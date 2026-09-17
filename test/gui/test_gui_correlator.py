@@ -21,7 +21,9 @@ import numpy as np
 import pytest
 
 #: A short Becker & Hickl SPC measurement shipped with the tests.
-SPC_FILE = pathlib.Path(__file__).resolve().parents[1] / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+SPC_FILE = (
+    pathlib.Path(__file__).resolve().parents[1] / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+)
 
 
 @pytest.fixture

@@ -1,23 +1,19 @@
 import sys
-from chisurf.gui import QtWidgets
 
-import chisurf.gui
-import chisurf.gui.widgets.wizard
-import chisurf.gui.widgets
-import chisurf.gui.decorators
-import chisurf.gui.widgets.parameter_editor
-
+import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.experiments
-import chisurf.core.curve
 import chisurf.core.fitting
-
+import chisurf.gui
+import chisurf.gui.decorators
+import chisurf.gui.widgets
+import chisurf.gui.widgets.parameter_editor
+import chisurf.gui.widgets.wizard
 import chisurf.macros
-
+from chisurf.gui import QtWidgets
 
 
 class ChisurfWizard(QtWidgets.QWizard):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWizardStyle(QtWidgets.QWizard.ModernStyle)
@@ -48,9 +44,7 @@ class ChisurfWizard(QtWidgets.QWizard):
         toolbar.setMovable(False)
         toolbar.setFloatable(False)
         toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
-        attach_help_and_guide(
-            self, toolbar, title="FCS curve merger — help", owner=type(self)
-        )
+        attach_help_and_guide(self, toolbar, title="FCS curve merger — help", owner=type(self))
         if hasattr(layout, "insertWidget"):
             layout.insertWidget(0, toolbar)
         else:
@@ -61,9 +55,8 @@ if __name__ == "plugin":
     wizard = ChisurfWizard()
     wizard.show()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     wizard = ChisurfWizard()
     wizard.show()
     sys.exit(app.exec_())
-

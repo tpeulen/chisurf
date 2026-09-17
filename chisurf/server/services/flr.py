@@ -7,9 +7,7 @@ used by FitInfo.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
-
-from chisurf.server.services import ServiceResult, service_error, NOT_FOUND, OPERATION_FAILED
+from chisurf.server.services import OPERATION_FAILED, ServiceResult, service_error
 from chisurf.server.session import SessionState
 
 # ── helpers ──────────────────────────────────────────────────────────
@@ -31,7 +29,9 @@ def _ensure_analysis(state: SessionState, analysis_id: str):
 # ── dedicated RPC methods ────────────────────────────────────────────
 
 
-def flr_metadata_get(state: SessionState, analysis_id: str = "analysis_1", **kwargs) -> ServiceResult:
+def flr_metadata_get(
+    state: SessionState, analysis_id: str = "analysis_1", **kwargs
+) -> ServiceResult:
     try:
         db = _db(state)
         meta = db.get_analysis_metadata(analysis_id)
@@ -40,7 +40,12 @@ def flr_metadata_get(state: SessionState, analysis_id: str = "analysis_1", **kwa
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_metadata_set(state: SessionState, analysis_id: str = "analysis_1", metadata: Optional[Dict[str, str]] = None, **kwargs) -> ServiceResult:
+def flr_metadata_set(
+    state: SessionState,
+    analysis_id: str = "analysis_1",
+    metadata: dict[str, str] | None = None,
+    **kwargs,
+) -> ServiceResult:
     try:
         db = _ensure_analysis(state, analysis_id)
         db.set_analysis_metadata(analysis_id, metadata or {})
@@ -49,7 +54,9 @@ def flr_metadata_set(state: SessionState, analysis_id: str = "analysis_1", metad
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_metadata_add(state: SessionState, analysis_id: str = "analysis_1", key: str = "", value: str = "", **kwargs) -> ServiceResult:
+def flr_metadata_add(
+    state: SessionState, analysis_id: str = "analysis_1", key: str = "", value: str = "", **kwargs
+) -> ServiceResult:
     try:
         db = _ensure_analysis(state, analysis_id)
         db.add_analysis_metadata(analysis_id, key, value)
@@ -58,7 +65,9 @@ def flr_metadata_add(state: SessionState, analysis_id: str = "analysis_1", key: 
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_metadata_delete(state: SessionState, analysis_id: str = "analysis_1", key: str = "", **kwargs) -> ServiceResult:
+def flr_metadata_delete(
+    state: SessionState, analysis_id: str = "analysis_1", key: str = "", **kwargs
+) -> ServiceResult:
     try:
         db = _ensure_analysis(state, analysis_id)
         db.delete_analysis_metadata(analysis_id, key)
@@ -67,7 +76,9 @@ def flr_metadata_delete(state: SessionState, analysis_id: str = "analysis_1", ke
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_analysis_update(state: SessionState, analysis_id: str = "analysis_1", **kwargs) -> ServiceResult:
+def flr_analysis_update(
+    state: SessionState, analysis_id: str = "analysis_1", **kwargs
+) -> ServiceResult:
     try:
         db = _ensure_analysis(state, analysis_id)
         update_kwargs = {k: v for k, v in kwargs.items() if k != "analysis_id"}
@@ -77,17 +88,34 @@ def flr_analysis_update(state: SessionState, analysis_id: str = "analysis_1", **
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_photon_stream_add(state: SessionState, analysis_id: str = "analysis_1", file_path: str = "", detector_id: str = "", stream_id: str = "", file_format: str = "", **kwargs) -> ServiceResult:
+def flr_photon_stream_add(
+    state: SessionState,
+    analysis_id: str = "analysis_1",
+    file_path: str = "",
+    detector_id: str = "",
+    stream_id: str = "",
+    file_format: str = "",
+    **kwargs,
+) -> ServiceResult:
     try:
         db = _ensure_analysis(state, analysis_id)
         from pathlib import Path
-        db.add_photon_stream(analysis_id, Path(file_path), detector_id=detector_id, stream_id=stream_id or None, file_format=file_format or None)
+
+        db.add_photon_stream(
+            analysis_id,
+            Path(file_path),
+            detector_id=detector_id,
+            stream_id=stream_id or None,
+            file_format=file_format or None,
+        )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_photon_stream_list(state: SessionState, analysis_id: str = "analysis_1", **kwargs) -> ServiceResult:
+def flr_photon_stream_list(
+    state: SessionState, analysis_id: str = "analysis_1", **kwargs
+) -> ServiceResult:
     try:
         db = _db(state)
         streams = db.get_photon_streams(analysis_id)
@@ -97,10 +125,13 @@ def flr_photon_stream_list(state: SessionState, analysis_id: str = "analysis_1",
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_export(state: SessionState, analysis_id: str = "analysis_1", file_path: str = "", **kwargs) -> ServiceResult:
+def flr_export(
+    state: SessionState, analysis_id: str = "analysis_1", file_path: str = "", **kwargs
+) -> ServiceResult:
     try:
         db = _db(state)
         from pathlib import Path
+
         out = db.export_flr_cif(Path(file_path), analysis_id=analysis_id)
         return {"ok": True, "path": str(out)}
     except Exception as e:
@@ -116,7 +147,7 @@ def flr_probe_types(state: SessionState, **kwargs) -> ServiceResult:
         return service_error(str(e), error_code=OPERATION_FAILED)
 
 
-def flr_probes(state: SessionState, type_id: Optional[int] = None, **kwargs) -> ServiceResult:
+def flr_probes(state: SessionState, type_id: int | None = None, **kwargs) -> ServiceResult:
     try:
         db = _db(state)
         probes = [dict(r) for r in db.get_probes(type_id=type_id)]

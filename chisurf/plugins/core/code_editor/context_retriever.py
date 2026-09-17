@@ -8,7 +8,9 @@ from typing import Any
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
 
 _WORD_RE = re.compile(r"[a-z0-9_]{3,}", re.IGNORECASE)
-_IMPORT_RE = re.compile(r"^(?:from\s+(?P<from>[a-zA-Z0-9_.]+)\s+import\s+|import\s+)(?P<name>[a-zA-Z0-9_.]+)")
+_IMPORT_RE = re.compile(
+    r"^(?:from\s+(?P<from>[a-zA-Z0-9_.]+)\s+import\s+|import\s+)(?P<name>[a-zA-Z0-9_.]+)"
+)
 
 
 class ChisurfContextRetriever:

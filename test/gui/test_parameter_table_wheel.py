@@ -9,6 +9,7 @@ The step has to be relative: a parameter table holds a lifetime of 4, an
 amplitude of 1e-3 and a count of 1e6 at the same time, and a fixed step is
 either useless on one or destructive on another.
 """
+
 import numpy as np
 import pytest
 from qtpy import QtCore, QtGui, QtWidgets
@@ -206,7 +207,8 @@ def test_the_wheel_writes_through_the_same_path_as_typing(table):
     applied = []
     original = controller.apply_value
     controller.apply_value = lambda value, parameter=None: (
-        applied.append(value), original(value, parameter)
+        applied.append(value),
+        original(value, parameter),
     )[1]
     try:
         turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
@@ -216,6 +218,7 @@ def test_the_wheel_writes_through_the_same_path_as_typing(table):
 
 
 # --- what the review of this feature found (RF-834..RF-839) ----------------
+
 
 def test_a_cell_the_table_declares_read_only_is_not_wheeled(table):
     """RF-834: a bound that is not enforced paints blank and cannot be typed.
@@ -327,6 +330,7 @@ def test_the_wheel_reaches_zero_and_crosses_it(table):
 
 # --- what a changed parameter must actually do -----------------------------
 
+
 def test_changing_a_parameter_recomputes_the_curve(qtbot):
     """The plot has to follow the value. Changing is not fitting.
 
@@ -342,14 +346,14 @@ def test_changing_a_parameter_recomputes_the_curve(qtbot):
 
     rng = np.random.default_rng(0)
     x = np.linspace(0, 10, 64)
-    y = 2.0 + 0.5 * x ** 2 + rng.normal(0, 0.5, x.size)
+    y = 2.0 + 0.5 * x**2 + rng.normal(0, 0.5, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y))
     fit = fit_module.FitGroup(
         data=chisurf.core.data.DataGroup([data]),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     chisurf.fits.append(fit)
     try:
@@ -369,7 +373,7 @@ def test_changing_a_parameter_recomputes_the_curve(qtbot):
 
 
 def test_a_host_can_decline_the_backend(qtbot, monkeypatch):
-    """nDXplorer's constants are rendered by this table and belong to no fit.
+    """NDXplorer's constants are rendered by this table and belong to no fit.
 
     Every edit used to attempt ``parameter.set_value`` for them, and the server
     answered "fit not found" — once per keystroke, or per wheel notch, with a
@@ -385,6 +389,7 @@ def test_a_host_can_decline_the_backend(qtbot, monkeypatch):
         def __getattr__(self, name):
             def record(**_kw):
                 calls.append(name)
+
             return record
 
     monkeypatch.setattr(pw, "get_fitting_client", lambda: _Client())

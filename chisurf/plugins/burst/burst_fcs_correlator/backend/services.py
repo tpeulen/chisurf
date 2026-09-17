@@ -7,7 +7,7 @@ handlers under the ``burst_fcs.*`` namespace.
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
@@ -23,11 +23,11 @@ from ..core.algorithms import (
 )
 
 
-def _ok(result: Any) -> Dict[str, Any]:
+def _ok(result: Any) -> dict[str, Any]:
     return {"ok": True, "result": result}
 
 
-def _read_error(exc: OSError) -> Dict[str, Any]:
+def _read_error(exc: OSError) -> dict[str, Any]:
     """Return the service error for a TTTR input that could not be read."""
     from chisurf.server.services import NOT_FOUND, OPERATION_FAILED, service_error
 
@@ -35,52 +35,58 @@ def _read_error(exc: OSError) -> Dict[str, Any]:
     return service_error(str(exc), error_code=code, exception=exc)
 
 
-def parse_bst_handler(path: str) -> Dict[str, Any]:
+def parse_bst_handler(path: str) -> dict[str, Any]:
     tttr_path, ranges = parse_bst_file(pathlib.Path(path))
-    return _ok({
-        "tttr_path": str(tttr_path) if tttr_path is not None else None,
-        "ranges": [[int(a), int(b)] for a, b in ranges],
-    })
+    return _ok(
+        {
+            "tttr_path": str(tttr_path) if tttr_path is not None else None,
+            "ranges": [[int(a), int(b)] for a, b in ranges],
+        }
+    )
 
 
-def parse_bur_handler(path: str, analysis_root: str = None) -> Dict[str, Any]:
+def parse_bur_handler(path: str, analysis_root: str = None) -> dict[str, Any]:
     root = pathlib.Path(analysis_root) if analysis_root else pathlib.Path(path).parent
     tttr_path, ranges = parse_bur_file(pathlib.Path(path), root)
-    return _ok({
-        "tttr_path": str(tttr_path) if tttr_path is not None else None,
-        "ranges": [[int(a), int(b)] for a, b in ranges],
-    })
+    return _ok(
+        {
+            "tttr_path": str(tttr_path) if tttr_path is not None else None,
+            "ranges": [[int(a), int(b)] for a, b in ranges],
+        }
+    )
 
 
-def fit_curve_handler(tau, g, settings: Dict[str, Any] = None) -> Dict[str, Any]:
+def fit_curve_handler(tau, g, settings: dict[str, Any] = None) -> dict[str, Any]:
     s = BurstFcsSettings.from_dict(settings or {})
     return _ok(fit_curve(np.asarray(tau, dtype=float), np.asarray(g, dtype=float), s))
 
 
-def fit_diffusion_handler(tau, g) -> Dict[str, Any]:
+def fit_diffusion_handler(tau, g) -> dict[str, Any]:
     td_mean, td_peak = fit_diffusion_time(np.asarray(tau, dtype=float), np.asarray(g, dtype=float))
     return _ok({"td_mean": td_mean, "td_peak": td_peak})
 
 
-def fit_simple_handler(tau, g) -> Dict[str, Any]:
+def fit_simple_handler(tau, g) -> dict[str, Any]:
     td, tau_used, g_used, g_fit = fit_simple_diffusion(
         np.asarray(tau, dtype=float), np.asarray(g, dtype=float)
     )
-    return _ok({
-        "td": float(td),
-        "tau": np.asarray(tau_used, dtype=float).tolist(),
-        "g": np.asarray(g_used, dtype=float).tolist(),
-        "g_fit": np.asarray(g_fit, dtype=float).tolist(),
-    })
+    return _ok(
+        {
+            "td": float(td),
+            "tau": np.asarray(tau_used, dtype=float).tolist(),
+            "g": np.asarray(g_used, dtype=float).tolist(),
+            "g_fit": np.asarray(g_fit, dtype=float).tolist(),
+        }
+    )
 
 
 def correlate_file_handler(
     tttr_path: str,
-    ranges: List,
-    pairs: List[Dict[str, Any]],
-    settings: Dict[str, Any] = None,
+    ranges: list,
+    pairs: list[dict[str, Any]],
+    settings: dict[str, Any] = None,
     filetype=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Correlate one TTTR file, reporting an unreadable input as a service error.
 
     An empty ``curves`` list therefore means the file was read and produced no

@@ -2,15 +2,20 @@ from __future__ import annotations
 
 """Tests for the clean typed proxy classes."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
 import pytest
 
 from chisurf.core.api._client import ChisurfClient
 from chisurf.core.api._proxies import (
-    ProxyDatasetList, ProxyFitList,
-    FitProxy, DatasetProxy, ParameterProxy, ModelProxy, DataProxy,
+    DataProxy,
+    DatasetProxy,
+    FitProxy,
+    ModelProxy,
+    ParameterProxy,
+    ProxyDatasetList,
+    ProxyFitList,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -24,9 +29,10 @@ def client():
 
 
 class TestDataProxy:
-
     def test_properties(self):
-        dp = DataProxy({"name": "MyData", "uid": "ds1", "filename": "/tmp/f.dat", "experiment": "TCSPC"})
+        dp = DataProxy(
+            {"name": "MyData", "uid": "ds1", "filename": "/tmp/f.dat", "experiment": "TCSPC"}
+        )
         assert dp.name == "MyData"
         assert dp.uid == "ds1"
         assert dp.filename == "/tmp/f.dat"
@@ -48,15 +54,21 @@ class TestDataProxy:
 
 
 class TestParameterProxy:
-
     @pytest.fixture
     def param(self):
-        return ParameterProxy({
-            "name": "tau1", "fit_uid": "f1",
-            "value": 3.5, "fixed": False, "bounds": (0.0, 10.0),
-            "bounds_on": True, "is_linked": False, "linked_to": "",
-            "error_estimate": 0.1,
-        })
+        return ParameterProxy(
+            {
+                "name": "tau1",
+                "fit_uid": "f1",
+                "value": 3.5,
+                "fixed": False,
+                "bounds": (0.0, 10.0),
+                "bounds_on": True,
+                "is_linked": False,
+                "linked_to": "",
+                "error_estimate": 0.1,
+            }
+        )
 
     def test_read_properties(self, param):
         assert param.name == "tau1"
@@ -73,49 +85,78 @@ class TestParameterProxy:
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.set_value(4.0)
-        client.call.assert_called_once_with("parameter.set_value", {
-            "parameter_name": "tau1", "value": 4.0, "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.set_value",
+            {
+                "parameter_name": "tau1",
+                "value": 4.0,
+                "fit_uid": "f1",
+            },
+        )
 
     def test_set_fixed_calls_server(self, client):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.set_fixed(True)
-        client.call.assert_called_once_with("parameter.set_fixed", {
-            "parameter_name": "tau1", "fixed": True, "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.set_fixed",
+            {
+                "parameter_name": "tau1",
+                "fixed": True,
+                "fit_uid": "f1",
+            },
+        )
 
     def test_set_bounds_calls_server(self, client):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.set_bounds((0.0, 5.0))
-        client.call.assert_called_once_with("parameter.set_bounds", {
-            "parameter_name": "tau1", "bounds": [0.0, 5.0], "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.set_bounds",
+            {
+                "parameter_name": "tau1",
+                "bounds": [0.0, 5.0],
+                "fit_uid": "f1",
+            },
+        )
 
     def test_set_bounds_on_calls_server(self, client):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.set_bounds_on(False)
-        client.call.assert_called_once_with("parameter.set_bounds_on", {
-            "parameter_name": "tau1", "bounds_on": False, "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.set_bounds_on",
+            {
+                "parameter_name": "tau1",
+                "bounds_on": False,
+                "fit_uid": "f1",
+            },
+        )
 
     def test_link_to_calls_server(self, client):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.link_to("tau2")
-        client.call.assert_called_once_with("parameter.link", {
-            "parameter_name": "tau1", "target_parameter_name": "tau2", "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.link",
+            {
+                "parameter_name": "tau1",
+                "target_parameter_name": "tau2",
+                "fit_uid": "f1",
+            },
+        )
 
     def test_unlink_calls_server(self, client):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         p.unlink()
-        client.call.assert_called_once_with("parameter.unlink", {
-            "parameter_name": "tau1", "fit_uid": "f1",
-        })
+        client.call.assert_called_once_with(
+            "parameter.unlink",
+            {
+                "parameter_name": "tau1",
+                "fit_uid": "f1",
+            },
+        )
 
     def test_no_client_raises(self):
         p = ParameterProxy({"name": "tau1", "fit_uid": "f1"}, client=None)
@@ -132,10 +173,12 @@ class TestParameterProxy:
 
 
 class TestModelProxy:
-
     def test_properties(self):
         data = {
-            "name": "Lifetime", "n_points": 100, "n_free": 3, "chi2r": 1.2,
+            "name": "Lifetime",
+            "n_points": 100,
+            "n_free": 3,
+            "chi2r": 1.2,
             "parameters_all": [
                 {"name": "tau1", "value": 3.5, "fit_uid": "f1"},
                 {"name": "tau2", "value": 1.0, "fit_uid": "f1"},
@@ -187,7 +230,6 @@ class TestModelProxy:
 
 
 class TestFitProxy:
-
     @pytest.fixture
     def fit_data(self):
         return {
@@ -202,9 +244,17 @@ class TestFitProxy:
             "dataset_name": "TestData",
             "dataset_uid": "ds1",
             "model_name": "Lifetime",
-            "data": {"name": "TestData", "uid": "ds1", "filename": "/tmp/f.dat", "experiment": "TCSPC"},
+            "data": {
+                "name": "TestData",
+                "uid": "ds1",
+                "filename": "/tmp/f.dat",
+                "experiment": "TCSPC",
+            },
             "model": {
-                "name": "Lifetime", "n_points": 100, "n_free": 3, "chi2r": 1.2,
+                "name": "Lifetime",
+                "n_points": 100,
+                "n_free": 3,
+                "chi2r": 1.2,
                 "parameters_all": [
                     {"name": "tau1", "value": 3.5, "fit_uid": "f1"},
                     {"name": "tau2", "value": 1.0, "fit_uid": "f1"},
@@ -273,17 +323,28 @@ class TestFitProxy:
         f = FitProxy({"uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         f.save("/tmp/out", "csv")
-        client.call.assert_called_once_with("fit.save", {
-            "fit_uid": "f1", "filename": "/tmp/out", "file_type": "csv",
-        })
+        client.call.assert_called_once_with(
+            "fit.save",
+            {
+                "fit_uid": "f1",
+                "filename": "/tmp/out",
+                "file_type": "csv",
+            },
+        )
 
     def test_save_with_kwargs(self, client):
         f = FitProxy({"uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         f.save("/tmp/out", save_curves=True)
-        client.call.assert_called_once_with("fit.save", {
-            "fit_uid": "f1", "filename": "/tmp/out", "file_type": "csv", "save_curves": True,
-        })
+        client.call.assert_called_once_with(
+            "fit.save",
+            {
+                "fit_uid": "f1",
+                "filename": "/tmp/out",
+                "file_type": "csv",
+                "save_curves": True,
+            },
+        )
 
     def test_update_calls_server(self, client):
         f = FitProxy({"uid": "f1"}, client=client)
@@ -295,17 +356,26 @@ class TestFitProxy:
         f = FitProxy({"uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         f.set_result_idx(3)
-        client.call.assert_called_once_with("fit.set_result_idx", {
-            "fit_uid": "f1", "result_idx": 3,
-        })
+        client.call.assert_called_once_with(
+            "fit.set_result_idx",
+            {
+                "fit_uid": "f1",
+                "result_idx": 3,
+            },
+        )
 
     def test_set_dataset_calls_server(self, client):
         f = FitProxy({"uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         f.set_dataset(dataset_index=5)
-        client.call.assert_called_once_with("fit.set_dataset", {
-            "fit_uid": "f1", "dataset_index": 5, "dataset_uid": None,
-        })
+        client.call.assert_called_once_with(
+            "fit.set_dataset",
+            {
+                "fit_uid": "f1",
+                "dataset_index": 5,
+                "dataset_uid": None,
+            },
+        )
 
     def test_model_finalize_calls_server(self, client):
         f = FitProxy({"uid": "f1"}, client=client)
@@ -317,9 +387,13 @@ class TestFitProxy:
         f = FitProxy({"uid": "f1"}, client=client)
         client.call.return_value = {"ok": True}
         f.model_set_parse_function("expr")
-        client.call.assert_called_once_with("model.set_parse_function", {
-            "fit_uid": "f1", "function_name": "expr",
-        })
+        client.call.assert_called_once_with(
+            "model.set_parse_function",
+            {
+                "fit_uid": "f1",
+                "function_name": "expr",
+            },
+        )
 
     def test_no_client_raises(self):
         f = FitProxy({"uid": "f1"}, client=None)
@@ -337,13 +411,18 @@ class TestFitProxy:
 
 
 class TestDatasetProxy:
-
     def test_properties(self):
-        ds = DatasetProxy({
-            "index": 0, "uid": "ds1", "name": "TestData",
-            "type": "DataCurve", "filename": "/tmp/f.dat",
-            "experiment": "TCSPC", "length": 100,
-        })
+        ds = DatasetProxy(
+            {
+                "index": 0,
+                "uid": "ds1",
+                "name": "TestData",
+                "type": "DataCurve",
+                "filename": "/tmp/f.dat",
+                "experiment": "TCSPC",
+                "length": 100,
+            }
+        )
         assert ds.uid == "ds1"
         assert ds.name == "TestData"
         assert ds.type == "DataCurve"
@@ -354,7 +433,9 @@ class TestDatasetProxy:
 
     def test_curve_data_calls_server(self, client):
         client.dataset__curve_data.return_value = {
-            "ok": True, "x": [0.0, 1.0], "y": [2.0, 3.0],
+            "ok": True,
+            "x": [0.0, 1.0],
+            "y": [2.0, 3.0],
         }
         ds = DatasetProxy({"uid": "ds1", "name": "Data"}, client=client)
         curve = ds.curve_data()
@@ -382,7 +463,6 @@ class TestDatasetProxy:
 
 
 class TestProxyFitList:
-
     def test_fetch_empty(self, client):
         client.fit__list.return_value = []
         pl = ProxyFitList(client)
@@ -452,7 +532,6 @@ class TestProxyFitList:
 
 
 class TestProxyDatasetList:
-
     def test_fetch_empty(self, client):
         client.dataset__list.return_value = []
         pl = ProxyDatasetList(client)
@@ -533,7 +612,6 @@ class TestProxyListInsertion:
 
 
 class TestFitProxyRpcMethods:
-
     def test_all_rpc_methods_covered(self):
         """FitProxy must have explicit methods for all documented RPC actions."""
         fit = FitProxy({"uid": "f1"}, client=MagicMock(spec=ChisurfClient))
@@ -547,12 +625,13 @@ class TestFitProxyRpcMethods:
 
 
 class TestDatasetProxyCurveData:
-
     def test_curve_data_via_explicit_method(self):
         """DatasetProxy.curve_data() is the only way to fetch arrays."""
         client = MagicMock(spec=ChisurfClient)
         client.dataset__curve_data.return_value = {
-            "ok": True, "x": [0.0, 1.0], "y": [2.0, 3.0],
+            "ok": True,
+            "x": [0.0, 1.0],
+            "y": [2.0, 3.0],
         }
         ds = DatasetProxy({"uid": "ds1", "name": "Data"}, client=client)
         curve = ds.curve_data()

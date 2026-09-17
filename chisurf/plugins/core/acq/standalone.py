@@ -7,7 +7,6 @@ or as a standalone application with its own MDI interface.
 """
 
 import logging
-import os
 import sys
 
 from chisurf.gui import dialogs
@@ -27,6 +26,7 @@ try:
     )
 
     from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+
     PYQT_AVAILABLE = True
 except Exception:
     # Allow this module to be imported in environments without a Qt stack so that
@@ -44,13 +44,16 @@ except Exception:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def is_chisurf_available():
     """Check if chisurf is available."""
     try:
         import chisurf
+
         return True, chisurf
     except ImportError:
         return False, None
+
 
 def run_standalone():
     """Run the SM acquisition as a standalone application."""
@@ -79,6 +82,7 @@ def run_standalone():
     except Exception as e:
         logger.error(f"Failed to initialize SM Acquisition manager: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -89,6 +93,7 @@ def run_standalone():
 
     # Run the application
     return app.exec()
+
 
 def run_as_plugin():
     """Run the SM acquisition as a chisurf plugin."""
@@ -113,16 +118,18 @@ def run_as_plugin():
         return run_standalone()
 
     try:
-        manager = SMAcquisitionManager()
+        SMAcquisitionManager()
         logger.info("SM Acquisition plugin loaded successfully")
     except Exception as e:
         logger.error(f"Failed to load SM Acquisition plugin: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
     # Keep the plugin running
     return chisurf.run()
+
 
 class StandaloneMainWindow(ChisurfDockTool):
     """Standalone main window for SM Acquisition."""
@@ -161,28 +168,30 @@ class StandaloneMainWindow(ChisurfDockTool):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu('&File')
-        exit_action = QAction('&Exit', self)
+        file_menu = menubar.addMenu("&File")
+        exit_action = QAction("&Exit", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
         # View menu
-        view_menu = menubar.addMenu('&View')
+        menubar.addMenu("&View")
 
         # Window menu
-        window_menu = menubar.addMenu('&Window')
+        menubar.addMenu("&Window")
 
         # Help menu
-        help_menu = menubar.addMenu('&Help')
-        about_action = QAction('&About', self)
+        help_menu = menubar.addMenu("&Help")
+        about_action = QAction("&About", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 
     def show_about(self):
         """Show about dialog."""
-        dialogs.about(self, "About SM Acquisition",
-                         "Single-Molecule Acquisition Plugin\n\n"
-                         "Standalone version for testing and development.")
+        dialogs.about(
+            self,
+            "About SM Acquisition",
+            "Single-Molecule Acquisition Plugin\n\nStandalone version for testing and development.",
+        )
 
     def closeEvent(self, event):
         """Handle close event."""
@@ -193,6 +202,7 @@ class StandaloneMainWindow(ChisurfDockTool):
                 logger.error(f"Error closing acquisition manager: {e}")
 
         super().closeEvent(event)
+
 
 def main():
     """Main entry point.
@@ -205,10 +215,9 @@ def main():
     - **GUI/plugin mode** (default): existing behaviour, either running as a
       chisurf plugin or as a standalone Qt application.
     """
-
     # First: check for CLI mode flag and delegate to the simulation CLI.
     args = sys.argv[1:]
-    if '--cli' not in args and ('-h' in args or '--help' in args):
+    if "--cli" not in args and ("-h" in args or "--help" in args):
         # Reachable as `csc photon-acquisition --help`, where silently opening a
         # window instead of answering would be the wrong move. With `--cli` the
         # flag belongs to the simulation CLI below, not to this wrapper.
@@ -219,8 +228,8 @@ def main():
             "  --cli ...        forward to the simulation CLI (try: --cli --help)"
         )
         return 0
-    if '--cli' in args:
-        cli_index = args.index('--cli')
+    if "--cli" in args:
+        cli_index = args.index("--cli")
         cli_args = args[cli_index + 1 :]
 
         # Import here to avoid unnecessary Click/CLI setup when running GUI.
@@ -239,7 +248,7 @@ def main():
     if chisurf_available:
         logger.info("chisurf detected, running as plugin")
         # Check command line arguments
-        if len(sys.argv) > 1 and sys.argv[1] == '--standalone':
+        if len(sys.argv) > 1 and sys.argv[1] == "--standalone":
             logger.info("Forced standalone mode")
             return run_standalone()
         else:
@@ -248,5 +257,6 @@ def main():
         logger.info("chisurf not detected, running standalone")
         return run_standalone()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

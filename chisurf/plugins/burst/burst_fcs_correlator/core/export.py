@@ -18,8 +18,9 @@ burst.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 __all__ = ["write_fcs_container"]
 
@@ -89,7 +90,8 @@ def write_fcs_container(
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
     return write_burst_artifact(
-        source, table,
+        source,
+        table,
         name="burst fcs",
         artifact_kind="fcs_correlation",
         operation_type="burst_correlation",

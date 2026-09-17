@@ -37,6 +37,7 @@ Run
     QT_QPA_PLATFORM=offscreen PYTHONPATH=. \\
         python test/benchmarks/benchmark_chimol_chrome.py
 """
+
 from __future__ import annotations
 
 import os
@@ -70,10 +71,7 @@ def build_gui():
     gui.command_line.visible = True
     gui.set_rows(
         [GuiRow(name="all", is_header=True)]
-        + [
-            GuiRow(name=f"object_{index:03d}", enabled=index % 3 != 0)
-            for index in range(OBJECTS)
-        ]
+        + [GuiRow(name=f"object_{index:03d}", enabled=index % 3 != 0) for index in range(OBJECTS)]
     )
     gui.set_sequences(
         [

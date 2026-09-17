@@ -65,6 +65,7 @@ over all of its free parameters -- one clique, treewidth ``n_free - 1``. That is
 the honest answer: a single dataset has no dataset-level structure to exploit.
 Structure appears with :class:`~chisurf.core.fitting.fit.FitGroup`.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -73,9 +74,8 @@ import functools
 import inspect
 import itertools
 
-from chisurf.core import graph as cg
-
 from chisurf import typing
+from chisurf.core import graph as cg
 
 __all__ = [
     "VariableNode",
@@ -311,15 +311,16 @@ def frozen_structure(*targets):
             q.__dict__.pop("_frozen_value", None)
         if structure_version() != structure_at_entry:
             import chisurf.logging
+
             chisurf.logging.warning(
                 "frozen_structure: the parameter structure changed during a "
                 "run that declared it fixed; cached parameter lists were stale."
             )
         if window_version() != window_at_entry:
             import chisurf.logging
+
             chisurf.logging.warning(
-                "frozen_structure: a fit window changed during a run that "
-                "declared it fixed."
+                "frozen_structure: a fit window changed during a run that declared it fixed."
             )
 
 
@@ -350,6 +351,7 @@ def frozen(*argument_names):
     callable
         The decorator.
     """
+
     def decorate(function):
         @functools.wraps(function)
         def wrapper(*args, **kwargs):
@@ -357,7 +359,9 @@ def frozen(*argument_names):
             targets = [bound.arguments.get(name) for name in argument_names]
             with frozen_structure(*[t for t in targets if t is not None]):
                 return function(*args, **kwargs)
+
         return wrapper
+
     return decorate
 
 
@@ -510,32 +514,22 @@ class FactorGraph:
     """
 
     def __init__(
-            self,
-            variables: typing.Sequence[VariableNode],
-            factors: typing.Sequence[FactorNode],
-            version: int = 0,
+        self,
+        variables: typing.Sequence[VariableNode],
+        factors: typing.Sequence[FactorNode],
+        version: int = 0,
     ):
         """Initialise the graph from its variable and factor nodes."""
-        self.variables: typing.Dict[str, VariableNode] = {
-            v.key: v for v in variables
-        }
-        self.factors: typing.Dict[str, FactorNode] = {
-            f.key: f for f in factors
-        }
+        self.variables: typing.Dict[str, VariableNode] = {v.key: v for v in variables}
+        self.factors: typing.Dict[str, FactorNode] = {f.key: f for f in factors}
         self.version = int(version)
 
         #: variable key -> position in the flat parameter vector
-        self._index_of: typing.Dict[str, int] = {
-            v.key: v.index for v in variables
-        }
+        self._index_of: typing.Dict[str, int] = {v.key: v.index for v in variables}
         #: position in the flat parameter vector -> variable key
-        self._key_at: typing.Dict[int, str] = {
-            v.index: v.key for v in variables
-        }
+        self._key_at: typing.Dict[int, str] = {v.index: v.key for v in variables}
         #: variable key -> keys of the factors it appears in
-        incidence: typing.Dict[str, typing.List[str]] = {
-            v.key: [] for v in variables
-        }
+        incidence: typing.Dict[str, typing.List[str]] = {v.key: [] for v in variables}
         for f in factors:
             for key in f.scope:
                 if key in incidence:
@@ -548,8 +542,7 @@ class FactorGraph:
         #: elimination order -> maximal cliques, for a *caller-supplied* order
         #: only; the default order is the engine's and is cached there.
         self._cliques: typing.Dict[
-            typing.Optional[typing.Tuple[str, ...]],
-            typing.List[typing.Tuple[str, ...]]
+            typing.Optional[typing.Tuple[str, ...]], typing.List[typing.Tuple[str, ...]]
         ] = {}
 
     # -- the engine -------------------------------------------------------
@@ -613,7 +606,7 @@ class FactorGraph:
     def likelihood_factors(self) -> typing.List[FactorNode]:
         """Return the likelihood factors, ordered by local-fit index."""
         out = [f for f in self.factors.values() if f.kind == LIKELIHOOD]
-        out.sort(key=lambda f: (f.fit_index if f.fit_index is not None else -1))
+        out.sort(key=lambda f: f.fit_index if f.fit_index is not None else -1)
         return out
 
     # -- structure --------------------------------------------------------
@@ -667,10 +660,7 @@ class FactorGraph:
         """
         return [set(c) for c in self.engine.connected_components()]
 
-    def elimination_order(
-            self,
-            heuristic: str = "min_fill"
-    ) -> typing.List[str]:
+    def elimination_order(self, heuristic: str = "min_fill") -> typing.List[str]:
         """Return a greedy variable-elimination order.
 
         Parameters
@@ -694,15 +684,11 @@ class FactorGraph:
         """
         if heuristic not in ("min_fill", "min_degree"):
             raise ValueError(
-                f"unknown elimination heuristic {heuristic!r}; "
-                "expected 'min_fill' or 'min_degree'"
+                f"unknown elimination heuristic {heuristic!r}; expected 'min_fill' or 'min_degree'"
             )
         return list(self.engine.get_elimination_order(heuristic))
 
-    def cliques(
-            self,
-            order: typing.Sequence[str] = None
-    ) -> typing.List[typing.Tuple[str, ...]]:
+    def cliques(self, order: typing.Sequence[str] = None) -> typing.List[typing.Tuple[str, ...]]:
         """Return the maximal cliques induced by an elimination order.
 
         Each eliminated variable together with its then-remaining neighbours
@@ -758,10 +744,7 @@ class FactorGraph:
         self._cliques[cache_key] = out
         return list(out)
 
-    def junction_tree(
-            self,
-            order: typing.Sequence[str] = None
-    ) -> cg.Graph:
+    def junction_tree(self, order: typing.Sequence[str] = None) -> cg.Graph:
         """Return a junction (clique) tree of the fit.
 
         Nodes are the maximal cliques of :meth:`cliques` (as sorted tuples);
@@ -789,8 +772,7 @@ class FactorGraph:
             # construction that guarantees the running-intersection property.
             # Its edges index into `get_cliques()`, so they are read against
             # the engine's clique list rather than the key-sorted one above.
-            engine_cliques = [tuple(sorted(c))
-                              for c in self.engine.get_cliques()]
+            engine_cliques = [tuple(sorted(c)) for c in self.engine.get_cliques()]
             for edge in self.engine.get_junction_tree_edges():
                 a = engine_cliques[edge.first]
                 b = engine_cliques[edge.second]
@@ -805,8 +787,7 @@ class FactorGraph:
             shared = set(a) & set(b)
             if shared:
                 complete.add_edge(a, b, weight=len(shared))
-        tree = cg.maximum_spanning_tree(complete) if complete.number_of_edges() \
-            else complete
+        tree = cg.maximum_spanning_tree(complete) if complete.number_of_edges() else complete
         for a, b in tree.edges():
             tree[a][b]["separator"] = tuple(sorted(set(a) & set(b)))
         return tree
@@ -893,10 +874,7 @@ class FactorGraph:
 
     # -- relevance --------------------------------------------------------
 
-    def affected_factors(
-            self,
-            changed: typing.Iterable[str]
-    ) -> typing.Set[str]:
+    def affected_factors(self, changed: typing.Iterable[str]) -> typing.Set[str]:
         """Return the factors that must be re-evaluated for a set of changes.
 
         Parameters
@@ -911,10 +889,7 @@ class FactorGraph:
         """
         return set(self.engine.affected_factors([str(k) for k in changed]))
 
-    def affected_fits(
-            self,
-            changed: typing.Iterable[str]
-    ) -> typing.List[int]:
+    def affected_fits(self, changed: typing.Iterable[str]) -> typing.List[int]:
         """Return the local fits that must be recomputed for a set of changes.
 
         This is the query that makes a global objective proportional to what
@@ -931,8 +906,7 @@ class FactorGraph:
             Sorted indices of the local fits whose likelihood factor depends on
             at least one changed variable.
         """
-        return [int(i) for i in self.engine.affected_fits(
-            [str(k) for k in changed])]
+        return [int(i) for i in self.engine.affected_fits([str(k) for k in changed])]
 
     def unexplained_variables(self) -> typing.Set[str]:
         """Return the variables no likelihood factor depends on.
@@ -951,10 +925,7 @@ class FactorGraph:
         """
         return set(self.engine.get_unexplained_variables())
 
-    def affected_fits_from_indices(
-            self,
-            indices: typing.Iterable[int]
-    ) -> typing.List[int]:
+    def affected_fits_from_indices(self, indices: typing.Iterable[int]) -> typing.List[int]:
         """Like :meth:`affected_fits`, but keyed by parameter-vector position.
 
         Parameters
@@ -993,9 +964,7 @@ class FactorGraph:
         lines.append(f"components     : {len(comps)}")
         seps = [s for s in self.separators() if s]
         if seps:
-            shared = ", ".join(
-                "{" + ", ".join(names.get(k, k) for k in s) + "}" for s in seps
-            )
+            shared = ", ".join("{" + ", ".join(names.get(k, k) for k in s) + "}" for s in seps)
             lines.append(f"separators     : {shared}")
         else:
             lines.append("separators     : (none — no shared parameters)")
@@ -1022,16 +991,19 @@ def _build_engine(variables, factors):
     engine = _bff.InferenceFactorGraph()
     for v in variables.values():
         engine.add_variable(
-            v.key, v.name, int(v.index),
-            -1 if v.fit_index is None else int(v.fit_index))
+            v.key, v.name, int(v.index), -1 if v.fit_index is None else int(v.fit_index)
+        )
     for f in factors.values():
         scope = [k for k in f.scope if k in variables]
         engine.add_factor(
             f.key,
-            _bff.INFERENCE_FACTOR_LIKELIHOOD if f.kind == LIKELIHOOD else _bff.INFERENCE_FACTOR_PRIOR,
+            _bff.INFERENCE_FACTOR_LIKELIHOOD
+            if f.kind == LIKELIHOOD
+            else _bff.INFERENCE_FACTOR_PRIOR,
             scope,
             -1 if f.fit_index is None else int(f.fit_index),
-            int(f.size))
+            int(f.size),
+        )
     return engine
 
 
@@ -1053,10 +1025,7 @@ def _free_variables(model) -> typing.List[VariableNode]:
     return variables
 
 
-def _prior_factors(
-        model,
-        known: typing.Set[str]
-) -> typing.List[FactorNode]:
+def _prior_factors(model, known: typing.Set[str]) -> typing.List[FactorNode]:
     """Build one factor per free parameter carrying more than its bounds."""
     from chisurf.core.fitting.fit import _smooth_prior
 
@@ -1081,10 +1050,7 @@ def _prior_factors(
     return factors
 
 
-def _local_scope(
-        local_fit,
-        known: typing.Set[str]
-) -> typing.Tuple[str, ...]:
+def _local_scope(local_fit, known: typing.Set[str]) -> typing.Tuple[str, ...]:
     """Return the free variables one local fit's likelihood depends on.
 
     Every non-fixed parameter of the local model is resolved through its link
@@ -1188,10 +1154,7 @@ def build_factor_graph(fit, model=None) -> FactorGraph:
                 key = parameter_key(p)
                 if key in known:
                     owner.setdefault(key, i)
-        variables = [
-            dataclasses.replace(v, fit_index=owner.get(v.key))
-            for v in variables
-        ]
+        variables = [dataclasses.replace(v, fit_index=owner.get(v.key)) for v in variables]
     else:
         factors.append(
             FactorNode(

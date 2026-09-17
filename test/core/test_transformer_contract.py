@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 
 import pytest
-
 from mmfdb.repository import MFDatabase
+
 from chisurf.core.transform import (
     PortSpec,
+    TransformerConformanceError,
     TransformInputs,
     TransformResult,
-    TransformerConformanceError,
     check_transformer_conformance,
     list_transformers,
     register_transformer,

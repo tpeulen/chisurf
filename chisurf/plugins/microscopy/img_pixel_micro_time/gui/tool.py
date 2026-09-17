@@ -12,8 +12,11 @@ class ImgPixelMicroTimeTool(ImagingMapTool):
 
     def __init__(self, parent=None, embedded: bool = False, view_model=None, **kwargs):
         super().__init__(
-            view_model or MicroTimeViewModel(), title="Mean Micro-Time",
-            parent=parent, embedded=embedded, **kwargs,
+            view_model or MicroTimeViewModel(),
+            title="Mean Micro-Time",
+            parent=parent,
+            embedded=embedded,
+            **kwargs,
         )
 
 

@@ -107,10 +107,15 @@ def _is_relevant(name: str) -> bool:
     return name not in NUISANCE_PARAMS and not name.startswith(_NUISANCE_PREFIXES)
 
 
-def _targets_for_models(models, names: list[str] | None = None, relevant_only: bool = True) -> list[dict]:
+def _targets_for_models(
+    models, names: list[str] | None = None, relevant_only: bool = True
+) -> list[dict]:
     """Build sweep targets from already-built views."""
+
     def display(ci, model):
-        return names[ci] if names and ci < len(names) else getattr(model, "name", type(model).__name__)
+        return (
+            names[ci] if names and ci < len(names) else getattr(model, "name", type(model).__name__)
+        )
 
     targets: list[dict] = []
     for ci, model in enumerate(models):
@@ -118,17 +123,37 @@ def _targets_for_models(models, names: list[str] | None = None, relevant_only: b
             name = _canonical(p)
             if relevant_only and not _is_relevant(name):
                 continue
-            targets.append({"label": f"C{ci} [{display(ci, model)}] · {p.name}", "kind": "param",
-                            "component": ci, "name": name})
+            targets.append(
+                {
+                    "label": f"C{ci} [{display(ci, model)}] · {p.name}",
+                    "kind": "param",
+                    "component": ci,
+                    "name": name,
+                }
+            )
     if len(models) > 1:
         for ci, model in enumerate(models):
-            targets.append({"label": f"fraction · C{ci} [{display(ci, model)}]", "kind": "fraction",
-                            "component": ci, "name": None})
+            targets.append(
+                {
+                    "label": f"fraction · C{ci} [{display(ci, model)}]",
+                    "kind": "fraction",
+                    "component": ci,
+                    "name": None,
+                }
+            )
     return targets
 
 
-def _run_sweep(models, sweep: dict, param_min: float, param_max: float, n_points: int,
-               fractions: list[float] | None, tau_d0: float | None, log_scale: bool) -> dict:
+def _run_sweep(
+    models,
+    sweep: dict,
+    param_min: float,
+    param_max: float,
+    n_points: int,
+    fractions: list[float] | None,
+    tau_d0: float | None,
+    log_scale: bool,
+) -> dict:
     """Sweep the requested quantity over the mixed views; ``ValueError`` on a bad spec."""
     from chisurf.core.fluorescence.fret.fret_line import sweep as fret_line_sweep
 
@@ -282,7 +307,10 @@ def fret_line_overlays(
     if not res.get("ok"):
         return res
     if line not in _FRET_LINE_AXES:
-        return {"ok": False, "error": f"unknown line projection {line!r}; choose {sorted(_FRET_LINE_AXES)}"}
+        return {
+            "ok": False,
+            "error": f"unknown line projection {line!r}; choose {sorted(_FRET_LINE_AXES)}",
+        }
     x_key, y_key, axes_label = _FRET_LINE_AXES[line]
     result = res["result"]
     overlay = {

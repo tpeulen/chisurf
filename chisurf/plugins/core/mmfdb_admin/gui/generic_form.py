@@ -1,8 +1,12 @@
 """Dynamic, schema-driven detail and edit form widget for MMFDB tables."""
 
 from __future__ import annotations
-from typing import Any, Callable
-from qtpy import QtCore, QtWidgets, QtGui
+
+from collections.abc import Callable
+from typing import Any
+
+from qtpy import QtCore, QtWidgets
+
 import chisurf.logging
 
 # Legacy hardcoded schemas — kept for backward compatibility only.
@@ -10,10 +14,21 @@ import chisurf.logging
 SCHEMAS = {
     "user": [
         {"name": "user_id", "label": "User ID", "type": "str", "required": True},
-        {"name": "user_uuid", "label": "UUID", "type": "str", "readonly": True, "placeholder": "Auto-generated if left empty"},
+        {
+            "name": "user_uuid",
+            "label": "UUID",
+            "type": "str",
+            "readonly": True,
+            "placeholder": "Auto-generated if left empty",
+        },
         {"name": "display_name", "label": "Display Name", "type": "str", "required": True},
         {"name": "email", "label": "Email", "type": "str"},
-        {"name": "role", "label": "Role", "type": "choice", "choices": ["user", "admin", "pi", "postdoc", "phd", "student"]},
+        {
+            "name": "role",
+            "label": "Role",
+            "type": "choice",
+            "choices": ["user", "admin", "pi", "postdoc", "phd", "student"],
+        },
         {"name": "affiliation", "label": "Affiliation", "type": "str"},
         {"name": "department", "label": "Department", "type": "str"},
         {"name": "phone", "label": "Phone", "type": "str"},
@@ -40,10 +55,21 @@ SCHEMAS = {
     ],
     "sample": [
         {"name": "sample_id", "label": "Sample ID", "type": "str", "required": True},
-        {"name": "sample_uuid", "label": "UUID", "type": "str", "readonly": True, "placeholder": "Auto-generated if left empty"},
+        {
+            "name": "sample_uuid",
+            "label": "UUID",
+            "type": "str",
+            "readonly": True,
+            "placeholder": "Auto-generated if left empty",
+        },
         {"name": "description", "label": "Description", "type": "str"},
         {"name": "num_of_probes", "label": "Number of Probes", "type": "int"},
-        {"name": "solvent_phase", "label": "Solvent Phase", "type": "choice", "choices": ["liquid", "vitrified", "other"]},
+        {
+            "name": "solvent_phase",
+            "label": "Solvent Phase",
+            "type": "choice",
+            "choices": ["liquid", "vitrified", "other"],
+        },
         {"name": "sample_condition_id", "label": "Condition ID", "type": "str"},
         {"name": "entity_assembly_id", "label": "Entity Assembly ID", "type": "str"},
         {"name": "project_id", "label": "Project ID", "type": "str"},
@@ -79,7 +105,13 @@ SCHEMAS = {
         {"name": "updated_at", "label": "Updated At", "type": "str", "readonly": True},
     ],
     "branch": [
-        {"name": "branch_uuid", "label": "Branch UUID", "type": "str", "readonly": True, "placeholder": "Auto-generated UUID"},
+        {
+            "name": "branch_uuid",
+            "label": "Branch UUID",
+            "type": "str",
+            "readonly": True,
+            "placeholder": "Auto-generated UUID",
+        },
         {"name": "name", "label": "Branch Name", "type": "str", "required": True},
         {"name": "parent_branch_uuid", "label": "Parent Branch UUID", "type": "str"},
         {"name": "head_operation_id", "label": "Head Operation ID", "type": "str"},
@@ -108,8 +140,18 @@ SCHEMAS = {
         {"name": "setup_id", "label": "Setup ID", "type": "str", "required": True},
         {"name": "name", "label": "Name", "type": "str", "required": True},
         {"name": "instrument_type", "label": "Instrument Type", "type": "str"},
-        {"name": "laser_wavelengths", "label": "Laser Wavelengths", "type": "str", "placeholder": "[485, 640]"},
-        {"name": "detector_channels", "label": "Detector Channels", "type": "str", "placeholder": '{"ch1": ...}'},
+        {
+            "name": "laser_wavelengths",
+            "label": "Laser Wavelengths",
+            "type": "str",
+            "placeholder": "[485, 640]",
+        },
+        {
+            "name": "detector_channels",
+            "label": "Detector Channels",
+            "type": "str",
+            "placeholder": '{"ch1": ...}',
+        },
         {"name": "details", "label": "Details", "type": "text"},
         {"name": "created_by_user_id", "label": "Owner", "type": "str", "readonly": True},
         {"name": "is_public", "label": "Public", "type": "bool"},
@@ -129,7 +171,12 @@ SCHEMAS = {
         {"name": "data_type", "label": "Data Type", "type": "str", "readonly": True},
         {"name": "storage_mode", "label": "Storage Mode", "type": "str", "readonly": True},
         {"name": "location", "label": "File Path/URL/Folder", "type": "str", "readonly": True},
-        {"name": "validation_status", "label": "Validation Status", "type": "str", "readonly": True},
+        {
+            "name": "validation_status",
+            "label": "Validation Status",
+            "type": "str",
+            "readonly": True,
+        },
         {"name": "checksum", "label": "Checksum (SHA-256)", "type": "str", "readonly": True},
         {"name": "details", "label": "Details/JSON", "type": "text", "readonly": True},
     ],
@@ -146,14 +193,24 @@ SCHEMAS = {
         {"name": "product_type", "label": "Product Type", "type": "str", "readonly": True},
         {"name": "storage_mode", "label": "Storage Mode", "type": "str", "readonly": True},
         {"name": "location", "label": "File Path/URL/Folder", "type": "str", "readonly": True},
-        {"name": "validation_status", "label": "Validation Status", "type": "str", "readonly": True},
+        {
+            "name": "validation_status",
+            "label": "Validation Status",
+            "type": "str",
+            "readonly": True,
+        },
         {"name": "checksum", "label": "Checksum (SHA-256)", "type": "str", "readonly": True},
         {"name": "experiment_id", "label": "Experiment ID", "type": "str", "readonly": True},
     ],
     "object": [
         {"name": "object_uuid", "label": "Object UUID", "type": "str", "readonly": True},
         {"name": "content_md5", "label": "MD5", "type": "str", "readonly": True},
-        {"name": "original_filename", "label": "Original Filename", "type": "str", "readonly": True},
+        {
+            "name": "original_filename",
+            "label": "Original Filename",
+            "type": "str",
+            "readonly": True,
+        },
         {"name": "size_bytes", "label": "Size Bytes", "type": "int", "readonly": True},
         {"name": "mime_type", "label": "MIME Type", "type": "str", "readonly": True},
         {"name": "refcount", "label": "Refcount", "type": "int", "readonly": True},
@@ -178,6 +235,7 @@ SCHEMAS = {
     ],
 }
 
+
 class MMFDBDetailWidget(QtWidgets.QWidget):
     """A generic form layout widget driven by MMFDB schemas.
 
@@ -195,6 +253,7 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
         built-in Ctrl+Z undo stack because the user can still undo *within*
         a field before pressing Enter.
     """
+
     dataChanged = QtCore.Signal()
     commitRequested = QtCore.Signal()
 
@@ -216,12 +275,22 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
             self.schema = [
                 {
                     "name": fs.name if isinstance(fs, FieldSpec) else fs.get("name", ""),
-                    "label": fs.label if isinstance(fs, FieldSpec) else fs.get("label", fs.get("name", "")),
+                    "label": fs.label
+                    if isinstance(fs, FieldSpec)
+                    else fs.get("label", fs.get("name", "")),
                     "type": fs.widget if isinstance(fs, FieldSpec) else fs.get("type", "str"),
-                    "required": fs.required if isinstance(fs, FieldSpec) else fs.get("required", False),
-                    "readonly": fs.readonly if isinstance(fs, FieldSpec) else fs.get("readonly", False),
-                    "choices": list(fs.choices) if isinstance(fs, FieldSpec) else fs.get("choices", []),
-                    "placeholder": fs.placeholder if isinstance(fs, FieldSpec) else fs.get("placeholder", ""),
+                    "required": fs.required
+                    if isinstance(fs, FieldSpec)
+                    else fs.get("required", False),
+                    "readonly": fs.readonly
+                    if isinstance(fs, FieldSpec)
+                    else fs.get("readonly", False),
+                    "choices": list(fs.choices)
+                    if isinstance(fs, FieldSpec)
+                    else fs.get("choices", []),
+                    "placeholder": fs.placeholder
+                    if isinstance(fs, FieldSpec)
+                    else fs.get("placeholder", ""),
                     "tooltip": fs.tooltip if isinstance(fs, FieldSpec) else fs.get("tooltip", ""),
                 }
                 for fs in field_specs
@@ -354,6 +423,7 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
     def eventFilter(self, obj: Any, event: Any) -> bool:
         """Detect focus-out on QPlainTextEdit fields to trigger commit."""
         from qtpy.QtCore import QEvent
+
         if event.type() == QEvent.FocusOut and obj in self._text_areas:
             self._on_commit()
         return False
@@ -372,6 +442,7 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
 
                 if isinstance(val, (list, dict)):
                     import json
+
                     val = json.dumps(val)
 
                 if isinstance(widget, QtWidgets.QComboBox):
@@ -406,7 +477,7 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
         data = {}
         for field in self.schema:
             name = field["name"]
-            ftype = field.get("type", "str")
+            field.get("type", "str")
             widget = self.widgets.get(name)
             if not widget:
                 continue
@@ -429,12 +500,14 @@ class MMFDBDetailWidget(QtWidgets.QWidget):
 
             if name == "laser_wavelengths":
                 import json
+
                 try:
                     val = json.loads(val) if val else []
                 except Exception:
                     val = []
             elif name == "detector_channels":
                 import json
+
                 try:
                     val = json.loads(val) if val else {}
                 except Exception:

@@ -15,7 +15,8 @@ as ``pda.from_bursts``.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -23,26 +24,26 @@ from chisurf.server.services import INVALID_INPUT, OPERATION_FAILED, ServiceResu
 from chisurf.server.session import SessionState
 
 
-def _as_channel_tuple(channels: Any) -> Tuple[List[int], ...]:
+def _as_channel_tuple(channels: Any) -> tuple[list[int], ...]:
     """JSON ``[[0], [1]]`` → ``([0], [1])`` (the reader wants a tuple of lists)."""
     return tuple([int(c) for c in group] for group in channels)
 
 
-def _as_intervals(ranges: Sequence[Sequence[int]]) -> List[Tuple[int, int]]:
+def _as_intervals(ranges: Sequence[Sequence[int]]) -> list[tuple[int, int]]:
     """JSON ``[[a, b], ...]`` → ``[(a, b), ...]`` of ints."""
     return [(int(a), int(b)) for a, b in ranges]
 
 
 def from_bursts(
     state: SessionState,
-    burst_slices: Optional[Dict[str, Sequence[Sequence[int]]]] = None,
+    burst_slices: dict[str, Sequence[Sequence[int]]] | None = None,
     channels: Any = None,
-    micro_time_ranges: Optional[Sequence[Sequence[int]]] = None,
+    micro_time_ranges: Sequence[Sequence[int]] | None = None,
     reading_routine: str = "PTU",
     minimum_number_of_photons: int = 20,
     maximum_number_of_photons: int = 200,
     minimum_time_window_length: float = 2e-3,
-    n_colors: Optional[int] = None,
+    n_colors: int | None = None,
 ) -> ServiceResult:
     """Build a PDA experimental histogram from gated burst intervals.
 
@@ -72,7 +73,9 @@ def from_bursts(
         ``channels`` and photon-count metadata.
     """
     if not burst_slices:
-        return service_error("burst_slices is required and must be non-empty", error_code=INVALID_INPUT)
+        return service_error(
+            "burst_slices is required and must be non-empty", error_code=INVALID_INPUT
+        )
     if channels is None:
         return service_error("channels is required, e.g. [[0], [1]]", error_code=INVALID_INPUT)
 
@@ -86,7 +89,7 @@ def from_bursts(
     try:
         from chisurf.core.experiments.pda2c import Pda2cReader
 
-        settings: Dict[str, Any] = dict(
+        settings: dict[str, Any] = dict(
             channels=ch,
             micro_time_ranges=mtr,
             reading_routine=reading_routine,
@@ -101,7 +104,7 @@ def from_bursts(
     except Exception as exc:  # pragma: no cover - depends on TTTR/tttrlib
         return service_error(f"PDA read failed: {exc}", error_code=OPERATION_FAILED, exception=exc)
 
-    curves: List[Dict[str, Any]] = []
+    curves: list[dict[str, Any]] = []
     for curve in group:
         pda = getattr(curve, "pda", None) or {}
         s1s2 = np.asarray(pda.get("s1s2", []), dtype=float)

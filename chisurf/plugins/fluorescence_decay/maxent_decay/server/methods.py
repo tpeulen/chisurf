@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from ..api.contract import METHOD_DESCRIBE, METHOD_RUN_FRET, METHOD_RUN_LCURVE, METHOD_RUN_LIFETIME
-from ..backend.services import contract_handler, run_fret_handler, run_lcurve_handler, run_lifetime_handler
+from ..backend.services import (
+    contract_handler,
+    run_fret_handler,
+    run_lcurve_handler,
+    run_lifetime_handler,
+)
 
 
 def _dispatch(method: str, params: dict[str, Any]) -> dict[str, Any]:

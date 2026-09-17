@@ -1,23 +1,20 @@
-import json
-import os
 from collections import OrderedDict
 
-import numpy as np
 
-import chisurf as cs
-class AvPotential(object):
+class AvPotential:
     """
     A class for calculating accessible volume potentials.
-    
+
     This class is used to calculate the potential energy of a structure based on
     accessible volume calculations.
     """
-    name = 'Av'
+
+    name = "Av"
 
     def __init__(self, distances=None, positions=None, av_samples=10000, min_av=150, verbose=False):
         """
         Initialize the AvPotential class.
-        
+
         Parameters
         ----------
         distances : dict, optional
@@ -55,7 +52,7 @@ class AvPotential(object):
         """
         if self.positions is None:
             raise ValueError("Positions not set unable to calculate AVs")
-        
+
         # This method would need to be implemented with cs's AV calculation
         # For now, we'll leave it as a placeholder
         pass
@@ -63,7 +60,7 @@ class AvPotential(object):
     def calc_distances(self, structure=None, verbose=False):
         """
         Calculate distances between accessible volumes.
-        
+
         Parameters
         ----------
         structure : Structure, optional
@@ -74,7 +71,7 @@ class AvPotential(object):
         verbose = verbose or self.verbose
         if structure is not None:
             self.structure = structure
-            
+
         # This method would need to be implemented with cs's distance calculation
         # For now, we'll leave it as a placeholder
         pass
@@ -82,7 +79,7 @@ class AvPotential(object):
     def getChi2(self, structure=None, reduced=False, verbose=False):
         """
         Calculate chi-squared value for the structure.
-        
+
         Parameters
         ----------
         structure : Structure, optional
@@ -91,7 +88,7 @@ class AvPotential(object):
             Whether to return reduced chi-squared
         verbose : bool, optional
             Whether to print verbose output
-            
+
         Returns
         -------
         float
@@ -103,7 +100,7 @@ class AvPotential(object):
 
         chi2 = 0.0
         self.calc_distances(verbose=verbose)
-        
+
         # This method would need to be implemented with actual chi-squared calculation
         # For now, we'll return a placeholder value
         return chi2
@@ -111,12 +108,12 @@ class AvPotential(object):
     def getEnergy(self, structure=None):
         """
         Calculate energy for the structure.
-        
+
         Parameters
         ----------
         structure : Structure, optional
             Structure to calculate energy for
-            
+
         Returns
         -------
         float

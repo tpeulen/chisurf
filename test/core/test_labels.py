@@ -38,7 +38,7 @@ def test_plain_labels_are_typeset(plain, rich):
 @pytest.mark.parametrize(
     "text",
     [
-        "&tau;<sub>0</sub>",        # models spell their labels out in HTML
+        "&tau;<sub>0</sub>",  # models spell their labels out in HTML
         "cpm<sub>all</sub>",
         "x<sup>2</sup>",
     ],
@@ -85,7 +85,7 @@ def test_markup_characters_in_a_plain_label_are_escaped():
     [
         ("R<sub>DA</sub>", "RDA"),
         ("&kappa;<sup>2</sup>", "κ2"),
-        ("tau_D(0)", "tau_D(0)"),     # already plain
+        ("tau_D(0)", "tau_D(0)"),  # already plain
         ("", ""),
     ],
 )

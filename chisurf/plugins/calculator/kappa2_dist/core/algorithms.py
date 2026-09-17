@@ -120,8 +120,7 @@ def compute_kappa2_dist(**params: float | bool | str) -> dict:
         # solid-angle weight of each one, and ignoring it pulled <k2> from
         # 0.668 to 0.633.
         k2v = np.asarray(k2v, dtype=float)
-        weights = (np.ones_like(k2v) if weights is None
-                   else np.asarray(weights, dtype=float))
+        weights = np.ones_like(k2v) if weights is None else np.asarray(weights, dtype=float)
 
     total = max(float(np.sum(weights)), 1e-30)
     k2_mean = float(np.dot(weights, k2v) / total)

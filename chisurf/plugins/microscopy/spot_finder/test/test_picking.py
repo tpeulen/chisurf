@@ -16,8 +16,9 @@ import pytest
 from chisurf.core.roi import fit_gaussian_spot, spot_roi
 
 
-def _field(cy=20.0, cx=24.0, sigma_y=1.8, sigma_x=1.8, amplitude=300.0,
-           background=5.0, shape=(48, 56)):
+def _field(
+    cy=20.0, cx=24.0, sigma_y=1.8, sigma_x=1.8, amplitude=300.0, background=5.0, shape=(48, 56)
+):
     """Return a field holding one Gaussian spot at a known place and width."""
     rows, cols = np.indices(shape)
     return background + amplitude * np.exp(
@@ -92,7 +93,7 @@ def test_a_click_outside_the_image_is_refused():
 def test_a_flat_window_does_not_produce_a_region():
     """The failure mode a fixed-radius circle would have hidden."""
     image = np.full((48, 56), 5.0)
-    image[40:44, 50:54] = 300.0        # a spot, but far from the click
+    image[40:44, 50:54] = 300.0  # a spot, but far from the click
 
     spot = fit_gaussian_spot(image, 10, 10, window=9)
 
@@ -130,7 +131,7 @@ def test_picking_through_the_view_model_adds_a_region(tmp_path):
     vm.results = [detect(image, SpotFinderSettings(clear_border=False))]
     found = vm.results[0].n_regions
 
-    vm.picked_point = (0, 35, 41)          # a click beside the faint spot
+    vm.picked_point = (0, 35, 41)  # a click beside the faint spot
     vm.pick_spot()
 
     assert len(vm.picked) == 1, vm.status_text
@@ -149,7 +150,7 @@ def test_a_pick_that_fails_says_so_and_adds_nothing():
     vm = SpotFinderViewModel()
     vm.results = [detect(image, SpotFinderSettings(clear_border=False))]
 
-    vm.picked_point = (0, 45, 5)           # empty corner
+    vm.picked_point = (0, 45, 5)  # empty corner
     vm.pick_spot()
 
     assert not vm.picked
@@ -167,7 +168,7 @@ def test_a_pick_does_not_claim_pixels_a_detected_region_already_owns():
     before = vm.results[0].n_regions
     labels_before = vm.results[0].labels.copy()
 
-    vm.picked_point = (0, 20, 24)          # right on the region already found
+    vm.picked_point = (0, 20, 24)  # right on the region already found
     vm.pick_spot()
     vm.add_picked_to_detection()
 

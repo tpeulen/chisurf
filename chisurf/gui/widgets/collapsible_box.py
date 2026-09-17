@@ -7,6 +7,7 @@ Usage::
     box.add_row("Alpha:", alpha_spin)
     layout.addWidget(box)
 """
+
 from __future__ import annotations
 
 from qtpy import QtCore, QtWidgets
@@ -25,6 +26,7 @@ def _resolve_auto_fold_delay(delay: int | None = None) -> int:
         return delay
     try:
         from chisurf.core.settings import cs_settings
+
         cfg = cs_settings.get("gui", {}).get("collapsible_box", {})
         return int(cfg.get("auto_fold_timeout_ms", 1200))
     except Exception:
@@ -101,9 +103,7 @@ class CollapsibleBox(QtWidgets.QWidget):
         self._btn.setObjectName("CollapsibleBoxHeader")
         self._btn.setCheckable(True)
         self._btn.setChecked(self._expanded)
-        self._btn.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-        )
+        self._btn.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._btn.clicked.connect(self._on_header_clicked)
         self._update_header_text()
         self._header_layout.addWidget(self._btn)
@@ -175,13 +175,9 @@ class CollapsibleBox(QtWidgets.QWidget):
         self._content.setVisible(self._expanded)
         self._update_header_text()
         if self._expanded:
-            self.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-            )
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         else:
-            self.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-            )
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         if self.parent() is not None:
             try:
                 self.parent().updateGeometry()

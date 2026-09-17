@@ -25,7 +25,8 @@ def ensure_qt_stack():
     global chisurf, QtWidgets, QtCore, ExperimentalDataSelector
 
     if QtWidgets is None or QtCore is None:
-        from qtpy import QtWidgets as _QtWidgets, QtCore as _QtCore  # type: ignore
+        from qtpy import QtCore as _QtCore
+        from qtpy import QtWidgets as _QtWidgets  # type: ignore
 
         QtWidgets = _QtWidgets
         QtCore = _QtCore

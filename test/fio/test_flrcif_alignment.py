@@ -6,12 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
-
-from build_tools.dev_utils import align_flrcif_parameters as align
-from chisurf.core.project.mmfdb_adapter import resolve_parameter_name
 from mmfdb.adapters.chinet import _lookup_flrcif_name
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
+from build_tools.dev_utils import align_flrcif_parameters as align
+from chisurf.core.project.mmfdb_adapter import resolve_parameter_name
 
 REGISTRY_PATH = (
     Path(__file__).resolve().parent.parent.parent
@@ -27,14 +26,12 @@ DIC_PATH = MmcifDictionary.DATA_DIR / "mmfdb_flr_ext.dic"
 
 def test_registry_file_exists():
     """The renamed parameter registry file exists."""
-    assert REGISTRY_PATH.is_file(), (
-        f"parameter_registry.json not found at {REGISTRY_PATH}"
-    )
+    assert REGISTRY_PATH.is_file(), f"parameter_registry.json not found at {REGISTRY_PATH}"
 
 
 def test_registry_has_no_fitting_parameters_reference():
     """The registry should use 'parameter_registry' not 'fitting_parameters'."""
-    with open(REGISTRY_PATH, "r") as fh:
+    with open(REGISTRY_PATH) as fh:
         data = json.load(fh)
     assert "version" in data
     assert "parameters" in data
@@ -42,21 +39,20 @@ def test_registry_has_no_fitting_parameters_reference():
 
 def test_all_parameters_have_flrcif_item_id():
     """Every parameter entry in the registry has an flrcif_item_id mapping."""
-    with open(REGISTRY_PATH, "r") as fh:
+    with open(REGISTRY_PATH) as fh:
         data = json.load(fh)
     params = data.get("parameters", {})
     missing = [
-        key for key, entry in params.items()
+        key
+        for key, entry in params.items()
         if isinstance(entry, dict) and "flrcif_item_id" not in entry
     ]
-    assert not missing, (
-        f"{len(missing)} parameter(s) missing flrcif_item_id: {missing[:10]}"
-    )
+    assert not missing, f"{len(missing)} parameter(s) missing flrcif_item_id: {missing[:10]}"
 
 
 def test_flrcif_item_ids_are_unique():
     """No two parameters share the same flrcif_item_id."""
-    with open(REGISTRY_PATH, "r") as fh:
+    with open(REGISTRY_PATH) as fh:
         data = json.load(fh)
     params = data.get("parameters", {})
     seen = {}
@@ -66,10 +62,7 @@ def test_flrcif_item_ids_are_unique():
         flrcif = entry.get("flrcif_item_id")
         if flrcif:
             if flrcif in seen:
-                pytest.fail(
-                    f"Duplicate flrcif_item_id '{flrcif}' for "
-                    f"'{key}' and '{seen[flrcif]}'"
-                )
+                pytest.fail(f"Duplicate flrcif_item_id '{flrcif}' for '{key}' and '{seen[flrcif]}'")
             seen[flrcif] = key
 
 
@@ -94,7 +87,7 @@ def test_dic_contains_flr_fit_parameter_items():
 
 def test_all_registry_ids_mapped_to_dic_items():
     """Every flrcif_item_id in the registry has a matching item in the .dic."""
-    with open(REGISTRY_PATH, "r") as fh:
+    with open(REGISTRY_PATH) as fh:
         data = json.load(fh)
     params = data.get("parameters", {})
     d = MmcifDictionary.load_bundled()
@@ -109,8 +102,7 @@ def test_all_registry_ids_mapped_to_dic_items():
         if item is None:
             missing.append((key, flrcif))
     assert not missing, (
-        f"{len(missing)} flrcif_item_id(s) not found in bundled dictionaries: "
-        f"{missing[:10]}"
+        f"{len(missing)} flrcif_item_id(s) not found in bundled dictionaries: {missing[:10]}"
     )
 
 
@@ -121,8 +113,7 @@ def test_dic_item_metadata_matches_registry():
     assert cat is not None
     for item in cat.items.values():
         assert item.type_code in ("float", "int"), (
-            f"Expected a numeric type_code for {item.name}, "
-            f"got {item.type_code}"
+            f"Expected a numeric type_code for {item.name}, got {item.type_code}"
         )
 
 
@@ -151,12 +142,8 @@ def test_dic_items_have_schema_bindings():
     cat = d.get_category("flr_fit_parameter")
     assert cat is not None
     for item in cat.items.values():
-        assert item.schema_table == "flr_fit_parameter", (
-            f"{item.name} missing schema_table"
-        )
-        assert item.schema_column, (
-            f"{item.name} missing schema_column"
-        )
+        assert item.schema_table == "flr_fit_parameter", f"{item.name} missing schema_table"
+        assert item.schema_column, f"{item.name} missing schema_column"
 
 
 def test_dic_uses_only_the_vendor_neutral_schema_namespace():
@@ -198,6 +185,7 @@ def test_dictionary_load_failure_is_not_swallowed(monkeypatch):
     An empty set reads as "nothing is defined yet", which would make the
     alignment re-append a definition for every parameter already in the file.
     """
+
     def _boom(*_args, **_kwargs):
         raise RuntimeError("dictionary unavailable")
 
@@ -228,9 +216,7 @@ def test_registry_and_dictionary_descriptions_do_not_drift():
     the extension dictionary in step with the registry, so a drift here means
     someone edited a description in the JSON without re-running the alignment.
     """
-    import re
-
-    with open(REGISTRY_PATH, "r") as fh:
+    with open(REGISTRY_PATH) as fh:
         data = json.load(fh)
     params = data.get("parameters", {})
     d = MmcifDictionary.load_bundled()

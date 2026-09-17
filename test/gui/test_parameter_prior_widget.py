@@ -70,12 +70,16 @@ def test_default_selection_is_box(qtbot, param):
 def test_every_family_is_reachable_from_the_single_combo(qtbot, param):
     """The combo replaced a radio row that could not reach five of the families."""
     popup = _popup(qtbot, param)
-    offered = {
-        popup.cb_prior_family.itemData(i) for i in range(popup.cb_prior_family.count())
-    }
+    offered = {popup.cb_prior_family.itemData(i) for i in range(popup.cb_prior_family.count())}
     assert offered == {
-        "box", "normal", "truncated_normal", "lognormal",
-        "half_normal", "exponential", "gamma", "beta",
+        "box",
+        "normal",
+        "truncated_normal",
+        "lognormal",
+        "half_normal",
+        "exponential",
+        "gamma",
+        "beta",
     }
 
 
@@ -196,16 +200,21 @@ def test_other_entry_is_removed_once_a_real_family_is_picked(qtbot, param):
 # AutoForm / view-spec declaration of priors
 # --------------------------------------------------------------------------
 
+
 def test_view_spec_loader_round_trips_priors():
     from chisurf.core.models import view_spec as vs
 
-    view = vs.load_view_spec({
-        "sections": [{
-            "type": "parameter_group",
-            "target": "g",
-            "priors": {"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}},
-        }],
-    })
+    view = vs.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "parameter_group",
+                    "target": "g",
+                    "priors": {"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}},
+                }
+            ],
+        }
+    )
     section = view.sections[0]
     assert isinstance(section, vs.ParameterGroupSection)
     assert section.priors == {"tau1": {"kind": "normal", "mu": 2.0, "sigma": 0.3}}
@@ -231,12 +240,14 @@ def test_apply_section_priors_sets_and_clears(qapp, param):
 
 class _GroupModel(ModelCurve):
     """Model whose parameter lives in a nested group, so a ParameterGroupSection
-    can target it by attribute name."""
+    can target it by attribute name.
+    """
 
     name = "GroupModel"
 
     def __init__(self, fit):
         from chisurf.core.fitting.parameter import FittingParameterGroup
+
         super().__init__(fit)
         self.rates = FittingParameterGroup(name="rates")
         self.k = FittingParameter(name="k", value=2.0)
@@ -257,12 +268,14 @@ def test_view_spec_prior_applied_when_widget_built(qapp, monkeypatch):
     cs.fits = [fit]
     model = fit.model
 
-    view = vs.ModelView(sections=(
-        vs.ParameterGroupSection(
-            target="rates",
-            priors={"k": {"kind": "lognormal", "mu": 0.0, "sigma": 0.4}},
-        ),
-    ))
+    view = vs.ModelView(
+        sections=(
+            vs.ParameterGroupSection(
+                target="rates",
+                priors={"k": {"kind": "lognormal", "mu": 0.0, "sigma": 0.4}},
+            ),
+        )
+    )
     monkeypatch.setattr(model, "view_spec", lambda: view)
 
     AutoModelWidget(model)
@@ -272,6 +285,7 @@ def test_view_spec_prior_applied_when_widget_built(qapp, monkeypatch):
 # --------------------------------------------------------------------------
 # Dismissal: outside click / focus loss only, never an interaction inside
 # --------------------------------------------------------------------------
+
 
 def test_focus_moving_to_a_child_keeps_the_popup_open(qtbot, param):
     """The regression this guards: clicking a spin box closed the popup.
@@ -421,9 +435,7 @@ def test_auto_hide_is_suspended_while_a_menu_is_open(qtbot, param):
     qtbot.waitExposed(popup)
 
     def deactivate():
-        QtWidgets.QApplication.sendEvent(
-            popup, QtCore.QEvent(QtCore.QEvent.WindowDeactivate)
-        )
+        QtWidgets.QApplication.sendEvent(popup, QtCore.QEvent(QtCore.QEvent.WindowDeactivate))
         qtbot.wait(20)  # the dismissal check is deferred to the event loop
 
     popup._begin_suspend_auto_hide()

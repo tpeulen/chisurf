@@ -27,6 +27,13 @@ from .io import (
     write_bur,
     zip_output_folder,
 )
+from .mmfdb import (
+    BurstMMFDBPipeline,
+    BurstRegistrationResult,
+    build_burst_metadata,
+    extract_burst_parameters,
+    registration_result_to_payload,
+)
 from .models import (
     AnalysisRequest,
     AnalysisResult,
@@ -37,13 +44,6 @@ from .models import (
     GMMSettings,
     MMFDBContext,
     PhotonFilterSettings,
-)
-from .mmfdb import (
-    BurstMMFDBPipeline,
-    BurstRegistrationResult,
-    build_burst_metadata,
-    extract_burst_parameters,
-    registration_result_to_payload,
 )
 from .selection import (
     analyze_file,

@@ -26,9 +26,7 @@ def test_typed_chunks_are_joined_into_prose():
         {"type": "reference", "reference_ids": []},
         {"type": "text", "text": "That gives S2 = 0.35."},
     ]
-    assert message_text(content) == (
-        "The residual anisotropy is 0.045.\nThat gives S2 = 0.35."
-    )
+    assert message_text(content) == ("The residual anisotropy is 0.045.\nThat gives S2 = 0.35.")
 
 
 def test_a_lone_chunk_is_unwrapped():

@@ -10,15 +10,14 @@ from .potentials_mj import MJPotentialWidget
 from .potentials_rama import RamachandranWidget
 from .potentials_rg import RadiusGyrationWidget
 
-
 __all__ = [
-    'AsaWidget',
-    'AvPotentialWidget',
-    'CEPotentialWidget',
-    'ClashPotentialWidget',
-    'GoPotentialWidget',
-    'HPotentialWidget',
-    'MJPotentialWidget',
-    'RamachandranWidget',
-    'RadiusGyrationWidget',
+    "AsaWidget",
+    "AvPotentialWidget",
+    "CEPotentialWidget",
+    "ClashPotentialWidget",
+    "GoPotentialWidget",
+    "HPotentialWidget",
+    "MJPotentialWidget",
+    "RamachandranWidget",
+    "RadiusGyrationWidget",
 ]

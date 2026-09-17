@@ -25,15 +25,15 @@ What is pinned here is the arrangement that replaced it:
 The last point is asserted on the *source*: a reset that starts enumerating
 again is the regression this file exists to catch.
 """
+
 from __future__ import annotations
 
 import ast
 import inspect
 import pathlib
 
-import pytest
-
 import chimol
+import pytest
 from toolkit_free import probe
 
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
@@ -42,7 +42,7 @@ ROOT = pathlib.Path(chimol.__file__).resolve().parent
 @pytest.fixture(scope="module")
 def reset():
     """One viewer with everything open, reset once, measured after."""
-    return probe('''
+    return probe("""
         app = open_app(size=(900, 600))
         cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 
@@ -106,7 +106,7 @@ def reset():
         emit("reps_after_second", ",".join(shown(keys[1])))
         emit("reps_default", ",".join(sorted(
             spec.name for spec in REPRESENTATIONS.specs() if spec.default_visible)))
-    ''')
+    """)
 
 
 def test_the_windows_a_command_opened_are_closed(reset):
@@ -169,18 +169,24 @@ def test_the_command_does_not_enumerate_what_to_reset():
 
     source = inspect.getsource(LifecycleMixin.reinitialize)
     body = ast.parse(inspect.cleandoc(source).replace("@command", "# @command", 1))
-    names = {
-        node.attr
-        for node in ast.walk(body)
-        if isinstance(node, ast.Attribute)
-    }
+    names = {node.attr for node in ast.walk(body) if isinstance(node, ast.Attribute)}
     forbidden = {
-        "playback", "wizard", "panels", "windows", "remove_window", "end_tour",
-        "close_menus", "restore_baseline", "set_cartoon_visible", "info_text",
-        "_lighting_overrides", "restore_camera_baseline", "remove_object",
+        "playback",
+        "wizard",
+        "panels",
+        "windows",
+        "remove_window",
+        "end_tour",
+        "close_menus",
+        "restore_baseline",
+        "set_cartoon_visible",
+        "info_text",
+        "_lighting_overrides",
+        "restore_camera_baseline",
+        "remove_object",
     }
-    assert not (names & forbidden), (
-        "reinitialize is enumerating again: " + ", ".join(sorted(names & forbidden))
+    assert not (names & forbidden), "reinitialize is enumerating again: " + ", ".join(
+        sorted(names & forbidden)
     )
 
 

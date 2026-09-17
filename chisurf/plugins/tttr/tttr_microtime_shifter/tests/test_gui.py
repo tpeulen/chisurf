@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -14,8 +13,8 @@ try:
 except ImportError:
     QtWidgets = None  # type: ignore[assignment]
 
-from chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool import MicrotimeShifterTool
 from chisurf.gui import dialogs
+from chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool import MicrotimeShifterTool
 
 
 @pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
@@ -65,10 +64,11 @@ def test_tool_has_required_children() -> None:
 def test_tool_file_list_operations(tmp_path: Path) -> None:
     """The tool can add, select and clear files in its list."""
     from unittest.mock import MagicMock
+
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
-    
+
     tool = MicrotimeShifterTool()
     tool._on_file_path = MagicMock()
 
@@ -102,6 +102,7 @@ def test_tool_file_list_operations(tmp_path: Path) -> None:
 def test_tool_reset_button_and_logy() -> None:
     """The tool reset buttons set shifts to 0, and logy updates line scale."""
     import numpy as np
+
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
@@ -155,6 +156,7 @@ def test_tool_reset_button_and_logy() -> None:
 def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     """_open_save_dialog always uses all loaded files, not just selected ones."""
     from unittest.mock import MagicMock
+
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
@@ -191,5 +193,3 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
     assert f2 in called_args["file_paths"]
 
     tool.close()
-
-

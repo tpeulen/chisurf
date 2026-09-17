@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 
 import numpy as np
-
 from mmfdb.repository import MFDatabase
 from mmfdb.security.auth import AuthenticatedPrincipal, create_default_acl_for_object
+
 from chisurf.plugins.microscopy.imaging_common.base import ImagingMapViewModel
 
 
@@ -60,9 +60,7 @@ def test_imaging_map_persistence_registers_snapshot_and_complete_parameters(tmp_
         vm = _TestMapViewModel(output)
         vm.filename = str(source)
         vm.pipeline_hdf5 = str(output)
-        vm.detectors = {
-            "green": {"chs": [0, 1], "micro_time_ranges": [[2, 30]], "bg": 1.5}
-        }
+        vm.detectors = {"green": {"chs": [0, 1], "micro_time_ranges": [[2, 30]], "bg": 1.5}}
         vm._columns = {"mean lifetime": np.ones((2, 3))}
         vm.bind_mmfdb(
             db,
@@ -142,13 +140,14 @@ def test_imaging_map_requires_authenticated_principal_even_for_local_binding(tmp
 
 
 def test_gui_runtime_session_is_revalidated_against_bound_database(tmp_path, monkeypatch):
-    import chisurf.core.settings as cs_settings
-    from chisurf.core.transform.mmfdb import runtime_session_for_database
     from mmfdb.security.auth import create_session
     from mmfdb.security.credentials import (
         delete_runtime_session_token,
         store_runtime_session_token,
     )
+
+    import chisurf.core.settings as cs_settings
+    from chisurf.core.transform.mmfdb import runtime_session_for_database
 
     host, port, user_id = "runtime-test", 18765, "imager"
     monkeypatch.setitem(

@@ -3,18 +3,20 @@
 Test script to verify that Qt widgets are properly skipped during serialization.
 """
 
-import sys
 import logging
 import os
+import sys
 
 # Add the parent directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from qtpy.QtWidgets import QApplication, QWidget, QSpinBox
+from qtpy.QtWidgets import QApplication, QSpinBox, QWidget
+
 import chisurf.core.base
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
 
 # Create a simple class that contains Qt widgets
 class TestClass(chisurf.core.base.Base):
@@ -26,68 +28,72 @@ class TestClass(chisurf.core.base.Base):
         self.normal_attr = "This is a normal attribute"
         self.number = 42
 
+
 def test_with_skip_qt_widgets():
     """Test serialization with skip_qt_widgets=True"""
     logging.info("Testing serialization with skip_qt_widgets=True")
     test_obj = TestClass()
-    
+
     # Try to convert to dict with skip_qt_widgets=True
     result = test_obj.to_dict(skip_qt_widgets=True)
-    
+
     # Check that Qt widgets were skipped
-    assert 'app' not in result, "Qt widget 'app' was not skipped"
-    assert 'widget' not in result, "Qt widget 'widget' was not skipped"
-    assert 'spinbox' not in result, "Qt widget 'spinbox' was not skipped"
-    
+    assert "app" not in result, "Qt widget 'app' was not skipped"
+    assert "widget" not in result, "Qt widget 'widget' was not skipped"
+    assert "spinbox" not in result, "Qt widget 'spinbox' was not skipped"
+
     # Check that normal attributes were preserved
-    assert 'normal_attr' in result, "Normal attribute was incorrectly skipped"
-    assert 'number' in result, "Normal attribute was incorrectly skipped"
-    
+    assert "normal_attr" in result, "Normal attribute was incorrectly skipped"
+    assert "number" in result, "Normal attribute was incorrectly skipped"
+
     logging.info("Test passed: Qt widgets were properly skipped")
     return True
+
 
 def test_with_to_elementary():
     """Test to_elementary with skip_qt_widgets=True"""
     logging.info("Testing to_elementary with skip_qt_widgets=True")
     test_obj = TestClass()
-    
+
     # Convert to dict first
     d = test_obj.to_dict()
-    
+
     # Then use to_elementary with skip_qt_widgets=True
     result = chisurf.core.base.to_elementary(d, skip_qt_widgets=True)
-    
+
     # Check that Qt widgets were skipped
-    assert 'app' not in result, "Qt widget 'app' was not skipped"
-    assert 'widget' not in result, "Qt widget 'widget' was not skipped"
-    assert 'spinbox' not in result, "Qt widget 'spinbox' was not skipped"
-    
+    assert "app" not in result, "Qt widget 'app' was not skipped"
+    assert "widget" not in result, "Qt widget 'widget' was not skipped"
+    assert "spinbox" not in result, "Qt widget 'spinbox' was not skipped"
+
     # Check that normal attributes were preserved
-    assert 'normal_attr' in result, "Normal attribute was incorrectly skipped"
-    assert 'number' in result, "Normal attribute was incorrectly skipped"
-    
+    assert "normal_attr" in result, "Normal attribute was incorrectly skipped"
+    assert "number" in result, "Normal attribute was incorrectly skipped"
+
     logging.info("Test passed: Qt widgets were properly skipped by to_elementary")
     return True
+
 
 def test_yaml_serialization():
     """Test YAML serialization with skip_qt_widgets=True"""
     logging.info("Testing YAML serialization with skip_qt_widgets=True")
     test_obj = TestClass()
-    
+
     # Try to convert to YAML with skip_qt_widgets=True
     yaml_str = test_obj.to_yaml(skip_qt_widgets=True)
-    
+
     # Check that the YAML string doesn't contain references to Qt widgets
-    assert 'app' not in yaml_str, "Qt widget 'app' was not skipped in YAML"
-    assert 'widget' not in yaml_str, "Qt widget 'widget' was not skipped in YAML"
-    assert 'spinbox' not in yaml_str, "Qt widget 'spinbox' was not skipped in YAML"
-    
+    assert "app" not in yaml_str, "Qt widget 'app' was not skipped in YAML"
+    assert "widget" not in yaml_str, "Qt widget 'widget' was not skipped in YAML"
+    assert "spinbox" not in yaml_str, "Qt widget 'spinbox' was not skipped in YAML"
+
     # Check that normal attributes were preserved
-    assert 'normal_attr' in yaml_str, "Normal attribute was incorrectly skipped in YAML"
-    assert '42' in yaml_str, "Normal attribute was incorrectly skipped in YAML"
-    
+    assert "normal_attr" in yaml_str, "Normal attribute was incorrectly skipped in YAML"
+    assert "42" in yaml_str, "Normal attribute was incorrectly skipped in YAML"
+
     logging.info("Test passed: Qt widgets were properly skipped in YAML serialization")
     return True
+
 
 if __name__ == "__main__":
     try:

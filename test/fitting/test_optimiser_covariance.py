@@ -20,14 +20,14 @@ permutation used to un-pivot ``R`` stopped being a permutation. A permuted
 covariance is *plausible* -- positive diagonal, symmetric, right magnitudes
 -- so only a test that compares against something else finds it.
 """
+
 import numpy as np
 import pytest
 import scipy.optimize
 
 import chisurf.core.fitting.minimizer as M
 
-pytestmark = pytest.mark.skipif(not M.have_minimizer(),
-                                reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
 
 
 def problem():
@@ -68,11 +68,14 @@ def test_unbounded_covariance_matches_scipy():
     assert node is not None
 
 
-@pytest.mark.parametrize("bounds", [
-    [(None, None)] * 4,
-    [(0.0, 10.0), (0.01, 5.0), (0.0, 10.0), (0.01, 20.0)],
-    [(0.0, None), (0.01, None), (0.0, None), (0.01, None)],
-])
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        [(None, None)] * 4,
+        [(0.0, 10.0), (0.01, 5.0), (0.0, 10.0), (0.01, 20.0)],
+        [(0.0, None), (0.01, None), (0.0, None), (0.01, None)],
+    ],
+)
 def test_covariance_is_the_inverse_gram_matrix(bounds):
     f, start = problem()
     m, node = run(f, start, bounds)
@@ -88,8 +91,7 @@ def test_covariance_is_the_inverse_gram_matrix(bounds):
         h = eps * abs(q[j]) or eps
         q[j] += h
         jacobian[:, j] = (f(q) - f0) / h
-    np.testing.assert_allclose(cov, np.linalg.inv(jacobian.T @ jacobian),
-                               rtol=1e-3)
+    np.testing.assert_allclose(cov, np.linalg.inv(jacobian.T @ jacobian), rtol=1e-3)
     assert node is not None
 
 
@@ -102,7 +104,8 @@ def test_the_covariance_is_not_permuted():
     for shift in range(1, n):
         rolled = np.roll(np.roll(reference, shift, axis=0), shift, axis=1)
         assert not np.allclose(got, rolled, rtol=1e-6), (
-            "the covariance is a cyclic shift of scipy's by %d" % shift)
+            "the covariance is a cyclic shift of scipy's by %d" % shift
+        )
     assert node is not None
 
 
@@ -121,6 +124,5 @@ def test_the_finite_difference_covariance_agrees_with_it_here():
     m, node = run(f, start, [(None, None)] * 4)
     fd, used = m.finite_difference_covariance()
     assert used == [0, 1, 2, 3]
-    np.testing.assert_allclose(np.sqrt(np.diag(fd)),
-                               np.sqrt(np.diag(m.covariance)), rtol=1e-3)
+    np.testing.assert_allclose(np.sqrt(np.diag(fd)), np.sqrt(np.diag(m.covariance)), rtol=1e-3)
     assert node is not None

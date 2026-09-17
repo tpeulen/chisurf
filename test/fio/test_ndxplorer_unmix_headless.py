@@ -117,9 +117,12 @@ def test_injected_stable_columns_are_computable_by_real_engine():
     assert (source.column_values("Number of Photons (donor, unmix)") >= 0).all()
 
     # add an equation over the injected columns and let the REAL engine compute it
-    extra = [{"Proximity ratio (unmix)":
-              "'Number of Photons (acceptor, unmix)' / "
-              "('Number of Photons (donor, unmix)' + 'Number of Photons (acceptor, unmix)')"}]
+    extra = [
+        {
+            "Proximity ratio (unmix)": "'Number of Photons (acceptor, unmix)' / "
+            "('Number of Photons (donor, unmix)' + 'Number of Photons (acceptor, unmix)')"
+        }
+    ]
     ndx.data_source.compute_columns(constants=ndx.constants, equations=extra)
     pr = ndx.data_source.column_values("Proximity ratio (unmix)")
     assert np.all((pr >= -1e-9) & (pr <= 1 + 1e-9))
@@ -136,16 +139,18 @@ def test_injected_shuffle_columns_are_integer_and_count_preserving():
         emission=emission,
         channel_columns=["Number of Photons (green)", "Number of Photons (red)"],
         source_labels=["donor", "acceptor"],
-        unmix="shuffle", seed=3,
+        unmix="shuffle",
+        seed=3,
         recompute=False,
     )
     out = ndx.data_source
     donor = out.column_values("Number of Photons (donor, shuffle)")
     acceptor = out.column_values("Number of Photons (acceptor, shuffle)")
-    raw = (out.column_values("Number of Photons (green)")
-           + out.column_values("Number of Photons (red)"))
-    assert np.array_equal(donor + acceptor, raw)        # exact photon-count preservation
-    assert np.array_equal(donor, np.rint(donor))         # integer
+    raw = out.column_values("Number of Photons (green)") + out.column_values(
+        "Number of Photons (red)"
+    )
+    assert np.array_equal(donor + acceptor, raw)  # exact photon-count preservation
+    assert np.array_equal(donor, np.rint(donor))  # integer
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +170,13 @@ def _alex_burst_df(seed=3):
         photons = rng.poisson(400, n).astype(float)
         dd.append(rng.poisson((1 - efficiency) * photons))
         aa.append(rng.poisson(beta * gamma * photons))
-        da.append(rng.poisson(gamma * efficiency * photons
-                              + alpha * (1 - efficiency) * photons
-                              + delta * beta * gamma * photons))
+        da.append(
+            rng.poisson(
+                gamma * efficiency * photons
+                + alpha * (1 - efficiency) * photons
+                + delta * beta * gamma * photons
+            )
+        )
         tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.12, n))
     photons = rng.poisson(400, 300).astype(float)
     dd.append(rng.poisson(photons))

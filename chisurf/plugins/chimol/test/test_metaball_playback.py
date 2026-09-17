@@ -11,16 +11,16 @@ The rule the cartoon's draft established, and which these tests hold the
 metaball to: **the draft may be coarser, never different**. A blob that changes
 colour mid-scrub and snaps back is worse than one that is simply chunkier.
 """
+
 from __future__ import annotations
 
 import time
 
 import numpy as np
 import pytest
-
 from chimol.core.settings.config import _DISPLAY_CONFIG
-from chimol.io.atoms import make_bead_rows
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import make_bead_rows
 
 
 @pytest.fixture(scope="module")
@@ -152,13 +152,13 @@ def test_the_isosurface_normals_are_the_default(blob):
 
     blob._draft_quality = False
     iso = np.asarray(
-        blob._update_metaballs(np.asarray(blob._coords, float), cfg, None)[0]
-        .geometry.normals
+        blob._update_metaballs(np.asarray(blob._coords, float), cfg, None)[0].geometry.normals
     )
     smooth_cfg = dict(cfg, normals="density")
     smoothed = np.asarray(
-        blob._update_metaballs(np.asarray(blob._coords, float), smooth_cfg, None)[0]
-        .geometry.normals
+        blob._update_metaballs(np.asarray(blob._coords, float), smooth_cfg, None)[
+            0
+        ].geometry.normals
     )
     # They must actually differ, or the setting is decoration.
     assert not np.allclose(iso, smoothed)

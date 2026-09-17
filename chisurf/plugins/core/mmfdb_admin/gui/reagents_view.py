@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from qtpy import QtWidgets
-
 from mmfdb.samples.reagents import REAGENT_KINDS
+from qtpy import QtWidgets
 
 _KINDS = tuple(sorted(REAGENT_KINDS))
 #: Lot columns shown in the table; the last is the (stable) lot id.
@@ -85,10 +84,13 @@ class ReagentLotsView(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         kind = self.kind_filter_combo.currentText()
-        lots = self._client.list_reagent_lots(
-            kind=None if kind == "all" else kind,
-            include_expired=self.show_expired_check.isChecked(),
-        ) or []
+        lots = (
+            self._client.list_reagent_lots(
+                kind=None if kind == "all" else kind,
+                include_expired=self.show_expired_check.isChecked(),
+            )
+            or []
+        )
         self.lot_table.setRowCount(len(lots))
         for row, lot in enumerate(lots):
             for col, key in enumerate(_LOT_KEYS):

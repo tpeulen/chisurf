@@ -28,15 +28,14 @@ def _band_limited_stack(n_frames=8, size=128, cutoff=0.15, noise=1.0, seed=3, ob
     fy = np.fft.fftfreq(size)[None, :]
     truth = np.real(np.fft.ifft2(np.fft.fft2(field) * (np.sqrt(fx**2 + fy**2) <= cutoff)))
     truth = truth / truth.std()
-    return np.stack(
-        [truth + noise * rng.normal(size=truth.shape) for _ in range(n_frames)]
-    )
+    return np.stack([truth + noise * rng.normal(size=truth.shape) for _ in range(n_frames)])
 
 
 @pytest.fixture()
 def tiff_stack(tmp_path):
     """Write a band-limited stack to a multi-page TIFF and return its path."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "bandlimited.tif"
     imwrite(str(path), _band_limited_stack().astype(np.float32))
     return path
@@ -77,7 +76,8 @@ def test_the_first_second_half_split_also_works(tiff_stack):
 
 def test_a_single_frame_cannot_be_split_by_frame(tmp_path):
     """One frame holds no second measurement; saying so beats returning 1.0."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "single.tif"
     imwrite(str(path), _band_limited_stack(n_frames=1)[0].astype(np.float32))
     with pytest.raises(ValueError, match="at least two frames"):
@@ -96,7 +96,8 @@ def test_unknown_splits_and_missing_second_files_are_rejected(tiff_stack):
 
 def test_two_files_correlates_two_acquisitions(tiff_stack, tmp_path):
     """The two-file split reads a second stack and correlates the two sums."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     second = tmp_path / "second.tif"
     imwrite(str(second), _band_limited_stack(seed=99).astype(np.float32))  # same object, new noise
     result = core.analyse(str(tiff_stack), split="two_files", second_filename=str(second))
@@ -135,7 +136,8 @@ def test_a_short_stack_can_be_forced_to_be_frames(tmp_path):
     series, not a corner case. Labelling the axes on write settles it for good;
     the override is for the files already on disk that did not.
     """
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "short.tif"
     imwrite(str(path), _band_limited_stack(n_frames=4).astype(np.float32))
 
@@ -173,9 +175,7 @@ def test_a_photon_stream_is_measured_like_an_image():
 @pytest.mark.skipif(not HT3.is_file(), reason="CLSM photon-stream test file missing")
 def test_two_detectors_of_one_photon_stream_correlate():
     """The channel split is the one that needs no frames at all."""
-    result = core.analyse(
-        str(HT3), split="channels", channel=0, channel_2=1, pixel_size_nm=80.0
-    )
+    result = core.analyse(str(HT3), split="channels", channel=0, channel_2=1, pixel_size_nm=80.0)
     assert result.crossed
     assert result.unit == "nm"
     assert 100.0 < result.resolution < 5000.0
@@ -196,9 +196,7 @@ def test_the_cli_measures_a_photon_stream(tmp_path):
 
     from chisurf.plugins.microscopy.img_frc.cli import cli
 
-    result = CliRunner().invoke(
-        cli, [str(HT3), "--channel", "ch0", "--pixel-size", "80", "--json"]
-    )
+    result = CliRunner().invoke(cli, [str(HT3), "--channel", "ch0", "--pixel-size", "80", "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["kind"] == "tttr"
@@ -264,9 +262,7 @@ def test_the_cli_json_payload_parses(tiff_stack, tmp_path):
     from chisurf.plugins.microscopy.img_frc.cli import cli
 
     out = tmp_path / "curve.csv"
-    result = CliRunner().invoke(
-        cli, [str(tiff_stack), "--json", "--out-csv", str(out)]
-    )
+    result = CliRunner().invoke(cli, [str(tiff_stack), "--json", "--out-csv", str(out)])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["criterion"] == "fixed_1/7"
@@ -277,9 +273,9 @@ def test_the_cli_fails_loudly_when_nothing_crosses(tmp_path):
     """A flat image resolves nothing; exit 0 would read as a measurement."""
     from click.testing import CliRunner
 
+    from chisurf.core.fio.image import imwrite
     from chisurf.plugins.microscopy.img_frc.cli import cli
 
-    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "noiseless.tif"
     # Eight identical frames: both halves are the same image, so the FRC is 1 at
     # every frequency and there is nothing to cross.
@@ -323,9 +319,7 @@ def test_the_panel_adopts_the_toolbox_source_and_setup(tiff_stack):
     assert vm.pipeline_hdf5 == "/tmp/imaging.hdf5"
     assert vm.channel_names  # the file was actually read, not just remembered
 
-    vm.apply_setup_settings(
-        {"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}}
-    )
+    vm.apply_setup_settings({"detectors": {"green": {"chs": [0]}, "red": {"chs": [1]}}})
     assert set(vm.detectors) == {"green", "red"}
 
 

@@ -76,8 +76,8 @@ class MemoryEditorWidget(QtWidgets.QWidget):
         self.editor = None
         self._host = None
         try:
-            from emtk.widgets import memory_editor as me
             from emtk.qt_host import ControlHost
+            from emtk.widgets import memory_editor as me
 
             self.editor = me.MemoryEditor(
                 None,
@@ -124,8 +124,9 @@ class MemoryEditorWidget(QtWidgets.QWidget):
                 continue
             try:
                 sources.append(
-                    me.BufferSource(item, name=f"{self._target}[{index}]"
-                                    if len(items) > 1 else self._target)
+                    me.BufferSource(
+                        item, name=f"{self._target}[{index}]" if len(items) > 1 else self._target
+                    )
                 )
             except TypeError:
                 logger.debug("memory_editor: %r is not a buffer", type(item))

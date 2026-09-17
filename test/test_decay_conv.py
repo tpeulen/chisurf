@@ -1,9 +1,8 @@
 """Test TCSPC decay convolution: simulate decay, verify convolution shape, fit lifetime."""
+
 import numpy as np
 
 from chisurf.core.fluorescence.decay import sample_decay_shot_noise
-import pytest
-
 from chisurf.core.fluorescence.tcspc.convolve import convolve_lifetime_spectrum
 
 
@@ -30,9 +29,7 @@ def test_convolution_shape():
     sim_decay = sim_decay / np.max(sim_decay) * 10000
     # Seeded: the global legacy stream made this test irreproducible, so a
     # failure could not be repeated and a flake could not be told from a bug.
-    sim_counts = sample_decay_shot_noise(
-        np.maximum(sim_decay, 0), seed=1
-    ).astype(float)
+    sample_decay_shot_noise(np.maximum(sim_decay, 0), seed=1).astype(float)
 
     irf_model = irf / np.sum(irf)
     model_decay = np.zeros_like(time_axis)
@@ -75,9 +72,7 @@ def test_fitted_lifetime():
     sim_decay = sim_decay / np.max(sim_decay) * 10000
     # Seeded: the global legacy stream made this test irreproducible, so a
     # failure could not be repeated and a flake could not be told from a bug.
-    sim_counts = sample_decay_shot_noise(
-        np.maximum(sim_decay, 0), seed=1
-    ).astype(float)
+    sim_counts = sample_decay_shot_noise(np.maximum(sim_decay, 0), seed=1).astype(float)
 
     from scipy.optimize import curve_fit
 
@@ -87,11 +82,13 @@ def test_fitted_lifetime():
     fit_range = (50, n_tac // 2)
     popt, _ = curve_fit(
         multi_exp,
-        time_axis[fit_range[0]:fit_range[1]],
-        sim_counts[fit_range[0]:fit_range[1]],
+        time_axis[fit_range[0] : fit_range[1]],
+        sim_counts[fit_range[0] : fit_range[1]],
         p0=[10000, 4.0],
     )
     fitted_tau = popt[1]
     error_pct = abs(fitted_tau - 4.0) / 4.0 * 100
 
-    assert error_pct < 10.0, f"Lifetime fit error too large: {error_pct:.1f}% (tau={fitted_tau:.3f} ns)"
+    assert error_pct < 10.0, (
+        f"Lifetime fit error too large: {error_pct:.1f}% (tau={fitted_tau:.3f} ns)"
+    )

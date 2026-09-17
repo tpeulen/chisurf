@@ -107,7 +107,8 @@ def ask_calibration_options(parent, donor_lifetime: float = 4.0):
     layout = QtWidgets.QVBoxLayout(dialog)
     layout.addWidget(AutoForm(options, dialog))
     buttons = QtWidgets.QDialogButtonBox(
-        QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, dialog)
+        QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, dialog
+    )
     buttons.button(QtWidgets.QDialogButtonBox.Ok).setText("🎯 Calibrate")
     buttons.accepted.connect(dialog.accept)
     buttons.rejected.connect(dialog.reject)

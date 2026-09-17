@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import chisurf.core.settings
-from .fit_list import ModelDataRepresentationSelector
+
 from .fit_controller import FittingControllerWidget
+from .fit_list import ModelDataRepresentationSelector
 from .fit_subwindow import FitSubWindow
 from .parameter_widgets import (
     FittingParameterDetailPopup,
@@ -17,15 +18,15 @@ from .parameter_widgets import (
 parameter_settings = chisurf.core.settings.parameter
 
 __all__ = [
-    'parameter_settings',
-    'ModelDataRepresentationSelector',
-    'FittingControllerWidget',
-    'FitSubWindow',
-    'FittingParameterDetailPopup',
-    'FittingParameterProxyController',
-    'FittingParameterWidget',
-    'FittingParameterGroupWidget',
-    'ParameterActionsMixin',
-    'make_fitting_parameter_widget',
-    'make_fitting_parameter_group_widget',
+    "parameter_settings",
+    "ModelDataRepresentationSelector",
+    "FittingControllerWidget",
+    "FitSubWindow",
+    "FittingParameterDetailPopup",
+    "FittingParameterProxyController",
+    "FittingParameterWidget",
+    "FittingParameterGroupWidget",
+    "ParameterActionsMixin",
+    "make_fitting_parameter_widget",
+    "make_fitting_parameter_group_widget",
 ]

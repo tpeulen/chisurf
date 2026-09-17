@@ -15,30 +15,25 @@ from the measured fluorescence decay data.
 
 References
 ----------
-- Adrián Gómez-Sánchez et al., "Blind instrument response function identification 
+- Adrián Gómez-Sánchez et al., "Blind instrument response function identification
   from fluorescence decays", Biophysical Reports, 2024.
   https://doi.org/10.1016/j.bpr.2024.100155
 - Richardson, W. H. (1972). "Bayesian-Based Iterative Method of Image Restoration"
 - Lucy, L. B. (1974). "An iterative technique for the rectification of observed distributions"
-- Savitzky, A.; Golay, M. J. E. (1964). "Smoothing and Differentiation of Data by 
+- Savitzky, A.; Golay, M. J. E. (1964). "Smoothing and Differentiation of Data by
   Simplified Least Squares Procedures"
 """
 
 from __future__ import annotations
+
 import numpy as np
-from scipy.signal import savgol_filter
 from scipy.ndimage import median_filter as scipy_median_filter
 from scipy.optimize import minimize
-from typing import Dict, Tuple, Optional, Union
-import warnings
+from scipy.signal import savgol_filter
 
 
 def pad_array(
-    x: np.ndarray,
-    pad_left: int,
-    pad_right: int,
-    axis: int,
-    mode: str = "reflect"
+    x: np.ndarray, pad_left: int, pad_right: int, axis: int, mode: str = "reflect"
 ) -> np.ndarray:
     """
     Pad a numpy array along one axis.
@@ -68,20 +63,20 @@ def pad_array(
     pad_width[axis] = (pad_left, pad_right)
 
     if mode == "reflect":
-        return np.pad(x, pad_width, mode='reflect')
+        return np.pad(x, pad_width, mode="reflect")
     elif mode == "edge":
-        return np.pad(x, pad_width, mode='edge')
+        return np.pad(x, pad_width, mode="edge")
     elif mode == "constant":
-        return np.pad(x, pad_width, mode='constant', constant_values=0)
+        return np.pad(x, pad_width, mode="constant", constant_values=0)
     else:
         raise ValueError(f"Unsupported padding mode: {mode}")
 
 
 def median_filter_nd(
     x: np.ndarray,
-    window_size: Union[int, list, tuple] = 3,
-    axes: Optional[Union[list, tuple]] = None,
-    mode: str = "reflect"
+    window_size: int | list | tuple = 3,
+    axes: list | tuple | None = None,
+    mode: str = "reflect",
 ) -> np.ndarray:
     """
     Apply N-dimensional median filter over specified axes.
@@ -129,10 +124,7 @@ def median_filter_nd(
     return scipy_median_filter(x, size=size, mode=mode)
 
 
-def generate_truncated_exponential(
-    t: np.ndarray,
-    params: Dict[str, float]
-) -> np.ndarray:
+def generate_truncated_exponential(t: np.ndarray, params: dict[str, float]) -> np.ndarray:
     """
     Generate a truncated exponential curve from fit parameters.
 
@@ -161,21 +153,12 @@ def generate_truncated_exponential(
     C = params["C"]
     t0 = params["t0"]
 
-    y = np.where(
-        t >= t0,
-        A * np.exp(-(t - t0) * k) + C,
-        C
-    )
+    y = np.where(t >= t0, A * np.exp(-(t - t0) * k) + C, C)
 
     return y
 
 
-def estimate_lifetime(
-    x: np.ndarray,
-    y: np.ndarray,
-    t0: int,
-    t1: int
-) -> float:
+def estimate_lifetime(x: np.ndarray, y: np.ndarray, t0: int, t1: int) -> float:
     """
     Estimate the decay lifetime (tau) from the centroid of the baseline-subtracted
     signal between t0 and t1.
@@ -196,11 +179,11 @@ def estimate_lifetime(
     float
         Estimated lifetime tau
     """
-    x_region = x[t0:t1+1].astype(np.float32)
+    x_region = x[t0 : t1 + 1].astype(np.float32)
     x_region = x_region - x_region.min()  # shift to start at 0
 
     # Baseline subtraction and clamping
-    y_region = y[t0:t1+1].astype(np.float32)
+    y_region = y[t0 : t1 + 1].astype(np.float32)
     y_clamped = np.maximum(y_region - y_region.min(), 0.0)
 
     # Centroid-based lifetime estimation
@@ -209,14 +192,10 @@ def estimate_lifetime(
     return tau
 
 
-def partial_convolution_fft(
-    signal: np.ndarray,
-    kernel: np.ndarray,
-    axis: int = 0
-) -> np.ndarray:
+def partial_convolution_fft(signal: np.ndarray, kernel: np.ndarray, axis: int = 0) -> np.ndarray:
     """
     Perform 1D convolution along a specified axis using FFT.
-    
+
     This implements circular convolution via FFT, which is appropriate for
     Richardson-Lucy deconvolution when the kernel is properly normalized.
 
@@ -265,12 +244,12 @@ class IRFEstimator:
     """
     Estimate instrument response functions (IRFs) from time-series fluorescence decay data.
 
-    This class implements a blind IRF estimation algorithm which uses truncated exponential 
-    fitting and Richardson-Lucy deconvolution to extract IRFs from fluorescence decay 
+    This class implements a blind IRF estimation algorithm which uses truncated exponential
+    fitting and Richardson-Lucy deconvolution to extract IRFs from fluorescence decay
     measurements without requiring separate IRF measurements.
-    
+
     The algorithm is based on the method described in:
-    Gómez-Sánchez et al., "Blind instrument response function identification from 
+    Gómez-Sánchez et al., "Blind instrument response function identification from
     fluorescence decays", Biophysical Reports, 2024.
     https://doi.org/10.1016/j.bpr.2024.100155
 
@@ -306,7 +285,7 @@ class IRFEstimator:
     >>> time = np.linspace(0, 50, 500)
     >>> data = np.exp(-time/4.0) + 0.1
     >>> data = data.reshape(-1, 1)  # Single channel
-    >>> 
+    >>>
     >>> # Estimate IRF
     >>> estimator = IRFEstimator(data, dt=time[1]-time[0])
     >>> irf = estimator.run()
@@ -341,8 +320,8 @@ class IRFEstimator:
         self.time = np.arange(self.data.shape[0]) * dt
 
         self.num_samples, self.num_channels = self.data.shape
-        self.t0 = None   # shape (num_channels,)
-        self.t1 = None   # shape (num_channels,)
+        self.t0 = None  # shape (num_channels,)
+        self.t1 = None  # shape (num_channels,)
         self.params = None  # dict with A, k, C
         self.data_fit = None  # shape (num_samples, num_channels)
         self.kernel = None  # shape (num_samples,)
@@ -353,7 +332,7 @@ class IRFEstimator:
         window_length: int = 11,
         polyorder: int = 3,
         persistence: int = 5,
-        threshold: float = 0.05
+        threshold: float = 0.05,
     ) -> None:
         """
         Estimate per-channel start (t0) and end (t1) indices of decay using
@@ -383,7 +362,9 @@ class IRFEstimator:
 
         for c in range(self.num_channels):
             y = self.data[:, c]
-            dy = savgol_filter(y, window_length=window_length, polyorder=polyorder, deriv=1, delta=self.dt)
+            dy = savgol_filter(
+                y, window_length=window_length, polyorder=polyorder, deriv=1, delta=self.dt
+            )
 
             # t0: global minimum of derivative
             t0 = int(np.argmin(dy))
@@ -391,7 +372,7 @@ class IRFEstimator:
             # t1: first point after t0 with persistent positive derivative
             t1 = len(dy) - 1  # fallback to end
             for i in range(t0 + 1, len(dy) - persistence):
-                avg_diff = dy[i:i + persistence].mean()
+                avg_diff = dy[i : i + persistence].mean()
                 amplitude = max(0, self.data[i + persistence, c] - self.data[:, c].min())
                 if avg_diff > 0 and amplitude > threshold * y_range[c]:
                     t1 = i
@@ -404,10 +385,7 @@ class IRFEstimator:
         self.t1 = np.array(t1s, dtype=int)
 
     def fit_exponential(
-        self,
-        offset: int = 0,
-        method: str = 'L-BFGS-B',
-        max_iter: int = 1000
+        self, offset: int = 0, method: str = "L-BFGS-B", max_iter: int = 1000
     ) -> None:
         """
         Fit per-channel truncated exponential curves to the data between t0 and t1
@@ -445,13 +423,13 @@ class IRFEstimator:
                 C_init[c] = np.median(bg_data) if len(bg_data) > 0 else 0.0
             else:
                 # For short decay regions, use minimum of decay region
-                decay_data = self.data[self.t0[c]:self.t1[c], c]
+                decay_data = self.data[self.t0[c] : self.t1[c], c]
                 C_init[c] = np.min(decay_data) if len(decay_data) > 0 else 0.0
-        
+
         # Ensure C_init is non-negative
         C_init = np.maximum(C_init, 0.0)
-        
-        A_init = (self.data.max(axis=0) - C_init)
+
+        A_init = self.data.max(axis=0) - C_init
 
         # Estimate initial lifetime from central channel
         cc = self.num_channels // 2
@@ -472,13 +450,13 @@ class IRFEstimator:
             float
                 Mean squared error across all channels.
             """
-            A = params[:self.num_channels]
-            C = params[self.num_channels:2*self.num_channels]
+            A = params[: self.num_channels]
+            C = params[self.num_channels : 2 * self.num_channels]
             k = params[-1]
 
             total_loss = 0.0
             for c in range(self.num_channels):
-                y_true = self.data[self.t0[c]+offset:self.t1[c]+1, c]
+                y_true = self.data[self.t0[c] + offset : self.t1[c] + 1, c]
                 x = np.arange(len(y_true)) * self.dt
                 y_pred = A[c] * np.exp(-k * x) + C[c]
                 total_loss += np.mean((y_true - y_pred) ** 2)
@@ -489,29 +467,21 @@ class IRFEstimator:
         x0 = np.concatenate([A_init, C_init, [k_init]])
 
         # Bounds: A > 0, C >= 0, k > 0
-        bounds = [(1e-6, None)] * self.num_channels + \
-                 [(0, None)] * self.num_channels + \
-                 [(1e-6, None)]
+        bounds = (
+            [(1e-6, None)] * self.num_channels + [(0, None)] * self.num_channels + [(1e-6, None)]
+        )
 
         # Optimize
         result = minimize(
-            loss_function,
-            x0,
-            method=method,
-            bounds=bounds,
-            options={'maxiter': max_iter}
+            loss_function, x0, method=method, bounds=bounds, options={"maxiter": max_iter}
         )
 
         # Extract optimized parameters
-        A_opt = result.x[:self.num_channels]
-        C_opt = result.x[self.num_channels:2*self.num_channels]
+        A_opt = result.x[: self.num_channels]
+        C_opt = result.x[self.num_channels : 2 * self.num_channels]
         k_opt = result.x[-1]
 
-        self.params = {
-            "A": A_opt,
-            "C": C_opt,
-            "k": k_opt
-        }
+        self.params = {"A": A_opt, "C": C_opt, "k": k_opt}
 
     def generate_data_fit(self) -> None:
         """
@@ -565,10 +535,7 @@ class IRFEstimator:
         self.kernel = exp_curve
 
     def richardson_lucy_deconvolution(
-        self,
-        iterations: int = 30,
-        eps: float = 1e-4,
-        regularization: int = 3
+        self, iterations: int = 30, eps: float = 1e-4, regularization: int = 3
     ) -> None:
         """
         Perform Richardson-Lucy deconvolution channel-wise using FFT-based
@@ -589,7 +556,9 @@ class IRFEstimator:
             If self.kernel is None
         """
         if self.kernel is None:
-            raise RuntimeError("Run generate_kernel() first or provide a convolution kernel manually.")
+            raise RuntimeError(
+                "Run generate_kernel() first or provide a convolution kernel manually."
+            )
 
         # Initialize output
         x_est = np.ones_like(self.data)
@@ -599,7 +568,7 @@ class IRFEstimator:
         kernel_t = self.kernel[::-1].copy()  # time-reversed kernel
 
         # Subtract offset
-        y = self.data.copy() - self.params['C'].reshape(1, -1)
+        y = self.data.copy() - self.params["C"].reshape(1, -1)
         y = np.maximum(y, 0)
 
         # RL deconvolution
@@ -612,8 +581,10 @@ class IRFEstimator:
             x_est = np.maximum(x_est, 0)  # enforce positivity
 
             if regularization > 1:
-                x_est = median_filter_nd(x_est, window_size=regularization, axes=[0], mode='reflect')
-        
+                x_est = median_filter_nd(
+                    x_est, window_size=regularization, axes=[0], mode="reflect"
+                )
+
         # Remove any DC offset from IRF (IRF should integrate to a finite value, not have constant background)
         # Estimate DC component from the tail of the IRF
         tail_length = min(50, len(x_est) // 10)
@@ -630,10 +601,10 @@ class IRFEstimator:
         polyorder: int = 3,
         persistence: int = 5,
         threshold: float = 0.05,
-        fit_method: str = 'L-BFGS-B',
+        fit_method: str = "L-BFGS-B",
         fit_max_iter: int = 1000,
         rl_iterations: int = 500,
-        regularization: int = 3
+        regularization: int = 3,
     ) -> np.ndarray:
         """Execute the full IRF estimation pipeline via the tttrlib C++ engine.
 
@@ -669,12 +640,20 @@ class IRFEstimator:
             Estimated IRFs (shape: [num_samples, num_channels])
         """
         import tttrlib as _ttl
+
         data_flat = self.data.astype(np.float64).flatten().tolist()
-        irf = np.asarray(_ttl.blind_irf_estimate(
-            data_flat, self.num_samples, self.num_channels,
-            self.dt, rl_iterations, regularization,
-            window_length, polyorder
-        ))
+        irf = np.asarray(
+            _ttl.blind_irf_estimate(
+                data_flat,
+                self.num_samples,
+                self.num_channels,
+                self.dt,
+                rl_iterations,
+                regularization,
+                window_length,
+                polyorder,
+            )
+        )
         self.irf = irf.reshape(self.data.shape)
         return self.irf
 
@@ -708,26 +687,36 @@ class IRFEstimator:
         if ax is None:
             nrows = int(np.ceil(np.sqrt(self.num_channels)))
             ncols = int(np.ceil(self.num_channels / nrows))
-            fig, ax = plt.subplots(nrows, ncols, figsize=(4*ncols, 3*nrows), sharex=True, sharey=True)
+            fig, ax = plt.subplots(
+                nrows, ncols, figsize=(4 * ncols, 3 * nrows), sharex=True, sharey=True
+            )
             ax = np.array(ax).reshape(-1)
         else:
             fig = ax[0].figure if isinstance(ax, np.ndarray) else ax.figure
             ax = np.array(ax).reshape(-1)
 
         for c in range(self.num_channels):
-            ax[c].plot(self.time, self.data[:, c], 'k.', label='Raw', markersize=2)
-            ax[c].plot(self.time, self.data_fit[:, c], 'r-', label='Fit')
-            ax[c].axvline(self.time[int(self.t0[c])], color='grey', linestyle='--', alpha=0.5, label='Fitting interval')
-            ax[c].axvline(self.time[int(self.t1[c])], color='grey', linestyle='--', alpha=0.5)
+            ax[c].plot(self.time, self.data[:, c], "k.", label="Raw", markersize=2)
+            ax[c].plot(self.time, self.data_fit[:, c], "r-", label="Fit")
+            ax[c].axvline(
+                self.time[int(self.t0[c])],
+                color="grey",
+                linestyle="--",
+                alpha=0.5,
+                label="Fitting interval",
+            )
+            ax[c].axvline(self.time[int(self.t1[c])], color="grey", linestyle="--", alpha=0.5)
             ax[c].set_title(f"Channel {c}")
-            ax[c].set_xlabel('Time (ns)')
-            ax[c].set_ylabel('Intensity')
+            ax[c].set_xlabel("Time (ns)")
+            ax[c].set_ylabel("Intensity")
 
         # Hide unused subplots
         for c in range(self.num_channels, len(ax)):
-            ax[c].axis('off')
+            ax[c].axis("off")
 
-        fig.legend(['Raw', 'Fit', 'Fitting interval'], loc='upper right', bbox_to_anchor=(0.98, 0.95))
+        fig.legend(
+            ["Raw", "Fit", "Fitting interval"], loc="upper right", bbox_to_anchor=(0.98, 0.95)
+        )
         fig.tight_layout()
 
         return fig, ax
@@ -762,27 +751,29 @@ class IRFEstimator:
         if ax is None:
             nrows = int(np.ceil(np.sqrt(self.num_channels)))
             ncols = int(np.ceil(self.num_channels / nrows))
-            fig, ax = plt.subplots(nrows, ncols, figsize=(4*ncols, 3*nrows), sharex=True, sharey=True)
+            fig, ax = plt.subplots(
+                nrows, ncols, figsize=(4 * ncols, 3 * nrows), sharex=True, sharey=True
+            )
             ax = np.array(ax).reshape(-1)
         else:
             fig = ax[0].figure if isinstance(ax, np.ndarray) else ax.figure
             ax = np.array(ax).reshape(-1)
 
         forward = partial_convolution_fft(self.irf, self.kernel, axis=0)
-        forward += self.params['C'].reshape(1, -1)
+        forward += self.params["C"].reshape(1, -1)
 
         for c in range(self.num_channels):
-            ax[c].plot(self.time, self.data[:, c], 'k.', label='Measured', markersize=2)
-            ax[c].plot(self.time, forward[:, c], 'g-', label='IRF ⊗ Exp')
+            ax[c].plot(self.time, self.data[:, c], "k.", label="Measured", markersize=2)
+            ax[c].plot(self.time, forward[:, c], "g-", label="IRF ⊗ Exp")
             ax[c].set_title(f"Channel {c}")
-            ax[c].set_xlabel('Time (ns)')
-            ax[c].set_ylabel('Intensity')
+            ax[c].set_xlabel("Time (ns)")
+            ax[c].set_ylabel("Intensity")
 
         # Hide unused subplots
         for c in range(self.num_channels, len(ax)):
-            ax[c].axis('off')
+            ax[c].axis("off")
 
-        fig.legend(['Measured', 'IRF ⊗ Exp'], loc='upper right', bbox_to_anchor=(0.95, 0.95))
+        fig.legend(["Measured", "IRF ⊗ Exp"], loc="upper right", bbox_to_anchor=(0.95, 0.95))
         fig.tight_layout()
 
         return fig, ax

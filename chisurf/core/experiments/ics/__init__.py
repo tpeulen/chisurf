@@ -19,6 +19,7 @@ import chisurf.core.fio.image
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
+
 from .data import FlowVector, IcsCarpet, IcsSettings, IcsTiming, lag_time
 from .flow_map import FlowMap, pcf_flow_map, stics_flow_map, tile_slices
 from .ics_core import compute_ics_carpet, frame_pairs, normalise_ics
@@ -33,7 +34,8 @@ from .tttr_loader import load_clsm_from_tttr
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "ics.view.json"
 
-def _load_tiff_stack(path: str) -> "np.ndarray":
+
+def _load_tiff_stack(path: str) -> np.ndarray:
     """Load a (possibly multi-frame, compressed) TIFF into a NumPy array.
 
     Parameters
@@ -59,24 +61,24 @@ class ICSReader(ExperimentReader):
     artifact_kind_derived = "analysis_result"
 
     def __init__(
-            self,
-            name: str = "Image correlation (RICS/STICS/TICS/iMSD)",
-            reading_routine: str | None = "PTU",
-            channel: int = 0,
-            pixel_duration: float | None = None,
-            line_duration: float | None = None,
-            frame_duration: float | None = None,
-            pixel_size_nm: float = 40.0,
-            x_range=None,
-            y_range=None,
-            subtract_average: str = "frame",
-            max_frame_lag: int = 0,
-            fftshift: bool = True,
-            roi=None,
-            drift_correction: str = "",
-            micro_time_ranges=None,
-            *args,
-            **kwargs
+        self,
+        name: str = "Image correlation (RICS/STICS/TICS/iMSD)",
+        reading_routine: str | None = "PTU",
+        channel: int = 0,
+        pixel_duration: float | None = None,
+        line_duration: float | None = None,
+        frame_duration: float | None = None,
+        pixel_size_nm: float = 40.0,
+        x_range=None,
+        y_range=None,
+        subtract_average: str = "frame",
+        max_frame_lag: int = 0,
+        fftshift: bool = True,
+        roi=None,
+        drift_correction: str = "",
+        micro_time_ranges=None,
+        *args,
+        **kwargs,
     ):
         """Initialize an image-correlation reader.
 
@@ -217,9 +219,10 @@ class ICSReader(ExperimentReader):
     def view_spec(self):
         """Return the declarative editor spec for ICS reader settings."""
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
-    def _resolve_roi(self) -> "ROI | None":
+    def _resolve_roi(self) -> ROI | None:
         """Return the configured region as an :class:`ROI`, or ``None``.
 
         Accepts either a live ROI object or its serialised dictionary, so a
@@ -359,10 +362,7 @@ class ICSReader(ExperimentReader):
         return images
 
     def read(
-            self,
-            filename: str = None,
-            *args,
-            **kwargs
+        self, filename: str = None, *args, **kwargs
     ) -> chisurf.core.data.ExperimentDataCurveGroup:
         """Read an image stack and return its spatiotemporal correlation carpet.
 
@@ -471,22 +471,25 @@ class ICSReader(ExperimentReader):
         intensity_mean = images.mean(axis=0) if images.ndim == 3 else None
 
         meta_ics = carpet.to_meta()
-        meta_ics.update({
-            "filename": str(fn),
-            "n_frames": int(images.shape[0]),
-            "max_frame_lag": max_lag,
-            "micro_time_ranges": mtr_norm,
-            "intensity_stack": images,
-            "intensity_mean": intensity_mean,
-            "roi": roi.to_dict() if roi is not None else None,
-            "drift_correction": drift_mode or None,
-            # Keeping the shifts makes the correction auditable: a drift larger
-            # than the beam waist means the long lags were compromised.
-            "drift_shifts": drift_shifts,
-        })
+        meta_ics.update(
+            {
+                "filename": str(fn),
+                "n_frames": int(images.shape[0]),
+                "max_frame_lag": max_lag,
+                "micro_time_ranges": mtr_norm,
+                "intensity_stack": images,
+                "intensity_mean": intensity_mean,
+                "roi": roi.to_dict() if roi is not None else None,
+                "drift_correction": drift_mode or None,
+                # Keeping the shifts makes the correction auditable: a drift larger
+                # than the beam waist means the long lags were compromised.
+                "drift_shifts": drift_shifts,
+            }
+        )
 
         n_lags, ny, nx = carpet.shape
         from chisurf.core.experiments.ics.data import carpet_coordinates
+
         meta_all = {
             "ics": meta_ics,
             # Where each flattened value sits, by name -- what a model fitted
@@ -513,7 +516,7 @@ class ICSReader(ExperimentReader):
             filename=str(fn),
             data_reader=self,
             meta_data=meta_all,
-            load_filename_on_init=False
+            load_filename_on_init=False,
         )
         group.append(data)
         group.data_reader = self

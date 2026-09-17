@@ -55,7 +55,14 @@ def test_two_focus_present(models):
     """The two-focus model exists with the expected parameters."""
     assert TWO_FOCUS in models
     assert set(models[TWO_FOCUS]["initial"]) == {
-        "N", "D", "w_r", "w_z", "tau_T", "Trip", "diam", "y_0"
+        "N",
+        "D",
+        "w_r",
+        "w_z",
+        "tau_T",
+        "Trip",
+        "diam",
+        "y_0",
     }
 
 

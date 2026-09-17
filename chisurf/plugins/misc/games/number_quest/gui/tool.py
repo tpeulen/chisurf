@@ -170,9 +170,7 @@ class NumberQuestChiGame(chigame.Game):
             .replace("Try again.", "")
             .strip()
         )
-        self.host.audio.sfx(
-            "guess", 880.0 if self.game.status is GuessStatus.WON else 520.0
-        )
+        self.host.audio.sfx("guess", 880.0 if self.game.status is GuessStatus.WON else 520.0)
 
     def _decay_point(self, index: int, tau: float) -> tuple[float, float]:
         """A point on the decay implied by a lifetime.
@@ -205,17 +203,36 @@ class NumberQuestChiGame(chigame.Game):
         scene : chisurf.gui.chigame.scene.Scene
             Frame under construction.
         """
-        scene.text("LIFETIME ESTIMATION", at=(VIEW_W * 0.5, 30.0), height=15.0,
-                   align="center", color=(0.78, 0.82, 0.88, 1.0))
-        scene.text(f"Turns left: {self.game.attempts_remaining}    Score: {self.game.score}",
-                   at=(VIEW_W * 0.5, 52.0), height=11.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "LIFETIME ESTIMATION",
+            at=(VIEW_W * 0.5, 30.0),
+            height=15.0,
+            align="center",
+            color=(0.78, 0.82, 0.88, 1.0),
+        )
+        scene.text(
+            f"Turns left: {self.game.attempts_remaining}    Score: {self.game.score}",
+            at=(VIEW_W * 0.5, 52.0),
+            height=11.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
 
         # Plot frame: two rules rather than a box, as an instrument would draw.
-        scene.draw("mount", "axis-y", at=(PLOT_X, PLOT_Y + PLOT_H * 0.5),
-                   size=(1.5, PLOT_H), color=(0.30, 0.33, 0.38, 1.0))
-        scene.draw("mount", "axis-x", at=(PLOT_X + PLOT_W * 0.5, PLOT_Y + PLOT_H),
-                   size=(PLOT_W, 1.5), color=(0.30, 0.33, 0.38, 1.0))
+        scene.draw(
+            "mount",
+            "axis-y",
+            at=(PLOT_X, PLOT_Y + PLOT_H * 0.5),
+            size=(1.5, PLOT_H),
+            color=(0.30, 0.33, 0.38, 1.0),
+        )
+        scene.draw(
+            "mount",
+            "axis-x",
+            at=(PLOT_X + PLOT_W * 0.5, PLOT_Y + PLOT_H),
+            size=(PLOT_W, 1.5),
+            color=(0.30, 0.33, 0.38, 1.0),
+        )
 
         # Previous estimates stay on screen, faintly: the trace of the search is
         # the interesting part, and it is what makes narrowing an interval feel
@@ -223,26 +240,43 @@ class NumberQuestChiGame(chigame.Game):
         for past in self.history[:-1]:
             for index in range(CURVE_POINTS):
                 at = self._decay_point(index, past * NS_PER_UNIT)
-                scene.draw("ui", "trace", at=at, size=(1.6, 1.6),
-                           color=(0.30, 0.34, 0.40, 1.0))
+                scene.draw("ui", "trace", at=at, size=(1.6, 1.6), color=(0.30, 0.34, 0.40, 1.0))
 
         for index in range(CURVE_POINTS):
             at = self._decay_point(index, self.tau)
             scene.draw("photon", "curve", at=at, size=(2.6, 2.6), emission_nm=PROBE_NM)
 
-        scene.text(f"{self.tau:.1f} ns", at=(VIEW_W * 0.5, PLOT_Y + PLOT_H + 26.0),
-                   height=26.0, align="center", color=(0.35, 0.85, 0.80, 1.0))
+        scene.text(
+            f"{self.tau:.1f} ns",
+            at=(VIEW_W * 0.5, PLOT_Y + PLOT_H + 26.0),
+            height=26.0,
+            align="center",
+            color=(0.35, 0.85, 0.80, 1.0),
+        )
 
         if self.message:
-            scene.text(self.message, at=(VIEW_W * 0.5, PLOT_Y + PLOT_H + 56.0),
-                       height=12.0, align="center", color=(0.78, 0.82, 0.88, 1.0))
+            scene.text(
+                self.message,
+                at=(VIEW_W * 0.5, PLOT_Y + PLOT_H + 56.0),
+                height=12.0,
+                align="center",
+                color=(0.78, 0.82, 0.88, 1.0),
+            )
 
-        scene.text("Left/Right  dial      L/R  coarse",
-                   at=(VIEW_W * 0.5, VIEW_H - 34.0), height=11.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
-        scene.text("Confirm  submit      Cancel  new round",
-                   at=(VIEW_W * 0.5, VIEW_H - 16.0), height=11.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "Left/Right  dial      L/R  coarse",
+            at=(VIEW_W * 0.5, VIEW_H - 34.0),
+            height=11.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
+        scene.text(
+            "Confirm  submit      Cancel  new round",
+            at=(VIEW_W * 0.5, VIEW_H - 16.0),
+            height=11.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
 
 
 @persist_plugin_state("number_quest")

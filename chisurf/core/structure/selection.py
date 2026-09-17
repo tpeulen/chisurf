@@ -54,19 +54,79 @@ class SelectionError(ValueError):
 WATER_RESIDUES = frozenset({"HOH", "H2O", "WAT", "SOL", "TIP", "TIP3", "TIP4", "SPC"})
 
 #: The twenty standard amino acids plus the usual protonation variants.
-PROTEIN_RESIDUES = frozenset({
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
-    "HID", "HIE", "HIP", "HSD", "HSE", "HSP", "CYX", "CYM", "ASH", "GLH",
-    "LYN", "MSE", "SEC", "PYL",
-})
+PROTEIN_RESIDUES = frozenset(
+    {
+        "ALA",
+        "ARG",
+        "ASN",
+        "ASP",
+        "CYS",
+        "GLN",
+        "GLU",
+        "GLY",
+        "HIS",
+        "ILE",
+        "LEU",
+        "LYS",
+        "MET",
+        "PHE",
+        "PRO",
+        "SER",
+        "THR",
+        "TRP",
+        "TYR",
+        "VAL",
+        "HID",
+        "HIE",
+        "HIP",
+        "HSD",
+        "HSE",
+        "HSP",
+        "CYX",
+        "CYM",
+        "ASH",
+        "GLH",
+        "LYN",
+        "MSE",
+        "SEC",
+        "PYL",
+    }
+)
 
 #: Nucleic-acid residues, DNA and RNA, with the common 3- and 5-prime forms.
-NUCLEIC_RESIDUES = frozenset({
-    "A", "C", "G", "T", "U", "DA", "DC", "DG", "DT", "DU", "RA", "RC", "RG",
-    "RU", "ADE", "CYT", "GUA", "THY", "URA",
-    "A3", "A5", "C3", "C5", "G3", "G5", "T3", "T5", "U3", "U5",
-})
+NUCLEIC_RESIDUES = frozenset(
+    {
+        "A",
+        "C",
+        "G",
+        "T",
+        "U",
+        "DA",
+        "DC",
+        "DG",
+        "DT",
+        "DU",
+        "RA",
+        "RC",
+        "RG",
+        "RU",
+        "ADE",
+        "CYT",
+        "GUA",
+        "THY",
+        "URA",
+        "A3",
+        "A5",
+        "C3",
+        "C5",
+        "G3",
+        "G5",
+        "T3",
+        "T5",
+        "U3",
+        "U5",
+    }
+)
 
 #: Protein backbone atom names. Deliberately *not* including ``OXT``: the
 #: language being reproduced counts only these four, and adding the terminal
@@ -98,11 +158,23 @@ _NUMERIC_FIELDS = {
 #: Fields that are an *index* rather than a stored value, so they are computed.
 _INDEX_FIELDS = ("resid", "chainid")
 
-_KEYWORDS = ("all", "everything", "none", "nothing", "water", "waters",
-             "protein", "nucleic", "backbone", "sidechain", "hydrogen")
+_KEYWORDS = (
+    "all",
+    "everything",
+    "none",
+    "nothing",
+    "water",
+    "waters",
+    "protein",
+    "nucleic",
+    "backbone",
+    "sidechain",
+    "hydrogen",
+)
 _COMPARISONS = ("==", "!=", "<=", ">=", "<", ">")
 
-_TOKEN = re.compile(r"""
+_TOKEN = re.compile(
+    r"""
     \s*(?:
         (?P<lparen>\()
       | (?P<rparen>\))
@@ -111,14 +183,16 @@ _TOKEN = re.compile(r"""
       | (?P<word>[A-Za-z_][A-Za-z_0-9]*)
       | (?P<number>-?\d+\.?\d*)
       | (?P<other>\S)
-    )""", re.VERBOSE)
+    )""",
+    re.VERBOSE,
+)
 
 
 def _tokenize(expression: str) -> list[str]:
     """Split *expression* into tokens."""
     tokens, pos = [], 0
     for match in _TOKEN.finditer(expression):
-        if match.start() != pos and expression[pos:match.start()].strip():
+        if match.start() != pos and expression[pos : match.start()].strip():
             raise SelectionError(f"cannot parse {expression!r} near {expression[pos:]!r}")
         pos = match.end()
         if match.group("other"):
@@ -134,9 +208,14 @@ def _residue_index(atoms: np.ndarray) -> np.ndarray:
     merges the residue 5 of every chain, and numbering by unique value sorts
     them, which is not the file's order.
     """
-    keys = np.stack([atoms["chain"].astype("U4"),
-                     atoms["res_id"].astype("U12"),
-                     atoms["res_name"].astype("U5")], axis=1)
+    keys = np.stack(
+        [
+            atoms["chain"].astype("U4"),
+            atoms["res_id"].astype("U12"),
+            atoms["res_name"].astype("U5"),
+        ],
+        axis=1,
+    )
     changed = np.ones(len(atoms), dtype=bool)
     if len(atoms) > 1:
         changed[1:] = np.any(keys[1:] != keys[:-1], axis=1)
@@ -179,7 +258,7 @@ class _Parser:
     def parse(self) -> np.ndarray:
         mask = self.parse_or()
         if self.peek() is not None:
-            raise SelectionError(f"trailing {' '.join(self.tokens[self.pos:])!r}")
+            raise SelectionError(f"trailing {' '.join(self.tokens[self.pos :])!r}")
         return mask
 
     def parse_or(self) -> np.ndarray:
@@ -216,8 +295,7 @@ class _Parser:
         if lowered in _NUMERIC_FIELDS:
             return self._numeric_field(self.atoms[_NUMERIC_FIELDS[lowered]])
         if lowered in _INDEX_FIELDS:
-            values = (_residue_index(self.atoms) if lowered == "resid"
-                      else _chain_index(self.atoms))
+            values = _residue_index(self.atoms) if lowered == "resid" else _chain_index(self.atoms)
             return self._numeric_field(values)
         raise SelectionError(f"unknown selection keyword {token!r}")
 
@@ -236,12 +314,14 @@ class _Parser:
             return np.isin(names, list(NUCLEIC_RESIDUES))
         if word == "backbone":
             atom_names = np.char.upper(self.atoms["atom_name"].astype(str))
-            return (np.isin(names, list(PROTEIN_RESIDUES))
-                    & np.isin(atom_names, list(BACKBONE_ATOMS)))
+            return np.isin(names, list(PROTEIN_RESIDUES)) & np.isin(
+                atom_names, list(BACKBONE_ATOMS)
+            )
         if word == "sidechain":
             atom_names = np.char.upper(self.atoms["atom_name"].astype(str))
-            return (np.isin(names, list(PROTEIN_RESIDUES))
-                    & ~np.isin(atom_names, list(NON_SIDECHAIN_ATOMS)))
+            return np.isin(names, list(PROTEIN_RESIDUES)) & ~np.isin(
+                atom_names, list(NON_SIDECHAIN_ATOMS)
+            )
         # hydrogen: the element field is authoritative when populated, and the
         # name is the fallback -- plenty of PDBs leave the element column blank.
         element = np.char.upper(self.atoms["element"].astype(str))
@@ -255,8 +335,7 @@ class _Parser:
         """Consume the value list that follows a field name."""
         values = []
         while (token := self.peek()) is not None:
-            if token in ("(", ")") or token.lower() in (
-                    "and", "or", "not", "&&", "||", "!"):
+            if token in ("(", ")") or token.lower() in ("and", "or", "not", "&&", "||", "!"):
                 break
             values.append(self.take())
         if not values:
@@ -280,9 +359,12 @@ class _Parser:
         if (comparison := self.accept(*_COMPARISONS)) is not None:
             number = self._number(self.take())
             return {
-                "==": values == number, "!=": values != number,
-                "<": values < number, "<=": values <= number,
-                ">": values > number, ">=": values >= number,
+                "==": values == number,
+                "!=": values != number,
+                "<": values < number,
+                "<=": values <= number,
+                ">": values > number,
+                ">=": values >= number,
             }[comparison]
         tokens = self._values()
         # `resSeq 5 to 9` is inclusive at both ends, as in the language this

@@ -51,11 +51,11 @@ class CompletionPopup(QtWidgets.QListWidget):
         self.hide()
 
     def show_for(
-            self,
-            result: typing.Any,
-            anchor: QtCore.QPoint,
-            font: QtGui.QFont,
-            theme: ConsoleTheme,
+        self,
+        result: typing.Any,
+        anchor: QtCore.QPoint,
+        font: QtGui.QFont,
+        theme: ConsoleTheme,
     ) -> None:
         """Display *result* at *anchor*.
 
@@ -161,8 +161,7 @@ class CompletionPopup(QtWidgets.QListWidget):
             step = -10 if key == QtCore.Qt.Key_PageUp else 10
             self.setCurrentRow(max(0, min(self.count() - 1, self.currentRow() + step)))
             return True
-        if key in (QtCore.Qt.Key_Left, QtCore.Qt.Key_Right, QtCore.Qt.Key_Home,
-                   QtCore.Qt.Key_End):
+        if key in (QtCore.Qt.Key_Left, QtCore.Qt.Key_Right, QtCore.Qt.Key_Home, QtCore.Qt.Key_End):
             self.hide()
             return False
 
@@ -188,11 +187,11 @@ class CallTipWidget(QtWidgets.QLabel):
         self.hide()
 
     def show_tip(
-            self,
-            tip: typing.Any,
-            anchor: QtCore.QPoint,
-            font: QtGui.QFont,
-            theme: ConsoleTheme,
+        self,
+        tip: typing.Any,
+        anchor: QtCore.QPoint,
+        font: QtGui.QFont,
+        theme: ConsoleTheme,
     ) -> None:
         """Display *tip* at *anchor*.
 
@@ -207,7 +206,9 @@ class CallTipWidget(QtWidgets.QLabel):
         body = tip.doc.split("\n\n")[0].strip() if tip.doc else ""
         html = f"<b>{_escape(tip.name)}</b>{signature}"
         if body:
-            html += "<br><span style='opacity:0.8'>" + _escape(body).replace("\n", "<br>") + "</span>"
+            html += (
+                "<br><span style='opacity:0.8'>" + _escape(body).replace("\n", "<br>") + "</span>"
+            )
 
         self.setFont(font)
         self.setStyleSheet(
@@ -274,6 +275,4 @@ def _escape(text: str) -> str:
     -------
     str
     """
-    return (
-        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

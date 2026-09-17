@@ -32,6 +32,7 @@ def estimate_noise_level(v_real: np.ndarray, v_imag: np.ndarray | None = None) -
     The value is used as the per-point weight so that a good fit gives
     ``chi2_red ~ 1`` for a good fit (normalising by the estimated noise level).
     """
+
     def _mad_sigma(x: np.ndarray) -> float:
         x = np.asarray(x, dtype=float)
         return float(1.4826 * np.median(np.abs(x - np.median(x))))
@@ -56,7 +57,7 @@ def phase_correct(v_complex: np.ndarray) -> tuple[np.ndarray, np.ndarray, float]
     phase = float(np.angle(np.sum(v))) if np.any(v.imag) else 0.0
     rot = v * np.exp(-1j * phase)
     # Prefer the sign that makes the leading amplitude positive.
-    if rot.real[:max(1, len(rot) // 20)].mean() < 0:
+    if rot.real[: max(1, len(rot) // 20)].mean() < 0:
         rot = -rot
         phase += np.pi
     return rot.real, rot.imag, phase

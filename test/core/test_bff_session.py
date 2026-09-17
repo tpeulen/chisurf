@@ -107,8 +107,7 @@ class TestBffSession(unittest.TestCase):
         the restore moves loaded free ports into the live session so a
         re-save writes them again.
         """
-        port = bff.GraphPort(value=3.5, name="gamma", lb=0.0, ub=10.0,
-                        is_bounded=True)
+        port = bff.GraphPort(value=3.5, name="gamma", lb=0.0, ub=10.0, is_bounded=True)
         bff.get_session().add_port(port)
 
         archive_path = Project(name="BffTest").save(os.path.join(self.test_dir, "proj3"))
@@ -156,8 +155,7 @@ class TestBffSession(unittest.TestCase):
         node_b.add_input_port("in", port_b)
         port_b.set_link(port_a)
 
-        free = chinet.Port(value=2.5, name="legacy_free", lb=0.0, ub=5.0,
-                           is_bounded=True)
+        free = chinet.Port(value=2.5, name="legacy_free", lb=0.0, ub=5.0, is_bounded=True)
         free.prior = {"kind": "normal", "mu": 2.0, "sigma": 0.5}
 
         chinet.session.add_node("LegacyNode", node_a)
@@ -177,8 +175,7 @@ class TestBffSession(unittest.TestCase):
                 Project(name="Legacy").save_to_archive(archive)
                 with open(legacy_path, "rb") as fp:
                     archive.write_bytes(SESSION_FILENAME, fp.read())
-                archive_path = archive.save(
-                    os.path.join(self.test_dir, "legacy.csp"))
+                archive_path = archive.save(os.path.join(self.test_dir, "legacy.csp"))
         finally:
             chinet.session.clear()
 
@@ -198,8 +195,7 @@ class TestBffSession(unittest.TestCase):
         self.assertIsNotNone(restored_free)
         self.assertEqual(restored_free.value, 2.5)
         self.assertEqual(restored_free.bounds, (0.0, 5.0))
-        self.assertEqual(restored_free.prior,
-                         {"kind": "normal", "mu": 2.0, "sigma": 0.5})
+        self.assertEqual(restored_free.prior, {"kind": "normal", "mu": 2.0, "sigma": 0.5})
 
 
 if __name__ == "__main__":

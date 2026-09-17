@@ -122,9 +122,7 @@ def posterior(model: H2mmModel, data: BurstPhotons) -> tuple[np.ndarray, int]:
     return _require_tttrlib("posterior (gamma)").posterior(model, data)
 
 
-def sample_states(
-    model: H2mmModel, data: BurstPhotons, seed: int = 0
-) -> tuple[np.ndarray, int]:
+def sample_states(model: H2mmModel, data: BurstPhotons, seed: int = 0) -> tuple[np.ndarray, int]:
     """Draw each photon's state independently from its γ row.
 
     Faithful per photon, but the draws carry none of γ's temporal correlation,
@@ -143,8 +141,7 @@ def sample_paths(
     Each draw is an exact sample from the joint posterior, so unlike
     :func:`sample_states` the dwell structure is valid.
     """
-    return _require_tttrlib("FFBS path sampling").sample_paths(
-        model, data, seed, n_samples)
+    return _require_tttrlib("FFBS path sampling").sample_paths(model, data, seed, n_samples)
 
 
 #: Per-photon state decoders. ``viterbi`` answers "what is the single most
@@ -165,7 +162,7 @@ DECODER_LABELS: dict[str, str] = {
 #: Whether a decoder's path may be used for dwell/transition statistics.
 DECODER_KEEPS_DWELLS: dict[str, bool] = {
     "viterbi": True,
-    "jitter": False,   # independent draws shatter dwells into single photons
+    "jitter": False,  # independent draws shatter dwells into single photons
     "ffbs": True,
 }
 
@@ -291,8 +288,13 @@ def fit_one(
     # the progress callback, and that must reach the caller unfitted rather than
     # be treated as a backend problem. Nothing is caught here.
     return _tttrlib_engine.fit_states(
-        data, n_states, n_restarts=n_restarts, max_iter=max_iter,
-        tol=tol, seed=seed, single_precision=single_precision,
+        data,
+        n_states,
+        n_restarts=n_restarts,
+        max_iter=max_iter,
+        tol=tol,
+        seed=seed,
+        single_precision=single_precision,
         on_iter=on_iter,
     )
 
@@ -338,8 +340,13 @@ def optimize(
     """
     _require_backend("optimisation")
     return _tttrlib_engine.optimize(
-        model, data, max_iter=max_iter, tol=tol, min_trans=min_trans,
-        accelerate=accelerate, single_precision=single_precision,
+        model,
+        data,
+        max_iter=max_iter,
+        tol=tol,
+        min_trans=min_trans,
+        accelerate=accelerate,
+        single_precision=single_precision,
         on_iter=on_iter,
     )
 
@@ -379,7 +386,12 @@ def fit_states(
         The best model over the restarts.
     """
     return fit_one(
-        data, n_states, engine="em-float32" if single_precision else "em",
-        n_restarts=n_restarts, max_iter=max_iter, tol=tol, seed=seed,
+        data,
+        n_states,
+        engine="em-float32" if single_precision else "em",
+        n_restarts=n_restarts,
+        max_iter=max_iter,
+        tol=tol,
+        seed=seed,
         on_iter=on_iter,
     )

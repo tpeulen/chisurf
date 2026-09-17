@@ -1,6 +1,4 @@
-import csv
 import requests
-from typing import Any, List, Tuple
 
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
@@ -12,7 +10,7 @@ class OmegaOpticalDownloader:
     def download_and_store(self, product_id: str, name: str, filter_type: str) -> None:
         """
         Download CSV for a specific product and store in MMFDB.
-        
+
         Parameters
         ----------
         product_id : str
@@ -35,14 +33,14 @@ class OmegaOpticalDownloader:
             raise RuntimeError(f"Could not download any CSV for product for product {product_id}")
 
         # Parse CSV - expect wavelength,transmission or wavelength,OD
-        wavelengths: List[float] = []
-        intensities: List[float] = []
-        
+        wavelengths: list[float] = []
+        intensities: list[float] = []
+
         for line in response.text.splitlines():
             line = line.strip()
-            if not line or line.startswith('#'):  # Skip comments/empty
+            if not line or line.startswith("#"):  # Skip comments/empty
                 continue
-            parts = line.split(',')
+            parts = line.split(",")
             if len(parts) < 2:
                 continue
             try:
@@ -98,13 +96,15 @@ def main():
     from chisurf.plugins.spectra_downloader.download._base import scraper_main
 
     def _add(parser):
-        parser.add_argument("--product", default=None,
-                            help="Download a specific Omega product ID (for testing).")
+        parser.add_argument(
+            "--product", default=None, help="Download a specific Omega product ID (for testing)."
+        )
 
     def _run(db, args):
         if args.product:
             OmegaOpticalDownloader(db).download_and_store(
-                args.product, f"Omega-{args.product}", "unknown")
+                args.product, f"Omega-{args.product}", "unknown"
+            )
         else:
             download_omega_to_db(db)
 

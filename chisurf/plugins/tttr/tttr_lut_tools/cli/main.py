@@ -32,22 +32,34 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("files", nargs=-1, type=click.Path(exists=True, dir_okay=False), required=True)
-@click.option("-o", "--out", required=True, type=click.Path(), help="Output LUT (.npy/.npz/.txt/.csv).")
+@click.option(
+    "-o", "--out", required=True, type=click.Path(), help="Output LUT (.npy/.npz/.txt/.csv)."
+)
 @click.option("--routine", default=None, help="tttrlib reading routine (blank = auto).")
 @click.option("--n-bins", default=0, type=int, help="TAC bin count (0 = infer).")
 @click.option("--linear-start", default=None, type=int, help="Linear-region start (auto if unset).")
 @click.option("--linear-stop", default=None, type=int, help="Linear-region stop (auto if unset).")
 @click.option("--ntac", "ntac_required", default=0, type=int, help="Target NTAC bins (0 = same).")
 @click.option("--noffset", default=0, type=int, help="Offset subtracted from corrected indices.")
-@click.option("--channel", default=None, type=int,
-              help="Routing channel to compute the LUT for (per-channel; recommended).")
-def compute_cmd(files, out, routine, n_bins, linear_start, linear_stop, ntac_required,
-                noffset, channel):
+@click.option(
+    "--channel",
+    default=None,
+    type=int,
+    help="Routing channel to compute the LUT for (per-channel; recommended).",
+)
+def compute_cmd(
+    files, out, routine, n_bins, linear_start, linear_stop, ntac_required, noffset, channel
+):
     """Compute a linearization LUT from uniform-illumination FILES."""
     tbl = compute.compute_lut_from_files(
-        list(files), routine=routine, n_bins=n_bins or None,
-        linear_start=linear_start, linear_stop=linear_stop,
-        ntac_required=ntac_required or None, noffset=noffset, channel=channel,
+        list(files),
+        routine=routine,
+        n_bins=n_bins or None,
+        linear_start=linear_start,
+        linear_stop=linear_stop,
+        ntac_required=ntac_required or None,
+        noffset=noffset,
+        channel=channel,
     )
     path = io.save_lut(out, tbl)
     ch = f"ch{channel} " if channel is not None else ""
@@ -57,7 +69,9 @@ def compute_cmd(files, out, routine, n_bins, linear_start, linear_stop, ntac_req
 @cli.command()
 @click.argument("file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--lut", "luts", multiple=True, metavar="CH=PATH", help="Assign a LUT to a channel.")
-@click.option("--shift", "shifts", multiple=True, metavar="CH=N", help="Per-channel micro-time shift.")
+@click.option(
+    "--shift", "shifts", multiple=True, metavar="CH=N", help="Per-channel micro-time shift."
+)
 @click.option("--channel", default=0, type=int, help="Channel to histogram for the summary.")
 @click.option("--routine", default=None, help="tttrlib reading routine.")
 def apply_cmd(file, luts, shifts, channel, routine):
@@ -69,7 +83,9 @@ def apply_cmd(file, luts, shifts, channel, routine):
 
 
 @cli.command()
-@click.option("--lut", "luts", multiple=True, metavar="CH=PATH", required=True, help="Assign a LUT.")
+@click.option(
+    "--lut", "luts", multiple=True, metavar="CH=PATH", required=True, help="Assign a LUT."
+)
 @click.option("--shift", "shifts", multiple=True, metavar="CH=N", help="Per-channel shift.")
 @click.option("--routine", default=None, help="tttrlib reading routine.")
 @click.option("-o", "--out", required=True, type=click.Path(), help="settings.tttr.json output.")
@@ -77,8 +93,9 @@ def settings_cmd(luts, shifts, routine, out):
     """Build a settings.tttr.json from assigned LUTs/shifts."""
     lut_map = {ch: io.load_lut_file(p) for ch, p in _parse_channel_map(luts).items()}
     shift_map = _parse_channel_map(shifts, loader=int)
-    d = settings.build_settings_dict(lut_map, shift_map, reading_routine=routine,
-                                     used_channels=sorted(lut_map))
+    d = settings.build_settings_dict(
+        lut_map, shift_map, reading_routine=routine, used_channels=sorted(lut_map)
+    )
     path = settings.save_settings(out, d)
     click.echo(f"wrote {path} ({len(lut_map)} channel(s))")
 

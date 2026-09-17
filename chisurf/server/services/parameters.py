@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from chisurf.server.services import (
-    ServiceResult,
-    service_error,
     NOT_FOUND,
     OPERATION_FAILED,
+    ServiceResult,
     _resolve_fit,
+    service_error,
 )
 from chisurf.server.session import SessionState
 
@@ -48,17 +48,17 @@ def _finalize_owner(owner: Any) -> None:
 
 def _resolve_parameter(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
     *,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
     fit_error: str = "fit not found",
-    access_error: Optional[str] = "cannot access model parameters",
-    parameter_error: Optional[str] = None,
-) -> tuple[Any, Any, Optional[ServiceResult]]:
+    access_error: str | None = "cannot access model parameters",
+    parameter_error: str | None = None,
+) -> tuple[Any, Any, ServiceResult | None]:
     """Look up a parameter, addressed either by UUID or by fit + name.
 
     Returns ``(owner, parameter, None)`` or ``(owner_or_None, None, error)``. The
@@ -156,7 +156,7 @@ def _resolve_parameter(
     return fit, parameter, None
 
 
-def _parameter_payload(parameter_name: str, parameter: Any) -> Dict[str, Any]:
+def _parameter_payload(parameter_name: str, parameter: Any) -> dict[str, Any]:
     """Build a serialisable dict from a parameter object.
 
     Parameters
@@ -180,11 +180,11 @@ def _parameter_payload(parameter_name: str, parameter: Any) -> Dict[str, Any]:
 
 def get_parameter(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Return the current state of a single parameter.
 
@@ -223,13 +223,13 @@ def get_parameter(
 
 def set_parameter_value(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     value: float = 0.0,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Set the numeric value of a parameter and update the model.
 
@@ -254,8 +254,13 @@ def set_parameter_value(
 
     """
     owner, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error
@@ -269,13 +274,13 @@ def set_parameter_value(
 
 def set_parameter_fixed(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     fixed: bool = False,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Fix or free a parameter and finalise the model.
 
@@ -300,8 +305,13 @@ def set_parameter_fixed(
 
     """
     owner, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error
@@ -315,13 +325,13 @@ def set_parameter_fixed(
 
 def set_parameter_bounds(
     state: SessionState,
-    parameter_name: Optional[str] = None,
-    bounds: Tuple[float, float] = (0.0, 0.0),
+    parameter_name: str | None = None,
+    bounds: tuple[float, float] = (0.0, 0.0),
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Set the (min, max) bounds for a parameter.
 
@@ -346,8 +356,13 @@ def set_parameter_bounds(
 
     """
     owner, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error
@@ -361,13 +376,13 @@ def set_parameter_bounds(
 
 def set_parameter_bounds_on(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     bounds_on: bool = False,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Enable or disable bound constraints for a parameter.
 
@@ -392,8 +407,13 @@ def set_parameter_bounds_on(
 
     """
     _, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error
@@ -406,13 +426,13 @@ def set_parameter_bounds_on(
 
 def set_parameter_prior(
     state: SessionState,
-    parameter_name: Optional[str] = None,
-    prior: Optional[dict] = None,
+    parameter_name: str | None = None,
+    prior: dict | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Set or clear a parameter's prior from its serialisable state dict.
 
@@ -442,8 +462,13 @@ def set_parameter_prior(
         Global UUID of the containing model/group (finalisation target).
     """
     owner, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error
@@ -457,18 +482,18 @@ def set_parameter_prior(
 
 def parameter_link(
     state: SessionState,
-    parameter_name: Optional[str] = None,
-    target_parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
+    target_parameter_name: str | None = None,
     fit_index: int = 0,
-    target_fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
-    target_fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    target_local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
-    target_parameter_uid: Optional[str] = None,
-    target_owner_uid: Optional[str] = None,
+    target_fit_index: int | None = None,
+    fit_uid: str | None = None,
+    target_fit_uid: str | None = None,
+    local_idx: int | None = None,
+    target_local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
+    target_parameter_uid: str | None = None,
+    target_owner_uid: str | None = None,
 ) -> ServiceResult:
     """Link a parameter to another parameter (same or different fit).
 
@@ -566,7 +591,9 @@ def parameter_link(
             return service_error("cannot access target parameters", error_code=OPERATION_FAILED)
         link_to = tdict.get(target_parameter_name)
         if link_to is None:
-            return service_error(f"target parameter '{target_parameter_name}' not found", error_code=NOT_FOUND)
+            return service_error(
+                f"target parameter '{target_parameter_name}' not found", error_code=NOT_FOUND
+            )
 
     try:
         p.link = link_to
@@ -578,12 +605,12 @@ def parameter_link(
 
 def parameter_unlink(
     state: SessionState,
-    parameter_name: Optional[str] = None,
+    parameter_name: str | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
-    local_idx: Optional[int] = None,
-    parameter_uid: Optional[str] = None,
-    owner_uid: Optional[str] = None,
+    fit_uid: str | None = None,
+    local_idx: int | None = None,
+    parameter_uid: str | None = None,
+    owner_uid: str | None = None,
 ) -> ServiceResult:
     """Remove a parameter's link (make it independent).
 
@@ -606,8 +633,13 @@ def parameter_unlink(
 
     """
     owner, p, error = _resolve_parameter(
-        state, parameter_name, fit_index, fit_uid, local_idx,
-        parameter_uid=parameter_uid, owner_uid=owner_uid,
+        state,
+        parameter_name,
+        fit_index,
+        fit_uid,
+        local_idx,
+        parameter_uid=parameter_uid,
+        owner_uid=owner_uid,
     )
     if error is not None:
         return error

@@ -10,7 +10,8 @@ which is all that separates RICS from STICS, TICS and iMSD (see
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -21,7 +22,7 @@ except Exception:  # pragma: no cover - optional at import time
 
 from chisurf.core.roi import as_mask
 
-from .data import IcsCarpet, IcsSettings, IcsTiming
+from .data import IcsCarpet, IcsSettings
 
 
 def _ensure_3d_stack(images: np.ndarray) -> np.ndarray:
@@ -92,7 +93,7 @@ def normalise_ics(
     images: np.ndarray,
     x_range: Sequence[int],
     y_range: Sequence[int],
-    mask: Optional[np.ndarray] = None,
+    mask: np.ndarray | None = None,
 ) -> np.ndarray:
     """Normalise a raw correlation stack to ``G`` when the correlator did not.
 
@@ -158,7 +159,7 @@ def normalise_ics(
         mean_intensity = float(roi.mean())
         n_pixels = float(roi.shape[1] * roi.shape[2])
 
-    norm = mean_intensity ** 2 * n_pixels
+    norm = mean_intensity**2 * n_pixels
     if not np.isfinite(norm) or norm <= 0.0:
         return ics_stack
     return ics_stack / norm
@@ -166,8 +167,8 @@ def normalise_ics(
 
 def compute_ics_carpet(
     images: np.ndarray,
-    settings: Optional[IcsSettings] = None,
-    mask: Optional[np.ndarray] = None,
+    settings: IcsSettings | None = None,
+    mask: np.ndarray | None = None,
     use_fftshift: bool = True,
     **kwargs: Any,
 ) -> IcsCarpet:
@@ -234,13 +235,11 @@ def compute_ics_carpet(
     stack = _ensure_3d_stack(images)
     n_frames, ny, nx = stack.shape
 
-    region_mask: Optional[np.ndarray] = None
+    region_mask: np.ndarray | None = None
     if mask is not None:
         m = as_mask(mask, (ny, nx), image=stack)
         if m.shape != (ny, nx):
-            raise ValueError(
-                f"Mask shape {m.shape} does not match image shape {(ny, nx)}"
-            )
+            raise ValueError(f"Mask shape {m.shape} does not match image shape {(ny, nx)}")
         rows = np.flatnonzero(m.any(axis=1))
         cols = np.flatnonzero(m.any(axis=0))
         if rows.size == 0 or cols.size == 0:
@@ -279,7 +278,7 @@ def compute_ics_carpet(
         pairs = frame_pairs(n_frames, d)
         if not pairs:
             continue
-        ics_kwargs: Dict[str, Any] = {
+        ics_kwargs: dict[str, Any] = {
             "images": stack,
             "x_range": list(x_range),
             "y_range": list(y_range),
@@ -295,7 +294,7 @@ def compute_ics_carpet(
         # allocation. Fixed upstream and ChiSurf builds that source, so this is
         # belt-and-braces against an older local build; slicing to the pair count
         # first only touches shape metadata, never the data.
-        raw = np.asarray(raw)[:len(pairs)]
+        raw = np.asarray(raw)[: len(pairs)]
         raw = np.asarray(raw, dtype=float)
         if raw.ndim == 2:
             raw = raw[None, ...]
@@ -312,9 +311,7 @@ def compute_ics_carpet(
         realised.append(d)
 
     if not maps:
-        raise ValueError(
-            f"No frame lag in {lags} is realisable in a stack of {n_frames} frames"
-        )
+        raise ValueError(f"No frame lag in {lags} is realisable in a stack of {n_frames} frames")
 
     correlation = np.asarray(maps, dtype=float)
     error = np.asarray(errors, dtype=float)
@@ -334,7 +331,7 @@ def compute_ics_carpet(
 
     timing = settings.timing.resolved(n_lines=ny)
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         "n_input_frames": int(n_frames),
         "fftshifted": bool(use_fftshift),
         "x_range": tuple(x_range),

@@ -108,20 +108,24 @@ class DecayPanel(QtWidgets.QWidget):
         if curves is None:
             return
 
-        self.decay_plot.scatter(curves.channels, curves.data, size=3,
-                                name="Data (VV|VH)")
-        self.decay_plot.line(curves.channels, curves.model,
-                             pen=MODEL_PEN, name="Model (fit)")
+        self.decay_plot.scatter(curves.channels, curves.data, size=3, name="Data (VV|VH)")
+        self.decay_plot.line(curves.channels, curves.model, pen=MODEL_PEN, name="Model (fit)")
         if curves.irf is not None:
-            self.decay_plot.line(range(len(curves.irf)), curves.irf,
-                                 pen=IRF_PEN, name="IRF")
+            self.decay_plot.line(range(len(curves.irf)), curves.irf, pen=IRF_PEN, name="IRF")
         if curves.background is not None:
-            self.decay_plot.line(range(len(curves.background)), curves.background,
-                                 pen=BACKGROUND_PEN, name="Background")
+            self.decay_plot.line(
+                range(len(curves.background)),
+                curves.background,
+                pen=BACKGROUND_PEN,
+                name="Background",
+            )
 
         self.residual_plot.line(
-            range(len(curves.residuals)), curves.residuals,
-            pen=chiplot.to_pen(RESIDUAL_PEN, width=1), symbol="o", symbol_size=3,
+            range(len(curves.residuals)),
+            curves.residuals,
+            pen=chiplot.to_pen(RESIDUAL_PEN, width=1),
+            symbol="o",
+            symbol_size=3,
         )
 
         # The ranges come with the curves: pinning them is a display decision

@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -59,7 +60,7 @@ def save_rois(rois: Iterable[ROI], path: str, metadata: dict | None = None) -> s
     return str(out)
 
 
-def load_rois(path: str) -> List[ROI]:
+def load_rois(path: str) -> list[ROI]:
     """Read regions from a native JSON file.
 
     Parameters
@@ -109,7 +110,7 @@ def load_roi_metadata(path: str) -> dict:
     return dict(data.get("metadata", {})) if isinstance(data, dict) else {}
 
 
-def rois_from_cellpose(path: str, crop: bool = True) -> List[ROI]:
+def rois_from_cellpose(path: str, crop: bool = True) -> list[ROI]:
     """Read a Cellpose segmentation into one region per object.
 
     Cellpose writes a ``*_seg.npy`` holding a pickled dictionary whose ``masks``
@@ -159,7 +160,7 @@ def rois_from_cellpose(path: str, crop: bool = True) -> List[ROI]:
     return labels_to_rois(labels.astype(int), crop=crop)
 
 
-def rois_from_label_image(path: str, crop: bool = True) -> List[ROI]:
+def rois_from_label_image(path: str, crop: bool = True) -> list[ROI]:
     """Read an integer label image (TIFF or NumPy) into regions.
 
     Parameters
@@ -186,7 +187,7 @@ def rois_from_label_image(path: str, crop: bool = True) -> List[ROI]:
     return labels_to_rois(labels.astype(int), crop=crop)
 
 
-def load_regions(path: str, crop: bool = True) -> List[ROI]:
+def load_regions(path: str, crop: bool = True) -> list[ROI]:
     """Read regions from a file of any supported kind.
 
     The one entry point every consumer should use: it picks the reader from the

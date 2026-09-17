@@ -17,6 +17,7 @@ multiple segments or for combining related simulations into a single dataset.
 icon = "🔗"
 
 import sys
+
 from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
 
 # Define the plugin name - this will appear in the Plugins menu

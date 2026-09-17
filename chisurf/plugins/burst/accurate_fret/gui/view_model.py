@@ -8,9 +8,9 @@ series that ``accurate_fret.view.json`` reads.
 from __future__ import annotations
 
 import logging
-from concurrent.futures import CancelledError
 import pathlib
 from collections.abc import Callable
+from concurrent.futures import CancelledError
 
 import numpy as np
 
@@ -123,8 +123,7 @@ class AccurateFretViewModel:
             return
         self._map_columns()
         self._result = None
-        missing = [k for k in ("i_dd", "i_da")
-                   if not getattr(self, f"column_{k}")]
+        missing = [k for k in ("i_dd", "i_da") if not getattr(self, f"column_{k}")]
         head = (
             f"{pathlib.Path(path).name}: "
             f"{len(next(iter(self._columns.values())))} bursts, "
@@ -152,10 +151,7 @@ class AccurateFretViewModel:
         from chisurf.core.fluorescence.burst.table import DETECTOR_ROLE_WORDS
 
         words = tuple(DETECTOR_ROLE_WORDS)
-        return any(
-            any(word in str(name).lower() for word in words)
-            for name in self._columns
-        )
+        return any(any(word in str(name).lower() for word in words) for name in self._columns)
 
     def load_from_ndxplorer(self) -> str:
         """Take the burst columns from an open ndX window.
@@ -238,10 +234,14 @@ class AccurateFretViewModel:
         values = (get_setup_calibration(self.setup_name) or {}).get("values") or {}
         if not values:
             return False
-        for key, attr in (("r0", "forster_radius"), ("bg_dd", "background_dd"),
-                          ("bg_da", "background_da"), ("bg_aa", "background_aa"),
-                          ("phi_d", "quantum_yield_donor"),
-                          ("phi_a", "quantum_yield_acceptor")):
+        for key, attr in (
+            ("r0", "forster_radius"),
+            ("bg_dd", "background_dd"),
+            ("bg_da", "background_da"),
+            ("bg_aa", "background_aa"),
+            ("phi_d", "quantum_yield_donor"),
+            ("phi_a", "quantum_yield_acceptor"),
+        ):
             value = values.get(key)
             if value is not None and np.isfinite(float(value)):
                 setattr(self, attr, float(value))
@@ -332,8 +332,12 @@ class AccurateFretViewModel:
             return "Pick a donor and an acceptor dye."
         from chisurf.core.fluorescence.fret.dyes import fret_pair
 
-        pair = fret_pair(self.donor_dye, self.acceptor_dye,
-                         kappa2=self.kappa2, refractive_index=self.refractive_index)
+        pair = fret_pair(
+            self.donor_dye,
+            self.acceptor_dye,
+            kappa2=self.kappa2,
+            refractive_index=self.refractive_index,
+        )
         self._dye_pair = pair
         if pair is None:
             self.results_text = "The dye pair could not be resolved in the database."
@@ -376,8 +380,11 @@ class AccurateFretViewModel:
         if not self.lightpath_name:
             return None
         entry = next(
-            (lp for lp in self._lightpaths
-             if str(lp.get("name") or lp["operation_id"]) == self.lightpath_name),
+            (
+                lp
+                for lp in self._lightpaths
+                if str(lp.get("name") or lp["operation_id"]) == self.lightpath_name
+            ),
             None,
         )
         if entry is None:
@@ -436,12 +443,18 @@ class AccurateFretViewModel:
             progress(0.3, "Calibrating")
         try:
             self._result = _core.calibrate(
-                i_dd, i_da, i_aa, tau_f,
-                donor_lifetime=self.donor_lifetime, forster_radius=self.forster_radius,
+                i_dd,
+                i_da,
+                i_aa,
+                tau_f,
+                donor_lifetime=self.donor_lifetime,
+                forster_radius=self.forster_radius,
                 linker_sigma=self.linker_sigma,
                 background=(self.background_dd, self.background_da, self.background_aa),
-                gamma_source=self.gamma_source, n_bootstrap=self.n_bootstrap,
-                lightpath=self._lightpath_argument(), use_priors=self.use_priors,
+                gamma_source=self.gamma_source,
+                n_bootstrap=self.n_bootstrap,
+                lightpath=self._lightpath_argument(),
+                use_priors=self.use_priors,
                 max_fret_populations=self.max_fret_populations,
                 min_population=self.min_population,
             )
@@ -482,8 +495,7 @@ class AccurateFretViewModel:
             register_calibration_parameters(self._result)
         except Exception:
             # Publishing is a convenience; a calibration is not lost over it.
-            logger.debug("could not publish the calibration parameters",
-                         exc_info=True)
+            logger.debug("could not publish the calibration parameters", exc_info=True)
 
     def _write_container(self) -> None:
         """Record the corrected values beside the photons they came from.
@@ -503,15 +515,15 @@ class AccurateFretViewModel:
 
         try:
             _c.write_container(
-                self.filename, self._result,
+                self.filename,
+                self._result,
                 # The inputs that decide the answer, so a re-run with the same
                 # ones replaces this rather than adding beside it.
                 parameters={
                     "donor_lifetime": self.donor_lifetime,
                     "forster_radius": self.forster_radius,
                     "linker_sigma": self.linker_sigma,
-                    "background": [self.background_dd, self.background_da,
-                                   self.background_aa],
+                    "background": [self.background_dd, self.background_da, self.background_aa],
                     "gamma_source": self.gamma_source,
                     "n_bootstrap": self.n_bootstrap,
                     "use_priors": self.use_priors,
@@ -562,10 +574,18 @@ class AccurateFretViewModel:
             m = (labels == value) & np.isfinite(x) & np.isfinite(y)
             if not np.any(m):
                 continue
-            series.append({
-                "x": x[m], "y": y[m], "name": name, "color": colour,
-                "symbol": "o", "symbol_size": symbol_size, "no_line": True, "width": 0,
-            })
+            series.append(
+                {
+                    "x": x[m],
+                    "y": y[m],
+                    "name": name,
+                    "color": colour,
+                    "symbol": "o",
+                    "symbol_size": symbol_size,
+                    "no_line": True,
+                    "width": 0,
+                }
+            )
         return series
 
     def es_series(self) -> list[dict]:
@@ -582,15 +602,26 @@ class AccurateFretViewModel:
             return []
         series = self._class_series(result.tau_f, result.efficiency)
         if result.line is not None:
-            series.append({
-                "x": result.line.tau_f, "y": result.line.efficiency,
-                "name": "static FRET line", "color": "#ffffff", "width": 2,
-            })
+            series.append(
+                {
+                    "x": result.line.tau_f,
+                    "y": result.line.efficiency,
+                    "name": "static FRET line",
+                    "color": "#ffffff",
+                    "width": 2,
+                }
+            )
         if self.show_dynamic_line and result.dynamic_line is not None:
-            series.append({
-                "x": result.dynamic_line.tau_f, "y": result.dynamic_line.efficiency,
-                "name": "dynamic FRET line", "color": "#ff5555", "width": 2, "style": "dash",
-            })
+            series.append(
+                {
+                    "x": result.dynamic_line.tau_f,
+                    "y": result.dynamic_line.efficiency,
+                    "name": "dynamic FRET line",
+                    "color": "#ff5555",
+                    "width": 2,
+                    "style": "dash",
+                }
+            )
         return series
 
     def efficiency_histogram(self) -> list[dict]:
@@ -604,8 +635,15 @@ class AccurateFretViewModel:
             return []
         counts, edges = np.histogram(e, bins=60, range=(-0.1, 1.1))
         centres = 0.5 * (edges[1:] + edges[:-1])
-        return [{"x": centres, "y": counts.astype(float), "name": "accurate E",
-                 "color": "#4488ff", "width": 2}]
+        return [
+            {
+                "x": centres,
+                "y": counts.astype(float),
+                "name": "accurate E",
+                "color": "#4488ff",
+                "width": 2,
+            }
+        ]
 
     # ── session / export ──
     def register_in_session(self) -> str:

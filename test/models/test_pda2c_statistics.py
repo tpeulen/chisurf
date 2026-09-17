@@ -244,9 +244,7 @@ def test_poisson_deviance_is_less_biased_than_chi_square_at_low_counts():
     true_mean = 52.0
     seeds = range(1, 21)
     bias = {
-        statistic: float(
-            np.mean([_recover_mean(statistic, s) for s in seeds]) - true_mean
-        )
+        statistic: float(np.mean([_recover_mean(statistic, s) for s in seeds]) - true_mean)
         for statistic in ("poisson", "neyman")
     }
     assert abs(bias["poisson"]) < 0.1, bias
@@ -259,9 +257,7 @@ def test_poisson_deviance_is_less_biased_than_chi_square_at_low_counts():
 
 @pytest.mark.parametrize("spec_name", PDA_VIEW_SPECS)
 def test_view_specs_expose_the_fit_histogram_panel(spec_name):
-    spec = json.loads(
-        (pathlib.Path("chisurf/core/models/pda2c") / spec_name).read_text()
-    )
+    spec = json.loads((pathlib.Path("chisurf/core/models/pda2c") / spec_name).read_text())
     panels = [s for s in spec["sections"] if s.get("title") == "Fit histogram / statistic"]
     assert panels, f"{spec_name} has no fit-histogram panel"
     inner = panels[0]["sections"]
@@ -282,9 +278,7 @@ def test_view_specs_expose_the_fit_histogram_panel(spec_name):
 @pytest.mark.parametrize("spec_name", PDA_VIEW_SPECS)
 def test_component_groups_render_as_tables(spec_name):
     """Species/component groups use the paired table, not a spin-box grid."""
-    spec = json.loads(
-        (pathlib.Path("chisurf/core/models/pda2c") / spec_name).read_text()
-    )
+    spec = json.loads((pathlib.Path("chisurf/core/models/pda2c") / spec_name).read_text())
 
     def walk(sections):
         for s in sections:
@@ -311,9 +305,7 @@ def test_fit_settings_panel_builds_real_widgets(qtbot):
     assert editor.findChildren(ScalarTableWidget), "binning table did not render"
 
     # The combo commits through to the model (the binding, not just the layout).
-    axis_combo = [
-        c for c in editor.findChildren(ChoiceWidget) if c._section.label == "Axis"
-    ][0]
+    axis_combo = [c for c in editor.findChildren(ChoiceWidget) if c._section.label == "Axis"][0]
     axis_combo.combo.setCurrentIndex(axis_combo._options.index("R"))
     assert fit.model.fit_settings.axis == "R"
     assert fit.model.fit_settings.x_max == 100.0

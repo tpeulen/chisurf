@@ -10,7 +10,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.bond_orders import (
     DOUBLE_BONDS,
     assign_bond_orders,
@@ -22,19 +21,28 @@ from chimol.geometry.wireframe import (
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
-ATOM_DTYPE = np.dtype([
-    ("atom_name", "U4"), ("res_name", "U4"), ("res_id", "i4"),
-    ("chain", "U2"), ("element", "U2"), ("xyz", "f8", 3),
-])
+ATOM_DTYPE = np.dtype(
+    [
+        ("atom_name", "U4"),
+        ("res_name", "U4"),
+        ("res_id", "i4"),
+        ("chain", "U2"),
+        ("element", "U2"),
+        ("xyz", "f8", 3),
+    ]
+)
 
 
 def _atoms(rows):
     return np.array(
-        [(n, r, i, "A", e, (0.0, 0.0, float(k)))
-         for k, (n, r, i, e) in enumerate(rows)],
+        [(n, r, i, "A", e, (0.0, 0.0, float(k))) for k, (n, r, i, e) in enumerate(rows)],
         dtype=ATOM_DTYPE,
     )
 
@@ -50,9 +58,13 @@ def test_only_one_oxygen_of_a_carboxylate_is_double():
     ``OD1`` takes the double bond and ``OD2`` the negative charge; doubling both
     would give the carbon five bonds.
     """
-    atoms = _atoms([
-        ("CG", "ASP", 1, "C"), ("OD1", "ASP", 1, "O"), ("OD2", "ASP", 1, "O"),
-    ])
+    atoms = _atoms(
+        [
+            ("CG", "ASP", 1, "C"),
+            ("OD1", "ASP", 1, "O"),
+            ("OD2", "ASP", 1, "O"),
+        ]
+    )
     assert assign_bond_orders(atoms, [(0, 1), (0, 2)]).tolist() == [2, 1]
 
 
@@ -61,26 +73,33 @@ def test_the_guanidinium_partner_is_forced_single():
 
     They are one resonance hybrid, and the bookkeeping has to pick one.
     """
-    atoms = _atoms([
-        ("CZ", "ARG", 1, "C"), ("NH1", "ARG", 1, "N"), ("NH2", "ARG", 1, "N"),
-    ])
+    atoms = _atoms(
+        [
+            ("CZ", "ARG", 1, "C"),
+            ("NH1", "ARG", 1, "N"),
+            ("NH2", "ARG", 1, "N"),
+        ]
+    )
     assert assign_bond_orders(atoms, [(0, 1), (0, 2)]).tolist() == [2, 1]
 
 
 def test_histidine_follows_the_tautomer_in_the_residue_name():
     """``CE1=ND1`` for HIS, ``CE1=NE2`` for the ND1-protonated HID."""
     for residue, expect in (("HIS", [2, 1]), ("HID", [1, 2])):
-        atoms = _atoms([
-            ("CE1", residue, 1, "C"),
-            ("ND1", residue, 1, "N"),
-            ("NE2", residue, 1, "N"),
-        ])
+        atoms = _atoms(
+            [
+                ("CE1", residue, 1, "C"),
+                ("ND1", residue, 1, "N"),
+                ("NE2", residue, 1, "N"),
+            ]
+        )
         assert assign_bond_orders(atoms, [(0, 1), (0, 2)]).tolist() == expect
 
 
 def test_a_ligand_gets_no_double_bonds():
     """An untemplated residue has no entry, and PyMOL is in the same position:
-    for a PDB ligand it has bond orders only from a format that carries them."""
+    for a PDB ligand it has bond orders only from a format that carries them.
+    """
     atoms = _atoms([("C1", "NAG", 1, "C"), ("O5", "NAG", 1, "O")])
     assert assign_bond_orders(atoms, [(0, 1)]).tolist() == [1]
 
@@ -121,7 +140,8 @@ def test_a_real_protein_is_mostly_backbone_carbonyls():
     assert int((orders == 2).sum()) == 258
     names = np.char.upper(np.char.strip(atoms["atom_name"].astype(str)))
     carbonyls = sum(
-        1 for (i, j), order in zip(bonds, orders)
+        1
+        for (i, j), order in zip(bonds, orders)
         if order == 2 and {str(names[i]), str(names[j])} == {"C", "O"}
     )
     assert carbonyls > 150, "the backbone carbonyls are most of them"
@@ -131,10 +151,7 @@ def test_a_real_protein_is_mostly_backbone_carbonyls():
 # The second line
 # --------------------------------------------------------------------------- #
 def _benzene():
-    pts = np.array([
-        [1.4 * np.cos(a), 1.4 * np.sin(a), 0.0]
-        for a in np.arange(6) * np.pi / 3
-    ])
+    pts = np.array([[1.4 * np.cos(a), 1.4 * np.sin(a), 0.0] for a in np.arange(6) * np.pi / 3])
     bonds = np.array([[k, (k + 1) % 6] for k in range(6)])
     orders = np.array([2 if k % 2 == 0 else 1 for k in range(6)])
     return pts, bonds, orders
@@ -152,8 +169,7 @@ def test_the_second_line_goes_inside_the_ring():
     mid = 0.5 * (pts[bonds[:, 0]] + pts[bonds[:, 1]])
     double = orders == 2
     assert np.all(
-        np.linalg.norm((mid + offsets)[double], axis=1)
-        < np.linalg.norm(mid[double], axis=1)
+        np.linalg.norm((mid + offsets)[double], axis=1) < np.linalg.norm(mid[double], axis=1)
     )
     assert np.allclose(offsets[~double], 0.0), "a single bond is not offset"
 
@@ -184,7 +200,8 @@ def test_the_extra_lines_carry_the_bond_s_colours():
 
 def test_a_bond_with_no_neighbours_still_offsets_somewhere():
     """A diatomic has no plane to choose, and any perpendicular will do --
-    but the line must not land on top of the bond it is doubling."""
+    but the line must not land on top of the bond it is doubling.
+    """
     pts = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.2]])
     offsets = valence_offsets(pts, np.array([[0, 1]]), np.array([2]))
     assert offsets is not None

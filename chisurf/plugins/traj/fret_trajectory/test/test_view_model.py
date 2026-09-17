@@ -3,7 +3,6 @@
 import pathlib
 
 import numpy as np
-import pytest
 
 from chisurf.core.structure.trajectory_data import Trajectory
 
@@ -154,7 +153,8 @@ def test_calc_without_dipoles_uses_fixed_kappa2(tmp_path):
 
     xyz, _, _ = read_dcd(str(source))
     np.testing.assert_allclose(
-        result[:, 2], np.linalg.norm(xyz[:, 2] - xyz[:, 0], axis=1), rtol=1e-5)
+        result[:, 2], np.linalg.norm(xyz[:, 2] - xyz[:, 0], axis=1), rtol=1e-5
+    )
     # kappa2 is the engine's isotropic constant, and kappa its square root ...
     np.testing.assert_allclose(result[:, 4], 2.0 / 3.0, rtol=1e-6)
     np.testing.assert_allclose(result[:, 3] ** 2, result[:, 4], rtol=1e-6)
@@ -162,9 +162,7 @@ def test_calc_without_dipoles_uses_fixed_kappa2(tmp_path):
     assert np.all(result[:, 5] > 0)
     np.testing.assert_allclose(
         result[:, 5],
-        distance_to_fret_rate_constant(
-            result[:, 2], model.forster_radius, model.tau0, 2.0 / 3.0
-        ),
+        distance_to_fret_rate_constant(result[:, 2], model.forster_radius, model.tau0, 2.0 / 3.0),
         rtol=1e-6,
     )
 

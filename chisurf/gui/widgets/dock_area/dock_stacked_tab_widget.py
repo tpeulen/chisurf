@@ -114,9 +114,7 @@ class DockStackedTabWidget(QtWidgets.QWidget):
         self._tab_bar.addTab(text)
         return idx
 
-    def insertTab(
-        self, index: int, widget: QtWidgets.QWidget, text: str
-    ) -> int:
+    def insertTab(self, index: int, widget: QtWidgets.QWidget, text: str) -> int:
         """Insert ``widget`` as a tab at ``index`` with ``text``."""
         idx = self._stacked_widget.insertWidget(index, widget)
         self._tab_bar.insertTab(index, text)
@@ -205,9 +203,7 @@ class DockStackedTabWidget(QtWidgets.QWidget):
                 self._new_tab_btn.setText("+")
                 self._new_tab_btn.setAutoRaise(True)
                 if self.dock_area is not None:
-                    self._new_tab_btn.clicked.connect(
-                        self.dock_area.newTabRequested.emit
-                    )
+                    self._new_tab_btn.clicked.connect(self.dock_area.newTabRequested.emit)
                 self.setCornerWidget(self._new_tab_btn, QtCore.Qt.TopLeftCorner)
             self._new_tab_btn.show()
             return
@@ -250,9 +246,7 @@ class DockStackedTabWidget(QtWidgets.QWidget):
         if self.dock_area is not None:
             self.dock_area.restore_all_tabs(self)
 
-    def _on_tab_context_menu(
-        self, local_index: int, global_pos: QtCore.QPoint
-    ) -> None:
+    def _on_tab_context_menu(self, local_index: int, global_pos: QtCore.QPoint) -> None:
         """Forward tab context menu requests to the dock area."""
         if self.dock_area is not None:
             self.dock_area._on_tab_context_menu(self, local_index, global_pos)
@@ -281,7 +275,9 @@ class DockStackedTabWidget(QtWidgets.QWidget):
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """Show dock-area context actions when right-clicking the tab pane."""
-        if self.dock_area is not None and self.dock_area.is_inside_client_content(event.globalPos()):
+        if self.dock_area is not None and self.dock_area.is_inside_client_content(
+            event.globalPos()
+        ):
             event.accept()
             return
 

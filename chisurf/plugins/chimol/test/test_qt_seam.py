@@ -28,6 +28,7 @@ run flagged a module whose only mention of Qt was **a docstring explaining that
 it no longer imports Qt**. A comment about a dependency is not a dependency;
 the import graph is what matters, so the import graph is what is read.
 """
+
 from __future__ import annotations
 
 import ast
@@ -110,9 +111,7 @@ def _modules() -> list[pathlib.Path]:
 
 def test_no_new_module_imports_qt():
     """Every Qt importer is on the list, and the list only shrinks."""
-    offenders = {
-        str(p.relative_to(PACKAGE)) for p in _modules() if _imports_qt(p)
-    }
+    offenders = {str(p.relative_to(PACKAGE)) for p in _modules() if _imports_qt(p)}
     allowed = _allowlist()
     new = sorted(offenders - allowed)
     assert not new, (
@@ -130,9 +129,7 @@ def test_the_allowlist_has_no_stale_entries():
     Without this the list never shrinks in practice: the work gets done and the
     record still claims the leak is there.
     """
-    offenders = {
-        str(p.relative_to(PACKAGE)) for p in _modules() if _imports_qt(p)
-    }
+    offenders = {str(p.relative_to(PACKAGE)) for p in _modules() if _imports_qt(p)}
     stale = sorted(_allowlist() - offenders)
     assert not stale, (
         "these are on the Qt allow-list but no longer import Qt -- delete the "
@@ -184,10 +181,20 @@ def test_the_toolkit_free_core_stays_toolkit_free(module):
 #: the editor panel, the settings window, the `resolution` command, the
 #: sequence strip and the file dialog -- all drawn with quads, on every host.
 _CONTENT_WIDGETS = (
-    "QPlainTextEdit", "QTextEdit", "QTextBrowser",
-    "QTableWidget", "QTableView", "QTreeWidget", "QTreeView",
-    "QListWidget", "QListView", "QListWidgetItem",
-    "QFileDialog", "QInputDialog", "QColorDialog", "QFontDialog",
+    "QPlainTextEdit",
+    "QTextEdit",
+    "QTextBrowser",
+    "QTableWidget",
+    "QTableView",
+    "QTreeWidget",
+    "QTreeView",
+    "QListWidget",
+    "QListView",
+    "QListWidgetItem",
+    "QFileDialog",
+    "QInputDialog",
+    "QColorDialog",
+    "QFontDialog",
     "QDialog",
 )
 
@@ -210,7 +217,11 @@ def _drawn_names(path: pathlib.Path) -> set[str]:
             found.add(node.attr)
         elif isinstance(node, ast.Name) and node.id in _CONTENT_WIDGETS:
             found.add(node.id)
-        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in docstrings
+        ):
             continue
     return found
 

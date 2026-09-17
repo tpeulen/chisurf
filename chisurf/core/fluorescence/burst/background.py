@@ -63,8 +63,7 @@ class BackgroundDiagnostics:
 _POSITIVE = 1e-12
 
 
-def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts,
-                          tail_range_ms=None):
+def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, tail_range_ms=None):
     """Poisson-MLE exponential fit of the inter-photon-time tail.
 
     Returns ``(amplitude, rate, tail_mask, success)``; ``rate`` falls back to the
@@ -159,12 +158,12 @@ def interphoton_time_diagnostics(
         return BackgroundDiagnostics()
     centers, counts, max_dt = hist
     A, lam, tail_mask, _ = _fit_exponential_tail(
-        centers, counts, max_dt, tail_fraction, min_counts,
-        tail_range_ms=tail_range_ms)
+        centers, counts, max_dt, tail_fraction, min_counts, tail_range_ms=tail_range_ms
+    )
     model = A * np.exp(-lam * centers) if A > 0 and lam > 0 else np.zeros_like(centers)
     return BackgroundDiagnostics(
-        centers=centers, counts=counts, tail_mask=tail_mask,
-        model=model, rate_khz=lam, amplitude=A)
+        centers=centers, counts=counts, tail_mask=tail_mask, model=model, rate_khz=lam, amplitude=A
+    )
 
 
 def estimate_background_from_interphoton_times(
@@ -210,8 +209,8 @@ def estimate_background_from_interphoton_times(
     centers, counts, max_dt = hist
     # lambda has units 1/ms, treated as kHz (1/ms == kHz).
     _, lam, _, _ = _fit_exponential_tail(
-        centers, counts, max_dt, tail_fraction, min_counts,
-        tail_range_ms=tail_range_ms)
+        centers, counts, max_dt, tail_fraction, min_counts, tail_range_ms=tail_range_ms
+    )
     return float(lam)
 
 
@@ -345,6 +344,6 @@ def background_diagnostics_from_bursts(
     for det_name, det_info in detectors.items():
         dt_ms = _detector_interphoton_times(tttr, det_info, dt_scale)
         out[det_name] = interphoton_time_diagnostics(
-            dt_ms, binsize_ms=binsize_ms, tail_fraction=tail_fraction,
-            min_counts=min_counts)
+            dt_ms, binsize_ms=binsize_ms, tail_fraction=tail_fraction, min_counts=min_counts
+        )
     return out

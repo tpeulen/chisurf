@@ -143,9 +143,7 @@ def measure_drift(
     """
     stack = load_image_stack(filename, windows=windows, channel_axis=channel_axis)
     if stack.n_frames < 2:
-        raise ValueError(
-            f"{filename} has {stack.n_frames} frame(s); drift needs at least two"
-        )
+        raise ValueError(f"{filename} has {stack.n_frames} frame(s); drift needs at least two")
 
     frames = stack.frames(channel)
     shifts = estimate_drift(
@@ -201,15 +199,12 @@ def corrected_stack(
     stack = load_image_stack(filename, windows=windows, channel_axis=channel_axis)
     if shifts is None:
         shifts = measure_drift(
-            filename, channel, mode=mode, windows=windows,
-            channel_axis=channel_axis, **kwargs
+            filename, channel, mode=mode, windows=windows, channel_axis=channel_axis, **kwargs
         ).shifts
 
     out = np.empty_like(np.asarray(stack.data, dtype=float))
     for ch in range(stack.n_channels):
-        out[:, ch] = apply_drift(
-            np.asarray(stack.data[:, ch], dtype=float), shifts, mode=mode
-        )
+        out[:, ch] = apply_drift(np.asarray(stack.data[:, ch], dtype=float), shifts, mode=mode)
     return out, np.asarray(shifts)
 
 
@@ -263,12 +258,14 @@ def correct_photon_image(
         if reading_routine
         else tttrlib.TTTR(str(filename))
     )
-    clsm = tttrlib.CLSMImage(
-        tttr_data=tttr, channels=list(channels or [0]), fill=True
-    )
+    clsm = tttrlib.CLSMImage(tttr_data=tttr, channels=list(channels or [0]), fill=True)
     shifts = correct_clsm_drift(
-        clsm, reference=reference, roi=as_roi(roi),
-        smooth=smooth, subpixel=subpixel, mode=mode,
+        clsm,
+        reference=reference,
+        roi=as_roi(roi),
+        smooth=smooth,
+        subpixel=subpixel,
+        mode=mode,
     )
     return clsm, shifts
 
@@ -371,19 +368,20 @@ def write_container(
     sh = np.asarray(shifts, dtype=float)
     written = write_imaging_table(
         source,
-        store_from_arrays({
-            "Frame": np.arange(len(sh), dtype=np.int64),
-            "dx": sh[:, 1],
-            "dy": sh[:, 0],
-            "Magnitude": np.hypot(sh[:, 0], sh[:, 1]),
-        }),
+        store_from_arrays(
+            {
+                "Frame": np.arange(len(sh), dtype=np.int64),
+                "dx": sh[:, 1],
+                "dy": sh[:, 0],
+                "Magnitude": np.hypot(sh[:, 0], sh[:, 1]),
+            }
+        ),
         name="drift",
         artifact_kind="drift_trajectory",
         operation_type="drift_correction",
         row_grain="frame",
         parameters=parameters,
-        units={"Frame": "dimensionless", "dx": "pixels", "dy": "pixels",
-               "Magnitude": "pixels"},
+        units={"Frame": "dimensionless", "dx": "pixels", "dy": "pixels", "Magnitude": "pixels"},
         out_dir=out_dir,
     )
     if corrected is not None:
@@ -391,7 +389,8 @@ def write_container(
         if arr.ndim == 4 and arr.shape[1] == 1:
             arr = arr[:, 0]
         written = write_image(
-            source, arr.astype(np.float32),
+            source,
+            arr.astype(np.float32),
             name="drift corrected",
             operation_type="drift_correction",
             axes="TCYX" if arr.ndim == 4 else "TYX",

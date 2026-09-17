@@ -14,6 +14,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from chisurf.gui import chiplot as cp
+
 from .registry import register_section
 
 logger = logging.getLogger(__name__)
@@ -45,12 +46,18 @@ class DecayConvWidget(QtWidgets.QWidget):
         self._region = self._plot.region((0.0, 1.0), brush=(80, 160, 255, 40), movable=True)
         self._region.on_change(self._on_region, final=True)
         self._irf_region = self._plot.region(
-            (0.0, 1.0), brush=(80, 255, 140, 30), pen=cp.to_pen((80, 255, 140), width=1), movable=True,
+            (0.0, 1.0),
+            brush=(80, 255, 140, 30),
+            pen=cp.to_pen((80, 255, 140), width=1),
+            movable=True,
         )
         self._irf_region.on_change(self._on_irf_region, final=True)
         # Background-estimation region (grey): mean data counts here → bg_vv/bg_vh.
         self._bg_region = self._plot.region(
-            (0.0, 0.0), brush=(180, 180, 180, 40), pen=cp.to_pen((180, 180, 180), width=1), movable=True,
+            (0.0, 0.0),
+            brush=(180, 180, 180, 40),
+            pen=cp.to_pen((180, 180, 180), width=1),
+            movable=True,
         )
         self._bg_region.on_change(self._on_bg_region, final=True)
         layout.addWidget(self._plot, 1)

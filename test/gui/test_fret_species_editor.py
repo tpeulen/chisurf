@@ -128,9 +128,12 @@ def test_period_and_shift_flow_to_detector_patterns():
     def irf_for(_name):
         return synthetic_irf(t, 0.5, 0.3)
 
-    aperiodic = dict(comp); aperiodic["period_ns"] = 0.0
+    aperiodic = dict(comp)
+    aperiodic["period_ns"] = 0.0
     p_periodic = fret_species_detector_patterns(comp, ["green"], 256, irf_for_detector=irf_for)
-    p_aperiodic = fret_species_detector_patterns(aperiodic, ["green"], 256, irf_for_detector=irf_for)
+    p_aperiodic = fret_species_detector_patterns(
+        aperiodic, ["green"], 256, irf_for_detector=irf_for
+    )
     # Periodic (laser-period) convolution differs from the aperiodic result.
     assert not np.allclose(p_periodic["green"], p_aperiodic["green"])
 
@@ -138,7 +141,8 @@ def test_period_and_shift_flow_to_detector_patterns():
 def test_plot_refreshes_even_when_dock_reparents_it(qapp, qtbot):
     """A dock can reparent/float the preview plot out of the AutoForm's child
     tree; refresh_plots must still reach it (regression: table edits stopped
-    recomputing the curves once the plot lived in a dock)."""
+    recomputing the curves once the plot lived in a dock).
+    """
     from chisurf.gui.autoform import AutoForm
     from chisurf.gui.autoform.sections.builtin import PlotWidget
 
@@ -177,5 +181,6 @@ def test_anisotropy_spectrum_edit_and_roundtrip():
     assert m2.donor_aniso_rows[1]["rho"] == 9.0
     # Flows through to the coupled decay generator.
     from chisurf.core.fluorescence.fret.species_decay import fret_species_from_dict
+
     sp = fret_species_from_dict(comp)
     assert len(sp.anisotropy._rows("donor")) == 2

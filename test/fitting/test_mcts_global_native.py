@@ -29,9 +29,7 @@ def _group(*, bad_second: bool = False):
     for amplitude in (2.0, 5.0):
         y = amplitude * np.exp(-x / 3.0) + rng.normal(0.0, SIGMA, N)
         curves.append(
-            chisurf.core.data.DataCurve(
-                x=x, y=y, ey=np.full(N, SIGMA), name=f"a={amplitude}"
-            )
+            chisurf.core.data.DataCurve(x=x, y=y, ey=np.full(N, SIGMA), name=f"a={amplitude}")
         )
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup(curves),
@@ -74,9 +72,7 @@ def _declaration(member):
             NativeStructure("free-lifetime", ("amplitude", "lifetime")),
         ),
         actions=(
-            NativeAction(
-                "fixed-lifetime", "release-lifetime", "free-lifetime"
-            ),
+            NativeAction("fixed-lifetime", "release-lifetime", "free-lifetime"),
             NativeAction("fixed-lifetime", "terminate", "fixed-lifetime", terminal=True),
             NativeAction("free-lifetime", "terminate", "free-lifetime", terminal=True),
         ),
@@ -112,11 +108,7 @@ def test_global_search_uses_one_joint_problem_and_one_shared_owner_port():
     assert all(not port.is_linked() for port in prepared.binding.ports)
 
     root = prepared.problem.get_initial_state()
-    moves = [
-        action
-        for action in prepared.problem.get_actions(root)
-        if not action.get_terminal()
-    ]
+    moves = [action for action in prepared.problem.get_actions(root) if not action.get_terminal()]
     # Releasing a linked structural parameter in only one member is illegal;
     # the sole move coordinates both declarations.
     assert len(moves) == 1
@@ -149,18 +141,14 @@ def test_one_refused_member_refuses_the_whole_group_before_graph_build(monkeypat
 
     def declarer(member):
         if member is fit[1]:
-            return unsupported(
-                "test.unsupported", "unsupported_member", "no native equation"
-            )
+            return unsupported("test.unsupported", "unsupported_member", "no native equation")
         return _declaration(member)
 
     def graph_was_called(*args, **kwargs):
         calls.append((args, kwargs))
         raise AssertionError("a partial global objective must not be built")
 
-    monkeypatch.setattr(
-        "chisurf.core.fitting.minimizer.graph_objective", graph_was_called
-    )
+    monkeypatch.setattr("chisurf.core.fitting.minimizer.graph_objective", graph_was_called)
     prepared = prepare_global_model_search(fit, declarer)
 
     assert not prepared.supported
@@ -273,10 +261,9 @@ def test_common_dispatcher_routes_a_multi_member_fit_to_the_joint_capability():
     assert prepared.supported, prepared.reasons
     assert prepared.binding.declaration.objective_model is fit._model
     assert len(prepared.binding.ports) == 3
-    assert sum(
-        key.startswith("shared:")
-        for key in prepared.problem.get_parameter_group_keys()
-    ) == 1
+    assert (
+        sum(key.startswith("shared:") for key in prepared.problem.get_parameter_group_keys()) == 1
+    )
 
 
 def test_native_tcspc_members_are_refused_whole_until_joint_builder_supports_them():
@@ -285,9 +272,7 @@ def test_native_tcspc_members_are_refused_whole_until_joint_builder_supports_the
 
     x = np.arange(32, dtype=float) * 0.05
     y = 1000.0 * np.exp(-x / 2.0) + 1.0
-    curves = [
-        chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y)) for _ in range(2)
-    ]
+    curves = [chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y)) for _ in range(2)]
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup(curves), model_class=LifetimeModel
     )

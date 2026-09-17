@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import numpy as np
+
 import chisurf.core.fluorescence.fcs.correlate
+from chisurf import typing
 from chisurf.core.fluorescence.fcs import normalization
 
-from chisurf import typing
-
-weightCalculations = ['Koppel', 'none']
+weightCalculations = ["Koppel", "none"]
 
 #: Correlation normalizations ``tttrlib`` implements. ``wahl`` is its default;
 #: ``laurence`` normalizes each lag by the count rate in the overlapping
 #: sub-intervals, which removes the long-lag upturn near the chunk duration.
-correlationMethods = ['wahl', 'felekyan', 'laurence', 'default']
+correlationMethods = ["wahl", "felekyan", "laurence", "default"]
 
 # Re-export normalization functions for convenient access
 resolve_total_mean_count_rate = normalization.resolve_total_mean_count_rate
@@ -23,20 +23,20 @@ compute_cpm_all = normalization.compute_cpm_all
 
 
 def noise(
-        times: np.ndarray,
-        correlation: np.ndarray,
-        measurement_duration: float,
-        mean_count_rate: float,
-        weight_type: str = 'suren',
-        skip_points: int = 0,
-        correlation_amplitude_range: typing.Tuple[int, int] = (0, 16),
-        time_upper: float = 10,
-        z0_w0: float = 3.5,
-        starchev_a1: float = 2.e-3,
-        starchev_a2: float = 1.8e-1,
-        starchev_c1: float = 1.0e-4,
-        diffusion_time: float = None,
-        verbose: bool = False
+    times: np.ndarray,
+    correlation: np.ndarray,
+    measurement_duration: float,
+    mean_count_rate: float,
+    weight_type: str = "suren",
+    skip_points: int = 0,
+    correlation_amplitude_range: typing.Tuple[int, int] = (0, 16),
+    time_upper: float = 10,
+    z0_w0: float = 3.5,
+    starchev_a1: float = 2.0e-3,
+    starchev_a2: float = 1.8e-1,
+    starchev_c1: float = 1.0e-4,
+    diffusion_time: float = None,
+    verbose: bool = False,
 ) -> np.array:
     """
     Calculate noise weights for fluorescence correlation spectroscopy (FCS)
@@ -123,10 +123,10 @@ def noise(
     """
     if verbose:
         print("Calculating FCS weights")
-        print("Using method: %s" % weight_type)
-        print("measurement_duration [s]: %s" % measurement_duration)
-        print("mean_count_rate [kHz]: %s" % mean_count_rate)
-        print("skip_points: %s" % skip_points)
+        print(f"Using method: {weight_type}")
+        print(f"measurement_duration [s]: {measurement_duration}")
+        print(f"mean_count_rate [kHz]: {mean_count_rate}")
+        print(f"skip_points: {skip_points}")
 
     sd = np.ones_like(correlation)
     if skip_points > 0:
@@ -140,62 +140,69 @@ def noise(
     # the front so that `lb = 0` selects up to the very last point (a negative
     # stop of `-lb` would silently drop the whole tail).
     n = len(correlation)
-    correlation_offset = np.mean(correlation[n - ub:n - lb])
+    correlation_offset = np.mean(correlation[n - ub : n - lb])
     mean_correlation_amplitude = np.mean(correlation[lb:ub]) - correlation_offset
     if mean_correlation_amplitude == 0:
         print("WARNING: the mean correlation amplitude seems to be zero!")
         mean_correlation_amplitude = 1.0
     if diffusion_time is None:
         try:
-            imaxhalf = np.min(np.nonzero(correlation < mean_correlation_amplitude / 2.0 + correlation_offset))
+            imaxhalf = np.min(
+                np.nonzero(correlation < mean_correlation_amplitude / 2.0 + correlation_offset)
+            )
             diffusion_time = times[imaxhalf]
         except ValueError:
             diffusion_time = times[len(times) // 2]
 
-    if weight_type == 'suren':
+    if weight_type == "suren":
         dt = np.diff(times)
         dt = np.hstack([dt, dt[-1]])
-        ns = measurement_duration * 1000. / dt
+        ns = measurement_duration * 1000.0 / dt
         na = dt * mean_count_rate
 
         A = np.exp(-2 * dt / diffusion_time)
         B = np.exp(-2 * times / diffusion_time)
         m = times / dt
-        S = (mean_correlation_amplitude ** 2 / ns *
-             ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A) +
-             2 * mean_correlation_amplitude / ns ** 2.0 * (1 + B) +
-             (1 + mean_correlation_amplitude * np.sqrt(B)) / (ns * na ** 2))
-        S *= (times < time_upper) + (times >= time_upper) * 10 ** (-np.log(times + 1e-12) / np.log(10) + 1)
+        S = (
+            mean_correlation_amplitude**2 / ns * ((1 + A) * (1 + B) + 2 * m * (1 - A) * B) / (1 - A)
+            + 2 * mean_correlation_amplitude / ns**2.0 * (1 + B)
+            + (1 + mean_correlation_amplitude * np.sqrt(B)) / (ns * na**2)
+        )
+        S *= (times < time_upper) + (times >= time_upper) * 10 ** (
+            -np.log(times + 1e-12) / np.log(10) + 1
+        )
         S = np.sqrt(np.abs(S))
         sd[skip_points:] = S
-    elif weight_type == 'starchev':
+    elif weight_type == "starchev":
         # Noise on fluorescence correlation spectroscopy - Starchev method
         # Reference: Starchev, O. Y. (2001). Noise on fluorescence correlation spectroscopy.
         # Journal of Colloid and Interface Science, 233, 50–55.
         tc = diffusion_time
-        N = 1. / mean_correlation_amplitude
+        N = 1.0 / mean_correlation_amplitude
         a1 = starchev_a1
         a2 = starchev_a2
         c1 = starchev_c1
         p = z0_w0  # Shape factor of 3D Gaussian detection volume.
         i = mean_count_rate
-        var_g = 1. / N ** 3.0 * (a1 / i + a2 / i ** 2) / (1 + p ** 2 * times / tc) + \
-                c1 / (N ** 2.0) / (1 + p ** 2 * times / tc) ** 0.33
+        var_g = (
+            1.0 / N**3.0 * (a1 / i + a2 / i**2) / (1 + p**2 * times / tc)
+            + c1 / (N**2.0) / (1 + p**2 * times / tc) ** 0.33
+        )
         sd[skip_points:] = np.sqrt(var_g)
-    elif weight_type == 'uniform':
+    elif weight_type == "uniform":
         sd = np.ones_like(correlation)
 
     return sd
 
 
 def complete_noise(
-        times: np.ndarray,
-        correlation: np.ndarray,
-        uncertainty: typing.Optional[np.ndarray],
-        measurement_duration: float,
-        mean_count_rate: float,
-        weight_type: str = 'suren',
-        **kwargs
+    times: np.ndarray,
+    correlation: np.ndarray,
+    uncertainty: typing.Optional[np.ndarray],
+    measurement_duration: float,
+    mean_count_rate: float,
+    weight_type: str = "suren",
+    **kwargs,
 ) -> np.ndarray:
     """Complete a measured uncertainty estimate with the noise model.
 
@@ -249,8 +256,12 @@ def complete_noise(
     # count rate, so it can only be evaluated on a real, non-empty curve.
     if times.size > 1 and measurement_duration > 0 and mean_count_rate > 0:
         modelled = noise(
-            times, correlation, measurement_duration, mean_count_rate,
-            weight_type=weight_type, **kwargs
+            times,
+            correlation,
+            measurement_duration,
+            mean_count_rate,
+            weight_type=weight_type,
+            **kwargs,
         )
         modelled = np.asarray(modelled, dtype=np.float64)
         from_model = ~usable & np.isfinite(modelled) & (modelled > 0.0)
@@ -269,7 +280,7 @@ def background_factor_ac(signal_cr_khz: float, background_cr_khz: float) -> floa
 
     .. math::
 
-        k_\mathrm{bg} = \left(\frac{S - B}{S}\right)^2 ,
+        k_\\mathrm{bg} = \\left(\frac{S - B}{S}\right)^2 ,
 
     where ``S`` is the total detected countrate (signal + background) and
     ``B`` is the background countrate. This factor multiplies the *amplitude*
@@ -292,7 +303,6 @@ def background_factor_ac(signal_cr_khz: float, background_cr_khz: float) -> floa
         non-finite or ``S <= B`` or ``S <= 0``, ``1.0`` is returned and no
         correction should be applied.
     """
-
     try:
         S = float(signal_cr_khz)
         B = float(background_cr_khz)
@@ -309,10 +319,10 @@ def background_factor_ac(signal_cr_khz: float, background_cr_khz: float) -> floa
 
 
 def background_factor_cc(
-        signal1_cr_khz: float,
-        background1_cr_khz: float,
-        signal2_cr_khz: float,
-        background2_cr_khz: float,
+    signal1_cr_khz: float,
+    background1_cr_khz: float,
+    signal2_cr_khz: float,
+    background2_cr_khz: float,
 ) -> float:
     """Return background attenuation factor for a cross-correlation model.
 
@@ -321,7 +331,7 @@ def background_factor_cc(
 
     .. math::
 
-        k_\mathrm{bg} = \frac{S_1 - B_1}{S_1} \cdot \frac{S_2 - B_2}{S_2} .
+        k_\\mathrm{bg} = \frac{S_1 - B_1}{S_1} \\cdot \frac{S_2 - B_2}{S_2} .
 
     As for :func:`background_factor_ac`, this factor is meant to be applied to
     the *amplitude* of a background-free model curve while keeping the
@@ -341,7 +351,6 @@ def background_factor_cc(
         non-finite or inconsistent (e.g. ``Si <= Bi`` or ``Si <= 0``), ``1.0``
         is returned and no correction should be applied.
     """
-
     try:
         S1 = float(signal1_cr_khz)
         B1 = float(background1_cr_khz)
@@ -363,10 +372,10 @@ def background_factor_cc(
 
 
 def _spline_local_residual_std(
-        times: np.ndarray,
-        correlation: np.ndarray,
-        knot_count: int = 5,
-        window: int = 3,
+    times: np.ndarray,
+    correlation: np.ndarray,
+    knot_count: int = 5,
+    window: int = 3,
 ) -> np.ndarray:
     """Estimate local noise via residuals to a smooth spline on log10(tau).
 
@@ -382,7 +391,6 @@ def _spline_local_residual_std(
       smoother is used instead.
     - Any non-finite or degenerate cases fall back to unit standard deviations.
     """
-
     t = np.asarray(times, dtype=float).ravel()
     g = np.asarray(correlation, dtype=float).ravel()
     n = g.size
@@ -454,13 +462,13 @@ def _spline_local_residual_std(
 
 
 def compute_weights(
-        times: np.ndarray,
-        correlation: np.ndarray,
-        acquisition_time_s: float,
-        mean_count_rate_khz: float,
-        mode: str | None = None,
-        existing_weights: np.ndarray | None = None,
-        noise_kwargs: dict | None = None,
+    times: np.ndarray,
+    correlation: np.ndarray,
+    acquisition_time_s: float,
+    mean_count_rate_khz: float,
+    mode: str | None = None,
+    existing_weights: np.ndarray | None = None,
+    noise_kwargs: dict | None = None,
 ) -> np.ndarray:
     """Return correlation-amplitude weights for FCS curves.
 
@@ -495,7 +503,6 @@ def compute_weights(
     np.ndarray
         Weights ``w = 1/sigma`` with the same shape as ``correlation``.
     """
-
     if noise_kwargs is None:
         noise_kwargs = {}
 
@@ -524,7 +531,7 @@ def compute_weights(
     # PyCorrFit-style spline-based local variance: weight_type "splineX".
     if m.startswith("spline"):
         # Optional knot count in the suffix (e.g. "spline5").
-        suffix = m[len("spline"):]
+        suffix = m[len("spline") :]
         knots = None
         if suffix:
             try:
@@ -605,4 +612,3 @@ def compute_weights(
         else:
             w[i] = 1.0 / float(v)
     return w
-

@@ -124,8 +124,7 @@ def _apply_chrome_font(plot_item) -> None:
             axis.setStyle(tickFont=tick)
             # labelStyle survives a later ``setLabel(text)`` with no keywords,
             # which is how ``set_labels`` calls it.
-            axis.labelStyle = {**getattr(axis, "labelStyle", {}),
-                               "font-size": f"{label_pt}pt"}
+            axis.labelStyle = {**getattr(axis, "labelStyle", {}), "font-size": f"{label_pt}pt"}
             axis._updateLabel()
         except Exception:
             pass
@@ -716,8 +715,7 @@ class _Roi(_Item):
         showing, and to grey out a region the user has switched off.
         """
         self._native.setPen(
-            _pen(S.to_pen(pen, **overrides) if not isinstance(pen, S.Pen) or overrides
-                 else pen)
+            _pen(S.to_pen(pen, **overrides) if not isinstance(pen, S.Pen) or overrides else pen)
         )
 
     def on_change(self, callback, *, final: bool = True) -> None:
@@ -748,7 +746,6 @@ class _Text(_Item):
 # --------------------------------------------------------------------------
 
 
-
 def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
     """Build the pyqtgraph ROI item for a region shape.
 
@@ -764,8 +761,9 @@ def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
         # axis-aligned either leaks in the corners or cuts the population's own
         # diagonal off. pyqtgraph rotates about `pos`, so the centre has to be
         # held still by hand.
-        item = pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable,
-                             rotatable=rotatable)
+        item = pg.EllipseROI(
+            list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable
+        )
         if angle:
             centre = item.pos() + item.size() * 0.5
             item.setAngle(float(angle), center=(0.5, 0.5))
@@ -780,11 +778,11 @@ def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
             points = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
         return pg.PolyLineROI(
             [tuple(map(float, p)) for p in points],
-            closed=True, pen=_pen(pen), movable=movable,
+            closed=True,
+            pen=_pen(pen),
+            movable=movable,
         )
-    return pg.RectROI(
-        list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable
-    )
+    return pg.RectROI(list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable)
 
 
 class _PgCanvas(base.Canvas):
@@ -942,8 +940,15 @@ class _PgCanvas(base.Canvas):
         return _Region(item, self._pi)
 
     def add_roi(
-        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
-        rotatable=False, points=None,
+        self,
+        *,
+        kind="rect",
+        pos=(0.0, 0.0),
+        size=(10.0, 10.0),
+        pen,
+        movable=True,
+        rotatable=False,
+        points=None,
     ) -> H.Roi:
         """Add a region-of-interest shape over the plot.
 
@@ -964,8 +969,17 @@ class _PgCanvas(base.Canvas):
         return _Marker(item, self._pi)
 
     def add_arrow(
-        self, pos, *, angle=0.0, size=20.0, tip_angle=25.0, head_width=None,
-        tail_length=None, tail_width=3.0, pen=None, brush=None,
+        self,
+        pos,
+        *,
+        angle=0.0,
+        size=20.0,
+        tip_angle=25.0,
+        head_width=None,
+        tail_length=None,
+        tail_width=3.0,
+        pen=None,
+        brush=None,
     ) -> H.Arrow:
         """Draw a scale-invariant arrow head at a data coordinate.
 
@@ -1132,8 +1146,7 @@ class _PgCanvas(base.Canvas):
         """Return the current visible ``((x0, x1), (y0, y1))``, in data units."""
         (x0, x1), (y0, y1) = self._pi.getViewBox().viewRange()
         log_x, log_y = self._log_modes()
-        return (self._from_axis_units((x0, x1), log_x),
-                self._from_axis_units((y0, y1), log_y))
+        return (self._from_axis_units((x0, x1), log_x), self._from_axis_units((y0, y1), log_y))
 
     def auto_range(self) -> None:
         """Fit the view to its contents once."""
@@ -1208,9 +1221,7 @@ class _PgCanvas(base.Canvas):
             if axis is None:
                 continue
             if compact:
-                axis.setStyle(
-                    tickLength=0, autoExpandTextSpace=False, tickTextOffset=0
-                )
+                axis.setStyle(tickLength=0, autoExpandTextSpace=False, tickTextOffset=0)
                 axis.setTickFont(font)
             else:
                 axis.setStyle(tickLength=-5, autoExpandTextSpace=True, tickTextOffset=2)
@@ -1484,8 +1495,16 @@ class _PgImageView(base.ImageViewCanvas):
         return _Image(item, view)
 
     def add_roi(
-        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
-        rotatable=False, points=None, angle=0.0
+        self,
+        *,
+        kind="rect",
+        pos=(0.0, 0.0),
+        size=(10.0, 10.0),
+        pen,
+        movable=True,
+        rotatable=False,
+        points=None,
+        angle=0.0,
     ) -> H.Roi:
         """Add a region-of-interest to the view."""
         roi = _roi_item(kind, pos, size, pen, movable, rotatable, points, angle)
@@ -1543,13 +1562,12 @@ class _PgVolumeView(base.VolumeViewCanvas):
         if threshold > 0.0:
             norm = np.where(norm < threshold, 0.0, norm)
         if gamma != 1.0:
-            norm = norm ** gamma
+            norm = norm**gamma
 
         lut = None
         try:
             name = colormap.name if isinstance(colormap, S.Colormap) else colormap
-            lut = pg.colormap.get(name, source="matplotlib").getLookupTable(
-                0.0, 1.0, 256)
+            lut = pg.colormap.get(name, source="matplotlib").getLookupTable(0.0, 1.0, 256)
         except Exception:
             # an unknown name is not worth failing a render over; grey is a
             # legible fallback and the caller still sees its data
@@ -1600,8 +1618,8 @@ class _PgVolumeView(base.VolumeViewCanvas):
         scale = np.array([sx, sy, sz])
         for a, b in seg:
             item = self._gl.GLLinePlotItem(
-                pos=np.vstack([a, b]) * scale, color=color, width=width,
-                antialias=True)
+                pos=np.vstack([a, b]) * scale, color=color, width=width, antialias=True
+            )
             self._view.addItem(item)
             self._vectors.append(item)
         self._view.update()
@@ -1615,8 +1633,7 @@ class _PgVolumeView(base.VolumeViewCanvas):
         self._vectors = []
 
     def set_camera(self, distance=None, elevation=None, azimuth=None):
-        self._view.setCameraPosition(
-            distance=distance, elevation=elevation, azimuth=azimuth)
+        self._view.setCameraPosition(distance=distance, elevation=elevation, azimuth=azimuth)
 
     @property
     def native(self):
@@ -1671,7 +1688,9 @@ class PyQtGraphBackend(base.Backend):
                 f"chiplot: plot foreground {fg!r} matches the background — every "
                 f"axis would be invisible; using {opts['foreground']!r} instead. "
                 f"Fix it in Plot settings.",
-                RuntimeWarning, stacklevel=2)
+                RuntimeWarning,
+                stacklevel=2,
+            )
         pg.setConfigOptions(**opts)
 
     def raw_module(self):

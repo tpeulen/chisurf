@@ -1,24 +1,20 @@
 from __future__ import annotations
 
-import abc
-
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
 
 import chisurf.core.fitting
 import chisurf.gui
 import chisurf.gui.widgets
-
 from chisurf.gui.widgets.general import View
 
 
 class Plot(View):
-
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.Fit,
-            parent=None,
-            plot_controller: QtWidgets.QWidget = None,
-            **kwargs
+        self,
+        fit: chisurf.core.fitting.fit.Fit,
+        parent=None,
+        plot_controller: QtWidgets.QWidget = None,
+        **kwargs,
     ):
         super().__init__()
         self.layout = QtWidgets.QVBoxLayout(self)

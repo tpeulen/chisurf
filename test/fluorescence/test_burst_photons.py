@@ -11,11 +11,10 @@ cannot creep back in and quietly shorten every burst by one photon.
 from __future__ import annotations
 
 import numpy as np
-
-from chisurf.core.datastore import numeric_column, row_count
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe
 from chisurf.core.fluorescence.burst.photons import (
     StreamDef,

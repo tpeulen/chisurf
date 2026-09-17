@@ -201,9 +201,7 @@ class CellOutput(QtWidgets.QTextEdit):
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-        )
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.setContentsMargins(0, 0, 0, 0)
         self.document().setDocumentMargin(3)
         font = make_editor_font(get_editor_settings())
@@ -258,9 +256,7 @@ class CellOutput(QtWidgets.QTextEdit):
         cursor.movePosition(QtGui.QTextCursor.End)
         base = QtGui.QTextCharFormat()
         base.setForeground(
-            QtGui.QColor(
-                self._theme.stderr_fg if kind == "stderr" else self._theme.foreground
-            )
+            QtGui.QColor(self._theme.stderr_fg if kind == "stderr" else self._theme.foreground)
         )
         for event in self._ansi.feed(text):
             if isinstance(event, _ansi.Text):
@@ -296,9 +292,7 @@ class CellOutput(QtWidgets.QTextEdit):
 
         name = f"nb-img-{self._counter}"
         self._counter += 1
-        self.document().addResource(
-            QtGui.QTextDocument.ImageResource, QtCore.QUrl(name), image
-        )
+        self.document().addResource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(name), image)
 
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
@@ -539,7 +533,7 @@ class CellOutput(QtWidgets.QTextEdit):
 
     def _ansi_format(
         self,
-        state: "_ansi.SgrState",
+        state: _ansi.SgrState,
         base: QtGui.QTextCharFormat,
     ) -> QtGui.QTextCharFormat:
         """Return the char format *state* selects, over *base*.
@@ -746,9 +740,7 @@ class NotebookCell(QtWidgets.QWidget):
         self.close_button.setAutoRaise(True)
         self.close_button.setFixedSize(18, 16)
         self.close_button.setToolTip("Delete cell")
-        self.close_button.clicked.connect(
-            lambda _checked=False: self.removeRequested.emit(self)
-        )
+        self.close_button.clicked.connect(lambda _checked=False: self.removeRequested.emit(self))
         buttons.addWidget(self.close_button)
         gutter.addLayout(buttons)
 
@@ -788,9 +780,7 @@ class NotebookCell(QtWidgets.QWidget):
         self.render_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.render_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.render_view.document().setDocumentMargin(1)
-        self.render_view.setStyleSheet(
-            "QTextBrowser { background: transparent; border: none; }"
-        )
+        self.render_view.setStyleSheet("QTextBrowser { background: transparent; border: none; }")
         self.render_view.doubleClicked.connect(self._enter_edit_mode)
         body.addWidget(self.render_view)
 
@@ -1200,8 +1190,7 @@ class NotebookEditor(QtWidgets.QWidget):
             ConsoleConfig(
                 role=ConsoleRole.INTERACTIVE,
                 banner=(
-                    "Notebook kernel — commands typed here share variables"
-                    " with the cells above.\n"
+                    "Notebook kernel — commands typed here share variables with the cells above.\n"
                 ),
                 history_path=False,
             ),
@@ -1220,17 +1209,12 @@ class NotebookEditor(QtWidgets.QWidget):
         while self.stack.count():
             item = self.stack.takeAt(0)
             widget = item.widget()
-            if (
-                widget is not None
-                and widget.objectName() == "notebook_insert_button"
-            ):
+            if widget is not None and widget.objectName() == "notebook_insert_button":
                 widget.hide()
                 widget.deleteLater()
         for index, cell in enumerate(self._cells):
             if index > 0:
-                self.stack.addWidget(
-                    self._make_insert_button(index), 0, QtCore.Qt.AlignHCenter
-                )
+                self.stack.addWidget(self._make_insert_button(index), 0, QtCore.Qt.AlignHCenter)
             self.stack.addWidget(cell)
         self.stack.addWidget(self.add_row)
         self.stack.addStretch(1)
@@ -1261,9 +1245,7 @@ class NotebookEditor(QtWidgets.QWidget):
             " { background: palette(highlight); color: palette(highlighted-text); }"
         )
         button.setToolTip("Insert a code cell between these two cells")
-        button.clicked.connect(
-            lambda _checked=False, i=index: self._on_insert_cell_clicked(i)
-        )
+        button.clicked.connect(lambda _checked=False, i=index: self._on_insert_cell_clicked(i))
         return button
 
     def _on_insert_cell_clicked(self, index: int) -> None:
@@ -1399,9 +1381,7 @@ class NotebookEditor(QtWidgets.QWidget):
         cell.runRequested.connect(self.run_cell)
         cell.removeRequested.connect(self.remove_cell)
         cell.textChanged.connect(self._on_cell_text_changed)
-        cell.editor.statusChanged.connect(
-            lambda _status, c=cell: self._on_cell_status_changed(c)
-        )
+        cell.editor.statusChanged.connect(lambda _status, c=cell: self._on_cell_status_changed(c))
         cell.editor.definitionRequested.connect(self.definitionRequested.emit)
         for combo in ("Shift+Return", "Ctrl+Return", "Meta+Return"):
             shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(combo), cell.editor)
@@ -1547,6 +1527,7 @@ class NotebookEditor(QtWidgets.QWidget):
         self._source_nb = nb
         self.set_current_file(path)
         self._beacon.setModified(False)
+
     # ------------------------------------------------------------------
     # execution
     # ------------------------------------------------------------------
@@ -1766,7 +1747,7 @@ class NotebookEditor(QtWidgets.QWidget):
     def _emit_status_changed(self) -> None:
         """Emit the host-visible status payload."""
         cell = self._focus_cell or (self._cells[0] if self._cells else None)
-        line, column = (cell.editor.line_column() if cell is not None else (1, 0))
+        line, column = cell.editor.line_column() if cell is not None else (1, 0)
         self.statusChanged.emit(
             {
                 "file": self.current_file or "",

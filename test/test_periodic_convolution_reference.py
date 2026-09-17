@@ -45,7 +45,8 @@ def _irf(n=N, dt=DT):
 
 def _spectrum(n_exp):
     return np.ascontiguousarray(
-        np.array([[1.0 / n_exp, 0.5 + 0.05 * k] for k in range(n_exp)]).ravel())
+        np.array([[1.0 / n_exp, 0.5 + 0.05 * k] for k in range(n_exp)]).ravel()
+    )
 
 
 def _brute_force(spectrum, irf, period, dt, n):
@@ -81,9 +82,7 @@ def _brute_force(spectrum, irf, period, dt, n):
 
     model = np.zeros(n)
     for amplitude, lifetime in zip(amplitudes, lifetimes):
-        model += amplitude * np.exp(-time / lifetime) / (
-            1.0 - np.exp(-period / lifetime)
-        )
+        model += amplitude * np.exp(-time / lifetime) / (1.0 - np.exp(-period / lifetime))
 
     out = np.zeros(n)
     for i in range(n):

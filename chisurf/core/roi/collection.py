@@ -25,7 +25,8 @@ an RPC service uses the same object with no GUI in sight.
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -71,13 +72,16 @@ class RegionEntry:
         """Return the region as it contributes: inverted when :attr:`invert`."""
         return ~self.roi if self.invert else self.roi
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise the entry, region included."""
-        return {"roi": self.roi.to_dict(), "enabled": bool(self.enabled),
-                "invert": bool(self.invert)}
+        return {
+            "roi": self.roi.to_dict(),
+            "enabled": bool(self.enabled),
+            "invert": bool(self.invert),
+        }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RegionEntry":
+    def from_dict(cls, data: dict[str, Any]) -> RegionEntry:
         """Rebuild an entry from :meth:`to_dict`."""
         return cls(
             roi=roi_from_dict(data["roi"]),
@@ -131,14 +135,14 @@ class RegionCollection:
 
     def __init__(
         self,
-        entries: Optional[Iterable[Any]] = None,
+        entries: Iterable[Any] | None = None,
         combine: str = "and",
         name: str = "",
     ) -> None:
         """Initialize the collection."""
         self.combine = combine
         self.name = str(name)
-        self._entries: List[RegionEntry] = []
+        self._entries: list[RegionEntry] = []
         for item in entries or []:
             if isinstance(item, RegionEntry):
                 self._append(item)
@@ -177,13 +181,11 @@ class RegionCollection:
         """Set the reduction, rejecting an operation the core cannot apply."""
         op = str(value).lower()
         if op not in COMBINE_OPS:
-            raise ValueError(
-                f"unknown combine {value!r}; expected one of {list(COMBINE_OPS)}"
-            )
+            raise ValueError(f"unknown combine {value!r}; expected one of {list(COMBINE_OPS)}")
         self._combine = op
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """The region names, in order."""
         return [e.name for e in self._entries]
 
@@ -240,15 +242,15 @@ class RegionCollection:
             roi.name = str(name)
         return self._append(RegionEntry(roi=roi, **flags))
 
-    def extend(self, regions: Iterable[Any]) -> List[str]:
+    def extend(self, regions: Iterable[Any]) -> list[str]:
         """Add several regions, returning the names they were stored under."""
         return [self.add(r) for r in regions]
 
-    def get(self, name: str) -> Optional[RegionEntry]:
+    def get(self, name: str) -> RegionEntry | None:
         """Return the entry of this name, or ``None``."""
         return next((e for e in self._entries if e.name == name), None)
 
-    def roi(self, name: str) -> Optional[ROI]:
+    def roi(self, name: str) -> ROI | None:
         """Return the region of this name, or ``None``."""
         entry = self.get(name)
         return entry.roi if entry is not None else None
@@ -293,11 +295,11 @@ class RegionCollection:
 
     # --- the combined region ------------------------------------------------
     @property
-    def enabled(self) -> List[RegionEntry]:
+    def enabled(self) -> list[RegionEntry]:
         """The entries currently taking part."""
         return [e for e in self._entries if e.enabled]
 
-    def combined(self) -> Optional[ROI]:
+    def combined(self) -> ROI | None:
         """Return the single region the enabled members reduce to.
 
         Returns
@@ -351,7 +353,7 @@ class RegionCollection:
         return ~self.contains(points)
 
     # --- measuring ----------------------------------------------------------
-    def properties(self, shape: Sequence[int], extent=None, image=None) -> List[Any]:
+    def properties(self, shape: Sequence[int], extent=None, image=None) -> list[Any]:
         """Measure every region, in order, against the same frame.
 
         Returns
@@ -363,7 +365,7 @@ class RegionCollection:
         return [e.roi.properties(shape, extent, image=image) for e in self._entries]
 
     # --- serialisation ------------------------------------------------------
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise the whole collection, flags and order included."""
         return {
             "name": self.name,
@@ -372,7 +374,7 @@ class RegionCollection:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RegionCollection":
+    def from_dict(cls, data: dict[str, Any]) -> RegionCollection:
         """Rebuild a collection from :meth:`to_dict`.
 
         Also accepts a bare list of serialised regions, so a plain regions file
@@ -405,7 +407,7 @@ class RegionCollection:
         return path
 
     @classmethod
-    def load(cls, path: str) -> "RegionCollection":
+    def load(cls, path: str) -> RegionCollection:
         """Read a collection from a file.
 
         Accepts a collection written by :meth:`save`, a plain regions file
@@ -429,8 +431,7 @@ class RegionCollection:
     def __repr__(self) -> str:
         """Return a short description naming the regions."""
         parts = ", ".join(
-            f"{'' if e.enabled else '-'}{'~' if e.invert else ''}{e.name}"
-            for e in self._entries
+            f"{'' if e.enabled else '-'}{'~' if e.invert else ''}{e.name}" for e in self._entries
         )
         return f"RegionCollection({self._combine}: {parts})"
 

@@ -410,9 +410,7 @@ class PCHApp(ChisurfDockTool):
             self.action_compute.setEnabled(True)
             self.action_save.setEnabled(False)
             self.clear_messages()
-            self.statusBar().showMessage(
-                f"Loaded: {path} ({info.get('n_photons', 0):,} photons)"
-            )
+            self.statusBar().showMessage(f"Loaded: {path} ({info.get('n_photons', 0):,} photons)")
         except Exception as e:
             # A non-modal error has to be paired with a state that matches it.
             # The modal this replaced forced an acknowledgement; a message in
@@ -447,7 +445,9 @@ class PCHApp(ChisurfDockTool):
             return
         self.action_compute.setEnabled(False)
         ChiSurfProgress.run(
-            self, "Computing PCH…", self._compute,
+            self,
+            "Computing PCH…",
+            self._compute,
             kwargs=dict(
                 filename=self._filename,
                 channels=channels,
@@ -478,8 +478,7 @@ class PCHApp(ChisurfDockTool):
         self.Error.compute_failed.clear()
         self.Error.no_histogram.clear()
         self.statusBar().showMessage(
-            f"Computed PCH: {self._result.total_bins:,} bins, "
-            f"{len(self._result.k_vals)} k-values"
+            f"Computed PCH: {self._result.total_bins:,} bins, {len(self._result.k_vals)} k-values"
         )
 
     def _on_fit(self):
@@ -540,9 +539,7 @@ class PCHApp(ChisurfDockTool):
             # A completed save is an *event*: it has no persisting cause, so it
             # is reported by the transient status line and not as a declared
             # condition that would outlive it for the rest of the session.
-            self.statusBar().showMessage(
-                f"Saved {fname_base}.npz / .csv / .txt and two PNGs"
-            )
+            self.statusBar().showMessage(f"Saved {fname_base}.npz / .csv / .txt and two PNGs")
         except Exception as e:
             self.Error.save_failed(e)
 
@@ -582,10 +579,7 @@ class PCHApp(ChisurfDockTool):
         )
         low = self._fit_result.fit_low
         high = self._fit_result.fit_high
-        mask = (
-            (np.array(self._result.k_vals) >= low)
-            & (np.array(self._result.k_vals) <= high)
-        )
+        mask = (np.array(self._result.k_vals) >= low) & (np.array(self._result.k_vals) <= high)
         k_arr = np.array(self._result.k_vals)
         self.hist_plot.line(
             k_arr[mask],
@@ -646,9 +640,7 @@ class PCHApp(ChisurfDockTool):
         txt_path = f"{fname_base}.txt"
 
         p_fit_arr = (
-            np.array(self._fit_result.p_fit)
-            if self._fit_result is not None
-            else np.array([])
+            np.array(self._fit_result.p_fit) if self._fit_result is not None else np.array([])
         )
 
         np.savez(
@@ -680,6 +672,7 @@ class PCHApp(ChisurfDockTool):
 # Allow standalone run for testing
 if __name__ == "__main__":
     import sys
+
     app = QApplication(sys.argv)
     win = PCHApp()
     win.show()

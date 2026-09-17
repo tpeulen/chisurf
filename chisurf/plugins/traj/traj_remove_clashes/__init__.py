@@ -18,6 +18,7 @@ trajectories from enhanced sampling methods.
 icon = "💢"
 
 import sys
+
 from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
 
 # Define the plugin name - this will appear in the Plugins menu

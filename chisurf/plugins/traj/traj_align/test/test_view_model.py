@@ -35,6 +35,7 @@ def _tiny_trajectory(path: str, n_frames: int = 5, spacing: float = 1.0) -> str:
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
+
     write_dcd(path, xyz, delta=spacing)
     pdb = str(path).replace(".dcd", ".pdb")
     trajectory[0].save_pdb(pdb)
@@ -140,7 +141,6 @@ def test_save_aligned_with_empty_selection_is_finite(tmp_path):
     unconverged and writes a trajectory of pure ``NaN`` while still reporting
     success (RF-706).
     """
-    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
     source = tmp_path / "traj.dcd"
@@ -190,7 +190,6 @@ def test_save_aligned_keeps_the_source_time_axis(tmp_path):
     trajectory read every second frame claimed unit frame spacing and any rate
     fitted against that axis was off by the stride factor.
     """
-    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
     source = tmp_path / "traj.dcd"
@@ -205,8 +204,7 @@ def test_save_aligned_keeps_the_source_time_axis(tmp_path):
 
     from chisurf.core.structure import trajectory_data as md
 
-    np.testing.assert_allclose(md.load(str(target), top=topology).time,
-                               [0.0, 20.0, 40.0])
+    np.testing.assert_allclose(md.load(str(target), top=topology).time, [0.0, 20.0, 40.0])
 
 
 def test_view_spec_loads():

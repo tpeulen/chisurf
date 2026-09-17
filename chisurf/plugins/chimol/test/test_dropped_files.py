@@ -23,10 +23,10 @@ What it means is `load` -- the same command a typed line takes, so a session, a
 labelling plan, a map and a structure are dispatched by suffix by the code that
 already does that, and the prompt says what happened.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 SCRIPT = '''
@@ -152,9 +152,9 @@ def test_every_host_says_it_takes_drops_and_means_it():
       property, not a constant, because the same class is also what an
       offscreen canvas is and that one has no window to drop on.
     """
-    from chimol.testing.parity import HOST_FEATURES
     from chimol.hosts.native.canvas import CanvasView
     from chimol.hosts.web.page import Page
+    from chimol.testing.parity import HOST_FEATURES
 
     assert "file_drop" in dict(HOST_FEATURES)
     assert "file_drop" in Page.supported_features

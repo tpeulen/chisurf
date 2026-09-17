@@ -128,6 +128,13 @@ llvm-openmp = ">=22.1.3,<23"
 # the single home for such deps — the former chisurf-env.yaml pip section is gone.
 [pypi-dependencies]
 latexify-py = "*"
+# The node-graph editor toolkit: chisurf.gui.widgets.node_editor and chimol
+# import emtk.qt_host unguarded, so it is not optional. Not on conda-forge;
+# real PyPI package (tpeulen's own, published 2026-09). Declared here, not
+# just in pyproject.toml's [project.dependencies], because pixi.toml's own
+# [pypi-dependencies] is what the solver actually reads -- pyproject.toml's
+# list is metadata for a bare `pip install chisurf`, not consumed by pixi.
+emtk = "*"
 # imp-bff (PyPI name; imports as IMP.bff) is the structure/dye-simulation/
 # scoring engine: AV backend, structure I/O and kappa-squared correction all
 # import it unguarded. Bare `imp` (the full IMP suite) is no longer a chisurf

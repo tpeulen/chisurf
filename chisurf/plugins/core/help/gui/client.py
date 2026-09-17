@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
 from chisurf.plugins.core.help.api.contract import (
@@ -25,7 +25,7 @@ class HelpClient:
     and provides convenience methods for each ``help.docs.*`` endpoint.
     """
 
-    def __init__(self, client: Optional[Any] = None):
+    def __init__(self, client: Any | None = None):
         """Wrap *client* (a PluginClient-compatible object).
 
         Parameters
@@ -40,7 +40,7 @@ class HelpClient:
         else:
             self._client = client
 
-    def list_docs(self) -> Dict[str, Any]:
+    def list_docs(self) -> dict[str, Any]:
         """List all available documentation files.
 
         Returns
@@ -51,7 +51,7 @@ class HelpClient:
         """
         return self._call(METHOD_LIST_DOCS)
 
-    def read_doc(self, path: str) -> Optional[Dict[str, Any]]:
+    def read_doc(self, path: str) -> dict[str, Any] | None:
         """Read a documentation file.
 
         Parameters
@@ -89,7 +89,7 @@ class HelpClient:
         result = self._call(METHOD_SAVE_DOC, {"path": path, "content": content})
         return bool(result and result.get("ok"))
 
-    def search_docs(self, query: str) -> List[Dict[str, Any]]:
+    def search_docs(self, query: str) -> list[dict[str, Any]]:
         """Search documentation files.
 
         Parameters
@@ -108,9 +108,7 @@ class HelpClient:
             return result.get("result", [])
         return []
 
-    def ask(
-        self, question: str, model: str = "", provider: str = ""
-    ) -> Dict[str, Any]:
+    def ask(self, question: str, model: str = "", provider: str = "") -> dict[str, Any]:
         """Ask the documentation a question and return a cited answer.
 
         The language-model round trip and the page reads happen on the
@@ -138,8 +136,14 @@ class HelpClient:
         params = {"question": question, "model": model, "provider": provider}
         result = self._call(METHOD_ASK, params)
         if result is None:
-            return {"ok": False, "error": "the documentation service did not respond",
-                    "text": "", "pages": [], "searched": [], "steps": 0}
+            return {
+                "ok": False,
+                "error": "the documentation service did not respond",
+                "text": "",
+                "pages": [],
+                "searched": [],
+                "steps": 0,
+            }
         if result.get("ok"):
             return result.get("result", {})
         return {
@@ -151,14 +155,14 @@ class HelpClient:
             "steps": 0,
         }
 
-    def describe_contract(self) -> Dict[str, Any]:
+    def describe_contract(self) -> dict[str, Any]:
         """Return the Help plugin workflow contract."""
         result = self._call(METHOD_CONTRACT)
         if result and result.get("ok"):
             return result.get("result", {})
         return {}
 
-    def review_status(self, path: str) -> Dict[str, Any]:
+    def review_status(self, path: str) -> dict[str, Any]:
         """Return the human-review status of one page.
 
         Parameters
@@ -177,9 +181,7 @@ class HelpClient:
             return result.get("result", {})
         return {}
 
-    def set_review_status(
-        self, path: str, status: str, reviewer: str = ""
-    ) -> Dict[str, Any]:
+    def set_review_status(self, path: str, status: str, reviewer: str = "") -> dict[str, Any]:
         """Record or clear human sign-off for a page.
 
         Parameters
@@ -205,7 +207,7 @@ class HelpClient:
             return result.get("result", {})
         return {}
 
-    def review_check(self) -> Dict[str, Any]:
+    def review_check(self) -> dict[str, Any]:
         """Return the release-gate report for all tracked pages."""
         result = self._call(METHOD_REVIEW_CHECK)
         if result and result.get("ok"):
@@ -215,8 +217,8 @@ class HelpClient:
     def _call(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         try:
             return self._client.call(method, params)
         except Exception:

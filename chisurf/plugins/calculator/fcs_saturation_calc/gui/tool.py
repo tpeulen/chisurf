@@ -596,8 +596,10 @@ class SaturationCalculatorTool(ChisurfDockTool):
         # and the only thing the current power changes about it is where the red
         # marker sits. Keying the cache on everything *but* the power is what
         # makes dragging the power slider feel live.
-        if (power_mW, self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr,
-                                       w_r, w_z, D_val)) == getattr(self, "_sweep_series_key", None):
+        if (
+            power_mW,
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
+        ) == getattr(self, "_sweep_series_key", None):
             return
         self._sweep_series_key = (
             power_mW,
@@ -676,9 +678,14 @@ class SaturationCalculatorTool(ChisurfDockTool):
         except Exception:
             return
 
-        key = (self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, 0.0),
-               round(power_mW, 9), tuple(labels), tuple(sorted(self._hidden_states)),
-               self._show_power_profile, self._show_fluorescence_profile)
+        key = (
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, 0.0),
+            round(power_mW, 9),
+            tuple(labels),
+            tuple(sorted(self._hidden_states)),
+            self._show_power_profile,
+            self._show_fluorescence_profile,
+        )
         if key == getattr(self, "_profile_key", None):
             return
         self._profile_key = key
@@ -763,7 +770,9 @@ class SaturationCalculatorTool(ChisurfDockTool):
 
         state_key = (
             self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
-            round(power_mW, 9), round(N_val, 9), bool(self._include_bunching),
+            round(power_mW, 9),
+            round(N_val, 9),
+            bool(self._include_bunching),
             bool(self._normalize_fcs),
         )
         if state_key == getattr(self, "_curves_key", None):
@@ -828,7 +837,10 @@ class SaturationCalculatorTool(ChisurfDockTool):
             bunching = (
                 compute_bunching_factor(
                     excitation_rate_peak(power_mW * 1e-3, ext, w_r * 1e-9, wavelength * 1e-9),
-                    dark_m, exc_m, bright_arr, tau_s,
+                    dark_m,
+                    exc_m,
+                    bright_arr,
+                    tau_s,
                 )
                 if self._include_bunching
                 else np.ones_like(tau_s)
@@ -850,8 +862,14 @@ class SaturationCalculatorTool(ChisurfDockTool):
                 shown = shown / shown[0]
             self._fcs_curves_series.insert(
                 1,
-                {"name": "1-component Gaussian fit", "x": tau_ms, "y": shown,
-                 "color": "#9e9e9e", "width": 2, "dash": "dash"},
+                {
+                    "name": "1-component Gaussian fit",
+                    "x": tau_ms,
+                    "y": shown,
+                    "color": "#9e9e9e",
+                    "width": 2,
+                    "dash": "dash",
+                },
             )
             # The deviation is a few times 1e-3 of the amplitude -- invisible on
             # a linear plot next to a curve of order 1, and obvious the moment it
@@ -859,10 +877,21 @@ class SaturationCalculatorTool(ChisurfDockTool):
             # real data, so it is what the tool should show.
             reference = y_sat if self._normalize_fcs else np.asarray(y_sat)
             self._fcs_residual_series = [
-                {"name": "saturated − 1-component fit", "x": tau_ms,
-                 "y": np.asarray(reference) - shown, "color": "#ff7043", "width": 2},
-                {"name": "zero", "x": tau_ms, "y": np.zeros_like(tau_ms),
-                 "color": "#607d8b", "width": 1, "dash": "dash"},
+                {
+                    "name": "saturated − 1-component fit",
+                    "x": tau_ms,
+                    "y": np.asarray(reference) - shown,
+                    "color": "#ff7043",
+                    "width": 2,
+                },
+                {
+                    "name": "zero",
+                    "x": tau_ms,
+                    "y": np.zeros_like(tau_ms),
+                    "color": "#607d8b",
+                    "width": 1,
+                    "dash": "dash",
+                },
             ]
 
         self._update_power_sweep()
@@ -915,9 +944,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         """Summary row for the scheme's relaxation times (the eigenvalues)."""
         if not modes:
             return ""
-        shown = "&nbsp;·&nbsp;".join(
-            f"<b>{t * 1e6:.3g} µs</b> (amp {a:.2f})" for t, a in modes[:4]
-        )
+        shown = "&nbsp;·&nbsp;".join(f"<b>{t * 1e6:.3g} µs</b> (amp {a:.2f})" for t, a in modes[:4])
         return (
             f"<tr><td><b>Relaxation times:</b></td><td>{shown}<br>"
             f"<i>eigenvalues of K<sub>dark</sub> + k<sub>exc</sub>K<sub>exc</sub> — what a "

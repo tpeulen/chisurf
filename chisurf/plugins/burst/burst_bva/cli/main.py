@@ -10,8 +10,8 @@ import click
 from chisurf.core.datastore import numeric_column, row_count
 from chisurf.plugins.burst.burst_bva.api.models import BvaSettings
 from chisurf.plugins.burst.burst_bva.core.computation import (
-    read_burst_analysis,
     compute_bva,
+    read_burst_analysis,
     write_bv4_analysis,
 )
 
@@ -26,7 +26,9 @@ def cli():
 @click.option("--file-type", default="SPC-130", help="tttrlib container name")
 @click.option("--pattern", default="bi4_bur", help="Glob pattern for burst data dirs")
 @click.option("--donor-channels", default="0,8", help="Comma-separated donor routing channels")
-@click.option("--acceptor-channels", default="1,9", help="Comma-separated acceptor routing channels")
+@click.option(
+    "--acceptor-channels", default="1,9", help="Comma-separated acceptor routing channels"
+)
 @click.option("--donor-mtr-start", default=0, type=int)
 @click.option("--donor-mtr-end", default=32768, type=int)
 @click.option("--acceptor-mtr-start", default=0, type=int)
@@ -77,7 +79,8 @@ def compute(
 
     click.echo("Computing BVA ...")
     df_v = compute_bva(
-        df, tttrs,
+        df,
+        tttrs,
         donor_channels=settings.donor_channels,
         donor_micro_time_ranges=settings.donor_micro_time_ranges,
         acceptor_channels=settings.acceptor_channels,
@@ -96,6 +99,7 @@ def compute(
         settings_path = out_dir / "bva_settings.json"
         out_dir.mkdir(parents=True, exist_ok=True)
         from chisurf.plugins.burst.burst_bva.api.serialization import to_jsonable
+
         with open(settings_path, "w") as f:
             json.dump(to_jsonable(settings), f, indent=4)
         click.echo(f"Settings saved to {settings_path}")

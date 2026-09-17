@@ -5,6 +5,7 @@ uninitialised 8-byte/64-byte buffer). Re-pointed at IMP.bff's Port, the
 runtime that replaced it: the same invariant -- a newly constructed port
 reads back zeroed, deterministic state.
 """
+
 import numpy as np
 
 from chisurf.core import nodes

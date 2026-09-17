@@ -13,9 +13,9 @@ import numpy as np
 import tttrlib
 
 import chisurf as cs
+import chisurf.core.fluorescence
 import chisurf.core.math.datatools
 import chisurf.core.math.functions.distributions
-import chisurf.core.fluorescence
 import chisurf.core.models.fret_parameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
@@ -89,6 +89,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         # evaluates the standard normal at z and so drops the `1/scale`, which
         # misweights components of unequal width against each other.
         import IMP.bff as _bff
+
         p = _bff.gaussian_distance_mixture(
             np.asarray(r, dtype=np.float64),
             np.asarray(means, dtype=np.float64),
@@ -682,4 +683,3 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         except Exception:
             pass
         super().set_state(state)
-

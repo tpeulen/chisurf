@@ -27,6 +27,7 @@ emoji rather than monochrome text glyphs. Emoji-default pictographs (``🗑``
 family, ``🔄`` …) do not need it. :func:`normalize` rewrites the bare forms and
 known synonyms to these canonical values.
 """
+
 from __future__ import annotations
 
 import re
@@ -44,12 +45,12 @@ class Glyphs:
 
     # -- Files / IO --------------------------------------------------------
     SAVE = "💾"
-    OPEN = "📂"       # open / browse / load (open folder)
-    FOLDER = "📁"     # a directory as a concept (tab, tree node)
+    OPEN = "📂"  # open / browse / load (open folder)
+    FOLDER = "📁"  # a directory as a concept (tab, tree node)
     FILE = "📄"
-    IMPORT = "📥"     # import / download-into-app
-    EXPORT = "📤"     # export / upload-out-of-app
-    COPY = "📋"       # copy / clipboard
+    IMPORT = "📥"  # import / download-into-app
+    EXPORT = "📤"  # export / upload-out-of-app
+    COPY = "📋"  # copy / clipboard
     DATABASE = "🗄" + VS16
     PACKAGE = "📦"
     NOTE = "📝"
@@ -57,38 +58,38 @@ class Glyphs:
     BOOK = "📖"
 
     # -- Edit actions ------------------------------------------------------
-    ADD = "➕"        # add / new row (non-destructive)
-    REMOVE = "➖"     # remove a row from a list (non-destructive)
-    DELETE = "🗑" + VS16   # destructive delete / trash
-    EDIT = "✏" + VS16      # edit / rename
-    CLEAR = "🧹"      # clear / clean up
-    CLOSE = "✕"       # close / cancel / dismiss (interactive)
+    ADD = "➕"  # add / new row (non-destructive)
+    REMOVE = "➖"  # remove a row from a list (non-destructive)
+    DELETE = "🗑" + VS16  # destructive delete / trash
+    EDIT = "✏" + VS16  # edit / rename
+    CLEAR = "🧹"  # clear / clean up
+    CLOSE = "✕"  # close / cancel / dismiss (interactive)
     CUT = "✂" + VS16
 
     # -- Run / playback / flow --------------------------------------------
-    RUN = "▶" + VS16       # run / play / start
+    RUN = "▶" + VS16  # run / play / start
     STOP = "⏹" + VS16
     PAUSE = "⏸" + VS16
-    REFRESH = "🔄"    # refresh / reload the view
-    RESTART = "🔁"    # run it again from scratch (not "redraw" — that is REFRESH)
-    RESET = "♻" + VS16     # reset to defaults / lifecycle
-    LOOP = "🔁"       # repeat / loop semantics (not "refresh")
+    REFRESH = "🔄"  # refresh / reload the view
+    RESTART = "🔁"  # run it again from scratch (not "redraw" — that is REFRESH)
+    RESET = "♻" + VS16  # reset to defaults / lifecycle
+    LOOP = "🔁"  # repeat / loop semantics (not "refresh")
     SHUFFLE = "🔀"
     SKIP_BACK = "⏮" + VS16
     SKIP_FWD = "⏭" + VS16
 
     # -- Status ------------------------------------------------------------
-    SUCCESS = "✅"    # status: succeeded
-    ERROR = "❌"      # status: failed / error
+    SUCCESS = "✅"  # status: succeeded
+    ERROR = "❌"  # status: failed / error
     WARNING = "⚠" + VS16
     INFO = "ℹ" + VS16
-    CHECK = "✓"       # inline tick (pass, in tables)
-    CROSS = "✗"       # inline ballot-x (fail, in tables)
+    CHECK = "✓"  # inline tick (pass, in tables)
+    CROSS = "✗"  # inline ballot-x (fail, in tables)
     CHECKBOX_ON = "☑" + VS16
     CHECKBOX_OFF = "☐"
-    PENDING = "⏳"    # busy / waiting
-    STAR_ON = "★"     # favourite (filled)
-    STAR_OFF = "☆"    # favourite (empty)
+    PENDING = "⏳"  # busy / waiting
+    STAR_ON = "★"  # favourite (filled)
+    STAR_OFF = "☆"  # favourite (empty)
     FLAG = "🚩"
 
     # -- Navigation --------------------------------------------------------
@@ -100,8 +101,8 @@ class Glyphs:
     DOWN = "⬇" + VS16
 
     # -- Search / view -----------------------------------------------------
-    SEARCH = "🔍"     # search / filter / zoom
-    EYE = "👁" + VS16      # visibility
+    SEARCH = "🔍"  # search / filter / zoom
+    EYE = "👁" + VS16  # visibility
     CHART = "📊"
     CHART_UP = "📈"
     CHART_DOWN = "📉"
@@ -132,7 +133,7 @@ class Glyphs:
     USER = "👤"
     USERS = "👥"
     SPARKLE = "✨"
-    ROCKET = "🚀"     # launch / getting started — NOT "run": that is RUN (▶)
+    ROCKET = "🚀"  # launch / getting started — NOT "run": that is RUN (▶)
     CHAIN = "⛓" + VS16
     GRID = "🎛" + VS16
 
@@ -145,9 +146,9 @@ class Glyphs:
 #: glyph (the source and target are different base characters, so replacement
 #: is naturally idempotent).
 SYNONYMS: dict[str, str] = {
-    "🔎": Glyphs.SEARCH,   # zoom / magnifier -> search
-    "✎": Glyphs.EDIT,      # light pencil -> edit
-    "✖": Glyphs.CLOSE,     # heavy multiply -> close
+    "🔎": Glyphs.SEARCH,  # zoom / magnifier -> search
+    "✎": Glyphs.EDIT,  # light pencil -> edit
+    "✖": Glyphs.CLOSE,  # heavy multiply -> close
 }
 
 #: Text-default base symbols that must carry a VS16 to render as colour emoji.
@@ -172,10 +173,7 @@ VS16_COMPLETE: dict[str, str] = {
 }
 
 # Precompiled: match each base symbol only when *not* already followed by VS16.
-_VS16_RE = {
-    base: re.compile(re.escape(base) + r"(?!️)")
-    for base in VS16_COMPLETE
-}
+_VS16_RE = {base: re.compile(re.escape(base) + r"(?!️)") for base in VS16_COMPLETE}
 
 
 def normalize(text: str) -> str:

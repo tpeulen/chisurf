@@ -26,7 +26,6 @@ from chisurf.core.fitting.inversion import (
     SmoothnessWeight,
     difference_operator,
     entropy_weight_to_nu,
-    maxent,
     nu_to_entropy_weight,
     tikhonov_nnls,
 )
@@ -44,10 +43,7 @@ def test_the_entropy_conventions_are_distinct_and_invertible():
     where it must not be.
     """
     w = 0.125
-    nus = {
-        c: entropy_weight_to_nu(w, c)
-        for c in (EntropyWeight.HALF_CHI2, EntropyWeight.CHI2)
-    }
+    nus = {c: entropy_weight_to_nu(w, c) for c in (EntropyWeight.HALF_CHI2, EntropyWeight.CHI2)}
     assert len(set(nus.values())) == len(nus), nus
     for convention, nu in nus.items():
         assert nu_to_entropy_weight(nu, convention) == pytest.approx(w, rel=1e-12)
@@ -106,8 +102,7 @@ def _deer_problem(n_t=120, n_r=60, seed=0):
     r = np.linspace(20.0, 60.0, n_r)
     t = np.linspace(0.0, 3.0, n_t)
     K = np.asarray(dipolar_kernel(t, r), dtype=float)
-    p_true = (np.exp(-0.5 * ((r - 35.0) / 2.0) ** 2)
-              + 0.5 * np.exp(-0.5 * ((r - 45.0) / 3.0) ** 2))
+    p_true = np.exp(-0.5 * ((r - 35.0) / 2.0) ** 2) + 0.5 * np.exp(-0.5 * ((r - 45.0) / 3.0) ** 2)
     p_true /= p_true.sum()
     b = K @ p_true + rng.normal(0.0, 2e-3, n_t)
     return r, K, b, p_true
@@ -131,13 +126,12 @@ def test_deer_tikhonov_still_optimises_alpha_squared_roughness():
 
     got = solve_tikhonov(K, b, alpha, L)
 
-    ref, _ = nnls(np.vstack([K, alpha * L]),
-                  np.concatenate([b, np.zeros(L.shape[0])]))
+    ref, _ = nnls(np.vstack([K, alpha * L]), np.concatenate([b, np.zeros(L.shape[0])]))
     np.testing.assert_allclose(got, ref, rtol=1e-9, atol=1e-12)
 
     def objective(p):
         res = K @ p - b
-        return float(res @ res) + alpha ** 2 * float((L @ p) @ (L @ p))
+        return float(res @ res) + alpha**2 * float((L @ p) @ (L @ p))
 
     # No feasible point scores better: perturb toward the unregularised
     # solution and confirm the objective rises.
@@ -174,8 +168,9 @@ def _simplex_referee(Q, alpha, n, seed=0):
     best = np.inf
     for k in range(3):
         z0 = np.zeros(n) if k == 0 else rng.standard_normal(n) * 0.1
-        res = minimize(f, z0, method="L-BFGS-B",
-                       options={"maxiter": 20000, "ftol": 1e-16, "gtol": 1e-12})
+        res = minimize(
+            f, z0, method="L-BFGS-B", options={"maxiter": 20000, "ftol": 1e-16, "gtol": 1e-12}
+        )
         best = min(best, float(res.fun))
     return best
 
@@ -253,7 +248,7 @@ def test_fcs_maxent_engine_route_optimises_the_quickfit_objective():
     sigma = np.full(tau.size, 2e-3)
     y = A @ p_true + rng.normal(0.0, sigma)
     m = np.full(td.size, 1.0 / td.size)
-    inv_sigma2 = 1.0 / sigma ** 2
+    inv_sigma2 = 1.0 / sigma**2
     alpha = 0.05
 
     p, _ = _maxent_engine_solve(A, y, sigma, m, alpha, 800)
@@ -270,8 +265,12 @@ def test_fcs_maxent_engine_route_optimises_the_quickfit_objective():
     def f(z):
         return Q(np.exp(np.clip(z, -60.0, 60.0)))
 
-    res = minimize(f, np.log(np.clip(p, 1e-12, None)), method="L-BFGS-B",
-                   options={"maxiter": 20000, "ftol": 1e-16, "gtol": 1e-12})
+    res = minimize(
+        f,
+        np.log(np.clip(p, 1e-12, None)),
+        method="L-BFGS-B",
+        options={"maxiter": 20000, "ftol": 1e-16, "gtol": 1e-12},
+    )
     assert Q(p) <= float(res.fun) * (1.0 + 1e-3) + 1e-9
 
 
@@ -321,9 +320,11 @@ def test_flc_2d_ilt_uses_the_power_convention():
     reg = 0.4
 
     got = _solve_reg_L(Wd, wy, L, reg, "nnls")
-    ref, _ = nnls(np.vstack([Wd, np.sqrt(reg) * L]),
-                  np.concatenate([wy, np.zeros(L.shape[0])]),
-                  maxiter=40 * Wd.shape[1])
+    ref, _ = nnls(
+        np.vstack([Wd, np.sqrt(reg) * L]),
+        np.concatenate([wy, np.zeros(L.shape[0])]),
+        maxiter=40 * Wd.shape[1],
+    )
     np.testing.assert_allclose(got, ref, rtol=1e-9, atol=1e-12)
 
 
@@ -333,9 +334,7 @@ def test_flc_2d_and_deer_penalty_operators_are_the_same_matrix():
     from chisurf.plugins.fcs.flc_2d.fit.ilt import _penalty_matrix
 
     for n in (5, 12, 40):
-        np.testing.assert_allclose(
-            second_derivative_operator(n), _penalty_matrix(n, 2)
-        )
+        np.testing.assert_allclose(second_derivative_operator(n), _penalty_matrix(n, 2))
 
 
 # --------------------------------------------------------------- the register

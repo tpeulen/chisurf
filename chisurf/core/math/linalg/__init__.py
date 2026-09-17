@@ -51,7 +51,6 @@ def cartesian(arrays: typing.List[np.array], out=None):
            [3, 5, 7]])
 
     """
-
     arrays = [np.asarray(x) for x in arrays]
     dtype = arrays[0].dtype
 
@@ -62,9 +61,9 @@ def cartesian(arrays: typing.List[np.array], out=None):
     m = n // arrays[0].size
     out[:, 0] = np.repeat(arrays[0], m)
     if arrays[1:]:
-        cartesian(arrays[1:], out=out[0:m,1:])
+        cartesian(arrays[1:], out=out[0:m, 1:])
         for j in range(1, arrays[0].size):
-            out[j*m:(j+1)*m,1:] = out[0:m,1:]
+            out[j * m : (j + 1) * m, 1:] = out[0:m, 1:]
     return out
 
 
@@ -230,12 +229,7 @@ def angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float | np.ndarray:
     return np.arccos(np.clip(d, -1.0, 1.0))
 
 
-def dihedral(
-        v1: np.ndarray,
-        v2: np.ndarray,
-        v3: np.ndarray,
-        v4: np.ndarray
-) -> float | np.ndarray:
+def dihedral(v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, v4: np.ndarray) -> float | np.ndarray:
     """Dihedral angle defined by four points.
 
     Obtain ``b1``, ``b2`` and ``b3`` by subtraction, then the plane normals
@@ -299,12 +293,7 @@ def dihedral(
 # ``test/core/test_restoration.py``).
 
 
-def euler_matrix(
-        psi,
-        theta,
-        phi,
-        approx:bool = False
-) -> np.ndarray:
+def euler_matrix(psi, theta, phi, approx: bool = False) -> np.ndarray:
     """Return homogeneous rotation matrix from Euler angles psi, theta and phi
 
     Here the Euler-angles are defined according to DIN 9300. For small angles the Trigonometric functions can be
@@ -319,13 +308,12 @@ def euler_matrix(
     :param approx: bool
 
     """
-
     if approx is False:
         sin_psi, sin_theta, sin_phi = sin(psi), sin(theta), sin(phi)
         cos_psi, cos_theta, cos_phi = cos(psi), cos(theta), cos(phi)
     else:
         sin_psi, sin_theta, sin_phi = psi, theta, phi
-        cos_psi, cos_theta, cos_phi = 1-abs(psi), 1-abs(theta), 1-abs(phi)
+        cos_psi, cos_theta, cos_phi = 1 - abs(psi), 1 - abs(theta), 1 - abs(phi)
 
     m = np.identity(3)
 
@@ -356,7 +344,7 @@ def vector4_norm(v: np.ndarray) -> np.ndarray:
     numpy.ndarray
         The same array, normalised.
     """
-    s = sqrt(v[0]**2 + v[1]**2 + v[2]**2 + v[3]**2)
+    s = sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 + v[3] ** 2)
     v[0] /= s
     v[1] /= s
     v[2] /= s
@@ -381,17 +369,14 @@ def quaternion_about_axis(angle: float, axis: np.ndarray) -> np.ndarray:
     """
     q = np.array([0.0, axis[0], axis[1], axis[2]], dtype=np.float64)
     vector4_norm(q)
-    q[1] *= sin(angle/2.0)
-    q[2] *= sin(angle/2.0)
-    q[3] *= sin(angle/2.0)
-    q[0] = cos(angle/2.0)
+    q[1] *= sin(angle / 2.0)
+    q[2] *= sin(angle / 2.0)
+    q[3] *= sin(angle / 2.0)
+    q[0] = cos(angle / 2.0)
     return q
 
 
-def quaternion_multiply(
-        quaternion0: np.ndarray,
-        quaternion1: np.ndarray
-) -> np.ndarray:
+def quaternion_multiply(quaternion0: np.ndarray, quaternion1: np.ndarray) -> np.ndarray:
     """Multiply ``quaternion1`` into ``quaternion0`` in place.
 
     Parameters
@@ -409,10 +394,10 @@ def quaternion_multiply(
     w0, x0, y0, z0 = quaternion0
     w1, x1, y1, z1 = quaternion1
 
-    quaternion0[0] = -x1*x0 - y1*y0 - z1*z0 + w1*w0
-    quaternion0[1] = x1*w0 + y1*z0 - z1*y0 + w1*x0
-    quaternion0[2] = -x1*z0 + y1*w0 + z1*x0 + w1*y0
-    quaternion0[3] = x1*y0 - y1*x0 + z1*w0 + w1*z0
+    quaternion0[0] = -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0
+    quaternion0[1] = x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0
+    quaternion0[2] = -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0
+    quaternion0[3] = x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
     return quaternion0
 
 
@@ -448,8 +433,8 @@ def rotate_point(p3: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
     vCvCp3 = cross3(v, vCp3) * 2
 
     p_new = np.zeros(3, dtype=np.float64)
-    p_new[0] = p3[0] + vCp3[0]*(2*w) + vCvCp3[0]
-    p_new[1] = p3[1] + vCp3[1]*(2*w) + vCvCp3[1]
-    p_new[2] = p3[2] + vCp3[2]*(2*w) + vCvCp3[2]
+    p_new[0] = p3[0] + vCp3[0] * (2 * w) + vCvCp3[0]
+    p_new[1] = p3[1] + vCp3[1] * (2 * w) + vCvCp3[1]
+    p_new[2] = p3[2] + vCp3[2] * (2 * w) + vCvCp3[2]
 
     return p_new

@@ -1,26 +1,26 @@
 from __future__ import annotations
-from chisurf import typing
 
-import os
-import uuid
-import json
-import os.path
-import zlib
 import copy
-import yaml
+import json
 import logging
-import weakref
-
-import numpy as np
-import chisurf as cs
-import chisurf.core.settings
-
+import os
+import os.path
 import re
 import unicodedata
+import uuid
+import weakref
+import zlib
 from collections.abc import Iterable
 
+import numpy as np
+import yaml
 
-def slugify(text, separator='_', regex_pattern=r'[^-a-z0-9_]+'):
+import chisurf as cs
+import chisurf.core.settings
+from chisurf import typing
+
+
+def slugify(text, separator="_", regex_pattern=r"[^-a-z0-9_]+"):
     """
     Convert a string to a slug.
 
@@ -42,14 +42,14 @@ def slugify(text, separator='_', regex_pattern=r'[^-a-z0-9_]+'):
     text = str(text).lower()
 
     # Convert accented characters to their ASCII equivalents
-    text = unicodedata.normalize('NFKD', text)
-    text = ''.join([c for c in text if not unicodedata.combining(c)])
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join([c for c in text if not unicodedata.combining(c)])
 
     # Replace characters matching the regex pattern with the separator
     text = re.sub(regex_pattern, separator, text)
 
     # Replace multiple consecutive separators with a single one
-    text = re.sub(f'{separator}+', separator, text)
+    text = re.sub(f"{separator}+", separator, text)
 
     # Remove leading/trailing separators
     text = text.strip(separator)
@@ -61,7 +61,7 @@ def to_elementary(
     obj: typing.Dict,
     verbose: bool = False,
     remove_protected: bool = True,
-    skip_qt_widgets: bool = False
+    skip_qt_widgets: bool = False,
 ) -> typing.Dict:
     """Creates a dictionary containing only elements of (basic) elementary types.
 
@@ -116,7 +116,7 @@ def to_elementary(
                 obj=obj[k],
                 verbose=verbose,
                 remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
+                skip_qt_widgets=skip_qt_widgets,
             )
         return re
     # Check numpy types first, as float also is a python float instance
@@ -142,8 +142,9 @@ def to_elementary(
                 obj=e,
                 verbose=verbose,
                 remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
-            ) for e in obj
+                skip_qt_widgets=skip_qt_widgets,
+            )
+            for e in obj
         ]
     elif isinstance(obj, np.integer):
         logging.debug("to_elementary: Converting numpy integer to python.")
@@ -155,7 +156,9 @@ def to_elementary(
         logging.warning(f"Skipping element {obj.__class__.__name__}")
         return None
     elif isinstance(obj, cs.core.base.Base):
-        logging.debug(f"to_elementary: Converting cs.core.base.Base of type {obj.__class__.__name__}.")
+        logging.debug(
+            f"to_elementary: Converting cs.core.base.Base of type {obj.__class__.__name__}."
+        )
         if verbose:
             print("Converting cs.core.base.Base.")
         return to_elementary(
@@ -163,22 +166,21 @@ def to_elementary(
                 convert_values_to_elementary=True,
                 copy_values=True,
                 remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
+                skip_qt_widgets=skip_qt_widgets,
             ),
             verbose=verbose,
             remove_protected=remove_protected,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
     else:
-        logging.warning(f"to_elementary: Object of type {type(obj)} was not converted to basic type")
+        logging.warning(
+            f"to_elementary: Object of type {type(obj)} was not converted to basic type"
+        )
         print("WARNING object was not converted to basic type")
         return str(obj)
 
 
-def clean_string(
-        s: str,
-        regex_pattern: str = r'[^-a-z0-9_]+'
-) -> str:
+def clean_string(s: str, regex_pattern: str = r"[^-a-z0-9_]+") -> str:
     """Get a slugified a string.
 
     Special characters to clean up string. The slugified string can be used
@@ -204,7 +206,7 @@ def clean_string(
     'kkl_ss'
 
     """
-    r = slugify(s, separator='_', regex_pattern=regex_pattern)
+    r = slugify(s, separator="_", regex_pattern=regex_pattern)
     return r
 
 
@@ -217,9 +219,7 @@ _SETATTR_PROPERTY_CACHE: dict = {}
 
 
 def find_objects(
-        search_iterable: Iterable,
-        searched_object_type: typing.Type,
-        remove_doublets: bool = True
+    search_iterable: Iterable, searched_object_type: typing.Type, remove_doublets: bool = True
 ) -> typing.List[object]:
     """Traverse a list recursively to return all objects of type
     `searched_object_type` as a list
@@ -235,7 +235,7 @@ def find_objects(
         if isinstance(value, searched_object_type):
             re.append(value)
         # Fallback to class name check to handle reloaded environments (e.g. pytest)
-        elif type(value).__name__ == getattr(searched_object_type, '__name__', None):
+        elif type(value).__name__ == getattr(searched_object_type, "__name__", None):
             re.append(value)
         elif isinstance(value, list):
             re += find_objects(value, searched_object_type, remove_doublets)
@@ -246,32 +246,31 @@ def find_objects(
         return re
 
 
-_QT_MODULE_PREFIXES = ('PyQt5', 'PyQt6', 'PySide2', 'PySide6')
+_QT_MODULE_PREFIXES = ("PyQt5", "PyQt6", "PySide2", "PySide6")
 
 
 def _is_qt_object(obj) -> bool:
     """Check if an object originates from any Qt binding."""
-    return hasattr(obj, '__module__') and obj.__module__.startswith(_QT_MODULE_PREFIXES)
+    return hasattr(obj, "__module__") and obj.__module__.startswith(_QT_MODULE_PREFIXES)
 
 
-class Base(object):
-
-    _verbose = cs.core.settings.cs_settings['verbose']
+class Base:
+    _verbose = cs.core.settings.cs_settings["verbose"]
     supported_save_file_types: typing.List[str] = ["yaml", "json"]
     meta_data: typing.Dict = dict()
     # Global index of all live Base instances keyed by unique_identifier.
     # Entries are weak references; dead instances are evicted automatically.
-    _uuid_index: "weakref.WeakValueDictionary[str, Base]" = weakref.WeakValueDictionary()
+    _uuid_index: weakref.WeakValueDictionary[str, Base] = weakref.WeakValueDictionary()
 
     @property
     def unique_identifier(self):
         """Return the UUID that uniquely identifies this instance."""
-        return self.meta_data['unique_identifier']
+        return self.meta_data["unique_identifier"]
 
     @unique_identifier.setter
     def unique_identifier(self, v):
         """Set the UUID that uniquely identifies this instance."""
-        self.meta_data['unique_identifier'] = v
+        self.meta_data["unique_identifier"] = v
 
     def __eq__(self, other: object) -> bool:
         """Compare two Base instances by their unique identifier."""
@@ -291,7 +290,7 @@ class Base(object):
         return hash(self.unique_identifier)
 
     @classmethod
-    def find_by_uuid(cls, uid: str) -> typing.Optional["Base"]:
+    def find_by_uuid(cls, uid: str) -> typing.Optional[Base]:
         """Look up a live :class:`Base` instance by its ``unique_identifier``.
 
         Returns ``None`` if no live instance with that UID exists.
@@ -312,7 +311,7 @@ class Base(object):
     def name(self) -> str:
         """Return the name of this object (falls back to class name)."""
         # try:
-        name = self.__dict__.get('name', self.__class__.name)
+        name = self.__dict__.get("name", self.__class__.name)
         name = name() if callable(name) else name
         return name
         # except (KeyError, AttributeError):
@@ -321,24 +320,24 @@ class Base(object):
     @name.setter
     def name(self, v: str):
         """Set the name of this object."""
-        self.__dict__['name'] = v
+        self.__dict__["name"] = v
 
     @property
     def verbose(self):
         """Return the verbosity flag."""
-        return self.meta_data['verbose']
+        return self.meta_data["verbose"]
 
     @verbose.setter
     def verbose(self, v: bool):
         """Set the verbosity flag."""
-        self.meta_data['verbose'] = v
+        self.meta_data["verbose"] = v
 
     def save(
-            self,
-            filename: str,
-            file_type: str = 'yaml',
-            verbose: bool = False,
-            skip_qt_widgets: bool = False
+        self,
+        filename: str,
+        file_type: str = "yaml",
+        verbose: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> None:
         """Serialize and save the object to a file.
 
@@ -354,12 +353,7 @@ class Base(object):
             If True, skip Qt widgets during serialization.
         """
         cs.logging.info(
-            "%s of type %s is saving filename %s as file type %s" % (
-                self.name,
-                self.__class__.__name__,
-                filename,
-                file_type
-            )
+            f"{self.name} of type {self.__class__.__name__} is saving filename {filename} as file type {file_type}"
         )
         if file_type in self.supported_save_file_types:
             txt = ""
@@ -376,13 +370,7 @@ class Base(object):
             with io.open_maybe_zipped(filename, mode) as fp:
                 fp.write(txt)
 
-    def load(
-            self,
-            filename: str,
-            file_type: str = 'yaml',
-            verbose: bool = False,
-            **kwargs
-    ) -> None:
+    def load(self, filename: str, file_type: str = "yaml", verbose: bool = False, **kwargs) -> None:
         """Load and restore the object's state from a file.
 
         Parameters
@@ -395,22 +383,16 @@ class Base(object):
             If True, print the loaded content.
         """
         if file_type == "json":
-            self.from_json(
-                filename=filename,
-                verbose=verbose
-            )
+            self.from_json(filename=filename, verbose=verbose)
         else:
-            self.from_yaml(
-                filename=filename,
-                verbose=verbose
-            )
+            self.from_yaml(filename=filename, verbose=verbose)
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-            skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> dict:
         """
 
@@ -443,7 +425,7 @@ class Base(object):
         if remove_protected:
             d = dict()
             for key in self.__dict__:
-                if key[0] != '_':
+                if key[0] != "_":
                     try:
                         # Skip Qt widgets if requested
                         if skip_qt_widgets:
@@ -452,7 +434,7 @@ class Base(object):
                             if _is_qt_object(value):
                                 cs.logging.warning(f"Skipping element {key}")
                                 continue
-                        
+
                         if copy_values:
                             d[key] = copy.copy(self.__dict__[key])
                         else:
@@ -468,11 +450,11 @@ class Base(object):
                     for key, value in d.items():
                         if _is_qt_object(value):
                             keys_to_remove.append(key)
-                    
+
                     for key in keys_to_remove:
                         cs.logging.warning(f"Skipping element {key}")
                         d.pop(key, None)
-                
+
                 d["meta_data"] = copy.deepcopy(self.meta_data)
                 return d
             else:
@@ -482,10 +464,7 @@ class Base(object):
         else:
             return d
 
-    def from_dict(
-            self,
-            v: dict
-    ) -> None:
+    def from_dict(self, v: dict) -> None:
         """Restore the object's state from a dictionary.
 
         Parameters
@@ -496,12 +475,12 @@ class Base(object):
         self.__dict__.update(v)
 
     def to_json(
-            self,
-            indent: int = 4,
-            sort_keys: bool = True,
-            d: typing.Dict = None,
-            remove_protected: bool = False,
-            skip_qt_widgets: bool = False
+        self,
+        indent: int = 4,
+        sort_keys: bool = True,
+        d: typing.Dict = None,
+        remove_protected: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> str:
         """Serialize the object to a JSON string.
 
@@ -524,25 +503,20 @@ class Base(object):
             JSON-formatted string.
         """
         if d is None:
-            d = self.to_dict(
-                remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
-            )
+            d = self.to_dict(remove_protected=remove_protected, skip_qt_widgets=skip_qt_widgets)
         return json.dumps(
             obj=to_elementary(
-                d,
-                remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
+                d, remove_protected=remove_protected, skip_qt_widgets=skip_qt_widgets
             ),
             indent=indent,
-            sort_keys=sort_keys
+            sort_keys=sort_keys,
         )
 
     def to_yaml(
-            self,
-            remove_protected: bool = True,
-            convert_values_to_elementary: bool = True,
-            skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = True,
+        convert_values_to_elementary: bool = True,
+        skip_qt_widgets: bool = False,
     ) -> str:
         """Serialize the object to a YAML string.
 
@@ -565,18 +539,15 @@ class Base(object):
                 self.to_dict(
                     remove_protected=remove_protected,
                     convert_values_to_elementary=convert_values_to_elementary,
-                    skip_qt_widgets=skip_qt_widgets
+                    skip_qt_widgets=skip_qt_widgets,
                 ),
                 remove_protected=remove_protected,
-                skip_qt_widgets=skip_qt_widgets
+                skip_qt_widgets=skip_qt_widgets,
             )
         )
 
     def from_yaml(
-            self,
-            yaml_string: str = None,
-            filename: str = None,
-            verbose: bool = False
+        self, yaml_string: str = None, filename: str = None, verbose: bool = False
     ) -> None:
         """Restore the object's state from a YAML file
 
@@ -594,21 +565,16 @@ class Base(object):
         j = dict()
         if isinstance(filename, str):
             if os.path.isfile(filename):
-                with io.open_maybe_zipped(filename, 'r') as fp:
+                with io.open_maybe_zipped(filename, "r") as fp:
                     j = yaml.safe_load(fp)
         if isinstance(yaml_string, str):
-            j = yaml.safe_load(
-                yaml_string
-            )
+            j = yaml.safe_load(yaml_string)
         if verbose:
             print(j)
         self.from_dict(j)
 
     def from_json(
-            self,
-            json_string: str = None,
-            filename: str = None,
-            verbose: bool = False
+        self, json_string: str = None, filename: str = None, verbose: bool = False
     ) -> None:
         """Restore the object's state from a JSON file
 
@@ -636,7 +602,7 @@ class Base(object):
         j = dict()
         if isinstance(filename, str):
             if os.path.isfile(filename):
-                with io.open_maybe_zipped(filename, 'r') as fp:
+                with io.open_maybe_zipped(filename, "r") as fp:
                     j = json.load(fp)
         if isinstance(json_string, str):
             j = json.loads(json_string)
@@ -670,6 +636,7 @@ class Base(object):
     def __getattr__(self, key: str):
         """Fallback attribute lookup that checks for properties on the class."""
         import logging
+
         propobj = getattr(self.__class__, key, None)
         # the key refers to a property
         if isinstance(propobj, property):
@@ -684,10 +651,7 @@ class Base(object):
 
     def __getstate__(self):
         """Return a minimal dict for pickling (metadata + name)."""
-        d = {
-            'meta_data': self.meta_data,
-            'name': self.name
-        }
+        d = {"meta_data": self.meta_data, "name": self.name}
         return d
 
     def __setstate__(self, state):
@@ -700,17 +664,17 @@ class Base(object):
 
     def __str__(self):
         """Return a one-line summary showing the class name."""
-        s = 'Class: %s\n' % self.__class__.__name__
+        s = f"Class: {self.__class__.__name__}\n"
         return s
 
     def __init__(
-            self,
-            name: object = None,
-            verbose: bool = False,
-            unique_identifier: str = None,
-            meta_data: typing.Dict = None,
-            *args,
-            **kwargs
+        self,
+        name: object = None,
+        verbose: bool = False,
+        unique_identifier: str = None,
+        meta_data: typing.Dict = None,
+        *args,
+        **kwargs,
     ):
         """The class saves all passed keyword arguments in dictionary and makes
         these keywords accessible as attributes. Moreover, this class saves these
@@ -720,7 +684,7 @@ class Base(object):
         :param args:
         :param kwargs:
 
-        Example
+        Example:
         -------
 
         >>> import cs.core.base
@@ -751,8 +715,8 @@ class Base(object):
 
         if unique_identifier is None:
             unique_identifier = str(uuid.uuid4())
-        self.meta_data['unique_identifier'] = unique_identifier
-        self.meta_data['verbose'] = verbose
+        self.meta_data["unique_identifier"] = unique_identifier
+        self.meta_data["verbose"] = verbose
 
         # clean up the keys (no spaces etc.)
         d = dict()
@@ -763,7 +727,7 @@ class Base(object):
         if name is None:
             name = self.__class__.__name__
 
-        d['name'] = name
+        d["name"] = name
         kwargs.update(d)
         self.__dict__.update(**kwargs)
         Base._uuid_index[str(self.unique_identifier)] = self
@@ -779,7 +743,7 @@ class Base(object):
         """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = copy.copy(self.__dict__)
-        c.__dict__['meta_data'] = copy.deepcopy(self.__dict__.get('meta_data', {}))
+        c.__dict__["meta_data"] = copy.deepcopy(self.__dict__.get("meta_data", {}))
         Base._uuid_index[str(c.unique_identifier)] = c
         return c
 
@@ -796,7 +760,7 @@ class Base(object):
         return c
 
 
-def find_by_uuid(uid: str) -> typing.Optional["Base"]:
+def find_by_uuid(uid: str) -> typing.Optional[Base]:
     """Convenience: look up a live :class:`Base` instance by its UID.
 
     Equivalent to ``Base.find_by_uuid(uid)``.
@@ -820,31 +784,31 @@ class Data(Base):
     """
 
     def __init__(
-            self,
-            filename: str = "None",
-            data: bytes = None,
-            embed_data: bool = None,
-            read_file_size_limit: int = None,
-            name: object = None,
-            verbose: bool = False,
-            unique_identifier: str = None,
-            meta_data: typing.Dict = None,
-            **kwargs
+        self,
+        filename: str = "None",
+        data: bytes = None,
+        embed_data: bool = None,
+        read_file_size_limit: int = None,
+        name: object = None,
+        verbose: bool = False,
+        unique_identifier: str = None,
+        meta_data: typing.Dict = None,
+        **kwargs,
     ):
         super().__init__(
             name=name,
             verbose=verbose,
             unique_identifier=unique_identifier,
             meta_data=meta_data,
-            **kwargs
+            **kwargs,
         )
         self._data = data
         self._filename = None
 
         if embed_data is None:
-            embed_data = cs.core.settings.database['embed_data']
+            embed_data = cs.core.settings.database["embed_data"]
         if read_file_size_limit is None:
-            read_file_size_limit = cs.core.settings.database['read_file_size_limit']
+            read_file_size_limit = cs.core.settings.database["read_file_size_limit"]
 
         self._embed_data = embed_data
         self._max_file_size = read_file_size_limit
@@ -877,14 +841,14 @@ class Data(Base):
     def name(self) -> str:
         """Return the object name, falling back to the filename."""
         try:
-            return self.__dict__['name']
+            return self.__dict__["name"]
         except KeyError:
             return self.filename
 
     @name.setter
     def name(self, v: str):
         """Set the object name."""
-        self.__dict__['name'] = v
+        self.__dict__["name"] = v
 
     @property
     def filename(self) -> str:
@@ -892,13 +856,10 @@ class Data(Base):
         try:
             return self._filename
         except (AttributeError, TypeError):
-            return 'No file'
+            return "No file"
 
     @filename.setter
-    def filename(
-            self,
-            v: str
-    ) -> None:
+    def filename(self, v: str) -> None:
         """Set the file path and optionally embed its binary content.
 
         The file content is read and optionally compressed/embedded
@@ -919,27 +880,28 @@ class Data(Base):
             if file_size < self._max_file_size and self._embed_data:
                 with open(self._filename, "rb") as fp:
                     data = fp.read()
-                    if len(data) > cs.core.settings.database['compression_data_limit']:
+                    if len(data) > cs.core.settings.database["compression_data_limit"]:
                         data = zlib.compress(data)
-                    if len(data) < cs.core.settings.database['embed_data_limit']:
+                    if len(data) < cs.core.settings.database["embed_data_limit"]:
                         self._data = data
             if self.verbose:
-                print("Filename: %s" % self._filename)
-                print("File size [byte]: %s" % file_size)
+                print(f"Filename: {self._filename}")
+                print(f"File size [byte]: {file_size}")
         except FileNotFoundError:
             if self.verbose:
-                cs.logging.warning("Filename: %s not found" % v)
+                cs.logging.warning(f"Filename: {v} not found")
 
     def __str__(self):
         """Return a summary including class name and filename."""
         s = super().__str__()
-        s += "\nfilename: %s" % self.filename
+        s += f"\nfilename: {self.filename}"
         return s
 
 
 # Module-level callback for missing-package notifications.
 # GUI code can replace this with a real dialog; defaults to logging.
-_safe_import_notify = lambda title, text: None
+def _safe_import_notify(title, text):
+    return None
 
 
 def set_safe_import_notify(callback):
@@ -951,22 +913,22 @@ def set_safe_import_notify(callback):
 def safe_import(module_name: str, package_name: str = None, parent=None):
     """
     Safely import a module with user-friendly error handling for conda packages.
-    
+
     Args:
         module_name: The module to import (e.g., 'numpy', 'scipy.optimize')
         package_name: The conda package name if different from module_name (e.g., 'scipy' for 'scipy.optimize')
         parent: Parent widget for error dialogs
-    
+
     Returns:
         The imported module, or None if import failed
-        
+
     Example:
         >>> np = safe_import('numpy')
         >>> optimize = safe_import('scipy.optimize', 'scipy')
     """
     if package_name is None:
-        package_name = module_name.split('.')[0]
-    
+        package_name = module_name.split(".")[0]
+
     try:
         return __import__(module_name)
     except ImportError:

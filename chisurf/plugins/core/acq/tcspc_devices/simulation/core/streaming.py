@@ -6,6 +6,7 @@ Drop-in replacement for ``BurbulatorSimulator``: exposes
 and optionally writes ``m###.spc`` files. No Qt; uses only the ``core.algorithms``
 tttrlib path.
 """
+
 from __future__ import annotations
 
 import logging
@@ -123,7 +124,8 @@ class TttrlibSimulator:
             logger.error("SIMULATION: tttrlib backend unavailable")
             return False
         self.generation_thread = threading.Thread(
-            target=self._generate, args=(params, data_queue, stop_event), daemon=True)
+            target=self._generate, args=(params, data_queue, stop_event), daemon=True
+        )
         self.generation_thread.start()
         return True
 
@@ -149,12 +151,13 @@ class TttrlibSimulator:
             for i in range(0, len(words), batch):
                 if stop_event.is_set():
                     break
-                data_queue.put(words[i:i + batch], timeout=5.0)
+                data_queue.put(words[i : i + batch], timeout=5.0)
             data_queue.put(None)  # signal completion
             logger.info("SIMULATION: tttrlib streaming completed")
         except Exception as e:  # pragma: no cover - defensive
             logger.error("SIMULATION: tttrlib generation error: %s", e)
             import traceback
+
             logger.debug(traceback.format_exc())
             try:
                 data_queue.put(None)
@@ -183,7 +186,7 @@ class TttrlibSimulator:
             macro_time_clock = int(params.get("macro_time_clock_header", 100))
             file_index = 0
             for start in range(0, len(words), words_per_file):
-                chunk = words[start:start + words_per_file]
+                chunk = words[start : start + words_per_file]
                 filename = os.path.join(out, f"m{file_index:03d}.spc")
                 with open(filename, "wb") as f:
                     f.write(spc132_file_bytes(chunk, macro_time_clock=macro_time_clock))

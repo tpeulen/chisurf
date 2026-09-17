@@ -77,7 +77,9 @@ class DatabaseConnector:
                 "device_count": len(db.get_devices()),
                 "experiment_type_count": len(db.get_experiment_types()),
                 "experiment_count": len(experiment_rows),
-                "experiment_data_count": sum(len(db.get_experiment_data(row["experiment_id"])) for row in experiment_rows),
+                "experiment_data_count": sum(
+                    len(db.get_experiment_data(row["experiment_id"])) for row in experiment_rows
+                ),
             }
 
     def backup(self) -> dict[str, Any]:
@@ -212,8 +214,12 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register(
         "database_connector.repository", lambda params: repository_handler(**params)
     )
-    dispatcher.register("database_connector.import_file", lambda params: import_file_handler(**params))
-    dispatcher.register("database_connector.export_sample", lambda params: export_sample_handler(**params))
+    dispatcher.register(
+        "database_connector.import_file", lambda params: import_file_handler(**params)
+    )
+    dispatcher.register(
+        "database_connector.export_sample", lambda params: export_sample_handler(**params)
+    )
 
 
 def status_handler() -> dict[str, Any]:

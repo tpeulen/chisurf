@@ -6,8 +6,7 @@ import pathlib
 
 import chisurf as cs
 from chisurf import logging
-from chisurf.gui import QtCore, QtWidgets, run_on_gui_thread
-from chisurf.gui import dialogs
+from chisurf.gui import QtCore, QtWidgets, dialogs, run_on_gui_thread
 
 
 def _recent_projects_file() -> pathlib.Path:
@@ -134,7 +133,9 @@ def open_recent_project(window, project_path: str) -> None:
                 )
                 try:
                     current = list(getattr(window, "_recent_projects", []) or [])
-                    current = [p for p in current if os.path.normpath(p) != os.path.normpath(project_path)]
+                    current = [
+                        p for p in current if os.path.normpath(p) != os.path.normpath(project_path)
+                    ]
                     set_recent_projects(window, current)
                     store_recent_projects(current)
                     refresh_recent_projects_menu(window)
@@ -150,7 +151,9 @@ def open_recent_project(window, project_path: str) -> None:
             )
             try:
                 current = list(getattr(window, "_recent_projects", []) or [])
-                current = [p for p in current if os.path.normpath(p) != os.path.normpath(project_path)]
+                current = [
+                    p for p in current if os.path.normpath(p) != os.path.normpath(project_path)
+                ]
                 set_recent_projects(window, current)
                 store_recent_projects(current)
                 refresh_recent_projects_menu(window)
@@ -160,7 +163,9 @@ def open_recent_project(window, project_path: str) -> None:
         if not path.is_file():
             try:
                 current = list(getattr(window, "_recent_projects", []) or [])
-                current = [p for p in current if os.path.normpath(p) != os.path.normpath(project_path)]
+                current = [
+                    p for p in current if os.path.normpath(p) != os.path.normpath(project_path)
+                ]
                 set_recent_projects(window, current)
                 store_recent_projects(current)
                 refresh_recent_projects_menu(window)
@@ -251,9 +256,7 @@ def refresh_recent_projects_menu(window) -> None:
             pass
         try:
             clear_action = QtWidgets.QAction("Clear Recent Projects", window)
-            clear_action.triggered.connect(
-                lambda _checked=False: clear_recent_projects(window)
-            )
+            clear_action.triggered.connect(lambda _checked=False: clear_recent_projects(window))
             menu.addAction(clear_action)
         except Exception:
             pass
@@ -303,7 +306,7 @@ def init_recent_projects_menu(window) -> None:
             for i, a in enumerate(actions):
                 if a.isSeparator():
                     # Check if Exit follows this separator
-                    remaining = actions[i + 1:]
+                    remaining = actions[i + 1 :]
                     if any(r is exit_action for r in remaining):
                         target = a
                         break

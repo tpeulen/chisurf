@@ -5,31 +5,37 @@ This script will print the current style sheet setting from the configuration.
 """
 
 import os
-import sys
 import pathlib
+import sys
 
 # Add the chisurf directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import chisurf.core.settings
 
+
 def main():
     # Print the current style sheet setting
     print(f"Current style sheet setting: {chisurf.core.settings.cs_settings['gui']['style_sheet']}")
-    
+
     # Get the path to the style sheet file
-    style_file = pathlib.Path(chisurf.__file__).parent / "gui/styles" / chisurf.core.settings.cs_settings['gui']['style_sheet']
+    style_file = (
+        pathlib.Path(chisurf.__file__).parent
+        / "gui/styles"
+        / chisurf.core.settings.cs_settings["gui"]["style_sheet"]
+    )
     print(f"Style sheet file path: {style_file}")
-    
+
     # Check if the file exists
     if style_file.exists():
-        print(f"Style sheet file exists: Yes")
+        print("Style sheet file exists: Yes")
         # Print the content of the style sheet file
-        with open(style_file, 'r') as f:
+        with open(style_file) as f:
             content = f.read()
         print(f"Style sheet content (first 100 chars): {content[:100]}")
     else:
-        print(f"Style sheet file exists: No")
+        print("Style sheet file exists: No")
+
 
 if __name__ == "__main__":
     main()

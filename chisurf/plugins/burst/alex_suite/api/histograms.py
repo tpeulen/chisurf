@@ -162,8 +162,13 @@ def load_channels(
     # the donor channel's span instead.
     lowered = {str(name).strip().lower(): name for name in columns}
     duration = next(
-        (lowered[key] for key in ("duration (ms)", "duration", "tau", "duration_ms")
-         if key in lowered), None)
+        (
+            lowered[key]
+            for key in ("duration (ms)", "duration", "tau", "duration_ms")
+            if key in lowered
+        ),
+        None,
+    )
     if duration is not None:
         arrays["duration"] = np.asarray(columns[duration], dtype=float)
         mapping["duration"] = duration
@@ -215,12 +220,16 @@ def burst_efficiency_stoichiometry(
         bg_aa = corrections.bg_aa * tau_ms
 
     result = corrected_es(
-        i_dd, i_da, i_aa,
+        i_dd,
+        i_da,
+        i_aa,
         gamma=corrections.gamma,
         alpha=corrections.alpha,
         beta=corrections.beta,
         delta=corrections.delta,
-        bg_dd=bg_dd, bg_da=bg_da, bg_aa=bg_aa,
+        bg_dd=bg_dd,
+        bg_da=bg_da,
+        bg_aa=bg_aa,
     )
     e = np.asarray(result["E"], dtype=float)
     s = result["S"]
@@ -278,8 +287,8 @@ def es_histograms(
     keep &= (total >= thresholds.total_min) & (total <= thresholds.total_max)
     duration = channels.get("duration")
     if duration is not None:
-        keep &= (duration >= thresholds.duration_min_ms)
-        keep &= (duration <= thresholds.duration_max_ms)
+        keep &= duration >= thresholds.duration_min_ms
+        keep &= duration <= thresholds.duration_max_ms
     keep &= (e > thresholds.e_range[0]) & (e < thresholds.e_range[1])
     # A non-ALEX table has S = NaN everywhere, and every comparison against NaN
     # is False -- so gating on S would select nothing at all rather than
@@ -299,7 +308,9 @@ def es_histograms(
     finite_s = np.isfinite(s)
     if finite_s.any():
         hist_2d, _, _ = np.histogram2d(
-            s[finite_s], e[finite_s], bins=(s_edges, e_edges),
+            s[finite_s],
+            e[finite_s],
+            bins=(s_edges, e_edges),
             weights=None if weights is None else weights[finite_s],
         )
     else:
@@ -309,10 +320,8 @@ def es_histograms(
     # E histogram over a stoichiometry band, the S histogram over an efficiency
     # band. Projecting the 2-D map rather than re-histogramming keeps the three
     # panels of one view consistent by construction.
-    s_gate = (s_centres >= thresholds.s_range_for_e[0]) & (
-        s_centres <= thresholds.s_range_for_e[1])
-    e_gate = (e_centres >= thresholds.e_range_for_s[0]) & (
-        e_centres <= thresholds.e_range_for_s[1])
+    s_gate = (s_centres >= thresholds.s_range_for_e[0]) & (s_centres <= thresholds.s_range_for_e[1])
+    e_gate = (e_centres >= thresholds.e_range_for_s[0]) & (e_centres <= thresholds.e_range_for_s[1])
     e_hist = hist_2d[s_gate].sum(axis=0) if s_gate.any() else hist_2d.sum(axis=0)
     s_hist = hist_2d[:, e_gate].sum(axis=1) if e_gate.any() else hist_2d.sum(axis=1)
 

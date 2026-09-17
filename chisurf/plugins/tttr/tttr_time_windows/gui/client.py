@@ -73,9 +73,7 @@ class TimeWindowClient:
         )
         if not svc_result.get("ok", True):
             err_msg = svc_result.get("error", "unknown error")
-            raise RuntimeError(
-                f"tttr_time_windows.jobs.analyze_files failed: {err_msg}"
-            )
+            raise RuntimeError(f"tttr_time_windows.jobs.analyze_files failed: {err_msg}")
         return svc_result.get("result", {})
 
     def load_preview(
@@ -99,8 +97,8 @@ class TimeWindowClient:
             Returns empty dict on failure.
         """
         try:
-            import tttrlib
             import numpy as np
+            import tttrlib
 
             tttr = tttrlib.TTTR(str(path))
             time_window_s = time_window_ms / 1000.0

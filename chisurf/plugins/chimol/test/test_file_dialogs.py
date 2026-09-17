@@ -56,8 +56,7 @@ def test_filter_sections_and_dialog_model():
     (tmp / "b.png").write_text("x")
     (tmp / "c.txt").write_text("x")
 
-    d = FileDialog(mode="open", file_type="PDB (*.pdb);;All files (*.*)",
-                   start_dir=tmp)
+    d = FileDialog(mode="open", file_type="PDB (*.pdb);;All files (*.*)", start_dir=tmp)
     assert d.folders == ["sub"] and d.files == ["a.pdb"]
     d.selected_file = "a.pdb"
     assert d.selected_path() == tmp / "a.pdb"
@@ -84,7 +83,7 @@ def test_filter_sections_and_dialog_model():
     assert picked == [str(tmp / "shot.png")]
 
 
-_DRIVE = '''
+_DRIVE = """
     import pathlib
 
     app = open_app(size=(1000, 780))
@@ -165,7 +164,7 @@ _DRIVE = '''
     tx = int(min(max(win3.x + win3.w / 2, 0), arr.shape[1] - 1))
     emit("title_px", tuple(int(v) for v in arr[ty, tx]))
     emit("errors", "; ".join(errors[:3]) or "none")
-'''
+"""
 
 
 def test_open_save_and_render_through_the_dialog():
@@ -292,7 +291,7 @@ def test_keys_scrollbars_and_save_typing():
     assert m["focused"] == "True", "a press did not give the dialog the keys"
     assert m["nav"] == "file04.pdb", "arrow navigation did not move the selection"
     assert m["paged"].startswith("file"), "page-down did not page"
-    assert int(m["paged"][4:-4]) > 4, f'page-down did not page: {m["paged"]}'
+    assert int(m["paged"][4:-4]) > 4, f"page-down did not page: {m['paged']}"
     assert int(m["nav_scrolled"]) > 0, "navigation did not keep the row on screen"
     assert int(m["thumb_drag"]) > 0, "dragging the thumb did not scroll"
     assert m["thumb_bounds_ok"] == "True"
@@ -398,8 +397,11 @@ def test_every_host_wires_the_same_two_prompts():
     from chimol.hosts.web.page import Page  # noqa: F401 - import proves Qt-free
     from chimol.ui.dialogs.prompts import file_prompt, open_structure_dialog
 
-    for source in (inspect.getsource(Page), inspect.getsource(ChimolApp),
-                   inspect.getsource(qt_window.MolViewPluginWindow)):
+    for source in (
+        inspect.getsource(Page),
+        inspect.getsource(ChimolApp),
+        inspect.getsource(qt_window.MolViewPluginWindow),
+    ):
         assert "open_structure_dialog" in source, (
             "a host no longer wires the in-viewport file dialog"
         )

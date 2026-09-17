@@ -25,8 +25,14 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "hmm.view.json"
 #: Colours cycled over the states, dimmest first. Distinguishable in both
 #: themes and colour-blind safe (Okabe-Ito, reordered dark to light).
 STATE_COLORS = (
-    "#0072B2", "#E69F00", "#009E73", "#D55E00",
-    "#CC79A7", "#56B4E9", "#F0E442", "#999999",
+    "#0072B2",
+    "#E69F00",
+    "#009E73",
+    "#D55E00",
+    "#CC79A7",
+    "#56B4E9",
+    "#F0E442",
+    "#999999",
 )
 
 
@@ -245,9 +251,7 @@ class HmmViewModel:
             self._scan = scan_state_counts(
                 self.traces, self.settings, self.min_states, self.max_states
             )
-            self._status = (
-                f"BIC prefers {self._scan.best_bic} states, AIC {self._scan.best_aic}."
-            )
+            self._status = f"BIC prefers {self._scan.best_bic} states, AIC {self._scan.best_aic}."
         except Exception as exc:
             logger.exception("HMM state scan failed")
             self._scan = None
@@ -319,9 +323,7 @@ class HmmViewModel:
         total = np.concatenate(traces).sum(axis=1)
         counts, edges = np.histogram(total, bins=min(200, max(20, len(total) // 50)))
         centres = 0.5 * (edges[:-1] + edges[1:])
-        series = [
-            {"x": centres, "y": counts, "name": "counts", "color": "#888888", "width": 1}
-        ]
+        series = [{"x": centres, "y": counts, "name": "counts", "color": "#888888", "width": 1}]
         if self._fit is not None:
             width = edges[1] - edges[0]
             for summary in self._fit.summaries:

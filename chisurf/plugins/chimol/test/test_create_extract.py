@@ -23,7 +23,11 @@ import pytest
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -39,8 +43,8 @@ def session(qapp):
     """Build a fresh viewer with 148L loaded, plus a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -123,9 +127,7 @@ def test_the_child_keeps_its_true_coordinates(session):
     """
     cmd, view, _, _ = session
     parent = _object(view, "148l").state.atoms
-    wanted = np.isin(
-        np.char.strip(parent["res_name"].astype(str)), ("NAG", "MUB")
-    )
+    wanted = np.isin(np.char.strip(parent["res_name"].astype(str)), ("NAG", "MUB"))
     expected = np.asarray(parent["xyz"], dtype=float)[wanted]
 
     cmd.do("create sugars, resn NAG+MUB")
@@ -179,9 +181,7 @@ def test_extract_conserves_the_atom_count(session):
 def test_the_extracted_atoms_are_gone_from_the_source(session):
     cmd, view, _, _ = session
     cmd.do("extract stem, resn DAL+FGA")
-    remaining = np.char.strip(
-        _object(view, "148l").state.atoms["res_name"].astype(str)
-    )
+    remaining = np.char.strip(_object(view, "148l").state.atoms["res_name"].astype(str))
     assert not np.isin(remaining, ("DAL", "FGA")).any()
 
 
@@ -233,10 +233,7 @@ def test_the_child_can_be_saved(session, tmp_path):
     cmd.do(f"save {out}, sugars")
     assert errors == []
     assert out.exists()
-    records = [
-        line for line in out.read_text().splitlines()
-        if line.startswith(("ATOM", "HETATM"))
-    ]
+    records = [line for line in out.read_text().splitlines() if line.startswith(("ATOM", "HETATM"))]
     assert len(records) == _atom_count(view, "sugars")
 
 
@@ -253,7 +250,5 @@ def test_the_saved_child_carries_its_original_coordinates(session, tmp_path):
             if line.startswith(("ATOM", "HETATM"))
         ]
     )
-    expected = np.asarray(
-        _object(view, "sugars").state.atoms["xyz"], dtype=float
-    )
+    expected = np.asarray(_object(view, "sugars").state.atoms["xyz"], dtype=float)
     assert np.allclose(written, expected, atol=5e-4)

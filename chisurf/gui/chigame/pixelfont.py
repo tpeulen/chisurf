@@ -161,8 +161,10 @@ GLYPHS: dict[str, str] = {
 
 #: Drawn for anything not in :data:`GLYPHS`. A hollow box, deliberately: a
 #: missing character that renders as a space is one nobody reports.
-MISSING = (".......//.#####.//.#...#.//.#...#.//.#...#.//.#...#.//.#...#.//.#####."
-           "//.......//.......//.......")
+MISSING = (
+    ".......//.#####.//.#...#.//.#...#.//.#...#.//.#...#.//.#...#.//.#####."
+    "//.......//.......//......."
+)
 
 #: How far the shadow is offset, in font pixels. One, down and to the right.
 SHADOW = 1
@@ -250,7 +252,7 @@ def atlas(scale: int = SCALE) -> np.ndarray:
     strips = []
     for char in CHARSET:
         left, width = extent(char)
-        strips.append(bitmap(char)[:, left:left + width])
+        strips.append(bitmap(char)[:, left : left + width])
     grid = np.concatenate(strips, axis=1)
     grid = np.repeat(np.repeat(grid, scale, axis=0), scale, axis=1)
     return (grid * 255).astype(np.uint8)

@@ -76,8 +76,7 @@ def __getattr__(name: str):
         return getattr(bff, name)
     except AttributeError:
         raise AttributeError(
-            f"this IMP.bff has no {name} "
-            f"(build {getattr(bff, 'get_build', lambda: '?')()})"
+            f"this IMP.bff has no {name} (build {getattr(bff, 'get_build', lambda: '?')()})"
         ) from None
 
 
@@ -101,22 +100,19 @@ def _flat_points(av):
     """
     import numpy as np
 
-    return np.ascontiguousarray(
-        np.asarray(getattr(av, "points", av), dtype=np.float64).reshape(-1)
-    )
+    return np.ascontiguousarray(np.asarray(getattr(av, "points", av), dtype=np.float64).reshape(-1))
 
 
 def average_distance(av1, av2, n_samples=50000, seed=0):
     """Mean donor-acceptor distance over sampled pairs, Angstrom."""
-    return _bff().average_distance(_flat_points(av1), _flat_points(av2),
-                                   int(n_samples), int(seed))
+    return _bff().average_distance(_flat_points(av1), _flat_points(av2), int(n_samples), int(seed))
 
 
 def mean_fret_distance(av1, av2, forster_radius=52.0, n_samples=50000, seed=0):
     """The FRET-averaged distance <R_DA>_E, Angstrom."""
-    return _bff().mean_fret_distance(_flat_points(av1), _flat_points(av2),
-                                     float(forster_radius), int(n_samples),
-                                     int(seed))
+    return _bff().mean_fret_distance(
+        _flat_points(av1), _flat_points(av2), float(forster_radius), int(n_samples), int(seed)
+    )
 
 
 def distance_between_mean_positions(av1, av2):
@@ -156,17 +152,14 @@ def _sample_av_distance(av1, av2, n_samples=50000):
     import numpy as np
 
     def _points(av):
-        pts = np.asarray(
-            getattr(av, "points", av), dtype=np.float64
-        ).reshape(-1, 4)
+        pts = np.asarray(getattr(av, "points", av), dtype=np.float64).reshape(-1, 4)
         return np.ascontiguousarray(pts)
 
     # A fixed seed by default: two calls on one pair are the same answer, and
     # a sampled distance that moves between runs is a defect nobody can
     # reproduce. A caller wanting a spread asks for one explicitly.
     return np.asarray(
-        _bff().random_distances(_points(av1), _points(av2),
-                                int(n_samples), 0),
+        _bff().random_distances(_points(av1), _points(av2), int(n_samples), 0),
         dtype=np.float64,
     )
 
@@ -211,17 +204,12 @@ def as_states(av):
     bff = _bff()
     if isinstance(av, bff.States):
         return av
-    points = np.ascontiguousarray(
-        np.asarray(av.points, dtype=np.float64)
-    ).reshape(-1)
-    attachment = np.ascontiguousarray(
-        np.asarray(av.attachment_point, dtype=np.float64)
-    ).reshape(-1)
+    points = np.ascontiguousarray(np.asarray(av.points, dtype=np.float64)).reshape(-1)
+    attachment = np.ascontiguousarray(np.asarray(av.attachment_point, dtype=np.float64)).reshape(-1)
     return bff.States(points, attachment)
 
 
-def model_distance(av1, av2, distance_type, forster_radius=52.0,
-                   n_samples=50000):
+def model_distance(av1, av2, distance_type, forster_radius=52.0, n_samples=50000):
     """A model distance of the named type between two volumes.
 
     Parameters
@@ -241,13 +229,24 @@ def model_distance(av1, av2, distance_type, forster_radius=52.0,
         The distance, Angstrom.
     """
     return _bff().model_distance(
-        as_states(av1), as_states(av2), str(distance_type),
-        float(forster_radius), int(n_samples),
+        as_states(av1),
+        as_states(av2),
+        str(distance_type),
+        float(forster_radius),
+        int(n_samples),
     )
 
 
-def histogram_rda(av1, av2, axis=None, n_samples=50000, normalize=True,
-                  rda_min=None, rda_max=None, n_rda_bins=None):
+def histogram_rda(
+    av1,
+    av2,
+    axis=None,
+    n_samples=50000,
+    normalize=True,
+    rda_min=None,
+    rda_max=None,
+    n_rda_bins=None,
+):
     """The distance distribution P(R_DA) of a pair of volumes.
 
     Parameters
@@ -280,15 +279,15 @@ def histogram_rda(av1, av2, axis=None, n_samples=50000, normalize=True,
     if axis is None and None not in (rda_min, rda_max, n_rda_bins):
         # linspace and not arange: the caller named the two ends, and arange
         # is the version that quietly drops the last bin to floating point.
-        axis = np.linspace(float(rda_min), float(rda_max),
-                           int(n_rda_bins) + 1)
+        axis = np.linspace(float(rda_min), float(rda_max), int(n_rda_bins) + 1)
 
     edges = np.ascontiguousarray(
         np.asarray(axis if axis is not None else [], dtype=np.float64)
     ).reshape(-1)
     counts = np.asarray(
-        _bff().histogram_rda(as_states(av1), as_states(av2), edges,
-                             int(n_samples), bool(normalize)),
+        _bff().histogram_rda(
+            as_states(av1), as_states(av2), edges, int(n_samples), bool(normalize)
+        ),
         dtype=np.float64,
     )
     return counts, edges

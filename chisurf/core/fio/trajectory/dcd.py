@@ -40,8 +40,15 @@ import pathlib
 
 import numpy as np
 
-__all__ = ["DCDHeader", "DCDWriter", "dcd_info", "read_dcd", "read_time_axis", "read_times",
-           "write_dcd"]
+__all__ = [
+    "DCDHeader",
+    "DCDWriter",
+    "dcd_info",
+    "read_dcd",
+    "read_time_axis",
+    "read_times",
+    "write_dcd",
+]
 
 
 def _gather_frames(flat, frames, atoms, frame_stride, x_offset, gap, out):
@@ -72,9 +79,7 @@ def _gather_frames(flat, frames, atoms, frame_stride, x_offset, gap, out):
     )
     selected = view[np.asarray(frames, dtype=np.intp)]
     atoms = np.asarray(atoms, dtype=np.intp)
-    contiguous = (
-        atoms.size == n_atoms_file and atoms[0] == 0 and atoms[-1] == n_atoms_file - 1
-    )
+    contiguous = atoms.size == n_atoms_file and atoms[0] == 0 and atoms[-1] == n_atoms_file - 1
     if not contiguous:
         selected = selected[:, :, atoms]
     np.copyto(out, selected.transpose(0, 2, 1))
@@ -131,8 +136,7 @@ def _dtypes(big_endian: bool, marker_bytes: int):
     """Return the ``(int32, float32, float64, marker)`` dtypes for a file."""
     prefix = ">" if big_endian else "<"
     marker = np.dtype(f"{prefix}i{marker_bytes}")
-    return (np.dtype(prefix + "i4"), np.dtype(prefix + "f4"),
-            np.dtype(prefix + "f8"), marker)
+    return (np.dtype(prefix + "i4"), np.dtype(prefix + "f4"), np.dtype(prefix + "f8"), marker)
 
 
 def _read_header(handle) -> tuple[DCDHeader, int, int]:
@@ -189,8 +193,11 @@ def _read_header(handle) -> tuple[DCDHeader, int, int]:
         # returns the wrong coordinates, so refuse instead.
         raise OSError(f"DCD files with fixed atoms are not supported ({n_fixed} fixed)")
 
-    delta = float(np.frombuffer(body[36:40], dtype=f4)[0] if charmm
-                  else np.frombuffer(body[36:44], dtype=f8)[0])
+    delta = float(
+        np.frombuffer(body[36:40], dtype=f4)[0]
+        if charmm
+        else np.frombuffer(body[36:44], dtype=f8)[0]
+    )
 
     if int(np.frombuffer(handle.read(marker_bytes), dtype=marker)[0]) != _HEADER_BYTES:
         raise OSError("malformed DCD: header record does not close")
@@ -200,8 +207,7 @@ def _read_header(handle) -> tuple[DCDHeader, int, int]:
     n_title = int(np.frombuffer(handle.read(4), dtype=i4)[0])
     if n_title < 0 or n_title * 80 + 4 != title_bytes:
         raise OSError("malformed DCD: inconsistent title block")
-    title = [handle.read(80).decode("ascii", "replace").rstrip("\x00 ")
-             for _ in range(n_title)]
+    title = [handle.read(80).decode("ascii", "replace").rstrip("\x00 ") for _ in range(n_title)]
     handle.read(marker_bytes)
 
     # Atom-count record.
@@ -213,10 +219,15 @@ def _read_header(handle) -> tuple[DCDHeader, int, int]:
         raise OSError(f"malformed DCD: {n_atoms} atoms")
 
     header = DCDHeader(
-        n_frames=n_frames_field, n_atoms=n_atoms, first_step=first_step,
-        step_interval=step_interval, delta=delta,
-        has_unitcell=bool(flags & _HAS_EXTRA_BLOCK), charmm=charmm,
-        big_endian=big_endian, title=title,
+        n_frames=n_frames_field,
+        n_atoms=n_atoms,
+        first_step=first_step,
+        step_interval=step_interval,
+        delta=delta,
+        has_unitcell=bool(flags & _HAS_EXTRA_BLOCK),
+        charmm=charmm,
+        big_endian=big_endian,
+        title=title,
     )
     return header, marker_bytes, handle.tell()
 
@@ -238,7 +249,7 @@ def _angles_from_cell(cell: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     all three is what distinguishes them, as it does in the reference reader.
     """
     lengths = cell[:, [0, 2, 5]]
-    raw = cell[:, [4, 3, 1]]                       # alpha, beta, gamma
+    raw = cell[:, [4, 3, 1]]  # alpha, beta, gamma
     cosine = np.all((raw >= -1.0) & (raw <= 1.0), axis=1)
     angles = np.where(
         cosine[:, None],
@@ -308,8 +319,11 @@ def read_dcd(path, *, stride: int | None = None, atom_indices=None):
         n_frames = (path.stat().st_size - offset) // per_frame
 
         keep = np.arange(0, int(n_frames), int(stride) if stride else 1, dtype=np.int64)
-        atoms = (np.arange(header.n_atoms, dtype=np.int64) if atom_indices is None
-                 else np.asarray(atom_indices, dtype=np.int64))
+        atoms = (
+            np.arange(header.n_atoms, dtype=np.int64)
+            if atom_indices is None
+            else np.asarray(atom_indices, dtype=np.int64)
+        )
         if atoms.size and (atoms.min() < 0 or atoms.max() >= header.n_atoms):
             raise IndexError(f"atom index out of range for {header.n_atoms} atoms")
 
@@ -326,11 +340,10 @@ def read_dcd(path, *, stride: int | None = None, atom_indices=None):
         flat = flat.byteswap().view(np.float32)
     flat = np.ascontiguousarray(flat, dtype=np.float32)
 
-    slots = marker_bytes // 4                      # markers, in float32 slots
+    slots = marker_bytes // 4  # markers, in float32 slots
     cell_slots = (2 * slots + 12) if header.has_unitcell else 0
     xyz = np.empty((keep.size, atoms.size, 3), dtype=np.float32)
-    _gather_frames(flat, keep, atoms, per_frame // 4,
-                   cell_slots + slots, 2 * slots, xyz)
+    _gather_frames(flat, keep, atoms, per_frame // 4, cell_slots + slots, 2 * slots, xyz)
 
     if not header.has_unitcell:
         return xyz, None, None
@@ -368,17 +381,25 @@ class DCDWriter:
     ...         writer.write(chunk)
     """
 
-    def __init__(self, path, n_atoms: int, *, first_step: int = 0,
-                 step_interval: int = 1, delta: float = 1.0,
-                 title: str = "Created by ChiSurf"):
+    def __init__(
+        self,
+        path,
+        n_atoms: int,
+        *,
+        first_step: int = 0,
+        step_interval: int = 1,
+        delta: float = 1.0,
+        title: str = "Created by ChiSurf",
+    ):
         if int(n_atoms) <= 0:
             raise ValueError(f"n_atoms must be positive, got {n_atoms}")
         self.n_atoms = int(n_atoms)
         self.n_frames = 0
         self._path = pathlib.Path(path)
         self._handle = open(path, "wb")
-        self._handle.write(_header_bytes(self.n_atoms, 0, first_step,
-                                         step_interval, delta, title, False))
+        self._handle.write(
+            _header_bytes(self.n_atoms, 0, first_step, step_interval, delta, title, False)
+        )
 
     def write(self, xyz) -> None:
         """Append one frame or a block of frames.
@@ -392,12 +413,12 @@ class DCDWriter:
         if frames.ndim == 2:
             frames = frames[np.newaxis]
         if frames.ndim != 3 or frames.shape[1:] != (self.n_atoms, 3):
-            raise ValueError(
-                f"expected (n_frames, {self.n_atoms}, 3), got {frames.shape}")
+            raise ValueError(f"expected (n_frames, {self.n_atoms}, 3), got {frames.shape}")
         for frame in frames:
             for axis in range(3):
-                self._handle.write(_record(
-                    np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes()))
+                self._handle.write(
+                    _record(np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes())
+                )
         self.n_frames += len(frames)
 
     def write_times(self, times) -> None:
@@ -417,8 +438,7 @@ class DCDWriter:
         """
         times = np.asarray(times, dtype=np.float64)
         if len(times) != self.n_frames:
-            raise ValueError(
-                f"{len(times)} times for {self.n_frames} frames")
+            raise ValueError(f"{len(times)} times for {self.n_frames} frames")
         np.save(_times_path(self._path), times)
 
     def close(self) -> None:
@@ -454,9 +474,15 @@ def _record(payload: bytes) -> bytes:
     return length + payload + length
 
 
-def _header_bytes(n_atoms: int, n_frames: int, first_step: int,
-                  step_interval: int, delta: float, title: str,
-                  has_cell: bool) -> bytes:
+def _header_bytes(
+    n_atoms: int,
+    n_frames: int,
+    first_step: int,
+    step_interval: int,
+    delta: float,
+    title: str,
+    has_cell: bool,
+) -> bytes:
     """Return the three header records of a DCD."""
     i4 = np.dtype("<i4")
     header = np.zeros(20, dtype=i4)
@@ -464,19 +490,28 @@ def _header_bytes(n_atoms: int, n_frames: int, first_step: int,
     header[1] = first_step
     header[2] = step_interval
     header[10] = 1 if has_cell else 0
-    header[19] = 24                                   # CHARMM version 24
+    header[19] = 24  # CHARMM version 24
     body = bytearray(header.tobytes())
     body[36:40] = np.array(delta, dtype="<f4").tobytes()
-    lines = [title.encode("ascii", "replace")[:80].ljust(80, b" "),
-             b"REMARKS".ljust(80, b" ")]
-    return (_record(_MAGIC + bytes(body))
-            + _record(np.array(len(lines), dtype=i4).tobytes() + b"".join(lines))
-            + _record(np.array(n_atoms, dtype=i4).tobytes()))
+    lines = [title.encode("ascii", "replace")[:80].ljust(80, b" "), b"REMARKS".ljust(80, b" ")]
+    return (
+        _record(_MAGIC + bytes(body))
+        + _record(np.array(len(lines), dtype=i4).tobytes() + b"".join(lines))
+        + _record(np.array(n_atoms, dtype=i4).tobytes())
+    )
 
 
-def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
-              first_step: int = 0, step_interval: int = 1, delta: float = 1.0,
-              title: str = "Created by ChiSurf") -> None:
+def write_dcd(
+    path,
+    xyz,
+    *,
+    cell_lengths=None,
+    cell_angles=None,
+    first_step: int = 0,
+    step_interval: int = 1,
+    delta: float = 1.0,
+    title: str = "Created by ChiSurf",
+) -> None:
     """Write a DCD trajectory.
 
     Writes the variant every reader accepts: standard 32-bit record markers,
@@ -516,8 +551,9 @@ def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
         cell_angles = np.asarray(cell_angles, dtype=np.float64).reshape(n_frames, 3)
 
     with open(path, "wb") as handle:
-        handle.write(_header_bytes(n_atoms, n_frames, first_step, step_interval,
-                                   delta, title, has_cell))
+        handle.write(
+            _header_bytes(n_atoms, n_frames, first_step, step_interval, delta, title, has_cell)
+        )
         record = _record
         for frame in range(n_frames):
             if has_cell:
@@ -526,14 +562,23 @@ def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
                 # Stored interleaved as (A, gamma, B, beta, alpha, C), and as
                 # cosines -- the convention CHARMM and modern NAMD use, and the
                 # one that lets an orthogonal cell round-trip to exactly 90.
-                cell = np.array([a, np.cos(np.radians(gamma)), b,
-                                 np.cos(np.radians(beta)),
-                                 np.cos(np.radians(alpha)), c], dtype="<f8")
+                cell = np.array(
+                    [
+                        a,
+                        np.cos(np.radians(gamma)),
+                        b,
+                        np.cos(np.radians(beta)),
+                        np.cos(np.radians(alpha)),
+                        c,
+                    ],
+                    dtype="<f8",
+                )
                 handle.write(record(cell.tobytes()))
             frame_xyz = xyz[frame]
             for axis in range(3):
-                handle.write(record(
-                    np.ascontiguousarray(frame_xyz[:, axis], dtype="<f4").tobytes()))
+                handle.write(
+                    record(np.ascontiguousarray(frame_xyz[:, axis], dtype="<f4").tobytes())
+                )
 
 
 def read_times(path):
@@ -580,6 +625,11 @@ def read_time_axis(path, stride: int = None) -> np.ndarray:
         return times[:: int(stride)] if stride else times
     header = dcd_info(path)
     step = header.step_interval * (int(stride) if stride else 1)
-    return (header.first_step + np.arange(header.n_frames // (int(stride) if stride else 1)
-                                          + (1 if header.n_frames % (int(stride) if stride else 1)
-                                             else 0)) * step) * header.delta
+    return (
+        header.first_step
+        + np.arange(
+            header.n_frames // (int(stride) if stride else 1)
+            + (1 if header.n_frames % (int(stride) if stride else 1) else 0)
+        )
+        * step
+    ) * header.delta

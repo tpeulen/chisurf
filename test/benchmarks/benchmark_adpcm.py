@@ -53,9 +53,11 @@ def make_clip(seconds: float) -> bytes:
         An encoded clip.
     """
     time_axis = np.arange(int(RATE * seconds)) / RATE
-    signal = (np.sin(2 * np.pi * 220 * time_axis) * 0.5
-              + np.sin(2 * np.pi * 660 * time_axis) * 0.25
-              + np.sin(2 * np.pi * 1830 * time_axis) * 0.12)
+    signal = (
+        np.sin(2 * np.pi * 220 * time_axis) * 0.5
+        + np.sin(2 * np.pi * 660 * time_axis) * 0.25
+        + np.sin(2 * np.pi * 1830 * time_axis) * 0.12
+    )
     return adpcm.encode((signal * 32767).astype(np.int16), RATE)
 
 
@@ -105,8 +107,10 @@ def main(argv: list[str]) -> int:
             adpcm.decode_gpu(raw)
         gpu_ms = (time.perf_counter() - start) / options.repeats * 1e3
 
-        print(f"| {seconds} | {count:,} | {blocks:,} | {cpu_ms:.2f} | {gpu_ms:.2f} "
-              f"| {cpu_ms / max(gpu_ms, 1e-9):.1f}x | {'yes' if identical else 'NO'} |")
+        print(
+            f"| {seconds} | {count:,} | {blocks:,} | {cpu_ms:.2f} | {gpu_ms:.2f} "
+            f"| {cpu_ms / max(gpu_ms, 1e-9):.1f}x | {'yes' if identical else 'NO'} |"
+        )
         if not identical:
             return 2
     return 0

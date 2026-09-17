@@ -18,8 +18,8 @@ import pathlib
 
 from qtpy import QtWidgets
 
-from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui import dialogs
+from chisurf.gui.autoform.sections.registry import register_section
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +144,7 @@ class _ControlBar(QtWidgets.QWidget):
         try:
             self._model.load_stack(path)
         except Exception as exc:  # noqa: BLE001
-            dialogs.error(
-                self, "Load Error", f"Failed to read image stack:\n{exc}"
-            )
+            dialogs.error(self, "Load Error", f"Failed to read image stack:\n{exc}")
 
     def _detect(self) -> None:
         if self._model.stack is None:
@@ -156,9 +154,7 @@ class _ControlBar(QtWidgets.QWidget):
 
     def _fit_selected(self) -> None:
         if self._model.selected_bead is None:
-            dialogs.information(
-                self, "No bead", "Click a bead in the image or detect beads first."
-            )
+            dialogs.information(self, "No bead", "Click a bead in the image or detect beads first.")
             return
         self._model.fit_selected()
 
@@ -183,9 +179,7 @@ class _ControlBar(QtWidgets.QWidget):
         try:
             self._model.export_csv(path)
         except Exception as exc:  # noqa: BLE001
-            dialogs.error(
-                self, "CSV export error", f"Failed to export CSV:\n{exc}"
-            )
+            dialogs.error(self, "CSV export error", f"Failed to export CSV:\n{exc}")
 
     def _on_bead_index(self, value: int) -> None:
         self._model.select_bead_index(int(value))

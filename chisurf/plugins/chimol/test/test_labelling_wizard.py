@@ -24,7 +24,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -62,9 +66,7 @@ def _cb_119(viewer) -> int:
     """Index of 148L's residue-119 CB -- the usual labelling position."""
     oid = viewer.get_active_object_id()
     atoms = viewer.objects[oid].state.atoms
-    hits = np.where(
-        (atoms["res_id"] == 119) & (atoms["atom_name"] == "CB")
-    )[0]
+    hits = np.where((atoms["res_id"] == 119) & (atoms["atom_name"] == "CB"))[0]
     assert hits.size, "148l has no residue-119 CB; fixture changed?"
     return int(hits[0])
 
@@ -127,7 +129,9 @@ def test_keep_attaches_to_the_residue_as_it_is(session):
     assert state.attach_atom == "CB"
     shared.do("wizard dye, Cy5")
     viewer.pick_hook(_cb_119(viewer))
-    resn_before = str(viewer.objects[viewer.get_active_object_id()].state.atoms["res_name"][_cb_119(viewer)]).strip()
+    resn_before = str(
+        viewer.objects[viewer.get_active_object_id()].state.atoms["res_name"][_cb_119(viewer)]
+    ).strip()
     shared.do("wizard apply")
     assert errors == [], errors[:2]
     atoms = viewer.objects[viewer.get_active_object_id()].state.atoms
@@ -194,7 +198,7 @@ def test_a_pick_without_a_dye_attach_says_so(session):
     shared.do("wizard labelling")
     viewer = win.viewer
     viewer.pick_hook(_cb_119(viewer))
-    shared.do("wizard apply")   # no dye chosen: refused, not crashed
+    shared.do("wizard apply")  # no dye chosen: refused, not crashed
     assert not viewer.wizard.created
     shared.do("wizard done")
 
@@ -211,7 +215,7 @@ def test_a_residue_picked_in_the_sequence_strip_is_the_wizards_pick(session):
     oid = viewer.get_active_object_id()
     residue_ids = np.asarray(viewer.active_state().residue_ids)
     index = int(np.where(residue_ids == 44)[0][0])
-    apply_sequence_selection(viewer, oid, [index])          # what the strip's click does
+    apply_sequence_selection(viewer, oid, [index])  # what the strip's click does
     assert state.residue[:3] == (oid, "E", 44), state.residue
     labels = [row.label for row in state.panel()]
     assert any("44" in label for label in labels)

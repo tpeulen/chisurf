@@ -22,8 +22,6 @@ left to right, which is *more* accurate, not less.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from ..base import BaseEstimator
@@ -86,10 +84,9 @@ def _kmeanspp_seed(X: np.ndarray, n_clusters: int, uniforms: np.ndarray) -> np.n
     candidate = np.empty(n_samples)
     for c in range(1, n_clusters):
         total = float(closest.sum())
-        trials = uniforms[c * n_trials:(c + 1) * n_trials]
+        trials = uniforms[c * n_trials : (c + 1) * n_trials]
         if total <= 0.0:
-            indices = np.minimum(
-                (trials * n_samples).astype(np.int64), n_samples - 1)
+            indices = np.minimum((trials * n_samples).astype(np.int64), n_samples - 1)
         else:
             # The loop searched for the first partial sum reaching the target;
             # that is exactly a left-side binary search on the cumulative sum.
@@ -143,8 +140,7 @@ def _kmeans_lloyd(
         counts = np.bincount(assignment, minlength=n_clusters).astype(float)
         sums = np.empty((n_clusters, n_features))
         for j in range(n_features):
-            sums[:, j] = np.bincount(
-                assignment, weights=X[:, j], minlength=n_clusters)
+            sums[:, j] = np.bincount(assignment, weights=X[:, j], minlength=n_clusters)
         worst_index = int(np.argmax(best))
 
         shift = 0.0
@@ -230,9 +226,7 @@ def _kmeans(
     labels = np.empty(n_samples, dtype=np.int64)
     best, best_inertia, best_n_iter = None, np.inf, 0
     for _ in range(n_init):
-        centers = _kmeanspp_seed(
-            X, n_clusters, random_state.random(n_clusters * n_trials)
-        )
+        centers = _kmeanspp_seed(X, n_clusters, random_state.random(n_clusters * n_trials))
         inertia, n_iter = _kmeans_lloyd(X, centers, labels, max_iter, tol)
         if inertia < best_inertia:
             best = (centers, labels.copy())
@@ -273,7 +267,7 @@ class KMeans(BaseEstimator):
     def __init__(
         self,
         n_clusters: int = 8,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         n_init: int = 10,
         max_iter: int = 300,
         tol: float = 1e-4,
@@ -286,7 +280,12 @@ class KMeans(BaseEstimator):
         self.tol = tol
         self.verbose = verbose
         self._constructor_params = {
-            "n_clusters", "random_state", "n_init", "max_iter", "tol", "verbose",
+            "n_clusters",
+            "random_state",
+            "n_init",
+            "max_iter",
+            "tol",
+            "verbose",
         }
 
     def fit(self, X, y=None):

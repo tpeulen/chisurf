@@ -53,21 +53,15 @@ def _check_ext_coeff(ec: float | None) -> list[str]:
     return issues
 
 
-def _check_stokes_shift(
-    abs_max: float | None, em_max: float | None
-) -> list[str]:
+def _check_stokes_shift(abs_max: float | None, em_max: float | None) -> list[str]:
     issues = []
     if abs_max is not None and em_max is not None:
         if em_max < abs_max:
-            issues.append(
-                f"negative Stokes shift: em_max={em_max} < abs_max={abs_max}"
-            )
+            issues.append(f"negative Stokes shift: em_max={em_max} < abs_max={abs_max}")
     return issues
 
 
-def _check_wavelength_range(
-    abs_max: float | None, em_max: float | None
-) -> list[str]:
+def _check_wavelength_range(abs_max: float | None, em_max: float | None) -> list[str]:
     issues = []
     for label, val in [("abs_max", abs_max), ("em_max", em_max)]:
         if val is not None and (val < 200 or val > 1000):
@@ -109,9 +103,7 @@ def run_deterministic_checks(probe: dict) -> dict:
 
     if not issues:
         proposed_quality = "high"
-    elif len(issues) <= 2 and all(
-        "missing" not in i for i in issues
-    ):
+    elif len(issues) <= 2 and all("missing" not in i for i in issues):
         proposed_quality = "medium"
     else:
         proposed_quality = "low"
@@ -194,9 +186,8 @@ def _call_llm(prompt: str, provider: str | None = None) -> str | None:
     str or None
         Response text, or None on failure.
     """
-    from chisurf.core.support import http
-
     from chisurf.core.settings.ai_settings import get_api_settings
+    from chisurf.core.support import http
 
     if not _llm_available(provider):
         logger.debug("AI triage: no usable LLM provider — skipping LLM step")
@@ -394,9 +385,7 @@ def run_triage(
                 parsed = _parse_llm_reply(llm_reply)
                 if parsed:
                     result["llm_proposal"] = parsed
-                    result["recommendation"] = parsed.get(
-                        "recommendation", "needs_review"
-                    )
+                    result["recommendation"] = parsed.get("recommendation", "needs_review")
                     result["rationale"] = parsed.get("rationale", "")
                     result["proposed_category"] = parsed.get("category")
                     result["canonical_name"] = parsed.get("canonical_name")

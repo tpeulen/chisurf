@@ -95,7 +95,10 @@ class AccurateFretTool(ChisurfDockTool):
             return
         self.Error.clear()
         ChiSurfProgress.run(
-            self, "Calibrating…", self._calibrate, maximum=100,
+            self,
+            "Calibrating…",
+            self._calibrate,
+            maximum=100,
             on_result=self._calibrated,
             on_error=self.Error.failed,
             on_done=self._refresh,
@@ -104,6 +107,7 @@ class AccurateFretTool(ChisurfDockTool):
 
     def _calibrate(self, task) -> bool:
         """Worker: run the Qt-free calibration through *task*. No GUI here."""
+
         def report(fraction: float, message: str) -> None:
             task.raise_if_cancelled()
             task.set_fraction(float(fraction), str(message))

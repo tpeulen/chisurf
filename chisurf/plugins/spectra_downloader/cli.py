@@ -39,8 +39,12 @@ def list_sources():
 @cli.command("run")
 @click.argument("source")
 @click.option("--db", default=None, help="Path to the staging spectra.db.")
-@click.option("--extra", "extra_args", default=None,
-              help="Extra arguments to pass to the scraper (space separated).")
+@click.option(
+    "--extra",
+    "extra_args",
+    default=None,
+    help="Extra arguments to pass to the scraper (space separated).",
+)
 def run_source(source, db, extra_args):
     """Run a single registered downloader source."""
     if get_scraper(source) is None:
@@ -58,13 +62,18 @@ def run_source(source, db, extra_args):
     res = subprocess.run(args)
     sys.exit(res.returncode)
 
+
 @cli.command("run-all")
 @click.option("--db", default=None, help="Target spectra.db to merge everything into.")
 @click.option("--only", default=None, help="Comma-separated subset of sources (default: all).")
 @click.option("--keep-temp", is_flag=True, help="Keep the per-source temp DBs/logs.")
 @click.option("--no-consolidate", is_flag=True, help="Skip de-duplication after merge.")
-@click.option("--threed-max-pages", default=DEFAULT_THREED_MAX_PAGES, show_default=True,
-              help="3DOptix catalogue page cap (0 = all; it bounds the whole run).")
+@click.option(
+    "--threed-max-pages",
+    default=DEFAULT_THREED_MAX_PAGES,
+    show_default=True,
+    help="3DOptix catalogue page cap (0 = all; it bounds the whole run).",
+)
 def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
     """Run scrapers in parallel, each into its own DB, then merge + consolidate.
 
@@ -72,8 +81,8 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
     contention; the final stage merges every per-source DB into one canonical
     ``spectra.db`` and de-duplicates across sources.
     """
-    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
 
     target = db or str(DEFAULT_DATABASE_PATH)
     valid = {s.module for s in SCRAPERS}
@@ -81,8 +90,9 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
         names = [s.strip() for s in only.split(",") if s.strip()]
         unknown = [n for n in names if n not in valid]
         if unknown:
-            click.echo(f"Unknown source(s): {', '.join(unknown)}. "
-                       f"Available: {', '.join(sorted(valid))}")
+            click.echo(
+                f"Unknown source(s): {', '.join(unknown)}. Available: {', '.join(sorted(valid))}"
+            )
             sys.exit(1)
     else:
         names = [s.module for s in default_scrapers()]
@@ -129,8 +139,8 @@ def run_all(db, only, keep_temp, no_consolidate, threed_max_pages):
 @click.option("--no-consolidate", is_flag=True, help="Skip de-duplication after merge.")
 def merge_cmd(db, sources, no_consolidate):
     """Merge already-scraped per-source DBs into the target spectra.db."""
-    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
     from chisurf.plugins.spectra_downloader.download.merge import merge_all
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
 
     target = db or str(DEFAULT_DATABASE_PATH)
     click.echo(f"Merging {len(sources)} source DB(s) into {target} …")
@@ -142,25 +152,45 @@ def merge_cmd(db, sources, no_consolidate):
 @click.option("--db", default=None, help="Path to the SQLite database.")
 def consolidate(db):
     """Consolidate duplicate probes and merge their spectra/properties."""
-    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH, FluorophoreDatabase
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
+        DEFAULT_DATABASE_PATH,
+        FluorophoreDatabase,
+    )
+
     db_path = db or str(DEFAULT_DATABASE_PATH)
     click.echo(f"Consolidating database at {db_path}...")
     with FluorophoreDatabase(db_path) as fdb:
         res = fdb.consolidate_probes()
-    click.echo(f"Consolidation complete: merged {res['merged_groups']} groups, deleted {res['deleted_probes']} duplicate probes.")
+    click.echo(
+        f"Consolidation complete: merged {res['merged_groups']} groups, deleted {res['deleted_probes']} duplicate probes."
+    )
 
 
 @cli.command("push")
-@click.option("--staging", "--db", "staging", default=None,
-              help="Scraped staging spectra.db to push (default: the bundled one).")
-@click.option("--mmfdb", default=None,
-              help="Target MMFDB (default: the resolved/connected live MMFDB).")
-@click.option("--replace", is_flag=True,
-              help="Purge the existing reference probes first, then import cleanly.")
-@click.option("--mark-verified", is_flag=True,
-              help="Stamp imported probes as approved (default: unverified).")
-@click.option("--backup/--no-backup", default=True, show_default=True,
-              help="Back up the MMFDB before a --replace push.")
+@click.option(
+    "--staging",
+    "--db",
+    "staging",
+    default=None,
+    help="Scraped staging spectra.db to push (default: the bundled one).",
+)
+@click.option(
+    "--mmfdb", default=None, help="Target MMFDB (default: the resolved/connected live MMFDB)."
+)
+@click.option(
+    "--replace",
+    is_flag=True,
+    help="Purge the existing reference probes first, then import cleanly.",
+)
+@click.option(
+    "--mark-verified", is_flag=True, help="Stamp imported probes as approved (default: unverified)."
+)
+@click.option(
+    "--backup/--no-backup",
+    default=True,
+    show_default=True,
+    help="Back up the MMFDB before a --replace push.",
+)
 def push(staging, mmfdb, replace, mark_verified, backup):
     """Push a scraped staging spectra.db into the connected MMFDB.
 
@@ -169,8 +199,9 @@ def push(staging, mmfdb, replace, mark_verified, backup):
     """
     import shutil
 
-    from mmfdb.store.database_resolver import resolve_database_path
     from mmfdb.repository import MFDatabase
+    from mmfdb.store.database_resolver import resolve_database_path
+
     from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
 
     staging = staging or str(DEFAULT_DATABASE_PATH)
@@ -187,7 +218,9 @@ def push(staging, mmfdb, replace, mark_verified, backup):
     click.echo(f"Pushing {staging} -> MMFDB {target}" + (" (replace)" if replace else ""))
     with MFDatabase(target) as db:
         counts = db.import_reference_set(
-            source_path=staging, replace=replace, mark_verified=mark_verified,
+            source_path=staging,
+            replace=replace,
+            mark_verified=mark_verified,
         )
     if counts.get("purged"):
         click.echo(f"  purged: {counts['purged']}")

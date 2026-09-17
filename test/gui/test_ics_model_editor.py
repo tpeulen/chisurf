@@ -5,6 +5,7 @@ The image-correlation model is a catalogue of carpet equations
 carries what the ICS reader records -- the carpet, its coordinates, its grid
 and the pixel size -- so no file I/O is needed.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -31,17 +32,30 @@ def _make_ics_data(n_lags: int = 3):
     pixel_shift, line_shift = np.meshgrid(xi_axis, psi_axis)
     frame_lags = np.arange(n_lags, dtype=float)
     carpet = image_correlation(
-        pixel_shift[None, ...], line_shift[None, ...], frame_lags[:, None, None],
-        n=2.0, diffusion_coefficient=1.5, offset=0.0,
-        pixel_duration=11.1, line_duration=3.33, frame_duration=500.0,
-        pixel_size=50.0, w_r=0.25, w_z=1.0,
+        pixel_shift[None, ...],
+        line_shift[None, ...],
+        frame_lags[:, None, None],
+        n=2.0,
+        diffusion_coefficient=1.5,
+        offset=0.0,
+        pixel_duration=11.1,
+        line_duration=3.33,
+        frame_duration=500.0,
+        pixel_size=50.0,
+        w_r=0.25,
+        w_z=1.0,
     )
     carpet = np.broadcast_to(carpet, (n_lags,) + pixel_shift.shape).copy()
     y = carpet.ravel()
     ics = {
-        "correlation": carpet, "pixel_shift": pixel_shift, "line_shift": line_shift,
-        "frame_lags": frame_lags, "pixel_duration_us": 11.1, "line_duration_ms": 3.33,
-        "frame_duration_ms": 500.0, "pixel_size_nm": 50.0,
+        "correlation": carpet,
+        "pixel_shift": pixel_shift,
+        "line_shift": line_shift,
+        "frame_lags": frame_lags,
+        "pixel_duration_us": 11.1,
+        "line_duration_ms": 3.33,
+        "frame_duration_ms": 500.0,
+        "pixel_size_nm": 50.0,
     }
     meta = {
         "ics": ics,
@@ -49,8 +63,14 @@ def _make_ics_data(n_lags: int = 3):
         "grid": {"ndim": 3, "shape": carpet.shape, "order": "C", "size": int(y.size)},
         "parameter_defaults": {"pxl_size": 50.0},
     }
-    return DataCurve(name="synthetic-ics", load_filename_on_init=False,
-                     y=y, ey=np.full(y.size, 1e-3), x=np.arange(y.size, dtype=float), meta_data=meta)
+    return DataCurve(
+        name="synthetic-ics",
+        load_filename_on_init=False,
+        y=y,
+        ey=np.full(y.size, 1e-3),
+        x=np.arange(y.size, dtype=float),
+        meta_data=meta,
+    )
 
 
 def _make_ics_fit(n_lags: int = 3):
@@ -98,7 +118,11 @@ def test_the_editor_renders_and_declares_the_image_plots(qapp):
 
 def test_image_accessors_follow_the_frame_slider(qapp):
     from chisurf.core.models.grid_images import (
-        get_grid_data_image, get_grid_model_image, get_grid_n_frames, get_grid_residual_image)
+        get_grid_data_image,
+        get_grid_model_image,
+        get_grid_n_frames,
+        get_grid_residual_image,
+    )
 
     fit = _make_ics_fit(n_lags=3)
     fit.model.update()
@@ -150,15 +174,25 @@ def test_ics_compute_is_finite_for_adversarial_params():
 
     axis = np.arange(-6, 7, dtype=float)
     ps, ls = np.meshgrid(axis, axis)
-    for kw in (dict(n=0.0, diffusion_coefficient=1.0), dict(n=-5.0, diffusion_coefficient=-2.0),
-               dict(n=1e-9, diffusion_coefficient=0.0, w_r=0.0, w_z=0.0)):
+    for kw in (
+        dict(n=0.0, diffusion_coefficient=1.0),
+        dict(n=-5.0, diffusion_coefficient=-2.0),
+        dict(n=1e-9, diffusion_coefficient=0.0, w_r=0.0, w_z=0.0),
+    ):
         for delta in (0.0, 3.0):
-            for extra in ({}, {"n_immobile": -2.0, "w_immobile": 0.0, "shift_x": 30.0},
-                          {"v_x": -50.0, "v_y": 1e4}, {"tau_triplet": -1.0, "a_triplet": 1.5},
-                          {"n_immobile": -2.0, "two_d": True}, {"alpha": 0.0},
-                          {"alpha": 2.0, "a_triplet": 0.999}):
+            for extra in (
+                {},
+                {"n_immobile": -2.0, "w_immobile": 0.0, "shift_x": 30.0},
+                {"v_x": -50.0, "v_y": 1e4},
+                {"tau_triplet": -1.0, "a_triplet": 1.5},
+                {"n_immobile": -2.0, "two_d": True},
+                {"alpha": 0.0},
+                {"alpha": 2.0, "a_triplet": 0.999},
+            ):
                 assert np.all(np.isfinite(image_correlation(ps, ls, delta, **{**kw, **extra})))
-    assert np.all(np.isfinite(ics_gaussian_2d(ls, ps, amplitude=-1.0, sigma_1=0.0, sigma_2=0.0, angle=9.0)))
+    assert np.all(
+        np.isfinite(ics_gaussian_2d(ls, ps, amplitude=-1.0, sigma_1=0.0, sigma_2=0.0, angle=9.0))
+    )
 
 
 def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
@@ -168,8 +202,11 @@ def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
     fit = _make_ics_fit(n_lags=3)
     fit.model.update()
     plot = Residual2DPlot(
-        fit=fit, accessor=get_grid_residual_image,
-        accessor_kwargs={"weighted": True, "frame_index": 0}, frame_kw="frame_index")
+        fit=fit,
+        accessor=get_grid_residual_image,
+        accessor_kwargs={"weighted": True, "frame_index": 0},
+        frame_kw="frame_index",
+    )
     plot.update()
     image = plot._image_item
     assert image is not None, "no image drawn"

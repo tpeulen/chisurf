@@ -32,15 +32,100 @@ import struct
 import numpy as np
 
 #: The IMA step table. 89 quantiser steps, geometric at about 1.1x.
-STEP_TABLE = np.array([
-    7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41,
-    45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190,
-    209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724,
-    796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272,
-    2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132,
-    7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350,
-    22385, 24623, 27086, 29794, 32767,
-], dtype=np.int32)
+STEP_TABLE = np.array(
+    [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        16,
+        17,
+        19,
+        21,
+        23,
+        25,
+        28,
+        31,
+        34,
+        37,
+        41,
+        45,
+        50,
+        55,
+        60,
+        66,
+        73,
+        80,
+        88,
+        97,
+        107,
+        118,
+        130,
+        143,
+        157,
+        173,
+        190,
+        209,
+        230,
+        253,
+        279,
+        307,
+        337,
+        371,
+        408,
+        449,
+        494,
+        544,
+        598,
+        658,
+        724,
+        796,
+        876,
+        963,
+        1060,
+        1166,
+        1282,
+        1411,
+        1552,
+        1707,
+        1878,
+        2066,
+        2272,
+        2499,
+        2749,
+        3024,
+        3327,
+        3660,
+        4026,
+        4428,
+        4871,
+        5358,
+        5894,
+        6484,
+        7132,
+        7845,
+        8630,
+        9493,
+        10442,
+        11487,
+        12635,
+        13899,
+        15289,
+        16818,
+        18500,
+        20350,
+        22385,
+        24623,
+        27086,
+        29794,
+        32767,
+    ],
+    dtype=np.int32,
+)
 
 #: How the step index moves after each nibble: down for small deltas, up for
 #: large ones, which is the whole of the "adaptive" in ADPCM.
@@ -251,7 +336,7 @@ def decode_cpu(raw: bytes) -> tuple[np.ndarray, int]:
     """
     rate, count, block, stride, blocks = _header(raw)
     body = np.frombuffer(raw, dtype=np.uint8, offset=20)
-    body = body[:blocks * stride].reshape(blocks, stride)
+    body = body[: blocks * stride].reshape(blocks, stride)
 
     predictor = body[:, 0:2].copy().view(np.int16).reshape(-1).astype(np.int32)
     index = body[:, 2].astype(np.int32)
@@ -344,18 +429,28 @@ def _pipeline():
         import wgpu
 
         source = (WGSL_DIR / "adpcm.wgsl").read_text(encoding="utf-8")
-        layout = dev.create_bind_group_layout(entries=[
-            {"binding": 0, "visibility": wgpu.ShaderStage.COMPUTE,
-             "buffer": {"type": wgpu.BufferBindingType.uniform}},
-            {"binding": 1, "visibility": wgpu.ShaderStage.COMPUTE,
-             "buffer": {"type": wgpu.BufferBindingType.read_only_storage}},
-            {"binding": 2, "visibility": wgpu.ShaderStage.COMPUTE,
-             "buffer": {"type": wgpu.BufferBindingType.storage}},
-        ])
+        layout = dev.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.uniform},
+                },
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.read_only_storage},
+                },
+                {
+                    "binding": 2,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.storage},
+                },
+            ]
+        )
         pipeline = dev.create_compute_pipeline(
             layout=dev.create_pipeline_layout(bind_group_layouts=[layout]),
-            compute={"module": dev.create_shader_module(code=source),
-                     "entry_point": "main"},
+            compute={"module": dev.create_shader_module(code=source), "entry_point": "main"},
         )
         return dev, pipeline, layout
     except Exception:
@@ -397,26 +492,24 @@ def decode_gpu(raw: bytes) -> tuple[np.ndarray, int] | None:
 
         # The body is handed over as words because that is what a storage
         # buffer holds; the shader indexes bytes out of them.
-        body = np.frombuffer(raw, dtype=np.uint8, offset=20)[:blocks * stride]
+        body = np.frombuffer(raw, dtype=np.uint8, offset=20)[: blocks * stride]
         padded = np.zeros((body.size + 3) // 4 * 4, np.uint8)
-        padded[:body.size] = body
+        padded[: body.size] = body
 
         params = np.array([blocks, block, stride, count], np.uint32)
-        uniform = dev.create_buffer_with_data(
-            data=params, usage=wgpu.BufferUsage.UNIFORM)
-        source = dev.create_buffer_with_data(
-            data=padded, usage=wgpu.BufferUsage.STORAGE)
+        uniform = dev.create_buffer_with_data(data=params, usage=wgpu.BufferUsage.UNIFORM)
+        source = dev.create_buffer_with_data(data=padded, usage=wgpu.BufferUsage.STORAGE)
         out = dev.create_buffer(
-            size=max(4, count * 4),
-            usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC)
-        bind = dev.create_bind_group(layout=layout, entries=[
-            {"binding": 0, "resource": {"buffer": uniform, "offset": 0,
-                                        "size": params.nbytes}},
-            {"binding": 1, "resource": {"buffer": source, "offset": 0,
-                                        "size": padded.nbytes}},
-            {"binding": 2, "resource": {"buffer": out, "offset": 0,
-                                        "size": max(4, count * 4)}},
-        ])
+            size=max(4, count * 4), usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
+        )
+        bind = dev.create_bind_group(
+            layout=layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": uniform, "offset": 0, "size": params.nbytes}},
+                {"binding": 1, "resource": {"buffer": source, "offset": 0, "size": padded.nbytes}},
+                {"binding": 2, "resource": {"buffer": out, "offset": 0, "size": max(4, count * 4)}},
+            ],
+        )
 
         encoder = dev.create_command_encoder()
         pass_ = encoder.begin_compute_pass()

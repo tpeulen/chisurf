@@ -62,8 +62,12 @@ def test_score_builds_avs_and_distances():
 @needs_example
 def test_dock_runs_and_writes_outputs(tmp_path):
     params = imp_engine.DockingParameters(
-        n_frames=4, mc_steps=8, shuffle_max_translation=0.0, n_best=2,
-        fixed_body=0, max_translation=3.0,
+        n_frames=4,
+        mc_steps=8,
+        shuffle_max_translation=0.0,
+        n_best=2,
+        fixed_body=0,
+        max_translation=3.0,
     )
     res = imp_engine.dock([_PROTEIN, _DNA], _FPS, str(tmp_path), params)
     # the MC run completes, produces a finite score and emits outputs
@@ -106,9 +110,11 @@ def test_estimate_errors_runs_the_trials_it_was_asked_for(tmp_path):
     """
     params = imp_engine.DockingParameters(n_frames=150, coarse_clash=True)
     serial = imp_engine.estimate_errors(
-        [_PROTEIN, _DNA], _FPS, str(tmp_path / "s"), n_trials=2, params=params, n_workers=1)
+        [_PROTEIN, _DNA], _FPS, str(tmp_path / "s"), n_trials=2, params=params, n_workers=1
+    )
     asked_for_two = imp_engine.estimate_errors(
-        [_PROTEIN, _DNA], _FPS, str(tmp_path / "p"), n_trials=2, params=params, n_workers=2)
+        [_PROTEIN, _DNA], _FPS, str(tmp_path / "p"), n_trials=2, params=params, n_workers=2
+    )
 
     assert serial["n_workers"] == 1
     assert asked_for_two["n_workers"] == 1
@@ -128,7 +134,8 @@ def test_estimate_errors_reports_uncertainty(tmp_path):
     """Repeated docking superposes models and reports per-atom RMSF precision."""
     params = imp_engine.DockingParameters(n_frames=120, coarse_clash=True)
     res = imp_engine.estimate_errors(
-        [_PROTEIN, _DNA], _FPS, str(tmp_path), n_trials=2, params=params, n_workers=1)
+        [_PROTEIN, _DNA], _FPS, str(tmp_path), n_trials=2, params=params, n_workers=1
+    )
     unc = res["uncertainty"]
     assert unc is not None and unc["n_models"] == 2
     assert unc["mobile_rmsf_mean"] == unc["mobile_rmsf_mean"]  # finite
@@ -139,8 +146,10 @@ def test_estimate_errors_reports_uncertainty(tmp_path):
 def test_dock_minimize_saves_distributions(tmp_path):
     """save_distributions exports a P(R_DA) table over the docked structure."""
     import csv
+
     params = imp_engine.DockingParameters(
-        n_frames=100, shuffle_max_translation=0.0, save_distributions=True)
+        n_frames=100, shuffle_max_translation=0.0, save_distributions=True
+    )
     res = imp_engine.dock_minimize([_PROTEIN, _DNA], _FPS, str(tmp_path), params)
     csv_path = res.extra.get("distributions_csv")
     assert csv_path and os.path.exists(csv_path)

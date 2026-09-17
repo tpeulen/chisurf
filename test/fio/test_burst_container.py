@@ -10,19 +10,19 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
-from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst_container import (
     container_for,
     deinterleave_bursts,
     write_burst_artifact,
     write_per_source,
 )
-from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.pto import Measurement
 
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -45,10 +45,14 @@ def measurement(tmp_path: Path) -> Path:
     raw = tmp_path / "m000.ptu"
     shutil.copy(PTU, raw)
     write_burst_artifact(
-        raw, _bursts(),
-        name="bursts", artifact_kind="burst_table",
-        operation_type="burst_selection", row_grain="burst",
-        parameters={"min_photons": 60}, derived_from=(),
+        raw,
+        _bursts(),
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        parameters={"min_photons": 60},
+        derived_from=(),
     )
     return raw
 
@@ -60,8 +64,10 @@ def test_a_per_burst_result_joins_the_burst_table(measurement: Path):
     write_burst_artifact(
         measurement,
         pd.DataFrame({"Proximity Ratio Mean": np.linspace(0, 1, 20)}),
-        name="bva", artifact_kind="burst_table",
-        operation_type="burst_variance_analysis", row_grain="burst",
+        name="bva",
+        artifact_kind="burst_table",
+        operation_type="burst_variance_analysis",
+        row_grain="burst",
         parameters={"window": 5},
     )
     with Measurement.open(container_for(measurement)) as m:
@@ -75,16 +81,19 @@ def test_a_per_burst_result_joins_the_burst_table(measurement: Path):
 
 def test_a_finer_grained_result_carries_its_key(measurement: Path):
     """A dwell subdivides a burst, so it cannot be a row in a burst table.
-    The companion format had nowhere to put it."""
-    dwells = pd.DataFrame(
-        {"burst": np.repeat(np.arange(5), 4), "state": np.tile([0, 1, 0, 1], 5)}
-    )
+    The companion format had nowhere to put it.
+    """
+    dwells = pd.DataFrame({"burst": np.repeat(np.arange(5), 4), "state": np.tile([0, 1, 0, 1], 5)})
     write_burst_artifact(
-        measurement, dwells,
-        name="dwells", artifact_kind="dwell_table",
-        operation_type="photon_hmm", row_grain="dwell",
+        measurement,
+        dwells,
+        name="dwells",
+        artifact_kind="dwell_table",
+        operation_type="photon_hmm",
+        row_grain="dwell",
         parameters={"states": 2},
-        source_row_column="burst", target_row_column="Number of Photons",
+        source_row_column="burst",
+        target_row_column="Number of Photons",
     )
     with Measurement.open(container_for(measurement)) as m:
         uid = m._resolve("dwells")
@@ -96,15 +105,19 @@ def test_a_finer_grained_result_carries_its_key(measurement: Path):
 def test_a_coarser_result_maps_many_source_rows_to_one(measurement: Path):
     """Burst fusion. The legacy writer had no way to say which sources made a
     fused burst, so it wrote the membership back into the *source* analysis's
-    directory -- mutating another output to carry a relation."""
+    directory -- mutating another output to carry a relation.
+    """
     labels = np.array([0, 0, 1, 1, 1, 2] + [3] * 14)
     fused = _bursts(4)
     with Measurement.open(container_for(measurement), writable=True) as m:
         bursts = m._resolve("bursts")
         fused_uid = m.put_table(
-            "fused bursts", fused,
-            artifact_kind="burst_table", operation_type="burst_fusion",
-            row_grain="burst", parameters={"p_same": 0.8},
+            "fused bursts",
+            fused,
+            artifact_kind="burst_table",
+            operation_type="burst_fusion",
+            row_grain="burst",
+            parameters={"p_same": 0.8},
             derived_from=[m.instrument_uid, bursts],
         )
         m.put_table(
@@ -115,10 +128,13 @@ def test_a_coarser_result_maps_many_source_rows_to_one(measurement: Path):
                     "fused_row": labels.astype(np.int64),
                 }
             ),
-            artifact_kind="row_mapping", operation_type="burst_fusion",
-            row_grain="pair", parameters={"p_same": 0.8},
+            artifact_kind="row_mapping",
+            operation_type="burst_fusion",
+            row_grain="pair",
+            parameters={"p_same": 0.8},
             derived_from=[bursts, fused_uid],
-            source_row_column="source_row", target_row_column="fused_row",
+            source_row_column="source_row",
+            target_row_column="fused_row",
         )
 
     with Measurement.open(container_for(measurement)) as m:
@@ -138,9 +154,12 @@ def test_a_coarser_result_maps_many_source_rows_to_one(measurement: Path):
 def test_nothing_is_written_outside_the_measurement(measurement: Path, tmp_path: Path):
     before = {p.name for p in tmp_path.iterdir()}
     write_burst_artifact(
-        measurement, pd.DataFrame({"x": [1.0, 2.0]}),
-        name="whatever", artifact_kind="burst_table",
-        operation_type="burst_fusion", row_grain="burst",
+        measurement,
+        pd.DataFrame({"x": [1.0, 2.0]}),
+        name="whatever",
+        artifact_kind="burst_table",
+        operation_type="burst_fusion",
+        row_grain="burst",
     )
     assert {p.name for p in tmp_path.iterdir()} == before
     assert not [p for p in tmp_path.iterdir() if p.is_dir()]
@@ -161,8 +180,10 @@ def test_a_frame_covering_several_files_goes_to_several_containers(tmp_path: Pat
     )
     written = write_per_source(
         frame,
-        name="bva", artifact_kind="burst_table",
-        operation_type="burst_variance_analysis", row_grain="burst",
+        name="bva",
+        artifact_kind="burst_table",
+        operation_type="burst_variance_analysis",
+        row_grain="burst",
         derived_from=(),
     )
     assert len(written) == 2
@@ -178,8 +199,10 @@ def test_a_frame_with_no_source_column_is_refused(tmp_path: Path):
     with pytest.raises(KeyError, match="attributed"):
         write_per_source(
             pd.DataFrame({"x": [1.0]}),
-            name="x", artifact_kind="burst_table",
-            operation_type="burst_variance_analysis", row_grain="burst",
+            name="x",
+            artifact_kind="burst_table",
+            operation_type="burst_variance_analysis",
+            row_grain="burst",
         )
 
 
@@ -187,13 +210,14 @@ def test_a_frame_with_no_source_column_is_refused(tmp_path: Path):
 
 
 def test_the_legacy_padding_is_stripped_on_the_way_in(measurement: Path):
-    padded = pd.DataFrame(
-        {"a": [0, 1, 0, 2, 0], "b": [0.0, 1.5, 0.0, 2.5, 0.0], "": [""] * 5}
-    )
+    padded = pd.DataFrame({"a": [0, 1, 0, 2, 0], "b": [0.0, 1.5, 0.0, 2.5, 0.0], "": [""] * 5})
     write_burst_artifact(
-        measurement, padded,
-        name="padded", artifact_kind="burst_table",
-        operation_type="burst_variance_analysis", row_grain="burst",
+        measurement,
+        padded,
+        name="padded",
+        artifact_kind="burst_table",
+        operation_type="burst_variance_analysis",
+        row_grain="burst",
     )
     with Measurement.open(container_for(measurement)) as m:
         out = m.get_store("padded")
@@ -238,8 +262,11 @@ def test_a_written_table_says_what_its_numbers_are_in(tmp_path: Path):
                 "First Photon": np.arange(6, dtype=np.int64),
             }
         ),
-        name="bursts", artifact_kind="burst_table",
-        operation_type="burst_selection", row_grain="burst", derived_from=(),
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        derived_from=(),
     )
     units = _column_units(raw)
     assert units["Duration (ms)"] == "milliseconds"
@@ -274,8 +301,11 @@ def test_a_detector_qualifier_does_not_cost_a_column_its_unit(tmp_path: Path):
                 "First Photon (green)": np.arange(4, dtype=np.int64),
             }
         ),
-        name="bursts", artifact_kind="burst_table",
-        operation_type="burst_selection", row_grain="burst", derived_from=(),
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        derived_from=(),
     )
     units = _column_units(raw)
     assert units["Number of Photons"] == "photons"
@@ -303,8 +333,11 @@ def test_a_window_rate_says_khz_even_though_its_label_ends_in_a_range(tmp_path: 
     write_burst_artifact(
         raw,
         pd.DataFrame({label: np.linspace(1.0, 4.0, 4)}),
-        name="bursts", artifact_kind="burst_table",
-        operation_type="burst_selection", row_grain="burst", derived_from=(),
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        derived_from=(),
     )
     assert _column_units(raw)[label] == "kilohertz"
 
@@ -324,10 +357,14 @@ def test_a_writer_can_name_the_estimator_that_produced_its_table(tmp_path: Path)
     raw = tmp_path / "m.ptu"
     shutil.copy(PTU, raw)
     write_burst_artifact(
-        raw, pd.DataFrame({"Tau (green)": np.linspace(1.0, 4.0, 5)}),
-        name="mle", artifact_kind="burst_table",
-        operation_type="burst_lifetime_fitting", row_grain="burst",
-        algorithm="mle", derived_from=(),
+        raw,
+        pd.DataFrame({"Tau (green)": np.linspace(1.0, 4.0, 5)}),
+        name="mle",
+        artifact_kind="burst_table",
+        operation_type="burst_lifetime_fitting",
+        row_grain="burst",
+        algorithm="mle",
+        derived_from=(),
     )
     with Measurement.open(container_for(raw), writable=False) as m:
         obj = [o for o in m.artifacts() if o.name == "mle"][0]
@@ -337,7 +374,8 @@ def test_a_writer_can_name_the_estimator_that_produced_its_table(tmp_path: Path)
 
 def test_an_invented_estimator_is_refused(tmp_path: Path):
     """The algorithm is a dictionary term like every other. Absent is allowed --
-    it means *unrecorded* -- but wrong is not."""
+    it means *unrecorded* -- but wrong is not.
+    """
     import shutil
 
     from chisurf.core.fio.pto import PtoMfdbError
@@ -346,10 +384,14 @@ def test_an_invented_estimator_is_refused(tmp_path: Path):
     shutil.copy(PTU, raw)
     with pytest.raises(PtoMfdbError, match="not a value of"):
         write_burst_artifact(
-            raw, pd.DataFrame({"x": [1.0, 2.0]}),
-            name="bursts", artifact_kind="burst_table",
-            operation_type="burst_lifetime_fitting", row_grain="burst",
-            algorithm="vibes", derived_from=(),
+            raw,
+            pd.DataFrame({"x": [1.0, 2.0]}),
+            name="bursts",
+            artifact_kind="burst_table",
+            operation_type="burst_lifetime_fitting",
+            row_grain="burst",
+            algorithm="vibes",
+            derived_from=(),
         )
 
 
@@ -362,7 +404,7 @@ def test_every_writer_that_knows_its_estimator_records_it(tmp_path: Path):
     term, and a mapping that names a term mmfdb does not declare would be
     caught only at write time on a real run -- which is too late.
     """
-    from chisurf.core.fio.pto import _terms, _ALGORITHM
+    from chisurf.core.fio.pto import _ALGORITHM, _terms
     from chisurf.plugins.burst.burst_mle_analysis.core.export import _IRF_ALGORITHM
     from chisurf.plugins.burst.burst_selection.api.selection import _FILTER_ALGORITHM
 
@@ -406,9 +448,9 @@ def test_the_search_that_ran_reaches_the_container(tmp_path: Path, mode, extra, 
     did not use -- it is read only when `used_filter` says that mode is the one
     that ran.
     """
-    from chisurf.plugins.burst.burst_selection.api.selection import _selection_algorithm
     from chisurf.plugins.burst.burst_selection.api.io import write_container
     from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
+    from chisurf.plugins.burst.burst_selection.api.selection import _selection_algorithm
 
     settings = SimpleNamespace(
         used_filter=BurstFilterMode[mode],
@@ -428,8 +470,9 @@ def test_the_search_that_ran_reaches_the_container(tmp_path: Path, mode, extra, 
     from chisurf.core.fio.pto import Measurement
 
     with Measurement.open(out, writable=False) as m:
-        tagged = [o.name for o in m.artifacts()
-                  if m.tag(o.uid, "_mmfdb_operation.algorithm") == expected]
+        tagged = [
+            o.name for o in m.artifacts() if m.tag(o.uid, "_mmfdb_operation.algorithm") == expected
+        ]
     assert tagged, (
         f"{mode} ran a {expected} search and the container does not say so; "
         "the term is dropped somewhere between selection and put_table."
@@ -458,8 +501,11 @@ def test_a_plugin_can_name_the_units_of_its_own_columns(tmp_path: Path):
     write_burst_artifact(
         raw,
         pd.DataFrame({"Transit Time": np.linspace(0.1, 0.5, 4)}),
-        name="bursts", artifact_kind="burst_table",
-        operation_type="burst_selection", row_grain="burst", derived_from=(),
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        derived_from=(),
         units={"Transit Time": "microseconds"},
     )
     assert _column_units(raw)["Transit Time"] == "microseconds"
@@ -477,8 +523,11 @@ def test_an_invented_unit_is_refused(tmp_path: Path):
         write_burst_artifact(
             raw,
             pd.DataFrame({"x": [1.0, 2.0]}),
-            name="bursts", artifact_kind="burst_table",
-            operation_type="burst_selection", row_grain="burst", derived_from=(),
+            name="bursts",
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            derived_from=(),
             units={"x": "furlongs"},
         )
 
@@ -489,7 +538,8 @@ def test_an_invented_unit_is_refused(tmp_path: Path):
 def test_three_analyses_land_in_one_container(measurement: Path, tmp_path: Path):
     """What the whole exercise is for. The legacy layout put each of these in
     its own `…4` directory beside a `.bur`, related by filename, with a
-    settings JSON inside each that the readers then skipped on purpose."""
+    settings JSON inside each that the readers then skipped on purpose.
+    """
     from chisurf.plugins.burst.burst_2cde.core.computation import (
         column_for_variant,
         write_2cde_container,
@@ -534,7 +584,8 @@ def test_three_analyses_land_in_one_container(measurement: Path, tmp_path: Path)
 def test_the_two_2cde_variants_do_not_overwrite_each_other(measurement: Path):
     """The variant is part of the run's settings, so computing ALEX after FRET
     adds a result rather than replacing one -- which a single `2c4/<stem>.2c4`
-    could not express at all."""
+    could not express at all.
+    """
     from chisurf.plugins.burst.burst_2cde.core.computation import (
         column_for_variant,
         write_2cde_container,
@@ -559,14 +610,15 @@ def test_the_two_2cde_variants_do_not_overwrite_each_other(measurement: Path):
 def test_h2mm_writes_bursts_and_dwells_at_their_own_grains(measurement: Path):
     """The analysis the companion format could not hold. Its own docstring says
     why: h2mm_bursts.csv is indexed by a compacted burst number, so "one dropped
-    burst shifts every later row" and it cannot be joined back at all."""
+    burst shifts every later row" and it cannot be joined back at all.
+    """
     from chisurf.plugins.burst.burst_h2mm.core.export import write_h2mm_container
 
     bursts = pd.DataFrame({"H2MM State": np.tile([0, 1], 10)})
     dwells = pd.DataFrame(
         {
             "Dwell": np.arange(30),
-            "Burst": np.repeat(np.arange(10), 3),   # compacted: only 10 of 20
+            "Burst": np.repeat(np.arange(10), 3),  # compacted: only 10 of 20
             "State": np.tile([0, 1, 0], 10),
             "Dwell Time (ms)": np.linspace(0.1, 3.0, 30),
             "FRET efficiency": np.linspace(0, 1, 30),

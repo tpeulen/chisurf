@@ -77,8 +77,11 @@ class AnisotropyWizard(QtWidgets.QDialog):
         layout.addWidget(self.assistant)
         # After the assistant, so the model is available to resolve the files.
         attach_help_and_guide(
-            self, toolbar, title="Time-resolved anisotropy — help",
-            model=self.assistant.model, owner=type(self),
+            self,
+            toolbar,
+            title="Time-resolved anisotropy — help",
+            model=self.assistant.model,
+            owner=type(self),
         )
 
     @property

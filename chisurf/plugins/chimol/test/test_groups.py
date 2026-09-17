@@ -20,12 +20,15 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-
 from chimol.ui.menus.objects import OBJECT_MENUS, targets_for
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -194,9 +197,9 @@ def test_an_action_in_the_members_slot_is_read_as_one(session):
 
 def test_auto_toggles_an_existing_group_and_adds_otherwise(session):
     win, do, errors = session
-    do("group ligands, lig nag")          # auto with members -> add
+    do("group ligands, lig nag")  # auto with members -> add
     assert _names(win.viewer, "ligands") == ["lig", "nag"]
-    do("group ligands")                   # auto, no members -> toggle
+    do("group ligands")  # auto, no members -> toggle
     assert not win.viewer.is_group_open("ligands")
     do("group ligands")
     assert win.viewer.is_group_open("ligands")
@@ -332,7 +335,7 @@ def test_members_are_drawn_contiguously_under_their_header(session):
     assert kinds[li] == "group"
     # Everything up to the next group row belongs to `ligands`.
     block = []
-    for kind, label in rows[li + 1:]:
+    for kind, label in rows[li + 1 :]:
         if kind == "group":
             break
         block.append(label)
@@ -361,9 +364,7 @@ def test_the_members_are_indented_and_the_header_is_not(session):
     do("group ligands, lig")
     rows = {row.name: row for row in win.viewer.gui.rows}
     assert "ligands" in rows and "lig" in rows
-    assert rows["lig"].indent > rows["ligands"].indent, (
-        "a group member has to look like one"
-    )
+    assert rows["lig"].indent > rows["ligands"].indent, "a group member has to look like one"
 
 
 def test_the_group_header_carries_the_same_five_menus(session):
@@ -386,12 +387,16 @@ def test_the_group_header_carries_the_same_five_menus(session):
     assert set(gui._button_rects[index]) == {"A", "S", "H", "L", "C"}
     # ... and they are the five from the shared table, not a private copy.
     assert [letter for letter, _label, _entries in OBJECT_MENUS] == [
-        "A", "S", "H", "L", "C",
+        "A",
+        "S",
+        "H",
+        "L",
+        "C",
     ]
 
 
 def test_a_menu_entry_on_a_group_runs_once_per_member(session):
-    """"The command should be applied to all members of the group."" -- PyMOL."""
+    """ "The command should be applied to all members of the group."" -- PyMOL."""
     win, do, _ = session
     do("group ligands, lig nag")
     targets = targets_for(win.viewer, "show cartoon, {sele}", "ligands")
@@ -423,7 +428,10 @@ def test_grouped_display_order_keeps_blocks_together():
         {"id": "d", "name": "d", "group": "g"},
     ]
     assert [o["id"] for o in W._grouped_display_order(objects)] == [
-        "a", "b", "d", "c",
+        "a",
+        "b",
+        "d",
+        "c",
     ]
 
 

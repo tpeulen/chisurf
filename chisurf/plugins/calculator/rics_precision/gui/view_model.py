@@ -24,13 +24,13 @@ class PrecisionViewModel:
         self._observers: list[Callable[[str], None]] = []
 
         # ── sample ──
-        self.diffusion_coefficient: float = 10.0     # µm²/s
+        self.diffusion_coefficient: float = 10.0  # µm²/s
         self.n_particles: float = 50.0
-        self.brightness_khz: float = 100.0           # kHz per molecule
+        self.brightness_khz: float = 100.0  # kHz per molecule
 
         # ── optics ──
-        self.w_r: float = 0.25                       # µm
-        self.w_z: float = 1.25                       # µm
+        self.w_r: float = 0.25  # µm
+        self.w_z: float = 1.25  # µm
         self.pixel_size_nm: float = 50.0
         self.two_d: bool = False
 
@@ -82,12 +82,12 @@ class PrecisionViewModel:
     def _kwargs(self) -> dict:
         """Return the predictor arguments implied by the current settings."""
         return dict(
-            pixel_size=float(self.pixel_size_nm) * 1e-3,     # nm -> µm
+            pixel_size=float(self.pixel_size_nm) * 1e-3,  # nm -> µm
             ny=int(self.ny),
             n_particles=float(self.n_particles),
             w_r=float(self.w_r),
             w_z=float(self.w_z),
-            brightness=float(self.brightness_khz) * 1e3,     # kHz -> photons/s
+            brightness=float(self.brightness_khz) * 1e3,  # kHz -> photons/s
             n_images=int(self.n_images),
             n_lags=int(self.n_lags),
             n_repeats=int(self.n_repeats),
@@ -151,10 +151,13 @@ class PrecisionViewModel:
 
         here = s.current.relative_error
         verdict = (
-            "unusable" if here > 0.5 else
-            "poor" if here > 0.2 else
-            "usable" if here > 0.05 else
-            "good"
+            "unusable"
+            if here > 0.5
+            else "poor"
+            if here > 0.2
+            else "usable"
+            if here > 0.05
+            else "good"
         )
         gain = here / s.best_error if s.best_error > 0 else float("nan")
         tail = (
@@ -172,17 +175,31 @@ class PrecisionViewModel:
             return []
         dwell_us = np.asarray(s.dwell, dtype=float) * 1e6
         err_pct = np.asarray(s.relative_error, dtype=float) * 100.0
-        series = [{"x": dwell_us, "y": err_pct, "name": "predicted error",
-                   "color": "#4c9be8", "width": 2, "symbol": "o", "symbol_size": 6}]
+        series = [
+            {
+                "x": dwell_us,
+                "y": err_pct,
+                "name": "predicted error",
+                "color": "#4c9be8",
+                "width": 2,
+                "symbol": "o",
+                "symbol_size": 6,
+            }
+        ]
         if s.current is not None:
             # A single point drawn as a line is invisible, so it needs a symbol
             # and no pen of its own.
-            series.append({
-                "x": np.array([float(self.pixel_time_us)]),
-                "y": np.array([s.current.relative_error * 100.0]),
-                "name": "your setting", "color": "#e8734c",
-                "symbol": "d", "symbol_size": 14, "no_line": True,
-            })
+            series.append(
+                {
+                    "x": np.array([float(self.pixel_time_us)]),
+                    "y": np.array([s.current.relative_error * 100.0]),
+                    "name": "your setting",
+                    "color": "#e8734c",
+                    "symbol": "d",
+                    "symbol_size": 14,
+                    "no_line": True,
+                }
+            )
         return series
 
     def sweep_rows(self) -> list[dict]:
@@ -192,12 +209,14 @@ class PrecisionViewModel:
             return []
         rows = []
         for dwell, line, err in zip(s.dwell, s.line_time, s.relative_error):
-            rows.append({
-                "dwell": f"{dwell * 1e6:.3g}",
-                "line": f"{line * 1e3:.3g}",
-                "error": "—" if not np.isfinite(err) else f"{err * 100:.1f}",
-                # milliseconds, like the line time next to it -- the CLI spells
-                # the same quantity ``line * ny * 1e3`` (cli/main.py:89,110)
-                "frame": f"{line * self.ny * 1e3:.3g}",
-            })
+            rows.append(
+                {
+                    "dwell": f"{dwell * 1e6:.3g}",
+                    "line": f"{line * 1e3:.3g}",
+                    "error": "—" if not np.isfinite(err) else f"{err * 100:.1f}",
+                    # milliseconds, like the line time next to it -- the CLI spells
+                    # the same quantity ``line * ny * 1e3`` (cli/main.py:89,110)
+                    "frame": f"{line * self.ny * 1e3:.3g}",
+                }
+            )
         return rows

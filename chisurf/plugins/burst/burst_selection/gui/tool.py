@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import hashlib
-import logging as _logging
 import json
+import logging as _logging
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pyqtgraph as pg
+from mmfdb.security.base import MMFDBClientBase
+from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.datastore import (
     column_names,
@@ -22,17 +24,14 @@ from chisurf.core.datastore import (
     take_columns,
     write_csv_table,
 )
-import pyqtgraph as pg
-from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.core.runtime import analysis_cache
 from chisurf.core.fio.decimate import per_curve_budget, thin_for_plot
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
-from mmfdb.security.base import MMFDBClientBase
-from chisurf.gui.widgets.dock_area.dock_area import DockArea
+from chisurf.core.fio.staging import TTTR_EXTENSIONS, TTTR_FILE_FILTER
+from chisurf.core.runtime import analysis_cache
 from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.widgets.navigation import find_status_reporter
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.navigation import find_status_reporter
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 from chisurf.gui.widgets.tools import ChisurfDockTool
@@ -51,13 +50,7 @@ from ..api.mmfdb import (
     acquire_mmfdb_connection as _acquire_mmfdb_connection,
 )
 from ..api.mmfdb import (
-    file_md5 as _file_md5,
-)
-from ..api.mmfdb import (
     raw_artifact_id_for_path as _raw_artifact_id_for_path,
-)
-from ..api.mmfdb import (
-    raw_file_data_format as _raw_file_data_format,
 )
 from ..api.mmfdb import (
     register_raw_input_for_sample as _register_raw_input_for_sample,
@@ -81,16 +74,26 @@ from .adapter import (
     proximity_ratio_from_frame,
 )
 from .client import BurstSelectionClient
-from chisurf.core.fio.staging import TTTR_EXTENSIONS, TTTR_FILE_FILTER
 from .gmm_settings_dialog import DEFAULT_GMM_SETTINGS, GMMSettingsDialog
 
 # Curated common keys shown first; then all PDBx keys are appended.
 COMMON_METADATA_KEYS = [
-    "pH", "temperature", "ionic_strength", "buffer_composition",
-    "solvent_phase", "labeling_efficiency", "donor_only_fraction",
-    "acceptor_only_fraction", "dye_ratio", "quencher_concentration",
-    "time_resolution", "excitation_wavelength", "emission_wavelength",
-    "power", "temperature_control", "data_notes",
+    "pH",
+    "temperature",
+    "ionic_strength",
+    "buffer_composition",
+    "solvent_phase",
+    "labeling_efficiency",
+    "donor_only_fraction",
+    "acceptor_only_fraction",
+    "dye_ratio",
+    "quencher_concentration",
+    "time_resolution",
+    "excitation_wavelength",
+    "emission_wavelength",
+    "power",
+    "temperature_control",
+    "data_notes",
 ]
 
 # Build the full key list once
@@ -193,7 +196,9 @@ def histogram_data_from_frame(frame, feature: str) -> np.ndarray:
 class MetadataDialog(QtWidgets.QDialog):
     """Dialog for adding/editing metadata for burst analysis."""
 
-    def __init__(self, metadata: dict[str, str] | None = None, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(
+        self, metadata: dict[str, str] | None = None, parent: QtWidgets.QWidget = None
+    ) -> None:
         """Initialize the metadata dialog."""
         super().__init__(parent)
         self.setWindowTitle("Burst Analysis Metadata")
@@ -215,7 +220,10 @@ class MetadataDialog(QtWidgets.QDialog):
         buttons.addStretch()
         layout.addLayout(buttons)
 
-        dialog_buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        dialog_buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
         dialog_buttons.accepted.connect(self.accept)
         dialog_buttons.rejected.connect(self.reject)
         layout.addWidget(dialog_buttons)
@@ -287,7 +295,9 @@ class BatchProcessingDialog(QtWidgets.QDialog):
             )
         )
         self.list_widget = DropListWidget(self)
-        self.list_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.list_widget.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         self.list_widget.pathsDropped.connect(self._add_folders_from_paths)
         layout.addWidget(self.list_widget, 1)
         buttons = QtWidgets.QHBoxLayout()
@@ -342,7 +352,11 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
     def folders(self) -> list[Path]:
         """Return selected folders."""
-        return [Path(item.text()) for item_index in range(self.list_widget.count()) for item in [self.list_widget.item(item_index)]]
+        return [
+            Path(item.text())
+            for item_index in range(self.list_widget.count())
+            for item in [self.list_widget.item(item_index)]
+        ]
 
 
 def _trace_rate_hz(tttr_slice, bin_width_s: float, bin_width_ms: float, offset_s: float):
@@ -373,8 +387,7 @@ def _trace_rate_hz(tttr_slice, bin_width_s: float, bin_width_ms: float, offset_s
     tuple of numpy.ndarray
         ``(time_s, rate_hz)``, both empty when the slice holds no photons.
     """
-    trace = np.asarray(
-        tttr_slice.get_intensity_trace(time_window_length=bin_width_s), dtype=float)
+    trace = np.asarray(tttr_slice.get_intensity_trace(time_window_length=bin_width_s), dtype=float)
     macro_times = np.asarray(getattr(tttr_slice, "macro_times", []))
     skip = 0
     if macro_times.size and trace.size:
@@ -546,9 +559,27 @@ class BurstSelectionTool(ChisurfDockTool):
         layout.setSpacing(2)
         default_windows = {"prompt": (0, 2048), "delayed": (2048, 4095)}
         default_detectors = {
-            "green": {"chs": [8, 0, 3], "micro_time_ranges": [(0, 4095)], "g_factor": 1, "l1": 0, "l2": 0},
-            "red": {"chs": [9, 1, 2], "micro_time_ranges": [(0, 2048)], "g_factor": 1, "l1": 0, "l2": 0},
-            "yellow": {"chs": [9, 1, 2], "micro_time_ranges": [(2048, 4095)], "g_factor": 1, "l1": 0, "l2": 0},
+            "green": {
+                "chs": [8, 0, 3],
+                "micro_time_ranges": [(0, 4095)],
+                "g_factor": 1,
+                "l1": 0,
+                "l2": 0,
+            },
+            "red": {
+                "chs": [9, 1, 2],
+                "micro_time_ranges": [(0, 2048)],
+                "g_factor": 1,
+                "l1": 0,
+                "l2": 0,
+            },
+            "yellow": {
+                "chs": [9, 1, 2],
+                "micro_time_ranges": [(2048, 4095)],
+                "g_factor": 1,
+                "l1": 0,
+                "l2": 0,
+            },
         }
         self.wizard = WizardTTTRPhotonFilter(
             windows=default_windows,
@@ -639,7 +670,7 @@ class BurstSelectionTool(ChisurfDockTool):
             "doubleSpinBox_8",
             "doubleSpinBox_9",
             "doubleSpinBox_10",
-            "spinBox_9"
+            "spinBox_9",
         ):
             widget = getattr(self.wizard, name, None)
             if widget is not None:
@@ -690,7 +721,13 @@ class BurstSelectionTool(ChisurfDockTool):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
-        for layout_name in ("gridLayout_4", "gridLayout_8", "gridLayout_2", "gridLayout_3", "gridLayout"):
+        for layout_name in (
+            "gridLayout_4",
+            "gridLayout_8",
+            "gridLayout_2",
+            "gridLayout_3",
+            "gridLayout",
+        ):
             widget_layout = getattr(self.wizard, layout_name, None)
             if widget_layout is not None:
                 widget_layout.setContentsMargins(2, 2, 2, 2)
@@ -921,9 +958,7 @@ class BurstSelectionTool(ChisurfDockTool):
             return
         self.show_all_photons_check = QtWidgets.QCheckBox("All photons", self)
         self.show_all_photons_check.setChecked(True)
-        self.show_all_photons_check.setToolTip(
-            "Show diagnostic layers computed from all photons."
-        )
+        self.show_all_photons_check.setToolTip("Show diagnostic layers computed from all photons.")
         self.show_all_photons_check.hide()
         self.show_selected_photons_check = QtWidgets.QCheckBox("Selected photons", self)
         self.show_selected_photons_check.setChecked(True)
@@ -939,16 +974,12 @@ class BurstSelectionTool(ChisurfDockTool):
         self.plot_min_spin = QtWidgets.QSpinBox(self)
         self.plot_min_spin.setRange(0, 99_999_999)
         self.plot_min_spin.setValue(0)
-        self.plot_min_spin.setToolTip(
-            "Minimum photon index to process (0 = start of file)"
-        )
+        self.plot_min_spin.setToolTip("Minimum photon index to process (0 = start of file)")
         self.plot_min_spin.hide()
         self.plot_max_spin = QtWidgets.QSpinBox(self)
         self.plot_max_spin.setRange(0, 99_999_999)
         self.plot_max_spin.setValue(DEFAULT_PLOT_MAX)
-        self.plot_max_spin.setToolTip(
-            "Maximum photon index to process (default = end of file)"
-        )
+        self.plot_max_spin.setToolTip("Maximum photon index to process (default = end of file)")
         self.plot_max_spin.hide()
 
     def _ensure_display_view_model(self):
@@ -984,7 +1015,8 @@ class BurstSelectionTool(ChisurfDockTool):
             toolbar.setMovable(False)
             toolbar.setFloatable(False)
             widget = _display_sections._TimeWindowSection(
-                self._ensure_display_view_model(), compact=True)
+                self._ensure_display_view_model(), compact=True
+            )
             widget.setSizePolicy(
                 QtWidgets.QSizePolicy.Policy.Expanding,
                 QtWidgets.QSizePolicy.Policy.Preferred,
@@ -1008,7 +1040,6 @@ class BurstSelectionTool(ChisurfDockTool):
         from chisurf.gui.autoform import AutoForm
 
         from . import sections as _display_sections  # registers "burst_time_window"
-        from .display_view_model import BurstDisplayViewModel
 
         assert _display_sections is not None
         form = AutoForm(self._ensure_display_view_model(), parent)
@@ -1200,7 +1231,9 @@ class BurstSelectionTool(ChisurfDockTool):
         self.table = QtWidgets.QTableWidget(self)
         self.table.setColumnCount(len(UI_COLUMNS))
         self.table.setHorizontalHeaderLabels(UI_COLUMNS)
-        self.table.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.table.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding
+        )
         self.table.horizontalHeader().setStretchLastSection(True)
 
     def _build_docks(self) -> None:
@@ -1290,9 +1323,11 @@ class BurstSelectionTool(ChisurfDockTool):
         # parent with no layout to size it, so Qt draws it at its default
         # 640x480 in the corner — a ghost "Burst bins" spin box over the tab
         # bar. Hide what nothing placed.
-        for panel, placed in ((mcs_controls_panel, self.show_mcs_plot),
-                              (decay_controls_panel, self.show_decay_plot),
-                              (burst_controls_panel, self.show_burst_plot)):
+        for panel, placed in (
+            (mcs_controls_panel, self.show_mcs_plot),
+            (decay_controls_panel, self.show_decay_plot),
+            (burst_controls_panel, self.show_burst_plot),
+        ):
             if not placed:
                 panel.hide()
 
@@ -1356,7 +1391,13 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _connect_histogram_controls(self, slot: Any) -> None:
         """Connect histogram controls to a common update slot."""
-        controls = [self.feature_combo, self.hist_bins_spin, self.hist_min_spin, self.hist_max_spin, self.hist_log_y_check]
+        controls = [
+            self.feature_combo,
+            self.hist_bins_spin,
+            self.hist_min_spin,
+            self.hist_max_spin,
+            self.hist_log_y_check,
+        ]
         for control in controls:
             if isinstance(control, QtWidgets.QComboBox):
                 control.currentTextChanged.connect(slot)
@@ -1685,18 +1726,25 @@ class BurstSelectionTool(ChisurfDockTool):
 
         mode_text = self.wizard.comboBox_burst_filter.currentText()
         if "CUSUM" in mode_text:
-            used_filter = BurstFilterMode.CUSUM
+            pass
         elif "BOCPD" in mode_text:
-            used_filter = BurstFilterMode.BOCPD
+            pass
         elif "Kalman" in mode_text:
-            used_filter = BurstFilterMode.KALMAN
+            pass
         elif "Burst" in mode_text:
-            used_filter = BurstFilterMode.BURST
+            pass
         else:
-            used_filter = BurstFilterMode.COUNT_RATE
+            pass
 
         threshold = int(self.wizard.min_ph)
-        time_window = float(self.wizard.spinBox.value() if hasattr(self.wizard, 'spinBox') else DEFAULT_TIME_WINDOW_MS) / 1000.0
+        time_window = (
+            float(
+                self.wizard.spinBox.value()
+                if hasattr(self.wizard, "spinBox")
+                else DEFAULT_TIME_WINDOW_MS
+            )
+            / 1000.0
+        )
         # The number in the "Min photons" box, whatever the mode. It used to be
         # honoured for the sliding-window/CUSUM/Kalman modes and replaced by the
         # constant 60 for count-rate and the tttrlib registry searches -- back
@@ -1735,7 +1783,7 @@ class BurstSelectionTool(ChisurfDockTool):
             legacy_parameters.setdefault("decay_coarse", self.wizard.decay_coarse)
         return legacy_parameters
 
-    def _frame_from_result(self, path: Path, dataframes: dict[str, Any]) :
+    def _frame_from_result(self, path: Path, dataframes: dict[str, Any]):
         """Return the burst table for ``path`` from an analysis result."""
         keys = (str(path), str(path.resolve()), str(path.name))
         for key in keys:
@@ -1744,7 +1792,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 return store_from_rows(raw_frames)
         return new_store()
 
-    def _frame_for_path(self, path: Path) :
+    def _frame_for_path(self, path: Path):
         """Return a cached burst table for ``path`` when available."""
         resolved = path.resolve()
         if resolved in self._last_frames_by_file:
@@ -1755,6 +1803,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _selected_sample_id(self) -> str:
         """Return the selected MMFDB sample ID when the tool exposes one."""
+
         def safe_getattr(obj: object, name: str, default: object = None) -> object:
             """Read an attribute from Qt test doubles that may skip ``__init__``."""
             try:
@@ -1911,11 +1960,17 @@ class BurstSelectionTool(ChisurfDockTool):
             raise RuntimeError("MMFDB output requires an authenticated session.")
 
         normalized_paths = [path.resolve() for path in paths if path.is_file()]
-        sample_ids = {sample_id for path in normalized_paths if (sample_id := _sample_id_for_raw_path(db, path))}
+        sample_ids = {
+            sample_id
+            for path in normalized_paths
+            if (sample_id := _sample_id_for_raw_path(db, path))
+        }
         sample_id = self._selected_sample_id()
         if not sample_id and len(sample_ids) == 1:
             sample_id = next(iter(sample_ids))
-        if not sample_id or any(_sample_id_for_raw_path(db, path) is None for path in normalized_paths):
+        if not sample_id or any(
+            _sample_id_for_raw_path(db, path) is None for path in normalized_paths
+        ):
             selected = show_sample_picker_dialog(db=db, parent=self)
             if not selected:
                 raise RuntimeError("MMFDB output requires a registered sample for the raw data.")
@@ -2029,7 +2084,9 @@ class BurstSelectionTool(ChisurfDockTool):
         frame, metadata = self._analyze_file_frame(path, settings)
         self._display_frame_set([frame], settings, [self._file_index_for_path(path)])
         self._last_result = {"metadata": metadata, "settings": settings}
-        self.summary.setPlainText(json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str))
+        self.summary.setPlainText(
+            json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str)
+        )
 
     def _analyze_selected_files(self, paths: list[Path], settings: AnalysisSettings) -> None:
         """Analyze and stack burst tables for multiple selected files."""
@@ -2045,10 +2102,13 @@ class BurstSelectionTool(ChisurfDockTool):
         file_indices = [self._file_index_for_path(path) for path in paths]
         self._display_frame_set(frames, settings, file_indices)
         self._last_result = {"metadata": metadata, "settings": settings}
-        self.summary.setPlainText(json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str))
+        self.summary.setPlainText(
+            json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str)
+        )
 
-    def _update_selected_files(self, paths: list[Path], settings: AnalysisSettings,
-                               *, preview: bool = False) -> None:
+    def _update_selected_files(
+        self, paths: list[Path], settings: AnalysisSettings, *, preview: bool = False
+    ) -> None:
         """Show what is already known about these files, then load diagnostics.
 
         ``preview=True`` is the *arriving at the step* path: selecting a file,
@@ -2242,15 +2302,9 @@ class BurstSelectionTool(ChisurfDockTool):
         fingerprint = analysis_cache.fingerprint(
             self._file_paths,
             {**request, "_read_context": analysis_cache.photon_read_context()},
-            extra=analysis_cache.algorithm_tag(
-                "burst_selection", ALGORITHM_VERSION, "tttrlib"
-            ),
+            extra=analysis_cache.algorithm_tag("burst_selection", ALGORITHM_VERSION, "tttrlib"),
         )
-        if (
-            not force
-            and self._has_processed
-            and self._result_cache.matches(fingerprint)
-        ):
+        if not force and self._has_processed and self._result_cache.matches(fingerprint):
             self.summary.setPlainText(
                 "Unchanged — kept the previous burst search "
                 "(same files, same settings; nothing re-searched).\n"
@@ -2263,9 +2317,13 @@ class BurstSelectionTool(ChisurfDockTool):
 
         self.Error.clear()
         ChiSurfProgress.run(
-            self, f"Processing {len(self._file_paths)} file(s)...",
-            self._analysis_worker, args=(list(self._file_paths), request),
-            maximum=len(self._file_paths), title="Burst Selection", owner=self,
+            self,
+            f"Processing {len(self._file_paths)} file(s)...",
+            self._analysis_worker,
+            args=(list(self._file_paths), request),
+            maximum=len(self._file_paths),
+            title="Burst Selection",
+            owner=self,
             on_result=lambda result: self._analysis_finished(result, settings),
             on_error=self.Error.analysis_failed,
         )
@@ -2292,8 +2350,10 @@ class BurstSelectionTool(ChisurfDockTool):
         frames: list = []
         frames_by_file: dict = {}
         metadata: dict[str, Any] = {
-            "n_files": len(self._file_paths), "n_bursts": 0,
-            "n_photons": 0, "n_selected": 0,
+            "n_files": len(self._file_paths),
+            "n_bursts": 0,
+            "n_photons": 0,
+            "n_selected": 0,
         }
         dataframes = result.get("dataframes", {})
         for path in self._file_paths:
@@ -2315,13 +2375,19 @@ class BurstSelectionTool(ChisurfDockTool):
             selected_paths = self._selected_file_paths_from_list()
             if not selected_paths:
                 selected_paths = self._file_paths[:1]
-            selected_frames = [frame for path in selected_paths if (frame := self._frame_for_path(path)) is not None]
+            selected_frames = [
+                frame
+                for path in selected_paths
+                if (frame := self._frame_for_path(path)) is not None
+            ]
             selected_indices = [self._file_index_for_path(path) for path in selected_paths]
             if selected_frames:
                 self._display_frame_set(selected_frames, settings, selected_indices)
             elif self._file_paths:
                 self._display_frame_set([frames_by_file[self._file_paths[0]]], settings, [0])
-            self._load_tttr_for_plots(selected_paths if selected_paths else self._file_paths[:1], settings)
+            self._load_tttr_for_plots(
+                selected_paths if selected_paths else self._file_paths[:1], settings
+            )
             self.update_burst_plots()
             self._has_processed = True
             if self._running_fingerprint is not None:
@@ -2342,7 +2408,9 @@ class BurstSelectionTool(ChisurfDockTool):
             self._result_cache.invalidate()
 
         self._last_result = {"metadata": metadata, "settings": settings}
-        self.summary.setPlainText(json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str))
+        self.summary.setPlainText(
+            json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str)
+        )
 
     def _load_first_tttr_for_plots(self, settings: AnalysisSettings) -> None:
         """Load the first TTTR file and selected mask for diagnostic plots."""
@@ -2435,14 +2503,18 @@ class BurstSelectionTool(ChisurfDockTool):
             self.gmm_summary.clear()
             return
         min_value, max_value = self._valid_histogram_range(data)
-        counts, edges = np.histogram(data, bins=int(self.hist_bins_spin.value()), range=(min_value, max_value))
+        counts, edges = np.histogram(
+            data, bins=int(self.hist_bins_spin.value()), range=(min_value, max_value)
+        )
         centers = (edges[:-1] + edges[1:]) / 2.0
         width = edges[1] - edges[0]
         self.histogram_plot.clear()
         self.histogram_plot.setLabel("bottom", feature)
         self.histogram_plot.setLabel("left", "Frequency")
         self.histogram_plot.getPlotItem().setLogMode(bool(self.hist_log_y_check.isChecked()), False)
-        self.histogram_plot.addItem(pg.BarGraphItem(x=centers, height=counts, width=width, brush="b", pen="k", alpha=0.7))
+        self.histogram_plot.addItem(
+            pg.BarGraphItem(x=centers, height=counts, width=width, brush="b", pen="k", alpha=0.7)
+        )
         if self._fit_gmm_on_update:
             self._plot_gmm(data, min_value, max_value, counts)
         else:
@@ -2453,7 +2525,11 @@ class BurstSelectionTool(ChisurfDockTool):
         try:
             _LOG.debug("update_burst_plots called")
             diagnostics = self._safe_getattr("_last_diagnostics", None)
-            if not diagnostics and self._safe_getattr("_last_tttr", None) is not None and self._safe_getattr("_last_selected", None) is not None:
+            if (
+                not diagnostics
+                and self._safe_getattr("_last_tttr", None) is not None
+                and self._safe_getattr("_last_selected", None) is not None
+            ):
                 diagnostics = [
                     {
                         "path": self._safe_getattr("_last_diagnostic_path", None),
@@ -2488,7 +2564,9 @@ class BurstSelectionTool(ChisurfDockTool):
             )
             show_dt = self._dock_widget_is_present(getattr(self, "dt_plot", None))
             show_filter = self._plot_widget_is_docked("Filter")
-            show_filter_settings = self._dock_widget_is_present(getattr(self, "filter_settings_panel", None))
+            show_filter_settings = self._dock_widget_is_present(
+                getattr(self, "filter_settings_panel", None)
+            )
             d_t_visible: list[np.ndarray] = []
             # The budget belongs to the *plot*, so it is split across every
             # curve drawn into it -- one per file per visible layer. Splitting
@@ -2508,9 +2586,13 @@ class BurstSelectionTool(ChisurfDockTool):
                 self.filter_plot.clear()
 
             offsets = self._macro_time_offsets_ms(diagnostics)
-            first_visible_range: tuple[int, int, np.ndarray, np.ndarray, np.ndarray, Any, Path | None] | None = None
+            first_visible_range: (
+                tuple[int, int, np.ndarray, np.ndarray, np.ndarray, Any, Path | None] | None
+            ) = None
             photon_offset = 0
-            for file_index, (diag, selected) in enumerate(zip(diagnostics, selected_masks, strict=True)):
+            for file_index, (diag, selected) in enumerate(
+                zip(diagnostics, selected_masks, strict=True)
+            ):
                 local_start = max(0, start - photon_offset)
                 local_stop = min(len(selected), stop - photon_offset)
                 if local_stop <= local_start:
@@ -2519,17 +2601,33 @@ class BurstSelectionTool(ChisurfDockTool):
                 local_indices = np.arange(local_start, local_stop)
                 global_indices = local_indices + photon_offset
                 selected_slice = selected[local_start:local_stop]
-                d_t = self._delta_macro_time_ms(diag["tttr"], offsets[file_index])[local_start:local_stop]
+                d_t = self._delta_macro_time_ms(diag["tttr"], offsets[file_index])[
+                    local_start:local_stop
+                ]
                 if first_visible_range is None:
-                    first_visible_range = (local_start, local_stop, local_indices, selected_slice, d_t, diag["tttr"], diag.get("path"))
+                    first_visible_range = (
+                        local_start,
+                        local_stop,
+                        local_indices,
+                        selected_slice,
+                        d_t,
+                        diag["tttr"],
+                        diag.get("path"),
+                    )
                 if show_dt and d_t.size:
                     d_t_visible.append(d_t)
                     if show_all_photons:
-                        plot_x, plot_y = thin_for_plot(global_indices, d_t, max_points=plot_point_budget)
-                        self.dt_plot.plot(plot_x, plot_y, pen=self._diagnostic_pen(len(d_t_visible)), width=1)
+                        plot_x, plot_y = thin_for_plot(
+                            global_indices, d_t, max_points=plot_point_budget
+                        )
+                        self.dt_plot.plot(
+                            plot_x, plot_y, pen=self._diagnostic_pen(len(d_t_visible)), width=1
+                        )
                     if show_selected_photons:
                         plot_x, plot_y = thin_for_plot(
-                            global_indices[selected_slice], d_t[selected_slice], max_points=plot_point_budget
+                            global_indices[selected_slice],
+                            d_t[selected_slice],
+                            max_points=plot_point_budget,
                         )
                         self.dt_plot.plot(
                             plot_x,
@@ -2539,7 +2637,9 @@ class BurstSelectionTool(ChisurfDockTool):
                         )
                 if show_filter:
                     if show_all_photons:
-                        thinned_indices = thin_for_plot(global_indices, max_points=plot_point_budget)
+                        thinned_indices = thin_for_plot(
+                            global_indices, max_points=plot_point_budget
+                        )
                         self.filter_plot.plot(
                             thinned_indices,
                             np.zeros_like(thinned_indices, dtype=float),
@@ -2567,8 +2667,12 @@ class BurstSelectionTool(ChisurfDockTool):
                 _LOG.debug("filter plot updated")
 
             if show_filter_settings and first_visible_range is not None:
-                local_start, local_stop, local_indices, selected_slice, d_t, tttr, path = first_visible_range
-                self._update_filter_settings_diagnostics(local_start, local_stop, local_indices, selected_slice, d_t, tttr, path)
+                local_start, local_stop, local_indices, selected_slice, d_t, tttr, path = (
+                    first_visible_range
+                )
+                self._update_filter_settings_diagnostics(
+                    local_start, local_stop, local_indices, selected_slice, d_t, tttr, path
+                )
 
             if self._plot_widget_is_docked("MCS"):
                 self._update_mcs_plot(start, stop)
@@ -2618,14 +2722,25 @@ class BurstSelectionTool(ChisurfDockTool):
         """Return a diagnostic plot color for a file and selection layer."""
         if selected:
             return (0, 255, 255, 230)
-        palette = ((255, 255, 0), (255, 180, 0), (255, 0, 255), (180, 120, 255), (0, 255, 0), (255, 0, 0))
+        palette = (
+            (255, 255, 0),
+            (255, 180, 0),
+            (255, 0, 255),
+            (180, 120, 255),
+            (0, 255, 0),
+            (255, 0, 0),
+        )
         base = palette[file_index % len(palette)]
         return (base[0], base[1], base[2], 70)
 
     def _update_mcs_plot(self, start: int, stop: int) -> None:
         """Update the MCS intensity trace plot file-by-file."""
         diagnostics = self._safe_getattr("_last_diagnostics", None)
-        if not diagnostics and self._safe_getattr("_last_tttr", None) is not None and self._safe_getattr("_last_selected", None) is not None:
+        if (
+            not diagnostics
+            and self._safe_getattr("_last_tttr", None) is not None
+            and self._safe_getattr("_last_selected", None) is not None
+        ):
             diagnostics = [
                 {
                     "path": self._safe_getattr("_last_diagnostic_path", None),
@@ -2664,9 +2779,14 @@ class BurstSelectionTool(ChisurfDockTool):
                 try:
                     range_indices = np.arange(local_start, local_stop)
                     time_all, trace_all = _trace_rate_hz(
-                        tttr[range_indices], bin_width, bin_width_ms,
-                        offsets_ms[file_index] / 1000.0)
-                    time_all, trace_all = thin_for_plot(time_all, trace_all, max_points=plot_point_budget)
+                        tttr[range_indices],
+                        bin_width,
+                        bin_width_ms,
+                        offsets_ms[file_index] / 1000.0,
+                    )
+                    time_all, trace_all = thin_for_plot(
+                        time_all, trace_all, max_points=plot_point_budget
+                    )
                     self.mcs_plot.plot(
                         time_all,
                         trace_all,
@@ -2674,27 +2794,49 @@ class BurstSelectionTool(ChisurfDockTool):
                     )
                     plotted = True
                 except Exception:
-                    self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1))
+                    self.mcs_plot.plot(
+                        [], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1)
+                    )
             if show_selected:
                 selected_indices = np.where(selected[local_start:local_stop])[0] + local_start
                 try:
                     if selected_indices.size:
                         time_selected, trace_selected = _trace_rate_hz(
-                            tttr[selected_indices], bin_width, bin_width_ms,
-                            offsets_ms[file_index] / 1000.0)
+                            tttr[selected_indices],
+                            bin_width,
+                            bin_width_ms,
+                            offsets_ms[file_index] / 1000.0,
+                        )
                         time_selected, trace_selected = thin_for_plot(
                             time_selected, trace_selected, max_points=plot_point_budget
                         )
                         self.mcs_plot.plot(
                             time_selected,
                             trace_selected,
-                            pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH),
+                            pen=pg.mkPen(
+                                self._diagnostic_pen(file_index, selected=True),
+                                width=_SELECTED_PEN_WIDTH,
+                            ),
                         )
                         plotted = True
                     else:
-                        self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH))
+                        self.mcs_plot.plot(
+                            [],
+                            [],
+                            pen=pg.mkPen(
+                                self._diagnostic_pen(file_index, selected=True),
+                                width=_SELECTED_PEN_WIDTH,
+                            ),
+                        )
                 except Exception:
-                    self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH))
+                    self.mcs_plot.plot(
+                        [],
+                        [],
+                        pen=pg.mkPen(
+                            self._diagnostic_pen(file_index, selected=True),
+                            width=_SELECTED_PEN_WIDTH,
+                        ),
+                    )
             offset += len(selected)
         if not plotted:
             self.mcs_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
@@ -2705,7 +2847,11 @@ class BurstSelectionTool(ChisurfDockTool):
     def _update_decay_plot(self) -> None:
         """Update the microtime decay plot file-by-file."""
         diagnostics = self._safe_getattr("_last_diagnostics", None)
-        if not diagnostics and self._safe_getattr("_last_tttr", None) is not None and self._safe_getattr("_last_selected", None) is not None:
+        if (
+            not diagnostics
+            and self._safe_getattr("_last_tttr", None) is not None
+            and self._safe_getattr("_last_selected", None) is not None
+        ):
             diagnostics = [
                 {
                     "path": self._safe_getattr("_last_diagnostic_path", None),
@@ -2734,17 +2880,31 @@ class BurstSelectionTool(ChisurfDockTool):
                     self._plot_decay(y_all, x_all, self._diagnostic_pen(file_index))
                     plotted = True
                 except Exception:
-                    self.decay_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1))
+                    self.decay_plot.plot(
+                        [], [], pen=pg.mkPen(self._diagnostic_pen(file_index), width=1)
+                    )
             if show_selected:
                 try:
                     if selected_indices.size:
-                        y_selected, x_selected = tttr[selected_indices].get_microtime_histogram(coarse)
-                        self._plot_decay(y_selected, x_selected, self._diagnostic_pen(file_index, selected=True))
+                        y_selected, x_selected = tttr[selected_indices].get_microtime_histogram(
+                            coarse
+                        )
+                        self._plot_decay(
+                            y_selected, x_selected, self._diagnostic_pen(file_index, selected=True)
+                        )
                         plotted = True
                     else:
-                        self.decay_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1))
+                        self.decay_plot.plot(
+                            [],
+                            [],
+                            pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1),
+                        )
                 except Exception:
-                    self.decay_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1))
+                    self.decay_plot.plot(
+                        [],
+                        [],
+                        pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=1),
+                    )
         if not plotted:
             self.decay_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
 
@@ -2761,10 +2921,16 @@ class BurstSelectionTool(ChisurfDockTool):
         """Update the burst duration histogram file-by-file."""
         self.burst_plot.clear()
         if not self._show_selected_photons():
-            self.burst_plot.addItem(pg.TextItem("Selected photons hidden", anchor=(0.5, 0.5), color="w"))
+            self.burst_plot.addItem(
+                pg.TextItem("Selected photons hidden", anchor=(0.5, 0.5), color="w")
+            )
             return
         diagnostics = self._safe_getattr("_last_diagnostics", None)
-        if not diagnostics and self._safe_getattr("_last_tttr", None) is not None and self._safe_getattr("_last_selected", None) is not None:
+        if (
+            not diagnostics
+            and self._safe_getattr("_last_tttr", None) is not None
+            and self._safe_getattr("_last_selected", None) is not None
+        ):
             diagnostics = [
                 {
                     "path": self._safe_getattr("_last_diagnostic_path", None),
@@ -2774,7 +2940,9 @@ class BurstSelectionTool(ChisurfDockTool):
                 }
             ]
         if not diagnostics:
-            self.burst_plot.addItem(pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w"))
+            self.burst_plot.addItem(
+                pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w")
+            )
             return
         total = 0
         plotted = False
@@ -2800,7 +2968,9 @@ class BurstSelectionTool(ChisurfDockTool):
             total += int(np.sum(counts))
             plotted = True
         if not plotted:
-            self.burst_plot.addItem(pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w"))
+            self.burst_plot.addItem(
+                pg.TextItem("No burst data available", anchor=(0.5, 0.5), color="w")
+            )
             return
         self.burst_plot.setLabel("bottom", "Burst duration", units="ms")
         self.burst_plot.setLabel("left", "Frequency")
@@ -2825,7 +2995,11 @@ class BurstSelectionTool(ChisurfDockTool):
     def _burst_durations_ms(self) -> np.ndarray:
         """Return current burst durations in milliseconds for the first diagnostic file."""
         diagnostics = self._safe_getattr("_last_diagnostics", None)
-        if not diagnostics and self._safe_getattr("_last_tttr", None) is not None and self._safe_getattr("_last_start_stop", None) is not None:
+        if (
+            not diagnostics
+            and self._safe_getattr("_last_tttr", None) is not None
+            and self._safe_getattr("_last_start_stop", None) is not None
+        ):
             return self._burst_durations_ms_for_diag(
                 {
                     "path": self._safe_getattr("_last_diagnostic_path", None),
@@ -2903,7 +3077,9 @@ class BurstSelectionTool(ChisurfDockTool):
             reg_covar=s["reg_covar"],
         )
 
-    def _plot_gmm(self, data: np.ndarray, min_value: float, max_value: float, counts: np.ndarray) -> None:
+    def _plot_gmm(
+        self, data: np.ndarray, min_value: float, max_value: float, counts: np.ndarray
+    ) -> None:
         """Fit and plot an optional Gaussian mixture model."""
         try:
             from chisurf.core.ml import GaussianMixture  # noqa: F401  (availability check)
@@ -2920,7 +3096,9 @@ class BurstSelectionTool(ChisurfDockTool):
                 bic_scores.append(model.bic(data.reshape(-1, 1)))
             n_components = int(np.argmin(bic_scores) + 1)
         if n_components <= 0 or data.size < n_components:
-            self.gmm_summary.setPlainText("GMM fitting skipped: not enough data points or zero components.")
+            self.gmm_summary.setPlainText(
+                "GMM fitting skipped: not enough data points or zero components."
+            )
             return
         x_fit = np.linspace(min_value, max_value, 200).reshape(-1, 1)
         try:
@@ -2931,13 +3109,29 @@ class BurstSelectionTool(ChisurfDockTool):
                 scale = float(np.max(counts)) / float(np.max(y_fit))
             else:
                 scale = 1.0
-            self.histogram_plot.plot(x_fit.ravel(), y_fit * scale, pen=pg.mkPen("r", width=2), name="GMM Fit")
+            self.histogram_plot.plot(
+                x_fit.ravel(), y_fit * scale, pen=pg.mkPen("r", width=2), name="GMM Fit"
+            )
             for index in range(n_components):
                 mean = float(model.means_[index, 0])
                 variance = float(model.covariances_[index, 0, 0])
                 weight = float(model.weights_[index])
-                component = weight * np.exp(-0.5 * ((x_fit.ravel() - mean) ** 2) / variance) / np.sqrt(2 * np.pi * variance) * scale
-                self.histogram_plot.plot(x_fit.ravel(), component, pen=pg.mkPen(pg.intColor(index, hues=n_components), width=1, style=QtCore.Qt.PenStyle.DashLine), name=f"Gaussian {index + 1}")
+                component = (
+                    weight
+                    * np.exp(-0.5 * ((x_fit.ravel() - mean) ** 2) / variance)
+                    / np.sqrt(2 * np.pi * variance)
+                    * scale
+                )
+                self.histogram_plot.plot(
+                    x_fit.ravel(),
+                    component,
+                    pen=pg.mkPen(
+                        pg.intColor(index, hues=n_components),
+                        width=1,
+                        style=QtCore.Qt.PenStyle.DashLine,
+                    ),
+                    name=f"Gaussian {index + 1}",
+                )
             self.histogram_plot.addLegend()
             self.gmm_summary.setPlainText(self._gmm_table(model, n_components))
         except Exception as exc:
@@ -2953,7 +3147,6 @@ class BurstSelectionTool(ChisurfDockTool):
                 f"{float(model.means_[index, 0]):>8.3f}  {std:>9.3f}"
             )
         return "\n".join(lines)
-
 
     def _update_histogram_if_available(self) -> None:
         """Update the histogram only when analysis data is available."""
@@ -2971,12 +3164,16 @@ class BurstSelectionTool(ChisurfDockTool):
         """
         current = self.feature_combo.currentText()
         columns = column_names(frame)
-        if columns != [self.feature_combo.itemText(index) for index in range(self.feature_combo.count())]:
+        if columns != [
+            self.feature_combo.itemText(index) for index in range(self.feature_combo.count())
+        ]:
             self.feature_combo.blockSignals(True)
             self.feature_combo.clear()
             self.feature_combo.addItems(columns)
             index = self.feature_combo.findText(current)
-            self.feature_combo.setCurrentIndex(index if index >= 0 else self.feature_combo.findText(PROXIMITY_RATIO_COLUMN))
+            self.feature_combo.setCurrentIndex(
+                index if index >= 0 else self.feature_combo.findText(PROXIMITY_RATIO_COLUMN)
+            )
             self.feature_combo.blockSignals(False)
 
     def _refresh_file_list(self) -> None:
@@ -3024,7 +3221,9 @@ class BurstSelectionTool(ChisurfDockTool):
             if settings is None:
                 _LOG.debug("using current controls for diagnostic settings")
                 settings = self._settings_from_controls()
-            _LOG.debug("updating selected file results", paths=[str(path) for path in selected_paths])
+            _LOG.debug(
+                "updating selected file results", paths=[str(path) for path in selected_paths]
+            )
             # Selecting a file is a request to *look*, not to search.
             self._update_selected_files(selected_paths, settings, preview=True)
         except Exception as exc:
@@ -3110,9 +3309,9 @@ class BurstSelectionTool(ChisurfDockTool):
         if not detectors:
             return None
         gated = [
-            name for name, info in detectors.items()
-            if any(int(hi) > int(lo) for lo, hi in (info or {}).get(
-                "micro_time_ranges", []) or [])
+            name
+            for name, info in detectors.items()
+            if any(int(hi) > int(lo) for lo, hi in (info or {}).get("micro_time_ranges", []) or [])
         ]
         if not gated:
             return None
@@ -3160,14 +3359,13 @@ class BurstSelectionTool(ChisurfDockTool):
                 continue
             try:
                 frame = summarize_bursts(
-                    start_stop, diag.get("path") or "", tttr,
-                    windows=windows, detectors=detectors)
+                    start_stop, diag.get("path") or "", tttr, windows=windows, detectors=detectors
+                )
             except Exception:
                 _LOG.debug("preview burst table failed", exc_info=True)
                 continue
             frames.append(frame)
-            indices.append(self._file_index_for_path(Path(diag["path"]))
-                           if diag.get("path") else 0)
+            indices.append(self._file_index_for_path(Path(diag["path"])) if diag.get("path") else 0)
             n_bursts += int(len(start_stop))
         if not frames:
             return
@@ -3175,11 +3373,11 @@ class BurstSelectionTool(ChisurfDockTool):
         self._display_frame_set(frames, settings, indices)
         window_s, start_s = self._diagnostic_window()
         where = (
-            "the whole measurement" if window_s is None else
-            f"{start_s:.1f}\u2013{start_s + window_s:.1f} s"
+            "the whole measurement"
+            if window_s is None
+            else f"{start_s:.1f}\u2013{start_s + window_s:.1f} s"
         )
-        warning = self._gate_mismatch_warning(
-            diagnostics[0].get("tttr"), detectors)
+        warning = self._gate_mismatch_warning(diagnostics[0].get("tttr"), detectors)
         self.summary.setPlainText(
             f"Preview of {where}: {n_bursts} burst(s) in "
             f"{len(frames)} file(s).\n\n"
@@ -3239,8 +3437,9 @@ class BurstSelectionTool(ChisurfDockTool):
         # every file (about a second for a 20 M-photon container), and without a
         # task the window simply stops responding with nothing to say why.
         reporter = find_status_reporter(self)
-        task = reporter.begin_task(
-            "Loading burst diagnostics…", len(path_list)) if reporter else None
+        task = (
+            reporter.begin_task("Loading burst diagnostics…", len(path_list)) if reporter else None
+        )
         try:
             settings_dict = asdict(settings) if settings else {}
             for index, path in enumerate(path_list):
@@ -3249,12 +3448,13 @@ class BurstSelectionTool(ChisurfDockTool):
                 self._status_bar.showMessage(f"Loading diagnostics for {path.name}...")
                 if task is not None:
                     task.setValue(index)
-                    task.setLabelText(
-                        f"Reading {path.name} ({index + 1}/{len(path_list)})…")
+                    task.setLabelText(f"Reading {path.name} ({index + 1}/{len(path_list)})…")
                 window_s, window_start_s = self._diagnostic_window()
                 diag = self._client.load_diagnostics(
-                    path, settings_dict,
-                    window_s=window_s, window_start_s=window_start_s,
+                    path,
+                    settings_dict,
+                    window_s=window_s,
+                    window_start_s=window_start_s,
                     tttr=self._open_tttr.get(path.resolve()),
                 )
                 _LOG.debug("TTTR diagnostics loaded", keys=list(diag.keys()) if diag else [])
@@ -3264,9 +3464,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 diag["path"] = path
                 diagnostics.append(diag)
             self._last_diagnostics = diagnostics
-            self._open_tttr = {
-                Path(diag["path"]).resolve(): diag["tttr"] for diag in diagnostics
-            }
+            self._open_tttr = {Path(diag["path"]).resolve(): diag["tttr"] for diag in diagnostics}
             first = diagnostics[0]
             self._last_tttr = first["tttr"]
             self._last_selected = first["selected"]
@@ -3280,10 +3478,10 @@ class BurstSelectionTool(ChisurfDockTool):
             # all of them.
             previous_total = self.__dict__.get("_diagnostic_photon_total")
             self._diagnostic_photon_total = total_photons
-            self._sync_plot_range_controls(
-                total_photons, reset=previous_total != total_photons
+            self._sync_plot_range_controls(total_photons, reset=previous_total != total_photons)
+            _LOG.debug(
+                "TTTR diagnostics assigned; updating plots", paths=[str(path) for path in path_list]
             )
-            _LOG.debug("TTTR diagnostics assigned; updating plots", paths=[str(path) for path in path_list])
             self._status_bar.showMessage("Updating stacked plots...")
             # The visible-window slider is placed on a timeline that has just
             # been replaced; it re-reads the span and re-applies its window,
@@ -3511,7 +3709,9 @@ class BurstSelectionTool(ChisurfDockTool):
             return
         last_index = max(0, int(n_photons) - 1)
         min_value = 0 if reset else min(max(0, int(self.plot_min_spin.value())), last_index)
-        max_value = last_index if reset else min(max(0, int(self.plot_max_spin.value())), last_index)
+        max_value = (
+            last_index if reset else min(max(0, int(self.plot_max_spin.value())), last_index)
+        )
         if max_value < min_value:
             max_value = min_value
 
@@ -3675,24 +3875,32 @@ class BurstSelectionTool(ChisurfDockTool):
 
         # Canonical shared actions (same icon / colour / order as every plugin
         # toolbar: Add, Batch, Run🚀, Clear, Refresh). Detail in the tooltip.
-        self._act_add = action_button("add", on_click=self.add_files,
-                                      tooltip="Add TTTR files")
-        self._act_batch = action_button("batch", on_click=self.open_batch_dialog,
-                                        tooltip="Batch-process a folder of TTTR files")
-        self._act_process = action_button("run", on_click=self.analyze_files,
-                                          tooltip="Process all loaded files")
+        self._act_add = action_button("add", on_click=self.add_files, tooltip="Add TTTR files")
+        self._act_batch = action_button(
+            "batch", on_click=self.open_batch_dialog, tooltip="Batch-process a folder of TTTR files"
+        )
+        self._act_process = action_button(
+            "run", on_click=self.analyze_files, tooltip="Process all loaded files"
+        )
         # A search whose files and settings are unchanged is skipped; this is how
         # the user asks for it anyway.
         self._act_restart = action_button(
-            "restart", on_click=self._restart_search,
+            "restart",
+            on_click=self._restart_search,
             tooltip="Search the bursts again even if nothing changed",
         )
-        self._act_clear = action_button("clear", on_click=self.clear,
-                                        tooltip="Clear loaded files")
-        self._act_refresh = action_button("refresh", on_click=self.update_burst_plots,
-                                          tooltip="Refresh burst plots")
-        for _btn in (self._act_add, self._act_batch, self._act_process,
-                     self._act_restart, self._act_clear, self._act_refresh):
+        self._act_clear = action_button("clear", on_click=self.clear, tooltip="Clear loaded files")
+        self._act_refresh = action_button(
+            "refresh", on_click=self.update_burst_plots, tooltip="Refresh burst plots"
+        )
+        for _btn in (
+            self._act_add,
+            self._act_batch,
+            self._act_process,
+            self._act_restart,
+            self._act_clear,
+            self._act_refresh,
+        ):
             toolbar.addWidget(_btn)
 
         toolbar.addSeparator()
@@ -3717,16 +3925,12 @@ class BurstSelectionTool(ChisurfDockTool):
         toolbar.setProperty("_chisurf_right_spacer", True)
 
         ndx_action = QtWidgets.QAction("🔬 to ndX", self)
-        ndx_action.setToolTip(
-            "Open a registered burst selection from MMFDB in ndX"
-        )
+        ndx_action.setToolTip("Open a registered burst selection from MMFDB in ndX")
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
 
         send_ndx_action = QtWidgets.QAction("→ ndX (current)", self)
-        send_ndx_action.setToolTip(
-            "Send the current burst-selection result to ndX"
-        )
+        send_ndx_action.setToolTip("Send the current burst-selection result to ndX")
         send_ndx_action.triggered.connect(self._send_current_to_ndxplorer)
         toolbar.addAction(send_ndx_action)
 
@@ -3734,9 +3938,7 @@ class BurstSelectionTool(ChisurfDockTool):
         # carried this tool's help as HTML inside the source file. Help now lives
         # in ``help.md`` beside this module, where it is editable without
         # touching code and its links are live.
-        self.add_toolbar_help(
-            toolbar, resource="help.md", title="Burst Selection — help"
-        )
+        self.add_toolbar_help(toolbar, resource="help.md", title="Burst Selection — help")
 
     def _setup_statusbar(self) -> None:
         """Create the status bar."""
@@ -3780,9 +3982,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
             path = self._current_burst_output_path()
             if not path:
-                self._status_bar.showMessage(
-                    "No burst output to send: run an analysis first."
-                )
+                self._status_bar.showMessage("No burst output to send: run an analysis first.")
                 return
             send_path_to_ndxplorer(path, parent=self)
         except Exception as exc:
@@ -3906,6 +4106,7 @@ class BurstSelectionTool(ChisurfDockTool):
         """Save the current dock layout to QSettings."""
         try:
             import json
+
             settings = QtCore.QSettings("chisurf", "BurstSelectionTool")
             layout_state = self.dock_area.get_layout_state()
             settings.setValue("dock_layout", json.dumps(layout_state, sort_keys=True))
@@ -3917,6 +4118,7 @@ class BurstSelectionTool(ChisurfDockTool):
         """Restore the dock layout from QSettings."""
         try:
             import json
+
             settings = QtCore.QSettings("chisurf", "BurstSelectionTool")
             value = settings.value("dock_layout")
             if isinstance(value, str):

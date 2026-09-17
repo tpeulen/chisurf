@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -22,8 +21,8 @@ TEST_FOLDER = (
 class TestApi:
     def test_prepare_folder_returns_result(self):
         from chisurf.plugins.burst.mfd_prepare.api import (
-            prepare_folder,
             PrepareRequest,
+            prepare_folder,
         )
 
         result = prepare_folder(PrepareRequest(folder=str(TEST_FOLDER)))
@@ -34,20 +33,18 @@ class TestApi:
 
     def test_prepare_folder_no_photons(self):
         from chisurf.plugins.burst.mfd_prepare.api import (
-            prepare_folder,
             PrepareRequest,
+            prepare_folder,
         )
 
-        result = prepare_folder(
-            PrepareRequest(folder=str(TEST_FOLDER), with_photons=False)
-        )
+        result = prepare_folder(PrepareRequest(folder=str(TEST_FOLDER), with_photons=False))
         assert result.error == ""
         assert result.n_bursts > 0
 
     def test_prepare_nonexistent_folder(self):
         from chisurf.plugins.burst.mfd_prepare.api import (
-            prepare_folder,
             PrepareRequest,
+            prepare_folder,
         )
 
         result = prepare_folder(PrepareRequest(folder="/nonexistent/path"))
@@ -62,8 +59,8 @@ class TestApi:
 
     def test_result_to_dict_is_json_serializable(self):
         from chisurf.plugins.burst.mfd_prepare.api import (
-            prepare_folder,
             PrepareRequest,
+            prepare_folder,
         )
 
         result = prepare_folder(PrepareRequest(folder=str(TEST_FOLDER)))
@@ -74,6 +71,7 @@ class TestApi:
 class TestCli:
     def test_cli_contract(self):
         from click.testing import CliRunner
+
         from chisurf.plugins.burst.mfd_prepare.cli.main import cli
 
         runner = CliRunner()
@@ -84,17 +82,20 @@ class TestCli:
 
     def test_cli_prepare_report_only(self):
         from click.testing import CliRunner
+
         from chisurf.plugins.burst.mfd_prepare.cli.main import cli
 
         runner = CliRunner()
         result = runner.invoke(
-            cli, ["prepare", str(TEST_FOLDER), "--report-only", "--no-photons"],
+            cli,
+            ["prepare", str(TEST_FOLDER), "--report-only", "--no-photons"],
         )
         assert result.exit_code == 0
         assert "bursts:" in result.output
 
     def test_cli_has_fit_command(self):
         from click.testing import CliRunner
+
         from chisurf.plugins.burst.mfd_prepare.cli.main import cli
 
         runner = CliRunner()
@@ -106,6 +107,7 @@ class TestCli:
 @pytest.fixture
 def qapp():
     from qtpy import QtWidgets
+
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     yield app
 

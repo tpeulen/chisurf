@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import numpy as np
 
 import chisurf.core.math
@@ -9,10 +8,7 @@ import chisurf.core.math.datatools
 
 # bin_lifetime_spectrum = skf.decay.rate_spectra.bin_lifetime_spectrum
 def bin_lifetime_spectrum(
-    lifetime_spectrum: np.array,
-    n_lifetimes: int,
-    discriminate: bool,
-    discriminator=None
+    lifetime_spectrum: np.array, n_lifetimes: int, discriminate: bool, discriminator=None
 ) -> np.array:
     """Takes an interleaved lifetime spectrum
 
@@ -23,8 +19,7 @@ def bin_lifetime_spectrum(
     :return: lifetime_spectrum
     """
     amplitudes, lifetimes = chisurf.core.math.datatools.interleaved_to_two_columns(
-        lifetime_spectrum,
-        sort=False
+        lifetime_spectrum, sort=False
     )
     print(lifetimes)
     print(amplitudes)
@@ -37,30 +32,25 @@ def bin_lifetime_spectrum(
             weights=amplitudes,
             n_bins=n_lifetimes,
             tth_min=float(lifetimes.min()),
-            tth_max=float(lifetimes.max())
+            tth_max=float(lifetimes.max()),
         )
     else:
         lt, am = lifetimes, amplitudes
     if discriminate and discriminator is not None:
         lt, am = chisurf.core.math.datatools.discriminate(
-            values=lt,
-            weights=am,
-            discriminator=discriminator
+            values=lt, weights=am, discriminator=discriminator
         )
-    binned_lifetime_spectrum = chisurf.core.math.datatools.two_column_to_interleaved(
-        x=am,
-        t=lt
-    )
+    binned_lifetime_spectrum = chisurf.core.math.datatools.two_column_to_interleaved(x=am, t=lt)
     return binned_lifetime_spectrum
 
 
 def rescale_w_bg(
-        model_decay: np.array,
-        experimental_decay: np.array,
-        experimental_weights: np.array,
-        experimental_background: float,
-        start: int,
-        stop: int
+    model_decay: np.array,
+    experimental_decay: np.array,
+    experimental_weights: np.array,
+    experimental_background: float,
+    start: int,
+    stop: int,
 ) -> float:
     """Computes a scaling factor that scales a model decay to an
     experimental decay on a defined range.
@@ -118,13 +108,13 @@ def rescale_w_bg(
 
 
 def pddem_rates(
-        decayA: np.ndarray,
-        decayB: np.ndarray,
-        ks: np.ndarray,
-        px: np.ndarray,
-        pm: np.ndarray,
-        pAB: np.ndarray,
-        weights: np.ndarray,
+    decayA: np.ndarray,
+    decayB: np.ndarray,
+    ks: np.ndarray,
+    px: np.ndarray,
+    pm: np.ndarray,
+    pAB: np.ndarray,
+    weights: np.ndarray,
 ) -> np.ndarray:
     """The PDDEM spectrum for a whole FRET-rate spectrum, in one call.
 
@@ -234,12 +224,12 @@ def pddem_rates(
 
 
 def pddem(
-        decayA: np.ndarray,
-        decayB: np.ndarray,
-        k: np.ndarray,
-        px: np.ndarray,
-        pm: np.ndarray,
-        pAB: np.ndarray
+    decayA: np.ndarray,
+    decayB: np.ndarray,
+    k: np.ndarray,
+    px: np.ndarray,
+    pm: np.ndarray,
+    pAB: np.ndarray,
 ):
     """
     Electronic Energy Transfer within Asymmetric
@@ -264,7 +254,7 @@ def pddem(
     :param pAB: pure AB [0., 0]
     :return:
     """
-    #return _tcspc.pddem(decayA, decayB, k, px, pm, pAB)
+    # return _tcspc.pddem(decayA, decayB, k, px, pm, pAB)
     eps = 1e-9
 
     nA = decayA.shape[0] // 2
@@ -337,5 +327,3 @@ def pddem(
     d[0::2] = c
     d[1::2] = tau
     return d
-
-

@@ -4,14 +4,16 @@ import datetime
 import json
 import time
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
-from chisurf.plugins.fluorescence_decay.maxent_decay.core.sampling import sample_mem_distribution_mcmc
-from .qt_stack import ensure_qt_stack
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.plugins.fluorescence_decay.maxent_decay.core.sampling import (
+    sample_mem_distribution_mcmc,
+)
+
+from .qt_stack import ensure_qt_stack
 
 
 class _MaxentActionsMixin:
@@ -217,12 +219,14 @@ class _MaxentActionsMixin:
                     elapsed = time.perf_counter() - t0_sampling
                     remaining = (elapsed / float(done)) * (float(total) - done)
                     if remaining > 3600:
-                        eta_str = f" (ETA: {int(remaining // 3600)}h {int((remaining % 3600) // 60)}m)"
+                        eta_str = (
+                            f" (ETA: {int(remaining // 3600)}h {int((remaining % 3600) // 60)}m)"
+                        )
                     elif remaining > 60:
                         eta_str = f" (ETA: {int(remaining // 60)}m {int(remaining % 60)}s)"
                     else:
                         eta_str = f" (ETA: {int(remaining)}s)"
-                    
+
                     label = f"Sampling MEM distribution...{eta_str}"
                     progress.setLabelText(label)
             except Exception:
@@ -314,9 +318,9 @@ class _MaxentActionsMixin:
             t = self._t_axis
 
         try:
-            fit = self._current_fit()
+            self._current_fit()
         except Exception:
-            fit = None
+            pass
 
         start_dir = ""
         try:
@@ -379,7 +383,9 @@ class _MaxentActionsMixin:
 
         try:
             if dist_axis.size and p.size:
-                np.savetxt(out_dir / "distribution.txt", np.column_stack([dist_axis, p]), header="axis  p")
+                np.savetxt(
+                    out_dir / "distribution.txt", np.column_stack([dist_axis, p]), header="axis  p"
+                )
         except Exception:
             pass
 
@@ -401,7 +407,9 @@ class _MaxentActionsMixin:
             if lamp is not None and t is not None:
                 lamp_arr = np.asarray(lamp, dtype=float).ravel()
                 if lamp_arr.size == np.asarray(t, dtype=float).ravel().size:
-                    np.savetxt(out_dir / "irf.txt", np.column_stack([t, lamp_arr]), header="time  irf")
+                    np.savetxt(
+                        out_dir / "irf.txt", np.column_stack([t, lamp_arr]), header="time  irf"
+                    )
         except Exception:
             pass
 
@@ -410,7 +418,11 @@ class _MaxentActionsMixin:
                 t_seg = np.asarray(t, dtype=float).ravel()[fitstart : fitstop + 1]
                 wres_arr = np.asarray(wres, dtype=float).ravel()
                 if t_seg.size == wres_arr.size:
-                    np.savetxt(out_dir / "wres.txt", np.column_stack([t_seg, wres_arr]), header="time  wres")
+                    np.savetxt(
+                        out_dir / "wres.txt",
+                        np.column_stack([t_seg, wres_arr]),
+                        header="time  wres",
+                    )
         except Exception:
             pass
 

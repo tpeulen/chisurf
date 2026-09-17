@@ -14,9 +14,9 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from chimol.core.viewer import _DISPLAY_CONFIG
 from qtpy import QtWidgets
 
-from chimol.core.viewer import _DISPLAY_CONFIG
 from chisurf.plugins.modelling.fret.core.av_viewer_3d import AVViewer3D
 
 
@@ -54,7 +54,9 @@ def test_show_av_renders_a_transparent_surface_mesh(_qt_app):
     # A closed envelope is a few thousand triangles, orders of magnitude fewer
     # primitives than the 60k input points would be as sprites.
     n_tris = obj.geometry.indices.shape[0]
-    assert 0 < n_tris < av.shape[0], f"surface has {n_tris} tris, expected far fewer than {av.shape[0]}"
+    assert 0 < n_tris < av.shape[0], (
+        f"surface has {n_tris} tris, expected far fewer than {av.shape[0]}"
+    )
 
 
 def test_point_overlay_caps_dense_clouds(_qt_app):
@@ -64,5 +66,7 @@ def test_point_overlay_caps_dense_clouds(_qt_app):
     viewer.mol_view.set_coordinates(np.random.default_rng(0).standard_normal((200, 3)) * 10)
 
     cloud = np.random.default_rng(2).standard_normal((150000, 3)) * 15
-    viewer.mol_view.add_point_overlay("d", cloud, alpha=0.5, transform_to_scene=False, max_points=25000)
+    viewer.mol_view.add_point_overlay(
+        "d", cloud, alpha=0.5, transform_to_scene=False, max_points=25000
+    )
     assert viewer.mol_view._point_overlays["d"]["coords"].shape[0] == 25000

@@ -1,19 +1,20 @@
 """Plot controller classes for SM Acquisition plugin."""
 
+import numpy as np
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QSpinBox,
-    QDoubleSpinBox,
-    QCheckBox,
     QToolButton,
-    QComboBox,
+    QVBoxLayout,
+    QWidget,
 )
+
 import chisurf
-import numpy as np
 
 
 class DecayPlotController(QWidget):
@@ -98,7 +99,7 @@ class DecayPlotController(QWidget):
 
     def update_plot(self):
         """Update the decay plot based on current settings."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_decay_plot()
 
@@ -183,13 +184,13 @@ class CorrelationPlotController(QWidget):
 
     def on_channel_changed(self):
         """Handle channel selection changes."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_correlation_plot()
 
     def update_plot(self):
         """Update the correlation plot based on current settings."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_correlation_plot()
 
@@ -332,7 +333,7 @@ class CountRatePlotController(QWidget):
 
     def set_mean_line(self, curve_index):
         """Add a horizontal mean line for the specified curve."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             # Calculate the current mean value for the curve
             if curve_index < 4:  # Individual channels
@@ -354,7 +355,7 @@ class CountRatePlotController(QWidget):
 
     def update_plot(self):
         """Update the count rate plot based on current settings."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_count_rate_plot()
 
@@ -451,7 +452,7 @@ class MCSPlotController(QWidget):
 
     def update_plot(self):
         """Update the MCS plot based on current settings."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_mcs_plot()
 
@@ -502,6 +503,6 @@ class MacrotimePlotController(QWidget):
 
     def update_plot(self):
         """Update the macrotime plot based on current settings."""
-        if hasattr(chisurf.cs, '_acquisition_manager'):
+        if hasattr(chisurf.cs, "_acquisition_manager"):
             manager = chisurf.cs._acquisition_manager
             manager.update_macrotime_plot()

@@ -29,11 +29,7 @@ DOCS = REPO_ROOT / "docs"
 
 def _all_pages() -> list[pathlib.Path]:
     """Every Markdown page of the bundle, generated ones included."""
-    return [
-        path
-        for path in sorted(DOCS.rglob("*.md"))
-        if not SKIP_PARTS.intersection(path.parts)
-    ]
+    return [path for path in sorted(DOCS.rglob("*.md")) if not SKIP_PARTS.intersection(path.parts)]
 
 
 @pytest.mark.skipif(not DOCS.is_dir(), reason="documentation not in this distribution")

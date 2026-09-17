@@ -180,9 +180,7 @@ def test_the_prose_is_reached_through_the_documentation_tools(context):
 
 
 def test_a_repository_concept_reads_back(context):
-    result = documentation_tools.read_documentation(
-        context, document="okf/subsystems/llm-agent.md"
-    )
+    result = documentation_tools.read_documentation(context, document="okf/subsystems/llm-agent.md")
     assert "agent" in result["content"].lower()
 
 
@@ -219,12 +217,10 @@ def test_list_plugins_says_how_to_drive_a_plugin(context):
 
 
 def test_a_plugin_is_findable_by_its_rpc_method_name(context):
-    """"kappa" is what a user types; it appears only in the method name."""
+    """ "kappa" is what a user types; it appears only in the method name."""
     result = codebase_tools.list_plugins(context, query="kappa")
     names = [
-        method["name"]
-        for entry in result["plugins"]
-        for method in entry.get("rpc_methods", [])
+        method["name"] for entry in result["plugins"] for method in entry.get("rpc_methods", [])
     ]
     assert "kappa2_dist.compute" in names
 

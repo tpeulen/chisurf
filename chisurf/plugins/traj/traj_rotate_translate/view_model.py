@@ -138,18 +138,21 @@ class RotateTranslateViewModel:
             self.append_log(f"Loaded first frame with {frame_0.n_atoms} atoms")
             writer = None
             try:
-                for i, chunk in enumerate(md.iterload(filename, chunk=chunk_size,
-                                                      stride=stride, top=topology)):
+                for i, chunk in enumerate(
+                    md.iterload(filename, chunk=chunk_size, stride=stride, top=topology)
+                ):
                     xyz = chunk.xyz.copy()
                     rotate(xyz, rotation_matrix)
                     translate(xyz, translation_vector)
                     if writer is None:
                         # Opened on the first chunk so the frame spacing comes
                         # from the data rather than being assumed (RF-708).
-                        spacing = (float(chunk.time[1] - chunk.time[0])
-                                   if chunk.n_frames > 1 else 1.0)
-                        writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
-                                           delta=spacing or 1.0)
+                        spacing = (
+                            float(chunk.time[1] - chunk.time[0]) if chunk.n_frames > 1 else 1.0
+                        )
+                        writer = DCDWriter(
+                            target_filename, n_atoms=frame_0.n_atoms, delta=spacing or 1.0
+                        )
                     writer.write(xyz)
                     if (i + 1) % 10 == 0:
                         self.append_log(f"Processed {i + 1} chunks")

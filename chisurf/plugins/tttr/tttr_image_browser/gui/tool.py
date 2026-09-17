@@ -27,10 +27,13 @@ from chisurf.plugins.tttr.tttr_image_browser.gui.client import TTTRImageBrowserC
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
+
     def _persist_plugin_state(_name: str):
         def decorator(cls):
             return cls
+
         return decorator
+
     persist_plugin_state = _persist_plugin_state
 
 
@@ -182,11 +185,31 @@ class TTTRImageBrowserTool(ChisurfDockTool):
         toolbar = QToolBar(f"{Glyphs.TOOLBOX} {i18n.tr('TTTR Image Browser')}", self)
         toolbar.setObjectName("tttrImageBrowserMainToolbar")
         actions = [
-            (f"{Glyphs.OPEN} {i18n.tr('Open')}", self._workspace._on_pick_folder, i18n.tr("Pick a folder with TTTR images")),
-            (f"{Glyphs.CLEAR} {i18n.tr('Clear')}", self._workspace._on_clear, i18n.tr("Clear the file list")),
-            (f"{Glyphs.RESET} {i18n.tr('Caches')}", self._workspace._on_clear_caches, i18n.tr("Clear image caches")),
-            (f"{Glyphs.EXPORT} {i18n.tr('Export')}", self._workspace._on_export, i18n.tr("Export selected image files")),
-            ("TIFF", self._workspace._on_save_tiff, i18n.tr("Save intensity images as TIFF stacks")),
+            (
+                f"{Glyphs.OPEN} {i18n.tr('Open')}",
+                self._workspace._on_pick_folder,
+                i18n.tr("Pick a folder with TTTR images"),
+            ),
+            (
+                f"{Glyphs.CLEAR} {i18n.tr('Clear')}",
+                self._workspace._on_clear,
+                i18n.tr("Clear the file list"),
+            ),
+            (
+                f"{Glyphs.RESET} {i18n.tr('Caches')}",
+                self._workspace._on_clear_caches,
+                i18n.tr("Clear image caches"),
+            ),
+            (
+                f"{Glyphs.EXPORT} {i18n.tr('Export')}",
+                self._workspace._on_export,
+                i18n.tr("Export selected image files"),
+            ),
+            (
+                "TIFF",
+                self._workspace._on_save_tiff,
+                i18n.tr("Save intensity images as TIFF stacks"),
+            ),
             ("DOCX", self._workspace._on_export_docx, i18n.tr("Export selected images as DOCX")),
         ]
         for text, slot, tooltip in actions:
@@ -199,7 +222,9 @@ class TTTRImageBrowserTool(ChisurfDockTool):
         # the Image Tools shell). Steps remain freely navigable on the left.
         toolbar.addSeparator()
         next_action = QAction(f"{i18n.tr('Next')} ▶ {i18n.tr('Intensity')}", self)
-        next_action.setToolTip(i18n.tr("Send the current image to the imaging pipeline (Intensity step)."))
+        next_action.setToolTip(
+            i18n.tr("Send the current image to the imaging pipeline (Intensity step).")
+        )
         next_action.triggered.connect(self._on_next_step)
         toolbar.addAction(next_action)
 
@@ -215,7 +240,11 @@ class TTTRImageBrowserTool(ChisurfDockTool):
         toolbar.addWidget(spacer)
 
         help_action = QAction(f"❔ {i18n.tr('Help')}", self)
-        help_action.setToolTip(i18n.tr("Show what TTTR Image Browser does, how the toolbar works, and how to use the CLI"))
+        help_action.setToolTip(
+            i18n.tr(
+                "Show what TTTR Image Browser does, how the toolbar works, and how to use the CLI"
+            )
+        )
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)
         self.addToolBar(toolbar)

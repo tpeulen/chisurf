@@ -95,7 +95,7 @@ def drifting_kymograph(
     centre = origin + (start - origin + velocity * t) % spans
     dx = np.abs(grid[None, :, None] - centre[:, None, :])
     dx = np.minimum(dx, n_x - dx)
-    rate = np.exp(-(dx ** 2) / (2.0 * width ** 2)).sum(axis=2)
+    rate = np.exp(-(dx**2) / (2.0 * width**2)).sum(axis=2)
     return rng.poisson(rate * brightness).astype(float)
 
 
@@ -150,7 +150,7 @@ def drifting_stack(
             dy = np.abs(ys - cy)
             dx = np.minimum(dx, n - dx)
             dy = np.minimum(dy, n - dy)
-            image += np.exp(-(dx ** 2 + dy ** 2) / (2.0 * width ** 2))
+            image += np.exp(-(dx**2 + dy**2) / (2.0 * width**2))
         frames.append(image)
     return rng.poisson(np.asarray(frames) * brightness).astype(float)
 
@@ -288,12 +288,8 @@ def test_the_transit_time_and_velocity_are_recovered():
 
 def test_the_velocity_sign_follows_the_flow():
     """Reversing the drift reverses the reported velocity, nothing else."""
-    forward = pcf_from_kymograph(
-        drifting_kymograph(velocity=+0.25), deltas=(4, -4), timing=TIMING
-    )
-    backward = pcf_from_kymograph(
-        drifting_kymograph(velocity=-0.25), deltas=(4, -4), timing=TIMING
-    )
+    forward = pcf_from_kymograph(drifting_kymograph(velocity=+0.25), deltas=(4, -4), timing=TIMING)
+    backward = pcf_from_kymograph(drifting_kymograph(velocity=-0.25), deltas=(4, -4), timing=TIMING)
     v_f = np.nanmedian(forward.velocity(4))
     v_b = np.nanmedian(backward.velocity(4))
     assert v_f > 0.0 > v_b
@@ -318,8 +314,13 @@ def test_a_barrier_deletes_the_pair_correlation_but_not_the_local_one():
     """
     n_x, wall, distance = 64, 32, 6
     intensity = drifting_kymograph(
-        velocity=0.25, n_x=n_x, barrier=wall, n_molecules=20,
-        n_time=8000, brightness=60.0, width=1.0,
+        velocity=0.25,
+        n_x=n_x,
+        barrier=wall,
+        n_molecules=20,
+        n_time=8000,
+        brightness=60.0,
+        width=1.0,
     )
     carpet = pcf_from_kymograph(intensity, deltas=(0, distance), timing=TIMING)
 
@@ -328,7 +329,7 @@ def test_a_barrier_deletes_the_pair_correlation_but_not_the_local_one():
 
     # Everywhere the pair lies inside one compartment the transit time is the
     # right one, to better than a percent.
-    inside = np.concatenate([transit[:wall - 8], transit[wall + 4:n_x - distance]])
+    inside = np.concatenate([transit[: wall - 8], transit[wall + 4 : n_x - distance]])
     assert np.all(np.isfinite(inside))
     assert np.allclose(inside, expected, rtol=0.15)
 
@@ -337,7 +338,7 @@ def test_a_barrier_deletes_the_pair_correlation_but_not_the_local_one():
     # The pixel immediately against the wall is left out on purpose -- an
     # emitter one pixel from the wall still lights the pixel on the far side of
     # it, so a barrier is localized to about a spot width and no better.
-    straddling = transit[wall - 4:wall - 1]
+    straddling = transit[wall - 4 : wall - 1]
     assert np.all(straddling > 2.5 * expected)
 
     crossing = carpet.map(distance)[wall - 3]
@@ -403,8 +404,7 @@ def test_a_pcf_without_a_time_axis_is_refused():
     """A timing with no line duration cannot produce a transit time."""
     intensity = drifting_kymograph(n_time=400, n_x=8, seed=1)
     with pytest.raises(ValueError, match="frame duration is not set"):
-        pcf_from_kymograph(intensity, (1,), IcsTiming(frame_duration_ms=0.0),
-                           time_unit="frame")
+        pcf_from_kymograph(intensity, (1,), IcsTiming(frame_duration_ms=0.0), time_unit="frame")
     with pytest.raises(ValueError, match="n_time, n_positions"):
         pcf_from_kymograph(np.zeros((3, 4, 5)), (1,), TIMING)
     with pytest.raises(ValueError, match="segments"):
@@ -418,9 +418,7 @@ def test_the_carpet_pcf_at_zero_distance_is_the_tics_decay():
     """``pcf_curve(0)`` and ``tics_curve()`` are the same column of one carpet."""
     stack = drifting_stack(velocity=0.5, n=24, n_frames=60, seed=2)
     timing = scan_timing(24)
-    carpet = compute_ics_carpet(
-        stack, IcsSettings(frame_lags=tuple(range(4)), timing=timing)
-    )
+    carpet = compute_ics_carpet(stack, IcsSettings(frame_lags=tuple(range(4)), timing=timing))
     tau_t, g_t = carpet.tics_curve()
     tau_p, g_p = carpet.pcf_curve(0)
     assert np.allclose(tau_t, tau_p)
@@ -446,9 +444,7 @@ def test_the_stics_peak_moves_against_the_flow():
     """
     stack = drifting_stack(velocity=1.0, n=32, n_frames=120, seed=13)
     timing = scan_timing(32)
-    carpet = compute_ics_carpet(
-        stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing)
-    )
+    carpet = compute_ics_carpet(stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing))
     for lag in range(5):
         xi, psi = carpet.peak_shift(lag)
         assert xi == pytest.approx(-1.0 * lag, abs=0.15)
@@ -467,9 +463,7 @@ def test_the_slow_axis_is_not_the_fast_axis():
     """Drift along the lines shows up in ``vy``, not in ``vx``."""
     stack = drifting_stack(velocity=1.0, n=32, n_frames=120, seed=13, axis="y")
     timing = scan_timing(32)
-    carpet = compute_ics_carpet(
-        stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing)
-    )
+    carpet = compute_ics_carpet(stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing))
     flow = carpet.velocity()
     assert flow.vy > 0.0
     assert abs(flow.vx) < 0.1 * abs(flow.vy)
@@ -486,9 +480,7 @@ def test_the_gaussian_peak_fit_beats_the_centroid_on_sub_pixel_drift():
     """
     stack = drifting_stack(velocity=0.2, n=32, n_frames=400, seed=11)
     timing = scan_timing(32)
-    carpet = compute_ics_carpet(
-        stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing)
-    )
+    carpet = compute_ics_carpet(stack, IcsSettings(frame_lags=tuple(range(5)), timing=timing))
     expected = 0.2 * timing.pixel_size_nm * 1e-3 / (timing.frame_duration_ms * 1e-3)
     gauss = carpet.velocity(method="gauss").vx
     centroid = carpet.velocity(method="centroid", window=2).vx
@@ -505,9 +497,7 @@ def test_the_gaussian_peak_fit_beats_the_centroid_on_sub_pixel_drift():
 def test_a_velocity_needs_a_time_and_a_length():
     """Without a frame time or a pixel size a peak shift is not a velocity."""
     stack = drifting_stack(velocity=1.0, n=24, n_frames=40, seed=4)
-    one_lag = compute_ics_carpet(
-        stack, IcsSettings(frame_lags=(0,), timing=scan_timing(24))
-    )
+    one_lag = compute_ics_carpet(stack, IcsSettings(frame_lags=(0,), timing=scan_timing(24)))
     with pytest.raises(ValueError, match="at least two frame lags"):
         one_lag.velocity()
 
@@ -571,7 +561,7 @@ def banded_stack(
             dy = np.abs(ys - cy)
             dx = np.minimum(dx, n - dx)
             dy = np.minimum(dy, n - dy)
-            image += np.exp(-(dx ** 2 + dy ** 2) / (2.0 * width ** 2))
+            image += np.exp(-(dx**2 + dy**2) / (2.0 * width**2))
         frames.append(image)
     return rng.poisson(np.asarray(frames) * 30.0).astype(float)
 

@@ -1,14 +1,13 @@
-
 """CSV files"""
+
 import csv
+import os
 import pathlib
 import warnings
-import os
 
 import numpy as np
 
 import chisurf.core.fluorescence.fcs
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
@@ -78,15 +77,15 @@ def openCSV(path, filename=None):
         path = path / filename
     filename = path.name
     # Check if the file is correlation data
-    with path.open("r", encoding='utf-8') as fd:
+    with path.open("r", encoding="utf-8") as fd:
         firstline = fd.readline()
         if firstline.lower().count("this is not correlation data") > 0:
             return None
 
     # Define what will happen to the file
     timefactor = 1000  # because we want ms instead of s
-    csvfile = path.open('r', encoding='utf-8')
-    readdata = csv.reader(csvfile, delimiter=',')
+    csvfile = path.open("r", encoding="utf-8")
+    readdata = csv.reader(csvfile, delimiter=",")
     data = list()
     weights = list()
     weightname = "external"
@@ -113,24 +112,22 @@ def openCSV(path, filename=None):
             elif corrtype[0:15].lower() == "autocorrelation":
                 DataType = "AC"
                 DataType += corrtype[15:].strip()
-        elif str(row[0])[0:13].upper() == '# BEGIN TRACE':
+        elif str(row[0])[0:13].upper() == "# BEGIN TRACE":
             # Correlation is over. We have a trace
             corr = np.array(data)
             data = list()
             numtraces = 1
-        elif str(row[0])[0:20].upper() == '# BEGIN SECOND TRACE':
+        elif str(row[0])[0:20].upper() == "# BEGIN SECOND TRACE":
             # First trace is over. We have a second trace
             traceA = np.array(data)
             data = list()
             numtraces = 2
         elif "avg. signal" in row[0]:
-            count_rates.append(
-                float(row[0].split("\t")[1].strip())
-            )
+            count_rates.append(float(row[0].split("\t")[1].strip()))
         # Exclude commentaries
         elif "#   duration [s]	" in row[0]:
             duration = float(row[0].split("\t")[1].strip())
-        elif str(row[0])[0:1] != '#':
+        elif str(row[0])[0:1] != "#":
             # Read the 1st section
             # On Windows we had problems importing nan values that
             # had some white-spaces around them. Therefore: strip()
@@ -138,17 +135,16 @@ def openCSV(path, filename=None):
             # separated values as well
             if len(row) == 1:
                 row = row[0].split()
-            data.append((float(row[0].strip())*timefactor,
-                         float(row[1].strip())))
+            data.append((float(row[0].strip()) * timefactor, float(row[1].strip())))
             if len(row) == 5:
                 # this has to be correlation with weights
                 weights.append(float(row[4].strip()))
                 if weightname == "external":
                     try:
-                        weightname = "ext. " + \
-                            prev_row[0].split("Weights")[1].split(
-                                "[")[1].split("]")[0]
-                    except:
+                        weightname = (
+                            "ext. " + prev_row[0].split("Weights")[1].split("[")[1].split("]")[0]
+                        )
+                    except Exception:
                         pass
         prev_row = row
     # Collect the rest of the trace, if there is any:
@@ -195,9 +191,7 @@ def openCSV(path, filename=None):
     return dictionary
 
 
-def read_pycorrfit_header(
-        filename: str
-) -> str:
+def read_pycorrfit_header(filename: str) -> str:
     """Read the comment header from a PyCorrFit CSV file.
 
     Parameters
@@ -211,7 +205,7 @@ def read_pycorrfit_header(
         The comment header string.
     """
     header = ""
-    with open(filename, "r") as fp:
+    with open(filename) as fp:
         lines = fp.readlines()
         for line in lines:
             if line[0] == "#":
@@ -221,10 +215,7 @@ def read_pycorrfit_header(
     return header
 
 
-def read_pycorrfit(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_pycorrfit(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read a PyCorrFit CSV file and return FCS datasets.
 
     Parameters
@@ -239,48 +230,44 @@ def read_pycorrfit(
     list of FCSDataset
         List of FCS datasets.
     """
-    header = read_pycorrfit_header(
-        filename=filename
-    )
+    header = read_pycorrfit_header(filename=filename)
     if verbose:
         print("Reading PyCorrFit from file: ", filename)
     d = openCSV(filename)
     correlations = list()
-    for i, correlation in enumerate(d['Correlation']):
+    for i, correlation in enumerate(d["Correlation"]):
         r = dict()
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1]
-        if d['Trace'][i] is not None:
-            intenstiy_trace_time = (d['Trace'][i][0][:, 0] / 1000.0).tolist()
-            intensity_trace_ch1 = (d['Trace'][i][0][:, 1]).tolist()
+        if d["Trace"][i] is not None:
+            intenstiy_trace_time = (d["Trace"][i][0][:, 0] / 1000.0).tolist()
+            intensity_trace_ch1 = (d["Trace"][i][0][:, 1]).tolist()
             r.update(
                 {
-                    'intensity_trace_time_ch1': intenstiy_trace_time,
-                    'intensity_trace_ch1': intensity_trace_ch1
+                    "intensity_trace_time_ch1": intenstiy_trace_time,
+                    "intensity_trace_ch1": intensity_trace_ch1,
                 }
             )
         aquisition_time = d["Duration"]
         mean_count_rate = np.mean(d["Count rates"][i])
-        w = 1. / chisurf.core.fluorescence.fcs.noise(
-                    times=correlation_time,
-                    correlation=correlation_amplitude,
-                    measurement_duration=aquisition_time,
-                    mean_count_rate=mean_count_rate,
-                )
+        w = 1.0 / chisurf.core.fluorescence.fcs.noise(
+            times=correlation_time,
+            correlation=correlation_amplitude,
+            measurement_duration=aquisition_time,
+            mean_count_rate=mean_count_rate,
+        )
         r.update(
             {
-                'filename': filename,
-                'measurement_id': "%s_%s" % (
-                    os.path.splitext(os.path.basename(d['Filename']))[0], i
+                "filename": filename,
+                "measurement_id": "{}_{}".format(
+                    os.path.splitext(os.path.basename(d["Filename"]))[0], i
                 ),
-                'acquisition_time': aquisition_time,
-                'mean_count_rate': mean_count_rate,
-                'correlation_times': correlation_time,
-                'correlation_amplitudes': correlation_amplitude,
-                'correlation_amplitude_weights': w.tolist(),
-                'meta_data': {
-                    'header': header
-                }
+                "acquisition_time": aquisition_time,
+                "mean_count_rate": mean_count_rate,
+                "correlation_times": correlation_time,
+                "correlation_amplitudes": correlation_amplitude,
+                "correlation_amplitude_weights": w.tolist(),
+                "meta_data": {"header": header},
             }
         )
         correlations.append(r)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 from chisurf.core.plugin import load_manifest
 
 # Load manifest as source of truth
@@ -13,6 +14,7 @@ else:
 # When the plugin is loaded, this code will be executed
 if __name__ == "plugin":
     from chisurf.plugins.core.user_editor.gui.tool import UserEditorWidget
+
     # Create an instance of the UserEditorWidget class
     window = UserEditorWidget()
     # Show the window

@@ -7,11 +7,15 @@ import chisurf.gui
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--run-slow", action="store_true", default=False,
+        "--run-slow",
+        action="store_true",
+        default=False,
         help="Run slow tests (reader-heavy PDB, TTTR, etc.)",
     )
     parser.addoption(
-        "--run-xfail", action="store_true", default=False,
+        "--run-xfail",
+        action="store_true",
+        default=False,
         help="Run expected-to-fail (xfail) tests",
     )
 

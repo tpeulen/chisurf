@@ -38,7 +38,11 @@ def window(qapp, tmp_path):
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
@@ -123,15 +127,21 @@ def _ball_count(window) -> int:
 
 def test_a_scoped_show_touches_only_the_named_representation(cmd):
     """`show sticks, mysel` scopes sticks; the other representations are not
-    materialised -- one rep's scoping never bleeds into another's."""
+    materialised -- one rep's scoping never bleeds into another's.
+    """
     _run(cmd, "select mysel, chain E and resi 1-40")
     _run(cmd, "as cartoon")
     _run(cmd, "show sticks, mysel")
     assert _stick_count(cmd.window) == _count(cmd, "chain E and resi 1-40")
-    state = cmd.window.viewer.objects.get(
-        str(cmd.window.viewer.get_active_object_id())).state
-    for field in ("dots_mask", "surface_mask", "lines_mask", "nonbonded_mask",
-                  "label_mask", "metaball_mask"):
+    state = cmd.window.viewer.objects.get(str(cmd.window.viewer.get_active_object_id())).state
+    for field in (
+        "dots_mask",
+        "surface_mask",
+        "lines_mask",
+        "nonbonded_mask",
+        "label_mask",
+        "metaball_mask",
+    ):
         assert getattr(state, field) is None, f"{field} was materialised by show sticks"
 
 
@@ -139,7 +149,8 @@ def test_a_scoped_show_from_off_materialises_the_selection(cmd):
     """Spheres off everywhere, then `show spheres, mysel`: exactly the selection
     draws. The stored all-off mask is residue-length (the global toggle's
     legacy), so this also pins that a scoped show survives a residue/atom-length
-    mismatch instead of broadcasting."""
+    mismatch instead of broadcasting.
+    """
     _run(cmd, "hide everything")
     _run(cmd, "select mysel, chain E and resi 1-40")
     _run(cmd, "show spheres, mysel")
@@ -149,7 +160,8 @@ def test_a_scoped_show_from_off_materialises_the_selection(cmd):
 def test_a_scoped_hide_from_everywhere_removes_only_the_selection(cmd):
     """`hide sticks, mysel` from sticks-on-everywhere leaves exactly the
     selection off. The all-on mask is materialised, so a later scoped hide can
-    carve into it."""
+    carve into it.
+    """
     _run(cmd, "select mysel, chain E")
     _run(cmd, "show sticks, all")
     total = _count(cmd, "all")
@@ -160,20 +172,19 @@ def test_a_scoped_hide_from_everywhere_removes_only_the_selection(cmd):
 def test_as_scoped_to_a_selection_switches_only_the_selection(cmd):
     """`as spheres, mysel` is "hide everything, then show spheres" *scoped to
     mysel*: spheres draw for the selection, and the rest of the molecule keeps
-    what it had (cartoon here) rather than being switched too."""
+    what it had (cartoon here) rather than being switched too.
+    """
     _run(cmd, "hide everything")
     _run(cmd, "show cartoon")
     _run(cmd, "select mysel, chain E and resi 1-40")
     _run(cmd, "as spheres, mysel")
-    state = cmd.window.viewer.objects.get(
-        str(cmd.window.viewer.get_active_object_id())).state
+    state = cmd.window.viewer.objects.get(str(cmd.window.viewer.get_active_object_id())).state
     assert state.show_atoms
     assert not state.show_sticks
     assert _ball_count(cmd.window) == _count(cmd, "chain E and resi 1-40")
     assert state.show_cartoon
     assert state.cartoon_mask is not None
     assert state.cartoon_mask.any() and not state.cartoon_mask.all()
-
 
 
 def test_anonymous_select_names_the_default_sele(cmd):

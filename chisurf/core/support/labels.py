@@ -44,14 +44,41 @@ _SUPERSCRIPT_DIGITS = str.maketrans("0123456789+-=()", "⁰¹²³⁴⁵⁶⁷⁸
 #: the capital letter, so ``Phi_D`` is the donor quantum yield and ``phi`` the
 #: lower-case letter.
 GREEK: dict[str, str] = {
-    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
-    "zeta": "ζ", "eta": "η", "theta": "θ", "iota": "ι", "kappa": "κ",
-    "lambda": "λ", "mu": "µ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ",
-    "sigma": "σ", "tau": "τ", "upsilon": "υ", "phi": "φ", "chi": "χ",
-    "psi": "ψ", "omega": "ω",
-    "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ", "Lambda": "Λ", "Xi": "Ξ",
-    "Pi": "Π", "Sigma": "Σ", "Upsilon": "Υ", "Phi": "Φ", "Chi": "Χ",
-    "Psi": "Ψ", "Omega": "Ω",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "delta": "δ",
+    "epsilon": "ε",
+    "zeta": "ζ",
+    "eta": "η",
+    "theta": "θ",
+    "iota": "ι",
+    "kappa": "κ",
+    "lambda": "λ",
+    "mu": "µ",
+    "nu": "ν",
+    "xi": "ξ",
+    "pi": "π",
+    "rho": "ρ",
+    "sigma": "σ",
+    "tau": "τ",
+    "upsilon": "υ",
+    "phi": "φ",
+    "chi": "χ",
+    "psi": "ψ",
+    "omega": "ω",
+    "Gamma": "Γ",
+    "Delta": "Δ",
+    "Theta": "Θ",
+    "Lambda": "Λ",
+    "Xi": "Ξ",
+    "Pi": "Π",
+    "Sigma": "Σ",
+    "Upsilon": "Υ",
+    "Phi": "Φ",
+    "Chi": "Χ",
+    "Psi": "Ψ",
+    "Omega": "Ω",
 }
 
 #: Maximal runs of ASCII letters. Matching whole runs rather than the Greek
@@ -142,8 +169,7 @@ def to_rich(text: str) -> str:
             # eat the one that closes an enclosing group (``P(R_DA)``), nor a
             # comma or full stop that belongs to the sentence around it.
             while body and (
-                (body[-1] == ")" and body.count(")") > body.count("("))
-                or body[-1] in ",."
+                (body[-1] == ")" and body.count(")") > body.count("(")) or body[-1] in ",."
             ):
                 trailing = body[-1] + trailing
                 body = body[:-1]
@@ -219,9 +245,7 @@ def to_unicode(text: str) -> str:
     if not text:
         return ""
     source = _TAG_RE.sub("", html.unescape(str(text)))
-    lettered = _WORD_RE.sub(
-        lambda m: GREEK.get(m.group(0), m.group(0)), source
-    )
+    lettered = _WORD_RE.sub(lambda m: GREEK.get(m.group(0), m.group(0)), source)
 
     def script(match: re.Match) -> str:
         body = match.group(2) if match.group(2) is not None else match.group(3)
@@ -229,8 +253,10 @@ def to_unicode(text: str) -> str:
         converted = body.translate(table)
         # All-or-nothing: a partially converted run (``R_D0`` -> ``R_D₀``) reads
         # worse than leaving it alone.
-        return converted if converted != body and not any(
-            c.isalpha() for c in body
-        ) else match.group(0)
+        return (
+            converted
+            if converted != body and not any(c.isalpha() for c in body)
+            else match.group(0)
+        )
 
     return _SUBSUP_RE.sub(script, lettered)

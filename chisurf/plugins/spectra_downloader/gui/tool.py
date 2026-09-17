@@ -66,14 +66,14 @@ class SpectraTool(NavigationPanelTool):
                 "icon": Glyphs.CHART,
                 "factory": _make_overview(db),
                 "description": "Summary of the staging spectra database "
-                               "(counts by category and source).",
+                "(counts by category and source).",
             },
             {
                 "name": "Browse",
                 "icon": Glyphs.SEARCH,
                 "factory": _make_browser(db),
                 "description": "Browse scraped components — filter, inspect "
-                               "metadata, view spectra, push to the MMFDB.",
+                "metadata, view spectra, push to the MMFDB.",
             },
             {
                 "name": "Download",
@@ -86,7 +86,7 @@ class SpectraTool(NavigationPanelTool):
                 "icon": Glyphs.UP,
                 "factory": _make_add_to_mmfdb(db),
                 "description": "Choose an endpoint (local file or server), "
-                               "authenticate, and add the staging components to the MMFDB.",
+                "authenticate, and add the staging components to the MMFDB.",
             },
         ]
         super().__init__(

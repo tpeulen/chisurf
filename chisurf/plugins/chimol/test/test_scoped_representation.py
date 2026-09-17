@@ -18,6 +18,7 @@ asks whether *something* was drawn:
 1RTD is the fixture because it is what makes both measurable -- two protein
 chains and two nucleic chains, with the numbering overlapping between them.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -27,7 +28,11 @@ import pytest
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "1rtd.pdb"
 )
 
 NUCLEOTIDES = {"DA", "DC", "DG", "DT", "A", "C", "G", "U", "2DA"}

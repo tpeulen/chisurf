@@ -22,7 +22,7 @@ class TwoCdeState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TwoCdeState":
+    def from_dict(cls, data: dict[str, Any]) -> TwoCdeState:
         return cls(
             last_analysis_folder=data.get("last_analysis_folder"),
             last_settings=dict(data.get("last_settings", {})),

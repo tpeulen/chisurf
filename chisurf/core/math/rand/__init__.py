@@ -33,13 +33,7 @@ def weighted_choice(weights, n=1):
     return tttrlib.weighted_choice(np.asarray(weights, dtype=np.float64), int(n))
 
 
-def brownian(
-        x0: np.ndarray,
-        n: int,
-        dt: float,
-        delta: float,
-        out=None
-):
+def brownian(x0: np.ndarray, n: int, dt: float, delta: float, out=None):
     r"""
     Generate an instance of Brownian motion (i.e. the Wiener process):
 
@@ -62,7 +56,7 @@ def brownian(
     an initial condition, and the value returned is a numpy array with one
     more dimension than :math:`x_0`.
 
-    Arguments
+    Arguments:
     ---------
     x0 : float or numpy array (or something that can be converted to a numpy array
          using numpy.asarray(x0)).
@@ -79,18 +73,17 @@ def brownian(
         If `out` is not None, it specifies the array in which to put the
         result.  If `out` is None, a new numpy array is created and returned.
 
-    Returns
+    Returns:
     -------
     A numpy array of floats with shape `x0.shape + (n,)`.
 
     Note that the initial value `x0` is not included in the returned array.
     """
-
     x0 = np.asarray(x0)
 
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
-    r = norm.rvs(size=x0.shape + (n,), scale=delta*sqrt(dt))
+    r = norm.rvs(size=x0.shape + (n,), scale=delta * sqrt(dt))
 
     # If `out` was not given, create an output array.
     if out is None:
@@ -106,11 +99,7 @@ def brownian(
     return out
 
 
-def mc(
-        e0: float,
-        e1: float,
-        kT: float
-) -> bool:
+def mc(e0: float, e1: float, kT: float) -> bool:
     """Accept or reject a candidate in Metropolis-Algorithm by its energy
     and the energy of its predecessors using the Bennett acceptance ratio.
 
@@ -140,10 +129,7 @@ def mc(
 
 
 def random_numbers(
-        cdf_axis,
-        cdf_values: np.ndarray,
-        n: int,
-        norm_cdf=True, dtype=np.float64
+    cdf_axis, cdf_values: np.ndarray, n: int, norm_cdf=True, dtype=np.float64
 ) -> np.ndarray:
     """Generates an array of n random numbers according to an cumulative
     distribution function (CDF)

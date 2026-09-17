@@ -26,12 +26,12 @@ What is pinned here
 * a **real shipped ChiSurf spec** (not one written for the test) is read, so
   the adapter is exercised against the dialect as it is actually written.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from emtk.widgets.settings_editor import BOOL, CHOICE, FLOAT, INT, TEXT
 from emtk.widgets.view_spec import (
     load_view_spec,
@@ -42,7 +42,10 @@ from emtk.widgets.view_spec import (
 
 #: chimol's own spec: the appearance settings, bound through ``SettingsProxy``.
 APPEARANCE = (
-    pathlib.Path(__import__("chimol").__file__).resolve().parent / "ui" / "data" / "appearance.view.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent
+    / "ui"
+    / "data"
+    / "appearance.view.json"
 )
 
 #: A spec shipped by ChiSurf itself, written with no thought for chimol. Read
@@ -50,7 +53,11 @@ APPEARANCE = (
 #: than against an example composed to suit it.
 FOREIGN = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "chisurf" / "core" / "models" / "parameter_transform" / "parameter_transform.view.json"
+    / "chisurf"
+    / "core"
+    / "models"
+    / "parameter_transform"
+    / "parameter_transform.view.json"
 )
 
 
@@ -109,8 +116,8 @@ def test_a_panel_title_becomes_the_group():
 
 def test_the_rows_write_through_to_the_settings():
     """A panel that displays without editing is a picture."""
-    from chimol.ui.panels.form import SettingsProxy
     from chimol.core.settings import registry as settings_api
+    from chimol.ui.panels.form import SettingsProxy
 
     before = settings_api.get_setting("cartoon_loop_radius")
     try:
@@ -179,12 +186,20 @@ def test_a_spec_naming_an_attribute_the_model_lacks_is_reported():
 def test_a_field_with_no_declared_kind_is_read_from_the_value():
     """`{"attr": "x"}` is common and perfectly clear once the model is in hand."""
     model = _Model()
-    spec = {"sections": [
-        {"attr": "enabled"}, {"attr": "count"}, {"attr": "weight"}, {"attr": "func"},
-    ]}
+    spec = {
+        "sections": [
+            {"attr": "enabled"},
+            {"attr": "count"},
+            {"attr": "weight"},
+            {"attr": "func"},
+        ]
+    }
     kinds = {row.key: row.kind for row in settings_from_view_spec(spec, model)}
     assert kinds == {
-        "enabled": BOOL, "count": INT, "weight": FLOAT, "func": TEXT,
+        "enabled": BOOL,
+        "count": INT,
+        "weight": FLOAT,
+        "func": TEXT,
     }
 
 
@@ -192,7 +207,7 @@ def test_the_form_command_opens_a_window():
     """End to end, through the real command layer and a real frame."""
     from toolkit_free import probe
 
-    measured = probe(f'''
+    measured = probe(f"""
         app = open_app(size=(1000, 700))
         errors = []
         app.cmd.set_error_callback(errors.append)
@@ -220,7 +235,7 @@ def test_the_form_command_opens_a_window():
         panel = next(v for k, v in app.viewer.gui.panels.items() if k.startswith("form:"))
         emit("rows", len(panel.model.settings))
         emit("missing", "; ".join(panel.missing) or "none")
-    ''')
+    """)
 
     assert measured["errors"] == "none"
     assert measured["window"] == "yes"

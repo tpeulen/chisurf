@@ -7,12 +7,11 @@ from chisurf.core.structure.potential.potentials import ASA
 
 
 class AsaWidget(ASA, QtWidgets.QWidget):
-
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            parent: QtWidgets.QWidget = None,
-            **kwargs
+        self,
+        structure: chisurf.core.structure.Structure,
+        parent: QtWidgets.QWidget = None,
+        **kwargs,
     ):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
@@ -32,13 +31,10 @@ class AsaWidget(ASA, QtWidgets.QWidget):
 
         self.lineEdit.textChanged.connect(self.setParameterSphere)
         self.lineEdit_2.textChanged.connect(self.setParameterProbe)
-        self.lineEdit.setText('590')
-        self.lineEdit_2.setText('3.5')
+        self.lineEdit.setText("590")
+        self.lineEdit_2.setText("3.5")
 
-        super(AsaWidget, self).__init__(
-            structure,
-            **kwargs
-        )
+        super().__init__(structure, **kwargs)
 
     def setParameterSphere(self):
         self.n_sphere_point = int(self.lineEdit.text())

@@ -7,14 +7,13 @@ simulations can be launched via ``csc proteinmc`` without scripting.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import click
 
 from chisurf.plugins.modelling.proteinmc.model import run_protein_mc
 
 
-def _validate_output_path(path: Optional[str]) -> Optional[str]:
+def _validate_output_path(path: str | None) -> str | None:
     if not path:
         return None
     target = Path(path)
@@ -23,7 +22,9 @@ def _validate_output_path(path: Optional[str]) -> Optional[str]:
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
     except Exception as exc:
-        raise click.ClickException(f"Unable to create output directory for '{path}': {exc}") from exc
+        raise click.ClickException(
+            f"Unable to create output directory for '{path}': {exc}"
+        ) from exc
     return str(target)
 
 
@@ -61,18 +62,17 @@ def _validate_output_path(path: Optional[str]) -> Optional[str]:
 @click.option("-v", "--verbose", is_flag=True, help="Print detailed progress output.")
 def cli(
     structure: str,
-    settings_file: Optional[str],
-    labeling_file: Optional[str],
-    output: Optional[str],
-    scale: Optional[float],
-    n_iter: Optional[int],
-    n_out: Optional[int],
-    n_written: Optional[int],
+    settings_file: str | None,
+    labeling_file: str | None,
+    output: str | None,
+    scale: float | None,
+    n_iter: int | None,
+    n_out: int | None,
+    n_written: int | None,
     eval_interval: int,
     verbose: bool,
 ) -> None:
     """Run ProteinMC for a local PDB/PQR file or four-character PDB ID."""
-
     output_path = _validate_output_path(output)
 
     try:

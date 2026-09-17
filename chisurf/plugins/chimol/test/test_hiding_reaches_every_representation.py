@@ -24,10 +24,10 @@ the real panel and asserts the geometry handed to the renderer goes away and
 comes back, so a builder that forgets is a red test rather than a report with a
 screenshot.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: Every built-in depiction that draws from coordinate rows. ``nonbonded``
@@ -35,7 +35,7 @@ from toolkit_free import probe
 #: begin with and the check would pass without meaning anything.
 DEPICTIONS = ("cartoon", "spheres", "sticks", "lines", "surface", "dots")
 
-SCRIPT = '''
+SCRIPT = f"""
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("load 148l.pdb")
@@ -49,7 +49,7 @@ def drawn():
     return sum(len(getattr(o.geometry, "positions", ()))
                for o in (getattr(scene, "objects", None) or ()))
 
-for rep in %(reps)r:
+for rep in {list(DEPICTIONS)!r}:
     cmd.do("hide everything")
     cmd.do("show " + rep)
     app.renderer._draw()
@@ -59,10 +59,10 @@ for rep in %(reps)r:
     off = drawn()
     panel._toggle(root)                 # everything back on
     app.renderer._draw()
-    emit(rep, "%%d %%d %%d" %% (full, off, drawn()))
-''' % {"reps": list(DEPICTIONS)}
+    emit(rep, "%d %d %d" % (full, off, drawn()))
+"""
 
-PARTIAL = '''
+PARTIAL = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("load 148l.pdb")
@@ -90,7 +90,7 @@ for node in residues:
     panel._toggle(node)
 app.renderer._draw()
 emit("restored", drawn())
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -102,9 +102,7 @@ def ran():
 def test_switching_everything_off_empties_the_picture(ran, rep):
     full, off, back = (int(v) for v in ran[rep].split())
     assert full > 0, f"{rep} drew nothing to begin with -- the check is vacuous"
-    assert off == 0, (
-        f"{rep} still handed {off} vertices to the renderer with every row hidden"
-    )
+    assert off == 0, f"{rep} still handed {off} vertices to the renderer with every row hidden"
 
 
 @pytest.mark.parametrize("rep", DEPICTIONS)
@@ -122,16 +120,12 @@ def test_hiding_part_of_a_chain_hides_part_of_the_cartoon(partial):
     """Per-atom hiding, per-residue depiction: the two row spaces have to meet."""
     full, some = int(partial["full"]), int(partial["some_off"])
     assert int(partial["residues_off"]) > 0
-    assert 0 < some < full, (
-        "the cartoon is unchanged by switching forty of its residues off"
-    )
+    assert 0 < some < full, "the cartoon is unchanged by switching forty of its residues off"
     assert int(partial["restored"]) == full
 
 
 def test_the_question_has_one_answer():
     """`drawable_rows` is the viewer's, and it composes both halves."""
-    import numpy as np
-
     from chimol.core.viewer import Viewer
 
     assert callable(Viewer.drawable_rows)

@@ -33,10 +33,10 @@ that control the animation would have looked like a cache bug.
 
 Runs in a child process; see :mod:`.toolkit_free`.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: Each interaction is applied in order, and the chrome compared after it **and**
@@ -71,7 +71,7 @@ INTERACTIONS = [
 @pytest.fixture(scope="module")
 def swept():
     """Drive every interaction and report whether the cache stayed honest."""
-    return probe('''
+    return probe("""
         from emtk.quad_painter import QuadPainter
 
         app = open_app(size=(1100, 760))
@@ -140,7 +140,7 @@ def swept():
             same = gui.chrome_fingerprint() == gui.chrome_fingerprint()
             row.selected = keep
             emit("huge_selection_rebuilds", "frozen" if same else "ok")
-    ''')
+    """)
 
 
 @pytest.mark.parametrize("interaction", INTERACTIONS)

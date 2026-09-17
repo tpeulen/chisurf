@@ -22,8 +22,7 @@ _log = logging.getLogger(__name__)
 class _EntrypointLoader(Protocol):
     """Protocol for objects that can load a plugin entrypoint."""
 
-    def load(self, entrypoint: str) -> Any:
-        ...
+    def load(self, entrypoint: str) -> Any: ...
 
 
 class _DefaultLoader:
@@ -82,7 +81,10 @@ class PluginRegistry:
                 continue
             for init_py_path in sorted(base_path.rglob("__init__.py")):
                 plugin_dir = init_py_path.parent
-                if any(part.startswith(".") or part == "__pycache__" or "{{" in part for part in plugin_dir.parts):
+                if any(
+                    part.startswith(".") or part == "__pycache__" or "{{" in part
+                    for part in plugin_dir.parts
+                ):
                     continue
                 resolved = plugin_dir.resolve()
                 if resolved in seen_dirs:
@@ -100,12 +102,14 @@ class PluginRegistry:
                     if manifest_path.exists():
                         try:
                             import json
+
                             data = json.loads(manifest_path.read_text())
                             errors = validate_manifest(data)
                             if errors:
                                 _log.warning(
                                     "Manifest %s has validation errors: %s",
-                                    manifest_path, errors,
+                                    manifest_path,
+                                    errors,
                                 )
                         except Exception:
                             _log.warning(
@@ -284,9 +288,7 @@ def _read_legacy_metadata(plugin_dir: pathlib.Path) -> dict[str, Any] | None:
         from chisurf.plugins import _read_plugin_metadata  # type: ignore
 
         init_py = plugin_dir / "__init__.py"
-        name, description, cli_entrypoint, cli_only, menu_hidden = _read_plugin_metadata(
-            init_py
-        )
+        name, description, cli_entrypoint, cli_only, menu_hidden = _read_plugin_metadata(init_py)
         if not name:
             return None
         return {
@@ -370,13 +372,12 @@ def _apply_manifest_statefulness(widget: Any, manifest: PluginManifest) -> None:
         return
 
     settings_key = (
-        manifest.statefulness.window.settings_key
-        or manifest.state_namespace
-        or manifest.id
+        manifest.statefulness.window.settings_key or manifest.state_namespace or manifest.id
     )
 
     try:
         from PyQt5.QtCore import Qt as _Qt
+
         widget.setAttribute(_Qt.WA_DeleteOnClose)
     except Exception:
         pass

@@ -30,7 +30,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -166,7 +170,8 @@ def test_the_camera_survives_the_panel_refresh(session, qapp, tmp_path):
 
 def test_a_restored_session_actually_draws(session, qapp, tmp_path):
     """State restored but no geometry would be the same class of bug as a mask
-    set without its flag: everything looks right and nothing is on screen."""
+    set without its flag: everything looks right and nothing is on screen.
+    """
     win, shared, do, _messages, _errors = session
     _furnish(do)
     path = tmp_path / "s.cms"
@@ -178,9 +183,7 @@ def test_a_restored_session_actually_draws(session, qapp, tmp_path):
         scene = win2.viewer.get_current_scene()
         assert scene.objects, "the restored session drew nothing"
         verts = sum(
-            len(o.geometry.positions)
-            for o in scene.objects
-            if o.geometry.positions is not None
+            len(o.geometry.positions) for o in scene.objects if o.geometry.positions is not None
         )
         assert verts > 1000
     finally:

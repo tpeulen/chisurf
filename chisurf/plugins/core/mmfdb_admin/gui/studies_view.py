@@ -83,8 +83,12 @@ class StudiesView(QtWidgets.QWidget):
         self.study_table.setRowCount(len(studies))
         for row, s in enumerate(studies):
             self.study_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(s.get("name") or "")))
-            self.study_table.setItem(row, 1, QtWidgets.QTableWidgetItem("yes" if s.get("is_public") else "no"))
-            self.study_table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(s.get("study_id") or "")))
+            self.study_table.setItem(
+                row, 1, QtWidgets.QTableWidgetItem("yes" if s.get("is_public") else "no")
+            )
+            self.study_table.setItem(
+                row, 2, QtWidgets.QTableWidgetItem(str(s.get("study_id") or ""))
+            )
 
     def _selected_study_id(self) -> str | None:
         items = self.study_table.selectedItems()
@@ -101,7 +105,9 @@ class StudiesView(QtWidgets.QWidget):
         self.member_table.setRowCount(len(members))
         for row, m in enumerate(members):
             for col, key in enumerate(("member_type", "member_id", "role")):
-                self.member_table.setItem(row, col, QtWidgets.QTableWidgetItem(str(m.get(key) or "")))
+                self.member_table.setItem(
+                    row, col, QtWidgets.QTableWidgetItem(str(m.get(key) or ""))
+                )
         fields = detail.get("fields", {}) or {}
         self.field_table.setRowCount(len(fields))
         for row, (k, v) in enumerate(sorted(fields.items())):
@@ -127,9 +133,7 @@ class StudiesView(QtWidgets.QWidget):
         if not sid or not member_id:
             self.message_label.setText("Select a study and enter a member id.")
             return
-        result = self._client.add_study_member(
-            sid, self.member_type_combo.currentText(), member_id
-        )
+        result = self._client.add_study_member(sid, self.member_type_combo.currentText(), member_id)
         if result.get("error"):
             self.message_label.setText(f"Rejected: {result['error']}")
         else:

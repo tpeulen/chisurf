@@ -6,15 +6,10 @@ import chisurf.core.structure
 
 
 class RadiusGyrationWidget(QtWidgets.QWidget):
+    name = "Radius-Gyration"
 
-    name = 'Radius-Gyration'
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            parent=None
-    ):
-        super(RadiusGyrationWidget, self).__init__(parent)
+    def __init__(self, structure: chisurf.core.structure.Structure, parent=None):
+        super().__init__(parent)
         self.structure = structure
         self.parent = parent
 

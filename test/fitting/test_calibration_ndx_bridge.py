@@ -33,7 +33,7 @@ def test_mapping_matches_ndx_constant_names():
     # ndx effective gamma = (PhiA/PhiD)/(gG/gR) must equal calib gamma
     assert m["gG/gR"] == pytest.approx((0.4 / 0.8) / 1.6)
     assert m["alpha"] == pytest.approx(0.08)
-    assert m["beta"] == pytest.approx(0.05)      # ndx 'beta' == direct excitation (delta)
+    assert m["beta"] == pytest.approx(0.05)  # ndx 'beta' == direct excitation (delta)
     assert m["Bg"] == pytest.approx(1.0) and m["Br"] == pytest.approx(0.5)
     assert m["forster_radius"] == pytest.approx(55.0)
     # round-trip: ndx's effective gamma equals the calibration gamma
@@ -159,8 +159,9 @@ def test_inject_shuffle_preserves_total_counts_and_is_integer():
     )
     donor = source.column_values("Number of Photons (donor, shuffle)")
     acceptor = source.column_values("Number of Photons (acceptor, shuffle)")
-    raw_total = (source.column_values("Number of Photons (green)")
-                 + source.column_values("Number of Photons (red)"))
+    raw_total = source.column_values("Number of Photons (green)") + source.column_values(
+        "Number of Photons (red)"
+    )
     # integer + exact photon-count preservation per burst
     assert np.array_equal(donor + acceptor, raw_total)
     assert np.allclose(donor, np.rint(donor))
@@ -201,16 +202,20 @@ def _simulated_burst_columns(seed: int = 2):
         photons = rng.poisson(400, n).astype(float)
         dd.append(rng.poisson((1 - efficiency) * photons))
         aa.append(rng.poisson(BETA * GAMMA * photons))
-        da.append(rng.poisson(GAMMA * efficiency * photons
-                              + ALPHA * (1 - efficiency) * photons
-                              + DELTA * BETA * GAMMA * photons))
+        da.append(
+            rng.poisson(
+                GAMMA * efficiency * photons
+                + ALPHA * (1 - efficiency) * photons
+                + DELTA * BETA * GAMMA * photons
+            )
+        )
         tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.12, n))
-    photons = rng.poisson(400, 300).astype(float)          # donor-only
+    photons = rng.poisson(400, 300).astype(float)  # donor-only
     dd.append(rng.poisson(photons))
     da.append(rng.poisson(ALPHA * photons))
     aa.append(rng.poisson(2.0, 300))
     tau.append(rng.normal(TAU_D0, 0.12, 300))
-    photons = rng.poisson(400, 300).astype(float)          # acceptor-only
+    photons = rng.poisson(400, 300).astype(float)  # acceptor-only
     dd.append(rng.poisson(2.0, 300))
     aa.append(rng.poisson(BETA * GAMMA * photons))
     da.append(rng.poisson(DELTA * BETA * GAMMA * photons))
@@ -228,8 +233,17 @@ class _LoadedNdx(_StubNdx):
 
     def __init__(self):
         super().__init__()
-        self.constants.update({"PhiA": 0.32, "PhiD": 0.8, "forster_radius": 52.0,
-                               "Bg": 0.0, "Br": 0.0, "By": 0.0, "r": 1.0})
+        self.constants.update(
+            {
+                "PhiA": 0.32,
+                "PhiD": 0.8,
+                "forster_radius": 52.0,
+                "Bg": 0.0,
+                "Br": 0.0,
+                "By": 0.0,
+                "r": 1.0,
+            }
+        )
         self.data_source = _StubDataSource(_simulated_burst_columns())
 
 
@@ -248,8 +262,9 @@ def test_optimize_recovers_the_factors_from_the_loaded_data():
     assert result["factors"]["beta"] == pytest.approx(BETA, rel=0.05)
     # written into the window with ndx's own naming, and recomputed
     assert ndx.constants["gG/gR"] != before_gg_gr
-    assert (ndx.constants["PhiA"] / ndx.constants["PhiD"]) / ndx.constants["gG/gR"] == \
-        pytest.approx(result["factors"]["gamma"])
+    assert (ndx.constants["PhiA"] / ndx.constants["PhiD"]) / ndx.constants[
+        "gG/gR"
+    ] == pytest.approx(result["factors"]["gamma"])
     assert ndx.constants["beta"] == pytest.approx(result["factors"]["delta"])
     assert ndx.constants["r"] == pytest.approx(1.0 / result["factors"]["beta"])
     assert ndx.updated == 1
@@ -290,7 +305,7 @@ def test_optimize_injects_accurate_columns():
     assert "FRET efficiency (accurate)" in result["injected"]
     assert "Stoichiometry (accurate)" in result["injected"]
     assert "Off static FRET line" in result["injected"]
-    for name, values in original.items():                 # nothing overwritten
+    for name, values in original.items():  # nothing overwritten
         np.testing.assert_array_equal(source.column_values(name), values)
     fret = source.column_values("Population") >= 0
     e = source.column_values("FRET efficiency (accurate)")[fret]
@@ -306,8 +321,7 @@ def test_optimize_reports_unusable_data():
     from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
     ndx = _StubNdx()
-    ndx.data_source = _StubDataSource({"foo": np.array([1.0, 2.0]),
-                                       "bar": np.array([3.0, 4.0])})
+    ndx.data_source = _StubDataSource({"foo": np.array([1.0, 2.0]), "bar": np.array([3.0, 4.0])})
     result = optimize_calibration_from_ndx(ndx)
     assert not result["ok"] and "i_dd" in result["error"]
 
@@ -387,7 +401,7 @@ def test_push_writes_the_parameter_table_so_it_survives_a_recompute():
     ndx.settle()
     assert ndx.constants["alpha"] == pytest.approx(mapping["alpha"])
     assert ndx.constants["gG/gR"] == pytest.approx(mapping["gG/gR"])
-    assert ndx.constants["tauD0"] == 4.0     # unrelated constants survive
+    assert ndx.constants["tauD0"] == 4.0  # unrelated constants survive
 
 
 def test_push_updates_a_live_mapping_in_place_instead_of_replacing_it():

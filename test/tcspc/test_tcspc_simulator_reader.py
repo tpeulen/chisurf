@@ -177,14 +177,23 @@ def test_simulate_channels_recovers_r_through_the_schaffer_correction():
     # point-wise correction is exact only on the ideal (IRF-free) channels.
     delta_irf = np.eye(1, 256, 0).ravel()
     x, vv, vh = simulate_decay_channels(
-        SPECTRUM, ROTATION, n_tac=256, dt=0.0141, p0=20000.0,
-        g_factor=g, l1=l1, l2=l2, add_noise=False, irf=delta_irf,
+        SPECTRUM,
+        ROTATION,
+        n_tac=256,
+        dt=0.0141,
+        p0=20000.0,
+        g_factor=g,
+        l1=l1,
+        l2=l2,
+        add_noise=False,
+        irf=delta_irf,
     )
     r_back = (vv - g * vh) / (vv * (1 - 3 * l2) + (2 - 3 * l1) * g * vh)
     r_true = 0.3 * np.exp(-x / 2.0)
     # The delta sits in bin 0, so the kernel shifts the curves by one bin;
     # from bin 1 on the round trip is exact.
     assert np.allclose(r_back[1:], r_true[1:], atol=1e-12)
+
 
 def test_simulate_channels_g_factor_scales_vh():
     """The perpendicular channel records 1/g of an equally sensitive one."""
@@ -203,7 +212,13 @@ def test_simulate_channels_empty_rotation_is_the_vm_decay():
 
     _, vm = simulate_decay(SPECTRUM, n_tac=64, dt=0.1, p0=1000.0, add_noise=False, irf_mean=1.0)
     _, vv, vh = simulate_decay_channels(
-        SPECTRUM, [], n_tac=64, dt=0.1, p0=1000.0, add_noise=False, irf_mean=1.0,
+        SPECTRUM,
+        [],
+        n_tac=64,
+        dt=0.1,
+        p0=1000.0,
+        add_noise=False,
+        irf_mean=1.0,
     )
     np.testing.assert_allclose(vv, vh, atol=1e-9)  # g = 1, r = 0
     np.testing.assert_allclose(vv, vm, atol=1e-9)
@@ -255,10 +270,11 @@ def test_add_fit_over_vvvh_read_creates_polarized_group():
     the calibration comes from the setup's reader attributes -- no file needed.
     """
     import pytest
+
     pytest.importorskip("IMP.bff")
     import chisurf as cs
-    from chisurf.macros import core_fit
     from chisurf.core.models.description import for_family
+    from chisurf.macros import core_fit
 
     setup = make_vvvh_setup(p0=20000, add_noise=False)
     group = setup.read()

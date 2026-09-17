@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from chisurf.server.services import (
     OPERATION_FAILED,
@@ -19,7 +19,7 @@ def agent_code_run(
     state: SessionState,
     code: str = "",
     timeout_ms: int = 5000,
-    cwd: Optional[str] = None,
+    cwd: str | None = None,
 ) -> ServiceResult:
     """Execute a snippet of Python code in a subprocess.
 
@@ -44,6 +44,7 @@ def agent_code_run(
         return service_error("no code provided", error_code=OPERATION_FAILED)
 
     import chisurf as cs
+
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(cs.__file__)))
     if cwd:
         work_dir = str(cwd)
@@ -87,8 +88,9 @@ def agent_code_run(
         stdout_lines = stdout.splitlines()
         if stdout_lines and stdout_lines[-1].startswith("RESULT_JSON:"):
             import json as _json
+
             try:
-                payload = stdout_lines[-1][len("RESULT_JSON:"):]
+                payload = stdout_lines[-1][len("RESULT_JSON:") :]
                 result_json = _json.loads(payload)
             except Exception:
                 pass

@@ -3,8 +3,8 @@ from __future__ import annotations
 """Contract tests for chisurf.server.services module structure."""
 
 import json
-from importlib import resources, import_module
 from collections import Counter
+from importlib import import_module, resources
 
 
 def _service_modules() -> set[str]:
@@ -25,6 +25,4 @@ def test_no_duplicate_handler_names():
         module = import_module(f"chisurf.server.services.{mod_name}")
         names = [n for n in dir(module) if not n.startswith("_")]
         dupes = {name for name, count in Counter(names).items() if count > 1}
-        assert not dupes, (
-            f"chisurf.server.services.{mod_name} has duplicate names: {dupes}"
-        )
+        assert not dupes, f"chisurf.server.services.{mod_name} has duplicate names: {dupes}"

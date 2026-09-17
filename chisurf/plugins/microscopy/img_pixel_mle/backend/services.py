@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from chisurf.core.datastore import write_csv_table
+
 from ..api.contract import (
     METHOD_ANALYZE,
     METHOD_CONTRACT,

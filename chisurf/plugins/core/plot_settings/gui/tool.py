@@ -22,15 +22,18 @@ from chisurf.gui.widgets.collapsible_box import CollapsibleBox
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
+
     def persist_plugin_state(name):  # type: ignore[misc]
         def decorator(cls):
             return cls
+
         return decorator
 
 
 # ---------------------------------------------------------------------------
 # ColorButton — a clickable swatch that opens QColorDialog
 # ---------------------------------------------------------------------------
+
 
 class ColorButton(QtWidgets.QPushButton):
     """A push button showing a color swatch; click opens ``QColorDialog``.
@@ -54,15 +57,12 @@ class ColorButton(QtWidgets.QPushButton):
 
     def _update_swatches(self):
         self.setStyleSheet(
-            f"background-color: {self._color};"
-            f"border: 2px solid #555;"
-            f"border-radius: 4px;"
+            f"background-color: {self._color};border: 2px solid #555;border-radius: 4px;"
         )
         self.setToolTip(self._color)
 
     def _pick(self):
-        c = QtWidgets.QColorDialog.getColor(
-            QtGui.QColor(self._color), self, "Select Color")
+        c = QtWidgets.QColorDialog.getColor(QtGui.QColor(self._color), self, "Select Color")
         if c.isValid():
             self._color = c.name()
             self._update_swatches()
@@ -81,6 +81,7 @@ class ColorButton(QtWidgets.QPushButton):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _hbox(*widgets, spacing=6) -> QtWidgets.QHBoxLayout:
     lay = QtWidgets.QHBoxLayout()
@@ -109,8 +110,7 @@ def _color_row(label: str, key: str, btn: ColorButton) -> QtWidgets.QWidget:
     return w
 
 
-def _labelled_row(label: str, widget: QtWidgets.QWidget,
-                  stretch: bool = True) -> QtWidgets.QWidget:
+def _labelled_row(label: str, widget: QtWidgets.QWidget, stretch: bool = True) -> QtWidgets.QWidget:
     """Return a row pairing a fixed-width label with a control."""
     row = QtWidgets.QWidget()
     layout = QtWidgets.QHBoxLayout(row)
@@ -161,6 +161,7 @@ def _check_row(label: str, cb: QtWidgets.QCheckBox) -> QtWidgets.QWidget:
 # ---------------------------------------------------------------------------
 # Main widget
 # ---------------------------------------------------------------------------
+
 
 @persist_plugin_state("plot_settings")
 class PlotSettingsWidget(QtWidgets.QWidget):
@@ -237,7 +238,8 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         box.add_widget(row)
 
         hint = QtWidgets.QLabel(
-            "Changes apply on next application start or when a new plot is created.")
+            "Changes apply on next application start or when a new plot is created."
+        )
         hint.setStyleSheet("color: gray; font-size: 10px;")
         hint.setWordWrap(True)
         box.add_widget(hint)
@@ -266,8 +268,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self._alpha_label = QtWidgets.QLabel("100")
         self._alpha_label.setFixedWidth(36)
         self._alpha_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.alpha_slider.valueChanged.connect(
-            lambda v: self._alpha_label.setText(str(v)))
+        self.alpha_slider.valueChanged.connect(lambda v: self._alpha_label.setText(str(v)))
         alpha_row = QtWidgets.QWidget()
         al = QtWidgets.QHBoxLayout(alpha_row)
         al.setContentsMargins(0, 0, 0, 0)
@@ -330,7 +331,8 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self.font_size.setSpecialValueText("auto")
         self.font_size.setToolTip(
             "Base point size for ticks, axis labels and titles. "
-            "'auto' follows the application font.")
+            "'auto' follows the application font."
+        )
         self.font_size.valueChanged.connect(self._on_changed)
         box.add_widget(_spin_row("Axis font size", self.font_size))
 
@@ -359,7 +361,8 @@ class PlotSettingsWidget(QtWidgets.QWidget):
 
         self.enable_region_selector = QtWidgets.QCheckBox()
         self.enable_region_selector.setToolTip(
-            "Draw the draggable fit-range band on the data panel.")
+            "Draw the draggable fit-range band on the data panel."
+        )
         self.enable_region_selector.toggled.connect(self._on_changed)
         box.add_widget(_check_row("Fit-range selector", self.enable_region_selector))
 
@@ -412,7 +415,8 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self.pg_foreground.addItems(["d", "w", "l", "k"])
         self.pg_foreground.setToolTip(
             "Axis, tick and label colour. Keep it contrasting with the "
-            "background: matching the two hides every axis.")
+            "background: matching the two hides every axis."
+        )
         self.pg_foreground.currentTextChanged.connect(self._on_changed)
         fg_row = QtWidgets.QWidget()
         fl = QtWidgets.QHBoxLayout(fg_row)
@@ -477,8 +481,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self.show_data_grid.setChecked(bool(ps.get("show_data_grid", True)))
         self.show_residual_grid.setChecked(bool(ps.get("show_residual_grid", True)))
         self.show_acorr_grid.setChecked(bool(ps.get("show_acorr_grid", True)))
-        self.enable_region_selector.setChecked(
-            bool(ps.get("enable_region_selector", True)))
+        self.enable_region_selector.setChecked(bool(ps.get("enable_region_selector", True)))
         self.show_legend.setChecked(bool(ps.get("show_legend", False)))
         self.hide_title.setChecked(bool(ps.get("hideTitle", True)))
         self.label_axis.setChecked(bool(ps.get("label_axis", False)))
@@ -526,10 +529,9 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         gui = css.cs_settings.setdefault("gui", {})
         existing = gui.get("plot", {})
         existing_colors = existing.get("colors", {})
-        settings["colors"].update({
-            k: v for k, v in existing_colors.items()
-            if k not in settings["colors"]
-        })
+        settings["colors"].update(
+            {k: v for k, v in existing_colors.items() if k not in settings["colors"]}
+        )
         existing.update(settings)
         gui["plot"] = existing
         self._update_preview()
@@ -537,10 +539,12 @@ class PlotSettingsWidget(QtWidgets.QWidget):
     def _save_settings(self):
         self._apply_settings()
         import yaml
+
         from chisurf.core.settings.path_utils import get_path
+
         settings_file = get_path("settings") / "settings_chisurf.yaml"
         try:
-            with open(settings_file, "r", encoding="utf-8") as fh:
+            with open(settings_file, encoding="utf-8") as fh:
                 data = yaml.safe_load(fh) or {}
             if not isinstance(data, dict):
                 data = {}
@@ -574,6 +578,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         try:
             from chisurf.gui import chiplot as cp
             from chisurf.gui.chiplot.canvas import Plot
+
             ps = self._collect_settings()
             colors = ps["colors"]
             bg = "k" if ps["pyqtgraph_config"]["background"] == "k" else "w"
@@ -586,8 +591,9 @@ class PlotSettingsWidget(QtWidgets.QWidget):
             cp.configure(**ps["pyqtgraph_config"])
             # The chrome font is read from the settings dict at draw time, so
             # the preview needs the pending value in place to show it.
-            css.cs_settings.setdefault("gui", {}).setdefault(
-                "plot", {})["font_size"] = ps["font_size"]
+            css.cs_settings.setdefault("gui", {}).setdefault("plot", {})["font_size"] = ps[
+                "font_size"
+            ]
 
             plot = Plot(background=bg)
             self._preview_plot = plot
@@ -604,8 +610,9 @@ class PlotSettingsWidget(QtWidgets.QWidget):
             irf = 500 * np.exp(-((t - 1.0) ** 2) / 0.05) + background
 
             plot.line(t, data, pen=colors["data"], width=ps["line_width"], name="data")
-            plot.line(t, model, pen=colors["model"], width=ps["line_width"],
-                      style="dash", name="model")
+            plot.line(
+                t, model, pen=colors["model"], width=ps["line_width"], style="dash", name="model"
+            )
             plot.line(t, irf, pen=colors["irf"], width=1.5, name="IRF")
 
             if ps["enable_grid"] and ps["show_data_grid"]:

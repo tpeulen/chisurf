@@ -59,12 +59,22 @@ def test_a_tour_file_is_read_leniently(tmp_path):
     assert load_tour(tmp_path / "broken.json") == []
 
     path = tmp_path / "tour.json"
-    path.write_text(json.dumps({"steps": [
-        {"title": "a", "text": "b", "target": {"attr": "tile"}},
-        {"title": "c", "text": "d", "target": {"action": "Run"},
-         "await": {"hint": "press it"}},
-        "not a step",
-    ]}))
+    path.write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {"title": "a", "text": "b", "target": {"attr": "tile"}},
+                    {
+                        "title": "c",
+                        "text": "d",
+                        "target": {"action": "Run"},
+                        "await": {"hint": "press it"},
+                    },
+                    "not a step",
+                ]
+            }
+        )
+    )
     steps = load_tour(path)
     assert len(steps) == 2
     assert steps[0].waits is False
@@ -93,8 +103,13 @@ def test_a_step_finds_its_widget_from_the_view_spec(host):
 def test_a_waiting_step_needs_the_real_button(host, qapp):
     """Next is disabled until the user triggers the highlighted action."""
     steps = [
-        TourStep(title="press", text="…", target={"action": "Run it"},
-                 expect={"hint": "Press ▶ Run it"}, waits=True),
+        TourStep(
+            title="press",
+            text="…",
+            target={"action": "Run it"},
+            expect={"hint": "Press ▶ Run it"},
+            waits=True,
+        ),
         TourStep(title="after", text="…", target={"attr": "tile"}),
     ]
     tour = GuidedTour(host, steps)
@@ -118,8 +133,7 @@ def test_a_waiting_step_needs_the_real_button(host, qapp):
 
 def test_a_waiting_step_whose_control_is_missing_does_not_strand_the_user(host):
     """No resolvable control means no wait, rather than a dead end."""
-    steps = [TourStep(title="press", text="…", target={"action": "Nope"},
-                      expect={}, waits=True)]
+    steps = [TourStep(title="press", text="…", target={"action": "Nope"}, expect={}, waits=True)]
     tour = GuidedTour(host, steps)
     tour.start()
     assert tour._bubble.next_button.isEnabled() is True
@@ -214,7 +228,6 @@ def test_every_plugin_help_page_links_somewhere_real():
     A dead link in a *Further reading* list is worse than no link: it looks like
     the tool has documentation until someone clicks it.
     """
-    import pathlib
     import re
 
     from chisurf.gui.widgets.tools.doc_links import repository_root, resolve_document
@@ -300,9 +313,7 @@ def test_a_step_opens_the_collapsed_panel_its_target_sits_in(qapp):
 
     assert not box.is_expanded()
 
-    tour = GuidedTour(
-        window, [TourStep(title="t", text="x", target={"name": "sim_tau1"})]
-    )
+    tour = GuidedTour(window, [TourStep(title="t", text="x", target={"name": "sim_tau1"})])
     tour.start()
 
     assert box.is_expanded(), "the step pointed into a folded panel"

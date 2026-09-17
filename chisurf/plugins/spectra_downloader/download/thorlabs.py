@@ -30,15 +30,12 @@ import numpy as np
 import openpyxl
 
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
-    DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
 
 logger = logging.getLogger(__name__)
 
-THOR2_DATA_URL = (
-    "https://github.com/tjconstant/thor2/archive/refs/heads/master.zip"
-)
+THOR2_DATA_URL = "https://github.com/tjconstant/thor2/archive/refs/heads/master.zip"
 
 # Map a data-file prefix → a canonical component kind (resolved via
 # COMPONENT_KINDS in mmfdb_adapter to its category + default spectrum type).
@@ -195,15 +192,16 @@ def download_thorlabs_to_db(db: FluorophoreDatabase) -> dict[str, int]:
         with zipfile.ZipFile(zippath) as zf:
             # Collect all Excel data files
             xlsx_files = [
-                n for n in zf.namelist()
+                n
+                for n in zf.namelist()
                 if n.startswith("thor2-master/data-raw/")
-                   and n.endswith(".xlsx")
-                   and not Path(n).name.startswith("~$")
+                and n.endswith(".xlsx")
+                and not Path(n).name.startswith("~$")
             ]
             csv_files = [
-                n for n in zf.namelist()
-                if n.startswith("thor2-master/data-raw/")
-                   and n.endswith(".csv")
+                n
+                for n in zf.namelist()
+                if n.startswith("thor2-master/data-raw/") and n.endswith(".csv")
             ]
 
             print(f"Found {len(xlsx_files)} Excel files and {len(csv_files)} CSV files.")

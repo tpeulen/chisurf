@@ -20,6 +20,7 @@ correct lifetimes. Over 24 randomised starts, fixing this took the number of
 fits reaching chi2r < 1.1 from 11/24 to 15/24 at the shipped optimiser settings,
 and removed the chi2r ~3 plateau entirely.
 """
+
 import numpy as np
 import pytest
 
@@ -40,8 +41,7 @@ def _reference(v, shift, outside_value=0.0):
     return out
 
 
-SHIFTS = [0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 3.75,
-          -0.25, -0.5, -1.0, -1.5, -2.0, -3.75]
+SHIFTS = [0.0, 0.25, 0.5, 1.0, 1.5, 2.0, 3.75, -0.25, -0.5, -1.0, -1.5, -2.0, -3.75]
 
 
 @pytest.mark.parametrize("shift", SHIFTS)
@@ -54,8 +54,8 @@ def test_matches_the_reference(shift):
 def test_matches_the_reference_with_nonzero_outside(shift):
     v = np.arange(1.0, 11.0)
     np.testing.assert_allclose(
-        shift_array(v, shift, True, 33.0),
-        _reference(v, shift, 33.0), atol=1e-12)
+        shift_array(v, shift, True, 33.0), _reference(v, shift, 33.0), atol=1e-12
+    )
 
 
 @pytest.mark.parametrize("centre", [0.0, 1.0, -1.0, 2.0, -2.0, 5.0, -5.0])
@@ -67,7 +67,8 @@ def test_continuous_across_integer_shifts(centre):
         # Bounded slope. Before the fix this was ~|v| regardless of h, so the
         # implied derivative diverged as 1/h.
         assert jump < 100.0 * h, (
-            f"discontinuity at shift={centre}: |f(+h)-f(-h)|={jump:.3e} for h={h:g}")
+            f"discontinuity at shift={centre}: |f(+h)-f(-h)|={jump:.3e} for h={h:g}"
+        )
 
 
 def test_a_tiny_shift_barely_changes_the_array():

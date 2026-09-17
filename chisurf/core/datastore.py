@@ -386,6 +386,7 @@ def row_count(table: Any) -> int:
     names = column_names(table)
     return len(np.asarray(table[names[0]])) if names else 0
 
+
 def numeric_column(table: Any, name: str) -> np.ndarray:
     """Return one column of any column-addressable table as ``float64``.
 
@@ -427,6 +428,7 @@ def numeric_column(table: Any, name: str) -> np.ndarray:
             pass
     return out
 
+
 def store_from_arrays(columns: Mapping[str, Any] | Sequence[tuple]) -> Any:
     """Build a store from named arrays, keeping every dtype.
 
@@ -445,7 +447,9 @@ def store_from_arrays(columns: Mapping[str, Any] | Sequence[tuple]) -> Any:
     ValueError
         If the columns are not all the same length.
     """
-    items = list(columns.items()) if isinstance(columns, Mapping) else [(str(k), v) for k, v in columns]
+    items = (
+        list(columns.items()) if isinstance(columns, Mapping) else [(str(k), v) for k, v in columns]
+    )
     store = new_store()
     lengths = set()
     for name, values in items:
@@ -600,8 +604,6 @@ def as_store(data: Any) -> Any:
     )
 
 
-
-
 def rows_from_table(table: Any) -> list[dict[str, Any]]:
     """Return a table as a list of row mappings — the inverse of
     :func:`store_from_rows`.
@@ -622,14 +624,15 @@ def rows_from_table(table: Any) -> list[dict[str, Any]]:
     names = column_names(table)
     columns = [np.asarray(table[name]) for name in names]
     return [
-        {name: column[i].item() if hasattr(column[i], "item") else column[i]
-         for name, column in zip(names, columns)}
+        {
+            name: column[i].item() if hasattr(column[i], "item") else column[i]
+            for name, column in zip(names, columns)
+        }
         for i in range(row_count(table))
     ]
 
-def store_from_rows(
-    rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None
-) -> Any:
+
+def store_from_rows(rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None) -> Any:
     """Build a store from a sequence of row mappings.
 
     The row-oriented shape an API hands back, and the one that otherwise goes
@@ -677,9 +680,9 @@ def store_from_rows(
         present = np.array([v is not None for v in raw], dtype=bool)
         if any(isinstance(v, str) for v in raw if v is not None):
             values = np.array(["" if v is None else str(v) for v in raw], dtype=object)
-        elif all(
-            isinstance(v, (bool, np.bool_)) for v in raw if v is not None
-        ) and any(v is not None for v in raw):
+        elif all(isinstance(v, (bool, np.bool_)) for v in raw if v is not None) and any(
+            v is not None for v in raw
+        ):
             # Checked before the int branch: bool is a subclass of int in
             # Python, and the int branch already excludes it (`not
             # isinstance(v, bool)`) -- without this branch a bool column fell
@@ -703,6 +706,7 @@ def store_from_rows(
             column.set_mask(np.ascontiguousarray(present, dtype=np.uint8))
     store.set_n_rows(len(rows))
     return store
+
 
 def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
     """Stack stores row-wise, the way a burst folder is combined.
@@ -774,13 +778,14 @@ def take_columns(store: Any, names: Sequence[str]) -> Any:
     for name in names:
         if name not in present:
             continue
-        column = column_at(store, present.index(name))
+        column_at(store, present.index(name))
         # np.array: these outlive nothing here, but the copy keeps the new store
         # independent of the one it came from, which is what a caller expects of
         # a "new store" rather than a view.
         out.add(str(name), np.array(column_values(store, present.index(name))))
     out.set_n_rows(row_count(store))
     return out
+
 
 def take_rows(store: Any, rows: Any) -> Any:
     """Return a new store holding ``rows``, in that order.
@@ -818,6 +823,7 @@ def take_where(store: Any, mask: Any) -> Any:
     tttrlib.DataStore
     """
     return take_rows(store, np.nonzero(np.asarray(mask, dtype=bool).ravel())[0])
+
 
 def read_table(path: Any, *, group: str = "/") -> Any:
     """Return a columnar HDF5 table as a store, or ``None`` if it is not one.

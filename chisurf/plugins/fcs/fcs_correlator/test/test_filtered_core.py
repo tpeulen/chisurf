@@ -57,11 +57,16 @@ def test_filter_result_channel_map():
     fpar = np.arange(6.0).reshape(2, 3)
     fperp = np.arange(6.0, 12.0).reshape(2, 3)
     res = FilterResultMFD(
-        filters_par=fpar, filters_perp=fperp,
-        reconstruction_par=np.zeros(3), reconstruction_perp=np.zeros(3),
-        weighted_residuals_par=np.zeros(3), weighted_residuals_perp=np.zeros(3),
-        total_decay_par=np.ones(3), total_decay_perp=np.ones(3),
-        species_decays_par=[np.ones(3)], species_decays_perp=[np.ones(3)],
+        filters_par=fpar,
+        filters_perp=fperp,
+        reconstruction_par=np.zeros(3),
+        reconstruction_perp=np.zeros(3),
+        weighted_residuals_par=np.zeros(3),
+        weighted_residuals_perp=np.zeros(3),
+        total_decay_par=np.ones(3),
+        total_decay_perp=np.ones(3),
+        species_decays_par=[np.ones(3)],
+        species_decays_perp=[np.ones(3)],
         metadata={},
     )
     table = res.to_channel_filters(par_channels=[0, 2], perp_channels=[1, 3])

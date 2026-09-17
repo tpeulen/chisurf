@@ -11,8 +11,8 @@ The symptom was a test that passed alone and failed in company
 the cost in the application is saved files that no longer round-trip.
 """
 
-import yaml
 import pytest
+import yaml
 
 pytest.importorskip("qtpy")
 

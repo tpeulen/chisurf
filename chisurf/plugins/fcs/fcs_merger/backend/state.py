@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclasses.dataclass
@@ -12,9 +12,9 @@ class MergerState:
 
     correlation_folder: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "MergerState":
+    def from_dict(cls, d: dict[str, Any]) -> MergerState:
         return cls(correlation_folder=str((d or {}).get("correlation_folder", "")))

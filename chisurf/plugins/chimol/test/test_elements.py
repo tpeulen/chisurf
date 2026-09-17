@@ -7,10 +7,10 @@ happens to fall inside it, which is exactly how a half-copied table survives
 review. So the count is asserted alongside the values -- the same rule the 547
 space groups are held to.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.analysis.elements import (
     ATOMIC_MASS,
     mass_of,
@@ -57,7 +57,8 @@ def test_masses_rise_with_the_elements_in_a_period():
 
 def test_an_unknown_symbol_is_none_rather_than_a_guess():
     """Reported, never defaulted: a weight is wrong in a way nobody can see if
-    an unrecognised atom is quietly counted as carbon -- or as zero."""
+    an unrecognised atom is quietly counted as carbon -- or as zero.
+    """
     assert mass_of("XX") is None
     assert mass_of("") is None
 

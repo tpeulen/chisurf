@@ -53,11 +53,7 @@ def result_to_payload(result: TimeWindowResult) -> dict[str, Any]:
 
 def service_success(result: TimeWindowResult | dict[str, Any]) -> dict[str, Any]:
     """Wrap a result in the standard JSON-RPC service envelope."""
-    payload = (
-        result_to_payload(result)
-        if isinstance(result, TimeWindowResult)
-        else result
-    )
+    payload = result_to_payload(result) if isinstance(result, TimeWindowResult) else result
     return {"ok": True, "result": payload}
 
 

@@ -1,21 +1,18 @@
 import sys
-from chisurf.gui import QtWidgets, QtGui, QtCore
 
-import chisurf.gui
-import chisurf.gui.widgets.wizard
-import chisurf.gui.widgets
-import chisurf.gui.decorators
-
+import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.experiments
-import chisurf.core.curve
 import chisurf.core.fitting
-
+import chisurf.gui
+import chisurf.gui.decorators
+import chisurf.gui.widgets
+import chisurf.gui.widgets.wizard
 import chisurf.macros
+from chisurf.gui import QtWidgets
 
 
 class ChisurfWizard(QtWidgets.QWizard):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWizardStyle(QtWidgets.QWizard.ModernStyle)
@@ -29,9 +26,8 @@ if __name__ == "plugin":
     wizard = ChisurfWizard()
     wizard.show()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     wizard = ChisurfWizard()
     wizard.show()
     sys.exit(app.exec_())
-

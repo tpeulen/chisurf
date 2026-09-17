@@ -32,6 +32,7 @@ writes ``renders/web_parity/`` -- ``desktop.json``, ``browser.json``,
 ``report.md`` and a PNG of each host. ``--desktop-only`` skips the browser half,
 which needs Playwright and a minute of Pyodide.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,7 +42,7 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Any, Optional
+from typing import Any
 
 __all__ = [
     "OUT_DIR",
@@ -73,7 +74,9 @@ _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 
 def _demo_pdb() -> str:
     """The structure both halves open, so they compare the same molecule."""
-    return str(pathlib.Path(__import__("chimol").__file__).resolve().parent / "data" / "demos" / "148l.pdb")
+    return str(
+        pathlib.Path(__import__("chimol").__file__).resolve().parent / "data" / "demos" / "148l.pdb"
+    )
 
 
 # -- the desktop half --------------------------------------------------------
@@ -120,9 +123,7 @@ def desktop_report(size: tuple[int, int] = SIZE) -> tuple[dict[str, Any], Any]:
     reload()
     image = app.draw_frame()
     gui = app.renderer._internal_gui
-    report = parity.report(
-        gui=gui, cmd=app.cmd, host=app.renderer, reload=reload, size=size
-    )
+    report = parity.report(gui=gui, cmd=app.cmd, host=app.renderer, reload=reload, size=size)
     report["role"] = "desktop"
     # After the probes the session is whatever the last one left; put it back
     # so the PNG beside the report is the molecule and not the debris.
@@ -144,9 +145,9 @@ def _free_port() -> int:
 
 def browser_report(
     size: tuple[int, int] = SIZE,
-    out_dir: Optional[pathlib.Path] = None,
+    out_dir: pathlib.Path | None = None,
     timeout_ms: int = 600_000,
-) -> tuple[dict[str, Any], Optional[pathlib.Path]]:
+) -> tuple[dict[str, Any], pathlib.Path | None]:
     """Run the same report inside a real page, on the browser's own WebGPU.
 
     Parameters
@@ -180,9 +181,10 @@ def browser_report(
     port = _free_port()
     root = _PLUGIN_DIR.parents[2]
     server = subprocess.Popen(
-        [sys.executable, "-m", "chimol.hosts.web.serve",
-         "--port", str(port), "--no-open"],
-        cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
+        cwd=str(root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     try:
         for _ in range(200):
@@ -196,9 +198,7 @@ def browser_report(
 
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True, args=CHROMIUM_FLAGS)
-            page = browser.new_page(
-                viewport={"width": size[0], "height": size[1] + 28}
-            )
+            page = browser.new_page(viewport={"width": size[0], "height": size[1] + 28})
             errors: list[str] = []
             page.on("pageerror", lambda e: errors.append(str(e)))
             page.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
@@ -211,9 +211,7 @@ def browser_report(
                 " || s.textContent.includes('failed')); }",
                 timeout=timeout_ms,
             )
-            status = page.evaluate(
-                "() => document.getElementById('status')?.textContent || ''"
-            )
+            status = page.evaluate("() => document.getElementById('status')?.textContent || ''")
             if "drawn" not in status:
                 failure = page.evaluate("() => globalThis.chimolError || ''")
                 browser.close()
@@ -259,10 +257,8 @@ def render_report(desktop: dict[str, Any], browser: dict[str, Any]) -> str:
         "# chimol: the browser against the desktop",
         "",
         f"- backend: desktop `{desktop['backend']}`, browser `{browser['backend']}`",
-        f"- commands registered: {len(desktop['commands'])} / "
-        f"{len(browser['commands'])}",
-        f"- commands probed: {len(ran)} "
-        f"({len(probes) - len(ran)} skipped, see `parity.SKIP`)",
+        f"- commands registered: {len(desktop['commands'])} / {len(browser['commands'])}",
+        f"- commands probed: {len(ran)} ({len(probes) - len(ran)} skipped, see `parity.SKIP`)",
         f"- controls reachable: {len(desktop['chrome']['reachable'])} / "
         f"{len(browser['chrome']['reachable'])}",
         "",
@@ -293,22 +289,33 @@ def render_report(desktop: dict[str, Any], browser: dict[str, Any]) -> str:
         lines.append("")
 
     if diff["commands_missing"]:
-        lines += ["## Commands missing in the browser", "",
-                  ", ".join(f"`{n}`" for n in diff["commands_missing"]), ""]
+        lines += [
+            "## Commands missing in the browser",
+            "",
+            ", ".join(f"`{n}`" for n in diff["commands_missing"]),
+            "",
+        ]
 
     if diff["probe_differences"]:
-        lines += ["## Commands that behave differently", "",
-                  "| command | desktop | browser |", "|---|---|---|"]
+        lines += [
+            "## Commands that behave differently",
+            "",
+            "| command | desktop | browser |",
+            "|---|---|---|",
+        ]
         for entry in diff["probe_differences"]:
             lines.append(
-                f"| `{entry['line']}` | {entry['desktop'][:160]} "
-                f"| {entry['browser'][:160]} |"
+                f"| `{entry['line']}` | {entry['desktop'][:160]} | {entry['browser'][:160]} |"
             )
         lines.append("")
 
     if diff["chrome_missing"]:
-        lines += ["## Controls the browser cannot reach", "",
-                  ", ".join(f"`{c}`" for c in diff["chrome_missing"]), ""]
+        lines += [
+            "## Controls the browser cannot reach",
+            "",
+            ", ".join(f"`{c}`" for c in diff["chrome_missing"]),
+            "",
+        ]
 
     if diff["menu_differences"]:
         lines += ["## Menus", ""]
@@ -321,8 +328,12 @@ def render_report(desktop: dict[str, Any], browser: dict[str, Any]) -> str:
         lines.append("")
 
     if diff["bands_differ"]:
-        lines += ["## Chrome bands (logical pixels)", "",
-                  "| band | desktop | browser |", "|---|---:|---:|"]
+        lines += [
+            "## Chrome bands (logical pixels)",
+            "",
+            "| band | desktop | browser |",
+            "|---|---:|---:|",
+        ]
         for band, (left, right) in diff["bands_differ"].items():
             lines.append(f"| {band} | {left} | {right} |")
         lines.append("")
@@ -334,9 +345,7 @@ def render_report(desktop: dict[str, Any], browser: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def capture(
-    out_dir: Optional[pathlib.Path] = None, desktop_only: bool = False
-) -> dict[str, Any]:
+def capture(out_dir: pathlib.Path | None = None, desktop_only: bool = False) -> dict[str, Any]:
     """Run both halves and write the A/B.
 
     Parameters
@@ -380,7 +389,7 @@ def capture(
     return parity.compare(desktop, browser)
 
 
-def main(argv: Optional[list[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=pathlib.Path, default=None)

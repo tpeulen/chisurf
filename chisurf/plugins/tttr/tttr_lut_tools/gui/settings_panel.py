@@ -11,8 +11,8 @@ import tttrlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 VALID_EXTS = {".spc", ".ht3", ".ptu", ".phu", ".photonhdf5"}
 EPS = 1e-12
@@ -170,7 +170,12 @@ def _hist_time_safe(tttr_obj: object, channel: int) -> tuple[np.ndarray, np.ndar
         return np.all(diff >= 0) and np.count_nonzero(diff) > 0
 
     def looks_like_hist(values: np.ndarray) -> bool:
-        return values.ndim == 1 and values.size > 0 and np.all(np.isfinite(values)) and np.all(values >= 0)
+        return (
+            values.ndim == 1
+            and values.size > 0
+            and np.all(np.isfinite(values))
+            and np.all(values >= 0)
+        )
 
     if looks_like_time(first) and looks_like_hist(second):
         x_values, y_values = first, second
@@ -252,7 +257,9 @@ class TTTRBundle:
             self._cor_log[int(channel)] = (x_values, logify(y_values))
         self._lut_sig = signature
 
-    def get_cor(self, channel: int, want_log: bool, channel_luts: dict[int, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+    def get_cor(
+        self, channel: int, want_log: bool, channel_luts: dict[int, np.ndarray]
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Return corrected histogram data."""
         self.ensure_corrected_cache(channel_luts)
         cache = self._cor_log if want_log else self._cor_lin
@@ -431,9 +438,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 
         self._file_model = _FileListModel(on_change=self._files_changed)
-        self.file_list = PathListWidget(
-            self._file_model, "files", extensions=sorted(VALID_EXTS)
-        )
+        self.file_list = PathListWidget(self._file_model, "files", extensions=sorted(VALID_EXTS))
         self.file_list.setMinimumHeight(45)
         self.file_list.setMaximumHeight(140)
 
@@ -989,7 +994,9 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                 int(channel): np.asarray(array).tolist()
                 for channel, array in self.channel_luts.items()
             },
-            "channel_shifts": {int(channel): int(shift) for channel, shift in self.channel_shifts.items()},
+            "channel_shifts": {
+                int(channel): int(shift) for channel, shift in self.channel_shifts.items()
+            },
             "metadata": {
                 "created": str(np.datetime64("now")),
                 "used_channels": [int(channel) for channel in used],

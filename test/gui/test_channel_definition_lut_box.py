@@ -11,8 +11,15 @@ import pathlib
 import numpy as np
 import pytest
 
-_SPC = (pathlib.Path(__file__).resolve().parents[2]
-        / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
+_SPC = (
+    pathlib.Path(__file__).resolve().parents[2]
+    / "test"
+    / "data"
+    / "tttr"
+    / "BH"
+    / "132"
+    / "BH_SPC132.spc"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -107,8 +114,9 @@ def test_microtime_preview_applies_lut(qapp, tmp_path):
     page._refresh_preview_lut()
     raw = np.asarray(page._microtime_counts).copy()
 
-    tbl = compute.compute_lut_from_files([str(_SPC)], channel=0,
-                                         linear_start=1500, linear_stop=3000)
+    tbl = compute.compute_lut_from_files(
+        [str(_SPC)], channel=0, linear_start=1500, linear_stop=3000
+    )
     page._channel_luts[0] = np.asarray(tbl["NTAC_fract"])
     page._apply_lut = True
     page._refresh_preview_lut()
@@ -150,8 +158,11 @@ def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp):
 
     ntac = np.linspace(0, 4096, 4096)
     dlg = MicrotimeShiftDialog(
-        str(_SPC), routine="SPC-130",
-        channel_luts={0: ntac, 1: ntac}, channel_shifts={0: 5}, apply_lut=True,
+        str(_SPC),
+        routine="SPC-130",
+        channel_luts={0: ntac, 1: ntac},
+        channel_shifts={0: 5},
+        apply_lut=True,
     )
     assert len(dlg._hists) > 1  # per-channel histograms
     assert dlg._spins[0].value() == 5  # seeded from current shifts

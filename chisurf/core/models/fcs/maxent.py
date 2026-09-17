@@ -37,9 +37,9 @@ class FCSMaxEntLCurveResult:
 
 
 def build_diffusion_kernel(
-        tau: np.ndarray,
-        td_grid: np.ndarray,
-        s: float = 3.5,
+    tau: np.ndarray,
+    td_grid: np.ndarray,
+    s: float = 3.5,
 ) -> np.ndarray:
     """Build a simple 3D Gaussian FCS diffusion kernel.
 
@@ -76,20 +76,20 @@ def build_diffusion_kernel(
     k = np.empty((tau.size, td_grid.size), dtype=float)
     for j, td in enumerate(td_grid):
         # Standard 3D Gaussian volume FCS model without offset and 1/N factor
-        k[:, j] = (1.0 / (1.0 + tau / td)) / np.sqrt(1.0 + (tau / td) / (s ** 2))
+        k[:, j] = (1.0 / (1.0 + tau / td)) / np.sqrt(1.0 + (tau / td) / (s**2))
     return k
 
 
 def _quickfit_mem_iteration(
-        Vred: np.ndarray,
-        svals: np.ndarray,
-        Ured: np.ndarray,
-        M: np.ndarray,
-        stdev: np.ndarray,
-        ydata: np.ndarray,
-        m_prior: np.ndarray,
-        alpha: float,
-        num_iter: int,
+    Vred: np.ndarray,
+    svals: np.ndarray,
+    Ured: np.ndarray,
+    M: np.ndarray,
+    stdev: np.ndarray,
+    ydata: np.ndarray,
+    m_prior: np.ndarray,
+    alpha: float,
+    num_iter: int,
 ):
     """MaxEnt iteration loop (QuickFit-style MEM).
 
@@ -179,7 +179,7 @@ def _quickfit_mem_iteration(
 
 #: The kernel's truncated SVD, keyed on exactly what it depends on. A tiny
 #: LRU (a fit touches one grid; a session a handful).
-_KERNEL_SVD_CACHE: "dict[tuple, tuple]" = {}
+_KERNEL_SVD_CACHE: dict[tuple, tuple] = {}
 
 
 def _kernel_svd(tau: np.ndarray, td_grid: np.ndarray, s: float):
@@ -206,8 +206,8 @@ def _kernel_svd(tau: np.ndarray, td_grid: np.ndarray, s: float):
     s_count = int(mask.sum())
     out = (
         svals[:s_count].astype(np.float64),
-        U_np[:, :s_count].astype(np.float64),   # Nd x s (QuickFit's V)
-        VT[:s_count, :].T.astype(np.float64),   # N x s  (QuickFit's U)
+        U_np[:, :s_count].astype(np.float64),  # Nd x s (QuickFit's V)
+        VT[:s_count, :].T.astype(np.float64),  # N x s  (QuickFit's U)
     )
     if len(_KERNEL_SVD_CACHE) > 8:
         _KERNEL_SVD_CACHE.clear()
@@ -259,17 +259,17 @@ def _maxent_engine_solve(A, g_data, stdev, m_prior, alpha, num_iter):
 
 
 def fcs_maxent(
-        tau: np.ndarray,
-        g: np.ndarray,
-        td_min: float | None = None,
-        td_max: float | None = None,
-        n_td: int = 80,
-        s: float = 3.5,
-        reg: float = 0.1,
-        weights: np.ndarray | None = None,
-        prior: np.ndarray | None = None,
-        td_grid: np.ndarray | None = None,
-        **kwargs,
+    tau: np.ndarray,
+    g: np.ndarray,
+    td_min: float | None = None,
+    td_max: float | None = None,
+    n_td: int = 80,
+    s: float = 3.5,
+    reg: float = 0.1,
+    weights: np.ndarray | None = None,
+    prior: np.ndarray | None = None,
+    td_grid: np.ndarray | None = None,
+    **kwargs,
 ) -> dict:
     r"""Run a simple MaxEnt inversion on an FCS correlation curve.
 
@@ -438,10 +438,10 @@ def fcs_maxent(
 
 
 def _rh_grid_to_td_grid(
-        rh_grid: np.ndarray,
-        w0_um: float,
-        temperature: float = 298.15,
-        viscosity: float = 1.0e-3,
+    rh_grid: np.ndarray,
+    w0_um: float,
+    temperature: float = 298.15,
+    viscosity: float = 1.0e-3,
 ) -> np.ndarray:
     """Convert a hydrodynamic-radius grid to a diffusion-time grid.
 
@@ -513,19 +513,19 @@ def _water_viscosity_Pa_s(temperature: float) -> float:
 
 
 def fcs_maxent_rh(
-        tau: np.ndarray,
-        g: np.ndarray,
-        rh_min: float = 0.5,
-        rh_max: float = 50.0,
-        n_rh: int = 64,
-        w0: float = 0.3,
-        s: float = 3.5,
-        reg: float = 0.1,
-        temperature: float = 298.15,
-        viscosity: float | None = None,
-        weights: np.ndarray | None = None,
-        prior: np.ndarray | None = None,
-        **kwargs,
+    tau: np.ndarray,
+    g: np.ndarray,
+    rh_min: float = 0.5,
+    rh_max: float = 50.0,
+    n_rh: int = 64,
+    w0: float = 0.3,
+    s: float = 3.5,
+    reg: float = 0.1,
+    temperature: float = 298.15,
+    viscosity: float | None = None,
+    weights: np.ndarray | None = None,
+    prior: np.ndarray | None = None,
+    **kwargs,
 ) -> dict:
     r"""Run a MaxEnt inversion parameterized in hydrodynamic radius.
 
@@ -618,9 +618,9 @@ def fcs_maxent_rh(
 
 
 def _lcurve_grid(
-        n_points: int,
-        log10_min: float,
-        log10_max: float,
+    n_points: int,
+    log10_min: float,
+    log10_max: float,
 ) -> np.ndarray:
     """Build the log10 regularization grid for an FCS MaxEnt L-curve.
 
@@ -671,13 +671,13 @@ def _valid_y_error(y_error: Any, size: int) -> np.ndarray:
 
 
 def _chi2r_from_arrays(
-        g: np.ndarray,
-        g_fit: np.ndarray,
-        y_error: Any,
-        xmin: int = 0,
-        xmax: int | None = None,
-        mask: np.ndarray | None = None,
-        n_free: int = 0,
+    g: np.ndarray,
+    g_fit: np.ndarray,
+    y_error: Any,
+    xmin: int = 0,
+    xmax: int | None = None,
+    mask: np.ndarray | None = None,
+    n_free: int = 0,
 ) -> float:
     """Compute reduced chi-squared from raw arrays.
 
@@ -750,8 +750,8 @@ def _solution_norm(result: dict) -> float:
 
 
 def _maxent_stdev_from_weights(
-        weights: np.ndarray | None,
-        size: int,
+    weights: np.ndarray | None,
+    size: int,
 ) -> np.ndarray:
     """Convert MaxEnt weights to normalized standard deviations.
 
@@ -810,8 +810,8 @@ def _maxent_prior(prior: np.ndarray | None, size: int) -> np.ndarray:
 
 
 def _maxent_svd_components(
-        A: np.ndarray,
-        stdev: np.ndarray,
+    A: np.ndarray,
+    stdev: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Build truncated SVD components used by the MaxEnt solver.
 
@@ -846,10 +846,10 @@ def _maxent_svd_components(
 
 
 def _maxent_td_grid(
-        tau: np.ndarray,
-        td_min: float | None,
-        td_max: float | None,
-        n_td: int,
+    tau: np.ndarray,
+    td_min: float | None,
+    td_max: float | None,
+    n_td: int,
 ) -> np.ndarray:
     """Build the diffusion-time grid used by FCS MaxEnt.
 
@@ -875,21 +875,21 @@ def _maxent_td_grid(
 
 
 def _compute_fcs_maxent_l_curve(
-        tau: np.ndarray,
-        g: np.ndarray,
-        *,
-        y_error: Any = None,
-        log10_min: float = -3.0,
-        log10_max: float = 3.0,
-        n_points: int = 32,
-        xmin: int = 0,
-        xmax: int | None = None,
-        mask: np.ndarray | None = None,
-        n_free: int = 0,
-        solver: str = "td",
-        solver_kwargs: dict[str, Any] | None = None,
-        return_results: bool = False,
-        on_error: str = "nan",
+    tau: np.ndarray,
+    g: np.ndarray,
+    *,
+    y_error: Any = None,
+    log10_min: float = -3.0,
+    log10_max: float = 3.0,
+    n_points: int = 32,
+    xmin: int = 0,
+    xmax: int | None = None,
+    mask: np.ndarray | None = None,
+    n_free: int = 0,
+    solver: str = "td",
+    solver_kwargs: dict[str, Any] | None = None,
+    return_results: bool = False,
+    on_error: str = "nan",
 ) -> FCSMaxEntLCurveResult:
     """Run an FCS MaxEnt L-curve sweep in core code.
 
@@ -1068,13 +1068,14 @@ def _compute_fcs_maxent_l_curve(
 
     try:
         from chisurf.core.math import regularization
+
         corner = regularization.discrete_lcurve_corner(chi2_vals, sol_vals)
     except Exception:
         corner = None
 
     return FCSMaxEntLCurveResult(
         log10_reg=grid,
-        reg=10.0 ** grid,
+        reg=10.0**grid,
         chi2r=chi2_vals,
         solution_norm=sol_vals,
         corner_index=corner,
@@ -1083,26 +1084,26 @@ def _compute_fcs_maxent_l_curve(
 
 
 def compute_fcs_maxent_l_curve(
-        tau: np.ndarray,
-        g: np.ndarray,
-        *,
-        y_error: Any = None,
-        log10_min: float = -3.0,
-        log10_max: float = 3.0,
-        n_points: int = 32,
-        xmin: int = 0,
-        xmax: int | None = None,
-        mask: np.ndarray | None = None,
-        n_free: int = 0,
-        td_min: float | None = None,
-        td_max: float | None = None,
-        n_td: int = 80,
-        s: float = 3.5,
-        baseline: float = 1.0,
-        prior: np.ndarray | None = None,
-        td_grid: np.ndarray | None = None,
-        return_results: bool = False,
-        **solver_kwargs: Any,
+    tau: np.ndarray,
+    g: np.ndarray,
+    *,
+    y_error: Any = None,
+    log10_min: float = -3.0,
+    log10_max: float = 3.0,
+    n_points: int = 32,
+    xmin: int = 0,
+    xmax: int | None = None,
+    mask: np.ndarray | None = None,
+    n_free: int = 0,
+    td_min: float | None = None,
+    td_max: float | None = None,
+    n_td: int = 80,
+    s: float = 3.5,
+    baseline: float = 1.0,
+    prior: np.ndarray | None = None,
+    td_grid: np.ndarray | None = None,
+    return_results: bool = False,
+    **solver_kwargs: Any,
 ) -> FCSMaxEntLCurveResult:
     """Compute an L-curve for diffusion-time MaxEnt FCS inversion.
 
@@ -1170,28 +1171,28 @@ def compute_fcs_maxent_l_curve(
 
 
 def compute_fcs_maxent_rh_l_curve(
-        tau: np.ndarray,
-        g: np.ndarray,
-        *,
-        y_error: Any = None,
-        log10_min: float = -3.0,
-        log10_max: float = 3.0,
-        n_points: int = 32,
-        xmin: int = 0,
-        xmax: int | None = None,
-        mask: np.ndarray | None = None,
-        n_free: int = 0,
-        rh_min: float = 0.5,
-        rh_max: float = 50.0,
-        n_rh: int = 64,
-        w0: float = 0.3,
-        s: float = 3.5,
-        baseline: float = 1.0,
-        temperature: float = 298.15,
-        viscosity: float | None = None,
-        prior: np.ndarray | None = None,
-        return_results: bool = False,
-        **solver_kwargs: Any,
+    tau: np.ndarray,
+    g: np.ndarray,
+    *,
+    y_error: Any = None,
+    log10_min: float = -3.0,
+    log10_max: float = 3.0,
+    n_points: int = 32,
+    xmin: int = 0,
+    xmax: int | None = None,
+    mask: np.ndarray | None = None,
+    n_free: int = 0,
+    rh_min: float = 0.5,
+    rh_max: float = 50.0,
+    n_rh: int = 64,
+    w0: float = 0.3,
+    s: float = 3.5,
+    baseline: float = 1.0,
+    temperature: float = 298.15,
+    viscosity: float | None = None,
+    prior: np.ndarray | None = None,
+    return_results: bool = False,
+    **solver_kwargs: Any,
 ) -> FCSMaxEntLCurveResult:
     """Compute an L-curve for hydrodynamic-radius MaxEnt FCS inversion.
 
@@ -1267,12 +1268,12 @@ def compute_fcs_maxent_rh_l_curve(
 
 
 def plot_fcs_maxent_result(
-        result: dict,
-        ax_corr=None,
-        ax_dist=None,
-        show: bool = True,
-        log_tau: bool = True,
-        log_td: bool = True,
+    result: dict,
+    ax_corr=None,
+    ax_dist=None,
+    show: bool = True,
+    log_tau: bool = True,
+    log_td: bool = True,
 ):
     """Plot measured vs MaxEnt-reconstructed FCS curve and the distribution.
 

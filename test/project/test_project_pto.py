@@ -14,11 +14,13 @@ def _project() -> Project:
     project = Project(name="heterogeneous", description="PTO round trip")
     project.datasets["decay"] = {"uid": "dataset-decay", "noise": "poisson"}
     project.datasets["correlation"] = {"uid": "dataset-correlation", "noise": "default"}
-    project.fits = [{
-        "uid": "global-fit",
-        "members": ["dataset-decay", "dataset-correlation"],
-        "shared_parameter": "R0",
-    }]
+    project.fits = [
+        {
+            "uid": "global-fit",
+            "members": ["dataset-decay", "dataset-correlation"],
+            "shared_parameter": "R0",
+        }
+    ]
     project.parameters = {"global-fit": [{"uid": "R0", "value": 5.4}]}
     return project
 
@@ -35,10 +37,11 @@ def test_core_project_round_trip_is_a_ptolib_container(tmp_path):
     assert any(tag.name == "chisurf.profile" and tag.text == PROFILE for tag in reader.tags_for(0))
     objects = list(reader.objects())
     state = next(
-        obj for obj in objects
-        if obj.kind == "chisurf.project-entry" and obj.name == "project.json"
+        obj for obj in objects if obj.kind == "chisurf.project-entry" and obj.name == "project.json"
     )
-    assert json.loads(bytes(reader.read(state.uid)).decode("utf-8"))["meta"]["name"] == "heterogeneous"
+    assert (
+        json.loads(bytes(reader.read(state.uid)).decode("utf-8"))["meta"]["name"] == "heterogeneous"
+    )
     reader.close()
 
     loaded = load_project(saved)
@@ -52,7 +55,9 @@ def test_save_failure_keeps_the_previous_valid_project(tmp_path, monkeypatch):
 
     import chisurf.core.project.pto as project_pto
 
-    monkeypatch.setattr(project_pto, "read_entries", lambda _: (_ for _ in ()).throw(ProjectPtoError("bad temp")))
+    monkeypatch.setattr(
+        project_pto, "read_entries", lambda _: (_ for _ in ()).throw(ProjectPtoError("bad temp"))
+    )
     with pytest.raises(ProjectPtoError, match="bad temp"):
         save_project(Project(name="replacement"), target)
 

@@ -1,11 +1,11 @@
-import utils
-import os
+import pathlib
 import sys
 import unittest
-from qtpy.QtWidgets import QApplication
-from qtpy.QtTest import QTest
+
+import utils
 from qtpy.QtCore import Qt
-import pathlib
+from qtpy.QtTest import QTest
+from qtpy.QtWidgets import QApplication
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 
@@ -13,12 +13,10 @@ utils.set_search_paths(TOPDIR)
 
 from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
 
-
 app = QApplication(sys.argv)
 
 
 class Tests(unittest.TestCase):
-
     def setUp(self):
         self.form = Kappa2Dist()
 

@@ -46,14 +46,14 @@ class LogFilterWindow(QMainWindow):
         self._original_log_content = ""
 
         for i in range(5):
-            self.plainTextEditLog.appendPlainText(f"Initial log entry {i+1}")
+            self.plainTextEditLog.appendPlainText(f"Initial log entry {i + 1}")
 
         self._original_log_content = self.plainTextEditLog.toPlainText()
 
     def filter_log_content(self):
         filter_text = self.lineEdit_LogFilter.text().strip().lower()
 
-        if not hasattr(self, '_original_log_content'):
+        if not hasattr(self, "_original_log_content"):
             self._original_log_content = ""
 
         current_content = self.plainTextEditLog.toPlainText()
@@ -65,25 +65,28 @@ class LogFilterWindow(QMainWindow):
             self.plainTextEditLog.setPlainText(self._original_log_content)
             return
 
-        lines = self._original_log_content.split('\n')
+        lines = self._original_log_content.split("\n")
         filtered_lines = [line for line in lines if filter_text in line.lower()]
 
         self.plainTextEditLog.clear()
 
         if filtered_lines:
-            self.plainTextEditLog.setPlainText('\n'.join(filtered_lines))
+            self.plainTextEditLog.setPlainText("\n".join(filtered_lines))
         else:
             self.plainTextEditLog.setPlainText("No matching log entries found.")
 
     def add_log_entry(self):
         import random
+
         prefixes = ["INFO", "DEBUG", "WARNING", "ERROR", "TEST"]
         prefix = random.choice(prefixes)
-        self.plainTextEditLog.appendPlainText(f"{prefix}: New log entry at {time.strftime('%H:%M:%S')}")
+        self.plainTextEditLog.appendPlainText(
+            f"{prefix}: New log entry at {time.strftime('%H:%M:%S')}"
+        )
         self.update_log_filter()
 
     def update_log_filter(self):
-        if hasattr(self, 'lineEdit_LogFilter') and self.lineEdit_LogFilter.text().strip():
+        if hasattr(self, "lineEdit_LogFilter") and self.lineEdit_LogFilter.text().strip():
             self.filter_log_content()
 
     def clear_filter(self):
@@ -93,6 +96,7 @@ class LogFilterWindow(QMainWindow):
 @pytest.fixture
 def qapp():
     from qtpy.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication([])

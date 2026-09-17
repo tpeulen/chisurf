@@ -51,8 +51,14 @@ def count_impure(tracks, labels, min_points: int = 5) -> tuple[int, int]:
 def sparse_movie():
     """A well-posed movie: few particles, far apart, known D."""
     return tk.simulate_particle_movie(
-        n_frames=80, shape=(256, 256), n_particles=8, diffusion_coefficient=0.5,
-        sigma_psf=1.5, amplitude=250.0, background=10.0, seed=1,
+        n_frames=80,
+        shape=(256, 256),
+        n_particles=8,
+        diffusion_coefficient=0.5,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=1,
     )
 
 
@@ -110,7 +116,7 @@ def test_a_single_hot_pixel_is_not_a_particle():
     grid_y = np.arange(64)[:, None]
     grid_x = np.arange(64)[None, :]
     image = rng.poisson(np.full((64, 64), 50.0)).astype(float)
-    image += 300.0 * np.exp(-((grid_y - 20) ** 2 + (grid_x - 20) ** 2) / (2 * 1.5 ** 2))
+    image += 300.0 * np.exp(-((grid_y - 20) ** 2 + (grid_x - 20) ** 2) / (2 * 1.5**2))
     image[45, 45] = 5000.0  # one blazing pixel, one pixel wide
 
     found = tk.detect_particles(image, method="wavelet", min_area=2)
@@ -129,7 +135,7 @@ def test_a_noiseless_frame_still_yields_detections():
     grid_y = np.arange(64)[:, None]
     grid_x = np.arange(64)[None, :]
     image = np.full((64, 64), 5.0)
-    image += 300.0 * np.exp(-((grid_y - 32) ** 2 + (grid_x - 32) ** 2) / (2 * 1.5 ** 2))
+    image += 300.0 * np.exp(-((grid_y - 32) ** 2 + (grid_x - 32) ** 2) / (2 * 1.5**2))
     found = tk.detect_particles(image, method="wavelet")
     assert len(found) == 1
 
@@ -168,8 +174,12 @@ def test_a_frame_whose_regions_are_all_too_small_yields_nothing(method):
 def test_a_dim_movie_is_tracked_rather_than_crashing_on_its_empty_frames():
     """The same hole on a realistic stack: dim frames must just contribute none."""
     movie, _ = tk.simulate_particle_movie(
-        n_frames=20, shape=(128, 128), n_particles=8,
-        amplitude=8.0, background=10.0, seed=3,
+        n_frames=20,
+        shape=(128, 128),
+        n_particles=8,
+        amplitude=8.0,
+        background=10.0,
+        seed=3,
     )
     for threshold in (3.0, 4.0, 5.0):
         found = tk.detect_particles(movie, method="wavelet", threshold=threshold)
@@ -183,7 +193,7 @@ def test_two_spots_closer_than_the_psf_yield_one_detection():
     grid_x = np.arange(64)[None, :]
     image = np.full((64, 64), 5.0)
     for cy, cx in ((32.0, 32.0), (32.0, 34.0)):  # 2 px apart
-        image += 300.0 * np.exp(-((grid_y - cy) ** 2 + (grid_x - cx) ** 2) / (2 * 1.5 ** 2))
+        image += 300.0 * np.exp(-((grid_y - cy) ** 2 + (grid_x - cx) ** 2) / (2 * 1.5**2))
     assert len(tk.detect_particles(image, method="wavelet", min_separation=4.0)) == 1
 
 
@@ -232,7 +242,9 @@ def test_the_assignment_beats_a_nearest_neighbour_on_a_crossing():
         ys += [20.0, 24.0]
         xs += [10.0 + 2.0 * f, 28.0 - 2.0 * f]
     detections = tk.Detections(
-        frame=np.array(frames), y=np.array(ys), x=np.array(xs),
+        frame=np.array(frames),
+        y=np.array(ys),
+        x=np.array(xs),
         intensity=np.ones(len(frames)),
     )
     tracks = tk.link_detections(detections, max_distance=5.0)
@@ -247,7 +259,9 @@ def test_the_assignment_beats_a_nearest_neighbour_on_a_crossing():
 def test_a_distant_detection_starts_a_new_track():
     """``max_distance`` is the safety margin, and it must actually bite."""
     detections = tk.Detections(
-        frame=np.array([0, 1]), y=np.array([10.0, 90.0]), x=np.array([10.0, 90.0]),
+        frame=np.array([0, 1]),
+        y=np.array([10.0, 90.0]),
+        x=np.array([10.0, 90.0]),
         intensity=np.ones(2),
     )
     tracks = tk.link_detections(detections, max_distance=5.0)
@@ -258,7 +272,9 @@ def test_gap_closing_rejoins_a_blink():
     """A particle missing for one frame yields one track, not two."""
     frames = np.array([0, 1, 3, 4])  # frame 2 missing
     detections = tk.Detections(
-        frame=frames, y=np.full(4, 20.0), x=np.array([10.0, 11.0, 13.0, 14.0]),
+        frame=frames,
+        y=np.full(4, 20.0),
+        x=np.array([10.0, 11.0, 13.0, 14.0]),
         intensity=np.ones(4),
     )
     assert len(tk.link_detections(detections, max_distance=3.0, max_frame_gap=0)) == 2
@@ -269,7 +285,9 @@ def test_gap_closing_chains_three_fragments_into_one():
     """Two merges in a row must collapse to a single track, not two."""
     frames = np.array([0, 2, 4])
     detections = tk.Detections(
-        frame=frames, y=np.full(3, 20.0), x=np.array([10.0, 12.0, 14.0]),
+        frame=frames,
+        y=np.full(3, 20.0),
+        x=np.array([10.0, 12.0, 14.0]),
         intensity=np.ones(3),
     )
     tracks = tk.link_detections(detections, max_distance=3.0, max_frame_gap=2)
@@ -297,8 +315,10 @@ def test_linking_nothing_returns_nothing():
 def test_short_tracks_can_be_filtered_out():
     """``filter_by_length`` renumbers and keeps only the long tracks."""
     detections = tk.Detections(
-        frame=np.array([0, 1, 2, 0]), y=np.array([10.0, 10.0, 10.0, 90.0]),
-        x=np.array([10.0, 11.0, 12.0, 90.0]), intensity=np.ones(4),
+        frame=np.array([0, 1, 2, 0]),
+        y=np.array([10.0, 10.0, 10.0, 90.0]),
+        x=np.array([10.0, 11.0, 12.0, 90.0]),
+        intensity=np.ones(4),
     )
     tracks = tk.link_detections(detections, max_distance=3.0)
     assert len(tracks) == 2
@@ -323,11 +343,11 @@ def test_the_msd_uses_frame_numbers_not_indices():
     frames = np.array([0, 1, 3])
     positions = np.column_stack([np.zeros(3), np.array([0.0, 1.0, 3.0])])
     lags, msd, counts = tk.mean_squared_displacement(positions, frames, max_lag=3)
-    assert msd[0] == pytest.approx(1.0)   # lag 1: only the 0->1 pair
+    assert msd[0] == pytest.approx(1.0)  # lag 1: only the 0->1 pair
     assert counts[0] == 1
-    assert msd[1] == pytest.approx(4.0)   # lag 2: the 1->3 pair, 2 apart in time
+    assert msd[1] == pytest.approx(4.0)  # lag 2: the 1->3 pair, 2 apart in time
     assert counts[1] == 1
-    assert msd[2] == pytest.approx(9.0)   # lag 3: the 0->3 pair
+    assert msd[2] == pytest.approx(9.0)  # lag 3: the 0->3 pair
 
 
 def test_a_mis_shaped_position_array_is_refused():
@@ -349,8 +369,14 @@ def test_the_pipeline_recovers_a_known_diffusion_coefficient(true_d):
     ``test_fixing_alpha_tightens_the_diffusion_coefficient``.
     """
     movie, _ = tk.simulate_particle_movie(
-        n_frames=80, shape=(256, 256), n_particles=8, diffusion_coefficient=true_d,
-        sigma_psf=1.5, amplitude=250.0, background=10.0, seed=2,
+        n_frames=80,
+        shape=(256, 256),
+        n_particles=8,
+        diffusion_coefficient=true_d,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=2,
     )
     found = tk.detect_particles(movie, method="wavelet", min_separation=4.0)
     tracks = tk.link_detections(
@@ -375,8 +401,14 @@ def test_fixing_alpha_tightens_the_diffusion_coefficient():
     0.15 when alpha is fixed; here the claim is pinned per dataset.
     """
     movie, _ = tk.simulate_particle_movie(
-        n_frames=80, shape=(256, 256), n_particles=8, diffusion_coefficient=1.0,
-        sigma_psf=1.5, amplitude=250.0, background=10.0, seed=1,
+        n_frames=80,
+        shape=(256, 256),
+        n_particles=8,
+        diffusion_coefficient=1.0,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=1,
     )
     found = tk.detect_particles(movie, method="wavelet", min_separation=4.0)
     tracks = tk.link_detections(found, max_distance=8.0, max_frame_gap=1)
@@ -403,9 +435,14 @@ def test_the_bootstrap_error_bar_actually_covers_the_truth():
     for true_d in (0.5, 1.0):
         for seed in (1, 2, 3, 4):
             movie, _ = tk.simulate_particle_movie(
-                n_frames=80, shape=(256, 256), n_particles=8,
-                diffusion_coefficient=true_d, sigma_psf=1.5, amplitude=250.0,
-                background=10.0, seed=seed,
+                n_frames=80,
+                shape=(256, 256),
+                n_particles=8,
+                diffusion_coefficient=true_d,
+                sigma_psf=1.5,
+                amplitude=250.0,
+                background=10.0,
+                seed=seed,
             )
             found = tk.detect_particles(movie, method="wavelet", min_separation=4.0)
             tracks = tk.link_detections(
@@ -457,8 +494,14 @@ def test_a_fit_without_enough_tracks_is_refused():
 def test_the_fit_warns_about_its_own_weaknesses():
     """``warnings()`` must speak up when the numbers should not be trusted."""
     movie, _ = tk.simulate_particle_movie(
-        n_frames=40, shape=(128, 128), n_particles=4, diffusion_coefficient=0.5,
-        sigma_psf=1.5, amplitude=250.0, background=10.0, seed=5,
+        n_frames=40,
+        shape=(128, 128),
+        n_particles=4,
+        diffusion_coefficient=0.5,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=5,
     )
     found = tk.detect_particles(movie, method="wavelet", min_separation=4.0)
     tracks = tk.link_detections(found, max_distance=4.0, max_frame_gap=1)
@@ -489,8 +532,13 @@ def test_the_simulated_steps_have_the_prescribed_variance():
     # render=False: this asks about the motion, not the images, and rendering a
     # field large enough to avoid boundary reflections would cost gigabytes.
     movie, truth = tk.simulate_particle_movie(
-        n_frames=200, shape=(2048, 2048), n_particles=30,
-        diffusion_coefficient=true_d, poisson=False, seed=6, render=False,
+        n_frames=200,
+        shape=(2048, 2048),
+        n_particles=30,
+        diffusion_coefficient=true_d,
+        poisson=False,
+        seed=6,
+        render=False,
     )
     assert movie is None
     steps = []

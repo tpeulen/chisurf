@@ -32,7 +32,7 @@ def test_info_json_location(qapp, qtbot):
         filter_widget.lineEdit_2.setText(test_folder)
 
         mock_filename = str(pathlib.Path(temp_dir) / "test_file.ptu")
-        filter_widget.settings['tttr_filenames'] = [mock_filename]
+        filter_widget.settings["tttr_filenames"] = [mock_filename]
 
         original_dirs = filter_widget.original_directories
         parent_dirs = filter_widget.parent_directories
@@ -41,18 +41,18 @@ def test_info_json_location(qapp, qtbot):
         assert parent_dirs[0].name.startswith(test_folder)
         assert "_" in parent_dirs[0].name
 
-        info_dir = original_dirs[0] / 'info'
+        info_dir = original_dirs[0] / "info"
         info_dir.mkdir(exist_ok=True, parents=True)
 
         parameters = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "test_param": "test_value"
+            "test_param": "test_value",
         }
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         params_filename = info_dir / f"photon_selection_parameters_{timestamp}.json"
 
-        with open(params_filename, 'w') as f:
+        with open(params_filename, "w") as f:
             json.dump(parameters, f, indent=4)
 
         assert params_filename.exists()
@@ -80,30 +80,16 @@ def test_info_json_uppercase(qapp, qtbot, monkeypatch):
         filter_widget.lineEdit_2.setText(test_folder)
 
         mock_filename = str(pathlib.Path(temp_dir) / "test_file.ptu")
-        filter_widget.settings['tttr_filenames'] = [mock_filename]
+        filter_widget.settings["tttr_filenames"] = [mock_filename]
 
         mock_setup_name = "Test Setup"
         mock_setup_data = {
-            "detectors": {
-                "Detector1": {"chs": [0, 1, 2]},
-                "Detector2": {"chs": [3, 4, 5]}
-            },
-            "windows": {
-                "Window1": [0, 100],
-                "Window2": [200, 300]
-            },
-            "tttr_reading": {
-                "file_type": "PTU",
-                "micro_time_binning": 8
-            }
+            "detectors": {"Detector1": {"chs": [0, 1, 2]}, "Detector2": {"chs": [3, 4, 5]}},
+            "windows": {"Window1": [0, 100], "Window2": [200, 300]},
+            "tttr_reading": {"file_type": "PTU", "micro_time_binning": 8},
         }
 
-        mock_setups = {
-            "setups": {
-                mock_setup_name: mock_setup_data
-            },
-            "last_used": mock_setup_name
-        }
+        mock_setups = {"setups": {mock_setup_name: mock_setup_data}, "last_used": mock_setup_name}
 
         # Patch the module-level function the page actually calls. Assigning
         # ``filter_widget.load_detector_setups`` did nothing but raise
@@ -119,7 +105,7 @@ def test_info_json_uppercase(qapp, qtbot, monkeypatch):
 
         original_dirs = filter_widget.original_directories
 
-        info_dir = original_dirs[0] / 'Info'
+        info_dir = original_dirs[0] / "Info"
         info_dir.mkdir(exist_ok=True, parents=True)
 
         parameters = filter_widget.get_burst_selection_parameters()
@@ -132,13 +118,13 @@ def test_info_json_uppercase(qapp, qtbot, monkeypatch):
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         params_filename = info_dir / f"photon_selection_parameters_{timestamp}.json"
 
-        with open(params_filename, 'w') as f:
+        with open(params_filename, "w") as f:
             json.dump(parameters, f, indent=4)
 
         assert params_filename.exists()
         assert params_filename.parent.name == "Info"
 
-        with open(params_filename, 'r') as f:
+        with open(params_filename) as f:
             saved_params = json.load(f)
 
         assert "setup_info" in saved_params

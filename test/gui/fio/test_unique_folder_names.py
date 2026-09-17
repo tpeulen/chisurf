@@ -1,6 +1,6 @@
 import pathlib
-import tempfile
 import shutil
+import tempfile
 
 from chisurf.gui.widgets.wizard.tttr_photonfilter import WizardTTTRPhotonFilter
 
@@ -8,11 +8,7 @@ from chisurf.gui.widgets.wizard.tttr_photonfilter import WizardTTTRPhotonFilter
 def test_unique_folder_paths(qapp, qtbot):
     temp_dir = tempfile.mkdtemp()
 
-    test_folders = [
-        "bocpd_All 1.0000#10",
-        "kalman_All 1.0000#10",
-        "burstwise_All 1.0000#10"
-    ]
+    test_folders = ["bocpd_All 1.0000#10", "kalman_All 1.0000#10", "burstwise_All 1.0000#10"]
 
     for folder in test_folders:
         folder_path = pathlib.Path(temp_dir) / folder

@@ -17,18 +17,18 @@ one payload, drawn by one set of rules -- plus the resolution chooser that
 becomes possible once the reader knows a model can be depicted more than one
 way.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
 import pytest
-from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
-
-from chimol.io.atoms import bead_mask
-from chimol.io.structure import load_structure_payload
 from chimol.core.model.atoms_util import _is_bead_model
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import bead_mask
+from chimol.io.structure import load_structure_payload
+from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 
@@ -155,9 +155,7 @@ def test_an_ordinary_rmf_offers_no_choice(_qt_app, single):
     assert _drawn(view) == info["n_fine_total"]
 
 
-def test_a_multiresolution_file_opens_on_the_trees_own_representation(
-    _qt_app, multires
-):
+def test_a_multiresolution_file_opens_on_the_trees_own_representation(_qt_app, multires):
     """Both depictions are loaded; only the file's own one is drawn."""
     path, info = multires
     view, _payload = _load(path)
@@ -234,9 +232,7 @@ def test_choosing_a_resolution_does_not_unhide_what_you_hid(_qt_app, multires):
     view.set_rows_hidden(rows, True)
     view.set_visible_resolutions([COARSE_RESOLUTION])
 
-    hidden_coarse = sum(
-        1 for row in rows if view._resolutions[row] == COARSE_RESOLUTION
-    )
+    hidden_coarse = sum(1 for row in rows if view._resolutions[row] == COARSE_RESOLUTION)
     assert hidden_coarse > 0, "the fixture's chains have coarse beads too"
     assert _drawn(view) == info["n_coarse_total"] - hidden_coarse
 

@@ -5,10 +5,10 @@ What belongs here is the half chimol owns -- walking a viewer-shaped object for
 host arrays and device buffers, splitting RAM from VRAM, reading a GPU buffer
 back through the queue, and not looping forever on a cycle.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.services import memory_probe
 
 numpy = pytest.importorskip("numpy")
@@ -44,8 +44,8 @@ class _FakeScene:
     def __init__(self) -> None:
         self.xyz = numpy.zeros(4096, dtype=numpy.float32)
         self.instances = _FakeBuffer(8192)
-        self.name = "scene"          # not memory
-        self.tiny = numpy.zeros(4)   # below the minimum
+        self.name = "scene"  # not memory
+        self.tiny = numpy.zeros(4)  # below the minimum
 
 
 def test_the_probe_finds_host_arrays_and_device_buffers_and_separates_them():
@@ -65,7 +65,7 @@ def test_the_probe_skips_blocks_under_the_minimum():
 
 
 def test_the_probe_names_a_block_by_the_path_it_was_found_at():
-    """"A 24 MB float32 array" is not actionable; the attribute path is."""
+    """ "A 24 MB float32 array" is not actionable; the attribute path is."""
     found = memory_probe.report(_FakeScene(), _FakeDevice())
     assert {one.name for one in found.sources} == {"xyz", "instances"}
 
@@ -81,9 +81,15 @@ def test_an_unreadable_device_buffer_returns_zeros_and_says_why():
     """A repaint calls read() once per row; raising would take the window down."""
 
     class _Angry:
-        queue = type("q", (), {"read_buffer": staticmethod(
-            lambda *a: (_ for _ in ()).throw(RuntimeError("no COPY_SRC"))
-        )})()
+        queue = type(
+            "q",
+            (),
+            {
+                "read_buffer": staticmethod(
+                    lambda *a: (_ for _ in ()).throw(RuntimeError("no COPY_SRC"))
+                )
+            },
+        )()
 
     source = memory_probe.GpuBufferSource(_FakeBuffer(64), _Angry(), "b")
     assert source.read(0, 8) == b"\x00" * 8

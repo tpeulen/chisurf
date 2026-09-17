@@ -51,7 +51,7 @@ from chisurf.core.dataspec import (
 ALL = "All"
 
 #: Built-in filter modes, as (value written to the model, label shown).
-BUILTIN_MODES: typing.Tuple[typing.Tuple[str, str], ...] = (
+BUILTIN_MODES: tuple[tuple[str, str], ...] = (
     ("count_rate", "Count rate"),
     ("burst", "Burst"),
     ("kalman", "Kalman Burst"),
@@ -129,85 +129,153 @@ def _mode_panel(settings: FilterSettings) -> PanelSection:
     """
     common = (
         ValueSection(
-            target="settings", attr="min_photons", label="Min photons", kind="int",
-            minimum=1, maximum=100000,
+            target="settings",
+            attr="min_photons",
+            label="Min photons",
+            kind="int",
+            minimum=1,
+            maximum=100000,
             description="Bursts with fewer photons than this are discarded.",
         ),
     )
     if settings.mode == "count_rate":
         sections = common + (
             ValueSection(
-                target="settings", attr="photon_window", label="Photons / window",
-                kind="int", minimum=1, maximum=10000,
+                target="settings",
+                attr="photon_window",
+                label="Photons / window",
+                kind="int",
+                minimum=1,
+                maximum=10000,
                 description="Photons used to compute the local count rate.",
             ),
             ValueSection(
-                target="settings", attr="time_window", label="Time window",
-                kind="float", minimum=1e-6, maximum=1000.0, decimals=4, suffix=" ms",
+                target="settings",
+                attr="time_window",
+                label="Time window",
+                kind="float",
+                minimum=1e-6,
+                maximum=1000.0,
+                decimals=4,
+                suffix=" ms",
                 description="Window length for the count-rate threshold.",
             ),
         )
     elif settings.mode == "burst":
         sections = common + (
             ValueSection(
-                target="settings", attr="photon_window", label="Window size",
-                kind="int", minimum=2, maximum=1000,
+                target="settings",
+                attr="photon_window",
+                label="Window size",
+                kind="int",
+                minimum=2,
+                maximum=1000,
                 description="Consecutive photons used for the rate (m).",
             ),
             ValueSection(
-                target="settings", attr="time_window", label="Window duration",
-                kind="float", minimum=1e-6, maximum=1000.0, decimals=4, suffix=" ms",
+                target="settings",
+                attr="time_window",
+                label="Window duration",
+                kind="float",
+                minimum=1e-6,
+                maximum=1000.0,
+                decimals=4,
+                suffix=" ms",
                 description="Maximum separation of m photons inside a burst (T).",
             ),
         )
     elif settings.mode == "cusum":
         sections = common + (
             ValueSection(
-                target="settings", attr="background_rate", label="Background rate",
-                kind="float", minimum=0.0, maximum=1e9, decimals=1, suffix=" cps",
+                target="settings",
+                attr="background_rate",
+                label="Background rate",
+                kind="float",
+                minimum=0.0,
+                maximum=1e9,
+                decimals=1,
+                suffix=" cps",
                 description="Background count rate; 0 estimates it from the data.",
             ),
             ValueSection(
-                target="settings", attr="sb_ratio", label="Signal / background",
-                kind="float", minimum=0.0, maximum=1000.0, decimals=2,
+                target="settings",
+                attr="sb_ratio",
+                label="Signal / background",
+                kind="float",
+                minimum=0.0,
+                maximum=1000.0,
+                decimals=2,
                 description="Burst brightness relative to background; 0 auto-estimates.",
             ),
             ValueSection(
-                target="settings", attr="alpha", label="False-positive rate",
-                kind="float", minimum=1e-6, maximum=0.5, decimals=4,
+                target="settings",
+                attr="alpha",
+                label="False-positive rate",
+                kind="float",
+                minimum=1e-6,
+                maximum=0.5,
+                decimals=4,
                 description="Probability of calling background a burst.",
             ),
             ValueSection(
-                target="settings", attr="beta", label="False-negative rate",
-                kind="float", minimum=1e-6, maximum=0.5, decimals=4,
+                target="settings",
+                attr="beta",
+                label="False-negative rate",
+                kind="float",
+                minimum=1e-6,
+                maximum=0.5,
+                decimals=4,
                 description="Probability of missing a real burst.",
             ),
         )
     elif settings.mode == "kalman":
         sections = common + (
             ValueSection(
-                target="settings", attr="kalman_q", label="Process noise",
-                kind="float", minimum=0.0, maximum=1e6, decimals=4,
+                target="settings",
+                attr="kalman_q",
+                label="Process noise",
+                kind="float",
+                minimum=0.0,
+                maximum=1e6,
+                decimals=4,
                 description="How fast the filter believes the rate itself changes.",
             ),
             ValueSection(
-                target="settings", attr="kalman_r_scale", label="Measurement noise",
-                kind="float", minimum=1e-6, maximum=1000.0, decimals=4,
+                target="settings",
+                attr="kalman_r_scale",
+                label="Measurement noise",
+                kind="float",
+                minimum=1e-6,
+                maximum=1000.0,
+                decimals=4,
                 description="Scale on the Poisson measurement variance.",
             ),
             ValueSection(
-                target="settings", attr="kalman_z_thresh", label="Z threshold",
-                kind="float", minimum=0.0, maximum=100.0, decimals=2,
+                target="settings",
+                attr="kalman_z_thresh",
+                label="Z threshold",
+                kind="float",
+                minimum=0.0,
+                maximum=100.0,
+                decimals=2,
                 description="Innovation distance above which a bin is in a burst.",
             ),
             ValueSection(
-                target="settings", attr="kalman_min_len", label="Min length",
-                kind="int", minimum=1, maximum=10000,
+                target="settings",
+                attr="kalman_min_len",
+                label="Min length",
+                kind="int",
+                minimum=1,
+                maximum=10000,
                 description="Minimum consecutive bins over threshold.",
             ),
             ValueSection(
-                target="settings", attr="kalman_merge_gap", label="Merge gap",
-                kind="int", minimum=0, maximum=10000,
+                target="settings",
+                attr="kalman_merge_gap",
+                label="Merge gap",
+                kind="int",
+                minimum=0,
+                maximum=10000,
                 description="Merge bursts separated by at most this many bins.",
             ),
         )
@@ -216,7 +284,9 @@ def _mode_panel(settings: FilterSettings) -> PanelSection:
 
     label = dict(BUILTIN_MODES).get(settings.mode, settings.mode)
     return PanelSection(
-        title=f"{label} parameters", n_col=2, sections=sections,
+        title=f"{label} parameters",
+        n_col=2,
+        sections=sections,
     )
 
 
@@ -233,19 +303,25 @@ def filter_settings_view(
     rarely-touched panel closed is worth more than it costs.
     """
     channel = PanelSection(
-        title="Channel selection", collapsed=True, n_col=2,
+        title="Channel selection",
+        collapsed=True,
+        n_col=2,
         sections=(
             ChoiceSection(
-                target="settings", attr="detector", label="Detector",
+                target="settings",
+                attr="detector",
+                label="Detector",
                 options=(ALL,) + tuple(d for d in detectors if d != ALL),
                 description="Detector definition applied to the photon stream. "
-                            "'All' uses every channel.",
+                "'All' uses every channel.",
             ),
             ChoiceSection(
-                target="settings", attr="window", label="Time window",
+                target="settings",
+                attr="window",
+                label="Time window",
                 options=(ALL,) + tuple(w for w in windows if w != ALL),
                 description="Named micro-time window applied to the photon "
-                            "stream. 'All' uses the full micro-time range.",
+                "stream. 'All' uses the full micro-time range.",
             ),
         ),
     )
@@ -253,25 +329,40 @@ def filter_settings_view(
     # plots it shares the page with, and these are short labelled fields that
     # pair naturally.
     macro_time = PanelSection(
-        title="Macro time interval", n_col=2,
+        title="Macro time interval",
+        n_col=2,
         sections=(
-            ToggleSection(
-                target="settings", attr="dt_min_active", label="Use lower bound"),
+            ToggleSection(target="settings", attr="dt_min_active", label="Use lower bound"),
             ValueSection(
-                target="settings", attr="dt_min", label="min dMT", kind="float",
-                minimum=0.0, maximum=1e6, decimals=4, suffix=" ms",
+                target="settings",
+                attr="dt_min",
+                label="min dMT",
+                kind="float",
+                minimum=0.0,
+                maximum=1e6,
+                decimals=4,
+                suffix=" ms",
                 description="Discard photons closer together than this.",
             ),
-            ToggleSection(
-                target="settings", attr="dt_max_active", label="Use upper bound"),
+            ToggleSection(target="settings", attr="dt_max_active", label="Use upper bound"),
             ValueSection(
-                target="settings", attr="dt_max", label="max dMT", kind="float",
-                minimum=0.0, maximum=1e6, decimals=4, suffix=" ms",
+                target="settings",
+                attr="dt_max",
+                label="max dMT",
+                kind="float",
+                minimum=0.0,
+                maximum=1e6,
+                decimals=4,
+                suffix=" ms",
                 description="Discard photons further apart than this.",
             ),
             ValueSection(
-                target="settings", attr="merge_gap", label="Merge gap", kind="int",
-                minimum=0, maximum=100000,
+                target="settings",
+                attr="merge_gap",
+                label="Merge gap",
+                kind="int",
+                minimum=0,
+                maximum=100000,
                 description="Bridge gaps of at most this many photons inside a burst.",
             ),
         ),
@@ -280,7 +371,8 @@ def filter_settings_view(
     # registry-driven searches; duplicating it here would give two controls for
     # one setting.
     filter_panel = PanelSection(
-        title="Filter", n_col=2,
+        title="Filter",
+        n_col=2,
         sections=(
             ToggleSection(target="settings", attr="filter_active", label="Enable"),
             ToggleSection(target="settings", attr="invert", label="Invert"),
@@ -307,7 +399,7 @@ class _NotifyingSettings:
     source of truth and the page's properties keep reading it directly.
     """
 
-    def __init__(self, settings: "FilterSettings", on_change=None):
+    def __init__(self, settings: FilterSettings, on_change=None):
         object.__setattr__(self, "_settings", settings)
         object.__setattr__(self, "_on_change", on_change)
 
@@ -319,7 +411,7 @@ class _NotifyingSettings:
         previous = getattr(settings, name, object())
         setattr(settings, name, value)
         if previous == value:
-            return          # a widget re-emitting its own value is not an edit
+            return  # a widget re-emitting its own value is not an edit
         callback = object.__getattribute__(self, "_on_change")
         if callback is not None:
             callback()
@@ -337,10 +429,10 @@ class FilterSettingsModel:
 
     def __init__(
         self,
-        settings: typing.Optional[FilterSettings] = None,
-        detectors: typing.Union[typing.Sequence[str], typing.Callable] = (),
-        windows: typing.Union[typing.Sequence[str], typing.Callable] = (),
-        on_change: typing.Optional[typing.Callable] = None,
+        settings: FilterSettings | None = None,
+        detectors: typing.Sequence[str] | typing.Callable = (),
+        windows: typing.Sequence[str] | typing.Callable = (),
+        on_change: typing.Callable | None = None,
     ):
         raw = settings if settings is not None else FilterSettings()
         #: The dataclass itself, for callers that read values directly.
@@ -357,7 +449,7 @@ class FilterSettingsModel:
         self._built_options = self.options()
 
     @staticmethod
-    def _resolve(source) -> typing.Tuple[str, ...]:
+    def _resolve(source) -> tuple[str, ...]:
         if callable(source):
             try:
                 source = source()
@@ -365,7 +457,7 @@ class FilterSettingsModel:
                 source = ()
         return tuple(source or ())
 
-    def options(self) -> typing.Tuple[typing.Tuple[str, ...], typing.Tuple[str, ...]]:
+    def options(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
         """The detector and time-window choices as they stand right now."""
         return self._resolve(self._detectors), self._resolve(self._windows)
 
@@ -398,7 +490,6 @@ def install_filter_settings_form(page) -> None:
     edits; the page's properties read it, so a control moved into the form keeps
     its public accessor unchanged.
     """
-    from chisurf.gui.autoform import AutoForm
     from qtpy import QtCore, QtWidgets
 
     settings = FilterSettings()
@@ -466,8 +557,9 @@ def install_filter_settings_form(page) -> None:
         # on read. Without it a window labelled "0.5 ms" reaches the search as
         # 0.5 s, i.e. a ~10 Hz threshold, and the whole trace becomes one burst.
         try:
-            page.settings["count_rate_filter"]["time_window"] = \
+            page.settings["count_rate_filter"]["time_window"] = (
                 page.filter_settings.time_window_seconds()
+            )
         except (AttributeError, KeyError, TypeError):
             pass
         # Push into the Designer widgets *before* notifying: the update the
@@ -525,7 +617,7 @@ def install_filter_settings_form(page) -> None:
     left = QtWidgets.QWidget(splitter)
     left_box = QtWidgets.QVBoxLayout(left)
     left_box.setContentsMargins(0, 0, 0, 0)
-    left_box.addStretch(1)          # keeps panels top-aligned as they fold
+    left_box.addStretch(1)  # keeps panels top-aligned as they fold
     splitter.addWidget(left)
 
     right = QtWidgets.QWidget(splitter)
@@ -564,8 +656,7 @@ def install_filter_settings_form(page) -> None:
             index = parent_layout.indexOf(group) if parent_layout else -1
             if parent_layout is not None and index >= 0:
                 if isinstance(parent_layout, QtWidgets.QGridLayout):
-                    row, column, row_span, column_span = \
-                        parent_layout.getItemPosition(index)
+                    row, column, row_span, column_span = parent_layout.getItemPosition(index)
                     parent_layout.addWidget(scroller, row, column, row_span, column_span)
                 else:
                     parent_layout.insertWidget(index, scroller)
@@ -663,12 +754,12 @@ def adopt_info_panel(page) -> bool:
     if info is None or right_box is None:
         return False
     if info.parentWidget() is page._filter_settings_right:
-        return True                      # already adopted
+        return True  # already adopted
     previous = info.parentWidget()
     if previous is not None and previous.layout() is not None:
         previous.layout().removeWidget(info)
     info.setParent(page._filter_settings_right)
-    right_box.insertWidget(0, info)      # above the search parameters
+    right_box.insertWidget(0, info)  # above the search parameters
     info.show()
     return True
 
@@ -713,7 +804,7 @@ def _mirror_region(page) -> None:
     try:
         if page.pw_dT.getAxis("left").logMode:
             if low <= 0.0 or high <= 0.0:
-                return          # a log axis cannot show a non-positive bound
+                return  # a log axis cannot show a non-positive bound
             low, high = np.log10(low), np.log10(high)
         blocked = region.blockSignals(True)
         try:
@@ -743,15 +834,15 @@ def _rebuild_filter_form(page) -> None:
     # hand back a different Python wrapper for the same underlying widget, so an
     # identity test silently fails and orphans the registry-driven form that
     # shares this container.
-    previous = getattr(page, "_filter_settings_form_widget", None)
-    if previous is not None:
-        box.removeWidget(previous)
-        previous.setParent(None)
-        previous.deleteLater()
-    form = AutoForm(page._filter_settings_model)
     # Left column: the settings that apply whichever search is chosen. Inserted
     # before the trailing stretch so the panels stay top-aligned.
     left_box = page._filter_settings_left.layout()
+    previous = getattr(page, "_filter_settings_form_widget", None)
+    if previous is not None:
+        left_box.removeWidget(previous)
+        previous.setParent(None)
+        previous.deleteLater()
+    form = AutoForm(page._filter_settings_model)
     left_box.insertWidget(max(0, left_box.count() - 1), form)
     page._filter_settings_form_widget = form
 

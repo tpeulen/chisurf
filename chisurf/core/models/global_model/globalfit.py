@@ -1,14 +1,14 @@
 from __future__ import annotations
-from chisurf import typing
-import chisurf as cs
 
 import threading
-import numpy as np
 from typing import TYPE_CHECKING
 
-import chisurf.core.support.decorators
-import chisurf.core.parameter
+import numpy as np
 
+import chisurf as cs
+import chisurf.core.parameter
+import chisurf.core.support.decorators
+from chisurf import typing
 from chisurf.core.curve import Curve
 from chisurf.core.models import model
 
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 
 class GlobalFitModel(model.Model, Curve):
-
     name = "Global fit"
     view_spec_file = "globalfit.view.json"
 
@@ -101,10 +100,6 @@ class GlobalFitModel(model.Model, Curve):
             return
         self.fit.remove_local_fit(row)
 
-    def clear_local_fits(self) -> None:
-        """Remove every local fit from the global fit."""
-        self.fit.clear_local_fits()
-
     def add_global_parameter(self) -> None:
         """Create a global parameter named by :attr:`new_global_parameter_name`."""
         name = str(self.new_global_parameter_name or "").strip()
@@ -146,6 +141,7 @@ class GlobalFitModel(model.Model, Curve):
         the window setters bump a counter, so the token is two integers.
         """
         from chisurf.core.fitting import factorgraph
+
         return (factorgraph.window_version(), len(self.fits))
 
     @property
@@ -187,6 +183,7 @@ class GlobalFitModel(model.Model, Curve):
         if frozen is not None:
             return frozen["parameters"]
         from chisurf.core.fitting import factorgraph
+
         version = factorgraph.structure_version()
         cache = self.__dict__.get("_free_parameter_cache")
         if cache is not None and cache[0] == version and cache[1] == len(self.fits):
@@ -259,7 +256,7 @@ class GlobalFitModel(model.Model, Curve):
         re = dict()
         for i, f in enumerate(self.fits):
             d = f.model.parameter_dict
-            k = [str(i+1)+":"+dk for dk in d.keys()]
+            k = [str(i + 1) + ":" + dk for dk in d.keys()]
             for j, di in enumerate(d.keys()):
                 re[k[j]] = d[di]
         return re
@@ -284,13 +281,7 @@ class GlobalFitModel(model.Model, Curve):
         xn = np.arange(0, dn.shape[0], 1)
         return xn, dn, wn
 
-    def __init__(
-            self,
-            fit: Fit,
-            fits: typing.List[Fit] = None,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, fit: Fit, fits: typing.List[Fit] = None, *args, **kwargs):
         """Initialize the global fit model.
 
         Parameters
@@ -339,6 +330,7 @@ class GlobalFitModel(model.Model, Curve):
         reached, and what exposes the group's blocks, separators and treewidth.
         """
         from chisurf.core.fitting import factorgraph
+
         version = factorgraph.structure_version()
         graph = self._factor_graph
         if graph is None or graph.version != version:
@@ -416,8 +408,8 @@ class GlobalFitModel(model.Model, Curve):
             which would otherwise be mistaken for "reaches nothing".
         """
         try:
-            enabled = cs.core.settings.cs_settings['optimization'].get(
-                'global_structure_aware_update', True
+            enabled = cs.core.settings.cs_settings["optimization"].get(
+                "global_structure_aware_update", True
             )
         except (KeyError, TypeError, AttributeError):
             enabled = True
@@ -425,6 +417,7 @@ class GlobalFitModel(model.Model, Curve):
             return None
         try:
             from chisurf.core.fitting import factorgraph
+
             if self._current_at_version != factorgraph.structure_version():
                 # Nothing may be skipped until every local model has been
                 # evaluated at least once since the last structural change.
@@ -439,9 +432,7 @@ class GlobalFitModel(model.Model, Curve):
                 return None
             return graph.affected_fits(keys)
         except Exception as e:
-            cs.logging.warning(
-                f"GlobalFitModel: falling back to a full model update ({e})"
-            )
+            cs.logging.warning(f"GlobalFitModel: falling back to a full model update ({e})")
             return None
 
     def _invalidate_structure(self) -> None:
@@ -452,6 +443,7 @@ class GlobalFitModel(model.Model, Curve):
         so that any other holder of a graph over this fit rebuilds too.
         """
         from chisurf.core.fitting import factorgraph
+
         self._factor_graph = None
         self._pending_dirty_fits = None
         self._current_at_version = None
@@ -473,13 +465,7 @@ class GlobalFitModel(model.Model, Curve):
         """
         return self.factor_graph.describe()
 
-
-    def get_wres(
-            self,
-            fit: Fit,
-            xmin: int = None,
-            xmax: int = None
-    ) -> np.array:
+    def get_wres(self, fit: Fit, xmin: int = None, xmax: int = None) -> np.array:
         """Compute weighted residuals for a given fit within a range.
 
         Parameters
@@ -506,6 +492,7 @@ class GlobalFitModel(model.Model, Curve):
             wr = np.array((d[:ml] - m[:ml]) * w[:ml], dtype=np.float64)
         except Exception as e:
             import logging
+
             logging.warning(f"Failed to calculate weighted residuals: {e}")
             wr = np.array([1.0])
         return wr
@@ -627,11 +614,17 @@ class GlobalFitModel(model.Model, Curve):
         s = "\n"
         s += "Model: Global-fit\n"
         s += "Global-parameters:"
-        p0 = list(zip(self.global_parameters_all_names, self.global_parameters_values_all,
-                 self.global_parameters_bound_all, self.global_parameters_fixed_all))
+        p0 = list(
+            zip(
+                self.global_parameters_all_names,
+                self.global_parameters_values_all,
+                self.global_parameters_bound_all,
+                self.global_parameters_fixed_all,
+            )
+        )
         s += "Parameter \t Value \t Bounds \t Fixed\n"
         for p in p0:
-            s += "%s \t %.4f \t %s \t %s\n" % p
+            s += "{} \t {:.4f} \t {} \t {}\n".format(*p)
         for fit in self.fits:
             s += "\n"
             s += fit.name + "\n"
@@ -700,6 +693,7 @@ class GlobalFitModel(model.Model, Curve):
         """
         super().update()
         from chisurf.core.fitting import factorgraph
+
         self._current_at_version = factorgraph.structure_version()
         self._residual_dirty = set(range(len(self.fits)))
 
@@ -728,6 +722,7 @@ class GlobalFitModel(model.Model, Curve):
             indices = range(len(self.fits))
             # A full pass re-establishes the invariant the selective path needs.
             from chisurf.core.fitting import factorgraph
+
             self._current_at_version = factorgraph.structure_version()
         else:
             indices = [i for i in dirty if 0 <= i < len(self.fits)]
@@ -741,7 +736,7 @@ class GlobalFitModel(model.Model, Curve):
             # Nothing moved, so every local model is already current.
             return
 
-        if cs.core.settings.cs_settings['optimization']['global_threaded_model_update']:
+        if cs.core.settings.cs_settings["optimization"]["global_threaded_model_update"]:
             threads = [threading.Thread(target=f.model.update) for f in targets]
             for thread in threads:
                 thread.start()

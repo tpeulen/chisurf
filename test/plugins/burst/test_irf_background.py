@@ -75,7 +75,7 @@ def _far_tail_fraction(vv_vh: np.ndarray) -> float:
     vv = np.asarray(vv_vh[:n], dtype=float)
     pk = int(vv.argmax())
     total = float(vv.sum())
-    return float(vv[pk + 15:].sum()) / total if total > 0 else 0.0
+    return float(vv[pk + 15 :].sum()) / total if total > 0 else 0.0
 
 
 def test_mle_irf_model_gaussian_fit_suppresses_fluorescent_tail(tttr):
@@ -88,9 +88,7 @@ def test_mle_irf_model_gaussian_fit_suppresses_fluorescent_tail(tttr):
     """
     keep = non_burst_mask(tttr, min_photons=20)
     out = {
-        m: extract_mle_irf_background(
-            tttr, DETECTORS, micro_time_binning=8, mask=keep, irf_model=m
-        )
+        m: extract_mle_irf_background(tttr, DETECTORS, micro_time_binning=8, mask=keep, irf_model=m)
         for m in ("gaussian", "skewed", "experimental")
     }
     for m, res in out.items():

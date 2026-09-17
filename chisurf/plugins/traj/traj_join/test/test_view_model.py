@@ -1,7 +1,6 @@
 """Headless (Qt-free) tests for the Join-Trajectories view-model."""
 
 import numpy as np
-import pytest
 
 
 def _read(path):
@@ -10,7 +9,7 @@ def _read(path):
     from chisurf.core.structure import trajectory_data as md
 
     xyz, _, _ = read_dcd(path)
-    return md.Trajectory(xyz, time=read_time_axis(path)[:len(xyz)])
+    return md.Trajectory(xyz, time=read_time_axis(path)[: len(xyz)])
 
 
 def _tiny_trajectory(path: str, n_frames: int = 5, n_atoms: int = 3) -> None:
@@ -27,7 +26,7 @@ def _tiny_trajectory(path: str, n_frames: int = 5, n_atoms: int = 3) -> None:
     xyz = rng.random((n_frames, n_atoms, 3)).astype(np.float32)
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     trajectory.save_dcd(path)
-    pdb = str(path).replace('.dcd', '.pdb')
+    pdb = str(path).replace(".dcd", ".pdb")
     trajectory[0].save_pdb(pdb)
     return pdb
 

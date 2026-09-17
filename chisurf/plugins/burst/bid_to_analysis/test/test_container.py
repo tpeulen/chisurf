@@ -25,7 +25,11 @@ from chisurf.core.fio.pto import Measurement
 
 SPC = (
     Path(__file__).resolve().parents[2]
-    / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna" / "m000.spc"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "m000.spc"
 )
 
 pytestmark = pytest.mark.skipif(not SPC.exists(), reason="no BH SPC test data")

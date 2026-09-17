@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import pathlib
-import sqlite3
 from unittest.mock import patch
 
-from mmfdb.schema import schema
-from mmfdb.repository import MFDatabase
 from mmfdb.admin.backend.measurement_services import (
     archive_project_handler,
     delete_analysis_run_handler,
@@ -17,6 +14,7 @@ from mmfdb.admin.backend.measurement_services import (
     record_analysis_run_handler,
     restore_project_handler,
 )
+from mmfdb.repository import MFDatabase
 
 
 def test_analysis_provenance_and_linkages(tmp_path: pathlib.Path) -> None:
@@ -149,16 +147,22 @@ def test_analysis_provenance_and_linkages(tmp_path: pathlib.Path) -> None:
         # - local_fit_uuid <- grouped_in <- global_fit_uuid
 
         expected_edges = [
-                ("operation", "local_fit_uuid", "artifact", "fit_curve_1", "produced"),
-                ("artifact", dataset_id, "operation", "local_fit_uuid", "input_to"),
-                ("operation", step1_id, "artifact", dataset_id, "produced"),
-                ("artifact", raw_id, "operation", step1_id, "input_to"),
-                ("operation", "global_fit_uuid", "operation", "local_fit_uuid", "grouped_in"),
-                ("parameter", "global_tau_uuid", "parameter", "local_tau_uuid", "linked_to"),
-            ]
+            ("operation", "local_fit_uuid", "artifact", "fit_curve_1", "produced"),
+            ("artifact", dataset_id, "operation", "local_fit_uuid", "input_to"),
+            ("operation", step1_id, "artifact", dataset_id, "produced"),
+            ("artifact", raw_id, "operation", step1_id, "input_to"),
+            ("operation", "global_fit_uuid", "operation", "local_fit_uuid", "grouped_in"),
+            ("parameter", "global_tau_uuid", "parameter", "local_tau_uuid", "linked_to"),
+        ]
 
         actual_edges = [
-            (e["source_node_type"], e["source_node_id"], e["target_node_type"], e["target_node_id"], e["relationship_type"])
+            (
+                e["source_node_type"],
+                e["source_node_id"],
+                e["target_node_type"],
+                e["target_node_id"],
+                e["relationship_type"],
+            )
             for e in edges
         ]
 
@@ -247,10 +251,10 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
                                         "name": "tau",
                                         "value": 1.5,
                                     }
-                                }
-                            }
+                                },
+                            },
                         }
-                    ]
+                    ],
                 }
             ],
             "ui": {"current_fit_index": 0},
@@ -259,7 +263,7 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
                     "filename": "history.jsonl",
                     "event_count": 5,
                 }
-            }
+            },
         }
 
         # Archive the project
@@ -296,7 +300,13 @@ def test_project_archive_and_restore(tmp_path: pathlib.Path) -> None:
         # Expected edge: dataset_id -> project_uuid_123 via input_to
         expected_edge = ("artifact", dataset_id, "operation", "project_uuid_123", "input_to")
         actual_edges = [
-            (e["source_node_type"], e["source_node_id"], e["target_node_type"], e["target_node_id"], e["relationship_type"])
+            (
+                e["source_node_type"],
+                e["source_node_id"],
+                e["target_node_type"],
+                e["target_node_id"],
+                e["relationship_type"],
+            )
             for e in edges
         ]
         assert expected_edge in actual_edges
@@ -345,6 +355,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
             db.add_experiment("exp_proj", sample_id="sample_proj", status="complete")
 
         from chisurf.core.project import Project as CSProject
+
         project_payload = {
             "project_format_version": 4,
             "meta": {
@@ -356,7 +367,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
             "datasets": {},
             "fits": [],
             "ui": {},
-            "extra": {}
+            "extra": {},
         }
         mock_proj = CSProject.from_dict(project_payload)
 
@@ -364,7 +375,6 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
             patch("chisurf.macros.core_fit.get_project_payload", return_value=mock_proj),
             patch("chisurf.macros.core_fit.load_project_payload") as mock_load,
         ):
-
             from chisurf.core.actions import dispatch
 
             archive_res = dispatch(
@@ -375,7 +385,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
                     "experiment_id": "exp_proj",
                     "input_processed_data_ids": [],
                     "notes": "Archived via action test",
-                }
+                },
             )
             assert archive_res.get("ok") is True
             assert archive_res["project_id"] == "act_proj_123"
@@ -399,7 +409,7 @@ def test_project_actions_archive_and_restore(tmp_path: pathlib.Path) -> None:
                 "project.restore",
                 {
                     "project_id": "act_proj_123",
-                }
+                },
             )
             assert restore_res.get("ok") is True
             assert restore_res["project_id"] == "act_proj_123"
@@ -505,7 +515,7 @@ def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
     }
 
     with MFDatabase(db_path) as db:
-        result = archive_project_to_mmfdb(
+        archive_project_to_mmfdb(
             db=db,
             project_payload=project_payload,
             version_id="ver_src_001",
@@ -515,9 +525,11 @@ def test_archive_project_creates_source_objects(tmp_path: pathlib.Path) -> None:
 
         # Should have source artifact (input) + dataset artifact (output)
         input_arts = db.get_operation_artifacts("ver_src_001", direction="input")
-        output_arts = db.get_operation_artifacts("ver_src_001", direction="output")
+        db.get_operation_artifacts("ver_src_001", direction="output")
 
-        source_arts = [a for a in input_arts if a["artifact_kind"] in ("raw_measurement", "raw_data")]
+        source_arts = [
+            a for a in input_arts if a["artifact_kind"] in ("raw_measurement", "raw_data")
+        ]
         assert len(source_arts) == 1
         assert source_arts[0]["object_uuid"] is not None
 
@@ -635,14 +647,22 @@ def test_archive_project_deduplicates_objects(tmp_path: pathlib.Path) -> None:
             "ds000": {
                 "name": "Curve 1",
                 "filename": str(source_file),
-                "x": [1.0], "y": [10.0], "ex": [0.1], "ey": [1.0],
-                "data_reader": {}, "experiment_name": "TCSPC",
+                "x": [1.0],
+                "y": [10.0],
+                "ex": [0.1],
+                "ey": [1.0],
+                "data_reader": {},
+                "experiment_name": "TCSPC",
             },
             "ds001": {
                 "name": "Curve 2",
                 "filename": str(source_file),
-                "x": [2.0], "y": [20.0], "ex": [0.1], "ey": [1.4],
-                "data_reader": {}, "experiment_name": "TCSPC",
+                "x": [2.0],
+                "y": [20.0],
+                "ex": [0.1],
+                "ey": [1.4],
+                "data_reader": {},
+                "experiment_name": "TCSPC",
             },
         },
         "fits": [],

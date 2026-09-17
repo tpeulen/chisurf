@@ -14,25 +14,38 @@ from __future__ import annotations
 # process (re-opening mmfdb-admin, the spectra scraper's "Add to MMFDB") reuses it
 # so the user is not asked for a password again. Keyed loosely by endpoint.
 _SESSION: dict = {
-    "user": None, "token": None,
-    "host": "127.0.0.1", "cmd_port": 8765, "pub_port": 8766,
+    "user": None,
+    "token": None,
+    "host": "127.0.0.1",
+    "cmd_port": 8765,
+    "pub_port": 8766,
 }
 
 
-def cache_session(user: str, token: str | None, host: str = "127.0.0.1",
-                  cmd_port: int = 8765, pub_port: int = 8766) -> None:
+def cache_session(
+    user: str,
+    token: str | None,
+    host: str = "127.0.0.1",
+    cmd_port: int = 8765,
+    pub_port: int = 8766,
+) -> None:
     """Remember an authenticated MMFDB session for reuse across the process."""
     _SESSION.update(
-        user=user, token=token, host=host,
-        cmd_port=int(cmd_port), pub_port=int(pub_port),
+        user=user,
+        token=token,
+        host=host,
+        cmd_port=int(cmd_port),
+        pub_port=int(pub_port),
     )
 
 
 def cached_token(host: str = "127.0.0.1", cmd_port: int = 8765, pub_port: int = 8766) -> str | None:
     """Return a cached token for this endpoint, or ``None``."""
-    if (_SESSION.get("token")
-            and _SESSION.get("host") == host
-            and int(_SESSION.get("cmd_port") or 0) == int(cmd_port)):
+    if (
+        _SESSION.get("token")
+        and _SESSION.get("host") == host
+        and int(_SESSION.get("cmd_port") or 0) == int(cmd_port)
+    ):
         return _SESSION["token"]
     return None
 
@@ -77,14 +90,20 @@ def local_admin_status(db_path: str, user: str | None = None) -> tuple[bool, boo
     user = user or active_user_id()
     try:
         conn = sqlite3.connect(db_path)
-        has_users_table = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='flr_sample_users'"
-        ).fetchone() is not None
+        has_users_table = (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='flr_sample_users'"
+            ).fetchone()
+            is not None
+        )
         if not has_users_table:
             return True, False  # fresh DB (no user table yet) → bootstrap
-        any_admin = conn.execute(
-            "SELECT 1 FROM flr_sample_users WHERE is_admin = 1 AND deleted_at IS NULL LIMIT 1"
-        ).fetchone() is not None
+        any_admin = (
+            conn.execute(
+                "SELECT 1 FROM flr_sample_users WHERE is_admin = 1 AND deleted_at IS NULL LIMIT 1"
+            ).fetchone()
+            is not None
+        )
         if not any_admin:
             return True, False
         row = conn.execute(

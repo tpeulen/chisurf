@@ -3,22 +3,18 @@ from __future__ import annotations
 import importlib
 import pathlib
 
-from chisurf.gui import QtCore, QtWidgets
-
 import chisurf as cs
 import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
 from chisurf.core.experiments.core import reader
-from chisurf.gui import dialogs
+from chisurf.gui import QtCore, QtWidgets, dialogs
 
 
 def _load_vv_vh_gfactor_calculator_class():
     mod = importlib.import_module("chisurf.plugins.vv_vh_g_factor")
     cls = getattr(mod, "VvVhGFactorCalculator", None)
     if cls is None:
-        raise ImportError(
-            "VvVhGFactorCalculator not found in chisurf.plugins.vv_vh_g_factor"
-        )
+        raise ImportError("VvVhGFactorCalculator not found in chisurf.plugins.vv_vh_g_factor")
     return cls
 
 
@@ -66,9 +62,7 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
         self.spin_vh_shift = QtWidgets.QSpinBox()
         self.spin_vh_shift.setRange(-150, 150)
         self.spin_vh_shift.setValue(int(getattr(model, "vh_shift", 0) or 0))
-        self.spin_vh_shift.setToolTip(
-            "Channel shift applied to the VH decay relative to VV."
-        )
+        self.spin_vh_shift.setToolTip("Channel shift applied to the VH decay relative to VV.")
         grid.addWidget(self.spin_vh_shift, 1, 1)
 
         self.btn_vv_vh = QtWidgets.QPushButton("g-factor")
@@ -206,13 +200,12 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
             dlg.finished.connect(apply_from_plugin)
             dlg.exec_()
         except Exception as e:
-            dialogs.error(
-                self, "G-Factor Plugin Error", f"Failed to open the g-factor plugin: {e}"
-            )
+            dialogs.error(self, "G-Factor Plugin Error", f"Failed to open the g-factor plugin: {e}")
 
 
 def _register_tcspc_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("tcspc_l1l2")(_TcspcL1L2Widget)
 
 
@@ -245,6 +238,7 @@ class TCSPCReaderControlWidget(
         self._l1l2_widget = None
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             self.layout.addWidget(self._settings_form)
             self._bind_custom_section()

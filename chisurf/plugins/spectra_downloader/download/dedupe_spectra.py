@@ -165,8 +165,15 @@ def _merge_group(conn: sqlite3.Connection, primary_id: int, duplicate_ids: list[
             "FROM spectra WHERE probe_id = ? AND deleted_at IS NULL",
             (primary_id, dup),
         )
-        for table, col in (("probes", "probe_id"), ("optical_properties", "probe_id"), ("spectra", "probe_id")):
-            conn.execute(f"UPDATE {table} SET deleted_at = ? WHERE {col} = ? AND deleted_at IS NULL", (now, dup))
+        for table, col in (
+            ("probes", "probe_id"),
+            ("optical_properties", "probe_id"),
+            ("spectra", "probe_id"),
+        ):
+            conn.execute(
+                f"UPDATE {table} SET deleted_at = ? WHERE {col} = ? AND deleted_at IS NULL",
+                (now, dup),
+            )
 
 
 #: Categories / spectrum types that mark an optical filter rather than a fluorophore.
@@ -212,7 +219,9 @@ def find_and_merge_cross_category(conn: sqlite3.Connection, *, apply: bool) -> d
                 "primary_id": primary["probe_id"],
                 "primary_source": primary["source"],
                 "duplicate_ids": dups,
-                "duplicate_sources": [next(m["source"] for m in members if m["probe_id"] == d) for d in dups],
+                "duplicate_sources": [
+                    next(m["source"] for m in members if m["probe_id"] == d) for d in dups
+                ],
             }
         )
 
@@ -220,7 +229,11 @@ def find_and_merge_cross_category(conn: sqlite3.Connection, *, apply: bool) -> d
         for plan in plans:
             _merge_group(conn, plan["primary_id"], plan["duplicate_ids"])
         conn.commit()
-    return {"groups": plans, "n_groups": len(plans), "n_removed": sum(len(p["duplicate_ids"]) for p in plans)}
+    return {
+        "groups": plans,
+        "n_groups": len(plans),
+        "n_removed": sum(len(p["duplicate_ids"]) for p in plans),
+    }
 
 
 def find_and_merge(conn: sqlite3.Connection, *, apply: bool) -> dict[str, Any]:
@@ -251,7 +264,11 @@ def find_and_merge(conn: sqlite3.Connection, *, apply: bool) -> dict[str, Any]:
         for plan in plans:
             _merge_group(conn, plan["primary_id"], plan["duplicate_ids"])
         conn.commit()
-    return {"groups": plans, "n_groups": len(plans), "n_removed": sum(len(p["duplicate_ids"]) for p in plans)}
+    return {
+        "groups": plans,
+        "n_groups": len(plans),
+        "n_removed": sum(len(p["duplicate_ids"]) for p in plans),
+    }
 
 
 # ── Bayesian duplicate classifier (highlights candidates for human review) ────
@@ -362,10 +379,14 @@ def find_duplicate_candidates(
         out.append(
             {
                 "prob": prob,
-                "a": a["probe_id"], "b": b["probe_id"],
-                "name_a": a["chromophore_name"], "name_b": b["chromophore_name"],
-                "source_a": a["source"], "source_b": b["source"],
-                "exact_name": normalize_name(a["chromophore_name"]) == normalize_name(b["chromophore_name"]),
+                "a": a["probe_id"],
+                "b": b["probe_id"],
+                "name_a": a["chromophore_name"],
+                "name_b": b["chromophore_name"],
+                "source_a": a["source"],
+                "source_b": b["source"],
+                "exact_name": normalize_name(a["chromophore_name"])
+                == normalize_name(b["chromophore_name"]),
                 "band": "strong" if prob >= _REVIEW_PROB_HIGH else "review",
             }
         )
@@ -405,9 +426,13 @@ def _backup(db_path: pathlib.Path) -> pathlib.Path:
 
 def main(argv: list[str] | None = None) -> int:
     """Assess spectra quality and report/merge duplicate probes."""
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("db", type=pathlib.Path, help="Path to the fluorophore staging spectra.db")
-    ap.add_argument("--apply", action="store_true", help="Write the merge (backs up first). Default: dry-run.")
+    ap.add_argument(
+        "--apply", action="store_true", help="Write the merge (backs up first). Default: dry-run."
+    )
     ap.add_argument(
         "--cross-category",
         action="store_true",

@@ -6,23 +6,22 @@ without requiring Qt or OpenGL.
 
 import numpy as np
 import pytest
-
 from chimol.geometry.cartoon import (
-    _generate_cartoon_tube_arrays,
-    _flatten_sheet_path,
-    _helix_radials,
-    _path_parameterisation,
-    _refine_orientations,
-    _round_helix_path,
-    _sample_path,
-    _sample_orientations,
-    _propagate_ups,
     _build_frames,
+    _extrude_arrowhead,
+    _extrude_shape,
+    _flatten_sheet_path,
+    _generate_cartoon_tube_arrays,
+    _helix_radials,
     _make_circle_shape,
     _make_oval_shape,
     _make_rectangle_shape,
-    _extrude_shape,
-    _extrude_arrowhead,
+    _path_parameterisation,
+    _propagate_ups,
+    _refine_orientations,
+    _round_helix_path,
+    _sample_orientations,
+    _sample_path,
     _segment_ss,
 )
 
@@ -30,12 +29,17 @@ from chimol.geometry.cartoon import (
 def ideal_helix(n=14, radius=2.3, rise=1.5, twist_deg=100.0):
     """CA positions of an ideal alpha helix about the +z axis."""
     ang = np.radians(twist_deg) * np.arange(n)
-    return np.column_stack([
-        radius * np.cos(ang), radius * np.sin(ang), rise * np.arange(n),
-    ])
+    return np.column_stack(
+        [
+            radius * np.cos(ang),
+            radius * np.sin(ang),
+            rise * np.arange(n),
+        ]
+    )
 
 
 # -- Fixtures --
+
 
 @pytest.fixture
 def coords4():
@@ -44,8 +48,7 @@ def coords4():
 
 @pytest.fixture
 def colors4():
-    return np.array([[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 1]],
-                    dtype=float)
+    return np.array([[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 1]], dtype=float)
 
 
 @pytest.fixture
@@ -60,8 +63,8 @@ def colors10():
 
 # -- Shape profile tests --
 
-class TestShapeProfiles:
 
+class TestShapeProfiles:
     def test_circle_has_expected_verts(self):
         sv, sn = _make_circle_shape(16, 1.0)
         assert sv.shape == (16, 3)
@@ -115,34 +118,34 @@ class TestShapeProfiles:
 
 # -- SS segmenter tests --
 
-class TestSegmenter:
 
+class TestSegmenter:
     def test_none_ss_returns_empty(self):
         assert _segment_ss(None) == []
         assert _segment_ss(np.array([])) == []
 
     def test_all_helix(self):
-        segs = _segment_ss(np.array(['H', 'H', 'H'], dtype='U1'))
+        segs = _segment_ss(np.array(["H", "H", "H"], dtype="U1"))
         assert len(segs) == 1
-        assert segs[0]['ss_type'] == 'H'
-        assert segs[0] == {'start': 0, 'end': 3, 'ss_type': 'H'}
+        assert segs[0]["ss_type"] == "H"
+        assert segs[0] == {"start": 0, "end": 3, "ss_type": "H"}
 
     def test_mixed(self):
-        segs = _segment_ss(np.array(['H', 'H', 'E', 'E', 'C'], dtype='U1'))
+        segs = _segment_ss(np.array(["H", "H", "E", "E", "C"], dtype="U1"))
         assert len(segs) == 3
-        assert segs[0] == {'start': 0, 'end': 2, 'ss_type': 'H'}
-        assert segs[1] == {'start': 2, 'end': 4, 'ss_type': 'E'}
-        assert segs[2] == {'start': 4, 'end': 5, 'ss_type': 'C'}
+        assert segs[0] == {"start": 0, "end": 2, "ss_type": "H"}
+        assert segs[1] == {"start": 2, "end": 4, "ss_type": "E"}
+        assert segs[2] == {"start": 4, "end": 5, "ss_type": "C"}
 
     def test_single_residue_types(self):
-        segs = _segment_ss(np.array(['H', 'E', 'C'], dtype='U1'))
+        segs = _segment_ss(np.array(["H", "E", "C"], dtype="U1"))
         assert len(segs) == 3
 
 
 # -- Extrude tests --
 
-class TestExtrude:
 
+class TestExtrude:
     def test_extrude_circle(self, coords4, colors4):
         path, pc = _sample_path(coords4, colors4, subdivisions=6)
         t, up = _propagate_ups(path, None)
@@ -197,10 +200,10 @@ class TestExtrude:
 
 # -- Public entry-point tests --
 
-class TestGenerateCartoon:
 
+class TestGenerateCartoon:
     def test_tube_style(self, coords4, colors4):
-        result = _generate_cartoon_tube_arrays(coords4, colors4, style='tube')
+        result = _generate_cartoon_tube_arrays(coords4, colors4, style="tube")
         assert result is not None
         verts, norms, faces, cols = result
         assert verts.shape[0] > 0
@@ -210,30 +213,35 @@ class TestGenerateCartoon:
         assert np.all(np.isfinite(verts))
 
     def test_ribbon_no_ss_fallback(self, coords4, colors4):
-        result = _generate_cartoon_tube_arrays(coords4, colors4, style='ribbon')
+        result = _generate_cartoon_tube_arrays(coords4, colors4, style="ribbon")
         assert result is not None
 
-    @pytest.mark.parametrize('ss,label', [
-        (['H', 'H', 'H', 'H'], 'helix'),
-        (['E', 'E', 'E', 'E'], 'strand'),
-        (['C', 'C', 'C', 'C'], 'loop'),
-    ])
+    @pytest.mark.parametrize(
+        "ss,label",
+        [
+            (["H", "H", "H", "H"], "helix"),
+            (["E", "E", "E", "E"], "strand"),
+            (["C", "C", "C", "C"], "loop"),
+        ],
+    )
     def test_ribbon_uniform_ss(self, coords4, colors4, ss, label):
         result = _generate_cartoon_tube_arrays(
-            coords4, colors4,
-            ss_codes=np.array(ss, dtype='U1'),
-            style='ribbon',
+            coords4,
+            colors4,
+            ss_codes=np.array(ss, dtype="U1"),
+            style="ribbon",
         )
-        assert result is not None, f'{label} returned None'
+        assert result is not None, f"{label} returned None"
         verts, norms, faces, cols = result
         assert np.allclose(np.linalg.norm(norms, axis=1), 1.0, atol=1e-5)
 
     def test_ribbon_big_chain(self, coords10, colors10):
-        ss = np.array(['C', 'C', 'H', 'H', 'H',
-                       'E', 'E', 'E', 'C', 'C'], dtype='U1')
+        ss = np.array(["C", "C", "H", "H", "H", "E", "E", "E", "C", "C"], dtype="U1")
         result = _generate_cartoon_tube_arrays(
-            coords10, colors10,
-            ss_codes=ss, style='ribbon',
+            coords10,
+            colors10,
+            ss_codes=ss,
+            style="ribbon",
         )
         assert result is not None
         verts, norms, faces, cols = result
@@ -247,10 +255,12 @@ class TestGenerateCartoon:
         assert result is None
 
     def test_no_nans(self, coords10, colors10):
-        ss = np.array(['H', 'E', 'C'] * 3 + ['H'], dtype='U1')
+        ss = np.array(["H", "E", "C"] * 3 + ["H"], dtype="U1")
         result = _generate_cartoon_tube_arrays(
-            coords10, colors10,
-            ss_codes=ss, style='ribbon',
+            coords10,
+            colors10,
+            ss_codes=ss,
+            style="ribbon",
         )
         if result is not None:
             verts, norms, faces, cols = result
@@ -259,10 +269,12 @@ class TestGenerateCartoon:
             assert np.all(np.isfinite(faces))
 
     def test_single_residue_ss_blocks_do_not_drop_geometry(self, coords4, colors4):
-        ss = np.array(['C', 'H', 'E', 'C'], dtype='U1')
+        ss = np.array(["C", "H", "E", "C"], dtype="U1")
         result = _generate_cartoon_tube_arrays(
-            coords4, colors4,
-            ss_codes=ss, style='ribbon',
+            coords4,
+            colors4,
+            ss_codes=ss,
+            style="ribbon",
         )
         assert result is not None
         verts, norms, faces, cols = result
@@ -271,6 +283,7 @@ class TestGenerateCartoon:
 
 
 # -- PyMOL-parity behaviours --
+
 
 class TestRoundHelices:
     """PyMOL's ``cartoon_round_helices``: the ribbon follows the cylinder."""
@@ -344,12 +357,9 @@ class TestFlatSheets:
 
     def test_no_op_without_strands(self):
         ca = self.pleated_strand()
-        out, ups = _flatten_sheet_path(
-            ca, np.zeros(ca.shape[0], dtype=bool), cycles=4
-        )
+        out, ups = _flatten_sheet_path(ca, np.zeros(ca.shape[0], dtype=bool), cycles=4)
         assert np.array_equal(out, ca)
         assert ups is None
-
 
     def test_it_uses_pymols_uniform_average(self):
         """``RepCartoonFlattenSheets`` averages a point with its two neighbours.
@@ -368,7 +378,7 @@ class TestFlatSheets:
         ca = self.pleated_strand(n=7)
         is_sheet = np.ones(ca.shape[0], dtype=bool)
         ups = np.zeros_like(ca)
-        ups[:, 1] = (-1.0) ** np.arange(ca.shape[0])   # pleated up-vectors
+        ups[:, 1] = (-1.0) ** np.arange(ca.shape[0])  # pleated up-vectors
         _, out_ups = _flatten_sheet_path(ca, is_sheet, cycles=4, ups=ups)
         assert out_ups is not None
         # The alternation is gone from the interior...
@@ -436,7 +446,7 @@ class TestSmoothLoops:
     def kinked_loop(n: int = 11):
         ca = np.zeros((n, 3))
         ca[:, 0] = np.arange(n) * 3.3
-        ca[4:7, 1] = [3.0, -3.0, 3.0]        # a zig-zag in the coil
+        ca[4:7, 1] = [3.0, -3.0, 3.0]  # a zig-zag in the coil
         loop = np.zeros(n, dtype=bool)
         loop[3:8] = True
         return ca, loop

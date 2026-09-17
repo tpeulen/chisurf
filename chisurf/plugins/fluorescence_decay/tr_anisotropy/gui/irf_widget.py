@@ -13,8 +13,8 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 
 class IrfNormalizationWidget(QtWidgets.QWidget):

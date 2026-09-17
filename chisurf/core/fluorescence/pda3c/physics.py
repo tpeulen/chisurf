@@ -129,9 +129,7 @@ class ThreeColorSetup:
         photon emitted by dye ``d`` is counted in channel ``c``.
     """
 
-    forster_radii: np.ndarray = dataclasses.field(
-        default_factory=lambda: np.full((3, 3), 50.0)
-    )
+    forster_radii: np.ndarray = dataclasses.field(default_factory=lambda: np.full((3, 3), 50.0))
     excitation: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(2, 3))
     emission: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
@@ -168,17 +166,17 @@ class ThreeColorSetup:
 
     @classmethod
     def from_scalars(
-            cls,
-            r0_bg: float = 50.0,
-            r0_br: float = 50.0,
-            r0_gr: float = 50.0,
-            crosstalk_bg: float = 0.0,
-            crosstalk_br: float = 0.0,
-            crosstalk_gr: float = 0.0,
-            gamma_bg: float = 1.0,
-            gamma_br: float = 1.0,
-            direct_excitation_blue=(0.0, 0.0),
-            direct_excitation_green: float = 0.0,
+        cls,
+        r0_bg: float = 50.0,
+        r0_br: float = 50.0,
+        r0_gr: float = 50.0,
+        crosstalk_bg: float = 0.0,
+        crosstalk_br: float = 0.0,
+        crosstalk_gr: float = 0.0,
+        gamma_bg: float = 1.0,
+        gamma_br: float = 1.0,
+        direct_excitation_blue=(0.0, 0.0),
+        direct_excitation_green: float = 0.0,
     ) -> ThreeColorSetup:
         """Build a setup from the scalar corrections the field usually quotes.
 
@@ -230,12 +228,12 @@ class ThreeColorSetup:
 
     @classmethod
     def from_crosstalk_matrices(
-            cls,
-            payload,
-            forster_radii,
-            dyes=DYES,
-            lasers=LASERS,
-            detectors=CHANNELS,
+        cls,
+        payload,
+        forster_radii,
+        dyes=DYES,
+        lasers=LASERS,
+        detectors=CHANNELS,
     ) -> ThreeColorSetup:
         """Build a setup from a light-path simulator's crosstalk payload.
 
@@ -258,12 +256,8 @@ class ThreeColorSetup:
         -------
         ThreeColorSetup
         """
-        excitation, _, _ = matrix_from_payload(
-            payload["excitation"], rows=lasers, columns=dyes
-        )
-        emission, _, _ = matrix_from_payload(
-            payload["emission"], rows=dyes, columns=detectors
-        )
+        excitation, _, _ = matrix_from_payload(payload["excitation"], rows=lasers, columns=dyes)
+        emission, _, _ = matrix_from_payload(payload["emission"], rows=dyes, columns=detectors)
         return cls(forster_radii=forster_radii, excitation=excitation, emission=emission)
 
 
@@ -296,9 +290,7 @@ def transfer_efficiencies(distances, setup: ThreeColorSetup) -> np.ndarray:
     n = setup.n_dyes
     radii = setup.forster_radii
     if distances.shape[-2:] != (n, n):
-        raise ValueError(
-            f"distances must be (..., {n}, {n}); use distances_to_matrix() for pairs"
-        )
+        raise ValueError(f"distances must be (..., {n}, {n}); use distances_to_matrix() for pairs")
 
     upper = np.triu(np.ones((n, n), dtype=bool), k=1)
     with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
@@ -526,9 +518,7 @@ def green_channel_probabilities(r_gr, setup: ThreeColorSetup) -> np.ndarray:
     r_gr = np.asarray(r_gr, dtype=float)
     far = np.full_like(r_gr, 1e12, dtype=float)
     pairs = np.stack(np.broadcast_arrays(far, far, r_gr), axis=-1)
-    full = channel_probabilities(
-        distances_to_matrix(pairs, setup.n_dyes), setup, laser=1
-    )[..., 1:]
+    full = channel_probabilities(distances_to_matrix(pairs, setup.n_dyes), setup, laser=1)[..., 1:]
     totals = full.sum(axis=-1, keepdims=True)
     return np.divide(
         full,

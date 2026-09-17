@@ -9,12 +9,14 @@ class TestCodeEditor:
     def test_creation(self, qapp):
         """The shared editor widget can be created."""
         from chisurf.plugins.core.code_editor import CodeEditor
+
         widget = CodeEditor()
         assert widget is not None
 
     def test_creation_with_filename(self, qapp):
         """The shared editor accepts a filename at construction."""
         from chisurf.plugins.core.code_editor import CodeEditor
+
         widget = CodeEditor(filename="test.py", language="Python")
         assert widget is not None
 
@@ -22,7 +24,9 @@ class TestCodeEditor:
         """The shared editor reads the global LSP setting when not overridden."""
         from chisurf.plugins.core.code_editor import CodeEditor
 
-        monkeypatch.setattr(cs.core.settings, "cs_settings", {"gui": {"editor": {"enable_lsp": False}}})
+        monkeypatch.setattr(
+            cs.core.settings, "cs_settings", {"gui": {"editor": {"enable_lsp": False}}}
+        )
         monkeypatch.setattr(cs.core.settings, "gui", {"editor": {"enable_lsp": False}})
 
         widget = CodeEditor(can_load=False, enable_lsp=None)
@@ -53,11 +57,7 @@ class TestCodeEditor:
 
         editor = TextEditor(language="Python")
         editor.setText(
-            "class Alpha:\n"
-            "    def beta(self):\n"
-            "        pass\n\n"
-            "def gamma():\n"
-            "    pass\n"
+            "class Alpha:\n    def beta(self):\n        pass\n\ndef gamma():\n    pass\n"
         )
         symbols = editor.refresh_symbols()
 
@@ -91,11 +91,7 @@ class TestCodeEditor:
 
         path = tmp_path / "sample.py"
         path.write_text(
-            "class Alpha:\n"
-            "    def beta(self):\n"
-            "        pass\n\n"
-            "def gamma():\n"
-            "    pass\n",
+            "class Alpha:\n    def beta(self):\n        pass\n\ndef gamma():\n    pass\n",
             encoding="utf-8",
         )
         widget = CodeEditor(can_load=False, project_root=tmp_path, enable_lsp=False)

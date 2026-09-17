@@ -38,9 +38,16 @@ from chisurf.core.fluorescence.fret.lines import static_fret_line  # noqa: E402
 #: A two-population ALEX experiment with every factor declared.
 PARAMETERS = SmfretParameters(
     efficiencies=(0.30, 0.75),
-    gamma=0.65, alpha=0.08, beta=1.40, delta=0.06,
-    tau_d0=4.0, linker_sigma=6.0, r0=52.0,
-    n_photons=350_000, alex_period=0.1, seed=3,
+    gamma=0.65,
+    alpha=0.08,
+    beta=1.40,
+    delta=0.06,
+    tau_d0=4.0,
+    linker_sigma=6.0,
+    r0=52.0,
+    n_photons=350_000,
+    alex_period=0.1,
+    seed=3,
 )
 
 
@@ -72,7 +79,7 @@ def test_photon_streams_carry_the_declared_brightness(experiment):
     measuring the wrong thing.
     """
     counts = experiment.photon_counts()
-    assert counts["i_ad"] == 0            # no donor emission under acceptor excitation
+    assert counts["i_ad"] == 0  # no donor emission under acceptor excitation
     assert counts["i_dd"] > 10_000 and counts["i_aa"] > 10_000
 
     species = experiment.species
@@ -128,11 +135,15 @@ def test_burst_table_shape(bursts):
 @pytest.fixture(scope="module")
 def calibration(bursts):
     """Automatic calibration of the simulated measurement."""
-    line = static_fret_line(PARAMETERS.tau_d0, r0=PARAMETERS.r0,
-                            sigma=PARAMETERS.linker_sigma)
+    line = static_fret_line(PARAMETERS.tau_d0, r0=PARAMETERS.r0, sigma=PARAMETERS.linker_sigma)
     return auto_calibrate(
-        bursts["i_dd"], bursts["i_da"], bursts["i_aa"], tau_f=bursts["tau_f"],
-        line=line, donor_lifetime=PARAMETERS.tau_d0, n_bootstrap=0,
+        bursts["i_dd"],
+        bursts["i_da"],
+        bursts["i_aa"],
+        tau_f=bursts["tau_f"],
+        line=line,
+        donor_lifetime=PARAMETERS.tau_d0,
+        n_bootstrap=0,
     )
 
 

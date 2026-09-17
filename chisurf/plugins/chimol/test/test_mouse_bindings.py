@@ -31,10 +31,10 @@ that is what the block's label promises:
 * a pick or click cell does **nothing on a drag**. Doing nothing is right ---
   silently orbiting instead is what made them look implemented.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: ``(mode, button, modifiers, action, expectation)``. The expectation names
@@ -65,7 +65,7 @@ CELLS = [
 def measured():
     """Drive every cell in its own viewer and report what moved."""
     cells = [(m, b, k) for m, b, k, _a, _e in CELLS]
-    return probe(f'''
+    return probe(f"""
         from emtk.events import (
             LEFT_BUTTON, MIDDLE_BUTTON, RIGHT_BUTTON,
             NO_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER,
@@ -122,7 +122,7 @@ def measured():
 
             moved = [k for k in before if before[k] != after[k]]
             emit(f"{{mode}}:{{bname}}:{{mname}}", ",".join(moved) or "nothing")
-    ''')
+    """)
 
 
 @pytest.mark.parametrize(
@@ -170,7 +170,7 @@ CLICK_CELLS = [
 def clicked():
     """Click each pick cell and report whether the viewer was asked to act."""
     cells = [(m, b, k) for m, b, k, _a in CLICK_CELLS]
-    return probe(f'''
+    return probe(f"""
         from emtk.events import (
             LEFT_BUTTON, MIDDLE_BUTTON, RIGHT_BUTTON,
             NO_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER,
@@ -211,7 +211,7 @@ def clicked():
                 f"{{mode}}:{{bname}}:{{mname}}:menu",
                 "yes" if app.renderer._internal_gui.has_menu() else "no",
             )
-    ''')
+    """)
 
 
 @pytest.mark.parametrize(
@@ -222,9 +222,7 @@ def clicked():
 def test_a_pick_cell_fires_on_a_click(clicked, mode, button, mods, action):
     """These do nothing on a drag by design; doing nothing at all is the bug."""
     key = f"{mode}:{button}:{mods}"
-    assert clicked[key] == action, (
-        f"clicking {action} reached the viewer as {clicked[key]!r}"
-    )
+    assert clicked[key] == action, f"clicking {action} reached the viewer as {clicked[key]!r}"
     assert clicked[key + ":menu"] == "no", (
         f"{action} ended in the context menu; the menu is pending on every "
         "right press again, which swallows the cells that name a click"
@@ -237,7 +235,7 @@ def test_bond_editing_cells_say_they_are_not_implemented():
     They are on the block, so they cannot be silent: an unimplemented cell
     indistinguishable from a broken one costs the same afternoon twice.
     """
-    measured = probe('''
+    measured = probe("""
         from emtk.events import (
             LEFT_BUTTON, RIGHT_BUTTON, CONTROL_MODIFIER,
         )
@@ -257,7 +255,7 @@ def test_bond_editing_cells_say_they_are_not_implemented():
                 )
             app.renderer.on_pointer_release(486.0, 330.0, button, CONTROL_MODIFIER)
             emit(label, app.renderer._internal_gui.status_text)
-    ''')
+    """)
 
     for action in ("torf", "pktb"):
         assert "bond editing" in measured[action].lower(), (
@@ -271,7 +269,7 @@ def test_a_right_click_still_opens_the_menu():
     Both cells of that row are promised -- `SnglClk R Menu` and `R MovZ` -- and
     opening the menu on the press delivered one and silently ate the other.
     """
-    measured = probe('''
+    measured = probe("""
         from emtk.events import (
             RIGHT_BUTTON, NO_MODIFIER,
         )
@@ -301,7 +299,7 @@ def test_a_right_click_still_opens_the_menu():
         app.renderer.on_pointer_release(450.0, 390.0, RIGHT_BUTTON, NO_MODIFIER)
         emit("menu_after_drag", "yes" if gui.has_menu() else "no")
         emit("dollied", "yes" if abs(float(app.renderer._distance) - distance) > 1e-6 else "no")
-    ''')
+    """)
 
     assert measured["menu_after_click"] == "yes", "a right click no longer opens the menu"
     assert measured["menu_after_drag"] == "no", (

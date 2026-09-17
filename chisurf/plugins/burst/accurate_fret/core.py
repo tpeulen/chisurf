@@ -88,9 +88,14 @@ class CalibrationResult:
     def factor_rows(self) -> list[dict]:
         """Table rows: one per factor with value, uncertainty and its origin."""
         origin = {
-            "alpha": "donor-only bursts", "delta": "acceptor-only bursts",
-            "gamma": "E-S fit / FRET line", "beta": "E-S fit",
-            "bg_dd": "given", "bg_da": "given", "bg_aa": "given", "r0": "given",
+            "alpha": "donor-only bursts",
+            "delta": "acceptor-only bursts",
+            "gamma": "E-S fit / FRET line",
+            "beta": "E-S fit",
+            "bg_dd": "given",
+            "bg_da": "given",
+            "bg_aa": "given",
+            "r0": "given",
         }
         for message in self.calibration.messages:
             for key in ("alpha", "delta", "gamma"):
@@ -109,27 +114,33 @@ class CalibrationResult:
         rows = []
         for key in ("alpha", "beta", "gamma", "delta", "r0"):
             sigma = self.calibration.uncertainties.get(key, float("nan"))
-            rows.append({
-                "factor": symbol.get(key, key),
-                "value": f"{self.factors.get(key, float('nan')):.4f}",
-                "uncertainty": "—" if not np.isfinite(sigma) else f"{sigma:.4f}",
-                "origin": origin.get(key, ""),
-            })
+            rows.append(
+                {
+                    "factor": symbol.get(key, key),
+                    "value": f"{self.factors.get(key, float('nan')):.4f}",
+                    "uncertainty": "—" if not np.isfinite(sigma) else f"{sigma:.4f}",
+                    "origin": origin.get(key, ""),
+                }
+            )
         return rows
 
     def population_rows(self) -> list[dict]:
         """Table rows: one per FRET population (E, S, lifetime, distance, off-line)."""
         rows = []
         for p in self.calibration.populations:
-            rows.append({
-                "population": str(p["label"]),
-                "n": str(p["n"]),
-                "E": f"{p['E']:.4f} ± {p['sigma_E']:.4f}",
-                "S": f"{p['S']:.3f}",
-                "tau_f": f"{p['tau_f']:.3f}" if "tau_f" in p and np.isfinite(p["tau_f"]) else "—",
-                "distance": f"{p['distance']:.1f} ± {p['sigma_distance']:.1f}",
-                "off_line": f"{p['deviation']:+.4f}" if "deviation" in p else "—",
-            })
+            rows.append(
+                {
+                    "population": str(p["label"]),
+                    "n": str(p["n"]),
+                    "E": f"{p['E']:.4f} ± {p['sigma_E']:.4f}",
+                    "S": f"{p['S']:.3f}",
+                    "tau_f": f"{p['tau_f']:.3f}"
+                    if "tau_f" in p and np.isfinite(p["tau_f"])
+                    else "—",
+                    "distance": f"{p['distance']:.1f} ± {p['sigma_distance']:.1f}",
+                    "off_line": f"{p['deviation']:+.4f}" if "deviation" in p else "—",
+                }
+            )
         return rows
 
 
@@ -163,13 +174,19 @@ def list_lightpaths(db_path: str | None = None) -> list[dict]:
         return []
 
 
-def lightpath_prior(operation_id: str, *, donor: str | None = None,
-                    acceptor: str | None = None, green_detector: str | None = None,
-                    red_detector: str | None = None, green_laser: str | None = None,
-                    red_laser: str | None = None,
-                    quantum_yields: dict | None = None,
-                    detection_efficiencies: dict | None = None,
-                    db_path: str | None = None) -> dict:
+def lightpath_prior(
+    operation_id: str,
+    *,
+    donor: str | None = None,
+    acceptor: str | None = None,
+    green_detector: str | None = None,
+    red_detector: str | None = None,
+    green_laser: str | None = None,
+    red_laser: str | None = None,
+    quantum_yields: dict | None = None,
+    detection_efficiencies: dict | None = None,
+    db_path: str | None = None,
+) -> dict:
     """Build the ``lightpath`` argument of ``auto_calibrate`` from a saved light path.
 
     Reads the stored excitation/emission crosstalk matrices and resolves the dye
@@ -243,13 +260,25 @@ def lightpath_prior(operation_id: str, *, donor: str | None = None,
 # ---------------------------------------------------------------------------
 
 
-def calibrate(i_dd, i_da, i_aa=None, tau_f=None, *, donor_lifetime: float = 4.0,
-              forster_radius: float = 52.0, linker_sigma: float = 6.0,
-              background=(0.0, 0.0, 0.0), gamma_source: str = "auto",
-              n_bootstrap: int = 50, lightpath: dict | None = None,
-              use_priors: bool = True, max_fret_populations: int = 3,
-              min_population: int = 20, dynamic_distances=None,
-              calibration: CalibrationParameters | None = None) -> CalibrationResult:
+def calibrate(
+    i_dd,
+    i_da,
+    i_aa=None,
+    tau_f=None,
+    *,
+    donor_lifetime: float = 4.0,
+    forster_radius: float = 52.0,
+    linker_sigma: float = 6.0,
+    background=(0.0, 0.0, 0.0),
+    gamma_source: str = "auto",
+    n_bootstrap: int = 50,
+    lightpath: dict | None = None,
+    use_priors: bool = True,
+    max_fret_populations: int = 3,
+    min_population: int = 20,
+    dynamic_distances=None,
+    calibration: CalibrationParameters | None = None,
+) -> CalibrationResult:
     """Run the automatic calibration and package everything the GUI/CLI shows.
 
     Parameters
@@ -302,10 +331,20 @@ def calibrate(i_dd, i_da, i_aa=None, tau_f=None, *, donor_lifetime: float = 4.0,
         )
 
     result = auto_calibrate(
-        i_dd, i_da, i_aa, calibration=calib, lightpath=lightpath, tau_f=tau_f, line=line,
-        donor_lifetime=float(donor_lifetime), linker_sigma=float(linker_sigma),
-        gamma_source=gamma_source, n_bootstrap=int(n_bootstrap), use_priors=use_priors,
-        max_fret_populations=int(max_fret_populations), min_population=int(min_population),
+        i_dd,
+        i_da,
+        i_aa,
+        calibration=calib,
+        lightpath=lightpath,
+        tau_f=tau_f,
+        line=line,
+        donor_lifetime=float(donor_lifetime),
+        linker_sigma=float(linker_sigma),
+        gamma_source=gamma_source,
+        n_bootstrap=int(n_bootstrap),
+        use_priors=use_priors,
+        max_fret_populations=int(max_fret_populations),
+        min_population=int(min_population),
     )
 
     split = result.split
@@ -315,8 +354,14 @@ def calibrate(i_dd, i_da, i_aa=None, tau_f=None, *, donor_lifetime: float = 4.0,
         labels = np.where(split.acceptor_only, -2, labels)
 
     final = accurate_fret(
-        i_dd, i_da, i_aa, calibration=calib, tau_f=tau_f, line=line,
-        uncertainties=result.uncertainties, labels=labels,
+        i_dd,
+        i_da,
+        i_aa,
+        calibration=calib,
+        tau_f=tau_f,
+        line=line,
+        uncertainties=result.uncertainties,
+        labels=labels,
     )
 
     dynamic = None
@@ -330,8 +375,11 @@ def calibrate(i_dd, i_da, i_aa=None, tau_f=None, *, donor_lifetime: float = 4.0,
             )
         if distances is not None:
             dynamic = dynamic_fret_line(
-                float(donor_lifetime), r0=float(forster_radius), sigma=float(linker_sigma),
-                distance_1=float(distances[0]), distance_2=float(distances[1]),
+                float(donor_lifetime),
+                r0=float(forster_radius),
+                sigma=float(linker_sigma),
+                distance_1=float(distances[0]),
+                distance_2=float(distances[1]),
             )
 
     return CalibrationResult(
@@ -339,10 +387,16 @@ def calibrate(i_dd, i_da, i_aa=None, tau_f=None, *, donor_lifetime: float = 4.0,
         efficiency=np.asarray(final["E"], dtype=float),
         stoichiometry=None if final["S"] is None else np.asarray(final["S"], dtype=float),
         tau_f=None if tau_f is None else np.asarray(tau_f, dtype=float),
-        labels=labels, line=line, dynamic_line=dynamic,
+        labels=labels,
+        line=line,
+        dynamic_line=dynamic,
         distance=np.asarray(final["distance"], dtype=float),
-        meta={"donor_lifetime": float(donor_lifetime), "r0": float(forster_radius),
-              "linker_sigma": float(linker_sigma), "gamma_source": gamma_source},
+        meta={
+            "donor_lifetime": float(donor_lifetime),
+            "r0": float(forster_radius),
+            "linker_sigma": float(linker_sigma),
+            "gamma_source": gamma_source,
+        },
     )
 
 
@@ -421,7 +475,8 @@ def write_container(
         "Population": np.asarray(result.labels, dtype=np.int32),
     }
     units = {
-        "Burst Index": "dimensionless", "E": "dimensionless",
+        "Burst Index": "dimensionless",
+        "E": "dimensionless",
         "Population": "dimensionless",
     }
     for name, values, unit in (
@@ -434,7 +489,8 @@ def write_container(
             units[name] = unit
 
     written = write_burst_artifact(
-        source, store_from_arrays(columns),
+        source,
+        store_from_arrays(columns),
         name="accurate fret",
         artifact_kind="analysis_result",
         operation_type="calibration",
@@ -449,12 +505,19 @@ def write_container(
 
     populations = result.calibration.populations
     if populations:
-        keys = ("label", "n", "E", "sigma_E", "S", "tau_f", "distance",
-                "sigma_distance", "deviation")
+        keys = (
+            "label",
+            "n",
+            "E",
+            "sigma_E",
+            "S",
+            "tau_f",
+            "distance",
+            "sigma_distance",
+            "deviation",
+        )
         rows = {
-            key: np.asarray(
-                [p.get(key, float("nan")) for p in populations], dtype=float
-            )
+            key: np.asarray([p.get(key, float("nan")) for p in populations], dtype=float)
             for key in keys
             if any(key in p for p in populations)
         }
@@ -492,7 +555,8 @@ def write_container(
             (phi_a / phi_d) / gamma if phi_d and gamma else float("nan"),
         )
         write_burst_artifact(
-            source, store_from_arrays(rows),
+            source,
+            store_from_arrays(rows),
             name="accurate fret calibration",
             artifact_kind="parameter_table",
             operation_type="calibration",
@@ -503,13 +567,19 @@ def write_container(
             target_row_column="label",
             units={
                 **{spec["column"]: spec["units"] for spec in calibration_columns()},
-                "distance": "angstroms", "sigma_distance": "angstroms",
+                "distance": "angstroms",
+                "sigma_distance": "angstroms",
                 "tau_f": "nanoseconds",
-                "E": "dimensionless", "sigma_E": "dimensionless",
-                "S": "dimensionless", "deviation": "dimensionless",
-                "alpha": "dimensionless", "beta": "dimensionless",
-                "gamma": "dimensionless", "delta": "dimensionless",
-                "label": "dimensionless", "n": "counts",
+                "E": "dimensionless",
+                "sigma_E": "dimensionless",
+                "S": "dimensionless",
+                "deviation": "dimensionless",
+                "alpha": "dimensionless",
+                "beta": "dimensionless",
+                "gamma": "dimensionless",
+                "delta": "dimensionless",
+                "label": "dimensionless",
+                "n": "counts",
             },
             out_dir=out_dir,
         )

@@ -6,29 +6,29 @@ import json
 import logging
 import shutil
 import time
-import warnings
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-from chisurf.core.datastore import rows_from_table, store_from_rows
 import tttrlib
 
 import chisurf
-
+import chisurf.core.fluorescence.burst.kalman as kalman_mod
+from chisurf.core.datastore import rows_from_table, store_from_rows
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe, write_mti_summary
 from chisurf.core.fio.fluorescence.burst_manifest import (
     describe_tttr_source,
     write_analysis_manifest,
 )
-from chisurf.core.fluorescence.burst import burst_filter, count_rate_filter, cusum_filter
-from chisurf.core.fluorescence.burst import tttrlib_search
+from chisurf.core.fluorescence.burst import (
+    burst_filter,
+    count_rate_filter,
+    cusum_filter,
+    tttrlib_search,
+)
 from chisurf.core.fluorescence.burst.tttrlib_search import tttrlib_burst_filter
-import chisurf.core.fluorescence.burst.kalman as kalman_mod
-from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 from chisurf.core.math.signal import fill_small_gaps_in_array
 from chisurf.core.math.signal import find_bursts as signal_find_bursts
 
@@ -39,18 +39,16 @@ from .io import (
     write_container,
     zip_output_folder,
 )
-from .serialization import to_jsonable
 from .models import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSettings,
     BurstDetectionSettings,
     BurstFilterMode,
+    DeltaMacroTimeFilterSettings,
     PhotonFilterSettings,
 )
-
-
-
+from .serialization import to_jsonable
 
 #: Which filter ran -> its `_mmfdb_operation.algorithm` term.
 #:
@@ -77,8 +75,7 @@ def _selection_algorithm(settings) -> str:
     """The mmfdb term for the search `settings` selected, or "" if unrecorded."""
     used = getattr(settings, "used_filter", None)
     if used == BurstFilterMode.TTTRLIB:
-        return str(getattr(getattr(settings, "tttrlib_search", None),
-                           "algorithm", "") or "")
+        return str(getattr(getattr(settings, "tttrlib_search", None), "algorithm", "") or "")
     return _FILTER_ALGORITHM.get(used, "")
 
 
@@ -86,7 +83,8 @@ def _manifest_settings(analysis_settings) -> dict:
     """The burst-search settings, in a JSON-safe shape for the manifest."""
     try:
         return {
-            k: v for k, v in asdict(analysis_settings).items()
+            k: v
+            for k, v in asdict(analysis_settings).items()
             if isinstance(v, (bool, int, float, str, list, dict, type(None)))
         }
     except Exception:
@@ -101,7 +99,7 @@ def _delta_macro_time_ms(tttr: tttrlib.TTTR) -> np.ndarray:
 
 
 def _delta_macro_time_mask(
-    tttr: tttrlib.TTTR, delta_settings: "DeltaMacroTimeFilterSettings"
+    tttr: tttrlib.TTTR, delta_settings: DeltaMacroTimeFilterSettings
 ) -> np.ndarray:
     """Boolean mask of photons whose inter-photon gap is inside ``[dT_min, dT_max]`` (ms).
 
@@ -132,7 +130,7 @@ def _run_burst_search(
     what lets the search run on a *reduced* photon stream (the delta-macro-time
     pre-filter) rather than the whole file.
     """
-    n = len(tttr)
+    len(tttr)
     used_filter = BurstFilterMode(settings.used_filter)
 
     # A registry-driven tttrlib search needs the tttrlib burst-search registry.
@@ -142,6 +140,7 @@ def _run_burst_search(
     # visible; the user can upgrade tttrlib or pick a built-in mode explicitly.
     if used_filter == BurstFilterMode.TTTRLIB and not tttrlib_search.is_available():
         import chisurf
+
         chisurf.logging.warning(
             "burst_selection: the installed tttrlib publishes no burst-search "
             "registry; falling back to the built-in sliding-window burst search. "
@@ -196,8 +195,11 @@ def _run_burst_search(
             return np.asarray(selection, dtype=bool)
         # fallback: direct call on timestamps
         from chisurf.core.fluorescence.burst.bocpd import bocpd_filter
+
         return bocpd_filter(
-            tttr, min_ph=min_counts, dt=bocpd_settings.dt,
+            tttr,
+            min_ph=min_counts,
+            dt=bocpd_settings.dt,
             prior_count=bocpd_settings.prior_count,
             prior_duration=bocpd_settings.prior_duration,
             changepoint_prob=bocpd_settings.changepoint_prob,
@@ -358,9 +360,7 @@ def apply_photon_filters(
     used_filter = BurstFilterMode(settings.used_filter)
 
     if settings.filter_active:
-        selection = _search_and_apply_interval(
-            tttr, delta_mask, settings, burst_detection
-        )
+        selection = _search_and_apply_interval(tttr, delta_mask, settings, burst_detection)
         selected = np.logical_and(selected, selection)
     else:
         selected = np.logical_and(selected, delta_mask)
@@ -577,8 +577,7 @@ def _measurement_name(path) -> Path:
 
         with Measurement.open(path, writable=False) as measurement:
             embedded = [
-                m.name for m in measurement.artifacts()
-                if m.uid in measurement.instrument_uids
+                m.name for m in measurement.artifacts() if m.uid in measurement.instrument_uids
             ]
     except Exception:  # noqa: BLE001 - naming must never fail an analysis
         return path
@@ -787,11 +786,7 @@ def analyze_request(
     # Only where a folder was asked for and suppressed: the results still have
     # to land somewhere, and for a container that somewhere is the container. An
     # explicitly empty `output_formats` means "write nothing" and stays that.
-    if (
-        request.legacy_output
-        and not legacy_output
-        and "pto" not in request.settings.output_formats
-    ):
+    if request.legacy_output and not legacy_output and "pto" not in request.settings.output_formats:
         request.settings.output_formats = list(request.settings.output_formats) + ["pto"]
     legacy_output_folder = _prepare_legacy_output_folder(request) if legacy_output else None
     bur_output_dir = (

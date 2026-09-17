@@ -15,8 +15,6 @@ diagnosable error rather than a silent slow path.
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 from .h2mm import BurstPhotons, H2mmModel, factory_model
@@ -30,7 +28,7 @@ except Exception:  # pragma: no cover - tttrlib is optional
     HAVE_TTTRLIB = False
 
 
-def _to_engine(data: BurstPhotons) -> "tttrlib.HMM":
+def _to_engine(data: BurstPhotons) -> tttrlib.HMM:
     """Rebuild per-burst (times, streams) from CSR ``BurstPhotons`` and load them
     into a :class:`tttrlib.HMM` engine.
 
@@ -64,7 +62,7 @@ def _to_engine(data: BurstPhotons) -> "tttrlib.HMM":
     return eng
 
 
-def _to_engine_model(model: H2mmModel) -> "tttrlib.HmmModel":
+def _to_engine_model(model: H2mmModel) -> tttrlib.HmmModel:
     return tttrlib.HmmModel(
         [float(x) for x in np.asarray(model.prior).ravel()],
         [float(x) for x in np.asarray(model.trans).ravel()],
@@ -72,7 +70,7 @@ def _to_engine_model(model: H2mmModel) -> "tttrlib.HmmModel":
     )
 
 
-def _from_engine_model(fit: "tttrlib.HmmModel", n_phot: int) -> H2mmModel:
+def _from_engine_model(fit: tttrlib.HmmModel, n_phot: int) -> H2mmModel:
     return H2mmModel(
         prior=np.asarray(fit.prior_np, dtype=np.float64),
         trans=np.asarray(fit.trans_np, dtype=np.float64),
@@ -96,8 +94,14 @@ def optimize(
 ) -> H2mmModel:
     """EM optimisation via tttrlib. Reach it through :func:`~.engines.optimize`."""
     eng = _to_engine(data)
-    fit = eng.optimize(_to_engine_model(model), int(max_iter), float(tol),
-                       float(min_trans), bool(accelerate), bool(single_precision))
+    fit = eng.optimize(
+        _to_engine_model(model),
+        int(max_iter),
+        float(tol),
+        float(min_trans),
+        bool(accelerate),
+        bool(single_precision),
+    )
     out = _from_engine_model(fit, data.n_photons)
     if on_iter is not None:  # coarse progress: tttrlib EM is a single blocking call
         on_iter(out.n_iter, max(out.n_iter, 1))
@@ -124,9 +128,7 @@ def posterior(model: H2mmModel, data: BurstPhotons) -> tuple[np.ndarray, int]:
     return np.asarray(g, dtype=np.float32), int(n_underflow)
 
 
-def sample_states(
-    model: H2mmModel, data: BurstPhotons, seed: int = 0
-) -> tuple[np.ndarray, int]:
+def sample_states(model: H2mmModel, data: BurstPhotons, seed: int = 0) -> tuple[np.ndarray, int]:
     """Draw each photon's state independently from its γ row (marginal draw)."""
     eng = _to_engine(data)
     path, n_underflow = eng.jitter_path(_to_engine_model(model), int(seed))
@@ -159,10 +161,10 @@ def fit_states(
     best: H2mmModel | None = None
     restarts = max(int(n_restarts), 1)
     for r in range(restarts):
-        init = factory_model(n_states, data.n_streams,
-                             seed=None if seed is None else int(seed) + r)
-        fit = eng.optimize(_to_engine_model(init), int(max_iter), float(tol),
-                           1e-12, True, bool(single_precision))
+        init = factory_model(n_states, data.n_streams, seed=None if seed is None else int(seed) + r)
+        fit = eng.optimize(
+            _to_engine_model(init), int(max_iter), float(tol), 1e-12, True, bool(single_precision)
+        )
         cand = _from_engine_model(fit, data.n_photons)
         if best is None or cand.loglik > best.loglik:
             best = cand

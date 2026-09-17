@@ -1,10 +1,11 @@
 import json
+
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
-from chisurf.gui import chiplot as cp
 import chisurf.core.settings
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots.plotbase import Plot
 
 try:
@@ -13,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - optional GUI backend
     ChimolView = None
 
-colors = cs.core.settings.gui['plot']['colors']
+colors = cs.core.settings.gui["plot"]["colors"]
 color_scheme = cs.core.settings.colors
 
 
@@ -110,7 +111,6 @@ class ProteinMCPlotControl(QtWidgets.QWidget):
 
 
 class ProteinMCPlot(Plot):
-
     name = "Trajectory-Plot"
 
     def __init__(self, fit, *args, **kwargs):
@@ -155,11 +155,19 @@ class ProteinMCPlot(Plot):
         self.energy_plot.set_title("Energy")
         self.fret_plot.set_title("FRET")
 
-        lw = cs.core.settings.gui['plot']['line_width']
-        self.rmsd_curve = self.rmsd_plot.line([0.0], [0.0], pen=colors['irf'], width=lw, name='rmsd')
-        self.drmsd_curve = self.drmsd_plot.line([0.0], [0.0], pen=colors['data'], width=lw, name='drmsd')
-        self.energy_curve = self.energy_plot.line([0.0], [0.0], pen=colors['model'], width=lw, name='energy')
-        self.fret_curve = self.fret_plot.line([0.0], [0.0], pen=colors['model'], width=lw, name='fret')
+        lw = cs.core.settings.gui["plot"]["line_width"]
+        self.rmsd_curve = self.rmsd_plot.line(
+            [0.0], [0.0], pen=colors["irf"], width=lw, name="rmsd"
+        )
+        self.drmsd_curve = self.drmsd_plot.line(
+            [0.0], [0.0], pen=colors["data"], width=lw, name="drmsd"
+        )
+        self.energy_curve = self.energy_plot.line(
+            [0.0], [0.0], pen=colors["model"], width=lw, name="energy"
+        )
+        self.fret_curve = self.fret_plot.line(
+            [0.0], [0.0], pen=colors["model"], width=lw, name="fret"
+        )
         # A movable=False "current frame" cursor on each panel.
         self.frame_lines = []
         for plot_item in (self.rmsd_plot, self.drmsd_plot, self.energy_plot, self.fret_plot):
@@ -173,8 +181,8 @@ class ProteinMCPlot(Plot):
         try:
             cs.logging.info(
                 "ProteinMCPlot: initialized for fit '%s' with model '%s'",
-                getattr(fit, 'name', 'unknown'),
-                getattr(fit.model.__class__, 'name', fit.model.__class__.__name__)
+                getattr(fit, "name", "unknown"),
+                getattr(fit.model.__class__, "name", fit.model.__class__.__name__),
             )
         except Exception:
             pass
@@ -202,8 +210,7 @@ class ProteinMCPlot(Plot):
 
         try:
             cs.logging.info(
-                "ProteinMCPlot.update_all: updated trajectory curves with %d points",
-                len(x)
+                "ProteinMCPlot.update_all: updated trajectory curves with %d points", len(x)
             )
         except Exception:
             pass
@@ -300,7 +307,6 @@ class ProteinMCStructureControl(QtWidgets.QWidget):
 
     def _object_id(self):
         """Return the Chimol object controlled by this panel."""
-
         return getattr(self._plot, "object_id", None)
 
     def _on_spin(self, value: int) -> None:
@@ -323,7 +329,6 @@ class ProteinMCStructureControl(QtWidgets.QWidget):
 
     def _play(self) -> None:
         """Start local trajectory playback."""
-
         if self._viewer is None:
             return
         if not self._play_timer.isActive():
@@ -331,12 +336,10 @@ class ProteinMCStructureControl(QtWidgets.QWidget):
 
     def _pause(self) -> None:
         """Pause local trajectory playback at the current frame."""
-
         self._play_timer.stop()
 
     def _stop(self) -> None:
         """Stop playback and return to the first frame."""
-
         self._play_timer.stop()
         self._goto_first()
 
@@ -418,8 +421,16 @@ class ProteinMCStructureControl(QtWidgets.QWidget):
             return
         try:
             model = getattr(self._plot, "model", None)
-            total = int(getattr(model, "frame_count", 0)) if model is not None else int(self._viewer.get_frame_count(self._object_id()))
-            current = int(getattr(model, "current_frame_index", 0)) if model is not None else int(self._viewer.get_active_frame_index(self._object_id()))
+            total = (
+                int(getattr(model, "frame_count", 0))
+                if model is not None
+                else int(self._viewer.get_frame_count(self._object_id()))
+            )
+            current = (
+                int(getattr(model, "current_frame_index", 0))
+                if model is not None
+                else int(self._viewer.get_active_frame_index(self._object_id()))
+            )
         except Exception:
             try:
                 total = int(self._viewer.get_total_frames())
@@ -512,14 +523,18 @@ class ProteinMCStructurePlot(Plot):
             if structure is not None:
                 self.object_id = self.viewer.add_structure(structure, name="ProteinMC")
             else:
-                self.object_id = self.viewer.add_coordinates(np.asarray(frames[0], dtype=float), name="ProteinMC")
+                self.object_id = self.viewer.add_coordinates(
+                    np.asarray(frames[0], dtype=float), name="ProteinMC"
+                )
             try:
                 self.viewer.set_representation("atoms", object_id=self.object_id)
             except Exception:
                 pass
         if frames:
             arr = np.asarray(frames, dtype=float)
-            active_frame = min(max(0, int(getattr(self.model, "current_frame_index", len(arr) - 1))), len(arr) - 1)
+            active_frame = min(
+                max(0, int(getattr(self.model, "current_frame_index", len(arr) - 1))), len(arr) - 1
+            )
             try:
                 self.viewer.set_frames(
                     arr,
@@ -609,7 +624,9 @@ class ProteinMCDistanceNetworkPlot(Plot):
             except Exception:
                 continue
             target = float(edge["target"])
-            error = max(float(edge["error_neg"] if model_distance < target else edge["error_pos"]), 1e-12)
+            error = max(
+                float(edge["error_neg"] if model_distance < target else edge["error_pos"]), 1e-12
+            )
             wres = (model_distance - target) / error
             item.set_pen(cp.to_pen(_agreement_color(wres), width=1.0 + min(abs(wres), 3.0) * 0.8))
 
@@ -636,7 +653,9 @@ class ProteinMCDistanceNetworkPlot(Plot):
             p2 = self._network_node_positions.get(edge["p2"])
             if p1 is None or p2 is None:
                 continue
-            item = self.plot_widget.line([p1[0], p2[0]], [p1[1], p2[1]], pen=(80, 80, 80, 120), width=1.0)
+            item = self.plot_widget.line(
+                [p1[0], p2[0]], [p1[1], p2[1]], pen=(80, 80, 80, 120), width=1.0
+            )
             self._network_edges.append(edge)
             self._network_edge_items.append(item)
         scatter = self.plot_widget.scatter(
@@ -650,8 +669,10 @@ class ProteinMCDistanceNetworkPlot(Plot):
         for name in nodes:
             pos = self._network_node_positions[name]
             label = self.plot_widget.text(
-                str(name), (float(pos[0] * 1.12), float(pos[1] * 1.12)),
-                color=(230, 230, 230), anchor=(0.5, 0.5),
+                str(name),
+                (float(pos[0] * 1.12), float(pos[1] * 1.12)),
+                color=(230, 230, 230),
+                anchor=(0.5, 0.5),
             )
             self._network_static_items.append(label)
         self.plot_widget.set_xlim(-1.25, 1.25, padding=0.02)
@@ -659,7 +680,10 @@ class ProteinMCDistanceNetworkPlot(Plot):
 
     def _draw_message(self, message: str) -> None:
         self.plot_widget.text(
-            str(message), (0.0, 0.0), color=(230, 230, 230), anchor=(0.5, 0.5),
+            str(message),
+            (0.0, 0.0),
+            color=(230, 230, 230),
+            anchor=(0.5, 0.5),
         )
         self.plot_widget.set_xlim(-1, 1, padding=0.02)
         self.plot_widget.set_ylim(-1, 1, padding=0.02)
@@ -814,7 +838,7 @@ class ProteinMCDistanceNetworkControl(QtWidgets.QWidget):
 
 def _load_labeling_payload(filename: str) -> dict:
     """Load an FPS JSON labeling file."""
-    with open(filename, "r") as fp:
+    with open(filename) as fp:
         return json.load(fp)
 
 
@@ -907,7 +931,6 @@ def _as_text(value) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="ignore").strip()
     return str(value).strip()
-
 
 
 # class ProteinMCPlot_Old(Plot):

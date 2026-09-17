@@ -12,6 +12,7 @@ trajectory attributes, so a headless script can start a run, watch it and stop i
 with the same calls the editor's buttons make. The predecessor put all of this in
 a ``QWidget``, which is why nothing about ProteinMC could be scripted.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,7 @@ import re
 import threading
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -167,7 +168,6 @@ def _decode(value: Any) -> str:
 
 
 class ProteinMCModel(Model):
-
     """Sample protein conformations by Monte Carlo against FRET restraints.
 
     The model owns everything a run needs and everything a run produces, so a
@@ -217,7 +217,7 @@ class ProteinMCModel(Model):
         # Energy terms: one dict per active term.
         self._potentials: list[dict] = []
         #: Row dict of the term selected in the energy table.
-        self.selected_potential: Optional[dict] = None
+        self.selected_potential: dict | None = None
         #: Key of the term the "Add" button appends.
         self.new_potential: str = next(iter(POTENTIAL_SPECS))
         for key, spec in POTENTIAL_SPECS.items():
@@ -234,8 +234,8 @@ class ProteinMCModel(Model):
         self.chi2r: list[float] = []
 
         # Run state.
-        self._thread: Optional[threading.Thread] = None
-        self._runner: Optional[ProteinMCRunner] = None
+        self._thread: threading.Thread | None = None
+        self._runner: ProteinMCRunner | None = None
         self._stop_requested = False
         self._sampling_status: str = ""
         self._total_frames_target: int = 0
@@ -383,7 +383,7 @@ class ProteinMCModel(Model):
         self._potentials.pop(index if index is not None else -1)
         self.selected_potential = None
 
-    def _selected_index(self) -> Optional[int]:
+    def _selected_index(self) -> int | None:
         """Return the index of the selected energy term, or ``None``."""
         row = self.selected_potential
         if isinstance(row, dict) and isinstance(row.get("index"), int):
@@ -470,7 +470,7 @@ class ProteinMCModel(Model):
             )
         return out
 
-    def _dye_potential(self) -> Optional[dict]:
+    def _dye_potential(self) -> dict | None:
         """Return the FRET (``fps``) energy term, if it is active."""
         return next((p for p in self._potentials if p["key"] == "fps"), None)
 
@@ -518,7 +518,8 @@ class ProteinMCModel(Model):
         if resolved and resolved not in groups:
             resolved = next(
                 (
-                    key for key in groups
+                    key
+                    for key in groups
                     if resolved.lower() in key.lower() or key.lower() in resolved.lower()
                 ),
                 resolved,
@@ -530,16 +531,21 @@ class ProteinMCModel(Model):
         self._distance_definitions = {k: all_distances[k] for k in keys if k in all_distances}
         for name in self._distance_definitions:
             self._distance_parameters[name] = FittingParameter(
-                name=name, label_text=f"{name}[Å]", value=float("nan"),
-                lb=float("-inf"), ub=float("inf"),
-                bounds_on=False, fixed=True, is_output=True,
+                name=name,
+                label_text=f"{name}[Å]",
+                value=float("nan"),
+                lb=float("-inf"),
+                ub=float("inf"),
+                bounds_on=False,
+                fixed=True,
+                is_output=True,
             )
 
     def _distance_parameter_rows(self) -> list:
         """Return the inter-fluorophore distances of the active frame."""
         return list(self._distance_parameters.values())
 
-    def _resolve_position_index(self, position: dict, atoms) -> Optional[int]:
+    def _resolve_position_index(self, position: dict, atoms) -> int | None:
         """Resolve a labelling position to an atom index in the structure.
 
         Parameters
@@ -581,7 +587,7 @@ class ProteinMCModel(Model):
                 return index
         return None
 
-    def _resolve_position_by_guessing(self, name: str, atoms) -> Optional[int]:
+    def _resolve_position_by_guessing(self, name: str, atoms) -> int | None:
         """Resolve a position from the residue number embedded in its name.
 
         Parameters
@@ -611,7 +617,7 @@ class ProteinMCModel(Model):
         selected = np.where(mask)[0]
         return int(selected[0]) if selected.size else None
 
-    def _position_index(self, name: str, atoms) -> Optional[int]:
+    def _position_index(self, name: str, atoms) -> int | None:
         """Resolve one position name to an atom index, caching the result."""
         if name in self._distance_position_indices:
             return self._distance_position_indices[name]
@@ -663,7 +669,9 @@ class ProteinMCModel(Model):
             xyz = self._active_coordinates()
         if xyz is None or not self._distance_parameters or not self._distance_definitions:
             return
-        structure = self.proteinmc_structure if self.proteinmc_structure is not None else self.structure
+        structure = (
+            self.proteinmc_structure if self.proteinmc_structure is not None else self.structure
+        )
         atoms = getattr(structure, "atoms", None)
         if atoms is None:
             return
@@ -677,11 +685,29 @@ class ProteinMCModel(Model):
             j = self._position_index(str(definition.get("position2_name", "")), atoms)
             if i is None or j is None:
                 first, second = self._candidate_names(name)
-                i = i if i is not None else next(
-                    (k for k in (self._position_index(c, atoms) for c in first) if k is not None), None
+                i = (
+                    i
+                    if i is not None
+                    else next(
+                        (
+                            k
+                            for k in (self._position_index(c, atoms) for c in first)
+                            if k is not None
+                        ),
+                        None,
+                    )
                 )
-                j = j if j is not None else next(
-                    (k for k in (self._position_index(c, atoms) for c in second) if k is not None), None
+                j = (
+                    j
+                    if j is not None
+                    else next(
+                        (
+                            k
+                            for k in (self._position_index(c, atoms) for c in second)
+                            if k is not None
+                        ),
+                        None,
+                    )
                 )
             if i is None or j is None:
                 continue
@@ -699,7 +725,9 @@ class ProteinMCModel(Model):
         if self.trajectory_frames:
             index = max(0, min(self.current_frame_index, len(self.trajectory_frames) - 1))
             return self.trajectory_frames[index]
-        structure = self.proteinmc_structure if self.proteinmc_structure is not None else self.structure
+        structure = (
+            self.proteinmc_structure if self.proteinmc_structure is not None else self.structure
+        )
         return getattr(structure, "xyz", None)
 
     # -- trajectory ----------------------------------------------------
@@ -740,8 +768,7 @@ class ProteinMCModel(Model):
             self.proteinmc_structure = Structure(self.structure_file)
         except Exception as exc:
             logging.warning(
-                f"ProteinMC: could not load starting structure "
-                f"{self.structure_file!r}: {exc}"
+                f"ProteinMC: could not load starting structure {self.structure_file!r}: {exc}"
             )
             return
         self.trajectory_frames = []
@@ -793,8 +820,10 @@ class ProteinMCModel(Model):
         if continuing:
             initial_frames = [np.asarray(f, dtype=float) for f in self.trajectory_frames[:-1]]
             self._resume_traces = {
-                "rmsd": list(self.rmsd), "drmsd": list(self.drmsd),
-                "energy": list(self.energy), "chi2r": list(self.chi2r),
+                "rmsd": list(self.rmsd),
+                "drmsd": list(self.drmsd),
+                "energy": list(self.energy),
+                "chi2r": list(self.chi2r),
             }
         else:
             initial_frames = []
@@ -875,9 +904,7 @@ class ProteinMCModel(Model):
     def _run_sampling(self, **runner_kwargs) -> None:
         """Thread body: build the runner, sample, record the outcome."""
         try:
-            self._runner = ProteinMCRunner(
-                progress_callback=self._on_progress, **runner_kwargs
-            )
+            self._runner = ProteinMCRunner(progress_callback=self._on_progress, **runner_kwargs)
             self.proteinmc_structure = self._runner.structure
             if self._stop_requested:
                 self._runner.stop()
@@ -969,8 +996,12 @@ class ProteinMCModel(Model):
         settings = payload.get("settings") or {}
         if isinstance(settings, dict):
             for attr, key in (
-                ("n_iter", "n_iter"), ("n_out", "n_out"), ("n_written", "n_written"),
-                ("scale", "scale"), ("kt", "kt"), ("labeling_weight", "labeling_weight"),
+                ("n_iter", "n_iter"),
+                ("n_out", "n_out"),
+                ("n_written", "n_written"),
+                ("scale", "scale"),
+                ("kt", "kt"),
+                ("labeling_weight", "labeling_weight"),
             ):
                 value = settings.get(key)
                 if value is None and key == "n_written":

@@ -77,7 +77,8 @@ def _view_spec_of(model_class) -> tuple[str, bool]:
     """The declared ``view_spec_file`` and whether it resolves."""
     declaring = next(
         (
-            c for c in getattr(model_class, "__mro__", ())
+            c
+            for c in getattr(model_class, "__mro__", ())
             if "view_spec_file" in c.__dict__ and c.__dict__["view_spec_file"]
         ),
         None,

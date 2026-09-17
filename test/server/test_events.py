@@ -3,15 +3,15 @@ from __future__ import annotations
 """Tests for server event subscription / publication."""
 
 from unittest.mock import MagicMock
+
 import pytest
 
-from chisurf.server.eventbus import InProcessEventBus
 from chisurf.server.dispatcher import ServiceDispatcher
+from chisurf.server.eventbus import InProcessEventBus
 from chisurf.server.session import SessionState
 
 
 class TestEventBusIntegration:
-
     @pytest.fixture
     def event_bus(self):
         return InProcessEventBus()
@@ -27,10 +27,13 @@ class TestEventBusIntegration:
         events = []
         event_bus.subscribe("fit.created", lambda e: events.append(e))
 
-        result = dispatcher.dispatch("fit.create", {
-            "dataset_index": 0,
-            "model_name": "Lifetime fit",
-        })
+        result = dispatcher.dispatch(
+            "fit.create",
+            {
+                "dataset_index": 0,
+                "model_name": "Lifetime fit",
+            },
+        )
         # Should fail because no datasets, but event should not be published
         assert not result["ok"]
         assert len(events) == 0
@@ -107,4 +110,3 @@ class TestEventBusIntegration:
         dispatcher.dispatch("fit.clear", {})
         assert len(events) == 1
         assert "cleared_count" in events[0]
-

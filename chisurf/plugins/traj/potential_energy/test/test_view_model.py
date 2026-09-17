@@ -1,7 +1,6 @@
 """Headless (Qt-free) tests for the Potential-Energy view-model."""
 
 import numpy as np
-import pytest
 
 
 def _peptide_trajectory(path: str, n_res: int = 3, n_frames: int = 4) -> str:
@@ -13,6 +12,7 @@ def _peptide_trajectory(path: str, n_res: int = 3, n_frames: int = 4) -> str:
     """
     from chisurf.core.fio.trajectory import write_dcd
     from chisurf.core.structure import trajectory_data as md
+
     elements = {
         "N": md.element.nitrogen,
         "CA": md.element.carbon,

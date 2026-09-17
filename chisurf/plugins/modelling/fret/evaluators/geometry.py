@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -19,8 +19,8 @@ class EulerAngleEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         if bodies is None or self.body_id >= len(bodies):
             return EvaluatorResult(self.name, 0.0, "rad")
@@ -51,8 +51,8 @@ class TranslationEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         if bodies is None or self.body_id >= len(bodies):
             return EvaluatorResult(self.name, 0.0, "Å")
@@ -72,13 +72,14 @@ class MinDistanceEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         if bodies is None or self.body_a_id >= len(bodies) or self.body_b_id >= len(bodies):
             return EvaluatorResult(self.name, 0.0, "Å")
 
         from scipy.spatial.distance import cdist
+
         coords_a = bodies[self.body_a_id].global_coords()
         coords_b = bodies[self.body_b_id].global_coords()
         dists = cdist(coords_a, coords_b)

@@ -24,12 +24,16 @@ import pytest
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "solvated_fragment.pdb"
 )
 
 _N_WATERS = 8
-_N_POLYMER = 30          # six alanines, five atoms each
-_N_TOTAL = _N_POLYMER + 1 + _N_WATERS     # + the zinc
+_N_POLYMER = 30  # six alanines, five atoms each
+_N_TOTAL = _N_POLYMER + 1 + _N_WATERS  # + the zinc
 
 
 @pytest.fixture(scope="session")
@@ -44,8 +48,8 @@ def session(qapp):
     """Build a viewer with the solvated fragment loaded, plus a command runner."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(

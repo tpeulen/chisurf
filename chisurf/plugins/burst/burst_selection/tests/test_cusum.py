@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
-import numpy as np
 
 from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisSettings,
+    BocpdFilterSettings,
     BurstDetectionSettings,
     BurstFilterMode,
-    PhotonFilterSettings,
-    BocpdFilterSettings,
-    KalmanFilterSettings,
     CusumFilterSettings,
+    KalmanFilterSettings,
+    PhotonFilterSettings,
 )
 from chisurf.plugins.burst.burst_selection.api.selection import (
     analyze_file,
-    apply_photon_filters,
 )
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna"
@@ -71,7 +70,9 @@ def test_bocpd_filter_dispatches_to_tttrlib() -> None:
         ),
     )
     settings.burst_detection = BurstDetectionSettings(
-        min_photons=15, photon_window=10, time_window=0.001,
+        min_photons=15,
+        photon_window=10,
+        time_window=0.001,
     )
 
     result = analyze_file(BH_SPC_FILE, settings=settings)

@@ -284,8 +284,11 @@ class ImagingMapViewModel:
         dict
         """
         fixed = {
-            "X pixel": "pixels", "Y pixel": "pixels", "Z pixel": "pixels",
-            "Pixel Number": "dimensionless", "Frame": "dimensionless",
+            "X pixel": "pixels",
+            "Y pixel": "pixels",
+            "Z pixel": "pixels",
+            "Pixel Number": "dimensionless",
+            "Frame": "dimensionless",
         }
         out: dict[str, str] = {}
         for name in names:
@@ -305,10 +308,7 @@ class ImagingMapViewModel:
 
     def _summary(self, ny: int, nx: int) -> str:
         wins = ", ".join(self.window_names())
-        return (
-            f"{pathlib.Path(self.filename).name}: {nx}x{ny} px.\n"
-            f"Windows: {wins}."
-        )
+        return f"{pathlib.Path(self.filename).name}: {nx}x{ny} px.\nWindows: {wins}."
 
     # ── recompute dedup ──
     def _extra_signature(self) -> tuple:
@@ -397,8 +397,11 @@ class ImagingMapViewModel:
             from chisurf.core.fluorescence.imaging import compute_windows
 
             results = compute_windows(
-                self.filename, self._windows(), self.WINDOW_KIND,
-                self._window_params(), progress=progress,
+                self.filename,
+                self._windows(),
+                self.WINDOW_KIND,
+                self._window_params(),
+                progress=progress,
             )
             by_window: dict[str, dict[str, np.ndarray]] = {}
             columns: dict[str, np.ndarray] = {}
@@ -556,7 +559,8 @@ class ImagingMapViewModel:
         )
 
         return write_burst_artifact(
-            self.filename, table,
+            self.filename,
+            table,
             name=self.artifact_name(),
             artifact_kind="pixel_map",
             operation_type=self.OPERATION_TYPE,
@@ -572,11 +576,7 @@ class ImagingMapViewModel:
 
     def _register_hdf5_snapshot(self, path: str) -> None:
         """Register the just-written HDF5 when an MMFDB client is bound."""
-        if (
-            self.mmfdb_db is None
-            or not self.mmfdb_source_artifact_id
-            or self.mmfdb_session is None
-        ):
+        if self.mmfdb_db is None or not self.mmfdb_source_artifact_id or self.mmfdb_session is None:
             return
         state = self._signature()
         if state == self._mmfdb_persisted_signature:

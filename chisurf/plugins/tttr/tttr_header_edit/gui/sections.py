@@ -16,9 +16,9 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +66,16 @@ class _HeaderTableSection(QtWidgets.QWidget):
             )
         )
         bar.addWidget(_tool_button(f"{Glyphs.ADD} Add", "Add a new header tag.", self._add))
-        bar.addWidget(_tool_button(f"{Glyphs.REMOVE} Remove", "Remove the selected tag.", self._remove))
+        bar.addWidget(
+            _tool_button(f"{Glyphs.REMOVE} Remove", "Remove the selected tag.", self._remove)
+        )
         bar.addStretch(1)
         bar.addWidget(
-            _tool_button(f"{Glyphs.SAVE} Save as PTU", "Save the edited header to a new PTU file.", self._save)
+            _tool_button(
+                f"{Glyphs.SAVE} Save as PTU",
+                "Save the edited header to a new PTU file.",
+                self._save,
+            )
         )
         layout.addLayout(bar)
 

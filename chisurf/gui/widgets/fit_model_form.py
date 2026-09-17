@@ -26,8 +26,8 @@ import typing
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.core.fluorescence.mle import registry as fit_registry
+from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.gui.autoform import AutoForm
 
 
@@ -74,9 +74,7 @@ class FitModelForm(QtWidgets.QWidget):
             # without breaking stored settings.
             self.combo_model.addItem(spec.get("label", name), name)
             index = self.combo_model.count() - 1
-            self.combo_model.setItemData(
-                index, spec.get("summary", ""), QtCore.Qt.ToolTipRole
-            )
+            self.combo_model.setItemData(index, spec.get("summary", ""), QtCore.Qt.ToolTipRole)
         if combo is None:
             chooser = QtWidgets.QHBoxLayout()
             chooser.addWidget(QtWidgets.QLabel("Fit model"))
@@ -126,9 +124,7 @@ class FitModelForm(QtWidgets.QWidget):
         """Select ``model`` and load ``parameters`` into the form."""
         index = self.combo_model.findData(model)
         if index < 0:
-            raise ValueError(
-                f"unknown fit model {model!r}; available: {sorted(self._models)}"
-            )
+            raise ValueError(f"unknown fit model {model!r}; available: {sorted(self._models)}")
         self._initial_values = dict(parameters or {})
         blocked = self.combo_model.blockSignals(True)
         self.combo_model.setCurrentIndex(index)

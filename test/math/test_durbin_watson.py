@@ -5,6 +5,7 @@ it compiled the first time a fit window rendered its metrics overlay: a ~230 ms
 stall on the GUI thread, once per process. It is an O(n) statistic that NumPy
 evaluates in microseconds, so it is now plain NumPy. These pin the arithmetic.
 """
+
 import numpy as np
 import pytest
 
@@ -89,4 +90,5 @@ def test_is_not_jit_compiled():
     """Guard the regression: re-adding numba reintroduces the GUI stall."""
     assert not hasattr(durbin_watson, "py_func"), (
         "durbin_watson is numba-compiled again; it renders in the plot overlay "
-        "and will stall the GUI thread on first use")
+        "and will stall the GUI thread on first use"
+    )

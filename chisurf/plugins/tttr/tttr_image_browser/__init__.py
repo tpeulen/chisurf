@@ -22,12 +22,12 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.image_browser_section import ImageBrowserWidget
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 from .gui.view_model import ImageBrowserViewModel
-from chisurf.gui import dialogs
 
 try:
     from docx import Document

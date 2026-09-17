@@ -47,9 +47,7 @@ def spots(shape=(256, 256), n_spots=60, seed=1):
     for centre_y, centre_x, amplitude in rng.uniform(
         [10, 10, 40], [shape[0] - 10, shape[1] - 10, 300], (n_spots, 3)
     ):
-        truth += amplitude * np.exp(
-            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / 6.0
-        )
+        truth += amplitude * np.exp(-((x - centre_x) ** 2 + (y - centre_y) ** 2) / 6.0)
     return truth
 
 
@@ -69,9 +67,7 @@ def relative_error(estimate, truth):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "psf_shape,sigma", [((7, 7), 1.5), ((5, 9), (1.0, 2.0)), ((11, 11), 2.5)]
-)
+@pytest.mark.parametrize("psf_shape,sigma", [((7, 7), 1.5), ((5, 9), (1.0, 2.0)), ((11, 11), 2.5)])
 @pytest.mark.parametrize("n_iter", [1, 5, 30])
 def test_richardson_lucy_matches_skimage_2d(psf_shape, sigma, n_iter):
     """Same numbers as scikit-image, to the last few bits."""
@@ -190,13 +186,11 @@ def test_acceleration_walks_the_same_path_faster():
     accelerated = relative_error(richardson_lucy(noisy, psf, 30, acceleration=True), truth)
     plain_400 = relative_error(richardson_lucy(noisy, psf, 400), truth)
     assert abs(accelerated - plain_400) < 0.05, (
-        f"30 accelerated ({accelerated:.3f}) should land near 400 plain "
-        f"({plain_400:.3f})"
+        f"30 accelerated ({accelerated:.3f}) should land near 400 plain ({plain_400:.3f})"
     )
     # And it reaches the optimum in far fewer iterations.
     best_accelerated = min(
-        relative_error(richardson_lucy(noisy, psf, n, acceleration=True), truth)
-        for n in (3, 5, 10)
+        relative_error(richardson_lucy(noisy, psf, n, acceleration=True), truth) for n in (3, 5, 10)
     )
     assert best_accelerated < relative_error(richardson_lucy(noisy, psf, 5), truth)
 
@@ -263,9 +257,7 @@ def test_psf_sigma_from_optics_refuses_nonsense():
 def test_a_measured_sigma_can_be_used_directly():
     """The bridge from the bead-fitting tool: its sigma is this sigma."""
     measured = {"sigma_z_px": 2.2, "sigma_y_px": 1.4, "sigma_x_px": 1.35}
-    psf = gaussian_psf(
-        (measured["sigma_z_px"], measured["sigma_y_px"], measured["sigma_x_px"])
-    )
+    psf = gaussian_psf((measured["sigma_z_px"], measured["sigma_y_px"], measured["sigma_x_px"]))
     assert psf.ndim == 3
     assert abs(psf.sum() - 1.0) < 1e-12
 
@@ -327,9 +319,7 @@ def marginal_width(psf, axis):
     marginal = psf.sum(axis=1 - axis)
     coordinates = np.arange(len(marginal)) - len(marginal) // 2
     mean = (marginal * coordinates).sum() / marginal.sum()
-    return float(
-        np.sqrt((marginal * (coordinates - mean) ** 2).sum() / marginal.sum())
-    )
+    return float(np.sqrt((marginal * (coordinates - mean) ** 2).sum() / marginal.sum()))
 
 
 @pytest.mark.parametrize("sigma", [0.9, 1.3, 2.0])
@@ -379,8 +369,13 @@ def test_the_timing_terms_are_negligible_at_a_normal_dwell():
     from chisurf.core.fluorescence.imaging.restoration import scan_blur_kernel
 
     without_sweep = np.asarray(
-        scan_blur_kernel(1e-6, jitter_seconds=100e-12, resolution_seconds=25e-9,
-                         oversampling=4, include_dwell=False)
+        scan_blur_kernel(
+            1e-6,
+            jitter_seconds=100e-12,
+            resolution_seconds=25e-9,
+            oversampling=4,
+            include_dwell=False,
+        )
     )
     # Everything lands in one sample: the timing blur is far below one pixel.
     assert without_sweep.max() > 0.999
@@ -412,9 +407,7 @@ def test_event_mode_beats_binning_at_the_same_photon_count():
     # accurately a photon reconstructs to its own position.
     psf = gaussian_psf(1.3, (15, 15))
 
-    event_wise = richardson_lucy_events(
-        np.column_stack([rows, columns]), psf, (32, 32), 60
-    )
+    event_wise = richardson_lucy_events(np.column_stack([rows, columns]), psf, (32, 32), 60)
     binned = richardson_lucy_events(
         np.column_stack([np.floor(rows + 0.5), np.floor(columns + 0.5)]),
         psf,
@@ -455,9 +448,7 @@ def test_event_mode_conserves_photons_and_stays_non_negative():
     assert 1.0 <= restored.sum() / 5000 < 1.0 + 1e-4
 
     # Well away from the border the sensitivity is one and the sum is exact.
-    interior = richardson_lucy_events(
-        rng.uniform(12, 20, (5000, 2)), psf, (32, 32), 20
-    )
+    interior = richardson_lucy_events(rng.uniform(12, 20, (5000, 2)), psf, (32, 32), 20)
     assert abs(interior.sum() / 5000 - 1.0) < 1e-9
 
 
@@ -506,9 +497,7 @@ def test_oversample_psf_preserves_the_kernel_it_refines():
         assert fine.min() >= 0.0
         # Sampled back at pixel spacing, it is the kernel it came from.
         phase = ((fine.shape[0] - 1) // 2) % factor
-        np.testing.assert_allclose(
-            fine[phase::factor, phase::factor], psf, atol=1e-12
-        )
+        np.testing.assert_allclose(fine[phase::factor, phase::factor], psf, atol=1e-12)
 
 
 def test_oversample_psf_refuses_an_even_kernel():

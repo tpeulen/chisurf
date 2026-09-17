@@ -11,6 +11,7 @@ Run headless in the arm64 env, in its own process::
     QT_QPA_PLATFORM=offscreen python -m pytest \\
         test/gui/test_reaction_model_editor.py -p no:cov -o addopts=""
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -28,15 +29,16 @@ def qapp():
 def editor_and_model():
     """Return ``(editor, model)`` for a reaction fit over a synthetic relaxation."""
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.data import DataCurve
     from chisurf.core.models.stopped_flow.reaction import ReactionModel
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.linspace(0.0, 10.0, 200)
     data = DataCurve(
-        name="stopped-flow", load_filename_on_init=False,
-        x=x, y=1.0 - 0.5 * np.exp(-x),
+        name="stopped-flow",
+        load_filename_on_init=False,
+        x=x,
+        y=1.0 - 0.5 * np.exp(-x),
     )
     fit = fit_mod.Fit(model_class=ReactionModel, data=data)
     return build_model_editor(fit.model), fit.model
@@ -59,7 +61,8 @@ def test_reaction_table_shows_the_steps_by_name(qapp, editor_and_model):
 
     editor, model = editor_and_model
     tables = [
-        t for t in editor.findChildren(QtWidgets.QTableWidget)
+        t
+        for t in editor.findChildren(QtWidgets.QTableWidget)
         if t.columnCount() == 2 and t.rowCount() == model.n_reactions
     ]
     assert tables, "the reaction table rendered no rows"

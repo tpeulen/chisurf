@@ -30,14 +30,19 @@ def cli() -> None:
 
 @cli.command("alternation")
 @click.argument("files", nargs=-1, type=click.Path(exists=True), required=True)
-@click.option("--donor", default="auto",
-              help="Donor routing channels, comma separated, or 'auto'.")
-@click.option("--acceptor", default="auto",
-              help="Acceptor routing channels, comma separated, or 'auto'.")
-@click.option("--out-dir", type=click.Path(), default=None,
-              help="Where the converted .pto containers go (default: beside the source).")
-@click.option("--detect-only", is_flag=True,
-              help="Report the period and the laser gates without converting.")
+@click.option("--donor", default="auto", help="Donor routing channels, comma separated, or 'auto'.")
+@click.option(
+    "--acceptor", default="auto", help="Acceptor routing channels, comma separated, or 'auto'."
+)
+@click.option(
+    "--out-dir",
+    type=click.Path(),
+    default=None,
+    help="Where the converted .pto containers go (default: beside the source).",
+)
+@click.option(
+    "--detect-only", is_flag=True, help="Report the period and the laser gates without converting."
+)
 @click.option("--as-json", is_flag=True, help="Print the result as JSON.")
 def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
     """Find the µs-ALEX alternation and fold it into the micro-time.
@@ -54,8 +59,10 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
         # Same code path as the conversion, minus the writing, so what is
         # reported is what a real run would use.
         outcome = detect_and_convert(
-            files[:1], donor_channels=donor_channels,
-            acceptor_channels=acceptor_channels, dry_run=True,
+            files[:1],
+            donor_channels=donor_channels,
+            acceptor_channels=acceptor_channels,
+            dry_run=True,
         )
         payload = {
             "period": outcome["period"],
@@ -67,10 +74,11 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
         }
     else:
         outcome = detect_and_convert(
-            files, donor_channels=donor_channels,
-            acceptor_channels=acceptor_channels, out_dir=out_dir,
-            progress=lambda done, n, what: click.echo(
-                f"  [{done}/{n}] {what}", err=True),
+            files,
+            donor_channels=donor_channels,
+            acceptor_channels=acceptor_channels,
+            out_dir=out_dir,
+            progress=lambda done, n, what: click.echo(f"  [{done}/{n}] {what}", err=True),
         )
         payload = {
             "period": outcome["period"],
@@ -104,10 +112,14 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
 @click.option("--delta", type=float, default=0.0, help="Direct acceptor excitation.")
 @click.option("--min-photons", type=float, default=0.0, help="Minimum photons per burst.")
 @click.option("--bins", type=int, default=101, help="Bins on both axes.")
-@click.option("--export", "export_stem", type=click.Path(), default=None,
-              help="Write the ALEX-Suite CSV export with this stem.")
-def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins,
-              export_stem) -> None:
+@click.option(
+    "--export",
+    "export_stem",
+    type=click.Path(),
+    default=None,
+    help="Write the ALEX-Suite CSV export with this stem.",
+)
+def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins, export_stem) -> None:
     """Report the E-S histogram of a burst table, optionally exporting it."""
     from chisurf.plugins.burst.alex_suite.api.histograms import (
         Corrections,
@@ -117,8 +129,10 @@ def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins,
 
     corrections = Corrections(gamma=gamma, beta=beta, alpha=alpha, delta=delta)
     result = es_histograms(
-        burst_table, corrections=corrections,
-        thresholds=Thresholds(total_min=min_photons), bins=(bins, bins),
+        burst_table,
+        corrections=corrections,
+        thresholds=Thresholds(total_min=min_photons),
+        bins=(bins, bins),
     )
     click.echo(f"bursts      {result.e.size} of {result.n_bursts_total}")
     click.echo(f"columns     {result.columns}")
@@ -126,15 +140,16 @@ def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins,
         click.echo(f"E peak      {result.e_centres[int(np.argmax(result.e_hist))]:.3f}")
         finite = np.isfinite(result.s)
         if finite.any():
-            click.echo(
-                f"S peak      {result.s_centres[int(np.argmax(result.s_hist))]:.3f}")
+            click.echo(f"S peak      {result.s_centres[int(np.argmax(result.s_hist))]:.3f}")
     if export_stem:
         from chisurf.plugins.burst.alex_suite.api.legacy_export import (
             write_legacy_export,
         )
 
         for path in write_legacy_export(
-            export_stem, result, corrections=corrections,
+            export_stem,
+            result,
+            corrections=corrections,
             thresholds=Thresholds(total_min=min_photons),
         ):
             click.echo(f"wrote       {path}")
@@ -142,8 +157,9 @@ def histogram(burst_table, gamma, beta, alpha, delta, min_photons, bins,
 
 @cli.command("titration")
 @click.argument("series", type=click.Path(exists=True))
-@click.option("--populations", type=int, default=2,
-              help="Populations shared across the whole series.")
+@click.option(
+    "--populations", type=int, default=2, help="Populations shared across the whole series."
+)
 @click.option("--model", type=click.Choice(["hill", "one_site"]), default="hill")
 @click.option("--unit", default="nM", help="Concentration unit, for the report only.")
 @click.option("--min-photons", type=float, default=50.0, help="Minimum photons per burst.")
@@ -175,19 +191,24 @@ def titration(series, populations, model, unit, min_photons, bins, as_json) -> N
             except ValueError:
                 continue  # header line
             path = pathlib.Path(row[1].strip())
-            conditions.append(Condition(
-                concentration=concentration,
-                source=str(path if path.is_absolute() else root / path),
-                label=f"{concentration:g} {unit}",
-            ))
+            conditions.append(
+                Condition(
+                    concentration=concentration,
+                    source=str(path if path.is_absolute() else root / path),
+                    label=f"{concentration:g} {unit}",
+                )
+            )
     if len(conditions) < 2:
         raise click.ClickException(
             f"{series} holds {len(conditions)} usable rows; a titration needs at least 2"
         )
 
     result = run_titration(
-        conditions, n_components=populations, binding_model=model,
-        thresholds=Thresholds(total_min=min_photons), bins=bins,
+        conditions,
+        n_components=populations,
+        binding_model=model,
+        thresholds=Thresholds(total_min=min_photons),
+        bins=bins,
     )
     payload = {
         "concentrations": result.stack.concentrations.tolist(),

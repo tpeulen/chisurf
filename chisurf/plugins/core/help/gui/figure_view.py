@@ -171,16 +171,12 @@ class FigureDialog(QDialog):
         width = max(1, round(self._image.width() * self._scale))
         height = max(1, round(self._image.height() * self._scale))
         pixmap = QPixmap.fromImage(
-            self._image.scaled(
-                width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
+            self._image.scaled(width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
         self.label.setPixmap(pixmap)
         self.label.resize(pixmap.size())
         percent = round(self._scale * 100)
-        self.size_label.setText(
-            f"{self._image.width()} × {self._image.height()} px · {percent}%"
-        )
+        self.size_label.setText(f"{self._image.width()} × {self._image.height()} px · {percent}%")
 
     def fit(self) -> None:
         """Scale the figure to the window.

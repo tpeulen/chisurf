@@ -315,7 +315,7 @@ class ApiIndex:
                 name_words = set(re.split(r"[^\w]+|_", name))
                 present = sum(1 for word in words if word in name_words or word in name)
                 if present == len(words):
-                    score += 4.0            # every word of the query is in the name
+                    score += 4.0  # every word of the query is in the name
                 elif present:
                     score += present * 0.5
             if score:

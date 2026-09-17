@@ -1,15 +1,16 @@
 from __future__ import annotations
-import chisurf as cs
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+import chisurf as cs
 from chisurf.core.api.context import PluginContext
 from chisurf.server.session import SessionState
 
 
-def _extract_curve_data(dataset: Any) -> Optional[Dict[str, List[float]]]:
+def _extract_curve_data(dataset: Any) -> dict[str, list[float]] | None:
     """Extract serializable x/y/ex/ey arrays from a DataCurve or container.
 
     Returns ``None`` if the dataset does not have curve-like data.
@@ -19,7 +20,7 @@ def _extract_curve_data(dataset: Any) -> Optional[Dict[str, List[float]]]:
         y = getattr(dataset, "y", None)
         if x is None or y is None:
             return None
-        result: Dict[str, List[float]] = {
+        result: dict[str, list[float]] = {
             "x": np.asarray(x, dtype=float).tolist(),
             "y": np.asarray(y, dtype=float).tolist(),
         }
@@ -80,7 +81,9 @@ def _local_fits() -> list[Any]:
     return list(_global_fits())
 
 
-def _resolve_indexed(items: list[Any], index: Optional[int] = None, uid: Optional[str] = None) -> tuple[Any, int]:
+def _resolve_indexed(
+    items: list[Any], index: int | None = None, uid: str | None = None
+) -> tuple[Any, int]:
     """Look up an item by uid or position. Returns ``(item, index)`` or ``(None, -1)``.
 
     A **non-empty** ``uid`` that matches nothing resolves to ``(None, -1)``
@@ -115,20 +118,22 @@ def _resolve_indexed(items: list[Any], index: Optional[int] = None, uid: Optiona
     return None, -1
 
 
-def _local_dataset(dataset_index: Optional[int] = None, dataset_uid: Optional[str] = None) -> tuple[Any, int]:
+def _local_dataset(
+    dataset_index: int | None = None, dataset_uid: str | None = None
+) -> tuple[Any, int]:
     return _resolve_indexed(_local_datasets(), dataset_index, dataset_uid)
 
 
-def _local_fit(fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> tuple[Any, int]:
+def _local_fit(fit_index: int | None = None, fit_uid: str | None = None) -> tuple[Any, int]:
     return _resolve_indexed(_local_fits(), fit_index, fit_uid)
 
 
 def _local_parameter(
     parameter_name: str,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
+    fit_uid: str | None = None,
     require_parameters: bool = False,
-) -> tuple[Any, Any, Optional[Dict[str, Any]]]:
+) -> tuple[Any, Any, dict[str, Any] | None]:
     fit, _ = _local_fit(fit_index, fit_uid)
     if fit is None:
         return None, None, {"ok": False, "error": "fit not found"}
@@ -185,22 +190,26 @@ class ChiSurfAPI:
 
     # ── datasets ─────────────────────────────────────────────────
 
-    def list_datasets(self) -> List[Dict[str, Any]]:
+    def list_datasets(self) -> list[dict[str, Any]]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__list()
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
         for idx, d in enumerate(self._state.datasets):
-            result.append({
-                "index": idx,
-                "uid": str(getattr(d, "unique_identifier", "") or ""),
-                "name": str(getattr(d, "name", "") or ""),
-                "type": type(d).__name__,
-                "experiment": str(getattr(getattr(d, "experiment", None), "name", "") or ""),
-                "filename": str(getattr(d, "filename", "") or ""),
-            })
+            result.append(
+                {
+                    "index": idx,
+                    "uid": str(getattr(d, "unique_identifier", "") or ""),
+                    "name": str(getattr(d, "name", "") or ""),
+                    "type": type(d).__name__,
+                    "experiment": str(getattr(getattr(d, "experiment", None), "name", "") or ""),
+                    "filename": str(getattr(d, "filename", "") or ""),
+                }
+            )
         return result
 
-    def get_dataset_info(self, dataset_index: Optional[int] = None, dataset_uid: Optional[str] = None) -> Dict[str, Any]:
+    def get_dataset_info(
+        self, dataset_index: int | None = None, dataset_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__get(dataset_index=dataset_index, dataset_uid=dataset_uid)
         d, idx = _local_dataset(dataset_index, dataset_uid)
@@ -219,14 +228,18 @@ class ChiSurfAPI:
             },
         }
 
-    def get_dataset_curve_data(self, dataset_index: Optional[int] = None, dataset_uid: Optional[str] = None) -> Dict[str, Any]:
+    def get_dataset_curve_data(
+        self, dataset_index: int | None = None, dataset_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.dataset__curve_data(dataset_index=dataset_index, dataset_uid=dataset_uid)
+            return self.client.dataset__curve_data(
+                dataset_index=dataset_index, dataset_uid=dataset_uid
+            )
         d, _ = _local_dataset(dataset_index, dataset_uid)
         if d is None:
             return {"ok": False, "error": "dataset not found"}
         try:
-            result: Dict[str, Any] = {"ok": True}
+            result: dict[str, Any] = {"ok": True}
             x = getattr(d, "x", None)
             if x is not None:
                 result["x"] = np.asarray(x, dtype=float).tolist()
@@ -248,9 +261,9 @@ class ChiSurfAPI:
         experiment_reader: Any = None,
         dataset: Any = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            params: Dict[str, Any] = dict(kwargs)
+            params: dict[str, Any] = dict(kwargs)
             if experiment_reader is not None:
                 rname = getattr(type(experiment_reader), "__name__", None)
                 if rname:
@@ -277,6 +290,7 @@ class ChiSurfAPI:
                         pass
             return self.client.call("dataset.load", params)
         from chisurf.macros import core_data
+
         core_data.add_dataset(
             experiment_reader=experiment_reader,
             dataset=dataset,
@@ -287,12 +301,15 @@ class ChiSurfAPI:
 
     def remove_datasets(
         self,
-        dataset_indices: Optional[List[int]] = None,
-        dataset_uids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        dataset_indices: list[int] | None = None,
+        dataset_uids: list[str] | None = None,
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.dataset__remove(dataset_indices=dataset_indices, dataset_uids=dataset_uids)
+            return self.client.dataset__remove(
+                dataset_indices=dataset_indices, dataset_uids=dataset_uids
+            )
         from chisurf.macros import core_data
+
         indices = list(dataset_indices or [])
         if dataset_uids:
             for i, d in enumerate(self._state.datasets):
@@ -302,7 +319,7 @@ class ChiSurfAPI:
             core_data.remove_datasets(dataset_indices=list(set(indices)), _from_controller=True)
         return {"ok": True}
 
-    def clear_datasets(self) -> Dict[str, Any]:
+    def clear_datasets(self) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__clear()
         self._state.datasets.clear()
@@ -310,15 +327,16 @@ class ChiSurfAPI:
 
     def group_datasets(
         self,
-        dataset_indices: List[int],
-        group_name: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        dataset_indices: list[int],
+        group_name: str | None = None,
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__group(
                 dataset_indices=dataset_indices,
                 group_name=group_name,
             )
         from chisurf.macros import core_data
+
         core_data.group_datasets(
             dataset_indices=dataset_indices,
             _from_controller=True,
@@ -327,11 +345,12 @@ class ChiSurfAPI:
 
     def ungroup_datasets(
         self,
-        dataset_indices: List[int],
-    ) -> Dict[str, Any]:
+        dataset_indices: list[int],
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__ungroup(dataset_indices=dataset_indices)
         from chisurf.macros import core_data
+
         core_data.ungroup_datasets(
             dataset_indices=dataset_indices,
             _from_controller=True,
@@ -340,10 +359,10 @@ class ChiSurfAPI:
 
     # ── fits ──────────────────────────────────────────────────────
 
-    def list_fits(self) -> List[Dict[str, Any]]:
+    def list_fits(self) -> list[dict[str, Any]]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__list()
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
         fits = list(self._state.fits)
         for idx, f in enumerate(fits):
             chi2 = None
@@ -358,36 +377,58 @@ class ChiSurfAPI:
                 pass
             param_count = 0
             try:
-                param_count = len(getattr(getattr(f, "model", None), "parameters_all_dict", {}) or {})
+                param_count = len(
+                    getattr(getattr(f, "model", None), "parameters_all_dict", {}) or {}
+                )
             except Exception:
                 pass
-            result.append({
-                "index": idx,
-                "uid": str(getattr(f, "unique_identifier", "") or ""),
-                "name": str(getattr(f, "name", "") or ""),
-                "type": type(f).__name__,
-                "chi2": chi2,
-                "dataset_uid": str(getattr(getattr(f, "data", None), "unique_identifier", "") or ""),
-                "dataset_name": data_name,
-                "model_name": str(getattr(getattr(f, "model", None), "name", "") or ""),
-                "parameter_count": param_count,
-                "data": {
-                    "name": str(getattr(getattr(f, "data", None), "name", "") or ""),
-                    "uid": str(getattr(getattr(f, "data", None), "unique_identifier", "") or ""),
-                    "filename": str(getattr(getattr(f, "data", None), "filename", "") or ""),
-                    "experiment": str(getattr(getattr(f, "data", None), "experiment", "") or getattr(getattr(getattr(f, "data", None), "experiment", None), "name", "") or ""),
-                } if hasattr(f, "data") and f.data is not None else {},
-                "model": {
-                    "name": str(getattr(getattr(f, "model", None), "name", "") or ""),
-                    "n_points": _safe_n_points(f),
-                    "n_free": _safe_n_free(f),
-                    "chi2r": _safe_chi2r(f),
-                    "parameters_all": _collect_param_list(f, fit_uid=str(getattr(f, "unique_identifier", "") or "")),
-                } if hasattr(f, "model") and f.model is not None else {},
-            })
+            result.append(
+                {
+                    "index": idx,
+                    "uid": str(getattr(f, "unique_identifier", "") or ""),
+                    "name": str(getattr(f, "name", "") or ""),
+                    "type": type(f).__name__,
+                    "chi2": chi2,
+                    "dataset_uid": str(
+                        getattr(getattr(f, "data", None), "unique_identifier", "") or ""
+                    ),
+                    "dataset_name": data_name,
+                    "model_name": str(getattr(getattr(f, "model", None), "name", "") or ""),
+                    "parameter_count": param_count,
+                    "data": {
+                        "name": str(getattr(getattr(f, "data", None), "name", "") or ""),
+                        "uid": str(
+                            getattr(getattr(f, "data", None), "unique_identifier", "") or ""
+                        ),
+                        "filename": str(getattr(getattr(f, "data", None), "filename", "") or ""),
+                        "experiment": str(
+                            getattr(getattr(f, "data", None), "experiment", "")
+                            or getattr(
+                                getattr(getattr(f, "data", None), "experiment", None), "name", ""
+                            )
+                            or ""
+                        ),
+                    }
+                    if hasattr(f, "data") and f.data is not None
+                    else {},
+                    "model": {
+                        "name": str(getattr(getattr(f, "model", None), "name", "") or ""),
+                        "n_points": _safe_n_points(f),
+                        "n_free": _safe_n_free(f),
+                        "chi2r": _safe_chi2r(f),
+                        "parameters_all": _collect_param_list(
+                            f, fit_uid=str(getattr(f, "unique_identifier", "") or "")
+                        ),
+                    }
+                    if hasattr(f, "model") and f.model is not None
+                    else {},
+                }
+            )
         return result
 
-    def get_fit_info(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def get_fit_info(
+        self, fit_index: int | None = None, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__get(fit_index=fit_index, fit_uid=fit_uid)
         fit, idx = _local_fit(fit_index, fit_uid)
@@ -418,7 +459,9 @@ class ChiSurfAPI:
                 "chi2r": _safe_chi2r(fit),
                 "n_points": _safe_n_points(fit),
                 "n_free": _safe_n_free(fit),
-                "dataset_uid": str(getattr(getattr(fit, "data", None), "unique_identifier", "") or ""),
+                "dataset_uid": str(
+                    getattr(getattr(fit, "data", None), "unique_identifier", "") or ""
+                ),
                 "dataset_name": str(getattr(getattr(fit, "data", None), "name", "") or ""),
                 "model_name": str(getattr(getattr(fit, "model", None), "name", "") or ""),
                 "parameter_count": len(params),
@@ -428,15 +471,27 @@ class ChiSurfAPI:
                     "name": str(getattr(getattr(fit, "data", None), "name", "") or ""),
                     "uid": str(getattr(getattr(fit, "data", None), "unique_identifier", "") or ""),
                     "filename": str(getattr(getattr(fit, "data", None), "filename", "") or ""),
-                    "experiment": str(getattr(getattr(fit, "data", None), "experiment", "") or getattr(getattr(getattr(fit, "data", None), "experiment", None), "name", "") or ""),
-                } if hasattr(fit, "data") and fit.data is not None else {},
+                    "experiment": str(
+                        getattr(getattr(fit, "data", None), "experiment", "")
+                        or getattr(
+                            getattr(getattr(fit, "data", None), "experiment", None), "name", ""
+                        )
+                        or ""
+                    ),
+                }
+                if hasattr(fit, "data") and fit.data is not None
+                else {},
                 "model": {
                     "name": str(getattr(getattr(fit, "model", None), "name", "") or ""),
                     "n_points": _safe_n_points(fit),
                     "n_free": _safe_n_free(fit),
                     "chi2r": _safe_chi2r(fit),
-                    "parameters_all": _collect_param_list(fit, fit_uid=str(getattr(fit, "unique_identifier", "") or "")),
-                } if hasattr(fit, "model") and fit.model is not None else {},
+                    "parameters_all": _collect_param_list(
+                        fit, fit_uid=str(getattr(fit, "unique_identifier", "") or "")
+                    ),
+                }
+                if hasattr(fit, "model") and fit.model is not None
+                else {},
             },
         }
 
@@ -495,9 +550,14 @@ class ChiSurfAPI:
         """
         if self.mode == "server" and self.client is not None:
             return self.client.fit__posterior(
-                fit_index=fit_index, fit_uid=fit_uid, engine=engine,
-                targets=targets, joint=joint, condition=condition,
-                p_value=p_value, options=options or None,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+                engine=engine,
+                targets=targets,
+                joint=joint,
+                condition=condition,
+                p_value=p_value,
+                options=options or None,
                 global_posterior=global_posterior,
             )
         from chisurf.server.services import fits as _fits
@@ -508,19 +568,25 @@ class ChiSurfAPI:
             fits = property(lambda self: _local_fits())
 
         return _fits.fit_posterior(
-            _State(), fit_index=fit_index, fit_uid=fit_uid, engine=engine,
-            targets=targets, joint=joint, condition=condition,
-            p_value=p_value, options=options or None,
+            _State(),
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            engine=engine,
+            targets=targets,
+            joint=joint,
+            condition=condition,
+            p_value=p_value,
+            options=options or None,
             global_posterior=global_posterior,
         )
 
     def reweight_prior(
         self,
-        priors: Dict[str, Any],
-        fit_index: Optional[int] = None,
-        fit_uid: Optional[str] = None,
+        priors: dict[str, Any],
+        fit_index: int | None = None,
+        fit_uid: str | None = None,
         p_value: float = 0.68,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ask what a completed sampling run would have said under other priors.
 
         Changing a prior changes the posterior but not the likelihood, so the
@@ -562,7 +628,9 @@ class ChiSurfAPI:
         """
         if self.mode == "server" and self.client is not None:
             return self.client.fit__reweight_prior(
-                priors=priors, fit_index=fit_index, fit_uid=fit_uid,
+                priors=priors,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
                 p_value=p_value,
             )
         from chisurf.server.services import fits as _fits
@@ -573,18 +641,21 @@ class ChiSurfAPI:
             fits = property(lambda self: _local_fits())
 
         return _fits.fit_reweight_prior(
-            _State(), priors=priors, fit_index=fit_index, fit_uid=fit_uid,
+            _State(),
+            priors=priors,
+            fit_index=fit_index,
+            fit_uid=fit_uid,
             p_value=p_value,
         )
 
     def derived_quantities(
         self,
-        fit_index: Optional[int] = None,
-        fit_uid: Optional[str] = None,
-        names: Optional[List[str]] = None,
+        fit_index: int | None = None,
+        fit_uid: str | None = None,
+        names: list[str] | None = None,
         p_value: float = 0.68,
         max_draws: int = 2048,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Report the numbers a fit computes but does not fit, with error bars.
 
         The FRET efficiency that goes in the figure and the mean lifetime that
@@ -625,8 +696,11 @@ class ChiSurfAPI:
         """
         if self.mode == "server" and self.client is not None:
             return self.client.fit__derived(
-                fit_index=fit_index, fit_uid=fit_uid, names=names,
-                p_value=p_value, max_draws=max_draws,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+                names=names,
+                p_value=p_value,
+                max_draws=max_draws,
             )
         from chisurf.server.services import fits as _fits
 
@@ -636,11 +710,15 @@ class ChiSurfAPI:
             fits = property(lambda self: _local_fits())
 
         return _fits.fit_derived(
-            _State(), fit_index=fit_index, fit_uid=fit_uid, names=names,
-            p_value=p_value, max_draws=max_draws,
+            _State(),
+            fit_index=fit_index,
+            fit_uid=fit_uid,
+            names=names,
+            p_value=p_value,
+            max_draws=max_draws,
         )
 
-    def run_fit(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def run_fit(self, fit_index: int | None = None, fit_uid: str | None = None) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid)
         fit, idx = _local_fit(fit_index, fit_uid)
@@ -662,19 +740,20 @@ class ChiSurfAPI:
 
     def add_fit(
         self,
-        dataset_indices: List[int],
-        model_name: Optional[str] = None,
-        model_kw: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        dataset_indices: list[int],
+        model_name: str | None = None,
+        model_kw: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            call_kw: Dict[str, Any] = {"dataset_indices": list(dataset_indices or [])}
+            call_kw: dict[str, Any] = {"dataset_indices": list(dataset_indices or [])}
             if model_name is not None:
                 call_kw["model_name"] = str(model_name)
             if isinstance(model_kw, dict):
                 call_kw["model_kw"] = model_kw
             return self.client.fit__create(**call_kw)
         from chisurf.macros import core_fit
-        kwargs: Dict[str, Any] = {"dataset_indices": list(dataset_indices or [])}
+
+        kwargs: dict[str, Any] = {"dataset_indices": list(dataset_indices or [])}
         if isinstance(model_kw, dict):
             kwargs["model_kw"] = model_kw
         if model_name is not None:
@@ -683,9 +762,9 @@ class ChiSurfAPI:
 
     def remove_fits(
         self,
-        fit_indices: Optional[List[int]] = None,
-        fit_uids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        fit_indices: list[int] | None = None,
+        fit_uids: list[str] | None = None,
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__remove(fit_indices=fit_indices, fit_uids=fit_uids)
         fits = list(self._state.fits)
@@ -702,18 +781,24 @@ class ChiSurfAPI:
         self._state.fits[:] = kept
         return {"ok": True, "removed_count": len(to_remove)}
 
-    def clear_fits(self) -> Dict[str, Any]:
+    def clear_fits(self) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__clear()
         self._state.fits.clear()
         return {"ok": True}
 
-    def fit_create(self, dataset_index: int = 0, model_name: Optional[str] = None, fit_name: Optional[str] = None) -> Dict[str, Any]:
+    def fit_create(
+        self, dataset_index: int = 0, model_name: str | None = None, fit_name: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.fit__create(dataset_index=dataset_index, model_name=model_name, fit_name=fit_name)
+            return self.client.fit__create(
+                dataset_index=dataset_index, model_name=model_name, fit_name=fit_name
+            )
         return {"ok": False, "error": "fit.create requires server mode for server-side creation"}
 
-    def fit_update(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def fit_update(
+        self, fit_index: int | None = None, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__update(fit_index=fit_index, fit_uid=fit_uid)
         fit, _ = _local_fit(fit_index, fit_uid)
@@ -729,9 +814,13 @@ class ChiSurfAPI:
 
     # ── parameters ────────────────────────────────────────────────
 
-    def get_parameter(self, parameter_name: str, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def get_parameter(
+        self, parameter_name: str, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.parameter__get(parameter_name=parameter_name, fit_index=fit_index, fit_uid=fit_uid)
+            return self.client.parameter__get(
+                parameter_name=parameter_name, fit_index=fit_index, fit_uid=fit_uid
+            )
         _, p, error = _local_parameter(parameter_name, fit_index, fit_uid)
         if error is not None:
             return error
@@ -748,10 +837,16 @@ class ChiSurfAPI:
             },
         }
 
-    def set_parameter_value(self, parameter_name: str, value: float, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def set_parameter_value(
+        self, parameter_name: str, value: float, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.parameter__set_value(parameter_name=parameter_name, value=value, fit_index=fit_index, fit_uid=fit_uid)
-        fit, p, error = _local_parameter(parameter_name, fit_index, fit_uid, require_parameters=True)
+            return self.client.parameter__set_value(
+                parameter_name=parameter_name, value=value, fit_index=fit_index, fit_uid=fit_uid
+            )
+        fit, p, error = _local_parameter(
+            parameter_name, fit_index, fit_uid, require_parameters=True
+        )
         if error is not None:
             return error
         try:
@@ -764,10 +859,16 @@ class ChiSurfAPI:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def set_parameter_fixed(self, parameter_name: str, fixed: bool, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def set_parameter_fixed(
+        self, parameter_name: str, fixed: bool, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.parameter__set_fixed(parameter_name=parameter_name, fixed=fixed, fit_index=fit_index, fit_uid=fit_uid)
-        fit, p, error = _local_parameter(parameter_name, fit_index, fit_uid, require_parameters=True)
+            return self.client.parameter__set_fixed(
+                parameter_name=parameter_name, fixed=fixed, fit_index=fit_index, fit_uid=fit_uid
+            )
+        fit, p, error = _local_parameter(
+            parameter_name, fit_index, fit_uid, require_parameters=True
+        )
         if error is not None:
             return error
         try:
@@ -778,10 +879,20 @@ class ChiSurfAPI:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def set_parameter_bounds(self, parameter_name: str, bounds: tuple, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def set_parameter_bounds(
+        self, parameter_name: str, bounds: tuple, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.parameter__set_bounds(parameter_name=parameter_name, lower=bounds[0], upper=bounds[1], fit_index=fit_index, fit_uid=fit_uid)
-        fit, p, error = _local_parameter(parameter_name, fit_index, fit_uid, require_parameters=True)
+            return self.client.parameter__set_bounds(
+                parameter_name=parameter_name,
+                lower=bounds[0],
+                upper=bounds[1],
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+            )
+        fit, p, error = _local_parameter(
+            parameter_name, fit_index, fit_uid, require_parameters=True
+        )
         if error is not None:
             return error
         try:
@@ -794,7 +905,7 @@ class ChiSurfAPI:
 
     # ── model ─────────────────────────────────────────────────────
 
-    def model_finalize(self, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def model_finalize(self, fit_index: int = 0, fit_uid: str | None = None) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.model__finalize(fit_index=fit_index, fit_uid=fit_uid)
         fit, _ = _local_fit(fit_index, fit_uid)
@@ -811,9 +922,13 @@ class ChiSurfAPI:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def model_set_parse_function(self, parse_function: str, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def model_set_parse_function(
+        self, parse_function: str, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.model__set_parse_function(parse_function=parse_function, fit_index=fit_index, fit_uid=fit_uid)
+            return self.client.model__set_parse_function(
+                parse_function=parse_function, fit_index=fit_index, fit_uid=fit_uid
+            )
         fit, _ = _local_fit(fit_index, fit_uid)
         if fit is None:
             return {"ok": False, "error": "fit not found"}
@@ -826,9 +941,16 @@ class ChiSurfAPI:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def set_parameter_bounds_on(self, parameter_name: str, bounds_on: bool, fit_index: int = 0, fit_uid: Optional[str] = None) -> Dict[str, Any]:
+    def set_parameter_bounds_on(
+        self, parameter_name: str, bounds_on: bool, fit_index: int = 0, fit_uid: str | None = None
+    ) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
-            return self.client.parameter__set_bounds_on(parameter_name=parameter_name, bounds_on=bounds_on, fit_index=fit_index, fit_uid=fit_uid)
+            return self.client.parameter__set_bounds_on(
+                parameter_name=parameter_name,
+                bounds_on=bounds_on,
+                fit_index=fit_index,
+                fit_uid=fit_uid,
+            )
         _, p, error = _local_parameter(parameter_name, fit_index, fit_uid, require_parameters=True)
         if error is not None:
             return error
@@ -840,7 +962,7 @@ class ChiSurfAPI:
 
     # ── projects ──────────────────────────────────────────────────
 
-    def get_project_info(self) -> Dict[str, Any]:
+    def get_project_info(self) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.project__info()
         return {
@@ -850,24 +972,24 @@ class ChiSurfAPI:
             "dataset_count": len(self._state.datasets),
         }
 
-    def save_project(self, target_path: str, project_name: Optional[str] = None) -> Dict[str, Any]:
+    def save_project(self, target_path: str, project_name: str | None = None) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.project__save(target_path=target_path, project_name=project_name)
         return {"ok": False, "error": "project.save requires server mode"}
 
-    def load_project(self, project_path: str) -> Dict[str, Any]:
+    def load_project(self, project_path: str) -> dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.project__load(project_path=project_path)
         return {"ok": False, "error": "project.load requires server mode"}
 
     # ── convenience ───────────────────────────────────────────────
 
-    def ping(self) -> Dict[str, Any]:
+    def ping(self) -> dict[str, Any]:
         if self.client is not None:
             return self.client.meta__ping()
         return {"ok": True, "status": "alive-local"}
 
-    def session_describe(self) -> Dict[str, Any]:
+    def session_describe(self) -> dict[str, Any]:
         if self.client is not None:
             return self.client.session__describe()
         return {
@@ -878,7 +1000,7 @@ class ChiSurfAPI:
             "fit_count": len(self._state.fits),
         }
 
-    def session_snapshot(self) -> Dict[str, Any]:
+    def session_snapshot(self) -> dict[str, Any]:
         if self.client is not None:
             return self.client.session__snapshot()
         return {
@@ -889,11 +1011,14 @@ class ChiSurfAPI:
             },
         }
 
-    def session_restore(self, project_path: Optional[str] = None) -> Dict[str, Any]:
+    def session_restore(self, project_path: str | None = None) -> dict[str, Any]:
         if self.client is not None:
             return self.client.session__restore(project_path=project_path)
         if project_path:
-            return {"ok": False, "error": "session restore requires server mode for project loading"}
+            return {
+                "ok": False,
+                "error": "session restore requires server mode for project loading",
+            }
         self._state.fits.clear()
         self._state.datasets.clear()
         return {"ok": True, "message": "session cleared locally"}
@@ -908,7 +1033,7 @@ class ChiSurfAPI:
         datasets = self.list_datasets()
         return len(datasets)
 
-    def subscribe(self, topic: str = "", callback: Optional[Callable] = None) -> Any:
+    def subscribe(self, topic: str = "", callback: Callable | None = None) -> Any:
         if self.client is not None:
             return self.client.subscribe(topic, callback)
         return None
@@ -918,7 +1043,7 @@ class ChiSurfAPI:
         if self.client is not None:
             self.client.drain()
 
-    def list_methods(self) -> List[str]:
+    def list_methods(self) -> list[str]:
         if self.client is not None:
             return self.client.meta__methods()
         return []
@@ -934,6 +1059,7 @@ class ChiSurfAPI:
         if not force and self.mode != "server":
             return
         from chisurf.core.api._proxies import install_proxies
+
         install_proxies(self.client)
         self._state = SessionState(
             datasets=getattr(cs, "imported_datasets", []),
@@ -943,11 +1069,11 @@ class ChiSurfAPI:
     # ---- graph ----
     def build_fit_graph(
         self,
-        fit_indices: Optional[List[int]] = None,
-        fit_uids: Optional[List[str]] = None,
+        fit_indices: list[int] | None = None,
+        fit_uids: list[str] | None = None,
         include_fixed: bool = True,
         connect_owners: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build the fit/parameter graph for the selected fits.
 
         Local and hybrid modes answer from the process-local session state
@@ -990,10 +1116,10 @@ class ChiSurfAPI:
 
 
 from chisurf.server.services._stats import (
-    _safe_chi2,
-    _safe_chi2r,
-    _safe_n_points,
-    _safe_n_free,
     _collect_member_list,
     _collect_param_list,
+    _safe_chi2,
+    _safe_chi2r,
+    _safe_n_free,
+    _safe_n_points,
 )

@@ -5,6 +5,7 @@ editor off ``QGraphicsScene`` is that the graph and its behaviour are now
 testable without one. The Qt wrapper is thin enough that what it adds is
 signals, and those are covered in the GUI suite.
 """
+
 from __future__ import annotations
 
 import pytest

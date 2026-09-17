@@ -10,6 +10,7 @@ These tests pin both halves: that the reweighted answer is *correct* where it
 should be (against a closed form, since a linear model's posterior is exactly
 Gaussian), and that ``pareto_k`` *refuses* where it should.
 """
+
 import numpy as np
 import pytest
 
@@ -26,14 +27,14 @@ def _fit(seed=0, npts=96, sigma=0.05):
     """Return a converged linear fit, whose posterior is exactly Gaussian."""
     rng = np.random.default_rng(seed)
     x = np.linspace(0.5, 3.0, npts)
-    y = 3.1 + 1.2 * x + 0.4 * x ** 2 + rng.normal(0.0, sigma, x.size)
+    y = 3.1 + 1.2 * x + 0.4 * x**2 + rng.normal(0.0, sigma, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.full_like(y, sigma))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([data]),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x+b*x**2'
+    fit.model.func = "c+a*x+b*x**2"
     fit.model.find_parameters()
     fit.run()
     return fit
@@ -51,7 +52,7 @@ def _exact_posterior(fit, name, prior):
     # ``parameter_names`` carries the group's ``fit:name`` prefixes while the
     # Parameter objects keep their short names, so index the two in parallel
     # rather than matching one against the other.
-    names = [str(n).split(':')[-1] for n in model.parameter_names]
+    names = [str(n).split(":")[-1] for n in model.parameter_names]
     params = list(model.parameters)
     cov, used = chisurf.core.fitting.fit.covariance_matrix(fit, model=model)
     cov = np.atleast_2d(np.asarray(cov, dtype=float))
@@ -61,14 +62,15 @@ def _exact_posterior(fit, name, prior):
     j = used_names.index(name)
     K = form.K.copy()
     h = form.h.copy()
-    K[j, j] += 1.0 / prior.sigma ** 2
-    h[j] += prior.mu / prior.sigma ** 2
+    K[j, j] += 1.0 / prior.sigma**2
+    h[j] += prior.mu / prior.sigma**2
     updated = CanonicalForm(names=form.names, K=K, h=h, g=0.0)
     i = updated.names.index(name)
     return float(updated.mean[i]), float(np.sqrt(updated.covariance[i, i]))
 
 
 # -- the generalised-Pareto fit -------------------------------------------
+
 
 def test_the_pareto_fit_recovers_a_known_shape():
     """The estimator has to work before anything built on it can."""
@@ -89,6 +91,7 @@ def test_a_degenerate_sample_is_refused_not_guessed():
 
 
 # -- the weights ----------------------------------------------------------
+
 
 def test_equal_ratios_give_equal_weights():
     """The no-change case must be exactly the original sample."""
@@ -128,12 +131,12 @@ def test_weights_beyond_the_exponential_range_are_refused_not_ignored():
     rng = np.random.default_rng(3)
     ratios = rng.standard_cauchy(size=4000) * 500.0
     lw, k = rw.pareto_smoothed_log_weights(ratios)
-    assert not np.isnan(k)              # not "undiagnosed"
-    assert k > rw.PARETO_K_THRESHOLD    # a refusal
+    assert not np.isnan(k)  # not "undiagnosed"
+    assert k > rw.PARETO_K_THRESHOLD  # a refusal
     assert np.exp(lw).sum() == pytest.approx(1.0)
 
     out = rw.reweight(rng.normal(size=(4000, 2)), ratios)
-    assert not out['reliable']
+    assert not out["reliable"]
 
 
 def test_weighted_quantiles_reduce_to_unweighted_ones():
@@ -159,14 +162,16 @@ def _importance_rmse(target_sd, n=2000, seeds=range(80)):
     for seed in seeds:
         rng = np.random.default_rng(seed)
         x = rng.normal(0.0, 1.0, n)
-        log_ratios = -0.5 * (x / target_sd) ** 2 + 0.5 * x ** 2
+        log_ratios = -0.5 * (x / target_sd) ** 2 + 0.5 * x**2
         w = np.exp(log_ratios - log_ratios.max())
         w /= w.sum()
-        raw_err.append(float(w @ x ** 2) - target_sd ** 2)
+        raw_err.append(float(w @ x**2) - target_sd**2)
         lw, _ = rw.pareto_smoothed_log_weights(log_ratios)
-        psis_err.append(float(np.exp(lw) @ x ** 2) - target_sd ** 2)
-    return (float(np.sqrt(np.mean(np.square(raw_err)))),
-            float(np.sqrt(np.mean(np.square(psis_err)))))
+        psis_err.append(float(np.exp(lw) @ x**2) - target_sd**2)
+    return (
+        float(np.sqrt(np.mean(np.square(raw_err)))),
+        float(np.sqrt(np.mean(np.square(psis_err)))),
+    )
 
 
 def test_smoothing_makes_the_estimate_better_where_it_is_meant_to():
@@ -190,6 +195,7 @@ def test_smoothing_leaves_well_behaved_weights_alone():
 
 # -- the claim ------------------------------------------------------------
 
+
 def test_reweighting_matches_the_exact_posterior_under_the_new_prior():
     """The whole point: a chain sampled under one prior answers for another.
 
@@ -198,7 +204,7 @@ def test_reweighting_matches_the_exact_posterior_under_the_new_prior():
     """
     np.random.seed(0)
     fit = _fit()
-    c = [p for p in fit.model.parameters if p.name == 'c'][0]
+    c = [p for p in fit.model.parameters if p.name == "c"][0]
     c_hat, sd = float(c.value), float(c.error_estimate)
 
     chain = chisurf.core.fitting.sample.sample_differential_evolution(
@@ -208,15 +214,15 @@ def test_reweighting_matches_the_exact_posterior_under_the_new_prior():
     # Tight enough to move the answer several posterior widths, loose enough to
     # still overlap the draws -- the regime reweighting is for.
     prior = NormalPrior(mu=c_hat + 3.0 * sd, sigma=0.5 * sd)
-    want_mean, want_sd = _exact_posterior(fit, 'c', prior)
+    want_mean, want_sd = _exact_posterior(fit, "c", prior)
 
-    out = rw.reweight_prior(chain, {'c': prior}, model=fit.model)
-    assert out['reliable']
-    assert out['changed'] == ['c']
-    entry = [e for e in out['parameters'] if e['name'].split(':')[-1] == 'c'][0]
+    out = rw.reweight_prior(chain, {"c": prior}, model=fit.model)
+    assert out["reliable"]
+    assert out["changed"] == ["c"]
+    entry = [e for e in out["parameters"] if e["name"].split(":")[-1] == "c"][0]
 
-    assert entry['mean'] == pytest.approx(want_mean, abs=0.25 * want_sd)
-    assert entry['sd'] == pytest.approx(want_sd, rel=0.25)
+    assert entry["mean"] == pytest.approx(want_mean, abs=0.25 * want_sd)
+    assert entry["sd"] == pytest.approx(want_sd, rel=0.25)
     # And it genuinely moved -- otherwise the test would pass on a no-op. The
     # shift is measured in units of the *new* width, since that is the scale the
     # agreement above is asserted at.
@@ -227,15 +233,15 @@ def test_reweighting_agrees_with_sampling_under_the_prior_directly():
     """Against the expensive answer it replaces, not only against the algebra."""
     np.random.seed(1)
     fit = _fit(seed=3)
-    c = [p for p in fit.model.parameters if p.name == 'c'][0]
+    c = [p for p in fit.model.parameters if p.name == "c"][0]
     c_hat, sd = float(c.value), float(c.error_estimate)
     prior = NormalPrior(mu=c_hat + 1.0 * sd, sigma=1.0 * sd)
 
     flat_chain = chisurf.core.fitting.sample.sample_differential_evolution(
         fit=fit, steps=3000, thin=1, seed=2
     )
-    cheap = rw.reweight_prior(flat_chain, {'c': prior}, model=fit.model)
-    assert cheap['reliable']
+    cheap = rw.reweight_prior(flat_chain, {"c": prior}, model=fit.model)
+    assert cheap["reliable"]
 
     # Now the expensive way: put the prior on and sample again.
     c.prior = prior
@@ -245,13 +251,13 @@ def test_reweighting_agrees_with_sampling_under_the_prior_directly():
         )
     finally:
         c.prior = None
-    i = list(direct['parameter_names']).index('c')
-    drawn = np.asarray(direct['parameter_values'])[:, i]
-    drawn = drawn[len(drawn) // 2:]
+    i = list(direct["parameter_names"]).index("c")
+    drawn = np.asarray(direct["parameter_values"])[:, i]
+    drawn = drawn[len(drawn) // 2 :]
 
-    entry = [e for e in cheap['parameters'] if e['name'].split(':')[-1] == 'c'][0]
-    assert entry['mean'] == pytest.approx(float(drawn.mean()), abs=0.3 * sd)
-    assert entry['sd'] == pytest.approx(float(drawn.std(ddof=1)), rel=0.35)
+    entry = [e for e in cheap["parameters"] if e["name"].split(":")[-1] == "c"][0]
+    assert entry["mean"] == pytest.approx(float(drawn.mean()), abs=0.3 * sd)
+    assert entry["sd"] == pytest.approx(float(drawn.std(ddof=1)), rel=0.35)
 
 
 def test_reweighting_evaluates_no_model_at_all():
@@ -261,7 +267,7 @@ def test_reweighting_evaluates_no_model_at_all():
     chain = chisurf.core.fitting.sample.sample_differential_evolution(
         fit=fit, steps=400, thin=1, seed=4
     )
-    c = [p for p in fit.model.parameters if p.name == 'c'][0]
+    c = [p for p in fit.model.parameters if p.name == "c"][0]
     prior = NormalPrior(mu=float(c.value), sigma=float(c.error_estimate))
 
     calls = [0]
@@ -274,10 +280,10 @@ def test_reweighting_evaluates_no_model_at_all():
 
     model._update_model = counting
     try:
-        out = rw.reweight_prior(chain, {'c': prior}, model=fit.model)
+        out = rw.reweight_prior(chain, {"c": prior}, model=fit.model)
     finally:
         model._update_model = original
-    assert out['parameters']
+    assert out["parameters"]
     assert calls[0] == 0
 
 
@@ -293,21 +299,21 @@ def test_a_prior_the_chain_never_visited_is_refused():
     chain = chisurf.core.fitting.sample.sample_differential_evolution(
         fit=fit, steps=2000, thin=1, seed=5
     )
-    c = [p for p in fit.model.parameters if p.name == 'c'][0]
+    c = [p for p in fit.model.parameters if p.name == "c"][0]
     sd = float(c.error_estimate)
     far = NormalPrior(mu=float(c.value) + 40.0 * sd, sigma=0.5 * sd)
 
-    out = rw.reweight_prior(chain, {'c': far}, model=fit.model)
-    assert not out['reliable']
-    assert out['pareto_k'] > rw.PARETO_K_THRESHOLD
-    assert any('Pareto k' in w for w in out['warnings'])
+    out = rw.reweight_prior(chain, {"c": far}, model=fit.model)
+    assert not out["reliable"]
+    assert out["pareto_k"] > rw.PARETO_K_THRESHOLD
+    assert any("Pareto k" in w for w in out["warnings"])
 
 
 def test_removing_a_prior_returns_to_the_likelihood_posterior():
     """Reweighting must work in the other direction too."""
     np.random.seed(4)
     fit = _fit(seed=6)
-    c = [p for p in fit.model.parameters if p.name == 'c'][0]
+    c = [p for p in fit.model.parameters if p.name == "c"][0]
     c_hat, sd = float(c.value), float(c.error_estimate)
 
     # Sample *with* a prior, then reweight it away.
@@ -320,11 +326,11 @@ def test_removing_a_prior_returns_to_the_likelihood_posterior():
     finally:
         c.prior = None
 
-    out = rw.reweight_prior(chain, {'c': None}, model=None, old_priors={'c': prior})
-    assert out['reliable']
-    entry = [e for e in out['parameters'] if e['name'].split(':')[-1] == 'c'][0]
+    out = rw.reweight_prior(chain, {"c": None}, model=None, old_priors={"c": prior})
+    assert out["reliable"]
+    entry = [e for e in out["parameters"] if e["name"].split(":")[-1] == "c"][0]
     # Back to the likelihood optimum, which the prior had pulled away from.
-    assert entry['mean'] == pytest.approx(c_hat, abs=0.4 * sd)
+    assert entry["mean"] == pytest.approx(c_hat, abs=0.4 * sd)
 
 
 def test_an_unchanged_prior_is_a_no_op_and_says_so():
@@ -334,10 +340,10 @@ def test_an_unchanged_prior_is_a_no_op_and_says_so():
     chain = chisurf.core.fitting.sample.sample_differential_evolution(
         fit=fit, steps=300, thin=1, seed=8
     )
-    out = rw.reweight_prior(chain, {'c': None}, model=fit.model)
-    assert out['changed'] == []
-    assert any('no prior actually changed' in w for w in out['warnings'])
-    assert out['ess'] == pytest.approx(out['n_draws'], rel=1e-6)
+    out = rw.reweight_prior(chain, {"c": None}, model=fit.model)
+    assert out["changed"] == []
+    assert any("no prior actually changed" in w for w in out["warnings"])
+    assert out["ess"] == pytest.approx(out["n_draws"], rel=1e-6)
 
 
 def test_an_unknown_parameter_is_refused():
@@ -348,11 +354,11 @@ def test_an_unknown_parameter_is_refused():
         fit=fit, steps=200, thin=1, seed=9
     )
     with pytest.raises(KeyError):
-        rw.reweight_prior(chain, {'nope': NormalPrior(mu=0.0, sigma=1.0)},
-                          model=fit.model)
+        rw.reweight_prior(chain, {"nope": NormalPrior(mu=0.0, sigma=1.0)}, model=fit.model)
 
 
 # -- reachability ---------------------------------------------------------
+
 
 class _State:
     """Minimal stand-in for the server's session state."""
@@ -365,15 +371,21 @@ class _State:
 def _sampled_fit(tmp_path, monkeypatch, seed=0):
     """Return a fit that has been through ``sample_fit``, so it carries a chain."""
     import chisurf.macros.core_fit
+
     monkeypatch.setattr(
-        chisurf.macros.core_fit, "save_project",
+        chisurf.macros.core_fit,
+        "save_project",
         lambda target_path, project_name="project", **kw: None,
     )
     np.random.seed(seed)
     fit = _fit(seed=seed)
     chisurf.core.fitting.fit.sample_fit(
-        fit=fit, target_directory=str(tmp_path), method='de',
-        steps=1200, thin=1, n_runs=2,
+        fit=fit,
+        target_directory=str(tmp_path),
+        method="de",
+        steps=1200,
+        thin=1,
+        n_runs=2,
     )
     return fit
 
@@ -383,13 +395,13 @@ def test_sampling_leaves_the_draws_behind_not_only_their_summary(tmp_path, monke
     fit = _sampled_fit(tmp_path, monkeypatch)
     chain = fit.sampling_chain
     assert isinstance(chain, dict)
-    assert list(chain['parameter_names']) == list(fit.model.parameter_names)
-    values = np.asarray(chain['parameter_values'])
+    assert list(chain["parameter_names"]) == list(fit.model.parameter_names)
+    values = np.asarray(chain["parameter_values"])
     assert values.ndim == 2
-    assert values.shape[1] == len(chain['parameter_names'])
+    assert values.shape[1] == len(chain["parameter_names"])
     assert values.shape[0] > 0
     # The burn-in has already been dropped, so the draws are usable as they are.
-    assert chain['burn_in'] == fit.sampling_diagnostics['burn_in']
+    assert chain["burn_in"] == fit.sampling_diagnostics["burn_in"]
 
 
 def test_the_rpc_reweights_a_stored_chain(tmp_path, monkeypatch):
@@ -399,19 +411,24 @@ def test_the_rpc_reweights_a_stored_chain(tmp_path, monkeypatch):
     from chisurf.server.services import fits as fit_service
 
     fit = _sampled_fit(tmp_path, monkeypatch, seed=1)
-    a = [p for p in fit.model.parameters if p.name == 'a'][0]
+    a = [p for p in fit.model.parameters if p.name == "a"][0]
     state = _State([fit])
 
     r = fit_service.fit_reweight_prior(
-        state, fit_index=0,
-        priors={'a': {'kind': 'normal',
-                      'mu': float(a.value) + float(a.error_estimate),
-                      'sigma': 2.0 * float(a.error_estimate)}},
+        state,
+        fit_index=0,
+        priors={
+            "a": {
+                "kind": "normal",
+                "mu": float(a.value) + float(a.error_estimate),
+                "sigma": 2.0 * float(a.error_estimate),
+            }
+        },
     )
-    assert r['ok'], r
-    assert r['changed'] == ['a']
-    assert r['reliable']
-    assert 0.0 < r['ess'] <= r['n_draws']
+    assert r["ok"], r
+    assert r["changed"] == ["a"]
+    assert r["reliable"]
+    assert 0.0 < r["ess"] <= r["n_draws"]
     # And the payload survives the trip to JSON -- pareto_k is deliberately
     # non-finite in the failure cases, which json.dumps would not accept.
     json.loads(json.dumps(r))
@@ -420,13 +437,15 @@ def test_the_rpc_reweights_a_stored_chain(tmp_path, monkeypatch):
 def test_the_rpc_refuses_a_fit_that_was_never_sampled():
     """There is nothing to reweight, and inventing an answer would be worse."""
     from chisurf.server.services import fits as fit_service
+
     fit = _fit()
     r = fit_service.fit_reweight_prior(
-        _State([fit]), fit_index=0,
-        priors={'a': {'kind': 'normal', 'mu': 1.0, 'sigma': 1.0}},
+        _State([fit]),
+        fit_index=0,
+        priors={"a": {"kind": "normal", "mu": 1.0, "sigma": 1.0}},
     )
-    assert not r['ok']
-    assert 'sampling job' in r['error']
+    assert not r["ok"]
+    assert "sampling job" in r["error"]
 
 
 def test_the_api_reweights_in_process(tmp_path, monkeypatch):
@@ -438,17 +457,15 @@ def test_the_api_reweights_in_process(tmp_path, monkeypatch):
     monkeypatch.setattr(cs, "fits", [fit], raising=False)
     monkeypatch.setattr(cs, "cs", None, raising=False)
 
-    a = [p for p in fit.model.parameters if p.name == 'a'][0]
+    a = [p for p in fit.model.parameters if p.name == "a"][0]
     api = ChiSurfAPI(mode="local")
     r = api.reweight_prior(
-        {'a': {'kind': 'normal', 'mu': float(a.value),
-               'sigma': float(a.error_estimate)}},
+        {"a": {"kind": "normal", "mu": float(a.value), "sigma": float(a.error_estimate)}},
         fit_index=0,
     )
-    assert r['ok'], r
-    entry = [e for e in r['parameters'] if e['name'].split(':')[-1] == 'a'][0]
-    assert np.isfinite(entry['mean']) and np.isfinite(entry['sd'])
+    assert r["ok"], r
+    entry = [e for e in r["parameters"] if e["name"].split(":")[-1] == "a"][0]
+    assert np.isfinite(entry["mean"]) and np.isfinite(entry["sd"])
     # A prior centred on the optimum tightens the answer rather than moving it.
-    assert entry['mean'] == pytest.approx(float(a.value),
-                                          abs=0.5 * float(a.error_estimate))
-    assert entry['sd'] < float(a.error_estimate)
+    assert entry["mean"] == pytest.approx(float(a.value), abs=0.5 * float(a.error_estimate))
+    assert entry["sd"] < float(a.error_estimate)

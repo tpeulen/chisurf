@@ -33,8 +33,7 @@ tttrlib = pytest.importorskip("tttrlib")
 #: silently selects a slow path, so each one is a place this can happen again.
 TTTRLIB_BACKENDS = [
     ("chisurf.plugins.burst.burst_h2mm.core.h2mm_tttrlib", "HAVE_TTTRLIB", "HMM"),
-    ("chisurf.plugins.burst.burst_h2mm.core.surrogate_tttrlib", "HAVE_TTTRLIB",
-     "HmmSurrogate"),
+    ("chisurf.plugins.burst.burst_h2mm.core.surrogate_tttrlib", "HAVE_TTTRLIB", "HmmSurrogate"),
     ("chisurf.core.fluorescence.mle.fit2x", "HAVE_TTTRLIB", "TTTR"),
 ]
 
@@ -67,15 +66,14 @@ def test_the_h2mm_engine_selector_picks_the_compiled_backend():
     if not hasattr(tttrlib, "HMM"):
         pytest.skip("this tttrlib build has no HMM")
 
-    engines = importlib.import_module(
-        "chisurf.plugins.burst.burst_h2mm.core.engines"
-    )
+    engines = importlib.import_module("chisurf.plugins.burst.burst_h2mm.core.engines")
     assert callable(engines.optimize)
     gates = [n for n in vars(engines) if n.startswith("_HAVE_")]
     assert not gates, (
-        "an availability gate reappeared in the H2MM selector (%s); the "
+        "an availability gate reappeared in the H2MM selector ({}); the "
         "module is hard-import by decision -- tttrlib or an error, no "
-        "silently degraded path" % ", ".join(gates))
+        "silently degraded path".format(", ".join(gates))
+    )
 
 
 def test_the_photon_simulator_is_available_to_the_shim():

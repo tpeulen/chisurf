@@ -174,9 +174,7 @@ class TestOwnership:
 
     def test_the_data_setter_does_not_alias_its_source(self):
         """`dc.data = src` goes through `set_data`, one row per column."""
-        source = np.vstack([
-            np.arange(4.0), np.ones(4), np.zeros(4), np.ones(4), np.ones(4)
-        ])
+        source = np.vstack([np.arange(4.0), np.ones(4), np.zeros(4), np.ones(4), np.ones(4)])
         dc = DataCurve()
         dc.data = source
         source[3, 0] = 999.0
@@ -229,7 +227,8 @@ class TestRoundTrip:
 
     def test_copy_has_its_own_dataset(self, data_curve):
         """A copy gets its own bff Dataset, synced from its arrays -- two
-        curves never share one C++ object."""
+        curves never share one C++ object.
+        """
         restored = copy.copy(data_curve)
         assert restored.this != data_curve.this
         assert restored.get_size() == data_curve.get_size()

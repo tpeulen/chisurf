@@ -6,6 +6,7 @@ These tests cover the parts that were silently wrong before and would be
 silently wrong again: which way a link arrow points, whether an edge survives a
 node being filtered out, and what the window does with a selection.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,7 +22,6 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 import chisurf.core.fitting.parameter as fp  # noqa: E402
-import chisurf.core.models  # noqa: E402
 from chisurf.plugins.core.globalview.api.graph import build_graph  # noqa: E402
 
 
@@ -69,8 +69,8 @@ def test_the_link_edge_points_from_follower_to_master():
     by_idx = {n.node_idx: n for n in result.nodes}
     params = {i for i, n in by_idx.items() if n.node_type == "parameter"}
     edge = next(e for e in result.edges if e.source in params and e.target in params)
-    assert by_idx[edge.source].is_linked          # follower
-    assert not by_idx[edge.target].is_linked      # master
+    assert by_idx[edge.source].is_linked  # follower
+    assert not by_idx[edge.target].is_linked  # master
 
 
 # ── the window ───────────────────────────────────────────────────────
@@ -80,16 +80,12 @@ def test_the_link_edge_points_from_follower_to_master():
 def tool(qapp, monkeypatch, tmp_path):
     from qtpy import QtCore
 
-    monkeypatch.setattr(
-        QtCore.QSettings, "value", lambda self, *a, **k: None, raising=False
-    )
+    monkeypatch.setattr(QtCore.QSettings, "value", lambda self, *a, **k: None, raising=False)
     from chisurf.plugins.core.globalview.gui import GraphWizard
 
     a, b = _group(["tau", "bg"]), _group(["tau", "bg"])
     b.parameters_all_dict["tau"].link = a.parameters_all_dict["tau"]
-    window = GraphWizard(
-        fit_list=[_Fit(a, "Decay A"), _Fit(b, "Decay B")], include_fixed=True
-    )
+    window = GraphWizard(fit_list=[_Fit(a, "Decay A"), _Fit(b, "Decay B")], include_fixed=True)
     yield window
     window.close()
 
@@ -114,10 +110,12 @@ def test_edges_are_reindexed_when_a_node_is_filtered_out(tool):
     names them by node id. The two diverge the moment ``include_fixed`` drops a
     node, and an un-reindexed edge then joins two unrelated parameters.
     """
+
     def link_ends():
         document = tool.graph_widget.control.document
-        return [(int(e.source), int(e.target)) for e in document.edges
-                if e.config.get("kind") == "link"]
+        return [
+            (int(e.source), int(e.target)) for e in document.edges if e.config.get("kind") == "link"
+        ]
 
     names = tool.node_data["names"]
     assert link_ends()
@@ -133,9 +131,8 @@ def test_edges_are_reindexed_when_a_node_is_filtered_out(tool):
 
 def test_every_parameter_editor_says_which_fit_it_belongs_to(tool, qapp):
     """Two fits of one model name their parameters identically."""
-    from qtpy import QtWidgets
-
     from emtk import nodes
+    from qtpy import QtWidgets
 
     widget = tool.graph_widget
     taus = [i for i, n in enumerate(tool.node_data["names"]) if n == "tau"]
@@ -194,22 +191,23 @@ def test_a_value_change_does_not_relayout_the_network(tool, monkeypatch):
     calls = []
     original = tool.get_node_positions
     monkeypatch.setattr(
-        tool, "get_node_positions",
+        tool,
+        "get_node_positions",
         lambda *a, **k: (calls.append(1), original(*a, **k))[1],
     )
 
     tool.recompute_graph(force=False)
-    assert calls == []                       # nothing changed: nothing laid out
+    assert calls == []  # nothing changed: nothing laid out
 
     tool.recompute_graph(force=True)
-    assert len(calls) == 1                   # the user asked: always redraw
+    assert len(calls) == 1  # the user asked: always redraw
 
     # A structural change — a new link — does redraw on its own. Made on the
     # parameters directly, so nothing but the shape of the graph differs.
     calls.clear()
-    tool.fit_list[1].model.parameters_all_dict["bg"].link = (
-        tool.fit_list[0].model.parameters_all_dict["bg"]
-    )
+    tool.fit_list[1].model.parameters_all_dict["bg"].link = tool.fit_list[
+        0
+    ].model.parameters_all_dict["bg"]
     tool.recompute_graph(force=False)
     assert len(calls) == 1
 
@@ -221,7 +219,7 @@ def test_change_events_are_coalesced_rather_than_answered_one_by_one(tool):
     for _ in range(20):
         tool._on_change_event()
     assert tool._refresh_timer.isActive()
-    assert rebuilds == []                    # nothing has run yet
+    assert rebuilds == []  # nothing has run yet
 
 
 def test_with_auto_off_the_status_bar_says_the_picture_is_stale(tool):
@@ -241,8 +239,10 @@ def test_a_layout_is_not_remembered_before_the_window_has_a_size(tool, monkeypat
     """
     saved = []
     monkeypatch.setattr(
-        type(tool._dock_settings()), "setValue",
-        lambda self, key, value: saved.append(key), raising=False,
+        type(tool._dock_settings()),
+        "setValue",
+        lambda self, key, value: saved.append(key),
+        raising=False,
     )
     tool._layout_ready = False
     tool._save_dock_layout()
@@ -274,13 +274,9 @@ def test_connect_base_joins_plugin_groups_to_the_fits():
         )
         owners = {n.node_idx for n in result.nodes if n.node_type in ("fit", "group")}
         group_idx = next(n.node_idx for n in result.nodes if n.node_type == "group")
-        owner_edges = [
-            e for e in result.edges if e.source in owners and e.target in owners
-        ]
+        owner_edges = [e for e in result.edges if e.source in owners and e.target in owners]
         # 3 owners fully connected = 3 edges, and the group is in two of them.
         assert len(owner_edges) == 3
-        assert sum(
-            1 for e in owner_edges if group_idx in (e.source, e.target)
-        ) == 2
+        assert sum(1 for e in owner_edges if group_idx in (e.source, e.target)) == 2
     finally:
         unregister_parameter_group("test_owner")

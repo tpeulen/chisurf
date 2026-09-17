@@ -5,6 +5,7 @@ from qtpy import QtCore, QtWidgets
 
 def test_fcs_filter_calculator_widget(qapp, qtbot):
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -116,7 +117,8 @@ def test_example_mixture_survives_project_roundtrip(qapp, qtbot, tmp_path, monke
 
 def test_no_embedded_detector_editor_uses_setup_selector(qapp, qtbot):
     """The embedded detector wizard is gone; the widget only *selects* saved
-    setups (the authoritative editor is the toolbox's Detector Def tool)."""
+    setups (the authoritative editor is the toolbox's Detector Def tool).
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -184,9 +186,7 @@ def test_widget_adds_irf_scatter_as_hidden_nuisance_filter(qapp, qtbot, tmp_path
     assert results[0].nuisance_labels[1].endswith(", measured)")
     # Detectors without a measured IRF use their (synthetic) detector IRF as the
     # scatter shape, so it stays consistent with the auto-fit / component convolution.
-    assert all(
-        result.nuisance_labels[1].endswith(", detector-IRF)") for result in results[1:]
-    )
+    assert all(result.nuisance_labels[1].endswith(", detector-IRF)") for result in results[1:])
     assert all(result.to_channel_filters().shape[0] == result.n_species for result in results)
 
 
@@ -229,10 +229,7 @@ def test_synthetic_dialog_uses_editable_lifetime_spectrum_table(qapp, qtbot, mon
         assert table is not None
         assert table.horizontalHeaderItem(0).text() == "Amplitude"
         assert table.horizontalHeaderItem(1).text() == "Lifetime (ns)"
-        assert any(
-            "Fit" in button.text()
-            for button in dialog.findChildren(QtWidgets.QToolButton)
-        )
+        assert any("Fit" in button.text() for button in dialog.findChildren(QtWidgets.QToolButton))
         return QtWidgets.QDialog.Accepted
 
     monkeypatch.setattr(QtWidgets.QDialog, "exec_", accept_dialog)
@@ -263,10 +260,16 @@ def test_edit_synthetic_component_replaces_in_place(qapp, qtbot, monkeypatch):
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
     widget.lw_species.clear()
-    widget.lw_species.add_synthetic_source({
-        "type": "synthetic", "model": "lifetime_spectrum", "name": "comp",
-        "amplitudes": [1.0], "lifetimes": [2.0], "bin_width": 0.05,
-    })
+    widget.lw_species.add_synthetic_source(
+        {
+            "type": "synthetic",
+            "model": "lifetime_spectrum",
+            "name": "comp",
+            "amplitudes": [1.0],
+            "lifetimes": [2.0],
+            "bin_width": 0.05,
+        }
+    )
     item = widget.lw_species.item(0)
     assert widget._is_editable_component(item)
     count_before = widget.lw_species.count()
@@ -274,8 +277,12 @@ def test_edit_synthetic_component_replaces_in_place(qapp, qtbot, monkeypatch):
     # Edit: bump the lifetime and accept.
     def edit_and_accept(dialog):
         from chisurf.gui.widgets.synthetic_decay_editor import SyntheticDecayEditorModel
-        model = next(c for c in dialog.findChildren(QtWidgets.QWidget)
-                     if isinstance(getattr(c, "model", None), SyntheticDecayEditorModel)).model
+
+        model = next(
+            c
+            for c in dialog.findChildren(QtWidgets.QWidget)
+            if isinstance(getattr(c, "model", None), SyntheticDecayEditorModel)
+        ).model
         model.spectrum_rows = [{"amplitude": 1.0, "lifetime": 7.5}]
         return QtWidgets.QDialog.Accepted
 
@@ -296,11 +303,15 @@ def test_add_fret_species_stores_coupled_detector_patterns(qapp, qtbot, monkeypa
 
     def set_da_and_accept(dialog):
         from chisurf.gui.widgets.fret_species_editor import FretSpeciesEditorModel
+
         # Switch the unified dialog's Type selector to "FRET species".
         combo = dialog.findChild(QtWidgets.QComboBox)
         combo.setCurrentIndex(combo.findData("fret"))
-        model = next(c for c in dialog.findChildren(QtWidgets.QWidget)
-                     if isinstance(getattr(c, "model", None), FretSpeciesEditorModel)).model
+        model = next(
+            c
+            for c in dialog.findChildren(QtWidgets.QWidget)
+            if isinstance(getattr(c, "model", None), FretSpeciesEditorModel)
+        ).model
         model.state = "da"
         model.transfer_efficiency = 0.6
         return QtWidgets.QDialog.Accepted
@@ -330,19 +341,21 @@ def test_fit_pattern_source_selects_detector_specific_snapshot(qapp, qtbot):
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
     widget.lw_species.clear()
-    widget.lw_species.add_synthetic_source({
-        "type": "synthetic",
-        "model": "lifetime_spectrum",
-        "name": "fit component",
-        "amplitudes": [1.0],
-        "lifetimes": [3.0],
-        "bin_width": 0.1,
-        "patterns_by_detector": {
-            "green": [4.0, 2.0, 1.0],
-            "red": [1.0, 0.5, 0.25],
-            "__default__": [4.0, 2.0, 1.0],
-        },
-    })
+    widget.lw_species.add_synthetic_source(
+        {
+            "type": "synthetic",
+            "model": "lifetime_spectrum",
+            "name": "fit component",
+            "amplitudes": [1.0],
+            "lifetimes": [3.0],
+            "bin_width": 0.1,
+            "patterns_by_detector": {
+                "green": [4.0, 2.0, 1.0],
+                "red": [1.0, 0.5, 0.25],
+                "__default__": [4.0, 2.0, 1.0],
+            },
+        }
+    )
     item = widget.lw_species.item(0)
 
     green, _ = widget._species_item_pattern(item, 3, ["green"])
@@ -387,7 +400,8 @@ def test_read_from_fit_populates_spectrum_and_model_patterns(qapp, qtbot, monkey
 
     def import_and_accept(dialog):
         next(
-            button for button in dialog.findChildren(QtWidgets.QToolButton)
+            button
+            for button in dialog.findChildren(QtWidgets.QToolButton)
             if "Fit" in button.text()
         ).click()
         return QtWidgets.QDialog.Accepted
@@ -407,6 +421,7 @@ def test_read_from_fit_populates_spectrum_and_model_patterns(qapp, qtbot, monkey
 def test_use_correlator_total_pulls_loaded_files(qapp, qtbot, tmp_path):
     import numpy as np
     from qtpy import QtWidgets
+
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     decay = tmp_path / "mix.txt"
@@ -432,6 +447,7 @@ def test_use_correlator_total_pulls_loaded_files(qapp, qtbot, tmp_path):
 
 def test_micro_time_axis_from_data_and_binning(qapp, qtbot):
     import numpy as np
+
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     class _Header:
@@ -476,25 +492,25 @@ def test_auto_fit_adds_lifetime_components(qapp, qtbot, tmp_path):
 
     assert widget.lw_species.count() == 2
     taus = sorted(
-        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["lifetimes"][0]
-        for i in range(2)
+        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["lifetimes"][0] for i in range(2)
     )
     assert abs(taus[0] - 1.2) < 0.2
     assert abs(taus[1] - 4.0) < 0.4
 
 
 def test_auto_fit_joint_irf_fit_resolves_distinct_components(qapp, qtbot, tmp_path):
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
-    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
     # An IRF-convolved bi-exponential with a real prompt at ~bin 14. With no
     # measured IRF loaded, auto-fit fits the IRF jointly (from the prompt) and
     # resolves both lifetimes without a tail-only workaround.
     t = np.arange(256) * 0.05
     irf = synthetic_irf(t, center_ns=0.7, fwhm_ns=0.35)
-    total = 60000.0 * synthetic_decay(256, 1.2, bin_width=0.05, irf=irf, normalize=True) \
-        + 40000.0 * synthetic_decay(256, 4.0, bin_width=0.05, irf=irf, normalize=True)
+    total = 60000.0 * synthetic_decay(
+        256, 1.2, bin_width=0.05, irf=irf, normalize=True
+    ) + 40000.0 * synthetic_decay(256, 4.0, bin_width=0.05, irf=irf, normalize=True)
     total_path = tmp_path / "mix.txt"
     np.savetxt(total_path, total)
 
@@ -510,8 +526,7 @@ def test_auto_fit_joint_irf_fit_resolves_distinct_components(qapp, qtbot, tmp_pa
 
     assert widget.lw_species.count() == 2
     taus = sorted(
-        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["lifetimes"][0]
-        for i in range(2)
+        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["lifetimes"][0] for i in range(2)
     )
     # Two DISTINCT lifetimes recovered (not collapsed to one).
     assert abs(taus[0] - 1.2) < 0.3
@@ -586,7 +601,8 @@ def test_a_masked_residual_range_is_not_drawn_across(qapp, qtbot):
     handle = plot.line(np.arange(y.size), y)
     _, drawn = handle.get_data()
     assert np.isnan(drawn[2]) and np.isfinite(drawn[[0, 1, 3]]).all(), (
-        "the missing sample must stay a gap, not be dropped and joined across")
+        "the missing sample must stay a gap, not be dropped and joined across"
+    )
 
 
 def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
@@ -602,7 +618,10 @@ def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
         assert widget._measured_irf_vector(n) is None
     before = {n: widget.detector_selection.width(n, "") for n in names}
     widget._auto_fit_settings = {
-        "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+        "kind": "lifetime",
+        "n_components": 2,
+        "tau_min": 0.2,
+        "tau_max": 8.0,
     }
     widget._auto_fit_components(n_components=2)
     qapp.processEvents()
@@ -615,7 +634,8 @@ def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
 
 def test_stacked_mode_computes_global_filters_split_per_detector(qapp, qtbot):
     """Global (stacked) mode solves one filter set over concatenated detectors and
-    splits it back into per-detector slices; the independent mode is the default."""
+    splits it back into per-detector slices; the independent mode is the default.
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -627,8 +647,10 @@ def test_stacked_mode_computes_global_filters_split_per_detector(qapp, qtbot):
     assert not widget.stacked_mode_cb.isChecked()
     widget._compute_filters()
     assert widget._result_multi_detector
-    assert all(dr["result"].metadata.get("filter_mode") != "stacked"
-               for dr in widget._result_multi_detector)
+    assert all(
+        dr["result"].metadata.get("filter_mode") != "stacked"
+        for dr in widget._result_multi_detector
+    )
 
     # Enable stacked/global mode → one global set, split per detector, mode tagged.
     widget.stacked_mode_cb.setChecked(True)
@@ -646,7 +668,8 @@ def test_stacked_mode_computes_global_filters_split_per_detector(qapp, qtbot):
 
 def test_stacked_mode_uses_fret_interdetector_scaling(qapp, qtbot):
     """A FRET species with asymmetric per-detector brightness yields different
-    filters in stacked mode than in independent mode (the coupling is used)."""
+    filters in stacked mode than in independent mode (the coupling is used).
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -678,8 +701,13 @@ def test_example_components_cleared_when_data_loaded(qapp, qtbot, tmp_path):
     assert widget.lw_species.count() == 2
     # A user-added component must survive the load.
     widget.lw_species.add_synthetic_source(
-        {"type": "synthetic", "model": "lifetime", "name": "MyComp",
-         "lifetime": 2.5, "bin_width": 0.05}
+        {
+            "type": "synthetic",
+            "model": "lifetime",
+            "name": "MyComp",
+            "lifetime": 2.5,
+            "bin_width": 0.05,
+        }
     )
     total = tmp_path / "mix.txt"
     np.savetxt(total, np.exp(-np.arange(256) / 40.0) + 0.01)
@@ -698,14 +726,15 @@ def test_auto_fit_on_file_backed_total_with_nondefault_bins(qapp, qtbot, tmp_pat
     fitted shift on a 256-bin IRF used against a 2048-bin decay previously pushed
     the prompt off the end and raised "irf must contain a positive value".
     """
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
-    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
     t = np.arange(2048) * 0.05
     irf = synthetic_irf(t, center_ns=0.9, fwhm_ns=0.3, shape=0.3)
-    total = (60000.0 * synthetic_decay(2048, 1.2, bin_width=0.05, irf=irf, normalize=True)
-             + 40000.0 * synthetic_decay(2048, 4.0, bin_width=0.05, irf=irf, normalize=True))
+    total = 60000.0 * synthetic_decay(
+        2048, 1.2, bin_width=0.05, irf=irf, normalize=True
+    ) + 40000.0 * synthetic_decay(2048, 4.0, bin_width=0.05, irf=irf, normalize=True)
     p = tmp_path / "mix.txt"
     np.savetxt(p, total)
 
@@ -715,7 +744,10 @@ def test_auto_fit_on_file_backed_total_with_nondefault_bins(qapp, qtbot, tmp_pat
     widget._set_total_paths([p])
     assert widget._total_vector is None and widget._current_n_bins() == 2048
     widget._auto_fit_settings = {
-        "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+        "kind": "lifetime",
+        "n_components": 2,
+        "tau_min": 0.2,
+        "tau_max": 8.0,
     }
     widget._auto_fit_components(n_components=2)  # must not raise
     assert widget.lw_species.count() == 2
@@ -723,7 +755,8 @@ def test_auto_fit_on_file_backed_total_with_nondefault_bins(qapp, qtbot, tmp_pat
 
 def test_instrument_dock_autoform_and_period(qapp, qtbot):
     """The Instrument dock is an AutoForm over α/β/γ/δ/G/l1/l2/R0/period, and the
-    laser period drives the periodic-convolution helper."""
+    laser period drives the periodic-convolution helper.
+    """
     from chisurf.gui.autoform import AutoForm
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
@@ -731,8 +764,18 @@ def test_instrument_dock_autoform_and_period(qapp, qtbot):
     qtbot.addWidget(widget)
     assert "Instrument" in widget.dock_area._tab_names.values()
     assert isinstance(widget.instrument_form, AutoForm)
-    for attr in ("alpha", "beta", "gamma", "delta", "g_factor", "l1", "l2",
-                 "forster_radius", "period_ns", "periodic"):
+    for attr in (
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "g_factor",
+        "l1",
+        "l2",
+        "forster_radius",
+        "period_ns",
+        "periodic",
+    ):
         assert hasattr(widget.instrument_model, attr)
 
     # Periodic convolution: off ⇒ None; on with 0 ⇒ full micro-time window.
@@ -759,7 +802,8 @@ def test_a_calibration_measured_once_arrives_here(qapp, qtbot):
     written to a file nobody opens.
     """
     from chisurf.core.fluorescence.fret.calibration import (
-        CalibrationParameters, calibration_to_setup,
+        CalibrationParameters,
+        calibration_to_setup,
     )
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
@@ -799,9 +843,13 @@ def test_the_acceptor_excitation_channel_is_not_switched_off_by_default(qapp, qt
 
     assert DEFAULTS["beta"] == 1.0
     source = {
-        "model": "fret_species", "state": "da",
-        "donor_spectrum": [1.0, 4.0], "acceptor_spectrum": [1.0, 2.0],
-        "fret_mode": "efficiency", "transfer_efficiency": 0.5, "bin_width": 0.032,
+        "model": "fret_species",
+        "state": "da",
+        "donor_spectrum": [1.0, 4.0],
+        "acceptor_spectrum": [1.0, 2.0],
+        "fret_mode": "efficiency",
+        "transfer_efficiency": 0.5,
+        "bin_width": 0.032,
         "crosstalk": {k: DEFAULTS[k] for k in ("alpha", "beta", "gamma", "delta")},
     }
     patterns = fret_species_detector_patterns(source, ["green", "red", "yellow"], 256)
@@ -809,9 +857,10 @@ def test_the_acceptor_excitation_channel_is_not_switched_off_by_default(qapp, qt
 
 
 def test_filters_computed_over_fit_range_window(qapp, qtbot):
-    """fFCS filters are solved on the fit-range slice, not the full decay: the
+    """FFCS filters are solved on the fit-range slice, not the full decay: the
     reconstruction equals the total outside the range (residual 0) and the filters
-    are zero there, so the excluded pre-prompt/tail bins can't bias the fit."""
+    are zero there, so the excluded pre-prompt/tail bins can't bias the fit.
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -820,8 +869,11 @@ def test_filters_computed_over_fit_range_window(qapp, qtbot):
     widget._compute_filters()
     qapp.processEvents()
 
-    entry = next(e for e in widget._result_multi_detector
-                 if e["detector"] == widget.detector_selection.get_selected()[0])
+    entry = next(
+        e
+        for e in widget._result_multi_detector
+        if e["detector"] == widget.detector_selection.get_selected()[0]
+    )
     res = entry["result"]
     f = np.asarray(res.filters)
     assert np.all(f[:, :40] == 0.0) and np.all(f[:, 200:] == 0.0)
@@ -850,7 +902,8 @@ def test_filters_zeroed_outside_per_detector_fit_range(qapp, qtbot):
 
 def test_fit_range_change_auto_updates_filters_without_refit(qapp, qtbot):
     """Changing the fit range re-zeros the stored filters (narrow → widen recovers
-    the previously-zeroed columns via the cached un-zeroed filters), no refit."""
+    the previously-zeroed columns via the cached un-zeroed filters), no refit.
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -911,7 +964,8 @@ def test_residuals_masked_to_fit_range(qapp, qtbot):
 
 def test_detector_irf_shift_moves_prompt_and_persists(qapp, qtbot):
     """The per-detector IRF time shift moves both synthetic & measured IRFs, and
-    round-trips through the detector table's export/import state."""
+    round-trips through the detector table's export/import state.
+    """
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
@@ -969,16 +1023,22 @@ def test_fret_autofit_creates_fret_species(qapp, qtbot):
     widget._suspend_compute = True  # skip per-add recompute (as the auto-fit does)
     # Fitted donor lifetimes 2.0 & 4.0 ns → FRET species with E 0.5 and 0 (τ_D0=4).
     widget._add_fret_autofit_species(
-        amps=np.array([0.5, 0.5]), taus=np.array([2.0, 4.0]), scale=1.0,
-        dt=0.05, start=5, n_bins=256, detector_names=["green", "red", "yellow"],
+        amps=np.array([0.5, 0.5]),
+        taus=np.array([2.0, 4.0]),
+        scale=1.0,
+        dt=0.05,
+        start=5,
+        n_bins=256,
+        detector_names=["green", "red", "yellow"],
     )
     widget._suspend_compute = False
     assert widget.lw_species.count() == 2
     models = [widget.lw_species.item(i).data(QtCore.Qt.UserRole)["model"] for i in range(2)]
     assert all(m == "fret_species" for m in models)
     # τ=4 → donor-only (E≈0); τ=2 → DA with E≈0.5; per-detector coupled patterns exist.
-    effs = sorted(widget.lw_species.item(i).data(QtCore.Qt.UserRole)["transfer_efficiency"]
-                  for i in range(2))
+    effs = sorted(
+        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["transfer_efficiency"] for i in range(2)
+    )
     assert abs(effs[0] - 0.0) < 1e-2 and abs(effs[1] - 0.5) < 0.05
     for i in range(2):
         assert "patterns_by_detector" in widget.lw_species.item(i).data(QtCore.Qt.UserRole)
@@ -988,8 +1048,9 @@ def test_auto_fit_settings_drive_kind_and_bounds(qapp, qtbot, tmp_path):
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
     from chisurf.plugins.fcs.fcs_filter_calculator.api import synthetic_decay
 
-    total = 60000.0 * synthetic_decay(1024, 1.5, bin_width=0.05, normalize=True) \
-        + 40000.0 * synthetic_decay(1024, 4.5, bin_width=0.05, normalize=True)
+    total = 60000.0 * synthetic_decay(
+        1024, 1.5, bin_width=0.05, normalize=True
+    ) + 40000.0 * synthetic_decay(1024, 4.5, bin_width=0.05, normalize=True)
     p = tmp_path / "mix.txt"
     np.savetxt(p, total)
     widget = FcsFilterCalculatorWidget()
@@ -1008,8 +1069,10 @@ def test_auto_fit_settings_drive_kind_and_bounds(qapp, qtbot, tmp_path):
     widget._auto_fit_settings["kind"] = "fret"
     widget.lw_species.clear()
     widget._auto_fit_components(n_components=2)
-    models = {widget.lw_species.item(i).data(QtCore.Qt.UserRole)["model"]
-              for i in range(widget.lw_species.count())}
+    models = {
+        widget.lw_species.item(i).data(QtCore.Qt.UserRole)["model"]
+        for i in range(widget.lw_species.count())
+    }
     assert models == {"fret_species"}
 
 
@@ -1085,8 +1148,20 @@ def test_autofit_parameter_table_hides_the_convolution_plumbing(qapp, qtbot, tmp
     widget = _autofit_widget(qtbot, tmp_path)
 
     names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
-    assert not (names & {"dt", "rep", "start", "stop", "irf_start", "irf_stop", "n0",
-                         "lamp background", "irf position"})
+    assert not (
+        names
+        & {
+            "dt",
+            "rep",
+            "start",
+            "stop",
+            "irf_start",
+            "irf_stop",
+            "n0",
+            "lamp background",
+            "irf position",
+        }
+    )
 
 
 def test_autofit_parameters_can_be_linked(qapp, qtbot, tmp_path):
@@ -1095,8 +1170,11 @@ def test_autofit_parameters_can_be_linked(qapp, qtbot, tmp_path):
     widget_b = _autofit_widget(qtbot, tmp_path / "b")
 
     def tau0(widget):
-        return next(p for p in widget._auto_fit_result["model"].parameters_all
-                    if getattr(p, "canonical_id", "") == "lifetime.tau.0")
+        return next(
+            p
+            for p in widget._auto_fit_result["model"].parameters_all
+            if getattr(p, "canonical_id", "") == "lifetime.tau.0"
+        )
 
     target = tau0(widget_a)
     follower = tau0(widget_b)
@@ -1132,8 +1210,9 @@ def test_fret_auto_fit_runs_through_a_real_fret_model(qapp, qtbot, tmp_path):
     assert len(result["distances"]) == 2
     assert np.all(result["efficiencies"] >= 0) and np.all(result["efficiencies"] <= 1)
     # Every added species is a FRET species carrying a fitted efficiency.
-    sources = [widget.lw_species.item(i).data(QtCore.Qt.UserRole)
-               for i in range(widget.lw_species.count())]
+    sources = [
+        widget.lw_species.item(i).data(QtCore.Qt.UserRole) for i in range(widget.lw_species.count())
+    ]
     assert sources and all(s["model"] == "fret_species" for s in sources)
     assert all("transfer_efficiency" in s for s in sources)
 
@@ -1143,9 +1222,12 @@ def test_fret_auto_fit_exposes_distances_as_linkable_parameters(qapp, qtbot, tmp
 
     widget = _autofit_widget(qtbot, tmp_path, n_components=2, kind="fret")
 
-    means = [p for p in widget._auto_fit_result["model"].parameters_all
-             if getattr(p, "canonical_id", "").startswith("distance.mean.")]
-    assert len(means) == 3        # the model holds as many as it could use
+    means = [
+        p
+        for p in widget._auto_fit_result["model"].parameters_all
+        if getattr(p, "canonical_id", "").startswith("distance.mean.")
+    ]
+    assert len(means) == 3  # the model holds as many as it could use
     assert all(isinstance(p, FittingParameter) for p in means)
     names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
     # Only the fitted topology's two distances are rows.

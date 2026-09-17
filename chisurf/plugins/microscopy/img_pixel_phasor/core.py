@@ -81,9 +81,7 @@ def derived_phasor_maps(
     """
     if frequency_mhz <= 0.0:
         raise ValueError("frequency_mhz must be > 0 to derive lifetime maps")
-    tau_phi, tau_m = analysis.phasor_to_apparent_lifetime(
-        maps["g"], maps["s"], frequency_mhz
-    )
+    tau_phi, tau_m = analysis.phasor_to_apparent_lifetime(maps["g"], maps["s"], frequency_mhz)
     return {**maps, "tau_phi": tau_phi, "tau_m": tau_m}
 
 

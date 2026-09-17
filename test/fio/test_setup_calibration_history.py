@@ -11,19 +11,14 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
-import pytest
-
-from mmfdb.store.database_resolver import resolve_database_path
 from mmfdb.repository import MFDatabase
-from mmfdb.schema.schema import migrate_schema, get_schema_version, SCHEMA_VERSION
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     setup_id_for_name,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,19 +38,28 @@ def _fresh_db(tmp_path: Path, name: str = "test.db") -> MFDatabase:
 
 def test_calibration_table_exists(tmp_path: Path) -> None:
     """After fresh schema setup, mmfdb_setup_calibration exists and
-    has the expected columns."""
+    has the expected columns.
+    """
     db = _fresh_db(tmp_path)
     try:
         cols = {
-            r[1] for r in db.conn.execute(
-                "PRAGMA table_info(mmfdb_setup_calibration)"
-            ).fetchall()
+            r[1] for r in db.conn.execute("PRAGMA table_info(mmfdb_setup_calibration)").fetchall()
         }
         required = {
-            "id", "setup_id", "channel_name",
-            "g_factor", "l1", "l2", "g_factor_channels",
-            "g_factor_calibration_id", "calibrated_at", "method",
-            "created_by_user_id", "created_at", "updated_at", "deleted_at",
+            "id",
+            "setup_id",
+            "channel_name",
+            "g_factor",
+            "l1",
+            "l2",
+            "g_factor_channels",
+            "g_factor_calibration_id",
+            "calibrated_at",
+            "method",
+            "created_by_user_id",
+            "created_at",
+            "updated_at",
+            "deleted_at",
         }
         missing = required - cols
         assert not missing, f"Missing columns: {missing}"
@@ -84,7 +88,7 @@ def test_calibration_dictionary_maps(tmp_path: Path) -> None:
         ok, message = mapper.validate_mapping(full_name)
         if not ok:
             failures.append(f"{full_name}: {message}")
-    assert not failures, f"Dictionary-schema mapping failures:\n" + "\n".join(failures)
+    assert not failures, "Dictionary-schema mapping failures:\n" + "\n".join(failures)
 
 
 # ---------------------------------------------------------------------------
@@ -144,9 +148,14 @@ def test_save_setup_creates_calibration_snapshots(tmp_path: Path) -> None:
                 "red": {"channels": [1, 9], "g_factor": 1.10, "l1": 0.01, "l2": 0.04},
             },
         )
-        assert len(db.conn.execute(
-            "SELECT 1 FROM mmfdb_setup_calibration WHERE setup_id = ?", (setup_id,)
-        ).fetchall()) == 2
+        assert (
+            len(
+                db.conn.execute(
+                    "SELECT 1 FROM mmfdb_setup_calibration WHERE setup_id = ?", (setup_id,)
+                ).fetchall()
+            )
+            == 2
+        )
 
         # Changing a factor DOES append a new snapshot for that channel.
         db.save_setup(
@@ -219,12 +228,16 @@ def test_list_setup_calibration_dates(tmp_path: Path) -> None:
         db.save_setup(setup_id=setup_id, name=setup_name, detectors={"green": {"channels": [0]}})
 
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=1.0, calibrated_at="2024-01-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=1.0,
+            calibrated_at="2024-01-01T00:00:00",
         )
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=1.1, calibrated_at="2024-06-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=1.1,
+            calibrated_at="2024-06-01T00:00:00",
         )
 
         dates = db.list_setup_calibration_dates(setup_id)
@@ -242,23 +255,30 @@ def test_get_setup_calibration_returns_latest(tmp_path: Path) -> None:
         setup_name = "Latest Test"
         setup_id = setup_id_for_name(setup_name)
         db.save_setup(
-            setup_id=setup_id, name=setup_name,
+            setup_id=setup_id,
+            name=setup_name,
             detectors={"green": {"channels": [0]}, "red": {"channels": [1]}},
         )
 
         # Green: two snapshots
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=1.0, calibrated_at="2024-01-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=1.0,
+            calibrated_at="2024-01-01T00:00:00",
         )
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=2.0, calibrated_at="2024-06-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=2.0,
+            calibrated_at="2024-06-01T00:00:00",
         )
         # Red: one snapshot
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="red",
-            g_factor=1.5, calibrated_at="2024-03-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="red",
+            g_factor=1.5,
+            calibrated_at="2024-03-01T00:00:00",
         )
 
         latest = db.get_setup_calibration(setup_id)
@@ -279,12 +299,16 @@ def test_get_setup_calibration_at_date(tmp_path: Path) -> None:
         db.save_setup(setup_id=setup_id, name=setup_name, detectors={"green": {"channels": [0]}})
 
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=1.0, calibrated_at="2024-01-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=1.0,
+            calibrated_at="2024-01-01T00:00:00",
         )
         db.add_setup_calibration(
-            setup_id=setup_id, channel_name="green",
-            g_factor=2.0, calibrated_at="2024-06-01T00:00:00",
+            setup_id=setup_id,
+            channel_name="green",
+            g_factor=2.0,
+            calibrated_at="2024-06-01T00:00:00",
         )
 
         snap = db.get_setup_calibration(setup_id, calibrated_at="2024-01-01T00:00:00")
@@ -301,7 +325,8 @@ def test_get_setup_includes_calibration(tmp_path: Path) -> None:
         setup_name = "Full Setup Test"
         setup_id = setup_id_for_name(setup_name)
         db.save_setup(
-            setup_id=setup_id, name=setup_name,
+            setup_id=setup_id,
+            name=setup_name,
             detectors={"green": {"channels": [0], "g_factor": 1.5}},
         )
 

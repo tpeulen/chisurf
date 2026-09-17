@@ -7,14 +7,12 @@ late subscribers, unsubscribe, handler exceptions, ordering,
 nested publish, event structure guarantees.
 """
 
-import threading
-import time
 from unittest.mock import MagicMock
 
 import pytest
 
-from chisurf.server.eventbus import InProcessEventBus
 from chisurf.server.dispatcher import ServiceDispatcher
+from chisurf.server.eventbus import InProcessEventBus
 from chisurf.server.session import SessionState
 
 
@@ -32,7 +30,6 @@ def dispatcher(event_bus):
 
 
 class TestWildcardPatterns:
-
     def test_wildcard_fit_all(self, event_bus, dispatcher):
         events = []
         event_bus.subscribe("fit.*", lambda e: events.append(e))
@@ -73,8 +70,8 @@ class TestWildcardPatterns:
         """? matches single character in wildcard."""
         events = []
         event_bus.subscribe("fit.???", lambda e: events.append(e))
-        event_bus.publish("fit.add", {"v": 1})   # 3 chars after dot
-        event_bus.publish("fit.run", {"v": 2})    # 3 chars
+        event_bus.publish("fit.add", {"v": 1})  # 3 chars after dot
+        event_bus.publish("fit.run", {"v": 2})  # 3 chars
         event_bus.publish("fit.clear", {"v": 3})  # 5 chars, should NOT match
         assert len(events) == 2
 
@@ -100,7 +97,6 @@ class TestWildcardPatterns:
 
 
 class TestMultipleSubscribers:
-
     def test_two_subscribers_same_topic(self, event_bus):
         events1 = []
         events2 = []
@@ -114,11 +110,11 @@ class TestMultipleSubscribers:
         assert events2[0]["v"] == 42
 
     def test_many_subscribers_same_topic(self, event_bus):
-        all_events = []
 
         def _make_collector(container):
             def handler(e):
                 container.append(e)
+
             return handler
 
         subscribers = 50
@@ -152,7 +148,6 @@ class TestMultipleSubscribers:
 
 
 class TestLateSubscriber:
-
     def test_late_subscriber_misses_earlier_events(self, event_bus):
         event_bus.publish("late.topic", {"v": "before"})
         late_events = []
@@ -170,7 +165,6 @@ class TestLateSubscriber:
 
 
 class TestUnsubscribe:
-
     def test_unsubscribe_stops_events(self, event_bus):
         events = []
         token = event_bus.subscribe("unsub.test", lambda e: events.append(e))
@@ -206,7 +200,6 @@ class TestUnsubscribe:
 
 
 class TestEventStructure:
-
     def test_event_has_topic(self, event_bus):
         events = []
         event_bus.subscribe("struct.test", lambda e: events.append(e))
@@ -240,7 +233,6 @@ class TestEventStructure:
 
 
 class TestOrderingAndNesting:
-
     def test_multiple_events_in_order(self, event_bus):
         events = []
         event_bus.subscribe("order.*", lambda e: events.append(e))

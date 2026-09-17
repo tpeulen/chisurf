@@ -2,8 +2,8 @@
 
 from .core import (
     DriftResult,
-    corrected_stack,
     correct_photon_image,
+    corrected_stack,
     measure_drift,
     write_shifts_csv,
     write_stack_tiff,

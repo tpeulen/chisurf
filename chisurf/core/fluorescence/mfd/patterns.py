@@ -107,17 +107,21 @@ def _bff():
     """
     try:
         import IMP.bff as bff
-    except ImportError as error:                      # pragma: no cover
+    except ImportError as error:  # pragma: no cover
         raise ImportError(
             "chisurf.core.fluorescence.mfd.patterns needs IMP.bff: the lifetime "
             "spectrum algebra it used to duplicate now lives in that package's "
             "FRETSpectrumNode/PhotophysicsAnisotropySpectrumNode producer nodes"
         ) from error
-    for required in ("PhotophysicsLifetimeSpectrumNode", "FRETSpectrumNode", "PhotophysicsAnisotropySpectrumNode"):
-        if not hasattr(bff, required):                # pragma: no cover
+    for required in (
+        "PhotophysicsLifetimeSpectrumNode",
+        "FRETSpectrumNode",
+        "PhotophysicsAnisotropySpectrumNode",
+    ):
+        if not hasattr(bff, required):  # pragma: no cover
             raise ImportError(
-                "IMP.bff is present but has no %s; rebuild the extensions "
-                "(`pixi run build-extensions`)" % required
+                f"IMP.bff is present but has no {required}; rebuild the extensions "
+                "(`pixi run build-extensions`)"
             )
     return bff
 
@@ -198,8 +202,9 @@ def _donor_node(amplitudes, lifetimes):
     return node
 
 
-def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
-                   optics: Optics) -> tuple[np.ndarray, np.ndarray]:
+def _fret_spectrum(
+    donor_amplitudes, donor_lifetimes, weights, distances, optics: Optics
+) -> tuple[np.ndarray, np.ndarray]:
     """Drive ``IMP.bff.FRETSpectrumNode`` — the donor quenched over a distribution.
 
     A distance is a transfer rate, rates add, so the quenched spectrum is the
@@ -234,11 +239,8 @@ def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
     node = bff.FRETSpectrumNode("fret")
     node.build_ports()
     node.add_output_port("fret", bff.GraphPort([0.0], False, True))
-    node.get_input_port("donor_lifetime_spectrum").link = \
-        donor.get_output_port("donor")
-    node.get_input_port("distance_distribution").set_values_array(
-        _interleave(weights, distances)
-    )
+    node.get_input_port("donor_lifetime_spectrum").link = donor.get_output_port("donor")
+    node.get_input_port("distance_distribution").set_values_array(_interleave(weights, distances))
     node.get_input_port("x_donly").set_value(0.0)
     node.get_input_port("forster_radius").set_value(float(optics.r0))
     node.get_input_port("tau0").set_value(float(optics.tau_d0))
@@ -247,8 +249,9 @@ def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
     return _deinterleave(node.get_spectrum())
 
 
-def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
-                        polarization: str) -> tuple[np.ndarray, np.ndarray]:
+def _polarized_spectrum(
+    amplitudes, lifetimes, rho: float, optics: Optics, polarization: str
+) -> tuple[np.ndarray, np.ndarray]:
     """Drive ``IMP.bff.PhotophysicsAnisotropySpectrumNode`` for one detection channel.
 
     The measured decay is the *product* of the fluorescence decay and
@@ -307,9 +310,7 @@ def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
     # Refuses an unknown name rather than defaulting to magic angle, which would
     # silently be a model with no anisotropy in it.
     node.set_polarization_name(polarization)
-    node.get_input_port("lifetime_spectrum").set_values_array(
-        _interleave(amplitudes, lifetimes)
-    )
+    node.get_input_port("lifetime_spectrum").set_values_array(_interleave(amplitudes, lifetimes))
     node.get_input_port("r0").set_value(float(optics.r0_anisotropy))
     node.get_input_port("g").set_value(1.0)
     node.get_input_port("l1").set_value(float(optics.l1))
@@ -376,10 +377,7 @@ def noncentral_chi_distance_distribution(
     weights = (
         r
         / (d * s * np.sqrt(2.0 * np.pi))
-        * (
-            np.exp(-((r - d) ** 2) / (2.0 * s * s))
-            - np.exp(-((r + d) ** 2) / (2.0 * s * s))
-        )
+        * (np.exp(-((r - d) ** 2) / (2.0 * s * s)) - np.exp(-((r + d) ** 2) / (2.0 * s * s)))
     )
     weights = np.clip(weights, 0.0, None)
     total = np.sum(weights, axis=-1, keepdims=True)
@@ -530,15 +528,11 @@ def donor_lifetime_spectrum_of_state(
     amplitudes, lifetimes : numpy.ndarray
         Flattened over (distance, donor component); amplitudes sum to one.
     """
-    donor_x, donor_tau = donor_lifetime_spectrum(
-        optics.tau_d0 if donor is None else donor
-    )
+    donor_x, donor_tau = donor_lifetime_spectrum(optics.tau_d0 if donor is None else donor)
     weights, distances = noncentral_chi_distance_distribution(
         state.distance, optics.sigma, n_points=n_points
     )
-    amplitudes, lifetimes = _fret_spectrum(
-        donor_x, donor_tau, weights[0], distances[0], optics
-    )
+    amplitudes, lifetimes = _fret_spectrum(donor_x, donor_tau, weights[0], distances[0], optics)
     quenched = weights.shape[-1] * donor_x.size
     amplitudes, lifetimes = amplitudes[:quenched], lifetimes[:quenched]
     total = float(np.sum(amplitudes))
@@ -731,9 +725,7 @@ class ChannelResponse:
         for weight, t in zip(a * tau, tau):
             if weight == 0.0:
                 continue
-            out += weight * wrapped_exponential_pattern(
-                float(t), self.n_channels, self.dt
-            )
+            out += weight * wrapped_exponential_pattern(float(t), self.n_channels, self.dt)
         return np.clip(out, 0.0, None)
 
     def decay(self, amplitudes, lifetimes) -> np.ndarray:
@@ -775,11 +767,7 @@ class ChannelResponse:
         numpy.ndarray
             ``(n_channels,)``, summing to one where there is any signal at all.
         """
-        pattern = np.real(
-            np.fft.irfft(
-                self._spectrum * np.fft.rfft(decay), n=self.n_channels
-            )
-        )
+        pattern = np.real(np.fft.irfft(self._spectrum * np.fft.rfft(decay), n=self.n_channels))
         pattern = np.clip(pattern, 0.0, None)
         total = pattern.sum()
         return pattern / total if total > 0 else pattern

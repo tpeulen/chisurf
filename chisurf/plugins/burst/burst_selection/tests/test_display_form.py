@@ -27,7 +27,8 @@ def _display_form(tool):
     from chisurf.gui.autoform import AutoForm
 
     forms = [
-        f for f in tool.findChildren(AutoForm)
+        f
+        for f in tool.findChildren(AutoForm)
         if getattr(f.model, "__class__", None).__name__ == "BurstDisplayViewModel"
     ]
     assert len(forms) == 1, "exactly one Display form, built once"
@@ -92,7 +93,8 @@ def test_no_control_panel_is_left_floating_over_the_dock_area(tool):
     bar.
     """
     stray = [
-        w for w in tool.dock_area.children()
+        w
+        for w in tool.dock_area.children()
         if isinstance(w, QtWidgets.QWidget)
         and w.isVisible()
         and w.parentWidget() is tool.dock_area

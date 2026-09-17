@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Dict, List
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -41,7 +40,7 @@ def irf_width_skew_ns(vector, bin_width_ns: float) -> tuple[float, float]:
     w = y / y.sum()
     mean = float((w * x).sum())
     var = float((w * (x - mean) ** 2).sum())
-    std = var ** 0.5
+    std = var**0.5
     skew = float((w * (x - mean) ** 3).sum() / std**3) if std > 0 else 0.0
     return round(fwhm_bins * float(bin_width_ns or 0.05), 4), round(skew, 3)
 
@@ -73,17 +72,17 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
             "the Width/Skew starting values."
         )
         self._polarized = False
-        self._detectors: List[str] = []
+        self._detectors: list[str] = []
         self._bin_width_ns = 0.05
         # per (detector, role) state; role is "" unless polarized
-        self._irf: Dict[tuple, str] = {}
-        self._width: Dict[tuple, float] = {}
-        self._skew: Dict[tuple, float] = {}
-        self._shift: Dict[tuple, float] = {}
-        self._width_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
-        self._skew_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
-        self._shift_spins: Dict[tuple, QtWidgets.QDoubleSpinBox] = {}
-        self.checkboxes: Dict[str, QtWidgets.QCheckBox] = {}
+        self._irf: dict[tuple, str] = {}
+        self._width: dict[tuple, float] = {}
+        self._skew: dict[tuple, float] = {}
+        self._shift: dict[tuple, float] = {}
+        self._width_spins: dict[tuple, QtWidgets.QDoubleSpinBox] = {}
+        self._skew_spins: dict[tuple, QtWidgets.QDoubleSpinBox] = {}
+        self._shift_spins: dict[tuple, QtWidgets.QDoubleSpinBox] = {}
+        self.checkboxes: dict[str, QtWidgets.QCheckBox] = {}
 
         # Coalesce rapid Width/Skew edits into a single recompute.
         self._recompute_timer = QtCore.QTimer(self)
@@ -95,9 +94,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(1)
         self.table = QtWidgets.QTableWidget(0, 6, self)
-        self.table.setHorizontalHeaderLabels(
-            ["", "Detector", "Width", "Skew", "Shift", "IRF"]
-        )
+        self.table.setHorizontalHeaderLabels(["", "Detector", "Width", "Skew", "Shift", "IRF"])
         self.table.horizontalHeaderItem(2).setToolTip("Synthetic-IRF start FWHM (ns)")
         self.table.horizontalHeaderItem(3).setToolTip("Synthetic-IRF generalized-Gaussian skew")
         self.table.horizontalHeaderItem(4).setToolTip(
@@ -127,7 +124,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
             self._polarized = bool(polarized)
             self._rebuild()
 
-    def refresh(self, detector_names: List[str], tttr_data=None) -> None:
+    def refresh(self, detector_names: list[str], tttr_data=None) -> None:
         names = [str(n) for n in (detector_names or [])]
         if not names and tttr_data is not None:
             try:
@@ -234,7 +231,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
 
         self._sync_row(row, key)
 
-    def _edit_value(self, store: Dict[tuple, float], key: tuple, value) -> None:
+    def _edit_value(self, store: dict[tuple, float], key: tuple, value) -> None:
         """Store an edited Width/Skew value and schedule a (debounced) recompute."""
         store[key] = float(value)
         self._recompute_timer.start()
@@ -274,7 +271,8 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         if btn is not None:
             btn.setText(Glyphs.CLOSE if has_irf else "…")
             btn.setToolTip(
-                f"Unload measured IRF\n{self._irf.get(key, '')}" if has_irf
+                f"Unload measured IRF\n{self._irf.get(key, '')}"
+                if has_irf
                 else "Load a measured IRF file for this detector"
             )
 
@@ -310,7 +308,7 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self.selectionChanged.emit()
 
     # ── accessors for the compute path ───────────────────────────────
-    def get_selected(self) -> List[str]:
+    def get_selected(self) -> list[str]:
         return [name for name, cb in self.checkboxes.items() if cb.isChecked()]
 
     def irf_path(self, detector: str, role: str = "") -> str:
@@ -361,8 +359,12 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         def enc(d):
             return {f"{k[0]}|{k[1]}": v for k, v in d.items()}
 
-        return {"irf": enc(self._irf), "width": enc(self._width),
-                "skew": enc(self._skew), "shift": enc(self._shift)}
+        return {
+            "irf": enc(self._irf),
+            "width": enc(self._width),
+            "skew": enc(self._skew),
+            "shift": enc(self._shift),
+        }
 
     def import_state(self, state: dict) -> None:
         def dec(d):
@@ -380,19 +382,23 @@ class DetectorIrfTableWidget(QtWidgets.QGroupBox):
         self._shift = {k: float(v) for k, v in dec(state.get("shift")).items()}
         self._rebuild()
 
+
 class DetectorSelectionWidget(QtWidgets.QGroupBox):
     """Widget for selecting detectors/channels."""
+
     selectionChanged = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__("Detectors", parent)
-        self.setToolTip("Select the detector definitions used to compute decay patterns and filters.")
+        self.setToolTip(
+            "Select the detector definitions used to compute decay patterns and filters."
+        )
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(1, 1, 1, 1)
         self.layout.setSpacing(1)
-        self.checkboxes: Dict[str, QtWidgets.QCheckBox] = {}
+        self.checkboxes: dict[str, QtWidgets.QCheckBox] = {}
 
-    def refresh(self, detector_names: List[str], tttr_data=None):
+    def refresh(self, detector_names: list[str], tttr_data=None):
         """Refresh checkboxes based on detector names or TTTR data."""
         # Clear existing
         for cb in self.checkboxes.values():
@@ -422,11 +428,13 @@ class DetectorSelectionWidget(QtWidgets.QGroupBox):
             except Exception:
                 pass
 
-    def get_selected(self) -> List[str]:
+    def get_selected(self) -> list[str]:
         return [name for name, cb in self.checkboxes.items() if cb.isChecked()]
+
 
 class SpeciesListWidget(QtWidgets.QListWidget):
     """List widget for species decays with custom behavior."""
+
     filesChanged = QtCore.Signal()  # Emitted when files are added/removed (invalidate cache)
     checkStateChanged = QtCore.Signal()  # Emitted when checkboxes toggle (keep cache)
 
@@ -464,11 +472,11 @@ class SpeciesListWidget(QtWidgets.QListWidget):
             super().dropEvent(event)
             self.filesChanged.emit()
 
-    def add_pattern(self, paths: List[pathlib.Path]) -> None:
+    def add_pattern(self, paths: list[pathlib.Path]) -> None:
         """Add a new decay pattern from a set of files."""
         if not paths:
             return
-            
+
         valid_paths = [p for p in paths if p.is_file()]
         if not valid_paths:
             return
@@ -476,8 +484,8 @@ class SpeciesListWidget(QtWidgets.QListWidget):
         # Create a single entry representing this pattern (one or more files)
         name = valid_paths[0].name
         if len(valid_paths) > 1:
-            name += f" (+{len(valid_paths)-1} files)"
-            
+            name += f" (+{len(valid_paths) - 1} files)"
+
         item = QtWidgets.QListWidgetItem(name)
         item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
         item.setCheckState(QtCore.Qt.Checked)
@@ -514,7 +522,8 @@ class SpeciesListWidget(QtWidgets.QListWidget):
         model = str(source.get("model", "lifetime"))
         if model == "fret_species":
             state = {"d_only": "donor-only", "da": "FRET pair", "a_only": "acceptor-only"}.get(
-                str(source.get("state", "da")), str(source.get("state", "da")))
+                str(source.get("state", "da")), str(source.get("state", "da"))
+            )
             if source.get("fret_mode") == "distance":
                 fret = f"R={float(source.get('distance', 0)):g}Å"
             else:
@@ -525,15 +534,9 @@ class SpeciesListWidget(QtWidgets.QListWidget):
         elif model == "lifetime_spectrum":
             summary = f"{len(source.get('lifetimes', []))} lifetime terms"
         elif model == "gaussian_lifetime":
-            summary = (
-                f"τ={float(source['mean_lifetime']):g}±"
-                f"{float(source['sigma_lifetime']):g} ns"
-            )
+            summary = f"τ={float(source['mean_lifetime']):g}±{float(source['sigma_lifetime']):g} ns"
         elif model == "gaussian_distance":
-            summary = (
-                f"R={float(source['mean_distance']):g}±"
-                f"{float(source['sigma_distance']):g} Å"
-            )
+            summary = f"R={float(source['mean_distance']):g}±{float(source['sigma_distance']):g} Å"
         else:
             summary = model.replace("_", " ")
         if source.get("patterns_by_detector"):

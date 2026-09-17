@@ -205,7 +205,7 @@ def _window_from_curve(tau: np.ndarray, p_same: np.ndarray, threshold: float):
         return 0.0, True
 
     last = int(above[-1])
-    beyond = np.flatnonzero(determined[last + 1:]) + last + 1
+    beyond = np.flatnonzero(determined[last + 1 :]) + last + 1
     if beyond.size == 0:
         return float(tau[last]), False
 
@@ -328,6 +328,7 @@ def group_slices(labels: np.ndarray) -> list[np.ndarray]:
 
 # ── burst-table merge (no photon access) ────────────────────────────────────
 
+
 def _burst_edges(frame, index) -> tuple:
     """Start and end time (ms) of one burst row, from its mean time and duration.
 
@@ -369,6 +370,8 @@ def fuse_burst_frame(frame, labels: np.ndarray):
     """
     from chisurf.core.datastore import (
         column_names as _column_names,
+    )
+    from chisurf.core.datastore import (
         numeric_column,
         store_from_rows,
     )
@@ -389,7 +392,7 @@ def fuse_burst_frame(frame, labels: np.ndarray):
     rows: list[dict[str, Any]] = []
 
     detectors = [
-        c[len("Number of Photons ("):-1]
+        c[len("Number of Photons (") : -1]
         for c in columns
         if c.startswith("Number of Photons (") and c.endswith(")")
     ]
@@ -462,24 +465,23 @@ def fuse_burst_frame(frame, labels: np.ndarray):
                 weights = counts
                 valid = np.isfinite(micro) & (weights > 0)
                 out[micro_column] = (
-                    float(np.average(micro[valid], weights=weights[valid]))
-                    if valid.any()
-                    else 0.0
+                    float(np.average(micro[valid], weights=weights[valid])) if valid.any() else 0.0
                 )
 
         for column in window_columns:
             rates = values_of(column)[rows_of_group]
             weights = values_of("Duration (ms)")[rows_of_group]
             valid = np.isfinite(rates) & (rates >= 0) & (weights > 0)
-            out[column] = float(np.average(rates[valid], weights=weights[valid])) if valid.any() else -1.0
+            out[column] = (
+                float(np.average(rates[valid], weights=weights[valid])) if valid.any() else -1.0
+            )
 
         for column in columns:
             if column not in out:
                 values = values_of(column)[rows_of_group]
                 finite = values[np.isfinite(values)]
                 out[column] = (
-                    float(finite.mean()) if finite.size
-                    else np.asarray(frame[column])[first]
+                    float(finite.mean()) if finite.size else np.asarray(frame[column])[first]
                 )
 
         out["Fusion Size"] = int(len(rows_of_group))
@@ -509,6 +511,8 @@ def fusion_statistics(before, after, labels: np.ndarray) -> dict[str, Any]:
     """
     from chisurf.core.datastore import (
         column_names as _column_names,
+    )
+    from chisurf.core.datastore import (
         numeric_column,
         row_count,
     )

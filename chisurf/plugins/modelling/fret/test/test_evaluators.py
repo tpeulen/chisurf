@@ -2,28 +2,20 @@
 
 import os
 import tempfile
+
 import numpy as np
-import pytest
 
 from ..core.av import AccessibleVolume
+from ..core.io import read_evaluators_json, write_evaluators_json
 from ..evaluators import (
-    DistanceEvaluator,
-    DistanceDistributionEvaluator,
-    FretEfficiencyEvaluator,
     Chi2Evaluator,
-    ReducedChi2Evaluator,
-    Chi2ContributionEvaluator,
-    WeightedResidualEvaluator,
-    EulerAngleEvaluator,
-    TranslationEvaluator,
-    MinDistanceEvaluator,
-    AVSizeEvaluator,
-    AVSphereOverlapEvaluator,
+    DistanceEvaluator,
     EvaluationStorage,
     EvaluatorResult,
+    FretEfficiencyEvaluator,
+    ReducedChi2Evaluator,
+    WeightedResidualEvaluator,
 )
-from ..core.io import write_evaluators_json, read_evaluators_json
-from ..core.engine import RigidBody
 
 
 def _make_point_av(coord):
@@ -96,7 +88,7 @@ def test_reduced_chi2_positive():
             "error_neg": 2.0,
             "error_pos": 2.0,
             "distance_type": "Rmp",
-        }
+        },
     ]
     # chi2 contributions: (2/2)^2 = 1.0, and (4/2)^2 = 4.0. Total chi2 = 5.0
     # n_valid = 2. reduced chi2 = 5.0 / (2 - 1) = 5.0
@@ -123,11 +115,15 @@ def test_weighted_residual_sign():
     cache = {"A": av1, "B": av2}
 
     # Model distance is 10.0. Exp distance is 8.0. Residual = (10 - 8)/2 = +1.0
-    ev_pos = WeightedResidualEvaluator("res_pos", "A", "B", distance=8.0, error_neg=2.0, error_pos=2.0, distance_type="Rmp")
+    ev_pos = WeightedResidualEvaluator(
+        "res_pos", "A", "B", distance=8.0, error_neg=2.0, error_pos=2.0, distance_type="Rmp"
+    )
     assert abs(ev_pos.evaluate(cache).value - 1.0) < 1e-7
 
     # Model distance is 10.0. Exp distance is 12.0. Residual = (10 - 12)/2 = -1.0
-    ev_neg = WeightedResidualEvaluator("res_neg", "A", "B", distance=12.0, error_neg=2.0, error_pos=2.0, distance_type="Rmp")
+    ev_neg = WeightedResidualEvaluator(
+        "res_neg", "A", "B", distance=12.0, error_neg=2.0, error_pos=2.0, distance_type="Rmp"
+    )
     assert abs(ev_neg.evaluate(cache).value - (-1.0)) < 1e-7
 
 
@@ -192,6 +188,8 @@ def test_evaluation_storage_columns_match_evaluators():
     from chisurf.core.datastore import column_names
 
     storage = EvaluationStorage()
-    storage.add_frame("f1.pdb", {"m1": EvaluatorResult("m1", 1.0), "m2": EvaluatorResult("m2", 2.0)})
+    storage.add_frame(
+        "f1.pdb", {"m1": EvaluatorResult("m1", 1.0), "m2": EvaluatorResult("m2", 2.0)}
+    )
     table = storage.to_store()
     assert column_names(table) == ["filename", "m1", "m2"]

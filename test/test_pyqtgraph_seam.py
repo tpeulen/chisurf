@@ -22,8 +22,8 @@ is an empty allow-list (bar the ChiMOL OpenGL module owned by PRD-57).
 
 from __future__ import annotations
 
-import pathlib
 import ast
+import pathlib
 import re
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent

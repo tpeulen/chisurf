@@ -1,4 +1,5 @@
 """Tests for the safe, policy-driven expression engine."""
+
 import numpy as np
 import pytest
 
@@ -16,6 +17,7 @@ from chisurf.core.support.expressions import (
 )
 
 # -- parsing / whitelist -------------------------------------------------------
+
 
 def test_arithmetic_compiles_and_evaluates():
     r = evaluate_expression("2 * a + b", {"a": 3.0, "b": 4.0})
@@ -108,6 +110,7 @@ def test_syntax_error_message():
 
 # -- validation ----------------------------------------------------------------
 
+
 def test_validate_ok_bare():
     res = validate_expression("a + b", ["a", "b"])
     assert res.ok and res.message is None
@@ -131,6 +134,7 @@ def test_validation_result_is_falsey_on_error():
 
 
 # -- NDX policy (ndxplorer parity) ---------------------------------------------
+
 
 def test_ndx_policy_quoted_names_only():
     res = validate_expression("'Sg' - 'Bg'", ["Sg"], policy=NDX_POLICY, extra_names=["Bg"])
@@ -168,9 +172,12 @@ def test_ndx_policy_rejects_comparisons():
 
 # -- name resolution helper ----------------------------------------------------
 
+
 def test_resolve_name_pipe_and_case():
-    assert resolve_name("green count rate", ["Green Count Rate | kHz"], NDX_POLICY) == \
-        "Green Count Rate | kHz"
+    assert (
+        resolve_name("green count rate", ["Green Count Rate | kHz"], NDX_POLICY)
+        == "Green Count Rate | kHz"
+    )
 
 
 def test_resolve_name_exact_default():
@@ -180,6 +187,7 @@ def test_resolve_name_exact_default():
 
 # -- introspection -------------------------------------------------------------
 
+
 def test_function_signatures_lists_defaults():
     sigs = function_signatures(DEFAULT_POLICY)
     assert "sqrt" in sigs and "where" in sigs
@@ -187,10 +195,13 @@ def test_function_signatures_lists_defaults():
 
 # -- parse-model policy --------------------------------------------------------
 
+
 def test_allow_unknown_accepts_free_parameters():
     # A parse-model formula: x is reserved, a1/tau1 are free parameters.
     res = validate_expression(
-        "a1 * exp(-x / tau1)", known_names=["x"], policy=PARSE_MODEL_POLICY,
+        "a1 * exp(-x / tau1)",
+        known_names=["x"],
+        policy=PARSE_MODEL_POLICY,
         allow_unknown=True,
     )
     assert res.ok
@@ -198,16 +209,12 @@ def test_allow_unknown_accepts_free_parameters():
 
 
 def test_allow_unknown_still_rejects_unsafe():
-    res = validate_expression(
-        "a.__class__", policy=PARSE_MODEL_POLICY, allow_unknown=True
-    )
+    res = validate_expression("a.__class__", policy=PARSE_MODEL_POLICY, allow_unknown=True)
     assert not res.ok
 
 
 def test_discover_parameters_real_fcs_formula():
-    params = discover_parameters(
-        "b+1/abs(N)*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)", reserved=["x"]
-    )
+    params = discover_parameters("b+1/abs(N)*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)", reserved=["x"])
     assert params == ["b", "N", "td", "s"]
 
 

@@ -96,9 +96,11 @@ def _fitting_parameter_section_factory(model, target: str, **opts):
         spec = opts.pop("prior")
         try:
             from chisurf.core.fitting.priors import as_prior
+
             fp.prior = as_prior(spec) if spec is not None else None
         except Exception:
             import chisurf.logging
+
             chisurf.logging.warning("fitting_parameter: invalid prior spec for %r ignored", target)
     if "label" in opts:
         opts.setdefault("label_text", opts.pop("label"))

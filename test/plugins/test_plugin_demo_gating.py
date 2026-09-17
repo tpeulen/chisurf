@@ -106,9 +106,10 @@ def test_opting_in_brings_a_demo_back(monkeypatch: pytest.MonkeyPatch, tmp_path)
     package = tmp_path / "gating_probe_demo"
     package.mkdir()
     (package / "__init__.py").write_text('name = "Gating probe"\n', encoding="utf-8")
-    (package / "manifest.json").write_text(json.dumps(
-        {"id": "gating_probe_demo", "version": "1", "demo": True, "menu_hidden": False}),
-        encoding="utf-8")
+    (package / "manifest.json").write_text(
+        json.dumps({"id": "gating_probe_demo", "version": "1", "demo": True, "menu_hidden": False}),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(plugins, "__path__", [*plugins.__path__, str(tmp_path)])
 
     key = str(package.resolve())

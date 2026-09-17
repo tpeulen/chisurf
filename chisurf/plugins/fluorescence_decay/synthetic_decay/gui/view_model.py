@@ -127,7 +127,9 @@ class SyntheticDecayViewModel:
         from qtpy import QtWidgets
 
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            None, "Load lifetime spectrum", "",
+            None,
+            "Load lifetime spectrum",
+            "",
             "Data files (*.csv *.txt *.dat);;All files (*)",
         )
         if not path:
@@ -158,8 +160,7 @@ class SyntheticDecayViewModel:
             self._refresh_fields()
             return
         self.spectrum_rows = [
-            {"amp": float(values[i]), "tau": float(values[i + 1])}
-            for i in range(0, len(values), 2)
+            {"amp": float(values[i]), "tau": float(values[i + 1])} for i in range(0, len(values), 2)
         ]
         self.selected_row = -1
         self.status = f"Loaded {len(self.spectrum_rows)} components from {pathlib.Path(path).name}."
@@ -214,7 +215,9 @@ class SyntheticDecayViewModel:
                     bin_width=float(self.bin_width),
                     rotation_rows=self.rotation_rows,
                 )["r"]
-                self.status = f"Generated {len(self._y)} bins ({len(self.spectrum_rows)} components)."
+                self.status = (
+                    f"Generated {len(self._y)} bins ({len(self.spectrum_rows)} components)."
+                )
         except Exception as exc:
             self._x, self._y = [], []
             self._vv, self._vh, self._r = [], [], []
@@ -261,7 +264,9 @@ class SyntheticDecayViewModel:
         from qtpy import QtWidgets
 
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            None, "Save decay", "synthetic_decay.csv",
+            None,
+            "Save decay",
+            "synthetic_decay.csv",
             "CSV (*.csv);;Text (*.txt);;NumPy (*.npy);;JSON (*.json)",
         )
         if not path:
@@ -277,9 +282,7 @@ class SyntheticDecayViewModel:
             with open(path, "w") as fh:
                 json.dump({"x": self._x, "y": self._y}, fh, indent=2)
         else:
-            np.savetxt(
-                path, np.column_stack([self._x, self._y]), header="time_ns\tcounts"
-            )
+            np.savetxt(path, np.column_stack([self._x, self._y]), header="time_ns\tcounts")
         self.status = f"Saved {len(self._y)} bins to {pathlib.Path(path).name}."
         self._refresh_fields()
 
@@ -298,7 +301,9 @@ class SyntheticDecayViewModel:
         from qtpy import QtWidgets
 
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            None, "Save VV/VH decays", "synthetic_aniso.dat",
+            None,
+            "Save VV/VH decays",
+            "synthetic_aniso.dat",
             "VV/VH data (*.dat *.txt);;All files (*)",
         )
         if not path:
@@ -429,7 +434,6 @@ class SyntheticDecayViewModel:
             return
         try:
             import chisurf as cs
-
             from chisurf.core.models.description import for_family
             from chisurf.macros import core_data
 

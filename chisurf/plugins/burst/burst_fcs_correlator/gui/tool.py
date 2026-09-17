@@ -11,20 +11,20 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
 
 from ..core.algorithms import BurstFcsSettings, PairConfig, parse_channel_list
 from ..file_list import make_burst_file_list
 from .client import BurstFcsClient
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -43,16 +43,18 @@ class _BurstFcsModel:
         self.maxent_td_max = 0.0
         self.tmin_fit = 0.0
         self.tmax_fit = 0.0
-        self._selected: Optional[Dict[str, Any]] = None
+        self._selected: dict[str, Any] | None = None
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_GUI_DIR / "burst_fcs.view.json")
 
     # -- settings <-> core ---------------------------------------------
     def to_settings(self) -> BurstFcsSettings:
         def _opt(v):
             return float(v) if v and float(v) > 0.0 else None
+
         return BurstFcsSettings(
             n_bins=int(self.n_bins),
             n_casc=int(self.n_casc),
@@ -67,19 +69,25 @@ class _BurstFcsModel:
         )
 
     # -- declarative plot sources --------------------------------------
-    def corr_plot_series(self) -> List[Dict[str, Any]]:
+    def corr_plot_series(self) -> list[dict[str, Any]]:
         c = self._selected
         if not c:
             return []
-        series = [{"x": c.get("tau_raw", c.get("tau", [])), "y": c.get("g_raw", c.get("g", [])),
-                   "name": "data", "color": "w"}]
+        series = [
+            {
+                "x": c.get("tau_raw", c.get("tau", [])),
+                "y": c.get("g_raw", c.get("g", [])),
+                "name": "data",
+                "color": "w",
+            }
+        ]
         g_fit = c.get("g_fit") or []
         tau = c.get("tau") or []
         if len(g_fit) and len(tau) == len(g_fit):
             series.append({"x": tau, "y": g_fit, "name": "fit", "color": "r", "width": 2})
         return series
 
-    def dist_plot_series(self) -> List[Dict[str, Any]]:
+    def dist_plot_series(self) -> list[dict[str, Any]]:
         c = self._selected
         if not c:
             return []
@@ -98,6 +106,7 @@ class _PlotsProxy:
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_GUI_DIR / "burst_fcs_plots.view.json")
 
     def corr_plot_series(self):
@@ -130,8 +139,8 @@ class BurstFcsTool(ChisurfDockTool):
 
         self._client = BurstFcsClient()
         self._model = _BurstFcsModel()
-        self._pair_presets: List[Dict[str, Any]] = []
-        self._curves: List[Dict[str, Any]] = []
+        self._pair_presets: list[dict[str, Any]] = []
+        self._curves: list[dict[str, Any]] = []
         # Hidden correlator reused only to resolve FCS presets → channel lists.
         self._corr = WizardTTTRCorrelator()
 
@@ -176,11 +185,13 @@ class BurstFcsTool(ChisurfDockTool):
         lcol.setSpacing(6)
 
         from chisurf.gui.widgets.setup_selector import SetupSelector
+
         self.setup_selector = SetupSelector(show_summary=False)
         self.setup_selector.setupChanged.connect(self._on_setup_changed)
         lcol.addWidget(self.setup_selector)
 
         from chisurf.gui.autoform import AutoForm
+
         self._settings_form = AutoForm(self._model, parent=self)
         lcol.addWidget(self._settings_form)
 
@@ -200,7 +211,9 @@ class BurstFcsTool(ChisurfDockTool):
         rcol.setSpacing(6)
 
         self.line_filter = QtWidgets.QLineEdit()
-        self.line_filter.setPlaceholderText(f"{Glyphs.SEARCH} Filter by file or pair name (e.g. 'GG')")
+        self.line_filter.setPlaceholderText(
+            f"{Glyphs.SEARCH} Filter by file or pair name (e.g. 'GG')"
+        )
         self.line_filter.textChanged.connect(self._refresh_browser_list)
         rcol.addWidget(self.line_filter)
 
@@ -245,7 +258,9 @@ class BurstFcsTool(ChisurfDockTool):
             cha = str(pair.get("channel_a", ""))
             chb = str(pair.get("channel_b", ""))
             name = str(pair.get("name", "")) or (
-                (f"{cha}×{chb}" if cha != chb else f"{cha}_ACF") if cha and chb else f"Pair {idx + 1}"
+                (f"{cha}×{chb}" if cha != chb else f"{cha}_ACF")
+                if cha and chb
+                else f"Pair {idx + 1}"
             )
             item = QtWidgets.QListWidgetItem(name, self.list_pairs)
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
@@ -253,9 +268,9 @@ class BurstFcsTool(ChisurfDockTool):
             item.setData(QtCore.Qt.UserRole, int(idx))
             self._pair_presets.append(pair)
 
-    def _selected_pairs(self) -> List[PairConfig]:
+    def _selected_pairs(self) -> list[PairConfig]:
         """Resolve the checked presets to PairConfig (channel int-lists)."""
-        pairs: List[PairConfig] = []
+        pairs: list[PairConfig] = []
         cb_preset = getattr(self._corr, "comboBox_fcs_preset", None)
         for row in range(self.list_pairs.count()):
             item = self.list_pairs.item(row)
@@ -269,10 +284,16 @@ class BurstFcsTool(ChisurfDockTool):
                     cb_preset.setCurrentIndex(p_idx + 1)
             except Exception:
                 pass
-            ch_a = parse_channel_list(getattr(self._corr, "lineEdit", None).text()
-                                      if getattr(self._corr, "lineEdit", None) else "")
-            ch_b = parse_channel_list(getattr(self._corr, "lineEdit_2", None).text()
-                                      if getattr(self._corr, "lineEdit_2", None) else "")
+            ch_a = parse_channel_list(
+                getattr(self._corr, "lineEdit", None).text()
+                if getattr(self._corr, "lineEdit", None)
+                else ""
+            )
+            ch_b = parse_channel_list(
+                getattr(self._corr, "lineEdit_2", None).text()
+                if getattr(self._corr, "lineEdit_2", None)
+                else ""
+            )
             if not ch_a or not ch_b:
                 continue
             try:
@@ -280,22 +301,27 @@ class BurstFcsTool(ChisurfDockTool):
                 micro_b = self._corr.microtime_range_b
             except Exception:
                 micro_a, micro_b = [], []
-            pairs.append(PairConfig(
-                pair_name=item.text(), chs_a=ch_a, chs_b=ch_b,
-                micro_a=list(micro_a or []), micro_b=list(micro_b or []),
-            ))
+            pairs.append(
+                PairConfig(
+                    pair_name=item.text(),
+                    chs_a=ch_a,
+                    chs_b=ch_b,
+                    micro_a=list(micro_a or []),
+                    micro_b=list(micro_b or []),
+                )
+            )
         return pairs
 
     # ------------------------------------------------------------------
     # Run
     # ------------------------------------------------------------------
-    def _resolve_files(self) -> List[Dict[str, Any]]:
+    def _resolve_files(self) -> list[dict[str, Any]]:
         """Return [{tttr_path, ranges}] from the checked file-list entries."""
         try:
             entries = list(self.file_list.checked_paths())
         except Exception:
             entries = []
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for entry in entries:
             p = pathlib.Path(entry)
             if p.is_dir():
@@ -329,18 +355,28 @@ class BurstFcsTool(ChisurfDockTool):
     def _on_run(self) -> None:
         pairs = self._selected_pairs()
         if not pairs:
-            dialogs.warning(self, "Burst-wise FCS",
-                                          "Select a detector setup and at least one FCS pair.")
+            dialogs.warning(
+                self, "Burst-wise FCS", "Select a detector setup and at least one FCS pair."
+            )
             return
         files = self._resolve_files()
         if not files:
-            dialogs.information(self, "Burst-wise FCS",
-                                             "No burst folders or BUR/BST files selected.")
+            dialogs.information(
+                self, "Burst-wise FCS", "No burst folders or BUR/BST files selected."
+            )
             return
 
         settings = self.to_settings_dict()
-        pair_dicts = [{"pair_name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b,
-                       "micro_a": p.micro_a, "micro_b": p.micro_b} for p in pairs]
+        pair_dicts = [
+            {
+                "pair_name": p.pair_name,
+                "chs_a": p.chs_a,
+                "chs_b": p.chs_b,
+                "micro_a": p.micro_a,
+                "micro_b": p.micro_b,
+            }
+            for p in pairs
+        ]
 
         progress = ChiSurfProgress(self, "Computing burst-wise FCS…", len(files))
         progress.setWindowModality(QtCore.Qt.WindowModal)
@@ -355,7 +391,10 @@ class BurstFcsTool(ChisurfDockTool):
             QtWidgets.QApplication.processEvents()
             try:
                 r = self._client.correlate_file(
-                    f["tttr_path"], f["ranges"], pair_dicts, settings,
+                    f["tttr_path"],
+                    f["ranges"],
+                    pair_dicts,
+                    settings,
                 )
                 self._curves.extend(r.get("result", {}).get("curves", []))
             except Exception:
@@ -364,10 +403,9 @@ class BurstFcsTool(ChisurfDockTool):
 
         self._refresh_browser_list()
         if not self._curves:
-            dialogs.information(self, "Burst-wise FCS",
-                                             "No correlation curves were produced.")
+            dialogs.information(self, "Burst-wise FCS", "No correlation curves were produced.")
 
-    def to_settings_dict(self) -> Dict[str, Any]:
+    def to_settings_dict(self) -> dict[str, Any]:
         return self._model.to_settings().to_dict()
 
     # ------------------------------------------------------------------
@@ -376,7 +414,7 @@ class BurstFcsTool(ChisurfDockTool):
     def _refresh_browser_list(self) -> None:
         flt = self.line_filter.text().strip().lower()
         self.list_browser.clear()
-        self._browser_index: List[int] = []
+        self._browser_index: list[int] = []
         for idx, c in enumerate(self._curves):
             label = f"{c.get('file', '')} · b{c.get('burst_index', 0)} · {c.get('pair_name', '')}"
             if flt and flt not in label.lower():
@@ -399,7 +437,8 @@ class BurstFcsTool(ChisurfDockTool):
     # ------------------------------------------------------------------
     def _on_save_settings(self) -> None:
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save burst-FCS settings", "", "JSON (*.json)")
+            self, "Save burst-FCS settings", "", "JSON (*.json)"
+        )
         if not path:
             return
         try:
@@ -409,7 +448,8 @@ class BurstFcsTool(ChisurfDockTool):
 
     def _on_load_settings(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load burst-FCS settings", "", "JSON (*.json)")
+            self, "Load burst-FCS settings", "", "JSON (*.json)"
+        )
         if not path:
             return
         try:
@@ -417,8 +457,17 @@ class BurstFcsTool(ChisurfDockTool):
         except Exception as e:
             dialogs.error(self, "Load settings", str(e))
             return
-        for k in ("n_bins", "n_casc", "make_fine", "padding_ms", "fit_mode",
-                  "maxent_td_min", "maxent_td_max", "tmin_fit", "tmax_fit"):
+        for k in (
+            "n_bins",
+            "n_casc",
+            "make_fine",
+            "padding_ms",
+            "fit_mode",
+            "maxent_td_min",
+            "maxent_td_max",
+            "tmin_fit",
+            "tmax_fit",
+        ):
             if k in cfg:
                 setattr(self._model, k, cfg[k])
         if "maxent_reg" in cfg and float(cfg["maxent_reg"]) > 0:
@@ -429,8 +478,10 @@ class BurstFcsTool(ChisurfDockTool):
             pass
 
     def _on_show_pairs_json(self) -> None:
-        pairs = [{"pair_name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b}
-                 for p in self._selected_pairs()]
+        pairs = [
+            {"pair_name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b}
+            for p in self._selected_pairs()
+        ]
         dlg = QtWidgets.QDialog(self)
         dlg.setWindowTitle(f"{Glyphs.SCIENCE} FCS pairs JSON")
         v = QtWidgets.QVBoxLayout(dlg)

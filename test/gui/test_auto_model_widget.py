@@ -5,6 +5,7 @@ renders into a real editor by composition, that picking a topology rebuilds
 the parameter rows, and that custom/registered sections appear. Qt runs in
 offscreen mode so the tests stay headless.
 """
+
 from __future__ import annotations
 
 import os
@@ -36,14 +37,18 @@ def lifetime_model():
     x = np.linspace(0, 25, 256)
     data = DataCurve(x=x, y=np.ones_like(x))
     fit = fit_mod.Fit(model_class=LifetimeModel, data=data)
-    assert fit.model.problem is not None, fit.model.missing   # the IRF is modelled until one is loaded
+    assert fit.model.problem is not None, (
+        fit.model.missing
+    )  # the IRF is modelled until one is loaded
     return fit.model
 
 
 def _rows(widget):
     from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+
     return len(widget.parameter_widgets) + sum(
-        t.table_model.rowCount() for t in widget.findChildren(ParameterGroupTableWidget))
+        t.table_model.rowCount() for t in widget.findChildren(ParameterGroupTableWidget)
+    )
 
 
 def test_auto_model_widget_renders_sections(qapp, lifetime_model):
@@ -56,6 +61,7 @@ def test_auto_model_widget_renders_sections(qapp, lifetime_model):
     assert w._layout.count() == len(spec.sections) + 1
     # parameter rows were created for the resolvable groups
     assert _rows(w) > 0
+
 
 def test_picking_a_topology_rebuilds_the_rows(qapp, lifetime_model):
     """A component count is a structure: choosing another shows its rows."""
@@ -70,11 +76,13 @@ def test_picking_a_topology_rebuilds_the_rows(qapp, lifetime_model):
 
 def test_custom_section_registered(qapp):
     from chisurf.gui.autoform.sections.registry import get_section_factory
+
     assert get_section_factory("lifetime_amplitude_options") is not None
 
 
 def test_plot_keys_resolve(qapp):
     from chisurf.gui.autoform.sections.registry import get_plot_class
+
     for key in ("line", "residual", "fit_info", "distribution"):
         assert get_plot_class(key) is not None, f"plot key {key} unresolved"
 
@@ -109,7 +117,8 @@ def test_model_plot_specs_resolve_from_view_spec(qapp, lifetime_model):
 def test_registered_auto_lifetime_model_wires_live(qapp):
     """The config-registered pure LifetimeModel resolves to an editor + plots
     produced by the data-driven path (PRD-38). The "Lifetime" menu entry now
-    points at the pure compute model, not a hand-written widget."""
+    points at the pure compute model, not a hand-written widget.
+    """
     import importlib
 
     import numpy as np
@@ -150,6 +159,7 @@ def test_code_view_resolves_model_view_json(qapp, lifetime_model):
 
     class Bare:
         pass
+
     assert resolve_model_view_spec_path(Bare()) is None
 
 
@@ -265,22 +275,30 @@ def registered_lifetime_model(lifetime_model):
 
 def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_model, monkeypatch):
     """The IRF input renders as a CurveInputWidget and a selection dispatches the
-    view's dataset action with its slot and the index/name payload keys."""
+    view's dataset action with its slot and the index/name payload keys.
+    """
     import chisurf as cs
     from chisurf.gui.autoform.sections.builtin import CurveInputWidget
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(registered_lifetime_model)
-    irf = next(c for c in w.findChildren(CurveInputWidget)
-               if (c._section.action_fixed or {}).get("slot") == "response")
+    irf = next(
+        c
+        for c in w.findChildren(CurveInputWidget)
+        if (c._section.action_fixed or {}).get("slot") == "response"
+    )
 
     dispatched = []
-    monkeypatch.setattr(cs.core.actions, "dispatch",
-                        lambda name, payload=None: dispatched.append((name, dict(payload or {}))))
+    monkeypatch.setattr(
+        cs.core.actions,
+        "dispatch",
+        lambda name, payload=None: dispatched.append((name, dict(payload or {}))),
+    )
 
     class _Sel:
         selected_curve_index = 3
         curve_name = "irf_curve.txt"
+
     irf._selector = _Sel()
     irf._on_change()
 
@@ -308,7 +326,8 @@ def test_choice_and_toggle_controls_mutate_the_model(qapp, lifetime_model):
 def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
     """Reproduces the live add_fit crash: core_fit did
     ``modelLayout.addWidget(fit.model)`` assuming the model is a widget. A pure
-    model must be placed via its editor widget instead, cached for show/hide."""
+    model must be placed via its editor widget instead, cached for show/hide.
+    """
     from qtpy import QtWidgets
 
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
@@ -333,9 +352,11 @@ def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
     hide_model_editor(m)
     assert not editor.isVisible()
     show_model_editor(m)
+
     # show/hide on a model with no editor must be a quiet no-op
     class Bare:
         pass
+
     show_model_editor(Bare())
     hide_model_editor(Bare())
     assert model_editor_widget(Bare()) is None
@@ -380,7 +401,8 @@ def test_a_model_with_no_declared_plots_gets_none(qapp):
 
 def test_autoform_renders_a_parameter_group_without_json(qapp):
     """PRD-40 Task 4: AutoForm.from_parameter_group renders a bare param group
-    (no view.json, no Model) into real parameter widgets."""
+    (no view.json, no Model) into real parameter widgets.
+    """
     from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.gui.autoform import AutoForm
 
@@ -399,7 +421,8 @@ def test_autoform_renders_a_parameter_group_without_json(qapp):
 
 def test_value_section_binds_scalar_attributes(qapp):
     """PRD-40 Task 5 primitive: ValueSection int/str fields read and write the
-    bound object's attributes (the generic typed-field renderer)."""
+    bound object's attributes (the generic typed-field renderer).
+    """
     from types import SimpleNamespace
 
     from chisurf.core import dataspec as ds
@@ -490,6 +513,7 @@ def test_field_tooltip_falls_back_to_parameter_registry(qtbot):
 
 # ---- LifetimeMixtureModel (AutoForm-based lifetime mixer) ---------------
 
+
 @pytest.fixture
 def mixture_model():
     """Build a LifetimeMixtureModel for AutoForm tests."""
@@ -514,6 +538,7 @@ def test_mixture_new_model_is_pure(qapp, mixture_model):
     from qtpy import QtWidgets
 
     from chisurf.core.models.description import tcspc_mixture as LifetimeMixtureModel
+
     assert not isinstance(mixture_model, QtWidgets.QWidget)
     # class attribute is the menu/registry label
     assert LifetimeMixtureModel.name == "Lifetime mixture"
@@ -522,6 +547,7 @@ def test_mixture_new_model_is_pure(qapp, mixture_model):
 def test_mixture_new_model_view_spec_has_fit_mixer(qapp, mixture_model):
     """The mixture's derived editor declares a fit_mixer section."""
     from chisurf.core.models import view_spec as vs
+
     spec = mixture_model.view_spec()
     customs = [s for s in spec.flat_sections() if isinstance(s, vs.CustomSection)]
     mixer = next((s for s in customs if s.key == "fit_mixer"), None)
@@ -531,12 +557,14 @@ def test_mixture_new_model_view_spec_has_fit_mixer(qapp, mixture_model):
 def test_mixture_new_model_fit_mixer_section_registered(qapp):
     """The fit_mixer custom section is registered in the section registry."""
     from chisurf.gui.autoform.sections.registry import get_section_factory
+
     assert get_section_factory("fit_mixer") is not None
 
 
 def test_mixture_new_model_autoform_renders(qapp, mixture_model):
     """AutoForm builds a non-empty editor from mix_model.view.json."""
     from chisurf.gui.autoform import AutoForm
+
     w = AutoForm(mixture_model)
     # At least some widgets were created (convolve params etc.)
     assert w._layout.count() > 0
@@ -545,6 +573,7 @@ def test_mixture_new_model_autoform_renders(qapp, mixture_model):
 def test_mixture_new_model_fit_mixer_widget_renders(qapp, mixture_model):
     """The FitMixerWidget renders and exposes its controls."""
     from chisurf.gui.autoform.sections.builtin import FitMixerWidget
+
     w = FitMixerWidget(model=mixture_model)
     assert w.cb is not None  # fit combo box
     assert w.fit_list is not None  # added-fits list
@@ -553,7 +582,8 @@ def test_mixture_new_model_fit_mixer_widget_renders(qapp, mixture_model):
 
 def test_mixture_new_model_append_pop_updates_fractions(qapp, mixture_model):
     """append_model / pop_model change _fractions; FitMixerWidget._rebuild_fractions
-    must not raise and the fraction count matches the model state."""
+    must not raise and the fraction count matches the model state.
+    """
     import numpy as np
 
     import chisurf.core.fitting.fit as fit_mod
@@ -584,6 +614,7 @@ def test_mixture_new_model_build_editor(qapp, mixture_model):
     """build_model_editor returns an AutoForm widget for the pure mixture model."""
     from chisurf.gui.autoform import AutoForm
     from chisurf.gui.widgets.models.model_editor import build_model_editor
+
     editor = build_model_editor(mixture_model)
     assert isinstance(editor, AutoForm)
     assert editor.model is mixture_model

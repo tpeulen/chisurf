@@ -309,9 +309,7 @@ def _corrected_axis_constants(model) -> tuple:
     gamma = float(getattr(getattr(model, "nuisance", None), "gamma", 1.0) or 1.0)
     if not np.isfinite(gamma) or gamma <= 0.0:
         gamma = 1.0
-    R0 = float(
-        getattr(getattr(model, "fret_parameters", None), "forster_radius", 52.0) or 52.0
-    )
+    R0 = float(getattr(getattr(model, "fret_parameters", None), "forster_radius", 52.0) or 52.0)
     return gamma, R0
 
 
@@ -334,8 +332,7 @@ def assign_pda_histogram_function(pda_obj, model, axis: str) -> None:
     honestly rebuilt (the cache must not serve bins projected with the old
     gamma); when they are fixed, the assignment happens once per fit.
     """
-    key = (axis,) + (_corrected_axis_constants(model) if axis in ("E", "R")
-                     else ())
+    key = (axis,) + (_corrected_axis_constants(model) if axis in ("E", "R") else ())
     if getattr(pda_obj, "_chisurf_histogram_key", None) == key:
         return
     pda_obj.histogram_function = build_pda_histogram_function(model, axis)
@@ -394,9 +391,9 @@ def build_pda_histogram_function(model, axis: str):
 
 
 def pda_weighted_residuals(
-        data_y,
-        model_y,
-        statistic: str = "poisson",
+    data_y,
+    model_y,
+    statistic: str = "poisson",
 ) -> np.ndarray:
     """Weighted residuals of a modelled counting histogram.
 
@@ -480,14 +477,14 @@ class Pda2cFitSettings:
     """
 
     def __init__(
-            self,
-            axis: str = "S1/(S0+S1)",
-            n_bins: int = 81,
-            n_min: int = 10,
-            statistic: str = "poisson",
-            x_min: float | None = None,
-            x_max: float | None = None,
-            log_x: bool | None = None,
+        self,
+        axis: str = "S1/(S0+S1)",
+        n_bins: int = 81,
+        n_min: int = 10,
+        statistic: str = "poisson",
+        x_min: float | None = None,
+        x_max: float | None = None,
+        log_x: bool | None = None,
     ):
         """Initialize the fit-histogram settings.
 
@@ -570,8 +567,10 @@ def resolve_fit_settings(model, kw_hist: dict | None = None) -> Pda2cFitSettings
         return settings
     kw = dict(kw_hist or {})
     axis = kw.pop("histogram", "S1/(S0+S1)")
-    return Pda2cFitSettings(axis=axis, **{k: v for k, v in kw.items() if k in
-                                        ("n_bins", "n_min", "x_min", "x_max", "log_x")})
+    return Pda2cFitSettings(
+        axis=axis,
+        **{k: v for k, v in kw.items() if k in ("n_bins", "n_min", "x_min", "x_max", "log_x")},
+    )
 
 
 def get_pda_distribution(fit, kw_hist: dict | None = None) -> list:
@@ -641,11 +640,11 @@ def get_pda_distribution(fit, kw_hist: dict | None = None) -> list:
 
 
 def pda_1d_residuals_from_s1s2(
-        fit,
-        pda_obj,
-        nuisance=None,
-        kw_hist: dict | None = None,
-        settings: Pda2cFitSettings | None = None,
+    fit,
+    pda_obj,
+    nuisance=None,
+    kw_hist: dict | None = None,
+    settings: Pda2cFitSettings | None = None,
 ) -> np.ndarray:
     """Compute 1D PDA histogram residuals from S1S2 data.
 
@@ -684,9 +683,7 @@ def pda_1d_residuals_from_s1s2(
     if settings is None:
         settings = resolve_fit_settings(getattr(fit, "model", None), kw_hist)
     kw_hist = settings.kw_hist
-    assign_pda_histogram_function(
-        pda_obj, getattr(fit, "model", None), settings.axis
-    )
+    assign_pda_histogram_function(pda_obj, getattr(fit, "model", None), settings.axis)
 
     try:
         s1s2_model = np.asarray(pda_obj.get_S1S2_matrix(), dtype=float)
@@ -791,9 +788,7 @@ def pda_1d_residuals_from_s1s2(
                 settings.axis,
                 float(getattr(getattr(model_obj, "nuisance", None), "gamma", 1.0) or 1.0),
                 float(
-                    getattr(
-                        getattr(model_obj, "fret_parameters", None), "forster_radius", 52.0
-                    )
+                    getattr(getattr(model_obj, "fret_parameters", None), "forster_radius", 52.0)
                     or 52.0
                 ),
             )
@@ -975,8 +970,7 @@ class Pda2cModelMixin:
 
         source = str(self.lightpath_graph or "").strip()
         if not source:
-            source = str(pathlib.Path.home() / ".chisurf" / "settings"
-                         / "lightpath_easy_last.json")
+            source = str(pathlib.Path.home() / ".chisurf" / "settings" / "lightpath_easy_last.json")
         path = pathlib.Path(source)
         if not path.is_file():
             self._lightpath_status = (
@@ -987,14 +981,16 @@ class Pda2cModelMixin:
 
         try:
             payload = json.loads(path.read_text())
-            if "nodes" not in payload:      # an easy-mode config, not a graph
+            if "nodes" not in payload:  # an easy-mode config, not a graph
                 from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
                     build_easy_graph,
                 )
+
                 payload = build_easy_graph(payload)
             from chisurf.plugins.core.lightpath_simulator.core.workflow import (
                 simulate_lightpath,
             )
+
             result = simulate_lightpath(payload)
             matrices = result["crosstalk_matrices"]
             # The simulator's matrix payload is {rows, columns, values, ...}:
@@ -1002,7 +998,7 @@ class Pda2cModelMixin:
             dyes = list(matrices["excitation"]["columns"])
             detectors = list(matrices["emission"]["columns"])
             lasers = list(matrices["excitation"]["rows"])
-        except Exception as error:                      # noqa: BLE001 - reported
+        except Exception as error:  # noqa: BLE001 - reported
             self._lightpath_status = f"<b>Light-path simulation failed:</b> {error}"
             return {}
 
@@ -1017,9 +1013,12 @@ class Pda2cModelMixin:
             return {}
 
         apply_lightpath_to_nuisance(
-            self.nuisance, result,
-            donor=dyes[0], acceptor=dyes[1],
-            green_detector=detectors[0], red_detector=detectors[1],
+            self.nuisance,
+            result,
+            donor=dyes[0],
+            acceptor=dyes[1],
+            green_detector=detectors[0],
+            red_detector=detectors[1],
             green_laser=lasers[0] if lasers else None,
         )
         self._lightpath_status = (

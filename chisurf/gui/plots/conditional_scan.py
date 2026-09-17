@@ -12,6 +12,7 @@ A line at 45° means the two parameters move together one-for-one and the data
 cannot tell them apart; a flat line means fixing this one tells you nothing about
 that one. The numbers in real units are underneath.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -25,8 +26,14 @@ from chisurf.gui.plots.plotbase import Plot
 
 #: Line colours, reused per target parameter.
 TARGET_COLOURS = (
-    "#4c9be8", "#e8834c", "#5cc98a", "#c96ec9",
-    "#e8c84c", "#7f7fe8", "#e85c7a", "#4cc9c9",
+    "#4c9be8",
+    "#e8834c",
+    "#5cc98a",
+    "#c96ec9",
+    "#e8c84c",
+    "#7f7fe8",
+    "#e85c7a",
+    "#4cc9c9",
 )
 
 #: Half-width of the sweep, in standard deviations of the held parameter.
@@ -56,8 +63,7 @@ class ConditionalScanPlot(Plot):
         # No stretch: a parameter name is short, and the slider is the control
         # the user actually drags.
         self.parameter_box.setMinimumWidth(120)
-        self.parameter_box.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                         QtWidgets.QSizePolicy.Fixed)
+        self.parameter_box.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         top.addWidget(self.parameter_box, 0)
         top.addSpacing(8)
         top.addWidget(QtWidgets.QLabel("at"))
@@ -137,9 +143,7 @@ class ConditionalScanPlot(Plot):
             self._degrade(f"<i>no usable curvature: {e}</i>")
             return
         if form is None or len(form.names) < 2:
-            self._degrade(
-                "<i>needs a converged fit with at least two free parameters</i>"
-            )
+            self._degrade("<i>needs a converged fit with at least two free parameters</i>")
             return
 
         self._engine = engine
@@ -150,8 +154,7 @@ class ConditionalScanPlot(Plot):
         self.parameter_box.addItems([n.split(":")[-1] for n in names])
         self._full_names = names
         if current in [n.split(":")[-1] for n in names]:
-            self.parameter_box.setCurrentIndex(
-                [n.split(":")[-1] for n in names].index(current))
+            self.parameter_box.setCurrentIndex([n.split(":")[-1] for n in names].index(current))
         self.parameter_box.blockSignals(False)
         self._rebuild()
 
@@ -187,12 +190,16 @@ class ConditionalScanPlot(Plot):
         plot.legend()
         for k, target in enumerate(scan["targets"]):
             colour = TARGET_COLOURS[k % len(TARGET_COLOURS)]
-            plot.line(scan["held_z"], target["z"],
-                      pen=S.to_pen(colour, width=1.8),
-                      name=str(target["name"]).split(":")[-1])
+            plot.line(
+                scan["held_z"],
+                target["z"],
+                pen=S.to_pen(colour, width=1.8),
+                name=str(target["name"]).split(":")[-1],
+            )
         # The optimum, so "no change" has somewhere to be read off.
-        plot.line([-SCAN_SPAN, SCAN_SPAN], [0.0, 0.0],
-                  pen=S.to_pen("#808080", width=1.0, style="dash"))
+        plot.line(
+            [-SCAN_SPAN, SCAN_SPAN], [0.0, 0.0], pen=S.to_pen("#808080", width=1.0, style="dash")
+        )
 
         if self._exact is not None:
             exact_by_name = {t["name"]: t for t in self._exact["targets"]}
@@ -205,18 +212,25 @@ class ConditionalScanPlot(Plot):
                 finite = np.isfinite(z)
                 if not finite.any():
                     continue
-                plot.scatter(np.asarray(self._exact["held_z"])[finite], z[finite],
-                             size=8.0, brush=colour,
-                             pen=S.to_pen("#101010", width=1.0))
+                plot.scatter(
+                    np.asarray(self._exact["held_z"])[finite],
+                    z[finite],
+                    size=8.0,
+                    brush=colour,
+                    pen=S.to_pen("#101010", width=1.0),
+                )
             # The range the straight lines can actually be trusted over.
             valid = self._validity.get("valid_to") if self._validity else None
             if valid is not None and np.isfinite(valid) and valid < SCAN_SPAN:
                 for sign in (-1.0, 1.0):
-                    plot.line([sign * valid, sign * valid],
-                              [-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05],
-                              pen=S.to_pen("#c05050", width=1.2, style="dash"))
-        plot.set_range(x=(-SCAN_SPAN, SCAN_SPAN),
-                       y=(-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05), padding=0.0)
+                    plot.line(
+                        [sign * valid, sign * valid],
+                        [-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05],
+                        pen=S.to_pen("#c05050", width=1.2, style="dash"),
+                    )
+        plot.set_range(
+            x=(-SCAN_SPAN, SCAN_SPAN), y=(-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05), padding=0.0
+        )
         plot.grid(x=True, y=True, alpha=0.15)
         self._draw_marker()
 
@@ -239,8 +253,7 @@ class ConditionalScanPlot(Plot):
                 self._scan["name"], points=13, span=SCAN_SPAN
             )
             self._validity = (
-                E.gaussian_validity(self._scan, self._exact)
-                if self._exact is not None else None
+                E.gaussian_validity(self._scan, self._exact) if self._exact is not None else None
             )
         except Exception as e:
             self._exact, self._validity = None, None
@@ -275,8 +288,13 @@ class ConditionalScanPlot(Plot):
         rows = []
         if self._validity is not None:
             valid = self._validity["valid_to"]
-            colour = ("#3c8f5c" if not np.isfinite(valid) or valid >= 2.0
-                      else "#b07020" if valid >= 1.0 else "#b03030")
+            colour = (
+                "#3c8f5c"
+                if not np.isfinite(valid) or valid >= 2.0
+                else "#b07020"
+                if valid >= 1.0
+                else "#b03030"
+            )
             rows.append(
                 f"<span style='color:{colour}'><b>&#9679; Re-fit check:</b> "
                 f"{self._validity['verdict']}</span> "
@@ -296,8 +314,9 @@ class ConditionalScanPlot(Plot):
         ]
         for target in scan["targets"]:
             mean = target["marginal"] + target["marginal_sd"] * target["correlation"] * z
-            shrink = (1.0 - target["sd"] / target["marginal_sd"]
-                      if target["marginal_sd"] > 0 else 0.0)
+            shrink = (
+                1.0 - target["sd"] / target["marginal_sd"] if target["marginal_sd"] > 0 else 0.0
+            )
             rows.append(
                 "<tr>"
                 f"<td>{str(target['name']).split(':')[-1]}</td>"

@@ -12,14 +12,14 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.general import apply_compact_table_style
 from chisurf.gui.widgets.spectrum_view import SpectrumView
 
 from .component_detail_form import ComponentDetailForm
 from .duplicates_dialog import DuplicatesDialog
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 _PROPERTY_MAP = {
     "Cut-On Wavelength (nm)": "cut_on",
@@ -61,7 +61,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
         """Load the component type registry from components.json."""
         registry_path = Path(__file__).resolve().parent / "components.json"
         try:
-            with open(registry_path, "r", encoding="utf-8") as f:
+            with open(registry_path, encoding="utf-8") as f:
                 self._registry = json.load(f)
         except Exception as e:
             # Fallback registry if file fails to load
@@ -71,7 +71,14 @@ class OpticalComponentDock(QtWidgets.QWidget):
                     "key": "fluorophore",
                     "label": "Fluorophores",
                     "icon": "🌈",
-                    "categories": ["fluorophore", "organic_dye", "protein", "quantum_dot", "nanoparticle", "other"],
+                    "categories": [
+                        "fluorophore",
+                        "organic_dye",
+                        "protein",
+                        "quantum_dot",
+                        "nanoparticle",
+                        "other",
+                    ],
                     "columns": [
                         ["ID", "probe_id"],
                         ["Name", "chromophore_name"],
@@ -81,7 +88,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
                         ["QY", "qy"],
                         ["Status", "verification_status"],
                         ["Quality", "quality"],
-                        ["Source", "source"]
+                        ["Source", "source"],
                     ],
                     "view": "fluorophore.view.json",
                 }
@@ -192,7 +199,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
         self._ai_btn.setToolTip("Run deterministic checks on the selected item")
         self._ai_btn.clicked.connect(self._on_ai_triage)
         layout.addWidget(self._ai_btn)
-        
+
         self._dup_btn = QtWidgets.QToolButton()
         self._dup_btn.setText("👯 Find Duplicates")
         self._dup_btn.setToolTip("Find and merge duplicate components")
@@ -322,7 +329,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
             headers = [Glyphs.CHECK] + [c[0] for c in columns]
             self._table.setColumnCount(len(headers))
             self._table.setHorizontalHeaderLabels(headers)
-            
+
             # Temporarily disable ResizeToContents mode during populating to avoid layout recalculation overhead
             header = self._table.horizontalHeader()
             for col in range(self._table.columnCount()):
@@ -332,7 +339,11 @@ class OpticalComponentDock(QtWidgets.QWidget):
 
             for row, p in enumerate(probes):
                 cb = QtWidgets.QTableWidgetItem("")
-                cb.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
+                cb.setFlags(
+                    QtCore.Qt.ItemIsUserCheckable
+                    | QtCore.Qt.ItemIsEnabled
+                    | QtCore.Qt.ItemIsSelectable
+                )
                 cb.setCheckState(QtCore.Qt.Unchecked)
                 cb.setTextAlignment(QtCore.Qt.AlignCenter)
                 self._table.setItem(row, 0, cb)
@@ -439,7 +450,9 @@ class OpticalComponentDock(QtWidgets.QWidget):
         if answer != QtWidgets.QMessageBox.Yes:
             return
         try:
-            result = self._client._call("fluorophores.import_reference_set", {"mark_verified": False})
+            result = self._client._call(
+                "fluorophores.import_reference_set", {"mark_verified": False}
+            )
             self._set_status(
                 f"Imported: {result.get('probes', 0)} probes, "
                 f"{result.get('spectra', 0)} spectra, "
@@ -454,7 +467,9 @@ class OpticalComponentDock(QtWidgets.QWidget):
         if not probe_id:
             return
         try:
-            self._client._call("fluorophores.approve", {"probe_id": int(probe_id), "verified_by": "admin"})
+            self._client._call(
+                "fluorophores.approve", {"probe_id": int(probe_id), "verified_by": "admin"}
+            )
             self._set_status(f"Approved item {probe_id}")
             self.refresh()
         except Exception as exc:
@@ -465,7 +480,9 @@ class OpticalComponentDock(QtWidgets.QWidget):
         if not probe_id:
             return
         try:
-            self._client._call("fluorophores.reject", {"probe_id": int(probe_id), "verified_by": "admin"})
+            self._client._call(
+                "fluorophores.reject", {"probe_id": int(probe_id), "verified_by": "admin"}
+            )
             self._set_status(f"Rejected item {probe_id}")
             self.refresh()
         except Exception as exc:
@@ -487,10 +504,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
             issues = result.get("issues", [])
             quality = result.get("proposed_quality", "unknown")
             if issues:
-                msg = (
-                    "Issues found (queued for review):\n  • "
-                    + "\n  • ".join(issues)
-                )
+                msg = "Issues found (queued for review):\n  • " + "\n  • ".join(issues)
             else:
                 msg = (
                     f"No issues found — proposed quality: {quality}.\n\n"
@@ -507,40 +521,45 @@ class OpticalComponentDock(QtWidgets.QWidget):
             QtWidgets.QApplication.processEvents()
             result = self._client._call("fluorophores.find_duplicates", {})
             probes = result.get("probes", [])
-            
+
             # Filter probes to only match the currently active component's categories
             active_cats = set(self._active_component.get("categories", []))
             if active_cats:
                 probes = [p for p in probes if p.get("category", "other") in active_cats]
-                
+
             if not probes:
-                dialogs.information(self, "Find Duplicates", "No probes found for the active category.")
+                dialogs.information(
+                    self, "Find Duplicates", "No probes found for the active category."
+                )
                 self._set_status("No probes found")
                 return
             self._progress = ChiSurfProgress(self, "Analyzing probes for duplicates...", 100)
             self._progress.setWindowTitle("Finding Duplicates")
             self._progress.setWindowModality(QtCore.Qt.WindowModal)
             self._progress.setValue(0)
-            
+
             from .duplicates_dialog import DuplicateFinderThread
+
             self._dup_thread = DuplicateFinderThread(probes, self)
             self._dup_thread.progress.connect(self._progress.setValue)
             self._progress.canceled.connect(self._dup_thread.requestInterruption)
-            
+
             def on_finished(duplicate_groups):
                 if not self._progress.wasCanceled():
                     self._progress.close()
                     if not duplicate_groups:
-                        dialogs.information(self, "Find Duplicates", "No potential duplicates found.")
+                        dialogs.information(
+                            self, "Find Duplicates", "No potential duplicates found."
+                        )
                         self._set_status("No duplicates found")
                         return
                     dialog = DuplicatesDialog(duplicate_groups, self._client, self)
                     if dialog.exec() == QtWidgets.QDialog.Accepted:
                         self.refresh()
-                        
+
             self._dup_thread.finished_groups.connect(on_finished)
             self._dup_thread.start()
-            
+
         except Exception as exc:
             self._set_status(f"Find duplicates failed: {exc}")
 
@@ -630,9 +649,15 @@ class OpticalComponentDock(QtWidgets.QWidget):
         menu.addAction(f"{Glyphs.COPY} Copy selected row", self._copy_selected_row)
         menu.addAction(f"{Glyphs.COPY} Copy selected cell", self._copy_selected_cell)
         menu.addSeparator()
-        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check selected rows", lambda: self._set_selected_checks(True))
-        menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck selected rows", lambda: self._set_selected_checks(False))
-        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(True))
+        menu.addAction(
+            f"{Glyphs.CHECKBOX_ON} Check selected rows", lambda: self._set_selected_checks(True)
+        )
+        menu.addAction(
+            f"{Glyphs.CHECKBOX_OFF} Uncheck selected rows", lambda: self._set_selected_checks(False)
+        )
+        menu.addAction(
+            f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(True)
+        )
         menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck all", lambda: self._set_all_checks(False))
         menu.addAction(f"{Glyphs.LOOP} Invert visible checks", self._invert_checks)
         menu.addSeparator()

@@ -6,6 +6,7 @@ distribute over the states"*, and the argmax answers that with a one-directional
 bias. These tests hold the plugin to offering — and correctly reporting — the
 decoders that do not.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -44,8 +45,7 @@ def _simulate(n_bursts=120, burst_len=200, seed=3):
     gt = _overlapping_gt()
     rng = np.random.default_rng(seed)
     times = [
-        np.cumsum(rng.integers(1, 60, size=burst_len)).astype(np.int64)
-        for _ in range(n_bursts)
+        np.cumsum(rng.integers(1, 60, size=burst_len)).astype(np.int64) for _ in range(n_bursts)
     ]
     streams = h2mm.simulate_bursts(gt, times, seed=seed + 7)
     return times, streams
@@ -84,14 +84,14 @@ def _dataset(with_background=True, n_bursts=60, burst_len=120, seed=3):
 
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
     defs = [StreamDef("green", [0]), StreamDef("red", [1])]
-    data, meta = bursts_from_dataframe(
-        df, {"sim.spc": tttr}, defs, min_photons=3, return_meta=True)
+    data, meta = bursts_from_dataframe(df, {"sim.spc": tttr}, defs, min_photons=3, return_meta=True)
     return data, meta, df, tttr
 
 
 # ---------------------------------------------------------------------------
 # Decoders
 # ---------------------------------------------------------------------------
+
 
 class TestDecoders:
     """The three decoders, and the bias the sampling ones remove."""
@@ -142,6 +142,7 @@ class TestDecoders:
 # analyze()
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeDecoder:
     """What analyze() reports, and which path each product is derived from."""
 
@@ -150,8 +151,7 @@ class TestAnalyzeDecoder:
         self.data = h2mm.prepare_bursts(times, streams, n_streams=2)
 
     def _run(self, decoder):
-        return analyze(self.data, state_counts=(2,), n_restarts=1,
-                       decoder=decoder, decoder_seed=4)
+        return analyze(self.data, state_counts=(2,), n_restarts=1, decoder=decoder, decoder_seed=4)
 
     def test_default_is_viterbi_and_records_it(self):
         ana = analyze(self.data, state_counts=(2,), n_restarts=1)
@@ -173,7 +173,8 @@ class TestAnalyzeDecoder:
         ana = self._run("jitter")
         assert ana.decoder == "jitter"
         np.testing.assert_allclose(
-            ana.populations, np.asarray(ana.posterior_populations), atol=0.02)
+            ana.populations, np.asarray(ana.posterior_populations), atol=0.02
+        )
 
     def test_jitter_dwells_come_from_viterbi_not_the_draw(self):
         # Independent per-photon draws shatter dwells; taking dwell statistics
@@ -200,11 +201,11 @@ class TestAnalyzeDecoder:
         offsets = np.asarray(self.data.burst_offsets)
 
         def n_dwells(p):
-            return sum(1 + int((np.diff(p[a:b]) != 0).sum())
-                       for a, b in zip(offsets[:-1], offsets[1:]))
+            return sum(
+                1 + int((np.diff(p[a:b]) != 0).sum()) for a, b in zip(offsets[:-1], offsets[1:])
+            )
 
-        d_v, d_f, d_j = (n_dwells(vit.path), n_dwells(ffbs.path),
-                         n_dwells(jitter_path))
+        d_v, d_f, d_j = (n_dwells(vit.path), n_dwells(ffbs.path), n_dwells(jitter_path))
         assert d_j > 2 * d_f, f"jitter {d_j} vs ffbs {d_f}"
         assert d_f < 5 * d_v, f"ffbs {d_f} vs viterbi {d_v}"
 
@@ -213,21 +214,32 @@ class TestAnalyzeDecoder:
 # Writing the assignment back into the photon stream
 # ---------------------------------------------------------------------------
 
+
 class TestStateTttr:
     """Writing the assignment back into the photon stream, both ways."""
 
     def setup_method(self):
         self.data, self.meta, self.df, self.tttr = _dataset()
-        self.ana = analyze(self.data, state_counts=(2,), n_restarts=1,
-                           decoder="jitter", decoder_seed=2)
+        self.ana = analyze(
+            self.data, state_counts=(2,), n_restarts=1, decoder="jitter", decoder_seed=2
+        )
         self.files = list(self.df["First File"].astype(str))
 
     def _write(self, tmp_path, **kw):
         return write_state_tttr(
-            self.meta, self.ana.path, np.asarray(self.data.streams),
-            {"sim.spc": self.tttr}, self.meta.burst_rows, self.files, tmp_path,
-            model=self.ana.best.model, decoder=self.ana.decoder,
-            seed=self.ana.decoder_seed, n_states=2, **kw)
+            self.meta,
+            self.ana.path,
+            np.asarray(self.data.streams),
+            {"sim.spc": self.tttr},
+            self.meta.burst_rows,
+            self.files,
+            tmp_path,
+            model=self.ana.best.model,
+            decoder=self.ana.decoder,
+            seed=self.ana.decoder_seed,
+            n_states=2,
+            **kw,
+        )
 
     def test_writes_both_outputs(self, tmp_path):
         out = self._write(tmp_path)
@@ -242,7 +254,8 @@ class TestStateTttr:
         back = tttrlib.TTTR(out.tttr_paths["sim"], "PTU")
         assert back.size() == self.tttr.size()
         np.testing.assert_array_equal(
-            np.asarray(back.macro_times), np.asarray(self.tttr.macro_times))
+            np.asarray(back.macro_times), np.asarray(self.tttr.macro_times)
+        )
 
     def test_channel_ids_are_compacted(self, tmp_path):
         out = self._write(tmp_path, write_sidecar=False)
@@ -272,8 +285,7 @@ class TestStateTttr:
         sc = tttrlib.HmmStateSidecar.read(out.sidecar_paths["sim"])
         states = sc.states_np
         idx = np.asarray(self.meta.photon_index, dtype=np.int64)
-        np.testing.assert_array_equal(
-            states[idx], np.asarray(self.ana.path, dtype=np.uint8))
+        np.testing.assert_array_equal(states[idx], np.asarray(self.ana.path, dtype=np.uint8))
         # Everything else was never analysed and must say so, not default to 0.
         rest = np.setdiff1d(np.arange(self.tttr.size()), idx)
         assert (states[rest] == UNASSIGNED).all()
@@ -286,8 +298,7 @@ class TestStateTttr:
         assert sc.seed == 2
         assert sc.n_states == 2
         assert sc.has_channel_map
-        np.testing.assert_allclose(
-            sc.model.obs_np, self.ana.best.model.obs, atol=1e-9)
+        np.testing.assert_allclose(sc.model.obs_np, self.ana.best.model.obs, atol=1e-9)
 
     def test_per_state_decays_can_be_built_from_the_written_file(self, tmp_path):
         # The point of the whole exercise: a per-state decay as an ordinary
@@ -307,11 +318,19 @@ class TestStateTttr:
 
     def test_refuses_without_a_photon_index(self, tmp_path):
         meta = type(self.meta)(
-            macro_time=self.meta.macro_time, micro_time=self.meta.micro_time,
-            channel=self.meta.channel, burst_id=self.meta.burst_id,
+            macro_time=self.meta.macro_time,
+            micro_time=self.meta.micro_time,
+            channel=self.meta.channel,
+            burst_id=self.meta.burst_id,
             photon_index=None,
         )
         with pytest.raises(ValueError, match="photon_index"):
             write_state_tttr(
-                meta, self.ana.path, np.asarray(self.data.streams),
-                {"sim.spc": self.tttr}, self.meta.burst_rows, self.files, tmp_path)
+                meta,
+                self.ana.path,
+                np.asarray(self.data.streams),
+                {"sim.spc": self.tttr},
+                self.meta.burst_rows,
+                self.files,
+                tmp_path,
+            )

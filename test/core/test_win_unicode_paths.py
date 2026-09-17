@@ -1,12 +1,12 @@
 import os
 import sys
+
 import pytest
-import shutil
 import tttrlib
 
-@pytest.mark.skipif(sys.platform != 'win32', reason="Windows-specific path tests")
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific path tests")
 class TestWindowsUnicodePaths:
-    
     @pytest.fixture
     def unicode_file(self, tmp_path):
         filename = tmp_path / "test_µ_file.ptu"
@@ -25,9 +25,9 @@ class TestWindowsUnicodePaths:
         """Test if tttrlib releases the file handle, allowing rename/delete."""
         # Using a real PTU file if possible, or just the mock
         tt = tttrlib.TTTR(unicode_file)
-        
+
         temp_name = str(tmp_path / "test_m_file.ptu")
-        
+
         # On Windows, if tttrlib holds the handle, this rename will fail
         try:
             # We must delete the object to release the handle if it's held by the wrapper
@@ -40,13 +40,15 @@ class TestWindowsUnicodePaths:
 
     def test_short_path_name(self, unicode_file):
         """Test if short path names (DOS 8.3) work as a fallback for unicode issues."""
+
         def get_short_path_name(long_name):
             import ctypes
             from ctypes import wintypes
+
             _GetShortPathNameW = ctypes.windll.kernel32.GetShortPathNameW
             _GetShortPathNameW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
             _GetShortPathNameW.restype = wintypes.DWORD
-            
+
             long_name = os.path.abspath(long_name)
             output_buf_size = _GetShortPathNameW(long_name, None, 0)
             if output_buf_size == 0:

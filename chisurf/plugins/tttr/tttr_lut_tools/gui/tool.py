@@ -8,12 +8,12 @@ import pathlib
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area import DockArea
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .settings_panel import TTTRSettingsPanel
 from .tac_lut_panel import TACLinearizationPanel
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 _README = pathlib.Path(__file__).parents[1] / "README.md"
 
@@ -127,7 +127,8 @@ class TTRLutToolsWidget(ChisurfDockTool):
         luts = model.compute_all_channels() if hasattr(model, "compute_all_channels") else {}
         if not luts:
             dialogs.information(
-                self, "No LUTs yet",
+                self,
+                "No LUTs yet",
                 "Load a uniform-illumination file in ‘① Compute LUT’ first — a LUT is "
                 "then computed for every routing channel it contains.",
             )
@@ -136,8 +137,7 @@ class TTRLutToolsWidget(ChisurfDockTool):
             self.settings_panel.receive_computed_lut(f"ch{ch}_lut", ntac, channel=int(ch))
         chans = ", ".join(str(c) for c in sorted(luts))
         self.statusBar().showMessage(
-            f"Added LUTs for channel(s) {chans} to the Detector setup — "
-            "close this window to apply."
+            f"Added LUTs for channel(s) {chans} to the Detector setup — close this window to apply."
         )
 
     def _lut_tools_settings(self) -> QtCore.QSettings:

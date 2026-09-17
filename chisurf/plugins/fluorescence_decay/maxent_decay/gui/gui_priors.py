@@ -4,8 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
-from .qt_stack import ensure_qt_stack
 from chisurf.gui import dialogs
+
+from .qt_stack import ensure_qt_stack
 
 
 class _MaxentPriorsMixin:
@@ -41,9 +42,7 @@ class _MaxentPriorsMixin:
             if arr.size == 0:
                 raise ValueError("empty prior")
             self._prior_vec = arr
-            self.label_prior_info.setText(
-                f"Prior: loaded {arr.size} values from '{Path(fn).name}'"
-            )
+            self.label_prior_info.setText(f"Prior: loaded {arr.size} values from '{Path(fn).name}'")
         except Exception as exc:
             dialogs.error(
                 self,
@@ -169,9 +168,7 @@ class _MaxentPriorsMixin:
         self._donly_vec = arr
         n_pairs = arr.size // 2
         label = combo.currentText()
-        self.label_donor_info.setText(
-            f"Donor spectrum: {n_pairs} amp/tau pairs from fit '{label}'"
-        )
+        self.label_donor_info.setText(f"Donor spectrum: {n_pairs} amp/tau pairs from fit '{label}'")
         self._update_donor_requirement_ui()
 
     def _on_load_dist_prior_clicked(self) -> None:

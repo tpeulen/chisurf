@@ -60,6 +60,7 @@ _DIMENSIONS = (1, 2, 3)
 
 def _bff():
     import IMP.bff
+
     return IMP.bff
 
 
@@ -109,7 +110,9 @@ def reduced_density(c_over_c0: float, dimension: int) -> float:
     return float(_bff().acceptor_reduced_density(float(c_over_c0), d))
 
 
-def quenching_factor(time: np.ndarray, tau_d0: float, c_over_c0: float, dimension: int) -> np.ndarray:
+def quenching_factor(
+    time: np.ndarray, tau_d0: float, c_over_c0: float, dimension: int
+) -> np.ndarray:
     """exp[-2 eta_d (t/tau_D(0))^(d/6)] on *time*."""
     d = _check_dimension(dimension)
     t = np.asarray(time, dtype=float)
@@ -119,8 +122,12 @@ def quenching_factor(time: np.ndarray, tau_d0: float, c_over_c0: float, dimensio
         raise ValueError("time must be non-negative")
     if float(c_over_c0) < 0:
         raise ValueError(f"c_over_c0 must be non-negative, got {c_over_c0!r}")
-    flat = np.asarray(_bff().acceptor_quenching_factor(
-        np.ascontiguousarray(t.ravel()), float(tau_d0), float(c_over_c0), d), dtype=float)
+    flat = np.asarray(
+        _bff().acceptor_quenching_factor(
+            np.ascontiguousarray(t.ravel()), float(tau_d0), float(c_over_c0), d
+        ),
+        dtype=float,
+    )
     return flat.reshape(t.shape)
 
 
@@ -136,25 +143,30 @@ def donor_decay(time: np.ndarray, tau_d0: float, c_over_c0: float, dimension: in
     return np.exp(-t / float(tau_d0)) * factor
 
 
-def transfer_efficiency(c_over_c0: float, dimension: int, *, n_points: int = 200_001,
-                        t_max_tau: float = 200.0) -> float:
+def transfer_efficiency(
+    c_over_c0: float, dimension: int, *, n_points: int = 200_001, t_max_tau: float = 200.0
+) -> float:
     """E = 1 - int I_DA / int I_D, by the trapezoid rule (no closed form in 1-D and 2-D)."""
     d = _check_dimension(dimension)
     if n_points < 3:
         raise ValueError("n_points must be at least 3")
     if float(c_over_c0) < 0:
         raise ValueError(f"c_over_c0 must be non-negative, got {c_over_c0!r}")
-    return float(_bff().acceptor_transfer_efficiency(float(c_over_c0), d, int(n_points), float(t_max_tau)))
+    return float(
+        _bff().acceptor_transfer_efficiency(float(c_over_c0), d, int(n_points), float(t_max_tau))
+    )
 
 
-def quench_decay(donor_decay_curve: np.ndarray, time: np.ndarray, tau_d0: float, c_over_c0: float,
-                 dimension: int) -> np.ndarray:
+def quench_decay(
+    donor_decay_curve: np.ndarray, time: np.ndarray, tau_d0: float, c_over_c0: float, dimension: int
+) -> np.ndarray:
     """Multiply an arbitrary donor-only decay by the acceptor-density quenching factor."""
     y = np.asarray(donor_decay_curve, dtype=float)
     t = np.asarray(time, dtype=float)
     if y.shape != t.shape:
         raise ValueError(
-            f"donor_decay_curve and time must have the same shape, got {y.shape} and {t.shape}")
+            f"donor_decay_curve and time must have the same shape, got {y.shape} and {t.shape}"
+        )
     return y * quenching_factor(t, tau_d0, c_over_c0, dimension)
 
 

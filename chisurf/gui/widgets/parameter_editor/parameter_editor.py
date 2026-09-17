@@ -22,7 +22,13 @@ import chisurf.core.fio as io
 import chisurf.core.settings
 import chisurf.gui.widgets
 from chisurf import typing
-from chisurf.core.dataspec import ChoiceSection, PanelSection, SettingsView, ToggleSection, ValueSection
+from chisurf.core.dataspec import (
+    ChoiceSection,
+    PanelSection,
+    SettingsView,
+    ToggleSection,
+    ValueSection,
+)
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 
 __all__ = ["ParameterEditor"]
@@ -78,7 +84,7 @@ class ParameterEditor(QtWidgets.QWidget):
         if target is None:
             target = chisurf.core.settings.cs_settings
         if windows_title is None:
-            windows_title = "Configuration: %s" % json_file
+            windows_title = f"Configuration: {json_file}"
 
         self.callback = callback
         self._json_file = json_file
@@ -120,7 +126,8 @@ class ParameterEditor(QtWidgets.QWidget):
         self._view = SettingsView(self._dict, on_change=self._on_change)
 
         tree = QtWidgets.QTreeWidget()
-        from chisurf.gui.widgets.general import table_font, table_row_height, table_header_height
+        from chisurf.gui.widgets.general import table_font, table_header_height, table_row_height
+
         tree.setFont(table_font())
         row_h = table_row_height()
         font_sz = table_font().pointSize()
@@ -191,6 +198,7 @@ class ParameterEditor(QtWidgets.QWidget):
             options = list(section.options)
             if not options and section.options_source:
                 from chisurf.gui.autoform.sections.builtin import _resolve_options_source
+
                 options = _resolve_options_source(section.options_source)
             _labels = list(getattr(section, "labels", ()))
             _has_labels = bool(_labels) and len(_labels) == len(options)

@@ -50,9 +50,7 @@ def test_two_guards_compose_without_interfering():
 
     try:
         paths = ["a.txt", "b.csv", "c.dat"]
-        result = apply_drop_guards(
-            None, paths, ["test_uppercase_txt", "test_reverse_csv"]
-        )
+        result = apply_drop_guards(None, paths, ["test_uppercase_txt", "test_reverse_csv"])
         assert result == ["A.TXT", "vsc.b", "c.dat"]
     finally:
         from chisurf.gui.widgets import dropguard

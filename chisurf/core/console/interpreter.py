@@ -66,11 +66,11 @@ class Interpreter:
         linecache.cache[filename] = (len(source), None, lines, filename)
 
     def compile_cell(
-            self,
-            source: str,
-            filename: str,
-            *,
-            silent: bool = False,
+        self,
+        source: str,
+        filename: str,
+        *,
+        silent: bool = False,
     ) -> list[types.CodeType]:
         """Compile *source* into one or two code objects.
 
@@ -95,7 +95,11 @@ class Interpreter:
         """
         flags = self.compile_flags | _TOP_LEVEL_AWAIT
         tree = compile(
-            source, filename, "exec", flags | ast.PyCF_ONLY_AST, dont_inherit=True,
+            source,
+            filename,
+            "exec",
+            flags | ast.PyCF_ONLY_AST,
+            dont_inherit=True,
         )
         self._absorb_future_flags(tree)
         flags = self.compile_flags | _TOP_LEVEL_AWAIT
@@ -134,9 +138,9 @@ class Interpreter:
                     self.compile_flags |= feature.compiler_flag
 
     def run_codes(
-            self,
-            codes: typing.Sequence[types.CodeType],
-            namespace: dict,
+        self,
+        codes: typing.Sequence[types.CodeType],
+        namespace: dict,
     ) -> None:
         """Execute *codes* in *namespace*.
 

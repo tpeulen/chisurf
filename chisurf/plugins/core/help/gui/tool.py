@@ -29,7 +29,6 @@ import logging
 import pathlib
 import re
 import webbrowser
-from typing import Optional
 
 from qtpy.QtCore import QEvent, QStringListModel, Qt, QTimer, QUrl
 from qtpy.QtGui import (
@@ -51,7 +50,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMainWindow,
     QPlainTextEdit,
     QShortcut,
     QSplitter,
@@ -63,13 +61,13 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-import chisurf as cs
-import chisurf.core.settings
 from chisurf.core.info import help_url
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
-from chisurf.plugins.core.help.api import markdown as md_api, review, toc as toc_api
+from chisurf.plugins.core.help.api import markdown as md_api
+from chisurf.plugins.core.help.api import review
+from chisurf.plugins.core.help.api import toc as toc_api
 from chisurf.plugins.core.help.gui.ask_panel import AskPanel
 from chisurf.plugins.core.help.gui.client import HelpClient
 
@@ -95,8 +93,7 @@ REVIEW_TOOLTIPS = {
         "running application by a human. Still blocks a release."
     ),
     review.STATUS_UNREVIEWED: (
-        "Nobody and nothing has been through this page. Largely "
-        "machine-drafted; blocks release."
+        "Nobody and nothing has been through this page. Largely machine-drafted; blocks release."
     ),
 }
 
@@ -138,10 +135,13 @@ _ROLE_KIND = Qt.UserRole + 2
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
+
     def _noop_persist_plugin_state(name):
         def decorator(cls):
             return cls
+
         return decorator
+
     persist_plugin_state = _noop_persist_plugin_state
 
 
@@ -164,6 +164,8 @@ def _docs_root_prefix() -> str:
     from chisurf.plugins.core.help.api.toc import docs_root
 
     return f"{docs_root()}/"
+
+
 _IMG_SRC = re.compile(r'src\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
 
 
@@ -197,13 +199,13 @@ def _constrain_image_widths(html: str, base_dir: pathlib.Path, max_width: int) -
     if max_width <= 0:
         return html
 
-    def _fix(match: "re.Match[str]") -> str:
+    def _fix(match: re.Match[str]) -> str:
         tag = match.group(0)
         # A source beginning with "/" is root-relative *to the documentation*,
         # which is how Sphinx reads it; taken as a filesystem path it points at
         # the root of the disk and the image is simply missing.
         tag = _ROOT_RELATIVE_SRC.sub(
-            lambda m: f'{m.group(1)}{_docs_root_prefix()}{m.group(2)}', tag
+            lambda m: f"{m.group(1)}{_docs_root_prefix()}{m.group(2)}", tag
         )
         preceding = html[: match.start()].rstrip().lower()
         # A bare block image sits between paragraphs; an inline one does not.
@@ -228,10 +230,7 @@ def _constrain_image_widths(html: str, base_dir: pathlib.Path, max_width: int) -
                         width = height = 0
                     if width > 0 and height > 0 and width > max_width:
                         scaled = max(1, round(height * max_width / width))
-                        tag = (
-                            tag[:-1].rstrip("/")
-                            + f' width="{max_width}" height="{scaled}">'
-                        )
+                        tag = tag[:-1].rstrip("/") + f' width="{max_width}" height="{scaled}">'
 
         return f'<p align="center">{tag}</p>' if is_block else tag
 
@@ -312,9 +311,7 @@ def emoji_icon(character: str, size: int = 16):
             font = QFont(painter.font())
             font.setPixelSize(int(size * 0.86))
             painter.setFont(font)
-            painter.drawText(
-                pixmap.rect(), Qt.AlignCenter, character
-            )
+            painter.drawText(pixmap.rect(), Qt.AlignCenter, character)
         finally:
             painter.end()
         icon = QIcon(pixmap)
@@ -355,7 +352,7 @@ class HelpTextBrowser(QTextBrowser):
         #: sets it; a bare viewer simply does nothing.
         self.imageClicked = None
         #: Column the document is currently laid out for.
-        self._column: Optional[int] = None
+        self._column: int | None = None
 
     def setHtml(self, html, *args):
         """Show *html* and fit it to the current column."""
@@ -543,6 +540,7 @@ class HelpTextBrowser(QTextBrowser):
         try:
             if name.scheme() in ("http", "https"):
                 import urllib.request
+
                 try:
                     with urllib.request.urlopen(name.toString()) as resp:
                         data = resp.read()
@@ -584,9 +582,9 @@ class HelpWidget(ChisurfDockTool):
         self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
         self.setMinimumSize(900, 560)
         self.docs_index: dict = {}
-        self.current_path: Optional[pathlib.Path] = None
+        self.current_path: pathlib.Path | None = None
         self.client = HelpClient()
-        self._toc: Optional[toc_api.Node] = None
+        self._toc: toc_api.Node | None = None
         self._items: dict[str, QTreeWidgetItem] = {}
         self._order: list[toc_api.Node] = []
         self._trail: dict[str, str] = {}
@@ -713,8 +711,7 @@ class HelpWidget(ChisurfDockTool):
         toolbar.setObjectName("help_toolbar")
         toolbar.setMovable(False)
         toolbar.setStyleSheet(
-            "QToolBar { spacing: 3px; }"
-            "QToolButton { font-size: 11pt; padding: 3px 7px; }"
+            "QToolBar { spacing: 3px; }QToolButton { font-size: 11pt; padding: 3px 7px; }"
         )
         self.addToolBar(toolbar)
         self.toolbar = toolbar
@@ -770,9 +767,7 @@ class HelpWidget(ChisurfDockTool):
         self.ask_btn.toggled.connect(self._on_ask_toggled)
 
         spacer = QWidget()
-        spacer.setSizePolicy(
-            spacer.sizePolicy().Expanding, spacer.sizePolicy().Preferred
-        )
+        spacer.setSizePolicy(spacer.sizePolicy().Expanding, spacer.sizePolicy().Preferred)
         toolbar.addWidget(spacer)
 
         self.authoring_btn = toolbar.addAction("✎")
@@ -857,8 +852,7 @@ class HelpWidget(ChisurfDockTool):
         self.review_summary_label = QLabel("")
         self.review_summary_label.setStyleSheet("color: #888888; font-size: 9pt;")
         self.review_summary_label.setToolTip(
-            "Human-review status of the user manual. Unreviewed or stale pages "
-            "block a release."
+            "Human-review status of the user manual. Unreviewed or stale pages block a release."
         )
         bar.addWidget(self.review_summary_label)
 
@@ -969,9 +963,7 @@ class HelpWidget(ChisurfDockTool):
         self._items = {}
         self._order = []
         self._trail = {}
-        include_dev = bool(
-            getattr(self, "developer_btn", None) and self.developer_btn.isChecked()
-        )
+        include_dev = bool(getattr(self, "developer_btn", None) and self.developer_btn.isChecked())
         try:
             self._toc = toc_api.build_toc(include_development=include_dev)
         except Exception:
@@ -1082,7 +1074,7 @@ class HelpWidget(ChisurfDockTool):
                 addresses.append(key)
         self.address_completer_model.setStringList(sorted(addresses))
 
-    def _set_address(self, path: Optional[pathlib.Path]):
+    def _set_address(self, path: pathlib.Path | None):
         """Show the address of what is on screen, without disturbing typing."""
         if not hasattr(self, "address_edit") or self.address_edit.hasFocus():
             return
@@ -1106,10 +1098,10 @@ class HelpWidget(ChisurfDockTool):
             open_link(text)
             return
         if text.startswith("cite:"):
-            from chisurf.plugins.core.help.api.bibliography import bibliography, entry_url
             from chisurf.gui.widgets.tools.doc_links import open_link
+            from chisurf.plugins.core.help.api.bibliography import bibliography, entry_url
 
-            entry = bibliography().get(text[len("cite:"):].strip())
+            entry = bibliography().get(text[len("cite:") :].strip())
             if entry is not None:
                 open_link(entry_url(entry))
                 return
@@ -1209,7 +1201,7 @@ class HelpWidget(ChisurfDockTool):
         results.sort(key=lambda hit: (-hit["score"], hit["node"].title))
         return results[:limit]
 
-    def _indexed(self, path: Optional[pathlib.Path]) -> Optional[dict]:
+    def _indexed(self, path: pathlib.Path | None) -> dict | None:
         """Return (and cache) the searchable form of a page."""
         if path is None:
             return None
@@ -1225,8 +1217,7 @@ class HelpWidget(ChisurfDockTool):
         # the reader as a result excerpt is not.
         raw = md_api.strip_front_matter(raw)
         headings = "\n".join(
-            match.group(1)
-            for match in re.finditer(r"^#{1,6}\s+(.+)$", raw, re.M)
+            match.group(1) for match in re.finditer(r"^#{1,6}\s+(.+)$", raw, re.M)
         ).lower()
         entry = {
             "path": path,
@@ -1269,7 +1260,7 @@ class HelpWidget(ChisurfDockTool):
         if position < 0:
             return text[:width]
         start = max(0, position - width // 3)
-        excerpt = text[start: start + width].strip()
+        excerpt = text[start : start + width].strip()
         return ("…" if start else "") + excerpt + ("…" if start + width < len(text) else "")
 
     def _filter_tree(self, needle: str):
@@ -1277,7 +1268,7 @@ class HelpWidget(ChisurfDockTool):
         if not needle:
             self._filter_tree_to(None)
 
-    def _filter_tree_to(self, keys: Optional[set]):
+    def _filter_tree_to(self, keys: set | None):
         """Keep only the rows in *keys* — the search hits — or all of them.
 
         The tree is filtered by the *result set* rather than by the raw string:
@@ -1291,7 +1282,7 @@ class HelpWidget(ChisurfDockTool):
         if keys is not None:
             self.tree.expandAll()
 
-    def _filter_item(self, item, keys: Optional[set]) -> bool:
+    def _filter_item(self, item, keys: set | None) -> bool:
         if keys is None:
             item.setHidden(False)
             for index in range(item.childCount()):
@@ -1327,7 +1318,7 @@ class HelpWidget(ChisurfDockTool):
                 where = self._trail.get(str(node.path), "")
                 rows.append(
                     f'<p><a href="{_html.escape(str(node.path), quote=True)}">'
-                    f'<b>{_html.escape(node.title)}</b></a>'
+                    f"<b>{_html.escape(node.title)}</b></a>"
                     + (f' <span class="doc-hit">— {_html.escape(where)}</span>' if where else "")
                     + f'<br><span class="doc-hit">{_html.escape(hit["excerpt"])}</span></p>'
                 )
@@ -1373,16 +1364,12 @@ class HelpWidget(ChisurfDockTool):
             )
 
         parts.append("<h2>The parts of the documentation</h2>")
-        for section in (self._toc.children if self._toc else []):
+        for section in self._toc.children if self._toc else []:
             icon = SECTION_ICONS.get(section.title, "📄")
-            target = section.path or (
-                section.children[0].path if section.children else None
-            )
+            target = section.path or (section.children[0].path if section.children else None)
             heading = _html.escape(section.title)
             if target is not None:
-                heading = (
-                    f'<a href="{_html.escape(str(target), quote=True)}">{heading}</a>'
-                )
+                heading = f'<a href="{_html.escape(str(target), quote=True)}">{heading}</a>'
             parts.append(
                 f'<p>{icon} <span class="doc-card-title">{heading}</span><br>'
                 f'<span class="doc-hit">{_html.escape(section.summary)}</span></p>'
@@ -1396,7 +1383,7 @@ class HelpWidget(ChisurfDockTool):
                     + "</p>"
                 )
         parts.append(
-            "<hr><p class=\"doc-hit\">Press <b>Ctrl+F</b> to search every page, "
+            '<hr><p class="doc-hit">Press <b>Ctrl+F</b> to search every page, '
             "or use the tree on the left. Every plugin's <b>?</b> button opens "
             "its own help here.</p>"
         )
@@ -1426,12 +1413,12 @@ class HelpWidget(ChisurfDockTool):
         self._history: list = []
         self._history_index: int = -1
 
-    def _push_history(self, path: Optional[pathlib.Path], anchor: str):
+    def _push_history(self, path: pathlib.Path | None, anchor: str):
         entry = (path, anchor or "")
         if self._history and self._history[self._history_index] == entry:
             return
         # A new branch discards whatever was ahead, as a browser does.
-        del self._history[self._history_index + 1:]
+        del self._history[self._history_index + 1 :]
         self._history.append(entry)
         self._history_index = len(self._history) - 1
         self._update_history_buttons()
@@ -1483,7 +1470,7 @@ class HelpWidget(ChisurfDockTool):
         anchor = md_api.slugify_heading(section) if section else None
         self.navigate(pathlib.Path(path), anchor)
 
-    def navigate(self, file_path: pathlib.Path, anchor: Optional[str] = None):
+    def navigate(self, file_path: pathlib.Path, anchor: str | None = None):
         """Open a page **and record it in the history**.
 
         Every route into a document that a *reader* takes goes through here --
@@ -1531,7 +1518,7 @@ class HelpWidget(ChisurfDockTool):
         if forward is not None:
             forward.setEnabled(self._history_index + 1 < len(self._history))
 
-    def _open_document_path(self, file_path: pathlib.Path, anchor: Optional[str] = None):
+    def _open_document_path(self, file_path: pathlib.Path, anchor: str | None = None):
         if not file_path.exists():
             return
         self.current_path = file_path
@@ -1612,11 +1599,15 @@ class HelpWidget(ChisurfDockTool):
             return html
         left = (
             f'<a href="{_html.escape(str(previous.path), quote=True)}">◀ '
-            f"{_html.escape(previous.title)}</a>" if previous else ""
+            f"{_html.escape(previous.title)}</a>"
+            if previous
+            else ""
         )
         right = (
             f'<a href="{_html.escape(str(following.path), quote=True)}">'
-            f"{_html.escape(following.title)} ▶</a>" if following else ""
+            f"{_html.escape(following.title)} ▶</a>"
+            if following
+            else ""
         )
         pager = (
             '<hr><table width="100%" border="0" cellpadding="0" cellspacing="0"><tr>'
@@ -1733,9 +1724,7 @@ class HelpWidget(ChisurfDockTool):
             html = None
         return html, shown
 
-    def _set_viewer_html(
-        self, html: Optional[str], text: str, file_path: Optional[pathlib.Path]
-    ):
+    def _set_viewer_html(self, html: str | None, text: str, file_path: pathlib.Path | None):
         """Show *html* for *file_path*, resolving and scaling its images."""
         if html is None:
             self.viewer.setPlainText(text)
@@ -1748,9 +1737,7 @@ class HelpWidget(ChisurfDockTool):
                 pass
         try:
             if base_dir is not None:
-                html = _constrain_image_widths(
-                    html, base_dir, self.viewer.text_column_width()
-                )
+                html = _constrain_image_widths(html, base_dir, self.viewer.text_column_width())
         except Exception:
             pass
         self._paint_viewer_background()
@@ -1873,7 +1860,7 @@ class HelpWidget(ChisurfDockTool):
 
     # ── human review ────────────────────────────────────────────────
 
-    def _refresh_review_state(self, file_path: Optional[pathlib.Path]):
+    def _refresh_review_state(self, file_path: pathlib.Path | None):
         """Update the review banner and both sign-off buttons for *file_path*."""
         if not hasattr(self, "review_btn"):
             return
@@ -1917,22 +1904,17 @@ class HelpWidget(ChisurfDockTool):
         fg, bg = colours.get(status, ("#000000", "#f0f0f0"))
         self.review_label.setText(f"{badge} {status.upper()}{who} — {tip}")
         self.review_label.setStyleSheet(
-            f"color: {fg}; background: {bg}; padding: 4px; border-radius: 3px;"
-            "font-size: 9pt;"
+            f"color: {fg}; background: {bg}; padding: 4px; border-radius: 3px;font-size: 9pt;"
         )
         self.review_label.setVisible(True)
 
     def _on_review_toggled(self, checked: bool):
         """Record or clear the *human* sign-off for the current page."""
-        self._record_review(
-            review.STATUS_REVIEWED if checked else review.STATUS_UNREVIEWED
-        )
+        self._record_review(review.STATUS_REVIEWED if checked else review.STATUS_UNREVIEWED)
 
     def _on_ai_review_toggled(self, checked: bool):
         """Record or clear the *agent* sign-off for the current page."""
-        self._record_review(
-            review.STATUS_AI_REVIEWED if checked else review.STATUS_UNREVIEWED
-        )
+        self._record_review(review.STATUS_AI_REVIEWED if checked else review.STATUS_UNREVIEWED)
 
     def _record_review(self, status: str):
         """Write *status* for the open page and refresh what shows it."""

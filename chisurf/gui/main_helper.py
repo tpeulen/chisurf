@@ -1,62 +1,73 @@
 from __future__ import annotations
+
 import functools
-import os
-import pathlib
-import typing
-import yaml
-import shutil
-import copy
 import importlib
+import pathlib
+import shutil
+import typing
+
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets as _gw
-from chisurf.history import replay as _hr
-from qtpy import QtCore, QtWidgets
-from chisurf.gui import dialogs
+from chisurf.gui import dialogs, misc_helpers
 from chisurf.gui.progress import ChiSurfProgress
-
+from chisurf.history import replay as _hr
 
 if typing.TYPE_CHECKING:
     from chisurf.gui.main import Main
 
+
 class ProjectMixin:
     def _load_recent_projects(self: Main) -> list[str]:
         from chisurf.gui import project_helpers
+
         return project_helpers.load_recent_projects()
 
     def _store_recent_projects(self: Main, projects: list[str]) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.store_recent_projects(projects)
 
     def _set_recent_projects(self: Main, projects: list[str]) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.set_recent_projects(self, projects)
 
     def add_recent_project(self: Main, project_path) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.add_recent_project(self, project_path)
 
     def _clear_recent_projects(self: Main) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.clear_recent_projects(self)
 
     def _open_recent_project(self: Main, project_path: str) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.open_recent_project(self, project_path)
 
     def _refresh_recent_projects_menu(self: Main) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.refresh_recent_projects_menu(self)
 
     def _init_recent_projects_menu(self: Main) -> None:
         from chisurf.gui import project_helpers
+
         project_helpers.init_recent_projects_menu(self)
 
     def onOpenProject(self: Main, event: QtCore.QEvent = None):
         """Open a project archive selected from disk."""
         from chisurf.gui import project_helpers
 
-        working_path = pathlib.Path(cs.working_path) if getattr(cs, "working_path", None) else pathlib.Path.home()
+        working_path = (
+            pathlib.Path(cs.working_path)
+            if getattr(cs, "working_path", None)
+            else pathlib.Path.home()
+        )
         path_str, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Open Project", working_path.as_posix(), "ChiSurf Project (*.cs.pto)"
         )
@@ -128,8 +139,10 @@ class ProjectMixin:
             self._current_project_path = None
             cs.logging.info(
                 "Project saved to MMFDB: %s v%s (id=%s, ver=%s)",
-                project_name, result.get("version_number"),
-                result.get("project_id"), result.get("version_id"),
+                project_name,
+                result.get("version_number"),
+                result.get("project_id"),
+                result.get("version_id"),
             )
         except Exception as exc:
             cs.logging.exception("Failed to save project to MMFDB")
@@ -140,7 +153,8 @@ class ProjectMixin:
         version_id = getattr(self, "_current_project_version_id", None)
         if version_id:
             result = dialogs.question(
-                self, "Export Project",
+                self,
+                "Export Project",
                 "Export the current project version as .cs.pto?\n\n"
                 "This creates a portable archive file that can be imported on another system.",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
@@ -151,7 +165,8 @@ class ProjectMixin:
             working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
             default_name = f"{getattr(self, '_current_project_name', 'project')}_v{getattr(self, '_current_project_version', 1)}.cs.pto"
             path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, "Export Project as .cs.pto",
+                self,
+                "Export Project as .cs.pto",
                 (working / default_name).as_posix(),
                 "ChiSurf Project (*.cs.pto)",
             )
@@ -162,6 +177,7 @@ class ProjectMixin:
                 project_path = pathlib.Path(f"{project_path}.cs.pto")
             try:
                 from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
+
                 client = ProjectBrowserClient(inprocess=True)
                 client.export_csp(version_id=version_id, target_path=str(project_path))
                 self.add_recent_project(project_path)
@@ -173,7 +189,10 @@ class ProjectMixin:
         working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
         default_path = working / "chisurf_project.cs.pto"
         path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export Project", default_path.as_posix(), "ChiSurf Project (*.cs.pto)",
+            self,
+            "Export Project",
+            default_path.as_posix(),
+            "ChiSurf Project (*.cs.pto)",
         )
         if not path_str:
             return
@@ -182,7 +201,8 @@ class ProjectMixin:
             project_path = pathlib.Path(f"{project_path}.cs.pto")
         if project_path.exists():
             result = dialogs.question(
-                self, "Overwrite?",
+                self,
+                "Overwrite?",
                 f"Overwrite existing file?\n{project_path}",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.No,
@@ -212,19 +232,22 @@ class ProjectMixin:
             self.load_and_show_plugin("chisurf.plugins.core.project_browser")
         except Exception as exc:
             dialogs.error(
-                self, "Open Project Failed",
-                f"Could not open projects from MMFDB:\n{exc}"
+                self, "Open Project Failed", f"Could not open projects from MMFDB:\n{exc}"
             )
 
     def onImportProject(self: Main, event: QtCore.QEvent = None):
         """Import a project archive file into the MMFDB database."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Import Project", "", "ChiSurf Project (*.cs.pto)",
+            self,
+            "Import Project",
+            "",
+            "ChiSurf Project (*.cs.pto)",
         )
         if not file_path:
             return
         try:
             from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
+
             client = ProjectBrowserClient(inprocess=True)
 
             preview = client.import_preview(file_path=file_path)
@@ -236,12 +259,14 @@ class ProjectMixin:
 
             if has_collisions:
                 from chisurf.plugins.core.project_browser.gui.tool import CollisionDialog
+
                 dlg = CollisionDialog(collisions, preview.get("origin", {}), self)
                 if dlg.exec() != QtWidgets.QDialog.Accepted:
                     return
             else:
                 ok = dialogs.question(
-                    self, "Confirm Import",
+                    self,
+                    "Confirm Import",
                     f"No collisions detected.\n"
                     f"Original: {preview.get('origin', {}).get('project_id', '?')}\n"
                     f"Proceed?",
@@ -255,7 +280,8 @@ class ProjectMixin:
                 self._current_project_id = result.get("project_id")
                 self._current_project_version_id = result.get("version_id")
                 dialogs.information(
-                    self, "Import Complete",
+                    self,
+                    "Import Complete",
                     f"Project imported.\n"
                     f"ID: {result.get('project_id', '?')} v{result.get('version_number', '?')}",
                 )
@@ -291,7 +317,9 @@ class ProjectMixin:
             "Archive Project to Database",
             "Project name:",
             QtWidgets.QLineEdit.Normal,
-            self._current_project_path.stem if getattr(self, "_current_project_path", None) else "chisurf_project"
+            self._current_project_path.stem
+            if getattr(self, "_current_project_path", None)
+            else "chisurf_project",
         )
         if not ok1 or not project_name:
             return
@@ -318,9 +346,17 @@ class ProjectMixin:
         current_exp = getattr(self, "current_experiment", None)
         if current_exp is not None:
             experiment_id = getattr(current_exp, "experiment_id", None)
-            if not experiment_id and hasattr(current_exp, "metadata") and isinstance(current_exp.metadata, dict):
+            if (
+                not experiment_id
+                and hasattr(current_exp, "metadata")
+                and isinstance(current_exp.metadata, dict)
+            ):
                 experiment_id = current_exp.metadata.get("experiment_id")
-            if not experiment_id and hasattr(current_exp, "extra") and isinstance(current_exp.extra, dict):
+            if (
+                not experiment_id
+                and hasattr(current_exp, "extra")
+                and isinstance(current_exp.extra, dict)
+            ):
                 experiment_id = current_exp.extra.get("experiment_id")
 
         project_id = f"proj_{uuid.uuid4()}"
@@ -344,7 +380,7 @@ class ProjectMixin:
                 dialogs.information(
                     self,
                     "Project Archived",
-                    f"Project successfully archived to database.\nProject ID: {res.get('project_id', project_id)}"
+                    f"Project successfully archived to database.\nProject ID: {res.get('project_id', project_id)}",
                 )
             else:
                 dialogs.warning(
@@ -353,12 +389,7 @@ class ProjectMixin:
                     res.get("error", "Failed to archive project to database."),
                 )
         except Exception as exc:
-            dialogs.error(
-                self,
-                "Archive Failed",
-                f"Failed to archive project to database: {exc}"
-            )
-
+            dialogs.error(self, "Archive Failed", f"Failed to archive project to database: {exc}")
 
 
 class SetupMixin:
@@ -366,9 +397,10 @@ class SetupMixin:
         """Restore saved setup defaults from user settings."""
         try:
             from chisurf.gui.widgets.experiments.setup_persistence import (
-                load_setup_defaults,
                 apply_setup_defaults,
+                load_setup_defaults,
             )
+
             defaults = load_setup_defaults()
             if defaults.get("experiments"):
                 apply_setup_defaults(self, defaults)
@@ -383,6 +415,7 @@ class SetupMixin:
                 collect_setup_defaults,
                 save_setup_defaults,
             )
+
             defaults = collect_setup_defaults(self)
             if save_setup_defaults(defaults):
                 cs.logging.info("Saved setup defaults to user settings")
@@ -426,9 +459,7 @@ class SetupMixin:
         # Add setups for selected experiment
         self.comboBox_setupSelect.blockSignals(True)
         self.comboBox_setupSelect.clear()
-        self.comboBox_setupSelect.addItems(
-            exp.reader_names
-        )
+        self.comboBox_setupSelect.addItems(exp.reader_names)
         self.comboBox_setupSelect.blockSignals(False)
         self._current_experiment_idx = self.comboBox_experimentSelect.currentIndex()
         self._refresh_setup_ui()
@@ -446,9 +477,8 @@ class SetupMixin:
     def _refresh_setup_ui(self: Main):
         """Show the reader widget for the current setup — no dispatch."""
         from qtpy import QtWidgets
-        _gw.hide_items_in_layout(
-            self.layout_experiment_reader
-        )
+
+        _gw.hide_items_in_layout(self.layout_experiment_reader)
         readers = self.current_experiment.readers
         if not readers:
             self._current_setup_idx = 0
@@ -473,12 +503,12 @@ class SetupMixin:
             return
         self.layout_experiment_reader.addWidget(widget)
         widget.show()
-        if hasattr(widget, 'updateUI') and callable(widget.updateUI):
+        if hasattr(widget, "updateUI") and callable(widget.updateUI):
             widget.updateUI()
         self._current_setup_idx = self.comboBox_setupSelect.currentIndex()
 
         try:
-            if hasattr(widget, 'set_help_callback') and callable(widget.set_help_callback):
+            if hasattr(widget, "set_help_callback") and callable(widget.set_help_callback):
                 widget.set_help_callback(self.open_context_help_for_reader)
         except Exception:
             pass
@@ -491,45 +521,45 @@ class SetupMixin:
             exp_type (str): The experiment type key in cs.core.experiments.types
             config (dict): Configuration for the experiment with readers and models
         """
-        import chisurf.core.experiments
         try:
             # Get the base experiment from registry or create a new one
             experiment = cs.core.experiments.types.get(exp_type)
             if experiment is None:
                 experiment = cs.core.experiments.core.Experiment(
-                    name=config.get('name', exp_type),
-                    hidden=config.get('hidden', False)
+                    name=config.get("name", exp_type), hidden=config.get("hidden", False)
                 )
 
             # Add readers
             for reader_cfg in config.get("readers", []):
                 try:
-                    reader_class = self._resolve_class(reader_cfg.get('reader_class'))
+                    reader_class = self._resolve_class(reader_cfg.get("reader_class"))
                     if reader_class is None:
                         continue
-                    
-                    reader_params = reader_cfg.get('reader_params', {})
+
+                    reader_params = reader_cfg.get("reader_params", {})
                     # Ensure experiment is passed to reader if it expects it
-                    reader_params['experiment'] = experiment
+                    reader_params["experiment"] = experiment
                     reader = reader_class(**reader_params)
-                    
+
                     # Register the controller lazily: only the reader the user
                     # actually selects ever gets its widget shown, so building
                     # every controller here would construct ~18 widgets to
                     # display one.
-                    controller_class_name = reader_cfg.get('controller_class')
+                    controller_class_name = reader_cfg.get("controller_class")
                     if controller_class_name:
                         controller_class = self._resolve_class(controller_class_name)
                         if controller_class:
-                            controller_params = dict(reader_cfg.get('controller_params', {}))
-                            controller_params['experiment_reader'] = reader
+                            controller_params = dict(reader_cfg.get("controller_params", {}))
+                            controller_params["experiment_reader"] = reader
                             reader.set_controller_factory(
                                 functools.partial(controller_class, **controller_params)
                             )
 
                     experiment.add_reader(reader)
                 except Exception as e:
-                    cs.logging.error(f"Failed to setup reader {reader_cfg.get('reader_class')} in {exp_type}: {e}")
+                    cs.logging.error(
+                        f"Failed to setup reader {reader_cfg.get('reader_class')} in {exp_type}: {e}"
+                    )
 
             # Add models
             for model_path in config.get("models", []):
@@ -576,10 +606,9 @@ class SetupMixin:
                 "chisurf.gui.widgets.models.fcs.maxent_widget.MaxEntRHWidget"
             ),
         }.get(class_path, class_path)
-        import importlib
         try:
-            if '.' in class_path:
-                module_name, class_name = class_path.rsplit('.', 1)
+            if "." in class_path:
+                module_name, class_name = class_path.rsplit(".", 1)
                 module = importlib.import_module(module_name)
                 return getattr(module, class_name)
             # Fallback for unqualified names — not used in current config
@@ -592,8 +621,6 @@ class SetupMixin:
         """
         Initialize experiment setups based on configuration from YAML file.
         """
-        import pathlib
-        import shutil
         import chisurf.core.experiments
 
         # One loader, one merger: the settings file is also read by the headless
@@ -604,7 +631,9 @@ class SetupMixin:
             _load_yaml_config,
         )
 
-        def _summarize_experiment_config_diff(default_cfg: dict, user_cfg: dict, max_lines: int = 10) -> str:
+        def _summarize_experiment_config_diff(
+            default_cfg: dict, user_cfg: dict, max_lines: int = 10
+        ) -> str:
             default_cfg = default_cfg or {}
             user_cfg = user_cfg or {}
             lines: list[str] = []
@@ -642,7 +671,9 @@ class SetupMixin:
                                 changed_types.append(key)
                             continue
                         name_changed = d_val.get("name", key) != u_val.get("name", key)
-                        hidden_changed = bool(d_val.get("hidden", False)) != bool(u_val.get("hidden", False))
+                        hidden_changed = bool(d_val.get("hidden", False)) != bool(
+                            u_val.get("hidden", False)
+                        )
                         if name_changed or hidden_changed:
                             changed_types.append(key)
                     if added_types:
@@ -682,7 +713,9 @@ class SetupMixin:
 
         check_updates = True
         try:
-            check_updates = bool(cs.core.settings.cs_settings.get('check_experiment_config_updates_on_startup', True))
+            check_updates = bool(
+                cs.core.settings.cs_settings.get("check_experiment_config_updates_on_startup", True)
+            )
         except Exception:
             check_updates = True
 
@@ -706,8 +739,7 @@ class SetupMixin:
                         user_for_diff = _load_yaml_config(user_config_file)
                         if isinstance(default_for_diff, dict) or isinstance(user_for_diff, dict):
                             diff_summary = _summarize_experiment_config_diff(
-                                default_for_diff or {},
-                                user_for_diff or {}
+                                default_for_diff or {}, user_for_diff or {}
                             )
                     except Exception:
                         diff_summary = ""
@@ -735,10 +767,15 @@ class SetupMixin:
 
                     try:
                         if answer.checked:
-                            from chisurf.core.settings.settings_utils import set_check_experiment_config_updates_on_startup as _set_exp_flag
+                            from chisurf.core.settings.settings_utils import (
+                                set_check_experiment_config_updates_on_startup as _set_exp_flag,
+                            )
+
                             _set_exp_flag(False)
                             try:
-                                cs.core.settings.cs_settings['check_experiment_config_updates_on_startup'] = False
+                                cs.core.settings.cs_settings[
+                                    "check_experiment_config_updates_on_startup"
+                                ] = False
                             except Exception:
                                 pass
                     except Exception:
@@ -768,7 +805,7 @@ class SetupMixin:
 
         if experiment_configs:
             for exp_type, config in experiment_configs.items():
-                if exp_type == 'global' or exp_type == 'experiment_types':
+                if exp_type == "global" or exp_type == "experiment_types":
                     continue
                 self._setup_experiment(exp_type, config)
         else:
@@ -780,24 +817,23 @@ class SetupMixin:
         # (see _setup_experiment): a stale class path or a reader that fails to
         # construct must not raise out of this startup stage — the six splash
         # stages behind it (actions, tools, layout, style) would never run.
-        global_config = experiment_configs.get('global') or {}
+        global_config = experiment_configs.get("global") or {}
         if not isinstance(global_config, dict):
             cs.logging.error("Ignoring malformed 'global' experiment configuration section")
             global_config = {}
         global_fit = cs.core.experiments.core.Experiment(
-            name=global_config.get('name', 'Global'),
-            hidden=global_config.get('hidden', True)
+            name=global_config.get("name", "Global"), hidden=global_config.get("hidden", True)
         )
 
         global_setup = None
-        readers = global_config.get('readers') or []
+        readers = global_config.get("readers") or []
         if readers:
             reader_config = readers[0] if isinstance(readers[0], dict) else {}
             try:
-                reader_class = self._resolve_class(reader_config.get('reader_class'))
+                reader_class = self._resolve_class(reader_config.get("reader_class"))
                 if reader_class is not None:
-                    reader_params = dict(reader_config.get('reader_params', {}))
-                    reader_params['experiment'] = global_fit
+                    reader_params = dict(reader_config.get("reader_params", {}))
+                    reader_params["experiment"] = global_fit
                     global_setup = reader_class(**reader_params)
             except Exception as e:
                 cs.logging.error(
@@ -806,14 +842,12 @@ class SetupMixin:
         if global_setup is None:
             # Fall back to the built-in reader, as for a section without readers.
             global_setup = cs.core.experiments.globalfit.GlobalFitSetup(
-                name='Global-Fit',
-                experiment=global_fit
+                name="Global-Fit", experiment=global_fit
             )
         global_fit.add_reader(global_setup)
 
         model_classes = [
-            self._resolve_class(model_class)
-            for model_class in (global_config.get('models') or [])
+            self._resolve_class(model_class) for model_class in (global_config.get("models") or [])
         ]
         global_fit.add_model_classes(models=model_classes)
 
@@ -827,31 +861,26 @@ class SetupMixin:
             },
         )
 
-        self.experiment_names = [
-            b.name for b in list(cs.experiment.values()) 
-            if not b.hidden
-        ]
+        self.experiment_names = [b.name for b in list(cs.experiment.values()) if not b.hidden]
         self.comboBox_experimentSelect.clear()
-        self.comboBox_experimentSelect.addItems(
-            self.experiment_names
-        )
+        self.comboBox_experimentSelect.addItems(self.experiment_names)
 
         # Chimol display config version check
         try:
             from chimol.core.settings.config import (
-                check_for_display_config_update,
-                get_user_display_config_path,
-                get_package_display_config_path,
                 DISPLAY_CONFIG_VERSION,
+                check_for_display_config_update,
+                get_package_display_config_path,
+                get_user_display_config_path,
             )
+
             if check_for_display_config_update():
                 user_path = get_user_display_config_path()
                 package_path = get_package_display_config_path()
                 answer = dialogs.choice(
                     self,
                     "Chimol display configuration update",
-                    "The Chimol display configuration in your settings folder "
-                    "is outdated.",
+                    "The Chimol display configuration in your settings folder is outdated.",
                     {"update": "Update", "skip": "Skip"},
                     default="skip",
                     kind="information",
@@ -868,17 +897,14 @@ class SetupMixin:
                             user_path.parent.mkdir(parents=True, exist_ok=True)
                             shutil.copyfile(package_path, user_path)
                             from chimol.core.settings import config as _chimol_config
+
                             _chimol_config.reload_display_config()
                         except Exception as e:
-                            cs.logging.error(
-                                f"Failed to update chimol display config: {e}"
-                            )
+                            cs.logging.error(f"Failed to update chimol display config: {e}")
         except ImportError:
             pass
         except Exception as e:
-            cs.logging.warning(
-                f"Failed to check chimol display config update: {e}"
-            )
+            cs.logging.warning(f"Failed to check chimol display config update: {e}")
 
     def reinitialize(
         self: Main,
@@ -905,7 +931,7 @@ class SetupMixin:
                 "• Memory will be cleaned up\n\n"
                 "This action cannot be undone. Continue?",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.No,
             )
 
             if reply != QtWidgets.QMessageBox.Yes:
@@ -924,8 +950,7 @@ class SetupMixin:
 
         try:
             cs.macros.reinitialize_application(
-                main_window=self,
-                progress_callback=progress_callback
+                main_window=self, progress_callback=progress_callback
             )
 
             progress_dialog.close()
@@ -933,21 +958,22 @@ class SetupMixin:
                 dialogs.information(
                     self,
                     "Reinitialization Complete",
-                    "ChiSurf has been successfully reinitialized.\nAll data has been cleared, memory freed, and the application reset to initial state."
+                    "ChiSurf has been successfully reinitialized.\nAll data has been cleared, memory freed, and the application reset to initial state.",
                 )
         except Exception as e:
             progress_dialog.close()
             dialogs.error(
                 self,
                 "Reinitialization Error",
-                f"An error occurred during reinitialization:\n{str(e)}"
+                f"An error occurred during reinitialization:\n{str(e)}",
             )
+
 
 # Placeholder for remaining Mixins
 class HistoryMixin:
     def _init_history_browser(self: Main) -> None:
         try:
-            from qtpy import QtCore, QtWidgets
+            from qtpy import QtWidgets
 
             log_widget = getattr(self, "plainTextEditLog", None)
             filter_edit = getattr(self, "lineEdit_LogFilter", None)
@@ -975,7 +1001,11 @@ class HistoryMixin:
             for i in range(parent_layout.count()):
                 item = parent_layout.itemAt(i)
                 w = item.widget()
-                if w is not None and isinstance(w, QtWidgets.QLabel) and w.text() in {"Logging", "History"}:
+                if (
+                    w is not None
+                    and isinstance(w, QtWidgets.QLabel)
+                    and w.text() in {"Logging", "History"}
+                ):
                     widgets_to_remove.append(w)
 
             seen = set()
@@ -1048,9 +1078,7 @@ class HistoryMixin:
             except Exception:
                 pass
             try:
-                cs.history.set_checkpoint_capture(
-                    _hr.capture_domain_snapshot
-                )
+                cs.history.set_checkpoint_capture(_hr.capture_domain_snapshot)
             except Exception:
                 pass
             parent_layout.insertWidget(insert_index, browser, 1)
@@ -1089,7 +1117,7 @@ class HistoryMixin:
             event = browser.undo_step()
             if isinstance(event, dict):
                 cs.logging.info(
-                    f"HISTNAV: undo -> event={event.get('action_type','?')} id={str(event.get('event_id',''))[:8]}"
+                    f"HISTNAV: undo -> event={event.get('action_type', '?')} id={str(event.get('event_id', ''))[:8]}"
                 )
             else:
                 cs.logging.info("HISTNAV: undo produced no event")
@@ -1109,7 +1137,7 @@ class HistoryMixin:
             event = browser.redo_step()
             if isinstance(event, dict):
                 cs.logging.info(
-                    f"HISTNAV: redo -> event={event.get('action_type','?')} id={str(event.get('event_id',''))[:8]}"
+                    f"HISTNAV: redo -> event={event.get('action_type', '?')} id={str(event.get('event_id', ''))[:8]}"
                 )
             else:
                 cs.logging.info("HISTNAV: redo produced no event")
@@ -1133,19 +1161,20 @@ class HistoryMixin:
         except Exception:
             pass
 
+
 class StateMixin:
     def _apply_parameter_state(
-            self: Main,
-            parameter_state: typing.Dict[typing.Tuple[str, str, str], typing.Dict[str, typing.Any]],
-            force_unlink_keys: typing.Optional[typing.Set[typing.Tuple[str, str, str]]] = None,
+        self: Main,
+        parameter_state: dict[tuple[str, str, str], dict[str, typing.Any]],
+        force_unlink_keys: set[tuple[str, str, str]] | None = None,
     ) -> None:
-        def format_key(key: typing.Tuple[str, str, str]) -> str:
+        def format_key(key: tuple[str, str, str]) -> str:
             return f"{key[0]}/{key[1]}/{key[2]}"
 
         def resolve_param(
-                key: typing.Tuple[str, str, str],
-                state: typing.Optional[typing.Dict[str, typing.Any]] = None,
-                link_uid: typing.Optional[typing.Tuple[str, str, str]] = None,
+            key: tuple[str, str, str],
+            state: dict[str, typing.Any] | None = None,
+            link_uid: tuple[str, str, str] | None = None,
         ):
             state = state or {}
             src_param_uid = str(state.get("source_parameter_uid") or "")
@@ -1188,12 +1217,12 @@ class StateMixin:
             return None
 
         force_unlink_keys = force_unlink_keys or set()
-        touched_fit_groups: typing.Set[typing.Any] = set()
+        touched_fit_groups: set[typing.Any] = set()
         applied_scalar = 0
         applied_links = 0
         applied_unlinks = 0
         unresolved = 0
-        unresolved_keys: typing.List[str] = []
+        unresolved_keys: list[str] = []
 
         # First apply scalar state
         for key, state in parameter_state.items():
@@ -1338,14 +1367,14 @@ class StateMixin:
             pass
 
     def _apply_fit_range_state(
-            self: Main,
-            fit_range_state: typing.Dict[str, typing.Dict[str, typing.Any]],
+        self: Main,
+        fit_range_state: dict[str, dict[str, typing.Any]],
     ) -> None:
         if not isinstance(fit_range_state, dict) or not fit_range_state:
             return
 
         applied = 0
-        unresolved_fit_groups: typing.List[str] = []
+        unresolved_fit_groups: list[str] = []
 
         for fit_group_name, state in fit_range_state.items():
             try:
@@ -1393,17 +1422,19 @@ class StateMixin:
                 pass
 
         try:
-            cs.logging.info(f"HISTNAV: applied fit_range_state to {applied} fit groups; unresolved={unresolved_fit_groups}")
+            cs.logging.info(
+                f"HISTNAV: applied fit_range_state to {applied} fit groups; unresolved={unresolved_fit_groups}"
+            )
         except Exception:
             pass
 
-    def _apply_model_state(self: Main, model_state: typing.Dict[str, typing.Any]) -> None:
+    def _apply_model_state(self: Main, model_state: dict[str, typing.Any]) -> None:
         """Apply model state from history replay."""
         if not isinstance(model_state, dict) or not model_state:
             return
 
         applied = 0
-        unresolved_fit_groups: typing.List[str] = []
+        unresolved_fit_groups: list[str] = []
 
         import chisurf.core.actions as actions
 
@@ -1453,24 +1484,30 @@ class StateMixin:
 
                         comp_name = str(comp_data.get("name", ""))
                         action = str(comp_data.get("action", ""))
-                        
+
                         if action == "add":
                             try:
-                                actions.dispatch("model.add_component", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "component_name": comp_name
-                                })
+                                actions.dispatch(
+                                    "model.add_component",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "component_name": comp_name,
+                                    },
+                                )
                                 applied += 1
                             except Exception:
                                 pass
                         elif action == "remove":
                             try:
-                                actions.dispatch("model.remove_component", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "component_name": comp_name
-                                })
+                                actions.dispatch(
+                                    "model.remove_component",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "component_name": comp_name,
+                                    },
+                                )
                                 applied += 1
                             except Exception:
                                 pass
@@ -1482,11 +1519,14 @@ class StateMixin:
                     if "normalize_amplitudes" in config_data:
                         try:
                             component_name = str(config_data["normalize_amplitudes"])
-                            actions.dispatch("model.normalize_amplitudes", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index,
-                                "component_name": component_name
-                            })
+                            actions.dispatch(
+                                "model.normalize_amplitudes",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                    "component_name": component_name,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
@@ -1494,41 +1534,53 @@ class StateMixin:
                     if "absolute_amplitudes" in config_data:
                         try:
                             component_name = str(config_data["absolute_amplitudes"])
-                            actions.dispatch("model.absolute_amplitudes", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index,
-                                "component_name": component_name
-                            })
+                            actions.dispatch(
+                                "model.absolute_amplitudes",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                    "component_name": component_name,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
 
                     if "unload_irf" in config_data:
                         try:
-                            actions.dispatch("model.unload_irf", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index
-                            })
+                            actions.dispatch(
+                                "model.unload_irf",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
 
                     if "unload_lintable" in config_data:
                         try:
-                            actions.dispatch("model.unload_lintable", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index
-                            })
+                            actions.dispatch(
+                                "model.unload_lintable",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
 
                     if "unload_background_curve" in config_data:
                         try:
-                            actions.dispatch("model.unload_background_curve", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index
-                            })
+                            actions.dispatch(
+                                "model.unload_background_curve",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
@@ -1538,12 +1590,15 @@ class StateMixin:
                         if key.startswith("irf_") and isinstance(value, str):
                             try:
                                 irf_idx = int(key[4:])
-                                actions.dispatch("model.change_irf", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "irf_idx": irf_idx,
-                                    "irf_name": value
-                                })
+                                actions.dispatch(
+                                    "model.change_irf",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "irf_idx": irf_idx,
+                                        "irf_name": value,
+                                    },
+                                )
                                 applied += 1
                             except Exception:
                                 pass
@@ -1551,12 +1606,15 @@ class StateMixin:
                         if key.startswith("correction_") and isinstance(value, (int, float, str)):
                             try:
                                 correction_type = key[11:]
-                                actions.dispatch("model.set_correction", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "correction_type": correction_type,
-                                    "value": value
-                                })
+                                actions.dispatch(
+                                    "model.set_correction",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "correction_type": correction_type,
+                                        "value": value,
+                                    },
+                                )
                                 applied += 1
                             except Exception:
                                 pass
@@ -1564,12 +1622,15 @@ class StateMixin:
                         if key.startswith("linearization_") and isinstance(value, str):
                             try:
                                 idx = int(key[15:])
-                                actions.dispatch("model.set_linearization", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "idx": idx,
-                                    "lin_name": value
-                                })
+                                actions.dispatch(
+                                    "model.set_linearization",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "idx": idx,
+                                        "lin_name": value,
+                                    },
+                                )
                                 applied += 1
                             except Exception:
                                 pass
@@ -1578,11 +1639,14 @@ class StateMixin:
                     if "global_parameters" in config_data:
                         try:
                             for param_name in config_data["global_parameters"]:
-                                actions.dispatch("model.append_global_parameter", {
-                                    "fit_index": target_fit_group.index,
-                                    "local_fit_index": target_local_fit.index,
-                                    "parameter_name": str(param_name)
-                                })
+                                actions.dispatch(
+                                    "model.append_global_parameter",
+                                    {
+                                        "fit_index": target_fit_group.index,
+                                        "local_fit_index": target_local_fit.index,
+                                        "parameter_name": str(param_name),
+                                    },
+                                )
                                 applied += 1
                         except Exception:
                             pass
@@ -1591,19 +1655,19 @@ class StateMixin:
                     if "remove_local_fit" in config_data:
                         try:
                             row = int(config_data["remove_local_fit"])
-                            actions.dispatch("model.remove_local_fit", {
-                                "fit_index": target_fit_group.index,
-                                "row": row
-                            })
+                            actions.dispatch(
+                                "model.remove_local_fit",
+                                {"fit_index": target_fit_group.index, "row": row},
+                            )
                             applied += 1
                         except Exception:
                             pass
 
                     if "clear_local_fits" in config_data:
                         try:
-                            actions.dispatch("model.clear_local_fits", {
-                                "fit_index": target_fit_group.index
-                            })
+                            actions.dispatch(
+                                "model.clear_local_fits", {"fit_index": target_fit_group.index}
+                            )
                             applied += 1
                         except Exception:
                             pass
@@ -1611,10 +1675,13 @@ class StateMixin:
                     if "append_fit" in config_data:
                         try:
                             fit_index = int(config_data["append_fit"])
-                            actions.dispatch("model.append_fit", {
-                                "fit_index": target_fit_group.index,
-                                "fit_index_to_append": fit_index
-                            })
+                            actions.dispatch(
+                                "model.append_fit",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "fit_index_to_append": fit_index,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
@@ -1622,10 +1689,13 @@ class StateMixin:
                     # Handle generic model updates
                     if "update" in config_data:
                         try:
-                            actions.dispatch("model.update", {
-                                "fit_index": target_fit_group.index,
-                                "local_fit_index": target_local_fit.index
-                            })
+                            actions.dispatch(
+                                "model.update",
+                                {
+                                    "fit_index": target_fit_group.index,
+                                    "local_fit_index": target_local_fit.index,
+                                },
+                            )
                             applied += 1
                         except Exception:
                             pass
@@ -1639,13 +1709,15 @@ class StateMixin:
                     pass
 
         try:
-            cs.logging.info(f"HISTNAV: applied model_state to {applied} model operations; unresolved_fit_groups={unresolved_fit_groups}")
+            cs.logging.info(
+                f"HISTNAV: applied model_state to {applied} model operations; unresolved_fit_groups={unresolved_fit_groups}"
+            )
         except Exception:
             pass
 
     def _apply_setup_state(
-            self: Main,
-            setup_state: typing.Dict[str, typing.Any],
+        self: Main,
+        setup_state: dict[str, typing.Any],
     ) -> None:
         if not isinstance(setup_state, dict) or not setup_state:
             return
@@ -1722,13 +1794,14 @@ class StateMixin:
 
         try:
             cs.logging.info(
-                f"HISTNAV: cursor changed to action={event.get('action_type','?')} id={str(event.get('event_id',''))[:8]}"
+                f"HISTNAV: cursor changed to action={event.get('action_type', '?')} id={str(event.get('event_id', ''))[:8]}"
             )
         except Exception:
             pass
 
         try:
             import chisurf.history
+
             browser = getattr(self, "historyBrowser", None)
             events = [event]
             all_events = [event]
@@ -1744,7 +1817,9 @@ class StateMixin:
             events_to_replay = events
             try:
                 if cursor_index >= 0:
-                    checkpoint_snapshot, events_to_replay = cs.history.get_events_from_checkpoint(cursor_index)
+                    checkpoint_snapshot, events_to_replay = cs.history.get_events_from_checkpoint(
+                        cursor_index
+                    )
                     if checkpoint_snapshot is not None:
                         cs.logging.info(
                             f"HISTNAV: using checkpoint at index {cursor_index}, replaying {len(events_to_replay)} events"
@@ -1768,9 +1843,7 @@ class StateMixin:
             # the (old) fit-group UID, so rewrite its keys through the remap before
             # applying. Parameter/fit-range state is name-keyed and needs no remap.
             if uid_remap and model_state:
-                model_state = {
-                    uid_remap.get(str(k), str(k)): v for k, v in model_state.items()
-                }
+                model_state = {uid_remap.get(str(k), str(k)): v for k, v in model_state.items()}
 
             link_touched = _hr.touched_parameter_keys(
                 all_events,
@@ -1807,7 +1880,7 @@ class StateMixin:
                 pass
         self._sync_history_navigation_actions()
 
-    def _select_dataset_by_identity(self: Main, names: typing.List[str], dataset_uid: str = "") -> None:
+    def _select_dataset_by_identity(self: Main, names: list[str], dataset_uid: str = "") -> None:
         try:
             target = [str(n) for n in names if n]
             target_uid = str(dataset_uid or "")
@@ -1871,6 +1944,7 @@ class StateMixin:
         except Exception:
             pass
 
+
 class DevMixin:
     def _init_system_info_watermark(self: Main) -> None:
         try:
@@ -1899,20 +1973,20 @@ class DevMixin:
             return
 
         dev_settings = cs.core.settings.dev_mode_settings()
-        badge_locations = dev_settings.get('badge_locations', {})
+        badge_locations = dev_settings.get("badge_locations", {})
 
-        if not dev_settings.get('show_code_badge', True):
+        if not dev_settings.get("show_code_badge", True):
             return
 
-        dock_badges = badge_locations.get('docks', True)
+        dock_badges = badge_locations.get("docks", True)
         if dock_badges:
             dock_widgets = [
-                ('dockWidgetReadData', 'Read Data'),
-                ('dockWidgetDatasets', 'Datasets'),
-                ('dockWidgetAnalysis', 'Analysis'),
-                ('dockWidgetPlot', 'Plot Settings'),
-                ('dockWidgetHistory', 'History'),
-                ('dockWidgetScriptEdit', 'Code'),
+                ("dockWidgetReadData", "Read Data"),
+                ("dockWidgetDatasets", "Datasets"),
+                ("dockWidgetAnalysis", "Analysis"),
+                ("dockWidgetPlot", "Plot Settings"),
+                ("dockWidgetHistory", "History"),
+                ("dockWidgetScriptEdit", "Code"),
             ]
 
             for attr_name, _label in dock_widgets:
@@ -1923,49 +1997,51 @@ class DevMixin:
                 if widget is None:
                     continue
                 resolver = make_widget_source_resolver(widget)
-                install_code_badge(widget, resolver, corner='top-right', margin=4)
+                install_code_badge(widget, resolver, corner="top-right", margin=4)
 
-        if badge_locations.get('parameter_groups', True):
+        if badge_locations.get("parameter_groups", True):
             try:
                 self._install_parameter_badges()
             except Exception:
                 pass
 
-        if badge_locations.get('experiment_panels', True):
+        if badge_locations.get("experiment_panels", True):
             try:
                 self._install_experiment_panel_badges()
             except Exception:
                 pass
 
-        if badge_locations.get('mdi_windows', True):
+        if badge_locations.get("mdi_windows", True):
             try:
-                self.mdiarea.subWindowActivated.connect(self._on_mdi_window_activated_for_code_badge)
+                self.mdiarea.subWindowActivated.connect(
+                    self._on_mdi_window_activated_for_code_badge
+                )
             except Exception:
                 pass
 
     def _install_parameter_badges(self: Main) -> None:
         """Install code badges on parameter group widgets."""
         try:
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import (
                 make_widget_resolver,
             )
+            from chisurf.gui.widgets.code_badge import install_code_badge
         except ImportError:
             return
 
         try:
             for fit in cs.fits:
                 try:
-                    model = getattr(fit, 'model', None)
+                    model = getattr(fit, "model", None)
                     if model is None:
                         continue
-                    for param in getattr(model, 'parameters_all', []):
+                    for param in getattr(model, "parameters_all", []):
                         try:
-                            widget = getattr(param, '_widget', None)
-                            if widget is None or hasattr(widget, '_chisurf_code_badge_installed'):
+                            widget = getattr(param, "_widget", None)
+                            if widget is None or hasattr(widget, "_chisurf_code_badge_installed"):
                                 continue
                             resolver = make_widget_resolver(widget)
-                            install_code_badge(widget, resolver, corner='top-right', margin=4)
+                            install_code_badge(widget, resolver, corner="top-right", margin=4)
                             widget._chisurf_code_badge_installed = True
                         except Exception:
                             continue
@@ -1977,25 +2053,25 @@ class DevMixin:
     def _install_experiment_panel_badges(self: Main) -> None:
         """Install code badges on experiment panel widgets."""
         try:
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import (
                 make_widget_resolver,
             )
+            from chisurf.gui.widgets.code_badge import install_code_badge
         except ImportError:
             return
 
         try:
             experiment_panels = [
-                'comboBox_experimentSelect',
-                'comboBox_setupSelect',
-                'comboBox_Model',
+                "comboBox_experimentSelect",
+                "comboBox_setupSelect",
+                "comboBox_Model",
             ]
             for attr_name in experiment_panels:
                 widget = getattr(self, attr_name, None)
-                if widget is None or hasattr(widget, '_chisurf_code_badge_installed'):
+                if widget is None or hasattr(widget, "_chisurf_code_badge_installed"):
                     continue
                 resolver = make_widget_resolver(widget)
-                install_code_badge(widget, resolver, corner='top-right', margin=4)
+                install_code_badge(widget, resolver, corner="top-right", margin=4)
                 widget._chisurf_code_badge_installed = True
         except Exception:
             pass
@@ -2009,25 +2085,24 @@ class DevMixin:
             return
 
         try:
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import resolve_fit_window_source
+            from chisurf.gui.widgets.code_badge import install_code_badge
         except ImportError:
             return
 
-        if hasattr(sub_window, '_chisurf_code_badge_installed'):
+        if hasattr(sub_window, "_chisurf_code_badge_installed"):
             return
 
         try:
-            widget = sub_window.widget() if hasattr(sub_window, 'widget') else sub_window
+            widget = sub_window.widget() if hasattr(sub_window, "widget") else sub_window
 
             def resolver():
                 return resolve_fit_window_source(sub_window)
 
-            install_code_badge(widget, resolver, corner='top-right', margin=4)
+            install_code_badge(widget, resolver, corner="top-right", margin=4)
             sub_window._chisurf_code_badge_installed = True
         except Exception:
             pass
-
 
     def _init_developer_menu(self: Main) -> None:
         """Initialize the Developer menu with dev mode tools."""
@@ -2067,9 +2142,10 @@ class DevMixin:
         """Open source for the currently focused widget."""
         try:
             from chisurf.gui.devtools.source_jump import (
-                resolve_focused_widget_source,
                 open_in_editor,
+                resolve_focused_widget_source,
             )
+
             result = resolve_focused_widget_source()
             if result is None:
                 dialogs.information(
@@ -2098,6 +2174,7 @@ class DevMixin:
         """Refresh all code badges visibility."""
         try:
             from chisurf.gui.widgets.code_badge import get_badge_manager
+
             get_badge_manager().refresh_all()
             self._install_dev_mode_code_badges()
         except ImportError:
@@ -2107,10 +2184,11 @@ class DevMixin:
         """Open dev mode settings dialog."""
         try:
             from chisurf.gui.widgets.settings_editor import SettingsEditor
-            if not hasattr(self, '_dev_settings_editor') or self._dev_settings_editor is None:
+
+            if not hasattr(self, "_dev_settings_editor") or self._dev_settings_editor is None:
                 self._dev_settings_editor = SettingsEditor(
                     filename=cs.core.settings.chisurf_settings_file,
-                    window_title="Dev Mode Settings"
+                    window_title="Dev Mode Settings",
                 )
             self._dev_settings_editor.show()
         except Exception as e:

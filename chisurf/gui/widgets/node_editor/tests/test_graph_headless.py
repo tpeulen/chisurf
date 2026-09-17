@@ -5,9 +5,19 @@ from chisurf.gui.widgets.node_editor.graph import EdgeDef, GraphDef, NodeDef, Po
 
 def test_headless_graph_validation():
     # Construct a simple DAG headlessly
-    n1 = NodeDef(id="n1", node_type="test", title="Node 1", inputs=[], outputs=[PortDef("Out", True)])
-    n2 = NodeDef(id="n2", node_type="test", title="Node 2", inputs=[PortDef("In", False)], outputs=[PortDef("Out", True)])
-    n3 = NodeDef(id="n3", node_type="test", title="Node 3", inputs=[PortDef("In", False)], outputs=[])
+    n1 = NodeDef(
+        id="n1", node_type="test", title="Node 1", inputs=[], outputs=[PortDef("Out", True)]
+    )
+    n2 = NodeDef(
+        id="n2",
+        node_type="test",
+        title="Node 2",
+        inputs=[PortDef("In", False)],
+        outputs=[PortDef("Out", True)],
+    )
+    n3 = NodeDef(
+        id="n3", node_type="test", title="Node 3", inputs=[PortDef("In", False)], outputs=[]
+    )
 
     e1 = EdgeDef(source="n1", source_port=0, target="n2", target_port=0)
     e2 = EdgeDef(source="n2", source_port=0, target="n3", target_port=0)
@@ -21,9 +31,22 @@ def test_headless_graph_validation():
     assert graph.incoming_edges("n2")[0].source == "n1"
     assert graph.outgoing_edges("n2")[0].target == "n3"
 
+
 def test_headless_graph_cycle():
-    n1 = NodeDef(id="n1", node_type="test", title="Node 1", inputs=[PortDef("In", False)], outputs=[PortDef("Out", True)])
-    n2 = NodeDef(id="n2", node_type="test", title="Node 2", inputs=[PortDef("In", False)], outputs=[PortDef("Out", True)])
+    n1 = NodeDef(
+        id="n1",
+        node_type="test",
+        title="Node 1",
+        inputs=[PortDef("In", False)],
+        outputs=[PortDef("Out", True)],
+    )
+    n2 = NodeDef(
+        id="n2",
+        node_type="test",
+        title="Node 2",
+        inputs=[PortDef("In", False)],
+        outputs=[PortDef("Out", True)],
+    )
 
     e1 = EdgeDef(source="n1", source_port=0, target="n2", target_port=0)
     e2 = EdgeDef(source="n2", source_port=0, target="n1", target_port=0)
@@ -33,6 +56,7 @@ def test_headless_graph_cycle():
     assert graph.validate_acyclic() is False
     with pytest.raises(ValueError, match="Graph contains a cycle"):
         graph.topological_node_ids()
+
 
 def test_graph_def_round_trip():
     data = {
@@ -46,12 +70,12 @@ def test_graph_def_round_trip():
                 "config": {"value": 5.0},
                 "pos": [10.0, 20.0],
                 "collapsed": False,
-                "z": 1.0
+                "z": 1.0,
             }
         ],
         "edges": [],
         "version": 1,
-        "meta": {"purpose": "workflow"}
+        "meta": {"purpose": "workflow"},
     }
 
     graph = GraphDef.from_scene_dict(data)

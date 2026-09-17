@@ -27,8 +27,18 @@ logger = logging.getLogger("chisurf.plugins.burst")
 _VIEW_JSON = pathlib.Path(__file__).parent / "titration.view.json"
 
 #: Colour ramp for the stack plot: cool (no ligand) to warm (saturating).
-_RAMP = ("#3b4cc0", "#5977e3", "#7b9ff9", "#9ebeff", "#c0d4f5",
-         "#f2cbb7", "#f7ac8e", "#e8765c", "#d03b33", "#b40426")
+_RAMP = (
+    "#3b4cc0",
+    "#5977e3",
+    "#7b9ff9",
+    "#9ebeff",
+    "#c0d4f5",
+    "#f2cbb7",
+    "#f7ac8e",
+    "#e8765c",
+    "#d03b33",
+    "#b40426",
+)
 
 
 class TitrationViewModel:
@@ -106,11 +116,13 @@ class TitrationViewModel:
     def add_files(self, paths) -> None:
         """Append one row per file, keeping any concentrations already typed."""
         for path in paths:
-            self.rows.append({
-                "concentration": 0.0,
-                "file": str(path),
-                "name": pathlib.Path(path).name,
-            })
+            self.rows.append(
+                {
+                    "concentration": 0.0,
+                    "file": str(path),
+                    "name": pathlib.Path(path).name,
+                }
+            )
         self.notify("changed")
 
     def browse_files(self) -> None:
@@ -232,16 +244,24 @@ class TitrationViewModel:
         for i in range(len(stack)):
             colour = _RAMP[int(i * (len(_RAMP) - 1) / max(len(stack) - 1, 1))]
             base = i * step
-            series.append({
-                "x": stack.centres.tolist(),
-                "y": (stack.histograms[i] + base).tolist(),
-                "name": stack.labels[i], "color": colour, "width": 1,
-            })
-            series.append({
-                "x": stack.centres.tolist(),
-                "y": (fit.curves[i] + base).tolist(),
-                "color": "#444444", "width": 2, "style": "dash",
-            })
+            series.append(
+                {
+                    "x": stack.centres.tolist(),
+                    "y": (stack.histograms[i] + base).tolist(),
+                    "name": stack.labels[i],
+                    "color": colour,
+                    "width": 1,
+                }
+            )
+            series.append(
+                {
+                    "x": stack.centres.tolist(),
+                    "y": (fit.curves[i] + base).tolist(),
+                    "color": "#444444",
+                    "width": 2,
+                    "style": "dash",
+                }
+            )
         return series
 
     def binding_series(self) -> list[dict]:
@@ -250,19 +270,27 @@ class TitrationViewModel:
         if result is None:
             return []
         fractions = result.fit.fractions[:, result.component]
-        series = [{
-            "x": result.stack.concentrations.tolist(),
-            "y": fractions.tolist(),
-            "name": f"population {result.component}",
-            "color": "#b40426", "symbol": "o", "symbol_size": 10, "no_line": True,
-        }]
+        series = [
+            {
+                "x": result.stack.concentrations.tolist(),
+                "y": fractions.tolist(),
+                "name": f"population {result.component}",
+                "color": "#b40426",
+                "symbol": "o",
+                "symbol_size": 10,
+                "no_line": True,
+            }
+        ]
         if result.binding is not None:
-            series.append({
-                "x": result.binding.curve_x.tolist(),
-                "y": result.binding.curve_y.tolist(),
-                "name": f"K_d = {result.binding.kd:.3g} {self.concentration_unit}",
-                "color": "#3b4cc0", "width": 2,
-            })
+            series.append(
+                {
+                    "x": result.binding.curve_x.tolist(),
+                    "y": result.binding.curve_y.tolist(),
+                    "name": f"K_d = {result.binding.kd:.3g} {self.concentration_unit}",
+                    "color": "#3b4cc0",
+                    "width": 2,
+                }
+            )
         return series
 
     def binding_axes(self) -> dict:
@@ -301,13 +329,13 @@ class TitrationViewModel:
             writer = csv.writer(handle)
             writer.writerow(["STACK"])
             writer.writerow(
-                ["E"] + [f"{lab} data" for lab in stack.labels]
+                ["E"]
+                + [f"{lab} data" for lab in stack.labels]
                 + [f"{lab} fit" for lab in stack.labels]
             )
             for j, centre in enumerate(stack.centres):
                 writer.writerow(
-                    [centre] + [row[j] for row in stack.histograms]
-                    + [row[j] for row in fit.curves]
+                    [centre] + [row[j] for row in stack.histograms] + [row[j] for row in fit.curves]
                 )
             writer.writerow([])
             writer.writerow(["POPULATIONS"])

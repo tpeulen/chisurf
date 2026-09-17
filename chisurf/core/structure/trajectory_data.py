@@ -29,8 +29,18 @@ import numpy as np
 
 from .topology import Element, Topology, element
 
-__all__ = ["Element", "Topology", "Trajectory", "compute_distances", "iterload", "join",
-           "element", "load", "load_frame", "rmsd"]
+__all__ = [
+    "Element",
+    "Topology",
+    "Trajectory",
+    "compute_distances",
+    "iterload",
+    "join",
+    "element",
+    "load",
+    "load_frame",
+    "rmsd",
+]
 
 
 def _kabsch_rotations(mobile: np.ndarray, target: np.ndarray) -> np.ndarray:
@@ -65,8 +75,9 @@ def _superposition(mobile_xyz, target_xyz, indices):
     target_sel = target_xyz[indices]
     mobile_centre = mobile_sel.mean(axis=1)
     target_centre = target_sel.mean(axis=0)
-    rotations = _kabsch_rotations(mobile_sel - mobile_centre[:, None, :],
-                                  target_sel - target_centre)
+    rotations = _kabsch_rotations(
+        mobile_sel - mobile_centre[:, None, :], target_sel - target_centre
+    )
     return rotations, mobile_centre, target_centre
 
 
@@ -93,13 +104,15 @@ class Trajectory:
             raise ValueError(f"expected (n_frames, n_atoms, 3), got {xyz.shape}")
         if topology is not None and topology.n_atoms != xyz.shape[1]:
             raise ValueError(
-                f"topology has {topology.n_atoms} atoms but the coordinates "
-                f"have {xyz.shape[1]}"
+                f"topology has {topology.n_atoms} atoms but the coordinates have {xyz.shape[1]}"
             )
         self.xyz = xyz
         self.topology = topology
-        self.time = (np.arange(len(xyz), dtype=np.float32) if time is None
-                     else np.asarray(time, dtype=np.float32))
+        self.time = (
+            np.arange(len(xyz), dtype=np.float32)
+            if time is None
+            else np.asarray(time, dtype=np.float32)
+        )
 
     # -- shape ---------------------------------------------------------------
     @property
@@ -144,17 +157,18 @@ class Trajectory:
         Trajectory
         """
         indices = np.asarray(indices, dtype=np.intp)
-        return Trajectory(self.xyz[:, indices],
-                          None if self.topology is None else self.topology.subset(indices),
-                          self.time)
+        return Trajectory(
+            self.xyz[:, indices],
+            None if self.topology is None else self.topology.subset(indices),
+            self.time,
+        )
 
     def center_coordinates(self) -> Trajectory:
         """Move every frame's centroid to the origin, in place."""
         self.xyz -= self.xyz.mean(axis=1, keepdims=True)
         return self
 
-    def superpose(self, reference: Trajectory, frame: int = 0,
-                  atom_indices=None) -> Trajectory:
+    def superpose(self, reference: Trajectory, frame: int = 0, atom_indices=None) -> Trajectory:
         """Rotate and translate each frame onto *reference*, in place.
 
         Parameters
@@ -172,10 +186,14 @@ class Trajectory:
         Trajectory
             ``self``, modified in place.
         """
-        indices = (np.arange(self.n_atoms) if atom_indices is None
-                   else np.asarray(atom_indices, dtype=np.intp))
+        indices = (
+            np.arange(self.n_atoms)
+            if atom_indices is None
+            else np.asarray(atom_indices, dtype=np.intp)
+        )
         rotations, mobile_centre, target_centre = _superposition(
-            self.xyz, reference.xyz[frame], indices)
+            self.xyz, reference.xyz[frame], indices
+        )
         moved = np.einsum("fai,fij->faj", self.xyz - mobile_centre[:, None, :], rotations)
         self.xyz = np.ascontiguousarray(moved + target_centre, dtype=np.float32)
         return self
@@ -206,15 +224,16 @@ class Trajectory:
             )
         topology = None
         if self.topology is not None and other.topology is not None:
-            topology = Topology(np.concatenate(
-                [self.topology.atom_array, other.topology.atom_array]))
-        return Trajectory(np.concatenate([self.xyz, other.xyz], axis=1),
-                          topology, self.time)
+            topology = Topology(
+                np.concatenate([self.topology.atom_array, other.topology.atom_array])
+            )
+        return Trajectory(np.concatenate([self.xyz, other.xyz], axis=1), topology, self.time)
 
     # -- output --------------------------------------------------------------
     def save_dcd(self, filename) -> None:
         """Write the trajectory as a DCD. Both are ångströms, so nothing scales."""
         from chisurf.core.fio.trajectory import write_dcd
+
         write_dcd(filename, self.xyz)
 
     def save_pdb(self, filename) -> None:
@@ -243,8 +262,13 @@ class Trajectory:
             raise ValueError(f"cannot write {filename!r}: .dcd and .pdb are written")
 
 
-def rmsd(target: Trajectory, reference: Trajectory, frame: int = 0,
-         atom_indices=None, precentered: bool = False) -> np.ndarray:
+def rmsd(
+    target: Trajectory,
+    reference: Trajectory,
+    frame: int = 0,
+    atom_indices=None,
+    precentered: bool = False,
+) -> np.ndarray:
     """Return the minimal RMSD of each frame of *target* against one reference frame.
 
     "Minimal" means after optimal rigid superposition: the value does not
@@ -270,8 +294,11 @@ def rmsd(target: Trajectory, reference: Trajectory, frame: int = 0,
     numpy.ndarray
         ``(target.n_frames,)`` RMSD in the trajectory's units (nanometres).
     """
-    indices = (np.arange(target.n_atoms) if atom_indices is None
-               else np.asarray(atom_indices, dtype=np.intp))
+    indices = (
+        np.arange(target.n_atoms)
+        if atom_indices is None
+        else np.asarray(atom_indices, dtype=np.intp)
+    )
     mobile = target.xyz[:, indices].astype(np.float64)
     fixed = reference.xyz[frame][indices].astype(np.float64)
     mobile = mobile - mobile.mean(axis=1, keepdims=True)
@@ -279,11 +306,12 @@ def rmsd(target: Trajectory, reference: Trajectory, frame: int = 0,
     rotations = _kabsch_rotations(mobile, fixed)
     aligned = np.einsum("fai,fij->faj", mobile, rotations)
     difference = aligned - fixed
-    return np.sqrt((difference ** 2).sum(axis=(1, 2)) / len(indices)).astype(np.float32)
+    return np.sqrt((difference**2).sum(axis=(1, 2)) / len(indices)).astype(np.float32)
 
 
-def compute_distances(trajectory: Trajectory, atom_pairs, periodic: bool = False,
-                      opt: bool = True) -> np.ndarray:
+def compute_distances(
+    trajectory: Trajectory, atom_pairs, periodic: bool = False, opt: bool = True
+) -> np.ndarray:
     """Return the distance between each atom pair, in every frame.
 
     Parameters
@@ -305,12 +333,10 @@ def compute_distances(trajectory: Trajectory, atom_pairs, periodic: bool = False
         ``(n_frames, n_pairs)`` distances, in ångströms.
     """
     if periodic:
-        raise NotImplementedError(
-            "periodic distances are not implemented; pass periodic=False"
-        )
+        raise NotImplementedError("periodic distances are not implemented; pass periodic=False")
     pairs = np.asarray(atom_pairs, dtype=np.intp).reshape(-1, 2)
     delta = trajectory.xyz[:, pairs[:, 0]] - trajectory.xyz[:, pairs[:, 1]]
-    return np.sqrt((delta ** 2).sum(axis=-1))
+    return np.sqrt((delta**2).sum(axis=-1))
 
 
 def join(trajectories) -> Trajectory:
@@ -332,9 +358,11 @@ def join(trajectories) -> Trajectory:
     n_atoms = trajectories[0].n_atoms
     if any(t.n_atoms != n_atoms for t in trajectories):
         raise ValueError("cannot join trajectories with different atom counts")
-    return Trajectory(np.concatenate([t.xyz for t in trajectories]),
-                      trajectories[0].topology,
-                      np.concatenate([t.time for t in trajectories]))
+    return Trajectory(
+        np.concatenate([t.xyz for t in trajectories]),
+        trajectories[0].topology,
+        np.concatenate([t.time for t in trajectories]),
+    )
 
 
 def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajectory:
@@ -362,15 +390,17 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
             raise ValueError(f"{filename!r} stores coordinates only; pass top=")
         topology = top if isinstance(top, Topology) else Topology.from_file(str(top))
         from chisurf.core.fio.trajectory import read_dcd
+
         xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
         # DCD records a first step, an interval and a timestep rather than a
         # free list of times. Rebuild the axis from those, so a strided
         # trajectory keeps its real spacing instead of counting frames.
         from chisurf.core.fio.trajectory import read_time_axis
 
-        time = read_time_axis(filename, stride=stride)[:len(xyz)]
-        return Trajectory(xyz, topology.subset(atom_indices)
-                          if atom_indices is not None else topology, time)
+        time = read_time_axis(filename, stride=stride)[: len(xyz)]
+        return Trajectory(
+            xyz, topology.subset(atom_indices) if atom_indices is not None else topology, time
+        )
 
     topology = Topology.from_file(str(filename))
     xyz = topology.atom_array["xyz"][np.newaxis]
@@ -424,4 +454,4 @@ def iterload(filename, chunk: int = 100, stride: int = None, top=None):
     """
     trajectory = load(filename, top=top, stride=stride)
     for start in range(0, trajectory.n_frames, max(1, int(chunk))):
-        yield trajectory[start:start + int(chunk)]
+        yield trajectory[start : start + int(chunk)]

@@ -11,6 +11,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from mmfdb.lifecycle.staleness import record_calibration_use
+
 from chisurf.plugins.core.mmfdb_admin.gui.calibrations_view import CalibrationsView
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
@@ -25,9 +26,7 @@ def qapp():
 
 
 def _cal_types(view) -> set[str]:
-    return {
-        view.cal_table.item(r, 0).text() for r in range(view.cal_table.rowCount())
-    }
+    return {view.cal_table.item(r, 0).text() for r in range(view.cal_table.rowCount())}
 
 
 def test_view_lists_calibrations(db, qapp):
@@ -65,8 +64,9 @@ def test_view_shows_stale_uses(db, qapp):
     with patch_db(db):
         client = MMFDBClient(inprocess=True)
         old = client.create_calibration("g_factor", 1.02)["artifact_id"]
-        record_calibration_use(db, used_by_id="fit-1", calibration_artifact_id=old,
-                               used_by_type="artifact")
+        record_calibration_use(
+            db, used_by_id="fit-1", calibration_artifact_id=old, used_by_type="artifact"
+        )
         client.create_calibration("g_factor", 1.05)  # supersedes
         view = CalibrationsView(client)
         assert view.stale_table.rowCount() == 1

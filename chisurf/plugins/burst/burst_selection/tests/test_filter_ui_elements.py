@@ -18,11 +18,11 @@ pytest.importorskip("qtpy.QtWidgets", reason="no Qt binding installed")
 
 import tttrlib  # noqa: E402
 
+from chisurf.core.fluorescence.burst import tttrlib_search  # noqa: E402
 from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (  # noqa: E402
     ALL,
 )
 from chisurf.plugins.burst.burst_selection import BurstSelectionTool  # noqa: E402
-from chisurf.core.fluorescence.burst import tttrlib_search  # noqa: E402
 
 DATA = os.environ.get("TTTRLIB_DATA", "/Users/tpeulen/dev/tttr-data")
 
@@ -55,17 +55,15 @@ def photons():
 
 # --- the mode selector ----------------------------------------------------------
 
+
 def test_mode_selector_offers_only_registry_searches(page):
     """The hand-written modes are gone: every search comes from tttrlib."""
     combo = page.comboBox_burst_filter
     labels = [combo.itemText(i) for i in range(combo.count())]
     assert labels, "no burst searches offered"
-    registry_labels = {
-        spec["label"] for spec in (page._tttrlib_algorithms or {}).values()
-    }
+    registry_labels = {spec["label"] for spec in (page._tttrlib_algorithms or {}).values()}
     assert set(labels) == registry_labels
-    for retired in ("Count rate", "Burst", "Kalman Burst", "CUSUM Burst",
-                    "BOCPD Burst"):
+    for retired in ("Count rate", "Burst", "Kalman Burst", "CUSUM Burst", "BOCPD Burst"):
         assert retired not in labels, retired
 
 
@@ -106,6 +104,7 @@ def test_selecting_a_registry_search_reports_the_tttrlib_mode(page):
 
 # --- macro time interval --------------------------------------------------------
 
+
 def test_macro_time_bounds_reach_the_public_accessors(page):
     page.filter_settings.dt_min = 0.002
     page.filter_settings.dt_max = 0.080
@@ -128,13 +127,13 @@ def test_macro_time_bounds_actually_filter_photons(page, photons):
     page.filter_settings.dt_min_active = True
     page.filter_settings.dt_max_active = True
     page.filter_settings.dt_min = 0.001
-    page.filter_settings.use_gap_fill = False   # gap filling widens the result
+    page.filter_settings.use_gap_fill = False  # gap filling widens the result
 
     fractions = []
     for dt_max in (0.05, 0.15, 1000.0):
         page.filter_settings.dt_max = dt_max
         settings = photon_filter_settings_from_wizard(page)
-        settings.filter_active = False          # isolate the macro-time filter
+        settings.filter_active = False  # isolate the macro-time filter
         settings.use_gap_fill = False
         fractions.append(apply_photon_filters(photons, settings).mean())
 
@@ -153,6 +152,7 @@ def test_merge_gap_reaches_the_accessor(page):
 
 
 # --- filter parameters ----------------------------------------------------------
+
 
 def test_min_photons_and_window_reach_the_accessors(page):
     page.filter_settings.min_photons = 123
@@ -183,6 +183,7 @@ def test_kalman_parameters_reach_the_accessors(page):
 
 # --- channel selection ----------------------------------------------------------
 
+
 def test_detector_and_window_offer_all_and_follow_the_page(page):
     page.detectors = {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}}
     page.windows = {"prompt": (0, 100), "delayed": (100, 200)}
@@ -201,10 +202,10 @@ def test_detector_and_window_offer_all_and_follow_the_page(page):
 
 @pytest.mark.xfail(
     reason="the detector selection is mirrored into the page's channel field "
-           "only from the generated form's own change signal, so setting "
-           "FilterSettings.detector programmatically -- as restoring a saved "
-           "project does -- leaves the channel field untouched. Needs the "
-           "mirroring moved somewhere both paths reach.",
+    "only from the generated form's own change signal, so setting "
+    "FilterSettings.detector programmatically -- as restoring a saved "
+    "project does -- leaves the channel field untouched. Needs the "
+    "mirroring moved somewhere both paths reach.",
     strict=False,
 )
 def test_detector_selection_drives_the_channel_field(page):
@@ -218,6 +219,7 @@ def test_detector_selection_drives_the_channel_field(page):
 
 
 # --- panels ---------------------------------------------------------------------
+
 
 def test_every_panel_is_foldable(page):
     panels = page._filter_settings_model.view_spec().sections
@@ -247,6 +249,7 @@ def test_editing_any_control_triggers_a_plot_update(page):
 
 # --- BOCPD is back (tttrlib C++ engine) ---------------------------------------
 
+
 def test_bocpd_is_offered(page):
     combo = page.comboBox_burst_filter
     labels = [combo.itemText(i) for i in range(combo.count())]
@@ -256,7 +259,8 @@ def test_bocpd_is_offered(page):
 def test_bocpd_runs_without_error(photons):
     """BOCPD is now backed by tttrlib C++ and should run successfully."""
     from chisurf.plugins.burst.burst_selection.api.models import (
-        BurstFilterMode, PhotonFilterSettings,
+        BurstFilterMode,
+        PhotonFilterSettings,
     )
     from chisurf.plugins.burst.burst_selection.api.selection import apply_photon_filters
 
@@ -267,9 +271,11 @@ def test_bocpd_runs_without_error(photons):
 
 # --- responsiveness: every control must reach the plots -------------------------
 
+
 def _controls(widget):
     """Every editable control inside a generated form."""
     from qtpy import QtWidgets
+
     return (
         widget.findChildren(QtWidgets.QSpinBox)
         + widget.findChildren(QtWidgets.QDoubleSpinBox)
@@ -280,6 +286,7 @@ def _controls(widget):
 def _nudge(control):
     """Change a control the way a user would."""
     from qtpy import QtWidgets
+
     if isinstance(control, QtWidgets.QCheckBox):
         control.setChecked(not control.isChecked())
     else:
@@ -294,8 +301,6 @@ def test_every_shared_control_updates_the_plots(qapp, page):
     notify. Enumerating the widgets keeps that from regressing for a control
     added later.
     """
-    from qtpy import QtWidgets
-
     calls = []
     page.actionUpdate_Values.triggered.connect(lambda: calls.append(1))
 
@@ -303,13 +308,12 @@ def test_every_shared_control_updates_the_plots(qapp, page):
     assert controls, "the generated form has no controls"
     for control in controls:
         if not control.isEnabled():
-            continue          # a control inside a folded panel is not editable
+            continue  # a control inside a folded panel is not editable
         before = len(calls)
         _nudge(control)
         qapp.processEvents()
         assert len(calls) > before, (
-            f"{control.objectName() or type(control).__name__} changed without "
-            f"signalling an update"
+            f"{control.objectName() or type(control).__name__} changed without signalling an update"
         )
 
 
@@ -384,9 +388,7 @@ def test_a_search_parameter_changes_the_number_of_bursts(qapp, page, photons):
     for min_photons in (20, 60, 200):
         page.burst_search_form._view._params_group.L = min_photons
         qapp.processEvents()
-        bursts = tttrlib_search.search(
-            photons, "maxtree", page.burst_search_form.parameters
-        )
+        bursts = tttrlib_search.search(photons, "maxtree", page.burst_search_form.parameters)
         counts.append(len(bursts))
 
     assert counts[0] > counts[1] > counts[2], counts
@@ -394,16 +396,15 @@ def test_a_search_parameter_changes_the_number_of_bursts(qapp, page, photons):
 
 # --- the delta-macro-time region ------------------------------------------------
 
+
 def _region_ms(page):
-    import numpy as np
     low, high = page.region_selector.getRegion()
     if page.pw_dT.getAxis("left").logMode:
-        return 10 ** low, 10 ** high
+        return 10**low, 10**high
     return low, high
 
 
 def _set_region_ms(page, low, high):
-    import numpy as np
     if page.pw_dT.getAxis("left").logMode:
         low, high = np.log10(low), np.log10(high)
     page.region_selector.setRegion((low, high))
@@ -434,7 +435,6 @@ def test_dragging_the_region_reaches_the_analysis(qapp, page):
 
 def test_editing_the_bounds_moves_the_region(qapp, page):
     """The other direction: the region must not show stale bounds."""
-
     if getattr(page, "region_selector", None) is None:
         pytest.skip("no region selector on this page")
 
@@ -447,8 +447,8 @@ def test_editing_the_bounds_moves_the_region(qapp, page):
 def test_dragging_the_region_is_not_undone_by_the_reverse_sync(qapp, page):
     """The page has a second onRegionUpdate() that resets the region from the
     spin boxes. Those were not being kept in step, so a dragged region snapped
-    straight back to the bounds it had before the drag."""
-    import numpy as np
+    straight back to the bounds it had before the drag.
+    """
     from chisurf.plugins.burst.burst_selection.gui.adapter import (
         photon_filter_settings_from_wizard,
     )
@@ -461,7 +461,7 @@ def test_dragging_the_region_is_not_undone_by_the_reverse_sync(qapp, page):
     assert page.doubleSpinBox_2.value() == pytest.approx(0.003, rel=1e-3)
     assert page.doubleSpinBox_3.value() == pytest.approx(0.07, rel=1e-3)
 
-    page.onRegionUpdate()          # the page's spin-box -> region direction
+    page.onRegionUpdate()  # the page's spin-box -> region direction
     qapp.processEvents()
     low, high = _region_ms(page)
     assert high == pytest.approx(0.07, rel=1e-3), "the drag was undone"

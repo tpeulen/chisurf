@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
-from chisurf.server.transport.zmq import ZmqServer, ZmqClient
+
+from chisurf.server.transport.zmq import ZmqClient, ZmqServer
 from test.server.helpers import find_free_port
 
 
@@ -70,6 +71,7 @@ def test_zmq_invalid_request_no_method():
     time.sleep(0.5)
 
     import zmq
+
     ctx = zmq.Context()
     sock = ctx.socket(zmq.REQ)
     sock.connect(f"tcp://127.0.0.1:{cmd_port}")
@@ -96,6 +98,7 @@ def test_zmq_invalid_request_bad_type():
     time.sleep(0.5)
 
     import zmq
+
     ctx = zmq.Context()
     sock = ctx.socket(zmq.REQ)
     sock.connect(f"tcp://127.0.0.1:{cmd_port}")
@@ -110,11 +113,11 @@ def test_zmq_invalid_request_bad_type():
 
 def test_zmq_timeout():
     """Client returns timeout error if server does not respond."""
-    import zmq
     cmd_port = find_free_port()
 
     def handler(method, params):
         import time
+
         time.sleep(10)
 
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=find_free_port())
@@ -145,6 +148,7 @@ def test_zmq_parse_error_handled():
     time.sleep(0.5)
 
     import zmq
+
     ctx = zmq.Context()
     sock = ctx.socket(zmq.REQ)
     sock.connect(f"tcp://127.0.0.1:{cmd_port}")

@@ -25,22 +25,33 @@ description = (
 cli_entrypoint = "fret=chisurf.plugins.modelling.fret.cli.main:main"
 
 # Expose core modules and actions.
-from .core import av, distance, engine, io, results, screening, evaluate, pair_selection, olga_greedy, trajectory
-from .core.io import load_structure, write_pdb
+# IMP + IMP.bff PMI-based docking engine — the maintained backend (replaces the
+# removed hand-rolled spring/Verlet engine).
+from .core import (
+    av,
+    distance,
+    engine,
+    evaluate,
+    imp_engine,
+    io,
+    olga_greedy,
+    pair_selection,
+    results,
+    screening,
+    trajectory,
+)
 from .core.av import compute_av, compute_avs_for_structure, load_structure_with_vdw
 from .core.distance import (
     average_distance,
-    mean_fret_distance,
-    distance_between_mean_positions,
-    model_distance,
     chi2_score,
+    distance_between_mean_positions,
+    mean_fret_distance,
+    model_distance,
 )
+from .core.engine import DistanceRestraint, RigidBody, SpringParameters
+from .core.imp_engine import DockingParameters, DockingResult, dock, refine, score, screen
+from .core.io import load_structure, write_pdb
 from .core.screening import score_single_structure, screen_structure_library
-from .core.engine import RigidBody, DistanceRestraint, SpringParameters
-# IMP + IMP.bff PMI-based docking engine — the maintained backend (replaces the
-# removed hand-rolled spring/Verlet engine).
-from .core import imp_engine
-from .core.imp_engine import DockingParameters, DockingResult, dock, refine, screen, score
 
 # ChiSurf plugin entry point.
 if __name__ == "plugin":
@@ -51,4 +62,3 @@ if __name__ == "plugin":
 
     window = FretDockingTool()
     window.show()
-

@@ -25,6 +25,7 @@ each fed as the pair of events glfw emits. Plus the property underneath: with a
 char-capable backend, a key event **never** contributes text -- which is what
 stops every character being typed twice.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -99,7 +100,8 @@ def test_a_key_event_contributes_no_text_on_a_char_backend(typed):
 
 def test_shift_is_not_applied_twice(typed):
     """The OS already applied it. Upper-casing again would be harmless for a
-    letter and wrong for every symbol."""
+    letter and wrong for every symbol.
+    """
     view, seen = typed
     view._on_key_down({"key": "7", "modifiers": ("Shift",)})
     view._on_char({"data": "/", "modifiers": ("Shift",)})
@@ -108,7 +110,8 @@ def test_shift_is_not_applied_twice(typed):
 
 def test_a_backend_without_char_events_still_types(typed):
     """The browser reports a layout-aware ``KeyboardEvent.key`` and has no
-    ``char`` event, so that path must keep working."""
+    ``char`` event, so that path must keep working.
+    """
     view, seen = typed
     view._typed_via_char = False
     view._on_key_down({"key": "z", "modifiers": ()})
@@ -134,6 +137,7 @@ def test_a_control_character_is_not_typed(typed):
     view._on_char({"data": "\x00", "modifiers": ()})
     assert seen == [], f"control characters reached the editor: {seen!r}"
 
+
 # --------------------------------------------------------------- every host
 
 
@@ -148,7 +152,6 @@ def test_the_backend_list_matches_what_the_backends_do():
     import pathlib as _pathlib
 
     import rendercanvas
-
     from chimol.hosts.native.canvas import _CHAR_BACKENDS
 
     base = _pathlib.Path(rendercanvas.__file__).parent
@@ -196,9 +199,7 @@ def test_the_qt_host_passes_the_character_qt_produced():
     # carries only what it touches. What is under test is which of the event's
     # two accessors it reads, and that is visible from here.
     class _Host:
-        on_key_press = staticmethod(
-            lambda key, text="", modifiers=0: seen.append(text) or True
-        )
+        on_key_press = staticmethod(lambda key, text="", modifiers=0: seen.append(text) or True)
 
         def __init__(self):
             pass
@@ -216,7 +217,8 @@ def test_the_qt_host_passes_the_character_qt_produced():
 
 def test_the_browser_host_passes_the_character_the_page_produced():
     """The browser path. `KeyboardEvent.key` is layout-aware and already
-    shifted, so the page's text is passed through untouched."""
+    shifted, so the page's text is passed through untouched.
+    """
     from chimol.hosts.web import page as web_demo
 
     seen = []

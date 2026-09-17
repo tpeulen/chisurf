@@ -10,13 +10,13 @@ frames to cover a long trajectory in reasonable time, **smoothing** averages
 neighbouring frames so the picture stops being restless. Neither may change what
 the current frame *is*.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chimol.io.atoms import make_bead_rows
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import make_bead_rows
 
 
 @pytest.fixture(scope="module")
@@ -108,9 +108,7 @@ def test_no_window_means_the_trajectory_as_recorded(jittery, window):
     stored = np.asarray(view._get_active_state().frames, dtype=float)
     view.set_trajectory_smoothing(window)
     view.set_current_frame(7)
-    np.testing.assert_allclose(
-        np.asarray(view._all_atom_coords, dtype=float), stored[7], atol=1e-9
-    )
+    np.testing.assert_allclose(np.asarray(view._all_atom_coords, dtype=float), stored[7], atol=1e-9)
 
 
 def test_smoothing_does_not_change_which_frame_it_is(jittery):
@@ -161,16 +159,18 @@ def test_the_window_is_clipped_at_the_ends_not_wrapped(jittery):
     # Displace the last frames far enough that any leakage is unmistakable.
     state = view._get_active_state()
     stored = np.asarray(state.frames, dtype=float).copy()
-    stored[n - 3:] += 1000.0
+    stored[n - 3 :] += 1000.0
     state.frames = stored
     view.set_trajectory_smoothing(9)  # drop any cached smoothed frame
 
     view.set_current_frame(0)
     first_after = np.asarray(view._all_atom_coords, dtype=float)
     np.testing.assert_allclose(
-        first_after, first_before, atol=1e-9,
+        first_after,
+        first_before,
+        atol=1e-9,
         err_msg="the first frame moved when the last frames did -- the window "
-                "wrapped around the seam",
+        "wrapped around the seam",
     )
 
     # ... and the far end *did* see it, or the displacement proved nothing.

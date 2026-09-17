@@ -6,6 +6,7 @@ two-exponential decay are close over a limited window, so only fitting
 simulated data with a known answer shows that the density is recovered -- and
 that the dimensionality, which the model searches, is found.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -40,8 +41,10 @@ def _set(problem, canonical, value):
 
 def _view(y, dimension):
     x = _axis()
-    fit = fitting.Fit(model_class=for_family("tcspc_fret_acceptor_density"),
-                      data=chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0))))
+    fit = fitting.Fit(
+        model_class=for_family("tcspc_fret_acceptor_density"),
+        data=chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0))),
+    )
     fit.xmin, fit.xmax = 0, N
     model = fit.model
     model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=_irf()))
@@ -50,8 +53,13 @@ def _view(y, dimension):
     assert model.problem is not None, model.missing
     model.structure = f"tcspc_fret_acceptor_density.dimensions.{dimension}"
     problem = model.problem
-    for canonical, value in (("donor.amplitude.0", 1.0), ("donor.tau.0", TAU_D0), ("fret.tau0", TAU_D0),
-                             ("instrument.n0", 50000.0), ("instrument.background", 1.0)):
+    for canonical, value in (
+        ("donor.amplitude.0", 1.0),
+        ("donor.tau.0", TAU_D0),
+        ("fret.tau0", TAU_D0),
+        ("instrument.n0", 50000.0),
+        ("instrument.background", 1.0),
+    ):
         _set(problem, canonical, value)
     return fit, model
 
@@ -73,7 +81,7 @@ def test_the_density_is_recovered_from_a_simulated_decay(dimension, truth):
     fit, model = _view(y, dimension)
     parameters = _parameters(model)
     parameters["donor.tau.0"].fixed = True
-    _set(model.problem, "acceptor.c_over_c0", 0.3)            # away from the truth
+    _set(model.problem, "acceptor.c_over_c0", 0.3)  # away from the truth
     model.find_parameters()
     fit.run()
     assert parameters["acceptor.c_over_c0"].value == pytest.approx(truth, rel=1e-3)
@@ -114,7 +122,10 @@ def test_the_geometry_survives_a_save_and_reload():
 
 @pytest.mark.parametrize("dimension", [1, 2, 3])
 def test_the_view_reports_the_efficiency_and_the_absolute_density(dimension):
-    from chisurf.core.fluorescence.fret.acceptor_density import characteristic_density, transfer_efficiency
+    from chisurf.core.fluorescence.fret.acceptor_density import (
+        characteristic_density,
+        transfer_efficiency,
+    )
 
     _, model = _view(np.full(N, 10.0), dimension)
     _set(model.problem, "acceptor.c_over_c0", 2.5)
@@ -122,4 +133,6 @@ def test_the_view_reports_the_efficiency_and_the_absolute_density(dimension):
     model.update()
     outputs = {p.name: p.value for p in model.parameters_all if getattr(p, "is_output", False)}
     assert outputs["E"] == pytest.approx(transfer_efficiency(2.5, dimension), rel=1e-12)
-    assert outputs["density [Å^-d]"] == pytest.approx(2.5 * characteristic_density(52.0, dimension), rel=1e-12)
+    assert outputs["density [Å^-d]"] == pytest.approx(
+        2.5 * characteristic_density(52.0, dimension), rel=1e-12
+    )

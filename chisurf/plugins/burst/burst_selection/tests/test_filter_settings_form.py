@@ -6,7 +6,6 @@ pytest.importorskip("qtpy.QtWidgets", reason="no Qt binding installed")
 
 from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (  # noqa: E402
     FilterSettings,
-    FilterSettingsModel,
     filter_settings_view,
 )
 
@@ -19,10 +18,12 @@ def page(qapp):
     from chisurf.gui.widgets.wizard.tttr_photonfilter.tttr_photon_filter import (
         WizardTTTRPhotonFilter,
     )
+
     return WizardTTTRPhotonFilter(windows=WINDOWS, detectors=DETECTORS)
 
 
 # --- the spec ------------------------------------------------------------------
+
 
 def test_panels_are_foldable_and_channel_selection_starts_closed():
     view = filter_settings_view(FilterSettings(), ["green"], ["prompt"])
@@ -34,13 +35,11 @@ def test_panels_are_foldable_and_channel_selection_starts_closed():
     assert view.sections[1].collapsed is False
 
 
-
 def test_mode_selector_is_not_duplicated_in_the_form():
     """The wizard's combobox owns the mode; it also lists the registry searches."""
     view = filter_settings_view(FilterSettings())
     attrs = {getattr(s, "attr", None) for panel in view.sections for s in panel.sections}
     assert "mode" not in attrs
-
 
 
 def test_designer_groups_are_replaced_by_the_generated_form(page):
@@ -58,9 +57,6 @@ def test_page_properties_read_the_settings_object(page):
     assert page.min_ph == 77
     assert page.max_gap == 9
     assert page.use_upper is False
-
-
-
 
 
 def test_editing_the_generated_form_updates_the_plots(qapp):
@@ -96,6 +92,7 @@ def _field_editor(page, attr):
     if form is None:
         return None
     from qtpy import QtWidgets
+
     for w in form.findChildren(QtWidgets.QWidget):
         section = getattr(w, "_section", None)
         if getattr(section, "attr", None) == attr and hasattr(w, "editor"):
@@ -132,7 +129,9 @@ def test_region_drag_updates_the_dmt_fields(page):
 def test_all_is_offered_for_detector_and_time_window():
     """'All' must stay selectable: it is how a user asks for every channel."""
     from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (
-        ALL, FilterSettings, filter_settings_view,
+        ALL,
+        FilterSettings,
+        filter_settings_view,
     )
 
     view = filter_settings_view(FilterSettings(), ["green", "red"], ["prompt"])
@@ -147,7 +146,8 @@ def test_all_is_offered_for_detector_and_time_window():
 def test_panels_use_two_columns():
     """A single column made the panel taller than the plots it shares space with."""
     from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (
-        FilterSettings, filter_settings_view,
+        FilterSettings,
+        filter_settings_view,
     )
 
     view = filter_settings_view(FilterSettings())
@@ -156,8 +156,8 @@ def test_panels_use_two_columns():
 
 def test_detector_and_window_options_follow_the_page(qapp):
     """The choices are filled after a setup or file loads, not at build time."""
-    from chisurf.plugins.burst.burst_selection import BurstSelectionTool
     from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import ALL
+    from chisurf.plugins.burst.burst_selection import BurstSelectionTool
 
     tool = BurstSelectionTool(parent=None, show_channel_selection=True)
     page = tool.wizard

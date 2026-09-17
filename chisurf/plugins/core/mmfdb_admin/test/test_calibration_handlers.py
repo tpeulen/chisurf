@@ -7,12 +7,12 @@ the same type). A non-numeric value comes back as an ``error`` field.
 
 from __future__ import annotations
 
-from mmfdb.lifecycle.staleness import record_calibration_use
 from mmfdb.admin.backend.services import (
     create_calibration_handler,
     list_calibrations_handler,
     stale_calibrations_handler,
 )
+from mmfdb.lifecycle.staleness import record_calibration_use
 
 from .conftest import patch_db
 
@@ -38,8 +38,9 @@ def test_stale_handler_flags_superseded_use(db):
     with patch_db(db):
         old = create_calibration_handler("g_factor", 1.02)["artifact_id"]
         # a fit (stand-in artifact) used the old calibration
-        record_calibration_use(db, used_by_id="fit-1", calibration_artifact_id=old,
-                               used_by_type="artifact")
+        record_calibration_use(
+            db, used_by_id="fit-1", calibration_artifact_id=old, used_by_type="artifact"
+        )
         # a newer g_factor calibration supersedes it
         create_calibration_handler("g_factor", 1.05)
         stale = stale_calibrations_handler()["stale"]

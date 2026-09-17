@@ -9,7 +9,7 @@ caller could not reach directly.
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -145,8 +145,7 @@ class TrackingResult:
         unit = "µm²/s" if self.info.get("calibrated") else "px²/frame"
         lines.append("")
         lines.append(
-            f"D = {fit.diffusion_coefficient:.4g} ± "
-            f"{fit.diffusion_coefficient_error:.2g} {unit}"
+            f"D = {fit.diffusion_coefficient:.4g} ± {fit.diffusion_coefficient_error:.2g} {unit}"
         )
         if fit.alpha_fixed:
             lines.append(f"alpha = {fit.alpha:.3g} (fixed)")
@@ -256,7 +255,10 @@ def track_stack(
     if progress is not None:
         progress(0.05, "detecting particles")
     detections = tk.detect_particles(
-        frames, method=method, threshold=float(threshold), min_area=int(min_area),
+        frames,
+        method=method,
+        threshold=float(threshold),
+        min_area=int(min_area),
         min_separation=float(min_separation),
     )
     if progress is not None:
@@ -319,9 +321,14 @@ def analyse(
         nothing was long enough.
     """
     detections, tracks = track_stack(
-        frames, method=method, threshold=threshold, min_area=min_area,
-        min_separation=min_separation, max_distance=max_distance,
-        max_frame_gap=max_frame_gap, progress=progress,
+        frames,
+        method=method,
+        threshold=threshold,
+        min_area=min_area,
+        min_separation=min_separation,
+        max_distance=max_distance,
+        max_frame_gap=max_frame_gap,
+        progress=progress,
     )
     payload = dict(info or {})
     payload["calibrated"] = float(pixel_size) != 1.0 or float(frame_interval) != 1.0
@@ -332,8 +339,11 @@ def analyse(
         progress(0.8, "fitting transport")
     try:
         result.fit = tk.fit_msd(
-            tracks, pixel_size=float(pixel_size), frame_interval=float(frame_interval),
-            min_length=int(min_track_length), fix_alpha=fix_alpha,
+            tracks,
+            pixel_size=float(pixel_size),
+            frame_interval=float(frame_interval),
+            min_length=int(min_track_length),
+            fix_alpha=fix_alpha,
             n_bootstrap=int(n_bootstrap),
         )
     except ValueError as exc:
@@ -376,15 +386,20 @@ def write_container(source, result, *, parameters=None, out_dir=None) -> str:
 
     rows = result.tracks_table()
     written = write_imaging_table(
-        source, store_from_rows(rows) if rows else store_from_arrays({}),
+        source,
+        store_from_rows(rows) if rows else store_from_arrays({}),
         name="tracks",
         artifact_kind="track_table",
         operation_type="particle_tracking",
         row_grain="track",
         parameters=parameters,
-        units={"track": "dimensionless", "length": "counts",
-               "first": "dimensionless", "last": "dimensionless",
-               "net": "pixels"},
+        units={
+            "track": "dimensionless",
+            "length": "counts",
+            "first": "dimensionless",
+            "last": "dimensionless",
+            "net": "pixels",
+        },
         out_dir=out_dir,
     )
 
@@ -398,14 +413,16 @@ def write_container(source, result, *, parameters=None, out_dir=None) -> str:
     if identifiers:
         write_imaging_table(
             source,
-            store_from_arrays({
-                # The key. A detection is finer than a track, so the join is
-                # declared rather than counted.
-                "Track": np.array(identifiers, dtype=np.int64),
-                "Frame": np.array(frames, dtype=np.int64),
-                "x": np.array(xs, dtype=float),
-                "y": np.array(ys, dtype=float),
-            }),
+            store_from_arrays(
+                {
+                    # The key. A detection is finer than a track, so the join is
+                    # declared rather than counted.
+                    "Track": np.array(identifiers, dtype=np.int64),
+                    "Frame": np.array(frames, dtype=np.int64),
+                    "x": np.array(xs, dtype=float),
+                    "y": np.array(ys, dtype=float),
+                }
+            ),
             name="track detections",
             artifact_kind="localization_table",
             operation_type="particle_tracking",
@@ -414,8 +431,12 @@ def write_container(source, result, *, parameters=None, out_dir=None) -> str:
             derived_from="tracks",
             source_row_column="track",
             target_row_column="Track",
-            units={"Track": "dimensionless", "Frame": "dimensionless",
-                   "x": "pixels", "y": "pixels"},
+            units={
+                "Track": "dimensionless",
+                "Frame": "dimensionless",
+                "x": "pixels",
+                "y": "pixels",
+            },
             out_dir=out_dir,
         )
     return written

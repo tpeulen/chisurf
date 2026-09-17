@@ -5,7 +5,7 @@ import json
 import pathlib
 import tempfile
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
 from .archive import ProjectArchive
 from .pto import PROJECT_SUFFIX, ProjectPtoError
@@ -24,22 +24,22 @@ class Project:
 
     name: str = "untitled"
     description: str = ""
-    chisurf_version: Optional[str] = None
+    chisurf_version: str | None = None
     project_format_version: int = 4
     # Creation timestamp (ISO 8601). Mainly for user information.
     created: str = field(default_factory=lambda: datetime.datetime.now().isoformat())
 
     # Core state sections keyed by UID or strict lists:
-    datasets: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    experiments: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    fits: List[Dict[str, Any]] = field(default_factory=list)
-    ui_state: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    extra: Dict[str, Any] = field(default_factory=dict)
-    dependency_edges: List[Dict[str, Any]] = field(default_factory=list)
-    parameters: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+    datasets: dict[str, dict[str, Any]] = field(default_factory=dict)
+    experiments: dict[str, dict[str, Any]] = field(default_factory=dict)
+    fits: list[dict[str, Any]] = field(default_factory=list)
+    ui_state: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
+    dependency_edges: list[dict[str, Any]] = field(default_factory=list)
+    parameters: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert this project into a deterministic JSON-serializable dictionary."""
         sorted_datasets = {k: self.datasets[k] for k in sorted(self.datasets.keys())}
         sorted_experiments = {k: self.experiments[k] for k in sorted(self.experiments.keys())}
@@ -63,7 +63,7 @@ class Project:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Project":
+    def from_dict(cls, data: dict[str, Any]) -> Project:
         """Reconstruct a :class:`Project` from a dictionary. V4 format only."""
         version = int(data.get("project_format_version", 1))
         if version < 4:
@@ -94,22 +94,22 @@ class Project:
             parameters=data.get("parameters") or {},
         )
 
-    def get_dataset(self, uid: str) -> Optional[Dict[str, Any]]:
+    def get_dataset(self, uid: str) -> dict[str, Any] | None:
         """Return a dataset payload by UID."""
         return self.datasets.get(uid)
 
-    def get_fit(self, uid: str) -> Optional[Dict[str, Any]]:
+    def get_fit(self, uid: str) -> dict[str, Any] | None:
         """Return a fit payload by UID."""
         for fit in self.fits:
             if fit.get("uid") == uid:
                 return fit
         return None
 
-    def list_dataset_uids(self) -> List[str]:
+    def list_dataset_uids(self) -> list[str]:
         """Return sorted dataset UIDs."""
         return sorted(list(self.datasets.keys()))
 
-    def list_fit_uids(self) -> List[str]:
+    def list_fit_uids(self) -> list[str]:
         """Return sorted fit UIDs."""
         uids = [fit.get("uid") for fit in self.fits if fit.get("uid")]
         return sorted(uids)
@@ -156,8 +156,9 @@ class Project:
         if session_bytes is not None:
             archive.write_bytes("session.jsonl", session_bytes)
         return archive.save(project_path)
+
     @classmethod
-    def load(cls, target_path: PathLike) -> "Project":
+    def load(cls, target_path: PathLike) -> Project:
         """Load a project from a validated ``.cs.pto`` container.
 
         Parameters
@@ -173,7 +174,9 @@ class Project:
         project_path = _project_input_path(target_path)
         archive = ProjectArchive.open(project_path)
         data = json.loads(archive.read_text("project.json"))
-        session_bytes = archive.read_bytes("session.jsonl") if archive.has_entry("session.jsonl") else None
+        session_bytes = (
+            archive.read_bytes("session.jsonl") if archive.has_entry("session.jsonl") else None
+        )
         archive.close()
         project = cls.from_dict(data)
         project._archive_path = project_path

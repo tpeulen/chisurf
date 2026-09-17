@@ -162,8 +162,7 @@ class UserEditorViewModel:
             )
         lines = [f"### {row.display_name or row.user_id}", ""]
         if row.is_active:
-            lines += ["> This is the account ChiSurf uses for its own database "
-                      "connections.", ""]
+            lines += ["> This is the account ChiSurf uses for its own database connections.", ""]
         if row.protected:
             lines += ["> A built-in account: it cannot be renamed or deleted.", ""]
         problems = self.problems()
@@ -193,6 +192,7 @@ class UserEditorViewModel:
 
     def _field(name: str):  # noqa: N805 - descriptor factory
         """Property forwarding one edited-account field to the view."""
+
         def getter(self):
             return getattr(self.edited, name)
 

@@ -63,7 +63,8 @@ def test_nothing_writes_a_table_through_a_frame():
 
 def test_nothing_reads_a_table_through_a_frame():
     """Not even as a fallback. A fallback to this reader works on a developer's
-    machine and fails on everyone else's — the same defect the writers had."""
+    machine and fails on everyone else's — the same defect the writers had.
+    """
     readers = _matching(_READ_RE)
     assert not readers, (
         "these read HDF5 through a DataFrame:\n  "
@@ -76,7 +77,7 @@ def test_nothing_reads_a_table_through_a_frame():
 def test_the_seam_has_no_frame_reader_behind_it():
     """read_results_table converts a columnar table; it does not fall back."""
     source = (_PKG / "core" / "datastore.py").read_text(encoding="utf-8")
-    body = source[source.index("def read_results_table("):]
+    body = source[source.index("def read_results_table(") :]
     end = body.find("\ndef ", 1)
     if end != -1:
         body = body[:end]

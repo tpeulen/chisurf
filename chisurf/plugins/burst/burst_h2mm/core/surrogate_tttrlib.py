@@ -32,7 +32,7 @@ except Exception:  # pragma: no cover - tttrlib is optional
     HAVE_TTTRLIB = False
 
 
-def load(path: str | Path) -> "tttrlib.HmmSurrogate":
+def load(path: str | Path) -> tttrlib.HmmSurrogate:
     """Load a surrogate from a ``tttrlib.hmm_surrogate`` JSON file.
 
     Raises
@@ -92,7 +92,8 @@ def estimate_model(
         surrogate = load(surrogate)
     if surrogate.get_n_states() != int(n_states):
         raise ValueError(
-            f"surrogate trained for n_states={surrogate.get_n_states()}, got {n_states}")
+            f"surrogate trained for n_states={surrogate.get_n_states()}, got {n_states}"
+        )
 
     fit = surrogate.predict(_to_engine(data))
     model = H2mmModel(

@@ -123,7 +123,7 @@ def split_container_path(path) -> tuple[pathlib.Path | None, str]:
     for index, part in enumerate(parts):
         if part.lower().endswith(SUFFIX):
             container = pathlib.Path(*parts[: index + 1])
-            below = [p for p in parts[index + 1:] if p not in _FOLDER_ISMS]
+            below = [p for p in parts[index + 1 :] if p not in _FOLDER_ISMS]
             return container, SEPARATOR.join(below)
     return None, ""
 
@@ -250,9 +250,10 @@ def list_runs(path, *, operation: str = "") -> list[str]:
     runs: list[str] = []
     with Measurement.open(container, writable=False) as measurement:
         for obj in measurement.artifacts():
-            if operation and measurement.tag(
-                obj.uid, "_mmfdb_operation.operation_type"
-            ) != operation:
+            if (
+                operation
+                and measurement.tag(obj.uid, "_mmfdb_operation.operation_type") != operation
+            ):
                 continue
             if not measurement.tag(obj.uid, "_mmfdb_operation.operation_type"):
                 continue

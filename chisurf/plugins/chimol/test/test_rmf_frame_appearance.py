@@ -19,6 +19,7 @@ Three things are pinned here:
   two are different questions and one mask serving both is the bug that keeps
   being rediscovered.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,10 +27,9 @@ import pytest
 
 RMF = pytest.importorskip("RMF")
 
+from chimol.core.viewer import Viewer
 from chimol.io.rmf import load_rmf_full
 from chimol.io.structure import load_structure_payload
-from chimol.core.viewer import Viewer
-
 
 N_BEADS = 6
 N_FRAMES = 4

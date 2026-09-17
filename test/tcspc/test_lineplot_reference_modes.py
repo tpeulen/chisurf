@@ -130,9 +130,20 @@ class _GroupFit:
 
 def test_tcspc_anisotropy_rt_reads_the_groups_vv_and_vh():
     group = [_GroupFit(1.0, [4.0, 4.0]), _GroupFit(2.0, [1.0, 1.0])]
-    context = _context(group[0].model, [0.0, 0.0],
-                       {"g": 1.0, "l1": 0.0, "l2": 0.0, "bg_vv": 0.0, "bg_vh": 0.0, "vh_shift": 0.0,
-                        "variant": "corrected"}, group_fits=group)
+    context = _context(
+        group[0].model,
+        [0.0, 0.0],
+        {
+            "g": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+            "bg_vv": 0.0,
+            "bg_vh": 0.0,
+            "vh_shift": 0.0,
+            "variant": "corrected",
+        },
+        group_fits=group,
+    )
     result = reference_modes.anisotropy_rt(context)
     np.testing.assert_allclose(result.y, np.array([0.5, 0.5]))
 
@@ -140,6 +151,7 @@ def test_tcspc_anisotropy_rt_reads_the_groups_vv_and_vh():
 def test_the_rt_defaults_come_from_the_described_model():
     class _Model:
         parameters_all = [_Parameter("anisotropy.g", 1.3), _Parameter("anisotropy.l1", 0.03)]
-    mode, = reference_modes.modes_named(["tcspc_anisotropy_rt"], model=_Model())
+
+    (mode,) = reference_modes.modes_named(["tcspc_anisotropy_rt"], model=_Model())
     defaults = {p.key: p.default for p in mode.parameters}
     assert defaults["g"] == 1.3 and defaults["l1"] == 0.03 and defaults["l2"] == 0.0

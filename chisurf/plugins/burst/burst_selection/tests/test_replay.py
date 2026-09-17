@@ -17,12 +17,15 @@ import pytest
 pytest.importorskip("tttrlib")
 
 from mmfdb.provenance.compute_spec import get_compute_spec, recompute
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import (
     register_raw_measurement,
     register_result,
     set_global_db,
 )
+from mmfdb.repository import MFDatabase
+from mmfdb.security.auth import create_session
+
+from chisurf.core.transform.mmfdb import session_from_auth
 from chisurf.plugins.burst.burst_selection.api import replay as _replay  # noqa: F401
 from chisurf.plugins.burst.burst_selection.api.mmfdb import extract_burst_parameters
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -34,12 +37,8 @@ from chisurf.plugins.burst.burst_selection.api.models import (
     PhotonFilterSettings,
 )
 from chisurf.plugins.burst.burst_selection.api.transformer import OPERATION_TYPE
-from chisurf.core.transform.mmfdb import session_from_auth
-from mmfdb.security.auth import create_session
 
-_SPC = (
-    Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna" / "m000.spc"
-)
+_SPC = Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna" / "m000.spc"
 _STREAM_CHANNELS = [0, 1, 8, 9]
 
 
@@ -50,12 +49,8 @@ def _settings() -> AnalysisSettings:
         filter_active=False,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0),
     )
-    s.burst_detection = BurstDetectionSettings(
-        min_photons=20, photon_window=10, time_window=1e-3
-    )
-    s.gmm = GMMSettings(
-        covariance_type="spherical", random_state=42, max_iter=50, n_init=1
-    )
+    s.burst_detection = BurstDetectionSettings(min_photons=20, photon_window=10, time_window=1e-3)
+    s.gmm = GMMSettings(covariance_type="spherical", random_state=42, max_iter=50, n_init=1)
     return s
 
 
@@ -64,9 +59,7 @@ def chain(tmp_path):
     """Raw SPC artifact + a burst_selection result carrying reproducible params."""
     if not _SPC.is_file():
         pytest.skip("bundled SPC fixture not available")
-    _replay.register_replay_executor(
-        OPERATION_TYPE, _replay.burst_selection_replay_executor
-    )
+    _replay.register_replay_executor(OPERATION_TYPE, _replay.burst_selection_replay_executor)
     db = MFDatabase(os.path.join(tmp_path, "burst_replay.db"))
     db.ensure_user("burst-replay-user")
     token = create_session(db.conn, "burst-replay-user")["token"]
@@ -99,7 +92,10 @@ def test_burst_params_capture_channels_and_gmm_determinism(chain):
     db, ids, params = chain
     # the reproducible set the schema now declares
     assert {(e["value"], e["role"]) for e in params["channels"]} == {
-        (0, "0"), (1, "1"), (8, "2"), (9, "3")
+        (0, "0"),
+        (1, "1"),
+        (8, "2"),
+        (9, "3"),
     }
     assert params["gmm_covariance_type"] == "spherical"
     assert params["gmm_random_state"] == 42

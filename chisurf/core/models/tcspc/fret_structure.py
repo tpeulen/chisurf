@@ -8,6 +8,7 @@ this module is only the part that is not a fit: reading the PDB files and
 computing each structure's distribution with the accessible-volume code, once
 per load, which is Python by design (nothing here runs per iteration).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,11 +18,21 @@ from chisurf.core.models.description import for_family
 
 #: The label settings a structure's accessible volumes are computed with.
 LABEL_DEFAULTS = {
-    "res_1": 0, "res_2": 0, "atom_name_1": "CA", "atom_name_2": "CA",
-    "linker_length_1": 20.0, "linker_length_2": 20.0,
-    "linker_width_1": 4.5, "linker_width_2": 4.5,
-    "radius1_1": 4.0, "radius1_2": 4.0, "radius2_1": 4.5, "radius2_2": 4.5,
-    "radius3_1": 3.5, "radius3_2": 3.5, "simulation_grid_resolution": 0.5,
+    "res_1": 0,
+    "res_2": 0,
+    "atom_name_1": "CA",
+    "atom_name_2": "CA",
+    "linker_length_1": 20.0,
+    "linker_length_2": 20.0,
+    "linker_width_1": 4.5,
+    "linker_width_2": 4.5,
+    "radius1_1": 4.0,
+    "radius1_2": 4.0,
+    "radius2_1": 4.5,
+    "radius2_2": 4.5,
+    "radius3_1": 3.5,
+    "radius3_2": 3.5,
+    "simulation_grid_resolution": 0.5,
 }
 
 
@@ -37,15 +48,21 @@ def av_distance_distribution(structure, axis, **labels) -> np.ndarray:
     labels = {**LABEL_DEFAULTS, **labels}
 
     def volume(k):
-        return ACV(structure=structure, residue_seq_number=labels[f"res_{k}"],
-                   atom_name=labels[f"atom_name_{k}"], linker_length=labels[f"linker_length_{k}"],
-                   linker_width=labels[f"linker_width_{k}"], radius1=labels[f"radius1_{k}"],
-                   radius2=labels[f"radius2_{k}"], radius3=labels[f"radius3_{k}"],
-                   simulation_grid_resolution=labels["simulation_grid_resolution"])
+        return ACV(
+            structure=structure,
+            residue_seq_number=labels[f"res_{k}"],
+            atom_name=labels[f"atom_name_{k}"],
+            linker_length=labels[f"linker_length_{k}"],
+            linker_width=labels[f"linker_width_{k}"],
+            radius1=labels[f"radius1_{k}"],
+            radius2=labels[f"radius2_{k}"],
+            radius3=labels[f"radius3_{k}"],
+            simulation_grid_resolution=labels["simulation_grid_resolution"],
+        )
 
     counts, _ = volume(1).pRDA(volume(2), rda_axis=axis, same_size=False)
     p = np.zeros(len(axis))
-    p[1:1 + len(counts)] = counts
+    p[1 : 1 + len(counts)] = counts
     return p
 
 
@@ -68,6 +85,7 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
     def rda_axis(self) -> np.ndarray:
         """The distance axis every structure's distribution is computed on (Å)."""
         import chisurf.core.fluorescence
+
         return np.asarray(chisurf.core.fluorescence.rda_axis, dtype=float)
 
     def __getattr__(self, name):
@@ -87,7 +105,9 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         """Add one structure's distance distribution to the ensemble."""
         self._labels.update({k: v for k, v in labels.items() if k in LABEL_DEFAULTS})
         name = getattr(structure, "name", f"structure {len(self.names) + 1}")
-        self.append_values(av_distance_distribution(structure, self.rda_axis, **self._labels), name=name)
+        self.append_values(
+            av_distance_distribution(structure, self.rda_axis, **self._labels), name=name
+        )
         self.names.append(name)
         problem = self.problem
         if problem is not None:
@@ -122,7 +142,7 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
 
         self.clear()
         self._structure_files = []
-        for path in (paths or []):
+        for path in paths or []:
             try:
                 self.append(Structure(str(path)))
             except Exception as error:
@@ -136,21 +156,48 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         spec = super().view_spec()
 
         def label(k, title):
-            return vs.PanelSection(title=title, sections=tuple(
-                vs.ValueSection(label=text, kind=kind, attr=f"{key}_{k}")
-                for key, text, kind in (("res", "Residue", "int"), ("atom_name", "Atom", "str"),
-                                        ("linker_length", "Linker length", "float"),
-                                        ("linker_width", "Linker width", "float"),
-                                        ("radius1", "Radius 1", "float"), ("radius2", "Radius 2", "float"),
-                                        ("radius3", "Radius 3", "float"))))
+            return vs.PanelSection(
+                title=title,
+                sections=tuple(
+                    vs.ValueSection(label=text, kind=kind, attr=f"{key}_{k}")
+                    for key, text, kind in (
+                        ("res", "Residue", "int"),
+                        ("atom_name", "Atom", "str"),
+                        ("linker_length", "Linker length", "float"),
+                        ("linker_width", "Linker width", "float"),
+                        ("radius1", "Radius 1", "float"),
+                        ("radius2", "Radius 2", "float"),
+                        ("radius3", "Radius 3", "float"),
+                    )
+                ),
+            )
+
         extra = (
-            vs.PanelSection(title="Labels / AV", sections=(
-                label(1, "Donor label"), label(2, "Acceptor label"),
-                vs.ValueSection(label="Resolution", kind="float", attr="simulation_grid_resolution"))),
-            vs.PanelSection(title="Structures", sections=(
-                vs.CustomSection(key="path_list", target="structure_files", options={
-                    "extensions": [".pdb"], "add_folders": True,
-                    "dialog_filter": "PDB files (*.pdb)", "title": "PDB ensemble"}),)),
+            vs.PanelSection(
+                title="Labels / AV",
+                sections=(
+                    label(1, "Donor label"),
+                    label(2, "Acceptor label"),
+                    vs.ValueSection(
+                        label="Resolution", kind="float", attr="simulation_grid_resolution"
+                    ),
+                ),
+            ),
+            vs.PanelSection(
+                title="Structures",
+                sections=(
+                    vs.CustomSection(
+                        key="path_list",
+                        target="structure_files",
+                        options={
+                            "extensions": [".pdb"],
+                            "add_folders": True,
+                            "dialog_filter": "PDB files (*.pdb)",
+                            "title": "PDB ensemble",
+                        },
+                    ),
+                ),
+            ),
         )
         return vs.ModelView(sections=tuple(spec.sections) + extra, plots=spec.plots)
 

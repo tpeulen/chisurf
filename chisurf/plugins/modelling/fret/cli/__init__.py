@@ -1,5 +1,4 @@
-"""CLI interface for FRET modelling.
-"""
+"""CLI interface for FRET modelling."""
 
 from __future__ import annotations
 

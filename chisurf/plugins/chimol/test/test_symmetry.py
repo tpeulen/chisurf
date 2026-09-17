@@ -28,16 +28,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.symmetry import (
     CELL_EDGES,
     SPACE_GROUP_OPERATORS,
     UnitCell,
+    cell_corners,
+    cell_line_segments,
     normalise_space_group,
     operators_for,
     parse_symmetry_operator,
-    cell_corners,
-    cell_line_segments,
     read_cryst1,
     read_file_operators,
     symmetry_mates,
@@ -45,7 +44,10 @@ from chimol.analysis.symmetry import (
 
 _DATA = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
 )
 #: The only fixture with a CRYST1 record.
 _CRYSTAL = _DATA / "1rtd.pdb"
@@ -100,7 +102,8 @@ def test_every_rotation_is_an_isometry():
 def test_both_determinant_signs_are_present():
     """A sanity check on the check: if everything were +1 the table would be
     only the chiral groups, and the isometry test above would be weaker than it
-    looks."""
+    looks.
+    """
     signs = set()
     for operators in SPACE_GROUP_OPERATORS.values():
         for op in operators:
@@ -115,8 +118,21 @@ def test_the_chiral_protein_groups_have_no_improper_rotations():
     So for the groups proteins actually use, an improper rotation would be a
     transcription error rather than a legitimate mirror.
     """
-    for name in ("P212121", "P21", "C2", "P43212", "P41212", "P3121",
-                 "P3221", "P6122", "P6522", "P1", "C2221", "I222", "P21212"):
+    for name in (
+        "P212121",
+        "P21",
+        "C2",
+        "P43212",
+        "P41212",
+        "P3121",
+        "P3221",
+        "P6122",
+        "P6522",
+        "P1",
+        "C2221",
+        "I222",
+        "P21212",
+    ):
         operators = SPACE_GROUP_OPERATORS.get(name)
         assert operators, f"{name} should be in the table"
         for op in operators:
@@ -132,9 +148,7 @@ def test_each_group_has_exactly_one_identity():
         identities = 0
         for op in operators:
             rotation, translation = parse_symmetry_operator(op)
-            if np.allclose(rotation, np.eye(3)) and np.allclose(
-                np.mod(translation, 1.0), 0.0
-            ):
+            if np.allclose(rotation, np.eye(3)) and np.allclose(np.mod(translation, 1.0), 0.0):
                 identities += 1
         if identities != 1:
             wrong.append(f"{name}: {identities}")
@@ -152,7 +166,8 @@ def test_no_group_lists_an_operator_twice():
 
 def test_the_table_is_the_size_pymol_ships():
     """A guard on the extraction itself: a truncated run would still pass every
-    mathematical check above, because what survived would be self-consistent."""
+    mathematical check above, because what survived would be self-consistent.
+    """
     assert len(SPACE_GROUP_OPERATORS) > 500
     assert len({v for v in SPACE_GROUP_OPERATORS.values()}) > 500
     assert max(len(v) for v in SPACE_GROUP_OPERATORS.values()) == 192
@@ -161,10 +176,30 @@ def test_the_table_is_the_size_pymol_ships():
 def test_every_space_group_used_by_proteins_resolves():
     """The 25 commonest, in the spellings a CRYST1 record actually carries."""
     for name in (
-        "P 21 21 21", "P 1 21 1", "C 1 2 1", "P 21 21 2", "P 43 21 2",
-        "P 41 21 2", "P 32 2 1", "P 61 2 2", "P 1", "C 2 2 21", "I 2 2 2",
-        "P 31 2 1", "P 65 2 2", "P 6 2 2", "I 4 1 2 2", "F 2 2 2", "P 6 1",
-        "P 3 2 1", "P 6 3", "I 4", "H 3", "R 3", "P 2 21 21", "I 21 3",
+        "P 21 21 21",
+        "P 1 21 1",
+        "C 1 2 1",
+        "P 21 21 2",
+        "P 43 21 2",
+        "P 41 21 2",
+        "P 32 2 1",
+        "P 61 2 2",
+        "P 1",
+        "C 2 2 21",
+        "I 2 2 2",
+        "P 31 2 1",
+        "P 65 2 2",
+        "P 6 2 2",
+        "I 4 1 2 2",
+        "F 2 2 2",
+        "P 6 1",
+        "P 3 2 1",
+        "P 6 3",
+        "I 4",
+        "H 3",
+        "R 3",
+        "P 2 21 21",
+        "I 21 3",
         "F 4 3 2",
     ):
         assert operators_for(name), f"{name} does not resolve"
@@ -178,8 +213,16 @@ def test_a_spelling_without_spaces_resolves_the_same():
 def test_the_multiplicity_matches_the_symbol():
     """Order of the group, from the space-group symbol's own arithmetic."""
     expected = {
-        "P1": 1, "P21": 2, "P212121": 4, "C2": 4, "C2221": 8,
-        "P43212": 8, "P3121": 6, "P6122": 12, "I222": 8, "F222": 16,
+        "P1": 1,
+        "P21": 2,
+        "P212121": 4,
+        "C2": 4,
+        "C2221": 8,
+        "P43212": 8,
+        "P3121": 6,
+        "P6122": 12,
+        "I222": 8,
+        "F222": 16,
     }
     for name, order in expected.items():
         assert len(SPACE_GROUP_OPERATORS[name]) == order, name
@@ -395,9 +438,7 @@ def test_the_operators_read_from_a_file_place_the_same_mates(tmp_path):
     """End to end: file operators must move a molecule like the table's do."""
     coords = _cube_of_points()
     cell = UnitCell(a=20.0, b=20.0, c=20.0)
-    operators = read_file_operators(
-        _written(tmp_path, _CIF_LAYOUTS["loop, id first"])
-    )
+    operators = read_file_operators(_written(tmp_path, _CIF_LAYOUTS["loop, id first"]))
     from_file = symmetry_mates(coords, cell, operators, cutoff=0.0, shells=0)
     from_text = symmetry_mates(coords, cell, _C222_OPERATORS, cutoff=0.0, shells=0)
     assert len(from_file) == len(from_text) == 3
@@ -422,9 +463,7 @@ def test_a_mate_is_a_rigid_copy():
     reference = np.linalg.norm(coords[1:] - coords[0], axis=1)
     for mate in mates[:5]:
         moved = mate["coords"]
-        assert np.allclose(
-            np.linalg.norm(moved[1:] - moved[0], axis=1), reference, atol=1e-9
-        )
+        assert np.allclose(np.linalg.norm(moved[1:] - moved[0], axis=1), reference, atol=1e-9)
 
 
 def test_the_identity_at_the_origin_is_excluded():
@@ -432,9 +471,7 @@ def test_the_identity_at_the_origin_is_excluded():
     coords = _cube_of_points()
     cell = UnitCell(a=20.0, b=20.0, c=20.0)
     mates = symmetry_mates(coords, cell, operators_for("P1"), cutoff=0.0)
-    assert all(
-        not (m["operator"] == 0 and m["translation"] == (0, 0, 0)) for m in mates
-    )
+    assert all(not (m["operator"] == 0 and m["translation"] == (0, 0, 0)) for m in mates)
 
 
 def test_p1_gives_only_lattice_translations():
@@ -450,10 +487,7 @@ def test_a_pure_translation_offsets_by_the_cell_edge():
     coords = _cube_of_points()
     cell = UnitCell(a=20.0, b=30.0, c=40.0)
     mates = symmetry_mates(coords, cell, operators_for("P1"), cutoff=0.0)
-    offsets = {
-        tuple(np.round(m["coords"].mean(axis=0) - coords.mean(axis=0), 6))
-        for m in mates
-    }
+    offsets = {tuple(np.round(m["coords"].mean(axis=0) - coords.mean(axis=0), 6)) for m in mates}
     assert (20.0, 0.0, 0.0) in offsets
     assert (0.0, 30.0, 0.0) in offsets
     assert (0.0, 0.0, 40.0) in offsets
@@ -461,7 +495,7 @@ def test_a_pure_translation_offsets_by_the_cell_edge():
 
 def test_the_cutoff_rejects_distant_mates():
     coords = _cube_of_points(spread=6.0)
-    cell = UnitCell(a=60.0, b=60.0, c=60.0)   # far apart
+    cell = UnitCell(a=60.0, b=60.0, c=60.0)  # far apart
     near = symmetry_mates(coords, cell, operators_for("P1"), cutoff=2.0)
     everything = symmetry_mates(coords, cell, operators_for("P1"), cutoff=0.0)
     assert len(near) < len(everything)
@@ -472,8 +506,8 @@ def test_shells_controls_how_far_it_looks():
     cell = UnitCell(a=20.0, b=20.0, c=20.0)
     one = symmetry_mates(coords, cell, operators_for("P1"), cutoff=0.0, shells=1)
     two = symmetry_mates(coords, cell, operators_for("P1"), cutoff=0.0, shells=2)
-    assert len(one) == 26        # 3**3 - 1
-    assert len(two) == 124       # 5**3 - 1
+    assert len(one) == 26  # 3**3 - 1
+    assert len(two) == 124  # 5**3 - 1
 
 
 def test_no_operators_is_refused():
@@ -493,9 +527,7 @@ def test_mates_are_found_in_a_real_crystal():
     from chisurf.core.fio.structure.coordinates import read_coordinates
 
     cell, space_group = read_cryst1(_CRYSTAL)
-    atoms = read_coordinates(
-        str(_CRYSTAL), keep_water=True, only_standard_residues=False
-    )
+    atoms = read_coordinates(str(_CRYSTAL), keep_water=True, only_standard_residues=False)
     coords = np.asarray(atoms["xyz"], dtype=float)
     mates = symmetry_mates(coords, cell, operators_for(space_group), cutoff=5.0)
     assert mates, "a real crystal must have lattice contacts"
@@ -513,7 +545,8 @@ def test_the_box_has_twelve_edges():
 
 def test_every_corner_meets_three_edges():
     """A parallelepiped's corners have degree three. Derived from the bit pattern
-    rather than typed out, so this checks the derivation, not a transcription."""
+    rather than typed out, so this checks the derivation, not a transcription.
+    """
     from collections import Counter
 
     degree = Counter(i for edge in CELL_EDGES for i in edge)
@@ -535,13 +568,13 @@ def test_the_corners_are_the_fractional_vertices():
 
 def test_the_box_edges_are_the_cell_edges():
     """Twelve edges, four of each cell length -- the check that the edge list and
-    the corner numbering agree with each other."""
+    the corner numbering agree with each other.
+    """
     cell = UnitCell(a=10.0, b=20.0, c=30.0)
     segments = cell_line_segments(cell)
     assert segments.shape == (24, 3)
     lengths = [
-        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6)
-        for k in range(12)
+        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6) for k in range(12)
     ]
     from collections import Counter
 
@@ -550,12 +583,12 @@ def test_the_box_edges_are_the_cell_edges():
 
 def test_a_triclinic_box_still_closes():
     """Opposite edges of a parallelepiped are parallel and equal, whatever the
-    angles -- so the twelve lengths still come in three groups of four."""
+    angles -- so the twelve lengths still come in three groups of four.
+    """
     cell = UnitCell(a=10.0, b=20.0, c=30.0, alpha=70.0, beta=80.0, gamma=100.0)
     segments = cell_line_segments(cell)
     lengths = [
-        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6)
-        for k in range(12)
+        round(float(np.linalg.norm(segments[2 * k + 1] - segments[2 * k])), 6) for k in range(12)
     ]
     from collections import Counter
 
@@ -584,8 +617,8 @@ def crystal_cmd(qapp, tmp_path):
     """A window with 1RTD -- a file that carries its own CRYST1 record."""
     import shutil
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not _CRYSTAL.is_file():
         pytest.skip("no crystal fixture")

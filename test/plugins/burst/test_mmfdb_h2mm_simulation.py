@@ -11,10 +11,9 @@ The same flow is walked interactively in
 
 from __future__ import annotations
 
+import matplotlib
 import numpy as np
 import pytest
-
-import matplotlib
 
 matplotlib.use("Agg")
 

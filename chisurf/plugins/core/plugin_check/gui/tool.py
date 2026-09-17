@@ -63,9 +63,7 @@ class PluginCheckTool(QtWidgets.QWidget):
         )
 
         self.plugin_tree = QtWidgets.QTreeWidget()
-        self.plugin_tree.setHeaderLabels(
-            ["Plugin", "Status", "Source", "Depends on", "Error"]
-        )
+        self.plugin_tree.setHeaderLabels(["Plugin", "Status", "Source", "Depends on", "Error"])
         self.plugin_tree.setColumnWidth(0, 250)
         self.plugin_tree.setColumnWidth(1, 80)
         self.plugin_tree.setColumnWidth(2, 80)
@@ -158,7 +156,9 @@ class PluginCheckTool(QtWidgets.QWidget):
         toolbar.addAction(self.test_all_action)
 
         self.test_safe_action = QtWidgets.QAction("🛡️ Test Safe Plugins", self)
-        self.test_safe_action.setToolTip("Test a few plugins with aggressive filtering and short timeouts")
+        self.test_safe_action.setToolTip(
+            "Test a few plugins with aggressive filtering and short timeouts"
+        )
         self.test_safe_action.triggered.connect(self.start_safe_testing)
         toolbar.addAction(self.test_safe_action)
 
@@ -193,7 +193,9 @@ class PluginCheckTool(QtWidgets.QWidget):
 
         self.skip_blacklisted_checkbox = QtWidgets.QCheckBox("Skip blacklisted")
         self.skip_blacklisted_checkbox.setChecked(True)
-        self.skip_blacklisted_checkbox.setToolTip("Automatically skip plugins blacklisted due to frequent failures")
+        self.skip_blacklisted_checkbox.setToolTip(
+            "Automatically skip plugins blacklisted due to frequent failures"
+        )
         toolbar.addWidget(self.skip_blacklisted_checkbox)
 
     def refresh_plugins(self) -> None:
@@ -332,7 +334,9 @@ class PluginCheckTool(QtWidgets.QWidget):
         except ImportError:
             import importlib.util
 
-            spec = importlib.util.spec_from_file_location("plugin_check", "cs/macros/plugin_check.py")
+            spec = importlib.util.spec_from_file_location(
+                "plugin_check", "cs/macros/plugin_check.py"
+            )
             plugin_check_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(plugin_check_module)
             PluginTestRunner = plugin_check_module.PluginTestRunner
@@ -354,7 +358,9 @@ class PluginCheckTool(QtWidgets.QWidget):
             self._task.update_progress(current, f"Testing plugins… {current}/{total}")
         self.status_label.setText(f"🧪 Testing plugins... {current}/{total}")
 
-    def update_plugin_result(self, plugin_name: str, success: bool, error_message: str | None) -> None:
+    def update_plugin_result(
+        self, plugin_name: str, success: bool, error_message: str | None
+    ) -> None:
         """Update the result for a single plugin."""
         for index in range(self.plugin_tree.topLevelItemCount()):
             item = self.plugin_tree.topLevelItem(index)
@@ -363,7 +369,9 @@ class PluginCheckTool(QtWidgets.QWidget):
                 if success:
                     item.setText(1, Glyphs.SUCCESS)
                     item.setForeground(1, QtGui.QColor("green"))
-                elif any(skip_word in error.lower() for skip_word in ["skipped", "gui execution blocked"]):
+                elif any(
+                    skip_word in error.lower() for skip_word in ["skipped", "gui execution blocked"]
+                ):
                     item.setText(1, Glyphs.WARNING)
                     item.setForeground(1, QtGui.QColor("orange"))
                 else:
@@ -375,7 +383,10 @@ class PluginCheckTool(QtWidgets.QWidget):
 
                 self.plugin_results[plugin_name] = {
                     "success": success,
-                    "skipped": any(skip_word in error.lower() for skip_word in ["skipped", "gui execution blocked"]),
+                    "skipped": any(
+                        skip_word in error.lower()
+                        for skip_word in ["skipped", "gui execution blocked"]
+                    ),
                     "error": error,
                     "item": item,
                 }
@@ -414,6 +425,7 @@ class PluginCheckTool(QtWidgets.QWidget):
 
     def _dependency_details(self, plugin_info: dict) -> list[str]:
         """Detail rows describing this plugin's declared dependencies."""
+
         def _render(mapping: dict) -> str:
             # "*" means "any version, it just has to be there" -- printing it
             # beside every name is noise that hides the real bounds.

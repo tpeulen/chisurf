@@ -11,9 +11,6 @@ a reader checking this against Olga's ``chisqdist.hpp`` wants to see.
 
 from __future__ import annotations
 
-import math
-from typing import Tuple
-
 import numpy as np
 from scipy.special import erfc, gammaincc
 
@@ -107,7 +104,7 @@ def select_informative_pairs(
     max_pairs: int,
     unique_only: bool = True,
     diag_weight: float = 0.99,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Choose the most informative FRET pairs, greedily.
 
     Parameters

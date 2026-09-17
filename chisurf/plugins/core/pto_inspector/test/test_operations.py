@@ -91,9 +91,7 @@ def test_declaring_plugins_have_a_gui_or_say_they_do_not():
     clear_cache()
     index = operation_index()
     assert index, "no plugin declares an operation_type"
-    without = {
-        m.id for manifests in index.values() for m in manifests if not m.entrypoints.gui
-    }
+    without = {m.id for manifests in index.values() for m in manifests if not m.entrypoints.gui}
     # Headless-only tools are allowed to claim a step — the inspector says so
     # rather than opening nothing — but the set is worth seeing when it grows.
     assert without <= {"burst_ebfret"}, sorted(without)

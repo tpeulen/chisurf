@@ -133,25 +133,19 @@ def wrapped_exponential_moments(
     with np.errstate(over="ignore", invalid="ignore"):
         expm1_a = np.expm1(np.clip(a, None, 700.0))
         g = np.where(small, _g_series(a), 1.0 / a - 1.0 / expm1_a)
-        h = np.where(
-            small, _h_series(a), 2.0 / a**2 - (2.0 / a + 1.0) / expm1_a
-        )
+        h = np.where(small, _h_series(a), 2.0 / a**2 - (2.0 / a + 1.0) / expm1_a)
     mean = period * g
     second = period * period * h
     variance = np.clip(second - mean * mean, 0.0, None)
 
     if channel_width is not None:
-        offset_mean, offset_variance = wrapped_exponential_moments(
-            tau_arr, float(channel_width)
-        )
+        offset_mean, offset_variance = wrapped_exponential_moments(tau_arr, float(channel_width))
         mean = mean - offset_mean
         variance = np.clip(variance - offset_variance, 0.0, None)
     return mean, variance
 
 
-def wrapped_exponential_pattern(
-    tau: float, n_channels: int, dt: float
-) -> np.ndarray:
+def wrapped_exponential_pattern(tau: float, n_channels: int, dt: float) -> np.ndarray:
     """Return the normalised periodic decay pattern of one lifetime.
 
     Parameters
@@ -222,17 +216,13 @@ def periodic_pattern(
         response = response / total
 
     decay = wrapped_exponential_pattern(tau, response.size, dt)
-    pattern = np.real(
-        np.fft.irfft(np.fft.rfft(response) * np.fft.rfft(decay), n=response.size)
-    )
+    pattern = np.real(np.fft.irfft(np.fft.rfft(response) * np.fft.rfft(decay), n=response.size))
     pattern = np.clip(pattern, 0.0, None)
     total = pattern.sum()
     return pattern / total if total > 0 else pattern
 
 
-def pattern_moments(
-    pattern: np.ndarray, dt: float
-) -> tuple[float, float]:
+def pattern_moments(pattern: np.ndarray, dt: float) -> tuple[float, float]:
     """Return the mean and variance of a micro-time pattern, in time units.
 
     These are *linear* moments of a quantity that lives on a circle, which is

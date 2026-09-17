@@ -148,9 +148,7 @@ def integrated_excitation_rate(
     float
         Area-integrated excitation rate (m^2 s^-1).
     """
-    return absorption_cross_section_m2(extinction_coefficient) * photon_flux(
-        power_W, wavelength_m
-    )
+    return absorption_cross_section_m2(extinction_coefficient) * photon_flux(power_W, wavelength_m)
 
 
 def excitation_rate_peak(
@@ -349,8 +347,7 @@ def emission_profile(
     P_states = steady_state_full_populations(k_exc, dark_matrix, exc_matrix)
     if q.shape[-1] != P_states.shape[0]:
         raise ValueError(
-            f"brightness has {q.shape[-1]} entries but the scheme has "
-            f"{P_states.shape[0]} states"
+            f"brightness has {q.shape[-1]} entries but the scheme has {P_states.shape[0]} states"
         )
     profile = np.tensordot(q, P_states, axes=(q.ndim - 1, 0))
 
@@ -425,10 +422,12 @@ def gaussian_g_diff(tau_s: np.ndarray, w0: float, z0: float, D: float) -> np.nda
         ``(1 + 4 D tau / w0^2)^-1 (1 + 4 D tau / z0^2)^-1/2``.
     """
     import IMP.bff as _bff
+
     tau_s = np.atleast_1d(np.asarray(tau_s, dtype=float))
-    return np.asarray(_bff.fcs_gaussian_g_diff(
-        [float(v) for v in tau_s], float(w0), float(z0), float(D)),
-        dtype=float)
+    return np.asarray(
+        _bff.fcs_gaussian_g_diff([float(v) for v in tau_s], float(w0), float(z0), float(D)),
+        dtype=float,
+    )
 
 
 @functools.lru_cache(maxsize=16)
@@ -758,18 +757,23 @@ def compute_bunching_factor(
     # implementation with the C++ forward model; parity pinned at 5e-14
     # including cyclic schemes with complex relaxation modes.
     import IMP.bff as _bff
+
     tau_grid = np.atleast_1d(np.asarray(tau_s, dtype=float))
     dark = np.asarray(dark_matrix, dtype=float)
     n_states = int(dark.shape[0])
-    qb = ([] if brightness_b is None
-          else [float(v) for v in np.asarray(brightness_b, dtype=float)])
-    return np.asarray(_bff.fcs_bunching_factor(
-        [float(v) for v in tau_grid], float(max(0.0, float(k_exc_0))),
-        [float(v) for v in dark.ravel()],
-        [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
-        n_states,
-        [float(v) for v in np.asarray(brightness, dtype=float)],
-        qb), dtype=float)
+    qb = [] if brightness_b is None else [float(v) for v in np.asarray(brightness_b, dtype=float)]
+    return np.asarray(
+        _bff.fcs_bunching_factor(
+            [float(v) for v in tau_grid],
+            float(max(0.0, float(k_exc_0))),
+            [float(v) for v in dark.ravel()],
+            [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
+            n_states,
+            [float(v) for v in np.asarray(brightness, dtype=float)],
+            qb,
+        ),
+        dtype=float,
+    )
 
 
 def saturated_curve_shape(
@@ -849,18 +853,30 @@ def saturated_curve_shape(
     # (2.1 ms both sides on the model's grid; the Hankel matrix is cached
     # on its grids there exactly as the lru_cache here did).
     import IMP.bff as _bff
+
     tau_s = np.atleast_1d(np.asarray(tau_s, dtype=float))
     dark = np.asarray(dark_matrix, dtype=float)
-    qb = ([] if brightness_b is None
-          else [float(v) for v in np.asarray(brightness_b, dtype=float)])
-    return np.asarray(_bff.fcs_saturated_curve_shape(
-        [float(v) for v in tau_s], float(power_W), float(extinction),
-        [float(v) for v in dark.ravel()],
-        [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
-        int(dark.shape[0]),
-        [float(v) for v in np.asarray(brightness, dtype=float)],
-        float(w0), float(z0), float(D), bool(include_bunching),
-        int(n_r), int(n_z), float(wavelength_m), qb), dtype=float)
+    qb = [] if brightness_b is None else [float(v) for v in np.asarray(brightness_b, dtype=float)]
+    return np.asarray(
+        _bff.fcs_saturated_curve_shape(
+            [float(v) for v in tau_s],
+            float(power_W),
+            float(extinction),
+            [float(v) for v in dark.ravel()],
+            [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
+            int(dark.shape[0]),
+            [float(v) for v in np.asarray(brightness, dtype=float)],
+            float(w0),
+            float(z0),
+            float(D),
+            bool(include_bunching),
+            int(n_r),
+            int(n_z),
+            float(wavelength_m),
+            qb,
+        ),
+        dtype=float,
+    )
 
 
 def compute_power_sweep(
@@ -992,8 +1008,12 @@ def fit_single_component(
     guess = (w0**2 / (4.0 * D), max(1.0, z0 / w0))
     try:
         params, _ = curve_fit(
-            model, tau_s, y, p0=guess,
-            bounds=([1e-12, 0.5], [1.0, 100.0]), maxfev=20000,
+            model,
+            tau_s,
+            y,
+            p0=guess,
+            bounds=([1e-12, 0.5], [1.0, 100.0]),
+            maxfev=20000,
         )
     except Exception:
         return guess[0], guess[1], model(tau_s, *guess), float("inf")
@@ -1053,7 +1073,10 @@ def fit_two_components(
     guess = (0.2, 0.5 * tau_d, 3.0 * tau_d, max(1.0, z0 / w0))
     try:
         params, _ = curve_fit(
-            model, tau_s, y, p0=guess,
+            model,
+            tau_s,
+            y,
+            p0=guess,
             bounds=([0.0, 1e-12, 1e-12, 0.5], [1.0, 1.0, 1.0, 100.0]),
             maxfev=200000,
         )

@@ -6,18 +6,17 @@ from unittest.mock import MagicMock
 
 from chisurf.server.services.parameters import (
     get_parameter,
-    set_parameter_value,
-    set_parameter_fixed,
-    set_parameter_bounds,
-    set_parameter_bounds_on,
     parameter_link,
     parameter_unlink,
+    set_parameter_bounds,
+    set_parameter_bounds_on,
+    set_parameter_fixed,
+    set_parameter_value,
 )
 from chisurf.server.session import SessionState
 
 
 class TestParametersService:
-
     def test_get_parameter(self):
         p = MagicMock()
         p.value = 1.5
@@ -129,7 +128,9 @@ class TestParametersService:
         fit.model = model
         fit.unique_identifier = "fit-uid"
         state = SessionState(fits=[fit])
-        result = parameter_link(state, parameter_name="tau1", target_parameter_name="tau2", fit_index=0)
+        result = parameter_link(
+            state, parameter_name="tau1", target_parameter_name="tau2", fit_index=0
+        )
         assert result["ok"]
         assert p_source.link is p_target
 
@@ -151,8 +152,11 @@ class TestParametersService:
         fit2.unique_identifier = "fit-2"
         state = SessionState(fits=[fit1, fit2])
         result = parameter_link(
-            state, parameter_name="tau1", target_parameter_name="tau2",
-            fit_index=0, target_fit_index=1,
+            state,
+            parameter_name="tau1",
+            target_parameter_name="tau2",
+            fit_index=0,
+            target_fit_index=1,
         )
         assert result["ok"]
         assert p_source.link is p_target
@@ -164,7 +168,9 @@ class TestParametersService:
         fit.model = model
         fit.unique_identifier = "fit-uid"
         state = SessionState(fits=[fit])
-        result = parameter_link(state, parameter_name="nonexistent", target_parameter_name="tau2", fit_index=0)
+        result = parameter_link(
+            state, parameter_name="nonexistent", target_parameter_name="tau2", fit_index=0
+        )
         assert not result["ok"]
 
     def test_parameter_unlink(self):

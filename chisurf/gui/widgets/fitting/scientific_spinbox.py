@@ -24,7 +24,7 @@ class ScientificDoubleSpinBox(QtWidgets.QAbstractSpinBox):
     """
 
     #: value-change signals (``self``) and (``self``, ``value``)
-    sigValueChanged = QtCore.Signal(object)           # (self,)
+    sigValueChanged = QtCore.Signal(object)  # (self,)
     sigValueChanging = QtCore.Signal(object, object)  # (self, value)
 
     def __init__(

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
-from typing import Optional, Dict, Any
 
 
-def resolve_total_mean_count_rate(meta: Optional[Dict[str, Any]]) -> Optional[float]:
+def resolve_total_mean_count_rate(meta: dict[str, Any] | None) -> float | None:
     """Extract the total mean count rate from metadata.
 
     Handles both ``mean_count_rate_total`` and ``mean_count_rate`` with
@@ -58,10 +59,8 @@ def resolve_total_mean_count_rate(meta: Optional[Dict[str, Any]]) -> Optional[fl
 
 
 def diffusion_reference_component(
-    x: np.ndarray,
-    td: float,
-    s: Optional[float] = None
-) -> Optional[np.ndarray]:
+    x: np.ndarray, td: float, s: float | None = None
+) -> np.ndarray | None:
     """Return a 2D or 3D Gaussian diffusion component.
 
     Parameters
@@ -103,10 +102,8 @@ def diffusion_reference_component(
 
 
 def fcs_diffusion_reference(
-    x: np.ndarray,
-    params: Dict[str, float],
-    b_default: float = 1.0
-) -> Optional[np.ndarray]:
+    x: np.ndarray, params: dict[str, float], b_default: float = 1.0
+) -> np.ndarray | None:
     """Return the diffusion-only FCS reference curve including ``1/N``.
 
     The baseline ``b`` is intentionally *not* included. Plotting callbacks
@@ -149,11 +146,7 @@ def fcs_diffusion_reference(
     return 1.0 / abs(n) * component
 
 
-def normalize_fcs_curve(
-    y: np.ndarray,
-    reference: np.ndarray,
-    b: float = 1.0
-) -> np.ndarray:
+def normalize_fcs_curve(y: np.ndarray, reference: np.ndarray, b: float = 1.0) -> np.ndarray:
     """Normalize FCS curve as ``(G - b) / Gdiff``.
 
     Parameters
@@ -175,10 +168,7 @@ def normalize_fcs_curve(
     return (y - b) / reference
 
 
-def compute_cpm(
-    mean_count_rate_total: float,
-    N: float
-) -> Optional[float]:
+def compute_cpm(mean_count_rate_total: float, N: float) -> float | None:
     """Compute CPM (counts per molecule) from total count rate and N.
 
     Parameters
@@ -199,10 +189,8 @@ def compute_cpm(
 
 
 def compute_cpm_all(
-    mean_count_rate_total: float,
-    N: float,
-    bunch_params: Dict[str, float]
-) -> Optional[float]:
+    mean_count_rate_total: float, N: float, bunch_params: dict[str, float]
+) -> float | None:
     """Compute CPM for all molecules (including dark) from bunching parameters.
 
     Parameters

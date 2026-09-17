@@ -1,6 +1,8 @@
 import sys
-from .widget import AlignTrajectoryWidget
+
 from qtpy.QtWidgets import QApplication
+
+from .widget import AlignTrajectoryWidget
 
 
 def main():

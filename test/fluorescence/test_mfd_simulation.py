@@ -18,6 +18,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from chisurf.core.fluorescence.burst.simulate import (
+    MFD_STREAMS,
+    rate_matrix_for,
+    simulate_smfret,
+)
 from chisurf.core.fluorescence.mfd.fit import (
     MfdKineticModel,
     MfdModel,
@@ -26,15 +31,8 @@ from chisurf.core.fluorescence.mfd.fit import (
 from chisurf.core.fluorescence.mfd.histogram import HistogramAxes
 from chisurf.core.fluorescence.mfd.moments import pattern_moments
 from chisurf.core.fluorescence.mfd.patterns import state_efficiency
-from chisurf.core.fluorescence.burst.simulate import (
-    MFD_STREAMS,
-    rate_matrix_for,
-    simulate_smfret,
-)
 
-AXES = HistogramAxes.default(
-    n_ratio=40, n_micro_time=40, micro_time_range=(0.5, 6.0)
-)
+AXES = HistogramAxes.default(n_ratio=40, n_micro_time=40, micro_time_range=(0.5, 6.0))
 
 
 #: The measurement these tests are written against. The distances the old
@@ -42,12 +40,25 @@ AXES = HistogramAxes.default(
 #: which is what the survivor is asked for directly — it parameterises by
 #: efficiency, and going through a distance twice is a conversion to get wrong.
 MEASUREMENT = dict(
-    alex=False, polarized=True,
-    efficiencies=(0.786, 0.152), donor_only=0.15, acceptor_only=0.0,
-    gamma=1.0, alpha=0.02, beta=1.0, delta=0.0,
-    tau_d0=4.0, tau_a=3.0, linker_sigma=6.0, r0=52.0,
-    concentration=1.0, brightness=400.0, background=0.02,
-    laser_period=13.6, irf_centre=1.2, irf_width=0.09,
+    alex=False,
+    polarized=True,
+    efficiencies=(0.786, 0.152),
+    donor_only=0.15,
+    acceptor_only=0.0,
+    gamma=1.0,
+    alpha=0.02,
+    beta=1.0,
+    delta=0.0,
+    tau_d0=4.0,
+    tau_a=3.0,
+    linker_sigma=6.0,
+    r0=52.0,
+    concentration=1.0,
+    brightness=400.0,
+    background=0.02,
+    laser_period=13.6,
+    irf_centre=1.2,
+    irf_width=0.09,
 )
 
 #: Mean burst duration the regimes are named against. Measured from the simulated
@@ -65,16 +76,25 @@ def _truth():
     from chisurf.core.fluorescence.fret.lines import distance_for_efficiency
     from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
 
-    optics = Optics(r0=MEASUREMENT["r0"], tau_d0=MEASUREMENT["tau_d0"],
-                    tau_a=MEASUREMENT["tau_a"], sigma=MEASUREMENT["linker_sigma"],
-                    alpha=MEASUREMENT["alpha"], delta=MEASUREMENT["delta"],
-                    gamma=MEASUREMENT["gamma"])
+    optics = Optics(
+        r0=MEASUREMENT["r0"],
+        tau_d0=MEASUREMENT["tau_d0"],
+        tau_a=MEASUREMENT["tau_a"],
+        sigma=MEASUREMENT["linker_sigma"],
+        alpha=MEASUREMENT["alpha"],
+        delta=MEASUREMENT["delta"],
+        gamma=MEASUREMENT["gamma"],
+    )
     states = [
         FretState(
-            distance=float(distance_for_efficiency(
-                e, donor=MEASUREMENT["tau_d0"], r0=MEASUREMENT["r0"],
-                sigma=MEASUREMENT["linker_sigma"],
-            )),
+            distance=float(
+                distance_for_efficiency(
+                    e,
+                    donor=MEASUREMENT["tau_d0"],
+                    r0=MEASUREMENT["r0"],
+                    sigma=MEASUREMENT["linker_sigma"],
+                )
+            ),
             name=name,
         )
         for e, name in zip(MEASUREMENT["efficiencies"], ("closed", "open"))
@@ -140,9 +160,11 @@ def test_the_burst_tables_reproduce_the_generated_photons(tmp_path):
     for row, (first, last) in enumerate(simulated.true_bursts(min_photons=20)):
         emitted = stream[first : last + 1]
         assert preparation.counts[row, green] == int(
-            np.isin(emitted, [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]]).sum())
+            np.isin(emitted, [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]]).sum()
+        )
         assert preparation.counts[row, red] == int(
-            np.isin(emitted, [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]]).sum())
+            np.isin(emitted, [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]]).sum()
+        )
 
 
 def test_the_response_estimated_from_non_burst_photons_recovers_the_declared_one(tmp_path):
@@ -188,9 +210,7 @@ def test_the_regimes_are_named_in_transitions_per_burst():
     # Varying the timescale must not move the equilibrium populations.
     from chisurf.core.fluorescence.kinetics import equilibrium_populations
 
-    assert np.allclose(
-        equilibrium_populations(slow), equilibrium_populations(fast), atol=1e-9
-    )
+    assert np.allclose(equilibrium_populations(slow), equilibrium_populations(fast), atol=1e-9)
 
 
 def test_exchange_fills_the_gap_between_the_states(tmp_path):
@@ -334,9 +354,7 @@ def _burstwise_curve(data, parameters, rates, max_bursts=500):
             donor_only=MEASUREMENT["donor_only"],
             rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
         )
-        values = burstwise_log_probabilities(
-            model, data, max_bursts=max_bursts, seed=1
-        )
+        values = burstwise_log_probabilities(model, data, max_bursts=max_bursts, seed=1)
         out.append(float(np.sum(values[np.isfinite(values)])))
     return np.asarray(out)
 
@@ -376,9 +394,7 @@ def test_the_burstwise_source_needs_photons(tmp_path):
     from chisurf.core.fluorescence.mfd.fit import burstwise_log_probabilities
 
     simulated, folder = _folder(tmp_path, "static", n_bursts=200)
-    data = load_mfd_data(
-        folder, axes=AXES, responses=simulated.true_responses()
-    )
+    data = load_mfd_data(folder, axes=AXES, responses=simulated.true_responses())
     data.preparation.summary.pop("_tttrs")
     model = MfdModel(
         optics=_truth()[0],
@@ -438,10 +454,7 @@ def _matched_static_distance(optics, states):
         state_efficiency,
     )
 
-    target = 0.5 * sum(
-        float(red_probability(state_efficiency(s, optics), optics))
-        for s in states
-    )
+    target = 0.5 * sum(float(red_probability(state_efficiency(s, optics), optics)) for s in states)
     grid = np.arange(30.0, 90.0, 0.25)
     values = [
         abs(
@@ -473,24 +486,25 @@ def test_pooled_decays_tell_a_within_burst_mixture_from_a_static_state(tmp_path)
     from chisurf.core.fluorescence.mfd.fit import pooled_decay_score
     from chisurf.core.fluorescence.mfd.patterns import FretState
 
-    axes = HistogramAxes.default(
-        n_ratio=20, n_micro_time=40, micro_time_range=(0.5, 6.0)
-    )
+    axes = HistogramAxes.default(n_ratio=20, n_micro_time=40, micro_time_range=(0.5, 6.0))
     optics, states = _truth()
     exchange = rate_matrix_for("intermediate", mean_duration=MEAN_DURATION)
     # A single state whose *mean* delay matches the exchanging mixture's, so the
     # two are told apart by decay shape and by nothing else.
     distance = _matched_static_distance(optics, states)
-    matched_efficiency = float(
-        state_efficiency(FretState(distance=distance), optics)
-    )
+    matched_efficiency = float(state_efficiency(FretState(distance=distance), optics))
 
     mixture_model = MfdKineticModel(
-        optics=optics, states=states, populations=[0.5, 0.5],
-        donor_only=MEASUREMENT["donor_only"], rate_matrix=exchange,
+        optics=optics,
+        states=states,
+        populations=[0.5, 0.5],
+        donor_only=MEASUREMENT["donor_only"],
+        rate_matrix=exchange,
     )
     single_model = MfdModel(
-        optics=optics, states=[FretState(distance=distance)], populations=[1.0],
+        optics=optics,
+        states=[FretState(distance=distance)],
+        populations=[1.0],
         donor_only=MEASUREMENT["donor_only"],
     )
 
@@ -500,7 +514,9 @@ def test_pooled_decays_tell_a_within_burst_mixture_from_a_static_state(tmp_path)
     ):
         simulated = simulate_smfret(
             **{**MEASUREMENT, "efficiencies": efficiencies},
-            n_photons=300_000, seed=21, rate_matrix=rates,
+            n_photons=300_000,
+            seed=21,
+            rate_matrix=rates,
         )
         folder = simulated.write_folder(tmp_path / name, stem=name)
         data = load_mfd_data(
@@ -535,9 +551,7 @@ def test_pooled_decays_pool_on_the_ratio_only(tmp_path):
     """
     from chisurf.core.fluorescence.mfd.histogram import observed_pooled_decays
 
-    axes = HistogramAxes.default(
-        n_ratio=12, n_micro_time=40, micro_time_range=(0.5, 6.0)
-    )
+    axes = HistogramAxes.default(n_ratio=12, n_micro_time=40, micro_time_range=(0.5, 6.0))
     simulated, folder = _folder(tmp_path, "static", n_bursts=600)
     data = load_mfd_data(
         folder, axes=axes, min_green_photons=20, responses=simulated.true_responses()
@@ -558,9 +572,7 @@ def test_pooled_decays_need_photons(tmp_path):
     from chisurf.core.fluorescence.mfd.histogram import observed_pooled_decays
 
     simulated, folder = _folder(tmp_path, "static", n_bursts=200)
-    data = load_mfd_data(
-        folder, axes=AXES, responses=simulated.true_responses()
-    )
+    data = load_mfd_data(folder, axes=AXES, responses=simulated.true_responses())
     data.preparation.summary.pop("_tttrs")
     with pytest.raises(ValueError, match="with_photons=True"):
         observed_pooled_decays(data.preparation, AXES)
@@ -578,15 +590,19 @@ def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
     correlation at all. The model then has to recover the parallel fraction from
     ``r(t)``, integrated, without ever being told it.
     """
-    from chisurf.core.fluorescence.mfd.patterns import FretState
-
     rho, distance = 1.0, 70.0
     optics, _ = _truth()
     efficiency = 1.0 / (1.0 + (distance / optics.r0) ** 6)
     simulated = simulate_smfret(
-        **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
-           "background": 0.0, "rho": rho},
-        n_photons=150_000, seed=3,
+        **{
+            **MEASUREMENT,
+            "efficiencies": (efficiency,),
+            "donor_only": 0.0,
+            "background": 0.0,
+            "rho": rho,
+        },
+        n_photons=150_000,
+        seed=3,
     )
 
     # The simulated split, over burst photons only.
@@ -604,9 +620,7 @@ def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
     response = simulated.true_responses()["green"]
     amplitudes = np.array([1.0])
     lifetimes = np.array([optics.tau_d0 * (1.0 - efficiency)])
-    _, _, predicted = polarized_patterns(
-        response, amplitudes, lifetimes, rho, optics
-    )
+    _, _, predicted = polarized_patterns(response, amplitudes, lifetimes, rho, optics)
 
     assert observed == pytest.approx(predicted, abs=0.02)
 
@@ -618,9 +632,15 @@ def test_a_slower_rotor_gives_a_more_polarized_simulated_stream(tmp_path):
     splits = []
     for rho in (0.1, 5.0):
         simulated = simulate_smfret(
-            **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
-               "background": 0.0, "rho": rho},
-            n_photons=60_000, seed=4,
+            **{
+                **MEASUREMENT,
+                "efficiencies": (efficiency,),
+                "donor_only": 0.0,
+                "background": 0.0,
+                "rho": rho,
+            },
+            n_photons=60_000,
+            seed=4,
         )
         stream = np.asarray(simulated.stream)
         parallel = int((stream == MFD_STREAMS["g_par"]).sum())
@@ -647,13 +667,12 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
     distance = 70.0
     efficiency = 1.0 / (1.0 + (distance / optics.r0) ** 6)
     simulated = simulate_smfret(
-        **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
-           "rho": 1.0},
-        n_photons=150_000, seed=6,
+        **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0, "rho": 1.0},
+        n_photons=150_000,
+        seed=6,
     )
     spans = simulated.true_bursts(min_photons=20)
-    folder = simulated.write_folder(tmp_path / "polarized", stem="polarized",
-                                    bursts=spans)
+    folder = simulated.write_folder(tmp_path / "polarized", stem="polarized", bursts=spans)
 
     assert set(np.unique(simulated.stream)) == {0, 1, 8, 9}
 
@@ -681,13 +700,13 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
         green="green_par",
         red="green_perp",
         min_green_photons=20,
-        responses={
-            "green_par": responses["green"], "green_perp": responses["green"]
-        },
+        responses={"green_par": responses["green"], "green_perp": responses["green"]},
     )
     model = MfdModel(
-        optics=optics, states=[FretState(distance=distance, rho=1.0)],
-        populations=[1.0], donor_only=0.0,
+        optics=optics,
+        states=[FretState(distance=distance, rho=1.0)],
+        populations=[1.0],
+        donor_only=0.0,
     )
     predicted = model.anisotropy_histogram(
         data, parallel="green_par", perpendicular="green_perp", axes=AXES

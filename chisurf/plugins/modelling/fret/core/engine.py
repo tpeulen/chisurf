@@ -14,19 +14,18 @@ there. They are back where they came from.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-
-
 
 # ---------------------------------------------------------------------------
 # Parameter container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SpringParameters:
     """Simulation parameters mirroring FPS ``FPSParameters``."""
+
     viscosity_factor: float = 0.85
     time_step_factor: float = 0.005
     max_iterations: int = 50000
@@ -45,12 +44,14 @@ class SpringParameters:
 # Rigid Body
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RigidBody:
     """A rigid body that can be translated and rotated as a unit.
 
     Attributes stored in the *body* (local) frame.
     """
+
     name: str
     atoms_local: np.ndarray  # (N, 4) xyzr in the local frame (com = 0)
     com: np.ndarray  # (3,) center of mass in global frame
@@ -74,7 +75,7 @@ class RigidBody:
         self,
         force: np.ndarray,
         point: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Apply a force at a point on the body.
 
         Returns (linear_force_increment, torque_increment).
@@ -97,6 +98,7 @@ class RigidBody:
 # Distance restraint (harmonic spring)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DistanceRestraint:
     """A single FRET distance restraint between two AV positions on two bodies.
@@ -104,6 +106,7 @@ class DistanceRestraint:
     Positions are stored as offsets from each body's COM so they move
     with the body during docking.
     """
+
     name: str
     body_a: int
     offset_a: np.ndarray  # AV mean position relative to body A's COM
@@ -118,7 +121,7 @@ class DistanceRestraint:
     position_name_a: str = ""
     position_name_b: str = ""
     sigma_rda: float = 0.0
-    convfun: Optional[np.ndarray] = None
+    convfun: np.ndarray | None = None
     transfer_function_type: str = "Polynomial"
 
     def global_position_a(self, bodies) -> np.ndarray:
@@ -145,6 +148,7 @@ class DistanceRestraint:
             Effective distance.
         """
         from . import distance as _dist
+
         if self.distance_type == "Rmp" or self.transfer_function_type == "None":
             return rmp
         elif self.transfer_function_type == "Gaussian":
@@ -164,17 +168,20 @@ class DistanceRestraint:
 # Rotation helpers
 # ---------------------------------------------------------------------------
 
+
 def _rotation_matrix(axis: np.ndarray, angle: float) -> np.ndarray:
     """Build a (3,3) rotation matrix from an axis-angle pair."""
     c = np.cos(angle)
     s = np.sin(angle)
     t = 1.0 - c
     x, y, z = axis
-    return np.array([
-        [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
-        [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
-        [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
-    ])
+    return np.array(
+        [
+            [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+            [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+            [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+        ]
+    )
 
 
 def _rotate_vector(v: np.ndarray, axis: np.ndarray, angle: float) -> np.ndarray:

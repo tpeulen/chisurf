@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, field
 import json
-from pathlib import Path
 import tempfile
 import time
-from typing import Any, Optional
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -17,7 +17,6 @@ from chisurf.core.math.rand import mc, weighted_choice
 from chisurf.core.structure import ProteinCentroid, Structure, Universe
 
 from .rmf import ProteinMCRmfWriter
-
 
 ProgressCallback = Callable[["ProteinMCProgress"], None]
 
@@ -37,8 +36,8 @@ class ProteinMCProgress:
     drmsd: list[float] = field(default_factory=list)
     energies: list[float] = field(default_factory=list)
     labeling_energies: list[float] = field(default_factory=list)
-    xyz: Optional[np.ndarray] = None
-    output_file: Optional[str] = None
+    xyz: np.ndarray | None = None
+    output_file: str | None = None
 
 
 @dataclass
@@ -58,11 +57,11 @@ class ProteinMCResult:
 
 def load_json(filename: str | Path) -> dict[str, Any]:
     """Load a JSON file and return its object."""
-    with open(filename, "r") as fp:
+    with open(filename) as fp:
         return json.load(fp)
 
 
-def normalize_settings(settings: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def normalize_settings(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return ProteinMC settings with legacy and current key aliases populated."""
     base = dict(chisurf.core.settings.cs_settings.get("mc_settings", {}))
     if settings is None or "potentials" not in settings:
@@ -319,9 +318,7 @@ class DirectLabelingPotential:
             used_names.add(d.get("position1_name", ""))
             used_names.add(d.get("position2_name", ""))
         self.positions = {
-            name: self.all_positions[name]
-            for name in used_names
-            if name in self.all_positions
+            name: self.all_positions[name] for name in used_names if name in self.all_positions
         }
 
         self._position_indices = {
@@ -383,10 +380,10 @@ class ProteinMCRunner:
         structure_source: str | Path | ProteinCentroid,
         *,
         flexfit_set: str | None = None,
-        settings: Optional[dict[str, Any]] = None,
+        settings: dict[str, Any] | None = None,
         settings_file: str | Path | None = None,
         output_file: str | Path | None = None,
-        initial_frames: Optional[list[np.ndarray]] = None,
+        initial_frames: list[np.ndarray] | None = None,
         progress_callback: ProgressCallback | None = None,
         verbose: bool = False,
     ) -> None:
@@ -424,8 +421,8 @@ class ProteinMCRunner:
         self.drmsd: list[float] = []
         self.energies: list[float] = []
         self.labeling_energies: list[float] = []
-        self._reference_xyz: Optional[np.ndarray] = None
-        self._previous_xyz: Optional[np.ndarray] = None
+        self._reference_xyz: np.ndarray | None = None
+        self._previous_xyz: np.ndarray | None = None
         self._eval_intervals: list[int] = []
         self._last_energies: list[float] = []
         self._labeling_potential: DirectLabelingPotential | None = None
@@ -433,9 +430,7 @@ class ProteinMCRunner:
         self._last_energies = [0.0] * len(self.universe.potentials)
         fps_file = self._find_fps_file()
         if "move_map" not in self.settings and fps_file:
-            derived = build_move_map_from_flexfit(
-                self.structure, fps_file, flexfit_set
-            )
+            derived = build_move_map_from_flexfit(self.structure, fps_file, flexfit_set)
             if derived is not None:
                 self.settings["move_map"] = derived
 
@@ -497,7 +492,9 @@ class ProteinMCRunner:
         self._previous_xyz = np.array(self.structure.xyz, copy=True)
 
         energy = self._total_energy(iteration=0)
-        self._append_frame(writer, energy, self._labeling_energy(), iteration=0, accepted=0, rejected=0)
+        self._append_frame(
+            writer, energy, self._labeling_energy(), iteration=0, accepted=0, rejected=0
+        )
 
         move_map = np.asarray(self.move_map, dtype=np.float64)
         n_iter = int(self.settings["n_iter"])
@@ -526,9 +523,12 @@ class ProteinMCRunner:
             iteration += 1
             if iteration % 100 == 0:
                 time.sleep(0)
-            move_phi, move_psi, move_omega, move_chi = (
-                np.random.ranf(4) < [p_phi, p_psi, p_omega, p_chi]
-            )
+            move_phi, move_psi, move_omega, move_chi = np.random.ranf(4) < [
+                p_phi,
+                p_psi,
+                p_omega,
+                p_chi,
+            ]
             moving_aa = int(np.asarray(weighted_choice(move_map, 1)).flat[0])
             if move_phi and c_phi.size:
                 c_phi *= 0.0
@@ -660,16 +660,16 @@ class ProteinMCRunner:
 def run_protein_mc(
     pdb_file: str,
     *,
-    settings_file: Optional[str] = None,
-    labeling_file: Optional[str] = None,
+    settings_file: str | None = None,
+    labeling_file: str | None = None,
     score_set: str = "",
     flexfit_set: str | None = None,
-    output_file: Optional[str] = None,
+    output_file: str | None = None,
     verbose: bool = False,
-    scale: Optional[float] = None,
-    n_iter: Optional[int] = None,
-    n_out: Optional[int] = None,
-    n_written: Optional[int] = None,
+    scale: float | None = None,
+    n_iter: int | None = None,
+    n_out: int | None = None,
+    n_written: int | None = None,
     eval_interval: int = 1,
     progress_callback: ProgressCallback | None = None,
 ) -> str:
@@ -756,6 +756,24 @@ def _as_text(value) -> str:
 
 
 _STANDARD_RESIDUES = {
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 }

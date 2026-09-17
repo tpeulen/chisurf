@@ -14,8 +14,9 @@ def _rms(r, p):
 
 def test_normalised():
     r = np.linspace(1e-3, 400.0, 3000)
-    p = rdf.ising_chain(r, number_of_residues=40, b_structured=5.0,
-                        b_unstructured=8.0, coupling=1.0, field=0.0)
+    p = rdf.ising_chain(
+        r, number_of_residues=40, b_structured=5.0, b_unstructured=8.0, coupling=1.0, field=0.0
+    )
     assert abs(np.trapezoid(p, r) - 1.0) < 1e-3
     assert np.all(p >= 0)
 
@@ -24,8 +25,7 @@ def test_reduces_to_gaussian_chain_when_states_equal():
     """b_S == b_U -> Gaussian chain with <r^2> = N b^2 regardless of J, h."""
     r = np.linspace(1e-3, 400.0, 4000)
     n, b = 50, 6.0
-    p_ising = rdf.ising_chain(r, n, b_structured=b, b_unstructured=b,
-                              coupling=2.0, field=0.5)
+    p_ising = rdf.ising_chain(r, n, b_structured=b, b_unstructured=b, coupling=2.0, field=0.5)
     # Gaussian chain with the same <r^2> = N b^2 -> segment_length*sqrt(N)=b*sqrt(N).
     p_gauss = rdf.gaussian_chain(r, b, n)
     p_gauss = p_gauss / np.trapezoid(p_gauss, r)
@@ -38,7 +38,7 @@ def test_field_drives_compaction():
     r = np.linspace(1e-3, 500.0, 4000)
     n = 50
     p_unfold = rdf.ising_chain(r, n, 4.0, 9.0, coupling=1.0, field=-3.0)  # -> U (expanded)
-    p_fold = rdf.ising_chain(r, n, 4.0, 9.0, coupling=1.0, field=+3.0)    # -> S (compact)
+    p_fold = rdf.ising_chain(r, n, 4.0, 9.0, coupling=1.0, field=+3.0)  # -> S (compact)
     assert _rms(r, p_fold) < _rms(r, p_unfold)
 
 

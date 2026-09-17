@@ -23,6 +23,7 @@ def container(tmp_path):
 @pytest.fixture()
 def ndx(container):
     """A window stub carrying the provenance the bridge reads."""
+
     class _Source:
         provenance = {"container_path": str(container)}
 
@@ -39,7 +40,9 @@ def test_file_round_trip(tmp_path):
     constants = {"gG/gR": 0.8, "alpha": 0.02, "forster_radius": 52.0}
     target = tmp_path / ("c" + cio.SUFFIX)
     out = cio.save_calibration(
-        constants, path=str(target), note="dsDNA ruler",
+        constants,
+        path=str(target),
+        note="dsDNA ruler",
         result={"report": "REPORT", "uncertainties": {"gamma": 0.05}},
     )
     assert out["ok"] and out["where"] == "file"
@@ -156,6 +159,7 @@ def test_the_newest_calibration_is_what_the_bridge_restores(ndx, container):
     is the one the user actually sees when a `.pto` is opened.
     """
     from chisurf.plugins.ndxplorer import calibration_io as cio
+
     bridge = pytest.importorskip("chisurf.plugins.ndxplorer.calibration_bridge")
 
     n = cio.CALIBRATION_HISTORY + 4

@@ -5,6 +5,7 @@ prefix in their shebang; the shipped ``.app``/AppImage lives somewhere else
 entirely. These tests move the tree after rewriting and execute the scripts
 from their new location.
 """
+
 from __future__ import annotations
 
 import importlib.util

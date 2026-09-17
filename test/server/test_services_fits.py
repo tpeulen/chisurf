@@ -5,22 +5,21 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from chisurf.server.services.fits import (
-    list_fits,
-    get_fit_info,
-    run_fit,
-    ping,
     fit_create,
     fit_save,
     fit_set_dataset,
-    fit_set_result_idx,
     fit_set_fit_range,
+    fit_set_result_idx,
+    get_fit_info,
+    list_fits,
+    ping,
+    run_fit,
 )
 from chisurf.server.services.models import model_finalize, model_set_parse_function
 from chisurf.server.session import SessionState
 
 
 class TestFitsService:
-
     def test_list_fits_empty(self):
         state = SessionState()
         result = list_fits(state)
@@ -104,6 +103,7 @@ class TestFitsService:
 
     def test_ping_returns_alive(self):
         from chisurf.server.services.fits import ping
+
         state = SessionState()
         result = ping(state)
         assert result["ok"]
@@ -236,7 +236,6 @@ class TestFitsService:
         # Without a real model class available, this should fail at import
         assert not result["ok"]
 
-
     def test_fit_set_dataset_without_fit(self):
         state = SessionState()
         result = fit_set_dataset(state, fit_index=0, dataset_index=0)
@@ -293,9 +292,9 @@ class TestFitsService:
 
 
 class TestGraphService:
-
     def test_build_graph_empty_state(self):
         from chisurf.server.services.graph import build_fit_graph
+
         state = SessionState()
         result = build_fit_graph(state)
         assert result["ok"]
@@ -304,6 +303,7 @@ class TestGraphService:
 
     def test_build_graph_single_fit(self):
         from chisurf.server.services.graph import build_fit_graph
+
         fit = MagicMock()
         fit.unique_identifier = "fit-1"
         fit.name = "TestFit"
@@ -325,6 +325,7 @@ class TestGraphService:
 
     def test_build_graph_with_parameters(self):
         from chisurf.server.services.graph import build_fit_graph
+
         param_free = MagicMock()
         param_free.name = "amp"
         param_free.value = 1.5
@@ -356,6 +357,7 @@ class TestGraphService:
 
     def test_build_graph_excludes_fixed_when_requested(self):
         from chisurf.server.services.graph import build_fit_graph
+
         param_free = MagicMock()
         param_free.name = "amp"
         param_free.value = 1.0
@@ -387,6 +389,7 @@ class TestGraphService:
 
     def test_fit_diagnostics_not_found(self):
         from chisurf.server.services.fits import fit_diagnostics
+
         state = SessionState()
         result = fit_diagnostics(state, fit_index=0)
         assert not result["ok"]
@@ -394,6 +397,7 @@ class TestGraphService:
 
     def test_fit_diagnostics_returns_metrics(self):
         from chisurf.server.services.fits import fit_diagnostics
+
         fit = MagicMock()
         fit.unique_identifier = "fit-diag-1"
         fit.name = "DiagFit"
@@ -435,6 +439,7 @@ class TestGraphService:
 
     def test_fit_diagnostics_downsampling(self):
         from chisurf.server.services.fits import fit_diagnostics
+
         fit = MagicMock()
         fit.unique_identifier = "fit-down-1"
         fit.name = "Down"
@@ -465,6 +470,7 @@ class TestGraphService:
 
     def test_fit_diagnostics_sanitizes_nan(self):
         from chisurf.server.services.fits import fit_diagnostics
+
         fit = MagicMock()
         fit.unique_identifier = "fit-nan"
         fit.name = "NaN"
@@ -487,12 +493,14 @@ class TestGraphService:
 
     def test_parameter_snapshot_not_found(self):
         from chisurf.server.services.fits import fit_parameter_snapshot
+
         state = SessionState()
         result = fit_parameter_snapshot(state, fit_index=0)
         assert not result["ok"]
 
     def test_parameter_snapshot_captures_params(self):
         from chisurf.server.services.fits import fit_parameter_snapshot
+
         fit = MagicMock()
         fit.unique_identifier = "fit-snap-1"
         fit.name = "SnapFit"
@@ -519,18 +527,21 @@ class TestGraphService:
 
     def test_restore_parameters_not_found(self):
         from chisurf.server.services.fits import fit_restore_parameters
+
         state = SessionState()
         result = fit_restore_parameters(state, fit_index=0, snapshot={"parameters": []})
         assert not result["ok"]
 
     def test_restore_parameters_missing_snapshot(self):
         from chisurf.server.services.fits import fit_restore_parameters
+
         state = SessionState()
         result = fit_restore_parameters(state, fit_index=0, snapshot=None)
         assert not result["ok"]
 
     def test_restore_parameters_restores_values(self):
         from chisurf.server.services.fits import fit_restore_parameters
+
         fit = MagicMock()
         fit.unique_identifier = "fit-rest-1"
         fit.name = "RestFit"
@@ -556,7 +567,13 @@ class TestGraphService:
         state = SessionState(fits=[fit])
         snapshot = {
             "parameters": [
-                {"name": "tau1", "value": 5.0, "fixed": True, "bounds": (1, 15), "bounds_on": False},
+                {
+                    "name": "tau1",
+                    "value": 5.0,
+                    "fixed": True,
+                    "bounds": (1, 15),
+                    "bounds_on": False,
+                },
             ]
         }
         result = fit_restore_parameters(state, fit_index=0, snapshot=snapshot)
@@ -571,6 +588,7 @@ class TestGraphService:
 
     def test_fit_select_by_index(self):
         from chisurf.server.services.fits import fit_select
+
         fit = MagicMock()
         fit.unique_identifier = "fit-sel-1"
         fit.name = "SelFit"
@@ -581,6 +599,7 @@ class TestGraphService:
 
     def test_fit_select_by_uid(self):
         from chisurf.server.services.fits import fit_select
+
         fit = MagicMock()
         fit.unique_identifier = "fit-sel-2"
         fit.name = "SelFit2"
@@ -591,12 +610,14 @@ class TestGraphService:
 
     def test_fit_select_not_found(self):
         from chisurf.server.services.fits import fit_select
+
         state = SessionState()
         result = fit_select(state, fit_index=0)
         assert not result["ok"]
 
     def test_build_graph_linked_parameters(self):
         from chisurf.server.services.graph import build_fit_graph
+
         source_param = MagicMock()
         source_param.name = "tau"
         source_param.value = 3.0
@@ -649,21 +670,19 @@ class TestGraphService:
         assert len(param_nodes) == 2
 
         # Each param should connect to its fit, plus one cross-param link edge
-        param_to_fit = [e for e in edges if any(
-            n["node_idx"] == e["source"] and n["node_type"] == "parameter"
-            for n in nodes
-        ) and any(
-            n["node_idx"] == e["target"] and n["node_type"] == "fit"
-            for n in nodes
-        )]
+        param_to_fit = [
+            e
+            for e in edges
+            if any(n["node_idx"] == e["source"] and n["node_type"] == "parameter" for n in nodes)
+            and any(n["node_idx"] == e["target"] and n["node_type"] == "fit" for n in nodes)
+        ]
         assert len(param_to_fit) == 2
 
         # The linked param should produce a cross-param edge
-        cross_param = [e for e in edges if any(
-            n["node_idx"] == e["source"] and n["node_type"] == "parameter"
-            for n in nodes
-        ) and any(
-            n["node_idx"] == e["target"] and n["node_type"] == "parameter"
-            for n in nodes
-        )]
+        cross_param = [
+            e
+            for e in edges
+            if any(n["node_idx"] == e["source"] and n["node_type"] == "parameter" for n in nodes)
+            and any(n["node_idx"] == e["target"] and n["node_type"] == "parameter" for n in nodes)
+        ]
         assert len(cross_param) >= 1

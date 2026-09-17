@@ -153,8 +153,7 @@ def state_arrays(analysis_dir, sizes: dict[str, int]) -> tuple[dict[str, np.ndar
             "be matched to the measurement's photons — re-run H2MM"
         )
     out: dict[str, np.ndarray] = {
-        stem: np.full(int(size), UNASSIGNED, dtype=np.int8)
-        for stem, size in sizes.items()
+        stem: np.full(int(size), UNASSIGNED, dtype=np.int8) for stem, size in sizes.items()
     }
     # len() of a mapping is its COLUMN count; the row count is a column's.
     if not len(table["Photon"]):

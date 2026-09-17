@@ -11,8 +11,6 @@ an agent's sign-off does not clear the release gate, it never overwrites a
 human's, and either level goes stale the moment the page is edited.
 """
 
-import pathlib
-
 import pytest
 
 from chisurf.plugins.core.help.api import review
@@ -112,9 +110,7 @@ def test_registries_written_before_the_ai_level_still_load(tracked_page):
                     "status": "reviewed",
                     "reviewer": "a-person",
                     "date": "2026-01-01",
-                    "sha256": review.content_hash(
-                        tracked_page.read_text(encoding="utf-8")
-                    ),
+                    "sha256": review.content_hash(tracked_page.read_text(encoding="utf-8")),
                 }
             }
         ),

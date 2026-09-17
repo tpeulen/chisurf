@@ -1,4 +1,5 @@
 """GUI tests for the single-expression ExpressionInput widget."""
+
 import os
 
 import pytest
@@ -57,7 +58,7 @@ def test_committed_only_when_valid(qapp):
     w._on_return()
     assert fired == ["a1*exp(-x/tau1)"]
     fired.clear()
-    w.setText("a1*exp(")   # invalid
+    w.setText("a1*exp(")  # invalid
     w._on_return()
     assert fired == []
 

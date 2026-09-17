@@ -106,7 +106,7 @@ class _MaxentPlottingMixin:
             p_hi = np.asarray(stats.get("p_hi", []), dtype=float).ravel()
             p_med = np.asarray(stats.get("p_med", []), dtype=float).ravel()
             p_mean = np.asarray(stats.get("p_mean", []), dtype=float).ravel()
-            p_mem_s = np.asarray(stats.get("p_mem", []), dtype=float).ravel()
+            np.asarray(stats.get("p_mem", []), dtype=float).ravel()
         except Exception:
             return
         if p_lo.size != dist_axis.size or p_hi.size != dist_axis.size:

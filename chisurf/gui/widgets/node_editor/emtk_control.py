@@ -28,6 +28,7 @@ arrive. The panning gesture is **Alt-drag** here, and the wheel zooms; both are
 translated into the ``IO`` fields :mod:`emtk.nodes` reads, so the editor itself
 needs no special case.
 """
+
 from __future__ import annotations
 
 import logging
@@ -135,7 +136,7 @@ class NodeContentRenderer:
         """
         return (nodes.NodeShape.BOX, "", None)
 
-    def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
+    def node_style(self, node: GraphNode) -> tuple | None:
         """The title-bar colour this node should have, if not the default.
 
         Parameters
@@ -158,7 +159,7 @@ class NodeContentRenderer:
         """
         return None
 
-    def link_style(self, edge: typing.Any) -> typing.Optional[tuple]:
+    def link_style(self, edge: typing.Any) -> tuple | None:
         """The colour and thickness this edge should have, if not the default.
 
         Parameters
@@ -283,13 +284,13 @@ class GraphControl:
 
     def __init__(
         self,
-        document: typing.Optional[GraphDocument] = None,
+        document: GraphDocument | None = None,
         read_only: bool = False,
-        content: typing.Optional[NodeContentRenderer] = None,
-        on_change: typing.Optional[typing.Callable] = None,
-        on_select: typing.Optional[typing.Callable] = None,
-        on_link: typing.Optional[typing.Callable] = None,
-        on_unlink: typing.Optional[typing.Callable] = None,
+        content: NodeContentRenderer | None = None,
+        on_change: typing.Callable | None = None,
+        on_select: typing.Callable | None = None,
+        on_link: typing.Callable | None = None,
+        on_unlink: typing.Callable | None = None,
     ) -> None:
         self.document = document if document is not None else GraphDocument()
         self.read_only = bool(read_only)
@@ -348,8 +349,11 @@ class GraphControl:
         # dropping the style meant the first load looked right and every one
         # after it silently reverted to the defaults.
         style = self.editor.style if self.editor is not None else None
-        snap = (self.editor.snap_to_grid, self.editor.stick_to_nodes) \
-            if self.editor is not None else None
+        snap = (
+            (self.editor.snap_to_grid, self.editor.stick_to_nodes)
+            if self.editor is not None
+            else None
+        )
 
         self.document = document
         self.editor = nodes.EditorContext(style=style)
@@ -361,13 +365,9 @@ class GraphControl:
     def _sync_positions(self) -> None:
         """Push each node's stored position into the renderer's pool."""
         for node in self.document.nodes:
-            nodes.set_node_grid_space_pos(
-                self.editor, self.document.node_number(node.id), node.pos
-            )
+            nodes.set_node_grid_space_pos(self.editor, self.document.node_number(node.id), node.pos)
             if self.read_only:
-                nodes.set_node_draggable(
-                    self.editor, self.document.node_number(node.id), False
-                )
+                nodes.set_node_draggable(self.editor, self.document.node_number(node.id), False)
 
     def _pull_positions(self) -> None:
         """Copy dragged positions back out of the renderer into the document.
@@ -418,8 +418,9 @@ class GraphControl:
 
         with nodes.editor_context(self.editor, box=box):
             if self.show_minimap and document.nodes:
-                nodes.mini_map(self.editor, size_fraction=0.18,
-                               location=nodes.MiniMapLocation.BOTTOM_RIGHT)
+                nodes.mini_map(
+                    self.editor, size_fraction=0.18, location=nodes.MiniMapLocation.BOTTOM_RIGHT
+                )
 
             for node in document.nodes:
                 changed |= self._draw_node(node)
@@ -493,12 +494,14 @@ class GraphControl:
             # and anything drawn between begin and end is measured into its
             # rect -- which is how a disc silently stops being round.
             for index, _port in enumerate(node.inputs):
-                nodes.begin_input_attribute(document.pin_id(node.id, index, False),
-                                            nodes.PinShape.NONE)
+                nodes.begin_input_attribute(
+                    document.pin_id(node.id, index, False), nodes.PinShape.NONE
+                )
                 nodes.end_input_attribute()
             for index, _port in enumerate(node.outputs):
-                nodes.begin_output_attribute(document.pin_id(node.id, index, True),
-                                             nodes.PinShape.NONE)
+                nodes.begin_output_attribute(
+                    document.pin_id(node.id, index, True), nodes.PinShape.NONE
+                )
                 nodes.end_output_attribute()
             im.pop_item_width()
             nodes.end_node()
@@ -929,8 +932,10 @@ class GraphControl:
             nodes are, the view, and the selection.
         """
         return (
-            tuple((n.id, n.title, n.collapsed, n.pos, len(n.inputs), len(n.outputs))
-                  for n in self.document.nodes),
+            tuple(
+                (n.id, n.title, n.collapsed, n.pos, len(n.inputs), len(n.outputs))
+                for n in self.document.nodes
+            ),
             tuple(e.key() for e in self.document.edges),
             self.editor.canvas.panning,
             self.editor.canvas.zoom,

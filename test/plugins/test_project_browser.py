@@ -1,26 +1,17 @@
 from __future__ import annotations
 
-import json
-import uuid
-import base64
-import pathlib
-from unittest.mock import patch, MagicMock
-
 import pytest
 
-from mmfdb.security.auth import PERM_READ, PERM_WRITE, PERM_MANAGE
-from chisurf.core.project.archive import ProjectArchive
 from chisurf.plugins.core.project_browser.backend.services import (
-    list_projects_handler,
-    save_project_handler,
-    restore_project_handler,
-    export_csp_handler,
-    import_preview_handler,
-    import_csp_handler,
-    delete_version_handler,
-    _find_collisions,
-    _generate_id_remap,
     _apply_remap_to_export,
+    _generate_id_remap,
+    delete_version_handler,
+    export_csp_handler,
+    import_csp_handler,
+    import_preview_handler,
+    list_projects_handler,
+    restore_project_handler,
+    save_project_handler,
 )
 
 
@@ -318,7 +309,8 @@ class TestExportImport:
         # Actually the export archive still has the original IDs, so re-importing same archive
         # into the same DB with resolve_collisions=False should detect collisions.
         preview = import_preview_handler(
-            auth=mock_auth, archive_base64=archive_b64,
+            auth=mock_auth,
+            archive_base64=archive_b64,
         )
         collisions = preview.get("collisions", {})
         has_collisions = any(v for v in collisions.values())
@@ -336,18 +328,23 @@ class TestExportImport:
         archive_b64 = export["archive_bytes"]
 
         import_csp_handler(
-            auth=mock_auth, archive_base64=archive_b64, resolve_collisions=False,
+            auth=mock_auth,
+            archive_base64=archive_b64,
+            resolve_collisions=False,
         )
 
         preview = import_preview_handler(
-            auth=mock_auth, archive_base64=archive_b64,
+            auth=mock_auth,
+            archive_base64=archive_b64,
         )
         collisions = preview.get("collisions", {})
         has_collisions = any(v for v in collisions.values())
         assert has_collisions
 
         imported2 = import_csp_handler(
-            auth=mock_auth, archive_base64=archive_b64, resolve_collisions=True,
+            auth=mock_auth,
+            archive_base64=archive_b64,
+            resolve_collisions=True,
         )
         assert imported2["ok"]
         # New project should have a different version_id
@@ -371,7 +368,9 @@ class TestDeleteVersion:
 class TestFiltering:
     def test_show_public_no_collapse(self, temp_db, mock_auth):
         save_project_handler(
-            auth=mock_auth, project_name="PublicProj", project_payload={},
+            auth=mock_auth,
+            project_name="PublicProj",
+            project_payload={},
             visibility="public",
         )
         list_all = list_projects_handler(auth=mock_auth, show_public=True)
@@ -382,10 +381,14 @@ class TestFiltering:
 
     def test_search_filter(self, temp_db, mock_auth):
         save_project_handler(
-            auth=mock_auth, project_name="AlphaProject", project_payload={},
+            auth=mock_auth,
+            project_name="AlphaProject",
+            project_payload={},
         )
         save_project_handler(
-            auth=mock_auth, project_name="BetaProject", project_payload={},
+            auth=mock_auth,
+            project_name="BetaProject",
+            project_payload={},
         )
         result = list_projects_handler(auth=mock_auth, search="Alpha")
         assert len(result["projects"]) == 1

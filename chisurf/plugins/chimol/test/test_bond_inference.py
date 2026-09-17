@@ -28,16 +28,19 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.geometry.bonds import (
     CONNECT_CUTOFF,
     _build_bond_pairs,
     build_bond_pairs_by_element,
 )
 
-_PDB = pathlib.Path(__file__).resolve().parents[4] / "test" / "data" / (
-    "atomic_coordinates"
-) / "pdb_files"
+_PDB = (
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / ("atomic_coordinates")
+    / "pdb_files"
+)
 
 #: Representative van der Waals radii, as the readers supply them.
 _VDW = {"H": 1.2, "C": 1.7, "N": 1.55, "O": 1.52, "S": 1.8}
@@ -78,7 +81,7 @@ def test_a_real_bond_is_found(a, b, distance, what):
 def test_the_disulfide_the_old_rule_missed():
     """S-S is 2.05 A, beyond the old 1.9 A cutoff -- so none were ever drawn."""
     coords, radii, elements = _pair("S", "S", 2.05)
-    assert _build_bond_pairs(coords, 1.9).shape[0] == 0        # the old rule
+    assert _build_bond_pairs(coords, 1.9).shape[0] == 0  # the old rule
     assert build_bond_pairs_by_element(coords, radii, elements).shape[0] == 1
 
 
@@ -94,7 +97,7 @@ def test_two_hydrogens_are_never_bonded():
 def test_a_hydrogen_bond_is_not_a_covalent_bond():
     """~1.8 A between an O and an H of another molecule."""
     assert not _bonded("O", "H", 1.8)
-    assert _bonded("O", "H", 0.97)      # ...but the covalent one still is
+    assert _bonded("O", "H", 0.97)  # ...but the covalent one still is
 
 
 def test_a_distant_pair_is_not_bonded():
@@ -117,12 +120,8 @@ def test_sulfur_reaches_further():
     #   plain: 1.8 + 0.35 = 2.15     sulfur: 1.8 + 0.55 = 2.35
     coords = np.array([[0.0, 0.0, 0.0], [2.25, 0.0, 0.0]])
     radii = np.array([1.8, 1.8])
-    assert build_bond_pairs_by_element(
-        coords, radii, np.array(["S", "S"])
-    ).shape[0] == 1
-    assert build_bond_pairs_by_element(
-        coords, radii, np.array(["C", "C"])
-    ).shape[0] == 0
+    assert build_bond_pairs_by_element(coords, radii, np.array(["S", "S"])).shape[0] == 1
+    assert build_bond_pairs_by_element(coords, radii, np.array(["C", "C"])).shape[0] == 0
 
 
 def test_hydrogen_reaches_less_far():
@@ -137,8 +136,8 @@ def test_the_cutoff_is_pymols():
 
 
 def test_the_boundary_is_where_the_formula_puts_it():
-    """d - (vdw1 + vdw2)/2 <= cutoff, evaluated exactly at the edge."""
-    limit = (1.7 + 1.7) / 2 + CONNECT_CUTOFF        # 2.05 for carbon
+    """D - (vdw1 + vdw2)/2 <= cutoff, evaluated exactly at the edge."""
+    limit = (1.7 + 1.7) / 2 + CONNECT_CUTOFF  # 2.05 for carbon
     assert _bonded("C", "C", limit - 1e-6)
     assert not _bonded("C", "C", limit + 1e-3)
 
@@ -155,16 +154,12 @@ def test_pairs_come_back_ordered():
 
 
 def test_a_single_atom_has_no_bonds():
-    bonds = build_bond_pairs_by_element(
-        np.zeros((1, 3)), np.array([1.7]), np.array(["C"])
-    )
+    bonds = build_bond_pairs_by_element(np.zeros((1, 3)), np.array([1.7]), np.array(["C"]))
     assert bonds.shape == (0, 2)
 
 
 def test_no_atoms_gives_no_bonds():
-    bonds = build_bond_pairs_by_element(
-        np.zeros((0, 3)), np.zeros(0), np.array([], dtype="U2")
-    )
+    bonds = build_bond_pairs_by_element(np.zeros((0, 3)), np.zeros(0), np.array([], dtype="U2"))
     assert bonds.shape == (0, 2)
 
 

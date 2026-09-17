@@ -3,6 +3,7 @@
 These tests monkey-patch QFileDialog to simulate file-open dialogs
 without user interaction.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,14 +12,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
-import pytest
-
-from unittest.mock import patch
-
-from qtpy import QtWidgets
 
 import chisurf as cs
 import chisurf.gui
@@ -54,17 +50,23 @@ def _set_exp(exp_name: str, setup_name: str, **kw):
 def test_open_tcspc_via_action():
     """Dispatch dataset.add with a file path (as the open dialog would)."""
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
     before = len(cs.imported_datasets)
     cs.core.actions.dispatch(
         name="dataset.add",
         payload={
-            "filename": os.path.abspath(
-                "./test/data/tcspc/ibh_sample/Decay_577D.txt"
-            ),
+            "filename": os.path.abspath("./test/data/tcspc/ibh_sample/Decay_577D.txt"),
             "experiment_reader": None,
         },
     )
@@ -78,9 +80,7 @@ def test_open_fcs_via_action():
     cs.core.actions.dispatch(
         name="dataset.add",
         payload={
-            "filename": os.path.abspath(
-                "./test/data/fcs/kristine/Kristine_with_error.cor"
-            ),
+            "filename": os.path.abspath("./test/data/fcs/kristine/Kristine_with_error.cor"),
             "experiment_reader": None,
         },
     )

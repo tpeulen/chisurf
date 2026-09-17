@@ -378,8 +378,12 @@ class BurstBrowserViewModel:
         if counts.size == 0:
             return None
         centers = 0.5 * (edges[:-1] + edges[1:])
-        return {"centers": centers, "counts": counts,
-                "width": float(edges[1] - edges[0]), "label": str(col)}
+        return {
+            "centers": centers,
+            "counts": counts,
+            "width": float(edges[1] - edges[0]),
+            "label": str(col),
+        }
 
     # ── setup info ─────────────────────────────────────────────────────
     def _load_setup_info(self, root: pathlib.Path) -> None:
@@ -392,8 +396,12 @@ class BurstBrowserViewModel:
             jf = info_dir / "photon_selection_parameters.json"
             if jf.exists():
                 try:
-                    data = safe_open_file(jf, processor=json.load, default_value=None,
-                                          error_message=f"Could not read setup info from {jf}")
+                    data = safe_open_file(
+                        jf,
+                        processor=json.load,
+                        default_value=None,
+                        error_message=f"Could not read setup info from {jf}",
+                    )
                 except Exception as exc:
                     logger.warning("BurstBrowser: failed to read setup info: %s", exc)
                     data = None

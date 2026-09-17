@@ -60,9 +60,7 @@ class WaterfallSectionWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._plot = WaterfallPlotWidget(self)
-        self._plot.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        self._plot.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         if options.get("title"):
             self._plot.set_title(str(options["title"]))
         layout.addWidget(self._plot, 1)

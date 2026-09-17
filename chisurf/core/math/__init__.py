@@ -13,6 +13,7 @@ Both ``import chisurf.core.math.signal`` and attribute access
 (``chisurf.core.math.signal`` after ``import chisurf.core.math``) continue to
 work; the submodule is simply imported on first use.
 """
+
 import importlib
 from typing import Any
 

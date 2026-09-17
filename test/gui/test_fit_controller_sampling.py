@@ -21,11 +21,13 @@ def test_proteinmc_sample_button_runs_model_handler(qapp, qtbot, monkeypatch, tm
         name = "ProteinMC"
 
         def run_sampling(self, *, output_directory=None, run_count=1, n_iter=None):
-            calls.append({
-                "output_directory": output_directory,
-                "run_count": run_count,
-                "n_iter": n_iter,
-            })
+            calls.append(
+                {
+                    "output_directory": output_directory,
+                    "run_count": run_count,
+                    "n_iter": n_iter,
+                }
+            )
 
     model = ProteinMCModel()
     fit = SimpleNamespace(
@@ -49,11 +51,9 @@ def test_proteinmc_sample_button_runs_model_handler(qapp, qtbot, monkeypatch, tm
 
     # Steps and runs are sampling settings now, not spin boxes on the panel.
     monkeypatch.setitem(
-        chisurf.core.settings.cs_settings['optimization']['sampling'], 'steps', 2000
+        chisurf.core.settings.cs_settings["optimization"]["sampling"], "steps", 2000
     )
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings['optimization']['sampling'], 'n_runs', 3
-    )
+    monkeypatch.setitem(chisurf.core.settings.cs_settings["optimization"]["sampling"], "n_runs", 3)
 
     controller.onErrorEstimate()
 
@@ -63,7 +63,9 @@ def test_proteinmc_sample_button_runs_model_handler(qapp, qtbot, monkeypatch, tm
     assert calls[0]["n_iter"] == 2000
 
 
-def test_generic_sample_button_still_uses_server_for_curve_models(qapp, qtbot, monkeypatch, tmp_path):
+def test_generic_sample_button_still_uses_server_for_curve_models(
+    qapp, qtbot, monkeypatch, tmp_path
+):
     """Curve models without a custom handler fall through to server sampling.
 
     This ensures the new model-handler branch does not intercept ordinary

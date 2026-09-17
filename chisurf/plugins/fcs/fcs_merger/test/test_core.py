@@ -11,8 +11,12 @@ def _corr(seed: int) -> dict:
     x = np.logspace(-3, 2, n)
     y = 0.5 / (1.0 + x) + 1.0 + rng.normal(0, 0.01, n)
     return {
-        "x": x.tolist(), "y": y.tolist(), "duration": 10.0, "count_rate": 50.0,
-        "channel_a": {"counts": 5e5}, "channel_b": {"counts": 5e5},
+        "x": x.tolist(),
+        "y": y.tolist(),
+        "duration": 10.0,
+        "count_rate": 50.0,
+        "channel_a": {"counts": 5e5},
+        "channel_b": {"counts": 5e5},
     }
 
 

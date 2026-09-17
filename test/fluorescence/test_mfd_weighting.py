@@ -8,12 +8,12 @@ The error it guards is invisible to every other test in the tree, because the
 histogram source and the burst-wise source shared it. Two sources agreeing is
 what confirmation looks like right up until they are wrong the same way.
 """
+
 import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.mfd.fit import donor_weights
 from chisurf.core.fluorescence.mfd.moments import mixture_moments
-
 
 #: A burst that spent half its transit in each of a low- and a high-FRET state.
 FRACTIONS = np.array([[0.5, 0.5]])
@@ -21,7 +21,7 @@ FRACTIONS = np.array([[0.5, 0.5]])
 P_RED = np.array([0.2, 0.8])
 #: Their donor-channel mean delays and variances (ns, ns^2).
 MEAN = np.array([3.2, 0.8])
-VARIANCE = np.array([3.2 ** 2, 0.8 ** 2])
+VARIANCE = np.array([3.2**2, 0.8**2])
 
 
 def test_the_channel_counts_are_the_occupancy_mixture():
@@ -40,9 +40,7 @@ def test_the_channel_counts_are_the_occupancy_mixture():
     expected = float(FRACTIONS[0] @ P_RED)
     assert sampled.mean() / n_photons == pytest.approx(expected, abs=0.002)
     # and the spread is binomial, not over-dispersed by the state mixing
-    assert sampled.var() == pytest.approx(
-        n_photons * expected * (1.0 - expected), rel=0.02
-    )
+    assert sampled.var() == pytest.approx(n_photons * expected * (1.0 - expected), rel=0.02)
 
 
 def test_the_donor_photons_are_the_green_weighted_mixture():
@@ -73,12 +71,11 @@ def test_the_two_weightings_disagree_by_more_than_a_micro_time_bin():
     Guards the *size* of the effect, not just its sign: a fix that changed the
     weighting but not the answer would pass the test above and fail this one.
     """
-    green, _ = mixture_moments(
-        donor_weights(FRACTIONS, P_RED), MEAN[None, :], VARIANCE[None, :]
-    )
+    green, _ = mixture_moments(donor_weights(FRACTIONS, P_RED), MEAN[None, :], VARIANCE[None, :])
     occupancy, _ = mixture_moments(
         FRACTIONS,
-        MEAN[None, :], VARIANCE[None, :],
+        MEAN[None, :],
+        VARIANCE[None, :],
     )
 
     # 0.8*3.2 + 0.2*0.8 = 2.72 ns against the naive 0.5*3.2 + 0.5*0.8 = 2.00 ns.
@@ -101,7 +98,6 @@ def test_the_donor_photon_mean_matches_a_photon_by_photon_burst():
         donor_weights(FRACTIONS, P_RED), MEAN[None, :], VARIANCE[None, :]
     )
     assert float(delay.mean()) == pytest.approx(float(predicted[0]), rel=0.005)
-
 
 
 def test_the_weightings_agree_when_the_states_are_equally_bright():

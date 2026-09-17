@@ -17,19 +17,16 @@ Usage:
     python -m chisurf.plugins.spectra_downloader.download.threed_optix --db <path> [--max-pages <N>] [--brand <brand_name>]
 """
 
-import argparse
 import logging
 import re
 import time
 import urllib.parse
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-import numpy as np
 import requests
 from bs4 import BeautifulSoup
 
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
-    DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
 
@@ -55,6 +52,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
+
 def parse_wl(val: str | None) -> float | None:
     """Extract wavelength float value from text (e.g. '550 nm' -> 550.0)."""
     if not val:
@@ -62,16 +60,17 @@ def parse_wl(val: str | None) -> float | None:
     m = re.search(r"(\d+(?:\.\d+)?)", val)
     return float(m.group(1)) if m else None
 
-def scrape_product_detail(url: str) -> Dict[str, Any]:
+
+def scrape_product_detail(url: str) -> dict[str, Any]:
     """Fetch and parse detailed page for a specific catalog item."""
     res = {}
     try:
         response = requests.get(url, headers=HEADERS, timeout=30)
         if response.status_code != 200:
             return res
-        
+
         soup = BeautifulSoup(response.text, "html.parser")
-        
+
         # 1. External product webpage URL
         info_card = soup.find(class_=re.compile("Product-module__info"))
         if info_card:
@@ -95,7 +94,7 @@ def scrape_product_detail(url: str) -> Dict[str, Any]:
                     target_dict = properties
                 elif "material" in header_text:
                     target_dict = material
-                
+
                 if target_dict is not None:
                     for div in section.find_all("div"):
                         dt = div.find("dt")
@@ -114,26 +113,34 @@ def scrape_product_detail(url: str) -> Dict[str, Any]:
 
         # Extract coating using regex
         coating = None
-        coating_match = re.search(r"coated with (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s|\saoi)", description)
+        coating_match = re.search(
+            r"coated with (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s|\saoi)",
+            description,
+        )
         if not coating_match:
-            coating_match = re.search(r"coating[^.]+?is (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s)", description)
+            coating_match = re.search(
+                r"coating[^.]+?is (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s)",
+                description,
+            )
         if not coating_match:
-            coating_match = re.search(r"identified as (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s)", description)
-        
+            coating_match = re.search(
+                r"identified as (?:'|\")?([a-zA-Z0-9\-\_\.\s]+?)(?:'|\"|,|\.|\sand|\sfor|\sa\s)",
+                description,
+            )
+
         if coating_match:
             coating = coating_match.group(1).strip().strip("'").strip('"')
         res["coating"] = coating
 
     except Exception as e:
         logger.error(f"Error scraping detail page {url}: {e}")
-    
+
     return res
 
+
 def download_threed_optix_to_db(
-    db: FluorophoreDatabase,
-    max_pages: int = 0,
-    brand_filter: str | None = None
-) -> Dict[str, int]:
+    db: FluorophoreDatabase, max_pages: int = 0, brand_filter: str | None = None
+) -> dict[str, int]:
     """Scrape 3DOptix catalog and save to database.
 
     Parameters
@@ -145,11 +152,13 @@ def download_threed_optix_to_db(
     brand_filter : str, optional
         If specified, only scrape items matching this brand (case insensitive).
     """
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     page = 0
     consecutive_empty_pages = 0
 
-    print(f"Starting 3DOptix filter scraper (brand_filter={brand_filter or 'All'}, max_pages={max_pages or 'All'})")
+    print(
+        f"Starting 3DOptix filter scraper (brand_filter={brand_filter or 'All'}, max_pages={max_pages or 'All'})"
+    )
 
     while True:
         if max_pages > 0 and page >= max_pages:
@@ -162,7 +171,7 @@ def download_threed_optix_to_db(
             if resp.status_code != 200:
                 print(f"Error: Non-200 status code {resp.status_code} for page {page}")
                 break
-            
+
             soup = BeautifulSoup(resp.text, "html.parser")
             table = soup.find("table")
             if not table:
@@ -172,48 +181,52 @@ def download_threed_optix_to_db(
                     break
                 page += 1
                 continue
-            
+
             consecutive_empty_pages = 0
-            rows = table.find("tbody").find_all("tr") if table.find("tbody") else table.find_all("tr")[1:]
-            
+            rows = (
+                table.find("tbody").find_all("tr")
+                if table.find("tbody")
+                else table.find_all("tr")[1:]
+            )
+
             if not rows:
                 print(f"No rows found on page {page}.")
                 break
-            
+
             print(f"Found {len(rows)} items on page {page + 1}.")
-            
+
             for row in rows:
                 cols = row.find_all("td")
                 if len(cols) < 5:
                     continue
-                
+
                 # Extract index page columns
                 a_tag = cols[0].find("a", href=True)
                 if not a_tag:
                     continue
-                
+
                 full_name = a_tag.get_text(strip=True)
                 detail_path = a_tag["href"]
                 detail_url = urllib.parse.urljoin(BASE_URL, detail_path)
-                
+
                 item_brand = cols[4].get_text(strip=True)
-                
+
                 # Apply brand filter if specified
                 if brand_filter and item_brand.lower() != brand_filter.lower():
                     continue
 
                 item_subtype = cols[3].get_text(strip=True)
-                item_material = cols[5].get_text(strip=True) if len(cols) > 5 else None
+                cols[5].get_text(strip=True) if len(cols) > 5 else None
                 item_shape = cols[6].get_text(strip=True) if len(cols) > 6 else None
 
                 part_number = full_name.split()[0].strip()
 
                 print(f"Scraping {part_number} ({item_brand} - {item_subtype}) ...")
-                
+
                 # Fetch details from product detail page
                 details = scrape_product_detail(detail_url)
                 time.sleep(0.5)  # Respectful delay
-                
+
                 # Skip if detail fetch failed
                 if not details:
                     continue
@@ -222,14 +235,14 @@ def download_threed_optix_to_db(
                 item_properties = details.get("properties", {})
                 if item_shape and "Shape" not in item_properties:
                     item_properties["Shape"] = item_shape
-                
+
                 # Clean brand name for the probe-type id (lowercase, alnum + _).
-                brand_clean = re.sub(r'[^a-z0-9_]', '_', item_brand.lower().strip())
+                brand_clean = re.sub(r"[^a-z0-9_]", "_", item_brand.lower().strip())
                 kind = SUBTYPE_KIND_MAP.get(item_subtype, "other")
 
                 # Collect every scraped property into one dict; register_component
                 # canonicalizes keys (Cut-On → cut_on, Cut-Off → cut_off, …).
-                props: Dict[str, Any] = {"Brand": item_brand, "Subtype": item_subtype}
+                props: dict[str, Any] = {"Brand": item_brand, "Subtype": item_subtype}
                 props.update(item_properties)
                 for mat_k, mat_v in details.get("material", {}).items():
                     props[f"Material {mat_k}"] = mat_v
@@ -257,7 +270,7 @@ def download_threed_optix_to_db(
         except Exception as e:
             logger.error(f"Error processing page {page}: {e}")
             break
-        
+
         page += 1
 
     print("\nImport summary:")
@@ -266,26 +279,32 @@ def download_threed_optix_to_db(
     print(f"\nTotal: {sum(counts.values())} items imported.")
     return counts
 
+
 def main() -> None:
     """CLI entry point for threed_optix.py script."""
     from chisurf.plugins.spectra_downloader.download._base import scraper_main
 
     def _add(parser):
         parser.add_argument(
-            "--max-pages", type=int, default=10,
+            "--max-pages",
+            type=int,
+            default=10,
             help="Maximum catalog pages to scrape (default: 10, 0 = unlimited).",
         )
         parser.add_argument(
-            "--brand", default=None,
+            "--brand",
+            default=None,
             help="Filter items by brand name (e.g. optosigma, thorlabs).",
         )
 
     scraper_main(
         "Download 3DOptix optical-filter catalogue metadata into the staging DB",
         lambda db, args: download_threed_optix_to_db(
-            db, max_pages=args.max_pages, brand_filter=args.brand),
+            db, max_pages=args.max_pages, brand_filter=args.brand
+        ),
         _add,
     )
+
 
 if __name__ == "__main__":
     main()

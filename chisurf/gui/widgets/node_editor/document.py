@@ -24,12 +24,12 @@ in the document, not from a counter that walks. Handing out a fresh number each
 frame would reset every node's dragged position on every repaint, and the graph
 would look pinned in place with no error anywhere.
 """
+
 from __future__ import annotations
 
 import copy
 import json
 import logging
-import typing
 
 from .model import NodeModel, PortSpec
 
@@ -68,9 +68,9 @@ class GraphNode:
         node_id: str,
         node_type: str = "generic",
         title: str = "",
-        inputs: typing.Optional[list] = None,
-        outputs: typing.Optional[list] = None,
-        config: typing.Optional[dict] = None,
+        inputs: list | None = None,
+        outputs: list | None = None,
+        config: dict | None = None,
         pos: tuple = (0.0, 0.0),
         collapsed: bool = False,
     ) -> None:
@@ -83,7 +83,7 @@ class GraphNode:
         self.pos: tuple = (float(pos[0]), float(pos[1]))
         self.collapsed = bool(collapsed)
 
-    def port(self, index: int, is_output: bool) -> typing.Optional[PortSpec]:
+    def port(self, index: int, is_output: bool) -> PortSpec | None:
         """Look a port up by index and direction.
 
         Parameters
@@ -144,7 +144,7 @@ class GraphEdge:
         source_port: int,
         target: str,
         target_port: int,
-        config: typing.Optional[dict] = None,
+        config: dict | None = None,
     ) -> None:
         self.source = str(source)
         self.source_port = int(source_port)
@@ -187,7 +187,7 @@ class GraphDocument:
 
     # -- lookup ---------------------------------------------------------
 
-    def node(self, node_id: str) -> typing.Optional[GraphNode]:
+    def node(self, node_id: str) -> GraphNode | None:
         """Find a node by its string id.
 
         Parameters
@@ -250,7 +250,7 @@ class GraphDocument:
         """
         return self.index_of(node_id) + 1
 
-    def node_for_number(self, number: int) -> typing.Optional[GraphNode]:
+    def node_for_number(self, number: int) -> GraphNode | None:
         """Recover the node a renderer id refers to.
 
         Parameters
@@ -299,7 +299,7 @@ class GraphDocument:
         base = self.node_number(node_id) * self.PINS_PER_NODE
         return base + port_index * 2 + (1 if is_output else 0)
 
-    def port_for_pin(self, pin: int) -> typing.Optional[tuple]:
+    def port_for_pin(self, pin: int) -> tuple | None:
         """Decode a pin id back to the port it names.
 
         Parameters
@@ -334,7 +334,7 @@ class GraphDocument:
         """
         return int(edge_index) + 1
 
-    def edge_for_link(self, link: int) -> typing.Optional[GraphEdge]:
+    def edge_for_link(self, link: int) -> GraphEdge | None:
         """Recover the edge a link id refers to.
 
         Parameters
@@ -387,9 +387,7 @@ class GraphDocument:
         right and evaluates wrong.
         """
         self.nodes = [n for n in self.nodes if n.id != node_id]
-        self.edges = [
-            e for e in self.edges if e.source != node_id and e.target != node_id
-        ]
+        self.edges = [e for e in self.edges if e.source != node_id and e.target != node_id]
 
     def add_edge(self, edge: GraphEdge) -> bool:
         """Add an edge unless it is a duplicate or names a missing endpoint.
@@ -431,7 +429,7 @@ class GraphDocument:
     # -- serialisation --------------------------------------------------
 
     @staticmethod
-    def _port_from_entry(entry, is_output: bool) -> typing.Optional[PortSpec]:
+    def _port_from_entry(entry, is_output: bool) -> PortSpec | None:
         """Read one port, in either of the two spellings the schema allows.
 
         Parameters
@@ -479,8 +477,12 @@ class GraphDocument:
             A string when the port is untyped and unconstrained, so a simple
             graph round-trips to the simple spelling it was written in.
         """
-        if not port.port_type and not port.fixed \
-                and port.min_value is None and port.max_value is None:
+        if (
+            not port.port_type
+            and not port.fixed
+            and port.min_value is None
+            and port.max_value is None
+        ):
             return port.name
         entry: dict = {"name": port.name, "is_output": port.is_output}
         if port.port_type:
@@ -494,7 +496,7 @@ class GraphDocument:
         return entry
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GraphDocument":
+    def from_dict(cls, data: dict) -> GraphDocument:
         """Build a document from schema v1.
 
         Parameters
@@ -546,14 +548,10 @@ class GraphDocument:
                 reason = "names a node that is not in the graph"
             elif source.port(edge.source_port, True) is None:
                 reason = (
-                    f"source port {edge.source_port} is not one of "
-                    f"{len(source.outputs)} outputs"
+                    f"source port {edge.source_port} is not one of {len(source.outputs)} outputs"
                 )
             elif target.port(edge.target_port, False) is None:
-                reason = (
-                    f"target port {edge.target_port} is not one of "
-                    f"{len(target.inputs)} inputs"
-                )
+                reason = f"target port {edge.target_port} is not one of {len(target.inputs)} inputs"
             if reason is not None:
                 # Loud, because this is how a producer using the *other* port
                 # convention presents: the nodes all load, the edges all
@@ -561,8 +559,7 @@ class GraphDocument:
                 # scene indexed one flat list of inputs-then-outputs; the
                 # schema indexes each direction separately, and a graph written
                 # to the first convention loses exactly its output-side edges.
-                logger.warning("dropping edge %s -> %s: %s",
-                               edge.source, edge.target, reason)
+                logger.warning("dropping edge %s -> %s: %s", edge.source, edge.target, reason)
                 continue
             document.add_edge(edge)
         return document
@@ -618,7 +615,7 @@ class GraphDocument:
         return json.dumps(self.to_dict(), indent=indent, default=str)
 
     @classmethod
-    def from_json(cls, text: str) -> "GraphDocument":
+    def from_json(cls, text: str) -> GraphDocument:
         """Parse a JSON string into a document.
 
         Parameters

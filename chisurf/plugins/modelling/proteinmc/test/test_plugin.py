@@ -137,6 +137,7 @@ def test_rmf_writer_writes_pmi_stat_metadata(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
     from chimol.io.rmf import load_rmf_full
+
     from chisurf.plugins.modelling.proteinmc.rmf import ProteinMCRmfWriter
 
     atoms = np.zeros(

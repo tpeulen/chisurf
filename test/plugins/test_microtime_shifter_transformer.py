@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from mmfdb.repository import MFDatabase
+
 from chisurf.core.transform import check_transformer_conformance, get_transformer
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import (
     MicrotimeShifterTransformer,
@@ -42,7 +43,8 @@ def test_ports_declare_expected_kinds():
 
 def test_all_registered_transformers_conform(tmp_path):
     """Gate: every transformer in the registry satisfies the PRD-16 contract,
-    including a declared .dic parameter schema for its operation_type."""
+    including a declared .dic parameter schema for its operation_type.
+    """
     # Importing this module above registered the Microtime Shifter; add others
     # here as they are written.
     from chisurf.core.transform import check_transformer_conformance, list_transformers

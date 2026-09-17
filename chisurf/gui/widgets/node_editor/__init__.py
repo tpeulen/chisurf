@@ -10,6 +10,7 @@ signals the consumers connect to.
 Nothing here is imported at module level so the headless submodules stay
 importable without Qt; names resolve lazily (PEP 562).
 """
+
 import importlib
 
 #: exported name -> submodule that defines it
@@ -27,7 +28,7 @@ def __getattr__(name):
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     module = importlib.import_module(f"{__name__}.{module_name}")
     value = getattr(module, name)
-    globals()[name] = value          # subsequent lookups skip this hook
+    globals()[name] = value  # subsequent lookups skip this hook
     return value
 
 

@@ -50,8 +50,9 @@ class SpotFinderTool(AutoFormMleTool):
         if editor is None or canvas is None:
             return None, None
 
-        regions = RegionOverlay(canvas, lambda: self.model.regions,
-                                on_change=self.model.apply_regions)
+        regions = RegionOverlay(
+            canvas, lambda: self.model.regions, on_change=self.model.apply_regions
+        )
         found = RegionOverlay(canvas, self.model.region_regions, movable=False)
         # A third overlay, because a pick is neither of the other two: it is not
         # a control the user drags, and it is not yet part of the detection —

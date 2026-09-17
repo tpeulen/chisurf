@@ -15,10 +15,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
-
-from chimol.io.structure import _parse_pdb_backbone
 from chimol.core.viewer import _DISPLAY_CONFIG, Viewer
+from chimol.io.structure import _parse_pdb_backbone
+from qtpy import QtWidgets
 
 _PDB = (
     Path(__file__).resolve().parents[4]
@@ -63,9 +62,12 @@ def test_fallback_renders_every_atom(_qt_app) -> None:
     view.set_atoms_visible(True)
 
     balls_cfg = _DISPLAY_CONFIG.get("balls", {})
-    objs = view._update_atoms(
-        np.asarray(view._coords), view._coords.shape[0], balls_cfg, view._colors_per_ca
-    ) or []
+    objs = (
+        view._update_atoms(
+            np.asarray(view._coords), view._coords.shape[0], balls_cfg, view._colors_per_ca
+        )
+        or []
+    )
 
     spheres = [o for o in objs if o.id == "atoms_mesh"]
     assert spheres, "the fallback atoms representation produced no geometry"
@@ -140,9 +142,12 @@ def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
 
     from chimol.core.viewer import _DISPLAY_CONFIG as _CFG
 
-    objs = view._update_metaballs(
-        np.asarray(view._coords), _CFG.get("metaball", {}), view._colors_per_ca
-    ) or []
+    objs = (
+        view._update_metaballs(
+            np.asarray(view._coords), _CFG.get("metaball", {}), view._colors_per_ca
+        )
+        or []
+    )
     assert objs, "metaballs produced no mesh"
     verts = objs[0].geometry.positions
 

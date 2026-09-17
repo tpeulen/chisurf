@@ -147,9 +147,7 @@ class EdgeView:
         """Return ``(u, v, attributes)`` triples, or ``(u, v, attributes[key])``."""
         if key is None:
             return [(u, v, self._graph._edge_attr(u, v)) for u, v in self]
-        return [
-            (u, v, self._graph._edge_attr(u, v).get(key, default)) for u, v in self
-        ]
+        return [(u, v, self._graph._edge_attr(u, v).get(key, default)) for u, v in self]
 
     def __repr__(self) -> str:
         """Return a short representation listing the edges."""
@@ -316,8 +314,7 @@ class Graph:
     def __repr__(self) -> str:
         """Return a compact summary of the graph's size."""
         return (
-            f"{type(self).__name__}({self.number_of_nodes()} nodes, "
-            f"{self.number_of_edges()} edges)"
+            f"{type(self).__name__}({self.number_of_nodes()} nodes, {self.number_of_edges()} edges)"
         )
 
     def has_node(self, node) -> bool:

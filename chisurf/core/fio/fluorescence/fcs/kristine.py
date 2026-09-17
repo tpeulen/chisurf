@@ -4,20 +4,19 @@ import numpy as np
 
 import chisurf as cs
 import chisurf.core.fluorescence
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
 def write_kristine(
-        filename: str,
-        correlation_amplitude: np.ndarray,
-        correlation_time: np.ndarray,
-        mean_countrate: float,
-        acquisition_time: float,
-        correlation_amplitude_uncertainty: np.ndarray = None,
-        mask: np.ndarray = None,
-        verbose: bool = True
+    filename: str,
+    correlation_amplitude: np.ndarray,
+    correlation_time: np.ndarray,
+    mean_countrate: float,
+    acquisition_time: float,
+    correlation_amplitude_uncertainty: np.ndarray = None,
+    mask: np.ndarray = None,
+    verbose: bool = True,
 ) -> None:
     """Write a correlation curve as a Kristine ``.cor`` file.
 
@@ -79,10 +78,7 @@ def write_kristine(
     )
 
 
-def read_kristine(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_kristine(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """
 
     :param filename:
@@ -92,7 +88,7 @@ def read_kristine(
     if verbose:
         print("Reading kristine .cor from file: ", filename)
 
-    data = np.loadtxt(filename, encoding='utf-8')
+    data = np.loadtxt(filename, encoding="utf-8")
 
     # In kristine file-type
     # data is (n_points, n_columns), so we take all rows for each column
@@ -115,9 +111,7 @@ def read_kristine(
         ey = data[:, 3][i]
     except (IndexError, ValueError):
         ey = None
-    w = 1. / cs.core.fluorescence.fcs.complete_noise(
-        x, y, ey, dur, cr, weight_type='suren'
-    )
+    w = 1.0 / cs.core.fluorescence.fcs.complete_noise(x, y, ey, dur, cr, weight_type="suren")
 
     # Try to load mask from the 5th column (index 4)
     try:
@@ -125,30 +119,24 @@ def read_kristine(
     except (IndexError, ValueError):
         mask = np.ones_like(x)
 
-    measurement_id, _ = os.path.splitext(
-        os.path.basename(
-            filename
-        )
-    )
+    measurement_id, _ = os.path.splitext(os.path.basename(filename))
     return [
         {
-            'filename': filename,
-            'measurement_id': measurement_id,
-            'acquisition_time': float(dur),
-            'mean_count_rate': float(cr),
-            'correlation_times': x.tolist(),
-            'correlation_amplitudes': y.tolist(),
-            'correlation_amplitude_weights': w.tolist(),
-            'mask': mask.tolist(),
-            'intensity_trace': None
+            "filename": filename,
+            "measurement_id": measurement_id,
+            "acquisition_time": float(dur),
+            "mean_count_rate": float(cr),
+            "correlation_times": x.tolist(),
+            "correlation_amplitudes": y.tolist(),
+            "correlation_amplitude_weights": w.tolist(),
+            "mask": mask.tolist(),
+            "intensity_trace": None,
         }
     ]
 
 
 def write_dict_to_kristine(
-        filename: str,
-        ds: typing.List[FCSDataset],
-        verbose: bool = True
+    filename: str, ds: typing.List[FCSDataset], verbose: bool = True
 ) -> None:
     """Write multiple FCS datasets to individual Kristine .cor files.
 
@@ -162,16 +150,14 @@ def write_dict_to_kristine(
         If True, print progress.
     """
     for i, d in enumerate(ds):
-        root, ext = os.path.splitext(
-            filename
-        )
+        root, ext = os.path.splitext(filename)
         fn = root + ("_%02d_" % i) + ext
         write_kristine(
             filename=fn,
             verbose=verbose,
-            correlation_time=d['correlation_times'],
-            correlation_amplitude=d['correlation_amplitudes'],
-            correlation_amplitude_uncertainty=1. / np.array(d['correlation_amplitude_weights']),
-            acquisition_time=d['acquisition_time'],
-            mean_countrate=d['mean_count_rate']
+            correlation_time=d["correlation_times"],
+            correlation_amplitude=d["correlation_amplitudes"],
+            correlation_amplitude_uncertainty=1.0 / np.array(d["correlation_amplitude_weights"]),
+            acquisition_time=d["acquisition_time"],
+            mean_countrate=d["mean_count_rate"],
         )

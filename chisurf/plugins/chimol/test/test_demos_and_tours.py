@@ -12,12 +12,12 @@ viewer, every demo in turn), and steps each tour through every step. Qt is made
 *unimportable* in the child: a demo, an editor or a tour that quietly needs a
 toolkit is exactly what this is here to catch.
 """
+
 from __future__ import annotations
 
 import socket
 
 import pytest
-
 from toolkit_free import probe
 
 
@@ -57,9 +57,10 @@ def _fetching_tours() -> set[str]:
             out.add(key)
     return out
 
+
 #: One child process for the whole module: booting a viewer costs seconds and
 #: every case below is a command against the same one.
-SCRIPT = '''
+SCRIPT = """
 from chimol.plugins.demos.catalog import DEMOS
 from chimol.ui.tours import available_tours
 
@@ -110,7 +111,7 @@ errors.clear()
 cmd.do("demo_edit new")
 emit("demo_edit_new", ("errors: " + " | ".join(errors)) if errors
      else ",".join(sorted(w.key for w in app.viewer.gui.windows)))
-'''
+"""
 
 
 @pytest.fixture(scope="module")

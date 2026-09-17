@@ -34,14 +34,29 @@ import functools
 import pathlib
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 __all__ = ["SourceTarget", "is_source_path", "link_label", "resolve", "symbol_line"]
 
 #: Suffixes treated as source rather than as documentation.
 SOURCE_SUFFIXES = (
-    ".py", ".pyx", ".pyi", ".c", ".h", ".cpp", ".hpp", ".json", ".yaml", ".yml",
-    ".toml", ".cfg", ".ini", ".ui", ".qss", ".sh", ".js", ".ts",
+    ".py",
+    ".pyx",
+    ".pyi",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".ui",
+    ".qss",
+    ".sh",
+    ".js",
+    ".ts",
 )
 
 #: An explicit scheme, for places where a bare path would be ambiguous.
@@ -94,7 +109,7 @@ def is_source_path(target: str) -> bool:
     return pathlib.Path(path).suffix.lower() in SOURCE_SUFFIXES
 
 
-def resolve(target: str, base: Optional[pathlib.Path] = None) -> Optional[SourceTarget]:
+def resolve(target: str, base: pathlib.Path | None = None) -> SourceTarget | None:
     """Resolve a source link to a file and, where asked for, a line.
 
     Parameters
@@ -124,12 +139,10 @@ def resolve(target: str, base: Optional[pathlib.Path] = None) -> Optional[Source
     if not symbol:
         return SourceTarget(path=path)
     line = symbol_line(path, symbol)
-    return SourceTarget(
-        path=path, symbol=symbol, line=line or 0, missing_symbol=line is None
-    )
+    return SourceTarget(path=path, symbol=symbol, line=line or 0, missing_symbol=line is None)
 
 
-def _locate(relative: str, base: Optional[pathlib.Path]) -> Optional[pathlib.Path]:
+def _locate(relative: str, base: pathlib.Path | None) -> pathlib.Path | None:
     """Find the file a link names."""
     if not relative:
         return None
@@ -164,9 +177,7 @@ def _symbol_table(path: str, stamp: float) -> dict:
     def walk(node, prefix: str = "") -> None:
         for child in ast.iter_child_nodes(node):
             name = getattr(child, "name", None)
-            if name and isinstance(
-                child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-            ):
+            if name and isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 qualified = f"{prefix}{name}"
                 table.setdefault(qualified, child.lineno)
                 # The bare name too, so ``#get_score`` finds ``Fit.get_score``.
@@ -179,7 +190,7 @@ def _symbol_table(path: str, stamp: float) -> dict:
     return table
 
 
-def symbol_line(path: pathlib.Path, symbol: str) -> Optional[int]:
+def symbol_line(path: pathlib.Path, symbol: str) -> int | None:
     """Return the 1-based line where *symbol* is defined, or ``None``.
 
     Python files are parsed; for any other language the symbol is searched for
@@ -199,7 +210,7 @@ def symbol_line(path: pathlib.Path, symbol: str) -> Optional[int]:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    pattern = re.compile(rf'^\s*[\"\']?{re.escape(symbol)}[\"\']?\s*[:=]')
+    pattern = re.compile(rf"^\s*[\"\']?{re.escape(symbol)}[\"\']?\s*[:=]")
     for number, line in enumerate(text.splitlines(), 1):
         if pattern.match(line):
             return number
@@ -210,7 +221,7 @@ def symbol_line(path: pathlib.Path, symbol: str) -> Optional[int]:
 SRC_ROLE = re.compile(r"\{src\}`([^`]+)`")
 
 
-def link_label(written: str, target: Optional[SourceTarget] = None) -> str:
+def link_label(written: str, target: SourceTarget | None = None) -> str:
     """Return how a source link should read when the page gives no caption.
 
     The **path as written**, because a "See also" list naming five files from
@@ -230,11 +241,12 @@ def expand_source_roles(text: str) -> str:
     the code editor; the *text* becomes the symbol, or the caption the page
     gave.
     """
-    def _replace(match: "re.Match[str]") -> str:
+
+    def _replace(match: re.Match[str]) -> str:
         body = match.group(1).strip()
         caption = ""
         if "<" in body and body.endswith(">"):
-            caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1: -1]
+            caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1 : -1]
         resolved = resolve(body)
         label = caption or link_label(body, resolved)
         return f"[`{label}`]({body})"

@@ -16,9 +16,9 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +80,7 @@ class _IoSection(QtWidgets.QWidget):
 
         self._save_btn = QtWidgets.QToolButton()
         self._save_btn.setText(f"{Glyphs.SAVE} Save aligned…")
-        self._save_btn.setToolTip(
-            "Superpose every frame onto the first frame and write a new DCD."
-        )
+        self._save_btn.setToolTip("Superpose every frame onto the first frame and write a new DCD.")
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save_aligned)
         layout.addWidget(self._save_btn)
@@ -117,9 +115,7 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory(filename)
 

@@ -44,9 +44,15 @@ def test_two_colour_limit_of_the_green_red_pair():
     )
 
     setup = ThreeColorSetup.from_scalars(r0_gr=52.0)
-    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 52.0]), setup)[1, 2] == pytest.approx(0.5)
-    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1e9]), setup)[1, 2] == pytest.approx(0.0, abs=1e-9)
-    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1.0]), setup)[1, 2] == pytest.approx(1.0, abs=1e-9)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 52.0]), setup)[
+        1, 2
+    ] == pytest.approx(0.5)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1e9]), setup)[
+        1, 2
+    ] == pytest.approx(0.0, abs=1e-9)
+    assert transfer_efficiencies(distances_to_matrix([1e9, 1e9, 1.0]), setup)[
+        1, 2
+    ] == pytest.approx(1.0, abs=1e-9)
 
 
 def test_channel_probabilities_are_distributions():
@@ -91,8 +97,9 @@ def test_detection_crosstalk_moves_counts_between_channels():
     clean = ThreeColorSetup.from_scalars()
     leaky = ThreeColorSetup.from_scalars(crosstalk_bg=0.2, crosstalk_gr=0.1)
     args = (50.0, 60.0, 55.0)
-    assert blue_channel_probabilities(*args, leaky)[..., 1] > (
-        blue_channel_probabilities(*args, clean)[..., 1]
+    assert (
+        blue_channel_probabilities(*args, leaky)[..., 1]
+        > (blue_channel_probabilities(*args, clean)[..., 1])
     )
 
 
@@ -379,8 +386,12 @@ def test_recovers_three_distances_and_their_correlation():
             return -total_log_likelihood(counts, trial, setup, n_nodes=5)
 
         start = np.array([48.0, 50.0, 62.0, 0.0])  # deliberately off
-        result = minimize(negative_log_likelihood, start, method="Nelder-Mead",
-                          options={"xatol": 1e-2, "fatol": 1e-2, "maxiter": 2000})
+        result = minimize(
+            negative_log_likelihood,
+            start,
+            method="Nelder-Mead",
+            options={"xatol": 1e-2, "fatol": 1e-2, "maxiter": 2000},
+        )
         return result.x[:3], float(np.tanh(result.x[3]))
 
     # Measured: (52.09, 46.04, 67.23) with rho = +0.767 against a truth of

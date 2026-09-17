@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
+if TYPE_CHECKING:
+    import tttrlib
 
-def compute_bids_from_tttr(tttr: "tttrlib.TTTR", time_window_s: float) -> np.ndarray:
+
+def compute_bids_from_tttr(tttr: tttrlib.TTTR, time_window_s: float) -> np.ndarray:
     """Compute start/stop photon indices for fixed-duration time windows.
 
     Parameters

@@ -14,14 +14,23 @@ from chisurf.gui.plots.lineplot.lineplot import (
 
 
 def _lineplot_source() -> str:
-    path = Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "plots" / "lineplot" / "lineplot.py"
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "chisurf"
+        / "gui"
+        / "plots"
+        / "lineplot"
+        / "lineplot.py"
+    )
     return path.read_text(encoding="utf-8")
+
 
 def test_group_display_methods_exist():
     src = _lineplot_source()
     assert "def _plot_group_curves(self" in src
     assert "def _plot_single_fit_curves(self" in src
     assert "def _plot_active_fit_only(self" in src
+
 
 def test_group_display_alpha_and_setalpha_contract():
     src = _lineplot_source()
@@ -31,10 +40,16 @@ def test_group_display_alpha_and_setalpha_contract():
     assert "line.set_opacity(alpha)" in src
     assert "alpha = 1.0 if fit_index == current_fit_index else 0.4" in src
 
+
 def test_group_display_uses_selected_fit_when_available():
     src = _lineplot_source()
     assert "selected_fit" in src
-    assert "hasattr(self.fit, 'grouped_fits')" in src or "hasattr(fit, 'grouped_fits')" in src or "hasattr(self.fit, \"grouped_fits\")" in src
+    assert (
+        "hasattr(self.fit, 'grouped_fits')" in src
+        or "hasattr(fit, 'grouped_fits')" in src
+        or 'hasattr(self.fit, "grouped_fits")' in src
+    )
+
 
 def test_lineplot_without_reference_modes_uses_raw(qtbot):
     """LinePlotControl should expose raw mode when no modes are registered."""
@@ -165,7 +180,9 @@ def test_reference_mode_hidden_result(qtbot):
                 plot_transforms.PlotReferenceMode(
                     key="hide",
                     label="Hide",
-                    callback=lambda context: plot_transforms.PlotReferenceResult(context.x, context.y, visible=False),
+                    callback=lambda context: plot_transforms.PlotReferenceResult(
+                        context.x, context.y, visible=False
+                    ),
                 )
             ]
 
@@ -186,7 +203,6 @@ def test_reference_mode_hidden_result(qtbot):
 
 def test_axis_range_skips_invalid_log_axis():
     """Manual axis ranges must not produce NaN ranges in log mode."""
-
     assert LinePlot._axis_range(1.0, 3.0, np.array([1.0, 2.0, 3.0]), True) == [0.0, np.log10(3.0)]
     assert LinePlot._axis_range(None, 3.0, np.array([1.0, 2.0, 3.0]), True) == [0.0, np.log10(3.0)]
     assert LinePlot._axis_range(0.0, None, np.array([1.0, 2.0]), True) is None
@@ -197,7 +213,8 @@ def test_axis_range_skips_invalid_log_axis():
 def test_apply_presets_to_mode():
     """_apply_presets_to_mode should override axis preset fields."""
     mode = plot_transforms.PlotReferenceMode(
-        key="test", label="Test",
+        key="test",
+        label="Test",
         callback=lambda ctx: plot_transforms.PlotReferenceResult(ctx.x, ctx.y),
         y_range=(0, 1),
         y_padding=0.05,
@@ -213,7 +230,8 @@ def test_apply_presets_to_mode():
 def test_apply_presets_to_mode_skips_none():
     """None values in preset dict should not override existing fields."""
     mode = plot_transforms.PlotReferenceMode(
-        key="test", label="Test",
+        key="test",
+        label="Test",
         callback=lambda ctx: plot_transforms.PlotReferenceResult(ctx.x, ctx.y),
         y_range=(0, 1),
         y_padding=0.05,
@@ -226,14 +244,24 @@ def test_apply_presets_to_mode_skips_none():
 
 def test_presets_static_source_has_all_expected_keys():
     """The built-in JSON file should contain entries for all known modes."""
-    path = Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "plots" / "lineplot" / "reference_presets.json"
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "chisurf"
+        / "gui"
+        / "plots"
+        / "lineplot"
+        / "reference_presets.json"
+    )
     assert path.exists()
     with open(str(path)) as fh:
         presets = json.load(fh)
     expected_keys = {
-        "fcs_diffusion", "fcs_molecules",
-        "tcspc_total_photons", "tcspc_peak_photons",
-        "tcspc_donor_reference", "tcspc_anisotropy_rt",
+        "fcs_diffusion",
+        "fcs_molecules",
+        "tcspc_total_photons",
+        "tcspc_peak_photons",
+        "tcspc_donor_reference",
+        "tcspc_anisotropy_rt",
     }
     assert expected_keys.issubset(set(presets.keys()))
 
@@ -279,7 +307,8 @@ def test_reference_mode_y_axis_preset_anisotropy():
 def test_apply_presets_to_mode_empty_preset():
     """Empty preset dict should return the mode unchanged."""
     mode = plot_transforms.PlotReferenceMode(
-        key="test", label="Test",
+        key="test",
+        label="Test",
         callback=lambda ctx: plot_transforms.PlotReferenceResult(ctx.x, ctx.y),
         y_range=(0, 1),
     )
@@ -290,7 +319,8 @@ def test_apply_presets_to_mode_empty_preset():
 def test_apply_presets_to_mode_partial_override():
     """Partial preset (only y_padding) should preserve other fields."""
     mode = plot_transforms.PlotReferenceMode(
-        key="test", label="Test",
+        key="test",
+        label="Test",
         callback=lambda ctx: plot_transforms.PlotReferenceResult(ctx.x, ctx.y),
         y_range=(0, 1),
         y_padding=0.05,
@@ -312,7 +342,8 @@ def test_apply_presets_to_mode_list_conversion():
     if isinstance(raw_preset.get("y_range"), list):
         raw_preset["y_range"] = tuple(raw_preset["y_range"])
     mode = plot_transforms.PlotReferenceMode(
-        key="test", label="Test",
+        key="test",
+        label="Test",
         callback=lambda ctx: plot_transforms.PlotReferenceResult(ctx.x, ctx.y),
     )
     updated = LinePlot._apply_presets_to_mode(mode, raw_preset)

@@ -24,33 +24,57 @@ def cli():
 @click.option("--file-type", default="SPC-130", help="tttrlib container name (or 'auto')")
 @click.option("--pattern", default="*.bur", help="Glob for .bur files")
 @click.option("--donor-channels", default="0,8", help="Comma-separated donor routing channels")
-@click.option("--acceptor-channels", default="1,9", help="Comma-separated acceptor routing channels")
+@click.option(
+    "--acceptor-channels", default="1,9", help="Comma-separated acceptor routing channels"
+)
 @click.option("--min-states", default=1, type=int, help="Smallest state count to scan")
 @click.option("--max-states", default=3, type=int, help="Largest state count to scan")
 @click.option("--criterion", default="bic", type=click.Choice(["bic", "icl"]))
-@click.option("--engine", default="em", type=click.Choice(list(ENGINES)),
-              help="Compute engine (exact EM vs fast/approximate variants)")
-@click.option("--surrogate", "surrogate_path", type=click.Path(exists=True),
-              help="Trained surrogate .pkl (for the surrogate engines)")
+@click.option(
+    "--engine",
+    default="em",
+    type=click.Choice(list(ENGINES)),
+    help="Compute engine (exact EM vs fast/approximate variants)",
+)
+@click.option(
+    "--surrogate",
+    "surrogate_path",
+    type=click.Path(exists=True),
+    help="Trained surrogate .pkl (for the surrogate engines)",
+)
 @click.option("--refine-iters", default=20, type=int, help="EM polish maps for surrogate-refine")
-@click.option("--patience", default=None, type=int,
-              help="Early-stop the state scan after the criterion rises (safe speed-up)")
+@click.option(
+    "--patience",
+    default=None,
+    type=int,
+    help="Early-stop the state scan after the criterion rises (safe speed-up)",
+)
 @click.option("--restarts", default=2, type=int, help="Random restarts per state count")
 @click.option("--max-iter", default=500, type=int, help="Max EM iterations per fit")
 @click.option("--time-scale", default=1, type=int, help="Macro-time down-scaling")
 @click.option("--min-photons", default=5, type=int, help="Min stream photons per burst")
-@click.option("--decoder", default="viterbi", type=click.Choice(list(DECODERS)),
-              help="Per-photon state decoder: viterbi (most likely path), "
-                   "jitter (draw from the posterior - faithful photon "
-                   "distribution), ffbs (draw whole paths - faithful and keeps "
-                   "dwells)")
-@click.option("--decoder-seed", default=0, type=int,
-              help="Seed for the sampling decoders (reproducible, thread-count "
-                   "independent)")
-@click.option("--state-tttr", is_flag=True,
-              help="Write the decoded assignment back into the photon stream: a "
-                   "PTU whose routing channels encode (stream, state) plus a "
-                   "msgpack state sidecar, beside each source measurement")
+@click.option(
+    "--decoder",
+    default="viterbi",
+    type=click.Choice(list(DECODERS)),
+    help="Per-photon state decoder: viterbi (most likely path), "
+    "jitter (draw from the posterior - faithful photon "
+    "distribution), ffbs (draw whole paths - faithful and keeps "
+    "dwells)",
+)
+@click.option(
+    "--decoder-seed",
+    default=0,
+    type=int,
+    help="Seed for the sampling decoders (reproducible, thread-count independent)",
+)
+@click.option(
+    "--state-tttr",
+    is_flag=True,
+    help="Write the decoded assignment back into the photon stream: a "
+    "PTU whose routing channels encode (stream, state) plus a "
+    "msgpack state sidecar, beside each source measurement",
+)
 @click.option("--no-photons", is_flag=True, help="Skip the per-photon (ndX) table output")
 @click.option("--output", "-o", type=click.Path(), help="Output directory (default <folder>/h2mm)")
 def compute(
@@ -114,12 +138,12 @@ def compute(
         f"selected {result.n_states} states by {criterion.upper()}."
     )
     for f in result.scan:
-        click.echo(
-            f"  states={f.n_states}  logL={f.loglik:.1f}  BIC={f.bic:.1f}  ICL={f.icl:.1f}"
-        )
+        click.echo(f"  states={f.n_states}  logL={f.loglik:.1f}  BIC={f.bic:.1f}  ICL={f.icl:.1f}")
     click.echo(f"  FRET per state: {[round(x, 3) for x in result.fret]}")
-    click.echo(f"  populations:    {[round(x, 3) for x in result.populations]}"
-               f"   (decoder={result.decoder})")
+    click.echo(
+        f"  populations:    {[round(x, 3) for x in result.populations]}"
+        f"   (decoder={result.decoder})"
+    )
     if result.posterior_populations:
         # The unbiased number, printed next to the counted one so the difference
         # is visible rather than something the reader has to know to look for.

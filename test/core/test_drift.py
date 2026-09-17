@@ -6,6 +6,7 @@ drift inflates the diffusion coefficient fitted from long frame lags — exactly
 the region the spatiotemporal correlation carpet exposes. The last test pins
 that effect rather than just the mechanics.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -103,8 +104,7 @@ def test_wrap_mode_conserves_every_photon():
 def test_constant_mode_blanks_the_vacated_strip_instead_of_wrapping():
     """Constant fill is honest about the data that moved out of frame."""
     stack = _drifting_stack([(0, 0), (3, 0)])
-    corrected = apply_drift(stack, np.array([[0.0, 0.0], [3.0, 0.0]]),
-                            mode="constant", cval=0.0)
+    corrected = apply_drift(stack, np.array([[0.0, 0.0], [3.0, 0.0]]), mode="constant", cval=0.0)
     # frame 1 is moved back up by 3 rows, so the last 3 rows have no source
     np.testing.assert_allclose(corrected[1][-3:], 0.0)
     assert corrected[1][:-3].sum() > 0
@@ -155,7 +155,7 @@ def test_uncorrected_drift_masquerades_as_decorrelation():
 
     rng = np.random.default_rng(3)
     yy, xx = np.mgrid[0:32, 0:32]
-    base = 50.0 * np.exp(-((yy - 16) ** 2 + (xx - 16) ** 2) / (2 * 5.0 ** 2))
+    base = 50.0 * np.exp(-((yy - 16) ** 2 + (xx - 16) ** 2) / (2 * 5.0**2))
     base = base + rng.poisson(5.0, (32, 32))
     drifting = np.stack([np.roll(base, (3 * k, 0), axis=(0, 1)) for k in range(6)])
 
@@ -195,9 +195,7 @@ def test_the_parabolic_refinement_beats_phase_correlation_on_photon_data():
     rows, columns = np.indices((128, 128))
     base = np.zeros((128, 128))
     for y, x, amplitude in rng.uniform([8, 8, 50], [120, 120, 400], (40, 3)):
-        base += amplitude * np.exp(
-            -((columns - x) ** 2 + (rows - y) ** 2) / 8.0
-        )
+        base += amplitude * np.exp(-((columns - x) ** 2 + (rows - y) ** 2) / 8.0)
 
     parabolic, whitened = [], []
     for _ in range(20):
@@ -232,9 +230,9 @@ def test_a_shift_near_the_unambiguous_limit_is_still_exact(shift):
     """
     rng = np.random.default_rng(3)
     rows, columns = np.mgrid[0:32, 0:32]
-    base = 50.0 * np.exp(
-        -((rows - 16) ** 2 + (columns - 16) ** 2) / (2 * 5.0**2)
-    ) + rng.poisson(5.0, (32, 32))
+    base = 50.0 * np.exp(-((rows - 16) ** 2 + (columns - 16) ** 2) / (2 * 5.0**2)) + rng.poisson(
+        5.0, (32, 32)
+    )
     stack = np.stack([base, np.roll(base, (shift, 0), axis=(0, 1))])
 
     assert estimate_drift(stack)[1, 0] == float(shift)

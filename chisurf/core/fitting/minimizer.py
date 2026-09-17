@@ -132,6 +132,7 @@ the posterior view, the derived-quantity propagation, both sampler
 preconditioners and :attr:`Fit.grad`. A TCSPC ``fit.run()`` now makes **two**
 Python ``update_model()`` calls, which is what a parse fit always made.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -141,6 +142,7 @@ from chisurf.core.math.optimization import OptimizationCancelled
 
 try:
     import IMP.bff as _bff
+
     if not hasattr(_bff, "FitMinimizer"):
         raise ImportError("IMP.bff is present but carries no Minimizer")
 except Exception as _exc:  # pragma: no cover - depends on the build
@@ -148,8 +150,7 @@ except Exception as _exc:  # pragma: no cover - depends on the build
     _bff_import_error = _exc
 
 
-__all__ = ["minimize", "have_minimizer", "graph_objective",
-           "ResidualNode", "ProgressObserver"]
+__all__ = ["minimize", "have_minimizer", "graph_objective", "ResidualNode", "ProgressObserver"]
 
 
 def have_minimizer() -> bool:
@@ -201,11 +202,9 @@ if _bff is not None:
                 port.value = float(v)
 
         def evaluate(self):
-            parameters = np.array([p.value for p in self._ports],
-                                  dtype=np.float64)
+            parameters = np.array([p.value for p in self._ports], dtype=np.float64)
             try:
-                residuals = np.asarray(self._func(parameters),
-                                       dtype=np.float64).ravel()
+                residuals = np.asarray(self._func(parameters), dtype=np.float64).ravel()
             except BaseException as exc:  # noqa: BLE001 - re-raised below
                 # A Python exception thrown through a SWIG director unwinds a
                 # C++ loop that is holding raw buffers. Record it, hand back
@@ -251,8 +250,7 @@ if _bff is not None:
             chi2r = float(chi2) / dof if self._n_free else float(chi2)
             try:
                 try:
-                    self._callback(n_evaluations, total, chi2=float(chi2),
-                                   chi2r=chi2r)
+                    self._callback(n_evaluations, total, chi2=float(chi2), chi2r=chi2r)
                 except TypeError:
                     self._callback(n_evaluations, total)
             except OptimizationCancelled:
@@ -268,7 +266,6 @@ else:  # pragma: no cover - environment without IMP.bff
     ProgressObserver = None
 
 
-
 #: The variable an mdf FCS equation reads its diffusion shape from. It is a
 #: producer port, not a parameter: `FcsMdfCurve` writes it.
 FCS_MDF_VARIABLE = "g_mdf"
@@ -282,6 +279,7 @@ FCS_MDF_N_HERM = 40
 
 # --------------------------------------------------------------- the graph
 
+
 def _smooth_prior_present(model) -> bool:
     """Whether any free parameter contributes prior residuals.
 
@@ -291,6 +289,7 @@ def _smooth_prior_present(model) -> bool:
     and contribute nothing, so they do not disqualify anything.
     """
     from chisurf.core.fitting.fit import _smooth_prior
+
     for p in getattr(model, "parameters", []):
         if _smooth_prior(p) is not None:
             return True
@@ -342,11 +341,11 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     expression = getattr(model, "_expression", None)
     equation_parameters = getattr(model, "_parameters_equation", None)
     if expression is None or not equation_parameters:
-        return None            # not a parse model, or eval()-only equation
+        return None  # not a parse model, or eval()-only equation
 
     names = [p.name for p in equation_parameters]
     if len(set(names)) != len(names):
-        return None            # two equation variables share a name
+        return None  # two equation variables share a name
 
     producer_ports = producer_ports or {}
 
@@ -362,12 +361,11 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
         curve.set_expression(model.func)
         variables = list(curve.get_variable_names())
     except Exception:
-        return None            # the engine cannot compile it; eval() can
+        return None  # the engine cannot compile it; eval() can
     used_producers = [v for v in variables if v in producer_ports]
     if "x" not in variables and not used_producers:
-        return None            # no axis or producer at all: not a curve model
-    if any(v != "x" and v not in names
-           and v not in producer_ports for v in variables):
+        return None  # no axis or producer at all: not a curve model
+    if any(v != "x" and v not in names and v not in producer_ports for v in variables):
         return None
 
     # One port per equation variable, at the value it holds now. Read once,
@@ -375,7 +373,7 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     carried = list(extra_carried or [])
     for p in equation_parameters:
         if p.name not in variables:
-            continue           # the equation dropped this variable
+            continue  # the equation dropped this variable
         if getattr(p, "redundant", False) or getattr(p, "_callable", None):
             # A value *derived* from other parameters is neither a constant
             # nor something the optimiser writes, and the graph has no way to
@@ -406,8 +404,7 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     chi2 = _bff.FitChiSquared(name)
     chi2.set_data_arrays(y, ey)
     chi2.set_fit_range(int(fit.xmin), int(fit.xmax))
-    chi2.set_noise_model_name(
-        _normalize_noise(getattr(fit, "noise_model", "default")))
+    chi2.set_noise_model_name(_normalize_noise(getattr(fit, "noise_model", "default")))
     model_in = _bff.GraphPort([0.0])
     model_in.link = out
     chi2.add_input_port("model", model_in)
@@ -522,8 +519,7 @@ def graph_objective(fit, model, allow_priors: bool = False):
         # BFF already holds this model's whole graph; there is nothing to
         # build and nothing to copy back.
         return _description_objective(model, free)
-    if getattr(model, "fits", None) is not None and hasattr(
-            model, "global_parameters"):
+    if getattr(model, "fits", None) is not None and hasattr(model, "global_parameters"):
         return _group_objective(fit, model, free)
     # ChiSurf's classic lifetime and FRET models no longer get a hand-wired
     # TCSPC graph here: their native graphs are BFF's descriptions
@@ -583,8 +579,9 @@ def _description_objective(model, free):
     return m, free
 
 
-def _single_objective(fit, model, free, producer_ports=None,
-                      extra_carried=None, extra_keepalive=None):
+def _single_objective(
+    fit, model, free, producer_ports=None, extra_carried=None, extra_keepalive=None
+):
     """One dataset: ``Expression -> ChiSquared -> Minimizer``.
 
     *producer_ports*/*extra_carried*/*extra_keepalive* are the mdf FCS
@@ -595,8 +592,9 @@ def _single_objective(fit, model, free, producer_ports=None,
     """
     if _masked(fit) and not _mask_is_representable(fit):
         return None
-    built = _member_objective(fit, model, "chi2", producer_ports=producer_ports,
-                              extra_carried=extra_carried)
+    built = _member_objective(
+        fit, model, "chi2", producer_ports=producer_ports, extra_carried=extra_carried
+    )
     if built is None:
         return None
     chi2, carried, keepalive = built
@@ -605,17 +603,15 @@ def _single_objective(fit, model, free, producer_ports=None,
         # Same indexing as `_apply_fit_mask`: full-data indexing, applied
         # over the same window, skipped outright when the lengths disagree.
         try:
-            chi2.set_mask_array(np.ascontiguousarray(
-                np.asarray(fit.mask, dtype=float).ravel()))
+            chi2.set_mask_array(np.ascontiguousarray(np.asarray(fit.mask, dtype=float).ravel()))
         except Exception:
             return None
 
     parameter_ports = [None] * len(free)
     owner, pending = {}, []
-    _claim(carried, {id(p): i for i, p in enumerate(free)},
-           parameter_ports, owner, pending)
+    _claim(carried, {id(p): i for i, p in enumerate(free)}, parameter_ports, owner, pending)
     if any(port is None for port in parameter_ports):
-        return None            # a free parameter absent from the equation
+        return None  # a free parameter absent from the equation
     if not _wire_links(pending, owner):
         return None
 
@@ -643,12 +639,11 @@ def _is_fcs_mdf_model(model) -> bool:
     try:
         from chisurf.core.models.fcs.general import GeneralFCSModel
         from chisurf.core.models.fcs.mdf import MdfFCSModel
-    except Exception:                              # pragma: no cover
+    except Exception:  # pragma: no cover
         return False
     if isinstance(model, MdfFCSModel):
         return True
-    return (isinstance(model, GeneralFCSModel)
-            and model.diffusion_mode == "mdf")
+    return isinstance(model, GeneralFCSModel) and model.diffusion_mode == "mdf"
 
 
 def _fcs_mdf_producer(fit, model):
@@ -679,19 +674,18 @@ def _fcs_mdf_producer(fit, model):
 
     Returns ``(node, output_port, carried)`` or ``None``.
     """
-    if not hasattr(_bff, 'FCSMdfCurve'):
-        return None            # an older build; the director path still fits
+    if not hasattr(_bff, "FCSMdfCurve"):
+        return None  # an older build; the director path still fits
     try:
         from chisurf.core.models.fcs.mdf import MdfFCSModel
-    except Exception:                              # pragma: no cover
+    except Exception:  # pragma: no cover
         return None
     if isinstance(model, MdfFCSModel):
         physical, optics_group = model.physical, model.optics
     else:
         physical, optics_group = model.mdf_physical, model.mdf_optics
 
-    tau_ms = np.ascontiguousarray(
-        np.asarray(fit.data.x, dtype=np.float64).ravel())
+    tau_ms = np.ascontiguousarray(np.asarray(fit.data.x, dtype=np.float64).ravel())
     if tau_ms.size == 0:
         return None
     optics = optics_group.as_optics()
@@ -701,22 +695,26 @@ def _fcs_mdf_producer(fit, model):
         # Seconds, as the kernel takes them; the equation's own ``x`` stays
         # the data's milliseconds, which is what the relaxation terms use.
         node.set_axis_array(tau_ms * 1e-3)
-        node.set_optics(float(optics.excitation_wavelength),
-                        float(optics.emission_wavelength),
-                        float(optics.refractive_index),
-                        float(optics.pinhole_radius))
+        node.set_optics(
+            float(optics.excitation_wavelength),
+            float(optics.emission_wavelength),
+            float(optics.refractive_index),
+            float(optics.pinhole_radius),
+        )
         # The resolution `MdfFCSModel` and `GeneralFCSModel` call
         # `enderlein.g_diff` with; changing it here would change the model.
         node.set_quadrature(FCS_MDF_N_GRID, FCS_MDF_SPAN, FCS_MDF_N_HERM)
-        node.set_length_scale(1e-3)   # the ports carry nanometres
+        node.set_length_scale(1e-3)  # the ports carry nanometres
         node.set_normalize(True)
         node.add_output_port("mdf_shape", _bff.GraphPort([0.0], False, True))
     except Exception:
         return None
-    carried = [(physical._w0, node.get_input_port("w0")),
-               (physical._wem, node.get_input_port("wem")),
-               (physical._D, node.get_input_port("D")),
-               (physical._diam, node.get_input_port("diam"))]
+    carried = [
+        (physical._w0, node.get_input_port("w0")),
+        (physical._wem, node.get_input_port("wem")),
+        (physical._D, node.get_input_port("D")),
+        (physical._diam, node.get_input_port("diam")),
+    ]
     # The ports open at `build_ports()` defaults, not at the model's values.
     # A free parameter is overwritten by the optimiser anyway, but a *fixed*
     # one is a constant that must hold the model's value from the first
@@ -733,10 +731,14 @@ def _fcs_mdf_objective(fit, model, free):
     if built is None:
         return None
     node, out_port, carried = built
-    return _single_objective(fit, model, free,
-                             producer_ports={FCS_MDF_VARIABLE: out_port},
-                             extra_carried=carried,
-                             extra_keepalive=node)
+    return _single_objective(
+        fit,
+        model,
+        free,
+        producer_ports={FCS_MDF_VARIABLE: out_port},
+        extra_carried=carried,
+        extra_keepalive=node,
+    )
 
 
 def _is_fcs_kinetics_full_model(model) -> bool:
@@ -754,11 +756,13 @@ def _is_fcs_kinetics_full_model(model) -> bool:
     """
     try:
         from chisurf.core.models.fcs.kinetics import FCSKineticsModel
-    except Exception:                              # pragma: no cover
+    except Exception:  # pragma: no cover
         return False
-    return (isinstance(model, FCSKineticsModel)
-            and model.saturation_mode == "full"
-            and model.saturation.active)
+    return (
+        isinstance(model, FCSKineticsModel)
+        and model.saturation_mode == "full"
+        and model.saturation.active
+    )
 
 
 def _fcs_kinetics_full_producer(fit, model):
@@ -786,11 +790,10 @@ def _fcs_kinetics_full_producer(fit, model):
 
     Returns ``(node, output_port, carried)`` or ``None``.
     """
-    if not hasattr(_bff, 'FCSSaturationCurve'):
-        return None            # an older build; the director path still fits
+    if not hasattr(_bff, "FCSSaturationCurve"):
+        return None  # an older build; the director path still fits
     sat = model.saturation
-    tau_ms = np.ascontiguousarray(
-        np.asarray(fit.data.x, dtype=np.float64).ravel())
+    tau_ms = np.ascontiguousarray(np.asarray(fit.data.x, dtype=np.float64).ravel())
     if tau_ms.size == 0:
         return None
     try:
@@ -836,10 +839,14 @@ def _fcs_kinetics_full_objective(fit, model, free):
     if built is None:
         return None
     node, out_port, carried = built
-    return _single_objective(fit, model, free,
-                             producer_ports={model.FCS_SAT_VARIABLE: out_port},
-                             extra_carried=carried,
-                             extra_keepalive=node)
+    return _single_objective(
+        fit,
+        model,
+        free,
+        producer_ports={model.FCS_SAT_VARIABLE: out_port},
+        extra_carried=carried,
+        extra_keepalive=node,
+    )
 
 
 def _publish_curve(m, model, x) -> bool:
@@ -950,7 +957,7 @@ def _group_objective(fit, model, free):
             return None
         built = _member_objective(member, member_model, "member_%d" % index)
         if built is None:
-            return None        # refuse the group, not just this member
+            return None  # refuse the group, not just this member
         chi2, carried, alive = built
         chi2_nodes.append(chi2)
         keepalive.append((chi2, carried, alive))
@@ -972,7 +979,7 @@ def _group_objective(fit, model, free):
         if parameter_ports[slot] is not None:
             continue
         if id(p) not in globals_by_id:
-            return None        # a free parameter belonging to nothing
+            return None  # a free parameter belonging to nothing
         port = _bff.GraphPort(float(p.value))
         parameter_ports[slot] = port
         owner[id(p)] = port
@@ -1010,7 +1017,9 @@ def _mask_is_representable(fit) -> bool:
 
 def _normalize_noise(name: str) -> str:
     from chisurf.core.fitting import normalize_noise_model
+
     return normalize_noise_model(name)
+
 
 #: Amplitude below which a decay species is not worth reconvolving, relative
 #: to the largest amplitude in the spectrum.
@@ -1105,8 +1114,7 @@ def director_objective(func, x0, args=()):
         node that falls out of scope while the minimiser is still in use is a
         use-after-free.
     """
-    node = ResidualNode(
-        (lambda p: func(p, *args)) if args else func, len(x0))
+    node = ResidualNode((lambda p: func(p, *args)) if args else func, len(x0))
     node.set_start(x0)
     m = _bff.FitMinimizer()
     m.set_parameter_ports(node.ports)
@@ -1143,10 +1151,14 @@ def _graph_cache_key(fit, model):
         # does, on its geometry toggle), and a graph compiled for the other
         # string computes a different model at the same parameter values.
         func = getattr(model, "func", None)
-        return (id(model), id(fit.data),
-                func if isinstance(func, str) else None,
-                tuple(id(p) for p in free),
-                getattr(fit, "xmin", None), getattr(fit, "xmax", None))
+        return (
+            id(model),
+            id(fit.data),
+            func if isinstance(func, str) else None,
+            tuple(id(p) for p in free),
+            getattr(fit, "xmin", None),
+            getattr(fit, "xmax", None),
+        )
     except Exception:
         return None
 
@@ -1174,12 +1186,12 @@ def _cached_graph(fit, model):
     try:
         built = graph_objective(fit, model)
     except Exception as e:
-        chisurf.logging.debug("curvature: no graph (%s)" % e)
+        chisurf.logging.debug(f"curvature: no graph ({e})")
         built = None
     try:
         fit._graph_cache = (key, built)
     except Exception:
-        pass          # a fit that will not take an attribute simply rebuilds
+        pass  # a fit that will not take an attribute simply rebuilds
     return built
 
 
@@ -1231,8 +1243,7 @@ def curvature_over_the_graph(fit, model, epsilon=None, what="covariance"):
             return m.jacobian(x, step, 0.0)
         cov, used = m.finite_difference_covariance_at(x, step, 0.0)
     except Exception as e:
-        chisurf.logging.warning("curvature: the graph would not evaluate (%s)"
-                                % e)
+        chisurf.logging.warning(f"curvature: the graph would not evaluate ({e})")
         return None
     if cov.size == 0:
         return None
@@ -1278,15 +1289,14 @@ def _covariance_at_the_solution(m, free, x, options):
         line up by length and mean nothing.
     """
     ids = tuple(id(p) for p in free)
-    if ier_is_success(m.status) and _forward_differences_resolved(
-            x, options.get("epsfcn")):
+    if ier_is_success(m.status) and _forward_differences_resolved(x, options.get("epsfcn")):
         cov = m.covariance
         if cov.shape == (len(free), len(free)) and np.all(np.diag(cov) > 0.0):
             return cov, list(range(len(free))), ids
     try:
         cov, used = m.finite_difference_covariance()
-    except Exception as e:                      # a graph that will not evaluate
-        chisurf.logging.warning("minimize: no covariance: %s" % e)
+    except Exception as e:  # a graph that will not evaluate
+        chisurf.logging.warning(f"minimize: no covariance: {e}")
         return None
     if cov.size == 0:
         return None
@@ -1299,15 +1309,15 @@ def ier_is_success(ier) -> bool:
 
 
 def minimize(
-        func,
-        x0,
-        args=(),
-        bounds=None,
-        progress_callback=None,
-        n_free: int = 0,
-        fit=None,
-        model=None,
-        **options,
+    func,
+    x0,
+    args=(),
+    bounds=None,
+    progress_callback=None,
+    n_free: int = 0,
+    fit=None,
+    model=None,
+    **options,
 ):
     """Minimise ``sum(func(x)**2)`` in C++, falling back to numpy.
 
@@ -1353,14 +1363,14 @@ def minimize(
             "chisurf has no optimiser: IMP.bff could not be imported. "
             "There is one implementation of the bounded Levenberg-Marquardt "
             "in this stack and it is bff's; a second copy in Python is what "
-            "was removed on 2026-09-01.")
+            "was removed on 2026-09-01."
+        )
 
     # The graph when the model can be represented, the director when it
     # cannot. `graph_objective` refuses on *semantics* -- a prior, an
     # equation the engine will not compile -- so a refusal is a correct
     # answer computed the slower way, never a wrong one.
-    built = graph_objective(fit, model) if (fit is not None and
-                                            model is not None) else None
+    built = graph_objective(fit, model) if (fit is not None and model is not None) else None
     if built is not None and len(built[1]) != len(x0):
         built = None
     node = None
@@ -1375,8 +1385,7 @@ def minimize(
         # step rules*, and two implementations of one algorithm do not
         # average out, they disagree quietly. See the module docstring.
         m, node = director_objective(func, x0, args)
-        free = list(getattr(model, "parameters", [])) if model is not None \
-            else []
+        free = list(getattr(model, "parameters", [])) if model is not None else []
         if len(free) != len(x0):
             free = []
     else:
@@ -1412,8 +1421,7 @@ def minimize(
     # times is exactly what `covariance_matrix` would have cost, and coming
     # through here means the *free* QR matrix is used whenever it resolves.
     if fit is not None:
-        fit._cpp_covariance = (_covariance_at_the_solution(m, free, x, options)
-                               if free else None)
+        fit._cpp_covariance = _covariance_at_the_solution(m, free, x, options) if free else None
 
     if built is not None:
         # The graph is private, so the answer has to be published: the
@@ -1437,5 +1445,5 @@ def minimize(
             fit._model_holds_the_fit = True
 
     if ier not in _SUCCESS and ier != -1:
-        chisurf.logging.warning("minimize: %s" % m.message)
+        chisurf.logging.warning(f"minimize: {m.message}")
     return x, ier

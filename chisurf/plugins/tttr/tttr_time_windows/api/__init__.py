@@ -9,13 +9,13 @@ from .contract import (
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
     PLUGIN_ID,
+    contract_descriptor,
     request_from_payload,
     request_to_payload,
     result_to_payload,
     service_success,
-    contract_descriptor,
 )
-from .io import load_tttr, compute_and_save, save_bst
+from .io import compute_and_save, load_tttr, save_bst
 from .models import TimeWindowRequest, TimeWindowResult
 from .selection import compute_bids_from_tttr
 

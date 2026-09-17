@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
@@ -41,4 +42,5 @@ if __name__ == "plugin":
     except Exception as exc:
         print(f"Failed to open Model Manager: {exc}")
         import traceback
+
         traceback.print_exc()

@@ -1,14 +1,15 @@
 """Support-plane (profile-likelihood) chi2 scans of a single fit parameter."""
-from __future__ import annotations
-from chisurf import typing
 
-import numpy as np
+from __future__ import annotations
+
 import warnings
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 import chisurf as cs
 import chisurf.core.math.statistics
-
+from chisurf import typing
 
 if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit
@@ -16,10 +17,7 @@ if TYPE_CHECKING:
 EPS = 1e-15
 
 
-def _default_scan_window(
-        parameter_value: float,
-        rel_range: float
-) -> typing.Tuple[float, float]:
+def _default_scan_window(parameter_value: float, rel_range: float) -> typing.Tuple[float, float]:
     """Symmetric scan window around a value for the fixed-grid scan.
 
     The half width is ``|parameter_value| * rel_range`` so that the window is
@@ -46,11 +44,11 @@ def _default_scan_window(
 
 
 def scan_parameter(
-        fit: Fit,
-        parameter_name: str,
-        scan_range=(None, None),
-        rel_range: float = 0.2,
-        n_steps: int = 30
+    fit: Fit,
+    parameter_name: str,
+    scan_range=(None, None),
+    rel_range: float = 0.2,
+    n_steps: int = 30,
 ) -> typing.Dict:
     """Perform a fixed-grid chi2-scan for a parameter.
 
@@ -111,18 +109,14 @@ def scan_parameter(
         fit.update()
 
     return {
-        'chi2r': chi2r_array,
-        'parameter_values': parameter_array,
-        'parameter_names': [parameter_name]
+        "chi2r": chi2r_array,
+        "parameter_values": parameter_array,
+        "parameter_names": [parameter_name],
     }
 
 
 def _eval_scan_point(
-        fit: Fit,
-        parameter,
-        p_value: float,
-        initial_parameter_values,
-        is_fixed: bool
+    fit: Fit, parameter, p_value: float, initial_parameter_values, is_fixed: bool
 ) -> float:
     """Helper: fix param to p_value, refit, return chi2r."""
     parameter.fixed = is_fixed
@@ -156,11 +150,7 @@ def _finite_parameter_bound(value) -> typing.Optional[float]:
 
 
 def _interpolate_threshold_crossing(
-        x0: float,
-        y0: float,
-        x1: float,
-        y1: float,
-        threshold: float
+    x0: float, y0: float, x1: float, y1: float, threshold: float
 ) -> typing.Optional[float]:
     """Interpolate an x-position where a segment crosses a threshold.
 
@@ -205,11 +195,7 @@ def _interpolate_threshold_crossing(
 
 
 def _find_side_crossing(
-        values,
-        chi2r,
-        threshold: float,
-        v0: float,
-        sign: int
+    values, chi2r, threshold: float, v0: float, sign: int
 ) -> typing.Optional[float]:
     """Find the first threshold crossing on one side of the minimum.
 
@@ -254,8 +240,7 @@ def _find_side_crossing(
 
 
 def confidence_intervals_from_scan_result(
-        result: typing.Dict,
-        p_values=(0.68, 0.95, 0.99)
+    result: typing.Dict, p_values=(0.68, 0.95, 0.99)
 ) -> typing.List[typing.Dict]:
     """Calculate p-value thresholds and crossings for a scan result.
 
@@ -274,13 +259,13 @@ def confidence_intervals_from_scan_result(
         One dictionary per p-value with ``p_value``, ``threshold`` and
         ``crossings`` entries.
     """
-    values = result.get('parameter_values', [])
-    chi2r = result.get('chi2r', [])
-    chi2r_min = float(result.get('chi2r_min', np.nan))
-    v0 = float(result.get('v0', np.nan))
-    nu = int(result.get('nu', 1))
-    n_extra_params = int(result.get('n_extra_params', 1))
-    objective = str(result.get('objective', 'least_squares'))
+    values = result.get("parameter_values", [])
+    chi2r = result.get("chi2r", [])
+    chi2r_min = float(result.get("chi2r_min", np.nan))
+    v0 = float(result.get("v0", np.nan))
+    nu = int(result.get("nu", 1))
+    n_extra_params = int(result.get("n_extra_params", 1))
+    objective = str(result.get("objective", "least_squares"))
     intervals = []
     if not np.isfinite(chi2r_min) or not np.isfinite(v0) or nu <= 0:
         return intervals
@@ -301,26 +286,28 @@ def confidence_intervals_from_scan_result(
             _find_side_crossing(values, chi2r, threshold, v0, -1),
             _find_side_crossing(values, chi2r, threshold, v0, +1),
         )
-        intervals.append({
-            'p_value': p_value,
-            'threshold': float(threshold),
-            'crossings': crossings,
-        })
+        intervals.append(
+            {
+                "p_value": p_value,
+                "threshold": float(threshold),
+                "crossings": crossings,
+            }
+        )
     return intervals
 
 
 def _scan_one_side(
-        fit: Fit,
-        parameter,
-        v0: float,
-        chi2r_min: float,
-        sign: int,
-        threshold: float,
-        initial_parameter_values,
-        is_fixed: bool,
-        max_points: int,
-        target_dchi2: float,
-        p_boundary: float = None
+    fit: Fit,
+    parameter,
+    v0: float,
+    chi2r_min: float,
+    sign: int,
+    threshold: float,
+    initial_parameter_values,
+    is_fixed: bool,
+    max_points: int,
+    target_dchi2: float,
+    p_boundary: float = None,
 ):
     """Scan in one direction from v0, using adaptive step sizes.
 
@@ -357,7 +344,7 @@ def _scan_one_side(
     previous_y = chi2r_min
 
     for expansion in range(max_expansions):
-        end_x = v0 + sign * span * (2.0 ** expansion)
+        end_x = v0 + sign * span * (2.0**expansion)
         if p_boundary is not None:
             # The boundary only truncates the segment; it must not become the
             # segment, or the first step away from v0 would be the whole side.
@@ -403,11 +390,11 @@ def _scan_one_side(
 
 
 def adaptive_scan_parameter(
-        fit: Fit,
-        parameter_name: str,
-        scan_range: typing.Tuple[float, float] = (None, None),
-        p_value: float = 0.99,
-        max_points_per_side: int = 50
+    fit: Fit,
+    parameter_name: str,
+    scan_range: typing.Tuple[float, float] = (None, None),
+    p_value: float = 0.99,
+    max_points_per_side: int = 50,
 ) -> typing.Dict:
     """Adaptive F-test-driven chi² scan for a parameter.
 
@@ -456,7 +443,10 @@ def adaptive_scan_parameter(
     # interval by sqrt(chi2r) (BUG-10, fault 1).
     objective = cs.core.fitting.objective_type(fit)
     threshold = cs.core.math.statistics.chi2_threshold(
-        chi2r_min, n_extra_params=1, nu=nu, p_value=p_value,
+        chi2r_min,
+        n_extra_params=1,
+        nu=nu,
+        p_value=p_value,
         objective=objective,
     )
 
@@ -466,8 +456,10 @@ def adaptive_scan_parameter(
 
     # Parse optional scan_range: (None, None) means unbounded
     p_min, p_max = scan_range if scan_range is not None else (None, None)
-    if bool(getattr(varied_parameter, 'bounds_on', False)) and isinstance(getattr(varied_parameter, 'bounds', None), (tuple, list)):
-        bounds = getattr(varied_parameter, 'bounds', None)
+    if bool(getattr(varied_parameter, "bounds_on", False)) and isinstance(
+        getattr(varied_parameter, "bounds", None), (tuple, list)
+    ):
+        bounds = getattr(varied_parameter, "bounds", None)
         if len(bounds) == 2:
             p_min = _finite_parameter_bound(bounds[0]) if p_min is None else p_min
             p_max = _finite_parameter_bound(bounds[1]) if p_max is None else p_max
@@ -482,14 +474,30 @@ def adaptive_scan_parameter(
 
     # Scan in both directions
     neg_xs, neg_ys, neg_cross = _scan_one_side(
-        fit, varied_parameter, v0, chi2r_min, -1, threshold,
-        initial_parameter_values, is_fixed,
-        max_points_per_side, target_dchi2, p_boundary=neg_boundary
+        fit,
+        varied_parameter,
+        v0,
+        chi2r_min,
+        -1,
+        threshold,
+        initial_parameter_values,
+        is_fixed,
+        max_points_per_side,
+        target_dchi2,
+        p_boundary=neg_boundary,
     )
     pos_xs, pos_ys, pos_cross = _scan_one_side(
-        fit, varied_parameter, v0, chi2r_min, +1, threshold,
-        initial_parameter_values, is_fixed,
-        max_points_per_side, target_dchi2, p_boundary=pos_boundary
+        fit,
+        varied_parameter,
+        v0,
+        chi2r_min,
+        +1,
+        threshold,
+        initial_parameter_values,
+        is_fixed,
+        max_points_per_side,
+        target_dchi2,
+        p_boundary=pos_boundary,
     )
 
     # Restore state
@@ -504,15 +512,15 @@ def adaptive_scan_parameter(
     pos_cross = _find_side_crossing(all_x, all_y, threshold, v0, +1)
 
     return {
-        'chi2r': np.array(all_y),
-        'parameter_values': np.array(all_x),
-        'parameter_names': [parameter_name],
-        'threshold': threshold,
-        'chi2r_min': chi2r_min,
-        'v0': v0,
-        'p_value': p_value,
-        'crossings': (neg_cross, pos_cross),
-        'nu': nu,
-        'n_extra_params': 1,
-        'objective': objective,
+        "chi2r": np.array(all_y),
+        "parameter_values": np.array(all_x),
+        "parameter_names": [parameter_name],
+        "threshold": threshold,
+        "chi2r_min": chi2r_min,
+        "v0": v0,
+        "p_value": p_value,
+        "crossings": (neg_cross, pos_cross),
+        "nu": nu,
+        "n_extra_params": 1,
+        "objective": objective,
     }

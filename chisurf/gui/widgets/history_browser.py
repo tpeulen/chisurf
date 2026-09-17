@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 
-from chisurf import typing
 from qtpy import QtCore, QtGui, QtWidgets
+
 import chisurf as cs
+from chisurf import typing
 from chisurf.gui.widgets.general import apply_compact_table_style
+
 
 class HistoryBrowserWidget(QtWidgets.QWidget):
     cursorChanged = QtCore.Signal(object)
@@ -84,8 +86,8 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
 
     @staticmethod
     def _is_incomplete_start_event(
-            events: typing.List[typing.Dict[str, typing.Any]],
-            index: int,
+        events: typing.List[typing.Dict[str, typing.Any]],
+        index: int,
     ) -> bool:
         event = events[index]
         action = str(event.get("action_type", ""))
@@ -100,7 +102,7 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         if not completions:
             return False
 
-        for later in events[index + 1:]:
+        for later in events[index + 1 :]:
             later_action = str(later.get("action_type", ""))
             if later_action not in completions:
                 continue
@@ -307,7 +309,7 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         idx = self._cursor_index()
         if idx < 0:
             return []
-        return list(self._events[:idx + 1])
+        return list(self._events[: idx + 1])
 
     def all_events(self) -> typing.List[typing.Dict[str, typing.Any]]:
         return list(self._events)
@@ -320,7 +322,9 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         idx = self._cursor_index()
         return 0 <= idx < (len(self._events) - 1)
 
-    def move_cursor(self, delta: int, state_only: bool = False) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    def move_cursor(
+        self, delta: int, state_only: bool = False
+    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         if not self._events:
             return None
         idx = self._cursor_index()
@@ -348,7 +352,7 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         self._cursor_event_id = str(event.get("event_id") or "") or None
         self._render()
         self._log_info(
-            f"cursor {idx} -> {new_idx}; action={event.get('action_type','?')}; state_only={state_only}; skipped={skipped}"
+            f"cursor {idx} -> {new_idx}; action={event.get('action_type', '?')}; state_only={state_only}; skipped={skipped}"
         )
         self.cursorChanged.emit(event)
         return event
@@ -391,6 +395,8 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
             for i in range(self.table.topLevelItemCount()):
                 item = self.table.topLevelItem(i)
                 event = item.data(0, QtCore.Qt.UserRole)
-                if isinstance(event, dict) and str(event.get("event_id", "")) == str(selected_event_id):
+                if isinstance(event, dict) and str(event.get("event_id", "")) == str(
+                    selected_event_id
+                ):
                     self.table.setCurrentItem(item)
                     break

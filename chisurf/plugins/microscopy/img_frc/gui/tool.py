@@ -90,9 +90,7 @@ class ImgFrcTool(ChisurfDockTool):
 
     def _on_finished(self, ok: bool) -> None:
         """Refresh the form once the background run finished."""
-        self.statusBar().showMessage(
-            self.model.status if ok else "Measurement failed", 8000
-        )
+        self.statusBar().showMessage(self.model.status if ok else "Measurement failed", 8000)
         self._refresh()
 
     def _export_csv(self) -> None:

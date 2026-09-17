@@ -16,9 +16,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.datastore import column_names, numeric_column
-
 import chisurf
+from chisurf.core.datastore import column_names
 
 # The workflow needs the compiled TTTR reader and the standalone MMFDB package.
 pytest.importorskip("tttrlib")

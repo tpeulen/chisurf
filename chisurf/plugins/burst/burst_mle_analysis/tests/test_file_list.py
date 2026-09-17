@@ -19,8 +19,10 @@ from chisurf.plugins.burst.burst_mle_analysis.utils import (
 
 def test_add_file_is_silent_but_drop_fires_callback(qapp, tmp_path):
     """add_file must not call back (the wizard loads explicitly); a drop must."""
-    a = tmp_path / "a.spc"; a.write_bytes(b"1")
-    b = tmp_path / "b.spc"; b.write_bytes(b"2")
+    a = tmp_path / "a.spc"
+    a.write_bytes(b"1")
+    b = tmp_path / "b.spc"
+    b.write_bytes(b"2")
 
     calls: list[int] = []
     fw = FileListWidget(file_added_callback=lambda: calls.append(1))
@@ -44,7 +46,9 @@ def test_get_selected_files_tracks_check_state(qapp, tmp_path):
     for f in fs:
         f.write_bytes(b"x")
     fw = FileListWidget()
-    fw.add_file(str(fs[0])); fw.add_file(str(fs[1])); fw.add_file(str(fs[2]))
+    fw.add_file(str(fs[0]))
+    fw.add_file(str(fs[1]))
+    fw.add_file(str(fs[2]))
     assert fw.get_selected_files() == [Path(f) for f in fs]  # default checked
 
     fw._list.item(1).setCheckState(QtCore.Qt.Unchecked)
@@ -62,7 +66,8 @@ def test_set_accept_drops_routes_to_inner_list(qapp):
 
 def test_clear_is_silent(qapp, tmp_path):
     """A programmatic clear empties the list without firing the drop callback."""
-    a = tmp_path / "a.spc"; a.write_bytes(b"1")
+    a = tmp_path / "a.spc"
+    a.write_bytes(b"1")
     calls: list[int] = []
     fw = FileListWidget(file_added_callback=lambda: calls.append(1))
     fw.add_file(str(a))

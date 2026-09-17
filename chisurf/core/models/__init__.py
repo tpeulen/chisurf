@@ -1,8 +1,9 @@
-from . model import *
 from chisurf import logging
-from chisurf.core.models.model import Model
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models import global_model
+from chisurf.core.models.model import Model
+
+from .model import *
 
 
 def _join_bff_session(node):
@@ -68,7 +69,6 @@ def function_to_model_decorator(**kws):
         """
 
         class ModelDecorator(Model):
-
             def __init__(self, *args, **kwargs):
                 """Initialize the model decorator with a bff node and parameters.
 
@@ -81,62 +81,63 @@ def function_to_model_decorator(**kws):
                     with the factory-level keyword arguments from
                     :func:`function_to_model_decorator`.
                 """
-                logging.info('ModelDecorator.__init__')
-                logging.debug(f'args: {args}')
-                logging.debug(f'kwargs: {kwargs}')
-                logging.debug(f'kws: {kws}')
-                logging.debug(f'updating kwargs with kws')
+                logging.info("ModelDecorator.__init__")
+                logging.debug(f"args: {args}")
+                logging.debug(f"kwargs: {kwargs}")
+                logging.debug(f"kws: {kws}")
+                logging.debug("updating kwargs with kws")
                 kwargs.update(kws)
-                logging.debug(f'updating kwargs finished')
-                super(ModelDecorator, self).__init__(*args, **kwargs)
-                logging.debug(f'super called.')
+                logging.debug("updating kwargs finished")
+                super().__init__(*args, **kwargs)
+                logging.debug("super called.")
                 import chisurf.core.nodes as cn_nodes
+
                 self._node = cn_nodes.function_to_node(func)
                 # chinet registered every constructed node with its global
                 # database; bff's session is the registry, so the node is
                 # added here (its ports join through the FittingParameters
                 # below and deduplicate with the node on save).
                 _join_bff_session(self._node)
-                logging.debug(f'_node: {self._node}')
-                logging.debug(f'func: {func}')
+                logging.debug(f"_node: {self._node}")
+                logging.debug(f"func: {func}")
                 self.node_parameters = list()
-                logging.debug(f'node_parameters: {self.node_parameters}')
+                logging.debug(f"node_parameters: {self.node_parameters}")
                 self.make_parameters()
-                logging.debug(f'make_parameters finished.')
+                logging.debug("make_parameters finished.")
 
             def make_parameters(self):
                 """Create FittingParameters from the node's ports."""
                 ports = self._node.get_ports()
-                logging.debug(f'ports: {ports}')
-                logging.debug(f'ports.keys(): {ports.keys()}')
-                logging.debug(f'ports.values(): {ports.values()}')
+                logging.debug(f"ports: {ports}")
+                logging.debug(f"ports.keys(): {ports.keys()}")
+                logging.debug(f"ports.values(): {ports.values()}")
                 for port_key in ports:
-                    logging.debug(f'port_key: {port_key}')
+                    logging.debug(f"port_key: {port_key}")
                     port = ports[port_key]
-                    logging.debug(f'port: {port}')
+                    logging.debug(f"port: {port}")
                     p = FittingParameter(port=port, name=port_key)
-                    logging.debug(f'p: {p}')
-                    logging.debug(f'p.name: {p.name}')
+                    logging.debug(f"p: {p}")
+                    logging.debug(f"p.name: {p.name}")
                     self.node_parameters.append(p)
-                    logging.debug(f'node_parameters: {self.node_parameters}')
+                    logging.debug(f"node_parameters: {self.node_parameters}")
                 self.find_parameters()
-                logging.debug(f'find_parameters finished.')
+                logging.debug("find_parameters finished.")
 
                 # output ports act as fixed parameters
-                logging.debug(f'outputs: {self._node.outputs}')
-                logging.debug(f'fixing output ports')
+                logging.debug(f"outputs: {self._node.outputs}")
+                logging.debug("fixing output ports")
                 for port_key in self._node.outputs:
-                    logging.debug(f'port_key: {port_key}')
+                    logging.debug(f"port_key: {port_key}")
                     self.parameters_all_dict[port_key].fixed = True
-                    logging.debug(f'fixed: {self.parameters_all_dict[port_key].fixed}')
-                logging.debug(f'fixed output ports finished.')
+                    logging.debug(f"fixed: {self.parameters_all_dict[port_key].fixed}")
+                logging.debug("fixed output ports finished.")
 
             def _update_model(self, **kwargs):
                 """Evaluate the bff node to compute the model output."""
-                logging.debug(f'update_model called.')
-                logging.debug(f'evaluating')
+                logging.debug("update_model called.")
+                logging.debug("evaluating")
                 self._node.evaluate()
-                logging.debug(f'evaluate finished.')
+                logging.debug("evaluate finished.")
 
             def update(self, **kwargs) -> None:
                 """Refresh parameters and re-evaluate the model."""
@@ -150,42 +151,42 @@ def function_to_model_decorator(**kws):
 
     return decorator
 
+
 def inject_user_models():
+    import importlib
     import os
     import sys
-    import importlib
-    from chisurf.core.settings.path_utils import get_path
+
     from chisurf import logging
-    
-    models_dir = get_path('settings') / 'models'
+    from chisurf.core.settings.path_utils import get_path
+
+    models_dir = get_path("settings") / "models"
     if not models_dir.exists():
         return
-        
+
     overrides = {}
     for filename in os.listdir(models_dir):
-        if not filename.endswith('.py'):
+        if not filename.endswith(".py"):
             continue
-        if '__override__' in filename:
-            parts = filename.replace('.py', '').split('__override__')
+        if "__override__" in filename:
+            parts = filename.replace(".py", "").split("__override__")
             if len(parts) == 2:
                 module_name, timestamp = parts
-                if module_name not in overrides or overrides[module_name]['timestamp'] < timestamp:
-                    overrides[module_name] = {
-                        'timestamp': timestamp,
-                        'path': models_dir / filename
-                    }
-                    
+                if module_name not in overrides or overrides[module_name]["timestamp"] < timestamp:
+                    overrides[module_name] = {"timestamp": timestamp, "path": models_dir / filename}
+
     for module_name, info in overrides.items():
         try:
             logging.info(f"Injecting user model override for {module_name} from {info['path']}")
             # Import original module
             module = importlib.import_module(module_name)
             # Exec the override code in the module's dict
-            with open(info['path'], 'r') as f:
+            with open(info["path"]) as f:
                 code = f.read()
             exec(code, module.__dict__)
         except Exception as e:
             logging.error(f"Failed to inject model override for {module_name}: {e}")
+
 
 # Run injection on startup
 inject_user_models()

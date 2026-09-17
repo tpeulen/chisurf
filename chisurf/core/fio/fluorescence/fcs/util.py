@@ -1,4 +1,5 @@
 """utility functions for reading data"""
+
 import numpy as np
 
 
@@ -14,26 +15,23 @@ def downsample_trace(trace, bestlength=500):
     if len(trace) >= bestlength:
         # We want about 500 bins
         # We need to sum over intervals of length *teiler*
-        teiler = int(np.floor(len(trace)/bestlength))
-        newlength = int(np.floor(len(trace)/teiler))
+        teiler = int(np.floor(len(trace) / bestlength))
+        newlength = int(np.floor(len(trace) / teiler))
         newsignal = np.zeros(newlength)
         # Simultaneously sum over all intervals
         for j in np.arange(teiler):
-            newsignal = \
-                newsignal+trace[j:newlength*teiler:teiler][:, 1]
-        newsignal = 1. * newsignal / teiler
-        newtimes = trace[teiler-1:newlength*teiler:teiler][:, 0]
+            newsignal = newsignal + trace[j : newlength * teiler : teiler][:, 1]
+        newsignal = 1.0 * newsignal / teiler
+        newtimes = trace[teiler - 1 : newlength * teiler : teiler][:, 0]
         if len(trace) % teiler != 0:
             # We have a rest signal
             # We average it and add it to the trace
-            rest = trace[newlength*teiler:][:, 1]
+            rest = trace[newlength * teiler :][:, 1]
             lrest = len(rest)
-            rest = np.array([sum(rest)/lrest])
-            newsignal = np.concatenate((newsignal, rest),
-                                       axis=0)
+            rest = np.array([sum(rest) / lrest])
+            newsignal = np.concatenate((newsignal, rest), axis=0)
             timerest = np.array([trace[-1][0]])
-            newtimes = np.concatenate((newtimes, timerest),
-                                      axis=0)
+            newtimes = np.concatenate((newtimes, timerest), axis=0)
         newtrace = np.zeros((len(newtimes), 2))
         newtrace[:, 0] = newtimes
         newtrace[:, 1] = newsignal

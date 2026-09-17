@@ -6,10 +6,11 @@ They are meant to be used by higher‑level project save/load code.
 """
 
 from __future__ import annotations
-import chisurf as cs
 
 import uuid
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import chisurf as cs
 
 if TYPE_CHECKING:
     # Imported only for static type checking to avoid circular imports at
@@ -42,7 +43,7 @@ def _local_fits() -> list:
     return fits
 
 
-def _model_to_state(model: Any) -> Dict[str, Any]:
+def _model_to_state(model: Any) -> dict[str, Any]:
     """Extract a JSON‑serializable snapshot of a model's state.
 
     Version 4: parameters are keyed by UID, and links are resolved by UID.
@@ -50,7 +51,6 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
     :meth:`cs.core.models.model.Model.get_state`. It operates directly on a
     model instance without requiring a full :class:`Fit` wrapper.
     """
-
     try:
         find_params = getattr(model, "find_parameters", None)
         if callable(find_params):
@@ -61,8 +61,8 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
     params = getattr(model, "parameters_all_dict", {}) or {}
 
     # First pass: basic scalar attributes, keyed by UID
-    param_states: Dict[str, Dict[str, Any]] = {}
-    uid_to_obj: Dict[str, Any] = {}
+    param_states: dict[str, dict[str, Any]] = {}
+    uid_to_obj: dict[str, Any] = {}
     for name, p in params.items():
         # Bounds may be numpy arrays; normalize to a simple [lb, ub] list
         try:
@@ -111,7 +111,7 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
         link = getattr(p, "link", None)
         if link is None:
             continue
-        
+
         target_uid = str(getattr(link, "unique_identifier", ""))
         # The name is recorded beside the uid because a uid identifies *this*
         # object, not the parameter's role. Restoring into freshly constructed
@@ -133,7 +133,9 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
                 for op in getattr(other_fit.model, "parameters_all", []):
                     if str(getattr(op, "unique_identifier", "")) == target_uid:
                         p_state["link_target"] = target_uid
-                        p_state["link_target_fit_uid"] = str(getattr(other_fit, "unique_identifier", ""))
+                        p_state["link_target_fit_uid"] = str(
+                            getattr(other_fit, "unique_identifier", "")
+                        )
                         break
                 else:
                     continue
@@ -143,12 +145,12 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
     # JSON-friendly. Structural information such as component counts is
     # provided by model-specific get_state/set_state overrides; the generic
     # helper here only wires through sub-group state for TCSPC models.
-    extra: Dict[str, Any] = {}
+    extra: dict[str, Any] = {}
 
-    # TCSPC-specific extras (e.g. IRF, background, linearization state). 
-    # We delegate to small get_state helpers on the corresponding sub-groups 
+    # TCSPC-specific extras (e.g. IRF, background, linearization state).
+    # We delegate to small get_state helpers on the corresponding sub-groups
     # if available, and also capture UIDs for external curve dependencies.
-    tcspc_state: Dict[str, Any] = {}
+    tcspc_state: dict[str, Any] = {}
     for key in ("generic", "corrections", "convolve"):
         comp = getattr(model, key, None)
         get_state = getattr(comp, "get_state", None) if comp is not None else None
@@ -184,7 +186,7 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
         # Fallback for name mangling if internal attribute is used
         if irf_curve is None:
             irf_curve = getattr(convolve, "_Convolve__irf", None)
-        
+
         if irf_curve is not None:
             irf_uid = getattr(irf_curve, "unique_identifier", None)
             if irf_uid:
@@ -197,7 +199,7 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
     if tcspc_state:
         extra["tcspc"] = tcspc_state
 
-    state: Dict[str, Any] = {
+    state: dict[str, Any] = {
         "model_module": type(model).__module__,
         "model_class": type(model).__name__,
         "parameters": param_states,
@@ -207,18 +209,17 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
     return state
 
 
-def fit_to_state(fit: Fit) -> Dict[str, Any]:
+def fit_to_state(fit: Fit) -> dict[str, Any]:
     """Extract a JSON‑serializable snapshot of a single fit's model state.
 
     This thin wrapper forwards to :func:`_model_to_state` using
     ``fit.model``. It is kept for backwards-compatibility with existing
     callers that work at the :class:`Fit` level.
     """
-
     return _model_to_state(fit.model)
 
 
-def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
+def _apply_state_to_model(model: Any, state: dict[str, Any]) -> None:
     """Apply a previously captured state dictionary to a model instance.
 
     Version 4: parameters are restored by UID. The stored ``parameters``
@@ -229,12 +230,11 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
     ``model`` is already an instance of the desired class and only updates
     parameters, links and small structural extras (e.g. component counts).
     """
-
-    stored_params: Dict[str, Dict[str, Any]] = state.get("parameters", {}) or {}
+    stored_params: dict[str, dict[str, Any]] = state.get("parameters", {}) or {}
 
     # Optional structural extras (e.g. component counts for dynamic groups)
     # are interpreted by model-specific get_state/set_state overrides.
-    extra: Dict[str, Any] = state.get("extra", {}) or {}
+    extra: dict[str, Any] = state.get("extra", {}) or {}
 
     # Refresh parameter layout if the model supports it so that
     # parameters_all_dict is up to date before applying scalar state.
@@ -247,11 +247,8 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
 
     # Build lookup dicts by UID (primary) and by name (fallback)
     all_params = getattr(model, "parameters_all", []) or []
-    uid_to_param: Dict[str, Any] = {
-        str(getattr(p, "unique_identifier", "")): p
-        for p in all_params
-    }
-    name_to_param: Dict[str, Any] = getattr(model, "parameters_all_dict", {}) or {}
+    uid_to_param: dict[str, Any] = {str(getattr(p, "unique_identifier", "")): p for p in all_params}
+    name_to_param: dict[str, Any] = getattr(model, "parameters_all_dict", {}) or {}
 
     # First pass: scalar attributes, in the same order as
     # :meth:`chisurf.core.parameter.Parameter.set_state` — bounds, bounds_on,
@@ -310,7 +307,7 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
         target_uid = p_state.get("link_target")
         target_fit_uid = p_state.get("link_target_fit_uid")
         target_name = p_state.get("link_target_name") or ""
-        
+
         if not target_uid:
             # Explicitly clear existing links if any
             try:
@@ -318,7 +315,7 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
             except Exception:
                 pass
             continue
-            
+
         if not target_fit_uid:
             # Intra-fit link restoration: by uid when the same objects are still
             # around, by name when they are not (a reloaded project).
@@ -335,21 +332,24 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
             # That also reads projects written before the group members were
             # saved individually, which recorded the group's uid.
             candidates = _local_fits()
-            preferred = [f for f in candidates
-                         if str(getattr(f, "unique_identifier", "")) == target_fit_uid]
+            preferred = [
+                f for f in candidates if str(getattr(f, "unique_identifier", "")) == target_fit_uid
+            ]
             target = None
             for target_fit in preferred + candidates:
                 target_params = getattr(target_fit.model, "parameters_all", []) or []
                 target = next(
-                    (op for op in target_params
-                     if str(getattr(op, "unique_identifier", "")) == target_uid),
-                    None
+                    (
+                        op
+                        for op in target_params
+                        if str(getattr(op, "unique_identifier", "")) == target_uid
+                    ),
+                    None,
                 )
                 if target is None and target_name:
                     target = next(
-                        (op for op in target_params
-                         if str(getattr(op, "name", "")) == target_name),
-                        None
+                        (op for op in target_params if str(getattr(op, "name", "")) == target_name),
+                        None,
                     )
                 if target is not None:
                     break
@@ -377,11 +377,13 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
 
         # UID Reattachment Pass for TCSPC components
         datasets = getattr(cs, "imported_datasets", [])
-        
+
         # 1. Background curve reattachment
         bg_uid = tcspc_state.get("generic", {}).get("background_curve_uid")
         if bg_uid:
-            target_bg = next((d for d in datasets if getattr(d, "unique_identifier", None) == bg_uid), None)
+            target_bg = next(
+                (d for d in datasets if getattr(d, "unique_identifier", None) == bg_uid), None
+            )
             if target_bg:
                 generic = getattr(model, "generic", None)
                 if generic is not None:
@@ -393,7 +395,9 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
         # 2. IRF reattachment
         irf_uid = tcspc_state.get("convolve", {}).get("irf_uid")
         if irf_uid:
-            target_irf = next((d for d in datasets if getattr(d, "unique_identifier", None) == irf_uid), None)
+            target_irf = next(
+                (d for d in datasets if getattr(d, "unique_identifier", None) == irf_uid), None
+            )
             if target_irf:
                 convolve = getattr(model, "convolve", None)
                 if convolve is not None:
@@ -405,7 +409,7 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
 
 def apply_state_to_fit(
     fit: Fit,
-    state: Dict[str, Any],
+    state: dict[str, Any],
     dependency_edges: list[dict[str, Any]] | None = None,
     fit_record_id: str = "",
 ) -> None:
@@ -428,7 +432,6 @@ def apply_state_to_fit(
     fit_record_id : str, optional
         The fit record ID from the archiver. Used to match against operation_id.
     """
-
     _apply_state_to_model(fit.model, state)
 
     if dependency_edges:
@@ -476,10 +479,7 @@ def _restore_parameter_links_from_edges(
 
     # Build lookup dict by parameter UID
     all_params = getattr(model, "parameters_all", []) or []
-    uid_to_param: dict[str, Any] = {
-        str(getattr(p, "unique_identifier", "")): p
-        for p in all_params
-    }
+    uid_to_param: dict[str, Any] = {str(getattr(p, "unique_identifier", "")): p for p in all_params}
 
     # Restore links from dependency edges
     # Edge structure: source_node_id (target_uid) -> target_node_id (uid)
@@ -502,11 +502,11 @@ def _restore_parameter_links_from_edges(
 
 
 def make_fit_record(
-        fit_id: str,
-        fit: Fit,
-        dataset_id: Optional[str] = None,
-        experiment_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    fit_id: str,
+    fit: Fit,
+    dataset_id: str | None = None,
+    experiment_id: str | None = None,
+) -> dict[str, Any]:
     """Create a serializable record for a single fit.
 
     The resulting dictionary is suitable for storage in ``Project.fits``
@@ -514,7 +514,6 @@ def make_fit_record(
     dataset / experiment and the full parameter snapshot from
     :func:`fit_to_state`.
     """
-
     return {
         "fit_id": str(fit_id),
         "dataset_id": dataset_id,
@@ -523,16 +522,13 @@ def make_fit_record(
     }
 
 
-def apply_fit_record(fit: Fit, record: Dict[str, Any]) -> None:
+def apply_fit_record(fit: Fit, record: dict[str, Any]) -> None:
     """Apply a previously stored fit record to a :class:`Fit` instance.
 
     This is a thin wrapper around :func:`apply_state_to_fit` that expects
     the structure produced by :func:`make_fit_record`.
     """
-
     state = record.get("fit_state") or {}
     if not isinstance(state, dict):
         return
     apply_state_to_fit(fit, state)
-
-

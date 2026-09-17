@@ -40,6 +40,7 @@ Use
 
     paths = shoot(window, "npc_demo", area="all")
 """
+
 from __future__ import annotations
 
 import os
@@ -127,9 +128,7 @@ def _as_qimage(array) -> QtGui.QImage:
     if rgb.ndim != 3 or rgb.shape[0] < 1 or rgb.shape[1] < 1:
         raise RuntimeError(f"the renderer returned {rgb.shape}, which is not a frame")
     height, width = rgb.shape[0], rgb.shape[1]
-    image = QtGui.QImage(
-        rgb.data, width, height, 3 * width, QtGui.QImage.Format_RGB888
-    )
+    image = QtGui.QImage(rgb.data, width, height, 3 * width, QtGui.QImage.Format_RGB888)
     # `.copy()` and not a stored reference: the QImage does not own the NumPy
     # buffer, and a view outliving the array is a use-after-free that shows up
     # as a garbled screenshot rather than as a crash.
@@ -248,9 +247,7 @@ def grab_gl(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> Q
     _refuse_offscreen()
     targets = _gl_children(widget)
     if not targets:
-        raise RuntimeError(
-            "nothing to grab: no self-rendering 3-D view and no QOpenGLWidget"
-        )
+        raise RuntimeError("nothing to grab: no self-rendering 3-D view and no QOpenGLWidget")
     gl = targets[0]
     if not gl.isVisible():
         _prepare(widget, size)

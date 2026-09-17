@@ -10,16 +10,13 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.geometry.wireframe import (
     bond_line_segments,
     nonbonded_crosses,
     unbonded_mask,
 )
 
-_COORDS = np.array(
-    [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [9.0, 9.0, 9.0]]
-)
+_COORDS = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [9.0, 9.0, 9.0]])
 _BONDS = np.array([[0, 1], [1, 2]])
 
 
@@ -40,8 +37,7 @@ def test_each_bond_becomes_two_half_segments():
 def test_each_half_takes_its_own_atoms_colour():
     """A red-to-blue bond is half red and half blue, as in PyMOL."""
     colors = np.array(
-        [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0],
-         [0.0, 1.0, 0.0, 1.0], [1.0, 1.0, 1.0, 1.0]]
+        [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 0.0, 1.0], [1.0, 1.0, 1.0, 1.0]]
     )
     _, cols = bond_line_segments(_COORDS, _BONDS, colors)
     assert cols is not None
@@ -57,7 +53,7 @@ def test_unsplit_mode_gives_one_segment_per_bond():
 def test_out_of_range_and_self_bonds_are_dropped():
     bonds = np.array([[0, 1], [0, 0], [0, 99], [-1, 2]])
     verts, _ = bond_line_segments(_COORDS, bonds)
-    assert verts.shape[0] == 4      # only the first bond survives
+    assert verts.shape[0] == 4  # only the first bond survives
 
 
 def test_no_bonds_draws_nothing():
@@ -123,16 +119,21 @@ def view(qapp, bond_family):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     v = Viewer()
     v.add_structure(
-        _read_full_model(cs_struct.Structure, pdb), name="148l",
+        _read_full_model(cs_struct.Structure, pdb),
+        name="148l",
         source_path=str(pdb),
     )
     return v
@@ -175,9 +176,7 @@ def test_lines_are_coloured_per_atom(view):
     """Element colours are what make a wireframe readable."""
     view.set_cartoon_visible(False)
     view.set_lines_visible(True)
-    lines = next(
-        o for o in view.get_current_scene().objects if o.id.endswith("lines")
-    )
+    lines = next(o for o in view.get_current_scene().objects if o.id.endswith("lines"))
     colors = lines.geometry.colors
     assert colors is not None
     assert colors.shape[0] == lines.geometry.positions.shape[0]

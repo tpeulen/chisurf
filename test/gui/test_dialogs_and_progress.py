@@ -32,7 +32,9 @@ def test_headless_question_answers_with_the_declared_default(qapp):
     """Head-less, a question returns *default* — never a click that never comes."""
     assert dialogs.question(None, "Delete", "Delete it?") == dialogs.ChiSurfMessageBox.No
     answer = dialogs.question(
-        None, "Overwrite", "Overwrite it?",
+        None,
+        "Overwrite",
+        "Overwrite it?",
         buttons=dialogs.ChiSurfMessageBox.Yes | dialogs.ChiSurfMessageBox.Cancel,
         default=dialogs.ChiSurfMessageBox.Cancel,
     )
@@ -48,7 +50,9 @@ def test_confirm_declines_by_default(qapp):
 def test_choice_returns_no_key_when_nobody_can_choose(qapp):
     """A custom-button box yields ``None`` head-lessly unless a default is named."""
     answer = dialogs.choice(
-        None, "Folder exists", "'out/' already exists.",
+        None,
+        "Folder exists",
+        "'out/' already exists.",
         {"overwrite": "Overwrite", "skip": "Skip", "cancel": "Cancel"},
     )
     assert answer.key is None
@@ -56,8 +60,11 @@ def test_choice_returns_no_key_when_nobody_can_choose(qapp):
     assert answer.checked is False
 
     answer = dialogs.choice(
-        None, "Folder exists", "'out/' already exists.",
-        {"overwrite": "Overwrite", "skip": "Skip"}, default="skip",
+        None,
+        "Folder exists",
+        "'out/' already exists.",
+        {"overwrite": "Overwrite", "skip": "Skip"},
+        default="skip",
     )
     assert answer.key == "skip"
     assert answer
@@ -79,8 +86,7 @@ def test_a_default_that_is_not_offered_is_repaired(qapp, caplog):
 
     with caplog.at_level(logging.WARNING, logger="chisurf.gui.dialogs"):
         with dialogs.auto_answer():  # keep it off the scripted path
-            answer = box.question(None, "Message", "Are you sure to quit?",
-                                  box.Yes, box.No)
+            answer = box.question(None, "Message", "Are you sure to quit?", box.Yes, box.No)
     # Head-lessly the answer is still the default — the point is that a user
     # would now be *shown* a No button rather than only a Yes.
     assert int(answer) == int(box.No)
@@ -109,8 +115,12 @@ def test_no_call_site_passes_two_separate_buttons():
         except SyntaxError:
             continue
         for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                    and node.func.attr == "question" and len(node.args) >= 5):
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "question"
+                and len(node.args) >= 5
+            ):
                 continue
             if is_single_button(node.args[3]) and is_single_button(node.args[4]):
                 offenders.append(f"{path.name}:{node.lineno}")

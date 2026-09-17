@@ -20,7 +20,11 @@ from scipy.special import gamma as gamma_fn
 
 PCF_YAML = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "chisurf" / "core" / "models" / "pcf" / "models.yaml"
+    / "chisurf"
+    / "core"
+    / "models"
+    / "pcf"
+    / "models.yaml"
 )
 
 
@@ -50,27 +54,34 @@ def _parse_and_eval(equation, values, x):
 # PAM reference lambdas (verbatim from Models/fcs/PCF_*.m, https://gitlab.com/PAM-PIE/PAM at 7319d15d).
 def _pcf_lognormal(x, A, Mode, sigma):
     # PAM's y0 is unused in its fit function, so it is omitted from the port.
-    return A / sigma / np.sqrt(2 * np.pi) / x * np.exp(
-        -(np.log(x / Mode * 1000) - sigma ** 2) ** 2 / (2 * sigma ** 2))
+    return (
+        A
+        / sigma
+        / np.sqrt(2 * np.pi)
+        / x
+        * np.exp(-((np.log(x / Mode * 1000) - sigma**2) ** 2) / (2 * sigma**2))
+    )
 
 
 def _pcf_loggaussian(x, A, Mode, sigma, y_0):
-    return A * np.exp(-(np.log(x / Mode * 1000)) ** 2 / (2 * sigma ** 2)) + y_0
+    return A * np.exp(-((np.log(x / Mode * 1000)) ** 2) / (2 * sigma**2)) + y_0
 
 
 def _pcf_gamma_pam(x, A, alpha, beta):
-    return A * beta ** alpha * x ** (alpha - 1) * np.exp(-x * beta) / gamma_fn(alpha)
+    return A * beta**alpha * x ** (alpha - 1) * np.exp(-x * beta) / gamma_fn(alpha)
 
 
 CASES = {
     "PCF Log-Normal": (
         _pcf_lognormal,
         dict(A=(0.2, 5), Mode=(1, 100), sigma=(0.3, 2)),
-        dict(A=1, Mode=20, sigma=1)),  # PAM defaults
+        dict(A=1, Mode=20, sigma=1),
+    ),  # PAM defaults
     "PCF Log-Gaussian": (
         _pcf_loggaussian,
         dict(A=(0.2, 5), Mode=(1, 100), sigma=(0.3, 2), y_0=(-0.5, 0.5)),
-        dict(A=1, Mode=20, sigma=1, y_0=0)),
+        dict(A=1, Mode=20, sigma=1, y_0=0),
+    ),
 }
 
 
@@ -103,8 +114,12 @@ def test_pcf_gamma_matches_pam_shape(models):
     x = np.logspace(-4, 1, 200)
     rng = np.random.default_rng(11)
     for params in [dict(A=1, alpha=2, beta=1)] + [
-        dict(A=float(rng.uniform(0.2, 5)), alpha=float(rng.uniform(1.1, 6)),
-             beta=float(rng.uniform(0.2, 5))) for _ in range(6)
+        dict(
+            A=float(rng.uniform(0.2, 5)),
+            alpha=float(rng.uniform(1.1, 6)),
+            beta=float(rng.uniform(0.2, 5)),
+        )
+        for _ in range(6)
     ]:
         b = _parse_and_eval(entry["equation"], params, x)
         # PAM includes /gamma(alpha); the port folds it into A, so B == PAM * gamma(alpha).

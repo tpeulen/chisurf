@@ -100,7 +100,9 @@ class PhotonFilterSettings:
     kalman_filter: KalmanFilterSettings = field(default_factory=KalmanFilterSettings)
     cusum_filter: CusumFilterSettings = field(default_factory=CusumFilterSettings)
     tttrlib_search: TttrlibSearchSettings = field(default_factory=TttrlibSearchSettings)
-    delta_macro_time_filter: DeltaMacroTimeFilterSettings = field(default_factory=DeltaMacroTimeFilterSettings)
+    delta_macro_time_filter: DeltaMacroTimeFilterSettings = field(
+        default_factory=DeltaMacroTimeFilterSettings
+    )
     invert_filter: bool = False
     max_gap: int = 4
     use_gap_fill: bool = True

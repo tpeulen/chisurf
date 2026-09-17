@@ -87,9 +87,7 @@ def test_expanding_false_leaves_the_widget_compact(qapp):
     from qtpy import QtWidgets
 
     existing = QtWidgets.QPushButton("compact")
-    model = SimpleNamespace(
-        view_spec=lambda: _spec(attr="panel", expanding=False), panel=existing
-    )
+    model = SimpleNamespace(view_spec=lambda: _spec(attr="panel", expanding=False), panel=existing)
     form = _form(model)  # held: dropping it deletes the adopted child with it
     assert form is not None
     assert not getattr(existing, "_autoform_expanding", False)

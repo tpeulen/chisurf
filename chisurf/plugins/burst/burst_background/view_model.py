@@ -122,7 +122,7 @@ class BackgroundViewModel:
         if not self.show_channel_definition:
             hidden.add("Channel Definition")  # the shell supplies the channels
         if not self.show_files:
-            hidden.add("Files")               # the shell supplies the files
+            hidden.add("Files")  # the shell supplies the files
         if not hidden:
             return spec
         import dataclasses
@@ -199,11 +199,9 @@ class BackgroundViewModel:
             except Exception as exc:
                 logger.warning("background: could not read %s: %s", path, exc)
                 continue
-            scale = float(
-                getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
+            scale = float(getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
             self._interphoton[path] = {
-                name: _burst.background._detector_interphoton_times(
-                    tttr, info, scale)
+                name: _burst.background._detector_interphoton_times(tttr, info, scale)
                 for name, info in detectors.items()
             }
         self._seed_fit_window()
@@ -252,8 +250,11 @@ class BackgroundViewModel:
         # window is one that can actually be fitted.
         for q_low, q_high in SEED_QUANTILES:
             low = max(float(np.quantile(a, q_low)) for a in arrays)
-            high = (min(float(np.max(a)) for a in arrays) if q_high >= 1.0 else
-                    min(float(np.quantile(a, q_high)) for a in arrays))
+            high = (
+                min(float(np.max(a)) for a in arrays)
+                if q_high >= 1.0
+                else min(float(np.quantile(a, q_high)) for a in arrays)
+            )
             if high > low and self._window_is_fittable(arrays, low, high):
                 self.fit_from_ms, self.fit_to_ms = low, high
                 return
@@ -319,8 +320,9 @@ class BackgroundViewModel:
             self.backgrounds[path] = {n: float(d.rate_khz) for n, d in diags.items()}
         window = self.fit_range()
         where = (
-            f"tail from {self.tail_fraction:.0%}" if window is None else
-            f"fit window {window[0]:.3g}\u2013{window[1]:.3g} ms"
+            f"tail from {self.tail_fraction:.0%}"
+            if window is None
+            else f"fit window {window[0]:.3g}\u2013{window[1]:.3g} ms"
         )
         self.status = (
             f"{len(self.diagnostics)} file(s), "
@@ -335,7 +337,8 @@ class BackgroundViewModel:
         if starved:
             self.status += (
                 f" \u26a0 {', '.join(starved)}: too few bins in the window "
-                f"\u2014 widen it or lower 'Min. counts per bin'.")
+                f"\u2014 widen it or lower 'Min. counts per bin'."
+            )
 
     #: Fewer tail bins than this cannot constrain an amplitude and a rate; the
     #: fit returns a number either way, which is what makes it worth naming.
@@ -390,15 +393,17 @@ class BackgroundViewModel:
             try:
                 write_burst_artifact(
                     path,
-                    store_from_arrays({
-                        "Detector": np.array(names, dtype=object),
-                        "Rate": np.array(
-                            [float(diags[n].rate_khz) for n in names], dtype=float
-                        ),
-                        "Amplitude": np.array(
-                            [float(diags[n].amplitude) for n in names], dtype=float
-                        ),
-                    }),
+                    store_from_arrays(
+                        {
+                            "Detector": np.array(names, dtype=object),
+                            "Rate": np.array(
+                                [float(diags[n].rate_khz) for n in names], dtype=float
+                            ),
+                            "Amplitude": np.array(
+                                [float(diags[n].amplitude) for n in names], dtype=float
+                            ),
+                        }
+                    ),
                     name="background",
                     artifact_kind="background_data",
                     operation_type="background_correction",
@@ -413,12 +418,14 @@ class BackgroundViewModel:
                         continue
                     write_burst_artifact(
                         path,
-                        store_from_arrays({
-                            "Interphoton Time": np.asarray(diag.centers, dtype=float),
-                            "Counts": np.asarray(diag.counts, dtype=float),
-                            "Model": np.asarray(diag.model, dtype=float),
-                            "In Tail": np.asarray(diag.tail_mask, dtype=bool),
-                        }),
+                        store_from_arrays(
+                            {
+                                "Interphoton Time": np.asarray(diag.centers, dtype=float),
+                                "Counts": np.asarray(diag.counts, dtype=float),
+                                "Model": np.asarray(diag.model, dtype=float),
+                                "In Tail": np.asarray(diag.tail_mask, dtype=bool),
+                            }
+                        ),
                         name=f"background histogram {name}",
                         artifact_kind="background_data",
                         operation_type="background_correction",
@@ -427,12 +434,12 @@ class BackgroundViewModel:
                         derived_from="background",
                         units={
                             "Interphoton Time": "milliseconds",
-                            "Counts": "counts", "Model": "counts",
+                            "Counts": "counts",
+                            "Model": "counts",
                         },
                     )
             except Exception:
-                logger.debug("could not write the container for %s", path,
-                             exc_info=True)
+                logger.debug("could not write the container for %s", path, exc_info=True)
 
     def has_results(self) -> bool:
         """Whether an estimate has produced results."""

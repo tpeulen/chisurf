@@ -38,7 +38,7 @@ def test_super_poissonian():
     """A bright species broadens the histogram beyond Poisson (var > mean)."""
     p = fida.fida_pch(60, [(3.0, 2.0)])
     mean, var = _moments(p)
-    assert var > mean * 1.05          # Mandel Q > 0
+    assert var > mean * 1.05  # Mandel Q > 0
 
 
 def test_mean_scales_with_brightness_and_number():
@@ -77,17 +77,17 @@ def test_fit_fida_recovers_brightness_and_number():
     """FPCHFidaFit-style fit recovers the (q, N) that generated the histogram."""
     q_true, n_true = 3.0, 2.0
     p = fida.fida_pch(60, [(q_true, n_true)])
-    counts = 500_000 * p                          # noise-free "measurement"
+    counts = 500_000 * p  # noise-free "measurement"
     res = fida.fit_fida(counts, species_guess=[(1.5, 1.0)])
     q_fit, n_fit = res["species"][0]
     assert abs(q_fit - q_true) < 0.15
     assert abs(n_fit - n_true) < 0.15
-    assert res["chi2r"] < 1e-3                     # exact model -> ~0 residuals
+    assert res["chi2r"] < 1e-3  # exact model -> ~0 residuals
 
 
 def test_residuals_zero_at_truth():
     p = fida.fida_pch(40, [(2.5, 2.0)])
-    counts = 10_000 * p                        # "data" == model exactly
+    counts = 10_000 * p  # "data" == model exactly
     r = fida.fida_residuals(p, counts, n_bins=10_000)
     # Residuals vanish where the model has appreciable probability (empty tail
     # bins carry a negligible ~1/sqrt(n) offset from the p-floor and are ignored).

@@ -24,7 +24,6 @@ Reference values for the dyes themselves come from
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 #: Boltzmann constant, J/K.
 KB = 1.380649e-23
@@ -108,8 +107,8 @@ def stokes_einstein_diffusion(
     float
         Diffusion coefficient in m²/s.
     """
-    return KB * float(temperature_k) / (
-        6.0 * math.pi * float(viscosity) * float(hydrodynamic_radius)
+    return (
+        KB * float(temperature_k) / (6.0 * math.pi * float(viscosity) * float(hydrodynamic_radius))
     )
 
 
@@ -134,15 +133,17 @@ def stokes_einstein_radius(
     float
         Hydrodynamic radius in metres.
     """
-    return KB * float(temperature_k) / (
-        6.0 * math.pi * float(viscosity) * float(diffusion_coefficient)
+    return (
+        KB
+        * float(temperature_k)
+        / (6.0 * math.pi * float(viscosity) * float(diffusion_coefficient))
     )
 
 
 def diffusion_at_temperature(
     d25: float,
     temperature_c: float = 25.0,
-    viscosity: Optional[float] = None,
+    viscosity: float | None = None,
 ) -> float:
     r"""Correct a tabulated 25 °C diffusion coefficient to another temperature.
 
@@ -247,9 +248,11 @@ def effective_volume(tau_diffusion: float, diffusion_coefficient: float, s: floa
     float
         Effective volume in m³.
     """
-    return (math.pi ** 1.5) * float(s) * (
-        4.0 * float(diffusion_coefficient) * float(tau_diffusion)
-    ) ** 1.5
+    return (
+        (math.pi**1.5)
+        * float(s)
+        * (4.0 * float(diffusion_coefficient) * float(tau_diffusion)) ** 1.5
+    )
 
 
 def diffusion_from_volume(tau_diffusion: float, volume: float, s: float) -> float:
@@ -271,7 +274,7 @@ def diffusion_from_volume(tau_diffusion: float, volume: float, s: float) -> floa
     float
         Diffusion coefficient in m²/s, or NaN for unusable input.
     """
-    denom = (math.pi ** 1.5) * float(s)
+    denom = (math.pi**1.5) * float(s)
     if denom <= 0 or float(tau_diffusion) <= 0:
         return float("nan")
     inner = float(volume) / denom
@@ -368,7 +371,7 @@ def combined_waist(waist_a: float, waist_b: float) -> float:
 
 
 def reference_diffusion(
-    dye: str, temperature_c: float = 25.0, viscosity: Optional[float] = None
+    dye: str, temperature_c: float = 25.0, viscosity: float | None = None
 ) -> float:
     """Return a reference dye's diffusion coefficient at a given temperature.
 

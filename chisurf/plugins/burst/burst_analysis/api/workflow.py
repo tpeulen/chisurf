@@ -36,16 +36,16 @@ import base64
 import socket
 import tempfile
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from socketserver import ThreadingMixIn
-from typing import Any, Sequence
+from typing import Any
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 import numpy as np
 
 from chisurf.core.datastore import (
-    column_names,
     numeric_column,
     row_count,
     take_where,
@@ -56,7 +56,7 @@ _FULL_MICROTIME = (0, 4095)
 
 # Burst-search method name -> (BurstFilterMode value, filter_active).
 _SEARCH_METHODS = {
-    "burst": ("burst", True),          # Seidel sliding-window search (honours min_photons)
+    "burst": ("burst", True),  # Seidel sliding-window search (honours min_photons)
     "count_rate": ("count_rate", True),  # count-rate threshold
     "cusum": ("cusum", True),
     "bocpd": ("bocpd", True),
@@ -142,9 +142,7 @@ class Setup:
             raise ValueError(f"duplicate detector names in {names}")
 
     @classmethod
-    def from_channels(
-        cls, *, file_type: str | None = None, **channels: Sequence[int]
-    ) -> "Setup":
+    def from_channels(cls, *, file_type: str | None = None, **channels: Sequence[int]) -> Setup:
         """Build a setup from ``name=routing_channels`` keyword arguments.
 
         Example::
@@ -176,9 +174,7 @@ class Setup:
         from chisurf.core.fluorescence.burst.photons import StreamDef
 
         return [
-            StreamDef(
-                d.name, list(d.routing_channels), [tuple(r) for r in d.microtime_ranges]
-            )
+            StreamDef(d.name, list(d.routing_channels), [tuple(r) for r in d.microtime_ranges])
             for d in self.detectors
         ]
 
@@ -243,7 +239,10 @@ class Bva:
         ax.scatter(
             self.table["Proximity Ratio Mean"],
             self.table["Proximity Ratio Std"],
-            s=8, alpha=0.25, color="#1f77b4", label="bursts",
+            s=8,
+            alpha=0.25,
+            color="#1f77b4",
+            label="bursts",
         )
         grid = np.linspace(0.01, 0.99, 100)
         static_mean, static_std = compute_static_bva_line(grid, self.photons_per_slice)
@@ -300,8 +299,9 @@ class TwoCde:
 
         vals = numeric_column(self.table, self.column)
         finite = np.isfinite(vals)
-        e_col = next((c for c in ("Proximity Ratio Mean", "E", "Efficiency")
-                      if c in self.table), None)
+        e_col = next(
+            (c for c in ("Proximity Ratio Mean", "E", "Efficiency") if c in self.table), None
+        )
         if ax is None:
             _, ax = plt.subplots(figsize=(6, 5))
         if e_col is not None:
@@ -339,13 +339,15 @@ class Recurrence:
     efficiency: np.ndarray
 
     def same_molecule_probability(
-        self, tau_min_s: float = 1e-3, tau_max_s: float = 1.0, n_bins: int = 50,
+        self,
+        tau_min_s: float = 1e-3,
+        tau_max_s: float = 1.0,
+        n_bins: int = 50,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Return ``(tau, P_same)`` — the same-molecule probability vs lag."""
         from chisurf.core.fluorescence.burst.recurrence import same_molecule_probability
 
-        tau, p_same, _ = same_molecule_probability(
-            self.times_s, tau_min_s, tau_max_s, n_bins)
+        tau, p_same, _ = same_molecule_probability(self.times_s, tau_min_s, tau_max_s, n_bins)
         return tau, p_same
 
     def recurrence_time(self, threshold: float = 0.5, **kwargs) -> float:
@@ -359,7 +361,9 @@ class Recurrence:
         return float(ok.max()) if ok.size else float("nan")
 
     def efficiencies(
-        self, e_range: tuple[float, float], dt_range_s: tuple[float, float],
+        self,
+        e_range: tuple[float, float],
+        dt_range_s: tuple[float, float],
     ) -> np.ndarray:
         """Efficiencies of bursts recurring after the ``e_range`` sub-population."""
         from chisurf.core.fluorescence.burst.recurrence import recurrence_efficiencies
@@ -367,18 +371,21 @@ class Recurrence:
         return recurrence_efficiencies(self.times_s, self.efficiency, e_range, dt_range_s)
 
     def histogram(
-        self, e_range: tuple[float, float], dt_range_s: tuple[float, float],
+        self,
+        e_range: tuple[float, float],
+        dt_range_s: tuple[float, float],
         bins: int = 50,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return ``(centers, recurrence_hist, overall_hist)`` (unit area)."""
         from chisurf.core.fluorescence.burst.recurrence import recurrence_histogram
 
-        return recurrence_histogram(
-            self.times_s, self.efficiency, e_range, dt_range_s, bins)
+        return recurrence_histogram(self.times_s, self.efficiency, e_range, dt_range_s, bins)
 
     def plot(
-        self, e_range: tuple[float, float] = (0.0, 0.4),
-        dt_range_s: tuple[float, float] = (1e-3, 0.1), ax: Any = None,
+        self,
+        e_range: tuple[float, float] = (0.0, 0.4),
+        dt_range_s: tuple[float, float] = (1e-3, 0.1),
+        ax: Any = None,
     ) -> Any:
         """Overlay the recurrence FRET histogram on the overall histogram."""
         import matplotlib.pyplot as plt
@@ -388,8 +395,14 @@ class Recurrence:
             _, ax = plt.subplots(figsize=(6, 5))
         w = centers[1] - centers[0] if centers.size > 1 else 0.02
         ax.bar(centers, overall, width=w, color="0.8", label="all bursts")
-        ax.bar(centers, rec, width=w, color="#1f77b4", alpha=0.7,
-               label=f"recurrence E∈[{e_range[0]:g}, {e_range[1]:g}]")
+        ax.bar(
+            centers,
+            rec,
+            width=w,
+            color="#1f77b4",
+            alpha=0.7,
+            label=f"recurrence E∈[{e_range[0]:g}, {e_range[1]:g}]",
+        )
         ax.axvspan(e_range[0], e_range[1], color="crimson", alpha=0.08)
         ax.set_xlabel("FRET efficiency (proximity ratio)")
         ax.set_ylabel("probability density")
@@ -459,8 +472,11 @@ class H2mm:
         bars = ax.bar(range(len(order)), self.fret[order], color="#2ca02c", width=0.6)
         for rect, pop in zip(bars, self.populations[order]):
             ax.text(
-                rect.get_x() + rect.get_width() / 2, rect.get_height() + 0.02,
-                f"{pop:.0%}", ha="center", va="bottom",
+                rect.get_x() + rect.get_width() / 2,
+                rect.get_height() + 0.02,
+                f"{pop:.0%}",
+                ha="center",
+                va="bottom",
             )
         ax.set_xticks(range(len(order)))
         ax.set_xticklabels([f"state {i}" for i in range(len(order))])
@@ -511,8 +527,15 @@ class H2mm:
         for r in range(len(order)):
             for c in range(len(order)):
                 if r != c:
-                    ax.text(c, r, f"{rates[r, c]:.0f}", ha="center", va="center",
-                            color="white", fontsize=8)
+                    ax.text(
+                        c,
+                        r,
+                        f"{rates[r, c]:.0f}",
+                        ha="center",
+                        va="center",
+                        color="white",
+                        fontsize=8,
+                    )
         ax.figure.colorbar(im, ax=ax, fraction=0.046)
         return ax
 
@@ -529,8 +552,9 @@ class H2mm:
             durations = np.asarray(self.analysis.dwell_times.get(i, [])) * base_ms
             durations = durations[durations > 0]
             if durations.size:
-                ax.hist(durations, bins=25, histtype="step", color=color,
-                        label=f"E={self.fret[i]:.2f}")
+                ax.hist(
+                    durations, bins=25, histtype="step", color=color, label=f"E={self.fret[i]:.2f}"
+                )
         ax.set_xlabel("dwell time (ms)")
         ax.set_ylabel("count")
         ax.set_title("Dwell-time distributions")
@@ -609,8 +633,7 @@ class IrfBackground:
             _, ax = plt.subplots(figsize=(6, 4))
         for d in self.per_detector.values():
             if d.irf.sum() > 0:
-                ax.plot(d.time_ns, d.irf, lw=1.5,
-                        label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
+                ax.plot(d.time_ns, d.irf, lw=1.5, label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
         ax.set_xlabel("Micro time (ns)")
         ax.set_ylabel("IRF (normalised)")
         ax.set_title("Non-burst IRF & background")
@@ -808,7 +831,9 @@ class Bursts:
             acceptor_micro_time_ranges=a.bva_ranges(),
             acceptor_excitation_channels=list(aex.routing_channels) if aex else None,
             acceptor_excitation_micro_time_ranges=aex.bva_ranges() if aex else None,
-            tau=tau, kernel=kernel, variant=variant,
+            tau=tau,
+            kernel=kernel,
+            variant=variant,
         )
         return TwoCde(table=table, variant=variant)
 
@@ -973,9 +998,7 @@ class BurstWorkflow:
     ground truth so results can be validated.
     """
 
-    def __init__(
-        self, client: Any, *, workdir: Path, _server: Any = None, _thread: Any = None
-    ):
+    def __init__(self, client: Any, *, workdir: Path, _server: Any = None, _thread: Any = None):
         self._client = client
         self._workdir = Path(workdir)
         self._workdir.mkdir(parents=True, exist_ok=True)
@@ -993,7 +1016,7 @@ class BurstWorkflow:
         user: str = "admin",
         password: str = "",
         workdir: str | Path | None = None,
-    ) -> "BurstWorkflow":
+    ) -> BurstWorkflow:
         """Connect to a running MMFDB server and log in.
 
         Parameters
@@ -1016,7 +1039,7 @@ class BurstWorkflow:
         return cls(client, workdir=work)
 
     @classmethod
-    def demo(cls, *, workdir: str | Path | None = None) -> "BurstWorkflow":
+    def demo(cls, *, workdir: str | Path | None = None) -> BurstWorkflow:
         """Start a private, throwaway MMFDB server and connect to it.
 
         Intended for tutorials and offline exploration. The server runs in a
@@ -1067,9 +1090,7 @@ class BurstWorkflow:
         str
             The MMFDB object handle (UUID) identifying the stored dataset.
         """
-        reference = self._client.put_object(
-            path=str(path), mime_type="application/octet-stream"
-        )
+        reference = self._client.put_object(path=str(path), mime_type="application/octet-stream")
         record = reference.get("object", reference)
         object_uuid = str(record["object_uuid"])
         self._filenames[object_uuid] = Path(path).name
@@ -1138,8 +1159,6 @@ class BurstWorkflow:
             Its ``handle`` feeds :meth:`select_bursts`; ``truth`` holds the
             simulated FRET/exchange; ``setup`` matches the simulated detectors.
         """
-        import tttrlib
-
         efficiencies = [float(e) for e in fret]
         n_states = len(efficiencies)
         if n_states < 2:
@@ -1153,9 +1172,7 @@ class BurstWorkflow:
         ]
         # Spontaneous exchange: equal off-diagonal rates, zero diagonal.
         k_nrad = [
-            0.0 if i == j else exchange_rate
-            for i in range(n_states)
-            for j in range(n_states)
+            0.0 if i == j else exchange_rate for i in range(n_states) for j in range(n_states)
         ]
         config = {
             "settings": {
@@ -1175,8 +1192,12 @@ class BurstWorkflow:
             "background": [background, background],
             "population": [0.18] * n_states,
             "excitation": {
-                "type": "gaussian3d", "w0": 0.3, "z0": 2.0,
-                "extent_xy": 2.0, "extent_z": 4.0, "spacing": 0.1,
+                "type": "gaussian3d",
+                "w0": 0.3,
+                "z0": 2.0,
+                "extent_xy": 2.0,
+                "extent_z": 4.0,
+                "spacing": 0.1,
             },
         }
         from chisurf.core.fluorescence.simulation import build_engine
@@ -1264,9 +1285,7 @@ class BurstWorkflow:
         setup = setup or Setup.from_channels(green=(0, 8), red=(1, 9))
         handles = [datasets] if isinstance(datasets, str) else list(datasets)
         if method not in _SEARCH_METHODS:
-            raise ValueError(
-                f"method {method!r} not in {sorted(_SEARCH_METHODS)}"
-            )
+            raise ValueError(f"method {method!r} not in {sorted(_SEARCH_METHODS)}")
         filter_mode, filter_active = _SEARCH_METHODS[method]
 
         local_paths = [self._fetch(handle) for handle in handles]
@@ -1299,9 +1318,7 @@ class BurstWorkflow:
         )
         result = analyze_request(request)
         bur_paths = [
-            roles["bur"]
-            for roles in result.output_paths_by_file.values()
-            if "bur" in roles
+            roles["bur"] for roles in result.output_paths_by_file.values() if "bur" in roles
         ]
 
         table = load_bur_dataframe(bur_paths)
@@ -1393,7 +1410,7 @@ class BurstWorkflow:
 
             reset_runtime_config()
 
-    def __enter__(self) -> "BurstWorkflow":
+    def __enter__(self) -> BurstWorkflow:
         """Enter a context manager that closes the workflow on exit."""
         return self
 

@@ -13,6 +13,7 @@ comes from a plain thread pool over row-chunks: no multiprocessing, hence no
 thread owns its own :class:`Fit2x` (and therefore its own fit state), so the
 fits are independent.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -78,9 +79,9 @@ def fit_matrix_threaded(
     fitters = [Fit2x(settings, model=model) for _ in range(len(chunks))]
 
     def work(i):
-        params[offsets[i]:offsets[i + 1]] = fitters[i].fit_many(
-            data[chunks[i]], x0, fixed
-        ).stacked
+        params[offsets[i] : offsets[i + 1]] = (
+            fitters[i].fit_many(data[chunks[i]], x0, fixed).stacked
+        )
 
     with ThreadPoolExecutor(len(chunks)) as pool:
         list(pool.map(work, range(len(chunks))))

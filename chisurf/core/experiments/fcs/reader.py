@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pathlib
 
+import chisurf.core.data
 import chisurf.core.fio.ascii
+import chisurf.core.fio.fluorescence
 import chisurf.core.fio.fluorescence.fcs
 import chisurf.core.fluorescence.fcs
-import chisurf.core.data
-import chisurf.core.fio.fluorescence
 from chisurf.core.experiments.core.reader import ExperimentReader
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fcs.view.json"
@@ -51,13 +51,13 @@ class FCS(ExperimentReader):
     use_header: bool = False
 
     def __init__(
-            self,
-            name: str = 'FCS',
-            use_header: bool = False,
-            experiment_reader='kristine',
-            skiprows: int = 0,
-            *args,
-            **kwargs
+        self,
+        name: str = "FCS",
+        use_header: bool = False,
+        experiment_reader="kristine",
+        skiprows: int = 0,
+        *args,
+        **kwargs,
     ):
         """Initialize an FCS reader.
 
@@ -91,10 +91,7 @@ class FCS(ExperimentReader):
         self.error_y_on: bool = True
 
     def read(
-            self,
-            filename: str = None,
-            verbose: bool = None,
-            **kwargs
+        self, filename: str = None, verbose: bool = None, **kwargs
     ) -> chisurf.core.data.ExperimentDataCurveGroup:
         """Read an FCS data file.
 
@@ -119,7 +116,7 @@ class FCS(ExperimentReader):
         reader_name = kwargs.pop("reader_name", None) or self.experiment_reader
         reader_name = str(reader_name).lower()
         csv_kwargs = {}
-        if reader_name == 'csv':
+        if reader_name == "csv":
             csv_kwargs = dict(
                 col_x=self.col_x,
                 col_y=self.col_y,
@@ -134,20 +131,16 @@ class FCS(ExperimentReader):
             skiprows=self.skiprows,
             use_header=self.use_header,
             reader_name=reader_name,
-            experiment=getattr(self, 'experiment', None),
-            weight_mode=getattr(self, 'weight_mode', None),
-            weight_kwargs=getattr(self, 'weight_kwargs', None) or {},
+            experiment=getattr(self, "experiment", None),
+            weight_mode=getattr(self, "weight_mode", None),
+            weight_kwargs=getattr(self, "weight_kwargs", None) or {},
             **csv_kwargs,
         )
         r.current_dataset.data_reader = self
         r.data_reader = self
         return r
 
-    def autofitrange(
-            self,
-            data: chisurf.core.base.Data,
-            **kwargs
-    ) -> typing.Tuple[int, int]:
+    def autofitrange(self, data: chisurf.core.base.Data, **kwargs) -> tuple[int, int]:
         """Return the full data range as the default fit interval.
 
         Parameters
@@ -185,4 +178,5 @@ class FCS(ExperimentReader):
     def view_spec(self):
         """Return the declarative editor spec for FCS reader settings."""
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)

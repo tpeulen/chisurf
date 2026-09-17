@@ -44,7 +44,9 @@ def _rows(burst_folder: str, first_file: str) -> list:
     ]
 
 
-def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(tmp_path: Path, qapp, qtbot, monkeypatch):
+def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(
+    tmp_path: Path, qapp, qtbot, monkeypatch
+):
     from chisurf.plugins.burst.burst_fcs_correlator.wizard import BurstWiseFCSWizard
 
     w = BurstWiseFCSWizard()
@@ -81,7 +83,9 @@ def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(tmp_path: Path, qap
         assert body[skipped, mean_col] == 0.0
 
 
-def test_without_a_burst_count_it_falls_back_to_the_bursts_computed(tmp_path: Path, qapp, qtbot, monkeypatch):
+def test_without_a_burst_count_it_falls_back_to_the_bursts_computed(
+    tmp_path: Path, qapp, qtbot, monkeypatch
+):
     """Defensive fallback when ``burst_counts`` lacks the (folder, stem) key.
 
     Still writes a file rather than crashing, but the grid is only as wide as

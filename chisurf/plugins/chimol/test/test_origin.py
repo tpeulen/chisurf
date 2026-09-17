@@ -18,12 +18,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.camera.view_state import pack_view_state, unpack_view_state
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -39,8 +42,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.resize(600, 400)
@@ -253,8 +256,13 @@ def test_a_pymol_tuple_with_an_offset_is_not_read_as_a_legacy_one():
     silently, and as a completely different camera.
     """
     packed = pack_view_state(
-        np.eye(3), 100.0, [1.0, 2.0, 3.0], 1.0, 500.0,
-        fov=20.0, shift=[-66.0, 18.0, 0.0],
+        np.eye(3),
+        100.0,
+        [1.0, 2.0, 3.0],
+        1.0,
+        500.0,
+        fov=20.0,
+        shift=[-66.0, 18.0, 0.0],
     )
     state = unpack_view_state(packed)
     assert np.isclose(state.distance, 100.0)
@@ -269,13 +277,17 @@ def test_a_zero_offset_still_packs_as_pymol_does():
 
 def test_the_offset_round_trips_through_the_tuple():
     for shift in ([0.0, 0.0, 0.0], [5.0, -3.0, 0.0], [-66.075, 17.942, 0.0]):
-        packed = pack_view_state(
-            np.eye(3), 42.0, [1.0, 2.0, 3.0], 1.0, 500.0, shift=shift
-        )
+        packed = pack_view_state(np.eye(3), 42.0, [1.0, 2.0, 3.0], 1.0, 500.0, shift=shift)
         state = unpack_view_state(packed)
         again = pack_view_state(
-            state.rotation, state.distance, state.target, state.near, state.far,
-            state.fov, state.orthoscopic, shift=state.shift,
+            state.rotation,
+            state.distance,
+            state.target,
+            state.near,
+            state.far,
+            state.fov,
+            state.orthoscopic,
+            shift=state.shift,
         )
         assert np.allclose(packed, again, atol=1e-9)
 
@@ -303,7 +315,7 @@ def test_the_one_ambiguous_corner_is_documented_and_resolved_toward_pymol():
     """
     ambiguous = [*np.eye(3).reshape(-1), 50.0, 20.0, -45.0, 0.0, 0.0, 0.0, 1.0, 500.0, 20.0]
     state = unpack_view_state(ambiguous)
-    assert np.isclose(state.distance, 45.0)          # read as PyMOL
+    assert np.isclose(state.distance, 45.0)  # read as PyMOL
     assert np.allclose(state.rotation, np.eye(3))
 
     # The same view written with a positive azimuth still loads as legacy.

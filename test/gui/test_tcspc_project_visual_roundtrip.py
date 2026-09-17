@@ -17,7 +17,7 @@ from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.fluorescence.decay import synthetic_decay
 from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
-from chisurf.gui.widgets.fitting import FittingControllerWidget, FitSubWindow
+from chisurf.gui.widgets.fitting import FitSubWindow, FittingControllerWidget
 from chisurf.macros.core_fit import load_project, save_project
 
 
@@ -32,11 +32,15 @@ def _simulated_fit() -> FitGroup:
     counts_a = np.random.default_rng(7).poisson(expected).astype(float)
     counts_b = np.random.default_rng(8).poisson(expected * 0.72).astype(float)
     data_a = DataCurve(
-        x=time, y=counts_a, ey=np.sqrt(np.maximum(counts_a, 1.0)),
+        x=time,
+        y=counts_a,
+        ey=np.sqrt(np.maximum(counts_a, 1.0)),
         name="simulated-tcspc-a",
     )
     data_b = DataCurve(
-        x=time, y=counts_b, ey=np.sqrt(np.maximum(counts_b, 1.0)),
+        x=time,
+        y=counts_b,
+        ey=np.sqrt(np.maximum(counts_b, 1.0)),
         name="simulated-tcspc-b",
     )
     group = FitGroup(
@@ -49,8 +53,12 @@ def _simulated_fit() -> FitGroup:
         model.set_dataset("response", DataCurve(x=time, y=irf * 1e4, name="simulated-irf"))
         model.structure = "lifetime.components.2"
         values = {p.canonical_id: p for p in model.parameters_all}
-        for canonical, value in (("lifetime.tau.0", 1.1), ("lifetime.tau.1", 3.1),
-                                 ("lifetime.amplitude.0", 0.4), ("lifetime.amplitude.1", 0.6)):
+        for canonical, value in (
+            ("lifetime.tau.0", 1.1),
+            ("lifetime.tau.1", 3.1),
+            ("lifetime.amplitude.0", 0.4),
+            ("lifetime.amplitude.1", 0.6),
+        ):
             values[canonical].value = value
     group.update()
     return group
@@ -158,10 +166,9 @@ def test_simulated_tcspc_fit_window_survives_project_roundtrip(qapp, qtbot, tmp_
         cs_gui.fit_windows = old_windows
 
 
-def test_main_window_recreates_tcspc_fit_window_from_project(
-    qapp, qtbot, tmp_path, monkeypatch
-):
+def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_path, monkeypatch):
     from qtpy import QtCore
+
     from chisurf.gui.main import Main
 
     settings_path = tmp_path / "MainWindow.ini"
@@ -202,8 +209,10 @@ def test_main_window_recreates_tcspc_fit_window_from_project(
         _capture(main, "tcspc-main-before.png", tmp_path)
 
         project_path = save_project(str(tmp_path), "tcspc-main-roundtrip")
-        from chisurf.core.project import ProjectArchive
         import json
+
+        from chisurf.core.project import ProjectArchive
+
         saved_archive = ProjectArchive.open(project_path)
         saved_payload = json.loads(saved_archive.read_text("project.json"))
         saved_archive.close()
@@ -236,9 +245,7 @@ def test_main_window_recreates_tcspc_fit_window_from_project(
         assert len(cs.fits[0].grouped_fits) == expected_member_count
         assert cs.fits[0].name == expected_group_name
         assert tuple(cs.fits[0].fit_range) == expected_range
-        for restored_member, expected_member in zip(
-            cs.fits[0].grouped_fits, expected_members
-        ):
+        for restored_member, expected_member in zip(cs.fits[0].grouped_fits, expected_members):
             assert restored_member.data.name == expected_member["name"]
             np.testing.assert_allclose(restored_member.data.y, expected_member["data"])
             restored_member.update()

@@ -7,8 +7,6 @@ the plugin imports them under.
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 
 def count_frames(stat_path) -> int:
     """Completed frames recorded in a PMI ``stat.*.out``.
@@ -29,7 +27,7 @@ def count_frames(stat_path) -> int:
     return int(bff.count_frames(str(stat_path)))
 
 
-def read_score_series(stat_path) -> Tuple[List[float], List[float]]:
+def read_score_series(stat_path) -> tuple[list[float], list[float]]:
     """``(frames, scores)`` from a PMI stat file or a ``frame,score`` CSV.
 
     Parameters

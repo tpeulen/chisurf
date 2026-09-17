@@ -13,18 +13,21 @@ atom the dye never met contributes nothing, and the frames are independent.
 
 from __future__ import annotations
 
+import IMP.bff
 import numpy as np
 import pytest
-
-import IMP.bff
 
 
 def _quenching_rate_per_frame(collided, k_quench):
     """The kernel on a (frames, atoms) flag array: bff takes it row-major, flat."""
     flags = np.asarray(collided)
-    return np.asarray(IMP.bff.quenching_rate_per_frame(
-        flags.ravel().astype(int).tolist(), int(flags.shape[0]),
-        np.asarray(k_quench, dtype=float).tolist()))
+    return np.asarray(
+        IMP.bff.quenching_rate_per_frame(
+            flags.ravel().astype(int).tolist(),
+            int(flags.shape[0]),
+            np.asarray(k_quench, dtype=float).tolist(),
+        )
+    )
 
 
 def _reference(collided, k_quench):
@@ -49,9 +52,7 @@ def test_each_collided_atom_contributes_its_own_rate():
     # HIS at 1.5, and a frame that met one of each must report 5.0.
     k_quench = np.array([3.5, 1.5, 1.7])
     collided = np.array([[1, 1, 0], [0, 0, 1], [1, 1, 1], [0, 0, 0]], dtype=np.uint8)
-    np.testing.assert_allclose(
-        _quenching_rate_per_frame(collided, k_quench), [5.0, 1.7, 6.7, 0.0]
-    )
+    np.testing.assert_allclose(_quenching_rate_per_frame(collided, k_quench), [5.0, 1.7, 6.7, 0.0])
 
 
 def test_a_frame_with_no_collision_is_zero_not_missing():

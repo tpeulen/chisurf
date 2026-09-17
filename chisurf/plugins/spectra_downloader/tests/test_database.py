@@ -9,6 +9,7 @@ def db():
     # Use an in-memory database for testing
     return FluorophoreDatabase(":memory:")
 
+
 def test_connection_and_version(db):
     assert db.conn is not None
     # The dev fluorophore database is now backed by the canonical MMFDB schema.
@@ -17,6 +18,7 @@ def test_connection_and_version(db):
     # Check if WAL mode is enabled (journal_mode might be 'memory' for :memory: but we check pragma anyway)
     # Actually for :memory: it might stay as 'memory' or 'delete'.
     pass
+
 
 def test_probe_types(db):
     tid = db.add_probe_type("organic", "Organic Dye")
@@ -34,6 +36,7 @@ def test_context_manager_keeps_singleton_connected(db):
 
     assert db.get_probe_by_id(pid)["chromophore_name"] == "Reusable Dye"
 
+
 def test_probe_crud_and_validation(db):
     tid = db.add_probe_type("organic", "Organic Dye")
 
@@ -49,12 +52,13 @@ def test_probe_crud_and_validation(db):
     with pytest.raises(ValueError, match="Invalid probe_origin"):
         db.update_probe(pid, probe_origin="alien")
 
+
 def test_optical_property_normalization(db):
     tid = db.add_probe_type("organic", "Organic Dye")
     pid = db.add_probe("Normal Dye", tid)
 
     # Add property with legacy key
-    db.add_optical_property(pid, "ηfl", "0.92") # ηfl should map to qy
+    db.add_optical_property(pid, "ηfl", "0.92")  # ηfl should map to qy
 
     # Trigger normalization (usually happens in migration, but we can call it manually)
     db._normalize_optical_property_keys()
@@ -63,6 +67,7 @@ def test_optical_property_normalization(db):
     assert "qy" in props
     assert props["qy"] == "0.92"
     assert "ηfl" not in props
+
 
 def test_data_validation(db):
     tid = db.add_probe_type("organic", "Organic Dye")
@@ -83,6 +88,7 @@ def test_data_validation(db):
     db.add_optical_property(pid, "abs_max", "10")
     errors = db.validate_probe(pid)
     assert any("abs_max 10.0 out of range [200, 1000] nm" in e for e in errors)
+
 
 def test_sample_management_crud(db):
     # Entities
@@ -111,6 +117,7 @@ def test_sample_management_crud(db):
     assert len(db.get_entities()) == 0
     assert len(db.get_sequence("PROT1")) == 0
     assert len(db.get_poly_probe_positions(entity_id="PROT1")) == 0
+
 
 def test_search_and_rich_lookup(db):
     tid = db.add_probe_type("organic", "Organic Dye")

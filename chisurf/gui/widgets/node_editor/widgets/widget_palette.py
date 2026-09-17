@@ -17,7 +17,9 @@ class WidgetPalette(QtWidgets.QTreeWidget):
 
     nodeTypeActivated = QtCore.Signal(str)
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None, palette_path: str | None = None) -> None:
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, palette_path: str | None = None
+    ) -> None:
         super().__init__(parent)
 
         self.setHeaderHidden(True)

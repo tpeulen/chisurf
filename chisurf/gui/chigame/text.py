@@ -54,8 +54,9 @@ class FontAtlas:
         Atlas pixels per font pixel -- headroom, not quality.
     """
 
-    def __init__(self, device, pixel_size: int = 48, family: str | None = None,
-                 scale: int = pixelfont.SCALE) -> None:
+    def __init__(
+        self, device, pixel_size: int = 48, family: str | None = None, scale: int = pixelfont.SCALE
+    ) -> None:
         self._device = device
         self._metrics = pixelfont.metrics()
         self.cell_h = pixelfont.HEIGHT * scale
@@ -200,6 +201,7 @@ class FontAtlas:
         """
         return self.aspect
 
+
 def draw_text(
     batch,
     atlas: FontAtlas,
@@ -253,8 +255,11 @@ def draw_text(
     # tone. It is why that text stays readable over any background, and it is
     # most of why it reads as of the period rather than merely low-resolution.
     offset = height * (pixelfont.SHADOW / pixelfont.HEIGHT)
-    passes = ((offset, offset, (0.0, 0.0, 0.0, color[3] * 0.55)), (0.0, 0.0, color)) \
-        if shadow else ((0.0, 0.0, color),)
+    passes = (
+        ((offset, offset, (0.0, 0.0, 0.0, color[3] * 0.55)), (0.0, 0.0, color))
+        if shadow
+        else ((0.0, 0.0, color),)
+    )
 
     for dx, dy, tone in passes:
         pen = x

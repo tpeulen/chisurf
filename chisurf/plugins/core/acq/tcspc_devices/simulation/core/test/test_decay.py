@@ -10,16 +10,21 @@ from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import (
     tttrlib_available,
 )
 
-pytestmark = pytest.mark.skipif(
-    not tttrlib_available(), reason="tttrlib SimEngine not available"
-)
+pytestmark = pytest.mark.skipif(not tttrlib_available(), reason="tttrlib SimEngine not available")
 
 
 def _run(lifetimes, irf_fwhm=None):
     params = {
-        "N_species": 1, "N_channels": 1, "q": [80.0], "D": [3.0], "M": [30.0],
-        "N_tac_channels": 512, "tac_dt": 0.032, "laser_period": 16.0,
-        "N_ph_max": 120000, "decay_lifetimes": [lifetimes],
+        "N_species": 1,
+        "N_channels": 1,
+        "q": [80.0],
+        "D": [3.0],
+        "M": [30.0],
+        "N_tac_channels": 512,
+        "tac_dt": 0.032,
+        "laser_period": 16.0,
+        "N_ph_max": 120000,
+        "decay_lifetimes": [lifetimes],
     }
     if irf_fwhm:
         params["irf_fwhm_ns"] = irf_fwhm
@@ -46,9 +51,17 @@ def test_irf_gives_a_prompt_offset():
 
 def test_no_lifetimes_leaves_engine_runnable():
     # Without decay_lifetimes the engine still builds and runs (no decay set).
-    engine = build_engine({
-        "N_species": 1, "N_channels": 1, "q": [80.0], "D": [3.0], "M": [10.0],
-        "N_tac_channels": 256, "tac_dt": 0.032, "N_ph_max": 5000,
-    })
+    engine = build_engine(
+        {
+            "N_species": 1,
+            "N_channels": 1,
+            "q": [80.0],
+            "D": [3.0],
+            "M": [10.0],
+            "N_tac_channels": 256,
+            "tac_dt": 0.032,
+            "N_ph_max": 5000,
+        }
+    )
     engine.run()
     assert engine.n_photons() >= 0

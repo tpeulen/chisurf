@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from chisurf.core.fluorescence.burst import recurrence as rec
 
@@ -35,7 +34,7 @@ def test_same_molecule_probability_detects_recurrence():
     tau, p_same, g = rec.same_molecule_probability(t, 1e-3, 1.0, n_bins=40)
     short = tau < 0.05
     long = tau > 0.3
-    assert np.nanmean(p_same[short]) > 0.3       # same molecule likely at short lag
+    assert np.nanmean(p_same[short]) > 0.3  # same molecule likely at short lag
     assert np.nanmean(p_same[short]) > np.nanmean(p_same[long])  # decays with lag
 
 
@@ -45,14 +44,21 @@ def test_recurrence_histogram_recovers_interconverting_state():
     times, eff = [], []
     t = 0.0
     for _ in range(500):
-        t += rng.exponential(0.5)          # initial low-E burst
-        times.append(t); eff.append(rng.normal(0.2, 0.03))
-        t += rng.uniform(0.005, 0.03)      # recurs quickly as high-E
-        times.append(t); eff.append(rng.normal(0.8, 0.03))
-    times = np.asarray(times); eff = np.asarray(eff)
+        t += rng.exponential(0.5)  # initial low-E burst
+        times.append(t)
+        eff.append(rng.normal(0.2, 0.03))
+        t += rng.uniform(0.005, 0.03)  # recurs quickly as high-E
+        times.append(t)
+        eff.append(rng.normal(0.8, 0.03))
+    times = np.asarray(times)
+    eff = np.asarray(eff)
 
     centers, rec_h, all_h = rec.recurrence_histogram(
-        times, eff, e_range=(0.0, 0.4), dt_range_s=(1e-3, 0.05), bins=40,
+        times,
+        eff,
+        e_range=(0.0, 0.4),
+        dt_range_s=(1e-3, 0.05),
+        bins=40,
     )
     # The recurrence histogram (initial low-E) is dominated by the high-E state.
     assert centers[np.argmax(rec_h)] > 0.6
@@ -78,13 +84,17 @@ def test_bursts_recurrence_workflow_handle():
     n = 400
     t_ms = np.sort(rng.uniform(0.0, 60_000.0, size=n))  # ms
     pr = rng.uniform(0.0, 1.0, size=n)
-    table = pd.DataFrame({
-        "First File": ["f0"] * n,
-        "Mean Macro Time (ms)": t_ms,
-        "Proximity Ratio": pr,
-    })
+    table = pd.DataFrame(
+        {
+            "First File": ["f0"] * n,
+            "Mean Macro Time (ms)": t_ms,
+            "Proximity Ratio": pr,
+        }
+    )
     bursts = Bursts(
-        names=["f0"], dataset_uuids=[], table=table,
+        names=["f0"],
+        dataset_uuids=[],
+        table=table,
         setup=Setup.from_channels(green=(0, 8), red=(1, 9)),
     )
     r = bursts.recurrence()

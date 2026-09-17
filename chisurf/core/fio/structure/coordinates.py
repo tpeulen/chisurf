@@ -30,16 +30,15 @@ from __future__ import annotations
 
 import logging
 import os
-import typing
 import urllib.request
+
 import numpy as np
 
-from . import elements
-
-import chisurf.core.fio as io
-
 import chisurf as cs
+import chisurf.core.fio as io
 import chisurf.core.support.common
+
+from . import elements
 
 logger = logging.getLogger(__name__)
 
@@ -88,15 +87,14 @@ def _bff():
     return bff
 
 
-
 def write_pdb(
-        filename: str,
-        atoms=None,
-        append_model: bool = False,
-        append_coordinates: bool = False,
-        verbose: bool = False
+    filename: str,
+    atoms=None,
+    append_model: bool = False,
+    append_coordinates: bool = False,
+    verbose: bool = False,
 ):
-    """ Writes a structured numpy array containing the PDB-info to a PDB-file
+    """Writes a structured numpy array containing the PDB-info to a PDB-file
 
     If append_model and append_coordinates are False the file is overwritten. Otherwise the atomic-coordinates
     are appended to the existing file.
@@ -110,7 +108,7 @@ def write_pdb(
         If True the coordinates are appended to the file
 
     """
-    mode = 'a+' if append_model or append_coordinates else 'w'
+    mode = "a+" if append_model or append_coordinates else "w"
     if verbose:
         print("Writing to file: ", filename)
 
@@ -122,9 +120,7 @@ def write_pdb(
     # distinction in silence; mmCIF is the format that can.
     if atoms is not None and len(atoms):
         try:
-            long_chains = sorted(
-                {c for c in np.asarray(atoms['chain']).astype(str) if len(c) > 1}
-            )
+            long_chains = sorted({c for c in np.asarray(atoms["chain"]).astype(str) if len(c) > 1})
         except Exception:
             long_chains = []
         if long_chains:
@@ -133,32 +129,42 @@ def write_pdb(
                 "PDB file has and are truncated to their first character (%s%s). "
                 "Chains that differ only after the first character become "
                 "indistinguishable -- write mmCIF to keep them.",
-                filename, len(long_chains), ", ".join(long_chains[:5]),
+                filename,
+                len(long_chains),
+                ", ".join(long_chains[:5]),
                 ", ..." if len(long_chains) > 5 else "",
             )
 
-    with io.zipped.open_maybe_zipped(
-            filename=filename,
-            mode=mode
-    ) as fp:
+    with io.zipped.open_maybe_zipped(filename=filename, mode=mode) as fp:
         # http://cupnet.net/pdb_format/
         # `%1.1s` for the chain, not `%1s`: the precision is what truncates, and
         # without it a wider chain id silently shifts every following column.
         al = [
-            "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" %
-            (
-                "ATOM ", at['atom_id'], at['atom_name'], " ", at['res_name'],
-                at['chain'], at['res_id'], " ",
-                at['xyz'][0], at['xyz'][1], at['xyz'][2], 0.0, at['bfactor'],
-                at['element'], "  "
+            "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n"
+            % (
+                "ATOM ",
+                at["atom_id"],
+                at["atom_name"],
+                " ",
+                at["res_name"],
+                at["chain"],
+                at["res_id"],
+                " ",
+                at["xyz"][0],
+                at["xyz"][1],
+                at["xyz"][2],
+                0.0,
+                at["bfactor"],
+                at["element"],
+                "  ",
             )
             for at in atoms
         ]
         if append_model:
-            fp.write('MODEL')
+            fp.write("MODEL")
         fp.write("".join(al))
         if append_model:
-            fp.write('ENDMDL')
+            fp.write("ENDMDL")
 
 
 #: The atom row every reader produces. **chimol owns it** (`chimol.io.atoms.ATOM_DTYPE`)
@@ -177,8 +183,8 @@ def _format_of(name: str) -> str:
     dt = atom_dtype.fields[name][0]
     if dt.subdtype is not None:
         base, shape = dt.subdtype
-        return f"{shape[0]}{base.str[1:]}"          # ('<f8', (3,)) -> '3f8'
-    return dt.str.lstrip("<>|=")                    # '<U4' -> 'U4', '<i4' -> 'i4'
+        return f"{shape[0]}{base.str[1:]}"  # ('<f8', (3,)) -> '3f8'
+    return dt.str.lstrip("<>|=")  # '<U4' -> 'U4', '<i4' -> 'i4'
 
 
 formats = tuple(_format_of(name) for name in keys)
@@ -186,30 +192,66 @@ keys_formats = list(zip(keys, formats))
 
 
 _STANDARD_RESIDUES = {
-    "ALA", "ARG", "ASN", "ASP", "CYS",
-    "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO",
-    "SER", "THR", "TRP", "TYR", "VAL",
-    "SEC", "PYL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
+    "SEC",
+    "PYL",
     # Nucleic acid residues (DNA/RNA)
-    "DA", "DC", "DG", "DT",  # Deoxyribonucleotides
-    "A", "C", "G", "T", "U",  # Ribonucleotides
+    "DA",
+    "DC",
+    "DG",
+    "DT",  # Deoxyribonucleotides
+    "A",
+    "C",
+    "G",
+    "T",
+    "U",  # Ribonucleotides
     # Modified nucleic acid residues
-    "2DA", "2DC", "2DG", "2DT",  # Modified deoxyribonucleotides
-    "1MA", "1MG", "1MC", "1MT",  # Other modified nucleotides
-    "M2G", "OMG", "OMC", "H2U",  # Common RNA modifications
-    "PSU", "5MC", "7MG", "I",  # More modifications
+    "2DA",
+    "2DC",
+    "2DG",
+    "2DT",  # Modified deoxyribonucleotides
+    "1MA",
+    "1MG",
+    "1MC",
+    "1MT",  # Other modified nucleotides
+    "M2G",
+    "OMG",
+    "OMC",
+    "H2U",  # Common RNA modifications
+    "PSU",
+    "5MC",
+    "7MG",
+    "I",  # More modifications
 }
 
 
 def find_atom_index(
-        atoms: np.array,
-        chain_identifier: str,
-        residue_seq_number: int,
-        atom_name: str,
-        residue_name: str,
-        verbose: bool = False,
-        ignore_multiple_selections: bool = True
+    atoms: np.array,
+    chain_identifier: str,
+    residue_seq_number: int,
+    atom_name: str,
+    residue_name: str,
+    verbose: bool = False,
+    ignore_multiple_selections: bool = True,
 ):
     """
     Find the index of an atom by a set of identifiers
@@ -230,54 +272,49 @@ def find_atom_index(
         )
     if verbose:
         print("find_atom_index:")
-        print("-- Chain ID: %s" % chain_identifier)
-        print("-- Residue seq. number: %s" % residue_seq_number)
-        print("-- Residue name: %s" % residue_name)
-        print("-- Atom name: %s" % atom_name)
-    if chain_identifier is None or chain_identifier == '':
+        print(f"-- Chain ID: {chain_identifier}")
+        print(f"-- Residue seq. number: {residue_seq_number}")
+        print(f"-- Residue name: {residue_name}")
+        print(f"-- Atom name: {atom_name}")
+    if chain_identifier is None or chain_identifier == "":
         attachment_atom_index = np.where(
-            (atoms['res_id'] == residue_seq_number) &
-            (atoms['atom_name'] == atom_name)
+            (atoms["res_id"] == residue_seq_number) & (atoms["atom_name"] == atom_name)
         )[0]
         if verbose:
             print(
-                "-- WARNING no chain specified. Possible attachment atoms: % s"
-                % attachment_atom_index
+                f"-- WARNING no chain specified. Possible attachment atoms: {attachment_atom_index: }"
             )
     else:
         attachment_atom_index = np.where(
-            (atoms['res_id'] == residue_seq_number) &
-            (atoms['atom_name'] == atom_name) &
-            (atoms['chain'] == chain_identifier)
+            (atoms["res_id"] == residue_seq_number)
+            & (atoms["atom_name"] == atom_name)
+            & (atoms["chain"] == chain_identifier)
         )[0]
     if len(attachment_atom_index) != 1 and not ignore_multiple_selections:
         print("Search atom index:")
-        print("-- Chain ID: %s" % chain_identifier)
-        print("-- Residue seq. number: %s" % residue_seq_number)
-        print("-- Residue name: %s" % residue_name)
-        print("-- Atom name: %s" % atom_name)
+        print(f"-- Chain ID: {chain_identifier}")
+        print(f"-- Residue seq. number: {residue_seq_number}")
+        print(f"-- Residue name: {residue_name}")
+        print(f"-- Atom name: {atom_name}")
         raise ValueError("Invalid selection of attachment atom")
     else:
         attachment_atom_index = attachment_atom_index[0]
     if verbose:
-        print("Atom index: %s" % attachment_atom_index)
+        print(f"Atom index: {attachment_atom_index}")
     return attachment_atom_index
 
 
 get_atom_index = find_atom_index
 
 
-
-def fetch_pdb_string(
-        pdb_id: str
-) -> str:
+def fetch_pdb_string(pdb_id: str) -> str:
     """Downloads from the RCSB a PDB file with the specified PDB-ID
 
     :param pdb_id: The PDB-ID that is downloaded
     :param get_binary: If get_binary is True a binary string is returned.
     :return:
     """
-    url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdb_id[:4]
+    url = f"http://www.rcsb.org/pdb/files/{pdb_id[:4]}.pdb"
     binary = urllib.request.urlopen(url).read()
     return binary.decode("utf-8")
 
@@ -301,9 +338,7 @@ def fetch_pdb(pdb_id: str, **kwargs):
     return parse_string_pdb(st, **kwargs)
 
 
-def assign_element_to_atom_name(
-        atom_name: str
-):
+def assign_element_to_atom_name(atom_name: str):
     """Tries to guess element from atom name if not recognised.
 
     :param atom_name: string
@@ -321,17 +356,16 @@ def assign_element_to_atom_name(
         # isdigit() check on last two characters to avoid mis-assignment of
         # hydrogens atoms (GLN HE21 for example)
         # Hs may have digit in [0]
-        putative_element = atom_name[1] if atom_name[0].isdigit() else \
-            atom_name[0]
+        putative_element = atom_name[1] if atom_name[0].isdigit() else atom_name[0]
         if putative_element.capitalize() in chisurf.core.support.common.atom_weights.keys():
             element = putative_element
     return element
 
 
 def parse_string_pdb(
-        string: str,
-        assign_charge: bool = False,
-        verbose: bool = cs.core.settings.cs_settings['verbose']
+    string: str,
+    assign_charge: bool = False,
+    verbose: bool = cs.core.settings.cs_settings["verbose"],
 ):
     """
 
@@ -341,41 +375,38 @@ def parse_string_pdb(
     :return:
     """
     rows = string.splitlines()
-    atoms = np.zeros(
-        len(rows),
-        dtype={
-            'names': keys,
-            'formats': formats
-        }
-    )
+    atoms = np.zeros(len(rows), dtype={"names": keys, "formats": formats})
     ni = 0
     for line in rows:
         if verbose:
             print(line)
-        if line.startswith('ATOM'):
+        if line.startswith("ATOM"):
             atom_name = line[12:16].strip().upper()
-            atoms['i'][ni] = ni
-            atoms['chain'][ni] = line[21]
-            atoms['res_name'][ni] = line[17:20].strip().upper()
-            atoms['atom_name'][ni] = atom_name
-            atoms['res_id'][ni] = line[22:26]
-            atoms['atom_id'][ni] = line[6:11]
-            atoms['xyz'][ni][0] = line[30:38]
-            atoms['xyz'][ni][1] = line[38:46]
-            atoms['xyz'][ni][2] = line[46:54]
-            atoms['bfactor'][ni] = line[60:65]
-            atoms['element'][ni] = assign_element_to_atom_name(atom_name)
+            atoms["i"][ni] = ni
+            atoms["chain"][ni] = line[21]
+            atoms["res_name"][ni] = line[17:20].strip().upper()
+            atoms["atom_name"][ni] = atom_name
+            atoms["res_id"][ni] = line[22:26]
+            atoms["atom_id"][ni] = line[6:11]
+            atoms["xyz"][ni][0] = line[30:38]
+            atoms["xyz"][ni][1] = line[38:46]
+            atoms["xyz"][ni][2] = line[46:54]
+            atoms["bfactor"][ni] = line[60:65]
+            atoms["element"][ni] = assign_element_to_atom_name(atom_name)
             try:
                 if assign_charge:
-                    if atoms['res_name'][ni] in chisurf.core.support.common.CHARGE_DICT:
-                        if atoms['atom_name'][ni] == chisurf.core.support.common.TITR_ATOM_COARSE[atoms['res_name'][ni]]:
-                            atoms['charge'][ni] = chisurf.core.support.common.CHARGE_DICT[
-                                atoms['res_name'][ni]
+                    if atoms["res_name"][ni] in chisurf.core.support.common.CHARGE_DICT:
+                        if (
+                            atoms["atom_name"][ni]
+                            == chisurf.core.support.common.TITR_ATOM_COARSE[atoms["res_name"][ni]]
+                        ):
+                            atoms["charge"][ni] = chisurf.core.support.common.CHARGE_DICT[
+                                atoms["res_name"][ni]
                             ]
-                atoms['mass'][ni] = chisurf.core.support.common.atom_weights[atoms['element'][ni]]
-                atoms['radius'][ni] = chisurf.core.support.common.VDW_DICT[atoms['element'][ni]]
+                atoms["mass"][ni] = chisurf.core.support.common.atom_weights[atoms["element"][ni]]
+                atoms["radius"][ni] = chisurf.core.support.common.VDW_DICT[atoms["element"][ni]]
             except KeyError:
-                print("Cloud not assign parameters to: %s" % line)
+                print(f"Cloud not assign parameters to: {line}")
             ni += 1
     atoms = atoms[:ni]
     if verbose:
@@ -383,10 +414,7 @@ def parse_string_pdb(
     return atoms
 
 
-def parse_string_pqr(
-        string: str,
-        verbose: bool = cs.core.settings.cs_settings['verbose']
-):
+def parse_string_pqr(string: str, verbose: bool = cs.core.settings.cs_settings["verbose"]):
     """Parse a PQR format string into a structured atom array.
 
     Parameters
@@ -402,34 +430,33 @@ def parse_string_pqr(
         Structured array with atom information including charges and radii.
     """
     rows = string.splitlines()
-    atoms = np.zeros(len(rows), dtype={'names': keys, 'formats': formats})
+    atoms = np.zeros(len(rows), dtype={"names": keys, "formats": formats})
     ni = 0
     for line in rows:
-        if line.startswith('ATOM'):
+        if line.startswith("ATOM"):
             atom_name = line[12:16].strip().upper()
-            atoms['i'][ni] = ni
-            atoms['chain'][ni] = line[21]
-            atoms['atom_name'][ni] = atom_name.upper()
-            atoms['res_name'][ni] = line[17:20].strip().upper()
-            atoms['res_id'][ni] = line[21:27]
-            atoms['atom_id'][ni] = line[6:11]
-            atoms['xyz'][ni][0] = float(line[30:38].strip())
-            atoms['xyz'][ni][1] = float(line[38:46].strip())
-            atoms['xyz'][ni][2] = float(line[46:54].strip())
-            atoms['radius'][ni] = float(line[63:70].strip())
-            atoms['element'][ni] = assign_element_to_atom_name(atom_name)
-            atoms['charge'][ni] = float(line[55:62].strip())
-            atoms['element'][ni] = assign_element_to_atom_name(atom_name)
+            atoms["i"][ni] = ni
+            atoms["chain"][ni] = line[21]
+            atoms["atom_name"][ni] = atom_name.upper()
+            atoms["res_name"][ni] = line[17:20].strip().upper()
+            atoms["res_id"][ni] = line[21:27]
+            atoms["atom_id"][ni] = line[6:11]
+            atoms["xyz"][ni][0] = float(line[30:38].strip())
+            atoms["xyz"][ni][1] = float(line[38:46].strip())
+            atoms["xyz"][ni][2] = float(line[46:54].strip())
+            atoms["radius"][ni] = float(line[63:70].strip())
+            atoms["element"][ni] = assign_element_to_atom_name(atom_name)
+            atoms["charge"][ni] = float(line[55:62].strip())
+            atoms["element"][ni] = assign_element_to_atom_name(atom_name)
             try:
-                atoms['mass'][ni] = chisurf.core.support.common.atom_weights[atoms['element'][ni]]
+                atoms["mass"][ni] = chisurf.core.support.common.atom_weights[atoms["element"][ni]]
             except KeyError:
-                print("Cloud not assign parameters to: %s" % line)
+                print(f"Cloud not assign parameters to: {line}")
             ni += 1
     atoms = atoms[:ni]
     if verbose:
         print("Number of atoms: %s" % (ni + 1))
     return atoms
-
 
 
 def _table_to_atoms(table) -> np.ndarray:
@@ -470,7 +497,6 @@ def _table_to_atoms(table) -> np.ndarray:
     # replaced; the field stays zero rather than carrying a guess.
     atoms["charge"] = 0.0
     return atoms
-
 
 
 #: PDB column slices, from the format specification. Fixed columns rather than
@@ -539,16 +565,17 @@ def parse_pdb_native(
         raw = raw.encode("utf-8", errors="replace")
 
     lines = [
-        line for line in raw.split(b"\n")
+        line
+        for line in raw.split(b"\n")
         if line.startswith(b"ATOM  ") or line.startswith(b"HETATM")
     ]
     if not lines:
         return np.zeros(0, dtype=atom_dtype)
 
     width = max(len(line) for line in lines)
-    block = np.frombuffer(
-        b"".join(line.ljust(width) for line in lines), dtype="S1"
-    ).reshape(len(lines), width)
+    block = np.frombuffer(b"".join(line.ljust(width) for line in lines), dtype="S1").reshape(
+        len(lines), width
+    )
 
     def column(name: str) -> np.ndarray:
         start, stop = _PDB_COLUMNS[name]
@@ -586,11 +613,13 @@ def parse_pdb_native(
     # `chain " "` matched nothing.
     atoms["chain"] = column("chain")[index].astype("U4")
     atoms["atom_name"] = np.char.strip(column("atom_name")[index]).astype("U5")
-    atoms["xyz"] = np.column_stack([
-        column("x")[index].astype(float),
-        column("y")[index].astype(float),
-        column("z")[index].astype(float),
-    ])
+    atoms["xyz"] = np.column_stack(
+        [
+            column("x")[index].astype(float),
+            column("y")[index].astype(float),
+            column("z")[index].astype(float),
+        ]
+    )
 
     def integers(name: str) -> np.ndarray:
         text = np.char.strip(column(name)[index])
@@ -712,7 +741,7 @@ def read_coordinates(
         )
 
     if not os.path.isfile(filename):
-        raise FileNotFoundError("The file %s could not be found." % filename)
+        raise FileNotFoundError(f"The file {filename} could not be found.")
 
     lower = str(filename).lower()
     if not lower.endswith((".pdb", ".ent", ".cif", ".mmcif")):
@@ -752,15 +781,14 @@ def read_coordinates(
     )
 
 
-
 def read(
-        filename: str,
-        assign_charge: bool = False,
-        verbose: bool = None,
-        keep_water: bool = False,
-        only_standard_residues: bool = True,
-        radii: str = "charmm",
-        **kwargs
+    filename: str,
+    assign_charge: bool = False,
+    verbose: bool = None,
+    keep_water: bool = False,
+    only_standard_residues: bool = True,
+    radii: str = "charmm",
+    **kwargs,
 ) -> np.ndarray:
     """Read atomic coordinates from a PDB/PQR/mmCIF file.
 
@@ -796,7 +824,7 @@ def read(
            ...
     """
     if verbose is None:
-        verbose = cs.core.settings.cs_settings['verbose']
+        verbose = cs.core.settings.cs_settings["verbose"]
     if os.path.isfile(filename):
         if verbose:
             path, baseName = os.path.split(filename)
@@ -812,8 +840,8 @@ def read(
         # an HDF5 trajectory died on its own magic byte (`0x89` at position 0)
         # with a UnicodeDecodeError, from a function that had no intention of
         # looking at the bytes.
-        if '.PQR' in [ext1, ext2]:
-            with io.zipped.open_maybe_zipped(filename=filename, mode='r') as f:
+        if ".PQR" in [ext1, ext2]:
+            with io.zipped.open_maybe_zipped(filename=filename, mode="r") as f:
                 return parse_string_pqr(f.read(), **kwargs)
         return read_coordinates(
             filename=filename,
@@ -821,4 +849,4 @@ def read(
             only_standard_residues=only_standard_residues,
         )
     else:
-        return np.zeros(0, dtype={'names': keys, 'formats': formats})
+        return np.zeros(0, dtype={"names": keys, "formats": formats})

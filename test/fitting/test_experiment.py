@@ -1,185 +1,98 @@
-import utils
-import os
-import unittest
-import numpy as np
-import tempfile
 import copy
-
+import os
 import pathlib
+import tempfile
+import unittest
+
+import numpy as np
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 import chisurf.core.experiments
-import chisurf.core.models
 import chisurf.core.fio
+import chisurf.core.models
 
 
 class Tests(unittest.TestCase):
-
     def test_experiment(self):
-        experiment = chisurf.core.experiments.core.Experiment(
-            name="AAA"
-        )
-        self.assertEqual(
-            experiment.name,
-            "AAA"
-        )
+        experiment = chisurf.core.experiments.core.Experiment(name="AAA")
+        self.assertEqual(experiment.name, "AAA")
 
         experiment_json = experiment.to_json()
         e2 = chisurf.core.experiments.core.Experiment(name=None)
-        e2.from_json(
-            experiment_json
-        )
+        e2.from_json(experiment_json)
         ref_dict = experiment.to_dict()
         c_dict = e2.to_dict()
         for k in ref_dict:
-            self.assertEqual(
-                c_dict[k],
-                ref_dict[k]
-            )
+            self.assertEqual(c_dict[k], ref_dict[k])
 
-        experiment.add_model_class(
-            chisurf.core.models.Model
-        )
-        self.assertEqual(
-            chisurf.core.models.Model in experiment.model_classes,
-            True
-        )
-        experiment.add_model_classes(
-            [
-                chisurf.core.models.Model
-            ]
-        )
+        experiment.add_model_class(chisurf.core.models.Model)
+        self.assertEqual(chisurf.core.models.Model in experiment.model_classes, True)
+        experiment.add_model_classes([chisurf.core.models.Model])
 
         # Models are unique
-        experiment.add_model_class(
-            chisurf.core.models.Model
-        )
-        self.assertEqual(
-            len(experiment.model_classes),
-            1
-        )
-        self.assertListEqual(
-            experiment.model_names,
-            ['Model name not available']
-        )
+        experiment.add_model_class(chisurf.core.models.Model)
+        self.assertEqual(len(experiment.model_classes), 1)
+        self.assertListEqual(experiment.model_names, ["Model name not available"])
 
         experiment_reader = chisurf.core.experiments.core.ExperimentReader(
-            name="ExperimentReaderName_A",
-            experiment=experiment
+            name="ExperimentReaderName_A", experiment=experiment
         )
-        experiment.add_reader(
-            experiment_reader
-        )
+        experiment.add_reader(experiment_reader)
 
-        experiment.add_readers(
-            [
-                (experiment_reader, None)
-            ]
-        )
+        experiment.add_readers([(experiment_reader, None)])
 
-        self.assertListEqual(
-            experiment.get_reader_names(),
-            ["ExperimentReaderName_A"]
-        )
+        self.assertListEqual(experiment.get_reader_names(), ["ExperimentReaderName_A"])
 
     def test_experimental_data(self):
-        experiment = chisurf.core.experiments.core.Experiment(
-            name="Experiment Type"
-        )
-        data_reader = chisurf.core.experiments.core.ExperimentReader(
-            experiment=experiment
-        )
-        experiment.add_reader(
-            data_reader
-        )
+        experiment = chisurf.core.experiments.core.Experiment(name="Experiment Type")
+        data_reader = chisurf.core.experiments.core.ExperimentReader(experiment=experiment)
+        experiment.add_reader(data_reader)
         a = np.arange(100)
         experimental_data = chisurf.core.data.ExperimentalData(
-            experiment=experiment,
-            data_reader=data_reader,
-            embed_data=True,
-            data=bytes(a)
+            experiment=experiment, data_reader=data_reader, embed_data=True, data=bytes(a)
         )
-        self.assertEqual(
-            experimental_data.filename,
-            'None'
-        )
-        self.assertEqual(
-            experimental_data.experiment,
-            experiment
-        )
-        self.assertEqual(
-            experimental_data.data_reader,
-            data_reader
-        )
-        self.assertListEqual(
-            experiment.reader_names,
-            [data_reader.name]
-        )
-        #file = tempfile.NamedTemporaryFile(
+        self.assertEqual(experimental_data.filename, "None")
+        self.assertEqual(experimental_data.experiment, experiment)
+        self.assertEqual(experimental_data.data_reader, data_reader)
+        self.assertListEqual(experiment.reader_names, [data_reader.name])
+        # file = tempfile.NamedTemporaryFile(
         #    suffix='.npy'
-        #)
-        #filename = file.name
-        _, filename = tempfile.mkstemp(
-            suffix='.npy'
-        )
-        np.save(
-            file=filename,
-            arr=a
-        )
+        # )
+        # filename = file.name
+        _, filename = tempfile.mkstemp(suffix=".npy")
+        np.save(file=filename, arr=a)
         experimental_data.filename = filename
-        self.assertEqual(
-            experimental_data.filename,
-            filename
-        )
+        self.assertEqual(experimental_data.filename, filename)
         # TODO: test to_dict and to_json
 
     def test_TCSPCReader(self):
         filename = "./test/data/tcspc/ibh_sample/Decay_577D.txt"
-        ex = chisurf.core.experiments.core.Experiment(
-            'TCSPC'
-        )
+        ex = chisurf.core.experiments.core.Experiment("TCSPC")
         dt = 0.0141
         g1 = chisurf.core.experiments.tcspc.TCSPCReader(
-            experiment=ex,
-            skiprows=8,
-            rebin=(1, 8),
-            dt=dt
+            experiment=ex, skiprows=8, rebin=(1, 8), dt=dt
         )
-        g2 = chisurf.core.experiments.tcspc.TCSPCReader(
-            experiment=ex
-        )
-        g2.from_dict(
-            g1.to_dict()
-        )
-        self.assertDictEqual(
-            g1.to_dict(),
-            g2.to_dict()
-        )
+        g2 = chisurf.core.experiments.tcspc.TCSPCReader(experiment=ex)
+        g2.from_dict(g1.to_dict())
+        self.assertDictEqual(g1.to_dict(), g2.to_dict())
 
         # Test binning
         d1 = g1.read(
             filename=filename,
         )
-        self.assertEqual(
-            len(d1.x),
-            512
-        )
+        self.assertEqual(len(d1.x), 512)
 
         g1.rebin = (1, 1)
-        d2 = g1.read(
-            filename=filename
-        )
-        self.assertEqual(
-            len(d2.x),
-            4096
-        )
+        d2 = g1.read(filename=filename)
+        self.assertEqual(len(d2.x), 4096)
 
     def test_TCSPCReader_auto_routine(self):
         """Test automatic detection of reading routine based on file extension."""
         # Create a TCSPCReader with default settings (reading_routine='auto')
-        ex = chisurf.core.experiments.core.Experiment('TCSPC')
+        ex = chisurf.core.experiments.core.Experiment("TCSPC")
         reader = chisurf.core.experiments.tcspc.TCSPCReader(experiment=ex)
 
         # Test guessing reading routine for different file extensions
@@ -206,42 +119,23 @@ class Tests(unittest.TestCase):
         # Note: This will likely fail to read the file since it's not actually a THD file,
         # but we're just testing that the explicit routine is used
         try:
-            reader.read(filename=filename_txt, reading_routine='thd')
-        except Exception as e:
+            reader.read(filename=filename_txt, reading_routine="thd")
+        except Exception:
             # We expect an error since we're trying to read a non-THD file with the THD routine
             pass
 
     def test_FCS_Reader(self):
         import chisurf.core.experiments
-        filename = './test/data/fcs/kristine/Kristine_with_error.cor'
-        root, ext = os.path.splitext(
-            os.path.basename(
-                filename
-            )
-        )
-        ex = chisurf.core.experiments.core.Experiment(
-            'FCS'
-        )
-        g1 = chisurf.core.experiments.fcs.FCS(
-            experiment=ex,
-            experiment_reader='kristine'
-        )
-        fcs_curve = g1.read(
-            filename=filename
-        )
-        self.assertEqual(
-            root,
-            fcs_curve.name
-        )
+
+        filename = "./test/data/fcs/kristine/Kristine_with_error.cor"
+        root, ext = os.path.splitext(os.path.basename(filename))
+        ex = chisurf.core.experiments.core.Experiment("FCS")
+        g1 = chisurf.core.experiments.fcs.FCS(experiment=ex, experiment_reader="kristine")
+        fcs_curve = g1.read(filename=filename)
+        self.assertEqual(root, fcs_curve.name)
         # there is one FCS curve in the kristine file
-        self.assertEqual(
-            len(fcs_curve),
-            1
-        )
-        self.assertEqual(
-            len(fcs_curve.x),
-            207
-        )
+        self.assertEqual(len(fcs_curve), 1)
+        self.assertEqual(len(fcs_curve.x), 207)
 
         # The curve carries the file it was read from; the reference used to
         # say "None", recorded back when the reader dropped that provenance.
@@ -249,17 +143,14 @@ class Tests(unittest.TestCase):
 filename: {os.path.normpath(filename)}
 length  : 207
 x	y	error-x	error-y
-1.360e-05   	4.216e+00   	1.000e+00   	1.174e-01   	
-2.719e-05   	3.877e+00   	1.000e+00   	1.370e-01   	
-4.079e-05   	3.670e+00   	1.000e+00   	1.329e-01   	
+1.360e-05   	4.216e+00   	1.000e+00   	1.174e-01
+2.719e-05   	3.877e+00   	1.000e+00   	1.370e-01
+4.079e-05   	3.670e+00   	1.000e+00   	1.329e-01
 ....
-2.737e+03   	1.007e+00   	1.000e+00   	9.853e-03   	
-2.965e+03   	1.005e+00   	1.000e+00   	6.491e-03   	
+2.737e+03   	1.007e+00   	1.000e+00   	9.853e-03
+2.965e+03   	1.005e+00   	1.000e+00   	6.491e-03
 """
-        self.assertEqual(
-            ref_str,
-            fcs_curve[0].__str__()
-        )
+        self.assertEqual(ref_str, fcs_curve[0].__str__())
 
     def test_DataCurve(self):
         x = np.linspace(0, np.pi * 2.0)
@@ -267,65 +158,29 @@ x	y	error-x	error-y
         ex = np.zeros_like(x)
         ey = np.ones_like(y)
         data = np.vstack([x, y, ex, ey])
-        csv_io = chisurf.core.fio.ascii.Csv(
-            use_header=False
-        )
-        _, filename = tempfile.mkstemp(
-            suffix='.csv'
-        )
-        csv_io.save(
-            data=data,
-            filename=filename
-        )
+        csv_io = chisurf.core.fio.ascii.Csv(use_header=False)
+        _, filename = tempfile.mkstemp(suffix=".csv")
+        csv_io.save(data=data, filename=filename)
         d = chisurf.core.data.DataCurve(*data)
         d_copy = copy.copy(d)
-        self.assertEqual(
-            np.allclose(
-                d_copy.x,
-                d.x
-            ),
-            True
-        )
-        self.assertEqual(
-            np.allclose(
-                d_copy.y,
-                d.y
-            ),
-            True
-        )
-        self.assertEqual(
-            d.name,
-            d_copy.name
-        )
-        self.assertEqual(
-            d.verbose,
-            d_copy.verbose
-        )
+        self.assertEqual(np.allclose(d_copy.x, d.x), True)
+        self.assertEqual(np.allclose(d_copy.y, d.y), True)
+        self.assertEqual(d.name, d_copy.name)
+        self.assertEqual(d.verbose, d_copy.verbose)
 
-        _, filename = tempfile.mkstemp(
-            suffix='.csv'
-        )
+        _, filename = tempfile.mkstemp(suffix=".csv")
 
-        d.save(
-            filename=filename,
-            file_type='csv'
-        )
-        self.assertEqual(
-            d.filename,
-            filename
-        )
+        d.save(filename=filename, file_type="csv")
+        self.assertEqual(d.filename, filename)
 
         d2 = chisurf.core.data.DataCurve()
-        d2.load(
-            filename=filename,
-            skiprows=0
-        )
+        d2.load(filename=filename, skiprows=0)
         self.assertEqual(
             np.allclose(
                 np.hstack(d[:]),
                 np.hstack(d2[:]),
             ),
-            True
+            True,
         )
 
         d3 = chisurf.core.data.DataCurve()
@@ -335,7 +190,7 @@ x	y	error-x	error-y
                 np.hstack(d[:]),
                 np.hstack(d3[:]),
             ),
-            True
+            True,
         )
 
         d4 = chisurf.core.data.DataCurve()
@@ -345,7 +200,7 @@ x	y	error-x	error-y
                 np.hstack(d[:]),
                 np.hstack(d4[:]),
             ),
-            True
+            True,
         )
 
         # d5 = experiments.data.DataCurve(

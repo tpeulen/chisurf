@@ -116,9 +116,6 @@ class LanguageSelector(QtWidgets.QWidget):
 
     def _on_activated(self, _index: int) -> None:
         """Persist the picked language and switch the UI live."""
-        from chisurf.core.settings import settings_utils
-        from chisurf.gui import i18n as gui_i18n
-
         applied = _apply_language_choice(self.current_code())
         self.languageChanged.emit(applied)
 
@@ -197,9 +194,7 @@ class LanguageFlagSwitcher(QtWidgets.QToolButton):
         self.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
         self.setIcon(gui_i18n.language_flag_icon(current, 18))
         self.setIconSize(QtCore.QSize(24, 18))
-        self.setToolTip(
-            i18n.tr("Language") + f": {gui_i18n.language_display_name(current)}"
-        )
+        self.setToolTip(i18n.tr("Language") + f": {gui_i18n.language_display_name(current)}")
 
     def _select(self, code: str) -> None:
         """Apply the chosen language and refresh the button glyph/menu state."""

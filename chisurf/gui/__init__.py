@@ -1,28 +1,27 @@
 from __future__ import annotations
-import chisurf as cs
 
+import ast
+import atexit
 import collections
-import sys
-import pathlib
+import importlib
+import json
 import os
+import pathlib
+import pkgutil
+import re
+import sys
 import threading
 import time
-import atexit
-import ast
-import json
-import re
-
 from functools import partial
-import pkgutil
-import importlib
-import chisurf.gui.gui_tweaks  # GUI tweaks (QT_OPENGL, etc.)
 
-from qtpy import QtWidgets, QtGui, QtCore, uic
+from qtpy import QtCore, QtGui, QtWidgets, uic
 
 import chisurf  # Ensure chisurf is available module-wide
+import chisurf as cs
 import chisurf.core.settings
-from chisurf import logging
 import chisurf.gui.decorators
+import chisurf.gui.gui_tweaks  # GUI tweaks (QT_OPENGL, etc.)
+from chisurf import logging
 from chisurf.gui import dialogs
 
 
@@ -50,14 +49,15 @@ def _setup_action_dispatcher_scheduler():
     """Set up the action dispatcher to schedule debounced actions on the GUI thread."""
     try:
         import chisurf as cs
-        dispatcher = getattr(cs, 'action_dispatcher', None)
+
+        dispatcher = getattr(cs, "action_dispatcher", None)
         if dispatcher is None:
             return
-        
+
         # Only set the scheduler once
         if dispatcher._scheduler is not None:
             return
-        
+
         def qt_scheduler(func, **kwargs):
             """Schedule *func* on the GUI thread, from whichever thread asks.
 
@@ -79,7 +79,7 @@ def _setup_action_dispatcher_scheduler():
                     func(**kwargs)
                 except Exception:
                     pass
-        
+
         dispatcher.set_scheduler(qt_scheduler)
     except Exception:
         pass
@@ -119,7 +119,7 @@ def initialize_gui_executors():
                 _gui_executor.runRequested.connect(_gui_executor._run, QtCore.Qt.QueuedConnection)
         except Exception:
             pass
-    
+
     # Set up action dispatcher scheduler to run debounced actions on GUI thread
     _setup_action_dispatcher_scheduler()
 
@@ -130,7 +130,7 @@ def initialize_gui_executors():
     # raising a window does not claim to be a presenter.
     _install_presenter()
 
-    
+
 def run_on_gui_thread(func, *args, **kwargs):
     """Ensure *func* executes on the Qt GUI thread.
 
@@ -170,7 +170,7 @@ def run_on_gui_thread(func, *args, **kwargs):
     # From a worker thread: use queued signal/slot via _GuiExecutor
     if _gui_executor is None:
         initialize_gui_executors()
-    
+
     if _gui_executor is None:
         # Fallback to direct execution if setup fails
         try:
@@ -187,6 +187,7 @@ def run_on_gui_thread(func, *args, **kwargs):
             return func(*args, **kwargs)
         except Exception:
             return None
+
 
 class _LogRelay(QtCore.QObject):
     """GUI-thread relay for :class:`QTextEditLogger`.
@@ -220,11 +221,11 @@ class QTextEditLogger(logging.Handler):
     _MAX_PENDING = 20000
 
     def __init__(
-            self,
-            widget,
-            mode='set',
-            log_string = "%(asctime)s - %(levelname)s - %(message)s",
-            level=logging.INFO
+        self,
+        widget,
+        mode="set",
+        log_string="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
     ):
         super().__init__()
         self.widget = widget
@@ -301,27 +302,29 @@ class QTextEditLogger(logging.Handler):
         if self.mode == "set":
             # Only the newest message is visible in a status bar / label.
             msg = batch[-1][0]
-            if hasattr(self.widget, 'setText') and callable(getattr(self.widget, 'setText')):
+            if hasattr(self.widget, "setText") and callable(getattr(self.widget, "setText")):
                 self.widget.setText(msg)
-            elif hasattr(self.widget, 'showMessage') and callable(getattr(self.widget, 'showMessage')):
+            elif hasattr(self.widget, "showMessage") and callable(
+                getattr(self.widget, "showMessage")
+            ):
                 # For QStatusBar (including TruncatingStatusBar), use showMessage
                 try:
                     self.widget.showMessage(msg)
                 except Exception:
                     pass
         elif self.mode == "append":
-            add_entries = getattr(self.widget, 'add_entries', None)
+            add_entries = getattr(self.widget, "add_entries", None)
             if callable(add_entries):
                 # Log table: one relayout/scroll for the whole batch.
                 add_entries(batch)
-            elif hasattr(self.widget, 'addItem'):
+            elif hasattr(self.widget, "addItem"):
                 # QListWidget/QTableWidget without batch support
                 for msg, record in batch:
                     try:
                         self.widget.addItem(msg, record)
                     except TypeError:
                         self.widget.addItem(msg)
-                if hasattr(self.widget, 'scrollToBottom'):
+                if hasattr(self.widget, "scrollToBottom"):
                     self.widget.scrollToBottom()
             else:
                 # QPlainTextEdit
@@ -343,7 +346,7 @@ class QTextEditLogger(logging.Handler):
 
     def _run_filter_update(self):
         owner = self._filter_owner
-        if owner is not None and hasattr(owner, 'update_log_filter'):
+        if owner is not None and hasattr(owner, "update_log_filter"):
             try:
                 owner.update_log_filter()
             except Exception:  # pragma: no cover - filtering is best-effort
@@ -356,7 +359,7 @@ class QTextEditLogger(logging.Handler):
             return self._filter_owner
         parent = self.widget.parent()
         while parent is not None:
-            if hasattr(parent, 'update_log_filter'):
+            if hasattr(parent, "update_log_filter"):
                 self._filter_owner = parent
                 return parent
             parent = parent.parent()
@@ -369,14 +372,11 @@ def setup_logging_widgets(window):
     ##############################
     # Use the status bar itself for messages so its truncation logic applies
     log_handler = QTextEditLogger(
-        window.status,
-        'set',
-        log_string = "%(message)s",
-        level = logging.INFO
+        window.status, "set", log_string="%(message)s", level=logging.INFO
     )
     window.status_log_handler = log_handler
 
-    log_level = cs.core.settings.cs_settings.get('log_level', logging.INFO)
+    log_level = cs.core.settings.cs_settings.get("log_level", logging.INFO)
 
     # Attach logging to the root logger
     logging.getLogger().addHandler(log_handler)
@@ -386,7 +386,7 @@ def setup_logging_widgets(window):
 
     # Create logger for text log field
     ##################################
-    log_handler = QTextEditLogger(window.plainTextEditLog, 'append', level = logging.DEBUG)
+    log_handler = QTextEditLogger(window.plainTextEditLog, "append", level=logging.DEBUG)
     window.log_history_handler = log_handler
 
     # Attach logging to the root logger
@@ -451,15 +451,19 @@ class SplashScreen(QtWidgets.QSplashScreen):
         self.message_color = QtCore.Qt.lightGray  # Light gray text color
 
         # Get version information
-        from chisurf.core.info import __version__, __license__
+        from chisurf.core.info import __license__, __version__
+
         self.version_text = f"Version: {__version__}"
 
         # Initialize copyright, license, and contributors information
         import datetime
+
         current_year = datetime.datetime.now().year
         self.copyright_text = f"(c) 2014-{current_year} ChiSurf Team"
         self.license_text = f"Licensed under {__license__}"
-        self.contributors_text = "Developers & Contributors: \nThomas-Otavio Peulen, Katherina Hemmen, Jakub Kubiak"
+        self.contributors_text = (
+            "Developers & Contributors: \nThomas-Otavio Peulen, Katherina Hemmen, Jakub Kubiak"
+        )
 
     def update_progress(self, value):
         """Update progress bar value."""
@@ -469,9 +473,7 @@ class SplashScreen(QtWidgets.QSplashScreen):
         """Update the message displayed on the splash screen."""
         self.current_message = message
         self.showMessage(
-            self.current_message,
-            QtCore.Qt.AlignTop | QtCore.Qt.AlignHCenter,
-            self.message_color
+            self.current_message, QtCore.Qt.AlignTop | QtCore.Qt.AlignHCenter, self.message_color
         )
         self.repaint()  # Ensure the message is updated immediately
 
@@ -494,7 +496,9 @@ class SplashScreen(QtWidgets.QSplashScreen):
         font = painter.font()
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(stage_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter, self.current_message)
+        painter.drawText(
+            stage_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter, self.current_message
+        )
 
         # Draw the logging info below the general stage info (size 8 font)
         log_font = painter.font()
@@ -503,7 +507,9 @@ class SplashScreen(QtWidgets.QSplashScreen):
         painter.setFont(log_font)
         painter.setPen(QtCore.Qt.gray)
         log_rect = QtCore.QRect(10, progress_bar_rect.bottom() + 20, self.width() - 20, 15)
-        painter.drawText(log_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter, self.current_log_message)
+        painter.drawText(
+            log_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter, self.current_log_message
+        )
 
         # Set font for additional text boxes
         other_font = painter.font()
@@ -547,26 +553,23 @@ class SplashLogHandler(logging.Handler):
             pass
 
 
-def setup_gui(
-        app: QtWidgets.QApplication,
-        window: cs.gui.main.Main = None,
-        stage: str = None
-):
+def setup_gui(app: QtWidgets.QApplication, window: cs.gui.main.Main = None, stage: str = None):
     def gui_imports():
         # Phase 1: Only what's needed for the main window scaffold
-        import chisurf.core.settings
         import chisurf.core.base
-        import chisurf.core.support.common
         import chisurf.core.curve
-        import chisurf.core.support.decorators
-        import chisurf.core.parameter
         import chisurf.core.experiments
         import chisurf.core.fio
-        import chisurf.gui.decorators
-        import chisurf.gui.widgets.ipython
-        import chisurf.gui.widgets
-        import chisurf.macros
         import chisurf.core.math
+        import chisurf.core.parameter
+        import chisurf.core.settings
+        import chisurf.core.support.common
+        import chisurf.core.support.decorators
+        import chisurf.gui.decorators
+        import chisurf.gui.widgets
+        import chisurf.gui.widgets.ipython
+        import chisurf.macros
+
         if cs.core.settings.exceptions_on_gui:
             import chisurf.gui.exception_hook
 
@@ -575,37 +578,38 @@ def setup_gui(
         import chisurf.core.fitting
         import chisurf.core.fluorescence
         import chisurf.core.models
-        import chisurf.gui.plots
         import chisurf.core.structure
-        
+        import chisurf.gui.plots
 
     def setup_ipython():
         import chisurf.gui.widgets
-        cs.console = cs.gui.widgets.ipython.QIPythonWidget()
+
+        cs.console = cs.gui.widgets.ipython.QIPythonWidget()  # noqa: F823 -- ruff false-positive: a sibling function's local `import chisurf.x` submodule import confuses its cross-scope binding tracking for the module-level `cs` alias
         cs.console.history_widget = None
 
     def startup_interface():
         from chisurf.gui.main import Main
+
         window = Main()
-        cs.cs = window
+        cs.cs = window  # noqa: F823 -- same ruff false-positive as setup_ipython above
         import chisurf.core.base
+
         cs.core.base.set_safe_import_notify(
-            lambda title, text: dialogs.information(
-                window, title, text
-            )
+            lambda title, text: dialogs.information(window, title, text)
         )
         return window
 
     def setup_style(app):
         import pathlib
-        gui_settings = cs.core.settings.cs_settings.get('gui') or {}
-        style_name = gui_settings.get('style_sheet')
+
+        gui_settings = cs.core.settings.cs_settings.get("gui") or {}
+        style_name = gui_settings.get("style_sheet")
 
         base_path = pathlib.Path(cs.__file__).parent
         package_styles_path = base_path / "gui" / "styles"
 
         try:
-            user_styles_path = cs.core.settings.get_path('settings') / 'styles'
+            user_styles_path = cs.core.settings.get_path("settings") / "styles"
         except Exception:
             user_styles_path = None
 
@@ -650,7 +654,6 @@ def setup_gui(
             files are concatenated in sorted order so the user can split
             shared styles into multiple logical files if desired.
             """
-
             parts = []
 
             def _append_from_dir(d):
@@ -733,7 +736,7 @@ def setup_gui(
                         f"{style_path}\n\n"
                         "The application will continue with the default theme.\n"
                         "Please open the settings and select an existing theme."
-                    )
+                    ),
                 )
         except Exception as e:
             logging.warning(f"Failed to load GUI style sheet '{style_path}': {e}")
@@ -769,7 +772,7 @@ def setup_gui(
         # Check if the file exists in the built-in directory
         if not init_py.exists():
             # Try to find it in the user plugins directory
-            user_plugin_root = pathlib.Path.home() / '.cs' / 'plugins'
+            user_plugin_root = pathlib.Path.home() / ".cs" / "plugins"
             user_init_py = user_plugin_root / module_name / "__init__.py"
             if user_init_py.exists():
                 init_py = user_init_py
@@ -791,10 +794,12 @@ def setup_gui(
             for node in ast.walk(tree):
                 if isinstance(node, ast.Assign):
                     for target in node.targets:
-                        if isinstance(target, ast.Name) and target.id == 'name':
+                        if isinstance(target, ast.Name) and target.id == "name":
                             if isinstance(node.value, ast.Str):
                                 name = node.value.s
-                            elif isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                            elif isinstance(node.value, ast.Constant) and isinstance(
+                                node.value.value, str
+                            ):
                                 name = node.value.value
 
             return name, description
@@ -804,24 +809,24 @@ def setup_gui(
 
     def parse_hierarchical_plugin_name(plugin_name):
         """Parse hierarchical plugin name into components."""
-        if ':' in plugin_name:
-            parts = [part.strip() for part in plugin_name.split(':')]
+        if ":" in plugin_name:
+            parts = [part.strip() for part in plugin_name.split(":")]
             if len(parts) > 1:
                 hierarchy_parts = parts[:-1]  # All parts except the last
-                display_name = parts[-1]      # The last part is the display name
+                display_name = parts[-1]  # The last part is the display name
                 return hierarchy_parts, display_name
-        
+
         # No hierarchy, return as single category
-        return ['Main'], plugin_name.strip()
+        return ["Main"], plugin_name.strip()
 
     def create_nested_menu_structure(menu, hierarchy_parts, submenu_cache):
         """Create nested menu structure from hierarchy parts."""
         current_menu = menu
-        
+
         for i, part in enumerate(hierarchy_parts):
             # Build the path key for caching
-            path_key = " > ".join(hierarchy_parts[:i+1])
-            
+            path_key = " > ".join(hierarchy_parts[: i + 1])
+
             if path_key not in submenu_cache:
                 if i == 0:
                     # First level - create submenu directly under main menu
@@ -832,13 +837,13 @@ def setup_gui(
                 submenu_cache[path_key] = submenu
             else:
                 submenu = submenu_cache[path_key]
-            
+
             current_menu = submenu
-        
+
         return current_menu
 
     def populate_plugins():
-        plugin_menu = QtWidgets.QMenu('Plugins', window)
+        plugin_menu = QtWidgets.QMenu("Plugins", window)
         try:
             window.menuBar.addMenu(plugin_menu)
         except RuntimeError:
@@ -851,13 +856,13 @@ def setup_gui(
         submenu_cache = {}
 
         # Get plugin settings
-        plugin_settings = cs.core.settings.cs_settings.get('plugins', {})
-        disabled_plugins = plugin_settings.get('disabled_plugins', [])
-        hide_disabled_plugins = plugin_settings.get('hide_disabled_plugins', True)
-        plugin_order = plugin_settings.get('plugin_order', {})
+        plugin_settings = cs.core.settings.cs_settings.get("plugins", {})
+        disabled_plugins = plugin_settings.get("disabled_plugins", [])
+        hide_disabled_plugins = plugin_settings.get("hide_disabled_plugins", True)
+        plugin_order = plugin_settings.get("plugin_order", {})
 
         # Check if we're in experimental mode
-        experimental_mode = cs.core.settings.cs_settings.get('enable_experimental', False)
+        experimental_mode = cs.core.settings.cs_settings.get("enable_experimental", False)
 
         # Discover plugins (built-in + user, including nested subpackages)
         try:
@@ -869,16 +874,14 @@ def setup_gui(
         # Prefer the built-in updater plugin over any legacy user copy
         try:
             has_builtin_updater = any(
-                (info.get('module_name') == 'updater' and info.get('source') == 'built-in')
+                (info.get("module_name") == "updater" and info.get("source") == "built-in")
                 for info in plugin_infos
             )
             if has_builtin_updater:
                 plugin_infos = [
-                    info for info in plugin_infos
-                    if not (
-                        info.get('module_name') == 'updater'
-                        and info.get('source') == 'user'
-                    )
+                    info
+                    for info in plugin_infos
+                    if not (info.get("module_name") == "updater" and info.get("source") == "user")
                 ]
         except Exception:
             pass
@@ -892,7 +895,7 @@ def setup_gui(
         # Sort plugins by order (ascending) then by plugin name
         ordered = []
         for info in plugin_infos:
-            plugin_name = info.get('plugin_name') or info.get('module_name') or ''
+            plugin_name = info.get("plugin_name") or info.get("module_name") or ""
             order = plugin_order.get(plugin_name, 0)
             ordered.append((order, plugin_name, info))
         ordered.sort(key=lambda x: (x[0], x[1]))
@@ -910,12 +913,12 @@ def setup_gui(
 
         for _order, plugin_name, info in ordered:
             try:
-                module_path = info.get('module_path')
-                module_name = info.get('module_name') or ''
-                package_dir = pathlib.Path(info.get('package_dir'))
-                source = info.get('source') or 'built-in'
-                is_cli_only = bool(info.get('cli_only'))
-                if bool(info.get('menu_hidden')):
+                module_path = info.get("module_path")
+                module_name = info.get("module_name") or ""
+                package_dir = pathlib.Path(info.get("package_dir"))
+                source = info.get("source") or "built-in"
+                is_cli_only = bool(info.get("cli_only"))
+                if bool(info.get("menu_hidden")):
                     cs.logging.info(
                         f"Skipping plugin marked as hidden from menu: '{plugin_name}' "
                         f"(module='{module_name}', source='{source}', package_dir='{package_dir}')"
@@ -924,7 +927,7 @@ def setup_gui(
 
                 # Parse hierarchical plugin name
                 hierarchy_parts, display_name = parse_hierarchical_plugin_name(plugin_name)
-                
+
                 # Check disabled/broken status using display name
                 clean_name = display_name
                 is_broken = (
@@ -1004,7 +1007,7 @@ def setup_gui(
                             break
 
                 # Get plugin description from iter_plugins metadata or fallback to docstring
-                description = info.get('description') or "No description available."
+                description = info.get("description") or "No description available."
 
                 status = "BROKEN" if is_broken else "ok"
 
@@ -1022,7 +1025,7 @@ def setup_gui(
                     cs.logging.info(
                         f"Adding plugin to Plugins->Dev menu: '{label}' "
                         f"(plugin='{plugin_name}', module='{module_name}', source='{source}', "
-                        f"status={status}, script='{script_file}')"
+                        f"status={status}, script='{package_dir}')"
                     )
                     plugin_action = QtWidgets.QAction(label, window)
                     if icon:
@@ -1037,18 +1040,20 @@ def setup_gui(
                     continue
 
                 # Handle hierarchical plugins
-                if len(hierarchy_parts) > 1 or hierarchy_parts[0] != 'Main':
+                if len(hierarchy_parts) > 1 or hierarchy_parts[0] != "Main":
                     # Create nested menu structure
-                    target_menu = create_nested_menu_structure(plugin_menu, hierarchy_parts, submenu_cache)
-                    
+                    target_menu = create_nested_menu_structure(
+                        plugin_menu, hierarchy_parts, submenu_cache
+                    )
+
                     # Use only the display name for the label
                     label_base = f"{display_name}{label_suffix}"
                     label = f"{label_base} (BROKEN)" if is_broken else label_base
-                    
+
                     cs.logging.info(
                         f"Adding plugin to hierarchical menu: '{label}' "
                         f"(plugin='{plugin_name}', module='{module_name}', source='{source}', "
-                        f"status={status}, script='{script_file}', hierarchy={hierarchy_parts})"
+                        f"status={status}, script='{package_dir}', hierarchy={hierarchy_parts})"
                     )
                     plugin_action = QtWidgets.QAction(label, window)
                     if icon:
@@ -1064,11 +1069,11 @@ def setup_gui(
                     # Add directly to main plugins menu
                     label_base = f"{display_name}{label_suffix}"
                     label = f"{label_base} (BROKEN)" if is_broken else label_base
-                    
+
                     cs.logging.info(
                         f"Adding plugin to Plugins main menu: '{label}' "
                         f"(plugin='{plugin_name}', module='{module_name}', source='{source}', "
-                        f"status={status}, script='{script_file}')"
+                        f"status={status}, script='{package_dir}')"
                     )
                     plugin_action = QtWidgets.QAction(label, window)
                     if icon:
@@ -1111,10 +1116,10 @@ def setup_gui(
     elif stage == "check_updates":
         # Respect user setting to ignore update prompts on startup
         try:
-            _plugins = cs.core.settings.cs_settings.get('plugins') or {}
-            _updater_settings = _plugins.get('updater') or {}
-            _ignore_updates = bool(_updater_settings.get('ignore_updates_on_startup', False))
-            _check_on_startup = bool(_updater_settings.get('check_on_startup', True))
+            _plugins = cs.core.settings.cs_settings.get("plugins") or {}
+            _updater_settings = _plugins.get("updater") or {}
+            _ignore_updates = bool(_updater_settings.get("ignore_updates_on_startup", False))
+            _check_on_startup = bool(_updater_settings.get("check_on_startup", True))
         except Exception:
             _ignore_updates = False
             _check_on_startup = True
@@ -1132,7 +1137,10 @@ def setup_gui(
                     cs.logging.info(f"Update available: {latest_version}")
                     # Prompt user to open the updater
                     try:
-                        from chisurf.plugins.core.updater import build_installed_vs_latest_changelog as _build_changes
+                        from chisurf.plugins.core.updater import (
+                            build_installed_vs_latest_changelog as _build_changes,
+                        )
+
                         try:
                             _installed_ver, _changes = _build_changes(str(latest_version))
                         except Exception:
@@ -1142,7 +1150,8 @@ def setup_gui(
                             f"A new version of ChiSurf ({latest_version}) is available.\n\n"
                             + (
                                 f"Changes since your installed version ({_installed_ver}):\n\n{_changes}\n\n"
-                                if _changes else ""
+                                if _changes
+                                else ""
                             )
                             + "Do you want to open the Updater now?"
                         )
@@ -1155,9 +1164,12 @@ def setup_gui(
                         )
                         if reply == QtWidgets.QMessageBox.Yes:
                             import importlib
+
                             updater_plugin = importlib.import_module("chisurf.plugins.core.updater")
                             # Keep a strong reference to prevent garbage collection from closing the window
-                            cs.__updater_window__ = updater_plugin.UpdaterWidget(suppress_initial_notification=True)
+                            cs.__updater_window__ = updater_plugin.UpdaterWidget(
+                                suppress_initial_notification=True
+                            )
                             cs.__updater_window__.show()
                             try:
                                 cs.__updater_window__.raise_()
@@ -1173,6 +1185,7 @@ def setup_gui(
                         cs.logging.debug(f"Failed to show update prompt: {e}")
                 else:
                     cs.logging.info("ChiSurf is up to date.")
+
             _startup_update_check()
     elif stage == "startup_interface":
         return startup_interface()
@@ -1196,18 +1209,27 @@ def setup_gui(
         setup_logging_widgets(window)  # Attach logging to status bar
     return None
 
+
 def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
     logging.info("Starting GUI startup (get_win)")
     from chisurf.gui import chiplot as cp
+
     # Configuring the backend also loads it, which applies the pyqtgraph
     # autoRangeEnabled compat shim (see the chiplot pyqtgraph backend).
     cp.configure(useOpenGL=False)  # Disable OpenGL in the plotting backend
 
-    import chisurf.gui.resources
     import pathlib
 
+    import chisurf.gui.resources
+
     # Load splash screen from file path instead of resource
-    splash_path = pathlib.Path(cs.__file__).parent / "gui" / "resources" / "icons" / "splashscreen.png"
+    splash_path = (
+        pathlib.Path(cs.__file__).parent  # noqa: F823 -- same ruff false-positive as setup_ipython above
+        / "gui"
+        / "resources"
+        / "icons"
+        / "splashscreen.png"
+    )
     pixmap = QtGui.QPixmap(str(splash_path))
     splash = SplashScreen(pixmap)
 
@@ -1294,10 +1316,12 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
         # ZMQ connect is lazy, so probe with a short ping before exposing the
         # transport to widgets.
         from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+
         fitting_adapter = None
         try:
-            from chisurf.core.api._client import ChisurfClient
             import chisurf.core.settings as cs_settings
+            from chisurf.core.api._client import ChisurfClient
+
             try:
                 _ensure_chisurf_rpc_server()
             except Exception as _server_err:
@@ -1336,6 +1360,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
 
         try:
             from chisurf.gui.zmq_poller import ZmqSubscriberPoller
+
             poller_client = getattr(getattr(fitting_adapter, "_client", None), "_client", None)
             if poller_client is not None:
                 window._zmq_poller = ZmqSubscriberPoller(
@@ -1366,7 +1391,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
     try:
         _plugin_menu = None
         for _action in window.menuBar.actions():
-            if _action.text().startswith('Plugins'):
+            if _action.text().startswith("Plugins"):
                 _plugin_menu = _action.menu()
                 break
         if _plugin_menu is not None:
@@ -1412,6 +1437,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
 
         try:
             from chisurf.core.settings import path_utils as _pu
+
             existed_before = getattr(_pu, "USER_SETTINGS_EXISTED_BEFORE", True)
             if existed_before is False:
                 return True
@@ -1426,8 +1452,9 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
             from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
                 load_detector_setups,
             )
+
             data = load_detector_setups()
-            setups = data.get('setups', {}) if isinstance(data, dict) else {}
+            setups = data.get("setups", {}) if isinstance(data, dict) else {}
             if not isinstance(setups, dict) or len(setups) == 0:
                 return True
         except Exception:
@@ -1448,6 +1475,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
 
         try:
             from chisurf.plugins.core.boarding import wizard as _wiz
+
             _wiz.show_onboarding(parent=window)
         except Exception as e:
             try:
@@ -1464,9 +1492,8 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
     # Launch the background runner adapter (held as window attribute to prevent GC)
     try:
         from chisurf.gui.background_startup import BackgroundStartupRunner
-        _bg_runner = BackgroundStartupRunner(
-            window, manager, on_complete=_on_bg_complete
-        )
+
+        _bg_runner = BackgroundStartupRunner(window, manager, on_complete=_on_bg_complete)
         window._bg_startup_runner = _bg_runner
         _bg_runner.start()
     except Exception as _bg_err:
@@ -1482,9 +1509,9 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
 
 def set_app_style(app: QtWidgets.QApplication):
     try:
-        _gui_cfg = cs.core.settings.cs_settings.get('gui') or {}
+        _gui_cfg = cs.core.settings.cs_settings.get("gui") or {}
         _fallback_style = "Windows" if sys.platform == "win32" else "Fusion"
-        _style_name = _gui_cfg.get('qt_style')
+        _style_name = _gui_cfg.get("qt_style")
         if _style_name is None:
             _style_name = ""
         _style_name = str(_style_name).strip()
@@ -1525,6 +1552,7 @@ def _chisurf_rpc_is_available(timeout_ms: int = 500) -> bool:
     cfg = _mmfdb_rpc_config()
     try:
         from chisurf.server.startup import rpc_is_available
+
         return rpc_is_available(
             host=str(cfg["host"]),
             cmd_port=int(cfg["cmd_port"]),
@@ -1549,9 +1577,8 @@ def _ensure_chisurf_rpc_server(*, bootstrap_mmfdb: bool = True) -> None:
     if _chisurf_rpc_is_available(timeout_ms=300):
         return
 
-    existing = (
-        getattr(chisurf, "__chisurf_rpc_server__", None)
-        or getattr(chisurf, "__mmfdb_rpc_server__", None)
+    existing = getattr(chisurf, "__chisurf_rpc_server__", None) or getattr(
+        chisurf, "__mmfdb_rpc_server__", None
     )
     if existing is not None:
         if _chisurf_rpc_is_available(timeout_ms=1000):
@@ -1656,10 +1683,18 @@ class LoginDialog(QtWidgets.QDialog):
         logo_label = QtWidgets.QLabel()
         logo = QtGui.QPixmap(":/icons/icons/cs_logo.png")
         if logo.isNull():
-            logo_path = pathlib.Path(chisurf.__file__).parent / "gui" / "resources" / "icons" / "cs_logo.png"
+            logo_path = (
+                pathlib.Path(chisurf.__file__).parent
+                / "gui"
+                / "resources"
+                / "icons"
+                / "cs_logo.png"
+            )
             logo = QtGui.QPixmap(str(logo_path))
         if not logo.isNull():
-            logo_label.setPixmap(logo.scaled(64, 64, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+            logo_label.setPixmap(
+                logo.scaled(64, 64, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            )
         header_layout.addWidget(logo_label, 0, QtCore.Qt.AlignTop)
 
         title_layout = QtWidgets.QVBoxLayout()
@@ -1678,7 +1713,7 @@ class LoginDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QFormLayout()
         layout.setSpacing(8)
-        
+
         # Server and port row
         server_layout = QtWidgets.QHBoxLayout()
         self.server_combo = QtWidgets.QComboBox()
@@ -1692,17 +1727,17 @@ class LoginDialog(QtWidgets.QDialog):
         self.port_spin.setMaximumWidth(80)
         server_layout.addWidget(self.server_combo, 1)
         server_layout.addWidget(self.port_spin, 0)
-        
+
         self.user_combo = QtWidgets.QComboBox()
         self.user_combo.setEditable(True)
         self.password_edit = QtWidgets.QLineEdit()
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.save_login_check = QtWidgets.QCheckBox("Save selected user")
         self.auto_login_check = QtWidgets.QCheckBox("Log in automatically when allowed")
-        
+
         self.btn_login = QtWidgets.QPushButton("Login")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
-        
+
         # Load settings
         import chisurf.core.settings as cs_settings
         from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
@@ -1710,7 +1745,7 @@ class LoginDialog(QtWidgets.QDialog):
         mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
         self._mmfdb_client_config = client_config(mmfdb_settings)
         remote_mode = self._mmfdb_client_config["mode"] == "remote"
-        
+
         # Load server history
         if remote_mode:
             last_server = self._mmfdb_client_config["base_url"]
@@ -1720,33 +1755,29 @@ class LoginDialog(QtWidgets.QDialog):
             server_history = mmfdb_settings.get(
                 "server_history", [self._mmfdb_client_config["host"]]
             )
-            last_server = mmfdb_settings.get(
-                "last_server", self._mmfdb_client_config["host"]
-            )
-            last_port = mmfdb_settings.get(
-                "last_port", self._mmfdb_client_config["cmd_port"]
-            )
-        
+            last_server = mmfdb_settings.get("last_server", self._mmfdb_client_config["host"])
+            last_port = mmfdb_settings.get("last_port", self._mmfdb_client_config["cmd_port"])
+
         # Populate server combo with history, avoiding duplicates
         seen_servers = set()
         for server in server_history:
             if server not in seen_servers:
                 self.server_combo.addItem(server)
                 seen_servers.add(server)
-        
+
         # Set the last connected server (or first in history if not found)
         idx = self.server_combo.findText(last_server)
         if idx >= 0:
             self.server_combo.setCurrentIndex(idx)
         else:
             self.server_combo.setCurrentText(last_server)
-        
+
         # Set the last connected port
         if remote_mode:
             self.port_spin.hide()
         else:
             self.port_spin.setValue(int(last_port))
-        
+
         # Authentication must not depend on unauthenticated user enumeration.
         # Seed an editable username with the configured local identity instead.
         # An embedded desktop database ships known accounts, so offer those too
@@ -1763,31 +1794,31 @@ class LoginDialog(QtWidgets.QDialog):
         self.load_users_from_server()
         self.save_login_check.setChecked(bool(mmfdb_settings.get("save_login", True)))
         self.auto_login_check.setChecked(bool(mmfdb_settings.get("autologin", False)))
-            
+
         layout.addRow("MMFDB URL:" if remote_mode else "Server:", server_layout)
         layout.addRow("Select User:", self.user_combo)
         layout.addRow("Password:", self.password_edit)
         layout.addRow("", self.save_login_check)
         layout.addRow("", self.auto_login_check)
         root_layout.addLayout(layout)
-        
+
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addStretch(1)
         btn_layout.addWidget(self.btn_login)
         btn_layout.addWidget(self.btn_cancel)
         root_layout.addLayout(btn_layout)
-        
+
         self.btn_login.clicked.connect(self.handle_login)
         self.btn_cancel.clicked.connect(self.reject)
-        
+
         self.server_combo.currentTextChanged.connect(self.on_server_changed)
         self.port_spin.valueChanged.connect(self.on_port_changed)
         self.user_combo.currentIndexChanged.connect(self.on_user_changed)
         self.on_user_changed()
-        
+
         # Set default focus to password field
         self.password_edit.setFocus()
-        
+
     def on_user_changed(self):
         user_id = self.user_combo.currentData()
         user_data = next((u for u in self.users if u["user_id"] == user_id), None)
@@ -1798,15 +1829,15 @@ class LoginDialog(QtWidgets.QDialog):
                 self.password_edit.clear()
         else:
             self.password_edit.setEnabled(True)
-        
+
     def on_server_changed(self, text):
         """Called when server address changes - reload users from new server."""
         self.load_users_from_server()
-    
+
     def on_port_changed(self, value):
         """Called when port changes - reload users from server with new port."""
         self.load_users_from_server()
-        
+
     def load_users_from_server(self):
         """Configure a client without exposing the server's user directory."""
         from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
@@ -1820,13 +1851,13 @@ class LoginDialog(QtWidgets.QDialog):
             self.client = MMFDBClient(
                 mode="embedded", host=server_host, cmd_port=port, pub_port=port + 1
             )
-            
+
     def handle_login(self):
         current_text = getattr(self.user_combo, "currentText", None)
         user_id = current_text().strip() if callable(current_text) else ""
         user_id = user_id or self.user_combo.currentData()
         password = self.password_edit.text()
-        
+
         try:
             res = self.client.login(user_id=user_id, password=password)
             if res.get("ok") or res.get("authenticated"):
@@ -1838,27 +1869,33 @@ class LoginDialog(QtWidgets.QDialog):
                         "Set Password",
                         "You do not have a password set for this account.\nWould you like to set a password now to secure your account?",
                         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                        QtWidgets.QMessageBox.Yes
+                        QtWidgets.QMessageBox.Yes,
                     )
                     if reply == QtWidgets.QMessageBox.Yes:
                         from chisurf.plugins.core.user_editor.gui.tool import (
                             PasswordChangeDialog,
                         )
+
                         is_admin = bool(user_data.get("is_admin", False))
                         dlg = PasswordChangeDialog(user_id=user_id, is_admin=is_admin, parent=self)
                         if dlg.exec() == QtWidgets.QDialog.Accepted:
                             try:
-                                self.client.change_password(user_id=user_id, password=dlg.password, requester_id=user_id)
-                                dialogs.information(self, "Success", "Password successfully updated.")
+                                self.client.change_password(
+                                    user_id=user_id, password=dlg.password, requester_id=user_id
+                                )
+                                dialogs.information(
+                                    self, "Success", "Password successfully updated."
+                                )
                             except Exception as e:
                                 dialogs.error(self, "Error", f"Failed to save password:\n{e}")
-                
-                import chisurf.core.settings as cs_settings
+
                 from mmfdb.security.credentials import (
                     delete_session_token,
                     store_runtime_session_token,
                     store_session_token,
                 )
+
+                import chisurf.core.settings as cs_settings
                 from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
                 from chisurf.plugins.core.mmfdb_admin.gui.client import (
                     client_config,
@@ -1884,7 +1921,7 @@ class LoginDialog(QtWidgets.QDialog):
                     configured_client["host"] = server_host or self._mmfdb_client_config["host"]
                     configured_client["cmd_port"] = self.port_spin.value()
                     configured_client["pub_port"] = self.port_spin.value() + 1
-                
+
                 # Update server history
                 server_history = mmfdb_settings.get("server_history", [])
                 if server_host not in server_history:
@@ -1896,7 +1933,7 @@ class LoginDialog(QtWidgets.QDialog):
                     # Move to front if already exists
                     server_history.remove(server_host)
                     server_history.insert(0, server_host)
-                
+
                 mmfdb_settings["server_history"] = server_history
                 mmfdb_settings["last_server"] = server_host
                 mmfdb_settings["last_port"] = self.port_spin.value()
@@ -1938,7 +1975,7 @@ class LoginDialog(QtWidgets.QDialog):
                         "Autologin Not Saved",
                         "Login succeeded, but ChiSurf could not store the session token in the OS credential store.",
                     )
-                    
+
                 self.accept()
             else:
                 dialogs.warning(self, "Login Failed", _format_login_error(res.get("error")))
@@ -2012,7 +2049,7 @@ def get_app():
         _font_size = int(cs_settings.get("gui", {}).get("application_font_size", 0) or 0)
     except Exception:
         _font_size = 0
-    if _font_size > 0 and sys.platform == 'darwin':
+    if _font_size > 0 and sys.platform == "darwin":
         font = app.font()
         font.setPointSize(_font_size)
         app.setFont(font)
@@ -2036,6 +2073,7 @@ def get_app():
     updater_interrupt = False
     try:
         import chisurf as _chisurf_mod
+
         if getattr(_chisurf_mod, "__startup_interrupt_for_updater__", False):
             updater_interrupt = True
             win = None  # We won't use the main window in this case
@@ -2059,24 +2097,23 @@ def get_app():
         quits so the already-running ``app.exec()`` unwinds cleanly.
         """
         try:
-            from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
             from mmfdb.security.credentials import (
                 delete_session_token,
                 load_session_token,
                 store_runtime_session_token,
                 store_session_token,
             )
+
+            import chisurf.core.settings as cs_settings
             from chisurf.plugins.core.mmfdb_admin.gui.client import (
+                MMFDBClient,
                 client_config,
                 credential_endpoint,
             )
-            import chisurf.core.settings as cs_settings
 
             mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
             connection = client_config(mmfdb_settings)
-            _ensure_chisurf_rpc_server(
-                bootstrap_mmfdb=connection["mode"] == "embedded"
-            )
+            _ensure_chisurf_rpc_server(bootstrap_mmfdb=connection["mode"] == "embedded")
 
             default_user = connection["username"]
             # The embedded local server has a known first-run desktop admin, so
@@ -2103,7 +2140,9 @@ def get_app():
                                 credential_host, credential_port, default_user, token
                             )
                     except Exception as exc:
-                        logging.info(f"MMFDB stored-token autologin declined for {default_user}: {exc}")
+                        logging.info(
+                            f"MMFDB stored-token autologin declined for {default_user}: {exc}"
+                        )
                         delete_session_token(credential_host, credential_port, default_user)
                 # Order matters. The empty password is a *probe* — it asks
                 # whether the account is passwordless — and on the embedded
@@ -2134,9 +2173,7 @@ def get_app():
                             store_runtime_session_token(
                                 credential_host, credential_port, user, token
                             )
-                            store_session_token(
-                                credential_host, credential_port, user, token
-                            )
+                            store_session_token(credential_host, credential_port, user, token)
                     except Exception as exc:
                         logging.info(f"MMFDB autologin declined for {user}: {exc}")
 

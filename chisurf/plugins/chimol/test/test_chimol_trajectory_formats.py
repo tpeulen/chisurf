@@ -19,7 +19,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from chimol.io import structure as chimol_structure
 from chimol.io.structure import (
     TRAJECTORY_SUFFIXES,
@@ -36,8 +35,7 @@ def test_loader_accepts_exactly_the_declared_suffixes() -> None:
         # It must fail on the *file*, not on the format: a declared format that
         # the loader rejects is the drift this test exists to catch.
         assert not isinstance(excinfo.value, TrajectoryFormatError), (
-            f"'{suffix}' is declared a trajectory format but the loader "
-            "rejects it as one"
+            f"'{suffix}' is declared a trajectory format but the loader rejects it as one"
         )
 
 

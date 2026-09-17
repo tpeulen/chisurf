@@ -5,16 +5,15 @@ from typing import Any
 import numpy as np
 
 from ..api.contract import (
+    METHOD_DESCRIBE_CONTRACT,
     METHOD_ESTIMATE_IRF,
-    METHOD_LOAD_DECAY,
     METHOD_LOAD_DATASET,
+    METHOD_LOAD_DECAY,
     METHOD_SAVE_IRF,
     METHOD_TRANSFER_IRF,
-    METHOD_DESCRIBE_CONTRACT,
     contract_descriptor,
     service_success,
 )
-from ..api.models import IRFEstimationSettings
 from ..api.serialization import settings_from_dict
 from ..core.estimation import estimate_irf as _estimate_irf
 
@@ -63,16 +62,18 @@ def estimate_handler(
             settings=est_settings,
             channel_axis=channel_axis,
         )
-        return service_success({
-            "irf": result.irf,
-            "params": result.params,
-            "time_axis": result.time_axis,
-            "dt": result.dt,
-            "lifetime_ns": result.lifetime_ns,
-            "decay_rate_ns": result.decay_rate_ns,
-            "amplitude": result.amplitude,
-            "offset": result.offset,
-        })
+        return service_success(
+            {
+                "irf": result.irf,
+                "params": result.params,
+                "time_axis": result.time_axis,
+                "dt": result.dt,
+                "lifetime_ns": result.lifetime_ns,
+                "decay_rate_ns": result.decay_rate_ns,
+                "amplitude": result.amplitude,
+                "offset": result.offset,
+            }
+        )
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -81,19 +82,22 @@ def load_decay_handler(path: str) -> dict[str, Any]:
     """Load a VV/VH format decay file and return its data."""
     try:
         from chisurf.core.fio import read_vv_vh
+
         data, metadata = read_vv_vh(path, return_metadata=True)
         data = np.asarray(data, dtype=np.float32)
         # First half is VV, second half is VH in legacy format
         if len(data) % 2 == 0:
-            vv = data[:len(data) // 2]
+            vv = data[: len(data) // 2]
         else:
             vv = data
         dt = float(metadata.get("dt", 1.0))
-        return service_success({
-            "intensity": vv.tolist(),
-            "dt": dt,
-            "filename": path,
-        })
+        return service_success(
+            {
+                "intensity": vv.tolist(),
+                "dt": dt,
+                "filename": path,
+            }
+        )
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -103,6 +107,7 @@ def load_dataset_handler() -> dict[str, Any]:
     try:
         import chisurf as cs
         from chisurf.core.data import get_data
+
         all_curves = get_data(
             data_set=getattr(cs, "imported_datasets", []),
             curve_type="experiment",
@@ -113,13 +118,17 @@ def load_dataset_handler() -> dict[str, Any]:
                 x = np.asarray(ds.x, dtype=np.float32)
                 y = np.asarray(ds.y, dtype=np.float32)
                 dt = float(np.mean(np.diff(x))) if len(x) > 1 else 1.0
-                datasets.append({
-                    "name": getattr(ds, "name", "Unnamed"),
-                    "experiment": getattr(getattr(ds, "experiment", None), "name", "Uncategorized"),
-                    "intensity": y.tolist(),
-                    "time_axis": x.tolist(),
-                    "dt": dt,
-                })
+                datasets.append(
+                    {
+                        "name": getattr(ds, "name", "Unnamed"),
+                        "experiment": getattr(
+                            getattr(ds, "experiment", None), "name", "Uncategorized"
+                        ),
+                        "intensity": y.tolist(),
+                        "time_axis": x.tolist(),
+                        "dt": dt,
+                    }
+                )
         return service_success({"datasets": datasets})
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
@@ -128,8 +137,10 @@ def load_dataset_handler() -> dict[str, Any]:
 def save_irf_handler(path: str, irf_data: list[float], dt: float = 1.0) -> dict[str, Any]:
     """Save IRF data to a VV/VH file."""
     try:
-        from chisurf.core.fio import write_vv_vh
         import os
+
+        from chisurf.core.fio import write_vv_vh
+
         if not path.lower().endswith(".dat"):
             path += ".dat"
         irf_array = np.asarray(irf_data, dtype=float).flatten()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from qtpy.QtCore import QUrl
 from qtpy.QtGui import QDesktopServices, QTextCursor
@@ -85,11 +84,11 @@ class OutputDialog(QDialog):
 class DownloadInfoDialog(QDialog):
     """Prompt the user to download / select the HYDRO executable."""
 
-    def __init__(self, download_url: str, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, download_url: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("HYDRO executable required")
         self.resize(560, 260)
-        self.selected_path: Optional[Path] = None
+        self.selected_path: Path | None = None
         self.dont_show_startup = False
 
         msg = (
@@ -130,7 +129,9 @@ class DownloadInfoDialog(QDialog):
 
     def _select_exe(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select HYDRO executable", str(Path.home()),
+            self,
+            "Select HYDRO executable",
+            str(Path.home()),
             "Executables (*.exe);;All files (*.*)",
         )
         if path:

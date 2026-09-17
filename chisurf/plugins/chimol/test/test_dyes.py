@@ -11,10 +11,8 @@ surrounding suites stayed green, because nothing here was under test.
 from __future__ import annotations
 
 import pytest
-
 from chimol.plugins.labelling.dyes import (
     dye_parameters,
-    get_dye,
     list_dyes,
     parse_dye_spec,
     preset_names,
@@ -39,7 +37,11 @@ def test_a_preset_parses_to_position_fields():
 def test_the_fields_are_what_an_av_backend_reads():
     params = dye_parameters("Cy5")
     for field in (
-        "linker_length", "linker_width", "radius1", "radius2", "radius3",
+        "linker_length",
+        "linker_width",
+        "radius1",
+        "radius2",
+        "radius3",
         "simulation_type",
     ):
         assert field in params, f"{field} missing from the preset"

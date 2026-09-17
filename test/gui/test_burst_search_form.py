@@ -18,10 +18,7 @@ from chisurf.gui.widgets.burst_search_form import BurstSearchForm  # noqa: E402
 
 def test_combobox_offers_every_registry_algorithm(qapp):
     form = BurstSearchForm()
-    offered = {
-        form.combo_algorithm.itemData(i)
-        for i in range(form.combo_algorithm.count())
-    }
+    offered = {form.combo_algorithm.itemData(i) for i in range(form.combo_algorithm.count())}
     assert offered == set(tttrlib_search.algorithms())
     assert form.combo_algorithm.isEnabled()
 
@@ -52,9 +49,7 @@ def test_switching_algorithm_emits_parameters_changed(qapp):
     form = BurstSearchForm(algorithm="maxtree")
     seen = []
     form.parametersChanged.connect(lambda: seen.append(True))
-    form.combo_algorithm.setCurrentIndex(
-        form.combo_algorithm.findData("sliding_window")
-    )
+    form.combo_algorithm.setCurrentIndex(form.combo_algorithm.findData("sliding_window"))
     assert seen, "changing the algorithm should notify listeners"
 
 
@@ -82,9 +77,7 @@ def test_composite_search_renders_a_nested_panel(qapp):
     form = BurstSearchForm(algorithm="coincident")
     params = form.parameters
     assert "parameters" in params, "the delegated inner parameters must be present"
-    assert params["parameters"] == tttrlib_registry.defaults(
-        "burst_search", "maxtree"
-    )
+    assert params["parameters"] == tttrlib_registry.defaults("burst_search", "maxtree")
 
 
 def test_composite_parameters_are_foldable_not_a_json_box(qapp):

@@ -1,5 +1,4 @@
 import json
-import os
 import pathlib
 import typing
 
@@ -11,18 +10,16 @@ import chisurf.core.fio as io
 import chisurf.core.settings
 import chisurf.gui.decorators
 from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
-from chisurf.gui import QtCore, QtGui, QtWidgets, uic
+from chisurf.gui import QtCore, QtWidgets, dialogs
 from chisurf.gui import chiplot as cp
+from chisurf.gui.progress import ChiSurfProgress
 
 from .tttr_correlator_ui import setup_ui as _setup_ui
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui import dialogs
 
-colors = cs.core.settings.gui['plot']['colors']
+colors = cs.core.settings.gui["plot"]["colors"]
 
 
 class WizardTTTRCorrelator(QtWidgets.QWizardPage):
-
     @property
     def analysis_folder(self) -> pathlib.Path:
         return pathlib.Path(str(self.lineEdit_3.text()))
@@ -35,7 +32,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
     def channel_a(self) -> list[int]:
         s: str = str(self.lineEdit.text())
         if s:
-            return [int(x) for x in s.replace(',', ' ').split()]
+            return [int(x) for x in s.replace(",", " ").split()]
         elif isinstance(self.tttr, tttrlib.TTTR):
             return list(map(int, self.tttr.get_used_routing_channels()))
         return []
@@ -44,7 +41,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
     def channel_b(self) -> list[int]:
         s: str = str(self.lineEdit_2.text())
         if s:
-            return [int(x) for x in s.replace(',', ' ').split()]
+            return [int(x) for x in s.replace(",", " ").split()]
         elif isinstance(self.tttr, tttrlib.TTTR):
             return list(map(int, self.tttr.get_used_routing_channels()))
         return []
@@ -97,7 +94,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         s: str = str(self.lineEdit_7.text())
         return self.get_microtime_ranges(s)
 
-    def get_microtime_ranges(self, s) -> typing.List[typing.Tuple[int, int]] | None:
+    def get_microtime_ranges(self, s) -> list[tuple[int, int]] | None:
         cs.logging.log(0, "WizardTTTRCorrelator::get_microtime_ranges")
         if not s:
             cs.logging.log(0, "::microtime_ranges: Warning - Input string is empty.")
@@ -110,7 +107,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
             # Allow both ';' and ',' as range separators to be more user friendly.
             segments = []
-            for item in text.replace(',', ';').split(';'):
+            for item in text.replace(",", ";").split(";"):
                 item = item.strip()
                 if item:
                     segments.append(item)
@@ -119,7 +116,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 cs.logging.log(0, "::microtime_ranges: No usable ranges after parsing.")
                 return None
 
-            ranges: typing.List[typing.Tuple[int, int]] = []
+            ranges: list[tuple[int, int]] = []
             for seg in segments:
                 seg = seg.strip()
                 if not seg:
@@ -127,12 +124,12 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
                 # Support either ":" or "-" between min and max while allowing
                 # negative bounds such as "-1000:2000" or "-1000-2000".
-                if ':' in seg:
-                    a_txt, b_txt = seg.split(':', 1)
+                if ":" in seg:
+                    a_txt, b_txt = seg.split(":", 1)
                 else:
                     # Fallback for legacy "a-b" syntax; use the last '-' so that
                     # leading '-' signs in negative numbers are preserved.
-                    pos = seg.rfind('-')
+                    pos = seg.rfind("-")
                     if pos <= 0:
                         # Single value like "-1000"  treat as [-1000, -1000]
                         a_txt = seg
@@ -155,49 +152,51 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             return None
 
     def update_plots(self):
-        cs.logging.log(0, 'WizardTTTRCorrelator::Updating plots')
+        cs.logging.log(0, "WizardTTTRCorrelator::Updating plots")
         self.pw_fcs.clear()
         if self.is_correlated:
             for i, cor in enumerate(self.correlations):
-                pen = cp.to_pen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
-                self.plot_item_fcs.line(cor['x'], cor['y'], pen=pen)
+                pen = cp.to_pen(
+                    cs.core.settings.colors[i % len(cs.core.settings.colors)]["hex"], width=1
+                )
+                self.plot_item_fcs.line(cor["x"], cor["y"], pen=pen)
 
     def read_tttrs(self):
         cs.logging.log(0, "WizardTTTRCorrelator::read_tttrs")
         fn = self.current_tttr_filename
         if fn:
             if pathlib.Path(fn).exists():
-                n = len(self.settings['tttr_filenames'])
+                n = len(self.settings["tttr_filenames"])
                 self.spinBox_4.setMaximum(n - 1)
                 self.comboBox.setEnabled(False)
                 self.tttr = tttrlib.TTTR(fn, self.filetype)
                 header = self.tttr.get_header()
                 s = header.json
                 d = json.loads(s)
-                self.settings['header'] = d
+                self.settings["header"] = d
                 self.update_plots()
 
     def update_output_path(self):
         cs.logging.log(0, "WizardTTTRCorrelator::update_output_path")
         if len(self.channel_a) > 0 and len(self.channel_b) > 0:
-            cha = ','.join([str(x) for x in self.channel_a])
-            chb = ','.join([str(x) for x in self.channel_b])
-            chs = cha + '-' + chb
+            cha = ",".join([str(x) for x in self.channel_a])
+            chb = ",".join([str(x) for x in self.channel_b])
+            chs = cha + "-" + chb
         else:
-            chs = 'All'
-        s = pathlib.Path('cr5') / f'{chs}'
+            chs = "All"
+        s = pathlib.Path("cr5") / f"{chs}"
         self.lineEdit_5.setText(s.as_posix())
 
     def update_parameter(self):
         cs.logging.log(0, "WizardTTTRCorrelator::update_parameter")
-        self.settings['correlation']['is_fine'] = self.correlation_is_fine
-        self.settings['correlation']['microtime_binning'] = self.microtime_binning
-        self.settings['correlation']['ncasc'] = self.correlation_ncasc
-        self.settings['correlation']['nbins'] = self.correlation_nbins
-        self.settings['correlation']['nsplits'] = self.correlation_nsplits
-        self.settings['correlation']['channel_a'] = self.channel_a
-        self.settings['correlation']['channel_b'] = self.channel_b
-        self.settings['correlation']['filter'] = self.filter_file
+        self.settings["correlation"]["is_fine"] = self.correlation_is_fine
+        self.settings["correlation"]["microtime_binning"] = self.microtime_binning
+        self.settings["correlation"]["ncasc"] = self.correlation_ncasc
+        self.settings["correlation"]["nbins"] = self.correlation_nbins
+        self.settings["correlation"]["nsplits"] = self.correlation_nsplits
+        self.settings["correlation"]["channel_a"] = self.channel_a
+        self.settings["correlation"]["channel_b"] = self.channel_b
+        self.settings["correlation"]["filter"] = self.filter_file
 
         # Reset correlation flag when parameters change
         self.is_correlated = False
@@ -207,7 +206,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
     def onClearFiles(self):
         cs.logging.log(0, "WizardTTTRCorrelator::onClearFiles")
-        self.settings['tttr_filenames'].clear()
+        self.settings["tttr_filenames"].clear()
         self.comboBox.setEnabled(True)
         self.lineEdit.clear()
         self.tttr = None
@@ -218,7 +217,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
     def split_array(self, tttr, n):
         cs.logging.log(0, "WizardTTTRCorrelator::split_array")
         chunk_size = len(tttr) // n
-        chunks = [tttr[i * chunk_size: (i + 1) * chunk_size] for i in range(n)]
+        chunks = [tttr[i * chunk_size : (i + 1) * chunk_size] for i in range(n)]
         return chunks
 
     def get_correlation_settings(self):
@@ -226,7 +225,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         d = {
             "n_bins": self.correlation_nbins,
             "n_casc": self.correlation_ncasc,
-            "make_fine": self.correlation_is_fine
+            "make_fine": self.correlation_is_fine,
         }
         cs.logging.log(0, "Correlation settings:", d)
         return d
@@ -234,7 +233,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
     def save_correlations(self):
         cs.logging.log(0, "WizardTTTRCorrelator::saving correlations to files")
         # If disabled, skip writing per-chunk files (direct TTTR mode)
-        if not getattr(self, 'save_chunks_to_disk', True):
+        if not getattr(self, "save_chunks_to_disk", True):
             return
         # Ensure analysis folder is set even for direct TTTR correlation
         try:
@@ -246,17 +245,19 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         # Save each chunk as a .cor text file with columns: tau, G, suren (duration, count_rate), ey (zeros)
         for i, cor in enumerate(self.correlations):
             try:
-                x = np.array(cor.get('x', []))
-                y = np.array(cor.get('y', []))
-                duration = float(cor.get('duration', 0.0))
+                x = np.array(cor.get("x", []))
+                y = np.array(cor.get("y", []))
+                duration = float(cor.get("duration", 0.0))
                 # Derive mean count rate from channel counts
                 try:
-                    ca = float(cor.get('channel_a', {}).get('counts', 0.0))
-                    cb = float(cor.get('channel_b', {}).get('counts', 0.0))
+                    ca = float(cor.get("channel_a", {}).get("counts", 0.0))
+                    cb = float(cor.get("channel_b", {}).get("counts", 0.0))
                     # Mean count rate in kHz (kristine format expects kHz).
                     # Use total detector count rate for downstream CPM display.
                     count_rate = (ca + cb) / duration / 1000.0 if duration > 0 else 0.0
-                    print(f"Chunk {i}: duration={duration}s, counts={ca+cb}, count_rate={count_rate}kHz")
+                    print(
+                        f"Chunk {i}: duration={duration}s, counts={ca + cb}, count_rate={count_rate}kHz"
+                    )
                 except Exception:
                     count_rate = 0.0
                 suren = np.zeros_like(x)
@@ -266,10 +267,10 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                     suren[1] = count_rate
                 ey = np.zeros_like(x)
                 mat = np.vstack([x, y, suren, ey])
-                cor_path = output_folder / f'chnk-{i:04}.cor'
+                cor_path = output_folder / f"chnk-{i:04}.cor"
                 # Use native path string for Windows compatibility
                 # Format with 5 significant digits, suppress scientific notation for small numbers
-                np.savetxt(str(cor_path), mat.T, delimiter='\t', fmt='%.5g')
+                np.savetxt(str(cor_path), mat.T, delimiter="\t", fmt="%.5g")
             except Exception:
                 # Best effort: continue saving remaining chunks
                 continue
@@ -362,7 +363,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             if len(t) == 0:
                 cs.logging.log(1, f"Warning: Skipping chunk {i} due to missing macro_times.")
                 continue
-            
+
             # Compute duration more robustly using percentiles to avoid outliers
             # Use 0.1% and 99.9% percentiles instead of first/last photon
             if len(t) > 100:
@@ -393,31 +394,35 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 else:
                     dt = dT
                 x = correlator.x_axis * dt
-                print(f"Chunk {i}: sw1={sw1}, sw2={sw2}, dur_ms={dur}, dur_s={dur/1000.0}, dT={dT}")
+                print(
+                    f"Chunk {i}: sw1={sw1}, sw2={sw2}, dur_ms={dur}, dur_s={dur / 1000.0}, dT={dT}"
+                )
                 d = {
-                    'x': x.tolist(),
-                    'y': correlator.correlation.tolist(),
-                    'correlation_settings': correlation_settings,
-                    'analysis_folder': self.analysis_folder.as_posix(),
-                    'chunk': i,
-                    'duration': dur / 1000.0, # duration in seconds
-                    'channel_a': {
-                        'channels': ch1,
-                        'microtime_range': self.microtime_range_a,
-                        'counts': sw1
+                    "x": x.tolist(),
+                    "y": correlator.correlation.tolist(),
+                    "correlation_settings": correlation_settings,
+                    "analysis_folder": self.analysis_folder.as_posix(),
+                    "chunk": i,
+                    "duration": dur / 1000.0,  # duration in seconds
+                    "channel_a": {
+                        "channels": ch1,
+                        "microtime_range": self.microtime_range_a,
+                        "counts": sw1,
                     },
-                    'channel_b': {
-                        'channels': ch2,
-                        'microtime_range': self.microtime_range_b,
-                        'counts': sw2
-                    }
+                    "channel_b": {
+                        "channels": ch2,
+                        "microtime_range": self.microtime_range_b,
+                        "counts": sw2,
+                    },
                 }
                 self.correlations.append(d)
-                
+
                 # Update plot immediately after computing each correlation
                 self.is_correlated = True
-                pen = cp.to_pen(cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex'], width=1)
-                self.plot_item_fcs.line(d['x'], d['y'], pen=pen)
+                pen = cp.to_pen(
+                    cs.core.settings.colors[i % len(cs.core.settings.colors)]["hex"], width=1
+                )
+                self.plot_item_fcs.line(d["x"], d["y"], pen=pen)
             else:
                 cs.logging.log(1, "Warning: No photons to correlate with.")
 
@@ -441,7 +446,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         except Exception:
             txt = ""
         if (not txt) and isinstance(self.settings, dict):
-            files = self.settings.get('tttr_filenames', []) or []
+            files = self.settings.get("tttr_filenames", []) or []
             if files:
                 try:
                     first_parent = pathlib.Path(files[0]).resolve().parent
@@ -449,7 +454,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 except Exception:
                     pass
 
-    def load_tttr_files(self, filenames: typing.List[str], filetype: typing.Optional[str] = None):
+    def load_tttr_files(self, filenames: list[str], filetype: str | None = None):
         """
         Load a list of TTTR files directly (and optionally .bst burst-id files),
         concatenate them into a single TTTR object, and update internal state.
@@ -469,7 +474,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         plain_files = []
         for fn in filenames or []:
             try:
-                if str(fn).lower().endswith('.bst'):
+                if str(fn).lower().endswith(".bst"):
                     bst_files.append(str(fn))
                 else:
                     plain_files.append(str(fn))
@@ -477,7 +482,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 continue
 
         # Resolve .bst files to (tttr_path, idx_array)
-        resolved_from_bst: typing.Dict[str, typing.List[typing.Tuple[int, int]]] = {}
+        resolved_from_bst: dict[str, list[tuple[int, int]]] = {}
         for bst in bst_files:
             p_bst = pathlib.Path(bst)
             if not p_bst.exists() or not p_bst.is_file():
@@ -506,14 +511,14 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 cs.logging.log(1, f"Could not resolve TTTR for BST: {p_bst}")
                 continue
             # Parse start/stop ranges from bst file
-            ranges: typing.List[typing.Tuple[int, int]] = []
+            ranges: list[tuple[int, int]] = []
             try:
-                with open(p_bst, 'r', encoding='utf-8', errors='ignore') as fh:
+                with open(p_bst, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
                         line = line.strip()
-                        if not line or line.startswith('#') or line.startswith('//'):
+                        if not line or line.startswith("#") or line.startswith("//"):
                             continue
-                        parts = line.replace(',', ' ').split()
+                        parts = line.replace(",", " ").split()
                         if len(parts) < 2:
                             continue
                         try:
@@ -532,12 +537,12 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             resolved_from_bst.setdefault(key, []).extend(ranges)
 
         # Merge overlapping/adjacent ranges per TTTR and convert to numpy indices
-        bst_indices: typing.Dict[str, typing.Any] = {}
+        bst_indices: dict[str, typing.Any] = {}
         for tttr_path, rr in resolved_from_bst.items():
             try:
                 # sort ranges
                 rr = sorted(rr)
-                merged: typing.List[typing.Tuple[int, int]] = []
+                merged: list[tuple[int, int]] = []
                 for s, e in rr:
                     if not merged:
                         merged.append((s, e))
@@ -549,10 +554,8 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                             merged.append((s, e))
                 # Build a single index array (inclusive ranges)
                 import numpy as _np
-                parts = [
-                    _np.arange(s, e + 1, dtype=_np.int64)
-                    for s, e in merged if e >= s
-                ]
+
+                parts = [_np.arange(s, e + 1, dtype=_np.int64) for s, e in merged if e >= s]
                 if parts:
                     bst_indices[tttr_path] = _np.concatenate(parts)
             except Exception:
@@ -560,12 +563,13 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
         # Now construct TTTR by loading plain files and bst-resolved files, applying indices
         tttr_obj = None
+
         def _open_tttr(path_str: str):
             try:
                 p = pathlib.Path(path_str)
                 p_posix = p.as_posix()
                 ext = p.suffix.lower()
-                if ext == '.spc':
+                if ext == ".spc":
                     try:
                         ft_int = tttrlib.inferTTTRFileType(p_posix)
                         if ft_int is not None and ft_int >= 0:
@@ -624,6 +628,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                     n_events = None
                 if n_events is not None:
                     import numpy as _np
+
                     idx = _np.asarray(idx, dtype=_np.int64)
                     if idx.size == 0:
                         continue
@@ -635,13 +640,14 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 # If advanced indexing not supported, fall back to sequential append of slices
                 try:
                     import numpy as _np
+
                     if idx is not None and idx.size > 0:
                         # As a last resort, build via contiguous chunks
                         splits = _np.where(_np.diff(idx) > 1)[0]
                         start = 0
                         parts = []
                         for s in splits:
-                            parts.append(tt[idx[start:s+1]])
+                            parts.append(tt[idx[start : s + 1]])
                             start = s + 1
                         parts.append(tt[idx[start:]])
                         if parts:
@@ -658,8 +664,8 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
         # Update visible filenames to underlying TTTR files (not the .bst wrappers)
         visible_files = filtered_plain + list(bst_indices.keys())
-        self.settings.setdefault('tttr_filenames', [])
-        self.settings['tttr_filenames'] = visible_files
+        self.settings.setdefault("tttr_filenames", [])
+        self.settings["tttr_filenames"] = visible_files
         self.tttr = tttr_obj
         # Prefer analysis folder from the first underlying TTTR path if available
         try:
@@ -670,7 +676,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             pass
 
     def open_sl5(self, filename: str) -> tttrlib.TTTR | None:
-        cs.logging.log(0, 'WizardTTTRCorrelator::open_sl5:', filename)
+        cs.logging.log(0, "WizardTTTRCorrelator::open_sl5:", filename)
         data = dict()
         try:
             with io.open_maybe_zipped(filename) as fp:
@@ -678,20 +684,20 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         except Exception as e:
             cs.logging.log(1, f"Failed to read selection file {filename}: {e}")
             return None
-        tttr_filename = self.analysis_folder / pathlib.Path(data.get('filename', ''))
-        tttr_filetype = data.get('filetype')
-        f = cs.core.fio.decompress_numpy_array(data.get('filter'))
+        tttr_filename = self.analysis_folder / pathlib.Path(data.get("filename", ""))
+        tttr_filetype = data.get("filetype")
+        f = cs.core.fio.decompress_numpy_array(data.get("filter"))
         idx = np.where(f > 0)[0] if f is not None else None
         if not tttr_filename.exists():
             cs.logging.log(1, f"TTTR source file does not exist: {tttr_filename}")
             return None
-        cs.logging.log(0, 'tttr_filetype: ', tttr_filetype)
+        cs.logging.log(0, "tttr_filetype: ", tttr_filetype)
         tttr = tttrlib.TTTR(tttr_filename.as_posix(), tttr_filetype)
         if idx is not None:
             tttr = tttr[idx]
         return tttr
 
-    def open_selections(self, filenames: typing.List[pathlib.Path]) -> tttrlib.TTTR | None:
+    def open_selections(self, filenames: list[pathlib.Path]) -> tttrlib.TTTR | None:
         cs.logging.log(0, "WizardTTTRCorrelator::open_selections:", filenames)
         if not filenames:
             cs.logging.log(1, "No selection files provided to open_selections.")
@@ -711,12 +717,12 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
     def open_analysis_folder(self, folder: pathlib.Path = None):
         cs.logging.log(0, "WizardTTTRCorrelator::open_analysis_folder")
         if folder is None:
-            folder = self.analysis_folder / 'sl5'
+            folder = self.analysis_folder / "sl5"
         if not folder.exists():
             cs.logging.log(1, f"Analysis folder does not exist: {folder}")
             return
-        selected_files = sorted(list(folder.glob('*.json.gz')))
-        cs.logging.log(0, 'Opening analysis folder')
+        selected_files = sorted(list(folder.glob("*.json.gz")))
+        cs.logging.log(0, "Opening analysis folder")
         cs.logging.log(0, list(selected_files))
         if not selected_files:
             cs.logging.log(1, f"No selection files (*.json.gz) found in: {folder}")
@@ -725,38 +731,38 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
     @cs.gui.decorators.init_with_ui("tttr_correlator.ui")
     def __init__(
-            self,
-            ncasc: int = None,
-            nbins: int = None,
-            nsplits: int = None,
-            is_fine: bool = None,
-            microtime_binning: int = None,
-            channel_a: str = "",
-            channel_b: str = "",
-            filter_file: str = "",
-            analysis_folder: str = "",
-            output_path: str = "",
-            microtime_range_a: str = "",
-            microtime_range_b: str = "",
-            *args,
-            **kwargs
+        self,
+        ncasc: int = None,
+        nbins: int = None,
+        nsplits: int = None,
+        is_fine: bool = None,
+        microtime_binning: int = None,
+        channel_a: str = "",
+        channel_b: str = "",
+        filter_file: str = "",
+        analysis_folder: str = "",
+        output_path: str = "",
+        microtime_range_a: str = "",
+        microtime_range_b: str = "",
+        *args,
+        **kwargs,
     ):
         """
         Initializes the TTTR Correlation Wizard with optional parameters.
 
-        Parameters:
+        Parameters
         ----------
         ncasc : int, optional
-            Number of cascades in correlation. If None, the value is taken from 
+            Number of cascades in correlation. If None, the value is taken from
             cs_settings['correlator']['number_of_cascades'] at runtime.
         nbins : int, optional
-            Number of bins for correlation. If None, the value is taken from 
+            Number of bins for correlation. If None, the value is taken from
             cs_settings['correlator']['B'] at runtime.
         nsplits : int, optional
-            Number of data splits for correlation. If None, the value is taken from 
+            Number of data splits for correlation. If None, the value is taken from
             cs_settings['correlator']['split'] at runtime.
         is_fine : bool, optional
-            Whether to use fine correlation. If None, the value is taken from 
+            Whether to use fine correlation. If None, the value is taken from
             cs_settings['correlator']['fine'] at runtime.
         microtime_binning : int, optional
             Micro-time binning factor used with fine correlation. If None, the
@@ -776,22 +782,23 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         microtime_range_b : str, optional
             Semi-colon separated microtime ranges for channel B (e.g., "50-150;250-350").
 
-        Notes:
+        Notes
         ------
         - UI elements are set based on the provided arguments.
         - The correlation flag (`self.is_correlated`) is invalidated when any parameter is modified.
         - Default values for correlation parameters are taken from cs.core.settings.cs_settings at runtime,
           allowing them to reflect any changes to settings that occur during runtime.
         """
-
         self.setTitle("Correlator")
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         self.setSizePolicy(sizePolicy)
 
         self.tttr: tttrlib.TTTR = None
         self.settings: dict = dict()
-        self.settings['correlation'] = dict()
-        self.settings['tttr_filenames'] = []
+        self.settings["correlation"] = dict()
+        self.settings["tttr_filenames"] = []
         self.correlations = list()
         # Control whether per-chunk JSON files are written to disk
         self.save_chunks_to_disk = True
@@ -808,16 +815,28 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
         # Apply UI modifications from arguments
         self._apply_initial_parameters(
-            ncasc, nbins, nsplits, is_fine, microtime_binning, channel_a, channel_b,
-            filter_file, analysis_folder, output_path, microtime_range_a, microtime_range_b
+            ncasc,
+            nbins,
+            nsplits,
+            is_fine,
+            microtime_binning,
+            channel_a,
+            channel_b,
+            filter_file,
+            analysis_folder,
+            output_path,
+            microtime_range_a,
+            microtime_range_b,
         )
 
         # Force update of UI elements with values from settings
         # This ensures that any default values from the UI file are overridden
-        self.spinBox_2.setValue(int(cs.core.settings.cs_settings['correlator']['B']))
-        self.spinBox_3.setValue(int(cs.core.settings.cs_settings['correlator']['number_of_cascades']))
-        self.spinBox.setValue(int(cs.core.settings.cs_settings['correlator']['split']))
-        self.checkBox_2.setChecked(bool(cs.core.settings.cs_settings['correlator']['fine']))
+        self.spinBox_2.setValue(int(cs.core.settings.cs_settings["correlator"]["B"]))
+        self.spinBox_3.setValue(
+            int(cs.core.settings.cs_settings["correlator"]["number_of_cascades"])
+        )
+        self.spinBox.setValue(int(cs.core.settings.cs_settings["correlator"]["split"]))
+        self.checkBox_2.setChecked(bool(cs.core.settings.cs_settings["correlator"]["fine"]))
 
         # Ensure parameters are updated after setting them
         self.update_parameter()
@@ -826,17 +845,17 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
     def load_fcs_presets(self, setup_name, detectors) -> None:
         """Load presets for a detector setup into the preset combobox."""
-        if getattr(self, 'comboBox_fcs_preset', None) is None:
+        if getattr(self, "comboBox_fcs_preset", None) is None:
             return
         cfg = load_fcs_channel_setups()
-        setups = cfg.get('setups', {}) if isinstance(cfg, dict) else {}
+        setups = cfg.get("setups", {}) if isinstance(cfg, dict) else {}
         block = setups.get(setup_name or "", {}) if isinstance(setups, dict) else {}
-        pairs = block.get('pairs', []) if isinstance(block, dict) else []
+        pairs = block.get("pairs", []) if isinstance(block, dict) else []
         if not isinstance(pairs, list):
             pairs = []
         self._fcs_presets = pairs
         self._fcs_preset_detectors = detectors or {}
-        self._fcs_preset_corr = block.get('correlator', {}) if isinstance(block, dict) else {}
+        self._fcs_preset_corr = block.get("correlator", {}) if isinstance(block, dict) else {}
         cb = self.comboBox_fcs_preset
         try:
             cb.blockSignals(True)
@@ -844,9 +863,9 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             cb.addItem("")
             for p in self._fcs_presets:
                 try:
-                    cha = str(p.get('channel_a', ''))
-                    chb = str(p.get('channel_b', ''))
-                    nm = str(p.get('name', ''))
+                    cha = str(p.get("channel_a", ""))
+                    chb = str(p.get("channel_b", ""))
+                    nm = str(p.get("name", ""))
                 except Exception:
                     continue
                 if not nm:
@@ -870,37 +889,37 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             return
         dets = self._fcs_preset_detectors or {}
         try:
-            cha_name = str(pair.get('channel_a', ''))
-            chb_name = str(pair.get('channel_b', ''))
+            cha_name = str(pair.get("channel_a", ""))
+            chb_name = str(pair.get("channel_b", ""))
         except Exception:
             return
         da = dets.get(cha_name, {}) if isinstance(dets, dict) else {}
         db = dets.get(chb_name, {}) if isinstance(dets, dict) else {}
-        chs_a = da.get('chs', []) or []
-        chs_b = db.get('chs', []) or chs_a
+        chs_a = da.get("chs", []) or []
+        chs_b = db.get("chs", []) or chs_a
         if chs_a:
-            self.lineEdit.setText(','.join(map(str, chs_a)))
+            self.lineEdit.setText(",".join(map(str, chs_a)))
         if chs_b:
-            self.lineEdit_2.setText(','.join(map(str, chs_b)))
-        mta = da.get('micro_time_ranges', []) or []
-        mtb = db.get('micro_time_ranges', []) or []
+            self.lineEdit_2.setText(",".join(map(str, chs_b)))
+        mta = da.get("micro_time_ranges", []) or []
+        mtb = db.get("micro_time_ranges", []) or []
         if mta:
-            self.lineEdit_6.setText(';'.join(f"{a}-{b}" for a, b in mta))
+            self.lineEdit_6.setText(";".join(f"{a}-{b}" for a, b in mta))
         if mtb:
-            self.lineEdit_7.setText(';'.join(f"{a}-{b}" for a, b in mtb))
+            self.lineEdit_7.setText(";".join(f"{a}-{b}" for a, b in mtb))
         corr = dict(self._fcs_preset_corr)
-        pc = pair.get('correlator')
+        pc = pair.get("correlator")
         if isinstance(pc, dict):
             corr.update(pc)
         try:
-            if 'n_bins' in corr:
-                self.spinBox_2.setValue(int(corr['n_bins']))
-            if 'n_casc' in corr:
-                self.spinBox_3.setValue(int(corr['n_casc']))
-            if 'make_fine' in corr:
-                self.checkBox_2.setChecked(bool(corr['make_fine']))
-            if 'microtime_binning' in corr:
-                self.microtime_binning = int(corr['microtime_binning'])
+            if "n_bins" in corr:
+                self.spinBox_2.setValue(int(corr["n_bins"]))
+            if "n_casc" in corr:
+                self.spinBox_3.setValue(int(corr["n_casc"]))
+            if "make_fine" in corr:
+                self.checkBox_2.setChecked(bool(corr["make_fine"]))
+            if "microtime_binning" in corr:
+                self.microtime_binning = int(corr["microtime_binning"])
         except Exception:
             pass
         try:
@@ -910,8 +929,19 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             pass
 
     def _apply_initial_parameters(
-            self, ncasc, nbins, nsplits, is_fine, microtime_binning, channel_a, channel_b,
-            filter_file, analysis_folder, output_path, microtime_range_a, microtime_range_b
+        self,
+        ncasc,
+        nbins,
+        nsplits,
+        is_fine,
+        microtime_binning,
+        channel_a,
+        channel_b,
+        filter_file,
+        analysis_folder,
+        output_path,
+        microtime_range_a,
+        microtime_range_b,
     ):
         """
         Sets initial values of UI elements based on provided parameters.
@@ -920,16 +950,15 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         If any of the correlation parameters (ncasc, nbins, nsplits, is_fine) are None,
         their values are taken from cs.core.settings.cs_settings at runtime.
         """
-
         cs.logging.log(0, "Setting initial parameters for UI elements")
 
         # Always get the latest values from settings
-        settings_ncasc = cs.core.settings.cs_settings['correlator']['number_of_cascades']
-        settings_nbins = cs.core.settings.cs_settings['correlator']['B']
-        settings_nsplits = cs.core.settings.cs_settings['correlator']['split']
-        settings_is_fine = bool(cs.core.settings.cs_settings['correlator']['fine'])
+        settings_ncasc = cs.core.settings.cs_settings["correlator"]["number_of_cascades"]
+        settings_nbins = cs.core.settings.cs_settings["correlator"]["B"]
+        settings_nsplits = cs.core.settings.cs_settings["correlator"]["split"]
+        settings_is_fine = bool(cs.core.settings.cs_settings["correlator"]["fine"])
         settings_microtime_binning = int(
-            cs.core.settings.cs_settings['correlator'].get('microtime_binning', 1)
+            cs.core.settings.cs_settings["correlator"].get("microtime_binning", 1)
         )
 
         # Use provided parameters if not None, otherwise use settings
@@ -946,17 +975,17 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
 
         # Map each parameter to its corresponding UI widget
         ui_elements = {
-            'ncasc': (self.spinBox_3, ncasc),
-            'nbins': (self.spinBox_2, nbins),
-            'nsplits': (self.spinBox, nsplits),
-            'is_fine': (self.checkBox_2, is_fine),
-            'channel_a': (self.lineEdit, channel_a),
-            'channel_b': (self.lineEdit_2, channel_b),
-            'filter_file': (self.lineEdit_4, filter_file),
-            'analysis_folder': (self.lineEdit_3, analysis_folder),
-            'output_path': (self.lineEdit_5, output_path),
-            'microtime_range_a': (self.lineEdit_6, microtime_range_a),
-            'microtime_range_b': (self.lineEdit_7, microtime_range_b),
+            "ncasc": (self.spinBox_3, ncasc),
+            "nbins": (self.spinBox_2, nbins),
+            "nsplits": (self.spinBox, nsplits),
+            "is_fine": (self.checkBox_2, is_fine),
+            "channel_a": (self.lineEdit, channel_a),
+            "channel_b": (self.lineEdit_2, channel_b),
+            "filter_file": (self.lineEdit_4, filter_file),
+            "analysis_folder": (self.lineEdit_3, analysis_folder),
+            "output_path": (self.lineEdit_5, output_path),
+            "microtime_range_a": (self.lineEdit_6, microtime_range_a),
+            "microtime_range_b": (self.lineEdit_7, microtime_range_b),
         }
 
         # Apply values to UI elements
@@ -988,10 +1017,10 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         # Load FCS presets for this detector setup, if available
         try:
             settings = detector_page.get_settings()
-            dets = settings.get('detectors', {}) or {}
+            dets = settings.get("detectors", {}) or {}
         except Exception:
             dets = {}
-        setup_name = getattr(detector_page, 'current_setup_name', None)
+        setup_name = getattr(detector_page, "current_setup_name", None)
         self.load_fcs_presets(setup_name, dets)
 
     def populate_channel_combos(self, channel_defs: dict):
@@ -1007,7 +1036,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
             pass
         # Populate combos safely
         try:
-            if hasattr(self, 'comboBox'):
+            if hasattr(self, "comboBox"):
                 self.comboBox.blockSignals(True)
                 self.comboBox.clear()
                 self.comboBox.addItems(keys)
@@ -1017,7 +1046,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         except Exception:
             pass
         try:
-            if hasattr(self, 'comboBox_2'):
+            if hasattr(self, "comboBox_2"):
                 self.comboBox_2.blockSignals(True)
                 self.comboBox_2.clear()
                 self.comboBox_2.addItems(keys)
@@ -1028,8 +1057,8 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         except Exception:
             pass
         # Apply current selections to fields
-        self._on_combo_changed('A')
-        self._on_combo_changed('B')
+        self._on_combo_changed("A")
+        self._on_combo_changed("B")
 
     def _on_channel_text_changed(self, *_):
         """
@@ -1050,14 +1079,14 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         Update channel and microtime fields for side 'A' or 'B' when combo changes.
         """
         # Choose correct combo and targets
-        if side == 'A':
-            combo = getattr(self, 'comboBox', None)
-            ch_edit = getattr(self, 'lineEdit', None)
-            mtr_edit = getattr(self, 'lineEdit_6', None)
+        if side == "A":
+            combo = getattr(self, "comboBox", None)
+            ch_edit = getattr(self, "lineEdit", None)
+            mtr_edit = getattr(self, "lineEdit_6", None)
         else:
-            combo = getattr(self, 'comboBox_2', None)
-            ch_edit = getattr(self, 'lineEdit_2', None)
-            mtr_edit = getattr(self, 'lineEdit_7', None)
+            combo = getattr(self, "comboBox_2", None)
+            ch_edit = getattr(self, "lineEdit_2", None)
+            mtr_edit = getattr(self, "lineEdit_7", None)
         if combo is None or ch_edit is None or mtr_edit is None:
             return
         key = combo.currentText()
@@ -1068,7 +1097,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         try:
             all_chs = []
             for e in entries:
-                chs = e.get('detector_chs', [])
+                chs = e.get("detector_chs", [])
                 if isinstance(chs, (list, tuple)):
                     all_chs.extend(list(chs))
             # Deduplicate preserving order
@@ -1078,7 +1107,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                 if c not in seen:
                     seen.add(c)
                     uniq.append(c)
-            ch_edit.setText(','.join(str(c) for c in uniq))
+            ch_edit.setText(",".join(str(c) for c in uniq))
         except Exception:
             pass
         # Derive microtime range string by aggregating detector micro_time_range segments
@@ -1086,12 +1115,12 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         try:
             segs = []
             for e in entries:
-                r = e.get('micro_time_range')
+                r = e.get("micro_time_range")
                 if isinstance(r, (list, tuple)) and len(r) >= 2:
                     segs.append(f"{int(r[0])}-{int(r[1])}")
-            mtr_str = ';'.join(segs)
+            mtr_str = ";".join(segs)
         except Exception:
-            mtr_str = ''
+            mtr_str = ""
         try:
             mtr_edit.setText(mtr_str)
         except Exception:

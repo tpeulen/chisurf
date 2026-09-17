@@ -30,7 +30,6 @@ being omitted.
 """
 
 import pathlib
-from collections import OrderedDict
 
 import numpy as np
 import tttrlib
@@ -42,7 +41,6 @@ from chisurf.core.datastore import (
     numeric_column,
     row_count,
     store_from_arrays,
-    store_from_rows,
     write_csv_table,
 )
 
@@ -103,7 +101,6 @@ def mean_micro_time_ns(micro_times, indices, ns_per_channel: float) -> float:
     return float(np.mean(micro_times[indices])) * ns_per_channel
 
 
-
 def _micro_time_mask(micro_times, ranges) -> np.ndarray:
     """Return the photons a detector's micro-time windows accept.
 
@@ -136,10 +133,7 @@ def _micro_time_mask(micro_times, ranges) -> np.ndarray:
 
 
 def write_mti_summary(
-        filename: pathlib.Path,
-        analysis_dir: pathlib.Path,
-        max_macro_time,
-        append: bool = True
+    filename: pathlib.Path, analysis_dir: pathlib.Path, max_macro_time, append: bool = True
 ):
     """
     Creates or appends to an MTI file in the 'Info' folder. If any MTI file exists, appends to it;
@@ -158,7 +152,7 @@ def write_mti_summary(
         c:/data/Split_60_132_tween0p00001-0000.ht3   74860.905977
     """
     # Create the 'Info' directory if it doesn't exist
-    parent_directory = analysis_dir / 'Info'
+    parent_directory = analysis_dir / "Info"
     parent_directory.mkdir(exist_ok=True, parents=True)
 
     # Search for any existing .mti files in the 'Info' folder
@@ -167,11 +161,11 @@ def write_mti_summary(
     # If there are any existing .mti files, append to the first one found
     if existing_mti_files and append:
         mti_filename = existing_mti_files[0]
-        mode = 'a'
+        mode = "a"
     else:
         # If no .mti files are found or append is False, create a new file based on the filename
         mti_filename = parent_directory / f"{filename.stem}.mti"
-        mode = 'w'
+        mode = "w"
 
     # Write the filename and max_macro_time to the .mti file
     with open(mti_filename, mode) as mti_file:
@@ -233,14 +227,16 @@ def burst_feature_declaration() -> dict:
     global _BURST_FEATURES_DECLARATION
     if _BURST_FEATURES_DECLARATION is None:
         import yaml
+
         path = pathlib.Path(__file__).with_name("burst_features.yaml")
         with open(path, encoding="utf-8") as fh:
             _BURST_FEATURES_DECLARATION = yaml.safe_load(fh)
     return _BURST_FEATURES_DECLARATION
 
 
-def _static_burst_features(sources, start, stop, macro, res,
-                           confidence, burst_index, file_name) -> dict:
+def _static_burst_features(
+    sources, start, stop, macro, res, confidence, burst_index, file_name
+) -> dict:
     """Whole-burst quantities, by declared ``source`` name.
 
     This is the ``static``-scope vocabulary of ``burst_features.yaml``; a
@@ -269,14 +265,15 @@ def _static_burst_features(sources, start, stop, macro, res,
             # bursts never reach the filler, so the two would otherwise
             # drift apart. Unavailable (old engine) stays 0 -- the layout
             # must not depend on the tttrlib version.
-            out[s] = (float(confidence[burst_index])
-                      if confidence is not None
-                      and burst_index < confidence.size else 0)
+            out[s] = (
+                float(confidence[burst_index])
+                if confidence is not None and burst_index < confidence.size
+                else 0
+            )
         elif s == "file_name":
             out[s] = file_name
         else:
-            raise ValueError(
-                f"burst_features.yaml: unknown static source {s!r}")
+            raise ValueError(f"burst_features.yaml: unknown static source {s!r}")
     return out
 
 
@@ -293,8 +290,7 @@ _SPAN_EMPTY = {
 }
 
 
-def _span_features(sources, idxs, start, macro, res,
-                   micro_sl, micro_ns) -> dict:
+def _span_features(sources, idxs, start, macro, res, micro_sl, micro_ns) -> dict:
     """Photon-span quantities, by declared ``source`` name.
 
     The shared vocabulary of the ``detector`` and ``window_detector``
@@ -349,29 +345,28 @@ def _span_features(sources, idxs, start, macro, res,
         elif s == "mean_micro_time_ns":
             out[s] = mean_micro_time_ns(micro_sl, idxs, micro_ns)
         else:
-            raise ValueError(
-                f"burst_features.yaml: unknown span source {s!r}")
+            raise ValueError(f"burst_features.yaml: unknown span source {s!r}")
     return out
 
 
 def generate_burst_dataframe(
-        start_stop,
-        filename,
-        tttr,
-        windows,
-        detectors,
-        include_interleaved_zeros=True,
-        macro_time_resolution=None
+    start_stop,
+    filename,
+    tttr,
+    windows,
+    detectors,
+    include_interleaved_zeros=True,
+    macro_time_resolution=None,
 ):
     """
     Generate a DataFrame with burst summary information.
-    
+
     This function processes burst data and returns a DataFrame with various statistics for each burst.
     It is optimized for speed by:
     1) precomputing global detector/window masks,
     2) building fixed-length lists instead of OrderedDict,
     3) appending to a list of lists and dumping to pandas once.
-    
+
     Parameters
     -----------
     start_stop : list of tuples
@@ -394,7 +389,7 @@ def generate_burst_dataframe(
     macro_time_resolution : float, optional
         Macro-time resolution override. If omitted, uses
         ``tttr.header.macro_time_resolution``.
-        
+
     Returns
     --------
     tttrlib.DataStore
@@ -405,9 +400,13 @@ def generate_burst_dataframe(
     # unpack
     macro = tttr.macro_times
     micro = tttr.micro_times
-    rout  = tttr.routing_channel
-    res   = tttr.header.macro_time_resolution if macro_time_resolution is None else float(macro_time_resolution)
-    n_ph  = len(tttr)
+    rout = tttr.routing_channel
+    res = (
+        tttr.header.macro_time_resolution
+        if macro_time_resolution is None
+        else float(macro_time_resolution)
+    )
+    n_ph = len(tttr)
     micro_ns = micro_time_resolution_ns(tttr)
 
     # The column set is DECLARED, not coded: `burst_features.yaml` beside
@@ -416,8 +415,8 @@ def generate_burst_dataframe(
     # This function instantiates the declared families over the detector
     # setup and fills each column from its `source` quantity.
     declaration = burst_feature_declaration()
-    cols = []          # header, in declared order
-    fills = []         # one (scope, source, instance-key) per column
+    cols = []  # header, in declared order
+    fills = []  # one (scope, source, instance-key) per column
     for group in declaration["groups"]:
         scope = group["scope"]
         entries = [(e["column"], e["source"]) for e in group["columns"]]
@@ -430,20 +429,20 @@ def generate_burst_dataframe(
         elif scope == "detector":
             for d in detectors:
                 for template, source in entries:
-                    cols.append(template.format(
-                        detector=d, Detector=str(d).capitalize()))
+                    cols.append(template.format(detector=d, Detector=str(d).capitalize()))
                     fills.append((scope, source, d))
         elif scope == "window_detector":
             for w, (r0, r1) in windows.items():
                 for d in detectors:
                     for template, source in entries:
-                        cols.append(template.format(
-                            window=w, detector=d,
-                            Detector=str(d).capitalize(), r0=r0, r1=r1))
+                        cols.append(
+                            template.format(
+                                window=w, detector=d, Detector=str(d).capitalize(), r0=r0, r1=r1
+                            )
+                        )
                         fills.append((scope, source, (w, d)))
         else:
-            raise ValueError(
-                f"burst_features.yaml: unknown scope {scope!r}")
+            raise ValueError(f"burst_features.yaml: unknown scope {scope!r}")
     if declaration.get("trailing_blank", False):
         cols.append("")
         fills.append(("blank", "", None))
@@ -477,14 +476,11 @@ def generate_burst_dataframe(
     # channels (the same units as ``micro``); micro-time binning is a display-only
     # concern and never rescales these ranges.
     det_global = {}
-    for d,info in detectors.items():
+    for d, info in detectors.items():
         chm = np.isin(rout, info["chs"])
         det_global[d] = chm & _micro_time_mask(micro, info["micro_time_ranges"])
 
-    win_global = {
-        w: (micro >= r0) & (micro < r1)
-        for w,(r0,r1) in windows.items()
-    }
+    win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
 
     # helper zero-row: 0 for every declared column, "" for the blank one
     zero_row = ["" if scope == "blank" else 0 for scope, _, _ in fills]
@@ -500,7 +496,7 @@ def generate_burst_dataframe(
         out.append(zero_row.copy())
 
     for burst_index, (start, stop) in enumerate(start_stop):
-        if stop <= start or stop>=n_ph or start<0:
+        if stop <= start or stop >= n_ph or start < 0:
             continue
 
         # ``stop`` is the burst's last photon (inclusive), so the photon at
@@ -509,8 +505,8 @@ def generate_burst_dataframe(
         micro_sl = micro[sl]
 
         static_q = _static_burst_features(
-            wanted["static"], start, stop, macro, res,
-            confidence, burst_index, file_name_only)
+            wanted["static"], start, stop, macro, res, confidence, burst_index, file_name_only
+        )
 
         # Per-instance quantities, computed lazily -- once per detector /
         # window pair per burst, however many declared columns read them.
@@ -525,8 +521,8 @@ def generate_burst_dataframe(
                 if q is None:
                     idxs = np.nonzero(det_global[key][sl])[0]
                     q = det_q[key] = _span_features(
-                        wanted["detector"], idxs, start, macro, res,
-                        micro_sl, micro_ns)
+                        wanted["detector"], idxs, start, macro, res, micro_sl, micro_ns
+                    )
                 row.append(q[source])
             elif scope == "window_detector":
                 q = win_q.get(key)
@@ -534,10 +530,10 @@ def generate_burst_dataframe(
                     w, d = key
                     idxs = np.nonzero(det_global[d][sl] & win_global[w][sl])[0]
                     q = win_q[key] = _span_features(
-                        wanted["window_detector"], idxs, start, macro, res,
-                        micro_sl, micro_ns)
+                        wanted["window_detector"], idxs, start, macro, res, micro_sl, micro_ns
+                    )
                 row.append(q[source])
-            else:                          # the trailing blank
+            else:  # the trailing blank
                 row.append("")
 
         out.append(row)
@@ -561,7 +557,7 @@ def generate_burst_dataframe(
 def write_dataframe_to_bur(df, bur_filename):
     """
     Write a DataFrame to a .bur file (tab-separated values).
-    
+
     Parameters
     -----------
     df : tttrlib.DataStore
@@ -575,9 +571,9 @@ def write_dataframe_to_bur(df, bur_filename):
 def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detectors):
     """
     Write burst summary information to a TSV file (tab-separated).
-    
+
     This is a wrapper function that calls generate_burst_dataframe and write_dataframe_to_bur.
-    
+
     Parameters
     -----------
     bur_filename : str or pathlib.Path
@@ -601,6 +597,7 @@ def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detec
 
 
 write_bur_file = write_bur_file_fast
+
 
 def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     """Return ``(bursts, {name: TTTR})`` for one analysis in a `.pto`.
@@ -636,12 +633,10 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     FileNotFoundError
         If the container holds no burst table, or none under the named run.
     """
-    from chisurf.core.fio.analysis_path import read_tables
-    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, TABLE
-    from chisurf.core.fio.analysis_path import split_container_path
-    from chisurf.core.fio.staging import open_tttr
-
+    from chisurf.core.fio.analysis_path import read_tables, split_container_path
     from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, TABLE
+    from chisurf.core.fio.staging import open_tttr
 
     container, _run = split_container_path(path)
     tables = read_tables(path, operation=OPERATION)
@@ -686,10 +681,7 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
 
 
 def read_burst_analysis(
-        paris_path: pathlib.Path,
-        tttr_file_type: str,
-        pattern: str = 'b*4*',
-        row_stride: int = 1
+    paris_path: pathlib.Path, tttr_file_type: str, pattern: str = "b*4*", row_stride: int = 1
 ) -> tuple:
     """
     Reads and processes burst analysis data files from a specified directory,
@@ -768,7 +760,7 @@ def read_burst_analysis(
 
         # dict.fromkeys, not set(): first-appearance order, so the first entry
         # is the first real measurement of the table.
-        for ff in dict.fromkeys(np.asarray(df['First File']).tolist()):
+        for ff in dict.fromkeys(np.asarray(df["First File"]).tolist()):
             if ff in tttrs or is_sentinel_file_reference(ff):
                 continue
             tttrs[ff] = tttrlib.TTTR(str(data_path / str(ff)), tttr_file_type)
@@ -783,22 +775,21 @@ def read_burst_analysis(
     if is_container_path(paris_path):
         return _read_burst_analysis_from_container(paris_path)
 
-    info_path = paris_path / 'Info'
+    paris_path / "Info"
     data_path = paris_path.parent
 
     dfs = list()
     for path in paris_path.glob(pattern):
         stacked = list()
-        for fn in sorted(path.glob('*')):
+        for fn in sorted(path.glob("*")):
             with open(fn) as f:
-                t = [line.rstrip('\n') for line in f.readlines()]
-            header = t[0].split('\t')
-            rows = [line.split('\t') for line in t[2::row_stride]]
+                t = [line.rstrip("\n") for line in f.readlines()]
+            header = t[0].split("\t")
+            rows = [line.split("\t") for line in t[2::row_stride]]
             columns = list(zip(*rows)) if rows else [()] * len(header)
             stacked.append(
                 store_from_arrays(
-                    {name: np.array(col, dtype=object)
-                     for name, col in zip(header, columns)}
+                    {name: np.array(col, dtype=object) for name, col in zip(header, columns)}
                 )
             )
         dfs.append(concat_stores(stacked))

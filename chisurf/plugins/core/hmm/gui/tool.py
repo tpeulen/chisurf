@@ -70,9 +70,7 @@ class HmmTool(QtWidgets.QWidget):
         # State-scan panel. Add/Remove-style buttons stay in the form: they act
         # on one section and read as nonsense on a window-level bar.
         promote_to_toolbar(self.auto_form, toolbar, ("request_run", "request_scan"))
-        attach_help_and_guide(
-            self, toolbar, title="Hidden Markov model — help", model=self.model
-        )
+        attach_help_and_guide(self, toolbar, title="Hidden Markov model — help", model=self.model)
         layout.addWidget(self.auto_form)
         self.model.add_observer(self._on_model_event)
 
@@ -95,9 +93,7 @@ class HmmTool(QtWidgets.QWidget):
         self.setCursor(QtCore.Qt.BusyCursor)
         self._worker = _Worker(job, self)
         self._worker.finished.connect(self._on_finished)
-        self._worker.failed.connect(
-            lambda message: logger.warning("HMM tool: %s", message)
-        )
+        self._worker.failed.connect(lambda message: logger.warning("HMM tool: %s", message))
         self._worker.start()
 
     def _on_finished(self) -> None:

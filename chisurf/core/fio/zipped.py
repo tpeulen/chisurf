@@ -1,11 +1,9 @@
-from __future__ import print_function, division, absolute_import
-
 import bz2
 import gzip
+import io
 import os
 import pathlib
 import zipfile
-import io
 
 
 def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: bool = True):
@@ -29,42 +27,42 @@ def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: 
         Open file handle.
     """
     _, extension = os.path.splitext(str(filename).lower())
-    if mode == 'r':
-        if extension == '.gz':
-            with gzip.GzipFile(filename, 'r') as gz_f:
-                return io.StringIO(gz_f.read().decode('utf-8'))
-        elif extension == '.bz2':
-            with bz2.BZ2File(filename, 'r') as bz2_f:
-                return io.StringIO(bz2_f.read().decode('utf-8'))
-        elif extension == '.zip':
-            with zipfile.ZipFile(filename, 'r') as zip_f:
-                return io.StringIO(zip_f.read().decode('utf-8'))
+    if mode == "r":
+        if extension == ".gz":
+            with gzip.GzipFile(filename, "r") as gz_f:
+                return io.StringIO(gz_f.read().decode("utf-8"))
+        elif extension == ".bz2":
+            with bz2.BZ2File(filename, "r") as bz2_f:
+                return io.StringIO(bz2_f.read().decode("utf-8"))
+        elif extension == ".zip":
+            with zipfile.ZipFile(filename, "r") as zip_f:
+                return io.StringIO(zip_f.read().decode("utf-8"))
         else:
-            return open(filename, 'r')
-    elif mode == 'w':
+            return open(filename)
+    elif mode == "w":
         if os.path.exists(filename) and not force_overwrite:
-            raise IOError('"%s" already exists' % filename)
-        if extension == '.gz':
-            binary_fh = gzip.GzipFile(filename, 'wb')
-            return io.TextIOWrapper(binary_fh, encoding='utf-8')
-        elif extension == '.bz2':
-            binary_fh = bz2.BZ2File(filename, 'wb')
-            return io.TextIOWrapper(binary_fh, encoding='utf-8')
-        elif extension == '.zip':
-            binary_fh = zipfile.ZipFile(filename, 'w')
-            return io.TextIOWrapper(binary_fh, encoding='utf-8')
+            raise OSError(f'"{filename}" already exists')
+        if extension == ".gz":
+            binary_fh = gzip.GzipFile(filename, "wb")
+            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+        elif extension == ".bz2":
+            binary_fh = bz2.BZ2File(filename, "wb")
+            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+        elif extension == ".zip":
+            binary_fh = zipfile.ZipFile(filename, "w")
+            return io.TextIOWrapper(binary_fh, encoding="utf-8")
         else:
-            return open(filename, 'w')
-    elif mode == 'wb':
+            return open(filename, "w")
+    elif mode == "wb":
         if os.path.exists(filename) and not force_overwrite:
-            raise IOError('"%s" already exists' % filename)
-        if extension == '.gz':
-            return gzip.GzipFile(filename, 'wb')
-        elif extension == '.bz2':
-            return bz2.BZ2File(filename, 'wb')
-        elif extension == '.zip':
-            return zipfile.ZipFile(filename, 'wb')
+            raise OSError(f'"{filename}" already exists')
+        if extension == ".gz":
+            return gzip.GzipFile(filename, "wb")
+        elif extension == ".bz2":
+            return bz2.BZ2File(filename, "wb")
+        elif extension == ".zip":
+            return zipfile.ZipFile(filename, "wb")
         else:
-            return open(filename, 'wb')
+            return open(filename, "wb")
     else:
-        raise ValueError('Invalid reading_routine "%s"' % mode)
+        raise ValueError(f'Invalid reading_routine "{mode}"')

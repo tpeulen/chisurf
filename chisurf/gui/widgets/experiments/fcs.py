@@ -66,14 +66,14 @@ class _FcsColumnsWidget(QtWidgets.QWidget):
 
 def _register_fcs_sections():
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("fcs_columns")(_FcsColumnsWidget)
 
 
 class FCSController(reader.ExperimentReaderController, QtWidgets.QWidget):
-
     def get_filename(self) -> pathlib.Path:
         """Return an FCS filename after optionally assigning a sample."""
-        path = cs.gui.widgets.get_filename('FCS-CSV files', file_type=self.file_type)
+        path = cs.gui.widgets.get_filename("FCS-CSV files", file_type=self.file_type)
         if path:
             self._set_reader_sample_id(show_sample_picker_dialog(db=self._db(), parent=self))
         return path
@@ -95,12 +95,7 @@ class FCSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             pass
 
-    def __init__(
-            self,
-            file_type='Kristine files (*.cor)',
-            *args,
-            **kwargs
-    ):
+    def __init__(self, file_type="Kristine files (*.cor)", *args, **kwargs):
         _register_fcs_sections()
         super().__init__(*args, **kwargs)
         self.file_type = file_type
@@ -115,6 +110,7 @@ class FCSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         self._settings_form = None
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             self.layout.addWidget(self._settings_form)
 

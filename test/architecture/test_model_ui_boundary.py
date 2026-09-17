@@ -28,6 +28,7 @@ test fails if a violation appears outside the list) and a file that stops
 leaking must be removed from it (the test fails on a stale entry, so the list
 cannot rot into a lie).
 """
+
 from __future__ import annotations
 
 import ast
@@ -36,8 +37,7 @@ import pathlib
 import chisurf.core
 
 #: Module prefixes the model layer is forbidden to import.
-FORBIDDEN_PREFIXES = ("qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6",
-                      "chisurf.gui")
+FORBIDDEN_PREFIXES = ("qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6", "chisurf.gui")
 
 #: The model layer. All of it.
 CORE_ROOT = pathlib.Path(chisurf.core.__file__).parent
@@ -106,17 +106,18 @@ def _leaking_files():
 def test_the_model_layer_does_not_import_a_view():
     """No new file under ``chisurf/core`` may reach into the GUI."""
     found = _leaking_files()
-    new = {name: hits for name, hits in found.items()
-           if name not in KNOWN_LEAKS}
+    new = {name: hits for name, hits in found.items() if name not in KNOWN_LEAKS}
     lines = [
         f"  chisurf/core/{name}:{lineno}: imports {module!r}"
-        for name, hits in sorted(new.items()) for lineno, module in hits
+        for name, hits in sorted(new.items())
+        for lineno, module in hits
     ]
     assert not new, (
         "chisurf.core is the model layer and must not depend on a view.\n"
         "When the model has to tell a view something, call\n"
         "chisurf.core.runtime.presentation.notify (or .defer) and let the view "
-        "install itself.\nOffending imports:\n" + "\n".join(lines))
+        "install itself.\nOffending imports:\n" + "\n".join(lines)
+    )
 
 
 def test_the_debt_register_is_not_stale():
@@ -129,8 +130,8 @@ def test_the_debt_register_is_not_stale():
     found = _leaking_files()
     fixed = sorted(name for name in KNOWN_LEAKS if name not in found)
     assert not fixed, (
-        "these no longer import a view; delete them from "
-        "KNOWN_LEAKS:\n  " + "\n  ".join(fixed))
+        "these no longer import a view; delete them from KNOWN_LEAKS:\n  " + "\n  ".join(fixed)
+    )
 
 
 def test_the_boundary_is_nearly_closed():
@@ -139,5 +140,4 @@ def test_the_boundary_is_nearly_closed():
     Four files out of the ~460 under ``chisurf/core``. The number is pinned
     rather than merely listed so that "fix one, add one" fails.
     """
-    assert len(KNOWN_LEAKS) <= 4, (
-        "the model/view boundary regressed; KNOWN_LEAKS may only shrink")
+    assert len(KNOWN_LEAKS) <= 4, "the model/view boundary regressed; KNOWN_LEAKS may only shrink"

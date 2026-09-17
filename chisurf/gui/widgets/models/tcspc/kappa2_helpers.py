@@ -1,13 +1,9 @@
-from typing import Optional
-
-from chisurf.gui.widgets.models.tcspc.forster_helpers import open_forster_calculator
-
 import numpy as np
-
 from qtpy import QtWidgets
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.models.tcspc.forster_helpers import open_forster_calculator
 
 
 def _plotting_available() -> bool:
@@ -58,7 +54,7 @@ def setup_kappa2_controls(
     mode_layout.addWidget(stat_radio)
 
     mode_layout.addStretch(1)
-    
+
     # Fast optimization checkbox for static kappa2 convolution
     fast_checkbox = QtWidgets.QCheckBox("Fast")
     fast_checkbox.setChecked(True)
@@ -92,7 +88,9 @@ def setup_kappa2_controls(
     group.setExclusive(True)
 
     orientation_param = getattr(model, "orientation_parameter", None)
-    current_mode = getattr(orientation_param, "mode", "fast") if orientation_param is not None else "fast"
+    current_mode = (
+        getattr(orientation_param, "mode", "fast") if orientation_param is not None else "fast"
+    )
     if current_mode == "slow":
         stat_radio.setChecked(True)
     else:
@@ -112,14 +110,14 @@ def setup_kappa2_controls(
 
     dyn_radio.toggled.connect(on_mode_changed)
     stat_radio.toggled.connect(on_mode_changed)
-    
+
     def on_fft_changed() -> None:
         """Trigger model update when FFT checkbox state changes."""
         try:
             model.update()
         except Exception:
             pass
-    
+
     fast_checkbox.stateChanged.connect(on_fft_changed)
 
     # TODO: needs docstring
@@ -183,7 +181,7 @@ def _extract_kappa2_pairs(orientation_parameter, fret_parameters):
 
 
 def show_kappa2_distribution_plot(
-    parent: Optional[QtWidgets.QWidget] = None,
+    parent: QtWidgets.QWidget | None = None,
     orientation_parameter=None,
     fret_parameters=None,
 ) -> None:
@@ -224,7 +222,11 @@ def show_kappa2_distribution_plot(
         return
 
     try:
-        dynamic_k2 = float(getattr(fret_parameters, "kappa2", 0.666)) if fret_parameters is not None else 0.666
+        dynamic_k2 = (
+            float(getattr(fret_parameters, "kappa2", 0.666))
+            if fret_parameters is not None
+            else 0.666
+        )
     except Exception:
         dynamic_k2 = 0.666
 
@@ -299,7 +301,9 @@ def show_kappa2_distribution_plot(
         pass
 
     try:
-        plot_widget.text("static avg", (static_mean, y_line), color=(255, 160, 80), anchor=(0.5, 1.0))
+        plot_widget.text(
+            "static avg", (static_mean, y_line), color=(255, 160, 80), anchor=(0.5, 1.0)
+        )
     except Exception:
         pass
 
@@ -314,12 +318,12 @@ def show_kappa2_distribution_plot(
 
 
 def show_rapp_rda_distribution_plot(
-    parent: Optional[QtWidgets.QWidget] = None,
+    parent: QtWidgets.QWidget | None = None,
     orientation_parameter=None,
     fret_model=None,
 ) -> None:
     """Show the κ² distribution transformed to R_app/R_DA ratio scale.
-    
+
     This displays the distribution used for FFT convolution:
     R_app/R_DA = (κ²/⟨κ²⟩)^(1/6)
     """
@@ -332,7 +336,9 @@ def show_rapp_rda_distribution_plot(
         return
 
     # Get fret_parameters from fret_model if available
-    fret_parameters = getattr(fret_model, "fret_parameters", None) if fret_model is not None else None
+    fret_parameters = (
+        getattr(fret_model, "fret_parameters", None) if fret_model is not None else None
+    )
     pairs, mode = _extract_kappa2_pairs(orientation_parameter, fret_parameters)
 
     static_pairs = []
@@ -361,7 +367,7 @@ def show_rapp_rda_distribution_plot(
     finite = np.isfinite(amps) & np.isfinite(k2_vals)
     amps = amps[finite]
     k2_vals = k2_vals[finite]
-    
+
     if amps.size == 0:
         dialogs.information(
             parent,
@@ -372,8 +378,9 @@ def show_rapp_rda_distribution_plot(
 
     # Use shared transformation function from chisurf.core.fluorescence.general
     from chisurf.core.fluorescence.general import kappa2_to_distance_ratio
+
     r_ratio, weights, k2_mean = kappa2_to_distance_ratio(amps, k2_vals, n_bins=256)
-    
+
     dialog = QtWidgets.QDialog(parent)
     dialog.setWindowTitle("κ² & Rₐₚₚ/Rᴅᴀ distributions")
     layout = QtWidgets.QVBoxLayout(dialog)
@@ -393,7 +400,7 @@ def show_rapp_rda_distribution_plot(
         amps / np.sum(amps) if np.sum(amps) > 0 else amps,
         pen=(255, 100, 100),
         width=2,
-        symbol='o',
+        symbol="o",
         symbol_size=5,
         name="ρ(κ²)",
     )
@@ -440,7 +447,7 @@ def show_rapp_rda_distribution_plot(
         pass
 
     layout.addWidget(plot_widget)
-    
+
     # Second plot: R_DA and R_app distributions after convolution
     # Get distance distribution from fret_model
     distance_dist = None
@@ -450,7 +457,7 @@ def show_rapp_rda_distribution_plot(
             distance_dist = getattr(fret_model, "distance_distribution", None)
         except Exception:
             pass
-    
+
     if distance_dist is not None:
         try:
             # Extract R_DA distribution
@@ -459,12 +466,12 @@ def show_rapp_rda_distribution_plot(
                 # Shape is (n_dist, 2, n_points) - extract first distribution
                 amp_r = dist_array[0, 0, :]
                 r_da = dist_array[0, 1, :]
-                
+
                 # Filter valid points
                 valid = (amp_r > 0) & np.isfinite(r_da) & (r_da > 0)
                 amp_r = amp_r[valid]
                 r_da = r_da[valid]
-                
+
                 if len(r_da) > 0:
                     # Get Fast setting from UI checkbox
                     use_fast = True
@@ -472,27 +479,28 @@ def show_rapp_rda_distribution_plot(
                         fast_checkbox = getattr(fret_model, "_kappa2_fft_checkbox", None)
                         if fast_checkbox is not None:
                             use_fast = fast_checkbox.isChecked()
-                    
+
                     # Compute R_app distribution via convolution using shared function
                     from chisurf.core.fluorescence.general import convolve_distance_with_k2_ratio
+
                     r_app_centers, r_app_hist = convolve_distance_with_k2_ratio(
                         r_da, amp_r, r_ratio, weights, n_bins=256, use_fast=use_fast
                     )
-                    
+
                     # Normalize both distributions to max=1.0 for comparison
                     max_amp_r = np.max(amp_r)
                     max_r_app = np.max(r_app_hist)
-                    
+
                     if max_amp_r > 0:
                         amp_r_norm = amp_r / max_amp_r
                     else:
                         amp_r_norm = amp_r
-                    
+
                     if max_r_app > 0:
                         r_app_hist_norm = r_app_hist / max_r_app
                     else:
                         r_app_hist_norm = r_app_hist
-                    
+
                     # Create second plot
                     plot_widget2 = cp.Plot(dialog)
                     plot_widget2.grid(x=True, y=True, alpha=0.3)
@@ -505,7 +513,7 @@ def show_rapp_rda_distribution_plot(
                         amp_r_norm,
                         pen=(80, 255, 160),
                         width=2,
-                        symbol='o',
+                        symbol="o",
                         symbol_size=4,
                         name="ρ(Rᴅᴀ)",
                     )
@@ -518,9 +526,9 @@ def show_rapp_rda_distribution_plot(
                         width=2,
                         name="ρ(Rₐₚₚ)",
                     )
-                    
+
                     layout.addWidget(plot_widget2)
-        except Exception as e:
+        except Exception:
             # Silently skip if distance distribution cannot be processed
             pass
 
@@ -533,7 +541,7 @@ def show_rapp_rda_distribution_plot(
 
 
 def open_experimental_k2_dialog(
-    parent: Optional[QtWidgets.QWidget] = None,
+    parent: QtWidgets.QWidget | None = None,
     fret_model=None,
 ) -> None:
     """Open the Kappa2Dist plugin dialog and apply its distribution to a FRET model.
@@ -678,7 +686,9 @@ def open_experimental_k2_dialog(
         try:
             param = getattr(fret_model.fret_parameters, "_kappa2", None)
             controller = getattr(param, "controller", None) if param is not None else None
-            widget_value = getattr(controller, "widget_value", None) if controller is not None else None
+            widget_value = (
+                getattr(controller, "widget_value", None) if controller is not None else None
+            )
             if widget_value is not None:
                 try:
                     widget_value.blockSignals(True)

@@ -1,21 +1,21 @@
-"""FastAPI router for FRET modeling actions.
-"""
+"""FastAPI router for FRET modeling actions."""
 
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
-from ..core import av, io, results, screening, evaluate, pair_selection
-
+from ..core import av, evaluate, io, pair_selection, results, screening
 
 router = APIRouter(prefix="/fret", tags=["fret"])
 
 
 class BackendInfoResponse(BaseModel):
     """Response model for AV backends information."""
+
     has_labellib: bool
     has_imp_bff: bool
     active_backend: str
@@ -23,19 +23,22 @@ class BackendInfoResponse(BaseModel):
 
 class InfoRequest(BaseModel):
     """Request model for retrieving info from an fps.json file."""
+
     fps_path: str
 
 
 class InfoResponse(BaseModel):
     """Response model for fps.json summary."""
+
     positions_count: int
     distances_count: int
-    positions: List[Dict[str, Any]]
-    distances: List[Dict[str, Any]]
+    positions: list[dict[str, Any]]
+    distances: list[dict[str, Any]]
 
 
 class DockRequest(BaseModel):
     """Request model for running FRET-restrained docking."""
+
     fps_path: str
     pdb_path: str
     output_dir: str
@@ -50,6 +53,7 @@ class DockRequest(BaseModel):
 
 class RefineRequest(BaseModel):
     """Request model for running FRET refinement."""
+
     fps_path: str
     pdb_path: str
     output_dir: str
@@ -61,6 +65,7 @@ class RefineRequest(BaseModel):
 
 class BootstrapRequest(BaseModel):
     """Request model for running parametric bootstrap error estimation."""
+
     fps_path: str
     pdb_path: str
     output_dir: str
@@ -72,6 +77,7 @@ class BootstrapRequest(BaseModel):
 
 class SampleRequest(BaseModel):
     """Request model for running Metropolis MC sampling."""
+
     fps_path: str
     pdb_path: str
     output_dir: str
@@ -82,6 +88,7 @@ class SampleRequest(BaseModel):
 
 class ScreenRequest(BaseModel):
     """Request model for screening structure library."""
+
     fps_path: str
     pdb_dir: str
     output_csv: str
@@ -91,16 +98,20 @@ class ScreenRequest(BaseModel):
 
 class EvaluateRequest(BaseModel):
     """Request model for running structure evaluation."""
+
     fps_path: str
-    input_type: str = Field(..., description="One of 'Single PDB File', 'PDB Directory', 'MDTraj Trajectory'")
+    input_type: str = Field(
+        ..., description="One of 'Single PDB File', 'PDB Directory', 'MDTraj Trajectory'"
+    )
     input_path: str
-    traj_path: Optional[str] = None
+    traj_path: str | None = None
     output_csv: str
     av_backend: str = "auto"
 
 
 class PairSelectRequest(BaseModel):
     """Request model for running informative pair selection."""
+
     fps_path: str
     pdb_dir: str
     output_report: str
@@ -148,37 +159,41 @@ def get_info(req: InfoRequest) -> InfoResponse:
         positions, distances, score_sets, extra = io.read_fps_json(req.fps_path)
         pos_list = []
         for name, d in sorted(positions.items()):
-            pos_list.append({
-                "name": name,
-                "chain": d.get("chain_identifier", ""),
-                "residue": d.get("residue_seq_number", 0),
-                "atom": d.get("atom_name", "CA"),
-                "linker_length": d.get("linker_length", 20.0),
-                "radius": d.get("radius1", 3.5),
-            })
+            pos_list.append(
+                {
+                    "name": name,
+                    "chain": d.get("chain_identifier", ""),
+                    "residue": d.get("residue_seq_number", 0),
+                    "atom": d.get("atom_name", "CA"),
+                    "linker_length": d.get("linker_length", 20.0),
+                    "radius": d.get("radius1", 3.5),
+                }
+            )
         dist_list = []
         for name, d in sorted(distances.items()):
-            dist_list.append({
-                "name": name,
-                "position1": d.get("position1_name"),
-                "position2": d.get("position2_name"),
-                "distance": d.get("distance", 0.0),
-                "error_neg": d.get("error_neg", 5.0),
-                "error_pos": d.get("error_pos", 5.0),
-                "type": d.get("distance_type", "RDAMean")
-            })
+            dist_list.append(
+                {
+                    "name": name,
+                    "position1": d.get("position1_name"),
+                    "position2": d.get("position2_name"),
+                    "distance": d.get("distance", 0.0),
+                    "error_neg": d.get("error_neg", 5.0),
+                    "error_pos": d.get("error_pos", 5.0),
+                    "type": d.get("distance_type", "RDAMean"),
+                }
+            )
         return InfoResponse(
             positions_count=len(positions),
             distances_count=len(distances),
             positions=pos_list,
-            distances=dist_list
+            distances=dist_list,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/screen")
-def run_screen(req: ScreenRequest) -> Dict[str, Any]:
+def run_screen(req: ScreenRequest) -> dict[str, Any]:
     """Screen a structure library directory.
 
     Parameters
@@ -203,21 +218,21 @@ def run_screen(req: ScreenRequest) -> Dict[str, Any]:
             distances,
             n_threads=req.n_threads,
         )
-        
+
         # Save screening CSV
         results.write_screening_results_csv(scr_results, req.output_csv)
 
         return {
             "status": "success",
             "structures_screened": len(scr_results),
-            "output_csv": req.output_csv
+            "output_csv": req.output_csv,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/evaluate")
-def run_eval(req: EvaluateRequest) -> Dict[str, Any]:
+def run_eval(req: EvaluateRequest) -> dict[str, Any]:
     """Run OLGA-style structure evaluations.
 
     Parameters
@@ -240,8 +255,14 @@ def run_eval(req: EvaluateRequest) -> Dict[str, Any]:
         if not evaluators:
             # Fallback: construct DistanceEvaluators from distances
             from ..evaluators import DistanceEvaluator
+
             evaluators = [
-                DistanceEvaluator(name, d["position1_name"], d["position2_name"], distance_type=d.get("distance_type", "RDAMean"))
+                DistanceEvaluator(
+                    name,
+                    d["position1_name"],
+                    d["position2_name"],
+                    distance_type=d.get("distance_type", "RDAMean"),
+                )
                 for name, d in distances.items()
             ]
 
@@ -257,26 +278,29 @@ def run_eval(req: EvaluateRequest) -> Dict[str, Any]:
             count = len(storage.frames)
         elif req.input_type == "MDTraj Trajectory":
             if not req.traj_path:
-                raise HTTPException(status_code=400, detail="traj_path is required for MDTraj Trajectory evaluation.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="traj_path is required for MDTraj Trajectory evaluation.",
+                )
             if not os.path.exists(req.traj_path):
-                raise HTTPException(status_code=404, detail=f"Trajectory file not found: {req.traj_path}")
-            storage = evaluate.evaluate_trajectory(req.input_path, req.traj_path, positions, evaluators)
+                raise HTTPException(
+                    status_code=404, detail=f"Trajectory file not found: {req.traj_path}"
+                )
+            storage = evaluate.evaluate_trajectory(
+                req.input_path, req.traj_path, positions, evaluators
+            )
             storage.to_csv(req.output_csv)
             count = len(storage.frames)
         else:
             raise HTTPException(status_code=400, detail=f"Invalid input_type: {req.input_type}")
 
-        return {
-            "status": "success",
-            "evaluations_run": count,
-            "output_csv": req.output_csv
-        }
+        return {"status": "success", "evaluations_run": count, "output_csv": req.output_csv}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/select-pairs")
-def run_pair_select(req: PairSelectRequest) -> Dict[str, Any]:
+def run_pair_select(req: PairSelectRequest) -> dict[str, Any]:
     """Run informative pair selection.
 
     Parameters
@@ -295,7 +319,7 @@ def run_pair_select(req: PairSelectRequest) -> Dict[str, Any]:
 
     try:
         positions, distances, _, _ = io.read_fps_json(req.fps_path)
-        
+
         # 1. Compute RMSD matrix
         rmsds, filenames = pair_selection.compute_rmsd_matrix_from_pdb_dir(req.pdb_dir)
 
@@ -324,12 +348,13 @@ def run_pair_select(req: PairSelectRequest) -> Dict[str, Any]:
         return {
             "status": "success",
             "selected_pairs": selected_pair_names,
-            "output_report": req.output_report
+            "output_report": req.output_report,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 from fastapi import FastAPI
+
 app = FastAPI(title="FRET Modeling API")
 app.include_router(router)

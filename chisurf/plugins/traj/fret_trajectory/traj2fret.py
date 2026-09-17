@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import argparse
-from chisurf.core.structure import trajectory_data as md
+
 import numpy as np
 
 import chisurf.core.fluorescence
 import chisurf.core.fluorescence.anisotropy.kappa2  # noqa: F401  (not auto-imported by the package)
 import chisurf.core.fluorescence.general  # noqa: F401
+from chisurf.core.structure import trajectory_data as md
 
 
 def convert_chain_id_to_numbers(chain_id):
     import string
+
     di = dict(zip(string.letters, [ord(c) % 32 for c in string.letters]))
     try:
         return int(chain_id)
@@ -18,25 +20,11 @@ def convert_chain_id_to_numbers(chain_id):
         return di[chain_id]
 
 
-def mdtraj_selection_string(
-        chain_id: str,
-        res_id: int,
-        atom_name: str
-):
-    return "(chainid == %s) and (resid == %s) and (name == %s)" % \
-           (convert_chain_id_to_numbers(chain_id),
-            int(res_id) - 1,
-            atom_name
-            )
+def mdtraj_selection_string(chain_id: str, res_id: int, atom_name: str):
+    return f"(chainid == {convert_chain_id_to_numbers(chain_id)}) and (resid == {int(res_id) - 1}) and (name == {atom_name})"
 
 
-def traj2anisotropy(
-        traj: md.Trajectory,
-        t_step: float,
-        d1: int,
-        d2: int,
-        t_max: float
-):
+def traj2anisotropy(traj: md.Trajectory, t_step: float, d1: int, d2: int, t_max: float):
     """
     Biophysical Journal Volume 89 December 2005 3757-3770
     Gunnar F. Schroder, Ulrike Alexiev,y and Helmut Grubmuller
@@ -48,25 +36,23 @@ def traj2anisotropy(
     """
     n_t_max = int(t_max / t_step)
 
-    p2 = lambda x: (3.0 * x**2.0 - 1.0) / 2.0
+    def p2(x):
+        return (3.0 * x**2.0 - 1.0) / 2.0
+
     d = traj.xyz[:, d1, :] - traj.xyz[:, d2, :]
     n = np.sqrt((d**2).sum(axis=1))
     dn = (d.T / n).T
     r = np.zeros(n_t_max, dtype=np.float64)
     for i in range(0, len(traj) - n_t_max):
         for j in range(0, n_t_max):
-            dp = np.dot(dn[i], dn[i+j])
+            dp = np.dot(dn[i], dn[i + j])
             r[j] += 2.0 / 5.0 * p2(dp)
-    r /= (len(traj) - n_t_max)
+    r /= len(traj) - n_t_max
     t = np.arange(0, n_t_max, t_step)
     return t, r
 
 
-def integrate_rate_traj(
-        k: np.ndarray,
-        t_step: float,
-        t_max: float
-):
+def integrate_rate_traj(k: np.ndarray, t_step: float, t_max: float):
     """Calculates an average array of rate constants, k, up to a maximum time t_max.
 
     :param k: array (list) of rate constants
@@ -91,18 +77,13 @@ def integrate_rate_traj(
 
     base = cumulative[:n_windows].sum()
     for dt_i in range(n_t_max):
-        sk[dt_i] = cumulative[dt_i:dt_i + n_windows].sum() - base
+        sk[dt_i] = cumulative[dt_i : dt_i + n_windows].sum() - base
 
     sk /= k.shape[0]
     return sk * t_step
 
 
-def traj2decay(
-        k: np.ndarray,
-        t_step: float,
-        t_max: float,
-        tau0: float = None
-):
+def traj2decay(k: np.ndarray, t_step: float, t_max: float, tau0: float = None):
     """Converts a FRET-rate constant trajectory to a FRET-induced donor decay
     or a fluorescence intensity decay.
     If the parameter tau0 is None the FRET-induced donor decay is calculated. If tau0
@@ -126,20 +107,19 @@ def traj2decay(
         return times, fd0 * fret_decay
 
 
-class CalculateTransfer(object):
-
+class CalculateTransfer:
     def __init__(
-            self,
-            trajectory_file: str = None,
-            topology_file: str = None,
-            dipoles: bool = True,
-            tau0: float = 2.6,
-            stride: int = 1,
-            verbose: bool = True,
-            kappa2: float = 0.66666667,
-            forster_radius: float = 52.0,
-            t_step: float = 1.0,
-            **kwargs
+        self,
+        trajectory_file: str = None,
+        topology_file: str = None,
+        dipoles: bool = True,
+        tau0: float = 2.6,
+        stride: int = 1,
+        verbose: bool = True,
+        kappa2: float = 0.66666667,
+        forster_radius: float = 52.0,
+        t_step: float = 1.0,
+        **kwargs,
     ):
         """
 
@@ -258,12 +238,12 @@ class CalculateTransfer(object):
         self.__forster_radius = float(v)
 
     def calc(
-            self,
-            output_file: str,
-            trajectory_file: str = None,
-            stride: int = None,
-            chunk: int = 1000,
-            **kwargs
+        self,
+        output_file: str,
+        trajectory_file: str = None,
+        stride: int = None,
+        chunk: int = 1000,
+        **kwargs,
     ) -> np.ndarray:
         """Compute the FRET observables along a trajectory and write them to a file.
 
@@ -293,7 +273,7 @@ class CalculateTransfer(object):
             Array of shape ``(n_frames, 6)`` with columns
             ``[frame, time[ns], RDA[Ang], kappa, kappa2, FRETrate[1/ns]]``.
         """
-        verbose = kwargs.get('verbose', self.verbose)
+        verbose = kwargs.get("verbose", self.verbose)
         if trajectory_file is None:
             trajectory_file = self.trajectory_file
         if stride is None:
@@ -302,35 +282,32 @@ class CalculateTransfer(object):
         donor = self.donor
         acceptor = self.acceptor
         time_step = self.t_step * stride
-        dipoles = kwargs.get('dipoles', self.dipoles)
+        dipoles = kwargs.get("dipoles", self.dipoles)
 
         if verbose:
-            print("Trajectory: %s" % trajectory_file)
-            print("Donor-Dipole atoms: %s, %s" % tuple(donor))
-            print("Acceptor-Dipole atoms: %s, %s" % tuple(acceptor))
-            print("Stride: %s" % stride)
-            print("time_step: %s" % time_step)
-            print("Calculate kappa: %s" % dipoles)
-            print("Donor fluorescence lifetime: %s" % self.tau0)
-            print("Output file: %s" % output_file)
+            print(f"Trajectory: {trajectory_file}")
+            print("Donor-Dipole atoms: {}, {}".format(*tuple(donor)))
+            print("Acceptor-Dipole atoms: {}, {}".format(*tuple(acceptor)))
+            print(f"Stride: {stride}")
+            print(f"time_step: {time_step}")
+            print(f"Calculate kappa: {dipoles}")
+            print(f"Donor fluorescence lifetime: {self.tau0}")
+            print(f"Output file: {output_file}")
             print("-------------------------")
 
         # Write header (text mode, consistent with the appended rows below)
-        with open(output_file, 'w') as f_handle:
-            f_handle.write('Frame\ttime[ns]\tRDA[Ang]\tkappa\tkappa2\tFRETrate[1/ns]\n')
+        with open(output_file, "w") as f_handle:
+            f_handle.write("Frame\ttime[ns]\tRDA[Ang]\tkappa\tkappa2\tFRETrate[1/ns]\n")
         n = 0
         results = []
-        for chunk_traj in md.iterload(trajectory_file, stride=stride, chunk=chunk,
-                                      top=self.topology_file or None):
+        for chunk_traj in md.iterload(
+            trajectory_file, stride=stride, chunk=chunk, top=self.topology_file or None
+        ):
             if dipoles:
                 ds, ks = chisurf.core.fluorescence.anisotropy.kappa2.calculate_kappa_distance(
-                    chunk_traj.xyz,
-                    donor[0],
-                    donor[1],
-                    acceptor[0],
-                    acceptor[1]
+                    chunk_traj.xyz, donor[0], donor[1], acceptor[0], acceptor[1]
                 )
-                k2 = ks ** 2
+                k2 = ks**2
             else:
                 # Only the first atom of each dye is used, so there is no dipole
                 # orientation to compute: the fixed kappa2 (isotropic 2/3 by
@@ -352,19 +329,13 @@ class CalculateTransfer(object):
                     ks,  # kappa
                     k2,  # kappa2
                     chisurf.core.fluorescence.general.distance_to_fret_rate_constant(
-                        ds,
-                        self.forster_radius,
-                        self.tau0,
-                        k2
-                    )
+                        ds, self.forster_radius, self.tau0, k2
+                    ),
                 ]  # FRET-rate constant
             ).T
-            with open(output_file, 'a') as f_handle:
+            with open(output_file, "a") as f_handle:
                 np.savetxt(
-                    f_handle,
-                    r,
-                    delimiter='\t',
-                    fmt=['%d', '%.3f', '%.2f', '%.4e', '%.4e', '%.4e']
+                    f_handle, r, delimiter="\t", fmt=["%d", "%.3f", "%.2f", "%.4e", "%.4e", "%.4e"]
                 )
             results.append(r)
         if verbose:
@@ -407,51 +378,141 @@ Example
 python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.csv
 
 """,
-        formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--topology', dest='topology_file', type=str, default=None,
-                        help='PDB naming the atoms. Required for .dcd, '
-                             'which store coordinates only.')
-    parser.add_argument('trajectory_file', metavar='file', type=str,
-                        help='Filename of the .h5 trajectory file')
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "--topology",
+        dest="topology_file",
+        type=str,
+        default=None,
+        help="PDB naming the atoms. Required for .dcd, which store coordinates only.",
+    )
+    parser.add_argument(
+        "trajectory_file", metavar="file", type=str, help="Filename of the .h5 trajectory file"
+    )
 
-    parser.add_argument("-o", "--output", type=str, required=True,
-                        help='The output csv-file')
+    parser.add_argument("-o", "--output", type=str, required=True, help="The output csv-file")
 
-    parser.add_argument("-td0", "--tauD0", type=float, default=2.3, required=False,
-                        help='Fluorescence lifetime of the donor in ns')
+    parser.add_argument(
+        "-td0",
+        "--tauD0",
+        type=float,
+        default=2.3,
+        required=False,
+        help="Fluorescence lifetime of the donor in ns",
+    )
 
-    parser.add_argument("-d", "--donor", type=lambda x: x.split(' ')[0], nargs='+', required=True,
-                        help='Definition of the donor dipole chain-ids, residue-ids and the atom names, '
-                             'e.g. "A 201 CA B 302 N" chooses the "CA" atom on resiude 201 of chain A'
-                             'and the "N" atoms on residue 302 of chain "B". The chain is either numbered'
-                             'or the PDB-typical chain identifier, e.g. "A". The resiude numbers start with 1.')
-    parser.add_argument("-a", "--acceptor", nargs='+', type=lambda x: x.split(' ')[0], required=True,
-                        help='Definition of the acceptor dipole analogous to the donor')
+    parser.add_argument(
+        "-d",
+        "--donor",
+        type=lambda x: x.split(" ")[0],
+        nargs="+",
+        required=True,
+        help="Definition of the donor dipole chain-ids, residue-ids and the atom names, "
+        'e.g. "A 201 CA B 302 N" chooses the "CA" atom on resiude 201 of chain A'
+        'and the "N" atoms on residue 302 of chain "B". The chain is either numbered'
+        'or the PDB-typical chain identifier, e.g. "A". The resiude numbers start with 1.',
+    )
+    parser.add_argument(
+        "-a",
+        "--acceptor",
+        nargs="+",
+        type=lambda x: x.split(" ")[0],
+        required=True,
+        help="Definition of the acceptor dipole analogous to the donor",
+    )
 
-    parser.add_argument("-p", "--dipoles", help='If this is set to False the orientation factor is not calculated'
-                                                'and only the distance between the first two chosen D and A atom'
-                                                'are calculated.', default=1, required=False, type=int)
-    parser.add_argument("-dt", "--t_step", type=float, default=None, required=False,
-                        help='Time-step of trajectory in ns')
-    parser.add_argument("-s", "--stride", type=int, default=1, required=False,
-                        help='Load only every stride-th frame from the input file(s), to subsample')
-    parser.add_argument("-v", "--verbose", type=bool, default=False, required=False,
-                        help='If True outputs more information to the stdout.')
-    parser.add_argument("-r", "--forster_radius", type=float, default=52.0, required=False,
-                        help='Forster-radius of the dye pair.')
-    parser.add_argument("-c", "--decay_file", type=str, default=None, required=False,
-                        help='File to save time-resolved decays')
-    parser.add_argument("-cm", "--decay_time_max", type=float, default=100.0, required=False,
-                        help='Maximum time of the decays')
-    parser.add_argument("-nk", "--chunk", type=int, default=5000, required=False,
-                        help='Chunk size used to process trajectory')
-    parser.add_argument("-qa", "--quenching_atoms", type=lambda x: x.split(' ')[0], nargs='+', default=None,
-                        required=False, help='List of quenching atoms')
-    parser.add_argument("-qd", "--quenching_distance", type=float, default=2.5,
-                        required=False, help='Characteristic distance for PET')
-    parser.add_argument("-qk", "--quenching_constant", type=float, default=3.0,
-                        required=False, help='Quenching rate constant of PET (at zero distance)')
-
+    parser.add_argument(
+        "-p",
+        "--dipoles",
+        help="If this is set to False the orientation factor is not calculated"
+        "and only the distance between the first two chosen D and A atom"
+        "are calculated.",
+        default=1,
+        required=False,
+        type=int,
+    )
+    parser.add_argument(
+        "-dt",
+        "--t_step",
+        type=float,
+        default=None,
+        required=False,
+        help="Time-step of trajectory in ns",
+    )
+    parser.add_argument(
+        "-s",
+        "--stride",
+        type=int,
+        default=1,
+        required=False,
+        help="Load only every stride-th frame from the input file(s), to subsample",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        type=bool,
+        default=False,
+        required=False,
+        help="If True outputs more information to the stdout.",
+    )
+    parser.add_argument(
+        "-r",
+        "--forster_radius",
+        type=float,
+        default=52.0,
+        required=False,
+        help="Forster-radius of the dye pair.",
+    )
+    parser.add_argument(
+        "-c",
+        "--decay_file",
+        type=str,
+        default=None,
+        required=False,
+        help="File to save time-resolved decays",
+    )
+    parser.add_argument(
+        "-cm",
+        "--decay_time_max",
+        type=float,
+        default=100.0,
+        required=False,
+        help="Maximum time of the decays",
+    )
+    parser.add_argument(
+        "-nk",
+        "--chunk",
+        type=int,
+        default=5000,
+        required=False,
+        help="Chunk size used to process trajectory",
+    )
+    parser.add_argument(
+        "-qa",
+        "--quenching_atoms",
+        type=lambda x: x.split(" ")[0],
+        nargs="+",
+        default=None,
+        required=False,
+        help="List of quenching atoms",
+    )
+    parser.add_argument(
+        "-qd",
+        "--quenching_distance",
+        type=float,
+        default=2.5,
+        required=False,
+        help="Characteristic distance for PET",
+    )
+    parser.add_argument(
+        "-qk",
+        "--quenching_constant",
+        type=float,
+        default=3.0,
+        required=False,
+        help="Quenching rate constant of PET (at zero distance)",
+    )
 
     args = parser.parse_args()
     if args.verbose:
@@ -459,50 +520,34 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
         print("=========================")
         print("")
     kwargs = vars(args)
-    kwargs['dipoles'] = kwargs['dipoles'] > 0
+    kwargs["dipoles"] = kwargs["dipoles"] > 0
     # Save the first frame to a PDB and pick the atom numbers
     if args.verbose:
         print("Opening first frame of trajectory.")
     frame = md.load_frame(args.trajectory_file, 0, top=args.topology_file)
-    if kwargs['t_step'] is None:
+    if kwargs["t_step"] is None:
         try:
-            kwargs['t_step'] = frame.timestep
+            kwargs["t_step"] = frame.timestep
         except ValueError:
-            kwargs['t_step'] = 1.0
+            kwargs["t_step"] = 1.0
 
     calc_fret = CalculateTransfer(**kwargs)
     if args.verbose:
         print("Applying user parameters.")
 
     d1_atom = frame.top.select(
-        mdtraj_selection_string(
-            args.donor[0],
-            args.donor[1],
-            args.donor[2]
-        )
+        mdtraj_selection_string(args.donor[0], args.donor[1], args.donor[2])
     )[0]
     a1_atom = frame.top.select(
-        mdtraj_selection_string(
-            args.acceptor[0],
-            args.acceptor[1],
-            args.acceptor[2]
-        )
+        mdtraj_selection_string(args.acceptor[0], args.acceptor[1], args.acceptor[2])
     )[0]
 
-    if kwargs['dipoles']:
+    if kwargs["dipoles"]:
         a2_atom = frame.top.select(
-            mdtraj_selection_string(
-                args.acceptor[3],
-                args.acceptor[4],
-                args.acceptor[5]
-            )
+            mdtraj_selection_string(args.acceptor[3], args.acceptor[4], args.acceptor[5])
         )[0]
         d2_atom = frame.top.select(
-            mdtraj_selection_string(
-                args.donor[3],
-                args.donor[4],
-                args.donor[5]
-            )
+            mdtraj_selection_string(args.donor[3], args.donor[4], args.donor[5])
         )[0]
     else:
         d2_atom = None
@@ -521,11 +566,12 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
         print("Calculating fluorescence decays.")
     if args.decay_file is not None:
         traj = md.load(args.trajectory_file, top=args.topology_file)
-        t_step = kwargs['t_step']
-        t, rD = traj2anisotropy(traj, t_step, args.donor[0], args.donor[1], t_max=args.decay_time_max)
-        t, rA = traj2anisotropy(traj, t_step, args.acceptor[0], args.acceptor[1], t_max=args.decay_time_max)
+        t_step = kwargs["t_step"]
+        t, rD = traj2anisotropy(
+            traj, t_step, args.donor[0], args.donor[1], t_max=args.decay_time_max
+        )
+        t, rA = traj2anisotropy(
+            traj, t_step, args.acceptor[0], args.acceptor[1], t_max=args.decay_time_max
+        )
         d = np.vstack([t, rD, rA]).T
-        np.savetxt(args.decay_file, d,
-                   delimiter='\t',
-                   fmt=['%.3f', '%.3f', '%.3f']
-                   )
+        np.savetxt(args.decay_file, d, delimiter="\t", fmt=["%.3f", "%.3f", "%.3f"])

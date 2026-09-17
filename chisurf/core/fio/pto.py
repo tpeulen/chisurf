@@ -38,8 +38,9 @@ import json
 import logging
 import uuid
 import warnings
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -543,7 +544,7 @@ class Measurement:
         out_dir: str | Path | None = None,
         title: str = "",
         artifact_kind: str = "tttr_photon_stream",
-    ) -> "Measurement":
+    ) -> Measurement:
         """Start a container from one or more instrument files.
 
         Each instrument file is copied in **verbatim** and is never rewritten
@@ -619,7 +620,7 @@ class Measurement:
         return self
 
     @classmethod
-    def create_empty(cls, path: str | Path, *, title: str = "") -> "Measurement":
+    def create_empty(cls, path: str | Path, *, title: str = "") -> Measurement:
         """Start a container with no instrument file in it.
 
         For the results that genuinely have no measurement behind them: a curve
@@ -657,7 +658,7 @@ class Measurement:
         return self
 
     @classmethod
-    def open(cls, path: str | Path, *, writable: bool = False) -> "Measurement":
+    def open(cls, path: str | Path, *, writable: bool = False) -> Measurement:
         """Open an existing container.
 
         Parameters
@@ -689,7 +690,7 @@ class Measurement:
         self._instrument_uid = _primary_uid(handle)
         return self
 
-    def __enter__(self) -> "Measurement":
+    def __enter__(self) -> Measurement:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
@@ -1003,9 +1004,7 @@ class Measurement:
         store = self.get_store(ref)
         present = set(column_names(store))
         out: dict = {
-            key: numeric_column(store, key)
-            for key in self.CURVE_COLUMNS
-            if key in present
+            key: numeric_column(store, key) for key in self.CURVE_COLUMNS if key in present
         }
         out["x_units"] = self.column_units(store, "x")
         out["y_units"] = self.column_units(store, "y")
@@ -1253,8 +1252,7 @@ class Measurement:
         return [
             t.u
             for t in self._f.tags_for(uid)
-            if t.type == tttrlib.PtoType_UID
-            and t.name in (_SOURCE_NODE_ID, _RELATIONSHIP_TYPE)
+            if t.type == tttrlib.PtoType_UID and t.name in (_SOURCE_NODE_ID, _RELATIONSHIP_TYPE)
         ]
 
     def provenance(self, uid: int) -> dict:
@@ -1293,8 +1291,7 @@ class Measurement:
             "settings": settings,
             "settings_hash": self.tag(uid, _SETTINGS_HASH),
             "software": (
-                f"{self.tag(uid, _SOFTWARE_PACKAGE)} "
-                f"{self.tag(uid, _SOFTWARE_VERSION)}".strip()
+                f"{self.tag(uid, _SOFTWARE_PACKAGE)} {self.tag(uid, _SOFTWARE_VERSION)}".strip()
             ),
             "dictionary": self.tag(uid, _DICTIONARY_VERSION),
             "relationship": self.tag(uid, _RELATIONSHIP_TYPE),
@@ -1366,18 +1363,14 @@ class Measurement:
             for key in sorted(step["settings"]):
                 lines.append(f"      {key} = {step['settings'][key]!r}")
             if step["parents"]:
-                names = ", ".join(
-                    self._f.object(p).name for p in step["parents"]
-                )
+                names = ", ".join(self._f.object(p).name for p in step["parents"])
                 joined = ""
                 if step["source_row_column"]:
                     joined = (
                         f" on {step['source_row_column']}"
                         f" = {step['target_row_column'] or step['source_row_column']}"
                     )
-                lines.append(
-                    f"    {step['relationship'] or 'derived_from'} {names}{joined}"
-                )
+                lines.append(f"    {step['relationship'] or 'derived_from'} {names}{joined}")
         return "\n".join(lines)
 
     # -- getting back out -----------------------------------------------------
@@ -1526,8 +1519,7 @@ class Measurement:
             written.append(self.extract(obj.uid, out / str(obj.name)))
         if not written:
             raise PtoMfdbError(
-                f"could not disassemble into {out}: no instrument file in "
-                f"{self._path.name}"
+                f"could not disassemble into {out}: no instrument file in {self._path.name}"
             )
         return written
 
@@ -1556,9 +1548,7 @@ class Measurement:
         if not self._f.is_open():
             raise PtoMfdbError("the container is closed")
         if not self._writable:
-            raise PtoMfdbError(
-                f"{self._path} was opened read-only; reopen with writable=True"
-            )
+            raise PtoMfdbError(f"{self._path} was opened read-only; reopen with writable=True")
 
     def _resolve(self, ref: int | str) -> int:
         """Return the UID *ref* names, by uid or by name.
@@ -1602,9 +1592,7 @@ class Measurement:
         from chisurf.core.datastore import as_store, store_from_arrays
 
         if hasattr(table, "columns") and hasattr(table, "iloc"):
-            return store_from_arrays(
-                {str(name): table[name].to_numpy() for name in table.columns}
-            )
+            return store_from_arrays({str(name): table[name].to_numpy() for name in table.columns})
         return as_store(table)
 
     def _describe_columns(
@@ -1698,9 +1686,7 @@ class Measurement:
                 return str(column.attribute("item") or "")
         return ""
 
-    def _find_run(
-        self, operation_type: str, run: str, artifact_kind: str, name: str
-    ) -> int:
+    def _find_run(self, operation_type: str, run: str, artifact_kind: str, name: str) -> int:
         """Return the UID of the same output of an earlier identical run, or 0.
 
         This is what makes a recomputation replace rather than accumulate — and
@@ -1798,17 +1784,13 @@ class Measurement:
         )
         return uid
 
-    def _add_instrument(
-        self, raw: Path, artifact_kind: str = "tttr_photon_stream"
-    ) -> int:
+    def _add_instrument(self, raw: Path, artifact_kind: str = "tttr_photon_stream") -> int:
         """Embed the instrument file verbatim as the first object."""
         _check_term(artifact_kind, _ARTIFACT_KIND)
         checksum, size = _sha256_of_path(raw)
         data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
 
-        uid = self._add_payload_from_path(
-            artifact_kind, data_format, raw.name, raw
-        )
+        uid = self._add_payload_from_path(artifact_kind, data_format, raw.name, raw)
         self._describe(
             uid,
             data_format=data_format,
@@ -1839,9 +1821,7 @@ class Measurement:
             )
         return uid
 
-    def _add_payload_from_path(
-        self, kind: str, data_format: str, name: str, path: Path
-    ) -> int:
+    def _add_payload_from_path(self, kind: str, data_format: str, name: str, path: Path) -> int:
         """Add a file's bytes as an object.
 
         Prefers a streaming add when the library offers one. The fallback reads

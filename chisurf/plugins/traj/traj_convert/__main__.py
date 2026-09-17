@@ -1,6 +1,8 @@
 import sys
-from .widget import MDConverter
+
 from qtpy.QtWidgets import QApplication
+
+from .widget import MDConverter
 
 
 def main():

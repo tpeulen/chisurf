@@ -16,9 +16,8 @@ import struct
 
 import numpy as np
 import pytest
-
-from chimol.io.mrc import load_mrc_grid
 from chimol.core.model.volume import VolumeGrid
+from chimol.io.mrc import load_mrc_grid
 
 
 # --------------------------------------------------------------------------- #
@@ -26,12 +25,14 @@ from chimol.core.model.volume import VolumeGrid
 # --------------------------------------------------------------------------- #
 def write_mrc(
     path,
-    values,                     # indexed [x, y, z]
+    values,  # indexed [x, y, z]
     *,
     step=(1.0, 1.0, 1.0),
-    mapc=1, mapr=2, maps=3,     # which spatial axis is fast / medium / slow
-    xyz_origin=None,            # MRC2000 origin, in physical units
-    start=(0, 0, 0),            # ncstart / nrstart / nsstart, in voxels
+    mapc=1,
+    mapr=2,
+    maps=3,  # which spatial axis is fast / medium / slow
+    xyz_origin=None,  # MRC2000 origin, in physical units
+    start=(0, 0, 0),  # ncstart / nrstart / nsstart, in voxels
     mrc2000=True,
 ):
     """Write a minimal but honest MRC file.
@@ -64,14 +65,14 @@ def write_mrc(
         struct.pack_into("<%df" % len(vals), header, offset, *vals)
 
     put_i32(0, nc, nr, ns)
-    put_i32(12, 2)                                  # mode 2 = float32
+    put_i32(12, 2)  # mode 2 = float32
     put_i32(16, *start)
     size = [values.shape[a] for a in range(3)]
-    put_i32(28, *size)                              # mx, my, mz
+    put_i32(28, *size)  # mx, my, mz
     put_f32(40, *[size[a] * step[a] for a in range(3)])
     put_f32(52, 90.0, 90.0, 90.0)
     put_i32(64, *put_axis_words)
-    put_i32(92, 0)                                  # nsymbt
+    put_i32(92, 0)  # nsymbt
     if mrc2000:
         header[208:212] = b"MAP "
         if xyz_origin is not None:
@@ -87,7 +88,7 @@ def write_mrc(
 def blob():
     """A deliberately non-cubic map, so a transposition cannot hide."""
     values = np.zeros((6, 5, 4), dtype=np.float32)
-    values[4, 1, 2] = 10.0          # an asymmetric marker
+    values[4, 1, 2] = 10.0  # an asymmetric marker
     values[1:3, 2:4, 1:3] = 3.0
     return values
 
@@ -125,9 +126,7 @@ def test_a_map_that_cannot_be_placed_is_refused(kwargs, reason):
 
 
 def test_placement_applies_step_then_rotation_then_origin():
-    grid = VolumeGrid.from_array(
-        np.ones((2, 2, 2)), origin=(10.0, 0.0, 0.0), step=(2.0, 3.0, 4.0)
-    )
+    grid = VolumeGrid.from_array(np.ones((2, 2, 2)), origin=(10.0, 0.0, 0.0), step=(2.0, 3.0, 4.0))
     assert grid.index_to_world((0, 0, 0)) == pytest.approx([10.0, 0.0, 0.0])
     assert grid.index_to_world((1, 1, 1)) == pytest.approx([12.0, 3.0, 4.0])
     # A quarter turn about z sends +x to +y.
@@ -196,9 +195,7 @@ def test_a_contour_encloses_the_dense_region():
 def test_a_contour_follows_the_maps_placement():
     values = np.zeros((20, 20, 20), dtype=np.float32)
     values[6:14, 6:14, 6:14] = 1.0
-    placed = VolumeGrid.from_array(
-        values, origin=(100.0, 0.0, -50.0), step=(2.0, 1.0, 1.0)
-    )
+    placed = VolumeGrid.from_array(values, origin=(100.0, 0.0, -50.0), step=(2.0, 1.0, 1.0))
     verts = placed.isosurface(0.5)[0]
     assert verts[:, 0].min() > 100.0
     assert verts[:, 2].min() < 0.0
@@ -247,8 +244,7 @@ def test_a_plain_map_round_trips(tmp_path, blob):
     "mapc,mapr,maps",
     [(1, 2, 3), (3, 1, 2), (2, 3, 1), (1, 3, 2), (3, 2, 1), (2, 1, 3)],
 )
-def test_axes_stored_in_any_order_read_back_the_same_map(tmp_path, blob,
-                                                         mapc, mapr, maps):
+def test_axes_stored_in_any_order_read_back_the_same_map(tmp_path, blob, mapc, mapr, maps):
     """`mapc`/`mapr`/`maps` are a permutation, not decoration.
 
     Ignoring them loads the map transposed: for a non-cubic map that is not even
@@ -256,8 +252,11 @@ def test_axes_stored_in_any_order_read_back_the_same_map(tmp_path, blob,
     looks plausible.
     """
     path = write_mrc(
-        tmp_path / f"perm_{mapc}{mapr}{maps}.mrc", blob,
-        mapc=mapc, mapr=mapr, maps=maps,
+        tmp_path / f"perm_{mapc}{mapr}{maps}.mrc",
+        blob,
+        mapc=mapc,
+        mapr=mapr,
+        maps=maps,
     )
     grid = load_mrc_grid(path)
     assert grid.shape == blob.shape, f"axis order {mapc}{mapr}{maps} came back wrong"
@@ -272,9 +271,7 @@ def test_a_bad_axis_assignment_falls_back_rather_than_scrambling(tmp_path, blob)
 
 
 def test_the_mrc2000_origin_is_used_when_it_is_set(tmp_path, blob):
-    path = write_mrc(
-        tmp_path / "xyzorigin.mrc", blob, xyz_origin=(12.5, -4.0, 7.25)
-    )
+    path = write_mrc(tmp_path / "xyzorigin.mrc", blob, xyz_origin=(12.5, -4.0, 7.25))
     grid = load_mrc_grid(path)
     assert tuple(grid.origin) == pytest.approx((12.5, -4.0, 7.25))
 
@@ -285,15 +282,13 @@ def test_the_start_indices_place_the_map_when_the_xyz_origin_is_zero(tmp_path, b
     Preferring the format version over the value is what puts a map next to the
     model instead of around it.
     """
-    path = write_mrc(
-        tmp_path / "startorigin.mrc", blob, step=(2.0, 2.0, 2.0), start=(3, 4, 5)
-    )
+    path = write_mrc(tmp_path / "startorigin.mrc", blob, step=(2.0, 2.0, 2.0), start=(3, 4, 5))
     grid = load_mrc_grid(path)
     assert tuple(grid.origin) == pytest.approx((6.0, 8.0, 10.0))
 
 
 def test_absurd_start_indices_are_treated_as_uninitialised(tmp_path, blob):
-    path = write_mrc(tmp_path / "junkstart.mrc", blob, start=(10 ** 6, 0, 0))
+    path = write_mrc(tmp_path / "junkstart.mrc", blob, start=(10**6, 0, 0))
     grid = load_mrc_grid(path)
     assert tuple(grid.origin) == pytest.approx((0.0, 0.0, 0.0))
 
@@ -345,18 +340,14 @@ def test_agrees_with_imps_reader(tmp_path, blob):
     """
     IMP_em = pytest.importorskip("IMP.em", reason="IMP not available")
 
-    path = write_mrc(
-        tmp_path / "imp.mrc", blob, step=(1.5, 1.5, 1.5), xyz_origin=(3.0, 4.0, 5.0)
-    )
+    path = write_mrc(tmp_path / "imp.mrc", blob, step=(1.5, 1.5, 1.5), xyz_origin=(3.0, 4.0, 5.0))
     ours = load_mrc_grid(path)
 
     theirs = IMP_em.read_map(str(path), IMP_em.MRCReaderWriter())
     header = theirs.get_header()
     assert (header.get_nx(), header.get_ny(), header.get_nz()) == ours.shape
     assert header.get_spacing() == pytest.approx(float(ours.step[0]), abs=1e-4)
-    their_origin = (
-        theirs.get_origin()[0], theirs.get_origin()[1], theirs.get_origin()[2]
-    )
+    their_origin = (theirs.get_origin()[0], theirs.get_origin()[1], theirs.get_origin()[2])
     assert their_origin == pytest.approx(tuple(ours.origin), abs=1e-4)
 
     their_values = np.asarray(
@@ -364,9 +355,7 @@ def test_agrees_with_imps_reader(tmp_path, blob):
         dtype=np.float32,
     )
     # IMP indexes x fastest; ours is [x, y, z], so its flat order is the reverse.
-    assert np.allclose(
-        their_values, ours.values.transpose(2, 1, 0).ravel(), atol=1e-5
-    )
+    assert np.allclose(their_values, ours.values.transpose(2, 1, 0).ravel(), atol=1e-5)
 
 
 # --------------------------------------------------------------------------- #
@@ -387,9 +376,7 @@ def shell(qapp):
 
     view = Viewer()
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
-    values = np.exp(
-        -(((xx - 12) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 40.0)
-    ).astype(np.float32)
+    values = np.exp(-(((xx - 12) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 40.0)).astype(np.float32)
     grid = VolumeGrid.from_array(values, step=(1.0, 1.0, 1.0), name="blob")
 
     messages, errors = [], []
@@ -429,9 +416,7 @@ def test_two_maps_do_not_share_an_object_id(shell):
     """Ids are qualified on the map-only path too, or the second overwrites."""
     view, grid, _cmd, _msgs, _errs = shell
     view.add_volume(grid, name="one")
-    view.add_volume(
-        VolumeGrid.from_array(grid.values.copy(), name="two"), name="two"
-    )
+    view.add_volume(VolumeGrid.from_array(grid.values.copy(), name="two"), name="two")
     ids = [obj.id for obj in view._scene.objects]
     assert len(ids) == len(set(ids)), ids
 
@@ -444,20 +429,17 @@ def test_a_map_adopts_the_frame_of_what_is_already_loaded(shell):
     blob inside it. The picture is the only place that shows.
     """
     view, grid, _cmd, _msgs, _errs = shell
-    view.add_coordinates(np.zeros((4, 3)))       # something to define the frame
+    view.add_coordinates(np.zeros((4, 3)))  # something to define the frame
     existing = np.asarray(view._raw_center, dtype=float)
 
-    offset = VolumeGrid.from_array(
-        grid.values, origin=(500.0, 0.0, 0.0), step=(1.0, 1.0, 1.0)
-    )
+    offset = VolumeGrid.from_array(grid.values, origin=(500.0, 0.0, 0.0), step=(1.0, 1.0, 1.0))
     object_id = view.add_volume(offset)
     with view.activate_object(object_id):
         assert np.allclose(np.asarray(view._raw_center, dtype=float), existing)
     # ...and the geometry lands far from the origin, as its origin says.
-    verts = [
-        obj.geometry.positions for obj in view._scene.objects
-        if obj.id.endswith("volume_0")
-    ][0]
+    verts = [obj.geometry.positions for obj in view._scene.objects if obj.id.endswith("volume_0")][
+        0
+    ]
     assert verts[:, 0].min() > 100.0
 
 
@@ -469,8 +451,8 @@ def test_mesh_style_draws_lines_rather_than_a_filled_surface(shell):
     """
     view, grid, _cmd, _msgs, _errs = shell
     view.add_volume(
-        grid, levels=[{"level": grid.default_level(), "style": "mesh",
-                       "color": (0.0, 0.0, 1.0, 1.0)}]
+        grid,
+        levels=[{"level": grid.default_level(), "style": "mesh", "color": (0.0, 0.0, 1.0, 1.0)}],
     )
     geometry = view._scene.objects[0].geometry
     assert geometry.kind == "line"
@@ -481,9 +463,9 @@ def test_the_wireframe_does_not_send_every_edge_twice():
     """Interior edges are shared; drawing both copies doubles the lines."""
     from chimol.geometry.edges import _triangle_edges
 
-    faces = np.array([[0, 1, 2], [1, 2, 3]])      # two triangles sharing edge 1-2
+    faces = np.array([[0, 1, 2], [1, 2, 3]])  # two triangles sharing edge 1-2
     edges = _triangle_edges(faces)
-    assert edges.shape == (5, 2)                  # 3 + 3 - 1 shared
+    assert edges.shape == (5, 2)  # 3 + 3 - 1 shared
     assert len({tuple(e) for e in edges}) == 5
 
 
@@ -538,16 +520,18 @@ def test_volume_switches_the_map_to_solid_rendering(shell):
 def test_map_info_reports_placement_and_range(shell):
     view, _grid, cmd, messages, errors = shell
     placed = VolumeGrid.from_array(
-        np.linspace(0, 1, 8 ** 3, dtype=np.float32).reshape(8, 8, 8),
-        origin=(3.0, 4.0, 5.0), step=(0.5, 0.5, 2.0), name="placed",
+        np.linspace(0, 1, 8**3, dtype=np.float32).reshape(8, 8, 8),
+        origin=(3.0, 4.0, 5.0),
+        step=(0.5, 0.5, 2.0),
+        name="placed",
     )
     view.add_volume(placed)
     cmd.do("map_info placed")
     assert not errors, errors
     report = messages[-1]
     assert "8 x 8 x 8" in report
-    assert "0.5" in report and "2" in report        # the anisotropic step
-    assert "3" in report and "4" in report          # the origin
+    assert "0.5" in report and "2" in report  # the anisotropic step
+    assert "3" in report and "4" in report  # the origin
 
 
 # --------------------------------------------------------------------------- #
@@ -651,7 +635,7 @@ def test_a_binary_map_contours_at_a_half():
     of around it. The reference tool special-cases this and so does ChiMOL.
     """
     zz, yy, xx = np.mgrid[0:30, 0:30, 0:30]
-    occupied = (((xx - 15) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) < 200)
+    occupied = ((xx - 15) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) < 200
     grid = VolumeGrid.from_array(occupied.astype(np.float32), name="av")
     assert grid.is_binary()
     assert grid.default_levels() == [0.5]
@@ -708,13 +692,10 @@ def test_a_polar_map_is_drawn_as_two_coloured_contours(shell):
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
     positive = np.exp(-(((xx - 9) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 25.0))
     negative = np.exp(-(((xx - 16) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 25.0))
-    view.add_volume(
-        VolumeGrid.from_array((positive - negative).astype(np.float32), name="diff")
-    )
+    view.add_volume(VolumeGrid.from_array((positive - negative).astype(np.float32), name="diff"))
     objects = view._scene.objects
     assert len(objects) == 2, "both lobes should be drawn"
-    colours = {tuple(round(float(c), 3) for c in obj.geometry.colors[0])
-               for obj in objects}
+    colours = {tuple(round(float(c), 3) for c in obj.geometry.colors[0]) for obj in objects}
     assert len(colours) == 2, "the two lobes must be told apart by colour"
 
 
@@ -846,7 +827,8 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_p
     assert requested and "emd_3061.map.gz" in requested[-1], requested
     assert "EMD-3061" in errors[-1]
 
-    errors.clear(); requested.clear()
+    errors.clear()
+    requested.clear()
     cmd._fetch_one("nonsense", "emdb")
     assert not requested, "a number-less EMDB id should not be requested at all"
     assert "EMDB number" in errors[-1]
@@ -866,7 +848,8 @@ def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
     import urllib.request
 
     monkeypatch.setattr(
-        urllib.request, "urlopen",
+        urllib.request,
+        "urlopen",
         lambda url, *a, **k: (_ for _ in ()).throw(OSError(requested.append(url) or "x")),
     )
 

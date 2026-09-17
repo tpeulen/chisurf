@@ -37,10 +37,10 @@ What this pins
   the six methods and two outside modules that mutate it. That is the reason
   the mapping protocol is the choke point rather than a set of named methods.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.model.objects import Change, ObjectRegistry
 
 
@@ -129,7 +129,7 @@ def test_reading_never_counts():
 def measured():
     from toolkit_free import probe
 
-    return probe('''
+    return probe("""
         app = open_app(size=(600, 460))
         viewer = app.viewer
         gui = app.renderer._internal_gui
@@ -149,7 +149,7 @@ def measured():
         app.cmd.do("delete sim")
         emit("deleted", revision())
         emit("rows", ",".join(r.name for r in gui.rows))
-    ''')
+    """)
 
 
 def test_the_viewer_reports_every_kind_of_change(measured):
@@ -203,7 +203,7 @@ def test_the_history_records_what_happened():
     registry = ObjectRegistry()
     registry["a"] = _Entry()
     registry["b"] = _Entry()
-    registry["a"] = _Entry()      # replaced, not added
+    registry["a"] = _Entry()  # replaced, not added
     registry.touch("touch", "b", "hidden")
     del registry["b"]
 
@@ -257,7 +257,7 @@ def test_a_change_is_a_value():
 def measured_measurements():
     from toolkit_free import probe
 
-    return probe('''
+    return probe("""
         app = open_app(size=(600, 460))
         viewer = app.viewer
         gui = app.renderer._internal_gui
@@ -278,7 +278,7 @@ def measured_measurements():
         app.cmd.do("delete d1")
         emit("delete_errors", "; ".join(errors) or "none")
         emit("rows_after", ",".join(r.name for r in gui.rows))
-    ''')
+    """)
 
 
 def test_a_measurement_is_listed_as_an_object(measured_measurements):

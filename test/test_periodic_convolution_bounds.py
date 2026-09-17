@@ -15,6 +15,7 @@ The numba twin that used to sit beside this one clamped with
 the final channel its inter-pulse tail -- so this is now the only periodic
 convolution in the tree, and these tests are what keep the clamp on it.
 """
+
 import numpy as np
 import pytest
 
@@ -38,9 +39,8 @@ def _irf(n=N):
 def _run(conv_stop, stop=None, n_points=N):
     decay = np.zeros(N)
     convolve_lifetime_spectrum_periodic(
-        decay, SPECTRUM, _irf(), 0,
-        N if stop is None else stop,
-        n_points, PERIOD, DT, conv_stop)
+        decay, SPECTRUM, _irf(), 0, N if stop is None else stop, n_points, PERIOD, DT, conv_stop
+    )
     return decay
 
 
@@ -51,8 +51,9 @@ def test_length_valued_stop_is_clamped_to_the_last_index():
 
 @pytest.mark.parametrize("over", [1, 2, 10, 1000])
 def test_stops_beyond_the_end_are_clamped(over):
-    np.testing.assert_allclose(_run(N + over, stop=N + over), _run(N - 1, stop=N - 1),
-                               rtol=0, atol=0)
+    np.testing.assert_allclose(
+        _run(N + over, stop=N + over), _run(N - 1, stop=N - 1), rtol=0, atol=0
+    )
 
 
 def test_in_range_stops_are_untouched():
@@ -79,5 +80,4 @@ def test_repeated_calls_are_stable():
 
 def test_degenerate_lengths_do_not_touch_memory():
     empty = np.zeros(0)
-    convolve_lifetime_spectrum_periodic(
-        empty, SPECTRUM, empty, 0, 0, 0, PERIOD, DT, 0)
+    convolve_lifetime_spectrum_periodic(empty, SPECTRUM, empty, 0, 0, 0, PERIOD, DT, 0)

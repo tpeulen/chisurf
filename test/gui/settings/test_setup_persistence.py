@@ -6,11 +6,6 @@ These tests verify that:
 3. Reader can be synced from UI (onParametersChanged)
 4. The persistence layer works correctly
 """
-import json
-import os
-import pathlib
-import sys
-import tempfile
 
 import numpy as np
 import pytest
@@ -38,11 +33,10 @@ class TestReaderSerialization:
 
     def test_serialize_reader_state(self):
         """Test serialization of a mock reader."""
+        from chisurf.core.experiments.core.reader import ExperimentReader
         from chisurf.gui.widgets.experiments.setup_persistence import (
             serialize_reader_state,
         )
-
-        from chisurf.core.experiments.core.reader import ExperimentReader
 
         # serialize_reader_state gates on isinstance(reader, ExperimentReader)
         # and returns None otherwise, so a duck-typed stand-in is silently
@@ -94,11 +88,10 @@ class TestReaderSerialization:
 
     def test_apply_reader_state(self):
         """Test applying state to a mock reader."""
+        from chisurf.core.experiments.core.reader import ExperimentReader
         from chisurf.gui.widgets.experiments.setup_persistence import (
             apply_reader_state,
         )
-
-        from chisurf.core.experiments.core.reader import ExperimentReader
 
         # apply_reader_state is likewise a no-op for anything that is not an
         # ExperimentReader, so the mock has to really be one.
@@ -258,7 +251,7 @@ class TestUiSyncHelper:
             def update(self):
                 nonlocal depth
                 depth += 1
-                self.update()          # the feedback loop, in one line
+                self.update()  # the feedback loop, in one line
 
         Syncing().update()
         assert depth == 1

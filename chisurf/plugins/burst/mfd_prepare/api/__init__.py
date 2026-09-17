@@ -8,19 +8,19 @@ preparation core is reachable from a CLI, an RPC client, and a GUI without
 any of them importing the core directly. No Qt, no DB.
 """
 
-from .models import PrepareRequest, PrepareResult
 from .contract import (
-    PLUGIN_ID,
     CONTRACT_VERSION,
-    METHOD_PREPARE,
     METHOD_DESCRIBE,
+    METHOD_PREPARE,
+    PLUGIN_ID,
     contract_descriptor,
     request_from_payload,
     result_to_payload,
-    service_success,
     service_error,
+    service_success,
 )
-from .prepare import prepare_folder, describe_preparation
+from .models import PrepareRequest, PrepareResult
+from .prepare import describe_preparation, prepare_folder
 
 __all__ = [
     "PrepareRequest",

@@ -21,10 +21,9 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-
-from chisurf.core.datastore import take_where
 import pytest
 
+from chisurf.core.datastore import take_where
 from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.core.fluorescence.mfd import (
     UnresolvedPhotonSource,
@@ -40,10 +39,7 @@ from chisurf.core.fluorescence.mfd.prepare import (
 )
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-DATA = (
-    REPO
-    / "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
-)
+DATA = REPO / "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
 ANALYSIS = DATA / "burstwise_All 0.1000#15"
 
 pytestmark = pytest.mark.skipif(
@@ -125,8 +121,7 @@ def test_unresolvable_source_raises_with_the_places_searched(tmp_path):
     bur_dir = tmp_path / "analysis" / "bi4_bur"
     bur_dir.mkdir(parents=True)
     (bur_dir / "x.bur").write_text(
-        "First Photon\tLast Photon\tNumber of Photons\tFirst File\n"
-        "0\t1\t2\tnowhere.ptu\n",
+        "First Photon\tLast Photon\tNumber of Photons\tFirst File\n0\t1\t2\tnowhere.ptu\n",
         encoding="utf-8",
     )
     with pytest.raises(UnresolvedPhotonSource) as excinfo:
@@ -143,7 +138,8 @@ def test_empty_read_raises_rather_than_returning_no_photons(tmp_path):
     empty = tmp_path / "empty.ptu"
     empty.write_bytes(b"not a photon file")
     resolution = SourceResolution(
-        paths={"empty.ptu": empty}, origin={"empty.ptu": "sibling"},
+        paths={"empty.ptu": empty},
+        origin={"empty.ptu": "sibling"},
         container_type={"empty.ptu": None},
     )
     with pytest.raises(UnresolvedPhotonSource, match="zero photons"):
@@ -178,9 +174,7 @@ def test_counts_and_spans_agree_with_the_table(preparation):
     )
 
     frame = load_bur_dataframe(sorted((ANALYSIS / "bi4_bur").glob("*.bur")))
-    real = ~np.array(
-        [is_sentinel_file_reference(v) for v in np.asarray(frame["First File"])]
-    )
+    real = ~np.array([is_sentinel_file_reference(v) for v in np.asarray(frame["First File"])])
     frame = take_where(frame, real)
     for i, name in enumerate(preparation.channels):
         assert np.array_equal(
@@ -343,9 +337,7 @@ def test_photon_bursts_agree_with_the_table(preparation):
     lengths = np.diff(bursts.offsets)
     green = preparation.channel_index("green")
     red = preparation.channel_index("red")
-    expected = (
-        preparation.counts[rows, green] + preparation.counts[rows, red]
-    )
+    expected = preparation.counts[rows, green] + preparation.counts[rows, red]
     assert np.array_equal(lengths, expected)
     assert [m.size for m in micro] == list(lengths)
     assert bursts.n_colors == len(preparation.streams)

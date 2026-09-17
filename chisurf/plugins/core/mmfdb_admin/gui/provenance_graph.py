@@ -6,9 +6,11 @@ def node_key(node_type: str, node_id: str) -> str:
     """Return stable node editor ID."""
     return f"{node_type}:{node_id}"
 
+
 def record_kind(node: dict[str, Any]) -> str:
     """Return the node type / kind of record."""
     return node.get("node_type") or ""
+
 
 def record_title(node: dict[str, Any]) -> str:
     """Return formatted node title according to node type."""
@@ -41,21 +43,25 @@ def record_title(node: dict[str, Any]) -> str:
 
     return f"{nt}: {nid}"
 
+
 def relation_color(rel: str) -> list[int]:
     """Color edge config by relationship type."""
     rel = str(rel).lower()
     if rel == "input_to":
-        return [70, 120, 200]      # blue
+        return [70, 120, 200]  # blue
     elif rel == "produced":
-        return [70, 180, 100]      # green
+        return [70, 180, 100]  # green
     elif rel == "parameter_of":
-        return [200, 180, 70]      # yellow
+        return [200, 180, 70]  # yellow
     elif rel == "derived_from":
-        return [120, 120, 120]     # gray
+        return [120, 120, 120]  # gray
     else:
-        return [180, 180, 180]     # light gray
+        return [180, 180, 180]  # light gray
 
-def layout_nodes(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> dict[str, tuple[float, float]]:
+
+def layout_nodes(
+    nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
+) -> dict[str, tuple[float, float]]:
     """Compute left-to-right dependency levels and grid coordinates deterministically."""
     # Find levels via longest path BFS / bellman-ford style propagation
     levels = {n["id"]: 0 for n in nodes}
@@ -82,12 +88,7 @@ def layout_nodes(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> di
     for lvl in sorted(nodes_by_level.keys()):
         # Sort key: (level, kind, title, id)
         level_nodes = nodes_by_level[lvl]
-        level_nodes.sort(key=lambda x: (
-            lvl,
-            record_kind(x),
-            x.get("title", ""),
-            x.get("id", "")
-        ))
+        level_nodes.sort(key=lambda x: (lvl, record_kind(x), x.get("title", ""), x.get("id", "")))
 
         for idx, n in enumerate(level_nodes):
             x = lvl * 260.0
@@ -96,6 +97,7 @@ def layout_nodes(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> di
 
     return positions
 
+
 def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
     """Convert raw MMFDB provenance export format to Node Editor graph schema."""
     if not graph:
@@ -103,10 +105,10 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
             "version": 1,
             "meta": {
                 "purpose": "provenance_view",
-                "schema_name": "mmfdb.provenance.node_editor.v1"
+                "schema_name": "mmfdb.provenance.node_editor.v1",
             },
             "nodes": [],
-            "edges": []
+            "edges": [],
         }
 
     raw_nodes = list(graph.get("nodes") or [])
@@ -132,14 +134,9 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
             "inputs": [{"name": "in", "type": "mmfdb"}],
             "outputs": [{"name": "out", "type": "mmfdb"}],
             "type": "mmfdb_record",
-            "config": {
-                "record": node,
-                "node_type": nt,
-                "node_id": nid,
-                "workflow_runtime": None
-            },
+            "config": {"record": node, "node_type": nt, "node_id": nid, "workflow_runtime": None},
             "collapsed": False,
-            "z": 1.0
+            "z": 1.0,
         }
         out_nodes.append(node_entry)
         nodes_dict[key] = node_entry
@@ -159,15 +156,12 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
                     continue
                 key = node_key(nt, nid)
                 if key not in nodes_dict:
-                    record = re.get(f"{side}_record") or re.get(side) or {
-                        "node_type": nt,
-                        "node_id": nid
-                    }
-                    add_node({
-                        "node_type": nt,
-                        "node_id": nid,
-                        "record": record
-                    })
+                    record = (
+                        re.get(f"{side}_record")
+                        or re.get(side)
+                        or {"node_type": nt, "node_id": nid}
+                    )
+                    add_node({"node_type": nt, "node_id": nid, "record": record})
 
     # Process edges
     out_edges = []
@@ -207,8 +201,8 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
                 "edge_id": re.get("edge_id"),
                 "relationship_type": rel,
                 "metadata": re.get("metadata"),
-                "color": color
-            }
+                "color": color,
+            },
         }
         out_edges.append(edge_entry)
 
@@ -219,12 +213,9 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "version": 1,
-        "meta": {
-            "purpose": "provenance_view",
-            "schema_name": "mmfdb.provenance.node_editor.v1"
-        },
+        "meta": {"purpose": "provenance_view", "schema_name": "mmfdb.provenance.node_editor.v1"},
         "nodes": out_nodes,
-        "edges": out_edges
+        "edges": out_edges,
     }
 
 
@@ -292,16 +283,18 @@ def mmfdb_chinet_to_node_editor_graph(
     ) -> None:
         if source_id not in nodes_dict or target_id not in nodes_dict:
             return
-        out_edges.append({
-            "source": source_id,
-            "source_port": source_port,
-            "target": target_id,
-            "target_port": target_port,
-            "config": {
-                "relationship_type": relationship,
-                "color": color or relation_color(relationship),
-            },
-        })
+        out_edges.append(
+            {
+                "source": source_id,
+                "source_port": source_port,
+                "target": target_id,
+                "target_port": target_port,
+                "config": {
+                    "relationship_type": relationship,
+                    "color": color or relation_color(relationship),
+                },
+            }
+        )
 
     # Build project node
     project_node_id = f"operation:{operation_id}"
@@ -315,7 +308,9 @@ def mmfdb_chinet_to_node_editor_graph(
     )
 
     # Index artifacts by kind
-    source_arts = [a for a in artifacts if a.get("artifact_kind") in ("raw_measurement", "raw_data")]
+    source_arts = [
+        a for a in artifacts if a.get("artifact_kind") in ("raw_measurement", "raw_data")
+    ]
     dataset_arts = [a for a in artifacts if a.get("artifact_kind") == "processed_data"]
     session_arts = [a for a in artifacts if a.get("artifact_kind") == "chinet_session"]
     node_arts = [a for a in artifacts if a.get("artifact_kind") == "chinet_node"]
@@ -333,7 +328,11 @@ def mmfdb_chinet_to_node_editor_graph(
             f"Source: {os.path.basename(fname)}",
             "source_file",
             outputs=[{"name": "data", "type": "mmfdb"}],
-            config={"artifact_id": aid, "format": art.get("data_format"), "size_bytes": art.get("size_bytes")},
+            config={
+                "artifact_id": aid,
+                "format": art.get("data_format"),
+                "size_bytes": art.get("size_bytes"),
+            },
         )
 
     # Add dataset nodes
@@ -405,7 +404,11 @@ def mmfdb_chinet_to_node_editor_graph(
             "fit_result",
             inputs=[{"name": "dataset", "type": "mmfdb"}, {"name": "params", "type": "mmfdb"}],
             outputs=[{"name": "result", "type": "mmfdb"}],
-            config={"artifact_id": aid, "model_class": model_class, "model_module": meta.get("model_module")},
+            config={
+                "artifact_id": aid,
+                "model_class": model_class,
+                "model_module": meta.get("model_module"),
+            },
         )
         # Link to project
         _add_edge(project_node_id, nid, "project_contains", source_port=0, target_port=0)
@@ -526,16 +529,18 @@ def mmfdb_version_graph_to_node_editor_graph(
         src = f"version:{edge.get('source', '')}"
         tgt = f"version:{edge.get('target', '')}"
         if src in nodes_dict and tgt in nodes_dict:
-            out_edges.append({
-                "source": src,
-                "source_port": 1,
-                "target": tgt,
-                "target_port": 0,
-                "config": {
-                    "relationship_type": edge.get("relationship", "supersedes"),
-                    "color": [70, 180, 100],  # green for version lineage
-                },
-            })
+            out_edges.append(
+                {
+                    "source": src,
+                    "source_port": 1,
+                    "target": tgt,
+                    "target_port": 0,
+                    "config": {
+                        "relationship_type": edge.get("relationship", "supersedes"),
+                        "color": [70, 180, 100],  # green for version lineage
+                    },
+                }
+            )
 
     pos_map = layout_nodes(out_nodes, out_edges)
     for n in out_nodes:

@@ -13,10 +13,10 @@ numbers that changed every frame would rebuild the chrome every frame. That is
 not a small effect -- it is most of a frame on a large model -- so the
 publishing interval is asserted rather than trusted.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.plugins.dbg import window as dw
 from chimol.render.frame_stats import FrameStats
 from emtk.testing import RecordingPainter
@@ -95,8 +95,14 @@ def test_the_panel_list_covers_every_window_the_viewer_has():
     """A panel added and forgotten here is a panel nobody discovers."""
     assert len(dw.PANELS) >= 6
     names = {command.split()[0] for command, _title, _note in dw.PANELS}
-    assert {"settings_panel", "hierarchy_panel", "density_panel",
-            "history_panel", "mouse_panel", "object_panel"} <= names
+    assert {
+        "settings_panel",
+        "hierarchy_panel",
+        "density_panel",
+        "history_panel",
+        "mouse_panel",
+        "object_panel",
+    } <= names
 
 
 def test_pressing_a_row_issues_its_command_and_consumes_the_press():
@@ -233,7 +239,8 @@ def test_the_live_interval_falls_back_to_the_default():
 
 def test_the_live_interval_is_clamped_to_the_floor():
     """A value typed too small in the panel cannot make the instrument
-    dominate what it measures -- the whole point of a publishing interval."""
+    dominate what it measures -- the whole point of a publishing interval.
+    """
     from chimol.core.settings.config import _DISPLAY_CONFIG
     from chimol.render.frame_stats import MIN_REPORT_INTERVAL, nerd_report_interval
 
@@ -296,8 +303,7 @@ def test_nerd_lines_fit_the_fixed_width():
     usable = InternalGui.NERD_WIDTH_CHARS - 2
     overlong = [(len(one), one) for one in lines if len(one) > usable]
     assert not overlong, (
-        f"NERD_WIDTH_CHARS ({InternalGui.NERD_WIDTH_CHARS}) is too narrow "
-        f"for: {overlong}"
+        f"NERD_WIDTH_CHARS ({InternalGui.NERD_WIDTH_CHARS}) is too narrow for: {overlong}"
     )
 
 
@@ -443,14 +449,14 @@ def test_the_panel_asks_for_keys_only_where_they_can_land():
 
 
 def test_a_focused_field_that_declines_a_key_lets_it_through():
-    """"Not interested" and "nobody gets this" are different answers.
+    """ "Not interested" and "nobody gets this" are different answers.
 
     The chrome used to return the field's answer either way, so a focused
     object that handled nothing was a black hole: Return never reached the
     command line and the viewport could not be typed into at all.
     """
-    from emtk.keys import KEY_RETURN
     from chimol.ui.gui import InternalGui
+    from emtk.keys import KEY_RETURN
 
     class _Deaf:
         """A focusable object that consumes nothing."""
@@ -499,8 +505,7 @@ def test_the_graphs_carry_one_sample_per_frame():
     second.
     """
     stats = _filled(40)
-    series = dict((key, samples) for key, _l, _u, samples in stats.graphs()
-                  if key != "breakdown")
+    series = dict((key, samples) for key, _l, _u, samples in stats.graphs() if key != "breakdown")
     assert len(series["fps"]) == 40
     assert len(series["frame_ms"]) == 40
 
@@ -542,11 +547,16 @@ def test_a_stacked_graph_is_scaled_by_the_sum_not_the_tallest_part():
     gui = InternalGui()
     gui.layout(1200, 800)
     painter = RecordingPainter()
-    graph = ("breakdown", "frame time", "ms", (
-        ("scene_ms", "scene", (1, 2, 3), (10.0,)),
-        ("chrome_ms", "chrome", (4, 5, 6), (10.0,)),
-        ("wait_ms", "wait", (7, 8, 9), (10.0,)),
-    ))
+    graph = (
+        "breakdown",
+        "frame time",
+        "ms",
+        (
+            ("scene_ms", "scene", (1, 2, 3), (10.0,)),
+            ("chrome_ms", "chrome", (4, 5, 6), (10.0,)),
+            ("wait_ms", "wait", (7, 8, 9), (10.0,)),
+        ),
+    )
     gui._paint_nerd_graph(painter, 0.0, 0.0, 100.0, 12.0, graph)
     bars = [one for one in painter.fills if one[4] in ((1, 2, 3), (4, 5, 6), (7, 8, 9))]
     assert len(bars) == 3
@@ -570,12 +580,17 @@ def test_the_reference_lines_are_drawn_over_the_line():
     gui.layout(1200, 800)
     painter = RecordingPainter()
     gui._paint_nerd_graph(
-        painter, 0.0, 0.0, 100.0, 12.0,
+        painter,
+        0.0,
+        0.0,
+        100.0,
+        12.0,
         ("fps", "frame rate", "fps", (120.0, 55.0, 58.0)),
     )
     guide_colours = {colour for _v, colour in gui.NERD_GUIDES["fps"]}
     guide_indices = [
-        i for i, call in enumerate(painter.calls)
+        i
+        for i, call in enumerate(painter.calls)
         if call[0] == "fill_rect" and call[-1] in guide_colours
     ]
     line_indices = [i for i, call in enumerate(painter.calls) if call[0] == "fill_triangle"]

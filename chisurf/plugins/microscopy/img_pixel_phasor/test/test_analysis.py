@@ -18,9 +18,7 @@ def test_apparent_lifetime_recovers_true_tau_on_semicircle():
     freq = 80.0  # MHz
     for tau in (0.5, 1.0, 2.0, 4.0):
         g, s = _semicircle_point(tau, freq)
-        tau_phi, tau_m = analysis.phasor_to_apparent_lifetime(
-            np.array([g]), np.array([s]), freq
-        )
+        tau_phi, tau_m = analysis.phasor_to_apparent_lifetime(np.array([g]), np.array([s]), freq)
         assert tau_phi[0] == pytest.approx(tau, rel=1e-6)
         assert tau_m[0] == pytest.approx(tau, rel=1e-6)
 
@@ -129,9 +127,7 @@ def test_a_zero_radius_cursor_is_refused():
 def test_elliptic_cursor_axis_aligned():
     g = np.array([0.5, 0.7, 0.5])
     s = np.array([0.3, 0.3, 0.5])
-    mask = analysis.mask_from_elliptic_cursor(
-        g, s, center=(0.5, 0.3), radii=(0.25, 0.05)
-    )
+    mask = analysis.mask_from_elliptic_cursor(g, s, center=(0.5, 0.3), radii=(0.25, 0.05))
     # (0.5,0.3) center in; (0.7,0.3) within wide axis; (0.5,0.5) beyond narrow axis.
     np.testing.assert_array_equal(mask, [True, True, False])
 
@@ -260,7 +256,7 @@ def test_angular_frequency_zero_frequency_raises():
 def test_polar_grid_default_has_circles_and_spokes():
     grid = analysis.polar_grid_polylines()
     # default = 3 circles (1/3, 2/3, 1) + 12 spokes
-    circles = [g for g in grid if g["x"][0] != 0.0 or len(g["x"]) > 2]
+    [g for g in grid if g["x"][0] != 0.0 or len(g["x"]) > 2]
     spokes = [g for g in grid if len(g["x"]) == 2 and g["x"][0] == 0.0]
     assert len(spokes) == 12
     unit = [g for g in grid if g["major"]]

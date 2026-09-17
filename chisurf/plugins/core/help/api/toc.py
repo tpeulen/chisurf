@@ -32,8 +32,8 @@ from __future__ import annotations
 import functools
 import pathlib
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
 
 __all__ = [
     "Node",
@@ -81,17 +81,17 @@ class Node:
     """
 
     title: str
-    path: Optional[pathlib.Path] = None
-    children: list["Node"] = field(default_factory=list)
+    path: pathlib.Path | None = None
+    children: list[Node] = field(default_factory=list)
     kind: str = "page"
     summary: str = ""
 
-    def add(self, node: "Node") -> "Node":
+    def add(self, node: Node) -> Node:
         """Append *node* as a child and return it."""
         self.children.append(node)
         return node
 
-    def walk(self) -> Iterable["Node"]:
+    def walk(self) -> Iterable[Node]:
         """Yield this node and every descendant, depth first."""
         yield self
         for child in self.children:
@@ -171,7 +171,7 @@ def read_index(index_path: pathlib.Path) -> list[Node]:
     directory = index_path.parent
     lines = text.splitlines()
     nodes: list[Node] = []
-    group: Optional[Node] = None
+    group: Node | None = None
     index = 0
     # The page's own title is not a group inside itself, or the reference
     # section would open onto a single node called "Reference".
@@ -214,7 +214,7 @@ def read_index(index_path: pathlib.Path) -> list[Node]:
     return [node for node in nodes if node.kind != "group" or node.children]
 
 
-def _heading_title(lines: list[str], index: int) -> Optional[tuple[str, int]]:
+def _heading_title(lines: list[str], index: int) -> tuple[str, int] | None:
     """Return ``(title, lines_consumed)`` when *index* starts a section heading."""
     line = lines[index]
     myst = _MYST_HEADING.match(line)
@@ -223,9 +223,7 @@ def _heading_title(lines: list[str], index: int) -> Optional[tuple[str, int]]:
     # reStructuredText: a line of text underlined by punctuation.
     if index + 1 < len(lines) and line.strip() and not line.startswith((" ", "\t", "..")):
         underline = lines[index + 1]
-        if _RST_SECTION_ADORNMENT.match(underline) and len(underline.strip()) >= len(
-            line.strip()
-        ):
+        if _RST_SECTION_ADORNMENT.match(underline) and len(underline.strip()) >= len(line.strip()):
             return line.strip(), 2
     return None
 
@@ -284,7 +282,7 @@ def _read_toctree_block(
     return entries, caption, index
 
 
-def _next_content(lines: list[str], index: int) -> Optional[str]:
+def _next_content(lines: list[str], index: int) -> str | None:
     """Return the next non-blank line, or ``None`` at the end."""
     while index < len(lines):
         if lines[index].strip():
@@ -293,7 +291,7 @@ def _next_content(lines: list[str], index: int) -> Optional[str]:
     return None
 
 
-def _entry_node(entry: str, directory: pathlib.Path) -> Optional[Node]:
+def _entry_node(entry: str, directory: pathlib.Path) -> Node | None:
     """Resolve one toctree entry to a node, or ``None`` when it names nothing."""
     title = ""
     target = entry
@@ -322,7 +320,7 @@ def _entry_node(entry: str, directory: pathlib.Path) -> Optional[Node]:
     return Node(title or page_title(path) or path.stem, path=path)
 
 
-def _resolve(target: str, directory: pathlib.Path) -> Optional[pathlib.Path]:
+def _resolve(target: str, directory: pathlib.Path) -> pathlib.Path | None:
     """Resolve a toctree target to a file below *directory*."""
     candidate = (directory / target).resolve()
     for suffix in _SUFFIXES:
@@ -396,9 +394,7 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
     text = strip_front_matter(_source(path))
     if not text:
         return ""
-    skip = re.compile(
-        r"^\s*$|^[#=~^\-*`:.\[(]|^\.\.\s|^\||^\d+\.\s*$|^!\[|^\s*[-*+]\s"
-    )
+    skip = re.compile(r"^\s*$|^[#=~^\-*`:.\[(]|^\.\.\s|^\||^\d+\.\s*$|^!\[|^\s*[-*+]\s")
     lines = text.splitlines()
     for position, line in enumerate(lines):
         if skip.match(line):
@@ -429,23 +425,31 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
 #: nowhere to live in a caption at all.
 _SECTION_WORDING = {
     "getting_started/index": (
-        "Getting started", "Install ChiSurf, launch it, run a first analysis."),
+        "Getting started",
+        "Install ChiSurf, launch it, run a first analysis.",
+    ),
     "fundamentals/index": (
         "Fundamentals — photophysics",
         "The excited state, transfer, the instrument and the counting "
-        "statistics every method assumes."),
+        "statistics every method assumes.",
+    ),
     "concepts/index": (
         "Concepts — the theory",
-        "What each method measures, with the formulas and the assumptions."),
-    "guides/index": (
-        "Guides — how to in ChiSurf", "Step-by-step workflows in the real interface."),
+        "What each method measures, with the formulas and the assumptions.",
+    ),
+    "guides/index": ("Guides — how to in ChiSurf", "Step-by-step workflows in the real interface."),
     "manual/index": (
         "Fitting interface & examples",
-        "The fitting interface itself, and complete worked examples."),
+        "The fitting interface itself, and complete worked examples.",
+    ),
     "reference/index": (
-        "Reference", "File formats, settings, parameters and the plugin catalogue."),
+        "Reference",
+        "File formats, settings, parameters and the plugin catalogue.",
+    ),
     "references/index": (
-        "Literature", "Every work the documentation cites, each linking to the paper."),
+        "Literature",
+        "Every work the documentation cites, each linking to the paper.",
+    ),
 }
 
 #: Sections the root index lists that are not user documentation. Development is
@@ -454,16 +458,23 @@ _NOT_USER_SECTIONS = {"development/index"}
 
 #: Files under a plugin that document the plugin for its maintainer, not its user.
 _MAINTAINER_PAGES = {
-    "status.md", "contract.md", "todo.md", "notes.md", "changelog.md",
-    "migration.md", "handover.md", "roadmap.md", "plan.md",
+    "status.md",
+    "contract.md",
+    "todo.md",
+    "notes.md",
+    "changelog.md",
+    "migration.md",
+    "handover.md",
+    "roadmap.md",
+    "plan.md",
 }
 
 
 def build_toc(
     *,
-    root: Optional[pathlib.Path] = None,
+    root: pathlib.Path | None = None,
     include_development: bool = False,
-    plugins: Optional[Iterable[dict]] = None,
+    plugins: Iterable[dict] | None = None,
 ) -> Node:
     """Build the whole help table of contents.
 
@@ -562,7 +573,7 @@ def _root_sections(docs: pathlib.Path) -> list[tuple[str, str]]:
     return [(index, "") for index in _SECTION_WORDING]
 
 
-def _index_path(docs: pathlib.Path, index: str) -> Optional[pathlib.Path]:
+def _index_path(docs: pathlib.Path, index: str) -> pathlib.Path | None:
     for suffix in _SUFFIXES:
         candidate = docs / f"{index}{suffix}"
         if candidate.is_file():
@@ -570,7 +581,7 @@ def _index_path(docs: pathlib.Path, index: str) -> Optional[pathlib.Path]:
     return None
 
 
-def _plugin_section(plugins: Optional[Iterable[dict]]) -> Node:
+def _plugin_section(plugins: Iterable[dict] | None) -> Node:
     """Build the per-plugin branch from the plugin registry."""
     section = Node(
         "Plugins",
@@ -601,7 +612,9 @@ def _plugin_section(plugins: Optional[Iterable[dict]]) -> Node:
         # Some plugins nest others (the games menu holds five). Without this a
         # parent claims its children's documentation and the same page is
         # listed twice under two names.
-        nested = [other for other in directories if other != directory and _within(other, directory)]
+        nested = [
+            other for other in directories if other != directory and _within(other, directory)
+        ]
         pages = [
             path
             for path in sorted(directory.rglob("*.md"))

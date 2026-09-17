@@ -1,11 +1,11 @@
 from .proteinmc import (
-    ProteinMCRunner,
+    DirectLabelingPotential,
     ProteinMCProgress,
     ProteinMCResult,
-    DirectLabelingPotential,
-    run_protein_mc,
+    ProteinMCRunner,
     build_move_map_from_flexfit,
     list_flexfit_sets,
+    run_protein_mc,
 )
 
 __all__ = [

@@ -6,13 +6,13 @@ payload the viewer applies, and a plugin fetch source is recognised by its
 identifier pattern before the built-in catch-all. Unloading the plugin
 takes both away.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.io.registry import FETCH, FORMATS, FetchSource, FormatSpec
 from chimol.plugins import load_plugins
 
@@ -24,7 +24,7 @@ def test_the_builtin_formats_route_by_kind():
     assert FORMATS.kind_of("x.dcd") == "trajectory"
     assert FORMATS.kind_of("emd_1234.map.gz") == "map"
     assert FORMATS.kind_of("x.pse") == "session"
-    assert FORMATS.kind_of("plan.fps.json") == "plan"     # the compound suffix, not bare .json
+    assert FORMATS.kind_of("plan.fps.json") == "plan"  # the compound suffix, not bare .json
     assert FORMATS.kind_of("x.json") is None
     assert ".map.gz" in FORMATS.suffixes("map")
 
@@ -49,10 +49,15 @@ class _XyzPlugin:
 
     def register(self, api):
         api.add_format(FormatSpec(name="xyz", suffixes=(".xyz",), kind="structure", read=_read_xyz))
-        api.add_fetch_source(FetchSource(
-            name="toydb", label="Toy DB", url="https://toy.example/{id}.xyz", suffix=".xyz",
-            pattern=r"^toy[-_]\d+$",
-        ))
+        api.add_fetch_source(
+            FetchSource(
+                name="toydb",
+                label="Toy DB",
+                url="https://toy.example/{id}.xyz",
+                suffix=".xyz",
+                pattern=r"^toy[-_]\d+$",
+            )
+        )
 
 
 @pytest.fixture

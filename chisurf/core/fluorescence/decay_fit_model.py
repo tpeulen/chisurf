@@ -12,12 +12,12 @@ linking, bounds and error-estimate surface.
 
 The module is Qt-free and importable headlessly.
 """
+
 from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["build_lifetime_fit", "fit_lifetime_model",
-           "build_fret_fit", "fit_fret_model"]
+__all__ = ["build_lifetime_fit", "fit_lifetime_model", "build_fret_fit", "fit_fret_model"]
 
 
 def _set_port(problem, canonical: str, value: float) -> None:
@@ -33,8 +33,9 @@ def _parameters(model) -> dict:
     return {p.canonical_id: p for p in model.parameters_all if not getattr(p, "is_output", False)}
 
 
-def _described_fit(family, decay, *, bin_width, irf, start_bin, stop_bin, period, scalars=None,
-                   overrides=None):
+def _described_fit(
+    family, decay, *, bin_width, irf, start_bin, stop_bin, period, scalars=None, overrides=None
+):
     """A :class:`Fit` of a BFF-described TCSPC model over ``decay``, standing complete.
 
     What every TCSPC description shares: the decay on its time axis, the fit
@@ -74,7 +75,7 @@ def _described_fit(family, decay, *, bin_width, irf, start_bin, stop_bin, period
     if irf is not None:
         irf_y = np.zeros(n_bins, dtype=float)
         measured = np.asarray(irf, dtype=float).ravel()[:n_bins]
-        irf_y[:measured.size] = measured
+        irf_y[: measured.size] = measured
         model.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
     else:
         model.set_scalar("generated_response", 1.0)
@@ -86,15 +87,26 @@ def _described_fit(family, decay, *, bin_width, irf, start_bin, stop_bin, period
     return fit, model, problem, (start, stop)
 
 
-def _hold_instrument(model, problem, *, irf, background, fit_background, fit_scatter, fit_irf,
-                     irf_width, irf_skew, extra=None):
+def _hold_instrument(
+    model,
+    problem,
+    *,
+    irf,
+    background,
+    fit_background,
+    fit_scatter,
+    fit_irf,
+    irf_width,
+    irf_skew,
+    extra=None,
+):
     """The instrument's starting values and which of its parameters are fitted."""
     _set_port(problem, "instrument.background", float(background))
     if irf is None:
         _set_port(problem, "instrument.irf_width", abs(float(irf_width)))
         _set_port(problem, "instrument.irf_shape", float(irf_skew))
     free = {
-        "instrument.n0": False,               # autoscaled
+        "instrument.n0": False,  # autoscaled
         "instrument.background": bool(fit_background),
         "instrument.scatter": bool(fit_scatter),
         # A measured IRF's timing genuinely drifts; pinning it biased the lifetimes.
@@ -116,7 +128,9 @@ def _irf_report(model, *, irf, bin_width) -> dict:
     if irf is None:
         problem = model.problem
         active = problem.get_active_structure()
-        prompt = np.asarray(problem.get_structure_output(active, f"{active}.generated_response"), dtype=float)
+        prompt = np.asarray(
+            problem.get_structure_output(active, f"{active}.generated_response"), dtype=float
+        )
         irf_peak = (float(np.argmax(prompt)) + shift) * float(bin_width)
     return {
         "background": value["instrument.background"],
@@ -134,7 +148,7 @@ def _misfit(model) -> dict:
     return {
         "reconstruction": np.asarray(model.y, dtype=float),
         "weighted_residuals": wres,
-        "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
+        "chi2_reduced": float(np.sum(wres**2) / max(1, wres.size)),
     }
 
 
@@ -210,25 +224,44 @@ def build_lifetime_fit(
     if not 0 < lo < hi:
         raise ValueError(f"tau_bounds must satisfy 0 < lower < upper, got {tau_bounds}")
     if initial_lifetimes is None:
-        taus = np.exp(np.linspace(np.log(lo), np.log(hi), n + 2))[1:-1] if n > 1 \
+        taus = (
+            np.exp(np.linspace(np.log(lo), np.log(hi), n + 2))[1:-1]
+            if n > 1
             else np.array([np.sqrt(lo * hi)])
+        )
     else:
         taus = np.clip(np.asarray(initial_lifetimes, dtype=float).ravel()[:n], lo, hi)
     if taus.size < n:
         raise ValueError(f"{n} components need {n} initial lifetimes, got {taus.size}")
 
     fit, model, problem, window = _described_fit(
-        "tcspc_lifetime", decay, bin_width=bin_width, irf=irf, start_bin=start_bin,
-        stop_bin=stop_bin, period=period, scalars={"max_components": max(3, n)},
+        "tcspc_lifetime",
+        decay,
+        bin_width=bin_width,
+        irf=irf,
+        start_bin=start_bin,
+        stop_bin=stop_bin,
+        period=period,
+        scalars={"max_components": max(3, n)},
         # Lifetime bounds are the caller's; the description's (up to the period)
         # would otherwise stand.
-        overrides={f"lifetime.tau.{k}": (tau, lo, hi) for k, tau in enumerate(taus)})
+        overrides={f"lifetime.tau.{k}": (tau, lo, hi) for k, tau in enumerate(taus)},
+    )
     model.structure = f"lifetime.components.{n}"
     for k in range(n):
         _set_port(problem, f"lifetime.amplitude.{k}", 1.0 / n)
         _set_port(problem, f"lifetime.tau.{k}", float(taus[k]))
-    _hold_instrument(model, problem, irf=irf, background=background, fit_background=fit_background,
-                     fit_scatter=fit_scatter, fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew)
+    _hold_instrument(
+        model,
+        problem,
+        irf=irf,
+        background=background,
+        fit_background=fit_background,
+        fit_scatter=fit_scatter,
+        fit_irf=fit_irf,
+        irf_width=irf_width,
+        irf_skew=irf_skew,
+    )
     model.find_parameters()
     fit.fit_range = window
     model.update()
@@ -280,11 +313,21 @@ def fit_lifetime_model(
         ``f_i = a_i*tau_i / sum(a_j*tau_j)``.
     """
     fit = build_lifetime_fit(
-        decay, bin_width=bin_width, irf=irf, n_components=n_components,
-        initial_lifetimes=initial_lifetimes, tau_bounds=tau_bounds,
-        start_bin=start_bin, stop_bin=stop_bin, background=background,
-        fit_background=fit_background, fit_scatter=fit_scatter,
-        fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew, period=period,
+        decay,
+        bin_width=bin_width,
+        irf=irf,
+        n_components=n_components,
+        initial_lifetimes=initial_lifetimes,
+        tau_bounds=tau_bounds,
+        start_bin=start_bin,
+        stop_bin=stop_bin,
+        background=background,
+        fit_background=fit_background,
+        fit_scatter=fit_scatter,
+        fit_irf=fit_irf,
+        irf_width=irf_width,
+        irf_skew=irf_skew,
+        period=period,
     )
     fit.run()
     m = fit.model
@@ -393,8 +436,7 @@ def build_fret_fit(
     n = max(1, int(n_states))
     r_lo, r_hi = float(distance_bounds[0]), float(distance_bounds[1])
     if not 0 < r_lo < r_hi:
-        raise ValueError(
-            f"distance_bounds must satisfy 0 < lower < upper, got {distance_bounds}")
+        raise ValueError(f"distance_bounds must satisfy 0 < lower < upper, got {distance_bounds}")
     r0 = float(forster_radius)
     if not r0 > 0:
         raise ValueError(f"forster_radius must be positive, got {r0}")
@@ -403,13 +445,19 @@ def build_fret_fit(
         spread = np.linspace(0.7, 1.3, n) if n > 1 else np.array([1.0])
         distances = np.clip(r0 * spread, r_lo, r_hi)
     else:
-        distances = np.clip(
-            np.asarray(initial_distances, dtype=float).ravel()[:n], r_lo, r_hi)
+        distances = np.clip(np.asarray(initial_distances, dtype=float).ravel()[:n], r_lo, r_hi)
 
     fit, model, problem, window = _described_fit(
-        "tcspc_fret_gaussian", decay, bin_width=bin_width, irf=irf, start_bin=start_bin,
-        stop_bin=stop_bin, period=period, scalars={"max_components": max(3, n)},
-        overrides={f"distance.mean.{k}": (r, r_lo, r_hi) for k, r in enumerate(distances)})
+        "tcspc_fret_gaussian",
+        decay,
+        bin_width=bin_width,
+        irf=irf,
+        start_bin=start_bin,
+        stop_bin=stop_bin,
+        period=period,
+        scalars={"max_components": max(3, n)},
+        overrides={f"distance.mean.{k}": (r, r_lo, r_hi) for k, r in enumerate(distances)},
+    )
     model.structure = f"tcspc_fret_gaussian.components.{n}"
     for k, r in enumerate(distances):
         _set_port(problem, f"distance.mean.{k}", float(r))
@@ -421,11 +469,23 @@ def build_fret_fit(
     _set_port(problem, "fret.tau0", float(donor_lifetime))
     _set_port(problem, "fret.forster_radius", r0)
     _set_port(problem, "fret.x_donly", float(x_donor_only))
-    _hold_instrument(model, problem, irf=irf, background=background, fit_background=fit_background,
-                     fit_scatter=fit_scatter, fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew,
-                     extra={"fret.x_donly": bool(fit_donor_only),
-                            "donor.tau.0": bool(fit_donor_lifetime),
-                            "fret.forster_radius": False, "fret.tau0": False})
+    _hold_instrument(
+        model,
+        problem,
+        irf=irf,
+        background=background,
+        fit_background=fit_background,
+        fit_scatter=fit_scatter,
+        fit_irf=fit_irf,
+        irf_width=irf_width,
+        irf_skew=irf_skew,
+        extra={
+            "fret.x_donly": bool(fit_donor_only),
+            "donor.tau.0": bool(fit_donor_lifetime),
+            "fret.forster_radius": False,
+            "fret.tau0": False,
+        },
+    )
     model.find_parameters()
     fit.fit_range = window
     model.update()

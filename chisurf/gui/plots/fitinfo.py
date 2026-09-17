@@ -4,18 +4,18 @@ import io
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 from qtpy.QtCore import Qt
 
 import chisurf.core.fitting
 from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.metadata_editor import MetadataEditor
-from chisurf.gui import dialogs
 
 
 def _configure_fill_table(table: QtWidgets.QTableWidget) -> None:
@@ -79,22 +79,13 @@ class DropTable(QtWidgets.QTableWidget):
             event.acceptProposedAction()
 
 
-
 class FitInfo(plotbase.Plot):
-
     name = "Info"
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.FitGroup,
-            parent: QtWidgets.QWidget = None,
-            **kwargs
+        self, fit: chisurf.core.fitting.fit.FitGroup, parent: QtWidgets.QWidget = None, **kwargs
     ):
-        super().__init__(
-            fit,
-            parent=parent,
-            **kwargs
-        )
+        super().__init__(fit, parent=parent, **kwargs)
         self.analysis_id = getattr(fit, "name", None) or str(getattr(fit, "fit_idx", "analysis_1"))
         self.db = self._find_flr_database()
         self._memory_metadata = getattr(fit, "flr_metadata", {})
@@ -166,7 +157,7 @@ class FitInfo(plotbase.Plot):
                 routine = info.get("reading_routine")
                 container = info.get("tttrlib_container")
                 if fmt_lower in (name, routine or "", container or ""):
-                    if (routine or container):
+                    if routine or container:
                         return True
         # Fallback: look up by file extension.
         info = _FILE_FORMATS.get(Path(fp).suffix.lower())
@@ -174,7 +165,7 @@ class FitInfo(plotbase.Plot):
             return bool(info.get("tttrlib_container") or info.get("reading_routine"))
         return False
 
-    def _photon_streams_for_display(self) -> List[dict]:
+    def _photon_streams_for_display(self) -> list[dict]:
         """Return photon streams that should be shown in the fitinfo plot.
 
         Only streams originating from TTTR files are included. Non-TTTR
@@ -288,7 +279,7 @@ class FitInfo(plotbase.Plot):
         # New sample: auto-generate UUID
         self.sample_uuid_label.setText(str(uuid.uuid4()))
 
-    def _iter_fit_members(self) -> List[Any]:
+    def _iter_fit_members(self) -> list[Any]:
         """Return grouped fits or the current fit as a one-item list."""
         grouped_fits = getattr(self.fit, "grouped_fits", None)
         if isinstance(grouped_fits, (list, tuple)) and grouped_fits:
@@ -316,18 +307,22 @@ class FitInfo(plotbase.Plot):
     def _analysis_data_name(self, fit: Any, curve_key: str) -> str:
         """Return a stable data name for a named fit curve."""
         fit_name = str(getattr(fit, "name", "") or getattr(fit, "fit_idx", "") or "fit").strip()
-        fit_name = "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in fit_name).strip("._")
+        fit_name = "".join(
+            ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in fit_name
+        ).strip("._")
         curve_name = str(curve_key).strip()
-        curve_name = "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in curve_name).strip("._")
+        curve_name = "".join(
+            ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in curve_name
+        ).strip("._")
         if not fit_name:
             return curve_name or "data"
         if not curve_name:
             return fit_name
         return f"{fit_name}.{curve_name}"
 
-    def _collect_embedded_analysis_data(self) -> List[Dict[str, Any]]:
+    def _collect_embedded_analysis_data(self) -> list[dict[str, Any]]:
         """Collect small x/y curves from the current fit for mmCIF embedding."""
-        records: List[Dict[str, Any]] = []
+        records: list[dict[str, Any]] = []
         for fit in self._iter_fit_members():
             try:
                 curves = fit.get_curves(copy_curves=False, full_length=True)
@@ -412,7 +407,9 @@ class FitInfo(plotbase.Plot):
         self.external_table = DropTable(2)
         self.external_table.setHorizontalHeaderLabels(["file path / URL", "format"])
         self.external_table.horizontalHeader().setStretchLastSection(True)
-        self.external_table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        self.external_table.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeToContents
+        )
         self.external_table.setColumnWidth(1, 90)
         self.external_table.setToolTip("Drag & drop files or URLs here")
         _configure_fill_table(self.external_table)
@@ -435,7 +432,9 @@ class FitInfo(plotbase.Plot):
         if self.db is not None:
             self.db.add_photon_stream(self.analysis_id, path, stream_id=stream_id)
         else:
-            self._memory_streams.append({"stream_id": stream_id, "file_path": path, "file_format": ""})
+            self._memory_streams.append(
+                {"stream_id": stream_id, "file_path": path, "file_format": ""}
+            )
             self.fit.flr_photon_streams = self._memory_streams
         self._refresh()
 
@@ -444,7 +443,9 @@ class FitInfo(plotbase.Plot):
             return
         if self.db is not None:
             # Clear existing photon streams for this analysis, then re-add from table.
-            self.db.conn.execute("DELETE FROM flr_photon_stream WHERE analysis_id = ?", (self.analysis_id,))
+            self.db.conn.execute(
+                "DELETE FROM flr_photon_stream WHERE analysis_id = ?", (self.analysis_id,)
+            )
             for row in range(self.external_table.rowCount()):
                 path_item = self.external_table.item(row, 0)
                 format_item = self.external_table.item(row, 1)
@@ -452,7 +453,12 @@ class FitInfo(plotbase.Plot):
                     continue
                 path = path_item.text().strip()
                 file_format = format_item.text().strip() if format_item is not None else ""
-                self.db.add_photon_stream(self.analysis_id, path, stream_id=f"stream_{row + 1}", file_format=file_format or None)
+                self.db.add_photon_stream(
+                    self.analysis_id,
+                    path,
+                    stream_id=f"stream_{row + 1}",
+                    file_format=file_format or None,
+                )
         else:
             self._memory_streams = []
             for row in range(self.external_table.rowCount()):
@@ -462,11 +468,17 @@ class FitInfo(plotbase.Plot):
                     continue
                 path = path_item.text().strip()
                 file_format = format_item.text().strip() if format_item is not None else ""
-                self._memory_streams.append({"stream_id": f"stream_{row + 1}", "file_path": path, "file_format": file_format})
+                self._memory_streams.append(
+                    {
+                        "stream_id": f"stream_{row + 1}",
+                        "file_path": path,
+                        "file_format": file_format,
+                    }
+                )
             self.fit.flr_photon_streams = self._memory_streams
         self._update_cif_preview(full=False)
 
-    def add_external_data(self, path: str, file_format: Optional[str] = None) -> None:
+    def add_external_data(self, path: str, file_format: str | None = None) -> None:
         """Add an external data reference to the external data table."""
         self._suppress_change = True
         row = self.external_table.rowCount()
@@ -507,37 +519,37 @@ class FitInfo(plotbase.Plot):
 
         self.plot_controller.addTab(tab, "Export")
 
-    def _get_tttr_entries_from_data_curve(self) -> typing.Dict[str, str]:
+    def _get_tttr_entries_from_data_curve(self) -> dict[str, str]:
         """Parse TTTR header JSON from the first TTTR-sourced data curve.
 
         Returns a flat dict of ``{name: value}`` pairs from the PTU/TTTR
         header tags, or an empty dict if no TTTR data is available.
         """
-        if not hasattr(self.fit, 'grouped_fits'):
+        if not hasattr(self.fit, "grouped_fits"):
             return {}
-        for grouped in getattr(self.fit, 'grouped_fits', []):
-            dc = getattr(grouped, 'data', None)
+        for grouped in getattr(self.fit, "grouped_fits", []):
+            dc = getattr(grouped, "data", None)
             if dc is None:
                 continue
-            meta = getattr(dc, 'meta_data', None) or {}
-            hdr = meta.get('tttr_header_json', '')
+            meta = getattr(dc, "meta_data", None) or {}
+            hdr = meta.get("tttr_header_json", "")
             if not hdr:
                 continue
             try:
                 raw = json.loads(hdr) if isinstance(hdr, str) else hdr
             except Exception:
                 continue
-            tags = raw.get('tags', [])
-            result: typing.Dict[str, str] = {}
+            tags = raw.get("tags", [])
+            result: dict[str, str] = {}
             for tag in tags:
-                name = tag.get('name', '')
-                value = tag.get('value', '')
-                idx = tag.get('idx', 0)
-                if value is None or value == '':
+                name = tag.get("name", "")
+                value = tag.get("value", "")
+                idx = tag.get("idx", 0)
+                if value is None or value == "":
                     continue
                 key = name
                 if idx and idx > 0:
-                    key = f'{name}[{idx}]'
+                    key = f"{name}[{idx}]"
                 result[str(key)] = str(value)
             if result:
                 return result
@@ -578,23 +590,41 @@ class FitInfo(plotbase.Plot):
             else:
                 # Minimal in-memory CIF with separate TTTR header section
                 import ihm.format
+
                 writer = ihm.format.CifWriter(buf)
                 writer.start_block("chisurf_flr_export")
                 # General analysis metadata
                 if self._memory_metadata:
-                    with writer.loop("_chisurf_analysis_metadata", ["analysis_id", "key", "value"]) as loop:
+                    with writer.loop(
+                        "_chisurf_analysis_metadata", ["analysis_id", "key", "value"]
+                    ) as loop:
                         for key, value in sorted(self._memory_metadata.items()):
-                            loop.write(analysis_id=self.analysis_id or "analysis_1", key=key, value=value)
+                            loop.write(
+                                analysis_id=self.analysis_id or "analysis_1", key=key, value=value
+                            )
                 # TTTR instrument header in its own category
                 if tttr_data:
-                    with writer.loop("_chisurf_tttr_header", ["analysis_id", "name", "value"]) as loop:
+                    with writer.loop(
+                        "_chisurf_tttr_header", ["analysis_id", "name", "value"]
+                    ) as loop:
                         for key, value in sorted(tttr_data.items()):
-                            loop.write(analysis_id=self.analysis_id or "analysis_1", name=key, value=value)
+                            loop.write(
+                                analysis_id=self.analysis_id or "analysis_1", name=key, value=value
+                            )
                 analysis_data = self._collect_embedded_analysis_data()
                 if analysis_data:
                     with writer.loop(
                         "_chisurf_analysis_data",
-                        ["analysis_id", "data_type", "data_name", "x_values", "y_values", "x_unit", "y_unit", "details"],
+                        [
+                            "analysis_id",
+                            "data_type",
+                            "data_name",
+                            "x_values",
+                            "y_values",
+                            "x_unit",
+                            "y_unit",
+                            "details",
+                        ],
                     ) as loop:
                         for data in analysis_data:
                             loop.write(
@@ -614,9 +644,11 @@ class FitInfo(plotbase.Plot):
             # Validate with ihm CifTokenReader
             try:
                 import ihm.format
+
                 reader = ihm.format.CifTokenReader(io.StringIO(text))
                 tokens = list(reader.read_file())
                 from ihm.format import CifParserError
+
                 errors = [t for t in tokens if isinstance(t, CifParserError)]
                 if errors:
                     valid = False
@@ -638,7 +670,9 @@ class FitInfo(plotbase.Plot):
 
     def _save_cif(self):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save mmCIF", f"{self.analysis_id}.cif",
+            self,
+            "Save mmCIF",
+            f"{self.analysis_id}.cif",
             "mmCIF files (*.cif *.mmcif);;All files (*)",
         )
         if not path:
@@ -654,32 +688,47 @@ class FitInfo(plotbase.Plot):
         self._suppress_change = True
         self.analysis_id_edit.setText(self.analysis_id)
         if self.db is not None:
-            row = self.db.conn.execute("SELECT * FROM flr_fret_analysis WHERE analysis_id = ?", (self.analysis_id,)).fetchone()
+            row = self.db.conn.execute(
+                "SELECT * FROM flr_fret_analysis WHERE analysis_id = ?", (self.analysis_id,)
+            ).fetchone()
             if row:
                 self.method_edit.setText(row["type"] or row["method"] or self.method_edit.text())
                 self.sample_combo.setEditText(row["sample_id"] or self.analysis_id)
                 self.sample_details_edit.setPlainText(row["details"] or "")
-            condition = self.db.conn.execute("SELECT * FROM flr_sample_condition WHERE condition_id = ?", (f"condition_{self.analysis_id}",)).fetchone()
+            condition = self.db.conn.execute(
+                "SELECT * FROM flr_sample_condition WHERE condition_id = ?",
+                (f"condition_{self.analysis_id}",),
+            ).fetchone()
             if condition:
                 self.condition_details_edit.setPlainText(condition["details"] or "")
         self._update_sample_uuid_display()
         # Metadata table
         metadata = self._get_metadata()
-        self.metadata_editor.set_data([{"key": str(k), "value": str(v)} for k, v in sorted(metadata.items())])
+        self.metadata_editor.set_data(
+            [{"key": str(k), "value": str(v)} for k, v in sorted(metadata.items())]
+        )
         # External table
         self.external_table.setRowCount(0)
         if self.db is not None:
             for row in self.db.get_photon_streams(self.analysis_id):
                 idx = self.external_table.rowCount()
                 self.external_table.insertRow(idx)
-                self.external_table.setItem(idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path") or "")))
-                self.external_table.setItem(idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format") or "")))
+                self.external_table.setItem(
+                    idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path") or ""))
+                )
+                self.external_table.setItem(
+                    idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format") or ""))
+                )
         else:
             for row in getattr(self.fit, "flr_photon_streams", self._memory_streams):
                 idx = self.external_table.rowCount()
                 self.external_table.insertRow(idx)
-                self.external_table.setItem(idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path", ""))))
-                self.external_table.setItem(idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format", ""))))
+                self.external_table.setItem(
+                    idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path", "")))
+                )
+                self.external_table.setItem(
+                    idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format", "")))
+                )
         self._suppress_change = False
 
     def _on_changed(self):
@@ -701,7 +750,10 @@ class FitInfo(plotbase.Plot):
             )
             self.db.conn.execute(
                 "INSERT OR REPLACE INTO flr_sample_condition (condition_id, details) VALUES (?, ?)",
-                (f"condition_{self.analysis_id}", self.condition_details_edit.toPlainText().strip()),
+                (
+                    f"condition_{self.analysis_id}",
+                    self.condition_details_edit.toPlainText().strip(),
+                ),
             )
             self.db.set_analysis_metadata(self.analysis_id, self.metadata_editor.as_dict())
         else:

@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import copy
 import importlib
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
-from chimol.core.settings import config
 from chimol.analysis.ss import assign_ss_c3_from_atoms
+from chimol.core.settings import config
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +36,6 @@ def _restore_display_config():
 
 def _build_minimal_atoms(n_res: int) -> np.ndarray:
     """Construct a tiny ChiSurf-style atoms array with N/CA/C/O per residue."""
-
     # Simple straight backbone along x-axis; spacing 1.5 Å.
     coords = []
     for i in range(n_res):
@@ -64,7 +61,6 @@ def test_display_config_prefers_settings_dir(tmp_path, monkeypatch):
     directory through :mod:`chimol.core.settings.dirs` so that chimol can find its
     own settings with no ChiSurf to ask.
     """
-
     cfg_path = tmp_path / "chimol_display.json"
     cfg_path.write_text('{"background": "w", "camera": {"near_clip": 0.5}}', encoding="utf-8")
 
@@ -99,7 +95,6 @@ def test_display_config_falls_back_to_defaults(tmp_path, monkeypatch):
 
 def test_assign_ss_c3_from_atoms_returns_codes():
     """Basic sanity: SS assignment returns H/E/C codes with requested length."""
-
     atoms = _build_minimal_atoms(6)
     codes = assign_ss_c3_from_atoms(atoms, n_res=6, verbose=False)
     assert codes is not None
@@ -156,8 +151,7 @@ def test_no_records_returns_none(tmp_path):
     from chimol.io.structure import parse_pdb_secondary_structure
 
     stripped = "\n".join(
-        ln for ln in _PDB_WITH_RECORDS.splitlines()
-        if not ln.startswith(("HELIX", "SHEET"))
+        ln for ln in _PDB_WITH_RECORDS.splitlines() if not ln.startswith(("HELIX", "SHEET"))
     )
     assert parse_pdb_secondary_structure(_write(tmp_path, stripped, "bare.pdb")) is None
 
@@ -167,8 +161,10 @@ def test_records_after_the_coordinates_are_not_read(tmp_path):
 
     # The scan stops at the first coordinate record, so a stray HELIX line in
     # the middle of a large trajectory file cannot cost a full-file scan.
-    text = _PDB_WITH_RECORDS + \
-        "HELIX    9  H9 ALA E   90  ALA E   99  1                                  10\n"
+    text = (
+        _PDB_WITH_RECORDS
+        + "HELIX    9  H9 ALA E   90  ALA E   99  1                                  10\n"
+    )
     records = parse_pdb_secondary_structure(_write(tmp_path, text, "late.pdb"))
     assert records is not None
     assert ("E", 90) not in records
@@ -218,5 +214,5 @@ def test_mismatched_chain_span_is_skipped(tmp_path):
     )
     records = parse_pdb_secondary_structure(_write(tmp_path, text, "split.pdb"))
     assert records is not None
-    assert ("E", 3) not in records      # start/end chains disagree -> not guessed at
-    assert records[("E", 14)] == "E"    # the sheet records still load
+    assert ("E", 3) not in records  # start/end chains disagree -> not guessed at
+    assert records[("E", 14)] == "E"  # the sheet records still load

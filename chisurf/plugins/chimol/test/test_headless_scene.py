@@ -13,6 +13,7 @@ So this compares arrays, not pixels. It needs no GPU, and it is the regression
 net for the renderer split: if extracting the backend ever changes what the
 viewer assembles, this fails on the array that changed.
 """
+
 from __future__ import annotations
 
 import os
@@ -22,9 +23,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-os.environ.setdefault(
-    "CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_headless_test_")
-)
+os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_headless_test_"))
 
 _PDB = (
     Path(__file__).resolve().parents[4]
@@ -48,7 +47,6 @@ SCRIPTS = [
 def _build_scene(renderer_factory, script, qapp):
     """Run ``script`` through a viewer using ``renderer_factory`` and return its Scene."""
     from chimol.core.viewer import Viewer
-
     from chimol.io.structure import load_structure_payload
 
     viewer = Viewer(renderer_factory=renderer_factory)
@@ -157,7 +155,6 @@ def test_view_state_survives_a_round_trip():
     slot 16 from 166.78 to 1167.82.
     """
     import numpy as np
-
     from chimol.viewport.headless import SceneSink
 
     sink = SceneSink()
@@ -205,12 +202,10 @@ def test_apply_payload_makes_the_viewer_non_empty(qapp):
     ``show`` does not guard on it, which is what made the symptom so misleading:
     geometry appeared, and only the colour was missing.
     """
-    from pathlib import Path
-
     from chimol.commands.command import Cmd
+    from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
-    from chimol.core.viewer import Viewer
 
     viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)

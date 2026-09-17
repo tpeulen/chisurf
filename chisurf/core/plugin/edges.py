@@ -300,14 +300,10 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
                     target = owner_of_module(dotted, owners)
                     if target is None or target == source:
                         continue
-                    edges.add(
-                        PluginEdge(source, target, "optional", str(path.relative_to(base)))
-                    )
+                    edges.add(PluginEdge(source, target, "optional", str(path.relative_to(base))))
 
     hard_pairs = {(e.source, e.target) for e in edges if e.kind == "hard"}
-    return sorted(
-        e for e in edges if e.kind == "hard" or (e.source, e.target) not in hard_pairs
-    )
+    return sorted(e for e in edges if e.kind == "hard" or (e.source, e.target) not in hard_pairs)
 
 
 def declared_form(edges: list[PluginEdge]) -> dict[str, dict[str, dict[str, str]]]:

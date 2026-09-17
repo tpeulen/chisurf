@@ -15,7 +15,7 @@ import sys
 
 import click
 
-from ..api import prepare_folder, describe_preparation
+from ..api import describe_preparation, prepare_folder
 from ..api.models import PrepareRequest
 
 
@@ -58,27 +58,43 @@ def prepare(folder: str, no_photons: bool, report_only: bool):
 @cli.command()
 @click.argument("folder", type=click.Path(exists=True, file_okay=False))
 @click.option(
-    "--n-states", default=2, show_default=True, type=int,
+    "--n-states",
+    default=2,
+    show_default=True,
+    type=int,
     help="Number of species/states in the kinetic model.",
 )
 @click.option(
-    "--green", default="green", show_default=True,
+    "--green",
+    default="green",
+    show_default=True,
     help="Green detector channel name.",
 )
 @click.option(
-    "--red", default="red", show_default=True,
+    "--red",
+    default="red",
+    show_default=True,
     help="Red detector channel name.",
 )
 @click.option(
-    "--n-ratio-bins", default=41, show_default=True, type=int,
+    "--n-ratio-bins",
+    default=41,
+    show_default=True,
+    type=int,
     help="Number of bins on the FRET-ratio (S) axis.",
 )
 @click.option(
-    "--n-micro-time-bins", default=41, show_default=True, type=int,
+    "--n-micro-time-bins",
+    default=41,
+    show_default=True,
+    type=int,
     help="Number of bins on the micro-time axis.",
 )
 @click.option(
-    "--min-green-photons", default=20, show_default=True, type=int,
+    "--min-green-photons",
+    default=20,
+    show_default=True,
+    type=int,
     help="Minimum green photons per burst.",
 )
 def fit(
@@ -93,8 +109,8 @@ def fit(
     """Fit an MFD kinetic model to FOLDER and print the fitted parameters."""
     try:
         from chisurf.core.experiments.mfd.reader import MfdReader
-        from chisurf.core.models.mfd.two_dimensional import Mfd2DModel
         from chisurf.core.fitting.fit import Fit
+        from chisurf.core.models.mfd.two_dimensional import Mfd2DModel
 
         reader = MfdReader(
             green=green,
@@ -113,14 +129,18 @@ def fit(
         )
         fit.run()
 
-        params = dict(zip(
-            fit.model.parameter_names,
-            fit.model.parameter_values,
-        ))
-        uncertainties = dict(zip(
-            fit.model.parameter_names,
-            fit.model.parameter_uncertainties,
-        ))
+        params = dict(
+            zip(
+                fit.model.parameter_names,
+                fit.model.parameter_values,
+            )
+        )
+        uncertainties = dict(
+            zip(
+                fit.model.parameter_names,
+                fit.model.parameter_uncertainties,
+            )
+        )
         result = {
             "n_states": n_states,
             "parameters": params,

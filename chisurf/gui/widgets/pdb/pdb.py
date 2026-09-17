@@ -2,31 +2,21 @@ import logging
 import os
 
 import numpy as np
-from qtpy import  QtWidgets, uic, QtCore
+from qtpy import QtCore, QtWidgets, uic
 
-import chisurf.core.support.decorators
 import chisurf.core.fio
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 from chisurf.core.structure import Structure
 from chisurf.core.structure.trajectory import TrajectoryFile
 from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 
 
-class PDBSelector(
-    QtWidgets.QWidget
-):
-    """
+class PDBSelector(QtWidgets.QWidget):
+    """ """
 
-    """
-
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="pdb_widget.ui"
-    )
-    def __init__(
-            self,
-            show_labels: bool = True,
-            update=None
-    ):
+    @chisurf.gui.decorators.init_with_ui(ui_filename="pdb_widget.ui")
+    def __init__(self, show_labels: bool = True, update=None):
         """
 
         :param show_labels:
@@ -70,9 +60,9 @@ class PDBSelector(
             return
 
         atom = self._pdb[index]
-        chain = str(atom['chain'])
-        residue_id = int(atom['res_id'])
-        atom_name = str(atom['atom_name'])
+        chain = str(atom["chain"])
+        residue_id = int(atom["res_id"])
+        atom_name = str(atom["atom_name"])
 
         self._chain_combo.blockSignals(True)
         self._residue_combo.blockSignals(True)
@@ -88,12 +78,16 @@ class PDBSelector(
                 if chain_index >= 0:
                     self._chain_combo.setCurrentIndex(chain_index)
 
-            residue_index = self._residue_combo.findText(str(residue_id), QtCore.Qt.MatchFixedString)
+            residue_index = self._residue_combo.findText(
+                str(residue_id), QtCore.Qt.MatchFixedString
+            )
             if residue_index >= 0:
                 self._residue_combo.setCurrentIndex(residue_index)
             else:
                 self.onChainChanged()
-                residue_index = self._residue_combo.findText(str(residue_id), QtCore.Qt.MatchFixedString)
+                residue_index = self._residue_combo.findText(
+                    str(residue_id), QtCore.Qt.MatchFixedString
+                )
                 if residue_index >= 0:
                     self._residue_combo.setCurrentIndex(residue_index)
 
@@ -116,10 +110,7 @@ class PDBSelector(
         return self._pdb
 
     @atoms.setter
-    def atoms(
-            self,
-            v
-    ):
+    def atoms(self, v):
         self._pdb = v
         self.update_chain()
 
@@ -128,18 +119,13 @@ class PDBSelector(
         return str(self.comboBox.currentText())
 
     @chain_id.setter
-    def chain_id(
-            self,
-            v: str
-    ):
+    def chain_id(self, v: str):
         pass
 
     @property
     def residue_name(self) -> str:
         try:
-            return str(
-                self.atoms[self.atom_number]['res_name']
-            )
+            return str(self.atoms[self.atom_number]["res_name"])
         except ValueError:
             return "NA"
 
@@ -151,10 +137,7 @@ class PDBSelector(
             return 0
 
     @residue_id.setter
-    def residue_id(
-            self,
-            v: int
-    ):
+    def residue_id(self, v: int):
         pass
 
     @property
@@ -162,10 +145,7 @@ class PDBSelector(
         return str(self.comboBox_3.currentText())
 
     @atom_name.setter
-    def atom_name(
-            self,
-            v: str
-    ):
+    def atom_name(self, v: str):
         pass
 
     @property
@@ -175,11 +155,7 @@ class PDBSelector(
         chain = self.chain_id
 
         w = chisurf.core.fio.structure.coordinates.get_atom_index(
-            self.atoms,
-            chain,
-            residue_key,
-            atom_name,
-            None
+            self.atoms, chain, residue_key, atom_name, None
         )
         return w
 
@@ -188,8 +164,8 @@ class PDBSelector(
         self.comboBox_2.clear()
         pdb = self._pdb
         chain = str(self.comboBox.currentText())
-        atom_ids = np.where(pdb['chain'] == chain)[0]
-        residue_ids = list(set(self.atoms['res_id'][atom_ids]))
+        atom_ids = np.where(pdb["chain"] == chain)[0]
+        residue_ids = list(set(self.atoms["res_id"][atom_ids]))
         residue_ids_str = [str(x) for x in residue_ids]
         self.comboBox_2.addItems(residue_ids_str)
 
@@ -198,14 +174,14 @@ class PDBSelector(
         pdb = self.atoms
         chain = self.chain_id
         residue = self.residue_id
-        chisurf.logging.info("onResidueChanged: %s" % residue)
-        atom_ids = np.where((pdb['res_id'] == residue) & (pdb['chain'] == chain))[0]
-        atom_names = [atom['atom_name'] for atom in pdb[atom_ids]]
+        chisurf.logging.info(f"onResidueChanged: {residue}")
+        atom_ids = np.where((pdb["res_id"] == residue) & (pdb["chain"] == chain))[0]
+        atom_names = [atom["atom_name"] for atom in pdb[atom_ids]]
         self.comboBox_3.addItems(atom_names)
 
     def update_chain(self):
         self.comboBox.clear()
-        chain_ids = list(set(self.atoms['chain'][:]))
+        chain_ids = list(set(self.atoms["chain"][:]))
         self.comboBox.addItems(chain_ids)
 
 
@@ -235,32 +211,17 @@ class LoadThread(QtCore.QThread):
         logging.info("Reading finished")
 
 
-class PDBFolderLoad(
-    QtWidgets.QWidget
-):
-    """
+class PDBFolderLoad(QtWidgets.QWidget):
+    """ """
 
-    """
-
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         """
 
         :param parent:
         """
-        super(PDBFolderLoad, self).__init__(
-            *args,
-            **kwargs
-        )
+        super().__init__(*args, **kwargs)
         uic.loadUi(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "proteinFolderLoad.ui"
-            ),
-            self
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "proteinFolderLoad.ui"), self
         )
 
         # The bar comes from the .ui file; swap in the shared one.
@@ -284,14 +245,17 @@ class PDBFolderLoad(
         directory = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory"))
 
         self.folder = directory
-        filenames = [os.path.join(directory, f) for f in os.listdir(directory)
-                     if os.path.isfile(os.path.join(directory, f))]
+        filenames = [
+            os.path.join(directory, f)
+            for f in os.listdir(directory)
+            if os.path.isfile(os.path.join(directory, f))
+        ]
         filenames.sort()
 
         pdb_filenames = list()
         for filename in filenames:
             extension = os.path.splitext(filename)[1][1:]
-            if filename.lower().endswith('.pdb') or extension.isdigit():
+            if filename.lower().endswith(".pdb") or extension.isdigit():
                 pdb_filenames.append(filename)
 
         self.n_files = len(pdb_filenames)
@@ -300,9 +264,7 @@ class PDBFolderLoad(
         self.load_thread.read_parameter = [self.calc_internal, self.verbose]
         self.load_thread.append_parameter = [self.calc_rmsd]
         self.trajectory = TrajectoryFile(
-            use_objects=self.use_objects,
-            calc_internal=self.calc_internal,
-            verbose=self.verbose
+            use_objects=self.use_objects, calc_internal=self.calc_internal, verbose=self.verbose
         )
         self.load_thread.filenames = pdb_filenames
         self.load_thread.target = self.trajectory
@@ -317,10 +279,7 @@ class PDBFolderLoad(
         return int(self.lineEdit_3.text())
 
     @n_files.setter
-    def n_files(
-            self,
-            v: int
-    ):
+    def n_files(self, v: int):
         self.lineEdit_3.setText(str(v))
 
     @property
@@ -340,10 +299,7 @@ class PDBFolderLoad(
         return str(self.lineEdit_7.text())
 
     @folder.setter
-    def folder(
-            self,
-            v: str
-    ):
+    def folder(self, v: str):
         self.lineEdit_7.setText(v)
 
     @property

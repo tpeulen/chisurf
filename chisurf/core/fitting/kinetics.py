@@ -122,12 +122,17 @@ class RateMatrixMixin:
         old_fixed = {(i, j): p.fixed for (i, j), p in self.rate_items()}
         rates = []
         for i, j in self._rate_pairs(target):
-            rates.append(FittingParameter(
-                value=float(old.get((i, j), self.default_rate)),
-                name=f"{self.rate_prefix}{i}_{j}",
-                lb=0.0, ub=1e9, bounds_on=True,
-                fixed=old_fixed.get((i, j), True),
-                label_text=f"{self.rate_prefix}<sub>{i}{j}</sub>"))
+            rates.append(
+                FittingParameter(
+                    value=float(old.get((i, j), self.default_rate)),
+                    name=f"{self.rate_prefix}{i}_{j}",
+                    lb=0.0,
+                    ub=1e9,
+                    bounds_on=True,
+                    fixed=old_fixed.get((i, j), True),
+                    label_text=f"{self.rate_prefix}<sub>{i}{j}</sub>",
+                )
+            )
         self._rates = rates
         self._n_states = target
         self._invalidate_parameters()
@@ -161,16 +166,15 @@ class RateMatrixMixin:
         :func:`~chisurf.core.fluorescence.kinetics.rate_matrix_from_rates`, so
         the parameter list and any flat rate vector line up element for element.
         """
-        return [(i, j)
-                for i in range(1, n_states + 1)
-                for j in range(1, n_states + 1) if i != j]
+        return [(i, j) for i in range(1, n_states + 1) for j in range(1, n_states + 1) if i != j]
 
     # -- access -------------------------------------------------------------
 
     def rate_items(self) -> list:
         """Return ``((i, j), parameter)`` for every off-diagonal rate, 1-based."""
-        return list(zip(self._rate_pairs(getattr(self, "_n_states", 0)),
-                        getattr(self, "_rates", [])))
+        return list(
+            zip(self._rate_pairs(getattr(self, "_n_states", 0)), getattr(self, "_rates", []))
+        )
 
     def rates_by_name(self) -> dict:
         """Return ``{"k<i>_<j>": parameter}`` for every off-diagonal rate.
@@ -188,8 +192,9 @@ class RateMatrixMixin:
     @property
     def flat_rates(self) -> np.ndarray:
         """The ``n(n-1)`` off-diagonal rates, in the shared flat order."""
-        return np.array([max(0.0, float(p.value)) for p in getattr(self, "_rates", [])],
-                        dtype=float)
+        return np.array(
+            [max(0.0, float(p.value)) for p in getattr(self, "_rates", [])], dtype=float
+        )
 
     def rate_matrix(self) -> np.ndarray:
         """Return the ``n x n`` rate matrix ``K[target, source]`` (Hz)."""
@@ -262,8 +267,9 @@ class RateMatrixParameters(RateMatrixMixin, FittingParameterGroup):
     fitted quantities that belong beside their rates.
     """
 
-    def __init__(self, name: str = "kinetics", n_states: int = 2,
-                 default_rate: float | None = None, **kwargs):
+    def __init__(
+        self, name: str = "kinetics", n_states: int = 2, default_rate: float | None = None, **kwargs
+    ):
         """Initialize an ``n_states`` scheme.
 
         Parameters

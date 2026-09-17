@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -26,8 +26,8 @@ class FretEfficiencyEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av1 = av_cache.get(self.position1)
         av2 = av_cache.get(self.position2)
@@ -35,6 +35,7 @@ class FretEfficiencyEvaluator(Evaluator):
             val = 0.0
         else:
             from ..core.distance import _sample_av_distance
+
             d = _sample_av_distance(av1, av2)
             r = d[:, 0]
             w = d[:, 1]

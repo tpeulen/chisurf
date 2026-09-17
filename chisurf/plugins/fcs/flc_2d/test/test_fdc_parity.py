@@ -41,7 +41,10 @@ import pytest
 #: reads exactly like passing.
 _FIXTURE = (
     pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "numba_parity" / "flc_2d_fdc.npz"
+    / "test"
+    / "data"
+    / "numba_parity"
+    / "flc_2d_fdc.npz"
 )
 
 
@@ -61,18 +64,22 @@ def _scan_cases(recorded):
         ddT, tmin, tmax, logt_imax, n_chunks = recorded[f"params_{i}"]
         yield {
             "name": str(recorded["names"][i]),
-            "macro": recorded[f"macro_{i}"], "micro": recorded[f"micro_{i}"],
-            "lags": recorded[f"lags_{i}"], "ddT": int(ddT), "tmin": int(tmin),
-            "tmax": int(tmax), "logt_imax": int(logt_imax),
-            "n_chunks": int(n_chunks), "mats": recorded[f"mats_{i}"],
+            "macro": recorded[f"macro_{i}"],
+            "micro": recorded[f"micro_{i}"],
+            "lags": recorded[f"lags_{i}"],
+            "ddT": int(ddT),
+            "tmin": int(tmin),
+            "tmax": int(tmax),
+            "logt_imax": int(logt_imax),
+            "n_chunks": int(n_chunks),
+            "mats": recorded[f"mats_{i}"],
         }
 
 
 def test_the_fixture_covers_the_shapes_that_are_easy_to_get_wrong(recorded):
     """A parity fixture of ordinary streams proves the easy half only."""
     names = {c["name"] for c in _scan_cases(recorded)}
-    assert {"lag_inside_window", "narrow_gate", "empty_gate",
-            "single_photon", "dense"} <= names
+    assert {"lag_inside_window", "narrow_gate", "empty_gate", "single_photon", "dense"} <= names
     totals = {c["name"]: int(c["mats"].sum()) for c in _scan_cases(recorded)}
     assert totals["empty_gate"] == 0 and totals["single_photon"] == 0
     assert totals["dense"] > 100_000, "no case with a heavy pair count"
@@ -85,8 +92,14 @@ def test_the_scan_matches_the_numba_reference(recorded):
 
     for c in _scan_cases(recorded):
         got = _fdc_scan_log_kernel(
-            c["macro"], c["micro"], c["lags"], np.int64(c["ddT"]),
-            np.int64(c["tmin"]), np.int64(c["tmax"]), c["logt_imax"], c["n_chunks"],
+            c["macro"],
+            c["micro"],
+            c["lags"],
+            np.int64(c["ddT"]),
+            np.int64(c["tmin"]),
+            np.int64(c["tmax"]),
+            c["logt_imax"],
+            c["n_chunks"],
         )
         assert got.shape == c["mats"].shape, c["name"]
         np.testing.assert_array_equal(got, c["mats"], err_msg=c["name"])
@@ -100,8 +113,18 @@ def test_the_single_lag_builder_matches_the_numba_reference(recorded):
     for i in range(int(recorded["n_single"])):
         dT, ddT, tmin, tmax, lint, logt = recorded[f"s_params_{i}"]
         lin, lint_axis, log, logt_axis = create_2d_fdc_numba_int(
-            macro, micro, int(dT), int(ddT), 0, 10**12, int(tmin), int(tmax),
-            int(lint), int(logt), True, 1,
+            macro,
+            micro,
+            int(dT),
+            int(ddT),
+            0,
+            10**12,
+            int(tmin),
+            int(tmax),
+            int(lint),
+            int(logt),
+            True,
+            1,
         )
         np.testing.assert_array_equal(lin, recorded[f"s_lin_{i}"], err_msg=f"lin {i}")
         np.testing.assert_array_equal(lint_axis, recorded[f"s_lint_{i}"], err_msg=f"lint {i}")
@@ -117,8 +140,14 @@ def test_the_chunk_count_still_changes_nothing(recorded):
     reference = None
     for n_chunks in (1, 2, 5, 64):
         got = _fdc_scan_log_kernel(
-            c["macro"], c["micro"], c["lags"], np.int64(c["ddT"]),
-            np.int64(c["tmin"]), np.int64(c["tmax"]), c["logt_imax"], n_chunks,
+            c["macro"],
+            c["micro"],
+            c["lags"],
+            np.int64(c["ddT"]),
+            np.int64(c["tmin"]),
+            np.int64(c["tmax"]),
+            c["logt_imax"],
+            n_chunks,
         )
         if reference is None:
             reference = got
@@ -131,8 +160,14 @@ def test_a_gate_that_admits_nothing_returns_zeros_rather_than_raising(recorded):
 
     c = next(x for x in _scan_cases(recorded) if x["name"] == "empty_gate")
     got = _fdc_scan_log_kernel(
-        c["macro"], c["micro"], c["lags"], np.int64(c["ddT"]),
-        np.int64(c["tmin"]), np.int64(c["tmax"]), c["logt_imax"], 1,
+        c["macro"],
+        c["micro"],
+        c["lags"],
+        np.int64(c["ddT"]),
+        np.int64(c["tmin"]),
+        np.int64(c["tmax"]),
+        c["logt_imax"],
+        1,
     )
     assert got.sum() == 0 and got.shape == c["mats"].shape
 
@@ -158,8 +193,18 @@ def test_the_linear_matrix_trims_its_last_bin_as_the_reference_does(recorded):
     for i in range(int(recorded["n_single"])):
         dT, ddT, tmin, tmax, lint, logt = recorded[f"s_params_{i}"]
         lin, axis, _, _ = create_2d_fdc_numba_int(
-            macro, micro, int(dT), int(ddT), 0, 10**12, int(tmin), int(tmax),
-            int(lint), int(logt), True, 1,
+            macro,
+            micro,
+            int(dT),
+            int(ddT),
+            0,
+            10**12,
+            int(tmin),
+            int(tmax),
+            int(lint),
+            int(logt),
+            True,
+            1,
         )
         span = int(tmax) - int(tmin)
         lint_imax = -(-(span + int(lint)) // int(lint))
@@ -186,11 +231,28 @@ def test_both_kernels_put_the_log_matrix_on_the_same_axis(recorded):
     for i in range(int(recorded["n_single"])):
         dT, ddT, tmin, tmax, lint, logt = recorded[f"s_params_{i}"]
         _, _, log, _ = create_2d_fdc_numba_int(
-            macro, micro, int(dT), int(ddT), 0, 10**12, int(tmin), int(tmax),
-            int(lint), int(logt), True, 1,
+            macro,
+            micro,
+            int(dT),
+            int(ddT),
+            0,
+            10**12,
+            int(tmin),
+            int(tmax),
+            int(lint),
+            int(logt),
+            True,
+            1,
         )
         scan = _fdc_scan_log_kernel(
-            macro, micro, np.array([int(dT)], dtype=np.int64), np.int64(ddT),
-            np.int64(tmin), np.int64(tmax), int(logt), 1, int(lint),
+            macro,
+            micro,
+            np.array([int(dT)], dtype=np.int64),
+            np.int64(ddT),
+            np.int64(tmin),
+            np.int64(tmax),
+            int(logt),
+            1,
+            int(lint),
         )[0]
         np.testing.assert_array_equal(scan, log, err_msg=f"factor {int(lint)}")

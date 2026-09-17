@@ -12,6 +12,7 @@ Both are asserted here. The first is the sharper test: it converges as
 *signal* photon distribution, with background added on top rather than carved
 out of it) that a pass/reject test would not.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -242,8 +243,6 @@ def test_rejects_a_non_pda_model(qapp):
 
     x = np.linspace(0.0, 5.0, 32)
     data = chisurf.core.data.DataCurve(x=x, y=np.ones_like(x), ey=np.ones_like(x))
-    fit = fit_module.Fit(
-        data=data, model_class=chisurf.core.models.parse.ParseModel
-    )
+    fit = fit_module.Fit(data=data, model_class=chisurf.core.models.parse.ParseModel)
     with pytest.raises(TypeError, match="not a PDA model"):
         kinetic_consistency_check(fit, n_resamples=2)

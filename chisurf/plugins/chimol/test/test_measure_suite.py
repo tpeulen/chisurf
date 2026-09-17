@@ -11,6 +11,7 @@ area that agrees with one hand-computed value can still be wrong everywhere
 else, while one that is symmetric, non-negative, zero at infinite separation and
 additive with contact is doing the right arithmetic.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -23,7 +24,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -192,7 +197,8 @@ def test_the_molecular_weight_matches_the_chemistry(cmd):
 def test_the_whole_protein_weighs_what_a_hydrogen_less_structure_should(cmd):
     """An X-ray structure carries no hydrogens, so the weight is the heavy-atom
     one -- ~17.3 kDa for T4 lysozyme against ~18.7 kDa with hydrogens. Asserting
-    the smaller number is asserting that nothing was invented."""
+    the smaller number is asserting that nothing was invented.
+    """
     said, complained = cmd("measure_weight polymer")
     assert not complained, complained
     weight = float(re.search(r"weigh ([\d.]+) Da", said).group(1))
@@ -201,7 +207,8 @@ def test_the_whole_protein_weighs_what_a_hydrogen_less_structure_should(cmd):
 
 def test_atoms_of_unknown_element_are_counted_not_guessed(cmd):
     """A weight quietly missing a metal is the kind of wrong number that gets
-    published, so the message says how many were skipped."""
+    published, so the message says how many were skipped.
+    """
     from chimol.analysis.elements import masses_for
 
     masses, unknown = masses_for(["C", "N", "ZZ", "FE"])
@@ -227,10 +234,15 @@ def test_two_atom_distance_is_in_angstrom(cmd):
     exactly ``_scale_factor``, 10 -- because the coordinates the value was taken
     from are the *scene* ones the measurement is drawn in.
     """
-    lines = [ln for ln in PDB.read_text().splitlines()
-             if ln.startswith("ATOM") and ln[12:16].strip() == "CA"]
-    by_resi = {int(ln[22:26]): np.array(
-        [float(ln[30:38]), float(ln[38:46]), float(ln[46:54])]) for ln in lines}
+    lines = [
+        ln
+        for ln in PDB.read_text().splitlines()
+        if ln.startswith("ATOM") and ln[12:16].strip() == "CA"
+    ]
+    by_resi = {
+        int(ln[22:26]): np.array([float(ln[30:38]), float(ln[38:46]), float(ln[46:54])])
+        for ln in lines
+    }
     keys = sorted(by_resi)
     a, b = keys[0], keys[20]
     truth = float(np.linalg.norm(by_resi[a] - by_resi[b]))

@@ -9,6 +9,7 @@ The fix was to stop splitting. **PyMOL keeps one row per object** — checked in
 boundary. A row per chain reads fine on a four-chain protein and is unusable on
 an integrative model, which is the case that found it.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -29,9 +30,7 @@ def rows():
     total = CHAINS * PER_CHAIN
     codes = (list("ACDEFGHIKLMNPQRSTVWY") * (total // 20 + 1))[:total]
     numbers = list(range(1, total + 1))
-    return MolViewPluginWindow._sequence_rows_for_object(
-        "o1", "npc", codes, numbers, [], chains
-    )
+    return MolViewPluginWindow._sequence_rows_for_object("o1", "npc", codes, numbers, [], chains)
 
 
 def test_two_hundred_and_fifty_chains_make_one_row(rows):

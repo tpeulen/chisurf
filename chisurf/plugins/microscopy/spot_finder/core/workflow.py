@@ -105,8 +105,7 @@ def builtin_workflow(name: str = STANDARD) -> dict[str, Any]:
     path = workflows_dir() / f"{name}.json"
     if not path.exists():
         raise FileNotFoundError(
-            f"no workflow named {name!r}; the shipped ones are: "
-            + ", ".join(list_workflows())
+            f"no workflow named {name!r}; the shipped ones are: " + ", ".join(list_workflows())
         )
     return json.loads(path.read_text())
 
@@ -262,8 +261,7 @@ def _check_keys(mapping, allowed, what: str) -> None:
     unknown = sorted(set(mapping) - set(allowed))
     if unknown:
         raise ValueError(
-            f"unknown {what} key(s): {', '.join(unknown)}. "
-            f"Allowed: {', '.join(sorted(allowed))}"
+            f"unknown {what} key(s): {', '.join(unknown)}. Allowed: {', '.join(sorted(allowed))}"
         )
 
 

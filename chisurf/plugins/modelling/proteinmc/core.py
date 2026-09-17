@@ -15,7 +15,6 @@ from .model import (
     run_protein_mc,
 )
 
-
 __all__ = [
     "DirectLabelingPotential",
     "ProteinMCProgress",

@@ -9,6 +9,7 @@ The bar for a replacement reader is not "it produces something plausible", it is
 **field-for-field agreement with the reader it replaces**, on real files, with
 every difference deliberate and named. There is exactly one here: the radius.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -18,12 +19,25 @@ import pytest
 
 from chisurf.core.fio.structure.coordinates import parse_pdb_native, read_coordinates
 
-PDB_DIR = pathlib.Path(__file__).resolve().parents[2] / "test" / "data" / "atomic_coordinates" / "pdb_files"
+PDB_DIR = (
+    pathlib.Path(__file__).resolve().parents[2]
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+)
 FILES = ["148l.pdb", "hGBP1_closed.pdb", "1rtd.pdb"]
 #: Everything the two readers must agree on. `radius` is excluded on purpose --
 #: see `test_the_radius_is_the_one_documented_difference`.
 SHARED_FIELDS = (
-    "chain", "res_id", "res_name", "atom_id", "atom_name", "element", "bfactor", "mass",
+    "chain",
+    "res_id",
+    "res_name",
+    "atom_id",
+    "atom_name",
+    "element",
+    "bfactor",
+    "mass",
 )
 
 
@@ -47,7 +61,8 @@ def pair(request):
 def test_the_same_atoms_survive(pair):
     """Including the alternate-location rule, which is where a naive parser
     differs: keeping every altloc doubles those atoms and every distance, area
-    and bond inferred from them."""
+    and bond inferred from them.
+    """
     name, native, reference = pair
     assert len(native) == len(reference), name
 
@@ -87,7 +102,8 @@ def test_the_radius_is_the_one_documented_difference(pair):
 
 def test_a_blank_chain_stays_blank_rather_than_empty():
     """IMP reports a PDB's blank chain as `" "`, and a selection written against
-    that must keep working. Stripping it turned every such chain into `""`."""
+    that must keep working. Stripping it turned every such chain into `""`.
+    """
     path = PDB_DIR / "hGBP1_closed.pdb"
     if not path.is_file():
         pytest.skip("missing fixture")
@@ -108,7 +124,8 @@ def test_the_policy_selects_the_reader():
 
 def test_an_empty_or_headers_only_file_is_an_empty_array(tmp_path):
     """A file with no ATOM records is not an error; it is a structure with no
-    atoms, and every consumer already handles that."""
+    atoms, and every consumer already handles that.
+    """
     path = tmp_path / "headers.pdb"
     path.write_text("HEADER    NOTHING HERE\nEND\n")
     assert len(parse_pdb_native(str(path))) == 0

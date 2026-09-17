@@ -6,7 +6,6 @@ algorithms in the chisurf package.
 """
 
 import numpy as np
-from typing import List, Tuple, Union, Optional, Any
 
 
 def _fill_intervals(arr: np.ndarray, starts: np.ndarray, stops: np.ndarray) -> None:
@@ -40,7 +39,7 @@ def create_array_with_ones(start_stop_pairs: np.ndarray, length: int) -> np.ndar
     """
     Create a boolean array of the given length, set to True (1)
     in the intervals [start, stop) defined by start_stop_pairs.
-    
+
     Parameters
     ----------
     start_stop_pairs : np.ndarray
@@ -48,7 +47,7 @@ def create_array_with_ones(start_stop_pairs: np.ndarray, length: int) -> np.ndar
         Each row is a pair [start, stop] defining an interval.
     length : int
         Length of the output array.
-        
+
     Returns
     -------
     np.ndarray

@@ -69,10 +69,7 @@ def _near(available, wanted: str, limit: int = 3) -> list[str]:
     target = str(wanted).strip().lower()
     if not target:
         return []
-    scored = [
-        (_edit_distance(target, str(name).lower(), 3), str(name))
-        for name in available
-    ]
+    scored = [(_edit_distance(target, str(name).lower(), 3), str(name)) for name in available]
     return [name for distance, name in sorted(scored) if distance <= 3][:limit]
 
 

@@ -102,8 +102,7 @@ class ImgColocTool(ChisurfDockTool):
         if editor is None or plane is None:
             return None
 
-        overlay = RegionOverlay(plane, lambda: self.model.gates,
-                                on_change=self._on_gates_changed)
+        overlay = RegionOverlay(plane, lambda: self.model.gates, on_change=self._on_gates_changed)
         editor.changed.connect(self._on_gates_changed)
         editor.changed.connect(overlay.refresh)
         editor.selectionChanged.connect(overlay.select)

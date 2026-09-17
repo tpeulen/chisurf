@@ -23,21 +23,62 @@ import numpy as np
 
 from chisurf.core.datastore import column_names
 
-__all__ = ["COLUMN_HINTS", "DETECTOR_ROLE_WORDS", "gated_stream_columns",
-           "guess_columns", "read_burst_table", "columns_from_data",
-           "maps_fret_channels"]
+__all__ = [
+    "COLUMN_HINTS",
+    "DETECTOR_ROLE_WORDS",
+    "gated_stream_columns",
+    "guess_columns",
+    "read_burst_table",
+    "columns_from_data",
+    "maps_fret_channels",
+]
 
 #: Column-name fragments (lower case) identifying each channel role. Matched in
 #: order, exact match first, so a more specific name wins over a substring.
 COLUMN_HINTS: dict[str, tuple[str, ...]] = {
-    "i_dd": ("i_dd", "i11", "green count rate", "f_dexc_dem", "sg", "number of photons (green)",
-             "ngreen", "n green", "donor donor"),
-    "i_da": ("i_da", "i12", "red count rate", "f_dexc_aem", "sr", "number of photons (red)",
-             "nred", "n red", "donor acceptor"),
-    "i_aa": ("i_aa", "i22", "delayed yellow", "yellow count rate", "f_aexc_aem", "sy",
-             "number of photons (yellow)", "nyellow", "n yellow", "acceptor acceptor"),
-    "tau_f": ("tau_f", "tau (green)", "taud(a)", "lifetime green", "green lifetime",
-              "donor lifetime", "tau green"),
+    "i_dd": (
+        "i_dd",
+        "i11",
+        "green count rate",
+        "f_dexc_dem",
+        "sg",
+        "number of photons (green)",
+        "ngreen",
+        "n green",
+        "donor donor",
+    ),
+    "i_da": (
+        "i_da",
+        "i12",
+        "red count rate",
+        "f_dexc_aem",
+        "sr",
+        "number of photons (red)",
+        "nred",
+        "n red",
+        "donor acceptor",
+    ),
+    "i_aa": (
+        "i_aa",
+        "i22",
+        "delayed yellow",
+        "yellow count rate",
+        "f_aexc_aem",
+        "sy",
+        "number of photons (yellow)",
+        "nyellow",
+        "n yellow",
+        "acceptor acceptor",
+    ),
+    "tau_f": (
+        "tau_f",
+        "tau (green)",
+        "taud(a)",
+        "lifetime green",
+        "green lifetime",
+        "donor lifetime",
+        "tau green",
+    ),
 }
 
 
@@ -54,7 +95,8 @@ DETECTOR_ROLE_WORDS: dict[str, tuple[str, ...]] = {
 #: ``chisurf/core/fio/fluorescence/burst_features.yaml`` declares it:
 #: ``S {window} {detector} (photons|kHz) | {r0}-{r1}``.
 _GATED_COLUMN = re.compile(
-    r"^s\s+(?P<middle>.+?)\s+\((?P<unit>khz|photons)\)\s*\|\s*\d+\s*-\s*\d+$")
+    r"^s\s+(?P<middle>.+?)\s+\((?P<unit>khz|photons)\)\s*\|\s*\d+\s*-\s*\d+$"
+)
 
 #: ``Number of Photons ({detector})`` — how the detector names are recovered.
 _DETECTOR_COLUMN = re.compile(r"^number of photons \((?P<detector>.+)\)$")
@@ -190,8 +232,9 @@ def guess_columns(names, extra_hints: dict | None = None) -> dict[str, str]:
             continue
         hints = tuple((extra_hints or {}).get(role, ())) + tuple(hints)
         for hint in hints:
-            match = next((original for original, low in lowered
-                          if low == hint or hint in low), None)
+            match = next(
+                (original for original, low in lowered if low == hint or hint in low), None
+            )
             if match is not None and match not in out.values():
                 out[role] = match
                 break

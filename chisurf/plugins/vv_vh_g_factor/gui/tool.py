@@ -5,23 +5,30 @@ This acts as a thin client for the VV/VH G-Factor backend.
 
 from __future__ import annotations
 
-import logging
 import csv
-import sys
+import logging
 import warnings
 from pathlib import Path
+
 import numpy as np
+
 from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
 from qtpy import uic
-from qtpy.QtWidgets import (
-    QApplication, QWidget, QFileDialog, QVBoxLayout, QHBoxLayout,
-    QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QDialog
-)
 from qtpy.QtCore import Qt, QTimer
+from qtpy.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from chisurf.gui import chiplot as cp
 
@@ -31,20 +38,22 @@ try:
 except Exception:
     _read_vv_vh = None
 
-from .client import VvVhGFactorClient
 from ..core.calculations import (
-    shift_interp_on_axis,
-    compute_rt,
     compute_background_levels,
-    perrin_steady_state_anisotropy,
+    compute_rt,
     estimate_lifetime_first_moment,
+    perrin_steady_state_anisotropy,
+    shift_interp_on_axis,
     solve_linked_l_from_steady_state,
 )
+from .client import VvVhGFactorClient
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 class DataCurve:
@@ -104,9 +113,9 @@ class VvVhDecayBatchWindow(QDialog):
         layout.addLayout(buttons)
 
         self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels([
-            "filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            ["filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
 
@@ -128,20 +137,20 @@ class VvVhDecayBatchWindow(QDialog):
             vh = vh[:n]
             t = np.arange(n, dtype=float)
 
-            flip = bool(self.snapshot.get('flip', False))
+            flip = bool(self.snapshot.get("flip", False))
             if flip:
                 vv, vh = vh, vv
 
-            g_raw = float(self.snapshot.get('g_raw', np.nan))
-            g_corr = float(self.snapshot.get('g_corr', np.nan))
-            l1 = float(self.snapshot.get('l1', 0.0))
-            l2 = float(self.snapshot.get('l2', 0.0))
-            shift = float(self.snapshot.get('shift', 0.0))
-            bg_vv = float(self.snapshot.get('bg_vv', 0.0))
-            bg_vh = float(self.snapshot.get('bg_vh', 0.0))
-            apply_bg = bool(self.snapshot.get('apply_bg', False))
-            region_min = float(self.snapshot.get('region_min', 0.0))
-            region_max = float(self.snapshot.get('region_max', float(max(0, n - 1))))
+            float(self.snapshot.get("g_raw", np.nan))
+            g_corr = float(self.snapshot.get("g_corr", np.nan))
+            l1 = float(self.snapshot.get("l1", 0.0))
+            l2 = float(self.snapshot.get("l2", 0.0))
+            shift = float(self.snapshot.get("shift", 0.0))
+            bg_vv = float(self.snapshot.get("bg_vv", 0.0))
+            bg_vh = float(self.snapshot.get("bg_vh", 0.0))
+            apply_bg = bool(self.snapshot.get("apply_bg", False))
+            region_min = float(self.snapshot.get("region_min", 0.0))
+            region_max = float(self.snapshot.get("region_max", float(max(0, n - 1))))
 
             if not apply_bg:
                 bg_vv = 0.0
@@ -171,11 +180,11 @@ class VvVhDecayBatchWindow(QDialog):
             return (
                 Path(file_path).name,
                 np.nan,
-                float(self.snapshot.get('region_min', 0.0)),
-                float(self.snapshot.get('region_max', 0.0)),
-                float(self.snapshot.get('bg_vv', 0.0)),
-                float(self.snapshot.get('bg_vh', 0.0)),
-                float(self.snapshot.get('g_corr', np.nan)),
+                float(self.snapshot.get("region_min", 0.0)),
+                float(self.snapshot.get("region_max", 0.0)),
+                float(self.snapshot.get("bg_vv", 0.0)),
+                float(self.snapshot.get("bg_vh", 0.0)),
+                float(self.snapshot.get("g_corr", np.nan)),
             )
 
     def _append_result_row(self, row_tuple):
@@ -210,13 +219,17 @@ class VvVhDecayBatchWindow(QDialog):
         if not self.results:
             dialogs.information(self, "Save CSV", "No results to save.")
             return
-        out_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
+        out_path, _ = QFileDialog.getSaveFileName(
+            self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)"
+        )
         if not out_path:
             return
         try:
-            with open(out_path, 'w', encoding='utf-8', newline='') as f:
+            with open(out_path, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"])
+                writer.writerow(
+                    ["filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"]
+                )
                 writer.writerows(self.results)
             dialogs.information(self, "Save CSV", f"Saved: {out_path}")
         except Exception as e:
@@ -283,7 +296,9 @@ class VvVhGFactorCalculator(QWidget):
         self.load_button.clicked.connect(self.load_vv_vh_file)
         self.batch_button.clicked.connect(self.open_batch_window)
         self.bg_correction_checkbox.stateChanged.connect(self.on_bg_correction_changed)
-        self.flip_checkbox.stateChanged.connect(lambda *_: (self.update_plot(), self._schedule_calculate()))
+        self.flip_checkbox.stateChanged.connect(
+            lambda *_: (self.update_plot(), self._schedule_calculate())
+        )
         self.shift_spinbox.valueChanged.connect(self.on_shift_changed)
         self.fp_load_button.clicked.connect(self.load_fp_vv_vh_file)
         self.fp_rho_spinbox.valueChanged.connect(self.calculate_fp_mixing_estimate)
@@ -317,8 +332,8 @@ class VvVhGFactorCalculator(QWidget):
         self.bg_perpendicular_value.setVisible(False)
 
         self.plot_widget = cp.Plot()
-        self.plot_widget.set_labels(left='Intensity', bottom='Channel')
-        self.plot_widget.set_title('Full Decay Curves')
+        self.plot_widget.set_labels(left="Intensity", bottom="Channel")
+        self.plot_widget.set_title("Full Decay Curves")
         self.plot_widget.legend()
         self.plot_widget.set_log(x=False, y=True)
 
@@ -337,8 +352,8 @@ class VvVhGFactorCalculator(QWidget):
         self.bg_region.on_change(self.on_bg_region_changed, final=False)
 
         self.tail_plot_widget = cp.Plot()
-        self.tail_plot_widget.set_labels(left='r(t)', bottom='Channel')
-        self.tail_plot_widget.set_title('Time-Resolved Anisotropy r(t)')
+        self.tail_plot_widget.set_labels(left="r(t)", bottom="Channel")
+        self.tail_plot_widget.set_title("Time-Resolved Anisotropy r(t)")
         self.tail_plot_widget.legend()
         self.tail_plot_widget.set_log(x=False, y=False)
 
@@ -347,15 +362,25 @@ class VvVhGFactorCalculator(QWidget):
         self.resize(1200, 760)
 
     def _build_batch_snapshot(self) -> dict:
-        g_raw = float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        g_raw = (
+            float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        )
         if self.g_factor is not None and np.isfinite(self.g_factor) and float(self.g_factor) > 0.0:
             g_corr = float(self.g_factor)
         elif self.g_factor_corrected is not None and np.isfinite(self.g_factor_corrected):
             g_corr = float(self.g_factor_corrected)
         else:
             g_corr = g_raw
-        l1 = float(self.l1_estimate) if self.l1_estimate is not None and np.isfinite(self.l1_estimate) else 0.0
-        l2 = float(self.l2_estimate) if self.l2_estimate is not None and np.isfinite(self.l2_estimate) else l1
+        l1 = (
+            float(self.l1_estimate)
+            if self.l1_estimate is not None and np.isfinite(self.l1_estimate)
+            else 0.0
+        )
+        l2 = (
+            float(self.l2_estimate)
+            if self.l2_estimate is not None and np.isfinite(self.l2_estimate)
+            else l1
+        )
 
         bg_vv = 0.0
         bg_vh = 0.0
@@ -373,17 +398,17 @@ class VvVhGFactorCalculator(QWidget):
                 )
 
         return {
-            'g_raw': g_raw,
-            'g_corr': g_corr,
-            'l1': l1,
-            'l2': l2,
-            'shift': float(self.decay_shift),
-            'flip': bool(self.flip_checkbox.isChecked()),
-            'bg_vv': float(bg_vv),
-            'bg_vh': float(bg_vh),
-            'apply_bg': bool(self.bg_correction_checkbox.isChecked()),
-            'region_min': float(min(self.region_bounds)),
-            'region_max': float(max(self.region_bounds)),
+            "g_raw": g_raw,
+            "g_corr": g_corr,
+            "l1": l1,
+            "l2": l2,
+            "shift": float(self.decay_shift),
+            "flip": bool(self.flip_checkbox.isChecked()),
+            "bg_vv": float(bg_vv),
+            "bg_vh": float(bg_vh),
+            "apply_bg": bool(self.bg_correction_checkbox.isChecked()),
+            "region_min": float(min(self.region_bounds)),
+            "region_max": float(max(self.region_bounds)),
         }
 
     def open_batch_window(self):
@@ -397,7 +422,8 @@ class VvVhGFactorCalculator(QWidget):
         if file_path is None:
             try:
                 import chisurf as _cs
-                start_dir = str(getattr(_cs, 'working_path', '') or '')
+
+                start_dir = str(getattr(_cs, "working_path", "") or "")
             except Exception:
                 start_dir = ""
             file_path, _ = QFileDialog.getOpenFileName(
@@ -431,13 +457,13 @@ class VvVhGFactorCalculator(QWidget):
         data_length = len(self.time_axis)
         self.region_bounds = [
             self.time_axis[int(data_length * 0.7)],
-            self.time_axis[int(data_length * 0.9)]
+            self.time_axis[int(data_length * 0.9)],
         ]
         self.region.set_bounds(*self.region_bounds)
 
         self.bg_region_bounds = [
             self.time_axis[int(data_length * 0.05)],
-            self.time_axis[int(data_length * 0.15)]
+            self.time_axis[int(data_length * 0.15)],
         ]
         self.bg_region.set_bounds(*self.bg_region_bounds)
 
@@ -466,7 +492,8 @@ class VvVhGFactorCalculator(QWidget):
         if file_path is None:
             try:
                 import chisurf as _cs
-                start_dir = str(getattr(_cs, 'working_path', '') or '')
+
+                start_dir = str(getattr(_cs, "working_path", "") or "")
             except Exception:
                 start_dir = ""
             file_path, _ = QFileDialog.getOpenFileName(
@@ -493,7 +520,7 @@ class VvVhGFactorCalculator(QWidget):
         self.calculate_fp_mixing_estimate()
 
     def on_bg_correction_changed(self, state):
-        self.use_background_correction = (state == Qt.Checked)
+        self.use_background_correction = state == Qt.Checked
         if self.use_background_correction:
             self.plot_widget.add(self.bg_region)
         else:
@@ -537,18 +564,25 @@ class VvVhGFactorCalculator(QWidget):
         try:
             logger.debug(
                 "VvVhGFactorCalculator: invoking RPC client.calculate with region_bounds=%s, shift=%f, use_bg=%s",
-                self.region_bounds, self.decay_shift, self.use_background_correction
+                self.region_bounds,
+                self.decay_shift,
+                self.use_background_correction,
             )
             res = self._client.calculate(
                 parallel_data=par_full.tolist() if isinstance(par_full, np.ndarray) else par_full,
-                perpendicular_data=perp_full.tolist() if isinstance(perp_full, np.ndarray) else perp_full,
+                perpendicular_data=perp_full.tolist()
+                if isinstance(perp_full, np.ndarray)
+                else perp_full,
                 region_bounds=self.region_bounds,
                 decay_shift=self.decay_shift,
                 use_bg=self.use_background_correction,
                 bg_region_bounds=self.bg_region_bounds,
                 flip=False,
             )
-            logger.info("VvVhGFactorCalculator: RPC client.calculate completed successfully. Result: %s", res)
+            logger.info(
+                "VvVhGFactorCalculator: RPC client.calculate completed successfully. Result: %s",
+                res,
+            )
         except Exception as e:
             logger.error("VvVhGFactorCalculator: RPC calculation failed: %s", e)
             dialogs.error(self, "Calculation Error", f"RPC calculation failed: {e}")
@@ -613,7 +647,9 @@ class VvVhGFactorCalculator(QWidget):
 
         n = min(len(self.fp_parallel_data), len(self.fp_perpendicular_data))
         if n < 3:
-            self._set_fp_outputs(warning_text="Warning: FP file is too short for robust lifetime/mixing estimation.")
+            self._set_fp_outputs(
+                warning_text="Warning: FP file is too short for robust lifetime/mixing estimation."
+            )
             return
 
         t = np.arange(n, dtype=float)
@@ -721,7 +757,9 @@ class VvVhGFactorCalculator(QWidget):
 
         self._set_fp_outputs(tau_ns=tau_est_ns, rs_expected=rs_expected, l1=l_est, l2=l_est)
 
-    def _set_fp_outputs(self, tau_ns=np.nan, rs_expected=np.nan, l1=np.nan, l2=np.nan, warning_text=None):
+    def _set_fp_outputs(
+        self, tau_ns=np.nan, rs_expected=np.nan, l1=np.nan, l2=np.nan, warning_text=None
+    ):
         self.fp_tau_estimate_ns = float(tau_ns) if np.isfinite(tau_ns) else None
         self.fp_rs_expected = float(rs_expected) if np.isfinite(rs_expected) else None
 
@@ -732,9 +770,7 @@ class VvVhGFactorCalculator(QWidget):
         self.l1_estimate = float(final_l) if np.isfinite(final_l) else None
         self.l2_estimate = self.l1_estimate
         self.fp_estimate_available = bool(
-            self.fp_file_path
-            and self.l1_estimate is not None
-            and np.isfinite(self.l1_estimate)
+            self.fp_file_path and self.l1_estimate is not None and np.isfinite(self.l1_estimate)
         )
 
         if not self.fp_manual_tau_override:
@@ -815,7 +851,7 @@ class VvVhGFactorCalculator(QWidget):
             return None, None
         par = self.parallel_data.y
         perp = self.perpendicular_data.y
-        flip = getattr(self, 'flip_checkbox', None)
+        flip = getattr(self, "flip_checkbox", None)
         if flip is not None and flip.isChecked():
             return perp, par
         return par, perp
@@ -825,7 +861,7 @@ class VvVhGFactorCalculator(QWidget):
             return None, None
         par = self.fp_parallel_data
         perp = self.fp_perpendicular_data
-        flip = getattr(self, 'flip_checkbox', None)
+        flip = getattr(self, "flip_checkbox", None)
         if flip is not None and flip.isChecked():
             return perp, par
         return par, perp
@@ -847,11 +883,15 @@ class VvVhGFactorCalculator(QWidget):
                 par_raw, perp_raw, time_axis, shifted_time_axis, self.bg_region_bounds
             )
 
-        g_unc = float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        g_unc = (
+            float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        )
         if self.g_factor is not None and np.isfinite(self.g_factor) and float(self.g_factor) > 0.0:
             g_cor = float(self.g_factor)
         else:
-            g_cor = float(self.g_factor_corrected) if self.g_factor_corrected is not None else np.nan
+            g_cor = (
+                float(self.g_factor_corrected) if self.g_factor_corrected is not None else np.nan
+            )
 
         show_fast = bool(self.show_fast_checkbox.isChecked())
         show_slow = bool(self.show_slow_checkbox.isChecked())
@@ -860,9 +900,18 @@ class VvVhGFactorCalculator(QWidget):
 
         if show_fast:
             self._plot_decay_set(
-                self.plot_widget, time_axis, shifted_time_axis,
-                par_raw, perp_raw, bg_vv, bg_vh, g_unc, g_cor,
-                prefix="fast", show_raw=show_raw, show_corrected=show_corrected
+                self.plot_widget,
+                time_axis,
+                shifted_time_axis,
+                par_raw,
+                perp_raw,
+                bg_vv,
+                bg_vh,
+                g_unc,
+                g_cor,
+                prefix="fast",
+                show_raw=show_raw,
+                show_corrected=show_corrected,
             )
 
         fp_par, fp_perp = self._get_fp_par_perp()
@@ -877,9 +926,18 @@ class VvVhGFactorCalculator(QWidget):
                         fp_par, fp_perp, fp_time, fp_shifted_time, self.bg_region_bounds
                     )
                 self._plot_decay_set(
-                    self.plot_widget, fp_time, fp_shifted_time,
-                    fp_par[:n_fp], fp_perp[:n_fp], bg_fp_vv, bg_fp_vh, g_unc, g_cor,
-                    prefix="slow", show_raw=show_raw, show_corrected=show_corrected
+                    self.plot_widget,
+                    fp_time,
+                    fp_shifted_time,
+                    fp_par[:n_fp],
+                    fp_perp[:n_fp],
+                    bg_fp_vv,
+                    bg_fp_vh,
+                    g_unc,
+                    g_cor,
+                    prefix="slow",
+                    show_raw=show_raw,
+                    show_corrected=show_corrected,
                 )
 
         if self.use_background_correction:
@@ -887,11 +945,24 @@ class VvVhGFactorCalculator(QWidget):
         self.plot_widget.add(self.region)
 
     @staticmethod
-    def _plot_decay_set(plot_widget, time_axis, shifted_time_axis, par_raw, perp_raw, bg_par, bg_perp, g_unc, g_cor, prefix, show_raw=True, show_corrected=True):
+    def _plot_decay_set(
+        plot_widget,
+        time_axis,
+        shifted_time_axis,
+        par_raw,
+        perp_raw,
+        bg_par,
+        bg_perp,
+        g_unc,
+        g_cor,
+        prefix,
+        show_raw=True,
+        show_corrected=True,
+    ):
         par_corr = np.maximum(par_raw - bg_par, 0.0)
         perp_corr = np.maximum(perp_raw - bg_perp, 0.0)
 
-        is_fast = str(prefix).lower().startswith('fast')
+        is_fast = str(prefix).lower().startswith("fast")
         if is_fast:
             vv_raw_color = (31, 119, 180, 90)
             vh_raw_color = (214, 39, 40, 90)
@@ -904,10 +975,16 @@ class VvVhGFactorCalculator(QWidget):
             vh_cor_color = (241, 196, 15, 220)
 
         if show_raw:
-            plot_widget.line(time_axis, par_raw, pen=vv_raw_color, width=1.6, name=f'{prefix} VV raw')
-            plot_widget.line(shifted_time_axis, perp_raw, pen=vh_raw_color, width=1.6, name=f'{prefix} VH raw')
+            plot_widget.line(
+                time_axis, par_raw, pen=vv_raw_color, width=1.6, name=f"{prefix} VV raw"
+            )
+            plot_widget.line(
+                shifted_time_axis, perp_raw, pen=vh_raw_color, width=1.6, name=f"{prefix} VH raw"
+            )
         if show_corrected:
-            plot_widget.line(time_axis, par_corr, pen=vv_cor_color, width=1.6, name=f'{prefix} VV corr')
+            plot_widget.line(
+                time_axis, par_corr, pen=vv_cor_color, width=1.6, name=f"{prefix} VV corr"
+            )
 
         if show_corrected and np.isfinite(g_cor) and g_cor > 0.0:
             plot_widget.line(
@@ -916,19 +993,31 @@ class VvVhGFactorCalculator(QWidget):
                 pen=vh_cor_color,
                 width=1.6,
                 style="dash",
-                name=f'{prefix} VH corr * G ({g_cor:.3f})'
+                name=f"{prefix} VH corr * G ({g_cor:.3f})",
             )
 
     def update_rt_plot(self):
         self.tail_plot_widget.clear()
 
-        l1_corr = float(self.l1_estimate) if self.l1_estimate is not None and np.isfinite(self.l1_estimate) else 0.0
-        l2_corr = float(self.l2_estimate) if self.l2_estimate is not None and np.isfinite(self.l2_estimate) else l1_corr
-        g_unc = float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        l1_corr = (
+            float(self.l1_estimate)
+            if self.l1_estimate is not None and np.isfinite(self.l1_estimate)
+            else 0.0
+        )
+        l2_corr = (
+            float(self.l2_estimate)
+            if self.l2_estimate is not None and np.isfinite(self.l2_estimate)
+            else l1_corr
+        )
+        g_unc = (
+            float(self.g_factor_uncorrected) if self.g_factor_uncorrected is not None else np.nan
+        )
         if self.g_factor is not None and np.isfinite(self.g_factor) and float(self.g_factor) > 0.0:
             g_cor = float(self.g_factor)
         else:
-            g_cor = float(self.g_factor_corrected) if self.g_factor_corrected is not None else np.nan
+            g_cor = (
+                float(self.g_factor_corrected) if self.g_factor_corrected is not None else np.nan
+            )
         show_fast = bool(self.show_fast_checkbox.isChecked())
         show_slow = bool(self.show_slow_checkbox.isChecked())
         show_raw = bool(self.show_raw_checkbox.isChecked())
@@ -937,12 +1026,16 @@ class VvVhGFactorCalculator(QWidget):
         def _plot_dataset_rt(prefix, time_axis, par_raw, perp_raw):
             shifted_time_axis = time_axis + self.decay_shift
             perp_on_t_raw = np.asarray(perp_raw, dtype=float)
-            bg_par, bg_perp = compute_background_levels(par_raw, perp_raw, time_axis, shifted_time_axis, self.bg_region_bounds)
+            bg_par, bg_perp = compute_background_levels(
+                par_raw, perp_raw, time_axis, shifted_time_axis, self.bg_region_bounds
+            )
             par_corr = np.maximum(par_raw - bg_par, 0.0)
             perp_corr_raw = np.maximum(perp_raw - bg_perp, 0.0)
-            perp_on_t_corr = np.interp(time_axis, shifted_time_axis, perp_corr_raw, left=0.0, right=0.0)
+            perp_on_t_corr = np.interp(
+                time_axis, shifted_time_axis, perp_corr_raw, left=0.0, right=0.0
+            )
 
-            is_fast = str(prefix).lower().startswith('fast')
+            is_fast = str(prefix).lower().startswith("fast")
             if is_fast:
                 rt_raw_color = (0, 200, 255, 95)
                 rt_cor_color = (255, 215, 0, 230)
@@ -958,7 +1051,7 @@ class VvVhGFactorCalculator(QWidget):
                     r_unc,
                     pen=rt_raw_color,
                     width=1.8,
-                    name=f'{prefix} r(t) raw, G={g_unc:.4f}'
+                    name=f"{prefix} r(t) raw, G={g_unc:.4f}",
                 )
             if show_corr and np.isfinite(g_cor) and g_cor > 0.0:
                 r_cor = compute_rt(par_corr, perp_on_t_corr, g_cor, l1=l1_corr, l2=l2_corr)
@@ -969,21 +1062,33 @@ class VvVhGFactorCalculator(QWidget):
                     pen=rt_cor_color,
                     width=1.8,
                     style="dash",
-                    name=f'{prefix} r(t) corr, G={g_cor:.4f}, l1={l1_corr:.4f}, l2={l2_corr:.4f}'
+                    name=f"{prefix} r(t) corr, G={g_cor:.4f}, l1={l1_corr:.4f}, l2={l2_corr:.4f}",
                 )
 
         if show_fast and self.time_axis is not None:
             par_full, perp_full = self._get_par_perp()
             if par_full is not None and perp_full is not None:
                 fast_time = np.asarray(self.time_axis, dtype=float)
-                _plot_dataset_rt('fast', fast_time, np.asarray(par_full, dtype=float), np.asarray(perp_full, dtype=float))
+                _plot_dataset_rt(
+                    "fast",
+                    fast_time,
+                    np.asarray(par_full, dtype=float),
+                    np.asarray(perp_full, dtype=float),
+                )
 
         fp_par, fp_perp = self._get_fp_par_perp()
         if show_slow and fp_par is not None and fp_perp is not None:
             n_fp = min(len(fp_par), len(fp_perp))
             if n_fp > 0:
                 fp_time = np.arange(n_fp, dtype=float)
-                _plot_dataset_rt('slow', fp_time, np.asarray(fp_par[:n_fp], dtype=float), np.asarray(fp_perp[:n_fp], dtype=float))
+                _plot_dataset_rt(
+                    "slow",
+                    fp_time,
+                    np.asarray(fp_par[:n_fp], dtype=float),
+                    np.asarray(fp_perp[:n_fp], dtype=float),
+                )
 
-        self.tail_plot_widget.set_title(f'r(t): fast+slow, raw+corr (Shift: {self.decay_shift:.3f} ch)')
+        self.tail_plot_widget.set_title(
+            f"r(t): fast+slow, raw+corr (Shift: {self.decay_shift:.3f} ch)"
+        )
         self.tail_plot_widget.set_ylim(-0.5, 1.5, padding=0.0)

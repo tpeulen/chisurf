@@ -21,26 +21,39 @@ Features
 
 This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 """
-from chisurf.gui import dialogs
 
-import numpy as np
 import warnings
 from pathlib import Path
-from qtpy.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QPushButton, QFileDialog, QLabel, QDoubleSpinBox, QLineEdit, QCheckBox,
-    QTableWidget, QTableWidgetItem,
-    QHeaderView, )
+
+import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import (
+    QCheckBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui import chiplot as cp
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 try:
@@ -119,6 +132,7 @@ class VvVhAnisotropyBatchWindow(QWidget):
     Allows dropping multiple files and processes them with the same settings
     snapshot taken from the main window.
     """
+
     def __init__(self, settings_snapshot: dict, parent=None):
         super().__init__(parent)
         self.setWindowTitle("VV/VH Anisotropy Batch Processor")
@@ -158,9 +172,9 @@ class VvVhAnisotropyBatchWindow(QWidget):
 
         # Results table
         self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels([
-            "filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            ["filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
 
@@ -198,32 +212,39 @@ class VvVhAnisotropyBatchWindow(QWidget):
                 vec = np.loadtxt(filepath)
                 half = len(vec) // 2
                 vv, vh = vec[:half], vec[half:]
-        except Exception as e:
-            return (Path(filepath).name, np.nan, self.snapshot['region_min'], self.snapshot['region_max'],
-                    self.snapshot['bg_vv'], self.snapshot['bg_vh'], self.snapshot['g'])
+        except Exception:
+            return (
+                Path(filepath).name,
+                np.nan,
+                self.snapshot["region_min"],
+                self.snapshot["region_max"],
+                self.snapshot["bg_vv"],
+                self.snapshot["bg_vh"],
+                self.snapshot["g"],
+            )
 
         t = np.arange(len(vv), dtype=float)
         vv = np.asarray(vv, dtype=float)
         vh = np.asarray(vh, dtype=float)
 
         # Apply optional flip
-        if bool(self.snapshot.get('flip', False)):
+        if bool(self.snapshot.get("flip", False)):
             vv, vh = vh, vv
 
-        if self.snapshot['apply_bg']:
-            vv = vv - float(self.snapshot['bg_vv'])
-            vh = vh - float(self.snapshot['bg_vh'])
+        if self.snapshot["apply_bg"]:
+            vv = vv - float(self.snapshot["bg_vv"])
+            vh = vh - float(self.snapshot["bg_vh"])
 
-        vh_shift = self._shift_interp_on_axis(t, vh, float(self.snapshot['shift']))
-        denom = vv + 2.0 * float(self.snapshot['g']) * vh_shift
-        num = vv - float(self.snapshot['g']) * vh_shift
+        vh_shift = self._shift_interp_on_axis(t, vh, float(self.snapshot["shift"]))
+        denom = vv + 2.0 * float(self.snapshot["g"]) * vh_shift
+        num = vv - float(self.snapshot["g"]) * vh_shift
         r = np.full_like(vv, np.nan, dtype=float)
         valid = (~np.isnan(denom)) & (denom > 0)
         r[valid] = num[valid] / denom[valid]
 
         # Region indices (clamped)
-        rmin = float(self.snapshot['region_min'])
-        rmax = float(self.snapshot['region_max'])
+        rmin = float(self.snapshot["region_min"])
+        rmax = float(self.snapshot["region_max"])
         # Clamp to available t range
         rmin = max(t[0], min(rmin, t[-1]))
         rmax = max(t[0], min(rmax, t[-1]))
@@ -237,7 +258,15 @@ class VvVhAnisotropyBatchWindow(QWidget):
         r_region = r_region[~np.isnan(r_region)]
         r_inf = float(np.nanmean(r_region)) if r_region.size > 0 else np.nan
 
-        return (Path(filepath).name, r_inf, rmin, rmax, float(self.snapshot['bg_vv']), float(self.snapshot['bg_vh']), float(self.snapshot['g']))
+        return (
+            Path(filepath).name,
+            r_inf,
+            rmin,
+            rmax,
+            float(self.snapshot["bg_vv"]),
+            float(self.snapshot["bg_vh"]),
+            float(self.snapshot["g"]),
+        )
 
     def _on_run(self):
         paths = self.file_list.paths()
@@ -263,11 +292,13 @@ class VvVhAnisotropyBatchWindow(QWidget):
         if not self.results:
             dialogs.information(self, "Save CSV", "No results to save.")
             return
-        out_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
+        out_path, _ = QFileDialog.getSaveFileName(
+            self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)"
+        )
         if not out_path:
             return
         try:
-            with open(out_path, 'w', encoding='utf-8') as f:
+            with open(out_path, "w", encoding="utf-8") as f:
                 f.write("filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor\n")
                 for row in self.results:
                     f.write(",".join(str(x) for x in row) + "\n")
@@ -396,22 +427,21 @@ class VvVhAnisotropyCalculator(QWidget):
         self.rinf_line.setReadOnly(True)
         controls.addWidget(self.rinf_line, 2, 5)
 
-
         main_layout.addLayout(controls)
 
         # Plots
         plots_layout = QHBoxLayout()
 
         # Decays plot
-        self.decay_plot = cp.Plot(title='Decays (VV, VH)')
-        self.decay_plot.set_labels(left='Intensity', bottom='Channel')
+        self.decay_plot = cp.Plot(title="Decays (VV, VH)")
+        self.decay_plot.set_labels(left="Intensity", bottom="Channel")
         self.decay_plot.legend()
         self.decay_plot.set_log(y=True)
         plots_layout.addWidget(self.decay_plot)
 
         # r(t) plot
-        self.r_plot = cp.Plot(title='Anisotropy r(t)')
-        self.r_plot.set_labels(left='r(t)', bottom='Channel')
+        self.r_plot = cp.Plot(title="Anisotropy r(t)")
+        self.r_plot.set_labels(left="r(t)", bottom="Channel")
         self.r_plot.legend()
         # Fix y-axis range for anisotropy to [0, 0.45]
         self.r_plot.set_ylim(0.0, 0.45)
@@ -465,7 +495,7 @@ class VvVhAnisotropyCalculator(QWidget):
 
         # Set region initially to last 20% for r∞
         n = len(self.time_axis)
-        self.region_bounds = [self.time_axis[int(n*0.7)], self.time_axis[int(n*0.9)]]
+        self.region_bounds = [self.time_axis[int(n * 0.7)], self.time_axis[int(n * 0.9)]]
         # ``set_bounds`` blocks signals, so this does not re-enter the handler;
         # the region is (re)attached by ``_update_r_plot``.
         self.region.set_bounds(*self.region_bounds)
@@ -478,18 +508,20 @@ class VvVhAnisotropyCalculator(QWidget):
     def open_batch(self):
         """Open the batch processing window with a snapshot of current settings."""
         try:
-            region_min, region_max = (self.region_bounds if self.region_bounds else [0.0, 0.0])
+            region_min, region_max = self.region_bounds if self.region_bounds else [0.0, 0.0]
         except Exception:
             region_min, region_max = 0.0, 0.0
         snapshot = {
-            'apply_bg': bool(self.bg_checkbox.isChecked()),
-            'bg_vv': float(self.bg_vv_spin.value()) if hasattr(self, 'bg_vv_spin') else 0.0,
-            'bg_vh': float(self.bg_vh_spin.value()) if hasattr(self, 'bg_vh_spin') else 0.0,
-            'g': float(self.g_spin.value()) if hasattr(self, 'g_spin') else 1.0,
-            'shift': float(self.shift_spin.value()) if hasattr(self, 'shift_spin') else 0.0,
-            'flip': bool(self.flip_checkbox.isChecked()) if hasattr(self, 'flip_checkbox') else False,
-            'region_min': float(region_min),
-            'region_max': float(region_max),
+            "apply_bg": bool(self.bg_checkbox.isChecked()),
+            "bg_vv": float(self.bg_vv_spin.value()) if hasattr(self, "bg_vv_spin") else 0.0,
+            "bg_vh": float(self.bg_vh_spin.value()) if hasattr(self, "bg_vh_spin") else 0.0,
+            "g": float(self.g_spin.value()) if hasattr(self, "g_spin") else 1.0,
+            "shift": float(self.shift_spin.value()) if hasattr(self, "shift_spin") else 0.0,
+            "flip": bool(self.flip_checkbox.isChecked())
+            if hasattr(self, "flip_checkbox")
+            else False,
+            "region_min": float(region_min),
+            "region_max": float(region_max),
         }
         self._batch_window = VvVhAnisotropyBatchWindow(snapshot, None)
         self._batch_window.show()
@@ -528,9 +560,9 @@ class VvVhAnisotropyCalculator(QWidget):
 
     def _get_vv_vh(self):
         """Return VV, VH arrays, applying the VV<->VH flip if requested."""
-        vv = getattr(self, 'vv_raw', self.vv)
-        vh = getattr(self, 'vh_raw', self.vh)
-        flip = getattr(self, 'flip_checkbox', None)
+        vv = getattr(self, "vv_raw", self.vv)
+        vh = getattr(self, "vh_raw", self.vh)
+        flip = getattr(self, "flip_checkbox", None)
         if flip is not None and flip.isChecked():
             return vh, vv
         return vv, vh
@@ -600,24 +632,38 @@ class VvVhAnisotropyCalculator(QWidget):
         try:
             data_mat = np.column_stack([self.time_axis, r_raw, r_corr])
             header = "channel\tr(t)\tr(t)-r_inf"
-            np.savetxt(aniso_path.as_posix(), data_mat, header=header, comments="", delimiter="\t", fmt="%.10g")
+            np.savetxt(
+                aniso_path.as_posix(),
+                data_mat,
+                header=header,
+                comments="",
+                delimiter="\t",
+                fmt="%.10g",
+            )
         except Exception:
             pass
 
         # 3) Save r∞ and selection range as CSV
         rinfty_path = stem.parent / f"{stem.name}_rinf.csv"
         try:
-            rmin, rmax = (self.region_bounds if self.region_bounds else [self.time_axis[0], self.time_axis[-1]])
+            rmin, rmax = (
+                self.region_bounds
+                if self.region_bounds
+                else [self.time_axis[0], self.time_axis[-1]]
+            )
             with open(rinfty_path, "w", encoding="utf-8") as f:
                 f.write("filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor\n")
-                src_name = Path(self.loaded_file).name if getattr(self, 'loaded_file', None) else ""
-                bg_vv_val = float(self.bg_vv_spin.value()) if hasattr(self, 'bg_vv_spin') else np.nan
-                bg_vh_val = float(self.bg_vh_spin.value()) if hasattr(self, 'bg_vh_spin') else np.nan
-                g_val = float(self.g_spin.value()) if hasattr(self, 'g_spin') else np.nan
+                src_name = Path(self.loaded_file).name if getattr(self, "loaded_file", None) else ""
+                bg_vv_val = (
+                    float(self.bg_vv_spin.value()) if hasattr(self, "bg_vv_spin") else np.nan
+                )
+                bg_vh_val = (
+                    float(self.bg_vh_spin.value()) if hasattr(self, "bg_vh_spin") else np.nan
+                )
+                g_val = float(self.g_spin.value()) if hasattr(self, "g_spin") else np.nan
                 f.write(f"{src_name},{r_inf_val},{rmin},{rmax},{bg_vv_val},{bg_vh_val},{g_val}\n")
         except Exception:
             pass
-
 
     def _compute_r(self):
         if self.time_axis is None or self.vv is None or self.vh is None:
@@ -646,7 +692,9 @@ class VvVhAnisotropyCalculator(QWidget):
         r[valid] = num[valid] / denom[valid]
 
         # Compute r∞ in selected region
-        tmin, tmax = self.region_bounds if self.region_bounds else (self.time_axis[0], self.time_axis[-1])
+        tmin, tmax = (
+            self.region_bounds if self.region_bounds else (self.time_axis[0], self.time_axis[-1])
+        )
         idx_min = int(np.argmin(np.abs(self.time_axis - tmin)))
         idx_max = int(np.argmin(np.abs(self.time_axis - tmax)))
         if idx_max <= idx_min:
@@ -687,8 +735,13 @@ class VvVhAnisotropyCalculator(QWidget):
                 vv_plot = vv_plot - float(self.bg_vv_spin.value())
                 # For log plotting, mask non-positive values as NaN
                 vv_plot = np.where(vv_plot > 0, vv_plot, np.nan)
-            self.decay_plot.line(self.time_axis, vv_plot, pen='b', width=2,
-                                 name='VV (BG corrected)' if apply_bg else 'VV')
+            self.decay_plot.line(
+                self.time_axis,
+                vv_plot,
+                pen="b",
+                width=2,
+                name="VV (BG corrected)" if apply_bg else "VV",
+            )
 
         if vh_curr is not None:
             vh_plot = vh_curr.astype(float).copy()
@@ -698,9 +751,17 @@ class VvVhAnisotropyCalculator(QWidget):
             shift = float(self.shift_spin.value())
             # For visualization, shift the time axis of VH
             shifted_time = self.time_axis + shift
-            self.decay_plot.line(shifted_time, vh_plot, pen='r', width=2,
-                                 name=(f'VH (shift {shift:.3f} ch, BG corrected)'
-                                       if apply_bg else f'VH (shift {shift:.3f} ch)'))
+            self.decay_plot.line(
+                shifted_time,
+                vh_plot,
+                pen="r",
+                width=2,
+                name=(
+                    f"VH (shift {shift:.3f} ch, BG corrected)"
+                    if apply_bg
+                    else f"VH (shift {shift:.3f} ch)"
+                ),
+            )
 
     def _update_r_plot(self):
         self.r_plot.clear()
@@ -708,16 +769,19 @@ class VvVhAnisotropyCalculator(QWidget):
         if self.time_axis is None or self.r_t is None:
             return
         # raw r(t)
-        self.r_plot.line(self.time_axis, self.r_t, pen='m', width=2, name='r(t)')
+        self.r_plot.line(self.time_axis, self.r_t, pen="m", width=2, name="r(t)")
         # re-attach the region (clear removed it) and keep it at current bounds
         # (``set_bounds`` blocks signals, so no re-entrancy into the handler).
         self.r_plot.add(self.region)
         self.region.set_bounds(*self.region_bounds)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Simple manual test runner
-    from qtpy.QtWidgets import QApplication
     import sys
+
+    from qtpy.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     w = VvVhAnisotropyCalculator()
     w.show()

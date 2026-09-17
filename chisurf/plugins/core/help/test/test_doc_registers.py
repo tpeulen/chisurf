@@ -41,9 +41,7 @@ def test_every_image_used_is_registered():
 def test_every_registered_image_exists():
     """A register entry for a file that is gone is a lie about the inventory."""
     registers = _registers()
-    missing = [
-        src for src in registers.load_provenance() if not (docs_root() / src).exists()
-    ]
+    missing = [src for src in registers.load_provenance() if not (docs_root() / src).exists()]
     assert not missing, missing
 
 
@@ -61,7 +59,7 @@ def test_every_used_image_exists():
 
 
 def test_a_recipe_says_enough_to_remake_the_figure():
-    """"Screenshot of the tool" is not a recipe anybody can follow."""
+    """ "Screenshot of the tool" is not a recipe anybody can follow."""
     registers = _registers()
     thin = []
     for src, record in (registers.load_provenance() or {}).items():

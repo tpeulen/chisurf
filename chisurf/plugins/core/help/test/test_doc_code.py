@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import ast
 import importlib
-import pathlib
 import re
 
 import pytest
@@ -64,9 +63,7 @@ def _blocks() -> list[tuple[str, int, str, bool]]:
             if match.group("lang").lower() not in ("python", "py"):
                 continue
             body = match.group("body")
-            indents = [
-                len(l) - len(l.lstrip()) for l in body.splitlines() if l.strip()
-            ]
+            indents = [len(l) - len(l.lstrip()) for l in body.splitlines() if l.strip()]
             if not indents:
                 continue
             strip = min(indents)
@@ -105,9 +102,7 @@ def test_python_block_compiles(block):
         pytest.fail(f"{page}:{line} does not parse: {error}")
 
 
-@pytest.mark.parametrize(
-    "block", CHECKED_NAMES, ids=[_identify(b) for b in CHECKED_NAMES]
-)
+@pytest.mark.parametrize("block", CHECKED_NAMES, ids=[_identify(b) for b in CHECKED_NAMES])
 def test_python_block_names_resolve(block):
     """Every ``chisurf.…`` name a snippet uses must still exist."""
     page, line, code, _ = block

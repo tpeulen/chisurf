@@ -101,9 +101,7 @@ def test_export_flr_cif_writes_non_empty_frame(tool, frame, tmp_path, monkeypatc
         assert f"_{column}" in text
 
 
-@pytest.mark.parametrize(
-    "empty", [None, store_from_rows([])], ids=["none", "empty-store"]
-)
+@pytest.mark.parametrize("empty", [None, store_from_rows([])], ids=["none", "empty-store"])
 @pytest.mark.parametrize("method", ["export_bur", "export_flr_cif"])
 def test_export_without_data_reports_instead_of_writing(tool, tmp_path, monkeypatch, empty, method):
     target = tmp_path / "should-not-appear"

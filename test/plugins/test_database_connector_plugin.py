@@ -42,11 +42,6 @@ def test_database_connector_services_register():
 def test_database_connector_registry_discovers_core_plugin():
     """Discover the core database connector plugin from core plugin path."""
     registry = PluginRegistry()
-    core_plugin_path = (
-        Path(__file__).resolve().parents[2]
-        / "chisurf"
-        / "plugins"
-        / "core"
-    )
+    core_plugin_path = Path(__file__).resolve().parents[2] / "chisurf" / "plugins" / "core"
     manifests = registry.discover(search_paths=[core_plugin_path])
     assert any(manifest.id == "database_connector" for manifest in manifests)

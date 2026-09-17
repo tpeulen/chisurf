@@ -1,4 +1,5 @@
 """Tests for the MMFDB-backed reference-dye lookup used by the FCS tools."""
+
 from __future__ import annotations
 
 import math

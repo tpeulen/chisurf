@@ -39,9 +39,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         elif self.path.startswith("/blob"):
             self._reply(200, bytes(range(8)), "application/octet-stream")
         else:
-            body = json.dumps(
-                {"path": self.path, "agent": self.headers.get("User-Agent")}
-            ).encode()
+            body = json.dumps({"path": self.path, "agent": self.headers.get("User-Agent")}).encode()
             self._reply(200, body, "application/json; charset=utf-8")
 
     def do_POST(self):

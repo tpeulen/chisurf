@@ -19,6 +19,7 @@ so its text is a little harder-edged than the real thing. That is deliberate:
 this is for judging *placement*, and softening it here would hide a glyph that
 is half a pixel out.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -64,25 +65,21 @@ def rasterise(vertices: np.ndarray, width: int, height: int, coverage) -> np.nda
             continue
 
         fx = np.clip(
-            (np.arange(px0, px1) + 0.5 - x0) / (x1 - x0) if x1 != x0
-            else np.zeros(px1 - px0),
-            0.0, 1.0,
+            (np.arange(px0, px1) + 0.5 - x0) / (x1 - x0) if x1 != x0 else np.zeros(px1 - px0),
+            0.0,
+            1.0,
         )
         fy = np.clip(
-            (np.arange(py0, py1) + 0.5 - y0) / (y1 - y0) if y1 != y0
-            else np.zeros(py1 - py0),
-            0.0, 1.0,
+            (np.arange(py0, py1) + 0.5 - y0) / (y1 - y0) if y1 != y0 else np.zeros(py1 - py0),
+            0.0,
+            1.0,
         )
 
         u0, v0 = float(top_left[2]), float(top_left[3])
         u1, v1 = float(bottom_right[2]), float(bottom_right[3])
         if u1 != u0 or v1 != v0:
-            ui = np.clip(
-                (u0 + fx[None, :] * (u1 - u0)).astype(int), 0, coverage.shape[1] - 1
-            )
-            vi = np.clip(
-                (v0 + fy[:, None] * (v1 - v0)).astype(int), 0, coverage.shape[0] - 1
-            )
+            ui = np.clip((u0 + fx[None, :] * (u1 - u0)).astype(int), 0, coverage.shape[1] - 1)
+            vi = np.clip((v0 + fy[:, None] * (v1 - v0)).astype(int), 0, coverage.shape[0] - 1)
             ink = coverage[vi, ui]
         else:
             ink = np.ones((py1 - py0, px1 - px0))

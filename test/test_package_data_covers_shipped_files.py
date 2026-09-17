@@ -17,6 +17,7 @@ from __future__ import annotations
 import fnmatch
 import pathlib
 import subprocess
+
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -53,15 +54,24 @@ IGNORED_PARTS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "
 KNOWN_UNCOVERED = {
     # .c/.cpp/.h and .pml are covered now: the AV kernel's bundled C sources
     # went with the move to IMP.bff, and the viewer scripts are packaged.
-    ".dcd", ".pdb",              # structure fixtures
-    ".gnumeric", ".xlsx", ".xlsm",  # potential-energy databases
-    ".pdf",                      # reference document beside those databases
-    ".icns", ".ico", ".qrc",     # icons and the Qt resource manifest
-    ".ini", ".yml",              # device and plugin configuration
-    ".pdat",                     # the fortune database
-    ".mti", ".spc", ".rmf3", ".bur",  # measurement fixtures
-    ".tif",                      # imaging fixtures under a plugin's test/ tree
-    ".bmp",                      # one more icon the installed copy would lack
+    ".dcd",
+    ".pdb",  # structure fixtures
+    ".gnumeric",
+    ".xlsx",
+    ".xlsm",  # potential-energy databases
+    ".pdf",  # reference document beside those databases
+    ".icns",
+    ".ico",
+    ".qrc",  # icons and the Qt resource manifest
+    ".ini",
+    ".yml",  # device and plugin configuration
+    ".pdat",  # the fortune database
+    ".mti",
+    ".spc",
+    ".rmf3",
+    ".bur",  # measurement fixtures
+    ".tif",  # imaging fixtures under a plugin's test/ tree
+    ".bmp",  # one more icon the installed copy would lack
 }
 
 
@@ -106,7 +116,10 @@ def _git_ignored(paths: list[pathlib.Path]) -> set[pathlib.Path]:
         result = subprocess.run(
             ["git", "check-ignore", "--stdin"],
             input="\n".join(str(path) for path in paths),
-            capture_output=True, text=True, cwd=ROOT, check=False,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+            check=False,
         )
     except OSError:
         return set()
@@ -149,7 +162,10 @@ def test_every_shipped_data_extension_has_a_package_data_pattern():
     assert not uncovered, (
         "these file types live in chisurf/ but no [tool.setuptools.package-data] "
         "pattern matches them, so they will be missing from an installed copy:\n  "
-        + "\n  ".join(f"{suffix or '(no suffix)'}  e.g. {example}" for suffix, example in sorted(uncovered.items()))
+        + "\n  ".join(
+            f"{suffix or '(no suffix)'}  e.g. {example}"
+            for suffix, example in sorted(uncovered.items())
+        )
     )
 
 

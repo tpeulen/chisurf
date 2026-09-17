@@ -12,39 +12,39 @@ import pytest
 
 from chisurf.server.services.datasets import (
     add_dataset,
-    remove_datasets,
     clear_datasets,
-    list_datasets,
-    get_dataset_info,
-    get_dataset_curve_data,
-    dataset_rename,
     dataset_group,
+    dataset_rename,
     dataset_ungroup,
+    get_dataset_curve_data,
+    get_dataset_info,
+    list_datasets,
+    remove_datasets,
 )
 from chisurf.server.services.fits import (
-    list_fits,
-    get_fit_info,
-    run_fit,
-    fit_set_dataset,
-    fit_set_result_idx,
-    fit_set_fit_range,
-    remove_fits,
     clear_fits,
-    fit_save,
     fit_curve_data,
+    fit_save,
+    fit_set_dataset,
+    fit_set_fit_range,
+    fit_set_result_idx,
+    get_fit_info,
+    list_fits,
+    remove_fits,
+    run_fit,
 )
+from chisurf.server.services.graph import build_fit_graph
+from chisurf.server.services.models import model_finalize, model_set_parse_function
 from chisurf.server.services.parameters import (
     get_parameter,
-    set_parameter_value,
-    set_parameter_fixed,
-    set_parameter_bounds,
-    set_parameter_bounds_on,
     parameter_link,
     parameter_unlink,
+    set_parameter_bounds,
+    set_parameter_bounds_on,
+    set_parameter_fixed,
+    set_parameter_value,
 )
-from chisurf.server.services.models import model_finalize, model_set_parse_function
-from chisurf.server.services.projects import get_project_info, save_project, load_project
-from chisurf.server.services.graph import build_fit_graph
+from chisurf.server.services.projects import get_project_info, load_project, save_project
 from chisurf.server.session import SessionState
 
 
@@ -82,7 +82,6 @@ def _make_dataset(**extra):
 
 
 class TestInputRobustnessDatasets:
-
     def test_list_datasets_none_state(self):
         with pytest.raises(AttributeError):
             list_datasets(None)
@@ -95,7 +94,9 @@ class TestInputRobustnessDatasets:
 
     def test_add_dataset_with_curve_data_none_creates_empty(self):
         state = SessionState()
-        result = add_dataset(state, reader_name="Test", filename="/tmp/f.dat", name="T", curve_data=None)
+        result = add_dataset(
+            state, reader_name="Test", filename="/tmp/f.dat", name="T", curve_data=None
+        )
         assert result.get("ok") is True
         assert len(state.datasets) == 1
 
@@ -154,7 +155,6 @@ class TestInputRobustnessDatasets:
 
 
 class TestInputRobustnessFits:
-
     def test_list_fits_none_state(self):
         with pytest.raises(AttributeError):
             list_fits(None)
@@ -225,7 +225,6 @@ class TestInputRobustnessFits:
 
 
 class TestInputRobustnessParameters:
-
     def test_get_parameter_empty_name(self):
         fit = _make_fit()
         state = SessionState(fits=[fit])
@@ -243,9 +242,9 @@ class TestInputRobustnessParameters:
         model.parameters_all_dict = {"tau": p}
         fit = _make_fit(model=model)
         state = SessionState(fits=[fit])
-        result = set_parameter_value(state, parameter_name="tau", value=float('inf'), fit_index=0)
+        result = set_parameter_value(state, parameter_name="tau", value=float("inf"), fit_index=0)
         assert result.get("ok")
-        assert p.value == float('inf')
+        assert p.value == float("inf")
 
     def test_set_parameter_value_nan(self):
         p = MagicMock()
@@ -253,7 +252,7 @@ class TestInputRobustnessParameters:
         model.parameters_all_dict = {"tau": p}
         fit = _make_fit(model=model)
         state = SessionState(fits=[fit])
-        result = set_parameter_value(state, parameter_name="tau", value=float('nan'), fit_index=0)
+        result = set_parameter_value(state, parameter_name="tau", value=float("nan"), fit_index=0)
         assert result.get("ok")
 
     def test_set_parameter_fixed_string(self):
@@ -272,7 +271,9 @@ class TestInputRobustnessParameters:
         model.parameters_all_dict = {"tau": p}
         fit = _make_fit(model=model)
         state = SessionState(fits=[fit])
-        result = set_parameter_bounds(state, parameter_name="tau", bounds=(float('nan'), float('inf')), fit_index=0)
+        result = set_parameter_bounds(
+            state, parameter_name="tau", bounds=(float("nan"), float("inf")), fit_index=0
+        )
         assert result.get("ok")
 
     def test_set_parameter_bounds_on_no_bounds(self):
@@ -292,7 +293,9 @@ class TestInputRobustnessParameters:
         model.parameters_all_dict = {"tau1": p}
         fit = _make_fit(model=model)
         state = SessionState(fits=[fit])
-        result = parameter_link(state, parameter_name="tau1", target_parameter_name="nonexistent", fit_index=0)
+        result = parameter_link(
+            state, parameter_name="tau1", target_parameter_name="nonexistent", fit_index=0
+        )
         assert not result.get("ok")
 
     def test_parameter_unlink_not_linked(self):
@@ -308,7 +311,6 @@ class TestInputRobustnessParameters:
 
 
 class TestInputRobustnessModels:
-
     def test_model_finalize_nonexistent(self):
         state = SessionState()
         result = model_finalize(state, fit_index=0)
@@ -321,7 +323,6 @@ class TestInputRobustnessModels:
 
 
 class TestInputRobustnessProjects:
-
     def test_get_project_info_empty(self):
         state = SessionState()
         result = get_project_info(state)
@@ -341,7 +342,6 @@ class TestInputRobustnessProjects:
 
 
 class TestInputRobustnessGraph:
-
     def test_build_graph_nonexistent_fit_indices(self):
         state = SessionState()
         result = build_fit_graph(state, fit_indices=[0, 1])
@@ -350,7 +350,6 @@ class TestInputRobustnessGraph:
 
 
 class TestStressLargeState:
-
     def test_one_hundred_datasets(self):
         state = SessionState()
         for i in range(100):
@@ -459,12 +458,17 @@ class TestFromControllerFlag:
         state = SessionState()
         events = []
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         bus.subscribe("dataset.added", lambda e: events.append(e))
         result = add_dataset(
-            state, reader_name="TestReader", filename="/tmp/f.dat",
-            name="NoEvent", curve_data={"x": [], "y": []},
-            _from_controller=True, event_bus=bus,
+            state,
+            reader_name="TestReader",
+            filename="/tmp/f.dat",
+            name="NoEvent",
+            curve_data={"x": [], "y": []},
+            _from_controller=True,
+            event_bus=bus,
         )
         assert result.get("ok") is True
         assert len(events) == 0
@@ -473,11 +477,15 @@ class TestFromControllerFlag:
         state = SessionState()
         events = []
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         bus.subscribe("dataset.added", lambda e: events.append(e))
         result = add_dataset(
-            state, reader_name="TestReader", filename="/tmp/f2.dat",
-            name="WithEvent", curve_data={"x": [], "y": []},
+            state,
+            reader_name="TestReader",
+            filename="/tmp/f2.dat",
+            name="WithEvent",
+            curve_data={"x": [], "y": []},
             event_bus=bus,
         )
         assert result.get("ok") is True
@@ -488,11 +496,14 @@ class TestFromControllerFlag:
         state = SessionState(datasets=[ds])
         events = []
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         bus.subscribe("dataset.removed", lambda e: events.append(e))
         result = remove_datasets(
-            state, dataset_indices=[0],
-            _from_controller=True, event_bus=bus,
+            state,
+            dataset_indices=[0],
+            _from_controller=True,
+            event_bus=bus,
         )
         assert result.get("ok") is True
         assert len(events) == 0
@@ -506,6 +517,7 @@ class TestEdgeCaseBugs:
     def test_session_restore_with_project_and_event_bus(self):
         """session_restore must NOT pass event_bus to load_project (it doesn't accept it)."""
         from chisurf.server.services.session_svc import session_restore
+
         state = SessionState()
         event_bus = MagicMock()
         # project_path points to nonexistent dir -> load_project returns error,
@@ -518,6 +530,7 @@ class TestEdgeCaseBugs:
     def test_session_restore_without_project_clears(self):
         """session_restore with no project_path just clears the session."""
         from chisurf.server.services.session_svc import session_restore
+
         state = SessionState()
         state.current_experiment = "TCSPC"
         result = session_restore(state, project_path=None)
@@ -527,9 +540,11 @@ class TestEdgeCaseBugs:
     def test_session_restore_clear_publishes_event(self):
         """session_restore with no project_path publishes session.restored."""
         from chisurf.server.services.session_svc import session_restore
+
         state = SessionState()
         events = []
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         bus.subscribe("session.restored", lambda e: events.append(e))
         result = session_restore(state, event_bus=bus)
@@ -541,6 +556,7 @@ class TestEdgeCaseBugs:
     def test_get_parameter_with_none_fit_index(self):
         """get_parameter must not crash when fit_index is None."""
         from chisurf.server.services.parameters import get_parameter
+
         state = SessionState()
         # No fits exist, fit_index=None should not crash the _resolve_fit helper
         result = get_parameter(state, "tau", fit_index=None)
@@ -549,6 +565,7 @@ class TestEdgeCaseBugs:
     def test_set_parameter_value_with_none_fit_index(self):
         """set_parameter_value must not crash when fit_index is None."""
         from chisurf.server.services.parameters import set_parameter_value
+
         state = SessionState()
         result = set_parameter_value(state, "tau", 1.0, fit_index=None)
         assert result.get("ok") is False
@@ -659,6 +676,7 @@ class TestEdgeCaseBugs:
     def test_dataset_ungroup_ungrouped_count_zero(self):
         """dataset_ungroup must return ungrouped_count=0 when nothing was ungrouped."""
         from chisurf.core.data import DataCurve
+
         ds = DataCurve(name="Regular", x=[1.0], y=[2.0])
         state = SessionState(datasets=[ds])
         # Ungroup a non-grouped dataset -> nothing expands
@@ -672,6 +690,7 @@ class TestEdgeCaseBugs:
     def test_fit_create_empty_dataset_indices(self):
         """fit_create must treat dataset_indices=[] as empty list, not fallback to [0]."""
         from chisurf.server.services.fits import fit_create
+
         # Need at least one dataset to avoid the "no datasets available" early return
         ds = _make_dataset(name="TestData")
         state = SessionState(datasets=[ds])
@@ -682,6 +701,7 @@ class TestEdgeCaseBugs:
     def test_fit_create_empty_dataset_indices_no_datasets(self):
         """fit_create with dataset_indices=[] and no datasets returns error."""
         from chisurf.server.services.fits import fit_create
+
         state = SessionState()
         result = fit_create(state, dataset_indices=[])
         assert result.get("ok") is False
@@ -690,10 +710,9 @@ class TestEdgeCaseBugs:
 
     def test_curve_data_nan_not_crash_serialization(self):
         """get_dataset_curve_data must handle NaN/Inf without crashing JSON serialization."""
-        import numpy as np
         ds = _make_dataset(
             x=[0.0, 1.0, 2.0],
-            y=[float('nan'), float('inf'), 3.0],
+            y=[float("nan"), float("inf"), 3.0],
         )
         state = SessionState(datasets=[ds])
         result = get_dataset_curve_data(state, dataset_index=0)
@@ -708,11 +727,10 @@ class TestEdgeCaseBugs:
 
     def test_fit_curve_data_nan_not_crash(self):
         """fit_curve_data must handle NaN/Inf without crashing JSON serialization."""
-        import numpy as np
         # Create a fit whose data/model contains NaN
         data = MagicMock()
         data.x = [0.0, 1.0]
-        data.y = [float('nan'), float('inf')]
+        data.y = [float("nan"), float("inf")]
         data.name = "NaNData"
         data.unique_identifier = "ds-nan"
         data.filename = "/tmp/nan.dat"
@@ -722,12 +740,13 @@ class TestEdgeCaseBugs:
         model = MagicMock()
         model.name = "TestModel"
         model.x = [0.0, 1.0]
-        model.y = [float('nan'), 2.0]
-        model.residuals = [float('inf'), 0.5]
+        model.y = [float("nan"), 2.0]
+        model.residuals = [float("inf"), 0.5]
 
         fit = _make_fit(data=data, model=model)
 
         from chisurf.server.services.fits import fit_curve_data
+
         state = SessionState(fits=[fit])
         result = fit_curve_data(state, fit_index=0)
         assert result.get("ok") is True

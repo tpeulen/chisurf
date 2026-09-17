@@ -38,12 +38,21 @@ def test_every_sampler_has_a_label_a_description_and_a_function():
 def test_legacy_samplers_are_listed_last():
     names = list(sample.SAMPLERS)
     legacy = [n for n in names if sample.SAMPLERS[n].get("legacy")]
-    assert legacy and names[-len(legacy):] == legacy
+    assert legacy and names[-len(legacy) :] == legacy
 
 
-@pytest.mark.parametrize("alias,key", [("emcee", "ensemble"), ("stretch", "ensemble"), ("affine", "ensemble"),
-                                       ("metropolis", "blocked"), ("zeus", "slice"),
-                                       ("differential_evolution", "de"), ("Blocked", "blocked")])
+@pytest.mark.parametrize(
+    "alias,key",
+    [
+        ("emcee", "ensemble"),
+        ("stretch", "ensemble"),
+        ("affine", "ensemble"),
+        ("metropolis", "blocked"),
+        ("zeus", "slice"),
+        ("differential_evolution", "de"),
+        ("Blocked", "blocked"),
+    ],
+)
 def test_names_resolve_through_the_entries_aliases(alias, key):
     assert sample.resolve_sampler(alias) == key
 
@@ -53,7 +62,10 @@ def test_a_kernel_implemented_in_chisurf_takes_its_description_from_the_kernel_u
     assert sample.SAMPLERS["ensemble"]["description"] == stretch["description"]
     assert sample.SAMPLERS["ensemble"]["default_warmup"] == stretch["default_warmup"]
     # 'blocked' does more than the kernel (independent sub-problems): its own text
-    assert sample.SAMPLERS["blocked"]["description"] != bff.registry("sampler")["metropolis"]["description"]
+    assert (
+        sample.SAMPLERS["blocked"]["description"]
+        != bff.registry("sampler")["metropolis"]["description"]
+    )
 
 
 def test_a_sampler_that_needs_a_gradient_is_not_offered():
@@ -63,9 +75,17 @@ def test_a_sampler_that_needs_a_gradient_is_not_offered():
 
 def test_a_kernel_registered_in_bff_appears_without_a_chisurf_edit():
     key = "test_kernel_" + uuid.uuid4().hex[:8]
-    entry = {"label": "A test kernel", "summary": "s", "description": "registered by a test",
-             "params_schema": {"type": "object", "properties": {}}, "kind": "chain", "population": "single",
-             "requires_gradient": False, "aliases": [], "default_warmup": {"rule": "fixed", "value": 0}}
+    entry = {
+        "label": "A test kernel",
+        "summary": "s",
+        "description": "registered by a test",
+        "params_schema": {"type": "object", "properties": {}},
+        "kind": "chain",
+        "population": "single",
+        "requires_gradient": False,
+        "aliases": [],
+        "default_warmup": {"rule": "fixed", "value": 0},
+    }
     assert bff.register_algorithm_json("sampler", key, json.dumps(entry))
     catalog.refresh()
     try:
@@ -79,6 +99,7 @@ def test_a_kernel_registered_in_bff_appears_without_a_chisurf_edit():
 
 def test_warmup_defaults_are_the_kernels_declared_ones():
     from chisurf.core.fitting import sampler_bff
+
     for steps in (10, 200, 2000, 20000):
         assert sampler_bff._default_n_adapt("de", steps) == min(500, max(50, steps // 4))
         assert sampler_bff._default_n_adapt("metropolis", steps) == min(500, max(100, steps // 20))
@@ -87,10 +108,18 @@ def test_warmup_defaults_are_the_kernels_declared_ones():
 
 def test_no_dispatcher_branches_on_a_sampler_name():
     names = set(sample.SAMPLERS) | {"emcee"}
-    for rel in ("chisurf/core/fitting/fit.py", "chisurf/core/fitting/engine.py", "chisurf/core/fitting/sampler_bff.py"):
+    for rel in (
+        "chisurf/core/fitting/fit.py",
+        "chisurf/core/fitting/engine.py",
+        "chisurf/core/fitting/sampler_bff.py",
+    ):
         text = (ROOT / rel).read_text()
         for name in names:
-            assert not re.search(r"(method|algorithm|backend)\s*[=!]=\s*['\"]%s['\"]" % re.escape(name), text), (rel, name)
-            assert not re.search(r"^\s*['\"]%s['\"]\s*:\s*cs\.core\.fitting\.sample\." % re.escape(name), text, re.M), (rel, name)
+            assert not re.search(
+                rf"(method|algorithm|backend)\s*[=!]=\s*['\"]{re.escape(name)}['\"]", text
+            ), (rel, name)
+            assert not re.search(
+                rf"^\s*['\"]{re.escape(name)}['\"]\s*:\s*cs\.core\.fitting\.sample\.", text, re.M
+            ), (rel, name)
     sample_text = (ROOT / "chisurf/core/fitting/sample.py").read_text()
     assert "SAMPLERS = {" not in sample_text and "SAMPLER_ALIASES" not in sample_text

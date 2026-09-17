@@ -7,10 +7,10 @@ them read as an unresponsive control (BUG-001/002). They are properties over
 one ``Capture`` now -- this pins that: no two gestures at once, every one
 ends with the release, and the flags still answer.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.ui.gui import InternalGui
 from chimol.ui.gui.capture import Capture
 
@@ -66,7 +66,7 @@ def test_a_second_gesture_replaces_the_first(gui):
 
 def test_clearing_a_gesture_that_is_not_held_leaves_the_slot_alone(gui):
     gui._dragging_thumb = True
-    gui._seq_drag = None                    # a stale clear must not steal the slot
+    gui._seq_drag = None  # a stale clear must not steal the slot
     assert gui._dragging_thumb and gui.is_dragging()
     gui._dragging_thumb = False
     assert not gui.is_dragging()

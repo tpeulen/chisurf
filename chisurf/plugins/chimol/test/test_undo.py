@@ -19,12 +19,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.services.undo import UNDO_SLOTS, UndoRing
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -170,8 +173,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -241,7 +244,7 @@ def test_an_empty_coordinate_ring_falls_through_to_the_object_list(session):
 def test_nothing_to_undo_is_said_once_both_stacks_are_empty(session):
     """Said out loud, and not as a failure -- it is an ordinary answer."""
     cmd, _, messages, errors = session
-    for _ in range(6):          # more than either stack holds
+    for _ in range(6):  # more than either stack holds
         cmd.do("undo")
     assert not errors, errors
     assert messages and "nothing to undo" in messages[-1]
@@ -312,8 +315,6 @@ def test_history_is_per_object(session):
     cmd.do("translate [30, 0, 0]")
 
     active = view.get_active_object_id()
-    other = next(
-        o["id"] for o in view.list_objects() if str(o["id"]) != str(active)
-    )
+    other = next(o["id"] for o in view.list_objects() if str(o["id"]) != str(active))
     assert view.undo_depth(object_id=active) >= 1
     assert view.undo_depth(object_id=other) == 0

@@ -53,9 +53,7 @@ def spc_words():
 @pytest.fixture(scope="module")
 def photons(spc_words):
     """The same records decoded in one call — the batch oracle."""
-    decoded, _ = tttrlib.decode_records(
-        spc_words, tttrlib.RECORD_SPC130, tttrlib.TTTRDecodeState()
-    )
+    decoded, _ = tttrlib.decode_records(spc_words, tttrlib.RECORD_SPC130, tttrlib.TTTRDecodeState())
     return (
         np.asarray(decoded.macro_times, dtype=np.uint64),
         np.asarray(decoded.micro_times, dtype=np.uint16),
@@ -73,7 +71,7 @@ def run_pipeline(words, **config_kwargs):
     )
     pipeline = AcquisitionPipeline(config)
     for start in range(0, len(words), CHUNK):
-        pipeline.push(words[start:start + CHUNK])
+        pipeline.push(words[start : start + CHUNK])
     return pipeline
 
 
@@ -95,6 +93,7 @@ def batch_correlation(t1, t2):
 # One decode path
 # ---------------------------------------------------------------------------
 
+
 def test_chunked_decode_equals_the_whole_buffer(spc_words, photons):
     """The carried overflow counter is what makes macro times absolute.
 
@@ -103,7 +102,7 @@ def test_chunked_decode_equals_the_whole_buffer(spc_words, photons):
     """
     macro, micro, channel = photons
     decoder = PhotonDecoder(tttrlib.RECORD_SPC130)
-    got = [decoder.decode(spc_words[i:i + CHUNK]) for i in range(0, len(spc_words), CHUNK)]
+    got = [decoder.decode(spc_words[i : i + CHUNK]) for i in range(0, len(spc_words), CHUNK)]
 
     np.testing.assert_array_equal(np.concatenate([g[0] for g in got]), macro)
     np.testing.assert_array_equal(np.concatenate([g[1] for g in got]), micro)
@@ -117,10 +116,10 @@ def test_a_picoquant_buffer_decodes_through_the_library():
     bit-field decoder in the base class — "bits 25-30 for channel info,
     implementation may need adjustment based on exact format".
     """
+
     def record(nsync, dtime, channel, special=0):
         return np.uint32(
-            (special << 31) | ((channel & 0x3F) << 25) | ((dtime & 0x7FFF) << 10)
-            | (nsync & 0x3FF)
+            (special << 31) | ((channel & 0x3F) << 25) | ((dtime & 0x7FFF) << 10) | (nsync & 0x3FF)
         )
 
     overflow = np.uint32((1 << 31) | (63 << 25) | 1)  # one 1024-sync wrap
@@ -175,6 +174,7 @@ def test_no_bit_shift_decoding_survives_in_the_plugin():
 # Streaming equals batch
 # ---------------------------------------------------------------------------
 
+
 def test_live_decay_equals_bincount_of_the_saved_stream(spc_words, photons):
     _macro, micro, channel = photons
     pipeline = run_pipeline(spc_words)
@@ -204,7 +204,9 @@ def assert_agrees_per_cascade(y_live, y_batch, rtol=5e-3):
         if keep.sum() < n_bins // 2:
             continue
         np.testing.assert_allclose(
-            live[keep], batch[keep], rtol=rtol,
+            live[keep],
+            batch[keep],
+            rtol=rtol,
             err_msg=f"cascade {cascade} disagrees with the batch correlator",
         )
 
@@ -293,6 +295,7 @@ def test_the_mcs_window_is_the_tail_of_the_batch_trace(spc_words, photons):
 # Cost and memory
 # ---------------------------------------------------------------------------
 
+
 def test_per_chunk_cost_does_not_grow_with_run_length(spc_words):
     """Minute 30 must cost what minute 1 costs.
 
@@ -310,7 +313,7 @@ def test_per_chunk_cost_does_not_grow_with_run_length(spc_words):
         )
     )
 
-    chunks = [spc_words[i:i + CHUNK] for i in range(0, len(spc_words), CHUNK)]
+    chunks = [spc_words[i : i + CHUNK] for i in range(0, len(spc_words), CHUNK)]
     costs = []
     for chunk in chunks:
         start = time.perf_counter()
@@ -335,7 +338,7 @@ def test_nothing_downstream_of_decode_keeps_the_photons(spc_words):
     }
 
     for start in range(len(spc_words) // 4, len(spc_words), CHUNK):
-        pipeline.push(spc_words[start:start + CHUNK])
+        pipeline.push(spc_words[start : start + CHUNK])
 
     assert len(pipeline._count_rate_times) <= 50
     assert len(pipeline._macrotime_diffs) <= 100
@@ -363,6 +366,7 @@ def test_snapshot_carries_display_state_only(spc_words):
 # ---------------------------------------------------------------------------
 # Stop conditions
 # ---------------------------------------------------------------------------
+
 
 def test_the_photon_limit_stops_the_run(spc_words):
     pipeline = run_pipeline(spc_words, photon_limit=10_000)

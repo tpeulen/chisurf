@@ -26,7 +26,7 @@ class _ComponentFormModel:
         self._fields: list[str] = []
 
         try:
-            with open(view_scheme_path, "r", encoding="utf-8") as f:
+            with open(view_scheme_path, encoding="utf-8") as f:
                 scheme = json.load(f)
             for section in scheme.get("sections", []):
                 attr = section.get("attr")

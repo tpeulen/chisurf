@@ -180,11 +180,14 @@ class FTestTool(ChisurfDockTool):
         for fit in fits:
             sub = menu.addMenu(getattr(fit, "name", "fit"))
             sub.addAction("→ F-test model 1 (χ²₁, n₁)").triggered.connect(
-                lambda _=False, f=fit: self._load_fit(f, "model1"))
+                lambda _=False, f=fit: self._load_fit(f, "model1")
+            )
             sub.addAction("→ F-test model 2 (χ²₂, n₂)").triggered.connect(
-                lambda _=False, f=fit: self._load_fit(f, "model2"))
+                lambda _=False, f=fit: self._load_fit(f, "model2")
+            )
             sub.addAction("→ χ²-max (χ²min, params, ν)").triggered.connect(
-                lambda _=False, f=fit: self._load_fit(f, "chi2max"))
+                lambda _=False, f=fit: self._load_fit(f, "chi2max")
+            )
 
     def _load_fit(self, fit: Any, target: str) -> None:
         """Copy a fit's statistics into the selected target section, then recompute."""
@@ -212,7 +215,9 @@ class FTestTool(ChisurfDockTool):
             editor = getattr(vw, "editor", None)
             if attr is None or editor is None:
                 continue
-            signal = getattr(editor, "editingFinished", None) or getattr(editor, "valueChanged", None)
+            signal = getattr(editor, "editingFinished", None) or getattr(
+                editor, "valueChanged", None
+            )
             if signal is not None:
                 signal.connect(lambda *_a, a=attr: self._on_field_edited(a))
 

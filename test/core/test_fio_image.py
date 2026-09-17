@@ -60,8 +60,11 @@ def test_labelled_axes_survive_the_round_trip(tmp_path):
 def test_voxel_size_survives_the_round_trip(tmp_path):
     path = tmp_path / "volume.tif"
     image.imwrite(
-        path, _stack((5, 8, 9)), axes="ZYX",
-        resolution=(25.0, 25.0), metadata={"spacing": 0.1, "unit": "um"},
+        path,
+        _stack((5, 8, 9)),
+        axes="ZYX",
+        resolution=(25.0, 25.0),
+        metadata={"spacing": 0.1, "unit": "um"},
     )
     meta = image.metadata(path)
     assert meta["axes"] == "ZYX"

@@ -237,9 +237,7 @@ class BurstPreparation:
         if not agreement:
             return tuple(self.channels)
         return tuple(
-            name
-            for name in self.channels
-            if agreement.get(name, 1.0) >= COUNT_AGREEMENT_REQUIRED
+            name for name in self.channels if agreement.get(name, 1.0) >= COUNT_AGREEMENT_REQUIRED
         )
 
     def require_verified(self, names: Sequence[str]) -> None:
@@ -329,9 +327,7 @@ class BurstPreparation:
             lines.append(f"  {channel}: count agreement {value:.4f} [{mark}]")
         unverified = s.get("unverified_channels") or ()
         if unverified:
-            lines.append(
-                "  unusable until defined: " + ", ".join(unverified)
-            )
+            lines.append("  unusable until defined: " + ", ".join(unverified))
         return "\n".join(lines)
 
 
@@ -483,9 +479,7 @@ def burst_directory(folder: pathlib.Path | str) -> tuple[pathlib.Path, pathlib.P
         bur_dir = path
     elif path.is_dir():
         candidates = sorted(
-            child
-            for child in path.iterdir()
-            if child.is_dir() and any(child.glob("*.bur"))
+            child for child in path.iterdir() if child.is_dir() and any(child.glob("*.bur"))
         )
         if not candidates:
             raise FileNotFoundError(f"no .bur tables under {path}")
@@ -493,9 +487,7 @@ def burst_directory(folder: pathlib.Path | str) -> tuple[pathlib.Path, pathlib.P
     else:
         raise FileNotFoundError(f"{path} is neither a .bur file nor a directory")
 
-    analysis_dir = (
-        bur_dir.parent if bur_dir.name.lower() in ("bi4_bur", "bur") else bur_dir
-    )
+    analysis_dir = bur_dir.parent if bur_dir.name.lower() in ("bi4_bur", "bur") else bur_dir
     return analysis_dir, bur_dir
 
 
@@ -685,8 +677,7 @@ def open_sources(resolution: SourceResolution) -> dict[str, Any]:
             raise UnresolvedPhotonSource(
                 f"{path} could not be read as a photon stream"
                 + (
-                    f" (container type {resolution.container_type[key]!r} from "
-                    "the manifest)"
+                    f" (container type {resolution.container_type[key]!r} from the manifest)"
                     if resolution.container_type.get(key)
                     else " (container type auto-detected)"
                 )
@@ -697,8 +688,7 @@ def open_sources(resolution: SourceResolution) -> dict[str, Any]:
             raise UnresolvedPhotonSource(
                 f"{path} was opened but holds zero photons"
                 + (
-                    f" (container type {resolution.container_type[key]!r} from the "
-                    "manifest)"
+                    f" (container type {resolution.container_type[key]!r} from the manifest)"
                     if resolution.container_type.get(key)
                     else " (container type auto-detected)"
                 )
@@ -824,13 +814,10 @@ def infer_streams(
     if rows.size == 0:
         return None
     if rows.size > n_probe:
-        rows = np.sort(
-            np.random.default_rng(seed).choice(rows, size=n_probe, replace=False)
-        )
+        rows = np.sort(np.random.default_rng(seed).choice(rows, size=n_probe, replace=False))
 
     cache = {
-        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
-        for key, t in tttrs.items()
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times)) for key, t in tttrs.items()
     }
     present = sorted({int(c) for channels, _ in cache.values() for c in np.unique(channels)})
     if not present or len(present) > 8:
@@ -874,9 +861,7 @@ def infer_streams(
                         channels=list(channels),
                         # StreamDef windows are inclusive; the writer's are
                         # half-open, so the upper bound moves by one.
-                        micro_time_ranges=(
-                            [] if window is None else [(window[0], window[1] - 1)]
-                        ),
+                        micro_time_ranges=([] if window is None else [(window[0], window[1] - 1)]),
                     )
                     break
             if found is not None:
@@ -894,13 +879,9 @@ def _fallback_streams(names: Sequence[str]) -> list[StreamDef]:
     for name in names:
         lowered = str(name).lower()
         if lowered in known:
-            out.append(
-                StreamDef(name=name, channels=list(known[lowered].channels))
-            )
+            out.append(StreamDef(name=name, channels=list(known[lowered].channels)))
         elif lowered in FALLBACK_CHANNELS:
-            out.append(
-                StreamDef(name=name, channels=list(FALLBACK_CHANNELS[lowered]))
-            )
+            out.append(StreamDef(name=name, channels=list(FALLBACK_CHANNELS[lowered])))
         else:
             out.append(StreamDef(name=name, channels=[]))
     return out
@@ -1116,9 +1097,7 @@ def prepare_burst_folder(
         "n_bursts": row_count(frame),
         "stream_origin": stream_origin,
         "count_agreement": {},
-        "n_empty": {
-            name: int((counts[:, i] == 0).sum()) for i, name in enumerate(names)
-        },
+        "n_empty": {name: int((counts[:, i] == 0).sum()) for i, name in enumerate(names)},
     }
 
     # Inference needs the photons, so a folder that records no detectors has to
@@ -1155,9 +1134,7 @@ def prepare_burst_folder(
             frame, resolved_streams, tttrs, convention
         )
         for i, name in enumerate(names):
-            summary["count_agreement"][name] = float(
-                np.mean(recomputed[:, i] == counts[:, i])
-            )
+            summary["count_agreement"][name] = float(np.mean(recomputed[:, i] == counts[:, i]))
 
     if has_micro_columns:
         mean_micro_time = np.column_stack(
@@ -1183,9 +1160,7 @@ def prepare_burst_folder(
                 f"no channel definition (from {stream_origin}) describes "
                 f"{analysis_dir}: per-detector counts recomputed from the photons "
                 "agree with the .bur columns for "
-                + ", ".join(
-                    f"{k} {v:.3f}" for k, v in summary["count_agreement"].items()
-                )
+                + ", ".join(f"{k} {v:.3f}" for k, v in summary["count_agreement"].items())
                 + ". Pass streams= explicitly, or record the detectors in the "
                 "analysis manifest."
             )
@@ -1209,9 +1184,7 @@ def prepare_burst_folder(
         summary=summary,
     )
     if with_photons:
-        preparation.summary["photons"] = {
-            key: int(len(tttr)) for key, tttr in tttrs.items()
-        }
+        preparation.summary["photons"] = {key: int(len(tttr)) for key, tttr in tttrs.items()}
         preparation.summary["_tttrs"] = tttrs
     return preparation
 
@@ -1262,9 +1235,7 @@ def nuisance_measure(
     # A burst whose channel has fewer than two photons has no measurable span. It is
     # kept — it still carries signal — but its span is the sentinel, and the model
     # must be told which spans are measured rather than inferring it from a zero.
-    n_sentinel_spans = {
-        name: int(sentinel[keep, i].sum()) for i, name in enumerate(channels)
-    }
+    n_sentinel_spans = {name: int(sentinel[keep, i].sum()) for i, name in enumerate(channels)}
 
     summary = {
         "n_input": int(signal.size),
@@ -1328,8 +1299,7 @@ def photon_bursts(
     tttrs = preparation.summary.get("_tttrs")
     if not tttrs:
         raise ValueError(
-            "this preparation carries no photons; call prepare_burst_folder(..., "
-            "with_photons=True)"
+            "this preparation carries no photons; call prepare_burst_folder(..., with_photons=True)"
         )
 
     cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, float]] = {}
@@ -1365,9 +1335,7 @@ def photon_bursts(
             micro.append(micro_times[lo:hi][keep])
         kept.append(row)
 
-    bursts = PhotonBursts.from_lists(
-        times, colors, n_colors=len(streams), min_photons=min_photons
-    )
+    bursts = PhotonBursts.from_lists(times, colors, n_colors=len(streams), min_photons=min_photons)
     rows = np.asarray(kept, dtype=np.int64)
     if with_micro_times:
         return bursts, micro, rows

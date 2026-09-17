@@ -20,7 +20,7 @@ from .client import TimeWindowClient
 
 # Reuse the intensity plot widget for preview visualisation
 try:
-    from chisurf.plugins.tttr.intensity_trace.__init__ import IntensityPlotWidget
+    from chisurf.plugins.tttr.intensity_trace import IntensityPlotWidget
 except Exception:
     IntensityPlotWidget = None
 

@@ -17,11 +17,17 @@ def main(argv=None) -> int:
 
     result = merge_folder(args.folder, args.output)
     if args.summary:
-        print(f"merged {result['n_curves']} curve(s), duration={result['duration']:g} s, "
-              f"count_rate={result['count_rate']:g} kHz")
+        print(
+            f"merged {result['n_curves']} curve(s), duration={result['duration']:g} s, "
+            f"count_rate={result['count_rate']:g} kHz"
+        )
     else:
-        print(json.dumps({k: v for k, v in result.items()
-                          if k in ("duration", "count_rate", "n_curves")}, indent=2))
+        print(
+            json.dumps(
+                {k: v for k, v in result.items() if k in ("duration", "count_rate", "n_curves")},
+                indent=2,
+            )
+        )
     return 0
 
 

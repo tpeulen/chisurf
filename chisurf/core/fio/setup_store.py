@@ -18,20 +18,23 @@ See ``test/architecture/test_model_ui_boundary.py``, which now fails on a
 core module that imports a GUI toolkit or ``chisurf.gui`` -- this file is why
 that test could be widened from two packages to the whole of ``chisurf.core``.
 """
+
 import json
 import pathlib
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from chisurf.core.settings.file_utils import safe_open_file
 from mmfdb.repository import MFDatabase
 from mmfdb.store.database_resolver import resolve_database_path
+
+from chisurf.core.settings.file_utils import safe_open_file
 
 
 @dataclass
 class SetupTypeConfig:
     """Configuration that distinguishes one setup type from another."""
+
     setup_type: str
     id_prefix: str
     prefs_id: str
@@ -50,6 +53,7 @@ def setup_id_for_name(name: str, user_id: str, prefix: str) -> str:
 def resolve_active_user_id() -> str:
     try:
         import chisurf.core.settings
+
         uid = chisurf.core.settings.cs_settings.get("mmfdb", {}).get("default_user_id")
         if uid:
             return uid

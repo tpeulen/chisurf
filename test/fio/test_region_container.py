@@ -30,9 +30,9 @@ from chisurf.core.fio.pto import Measurement
 def _labels() -> np.ndarray:
     """Return three regions of different sizes in a 32x32 field, none touching."""
     labels = np.zeros((32, 32), dtype=np.int32)
-    labels[2:6, 2:6] = 1        # 16 px
-    labels[10:13, 20:26] = 2    # 18 px
-    labels[24:31, 8:11] = 3     # 21 px
+    labels[2:6, 2:6] = 1  # 16 px
+    labels[10:13, 20:26] = 2  # 18 px
+    labels[24:31, 8:11] = 3  # 21 px
     return labels
 
 
@@ -81,7 +81,8 @@ def test_the_table_reopens_column_for_column(container: Path):
         np.testing.assert_allclose(
             np.asarray(column_values(read, index), dtype=float),
             np.asarray(column_values(written, index), dtype=float),
-            rtol=0, atol=0,
+            rtol=0,
+            atol=0,
             err_msg=f"column {name} changed on the way through the container",
         )
 
@@ -108,8 +109,8 @@ def test_gaps_in_the_labels_cannot_reach_the_file(container: Path):
     whichever segmentation wrote it.
     """
     labels = _labels()
-    labels[labels == 3] = 7      # a gap at 3..6, and a maximum of 7
-    labels[labels == 2] = 0      # and label 2 deleted outright
+    labels[labels == 3] = 7  # a gap at 3..6, and a maximum of 7
+    labels[labels == 2] = 0  # and label 2 deleted outright
 
     write_regions(container, labels, _intensity(_labels()), name="gappy")
     regions = read_regions(container, name="gappy")
@@ -132,11 +133,14 @@ def test_a_row_survives_for_a_region_an_analysis_would_skip(container: Path):
     another's.
     """
     labels = _labels()
-    photons = np.array([412.0, np.nan, 7.0])      # region 2 was not measured
+    photons = np.array([412.0, np.nan, 7.0])  # region 2 was not measured
 
     write_regions(
-        container, labels, _intensity(labels),
-        name="sparse", extra={"spot.n_photons": photons},
+        container,
+        labels,
+        _intensity(labels),
+        name="sparse",
+        extra={"spot.n_photons": photons},
     )
     table = read_regions(container, name="sparse").table
 

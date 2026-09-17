@@ -6,13 +6,14 @@ day -- a baseline capture that leaked a setting into the next scene, and a
 second backend carrying its own copy of the first one's lighting constants --
 and the routing and conventions of the pipelines added after it.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.render.depth_cue import FOG_OFF, fog_planes
 from chimol.render.lighting import LightRig, resolve_light_rig
+
 from chisurf.plugins.chimol.test.capture_gl_baseline import (
     RESET,
     SCENES,
@@ -68,8 +69,11 @@ class TestLightRig:
 
     def test_reads_the_config_section(self):
         rig = resolve_light_rig(
-            {"ambient_strength": 0.3, "key_light_intensity": 0.8,
-             "light_direction": [1.0, 0.0, 0.0]}
+            {
+                "ambient_strength": 0.3,
+                "key_light_intensity": 0.8,
+                "light_direction": [1.0, 0.0, 0.0],
+            }
         )
         assert rig.ambient == pytest.approx(0.3)
         assert rig.key == pytest.approx(0.8)
@@ -77,9 +81,7 @@ class TestLightRig:
 
     def test_accepts_chimerax_ambient_name(self):
         """``ambient_light_intensity`` is ChimeraX's name for the same value."""
-        assert resolve_light_rig(
-            {"ambient_light_intensity": 0.2}
-        ).ambient == pytest.approx(0.2)
+        assert resolve_light_rig({"ambient_light_intensity": 0.2}).ambient == pytest.approx(0.2)
 
     def test_a_short_direction_falls_back_rather_than_raising(self):
         assert resolve_light_rig({"light_direction": [1.0]}).light_dir == pytest.approx(
@@ -190,8 +192,9 @@ class TestPipelineRouting:
         from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         packed = WgpuMeshRenderer.interleave_impostors(
-            self._geom("points", n=2, radii=np.full((2, 1), 2.5, dtype=np.float32),
-                       meta={"size": 8.0})
+            self._geom(
+                "points", n=2, radii=np.full((2, 1), 2.5, dtype=np.float32), meta={"size": 8.0}
+            )
         )
         assert np.allclose(packed[:, 3], 2.5)
 
@@ -206,9 +209,9 @@ class TestWgslSource:
     #: be concatenated with the *render* shading model and to declare a second
     #: `fn shade` that nothing noticed for two commits.
     FAMILIES = {
-        "shading.wgsl": None,   # the render prelude
-        "grid.wgsl": None,      # the compute prelude
-        "bvh.wgsl": None,       # the ray prelude
+        "shading.wgsl": None,  # the render prelude
+        "grid.wgsl": None,  # the compute prelude
+        "bvh.wgsl": None,  # the ray prelude
         "mesh.wgsl": "render",
         # The same mesh drawn N times from a storage buffer of transforms
         # (the instancing seam); the render prelude for the camera and shade().
@@ -325,7 +328,7 @@ class TestImpostorsOnTheGpu:
 
     @staticmethod
     def _renderer(size=320):
-        wgpu = pytest.importorskip("wgpu")
+        pytest.importorskip("wgpu")
         from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         try:
@@ -342,8 +345,8 @@ class TestImpostorsOnTheGpu:
         convention or the depth write is wrong, and each of those is invisible
         in a single-column render.
         """
-        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
         from chimol.core.camera.view_state import pack_view_state
+        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
 
         centre = np.zeros((1, 3), dtype=np.float32)
         radius = np.array([[4.0]], dtype=np.float32)
@@ -379,8 +382,12 @@ class TestImpostorsOnTheGpu:
         )
 
         view = pack_view_state(
-            np.eye(3), distance=40.0, target=(0.0, 0.0, 0.0),
-            near=1.0, far=120.0, fov=20.0,
+            np.eye(3),
+            distance=40.0,
+            target=(0.0, 0.0, 0.0),
+            near=1.0,
+            far=120.0,
+            fov=20.0,
         )
         renderer = self._renderer()
         images = [
@@ -405,22 +412,24 @@ class TestImpostorsOnTheGpu:
         per-fragment depth the far sphere cuts into it, and the tell is that the
         near sphere's own colour covers fewer pixels than its full disc.
         """
-        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
         from chimol.core.camera.view_state import pack_view_state
+        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
 
         # Overlapping, and the far one offset sideways so it emerges.
         geom = PackedGeometry(
             kind="points",
             positions=np.array([[0.0, 0.0, 3.0], [3.5, 0.0, -3.0]], dtype=np.float32),
             radii=np.array([[5.0], [5.0]], dtype=np.float32),
-            colors=np.array(
-                [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]], dtype=np.float32
-            ),
+            colors=np.array([[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]], dtype=np.float32),
             meta={"glyph": "sphere", "world_radius": True},
         )
         view = pack_view_state(
-            np.eye(3), distance=40.0, target=(0.0, 0.0, 0.0),
-            near=1.0, far=120.0, fov=30.0,
+            np.eye(3),
+            distance=40.0,
+            target=(0.0, 0.0, 0.0),
+            near=1.0,
+            far=120.0,
+            fov=30.0,
         )
         renderer = self._renderer()
         img = renderer.render(

@@ -96,8 +96,14 @@ def test_a_page_named_in_the_prose_becomes_a_link(panel, qtbot):
     panel._client.answer = {
         "ok": True,
         "text": "The four factors are in docs/concepts/accurate_fret.md.",
-        "pages": [{"document": "docs/concepts/accurate_fret.md", "title": "Accurate FRET",
-                   "type": "Concept", "section": ""}],
+        "pages": [
+            {
+                "document": "docs/concepts/accurate_fret.md",
+                "title": "Accurate FRET",
+                "type": "Concept",
+                "section": "",
+            }
+        ],
     }
     panel.ask("where are the factors?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
@@ -109,8 +115,14 @@ def test_a_markdown_link_the_model_wrote_is_rendered(panel, qtbot):
     panel._client.answer = {
         "ok": True,
         "text": "See [the four factors](docs/concepts/accurate_fret.md#The four factors).",
-        "pages": [{"document": "docs/concepts/accurate_fret.md", "title": "Accurate FRET",
-                   "type": "Concept", "section": "The four factors"}],
+        "pages": [
+            {
+                "document": "docs/concepts/accurate_fret.md",
+                "title": "Accurate FRET",
+                "type": "Concept",
+                "section": "The four factors",
+            }
+        ],
     }
     panel.ask("where?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)

@@ -24,7 +24,8 @@ def test_every_runtime_dependency_is_classified():
 def test_the_binding_constraint_is_stated():
     """GPL via PyQt5/sip today. If this fails, the dependency graph's
     licensing changed — regenerate doc/licenses.md and read the diff before
-    adjusting the assertion."""
+    adjusting the assertion.
+    """
     data = collect()
     assert data["binding_class"] in CLASSES
     assert data["binding_class"] == 4

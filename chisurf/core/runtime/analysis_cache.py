@@ -54,10 +54,10 @@ import hashlib
 import importlib
 import itertools
 import json
-
-from functools import lru_cache
+from collections.abc import Iterable, Mapping, Sequence
+from functools import cache
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 __all__ = [
     "ResultCache",
@@ -169,7 +169,7 @@ def file_identity(path, *, content: bool = False) -> dict[str, Any]:
     return {"path": str(p), "size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
 
 
-@lru_cache(maxsize=None)
+@cache
 def library_version(module_name: str) -> str:
     """Identify the installed version of a library that does the computing.
 

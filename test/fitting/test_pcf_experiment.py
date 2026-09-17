@@ -23,7 +23,9 @@ def test_pcf_config_block_present():
     import chisurf as cs
 
     cfg = yaml.safe_load(
-        (pathlib.Path(cs.__file__).parent / "core" / "settings" / "experiment_configs.yaml").read_text()
+        (
+            pathlib.Path(cs.__file__).parent / "core" / "settings" / "experiment_configs.yaml"
+        ).read_text()
     )
     assert "pcf" in cfg
     readers = cfg["pcf"]["readers"]

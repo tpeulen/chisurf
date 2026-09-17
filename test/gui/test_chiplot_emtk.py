@@ -13,8 +13,7 @@ import os
 
 import numpy as np
 import pytest
-
-from qtpy import QtGui, QtWidgets
+from qtpy import QtGui
 
 pytest.importorskip("emtk")
 
@@ -282,8 +281,12 @@ def test_a_region_of_interest_is_drawn_and_dragged(plot, kind):
     """Imaging picks pixels with these; moving one has to report where it went."""
     x, y = _decay()
     plot.line(x, y, name="decay")
-    roi = plot.add_roi(kind=kind, pos=(5.0, 100.0), size=(4.0, 200.0),
-                       points=[(5.0, 100.0), (9.0, 100.0), (9.0, 300.0)])
+    roi = plot.add_roi(
+        kind=kind,
+        pos=(5.0, 100.0),
+        size=(4.0, 200.0),
+        points=[(5.0, 100.0), (9.0, 100.0), (9.0, 300.0)],
+    )
 
     seen: list[tuple[float, float]] = []
     roi.on_change(lambda *_: seen.append(roi.pos))
@@ -324,9 +327,13 @@ def test_an_arrow_is_drawn_where_it_points(plot):
     pixmap.fill()
     plot.render(pixmap)
     image = pixmap.toImage()
-    red = [(i, j) for i in range(300) for j in range(300)
-           if QtGui.QColor(image.pixel(i, j)).red() > 200
-           and QtGui.QColor(image.pixel(i, j)).green() < 60]
+    red = [
+        (i, j)
+        for i in range(300)
+        for j in range(300)
+        if QtGui.QColor(image.pixel(i, j)).red() > 200
+        and QtGui.QColor(image.pixel(i, j)).green() < 60
+    ]
     assert red, "the head was not drawn"
     # Pointing up (+y), the head sits below its tip on screen.
     ys = [j for _, j in red]
@@ -445,8 +452,8 @@ def test_a_panel_exports_itself_to_a_file(plot, tmp_path):
     plot.resize(240, 180)
 
     target = tmp_path / "panel.png"
-    plot.export_image(str(target))   # the facade returns nothing: it falls
-    assert target.is_file()          # back to a widget grab if the backend
+    plot.export_image(str(target))  # the facade returns nothing: it falls
+    assert target.is_file()  # back to a widget grab if the backend
     assert target.stat().st_size > 0  # declines, so the file is the result
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import numpy as np
 
 
@@ -46,7 +45,9 @@ def i0(x):
     reproduced deliberately so the port cannot move a fitted distribution. See
     the note in `src/SpecialFunctions.cpp`.
     """
-    from IMP.bff import i0 as _i0, i0_array as _i0_array
+    from IMP.bff import i0 as _i0
+    from IMP.bff import i0_array as _i0_array
+
     if np.isscalar(x) or np.ndim(x) == 0:
         return float(_i0(float(x)))
     return _i0_array(np.asarray(x, dtype=float))
@@ -75,4 +76,5 @@ def i0_array(x: np.ndarray) -> np.ndarray:
     polynomial until 2026-09-02.
     """
     from IMP.bff import i0_array as _f
+
     return _f(np.asarray(x, dtype=float))

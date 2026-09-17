@@ -54,9 +54,7 @@ def _settings(formats: list[str]) -> AnalysisSettings:
         filter_active=False,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
     )
-    s.burst_detection = BurstDetectionSettings(
-        min_photons=60, photon_window=10, time_window=1e-3
-    )
+    s.burst_detection = BurstDetectionSettings(min_photons=60, photon_window=10, time_window=1e-3)
     s.gmm = GMMSettings(covariance_type="spherical", random_state=42, max_iter=50)
     s.output_formats = formats
     return s
@@ -87,7 +85,8 @@ def analysed(tmp_path: Path) -> Path:
 @pytest.mark.skipif(not BASELINE.exists(), reason="no captured legacy baseline")
 def test_every_legacy_column_survives(analysed: Path):
     """Parity is judged on the column inventory, not on bytes: the container
-    deliberately stores a table where the folder stored a padded text grid."""
+    deliberately stores a table where the folder stored a padded text grid.
+    """
     want = json.loads(BASELINE.read_text())["bur_columns"]
     with Measurement.open(analysed) as m:
         got = column_names(m.get_store("bursts"))
@@ -146,7 +145,8 @@ def test_the_interleave_is_not_carried_out_of_the_container(analysed: Path):
 
 def test_the_trailing_tab_column_is_not_handed_to_a_reader(analysed: Path):
     """The blank column exists only to produce the trailing tab the `.bur`
-    header needs. It is not data, and a reader is not given it."""
+    header needs. It is not data, and a reader is not given it.
+    """
     from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
 
     store = read_burst_table(analysed)
@@ -186,9 +186,7 @@ def test_the_instrument_file_is_still_recoverable(tmp_path: Path, analysed: Path
 def test_rerunning_does_not_accumulate(tmp_path: Path):
     source = tmp_path / SPC.name
     source.write_bytes(SPC.read_bytes())
-    request = AnalysisRequest(
-        files=[str(source)], settings=_settings(["pto"]), legacy_output=False
-    )
+    request = AnalysisRequest(files=[str(source)], settings=_settings(["pto"]), legacy_output=False)
     first = Path(analyze_request(request).output_paths["pto"])
     with Measurement.open(first) as m:
         before = m._f.n_objects()
@@ -201,9 +199,7 @@ def test_rerunning_does_not_accumulate(tmp_path: Path):
 
 
 def test_deinterleave_takes_the_odd_rows():
-    frame = pd.DataFrame(
-        {"a": [0, 1, 0, 2, 0], "b": [0.0, 1.5, 0.0, 2.5, 0.0], "": [""] * 5}
-    )
+    frame = pd.DataFrame({"a": [0, 1, 0, 2, 0], "b": [0.0, 1.5, 0.0, 2.5, 0.0], "": [""] * 5})
     out = deinterleave_bursts(frame)
     assert list(np.asarray(out["a"])) == [1, 2]
     assert column_names(out) == ["a", "b"]
@@ -218,7 +214,8 @@ def test_deinterleave_leaves_a_plain_table_alone():
 
 def test_deinterleave_keeps_a_genuine_zero_burst():
     """An odd row that happens to be all zeros is data; only the *even* rows
-    are the padding, and the check is on those."""
+    are the padding, and the check is on those.
+    """
     frame = pd.DataFrame({"a": [0, 0, 0, 5, 0], "b": [0.0, 0.0, 0.0, 5.0, 0.0]})
     out = deinterleave_bursts(frame)
     assert row_count(out) == 2
@@ -264,15 +261,13 @@ def test_the_legacy_folder_is_written_only_when_it_is_asked_for(tmp_path: Path):
     source.write_bytes(SPC.read_bytes())
 
     result = analyze_request(
-        AnalysisRequest(files=[str(source)], settings=_settings(["pto"]),
-                        legacy_output=False)
+        AnalysisRequest(files=[str(source)], settings=_settings(["pto"]), legacy_output=False)
     )
     assert "bur" not in result.output_paths
     assert not [p for p in source.parent.iterdir() if p.is_dir()]
 
     result = analyze_request(
-        AnalysisRequest(files=[str(source)], settings=_settings(["pto"]),
-                        legacy_output=True)
+        AnalysisRequest(files=[str(source)], settings=_settings(["pto"]), legacy_output=True)
     )
     assert "bur" in result.output_paths
     assert Path(result.output_paths["bur"]).exists()
@@ -345,9 +340,7 @@ def test_a_vendor_file_still_gets_its_folder(tmp_path: Path):
     source.write_bytes(SPC.read_bytes())
 
     result = analyze_request(
-        AnalysisRequest(
-            files=[str(source)], settings=_settings(["pto"]), legacy_output=True
-        )
+        AnalysisRequest(files=[str(source)], settings=_settings(["pto"]), legacy_output=True)
     )
 
     assert "bur" in result.output_paths

@@ -17,13 +17,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.geometry import ambient, neighbors, surface
 from chimol.render import compute
 
-pytestmark = pytest.mark.skipif(
-    not compute.available(), reason="no WebGPU adapter on this machine"
-)
+pytestmark = pytest.mark.skipif(not compute.available(), reason="no WebGPU adapter on this machine")
 
 #: f32 against f64 on values of order 1-100. Tight enough that a wrong branch or
 #: a mis-sized buffer fails; loose enough that rounding does not.
@@ -75,10 +72,26 @@ def test_occlusion_agrees(backend, cloud):
     normals = verts / np.linalg.norm(verts, axis=1)[:, None]
     radii = np.full(atoms.shape[0], 1.7)
 
-    on_cpu = backend("cpu", ambient.occlusion_from_spheres, verts, normals, atoms,
-                     radii, max_distance=10.0, strength=1.2)
-    on_gpu = backend("gpu", ambient.occlusion_from_spheres, verts, normals, atoms,
-                     radii, max_distance=10.0, strength=1.2)
+    on_cpu = backend(
+        "cpu",
+        ambient.occlusion_from_spheres,
+        verts,
+        normals,
+        atoms,
+        radii,
+        max_distance=10.0,
+        strength=1.2,
+    )
+    on_gpu = backend(
+        "gpu",
+        ambient.occlusion_from_spheres,
+        verts,
+        normals,
+        atoms,
+        radii,
+        max_distance=10.0,
+        strength=1.2,
+    )
     assert np.allclose(on_cpu, on_gpu, atol=TOLERANCE)
 
 
@@ -99,10 +112,12 @@ def test_directional_occlusion_agrees(backend, cloud):
     light /= np.linalg.norm(light)
 
     common = dict(max_distance=18.0, softness=1.6, strength=2.8)
-    on_cpu = backend("cpu", ambient.directional_occlusion, verts, normals, atoms,
-                     radii, light, **common)
-    on_gpu = backend("gpu", ambient.directional_occlusion, verts, normals, atoms,
-                     radii, light, **common)
+    on_cpu = backend(
+        "cpu", ambient.directional_occlusion, verts, normals, atoms, radii, light, **common
+    )
+    on_gpu = backend(
+        "gpu", ambient.directional_occlusion, verts, normals, atoms, radii, light, **common
+    )
     assert np.allclose(on_cpu, on_gpu, atol=TOLERANCE)
     assert int((on_cpu > 0.01).sum()) == int((on_gpu > 0.01).sum())
 
@@ -185,7 +200,7 @@ def test_the_marching_cubes_scan_finds_the_same_cells_and_cases(backend):
     chain exists to avoid, and which made an earlier version of this dispatch
     *slower* end to end than the NumPy pass it replaces.
     """
-    rng = np.random.default_rng(4)
+    np.random.default_rng(4)
     axes = [np.linspace(-1.0, 1.0, n) for n in (64, 62, 60)]
     x, y, z = np.meshgrid(*axes, indexing="ij")
     grid = np.sqrt(x * x + y * y + z * z)
@@ -195,15 +210,23 @@ def test_the_marching_cubes_scan_finds_the_same_cells_and_cases(backend):
     assert got is not None
     cells, cases = got
 
-    corners = np.array([
-        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
-        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
-    ])
+    corners = np.array(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+            [0, 1, 1],
+        ]
+    )
     nx, ny, nz = grid.shape
     inside = grid < level
     case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
     for bit, (ox, oy, oz) in enumerate(corners):
-        case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
+        case |= inside[ox : ox + nx - 1, oy : oy + ny - 1, oz : oz + nz - 1] << bit
     want = np.flatnonzero(((case != 0) & (case != 255)).ravel())
     assert np.array_equal(cells, want)
     assert np.array_equal(cases, case.ravel()[want])
@@ -256,6 +279,7 @@ def test_the_cpu_setting_disables_every_kernel(monkeypatch, cloud):
     colors = np.ones((atoms.shape[0], 4))
     sigmas = np.full(atoms.shape[0], 1.6)
     assert compute.shade_from_atoms(verts, atoms, colors, sigmas, 4.5) is None
-    assert compute.occlusion_from_spheres(
-        verts, verts, atoms, np.full(atoms.shape[0], 1.7), 10.0, 1.0
-    ) is None
+    assert (
+        compute.occlusion_from_spheres(verts, verts, atoms, np.full(atoms.shape[0], 1.7), 10.0, 1.0)
+        is None
+    )

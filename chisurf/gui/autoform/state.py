@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import json
 import pathlib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from chisurf import logging
 
@@ -63,9 +64,9 @@ class StateResult:
         ``{key: reason}`` for keys the model refused.
     """
 
-    applied: List[str] = field(default_factory=list)
-    unknown: List[str] = field(default_factory=list)
-    failed: Dict[str, str] = field(default_factory=dict)
+    applied: list[str] = field(default_factory=list)
+    unknown: list[str] = field(default_factory=list)
+    failed: dict[str, str] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -82,7 +83,7 @@ class StateResult:
         return ", ".join(parts)
 
 
-def _key(section: Any) -> Optional[str]:
+def _key(section: Any) -> str | None:
     """The state key for a section, or ``None`` when it holds no state."""
     attr = getattr(section, "attr", None)
     if not attr:
@@ -111,7 +112,7 @@ def iter_bound_sections(sections: Iterable[Any]) -> Iterable[Any]:
                 yield from iter_bound_sections(children)
 
 
-def _resolve_owner(model: Any, target: Optional[str]) -> Any:
+def _resolve_owner(model: Any, target: str | None) -> Any:
     """Return the object an ``attr`` lives on, or ``None`` when unreachable."""
     if not target:
         return model
@@ -148,7 +149,7 @@ def _jsonable(value: Any) -> Any:
     return str(value)
 
 
-def collect_state(form: Any) -> Dict[str, Any]:
+def collect_state(form: Any) -> dict[str, Any]:
     """Read the current value of every bound control on *form*.
 
     Parameters
@@ -168,7 +169,7 @@ def collect_state(form: Any) -> Dict[str, Any]:
     if model is None or spec is None:
         return {}
 
-    state: Dict[str, Any] = {}
+    state: dict[str, Any] = {}
     for section in iter_bound_sections(getattr(spec, "sections", ())):
         key = _key(section)
         owner = _resolve_owner(model, getattr(section, "target", None))
@@ -184,7 +185,7 @@ def collect_state(form: Any) -> Dict[str, Any]:
     return state
 
 
-def apply_state(form: Any, state: Dict[str, Any], *, sync: bool = True) -> StateResult:
+def apply_state(form: Any, state: dict[str, Any], *, sync: bool = True) -> StateResult:
     """Write *state* back onto the form's model and refresh the widgets.
 
     Lenient by design: unknown keys are collected rather than raised, and one
@@ -238,8 +239,7 @@ def apply_state(form: Any, state: Dict[str, Any], *, sync: bool = True) -> State
             try:
                 refresh()
             except Exception:  # pragma: no cover - a form may not be built yet
-                logging.debug("could not refresh the form after restoring",
-                              exc_info=True)
+                logging.debug("could not refresh the form after restoring", exc_info=True)
     return result
 
 
@@ -262,8 +262,12 @@ def save_state(form: Any, path: pathlib.Path | str, **extra: Any) -> pathlib.Pat
     """
     target = pathlib.Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"format": "chisurf-autoform-state", "version": 1,
-               "state": collect_state(form), **extra}
+    payload = {
+        "format": "chisurf-autoform-state",
+        "version": 1,
+        "state": collect_state(form),
+        **extra,
+    }
     target.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return target
 

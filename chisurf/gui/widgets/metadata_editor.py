@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 
-from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys, get_pdbx_metadata_descriptions
-
+from chisurf.core.fio.mmcif.pdbx_metadata import (
+    get_pdbx_metadata_descriptions,
+    get_pdbx_metadata_keys,
+)
 
 # ---------------------------------------------------------------------------
 # Shared metadata key definitions (previously duplicated in fitinfo.py and
@@ -14,11 +14,22 @@ from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys, get_pdb
 # ---------------------------------------------------------------------------
 
 COMMON_METADATA_KEYS = [
-    "pH", "temperature", "ionic_strength", "buffer_composition",
-    "solvent_phase", "labeling_efficiency", "donor_only_fraction",
-    "acceptor_only_fraction", "dye_ratio", "quencher_concentration",
-    "time_resolution", "excitation_wavelength", "emission_wavelength",
-    "power", "temperature_control", "data_notes",
+    "pH",
+    "temperature",
+    "ionic_strength",
+    "buffer_composition",
+    "solvent_phase",
+    "labeling_efficiency",
+    "donor_only_fraction",
+    "acceptor_only_fraction",
+    "dye_ratio",
+    "quencher_concentration",
+    "time_resolution",
+    "excitation_wavelength",
+    "emission_wavelength",
+    "power",
+    "temperature_control",
+    "data_notes",
     "_exptl_crystal_grow.ph",
     "_exptl_crystal_grow.temp",
     "_exptl_crystal_grow.method",
@@ -47,7 +58,7 @@ try:
 except Exception:
     _PDBX_DESCRIPTIONS = {}
 
-_COMMON_DESCRIPTIONS: Dict[str, str] = {
+_COMMON_DESCRIPTIONS: dict[str, str] = {
     "pH": "Solution pH",
     "temperature": "Temperature in Kelvin",
     "ionic_strength": "Ionic strength (mM or M)",
@@ -82,6 +93,7 @@ def key_description(key: str) -> str:
 # ---------------------------------------------------------------------------
 # Tooltip delegate for combobox dropdown items
 # ---------------------------------------------------------------------------
+
 
 class TooltipDelegate(QtWidgets.QStyledItemDelegate):
     """Displays tooltips from Qt.UserRole + 1 data on hover."""
@@ -146,6 +158,7 @@ class MetadataKeyComboBox(QtWidgets.QComboBox):
 # ---------------------------------------------------------------------------
 # Reusable metadata editor widget
 # ---------------------------------------------------------------------------
+
 
 class MetadataEditor(QtWidgets.QWidget):
     """A reusable widget for editing key-value (optionally +details)
@@ -214,7 +227,7 @@ class MetadataEditor(QtWidgets.QWidget):
 
     # ── Public API ──────────────────────────────────────────────────
 
-    def get_data(self) -> List[Dict[str, str]]:
+    def get_data(self) -> list[dict[str, str]]:
         """Return metadata rows as a list of dicts.
 
         Each dict has keys ``"key"`` and ``"value"`` (and optionally
@@ -235,16 +248,16 @@ class MetadataEditor(QtWidgets.QWidget):
             rows.append(item)
         return rows
 
-    def set_data(self, data: List[Dict[str, str]]) -> None:
+    def set_data(self, data: list[dict[str, str]]) -> None:
         """Replace all rows with metadata from *data*."""
         # Collect keys from loaded records that aren't in ALL_METADATA_KEYS so
         # they still appear as autocomplete options in the per-row comboboxes.
-        extra: List[str] = []
+        extra: list[str] = []
         for item in data:
             k = item.get("key", "")
             if k and k not in ALL_METADATA_KEYS and k not in extra:
                 extra.append(k)
-        self._extra_keys: List[str] = extra
+        self._extra_keys: list[str] = extra
 
         self._suppress_change = True
         self.table.setRowCount(0)
@@ -255,7 +268,7 @@ class MetadataEditor(QtWidgets.QWidget):
             self._add_row(key=key, value=value, details=details)
         self._suppress_change = False
 
-    def as_dict(self) -> Dict[str, str]:
+    def as_dict(self) -> dict[str, str]:
         """Return metadata as a flat key->value dict (2-column mode)."""
         return {d["key"]: d["value"] for d in self.get_data()}
 

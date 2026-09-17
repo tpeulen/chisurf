@@ -113,10 +113,7 @@ def test_the_status_logger_takes_no_positional_arguments():
         if method is None:
             continue
         params = list(inspect.signature(method).parameters.values())
-        positional = [
-            p for p in params
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        ]
+        positional = [p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
         assert len(positional) == 1, (
             f"{level}() takes {len(positional)} positional arguments; "
             "the module assumes exactly one (the message)"

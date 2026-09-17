@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from chisurf.plugins.core.globalview.api.graph import build_graph
 
@@ -16,29 +16,42 @@ def register_services(dispatcher: Any) -> None:
     state = getattr(dispatcher, "_state", None)
     if state is None:
         import chisurf as _cs
+
         class _FallbackState:
             @property
             def fits(self):
                 return getattr(_cs, "fits", [])
+
         state = _FallbackState()
-    dispatcher.register("globalview.graph.build", lambda params: graph_build_handler(state=state, **params))
-    dispatcher.register("globalview.parameters.list", lambda params: parameters_list_handler(state=state, **params))
-    dispatcher.register("globalview.parameters.link", lambda params: parameters_link_handler(state=state, **params))
-    dispatcher.register("globalview.parameters.unlink", lambda params: parameters_unlink_handler(state=state, **params))
+    dispatcher.register(
+        "globalview.graph.build", lambda params: graph_build_handler(state=state, **params)
+    )
+    dispatcher.register(
+        "globalview.parameters.list", lambda params: parameters_list_handler(state=state, **params)
+    )
+    dispatcher.register(
+        "globalview.parameters.link", lambda params: parameters_link_handler(state=state, **params)
+    )
+    dispatcher.register(
+        "globalview.parameters.unlink",
+        lambda params: parameters_unlink_handler(state=state, **params),
+    )
 
 
 def _select_fits(
-    fit_indices: Optional[List[int]] = None,
-    fit_uids: Optional[List[str]] = None,
+    fit_indices: list[int] | None = None,
+    fit_uids: list[str] | None = None,
     state: Any = None,
-) -> List[Any]:
+) -> list[Any]:
     """Select a subset of fits by index or uid, or all if neither given."""
     if state is None:
         import chisurf as _cs
+
         class _FallbackState:
             @property
             def fits(self):
                 return getattr(_cs, "fits", [])
+
         state = _FallbackState()
     fits = list(getattr(state, "fits", []))
     if fit_uids:
@@ -50,13 +63,13 @@ def _select_fits(
 
 
 def graph_build_handler(
-    fit_indices: Optional[List[int]] = None,
-    fit_uids: Optional[List[str]] = None,
+    fit_indices: list[int] | None = None,
+    fit_uids: list[str] | None = None,
     include_fixed: bool = True,
     connect_owners: bool = False,
     state: Any = None,
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a parameter relationship graph."""
     try:
         fits = _select_fits(fit_indices, fit_uids, state=state)
@@ -81,10 +94,7 @@ def graph_build_handler(
                     }
                     for n in result.nodes
                 ],
-                "edges": [
-                    {"source": e.source, "target": e.target}
-                    for e in result.edges
-                ],
+                "edges": [{"source": e.source, "target": e.target} for e in result.edges],
             },
         }
     except Exception as exc:
@@ -92,12 +102,12 @@ def graph_build_handler(
 
 
 def parameters_list_handler(
-    fit_indices: Optional[List[int]] = None,
-    fit_uids: Optional[List[str]] = None,
+    fit_indices: list[int] | None = None,
+    fit_uids: list[str] | None = None,
     include_fixed: bool = True,
     state: Any = None,
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List all parameters across fits."""
     try:
         fits = _select_fits(fit_indices, fit_uids, state=state)
@@ -114,44 +124,49 @@ def parameters_list_handler(
                     fixed = False
                 if fixed and not include_fixed:
                     continue
-                params_list.append({
-                    "name": str(getattr(p, "name", "")),
-                    "value": _safe_float(getattr(p, "value", None)),
-                    "fixed": fixed,
-                    "fit_idx": fi,
-                    "fit_name": str(getattr(fit, "name", "")),
-                    "is_linked": bool(getattr(p, "is_linked", False)),
-                    "link_name": str(getattr(getattr(p, "link", None), "name", "") or ""),
-                    "bounds": _safe_bounds(getattr(p, "bounds", None)),
-                    "bounds_on": bool(getattr(p, "bounds_on", False)),
-                })
+                params_list.append(
+                    {
+                        "name": str(getattr(p, "name", "")),
+                        "value": _safe_float(getattr(p, "value", None)),
+                        "fixed": fixed,
+                        "fit_idx": fi,
+                        "fit_name": str(getattr(fit, "name", "")),
+                        "is_linked": bool(getattr(p, "is_linked", False)),
+                        "link_name": str(getattr(getattr(p, "link", None), "name", "") or ""),
+                        "bounds": _safe_bounds(getattr(p, "bounds", None)),
+                        "bounds_on": bool(getattr(p, "bounds_on", False)),
+                    }
+                )
         return {"ok": True, "parameters": params_list}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
 
-def _safe_float(val: Any) -> Optional[float]:
+def _safe_float(val: Any) -> float | None:
     try:
         return float(val)
     except (TypeError, ValueError):
         return None
 
 
-def _safe_bounds(bounds: Any) -> List[Optional[float]]:
+def _safe_bounds(bounds: Any) -> list[float | None]:
     if not bounds:
         return [None, None]
     try:
-        return [float(bounds[0]) if bounds[0] is not None else None,
-                float(bounds[1]) if len(bounds) > 1 and bounds[1] is not None else None]
+        return [
+            float(bounds[0]) if bounds[0] is not None else None,
+            float(bounds[1]) if len(bounds) > 1 and bounds[1] is not None else None,
+        ]
     except (TypeError, IndexError, ValueError):
         return [None, None]
 
 
-def _get_fits_from_state(state: Any = None) -> List[Any]:
+def _get_fits_from_state(state: Any = None) -> list[Any]:
     """Get fits from state or fall back to chisurf module."""
     if state is not None:
         return list(getattr(state, "fits", []))
     import chisurf as cs
+
     return list(getattr(cs, "fits", []))
 
 
@@ -162,7 +177,7 @@ def parameters_link_handler(
     target_fit_index: int,
     state: Any = None,
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Link two parameters by name across fits."""
     try:
         fits = _get_fits_from_state(state)
@@ -190,7 +205,7 @@ def parameters_unlink_handler(
     fit_index: int,
     state: Any = None,
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Unlink a parameter."""
     try:
         fits = _get_fits_from_state(state)

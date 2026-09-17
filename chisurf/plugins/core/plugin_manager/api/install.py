@@ -127,7 +127,9 @@ def inspect_source(source: str | pathlib.Path) -> InstallPlan:
     if source.is_file():
         if source.suffix.lower() != ".zip":
             return InstallPlan(
-                source, "", destination_root,
+                source,
+                "",
+                destination_root,
                 problems=["only a plugin folder or a .zip archive can be installed"],
             )
         return _inspect_archive(source, destination_root)
@@ -144,7 +146,9 @@ def _inspect_archive(source: pathlib.Path, destination_root: pathlib.Path) -> In
                 root = _plugin_root(pathlib.Path(tmp))
                 if root is None:
                     return InstallPlan(
-                        source, "", destination_root,
+                        source,
+                        "",
+                        destination_root,
                         problems=["the archive has no package with an __init__.py"],
                     )
                 plan = _inspect_folder(root, root.name, destination_root)

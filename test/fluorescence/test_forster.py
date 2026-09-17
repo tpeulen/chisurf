@@ -59,9 +59,7 @@ def test_from_spectra_matches_two_step():
     eps_a = 250000.0 * _gaussian(wl, 650.0, 18.0)
     r0, j = forster_radius_from_spectra(wl, donor, eps_a, donor_quantum_yield=0.9)
     assert j == pytest.approx(overlap_integral(wl, donor, eps_a), rel=1e-12)
-    assert r0 == pytest.approx(
-        forster_radius(j, donor_quantum_yield=0.9), rel=1e-12
-    )
+    assert r0 == pytest.approx(forster_radius(j, donor_quantum_yield=0.9), rel=1e-12)
 
 
 def test_realistic_pair_gives_sensible_r0():
@@ -72,7 +70,7 @@ def test_realistic_pair_gives_sensible_r0():
     # 10) without being fragile to the exact synthetic spectral shape. The precise
     # formula is anchored by test_forster_radius_closed_form_anchor.
     wl = np.linspace(450.0, 800.0, 701)
-    donor_em = _gaussian(wl, 570.0, 25.0)            # donor emission band
+    donor_em = _gaussian(wl, 570.0, 25.0)  # donor emission band
     eps_acc = 270000.0 * _gaussian(wl, 600.0, 30.0)  # acceptor ε(λ), ε_max ~2.7e5
     r0, _ = forster_radius_from_spectra(wl, donor_em, eps_acc, donor_quantum_yield=0.8)
     assert 20.0 < r0 < 120.0

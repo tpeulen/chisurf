@@ -6,6 +6,7 @@ a pixel survives only if its *local* statistics resemble those of its
 threshold — rejecting things that are anomalous locally while being unremarkable
 globally, which is exactly what aggregates and debris are.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,8 +52,9 @@ def test_local_variance_carries_the_population_correction():
 def test_absolute_intensity_bounds():
     """The first stage is a plain threshold on the frame-averaged image."""
     img = np.arange(100, dtype=float).reshape(10, 10)
-    mask = arbitrary_region(img, intensity_min=20, intensity_max=60,
-                            intensity_fold_max=None).to_mask((10, 10))
+    mask = arbitrary_region(
+        img, intensity_min=20, intensity_max=60, intensity_fold_max=None
+    ).to_mask((10, 10))
     np.testing.assert_array_equal(mask, (img >= 20) & (img <= 60))
 
 
@@ -66,8 +68,8 @@ def test_small_aggregate_is_rejected_while_an_extended_feature_survives():
     like more of the same (ratio ~1.2).
     """
     img = np.ones((48, 48)) * 10.0
-    img[10:20, 10:20] = 100.0      # a legitimately bright, extended feature
-    img[34:37, 34:37] = 100.0      # a small aggregate of the same brightness
+    img[10:20, 10:20] = 100.0  # a legitimately bright, extended feature
+    img[34:37, 34:37] = 100.0  # a small aggregate of the same brightness
 
     roi = arbitrary_region(img, window=3, neighbourhood=11, intensity_fold_max=2.0)
     mask = roi.to_mask(img.shape)
@@ -86,10 +88,12 @@ def test_a_single_hot_pixel_needs_a_matched_window():
     img = np.ones((48, 48)) * 10.0
     img[35, 35] = 100.0
 
-    diluted = arbitrary_region(img, window=3, neighbourhood=11,
-                               intensity_fold_max=2.0).to_mask(img.shape)
-    matched = arbitrary_region(img, window=1, neighbourhood=11,
-                               intensity_fold_max=2.0).to_mask(img.shape)
+    diluted = arbitrary_region(img, window=3, neighbourhood=11, intensity_fold_max=2.0).to_mask(
+        img.shape
+    )
+    matched = arbitrary_region(img, window=1, neighbourhood=11, intensity_fold_max=2.0).to_mask(
+        img.shape
+    )
 
     assert diluted[35, 35], "a 3x3 window dilutes a single pixel below the fold"
     assert not matched[35, 35], "a 1x1 window sees it at full contrast"
@@ -99,7 +103,7 @@ def test_low_variance_patch_is_rejected():
     """An immobile patch has anomalously low local variance for its context."""
     rng = np.random.default_rng(3)
     img = rng.normal(100.0, 12.0, (64, 64))
-    img[40:50, 40:50] = 100.0      # perfectly flat: no local variance at all
+    img[40:50, 40:50] = 100.0  # perfectly flat: no local variance at all
 
     roi = arbitrary_region(img, window=3, neighbourhood=11, variance_fold_min=0.2)
     mask = roi.to_mask(img.shape)
@@ -150,15 +154,13 @@ def test_roi_file_round_trips_every_shape(tmp_path):
 
     assert len(back) == 3
     for original, restored in zip(rois, back):
-        np.testing.assert_array_equal(
-            restored.to_mask((16, 16)), original.to_mask((16, 16))
-        )
+        np.testing.assert_array_equal(restored.to_mask((16, 16)), original.to_mask((16, 16)))
     assert load_roi_metadata(path) == {"image": "x.tif"}
 
 
 def test_roi_file_is_plain_readable_json(tmp_path):
     """The native format is diffable text, not an opaque binary blob."""
-    path = save_rois([RectangleROI(0, 0, 2, 2, name="r")], str(tmp_path / "s.json"))
+    save_rois([RectangleROI(0, 0, 2, 2, name="r")], str(tmp_path / "s.json"))
     data = json.loads((tmp_path / "s.json").read_text())
     assert data["format"] == "chisurf-roi"
     assert data["rois"][0]["type"] == "rectangle"
@@ -181,8 +183,7 @@ def test_cellpose_segmentation_becomes_one_region_per_cell(tmp_path):
     labels[10:16, 10:18] = 2
     labels[15:19, 2:5] = 3
     path = tmp_path / "img_seg.npy"
-    np.save(path, {"masks": labels, "outlines": np.zeros_like(labels)},
-            allow_pickle=True)
+    np.save(path, {"masks": labels, "outlines": np.zeros_like(labels)}, allow_pickle=True)
 
     rois = rois_from_cellpose(str(path))
     assert [r.name for r in rois] == ["1", "2", "3"]
@@ -213,14 +214,12 @@ def test_label_image_round_trips_through_a_tiff(tmp_path):
     back = rois_from_label_image(path)
     assert len(back) == 2
     for original, restored in zip(rois, back):
-        np.testing.assert_array_equal(
-            restored.to_mask((12, 12)), original.to_mask((12, 12))
-        )
+        np.testing.assert_array_equal(restored.to_mask((12, 12)), original.to_mask((12, 12)))
 
 
 def test_binary_mask_file_imports_as_one_region(tmp_path):
     """The reference implementation's export shape: a single boolean mask."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     mask = np.zeros((10, 10), dtype=np.uint8)
     mask[3:7, 3:7] = 1
@@ -246,9 +245,7 @@ def test_a_selection_survives_a_full_round_trip(tmp_path):
     path = save_rois([region], str(tmp_path / "sel.json"))
     restored = load_rois(path)[0]
 
-    np.testing.assert_array_equal(
-        restored.to_mask(img.shape), region.to_mask(img.shape)
-    )
+    np.testing.assert_array_equal(restored.to_mask(img.shape), region.to_mask(img.shape))
     assert not restored.to_mask(img.shape)[30, 30]
 
 
@@ -260,7 +257,7 @@ def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
     silently, because a label image is also a valid mask. Consumers were each
     re-implementing that dispatch — and each getting the same case wrong.
     """
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
     from chisurf.core.roi import RectangleROI
     from chisurf.core.roi.io import load_region, load_regions
 
@@ -283,8 +280,9 @@ def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
     assert len(load_regions(str(mask_path))) == 1
 
     # The native format round-trips whatever it holds, shapes included.
-    native = save_rois([RectangleROI(0, 0, 3, 3), RectangleROI(5, 5, 8, 8)],
-                       str(tmp_path / "two.json"))
+    native = save_rois(
+        [RectangleROI(0, 0, 3, 3), RectangleROI(5, 5, 8, 8)], str(tmp_path / "two.json")
+    )
     assert len(load_regions(native)) == 2
     assert load_region(native).to_mask((12, 12)).sum() == 18
 

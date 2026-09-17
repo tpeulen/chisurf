@@ -3,16 +3,11 @@ import scipy.io
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
-def write_china_mat(
-        filename: str,
-        d: typing.List[typing.Dict],
-        verbose: bool = False
-) -> None:
+def write_china_mat(filename: str, d: typing.List[typing.Dict], verbose: bool = False) -> None:
     """Write FCS data to a China .mat file.
 
     Parameters
@@ -25,19 +20,14 @@ def write_china_mat(
         If True, print progress.
     """
     if verbose:
-        print("Writing to file: %s" % filename)
+        print(f"Writing to file: {filename}")
     mdict = dict()
 
-    scipy.io.savemat(
-        file_name=filename,
-        mdict=mdict
-    )
+    scipy.io.savemat(file_name=filename, mdict=mdict)
 
 
 def read_china_mat(
-        filename: str,
-        skip_points: int = 4,
-        verbose: bool = False
+    filename: str, skip_points: int = 4, verbose: bool = False
 ) -> typing.List[FCSDataset]:
     """Read a China .mat FCS file and return FCS datasets.
 
@@ -56,35 +46,24 @@ def read_china_mat(
         List of FCS datasets.
     """
     m = scipy.io.loadmat(filename)
-    n_measurements = m['AA'].shape[1]
+    n_measurements = m["AA"].shape[1]
     # save intensity traces
     if verbose:
-        print("Reading from file: %s" % filename)
+        print(f"Reading from file: {filename}")
 
     correlation_keys = {
-        'Auto_AA': {
-            'Intensity': 'IntA',
-            'Correlation': 'AA'
-        },
-        'Auto_BB': {
-            'Intensity': 'IntB',
-            'Correlation': 'BB'
-        },
-        'Cross_Axb': {
-            'Intensity': ['IntA', 'IntB'],
-            'Correlation': 'AAxB'
-        }
+        "Auto_AA": {"Intensity": "IntA", "Correlation": "AA"},
+        "Auto_BB": {"Intensity": "IntB", "Correlation": "BB"},
+        "Cross_Axb": {"Intensity": ["IntA", "IntB"], "Correlation": "AAxB"},
     }
     correlations = list()
 
     for correlation_key in correlation_keys:
-        intensity_key = correlation_keys[correlation_key]['Intensity']
-        correlation_key = correlation_keys[correlation_key]['Correlation']
+        intensity_key = correlation_keys[correlation_key]["Intensity"]
+        correlation_key = correlation_keys[correlation_key]["Correlation"]
         correlation_time = m[correlation_key][:, 0]
 
-        for measurement_number in range(
-                1, n_measurements
-        ):
+        for measurement_number in range(1, n_measurements):
             correlation_amplitude = m[correlation_key][:, measurement_number] + 1.0
             if isinstance(intensity_key, list):
                 k = intensity_key[0]
@@ -97,24 +76,24 @@ def read_china_mat(
                 intensity = m[intensity_key][:, measurement_number]
             aquisition_time = intensity_time[-1]
             mean_count_rate = intensity.sum() / (aquisition_time * 1000.0)
-            w = 1. / cs.core.fluorescence.fcs.noise(
+            w = 1.0 / cs.core.fluorescence.fcs.noise(
                 correlation_time,
                 correlation_amplitude,
                 aquisition_time,
                 mean_count_rate=mean_count_rate,
-                skip_points=skip_points
+                skip_points=skip_points,
             )
             correlations.append(
                 {
-                    'filename': filename,
-                    'measurement_id': "%s_%s" % (correlation_key, measurement_number),
-                    'acquisition_time': float(aquisition_time),
-                    'mean_count_rate': float(mean_count_rate),
-                    'correlation_times': correlation_time.tolist(),
-                    'correlation_amplitudes': correlation_amplitude.tolist(),
-                    'correlation_amplitude_weights': w.tolist(),
-                    'intensity_trace_times': intensity_time.tolist(),
-                    'intensity_trace': intensity.tolist(),
+                    "filename": filename,
+                    "measurement_id": f"{correlation_key}_{measurement_number}",
+                    "acquisition_time": float(aquisition_time),
+                    "mean_count_rate": float(mean_count_rate),
+                    "correlation_times": correlation_time.tolist(),
+                    "correlation_amplitudes": correlation_amplitude.tolist(),
+                    "correlation_amplitude_weights": w.tolist(),
+                    "intensity_trace_times": intensity_time.tolist(),
+                    "intensity_trace": intensity.tolist(),
                 }
             )
     return correlations

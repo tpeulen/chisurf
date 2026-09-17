@@ -29,9 +29,15 @@ TAU_D0, R0, LINKER = 4.0, 52.0, 6.0
 LINE = static_fret_line(TAU_D0, r0=R0, sigma=LINKER)
 
 
-def simulate(*, seed: int = 1, efficiencies=(0.3, 0.75), n_fret=(1200, 1200),
-             n_donor_only: int = 400, n_acceptor_only: int = 400,
-             photons: int = 400):
+def simulate(
+    *,
+    seed: int = 1,
+    efficiencies=(0.3, 0.75),
+    n_fret=(1200, 1200),
+    n_donor_only: int = 400,
+    n_acceptor_only: int = 400,
+    photons: int = 400,
+):
     """Simulate ALEX bursts with known correction factors.
 
     Photon budgets are Poisson; the donor channel carries ``(1-E)·N`` photons,
@@ -52,9 +58,9 @@ def simulate(*, seed: int = 1, efficiencies=(0.3, 0.75), n_fret=(1200, 1200),
         n_ph = rng.poisson(photons, n).astype(float)
         dd.append(rng.poisson((1.0 - e) * n_ph))
         aa.append(rng.poisson(BETA * GAMMA * n_ph))
-        da.append(rng.poisson(
-            GAMMA * e * n_ph + ALPHA * (1.0 - e) * n_ph + DELTA * BETA * GAMMA * n_ph
-        ))
+        da.append(
+            rng.poisson(GAMMA * e * n_ph + ALPHA * (1.0 - e) * n_ph + DELTA * BETA * GAMMA * n_ph)
+        )
         tau.append(rng.normal(float(LINE.lifetime_at(e)), 0.12, n))
         kind.append(np.full(n, f"fret{i}"))
     if n_donor_only:
@@ -104,8 +110,7 @@ def test_population_classification_matches_the_truth():
     split = classify_es_populations(es["S"], es["E"])
     assert split.method == "mixture"
     truth = d["kind"]
-    for mask, name in ((split.donor_only, "donor_only"),
-                       (split.acceptor_only, "acceptor_only")):
+    for mask, name in ((split.donor_only, "donor_only"), (split.acceptor_only, "acceptor_only")):
         assert np.count_nonzero(mask) > 300
         purity = np.mean(truth[mask] == name)
         assert purity > 0.95, f"{name} gate is only {purity:.2%} pure"
@@ -130,11 +135,15 @@ def test_iteration_is_self_consistent():
 
 def test_gamma_from_lifetime_on_a_single_population():
     """One static population plus its donor lifetime identifies gamma."""
-    d = simulate(efficiencies=(0.55,), n_fret=(2000,), n_donor_only=0,
-                 n_acceptor_only=0, seed=3)
+    d = simulate(efficiencies=(0.55,), n_fret=(2000,), n_donor_only=0, n_acceptor_only=0, seed=3)
     res = gamma_from_lifetime(
-        d["i_dd"], d["i_da"], d["tau_f"], line=LINE, i_aa=d["i_aa"],
-        alpha=ALPHA, delta=DELTA,
+        d["i_dd"],
+        d["i_da"],
+        d["tau_f"],
+        line=LINE,
+        i_aa=d["i_aa"],
+        alpha=ALPHA,
+        delta=DELTA,
     )
     assert res["gamma"] == pytest.approx(GAMMA, rel=0.03)
 
@@ -143,7 +152,11 @@ def test_auto_calibrate_falls_back_to_the_lifetime():
     """With a single FRET population the E-S fit cannot give gamma — the line can."""
     d = simulate(efficiencies=(0.55,), n_fret=(2000,), seed=4)
     res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], tau_f=d["tau_f"], donor_lifetime=TAU_D0,
+        d["i_dd"],
+        d["i_da"],
+        d["i_aa"],
+        tau_f=d["tau_f"],
+        donor_lifetime=TAU_D0,
     )
     assert not np.isfinite(res.gamma_estimates["es"])
     assert res.gamma_estimates["lifetime"] == pytest.approx(GAMMA, rel=0.03)
@@ -157,18 +170,24 @@ def test_lifetime_and_es_routes_agree():
     """The two independent gamma estimates agree — the consistency check a user runs."""
     d = simulate()
     res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], tau_f=d["tau_f"], donor_lifetime=TAU_D0,
+        d["i_dd"],
+        d["i_da"],
+        d["i_aa"],
+        tau_f=d["tau_f"],
+        donor_lifetime=TAU_D0,
     )
-    assert res.gamma_estimates["es"] == pytest.approx(
-        res.gamma_estimates["lifetime"], rel=0.03
-    )
+    assert res.gamma_estimates["es"] == pytest.approx(res.gamma_estimates["lifetime"], rel=0.03)
 
 
 def test_static_populations_sit_on_the_static_line():
     """After calibration the simulated (static) populations fall onto the line."""
     d = simulate()
     res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], tau_f=d["tau_f"], donor_lifetime=TAU_D0,
+        d["i_dd"],
+        d["i_da"],
+        d["i_aa"],
+        tau_f=d["tau_f"],
+        donor_lifetime=TAU_D0,
     )
     assert res.populations
     for p in res.populations:
@@ -183,14 +202,25 @@ def test_static_populations_sit_on_the_static_line():
 LIGHTPATH = {
     "matrices": {
         # ALEX: delta = I_DA/I_AA = ex[green, A] / ex[red, A]
-        "excitation": {"rows": ["green", "red"], "columns": ["D", "A"],
-                       "values": [[1.0, 0.055], [0.001, 1.0]]},
-        "emission": {"rows": ["D", "A"], "columns": ["green_det", "red_det"],
-                     "values": [[0.92, 0.075], [0.02, 0.90]]},
+        "excitation": {
+            "rows": ["green", "red"],
+            "columns": ["D", "A"],
+            "values": [[1.0, 0.055], [0.001, 1.0]],
+        },
+        "emission": {
+            "rows": ["D", "A"],
+            "columns": ["green_det", "red_det"],
+            "values": [[0.92, 0.075], [0.02, 0.90]],
+        },
     },
-    "donor": "D", "acceptor": "A",
-    "green_detector": "green_det", "red_detector": "red_det",
-    "gG": 1.0, "gR": 0.72, "qy_d": 0.92, "qy_a": 0.75,
+    "donor": "D",
+    "acceptor": "A",
+    "green_detector": "green_det",
+    "red_detector": "red_det",
+    "gG": 1.0,
+    "gR": 0.72,
+    "qy_d": 0.92,
+    "qy_a": 0.75,
 }
 
 
@@ -202,9 +232,7 @@ def test_optics_prior_supplies_factors_the_data_cannot():
     the optical uncertainty rather than a fitted illusion.
     """
     d = simulate(n_donor_only=0, n_acceptor_only=0)
-    res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], lightpath=LIGHTPATH, n_bootstrap=10
-    )
+    res = auto_calibrate(d["i_dd"], d["i_da"], d["i_aa"], lightpath=LIGHTPATH, n_bootstrap=10)
     # Hellenkamp alpha = I_DA/I_DD = gR*cRD / (gG*cGD)
     optics_alpha = 0.72 * 0.075 / (1.0 * 0.92)
     optics_delta = 0.055
@@ -218,7 +246,10 @@ def test_data_overrides_a_broad_optics_prior():
     """A sharp data estimate wins over an uncertain optical model."""
     d = simulate()
     res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], lightpath={**LIGHTPATH, "alpha_sigma": 0.5},
+        d["i_dd"],
+        d["i_da"],
+        d["i_aa"],
+        lightpath={**LIGHTPATH, "alpha_sigma": 0.5},
         n_bootstrap=25,
     )
     assert res.factors["alpha"] == pytest.approx(ALPHA, abs=0.005)
@@ -241,8 +272,13 @@ def test_efficiency_uncertainty_matches_finite_differences():
         shifted[key] = base[key] + step
         numeric[key] = abs(corrected_es(i_dd, i_da, i_aa, **shifted)["E"][0] - e0) / step
     unc = efficiency_uncertainty(
-        np.array([e0]), i_dd, i_aa, gamma=GAMMA,
-        sigma_gamma=1.0, sigma_alpha=1.0, sigma_delta=1.0,
+        np.array([e0]),
+        i_dd,
+        i_aa,
+        gamma=GAMMA,
+        sigma_gamma=1.0,
+        sigma_alpha=1.0,
+        sigma_delta=1.0,
     )
     for key in ("gamma", "alpha", "delta"):
         assert float(unc["terms"][key][0]) == pytest.approx(numeric[key], rel=1e-4)
@@ -278,8 +314,13 @@ def test_accurate_fret_reports_populations():
     d = simulate()
     cal = auto_calibrate(d["i_dd"], d["i_da"], d["i_aa"], n_bootstrap=25)
     out = accurate_fret(
-        d["i_dd"], d["i_da"], d["i_aa"], calibration=cal.calibration, tau_f=d["tau_f"],
-        line=LINE, uncertainties=cal.uncertainties,
+        d["i_dd"],
+        d["i_da"],
+        d["i_aa"],
+        calibration=cal.calibration,
+        tau_f=d["tau_f"],
+        line=LINE,
+        uncertainties=cal.uncertainties,
         labels=np.where(cal.split.fret, cal.split.fret_labels, -1),
     )
     populations = {p["label"]: p for p in out["populations"] if p["label"] >= 0}
@@ -322,9 +363,7 @@ def test_gaussian_mixture_recovers_two_components():
 def test_report_is_printable():
     """The result renders a summary naming the route each factor came from."""
     d = simulate()
-    res = auto_calibrate(
-        d["i_dd"], d["i_da"], d["i_aa"], tau_f=d["tau_f"], donor_lifetime=TAU_D0
-    )
+    res = auto_calibrate(d["i_dd"], d["i_da"], d["i_aa"], tau_f=d["tau_f"], donor_lifetime=TAU_D0)
     text = res.report()
     assert "gamma [E-S population fit]" in text
     assert "gamma [static FRET line]" in text

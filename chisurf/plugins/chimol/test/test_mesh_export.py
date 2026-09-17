@@ -5,6 +5,7 @@ viewport shows it -- contours as triangles, spheres and sticks tessellated
 back from their impostors -- readable by the format's own rules (parsed back
 here, not eyeballed).
 """
+
 from __future__ import annotations
 
 import json
@@ -15,13 +16,13 @@ import pytest
 
 pytest.importorskip("qtpy")
 
+from chimol.core.model.volume import VolumeGrid
 from chimol.io.mesh_export import (
     scene_mesh_objects,
     write_glb,
     write_stl,
     write_wrl,
 )
-from chimol.core.model.volume import VolumeGrid
 
 
 @pytest.fixture(scope="session")
@@ -98,7 +99,7 @@ def test_glb_parses_by_the_gltf_container_rules(shell, tmp_path):
 
     json_length, json_type = struct.unpack("<II", raw[12:20])
     assert json_type == 0x4E4F534A
-    document = json.loads(raw[20:20 + json_length])
+    document = json.loads(raw[20 : 20 + json_length])
     assert document["asset"]["version"] == "2.0"
     assert document["meshes"], "no meshes in the document"
     primitive = document["meshes"][0]["primitives"][0]
@@ -106,8 +107,7 @@ def test_glb_parses_by_the_gltf_container_rules(shell, tmp_path):
     index_accessor = document["accessors"][primitive["indices"]]
     assert index_accessor["count"] == 3 * written // len(document["meshes"]) or True
     total = sum(
-        document["accessors"][m["primitives"][0]["indices"]]["count"]
-        for m in document["meshes"]
+        document["accessors"][m["primitives"][0]["indices"]]["count"] for m in document["meshes"]
     )
     assert total == 3 * written
     # POSITION accessors carry min/max, which loaders require.
@@ -146,9 +146,7 @@ def test_spheres_and_sticks_are_tessellated_back(qapp, tmp_path):
         id="bonds",
         geometry=Geometry(
             kind="cylinders",
-            positions=np.array(
-                [[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]], dtype=np.float32
-            ),
+            positions=np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]], dtype=np.float32),
             radii=np.array([0.2, 0.2], dtype=np.float32),
             colors=np.tile(np.array([[0.0, 1.0, 0.0, 1.0]], dtype=np.float32), (2, 1)),
         ),

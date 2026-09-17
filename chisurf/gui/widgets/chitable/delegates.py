@@ -313,9 +313,7 @@ class RichTextHeaderView(QtWidgets.QHeaderView):
         doc.setHtml(text)
         # The margin the base measurement adds around the plain string, kept so
         # a rendered title is not flush against the section border.
-        margin = 2 * self.style().pixelMetric(
-            QtWidgets.QStyle.PM_HeaderMargin, None, self
-        )
+        margin = 2 * self.style().pixelMetric(QtWidgets.QStyle.PM_HeaderMargin, None, self)
         return QtCore.QSize(
             int(doc.idealWidth()) + margin,
             max(size.height(), int(doc.size().height()) + margin),

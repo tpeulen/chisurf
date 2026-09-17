@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from chisurf.plugins.microscopy.psf_determination.api import psf
 

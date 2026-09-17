@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
-import numpy as np
 from multiprocessing import shared_memory as _shm
 
-def _hist2_split_core_classlut(mt_bins: np.ndarray,
-                               rc_slice: np.ndarray,
-                               class_lut: np.ndarray,
-                               half_len: int):
+import numpy as np
+
+
+def _hist2_split_core_classlut(
+    mt_bins: np.ndarray, rc_slice: np.ndarray, class_lut: np.ndarray, half_len: int
+):
     """
     class_lut: int8 array (size max_rc+1) with {-1 ignore, 0=P, 1=S}.
     Returns (cp_u32, cs_u32).
@@ -13,20 +13,16 @@ def _hist2_split_core_classlut(mt_bins: np.ndarray,
     cls = class_lut[rc_slice]  # int8 view
     valid = cls >= 0
     if not np.any(valid):
-        return (np.zeros(half_len, dtype=np.uint32),
-                np.zeros(half_len, dtype=np.uint32))
+        return (np.zeros(half_len, dtype=np.uint32), np.zeros(half_len, dtype=np.uint32))
     b = mt_bins[valid]
     c = cls[valid].astype(np.int32, copy=False)
     h2 = np.bincount(b * 2 + c, minlength=2 * half_len)
-    return (h2[0::2].astype(np.uint32, copy=False),
-            h2[1::2].astype(np.uint32, copy=False))
+    return (h2[0::2].astype(np.uint32, copy=False), h2[1::2].astype(np.uint32, copy=False))
 
-def _copy_shifted(src_u32: np.ndarray,
-                  dst_f64: np.ndarray,
-                  dst_off: int,
-                  s0: int, s1: int,
-                  shift: int,
-                  n: int):
+
+def _copy_shifted(
+    src_u32: np.ndarray, dst_f64: np.ndarray, dst_off: int, s0: int, s1: int, shift: int, n: int
+):
     """
     Copy src_u32 into dst_f64 window [dst_off+s0 : dst_off+s1] applying
     a circular shift by 'shift' (positive = right shift) without np.roll.
@@ -40,7 +36,7 @@ def _copy_shifted(src_u32: np.ndarray,
     dst_f64[dst_off + s0 : dst_off + s0 + first] = src_u32[start : start + first]
     rem = length - first
     if rem:
-        dst_f64[dst_off + s0 + first : dst_off + s1] = src_u32[0 : rem]
+        dst_f64[dst_off + s0 + first : dst_off + s1] = src_u32[0:rem]
 
 
 def _burst_slice(first_ph, last_ph) -> slice:
@@ -77,21 +73,24 @@ def _build_fitter(cfg):
     (see okf/subsystems/mle-lifetime-fitting.md); it is no longer done here.
     """
     from chisurf.core.fluorescence.mle.fit2x import (
-        Fit2x, Fit2xModel, Fit2xSettings,
+        Fit2x,
+        Fit2xModel,
+        Fit2xSettings,
     )
+
     return Fit2x(
         Fit2xSettings(
-            dt=float(cfg['dt']),
-            irf=np.asarray(cfg['irf'], dtype=np.float64),
-            background=np.asarray(cfg['bg'], dtype=np.float64),
-            period=float(cfg['period']),
-            g_factor=float(cfg['g_factor']),
-            l1=float(cfg['l1']),
-            l2=float(cfg['l2']),
-            p2s_twoIstar=bool(cfg['p2s_twoIstar']),
-            soft_bifl_scatter=bool(cfg['BIFL_scatter']),
+            dt=float(cfg["dt"]),
+            irf=np.asarray(cfg["irf"], dtype=np.float64),
+            background=np.asarray(cfg["bg"], dtype=np.float64),
+            period=float(cfg["period"]),
+            g_factor=float(cfg["g_factor"]),
+            l1=float(cfg["l1"]),
+            l2=float(cfg["l2"]),
+            p2s_twoIstar=bool(cfg["p2s_twoIstar"]),
+            soft_bifl_scatter=bool(cfg["BIFL_scatter"]),
         ),
-        model=Fit2xModel(cfg.get('model', 'fit23')),
+        model=Fit2xModel(cfg.get("model", "fit23")),
     )
 
 
@@ -100,8 +99,7 @@ def _state_suffix(state):
     return "" if state is None else f" S{int(state)}"
 
 
-def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None,
-            extras=None):
+def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None, extras=None):
     """One result row, laid out by the fitted model.
 
     ``fit23`` keeps its historical column set (tau/gamma/r0/rho + the two
@@ -124,44 +122,46 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None,
     names must not collide with the all-photon ones, because every companion is
     merged into a single frame and a duplicate name is silently dropped.
     """
+
     def g(i):
         try:
             return float(x[i])
         except (TypeError, IndexError):
-            return float('nan')
+            return float("nan")
 
     extras = extras or {}
 
     sfx = _state_suffix(state)
     rec = {}
     if state is None:
-        rec['First File'] = fname
-        rec['Detector'] = det
-        rec['Ng-p-all'] = cp_sum
-        rec['Ng-s-all'] = cs_sum
+        rec["First File"] = fname
+        rec["Detector"] = det
+        rec["Ng-p-all"] = cp_sum
+        rec["Ng-s-all"] = cs_sum
     else:
-        rec[f'Ng-p{sfx}'] = cp_sum
-        rec[f'Ng-s{sfx}'] = cs_sum
+        rec[f"Ng-p{sfx}"] = cp_sum
+        rec[f"Ng-s{sfx}"] = cs_sum
     # The all-photon 2I* column has two spaces after the star — historical, and
     # part of the .b?4 format, so it is preserved exactly rather than tidied.
-    two_istar_key = f'2I*  ({color})' if state is None else f'2I*{sfx} ({color})'
-    rec.update({
-        f'Number of Photons (fit window){sfx} ({color})': cp_sum + cs_sum,
-        two_istar_key: two_istar,
-        f'Tau{sfx} ({color})': g(0),
-        f'BIFL scatter?{sfx} ({color})': int(cfg['BIFL_scatter']),
-        f'2I*: P+2S?{sfx} ({color})': int(cfg['p2s_twoIstar']),
-    })
-    if cfg.get('model', 'fit23') == 'fit23':
-        rec[f'gamma{sfx} ({color})'] = g(1)
-        rec[f'r0{sfx} ({color})'] = g(2)
-        rec[f'rho{sfx} ({color})'] = g(3)
-        rec[f'r Scatter{sfx} ({color})'] = float(extras.get('r_scatter', float('nan')))
-        rec[f'r Experimental{sfx} ({color})'] = float(
-            extras.get('r_experimental', float('nan')))
+    two_istar_key = f"2I*  ({color})" if state is None else f"2I*{sfx} ({color})"
+    rec.update(
+        {
+            f"Number of Photons (fit window){sfx} ({color})": cp_sum + cs_sum,
+            two_istar_key: two_istar,
+            f"Tau{sfx} ({color})": g(0),
+            f"BIFL scatter?{sfx} ({color})": int(cfg["BIFL_scatter"]),
+            f"2I*: P+2S?{sfx} ({color})": int(cfg["p2s_twoIstar"]),
+        }
+    )
+    if cfg.get("model", "fit23") == "fit23":
+        rec[f"gamma{sfx} ({color})"] = g(1)
+        rec[f"r0{sfx} ({color})"] = g(2)
+        rec[f"rho{sfx} ({color})"] = g(3)
+        rec[f"r Scatter{sfx} ({color})"] = float(extras.get("r_scatter", float("nan")))
+        rec[f"r Experimental{sfx} ({color})"] = float(extras.get("r_experimental", float("nan")))
     else:
-        for i, nm in enumerate(cfg.get('param_names') or ()):
-            rec[f'{nm}{sfx} ({color})'] = g(i)
+        for i, nm in enumerate(cfg.get("param_names") or ()):
+            rec[f"{nm}{sfx} ({color})"] = g(i)
     return rec
 
 
@@ -187,8 +187,18 @@ def pool_states_worker(args):
     perpendicular counts, unwindowed and unshifted, because both are cheap
     linear operations the caller applies once to the sum rather than per burst.
     """
-    (bursts, rc_name, rc_shape, rc_dtype_str,
-     mt_name, mt_shape, mt_dtype_str, det_order, perdet_cfg, state_info) = args
+    (
+        bursts,
+        rc_name,
+        rc_shape,
+        rc_dtype_str,
+        mt_name,
+        mt_shape,
+        mt_dtype_str,
+        det_order,
+        perdet_cfg,
+        state_info,
+    ) = args
 
     if rc_name is None or mt_name is None or state_info is None:
         return {}
@@ -206,7 +216,7 @@ def pool_states_worker(args):
         state_full = np.ndarray(st_shape, dtype=np.dtype(st_dtype), buffer=st_sh.buf)
 
         pooled = {
-            det: np.zeros((n_states, 2, int(perdet_cfg[det]['half_len'])), dtype=np.int64)
+            det: np.zeros((n_states, 2, int(perdet_cfg[det]["half_len"])), dtype=np.int64)
             for det in det_order
         }
         for first_ph, last_ph in bursts:
@@ -222,7 +232,7 @@ def pool_states_worker(args):
                 for det in det_order:
                     cfg = perdet_cfg[det]
                     cp, cs = _hist2_split_core_classlut(
-                        mt_sel, rc_sel, cfg['class_lut'], int(cfg['half_len'])
+                        mt_sel, rc_sel, cfg["class_lut"], int(cfg["half_len"])
                     )
                     pooled[det][state, 0] += cp
                     pooled[det][state, 1] += cs
@@ -249,9 +259,20 @@ def process_one_file_worker(args):
     state, and those results are merged into the *same* row as extra columns —
     a sub-population is a column of the burst, not a row of its own.
     """
-    (fname, bursts, rc_name, rc_shape, rc_dtype_str,
-     mt_name, mt_shape, mt_dtype_str, det_order, perdet_cfg, shift_int,
-     state_info) = args
+    (
+        fname,
+        bursts,
+        rc_name,
+        rc_shape,
+        rc_dtype_str,
+        mt_name,
+        mt_shape,
+        mt_dtype_str,
+        det_order,
+        perdet_cfg,
+        shift_int,
+        state_info,
+    ) = args
 
     # Missing TTTR: emit defaults (cp=cs=-1 → photon count -2, matching the
     # historical "no data" sentinel).
@@ -260,8 +281,7 @@ def process_one_file_worker(args):
         for _first, _last in bursts:
             for det in det_order:
                 cfg = perdet_cfg.get(det, {})
-                out.append(_record(fname, det, det.lower(), cfg,
-                                    None, float('nan'), -1, -1))
+                out.append(_record(fname, det, det.lower(), cfg, None, float("nan"), -1, -1))
         return out, len(bursts)
 
     # Attach shared memory
@@ -286,7 +306,7 @@ def process_one_file_worker(args):
         for det in det_order:
             cfg = perdet_cfg[det]
             fitters[det] = _build_fitter(cfg)
-            n = int(cfg['half_len'])
+            n = int(cfg["half_len"])
             half_len[det] = n
             decay_buf[det] = np.zeros(2 * n, dtype=np.float64)
             prev_ranges[det] = (0, 0, 0, 0)
@@ -312,27 +332,39 @@ def process_one_file_worker(args):
                 for state in [None] + list(range(n_states)):
                     if state is None:
                         mt_sel, rc_sel = mt_bins, rc_slice
-                        floor = int(cfg['min_photons'])
+                        floor = int(cfg["min_photons"])
                     else:
                         pick = st_slice == state
                         mt_sel, rc_sel = mt_bins[pick], rc_slice[pick]
                         # Split by colour *and* state a burst is thin, so the
                         # state passes get their own (lower) threshold.
-                        floor = int(cfg.get('state_min_photons') or cfg['min_photons'])
+                        floor = int(cfg.get("state_min_photons") or cfg["min_photons"])
 
-                    cp_u32, cs_u32 = _hist2_split_core_classlut(
-                        mt_sel, rc_sel, cfg['class_lut'], n
-                    )
-                    cp_sum = int(cp_u32.sum()); cs_sum = int(cs_u32.sum())
+                    cp_u32, cs_u32 = _hist2_split_core_classlut(mt_sel, rc_sel, cfg["class_lut"], n)
+                    cp_sum = int(cp_u32.sum())
+                    cs_sum = int(cs_u32.sum())
 
                     if (cp_sum + cs_sum) < floor:
-                        rec.update(_record(fname, det, color, cfg, None,
-                                           float('nan'), cp_sum, cs_sum, state=state))
+                        rec.update(
+                            _record(
+                                fname,
+                                det,
+                                color,
+                                cfg,
+                                None,
+                                float("nan"),
+                                cp_sum,
+                                cs_sum,
+                                state=state,
+                            )
+                        )
                         continue
 
                     # Write only the fit window, zeroing the previous burst's.
-                    sb = int(cfg['sb']); eb = int(cfg['eb'])
-                    s0 = max(0, sb); s1 = min(n, eb)
+                    sb = int(cfg["sb"])
+                    eb = int(cfg["eb"])
+                    s0 = max(0, sb)
+                    s1 = min(n, eb)
                     d = decay_buf[det]
                     pv_vv0, pv_vv1, pv_vh0, pv_vh1 = prev_ranges[det]
                     if pv_vv1 > pv_vv0:
@@ -353,19 +385,33 @@ def process_one_file_worker(args):
                     # at the panel's one global guess pulls every state toward
                     # the same answer, which is the thing the split exists to
                     # tell apart.
-                    x0 = cfg['x0']
+                    x0 = cfg["x0"]
                     if state is not None:
-                        x0 = (cfg.get('state_x0') or {}).get(state, x0)
+                        x0 = (cfg.get("state_x0") or {}).get(state, x0)
                     res = fitters[det](
-                        data=d, initial_values=x0, fixed=cfg['fixed'],
+                        data=d,
+                        initial_values=x0,
+                        fixed=cfg["fixed"],
                     )
                     x = np.asarray(res.x, dtype=np.float64)
                     two_istar = float(res.twoIstar)
-                    rec.update(_record(
-                        fname, det, color, cfg, x, two_istar, cp_sum, cs_sum,
-                        state=state,
-                        extras={'r_scatter': res.r_scatter,
-                                'r_experimental': res.r_experimental}))
+                    rec.update(
+                        _record(
+                            fname,
+                            det,
+                            color,
+                            cfg,
+                            x,
+                            two_istar,
+                            cp_sum,
+                            cs_sum,
+                            state=state,
+                            extras={
+                                "r_scatter": res.r_scatter,
+                                "r_experimental": res.r_experimental,
+                            },
+                        )
+                    )
                 out.append(rec)
         return out, len(bursts)
     finally:

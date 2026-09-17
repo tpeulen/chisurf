@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from .models import LCurveResult, MEMResult
-from .serialization import request_from_dict, request_to_payload as _request_to_payload, result_to_payload, settings_from_dict, to_jsonable
+from .serialization import request_from_dict, result_to_payload, settings_from_dict, to_jsonable
+from .serialization import request_to_payload as _request_to_payload
 
 PLUGIN_ID = "maxent_decay"
 CONTRACT_VERSION = "1.0.0"
@@ -116,9 +117,17 @@ def contract_descriptor() -> dict[str, Any]:
             },
         },
         "rpc_methods": {
-            METHOD_RUN_LIFETIME: {"input": "MEMRequest", "output": "MEMResult", "long_running": True},
+            METHOD_RUN_LIFETIME: {
+                "input": "MEMRequest",
+                "output": "MEMResult",
+                "long_running": True,
+            },
             METHOD_RUN_FRET: {"input": "MEMRequest", "output": "MEMResult", "long_running": True},
-            METHOD_RUN_LCURVE: {"input": "MEMRequest", "output": "LCurveResult", "long_running": True},
+            METHOD_RUN_LCURVE: {
+                "input": "MEMRequest",
+                "output": "LCurveResult",
+                "long_running": True,
+            },
             METHOD_DESCRIBE: {"input": "{}", "output": "Contract", "long_running": False},
         },
     }

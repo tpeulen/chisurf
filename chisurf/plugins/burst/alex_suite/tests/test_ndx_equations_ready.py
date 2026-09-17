@@ -13,8 +13,6 @@ come and go.
 
 from __future__ import annotations
 
-import pathlib
-
 import pytest
 
 from chisurf.plugins.burst.alex_suite.gui.tool import AlexSuiteTool
@@ -43,7 +41,7 @@ def test_equations_are_loaded_when_missing(qapp):
     """
     from ndxplorer.core.plot_main import NDXplorer
 
-    ndx = NDXplorer()                       # never shown: deferred init has not run
+    ndx = NDXplorer()  # never shown: deferred init has not run
     try:
         assert not getattr(ndx, "equations", None), (
             "this test is meaningless if the window already has equations"
@@ -72,4 +70,4 @@ def test_a_failure_does_not_stop_the_step():
         def __setattr__(self, name, value):
             raise RuntimeError("no settings here")
 
-    AlexSuiteTool._ensure_ndx_equations(_Broken())   # must not raise
+    AlexSuiteTool._ensure_ndx_equations(_Broken())  # must not raise

@@ -16,6 +16,7 @@ Compiling costs about as much as one ``loadUi`` (3.51 ms vs 3.40 ms), so the
 break-even is 1.22 constructions per file: a widget built once is marginally
 slower, anything built twice or more wins. Plots are rebuilt per fit.
 """
+
 import glob
 import pathlib
 
@@ -26,10 +27,9 @@ from qtpy import QtWidgets, uic  # noqa: E402
 
 import chisurf.gui.decorators as decorators  # noqa: E402
 
-
-UI_FILES = sorted(glob.glob(
-    str(pathlib.Path(__file__).parents[2] / "chisurf" / "**" / "*.ui"),
-    recursive=True))
+UI_FILES = sorted(
+    glob.glob(str(pathlib.Path(__file__).parents[2] / "chisurf" / "**" / "*.ui"), recursive=True)
+)
 
 
 def _loadui_reference(path, qtbot):
@@ -79,8 +79,9 @@ def test_compiled_matches_loadui(path, qtbot):
 
 def test_cache_is_keyed_on_mtime(tmp_path):
     """Editing a .ui during development must not serve a stale layout."""
-    src = next((p for p in UI_FILES
-                if decorators._compiled_ui_class(pathlib.Path(p)) is not None), None)
+    src = next(
+        (p for p in UI_FILES if decorators._compiled_ui_class(pathlib.Path(p)) is not None), None
+    )
     if src is None:
         pytest.skip("no compilable .ui file available")
 
@@ -91,6 +92,7 @@ def test_cache_is_keyed_on_mtime(tmp_path):
     assert decorators._compiled_ui_class(target) is first, "should be cached"
 
     import os
+
     st = target.stat()
     os.utime(target, (st.st_atime, st.st_mtime + 10))
     assert decorators._compiled_ui_class(target) is not first, "stale after touch"

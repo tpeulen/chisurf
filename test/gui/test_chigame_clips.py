@@ -30,12 +30,12 @@ def _tone(seconds: float = 1.0, rate: int = 22050, freq: float = 440.0) -> np.nd
         Signed 16-bit mono.
     """
     time = np.arange(int(rate * seconds)) / rate
-    signal = (np.sin(2 * np.pi * freq * time) * 0.6
-              + np.sin(2 * np.pi * freq * 2.7 * time) * 0.2)
+    signal = np.sin(2 * np.pi * freq * time) * 0.6 + np.sin(2 * np.pi * freq * 2.7 * time) * 0.2
     return (signal * 32767).astype(np.int16)
 
 
 # -- the codec ------------------------------------------------------------
+
 
 def test_the_codec_is_four_to_one_and_sounds_like_the_input():
     """Four bits a sample is the entire reason the soundtrack is committable."""
@@ -47,7 +47,7 @@ def test_the_codec_is_four_to_one_and_sounds_like_the_input():
     assert rate == 22050
     assert back.size == pcm.size, "a clip has to come back the length it went in"
     error = back.astype(float) - pcm.astype(float)
-    snr = 10 * np.log10((pcm.astype(float) ** 2).sum() / max((error ** 2).sum(), 1e-9))
+    snr = 10 * np.log10((pcm.astype(float) ** 2).sum() / max((error**2).sum(), 1e-9))
     assert snr > 15.0, f"only {snr:.1f} dB"
 
 
@@ -73,14 +73,14 @@ def test_a_block_does_not_depend_on_the_one_before_it():
     stride = 4 + (adpcm.BLOCK - 1 + 1) // 2
     # Scribble over the middle of the second block's nibbles.
     at = 20 + stride + 40
-    clip[at:at + 60] = b"\xff" * 60
+    clip[at : at + 60] = b"\xff" * 60
     back, _ = adpcm.decode(bytes(clip))
 
     per_block = adpcm.BLOCK
-    intact = back[3 * per_block:4 * per_block].astype(float)
-    original = pcm[3 * per_block:4 * per_block].astype(float)
+    intact = back[3 * per_block : 4 * per_block].astype(float)
+    original = pcm[3 * per_block : 4 * per_block].astype(float)
     error = intact - original
-    snr = 10 * np.log10((original ** 2).sum() / max((error ** 2).sum(), 1e-9))
+    snr = 10 * np.log10((original**2).sum() / max((error**2).sum(), 1e-9))
     assert snr > 15.0, "damage in one block leaked into a later one"
 
 
@@ -110,6 +110,7 @@ def test_an_empty_or_tiny_input_round_trips():
 
 
 # -- the two decode routes ------------------------------------------------
+
 
 def _gpu_or_skip():
     """Skip when this machine has no compute adapter."""
@@ -153,8 +154,7 @@ def test_the_routes_agree_on_a_shipped_clip():
 def test_a_block_boundary_does_not_shift_between_routes():
     """Off-by-one in the tail block would be inaudible and still wrong."""
     _gpu_or_skip()
-    for count in (1, 2, adpcm.BLOCK - 1, adpcm.BLOCK, adpcm.BLOCK + 1,
-                  adpcm.BLOCK * 3 + 7):
+    for count in (1, 2, adpcm.BLOCK - 1, adpcm.BLOCK, adpcm.BLOCK + 1, adpcm.BLOCK * 3 + 7):
         clip = adpcm.encode(_tone(2.0)[:count], 22050)
         on_cpu, _ = adpcm.decode_cpu(clip)
         on_gpu, _ = adpcm.decode_gpu(clip)
@@ -217,6 +217,7 @@ def test_the_host_lends_its_own_device_rather_than_making_a_second(qapp):
 
 # -- what is shipped ------------------------------------------------------
 
+
 def test_the_shipped_archives_hold_what_the_credits_say():
     """Five music loops and 512 sound effects, or the credits file is wrong."""
     music = audio.clip_names("music")
@@ -227,7 +228,7 @@ def test_the_shipped_archives_hold_what_the_credits_say():
     assert set(music) == {"level_1", "level_2", "level_3", "title_screen", "ending"}
     assert len(effects) == 512, len(effects)
 
-    credits = (audio.ASSET_DIR / "CREDITS.md")
+    credits = audio.ASSET_DIR / "CREDITS.md"
     assert credits.is_file(), "redistributed work has to say whose it is"
     text = credits.read_text(encoding="utf-8")
     assert "Juhani Junkala" in text and "CC0" in text
@@ -237,8 +238,7 @@ def test_the_whole_soundtrack_is_smaller_than_the_screenshots():
     """The size budget that decided the format."""
     if not (audio.ASSET_DIR / "music.zip").is_file():
         pytest.skip("audio assets are not installed in this checkout")
-    total = sum(path.stat().st_size
-                for path in audio.ASSET_DIR.glob("*.zip"))
+    total = sum(path.stat().st_size for path in audio.ASSET_DIR.glob("*.zip"))
     assert total < 9_000_000, f"{total / 1e6:.1f} MB"
 
 
@@ -276,6 +276,7 @@ def test_asking_for_a_clip_that_is_not_there_is_not_an_error():
 
 # -- the wiring -----------------------------------------------------------
 
+
 def test_every_context_plays_a_real_recording():
     """The synthesiser is the fallback now, not the soundtrack.
 
@@ -308,9 +309,26 @@ def test_every_game_event_maps_onto_a_clip_that_exists():
 
 def test_the_events_the_games_actually_raise_are_all_mapped():
     """A game asking for a sound nobody wired up gets a beep, silently."""
-    for event in ("paddle", "wall", "launch", "score", "lost", "break", "crack",
-                  "settle", "clear", "reveal", "flag", "guess",
-                  "emit", "unbind", "seal", "bleach", "talk", "cross"):
+    for event in (
+        "paddle",
+        "wall",
+        "launch",
+        "score",
+        "lost",
+        "break",
+        "crack",
+        "settle",
+        "clear",
+        "reveal",
+        "flag",
+        "guess",
+        "emit",
+        "unbind",
+        "seal",
+        "bleach",
+        "talk",
+        "cross",
+    ):
         assert ProceduralPack().sound_clip(event), event
     assert ProceduralPack().sound_clip("something nobody defined") is None
 

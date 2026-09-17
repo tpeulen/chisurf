@@ -50,7 +50,8 @@ class _Recorder:
 def _update(recorder, paths, *, preview):
     """Call the real method against the recorder."""
     BurstSelectionTool._update_selected_files(
-        recorder, [Path(p) for p in paths], None, preview=preview)
+        recorder, [Path(p) for p in paths], None, preview=preview
+    )
 
 
 def test_a_preview_searches_nothing():
@@ -62,8 +63,8 @@ def test_a_preview_searches_nothing():
     """
     rec = _Recorder()
     _update(rec, ["/data/a.pto", "/data/b.pto"], preview=True)
-    assert rec.analysed == []                      # the point
-    assert len(rec.diagnostics_for) == 1           # but the plots still load
+    assert rec.analysed == []  # the point
+    assert len(rec.diagnostics_for) == 1  # but the plots still load
 
 
 def test_a_preview_still_shows_a_table_it_already_has():

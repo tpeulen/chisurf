@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
-from typing import Dict, List
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.gui import chiplot as cp
 
 import chisurf as cs
 from chisurf.core.fluorescence.decay import (
@@ -18,16 +15,20 @@ from chisurf.core.fluorescence.decay import (
     sample_decay_shot_noise,
     scattered_light_decay_pattern,
 )
+from chisurf.gui import chiplot as cp
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 
 from ..api import FilterResult, compute_filters, synthetic_component_decay, unmix_decay
-from chisurf.gui import dialogs
 
 
 def _build_filter_client():
     from ..gui.client import FilterCalcClient
+
     return FilterCalcClient()
+
+
 from .calculator_options import CalculatorOptionsViewModel
 from .data_loading import load_vector
 from .widgets import SpeciesListWidget
@@ -35,17 +36,37 @@ from .widgets import SpeciesListWidget
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 #: Convolution/acquisition plumbing hidden from the Auto-fit parameter table.
 #: These are configured by the auto-fit itself (axis, range, IRF placement,
 #: acquisition times), not results the user reads or links, and showing all of
 #: them would bury the handful of lifetimes and amplitudes that matter.
-_AUTOFIT_HIDDEN_PARAMETERS = frozenset({
-    "dt", "rep", "start", "stop", "irf_start", "irf_stop", "lb", "n0",
-    "win-size", "tBg", "tMeas", "tDead", "r0", "g", "l1", "l2",
-    "lamp background", "irf position",
-})
+_AUTOFIT_HIDDEN_PARAMETERS = frozenset(
+    {
+        "dt",
+        "rep",
+        "start",
+        "stop",
+        "irf_start",
+        "irf_stop",
+        "lb",
+        "n0",
+        "win-size",
+        "tBg",
+        "tMeas",
+        "tDead",
+        "r0",
+        "g",
+        "l1",
+        "l2",
+        "lamp background",
+        "irf position",
+    }
+)
 
 
 @persist_plugin_state("fcs_filter_calculator")
@@ -53,8 +74,14 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     """A modular implementation of the Filtered FCS: Lifetime Filter Calculator."""
 
     _PLOT_COLORS = (
-        "#38bdf8", "#fb7185", "#4ade80", "#facc15",
-        "#c084fc", "#fb923c", "#2dd4bf", "#f472b6",
+        "#38bdf8",
+        "#fb7185",
+        "#4ade80",
+        "#facc15",
+        "#c084fc",
+        "#fb923c",
+        "#2dd4bf",
+        "#f472b6",
     )
     _NAMED_COLORS = {
         "green": "#4ade80",
@@ -70,7 +97,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.setWindowTitle("Filtered FCS: Lifetime Filter Calculator")
         self.resize(1000, 600)
 
-        self._total_paths: List[pathlib.Path] = []
+        self._total_paths: list[pathlib.Path] = []
         self._total_vector: np.ndarray | None = None
         self._total_vectors_by_detector: dict[str, np.ndarray] = {}
         # Micro-time axis taken from the loaded data / setup: the TAC bin width
@@ -89,7 +116,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         #: settings deliberately live in the Instrument dock instead and reach the
         #: fit through `_fit_period_ns`.
         self._auto_fit_settings: dict = {
-            "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
+            "kind": "lifetime",
+            "n_components": 2,
+            "tau_min": 0.2,
+            "tau_max": 8.0,
         }
         #: Result of the last auto-fit, including the live `Fit` and its model
         #: whose parameters the Auto-fit dock's table exposes for linking.
@@ -109,10 +139,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         # Detector Wizard Support
         from .data_loading import HAS_DETECTOR_WIZARD, load_detector_setups
+
         self._has_detector_wizard = HAS_DETECTOR_WIZARD
         self._load_detector_setups = load_detector_setups
         self._detector_settings = None
-        
+
         # Cache for loaded decay data to avoid redundant file loading
         self._decay_cache = {}  # Key: (tuple(paths), tuple(chs)), Value: loaded_vectors
         self._routing_cache = {}  # Key: file_path, Value: dict of {routing_ch: histogram}
@@ -158,7 +189,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         data_layout = QtWidgets.QVBoxLayout(data_group)
         data_layout.setContentsMargins(3, 3, 3, 3)
         data_layout.setSpacing(2)
-        
+
         from chisurf.gui.autoform import AutoForm
         from chisurf.gui.autoform.sections.builtin import ToggleWidget
 
@@ -172,9 +203,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         option_toggles = self.options_form.findChildren(ToggleWidget)
         self.anisotropy_mode_cb = option_toggles[0].checkbox
         self.fit_background_cb = option_toggles[1].checkbox
-        
+
         # Detector selection + per-detector IRF editor (unified table).
         from .widgets import DetectorIrfTableWidget
+
         self.detector_selection = DetectorIrfTableWidget()
         self.detector_selection.selectionChanged.connect(self._on_detector_selection_changed)
         data_layout.addWidget(self.detector_selection)
@@ -207,7 +239,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         total_row.addWidget(self.le_total, 1)
         self.btn_load_total = QtWidgets.QToolButton()
         self.btn_load_total.setText(f"{Glyphs.OPEN} Load…")
-        self.btn_load_total.setToolTip("Open a measured mixed decay histogram to replace the built-in example.")
+        self.btn_load_total.setToolTip(
+            "Open a measured mixed decay histogram to replace the built-in example."
+        )
         self.btn_load_total.clicked.connect(self._add_total_dialog)
         total_row.addWidget(self.btn_load_total)
         self.btn_total_from_correlator = QtWidgets.QToolButton()
@@ -302,16 +336,24 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.btn_unmix = self.toolbar.widgetForAction(unmix_action)
 
         project_action = self.toolbar.addAction(f"{Glyphs.SAVE} Project")
-        project_action.setToolTip("Save or load a Filter Calculator project, or export its results.")
+        project_action.setToolTip(
+            "Save or load a Filter Calculator project, or export its results."
+        )
         project_button = self.toolbar.widgetForAction(project_action)
         project_menu = QtWidgets.QMenu(project_button)
         project_menu.setToolTipsVisible(True)
         save_action = project_menu.addAction("Save project…")
         load_action = project_menu.addAction("Load project…")
         self.action_export = project_menu.addAction("Export results…")
-        save_action.setToolTip("Save inputs, component definitions, filters, and the current GUI state.")
-        load_action.setToolTip("Restore a saved Filter Calculator project and recompute its active inputs.")
-        self.action_export.setToolTip("Export computed filters, reconstruction, residuals, and metadata.")
+        save_action.setToolTip(
+            "Save inputs, component definitions, filters, and the current GUI state."
+        )
+        load_action.setToolTip(
+            "Restore a saved Filter Calculator project and recompute its active inputs."
+        )
+        self.action_export.setToolTip(
+            "Export computed filters, reconstruction, residuals, and metadata."
+        )
         save_action.triggered.connect(self._on_save_project)
         load_action.triggered.connect(self._on_load_project)
         self.action_export.triggered.connect(self._on_export)
@@ -328,13 +370,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # beside this module, no base class to inherit.
         from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
-        attach_help_and_guide(
-            self, self.toolbar, title="Filtered FCS — help", model=self
-        )
+        attach_help_and_guide(self, self.toolbar, title="Filtered FCS — help", model=self)
 
     def _add_total_dialog(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Select mixed total decay", "",
+            self,
+            "Select mixed total decay",
+            "",
             "Decay files (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr);;All files (*)",
         )
         if paths:
@@ -388,13 +430,19 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.lbl_autofit_range.setStyleSheet("color: palette(mid);")
         form.addRow(self.lbl_autofit_range)
 
-        for w in (self.cb_autofit_kind, self.sb_autofit_n,
-                  self.sb_autofit_tmin, self.sb_autofit_tmax):
+        for w in (
+            self.cb_autofit_kind,
+            self.sb_autofit_n,
+            self.sb_autofit_tmin,
+            self.sb_autofit_tmax,
+        ):
             sig = w.currentIndexChanged if isinstance(w, QtWidgets.QComboBox) else w.valueChanged
             sig.connect(self._sync_autofit_settings)
 
         self.btn_autofit_run = QtWidgets.QPushButton(f"{Glyphs.TARGET} Fit + generate filters")
-        self.btn_autofit_run.setToolTip("Run the auto-fit over the selected range and add the species.")
+        self.btn_autofit_run.setToolTip(
+            "Run the auto-fit over the selected range and add the species."
+        )
         self.btn_autofit_run.clicked.connect(lambda: self._auto_fit_components())
         form.addRow(self.btn_autofit_run)
         self.lbl_autofit_status = QtWidgets.QLabel()
@@ -441,10 +489,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 # fitted topology's parameters (and what it presents) are rows.
                 used = getattr(model, "structure_parameter_ids", None)
                 used = set(used()) if callable(used) else None
-                params = [p for p in model.parameters_all
-                          if getattr(p, "name", "") not in _AUTOFIT_HIDDEN_PARAMETERS
-                          and (used is None or getattr(p, "is_output", False)
-                               or getattr(p, "canonical_id", None) in used)]
+                params = [
+                    p
+                    for p in model.parameters_all
+                    if getattr(p, "name", "") not in _AUTOFIT_HIDDEN_PARAMETERS
+                    and (
+                        used is None
+                        or getattr(p, "is_output", False)
+                        or getattr(p, "canonical_id", None) in used
+                    )
+                ]
             except Exception as error:
                 cs.logging.warning(f"Auto-fit parameter table unavailable: {error}")
                 params = []
@@ -504,7 +558,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             "kind": self.cb_autofit_kind.currentData(),
             "n_components": int(self.sb_autofit_n.value()),
             "tau_min": float(self.sb_autofit_tmin.value()),
-            "tau_max": float(max(self.sb_autofit_tmax.value(), self.sb_autofit_tmin.value() + 0.01)),
+            "tau_max": float(
+                max(self.sb_autofit_tmax.value(), self.sb_autofit_tmin.value() + 0.01)
+            ),
         }
 
     def _build_instrument_panel(self) -> QtWidgets.QWidget:
@@ -543,6 +599,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if hasattr(self, "instrument_model"):
             return self.instrument_model.to_dict()
         from .instrument_options import DEFAULTS
+
         return dict(DEFAULTS)
 
     def _fit_period_ns(self, n_bins: int, dt: float) -> float | None:
@@ -558,7 +615,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _build_info_panel(self) -> QtWidgets.QWidget:
         """A read-only info panel that gathers all the relevant state + results,
-        plus an editable per-detector fit-range table."""
+        plus an editable per-detector fit-range table.
+        """
         panel = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(panel)
         layout.setContentsMargins(6, 6, 6, 6)
@@ -587,6 +645,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.info_text.setReadOnly(True)
         self.info_text.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
         from chisurf.gui.widgets.general import table_font
+
         self.info_text.setFont(table_font())
         layout.addWidget(self.info_text, 1)
         return panel
@@ -663,14 +722,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             lines.append("  source: example / in-memory")
         else:
             lines.append("  (none)")
-        lines.append(f"  bins: {n_bins}   bin width: {dt:.4g} ns"
-                     f"   micro-time binning: ×{self._micro_time_binning}")
+        lines.append(
+            f"  bins: {n_bins}   bin width: {dt:.4g} ns"
+            f"   micro-time binning: ×{self._micro_time_binning}"
+        )
         g0, g1 = self._fit_range(n_bins or 1)
         lines.append(f"  global fit range: {g0}–{g1} bins")
         # Detectors
         lines.append("")
         lines.append("== Detectors (IRF) ==")
-        for det in (self.detector_selection.get_selected() or ["default"]):
+        for det in self.detector_selection.get_selected() or ["default"]:
             has_irf = bool(self.detector_selection.irf_path(det, ""))
             lines.append(
                 f"  {det}: width {self.detector_selection.width(det, ''):.3f} ns, "
@@ -706,18 +767,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     def _build_docks(self, sources_panel) -> None:
         self.dock_area.addTab(sources_panel, "Decay sources")
         sources_dock = self.dock_area.find_main_tab_widget()
-        detector_dock = self._register_split_dock(
-            self.setup_tab, "Setup", sources_dock, "bottom"
-        )
-        self._register_split_dock(
-            self._build_autofit_panel(), "Auto-fit", sources_dock, "bottom"
-        )
+        self._register_split_dock(self.setup_tab, "Setup", sources_dock, "bottom")
+        self._register_split_dock(self._build_autofit_panel(), "Auto-fit", sources_dock, "bottom")
         self._register_split_dock(
             self._build_instrument_panel(), "Instrument", sources_dock, "bottom"
         )
-        self._register_split_dock(
-            self._build_info_panel(), "Info", sources_dock, "bottom"
-        )
+        self._register_split_dock(self._build_info_panel(), "Info", sources_dock, "bottom")
         filters_dock = self._register_split_dock(
             self.plot_filters, "Lifetime filters", sources_dock, "right"
         )
@@ -818,7 +873,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         floor = max(float(ref_peak) * 1e-4, 1e-9) if ref_peak else 1e-9
         disp = np.where(disp >= floor, disp, np.nan)
         plot.line(
-            x, disp,
+            x,
+            disp,
             pen=cp.to_pen("#22d3ee", style="dot"),
             name=f"{det_name}: IRF" if det_name else "IRF",
         )
@@ -861,7 +917,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     def _nuisance_patterns(
         self,
         total_decay: np.ndarray,
-        component_decays: List[np.ndarray] | None = None,
+        component_decays: list[np.ndarray] | None = None,
         detector_name: str | None = None,
         role: str = "",
     ) -> tuple[list[np.ndarray], list[str]]:
@@ -873,7 +929,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             patterns.append(afterpulse_decay_pattern(n_bins))
             labels.append("Afterpulse / constant")
         if self.options_model.scatter_irf:
-            detector = detector_name or (self.detector_selection.get_selected()[:1] or ["default"])[0]
+            detector = (
+                detector_name or (self.detector_selection.get_selected()[:1] or ["default"])[0]
+            )
             configured_path = self.detector_selection.irf_path(detector, role)
             if configured_path:
                 irf_path = pathlib.Path(configured_path)
@@ -899,12 +957,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 else:
                     # Fallback (no usable synthetic IRF, e.g. width 0): the coarse
                     # amplitude/position fit against the species basis.
+                    basis = [np.asarray(d, dtype=float).ravel() for d in (component_decays or [])]
                     basis = [
-                        np.asarray(d, dtype=float).ravel()
-                        for d in (component_decays or [])
-                    ]
-                    basis = [
-                        d for d in basis
+                        d
+                        for d in basis
                         if d.size == total.size
                         and np.all(np.isfinite(d))
                         and np.all(d >= 0.0)
@@ -939,17 +995,21 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         urls = event.mimeData().urls()
         if not urls:
             return
-        
+
         paths = [pathlib.Path(url.toLocalFile()) for url in urls]
-        
+
         # If dropping on total decay group area
-        if self.le_total.geometry().translated(self.le_total.parentWidget().mapTo(self, QtCore.QPoint(0,0))).contains(event.pos()):
+        if (
+            self.le_total.geometry()
+            .translated(self.le_total.parentWidget().mapTo(self, QtCore.QPoint(0, 0)))
+            .contains(event.pos())
+        ):
             self._set_total_paths(paths)
         else:
             # Default to adding as species
             self.lw_species.add_pattern(paths)
 
-    def _set_total_paths(self, paths: List[pathlib.Path], from_correlator: bool = False) -> None:
+    def _set_total_paths(self, paths: list[pathlib.Path], from_correlator: bool = False) -> None:
         self._total_paths = paths
         # Remember whether the mixed decay came from the Correlator (so a later
         # visit can re-sync it) or was manually loaded (leave it alone).
@@ -967,7 +1027,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         else:
             name = paths[0].name
             if len(paths) > 1:
-                name += f" (+{len(paths)-1} files)"
+                name += f" (+{len(paths) - 1} files)"
             self.le_total.setText(name)
             self.le_total.setToolTip("\n".join([str(p.absolute()) for p in paths]))
             # Real data replaces the built-in example → drop the eye-candy species.
@@ -986,14 +1046,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             widget = widget.parent()
         return None
 
-    def _correlator_file_paths(self) -> List[pathlib.Path]:
+    def _correlator_file_paths(self) -> list[pathlib.Path]:
         """TTTR files loaded in the sibling Correlator (Files & Steps), if any."""
         ctx = self._correlator_context()
         if ctx is None:
             return []
         # Prefer the fully-expanded list; fall back to the checked paths.
-        paths = list(getattr(ctx, "expanded_files", []) or []) or \
-            list(getattr(ctx, "file_paths", []) or [])
+        paths = list(getattr(ctx, "expanded_files", []) or []) or list(
+            getattr(ctx, "file_paths", []) or []
+        )
         return [pathlib.Path(p) for p in paths]
 
     def _use_correlator_total(self) -> None:
@@ -1006,7 +1067,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         paths = [p for p in self._correlator_file_paths() if pathlib.Path(p).is_file()]
         if not paths:
             dialogs.information(
-                self, "No correlator data",
+                self,
+                "No correlator data",
                 "No files are loaded in the Correlator (Files & Steps) step yet.",
             )
             return
@@ -1019,8 +1081,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # re-sync the mixed decay with the Correlator's CURRENT files and refresh
         # the plots — but only when the total is correlator-sourced (or unset), so a
         # manually-loaded measured decay is never overwritten.
-        corr = [pathlib.Path(p) for p in self._correlator_file_paths()
-                if pathlib.Path(p).is_file()]
+        corr = [pathlib.Path(p) for p in self._correlator_file_paths() if pathlib.Path(p).is_file()]
         first_show = not getattr(self, "_correlator_autoload_done", False)
         self._correlator_autoload_done = True
         adopt = getattr(self, "_total_from_correlator", False) or not self._total_paths
@@ -1037,13 +1098,14 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     def _has_total_decay(self) -> bool:
         return bool(self._total_paths) or self._total_vector is not None
 
-    def _total_decay(self, chs: List[str] | None = None) -> np.ndarray:
+    def _total_decay(self, chs: list[str] | None = None) -> np.ndarray:
         if self._total_paths:
             return self._load_and_sum_vectors(self._total_paths, chs)
         if self._total_vectors_by_detector and chs:
             selected = [
                 self._total_vectors_by_detector[name]
-                for name in chs if name in self._total_vectors_by_detector
+                for name in chs
+                if name in self._total_vectors_by_detector
             ]
             if selected:
                 return np.sum(selected, axis=0)
@@ -1069,12 +1131,24 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 fwhm_ns=0.16 + 0.035 * index,
                 shape=0.35 * index,
             )
-            fast = synthetic_component_decay(n_bins, {
-                "model": "lifetime", "lifetime": 1.2, "bin_width": bin_width,
-            }, irf=irf)
-            slow = synthetic_component_decay(n_bins, {
-                "model": "lifetime", "lifetime": 4.0, "bin_width": bin_width,
-            }, irf=irf)
+            fast = synthetic_component_decay(
+                n_bins,
+                {
+                    "model": "lifetime",
+                    "lifetime": 1.2,
+                    "bin_width": bin_width,
+                },
+                irf=irf,
+            )
+            slow = synthetic_component_decay(
+                n_bins,
+                {
+                    "model": "lifetime",
+                    "lifetime": 4.0,
+                    "bin_width": bin_width,
+                },
+                irf=irf,
+            )
             fast_patterns[detector] = fast.tolist()
             slow_patterns[detector] = slow.tolist()
             expected = (
@@ -1095,16 +1169,28 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.le_total.setToolTip(
             "Built-in example. Use ‘Open mixed decay…’ to replace it with measured data."
         )
-        self.lw_species.add_synthetic_source({
-            "type": "synthetic", "model": "lifetime", "name": "Fast example",
-            "lifetime": 1.2, "bin_width": bin_width, "example": True,
-            "patterns_by_detector": fast_patterns,
-        })
-        self.lw_species.add_synthetic_source({
-            "type": "synthetic", "model": "lifetime", "name": "Slow example",
-            "lifetime": 4.0, "bin_width": bin_width, "example": True,
-            "patterns_by_detector": slow_patterns,
-        })
+        self.lw_species.add_synthetic_source(
+            {
+                "type": "synthetic",
+                "model": "lifetime",
+                "name": "Fast example",
+                "lifetime": 1.2,
+                "bin_width": bin_width,
+                "example": True,
+                "patterns_by_detector": fast_patterns,
+            }
+        )
+        self.lw_species.add_synthetic_source(
+            {
+                "type": "synthetic",
+                "model": "lifetime",
+                "name": "Slow example",
+                "lifetime": 4.0,
+                "bin_width": bin_width,
+                "example": True,
+                "patterns_by_detector": slow_patterns,
+            }
+        )
         self._compute_filters()
 
     def _clear_example_components(self) -> None:
@@ -1121,8 +1207,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _add_species_dialog(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Select species decay histograms", "", 
-            "All Decay Files (*.txt *.dat *.csv *.bst *.tttr);;Text Files (*.txt *.dat *.csv);;Burst Files (*.bst);;TTTR Files (*.tttr);;All files (*)"
+            self,
+            "Select species decay histograms",
+            "",
+            "All Decay Files (*.txt *.dat *.csv *.bst *.tttr);;Text Files (*.txt *.dat *.csv);;Burst Files (*.bst);;TTTR Files (*.tttr);;All files (*)",
         )
         if paths:
             self.lw_species.add_pattern([pathlib.Path(p) for p in paths])
@@ -1177,9 +1265,14 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _add_component_dialog(self, edit_item=None) -> None:
         """One dialog to add/edit a decay component — a **Type** selector switches
-        between a plain lifetime spectrum and a coupled FRET species."""
+        between a plain lifetime spectrum and a coupled FRET species.
+        """
         existing = edit_item.data(QtCore.Qt.UserRole) if edit_item is not None else None
-        init_kind = "fret" if isinstance(existing, dict) and existing.get("model") == "fret_species" else "lifetime"
+        init_kind = (
+            "fret"
+            if isinstance(existing, dict) and existing.get("model") == "fret_species"
+            else "lifetime"
+        )
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Edit Component" if edit_item is not None else "Add Component")
@@ -1193,8 +1286,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         combo.addItem("FRET species", "fret")
         combo.setCurrentIndex(1 if init_kind == "fret" else 0)
         combo.setEnabled(edit_item is None)  # type is fixed when editing
-        combo.setToolTip("Plain lifetime decay (same in all detectors) or a coupled "
-                         "smFRET species (different green/red/yellow decays).")
+        combo.setToolTip(
+            "Plain lifetime decay (same in all detectors) or a coupled "
+            "smFRET species (different green/red/yellow decays)."
+        )
         type_row.addWidget(combo)
         type_row.addStretch(1)
         layout.addLayout(type_row)
@@ -1254,12 +1349,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 # provides the same number of channels.
                 routing_names = []
                 for detector_name in detector_names:
-                    config = (self._detector_settings or {}).get("detectors", {}).get(detector_name, {})
+                    config = (
+                        (self._detector_settings or {}).get("detectors", {}).get(detector_name, {})
+                    )
                     routing_names.extend(f"routing_{channel}" for channel in config.get("chs", []))
-                ordered = [patterns[key] for key in sorted(
-                    (key for key in patterns if key.startswith("detector_")),
-                    key=lambda key: int(key.split("_")[-1]),
-                )]
+                ordered = [
+                    patterns[key]
+                    for key in sorted(
+                        (key for key in patterns if key.startswith("detector_")),
+                        key=lambda key: int(key.split("_")[-1]),
+                    )
+                ]
                 if len(routing_names) == len(ordered):
                     patterns.update(dict(zip(routing_names, ordered)))
                 source["patterns_by_detector"] = {}
@@ -1306,8 +1406,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if self._total_vector is not None:
             return int(self._total_vector.size)
         try:
-            chs = (self.detector_selection.get_selected() or None
-                   if self.detector_selection.checkboxes else None)
+            chs = (
+                self.detector_selection.get_selected() or None
+                if self.detector_selection.checkboxes
+                else None
+            )
             return int(np.asarray(self._total_decay(chs)).size)
         except Exception:
             return 256
@@ -1333,8 +1436,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if fwhm <= 0.0:
             return None
         time = np.arange(n, dtype=float) * dt
-        irf = synthetic_irf(time, 2.0 * fwhm, fwhm,
-                            shape=float(self.detector_selection.skew(detector_name, role) or 0.0))
+        irf = synthetic_irf(
+            time,
+            2.0 * fwhm,
+            fwhm,
+            shape=float(self.detector_selection.skew(detector_name, role) or 0.0),
+        )
         shifted = self._shift_irf(irf, shift, dt)
         # A large shift/skew can leave the prompt outside the window (all-zero);
         # fall back to the unshifted IRF so downstream convolution stays valid.
@@ -1370,13 +1477,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         n_bins = self._current_n_bins()
         try:
             patterns = fret_species_detector_patterns(
-                source, detector_names, n_bins, irf_for_detector=self._detector_irf,
+                source,
+                detector_names,
+                n_bins,
+                irf_for_detector=self._detector_irf,
             )
         except Exception as error:
             dialogs.warning(self, "FRET Species Error", str(error))
             return
-        source["patterns_by_detector"] = {k: np.asarray(v, dtype=float).tolist()
-                                          for k, v in patterns.items()}
+        source["patterns_by_detector"] = {
+            k: np.asarray(v, dtype=float).tolist() for k, v in patterns.items()
+        }
         if edit_item is not None:
             self.lw_species.replace_synthetic_source(edit_item, source)
         else:
@@ -1388,7 +1499,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if pattern.size >= n_bins:
             return pattern[:n_bins]
         resized = np.zeros(n_bins, dtype=float)
-        resized[:pattern.size] = pattern
+        resized[: pattern.size] = pattern
         return resized
 
     @staticmethod
@@ -1406,7 +1517,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             raise ValueError("shot-noise sampling produced an empty decay")
         return sampled / total
 
-    def _species_item_pattern(self, item, n_bins: int, chs: List[str] | None):
+    def _species_item_pattern(self, item, n_bins: int, chs: list[str] | None):
         """Resolve a file-backed or synthetic list item to one decay pattern."""
         source = item.data(QtCore.Qt.UserRole)
         if isinstance(source, dict) and source.get("type") == "synthetic":
@@ -1414,13 +1525,18 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if detector_patterns:
                 selected = [
                     np.asarray(detector_patterns[channel], dtype=float)
-                    for channel in (chs or []) if channel in detector_patterns
+                    for channel in (chs or [])
+                    if channel in detector_patterns
                 ]
                 if selected:
-                    pattern = np.sum([self._resize_pattern(value, n_bins) for value in selected], axis=0)
+                    pattern = np.sum(
+                        [self._resize_pattern(value, n_bins) for value in selected], axis=0
+                    )
                 else:
                     pattern = np.asarray(
-                        detector_patterns.get("__default__", next(iter(detector_patterns.values()))),
+                        detector_patterns.get(
+                            "__default__", next(iter(detector_patterns.values()))
+                        ),
                         dtype=float,
                     )
                 return self._resize_pattern(pattern, n_bins), dict(source)
@@ -1563,8 +1679,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """
         f = np.array(filters, dtype=float, copy=True)
         if f.ndim == 2:
-            f[:, :max(0, int(start))] = 0.0
-            f[:, int(stop):] = 0.0
+            f[:, : max(0, int(start))] = 0.0
+            f[:, int(stop) :] = 0.0
         return f
 
     def _apply_range_to_result(self, result, detector: str | None) -> None:
@@ -1598,8 +1714,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
         return chs[0] if chs and len(chs) == 1 else None
 
-    def _ranged_filters(self, total_data, species_data, *, detector, total_path,
-                        species_patterns, nuisance_decays, nuisance_labels):
+    def _ranged_filters(
+        self,
+        total_data,
+        species_data,
+        *,
+        detector,
+        total_path,
+        species_patterns,
+        nuisance_decays,
+        nuisance_labels,
+    ):
         """Compute fFCS filters **over the detector's fit range** and embed back.
 
         The filters/g-matrix are solved on the ``[start, stop]`` slice only, so the
@@ -1610,10 +1735,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         total = np.asarray(total_data, dtype=float).ravel()
         n_bins = int(total.size)
         start, stop = self._detector_fit_range(detector, n_bins)
-        species = [self._resize_pattern(np.asarray(s, dtype=float), n_bins)
-                   for s in species_data]
-        nuis = [self._resize_pattern(np.asarray(d, dtype=float), n_bins)
-                for d in (nuisance_decays or [])]
+        species = [self._resize_pattern(np.asarray(s, dtype=float), n_bins) for s in species_data]
+        nuis = [
+            self._resize_pattern(np.asarray(d, dtype=float), n_bins)
+            for d in (nuisance_decays or [])
+        ]
         ranged = compute_filters(
             total[start:stop],
             [s[start:stop] for s in species],
@@ -1631,9 +1757,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         wres = np.zeros(n_bins, dtype=float)
         wres[start:stop] = np.asarray(ranged.weighted_residuals)
         return FilterResult(
-            filters=filters, reconstruction=recon, weighted_residuals=wres,
-            total_decay=total, species_decays=species,
-            metadata=ranged.metadata, total_path=total_path,
+            filters=filters,
+            reconstruction=recon,
+            weighted_residuals=wres,
+            total_decay=total,
+            species_decays=species,
+            metadata=ranged.metadata,
+            total_path=total_path,
             species_patterns=species_patterns,
             nuisance_count=int(ranged.nuisance_count),
             nuisance_labels=list(ranged.nuisance_labels or []),
@@ -1645,9 +1775,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._apply_range_to_result(self._result, self._single_detector())
         if self._result_anisotropy is not None:
             self._apply_range_to_result(self._result_anisotropy, self._single_detector())
-        for entry in (self._result_multi_detector or []):
+        for entry in self._result_multi_detector or []:
             self._apply_range_to_result(entry["result"], entry["detector"])
-        for entry in (self._result_multi_anisotropy or []):
+        for entry in self._result_multi_anisotropy or []:
             self._apply_range_to_result(entry["result"], entry["detector"])
 
     def _measured_irf_vector(self, detector: str | None, role: str = ""):
@@ -1676,9 +1806,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA
 
         if not self._has_total_decay():
-            dialogs.warning(
-                self, "Missing Total Decay", "Load a mixed total decay first."
-            )
+            dialogs.warning(self, "Missing Total Decay", "Load a mixed total decay first.")
             return
         # Settings come from the persistent Auto-fit dock (no modal popup).
         settings = dict(self._auto_fit_settings)
@@ -1694,7 +1822,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         start, stop = self._fit_range(n_bins)
 
         # Fit the IRF jointly when the primary detector has no measured IRF.
-        primary = (chs[0] if chs else None)
+        primary = chs[0] if chs else None
         measured = self._measured_irf_vector(primary)
         fit_irf = measured is None
         # The model masks the fit window itself, so it is handed the FULL decay
@@ -1710,13 +1838,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # Periodic (laser-period) convolution comes from the Instrument dock.
         period = self._fit_period_ns(n_bins, dt)
 
-        fwhm0 = (max(dt, float(self.detector_selection.width(primary, "") or 0.2))
-                 if primary else 0.2)
+        fwhm0 = (
+            max(dt, float(self.detector_selection.width(primary, "") or 0.2)) if primary else 0.2
+        )
         skew0 = float(self.detector_selection.skew(primary, "") or 0.0) if primary else 0.0
         shared = dict(
-            bin_width=dt, irf=measured, start_bin=fit_lo, stop_bin=stop,
+            bin_width=dt,
+            irf=measured,
+            start_bin=fit_lo,
+            stop_bin=stop,
             fit_irf=fit_irf,
-            irf_width=fwhm0 * FWHM_TO_SIGMA,   # the model parameterises sigma
+            irf_width=fwhm0 * FWHM_TO_SIGMA,  # the model parameterises sigma
             irf_skew=skew0,
             fit_background=include_background,
             fit_scatter=include_scatter,
@@ -1730,7 +1862,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
                 instrument = self._instrument()
                 result = fit_fret_model(
-                    total, n_states=int(n_components),
+                    total,
+                    n_states=int(n_components),
                     donor_lifetime=float(settings["tau_max"]),
                     forster_radius=float(instrument.get("forster_radius") or 52.0),
                     **shared,
@@ -1738,7 +1871,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 taus = np.asarray([], dtype=float)
             else:
                 result = fit_lifetime_model(
-                    total, n_components=int(n_components),
+                    total,
+                    n_components=int(n_components),
                     tau_bounds=(float(settings["tau_min"]), float(settings["tau_max"])),
                     **shared,
                 )
@@ -1772,7 +1906,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if peak_ns is None:
                 peak_ns = 2.0 * fitted_fwhm
             shift = peak_ns - 2.0 * fitted_fwhm
-            for det in (detector_names or ([primary] if primary else [])):
+            for det in detector_names or ([primary] if primary else []):
                 if self._measured_irf_vector(det) is None:
                     self.detector_selection.set_width(det, float(fitted_fwhm), "")
                     if fitted_skew is not None:
@@ -1789,16 +1923,31 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self.lw_species.clear()
             if kind == "fret":
                 self._add_fret_autofit_species(
-                    amps, taus, scale, dt, comp_start, n_bins, detector_names,
+                    amps,
+                    taus,
+                    scale,
+                    dt,
+                    comp_start,
+                    n_bins,
+                    detector_names,
                     period=period,
                     efficiencies=result["efficiencies"],
                     tau_d0=result["donor_lifetime"],
                     donor_only_fraction=result["donor_only_fraction"],
                 )
             else:
-                self._add_autofit_species(kind, amps, taus, scale, dt, comp_start,
-                                          n_bins, detector_names, apply_irf=True,
-                                          period=period)
+                self._add_autofit_species(
+                    kind,
+                    amps,
+                    taus,
+                    scale,
+                    dt,
+                    comp_start,
+                    n_bins,
+                    detector_names,
+                    apply_irf=True,
+                    period=period,
+                )
         finally:
             self._suspend_compute = False
         self._on_data_changed()
@@ -1815,8 +1964,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             n_species = len(taus)
         label = "FRET states" if kind == "fret" else "components"
         if fit_irf and fitted_fwhm > 0:
-            irf_note = (f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift:+.3f} ns"
-                        f" / skew {float(fitted_skew or 0.0):+.2f}")
+            irf_note = (
+                f", IRF FWHM {fitted_fwhm:.3f} ns / shift {shift:+.3f} ns"
+                f" / skew {float(fitted_skew or 0.0):+.2f}"
+            )
         else:
             irf_note = ""
         # Report the fitted nuisance terms. The model reports them as absolute
@@ -1827,8 +1978,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if include_background and result.get("background"):
             nuis.append(f"bkg {result['background']:.3g}")
         nuis_note = (" [" + ", ".join(nuis) + "]") if nuis else ""
-        msg = (f"Auto-fit [{fit_lo}–{stop}]: {n_species} {label} "
-               f"(χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}.")
+        msg = (
+            f"Auto-fit [{fit_lo}–{stop}]: {n_species} {label} "
+            f"(χ²ᵣ={result['chi2_reduced']:.3g}{irf_note}) — {parts}{nuis_note}."
+        )
         self._update_status(msg)
         if hasattr(self, "lbl_autofit_status"):
             self.lbl_autofit_status.setText(msg)
@@ -1836,23 +1989,39 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # (including the scatter/background nuisance) are recorded, not just shown.
         cs.logging.info(msg)
 
-    def _add_autofit_species(self, kind, amps, taus, scale, dt, start, n_bins,
-                             detector_names, apply_irf: bool = False, period=None):
+    def _add_autofit_species(
+        self,
+        kind,
+        amps,
+        taus,
+        scale,
+        dt,
+        start,
+        n_bins,
+        detector_names,
+        apply_irf: bool = False,
+        period=None,
+    ):
         from chisurf.core.fluorescence.decay import synthetic_decay
 
         if kind == "fret":
-            self._add_fret_autofit_species(amps, taus, scale, dt, start, n_bins,
-                                           detector_names, period=period)
+            self._add_fret_autofit_species(
+                amps, taus, scale, dt, start, n_bins, detector_names, period=period
+            )
         else:
             for amp, tau in zip(amps, taus):
                 frac = float(amp) / scale
                 source = {
-                    "type": "synthetic", "model": "lifetime_spectrum",
+                    "type": "synthetic",
+                    "model": "lifetime_spectrum",
                     # Fitted fraction is kept in the component name so it stays
                     # visible in the Components list (not just the transient status).
                     "name": f"τ={float(tau):.2f} ns ({frac:.0%})",
-                    "amplitudes": [frac], "lifetimes": [float(tau)],
-                    "bin_width": float(dt), "start_bin": int(start), "irf_path": None,
+                    "amplitudes": [frac],
+                    "lifetimes": [float(tau)],
+                    "bin_width": float(dt),
+                    "start_bin": int(start),
+                    "irf_path": None,
                     "period_ns": float(period) if period else 0.0,
                 }
                 # When the IRF was fitted, convolve each detector's pattern with that
@@ -1865,17 +2034,33 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     if irf is not None and not np.any(np.asarray(irf) > 0.0):
                         irf = None
                     patterns[name] = synthetic_decay(
-                        n_bins, [float(tau)], bin_width=float(dt), irf=irf,
-                        start_bin=int(start), normalize=True, period=period,
+                        n_bins,
+                        [float(tau)],
+                        bin_width=float(dt),
+                        irf=irf,
+                        start_bin=int(start),
+                        normalize=True,
+                        period=period,
                     ).tolist()
                 if patterns:
                     patterns["__default__"] = patterns[detector_names[0]]
                     source["patterns_by_detector"] = patterns
                 self.lw_species.add_synthetic_source(source)
 
-    def _add_fret_autofit_species(self, amps, taus, scale, dt, start, n_bins,
-                                  detector_names, period=None, efficiencies=None,
-                                  tau_d0=None, donor_only_fraction=0.0):
+    def _add_fret_autofit_species(
+        self,
+        amps,
+        taus,
+        scale,
+        dt,
+        start,
+        n_bins,
+        detector_names,
+        period=None,
+        efficiencies=None,
+        tau_d0=None,
+        donor_only_fraction=0.0,
+    ):
         """Add FRET species from fitted efficiencies, or derive them from lifetimes.
 
         With ``efficiencies`` (from a real ``FRETModel`` fit) each value is used
@@ -1902,28 +2087,36 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 pairs.append((float(donor_only_fraction) * scale, 0.0))
         else:
             tau_d0 = float(max(taus)) if len(taus) else 1.0
-            pairs = [(float(a), float(np.clip(1.0 - float(t) / tau_d0, 0.0, 0.999)))
-                     for a, t in zip(amps, taus)]
+            pairs = [
+                (float(a), float(np.clip(1.0 - float(t) / tau_d0, 0.0, 0.999)))
+                for a, t in zip(amps, taus)
+            ]
 
         dets = detector_names or ["green", "red", "yellow"]
         for amp, efficiency in pairs:
             frac = float(amp) / scale
-            tau = tau_d0 * (1.0 - efficiency)
+            tau_d0 * (1.0 - efficiency)
             state = "d_only" if efficiency < 1e-3 else "da"
             source = {
-                "type": "synthetic", "model": "fret_species",
+                "type": "synthetic",
+                "model": "fret_species",
                 # Keep the fitted fraction visible in the Components list.
-                "name": (f"donor-only τ={tau_d0:.2f} ({frac:.0%})" if state == "d_only"
-                         else f"DA E={efficiency:.2f} ({frac:.0%})"),
+                "name": (
+                    f"donor-only τ={tau_d0:.2f} ({frac:.0%})"
+                    if state == "d_only"
+                    else f"DA E={efficiency:.2f} ({frac:.0%})"
+                ),
                 "state": state,
                 "donor_spectrum": [1.0, tau_d0],
                 "acceptor_spectrum": [1.0, 2.0],
-                "fret_mode": "efficiency", "transfer_efficiency": efficiency,
+                "fret_mode": "efficiency",
+                "transfer_efficiency": efficiency,
                 "bin_width": float(dt),
                 "period_ns": float(period) if period else 0.0,
                 # Seed crosstalk from the Instrument dock (α/β/γ/δ, R0).
-                "crosstalk": {k: self._instrument().get(k)
-                              for k in ("alpha", "beta", "gamma", "delta")},
+                "crosstalk": {
+                    k: self._instrument().get(k) for k in ("alpha", "beta", "gamma", "delta")
+                },
                 "forster_radius": self._instrument().get("forster_radius"),
             }
             try:
@@ -1942,7 +2135,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             dialogs.warning(self, "Missing Total Decay", "Load a mixed total decay first.")
             return
         try:
-            chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
+            chs = (
+                self.detector_selection.get_selected()
+                if self.detector_selection.checkboxes
+                else None
+            )
             total = self._total_decay(chs)
             patterns = []
             names = []
@@ -1992,7 +2189,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 for label, count in zip(
                     self._unmix_result.nuisance_labels or [],
                     self._unmix_result.nuisance_counts
-                    if self._unmix_result.nuisance_counts is not None else [],
+                    if self._unmix_result.nuisance_counts is not None
+                    else [],
                 )
             )
             suffix = f"; {nuisance_summary}" if nuisance_summary else ""
@@ -2034,7 +2232,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         item = self.lw_species.itemAt(pos)
         menu = QtWidgets.QMenu(self.lw_species)
         act_add = menu.addAction(f"{Glyphs.ADD} Add component…")
-        act_add.setToolTip("Add a synthetic decay component (plain lifetime spectrum or FRET species).")
+        act_add.setToolTip(
+            "Add a synthetic decay component (plain lifetime spectrum or FRET species)."
+        )
         act_add.triggered.connect(lambda: self._add_component_dialog())
         act_add_file = menu.addAction(f"{Glyphs.CHART_UP} Add measured pattern…")
         act_add_file.triggered.connect(self._add_species_dialog)
@@ -2093,6 +2293,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._compute_filters()
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Error in auto-compute: {e}\n{traceback.format_exc()}")
             self._update_status(f"Error: {e}")
 
@@ -2116,9 +2317,17 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._filter_client_obj = client
         return client
 
-    def _compute_filters_rpc(self, total_data, species_data, *, total_path=None,
-                             species_patterns=None, nuisance_decays=None,
-                             nuisance_labels=None, reject_nuisance=True) -> "FilterResult":
+    def _compute_filters_rpc(
+        self,
+        total_data,
+        species_data,
+        *,
+        total_path=None,
+        species_patterns=None,
+        nuisance_decays=None,
+        nuisance_labels=None,
+        reject_nuisance=True,
+    ) -> FilterResult:
         """Compute single-channel filters through the backend RPC client.
 
         Falls back to the direct API on any transport/serialization issue so the
@@ -2143,11 +2352,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 return result
         except Exception:
             pass
-        return compute_filters(total_data, species_data, total_path=total_path,
-                               species_patterns=species_patterns,
-                               nuisance_decays=nuisance_decays,
-                               nuisance_labels=nuisance_labels,
-                               reject_nuisance=reject_nuisance)
+        return compute_filters(
+            total_data,
+            species_data,
+            total_path=total_path,
+            species_patterns=species_patterns,
+            nuisance_decays=nuisance_decays,
+            nuisance_labels=nuisance_labels,
+            reject_nuisance=reject_nuisance,
+        )
 
     def _compute_filters(self) -> None:
         # Bulk operations (auto-fit adding many species) suspend the per-change
@@ -2164,13 +2377,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             chs = None
             if self.detector_selection.checkboxes:
                 chs = self.detector_selection.get_selected()
-            
+
             # Check if Anisotropy mode is enabled (takes priority over multi-detector)
             anisotropy_mode = self.anisotropy_mode_cb.isChecked()
             if anisotropy_mode and chs and len(chs) >= 1:
                 self._compute_filters_anisotropy(chs)
                 return
-            
+
             # Check if multiple detectors are selected (multi-detector stacking mode)
             # Only if NOT in anisotropy mode
             if chs and len(chs) > 1:
@@ -2179,7 +2392,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 else:
                     self._compute_filters_multi_detector(chs)
                 return
-            
+
             # Standard single-channel mode
             # Load and sum total decay files (with caching)
             total_data = self._total_decay(chs)
@@ -2191,10 +2404,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 item = self.lw_species.item(i)
                 if item.checkState() != QtCore.Qt.Checked:
                     continue
-                
+
                 pattern_sum, source = self._species_item_pattern(item, total_data.size, chs)
                 species_patterns.append(source)
-                
+
                 species_data.append(pattern_sum)
                 species_names.append(item.text())
 
@@ -2208,7 +2421,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                         species_data[i] = sd[:total_size]
                     else:
                         padded = np.zeros(total_size, dtype=np.float64)
-                        padded[:sd.size] = sd
+                        padded[: sd.size] = sd
                         species_data[i] = padded
 
             nuisance_decays, nuisance_labels = self._nuisance_patterns(
@@ -2222,7 +2435,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 detector=chs[0] if chs and len(chs) == 1 else None,
                 total_path=(
                     [str(p.absolute()) for p in self._total_paths]
-                    if self._total_paths else ["synthetic:example-mixture"]
+                    if self._total_paths
+                    else ["synthetic:example-mixture"]
                 ),
                 species_patterns=species_patterns,
                 nuisance_decays=nuisance_decays,
@@ -2236,6 +2450,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Computation error: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Computation Error", str(e))
             self._update_status(f"Error: {e}")
@@ -2246,47 +2461,48 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._routing_cache.clear()
         self._cache_state = None
 
-    def _get_cache_key(self, paths: List[pathlib.Path], chs: List[str] | None) -> tuple:
+    def _get_cache_key(self, paths: list[pathlib.Path], chs: list[str] | None) -> tuple:
         """Generate cache key from file paths and detector channels."""
         path_tuple = tuple(str(p.absolute()) for p in paths)
         ch_tuple = tuple(sorted(chs)) if chs else ()
         return (path_tuple, ch_tuple)
 
-    def _load_routing_channels(self, path: pathlib.Path) -> Dict[int, np.ndarray]:
+    def _load_routing_channels(self, path: pathlib.Path) -> dict[int, np.ndarray]:
         """Load and cache all routing channel histograms for a TTTR file.
-        
+
         Returns dict mapping routing_channel_number -> histogram.
         """
         path_str = str(path.absolute())
-        
+
         if path_str in self._routing_cache:
             return self._routing_cache[path_str]
-        
+
         # Load file and extract all routing channels
         ext = path.suffix.lower()
         routing_histograms = {}
-        
-        if ext in ('.spc', '.ptu', '.ht3', '.tttr'):
+
+        if ext in (".spc", ".ptu", ".ht3", ".tttr"):
             import tttrlib
+
             try:
                 # Load TTTR data once
-                if ext == '.spc':
+                if ext == ".spc":
                     try:
-                        data = tttrlib.TTTR(str(path), 'SPC-130')
-                    except:
+                        data = tttrlib.TTTR(str(path), "SPC-130")
+                    except Exception:
                         data = tttrlib.TTTR(str(path))
                 else:
                     data = tttrlib.TTTR(str(path))
-                
+
                 header = data.get_header()
                 try:
                     n_tac = header.number_of_micro_time_channels
                 except AttributeError:
                     try:
-                        n_tac = header['number_of_micro_time_channels']
+                        n_tac = header["number_of_micro_time_channels"]
                     except (KeyError, TypeError):
                         n_tac = 4096
-                
+
                 microtimes = data.micro_times
                 routing = data.routing_channels
                 # Micro-time axis (bin width + optional binning) from the data.
@@ -2302,14 +2518,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
             except Exception as e:
                 cs.logging.warning(f"Error loading routing channels from {path.name}: {e}")
-        
-        elif ext == '.bst':
+
+        elif ext == ".bst":
             # For BST files, load the underlying TTTR and extract bursts
             from .data_loading import parse_bst_file
+
             tttr_path, ranges = parse_bst_file(path)
-            
+
             if tttr_path and ranges:
                 import tttrlib
+
                 try:
                     data = tttrlib.TTTR(str(tttr_path))
                     header = data.get_header()
@@ -2317,10 +2535,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                         n_tac = header.number_of_micro_time_channels
                     except AttributeError:
                         try:
-                            n_tac = header['number_of_micro_time_channels']
+                            n_tac = header["number_of_micro_time_channels"]
                         except (KeyError, TypeError):
                             n_tac = 4096
-                    
+
                     microtimes = data.micro_times
                     routing = data.routing_channels
                     # Micro-time axis (bin width + optional binning) from the data.
@@ -2337,21 +2555,21 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                                 mask = (burst_rt == rch) & (burst_mt >= 0) & (burst_mt < n_tac)
                                 np.add.at(hist, burst_mt[mask], 1)
                         routing_histograms[int(rch)] = hist
-                        
+
                 except Exception as e:
                     cs.logging.warning(f"Error loading BST routing channels from {path.name}: {e}")
-        
+
         # Cache the routing histograms
         self._routing_cache[path_str] = routing_histograms
         return routing_histograms
 
-    def _load_and_sum_vectors(self, paths: List[pathlib.Path], chs: List[str] | None) -> np.ndarray:
+    def _load_and_sum_vectors(self, paths: list[pathlib.Path], chs: list[str] | None) -> np.ndarray:
         """Load and sum vectors with routing channel caching."""
         cache_key = self._get_cache_key(paths, chs)
-        
+
         if cache_key in self._decay_cache:
             return self._decay_cache[cache_key].copy()
-        
+
         # Determine which routing channels to use
         routing_channels = set()
         if chs:
@@ -2359,25 +2577,25 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 if ch_name.startswith("routing_"):
                     try:
                         routing_channels.add(int(ch_name.split("_")[1]))
-                    except:
+                    except Exception:
                         pass
                 elif self._detector_settings:
                     # Map detector name to routing channels
                     det_config = self._detector_settings.get("detectors", {}).get(ch_name, {})
                     det_chs = det_config.get("chs", [])
                     routing_channels.update(det_chs)
-        
+
         # Load and combine from routing channel cache
         max_size = 0
         all_histograms = []
-        
+
         for path in paths:
             ext = path.suffix.lower()
-            
-            if ext in ('.spc', '.ptu', '.ht3', '.tttr', '.bst'):
+
+            if ext in (".spc", ".ptu", ".ht3", ".tttr", ".bst"):
                 # Use routing channel cache
                 routing_hists = self._load_routing_channels(path)
-                
+
                 if routing_channels:
                     # Combine specified routing channels
                     combined = None
@@ -2406,51 +2624,53 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 vec = load_vector(path, chs=chs, detector_settings=self._detector_settings)
                 all_histograms.append(vec)
                 max_size = max(max_size, vec.size)
-        
+
         # Sum all histograms
         if max_size == 0 or not all_histograms:
             # No valid data - return empty array
-            cs.logging.warning(f"No valid histogram data loaded for paths: {[p.name for p in paths]}")
+            cs.logging.warning(
+                f"No valid histogram data loaded for paths: {[p.name for p in paths]}"
+            )
             return np.zeros(4096, dtype=np.float64)
-        
+
         summed = np.zeros(max_size, dtype=np.float64)
         for hist in all_histograms:
             if hist.size < max_size:
                 padded = np.zeros(max_size, dtype=np.float64)
-                padded[:hist.size] = hist
+                padded[: hist.size] = hist
                 summed += padded
             else:
                 summed += hist
-        
+
         # Cache the result
         self._decay_cache[cache_key] = summed.copy()
         return summed
 
-    def _compute_filters_anisotropy(self, chs: List[str]) -> None:
+    def _compute_filters_anisotropy(self, chs: list[str]) -> None:
         """Compute Anisotropy filters for parallel and perpendicular channels.
-        
+
         Uses detector wizard routing channel logic: channels alternate as par, perp, par, perp.
         For a detector with routing channels [8, 0], ch 8 = parallel, ch 0 = perpendicular.
         With multiple detectors - computes separate par/perp for each detector and stacks them.
         """
         from ..api import compute_filters_mfd
-        
+
         try:
             # Check if multiple detectors selected - compute separately for each
             if len(chs) > 1:
                 self._compute_filters_multi_anisotropy(chs)
                 return
-            
+
             # Single detector anisotropy mode
             # Extract routing channels from the selected detector
             routing_par = []
             routing_perp = []
-            
+
             if self._detector_settings and chs:
                 det_name = chs[0]
                 det_config = self._detector_settings.get("detectors", {}).get(det_name, {})
                 routing_chs = det_config.get("chs", [])
-                
+
                 if len(routing_chs) >= 2:
                     # Alternating pattern: index 0, 2, 4... = parallel; index 1, 3, 5... = perpendicular
                     for i, ch in enumerate(routing_chs):
@@ -2459,47 +2679,49 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                         else:
                             routing_perp.append(ch)
                 else:
-                    raise ValueError(f"Detector '{det_name}' must have at least 2 routing channels for Anisotropy mode")
+                    raise ValueError(
+                        f"Detector '{det_name}' must have at least 2 routing channels for Anisotropy mode"
+                    )
             else:
                 raise ValueError("Anisotropy mode requires detector settings with routing channels")
-            
+
             # Create routing channel names for load_vector
             ch_par = [f"routing_{ch}" for ch in routing_par]
             ch_perp = [f"routing_{ch}" for ch in routing_perp]
-            
+
             # Load total decay for each channel separately (with caching)
             total_par = self._total_decay(ch_par)
             total_perp = self._total_decay(ch_perp)
-            
+
             # Ensure both have same size
             max_size = max(total_par.size, total_perp.size)
             if total_par.size < max_size:
                 padded = np.zeros(max_size, dtype=np.float64)
-                padded[:total_par.size] = total_par
+                padded[: total_par.size] = total_par
                 total_par = padded
             if total_perp.size < max_size:
                 padded = np.zeros(max_size, dtype=np.float64)
-                padded[:total_perp.size] = total_perp
+                padded[: total_perp.size] = total_perp
                 total_perp = padded
-            
+
             # Load species patterns for each channel
             species_par = []
             species_perp = []
             species_patterns = []
-            
+
             for i in range(self.lw_species.count()):
                 item = self.lw_species.item(i)
                 if item.checkState() != QtCore.Qt.Checked:
                     continue
-                
+
                 pattern_par, source = self._species_item_pattern(item, max_size, ch_par)
                 species_patterns.append(source)
                 species_par.append(pattern_par)
-                
+
                 # Load for perpendicular channel (with caching)
                 pattern_perp, _ = self._species_item_pattern(item, max_size, ch_perp)
                 species_perp.append(pattern_perp)
-            
+
             # Compute Anisotropy filters
             metadata = {
                 "detector": chs[0],
@@ -2513,8 +2735,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 total_perp, species_perp, chs[0], "perpendicular"
             )
             self._result_anisotropy = compute_filters_mfd(
-                total_par, total_perp,
-                species_par, species_perp,
+                total_par,
+                total_perp,
+                species_par,
+                species_perp,
                 metadata=metadata,
                 nuisance_decays_par=nuisance_par,
                 nuisance_decays_perp=nuisance_perp,
@@ -2527,36 +2751,39 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._result_multi_anisotropy = None  # Clear multi-anisotropy result
             self._update_plots()
             self.btn_export.setEnabled(True)
-            self._update_status(f"Anisotropy filters computed successfully ({chs[0]}: ch {routing_par} || ch {routing_perp}).")
-            
+            self._update_status(
+                f"Anisotropy filters computed successfully ({chs[0]}: ch {routing_par} || ch {routing_perp})."
+            )
+
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Anisotropy computation error: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Anisotropy Computation Error", str(e))
             self._update_status(f"Anisotropy Error: {e}")
 
-    def _compute_filters_multi_anisotropy(self, chs: List[str]) -> None:
+    def _compute_filters_multi_anisotropy(self, chs: list[str]) -> None:
         """Compute Anisotropy filters separately for each detector and stack them.
-        
+
         Each detector gets its own par/perp computation.
         """
         from ..api import compute_filters_mfd
-        
+
         try:
             anisotropy_results = []
-            
+
             for det_name in chs:
                 # Extract routing channels for this detector
                 if not self._detector_settings:
                     raise ValueError("Anisotropy mode requires detector settings")
-                
+
                 det_config = self._detector_settings.get("detectors", {}).get(det_name, {})
                 routing_chs = det_config.get("chs", [])
-                
+
                 if len(routing_chs) < 2:
                     cs.logging.warning(f"Detector '{det_name}' has <2 routing channels, skipping")
                     continue
-                
+
                 # Split into par/perp
                 routing_par = []
                 routing_perp = []
@@ -2565,42 +2792,42 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                         routing_par.append(ch)
                     else:
                         routing_perp.append(ch)
-                
+
                 ch_par = [f"routing_{ch}" for ch in routing_par]
                 ch_perp = [f"routing_{ch}" for ch in routing_perp]
-                
+
                 # Load total decay for this detector's par/perp
                 total_par = self._total_decay(ch_par)
                 total_perp = self._total_decay(ch_perp)
-                
+
                 # Ensure same size
                 max_size = max(total_par.size, total_perp.size)
                 if total_par.size < max_size:
                     padded = np.zeros(max_size, dtype=np.float64)
-                    padded[:total_par.size] = total_par
+                    padded[: total_par.size] = total_par
                     total_par = padded
                 if total_perp.size < max_size:
                     padded = np.zeros(max_size, dtype=np.float64)
-                    padded[:total_perp.size] = total_perp
+                    padded[: total_perp.size] = total_perp
                     total_perp = padded
-                
+
                 # Load species patterns
                 species_par = []
                 species_perp = []
                 species_patterns = []
-                
+
                 for i in range(self.lw_species.count()):
                     item = self.lw_species.item(i)
                     if item.checkState() != QtCore.Qt.Checked:
                         continue
-                    
+
                     pattern_par, source = self._species_item_pattern(item, max_size, ch_par)
                     species_patterns.append(source)
                     species_par.append(pattern_par)
-                    
+
                     pattern_perp, _ = self._species_item_pattern(item, max_size, ch_perp)
                     species_perp.append(pattern_perp)
-                
+
                 # Compute anisotropy for this detector
                 metadata = {
                     "detector": det_name,
@@ -2614,8 +2841,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     total_perp, species_perp, det_name, "perpendicular"
                 )
                 result = compute_filters_mfd(
-                    total_par, total_perp,
-                    species_par, species_perp,
+                    total_par,
+                    total_perp,
+                    species_par,
+                    species_perp,
                     metadata=metadata,
                     nuisance_decays_par=nuisance_par,
                     nuisance_decays_perp=nuisance_perp,
@@ -2623,14 +2852,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     reject_nuisance=True,
                 )
                 self._apply_range_to_result(result, det_name)
-                anisotropy_results.append({
-                    'detector': det_name,
-                    'result': result
-                })
-            
+                anisotropy_results.append({"detector": det_name, "result": result})
+
             if not anisotropy_results:
                 raise ValueError("No valid detectors for Anisotropy mode")
-            
+
             # Store multi-anisotropy results
             self._result_multi_anisotropy = anisotropy_results
             self._result = None
@@ -2638,29 +2864,32 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._result_multi_detector = None
             self._update_plots()
             self.btn_export.setEnabled(True)
-            detector_names = ", ".join([ar['detector'] for ar in anisotropy_results])
-            self._update_status(f"Multi-detector Anisotropy filters computed successfully ({detector_names}).")
-            
+            detector_names = ", ".join([ar["detector"] for ar in anisotropy_results])
+            self._update_status(
+                f"Multi-detector Anisotropy filters computed successfully ({detector_names})."
+            )
+
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Multi-Anisotropy computation error: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Multi-Anisotropy Computation Error", str(e))
             self._update_status(f"Multi-Anisotropy Error: {e}")
 
-    def _compute_filters_multi_detector(self, chs: List[str]) -> None:
+    def _compute_filters_multi_detector(self, chs: list[str]) -> None:
         """Compute filters for multiple detectors separately and stack them.
-        
+
         Each detector's photons are isolated - red photons don't contribute to green decay.
         """
         try:
             # Store results for each detector
             detector_results = []
-            
+
             for det_name in chs:
                 # Load total decay for this detector only (with caching)
                 ch_list = [det_name]
                 total_data = self._total_decay(ch_list)
-                
+
                 # Load species patterns for this detector only
                 species_data = []
                 species_names = []
@@ -2669,13 +2898,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     item = self.lw_species.item(i)
                     if item.checkState() != QtCore.Qt.Checked:
                         continue
-                    
+
                     pattern_sum, source = self._species_item_pattern(item, total_data.size, ch_list)
                     species_patterns.append(source)
-                    
+
                     species_data.append(pattern_sum)
                     species_names.append(item.text())
-                
+
                 # Validation against total
                 total_size = total_data.size
                 for i in range(len(species_data)):
@@ -2685,9 +2914,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                             species_data[i] = sd[:total_size]
                         else:
                             padded = np.zeros(total_size, dtype=np.float64)
-                            padded[:sd.size] = sd
+                            padded[: sd.size] = sd
                             species_data[i] = padded
-                
+
                 # Compute filters for this detector over its fit range.
                 nuisance, nuisance_labels = self._nuisance_patterns(
                     total_data, species_data, det_name
@@ -2701,10 +2930,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     nuisance_decays=nuisance,
                     nuisance_labels=nuisance_labels,
                 )
-                detector_results.append({
-                    'detector': det_name,
-                    'result': result
-                })
+                detector_results.append({"detector": det_name, "result": result})
 
             # Store multi-detector results
             self._result_multi_detector = detector_results
@@ -2714,14 +2940,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self.btn_export.setEnabled(True)
             detector_names = ", ".join(chs)
             self._update_status(f"Multi-detector filters computed successfully ({detector_names}).")
-            
+
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Multi-detector computation error: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Multi-Detector Computation Error", str(e))
             self._update_status(f"Multi-Detector Error: {e}")
 
-    def _compute_filters_stacked(self, chs: List[str]) -> None:
+    def _compute_filters_stacked(self, chs: list[str]) -> None:
         """Compute ONE global filter set over the detectors stacked on a single axis.
 
         Each detector's total decay and per-species patterns are concatenated
@@ -2738,13 +2965,15 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """
         try:
             # Per-detector totals and species patterns (joint scaling preserved).
-            totals = {det: np.asarray(self._total_decay([det]), dtype=float).ravel()
-                      for det in chs}
+            totals = {det: np.asarray(self._total_decay([det]), dtype=float).ravel() for det in chs}
             n_bins = int(min(t.size for t in totals.values()))
             totals = {det: self._resize_pattern(t, n_bins) for det, t in totals.items()}
 
-            checked = [self.lw_species.item(i) for i in range(self.lw_species.count())
-                       if self.lw_species.item(i).checkState() == QtCore.Qt.Checked]
+            checked = [
+                self.lw_species.item(i)
+                for i in range(self.lw_species.count())
+                if self.lw_species.item(i).checkState() == QtCore.Qt.Checked
+            ]
             if not checked:
                 return
             per_det_species: dict[str, list[np.ndarray]] = {det: [] for det in chs}
@@ -2760,8 +2989,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             nuis_by_det, labels0 = {}, None
             for det in chs:
                 nd, nl = self._nuisance_patterns(totals[det], per_det_species[det], det)
-                nuis_by_det[det] = [self._resize_pattern(np.asarray(p, dtype=float), n_bins)
-                                    for p in nd]
+                nuis_by_det[det] = [
+                    self._resize_pattern(np.asarray(p, dtype=float), n_bins) for p in nd
+                ]
                 if labels0 is None:
                     labels0 = nl
             n_nuis = min((len(v) for v in nuis_by_det.values()), default=0)
@@ -2773,12 +3003,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 for k in range(len(checked))
             ]
             nuisance_stacked = [
-                np.concatenate([nuis_by_det[det][k] for det in chs])
-                for k in range(n_nuis)
+                np.concatenate([nuis_by_det[det][k] for det in chs]) for k in range(n_nuis)
             ]
 
             stacked = compute_filters(
-                total_stacked, species_stacked,
+                total_stacked,
+                species_stacked,
                 total_path=[str(p.absolute()) for p in self._total_paths],
                 species_patterns=species_patterns,
                 nuisance_decays=nuisance_stacked or None,
@@ -2788,6 +3018,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
             # Split the global result back into per-detector FilterResult slices.
             from copy import deepcopy
+
             detector_results = []
             for idx, det in enumerate(chs):
                 seg = slice(idx * n_bins, (idx + 1) * n_bins)
@@ -2821,6 +3052,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             )
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Stacked computation error: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Stacked Filter Computation Error", str(e))
             self._update_status(f"Stacked Filter Error: {e}")
@@ -2834,9 +3066,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """
         from chisurf.gui.widgets.setup_selector import SetupSelector
 
-        self.setup_selector = SetupSelector(
-            loader=self._load_detector_setups or None
-        )
+        self.setup_selector = SetupSelector(loader=self._load_detector_setups or None)
         self.setup_selector.setupChanged.connect(self._on_detector_setup_selected)
         layout.addWidget(self.setup_selector)
         layout.addStretch(1)
@@ -2853,13 +3083,21 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._prepopulate_instrument_from_setup()
 
     def _connect_setup_signals(self):
-        if not hasattr(self, 'detector_wizard_page') or not self.detector_wizard_page: return
+        if not hasattr(self, "detector_wizard_page") or not self.detector_wizard_page:
+            return
         for widget in self.detector_wizard_page.findChildren(QtWidgets.QWidget):
-            for signal_name in ['textChanged', 'currentIndexChanged', 'stateChanged', 'valueChanged', 'editingFinished']:
+            for signal_name in [
+                "textChanged",
+                "currentIndexChanged",
+                "stateChanged",
+                "valueChanged",
+                "editingFinished",
+            ]:
                 if hasattr(widget, signal_name):
                     try:
                         getattr(widget, signal_name).connect(self._schedule_setup_refresh)
-                    except Exception: pass
+                    except Exception:
+                        pass
 
     def _schedule_setup_refresh(self):
         # Refresh checkboxes when wizard settings change
@@ -2878,12 +3116,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             try:
                 setups_data = self._load_detector_setups()
                 if setups_data:
-                    last_used = setups_data.get('last_used')
-                    if last_used and last_used in setups_data.get('setups', {}):
-                        self._detector_settings = setups_data['setups'][last_used]
+                    last_used = setups_data.get("last_used")
+                    if last_used and last_used in setups_data.get("setups", {}):
+                        self._detector_settings = setups_data["setups"][last_used]
                         detector_names = list(self._detector_settings.get("detectors", {}).keys())
-            except Exception: pass
-        
+            except Exception:
+                pass
+
         self.detector_selection.set_bin_width_ns(self._pattern_bin_width_ns())
         self.detector_selection.refresh(detector_names)
 
@@ -2893,7 +3132,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if not self._total_paths and self.lw_species.count() == 0:
                 dialogs.warning(self, "Empty Project", "No data loaded to save.")
                 return
-            
+
             # Filters are automatically computed, so we can proceed with saving
             # The computation will happen automatically when data is loaded
 
@@ -2902,74 +3141,74 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         )
         if path:
             import json
-            
+
             if self._result is not None:
                 # Save result with additional UI state
                 self._result.to_json(path, indent=2)
-                
+
                 # Also save detector selection state and anisotropy mode
-                with open(path, 'r') as f:
+                with open(path) as f:
                     project_data = json.load(f)
-                
+
                 # Add UI state
-                project_data['ui_state'] = {
-                    'selected_detectors': self.detector_selection.get_selected(),
-                    'anisotropy_mode': self.anisotropy_mode_cb.isChecked(),
-                    'stacked_mode': self.stacked_mode_cb.isChecked(),
-                    'afterpulse_filter': self.fit_background_cb.isChecked(),
-                    'scatter_filter': self.options_model.scatter_irf,
-                    'detector_irf': self.detector_selection.export_state(),
+                project_data["ui_state"] = {
+                    "selected_detectors": self.detector_selection.get_selected(),
+                    "anisotropy_mode": self.anisotropy_mode_cb.isChecked(),
+                    "stacked_mode": self.stacked_mode_cb.isChecked(),
+                    "afterpulse_filter": self.fit_background_cb.isChecked(),
+                    "scatter_filter": self.options_model.scatter_irf,
+                    "detector_irf": self.detector_selection.export_state(),
                 }
                 if self._total_vector is not None:
-                    project_data['total_decay'] = self._total_vector.tolist()
-                    project_data['total_label'] = self.le_total.text()
+                    project_data["total_decay"] = self._total_vector.tolist()
+                    project_data["total_label"] = self.le_total.text()
                 if self._total_vectors_by_detector:
-                    project_data['total_decays_by_detector'] = {
+                    project_data["total_decays_by_detector"] = {
                         name: decay.tolist()
                         for name, decay in self._total_vectors_by_detector.items()
                     }
-                
-                with open(path, 'w') as f:
+
+                with open(path, "w") as f:
                     json.dump(project_data, f, indent=2)
             else:
                 # Save only UI state when no computation results exist
                 project_data = {
-                    'total_path': [str(p.absolute()) for p in self._total_paths],
-                    'total_decay': (
+                    "total_path": [str(p.absolute()) for p in self._total_paths],
+                    "total_decay": (
                         self._total_vector.tolist() if self._total_vector is not None else None
                     ),
-                    'total_label': self.le_total.text(),
-                    'species_patterns': [],
-                    'ui_state': {
-                        'selected_detectors': self.detector_selection.get_selected(),
-                        'anisotropy_mode': self.anisotropy_mode_cb.isChecked(),
-                        'stacked_mode': self.stacked_mode_cb.isChecked(),
-                        'afterpulse_filter': self.fit_background_cb.isChecked(),
-                        'scatter_filter': self.options_model.scatter_irf,
-                        'detector_irf': self.detector_selection.export_state(),
-                    }
+                    "total_label": self.le_total.text(),
+                    "species_patterns": [],
+                    "ui_state": {
+                        "selected_detectors": self.detector_selection.get_selected(),
+                        "anisotropy_mode": self.anisotropy_mode_cb.isChecked(),
+                        "stacked_mode": self.stacked_mode_cb.isChecked(),
+                        "afterpulse_filter": self.fit_background_cb.isChecked(),
+                        "scatter_filter": self.options_model.scatter_irf,
+                        "detector_irf": self.detector_selection.export_state(),
+                    },
                 }
                 if self._total_vectors_by_detector:
-                    project_data['total_decays_by_detector'] = {
+                    project_data["total_decays_by_detector"] = {
                         name: decay.tolist()
                         for name, decay in self._total_vectors_by_detector.items()
                     }
-                
+
                 # Add species patterns
                 for i in range(self.lw_species.count()):
                     item = self.lw_species.item(i)
                     if item.checkState() == QtCore.Qt.Checked:
                         source = item.data(QtCore.Qt.UserRole)
                         if isinstance(source, dict):
-                            project_data['species_patterns'].append(dict(source))
+                            project_data["species_patterns"].append(dict(source))
                         else:
-                            project_data['species_patterns'].append(
+                            project_data["species_patterns"].append(
                                 [str(pathlib.Path(p).absolute()) for p in source]
                             )
-                
-                with open(path, 'w') as f:
+
+                with open(path, "w") as f:
                     json.dump(project_data, f, indent=2)
-            
+
             self._update_status(f"Project saved to {pathlib.Path(path).name}")
 
     def _on_load_project(self) -> None:
@@ -2981,15 +3220,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         try:
             import json
-            with open(path, 'r') as f:
+
+            with open(path) as f:
                 project_data = json.load(f)
-            res = FilterResult.from_dict(project_data) if 'filters' in project_data else None
+            res = FilterResult.from_dict(project_data) if "filters" in project_data else None
             self._result = res
-            
+
             # Restore UI state
-            total_path = res.total_path if res is not None else project_data.get('total_path')
-            inline_total = project_data.get('total_decay')
-            inline_by_detector = project_data.get('total_decays_by_detector') or {}
+            total_path = res.total_path if res is not None else project_data.get("total_path")
+            inline_total = project_data.get("total_decay")
+            inline_by_detector = project_data.get("total_decays_by_detector") or {}
             if inline_total is not None:
                 self._total_paths = []
                 self._total_vector = np.asarray(inline_total, dtype=float)
@@ -2997,13 +3237,13 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     str(name): np.asarray(decay, dtype=float)
                     for name, decay in inline_by_detector.items()
                 }
-                self.le_total.setText(project_data.get('total_label') or "Project mixture")
+                self.le_total.setText(project_data.get("total_label") or "Project mixture")
                 self.le_total.setCursorPosition(0)
             elif total_path:
                 # If it's an old single-string path, wrap in list
                 t_paths = total_path if isinstance(total_path, list) else [total_path]
                 path_objs = [pathlib.Path(p) for p in t_paths]
-                
+
                 # Check for existence
                 valid_paths = []
                 for p in path_objs:
@@ -3011,31 +3251,32 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                         valid_paths.append(p)
                     else:
                         cs.logging.warning(f"Total decay file not found: {p}")
-                
+
                 self._set_total_paths(valid_paths)
-            
+
             self.lw_species.clear()
             species_patterns = (
-                res.species_patterns if res is not None
-                else project_data.get('species_patterns', [])
+                res.species_patterns
+                if res is not None
+                else project_data.get("species_patterns", [])
             )
             if species_patterns:
                 for source in species_patterns:
-                    if isinstance(source, dict) and source.get('type') == 'synthetic':
+                    if isinstance(source, dict) and source.get("type") == "synthetic":
                         self.lw_species.add_synthetic_source(source)
                         continue
-                    pattern_files = source.get('paths', []) if isinstance(source, dict) else source
+                    pattern_files = source.get("paths", []) if isinstance(source, dict) else source
                     paths = [pathlib.Path(p) for p in pattern_files]
                     # Check if all files in pattern exist
                     missing = [p for p in paths if not p.exists()]
                     if missing:
                         cs.logging.warning(f"Some files missing for pattern: {missing}")
                     self.lw_species.add_pattern(paths)
-            
-            ui_state = project_data.get('ui_state', {})
-            
+
+            ui_state = project_data.get("ui_state", {})
+
             # Restore detector selection
-            selected_detectors = ui_state.get('selected_detectors', [])
+            selected_detectors = ui_state.get("selected_detectors", [])
             if selected_detectors and self.detector_selection.checkboxes:
                 # First uncheck all
                 for cb in self.detector_selection.checkboxes.values():
@@ -3044,30 +3285,32 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 for det_name in selected_detectors:
                     if det_name in self.detector_selection.checkboxes:
                         self.detector_selection.checkboxes[det_name].setChecked(True)
-            
+
             # Restore anisotropy mode
-            anisotropy_mode = ui_state.get('anisotropy_mode', False)
+            anisotropy_mode = ui_state.get("anisotropy_mode", False)
             self.anisotropy_mode_cb.setChecked(anisotropy_mode)
-            self.stacked_mode_cb.setChecked(bool(ui_state.get('stacked_mode', False)))
-            self.options_model.fit_background = ui_state.get('afterpulse_filter', True)
-            self.options_model.scatter_irf = ui_state.get('scatter_filter', True)
+            self.stacked_mode_cb.setChecked(bool(ui_state.get("stacked_mode", False)))
+            self.options_model.fit_background = ui_state.get("afterpulse_filter", True)
+            self.options_model.scatter_irf = ui_state.get("scatter_filter", True)
             # Per-detector IRF / width / skew live on the detector table now.
             self.detector_selection.set_polarized(anisotropy_mode)
-            self.detector_selection.import_state(ui_state.get('detector_irf', {}))
+            self.detector_selection.import_state(ui_state.get("detector_irf", {}))
             self.options_form.sync_fields()
-            
+
             self._update_plots()
             self.btn_export.setEnabled(True)
             self._update_status("Project loaded successfully.")
-            
+
         except Exception as e:
             import traceback
+
             cs.logging.error(f"Error loading project: {e}\n{traceback.format_exc()}")
             dialogs.error(self, "Load Error", str(e))
 
     def _update_plots(self) -> None:
         # Keep the Info dock in sync with every recompute / data change.
         self._refresh_info()
+
         # Seed the draggable fit/filter range from the first available total decay
         # — including a file-backed total loaded with no species yet (the example
         # components are cleared on load, so there may be no computed result).
@@ -3078,7 +3321,8 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 try:
                     return self._total_decay(
                         self.detector_selection.get_selected() or None
-                        if self.detector_selection.checkboxes else None
+                        if self.detector_selection.checkboxes
+                        else None
                     )
                 except Exception:
                     return None
@@ -3086,8 +3330,11 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         for candidate in (
             getattr(self._result, "total_decay", None) if self._result else None,
-            (self._result_multi_detector[0]["result"].total_decay
-             if self._result_multi_detector else None),
+            (
+                self._result_multi_detector[0]["result"].total_decay
+                if self._result_multi_detector
+                else None
+            ),
             _loaded_total(),
         ):
             if candidate is not None and np.asarray(candidate).size > 8:
@@ -3097,128 +3344,178 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         # Handle multi-anisotropy mode - stack each detector's par/perp horizontally
         if self._result_multi_anisotropy:
             anisotropy_results = self._result_multi_anisotropy
-            
+
             # Find maximum bin size
-            max_bins = max(ar['result'].n_bins for ar in anisotropy_results)
+            max_bins = max(ar["result"].n_bins for ar in anisotropy_results)
             offset = max_bins * 1.1  # 10% gap between par/perp pairs
-            
+
             # 1. Filters - stack each detector's par/perp horizontally
             self.plot_filters.clear()
             for det_idx, ar in enumerate(anisotropy_results):
-                res = ar['result']
-                det_name = ar['detector']
+                res = ar["result"]
+                det_name = ar["detector"]
                 base_x = det_idx * 2 * offset  # Each detector gets 2 slots (par + perp)
                 x = np.arange(res.n_bins)
-                
+
                 for i in range(res.n_filters):
                     filter_label = self._filter_label(res, i)
                     # Parallel filters
-                    self.plot_filters.line(x + base_x, res.filters_par[i], pen=self._filter_color(res, i),
-                                          name=f"{det_name}: {filter_label} (||)")
+                    self.plot_filters.line(
+                        x + base_x,
+                        res.filters_par[i],
+                        pen=self._filter_color(res, i),
+                        name=f"{det_name}: {filter_label} (||)",
+                    )
                     # Perpendicular filters
-                    self.plot_filters.line(x + base_x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
-                                          name=f"{det_name}: {filter_label} (⊥)")
+                    self.plot_filters.line(
+                        x + base_x + offset,
+                        res.filters_perp[i],
+                        pen=self._filter_color(res, i),
+                        name=f"{det_name}: {filter_label} (⊥)",
+                    )
                 # Zero lines
-                self.plot_filters.line(x + base_x, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
-                self.plot_filters.line(x + base_x + offset, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
-            
+                self.plot_filters.line(
+                    x + base_x, np.zeros(res.n_bins), pen=cp.to_pen("w", style="dash")
+                )
+                self.plot_filters.line(
+                    x + base_x + offset, np.zeros(res.n_bins), pen=cp.to_pen("w", style="dash")
+                )
+
             # 2. Reconstruction - stack each detector's par/perp
             self._clear_recon_plot()
             for det_idx, ar in enumerate(anisotropy_results):
-                res = ar['result']
-                det_name = ar['detector']
+                res = ar["result"]
+                det_name = ar["detector"]
                 base_x = det_idx * 2 * offset
                 x = np.arange(res.n_bins)
-                
+
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_recon.line(x + base_x, res.total_decay_par, pen=detector_color,
-                                    name=f"{det_name}: Total (||)")
-                self.plot_recon.line(x + base_x, res.reconstruction_par, pen=cp.to_pen(detector_color, style="dash"),
-                                    name=f"{det_name}: Recon (||)", style="dash")
+                self.plot_recon.line(
+                    x + base_x,
+                    res.total_decay_par,
+                    pen=detector_color,
+                    name=f"{det_name}: Total (||)",
+                )
+                self.plot_recon.line(
+                    x + base_x,
+                    res.reconstruction_par,
+                    pen=cp.to_pen(detector_color, style="dash"),
+                    name=f"{det_name}: Recon (||)",
+                    style="dash",
+                )
                 # Perpendicular
-                self.plot_recon.line(x + base_x + offset, res.total_decay_perp, pen=detector_color,
-                                    name=f"{det_name}: Total (⊥)")
-                self.plot_recon.line(x + base_x + offset, res.reconstruction_perp, pen=cp.to_pen(detector_color, style="dash"),
-                                    name=f"{det_name}: Recon (⊥)", style="dash")
-            
+                self.plot_recon.line(
+                    x + base_x + offset,
+                    res.total_decay_perp,
+                    pen=detector_color,
+                    name=f"{det_name}: Total (⊥)",
+                )
+                self.plot_recon.line(
+                    x + base_x + offset,
+                    res.reconstruction_perp,
+                    pen=cp.to_pen(detector_color, style="dash"),
+                    name=f"{det_name}: Recon (⊥)",
+                    style="dash",
+                )
+
             # 3. Residuals - stack each detector's par/perp
             self.plot_residuals.clear()
             for det_idx, ar in enumerate(anisotropy_results):
-                res = ar['result']
-                det_name = ar['detector']
+                res = ar["result"]
+                det_name = ar["detector"]
                 base_x = det_idx * 2 * offset
                 x = np.arange(res.n_bins)
-                
+
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_residuals.line(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color,
-                                        name=f"{det_name} (||)")
+                self.plot_residuals.line(
+                    x + base_x,
+                    self._mask_to_fit_range(res.weighted_residuals_par, det_name),
+                    pen=detector_color,
+                    name=f"{det_name} (||)",
+                )
                 # Perpendicular
-                self.plot_residuals.line(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color,
-                                        name=f"{det_name} (⊥)")
+                self.plot_residuals.line(
+                    x + base_x + offset,
+                    self._mask_to_fit_range(res.weighted_residuals_perp, det_name),
+                    pen=detector_color,
+                    name=f"{det_name} (⊥)",
+                )
                 # Reference lines
                 for val in [-3, 0, 3]:
-                    pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                    pen = cp.to_pen("r" if val != 0 else "w", style="dash")
                     self.plot_residuals.line(x + base_x, np.full(res.n_bins, val), pen=pen)
                     self.plot_residuals.line(x + base_x + offset, np.full(res.n_bins, val), pen=pen)
             return
-        
+
         # Handle multi-detector mode - stack detectors horizontally
         if self._result_multi_detector:
             detector_results = self._result_multi_detector
-            
+
             # Find maximum bin size across all detectors
-            max_bins = max(dr['result'].n_bins for dr in detector_results)
+            max_bins = max(dr["result"].n_bins for dr in detector_results)
             offset = max_bins * 1.1  # 10% gap between detectors
-            
+
             # 1. Filters - stack each detector horizontally
             self.plot_filters.clear()
             for det_idx, dr in enumerate(detector_results):
-                res = dr['result']
-                det_name = dr['detector']
+                res = dr["result"]
+                det_name = dr["detector"]
                 x = np.arange(res.n_bins) + (det_idx * offset)
-                
+
                 for i in range(res.n_filters):
                     pen, name = self._filter_pen_name(res, i, f"{det_name}: ")
                     self.plot_filters.line(x, res.filters[i], pen=pen, name=name)
                 # Zero line for this detector
-                self.plot_filters.line(x, np.zeros(res.n_bins), pen=cp.to_pen('w', style="dash"))
-            
+                self.plot_filters.line(x, np.zeros(res.n_bins), pen=cp.to_pen("w", style="dash"))
+
             # 2. Reconstruction - stack each detector horizontally
             self._clear_recon_plot()
             for det_idx, dr in enumerate(detector_results):
-                res = dr['result']
-                det_name = dr['detector']
+                res = dr["result"]
+                det_name = dr["detector"]
                 x = np.arange(res.n_bins) + (det_idx * offset)
-                
+
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_recon.line(x, res.total_decay, pen=detector_color,
-                                    name=f"{det_name}: Total")
-                self.plot_recon.line(x, res.reconstruction, pen=cp.to_pen(detector_color, style="dash"),
-                                    name=f"{det_name}: Recon", style="dash")
-                self._plot_irf_overlay(self.plot_recon, x, det_name, self._decay_peak(res.total_decay))
+                self.plot_recon.line(
+                    x, res.total_decay, pen=detector_color, name=f"{det_name}: Total"
+                )
+                self.plot_recon.line(
+                    x,
+                    res.reconstruction,
+                    pen=cp.to_pen(detector_color, style="dash"),
+                    name=f"{det_name}: Recon",
+                    style="dash",
+                )
+                self._plot_irf_overlay(
+                    self.plot_recon, x, det_name, self._decay_peak(res.total_decay)
+                )
 
             # 3. Residuals - stack each detector horizontally
             self.plot_residuals.clear()
             for det_idx, dr in enumerate(detector_results):
-                res = dr['result']
-                det_name = dr['detector']
+                res = dr["result"]
+                det_name = dr["detector"]
                 x = np.arange(res.n_bins) + (det_idx * offset)
-                
-                self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name),
-                                        name=f"{det_name}")
+
+                self.plot_residuals.line(
+                    x,
+                    self._mask_to_fit_range(res.weighted_residuals, det_name),
+                    pen=self._stable_plot_color(det_name),
+                    name=f"{det_name}",
+                )
                 # Reference lines for this detector
                 for val in [-3, 0, 3]:
-                    pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                    pen = cp.to_pen("r" if val != 0 else "w", style="dash")
                     self.plot_residuals.line(x, np.full(res.n_bins, val), pen=pen)
             return
-        
+
         # Handle Anisotropy mode - stack decays horizontally
         if self._result_anisotropy:
             res = self._result_anisotropy
             x = np.arange(res.n_bins)
-            
+
             # Offset for horizontal stacking
             offset = res.n_bins * 1.1  # 10% gap between channels
 
@@ -3227,37 +3524,55 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             for i in range(res.n_filters):
                 filter_label = self._filter_label(res, i)
                 # Parallel filters (left side)
-                self.plot_filters.line(x, res.filters_par[i], pen=self._filter_color(res, i),
-                                      name=f"{filter_label} (||)")
+                self.plot_filters.line(
+                    x,
+                    res.filters_par[i],
+                    pen=self._filter_color(res, i),
+                    name=f"{filter_label} (||)",
+                )
                 # Perpendicular filters (right side, offset)
-                self.plot_filters.line(x + offset, res.filters_perp[i], pen=self._filter_color(res, i),
-                                      name=f"{filter_label} (⊥)")
+                self.plot_filters.line(
+                    x + offset,
+                    res.filters_perp[i],
+                    pen=self._filter_color(res, i),
+                    name=f"{filter_label} (⊥)",
+                )
             # Zero lines for both channels
-            self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
-            self.plot_filters.line(x + offset, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
+            self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen("w", style="dash"))
+            self.plot_filters.line(x + offset, np.zeros_like(x), pen=cp.to_pen("w", style="dash"))
 
             # 2. Reconstruction - stack horizontally
             self._clear_recon_plot()
             # Parallel (left)
-            self.plot_recon.line(x, res.total_decay_par, pen='w', name="Total (||)")
-            self.plot_recon.line(x, res.reconstruction_par, pen='r', name="Recon (||)")
+            self.plot_recon.line(x, res.total_decay_par, pen="w", name="Total (||)")
+            self.plot_recon.line(x, res.reconstruction_par, pen="r", name="Recon (||)")
             # Perpendicular (right)
-            self.plot_recon.line(x + offset, res.total_decay_perp, pen='w', name="Total (⊥)")
-            self.plot_recon.line(x + offset, res.reconstruction_perp, pen='r', name="Recon (⊥)")
+            self.plot_recon.line(x + offset, res.total_decay_perp, pen="w", name="Total (⊥)")
+            self.plot_recon.line(x + offset, res.reconstruction_perp, pen="r", name="Recon (⊥)")
 
             # 3. Residuals - stack horizontally
             self.plot_residuals.clear()
             # Parallel (left)
-            self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', name="Residuals (||)")
+            self.plot_residuals.line(
+                x,
+                self._mask_to_fit_range(res.weighted_residuals_par),
+                pen="g",
+                name="Residuals (||)",
+            )
             # Perpendicular (right)
-            self.plot_residuals.line(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', name="Residuals (⊥)")
+            self.plot_residuals.line(
+                x + offset,
+                self._mask_to_fit_range(res.weighted_residuals_perp),
+                pen="y",
+                name="Residuals (⊥)",
+            )
             # Reference lines for both channels
             for val in [-3, 0, 3]:
-                pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
+                pen = cp.to_pen("r" if val != 0 else "w", style="dash")
                 self.plot_residuals.line(x, np.full_like(x, val), pen=pen)
                 self.plot_residuals.line(x + offset, np.full_like(x, val), pen=pen)
             return
-        
+
         # Standard single-channel mode
         if not self._result:
             return
@@ -3270,12 +3585,12 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         for i in range(res.n_filters):
             pen, name = self._filter_pen_name(res, i)
             self.plot_filters.line(x, res.filters[i], pen=pen, name=name)
-        self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen('w', style="dash"))
+        self.plot_filters.line(x, np.zeros_like(x), pen=cp.to_pen("w", style="dash"))
 
         # 2. Reconstruction
         self._clear_recon_plot()
-        self.plot_recon.line(x, res.total_decay, pen='w', name="Total")
-        self.plot_recon.line(x, res.reconstruction, pen='r', name="Recon", style="dash")
+        self.plot_recon.line(x, res.total_decay, pen="w", name="Total")
+        self.plot_recon.line(x, res.reconstruction, pen="r", name="Recon", style="dash")
         # Overlay the IRF/scatter pattern (single detector → one stored entry).
         peak = self._decay_peak(res.total_decay)
         for det_name in list(self._irf_by_detector.keys()):
@@ -3283,47 +3598,52 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         # 3. Residuals
         self.plot_residuals.clear()
-        self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals), pen='g')
+        self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals), pen="g")
         for val in [-3, 0, 3]:
-            self.plot_residuals.line(x, np.full_like(x, val), pen=cp.to_pen('r' if val != 0 else 'w', style="dash"))
+            self.plot_residuals.line(
+                x, np.full_like(x, val), pen=cp.to_pen("r" if val != 0 else "w", style="dash")
+            )
 
     def _on_export(self) -> None:
-        if not self._result and not self._result_anisotropy and not self._result_multi_detector and not self._result_multi_anisotropy:
+        if (
+            not self._result
+            and not self._result_anisotropy
+            and not self._result_multi_detector
+            and not self._result_multi_anisotropy
+        ):
             return
-        
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Export Filters", "fcs_filters.json", "JSON (*.json)")
+
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export Filters", "fcs_filters.json", "JSON (*.json)"
+        )
         if path:
             if self._result_multi_anisotropy:
                 # Export multi-anisotropy results
                 import json
+
                 export_data = {
-                    'mode': 'multi_anisotropy',
-                    'detectors': [
-                        {
-                            'detector': ar['detector'],
-                            'result': ar['result'].to_dict()
-                        }
+                    "mode": "multi_anisotropy",
+                    "detectors": [
+                        {"detector": ar["detector"], "result": ar["result"].to_dict()}
                         for ar in self._result_multi_anisotropy
-                    ]
+                    ],
                 }
-                with open(path, 'w') as f:
+                with open(path, "w") as f:
                     json.dump(export_data, f, indent=2)
             elif self._result_anisotropy:
                 self._result_anisotropy.to_json(path)
             elif self._result_multi_detector:
                 # Export multi-detector results as a list
                 import json
+
                 export_data = {
-                    'mode': 'multi_detector',
-                    'detectors': [
-                        {
-                            'detector': dr['detector'],
-                            'result': dr['result'].to_dict()
-                        }
+                    "mode": "multi_detector",
+                    "detectors": [
+                        {"detector": dr["detector"], "result": dr["result"].to_dict()}
                         for dr in self._result_multi_detector
-                    ]
+                    ],
                 }
-                with open(path, 'w') as f:
+                with open(path, "w") as f:
                     json.dump(export_data, f, indent=2)
             else:
                 self._result.to_json(path)

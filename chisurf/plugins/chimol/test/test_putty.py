@@ -21,7 +21,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.putty import (
     PUTTY_TRANSFORMS,
     putty_scale_factors,
@@ -30,7 +29,11 @@ from chimol.analysis.putty import (
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -123,7 +126,7 @@ def test_smoothing_softens_a_spike():
     """A single outlying residue should bulge the tube, not bead it."""
     smoothed = smooth_scale_factors(np.array([1.0, 1.0, 9.0, 1.0, 1.0]), window=1)
     assert smoothed[2] < 9.0
-    assert smoothed[1] > 1.0        # the bulge spreads to its neighbours
+    assert smoothed[1] > 1.0  # the bulge spreads to its neighbours
 
 
 def test_smoothing_leaves_the_ends_alone():
@@ -160,8 +163,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -186,7 +189,7 @@ def session(qapp):
     cmd.do("hide everything")
     cmd.do("show cartoon")
     yield cmd, view, errors
-    cmd.do("cartoon automatic")     # a global setting, restored for other tests
+    cmd.do("cartoon automatic")  # a global setting, restored for other tests
 
 
 def _tube_radii(view) -> np.ndarray | None:
@@ -197,7 +200,7 @@ def _tube_radii(view) -> np.ndarray | None:
     """
     scene = view.get_current_scene()
     mesh = None
-    for obj in (scene.objects if scene else []):
+    for obj in scene.objects if scene else []:
         geometry = obj.geometry
         positions = getattr(geometry, "positions", None)
         if getattr(geometry, "kind", "") != "mesh" or positions is None:

@@ -26,7 +26,11 @@ import pytest
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "solvated_fragment.pdb"
 )
 
 
@@ -92,9 +96,7 @@ def test_removing_the_waters_does_not_put_a_sphere_on_the_zinc(session):
 
     do("remove solvent")
     assert errors == []
-    assert _shown_spheres(viewer) == [], (
-        "nothing else was ever selected for spheres"
-    )
+    assert _shown_spheres(viewer) == [], "nothing else was ever selected for spheres"
 
 
 def test_the_representation_flag_clears_with_its_mask(session):
@@ -115,9 +117,7 @@ def test_only_the_cartoon_is_left_in_the_scene(session):
     do("remove solvent")
     scene = viewer.get_current_scene()
     assert scene.objects
-    assert all("cartoon" in str(o.id) for o in scene.objects), [
-        str(o.id) for o in scene.objects
-    ]
+    assert all("cartoon" in str(o.id) for o in scene.objects), [str(o.id) for o in scene.objects]
 
 
 # --------------------------------------------------------------------------- #
@@ -155,9 +155,7 @@ def test_a_surviving_atom_keeps_its_own_colour(session):
     res_ids = np.asarray(state.atoms["res_id"])
     for k in range(len(names)):
         key = f"{res_ids[k]}:{names[k]}"
-        assert tuple(
-            np.round(np.asarray(state.colors_per_atom_override)[k], 6)
-        ) == before[key], key
+        assert tuple(np.round(np.asarray(state.colors_per_atom_override)[k], 6)) == before[key], key
 
 
 def test_protection_shrinks_with_the_atoms(session):

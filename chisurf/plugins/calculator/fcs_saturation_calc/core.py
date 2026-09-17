@@ -193,9 +193,7 @@ def compute_volume_profile(
 
     r = np.linspace(0.0, 3.5 * w0_m, 140)
     z = np.zeros_like(r)
-    k_exc = excitation_rate(
-        r, z, w0_m, z0_m, power_mW * 1e-3, extinction, wavelength_nm * 1e-9
-    )
+    k_exc = excitation_rate(r, z, w0_m, z0_m, power_mW * 1e-3, extinction, wavelength_nm * 1e-9)
     k_exc_peak = float(k_exc[0])
     k_exc_norm = (k_exc / k_exc_peak) if k_exc_peak > 0 else np.zeros_like(r)
 
@@ -266,9 +264,7 @@ def volume_expansion(
     r = np.linspace(0.0, GRID_EXTENT_WAISTS * w0_m, DEFAULT_N_R)
     z = np.linspace(-GRID_EXTENT_WAISTS * z0_m, GRID_EXTENT_WAISTS * z0_m, DEFAULT_N_Z)
     R, Z = np.meshgrid(r, z, indexing="ij")
-    k_exc = excitation_rate(
-        R, Z, w0_m, z0_m, power_mW * 1e-3, extinction, wavelength_nm * 1e-9
-    )
+    k_exc = excitation_rate(R, Z, w0_m, z0_m, power_mW * 1e-3, extinction, wavelength_nm * 1e-9)
     profile = emission_profile(k_exc, dark_matrix, exc_matrix, brightness)
     v_eff = effective_volume(r, z, profile)
     v_0 = np.pi**1.5 * w0_m**2 * z0_m

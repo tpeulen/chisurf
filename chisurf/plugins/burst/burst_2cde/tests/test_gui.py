@@ -13,13 +13,15 @@ pytest.importorskip("qtpy")
 @pytest.fixture(scope="module")
 def qapp():
     from qtpy import QtWidgets
+
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def test_tool_builds_computes_and_grabs(qapp, tmp_path):
     from qtpy import QtWidgets  # noqa: F401
-    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
     from chisurf.plugins.burst.burst_2cde.core import computation as core
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
 
     tool = BurstTwoCdeTool(embedded=True)
     assert tool.name
@@ -27,13 +29,16 @@ def test_tool_builds_computes_and_grabs(qapp, tmp_path):
     # Drive the private draw path with a synthetic burst dataframe so the plot
     # renders without needing burst files on disk.
     import pandas as pd
+
     rng = np.random.default_rng(0)
     n = 200
-    df = pd.DataFrame({
-        "First File": ["f0"] * n,
-        "Proximity Ratio": rng.uniform(0, 1, n),
-        core.COLUMN_FRET_2CDE: rng.normal(12.0, 5.0, n),
-    })
+    df = pd.DataFrame(
+        {
+            "First File": ["f0"] * n,
+            "Proximity Ratio": rng.uniform(0, 1, n),
+            core.COLUMN_FRET_2CDE: rng.normal(12.0, 5.0, n),
+        }
+    )
     tool._draw(df, core.COLUMN_FRET_2CDE)
     assert "bursts valid" in tool._status.text()
 
@@ -62,11 +67,13 @@ def test_plotted_column_follows_the_run_not_the_live_combo(qapp):
     try:
         tool._variant.setCurrentText("fret")
         n = 20
-        df = pd.DataFrame({
-            "First File": ["f0"] * n,
-            "Proximity Ratio": np.linspace(0.0, 1.0, n),
-            core.COLUMN_FRET_2CDE: np.linspace(5.0, 15.0, n),
-        })
+        df = pd.DataFrame(
+            {
+                "First File": ["f0"] * n,
+                "Proximity Ratio": np.linspace(0.0, 1.0, n),
+                core.COLUMN_FRET_2CDE: np.linspace(5.0, 15.0, n),
+            }
+        )
         # The user switches to the other variant while the folder is correlated.
         tool._variant.setCurrentText("alex")
         tool._analysis_done((df, "fret"))
@@ -120,9 +127,7 @@ def test_dropped_folder_is_adopted_and_run(qapp, tmp_path, monkeypatch):
     tool = BurstTwoCdeTool(embedded=True)
     try:
         runs: list[bool] = []
-        monkeypatch.setattr(
-            BurstTwoCdeTool, "run", lambda self, **kwargs: runs.append(True)
-        )
+        monkeypatch.setattr(BurstTwoCdeTool, "run", lambda self, **kwargs: runs.append(True))
         tool.on_paths_dropped([pathlib.Path(tmp_path)])
         assert tool._folder_edit.text() == str(tmp_path)
         assert runs == [True]
@@ -163,6 +168,6 @@ def test_workflow_factory_registered():
     """The 2CDE step is wired into the burst_analysis workflow shell."""
     from chisurf.plugins.burst.burst_analysis.gui import tool as wf
 
-    roles = {step.get("role") for step in wf.STEPS} if hasattr(wf, "STEPS") else set()
+    {step.get("role") for step in wf.STEPS} if hasattr(wf, "STEPS") else set()
     # Fall back to scanning module for the factory if STEPS is named differently.
     assert hasattr(wf, "_burst_2cde")

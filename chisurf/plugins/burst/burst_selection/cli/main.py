@@ -67,20 +67,49 @@ def cli(ctx: click.Context, version: bool) -> None:
 @cli.command()
 @click.argument("files", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @click.option("--filetype", default=None, help="Explicit TTTR file type for tttrlib.")
-@click.option("--settings-file", type=click.Path(exists=True), help="JSON file with analysis settings.")
-@click.option("--output-dir", type=click.Path(file_okay=False), help="Directory for generated .bur files.")
-@click.option("--format", "output_formats", multiple=True, default=("pto",),
-              show_default=True,
-              help="'pto' writes the bursts into the measurement's own "
-                   "container beside the photons; 'bur' also writes the legacy "
-                   "companion folder, for tools that read it.")
-@click.option("--min-photons", default=60, show_default=True, type=int, help="Minimum photons per burst.")
-@click.option("--photon-window", default=10, show_default=True, type=int, help="Photon window size.")
-@click.option("--time-window", default=1e-3, show_default=True, type=float, help="Burst time window in seconds.")
-@click.option("--n-ph-max", default=60, show_default=True, type=int, help="Count-rate filter maximum photons.")
-@click.option("--count-rate-window", default=1e-3, show_default=True, type=float, help="Count-rate filter window in seconds.")
+@click.option(
+    "--settings-file", type=click.Path(exists=True), help="JSON file with analysis settings."
+)
+@click.option(
+    "--output-dir", type=click.Path(file_okay=False), help="Directory for generated .bur files."
+)
+@click.option(
+    "--format",
+    "output_formats",
+    multiple=True,
+    default=("pto",),
+    show_default=True,
+    help="'pto' writes the bursts into the measurement's own "
+    "container beside the photons; 'bur' also writes the legacy "
+    "companion folder, for tools that read it.",
+)
+@click.option(
+    "--min-photons", default=60, show_default=True, type=int, help="Minimum photons per burst."
+)
+@click.option(
+    "--photon-window", default=10, show_default=True, type=int, help="Photon window size."
+)
+@click.option(
+    "--time-window",
+    default=1e-3,
+    show_default=True,
+    type=float,
+    help="Burst time window in seconds.",
+)
+@click.option(
+    "--n-ph-max", default=60, show_default=True, type=int, help="Count-rate filter maximum photons."
+)
+@click.option(
+    "--count-rate-window",
+    default=1e-3,
+    show_default=True,
+    type=float,
+    help="Count-rate filter window in seconds.",
+)
 @click.option("--windows-json", type=click.Path(exists=True), help="PIE windows JSON file.")
-@click.option("--detectors-json", type=click.Path(exists=True), help="Detector definitions JSON file.")
+@click.option(
+    "--detectors-json", type=click.Path(exists=True), help="Detector definitions JSON file."
+)
 @click.option(
     "--mmfdb/--no-mmfdb",
     "use_mmfdb",
@@ -108,7 +137,9 @@ def cli(ctx: click.Context, version: bool) -> None:
     default=None,
     help="Existing sample name to resolve when --sample-id is not given.",
 )
-@click.option("--selected-setup", default=None, help="Detector setup label stored in MMFDB metadata.")
+@click.option(
+    "--selected-setup", default=None, help="Detector setup label stored in MMFDB metadata."
+)
 @click.option(
     "--legacy-output/--no-legacy-output",
     "legacy_output",
@@ -229,8 +260,9 @@ def _analyze_with_mmfdb(
     from mmfdb.samples.sample_manager import find_sample_by_name
     from mmfdb.store.database_resolver import resolve_database_path
 
-    from ..backend.services import analyze_files_handler
     from chisurf.core.transform.mmfdb import session_from_auth
+
+    from ..backend.services import analyze_files_handler
 
     db = MFDatabase(db_path or resolve_database_path())
     try:
@@ -308,7 +340,9 @@ def inspect_cmd(bur_file: str) -> None:
 def fit_gmm_cmd(bur_file: str, settings_file: str | None, settings_json: str | None) -> None:
     """Fit a Gaussian mixture model to burst features from BUR_FILE."""
     df = read_burst_table(bur_file)
-    settings = settings_from_dict({"gmm": (load_json_file(settings_file) or json.loads(settings_json or "{}"))})
+    settings = settings_from_dict(
+        {"gmm": (load_json_file(settings_file) or json.loads(settings_json or "{}"))}
+    )
     features = extract_features([df])
     result = fit_gmm(features, settings.gmm)
     click.echo(json.dumps(result, indent=2, default=str))

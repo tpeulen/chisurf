@@ -36,6 +36,7 @@ The approximation is the Gaussian, not the algebra. Everything here is exact
 *given* a Gaussian; how well that describes the posterior is the same question
 the `laplace` engine already answers, and a chain remains the way to find out.
 """
+
 from __future__ import annotations
 
 import collections
@@ -102,11 +103,11 @@ class CanonicalForm:
 
     @classmethod
     def from_moments(
-            cls,
-            names: typing.Sequence[str],
-            mean: np.ndarray,
-            covariance: np.ndarray,
-            log_mass: float = 0.0,
+        cls,
+        names: typing.Sequence[str],
+        mean: np.ndarray,
+        covariance: np.ndarray,
+        log_mass: float = 0.0,
     ) -> CanonicalForm:
         """Build a canonical form from a mean and a covariance.
 
@@ -145,11 +146,7 @@ class CanonicalForm:
         K = inv_chol.T @ inv_chol
         h = K @ mean
         log_det_cov = 2.0 * float(np.log(np.diag(chol)).sum())
-        g = float(
-            log_mass
-            - 0.5 * (cov.shape[0] * LOG_2PI + log_det_cov)
-            - 0.5 * float(mean @ h)
-        )
+        g = float(log_mass - 0.5 * (cov.shape[0] * LOG_2PI + log_det_cov) - 0.5 * float(mean @ h))
         return cls(names=names, K=K, h=h, g=g)
 
     # -- moments ----------------------------------------------------------
@@ -176,9 +173,7 @@ class CanonicalForm:
         sign, log_det_k = np.linalg.slogdet(self.K)
         if sign <= 0:
             return float("nan")
-        return float(
-            self.g + 0.5 * (d * LOG_2PI - log_det_k + float(self.h @ self.mean))
-        )
+        return float(self.g + 0.5 * (d * LOG_2PI - log_det_k + float(self.h @ self.mean)))
 
     def log_density(self, x: np.ndarray) -> float:
         """Return ``g + h.x - x.K.x/2`` at a point."""
@@ -232,27 +227,19 @@ class CanonicalForm:
         k_bb = self.K[np.ix_(b, b)]
         h_a, h_b = self.h[a], self.h[b]
 
-        solved_kba = np.linalg.solve(k_bb, k_ab.T)   # K_bb^-1 K_ba
-        solved_hb = np.linalg.solve(k_bb, h_b)       # K_bb^-1 h_b
+        solved_kba = np.linalg.solve(k_bb, k_ab.T)  # K_bb^-1 K_ba
+        solved_hb = np.linalg.solve(k_bb, h_b)  # K_bb^-1 h_b
         sign, log_det_kbb = np.linalg.slogdet(k_bb)
         if sign <= 0:
-            raise np.linalg.LinAlgError(
-                "the eliminated block is not positive definite"
-            )
+            raise np.linalg.LinAlgError("the eliminated block is not positive definite")
         return CanonicalForm(
             names=keep,
             K=k_aa - k_ab @ solved_kba,
             h=h_a - k_ab @ solved_hb,
-            g=float(
-                self.g
-                + 0.5 * (len(b) * LOG_2PI - log_det_kbb + float(h_b @ solved_hb))
-            ),
+            g=float(self.g + 0.5 * (len(b) * LOG_2PI - log_det_kbb + float(h_b @ solved_hb))),
         )
 
-    def condition(
-            self,
-            assignments: typing.Dict[str, float]
-    ) -> CanonicalForm:
+    def condition(self, assignments: typing.Dict[str, float]) -> CanonicalForm:
         r"""Hold variables at given values.
 
         :math:`K` loses the conditioned rows and columns and
@@ -292,9 +279,7 @@ class CanonicalForm:
         h_b = self.h[b]
         g = float(self.g + h_b @ v - 0.5 * v @ k_bb @ v)
         if not a:
-            return CanonicalForm(
-                names=(), K=np.zeros((0, 0)), h=np.zeros(0), g=g
-            )
+            return CanonicalForm(names=(), K=np.zeros((0, 0)), h=np.zeros(0), g=g)
         return CanonicalForm(
             names=tuple(self.names[i] for i in a),
             K=self.K[np.ix_(a, a)],
@@ -322,9 +307,7 @@ class CanonicalForm:
             idx = [index[n] for n in form.names]
             K[np.ix_(idx, idx)] += form.K
             h[idx] += form.h
-        return CanonicalForm(
-            names=tuple(names), K=K, h=h, g=float(self.g + other.g)
-        )
+        return CanonicalForm(names=tuple(names), K=K, h=h, g=float(self.g + other.g))
 
     def __len__(self) -> int:
         """Return the number of variables in scope."""

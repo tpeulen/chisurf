@@ -4,8 +4,8 @@ Qt-free helpers shared by the imaging N&B and phasor plugins. tttrlib is
 imported lazily so this module stays importable (and partially testable) where
 the compiled extension is absent.
 
-- :func:`nb_maps` computes the per-pixel Number & Brightness moments from an
-  intensity frame-stack (the one analysis PAM/tttrlib did not already provide).
+- :func:`nb_maps` (from :mod:`.number_brightness`) computes the per-pixel
+  Number & Brightness maps from an intensity frame-stack.
 - :func:`phasor_maps` is a thin wrapper over the built-in
   ``tttrlib.CLSMImage.get_phasor`` (raw + optional IRF reference).
 - :func:`maps_to_table` / :func:`write_imaging_hdf5` serialise per-pixel maps
@@ -19,6 +19,8 @@ from typing import Any
 
 import numpy as np
 
+from .number_brightness import nb_pipeline
+
 
 def _ensure_stack(intensity: Any) -> np.ndarray:
     """Return an intensity image as a ``(n_frames, n_lines, n_pixel)`` stack."""
@@ -28,48 +30,6 @@ def _ensure_stack(intensity: Any) -> np.ndarray:
     if arr.ndim == 3:
         return arr
     raise ValueError(f"Unsupported intensity shape {arr.shape!r}; expected 2D or 3D")
-
-
-def nb_maps(intensity_stack: Any) -> dict[str, np.ndarray]:
-    """Return per-pixel Number & Brightness maps from an intensity frame-stack.
-
-    For each pixel, over the frame axis (the temporal samples):
-
-    - ``mean``     = <k>
-    - ``variance`` = <k²> − <k>²  (population variance across frames)
-    - ``B``        = variance / mean            (apparent brightness)
-    - ``N``        = mean² / variance           (apparent number)
-    - ``epsilon``  = B − 1                       (true molecular brightness,
-      photon-counting detector assumption)
-
-    Parameters
-    ----------
-    intensity_stack : array_like
-        ``(n_frames, n_lines, n_pixel)`` (or a single 2D frame) of photon counts.
-
-    Returns
-    -------
-    dict of numpy.ndarray
-        2-D maps ``mean``, ``variance``, ``B``, ``N``, ``epsilon``. Undefined
-        pixels (zero mean/variance, or < 2 frames) are set to 0.
-    """
-    stack = _ensure_stack(intensity_stack)
-    mean = stack.mean(axis=0)
-    if stack.shape[0] < 2:
-        variance = np.zeros_like(mean)
-    else:
-        variance = stack.var(axis=0, ddof=0)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        B = np.where(mean > 0.0, variance / mean, 0.0)
-        N = np.where(variance > 0.0, mean * mean / variance, 0.0)
-    epsilon = np.where(mean > 0.0, B - 1.0, 0.0)
-    return {
-        "mean": np.nan_to_num(mean),
-        "variance": np.nan_to_num(variance),
-        "B": np.nan_to_num(B),
-        "N": np.nan_to_num(N),
-        "epsilon": np.nan_to_num(epsilon),
-    }
 
 
 def intensity_maps(intensity_stack: Any) -> dict[str, np.ndarray]:
@@ -275,11 +235,16 @@ def _calibration_hist_worker(filename, chs, ch_p, ch_s, irf_files):
     data_vh = micro_time_histogram(tttr, ch_s, n_channels=n) if ch_s else np.zeros(n)
     raw = (
         raw_irf_components(list(irf_files), ch_p or chs, ch_s, n_channels=n)
-        if irf_files else {"vv": None, "vh": None}
+        if irf_files
+        else {"vv": None, "vh": None}
     )
     return {
-        "data": data, "data_vv": data_vv, "data_vh": data_vh,
-        "irf_vv_raw": raw["vv"], "irf_vh_raw": raw["vh"], "n": n,
+        "data": data,
+        "data_vv": data_vv,
+        "data_vh": data_vh,
+        "irf_vv_raw": raw["vv"],
+        "irf_vh_raw": raw["vh"],
+        "n": n,
     }
 
 
@@ -291,7 +256,13 @@ def calibration_histograms(filename, chs, ch_p, ch_s, irf_files) -> dict:
     small histogram arrays cross the process boundary. Falls back to an in-process
     read if the pool is unavailable (e.g. a platform without spawn).
     """
-    args = (str(filename), list(chs or []), list(ch_p or []), list(ch_s or []), list(irf_files or []))
+    args = (
+        str(filename),
+        list(chs or []),
+        list(ch_p or []),
+        list(ch_s or []),
+        list(irf_files or []),
+    )
     try:
         return _get_proc_pool().submit(_calibration_hist_worker, *args).result()
     except Exception:
@@ -318,10 +289,16 @@ def _window_worker(payload):
     clsm = cached_clsm(filename, chs, mtr)
     if kind == "nb":
         stack = np.asarray(clsm.get_intensity(), dtype=float)
-        nb = nb_maps(stack)
+        nb = nb_pipeline(stack, params)
         return {
-            "intensity": stack.sum(axis=0), "N": nb["N"], "B": nb["B"],
-            "epsilon": nb["epsilon"], "frames": stack,
+            "intensity": stack.sum(axis=0),
+            "N": nb["N"],
+            "B": nb["B"],
+            "epsilon": nb["epsilon"],
+            "n": nb["n"],
+            "mean": nb["mean"],
+            "variance": nb["variance"],
+            "frames": stack,
         }
     if kind == "mean_micro_time":
         tttr = get_tttr(filename)
@@ -343,8 +320,10 @@ def _window_worker(payload):
             np.asarray(clsm.get_mean_micro_time(tttr, res_ns, n_ph, False), dtype=float)
         )
         return {
-            "intensity": stack.sum(axis=0), "mean_micro_time": np.nan_to_num(mt),
-            "frames": stack, "mt_frames": mt_frames,
+            "intensity": stack.sum(axis=0),
+            "mean_micro_time": np.nan_to_num(mt),
+            "frames": stack,
+            "mt_frames": mt_frames,
         }
     if kind == "phasor":
         stack = np.asarray(clsm.get_intensity(), dtype=float)
@@ -357,22 +336,31 @@ def _window_worker(payload):
         ph = phasor_maps(clsm, tttr, frequency=freq, tttr_irf=irf, n_ph_min=n_ph)
         pf = phasor_frames(clsm, tttr, frequency=freq, tttr_irf=irf, n_ph_min=n_ph)
         return {
-            "intensity": stack.sum(axis=0), "g": ph["g"], "s": ph["s"],
-            "n_photons": ph["n_photons"], "frames": stack,
-            "g_frames": pf["g"], "s_frames": pf["s"],
+            "intensity": stack.sum(axis=0),
+            "g": ph["g"],
+            "s": ph["s"],
+            "n_photons": ph["n_photons"],
+            "frames": stack,
+            "g_frames": pf["g"],
+            "s_frames": pf["s"],
         }
     if kind == "intensity":
         base_chs = ch_p or chs
         base = cached_clsm(filename, base_chs, mtr)
         n_par = np.asarray(base.get_intensity(), dtype=float).sum(axis=0)
         if ch_s and ch_s != base_chs:
-            n_perp = np.asarray(cached_clsm(filename, ch_s, mtr).get_intensity(), dtype=float).sum(axis=0)
+            n_perp = np.asarray(cached_clsm(filename, ch_s, mtr).get_intensity(), dtype=float).sum(
+                axis=0
+            )
         else:
             n_perp = np.zeros_like(n_par)
         durations, n_pixel = total_line_durations(base)
         return {
-            "n_par": n_par, "n_perp": n_perp, "durations": durations,
-            "n_pixel": n_pixel, "bg": float(bg),
+            "n_par": n_par,
+            "n_perp": n_perp,
+            "durations": durations,
+            "n_pixel": n_pixel,
+            "bg": float(bg),
             "frames": np.asarray(clsm.get_intensity(), dtype=float),
         }
     raise ValueError(f"unknown window kind {kind!r}")
@@ -399,9 +387,15 @@ def compute_windows(filename, windows, kind, params=None, progress=None, use_pro
         if callable(progress):
             progress(i / max(n, 1), f"Window {name} ({i + 1}/{n})")
         payload = (
-            filename, list(det.get("chs", [0]) or [0]), list(det.get("ch_p") or []),
-            list(det.get("ch_s") or []), list(det.get("micro_time_ranges") or []), kind, params,
-            list(det.get("irf") or []), float(det.get("bg") or 0.0),
+            filename,
+            list(det.get("chs", [0]) or [0]),
+            list(det.get("ch_p") or []),
+            list(det.get("ch_s") or []),
+            list(det.get("micro_time_ranges") or []),
+            kind,
+            params,
+            list(det.get("irf") or []),
+            float(det.get("bg") or 0.0),
         )
         if pool is not None:
             try:
@@ -502,8 +496,12 @@ def shift_wrap(arr: Any, shift: float) -> np.ndarray:
 
 
 def prepare_irf_hist(
-    vv, vh, shift_vv: float = 0.0, shift_vh: float = 0.0,
-    background_vv=None, background_vh=None,
+    vv,
+    vh,
+    shift_vv: float = 0.0,
+    shift_vh: float = 0.0,
+    background_vv=None,
+    background_vh=None,
 ) -> dict[str, np.ndarray]:
     """Prepare **already-computed** VV/VH IRF histograms (all histogram ops, fast).
 
@@ -530,7 +528,9 @@ def prepare_irf_hist(
     }
 
 
-def raw_irf_components(irf_files, ch_p, ch_s, n_channels: int | None = None) -> dict[str, np.ndarray]:
+def raw_irf_components(
+    irf_files, ch_p, ch_s, n_channels: int | None = None
+) -> dict[str, np.ndarray]:
     """Return the raw (un-prepared) VV/VH IRF histograms, summed over *irf_files*."""
 
     def _component(channels) -> np.ndarray:
@@ -544,8 +544,14 @@ def raw_irf_components(irf_files, ch_p, ch_s, n_channels: int | None = None) -> 
 
 
 def prepare_irf(
-    irf_files, ch_p, ch_s, n_channels: int | None = None,
-    background_vv=None, background_vh=None, shift_vv: float = 0.0, shift_vh: float = 0.0,
+    irf_files,
+    ch_p,
+    ch_s,
+    n_channels: int | None = None,
+    background_vv=None,
+    background_vh=None,
+    shift_vv: float = 0.0,
+    shift_vh: float = 0.0,
 ) -> dict[str, np.ndarray]:
     """Prepare a per-detector IRF from files: split VV/VH, shift, bg-correct, normalise.
 
@@ -555,8 +561,12 @@ def prepare_irf(
     """
     raw = raw_irf_components(irf_files, ch_p, ch_s, n_channels=n_channels)
     return prepare_irf_hist(
-        raw["vv"], raw["vh"], shift_vv=shift_vv, shift_vh=shift_vh,
-        background_vv=background_vv, background_vh=background_vh,
+        raw["vv"],
+        raw["vh"],
+        shift_vv=shift_vv,
+        shift_vh=shift_vh,
+        background_vv=background_vv,
+        background_vh=background_vh,
     )
 
 
@@ -720,9 +730,7 @@ def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
     """
     from chisurf.core.datastore import write_table
 
-    write_table(
-        path, df, meta={"source_tttr": str(source)} if source is not None else None
-    )
+    write_table(path, df, meta={"source_tttr": str(source)} if source is not None else None)
 
 
 def read_imaging_source(path: str) -> str | None:

@@ -7,24 +7,17 @@ import pickle
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.data
-import chisurf.core.support.decorators
 import chisurf.core.fio
 import chisurf.core.fitting
+import chisurf.core.support.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
 from chisurf import typing
-from chisurf.core.experiments.core import reader
 from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, dataset_tooltip_html
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-
-from .fcs import FCSController
-from .pch import PCHController
-from .ics import ICSController
 
 
 @chisurf.core.support.decorators.register
 class ExperimentalDataSelector(QtWidgets.QTreeWidget):
-
     @property
     def curve_name(self) -> str:
         try:
@@ -35,9 +28,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
     def get_datasets(self) -> typing.List[chisurf.core.data.ExperimentalData]:
         data_curves = self.get_data_sets(curve_type=self.curve_type)
         if self.experiment is not None:
-            dv = [
-                d for d in data_curves if isinstance(d.experiment, self.experiment)
-            ]
+            dv = [d for d in data_curves if isinstance(d.experiment, self.experiment)]
             return dv
         else:
             return data_curves
@@ -84,9 +75,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         return idx
 
     def onRemoveDataset(self):
-        dataset_idx = [
-            selected_index.row() for selected_index in self.selectedIndexes()
-        ]
+        dataset_idx = [selected_index.row() for selected_index in self.selectedIndexes()]
         chisurf.core.actions.dispatch(
             name="dataset.remove",
             payload={"dataset_indices": [int(i) for i in dataset_idx]},
@@ -97,19 +86,15 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         base_name, extension = os.path.splitext(self.curve_name)
         filename = chisurf.gui.widgets.save_file(
             working_path=base_name,
-            file_type='Pickle file (*.pkl)',
+            file_type="Pickle file (*.pkl)",
         )
-        self.selected_dataset.save(
-            filename=filename,
-            file_type='pkl'
-        )
+        self.selected_dataset.save(filename=filename, file_type="pkl")
 
     def onLoadDataset(self):
         filename: pathlib.Path = chisurf.gui.widgets.get_filename(
-            description='Pickled data ',
-            file_type='Pickle files (*.pkl)'
+            description="Pickled data ", file_type="Pickle files (*.pkl)"
         )
-        obj = pickle.load(open(filename, 'rb'))
+        obj = pickle.load(open(filename, "rb"))
         chisurf.imported_datasets.append(obj)
         self.update()
 
@@ -174,24 +159,30 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
                     widget_name = pathlib.Path(di.name).name
                     experiment_type = experiment_name(di)
                     item = TooltipTreeItem(
-                        self, [str(nbr), widget_name, experiment_type],
-                        key=di, render_fn=dataset_tooltip_html
+                        self,
+                        [str(nbr), widget_name, experiment_type],
+                        key=di,
+                        render_fn=dataset_tooltip_html,
                     )
                     item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
                 else:
                     experiment_type = experiment_name(d[0])
                     widget_name = pathlib.Path(d[0].name).name
                     item = TooltipTreeItem(
-                        self, [str(nbr), widget_name, experiment_type],
-                        key=d, render_fn=dataset_tooltip_html
+                        self,
+                        [str(nbr), widget_name, experiment_type],
+                        key=d,
+                        render_fn=dataset_tooltip_html,
                     )
                     for di in d:
                         fn = di.name
                         experiment_type = experiment_name(di)
                         widget_name = pathlib.Path(fn).name
                         i2 = TooltipTreeItem(
-                            item, [str(nbr), widget_name, experiment_type],
-                            key=di, render_fn=dataset_tooltip_html
+                            item,
+                            [str(nbr), widget_name, experiment_type],
+                            key=di,
+                            render_fn=dataset_tooltip_html,
                         )
                         i2.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
             else:
@@ -199,8 +190,10 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
                 widget_name = pathlib.Path(fn).name
                 experiment_type = experiment_name(d)
                 item = TooltipTreeItem(
-                    self, [str(nbr), widget_name, experiment_type],
-                    key=d, render_fn=dataset_tooltip_html
+                    self,
+                    [str(nbr), widget_name, experiment_type],
+                    key=d,
+                    render_fn=dataset_tooltip_html,
                 )
                 item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
 
@@ -274,24 +267,23 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         self.change_event()
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.Fit = None,
-            experiment=None,
-            drag_enabled: bool = False,
-            click_close: bool = True,
-            change_event: typing.Callable = None,
-            curve_types: str = 'experiment',
-            get_data_sets: typing.Callable = None,
-            parent: QtWidgets.QWidget = None,
-            icon: QtGui.QIcon = None,
-            context_menu_enabled: bool = True
+        self,
+        fit: chisurf.core.fitting.fit.Fit = None,
+        experiment=None,
+        drag_enabled: bool = False,
+        click_close: bool = True,
+        change_event: typing.Callable = None,
+        curve_types: str = "experiment",
+        get_data_sets: typing.Callable = None,
+        parent: QtWidgets.QWidget = None,
+        icon: QtGui.QIcon = None,
+        context_menu_enabled: bool = True,
     ):
         if get_data_sets is None:
+
             def get_data_sets(**kwargs):
-                return chisurf.core.data.get_data(
-                    data_set=chisurf.imported_datasets,
-                    **kwargs
-                )
+                return chisurf.core.data.get_data(data_set=chisurf.imported_datasets, **kwargs)
+
             self.get_data_sets = get_data_sets
         else:
             self.get_data_sets = get_data_sets
@@ -332,7 +324,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
 
         self.setHeaderHidden(False)
         self.setColumnCount(3)
-        self.setHeaderLabels(('#', 'Data name', 'Data type'))
+        self.setHeaderLabels(("#", "Data name", "Data type"))
         header = self.header()
 
         # Set resize mode for the first and third columns

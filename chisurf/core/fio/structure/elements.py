@@ -13,8 +13,15 @@ metal in half the files in the world.
 
 from __future__ import annotations
 
-__all__ = ["ATOMIC_MASS", "VDW_RADIUS", "DEFAULT_VDW_RADIUS", "mass_of",
-           "masses_for", "radius_of", "radii_for"]
+__all__ = [
+    "ATOMIC_MASS",
+    "VDW_RADIUS",
+    "DEFAULT_VDW_RADIUS",
+    "mass_of",
+    "masses_for",
+    "radius_of",
+    "radii_for",
+]
 
 
 ATOMIC_MASS: dict[str, float] = {
@@ -284,7 +291,7 @@ def mass_of(symbol: str) -> float | None:
     return ATOMIC_MASS.get(str(symbol).strip().upper())
 
 
-def radii_for(symbols) -> "numpy.ndarray":  # noqa: F821
+def radii_for(symbols) -> numpy.ndarray:  # noqa: F821
     """Van der Waals radii for a sequence of symbols, vectorised over a cache."""
     import numpy as np
 
@@ -299,7 +306,7 @@ def radii_for(symbols) -> "numpy.ndarray":  # noqa: F821
     return values
 
 
-def masses_for(symbols) -> tuple["numpy.ndarray", int]:  # noqa: F821
+def masses_for(symbols) -> tuple[numpy.ndarray, int]:  # noqa: F821
     """Masses for a sequence of symbols, and how many were not recognised.
 
     Returns
@@ -320,4 +327,3 @@ def masses_for(symbols) -> tuple["numpy.ndarray", int]:  # noqa: F821
         else:
             values[index] = mass
     return values, unknown
-

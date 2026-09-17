@@ -31,11 +31,15 @@ class RibbonGalleryListWidget(QtWidgets.QListWidget):
 
     def scrollToNextRow(self) -> None:
         """Scroll to the next row."""
-        self.verticalScrollBar().setValue(self.verticalScrollBar().value() + self.verticalScrollBar().singleStep())
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value() + self.verticalScrollBar().singleStep()
+        )
 
     def scrollToPreviousRow(self) -> None:
         """Scroll to the previous row."""
-        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - self.verticalScrollBar().singleStep())
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value() - self.verticalScrollBar().singleStep()
+        )
 
 
 class RibbonGalleryButton(QtWidgets.QToolButton):
@@ -54,46 +58,46 @@ class RibbonGalleryPopupListWidget(RibbonGalleryListWidget):
 
 class RibbonGalleryGroup:
     """Gallery group for organizing gallery items."""
-    
+
     def __init__(self, title: str):
         """Create a new gallery group.
-        
+
         :param title: The title of the group.
         """
         self._title = title
-        self._actions: typing.List[QtWidgets.QAction] = []
-        
+        self._actions: list[QtWidgets.QAction] = []
+
     def title(self) -> str:
         """Get the group title.
-        
+
         :return: The group title.
         """
         return self._title
-        
+
     def setTitle(self, title: str):
         """Set the group title.
-        
+
         :param title: The title to set.
         """
         self._title = title
-        
-    def actions(self) -> typing.List[QtWidgets.QAction]:
+
+    def actions(self) -> list[QtWidgets.QAction]:
         """Get the actions in this group.
-        
+
         :return: List of actions.
         """
         return self._actions
-        
+
     def addAction(self, action: QtWidgets.QAction):
         """Add an action to the group.
-        
+
         :param action: The action to add.
         """
         self._actions.append(action)
-        
-    def addActions(self, actions: typing.List[QtWidgets.QAction]):
+
+    def addActions(self, actions: list[QtWidgets.QAction]):
         """Add multiple actions to the group.
-        
+
         :param actions: The actions to add.
         """
         self._actions.extend(actions)
@@ -101,49 +105,49 @@ class RibbonGalleryGroup:
 
 class RibbonGalleryViewport(QtWidgets.QFrame):
     """Gallery popup viewport for showing multiple gallery groups."""
-    
+
     def __init__(self, parent=None):
         """Create a new gallery viewport.
-        
+
         :param parent: The parent widget.
         """
         super().__init__(parent)
         self.setWindowFlags(QtCore.Qt.WindowType.Popup)
         self.setFrameStyle(QtWidgets.QFrame.StyledPanel)
-        
+
         self._mainLayout = QtWidgets.QVBoxLayout(self)
         self._mainLayout.setContentsMargins(5, 5, 5, 5)
         self._mainLayout.setSpacing(2)
-        
-        self._groups: typing.List[RibbonGalleryGroup] = []
-        self._groupWidgets: typing.Dict[RibbonGalleryGroup, QtWidgets.QWidget] = {}
-        
+
+        self._groups: list[RibbonGalleryGroup] = []
+        self._groupWidgets: dict[RibbonGalleryGroup, QtWidgets.QWidget] = {}
+
     def addGroup(self, group: RibbonGalleryGroup) -> QtWidgets.QWidget:
         """Add a gallery group to the viewport.
-        
+
         :param group: The group to add.
         :return: The widget for the group.
         """
         if group in self._groups:
             return self._groupWidgets[group]
-            
+
         self._groups.append(group)
-        
+
         # Create group widget
         groupWidget = QtWidgets.QWidget()
         groupLayout = QtWidgets.QVBoxLayout(groupWidget)
         groupLayout.setContentsMargins(0, 0, 0, 0)
         groupLayout.setSpacing(2)
-        
+
         # Add group title
         titleLabel = QtWidgets.QLabel(group.title())
         titleLabel.setStyleSheet("font-weight: bold; padding: 2px;")
         groupLayout.addWidget(titleLabel)
-        
+
         # Add separator
         separator = RibbonHorizontalSeparator()
         groupLayout.addWidget(separator)
-        
+
         # Create list widget for actions
         listWidget = QtWidgets.QListWidget()
         listWidget.setViewMode(QtWidgets.QListWidget.ViewMode.IconMode)
@@ -151,7 +155,7 @@ class RibbonGalleryViewport(QtWidgets.QFrame):
         listWidget.setIconSize(QtCore.QSize(64, 64))
         listWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         listWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
+
         # Add actions to list widget
         for action in group.actions():
             item = QtWidgets.QListWidgetItem()
@@ -160,19 +164,19 @@ class RibbonGalleryViewport(QtWidgets.QFrame):
             item.setToolTip(action.toolTip())
             item.setData(QtCore.Qt.ItemDataRole.UserRole, action)
             listWidget.addItem(item)
-            
+
         # Connect item clicked to action trigger
         listWidget.itemClicked.connect(self._onItemClicked)
-        
+
         groupLayout.addWidget(listWidget)
         self._mainLayout.addWidget(groupWidget)
         self._groupWidgets[group] = groupWidget
-        
+
         return groupWidget
-        
+
     def _onItemClicked(self, item: QtWidgets.QListWidgetItem):
         """Handle item click in gallery.
-        
+
         :param item: The clicked item.
         """
         action = item.data(QtCore.Qt.ItemDataRole.UserRole)
@@ -185,10 +189,10 @@ class RibbonGallery(QtWidgets.QFrame):
     """A widget that displays a gallery of buttons with group support."""
 
     _popupWindowSize = QtCore.QSize(500, 500)
-    _buttons: typing.List[RibbonToolButton] = []
-    _popupButtons: typing.List[RibbonToolButton] = []
+    _buttons: list[RibbonToolButton] = []
+    _popupButtons: list[RibbonToolButton] = []
     _popupHideOnClick = False
-    _groups: typing.List[RibbonGalleryGroup] = []
+    _groups: list[RibbonGalleryGroup] = []
     _currentGroup: RibbonGalleryGroup = None
 
     @typing.overload
@@ -268,12 +272,14 @@ class RibbonGallery(QtWidgets.QFrame):
         self._popupLayout.addWidget(RibbonHorizontalSeparator())
 
         self._popupMenu = RibbonPermanentMenu()
-        self._popupMenu.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)  # type: ignore
+        self._popupMenu.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )  # type: ignore
         self._popupMenu.actionAdded.connect(self._handlePopupAction)
         self._popupLayout.addWidget(self._popupMenu)
 
         self._moreButton.clicked.connect(self.showPopup)  # type: ignore
-        
+
         # Initialize gallery viewport for groups
         self._galleryViewport = RibbonGalleryViewport(self)
 
@@ -284,7 +290,11 @@ class RibbonGallery(QtWidgets.QFrame):
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         """Resize the gallery."""
-        height = self.height() - self._mainLayout.contentsMargins().top() - self._mainLayout.contentsMargins().bottom()
+        height = (
+            self.height()
+            - self._mainLayout.contentsMargins().top()
+            - self._mainLayout.contentsMargins().bottom()
+        )
         self._upButton.setFixedSize(height // 4, height // 3)  # type: ignore
         self._downButton.setFixedSize(height // 4, height // 3)  # type: ignore
         self._moreButton.setFixedSize(height // 4, height // 3)  # type: ignore
@@ -293,21 +303,6 @@ class RibbonGallery(QtWidgets.QFrame):
     def popupMenu(self) -> RibbonPermanentMenu:
         """Return the popup menu."""
         return self._popupMenu
-
-    def showPopup(self):
-        """Show the popup window"""
-        self._popupWidget.move(self.mapToGlobal(self.geometry().topLeft()))
-        self._popupWidget.resize(
-            QtCore.QSize(
-                max(self.popupWindowSize().width(), self.width()), max(self.popupWindowSize().height(), self.height())
-            )
-        )
-        self._popupMenu.setFixedWidth(
-            self._popupWidget.width()
-            - self._popupLayout.contentsMargins().left()
-            - self._popupLayout.contentsMargins().right()
-        )
-        self._popupWidget.show()
 
     def hidePopupWidget(self):
         """Hide the popup window"""
@@ -333,7 +328,8 @@ class RibbonGallery(QtWidgets.QFrame):
         if isinstance(button, RibbonToolButton):
             row = self._popupButtons.index(button)
             self._listWidget.scrollTo(
-                self._listWidget.model().index(row, 0), QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible
+                self._listWidget.model().index(row, 0),
+                QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
             )
             if self._buttons[row].isCheckable():
                 self._buttons[row].setChecked(not self._buttons[row].isChecked())
@@ -376,7 +372,7 @@ class RibbonGallery(QtWidgets.QFrame):
         tooltip=None,
         statusTip=None,
         checkable=False,
-    ) -> typing.Tuple[RibbonToolButton, RibbonToolButton]:
+    ) -> tuple[RibbonToolButton, RibbonToolButton]:
         """Add a button to the gallery
 
         :param text: text of the button
@@ -428,9 +424,11 @@ class RibbonGallery(QtWidgets.QFrame):
         self._addPopupWidget(popupButton)  # noqa
         return button, popupButton
 
-    def addCategoryActions(self, title: str, actions: typing.List[QtWidgets.QAction]) -> RibbonGalleryGroup:
+    def addCategoryActions(
+        self, title: str, actions: list[QtWidgets.QAction]
+    ) -> RibbonGalleryGroup:
         """Add a category of actions to the gallery.
-        
+
         :param title: The title of the category.
         :param actions: The actions to add.
         :return: The created gallery group.
@@ -438,34 +436,34 @@ class RibbonGallery(QtWidgets.QFrame):
         group = RibbonGalleryGroup(title)
         group.addActions(actions)
         self._groups.append(group)
-        
+
         # Add to viewport
         self._galleryViewport.addGroup(group)
-        
+
         # If this is the first group, set as current
         if self._currentGroup is None:
             self._currentGroup = group
-            
+
         return group
-        
+
     def setCurrentViewGroup(self, group: RibbonGalleryGroup):
         """Set the current view group.
-        
+
         :param group: The group to set as current.
         """
         if group in self._groups:
             self._currentGroup = group
-            
+
     def currentViewGroup(self) -> RibbonGalleryGroup:
         """Get the current view group.
-        
+
         :return: The current group.
         """
         return self._currentGroup
-        
-    def groups(self) -> typing.List[RibbonGalleryGroup]:
+
+    def groups(self) -> list[RibbonGalleryGroup]:
         """Get all gallery groups.
-        
+
         :return: List of groups.
         """
         return self._groups
@@ -478,7 +476,7 @@ class RibbonGallery(QtWidgets.QFrame):
         shortcut=None,
         tooltip=None,
         statusTip=None,
-    ) -> typing.Tuple[RibbonToolButton, RibbonToolButton]:
+    ) -> tuple[RibbonToolButton, RibbonToolButton]:
         """Add a toggle button to the gallery
 
         :param text: text of the button
@@ -490,7 +488,7 @@ class RibbonGallery(QtWidgets.QFrame):
         :return: the button and the popup button added
         """
         return self.addButton(text, icon, slot, shortcut, tooltip, statusTip, True)
-        
+
     def showPopup(self):
         """Show the popup window with gallery groups."""
         if self._groups:
@@ -498,8 +496,8 @@ class RibbonGallery(QtWidgets.QFrame):
             self._galleryViewport.move(self.mapToGlobal(self.geometry().topLeft()))
             self._galleryViewport.resize(
                 QtCore.QSize(
-                    max(self.popupWindowSize().width(), self.width()), 
-                    max(self.popupWindowSize().height(), self.height())
+                    max(self.popupWindowSize().width(), self.width()),
+                    max(self.popupWindowSize().height(), self.height()),
                 )
             )
             self._galleryViewport.show()
@@ -508,7 +506,8 @@ class RibbonGallery(QtWidgets.QFrame):
             self._popupWidget.move(self.mapToGlobal(self.geometry().topLeft()))
             self._popupWidget.resize(
                 QtCore.QSize(
-                    max(self.popupWindowSize().width(), self.width()), max(self.popupWindowSize().height(), self.height())
+                    max(self.popupWindowSize().width(), self.width()),
+                    max(self.popupWindowSize().height(), self.height()),
                 )
             )
             self._popupMenu.setFixedWidth(

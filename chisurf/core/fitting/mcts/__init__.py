@@ -11,6 +11,9 @@ cannot search has no search; nothing is approximated in Python.
 
 from __future__ import annotations
 
+from chisurf.core.fitting.mcts.dispatcher import (
+    prepare_described_model_search,
+)
 from chisurf.core.fitting.mcts.native import (
     NativeAction,
     NativeParameterGroup,
@@ -21,14 +24,16 @@ from chisurf.core.fitting.mcts.native import (
     NativeStructure,
     prepare_native_model_search,
 )
-from chisurf.core.fitting.mcts.dispatcher import (
-    prepare_described_model_search,
-)
 
 _NATIVE = [
-    "NativeAction", "NativeParameterGroup", "NativeScore",
-    "NativeSearchDeclaration", "NativeSearchPreparation", "NativeSearchReason",
-    "NativeStructure", "prepare_native_model_search",
+    "NativeAction",
+    "NativeParameterGroup",
+    "NativeScore",
+    "NativeSearchDeclaration",
+    "NativeSearchPreparation",
+    "NativeSearchReason",
+    "NativeStructure",
+    "prepare_native_model_search",
     "prepare_described_model_search",
 ]
 

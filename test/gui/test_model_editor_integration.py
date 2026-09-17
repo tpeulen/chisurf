@@ -23,6 +23,7 @@ Run headless in the arm64 env, in its own process:
 If you change a model, its ``view.json``, the renderer, or the add-fit wiring,
 this file is the first thing to run.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -48,7 +49,8 @@ def _default_tcspc_model_paths():
     """The TCSPC model class paths from the *default* experiment config.
 
     Mirrors how ``main_helper.init_setups`` reads the bundled YAML (the user copy
-    is intentionally ignored here so the test reflects the repo, not a machine)."""
+    is intentionally ignored here so the test reflects the repo, not a machine).
+    """
     import yaml
 
     import chisurf.core.settings as settings
@@ -71,7 +73,8 @@ def test_every_configured_tcspc_model_resolves_with_a_name(qapp):
     """Every model path in the default config resolves to a class exposing a
     non-empty ``name`` — the string the model combobox shows and ``add_fit``
     matches on. A deleted/renamed class fails here instead of silently vanishing
-    from the menu."""
+    from the menu.
+    """
     paths = _default_tcspc_model_paths()
     assert paths, "no TCSPC models configured"
     problems = []
@@ -111,7 +114,8 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     """Walk the full add-fit path for the Lifetime model (a view on BFF's
     tcspc_lifetime) and assert the editor a user would see is usable: it builds,
     every parameter the structure uses renders, the IRF input and the switches
-    are present, the tables drop columns by priority, and the model computes."""
+    are present, the tables drop columns by priority, and the model computes.
+    """
     from qtpy import QtWidgets
 
     from chisurf.core.models import view_spec as vs
@@ -163,12 +167,18 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     # (c) the IRF input binds the view's response slot
     spec = model.view_spec()
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), "no IRF curve input"
+    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), (
+        "no IRF curve input"
+    )
 
     # (d) the switches the hand-written widget had are the description's scalars
     toggles = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)}
-    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up",
-            "scalars.reverse_linearization"} <= toggles, toggles
+    assert {
+        "scalars.convolve",
+        "scalars.periodic_excitation",
+        "scalars.pile_up",
+        "scalars.reverse_linearization",
+    } <= toggles, toggles
 
     # (e) plots resolve and the model computes a finite, non-empty curve
     assert model_plot_specs(model), "no plot specs resolved"
@@ -183,7 +193,8 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(qapp):
     """Walk the full add-fit path for the AutoForm-based Lifetime mixer and
     assert: the editor builds, the fit_mixer custom section is present and
-    rendered, and the model computes a finite fallback decay (no components)."""
+    rendered, and the model computes a finite fallback decay (no components).
+    """
     from qtpy import QtWidgets
 
     from chisurf.core.models import view_spec as vs
@@ -213,7 +224,9 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
 
     # (d) the IRF input is declared so the model can be convolved
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), "no IRF curve input"
+    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), (
+        "no IRF curve input"
+    )
 
     # (e) plots resolve
     assert model_plot_specs(model), "no plot specs resolved"
@@ -298,7 +311,8 @@ def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
 
     # A BFF-described model derives its editor from the description instead.
     assert model_class.view_spec_file or issubclass(model_class, DescriptionModel), (
-        f"{path} declares no view_spec_file")
+        f"{path} declares no view_spec_file"
+    )
 
     fit = _make_fit(model_class)
     model = fit.model
@@ -329,8 +343,7 @@ def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
                 # thing to hold as a list, and the renderer accepts either.
                 value = getattr(group, source, None)
                 assert value is not None or hasattr(group, source), (
-                    f"{path}: parameters_source {source!r} not found on "
-                    f"{type(group).__name__}"
+                    f"{path}: parameters_source {source!r} not found on {type(group).__name__}"
                 )
                 resolved = list(value() if callable(value) else value)
                 if source not in DATA_DEPENDENT_PARAMETER_SOURCES:
@@ -403,8 +416,7 @@ def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
             continue  # not laid out (a collapsed panel), so nothing was decided
         assert not view.isColumnHidden(COL_VALUE), f"{path}: value column dropped"
         assert not _scrolls(view), (
-            f"{path}: a single-column table overflows its "
-            f"{view.viewport().width()}px viewport"
+            f"{path}: a single-column table overflows its {view.viewport().width()}px viewport"
         )
 
     for table in editor.findChildren(PairedParameterTableWidget):

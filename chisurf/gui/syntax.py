@@ -30,8 +30,18 @@ __all__ = [
 
 #: Token names a palette may define.
 TOKENS = (
-    "keyword", "builtin", "class", "function", "string", "fstring_expr",
-    "comment", "number", "decorator", "self", "operator", "magic",
+    "keyword",
+    "builtin",
+    "class",
+    "function",
+    "string",
+    "fstring_expr",
+    "comment",
+    "number",
+    "decorator",
+    "self",
+    "operator",
+    "magic",
 )
 
 DEFAULT_DARK: dict[str, str] = {
@@ -146,14 +156,16 @@ class SyntaxHighlighter(QtGui.QSyntaxHighlighter):
     """
 
     def __init__(
-            self,
-            parent=None,
-            palette: typing.Mapping[str, str] | None = None,
-            font_family: str | None = None,
-            font_point_size: float | None = None,
+        self,
+        parent=None,
+        palette: typing.Mapping[str, str] | None = None,
+        font_family: str | None = None,
+        font_point_size: float | None = None,
     ) -> None:
         super().__init__(parent)
-        self.highlighting_rules: list[tuple[QtCore.QRegularExpression, QtGui.QTextCharFormat, int]] = []
+        self.highlighting_rules: list[
+            tuple[QtCore.QRegularExpression, QtGui.QTextCharFormat, int]
+        ] = []
         self._rule_sources: list[tuple[str, str, int]] = []
         self.palette = dict(palette) if palette else palette_from_editor_settings()
         self.formats: dict[str, QtGui.QTextCharFormat] = {}
@@ -245,12 +257,12 @@ class PythonHighlighter(SyntaxHighlighter):
     """
 
     def __init__(
-            self,
-            parent=None,
-            palette: typing.Mapping[str, str] | None = None,
-            font_family: str | None = None,
-            font_point_size: float | None = None,
-            **_legacy,
+        self,
+        parent=None,
+        palette: typing.Mapping[str, str] | None = None,
+        font_family: str | None = None,
+        font_point_size: float | None = None,
+        **_legacy,
     ) -> None:
         super().__init__(parent, palette, font_family, font_point_size)
         self._build_rules()
@@ -267,12 +279,51 @@ class PythonHighlighter(SyntaxHighlighter):
         self.add_rule(r"\b(self|cls)\b", "self")
 
         builtins_names = (
-            "abs", "all", "any", "bool", "bytes", "callable", "dict", "dir",
-            "enumerate", "filter", "float", "format", "frozenset", "getattr",
-            "hasattr", "hash", "id", "int", "isinstance", "issubclass", "iter",
-            "len", "list", "map", "max", "min", "next", "object", "open", "ord",
-            "print", "range", "repr", "reversed", "round", "set", "setattr",
-            "slice", "sorted", "str", "sum", "super", "tuple", "type", "zip",
+            "abs",
+            "all",
+            "any",
+            "bool",
+            "bytes",
+            "callable",
+            "dict",
+            "dir",
+            "enumerate",
+            "filter",
+            "float",
+            "format",
+            "frozenset",
+            "getattr",
+            "hasattr",
+            "hash",
+            "id",
+            "int",
+            "isinstance",
+            "issubclass",
+            "iter",
+            "len",
+            "list",
+            "map",
+            "max",
+            "min",
+            "next",
+            "object",
+            "open",
+            "ord",
+            "print",
+            "range",
+            "repr",
+            "reversed",
+            "round",
+            "set",
+            "setattr",
+            "slice",
+            "sorted",
+            "str",
+            "sum",
+            "super",
+            "tuple",
+            "type",
+            "zip",
         )
         for word in builtins_names:
             self.add_rule(rf"\b{word}\b(?=\s*\()", "builtin")
@@ -373,8 +424,9 @@ class PythonHighlighter(SyntaxHighlighter):
 class JSONHighlighter(SyntaxHighlighter):
     """Highlighter for JSON."""
 
-    def __init__(self, parent=None, palette=None, font_family=None,
-                 font_point_size=None, **_legacy) -> None:
+    def __init__(
+        self, parent=None, palette=None, font_family=None, font_point_size=None, **_legacy
+    ) -> None:
         super().__init__(parent, palette, font_family, font_point_size)
         self.add_rule(r'"[^"\\]*(?:\\.[^"\\]*)*"\s*:', "keyword")
         self.add_rule(r'"[^"\\]*(?:\\.[^"\\]*)*"', "string")
@@ -385,8 +437,9 @@ class JSONHighlighter(SyntaxHighlighter):
 class YAMLHighlighter(SyntaxHighlighter):
     """Highlighter for YAML."""
 
-    def __init__(self, parent=None, palette=None, font_family=None,
-                 font_point_size=None, **_legacy) -> None:
+    def __init__(
+        self, parent=None, palette=None, font_family=None, font_point_size=None, **_legacy
+    ) -> None:
         super().__init__(parent, palette, font_family, font_point_size)
         self.add_rule(r"^\s*([\w.-]+)\s*:", "keyword", group=1)
         self.add_rule(r'"[^"\\]*(?:\\.[^"\\]*)*"', "string")

@@ -15,15 +15,29 @@ def cli():
 
 
 @cli.command()
-@click.option('--total', '-t', required=True,
-              type=click.Path(exists=True, dir_okay=False),
-              help='Path to total decay histogram file')
-@click.option('--species', '-s', multiple=True, required=True,
-              type=click.Path(exists=True, dir_okay=False),
-              help='Path to species decay histogram file (repeatable)')
-@click.option('--output', '-o', default='fcs_filter.json', type=click.Path(),
-              help='Output JSON file path (default: fcs_filter.json)')
-@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+@click.option(
+    "--total",
+    "-t",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to total decay histogram file",
+)
+@click.option(
+    "--species",
+    "-s",
+    multiple=True,
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to species decay histogram file (repeatable)",
+)
+@click.option(
+    "--output",
+    "-o",
+    default="fcs_filter.json",
+    type=click.Path(),
+    help="Output JSON file path (default: fcs_filter.json)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def compute(total, species, output, verbose):
     """Compute fFCS filters from decay histogram files."""
     try:
@@ -46,7 +60,7 @@ def compute(total, species, output, verbose):
 
 
 @cli.command()
-@click.argument('input_file', type=click.Path(exists=True, dir_okay=False))
+@click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 def info(input_file):
     """Show information about a saved filter JSON file."""
     try:
@@ -87,5 +101,5 @@ def main(argv=None):
     return cli.main(args=argv, standalone_mode=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

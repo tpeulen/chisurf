@@ -29,17 +29,17 @@ Each is normalised independently. They are physically different quantities
 (a spectral flux, a dimensionless transmission), so a shared axis would
 either flatten the transmission curve to nothing or clip the flux.
 """
+
 from __future__ import annotations
 
 import logging
 import typing
 
 import numpy as np
-
 from emtk import im, implot, nodes
 
-from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import GraphNode
+from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
 
 __all__ = ["BeampathContent", "PROBE_CATEGORY"]
@@ -51,12 +51,16 @@ logger = logging.getLogger(__name__)
 #: filter reaches the same list; a filter node offering detector responses is
 #: how a beam path acquires a component that cannot be there.
 PROBE_CATEGORY: dict = {
-    "filter": lambda p: (p.get("category") == "filter"
-                         or (not p.get("category") and p.get("has_trans"))),
-    "splitter": lambda p: (p.get("category") in ("dichroic", "polarizer")
-                           or (not p.get("category") and p.get("has_trans"))),
-    "detector": lambda p: (p.get("category") == "detector"
-                           or (not p.get("category") and p.get("has_qe"))),
+    "filter": lambda p: (
+        p.get("category") == "filter" or (not p.get("category") and p.get("has_trans"))
+    ),
+    "splitter": lambda p: (
+        p.get("category") in ("dichroic", "polarizer")
+        or (not p.get("category") and p.get("has_trans"))
+    ),
+    "detector": lambda p: (
+        p.get("category") == "detector" or (not p.get("category") and p.get("has_qe"))
+    ),
     "sample": lambda p: bool(p.get("has_abs") or p.get("has_em")),
     "light_source": lambda p: bool(p.get("has_ex") or p.get("has_em")),
 }
@@ -74,7 +78,7 @@ ABSORPTION_COLOUR: tuple = (0, 200, 255, 255)
 EMISSION_COLOUR: tuple = (255, 180, 0, 255)
 
 
-def _summed(spectra: typing.Any) -> typing.Optional[np.ndarray]:
+def _summed(spectra: typing.Any) -> np.ndarray | None:
     """Add up the arrays in a nested ``{port: {source: array}}`` mapping.
 
     Parameters
@@ -109,7 +113,7 @@ def _summed(spectra: typing.Any) -> typing.Optional[np.ndarray]:
     return total
 
 
-def _normalised(values: typing.Optional[np.ndarray]) -> typing.Optional[list]:
+def _normalised(values: np.ndarray | None) -> list | None:
     """Scale a spectrum to peak at one, for plotting beside the others.
 
     Parameters
@@ -151,7 +155,7 @@ class BeampathContent(NodeContentRenderer):
         which it does on a worker thread after the window is already open.
     """
 
-    def __init__(self, probes: typing.Optional[list] = None) -> None:
+    def __init__(self, probes: list | None = None) -> None:
         self.probes: list = list(probes or [])
         #: Node ids whose plot the user has folded away, so a dense path can be
         #: read as a diagram rather than as a wall of axes.
@@ -327,9 +331,7 @@ class BeampathContent(NodeContentRenderer):
         if moved and not read_only:
             node.config["kappa2"] = kappa
             changed = True
-        moved, refractive = im.slider_float(
-            "n", float(node.config.get("n", 1.33)), 1.0, 2.0
-        )
+        moved, refractive = im.slider_float("n", float(node.config.get("n", 1.33)), 1.0, 2.0)
         if moved and not read_only:
             node.config["n"] = refractive
             changed = True
@@ -373,7 +375,8 @@ class BeampathContent(NodeContentRenderer):
         flags = implot.ImPlotFlags_CanvasOnly | implot.ImPlotFlags_NoLegend
         if not implot.begin_plot(
             f"##spectrum{node.id}",
-            (PLOT_SIZE[0] * scale, PLOT_SIZE[1] * scale), flags,
+            (PLOT_SIZE[0] * scale, PLOT_SIZE[1] * scale),
+            flags,
         ):
             return False
         try:
@@ -390,8 +393,7 @@ class BeampathContent(NodeContentRenderer):
         return False
 
     @staticmethod
-    def _draw_characteristic(axis: list, characteristic: typing.Any,
-                             scale: float = 1.0) -> None:
+    def _draw_characteristic(axis: list, characteristic: typing.Any, scale: float = 1.0) -> None:
         """Draw the node's own response curve, on top of the spectra.
 
         Parameters
@@ -408,8 +410,7 @@ class BeampathContent(NodeContentRenderer):
         if characteristic is None:
             return
         if isinstance(characteristic, (tuple, list)) and len(characteristic) == 2:
-            for values, colour in zip(characteristic,
-                                      (ABSORPTION_COLOUR, EMISSION_COLOUR)):
+            for values, colour in zip(characteristic, (ABSORPTION_COLOUR, EMISSION_COLOUR)):
                 curve = _normalised(np.asarray(values, dtype=float))
                 if curve is not None:
                     implot.set_next_line_style(colour, 1.5 * scale)
@@ -433,8 +434,7 @@ def _is_number(value: typing.Any) -> bool:
     -------
     bool
     """
-    return isinstance(value, (int, float)) and not isinstance(value, bool) \
-        and np.isfinite(value)
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and np.isfinite(value)
 
 
 def _parse_lines(text: str) -> list:

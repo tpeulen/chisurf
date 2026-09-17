@@ -30,8 +30,8 @@ class LegacyExportPanel(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         intro = QtWidgets.QLabel(
-            "The five CSV files the old ALEX-Suite wrote — for scripts built on "
-            "that layout.", self)
+            "The five CSV files the old ALEX-Suite wrote — for scripts built on that layout.", self
+        )
         intro.setToolTip(
             "Writes <stem>_meta.csv, _hist_E.csv, _hist_S.csv, _hist_2D.csv and "
             "_original_bursts.csv with the same section headers the old program "
@@ -48,10 +48,10 @@ class LegacyExportPanel(QtWidgets.QWidget):
         # A burst path is long, and a combo that asks for its full width pushes
         # the form's label column off the panel ("Burst fil"). Let it elide.
         self.file_combo.setSizeAdjustPolicy(
-            QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon
+        )
         self.file_combo.setMinimumContentsLength(24)
-        self.file_combo.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.file_combo.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         form.addRow("Burst file", self.file_combo)
 
         self.sample_edit = QtWidgets.QLineEdit(self)
@@ -107,8 +107,7 @@ class LegacyExportPanel(QtWidgets.QWidget):
             if index >= 0:
                 self.file_combo.setCurrentIndex(index)
         if self._bur_files:
-            self.status_label.setText(
-                f"{len(self._bur_files)} burst file(s) available.")
+            self.status_label.setText(f"{len(self._bur_files)} burst file(s) available.")
 
     # ── the action ──────────────────────────────────────────────────────
 
@@ -140,9 +139,7 @@ class LegacyExportPanel(QtWidgets.QWidget):
                     sample_name=self.sample_edit.text(),
                     buffer=self.buffer_edit.text(),
                 ),
-                parts=LegacyExport(**{
-                    key: box.isChecked() for key, box in self.checks.items()
-                }),
+                parts=LegacyExport(**{key: box.isChecked() for key, box in self.checks.items()}),
                 burst_table=burst_table,
             )
         except Exception as exc:

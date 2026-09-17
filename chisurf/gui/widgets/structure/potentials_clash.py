@@ -7,13 +7,8 @@ from chisurf.core.structure.potential.potentials import ClashPotential
 
 
 class ClashPotentialWidget(ClashPotential, QtWidgets.QWidget):
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure = None,
-            **kwargs
-    ):
-        QtWidgets.QWidget.__init__(self, parent=kwargs.get('parent'))
+    def __init__(self, structure: chisurf.core.structure.Structure = None, **kwargs):
+        QtWidgets.QWidget.__init__(self, parent=kwargs.get("parent"))
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -42,10 +37,7 @@ class ClashPotentialWidget(ClashPotential, QtWidgets.QWidget):
         row2.addWidget(self.doubleSpinBox_2)
         layout.addLayout(row2)
 
-        super(ClashPotentialWidget, self).__init__(
-            structure=structure,
-            **kwargs
-        )
+        super().__init__(structure=structure, **kwargs)
 
     @property
     def clash_tolerance(self):

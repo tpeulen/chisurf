@@ -1,7 +1,8 @@
-import sys
-import pathlib
-import pytest
 import os
+import pathlib
+import sys
+
+import pytest
 
 # Matplotlib must not open windows during a test run. The default backend on
 # macOS is ``macosx``, a native GUI backend, so any test that draws a figure
@@ -21,6 +22,7 @@ if str(_topdir) not in sys.path:
 @pytest.fixture(scope="session")
 def qapp():
     from qtpy.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication([])

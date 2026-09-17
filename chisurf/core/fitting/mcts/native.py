@@ -160,16 +160,16 @@ def _restore(snapshot: Sequence[tuple[Any, ...]]) -> None:
             parameter.link = link
     for parameter, value, fixed, _link, redundant in snapshot:
         current = float(parameter.value)
-        values_differ = current != value and not (
-            math.isnan(current) and math.isnan(value)
-        )
+        values_differ = current != value and not (math.isnan(current) and math.isnan(value))
         if values_differ:
             was_fixed = bool(parameter.fixed)
             parameter.fixed = False
             parameter.value = value
             parameter.fixed = was_fixed
-        if (hasattr(parameter, "redundant")
-                and bool(getattr(parameter, "redundant", False)) != redundant):
+        if (
+            hasattr(parameter, "redundant")
+            and bool(getattr(parameter, "redundant", False)) != redundant
+        ):
             parameter.redundant = redundant
         if bool(parameter.fixed) != fixed:
             parameter.fixed = fixed
@@ -317,7 +317,9 @@ def prepare_native_model_search(
     port_by_parameter = {
         id(parameter): port for parameter, port in zip(native_parameters, native_ports)
     }
-    unmapped = [parameter for parameter in declared_parameters if id(parameter) not in port_by_parameter]
+    unmapped = [
+        parameter for parameter in declared_parameters if id(parameter) not in port_by_parameter
+    ]
     if unmapped:
         return unsupported(
             declaration.capability_id,
@@ -329,7 +331,8 @@ def prepare_native_model_search(
     problem = bff.FittingModelSearchProblem(objective, declaration.score.residual_output)
     group_by_key = {group.key: group for group in declaration.groups}
     initial = next(
-        structure for structure in declaration.structures
+        structure
+        for structure in declaration.structures
         if structure.key == declaration.initial_structure
     )
     initially_free = set(initial.free_groups)

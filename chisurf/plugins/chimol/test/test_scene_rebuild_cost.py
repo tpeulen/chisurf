@@ -20,10 +20,10 @@ Two things have to hold, and the second is the one that matters:
   the viewer offers. A fingerprint that misses a field shows stale geometry,
   which is worse than being slow.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 SCRIPT = '''
@@ -158,9 +158,22 @@ def swept():
 
 
 INTERACTIONS = [
-    "nothing", "colour one", "colour all", "spectrum", "show sticks",
-    "hide cartoon", "show spheres", "label", "unlabel", "bond", "select",
-    "deselect", "hide one", "show one", "a setting", "another setting",
+    "nothing",
+    "colour one",
+    "colour all",
+    "spectrum",
+    "show sticks",
+    "hide cartoon",
+    "show spheres",
+    "label",
+    "unlabel",
+    "bond",
+    "select",
+    "deselect",
+    "hide one",
+    "show one",
+    "a setting",
+    "another setting",
     "delete one",
 ]
 
@@ -168,9 +181,7 @@ INTERACTIONS = [
 @pytest.mark.parametrize("interaction", INTERACTIONS)
 def test_the_cached_geometry_is_the_geometry(swept, interaction):
     """After every change, what the cache serves equals a forced rebuild."""
-    assert swept.get("honest:" + interaction) == "yes", (
-        f"stale geometry after: {interaction}"
-    )
+    assert swept.get("honest:" + interaction) == "yes", f"stale geometry after: {interaction}"
 
 
 def test_nothing_changed_means_nothing_is_rebuilt(swept):
@@ -191,9 +202,7 @@ def test_asking_an_object_for_its_colours_does_not_dirty_it(swept):
     drawn, and colouring one object of seven rebuilt six of them. Keyed on its
     inputs now, so the second call recomputes nothing.
     """
-    assert swept["reads_dirty"] == "none", (
-        f"reading the colours dirtied: {swept['reads_dirty']}"
-    )
+    assert swept["reads_dirty"] == "none", f"reading the colours dirtied: {swept['reads_dirty']}"
     assert int(swept["read_rebuilds"]) == 0
 
 

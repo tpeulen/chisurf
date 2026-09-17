@@ -66,8 +66,20 @@ __all__ = [
 #: instrument's software wrote it; opening one produces the measurement's
 #: container, inside which those exact bytes are kept and remain recoverable.
 VENDOR_EXTENSIONS: tuple[str, ...] = (
-    ".ptu", ".phu", ".ht3", ".ht2", ".pt3", ".pt2", ".t3r",
-    ".spc", ".set", ".hdf5", ".h5", ".photons", ".cz-raw", ".sm",
+    ".ptu",
+    ".phu",
+    ".ht3",
+    ".ht2",
+    ".pt3",
+    ".pt2",
+    ".t3r",
+    ".spc",
+    ".set",
+    ".hdf5",
+    ".h5",
+    ".photons",
+    ".cz-raw",
+    ".sm",
 )
 
 #: Every extension a photon measurement may arrive as, **container first**.
@@ -87,12 +99,14 @@ def _filter(label: str, extensions) -> str:
 #: One definition, because a dialog that lists a different set from the reader
 #: is a dialog that hides files ChiSurf can open — which is how `.pto` was
 #: absent from every one of them while being the format they all produce.
-TTTR_FILE_FILTER: str = ";;".join((
-    _filter("Photon data", TTTR_EXTENSIONS),
-    _filter("Photon container", (".pto",)),
-    _filter("Vendor photon files", VENDOR_EXTENSIONS),
-    "All files (*)",
-))
+TTTR_FILE_FILTER: str = ";;".join(
+    (
+        _filter("Photon data", TTTR_EXTENSIONS),
+        _filter("Photon container", (".pto",)),
+        _filter("Vendor photon files", VENDOR_EXTENSIONS),
+        "All files (*)",
+    )
+)
 
 # --- Tunables ---------------------------------------------------------------
 # Defaults may be overridden via the ``data_loading`` section of
@@ -506,15 +520,14 @@ def open_tttr(
     corrected = bool(apply_lut and channel_luts) or bool(channel_shifts)
     key = None
     if cache and not corrected:
-        key = _cache_key(path, selector, container, channel_luts, channel_shifts,
-                         apply_lut, lut_seed)
+        key = _cache_key(
+            path, selector, container, channel_luts, channel_shifts, apply_lut, lut_seed
+        )
         cached = _cache_get(key)
         if cached is not None:
             return cached
 
-    with staged_source(
-        path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs
-    ) as local:
+    with staged_source(path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
         spec = f"{local}|{selector}" if selector else str(local)
         if container is None:
             tttr = tttrlib.TTTR(spec)
@@ -546,7 +559,7 @@ def open_tttr(
 
 #: LRU of opened measurements, newest last. Bounded by photons rather than by
 #: entries: "four files" means 40 MB of one measurement and 4 GB of another.
-_TTTR_CACHE: "collections.OrderedDict[tuple, object]" = collections.OrderedDict()
+_TTTR_CACHE: collections.OrderedDict[tuple, object] = collections.OrderedDict()
 
 #: Bytes the cache may hold in total. Measured, not assumed: a 11.7 M-photon
 #: container costs 407 MB resident — about 35 bytes per photon, not the ~16 a
@@ -555,8 +568,7 @@ _TTTR_CACHE: "collections.OrderedDict[tuple, object]" = collections.OrderedDict(
 _TTTR_CACHE_BYTES = 512 * 1024 * 1024
 
 
-def _cache_key(path, selector, container, channel_luts, channel_shifts,
-               apply_lut, lut_seed):
+def _cache_key(path, selector, container, channel_luts, channel_shifts, apply_lut, lut_seed):
     """A key that changes whenever the bytes or the correction would.
 
     The file's mtime and size are in it, so rewriting a measurement re-reads it
@@ -569,14 +581,32 @@ def _cache_key(path, selector, container, channel_luts, channel_shifts,
         return None
     import numpy as np
 
-    lut = None if not channel_luts else tuple(sorted(
-        (str(k), tuple(np.asarray(v).ravel().tolist()[:8]), int(np.size(v)))
-        for k, v in channel_luts.items()))
-    shifts = None if not channel_shifts else tuple(sorted(
-        (str(k), float(v)) for k, v in channel_shifts.items()))
-    return (str(Path(path).resolve()), selector or "", container,
-            info.st_mtime_ns, info.st_size,
-            bool(apply_lut), int(lut_seed), lut, shifts)
+    lut = (
+        None
+        if not channel_luts
+        else tuple(
+            sorted(
+                (str(k), tuple(np.asarray(v).ravel().tolist()[:8]), int(np.size(v)))
+                for k, v in channel_luts.items()
+            )
+        )
+    )
+    shifts = (
+        None
+        if not channel_shifts
+        else tuple(sorted((str(k), float(v)) for k, v in channel_shifts.items()))
+    )
+    return (
+        str(Path(path).resolve()),
+        selector or "",
+        container,
+        info.st_mtime_ns,
+        info.st_size,
+        bool(apply_lut),
+        int(lut_seed),
+        lut,
+        shifts,
+    )
 
 
 #: Fallback cost per photon when the reader cannot report its own footprint.
@@ -655,11 +685,11 @@ def tttr_cache_stats() -> dict:
 #: "Container type SPC not supported" and an unreadable file — for a format
 #: ``tttrlib`` detects perfectly well on its own.
 _CONTAINER_ALIASES = {
-    "SPC": None,        # ambiguous between SPC-130 and SPC-600: let it detect
+    "SPC": None,  # ambiguous between SPC-130 and SPC-600: let it detect
     "BH": None,
     "SPC130": "SPC-130",
     "SPC-132": "SPC-130",
-    "BH132": "SPC-130",       # the name chisurf's own photon reader used
+    "BH132": "SPC-130",  # the name chisurf's own photon reader used
     "BH630_X48": "SPC-600_4096",
     "HDF5": "PHOTON-HDF5",
     "PHOTONHDF5": "PHOTON-HDF5",
@@ -700,7 +730,7 @@ def import_measurement(src, *, out_dir=None, create: bool | None = None):
     pathlib.Path
         The container, or *src* when there is none and none was created.
     """
-    from chisurf.core.fio.pto import Measurement, SUFFIX, is_measurement
+    from chisurf.core.fio.pto import SUFFIX, Measurement, is_measurement
 
     path, _ = split_container_spec(src)
     if is_measurement(path):

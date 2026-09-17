@@ -27,9 +27,6 @@ import pytest
 
 import chisurf.core.math.linalg
 import chisurf.core.math.optimization
-from chisurf.core.curve import Curve
-
-
 
 # --------------------------------------------------------------- Richardson-Lucy
 

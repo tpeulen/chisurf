@@ -113,6 +113,7 @@ def set_setup_params(params: typing.Dict[str, typing.Any]):
 def save_project(target_path: str, project_name: str):
     """Save the overall project."""
     from chisurf.macros import core_fit
+
     return core_fit.save_project(target_path=target_path, project_name=project_name)
 
 
@@ -220,7 +221,6 @@ def restore_project(project_id: str):
     return result
 
 
-
 @action("project.close")
 def close_project(main_window: typing.Any = None):
     """Close the current project."""
@@ -229,7 +229,7 @@ def close_project(main_window: typing.Any = None):
         # or another project.close dispatch), we perform a focused cleanup.
         try:
             # Close all fits
-            if hasattr(main_window, 'onCloseAllFits'):
+            if hasattr(main_window, "onCloseAllFits"):
                 main_window.onCloseAllFits()
 
             # Clean project archive temp extraction directories
@@ -243,9 +243,10 @@ def close_project(main_window: typing.Any = None):
             main_window._project_archive_temp_dirs = []
 
             # Clear imported datasets
-            if hasattr(cs, 'imported_datasets'):
+            if hasattr(cs, "imported_datasets"):
                 cs.imported_datasets.clear()
                 from chisurf.macros.core_data import restore_global_fit_dataset
+
                 try:
                     restore_global_fit_dataset(_from_controller=True, update_ui=False)
                 except Exception:
@@ -258,9 +259,9 @@ def close_project(main_window: typing.Any = None):
             main_window._current_project_name = None
 
             # Refresh UI selectors
-            if hasattr(main_window, 'dataset_selector'):
+            if hasattr(main_window, "dataset_selector"):
                 main_window.dataset_selector.update()
-            if hasattr(main_window, 'fit_selector'):
+            if hasattr(main_window, "fit_selector"):
                 main_window.fit_selector.update()
         except Exception as e:
             cs.logging.error(f"Error in project.close action: {e}")
@@ -274,6 +275,7 @@ def export_action_catalog(target_path: str, file_type: str = "yaml"):
     import yaml
 
     from chisurf.core.actions._infra import get_action_catalog
+
     catalog = get_action_catalog()
     with open(target_path, "w") as f:
         yaml.dump(catalog, f)

@@ -18,12 +18,12 @@ __all__ = ["rescale_w_bg", "scale_model_to_data"]
 
 
 def scale_model_to_data(
-        model_decay: np.array,
-        experimental_decay: np.array,
-        start: int,
-        stop: int,
-        experimental_background: float = 0.0,
-        use_weights: bool = True
+    model_decay: np.array,
+    experimental_decay: np.array,
+    start: int,
+    stop: int,
+    experimental_background: float = 0.0,
+    use_weights: bool = True,
 ) -> float:
     """
     Scale a model decay to an experimental decay.
@@ -65,11 +65,13 @@ def scale_model_to_data(
             experimental_weights=weights,
             experimental_background=experimental_background,
             start=start,
-            stop=stop
+            stop=stop,
         )
     else:
         # Simple scaling using ratio of sums
-        scale = np.sum(experimental_decay[start:stop] - experimental_background) / np.sum(model_decay[start:stop])
+        scale = np.sum(experimental_decay[start:stop] - experimental_background) / np.sum(
+            model_decay[start:stop]
+        )
 
     # Apply scaling
     model_decay *= scale

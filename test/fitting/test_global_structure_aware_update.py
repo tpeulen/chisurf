@@ -10,6 +10,7 @@ byte-identical residuals to the full path, and it must arm *only* when the model
 has just seen a complete parameter vector — anything else has to fall back to a
 full recompute.
 """
+
 import numpy as np
 import pytest
 
@@ -28,23 +29,21 @@ def _global_fit(n_datasets: int = 4, seed: int = 0):
     x = np.linspace(0.0, 5.0, N_POINTS)
     curves = []
     for k in range(n_datasets):
-        y = 3.1 + (1.0 + 0.1 * k) * x ** 2 + rng.normal(0.0, SIGMA, x.size)
-        curves.append(
-            chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
-        )
+        y = 3.1 + (1.0 + 0.1 * k) * x**2 + rng.normal(0.0, SIGMA, x.size)
+        curves.append(chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup(curves),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     for f in fit:
         f.fit_range = 0, len(f.model.y)
-        f.model.func = 'c+a*x**2'
+        f.model.func = "c+a*x**2"
         f.model.find_parameters()
     fit._model.find_parameters()
     return fit
 
 
-def _link_across(fit, name: str = 'a'):
+def _link_across(fit, name: str = "a"):
     """Link the named parameter of every local fit to the first fit's copy."""
     master = [p for p in fit[0].model.parameters_all if p.name == name][0]
     for local in list(fit)[1:]:
@@ -79,19 +78,19 @@ def _count_updates(fit, monkeypatch):
             counts[_i] += 1
             return _orig(*args, **kwargs)
 
-        monkeypatch.setattr(model, '_update_model', counting, raising=False)
+        monkeypatch.setattr(model, "_update_model", counting, raising=False)
     return counts
 
 
 def test_a_local_parameter_only_recomputes_its_own_dataset(monkeypatch):
     """Moving one dataset's local parameter must not touch the other datasets."""
     fit = _global_fit(4)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     gm = fit._model
 
     # Build the graph before instrumenting, so the counters start clean.
     graph = gm.factor_graph
-    local_c = [v for v in graph.variables.values() if v.name == '3:c'][0]
+    local_c = [v for v in graph.variables.values() if v.name == "3:c"][0]
     _prime(gm)
 
     counts = _count_updates(fit, monkeypatch)
@@ -107,11 +106,11 @@ def test_a_local_parameter_only_recomputes_its_own_dataset(monkeypatch):
 def test_a_shared_parameter_recomputes_every_dataset(monkeypatch):
     """Moving the linked parameter must reach all datasets."""
     fit = _global_fit(4)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     gm = fit._model
 
     graph = gm.factor_graph
-    shared = [v for v in graph.variables.values() if v.name == '1:a'][0]
+    shared = [v for v in graph.variables.values() if v.name == "1:a"][0]
     _prime(gm)
 
     counts = _count_updates(fit, monkeypatch)
@@ -150,10 +149,10 @@ def test_a_bare_update_recomputes_everything(monkeypatch):
 def test_the_dirty_set_is_consumed_once(monkeypatch):
     """A second update after one assignment must fall back to a full recompute."""
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     gm = fit._model
     graph = gm.factor_graph
-    local_c = [v for v in graph.variables.values() if v.name == '2:c'][0]
+    local_c = [v for v in graph.variables.values() if v.name == "2:c"][0]
     _prime(gm)
 
     counts = _count_updates(fit, monkeypatch)
@@ -171,12 +170,12 @@ def test_selective_and_full_updates_give_identical_residuals():
     """The optimisation must be invisible in the objective's value."""
     reference = None
     for structure_aware in (False, True):
-        opt = chisurf.core.settings.cs_settings['optimization']
-        previous = opt.get('global_structure_aware_update', True)
-        opt['global_structure_aware_update'] = structure_aware
+        opt = chisurf.core.settings.cs_settings["optimization"]
+        previous = opt.get("global_structure_aware_update", True)
+        opt["global_structure_aware_update"] = structure_aware
         try:
             fit = _global_fit(4, seed=7)
-            _link_across(fit, 'a')
+            _link_across(fit, "a")
             gm = fit._model
             rng = np.random.default_rng(11)
             trace = []
@@ -191,7 +190,7 @@ def test_selective_and_full_updates_give_identical_residuals():
                 trace.append(np.asarray(gm.weighted_residuals, dtype=float).copy())
             stacked = np.vstack(trace)
         finally:
-            opt['global_structure_aware_update'] = previous
+            opt["global_structure_aware_update"] = previous
 
         if reference is None:
             reference = stacked
@@ -202,7 +201,7 @@ def test_selective_and_full_updates_give_identical_residuals():
 def test_get_wres_agrees_with_a_full_recompute():
     """The objective used by the optimiser and the samplers must be unchanged."""
     fit = _global_fit(3, seed=3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     gm = fit._model
 
     rng = np.random.default_rng(5)
@@ -223,7 +222,7 @@ def test_structure_change_invalidates_the_cached_graph():
     before = gm.factor_graph
     assert len(before) == 6
 
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     after = gm.factor_graph
     assert after is not before
     assert len(after) == 4
@@ -244,14 +243,14 @@ def test_appending_a_fit_invalidates_the_cached_graph():
 def test_disabling_the_setting_restores_the_full_update(monkeypatch):
     """The escape hatch must actually recompute everything."""
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     gm = fit._model
     graph = gm.factor_graph
-    local_c = [v for v in graph.variables.values() if v.name == '2:c'][0]
+    local_c = [v for v in graph.variables.values() if v.name == "2:c"][0]
 
-    opt = chisurf.core.settings.cs_settings['optimization']
-    previous = opt.get('global_structure_aware_update', True)
-    opt['global_structure_aware_update'] = False
+    opt = chisurf.core.settings.cs_settings["optimization"]
+    previous = opt.get("global_structure_aware_update", True)
+    opt["global_structure_aware_update"] = False
     try:
         counts = _count_updates(fit, monkeypatch)
         values = list(gm.parameter_values)
@@ -260,7 +259,7 @@ def test_disabling_the_setting_restores_the_full_update(monkeypatch):
         gm.update()
         assert all(counts[i] == 1 for i in range(3))
     finally:
-        opt['global_structure_aware_update'] = previous
+        opt["global_structure_aware_update"] = previous
 
 
 def test_global_fit_still_converges():
@@ -275,26 +274,24 @@ def test_global_fit_still_converges():
     a_true, c_true = 1.2, [3.1, 4.0, 2.5, 5.2]
     curves = []
     for c in c_true:
-        y = c + a_true * x ** 2 + rng.normal(0.0, SIGMA, x.size)
-        curves.append(
-            chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
-        )
+        y = c + a_true * x**2 + rng.normal(0.0, SIGMA, x.size)
+        curves.append(chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup(curves),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     for f in fit:
         f.fit_range = 0, len(f.model.y)
-        f.model.func = 'c+a*x**2'
+        f.model.func = "c+a*x**2"
         f.model.find_parameters()
     fit._model.find_parameters()
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
 
     fit.run(local_first=False)
 
-    shared = [p for p in fit[0].model.parameters_all if p.name == 'a'][0]
+    shared = [p for p in fit[0].model.parameters_all if p.name == "a"][0]
     assert float(shared.value) == pytest.approx(a_true, abs=0.02)
     for local, c in zip(fit, c_true):
-        got = [p for p in local.model.parameters_all if p.name == 'c'][0]
+        got = [p for p in local.model.parameters_all if p.name == "c"][0]
         assert float(got.value) == pytest.approx(c, abs=0.05)
     assert fit.chi2r < 2.0

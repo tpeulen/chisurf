@@ -6,6 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from mmfdb.repository import MFDatabase
+
+from chisurf.core.fio.setup_store import (
+    load_mmfdb_setups,
+)
+from chisurf.core.fio.setup_store import (
+    setup_id_for_name as _sifn_shared,
+)
 from chisurf.core.fluorescence.fcs.channel_setups import (
     _fcs_config,
     _fcs_row_to_data,
@@ -13,10 +20,6 @@ from chisurf.core.fluorescence.fcs.channel_setups import (
     build_channels_from_setup,
     load_fcs_channel_setups,
     save_fcs_channel_setups,
-)
-from chisurf.core.fio.setup_store import (
-    load_mmfdb_setups,
-    setup_id_for_name as _sifn_shared,
 )
 
 FCS_CONFIG = _fcs_config()
@@ -97,7 +100,7 @@ def test_fcs_pairs_child_table_written(tmp_path: Path) -> None:
         sid = setup_id_for_name("PairTest", user_id)
         rows = db.conn.execute(
             "SELECT * FROM mmfdb_setup_fcs_pair WHERE setup_id = ? AND deleted_at IS NULL ORDER BY id",
-            (sid,)
+            (sid,),
         ).fetchall()
         assert len(rows) == 2
         assert rows[0]["name"] == "GG"
@@ -127,8 +130,7 @@ def test_correlator_typed_columns(tmp_path: Path) -> None:
 
         sid = setup_id_for_name("CorrTest", user_id)
         row = db.conn.execute(
-            "SELECT n_bins, n_casc, make_fine FROM mmfdb_setup WHERE setup_id = ?",
-            (sid,)
+            "SELECT n_bins, n_casc, make_fine FROM mmfdb_setup WHERE setup_id = ?", (sid,)
         ).fetchone()
         assert row is not None
         assert row["n_bins"] == 8
@@ -321,12 +323,18 @@ def test_fcs_migration_idempotent(tmp_path: Path) -> None:
         )
 
         legacy = tmp_path / "fcs_channel_setups.json"
-        _write_legacy_json(legacy, {"FCS1": {
-            "correlator": {"n_bins": 2, "n_casc": 25, "make_fine": False},
-            "pairs": [{"name": "GG", "channel_a": "GG", "channel_b": "GG"}],
-        }})
+        _write_legacy_json(
+            legacy,
+            {
+                "FCS1": {
+                    "correlator": {"n_bins": 2, "n_casc": 25, "make_fine": False},
+                    "pairs": [{"name": "GG", "channel_a": "GG", "channel_b": "GG"}],
+                }
+            },
+        )
 
         from chisurf.core.fluorescence.fcs.channel_setups import _migrate_json_to_mmfdb
+
         _migrate_json_to_mmfdb(db, legacy, user_id=user_id)
         count_after_first = len(db.list_setups())
 
@@ -388,7 +396,8 @@ def test_build_channels_no_windows() -> None:
 
 def test_per_pair_correlator_roundtrip(tmp_path: Path) -> None:
     """Per-pair n_bins/n_casc/make_fine survive save/load through the
-    structured child-table columns."""
+    structured child-table columns.
+    """
     db = _fresh_db(tmp_path)
     try:
         user_id = "user_alice"
@@ -400,12 +409,22 @@ def test_per_pair_correlator_roundtrip(tmp_path: Path) -> None:
 
         pairs = [
             {
-                "name": "GG", "channel_a": "GG", "channel_b": "GG", "kind": "ACF",
-                "n_bins": 4, "n_casc": 32, "make_fine": True,
+                "name": "GG",
+                "channel_a": "GG",
+                "channel_b": "GG",
+                "kind": "ACF",
+                "n_bins": 4,
+                "n_casc": 32,
+                "make_fine": True,
             },
             {
-                "name": "RR", "channel_a": "RR", "channel_b": "RR", "kind": "ACF",
-                "n_bins": 2, "n_casc": 16, "make_fine": False,
+                "name": "RR",
+                "channel_a": "RR",
+                "channel_b": "RR",
+                "kind": "ACF",
+                "n_bins": 2,
+                "n_casc": 16,
+                "make_fine": False,
             },
         ]
         # Default setup-level correlator values
@@ -450,12 +469,14 @@ def test_fcs_load_uses_injected_database_for_child_rows(tmp_path: Path) -> None:
             injected,
             "Scoped",
             {
-                "pairs": [{
-                    "name": "injected",
-                    "channel_a": "GG",
-                    "channel_b": "RR",
-                    "n_bins": 7,
-                }],
+                "pairs": [
+                    {
+                        "name": "injected",
+                        "channel_a": "GG",
+                        "channel_b": "RR",
+                        "n_bins": 7,
+                    }
+                ],
             },
             user_id=user_id,
         )
@@ -463,12 +484,14 @@ def test_fcs_load_uses_injected_database_for_child_rows(tmp_path: Path) -> None:
             other,
             "Scoped",
             {
-                "pairs": [{
-                    "name": "configured",
-                    "channel_a": "RR",
-                    "channel_b": "GG",
-                    "n_bins": 99,
-                }],
+                "pairs": [
+                    {
+                        "name": "configured",
+                        "channel_a": "RR",
+                        "channel_b": "GG",
+                        "n_bins": 99,
+                    }
+                ],
             },
             user_id=user_id,
         )
@@ -484,13 +507,15 @@ def test_fcs_load_uses_injected_database_for_child_rows(tmp_path: Path) -> None:
                 row_to_data=_fcs_row_to_data,
             )
 
-        assert loaded["setups"]["Scoped"]["pairs"] == [{
-            "name": "injected",
-            "channel_a": "GG",
-            "channel_b": "RR",
-            "kind": None,
-            "n_bins": 7,
-        }]
+        assert loaded["setups"]["Scoped"]["pairs"] == [
+            {
+                "name": "injected",
+                "channel_a": "GG",
+                "channel_b": "RR",
+                "kind": None,
+                "n_bins": 7,
+            }
+        ]
     finally:
         injected.close()
         other.close()
@@ -498,7 +523,8 @@ def test_fcs_load_uses_injected_database_for_child_rows(tmp_path: Path) -> None:
 
 def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
     """Per-pair correlator values are stored in the mmfdb_setup_fcs_pair
-    child-table columns, not only on the parent row."""
+    child-table columns, not only on the parent row.
+    """
     db = _fresh_db(tmp_path)
     try:
         user_id = "user_alice"
@@ -510,8 +536,13 @@ def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
 
         pairs = [
             {
-                "name": "GR", "channel_a": "GG", "channel_b": "RR", "kind": "CCF",
-                "n_bins": 6, "n_casc": 48, "make_fine": True,
+                "name": "GR",
+                "channel_a": "GG",
+                "channel_b": "RR",
+                "kind": "CCF",
+                "n_bins": 6,
+                "n_casc": 48,
+                "make_fine": True,
             },
         ]
         data = {"correlator": {"n_bins": 2, "n_casc": 25, "make_fine": False}, "pairs": pairs}
@@ -547,9 +578,10 @@ def test_per_pair_correlator_stored_in_child_table(tmp_path: Path) -> None:
 
 def test_default_fcs_save_uses_mmfdb_no_json(tmp_path: Path) -> None:
     """Default save (no file_path) writes to MMFDB and does NOT create a JSON
-    side-file at the canonical path."""
-    import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
+    side-file at the canonical path.
+    """
     import chisurf.core.fio.setup_store as utils
+    import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
 
     # Point canonical file to temp location so we don't depend on real config
     orig_file = fcs_mod.FCS_CHANNEL_SETUPS_FILE
@@ -591,7 +623,9 @@ def test_default_fcs_save_uses_mmfdb_no_json(tmp_path: Path) -> None:
 
         # Data must be loadable from MMFDB
         loaded = load_fcs_channel_setups(
-            db_path=db.db_path, user_id=user_id, skip_migration=True,
+            db_path=db.db_path,
+            user_id=user_id,
+            skip_migration=True,
         )
         assert "MmfdbOnlySetup" in loaded["setups"]
         assert loaded["last_used_setup"] == "MmfdbOnlySetup"
@@ -628,21 +662,26 @@ def test_fcs_migration_removes_legacy_file(tmp_path: Path) -> None:
     db.close()
 
     legacy_path = fcs_mod.FCS_CHANNEL_SETUPS_FILE
-    _write_legacy_json(legacy_path, {"FCS1": {
-        "correlator": {"n_bins": 5, "n_casc": 40, "make_fine": False},
-        "pairs": [{"name": "GG", "channel_a": "GG", "channel_b": "GG", "kind": "ACF"}],
-    }})
+    _write_legacy_json(
+        legacy_path,
+        {
+            "FCS1": {
+                "correlator": {"n_bins": 5, "n_casc": 40, "make_fine": False},
+                "pairs": [{"name": "GG", "channel_a": "GG", "channel_b": "GG", "kind": "ACF"}],
+            }
+        },
+    )
     assert legacy_path.exists()
 
     try:
         # Run load with migration — this triggers migration + file deletion
         loaded = load_fcs_channel_setups(
-            db_path=db_path, user_id=user_id, skip_migration=False,
+            db_path=db_path,
+            user_id=user_id,
+            skip_migration=False,
         )
         # After successful migration, the legacy file should be gone
-        assert not legacy_path.exists(), (
-            "Legacy JSON file must be deleted after verified migration"
-        )
+        assert not legacy_path.exists(), "Legacy JSON file must be deleted after verified migration"
         # Data from the legacy file must be present in the result
         assert "FCS1" in loaded["setups"]
     finally:
@@ -652,7 +691,8 @@ def test_fcs_migration_removes_legacy_file(tmp_path: Path) -> None:
 
 def test_fcs_explicit_export_still_roundtrips(tmp_path: Path) -> None:
     """Explicit export via custom file_path still writes JSON and can be
-    read back."""
+    read back.
+    """
     custom = tmp_path / "my_export.json"
 
     data = {

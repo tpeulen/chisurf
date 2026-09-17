@@ -221,10 +221,17 @@ def test_the_excitation_partition_is_what_the_incumbent_does():
     from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
 
     corrections = {
-        "R0_bg": 49.0, "R0_br": 52.0, "R0_gr": 51.0,
-        "cr_bg": 0.1, "cr_br": 0.05, "cr_gr": 0.2,
-        "de_bg": 0.08, "de_br": 0.06, "de_gr": 0.1,
-        "gamma_br": 1.3, "gamma_gr": 0.9,
+        "R0_bg": 49.0,
+        "R0_br": 52.0,
+        "R0_gr": 51.0,
+        "cr_bg": 0.1,
+        "cr_br": 0.05,
+        "cr_gr": 0.2,
+        "de_bg": 0.08,
+        "de_br": 0.06,
+        "de_gr": 0.1,
+        "gamma_br": 1.3,
+        "gamma_gr": 0.9,
     }
     setup = _setup_from_corrections(corrections)
     reference = _pam_blue_probabilities(50.0, 60.0, 55.0, corrections)
@@ -294,11 +301,7 @@ def _pam_burst_likelihood(f_blue, f_green, p_blue, p_gr, bg_blue, bg_green, n_bg
         binomial += (
             poisson.pmf(a, bg_green[0])
             * poisson.pmf(b, bg_green[1])
-            * np.exp(
-                log_coefficient
-                + np.log(p_gr) * signal[1]
-                + np.log(1 - p_gr) * signal[0]
-            )
+            * np.exp(log_coefficient + np.log(p_gr) * signal[1] + np.log(1 - p_gr) * signal[0])
         )
 
     return trinomial * binomial
@@ -336,9 +339,7 @@ def test_burst_likelihood_matches_the_incumbent_kernel():
         # log-likelihoods, which is the same product.
         obtained = float(
             burst_log_likelihood(f_blue[None, :], p_blue[None, :], bg_blue)[0, 0]
-            + burst_log_likelihood(
-                f_green[None, :], np.array([[1 - p_gr, p_gr]]), bg_green
-            )[0, 0]
+            + burst_log_likelihood(f_green[None, :], np.array([[1 - p_gr, p_gr]]), bg_green)[0, 0]
         )
         assert obtained == pytest.approx(np.log(expected), rel=1e-9)
 
@@ -351,10 +352,17 @@ def test_agreement_holds_with_corrections_switched_off():
     )
 
     corrections = {
-        "R0_bg": 50.0, "R0_br": 50.0, "R0_gr": 50.0,
-        "cr_bg": 0.0, "cr_br": 0.0, "cr_gr": 0.0,
-        "de_bg": 0.0, "de_br": 0.0, "de_gr": 0.0,
-        "gamma_br": 1.0, "gamma_gr": 1.0,
+        "R0_bg": 50.0,
+        "R0_br": 50.0,
+        "R0_gr": 50.0,
+        "cr_bg": 0.0,
+        "cr_br": 0.0,
+        "cr_gr": 0.0,
+        "de_bg": 0.0,
+        "de_br": 0.0,
+        "de_gr": 0.0,
+        "gamma_br": 1.0,
+        "gamma_gr": 1.0,
     }
     setup = _setup_from_corrections(corrections)
     rng = np.random.default_rng(404)

@@ -12,7 +12,6 @@ from __future__ import annotations
 import pathlib
 import re
 
-import pytest
 import yaml
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -22,8 +21,12 @@ FRONT_MATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 #: Kept in step with the inbound table in docs/licensing.md and with
 #: source_attribution.ACCEPTED.
 ACCEPTED = {
-    "CC-BY-SA-4.0", "CC-BY-SA-3.0", "CC-BY-4.0", "CC-BY-3.0",
-    "CC0-1.0", "public-domain",
+    "CC-BY-SA-4.0",
+    "CC-BY-SA-3.0",
+    "CC-BY-4.0",
+    "CC-BY-3.0",
+    "CC0-1.0",
+    "public-domain",
 }
 
 

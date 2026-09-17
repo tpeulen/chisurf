@@ -40,9 +40,7 @@ def prepare_folder(request: PrepareRequest) -> PrepareResult:
         sources_summary: dict = {}
         if hasattr(prep, "sources") and prep.sources:
             sources_summary = {
-                "origin": dict(prep.sources.origin)
-                if hasattr(prep.sources, "origin")
-                else {},
+                "origin": dict(prep.sources.origin) if hasattr(prep.sources, "origin") else {},
                 "container_type": dict(prep.sources.container_type)
                 if hasattr(prep.sources, "container_type")
                 else {},

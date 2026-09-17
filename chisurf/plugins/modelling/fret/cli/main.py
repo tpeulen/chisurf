@@ -1,15 +1,14 @@
-"""Click CLI for FRET modeling.
-"""
+"""Click CLI for FRET modeling."""
 
 from __future__ import annotations
 
+import json
 import os
 import sys
-import json
-import click
-import numpy as np
 
-from ..core import av, engine, io, results, screening, evaluate, pair_selection
+import click
+
+from ..core import av, evaluate, io, pair_selection, results, screening
 
 
 def _parse_pdb_paths(pdb_arg: str) -> list[str]:
@@ -56,8 +55,7 @@ def info_backends():
 @click.option("--out", "output", required=True, help="Output fps.json path.")
 def convert_fps(lps: str, pdb: str, output: str):
     """Convert legacy FPS / C# LPs+Distances .txt files to a standard fps.json."""
-    positions, distances, score_sets, extra = io.read_fps_json(
-        lps, pdb_paths=_parse_pdb_paths(pdb))
+    positions, distances, score_sets, extra = io.read_fps_json(lps, pdb_paths=_parse_pdb_paths(pdb))
     io.write_fps_json(output, positions, distances, score_sets or None, extra or None)
     click.echo(f"Wrote {output}: {len(positions)} positions, {len(distances)} distances")
 
@@ -69,24 +67,24 @@ def info(fps: str):
     if not os.path.exists(fps):
         click.echo(f"Error: file not found: {fps}", err=True)
         sys.exit(1)
-    
+
     positions, distances, score_sets, extra = io.read_fps_json(fps)
     click.echo(f"Positions: {len(positions)}")
     for pname, pdef in sorted(positions.items()):
         click.echo(
-            f"  {pname}: chain={pdef.get('chain_identifier','')} "
-            f"res={pdef.get('residue_seq_number',0)} "
-            f"atom={pdef.get('atom_name','CA')} "
-            f"L={pdef.get('linker_length',20)} "
-            f"R={pdef.get('radius1',3.5)}"
+            f"  {pname}: chain={pdef.get('chain_identifier', '')} "
+            f"res={pdef.get('residue_seq_number', 0)} "
+            f"atom={pdef.get('atom_name', 'CA')} "
+            f"L={pdef.get('linker_length', 20)} "
+            f"R={pdef.get('radius1', 3.5)}"
         )
     click.echo(f"\nDistances: {len(distances)}")
     for dname, ddef in sorted(distances.items()):
         click.echo(
             f"  {dname}: {ddef.get('position1_name')} - {ddef.get('position2_name')}  "
-            f"d={ddef.get('distance',0):.1f} "
-            f"err=[{ddef.get('error_neg',5):.1f},{ddef.get('error_pos',5):.1f}] "
-            f"type={ddef.get('distance_type','RDAMean')}"
+            f"d={ddef.get('distance', 0):.1f} "
+            f"err=[{ddef.get('error_neg', 5):.1f},{ddef.get('error_pos', 5):.1f}] "
+            f"type={ddef.get('distance_type', 'RDAMean')}"
         )
     if score_sets:
         click.echo(f"\nScore sets: {list(score_sets.keys())}")
@@ -96,8 +94,15 @@ def info(fps: str):
 @click.option("--fps", required=True, help="Path to labeling.fps.json.")
 @click.option("--pdb-dir", required=True, help="Directory containing structures to screen.")
 @click.option("--output", required=True, help="Output CSV file path.")
-@click.option("--n-threads", default=4, show_default=True, type=int, help="Number of worker threads.")
-@click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]), help="Accessible Volume backend.")
+@click.option(
+    "--n-threads", default=4, show_default=True, type=int, help="Number of worker threads."
+)
+@click.option(
+    "--av-backend",
+    default="auto",
+    type=click.Choice(["auto", "labellib", "imp-bff"]),
+    help="Accessible Volume backend.",
+)
 def screen_cmd(fps: str, pdb_dir: str, output: str, n_threads: int, av_backend: str):
     """Screen a structure library against FRET restraints."""
     av.select_backend(av_backend)
@@ -162,13 +167,27 @@ def _resolve_evaluate_mode(pdb, pdb_dir, top, traj, input_type):
 
 @main.command("evaluate")
 @click.option("--fps", required=True, help="Path to labeling.fps.json.")
-@click.option("--pdb", default=None, help="Single PDB file (or directory with --input-type 'PDB Directory').")
-@click.option("--pdb-dir", default=None, help="Directory of PDB structures (selects directory mode).")
+@click.option(
+    "--pdb", default=None, help="Single PDB file (or directory with --input-type 'PDB Directory')."
+)
+@click.option(
+    "--pdb-dir", default=None, help="Directory of PDB structures (selects directory mode)."
+)
 @click.option("--top", default=None, help="Topology file for a trajectory (paired with --traj).")
 @click.option("--traj", default=None, help="Trajectory file (DCD); topology is --top or --pdb.")
 @click.option("--output", required=True, help="Output CSV file path.")
-@click.option("--input-type", default=None, type=click.Choice(["Single PDB File", "PDB Directory", "MDTraj Trajectory"]), help="Legacy mode override (prefer --pdb-dir / --top+--traj).")
-@click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]), help="Accessible Volume backend.")
+@click.option(
+    "--input-type",
+    default=None,
+    type=click.Choice(["Single PDB File", "PDB Directory", "MDTraj Trajectory"]),
+    help="Legacy mode override (prefer --pdb-dir / --top+--traj).",
+)
+@click.option(
+    "--av-backend",
+    default="auto",
+    type=click.Choice(["auto", "labellib", "imp-bff"]),
+    help="Accessible Volume backend.",
+)
 def evaluate_cmd(fps, pdb, pdb_dir, top, traj, output, input_type, av_backend):
     """Run OLGA-style structure evaluations."""
     av.select_backend(av_backend)
@@ -177,8 +196,14 @@ def evaluate_cmd(fps, pdb, pdb_dir, top, traj, output, input_type, av_backend):
     if not evaluators:
         # Construct DistanceEvaluators from distances
         from ..evaluators import DistanceEvaluator
+
         evaluators = [
-            DistanceEvaluator(name, d["position1_name"], d["position2_name"], distance_type=d.get("distance_type", "RDAMean"))
+            DistanceEvaluator(
+                name,
+                d["position1_name"],
+                d["position2_name"],
+                distance_type=d.get("distance_type", "RDAMean"),
+            )
             for name, d in distances.items()
         ]
 
@@ -205,14 +230,23 @@ def evaluate_cmd(fps, pdb, pdb_dir, top, traj, output, input_type, av_backend):
 @click.option("--fps", required=True, help="Path to labeling.fps.json.")
 @click.option("--pdb-dir", required=True, help="Directory of PDB ensemble structures.")
 @click.option("--output", required=True, help="Output file to save decay report.")
-@click.option("--max-pairs", default=3, show_default=True, type=int, help="Maximum number of pairs to select.")
+@click.option(
+    "--max-pairs", default=3, show_default=True, type=int, help="Maximum number of pairs to select."
+)
 @click.option("--err", default=5.0, type=float, help="FRET distance measurement error.")
-@click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]), help="Accessible Volume backend.")
-def select_pairs_cmd(fps: str, pdb_dir: str, output: str, max_pairs: int, err: float, av_backend: str):
+@click.option(
+    "--av-backend",
+    default="auto",
+    type=click.Choice(["auto", "labellib", "imp-bff"]),
+    help="Accessible Volume backend.",
+)
+def select_pairs_cmd(
+    fps: str, pdb_dir: str, output: str, max_pairs: int, err: float, av_backend: str
+):
     """Run informative pair selection on ensemble."""
     av.select_backend(av_backend)
     positions, distances, _, _ = io.read_fps_json(fps)
-    
+
     rmsds, filenames = pair_selection.compute_rmsd_matrix_from_pdb_dir(pdb_dir)
     effs, pair_names = pair_selection.compute_efficiency_matrix_from_evaluators(
         pdb_dir, positions, distances
@@ -226,9 +260,7 @@ def select_pairs_cmd(fps: str, pdb_dir: str, output: str, max_pairs: int, err: f
         effs_clean, rmsds_clean, err=err, max_pairs=max_pairs
     )
     selected_pair_names = [clean_pair_names[i] for i in selected_indices]
-    pair_selection.write_pair_selection_report(
-        selected_pair_names, decay, rmsds.mean(), output
-    )
+    pair_selection.write_pair_selection_report(selected_pair_names, decay, rmsds.mean(), output)
     click.echo(f"Pair selection complete. Saved decay report to {output}")
 
 
@@ -251,6 +283,7 @@ def _split_pdbs(pdb):
 def imp_info():
     """Report IMP/IMP.bff backend availability."""
     from ..api import operations as ops
+
     click.echo(json.dumps(ops.backend_info(), indent=2))
 
 
@@ -263,9 +296,16 @@ def imp_info():
 def imp_score(pdb, fps_json, score_set, output_csv, mean_position):
     """Score a structure against FRET restraints."""
     from ..api import operations as ops
-    res = ops.score({"pdb_paths": _split_pdbs(pdb), "fps_json": fps_json,
-                     "score_set": score_set, "output_csv": output_csv,
-                     "mean_position_restraint": mean_position})
+
+    res = ops.score(
+        {
+            "pdb_paths": _split_pdbs(pdb),
+            "fps_json": fps_json,
+            "score_set": score_set,
+            "output_csv": output_csv,
+            "mean_position_restraint": mean_position,
+        }
+    )
     click.echo(json.dumps(res, indent=2))
 
 
@@ -279,29 +319,75 @@ def imp_score(pdb, fps_json, score_set, output_csv, mean_position):
 @click.option("--n-best", default=20, type=int)
 @click.option("--anneal/--no-anneal", "simulated_annealing", default=False)
 @click.option("--fixed-body", default=0, type=int)
-@click.option("--sigma-da", "sigma_da", default=6.0, type=float,
-              help="Mean-position transfer-function width (Angstrom).")
-@click.option("--method", default="minimize", type=click.Choice(["minimize", "mc"]),
-              help="minimize = fast IMP conjugate-gradient docking (default); mc = replica-exchange MC.")
-@click.option("--refine", "refine_av_cycles", default=0, type=int,
-              help="FPS-style AV-recompute refinement cycles after docking.")
-@click.option("--save-distributions", is_flag=True, default=False,
-              help="Export full P(R_DA) distance distributions to distance_distributions.csv.")
-@click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]),
-              help="Accessible Volume backend.")
-def imp_dock(pdb, fps_json, output_dir, n_frames, mc_steps, score_set,
-             n_best, simulated_annealing, fixed_body, sigma_da, method,
-             refine_av_cycles, save_distributions, av_backend):
+@click.option(
+    "--sigma-da",
+    "sigma_da",
+    default=6.0,
+    type=float,
+    help="Mean-position transfer-function width (Angstrom).",
+)
+@click.option(
+    "--method",
+    default="minimize",
+    type=click.Choice(["minimize", "mc"]),
+    help="minimize = fast IMP conjugate-gradient docking (default); mc = replica-exchange MC.",
+)
+@click.option(
+    "--refine",
+    "refine_av_cycles",
+    default=0,
+    type=int,
+    help="FPS-style AV-recompute refinement cycles after docking.",
+)
+@click.option(
+    "--save-distributions",
+    is_flag=True,
+    default=False,
+    help="Export full P(R_DA) distance distributions to distance_distributions.csv.",
+)
+@click.option(
+    "--av-backend",
+    default="auto",
+    type=click.Choice(["auto", "labellib", "imp-bff"]),
+    help="Accessible Volume backend.",
+)
+def imp_dock(
+    pdb,
+    fps_json,
+    output_dir,
+    n_frames,
+    mc_steps,
+    score_set,
+    n_best,
+    simulated_annealing,
+    fixed_body,
+    sigma_da,
+    method,
+    refine_av_cycles,
+    save_distributions,
+    av_backend,
+):
     """Run FRET-restrained rigid-body docking (minimisation or Monte-Carlo)."""
     from ..api import operations as ops
-    res = ops.dock({"pdb_paths": _split_pdbs(pdb), "fps_json": fps_json,
-                    "output_dir": output_dir, "n_frames": n_frames,
-                    "mc_steps": mc_steps, "score_set": score_set, "n_best": n_best,
-                    "simulated_annealing": simulated_annealing, "fixed_body": fixed_body,
-                    "sigma_da": sigma_da, "method": method,
-                    "refine_av_cycles": refine_av_cycles,
-                    "save_distributions": save_distributions,
-                    "av_backend": av_backend})
+
+    res = ops.dock(
+        {
+            "pdb_paths": _split_pdbs(pdb),
+            "fps_json": fps_json,
+            "output_dir": output_dir,
+            "n_frames": n_frames,
+            "mc_steps": mc_steps,
+            "score_set": score_set,
+            "n_best": n_best,
+            "simulated_annealing": simulated_annealing,
+            "fixed_body": fixed_body,
+            "sigma_da": sigma_da,
+            "method": method,
+            "refine_av_cycles": refine_av_cycles,
+            "save_distributions": save_distributions,
+            "av_backend": av_backend,
+        }
+    )
     click.echo(json.dumps(res, indent=2))
 
 
@@ -314,6 +400,7 @@ def imp_distributions(pdb, fps_json, output_csv, av_backend):
     """Compute full P(R_DA) distance distributions for a structure."""
     from ..core import av as _av
     from ..core import distributions as _distr
+
     _av.select_backend(av_backend)
     positions, distances, _ss, _extra = io.read_fps_json(fps_json, pdb_paths=_split_pdbs(pdb))
     res = _distr.compute_distance_distributions(pdb, positions, distances, out_csv=output_csv)
@@ -321,30 +408,51 @@ def imp_distributions(pdb, fps_json, output_csv, av_backend):
 
 
 @imp_group.command("dock-project")
-@click.option("--project", "project_path", required=True,
-              help="Docking project .json (bundles PDBs, fps.json and parameters).")
-@click.option("--out", "output_dir", default=None,
-              help="Override the project's output directory.")
-@click.option("--frames", "n_frames", default=None, type=int,
-              help="Override the number of MC frames (e.g. a quick smoke run).")
+@click.option(
+    "--project",
+    "project_path",
+    required=True,
+    help="Docking project .json (bundles PDBs, fps.json and parameters).",
+)
+@click.option("--out", "output_dir", default=None, help="Override the project's output directory.")
+@click.option(
+    "--frames",
+    "n_frames",
+    default=None,
+    type=int,
+    help="Override the number of MC frames (e.g. a quick smoke run).",
+)
 @click.option("--mc-steps", default=None, type=int, help="Override MC steps per frame.")
 @click.option("--n-best", default=None, type=int, help="Override number of best models kept.")
-@click.option("--method", default=None, type=click.Choice(["minimize", "mc"]),
-              help="Override the docking method (minimize / mc).")
-@click.option("--continue/--fresh", "continue_poses", default=True,
-              help="Continue from the project's saved docked poses (default) or "
-                   "ignore them and start a fresh run.")
-def imp_dock_project(project_path, output_dir, n_frames, mc_steps, n_best, method,
-                     continue_poses):
+@click.option(
+    "--method",
+    default=None,
+    type=click.Choice(["minimize", "mc"]),
+    help="Override the docking method (minimize / mc).",
+)
+@click.option(
+    "--continue/--fresh",
+    "continue_poses",
+    default=True,
+    help="Continue from the project's saved docked poses (default) or "
+    "ignore them and start a fresh run.",
+)
+def imp_dock_project(project_path, output_dir, n_frames, mc_steps, n_best, method, continue_poses):
     """Run FRET docking from a saved project file.
 
     If the project stores docked poses (FPS-style transform vectors) the run
     resumes from them; pass ``--fresh`` to start over.
     """
     from ..api import operations as ops
-    overrides = {"output_dir": output_dir, "n_frames": n_frames,
-                 "mc_steps": mc_steps, "n_best": n_best, "method": method,
-                 "continue_from_poses": continue_poses}
+
+    overrides = {
+        "output_dir": output_dir,
+        "n_frames": n_frames,
+        "mc_steps": mc_steps,
+        "n_best": n_best,
+        "method": method,
+        "continue_from_poses": continue_poses,
+    }
     res = ops.dock_project(project_path, overrides)
     click.echo(json.dumps(res, indent=2))
 
@@ -358,8 +466,16 @@ def imp_dock_project(project_path, output_dir, n_frames, mc_steps, n_best, metho
 def imp_refine(pdb, fps_json, output_dir, steps, score_set):
     """Conjugate-gradient local refinement of a pose."""
     from ..api import operations as ops
-    res = ops.refine({"pdb_paths": _split_pdbs(pdb), "fps_json": fps_json,
-                      "output_dir": output_dir, "steps": steps, "score_set": score_set})
+
+    res = ops.refine(
+        {
+            "pdb_paths": _split_pdbs(pdb),
+            "fps_json": fps_json,
+            "output_dir": output_dir,
+            "steps": steps,
+            "score_set": score_set,
+        }
+    )
     click.echo(json.dumps(res, indent=2))
 
 
@@ -371,8 +487,15 @@ def imp_refine(pdb, fps_json, output_dir, steps, score_set):
 def imp_screen(pdb, fps_json, score_set, output_csv):
     """Score and rank a structure library."""
     from ..api import operations as ops
-    res = ops.screen({"pdb_inputs": _split_pdbs(pdb), "fps_json": fps_json,
-                      "score_set": score_set, "output_csv": output_csv})
+
+    res = ops.screen(
+        {
+            "pdb_inputs": _split_pdbs(pdb),
+            "fps_json": fps_json,
+            "score_set": score_set,
+            "output_csv": output_csv,
+        }
+    )
     click.echo(json.dumps(res, indent=2))
 
 
@@ -384,15 +507,29 @@ def imp_screen(pdb, fps_json, score_set, output_csv):
 @click.option("--frames", "n_frames", default=200, type=int)
 @click.option("--score-set", default="")
 @click.option("--method", default="minimize", type=click.Choice(["minimize", "mc"]))
-@click.option("--workers", "n_workers", default=None, type=int,
-              help="Parallel worker processes (default: CPU count; 1 = serial).")
+@click.option(
+    "--workers",
+    "n_workers",
+    default=None,
+    type=int,
+    help="Parallel worker processes (default: CPU count; 1 = serial).",
+)
 def imp_errors(pdb, fps_json, output_dir, n_trials, n_frames, score_set, method, n_workers):
     """Repeated-trial docking error estimation (trials run in parallel)."""
     from ..api import operations as ops
-    res = ops.estimate_errors({"pdb_paths": _split_pdbs(pdb), "fps_json": fps_json,
-                               "output_dir": output_dir, "n_trials": n_trials,
-                               "n_frames": n_frames, "score_set": score_set,
-                               "method": method, "n_workers": n_workers})
+
+    res = ops.estimate_errors(
+        {
+            "pdb_paths": _split_pdbs(pdb),
+            "fps_json": fps_json,
+            "output_dir": output_dir,
+            "n_trials": n_trials,
+            "n_frames": n_frames,
+            "score_set": score_set,
+            "method": method,
+            "n_workers": n_workers,
+        }
+    )
     click.echo(json.dumps(res, indent=2))
 
 

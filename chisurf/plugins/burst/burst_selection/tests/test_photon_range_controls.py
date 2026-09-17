@@ -75,7 +75,5 @@ def _photon_last_field(tool):
             return widget
     # Fall back to the spin box holding the largest allowed value: the form
     # renders an int field as a spin box, and only two of them are bound here.
-    spins = [
-        w for w in form.findChildren(QtWidgets.QAbstractSpinBox) if hasattr(w, "value")
-    ]
+    spins = [w for w in form.findChildren(QtWidgets.QAbstractSpinBox) if hasattr(w, "value")]
     return max(spins, key=lambda w: w.value()) if spins else None

@@ -14,8 +14,8 @@ from __future__ import annotations
 import numpy as np
 
 import chisurf as cs
-import chisurf.core.math.functions.rdf as rdf
 import chisurf.core.fluorescence
+import chisurf.core.math.functions.rdf as rdf
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.pda2c.pdagauss import Pda2cGaussianDistanceModel
 
@@ -59,14 +59,22 @@ class Pda2cSawNuDistances(FittingParameterGroup):
 
     def __init__(self, name: str = "pda_saw_nu", **kwargs):
         self._r_rms = FittingParameter(
-            value=55.0, name="Rrms", label_text="R<sub>rms</sub>",
-            lb=1.0, ub=1000.0, bounds_on=True,
-            description='Root-mean-square inter-dye distance (Angstrom).',
+            value=55.0,
+            name="Rrms",
+            label_text="R<sub>rms</sub>",
+            lb=1.0,
+            ub=1000.0,
+            bounds_on=True,
+            description="Root-mean-square inter-dye distance (Angstrom).",
         )
         self._nu = FittingParameter(
-            value=0.588, name="nu", label_text="&nu;",
-            lb=0.30, ub=0.95, bounds_on=True,
-            description='Flory scaling exponent nu (~0.588 expanded, 0.5 theta, <0.4 collapsed).',
+            value=0.588,
+            name="nu",
+            label_text="&nu;",
+            lb=0.30,
+            ub=0.95,
+            bounds_on=True,
+            description="Flory scaling exponent nu (~0.588 expanded, 0.5 theta, <0.4 collapsed).",
         )
         super().__init__(name=name, parameters=[self._r_rms, self._nu], **kwargs)
 
@@ -88,5 +96,4 @@ class Pda2cSawNuModel(Pda2cGaussianDistanceModel):
         """Initialize the SAW-ν PDA model (reuses the Gaussian-model machinery)."""
         if distances is None:
             distances = Pda2cSawNuDistances(name="pda_saw_nu", fit=fit, **kwargs)
-        super().__init__(fit, nuisance=nuisance, distances=distances,
-                         kw_hist=kw_hist, **kwargs)
+        super().__init__(fit, nuisance=nuisance, distances=distances, kw_hist=kw_hist, **kwargs)

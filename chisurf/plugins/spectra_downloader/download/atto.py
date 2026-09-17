@@ -10,7 +10,6 @@ this scraper sources them from there: the CDX API lists the archived
 contract (source ``atto``, kind ``organic_dye``).
 """
 
-import json
 import logging
 import re
 import urllib.parse
@@ -191,8 +190,9 @@ def main():
     from chisurf.plugins.spectra_downloader.download._base import scraper_main
 
     def _add(parser):
-        parser.add_argument("--limit", type=int, default=0,
-                            help="Max number of dyes to import (0 = all).")
+        parser.add_argument(
+            "--limit", type=int, default=0, help="Max number of dyes to import (0 = all)."
+        )
 
     scraper_main(
         "Download ATTO-TEC dye spectra from the Wayback Machine into the staging DB",

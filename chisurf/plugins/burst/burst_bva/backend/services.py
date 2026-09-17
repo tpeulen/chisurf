@@ -23,7 +23,9 @@ METHOD_PREPARE_WORKFLOW = "burst_bva.workflow.prepare"
 def register_services(dispatcher: Any) -> None:
     """Register BVA RPC handlers with a ServiceDispatcher."""
     dispatcher.register(METHOD_COMPUTE_BVA, lambda params: compute_bva_handler(**(params or {})))
-    dispatcher.register(METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {})))
+    dispatcher.register(
+        METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {}))
+    )
     dispatcher.register(METHOD_DESCRIBE_CONTRACT, lambda params: contract_handler(**(params or {})))
 
 
@@ -173,7 +175,9 @@ def _settings_from_workflow(
     if len(detector_values) > 1:
         acceptor = detector_values[1]
         kwargs["acceptor_channels"] = list(acceptor.get("chs", [1, 9]))
-        kwargs["acceptor_micro_time_ranges"] = _ranges(acceptor.get("micro_time_ranges", [(0, 32768)]))
+        kwargs["acceptor_micro_time_ranges"] = _ranges(
+            acceptor.get("micro_time_ranges", [(0, 32768)])
+        )
     if tttr_reading.get("file_type"):
         kwargs["file_type"] = str(tttr_reading["file_type"])
     return BvaSettings(**kwargs)

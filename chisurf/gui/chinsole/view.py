@@ -11,8 +11,6 @@ is defended in layers -- every single-layer scheme leaks somewhere.
 
 from __future__ import annotations
 
-import typing
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.console import ansi as ansi_module
@@ -70,9 +68,9 @@ class ConsoleView(QtWidgets.QTextEdit):
     searchRequested = QtCore.Signal()
 
     def __init__(
-            self,
-            parent: QtWidgets.QWidget | None = None,
-            theme: ConsoleTheme | None = None,
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        theme: ConsoleTheme | None = None,
     ) -> None:
         super().__init__(parent)
         self.setAcceptRichText(False)
@@ -150,7 +148,9 @@ class ConsoleView(QtWidgets.QTextEdit):
         cursor = QtGui.QTextCursor(document)
         cursor.movePosition(QtGui.QTextCursor.Start)
         cursor.movePosition(
-            QtGui.QTextCursor.NextBlock, QtGui.QTextCursor.KeepAnchor, excess,
+            QtGui.QTextCursor.NextBlock,
+            QtGui.QTextCursor.KeepAnchor,
+            excess,
         )
         removed = len(cursor.selectedText())
         cursor.removeSelectedText()
@@ -194,7 +194,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         out = [lines[0]] if lines else [""]
         for line in lines[1:]:
             if line.startswith(self._continuation_text):
-                out.append(line[len(self._continuation_text):])
+                out.append(line[len(self._continuation_text) :])
             else:
                 out.append(line)
         return "\n".join(out)
@@ -281,9 +281,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         cursor.insertText(
             self._continuation_text, self._prompt_format(self.theme.prompt_continuation)
         )
-        cursor.block().setUserData(
-            PromptBlockData(BLOCK_CONTINUE, len(self._continuation_text))
-        )
+        cursor.block().setUserData(PromptBlockData(BLOCK_CONTINUE, len(self._continuation_text)))
 
     @staticmethod
     def _at_line_start(cursor: QtGui.QTextCursor) -> bool:
@@ -345,9 +343,7 @@ class ConsoleView(QtWidgets.QTextEdit):
             elif isinstance(event, ansi_module.EraseLine):
                 # This, with CarriageReturn above, is what makes a progress bar
                 # redraw its line instead of printing thousands of them.
-                cursor.movePosition(
-                    QtGui.QTextCursor.EndOfBlock, QtGui.QTextCursor.KeepAnchor
-                )
+                cursor.movePosition(QtGui.QTextCursor.EndOfBlock, QtGui.QTextCursor.KeepAnchor)
                 cursor.removeSelectedText()
             elif isinstance(event, ansi_module.EraseDisplay) and event.mode == 2:
                 self.clear_screen()
@@ -355,9 +351,7 @@ class ConsoleView(QtWidgets.QTextEdit):
 
         block = cursor.block()
         if block.userData() is None:
-            block.setUserData(
-                PromptBlockData(BLOCK_ERROR if kind == "stderr" else BLOCK_OUTPUT, 0)
-            )
+            block.setUserData(PromptBlockData(BLOCK_ERROR if kind == "stderr" else BLOCK_OUTPUT, 0))
         self._trim_scrollback()
         self._prompt_pos = self.document().characterCount() - 1
         if self._autoscroll:
@@ -365,9 +359,9 @@ class ConsoleView(QtWidgets.QTextEdit):
             self.ensureCursorVisible()
 
     def _format_for(
-            self,
-            state: ansi_module.SgrState,
-            base: QtGui.QTextCharFormat,
+        self,
+        state: ansi_module.SgrState,
+        base: QtGui.QTextCharFormat,
     ) -> QtGui.QTextCharFormat:
         """Translate an ANSI state into a Qt character format.
 
@@ -436,10 +430,10 @@ class ConsoleView(QtWidgets.QTextEdit):
             self.moveCursor(QtGui.QTextCursor.End)
 
     def append_image(
-            self,
-            data: bytes,
-            fmt: str = "png",
-            metadata: dict | None = None,
+        self,
+        data: bytes,
+        fmt: str = "png",
+        metadata: dict | None = None,
     ) -> None:
         """Append an inline image.
 
@@ -458,9 +452,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         name = f"chinsole-img-{self._image_counter}"
         self._image_counter += 1
         self._image_store[name] = (data, fmt)
-        self.document().addResource(
-            QtGui.QTextDocument.ImageResource, QtCore.QUrl(name), image
-        )
+        self.document().addResource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(name), image)
 
         image_format = QtGui.QTextImageFormat()
         image_format.setName(name)
@@ -498,7 +490,8 @@ class ConsoleView(QtWidgets.QTextEdit):
         size = renderer.defaultSize()
         ratio = self.devicePixelRatioF() or 1.0
         image = QtGui.QImage(
-            int(size.width() * ratio), int(size.height() * ratio),
+            int(size.width() * ratio),
+            int(size.height() * ratio),
             QtGui.QImage.Format_ARGB32,
         )
         image.fill(QtCore.Qt.transparent)
@@ -643,7 +636,11 @@ class ConsoleView(QtWidgets.QTextEdit):
                 return
 
         if self._is_text_input(event):
-            if not self.is_editable() or self.textCursor().hasSelection() and not self._selection_editable():
+            if (
+                not self.is_editable()
+                or self.textCursor().hasSelection()
+                and not self._selection_editable()
+            ):
                 self._jump_to_prompt()
 
         super().keyPressEvent(event)
@@ -716,9 +713,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         prompt_len = data.prompt_len if isinstance(data, PromptBlockData) else 0
         cursor.beginEditBlock()
         cursor.movePosition(QtGui.QTextCursor.StartOfBlock)
-        cursor.movePosition(
-            QtGui.QTextCursor.Right, QtGui.QTextCursor.KeepAnchor, prompt_len
-        )
+        cursor.movePosition(QtGui.QTextCursor.Right, QtGui.QTextCursor.KeepAnchor, prompt_len)
         cursor.removeSelectedText()
         cursor.deletePreviousChar()
         cursor.endEditBlock()
@@ -794,7 +789,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         block_text = cursor.block().text()
         data = cursor.block().userData()
         offset = data.prompt_len if isinstance(data, PromptBlockData) else 0
-        before = block_text[offset:cursor.positionInBlock()]
+        before = block_text[offset : cursor.positionInBlock()]
         if not before.strip():
             width = 4 - (len(before) % 4)
             cursor.insertText(" " * width)
@@ -810,7 +805,7 @@ class ConsoleView(QtWidgets.QTextEdit):
         block_text = cursor.block().text()
         data = cursor.block().userData()
         offset = data.prompt_len if isinstance(data, PromptBlockData) else 0
-        before = block_text[offset:cursor.positionInBlock()]
+        before = block_text[offset : cursor.positionInBlock()]
         if before and not before.strip():
             remove = min(4, len(before))
             for _ in range(remove):

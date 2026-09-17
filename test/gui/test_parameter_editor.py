@@ -169,11 +169,12 @@ def test_choice_section_renders_combobox_and_updates(qapp):
 
     data = {"covariance_type": "full"}
     pe = _editor(qapp, target=data)
-    
+
     class DummyGroup:
         def __init__(self, d):
             self._d = d
             self.covariance_type = d["covariance_type"]
+
         def __setattr__(self, name, val):
             if name == "_d":
                 super().__setattr__(name, val)
@@ -182,11 +183,16 @@ def test_choice_section_renders_combobox_and_updates(qapp):
                 super().__setattr__(name, val)
 
     pe._view.settings = DummyGroup(data)
-    view_spec = ModelView(sections=(
-        ChoiceSection(target="settings", attr="covariance_type",
-                      label="covariance_type",
-                      options=("full", "tied", "diag", "spherical")),
-    ))
+    view_spec = ModelView(
+        sections=(
+            ChoiceSection(
+                target="settings",
+                attr="covariance_type",
+                label="covariance_type",
+                options=("full", "tied", "diag", "spherical"),
+            ),
+        )
+    )
 
     pe._tree.clear()
     pe._add_sections(view_spec.sections, pe._tree.invisibleRootItem())
@@ -194,7 +200,12 @@ def test_choice_section_renders_combobox_and_updates(qapp):
     item = _leaf_items(pe)["covariance_type"]
     combo = pe._tree.itemWidget(item, 1)
     assert isinstance(combo, QtWidgets.QComboBox)
-    assert [combo.itemText(i) for i in range(combo.count())] == ["full", "tied", "diag", "spherical"]
+    assert [combo.itemText(i) for i in range(combo.count())] == [
+        "full",
+        "tied",
+        "diag",
+        "spherical",
+    ]
     assert combo.currentText() == "full"
 
     combo.setCurrentIndex(2)  # "diag"

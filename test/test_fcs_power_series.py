@@ -28,12 +28,18 @@ TRUTH = dict(k2_3=2.5, k3_1=0.5, D=400.0)
 
 def _series(noise: float = 2e-3, seed: int = 1):
     """Simulate the reference power series."""
-    dark, exc, brightness = triplet_scheme(
-        lifetime_ns=4.0, isc_yield=0.01, triplet_lifetime_us=2.0
-    )
+    dark, exc, brightness = triplet_scheme(lifetime_ns=4.0, isc_yield=0.01, triplet_lifetime_us=2.0)
     curves = simulate_power_series(
-        POWERS, dark, exc, brightness, w_r_nm=200.0, w_z_nm=1000.0,
-        D_um2s=TRUTH["D"], extinction=1e5, noise=noise, seed=seed,
+        POWERS,
+        dark,
+        exc,
+        brightness,
+        w_r_nm=200.0,
+        w_z_nm=1000.0,
+        D_um2s=TRUTH["D"],
+        extinction=1e5,
+        noise=noise,
+        seed=seed,
     )
     return curves
 
@@ -42,8 +48,7 @@ def _chi2r(group) -> float:
     """Reduced chi-square over the whole group."""
     group.update()
     total = sum(
-        float(np.sum(np.asarray(f.model.weighted_residuals) ** 2))
-        for f in group.grouped_fits
+        float(np.sum(np.asarray(f.model.weighted_residuals) ** 2)) for f in group.grouped_fits
     )
     n = sum(np.asarray(f.model.weighted_residuals).size for f in group.grouped_fits)
     return total / max(n, 1)
@@ -52,9 +57,16 @@ def _chi2r(group) -> float:
 def test_the_series_recovers_the_scheme_it_was_made_from():
     """The point of the whole exercise, checked end to end."""
     group = build_power_series_fit(
-        _series(), POWERS,
-        initial={"extinction": 1e5, "w_r": 200.0, "w_z": 1000.0,
-                 "D": 250.0, "k2_3": 6.0, "k3_1": 1.5},
+        _series(),
+        POWERS,
+        initial={
+            "extinction": 1e5,
+            "w_r": 200.0,
+            "w_z": 1000.0,
+            "D": 250.0,
+            "k2_3": 6.0,
+            "k3_1": 1.5,
+        },
         free=("k2_3", "k3_1", "D"),
     )
     parameters = group.grouped_fits[0].model.parameters_all_dict
@@ -90,9 +102,7 @@ def test_what_is_shared_and_what_is_not():
 
     # Changing the reference must move every follower: that is what "global" means.
     reference.model.parameters_all_dict["D"].value = 123.0
-    assert all(
-        f.model.parameters_all_dict["D"].value == pytest.approx(123.0) for f in rest
-    )
+    assert all(f.model.parameters_all_dict["D"].value == pytest.approx(123.0) for f in rest)
 
 
 def test_the_brightness_scale_is_not_offered_to_the_optimiser():

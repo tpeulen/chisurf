@@ -20,7 +20,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.selection.parser import (
     Evaluator,
     ParserError,
@@ -30,7 +29,11 @@ from chimol.core.selection.parser import (
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -44,8 +47,8 @@ def qapp():
 @pytest.fixture(scope="module")
 def viewer(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -90,9 +93,7 @@ def test_resn_selects_a_residue_by_name(select, atoms):
     implicit AND of two bare identifiers and came out empty. It looked like an
     empty selection, not like a missing feature.
     """
-    expected = _count(
-        np.char.strip(atoms["res_name"].astype(str)) == "NAG"
-    )
+    expected = _count(np.char.strip(atoms["res_name"].astype(str)) == "NAG")
     assert expected > 0, "148L should carry NAG"
     assert _count(select("resn NAG")) == expected
 
@@ -102,9 +103,7 @@ def test_resn_ignores_case(select):
 
 
 def test_a_value_list_unions(select):
-    assert _count(select("resn NAG+MUB")) == _count(
-        select("resn NAG or resn MUB")
-    )
+    assert _count(select("resn NAG+MUB")) == _count(select("resn NAG or resn MUB"))
 
 
 def test_a_space_separated_value_list_is_rejected_like_pymol(select):
@@ -207,9 +206,7 @@ def test_a_distance_is_angstrom_not_scene_units(select, atoms, viewer):
 
     xyz = np.asarray(atoms["xyz"], dtype=float)
     ligand = select("resn NAG")
-    distance = np.min(
-        np.linalg.norm(xyz[:, None, :] - xyz[None, ligand, :], axis=2), axis=1
-    )
+    distance = np.min(np.linalg.norm(xyz[:, None, :] - xyz[None, ligand, :], axis=2), axis=1)
     for radius in (3.0, 5.0, 8.0):
         expected = _count((distance <= radius) & ~ligand)
         assert _count(select(f"resn NAG around {radius}")) == expected
@@ -230,9 +227,7 @@ def test_polymer_and_hetatm_are_complementary(select):
 
 
 def test_backbone_and_sidechain_partition_the_polymer(select):
-    assert (select("backbone") | select("sidechain")).tolist() == select(
-        "polymer"
-    ).tolist()
+    assert (select("backbone") | select("sidechain")).tolist() == select("polymer").tolist()
 
 
 def test_organic_finds_the_ligand_sugars(select, atoms):
@@ -312,9 +307,7 @@ def test_first_and_last_pick_one_atom(select):
 # Logic
 # --------------------------------------------------------------------------- #
 def test_a_space_means_and(select):
-    assert select("polymer name CA").tolist() == select(
-        "polymer and name CA"
-    ).tolist()
+    assert select("polymer name CA").tolist() == select("polymer and name CA").tolist()
 
 
 def test_not_inverts(select):
@@ -323,9 +316,7 @@ def test_not_inverts(select):
 
 def test_minus_subtracts(select):
     """PyMOL added `-` as the complement of `+`: an AND NOT."""
-    assert select("polymer - backbone").tolist() == select(
-        "polymer and not backbone"
-    ).tolist()
+    assert select("polymer - backbone").tolist() == select("polymer and not backbone").tolist()
 
 
 def test_a_range_is_not_read_as_a_subtraction(select):
@@ -441,9 +432,9 @@ def test_pepseq_that_matches_nothing_is_empty(select):
 @pytest.mark.parametrize(
     "expression",
     [
-        "masked",          # no picking mask
+        "masked",  # no picking mask
         "protected",
-        "text_type CA",    # no force-field types
+        "text_type CA",  # no force-field types
         "flag 1",
     ],
 )
@@ -472,9 +463,7 @@ def test_donors_and_acceptors_are_answered_from_the_chemistry(select, atoms):
     assert _count(acceptors) > 0
     # Every one is a nitrogen, an oxygen or a sulfur; carbon is neither.
     for mask in (donors, acceptors):
-        elements = {
-            str(e).strip().upper() for e in atoms["element"][mask]
-        }
+        elements = {str(e).strip().upper() for e in atoms["element"][mask]}
         assert elements <= {"N", "O", "S"}, elements
 
 

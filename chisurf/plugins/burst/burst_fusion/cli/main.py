@@ -16,8 +16,9 @@ import click
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
 
 
-def _settings(threshold, tau_min, tau_max, bins, min_pairs, max_gap, max_group,
-              per_file, file_type):
+def _settings(
+    threshold, tau_min, tau_max, bins, min_pairs, max_gap, max_group, per_file, file_type
+):
     """Build :class:`FusionSettings` from the shared CLI options."""
     return FusionSettings(
         threshold=threshold,
@@ -63,39 +64,64 @@ def _channel_definition(detectors_file: str | None, setup_name: str | None):
 def _shared_options(function):
     """Attach the options both sub-commands take."""
     function = click.option(
-        "--threshold", default=0.5, show_default=True, type=float,
+        "--threshold",
+        default=0.5,
+        show_default=True,
+        type=float,
         help="Same-molecule probability required to fuse two bursts.",
     )(function)
     function = click.option(
-        "--tau-min", default=1e-4, show_default=True, type=float,
+        "--tau-min",
+        default=1e-4,
+        show_default=True,
+        type=float,
         help="Shortest lag of the P_same estimate (s).",
     )(function)
     function = click.option(
-        "--tau-max", default=1.0, show_default=True, type=float,
+        "--tau-max",
+        default=1.0,
+        show_default=True,
+        type=float,
         help="Longest lag of the P_same estimate (s); also caps the fusion window.",
     )(function)
     function = click.option(
-        "--bins", default=60, show_default=True, type=int, help="Logarithmic lag bins.",
+        "--bins",
+        default=60,
+        show_default=True,
+        type=int,
+        help="Logarithmic lag bins.",
     )(function)
     function = click.option(
-        "--min-pairs", default=3, show_default=True, type=int,
+        "--min-pairs",
+        default=3,
+        show_default=True,
+        type=int,
         help="Burst pairs a lag bin needs before it may end the fusion window.",
     )(function)
     function = click.option(
-        "--max-gap", default=10.0, show_default=True, type=float,
+        "--max-gap",
+        default=10.0,
+        show_default=True,
+        type=float,
         help="Hard ceiling on the gap fusion may bridge, in ms (0 = none). Caps "
-             "the probability window so a fused burst does not swallow background.",
+        "the probability window so a fused burst does not swallow background.",
     )(function)
     function = click.option(
-        "--max-group", default=0, show_default=True, type=int,
+        "--max-group",
+        default=0,
+        show_default=True,
+        type=int,
         help="Largest number of bursts one fused burst may contain (0 = no limit).",
     )(function)
     function = click.option(
-        "--per-file", is_flag=True,
+        "--per-file",
+        is_flag=True,
         help="Estimate P_same per measurement instead of pooling the folder.",
     )(function)
     function = click.option(
-        "--file-type", default="auto", show_default=True,
+        "--file-type",
+        default="auto",
+        show_default=True,
         help="TTTR container type of the raw data (the folder's manifest wins).",
     )(function)
     return function
@@ -110,13 +136,25 @@ def cli():
 @click.argument("analysis_folder", type=click.Path(exists=True, file_okay=False))
 @_shared_options
 @click.option("--json", "as_json", is_flag=True, help="Print the full result as JSON.")
-def curve(analysis_folder, threshold, tau_min, tau_max, bins, min_pairs, max_gap,
-          max_group, per_file, file_type, as_json):
+def curve(
+    analysis_folder,
+    threshold,
+    tau_min,
+    tau_max,
+    bins,
+    min_pairs,
+    max_gap,
+    max_group,
+    per_file,
+    file_type,
+    as_json,
+):
     """Report P_same and what THRESHOLD would fuse in ANALYSIS_FOLDER."""
     from chisurf.plugins.burst.burst_fusion.core.fusion import analyze
 
-    settings = _settings(threshold, tau_min, tau_max, bins, min_pairs, max_gap,
-                         max_group, per_file, file_type)
+    settings = _settings(
+        threshold, tau_min, tau_max, bins, min_pairs, max_gap, max_group, per_file, file_type
+    )
     result = analyze(pathlib.Path(analysis_folder), settings)
     if as_json:
         click.echo(json.dumps(result.statistics, indent=2, default=str))
@@ -124,13 +162,21 @@ def curve(analysis_folder, threshold, tau_min, tau_max, bins, min_pairs, max_gap
 
     stats = result.statistics
     window = result.window
-    click.echo(f"Bursts:            {stats['n_bursts_before']} in {stats['n_measurements']} measurement(s)")
-    click.echo(f"P_same >= {threshold:.2f}:   tau <= {window.tau_max_s * 1e3:.3f} ms"
-               + ("" if window.resolved else "  (unresolved: the curve never crossed the threshold)"))
-    click.echo(f"Gaps fused:        <= {result.tau_used_s * 1e3:.3f} ms"
-               + ("  (capped by --max-gap)" if stats["gap_capped"] else ""))
-    click.echo(f"After fusion:      {stats['n_bursts_after']} bursts "
-               f"({stats['n_fused_groups']} fused, largest {stats['largest_group']})")
+    click.echo(
+        f"Bursts:            {stats['n_bursts_before']} in {stats['n_measurements']} measurement(s)"
+    )
+    click.echo(
+        f"P_same >= {threshold:.2f}:   tau <= {window.tau_max_s * 1e3:.3f} ms"
+        + ("" if window.resolved else "  (unresolved: the curve never crossed the threshold)")
+    )
+    click.echo(
+        f"Gaps fused:        <= {result.tau_used_s * 1e3:.3f} ms"
+        + ("  (capped by --max-gap)" if stats["gap_capped"] else "")
+    )
+    click.echo(
+        f"After fusion:      {stats['n_bursts_after']} bursts "
+        f"({stats['n_fused_groups']} fused, largest {stats['largest_group']})"
+    )
     ratio = stats.get("proximity_ratio", {})
     if ratio.get("before", {}).get("n"):
         click.echo(
@@ -152,21 +198,43 @@ def curve(analysis_folder, threshold, tau_min, tau_max, bins, min_pairs, max_gap
 @click.argument("analysis_folder", type=click.Path(exists=True, file_okay=False))
 @_shared_options
 @click.option("--output", "-o", type=click.Path(), help="Target folder for the fused bursts.")
-@click.option("--data-folder", type=click.Path(exists=True, file_okay=False),
-              help="Where the raw measurements live (default: the analysis folder's parent).")
-@click.option("--detectors", "detectors_file", type=click.Path(exists=True, dir_okay=False),
-              help="JSON detector/window definition, for a folder written before "
-                   "burst analyses recorded their own reading manifest.")
-@click.option("--setup", "setup_name",
-              help="Name of a saved detector setup to use instead of --detectors.")
-def fuse(analysis_folder, threshold, tau_min, tau_max, bins, min_pairs, max_gap,
-         max_group, per_file, file_type, output, data_folder,
-         detectors_file, setup_name):
+@click.option(
+    "--data-folder",
+    type=click.Path(exists=True, file_okay=False),
+    help="Where the raw measurements live (default: the analysis folder's parent).",
+)
+@click.option(
+    "--detectors",
+    "detectors_file",
+    type=click.Path(exists=True, dir_okay=False),
+    help="JSON detector/window definition, for a folder written before "
+    "burst analyses recorded their own reading manifest.",
+)
+@click.option(
+    "--setup", "setup_name", help="Name of a saved detector setup to use instead of --detectors."
+)
+def fuse(
+    analysis_folder,
+    threshold,
+    tau_min,
+    tau_max,
+    bins,
+    min_pairs,
+    max_gap,
+    max_group,
+    per_file,
+    file_type,
+    output,
+    data_folder,
+    detectors_file,
+    setup_name,
+):
     """Write the fused bursts of ANALYSIS_FOLDER as a new burst folder."""
     from chisurf.plugins.burst.burst_fusion.core.fusion import fuse_folder
 
-    settings = _settings(threshold, tau_min, tau_max, bins, min_pairs, max_gap,
-                         max_group, per_file, file_type)
+    settings = _settings(
+        threshold, tau_min, tau_max, bins, min_pairs, max_gap, max_group, per_file, file_type
+    )
     detectors, windows = _channel_definition(detectors_file, setup_name)
     result = fuse_folder(
         pathlib.Path(analysis_folder),
@@ -177,8 +245,10 @@ def fuse(analysis_folder, threshold, tau_min, tau_max, bins, min_pairs, max_gap,
         data_folder=data_folder,
     )
     stats = result["statistics"]
-    click.echo(f"Fused {stats['n_bursts_before']} -> {stats['n_bursts_after']} bursts "
-               f"(gaps <= {result['tau_used_s'] * 1e3:.3f} ms)")
+    click.echo(
+        f"Fused {stats['n_bursts_before']} -> {stats['n_bursts_after']} bursts "
+        f"(gaps <= {result['tau_used_s'] * 1e3:.3f} ms)"
+    )
     for stem, counts in result["per_measurement"].items():
         click.echo(f"  {stem}: {counts['bursts_before']} -> {counts['bursts_after']}")
     click.echo(f"Written to {result['output_folder']}")

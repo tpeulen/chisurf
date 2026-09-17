@@ -74,7 +74,9 @@ class AppStartupServiceSpec:
         depends_on = data.get("depends_on", [])
         methods = data.get("methods", [])
         requires = data.get("requires", [])
-        if not isinstance(depends_on, list) or not all(isinstance(item, str) for item in depends_on):
+        if not isinstance(depends_on, list) or not all(
+            isinstance(item, str) for item in depends_on
+        ):
             raise ValueError("field 'depends_on' must be a list of strings")
         if not isinstance(methods, list) or not all(isinstance(item, str) for item in methods):
             raise ValueError("field 'methods' must be a list of strings")
@@ -110,8 +112,7 @@ class AppStartupServiceSpec:
             source_keys = [k for k in ("setting", "attribute", "env") if k in enabled_if_data]
             if len(source_keys) != 1:
                 raise ValueError(
-                    "field 'enabled_if' must have exactly one source key "
-                    "(setting, attribute, env)"
+                    "field 'enabled_if' must have exactly one source key (setting, attribute, env)"
                 )
             source_type = source_keys[0]
             source_key = enabled_if_data[source_type]
@@ -192,6 +193,7 @@ class AppStartupError(RuntimeError):
 def _resolve_dotted_setting(dotted_path: str) -> Any:
     """Resolve a dotted path into ``chisurf.core.settings.cs_settings``."""
     import chisurf.core.settings
+
     value = chisurf.core.settings.cs_settings
     for part in dotted_path.split("."):
         if isinstance(value, dict):
@@ -516,8 +518,7 @@ class AppStartupServiceManager:
             exists = value is not None
             if cond.exists != exists:
                 return False, (
-                    f"setting '{cond.source_key}' exists={exists}, "
-                    f"expected exists={cond.exists}"
+                    f"setting '{cond.source_key}' exists={exists}, expected exists={cond.exists}"
                 )
 
         if cond.equals is not None:
@@ -538,16 +539,14 @@ class AppStartupServiceManager:
                 matched = value == cond.equals
             if not matched:
                 return False, (
-                    f"condition '{cond.source_key}' equals {value!r}, "
-                    f"expected {cond.equals!r}"
+                    f"condition '{cond.source_key}' equals {value!r}, expected {cond.equals!r}"
                 )
 
         if cond.truthy is not None:
             truthy = bool(value)
             if cond.truthy != truthy:
                 return False, (
-                    f"setting '{cond.source_key}' truthy={truthy}, "
-                    f"expected truthy={cond.truthy}"
+                    f"setting '{cond.source_key}' truthy={truthy}, expected truthy={cond.truthy}"
                 )
 
         return True, ""
@@ -569,9 +568,7 @@ class AppStartupServiceManager:
                     "startup stage %r (%s/%s) took %.2fs", spec.id, spec.surface, spec.phase, _dt
                 )
             else:
-                logging.getLogger(__name__).debug(
-                    "startup stage %r took %.3fs", spec.id, _dt
-                )
+                logging.getLogger(__name__).debug("startup stage %r took %.3fs", spec.id, _dt)
 
     def _start_service_inner(
         self,
@@ -633,21 +630,18 @@ class AppStartupServiceManager:
             exists = value is not None
             if cond.exists != exists:
                 return False, (
-                    f"attribute '{cond.source_key}' exists={exists}, "
-                    f"expected exists={cond.exists}"
+                    f"attribute '{cond.source_key}' exists={exists}, expected exists={cond.exists}"
                 )
         if cond.equals is not None:
             if value != cond.equals:
                 return False, (
-                    f"attribute '{cond.source_key}' equals {value!r}, "
-                    f"expected {cond.equals!r}"
+                    f"attribute '{cond.source_key}' equals {value!r}, expected {cond.equals!r}"
                 )
         if cond.truthy is not None:
             truthy = bool(value)
             if cond.truthy != truthy:
                 return False, (
-                    f"attribute '{cond.source_key}' truthy={truthy}, "
-                    f"expected truthy={cond.truthy}"
+                    f"attribute '{cond.source_key}' truthy={truthy}, expected truthy={cond.truthy}"
                 )
         return True, ""
 

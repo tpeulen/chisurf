@@ -69,9 +69,7 @@ def test_each_lifetime_lands_in_its_own_bin():
 def test_discriminate_keeps_the_dominant_lifetime():
     """The discriminator sees real weights rather than an all-zero histogram."""
     amplitudes, lifetimes = _two_columns(
-        bin_lifetime_spectrum(
-            SPECTRUM, n_lifetimes=101, discriminate=True, discriminator=0.3
-        )
+        bin_lifetime_spectrum(SPECTRUM, n_lifetimes=101, discriminate=True, discriminator=0.3)
     )
     assert amplitudes.size == 1
     assert amplitudes[0] == pytest.approx(0.5)
@@ -82,8 +80,7 @@ def test_single_lifetime_spectrum_is_returned_unchanged():
     """A degenerate range has nothing to bin and must not divide by zero."""
     spectrum = np.array([1.0, 2.0])
     np.testing.assert_allclose(
-        bin_lifetime_spectrum(spectrum, n_lifetimes=101, discriminate=False),
-        spectrum
+        bin_lifetime_spectrum(spectrum, n_lifetimes=101, discriminate=False), spectrum
     )
 
 

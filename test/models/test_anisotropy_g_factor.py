@@ -27,8 +27,7 @@ def _measured(r_true):
     """Return the (VV, VH) a detector pair would record for ``r_true``."""
     intensity_parallel = 1.0 + 2.0 * r_true
     intensity_perpendicular = 1.0 - r_true
-    return (S_PARALLEL * intensity_parallel,
-            S_PERPENDICULAR * intensity_perpendicular)
+    return (S_PARALLEL * intensity_parallel, S_PERPENDICULAR * intensity_perpendicular)
 
 
 def _recover(r_true, l1=0.0, l2=0.0):
@@ -37,9 +36,7 @@ def _recover(r_true, l1=0.0, l2=0.0):
 
     vv, vh = _measured(r_true)
     t = np.array([1.0, 2.0, 3.0])
-    _, r_unc, r_cor = rt_curves(
-        t=t, vv=np.full(3, vv), vh=np.full(3, vh), g=G_FACTOR, l1=l1, l2=l2
-    )
+    _, r_unc, r_cor = rt_curves(t=t, vv=np.full(3, vv), vh=np.full(3, vh), g=G_FACTOR, l1=l1, l2=l2)
     return float(r_unc[0]), float(r_cor[0])
 
 
@@ -62,11 +59,9 @@ def test_an_isotropic_sample_reads_zero_whatever_the_g_factor():
 
     t = np.array([1.0, 2.0])
     for sensitivity in (0.5, 0.65, 1.0, 1.4, 2.0):
-        vv = np.full(2, 1.0)                       # isotropic: equal true intensities
+        vv = np.full(2, 1.0)  # isotropic: equal true intensities
         vh = np.full(2, 1.0 / sensitivity)
-        _, r_unc, _ = rt_curves(
-            t=t, vv=vv, vh=vh, g=sensitivity, l1=0.0, l2=0.0
-        )
+        _, r_unc, _ = rt_curves(t=t, vv=vv, vh=vh, g=sensitivity, l1=0.0, l2=0.0)
         assert r_unc[0] == pytest.approx(0.0, abs=1e-12), f"g = {sensitivity}"
 
 
@@ -99,8 +94,12 @@ def test_it_is_the_published_equation_with_the_reciprocal_g():
         for l1, l2 in ((0.0, 0.0), (0.03, 0.05), (0.02, 0.01)):
             published = (fp - G * fs) / ((1 - 3 * l2) * fp + (2 - 3 * l1) * G * fs)
             _, _, r_cor = rt_curves(
-                t=t, vv=np.full(2, fp), vh=np.full(2, fs),
-                g=G, l1=l1, l2=l2,
+                t=t,
+                vv=np.full(2, fp),
+                vh=np.full(2, fs),
+                g=G,
+                l1=l1,
+                l2=l2,
             )
             assert r_cor[0] == pytest.approx(published, abs=1e-12), f"G={G} l1={l1} l2={l2}"
 
@@ -115,12 +114,20 @@ def test_the_curve_agrees_with_the_integrals_module(qapp=None):
     from chisurf.core.fluorescence.anisotropy.integrals import anisotropy_from_integrals
     from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
-    for r_true, l1, l2 in ((0.0, 0.0, 0.0), (0.2, 0.0, 0.0),
-                           (0.25, 0.03, 0.05), (0.38, 0.02, 0.01)):
+    for r_true, l1, l2 in (
+        (0.0, 0.0, 0.0),
+        (0.2, 0.0, 0.0),
+        (0.25, 0.03, 0.05),
+        (0.38, 0.02, 0.01),
+    ):
         vv, vh = _measured(r_true)
         _, _, r_cor = rt_curves(
-            t=np.array([1.0, 2.0]), vv=np.full(2, vv), vh=np.full(2, vh),
-            g=G_FACTOR, l1=l1, l2=l2,
+            t=np.array([1.0, 2.0]),
+            vv=np.full(2, vv),
+            vh=np.full(2, vh),
+            g=G_FACTOR,
+            l1=l1,
+            l2=l2,
         )
         reference = anisotropy_from_integrals(
             s_p=np.full(2, vv), s_s=np.full(2, vh), G=G_FACTOR, l1=l1, l2=l2
@@ -129,7 +136,7 @@ def test_the_curve_agrees_with_the_integrals_module(qapp=None):
 
 
 def test_the_generator_round_trips_at_any_g():
-    """chisurf's own forward model must invert to the anisotropy it was given.
+    """Chisurf's own forward model must invert to the anisotropy it was given.
 
     ``vm_rt_to_vv_vh`` is where the convention is stated in code, and it is the
     same forward model tttrlib fits: ``VV = vm(1 + (2-3 l1) r)`` and

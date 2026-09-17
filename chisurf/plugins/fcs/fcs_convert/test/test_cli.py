@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
 from chisurf.plugins.fcs.fcs_convert.cli import (
-    _format_list,
-    _normalize,
     _SUPPORTED_INPUT_TYPES,
     _SUPPORTED_OUTPUT_TYPES,
+    _format_list,
+    _normalize,
     convert_fcs,
 )
 

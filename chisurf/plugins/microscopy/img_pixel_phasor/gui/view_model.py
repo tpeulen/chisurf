@@ -26,8 +26,12 @@ class PhasorImgViewModel(ImagingMapViewModel):
     OPERATION_TYPE = "phasor_analysis"
     #: g and s are the coordinates of a point on the universal circle, so they
     #: are genuinely dimensionless -- a claim, not an absence.
-    COLUMN_UNITS = {"g": "dimensionless", "s": "dimensionless",
-                    "tau_phi": "nanoseconds", "tau_m": "nanoseconds"}
+    COLUMN_UNITS = {
+        "g": "dimensionless",
+        "s": "dimensionless",
+        "tau_phi": "nanoseconds",
+        "tau_m": "nanoseconds",
+    }
     #: Phasor-plot extent (data coords). Widened past the universal circle
     #: (g∈[0,1], s∈[0,0.5]) so noisy pixels near the edges are not clipped.
     PHASOR_G_RANGE = (-0.1, 1.1)
@@ -81,8 +85,11 @@ class PhasorImgViewModel(ImagingMapViewModel):
             return None
         irf_files = list(win.get("irf") or [])
         key = (
-            self.filename, self.display_window, float(self.frequency),
-            int(self.n_ph_min), tuple(irf_files),
+            self.filename,
+            self.display_window,
+            float(self.frequency),
+            int(self.n_ph_min),
+            tuple(irf_files),
         )
         if getattr(self, "_pf_key", None) == key and getattr(self, "_pf_cache", None) is not None:
             return self._pf_cache
@@ -101,8 +108,11 @@ class PhasorImgViewModel(ImagingMapViewModel):
             )
             tttr_irf = get_tttr(irf_files[0]) if irf_files else None
             result = phasor_frames(
-                clsm, tttr, frequency=float(self.frequency),
-                tttr_irf=tttr_irf, n_ph_min=int(self.n_ph_min),
+                clsm,
+                tttr,
+                frequency=float(self.frequency),
+                tttr_irf=tttr_irf,
+                n_ph_min=int(self.n_ph_min),
             )
         except Exception:
             return None
@@ -132,8 +142,12 @@ class PhasorImgViewModel(ImagingMapViewModel):
         """
         win = self._windows().get(self.display_window) or {}
         sig = (
-            self.filename, self.display_window, float(self.frequency),
-            int(self.n_ph_min), tuple(win.get("irf") or []), int(bins),
+            self.filename,
+            self.display_window,
+            float(self.frequency),
+            int(self.n_ph_min),
+            tuple(win.get("irf") or []),
+            int(bins),
         )
 
         def build():
@@ -147,7 +161,9 @@ class PhasorImgViewModel(ImagingMapViewModel):
             for f in range(n):
                 g, s = g_st[f], s_st[f]
                 valid = np.isfinite(g) & np.isfinite(s) & ~((g == 0.0) & (s == 0.0))
-                hist, _, _ = np.histogram2d(g[valid].ravel(), s[valid].ravel(), bins=bins, range=rng)
+                hist, _, _ = np.histogram2d(
+                    g[valid].ravel(), s[valid].ravel(), bins=bins, range=rng
+                )
                 # histogram2d puts g on axis 0; the image is drawn row-major, so
                 # the transpose is what puts g on the horizontal axis.
                 out[f] = np.log1p(hist.T)
@@ -182,7 +198,9 @@ class PhasorImgViewModel(ImagingMapViewModel):
         gg, ss = g[mask].ravel(), s[mask].ravel()
         valid = np.isfinite(gg) & np.isfinite(ss)
         hist, _, _ = np.histogram2d(
-            gg[valid], ss[valid], bins=bins,
+            gg[valid],
+            ss[valid],
+            bins=bins,
             range=[list(self.PHASOR_G_RANGE), list(self.PHASOR_S_RANGE)],
         )
         return np.log1p(hist.T)

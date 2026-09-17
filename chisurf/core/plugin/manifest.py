@@ -348,8 +348,12 @@ def _type_fragment(annotation) -> dict:
     if "dict" in text or "Dict" in text or "Mapping" in text:
         return {"type": "object"}
     optional = "None" in text or "Optional" in text
-    for needle, kind in (("bool", "boolean"), ("int", "integer"),
-                         ("float", "number"), ("str", "string")):
+    for needle, kind in (
+        ("bool", "boolean"),
+        ("int", "integer"),
+        ("float", "number"),
+        ("str", "string"),
+    ):
         if needle in text:
             return {"type": [kind, "null"]} if optional else {"type": kind}
     return {}
@@ -367,11 +371,9 @@ def build_manifest_schema() -> dict:
     ``statefulness`` accepts either a boolean or an object because
     :meth:`PluginManifest._parse_statefulness` handles both.
     """
+
     def _props(cls) -> dict:
-        return {
-            f.name: _type_fragment(f.type)
-            for f in dataclasses.fields(cls)
-        }
+        return {f.name: _type_fragment(f.type) for f in dataclasses.fields(cls)}
 
     entrypoints_def = {
         "type": "object",
@@ -477,8 +479,11 @@ def validate_manifest_schema(data) -> list[str]:
     messages = []
     for error in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
         where = "/".join(str(p) for p in error.path) or "manifest"
-        cause = min(error.context, key=lambda e: len(list(e.path)), default=None) \
-            if error.context else None
+        cause = (
+            min(error.context, key=lambda e: len(list(e.path)), default=None)
+            if error.context
+            else None
+        )
         messages.append(f"{where}: {(cause or error).message}")
     return messages
 

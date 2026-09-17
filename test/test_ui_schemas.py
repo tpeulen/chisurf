@@ -37,6 +37,7 @@ would. What this suite adds is the other half: that the *files* follow it, that
 the written ``schemas/*.schema.json`` still match the generator, and -- the test
 that keeps the rest honest -- that the scheme actually **rejects** something.
 """
+
 from __future__ import annotations
 
 import json
@@ -66,7 +67,8 @@ def _find(pattern: str) -> list[pathlib.Path]:
         base = _ROOT / tree
         if base.exists():
             found.extend(
-                path for path in base.rglob(pattern)
+                path
+                for path in base.rglob(pattern)
                 if "build" not in path.parts and ".pixi" not in path.parts
             )
     return sorted(found)
@@ -139,8 +141,7 @@ def test_the_written_schemas_match_the_generator():
         assert path.exists(), f"{path} is missing; run the generator"
         written = json.loads(path.read_text(encoding="utf-8"))
         assert written == generated, (
-            f"{path.name} is stale -- regenerate with "
-            "`python -m chisurf.core.dataspec.schema`"
+            f"{path.name} is stale -- regenerate with `python -m chisurf.core.dataspec.schema`"
         )
 
 
@@ -174,9 +175,7 @@ def test_every_declared_field_is_in_the_scheme():
         # annotation carve-out the scheme allows everywhere.
         described = set(branches[name]["properties"]) - {"_comment"}
         fields = fields | {"type"}
-        assert described == fields, (
-            f"{name}: scheme and dataclass disagree on {described ^ fields}"
-        )
+        assert described == fields, f"{name}: scheme and dataclass disagree on {described ^ fields}"
 
 
 # ------------------------------------------------- the scheme must say no
@@ -185,26 +184,37 @@ def test_every_declared_field_is_in_the_scheme():
 @pytest.mark.parametrize(
     "spec, why",
     [
-        ({"sections": [{"type": "value", "attr": "x", "rebuild_on_change": True}]},
-         "a value section cannot rebuild the form -- only a choice can"),
-        ({"sections": [{"type": "choice", "attr": "x", "kind": "combo"}]},
-         "a choice uses `style`, not `kind`"),
-        ({"sections": [{"type": "value", "attr": "x", "kind": "path"}]},
-         "`path` is not an implemented kind; a file field renders as plain text"),
-        ({"sections": [{"type": "info", "n_col": 1}]},
-         "`n_col` belongs to a panel"),
-        ({"sections": [{"type": "value", "attr": "x", "hide_label": False}]},
-         "`hide_label` is not read"),
-        ({"sections": [{"type": "not_a_type"}]},
-         "an unknown section type"),
-        ({"nonsense": 1},
-         "an unknown top-level key"),
-        ({"sections": [{"type": "custom", "key": "help",
-                        "options": {"tite": "hello"}}]},
-         "a typo in a documented custom-section option name"),
-        ({"sections": [{"type": "custom", "key": "background_run",
-                        "options": {"start_acton": "go"}}]},
-         "a typo in a background_run option name"),
+        (
+            {"sections": [{"type": "value", "attr": "x", "rebuild_on_change": True}]},
+            "a value section cannot rebuild the form -- only a choice can",
+        ),
+        (
+            {"sections": [{"type": "choice", "attr": "x", "kind": "combo"}]},
+            "a choice uses `style`, not `kind`",
+        ),
+        (
+            {"sections": [{"type": "value", "attr": "x", "kind": "path"}]},
+            "`path` is not an implemented kind; a file field renders as plain text",
+        ),
+        ({"sections": [{"type": "info", "n_col": 1}]}, "`n_col` belongs to a panel"),
+        (
+            {"sections": [{"type": "value", "attr": "x", "hide_label": False}]},
+            "`hide_label` is not read",
+        ),
+        ({"sections": [{"type": "not_a_type"}]}, "an unknown section type"),
+        ({"nonsense": 1}, "an unknown top-level key"),
+        (
+            {"sections": [{"type": "custom", "key": "help", "options": {"tite": "hello"}}]},
+            "a typo in a documented custom-section option name",
+        ),
+        (
+            {
+                "sections": [
+                    {"type": "custom", "key": "background_run", "options": {"start_acton": "go"}}
+                ]
+            },
+            "a typo in a background_run option name",
+        ),
     ],
 )
 def test_the_scheme_rejects_what_the_loader_would_drop(spec, why):
@@ -218,14 +228,13 @@ def test_the_scheme_rejects_what_the_loader_would_drop(spec, why):
 @pytest.mark.parametrize(
     "guide, why",
     [
-        ({"steps": [{"title": "a", "target": {"widget": "someButton"}}]},
-         "`widget` is not read -- the key is `name`, and nine steps shipped this way"),
-        ({"steps": [{"title": "a", "target": {"nope": "x"}}]},
-         "an unknown target key"),
-        ({"steps": [{"title": "a", "await": {"nope": 1}}]},
-         "an unknown await key"),
-        ({"no_steps": []},
-         "a tour object with no steps"),
+        (
+            {"steps": [{"title": "a", "target": {"widget": "someButton"}}]},
+            "`widget` is not read -- the key is `name`, and nine steps shipped this way",
+        ),
+        ({"steps": [{"title": "a", "target": {"nope": "x"}}]}, "an unknown target key"),
+        ({"steps": [{"title": "a", "await": {"nope": 1}}]}, "an unknown await key"),
+        ({"no_steps": []}, "a tour object with no steps"),
     ],
 )
 def test_the_scheme_rejects_a_tour_that_points_at_nothing(guide, why):
@@ -235,30 +244,53 @@ def test_the_scheme_rejects_a_tour_that_points_at_nothing(guide, why):
 
 def test_a_valid_document_is_accepted():
     """And the other direction, so the scheme is not merely strict."""
-    assert validate_view_spec({
-        "_comment": "a note about this file",
-        "$schema": "https://chisurf.org/schemas/view.schema.json",
-        "sections": [{
-            "type": "panel", "title": "Group",
-            "sections": [
-                {"type": "value", "attr": "x", "kind": "float",
-                 "minimum": 0.0, "maximum": 1.0, "description": "a number"},
-                {"type": "toggle", "attr": "on", "label": "On"},
-                {"type": "choice", "attr": "mode", "options": ["a", "b"],
-                 "style": "combo", "rebuild_on_change": True},
-            ],
-        }],
-        "plots": [{"key": "line", "options": {}}],
-    }) == []
-    assert validate_guide({
-        "_comment": "a note",
-        "$schema": "https://chisurf.org/schemas/guide.schema.json",
-        "steps": [
-            {"title": "Intro", "text": "why", "target": {}},
-            {"title": "Do it", "target": {"name": "run"},
-             "await": {"hint": "press it"}},
-        ],
-    }) == []
+    assert (
+        validate_view_spec(
+            {
+                "_comment": "a note about this file",
+                "$schema": "https://chisurf.org/schemas/view.schema.json",
+                "sections": [
+                    {
+                        "type": "panel",
+                        "title": "Group",
+                        "sections": [
+                            {
+                                "type": "value",
+                                "attr": "x",
+                                "kind": "float",
+                                "minimum": 0.0,
+                                "maximum": 1.0,
+                                "description": "a number",
+                            },
+                            {"type": "toggle", "attr": "on", "label": "On"},
+                            {
+                                "type": "choice",
+                                "attr": "mode",
+                                "options": ["a", "b"],
+                                "style": "combo",
+                                "rebuild_on_change": True,
+                            },
+                        ],
+                    }
+                ],
+                "plots": [{"key": "line", "options": {}}],
+            }
+        )
+        == []
+    )
+    assert (
+        validate_guide(
+            {
+                "_comment": "a note",
+                "$schema": "https://chisurf.org/schemas/guide.schema.json",
+                "steps": [
+                    {"title": "Intro", "text": "why", "target": {}},
+                    {"title": "Do it", "target": {"name": "run"}, "await": {"hint": "press it"}},
+                ],
+            }
+        )
+        == []
+    )
 
 
 # ------------------------------------------------- starter view spec generator
@@ -290,8 +322,8 @@ def test_starter_view_spec_is_valid():
     from chisurf.core.dataspec.schema import generate_starter_view_spec
 
     spec = generate_starter_view_spec(_FakeModel())
-    assert validate_view_spec(spec) == [], (
-        "generated spec does not validate: " + "; ".join(validate_view_spec(spec))
+    assert validate_view_spec(spec) == [], "generated spec does not validate: " + "; ".join(
+        validate_view_spec(spec)
     )
 
 

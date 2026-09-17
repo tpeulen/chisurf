@@ -1,4 +1,5 @@
 """Tests for the fluorophore reference set import (PRD-06 Task 7.2)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -7,7 +8,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from mmfdb.repository import MFDatabase
 
 

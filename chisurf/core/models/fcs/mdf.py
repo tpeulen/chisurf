@@ -24,10 +24,10 @@ import numpy as np
 import chisurf as cs
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.models.model import ModelCurve
 from chisurf.core.fluorescence.fcs import enderlein
 from chisurf.core.fluorescence.fcs.normalization import compute_cpm, resolve_total_mean_count_rate
 from chisurf.core.models.fcs.relaxation import BunchingTerms
+from chisurf.core.models.model import ModelCurve
 
 #: Avogadro constant for the concentration output (1/mol).
 NA = 6.02214076e23
@@ -59,24 +59,56 @@ class MdfPhysical(FittingParameterGroup):
         """Initialize the free physical parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_mdf.N")
+            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_mdf.N"
+        )
         self._D = FittingParameter(
-            value=300.0, name="D", lb=1e-3, ub=1e5, fixed=False,
-            label_text="D[µm²/s]", registry_id="fcs_mdf.D")
+            value=300.0,
+            name="D",
+            lb=1e-3,
+            ub=1e5,
+            fixed=False,
+            label_text="D[µm²/s]",
+            registry_id="fcs_mdf.D",
+        )
         self._w0 = FittingParameter(
-            value=250.0, name="w0", lb=10.0, ub=5000.0, fixed=False,
-            label_text="w<sub>0</sub>[nm]", registry_id="fcs_mdf.w0")
+            value=250.0,
+            name="w0",
+            lb=10.0,
+            ub=5000.0,
+            fixed=False,
+            label_text="w<sub>0</sub>[nm]",
+            registry_id="fcs_mdf.w0",
+        )
         self._wem = FittingParameter(
-            value=250.0, name="wem", lb=10.0, ub=5000.0, fixed=False,
-            label_text="w<sub>em</sub>[nm]", registry_id="fcs_mdf.wem")
+            value=250.0,
+            name="wem",
+            lb=10.0,
+            ub=5000.0,
+            fixed=False,
+            label_text="w<sub>em</sub>[nm]",
+            registry_id="fcs_mdf.wem",
+        )
         self._b = FittingParameter(
-            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_mdf.b")
+            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_mdf.b"
+        )
         self._diam = FittingParameter(
-            value=0.0, name="diam", lb=0.0, ub=5000.0, fixed=True,
-            label_text="d<sub>foci</sub>[nm]", registry_id="fcs_mdf.diam")
+            value=0.0,
+            name="diam",
+            lb=0.0,
+            ub=5000.0,
+            fixed=True,
+            label_text="d<sub>foci</sub>[nm]",
+            registry_id="fcs_mdf.diam",
+        )
         self._bg = FittingParameter(
-            value=0.0, name="bg", lb=0.0, ub=1e6, fixed=True,
-            label_text="BG[kHz]", registry_id="fcs_mdf.bg")
+            value=0.0,
+            name="bg",
+            lb=0.0,
+            ub=1e6,
+            fixed=True,
+            label_text="BG[kHz]",
+            registry_id="fcs_mdf.bg",
+        )
 
     N = property(lambda s: float(s._N.value))
     D = property(lambda s: float(s._D.value))
@@ -94,18 +126,38 @@ class MdfOptics(FittingParameterGroup):
         """Initialize the fixed optical parameter group."""
         super().__init__(name=name, **kwargs)
         self._lam_ex = FittingParameter(
-            value=485.0, name="lam_ex", lb=200.0, ub=1200.0, fixed=True,
-            label_text="&lambda;<sub>ex</sub>[nm]", registry_id="fcs_mdf.lam_ex")
+            value=485.0,
+            name="lam_ex",
+            lb=200.0,
+            ub=1200.0,
+            fixed=True,
+            label_text="&lambda;<sub>ex</sub>[nm]",
+            registry_id="fcs_mdf.lam_ex",
+        )
         self._lam_em = FittingParameter(
-            value=520.0, name="lam_em", lb=200.0, ub=1200.0, fixed=True,
-            label_text="&lambda;<sub>em</sub>[nm]", registry_id="fcs_mdf.lam_em")
+            value=520.0,
+            name="lam_em",
+            lb=200.0,
+            ub=1200.0,
+            fixed=True,
+            label_text="&lambda;<sub>em</sub>[nm]",
+            registry_id="fcs_mdf.lam_em",
+        )
         self._n = FittingParameter(
-            value=1.33, name="n", lb=1.0, ub=2.0, fixed=True, registry_id="fcs_mdf.n")
+            value=1.33, name="n", lb=1.0, ub=2.0, fixed=True, registry_id="fcs_mdf.n"
+        )
         self._pinhole = FittingParameter(
-            value=50.0, name="pinhole", lb=1.0, ub=1000.0, fixed=True,
-            label_text="pinhole[µm]", registry_id="fcs_mdf.pinhole")
+            value=50.0,
+            name="pinhole",
+            lb=1.0,
+            ub=1000.0,
+            fixed=True,
+            label_text="pinhole[µm]",
+            registry_id="fcs_mdf.pinhole",
+        )
         self._mag = FittingParameter(
-            value=60.0, name="mag", lb=1.0, ub=1000.0, fixed=True, registry_id="fcs_mdf.mag")
+            value=60.0, name="mag", lb=1.0, ub=1000.0, fixed=True, registry_id="fcs_mdf.mag"
+        )
 
     lam_ex = property(lambda s: float(s._lam_ex.value))
     lam_em = property(lambda s: float(s._lam_em.value))
@@ -116,7 +168,7 @@ class MdfOptics(FittingParameterGroup):
     def as_optics(self) -> enderlein.Optics:
         """Build an :class:`~chisurf.core.fluorescence.fcs.enderlein.Optics` instance."""
         return enderlein.Optics(
-            excitation_wavelength=self.lam_ex * 1e-3,   # nm -> µm
+            excitation_wavelength=self.lam_ex * 1e-3,  # nm -> µm
             emission_wavelength=self.lam_em * 1e-3,
             refractive_index=self.n,
             pinhole=self.pinhole,
@@ -131,17 +183,37 @@ class MdfOutputs(FittingParameterGroup):
         """Initialize the derived-output parameter group (all NaN until fit)."""
         super().__init__(name=name, **kwargs)
         self._Veff = FittingParameter(
-            value=float("nan"), name="Veff", fixed=True, is_output=True,
-            label_text="V<sub>eff</sub>[fL]", registry_id="fcs_mdf.Veff")
+            value=float("nan"),
+            name="Veff",
+            fixed=True,
+            is_output=True,
+            label_text="V<sub>eff</sub>[fL]",
+            registry_id="fcs_mdf.Veff",
+        )
         self._conc = FittingParameter(
-            value=float("nan"), name="conc", fixed=True, is_output=True,
-            label_text="c[nM]", registry_id="fcs_mdf.conc")
+            value=float("nan"),
+            name="conc",
+            fixed=True,
+            is_output=True,
+            label_text="c[nM]",
+            registry_id="fcs_mdf.conc",
+        )
         self._tauD = FittingParameter(
-            value=float("nan"), name="tauD", fixed=True, is_output=True,
-            label_text="&tau;<sub>D</sub>[ms]", registry_id="fcs_mdf.tauD")
+            value=float("nan"),
+            name="tauD",
+            fixed=True,
+            is_output=True,
+            label_text="&tau;<sub>D</sub>[ms]",
+            registry_id="fcs_mdf.tauD",
+        )
         self._brightness = FittingParameter(
-            value=float("nan"), name="brightness", fixed=True, is_output=True,
-            label_text="&epsilon;[kHz]", registry_id="fcs_mdf.brightness")
+            value=float("nan"),
+            name="brightness",
+            fixed=True,
+            is_output=True,
+            label_text="&epsilon;[kHz]",
+            registry_id="fcs_mdf.brightness",
+        )
 
 
 def compute_brightness(fit, N: float, bg: float = 0.0) -> typing.Optional[float]:
@@ -212,7 +284,7 @@ class MdfFCSModel(ModelCurve):
     name = "FCS MDF (Gauss-Lorentz)"
     view_spec_file = "mdf.view.json"
 
-    def __init__(self, fit: "cs.core.fitting.fit.Fit", **kwargs):
+    def __init__(self, fit: cs.core.fitting.fit.Fit, **kwargs):
         """Initialize the physical/optics/bunching/outputs parameter groups."""
         super().__init__(fit, **kwargs)
         self.physical = MdfPhysical(name="mdf_physical", fit=fit)
@@ -231,23 +303,40 @@ class MdfFCSModel(ModelCurve):
             return
 
         p = self.physical
-        w0 = p.w0 * 1e-3   # nm -> µm
+        w0 = p.w0 * 1e-3  # nm -> µm
         wem = p.wem * 1e-3
-        D = p.D            # µm²/s
+        D = p.D  # µm²/s
         N = p.N
         b = p.b
 
-        if not (math.isfinite(w0) and w0 > 0 and math.isfinite(wem) and wem > 0
-                and math.isfinite(D) and D > 0 and math.isfinite(N) and N != 0):
+        if not (
+            math.isfinite(w0)
+            and w0 > 0
+            and math.isfinite(wem)
+            and wem > 0
+            and math.isfinite(D)
+            and D > 0
+            and math.isfinite(N)
+            and N != 0
+        ):
             self.x = tau_ms
             self.y = np.full_like(tau_ms, float("nan"))
             return
 
         tau_s = tau_ms * 1e-3
-        separation = p.diam * 1e-3   # nm -> µm
+        separation = p.diam * 1e-3  # nm -> µm
         optics = self.optics.as_optics()
-        g = enderlein.g_diff(tau_s, w0, wem, D, optics=optics, normalize=True,
-                              n_grid=121, span=30.0, separation=separation)
+        g = enderlein.g_diff(
+            tau_s,
+            w0,
+            wem,
+            D,
+            optics=optics,
+            normalize=True,
+            n_grid=121,
+            span=30.0,
+            separation=separation,
+        )
         g = self.bunching.apply(g, tau_ms)
 
         veff_um3 = enderlein.effective_volume(w0, wem, optics)
@@ -292,14 +381,14 @@ class MdfFCSModel(ModelCurve):
         """The compound equation over the node's shape, in bff's spelling."""
         factors = [MDF_SHAPE_VARIABLE]
         factors += [
-            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i)
-            for i in range(1, len(self.bunching) + 1)]
+            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i) for i in range(1, len(self.bunching) + 1)
+        ]
         cr = self._count_rate_constant()
         if cr is not None:
-            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+            amplitude = f"max(0.0, ({cr!r} - bg)/{cr!r})**2/N"
         else:
             amplitude = "1.0/N"
-        return "b + (%s)*%s" % (amplitude, "*".join(factors))
+        return "b + ({})*{}".format(amplitude, "*".join(factors))
 
     @property
     def _expression(self):

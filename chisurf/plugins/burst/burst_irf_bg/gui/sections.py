@@ -17,9 +17,9 @@ import logging
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 

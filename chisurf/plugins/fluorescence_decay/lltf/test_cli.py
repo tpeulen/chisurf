@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
 from chisurf.plugins.fluorescence_decay.lltf.core.cli import cli
-
 
 HERE = Path(__file__).parent
 EXAMPLE_DIR = HERE / "example"

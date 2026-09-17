@@ -115,10 +115,7 @@ def test_the_view_fits_the_widest_preset(game):
 def test_a_revealed_mine_ends_the_round(game):
     """The core still decides the outcome; the view only reports it."""
     row, col = next(
-        (r, c)
-        for r in range(game.rows)
-        for c in range(game.columns)
-        if game.game.board[r][c].mine
+        (r, c) for r in range(game.rows) for c in range(game.columns) if game.game.board[r][c].mine
     )
     game.cursor_row, game.cursor_col = row, col
     game.host.keys.tap(Action.CONFIRM)

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
 class HelpState:
     """Persistent plugin state."""
 
-    current_path: Optional[str] = None
+    current_path: str | None = None
     filter_text: str = ""
     edit_mode: bool = False
 
@@ -20,7 +20,7 @@ class HelpRequest:
     """Generic request envelope for help RPC calls."""
 
     method: str = ""
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -29,5 +29,5 @@ class HelpResponse:
 
     ok: bool = True
     result: Any = None
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None

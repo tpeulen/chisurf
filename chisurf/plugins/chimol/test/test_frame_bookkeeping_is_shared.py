@@ -15,12 +15,12 @@ The fix is that the four are one thing with one owner --
 it. What is pinned here is that property rather than the symptom: the page uses
 it, the windowed path uses it, and neither carries its own copy of the clock.
 """
+
 from __future__ import annotations
 
 import inspect
 
 import pytest
-
 from chimol.viewport.canvas import CanvasRenderer
 
 
@@ -69,7 +69,7 @@ def test_a_frame_fills_the_counters(monkeypatch):
     stats.enabled = True
     stats.draw("mesh", instances=3, vertices=12)
     stats.count("chrome_quads", 40)
-    stats.begin()                      # rolls the frame over
+    stats.begin()  # rolls the frame over
     assert stats.last_draws == 1
     assert stats.last_instances == 3
     assert stats.last_chrome_quads == 40

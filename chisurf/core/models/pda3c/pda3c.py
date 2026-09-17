@@ -198,18 +198,24 @@ class Pda3cSpecies(FittingParameterGroup):
 
     def means_of(self, index: int) -> list:
         """Return the three mean-distance parameters of species ``index``."""
-        return self._means[3 * index: 3 * index + 3]
+        return self._means[3 * index : 3 * index + 3]
 
     def sigmas_of(self, index: int) -> list:
         """Return the three width parameters of species ``index``."""
-        return self._sigmas[3 * index: 3 * index + 3]
+        return self._sigmas[3 * index : 3 * index + 3]
 
     def correlations_of(self, index: int) -> list:
         """Return the three correlation parameters of species ``index``."""
-        return self._correlations[3 * index: 3 * index + 3]
+        return self._correlations[3 * index : 3 * index + 3]
 
-    def append(self, r_gr: float = 55.0, r_bg: float = 50.0, r_br: float = 65.0,
-               sigma: float = 6.0, amplitude: float = 1.0):
+    def append(
+        self,
+        r_gr: float = 55.0,
+        r_bg: float = 50.0,
+        r_br: float = 65.0,
+        sigma: float = 6.0,
+        amplitude: float = 1.0,
+    ):
         """Append one trivariate-Gaussian species.
 
         Parameters
@@ -223,26 +229,48 @@ class Pda3cSpecies(FittingParameterGroup):
         """
         i = len(self) + 1
         self._amplitudes.append(
-            FittingParameter(value=amplitude, name=f"A({i})", label_text=f"A<sub>{i}</sub>",
-                description='Amplitude (population fraction) of this three-colour FRET species.')
+            FittingParameter(
+                value=amplitude,
+                name=f"A({i})",
+                label_text=f"A<sub>{i}</sub>",
+                description="Amplitude (population fraction) of this three-colour FRET species.",
+            )
         )
         for tag, value in zip(self.PAIRS, (r_gr, r_bg, r_br)):
             self._means.append(
-                FittingParameter(value=value, name=f"R{tag}({i})", lb=1.0, ub=200.0,
-                                 bounds_on=True, label_text=f"R<sub>{tag},{i}</sub>",
-                                 description=f'Mean distance R{tag} of this species (Angstrom).')
+                FittingParameter(
+                    value=value,
+                    name=f"R{tag}({i})",
+                    lb=1.0,
+                    ub=200.0,
+                    bounds_on=True,
+                    label_text=f"R<sub>{tag},{i}</sub>",
+                    description=f"Mean distance R{tag} of this species (Angstrom).",
+                )
             )
             self._sigmas.append(
-                FittingParameter(value=sigma, name=f"s{tag}({i})", lb=0.5, ub=60.0,
-                                 bounds_on=True, label_text=f"s<sub>{tag},{i}</sub>",
-                                 description=f'Width (standard deviation) of the distance R{tag} distribution (Angstrom).')
+                FittingParameter(
+                    value=sigma,
+                    name=f"s{tag}({i})",
+                    lb=0.5,
+                    ub=60.0,
+                    bounds_on=True,
+                    label_text=f"s<sub>{tag},{i}</sub>",
+                    description=f"Width (standard deviation) of the distance R{tag} distribution (Angstrom).",
+                )
             )
         for tag in self.CORRELATIONS:
             self._correlations.append(
-                FittingParameter(value=0.0, name=f"rho{tag}({i})", lb=-0.99, ub=0.99,
-                                 bounds_on=True, fixed=True,
-                                 label_text=f"&rho;<sub>{tag},{i}</sub>",
-                                 description=f'Distance correlation rho_{tag} between two distance axes (-1..1).')
+                FittingParameter(
+                    value=0.0,
+                    name=f"rho{tag}({i})",
+                    lb=-0.99,
+                    ub=0.99,
+                    bounds_on=True,
+                    fixed=True,
+                    label_text=f"&rho;<sub>{tag},{i}</sub>",
+                    description=f"Distance correlation rho_{tag} between two distance axes (-1..1).",
+                )
             )
 
     def pop(self):
@@ -289,9 +317,7 @@ class Pda3cSpecies(FittingParameterGroup):
         """
         mu = np.array([float(p.value) for p in self.means_of(index)])
         sigma = np.array([max(float(p.value), 1e-6) for p in self.sigmas_of(index)])
-        rho = np.clip(
-            [float(p.value) for p in self.correlations_of(index)], -0.999, 0.999
-        )
+        rho = np.clip([float(p.value) for p in self.correlations_of(index)], -0.999, 0.999)
         weight = max(float(self._amplitudes[index].value), 0.0)
         # Swapping the green and red labels swaps which site each is on, so
         # R_BG <-> R_BR (with their widths). R_GR is the distance *between* the
@@ -386,8 +412,9 @@ class Pda3cSetup(FittingParameterGroup):
         super().__init__(name=name, **kwargs)
 
         def fixed(value, key, label, lb=0.0, ub=1e6):
-            return FittingParameter(value=value, name=key, label_text=label,
-                                    lb=lb, ub=ub, bounds_on=True, fixed=True)
+            return FittingParameter(
+                value=value, name=key, label_text=label, lb=lb, ub=ub, bounds_on=True, fixed=True
+            )
 
         self._R0_bg = fixed(49.0, "R0(BG)", "R<sub>0</sub>(BG)", 1.0, 200.0)
         self._R0_br = fixed(52.0, "R0(BR)", "R<sub>0</sub>(BR)", 1.0, 200.0)
@@ -415,21 +442,36 @@ class Pda3cSetup(FittingParameterGroup):
         # Observation window, needed by the multistate (Szabo-Gopich) route
         # because its rates are absolute (Hz) rather than per-window.
         self._window = FittingParameter(
-            value=2e-3, name="T(window)", label_text="T<sub>window</sub>",
-            lb=1e-9, ub=1.0, bounds_on=True, fixed=True,
-            description='Observation window duration (s), used by the multistate Szabo-Gopich route.',
+            value=2e-3,
+            name="T(window)",
+            label_text="T<sub>window</sub>",
+            lb=1e-9,
+            ub=1.0,
+            bounds_on=True,
+            fixed=True,
+            description="Observation window duration (s), used by the multistate Szabo-Gopich route.",
         )
         # Mean number of state transitions per observation window. Zero is
         # the static limit, so the dynamic model nests the static one.
         self._k_ex = FittingParameter(
-            value=1.0, name="K(ex)", label_text="K<sub>ex</sub>",
-            lb=0.0, ub=1e4, bounds_on=True, fixed=True,
-            description='Mean number of state transitions per observation window (0 = static limit).',
+            value=1.0,
+            name="K(ex)",
+            label_text="K<sub>ex</sub>",
+            lb=0.0,
+            ub=1e4,
+            bounds_on=True,
+            fixed=True,
+            description="Mean number of state transitions per observation window (0 = static limit).",
         )
         self._labeling_fraction = FittingParameter(
-            value=1.0, name="F(labeling)", label_text="F<sub>labeling</sub>",
-            lb=0.0, ub=1.0, bounds_on=True, fixed=True,
-            description='Fraction of molecules carrying the intended dye assignment (free when sites are equivalent).',
+            value=1.0,
+            name="F(labeling)",
+            label_text="F<sub>labeling</sub>",
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            fixed=True,
+            description="Fraction of molecules carrying the intended dye assignment (free when sites are equivalent).",
         )
 
     def as_setup(self) -> ThreeColorSetup:
@@ -465,8 +507,9 @@ class Pda3cSetup(FittingParameterGroup):
     @property
     def background_blue(self) -> np.ndarray:
         """Mean background counts of the three blue-excitation channels."""
-        return np.array([float(self._bg_bb.value), float(self._bg_bg.value),
-                         float(self._bg_br.value)])
+        return np.array(
+            [float(self._bg_bb.value), float(self._bg_bg.value), float(self._bg_br.value)]
+        )
 
     @property
     def background_green(self) -> np.ndarray:
@@ -534,8 +577,10 @@ class Pda3cModel(ModelCurve):
         # the two-state K_ex route the defaults for a model nobody has entered
         # rates into.
         self.kinetics = RateMatrixParameters(
-            name="pda3c_kinetics", n_states=max(2, len(self.species)),
-            default_rate=0.0, fit=fit,
+            name="pda3c_kinetics",
+            n_states=max(2, len(self.species)),
+            default_rate=0.0,
+            fit=fit,
         )
         #: Trajectories drawn per evaluation by the multistate route. The
         #: sampling cost grows with transitions per window, so fast exchange
@@ -804,11 +849,8 @@ class Pda3cModel(ModelCurve):
             green_channel_probabilities,
         )
 
-        points, weights = component.quadrature(n_nodes=self.n_nodes,
-                                               truncate=self.truncate)
-        blue = weights @ blue_channel_probabilities(
-            points[:, 1], points[:, 2], points[:, 0], setup
-        )
+        points, weights = component.quadrature(n_nodes=self.n_nodes, truncate=self.truncate)
+        blue = weights @ blue_channel_probabilities(points[:, 1], points[:, 2], points[:, 0], setup)
         green = weights @ green_channel_probabilities(points[:, 0], setup)
         return blue, green
 
@@ -835,9 +877,7 @@ class Pda3cModel(ModelCurve):
         blue_1, green_1 = self._mean_channel_probabilities(first, setup)
         blue_2, green_2 = self._mean_channel_probabilities(second, setup)
 
-        fractions, fraction_weights = two_state_occupation_quadrature(
-            occupancy, self.setup.k_ex
-        )
+        fractions, fraction_weights = two_state_occupation_quadrature(occupancy, self.setup.k_ex)
 
         # The two boundary atoms are molecules that never switched, i.e. pure
         # states — so they get the full distance integral rather than the
@@ -847,16 +887,19 @@ class Pda3cModel(ModelCurve):
         from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
 
         pieces, weights = [], []
-        for component, weight in ((second, fraction_weights[0]),
-                                  (first, fraction_weights[-1])):
+        for component, weight in ((second, fraction_weights[0]), (first, fraction_weights[-1])):
             if weight <= 1e-12:
                 continue
             pieces.append(
                 _species_log_likelihood(
-                    counts, component, setup,
-                    self.setup.background_blue, self.setup.background_green,
+                    counts,
+                    component,
+                    setup,
+                    self.setup.background_blue,
+                    self.setup.background_green,
                     *self._species_photon_number_pmfs(counts, component),
-                    self.n_nodes, self.truncate,
+                    self.n_nodes,
+                    self.truncate,
                 )
             )
             weights.append(weight)
@@ -870,18 +913,14 @@ class Pda3cModel(ModelCurve):
             p_green = f * green_1[None, :] + (1.0 - f) * green_2[None, :]
             node = burst_log_likelihood(
                 counts.blue, p_blue, self.setup.background_blue
-            ) + burst_log_likelihood(
-                counts.green, p_green, self.setup.background_green
-            )
+            ) + burst_log_likelihood(counts.green, p_green, self.setup.background_green)
             pieces.extend(node)
             weights.extend(interior_weights[keep])
 
         weights = np.asarray(weights, dtype=float)
         weights = weights / weights.sum()
         with np.errstate(divide="ignore"):
-            return logsumexp(
-                np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0
-            )
+            return logsumexp(np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0)
 
     def _multistate_log_likelihood(self, counts: BurstCounts, species, setup) -> np.ndarray:
         """Per-burst log likelihood of N exchanging states, by sampling.
@@ -949,9 +988,7 @@ class Pda3cModel(ModelCurve):
             p_green = fractions @ green
             node = burst_log_likelihood(
                 counts.blue, p_blue, self.setup.background_blue
-            ) + burst_log_likelihood(
-                counts.green, p_green, self.setup.background_green
-            )
+            ) + burst_log_likelihood(counts.green, p_green, self.setup.background_green)
             return logsumexp(np.log(weights)[:, None] + node, axis=0)
 
         fractions = occupation_time_fractions(
@@ -992,9 +1029,7 @@ class Pda3cModel(ModelCurve):
         p_green = fractions @ green
         node = burst_log_likelihood(
             counts.blue, p_blue, self.setup.background_blue
-        ) + burst_log_likelihood(
-            counts.green, p_green, self.setup.background_green
-        )
+        ) + burst_log_likelihood(counts.green, p_green, self.setup.background_green)
         return logsumexp(np.log(weights)[:, None] + node, axis=0)
 
     @staticmethod
@@ -1037,10 +1072,14 @@ class Pda3cModel(ModelCurve):
         for component in static:
             pieces.append(
                 _species_log_likelihood(
-                    counts, component, setup,
-                    self.setup.background_blue, self.setup.background_green,
+                    counts,
+                    component,
+                    setup,
+                    self.setup.background_blue,
+                    self.setup.background_green,
                     *self._species_photon_number_pmfs(counts, component),
-                    self.n_nodes, self.truncate,
+                    self.n_nodes,
+                    self.truncate,
                 )
             )
             weights.append(component.amplitude)
@@ -1077,10 +1116,14 @@ class Pda3cModel(ModelCurve):
         species = self.species.as_species(labeling)
         per_species = [
             _species_log_likelihood(
-                counts, s, setup,
-                self.setup.background_blue, self.setup.background_green,
+                counts,
+                s,
+                setup,
+                self.setup.background_blue,
+                self.setup.background_green,
                 *self._species_photon_number_pmfs(counts, s),
-                self.n_nodes, self.truncate,
+                self.n_nodes,
+                self.truncate,
             )
             for s in species
         ]
@@ -1115,8 +1158,11 @@ class Pda3cModel(ModelCurve):
             self.d = np.vstack((np.arange(1), np.zeros(1)))
             return
         y = predicted_ratio_histograms(
-            counts, self.species.as_species(self._labeling_weight()), self.setup.as_setup(),
-            n_nodes=self.n_nodes, truncate=self.truncate,
+            counts,
+            self.species.as_species(self._labeling_weight()),
+            self.setup.as_setup(),
+            n_nodes=self.n_nodes,
+            truncate=self.truncate,
         )
         total = float(np.sum(counts.multiplicity))
         self.d = np.vstack((np.arange(y.size), y * total))
@@ -1160,8 +1206,9 @@ def _binomial_marginal_histogram(sizes, weights, probabilities, node_weights) ->
     return out
 
 
-def predicted_ratio_histograms(counts: BurstCounts, species, setup, n_nodes=5,
-                               truncate=1e-6) -> np.ndarray:
+def predicted_ratio_histograms(
+    counts: BurstCounts, species, setup, n_nodes=5, truncate=1e-6
+) -> np.ndarray:
     """Return the three predicted proximity-ratio histograms, concatenated.
 
     Order: ``F_BG/N_blue``, ``F_BR/N_blue``, ``F_GR/N_green`` — the projections
@@ -1203,17 +1250,15 @@ def predicted_ratio_histograms(counts: BurstCounts, species, setup, n_nodes=5,
     out = np.zeros(3 * N_RATIO_BINS, dtype=float)
     for amplitude, component in zip(amplitudes, species):
         points, node_weights = component.quadrature(n_nodes=n_nodes, truncate=truncate)
-        p_blue = blue_channel_probabilities(
-            points[:, 1], points[:, 2], points[:, 0], setup
-        )
+        p_blue = blue_channel_probabilities(points[:, 1], points[:, 2], points[:, 0], setup)
         p_green = green_channel_probabilities(points[:, 0], setup)
         out[:N_RATIO_BINS] += amplitude * _binomial_marginal_histogram(
             blue_sizes, blue_weights, p_blue[:, 1], node_weights
         )
-        out[N_RATIO_BINS:2 * N_RATIO_BINS] += amplitude * _binomial_marginal_histogram(
+        out[N_RATIO_BINS : 2 * N_RATIO_BINS] += amplitude * _binomial_marginal_histogram(
             blue_sizes, blue_weights, p_blue[:, 2], node_weights
         )
-        out[2 * N_RATIO_BINS:] += amplitude * _binomial_marginal_histogram(
+        out[2 * N_RATIO_BINS :] += amplitude * _binomial_marginal_histogram(
             green_sizes, green_weights, p_green[:, 1], node_weights
         )
     return out / 3.0
@@ -1232,8 +1277,7 @@ def observed_ratio_histograms(counts: BurstCounts) -> np.ndarray:
     ):
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(sizes > 0, values / np.where(sizes > 0, sizes, 1.0), 0.0)
-        hist, _ = np.histogram(ratio[sizes > 0], bins=edges,
-                               weights=counts.multiplicity[sizes > 0])
+        hist, _ = np.histogram(ratio[sizes > 0], bins=edges, weights=counts.multiplicity[sizes > 0])
         out.append(hist)
     stacked = np.concatenate(out)
     total = stacked.sum()
@@ -1271,8 +1315,11 @@ def get_pda3c_ratio_curves(fit) -> list:
         return []
     observed = observed_ratio_histograms(counts)
     predicted = predicted_ratio_histograms(
-        counts, model.species.as_species(model._labeling_weight()), model.setup.as_setup(),
-        n_nodes=model.n_nodes, truncate=model.truncate,
+        counts,
+        model.species.as_species(model._labeling_weight()),
+        model.setup.as_setup(),
+        n_nodes=model.n_nodes,
+        truncate=model.truncate,
     )
     total = float(np.sum(counts.multiplicity))
     x = np.arange(observed.size, dtype=float)

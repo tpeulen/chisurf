@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
 from importlib import resources
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from chisurf.server.transport.zmq import ZmqClient
 
@@ -42,13 +43,15 @@ def _params_from_spec(
 ) -> dict[str, Any]:
     param_specs = spec.get("params", [])
     if len(args) > len(param_specs):
-        raise TypeError(f"{spec['name']}() takes {len(param_specs)} positional arguments but {len(args)} were given")
+        raise TypeError(
+            f"{spec['name']}() takes {len(param_specs)} positional arguments but {len(args)} were given"
+        )
 
     raw: dict[str, Any] = {}
     for param_spec, value in zip(param_specs, args):
         raw[param_spec["name"]] = value
 
-    for param_spec in param_specs[len(args):]:
+    for param_spec in param_specs[len(args) :]:
         name = param_spec["name"]
         if name in kwargs:
             raw[name] = kwargs.pop(name)
@@ -69,7 +72,7 @@ def _params_from_spec(
 
 
 def _make_method(spec: dict[str, Any]) -> Callable[..., Any]:
-    def rpc_method(self: "ChisurfClient", *args: Any, **kwargs: Any) -> Any:
+    def rpc_method(self: ChisurfClient, *args: Any, **kwargs: Any) -> Any:
         params = _params_from_spec(spec, args, kwargs)
         result = self.call(spec["rpc"], params or None)
         if "result_key" in spec:
@@ -82,7 +85,7 @@ def _make_method(spec: dict[str, Any]) -> Callable[..., Any]:
     return rpc_method
 
 
-def _install_rpc_methods(cls: type["ChisurfClient"]) -> None:
+def _install_rpc_methods(cls: type[ChisurfClient]) -> None:
     for spec in _method_specs():
         setattr(cls, spec["name"], _make_method(spec))
 
@@ -90,7 +93,7 @@ def _install_rpc_methods(cls: type["ChisurfClient"]) -> None:
 def _make_alias(target: str, param_map: dict[str, str] | None = None) -> Callable[..., Any]:
     param_map = param_map or {}
 
-    def alias(self: "ChisurfClient", *args: Any, **kwargs: Any) -> Any:
+    def alias(self: ChisurfClient, *args: Any, **kwargs: Any) -> Any:
         for old_name, new_name in param_map.items():
             if old_name in kwargs:
                 kwargs[new_name] = kwargs.pop(old_name)
@@ -101,7 +104,7 @@ def _make_alias(target: str, param_map: dict[str, str] | None = None) -> Callabl
     return alias
 
 
-def _install_legacy_aliases(cls: type["ChisurfClient"]) -> None:
+def _install_legacy_aliases(cls: type[ChisurfClient]) -> None:
     aliases = {
         "list_datasets": ("dataset__list", {}),
         "get_dataset_info": ("dataset__get", {}),
@@ -145,7 +148,7 @@ class ChisurfClient:
     def close(self) -> None:
         self._client.close()
 
-    def call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         raw = self._client.call(method, params)
         # Transport-level errors (timeout, send/recv failure) come back
         # as {"ok": False, "error": "..."} from ZmqClient.call().
@@ -172,21 +175,21 @@ class ChisurfClient:
             details=err,
         )
 
-    def _call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self.call(method, params)
 
-    def _call_result(self, method: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _call_result(self, method: str, params: dict[str, Any] | None = None) -> Any:
         return self._call(method, params).get("result")
 
     def dataset__load(
         self,
         reader: Any = None,
-        name: Optional[str] = None,
-        reader_name: Optional[str] = None,
-        filename: Optional[str] = None,
+        name: str | None = None,
+        reader_name: str | None = None,
+        filename: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = dict(kwargs)
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = dict(kwargs)
         if reader is not None:
             params["reader"] = reader
         if reader_name is not None:
@@ -203,11 +206,11 @@ class ChisurfClient:
         self,
         reader_name: str,
         filename: str,
-        curves: Optional[List[int]] = None,
-        dataset_name: Optional[str] = None,
+        curves: list[int] | None = None,
+        dataset_name: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"reader_name": reader_name, "filename": filename}
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"reader_name": reader_name, "filename": filename}
         if curves is not None:
             params["curves"] = curves
         if dataset_name is not None:
@@ -215,34 +218,36 @@ class ChisurfClient:
         params.update(kwargs)
         return self._call("dataset.load", params)
 
-    def get_parameter(self, fit_index: int, param_id: str) -> Dict[str, Any]:
+    def get_parameter(self, fit_index: int, param_id: str) -> dict[str, Any]:
         return self._call(
             "parameter.get",
             {"fit_index": fit_index, "parameter_name": param_id},
         ).get("parameter", {})
 
-    def set_parameter_value(self, fit_index: int, param_id: str, value: float) -> Dict[str, Any]:
+    def set_parameter_value(self, fit_index: int, param_id: str, value: float) -> dict[str, Any]:
         return self._call(
             "parameter.set_value",
             {"fit_index": fit_index, "parameter_name": param_id, "value": value},
         )
 
-    def set_parameter_fixed(self, fit_index: int, param_id: str, fixed: bool) -> Dict[str, Any]:
+    def set_parameter_fixed(self, fit_index: int, param_id: str, fixed: bool) -> dict[str, Any]:
         return self._call(
             "parameter.set_fixed",
             {"fit_index": fit_index, "parameter_name": param_id, "fixed": fixed},
         )
 
-    def set_parameter_bounds(self, fit_index: int, param_id: str, lower: float, upper: float) -> Dict[str, Any]:
+    def set_parameter_bounds(
+        self, fit_index: int, param_id: str, lower: float, upper: float
+    ) -> dict[str, Any]:
         return self._call(
             "parameter.set_bounds",
             {"fit_index": fit_index, "parameter_name": param_id, "bounds": [lower, upper]},
         )
 
-    def subscribe(self, topic: str = "", callback: Optional[Callable] = None) -> Any:
+    def subscribe(self, topic: str = "", callback: Callable | None = None) -> Any:
         return self._client.subscribe(topic, callback)
 
-    def unsubscribe(self, topic: str = "", callback: Optional[Callable] = None) -> None:
+    def unsubscribe(self, topic: str = "", callback: Callable | None = None) -> None:
         import zmq
 
         if callback is not None:

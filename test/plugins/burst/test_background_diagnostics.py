@@ -19,7 +19,7 @@ def test_diagnostics_rate_matches_estimator():
     dt = _dt_ms(rng)
     rate = bg.estimate_background_from_interphoton_times(dt, tail_fraction=0.2)
     diag = bg.interphoton_time_diagnostics(dt, tail_fraction=0.2)
-    assert abs(diag.rate_khz - rate) < 1e-9        # same fit, no drift
+    assert abs(diag.rate_khz - rate) < 1e-9  # same fit, no drift
     assert diag.centers.size == diag.counts.size == diag.model.size
     assert diag.tail_mask.sum() > 0
     assert np.all(diag.model >= 0)
@@ -29,7 +29,7 @@ def test_recovers_known_background_rate():
     rng = np.random.default_rng(1)
     dt = _dt_ms(rng, bg_rate_khz=3.0)
     diag = bg.interphoton_time_diagnostics(dt, tail_fraction=0.2)
-    assert abs(diag.rate_khz - 3.0) / 3.0 < 0.25   # within 25% of the true rate
+    assert abs(diag.rate_khz - 3.0) / 3.0 < 0.25  # within 25% of the true rate
 
 
 def test_tail_fit_does_not_fail_on_its_own_bounds():
@@ -53,9 +53,7 @@ def test_tail_fit_does_not_fail_on_its_own_bounds():
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        amplitude, rate, _, success = bg._fit_exponential_tail(
-            centers, counts, max_dt, 0.2, 1
-        )
+        amplitude, rate, _, success = bg._fit_exponential_tail(centers, counts, max_dt, 0.2, 1)
     assert not [w for w in caught if "invalid value" in str(w.message)]
     assert success, "the tail fit fell back to the biased estimator"
     assert amplitude > 0.0 and rate > 0.0
@@ -76,7 +74,7 @@ def test_diagnostics_from_bursts_per_detector():
     route = rng.integers(0, 2, n).astype(np.int8)
     d = tttrlib.TTTR()
     d.append_events(macro, np.zeros(n, np.uint16), route, np.zeros(n, np.int8), False, 0)
-    d.header.set_macro_time_resolution(1e-7)       # 100 ns/tick
+    d.header.set_macro_time_resolution(1e-7)  # 100 ns/tick
 
     detectors = {"green": {"chs": [0]}, "red": {"chs": [1]}}
     diags = bg.background_diagnostics_from_bursts(d, detectors)

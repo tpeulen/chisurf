@@ -66,14 +66,10 @@ class AdamOptimizer:
             self.vs[i] = self.beta2 * self.vs[i] + (1.0 - self.beta2) * grad**2
 
         self.learning_rate = (
-            self.learning_rate_init
-            * np.sqrt(1.0 - self.beta2**self.t)
-            / (1.0 - self.beta1**self.t)
+            self.learning_rate_init * np.sqrt(1.0 - self.beta2**self.t) / (1.0 - self.beta1**self.t)
         )
         for i, param in enumerate(self.params):
-            param -= self.learning_rate * self.ms[i] / (
-                np.sqrt(self.vs[i]) + self.epsilon
-            )
+            param -= self.learning_rate * self.ms[i] / (np.sqrt(self.vs[i]) + self.epsilon)
 
 
 __all__ = ["AdamOptimizer"]

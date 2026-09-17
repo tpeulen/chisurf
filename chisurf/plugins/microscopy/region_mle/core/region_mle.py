@@ -189,10 +189,12 @@ def with_source_column(table, source) -> Any:
     table = as_store(as_table(table))
     names = column_names(table)
     return take_columns(
-        store_from_arrays({
-            "source_ptu": np.full(row_count(table), str(source)),
-            **{name: column_values(table, i) for i, name in enumerate(names)},
-        }),
+        store_from_arrays(
+            {
+                "source_ptu": np.full(row_count(table), str(source)),
+                **{name: column_values(table, i) for i, name in enumerate(names)},
+            }
+        ),
         ["source_ptu", *names],
     )
 
@@ -503,7 +505,9 @@ def shape_column_declaration() -> list:
     global _SHAPE_COLUMN_DECLARATION
     if _SHAPE_COLUMN_DECLARATION is None:
         import pathlib
+
         import yaml
+
         path = pathlib.Path(__file__).with_name("result_columns.yaml")
         with open(path, encoding="utf-8") as fh:
             _SHAPE_COLUMN_DECLARATION = yaml.safe_load(fh)["shape"]
@@ -541,9 +545,7 @@ def _shape_columns(prop) -> dict:
     return columns
 
 
-def region_preview(
-    intensity: np.ndarray, settings: RegionMleSettings
-) -> RegionMleResult:
+def region_preview(intensity: np.ndarray, settings: RegionMleSettings) -> RegionMleResult:
     """Measure the regions to be fitted, without fitting them.
 
     The cheap half of :func:`fit_regions`: what was found, how big, how bright,
@@ -615,8 +617,6 @@ def _microtime_component(
         # rather than as a differently-sized array nothing downstream expects.
         hist = np.pad(hist, (0, stop - hist.size))
     return hist[start:stop]
-
-
 
 
 def build_irf_vv_vh(

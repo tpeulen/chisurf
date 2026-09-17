@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # sdtfile.py
 
 # Copyright (c) 2007-2014, Christoph Gohlke
@@ -99,17 +98,14 @@ b'SPC fcs Data File'
 
 """
 
-from __future__ import division, print_function
-
-import sys
-
 import numpy as np
-__version__ = '2014.09.05'
-__docformat__ = 'restructuredtext en'
-__all__ = "SdtFile",
+
+__version__ = "2014.09.05"
+__docformat__ = "restructuredtext en"
+__all__ = ("SdtFile",)
 
 
-class SdtFile(object):
+class SdtFile:
     """Becker & Hickl SDT file.
 
     Attributes
@@ -131,6 +127,7 @@ class SdtFile(object):
         Time axes for each data set.
 
     """
+
     def __init__(self, arg=None):
         """Initialize instance from filename or open file.
 
@@ -140,9 +137,9 @@ class SdtFile(object):
             Filename or open file handle.
         """
         if isinstance(arg, basestring):
-            with open(arg, 'rb') as fh:
+            with open(arg, "rb") as fh:
                 self._fromfile(fh)
-        elif hasattr(arg, 'seek'):
+        elif hasattr(arg, "seek"):
             self._fromfile(arg)
 
     def _fromfile(self, fh):
@@ -154,23 +151,20 @@ class SdtFile(object):
             Open binary file handle.
         """
         # read file header
-        self.header = np.rec.fromfile(fh, dtype=FILE_HEADER,
-                                         shape=1, byteorder='<')[0]
+        self.header = np.rec.fromfile(fh, dtype=FILE_HEADER, shape=1, byteorder="<")[0]
         if self.header.header_valid != 0x5555:
             raise ValueError("not a SDT file")
-        if self.header.no_of_data_blocks == 0x7fff:
+        if self.header.no_of_data_blocks == 0x7FFF:
             self.header.no_of_data_blocks = self.header.reserved1
-        elif self.header.no_of_data_blocks > 0x7fff:
+        elif self.header.no_of_data_blocks > 0x7FFF:
             raise ValueError("")
 
         # read file info
         fh.seek(self.header.info_offset)
         self.info = FileInfo(fh.read(self.header.info_length))
         try:
-            if self.info.id not in (b"SPC Setup & Data File",
-                                    b"SPC fcs Data File"):
-                raise NotImplementedError(
-                    "currently not supported:", self.info.id)
+            if self.info.id not in (b"SPC Setup & Data File", b"SPC fcs Data File"):
+                raise NotImplementedError("currently not supported:", self.info.id)
         except AttributeError:
             raise ValueError("invalid SDT file info\n", self.info)
 
@@ -186,8 +180,7 @@ class SdtFile(object):
             pass
         fh.seek(self.header.meas_desc_block_offset)
         for _ in range(self.header.no_of_meas_desc_blocks):
-            self.measure_info.append(
-                np.rec.fromfile(fh, dtype=dtype, shape=1, byteorder='<'))
+            self.measure_info.append(np.rec.fromfile(fh, dtype=dtype, shape=1, byteorder="<"))
             fh.seek(self.header.meas_desc_block_length - dtype.itemsize, 1)
 
         self.times = []
@@ -198,18 +191,14 @@ class SdtFile(object):
         for _ in range(self.header.no_of_data_blocks):
             # read data block header
             fh.seek(offset)
-            bh = np.rec.fromfile(
-                fh,
-                dtype=BLOCK_HEADER,
-                shape=1,
-                byteorder='<'
-            )[0]
+            bh = np.rec.fromfile(fh, dtype=BLOCK_HEADER, shape=1, byteorder="<")[0]
             self.block_headers.append(bh)
             # read data block
             mi = self.measure_info[bh.meas_desc_block_no]
             dtype = BlockType(bh.block_type).dtype
             dsize = bh.block_length // dtype.itemsize
             data = np.fromfile(fh, dtype=dtype, count=dsize)
+
             # ``measure_info`` entries are shape-(1,) record arrays, so every
             # field reads back as a 1-element array rather than a number. NumPy
             # no longer accepts those where a scalar is required (``np.arange``
@@ -238,19 +227,28 @@ class SdtFile(object):
 
     def block_measure_info(self, block):
         """Return measure_info record for data block."""
-        return self.measure_info[
-            self.data_headers[block].meas_desc_block_no
-        ]
+        return self.measure_info[self.data_headers[block].meas_desc_block_no]
 
     def __str__(self):
         """Return a string containing all information about the SDT file."""
-        return "\n\n".join([str(i) for i in (
-            self.name, self.header, self.info, self.measure_info,
-            self.data_headers, self.data[0].shape)])
+        return "\n\n".join(
+            [
+                str(i)
+                for i in (
+                    self.name,
+                    self.header,
+                    self.info,
+                    self.measure_info,
+                    self.data_headers,
+                    self.data[0].shape,
+                )
+            ]
+        )
 
 
 class FileInfo(str):
     """File info string and attributes."""
+
     def __init__(self, value):
         """Initialize FileInfo from raw bytes.
 
@@ -260,19 +258,19 @@ class FileInfo(str):
             Raw file info block.
         """
         str.__init__(self)
-        assert (value.startswith(b'*IDENTIFICATION') and
-                value.strip().endswith(b'*END'))
+        assert value.startswith(b"*IDENTIFICATION") and value.strip().endswith(b"*END")
         for line in value.splitlines()[1:-1]:
             try:
-                key, val = line.split(b':', 1)
+                key, val = line.split(b":", 1)
             except Exception:
                 pass
             else:
                 setattr(self, bytes2str(key.strip().lower()), val.strip())
 
 
-class SetupBlock(object):
+class SetupBlock:
     """Setup block ascii and binary data."""
+
     def __init__(self, value):
         """Initialize SetupBlock from raw bytes.
 
@@ -281,12 +279,11 @@ class SetupBlock(object):
         value : bytes
             Raw setup block data.
         """
-        assert (value.startswith(b'*SETUP') and
-                value.strip().endswith(b'*END'))
-        i = value.find(b'BIN_PARA_BEGIN')
+        assert value.startswith(b"*SETUP") and value.strip().endswith(b"*END")
+        i = value.find(b"BIN_PARA_BEGIN")
         if i:
             self.ascii = value[:i]
-            self.binary = bytes(value[i+15:-10])
+            self.binary = bytes(value[i + 15 : -10])
             # todo: parse binary data here
         else:
             self.ascii = value
@@ -297,8 +294,9 @@ class SetupBlock(object):
         return self.ascii
 
 
-class BlockNo(object):
+class BlockNo:
     """The lblock_no field of BLOCK_HEADER."""
+
     def __init__(self, value):
         """Initialize BlockNo from raw value.
 
@@ -312,15 +310,16 @@ class BlockNo(object):
 
     def __str__(self):
         """Return string representation of BlockNo."""
-        return "Data number: %s\nModule number: %s" % (self.data, self.module)
+        return f"Data number: {self.data}\nModule number: {self.module}"
 
     def __iter__(self):
         """Iterate over (data, module)."""
         return iter((self.data, self.module))
 
 
-class BlockType(object):
+class BlockType:
     """The block_type field of BLOCK_HEADER."""
+
     def __init__(self, value):
         """Initialize BlockType from raw value.
 
@@ -335,8 +334,7 @@ class BlockType(object):
 
     def __str__(self):
         """Return string representation of BlockType."""
-        return "Mode: %s\nContent: %s\nData Type: %s" % (
-            self.mode, self.contents, self.dtype)
+        return f"Mode: {self.mode}\nContent: {self.contents}\nData Type: {self.dtype}"
 
     def __iter__(self):
         """Iterate over (mode, contents, dtype)."""
@@ -344,193 +342,202 @@ class BlockType(object):
 
 
 FILE_HEADER = [
-    ('revision', 'i2'),
-    ('info_offset', 'i4'),
-    ('info_length', 'i2'),
-    ('setup_offs', 'i4'),
-    ('setup_length', 'i2'),
-    ('data_block_offset', 'i4'),
-    ('no_of_data_blocks', 'i2'),
-    ('data_block_length', 'i4'),
-    ('meas_desc_block_offset', 'i4'),
-    ('no_of_meas_desc_blocks', 'i2'),
-    ('meas_desc_block_length', 'i2'),
-    ('header_valid', 'u2'),
-    ('reserved1', 'u4'),
-    ('reserved2', 'u2'),
-    ('chksum', 'u2')]
+    ("revision", "i2"),
+    ("info_offset", "i4"),
+    ("info_length", "i2"),
+    ("setup_offs", "i4"),
+    ("setup_length", "i2"),
+    ("data_block_offset", "i4"),
+    ("no_of_data_blocks", "i2"),
+    ("data_block_length", "i4"),
+    ("meas_desc_block_offset", "i4"),
+    ("no_of_meas_desc_blocks", "i2"),
+    ("meas_desc_block_length", "i2"),
+    ("header_valid", "u2"),
+    ("reserved1", "u4"),
+    ("reserved2", "u2"),
+    ("chksum", "u2"),
+]
 
 SETUP_BIN_HDR = [
-    ('soft_rev', 'u4'),
-    ('para_length', 'u4'),
-    ('reserved1', 'u4'),
-    ('reserved2', 'u2')]
+    ("soft_rev", "u4"),
+    ("para_length", "u4"),
+    ("reserved1", "u4"),
+    ("reserved2", "u2"),
+]
 
 MEASURE_STOP_INFO = [  # Info collected when measurement finished
-    ('status', 'u2'),
-    ('flags', 'u2'),
-    ('stop_time', 'f4'),
-    ('cur_step', 'i4'),
-    ('cur_cycle', 'i4'),
-    ('cur_page', 'i4'),
-    ('min_sync_rate', 'f4'),
-    ('min_cfd_rate', 'f4'),
-    ('min_tac_rate', 'f4'),
-    ('min_adc_rate', 'f4'),
-    ('max_sync_rate', 'f4'),
-    ('max_cfd_rate', 'f4'),
-    ('max_tac_rate', 'f4'),
-    ('max_adc_rate', 'f4'),
-    ('reserved1', 'i4'),
-    ('reserved2', 'f4')]
+    ("status", "u2"),
+    ("flags", "u2"),
+    ("stop_time", "f4"),
+    ("cur_step", "i4"),
+    ("cur_cycle", "i4"),
+    ("cur_page", "i4"),
+    ("min_sync_rate", "f4"),
+    ("min_cfd_rate", "f4"),
+    ("min_tac_rate", "f4"),
+    ("min_adc_rate", "f4"),
+    ("max_sync_rate", "f4"),
+    ("max_cfd_rate", "f4"),
+    ("max_tac_rate", "f4"),
+    ("max_adc_rate", "f4"),
+    ("reserved1", "i4"),
+    ("reserved2", "f4"),
+]
 
 MEASURE_FCS_INFO = [  # Info collected when FIFO measurement finished
-    ('chan', 'u2'),
-    ('fcs_decay_calc', 'u2'),
-    ('mt_resol', 'u4'),
-    ('cortime', 'f4'),
-    ('calc_photons', 'u4'),
-    ('fcs_points', 'i4'),
-    ('end_time', 'f4'),
-    ('overruns', 'u2'),
-    ('fcs_type', 'u2'),
-    ('cross_chan', 'u2'),
-    ('mod', 'u2'),
-    ('cross_mod', 'u2'),
-    ('cross_mt_resol', 'u4')]
+    ("chan", "u2"),
+    ("fcs_decay_calc", "u2"),
+    ("mt_resol", "u4"),
+    ("cortime", "f4"),
+    ("calc_photons", "u4"),
+    ("fcs_points", "i4"),
+    ("end_time", "f4"),
+    ("overruns", "u2"),
+    ("fcs_type", "u2"),
+    ("cross_chan", "u2"),
+    ("mod", "u2"),
+    ("cross_mod", "u2"),
+    ("cross_mt_resol", "u4"),
+]
 
 HIST_INFO = [  # Extension of MeasFCSInfo for other histograms
-    ('fida_time', 'f4'),
-    ('filda_time', 'f4'),
-    ('fida_points', 'i4'),
-    ('filda_points', 'i4'),
-    ('mcs_time', 'f4'),
-    ('mcs_points', 'i4')]
+    ("fida_time", "f4"),
+    ("filda_time", "f4"),
+    ("fida_points", "i4"),
+    ("filda_points", "i4"),
+    ("mcs_time", "f4"),
+    ("mcs_points", "i4"),
+]
 
 MEASURE_INFO = [  # Measurement description blocks
-    ('time', 'a9'),
-    ('date', 'a11'),
-    ('mod_ser_no', 'a16'),
-    ('meas_mode', 'i2'),
-    ('cfd_ll', 'f4'),
-    ('cfd_lh', 'f4'),
-    ('cfd_zc', 'f4'),
-    ('cfd_hf', 'f4'),
-    ('syn_zc', 'f4'),
-    ('syn_fd', 'i2'),
-    ('syn_hf', 'f4'),
-    ('tac_r', 'f4'),
-    ('tac_g', 'i2'),
-    ('tac_of', 'f4'),
-    ('tac_ll', 'f4'),
-    ('tac_lh', 'f4'),
-    ('adc_re', 'i2'),
-    ('eal_de', 'i2'),
-    ('ncx', 'i2'),
-    ('ncy', 'i2'),
-    ('page', 'u2'),
-    ('col_t', 'f4'),
-    ('rep_t', 'f4'),
-    ('stopt', 'i2'),
-    ('overfl', 'u1'),
-    ('use_motor', 'i2'),
-    ('steps', 'u2'),
-    ('offset', 'f4'),
-    ('dither', 'i2'),
-    ('incr', 'i2'),
-    ('mem_bank', 'i2'),
-    ('mod', 'a16'),
-    ('syn_th', 'f4'),
-    ('dead_time_comp', 'i2'),
-    ('polarity_l', 'i2'),
-    ('polarity_f', 'i2'),
-    ('polarity_p', 'i2'),
-    ('linediv', 'i2'),
-    ('accumulate', 'i2'),
-    ('flbck_y', 'i4'),
-    ('flbck_x', 'i4'),
-    ('bord_u', 'i4'),
-    ('bord_l', 'i4'),
-    ('pix_time', 'f4'),
-    ('pix_clk', 'i2'),
-    ('trigger', 'i2'),
-    ('scan_x', 'i4'),
-    ('scan_y', 'i4'),
-    ('scan_rx', 'i4'),
-    ('scan_ry', 'i4'),
-    ('fifo_typ', 'i2'),
-    ('epx_div', 'i4'),
-    ('mod_code', 'u2'),
-    ('mod_fpga_ver', 'u2'),
-    ('overflow_corr_factor', 'f4'),
-    ('adc_zoom', 'i4'),
-    ('cycles', 'i4'),
-    ('StopInfo', MEASURE_STOP_INFO),
-    ('FCSInfo', MEASURE_FCS_INFO),
-    ('image_x', 'i4'),
-    ('image_y', 'i4'),
-    ('image_rx', 'i4'),
-    ('image_ry', 'i4'),
-    ('xy_gain', 'i2'),
-    ('master_clock', 'i2'),
-    ('adc_de', 'i2'),
-    ('det', 'i2'),
-    ('x_axis', 'i2'),
-    ('MeasHISTInfo', HIST_INFO)
-    ]
+    ("time", "a9"),
+    ("date", "a11"),
+    ("mod_ser_no", "a16"),
+    ("meas_mode", "i2"),
+    ("cfd_ll", "f4"),
+    ("cfd_lh", "f4"),
+    ("cfd_zc", "f4"),
+    ("cfd_hf", "f4"),
+    ("syn_zc", "f4"),
+    ("syn_fd", "i2"),
+    ("syn_hf", "f4"),
+    ("tac_r", "f4"),
+    ("tac_g", "i2"),
+    ("tac_of", "f4"),
+    ("tac_ll", "f4"),
+    ("tac_lh", "f4"),
+    ("adc_re", "i2"),
+    ("eal_de", "i2"),
+    ("ncx", "i2"),
+    ("ncy", "i2"),
+    ("page", "u2"),
+    ("col_t", "f4"),
+    ("rep_t", "f4"),
+    ("stopt", "i2"),
+    ("overfl", "u1"),
+    ("use_motor", "i2"),
+    ("steps", "u2"),
+    ("offset", "f4"),
+    ("dither", "i2"),
+    ("incr", "i2"),
+    ("mem_bank", "i2"),
+    ("mod", "a16"),
+    ("syn_th", "f4"),
+    ("dead_time_comp", "i2"),
+    ("polarity_l", "i2"),
+    ("polarity_f", "i2"),
+    ("polarity_p", "i2"),
+    ("linediv", "i2"),
+    ("accumulate", "i2"),
+    ("flbck_y", "i4"),
+    ("flbck_x", "i4"),
+    ("bord_u", "i4"),
+    ("bord_l", "i4"),
+    ("pix_time", "f4"),
+    ("pix_clk", "i2"),
+    ("trigger", "i2"),
+    ("scan_x", "i4"),
+    ("scan_y", "i4"),
+    ("scan_rx", "i4"),
+    ("scan_ry", "i4"),
+    ("fifo_typ", "i2"),
+    ("epx_div", "i4"),
+    ("mod_code", "u2"),
+    ("mod_fpga_ver", "u2"),
+    ("overflow_corr_factor", "f4"),
+    ("adc_zoom", "i4"),
+    ("cycles", "i4"),
+    ("StopInfo", MEASURE_STOP_INFO),
+    ("FCSInfo", MEASURE_FCS_INFO),
+    ("image_x", "i4"),
+    ("image_y", "i4"),
+    ("image_rx", "i4"),
+    ("image_ry", "i4"),
+    ("xy_gain", "i2"),
+    ("master_clock", "i2"),
+    ("adc_de", "i2"),
+    ("det", "i2"),
+    ("x_axis", "i2"),
+    ("MeasHISTInfo", HIST_INFO),
+]
 
 BLOCK_HEADER = [
-    ('block_no', 'i2'),
-    ('data_offs', 'i4'),
-    ('next_block_offs', 'i4'),
-    ('block_type', 'u2'),
-    ('meas_desc_block_no', 'i2'),
-    ('lblock_no', 'u4'),
-    ('block_length', 'u4')]
+    ("block_no", "i2"),
+    ("data_offs", "i4"),
+    ("next_block_offs", "i4"),
+    ("block_type", "u2"),
+    ("meas_desc_block_no", "i2"),
+    ("lblock_no", "u4"),
+    ("block_length", "u4"),
+]
 
 BLOCK_CREATION = {  # file_type of creation
-    0: 'NOT_USED',
-    1: 'MEAS_DATA',
-    2: 'FLOW_DATA',
-    3: 'MEAS_DATA_FROM_FILE',
-    4: 'CALC_DATA',
-    5: 'SIM_DATA',
-    8: 'FIFO_DATA',
-    9: 'FIFO_DATA_FROM_FILE'}
+    0: "NOT_USED",
+    1: "MEAS_DATA",
+    2: "FLOW_DATA",
+    3: "MEAS_DATA_FROM_FILE",
+    4: "CALC_DATA",
+    5: "SIM_DATA",
+    8: "FIFO_DATA",
+    9: "FIFO_DATA_FROM_FILE",
+}
 
 BLOCK_CONTENT = {
-    0x0: 'DECAY_BLOCK',
-    0x10: 'PAGE_BLOCK',
-    0x20: 'FCS_BLOCK',
-    0x30: 'FIDA_BLOCK',
-    0x40: 'FILDA_BLOCK',
-    0x50: 'MCS_BLOCK',
-    0x60: 'IMG_BLOCK'}
+    0x0: "DECAY_BLOCK",
+    0x10: "PAGE_BLOCK",
+    0x20: "FCS_BLOCK",
+    0x30: "FIDA_BLOCK",
+    0x40: "FILDA_BLOCK",
+    0x50: "MCS_BLOCK",
+    0x60: "IMG_BLOCK",
+}
 
 BLOCK_DTYPE = {  # data type
-    0x000: np.dtype('<u2'),
-    0x100: np.dtype('<u4'),
-    0x200: np.dtype('<f4')}
+    0x000: np.dtype("<u2"),
+    0x100: np.dtype("<u4"),
+    0x200: np.dtype("<f4"),
+}
 
-HEADER_VALID = {
-    0x1111: False,
-    0x5555: True}
+HEADER_VALID = {0x1111: False, 0x5555: True}
 
 INFO_IDS = {
     b"SPC Setup Script File": "Setup script file_type: setup only",
     b"SPC Setup & Data File": "Normal file_type: setup + data",
     b"SPC DLL Data File": "DLL created: no setup, only data",
     b"SPC Flow Data File": "Continuous Flow file_type: no setup, only data",
-    b"SPC fcs Data File":
-    "FIFO file_type: setup, data blocks = Decay, fcs, FIDA, FILDA & MCS "
-    "curves for each used routing channel"}
+    b"SPC fcs Data File": "FIFO file_type: setup, data blocks = Decay, fcs, FIDA, FILDA & MCS "
+    "curves for each used routing channel",
+}
 
-if sys.version_info[0] > 2:
-    basestring = str
-    bytes2str = lambda x: str(x, 'ascii')
-else:
-    bytes2str = str
+basestring = str
+
+
+def bytes2str(x):
+    return str(x, "ascii")
+
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

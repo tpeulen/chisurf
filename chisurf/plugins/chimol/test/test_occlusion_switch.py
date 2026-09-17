@@ -15,6 +15,7 @@ asserts the second: it renders the same scene twice and compares the pixels.
 Two directions have to be asserted, not one. A test that only checks "the image
 changed" passes an inverted switch, which is how the defect survived.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,9 +25,7 @@ import tempfile
 import numpy as np
 import pytest
 
-os.environ.setdefault(
-    "CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_ao_test_")
-)
+os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_ao_test_"))
 
 _PDB = str(
     pathlib.Path(__file__).resolve().parents[4]
@@ -50,9 +49,7 @@ def _grab(win, app):
     bits = image.constBits()
     size = image.sizeInBytes() if hasattr(image, "sizeInBytes") else image.byteCount()
     bits.setsize(size)
-    arr = np.frombuffer(bits, np.uint8).reshape(
-        image.height(), image.bytesPerLine() // 4, 4
-    )
+    arr = np.frombuffer(bits, np.uint8).reshape(image.height(), image.bytesPerLine() // 4, 4)
     return arr[:, : image.width(), :3].astype(int)
 
 
@@ -158,8 +155,7 @@ def test_occlusion_has_one_enable_key():
     enablers = [
         dotted
         for dotted in walk(_DISPLAY_CONFIG)
-        if dotted.split(".")[-1] in ("ambient_occlusion",)
-        or dotted == "occlusion.enabled"
+        if dotted.split(".")[-1] in ("ambient_occlusion",) or dotted == "occlusion.enabled"
     ]
     assert enablers == ["occlusion.enabled"], (
         f"expected occlusion.enabled to be the only occlusion switch, found {enablers}"

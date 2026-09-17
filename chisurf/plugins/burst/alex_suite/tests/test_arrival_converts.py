@@ -14,7 +14,6 @@ that safe.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from chisurf.plugins.burst.alex_suite.gui.alternation import AlexAlternationPanel
 

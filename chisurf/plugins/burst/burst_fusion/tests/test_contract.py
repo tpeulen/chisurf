@@ -26,9 +26,7 @@ MANIFEST = pathlib.Path(services.__file__).resolve().parents[1] / "manifest.json
 
 
 def test_the_manifest_declares_exactly_the_registered_methods():
-    declared = {
-        entry["name"] for entry in json.loads(MANIFEST.read_text())["rpc_methods"]
-    }
+    declared = {entry["name"] for entry in json.loads(MANIFEST.read_text())["rpc_methods"]}
     assert declared == set(CANONICAL_METHODS) == set(services.list_methods())
 
 
@@ -106,9 +104,7 @@ def test_analyze_over_rpc_returns_the_curve_json_shape(tmp_path):
     from chisurf.plugins.burst.burst_fusion.demo import create_demo
 
     demo = create_demo(directory=tmp_path / "demo")
-    response = services.analyze_handler(
-        analysis_folder=demo["folder"], settings={"threshold": 0.7}
-    )
+    response = services.analyze_handler(analysis_folder=demo["folder"], settings={"threshold": 0.7})
     assert response["status"] == "ok"
     curve = response["curve"]
     assert len(curve["tau_s"]) == len(curve["p_same"]) == len(curve["pairs"])

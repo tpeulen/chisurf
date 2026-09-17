@@ -23,21 +23,23 @@ def shell(qapp):
     from chisurf.gui.widgets.navigation import NavigationPanelTool
 
     panels = [
-        {"name": f"{i}. Step", "factory": (lambda p, i=i: QtWidgets.QLabel(f"p{i}", p)),
-         "role": f"s{i}"}
+        {
+            "name": f"{i}. Step",
+            "factory": (lambda p, i=i: QtWidgets.QLabel(f"p{i}", p)),
+            "role": f"s{i}",
+        }
         for i in range(1, 4)
     ]
     panels.append({"name": "────", "separator": True, "role": "sep"})
-    panels.append({"name": "Extra", "factory": (lambda p: QtWidgets.QLabel("x", p)),
-                   "role": "extra"})
+    panels.append(
+        {"name": "Extra", "factory": (lambda p: QtWidgets.QLabel("x", p)), "role": "extra"}
+    )
     tool = NavigationPanelTool(panels=panels, title="FF test")
     yield tool
     tool.close()
 
 
-def test_fast_forward_runs_the_numbered_steps_and_stops_at_the_separator(
-    shell, monkeypatch
-):
+def test_fast_forward_runs_the_numbered_steps_and_stops_at_the_separator(shell, monkeypatch):
     """One click walks the pipeline — and only the pipeline.
 
     What follows the separator are tools you reach *with* the result, or that
@@ -45,8 +47,11 @@ def test_fast_forward_runs_the_numbered_steps_and_stops_at_the_separator(
     running them unasked is not what "fast-forward" means.
     """
     processed: list = []
-    monkeypatch.setattr(type(shell), "process_current_step",
-                        lambda self: processed.append(self.nav_list.currentRow()) or True)
+    monkeypatch.setattr(
+        type(shell),
+        "process_current_step",
+        lambda self: processed.append(self.nav_list.currentRow()) or True,
+    )
 
     shell.nav_list.setCurrentRow(0)
     shell._on_fast_forward_clicked()
@@ -143,8 +148,7 @@ def test_it_never_starts_a_step_while_one_is_running(shell, monkeypatch):
     """The whole point: one step in flight at a time."""
     starts: list = []
     busy = {"value": True}
-    monkeypatch.setattr(type(shell), "process_current_step",
-                        lambda self: starts.append(1) or True)
+    monkeypatch.setattr(type(shell), "process_current_step", lambda self: starts.append(1) or True)
     monkeypatch.setattr(type(shell), "_step_is_busy", lambda self: busy["value"])
 
     shell.nav_list.setCurrentRow(0)

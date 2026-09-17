@@ -1,6 +1,5 @@
 import pathlib
 import unittest
-from unittest import mock
 
 import utils
 
@@ -8,7 +7,8 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 from chisurf.history import OperationHistory
-import chisurf as cs
+
+
 class TestHistoryPersistence(unittest.TestCase):
     def setUp(self):
         self.history = OperationHistory()
@@ -30,7 +30,7 @@ class TestHistoryPersistence(unittest.TestCase):
             "timestamp": "2023-01-01T00:00:00Z",
             "action_type": "test",
             "summary": "Test event",
-            "payload": {}
+            "payload": {},
         }
         self.assertTrue(self.history.validate_event(valid_event))
 
@@ -48,7 +48,7 @@ class TestHistoryPersistence(unittest.TestCase):
             "timestamp": "2023-01-01T00:00:00Z",
             "action_type": "test",
             "summary": "Test event",
-            "payload": "not a dict"  # Should be dict
+            "payload": "not a dict",  # Should be dict
         }
         self.assertFalse(self.history.validate_event(invalid_event2))
 
@@ -78,7 +78,9 @@ class TestHistoryPersistence(unittest.TestCase):
         live = OperationHistory()
         live.record("live_action", "live event", {"value": 1})
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as handle:
-            handle.write('{"event_id":"valid","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"ok","payload":{}}\n')
+            handle.write(
+                '{"event_id":"valid","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"ok","payload":{}}\n'
+            )
             handle.write('{"broken":true}\n')
             filename = handle.name
         try:
@@ -97,7 +99,9 @@ class TestHistoryPersistence(unittest.TestCase):
         history = OperationHistory()
         existing = history.record("existing", "existing event", {})
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as handle:
-            handle.write('{"event_id":"loaded","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"loaded","payload":{}}\n')
+            handle.write(
+                '{"event_id":"loaded","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"loaded","payload":{}}\n'
+            )
             handle.write('{"invalid":true}\n')
             filename = handle.name
         try:
@@ -127,7 +131,9 @@ class TestHistoryPersistence(unittest.TestCase):
         repair_report = self.history.repair_history()
         self.assertTrue(repair_report["repair_successful"])
         self.assertEqual(repair_report["events_removed"], 2)
-        self.assertEqual(repair_report["events_after"], 3)  # Should be back to original 3 valid events
+        self.assertEqual(
+            repair_report["events_after"], 3
+        )  # Should be back to original 3 valid events
 
         # Verify history is now valid
         integrity_report = self.history.validate_history_integrity()
@@ -136,35 +142,35 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_save_load_with_metadata(self):
         """Test saving and loading history with metadata."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history.jsonl")
-            
+
             # Save history
             saved_path = self.history.save_jsonl(filepath)
             self.assertTrue(saved_path.exists())
-            
+
             # Check metadata is included
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 first_line = f.readline()
                 self.assertTrue(first_line.startswith("# CHISURF HISTORY METADATA:"))
 
     def test_load_with_version_validation(self):
         """Test loading history with version validation."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history.jsonl")
-            
+
             # Save history
             self.history.save_jsonl(filepath)
-            
+
             # Load history
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Verify load was successful
             self.assertTrue(load_result["success"])
             self.assertEqual(load_result["loaded_events"], 3)
@@ -173,20 +179,24 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_load_incompatible_version(self):
         """Test loading history with incompatible version."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history_incompatible.jsonl")
-            
+
             # Create file with incompatible version
-            with open(filepath, 'w') as f:
-                f.write('# CHISURF HISTORY METADATA: {"history_version": "2.0", "event_count": 1}\n')
-                f.write('{"event_id": "test", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test", "payload": {}}\n')
-            
+            with open(filepath, "w") as f:
+                f.write(
+                    '# CHISURF HISTORY METADATA: {"history_version": "2.0", "event_count": 1}\n'
+                )
+                f.write(
+                    '{"event_id": "test", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test", "payload": {}}\n'
+                )
+
             # Try to load
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Should detect incompatibility but still load (for forward compatibility)
             self.assertTrue(load_result["success"])
             self.assertEqual(load_result["compatibility"], "incompatible")
@@ -194,24 +204,32 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_corrupted_history_recovery(self):
         """Test loading and recovering from corrupted history."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_corrupted.jsonl")
-            
+
             # Create corrupted history file
-            with open(filepath, 'w') as f:
-                f.write('# CHISURF HISTORY METADATA: {"history_version": "1.0", "event_count": 3}\n')
-                f.write('{"event_id": "test1", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test1", "payload": {}}\n')
+            with open(filepath, "w") as f:
+                f.write(
+                    '# CHISURF HISTORY METADATA: {"history_version": "1.0", "event_count": 3}\n'
+                )
+                f.write(
+                    '{"event_id": "test1", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test1", "payload": {}}\n'
+                )
                 f.write('{"invalid": "event"}\n')  # Invalid event
-                f.write('{"event_id": "test2", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test2", "payload": {}}\n')
-                f.write('not valid json at all\n')  # Invalid JSON
-                f.write('{"event_id": "test3", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test3", "payload": {}}\n')
-            
+                f.write(
+                    '{"event_id": "test2", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test2", "payload": {}}\n'
+                )
+                f.write("not valid json at all\n")  # Invalid JSON
+                f.write(
+                    '{"event_id": "test3", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test3", "payload": {}}\n'
+                )
+
             # Load should detect corruption and attempt repair
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Should succeed but report errors
             self.assertTrue(load_result["success"])
             self.assertGreater(len(load_result["errors"]), 0)
@@ -221,38 +239,38 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_backup_and_restore(self):
         """Test backup and restore functionality."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = os.path.join(tmpdir, "backups")
-            
+
             # Create backup
             backup_result = self.history.create_backup(backup_dir)
             self.assertTrue(backup_result["success"])
             self.assertTrue(backup_result["backup_path"].endswith(".jsonl"))
             self.assertEqual(backup_result["event_count"], 3)
-            
+
             # Verify backup file exists
             backup_path = backup_result["backup_path"]
             self.assertTrue(os.path.exists(backup_path))
-            
+
             # Clear current history
             self.history.clear()
             self.assertEqual(len(self.history.list_events()), 0)
-            
+
             # Restore from backup
             restore_result = self.history.restore_from_backup(backup_path)
             self.assertTrue(restore_result["success"])
             self.assertEqual(restore_result["loaded_events"], 3)
-            
+
             # Verify history was restored
             self.assertEqual(len(self.history.list_events()), 3)
 
     def test_history_stats(self):
         """Test history statistics functionality."""
         stats = self.history.get_history_stats()
-        
+
         self.assertEqual(stats["event_count"], 3)
         self.assertEqual(stats["checkpoint_count"], 0)
         self.assertIsNotNone(stats["oldest_event"])
@@ -295,11 +313,11 @@ class TestHistoryPersistence(unittest.TestCase):
         # Test auto-compaction threshold
         auto_compact_report = self.history.auto_compact_if_needed()
         self.assertFalse(auto_compact_report["compaction_performed"])
-        
+
         # Add more events to trigger auto-compaction
         while len(self.history.list_events()) < 2001:
             self.history.record("test_action", "Bulk event", {"bulk": True})
-        
+
         auto_compact_report = self.history.auto_compact_if_needed()
         self.assertTrue(auto_compact_report.get("compaction_successful", False))
 

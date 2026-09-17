@@ -1,11 +1,11 @@
 from __future__ import annotations
-import chisurf as cs
 
 import os
 import shutil
 
-from .path_utils import get_path
+import chisurf as cs
 
+from .path_utils import get_path
 
 #: Direct children of the settings folder that hold *user data*, not settings.
 #: The settings folder is not settings-only: it is also where the per-user
@@ -13,12 +13,14 @@ from .path_utils import get_path
 #: plugins and the fetched-structure cache live. Resetting the settings must
 #: never delete those - they are unrecoverable user data, and every one of them
 #: has its own dedicated clear action.
-USER_DATA_DIRS = frozenset({
-    'flr',         # per-user MMFDB database (sample_management.db)
-    'objects',     # content-addressed object store (embedded experimental data)
-    'plugins',     # installed user plugins (see clear_user_plugins_folder)
-    'structures',  # fetched-structure cache
-})
+USER_DATA_DIRS = frozenset(
+    {
+        "flr",  # per-user MMFDB database (sample_management.db)
+        "objects",  # content-addressed object store (embedded experimental data)
+        "plugins",  # installed user plugins (see clear_user_plugins_folder)
+        "structures",  # fetched-structure cache
+    }
+)
 
 
 def clear_settings_folder():
@@ -69,12 +71,12 @@ def clear_settings_folder():
                 shutil.rmtree(path, onerror=_handle_remove_error)
             else:
                 # Skip log files (files ending with .log)
-                if not str(path).endswith('.log'):
+                if not str(path).endswith(".log"):
                     # Remove a single file
                     os.unlink(path)
-        except PermissionError as e:
+        except PermissionError:
             cs.logging.warning(f"Skipping locked file or folder: {path}")
-        except OSError as e:
+        except OSError:
             # e.errno==ENOTEMPTY can happen if subdir isn't empty (due to skips)
             cs.logging.warning(f"Couldn't remove {path}")
 
@@ -92,7 +94,7 @@ def clear_user_plugins_folder():
     Raises:
         None. All deletion errors are caught and logged.
     """
-    user_plugins_dir = get_path('settings') / 'plugins'
+    user_plugins_dir = get_path("settings") / "plugins"
 
     # If the user plugins directory doesn't exist, nothing to do
     if not user_plugins_dir.is_dir():
@@ -118,9 +120,9 @@ def clear_user_plugins_folder():
             else:
                 # Remove a single file
                 os.unlink(path)
-        except PermissionError as e:
+        except PermissionError:
             cs.logging.warning(f"Skipping locked file or folder: {path}")
-        except OSError as e:
+        except OSError:
             cs.logging.warning(f"Couldn't remove {path}")
 
 
@@ -151,9 +153,9 @@ def clear_logging_files():
         try:
             if not entry.is_dir(follow_symlinks=False):
                 # Remove log files (files ending with .log) and session files (.py)
-                if str(path).endswith('.log') or str(path).endswith('.py'):
+                if str(path).endswith(".log") or str(path).endswith(".py"):
                     os.unlink(path)
-        except PermissionError as e:
+        except PermissionError:
             cs.logging.warning(f"Skipping locked file: {path}")
-        except OSError as e:
+        except OSError:
             cs.logging.warning(f"Couldn't remove file: {path}")

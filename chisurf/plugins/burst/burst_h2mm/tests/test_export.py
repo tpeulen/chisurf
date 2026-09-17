@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+import pytest
 
 from chisurf.core.datastore import (
     column_names,
@@ -10,11 +12,8 @@ from chisurf.core.datastore import (
     numeric_column,
     row_count,
 )
-import pandas as pd
-import pytest
-
-from chisurf.plugins.burst.burst_h2mm.core import export as X
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
+from chisurf.plugins.burst.burst_h2mm.core import export as X
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
     PhotonMeta,
     StreamDef,
@@ -89,7 +88,12 @@ def test_build_tables_schema_and_lengths():
     fret = np.array([0.15, 0.80])
 
     tables = X.build_tables(
-        data, meta, path, fret, base_time_s=1e-6, micro_time_ns=0.032,
+        data,
+        meta,
+        path,
+        fret,
+        base_time_s=1e-6,
+        micro_time_ns=0.032,
         stream_groups=[("green", (0,)), ("red", (1,))],
     )
     ph, bu = tables.photons, tables.bursts
@@ -99,8 +103,12 @@ def test_build_tables_schema_and_lengths():
     for col in ("Mean Macro Time (s)", "Micro Time", "Channel", "Stream", "State", "Burst"):
         assert col in column_names(ph)
     # ndX FRET-line plot columns (its default Y axis + the per-colour mean micro time).
-    for col in ("Mean Microtime (green)", "Mean Microtime (red)",
-                "Proximity ratio", "FRET efficiency"):
+    for col in (
+        "Mean Microtime (green)",
+        "Mean Microtime (red)",
+        "Proximity ratio",
+        "FRET efficiency",
+    ):
         assert col in column_names(bu)
     # Measured proximity ratio is a finite fraction; mean micro time is finite (ns).
     pr = numeric_column(bu, "Proximity ratio")
@@ -142,13 +150,25 @@ def test_build_dwell_table_per_dwell_rows_and_edge_flag():
     data, meta = _dataset_via_tttrlib()
     ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
     dwells = X.build_dwell_table(
-        data, meta, ana.dwells, ana.base_time_s,
-        stream_groups=[("green", (0,)), ("red", (1,))], micro_time_ns=0.032,
+        data,
+        meta,
+        ana.dwells,
+        ana.base_time_s,
+        stream_groups=[("green", (0,)), ("red", (1,))],
+        micro_time_ns=0.032,
     )
     # One row per analysis dwell.
     assert row_count(dwells) == len(ana.dwells)
-    for col in ("Dwell", "Burst", "State", "Number of Photons", "Dwell Time (ms)",
-                "Mean Microtime (green)", "FRET efficiency", "Is Edge"):
+    for col in (
+        "Dwell",
+        "Burst",
+        "State",
+        "Number of Photons",
+        "Dwell Time (ms)",
+        "Mean Microtime (green)",
+        "FRET efficiency",
+        "Is Edge",
+    ):
         assert col in column_names(dwells)
     # Edge flag is 0/1 and every burst has at least one edge dwell (its first/last).
     edge = numeric_column(dwells, "Is Edge")
@@ -181,8 +201,13 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     csv = result.output_paths.get("bursts_csv")
     assert csv is not None
     df = pd.read_csv(csv)
-    for col in ("Mean Microtime (green)", "Proximity ratio", "FRET efficiency",
-                "Mean Macro Time (s)", "Dominant State"):
+    for col in (
+        "Mean Microtime (green)",
+        "Proximity ratio",
+        "FRET efficiency",
+        "Mean Macro Time (s)",
+        "Dominant State",
+    ):
         assert col in df.columns
     assert np.isfinite(df["Mean Microtime (green)"].to_numpy()).any()
 
@@ -190,6 +215,11 @@ def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):
     dwells_csv = result.output_paths.get("dwells_csv")
     assert dwells_csv is not None
     ddf = pd.read_csv(dwells_csv)
-    for col in ("State", "Number of Photons", "Dwell Time (ms)", "Is Edge",
-                "Mean Microtime (green)"):
+    for col in (
+        "State",
+        "Number of Photons",
+        "Dwell Time (ms)",
+        "Is Edge",
+        "Mean Microtime (green)",
+    ):
         assert col in ddf.columns

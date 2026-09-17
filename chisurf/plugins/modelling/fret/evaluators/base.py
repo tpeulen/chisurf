@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -24,10 +24,11 @@ class EvaluatorResult:
     extra : dict, optional
         Any extra metadata or detail arrays (e.g. histograms).
     """
+
     name: str
     value: float
     unit: str = ""
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 class Evaluator(ABC):
@@ -43,8 +44,8 @@ class Evaluator(ABC):
     @abstractmethod
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         """Evaluate this metric using a pre-computed AV cache and optional bodies.
 
@@ -62,7 +63,7 @@ class Evaluator(ABC):
         """
         pass
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise evaluator configuration to a JSON-safe dict."""
         d = {"type": self.__class__.__name__, "name": self.name}
         for k, v in vars(self).items():
@@ -71,7 +72,7 @@ class Evaluator(ABC):
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> Evaluator:
+    def from_dict(cls, d: dict[str, Any]) -> Evaluator:
         """Deserialise evaluator from a dict.
 
         Parameters
@@ -95,10 +96,10 @@ class EvaluationStorage:
     """
 
     def __init__(self) -> None:
-        self.filenames: List[str] = []
-        self.results: Dict[str, List[float]] = {}
+        self.filenames: list[str] = []
+        self.results: dict[str, list[float]] = {}
 
-    def add_frame(self, filename: str, frame_results: Dict[str, EvaluatorResult]) -> None:
+    def add_frame(self, filename: str, frame_results: dict[str, EvaluatorResult]) -> None:
         """Add results for a single structure/frame.
 
         Parameters
@@ -137,6 +138,7 @@ class EvaluationStorage:
             Output file path.
         """
         import csv
+
         headers = ["filename"] + list(self.results.keys())
         with open(path, "w", newline="") as f:
             writer = csv.writer(f)

@@ -5,12 +5,10 @@ GUI code uses this client instead of importing calculations directly.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +31,12 @@ class VvVhGFactorClient:
         # The RPC object store cannot use server-side paths; send base64 bytes.
         p = pathlib.Path(path)
         encoded = base64.b64encode(p.read_bytes()).decode("ascii")
-        result = self._client.call(
-            "mmfdb.objects.put", {"data": encoded, "filename": p.name}
-        )
+        result = self._client.call("mmfdb.objects.put", {"data": encoded, "filename": p.name})
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in mmfdb.objects.put RPC call"))
         res = result.get("result", result)
         logger.info("VvVhGFactorClient: put_object succeeded: %s", res)
         return res
-
 
     def calculate(
         self,
@@ -62,9 +57,11 @@ class VvVhGFactorClient:
                 "region_bounds": list(region_bounds),
                 "decay_shift": decay_shift,
                 "use_bg": use_bg,
-                "bg_region_bounds": list(bg_region_bounds) if bg_region_bounds is not None else None,
+                "bg_region_bounds": list(bg_region_bounds)
+                if bg_region_bounds is not None
+                else None,
                 "flip": flip,
-            }
+            },
         )
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in G-factor calculate RPC call"))
@@ -73,24 +70,25 @@ class VvVhGFactorClient:
     def perrin_steady_state(self, tau_ns: float, rho_ns: float, r0: float = 0.38) -> float:
         """Calculate steady-state Perrin anisotropy."""
         result = self._client.call(
-            "vv_vh_g_factor.perrin_steady_state",
-            {"tau_ns": tau_ns, "rho_ns": rho_ns, "r0": r0}
+            "vv_vh_g_factor.perrin_steady_state", {"tau_ns": tau_ns, "rho_ns": rho_ns, "r0": r0}
         )
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in G-factor Perrin RPC call"))
         res = result.get("result", result)
-        return float(res.get("r_steady_state", float('nan')))
+        return float(res.get("r_steady_state", float("nan")))
 
     def solve_linked_l(self, sp: float, ss: float, g_factor: float, r_target: float) -> float:
         """Solve for the linked l1=l2 mixing parameter."""
         result = self._client.call(
             "vv_vh_g_factor.solve_linked_l",
-            {"sp": sp, "ss": ss, "g_factor": g_factor, "r_target": r_target}
+            {"sp": sp, "ss": ss, "g_factor": g_factor, "r_target": r_target},
         )
         if isinstance(result, dict) and not result.get("ok", True):
-            raise RuntimeError(result.get("error", "Unknown error in G-factor solve_linked_l RPC call"))
+            raise RuntimeError(
+                result.get("error", "Unknown error in G-factor solve_linked_l RPC call")
+            )
         res = result.get("result", result)
-        return float(res.get("l_estimate", float('nan')))
+        return float(res.get("l_estimate", float("nan")))
 
     def archive_g_factor(
         self,
@@ -107,10 +105,12 @@ class VvVhGFactorClient:
                     "file_path": file_path,
                     "parameters": parameters,
                     "active_user": active_user,
-                }
+                },
             )
             if isinstance(result, dict) and not result.get("ok", True):
-                logger.warning("VvVhGFactorClient: archive_g_factor failed: %s", result.get("error"))
+                logger.warning(
+                    "VvVhGFactorClient: archive_g_factor failed: %s", result.get("error")
+                )
                 return {"ok": False, "error": result.get("error"), "calibration_id": ""}
             return result.get("result", result)
         except Exception as e:
@@ -130,5 +130,6 @@ class VvVhGFactorClient:
         from chisurf.plugins.vv_vh_g_factor.backend.services import (
             register_services,
         )
+
         register_services(dispatcher)
         return InProcessClient(dispatcher)

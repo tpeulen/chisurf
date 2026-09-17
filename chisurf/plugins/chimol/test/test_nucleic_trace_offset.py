@@ -22,6 +22,7 @@ The companion render test could not catch this: it pinned
 ``backbone_smooth_cycles`` to 0 in its config while the shipped default was 2,
 so it rendered a configuration nobody ran.
 """
+
 from __future__ import annotations
 
 import json
@@ -34,7 +35,9 @@ REPO = pathlib.Path(__file__).resolve().parents[4]
 PDB = REPO / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
 DISPLAY_JSON = (
     pathlib.Path(__import__("chimol").__file__).resolve().parent
-    / "core" / "settings" / "chimol_display.json"
+    / "core"
+    / "settings"
+    / "chimol_display.json"
 )
 
 
@@ -98,9 +101,7 @@ def test_averaging_a_helix_contracts_it(traces):
         worst = max(worst, float(np.linalg.norm(smoothed - trace, axis=1).max()))
     # 2.43 A measured; the bound is loose because the exact figure belongs to
     # this structure's pitch, while the sign and the scale are what matter.
-    assert worst > 1.5, (
-        f"expected a helix to contract under averaging, saw {worst:.2f} A"
-    )
+    assert worst > 1.5, f"expected a helix to contract under averaging, saw {worst:.2f} A"
 
 
 def test_the_shipped_default_leaves_the_trace_on_the_atoms(traces):
@@ -176,7 +177,11 @@ def test_the_base_connectors_are_drawn(structure, cycles):
     sub, coords, res_ids, chain_ids, colors = inputs
 
     result = cartoon._generate_nucleic_cartoon_arrays(
-        sub, coords, res_ids, chain_ids, colors,
+        sub,
+        coords,
+        res_ids,
+        chain_ids,
+        colors,
         config={
             "coordinate_scale": 1.0,
             "nucleic_ao_strength": 0.0,
@@ -190,9 +195,7 @@ def test_the_base_connectors_are_drawn(structure, cycles):
     sugar = coords[np.isin(names, ["C1'", "C1*"])]
     assert len(sugar) >= 4, "fixture has too few sugars to measure"
 
-    gaps = np.array([
-        float(np.linalg.norm(verts - point, axis=1).min()) for point in sugar
-    ])
+    gaps = np.array([float(np.linalg.norm(verts - point, axis=1).min()) for point in sugar])
     assert gaps.max() < 0.5, (
         f"{int((gaps >= 0.5).sum())}/{len(gaps)} bases have no connector to the "
         f"trace (worst gap {gaps.max():.2f} A at cycles={cycles})"
@@ -225,18 +228,19 @@ def test_the_mesh_is_built_around_the_atoms(structure):
     colors = np.tile(np.array([1.0, 1.0, 1.0, 1.0]), (len(res_ids), 1))
 
     result = cartoon._generate_nucleic_cartoon_arrays(
-        sub, coords, res_ids, chain_ids, colors,
+        sub,
+        coords,
+        res_ids,
+        chain_ids,
+        colors,
         config={"coordinate_scale": 1.0, "nucleic_ao_strength": 0.0},
     )
     assert result is not None, "no nucleic cartoon was generated"
     verts = np.asarray(result[0], dtype=float)
     assert len(verts) > 0
 
-    trace = coords[np.isin(np.char.strip(np.asarray(sub["atom_name"]).astype(str)),
-                           ["C4'", "C4*"])]
-    gaps = np.array([
-        float(np.linalg.norm(verts - point, axis=1).min()) for point in trace
-    ])
+    trace = coords[np.isin(np.char.strip(np.asarray(sub["atom_name"]).astype(str)), ["C4'", "C4*"])]
+    gaps = np.array([float(np.linalg.norm(verts - point, axis=1).min()) for point in trace])
     assert gaps.max() < 2.0, (
         f"no cartoon geometry within 2 A of a trace atom (worst "
         f"{gaps.max():.2f} A) -- the tube is not where the chain is"

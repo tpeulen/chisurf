@@ -58,7 +58,9 @@ def test_every_configured_fcs_model_resolves_with_a_name(qapp):
             problems.append(f"{path}: missing/empty .name")
         else:
             names.append(str(name))
-    assert not problems, "configured FCS models that won't appear in the menu:\n" + "\n".join(problems)
+    assert not problems, "configured FCS models that won't appear in the menu:\n" + "\n".join(
+        problems
+    )
     assert any("MDF" in n for n in names), f"MDF FCS model missing from {names}"
     assert any("general" in n.lower() for n in names), f"General FCS model missing from {names}"
     assert any("kinetic" in n.lower() for n in names), f"Kinetics FCS model missing from {names}"

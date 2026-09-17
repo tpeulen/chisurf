@@ -222,9 +222,7 @@ def halves(
         if other == index:
             raise ValueError("the two channels of a channel split must differ")
         if other >= stack.n_channels:
-            raise ValueError(
-                f"channel {other} is out of range; the source has {stack.n_channels}"
-            )
+            raise ValueError(f"channel {other} is out of range; the source has {stack.n_channels}")
         info["channel_names"] = list(stack.channel_names)
         return (
             np.asarray(stack.image(index), dtype=np.float64),
@@ -293,9 +291,7 @@ def analyse(
         windows=windows,
         axis_order=axis_order,
     )
-    curve = frc_mod.frc_curve(
-        half_1, half_2, bin_width=bin_width, pixel_size=pixel_size_nm
-    )
+    curve = frc_mod.frc_curve(half_1, half_2, bin_width=bin_width, pixel_size=pixel_size_nm)
     result = frc_mod.resolve(curve, criterion, smooth=smooth)
     return FrcAnalysis(
         frequency=curve.frequency,
@@ -383,21 +379,22 @@ def write_container(source, analysis, *, parameters: dict | None = None, out_dir
     per_nm = getattr(analysis, "unit", "px") == "nm"
     return write_imaging_table(
         source,
-        store_from_arrays({
-            "Frequency": frequency,
-            "Correlation": np.nan_to_num(
-                np.asarray(analysis.correlation, dtype=float)
-            ),
-            "Threshold": np.asarray(analysis.threshold, dtype=float),
-            "Ring Pixels": np.asarray(analysis.counts, dtype=float),
-        }),
+        store_from_arrays(
+            {
+                "Frequency": frequency,
+                "Correlation": np.nan_to_num(np.asarray(analysis.correlation, dtype=float)),
+                "Threshold": np.asarray(analysis.threshold, dtype=float),
+                "Ring Pixels": np.asarray(analysis.counts, dtype=float),
+            }
+        ),
         name="frc",
         artifact_kind="resolution_curve",
         operation_type="resolution_estimation",
         row_grain="curve_point",
         parameters=dict(parameters or {}, frequency_unit="1/nm" if per_nm else "1/px"),
         units={
-            "Correlation": "dimensionless", "Threshold": "dimensionless",
+            "Correlation": "dimensionless",
+            "Threshold": "dimensionless",
             "Ring Pixels": "counts",
         },
         out_dir=out_dir,

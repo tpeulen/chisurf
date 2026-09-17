@@ -20,9 +20,9 @@ import numpy as np
 
 import chisurf as cs
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.deer import models as _m
 from chisurf.core.models.deer.kernel import dipolar_kernel
+from chisurf.core.models.model import ModelCurve
 
 
 # --- metadata helper -------------------------------------------------------
@@ -42,18 +42,39 @@ class DeerModulation(FittingParameterGroup):
         """Initialize the modulation/zero-time/scale group."""
         super().__init__(name=name, **kwargs)
         self._lam = FittingParameter(
-            value=0.3, name="lambda", lb=0.0, ub=1.0, bounds_on=True, fixed=False,
-            label_text="&lambda;", registry_id="deer.lambda")
+            value=0.3,
+            name="lambda",
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            fixed=False,
+            label_text="&lambda;",
+            registry_id="deer.lambda",
+        )
         self._t0 = FittingParameter(
-            value=0.0, name="t0", lb=-0.5, ub=0.5, bounds_on=True, fixed=True,
-            label_text="t<sub>0</sub>[µs]", registry_id="deer.t0")
+            value=0.0,
+            name="t0",
+            lb=-0.5,
+            ub=0.5,
+            bounds_on=True,
+            fixed=True,
+            label_text="t<sub>0</sub>[µs]",
+            registry_id="deer.t0",
+        )
         # Fixed by default: the data is normalised to V(t0)=1 and the model
         # already yields V(t0)=scale, so a free scale is degenerate with the
         # overall amplitude and stalls the shape parameters. Users can release
         # it in the editor if a trace is not pre-normalised.
         self._scale = FittingParameter(
-            value=1.0, name="scale", lb=1e-3, ub=1e3, bounds_on=True, fixed=True,
-            label_text="scale", registry_id="deer.scale")
+            value=1.0,
+            name="scale",
+            lb=1e-3,
+            ub=1e3,
+            bounds_on=True,
+            fixed=True,
+            label_text="scale",
+            registry_id="deer.scale",
+        )
 
     mod_depth = property(lambda s: float(s._lam.value))
     zero_time = property(lambda s: float(s._t0.value))
@@ -69,11 +90,25 @@ class DeerBackground(FittingParameterGroup):
         #: Background kind selected in the editor (choice widget).
         self.model = "hom3d"
         self._k = FittingParameter(
-            value=0.05, name="bg_k", lb=0.0, ub=1e2, bounds_on=True, fixed=False,
-            label_text="k[µs<sup>-1</sup>]", registry_id="deer.bg_k")
+            value=0.05,
+            name="bg_k",
+            lb=0.0,
+            ub=1e2,
+            bounds_on=True,
+            fixed=False,
+            label_text="k[µs<sup>-1</sup>]",
+            registry_id="deer.bg_k",
+        )
         self._d = FittingParameter(
-            value=3.0, name="bg_d", lb=1.0, ub=6.0, bounds_on=True, fixed=True,
-            label_text="d", registry_id="deer.bg_d")
+            value=3.0,
+            name="bg_d",
+            lb=1.0,
+            ub=6.0,
+            bounds_on=True,
+            fixed=True,
+            label_text="d",
+            registry_id="deer.bg_d",
+        )
 
     k = property(lambda s: float(s._k.value))
     d = property(lambda s: float(s._d.value))
@@ -116,20 +151,47 @@ class DeerGaussians(FittingParameterGroup):
         s = vs.sum()
         return vs / s if s > 0 else vs
 
-    def append(self, mean: float = 35.0, sigma: float = 3.0, amplitude: float = 1.0,
-               fixed: bool = False, **kwargs):
+    def append(
+        self,
+        mean: float = 35.0,
+        sigma: float = 3.0,
+        amplitude: float = 1.0,
+        fixed: bool = False,
+        **kwargs,
+    ):
         """Add a Gaussian component (distances in Å)."""
         i = len(self._means) + 1
         s = self.short
         r_mean = FittingParameter(
-            value=mean, name=f"r{s}{i}", lb=10.0, ub=150.0, bounds_on=True, fixed=fixed,
-            label_text=f"r<sub>{i}</sub>[&#8491;]", registry_id=f"deer.r{s}{i}")
+            value=mean,
+            name=f"r{s}{i}",
+            lb=10.0,
+            ub=150.0,
+            bounds_on=True,
+            fixed=fixed,
+            label_text=f"r<sub>{i}</sub>[&#8491;]",
+            registry_id=f"deer.r{s}{i}",
+        )
         r_sigma = FittingParameter(
-            value=sigma, name=f"sig{s}{i}", lb=0.1, ub=50.0, bounds_on=True, fixed=fixed,
-            label_text=f"&sigma;<sub>{i}</sub>[&#8491;]", registry_id=f"deer.sig{s}{i}")
+            value=sigma,
+            name=f"sig{s}{i}",
+            lb=0.1,
+            ub=50.0,
+            bounds_on=True,
+            fixed=fixed,
+            label_text=f"&sigma;<sub>{i}</sub>[&#8491;]",
+            registry_id=f"deer.sig{s}{i}",
+        )
         amp = FittingParameter(
-            value=amplitude, name=f"a{s}{i}", lb=0.0, ub=1.0, bounds_on=True,
-            fixed=(i == 1), label_text=f"a<sub>{i}</sub>", registry_id=f"deer.a{s}{i}")
+            value=amplitude,
+            name=f"a{s}{i}",
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            fixed=(i == 1),
+            label_text=f"a<sub>{i}</sub>",
+            registry_id=f"deer.a{s}{i}",
+        )
         self._means.append(r_mean)
         self._sigmas.append(r_sigma)
         self._amps.append(amp)
@@ -159,11 +221,25 @@ class DeerRice(FittingParameterGroup):
         """Initialize the Rice-distribution group."""
         super().__init__(name=name, **kwargs)
         self._nu = FittingParameter(
-            value=35.0, name="nu", lb=10.0, ub=150.0, bounds_on=True, fixed=False,
-            label_text="&nu;[&#8491;]", registry_id="deer.nu")
+            value=35.0,
+            name="nu",
+            lb=10.0,
+            ub=150.0,
+            bounds_on=True,
+            fixed=False,
+            label_text="&nu;[&#8491;]",
+            registry_id="deer.nu",
+        )
         self._sigma = FittingParameter(
-            value=3.0, name="rice_sigma", lb=0.1, ub=50.0, bounds_on=True, fixed=False,
-            label_text="&sigma;[&#8491;]", registry_id="deer.rice_sigma")
+            value=3.0,
+            name="rice_sigma",
+            lb=0.1,
+            ub=50.0,
+            bounds_on=True,
+            fixed=False,
+            label_text="&sigma;[&#8491;]",
+            registry_id="deer.rice_sigma",
+        )
 
     nu = property(lambda s: float(s._nu.value))
     sigma = property(lambda s: float(abs(s._sigma.value)))
@@ -181,14 +257,35 @@ class DeerDistanceGrid(FittingParameterGroup):
         """Initialize the distance-grid settings group."""
         super().__init__(name=name, **kwargs)
         self._r_min = FittingParameter(
-            value=15.0, name="r_min", lb=5.0, ub=100.0, bounds_on=True, fixed=True,
-            label_text="r<sub>min</sub>[&#8491;]", registry_id="deer.r_min")
+            value=15.0,
+            name="r_min",
+            lb=5.0,
+            ub=100.0,
+            bounds_on=True,
+            fixed=True,
+            label_text="r<sub>min</sub>[&#8491;]",
+            registry_id="deer.r_min",
+        )
         self._r_max = FittingParameter(
-            value=0.0, name="r_max", lb=0.0, ub=300.0, bounds_on=True, fixed=True,
-            label_text="r<sub>max</sub>[&#8491;] (0=auto)", registry_id="deer.r_max")
+            value=0.0,
+            name="r_max",
+            lb=0.0,
+            ub=300.0,
+            bounds_on=True,
+            fixed=True,
+            label_text="r<sub>max</sub>[&#8491;] (0=auto)",
+            registry_id="deer.r_max",
+        )
         self._n = FittingParameter(
-            value=100.0, name="n_r", lb=16.0, ub=400.0, bounds_on=True, fixed=True,
-            label_text="n<sub>points</sub>", registry_id="deer.n_r")
+            value=100.0,
+            name="n_r",
+            lb=16.0,
+            ub=400.0,
+            bounds_on=True,
+            fixed=True,
+            label_text="n<sub>points</sub>",
+            registry_id="deer.n_r",
+        )
 
     r_min = property(lambda s: float(s._r_min.value))
     r_max = property(lambda s: float(s._r_max.value))
@@ -204,8 +301,15 @@ class DeerRegularization(FittingParameterGroup):
         #: Auto-selection criterion for ``alpha`` when it is left at 0.
         self.method = "gcv"  # 'gcv' or 'lcurve'
         self._alpha = FittingParameter(
-            value=0.0, name="alpha", lb=0.0, ub=1e2, bounds_on=True, fixed=True,
-            label_text="&alpha;", registry_id="deer.alpha")
+            value=0.0,
+            name="alpha",
+            lb=0.0,
+            ub=1e2,
+            bounds_on=True,
+            fixed=True,
+            label_text="&alpha;",
+            registry_id="deer.alpha",
+        )
 
     alpha = property(lambda s: float(s._alpha.value))
 
@@ -236,7 +340,7 @@ class _DeerModelBase(ModelCurve):
         v = getattr(data, "y", None)
         if v is not None and np.size(v) > 8:
             v = np.asarray(v, dtype=float)
-            plateau = float(np.median(v[int(0.75 * v.size):]))
+            plateau = float(np.median(v[int(0.75 * v.size) :]))
             self.modulation._lam.value = float(np.clip(1.0 - plateau, 0.05, 0.6))
 
     def _alpha_for_update(self, reg) -> float | None:
@@ -391,8 +495,9 @@ class _DeerModelBase(ModelCurve):
         rng = np.random.default_rng(seed)
 
         # Generate all replicas up-front so both paths share the same data.
-        replicas = [v_model + rng.normal(0.0, sigma, size=v_model.shape)
-                    for _ in range(int(n_boot))]
+        replicas = [
+            v_model + rng.normal(0.0, sigma, size=v_model.shape) for _ in range(int(n_boot))
+        ]
 
         reals: list[np.ndarray] = []
 
@@ -457,11 +562,11 @@ class _DeerModelBase(ModelCurve):
         ``graph_objective`` is attempted first and refused (DEER models are
         not parse models); the director path is the actual route used.
         """
-        return None       # overridden by Gaussian and Rice subclasses
+        return None  # overridden by Gaussian and Rice subclasses
 
     def _bootstrap_replica(self, band, v_b: np.ndarray):
         """Re-fit one replica using the pre-built *band* infrastructure."""
-        return None       # overridden by Gaussian and Rice subclasses
+        return None  # overridden by Gaussian and Rice subclasses
 
     def _get_kernel(self, t: np.ndarray, r: np.ndarray) -> np.ndarray:
         """Return a cached dipolar kernel for the current ``(t, r)`` axes."""
@@ -504,9 +609,18 @@ class DeerGaussianModel(_DeerModelBase):
         """Build the (multi-)Gaussian signal for the current parameters."""
         g, mo, bg = self.gaussians, self.modulation, self.background
         return _m.gaussian_signal(
-            t, r, g.means, g.sigmas, g.amplitudes,
-            mod_depth=mo.mod_depth, bg_model=bg.model, bg_k=bg.k, bg_d=bg.d,
-            scale=mo.scale, kernel=self._get_kernel(t, r))
+            t,
+            r,
+            g.means,
+            g.sigmas,
+            g.amplitudes,
+            mod_depth=mo.mod_depth,
+            bg_model=bg.model,
+            bg_k=bg.k,
+            bg_d=bg.d,
+            scale=mo.scale,
+            kernel=self._get_kernel(t, r),
+        )
 
     # -- C++ band bootstrap (PRD-132) ----------------------------------------
     def _bootstrap_band(self, replicas: list[np.ndarray]):
@@ -518,8 +632,10 @@ class DeerGaussianModel(_DeerModelBase):
         """
         try:
             from chisurf.core.fitting.minimizer import (
-                director_objective, _bff,
+                _bff,
+                director_objective,
             )
+
             if _bff is None:
                 return None
         except Exception:
@@ -541,8 +657,8 @@ class DeerGaussianModel(_DeerModelBase):
 
         def unpack(x):
             mm = x[:n]
-            ss = np.abs(x[n:2 * n])
-            aa = np.concatenate([[a0[0]], np.abs(x[2 * n:])]) if n > 1 else np.array([a0[0]])
+            ss = np.abs(x[n : 2 * n])
+            aa = np.concatenate([[a0[0]], np.abs(x[2 * n :])]) if n > 1 else np.array([a0[0]])
             return mm, ss, aa
 
         target_holder = [replicas[0].copy()]
@@ -551,8 +667,9 @@ class DeerGaussianModel(_DeerModelBase):
         def resid(x):
             mm, ss, aa = unpack(x)
             p = dd_gauss_multi(_r_ref, mm, ss, aa)
-            vm = deer_signal(_t_ref, _r_ref, p, mo.mod_depth,
-                             bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref)
+            vm = deer_signal(
+                _t_ref, _r_ref, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref
+            )
             return vm - target_holder[0]
 
         try:
@@ -576,7 +693,7 @@ class DeerGaussianModel(_DeerModelBase):
         """Re-fit one Gaussian replica using the pre-built C++ minimiser."""
         m = band["minimizer"]
         node = band["node"]
-        node.error = None            # clear any error from the previous run
+        node.error = None  # clear any error from the previous run
         band["target_holder"][0] = v_b
         m.set_initial_values([float(v) for v in band["x0"]])
         try:
@@ -603,17 +720,27 @@ class DeerRiceModel(_DeerModelBase):
         """Build the Rice-distribution signal for the current parameters."""
         rc, mo, bg = self.rice, self.modulation, self.background
         return _m.rice_signal(
-            t, r, rc.nu, rc.sigma,
-            mod_depth=mo.mod_depth, bg_model=bg.model, bg_k=bg.k, bg_d=bg.d,
-            scale=mo.scale, kernel=self._get_kernel(t, r))
+            t,
+            r,
+            rc.nu,
+            rc.sigma,
+            mod_depth=mo.mod_depth,
+            bg_model=bg.model,
+            bg_k=bg.k,
+            bg_d=bg.d,
+            scale=mo.scale,
+            kernel=self._get_kernel(t, r),
+        )
 
     # -- C++ band bootstrap (PRD-132) ----------------------------------------
     def _bootstrap_band(self, replicas: list[np.ndarray]):
         """Build one C++ :class:`Minimizer` for the whole Rice band."""
         try:
             from chisurf.core.fitting.minimizer import (
-                director_objective, _bff,
+                _bff,
+                director_objective,
             )
+
             if _bff is None:
                 return None
         except Exception:
@@ -635,8 +762,9 @@ class DeerRiceModel(_DeerModelBase):
 
         def resid(x):
             p = dd_rice(_r_ref, x[0], abs(x[1]))
-            vm = deer_signal(_t_ref, _r_ref, p, mo.mod_depth,
-                             bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref)
+            vm = deer_signal(
+                _t_ref, _r_ref, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref
+            )
             return vm - target_holder[0]
 
         try:
@@ -695,9 +823,18 @@ class DeerTikhonovModel(_DeerModelBase):
         mo, bg, reg = self.modulation, self.background, self.regularization
         manual = reg.alpha if reg.alpha and reg.alpha > 1e-6 else None
         v_model, p_r, alpha_used = _m.tikhonov_signal(
-            t, r, v_data, mod_depth=mo.mod_depth, bg_model=bg.model,
-            bg_k=bg.k, bg_d=bg.d, scale=mo.scale, alpha=manual,
-            method=getattr(reg, "method", "gcv"), kernel=self._get_kernel(t, r))
+            t,
+            r,
+            v_data,
+            mod_depth=mo.mod_depth,
+            bg_model=bg.model,
+            bg_k=bg.k,
+            bg_d=bg.d,
+            scale=mo.scale,
+            alpha=manual,
+            method=getattr(reg, "method", "gcv"),
+            kernel=self._get_kernel(t, r),
+        )
         self._alpha_used = alpha_used
         return v_model, p_r
 
@@ -709,8 +846,8 @@ class DeerTikhonovModel(_DeerModelBase):
         k_mat, r, f = ff
         alpha = self._alpha_used if self._alpha_used and self._alpha_used > 0 else None
         p, _ = _m.tikhonov_distance_distribution(
-            k_mat, r, f, alpha=alpha,
-            method=getattr(self.regularization, "method", "gcv"))
+            k_mat, r, f, alpha=alpha, method=getattr(self.regularization, "method", "gcv")
+        )
         return p
 
     def compute_lcurve(self) -> dict | None:
@@ -731,8 +868,13 @@ class DeerTikhonovModel(_DeerModelBase):
         A = k_mat * dr
         L = _t.second_derivative_operator(r.size)
         alphas, rho, eta = _t.lcurve(A, f, L)
-        return {"alphas": alphas, "rho": rho, "eta": eta,
-                "corner": discrete_lcurve_corner(rho, eta), "used": self._alpha_used}
+        return {
+            "alphas": alphas,
+            "rho": rho,
+            "eta": eta,
+            "corner": discrete_lcurve_corner(rho, eta),
+            "used": self._alpha_used,
+        }
 
 
 class DeerMaxEntModel(_DeerModelBase):
@@ -757,9 +899,18 @@ class DeerMaxEntModel(_DeerModelBase):
         """Invert ``P(r)`` by maximum entropy and rebuild the trace."""
         mo, bg, reg = self.modulation, self.background, self.regularization
         v_model, p_r, alpha_used = _m.maxent_signal(
-            t, r, v_data, mod_depth=mo.mod_depth, bg_model=bg.model,
-            bg_k=bg.k, bg_d=bg.d, scale=mo.scale, sigma=self._noise_level(),
-            alpha=self._alpha_for_update(reg), kernel=self._get_kernel(t, r))
+            t,
+            r,
+            v_data,
+            mod_depth=mo.mod_depth,
+            bg_model=bg.model,
+            bg_k=bg.k,
+            bg_d=bg.d,
+            scale=mo.scale,
+            sigma=self._noise_level(),
+            alpha=self._alpha_for_update(reg),
+            kernel=self._get_kernel(t, r),
+        )
         self._remember_alpha(reg, alpha_used)
         self._alpha_used = alpha_used
         return v_model, p_r
@@ -774,7 +925,8 @@ class DeerMaxEntModel(_DeerModelBase):
         k_mat, r, f = ff
         alpha = self._alpha_used if self._alpha_used and self._alpha_used > 0 else None
         p, _ = maxent_distance_distribution(
-            k_mat, r, f, sigma=self._noise_level(), alpha=alpha, n_iter=400)
+            k_mat, r, f, sigma=self._noise_level(), alpha=alpha, n_iter=400
+        )
         return p
 
     def compute_lcurve(self) -> dict | None:
@@ -786,7 +938,8 @@ class DeerMaxEntModel(_DeerModelBase):
             return None
         k_mat, r, f = ff
         _p, _a, info = maxent_distance_distribution(
-            k_mat, r, f, sigma=self._noise_level(), alpha=None, return_lcurve=True)
+            k_mat, r, f, sigma=self._noise_level(), alpha=None, return_lcurve=True
+        )
         if info is None:
             return None
         info["used"] = self._alpha_used

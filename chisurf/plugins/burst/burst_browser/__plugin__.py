@@ -1,6 +1,7 @@
 """Plugin entry point for Burst Browser.
 This allows loading via a plugin manager that imports ...burst_browser.__plugin__.
 """
+
 from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
 
 

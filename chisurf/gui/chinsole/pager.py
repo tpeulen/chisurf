@@ -32,9 +32,9 @@ class PagerWidget(QtWidgets.QWidget):
     closed = QtCore.Signal()
 
     def __init__(
-            self,
-            parent: QtWidgets.QWidget | None = None,
-            theme: ConsoleTheme | None = None,
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        theme: ConsoleTheme | None = None,
     ) -> None:
         super().__init__(parent)
         # A plain QWidget subclass ignores a stylesheet background unless this

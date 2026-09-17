@@ -25,7 +25,11 @@ import pytest
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -41,8 +45,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -288,12 +292,11 @@ def test_rms_reports_angstrom(session):
     cmd.do("copy mob, ref")
     ids = _ids(view)
     view.apply_transform_to_object(
-        np.eye(3), np.array([5.0 * view._scale_factor, 0.0, 0.0]),
+        np.eye(3),
+        np.array([5.0 * view._scale_factor, 0.0, 0.0]),
         object_id=ids["mob"],
     )
-    truth = float(
-        np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean())
-    )
+    truth = float(np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean()))
     assert truth == pytest.approx(5.0, abs=1e-6)
 
     cmd.do("rms mob, ref")
@@ -314,19 +317,13 @@ def test_align_sees_a_displacement_and_removes_it(session):
             [0.0, 0.0, 1.0],
         ]
     )
-    view.apply_transform_to_object(
-        rotation, np.array([250.0, -100.0, 50.0]), object_id=ids["mob"]
-    )
+    view.apply_transform_to_object(rotation, np.array([250.0, -100.0, 50.0]), object_id=ids["mob"])
 
-    before = float(
-        np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean())
-    )
+    before = float(np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean()))
     assert before > 1.0, "the copy should genuinely be displaced"
 
     cmd.do("align mob, ref")
-    after = float(
-        np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean())
-    )
+    after = float(np.sqrt(((_xyz(view, ids["ref"]) - _xyz(view, ids["mob"])) ** 2).sum(1).mean()))
     assert after < 1e-3
 
 
@@ -335,9 +332,7 @@ def test_rms_and_align_agree_after_aligning(session):
     cmd, view, messages, _ = session
     cmd.do("copy mob, ref")
     ids = _ids(view)
-    view.apply_transform_to_object(
-        np.eye(3), np.array([80.0, 0.0, 0.0]), object_id=ids["mob"]
-    )
+    view.apply_transform_to_object(np.eye(3), np.array([80.0, 0.0, 0.0]), object_id=ids["mob"])
     cmd.do("align mob, ref")
     cmd.do("rms mob, ref")
     assert float(messages[-1].split(":")[-1].split()[0]) == pytest.approx(0.0, abs=1e-3)
@@ -433,8 +428,8 @@ def test_a_transform_barely_changes_the_surface_area(session):
     cmd.do("get_area resn NAG")
     after = float(messages[-1].split()[1])
 
-    assert after == pytest.approx(before, rel=0.03)   # within the sampling error
-    assert after != before                            # ...and not bit-identical
+    assert after == pytest.approx(before, rel=0.03)  # within the sampling error
+    assert after != before  # ...and not bit-identical
 
 
 def test_a_pure_translation_leaves_the_area_exactly_alone(session):
@@ -466,6 +461,4 @@ def test_export_matches_the_atom_array_after_a_transform(session, tmp_path):
             if line.startswith(("ATOM", "HETATM"))
         ]
     )
-    assert np.allclose(
-        written, np.asarray(view._atoms["xyz"], dtype=float), atol=5e-4
-    )
+    assert np.allclose(written, np.asarray(view._atoms["xyz"], dtype=float), atol=5e-4)

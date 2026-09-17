@@ -21,18 +21,18 @@ def _new_engine_seed() -> int:
     streams, matching the "fresh draw" a caller expects from an unseeded
     call.
     """
-    return int(np.random.randint(0, 2 ** 31 - 1))
+    return int(np.random.randint(0, 2**31 - 1))
 
 
 def kappasq_dwt(
-        sD2: float,
-        sA2: float,
-        fret_efficiency: float,
-        n_samples: int = 10000,
-        n_bins: int = 31,
-        k2_min: float = 0.0,
-        k2_max: float = 4.0,
-        seed: typing.Optional[int] = None,
+    sD2: float,
+    sA2: float,
+    fret_efficiency: float,
+    n_samples: int = 10000,
+    n_bins: int = 31,
+    k2_min: float = 0.0,
+    k2_max: float = 4.0,
+    seed: typing.Optional[int] = None,
 ):
     """
     Diffusion with traps.
@@ -102,19 +102,19 @@ def kappasq_dwt(
         dtype=np.float64,
     )
     k2_scale = buf[:n_edges]
-    k2hist = buf[n_edges:n_edges + n_counts]
-    k2s = buf[n_edges + n_counts:n_edges + n_counts + n_samples]
+    k2hist = buf[n_edges : n_edges + n_counts]
+    k2s = buf[n_edges + n_counts : n_edges + n_counts + n_samples]
     return k2_scale, k2hist, k2s
 
 
 def kappasq_all_delta(
-        delta: float,
-        sD2: float,
-        sA2: float,
-        step: float = 0.25,
-        n_bins: int = 31,
-        k2_min: float = 0.0,
-        k2_max: float = 4.0
+    delta: float,
+    sD2: float,
+    sA2: float,
+    step: float = 0.25,
+    n_bins: int = 31,
+    k2_min: float = 0.0,
+    k2_max: float = 4.0,
 ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes an orientation factor distribution for a wobbling-in-a-cone model
@@ -188,13 +188,13 @@ def kappasq_all_delta(
 
 
 def kappasq_all(
-        sD2: float,
-        sA2: float,
-        n_bins: int = 81,
-        k2_min: float = 0.0,
-        k2_max: float = 4.0,
-        n_samples: int = 10000,
-        seed: typing.Optional[int] = None,
+    sD2: float,
+    sA2: float,
+    n_bins: int = 81,
+    k2_min: float = 0.0,
+    k2_max: float = 4.0,
+    n_samples: int = 10000,
+    seed: typing.Optional[int] = None,
 ) -> typing.Tuple[np.array, np.array, np.array]:
     """
     Computes an orientation factor distribution for a wobbling-in-a-cone model
@@ -273,10 +273,7 @@ def kappasq_all(
 
 
 def kappa_distance(
-        d1: np.array,
-        d2: np.array,
-        a1: np.array,
-        a2: np.array
+    d1: np.array, d2: np.array, a1: np.array, a2: np.array
 ) -> typing.Tuple[float, float]:
     """
     Calculates the distance between the centers of two dipoles and the
@@ -333,10 +330,7 @@ def kappa_distance(
     return d, k
 
 
-def kappa(
-        donor_dipole: np.ndarray,
-        acceptor_dipole: np.ndarray
-) -> typing.Tuple[float, float]:
+def kappa(donor_dipole: np.ndarray, acceptor_dipole: np.ndarray) -> typing.Tuple[float, float]:
     """
     Calculates the orientation factor kappa based on donor and acceptor dipoles.
 
@@ -364,17 +358,11 @@ def kappa(
     >>> round(k, 5)
     1.0
     """
-    return kappa_distance(
-        donor_dipole[0], donor_dipole[1],
-        acceptor_dipole[0], acceptor_dipole[1]
-    )
+    return kappa_distance(donor_dipole[0], donor_dipole[1], acceptor_dipole[0], acceptor_dipole[1])
 
 
 def s2delta(
-        s2_donor: float,
-        s2_acceptor: float,
-        r_inf_AD: float,
-        r_0: float = 0.38
+    s2_donor: float, s2_acceptor: float, r_inf_AD: float, r_0: float = 0.38
 ) -> typing.Tuple[float, float]:
     """
     Calculate s2delta from the residual anisotropies of the donor and acceptor.
@@ -420,11 +408,7 @@ def s2delta(
 
 
 def calculate_kappa_distance(
-        xyz: np.array,
-        aid1: int,
-        aid2: int,
-        aia1: int,
-        aia2: int
+    xyz: np.array, aid1: int, aid2: int, aia1: int, aia2: int
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the dipole center distance and the orientation factor kappa
@@ -480,10 +464,9 @@ def calculate_kappa_distance(
             # replaced -- returns as nan rather than raising. Testing the
             # result is what the caller actually means, and it does not
             # depend on which layer does the arithmetic.
-            with np.errstate(invalid='ignore', divide='ignore'):
+            with np.errstate(invalid="ignore", divide="ignore"):
                 d, k = kappa_distance(
-                    xyz[i_frame, aid1], xyz[i_frame, aid2],
-                    xyz[i_frame, aia1], xyz[i_frame, aia2]
+                    xyz[i_frame, aid1], xyz[i_frame, aid2], xyz[i_frame, aia1], xyz[i_frame, aia2]
                 )
             if not (np.isfinite(d) and np.isfinite(k)):
                 raise ValueError("degenerate dipole")
@@ -494,13 +477,7 @@ def calculate_kappa_distance(
     return ds, ks
 
 
-def kappasq(
-        delta: float,
-        sD2: float,
-        sA2: float,
-        beta1: float,
-        beta2: float
-) -> float:
+def kappasq(delta: float, sD2: float, sA2: float, beta1: float, beta2: float) -> float:
     """
     Calculates kappa² given a set of order parameters and angles.
 
@@ -549,10 +526,7 @@ def kappasq(
     return float(_f(delta, sD2, sA2, beta1, beta2))
 
 
-def p_isotropic_orientation_factor(
-        k2: np.ndarray,
-        normalize: bool = True
-) -> np.ndarray:
+def p_isotropic_orientation_factor(k2: np.ndarray, normalize: bool = True) -> np.ndarray:
     """
     Calculates the probability distribution of kappa² for isotropically oriented dipoles.
 

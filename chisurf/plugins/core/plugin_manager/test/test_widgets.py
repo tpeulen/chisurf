@@ -44,12 +44,14 @@ def _record(**overrides):
 
 def test_rows_carry_the_dependency_graph_in_both_directions():
     """The reverse index is the point: who breaks if this is switched off."""
-    rows = collect_rows([
-        _record(manifest_id="lib", plugin_name="Lib"),
-        _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
-        _record(manifest_id="b", plugin_name="B", requires={"lib": "*"}),
-        _record(manifest_id="c", plugin_name="C", optional_requires={"lib": "*"}),
-    ])
+    rows = collect_rows(
+        [
+            _record(manifest_id="lib", plugin_name="Lib"),
+            _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
+            _record(manifest_id="b", plugin_name="B", requires={"lib": "*"}),
+            _record(manifest_id="c", plugin_name="C", optional_requires={"lib": "*"}),
+        ]
+    )
     by_id = {row.plugin_id: row for row in rows}
     assert by_id["lib"].required_by == ["a", "b"]
     assert by_id["lib"].optional_for == ["c"]
@@ -58,11 +60,13 @@ def test_rows_carry_the_dependency_graph_in_both_directions():
 
 def test_disabling_reports_exactly_what_breaks():
     """An optional dependant is not broken by disabling; a hard one is."""
-    rows = collect_rows([
-        _record(manifest_id="lib", plugin_name="Lib"),
-        _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
-        _record(manifest_id="c", plugin_name="C", optional_requires={"lib": "*"}),
-    ])
+    rows = collect_rows(
+        [
+            _record(manifest_id="lib", plugin_name="Lib"),
+            _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
+            _record(manifest_id="c", plugin_name="C", optional_requires={"lib": "*"}),
+        ]
+    )
     lib = next(r for r in rows if r.plugin_id == "lib")
     assert lib.blocking_dependants(disabled=[]) == ["a"]
     # A dependant that is itself off cannot break.
@@ -84,16 +88,20 @@ def test_a_disabled_plugin_is_matched_by_its_legacy_display_name():
 
 
 def test_status_names_what_a_plugin_is():
-    rows = collect_rows([
-        _record(manifest_id="lib", library=True),
-        _record(manifest_id="cli", cli_only=True),
-        _record(manifest_id="exp", experimental=True),
-        _record(manifest_id="dep", deprecated=True),
-    ])
+    rows = collect_rows(
+        [
+            _record(manifest_id="lib", library=True),
+            _record(manifest_id="cli", cli_only=True),
+            _record(manifest_id="exp", experimental=True),
+            _record(manifest_id="dep", deprecated=True),
+        ]
+    )
     status = {row.plugin_id: row.status_text() for row in rows}
     assert status == {
-        "lib": "library", "cli": "cli only",
-        "exp": "experimental", "dep": "deprecated",
+        "lib": "library",
+        "cli": "cli only",
+        "exp": "experimental",
+        "dep": "deprecated",
     }
 
 
@@ -248,10 +256,13 @@ def test_view_model_hides_disabled_plugins_when_asked():
     from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
     model = PluginManagerViewModel(settings_block={"disabled_plugins": []})
-    model._rows = collect_rows([
-        _record(manifest_id="on", plugin_name="On"),
-        _record(manifest_id="off", plugin_name="Off"),
-    ], disabled=["off"])
+    model._rows = collect_rows(
+        [
+            _record(manifest_id="on", plugin_name="On"),
+            _record(manifest_id="off", plugin_name="Off"),
+        ],
+        disabled=["off"],
+    )
 
     model.show_disabled = False
     assert [r.plugin_id for r in model.visible_rows()] == ["on"]
@@ -263,10 +274,12 @@ def test_view_model_details_name_the_dependants():
     from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
     model = PluginManagerViewModel(settings_block={})
-    model._rows = collect_rows([
-        _record(manifest_id="lib", plugin_name="Lib"),
-        _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
-    ])
+    model._rows = collect_rows(
+        [
+            _record(manifest_id="lib", plugin_name="Lib"),
+            _record(manifest_id="a", plugin_name="A", requires={"lib": "*"}),
+        ]
+    )
     model.select_row({"id": "lib"})
     text = model.details_text()
     assert "Required by" in text and "`a`" in text
@@ -382,7 +395,9 @@ def test_every_bound_attribute_exists_on_the_model():
 
     for section in spec["sections"]:
         walk(section)
-    assert not missing, "view spec binds to attributes the model does not have:\n  " + "\n  ".join(missing)
+    assert not missing, "view spec binds to attributes the model does not have:\n  " + "\n  ".join(
+        missing
+    )
 
 
 def test_plugin_manager_widget_creation(qapp, qtbot):

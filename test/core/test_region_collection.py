@@ -42,7 +42,7 @@ def test_a_union_covers_both_regions_and_not_the_gap():
 
 
 def test_an_intersection_of_disjoint_regions_selects_nothing():
-    """"and" is the default because stacked gates narrow; here that means empty."""
+    """ "and" is the default because stacked gates narrow; here that means empty."""
     assert _hits(_collection("and"), LEFT, RIGHT, MIDDLE) == [False, False, False]
 
 
@@ -84,7 +84,7 @@ def test_nothing_enabled_is_not_the_same_as_no_restriction():
 
 
 def test_the_exclusion_mask_is_the_complement_of_containment():
-    """ndX's convention, named rather than remembered."""
+    """NdX's convention, named rather than remembered."""
     c = _collection("or")
     points = np.array([LEFT, MIDDLE])
     assert c.excluded(points).tolist() == [False, True]
@@ -129,7 +129,7 @@ def test_removing_reports_whether_it_was_there():
 
 # --- serialisation ------------------------------------------------------------
 def test_a_round_trip_keeps_geometry_flags_and_order():
-    """ndX's loader kept only rectangles; every shape and flag must survive."""
+    """NdX's loader kept only rectangles; every shape and flag must survive."""
     c = RegionCollection(combine="xor", name="gate")
     c.add(RectangleROI(0, 0, 10, 10, name="rect"))
     c.add(EllipseROI(20.0, 20.0, 5.0, 3.0, name="ellipse"), enabled=False)
@@ -170,7 +170,7 @@ def test_a_plain_regions_file_loads_as_a_union(tmp_path):
 
 def test_a_label_image_loads_as_one_entry_per_object(tmp_path):
     """A segmentation is many regions, not one merged blob."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     labels = np.zeros((16, 16), dtype=np.uint16)
     labels[2:5, 2:5] = 1

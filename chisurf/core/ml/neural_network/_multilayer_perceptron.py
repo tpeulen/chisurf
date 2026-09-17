@@ -10,8 +10,6 @@ scikit-learn attribute names that ``SurrogateModel.to_json`` depends on.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from ..base import BaseEstimator
@@ -84,7 +82,7 @@ class MLPRegressor(BaseEstimator):
         activation: str = "relu",
         solver: str = "adam",
         max_iter: int = 200,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         early_stopping: bool = False,
         learning_rate_init: float = 1e-3,
         n_iter_no_change: int = 10,
@@ -112,10 +110,21 @@ class MLPRegressor(BaseEstimator):
         self.verbose = verbose
         self.tol = tol
         self._constructor_params = {
-            "hidden_layer_sizes", "activation", "solver", "max_iter",
-            "random_state", "early_stopping", "learning_rate_init",
-            "n_iter_no_change", "validation_fraction", "learning_rate",
-            "power_t", "shuffle", "batch_size", "verbose", "tol",
+            "hidden_layer_sizes",
+            "activation",
+            "solver",
+            "max_iter",
+            "random_state",
+            "early_stopping",
+            "learning_rate_init",
+            "n_iter_no_change",
+            "validation_fraction",
+            "learning_rate",
+            "power_t",
+            "shuffle",
+            "batch_size",
+            "verbose",
+            "tol",
         }
 
     # ------------------------------------------------------------------ fit --

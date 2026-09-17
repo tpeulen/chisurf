@@ -1,46 +1,38 @@
 from __future__ import annotations
-from chisurf import typing
 
-import time
 import re
+import time
+
 import numpy as np
-from qtpy import QtWidgets, QtCore
-from chisurf.gui import chiplot as cp
-from chisurf.gui.widgets.dock_area.dock_area import DockArea
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
-import chisurf.gui.decorators
-import chisurf.core.settings
 import chisurf.core.fitting
-import chisurf.core.parameter
-import chisurf.core.support.decorators
 import chisurf.core.models
+import chisurf.core.parameter
+import chisurf.core.settings
+import chisurf.core.support.decorators
+import chisurf.gui.decorators
+from chisurf import typing
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
-plot_settings = cs.core.settings.gui['plot']
-colors = plot_settings['colors']
+plot_settings = cs.core.settings.gui["plot"]
+colors = plot_settings["colors"]
 color_scheme = cs.core.settings.colors
-lw = plot_settings['line_width']
+lw = plot_settings["line_width"]
 
 OVERLAY_PEN = cp.to_pen((255, 128, 0), width=1.5, style="dash")
 CROSSING_PEN = cp.to_pen((0, 180, 0), width=1.5, style="dash_dot")
 P_VALUE_LEVELS = (0.68, 0.95, 0.99)
 
 
-class ParameterScanWidget(
-    QtWidgets.QWidget
-):
-
-    @cs.gui.decorators.init_with_ui(
-        ui_filename="parameter_scan.ui"
-    )
+class ParameterScanWidget(QtWidgets.QWidget):
+    @cs.gui.decorators.init_with_ui(ui_filename="parameter_scan.ui")
     def __init__(
-            self,
-            model: cs.core.models.Model = None,
-            parent: QtWidgets.QWidget = None,
-            *args,
-            **kwargs
+        self, model: cs.core.models.Model = None, parent: QtWidgets.QWidget = None, *args, **kwargs
     ):
 
         self.model = model
@@ -215,7 +207,7 @@ class ParameterScanWidget(
                 p_value=max(p_value_levels),
                 max_points_per_side=max_points,
             )
-            result['confidence_intervals'] = (
+            result["confidence_intervals"] = (
                 cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
                     result,
                     p_values=p_value_levels,
@@ -244,26 +236,15 @@ class ParameterScanWidget(
             return parameter_dict.get(name)
 
 
-class ParameterScanPlot(
-    plotbase.Plot
-):
-
+class ParameterScanPlot(plotbase.Plot):
     name = "Parameter scan"
 
-    def __init__(
-            self,
-            fit: cs.core.fitting.fit.FitGroup,
-            *args,
-            **kwargs
-    ):
-        super(ParameterScanPlot, self).__init__(fit)
+    def __init__(self, fit: cs.core.fitting.fit.FitGroup, *args, **kwargs):
+        super().__init__(fit)
 
         self.data_x, self.data_y = None, None
 
-        self.plot_controller = ParameterScanWidget(
-           model=fit.model,
-           parent=self
-        )
+        self.plot_controller = ParameterScanWidget(model=fit.model, parent=self)
 
         area = DockArea()
         self.layout.addWidget(area)
@@ -275,9 +256,11 @@ class ParameterScanPlot(
 
         self.distribution_plot = p2
         self.distribution_curve = p2.line(
-            [0.0], [0.0],
-            pen=colors['data'], width=lw,
-            name='Data',
+            [0.0],
+            [0.0],
+            pen=colors["data"],
+            width=lw,
+            name="Data",
         )
 
         self._overlay_items = []
@@ -305,8 +288,8 @@ class ParameterScanPlot(
         str
             Label for the horizontal threshold line.
         """
-        p_value = float(interval.get('p_value', 0.0))
-        lower, upper = interval.get('crossings', (None, None))
+        p_value = float(interval.get("p_value", 0.0))
+        lower, upper = interval.get("crossings", (None, None))
         if lower is None or upper is None:
             return f"p={p_value:.2f}"
         return f"p={p_value:.2f} [{lower:.4g}, {upper:.4g}]"
@@ -336,17 +319,19 @@ class ParameterScanPlot(
 
             # Draw overlays from smart-scan result
             self._clear_overlays()
-            result = getattr(p, 'scan_result', None)
+            result = getattr(p, "scan_result", None)
             if result is not None:
-                intervals = result.get('confidence_intervals')
+                intervals = result.get("confidence_intervals")
                 if not intervals:
-                    intervals = [{
-                        'p_value': result.get('p_value', 0.99),
-                        'threshold': result.get('threshold'),
-                        'crossings': result.get('crossings', (None, None)),
-                    }]
+                    intervals = [
+                        {
+                            "p_value": result.get("p_value", 0.99),
+                            "threshold": result.get("threshold"),
+                            "crossings": result.get("crossings", (None, None)),
+                        }
+                    ]
                 for interval in intervals:
-                    threshold = interval.get('threshold')
+                    threshold = interval.get("threshold")
                     if threshold is None:
                         continue
                     thr_line = self.distribution_plot.hline(
@@ -356,13 +341,13 @@ class ParameterScanPlot(
                     )
                     self._add_overlay(thr_line)
 
-                    crossings = interval.get('crossings', (None, None))
+                    crossings = interval.get("crossings", (None, None))
                     for cr in crossings:
                         if cr is not None:
                             vline = self.distribution_plot.vline(
                                 cr,
                                 pen=CROSSING_PEN,
-                                label='{:.4g}'.format(cr),
+                                label=f"{cr:.4g}",
                             )
                             self._add_overlay(vline)
         except Exception as e:

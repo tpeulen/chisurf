@@ -64,7 +64,7 @@ def _file_md5(path: str) -> str:
     return digest.hexdigest()
 
 
-def active_mmfdb_connection() -> "MMFDBClientBase | None":
+def active_mmfdb_connection() -> MMFDBClientBase | None:
     """Open the configured MMFDB for a GUI composition root.
 
     This compatibility-named helper never reads the result registry's process
@@ -86,7 +86,7 @@ class MicrotimeShiftMMFDBPipeline:
     def __init__(
         self,
         db: MMFDBClientBase | None = None,
-        session: "SessionContext | None" = None,
+        session: SessionContext | None = None,
     ):
         """Create a shift registration pipeline.
 
@@ -222,9 +222,7 @@ class MicrotimeShiftMMFDBPipeline:
             norm_path = str(Path(input_file).resolve())
             raw_id, is_new = self._lookup_or_register_raw(norm_path, request)
             if not raw_id:
-                registration.warnings.append(
-                    f"MMFDB registration skipped for input {norm_path}."
-                )
+                registration.warnings.append(f"MMFDB registration skipped for input {norm_path}.")
                 continue
             registration.input_artifacts[norm_path] = raw_id
 
@@ -261,8 +259,7 @@ class MicrotimeShiftMMFDBPipeline:
                         "input_file": norm_path,
                         "global_shift": applied.get("global_shift", 0),
                         "channel_shifts": {
-                            str(k): v
-                            for k, v in applied.get("channel_shifts", {}).items()
+                            str(k): v for k, v in applied.get("channel_shifts", {}).items()
                         },
                     },
                     data_format=Path(shifted_path).suffix.lstrip(".") or "tttr",
@@ -278,9 +275,7 @@ class MicrotimeShiftMMFDBPipeline:
                         f"MMFDB did not register shifted output for {norm_path}."
                     )
             except Exception as exc:
-                registration.warnings.append(
-                    f"MMFDB registration error for {norm_path}: {exc}"
-                )
+                registration.warnings.append(f"MMFDB registration error for {norm_path}: {exc}")
 
         return registration
 

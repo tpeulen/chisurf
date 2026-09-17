@@ -19,7 +19,6 @@ from __future__ import annotations
 import time
 
 import pytest
-
 from chimol.core.services import compute_dispatch
 
 
@@ -87,9 +86,9 @@ def test_the_worker_lands_on_the_ui_thread_at_poll():
         thread_of_job.append(threading.get_ident())
         return 41
 
-    compute_dispatch.dispatch("k", _job, lambda result: applied_on.append(
-        (threading.get_ident(), result)
-    ))
+    compute_dispatch.dispatch(
+        "k", _job, lambda result: applied_on.append((threading.get_ident(), result))
+    )
     deadline = time.time() + 2.0
     while not applied_on and time.time() < deadline:
         compute_dispatch.poll()
@@ -98,9 +97,7 @@ def test_the_worker_lands_on_the_ui_thread_at_poll():
     assert applied_on, "the job never landed"
     job_thread, _ = thread_of_job[0], applied_on[0]
     assert job_thread != threading.get_ident(), "the job ran on the UI thread"
-    assert applied_on[0][0] == threading.get_ident(), (
-        "the apply did not run on the UI thread"
-    )
+    assert applied_on[0][0] == threading.get_ident(), "the apply did not run on the UI thread"
     assert applied_on[0][1] == 41
 
 
@@ -108,9 +105,8 @@ def test_the_worker_lands_on_the_ui_thread_at_poll():
 def driven_window():
     """A window with one dye and the density panel open, driven headlessly."""
     pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
@@ -141,7 +137,11 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not pdb.is_file():
         pytest.skip("missing 148l fixture")
@@ -158,13 +158,26 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
     class _Quiet:
         CHAR_W = 7.0
 
-        def fill_rect(self, *a, **k): pass
-        def stroke_rect(self, *a, **k): pass
-        def text(self, *a, **k): pass
-        def push_clip(self, *a, **k): pass
-        def pop_clip(self, *a, **k): pass
-        def text_width(self, s): return len(str(s)) * self.CHAR_W
-        def line_height(self): return 16.0
+        def fill_rect(self, *a, **k):
+            pass
+
+        def stroke_rect(self, *a, **k):
+            pass
+
+        def text(self, *a, **k):
+            pass
+
+        def push_clip(self, *a, **k):
+            pass
+
+        def pop_clip(self, *a, **k):
+            pass
+
+        def text_width(self, s):
+            return len(str(s)) * self.CHAR_W
+
+        def line_height(self):
+            return 16.0
 
     panel.draw(_Quiet(), rect)
     oid = panel._row_boxes[0][1]

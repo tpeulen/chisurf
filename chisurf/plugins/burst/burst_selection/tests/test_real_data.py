@@ -6,12 +6,10 @@ import json
 from pathlib import Path
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, numeric_column, row_count, store_from_rows
-import pandas as pd
 import pytest
 from click.testing import CliRunner
 
+from chisurf.core.datastore import column_names, row_count, store_from_rows
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe
 from chisurf.plugins.burst.burst_selection.api.io import load_tttr
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -66,7 +64,6 @@ def bur_file(tmp_path: Path) -> Path:
     return Path(result.output_paths["bur"])
 
 
-
 def assert_tables_equal(left, right):
     """Compare two column-addressable tables, column for column.
 
@@ -80,8 +77,9 @@ def assert_tables_equal(left, right):
     for name in column_names(left):
         a, b = np.asarray(left[name]), np.asarray(right[name])
         if a.dtype.kind in "fiu" and b.dtype.kind in "fiu":
-            np.testing.assert_allclose(a.astype(float), b.astype(float),
-                                       equal_nan=True, err_msg=name)
+            np.testing.assert_allclose(
+                a.astype(float), b.astype(float), equal_nan=True, err_msg=name
+            )
         else:
             assert list(a) == list(b), name
 

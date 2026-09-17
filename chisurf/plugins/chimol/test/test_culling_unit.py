@@ -5,12 +5,11 @@ and need no GPU, so they are built on a renderer instance created without
 its (adapter-touching) constructor. The trick is the same one the probe uses:
 prove the *decision* is right, which is where a wrong cull would hide.
 """
-import numpy as np
-import pytest
 
+import numpy as np
+from chimol.core.camera.view_state import pack_view_state
 from chimol.render.pack import PackedGeometry
 from chimol.render.wgpu_backend import WgpuMeshRenderer
-from chimol.core.camera.view_state import pack_view_state
 
 
 def _renderer():
@@ -27,8 +26,8 @@ def _view():
     # use the engine's own projection/view helpers via a real render for the matrix
     # is overkill; instead build a perspective matrix pointing +z at origin.
     import chimol.render.wgpu_backend as W
-    from chimol.render.depth_cue import fog_planes
     from chimol.core.camera.view_state import unpack_view_state
+
     state = unpack_view_state(list(vp))
     view = W.view_matrix(state.rotation, state.target, state.distance, state.shift)
     proj = W.perspective(state.fov, 1.0, max(state.near, 1e-3), state.far)

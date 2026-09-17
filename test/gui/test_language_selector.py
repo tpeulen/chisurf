@@ -78,8 +78,12 @@ def test_language_selector_widget_populates_and_applies(qapp, monkeypatch):
     from chisurf.gui.widgets.language_selector import LanguageSelector
 
     persisted, applied = {}, {}
-    monkeypatch.setattr(settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True)
-    monkeypatch.setattr(gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c)
+    monkeypatch.setattr(
+        settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True
+    )
+    monkeypatch.setattr(
+        gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c
+    )
 
     sel = LanguageSelector()
     codes = {sel.combo.itemData(i) for i in range(sel.combo.count())}
@@ -108,8 +112,12 @@ def test_language_flag_switcher_uk_english_and_applies(qapp, monkeypatch):
     assert gi18n.language_flag("xx") == "🌐"  # unknown → globe
 
     persisted, applied = {}, {}
-    monkeypatch.setattr(settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True)
-    monkeypatch.setattr(gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c)
+    monkeypatch.setattr(
+        settings_utils, "set_language", lambda c: persisted.setdefault("code", c) or True
+    )
+    monkeypatch.setattr(
+        gi18n, "apply_language", lambda c, app=None: applied.setdefault("code", c) or c
+    )
 
     sw = LanguageFlagSwitcher()
     entries = {a.data(): a.text() for a in sw._menu.actions()}
@@ -227,12 +235,16 @@ def test_pick_language_stores_code_persists_and_applies(qapp, monkeypatch):
 
     # Do not mutate the real user settings file — capture the persisted code.
     persisted = {}
-    monkeypatch.setattr(settings_utils, "set_language", lambda code: persisted.setdefault("code", code) or True)
+    monkeypatch.setattr(
+        settings_utils, "set_language", lambda code: persisted.setdefault("code", code) or True
+    )
 
     applied = {}
     from chisurf.gui import i18n as gi18n
 
-    monkeypatch.setattr(gi18n, "apply_language", lambda code, app=None: applied.setdefault("code", code) or code)
+    monkeypatch.setattr(
+        gi18n, "apply_language", lambda code, app=None: applied.setdefault("code", code) or code
+    )
 
     src = pathlib.Path(cs.__file__).parent / "core" / "settings" / "settings_chisurf.yaml"
     tmp = pathlib.Path(tempfile.mkdtemp()) / "settings_chisurf.yaml"

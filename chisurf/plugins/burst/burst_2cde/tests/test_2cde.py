@@ -19,7 +19,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 import tttrlib
 
 from chisurf.core.datastore import column_names
@@ -44,7 +43,8 @@ def _build(chan_per_burst, gap=1_000_000):
         np.zeros(len(macro), dtype=np.uint16),
         np.asarray(chan, dtype=np.int8),
         np.zeros(len(macro), dtype=np.int8),
-        False, 0,
+        False,
+        0,
     )
     d.header.set_macro_time_resolution(1.0)  # tau in "seconds" == ticks
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
@@ -78,17 +78,22 @@ def test_the_kernel_setting_changes_the_answer(variant):
     got = {}
     for kernel in ("laplace", "gaussian"):
         out = core.compute_2cde(
-            df.copy(), tttrs, donor_micro_time_ranges=[],
-            acceptor_micro_time_ranges=[], tau=30.0, kernel=kernel,
-            variant=variant, **channels,
+            df.copy(),
+            tttrs,
+            donor_micro_time_ranges=[],
+            acceptor_micro_time_ranges=[],
+            tau=30.0,
+            kernel=kernel,
+            variant=variant,
+            **channels,
         )
         got[kernel] = np.asarray(out[column], dtype=float)
 
     finite = np.isfinite(got["laplace"]) & np.isfinite(got["gaussian"])
     assert finite.sum() > 5, "not enough finite bursts to compare"
-    assert not np.allclose(
-        got["laplace"][finite], got["gaussian"][finite], rtol=1e-6, atol=1e-6
-    ), f"{variant}: the two kernels gave the same answer -- kernel is being ignored"
+    assert not np.allclose(got["laplace"][finite], got["gaussian"][finite], rtol=1e-6, atol=1e-6), (
+        f"{variant}: the two kernels gave the same answer -- kernel is being ignored"
+    )
 
 
 def test_the_engine_is_required():
@@ -100,9 +105,14 @@ def test_the_engine_is_required():
     tttrs, df, _, _ = _build([(np.random.random(50) < 0.5).astype(int)])
     with pytest.raises(RuntimeError, match="TwoCDE"):
         core.compute_2cde(
-            df, tttrs, donor_channels=[0], acceptor_channels=[1],
-            donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-            tau=30.0, variant="fret",
+            df,
+            tttrs,
+            donor_channels=[0],
+            acceptor_channels=[1],
+            donor_micro_time_ranges=[],
+            acceptor_micro_time_ranges=[],
+            tau=30.0,
+            variant="fret",
         )
 
 
@@ -112,9 +122,14 @@ def test_static_bursts_near_ten():
     static = [(rng.random(400) < 0.5).astype(int) for _ in range(30)]
     tttrs, df, _, _ = _build(static)
     out = core.compute_2cde(
-        df, tttrs, donor_channels=[0], acceptor_channels=[1],
-        donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-        tau=40.0, variant="fret",
+        df,
+        tttrs,
+        donor_channels=[0],
+        acceptor_channels=[1],
+        donor_micro_time_ranges=[],
+        acceptor_micro_time_ranges=[],
+        tau=40.0,
+        variant="fret",
     )
     assert abs(np.nanmean(out[core.COLUMN_FRET_2CDE]) - 10.0) < 3.0
 
@@ -126,9 +141,14 @@ def test_result_dataclass_and_plot(tmp_path):
     bursts = [(rng.random(200) < p).astype(int) for p in rng.uniform(0.2, 0.8, 20)]
     tttrs, df, _, _ = _build(bursts)
     out = core.compute_2cde(
-        df, tttrs, donor_channels=[0], acceptor_channels=[1],
-        donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-        tau=30.0, variant="fret",
+        df,
+        tttrs,
+        donor_channels=[0],
+        acceptor_channels=[1],
+        donor_micro_time_ranges=[],
+        acceptor_micro_time_ranges=[],
+        tau=30.0,
+        variant="fret",
     )
     res = TwoCde(table=out, variant="fret")
     assert res.column == "FRET-2CDE"
@@ -173,9 +193,14 @@ def test_write_sidecars(tmp_path):
     bursts = [(rng.random(150) < 0.5).astype(int) for _ in range(5)]
     tttrs, df, _, _ = _build(bursts)
     out = core.compute_2cde(
-        df, tttrs, donor_channels=[0], acceptor_channels=[1],
-        donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-        tau=30.0, variant="fret",
+        df,
+        tttrs,
+        donor_channels=[0],
+        acceptor_channels=[1],
+        donor_micro_time_ranges=[],
+        acceptor_micro_time_ranges=[],
+        tau=30.0,
+        variant="fret",
     )
     core.write_2cde_analysis(out, str(tmp_path), variant="fret")
     files = list((tmp_path / "2c4").glob("*.2c4"))

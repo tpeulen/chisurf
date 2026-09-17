@@ -167,8 +167,7 @@ def _require_lattice():
         import tttrlib
     except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
         raise RuntimeError(
-            "the hidden-Markov lattice is provided by tttrlib, which could not "
-            "be imported"
+            "the hidden-Markov lattice is provided by tttrlib, which could not be imported"
         ) from exc
     try:
         return (
@@ -249,9 +248,7 @@ def _backward_posteriors_xi(
     all.
     """
     _, _, backward_posteriors_xi, _, _ = _require_lattice()
-    backward_posteriors_xi(
-        log_transmat, log_frameprob, fwd, float(log_prob), posteriors, xi_sum
-    )
+    backward_posteriors_xi(log_transmat, log_frameprob, fwd, float(log_prob), posteriors, xi_sum)
 
 
 def _viterbi(
@@ -314,16 +311,13 @@ def _split_sequences(X: np.ndarray, lengths: Sequence[int] | None) -> Iterator[n
 #: the mixture estimators and the HMM share one implementation.
 from chisurf.core.ml._gaussian import _log_gaussian_density  # noqa: E402
 
-
 #: k-means++ seeding / Lloyd / the ``_kmeans`` driver -- moved to
 #: :mod:`chisurf.core.ml.cluster` so the HMM and the KMeans estimator share one
 #: implementation.
 from chisurf.core.ml.cluster import _kmeans  # noqa: E402
 
 
-def _project_simplexes(
-    theta: np.ndarray, reference: np.ndarray, n_components: int
-) -> np.ndarray:
+def _project_simplexes(theta: np.ndarray, reference: np.ndarray, n_components: int) -> np.ndarray:
     """Return ``theta`` with its probability blocks projected back onto the simplex.
 
     Clipping alone would turn an overshot probability into a hard zero, and a
@@ -477,8 +471,7 @@ class ConvergenceMonitor:
     def converged(self) -> bool:
         """Whether the iteration limit or the tolerance has been reached."""
         return self.iter == self.n_iter or (
-            len(self.history) == 2
-            and self._gain(self.history[1], self.history[0]) < self.tol
+            len(self.history) == 2 and self._gain(self.history[1], self.history[0]) < self.tol
         )
 
 
@@ -853,9 +846,7 @@ class GaussianHMM:
         self.transmat_ = theta[nc : nc + nc * nc].reshape(nc, nc).copy()
         offset = nc + nc * nc
         self.means_ = theta[offset : offset + nc * nf].reshape(nc, nf).copy()
-        self.covars_ = _covars_from_free(
-            theta[offset + nc * nf :], self.covariance_type, nc, nf
-        )
+        self.covars_ = _covars_from_free(theta[offset + nc * nf :], self.covariance_type, nc, nf)
 
     def score(self, X: np.ndarray, lengths: Sequence[int] | None = None) -> float:
         r"""Return the log-likelihood of ``X`` under the model.
@@ -877,9 +868,7 @@ class GaussianHMM:
         for sequence in _split_sequences(X, lengths):
             log_frameprob = self._compute_log_likelihood(sequence)
             fwd = np.empty_like(log_frameprob)
-            log_prob += _forward_log(
-                self._log_startprob, self._log_transmat, log_frameprob, fwd
-            )
+            log_prob += _forward_log(self._log_startprob, self._log_transmat, log_frameprob, fwd)
         return log_prob
 
     def score_samples(
@@ -910,9 +899,7 @@ class GaussianHMM:
             posteriors.append(sub_posteriors)
         return log_prob, np.concatenate(posteriors)
 
-    def predict_proba(
-        self, X: np.ndarray, lengths: Sequence[int] | None = None
-    ) -> np.ndarray:
+    def predict_proba(self, X: np.ndarray, lengths: Sequence[int] | None = None) -> np.ndarray:
         """Return the posterior state probabilities of every sample.
 
         Parameters
@@ -1002,13 +989,12 @@ class GaussianHMM:
         rng = _check_random_state(random_state if random_state is not None else self.random_state)
         covars = self.covars_full_
         states = np.empty(n_samples, dtype=int)
-        states[0] = rng.choice(self.n_components, p=self.startprob_) if currstate is None \
-            else currstate
+        states[0] = (
+            rng.choice(self.n_components, p=self.startprob_) if currstate is None else currstate
+        )
         for t in range(1, n_samples):
             states[t] = rng.choice(self.n_components, p=self.transmat_[states[t - 1]])
-        X = np.stack(
-            [rng.multivariate_normal(self.means_[s], covars[s]) for s in states]
-        )
+        X = np.stack([rng.multivariate_normal(self.means_[s], covars[s]) for s in states])
         return X, states
 
     def aic(self, X: np.ndarray, lengths: Sequence[int] | None = None) -> float:
@@ -1089,8 +1075,15 @@ class GaussianHMM:
         """
         rng = _check_random_state(self.random_state)
         uniform = 1.0 / self.n_components
-        needs = {code: self._needs_init(code, name) for code, name in
-                 (("s", "startprob_"), ("t", "transmat_"), ("m", "means_"), ("c", "covars_"))}
+        needs = {
+            code: self._needs_init(code, name)
+            for code, name in (
+                ("s", "startprob_"),
+                ("t", "transmat_"),
+                ("m", "means_"),
+                ("c", "covars_"),
+            )
+        }
 
         centers, labels = (None, None)
         if any(needs.values()):
@@ -1134,8 +1127,11 @@ class GaussianHMM:
         matrices = np.empty((self.n_components, self.n_features, self.n_features))
         for c in range(self.n_components):
             members = X[labels == c]
-            matrices[c] = np.atleast_2d(np.cov(members.T)) + ridge if len(members) > \
-                self.n_features else pooled
+            matrices[c] = (
+                np.atleast_2d(np.cov(members.T)) + ridge
+                if len(members) > self.n_features
+                else pooled
+            )
         if self.covariance_type == "full":
             return matrices
         if self.covariance_type == "tied":
@@ -1154,9 +1150,7 @@ class GaussianHMM:
         if self.transmat_.shape != (self.n_components, self.n_components):
             raise ValueError("transmat_ must have shape (n_components, n_components)")
         if not np.allclose(self.transmat_.sum(axis=1), 1):
-            raise ValueError(
-                f"transmat_ rows must sum to 1 (got {self.transmat_.sum(axis=1)})"
-            )
+            raise ValueError(f"transmat_ rows must sum to 1 (got {self.transmat_.sum(axis=1)})")
         self.means_ = np.asarray(self.means_, dtype=float)
         if self.means_.shape != (self.n_components, self.n_features):
             raise ValueError("means_ must have shape (n_components, n_features)")
@@ -1221,9 +1215,7 @@ class GaussianHMM:
         )
         return log_prob, posteriors
 
-    def _do_estep(
-        self, X: np.ndarray, lengths: Sequence[int] | None
-    ) -> tuple[dict, float]:
+    def _do_estep(self, X: np.ndarray, lengths: Sequence[int] | None) -> tuple[dict, float]:
         """Accumulate the sufficient statistics of all sequences and their log-likelihood."""
         nc, nf = self.n_components, self.n_features
         stats = {

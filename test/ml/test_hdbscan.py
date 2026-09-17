@@ -33,7 +33,6 @@ from chisurf.core.ml.cluster import HDBSCAN
 from chisurf.core.ml.cluster._hdbscan import (
     core_distances,
     mutual_reachability_mst,
-    single_linkage_tree,
     tree_to_labels,
 )
 
@@ -57,10 +56,7 @@ def _mutual_reachability_matrix(X, min_samples, alpha=1.0):
 def _blobs(n_features=2, seed=7, sizes=(200, 180, 120), n_noise=40):
     """Three separated Gaussian blobs plus uniform noise, in ``n_features`` dims."""
     rng = np.random.default_rng(seed)
-    parts = [
-        rng.normal(index * 3.0, 0.4, (size, n_features))
-        for index, size in enumerate(sizes)
-    ]
+    parts = [rng.normal(index * 3.0, 0.4, (size, n_features)) for index, size in enumerate(sizes)]
     parts.append(rng.uniform(-4, 12, (n_noise, n_features)))
     return np.ascontiguousarray(np.vstack(parts))
 
@@ -88,9 +84,7 @@ _CONFIGURATIONS = [
 #: moves tens of points. Its contract is tested directly in
 #: :func:`test_max_cluster_size_is_respected` instead.
 _STABLE_CONFIGURATIONS = [
-    configuration
-    for configuration in _CONFIGURATIONS
-    if "max_cluster_size" not in configuration
+    configuration for configuration in _CONFIGURATIONS if "max_cluster_size" not in configuration
 ]
 
 
@@ -183,9 +177,7 @@ def test_only_tied_weights_can_make_the_two_differ(n_features, configuration):
         configuration.get("max_cluster_size"),
     )
     try:
-        expected_labels, expected_probabilities = sk_tree_to_labels(
-            theirs_tree, *arguments
-        )
+        expected_labels, expected_probabilities = sk_tree_to_labels(theirs_tree, *arguments)
     except TypeError:  # scikit-learn's own epsilon search raises on some trees
         pytest.skip("scikit-learn cannot label this tree")
 
@@ -202,9 +194,7 @@ def test_core_distances_match_sklearn():
     X = _blobs(3)
     for min_samples in (1, 5, 25):
         mine = core_distances(X, min_samples)
-        distances, _ = NearestNeighbors(n_neighbors=min_samples).fit(X).kneighbors(
-            X, min_samples
-        )
+        distances, _ = NearestNeighbors(n_neighbors=min_samples).fit(X).kneighbors(X, min_samples)
         np.testing.assert_allclose(
             mine, np.ascontiguousarray(distances[:, -1]), rtol=1e-15, atol=0.0
         )
@@ -220,9 +210,7 @@ def test_core_distances_are_the_kth_row_of_the_distance_matrix():
     X = _blobs(3)
     for min_samples in (1, 5, 25):
         _, expected = _mutual_reachability_matrix(X, min_samples)
-        np.testing.assert_allclose(
-            core_distances(X, min_samples), expected, rtol=0.0, atol=1e-12
-        )
+        np.testing.assert_allclose(core_distances(X, min_samples), expected, rtol=0.0, atol=1e-12)
 
 
 def test_max_cluster_size_is_respected():
@@ -235,9 +223,7 @@ def test_max_cluster_size_is_respected():
     """
     rng = np.random.default_rng(5)
     centres = [(0.0, 0.0), (0.9, 0.0), (8.0, 0.0), (8.9, 0.0), (0.0, 8.0), (0.9, 8.0)]
-    X = np.ascontiguousarray(
-        np.vstack([rng.normal(centre, 0.12, (100, 2)) for centre in centres])
-    )
+    X = np.ascontiguousarray(np.vstack([rng.normal(centre, 0.12, (100, 2)) for centre in centres]))
     cap = 150
     fitted = HDBSCAN(min_cluster_size=20, max_cluster_size=cap).fit(X)
     counts = np.bincount(fitted.labels_[fitted.labels_ >= 0])
@@ -283,9 +269,7 @@ def test_mst_matches_scipy_on_the_explicit_graph(n_features):
     expected_weights = np.sort(expected[expected > 0])
 
     mine = mutual_reachability_mst(X, min_samples)
-    np.testing.assert_allclose(
-        np.sort(mine[:, 2]), expected_weights, rtol=1e-12, atol=1e-12
-    )
+    np.testing.assert_allclose(np.sort(mine[:, 2]), expected_weights, rtol=1e-12, atol=1e-12)
 
 
 @pytest.mark.parametrize("alpha", [0.5, 1.0, 2.0])
@@ -338,9 +322,7 @@ def test_tied_weights_are_broken_deterministically():
     tree undetermined. Two runs must still agree, and the tree must still be
     minimal.
     """
-    grid = np.stack(
-        np.meshgrid(np.arange(12.0), np.arange(12.0)), axis=-1
-    ).reshape(-1, 2)
+    grid = np.stack(np.meshgrid(np.arange(12.0), np.arange(12.0)), axis=-1).reshape(-1, 2)
     first = HDBSCAN(min_cluster_size=5).fit(grid)
     second = HDBSCAN(min_cluster_size=5).fit(grid)
     np.testing.assert_array_equal(first.labels_, second.labels_)
@@ -353,9 +335,7 @@ def test_tied_weights_are_broken_deterministically():
     scipy_sparse = pytest.importorskip("scipy.sparse.csgraph")
     reach, _ = _mutual_reachability_matrix(grid, 5)
     expected = scipy_sparse.minimum_spanning_tree(reach).toarray()
-    np.testing.assert_allclose(
-        mst[:, 2].sum(), expected[expected > 0].sum(), rtol=1e-12
-    )
+    np.testing.assert_allclose(mst[:, 2].sum(), expected[expected > 0].sum(), rtol=1e-12)
 
 
 # ---------------------------------------------------------------------------

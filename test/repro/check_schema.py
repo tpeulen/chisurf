@@ -1,5 +1,4 @@
 import sqlite3
-import os
 
 db_path = r"e:\dev\chisurf\chisurf\plugins\_dev\fluorophore_db\spectra.db"
 

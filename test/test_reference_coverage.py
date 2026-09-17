@@ -13,9 +13,8 @@ The reference checkouts live in gitignored ``junk/`` and are not present in CI,
 so these tests build their own tiny tree. That is deliberate: a test that skips
 without a 132 MB checkout would be a test that never runs.
 """
-from __future__ import annotations
 
-import pathlib
+from __future__ import annotations
 
 import pytest
 

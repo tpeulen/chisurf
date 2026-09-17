@@ -21,9 +21,11 @@ def _simulate(seed: int = 5, efficiencies=(0.3, 0.75), n: int = 900):
         photons = rng.poisson(400, n).astype(float)
         dd.append(rng.poisson((1 - e) * photons))
         aa.append(rng.poisson(BETA * GAMMA * photons))
-        da.append(rng.poisson(
-            GAMMA * e * photons + ALPHA * (1 - e) * photons + DELTA * BETA * GAMMA * photons
-        ))
+        da.append(
+            rng.poisson(
+                GAMMA * e * photons + ALPHA * (1 - e) * photons + DELTA * BETA * GAMMA * photons
+            )
+        )
         tau.append(rng.normal(float(LINE.lifetime_at(e)), 0.12, n))
     photons = rng.poisson(400, 300).astype(float)
     dd.append(rng.poisson(photons))
@@ -35,8 +37,12 @@ def _simulate(seed: int = 5, efficiencies=(0.3, 0.75), n: int = 900):
     aa.append(rng.poisson(BETA * GAMMA * photons))
     da.append(rng.poisson(DELTA * BETA * GAMMA * photons))
     tau.append(np.full(300, np.nan))
-    return (np.concatenate(dd).astype(float), np.concatenate(da).astype(float),
-            np.concatenate(aa).astype(float), np.concatenate(tau))
+    return (
+        np.concatenate(dd).astype(float),
+        np.concatenate(da).astype(float),
+        np.concatenate(aa).astype(float),
+        np.concatenate(tau),
+    )
 
 
 @pytest.fixture()
@@ -44,8 +50,10 @@ def burst_table(tmp_path):
     """Write a burst table with ndX-style column names."""
     i_dd, i_da, i_aa, tau = _simulate()
     path = tmp_path / "bursts.csv"
-    header = ("Green Count Rate (KHz),Red Count Rate (KHz),"
-              "S delayed yellow (kHz),Tau (green),Duration (ms)")
+    header = (
+        "Green Count Rate (KHz),Red Count Rate (KHz),"
+        "S delayed yellow (kHz),Tau (green),Duration (ms)"
+    )
     data = np.column_stack([i_dd, i_da, i_aa, tau, np.full(i_dd.size, 1.0)])
     np.savetxt(path, data, delimiter=",", header=header, comments="", fmt="%.6g")
     return path
@@ -122,8 +130,13 @@ def test_view_model_reports_missing_columns(tmp_path):
     from chisurf.plugins.burst.accurate_fret.gui.view_model import AccurateFretViewModel
 
     path = tmp_path / "odd.csv"
-    np.savetxt(path, np.random.default_rng(0).normal(size=(50, 2)),
-               delimiter=",", header="foo,bar", comments="")
+    np.savetxt(
+        path,
+        np.random.default_rng(0).normal(size=(50, 2)),
+        delimiter=",",
+        header="foo,bar",
+        comments="",
+    )
     model = AccurateFretViewModel()
     model.set_filename(str(path))
     assert "map" in model.results_text
@@ -135,9 +148,9 @@ def test_rpc_calibrate_file(burst_table):
     """The RPC handler returns JSON-able factors and the static line."""
     from chisurf.plugins.burst.accurate_fret.backend import services
 
-    reply = services.calibrate_file({
-        "path": str(burst_table), "donor_lifetime": TAU_D0, "n_bootstrap": 0
-    })
+    reply = services.calibrate_file(
+        {"path": str(burst_table), "donor_lifetime": TAU_D0, "n_bootstrap": 0}
+    )
     assert reply["ok"], reply.get("error")
     result = reply["result"]
     assert result["factors"]["gamma"] == pytest.approx(GAMMA, rel=0.05)
@@ -163,9 +176,9 @@ def test_cli_reports_the_calibration(burst_table):
     from chisurf.plugins.burst.accurate_fret.cli import cli
 
     out = burst_table.parent / "cli.csv"
-    result = CliRunner().invoke(cli, [
-        str(burst_table), "--tau-d0", str(TAU_D0), "--bootstrap", "0", "-o", str(out)
-    ])
+    result = CliRunner().invoke(
+        cli, [str(burst_table), "--tau-d0", str(TAU_D0), "--bootstrap", "0", "-o", str(out)]
+    )
     assert result.exit_code == 0, result.output
     assert "Automatic FRET calibration" in result.output
     assert "gamma" in result.output

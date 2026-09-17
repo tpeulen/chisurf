@@ -27,7 +27,10 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
 )
 
 
@@ -96,9 +99,7 @@ def test_an_ordinary_command_leaves_the_framing_alone(session, command):
 
     do(command)
     assert errors == [], f"{command} -> {errors[-1]}"
-    assert _distance(win) == pytest.approx(framed, rel=1e-9), (
-        f"{command} threw the framing away"
-    )
+    assert _distance(win) == pytest.approx(framed, rel=1e-9), f"{command} threw the framing away"
 
 
 def test_h_add_re_derives_without_re_framing(session):
@@ -139,9 +140,7 @@ def test_a_camera_command_still_moves_the_camera(session, setup, command):
     framed = _distance(win)
     do(command)
     assert errors == [], f"{command} -> {errors[-1]}"
-    assert _distance(win) != pytest.approx(framed, rel=1e-9), (
-        f"{command} did not move the camera"
-    )
+    assert _distance(win) != pytest.approx(framed, rel=1e-9), f"{command} did not move the camera"
 
 
 def test_loading_a_second_structure_frames_it(session):

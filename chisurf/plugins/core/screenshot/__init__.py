@@ -51,7 +51,6 @@ def _find_main_window():
 
 def _run_screenshot():
     """Grab main window screenshot, copy to clipboard, and exit."""
-
     win = _find_main_window()
     if win is None:
         try:
@@ -75,7 +74,7 @@ def _run_screenshot():
 
                 # Feedback in status bar
                 try:
-                    if hasattr(win, 'statusBar') and win.statusBar() is not None:
+                    if hasattr(win, "statusBar") and win.statusBar() is not None:
                         win.statusBar().showMessage("Screenshot copied to clipboard", 3000)
                 except Exception:
                     pass
@@ -83,6 +82,7 @@ def _run_screenshot():
                 # Show a temporary "Toast" message overlay
                 try:
                     from chisurf.gui import QtCore
+
                     # Create a styled label
                     toast = QtWidgets.QLabel("Screenshot copied to clipboard", win)
                     toast.setStyleSheet("""
@@ -97,7 +97,11 @@ def _run_screenshot():
                     """)
                     toast.setAlignment(QtCore.Qt.AlignCenter)
                     # Make it a frameless, non-interactive overlay
-                    toast.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.ToolTip | QtCore.Qt.WindowStaysOnTopHint)
+                    toast.setWindowFlags(
+                        QtCore.Qt.FramelessWindowHint
+                        | QtCore.Qt.ToolTip
+                        | QtCore.Qt.WindowStaysOnTopHint
+                    )
                     toast.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
                     toast.adjustSize()
 
@@ -115,7 +119,7 @@ def _run_screenshot():
 
                     # Auto-destruct after 1.5 seconds
                     # We store the reference on the window to prevent premature garbage collection
-                    if not hasattr(win, '_screenshot_toasts'):
+                    if not hasattr(win, "_screenshot_toasts"):
                         win._screenshot_toasts = []
                     win._screenshot_toasts.append(toast)
 

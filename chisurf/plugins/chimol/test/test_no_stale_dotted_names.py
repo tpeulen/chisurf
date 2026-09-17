@@ -6,6 +6,7 @@ directory, and from the ChiSurf call sites the table lists -- code, strings,
 prose alike. Before the move (the table exists, the moves have not been
 applied) the test is a no-op that only checks the table parses.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -44,10 +45,21 @@ def test_no_old_dotted_name_survives():
     hits = []
     for root in roots:
         proc = subprocess.run(
-            ["grep", "-rnE", "--include=*.py", "--include=*.js", "--include=*.json",
-             "--include=*.md", "--include=*.toml", "--include=*.txt", "--include=*.html",
-             pattern.pattern, root],
-            capture_output=True, text=True,
+            [
+                "grep",
+                "-rnE",
+                "--include=*.py",
+                "--include=*.js",
+                "--include=*.json",
+                "--include=*.md",
+                "--include=*.toml",
+                "--include=*.txt",
+                "--include=*.html",
+                pattern.pattern,
+                root,
+            ],
+            capture_output=True,
+            text=True,
         )
         for line in proc.stdout.splitlines():
             if "/tools/moves.toml" in line or "/__pycache__/" in line:

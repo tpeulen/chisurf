@@ -17,9 +17,9 @@ import pathlib
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +172,7 @@ class _IoSection(QtWidgets.QWidget):
 
         if event == "loaded" and self._top_edit.text() != self._model.topology_filename:
             self._top_edit.setText(self._model.topology_filename)
+
     def _refresh_host_form(self) -> None:
         """Walk up to the hosting AutoForm and refresh its widgets (log panel)."""
         widget = self.parentWidget()
@@ -189,9 +190,7 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory(filename)
 

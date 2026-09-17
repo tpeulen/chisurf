@@ -11,11 +11,9 @@ biased low by ``N / (N + 1)``.
 from __future__ import annotations
 
 import numpy as np
-
-from chisurf.core.datastore import row_count, rows_from_table
-import pandas as pd
 import pytest
 
+from chisurf.core.datastore import row_count, rows_from_table
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
 )

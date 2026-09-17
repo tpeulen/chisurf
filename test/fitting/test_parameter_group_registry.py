@@ -12,9 +12,9 @@ import utils
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-import chisurf.core.parameter  # noqa: F401  (initialises chisurf.core.settings)
-import chisurf.core.models  # noqa: F401
 import chisurf.core.fitting.parameter as fp
+import chisurf.core.models  # noqa: F401
+import chisurf.core.parameter  # noqa: F401  (initialises chisurf.core.settings)
 from chisurf.core.registry import parameter_groups as reg
 
 
@@ -28,7 +28,6 @@ def _make_group(names):
 
 
 class RegistryTests(unittest.TestCase):
-
     def setUp(self):
         for owner_id, _label, _group in list(reg.iter_registered_parameter_groups()):
             reg.unregister_parameter_group(owner_id)

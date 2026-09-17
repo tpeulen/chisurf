@@ -10,6 +10,7 @@ Speed is not what these tests check. They check the two things that make the
 speed *allowed*: that the answer does not move, and that a model the graph
 cannot represent is refused rather than approximated.
 """
+
 import numpy as np
 import pytest
 
@@ -19,15 +20,18 @@ import chisurf.core.fitting.fit as F
 import chisurf.core.fitting.minimizer as M
 from chisurf.core.models.parse import ParseModel
 
-
-pytestmark = pytest.mark.skipif(not M.have_minimizer(),
-                                reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
 
 N = 512
 
 
-def make_fit(equation="a*exp(-x/t)+b", start=(("a", 1.0), ("t", 1.0), ("b", 0.0)),
-             sigma=0.02, seed=3, ey=None):
+def make_fit(
+    equation="a*exp(-x/t)+b",
+    start=(("a", 1.0), ("t", 1.0), ("b", 0.0)),
+    sigma=0.02,
+    seed=3,
+    ey=None,
+):
     x = np.linspace(0.1, 20.0, N)
     y = 2.5 * np.exp(-x / 3.1) + 0.4
     y = y + np.random.default_rng(seed).normal(0, sigma, N)
@@ -71,8 +75,10 @@ def covariance_the_graph_offered(fit):
 
     def spy(self):
         cov, used = original(self)
-        seen["offered"] = (None if cov is None else np.asarray(cov, float),
-                           None if used is None else list(used))
+        seen["offered"] = (
+            None if cov is None else np.asarray(cov, float),
+            None if used is None else list(used),
+        )
         return cov, used
 
     F.Fit._optimiser_covariance = spy
@@ -82,8 +88,8 @@ def covariance_the_graph_offered(fit):
         F.Fit._optimiser_covariance = original
     cov, used = seen.get("offered", (None, None))
     assert cov is not None, (
-        "the C++ path offered no covariance, so this test is comparing "
-        "numpy against numpy again")
+        "the C++ path offered no covariance, so this test is comparing numpy against numpy again"
+    )
     numpy_cov, numpy_used = F.covariance_matrix(fit)
     return (cov, used), (np.asarray(numpy_cov, float), list(numpy_used))
 
@@ -135,9 +141,11 @@ def test_the_answer_does_not_move():
     graph, scipy = make_fit(), make_fit()
     graph.run()
     run_with_scipy(scipy)
-    np.testing.assert_allclose([p.value for p in graph.model.parameters],
-                               [p.value for p in scipy.model.parameters],
-                               rtol=1e-6)
+    np.testing.assert_allclose(
+        [p.value for p in graph.model.parameters],
+        [p.value for p in scipy.model.parameters],
+        rtol=1e-6,
+    )
     assert graph.chi2r == pytest.approx(scipy.chi2r, rel=1e-9)
 
 
@@ -172,8 +180,7 @@ def test_the_offered_covariance_is_the_finite_difference_one():
     fit = make_fit()
     (cpp, used), (numpy_cov, numpy_used) = covariance_the_graph_offered(fit)
     assert used == numpy_used
-    np.testing.assert_allclose(np.sqrt(np.diag(cpp)),
-                               np.sqrt(np.diag(numpy_cov)), rtol=2e-3)
+    np.testing.assert_allclose(np.sqrt(np.diag(cpp)), np.sqrt(np.diag(numpy_cov)), rtol=2e-3)
 
 
 def test_the_model_curve_is_the_fitted_one():
@@ -187,10 +194,8 @@ def test_the_model_curve_is_the_fitted_one():
     fit.run()
     parameters = {p.name: p.value for p in fit.model.parameters}
     x = np.asarray(fit.data.x, dtype=float)
-    expected = (parameters["a"] * np.exp(-x / parameters["t"])
-                + parameters["b"])
-    np.testing.assert_allclose(np.asarray(fit.model.y, dtype=float), expected,
-                               rtol=1e-10)
+    expected = parameters["a"] * np.exp(-x / parameters["t"]) + parameters["b"]
+    np.testing.assert_allclose(np.asarray(fit.model.y, dtype=float), expected, rtol=1e-10)
 
 
 def test_a_stale_covariance_is_never_reused():
@@ -228,10 +233,13 @@ def test_bounds_are_honoured():
 
 # ------------------------------------------------------- what is refused
 
+
 def test_a_prior_refuses_the_graph():
     """A prior appends rows to the residual, so the graph would be
-    optimising a different objective -- not a slightly different one."""
+    optimising a different objective -- not a slightly different one.
+    """
     from chisurf.core.fitting.priors import NormalPrior
+
     fit = make_fit()
     fit.model.parameters_all_dict["t"].prior = NormalPrior(mu=3.0, sigma=0.1)
     assert M.graph_objective(fit, fit.model) is None
@@ -244,21 +252,22 @@ def test_a_prior_actually_changes_the_answer_it_is_refused_for():
     if it did not, refusing the graph for it would be superstition.
     """
     from chisurf.core.fitting.priors import NormalPrior
+
     plain, with_prior = make_fit(), make_fit()
     plain.run()
-    with_prior.model.parameters_all_dict["t"].prior = NormalPrior(mu=2.0,
-                                                                 sigma=0.01)
+    with_prior.model.parameters_all_dict["t"].prior = NormalPrior(mu=2.0, sigma=0.01)
     with_prior.run()
     t_plain = plain.model.parameters_all_dict["t"].value
     t_prior = with_prior.model.parameters_all_dict["t"].value
     assert abs(t_prior - t_plain) > 1e-3, (
-        "the prior did not move the fit, so refusing the graph for it is "
-        "guarding nothing")
+        "the prior did not move the fit, so refusing the graph for it is guarding nothing"
+    )
 
 
 def test_a_bounded_parameter_is_not_mistaken_for_a_prior():
     """Bounds synthesise a uniform prior that contributes no residual rows;
-    treating that as a prior would refuse the graph for every bounded fit."""
+    treating that as a prior would refuse the graph for every bounded fit.
+    """
     fit = make_fit()
     t = fit.model.parameters_all_dict["t"]
     t.bounds = (0.01, 20.0)
@@ -282,6 +291,7 @@ def test_an_equation_the_engine_cannot_compile_refuses_the_graph():
 def test_a_non_parse_model_refuses_the_graph():
     class NotAParseModel:
         parameters = []
+
     assert M.graph_objective(make_fit(), NotAParseModel()) is None
 
 
@@ -290,8 +300,7 @@ def test_a_refused_graph_still_fits():
     fit = make_fit()
     run_with_scipy(fit)
     assert fit.chi2r == pytest.approx(1.0, abs=0.2)
-    assert all(np.isfinite(p.error_estimate)
-               for p in fit.model.parameters)
+    assert all(np.isfinite(p.error_estimate) for p in fit.model.parameters)
 
 
 def test_the_fallback_is_the_director_and_it_still_fits():
@@ -367,8 +376,7 @@ def test_a_refused_graph_still_gets_a_covariance_without_numpy():
         F.Fit._optimiser_covariance = original
         M.graph_objective = graph
     assert seen.get("offered"), "a refused graph fell back to numpy for its errors"
-    assert np.all(np.isfinite(
-        [p.error_estimate for p in fit.model.parameters]))
+    assert np.all(np.isfinite([p.error_estimate for p in fit.model.parameters]))
 
 
 def test_a_parameter_linked_inside_one_model_follows_its_master():
@@ -380,11 +388,11 @@ def test_a_parameter_linked_inside_one_model_follows_its_master():
     had it follow its master -- a different objective, silently. It is now a
     ``Port`` link, the same relation one level down.
     """
+
     def build():
         fit = make_fit()
         # The offset *is* the amplitude: one number, twice in the equation.
-        fit.model.parameters_all_dict["b"].link = \
-            fit.model.parameters_all_dict["a"]
+        fit.model.parameters_all_dict["b"].link = fit.model.parameters_all_dict["a"]
         fit.model.find_parameters()
         return fit
 
@@ -393,17 +401,24 @@ def test_a_parameter_linked_inside_one_model_follows_its_master():
     graph.run()
     run_with_scipy(scipy)
     for name in ("a", "t", "b"):
-        assert (graph.model.parameters_all_dict[name].value
-                == pytest.approx(scipy.model.parameters_all_dict[name].value,
-                                 rel=1e-4))
-    assert (graph.model.parameters_all_dict["b"].value
-            == graph.model.parameters_all_dict["a"].value)
+        assert graph.model.parameters_all_dict[name].value == pytest.approx(
+            scipy.model.parameters_all_dict[name].value, rel=1e-4
+        )
+    assert graph.model.parameters_all_dict["b"].value == graph.model.parameters_all_dict["a"].value
 
 
 # ------------------------------------------------------------- the group
 
-def make_group(n_members=2, lifetimes=(3.1, 3.1), amplitudes=(2.0, 3.0),
-               shared=True, sigma=0.02, seed=7, equation="a*exp(-x/t)"):
+
+def make_group(
+    n_members=2,
+    lifetimes=(3.1, 3.1),
+    amplitudes=(2.0, 3.0),
+    shared=True,
+    sigma=0.02,
+    seed=7,
+    equation="a*exp(-x/t)",
+):
     """A `FitGroup` of decays, optionally sharing one lifetime.
 
     The sharing is the ordinary ChiSurf one -- each follower's
@@ -416,8 +431,7 @@ def make_group(n_members=2, lifetimes=(3.1, 3.1), amplitudes=(2.0, 3.0),
     for k in range(n_members):
         y = amplitudes[k] * np.exp(-x / lifetimes[k]) + rng.normal(0, sigma, N)
         curves.append(cs.core.data.DataCurve(x=x, y=y, ey=np.full(N, sigma)))
-    group = F.FitGroup(data=cs.core.data.DataGroup(curves),
-                       model_class=ParseModel)
+    group = F.FitGroup(data=cs.core.data.DataGroup(curves), model_class=ParseModel)
     for member in group:
         member.model.func = equation
         member.xmin, member.xmax = 0, N - 1
@@ -458,7 +472,9 @@ def test_the_group_answer_does_not_move():
     run_group_with_scipy(scipy)
     np.testing.assert_allclose(
         [p.value for p in graph._model.parameters],
-        [p.value for p in scipy._model.parameters], rtol=1e-5)
+        [p.value for p in scipy._model.parameters],
+        rtol=1e-5,
+    )
     assert graph.chi2r == pytest.approx(scipy.chi2r, rel=1e-6)
 
 
@@ -479,7 +495,9 @@ def test_a_one_member_group_agrees_with_the_numpy_path():
     run_group_with_scipy(scipy)
     np.testing.assert_allclose(
         [p.value for p in graph._model.parameters],
-        [p.value for p in scipy._model.parameters], rtol=1e-5)
+        [p.value for p in scipy._model.parameters],
+        rtol=1e-5,
+    )
 
 
 def test_the_group_is_not_two_separate_fits():
@@ -526,8 +544,7 @@ def test_the_member_curves_are_the_fitted_ones():
         p = member.model.parameters_all_dict
         x = np.asarray(member.data.x, dtype=float)
         expected = p["a"].value * np.exp(-x / p["t"].value)
-        np.testing.assert_allclose(np.asarray(member.model.y, dtype=float),
-                                   expected, rtol=1e-10)
+        np.testing.assert_allclose(np.asarray(member.model.y, dtype=float), expected, rtol=1e-10)
 
 
 def test_a_group_with_a_global_parameter_fits_it():
@@ -537,8 +554,7 @@ def test_a_group_with_a_global_parameter_fits_it():
     follower follows -- there is nothing else for it to be.
     """
     group = make_group(lifetimes=(2.6, 3.4), shared=False)
-    shared = cs.core.fitting.parameter.FittingParameter(
-        name="t_global", value=1.0)
+    shared = cs.core.fitting.parameter.FittingParameter(name="t_global", value=1.0)
     group._model.append_global_parameter(shared)
     for member in group:
         member.model.parameters_all_dict["t"].link = shared
@@ -554,6 +570,7 @@ def test_a_group_with_a_global_parameter_fits_it():
 
 
 # ----------------------------------------------- what a group refuses
+
 
 def test_a_group_is_refused_whole_when_one_member_cannot_be_built():
     """Half a group in C++ is not a thing `JointChiSquared` can express.
@@ -572,7 +589,8 @@ def test_a_group_is_refused_whole_when_one_member_cannot_be_built():
 def test_a_masked_member_refuses_the_group():
     """`GlobalFitModel.weighted_residuals` concatenates its members
     *unmasked*, so a graph that honoured the masks would be optimising a
-    different objective than the numpy path it replaces."""
+    different objective than the numpy path it replaces.
+    """
     group = make_group()
     group[0].mask = np.ones(N, dtype=float)
     assert M.graph_objective(group, group._model) is None
@@ -580,9 +598,9 @@ def test_a_masked_member_refuses_the_group():
 
 def test_a_prior_refuses_the_group():
     from chisurf.core.fitting.priors import NormalPrior
+
     group = make_group()
-    group[0].model.parameters_all_dict["a"].prior = NormalPrior(mu=2.0,
-                                                               sigma=0.1)
+    group[0].model.parameters_all_dict["a"].prior = NormalPrior(mu=2.0, sigma=0.1)
     assert M.graph_objective(group, group._model) is None
 
 
@@ -599,6 +617,7 @@ def test_a_refused_group_still_fits():
 
 
 # ------------------------------------------------- the graph is built once
+
 
 def test_the_graph_is_not_rebuilt_for_every_curvature():
     """Six consumers ask for a curvature; the graph is built for one of them.
@@ -630,8 +649,7 @@ def test_the_graph_is_not_rebuilt_for_every_curvature():
         M.graph_objective = original
 
     assert after_first == 1, "the first call must build one graph"
-    assert builds["n"] == 1, (
-        "the graph was rebuilt %d times for six curvature calls" % builds["n"])
+    assert builds["n"] == 1, "the graph was rebuilt %d times for six curvature calls" % builds["n"]
     # A cache that returns a *different* answer is worse than no cache.
     np.testing.assert_allclose(again, first, rtol=0, atol=0)
 
@@ -649,4 +667,5 @@ def test_a_rerun_does_not_reuse_the_previous_graph():
     assert "_graph_cache" in fit.__dict__
     fit.run()
     assert "_graph_cache" not in fit.__dict__, (
-        "a graph cached for the previous run survived into this one")
+        "a graph cached for the previous run survived into this one"
+    )

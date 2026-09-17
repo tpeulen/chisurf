@@ -159,9 +159,7 @@ def two_cde(qapp, burst_folder):
     tool.close()
 
 
-def test_2cde_skips_only_when_its_companion_files_are_current(
-    two_cde, burst_folder, monkeypatch
-):
+def test_2cde_skips_only_when_its_companion_files_are_current(two_cde, burst_folder, monkeypatch):
     from chisurf.core.runtime import analysis_cache
     from chisurf.gui.progress import ChiSurfProgress
 
@@ -185,8 +183,10 @@ def test_2cde_skips_only_when_its_companion_files_are_current(
     out.mkdir(exist_ok=True)
     (out / "m000.2c4").write_text("x")
     analysis_cache.write_stamp(
-        out / "2cde.stamp.json", two_cde.analysis_fingerprint(),
-        outputs=[out / "m000.2c4"], tool="2cde",
+        out / "2cde.stamp.json",
+        two_cde.analysis_fingerprint(),
+        outputs=[out / "m000.2c4"],
+        tool="2cde",
     )
     two_cde.run()
     assert len(started) == 2, "with results on disk and nothing changed, do not recompute"
@@ -275,9 +275,7 @@ def test_every_step_fingerprints_its_own_inputs(bva, two_cde, burst_folder):
 # ── MLE batch export ─────────────────────────────────────────────────
 
 
-def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
-    qapp, burst_folder, monkeypatch
-):
+def test_mle_export_is_skipped_when_the_files_on_disk_are_current(qapp, burst_folder, monkeypatch):
     """The batch's product is the b{g,r,y}4 files, so current files are the answer.
 
     This one is deliberately disk-based rather than in-memory: the wizard keeps
@@ -294,9 +292,7 @@ def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
         bur = burst_folder / "bi4_bur" / "m000.bur"
         # The stamp sits beside the selected burst files, so the selection is
         # what has to be stubbed — the fingerprint's input list is wider than it.
-        monkeypatch.setattr(
-            wizard.burst_files_list, "get_selected_files", lambda: [str(bur)]
-        )
+        monkeypatch.setattr(wizard.burst_files_list, "get_selected_files", lambda: [str(bur)])
         # Enough state to get past the "no data" guard.
         wizard.df_bursts = object()
         wizard.tttrs = {"m000": object()}
@@ -307,8 +303,10 @@ def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("fit results")
         analysis_cache.write_stamp(
-            wizard.batch_stamp_path(), wizard.batch_fingerprint(),
-            outputs=[out], tool="burst_mle",
+            wizard.batch_stamp_path(),
+            wizard.batch_fingerprint(),
+            outputs=[out],
+            tool="burst_mle",
         )
 
         wizard.process_bursts()
@@ -341,24 +339,22 @@ def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
     first = analysis_cache.fingerprint([raw], request, extra="burst_selection")
     cache.remember(first)
 
-    assert cache.matches(
-        analysis_cache.fingerprint([raw], request, extra="burst_selection")
-    ), "the same files and the same settings are the same search"
+    assert cache.matches(analysis_cache.fingerprint([raw], request, extra="burst_selection")), (
+        "the same files and the same settings are the same search"
+    )
 
     changed = dict(request, settings={"min_photons": 30})
-    assert not cache.matches(
-        analysis_cache.fingerprint([raw], changed, extra="burst_selection")
-    ), "a changed burst-search setting must search again"
+    assert not cache.matches(analysis_cache.fingerprint([raw], changed, extra="burst_selection")), (
+        "a changed burst-search setting must search again"
+    )
 
     raw.write_bytes(b"different photons")
-    assert not cache.matches(
-        analysis_cache.fingerprint([raw], request, extra="burst_selection")
-    ), "re-recorded data must search again"
+    assert not cache.matches(analysis_cache.fingerprint([raw], request, extra="burst_selection")), (
+        "re-recorded data must search again"
+    )
 
 
-def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(
-    qapp, burst_folder, monkeypatch
-):
+def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(qapp, burst_folder, monkeypatch):
     """Arriving starts the fit; Stop reaches it.
 
     An H2MM scan with restarts runs for minutes, so a fit that starts on its own
@@ -389,9 +385,9 @@ def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(
         tool._result_cache.remember(tool._running_fingerprint)
         tool.stop()
         assert task.cancelled, "Stop must reach the running fit"
-        assert not tool._result_cache.matches(
-            tool.analysis_fingerprint(tool._gather_settings())
-        ), "a stopped scan is not the answer for these settings"
+        assert not tool._result_cache.matches(tool.analysis_fingerprint(tool._gather_settings())), (
+            "a stopped scan is not the answer for these settings"
+        )
 
         tool._on_fit_done()
         assert tool.btn_run.isEnabled() and not tool.btn_stop.isEnabled()
@@ -399,9 +395,7 @@ def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(
         tool.close()
 
 
-def test_a_stopped_h2mm_fit_does_not_start_itself_again(
-    qapp, burst_folder, monkeypatch
-):
+def test_a_stopped_h2mm_fit_does_not_start_itself_again(qapp, burst_folder, monkeypatch):
     """Stop has to outlast the visit that started the fit.
 
     Each step computes on arrival, so without this a fit the user deliberately
@@ -437,9 +431,7 @@ def test_a_stopped_h2mm_fit_does_not_start_itself_again(
         tool.close()
 
 
-def test_a_stopped_2cde_run_does_not_start_itself_again(
-    two_cde, monkeypatch
-):
+def test_a_stopped_2cde_run_does_not_start_itself_again(two_cde, monkeypatch):
     from chisurf.gui.progress import ChiSurfProgress
 
     started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
@@ -473,8 +465,10 @@ def test_restart_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
     out.mkdir(exist_ok=True)
     (out / "m000.2c4").write_text("x")
     analysis_cache.write_stamp(
-        out / "2cde.stamp.json", two_cde.analysis_fingerprint(),
-        outputs=[out / "m000.2c4"], tool="2cde",
+        out / "2cde.stamp.json",
+        two_cde.analysis_fingerprint(),
+        outputs=[out / "m000.2c4"],
+        tool="2cde",
     )
 
     two_cde.run()
@@ -513,20 +507,17 @@ def test_a_changed_lut_recomputes_every_photon_reading_step(two_cde):
     assert two_cde.analysis_fingerprint() == before, "and switching back is the old state"
 
 
-def test_a_corrected_estimator_does_not_inherit_the_old_exports(
-    qapp, burst_folder, monkeypatch
-):
+def test_a_corrected_estimator_does_not_inherit_the_old_exports(qapp, burst_folder, monkeypatch):
     """MLE is the only gate that survives a restart — and the only one that could
-    hand back another version's numbers without saying so."""
+    hand back another version's numbers without saying so.
+    """
     from chisurf.core.runtime import analysis_cache
     from chisurf.plugins.burst.burst_mle_analysis import wizard as wizard_mod
 
     wizard = wizard_mod.MLELifetimeAnalysisWizard()
     try:
         bur = burst_folder / "bi4_bur" / "m000.bur"
-        monkeypatch.setattr(
-            wizard.burst_files_list, "get_selected_files", lambda: [str(bur)]
-        )
+        monkeypatch.setattr(wizard.burst_files_list, "get_selected_files", lambda: [str(bur)])
         wizard.df_bursts = object()
         wizard.tttrs = {"m000": object()}
         saved = _runs(monkeypatch, wizard, "_save_burst_results_fast")
@@ -535,8 +526,10 @@ def test_a_corrected_estimator_does_not_inherit_the_old_exports(
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("fit results")
         analysis_cache.write_stamp(
-            wizard.batch_stamp_path(), wizard.batch_fingerprint(),
-            outputs=[out], tool="burst_mle",
+            wizard.batch_stamp_path(),
+            wizard.batch_fingerprint(),
+            outputs=[out],
+            tool="burst_mle",
         )
         wizard.process_bursts()
         assert saved == [], "current exports are not refitted"
@@ -545,9 +538,7 @@ def test_a_corrected_estimator_does_not_inherit_the_old_exports(
         # Relative to whatever the shipped version is: pinning a literal here
         # made this a no-op the day the estimator was bumped to that number,
         # and the test then asserted that nothing had changed.
-        monkeypatch.setattr(
-            wizard_mod, "ALGORITHM_VERSION", wizard_mod.ALGORITHM_VERSION + 1
-        )
+        monkeypatch.setattr(wizard_mod, "ALGORITHM_VERSION", wizard_mod.ALGORITHM_VERSION + 1)
         assert not analysis_cache.is_current(
             wizard.batch_stamp_path(), wizard.batch_fingerprint()
         ), "results from the previous estimator are not current"
@@ -572,9 +563,7 @@ def test_h2mm_fits_the_same_answer_twice(qapp, burst_folder):
         tool.close()
 
 
-def test_h2mm_does_not_refit_when_arriving_at_a_finished_step(
-    qapp, burst_folder, monkeypatch
-):
+def test_h2mm_does_not_refit_when_arriving_at_a_finished_step(qapp, burst_folder, monkeypatch):
     from chisurf.gui.progress import ChiSurfProgress
     from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
 

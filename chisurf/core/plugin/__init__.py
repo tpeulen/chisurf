@@ -1,4 +1,5 @@
 """Plugin infrastructure: manifests, discovery, registry, client."""
+
 from chisurf.core.plugin.client import InProcessClient, PluginClient
 from chisurf.core.plugin.manifest import (
     PluginManifest,

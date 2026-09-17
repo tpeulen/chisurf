@@ -21,6 +21,7 @@ The baselines are the same PNGs the GPU painter will later be judged against,
 by control inventory rather than by pixels. Here they are compared exactly,
 because here there is no reason for them to differ.
 """
+
 from __future__ import annotations
 
 import json
@@ -153,8 +154,7 @@ def test_no_control_the_baseline_could_reach_has_been_lost(qapp, tmp_path):
         was = set(expected[state]["reachable"])
         now = set(got[state]["reachable"])
         assert not (was - now), (
-            f"{state}: controls the baseline could reach are gone: "
-            f"{sorted(was - now)}"
+            f"{state}: controls the baseline could reach are gone: {sorted(was - now)}"
         )
 
 

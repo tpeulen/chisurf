@@ -31,38 +31,76 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("files", nargs=-1, required=True, type=click.Path(exists=True))
-@click.option("--workflow", "workflow_name", default="",
-              help="Start from a shipped workflow (see `spot-finder workflows`); "
-                   "the options below then override it. Default: single_molecule.")
-@click.option("--save-workflow", "save_workflow", default="", type=click.Path(),
-              help="Write the resolved settings out as a workflow JSON.")
-@click.option("--method", default="watershed",
-              type=click.Choice(["watershed", "threshold", "log", "dog"]),
-              help="Detector. watershed splits touching objects; log/dog measure width.")
+@click.option(
+    "--workflow",
+    "workflow_name",
+    default="",
+    help="Start from a shipped workflow (see `spot-finder workflows`); "
+    "the options below then override it. Default: single_molecule.",
+)
+@click.option(
+    "--save-workflow",
+    "save_workflow",
+    default="",
+    type=click.Path(),
+    help="Write the resolved settings out as a workflow JSON.",
+)
+@click.option(
+    "--method",
+    default="watershed",
+    type=click.Choice(["watershed", "threshold", "log", "dog"]),
+    help="Detector. watershed splits touching objects; log/dog measure width.",
+)
 @click.option("--name", default="spots", help="Stem the raster/table pair is written under.")
 @click.option("--sigma", default=1.0, type=float, help="Pre-threshold Gaussian smoothing.")
-@click.option("--threshold", default=-1.0, type=float,
-              help="Intensity level (<0 = Otsu); for log/dog, the minimum response.")
-@click.option("--peak-footprint-size", default=6, type=int,
-              help="Watershed seed footprint; larger merges nearby seeds.")
+@click.option(
+    "--threshold",
+    default=-1.0,
+    type=float,
+    help="Intensity level (<0 = Otsu); for log/dog, the minimum response.",
+)
+@click.option(
+    "--peak-footprint-size",
+    default=6,
+    type=int,
+    help="Watershed seed footprint; larger merges nearby seeds.",
+)
 @click.option("--min-area", default=1, type=int, help="Smallest region to keep (pixels).")
 @click.option("--max-area", default=0, type=int, help="Largest region to keep; 0 disables.")
-@click.option("--clear-border/--keep-border", default=True,
-              help="Drop regions touching the frame edge.")
+@click.option(
+    "--clear-border/--keep-border", default=True, help="Drop regions touching the frame edge."
+)
 @click.option("--min-sigma", default=1.0, type=float, help="Smallest spot width (log/dog).")
 @click.option("--max-sigma", default=5.0, type=float, help="Largest spot width (log/dog).")
 @click.option("--num-sigma", default=10, type=int, help="Scales between them (log).")
 @click.option("--overlap", default=0.5, type=float, help="Blob merge threshold (log/dog).")
-@click.option("--roi", "roi_path", default="", type=click.Path(),
-              help="Confine the search: a saved region JSON, a mask or a label image.")
+@click.option(
+    "--roi",
+    "roi_path",
+    default="",
+    type=click.Path(),
+    help="Confine the search: a saved region JSON, a mask or a label image.",
+)
 @click.option("--channels", default="", help="Routing channels for a photon file, comma-separated.")
 @click.option("--frame", default=-1, type=int, help="Frame to detect in; -1 sums over frames.")
 @click.option("--dry-run", is_flag=True, help="Detect and report, writing nothing.")
 @click.option("--out-dir", default="", help="Directory for the containers.")
 @click.option("--json", "json_output", is_flag=True, help="Print the run table as JSON.")
 @click.pass_context
-def detect(ctx, files, workflow_name, save_workflow, name, roi_path, channels,
-           frame, dry_run, out_dir, json_output, **overrides) -> None:
+def detect(
+    ctx,
+    files,
+    workflow_name,
+    save_workflow,
+    name,
+    roi_path,
+    channels,
+    frame,
+    dry_run,
+    out_dir,
+    json_output,
+    **overrides,
+) -> None:
     """Detect regions in FILES and write each into its measurement's container.
 
     Without ``--workflow`` this is the standard single-molecule segmentation.
@@ -129,9 +167,7 @@ def run(recipe, files, out_dir, dry_run, json_output) -> None:
     from ..api.spot_finder import detect_request
     from ..core.workflow import request_from_workflow
 
-    request = request_from_workflow(
-        recipe, files=list(files) or None, out_dir=out_dir
-    )
+    request = request_from_workflow(recipe, files=list(files) or None, out_dir=out_dir)
     if dry_run:
         request.write = False
     if not request.files:
@@ -154,8 +190,7 @@ def workflows(json_output: bool) -> None:
 
     names = list_workflows()
     if json_output:
-        click.echo(json.dumps(
-            {name: builtin_workflow(name) for name in names}, indent=2))
+        click.echo(json.dumps({name: builtin_workflow(name) for name in names}, indent=2))
         return
     for name in names:
         document = builtin_workflow(name)
@@ -211,9 +246,15 @@ def _echo_progress(index: int, total: int, name: str) -> None:
 def _report(result, json_output: bool) -> None:
     """Print the run table — every input, whatever became of it."""
     if json_output:
-        click.echo(json.dumps(
-            {"rows": [dataclasses.asdict(r) for r in result.rows],
-             "n_regions": result.n_regions}, indent=2))
+        click.echo(
+            json.dumps(
+                {
+                    "rows": [dataclasses.asdict(r) for r in result.rows],
+                    "n_regions": result.n_regions,
+                },
+                indent=2,
+            )
+        )
         return
     for row in result.rows:
         suffix = f" — {row.reason}" if row.reason else ""

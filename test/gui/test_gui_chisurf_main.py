@@ -7,9 +7,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')
-)
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
 from qtpy import QtWidgets
@@ -26,11 +24,11 @@ cs_app = cs.gui.get_app()
 
 
 def add_fit(
-        data_set_name: str,
-        dataset_selector: cs.gui.widgets.experiments.ExperimentalDataSelector,
-        add_fit_button: QtWidgets.QToolButton,
-        model_selector: QtWidgets.QComboBox,
-        model_name: str
+    data_set_name: str,
+    dataset_selector: cs.gui.widgets.experiments.ExperimentalDataSelector,
+    add_fit_button: QtWidgets.QToolButton,
+    model_selector: QtWidgets.QComboBox,
+    model_name: str,
 ):
     """Drive the main window's *Analysis* button to create one fit.
 
@@ -61,10 +59,7 @@ def add_fit(
             dataset_selector.scrollToItem(i)
             rect = dataset_selector.visualItemRect(i)
             QTest.mouseClick(
-                dataset_selector.viewport(),
-                Qt.LeftButton,
-                Qt.NoModifier,
-                rect.center()
+                dataset_selector.viewport(), Qt.LeftButton, Qt.NoModifier, rect.center()
             )
             break
     else:
@@ -88,10 +83,10 @@ def add_fit(
 
 
 def setup_reader(
-        experiment_name: str,
-        experiment_selector_combobox: QtWidgets.QComboBox,
-        setup_name: str,
-        setup_selector_combobox: QtWidgets.QComboBox
+    experiment_name: str,
+    experiment_selector_combobox: QtWidgets.QComboBox,
+    setup_name: str,
+    setup_selector_combobox: QtWidgets.QComboBox,
 ):
     """Pick an experiment and one of its readers in the main window.
 
@@ -126,34 +121,30 @@ class Tests(unittest.TestCase):
             experiment_name="TCSPC",
             experiment_selector_combobox=gui.comboBox_experimentSelect,
             setup_name="TXT/CSV",
-            setup_selector_combobox=gui.comboBox_setupSelect
+            setup_selector_combobox=gui.comboBox_setupSelect,
         )
         filename_decay = "./test/data/tcspc/ibh_sample/Decay_577D.txt"
         filename_irf = "./test/data/tcspc/ibh_sample/Prompt.txt"
 
         gui.current_setup.skiprows = 11
-        gui.current_setup.reading_routine = 'csv'
+        gui.current_setup.reading_routine = "csv"
         gui.current_setup.is_vv_vh = False
         gui.current_setup.use_header = True
         gui.current_setup.matrix_columns = []
-        gui.current_setup.polarization = 'vm'
+        gui.current_setup.polarization = "vm"
         gui.current_setup.rep_rate = 10.0
         gui.current_setup.dt = 0.0141
 
-        cs.macros.add_dataset(
-            filename=filename_decay
-        )
-        cs.macros.add_dataset(
-            filename=filename_irf
-        )
+        cs.macros.add_dataset(filename=filename_decay)
+        cs.macros.add_dataset(filename=filename_irf)
         data_set_name = "Decay_577D.txt"
-        for model_name in ('Lifetime', 'FRET: Gaussian distances'):
+        for model_name in ("Lifetime", "FRET: Gaussian distances"):
             fit = add_fit(
                 data_set_name=data_set_name,
                 dataset_selector=gui.dataset_selector,
                 add_fit_button=gui.toolButton,
                 model_selector=gui.comboBox_Model,
-                model_name=model_name
+                model_name=model_name,
             )
             self.assertIsNotNone(fit.model)
             self.assertIn(data_set_name, fit.data.name)
@@ -168,25 +159,20 @@ class Tests(unittest.TestCase):
             experiment_name="FCS",
             experiment_selector_combobox=gui.comboBox_experimentSelect,
             setup_name="Seidel Kristine",
-            setup_selector_combobox=gui.comboBox_setupSelect
+            setup_selector_combobox=gui.comboBox_setupSelect,
         )
         filename_fcs = "./test/data/fcs/kristine/Kristine_with_error.cor"
-        cs.macros.add_dataset(
-            filename=filename_fcs
-        )
-        model_names = [
-            gui.comboBox_Model.itemText(i)
-            for i in range(gui.comboBox_Model.count())
-        ]
-        self.assertIn('Parse-Model', model_names)
-        model_name = 'Parse-Model'
-        data_set_name = 'Kristine_with_error'
+        cs.macros.add_dataset(filename=filename_fcs)
+        model_names = [gui.comboBox_Model.itemText(i) for i in range(gui.comboBox_Model.count())]
+        self.assertIn("Parse-Model", model_names)
+        model_name = "Parse-Model"
+        data_set_name = "Kristine_with_error"
         fit = add_fit(
             data_set_name=data_set_name,
             dataset_selector=gui.dataset_selector,
             add_fit_button=gui.toolButton,
             model_selector=gui.comboBox_Model,
-            model_name=model_name
+            model_name=model_name,
         )
         self.assertIsNotNone(fit.model)
         # parameters are discovered lazily, on the first model update
@@ -196,14 +182,14 @@ class Tests(unittest.TestCase):
     def test_global_fit(self):
         """Create a global fit on the always-present global dataset."""
         gui = cs.cs
-        model_name = 'Global fit'
-        data_set_name = 'Global Dataset'
+        model_name = "Global fit"
+        data_set_name = "Global Dataset"
         fit = add_fit(
             data_set_name=data_set_name,
             dataset_selector=gui.dataset_selector,
             add_fit_button=gui.toolButton,
             model_selector=gui.comboBox_Model,
-            model_name=model_name
+            model_name=model_name,
         )
         self.assertIsNotNone(fit.model)
 

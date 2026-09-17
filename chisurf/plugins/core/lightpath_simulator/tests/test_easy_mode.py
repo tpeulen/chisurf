@@ -1,6 +1,5 @@
 """Tests for the easy-mode graph builder and preset I/O."""
 
-
 import numpy as np
 
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
@@ -237,8 +236,11 @@ class TestBuildEasyGraph:
         assert detector_nodes[1]["title"] == "Ch2"
         assert detector_nodes[2]["title"] == "Ch3"
         # Verify splitter types stored in config
-        splitter_types = [n["config"].get("splitter_type") for n in splitter_nodes
-                          if "splitter_type" in n.get("config", {})]
+        splitter_types = [
+            n["config"].get("splitter_type")
+            for n in splitter_nodes
+            if "splitter_type" in n.get("config", {})
+        ]
         assert splitter_types == ["Dichroic", "Dichroic"]
 
     def test_polarizer_splitter(self):
@@ -257,8 +259,9 @@ class TestBuildEasyGraph:
         }
         graph = build_easy_graph(config)
         splitter_nodes = [n for n in graph["nodes"] if n["type"] == "splitter"]
-        polarizer_nodes = [n for n in splitter_nodes
-                           if n["config"].get("splitter_type") == "Polarizer"]
+        polarizer_nodes = [
+            n for n in splitter_nodes if n["config"].get("splitter_type") == "Polarizer"
+        ]
         assert len(polarizer_nodes) == 1
         assert len([n for n in graph["nodes"] if n["type"] == "detector"]) == 2
 
@@ -273,7 +276,9 @@ class TestBuildEasyGraph:
         }
         graph = build_easy_graph(config)
         detector_titles = ["Visible Green", "Visible Red"]
-        for node, title in zip([n for n in graph["nodes"] if n["type"] == "detector"], detector_titles):
+        for node, title in zip(
+            [n for n in graph["nodes"] if n["type"] == "detector"], detector_titles
+        ):
             node["title"] = title
 
         easy_config = _graph_to_config(graph)
@@ -291,12 +296,14 @@ class TestBuildEasyGraph:
         }
         graph = build_easy_graph(config)
         splitter = next(
-            node for node in graph["nodes"]
+            node
+            for node in graph["nodes"]
             if node["type"] == "splitter" and node["title"].startswith("Dichroic Splitter")
         )
         filters = [node for node in graph["nodes"] if node["type"] == "filter"]
         graph["edges"] = [
-            edge for edge in graph["edges"]
+            edge
+            for edge in graph["edges"]
             if not (
                 edge["source"] == splitter["id"]
                 and edge["target"] in {node["id"] for node in filters}
@@ -321,25 +328,30 @@ class TestBuildEasyGraph:
         flat indexing. Re-shifting on every load would route the cascade from
         the wrong pin.
         """
-        graph = build_easy_graph({
-            "emission_splitters": [{"type": "Dichroic", "probe_id": 2}],
-            "detectors": [
-                {"name": "Ch1", "bandpass_probe_id": 3, "qe_probe_id": 4},
-                {"name": "Ch2", "qe_probe_id": 5},
-            ],
-        })
+        graph = build_easy_graph(
+            {
+                "emission_splitters": [{"type": "Dichroic", "probe_id": 2}],
+                "detectors": [
+                    {"name": "Ch1", "bandpass_probe_id": 3, "qe_probe_id": 4},
+                    {"name": "Ch2", "qe_probe_id": 5},
+                ],
+            }
+        )
         splitter = next(
-            node for node in graph["nodes"]
+            node
+            for node in graph["nodes"]
             if node["type"] == "splitter" and node["title"].startswith("Dichroic Splitter")
         )
         edge = next(
-            edge for edge in graph["edges"]
+            edge
+            for edge in graph["edges"]
             if edge["source"] == splitter["id"] and edge["source_port"] == 1
         )
 
         normalized = normalize_lightpath_graph(graph)
         normalized_edge = next(
-            item for item in normalized["edges"]
+            item
+            for item in normalized["edges"]
             if item["source"] == splitter["id"] and item["target"] == edge["target"]
         )
 
@@ -347,13 +359,15 @@ class TestBuildEasyGraph:
 
     def test_normalize_removes_legacy_forward_excitation_dichroic(self):
         """Older two-excitation-dichroic graphs should load as one dichroic."""
-        graph = build_easy_graph({
-            "emission_splitters": [{"type": "Dichroic", "probe_id": 2}],
-            "detectors": [
-                {"name": "Ch1", "qe_probe_id": 4},
-                {"name": "Ch2", "qe_probe_id": 5},
-            ],
-        })
+        graph = build_easy_graph(
+            {
+                "emission_splitters": [{"type": "Dichroic", "probe_id": 2}],
+                "detectors": [
+                    {"name": "Ch1", "qe_probe_id": 4},
+                    {"name": "Ch2", "qe_probe_id": 5},
+                ],
+            }
+        )
         sample = next(node for node in graph["nodes"] if node["type"] == "sample")
         light = next(node for node in graph["nodes"] if node["type"] == "light_source")
         exci = next(node for node in graph["nodes"] if node["title"] == "Excitation Dichroic")
@@ -369,14 +383,17 @@ class TestBuildEasyGraph:
         }
         graph["nodes"].append(fw)
         graph["edges"] = [
-            edge for edge in graph["edges"]
+            edge
+            for edge in graph["edges"]
             if not (edge["source"] == light["id"] and edge["target"] == sample["id"])
         ]
-        graph["edges"].extend([
-            {"source": light["id"], "source_port": 0, "target": fw["id"], "target_port": 0},
-            {"source": fw["id"], "source_port": 1, "target": sample["id"], "target_port": 0},
-            {"source": sample["id"], "source_port": 0, "target": exci["id"], "target_port": 0},
-        ])
+        graph["edges"].extend(
+            [
+                {"source": light["id"], "source_port": 0, "target": fw["id"], "target_port": 0},
+                {"source": fw["id"], "source_port": 1, "target": sample["id"], "target_port": 0},
+                {"source": sample["id"], "source_port": 0, "target": exci["id"], "target_port": 0},
+            ]
+        )
 
         normalized = normalize_lightpath_graph(graph)
 
@@ -388,13 +405,16 @@ class TestBuildEasyGraph:
 
     def test_trailing_none_dichroic_does_not_create_extra_detector(self):
         """A non-required None dichroic row should not become a graph splitter."""
-        graph = build_easy_graph({
-            "emission_splitters": [{"type": "Dichroic", "probe_id": None}],
-            "detectors": [{"name": "Only", "qe_probe_id": 4}],
-        })
+        graph = build_easy_graph(
+            {
+                "emission_splitters": [{"type": "Dichroic", "probe_id": None}],
+                "detectors": [{"name": "Only", "qe_probe_id": 4}],
+            }
+        )
 
         emission_splitters = [
-            node for node in graph["nodes"]
+            node
+            for node in graph["nodes"]
             if node["type"] == "splitter" and node["title"].startswith("Dichroic Splitter")
         ]
         detectors = [node for node in graph["nodes"] if node["type"] == "detector"]

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.geometry.guide_frames import (
     build_guide_frames,
     differences_and_normals,
@@ -66,9 +65,7 @@ def test_a_degenerate_step_copies_the_previous_direction():
 # --------------------------------------------------------------------------- #
 def test_an_interior_tangent_is_the_sum_of_both_directions():
     """``add3f(nv[a], nv[a-1])`` then normalise -- a head-to-tail sum."""
-    pts = np.array(
-        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 2.0, 0.0]]
-    )
+    pts = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 2.0, 0.0]])
     _, normals, _ = differences_and_normals(pts, np.zeros(4, int))
     tangents = tangents_from_normals(normals, np.zeros(4, int))
     expected = np.array([1.0, 1.0, 0.0]) / np.sqrt(2.0)
@@ -98,12 +95,10 @@ def test_alternating_up_vectors_are_made_consistent():
     n = 9
     pts = _chain(n)
     ups = np.zeros((n, 3))
-    ups[:, 2] = (-1.0) ** np.arange(n)   # every neighbour opposed
+    ups[:, 2] = (-1.0) ** np.arange(n)  # every neighbour opposed
 
     frames = build_guide_frames(pts, ups)
-    dots = np.einsum(
-        "ij,ij->i", frames.orientations[1:-2], frames.orientations[2:-1]
-    )
+    dots = np.einsum("ij,ij->i", frames.orientations[1:-2], frames.orientations[2:-1])
     assert dots.min() > 0.9
 
 
@@ -118,9 +113,7 @@ def test_a_helix_is_not_offered_the_inverted_candidate():
     frames = build_guide_frames(pts, ups, is_helix=helix)
     # With no inversion available the alternation survives, which is correct:
     # the helix's own twist is the signal, not noise to be flattened.
-    dots = np.einsum(
-        "ij,ij->i", frames.orientations[1:-2], frames.orientations[2:-1]
-    )
+    dots = np.einsum("ij,ij->i", frames.orientations[1:-2], frames.orientations[2:-1])
     assert dots.min() < 0.0
 
 
@@ -129,16 +122,17 @@ def test_orientations_come_out_perpendicular_to_the_tangent():
     pts = np.cumsum(np.random.default_rng(1).normal(size=(n, 3)), axis=0)
     ups = np.tile([0.3, 0.5, 0.8], (n, 1))
     frames = build_guide_frames(pts, ups)
-    along = np.einsum(
-        "ij,ij->i", frames.orientations[1:-1], frames.tangents[1:-1]
-    )
+    along = np.einsum("ij,ij->i", frames.orientations[1:-1], frames.tangents[1:-1])
     assert np.abs(along).max() < 1e-9
 
 
 def test_refine_normals_leaves_a_short_chain_alone():
     ups = np.tile([0.0, 0.0, 1.0], (2, 1))
     out = refine_normals(
-        ups, np.zeros((2, 3)), np.zeros((2, 3)), np.zeros(2, int),
+        ups,
+        np.zeros((2, 3)),
+        np.zeros((2, 3)),
+        np.zeros(2, int),
         np.zeros(2, bool),
     )
     assert np.allclose(out, ups)
@@ -186,9 +180,7 @@ def test_zero_weight_changes_nothing():
     pts, sheet, segments = _strand_into_a_loop()
     _, normals, _ = differences_and_normals(pts, segments)
     tangents = tangents_from_normals(normals, segments)
-    assert np.allclose(
-        refine_sheet_tips(tangents, sheet, segments, weight=0.0), tangents
-    )
+    assert np.allclose(refine_sheet_tips(tangents, sheet, segments, weight=0.0), tangents)
 
 
 def test_only_strand_tips_move():
@@ -222,17 +214,14 @@ def test_the_frame_is_orthonormal_where_it_is_defined():
     frames = build_guide_frames(pts, ups, is_sheet=sheet)
 
     interior = slice(1, -1)
-    assert np.allclose(
-        np.linalg.norm(frames.tangents[interior], axis=1), 1.0
+    assert np.allclose(np.linalg.norm(frames.tangents[interior], axis=1), 1.0)
+    assert np.allclose(np.linalg.norm(frames.orientations[interior], axis=1), 1.0)
+    assert (
+        np.abs(
+            np.einsum("ij,ij->i", frames.tangents[interior], frames.orientations[interior])
+        ).max()
+        < 1e-9
     )
-    assert np.allclose(
-        np.linalg.norm(frames.orientations[interior], axis=1), 1.0
-    )
-    assert np.abs(
-        np.einsum(
-            "ij,ij->i", frames.tangents[interior], frames.orientations[interior]
-        )
-    ).max() < 1e-9
 
 
 def test_lengths_are_the_residue_spacing():
@@ -270,11 +259,11 @@ from chimol.geometry.spline import (  # noqa: E402
     "x, power, expected",
     [
         (0.0, 2.0, 0.0),
-        (0.25, 2.0, 0.125),    # 0.5 * (2*0.25)^2
+        (0.25, 2.0, 0.125),  # 0.5 * (2*0.25)^2
         (0.5, 2.0, 0.5),
-        (0.75, 2.0, 0.875),    # 1 - 0.5 * (2*0.25)^2
+        (0.75, 2.0, 0.875),  # 1 - 0.5 * (2*0.25)^2
         (1.0, 2.0, 1.0),
-        (-1.0, 2.0, 0.0),      # clamped
+        (-1.0, 2.0, 0.0),  # clamped
         (2.0, 2.0, 1.0),
     ],
 )
@@ -316,6 +305,7 @@ def test_the_throw_scales_with_the_segment_length():
 
     A spline with a fixed tension cannot reproduce this.
     """
+
     def bulge(rise):
         pts = np.array([[0.0, 0.0, 0.0], [rise, 0.0, 0.0]])
         tangents = np.array([[0.8, 0.6, 0.0], [0.8, -0.6, 0.0]])
@@ -327,9 +317,7 @@ def test_the_throw_scales_with_the_segment_length():
 
 def test_zero_throw_gives_straight_segments():
     pts = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0], [3.0, 3.0, 0.0]])
-    tangents = np.array(
-        [[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]]
-    )
+    tangents = np.array([[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]])
     points, _, _ = sample_cartoon_curve(pts, tangents, 8, throw=0.0)
     # Every sample lies on one of the two straight legs.
     first_leg = points[:8]
@@ -338,9 +326,7 @@ def test_zero_throw_gives_straight_segments():
 
 def test_the_throw_rounds_a_turn():
     pts = np.array([[0.0, 0.0, 0.0], [3.3, 0.0, 0.0], [3.3, 3.3, 0.0]])
-    tangents = np.array(
-        [[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]]
-    )
+    tangents = np.array([[1.0, 0.0, 0.0], [0.7071, 0.7071, 0.0], [0.0, 1.0, 0.0]])
     thrown, _, _ = sample_cartoon_curve(pts, tangents, 8)
     straight, _, _ = sample_cartoon_curve(pts, tangents, 8, throw=0.0)
     length = lambda p: np.linalg.norm(np.diff(p, axis=0), axis=1).sum()  # noqa: E731

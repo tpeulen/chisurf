@@ -21,7 +21,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -35,8 +39,8 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     win = MolViewPluginWindow()
     shared = win.cmd
@@ -138,7 +142,8 @@ def test_proline_keeps_its_n_ca(session):
 
 def test_nothing_is_hidden_where_no_cartoon_covers_it(session):
     """The bonds are dropped because a cartoon already draws them, so with the
-    cartoon off there is nothing to defer to."""
+    cartoon off there is nothing to defer to.
+    """
     win, do, errors = session
     do("hide everything")
     do("show sticks, byres (resi 20-26)")

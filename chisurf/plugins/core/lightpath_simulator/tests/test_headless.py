@@ -1,4 +1,5 @@
 """Tests for headless optical simulation and mmCIF export."""
+
 import json
 from unittest.mock import MagicMock
 
@@ -28,6 +29,7 @@ def test_import_no_qt():
     # We should be able to import these without triggering any Qt errors
     assert True
 
+
 def test_propagate_headless():
     """Test full propagation on a minimal graph dict."""
     from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
@@ -52,7 +54,7 @@ def test_propagate_headless():
                 "title": "Laser",
                 "inputs": [],
                 "outputs": [{"name": "Light", "is_output": True}],
-                "config": {"source_mode": "manual", "manual_lines": "488:1.0"}
+                "config": {"source_mode": "manual", "manual_lines": "488:1.0"},
             },
             {
                 "id": "node_sample",
@@ -60,7 +62,7 @@ def test_propagate_headless():
                 "title": "Sample",
                 "inputs": [{"name": "In", "is_output": False}],
                 "outputs": [{"name": "Out", "is_output": True}],
-                "config": {"probe_ids": [1]}
+                "config": {"probe_ids": [1]},
             },
             {
                 "id": "node_det",
@@ -68,13 +70,13 @@ def test_propagate_headless():
                 "title": "Detector",
                 "inputs": [{"name": "In", "is_output": False}],
                 "outputs": [],
-                "config": {"detector_name": "Main Channel", "probe_id": 999}
-            }
+                "config": {"detector_name": "Main Channel", "probe_id": 999},
+            },
         ],
         "edges": [
             {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0}
-        ]
+            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
+        ],
     }
 
     sim = OpticalPathSimulator(mock_db)
@@ -86,6 +88,7 @@ def test_propagate_headless():
     assert len(signals) > 0
     assert signals[0]["detector"] == "Main Channel"
     assert signals[0]["intensity"] > 0
+
 
 def test_a_database_light_source_keeps_its_name_down_to_the_detector():
     """A source whose own name ends in a bracket must survive the channel key.
@@ -115,23 +118,45 @@ def test_a_database_light_source_keeps_its_name_down_to_the_detector():
     mock_db.get_probe_spectrum.return_value = (WAVELENGTHS, np.ones_like(WAVELENGTHS))
 
     sim = OpticalPathSimulator(mock_db)
-    sim.load_from_dict({
-        "nodes": [
-            {"id": "node_laser", "type": "light_source", "title": "Laser", "inputs": [],
-             "outputs": [{"name": "Light", "is_output": True}],
-             "config": {"source_mode": "database", "probe_id": 7}},
-            {"id": "node_sample", "type": "sample", "title": "Sample",
-             "inputs": [{"name": "In", "is_output": False}],
-             "outputs": [{"name": "Out", "is_output": True}], "config": {"probe_ids": [1]}},
-            {"id": "node_det", "type": "detector", "title": "Detector",
-             "inputs": [{"name": "In", "is_output": False}], "outputs": [],
-             "config": {"detector_name": "Det1", "probe_id": 999}},
-        ],
-        "edges": [
-            {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
-        ],
-    })
+    sim.load_from_dict(
+        {
+            "nodes": [
+                {
+                    "id": "node_laser",
+                    "type": "light_source",
+                    "title": "Laser",
+                    "inputs": [],
+                    "outputs": [{"name": "Light", "is_output": True}],
+                    "config": {"source_mode": "database", "probe_id": 7},
+                },
+                {
+                    "id": "node_sample",
+                    "type": "sample",
+                    "title": "Sample",
+                    "inputs": [{"name": "In", "is_output": False}],
+                    "outputs": [{"name": "Out", "is_output": True}],
+                    "config": {"probe_ids": [1]},
+                },
+                {
+                    "id": "node_det",
+                    "type": "detector",
+                    "title": "Detector",
+                    "inputs": [{"name": "In", "is_output": False}],
+                    "outputs": [],
+                    "config": {"detector_name": "Det1", "probe_id": 999},
+                },
+            ],
+            "edges": [
+                {
+                    "source": "node_laser",
+                    "source_port": 0,
+                    "target": "node_sample",
+                    "target_port": 0,
+                },
+                {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
+            ],
+        }
+    )
     sim.propagate()
 
     # the sample and the detector must agree on what the source is called
@@ -157,13 +182,29 @@ def test_export_instrument_setting():
 
     # State with 1 laser and 1 sample
     sim = OpticalPathSimulator(mock_db)
-    sim.load_from_dict({
-        "nodes": [
-            {"id": "l1", "type": "light_source", "title": "L", "inputs": [], "outputs": ["X"], "config": {"manual_lines": "488:1.0"}},
-            {"id": "s1", "type": "sample", "title": "S", "inputs": ["I"], "outputs": ["O", "D"], "config": {"probe_ids": [42]}}
-        ],
-        "edges": []
-    })
+    sim.load_from_dict(
+        {
+            "nodes": [
+                {
+                    "id": "l1",
+                    "type": "light_source",
+                    "title": "L",
+                    "inputs": [],
+                    "outputs": ["X"],
+                    "config": {"manual_lines": "488:1.0"},
+                },
+                {
+                    "id": "s1",
+                    "type": "sample",
+                    "title": "S",
+                    "inputs": ["I"],
+                    "outputs": ["O", "D"],
+                    "config": {"probe_ids": [42]},
+                },
+            ],
+            "edges": [],
+        }
+    )
 
     setting = sim.to_instrument_setting()
     assert isinstance(setting, InstrumentSetting)
@@ -172,6 +213,7 @@ def test_export_instrument_setting():
     assert len(setting.fluorophores) == 1
     assert setting.fluorophores[0].name == "ATTO 488"
     assert setting.fluorophores[0].quantum_yield == 0.5
+
 
 def test_export_to_json():
     """Verify JSON serialization contains expected keys."""
@@ -223,7 +265,9 @@ def test_lightpath_save_list_get_roundtrip(tmp_path):
 
     listed = list_handler(db_path=str(db_path))
     assert listed["ok"], listed.get("error")
-    assert [item["operation_id"] for item in listed["result"]["simulations"]] == [saved_result["operation_id"]]
+    assert [item["operation_id"] for item in listed["result"]["simulations"]] == [
+        saved_result["operation_id"]
+    ]
 
     loaded = get_handler(saved_result["operation_id"], db_path=str(db_path))
     assert loaded["ok"], loaded.get("error")
@@ -314,9 +358,7 @@ def _build_probe_db(db_path, absorption_type: str, absorption_scale: float = 1.0
             _PROBE_WAVELENGTHS,
             np.array([0.2, 1.0, 0.5, 0.0]) * absorption_scale,
         )
-        db.add_spectrum(
-            dye_id, "emission", _PROBE_WAVELENGTHS, np.array([0.0, 0.2, 0.8, 1.0])
-        )
+        db.add_spectrum(dye_id, "emission", _PROBE_WAVELENGTHS, np.array([0.0, 0.2, 0.8, 1.0]))
         db.add_spectrum(
             detector_id,
             "quantum_efficiency",
@@ -377,9 +419,7 @@ def test_a_dye_whose_absorption_is_filed_as_excitation_still_works(tmp_path):
     ]
     assert dyes and dyes[0]["has_abs"], "the dye is missing from the palette"
 
-    reference = simulate_lightpath(
-        _dye_detector_graph(*reference_ids), db_path=str(reference_path)
-    )
+    reference = simulate_lightpath(_dye_detector_graph(*reference_ids), db_path=str(reference_path))
     excitation = simulate_lightpath(
         _dye_detector_graph(*excitation_ids), db_path=str(excitation_path)
     )
@@ -551,23 +591,45 @@ def test_simulated_optics_reach_the_global_view():
     mock_db.get_probe_spectrum.return_value = (WAVELENGTHS, np.ones_like(WAVELENGTHS))
 
     simulator = OpticalPathSimulator(mock_db)
-    simulator.load_from_dict({
-        "nodes": [
-            {"id": "node_laser", "type": "light_source", "title": "Laser", "inputs": [],
-             "outputs": [{"name": "Light", "is_output": True}],
-             "config": {"source_mode": "manual", "manual_lines": "488:1.0"}},
-            {"id": "node_sample", "type": "sample", "title": "Sample",
-             "inputs": [{"name": "In", "is_output": False}],
-             "outputs": [{"name": "Out", "is_output": True}], "config": {"probe_ids": [1]}},
-            {"id": "node_det", "type": "detector", "title": "Detector",
-             "inputs": [{"name": "In", "is_output": False}], "outputs": [],
-             "config": {"detector_name": "Main Channel", "probe_id": 999}},
-        ],
-        "edges": [
-            {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
-        ],
-    })
+    simulator.load_from_dict(
+        {
+            "nodes": [
+                {
+                    "id": "node_laser",
+                    "type": "light_source",
+                    "title": "Laser",
+                    "inputs": [],
+                    "outputs": [{"name": "Light", "is_output": True}],
+                    "config": {"source_mode": "manual", "manual_lines": "488:1.0"},
+                },
+                {
+                    "id": "node_sample",
+                    "type": "sample",
+                    "title": "Sample",
+                    "inputs": [{"name": "In", "is_output": False}],
+                    "outputs": [{"name": "Out", "is_output": True}],
+                    "config": {"probe_ids": [1]},
+                },
+                {
+                    "id": "node_det",
+                    "type": "detector",
+                    "title": "Detector",
+                    "inputs": [{"name": "In", "is_output": False}],
+                    "outputs": [],
+                    "config": {"detector_name": "Main Channel", "probe_id": 999},
+                },
+            ],
+            "edges": [
+                {
+                    "source": "node_laser",
+                    "source_port": 0,
+                    "target": "node_sample",
+                    "target_port": 0,
+                },
+                {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
+            ],
+        }
+    )
     simulator.propagate()
     matrices = simulator.get_crosstalk_matrices()
 
@@ -580,6 +642,6 @@ def test_simulated_optics_reach_the_global_view():
         assert group.dyes and group.detectors
         emission = group.parameter("em", group.dyes[0], group.detectors[0])
         assert emission is not None and emission.value >= 0.0
-        assert emission.unique_identifier                    # linkable process-wide
+        assert emission.unique_identifier  # linkable process-wide
     finally:
         unregister_lightpath_parameters("lightpath_test")

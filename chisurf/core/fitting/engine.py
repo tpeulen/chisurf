@@ -36,6 +36,7 @@ not scan the other nine. Nothing is computed that was not asked for.
 That is exactly what a profile scan does natively, and it is what the other two
 engines do by construction -- so it means the same thing everywhere.
 """
+
 from __future__ import annotations
 
 import abc
@@ -186,9 +187,7 @@ class Joint:
 
 
 def _closest(
-        quantiles: typing.Dict[float, float],
-        target: float,
-        tolerance: float = 0.02
+    quantiles: typing.Dict[float, float], target: float, tolerance: float = 0.02
 ) -> typing.Optional[float]:
     """Return the stored quantile nearest ``target``, or ``None`` if none is close."""
     best, gap = None, tolerance
@@ -208,27 +207,48 @@ def _normal_quantile(p: float) -> float:
     if not (0.0 < p < 1.0):
         return float("nan")
     # Symmetric about 1/2; solve for the upper tail and mirror.
-    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
-         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
-    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
-         6.680131188771972e+01, -1.328068155288572e+01]
-    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
-         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
-    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
-         3.754408661907416e+00]
+    a = [
+        -3.969683028665376e01,
+        2.209460984245205e02,
+        -2.759285104469687e02,
+        1.383577518672690e02,
+        -3.066479806614716e01,
+        2.506628277459239e00,
+    ]
+    b = [
+        -5.447609879822406e01,
+        1.615858368580409e02,
+        -1.556989798598866e02,
+        6.680131188771972e01,
+        -1.328068155288572e01,
+    ]
+    c = [
+        -7.784894002430293e-03,
+        -3.223964580411365e-01,
+        -2.400758277161838e00,
+        -2.549732539343734e00,
+        4.374664141464968e00,
+        2.938163982698783e00,
+    ]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
     low, high = 0.02425, 1 - 0.02425
     if p < low:
         q = math.sqrt(-2 * math.log(p))
-        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / \
-               ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+        )
     if p > high:
         q = math.sqrt(-2 * math.log(1 - p))
-        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / \
-               ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+        )
     q = p - 0.5
     r = q * q
-    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / \
-           (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+    return (
+        (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
+        * q
+        / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+    )
 
 
 class PosteriorEngine(abc.ABC):
@@ -254,6 +274,7 @@ class PosteriorEngine(abc.ABC):
     def __init__(self, fit, model=None):
         """Bind the engine to a fit (and optionally an explicit model)."""
         from chisurf.core.fitting import factorgraph
+
         self.fit = fit
         self.model = model if model is not None else factorgraph.posterior_model(fit)
         self._targets: typing.List[str] = []
@@ -388,8 +409,9 @@ class PosteriorEngine(abc.ABC):
         """Raise unless :meth:`run` has been called since the last change."""
         if not self._ran:
             raise RuntimeError(
-                "call run() before reading results; the query changed since the "
-                "last run" if self._marginals else "call run() before reading results"
+                "call run() before reading results; the query changed since the last run"
+                if self._marginals
+                else "call run() before reading results"
             )
 
     def _parameter(self, name: str):
@@ -418,9 +440,9 @@ class PosteriorEngine(abc.ABC):
         return self.fit, str(getattr(parameter, "name", ""))
 
     def _symmetry_diagnostics(
-            self,
-            name: str,
-            p_value: float,
+        self,
+        name: str,
+        p_value: float,
     ) -> typing.Dict[str, typing.Any]:
         """Return diagnostics flagging a symmetric interval on a skewed posterior.
 
@@ -473,8 +495,7 @@ class PosteriorEngine(abc.ABC):
             return None
         # Snapshot every free value *before* fixing anything, so the re-fit can
         # be undone whatever it moves.
-        before = [(p, float(p.value)) for p in self.model.parameters_all
-                  if hasattr(p, "value")]
+        before = [(p, float(p.value)) for p in self.model.parameters_all if hasattr(p, "value")]
         fixed = []
         for name, value in self._evidence.items():
             p = self._parameter(name)
@@ -540,6 +561,7 @@ class LaplaceEngine(PosteriorEngine):
             ``self``.
         """
         from chisurf.core.fitting import factorgraph
+
         p_value = float(options.get("p_value", 0.68))
         restore = self._apply_evidence()
         try:
@@ -548,9 +570,7 @@ class LaplaceEngine(PosteriorEngine):
                 values = np.asarray(self.model.parameter_values, dtype=np.float64)
                 # Explicitly over *this* engine's model: the default is
                 # ``fit.model``, which for a group is one member.
-                cov, used = cs.core.fitting.fit.covariance_matrix(
-                    self.fit, model=self.model
-                )
+                cov, used = cs.core.fitting.fit.covariance_matrix(self.fit, model=self.model)
                 cov = np.atleast_2d(np.asarray(cov, dtype=np.float64))
                 index = {n: i for i, n in enumerate(names)}
                 position = {int(u): k for k, u in enumerate(list(used))}
@@ -566,8 +586,13 @@ class LaplaceEngine(PosteriorEngine):
                     sd = float(np.sqrt(cov[k, k])) if k is not None and cov.size else float("nan")
                     value = float(values[i]) if i < values.size else float("nan")
                     self._marginals[name] = Marginal(
-                        name=name, value=value, sd=sd, method=self.method,
-                        low=value - z * sd, high=value + z * sd, p_value=p_value,
+                        name=name,
+                        value=value,
+                        sd=sd,
+                        method=self.method,
+                        low=value - z * sd,
+                        high=value + z * sd,
+                        p_value=p_value,
                         diagnostics=self._symmetry_diagnostics(name, p_value),
                     )
 
@@ -594,9 +619,7 @@ class LaplaceEngine(PosteriorEngine):
         ``-chi2/2 + (d/2)ln(2 pi) + (1/2)ln det Sigma`` at the optimum.
         """
         try:
-            chi2 = float(
-                (np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum()
-            )
+            chi2 = float((np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum())
             d = cov.shape[0]
             sign, logdet = np.linalg.slogdet(cov)
             if sign <= 0 or not np.isfinite(logdet):
@@ -695,9 +718,7 @@ class GaussianEngine(PosteriorEngine):
         constant.
         """
         try:
-            chi2 = float(
-                (np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum()
-            )
+            chi2 = float((np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum())
             sign, logdet = np.linalg.slogdet(cov)
             if sign <= 0 or not np.isfinite(logdet):
                 return 0.0
@@ -747,8 +768,13 @@ class GaussianEngine(PosteriorEngine):
             sd = float(math.sqrt(single.covariance[0, 0]))
             z = _normal_quantile(0.5 + 0.5 * p_value)
             self._marginals[name] = Marginal(
-                name=name, value=mean, sd=sd, method=self.method,
-                low=mean - z * sd, high=mean + z * sd, p_value=p_value,
+                name=name,
+                value=mean,
+                sd=sd,
+                method=self.method,
+                low=mean - z * sd,
+                high=mean + z * sd,
+                p_value=p_value,
                 diagnostics=self._symmetry_diagnostics(name, p_value),
             )
 
@@ -758,7 +784,9 @@ class GaussianEngine(PosteriorEngine):
                 continue
             block = form.marginal(list(key))
             self._joints[key] = Joint(
-                names=key, mean=block.mean, covariance=block.covariance,
+                names=key,
+                mean=block.mean,
+                covariance=block.covariance,
                 method=self.method,
             )
 
@@ -767,9 +795,7 @@ class GaussianEngine(PosteriorEngine):
         return self
 
     def conditional(
-            self,
-            assignments: typing.Dict[str, float],
-            targets: typing.Sequence[str] = None
+        self, assignments: typing.Dict[str, float], targets: typing.Sequence[str] = None
     ) -> typing.List[Marginal]:
         """Return marginals under an arbitrary conditioning, without re-running.
 
@@ -803,18 +829,24 @@ class GaussianEngine(PosteriorEngine):
             single = conditioned.marginal([name])
             mean = float(single.mean[0])
             sd = float(math.sqrt(single.covariance[0, 0]))
-            out.append(Marginal(
-                name=name, value=mean, sd=sd, method=self.method,
-                low=mean - sd, high=mean + sd, p_value=0.68,
-            ))
+            out.append(
+                Marginal(
+                    name=name,
+                    value=mean,
+                    sd=sd,
+                    method=self.method,
+                    low=mean - sd,
+                    high=mean + sd,
+                    p_value=0.68,
+                )
+            )
         return out
 
-
     def conditional_scan(
-            self,
-            name: str,
-            points: int = 41,
-            span: float = 3.0,
+        self,
+        name: str,
+        points: int = 41,
+        span: float = 3.0,
     ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         r"""Sweep one parameter over its range and report what the rest become.
 
@@ -882,15 +914,17 @@ class GaussianEngine(PosteriorEngine):
             # The closed form, rather than one condition() call per point: they
             # agree exactly, and this keeps a long sweep free.
             z = rho * held_z
-            targets.append({
-                "name": other,
-                "mean": mu_other + sd_other * z,
-                "z": z,
-                "sd": sd_other * math.sqrt(max(1.0 - rho * rho, 0.0)),
-                "marginal": mu_other,
-                "marginal_sd": sd_other,
-                "correlation": rho,
-            })
+            targets.append(
+                {
+                    "name": other,
+                    "mean": mu_other + sd_other * z,
+                    "z": z,
+                    "sd": sd_other * math.sqrt(max(1.0 - rho * rho, 0.0)),
+                    "marginal": mu_other,
+                    "marginal_sd": sd_other,
+                    "correlation": rho,
+                }
+            )
         return {
             "name": name,
             "held": held,
@@ -900,13 +934,12 @@ class GaussianEngine(PosteriorEngine):
             "targets": targets,
         }
 
-
     def exact_conditional_scan(
-            self,
-            name: str,
-            points: int = 13,
-            span: float = 3.0,
-            check_cancel: typing.Callable = None,
+        self,
+        name: str,
+        points: int = 13,
+        span: float = 3.0,
+        check_cancel: typing.Callable = None,
     ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         r"""Run the same sweep, re-fitting at every point instead of assuming.
 
@@ -960,8 +993,7 @@ class GaussianEngine(PosteriorEngine):
 
         # Snapshot everything before touching it: this walks the optimiser over
         # the whole sweep and must put the fit back exactly as it was found.
-        before = [(p, float(p.value)) for p in self.model.parameters_all
-                  if hasattr(p, "value")]
+        before = [(p, float(p.value)) for p in self.model.parameters_all if hasattr(p, "value")]
         was_fixed = bool(getattr(parameter, "fixed", False))
 
         means = {t: np.full(len(reference["held"]), np.nan) for t in targets}
@@ -976,8 +1008,7 @@ class GaussianEngine(PosteriorEngine):
                     self.fit.run()
                 except Exception:
                     continue
-                current = {n: v for n, v in
-                           zip(self.parameter_names, self.model.parameter_values)}
+                current = {n: v for n, v in zip(self.parameter_names, self.model.parameter_values)}
                 for t in targets:
                     if t in current:
                         means[t][i] = float(current[t])
@@ -1001,17 +1032,19 @@ class GaussianEngine(PosteriorEngine):
         for t in targets:
             base = by_name[t]
             sd = base["marginal_sd"]
-            out.append({
-                "name": t,
-                "mean": means[t],
-                # Standardised on the same scale as the Gaussian sweep, which is
-                # the only way the two curves can be laid over each other.
-                "z": (means[t] - base["marginal"]) / sd if sd > 0 else means[t] * np.nan,
-                "sd": base["sd"],
-                "marginal": base["marginal"],
-                "marginal_sd": sd,
-                "correlation": base["correlation"],
-            })
+            out.append(
+                {
+                    "name": t,
+                    "mean": means[t],
+                    # Standardised on the same scale as the Gaussian sweep, which is
+                    # the only way the two curves can be laid over each other.
+                    "z": (means[t] - base["marginal"]) / sd if sd > 0 else means[t] * np.nan,
+                    "sd": base["sd"],
+                    "marginal": base["marginal"],
+                    "marginal_sd": sd,
+                    "correlation": base["correlation"],
+                }
+            )
         return {
             "name": name,
             "held": reference["held"],
@@ -1065,9 +1098,9 @@ def asymmetry_threshold(effective_draws: float) -> float:
 
 
 def marginal_asymmetry(
-        fit,
-        name: str,
-        p_value: float = 0.68,
+    fit,
+    name: str,
+    p_value: float = 0.68,
 ) -> typing.Optional[typing.Dict[str, typing.Any]]:
     r"""Measure how skewed a parameter's posterior actually is, from a chain.
 
@@ -1126,10 +1159,10 @@ def marginal_asymmetry(
     # autocorrelated chain of 30000 knows far less than 30000 independent draws
     # and its asymmetry estimate is correspondingly noisier.
     from chisurf.core.fitting import diagnostics as _dg
+
     chains = chain.get("chains")
     try:
-        effective = float(_dg.effective_sample_size(
-            np.asarray(chains, dtype=np.float64))[index])
+        effective = float(_dg.effective_sample_size(np.asarray(chains, dtype=np.float64))[index])
     except Exception:
         effective = float(column.size)
     if not np.isfinite(effective) or effective <= 1.0:
@@ -1139,9 +1172,9 @@ def marginal_asymmetry(
 
 
 def sample_asymmetry(
-        column: np.ndarray,
-        effective_draws: typing.Optional[float] = None,
-        p_value: float = 0.68,
+    column: np.ndarray,
+    effective_draws: typing.Optional[float] = None,
+    p_value: float = 0.68,
 ) -> typing.Optional[typing.Dict[str, typing.Any]]:
     """Summarise one column of draws as a possibly-asymmetric interval.
 
@@ -1176,23 +1209,22 @@ def sample_asymmetry(
         effective_draws = float(column.size)
 
     tail = 0.5 * (1.0 - float(p_value))
-    low, median, high = np.percentile(column, [100.0 * tail, 50.0,
-                                               100.0 * (1.0 - tail)])
+    low, median, high = np.percentile(column, [100.0 * tail, 50.0, 100.0 * (1.0 - tail)])
     lower, upper = float(median - low), float(high - median)
     if not (lower > 0.0 and upper > 0.0):
         return None
     asymmetry = upper / lower
     spread = float(column.std())
-    skew = (float(np.mean((column - column.mean()) ** 3) / spread ** 3)
-            if spread > 0 else 0.0)
+    skew = float(np.mean((column - column.mean()) ** 3) / spread**3) if spread > 0 else 0.0
 
     # Compared symmetrically, so a ratio of 0.8 counts the same as 1.25.
     ratio = max(asymmetry, 1.0 / asymmetry)
     threshold = asymmetry_threshold(effective_draws)
     gaussian_ok = ratio < threshold
     note = (
-        "" if gaussian_ok else
-        f"posterior is skewed ({median:.6g} +{upper:.3g} -{lower:.3g}); "
+        ""
+        if gaussian_ok
+        else f"posterior is skewed ({median:.6g} +{upper:.3g} -{lower:.3g}); "
         f"a symmetric interval misstates both ends"
     )
     return {
@@ -1210,9 +1242,9 @@ def sample_asymmetry(
 
 
 def gaussian_validity(
-        approximate: typing.Dict[str, typing.Any],
-        exact: typing.Dict[str, typing.Any],
-        tolerance: float = 0.25,
+    approximate: typing.Dict[str, typing.Any],
+    exact: typing.Dict[str, typing.Any],
+    tolerance: float = 0.25,
 ) -> typing.Dict[str, typing.Any]:
     r"""Say how far the quadratic approximation can be trusted.
 
@@ -1246,8 +1278,7 @@ def gaussian_validity(
         disagreement seen), ``worst_target``, and ``verdict``.
     """
     held_z = np.asarray(exact["held_z"], dtype=np.float64)
-    correlations = {t["name"]: float(t["correlation"])
-                    for t in approximate["targets"]}
+    correlations = {t["name"]: float(t["correlation"]) for t in approximate["targets"]}
 
     worst = 0.0
     worst_target = ""
@@ -1259,8 +1290,7 @@ def gaussian_validity(
             continue
         # The Gaussian prediction in standardised units is exactly rho * z, so
         # it can be evaluated wherever the re-fit was actually done.
-        difference = np.abs(rho * held_z
-                            - np.asarray(other["z"], dtype=np.float64))
+        difference = np.abs(rho * held_z - np.asarray(other["z"], dtype=np.float64))
         finite = np.isfinite(difference)
         if not finite.any():
             continue
@@ -1279,17 +1309,20 @@ def gaussian_validity(
             break
 
     if valid_to == float("inf"):
-        verdict = ("the quadratic approximation holds everywhere tested — "
-                   "Gaussian intervals are fine here")
+        verdict = (
+            "the quadratic approximation holds everywhere tested — Gaussian intervals are fine here"
+        )
     elif valid_to >= 2.0:
-        verdict = (f"holds to about {valid_to:.1f}σ — a 1σ interval is fine, "
-                   f"further out is not")
+        verdict = f"holds to about {valid_to:.1f}σ — a 1σ interval is fine, further out is not"
     elif valid_to >= 1.0:
-        verdict = (f"breaks down beyond {valid_to:.1f}σ — quote a profile or "
-                   f"sampled interval, not ±σ")
+        verdict = (
+            f"breaks down beyond {valid_to:.1f}σ — quote a profile or sampled interval, not ±σ"
+        )
     else:
-        verdict = ("breaks down inside 1σ — the posterior is not Gaussian and "
-                   "the ±σ error bar is misleading")
+        verdict = (
+            "breaks down inside 1σ — the posterior is not Gaussian and "
+            "the ±σ error bar is misleading"
+        )
     return {
         "valid_to": valid_to,
         "worst": worst,
@@ -1345,8 +1378,9 @@ class ProfileEngine(PosteriorEngine):
                 low = high = float("nan")
                 method = "none"
                 try:
-                    intervals = cs.core.fitting.support_plane.\
-                        confidence_intervals_from_scan_result(scan, p_values=(p_value,))
+                    intervals = cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
+                        scan, p_values=(p_value,)
+                    )
                 except Exception:
                     intervals = []
                 if intervals:
@@ -1357,11 +1391,15 @@ class ProfileEngine(PosteriorEngine):
                         method = self.method
                 # A profile interval is generally asymmetric, so quoting one
                 # standard deviation means the half-width only when it is not.
-                sd = (high - low) / 2.0 if np.isfinite(low) and np.isfinite(high) \
-                    else float("nan")
+                sd = (high - low) / 2.0 if np.isfinite(low) and np.isfinite(high) else float("nan")
                 self._marginals[name] = Marginal(
-                    name=name, value=value, sd=sd, method=method,
-                    low=low, high=high, p_value=p_value,
+                    name=name,
+                    value=value,
+                    sd=sd,
+                    method=method,
+                    low=low,
+                    high=high,
+                    p_value=p_value,
                     diagnostics={"scan": scan},
                 )
         finally:
@@ -1410,11 +1448,16 @@ class SamplingEngine(PosteriorEngine):
 
         # the samplers the registry holds (chisurf.core.fitting.sample.SAMPLERS)
         import inspect
+
         from chisurf.core.registry import catalog
+
         try:
             key = catalog.resolve("sampler", backend)
-            sampler = (cs.core.fitting.sample.sampler_function(key)
-                       if key in cs.core.fitting.sample.SAMPLERS else None)
+            sampler = (
+                cs.core.fitting.sample.sampler_function(key)
+                if key in cs.core.fitting.sample.SAMPLERS
+                else None
+            )
             if sampler is not None and "sampler" in inspect.signature(sampler).parameters:
                 options.setdefault("sampler", key)
         except ValueError:
@@ -1426,9 +1469,7 @@ class SamplingEngine(PosteriorEngine):
         runs = []
         try:
             for _ in range(n_runs):
-                runs.append(sampler(
-                    fit=self.fit, steps=steps, model=self.model, **options
-                ))
+                runs.append(sampler(fit=self.fit, steps=steps, model=self.model, **options))
         finally:
             self._restore_evidence(restore)
 
@@ -1453,8 +1494,10 @@ class SamplingEngine(PosteriorEngine):
                 self._marginals[name] = Marginal(name=name)
                 continue
             converged = (
-                np.isfinite(entry["rhat"]) and entry["rhat"] <= dg.RHAT_THRESHOLD
-                and np.isfinite(entry["ess"]) and entry["ess"] >= dg.ESS_THRESHOLD
+                np.isfinite(entry["rhat"])
+                and entry["rhat"] <= dg.RHAT_THRESHOLD
+                and np.isfinite(entry["ess"])
+                and entry["ess"] >= dg.ESS_THRESHOLD
             )
             quantiles = {float(k): float(v) for k, v in entry["quantiles"].items()}
             lo = _closest(quantiles, 0.5 - 0.5 * p_value)
@@ -1470,9 +1513,12 @@ class SamplingEngine(PosteriorEngine):
                 high=float(hi) if converged and hi is not None else float("nan"),
                 p_value=p_value,
                 diagnostics={
-                    "ess": entry["ess"], "rhat": entry["rhat"],
-                    "tau": entry["tau"], "mcse": entry["mcse"],
-                    "converged": bool(converged), "burn_in": burn,
+                    "ess": entry["ess"],
+                    "rhat": entry["rhat"],
+                    "tau": entry["tau"],
+                    "mcse": entry["mcse"],
+                    "converged": bool(converged),
+                    "burn_in": burn,
                 },
             )
 
@@ -1483,9 +1529,11 @@ class SamplingEngine(PosteriorEngine):
                 continue
             sub = flat[:, cols]
             self._joints[key] = Joint(
-                names=key, mean=sub.mean(axis=0),
+                names=key,
+                mean=sub.mean(axis=0),
                 covariance=np.cov(sub, rowvar=False).reshape(len(cols), len(cols)),
-                method=self.method, samples=sub,
+                method=self.method,
+                samples=sub,
             )
 
         self._log_evidence = float("nan")
@@ -1557,9 +1605,14 @@ class StoredEngine(PosteriorEngine):
                 low, high = self._scan_interval(scan, p_value)
                 if np.isfinite(low) or np.isfinite(high):
                     self._marginals[name] = Marginal(
-                        name=name, value=value, method="profile",
-                        low=low, high=high, p_value=p_value,
-                        sd=(high - low) / 2.0 if np.isfinite(low) and np.isfinite(high)
+                        name=name,
+                        value=value,
+                        method="profile",
+                        low=low,
+                        high=high,
+                        p_value=p_value,
+                        sd=(high - low) / 2.0
+                        if np.isfinite(low) and np.isfinite(high)
                         else float("nan"),
                         diagnostics={"scan": scan},
                     )
@@ -1571,14 +1624,17 @@ class StoredEngine(PosteriorEngine):
                 err = float("nan")
             if np.isfinite(err):
                 self._marginals[name] = Marginal(
-                    name=name, value=value, sd=err, method="laplace",
-                    low=value - err, high=value + err, p_value=p_value,
+                    name=name,
+                    value=value,
+                    sd=err,
+                    method="laplace",
+                    low=value - err,
+                    high=value + err,
+                    p_value=p_value,
                     diagnostics=self._symmetry_diagnostics(name, p_value),
                 )
             else:
-                self._marginals[name] = Marginal(
-                    name=name, value=value, p_value=p_value
-                )
+                self._marginals[name] = Marginal(name=name, value=value, p_value=p_value)
 
         self._joints = {}
         self._log_evidence = float("nan")
@@ -1597,6 +1653,7 @@ class StoredEngine(PosteriorEngine):
         they are marked ``converged: None`` rather than being claimed as checked.
         """
         from chisurf.core.fitting import diagnostics as dg
+
         report = getattr(self.fit, "sampling_diagnostics", None)
         if not isinstance(report, dict):
             return self._chain_quantiles(p_value)
@@ -1613,9 +1670,13 @@ class StoredEngine(PosteriorEngine):
             if lo is None or hi is None:
                 continue
             out[str(e.get("name"))] = Marginal(
-                name=str(e.get("name")), value=float(e.get("mean", float("nan"))),
-                sd=float(e.get("sd", float("nan"))), method="mcmc",
-                quantiles=quantiles, low=float(lo), high=float(hi),
+                name=str(e.get("name")),
+                value=float(e.get("mean", float("nan"))),
+                sd=float(e.get("sd", float("nan"))),
+                method="mcmc",
+                quantiles=quantiles,
+                low=float(lo),
+                high=float(hi),
                 p_value=p_value,
                 diagnostics={"ess": ess, "rhat": rhat, "converged": True},
             )
@@ -1655,11 +1716,12 @@ class StoredEngine(PosteriorEngine):
             column = column[np.isfinite(column)]
             if column.size < 32:
                 continue
-            quantiles = {float(q): float(np.quantile(column, q))
-                         for q in probabilities}
+            quantiles = {float(q): float(np.quantile(column, q)) for q in probabilities}
             out[name] = Marginal(
-                name=name, value=float(np.median(column)),
-                sd=float(column.std(ddof=1)), method="mcmc",
+                name=name,
+                value=float(np.median(column)),
+                sd=float(column.std(ddof=1)),
+                method="mcmc",
                 quantiles=quantiles,
                 low=float(np.quantile(column, tail)),
                 high=float(np.quantile(column, 1.0 - tail)),
@@ -1675,8 +1737,9 @@ class StoredEngine(PosteriorEngine):
     def _scan_interval(scan: dict, p_value: float) -> typing.Tuple[float, float]:
         """Return the profile crossings of a stored scan at ``p_value``."""
         try:
-            intervals = cs.core.fitting.support_plane.\
-                confidence_intervals_from_scan_result(scan, p_values=(p_value,))
+            intervals = cs.core.fitting.support_plane.confidence_intervals_from_scan_result(
+                scan, p_values=(p_value,)
+            )
         except Exception:
             return float("nan"), float("nan")
         if not intervals:

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import pytest
-
 from chisurf.core.api import ChiSurfAPI
-from chisurf.core.api.adapters import FitListAdapter, DatasetListAdapter
+from chisurf.core.api.adapters import DatasetListAdapter, FitListAdapter
 
 
 class DummyClient:
@@ -15,10 +13,28 @@ class DummyClient:
 
     def fit__list(self):
         return [
-            {"index": 0, "uid": "f-1", "name": "Fit1", "type": "FitGroup", "chi2": 1.2,
-             "dataset_uid": "ds-1", "dataset_name": "d1", "model_name": "LifetimeModel", "parameter_count": 4},
-            {"index": 1, "uid": "f-2", "name": "Fit2", "type": "FitGroup", "chi2": 0.9,
-             "dataset_uid": "ds-2", "dataset_name": "d2", "model_name": "AnisotropyModel", "parameter_count": 6},
+            {
+                "index": 0,
+                "uid": "f-1",
+                "name": "Fit1",
+                "type": "FitGroup",
+                "chi2": 1.2,
+                "dataset_uid": "ds-1",
+                "dataset_name": "d1",
+                "model_name": "LifetimeModel",
+                "parameter_count": 4,
+            },
+            {
+                "index": 1,
+                "uid": "f-2",
+                "name": "Fit2",
+                "type": "FitGroup",
+                "chi2": 0.9,
+                "dataset_uid": "ds-2",
+                "dataset_name": "d2",
+                "model_name": "AnisotropyModel",
+                "parameter_count": 6,
+            },
         ]
 
     def call(self, method, params=None):

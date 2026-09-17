@@ -5,11 +5,11 @@ neither. What they cover is the seam: that the viewer accepts this backend as a
 renderer, that the camera it reports is the camera the offscreen comparison
 would use, and that the gestures and the chrome do what the OpenGL backend's do.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.hosts.qt import wgpu_view
 
 pytestmark = pytest.mark.slow
@@ -64,7 +64,7 @@ class TestFactorySelection:
         assert wgpu_view.default_renderer() is SceneSink
 
     def test_the_refusal_is_logged(self, monkeypatch, caplog):
-        """"chimol shows nothing today" is harder to answer than a log line."""
+        """ "chimol shows nothing today" is harder to answer than a log line."""
         import logging
 
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
@@ -187,9 +187,7 @@ class TestChrome:
         """A scene with labels still gets a premultiplied image."""
         from chimol.hosts.qt.wgpu_view import Label
 
-        renderer._labels = [
-            Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))
-        ]
+        renderer._labels = [Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))]
         try:
             chrome = renderer._chrome_image()
             assert chrome is not None
@@ -204,9 +202,8 @@ class TestItDrawsTheSamePictureAsTheComparisonHarness:
     """The window and the offscreen baseline comparison share one code path."""
 
     def test_a_frame_comes_back_with_the_scene_in_it(self, renderer):
-        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
-        from chimol.render.scene import Geometry, Scene, SceneObject
         from chimol.core.camera.view_state import pack_view_state
+        from chimol.render.scene import Geometry, Scene, SceneObject
 
         # One big triangle, so "did anything draw" cannot be answered by noise.
         geom = Geometry(
@@ -220,9 +217,7 @@ class TestItDrawsTheSamePictureAsTheComparisonHarness:
             indices=np.arange(3, dtype=np.int32),
         )
         renderer.set_scene(Scene(objects=[SceneObject(id="tri", geometry=geom)]))
-        renderer.set_view_state(
-            pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
-        )
+        renderer.set_view_state(pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0))
         image = renderer.grab_image()
         assert image.shape[2] == 3
         red = (image[..., 0].astype(int) - image[..., 2]) > 30
@@ -243,7 +238,6 @@ class TestTheDefaultBackend:
     def test_the_shipped_config_says_so_too(self):
         """The default must be visible where a user would look for it."""
         import json
-        import pathlib
 
         from chimol.core.settings.config import get_package_display_config_path
 
@@ -282,14 +276,10 @@ class TestLabels:
         geom = PackedGeometry(
             kind="text",
             positions=np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32),
-            colors=np.array(
-                [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]], dtype=np.float32
-            ),
+            colors=np.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]], dtype=np.float32),
             meta={"labels": ["ALA", "GLY"]},
         )
-        labels = wgpu_view._collect_labels(
-            PackedScene([PackedObject("l", geom)], radius=1.0)
-        )
+        labels = wgpu_view._collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
         assert [label.text for label in labels] == ["ALA", "GLY"]
         assert labels[0].color == (1.0, 0.0, 0.0, 1.0)
 
@@ -302,9 +292,7 @@ class TestLabels:
             positions=np.zeros((5, 3), dtype=np.float32),
             meta={"labels": ["one"]},
         )
-        labels = wgpu_view._collect_labels(
-            PackedScene([PackedObject("l", geom)], radius=1.0)
-        )
+        labels = wgpu_view._collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
         assert len(labels) == 1
 
     def test_labels_are_drawn_into_the_chrome(self, renderer):
@@ -316,10 +304,13 @@ class TestLabels:
         labels = [wgpu_view.Label(centre, "XXXXXXXX", (1.0, 1.0, 1.0, 1.0))]
         blank = paint_chrome(renderer._internal_gui, None, 400, 300, 1.0)
         with_label = paint_chrome(
-            renderer._internal_gui, None, 400, 300, 1.0,
-            labels=labels, project=lambda pts: (
-                np.array([200.0]), np.array([150.0]), np.array([True])
-            ),
+            renderer._internal_gui,
+            None,
+            400,
+            300,
+            1.0,
+            labels=labels,
+            project=lambda pts: (np.array([200.0]), np.array([150.0]), np.array([True])),
         )
         renderer._internal_gui.visible = True
         assert with_label[..., 3].sum() > blank[..., 3].sum()
@@ -329,13 +320,10 @@ class TestSilhouette:
     """The depth-outline post-pass."""
 
     def test_off_by_default(self):
+        from chimol.core.camera.view_state import pack_view_state, unpack_view_state
         from chimol.render.wgpu_backend import WgpuMeshRenderer
-        from chimol.core.camera.view_state import unpack_view_state
-        from chimol.core.camera.view_state import pack_view_state
 
-        state = unpack_view_state(
-            pack_view_state(np.eye(3), 50.0, (0, 0, 0), 1.0, 100.0, 20.0)
-        )
+        state = unpack_view_state(pack_view_state(np.eye(3), 50.0, (0, 0, 0), 1.0, 100.0, 20.0))
         assert WgpuMeshRenderer._silhouette_params(state, {}) is None
 
     def test_enabled_resolves_the_linearising_ratio(self):
@@ -343,9 +331,7 @@ class TestSilhouette:
         from chimol.core.camera.view_state import pack_view_state, unpack_view_state
         from chimol.render.wgpu_backend import WgpuMeshRenderer
 
-        state = unpack_view_state(
-            pack_view_state(np.eye(3), 50.0, (0, 0, 0), 2.0, 200.0, 20.0)
-        )
+        state = unpack_view_state(pack_view_state(np.eye(3), 50.0, (0, 0, 0), 2.0, 200.0, 20.0))
         params = WgpuMeshRenderer._silhouette_params(state, {"enabled": True})
         assert params is not None
         assert params["near_far"] == pytest.approx(2.0 / 200.0)
@@ -358,8 +344,8 @@ class TestSilhouette:
         implementation that changed it for the wrong reason -- which is how an
         inverted occlusion switch survived here once.
         """
-        from chimol.render.scene import Geometry, Scene, SceneObject
         from chimol.core.camera.view_state import pack_view_state
+        from chimol.render.scene import Geometry, Scene, SceneObject
 
         # Two offset quads, so there is an internal depth step to outline.
         quads, indices = [], []
@@ -367,8 +353,10 @@ class TestSilhouette:
             base = 4 * k
             dx = 3.0 * k
             quads += [
-                [-6.0 + dx, -6.0, z], [6.0 + dx, -6.0, z],
-                [6.0 + dx, 6.0, z], [-6.0 + dx, 6.0, z],
+                [-6.0 + dx, -6.0, z],
+                [6.0 + dx, -6.0, z],
+                [6.0 + dx, 6.0, z],
+                [-6.0 + dx, 6.0, z],
             ]
             indices += [base, base + 1, base + 2, base, base + 2, base + 3]
         geom = Geometry(
@@ -379,9 +367,7 @@ class TestSilhouette:
             indices=np.array(indices, dtype=np.int32),
         )
         renderer.set_scene(Scene(objects=[SceneObject(id="q", geometry=geom)]))
-        renderer.set_view_state(
-            pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
-        )
+        renderer.set_view_state(pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0))
         renderer._internal_gui.visible = False
         try:
             from chimol.render.pack import pack_scene
@@ -394,17 +380,17 @@ class TestSilhouette:
             # on the default black background a working silhouette is
             # invisible -- which reads as "it drew nothing".
             white = (1.0, 1.0, 1.0)
-            off = offscreen.render(
-                packed, view, background=white, silhouette={"enabled": False}
-            )
+            off = offscreen.render(packed, view, background=white, silhouette={"enabled": False})
             on = offscreen.render(
-                packed, view, background=white,
+                packed,
+                view,
+                background=white,
                 silhouette={"enabled": True, "thickness": 2.0},
             )
         finally:
             renderer._internal_gui.visible = True
 
-        changed = (np.abs(off.astype(int) - on.astype(int)).sum(2) > 30)
+        changed = np.abs(off.astype(int) - on.astype(int)).sum(2) > 30
         assert changed.any(), "the silhouette drew nothing"
         # Outlines are thin: a pass that repainted the whole quad is not one.
         assert changed.mean() < 0.25, "the silhouette changed far too much"
@@ -449,9 +435,7 @@ class TestPickingProjection:
     def test_a_point_behind_the_camera_is_not_visible(self, renderer):
         from chimol.core.camera.view_state import pack_view_state
 
-        renderer.set_view_state(
-            pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
-        )
+        renderer.set_view_state(pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0))
         # Well behind the eye, which sits 60 in front of the target.
         _x, _y, visible = renderer.project_to_screen(np.array([[0.0, 0.0, 200.0]]))
         assert not bool(visible[0])

@@ -15,11 +15,11 @@ hierarchy check boxes inert.
 These tests pin the row shape, its ownership, the ways of building it, and the
 per-row classification.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.io.atoms import (
     ATOM_DTYPE,
     BEAD_RES_NAME,
@@ -38,9 +38,7 @@ def test_the_two_builders_agree():
     mean the same thing or the classification depends on which reader ran.
     """
     xyz = [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]
-    one_at_a_time = np.array(
-        [bead_row("A", 7, xyz[0]), bead_row("B", 8, xyz[1])], dtype=ATOM_DTYPE
-    )
+    one_at_a_time = np.array([bead_row("A", 7, xyz[0]), bead_row("B", 8, xyz[1])], dtype=ATOM_DTYPE)
     vectorised = make_bead_rows(xyz, chain_ids=["A", "B"], res_ids=[7, 8])
 
     assert vectorised.dtype == one_at_a_time.dtype
@@ -110,9 +108,10 @@ def test_there_is_one_atom_dtype_and_the_core_owns_it():
     pseudoatoms. A structured array does not object when the shapes disagree, so
     the mismatch showed up only as fields that were quietly always zero.
     """
-    from chisurf.core.fio.structure.coordinates import atom_dtype, keys
     from chimol.commands.builtin.editing import PSEUDOATOM_DTYPE
     from chimol.io import structure
+
+    from chisurf.core.fio.structure.coordinates import atom_dtype, keys
 
     assert ATOM_DTYPE is atom_dtype
     assert PSEUDOATOM_DTYPE is atom_dtype
@@ -129,9 +128,7 @@ def test_a_chain_id_of_more_than_one_character_survives():
     selected the whole of A, and colouring by chain painted twenty molecules
     alike.
     """
-    rows = make_bead_rows(
-        np.zeros((3, 3)), chain_ids=["A", "AA", "AB"], res_ids=[1, 1, 1]
-    )
+    rows = make_bead_rows(np.zeros((3, 3)), chain_ids=["A", "AA", "AB"], res_ids=[1, 1, 1])
     assert rows["chain"].tolist() == ["A", "AA", "AB"]
     assert len(set(rows["chain"].tolist())) == 3
 
@@ -143,8 +140,17 @@ def test_a_row_is_built_by_name_not_by_position():
     columns, and a typo must be refused rather than dropped.
     """
     row = np.array(
-        [atom_row(atom_name="CA", res_name="ALA", chain="B", res_id=7,
-                  element="C", xyz=(1.0, 2.0, 3.0), bfactor=42.0)],
+        [
+            atom_row(
+                atom_name="CA",
+                res_name="ALA",
+                chain="B",
+                res_id=7,
+                element="C",
+                xyz=(1.0, 2.0, 3.0),
+                bfactor=42.0,
+            )
+        ],
         dtype=ATOM_DTYPE,
     )
     assert row["atom_name"][0] == "CA"

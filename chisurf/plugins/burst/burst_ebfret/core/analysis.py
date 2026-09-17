@@ -1,10 +1,17 @@
 """High-level ebFRET analysis: scan state counts, select a model, decode paths.
 
-Wraps the empirical-Bayes fit
-(:func:`~chisurf.plugins.burst.burst_ebfret.core.ebayes.ebayes`) with a scan
-over candidate state counts, evidence-based model selection, and per-trace
-Viterbi decoding into dwell segments and a transition-count matrix — the
-practical outputs a user wants from binned-trace HMM analysis.
+A headless convenience over the faithful port of ebFRET's analysis loop: for
+each number of states it guesses the prior as the main window does
+(:func:`~chisurf.plugins.burst.burst_ebfret.core.hmm.guess_prior`), runs the
+empirical-Bayes iterations
+(:func:`~chisurf.plugins.burst.burst_ebfret.core.ebayes.run_ebayes`), and then
+selects the number of states with the highest summed lower bound. The Viterbi
+paths the loop already computed are turned into dwell segments and a
+transition-count matrix -- outputs ebFRET's GUI leaves to its exports, and
+that ChiSurf records in the measurement's container.
+
+State indices in these results are **0-based and ordered by ascending mean**,
+unlike the 1-based, unordered state numbers of the ebFRET port itself.
 """
 
 from __future__ import annotations
@@ -13,10 +20,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .ebayes import EbayesResult, ebayes
-from .viterbi import viterbi
+from .ebayes import run_ebayes
+from .hmm import guess_prior
+from .model import Analysis
 
-__all__ = ["StateFit", "Dwell", "EbfretAnalysis", "analyse"]
+__all__ = ["StateFit", "Dwell", "EbfretAnalysis", "analyse", "write_container"]
 
 
 @dataclass
@@ -28,9 +36,9 @@ class StateFit:
     index : int
         State index (sorted ascending by mean).
     mean : float
-        Emission mean (FRET efficiency).
+        Emission mean of the prior (FRET efficiency).
     precision : float
-        Emission precision ``E[lambda] = a / b``.
+        Expected emission precision under the prior, ``nu W``.
     std : float
         Emission standard deviation ``1 / sqrt(precision)``.
     occupancy : float
@@ -53,9 +61,9 @@ class Dwell:
     trace : int
         Index of the trace this dwell belongs to.
     state : int
-        Decoded state index.
+        Decoded state index (0-based, ascending mean).
     start : int
-        First frame of the dwell.
+        First frame of the dwell (0-based).
     length : int
         Number of frames.
     """
@@ -84,8 +92,11 @@ class EbfretAnalysis:
         Summed lower bound of the selected model.
     scan : dict
         Mapping ``{K: evidence}`` over the scanned state counts.
-    fit : EbayesResult
-        The underlying empirical-Bayes fit for the selected ``K``.
+    fit : Analysis
+        The ebFRET analysis (prior, posteriors, statistics, Viterbi paths) for
+        the selected ``K``.
+    evidence_history : list of float
+        Summed lower bound per empirical-Bayes iteration of the selected ``K``.
     """
 
     n_states: int
@@ -94,7 +105,8 @@ class EbfretAnalysis:
     dwells: list[Dwell] = field(default_factory=list)
     evidence: float = float("nan")
     scan: dict[int, float] = field(default_factory=dict)
-    fit: EbayesResult | None = None
+    fit: Analysis | None = None
+    evidence_history: list[float] = field(default_factory=list)
 
     @property
     def state_means(self) -> np.ndarray:
@@ -102,26 +114,18 @@ class EbfretAnalysis:
         return np.array([s.mean for s in self.states])
 
 
-def _decode(fit: EbayesResult, traces: list[np.ndarray]) -> tuple[list[np.ndarray], np.ndarray]:
-    """Viterbi-decode every trace and accumulate a transition-count matrix."""
-    order = np.argsort(fit.prior.m)
-    rank = np.empty_like(order)
-    rank[order] = np.arange(order.shape[0])  # original -> sorted index
-    paths: list[np.ndarray] = []
-    n_states = fit.prior.n_states
-    trans = np.zeros((n_states, n_states), dtype=int)
-    for result, trace in zip(fit.traces, traces):
-        states, _ = viterbi(trace, result.posterior)
-        states = rank[states]  # relabel to ascending-mean order
-        paths.append(states)
-        for prev, nxt in zip(states[:-1], states[1:]):
-            if prev != nxt:
-                trans[prev, nxt] += 1
-    return paths, trans
-
-
 def _dwells(paths: list[np.ndarray]) -> list[Dwell]:
-    """Segment decoded paths into contiguous dwell records."""
+    """Segment decoded paths into contiguous dwell records.
+
+    Parameters
+    ----------
+    paths : list of numpy.ndarray
+        0-based state per frame, one array per trace.
+
+    Returns
+    -------
+    list of Dwell
+    """
     out: list[Dwell] = []
     for t, states in enumerate(paths):
         if states.size == 0:
@@ -144,6 +148,7 @@ def analyse(
     threshold: float = 1e-4,
     vbem_max_iter: int = 100,
     vbem_threshold: float = 1e-5,
+    restarts: int = 2,
     seed: int = 0,
 ) -> EbfretAnalysis:
     """Scan state counts, pick the highest-evidence model, and decode it.
@@ -154,12 +159,18 @@ def analyse(
         FRET-efficiency traces.
     min_states, max_states : int, optional
         Inclusive range of state counts to scan.
-    max_iter, threshold : int, float, optional
-        Empirical-Bayes loop controls.
+    max_iter : int, optional
+        Empirical-Bayes iteration limit (the loop stops once ``it > max_iter``).
+    threshold : float, optional
+        ebFRET's *Precision*: relative convergence threshold of the summed
+        lower bound, and the margin a restart must win by.
     vbem_max_iter, vbem_threshold : int, float, optional
-        Per-trace VBEM controls.
+        Per-trace VBEM controls (ebFRET uses 100 and 1e-5).
+    restarts : int, optional
+        ebFRET's *Restarts*: one uninformative guess plus ``restarts - 1``
+        guesses drawn from the prior, per trace.
     seed : int, optional
-        Prior-initialisation seed.
+        Seed of the random restarts, so a run is reproducible.
 
     Returns
     -------
@@ -173,41 +184,65 @@ def analyse(
     """
     traces = [np.asarray(t, dtype=float).ravel() for t in traces]
     scan: dict[int, float] = {}
-    fits: dict[int, EbayesResult] = {}
+    fits: dict[int, Analysis] = {}
+    histories: dict[int, list[float]] = {}
     for k in range(min_states, max_states + 1):
-        fit = ebayes(
+        fit = Analysis(states=k, prior=guess_prior(traces, k))
+        gen = run_ebayes(
+            fit,
             traces,
-            k,
+            restarts=restarts,
+            precision=threshold,
             max_iter=max_iter,
-            threshold=threshold,
-            vbem_max_iter=vbem_max_iter,
-            vbem_threshold=vbem_threshold,
-            seed=seed,
+            rng=np.random.default_rng(seed + k),
+            vb_threshold=vbem_threshold,
+            vb_max_iter=vbem_max_iter,
         )
-        scan[k] = fit.evidence
+        history: list[float] = []
+        while True:
+            try:
+                next(gen)
+            except StopIteration as stop:
+                history = list(stop.value or [])
+                break
+        scan[k] = history[-1] if history else float("nan")
         fits[k] = fit
+        histories[k] = history
 
-    best_k = max(scan, key=scan.get)
+    best_k = max(scan, key=lambda k: -np.inf if np.isnan(scan[k]) else scan[k])
     fit = fits[best_k]
-    paths, trans = _decode(fit, traces)
+    mu = np.asarray(fit.prior.mu, dtype=float)
+    order = np.argsort(mu)
+    rank = np.empty_like(order)
+    rank[order] = np.arange(order.size)
+
+    paths: list[np.ndarray] = []
+    trans = np.zeros((best_k, best_k), dtype=int)
+    for vit in fit.viterbi:
+        if vit is None:
+            paths.append(np.zeros(0, dtype=int))
+            continue
+        states = rank[np.asarray(vit.state, dtype=int) - 1]
+        paths.append(states)
+        for prev, nxt in zip(states[:-1], states[1:]):
+            if prev != nxt:
+                trans[prev, nxt] += 1
     dwells = _dwells(paths)
 
-    order = np.argsort(fit.prior.m)
     total = sum(p.size for p in paths) or 1
-    occupancy = np.zeros(best_k)
-    for p in paths:
-        for s in range(best_k):
-            occupancy[s] += int(np.count_nonzero(p == s))
-    occupancy /= total
-
-    precision = (fit.prior.a / fit.prior.b)[order]
-    means = fit.prior.m[order]
+    occupancy = (
+        np.array(
+            [sum(int(np.count_nonzero(p == s)) for p in paths) for s in range(best_k)], dtype=float
+        )
+        / total
+    )
+    precision = np.asarray(fit.prior.nu, dtype=float) * np.asarray(fit.prior.W, dtype=float)
     states = [
         StateFit(
             index=i,
-            mean=float(means[i]),
-            precision=float(precision[i]),
-            std=float(1.0 / np.sqrt(precision[i])),
+            mean=float(mu[order[i]]),
+            precision=float(precision[order[i]]),
+            std=float(1.0 / np.sqrt(precision[order[i]])),
             occupancy=float(occupancy[i]),
         )
         for i in range(best_k)
@@ -217,9 +252,10 @@ def analyse(
         states=states,
         transition_counts=trans,
         dwells=dwells,
-        evidence=fit.evidence,
+        evidence=scan[best_k],
         scan=scan,
         fit=fit,
+        evidence_history=histories[best_k],
     )
 
 
@@ -275,16 +311,18 @@ def write_container(
     states = analysis.states
     written = write_burst_artifact(
         source,
-        store_from_arrays({
-            "State": np.array([s.index for s in states], dtype=np.int32),
-            "E": np.array([s.mean for s in states], dtype=float),
-            "Std": np.array([s.std for s in states], dtype=float),
-            "Precision": np.array([s.precision for s in states], dtype=float),
-            "Occupancy": np.array([s.occupancy for s in states], dtype=float),
-            # The evidence is a property of the model, so it repeats down the
-            # table rather than living in a header nothing can query.
-            "Evidence": np.full(len(states), float(analysis.evidence)),
-        }),
+        store_from_arrays(
+            {
+                "State": np.array([s.index for s in states], dtype=np.int32),
+                "E": np.array([s.mean for s in states], dtype=float),
+                "Std": np.array([s.std for s in states], dtype=float),
+                "Precision": np.array([s.precision for s in states], dtype=float),
+                "Occupancy": np.array([s.occupancy for s in states], dtype=float),
+                # The evidence is a property of the model, so it repeats down the
+                # table rather than living in a header nothing can query.
+                "Evidence": np.full(len(states), float(analysis.evidence)),
+            }
+        ),
         name="ebfret states",
         artifact_kind="fit_result",
         operation_type="model_fitting",
@@ -292,9 +330,12 @@ def write_container(
         parameters=parameters,
         derived_from="bursts",
         units={
-            "State": "dimensionless", "E": "dimensionless",
-            "Std": "dimensionless", "Precision": "dimensionless",
-            "Occupancy": "dimensionless", "Evidence": "dimensionless",
+            "State": "dimensionless",
+            "E": "dimensionless",
+            "Std": "dimensionless",
+            "Precision": "dimensionless",
+            "Occupancy": "dimensionless",
+            "Evidence": "dimensionless",
         },
         out_dir=out_dir,
     )
@@ -305,11 +346,13 @@ def write_container(
         pairs = [(s, t) for s in range(n) for t in range(n)]
         write_burst_artifact(
             source,
-            store_from_arrays({
-                "From": np.array([s for s, _ in pairs], dtype=np.int32),
-                "To": np.array([t for _, t in pairs], dtype=np.int32),
-                "Count": np.array([counts[s, t] for s, t in pairs], dtype=float),
-            }),
+            store_from_arrays(
+                {
+                    "From": np.array([s for s, _ in pairs], dtype=np.int32),
+                    "To": np.array([t for _, t in pairs], dtype=np.int32),
+                    "Count": np.array([counts[s, t] for s, t in pairs], dtype=float),
+                }
+            ),
             name="ebfret transitions",
             artifact_kind="parameter_table",
             operation_type="model_fitting",
@@ -318,8 +361,7 @@ def write_container(
             derived_from="ebfret states",
             source_row_column="State",
             target_row_column="From",
-            units={"From": "dimensionless", "To": "dimensionless",
-                   "Count": "counts"},
+            units={"From": "dimensionless", "To": "dimensionless", "Count": "counts"},
             out_dir=out_dir,
         )
 
@@ -327,14 +369,16 @@ def write_container(
     if dwells:
         write_burst_artifact(
             source,
-            store_from_arrays({
-                # The key. A dwell subdivides a trace, so the join is declared
-                # rather than counted -- exactly H2MM's dwell case.
-                "Trace": np.array([d.trace for d in dwells], dtype=np.int32),
-                "State": np.array([d.state for d in dwells], dtype=np.int32),
-                "Start": np.array([d.start for d in dwells], dtype=np.int64),
-                "Length": np.array([d.length for d in dwells], dtype=np.int64),
-            }),
+            store_from_arrays(
+                {
+                    # The key. A dwell subdivides a trace, so the join is declared
+                    # rather than counted -- exactly H2MM's dwell case.
+                    "Trace": np.array([d.trace for d in dwells], dtype=np.int32),
+                    "State": np.array([d.state for d in dwells], dtype=np.int32),
+                    "Start": np.array([d.start for d in dwells], dtype=np.int64),
+                    "Length": np.array([d.length for d in dwells], dtype=np.int64),
+                }
+            ),
             name="ebfret dwells",
             artifact_kind="dwell_table",
             operation_type="model_fitting",
@@ -343,8 +387,12 @@ def write_container(
             derived_from="ebfret states",
             source_row_column="State",
             target_row_column="State",
-            units={"Trace": "dimensionless", "State": "dimensionless",
-                   "Start": "dimensionless", "Length": "dimensionless"},
+            units={
+                "Trace": "dimensionless",
+                "State": "dimensionless",
+                "Start": "dimensionless",
+                "Length": "dimensionless",
+            },
             out_dir=out_dir,
         )
     return written

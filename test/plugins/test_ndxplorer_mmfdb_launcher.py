@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mmfdb.provenance.result_registry import register_raw_measurement
+
 from chisurf.plugins.ndxplorer.mmfdb_launcher import (
     BURST_KINDS,
     open_burst_selection_from_mmfdb,
@@ -19,10 +20,11 @@ from chisurf.plugins.ndxplorer.mmfdb_launcher import (
 
 def _authenticated_inprocess_client():
     """Return a real client carrying an explicitly issued test session."""
-    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
     from mmfdb.repository import MFDatabase
     from mmfdb.security.auth import create_session
     from mmfdb.store.database_resolver import resolve_database_path
+
+    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
     with MFDatabase(resolve_database_path()) as db:
         db.ensure_user("ndx-launcher-user")
@@ -58,7 +60,8 @@ def test_resolve_external_reference_directory_via_metadata(tmp_path):
     """A burst output folder is registered as an external_reference (no object,
     no file_path) with its on-disk path in metadata — resolve_dataset_path must
     return that path (the .bur folder co-located with the TTTR files, preserving
-    the photon-index linkage), not fail."""
+    the photon-index linkage), not fail.
+    """
     from mmfdb.provenance.result_registry import register_raw_measurement, register_result
     from mmfdb.repository import MFDatabase
     from mmfdb.store.database_resolver import resolve_database_path
@@ -118,6 +121,7 @@ def test_burst_kinds_target_the_on_disk_burst_folder():
 
 def test_picker_uses_explicit_client_instead_of_constructing_ambient_client(monkeypatch):
     """GUI glue must preserve the authenticated client supplied by its owner."""
+
     class Selection:
         artifact_id = "artifact-1"
 
@@ -130,8 +134,8 @@ def test_picker_uses_explicit_client_instead_of_constructing_ambient_client(monk
     supplied = Client()
     captured = {}
 
-    from chisurf.gui.widgets.mmfdb import dataset_browser
     import chisurf.plugins.ndxplorer.mmfdb_launcher as launcher
+    from chisurf.gui.widgets.mmfdb import dataset_browser
 
     def pick_dataset(**kwargs):
         captured.update(kwargs)

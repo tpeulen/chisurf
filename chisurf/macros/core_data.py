@@ -11,10 +11,9 @@ import chisurf.core.experiments.modelling
 import chisurf.core.fitting
 import chisurf.gui
 import chisurf.gui.widgets
-
-from chisurf import typing, logging
-from chisurf.core.data import DataGroup, ExperimentDataGroup, ExperimentDataCurveGroup
+from chisurf import logging, typing
 from chisurf.core.actions import record_action
+from chisurf.core.data import DataGroup, ExperimentDataCurveGroup, ExperimentDataGroup
 from chisurf.core.fio.staging import StagingCancelled
 
 
@@ -30,15 +29,16 @@ def _is_global_fit_dataset(dataset: typing.Any) -> bool:
 
 
 def restore_global_fit_dataset(
-        _from_controller: bool = False,
-        update_ui: bool = True,
-        experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
-        name: str = "Global-fit",
+    _from_controller: bool = False,
+    update_ui: bool = True,
+    experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
+    name: str = "Global-fit",
 ) -> typing.Dict[str, typing.Any]:
     if not _from_controller:
         return cs.core.actions.dispatch(name="dataset.restore_global_fit", payload={})
 
     import chisurf as _cs
+
     _api = getattr(_cs, "api", None)
     if _api is not None and getattr(_api, "mode", None) == "server":
         try:
@@ -50,6 +50,7 @@ def restore_global_fit_dataset(
         try:
             if experiment_reader is None:
                 from chisurf.core.experiments.globalfit.reader import GlobalFitSetup
+
                 experiment_reader = GlobalFitSetup(name="Global-Fit")
             result = _api.load_dataset(
                 experiment_reader=experiment_reader,
@@ -76,12 +77,21 @@ def restore_global_fit_dataset(
 
     for i, d in enumerate(list(getattr(cs, "imported_datasets", []) or [])):
         if _is_global_fit_dataset(d):
-            return {"ok": True, "restored": False, "index": int(i), "removed_duplicates": int(removed)}
+            return {
+                "ok": True,
+                "restored": False,
+                "index": int(i),
+                "removed_duplicates": int(removed),
+            }
 
     try:
         from chisurf.core.experiments.globalfit.reader import GlobalFitSetup
 
-        setup = experiment_reader if experiment_reader is not None else GlobalFitSetup(name="Global-Fit")
+        setup = (
+            experiment_reader
+            if experiment_reader is not None
+            else GlobalFitSetup(name="Global-Fit")
+        )
         dataset = setup.read(name=name)
         try:
             exp = getattr(setup, "experiment", None)
@@ -92,7 +102,7 @@ def restore_global_fit_dataset(
         except Exception:
             pass
         cs.imported_datasets.append(dataset)
-        gui = getattr(cs, 'cs', None)
+        gui = getattr(cs, "cs", None)
         if update_ui and gui is not None:
             cs.gui.run_on_gui_thread(gui.update)
         _record_history(
@@ -111,9 +121,9 @@ def restore_global_fit_dataset(
 
 
 def _record_history(
-        action_type: str,
-        summary: str,
-        payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    action_type: str,
+    summary: str,
+    payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
 ) -> None:
     try:
         record_action(action_type=action_type, summary=summary, payload=payload)
@@ -139,7 +149,9 @@ def _flatten_dataset(dataset: cs.core.base.Data) -> typing.List[cs.core.base.Dat
     return result
 
 
-def _fit_uses_dataset(fit: cs.core.fitting.fit.Fit, datasets: typing.List[cs.core.base.Data]) -> bool:
+def _fit_uses_dataset(
+    fit: cs.core.fitting.fit.Fit, datasets: typing.List[cs.core.base.Data]
+) -> bool:
     dataset_ids = {id(d) for d in datasets}
     for data_obj in _iter_fit_data(fit):
         if data_obj is None:
@@ -150,18 +162,19 @@ def _fit_uses_dataset(fit: cs.core.fitting.fit.Fit, datasets: typing.List[cs.cor
 
 
 def _iter_fit_data(fit: cs.core.fitting.fit.Fit) -> typing.Iterator[cs.core.base.Data | None]:
-    grouped = getattr(fit, 'grouped_fits', None)
+    grouped = getattr(fit, "grouped_fits", None)
     if isinstance(grouped, (list, tuple)):
         for member in grouped:
-            yield getattr(member, 'data', None)
-    yield getattr(fit, 'data', None)
+            yield getattr(member, "data", None)
+    yield getattr(fit, "data", None)
 
 
 def group_datasets(
-        dataset_indices: typing.List[int],
-        _from_controller: bool = False,
+    dataset_indices: typing.List[int],
+    _from_controller: bool = False,
 ) -> None:
     import chisurf as _cs
+
     _api = getattr(_cs, "api", None)
     if _api is not None and getattr(_api, "mode", None) == "server":
         _api.group_datasets(dataset_indices=list(dataset_indices or []))
@@ -173,23 +186,12 @@ def group_datasets(
         )
         return
 
-    selected_data = [
-        cs.imported_datasets[i] for i in dataset_indices
-    ]
-    if isinstance(
-            selected_data[0],
-            (cs.core.data.DataCurve, cs.core.data.DataCurveGroup)
-    ):
+    selected_data = [cs.imported_datasets[i] for i in dataset_indices]
+    if isinstance(selected_data[0], (cs.core.data.DataCurve, cs.core.data.DataCurveGroup)):
         # TODO: check for double names!!!
-        dg = cs.core.data.ExperimentDataCurveGroup(
-            selected_data,
-            name="Data-Group"
-        )
+        dg = cs.core.data.ExperimentDataCurveGroup(selected_data, name="Data-Group")
     else:
-        dg = cs.core.data.ExperimentDataGroup(
-            selected_data,
-            name="Data-Group"
-        )
+        dg = cs.core.data.ExperimentDataGroup(selected_data, name="Data-Group")
     dn = list()
     for d in cs.imported_datasets:
         if d not in dg:
@@ -210,10 +212,11 @@ def group_datasets(
 
 
 def ungroup_datasets(
-        dataset_indices: typing.List[int],
-        _from_controller: bool = False,
+    dataset_indices: typing.List[int],
+    _from_controller: bool = False,
 ) -> None:
     import chisurf as _cs
+
     _api = getattr(_cs, "api", None)
     if _api is not None and getattr(_api, "mode", None) == "server":
         _api.ungroup_datasets(dataset_indices=list(dataset_indices or []))
@@ -285,10 +288,11 @@ def ungroup_datasets(
 
 
 def remove_datasets(
-        dataset_indices: typing.List[int],
-        _from_controller: bool = False,
+    dataset_indices: typing.List[int],
+    _from_controller: bool = False,
 ) -> None:
     import chisurf as _cs
+
     _api = getattr(_cs, "api", None)
     if _api is not None and getattr(_api, "mode", None) == "server":
         _api.remove_datasets(dataset_indices=list(dataset_indices or []))
@@ -339,8 +343,7 @@ def remove_datasets(
             datasets_to_remove.append(entry)
 
     dependent_fit_indices = [
-        idx for idx, fit in enumerate(list(cs.fits))
-        if _fit_uses_dataset(fit, datasets_to_remove)
+        idx for idx, fit in enumerate(list(cs.fits)) if _fit_uses_dataset(fit, datasets_to_remove)
     ]
 
     message = (
@@ -348,7 +351,7 @@ def remove_datasets(
         f"\nDependent fits to close: {len(dependent_fit_indices)}."
         f"\nPlease confirm to proceed."
     )
-    gui = getattr(cs, 'cs', None)
+    gui = getattr(cs, "cs", None)
     proceed = True
     if gui is not None:
         # Imported here, not at module scope: macros run headless (server mode,
@@ -363,8 +366,8 @@ def remove_datasets(
         return
 
     if dependent_fit_indices:
-        old_confirm = cs.core.settings.gui.get('confirm_close_fit', True)
-        cs.core.settings.gui['confirm_close_fit'] = False
+        old_confirm = cs.core.settings.gui.get("confirm_close_fit", True)
+        cs.core.settings.gui["confirm_close_fit"] = False
         try:
             for idx in sorted(dependent_fit_indices, reverse=True):
                 cs.core.actions.dispatch(
@@ -372,7 +375,7 @@ def remove_datasets(
                     payload={"idx": int(idx)},
                 )
         finally:
-            cs.core.settings.gui['confirm_close_fit'] = old_confirm
+            cs.core.settings.gui["confirm_close_fit"] = old_confirm
 
     actual_idx_set = set(actual_indices)
     new_imported = []
@@ -393,15 +396,16 @@ def remove_datasets(
 
 
 def add_dataset(
-        experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
-        dataset: cs.core.base.Data = None,
-        _from_controller: bool = False,
-        **kwargs
+    experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
+    dataset: cs.core.base.Data = None,
+    _from_controller: bool = False,
+    **kwargs,
 ) -> None:
     # Phase 8: in server mode, route through the API so the server
     # owns the dataset. Falls back to local creation + append when
     # the reader cannot be serialised to the server.
     import chisurf as _cs
+
     _api = getattr(_cs, "api", None)
     if _api is not None and getattr(_api, "mode", None) == "server":
         try:
@@ -432,25 +436,27 @@ def add_dataset(
         return
 
     try:
-        gui = getattr(cs, 'cs', None)
+        gui = getattr(cs, "cs", None)
 
         # High-level entry trace for PDA crash localization
         try:
             logging.info(
                 "PDA TRACE: core_data.add_dataset called (experiment_reader=%s, has_dataset=%s)",
-                getattr(experiment_reader, 'name', type(experiment_reader).__name__) if experiment_reader is not None else None,
+                getattr(experiment_reader, "name", type(experiment_reader).__name__)
+                if experiment_reader is not None
+                else None,
                 dataset is not None,
             )
         except Exception:
             pass
 
-        filename = kwargs.get('filename', None)
+        filename = kwargs.get("filename", None)
         primary_filename = None
         if isinstance(filename, (list, tuple)):
             if filename:
                 primary_filename = filename[0]
         elif isinstance(filename, str):
-            parts = filename.split('|')
+            parts = filename.split("|")
             if len(parts) == 1:
                 primary_filename = parts[0]
                 filename = parts[0]
@@ -459,7 +465,7 @@ def add_dataset(
                 primary_filename = parts[0]
         elif filename is not None:
             primary_filename = str(filename)
-        kwargs['filename'] = filename
+        kwargs["filename"] = filename
 
         try:
             logging.info(
@@ -475,14 +481,16 @@ def add_dataset(
                 experiment_reader = _auto_reader_from_filename(primary_filename)
             if experiment_reader is None:
                 try:
-                    experiment_reader = getattr(gui, 'current_experiment_reader')
+                    experiment_reader = getattr(gui, "current_experiment_reader")
                 except Exception:
                     experiment_reader = None
 
         try:
             logging.info(
                 "PDA TRACE: core_data.add_dataset using experiment_reader=%s",
-                getattr(experiment_reader, 'name', type(experiment_reader).__name__) if experiment_reader is not None else None,
+                getattr(experiment_reader, "name", type(experiment_reader).__name__)
+                if experiment_reader is not None
+                else None,
             )
         except Exception:
             pass
@@ -505,9 +513,8 @@ def add_dataset(
             if gui is not None and hasattr(experiment_reader, "set_stage_callbacks"):
                 try:
                     from chisurf.gui.widgets.staged_loading import make_lazy_stage_dialog
-                    _p_cb, _c_cb, _stage_finish = make_lazy_stage_dialog(
-                        gui, "Loading data"
-                    )
+
+                    _p_cb, _c_cb, _stage_finish = make_lazy_stage_dialog(gui, "Loading data")
                     experiment_reader.set_stage_callbacks(_p_cb, _c_cb)
                 except Exception:
                     _stage_finish = None
@@ -620,7 +627,7 @@ def add_dataset(
                 "PDA TRACE: core_data.add_dataset appending dataset_group (is_experiment_group=%s, len=%d, imported_before=%d)",
                 is_experiment_group,
                 len(dataset_group),
-                len(getattr(cs, 'imported_datasets', [])),
+                len(getattr(cs, "imported_datasets", [])),
             )
         except Exception:
             pass
@@ -635,12 +642,16 @@ def add_dataset(
         # Publish event so the GUI can update the dataset selector reactively
         try:
             from chisurf.server.startup import get_shared_event_bus
+
             _bus = get_shared_event_bus()
             if _bus is not None:
-                _bus.publish("dataset.added", {
-                    "dataset_index": len(cs.imported_datasets) - 1,
-                    "dataset_name": str(getattr(dataset, "name", "")),
-                })
+                _bus.publish(
+                    "dataset.added",
+                    {
+                        "dataset_index": len(cs.imported_datasets) - 1,
+                        "dataset_name": str(getattr(dataset, "name", "")),
+                    },
+                )
         except Exception:
             cs.logging.exception("add_dataset: failed to publish dataset.added event")
 
@@ -648,7 +659,7 @@ def add_dataset(
         try:
             logging.info(
                 "PDA TRACE: core_data.add_dataset calling run_on_gui_thread(gui.update); imported_after=%d",
-                len(getattr(cs, 'imported_datasets', [])),
+                len(getattr(cs, "imported_datasets", [])),
             )
         except Exception:
             pass
@@ -682,7 +693,9 @@ def add_dataset(
             summary=f"add dataset(s): {', '.join(loaded_names) if loaded_names else 'unknown'}",
             payload={
                 "filename": primary_filename,
-                "reader": getattr(experiment_reader, "name", type(experiment_reader).__name__) if experiment_reader is not None else None,
+                "reader": getattr(experiment_reader, "name", type(experiment_reader).__name__)
+                if experiment_reader is not None
+                else None,
                 "loaded_names": loaded_names,
                 "loaded_uids": loaded_uids,
                 "loaded_count": int(len(loaded_names)),
@@ -708,14 +721,11 @@ def add_dataset(
         )
 
 
-def reinitialize_application(
-        main_window=None,
-        progress_callback=None
-) -> None:
+def reinitialize_application(main_window=None, progress_callback=None) -> None:
     """
     Reinitialize ChiSurf application by clearing all data and resetting state.
     Performs safe cleanup without affecting Python built-ins.
-    
+
     Parameters
     ----------
     main_window : QtWidgets.QMainWindow, optional
@@ -732,12 +742,12 @@ def reinitialize_application(
             "has_main_window": bool(main_window is not None),
         },
     )
-    
-    log = getattr(cs, 'logging', None)
+
+    log = getattr(cs, "logging", None)
 
     def _log_exception(step: str) -> None:
         try:
-            exc_fn = getattr(log, 'exception', None)
+            exc_fn = getattr(log, "exception", None)
             if callable(exc_fn):
                 exc_fn(f"reinitialize: {step} failed")
         except Exception:
@@ -752,8 +762,8 @@ def reinitialize_application(
             _log_exception(f"{step}: {str(e)}")
 
     def _close_subwindows() -> None:
-        if main_window and hasattr(main_window, 'mdiarea'):
-            close_all = getattr(main_window, '_close_all_fit_subwindows', None)
+        if main_window and hasattr(main_window, "mdiarea"):
+            close_all = getattr(main_window, "_close_all_fit_subwindows", None)
             if callable(close_all):
                 close_all()
                 return
@@ -766,10 +776,7 @@ def reinitialize_application(
 
     def _clear_imported_datasets_keep_global():
         try:
-            global_datasets = [
-                d for d in cs.imported_datasets
-                if _is_global_fit_dataset(d)
-            ]
+            global_datasets = [d for d in cs.imported_datasets if _is_global_fit_dataset(d)]
 
         except Exception:
             global_datasets = []
@@ -780,37 +787,37 @@ def reinitialize_application(
             else:
                 restore_global_fit_dataset(_from_controller=True, update_ui=False)
         except Exception:
-            _log_exception('clear imported_datasets')
+            _log_exception("clear imported_datasets")
 
     def _clear_fit_windows():
         """Close and clean up all fit windows"""
         try:
-            if hasattr(cs.gui, 'fit_windows'):
+            if hasattr(cs.gui, "fit_windows"):
                 fit_windows = list(cs.gui.fit_windows)
                 cs.gui.fit_windows.clear()
-                
+
                 for fw in fit_windows:
                     try:
-                        if hasattr(fw, 'close_confirm'):
+                        if hasattr(fw, "close_confirm"):
                             fw.close_confirm = False
                         fw.close()
                     except Exception:
                         pass
         except Exception:
-            _log_exception('clear fit windows')
+            _log_exception("clear fit windows")
 
     def _clear_global_caches():
         """Clear specific cs caches safely"""
         try:
             # Only clear specific known caches, don't iterate over all attributes
             cache_modules = [
-                ('cs.core.experiments', 'types'),
-                ('cs.core.fitting', None)  # None means clear all callable clear methods
+                ("cs.core.experiments", "types"),
+                ("cs.core.fitting", None),  # None means clear all callable clear methods
             ]
-            
+
             for module_path, attr_name in cache_modules:
                 try:
-                    module_parts = module_path.split('.')
+                    module_parts = module_path.split(".")
                     module = cs
                     for part in module_parts[:-1]:
                         if hasattr(module, part):
@@ -822,15 +829,15 @@ def reinitialize_application(
                             target = getattr(module, module_parts[-1])
                             if attr_name and hasattr(target, attr_name):
                                 attr = getattr(target, attr_name)
-                                if hasattr(attr, 'clear_cache') and callable(attr.clear_cache):
+                                if hasattr(attr, "clear_cache") and callable(attr.clear_cache):
                                     attr.clear_cache()
-                            elif hasattr(target, 'clear') and callable(target.clear):
+                            elif hasattr(target, "clear") and callable(target.clear):
                                 target.clear()
                 except Exception:
                     pass
-                            
+
         except Exception:
-            _log_exception('clear global caches')
+            _log_exception("clear global caches")
 
     def _force_garbage_collection():
         """Perform safe garbage collection"""
@@ -839,7 +846,7 @@ def reinitialize_application(
             if progress_callback:
                 progress_callback(f"Garbage collection (collected {collected} objects)", 10)
         except Exception:
-            _log_exception('garbage collection')
+            _log_exception("garbage collection")
 
     def _cleanup_specific_references():
         """Clean only specific cs references safely"""
@@ -847,54 +854,66 @@ def reinitialize_application(
             # Only clean specific, known cs attributes
             # Keep `gui` alive: it is the main-window anchor used by project
             # save/load and many macros. Removing it breaks close->open cycles.
-            refs_to_clean = ['current_dataset', 'current_fit']
+            refs_to_clean = ["current_dataset", "current_fit"]
             for ref_name in refs_to_clean:
                 if hasattr(cs, ref_name):
                     try:
                         attr = getattr(cs, ref_name)
                         # Only delete if it's a data object, not a function or type
-                        if not callable(attr) and not isinstance(attr, type) and not isinstance(attr, (int, float, str, bool, list, dict)):
+                        if (
+                            not callable(attr)
+                            and not isinstance(attr, type)
+                            and not isinstance(attr, (int, float, str, bool, list, dict))
+                        ):
                             delattr(cs, ref_name)
                     except Exception:
                         pass
         except Exception:
-            _log_exception('cleanup specific references')
+            _log_exception("cleanup specific references")
 
     def _reset_gui_components():
         """Reset GUI components to clean state"""
         if main_window is None:
             return
-            
+
         try:
             # Clear model selector
-            if hasattr(main_window, 'comboBox_Model'):
+            if hasattr(main_window, "comboBox_Model"):
                 main_window.comboBox_Model.clear()
-                
+
             # Reset data selectors
-            if hasattr(main_window, 'dataset_selector'):
-                if hasattr(main_window.dataset_selector, 'clear'):
+            if hasattr(main_window, "dataset_selector"):
+                if hasattr(main_window.dataset_selector, "clear"):
                     main_window.dataset_selector.clear()
-                if hasattr(main_window.dataset_selector, 'update'):
+                if hasattr(main_window.dataset_selector, "update"):
                     main_window.dataset_selector.update()
-                    
+
             # Reset fit selectors
-            if hasattr(main_window, 'fit_selector'):
-                if hasattr(main_window.fit_selector, 'clear'):
+            if hasattr(main_window, "fit_selector"):
+                if hasattr(main_window.fit_selector, "clear"):
                     main_window.fit_selector.clear()
-                if hasattr(main_window.fit_selector, 'update'):
+                if hasattr(main_window.fit_selector, "update"):
                     main_window.fit_selector.update()
-                    
+
         except Exception:
-            _log_exception('reset GUI components')
+            _log_exception("reset GUI components")
 
     # Execute reinitialization steps
-    _run('Closing all fits', lambda: main_window.onCloseAllFits() if main_window else None, 1)
-    _run('Closing subwindows', _close_subwindows, 2)
-    _run('Clearing fit windows', _clear_fit_windows, 3)
-    _run('Clearing datasets', _clear_imported_datasets_keep_global, 4)
-    _run('Clearing global caches', _clear_global_caches, 5)
-    _run('Updating dataset selector', lambda: main_window.dataset_selector.update() if main_window else None, 6)
-    _run('Updating fit selector', lambda: main_window.fit_selector.update() if main_window else None, 7)
+    _run("Closing all fits", lambda: main_window.onCloseAllFits() if main_window else None, 1)
+    _run("Closing subwindows", _close_subwindows, 2)
+    _run("Clearing fit windows", _clear_fit_windows, 3)
+    _run("Clearing datasets", _clear_imported_datasets_keep_global, 4)
+    _run("Clearing global caches", _clear_global_caches, 5)
+    _run(
+        "Updating dataset selector",
+        lambda: main_window.dataset_selector.update() if main_window else None,
+        6,
+    )
+    _run(
+        "Updating fit selector",
+        lambda: main_window.fit_selector.update() if main_window else None,
+        7,
+    )
 
     def _reset_state():
         if main_window:
@@ -902,11 +921,15 @@ def reinitialize_application(
             main_window._current_fit = None
             main_window._fit_idx = 0
 
-    _run('Resetting application state', _reset_state, 8)
-    _run('Cleaning up references', _cleanup_specific_references, 9)
-    _run('Restoring main window reference', lambda: setattr(cs, 'cs', main_window) if main_window is not None else None, 9)
-    _run('Force garbage collection', _force_garbage_collection, 10)
-    _run('Resetting GUI components', _reset_gui_components, 10)
+    _run("Resetting application state", _reset_state, 8)
+    _run("Cleaning up references", _cleanup_specific_references, 9)
+    _run(
+        "Restoring main window reference",
+        lambda: setattr(cs, "cs", main_window) if main_window is not None else None,
+        9,
+    )
+    _run("Force garbage collection", _force_garbage_collection, 10)
+    _run("Resetting GUI components", _reset_gui_components, 10)
 
     _record_history(
         action_type="app_reinitialize_finish",
@@ -923,47 +946,46 @@ def _auto_reader_from_filename(filename: str):
         return None
 
     suffix = pathlib.Path(filename).suffix.lower()
-    if suffix == '.cor':
+    if suffix == ".cor":
         reader = _find_experiment_reader(
-            experiment_names=('FCS', 'fcs'),
-            reader_names=('Seidel Kristine',),
-            low_level_readers=('kristine',),
+            experiment_names=("FCS", "fcs"),
+            reader_names=("Seidel Kristine",),
+            low_level_readers=("kristine",),
         )
         if reader is not None:
             return reader
-        experiment = cs.experiment.get('FCS')
+        experiment = cs.experiment.get("FCS")
         if experiment is None:
-            experiment = cs.core.experiments.types.get('fcs')
+            experiment = cs.core.experiments.types.get("fcs")
             if experiment is not None:
                 cs.experiment[experiment.name] = experiment
         if experiment is not None:
             return cs.core.experiments.fcs.FCS(
-                name='Seidel Kristine',
-                experiment_reader='kristine',
+                name="Seidel Kristine",
+                experiment_reader="kristine",
                 experiment=experiment,
             )
 
-    structure_ext = {'.pdb', '.cif', '.mmcif', '.gro', '.xyz'}
+    structure_ext = {".pdb", ".cif", ".mmcif", ".gro", ".xyz"}
     if suffix in structure_ext:
-        experiment = cs.experiment.get('Modelling')
+        experiment = cs.experiment.get("Modelling")
         if experiment is None:
-            experiment = cs.experiment.get('structure')
+            experiment = cs.experiment.get("structure")
         if experiment is None:
-            experiment = cs.core.experiments.types.get('structure')
+            experiment = cs.core.experiments.types.get("structure")
             if experiment is not None:
                 cs.experiment[experiment.name] = experiment
         reader = cs.core.experiments.modelling.StructureReader(
-            name='Structure',
-            experiment=experiment
+            name="Structure", experiment=experiment
         )
         return reader
     return None
 
 
 def _find_experiment_reader(
-        experiment_names: typing.Iterable[str],
-        reader_names: typing.Iterable[str] = (),
-        low_level_readers: typing.Iterable[str] = (),
+    experiment_names: typing.Iterable[str],
+    reader_names: typing.Iterable[str] = (),
+    low_level_readers: typing.Iterable[str] = (),
 ):
     """Find a configured reader/controller by experiment and reader metadata."""
     reader_name_set = {name.lower() for name in reader_names}
@@ -973,16 +995,16 @@ def _find_experiment_reader(
         experiment = cs.experiment.get(experiment_name)
         if experiment is None:
             continue
-        for candidate in getattr(experiment, 'readers', []) or []:
-            controller_reader = getattr(candidate, 'experiment_reader', None)
+        for candidate in getattr(experiment, "readers", []) or []:
+            controller_reader = getattr(candidate, "experiment_reader", None)
             reader = candidate
             if controller_reader is not None and not isinstance(controller_reader, str):
                 reader = controller_reader
             names = {
-                str(getattr(candidate, 'name', '')).lower(),
-                str(getattr(reader, 'name', '')).lower(),
+                str(getattr(candidate, "name", "")).lower(),
+                str(getattr(reader, "name", "")).lower(),
             }
-            low_level = str(getattr(reader, 'experiment_reader', '')).lower()
+            low_level = str(getattr(reader, "experiment_reader", "")).lower()
             if names & reader_name_set or low_level in low_level_reader_set:
                 return reader
     return None

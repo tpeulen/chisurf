@@ -7,8 +7,6 @@ engine call per measurement over the whole burst table. What is left here is
 the reference curve those per-burst points are plotted against.
 """
 
-from typing import Tuple
-
 import numpy as np
 import tttrlib
 
@@ -16,10 +14,10 @@ __all__ = ["compute_static_bva_line"]
 
 
 def compute_static_bva_line(
-        prox_mean_bins: np.ndarray,  # Proximity ratio bins
-        number_of_photons_per_slice: int = 4,
-        n_samples: int = 10_000
-) -> Tuple[np.ndarray, np.ndarray]:
+    prox_mean_bins: np.ndarray,  # Proximity ratio bins
+    number_of_photons_per_slice: int = 4,
+    n_samples: int = 10_000,
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the shot-noise-limited (static) BVA line.
 
     A static species observed with ``n`` photons per slice has slice proximity
@@ -66,7 +64,5 @@ def compute_static_bva_line(
         zeros = np.zeros(len(prox_mean_bins))
         return zeros, zeros.copy()
 
-    mean, sd = tttrlib.BVA.compute_static_bva_line(
-        prox_mean_bins, int(number_of_photons_per_slice)
-    )
+    mean, sd = tttrlib.BVA.compute_static_bva_line(prox_mean_bins, int(number_of_photons_per_slice))
     return np.asarray(mean, dtype=float), np.asarray(sd, dtype=float)

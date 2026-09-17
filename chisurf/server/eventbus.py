@@ -4,7 +4,8 @@ import fnmatch
 import threading
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 class EventBus:
@@ -14,7 +15,7 @@ class EventBus:
     ``publish``, and ``clear``.
     """
 
-    def subscribe(self, topic: str, handler: Callable[[Dict[str, Any]], None]) -> str:
+    def subscribe(self, topic: str, handler: Callable[[dict[str, Any]], None]) -> str:
         """Register a handler for *topic*.
 
         Parameters
@@ -43,7 +44,7 @@ class EventBus:
         """
         raise NotImplementedError
 
-    def publish(self, topic: str, payload: Dict[str, Any]) -> None:
+    def publish(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish an event on *topic*.
 
         Parameters
@@ -71,10 +72,10 @@ class InProcessEventBus(EventBus):
     def __init__(self):
         """Initialise an empty in-process event bus."""
         self._lock = threading.RLock()
-        self._subscriptions: Dict[str, List[tuple[str, Callable]]] = {}
-        self._pattern_subscriptions: List[tuple[str, str, Callable]] = []
+        self._subscriptions: dict[str, list[tuple[str, Callable]]] = {}
+        self._pattern_subscriptions: list[tuple[str, str, Callable]] = []
 
-    def subscribe(self, topic: str, handler: Callable[[Dict[str, Any]], None]) -> str:
+    def subscribe(self, topic: str, handler: Callable[[dict[str, Any]], None]) -> str:
         """Register a handler for *topic*.
 
         Parameters
@@ -118,7 +119,7 @@ class InProcessEventBus(EventBus):
                 (p, t, h) for p, t, h in self._pattern_subscriptions if t != token
             ]
 
-    def publish(self, topic: str, payload: Dict[str, Any]) -> None:
+    def publish(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish an event on *topic*.
 
         Parameters
@@ -151,7 +152,7 @@ class InProcessEventBus(EventBus):
             self._pattern_subscriptions.clear()
 
     @staticmethod
-    def _safe_call(handler: Callable, event: Dict[str, Any]) -> None:
+    def _safe_call(handler: Callable, event: dict[str, Any]) -> None:
         """Invoke *handler* and log any exception without propagating it.
 
         Parameters
@@ -166,4 +167,5 @@ class InProcessEventBus(EventBus):
             handler(event)
         except Exception:
             import logging
+
             logging.exception("EventBus handler error")

@@ -1,6 +1,7 @@
 """Setup Channel Definition GUI tool."""
 
 from qtpy import QtWidgets
+
 from chisurf.gui.widgets.wizard import DetectorWizardPage
 
 

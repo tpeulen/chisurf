@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclasses.dataclass
@@ -11,13 +11,13 @@ class FilterCalcState:
     """Last-used file selections."""
 
     total_path: str = ""
-    species_paths: List[str] = dataclasses.field(default_factory=list)
+    species_paths: list[str] = dataclasses.field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "FilterCalcState":
+    def from_dict(cls, d: dict[str, Any]) -> FilterCalcState:
         d = d or {}
         return cls(
             total_path=str(d.get("total_path", "")),

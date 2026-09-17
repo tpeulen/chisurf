@@ -83,9 +83,16 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
-                        tolerance: float = 1e-7, sigma_floor: float = 1e-3,
-                        init: str = "auto", seed: int = 0) -> dict:
+def gaussian_mixture_1d(
+    x,
+    n_components: int,
+    *,
+    n_iterations: int = 300,
+    tolerance: float = 1e-7,
+    sigma_floor: float = 1e-3,
+    init: str = "auto",
+    seed: int = 0,
+) -> dict:
     """Fit a one-dimensional Gaussian mixture by expectation-maximization.
 
     Deterministic and dependency-free, so automatic population gating does not
@@ -143,8 +150,9 @@ def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
 
     best = None
     for start in starts:
-        fit = _em_1d(x, start, n_iterations=n_iterations, tolerance=tolerance,
-                     sigma_floor=sigma_floor)
+        fit = _em_1d(
+            x, start, n_iterations=n_iterations, tolerance=tolerance, sigma_floor=sigma_floor
+        )
         if best is None or fit["log_likelihood"] > best["log_likelihood"]:
             best = fit
     return best
@@ -304,14 +312,18 @@ class PopulationSplit:
         }
 
 
-def classify_es_populations(stoichiometry, efficiency=None, *,
-                            donor_only_above: float = 0.75,
-                            acceptor_only_below: float = 0.25,
-                            max_components: int = 4,
-                            max_fret_populations: int = 3,
-                            min_population: int = 20,
-                            reference_sigma: float = 2.0,
-                            method: str = "auto") -> PopulationSplit:
+def classify_es_populations(
+    stoichiometry,
+    efficiency=None,
+    *,
+    donor_only_above: float = 0.75,
+    acceptor_only_below: float = 0.25,
+    max_components: int = 4,
+    max_fret_populations: int = 3,
+    min_population: int = 20,
+    reference_sigma: float = 2.0,
+    method: str = "auto",
+) -> PopulationSplit:
     """Find donor-only, acceptor-only and FRET bursts without manual gates.
 
     The stoichiometry separates the three species: a donor-only molecule has
@@ -424,16 +436,24 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
         fret_labels[fret] = 0
 
     return PopulationSplit(
-        donor_only=donor_only, acceptor_only=acceptor_only, fret=fret,
-        fret_labels=fret_labels, thresholds=(lo, hi), method=used_method,
+        donor_only=donor_only,
+        acceptor_only=acceptor_only,
+        fret=fret,
+        fret_labels=fret_labels,
+        thresholds=(lo, hi),
+        method=used_method,
         components=components,
     )
 
 
-def split_fret_subpopulations(efficiency, *, max_populations: int = 3,
-                              min_population: int = 20,
-                              min_separation: float = 0.05,
-                              min_fraction: float = 0.1) -> np.ndarray:
+def split_fret_subpopulations(
+    efficiency,
+    *,
+    max_populations: int = 3,
+    min_population: int = 20,
+    min_separation: float = 0.05,
+    min_fraction: float = 0.1,
+) -> np.ndarray:
     """Split doubly-labelled bursts into efficiency sub-populations.
 
     The detection factor ``gamma`` is identified by how the stoichiometry varies
@@ -504,9 +524,17 @@ def split_fret_subpopulations(efficiency, *, max_populations: int = 3,
 # ---------------------------------------------------------------------------
 
 
-def efficiency_uncertainty(efficiency, f_dd, f_aa=None, *, gamma: float = 1.0,
-                           sigma_gamma: float = 0.0, sigma_alpha: float = 0.0,
-                           sigma_delta: float = 0.0, sigma_statistical=None) -> dict:
+def efficiency_uncertainty(
+    efficiency,
+    f_dd,
+    f_aa=None,
+    *,
+    gamma: float = 1.0,
+    sigma_gamma: float = 0.0,
+    sigma_alpha: float = 0.0,
+    sigma_delta: float = 0.0,
+    sigma_statistical=None,
+) -> dict:
     """Propagate the calibration uncertainties into the FRET efficiency.
 
     With ``E = F_DA / (F_DA + gamma·F_DD)`` and
@@ -548,28 +576,31 @@ def efficiency_uncertainty(efficiency, f_dd, f_aa=None, *, gamma: float = 1.0,
     g = float(gamma) if gamma else 1.0
     one_minus = 1.0 - e
     d_gamma = np.abs(e * one_minus / g) * float(sigma_gamma)
-    d_alpha = np.abs(one_minus ** 2 / g) * float(sigma_alpha)
+    d_alpha = np.abs(one_minus**2 / g) * float(sigma_alpha)
     if f_aa is None:
         d_delta = np.zeros_like(e)
     else:
         aa = np.asarray(f_aa, dtype=float)
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(dd != 0, aa / (g * dd), 0.0)
-        d_delta = np.abs(one_minus ** 2 * ratio) * float(sigma_delta)
-    systematic = np.sqrt(d_gamma ** 2 + d_alpha ** 2 + d_delta ** 2)
-    statistical = np.zeros_like(systematic) if sigma_statistical is None else np.abs(
-        np.asarray(sigma_statistical, dtype=float)
+        d_delta = np.abs(one_minus**2 * ratio) * float(sigma_delta)
+    systematic = np.sqrt(d_gamma**2 + d_alpha**2 + d_delta**2)
+    statistical = (
+        np.zeros_like(systematic)
+        if sigma_statistical is None
+        else np.abs(np.asarray(sigma_statistical, dtype=float))
     )
     return {
-        "total": np.sqrt(systematic ** 2 + statistical ** 2),
+        "total": np.sqrt(systematic**2 + statistical**2),
         "systematic": systematic,
         "statistical": statistical,
         "terms": {"gamma": d_gamma, "alpha": d_alpha, "delta": d_delta},
     }
 
 
-def distance_from_efficiency(efficiency, r0: float, *, sigma_efficiency=None,
-                             sigma_r0: float = 0.0) -> dict:
+def distance_from_efficiency(
+    efficiency, r0: float, *, sigma_efficiency=None, sigma_r0: float = 0.0
+) -> dict:
     """Donor–acceptor distance from the accurate efficiency, with its error.
 
     ``R = R0 (1/E − 1)^{1/6}``. Because of the sixth root, the *relative*
@@ -598,7 +629,9 @@ def distance_from_efficiency(efficiency, r0: float, *, sigma_efficiency=None,
     e = np.asarray(efficiency, dtype=float)
     with np.errstate(divide="ignore", invalid="ignore"):
         valid = (e > 0.0) & (e < 1.0)
-        r = np.where(valid, float(r0) * (1.0 / np.where(valid, e, 0.5) - 1.0) ** (1.0 / 6.0), np.nan)
+        r = np.where(
+            valid, float(r0) * (1.0 / np.where(valid, e, 0.5) - 1.0) ** (1.0 / 6.0), np.nan
+        )
     sigma = np.zeros_like(r)
     rel_r0 = (float(sigma_r0) / float(r0)) if r0 else 0.0
     if sigma_efficiency is None:
@@ -607,13 +640,21 @@ def distance_from_efficiency(efficiency, r0: float, *, sigma_efficiency=None,
         se = np.abs(np.asarray(sigma_efficiency, dtype=float))
         with np.errstate(divide="ignore", invalid="ignore"):
             rel_e = np.where(valid, se / (6.0 * e * (1.0 - e)), np.nan)
-    sigma = r * np.sqrt(rel_r0 ** 2 + rel_e ** 2)
+    sigma = r * np.sqrt(rel_r0**2 + rel_e**2)
     return {"distance": r, "sigma": sigma}
 
 
-def accurate_fret(i_dd, i_da, i_aa=None, *, calibration=None, tau_f=None,
-                  line: FretLine | None = None, uncertainties: dict | None = None,
-                  labels=None) -> dict:
+def accurate_fret(
+    i_dd,
+    i_da,
+    i_aa=None,
+    *,
+    calibration=None,
+    tau_f=None,
+    line: FretLine | None = None,
+    uncertainties: dict | None = None,
+    labels=None,
+) -> dict:
     """Accurate per-burst FRET efficiency, stoichiometry, distance and errors.
 
     Applies the calibration (:class:`~chisurf.core.fluorescence.fret.calibration.CalibrationParameters`,
@@ -657,9 +698,15 @@ def accurate_fret(i_dd, i_da, i_aa=None, *, calibration=None, tau_f=None,
         unc[key] = float(value) if value is not None and np.isfinite(value) else 0.0
 
     es = corrected_es(
-        i_dd, i_da, i_aa,
-        gamma=factors["gamma"], alpha=factors["alpha"], beta=factors["beta"],
-        delta=factors["delta"], bg_dd=factors["bg_dd"], bg_da=factors["bg_da"],
+        i_dd,
+        i_da,
+        i_aa,
+        gamma=factors["gamma"],
+        alpha=factors["alpha"],
+        beta=factors["beta"],
+        delta=factors["delta"],
+        bg_dd=factors["bg_dd"],
+        bg_da=factors["bg_da"],
         bg_aa=factors["bg_aa"],
     )
     e = np.asarray(es["E"], dtype=float)
@@ -667,8 +714,13 @@ def accurate_fret(i_dd, i_da, i_aa=None, *, calibration=None, tau_f=None,
     f_aa = None if i_aa is None else np.asarray(i_aa, dtype=float) - factors["bg_aa"]
 
     sigma = efficiency_uncertainty(
-        e, f_dd, f_aa, gamma=factors["gamma"], sigma_gamma=unc["gamma"],
-        sigma_alpha=unc["alpha"], sigma_delta=unc["delta"],
+        e,
+        f_dd,
+        f_aa,
+        gamma=factors["gamma"],
+        sigma_gamma=unc["gamma"],
+        sigma_alpha=unc["alpha"],
+        sigma_delta=unc["delta"],
     )
     dist = distance_from_efficiency(
         e, factors["r0"], sigma_efficiency=sigma["total"], sigma_r0=unc["r0"]
@@ -680,19 +732,32 @@ def accurate_fret(i_dd, i_da, i_aa=None, *, calibration=None, tau_f=None,
     if labels is None:
         labels = np.zeros(e.shape, dtype=int)
     populations = _population_summary(
-        e, es["S"], tau_f, np.asarray(labels), factors, unc, line,
+        e,
+        es["S"],
+        tau_f,
+        np.asarray(labels),
+        factors,
+        unc,
+        line,
         sigma_systematic=sigma["systematic"],
     )
     return {
-        "E": e, "S": es["S"], "fc": es["fc"], "sigma_E": sigma["total"],
+        "E": e,
+        "S": es["S"],
+        "fc": es["fc"],
+        "sigma_E": sigma["total"],
         "sigma_E_systematic": sigma["systematic"],
-        "distance": dist["distance"], "sigma_distance": dist["sigma"],
-        "deviation": deviation, "populations": populations, "calibration": factors,
+        "distance": dist["distance"],
+        "sigma_distance": dist["sigma"],
+        "deviation": deviation,
+        "populations": populations,
+        "calibration": factors,
     }
 
 
-def _population_summary(e, s, tau_f, labels, factors, unc, line,
-                        sigma_systematic=None) -> list[dict]:
+def _population_summary(
+    e, s, tau_f, labels, factors, unc, line, sigma_systematic=None
+) -> list[dict]:
     """Per-population mean efficiency, stoichiometry, lifetime and distance.
 
     One dictionary per label holding the population mean, its statistical error
@@ -742,8 +807,13 @@ def _population_summary(e, s, tau_f, labels, factors, unc, line,
 #: Accepted spellings per factor (``CalibrationParameters.as_dict`` uses the
 #: parameter names ``Bg_DD``/``R0``, callers often the lower-case attribute names).
 _FACTOR_ALIASES = {
-    "gamma": ("gamma",), "alpha": ("alpha",), "beta": ("beta",), "delta": ("delta",),
-    "bg_dd": ("bg_dd", "Bg_DD"), "bg_da": ("bg_da", "Bg_DA"), "bg_aa": ("bg_aa", "Bg_AA"),
+    "gamma": ("gamma",),
+    "alpha": ("alpha",),
+    "beta": ("beta",),
+    "delta": ("delta",),
+    "bg_dd": ("bg_dd", "Bg_DD"),
+    "bg_da": ("bg_da", "Bg_DA"),
+    "bg_aa": ("bg_aa", "Bg_AA"),
     "r0": ("r0", "R0"),
 }
 
@@ -762,8 +832,14 @@ def _as_factor_dict(calibration) -> dict:
         ``gamma``/``alpha``/``beta``/``delta``, the three backgrounds and ``r0``.
     """
     factors = {
-        "gamma": 1.0, "alpha": 0.0, "beta": 1.0, "delta": 0.0,
-        "bg_dd": 0.0, "bg_da": 0.0, "bg_aa": 0.0, "r0": 52.0,
+        "gamma": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "delta": 0.0,
+        "bg_dd": 0.0,
+        "bg_da": 0.0,
+        "bg_aa": 0.0,
+        "r0": 52.0,
     }
     if calibration is None:
         return factors
@@ -781,9 +857,19 @@ def _as_factor_dict(calibration) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def beta_from_stoichiometry(i_dd, i_da, i_aa, *, gamma: float, alpha: float = 0.0,
-                            delta: float = 0.0, bg_dd: float = 0.0, bg_da: float = 0.0,
-                            bg_aa: float = 0.0, target: float = 0.5) -> float:
+def beta_from_stoichiometry(
+    i_dd,
+    i_da,
+    i_aa,
+    *,
+    gamma: float,
+    alpha: float = 0.0,
+    delta: float = 0.0,
+    bg_dd: float = 0.0,
+    bg_da: float = 0.0,
+    bg_aa: float = 0.0,
+    target: float = 0.5,
+) -> float:
     """Excitation-flux ratio ``beta`` from a single doubly-labelled population.
 
     ``beta`` only rescales the stoichiometry axis, so with one FRET population it
@@ -821,13 +907,25 @@ def beta_from_stoichiometry(i_dd, i_da, i_aa, *, gamma: float, alpha: float = 0.
     return float(den / (num * (1.0 / t - 1.0)))
 
 
-def gamma_from_lifetime(i_dd, i_da, tau_f, *, line: FretLine | None = None,
-                        i_aa=None, alpha: float = 0.0, delta: float = 0.0,
-                        bg_dd: float = 0.0, bg_da: float = 0.0, bg_aa: float = 0.0,
-                        labels=None, donor_lifetime: float | None = None,
-                        r0: float = 52.0, linker_sigma: float = 6.0,
-                        min_population: int = 20,
-                        efficiency_window: tuple[float, float] = (0.05, 0.95)) -> dict:
+def gamma_from_lifetime(
+    i_dd,
+    i_da,
+    tau_f,
+    *,
+    line: FretLine | None = None,
+    i_aa=None,
+    alpha: float = 0.0,
+    delta: float = 0.0,
+    bg_dd: float = 0.0,
+    bg_da: float = 0.0,
+    bg_aa: float = 0.0,
+    labels=None,
+    donor_lifetime: float | None = None,
+    r0: float = 52.0,
+    linker_sigma: float = 6.0,
+    min_population: int = 20,
+    efficiency_window: tuple[float, float] = (0.05, 0.95),
+) -> dict:
     """Estimate the detection factor ``gamma`` from the donor lifetime and FRET line.
 
     A structurally static population must lie on the static FRET line, so its
@@ -913,8 +1011,7 @@ def gamma_from_lifetime(i_dd, i_da, tau_f, *, line: FretLine | None = None,
         if not (e_lo <= e_line <= e_hi) or dd <= 0 or da <= 0:
             continue
         g = (da / dd) * (1.0 - e_line) / e_line
-        entries.append({"label": u, "n": n, "tau_f": tau_mean, "E_line": e_line,
-                        "gamma": float(g)})
+        entries.append({"label": u, "n": n, "tau_f": tau_mean, "E_line": e_line, "gamma": float(g)})
 
     if not entries:
         return {"gamma": float("nan"), "sigma": float("nan"), "populations": [], "line": line}
@@ -992,9 +1089,13 @@ class AutoCalibration:
         for key in ("prior", "es", "lifetime", "data", "posterior"):
             value = self.gamma_estimates.get(key)
             if value is not None and np.isfinite(value):
-                label = {"prior": "light path", "es": "E-S population fit",
-                         "lifetime": "static FRET line", "data": "data (adopted)",
-                         "posterior": "posterior"}[key]
+                label = {
+                    "prior": "light path",
+                    "es": "E-S population fit",
+                    "lifetime": "static FRET line",
+                    "data": "data (adopted)",
+                    "posterior": "posterior",
+                }[key]
                 lines.append(f"  gamma [{label}] = {value:.4f}")
         for p in self.populations:
             tau = f", tau_f = {p['tau_f']:.3f} ns" if "tau_f" in p else ""
@@ -1004,22 +1105,37 @@ class AutoCalibration:
                 f"± {p['sigma_E']:.3f}, R = {p['distance']:.1f} Å{tau}{dev}"
             )
         lines.extend(f"  ! {m}" for m in self.messages)
-        lines.append(f"  {'converged' if self.converged else 'not converged'} "
-                     f"after {self.iterations} iteration(s)")
+        lines.append(
+            f"  {'converged' if self.converged else 'not converged'} "
+            f"after {self.iterations} iteration(s)"
+        )
         return "\n".join(lines)
 
 
-def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict | None = None,
-                   tau_f=None,
-                   line: FretLine | None = None, donor_lifetime: float | None = None,
-                   linker_sigma: float = 6.0, gamma_source: str = "auto",
-                   n_iterations: int = 6, tolerance: float = 1e-3,
-                   n_bootstrap: int = 0, seed: int = 0, use_priors: bool = True,
-                   assume_one_to_one: bool = True, min_population: int = 20,
-                   max_fret_populations: int = 3,
-                   donor_only_above: float = 0.75,
-                   acceptor_only_below: float = 0.25,
-                   progress=None) -> AutoCalibration:
+def auto_calibrate(
+    i_dd,
+    i_da,
+    i_aa=None,
+    *,
+    calibration=None,
+    lightpath: dict | None = None,
+    tau_f=None,
+    line: FretLine | None = None,
+    donor_lifetime: float | None = None,
+    linker_sigma: float = 6.0,
+    gamma_source: str = "auto",
+    n_iterations: int = 6,
+    tolerance: float = 1e-3,
+    n_bootstrap: int = 0,
+    seed: int = 0,
+    use_priors: bool = True,
+    assume_one_to_one: bool = True,
+    min_population: int = 20,
+    max_fret_populations: int = 3,
+    donor_only_above: float = 0.75,
+    acceptor_only_below: float = 0.25,
+    progress=None,
+) -> AutoCalibration:
     """Determine all FRET correction factors automatically from one measurement.
 
     The procedure, iterated until the factors stop moving (the classification
@@ -1134,8 +1250,12 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
             )
 
     split = None
-    gamma_estimates: dict = {"es": float("nan"), "lifetime": float("nan"),
-                             "prior": float("nan"), "posterior": float("nan")}
+    gamma_estimates: dict = {
+        "es": float("nan"),
+        "lifetime": float("nan"),
+        "prior": float("nan"),
+        "posterior": float("nan"),
+    }
     previous = np.array([calib.alpha, calib.delta, calib.gamma, calib.beta])
     converged = False
     iteration = 0
@@ -1161,8 +1281,16 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
     for iteration in range(1, int(n_iterations) + 1):
         iteration_messages = []
         es = corrected_es(
-            dd, da, aa, gamma=calib.gamma, alpha=calib.alpha, beta=calib.beta,
-            delta=calib.delta, bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
+            dd,
+            da,
+            aa,
+            gamma=calib.gamma,
+            alpha=calib.alpha,
+            beta=calib.beta,
+            delta=calib.delta,
+            bg_dd=calib.bg_dd,
+            bg_da=calib.bg_da,
+            bg_aa=calib.bg_aa,
         )
         e_cur = np.asarray(es["E"], dtype=float)
         if aa is None:
@@ -1177,14 +1305,18 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
                 acceptor_only=np.zeros(dd.shape, dtype=bool),
                 fret=np.ones(dd.shape, dtype=bool),
                 fret_labels=split_fret_subpopulations(
-                    e_cur, max_populations=max_fret_populations,
+                    e_cur,
+                    max_populations=max_fret_populations,
                     min_population=min_population,
                 ),
-                thresholds=(0.0, 1.0), method="none",
+                thresholds=(0.0, 1.0),
+                method="none",
             )
         else:
             split = classify_es_populations(
-                es["S"], e_cur, donor_only_above=donor_only_above,
+                es["S"],
+                e_cur,
+                donor_only_above=donor_only_above,
                 acceptor_only_below=acceptor_only_below,
                 max_fret_populations=max_fret_populations,
                 min_population=min_population,
@@ -1195,8 +1327,16 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
         gamma_estimates["es"] = gamma_es
         if tau is not None and line is not None:
             lt = gamma_from_lifetime(
-                dd, da, tau, line=line, i_aa=aa, alpha=calib.alpha, delta=calib.delta,
-                bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
+                dd,
+                da,
+                tau,
+                line=line,
+                i_aa=aa,
+                alpha=calib.alpha,
+                delta=calib.delta,
+                bg_dd=calib.bg_dd,
+                bg_da=calib.bg_da,
+                bg_aa=calib.bg_aa,
                 labels=np.where(split.fret, split.fret_labels, -1),
                 min_population=min_population,
             )
@@ -1211,10 +1351,19 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
             calib.beta = float(beta_es)
         elif aa is not None and assume_one_to_one and np.any(split.fret):
             m = split.fret
-            calib.beta = float(beta_from_stoichiometry(
-                dd[m], da[m], aa[m], gamma=calib.gamma, alpha=calib.alpha,
-                delta=calib.delta, bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
-            ))
+            calib.beta = float(
+                beta_from_stoichiometry(
+                    dd[m],
+                    da[m],
+                    aa[m],
+                    gamma=calib.gamma,
+                    alpha=calib.alpha,
+                    delta=calib.delta,
+                    bg_dd=calib.bg_dd,
+                    bg_da=calib.bg_da,
+                    bg_aa=calib.bg_aa,
+                )
+            )
             iteration_messages.append(
                 "only one FRET population: beta defined by centring it at S = 0.5 "
                 "(1:1 labelling assumed)"
@@ -1238,9 +1387,17 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
     # The data uncertainty first (bootstrap), then the optics prior: the
     # posterior weight of each side is only meaningful once both widths exist.
     uncertainties = _bootstrap_uncertainties(
-        calib, dd, da, aa, tau, line, split,
-        n_bootstrap=0 if cancelled else n_bootstrap, seed=seed,
-        min_population=min_population, tick=_tick,
+        calib,
+        dd,
+        da,
+        aa,
+        tau,
+        line,
+        split,
+        n_bootstrap=0 if cancelled else n_bootstrap,
+        seed=seed,
+        min_population=min_population,
+        tick=_tick,
     )
     if not np.isfinite(uncertainties.get("gamma", float("nan"))):
         uncertainties["gamma"] = float(gamma_estimates.get("lifetime_sigma", float("nan")))
@@ -1251,16 +1408,27 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
     gamma_estimates["posterior"] = float(calib.gamma)
 
     final = accurate_fret(
-        dd, da, aa, calibration=calib, tau_f=tau, line=line,
+        dd,
+        da,
+        aa,
+        calibration=calib,
+        tau_f=tau,
+        line=line,
         uncertainties=uncertainties,
         labels=np.where(split.fret, split.fret_labels, -1) if split is not None else None,
     )
     populations = [p for p in final["populations"] if p["label"] != -1]
 
     return AutoCalibration(
-        calibration=calib, factors=_as_factor_dict(calib), uncertainties=uncertainties,
-        split=split, gamma_estimates=gamma_estimates, populations=populations,
-        iterations=iteration, converged=converged, messages=messages,
+        calibration=calib,
+        factors=_as_factor_dict(calib),
+        uncertainties=uncertainties,
+        split=split,
+        gamma_estimates=gamma_estimates,
+        populations=populations,
+        iterations=iteration,
+        converged=converged,
+        messages=messages,
     )
 
 
@@ -1276,18 +1444,25 @@ def _estimate_alpha_delta(calib, dd, da, aa, split, messages) -> dict:
     estimated = {"alpha": False, "delta": False}
     if np.any(split.donor_only):
         m = split.donor_only
-        calib.alpha = float(leakage_from_donor_only(
-            dd[m], da[m], bg_dd=calib.bg_dd, bg_da=calib.bg_da
-        ))
+        calib.alpha = float(
+            leakage_from_donor_only(dd[m], da[m], bg_dd=calib.bg_dd, bg_da=calib.bg_da)
+        )
         estimated["alpha"] = True
     else:
         messages.append("no donor-only population in the data")
     if aa is not None and np.any(split.acceptor_only):
         m = split.acceptor_only
-        calib.delta = float(direct_excitation_from_acceptor_only(
-            da[m], aa[m], dd[m], alpha=calib.alpha, bg_dd=calib.bg_dd,
-            bg_da=calib.bg_da, bg_aa=calib.bg_aa,
-        ))
+        calib.delta = float(
+            direct_excitation_from_acceptor_only(
+                da[m],
+                aa[m],
+                dd[m],
+                alpha=calib.alpha,
+                bg_dd=calib.bg_dd,
+                bg_da=calib.bg_da,
+                bg_aa=calib.bg_aa,
+            )
+        )
         estimated["delta"] = True
     else:
         messages.append("no acceptor-only population in the data")
@@ -1348,8 +1523,7 @@ def _prior_of(parameter) -> tuple[float, float] | None:
     return float(prior.mu), float(prior.sigma)
 
 
-def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict,
-                                messages: list) -> dict:
+def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict, messages: list) -> dict:
     """Precision-weight every optics-derived factor with its light-path prior.
 
     ``gamma``, ``alpha`` and ``delta`` are predicted by the excitation/emission
@@ -1382,8 +1556,11 @@ def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict,
         posterior sigma}}``.
     """
     out = {"prior": {}, "prior_sigma": {}, "sigma": {}}
-    for name, parameter in (("gamma", calib._gamma), ("alpha", calib._alpha),
-                            ("delta", calib._delta)):
+    for name, parameter in (
+        ("gamma", calib._gamma),
+        ("alpha", calib._alpha),
+        ("delta", calib._delta),
+    ):
         prior = _prior_of(parameter)
         sigma_d = float(data_sigma.get(name, float("nan")))
         if prior is None:
@@ -1408,7 +1585,7 @@ def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict,
         value = float(getattr(calib, name))
         if not np.isfinite(sigma_d) or sigma_d <= 0:
             sigma_d = max(abs(value) * 0.1, 1e-6)
-        w_d, w_p = 1.0 / sigma_d ** 2, 1.0 / max(sigma_p, 1e-9) ** 2
+        w_d, w_p = 1.0 / sigma_d**2, 1.0 / max(sigma_p, 1e-9) ** 2
         setattr(calib, name, float((value * w_d + mu * w_p) / (w_d + w_p)))
         out["sigma"][name] = float(np.sqrt(1.0 / (w_d + w_p)))
         messages.append(
@@ -1418,8 +1595,20 @@ def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict,
     return out
 
 
-def _bootstrap_uncertainties(calib, dd, da, aa, tau, line, split, *, n_bootstrap: int,
-                             seed: int, min_population: int, tick=None) -> dict:
+def _bootstrap_uncertainties(
+    calib,
+    dd,
+    da,
+    aa,
+    tau,
+    line,
+    split,
+    *,
+    n_bootstrap: int,
+    seed: int,
+    min_population: int,
+    tick=None,
+) -> dict:
     """Bootstrap the factor uncertainties with the population assignment fixed.
 
     Resampling *within* each class (rather than re-running the classification)
@@ -1437,19 +1626,29 @@ def _bootstrap_uncertainties(calib, dd, da, aa, tau, line, split, *, n_bootstrap
 
     for _resample in range(int(n_bootstrap)):
         if tick is not None and not tick(
-                f"bootstrapping the uncertainties ({_resample + 1}/{int(n_bootstrap)})"):
+            f"bootstrapping the uncertainties ({_resample + 1}/{int(n_bootstrap)})"
+        ):
             break
         if idx_d.size:
             s = rng.integers(0, idx_d.size, idx_d.size)
-            collected["alpha"].append(leakage_from_donor_only(
-                dd[idx_d[s]], da[idx_d[s]], bg_dd=calib.bg_dd, bg_da=calib.bg_da
-            ))
+            collected["alpha"].append(
+                leakage_from_donor_only(
+                    dd[idx_d[s]], da[idx_d[s]], bg_dd=calib.bg_dd, bg_da=calib.bg_da
+                )
+            )
         if aa is not None and idx_a.size:
             s = rng.integers(0, idx_a.size, idx_a.size)
-            collected["delta"].append(direct_excitation_from_acceptor_only(
-                da[idx_a[s]], aa[idx_a[s]], dd[idx_a[s]], alpha=calib.alpha,
-                bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
-            ))
+            collected["delta"].append(
+                direct_excitation_from_acceptor_only(
+                    da[idx_a[s]],
+                    aa[idx_a[s]],
+                    dd[idx_a[s]],
+                    alpha=calib.alpha,
+                    bg_dd=calib.bg_dd,
+                    bg_da=calib.bg_da,
+                    bg_aa=calib.bg_aa,
+                )
+            )
         if idx_f.size:
             s = rng.integers(0, idx_f.size, idx_f.size)
             j = idx_f[s]
@@ -1467,9 +1666,17 @@ def _bootstrap_uncertainties(calib, dd, da, aa, tau, line, split, *, n_bootstrap
                     pass
             elif tau is not None and line is not None:
                 lt = gamma_from_lifetime(
-                    dd[j], da[j], tau[j], line=line, i_aa=None if aa is None else aa[j],
-                    alpha=calib.alpha, delta=calib.delta, bg_dd=calib.bg_dd,
-                    bg_da=calib.bg_da, bg_aa=calib.bg_aa, labels=labels,
+                    dd[j],
+                    da[j],
+                    tau[j],
+                    line=line,
+                    i_aa=None if aa is None else aa[j],
+                    alpha=calib.alpha,
+                    delta=calib.delta,
+                    bg_dd=calib.bg_dd,
+                    bg_da=calib.bg_da,
+                    bg_aa=calib.bg_aa,
+                    labels=labels,
                     min_population=min_population,
                 )
                 if np.isfinite(lt["gamma"]):

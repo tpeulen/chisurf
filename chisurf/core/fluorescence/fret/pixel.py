@@ -21,8 +21,9 @@ from chisurf.core.fluorescence.crosstalk import invert_mixing, photon_shuffle_un
 __all__ = ["corrected_es_image", "pixel_source_photons"]
 
 
-def corrected_es_image(intensity, excitation, emission, *, unmix="naive", ridge=0.0,
-                       pairs=None, min_counts=0.0):
+def corrected_es_image(
+    intensity, excitation, emission, *, unmix="naive", ridge=0.0, pairs=None, min_counts=0.0
+):
     """Per-pixel accurate FRET-efficiency maps from the crosstalk matrices.
 
     Parameters
@@ -53,8 +54,9 @@ def corrected_es_image(intensity, excitation, emission, *, unmix="naive", ridge=
         is ``NaN`` where masked by ``min_counts``.
     """
     intensity = np.asarray(intensity, dtype=float)
-    res = corrected_es_general(intensity, excitation, emission,
-                               unmix=unmix, ridge=ridge, pairs=pairs)
+    res = corrected_es_general(
+        intensity, excitation, emission, unmix=unmix, ridge=ridge, pairs=pairs
+    )
     if min_counts and min_counts > 0:
         total = intensity.sum(axis=(0, 1))
         mask = total < float(min_counts)

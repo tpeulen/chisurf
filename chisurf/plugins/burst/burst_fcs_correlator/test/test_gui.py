@@ -22,12 +22,20 @@ def test_tool_builds_with_declarative_settings_and_dock_plots(qapp, qtbot):
     # selecting a curve drives the plot sources
     tau = np.logspace(-3, 2, 40)
     g = 0.5 / (1.0 + tau) + 1.0
-    w._curves = [{
-        "file": "f.ptu", "burst_index": 0, "pair_name": "GG",
-        "tau_raw": tau.tolist(), "g_raw": g.tolist(),
-        "tau": tau.tolist(), "g": g.tolist(), "g_fit": (g * 0.99).tolist(),
-        "td_grid": [], "p": [],
-    }]
+    w._curves = [
+        {
+            "file": "f.ptu",
+            "burst_index": 0,
+            "pair_name": "GG",
+            "tau_raw": tau.tolist(),
+            "g_raw": g.tolist(),
+            "tau": tau.tolist(),
+            "g": g.tolist(),
+            "g_fit": (g * 0.99).tolist(),
+            "td_grid": [],
+            "p": [],
+        }
+    ]
     w._refresh_browser_list()
     assert w.list_browser.count() == 1
     w.list_browser.setCurrentRow(0)

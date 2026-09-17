@@ -22,6 +22,7 @@ Both are asserted from the page's own objects **after** the DOM's exact
 delivery, and from the frame (the chrome quad count grows when a menu is
 drawn), never from a pristine gesture.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -30,7 +31,6 @@ import sys
 import time
 
 import pytest
-
 from test_browser_render import CHROMIUM_FLAGS, _free_port
 
 pytestmark = pytest.mark.slow
@@ -95,9 +95,10 @@ def server():
     pytest.importorskip("playwright.sync_api", reason="needs Playwright")
     port = _free_port()
     process = subprocess.Popen(
-        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port),
-         "--no-open"],
-        cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
+        cwd=str(_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     import socket
 

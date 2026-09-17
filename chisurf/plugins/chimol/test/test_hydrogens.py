@@ -22,7 +22,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.hydrogens import (
     LINEAR,
     PLANAR,
@@ -34,7 +33,10 @@ from chimol.analysis.hydrogens import (
 
 _DATA = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
 )
 _FRAGMENT = _DATA / "solvated_fragment.pdb"
 _HYDROGENATED = _DATA / "hGBP1_closed.pdb"
@@ -79,8 +81,7 @@ def test_a_tetrahedral_centre_with_two_neighbours_gives_two_more():
 def test_a_tetrahedral_centre_with_three_neighbours_has_one_free_valence():
     """Asking for more than the geometry allows gets what it allows."""
     dirs = open_valence_directions([np.array([1.0, 0.0, 0.0])], TETRAHEDRAL, 3)
-    got = open_valence_directions([np.array([1.0, 0.0, 0.0])] + dirs[:2],
-                                  TETRAHEDRAL, 3)
+    got = open_valence_directions([np.array([1.0, 0.0, 0.0])] + dirs[:2], TETRAHEDRAL, 3)
     assert len(got) == 1
 
 
@@ -122,15 +123,14 @@ def test_linear_is_opposite():
 
 def test_directions_are_unit_vectors():
     for geometry in (TETRAHEDRAL, PLANAR, LINEAR):
-        for direction in open_valence_directions(
-            [np.array([1.0, 0.0, 0.0])], geometry, 3
-        ):
+        for direction in open_valence_directions([np.array([1.0, 0.0, 0.0])], geometry, 3):
             assert float(np.linalg.norm(direction)) == pytest.approx(1.0, abs=1e-6)
 
 
 def test_no_neighbours_still_produces_a_full_set():
     """PyMOL takes a random first direction; a fixed one keeps sessions
-    reproducible, which matters more here than isotropy."""
+    reproducible, which matters more here than isotropy.
+    """
     first = open_valence_directions([], TETRAHEDRAL, 4)
     second = open_valence_directions([], TETRAHEDRAL, 4)
     assert len(first) == 4
@@ -206,9 +206,7 @@ def fragment():
     # so the fixture has to as well or it is testing a different molecule.
     from chisurf.core.fio.structure.coordinates import read_coordinates
 
-    atoms = read_coordinates(
-        str(_FRAGMENT), keep_water=True, only_standard_residues=False
-    )
+    atoms = read_coordinates(str(_FRAGMENT), keep_water=True, only_standard_residues=False)
     xyz = np.asarray(atoms["xyz"], dtype=float)
     from scipy.spatial import cKDTree
 
@@ -240,15 +238,9 @@ def test_the_n_terminus_is_an_ammonium(fragment):
     plan, _unknown = plan_hydrogens(atoms, pairs)
     per_parent = collections.Counter(p["parent"] for p in plan)
 
-    first_n = next(
-        i for i in range(len(atoms))
-        if atom_names[i] == "N" and int(res_ids[i]) == 1
-    )
+    first_n = next(i for i in range(len(atoms)) if atom_names[i] == "N" and int(res_ids[i]) == 1)
     assert per_parent[first_n] == 3
-    later_n = next(
-        i for i in range(len(atoms))
-        if atom_names[i] == "N" and int(res_ids[i]) == 3
-    )
+    later_n = next(i for i in range(len(atoms)) if atom_names[i] == "N" and int(res_ids[i]) == 3)
     assert per_parent[later_n] == 1
 
 
@@ -261,9 +253,7 @@ def test_hydrogens_sit_at_the_right_bond_length(fragment):
     for item in plan:
         parent = item["parent"]
         distance = float(np.linalg.norm(item["xyz"] - xyz[parent]))
-        expected = {"C": 1.09, "N": 1.01, "O": 0.96, "S": 1.34}[
-            str(elements[parent])
-        ]
+        expected = {"C": 1.09, "N": 1.01, "O": 0.96, "S": 1.34}[str(elements[parent])]
         assert distance == pytest.approx(expected, abs=1e-6)
 
 
@@ -349,10 +339,7 @@ def test_the_count_matches_a_real_protein(stripped_protein):
     plan, unknown = plan_hydrogens(sub, pairs)
     predicted = collections.Counter(p["parent"] for p in plan)
 
-    correct = sum(
-        1 for i in range(len(sub))
-        if predicted.get(i, 0) == truth.get(heavy[i], 0)
-    )
+    correct = sum(1 for i in range(len(sub)) if predicted.get(i, 0) == truth.get(heavy[i], 0))
     fraction = correct / len(sub)
     assert not unknown, f"a standard protein should need no exceptions: {unknown}"
     assert fraction > 0.995, f"only {fraction:.3%} of counts matched"
@@ -371,9 +358,7 @@ def test_the_only_mismatches_are_histidine_tautomers(stripped_protein):
     predicted = collections.Counter(p["parent"] for p in plan)
 
     offenders = {
-        str(residues[i])
-        for i in range(len(sub))
-        if predicted.get(i, 0) != truth.get(heavy[i], 0)
+        str(residues[i]) for i in range(len(sub)) if predicted.get(i, 0) != truth.get(heavy[i], 0)
     }
     assert offenders <= {"HIS"}, f"unexpected disagreements in {offenders}"
 
@@ -453,8 +438,21 @@ def test_the_large_errors_are_rotatable_groups(stripped_protein):
 
     # Every one of these is a terminal group free to rotate.
     rotatable = {
-        "OG", "OG1", "OH", "SG", "NE2", "ND2", "NH1", "NH2", "NZ", "N",
-        "CG2", "CD1", "CD2", "CE", "CB",
+        "OG",
+        "OG1",
+        "OH",
+        "SG",
+        "NE2",
+        "ND2",
+        "NH1",
+        "NH2",
+        "NZ",
+        "N",
+        "CG2",
+        "CD1",
+        "CD2",
+        "CE",
+        "CB",
     }
     assert offenders <= rotatable, f"a non-rotatable atom is misplaced: {offenders}"
     assert "CA" not in offenders and "C" not in offenders

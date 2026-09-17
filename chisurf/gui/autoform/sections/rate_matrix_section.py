@@ -35,7 +35,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from .registry import register_section
 
@@ -97,8 +97,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(1)
 
-        from chisurf.gui.widgets.general import table_font, table_row_height, table_header_height, apply_compact_table_style
         from chisurf.gui import QtGui
+        from chisurf.gui.widgets.general import (
+            apply_compact_table_style,
+            table_font,
+        )
 
         self.table = QtWidgets.QTableWidget(0, 0)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -127,8 +130,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
             # contents makes the panel lie about the model's state.
             self.button = QtWidgets.QToolButton()
             self.button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-            self.button.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                      QtWidgets.QSizePolicy.Fixed)
+            self.button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self.button.clicked.connect(self._open)
             layout.addWidget(self.button)
         else:
@@ -186,8 +188,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
             return
         n = self.table.rowCount()
         active = sum(
-            1 for (i, j), spin in self._spins.items()
-            if i != j and abs(spin.value()) > 0.0
+            1 for (i, j), spin in self._spins.items() if i != j and abs(spin.value()) > 0.0
         )
         name = self._title or "Transition rates"
         unit = f" {self._unit}" if self._unit else ""
@@ -223,11 +224,13 @@ class RateMatrixWidget(QtWidgets.QWidget):
         return [f"S{i}" for i in range(n)]
 
     def _descriptions(self, n: int) -> list[str]:
-        descriptions = _resolve(self._model, "saturation.state_descriptions", None) or _resolve(self._model, "state_descriptions", None)
+        descriptions = _resolve(self._model, "saturation.state_descriptions", None) or _resolve(
+            self._model, "state_descriptions", None
+        )
         if isinstance(descriptions, (list, tuple)) and len(descriptions) >= n:
             return [str(descriptions[i]) for i in range(n)]
         labels = self._labels(n)
-        return [f"State {i+1} ({labels[i]})" for i in range(n)]
+        return [f"State {i + 1} ({labels[i]})" for i in range(n)]
 
     def _load(self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox, raw: float) -> None:
         """Show one model value in its cell and remember what was read."""
@@ -239,15 +242,21 @@ class RateMatrixWidget(QtWidgets.QWidget):
         clamped = not self._min <= raw <= self._max
         spin.setStyleSheet(
             "QDoubleSpinBox { color: #c62828; padding: 0px; margin: 0px; border: none; background: transparent; selection-background-color: #ff3333; selection-color: #ffffff; }"
-            if clamped else
-            "QDoubleSpinBox { padding: 0px; margin: 0px; border: none; background: transparent; selection-background-color: #ff3333; selection-color: #ffffff; }"
+            if clamped
+            else "QDoubleSpinBox { padding: 0px; margin: 0px; border: none; background: transparent; selection-background-color: #ff3333; selection-color: #ffffff; }"
         )
         if clamped:
             logger.warning(
                 "rate_matrix: %s[%d, %d] = %g is outside the range this grid "
                 "shows (%g..%g); it is displayed as %g and kept unchanged in "
                 "the model until the cell is edited.",
-                self._attr or "rates", i, j, raw, self._min, self._max, shown,
+                self._attr or "rates",
+                i,
+                j,
+                raw,
+                self._min,
+                self._max,
+                shown,
             )
             spin.setToolTip(
                 f"Stored value {raw:g} is outside the range this grid shows "
@@ -272,7 +281,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
         if self._attr:
             _set_resolved(self._model, self._attr, flat)
         self._update_button()
-        callback = getattr(self._model, "_on_changed", None) or getattr(self._model, "on_changed", None)
+        callback = getattr(self._model, "_on_changed", None) or getattr(
+            self._model, "on_changed", None
+        )
         if callable(callback):
             try:
                 callback()
@@ -297,7 +308,8 @@ class RateMatrixWidget(QtWidgets.QWidget):
 
     # -- build / refresh ----------------------------------------------
     def _build(self) -> None:
-        from chisurf.gui.widgets.general import table_font, table_row_height, table_header_height
+        from chisurf.gui.widgets.general import table_font, table_header_height, table_row_height
+
         t_font = table_font()
         n = self._size()
         flat = self._flat()
@@ -316,10 +328,10 @@ class RateMatrixWidget(QtWidgets.QWidget):
             desc = descriptions[k] if k < len(descriptions) else labels[k]
             h_item = self.table.horizontalHeaderItem(k)
             if h_item is not None:
-                h_item.setToolTip(f"State {k+1}: {desc}")
+                h_item.setToolTip(f"State {k + 1}: {desc}")
             v_item = self.table.verticalHeaderItem(k)
             if v_item is not None:
-                v_item.setToolTip(f"State {k+1}: {desc}")
+                v_item.setToolTip(f"State {k + 1}: {desc}")
 
         for i in range(n):
             for j in range(n):
@@ -352,7 +364,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 idx = i * n + j
                 raw = flat[idx] if idx < len(flat) else 0.0
 
-                is_disabled_cell = (i == 0 and self._disable_row0) or (i == j and not self._diagonal)
+                is_disabled_cell = (i == 0 and self._disable_row0) or (
+                    i == j and not self._diagonal
+                )
 
                 def _update_cell_style(p=param, chk=chk_fix, sp=spin, is_dis=is_disabled_cell):
                     if is_dis:
@@ -361,7 +375,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
                             "QCheckBox { spacing: 0px; background: transparent; } "
                             "QCheckBox::indicator { width: 11px; height: 11px; border: 1px solid #444444; border-radius: 2px; background-color: #552222; }"
                         )
-                        sp.setStyleSheet("QDoubleSpinBox { border: 1px solid #333333; border-radius: 3px; color: #777777; background-color: #1a1a1a; }")
+                        sp.setStyleSheet(
+                            "QDoubleSpinBox { border: 1px solid #333333; border-radius: 3px; color: #777777; background-color: #1a1a1a; }"
+                        )
                         return
 
                     is_linked = getattr(p, "is_linked", False) if p is not None else False
@@ -370,13 +386,13 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     chk.setTristate(True)
                     if is_linked:
                         chk.setCheckState(QtCore.Qt.PartiallyChecked)
-                        color = "#2a88ff"   # Blue
+                        color = "#2a88ff"  # Blue
                     elif is_fixed:
                         chk.setCheckState(QtCore.Qt.Checked)
-                        color = "#ff2a2a"   # Red
+                        color = "#ff2a2a"  # Red
                     else:
                         chk.setCheckState(QtCore.Qt.Unchecked)
-                        color = "#2acc44"   # Green
+                        color = "#2acc44"  # Green
 
                     chk.setStyleSheet(
                         "QCheckBox { spacing: 0px; background: transparent; } "
@@ -403,7 +419,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     chk_fix.setToolTip(tt)
                     _update_cell_style()
                 else:
-                    tt_desc = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (f" ({self._unit})" if self._unit else "")
+                    tt_desc = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (
+                        f" ({self._unit})" if self._unit else ""
+                    )
                     # Loaded once the cell's tooltips are set, below: _load
                     # warns through the tooltip when a stored rate is outside
                     # the range the grid can show, and the description written
@@ -414,8 +432,8 @@ class RateMatrixWidget(QtWidgets.QWidget):
 
                     if param is not None:
                         from chisurf.gui.widgets.fitting.parameter_widgets import (
-                            FittingParameterProxyController,
                             FittingParameterDetailPopup,
+                            FittingParameterProxyController,
                         )
 
                         def _on_proxy_change():
@@ -425,12 +443,12 @@ class RateMatrixWidget(QtWidgets.QWidget):
                                 self._model.update()
 
                         ctrl = FittingParameterProxyController(
-                            fitting_parameter=param,
-                            parent=cell_w,
-                            on_change=_on_proxy_change
+                            fitting_parameter=param, parent=cell_w, on_change=_on_proxy_change
                         )
 
-                        st_str = "Fixed" if param.fixed else f"Free [{param.lb:.4g}, {param.ub:.4g}]"
+                        st_str = (
+                            "Fixed" if param.fixed else f"Free [{param.lb:.4g}, {param.ub:.4g}]"
+                        )
                         lnk_str = " (Linked)" if getattr(param, "is_linked", False) else ""
                         rich_tt = (
                             f"<b>{param.name}</b> = {param.value:.4g} ({st_str}{lnk_str})<br>"
@@ -456,21 +474,27 @@ class RateMatrixWidget(QtWidgets.QWidget):
                         cell_w.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
                         spin.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
-                        def _on_context_menu(pos: QtCore.QPoint, p=param, c=ctrl, cb=chk_fix, w=cell_w):
+                        def _on_context_menu(
+                            pos: QtCore.QPoint, p=param, c=ctrl, cb=chk_fix, w=cell_w
+                        ):
                             menu = c.build_link_menu()
                             menu.setTitle(f"🔗 {p.name}")
                             menu.addSeparator()
                             act_popup = menu.addAction("🛠 Parameter Detail Popup...")
+
                             def _show_popup():
                                 pop = FittingParameterDetailPopup(c)
                                 pop.move(QtGui.QCursor.pos())
                                 pop.refresh_from_model()
                                 pop.exec_()
+
                             act_popup.triggered.connect(_show_popup)
                             menu.exec_(w.mapToGlobal(pos))
 
                         cell_w.customContextMenuRequested.connect(_on_context_menu)
-                        spin.customContextMenuRequested.connect(lambda pos, w=cell_w, c_fn=_on_context_menu: c_fn(pos, w=w))
+                        spin.customContextMenuRequested.connect(
+                            lambda pos, w=cell_w, c_fn=_on_context_menu: c_fn(pos, w=w)
+                        )
 
                         class DblClickFilter(QtCore.QObject):
                             def __init__(self, c=ctrl, parent=None):
@@ -478,7 +502,10 @@ class RateMatrixWidget(QtWidgets.QWidget):
                                 self._c = c
 
                             def eventFilter(self, obj, event):
-                                if event.type() == QtCore.QEvent.MouseButtonDblClick and event.button() == QtCore.Qt.LeftButton:
+                                if (
+                                    event.type() == QtCore.QEvent.MouseButtonDblClick
+                                    and event.button() == QtCore.Qt.LeftButton
+                                ):
                                     pop = FittingParameterDetailPopup(self._c)
                                     pop.move(QtGui.QCursor.pos())
                                     pop.refresh_from_model()

@@ -3,17 +3,22 @@ import pathlib
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
 
 _SPC = (
     pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+    / "test"
+    / "data"
+    / "tttr"
+    / "BH"
+    / "132"
+    / "BH_SPC132.spc"
 )
 
 
 def test_fcs_correlator_tool(qapp, qtbot):
-    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
     from chisurf.gui.widgets.navigation import NavigationPanelTool
+    from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
+
     widget = FcsCorrelatorTool()
     qtbot.addWidget(widget)
     assert isinstance(widget, NavigationPanelTool)

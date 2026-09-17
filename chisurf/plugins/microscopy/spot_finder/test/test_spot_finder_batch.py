@@ -36,9 +36,7 @@ def _write_field(path: Path, *, spots: bool = True) -> Path:
     image = np.full((48, 56), 2.0)
     if spots:
         for cy, cx in CENTRES:
-            image += 200.0 * np.exp(
-                -(((rows - cy) ** 2 + (cols - cx) ** 2) / (2 * 1.6**2))
-            )
+            image += 200.0 * np.exp(-(((rows - cy) ** 2 + (cols - cx) ** 2) / (2 * 1.6**2)))
     imwrite(path, image.astype(np.uint16), axes="YX")
     with Measurement.create(path, artifact_kind="image_data"):
         pass
@@ -46,8 +44,7 @@ def _write_field(path: Path, *, spots: bool = True) -> Path:
 
 
 def _settings() -> SpotFinderSettings:
-    return SpotFinderSettings(method="threshold", sigma=1.0, min_area=2,
-                              clear_border=False)
+    return SpotFinderSettings(method="threshold", sigma=1.0, min_area=2, clear_border=False)
 
 
 def test_every_input_gets_a_row_whatever_happened_to_it(tmp_path: Path):
@@ -56,8 +53,9 @@ def test_every_input_gets_a_row_whatever_happened_to_it(tmp_path: Path):
     broken = tmp_path / "broken.tif"
     broken.write_bytes(b"not a tiff at all")
 
-    result = detect_request(SpotFinderRequest(
-        files=[str(good), str(empty), str(broken)], settings=_settings()))
+    result = detect_request(
+        SpotFinderRequest(files=[str(good), str(empty), str(broken)], settings=_settings())
+    )
 
     assert len(result.rows) == 3, "a batch must answer for every input"
     assert [row.status for row in result.rows] == ["ok", "empty", "failed"]
@@ -102,8 +100,9 @@ def test_the_run_table_carries_one_row_per_input(tmp_path: Path):
     good = _write_field(tmp_path / "good.tif")
     empty = _write_field(tmp_path / "empty.tif", spots=False)
 
-    table = run_table(detect_request(SpotFinderRequest(
-        files=[str(good), str(empty)], settings=_settings())))
+    table = run_table(
+        detect_request(SpotFinderRequest(files=[str(good), str(empty)], settings=_settings()))
+    )
 
     assert row_count(table) == 2
     assert column_names(table) == ["input", "status", "n_regions", "container", "reason"]
@@ -126,8 +125,7 @@ def test_a_dry_run_writes_nothing(tmp_path: Path):
 
     good = _write_field(tmp_path / "good.tif")
 
-    result = detect_request(SpotFinderRequest(
-        files=[str(good)], settings=_settings(), write=False))
+    result = detect_request(SpotFinderRequest(files=[str(good)], settings=_settings(), write=False))
 
     assert result.rows[0].status == "ok"
     assert result.rows[0].n_regions == len(CENTRES)
@@ -141,10 +139,9 @@ def test_two_detections_under_different_names_coexist(tmp_path: Path):
 
     good = _write_field(tmp_path / "good.tif")
 
-    detect_request(SpotFinderRequest(
-        files=[str(good)], name="loose", settings=_settings()))
+    detect_request(SpotFinderRequest(files=[str(good)], name="loose", settings=_settings()))
     tight = _settings()
-    tight.threshold = 60.0     # a fixed level rather than Otsu: fewer pixels per
+    tight.threshold = 60.0  # a fixed level rather than Otsu: fewer pixels per
     detect_request(SpotFinderRequest(files=[str(good)], name="tight", settings=tight))
     # spot, same spots -- two answers to compare, which is why they are named.
 
@@ -159,21 +156,20 @@ def test_the_cli_reports_every_file_and_exits_non_zero_when_nothing_is_found(
     empty = _write_field(tmp_path / "empty.tif", spots=False)
 
     runner = CliRunner()
-    ok = runner.invoke(cli, ["detect", str(good), "--method", "threshold",
-                             "--keep-border", "--min-area", "2"])
+    ok = runner.invoke(
+        cli, ["detect", str(good), "--method", "threshold", "--keep-border", "--min-area", "2"]
+    )
     assert ok.exit_code == 0, ok.output
     assert "ok" in ok.output
 
-    nothing = runner.invoke(cli, ["detect", str(empty), "--method", "threshold",
-                                  "--keep-border"])
+    nothing = runner.invoke(cli, ["detect", str(empty), "--method", "threshold", "--keep-border"])
     assert nothing.exit_code == 1, nothing.output
     assert "empty" in nothing.output
 
 
 def test_the_cli_lists_what_a_container_holds(tmp_path: Path):
     good = _write_field(tmp_path / "good.tif")
-    detect_request(SpotFinderRequest(
-        files=[str(good)], name="spots", settings=_settings()))
+    detect_request(SpotFinderRequest(files=[str(good)], name="spots", settings=_settings()))
 
     runner = CliRunner()
     listed = runner.invoke(cli, ["list", str(good)])
@@ -192,8 +188,20 @@ def test_the_cli_writes_the_same_thing_the_api_does(tmp_path: Path):
 
     detect_request(SpotFinderRequest(files=[str(by_api)], settings=_settings()))
     runner = CliRunner()
-    result = runner.invoke(cli, ["detect", str(by_cli), "--method", "threshold",
-                                 "--sigma", "1.0", "--min-area", "2", "--keep-border"])
+    result = runner.invoke(
+        cli,
+        [
+            "detect",
+            str(by_cli),
+            "--method",
+            "threshold",
+            "--sigma",
+            "1.0",
+            "--min-area",
+            "2",
+            "--keep-border",
+        ],
+    )
     assert result.exit_code == 0, result.output
 
     api_regions = read_regions(by_api)
@@ -206,8 +214,20 @@ def test_the_cli_accepts_every_detector(tmp_path: Path, method: str):
     good = _write_field(tmp_path / f"{method}.tif")
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["detect", str(good), "--method", method,
-                                 "--keep-border", "--min-area", "2",
-                                 "--max-sigma", "3", "--dry-run"])
+    result = runner.invoke(
+        cli,
+        [
+            "detect",
+            str(good),
+            "--method",
+            method,
+            "--keep-border",
+            "--min-area",
+            "2",
+            "--max-sigma",
+            "3",
+            "--dry-run",
+        ],
+    )
 
     assert result.exit_code == 0, result.output

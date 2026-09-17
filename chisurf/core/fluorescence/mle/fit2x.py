@@ -71,7 +71,7 @@ _SUPPLIED_BY_FACADE: dict[str, tuple[str, ...]] = {
 }
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def registry_defaults_of(model: Fit2xModel | str) -> tuple[float, ...]:
     """Default value of every parameter, in slot order, from the registry.
 
@@ -93,12 +93,11 @@ def registry_defaults_of(model: Fit2xModel | str) -> tuple[float, ...]:
     name = Fit2xModel(model).value
     properties = tttrlib.registry("fit")[name]["params_schema"]["properties"]
     return tuple(
-        float(properties[p].get("default", 0.0))
-        for p in tttrlib.decay_fit_parameter_names(name)
+        float(properties[p].get("default", 0.0)) for p in tttrlib.decay_fit_parameter_names(name)
     )
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def parameter_names_of(model: Fit2xModel | str) -> tuple[str, ...]:
     """Ordered names of the *free* input parameters a caller supplies.
 
@@ -122,6 +121,7 @@ def parameter_names_of(model: Fit2xModel | str) -> tuple[str, ...]:
     names = tuple(tttrlib.decay_fit_parameter_names(name))
     supplied = _SUPPLIED_BY_FACADE.get(name, ())
     return tuple(n for n in names if n not in supplied)
+
 
 # There is deliberately no model-to-class table and no packed-vector layout here
 # any more. Both used to be necessary because each estimator was its own class
@@ -482,7 +482,8 @@ class Fit2x:
         # is built once here and shared by every fit; only the problem carries
         # per-fit state.
         self._fit = tttrlib.DecayFit2(
-            name, tttrlib.setup_vector(name, **setup_kwargs), irf.tolist())
+            name, tttrlib.setup_vector(name, **setup_kwargs), irf.tolist()
+        )
         self._problem = tttrlib.DecayFitProblem(2, settings.n_channels, settings.dt)
         self._problem.irf = tttrlib.VectorDouble(irf.tolist())
         self._problem.background = tttrlib.VectorDouble(background.tolist())
@@ -537,8 +538,7 @@ class Fit2x:
         data_arr = np.ascontiguousarray(data, dtype=np.float64)
         self._problem.data = tttrlib.VectorDouble(data_arr.ravel().tolist())
 
-        out = self._fit.fit(
-            self._parameters(x0), self._constraints(fixed_arr), self._problem)
+        out = self._fit.fit(self._parameters(x0), self._constraints(fixed_arr), self._problem)
 
         return Fit2xResult(
             model_kind=self.model,
@@ -548,9 +548,7 @@ class Fit2x:
             twoIstar=float(out.objective),
             fixed=fixed_arr,
             model_curve=(
-                np.asarray(self._problem.model, dtype=np.float64)
-                if include_model
-                else None
+                np.asarray(self._problem.model, dtype=np.float64) if include_model else None
             ),
         )
 
@@ -643,12 +641,17 @@ class Fit2x:
             packed = self._parameters(x0_free)
 
         batch = self._fit.fit_many(
-            self._problem, data_arr.ravel().tolist(),
-            n_rows, int(data_arr.shape[1]),
-            packed, self._constraints(fixed_arr))
+            self._problem,
+            data_arr.ravel().tolist(),
+            n_rows,
+            int(data_arr.shape[1]),
+            packed,
+            self._constraints(fixed_arr),
+        )
 
         parameters = np.asarray(batch.parameters, dtype=np.float64).reshape(
-            n_rows, self._n_parameters)
+            n_rows, self._n_parameters
+        )
         # Report the parameters this facade *names*, which is not always all of
         # them: fit25's r0 is an instrument constant supplied by
         # :meth:`_parameters`, not something a caller passed in or can read back
@@ -658,7 +661,8 @@ class Fit2x:
         results = np.asarray(batch.results, dtype=np.float64)
         n_results = len(self._result_names)
         results = (
-            results.reshape(n_rows, n_results) if n_results and results.size
+            results.reshape(n_rows, n_results)
+            if n_results and results.size
             else np.empty((n_rows, 0), dtype=np.float64)
         )
         return Fit2xBatch(

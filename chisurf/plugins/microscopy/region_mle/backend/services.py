@@ -31,9 +31,7 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
 
         settings_dict = params.get("settings") or {}
         field_names = {f.name for f in dataclasses.fields(RegionMleSettings)}
-        settings = RegionMleSettings(
-            **{k: v for k, v in settings_dict.items() if k in field_names}
-        )
+        settings = RegionMleSettings(**{k: v for k, v in settings_dict.items() if k in field_names})
         request = RegionMleRequest(
             files=params["files"],
             irf_file=params["irf_file"],

@@ -84,15 +84,16 @@ def species_weight_streams(filters, micro_times, routing_channels=None):
     table, channel_aware, n_species, n_bins = _normalise_filter_table(filters)
     micro_idx = np.clip(np.asarray(micro_times), 0, n_bins - 1).astype(np.int64)
     if not channel_aware:
-        return [np.ascontiguousarray(table[s, micro_idx], dtype=np.float64) for s in range(n_species)]
+        return [
+            np.ascontiguousarray(table[s, micro_idx], dtype=np.float64) for s in range(n_species)
+        ]
 
     if routing_channels is None:
         raise ValueError("routing_channels is required for channel-aware filters")
 
     ch = np.clip(np.asarray(routing_channels), 0, table.shape[0] - 1).astype(np.int64)
     return [
-        np.ascontiguousarray(table[ch, s, micro_idx], dtype=np.float64)
-        for s in range(n_species)
+        np.ascontiguousarray(table[ch, s, micro_idx], dtype=np.float64) for s in range(n_species)
     ]
 
 
@@ -193,11 +194,7 @@ def species_filtered_correlation(
     return SpeciesFilteredCorrelation(lag_s=lag, auto=auto, cross=cross, labels=labels)
 
 
-def calc_lifetime_filter(
-        decays,
-        experimental_decay,
-        normalize_patterns: bool = True
-) -> np.array:
+def calc_lifetime_filter(decays, experimental_decay, normalize_patterns: bool = True) -> np.array:
     """
     Calculate lifetime filters for fluorescence lifetime correlation spectroscopy.
 
@@ -442,11 +439,11 @@ def photon_filter_weights(filters, micro_times) -> np.ndarray:
 
 
 def calc_ffcs_filters(
-        experimental_decay,
-        species_decays,
-        rcond: float | None = None,
-        tikhonov: float = 0.0,
-        empty_bins: str = "unit_weight",
+    experimental_decay,
+    species_decays,
+    rcond: float | None = None,
+    tikhonov: float = 0.0,
+    empty_bins: str = "unit_weight",
 ):
     """Compute fFCS-style lifetime filters and reconstruction.
 

@@ -5,15 +5,14 @@ A tiny floating `</>` overlay button that appears on key UI areas
 when Dev mode is enabled. Clicking opens the embedded editor at the
 relevant source location.
 """
+
 from __future__ import annotations
 
 import inspect
-import typing
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 import chisurf.core.settings
-from chisurf.gui import QtCore, QtGui, QtWidgets
-from chisurf.gui import dialogs
+from chisurf.gui import QtCore, QtGui, QtWidgets, dialogs
 
 
 class CodeBadgeButton(QtWidgets.QToolButton):
@@ -28,8 +27,8 @@ class CodeBadgeButton(QtWidgets.QToolButton):
 
     def __init__(
         self,
-        parent: Optional[QtWidgets.QWidget] = None,
-        target_resolver: Optional[Callable[[], Optional[Tuple[str, int]]]] = None,
+        parent: QtWidgets.QWidget | None = None,
+        target_resolver: Callable[[], tuple[str, int] | None] | None = None,
     ):
         super().__init__(parent)
         self._target_resolver = target_resolver
@@ -43,9 +42,11 @@ class CodeBadgeButton(QtWidgets.QToolButton):
     def set_editor_font_from_settings(self) -> None:
         """Apply the configured code editor font family to the badge."""
         font = QtGui.QFont()
-        font.setFamily(chisurf.core.settings.gui['editor']['font_family'])
+        font.setFamily(chisurf.core.settings.gui["editor"]["font_family"])
         font.setStyleHint(QtGui.QFont.Monospace)
-        font.setPointSize(max(7, min(10, int(chisurf.core.settings.gui['editor']['font_size']) - 1)))
+        font.setPointSize(
+            max(7, min(10, int(chisurf.core.settings.gui["editor"]["font_size"]) - 1))
+        )
         self.setFont(font)
 
     def _setup_ui(self):
@@ -124,9 +125,10 @@ class CodeBadgeButton(QtWidgets.QToolButton):
             chisurf.logging.error(f"Code badge error: {e}")
             self._show_error_message(str(e))
 
-    def _open_in_editor(self, path: str, line: Optional[int] = None):
+    def _open_in_editor(self, path: str, line: int | None = None):
         try:
             import chisurf.gui.devtools.source_jump as sj
+
             main_window = self._find_main_window()
             if main_window:
                 sj.open_in_editor(main_window, path, line)
@@ -135,7 +137,7 @@ class CodeBadgeButton(QtWidgets.QToolButton):
         except ImportError:
             self._show_error_message("Source jump module not available")
 
-    def _find_main_window(self) -> Optional[QtWidgets.QMainWindow]:
+    def _find_main_window(self) -> QtWidgets.QMainWindow | None:
         widget = self.parent()
         while widget is not None:
             if isinstance(widget, QtWidgets.QMainWindow):
@@ -165,17 +167,17 @@ class CodeBadgeButton(QtWidgets.QToolButton):
 class CodeBadgeManager(QtCore.QObject):
     """Manages code badges for widgets, handling positioning and lifecycle."""
 
-    def __init__(self, parent: Optional[QtCore.QObject] = None):
+    def __init__(self, parent: QtCore.QObject | None = None):
         super().__init__(parent)
-        self._badges: typing.Dict[int, CodeBadgeButton] = {}
+        self._badges: dict[int, CodeBadgeButton] = {}
 
     def install_badge(
         self,
         widget: QtWidgets.QWidget,
-        target_resolver: Optional[Callable[[], Optional[Tuple[str, int]]]] = None,
+        target_resolver: Callable[[], tuple[str, int] | None] | None = None,
         corner: str = "top-right",
         margin: int = 4,
-    ) -> Optional[CodeBadgeButton]:
+    ) -> CodeBadgeButton | None:
         """Install a code badge on a widget.
 
         Args:
@@ -266,7 +268,7 @@ class CodeBadgeManager(QtCore.QObject):
             badge.refresh_visibility()
 
 
-_badge_manager: Optional[CodeBadgeManager] = None
+_badge_manager: CodeBadgeManager | None = None
 
 
 def get_badge_manager() -> CodeBadgeManager:
@@ -279,10 +281,10 @@ def get_badge_manager() -> CodeBadgeManager:
 
 def install_code_badge(
     widget: QtWidgets.QWidget,
-    target_resolver: Optional[Callable[[], Optional[Tuple[str, int]]]] = None,
+    target_resolver: Callable[[], tuple[str, int] | None] | None = None,
     corner: str = "top-right",
     margin: int = 4,
-) -> Optional[CodeBadgeButton]:
+) -> CodeBadgeButton | None:
     """Install a code badge on a widget.
 
     Convenience function that uses the global badge manager.
@@ -304,14 +306,15 @@ def remove_code_badge(widget: QtWidgets.QWidget):
     get_badge_manager().remove_badge(widget)
 
 
-def make_widget_source_resolver(widget: QtWidgets.QWidget) -> Callable[[], Optional[Tuple[str, int]]]:
+def make_widget_source_resolver(widget: QtWidgets.QWidget) -> Callable[[], tuple[str, int] | None]:
     """Create a source resolver for a widget.
 
     Priority:
     1. Widget's class source file via inspect
     2. If widget has _chisurf_ui_path attribute, return (.ui, 1)
     """
-    def resolver() -> Optional[Tuple[str, int]]:
+
+    def resolver() -> tuple[str, int] | None:
         try:
             ui_path = getattr(widget, "_chisurf_ui_path", None)
             if ui_path:
@@ -333,9 +336,10 @@ def make_widget_source_resolver(widget: QtWidgets.QWidget) -> Callable[[], Optio
     return resolver
 
 
-def make_object_source_resolver(obj: object) -> Callable[[], Optional[Tuple[str, int]]]:
+def make_object_source_resolver(obj: object) -> Callable[[], tuple[str, int] | None]:
     """Create a source resolver for any Python object."""
-    def resolver() -> Optional[Tuple[str, int]]:
+
+    def resolver() -> tuple[str, int] | None:
         try:
             obj_class = obj.__class__
             try:

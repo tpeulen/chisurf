@@ -2,65 +2,71 @@
 
 from __future__ import annotations
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 
-def shorten_text_middle(text: str, font_metrics: QtGui.QFontMetrics, max_width: int, min_chars: int = 10) -> str:
+def shorten_text_middle(
+    text: str, font_metrics: QtGui.QFontMetrics, max_width: int, min_chars: int = 10
+) -> str:
     """Shorten text with ellipsis in the middle to fit within max_width.
-    
+
     Args:
         text: The text to shorten
         font_metrics: QFontMetrics to measure text width
         max_width: Maximum width in pixels
         min_chars: Minimum number of characters to show (won't shorten below this)
-    
+
     Returns:
         Shortened text with '...' in the middle if needed
     """
     if not text:
         return text
-    
+
     # Check if text already fits
     if font_metrics.horizontalAdvance(text) <= max_width:
         return text
-    
+
     # Don't shorten very short text
     if len(text) <= min_chars:
         return text
-    
+
     ellipsis = "..."
-    ellipsis_width = font_metrics.horizontalAdvance(ellipsis)
-    
+    font_metrics.horizontalAdvance(ellipsis)
+
     # Binary search for the right amount of text to keep
     left = 1
     right = len(text) - 1
-    best_text = text[:min_chars // 2] + ellipsis + text[-(min_chars // 2):]
-    
+    best_text = text[: min_chars // 2] + ellipsis + text[-(min_chars // 2) :]
+
     while left <= right:
         mid = (left + right) // 2
         # Keep mid characters from start and mid from end
         start_chars = mid
         end_chars = mid
-        
-        shortened = text[:start_chars] + ellipsis + text[-end_chars:] if end_chars > 0 else text[:start_chars] + ellipsis
+
+        shortened = (
+            text[:start_chars] + ellipsis + text[-end_chars:]
+            if end_chars > 0
+            else text[:start_chars] + ellipsis
+        )
         width = font_metrics.horizontalAdvance(shortened)
-        
+
         if width <= max_width:
             best_text = shortened
             left = mid + 1
         else:
             right = mid - 1
-    
+
     return best_text
 
 
 class CustomTitleBar(QtWidgets.QWidget):
     """Custom title bar for MDI sub-windows that is fully stylable via QSS
-    
+
     The title bar provides minimize, maximize/restore, and close buttons,
     and supports dragging the window. All visual styling is controlled
     through QSS using object names.
-    
+
     Object names for QSS styling:
     - customTitleBar: The title bar widget itself
     - titleLabel: The window title label
@@ -131,31 +137,32 @@ class CustomTitleBar(QtWidgets.QWidget):
         """Set window title"""
         self._full_title = title
         self._update_title_display()
-    
+
     def _update_title_display(self):
         """Update the displayed title based on available width"""
-        if not hasattr(self, 'title_label') or not hasattr(self, '_full_title'):
+        if not hasattr(self, "title_label") or not hasattr(self, "_full_title"):
             return
-        
+
         # Calculate available width for title
         # Account for: icon, buttons, margins, and spacing
         total_width = self.width()
         icon_width = self.icon_label.width() + 5 if self.icon_label.isVisible() else 0
-        buttons_width = (self.minimize_btn.width() + self.maximize_btn.width() + 
-                        self.close_btn.width() + 3 * 2)  # 3 buttons + spacing
+        buttons_width = (
+            self.minimize_btn.width() + self.maximize_btn.width() + self.close_btn.width() + 3 * 2
+        )  # 3 buttons + spacing
         margins = 10  # Left and right margins
         available_width = total_width - icon_width - buttons_width - margins - 20  # Extra padding
-        
+
         # Ensure we have some minimum width
         if available_width < 50:
             available_width = 50
-        
+
         # Shorten the title if needed
         font_metrics = self.title_label.fontMetrics()
         shortened_title = shorten_text_middle(self._full_title, font_metrics, available_width)
-        
+
         self.title_label.setText(shortened_title)
-        
+
         # Set tooltip to show full title if shortened
         if shortened_title != self._full_title:
             self.title_label.setToolTip(self._full_title)
@@ -191,7 +198,7 @@ class CustomTitleBar(QtWidgets.QWidget):
         """Toggle maximize on double click"""
         if event.button() == QtCore.Qt.LeftButton:
             self.toggle_maximize()
-    
+
     def resizeEvent(self, event):
         """Update title display when title bar is resized"""
         super().resizeEvent(event)
@@ -220,12 +227,12 @@ class CustomTitleBar(QtWidgets.QWidget):
 
 class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
     """Custom MDI sub-window with custom title bar decorations
-    
+
     This class provides an MDI sub-window with a custom title bar
     that can be fully styled via QSS. The window includes a resize grip
     for resizing from the bottom-right corner. When minimized, it appears
     as an icon in the MDI area.
-    
+
     Object names for QSS styling:
     - windowContainer: The main container frame
     - customTitleBar: The title bar (see CustomTitleBar for details)
@@ -237,7 +244,7 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
         # Store original geometry for restore
         self._normal_geometry = None
         self._is_minimized = False
-        
+
         # Remove default window frame - we'll handle minimize ourselves
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
 
@@ -274,7 +281,7 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
                 image: none;
             }
         """)
-        
+
         # Monitor for view mode changes
         self._check_view_mode_timer = QtCore.QTimer()
         self._check_view_mode_timer.timeout.connect(self._update_title_bar_visibility)
@@ -286,10 +293,10 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
         super().resizeEvent(event)
         self.size_grip.move(
             self.container.width() - self.size_grip.width(),
-            self.container.height() - self.size_grip.height()
+            self.container.height() - self.size_grip.height(),
         )
         # Update title bar display when window is resized
-        if hasattr(self, 'title_bar'):
+        if hasattr(self, "title_bar"):
             self.title_bar._update_title_display()
 
     def set_content(self, widget):
@@ -311,58 +318,58 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
     def setWindowTitle(self, title: str):
         """Override to update both the actual title and custom title bar"""
         super().setWindowTitle(title)
-        if hasattr(self, 'title_bar'):
+        if hasattr(self, "title_bar"):
             self.title_bar.set_title(title)
 
     def setWindowIcon(self, icon: QtGui.QIcon):
         """Override to update both the actual icon and custom title bar"""
         super().setWindowIcon(icon)
-        if hasattr(self, 'title_bar'):
+        if hasattr(self, "title_bar"):
             self.title_bar.set_icon(icon)
-    
+
     def showMinimized(self):
         """Custom minimize behavior - show as icon in MDI area"""
         if self._is_minimized:
             return
-            
+
         # Store current geometry
         self._normal_geometry = self.geometry()
         self._is_minimized = True
-        
+
         # Hide the main container but keep the window visible
         self.container.hide()
-        
+
         # Resize to icon size (width x height for minimized icon)
         icon_width = 160
         icon_height = 32
-        
+
         # Position at bottom of MDI area
         if self.mdiArea():
             mdi_rect = self.mdiArea().viewport().rect()
             # Find a spot at the bottom for this minimized window
             x_pos = 5
             y_pos = mdi_rect.height() - icon_height - 5
-            
+
             # Check for other minimized windows and position accordingly
             for window in self.mdiArea().subWindowList():
-                if window != self and hasattr(window, '_is_minimized') and window._is_minimized:
+                if window != self and hasattr(window, "_is_minimized") and window._is_minimized:
                     other_geom = window.geometry()
                     if abs(other_geom.y() - y_pos) < icon_height:
                         x_pos = max(x_pos, other_geom.x() + other_geom.width() + 5)
-            
+
             self.setGeometry(x_pos, y_pos, icon_width, icon_height)
         else:
             self.resize(icon_width, icon_height)
-        
+
         # Create minimized icon widget if not exists
-        if not hasattr(self, 'minimized_widget'):
+        if not hasattr(self, "minimized_widget"):
             self.minimized_widget = QtWidgets.QWidget()
             self.minimized_widget.setObjectName("minimizedIcon")
-            
+
             layout = QtWidgets.QHBoxLayout(self.minimized_widget)
             layout.setContentsMargins(5, 2, 5, 2)
             layout.setSpacing(5)
-            
+
             # Icon
             self.min_icon_label = QtWidgets.QLabel()
             self.min_icon_label.setFixedSize(16, 16)
@@ -370,67 +377,67 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
             if not self.windowIcon().isNull():
                 self.min_icon_label.setPixmap(self.windowIcon().pixmap(16, 16))
             layout.addWidget(self.min_icon_label)
-            
+
             # Title
             self.min_title_label = QtWidgets.QLabel(self.windowTitle())
             self.min_title_label.setObjectName("minimizedTitle")
             layout.addWidget(self.min_title_label)
             layout.addStretch()
-            
+
             # Restore button
             self.restore_btn = QtWidgets.QPushButton("▢")
             self.restore_btn.setObjectName("restoreButton")
             self.restore_btn.setFixedSize(20, 20)
             self.restore_btn.clicked.connect(self.showNormal)
             layout.addWidget(self.restore_btn)
-            
+
             # Make the widget clickable to restore
             self.minimized_widget.mouseDoubleClickEvent = lambda e: self.showNormal()
-        
+
         # Replace the main widget with minimized icon
         self.setWidget(self.minimized_widget)
         self.minimized_widget.show()
-    
+
     def showNormal(self):
         """Restore from minimized state"""
         if not self._is_minimized:
             super().showNormal()
             return
-            
+
         self._is_minimized = False
-        
+
         # Restore the container
         self.setWidget(self.container)
         self.container.show()
-        
+
         # Restore geometry
         if self._normal_geometry:
             self.setGeometry(self._normal_geometry)
         else:
             # Default size if no stored geometry
             self.resize(450, 350)
-        
+
         super().showNormal()
-    
+
     def showMaximized(self):
         """Ensure we're not minimized when maximizing"""
         if self._is_minimized:
             self.showNormal()
         super().showMaximized()
-    
+
     def _update_title_bar_visibility(self):
         """Update title bar visibility based on MDI view mode"""
         mdi = self.mdiArea()
         if not mdi:
             return
-        
+
         # Check if MDI is in tabbed view mode
         is_tabbed = mdi.viewMode() == QtWidgets.QMdiArea.TabbedView
-        
+
         # Only update if mode changed
         if is_tabbed != self._last_view_mode:
             self._last_view_mode = is_tabbed
-            
+
             if is_tabbed:
                 # Hide custom title bar in tabbed mode
                 self.title_bar.hide()
@@ -443,14 +450,14 @@ class CustomMdiSubWindow(QtWidgets.QMdiSubWindow):
                 self.size_grip.show()
                 # Restore content margins
                 self.content_layout.setContentsMargins(5, 5, 5, 5)
-    
+
     def showEvent(self, event):
         """Update title bar visibility when window is shown"""
         super().showEvent(event)
         self._update_title_bar_visibility()
-    
+
     def closeEvent(self, event):
         """Clean up timer on close"""
-        if hasattr(self, '_check_view_mode_timer'):
+        if hasattr(self, "_check_view_mode_timer"):
             self._check_view_mode_timer.stop()
         super().closeEvent(event)

@@ -12,20 +12,19 @@ from __future__ import annotations
 import dataclasses
 import logging
 import pathlib
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import tttrlib
 
 from chisurf.core.models.fcs.maxent import fcs_maxent
 
-
 # ----------------------------------------------------------------------
 # Parsing helpers for BUR/BST and TTTR files
 # ----------------------------------------------------------------------
 
 
-def parse_bst_file(path: pathlib.Path) -> Tuple[Optional[pathlib.Path], List[Tuple[int, int]]]:
+def parse_bst_file(path: pathlib.Path) -> tuple[pathlib.Path | None, list[tuple[int, int]]]:
     """Return ``(tttr_path, [(start, end), ...])`` for a Burst-ID ``.bst`` file.
 
     The underlying TTTR file is searched in the ``.bst`` folder and up to three
@@ -47,14 +46,14 @@ def parse_bst_file(path: pathlib.Path) -> Tuple[Optional[pathlib.Path], List[Tup
     except Exception:
         pass
 
-    tttr_path: Optional[pathlib.Path] = None
+    tttr_path: pathlib.Path | None = None
     for folder in candidates:
         cand = folder / base_with_ext
         if cand.exists() and cand.is_file():
             tttr_path = cand
             break
 
-    ranges: List[Tuple[int, int]] = []
+    ranges: list[tuple[int, int]] = []
     try:
         with path.open("r", encoding="utf-8", errors="ignore") as fh:
             for line in fh:
@@ -79,7 +78,7 @@ def parse_bst_file(path: pathlib.Path) -> Tuple[Optional[pathlib.Path], List[Tup
 
 def parse_bur_file(
     path: pathlib.Path, analysis_root: pathlib.Path
-) -> Tuple[Optional[pathlib.Path], List[Tuple[int, int]]]:
+) -> tuple[pathlib.Path | None, list[tuple[int, int]]]:
     """Return ``(tttr_path, [(start, end), ...])`` for a BUR file."""
     path = pathlib.Path(path)
     if not path.exists() or not path.is_file():
@@ -93,7 +92,7 @@ def parse_bur_file(
             cols = [c.strip() for c in header.split("\t") if c.strip()]
             name_to_idx = {c.lower(): i for i, c in enumerate(cols)}
 
-            def _idx(label: str) -> Optional[int]:
+            def _idx(label: str) -> int | None:
                 return name_to_idx.get(label.lower(), None)
 
             idx_first_photon = _idx("first photon")
@@ -102,8 +101,8 @@ def parse_bur_file(
             if idx_first_photon is None or idx_last_photon is None or idx_first_file is None:
                 return None, []
 
-            ranges: List[Tuple[int, int]] = []
-            first_file_name: Optional[str] = None
+            ranges: list[tuple[int, int]] = []
+            first_file_name: str | None = None
 
             for line in fh:
                 line = line.strip()
@@ -136,13 +135,13 @@ def parse_bur_file(
     if not ranges or not first_file_name:
         return None, []
 
-    tttr_path: Optional[pathlib.Path] = None
+    tttr_path: pathlib.Path | None = None
     name_path = pathlib.Path(first_file_name)
     if name_path.is_absolute() and name_path.exists():
         tttr_path = name_path
     else:
         base = analysis_root.parent if analysis_root is not None else path.parent
-        candidates: List[pathlib.Path] = []
+        candidates: list[pathlib.Path] = []
         try:
             if base is not None:
                 candidates.append(base)
@@ -166,7 +165,7 @@ def parse_bur_file(
     return tttr_path, ranges
 
 
-def open_tttr(path: pathlib.Path, filetype=None) -> Optional["tttrlib.TTTR"]:
+def open_tttr(path: pathlib.Path, filetype=None) -> tttrlib.TTTR | None:
     """Open a TTTR file through the project's single TTTR-opening seam.
 
     This used to be a private opener with extension-aware fallbacks, including
@@ -190,9 +189,9 @@ def open_tttr(path: pathlib.Path, filetype=None) -> Optional["tttrlib.TTTR"]:
         return None
 
 
-def parse_channel_list(text: str) -> List[int]:
+def parse_channel_list(text: str) -> list[int]:
     """Parse a comma / semicolon separated channel list into ints."""
-    vals: List[int] = []
+    vals: list[int] = []
     if not text:
         return vals
     for part in str(text).replace(";", ",").split(","):
@@ -212,9 +211,9 @@ def parse_channel_list(text: str) -> List[int]:
 
 
 def correlate_single_burst(
-    tttr: "tttrlib.TTTR",
-    chs_a: List[int],
-    chs_b: List[int],
+    tttr: tttrlib.TTTR,
+    chs_a: list[int],
+    chs_b: list[int],
     micro_a,
     micro_b,
     n_bins: int,
@@ -277,8 +276,7 @@ def correlate_single_burst(
             dt_ms = tttr.header.micro_time_resolution * 1000.0
         except Exception as e:
             raise ValueError(
-                "fine correlation requested but the file exposes no micro-time "
-                f"information: {e}"
+                f"fine correlation requested but the file exposes no micro-time information: {e}"
             ) from e
         correlator.set_microtimes(mt, mt, n_mt)
     tau = correlator.x_axis * dt_ms
@@ -286,7 +284,7 @@ def correlate_single_burst(
     return np.asarray(tau, dtype=float), np.asarray(g, dtype=float)
 
 
-def fit_diffusion_time(tau: np.ndarray, g: np.ndarray) -> Tuple[float, float]:
+def fit_diffusion_time(tau: np.ndarray, g: np.ndarray) -> tuple[float, float]:
     """Fit a MaxEnt diffusion-time distribution and summarize it.
 
     Returns ``(td_mean_ms, td_peak_ms)``; both NaN on failure.
@@ -317,7 +315,7 @@ def fit_diffusion_time(tau: np.ndarray, g: np.ndarray) -> Tuple[float, float]:
 
 def fit_simple_diffusion(
     tau: np.ndarray, g: np.ndarray
-) -> Tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
     """Approximate single-component diffusion time with a 3D Gaussian FCS model.
 
     Returns ``(td_ms, tau_used, g_used, g_fit)``; ``(NaN, [], [], [])`` on failure.
@@ -335,7 +333,7 @@ def fit_simple_diffusion(
 
     def _shape(td_val: float) -> np.ndarray:
         x = tau / td_val
-        return (1.0 / (1.0 + x)) / np.sqrt(1.0 + x / (s ** 2))
+        return (1.0 / (1.0 + x)) / np.sqrt(1.0 + x / (s**2))
 
     try:
         order = np.argsort(tau)
@@ -362,7 +360,7 @@ def fit_simple_diffusion(
 
     best_td = float("nan")
     best_sse = np.inf
-    best_g_fit: Optional[np.ndarray] = None
+    best_g_fit: np.ndarray | None = None
 
     for td_val in td_grid:
         try:
@@ -402,17 +400,17 @@ class BurstFcsSettings:
     padding_ms: float = 100.0
     fit_mode: str = "simple"  # "simple" | "maxent" | "none"
     maxent_reg: float = 0.1
-    maxent_td_min: Optional[float] = None
-    maxent_td_max: Optional[float] = None
-    tmin_fit: Optional[float] = None
-    tmax_fit: Optional[float] = None
+    maxent_td_min: float | None = None
+    maxent_td_max: float | None = None
+    tmin_fit: float | None = None
+    tmax_fit: float | None = None
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BurstFcsSettings":
+    def from_dict(cls, d: dict[str, Any]) -> BurstFcsSettings:
         fields = {f.name for f in dataclasses.fields(cls)}
         return cls(**{k: v for k, v in (d or {}).items() if k in fields})
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
 
@@ -421,13 +419,13 @@ class PairConfig:
     """One FCS channel pair (cross- or auto-correlation)."""
 
     pair_name: str
-    chs_a: List[int]
-    chs_b: List[int]
-    micro_a: List[Any] = dataclasses.field(default_factory=list)
-    micro_b: List[Any] = dataclasses.field(default_factory=list)
+    chs_a: list[int]
+    chs_b: list[int]
+    micro_a: list[Any] = dataclasses.field(default_factory=list)
+    micro_b: list[Any] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "PairConfig":
+    def from_dict(cls, d: dict[str, Any]) -> PairConfig:
         return cls(
             pair_name=str(d.get("pair_name") or d.get("name") or ""),
             chs_a=list(d.get("chs_a", [])),
@@ -437,7 +435,7 @@ class PairConfig:
         )
 
 
-def fit_curve(tau: np.ndarray, g: np.ndarray, settings: BurstFcsSettings) -> Dict[str, Any]:
+def fit_curve(tau: np.ndarray, g: np.ndarray, settings: BurstFcsSettings) -> dict[str, Any]:
     """Fit one correlation curve per ``settings.fit_mode``.
 
     Returns a dict with ``tau``, ``g`` (used data), ``g_fit``, ``td_grid``,
@@ -456,7 +454,7 @@ def fit_curve(tau: np.ndarray, g: np.ndarray, settings: BurstFcsSettings) -> Dic
         tau_arr = tau_arr[mask]
         g_arr = g_arr[mask]
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "tau": tau_arr.tolist(),
         "g": g_arr.tolist(),
         "g_fit": [],
@@ -470,7 +468,8 @@ def fit_curve(tau: np.ndarray, g: np.ndarray, settings: BurstFcsSettings) -> Dic
     if settings.fit_mode == "maxent":
         try:
             res = fcs_maxent(
-                tau=tau_arr, g=g_arr,
+                tau=tau_arr,
+                g=g_arr,
                 td_min=settings.maxent_td_min,
                 td_max=settings.maxent_td_max,
                 reg=settings.maxent_reg,
@@ -501,11 +500,11 @@ def fit_curve(tau: np.ndarray, g: np.ndarray, settings: BurstFcsSettings) -> Dic
 
 def correlate_burst_file(
     tttr_path: pathlib.Path,
-    ranges: List[Tuple[int, int]],
-    pairs: List[PairConfig],
+    ranges: list[tuple[int, int]],
+    pairs: list[PairConfig],
     settings: BurstFcsSettings,
     filetype=None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Correlate every (burst × pair) for one TTTR file.
 
     Opens the TTTR once, applies optional time padding around each burst, slices
@@ -551,7 +550,7 @@ def correlate_burst_file(
             if mt is not None and mt.size > 0:
                 pad_ticks = (pad_ms / 1000.0) / macro_res_s
 
-    curves: List[Dict[str, Any]] = []
+    curves: list[dict[str, Any]] = []
     for burst_index, (start, stop) in enumerate(ranges):
         try:
             s = int(start)
@@ -576,28 +575,33 @@ def correlate_burst_file(
                 pass
 
         try:
-            tttr_burst = tttr[s:e + 1]
+            tttr_burst = tttr[s : e + 1]
         except Exception:
             continue
 
         for pair in pairs:
             tau, g = correlate_single_burst(
                 tttr_burst,
-                chs_a=pair.chs_a, chs_b=pair.chs_b,
-                micro_a=pair.micro_a, micro_b=pair.micro_b,
-                n_bins=settings.n_bins, n_casc=settings.n_casc,
+                chs_a=pair.chs_a,
+                chs_b=pair.chs_b,
+                micro_a=pair.micro_a,
+                micro_b=pair.micro_b,
+                n_bins=settings.n_bins,
+                n_casc=settings.n_casc,
                 make_fine=settings.make_fine,
             )
             if tau is None or g is None:
                 continue
             fit = fit_curve(tau, g, settings)
-            curves.append({
-                "file": pathlib.Path(tttr_path).name,
-                "burst_index": burst_index,
-                "pair_name": pair.pair_name,
-                "tau_raw": np.asarray(tau, dtype=float).tolist(),
-                "g_raw": np.asarray(g, dtype=float).tolist(),
-                **fit,
-            })
+            curves.append(
+                {
+                    "file": pathlib.Path(tttr_path).name,
+                    "burst_index": burst_index,
+                    "pair_name": pair.pair_name,
+                    "tau_raw": np.asarray(tau, dtype=float).tolist(),
+                    "g_raw": np.asarray(g, dtype=float).tolist(),
+                    **fit,
+                }
+            )
 
     return curves

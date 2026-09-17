@@ -10,17 +10,18 @@ CPU (:mod:`chisurf.plugins.chimol.test.quad_raster`) to check that nothing
 silently went missing. Neither needs a GPU, which is the point: the chrome is
 meant to run wherever WebGPU does, and its tests should not need the device.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from emtk.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_RIGHT,
     ALIGN_VCENTER,
 )
+
 from chisurf.plugins.chimol.test import chrome_baseline, quad_raster
 
 
@@ -69,9 +70,7 @@ def test_a_filled_triangle_is_exactly_three_vertices_at_its_corners():
     p.fill_triangle((0.0, 0.0), (10.0, 0.0), (5.0, 10.0), (255, 0, 0))
     assert p.vertex_count == 3
     positions = p.vertices()[:, 0:2]
-    np.testing.assert_allclose(
-        positions, [[0.0, 0.0], [10.0, 0.0], [5.0, 10.0]]
-    )
+    np.testing.assert_allclose(positions, [[0.0, 0.0], [10.0, 0.0], [5.0, 10.0]])
 
 
 def test_a_triangle_coexists_with_rects_in_one_vertex_buffer():
@@ -191,9 +190,8 @@ def test_every_region_of_the_panel_draws_something(state):
     leaves a plausible-looking panel with its sequence strip or its
     mouse-mode block simply absent.
     """
-    from PIL import Image
-
     from chimol.ui.gui import InternalGui
+    from PIL import Image
 
     p, atlas = _painter()
     width, height = chrome_baseline.SIZE
@@ -208,7 +206,7 @@ def test_every_region_of_the_panel_draws_something(state):
     image = quad_raster.rasterise(verts, width, height, ink)
     alpha = image[..., 3]
 
-    column = alpha[:, int(width - gui.column_width):]
+    column = alpha[:, int(width - gui.column_width) :]
     assert column.max() > 0, f"{state}: the panel column is empty"
 
     if gui.sequence_visible and gui.sequences:
@@ -216,6 +214,5 @@ def test_every_region_of_the_panel_draws_something(state):
         assert strip.max() > 0, f"{state}: the sequence strip is empty"
 
     block = gui.block_rect
-    band = alpha[int(block.y):int(block.y + block.h),
-                 int(block.x):int(block.x + block.w)]
+    band = alpha[int(block.y) : int(block.y + block.h), int(block.x) : int(block.x + block.w)]
     assert band.max() > 0, f"{state}: the mouse-mode block is empty"

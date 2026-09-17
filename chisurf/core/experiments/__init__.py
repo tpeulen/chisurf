@@ -4,16 +4,15 @@ import pathlib
 
 import yaml
 
-import chisurf.core.experiments.fcs
-import chisurf.core.experiments.tcspc
-import chisurf.core.experiments.pda2c
-import chisurf.core.experiments.mfd
 import chisurf.core.experiments.deer
+import chisurf.core.experiments.fcs
 import chisurf.core.experiments.globalfit
+import chisurf.core.experiments.mfd
 import chisurf.core.experiments.modelling
+import chisurf.core.experiments.pda2c
+import chisurf.core.experiments.tcspc
 from chisurf.core.experiments.core import Experiment
 from chisurf.core.settings import get_path
-
 
 #: Experiment sections that no longer exist, with the section that replaced them.
 #:
@@ -33,8 +32,8 @@ from chisurf.core.settings import get_path
 SUPERSEDED_SECTIONS: dict[str, str] = {
     # Three-colour PDA stopped being an experiment of its own: the colour count
     # is a setting of the one PDA reader, so both colour counts live in `pda`.
-    'pda2c': 'pda',
-    'pda3c': 'pda',
+    "pda2c": "pda",
+    "pda3c": "pda",
 }
 
 
@@ -63,15 +62,16 @@ def migrate_experiment_config(config: dict) -> dict:
     """
     if not isinstance(config, dict):
         return config
-    types_section = config.get('experiment_types')
+    types_section = config.get("experiment_types")
     for stale, successor in SUPERSEDED_SECTIONS.items():
         dropped = config.pop(stale, None)
         if isinstance(types_section, dict):
             dropped = types_section.pop(stale, None) or dropped
         if dropped is not None:
             logging.info(
-                "experiment configuration: dropping the superseded '%s' section; "
-                "'%s' replaces it", stale, successor
+                "experiment configuration: dropping the superseded '%s' section; '%s' replaces it",
+                stale,
+                successor,
             )
     return config
 
@@ -93,7 +93,7 @@ def _load_yaml_config(path: pathlib.Path) -> dict:
         Parsed YAML content, or an empty dict on failure.
     """
     try:
-        with open(str(path), 'r', encoding='utf-8') as fp:
+        with open(str(path), encoding="utf-8") as fp:
             return migrate_experiment_config(yaml.safe_load(fp) or {})
     except Exception:
         return {}
@@ -115,12 +115,9 @@ def _deep_merge_dicts(base: dict, override: dict) -> dict:
     """
     result = copy.deepcopy(base)
     for key, value in (override or {}).items():
-        if (
-            isinstance(value, dict)
-            and isinstance(result.get(key), dict)
-        ):
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _deep_merge_dicts(result[key], value)
-        elif key == 'models' and isinstance(value, list) and isinstance(result.get(key), list):
+        elif key == "models" and isinstance(value, list) and isinstance(result.get(key), list):
             result[key] = result[key] + [m for m in value if m not in result[key]]
         else:
             result[key] = copy.deepcopy(value)
@@ -142,8 +139,8 @@ def get_experiment_config_files() -> tuple[pathlib.Path, pathlib.Path]:
     tuple of pathlib.Path
         ``(packaged, user)``. The user file need not exist.
     """
-    packaged = pathlib.Path(__file__).parent.parent / 'settings' / 'experiment_configs.yaml'
-    user = pathlib.Path(get_path('settings')) / 'experiment_configs.yaml'
+    packaged = pathlib.Path(__file__).parent.parent / "settings" / "experiment_configs.yaml"
+    user = pathlib.Path(get_path("settings")) / "experiment_configs.yaml"
     return packaged, user
 
 
@@ -162,7 +159,6 @@ def load_experiment_types():
     ``pch``) has been added without a corresponding ``experiment_types``
     entry.
     """
-
     default_config_file, user_config_file = get_experiment_config_files()
 
     # Load packaged defaults and merge user overrides on top so that
@@ -176,20 +172,20 @@ def load_experiment_types():
     experiment_types: dict[str, Experiment] = {}
 
     # First, honor explicit experiment_types definitions when present.
-    type_defs = config.get('experiment_types', {}) or {}
+    type_defs = config.get("experiment_types", {}) or {}
     if isinstance(type_defs, dict):
         for key, value in type_defs.items():
             if not isinstance(value, dict):
                 value = {}
-            name = value.get('name', key)
-            hidden = bool(value.get('hidden', False))
+            name = value.get("name", key)
+            hidden = bool(value.get("hidden", False))
             experiment_types[key] = Experiment(name, hidden)
 
     # Next, ensure that all top-level experiment sections have an Experiment
     # object, even if they are missing from experiment_types. This prevents
     # KeyError when new experiments are added only under their own section.
     for key in list(config.keys()):
-        if key in ('experiment_types', 'global'):
+        if key in ("experiment_types", "global"):
             continue
         if key not in experiment_types:
             experiment_types[key] = Experiment(name=key, hidden=False)

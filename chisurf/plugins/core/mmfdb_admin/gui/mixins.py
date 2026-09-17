@@ -6,13 +6,13 @@ self.client. They are combined in EntityDock via multiple inheritance.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf.logging
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.general import apply_compact_table_style
 
@@ -66,16 +66,18 @@ class SchemaMixin:
         legacy = SCHEMAS.get(self._spec.schema_type, [])
         result: list[FieldSpec] = []
         for f in legacy:
-            result.append(FieldSpec(
-                name=f.get("name", ""),
-                label=f.get("label", ""),
-                widget=f.get("type", "str"),
-                choices=f.get("choices", []),
-                required=f.get("required", False),
-                readonly=f.get("readonly", False),
-                placeholder=f.get("placeholder", ""),
-                fk_target=self._legacy_fk(f.get("name", "")),
-            ))
+            result.append(
+                FieldSpec(
+                    name=f.get("name", ""),
+                    label=f.get("label", ""),
+                    widget=f.get("type", "str"),
+                    choices=f.get("choices", []),
+                    required=f.get("required", False),
+                    readonly=f.get("readonly", False),
+                    placeholder=f.get("placeholder", ""),
+                    fk_target=self._legacy_fk(f.get("name", "")),
+                )
+            )
         return result
 
     def _legacy_fk(self, name: str) -> str | None:
@@ -200,9 +202,7 @@ class TableMixin:
             # Checkbox
             cb = QtWidgets.QTableWidgetItem("")
             cb.setFlags(
-                QtCore.Qt.ItemIsUserCheckable
-                | QtCore.Qt.ItemIsEnabled
-                | QtCore.Qt.ItemIsSelectable
+                QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             )
             cb.setCheckState(QtCore.Qt.Unchecked)
             cb.setTextAlignment(QtCore.Qt.AlignCenter)
@@ -256,9 +256,7 @@ class TableMixin:
             cell = self._table.item(row, 1)
             if cell and cell.text() == str(value):
                 self._table.selectRow(row)
-                self._table.scrollToItem(
-                    cell, QtWidgets.QAbstractItemView.PositionAtCenter
-                )
+                self._table.scrollToItem(cell, QtWidgets.QAbstractItemView.PositionAtCenter)
                 return
 
     def selected_row_id(self) -> str | None:
@@ -449,7 +447,9 @@ class DockToolbarMixin:
         if self._spec.writable:
             new_btn = QtWidgets.QToolButton()
             new_btn.setText(f"{Glyphs.ADD} New")
-            new_btn.setToolTip(f"Create a new {self._spec.key} — edit fields, changes save automatically on Enter")
+            new_btn.setToolTip(
+                f"Create a new {self._spec.key} — edit fields, changes save automatically on Enter"
+            )
             new_btn.clicked.connect(self._on_new)
             layout.addWidget(new_btn)
 

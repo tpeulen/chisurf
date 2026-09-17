@@ -82,11 +82,19 @@ class FlexFitPanel(QtWidgets.QWidget):
         # Bonds list table
         layout.addWidget(QtWidgets.QLabel("Bonds:"))
         self.flexfit_bond_table = QtWidgets.QTableWidget(0, 6)
-        self.flexfit_bond_table.setHorizontalHeaderLabels([
-            "Chain 1", "Residue 1", "Atom 1",
-            "Chain 2", "Residue 2", "Atom 2",
-        ])
-        self.flexfit_bond_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.flexfit_bond_table.setHorizontalHeaderLabels(
+            [
+                "Chain 1",
+                "Residue 1",
+                "Atom 1",
+                "Chain 2",
+                "Residue 2",
+                "Atom 2",
+            ]
+        )
+        self.flexfit_bond_table.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.Stretch
+        )
         self.flexfit_bond_table.setMinimumHeight(80)
         self.flexfit_bond_table.itemChanged.connect(self._on_item_changed)
         layout.addWidget(self.flexfit_bond_table)
@@ -155,13 +163,16 @@ class FlexFitPanel(QtWidgets.QWidget):
         for row in range(self.flexfit_res_table.rowCount()):
             c = self.flexfit_res_table.item(row, 0)
             r = self.flexfit_res_table.item(row, 1)
-            residues.append({
-                "chain_identifier": c.text().strip() if c and c.text() else "",
-                "residue_seq_number": _int_or(r.text().strip() if r and r.text() else "0"),
-            })
+            residues.append(
+                {
+                    "chain_identifier": c.text().strip() if c and c.text() else "",
+                    "residue_seq_number": _int_or(r.text().strip() if r and r.text() else "0"),
+                }
+            )
 
         bonds = []
         for row in range(self.flexfit_bond_table.rowCount()):
+
             def _cell(col):
                 it = self.flexfit_bond_table.item(row, col)
                 return it.text().strip() if it and it.text() else ""
@@ -200,12 +211,10 @@ class FlexFitPanel(QtWidgets.QWidget):
             row = self.flexfit_res_table.rowCount()
             self.flexfit_res_table.insertRow(row)
             self.flexfit_res_table.setItem(
-                row, 0,
-                QtWidgets.QTableWidgetItem(str(res.get("chain_identifier", "")))
+                row, 0, QtWidgets.QTableWidgetItem(str(res.get("chain_identifier", "")))
             )
             self.flexfit_res_table.setItem(
-                row, 1,
-                QtWidgets.QTableWidgetItem(str(res.get("residue_seq_number", "")))
+                row, 1, QtWidgets.QTableWidgetItem(str(res.get("residue_seq_number", "")))
             )
         self.flexfit_res_table.blockSignals(False)
 
@@ -218,14 +227,10 @@ class FlexFitPanel(QtWidgets.QWidget):
             e1, e2 = bond[0], bond[1]
             row = self.flexfit_bond_table.rowCount()
             self.flexfit_bond_table.insertRow(row)
-            for col, key in [
-                (0, "chain_identifier"), (1, "residue_seq_number"), (2, "atom_name")
-            ]:
+            for col, key in [(0, "chain_identifier"), (1, "residue_seq_number"), (2, "atom_name")]:
                 val = e1.get(key, "") if isinstance(e1, dict) else ""
                 self.flexfit_bond_table.setItem(row, col, QtWidgets.QTableWidgetItem(str(val)))
-            for col, key in [
-                (3, "chain_identifier"), (4, "residue_seq_number"), (5, "atom_name")
-            ]:
+            for col, key in [(3, "chain_identifier"), (4, "residue_seq_number"), (5, "atom_name")]:
                 val = e2.get(key, "") if isinstance(e2, dict) else ""
                 self.flexfit_bond_table.setItem(row, col, QtWidgets.QTableWidgetItem(str(val)))
         self.flexfit_bond_table.blockSignals(False)
@@ -241,9 +246,7 @@ class FlexFitPanel(QtWidgets.QWidget):
 
     def _on_flexfit_add_set(self) -> None:
         self.flush_flexfit(self._extra_sections)
-        name, ok = QtWidgets.QInputDialog.getText(
-            self, "New FlexFit set", "Set name:"
-        )
+        name, ok = QtWidgets.QInputDialog.getText(self, "New FlexFit set", "Set name:")
         if not ok or not name.strip():
             return
         name = name.strip()

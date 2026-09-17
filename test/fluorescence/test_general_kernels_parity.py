@@ -38,10 +38,7 @@ import pytest
 from chisurf.core.fluorescence import general
 
 _FIXTURE = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "data"
-    / "numba_parity"
-    / "general_kernels.npz"
+    pathlib.Path(__file__).resolve().parents[1] / "data" / "numba_parity" / "general_kernels.npz"
 )
 
 #: Summation order differs between a nested accumulation loop and ``bincount``,
@@ -109,9 +106,7 @@ def test_fluorescence_decay_matches_the_numba_reference(reference):
         spectrum = reference[f"decay{case}_spectrum"]
         axis = reference[f"decay{case}_axis"]
         for normalize in (True, False):
-            _, produced = general.calculate_fluorescence_decay(
-                spectrum.copy(), axis, normalize
-            )
+            _, produced = general.calculate_fluorescence_decay(spectrum.copy(), axis, normalize)
             expected = reference[f"decay{case}_expected_{int(normalize)}"]
             worst = max(worst, float(np.max(np.abs(produced - expected))))
     assert worst < _TOLERANCE, f"largest disagreement {worst:.3e}"

@@ -51,15 +51,13 @@ import chisurf.core.settings
 import chisurf.core.support.common
 
 package_directory = os.path.dirname(__file__)
-dye_file = os.path.join(
-    chisurf.core.settings.package_directory, 'dye_definition.json'
-)
+dye_file = os.path.join(chisurf.core.settings.package_directory, "dye_definition.json")
 
 try:
     dye_definition = json.load(open(dye_file))
-except IOError:
+except OSError:
     dye_definition = dict()
-    dye_definition['a'] = 0
+    dye_definition["a"] = 0
 
 dye_names = dye_definition.keys()
 
@@ -94,27 +92,26 @@ class BasicAV:
     """
 
     def __init__(
-            self,
-            structure,
-            simulation_grid_resolution: float = None,
-            allowed_sphere_radius: float = None,
-            radius1: float = 1.5,
-            radius2: float = 4.5,
-            radius3: float = 3.5,
-            linker_width: float = 1.5,
-            linker_length: float = 20.5,
-            simulation_type: str = "AV1",
-            chain_identifier: str = None,
-            residue_name: str = None,
-            residue_seq_number: int = None,
-            atom_name: str = None,
-            position_name: str = None,
-            verbose: bool = False,
-            **kwargs
+        self,
+        structure,
+        simulation_grid_resolution: float = None,
+        allowed_sphere_radius: float = None,
+        radius1: float = 1.5,
+        radius2: float = 4.5,
+        radius3: float = 3.5,
+        linker_width: float = 1.5,
+        linker_length: float = 20.5,
+        simulation_type: str = "AV1",
+        chain_identifier: str = None,
+        residue_name: str = None,
+        residue_seq_number: int = None,
+        atom_name: str = None,
+        position_name: str = None,
+        verbose: bool = False,
+        **kwargs,
     ):
         if simulation_grid_resolution is None:
-            simulation_grid_resolution = chisurf.core.settings.fps[
-                'simulation_grid_resolution']
+            simulation_grid_resolution = chisurf.core.settings.fps["simulation_grid_resolution"]
         self.dg = simulation_grid_resolution
         # ``None`` means the caller did not choose: hand upstream the sentinel
         # and let it derive the FPS mapping ``max(1.5, linker_width / 2 +
@@ -123,8 +120,7 @@ class BasicAV:
         # comes back empty (upstream AV.h: the flat value was the fps.json
         # door's bug, now unified into this derivation).
         self.allowed_sphere_radius = (
-            -1.0 if allowed_sphere_radius is None
-            else float(allowed_sphere_radius)
+            -1.0 if allowed_sphere_radius is None else float(allowed_sphere_radius)
         )
 
         self.verbose = verbose
@@ -142,21 +138,20 @@ class BasicAV:
         self.structure = structure
 
         attachment_atom_index = kwargs.get(
-            'attachment_atom_index',
+            "attachment_atom_index",
             chisurf.core.fio.structure.coordinates.get_atom_index(
                 self.atoms,
                 chain_identifier,
                 self.attachment_residue,
                 self.attachment_atom,
-                self.residue_name
-            )
+                self.residue_name,
+            ),
         )
 
         # AV1 is one sphere, AV3 uses all three radii. Upstream reads the model
         # off the radii rather than off a string, so the string maps here.
         dye_radii = (
-            (radius1, radius2, radius3) if self.simulation_type == 'AV3'
-            else (radius1, 0.0, 0.0)
+            (radius1, radius2, radius3) if self.simulation_type == "AV3" else (radius1, 0.0, 0.0)
         )
 
         # The attachment residue's own side chain obstructs the site it
@@ -167,18 +162,20 @@ class BasicAV:
         # Without it, a CB site walled in by its own side chain plus the
         # half-linker-width inflation returns an empty volume.
         atoms = self.atoms
-        backbone = ('N', 'CA', 'C', 'O')
-        site = (atoms['res_id'] == self.attachment_residue)
-        keep = ~site | (atoms['atom_name'] == self.attachment_atom) | np.isin(
-            atoms['atom_name'], backbone)
+        backbone = ("N", "CA", "C", "O")
+        site = atoms["res_id"] == self.attachment_residue
+        keep = (
+            ~site
+            | (atoms["atom_name"] == self.attachment_atom)
+            | np.isin(atoms["atom_name"], backbone)
+        )
         obstacle_atoms = atoms[keep]
 
         # The upstream door takes one (N, 4) array of x, y, z, radius, and the
         # three dye radii separately.
-        xyz = np.ascontiguousarray(obstacle_atoms['xyz'], dtype=np.float64)
+        xyz = np.ascontiguousarray(obstacle_atoms["xyz"], dtype=np.float64)
         atoms_xyzr = np.ascontiguousarray(
-            np.hstack([xyz, np.asarray(
-                obstacle_atoms['radius'], dtype=np.float64)[:, None]])
+            np.hstack([xyz, np.asarray(obstacle_atoms["radius"], dtype=np.float64)[:, None]])
         )
 
         result = _compute_av()(
@@ -194,8 +191,7 @@ class BasicAV:
         )
 
         ng = int(result.get_ng())
-        density = np.ascontiguousarray(
-            result.get_density(), dtype=np.float64).reshape(ng, ng, ng)
+        density = np.ascontiguousarray(result.get_density(), dtype=np.float64).reshape(ng, ng, ng)
         #: The upstream ``IMP.bff.ProbeAccessibleVolume`` this was built from, kept
         #: for the dynamic (quenching/FRET field) model built on first use.
         self._upstream_av = result
@@ -267,10 +263,10 @@ class BasicAV:
         """Recalculate the point cloud from the density grid."""
         self.update_points()
 
-    def save(self, filename: str, mode: str = 'xyz', **kwargs):
+    def save(self, filename: str, mode: str = "xyz", **kwargs):
         """Save the accessible volume as an xyz file or an OpenDX density."""
-        if mode == 'dx':
-            density = kwargs.get('density', self.density)
+        if mode == "dx":
+            density = kwargs.get("density", self.density)
             d = density / density.max() * 0.5
             ng, dg = self.ng, self.dg
             offset = (ng - 1) / 2 * dg
@@ -278,13 +274,15 @@ class BasicAV:
                 filename, d, self.x0 - offset, ng, ng, ng, dg, dg, dg
             )
         else:
-            p = kwargs.get('points', self.points)
+            p = kwargs.get("points", self.points)
             d = p[:, [3]].flatten()
             d /= max(d) * 50.0
             io.structure.write_points(
-                filename=filename + '.' + mode,
-                points=p[:, [0, 1, 2]], mode=mode,
-                verbose=self.verbose, density=d,
+                filename=filename + "." + mode,
+                points=p[:, [0, 1, 2]],
+                mode=mode,
+                verbose=self.verbose,
+                density=d,
             )
 
     # -- distances to a second accessible volume ----------------------------
@@ -310,8 +308,7 @@ class BasicAV:
         )
         return sample[:, 0], sample[:, 1]
 
-    def _pair_statistics(self, av, forster_radius: float = 52.0,
-                         n_samples: int = None, **kwargs):
+    def _pair_statistics(self, av, forster_radius: float = 52.0, n_samples: int = None, **kwargs):
         from IMP.bff import av_pair_statistics
 
         return av_pair_statistics(
@@ -333,10 +330,14 @@ class BasicAV:
 
         # The clouds are (n, 4) — xyz plus weight — and the kernel takes the
         # coordinates and the weights separately.
-        return float(mean_position_distance(
-            self.points[:, :3], av.points[:, :3],
-            self.points[:, 3], av.points[:, 3],
-        ))
+        return float(
+            mean_position_distance(
+                self.points[:, :3],
+                av.points[:, :3],
+                self.points[:, 3],
+                av.points[:, 3],
+            )
+        )
 
     def dRDA(self, av, **kwargs) -> float:
         """Mean donor–acceptor distance ⟨R_DA⟩."""
@@ -368,8 +369,9 @@ class BasicAV:
           as the axis. ``np.histogram`` returns ``len(bins) - 1`` counts, and
           ChiSurf plots ``(p, rda_axis)`` as a pair.
         """
-        import chisurf.core.fluorescence
         from IMP.bff import histogram_rda
+
+        import chisurf.core.fluorescence
 
         if rda_axis is None:
             rda_axis = chisurf.core.fluorescence.rda_axis
@@ -393,7 +395,10 @@ class BasicAV:
 
     def __repr__(self) -> str:
         return "%s(%s, n_points=%d)" % (
-            type(self).__name__, self.position_name or "?", len(self.points))
+            type(self).__name__,
+            self.position_name or "?",
+            len(self.points),
+        )
 
 
 class ACV(BasicAV):
@@ -416,10 +421,9 @@ class ACV(BasicAV):
         self._slow_centers = None
         self._slow_radius = None
         self._contact_density = None
-        self._contact_volume_trapped_fraction = kwargs.get(
-            'contact_volume_trapped_fraction', 0.8)
-        self.slow_centers = kwargs.get('slow_centers', 'CB')
-        self.slow_radius = kwargs.get('slow_radius', 10.0)
+        self._contact_volume_trapped_fraction = kwargs.get("contact_volume_trapped_fraction", 0.8)
+        self.slow_centers = kwargs.get("slow_centers", "CB")
+        self.slow_radius = kwargs.get("slow_radius", 10.0)
         self.update_density()
 
     @property
@@ -442,10 +446,9 @@ class ACV(BasicAV):
         if isinstance(v, str):
             atoms = self.atoms
             selection = (
-                np.ones(atoms.shape[0], dtype=bool) if v == 'all'
-                else atoms['atom_name'] == v
+                np.ones(atoms.shape[0], dtype=bool) if v == "all" else atoms["atom_name"] == v
             )
-            v = atoms['xyz'][selection]
+            v = atoms["xyz"][selection]
         self._slow_centers = np.ascontiguousarray(v, dtype=np.float64)
 
     @property
@@ -513,19 +516,20 @@ class DynamicAV(BasicAV):
     """
 
     def __init__(
-            self,
-            *args,
-            diffusion_coefficient: float = 8.0,
-            contact_distance: float = 3.5,
-            slow_factor: float = 0.985,
-            fluorescence_lifetime: float = 4.0,
-            rC_electron_transfer: float = 1.5,
-            **kwargs
+        self,
+        *args,
+        diffusion_coefficient: float = 8.0,
+        contact_distance: float = 3.5,
+        slow_factor: float = 0.985,
+        fluorescence_lifetime: float = 4.0,
+        rC_electron_transfer: float = 1.5,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.diffusion_coefficient = diffusion_coefficient
         self.contact_distance = float(contact_distance) + max(
-            self.radius1, self.radius2, self.radius3)
+            self.radius1, self.radius2, self.radius3
+        )
         self.slow_factor = slow_factor
         self.fluorescence_lifetime = fluorescence_lifetime
         self.rC_electron_transfer = rC_electron_transfer
@@ -615,8 +619,7 @@ class DynamicAV(BasicAV):
                         contact_distance=float(contact_distance),
                     )
             quencher = table
-        return self.dynamic.update_quenching_map(
-            quencher, rC=self.rC_electron_transfer)
+        return self.dynamic.update_quenching_map(quencher, rC=self.rC_electron_transfer)
 
     def update_fret_map(self, acceptor, forster_radius: float = 52.0, **kwargs):
         """Build the FRET field against an acceptor volume.
@@ -628,7 +631,9 @@ class DynamicAV(BasicAV):
         """
         return self.dynamic.update_fret_map(
             acceptor.dynamic if isinstance(acceptor, DynamicAV) else acceptor,
-            forster_radius=forster_radius, **kwargs)
+            forster_radius=forster_radius,
+            **kwargs,
+        )
 
     def update_equilibrium(self, **kwargs):
         """Relax the density to its equilibrium occupancy.
@@ -646,12 +651,12 @@ class DynamicAV(BasicAV):
         return occupancy
 
     def get_donor_only_decay(
-            self,
-            t_max: float = None,
-            t_step: float = 0.004,
-            n_out: int = None,
-            n_it: int = None,
-            **kwargs
+        self,
+        t_max: float = None,
+        t_step: float = 0.004,
+        n_out: int = None,
+        n_it: int = None,
+        **kwargs,
     ):
         """Integrate the donor decay on the grid.
 
@@ -669,8 +674,7 @@ class DynamicAV(BasicAV):
             t_max = 50.0
         if n_out is None:
             n_out = int(t_max / t_step) + 1
-        result = self.dynamic.donor_decay(
-            float(t_max), float(t_step), int(n_out))
+        result = self.dynamic.donor_decay(float(t_max), float(t_step), int(n_out))
         return (
             np.asarray(result.get_time()),
             np.asarray(result.get_fluorescence()),

@@ -4,7 +4,6 @@ import glob
 import os
 
 import numpy as np
-import pytest
 
 
 def _tiny_trajectory(path: str, n_frames: int = 5) -> str:
@@ -20,7 +19,7 @@ def _tiny_trajectory(path: str, n_frames: int = 5) -> str:
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     traj = md.Trajectory(xyz=xyz, topology=topology)
     traj.save_dcd(path)
-    pdb = str(path).replace('.dcd', '.pdb')
+    pdb = str(path).replace(".dcd", ".pdb")
     traj[0].save_pdb(pdb)
     return pdb
     return traj
@@ -101,7 +100,6 @@ def test_set_trajectory_notifies():
 
 def test_convert_single_file(tmp_path):
     from chisurf.core.structure import trajectory_data as md
-
     from chisurf.plugins.traj.traj_convert.view_model import MDConverterViewModel
 
     source = tmp_path / "src.dcd"

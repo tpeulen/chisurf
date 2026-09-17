@@ -44,8 +44,11 @@ def _find_tttr() -> tuple[Path | None, Path | None]:
         p = Path(override).resolve()
         return p, p.parent.parent
     root = Path(__file__).resolve().parents[2] / "modules" / "tttrlib"
-    found = [c for c in (root / b / "bin" / "tttr" for b in ("build", "build_new"))
-             if c.is_file() and os.access(c, os.X_OK)]
+    found = [
+        c
+        for c in (root / b / "bin" / "tttr" for b in ("build", "build_new"))
+        if c.is_file() and os.access(c, os.X_OK)
+    ]
     if found:
         newest = max(found, key=lambda p: p.stat().st_mtime)
         return newest.resolve(), newest.resolve().parent.parent
@@ -60,7 +63,7 @@ pytestmark = [
     pytest.mark.skipif(
         TTTR_BIN is None,
         reason="the tttr CLI is not built; looked in modules/tttrlib/build*/bin "
-               "and on PATH, and TTTRLIB_CLI is unset",
+        "and on PATH, and TTTRLIB_CLI is unset",
     ),
     pytest.mark.skipif(not SPC.exists(), reason="no instrument test data"),
 ]
@@ -71,8 +74,7 @@ def _run(*args: str) -> subprocess.CompletedProcess:
     if LIB_DIR:
         for var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
             env[var] = str(LIB_DIR) + os.pathsep + env.get(var, "")
-    result = subprocess.run([str(TTTR_BIN), *args], capture_output=True,
-                            text=True, env=env)
+    result = subprocess.run([str(TTTR_BIN), *args], capture_output=True, text=True, env=env)
     assert result.returncode == 0, (
         f"tttr {' '.join(args)} exited {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
@@ -90,13 +92,21 @@ def setup_file(tmp_path: Path) -> Path:
     channels = sorted({int(c) for c in np.asarray(tttrlib.TTTR(str(SPC)).routing_channel)})
     half = max(1, len(channels) // 2)
     path = tmp_path / "detector_setups.json"
-    path.write_text(json.dumps({
-        "last_used": "test",
-        "setups": {"test": {"detectors": {
-            "green": {"chs": channels[:half]},
-            "red": {"chs": channels[half:] or channels[:half]},
-        }}},
-    }))
+    path.write_text(
+        json.dumps(
+            {
+                "last_used": "test",
+                "setups": {
+                    "test": {
+                        "detectors": {
+                            "green": {"chs": channels[:half]},
+                            "red": {"chs": channels[half:] or channels[:half]},
+                        }
+                    }
+                },
+            }
+        )
+    )
     return path
 
 
@@ -112,9 +122,20 @@ def container(tmp_path: Path) -> Path:
 
 
 def _extend(container: Path, raw: Path, setup: Path, min_photons: int = 20) -> None:
-    _run("sm", str(raw), "--setup", str(setup),
-         "--min-photons", str(min_photons), "--rate-window", "10",
-         "--time-separation", "0.0005", "--output", str(container))
+    _run(
+        "sm",
+        str(raw),
+        "--setup",
+        str(setup),
+        "--min-photons",
+        str(min_photons),
+        "--rate-window",
+        "10",
+        "--time-separation",
+        "0.0005",
+        "--output",
+        str(container),
+    )
 
 
 def test_the_cli_extends_the_container_without_adding_a_second_primary(
@@ -147,9 +168,7 @@ def test_a_byte_identical_copy_under_another_name_resolves_to_the_same_primary(
         assert len(streams) == 1, [o.name for o in streams]
 
 
-def test_every_artifact_the_cli_wrote_reaches_the_primary(
-    container: Path, setup_file: Path
-):
+def test_every_artifact_the_cli_wrote_reaches_the_primary(container: Path, setup_file: Path):
     """PRD-88 rule 1, across a reopen and across the repository boundary."""
     raw = container.with_suffix(".spc")
     _extend(container, raw, setup_file)
@@ -173,15 +192,14 @@ def test_every_artifact_the_cli_wrote_reaches_the_primary(
             # used to accept `companion_of`, which the dictionary does not
             # define, and so accepted exactly the thing it was there to catch.
             assert m.tag(obj.uid, "_mmfdb_edge.relationship_type") in (
-                "derived_from", "calibrated_by",
+                "derived_from",
+                "calibrated_by",
             )
             checked += 1
         assert checked >= 1
 
 
-def test_the_two_writers_agree_on_every_column_unit(
-    container: Path, setup_file: Path
-):
+def test_the_two_writers_agree_on_every_column_unit(container: Path, setup_file: Path):
     """One vocabulary, two implementations of the rule that reads it.
 
     The CLI cannot load the mmCIF dictionary, so its unit rule is a port of the
@@ -209,9 +227,7 @@ def test_the_two_writers_agree_on_every_column_unit(
     assert not disagreed, disagreed
 
 
-def test_every_term_the_cli_writes_is_in_the_dictionary(
-    container: Path, setup_file: Path
-):
+def test_every_term_the_cli_writes_is_in_the_dictionary(container: Path, setup_file: Path):
     """The profile defines no vocabulary of its own, so an invented word is a
     word nothing can query.
 
@@ -250,17 +266,18 @@ def test_every_term_the_cli_writes_is_in_the_dictionary(
     assert not invented, invented
 
 
-def test_a_rerun_from_the_cli_does_not_orphan_the_companions(
-    container: Path, setup_file: Path
-):
+def test_a_rerun_from_the_cli_does_not_orphan_the_companions(container: Path, setup_file: Path):
     """PRD-88 rule 6. Replacing an artifact must leave its children pointing at it."""
     raw = container.with_suffix(".spc")
     _extend(container, raw, setup_file)
     _extend(container, raw, setup_file)  # identical settings -> replace in place
 
     with Measurement.open(container, writable=False) as m:
-        searches = [o for o in m.artifacts()
-                    if m.tag(o.uid, "_mmfdb_operation.operation_type") == "burst_selection"]
+        searches = [
+            o
+            for o in m.artifacts()
+            if m.tag(o.uid, "_mmfdb_operation.operation_type") == "burst_selection"
+        ]
         assert len(searches) == 1, "a re-run with the same settings made a second artifact"
         for obj in m.artifacts():
             op = m.tag(obj.uid, "_mmfdb_operation.operation_type") or ""

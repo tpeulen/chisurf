@@ -21,7 +21,6 @@ if _manifest_path.exists():
     name = _manifest.get("display_name", name)
 
 
-
 def __getattr__(attr_name: str):
     """Lazy Qt gate for the GUI entrypoint (keeps the package import Qt-free)."""
     if attr_name == "SpotFinderTool":

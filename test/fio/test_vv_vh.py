@@ -2,9 +2,9 @@
 
 
 # --- FROM test_vv_vh_io_and_anisotropy.py ---
+import importlib.util
 import os
 import tempfile
-import importlib.util
 from pathlib import Path
 
 import numpy as np
@@ -35,7 +35,14 @@ def test_vv_vh_roundtrip_split_channels():
 
 
 def test_vv_vh_spectrum_equals_concatenated_components():
-    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fluorescence" / "anisotropy" / "decay.py"
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "chisurf"
+        / "core"
+        / "fluorescence"
+        / "anisotropy"
+        / "decay.py"
+    )
     spec = importlib.util.spec_from_file_location("anisotropy_decay_local", module_path)
     decay = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
@@ -56,13 +63,8 @@ def test_vv_vh_spectrum_equals_concatenated_components():
     assert np.allclose(vv_vh_flat[: vv_flat.shape[0]], vv_flat)
     assert np.allclose(vv_vh_flat[vv_flat.shape[0] :], vh_flat)
 
-# --- FROM test_vv_vh_rebin_fix.py ---
-import os
-import tempfile
-import importlib.util
-from pathlib import Path
 
-import numpy as np
+# --- FROM test_vv_vh_rebin_fix.py ---
 
 
 def test_vv_vh_rebin_reshape_groups_are_stable():
@@ -129,7 +131,10 @@ def test_vv_vh_footer_metadata_readable_for_positive_only_data():
 
     try:
         vv_vh.write_vv_vh(
-            filename, vv=vv, vh=vh, g_factor=1.6,
+            filename,
+            vv=vv,
+            vh=vh,
+            g_factor=1.6,
             metadata={"l1": 0.05, "l2": 0.08, "polarization": "vv/vh"},
         )
         data, meta = vv_vh.read_vv_vh(filename, split=True, return_metadata=True)

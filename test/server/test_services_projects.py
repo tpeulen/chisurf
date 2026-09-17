@@ -2,22 +2,19 @@ from __future__ import annotations
 
 """Tests for chisurf.server.services.projects."""
 
-from unittest.mock import patch, MagicMock
-import tempfile
 import pathlib
-
-import pytest
+import tempfile
+from unittest.mock import MagicMock, patch
 
 from chisurf.server.services.projects import (
-    save_project,
-    load_project,
     get_project_info,
+    load_project,
+    save_project,
 )
 from chisurf.server.session import SessionState
 
 
 class TestProjectsService:
-
     def test_get_project_info_no_project(self):
         state = SessionState()
         result = get_project_info(state)

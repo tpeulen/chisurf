@@ -7,6 +7,7 @@ TTTR-reading ``compute_phasor`` is monkeypatched with synthetic phasor maps so
 the test needs no imaging file, and the HDF5 writer is stubbed so no h5py I/O is
 required — the derived-map math itself is covered by ``test_analysis.py``.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -46,7 +47,8 @@ def test_cli_produces_and_writes_derived_maps(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(core, "compute_phasor", lambda *a, **k: _synthetic_result())
     written: dict = {}
     monkeypatch.setattr(
-        core, "add_maps_to_hdf5",
+        core,
+        "add_maps_to_hdf5",
         lambda path, keep: written.update(keys=sorted(keep)) or sorted(keep),
     )
 

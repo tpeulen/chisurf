@@ -19,7 +19,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.camera.view_state import (
     DEFAULT_FOV,
     distance_for_radius,
@@ -39,21 +38,18 @@ def _rotation(angle_deg: float = 30.0) -> np.ndarray:
 # Field-of-view sign convention
 # --------------------------------------------------------------------------- #
 def test_perspective_writes_a_negative_field_of_view():
-    view = pack_view_state(np.eye(3), 10.0, [0, 0, 0], 1.0, 100.0, 20.0,
-                           orthoscopic=False)
+    view = pack_view_state(np.eye(3), 10.0, [0, 0, 0], 1.0, 100.0, 20.0, orthoscopic=False)
     assert view[17] == pytest.approx(-20.0)
 
 
 def test_orthoscopic_writes_a_positive_field_of_view():
-    view = pack_view_state(np.eye(3), 10.0, [0, 0, 0], 1.0, 100.0, 20.0,
-                           orthoscopic=True)
+    view = pack_view_state(np.eye(3), 10.0, [0, 0, 0], 1.0, 100.0, 20.0, orthoscopic=True)
     assert view[17] == pytest.approx(20.0)
 
 
 @pytest.mark.parametrize("ortho", [False, True])
 def test_field_of_view_round_trips_with_its_flag(ortho):
-    view = pack_view_state(_rotation(), 42.0, [1, 2, 3], 0.5, 500.0, 35.0,
-                           orthoscopic=ortho)
+    view = pack_view_state(_rotation(), 42.0, [1, 2, 3], 0.5, 500.0, 35.0, orthoscopic=ortho)
     state = unpack_view_state(view)
     assert state.fov == pytest.approx(35.0)
     assert state.orthoscopic is ortho
@@ -65,12 +61,24 @@ def test_a_view_copied_from_pymol_is_read_as_perspective():
     Read with the sign inverted this would come back as an orthoscopic camera.
     """
     pymol_view = [
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0,
-        0.0, 0.0, -138.7545623779297,
-        7.012499809265137, 47.04399871826172, 34.04500198364258,
-        109.39515686035156, 168.1139678955078, -20.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        -138.7545623779297,
+        7.012499809265137,
+        47.04399871826172,
+        34.04500198364258,
+        109.39515686035156,
+        168.1139678955078,
+        -20.0,
     ]
     state = unpack_view_state(pymol_view)
     assert state.orthoscopic is False
@@ -80,8 +88,7 @@ def test_a_view_copied_from_pymol_is_read_as_perspective():
 
 def test_legacy_tuples_are_not_read_as_orthoscopic():
     """Older chimol layouts always wrote a positive fov and meant nothing by it."""
-    legacy = [*np.eye(3).reshape(-1), 30.0, 20.0, 45.0, 0.0, 0.0, 0.0,
-              0.1, 1000.0, 45.0]
+    legacy = [*np.eye(3).reshape(-1), 30.0, 20.0, 45.0, 0.0, 0.0, 0.0, 0.1, 1000.0, 45.0]
     state = unpack_view_state(legacy)
     assert state.orthoscopic is False
     assert state.distance == pytest.approx(30.0)
@@ -119,9 +126,7 @@ def test_widening_the_lens_pulls_the_camera_in():
 
 
 def test_framing_ignores_the_sign_of_the_field_of_view():
-    assert distance_for_radius(10.0, -20.0) == pytest.approx(
-        distance_for_radius(10.0, 20.0)
-    )
+    assert distance_for_radius(10.0, -20.0) == pytest.approx(distance_for_radius(10.0, 20.0))
 
 
 def test_degenerate_field_of_view_does_not_divide_by_zero():
@@ -134,8 +139,7 @@ def test_degenerate_field_of_view_does_not_divide_by_zero():
 def _bar(half_x: float = 30.0, half_y: float = 5.0) -> np.ndarray:
     """Four points forming a flat bar: half-extents (half_x, half_y, 0)."""
     return np.array(
-        [[-half_x, 0.0, 0.0], [half_x, 0.0, 0.0],
-         [0.0, -half_y, 0.0], [0.0, half_y, 0.0]]
+        [[-half_x, 0.0, 0.0], [half_x, 0.0, 0.0], [0.0, -half_y, 0.0], [0.0, half_y, 0.0]]
     )
 
 
@@ -149,9 +153,7 @@ def test_complete_fits_the_bounding_sphere():
     assert framing_radius(_bar(), complete=True) == pytest.approx(30.0)
     cube = np.array([[-10.0, -10.0, -10.0], [10.0, 10.0, 10.0]])
     assert framing_radius(cube) == pytest.approx(10.0)
-    assert framing_radius(cube, complete=True) == pytest.approx(
-        math.sqrt(3) * 10.0
-    )
+    assert framing_radius(cube, complete=True) == pytest.approx(math.sqrt(3) * 10.0)
 
 
 @pytest.mark.parametrize("angle, camera_space_radius", [(30.0, 25.981), (45.0, 21.213)])
@@ -188,7 +190,11 @@ def test_empty_input_fits_nothing():
 def test_agrees_with_pymol_on_148l(complete, pymol_radius):
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     xyz = np.array(
         [
@@ -197,9 +203,7 @@ def test_agrees_with_pymol_on_148l(complete, pymol_radius):
             if line.startswith(("ATOM", "HETATM"))
         ]
     )
-    assert framing_radius(xyz, complete=complete) == pytest.approx(
-        pymol_radius, rel=0.05
-    )
+    assert framing_radius(xyz, complete=complete) == pytest.approx(pymol_radius, rel=0.05)
 
 
 # --------------------------------------------------------------------------- #

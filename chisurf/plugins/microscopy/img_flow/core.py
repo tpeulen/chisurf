@@ -130,8 +130,11 @@ class FlowAnalysis:
         }
         if vx.size == 0:
             out.update(
-                mean_speed=float("nan"), mean_vx=float("nan"), mean_vy=float("nan"),
-                max_speed=float("nan"), angle_deg=float("nan"),
+                mean_speed=float("nan"),
+                mean_vx=float("nan"),
+                mean_vy=float("nan"),
+                max_speed=float("nan"),
+                angle_deg=float("nan"),
                 coherence=float("nan"),
             )
             return out
@@ -282,9 +285,7 @@ def analyse(
             subtract_average=subtract_average,
         )
     else:
-        field = pcf_flow_map(
-            stack, distance=int(distance), tile=tile, timing=timing
-        )
+        field = pcf_flow_map(stack, distance=int(distance), tile=tile, timing=timing)
 
     return FlowAnalysis(
         x=np.asarray(field.x),
@@ -381,9 +382,7 @@ def _channel_index(channel: Any, names: list[str]) -> int:
         try:
             channel = int(channel)
         except ValueError as exc:
-            raise ValueError(
-                f"no channel {channel!r} in the file; it has {names}"
-            ) from exc
+            raise ValueError(f"no channel {channel!r} in the file; it has {names}") from exc
     index = int(channel or 0)
     if not 0 <= index < len(names):
         raise ValueError(f"channel {index} is out of range; the file has {len(names)}")
@@ -428,8 +427,7 @@ def to_rows(analysis: FlowAnalysis, min_quality: float = 0.0) -> list[dict[str, 
     return rows
 
 
-def write_csv(analysis: FlowAnalysis, path: str | pathlib.Path,
-              min_quality: float = 0.0) -> str:
+def write_csv(analysis: FlowAnalysis, path: str | pathlib.Path, min_quality: float = 0.0) -> str:
     """Write the velocity field to a CSV file.
 
     Parameters
@@ -493,34 +491,40 @@ def write_container(source, analysis, *, parameters=None, out_dir=None) -> str:
 
     written = write_imaging_table(
         source,
-        store_from_arrays({
-            "x": np.asarray(analysis.x, dtype=float).ravel(),
-            "y": np.asarray(analysis.y, dtype=float).ravel(),
-            "vx": np.asarray(analysis.vx, dtype=float).ravel(),
-            "vy": np.asarray(analysis.vy, dtype=float).ravel(),
-            "Speed": np.asarray(analysis.speed, dtype=float).ravel(),
-            "Quality": np.asarray(analysis.quality, dtype=float).ravel(),
-            "Amplitude": np.asarray(analysis.amplitude, dtype=float).ravel(),
-        }),
+        store_from_arrays(
+            {
+                "x": np.asarray(analysis.x, dtype=float).ravel(),
+                "y": np.asarray(analysis.y, dtype=float).ravel(),
+                "vx": np.asarray(analysis.vx, dtype=float).ravel(),
+                "vy": np.asarray(analysis.vy, dtype=float).ravel(),
+                "Speed": np.asarray(analysis.speed, dtype=float).ravel(),
+                "Quality": np.asarray(analysis.quality, dtype=float).ravel(),
+                "Amplitude": np.asarray(analysis.amplitude, dtype=float).ravel(),
+            }
+        ),
         name="flow",
         artifact_kind="velocity_field",
         operation_type="flow_field_estimation",
         row_grain="pixel",
-        parameters=dict(parameters or {}, method=analysis.method,
-                        n_escaped=int(analysis.n_escaped)),
+        parameters=dict(
+            parameters or {}, method=analysis.method, n_escaped=int(analysis.n_escaped)
+        ),
         units={
-            "x": "micrometres", "y": "micrometres",
+            "x": "micrometres",
+            "y": "micrometres",
             # µm/s has no term of its own; the components are recorded with the
             # length unit their magnitude is in and the frame time is in the
             # settings, which is what makes them reconstructible.
-            "Quality": "dimensionless", "Amplitude": "dimensionless",
+            "Quality": "dimensionless",
+            "Amplitude": "dimensionless",
         },
         out_dir=out_dir,
     )
     image = np.asarray(analysis.image)
     if image.size:
         written = write_image(
-            source, image.astype(np.float32),
+            source,
+            image.astype(np.float32),
             name="flow image",
             operation_type="flow_field_estimation",
             axes="YX",

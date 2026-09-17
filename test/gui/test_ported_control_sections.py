@@ -7,6 +7,7 @@ question is whether a toolkit-free control really does reach a Qt form -- that
 attribute the section is bound to, and that a form built from a ``view.json``
 resolves both keys.
 """
+
 from __future__ import annotations
 
 import struct
@@ -68,8 +69,9 @@ def test_the_host_paints_the_control_without_the_control_knowing_about_qt(qapp, 
     widget.resize(420, 200)
     image = widget._host.grab().toImage()
     assert image.width() > 0
-    colours = {image.pixel(x, y) for x in range(0, image.width(), 7)
-               for y in range(0, image.height(), 7)}
+    colours = {
+        image.pixel(x, y) for x in range(0, image.width(), 7) for y in range(0, image.height(), 7)
+    }
     # More than the background alone: the text actually drew.
     assert len(colours) > 3
 

@@ -39,10 +39,20 @@ def cli():
 @click.option("--output", "-o", type=click.Path(), help="Output directory root")
 @click.option("--save-settings", is_flag=True, help="Save settings JSON alongside output")
 def compute(
-    analysis_folder, variant, kernel, tau, file_type, pattern,
-    donor_channels, acceptor_channels,
-    donor_mtr_start, donor_mtr_end, acceptor_mtr_start, acceptor_mtr_end,
-    output, save_settings,
+    analysis_folder,
+    variant,
+    kernel,
+    tau,
+    file_type,
+    pattern,
+    donor_channels,
+    acceptor_channels,
+    donor_mtr_start,
+    donor_mtr_end,
+    acceptor_mtr_start,
+    acceptor_mtr_end,
+    output,
+    save_settings,
 ):
     """Compute the 2CDE feature for burst data in ANALYSIS_FOLDER."""
     try:
@@ -58,7 +68,10 @@ def compute(
         donor_micro_time_ranges=[(donor_mtr_start, donor_mtr_end)],
         acceptor_channels=acceptor_chs,
         acceptor_micro_time_ranges=[(acceptor_mtr_start, acceptor_mtr_end)],
-        tau=tau, kernel=kernel, variant=variant, file_type=file_type,
+        tau=tau,
+        kernel=kernel,
+        variant=variant,
+        file_type=file_type,
     )
 
     click.echo(f"Reading burst data from {af} ...")
@@ -67,12 +80,15 @@ def compute(
 
     click.echo(f"Computing {variant.upper()}-2CDE ({kernel}) ...")
     df_v = compute_2cde(
-        df, tttrs,
+        df,
+        tttrs,
         donor_channels=settings.donor_channels,
         donor_micro_time_ranges=settings.donor_micro_time_ranges,
         acceptor_channels=settings.acceptor_channels,
         acceptor_micro_time_ranges=settings.acceptor_micro_time_ranges,
-        tau=settings.tau, kernel=settings.kernel, variant=settings.variant,
+        tau=settings.tau,
+        kernel=settings.kernel,
+        variant=settings.variant,
     )
     column = column_for_variant(variant)
     valid = int(np.isfinite(numeric_column(df_v, column)).sum())
@@ -84,6 +100,7 @@ def compute(
 
     if save_settings:
         from chisurf.plugins.burst.burst_2cde.api.serialization import to_jsonable
+
         out = out_root / "2cde"
         out.mkdir(parents=True, exist_ok=True)
         with open(out / "2cde_settings.json", "w") as f:

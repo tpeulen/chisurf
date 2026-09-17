@@ -14,8 +14,9 @@ that record, and the coordinate-only convenience constructor.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any
 
 import numpy as np
 
@@ -147,9 +148,7 @@ def _table_from_atoms(atoms: np.ndarray):
     else:
         table.res_name = ["UNK"] * n
     if "atom_name" in names:
-        table.atom_name = [
-            (_as_text(v) or f"A{i}") for i, v in enumerate(atoms["atom_name"])
-        ]
+        table.atom_name = [(_as_text(v) or f"A{i}") for i, v in enumerate(atoms["atom_name"])]
     else:
         table.atom_name = [f"A{i}" for i in range(n)]
     return table
@@ -163,7 +162,7 @@ class StructureRmfWriter:
         filename: str | Path,
         structure: Any,
         *,
-        stat_output: Optional[Mapping[str, Any]] = None,
+        stat_output: Mapping[str, Any] | None = None,
         root_name: str = "ProteinMC",
     ) -> None:
         """Open an RMF file and build the hierarchy ``structure`` describes.
@@ -199,11 +198,9 @@ class StructureRmfWriter:
         except RmfWriterError:
             raise
         except Exception as exc:
-            raise RmfWriterError(
-                f"could not open {self.filename} for RMF output: {exc}"
-            ) from exc
+            raise RmfWriterError(f"could not open {self.filename} for RMF output: {exc}") from exc
 
-    def __enter__(self) -> "StructureRmfWriter":
+    def __enter__(self) -> StructureRmfWriter:
         """Return this writer for ``with``-statement use."""
         return self
 
@@ -218,8 +215,8 @@ class StructureRmfWriter:
         coords: np.ndarray,
         model_name: str = "structure",
         transform: np.ndarray | None = None,
-        metadata: Optional[Mapping[str, Any]] = None,
-    ) -> "StructureRmfWriter":
+        metadata: Mapping[str, Any] | None = None,
+    ) -> StructureRmfWriter:
         """Create a writer for raw ``(N, 3)`` or ``(N, 4)`` coordinates.
 
         Parameters
@@ -250,9 +247,7 @@ class StructureRmfWriter:
         """
         coords = np.asarray(coords, dtype=np.float64)
         if coords.ndim != 2 or coords.shape[1] < 3:
-            raise ValueError(
-                f"Expected (N, 3) or (N, 4) coordinates, got {coords.shape}"
-            )
+            raise ValueError(f"Expected (N, 3) or (N, 4) coordinates, got {coords.shape}")
 
         xyz = coords[:, :3].copy()
         if transform is not None:
@@ -283,15 +278,13 @@ class StructureRmfWriter:
 
         structure = Structure()
         structure.atoms = atoms
-        return cls(
-            filename, structure, stat_output=metadata, root_name=model_name
-        )
+        return cls(filename, structure, stat_output=metadata, root_name=model_name)
 
     def append(
         self,
         xyz: np.ndarray,
         name: str | None = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
         """Append one coordinate frame to the trajectory.
 
@@ -313,9 +306,7 @@ class StructureRmfWriter:
         coords = np.asarray(xyz, dtype=np.float64)
         n = self._writer.n_atoms
         if coords.shape != (n, 3):
-            raise ValueError(
-                f"xyz must have shape ({n}, 3), got {coords.shape!r}"
-            )
+            raise ValueError(f"xyz must have shape ({n}, 3), got {coords.shape!r}")
         self._writer.append(
             np.ascontiguousarray(coords).reshape(-1),
             frame_name="" if name is None else str(name),

@@ -163,7 +163,8 @@ class BurstDisplayViewModel:
         if not segments:
             return
         first, last = _timeline.photon_range(
-            segments, float(start_s), float(start_s) + float(length_s))
+            segments, float(start_s), float(start_s) + float(length_s)
+        )
         self._set_range(first, last)
 
     def show_whole_timeline(self) -> None:

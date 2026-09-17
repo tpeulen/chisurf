@@ -11,6 +11,7 @@ with a bimolecular step, or one where a species is consumed and reformed, has no
 closed-form relaxation, and writing down the sum of exponentials that
 approximates it is exactly the step that loses the rate constants.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,6 @@ from chisurf.core.models.model import ModelCurve
 
 
 class ReactionModel(ReactionSystem, ModelCurve):
-
     """Fit a kinetic scheme (species, reactions, rate constants) to a trace.
 
     The hand-written predecessor (``ReactionWidget``) was **abstract** — it never
@@ -52,16 +52,31 @@ class ReactionModel(ReactionSystem, ModelCurve):
         ModelCurve.__init__(self, fit, **kwargs)
 
         self._scaling = FittingParameter(
-            name="scaling", label_text="scaling", value=1.0,
-            lb=0.0, ub=float("inf"), bounds_on=False, fixed=False,
+            name="scaling",
+            label_text="scaling",
+            value=1.0,
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=False,
         )
         self._background = FittingParameter(
-            name="background", label_text="background", value=0.0,
-            lb=float("-inf"), ub=float("inf"), bounds_on=False, fixed=False,
+            name="background",
+            label_text="background",
+            value=0.0,
+            lb=float("-inf"),
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=False,
         )
         self._timeshift = FittingParameter(
-            name="timeshift", label_text="timeshift", value=0.0,
-            lb=float("-inf"), ub=float("inf"), bounds_on=False, fixed=True,
+            name="timeshift",
+            label_text="timeshift",
+            value=0.0,
+            lb=float("-inf"),
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=True,
         )
         #: Rescale the model to the data's integral inside the fit window.
         self.autoscale = False
@@ -86,10 +101,20 @@ class ReactionModel(ReactionSystem, ModelCurve):
         """Return the scheme a new model starts from: ``A ⇌ B``."""
         return {
             "reactions": [
-                {"educts": [0], "products": [1], "educt_stoichiometry": [1],
-                 "product_stoichometry": [1], "rate": 1.0},
-                {"educts": [1], "products": [0], "educt_stoichiometry": [1],
-                 "product_stoichometry": [1], "rate": 0.1},
+                {
+                    "educts": [0],
+                    "products": [1],
+                    "educt_stoichiometry": [1],
+                    "product_stoichometry": [1],
+                    "rate": 1.0,
+                },
+                {
+                    "educts": [1],
+                    "products": [0],
+                    "educt_stoichiometry": [1],
+                    "product_stoichometry": [1],
+                    "rate": 0.1,
+                },
             ],
             "species": [
                 {"species": "A", "concentration": 1.0, "brightness": 1.0},
@@ -198,14 +223,24 @@ class ReactionModel(ReactionSystem, ModelCurve):
         self._species_names.append(name)
         self._initial_concentrations.append(
             FittingParameter(
-                name=f"c({name})", label_text=f"c({name})", value=float(concentration),
-                lb=0.0, ub=float("inf"), bounds_on=False, fixed=bool(concentration_fixed),
+                name=f"c({name})",
+                label_text=f"c({name})",
+                value=float(concentration),
+                lb=0.0,
+                ub=float("inf"),
+                bounds_on=False,
+                fixed=bool(concentration_fixed),
             )
         )
         self._species_brightness.append(
             FittingParameter(
-                name=f"Q({name})", label_text=f"Q({name})", value=float(brightness),
-                lb=0.0, ub=float("inf"), bounds_on=False, fixed=bool(brightness_fixed),
+                name=f"Q({name})",
+                label_text=f"Q({name})",
+                value=float(brightness),
+                lb=0.0,
+                ub=float("inf"),
+                bounds_on=False,
+                fixed=bool(brightness_fixed),
             )
         )
 

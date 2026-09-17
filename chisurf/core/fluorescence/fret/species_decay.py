@@ -61,10 +61,10 @@ class CrosstalkFactors:
       in red; acceptor detected in red by ``γ``).
     """
 
-    alpha: float = 0.0   # donor leakage into the acceptor (red) channel
-    beta: float = 1.0    # excitation-flux ratio (acceptor vs donor excitation)
-    gamma: float = 1.0   # detection/quantum-yield ratio (acceptor vs donor)
-    delta: float = 0.0   # direct acceptor excitation by the donor-excitation laser
+    alpha: float = 0.0  # donor leakage into the acceptor (red) channel
+    beta: float = 1.0  # excitation-flux ratio (acceptor vs donor excitation)
+    gamma: float = 1.0  # detection/quantum-yield ratio (acceptor vs donor)
+    delta: float = 0.0  # direct acceptor excitation by the donor-excitation laser
 
     def excitation_matrix(self) -> np.ndarray:
         """``[laser, chromophore]`` excitation matrix (donor/acceptor × donor/acceptor)."""
@@ -88,12 +88,12 @@ class Anisotropy:
     """
 
     donor_r0: float = 0.38
-    donor_rho: float = 1.0        # donor rotational correlation time (ns)
+    donor_rho: float = 1.0  # donor rotational correlation time (ns)
     acceptor_r0: float = 0.38
-    acceptor_rho: float = 1.0     # acceptor rotational correlation time (ns)
-    r_inf: float = 0.0            # residual (hindered) anisotropy
-    g_factor: float = 1.0         # perpendicular-channel detection correction
-    donor_spectrum: Any = None    # [{amplitude, rho}] — overrides donor_r0/rho
+    acceptor_rho: float = 1.0  # acceptor rotational correlation time (ns)
+    r_inf: float = 0.0  # residual (hindered) anisotropy
+    g_factor: float = 1.0  # perpendicular-channel detection correction
+    donor_spectrum: Any = None  # [{amplitude, rho}] — overrides donor_r0/rho
     acceptor_spectrum: Any = None  # [{amplitude, rho}] — overrides acceptor_r0/rho
 
     def _rows(self, chromophore: str) -> list[dict]:
@@ -121,17 +121,19 @@ class FretSpecies:
     donor_spectrum: Any = field(default_factory=lambda: [1.0, 4.0])
     acceptor_spectrum: Any = field(default_factory=lambda: [1.0, 2.0])
     # FRET input — either a transfer efficiency, or a (distributed) distance.
-    fret_mode: str = "efficiency"           # "efficiency" | "distance"
+    fret_mode: str = "efficiency"  # "efficiency" | "distance"
     transfer_efficiency: float = 0.5
     # Distance distribution: Gaussian components (mean Å, sigma Å, fraction),
     # matching the TCSPC FRET fits' distance model. Empty → single ``distance``.
-    distance_rows: Any = field(default_factory=lambda: [{"mean": 50.0, "sigma": 6.0, "amplitude": 1.0}])
-    distance: float = 50.0                  # single-distance fallback (Å)
+    distance_rows: Any = field(
+        default_factory=lambda: [{"mean": 50.0, "sigma": 6.0, "amplitude": 1.0}]
+    )
+    distance: float = 50.0  # single-distance fallback (Å)
     distance_distribution: str = "gaussian"  # "gaussian" | "gaussian_3d"
     distance_samples: int = 81
-    forster_radius: float = 52.0            # R0 (Å)
+    forster_radius: float = 52.0  # R0 (Å)
     kappa2: float = 2.0 / 3.0
-    x_donly: float = 0.0                    # donor-only fraction within the DA population
+    x_donly: float = 0.0  # donor-only fraction within the DA population
     crosstalk: CrosstalkFactors = field(default_factory=CrosstalkFactors)
     anisotropy: Anisotropy = field(default_factory=Anisotropy)
     # Optional explicit matrices override the ones induced by ``crosstalk``.
@@ -171,7 +173,7 @@ def _amp_weighted_lifetime(spectrum: np.ndarray) -> float:
 def _distance_components(species: FretSpecies) -> list[tuple[float, float, float]]:
     """Return the distance distribution as ``(amplitude, mean, sigma)`` Gaussians."""
     comps: list[tuple[float, float, float]] = []
-    for row in (species.distance_rows or []):
+    for row in species.distance_rows or []:
         mean = float(row.get("mean", row.get("distance", 0.0)))
         sigma = float(row.get("sigma", 0.0))
         amp = float(row.get("amplitude", 1.0))
@@ -248,8 +250,8 @@ def _channel_contributions(
     acceptor_present = state in ("a_only", "da")
     is_fret = state == "da"
 
-    exc = species.excitation_matrix()   # [laser, chromophore]
-    em = species.emission_matrix()      # [chromophore, detector]
+    exc = species.excitation_matrix()  # [laser, chromophore]
+    em = species.emission_matrix()  # [chromophore, detector]
     zero = np.zeros_like(time_ns)
 
     # Emission time-courses (shapes) per chromophore.
@@ -300,8 +302,9 @@ def normalize_irf(irf: Any, n_bins: int) -> np.ndarray | None:
     return response / total if total > 0 else response
 
 
-def _apply_irf(decay: np.ndarray, irf, dt: float, time_shift: float,
-               period: float | None = None) -> np.ndarray:
+def _apply_irf(
+    decay: np.ndarray, irf, dt: float, time_shift: float, period: float | None = None
+) -> np.ndarray:
     if irf is None:
         return decay
     response = normalize_irf(irf, decay.size)
@@ -438,7 +441,12 @@ def fret_species_detector_patterns(
     time_shift = float(component.get("time_shift_ns", 0.0))
     period = float(component.get("period_ns", 0.0)) or None
     channels = fret_species_patterns(
-        int(n_bins), species, dt=dt, irf=None, polarized=False, normalize=True,
+        int(n_bins),
+        species,
+        dt=dt,
+        irf=None,
+        polarized=False,
+        normalize=True,
     )
     patterns: dict[str, np.ndarray] = {}
     for name in detector_names:
@@ -465,8 +473,8 @@ def fret_species_from_dict(component: dict) -> FretSpecies:
         acceptor_spectrum=component.get("acceptor_spectrum", [1.0, 2.0]),
         fret_mode=str(component.get("fret_mode", "efficiency")),
         transfer_efficiency=float(component.get("transfer_efficiency", 0.5)),
-        distance_rows=component.get("distance_rows") or [{"mean": float(component.get("distance", 50.0)),
-                                                          "sigma": 0.0, "amplitude": 1.0}],
+        distance_rows=component.get("distance_rows")
+        or [{"mean": float(component.get("distance", 50.0)), "sigma": 0.0, "amplitude": 1.0}],
         distance=float(component.get("distance", 50.0)),
         distance_distribution=str(component.get("distance_distribution", "gaussian")),
         distance_samples=int(component.get("distance_samples", 81)),
@@ -474,14 +482,18 @@ def fret_species_from_dict(component: dict) -> FretSpecies:
         kappa2=float(component.get("kappa2", 2.0 / 3.0)),
         x_donly=float(component.get("x_donly", 0.0)),
         crosstalk=CrosstalkFactors(
-            alpha=float(ct.get("alpha", 0.0)), beta=float(ct.get("beta", 1.0)),
-            gamma=float(ct.get("gamma", 1.0)), delta=float(ct.get("delta", 0.0)),
+            alpha=float(ct.get("alpha", 0.0)),
+            beta=float(ct.get("beta", 1.0)),
+            gamma=float(ct.get("gamma", 1.0)),
+            delta=float(ct.get("delta", 0.0)),
         ),
         anisotropy=Anisotropy(
-            donor_r0=float(an.get("donor_r0", 0.38)), donor_rho=float(an.get("donor_rho", 1.0)),
+            donor_r0=float(an.get("donor_r0", 0.38)),
+            donor_rho=float(an.get("donor_rho", 1.0)),
             acceptor_r0=float(an.get("acceptor_r0", 0.38)),
             acceptor_rho=float(an.get("acceptor_rho", 1.0)),
-            r_inf=float(an.get("r_inf", 0.0)), g_factor=float(an.get("g_factor", 1.0)),
+            r_inf=float(an.get("r_inf", 0.0)),
+            g_factor=float(an.get("g_factor", 1.0)),
             donor_spectrum=an.get("donor_spectrum") or None,
             acceptor_spectrum=an.get("acceptor_spectrum") or None,
         ),

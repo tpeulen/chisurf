@@ -45,8 +45,7 @@ def test_period_is_recovered_exactly():
     folded phase clean across a laser window.
     """
     t, routing = alternating_stream()
-    result = detect_alex_period(
-        t, routing, donor_channels=[0], acceptor_channels=[1])
+    result = detect_alex_period(t, routing, donor_channels=[0], acceptor_channels=[1])
     assert result["period"] == PERIOD
     assert result["confidence"] > 50
 
@@ -54,11 +53,10 @@ def test_period_is_recovered_exactly():
 def test_windows_land_inside_the_true_laser_gates():
     """The detected gates sit inside the real ones, trimmed by the guard band."""
     t, routing = alternating_stream()
-    period = detect_alex_period(
-        t, routing, donor_channels=[0], acceptor_channels=[1])["period"]
+    period = detect_alex_period(t, routing, donor_channels=[0], acceptor_channels=[1])["period"]
     windows = auto_alex_windows(
-        t % period, routing, donor_channels=[0], acceptor_channels=[1],
-        alex_period=period)
+        t % period, routing, donor_channels=[0], acceptor_channels=[1], alex_period=period
+    )
     for name, (lo_true, hi_true) in (("green", GREEN), ("red", RED)):
         lo, hi = windows[name]
         assert lo_true <= lo < hi <= hi_true, name
@@ -73,17 +71,17 @@ def test_swapped_channels_swap_the_windows_not_the_period():
     lasers, the *labelling* is what the detector assignment decides.
     """
     t, routing = alternating_stream()
-    straight = detect_alex_period(
-        t, routing, donor_channels=[0], acceptor_channels=[1])
-    swapped = detect_alex_period(
-        t, routing, donor_channels=[1], acceptor_channels=[0])
+    straight = detect_alex_period(t, routing, donor_channels=[0], acceptor_channels=[1])
+    swapped = detect_alex_period(t, routing, donor_channels=[1], acceptor_channels=[0])
     assert straight["period"] == swapped["period"]
 
     period = straight["period"]
-    a = auto_alex_windows(t % period, routing, donor_channels=[0],
-                          acceptor_channels=[1], alex_period=period)
-    b = auto_alex_windows(t % period, routing, donor_channels=[1],
-                          acceptor_channels=[0], alex_period=period)
+    a = auto_alex_windows(
+        t % period, routing, donor_channels=[0], acceptor_channels=[1], alex_period=period
+    )
+    b = auto_alex_windows(
+        t % period, routing, donor_channels=[1], acceptor_channels=[0], alex_period=period
+    )
     assert np.allclose(a["green"], b["red"])
     assert np.allclose(a["red"], b["green"])
 
@@ -105,8 +103,7 @@ def test_continuous_wave_data_is_refused_rather_than_converted():
     rng = np.random.default_rng(1)
     t = np.sort(rng.integers(0, 10_000_000, 200_000))
     routing = rng.integers(0, 2, t.size)
-    result = detect_alex_period(
-        t, routing, donor_channels=[0], acceptor_channels=[1])
+    result = detect_alex_period(t, routing, donor_channels=[0], acceptor_channels=[1])
     assert result["confidence"] < 50
 
     class _Fake:
@@ -119,8 +116,7 @@ def test_continuous_wave_data_is_refused_rather_than_converted():
     core.load = lambda *a, **k: _Fake()
     try:
         with pytest.raises(ValueError, match="no clear laser alternation"):
-            detect_and_convert(
-                ["cw.ptu"], donor_channels=[0], acceptor_channels=[1])
+            detect_and_convert(["cw.ptu"], donor_channels=[0], acceptor_channels=[1])
     finally:
         core.load = original
 
@@ -144,8 +140,7 @@ def test_setup_built_from_the_gates_uses_the_names_every_reader_knows():
     pytest.importorskip("qtpy")
     from chisurf.plugins.burst.alex_suite.gui.alternation import build_setup
 
-    setup = build_setup(
-        {"green": (300.0, 3700.0), "red": (4300.0, 7700.0)}, [0], [1], PERIOD)
+    setup = build_setup({"green": (300.0, 3700.0), "red": (4300.0, 7700.0)}, [0], [1], PERIOD)
     assert setup["windows"] == {"prompt": [300, 3700], "delayed": [4300, 7700]}
     assert list(setup["detectors"]) == ["green", "red", "yellow"]
     assert setup["detectors"]["green"]["chs"] == [0]
@@ -165,8 +160,7 @@ def test_the_streams_of_that_setup_map_onto_the_alex_channels():
     """
     from chisurf.core.fluorescence.burst.table import guess_columns
 
-    columns = ["Number of Photons (green)", "Number of Photons (red)",
-               "Number of Photons (yellow)"]
+    columns = ["Number of Photons (green)", "Number of Photons (red)", "Number of Photons (yellow)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
         for detector in ("green", "red", "yellow"):
             columns.append(f"S {window} {detector} (photons) | {lo}-{hi}")
@@ -219,8 +213,7 @@ REAL_PERIOD = 8000
 REAL_GREEN = (240, 3760)
 REAL_RED = (4160, 7680)
 
-real_data = pytest.mark.skipif(
-    not REAL_FILE.is_file(), reason=f"{REAL_FILE} not available")
+real_data = pytest.mark.skipif(not REAL_FILE.is_file(), reason=f"{REAL_FILE} not available")
 
 
 @pytest.fixture(scope="module")
@@ -239,8 +232,8 @@ def test_the_period_of_a_real_measurement_is_found_exactly():
 
     tttr = tttrlib.TTTR(str(REAL_FILE), "SM")
     result = detect_alex_period(
-        tttr.macro_times, tttr.routing_channels,
-        donor_channels=[1], acceptor_channels=[0])
+        tttr.macro_times, tttr.routing_channels, donor_channels=[1], acceptor_channels=[0]
+    )
     assert result["period"] == REAL_PERIOD
     assert result["confidence"] > 1000
 
@@ -256,8 +249,8 @@ def test_the_channel_assignment_of_a_real_measurement_is_worked_out(folded_real)
     from chisurf.plugins.tttr.ptu_alex_creator.core import detect_alex_channels
 
     assignment = detect_alex_channels(
-        folded_real.micro_times, folded_real.routing_channels,
-        alex_period=REAL_PERIOD)
+        folded_real.micro_times, folded_real.routing_channels, alex_period=REAL_PERIOD
+    )
     assert assignment["donor"] == [1]
     assert assignment["acceptor"] == [0]
     assert assignment["contrast"] < 0.2
@@ -274,8 +267,12 @@ def test_the_windows_of_a_real_measurement_match_the_old_configuration(folded_re
     against 0.07 across the same period, which is what the split now uses.
     """
     windows = auto_alex_windows(
-        folded_real.micro_times, folded_real.routing_channels,
-        donor_channels=[1], acceptor_channels=[0], alex_period=REAL_PERIOD)
+        folded_real.micro_times,
+        folded_real.routing_channels,
+        donor_channels=[1],
+        acceptor_channels=[0],
+        alex_period=REAL_PERIOD,
+    )
     for name, (lo_true, hi_true) in (("green", REAL_GREEN), ("red", REAL_RED)):
         lo, hi = windows[name]
         assert lo_true <= lo < hi <= hi_true + 100, (name, lo, hi)
@@ -290,7 +287,8 @@ def test_a_flat_folded_intensity_is_what_makes_this_hard(folded_real):
     that happens to be gated, where the old occupancy method also worked.
     """
     counts, _ = np.histogram(
-        np.asarray(folded_real.micro_times), bins=np.linspace(0, REAL_PERIOD, 41))
+        np.asarray(folded_real.micro_times), bins=np.linspace(0, REAL_PERIOD, 41)
+    )
     interior = counts[2:]  # the first bins hold the laser turn-on transient
     assert interior.min() > 0.4 * interior.max(), (
         "this file has laser-off gaps after all; pick one that does not"

@@ -34,9 +34,7 @@ _ROLE = re.compile(r"\{(?:doc|ref)\}`([^`]+)`")
 def _targets(path: pathlib.Path) -> set[str]:
     text = path.read_text(encoding="utf-8")
     targets = set(_MD_LINK.findall(text))
-    targets |= {
-        body.split("<")[-1].strip("<> ") for body in _ROLE.findall(text)
-    }
+    targets |= {body.split("<")[-1].strip("<> ") for body in _ROLE.findall(text)}
     return targets
 
 
@@ -134,9 +132,6 @@ def test_the_plugin_catalogue_has_no_orphan_pages():
     orphans = [
         page.name
         for page in sorted(directory.glob("*.md"))
-        if page.name != "index.md"
-        and "cookiecutter" not in page.name
-        and page.stem not in listed
+        if page.name != "index.md" and "cookiecutter" not in page.name and page.stem not in listed
     ]
     assert not orphans, orphans
-

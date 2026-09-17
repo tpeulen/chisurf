@@ -3,6 +3,7 @@
 The rule is data: a description's ``presentation.group_position`` names the
 scalar (``polarization``) and its values, so the view knows no family.
 """
+
 from __future__ import annotations
 
 import numpy as np

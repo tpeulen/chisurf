@@ -1,6 +1,5 @@
-import sys
-import os
 import pathlib
+import sys
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
@@ -16,7 +15,7 @@ for key, value in chisurf.core.settings.cs_settings.items():
 # Debug: Print all attributes of the settings module
 print("\nAttributes of chisurf.core.settings:")
 for attr in dir(chisurf.core.settings):
-    if not attr.startswith('__'):
+    if not attr.startswith("__"):
         try:
             value = getattr(chisurf.core.settings, attr)
             if not callable(value):

@@ -18,6 +18,7 @@ correlation spectroscopy (FCS) and related techniques.
 icon = "➿"
 
 import sys
+
 from chisurf.plugins.tttr.tttr_correlate.gui import CorrelateTTTR
 
 # Define the plugin name - this will appear in the Plugins menu

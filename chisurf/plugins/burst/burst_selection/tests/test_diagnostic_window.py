@@ -97,7 +97,7 @@ def test_the_selection_stays_full_length(monkeypatch):
     # What load_diagnostics does with the slice: scatter into a full-length mask.
     sliced = np.ones(last - first, dtype=bool)
     selected = np.zeros(len(np.asarray(sliceable.macro_times)), dtype=bool)
-    selected[first:first + len(sliced)] = sliced
+    selected[first : first + len(sliced)] = sliced
     assert selected.size == 300_000
     assert selected[:first].sum() == 0
     assert selected[last:].sum() == 0

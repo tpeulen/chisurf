@@ -2,11 +2,11 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+from chimol.geometry.primitives import _compute_center_radius
+from chimol.render.raytracer import RayCamera, Sphere, trace
 from PIL import Image
 
 import chisurf.core.structure as cs_struct
-from chimol.geometry.primitives import _compute_center_radius
-from chimol.render.raytracer import RayCamera, Sphere, trace
 
 
 class TestVisualRendering(unittest.TestCase):
@@ -22,8 +22,12 @@ class TestVisualRendering(unittest.TestCase):
         # Find repo root
         self._repo_root = here.parents[4]
 
-        self._pdb_148l = self._repo_root / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
-        self._pdb_1rtd = self._repo_root / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
+        self._pdb_148l = (
+            self._repo_root / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        )
+        self._pdb_1rtd = (
+            self._repo_root / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
+        )
 
         self._renders_dir = self._repo_root / "test_renders"
         self._renders_dir.mkdir(exist_ok=True)
@@ -31,12 +35,12 @@ class TestVisualRendering(unittest.TestCase):
     def _get_spheres_from_structure(self, struct: cs_struct.Structure) -> list[Sphere]:
         """Convert a Structure into a list of Sphere objects colored by element."""
         cpk_colors = {
-            'C': [0.5, 0.5, 0.5],
-            'O': [1.0, 0.0, 0.0],
-            'N': [0.0, 0.0, 1.0],
-            'S': [1.0, 1.0, 0.0],
-            'P': [1.0, 0.6, 0.0],
-            'H': [0.9, 0.9, 0.9],
+            "C": [0.5, 0.5, 0.5],
+            "O": [1.0, 0.0, 0.0],
+            "N": [0.0, 0.0, 1.0],
+            "S": [1.0, 1.0, 0.0],
+            "P": [1.0, 0.6, 0.0],
+            "H": [0.9, 0.9, 0.9],
         }
 
         positions = struct.xyz
@@ -44,9 +48,9 @@ class TestVisualRendering(unittest.TestCase):
 
         spheres = []
         for i in range(len(positions)):
-            elem = struct.atoms[i]['element']
+            elem = struct.atoms[i]["element"]
             if isinstance(elem, bytes):
-                elem_str = elem.decode('utf-8', errors='ignore').strip().upper()
+                elem_str = elem.decode("utf-8", errors="ignore").strip().upper()
             else:
                 elem_str = str(elem).strip().upper()
 
@@ -55,11 +59,13 @@ class TestVisualRendering(unittest.TestCase):
             if not np.isfinite(radius) or radius <= 0:
                 radius = 1.0
 
-            spheres.append(Sphere(
-                center=positions[i],
-                radius=radius,
-                color=np.array(color, dtype=np.float64),
-            ))
+            spheres.append(
+                Sphere(
+                    center=positions[i],
+                    radius=radius,
+                    color=np.array(color, dtype=np.float64),
+                )
+            )
         return spheres
 
     def test_render_148l_protein(self) -> None:
@@ -84,8 +90,11 @@ class TestVisualRendering(unittest.TestCase):
         # Perform ray tracing
         light_dirs = np.array([[0.0, 0.0, 1.0], [0.5, 0.5, 1.0]], dtype=np.float64)
         img = trace(
-            spheres, camera, light_dirs,
-            width=256, height=256,
+            spheres,
+            camera,
+            light_dirs,
+            width=256,
+            height=256,
             background=(30, 30, 30),
             ssaa=2,
         )
@@ -126,8 +135,11 @@ class TestVisualRendering(unittest.TestCase):
         # Perform ray tracing
         light_dirs = np.array([[0.0, 0.0, 1.0], [0.5, 0.5, 1.0]], dtype=np.float64)
         img = trace(
-            spheres, camera, light_dirs,
-            width=256, height=256,
+            spheres,
+            camera,
+            light_dirs,
+            width=256,
+            height=256,
             background=(30, 30, 30),
             ssaa=2,
         )
@@ -149,6 +161,7 @@ class TestVisualRendering(unittest.TestCase):
     def test_render_148l_ses(self) -> None:
         """Render T4 Lysozyme (148L) Solvent Excluded Surface (SES)."""
         from chimol.geometry.surface import _generate_surface_mesh_edt
+
         self.assertTrue(self._pdb_148l.is_file(), f"Structure not found: {self._pdb_148l}")
 
         struct = cs_struct.Structure(str(self._pdb_148l))
@@ -194,8 +207,11 @@ class TestVisualRendering(unittest.TestCase):
         # Perform ray tracing
         light_dirs = np.array([[0.0, 0.0, 1.0], [0.5, 0.5, 1.0]], dtype=np.float64)
         img = trace(
-            spheres, camera, light_dirs,
-            width=256, height=256,
+            spheres,
+            camera,
+            light_dirs,
+            width=256,
+            height=256,
             background=(30, 30, 30),
             ssaa=2,
         )
@@ -217,6 +233,7 @@ class TestVisualRendering(unittest.TestCase):
     def test_render_1rtd_sas(self) -> None:
         """Render HIV Reverse Transcriptase (1RTD) Solvent Accessible Surface (SAS)."""
         from chimol.geometry.surface import _generate_surface_mesh_edt
+
         self.assertTrue(self._pdb_1rtd.is_file(), f"Structure not found: {self._pdb_1rtd}")
 
         struct = cs_struct.Structure(str(self._pdb_1rtd))
@@ -262,8 +279,11 @@ class TestVisualRendering(unittest.TestCase):
         # Perform ray tracing
         light_dirs = np.array([[0.0, 0.0, 1.0], [0.5, 0.5, 1.0]], dtype=np.float64)
         img = trace(
-            spheres, camera, light_dirs,
-            width=256, height=256,
+            spheres,
+            camera,
+            light_dirs,
+            width=256,
+            height=256,
             background=(30, 30, 30),
             ssaa=2,
         )
@@ -285,6 +305,7 @@ class TestVisualRendering(unittest.TestCase):
     def test_1rtd_trace_extraction(self) -> None:
         """Verify that trace extraction for 1RTD returns both protein and nucleic residues."""
         from chimol.geometry.trace import _extract_ca_trace
+
         self.assertTrue(self._pdb_1rtd.is_file(), f"Structure not found: {self._pdb_1rtd}")
 
         struct = cs_struct.Structure(str(self._pdb_1rtd))
@@ -307,14 +328,13 @@ class TestVisualRendering(unittest.TestCase):
         # - Chains A and B must be present, along with nucleic acid chains (T, P, etc.).
         self.assertTrue(
             "A" in unique_chains or "B" in unique_chains,
-            "Protein chains (A/B) are missing from the extracted trace!"
+            "Protein chains (A/B) are missing from the extracted trace!",
         )
         self.assertTrue(
             any(ch not in ("A", "B") for ch in unique_chains),
-            "DNA chains are missing from the extracted trace!"
+            "DNA chains are missing from the extracted trace!",
         )
 
 
 if __name__ == "__main__":
     unittest.main()
-

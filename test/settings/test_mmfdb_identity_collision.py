@@ -23,7 +23,10 @@ import yaml
 
 SETTINGS = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "chisurf" / "core" / "settings" / "settings_chisurf.yaml"
+    / "chisurf"
+    / "core"
+    / "settings"
+    / "settings_chisurf.yaml"
 )
 
 

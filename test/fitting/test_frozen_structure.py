@@ -7,6 +7,7 @@ attribute reads each, two of them crossing into the backing chinet port, and it
 was being re-derived several times per evaluation. These tests pin that the
 frozen view is faithful, re-entrant, and self-checking.
 """
+
 import numpy as np
 import pytest
 
@@ -22,8 +23,10 @@ def _group(n_datasets: int = 3, seed: int = 0):
     x = np.linspace(0.0, 5.0, 48)
     curves = [
         chisurf.core.data.DataCurve(
-            x=x, y=(3.0 + 0.3 * k) + 1.2 * x ** 2 + rng.normal(0, 0.05, x.size),
-            ey=np.full_like(x, 0.05))
+            x=x,
+            y=(3.0 + 0.3 * k) + 1.2 * x**2 + rng.normal(0, 0.05, x.size),
+            ey=np.full_like(x, 0.05),
+        )
         for k in range(n_datasets)
     ]
     fit = chisurf.core.fitting.fit.FitGroup(
@@ -32,7 +35,7 @@ def _group(n_datasets: int = 3, seed: int = 0):
     )
     for f in fit:
         f.fit_range = 0, len(f.model.y)
-        f.model.func = 'c+a*x**2'
+        f.model.func = "c+a*x**2"
         f.model.find_parameters()
     fit._model.find_parameters()
     return fit
@@ -120,11 +123,12 @@ def test_window_version_moves_with_the_fit_range():
 def test_redundant_is_serialised_under_its_public_name():
     """Making ``redundant`` a property must not change the saved form."""
     from chisurf.core.fitting.parameter import FittingParameter
+
     p = FittingParameter(name="a", value=1.0)
     assert p.redundant is False
     state = p.to_dict()
-    assert 'redundant' in state
-    assert '_redundant' not in state
+    assert "redundant" in state
+    assert "_redundant" not in state
 
 
 def test_redundant_invalidates_the_free_parameter_list():
@@ -154,7 +158,7 @@ def test_a_fit_run_inside_a_freeze_still_converges():
     fit.run(local_first=False)
     assert fit.chi2r < 2.0
     for local in fit:
-        c = [p for p in local.model.parameters_all if p.name == 'a'][0]
+        c = [p for p in local.model.parameters_all if p.name == "a"][0]
         assert float(c.value) == pytest.approx(1.2, abs=0.05)
     # The freeze must have been released.
     assert fit._model.__dict__.get("_frozen_structure") is None
@@ -202,21 +206,19 @@ def test_frozen_parameter_reads_are_identical_to_unfrozen_ones():
     with factorgraph.frozen_structure(model):
         during = [float(p.value) for p in model.parameters_all]
         # The flags really were stamped.
-        assert all(p.__dict__.get("_frozen_flags") is not None
-                   for p in model.parameters_all)
+        assert all(p.__dict__.get("_frozen_flags") is not None for p in model.parameters_all)
     after = [float(p.value) for p in model.parameters_all]
 
     assert during == before == after
     # And the individual rules still hold.
     named = dict(zip(model.parameter_names, during))
-    assert named['plain'] == 2.5
-    assert named['bounded'] == 1.0        # clamped to the upper bound
-    assert named['below'] == 0.0          # clamped to the lower bound
-    assert named['follower'] == 7.25      # follows its master
-    assert named['fixed'] == 1.0          # clamped on read, but never written
+    assert named["plain"] == 2.5
+    assert named["bounded"] == 1.0  # clamped to the upper bound
+    assert named["below"] == 0.0  # clamped to the lower bound
+    assert named["follower"] == 7.25  # follows its master
+    assert named["fixed"] == 1.0  # clamped on read, but never written
     # Released afterwards.
-    assert all(p.__dict__.get("_frozen_flags") is None
-               for p in model.parameters_all)
+    assert all(p.__dict__.get("_frozen_flags") is None for p in model.parameters_all)
 
 
 def test_a_frozen_read_still_writes_a_clamped_value_back():
@@ -230,7 +232,7 @@ def test_a_frozen_read_still_writes_a_clamped_value_back():
     class _Model:
         parameters_all = [p]
         parameters = parameters_all
-        parameter_names = ['p']
+        parameter_names = ["p"]
         parameter_bounds = [p.bounds]
 
     with factorgraph.frozen_structure(_Model()):
@@ -249,13 +251,13 @@ def test_a_write_inside_a_freeze_is_seen_by_the_next_read():
     class _Model:
         parameters_all = [p]
         parameters = parameters_all
-        parameter_names = ['p']
+        parameter_names = ["p"]
         parameter_bounds = [p.bounds]
 
     with factorgraph.frozen_structure(_Model()):
-        assert float(p.value) == 1.0          # populates the cache
+        assert float(p.value) == 1.0  # populates the cache
         p.value = 2.0
-        assert float(p.value) == 2.0          # and the write dropped it
+        assert float(p.value) == 2.0  # and the write dropped it
         p.value = 3.5
         assert float(p.value) == 3.5
     assert float(p.value) == 3.5
@@ -272,7 +274,7 @@ def test_a_frozen_follower_tracks_its_master():
     class _Model:
         parameters_all = [master, follower]
         parameters = parameters_all
-        parameter_names = ['master', 'follower']
+        parameter_names = ["master", "follower"]
         parameter_bounds = [master.bounds, follower.bounds]
 
     with factorgraph.frozen_structure(_Model()):
@@ -287,8 +289,8 @@ def test_a_frozen_follower_tracks_its_master():
 def test_a_fit_gives_the_same_answer_with_and_without_the_freeze():
     """End to end: the caches must be invisible in the result."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "T", "test/fitting/test_tcspc_fit_convergence.py")
+
+    spec = importlib.util.spec_from_file_location("T", "test/fitting/test_tcspc_fit_convergence.py")
     T = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(T)
     import chisurf.core.fitting.fit as F

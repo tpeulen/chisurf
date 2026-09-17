@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -68,10 +67,11 @@ def test_a_channel_suffix_does_not_hide_the_unit(computed):
     with Measurement.open(written) as m:
         table = m.get_store("nb")
         units = {c: m.column_units(table, c) for c in column_names(table)}
-    suffixed = [c for c in units if c.startswith("N (")]
+    suffixed = [c for c in units if c.startswith(("N (", "B ("))]
     assert suffixed, "the fixture produced no channel-suffixed column to check"
     for name in suffixed:
-        assert units[name] == "counts"
+        # N is a molecule number, B a count per dwell
+        assert units[name] == ("dimensionless" if name.startswith("N (") else "counts")
     assert units["X pixel"] == "pixels"
 
 
@@ -88,7 +88,8 @@ def test_recomputing_does_not_add_a_second_map(computed):
 
 def test_nothing_is_written_without_a_source_file():
     """A tool with no file has no measurement to belong to, and inventing one
-    would put results next to nothing."""
+    would put results next to nothing.
+    """
     from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
 
     model = NBViewModel()

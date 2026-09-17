@@ -19,6 +19,7 @@ background, because an IRF modelled as a bare Gaussian falls to ``exp(-2304)``
 by the end of the window, and a log axis asked to span 300 decades tells you
 nothing about either renderer.
 """
+
 from __future__ import annotations
 
 import os
@@ -53,9 +54,11 @@ def _grab_widget(widget: QtWidgets.QWidget, backend: str) -> QtGui.QImage:
 # Example plot recipes — identical data/params for every backend
 # ---------------------------------------------------------------------------
 
+
 def plot_decay(plot):
     """TCSPC-style decay: exponential + IRF over a background, log-y."""
     import numpy as np
+
     t = np.linspace(0, 50, 512)
     bg = 3.0
     irf = 1000 * np.exp(-((t - 2) ** 2) / 0.5) + bg
@@ -71,6 +74,7 @@ def plot_decay(plot):
 def plot_scatter(plot):
     """FRET efficiency scatter: a 2-D cloud."""
     import numpy as np
+
     rng = np.random.default_rng(42)
     n = 2000
     e = rng.beta(5, 5, n)
@@ -83,6 +87,7 @@ def plot_scatter(plot):
 def plot_bars(plot):
     """Draw a FRET histogram."""
     import numpy as np
+
     bins = np.linspace(0, 1, 40)
     centers = (bins[:-1] + bins[1:]) / 2
     counts = 80 * np.exp(-((centers - 0.5) ** 2) / 0.02)
@@ -94,6 +99,7 @@ def plot_bars(plot):
 def plot_image(plot):
     """Draw a 2-D heatmap."""
     import numpy as np
+
     x = np.linspace(-3, 3, 100)
     y = np.linspace(-3, 3, 100)
     X, Y = np.meshgrid(x, y)
@@ -105,6 +111,7 @@ def plot_image(plot):
 def plot_region(plot):
     """Decay with a fit-range region and a dashed model line."""
     import numpy as np
+
     t = np.linspace(0, 50, 256)
     data = 5000 * np.exp(-t / 4.0)
     model = 4900 * np.exp(-t / 3.8)
@@ -119,6 +126,7 @@ def plot_region(plot):
 def plot_errorbars(plot):
     """Draw a weighted residual panel: markers with error bars around zero."""
     import numpy as np
+
     rng = np.random.default_rng(7)
     x = np.arange(30, dtype=float)
     y = rng.normal(0, 1, len(x))
@@ -143,9 +151,11 @@ RECIPES = {
 def _make_plot(backend_name: str):
     """Build a chiplot Plot using the given backend."""
     import chisurf.gui.chiplot.backends as backends
+
     backends._active = None
     os.environ["CHISURF_PLOT_BACKEND"] = backend_name
     from chisurf.gui.chiplot.canvas import Plot
+
     return Plot()
 
 
@@ -171,6 +181,7 @@ def main():
                 failures += 1
                 print(f"FAILED: {type(exc).__name__}: {exc}")
                 import traceback
+
                 traceback.print_exc()
             finally:
                 if plot is not None:

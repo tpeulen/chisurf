@@ -13,11 +13,11 @@ import numpy as np
 
 
 def second_order_correlation(
-        trace: np.ndarray,
-        tau1: np.ndarray,
-        tau2: np.ndarray,
-        trace2: np.ndarray | None = None,
-        trace3: np.ndarray | None = None,
+    trace: np.ndarray,
+    tau1: np.ndarray,
+    tau2: np.ndarray,
+    trace2: np.ndarray | None = None,
+    trace3: np.ndarray | None = None,
 ) -> np.ndarray:
     r"""Three-point (second-order) intensity correlation :math:`g^{(3)}`.
 
@@ -71,6 +71,6 @@ def second_order_correlation(
             m = n - shift
             if m <= 0:
                 continue
-            prod = i1[:m] * i2[t1:t1 + m] * i3[shift:shift + m]
+            prod = i1[:m] * i2[t1 : t1 + m] * i3[shift : shift + m]
             g3[a, b] = prod.mean() / denom
     return g3

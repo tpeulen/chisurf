@@ -111,9 +111,14 @@ def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
         _ChannelSwitches,
     )
 
-    m = _model(N_species=2, green_enabled=True, red_enabled=True,
-               species_M=[10.0, 20.0], species_D=[1.0, 2.0],
-               species_q=[100, 90, 80, 70, 0, 0, 50, 40, 30, 20, 0, 0])
+    m = _model(
+        N_species=2,
+        green_enabled=True,
+        red_enabled=True,
+        species_M=[10.0, 20.0],
+        species_D=[1.0, 2.0],
+        species_q=[100, 90, 80, 70, 0, 0, 50, 40, 30, 20, 0, 0],
+    )
     form = AutoForm(m)
     qtbot.addWidget(form)
     table = form.findChild(StateTableWidget)
@@ -125,8 +130,11 @@ def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
     assert out["M"] == [10.0, 20.0] and out["D"] == [1.0, 2.0]
     assert out["q"][:4] != out["q"][4:8]
     # Driving the Species spinbox resizes the table (via the framework refresh).
-    n_field = next(w for w in form.findChildren(QtWidgets.QWidget)
-                   if getattr(getattr(w, "_section", None), "attr", "") == "n_species")
+    n_field = next(
+        w
+        for w in form.findChildren(QtWidgets.QWidget)
+        if getattr(getattr(w, "_section", None), "attr", "") == "n_species"
+    )
     n_field.findChild(QtWidgets.QSpinBox).setValue(3)
     assert table.table.rowCount() == 4  # 3 species + Background
     assert len(m.to_parameters()["M"]) == 3
@@ -161,7 +169,7 @@ def test_a_new_species_does_not_inherit_another_species_decay(qapp, qtbot):
     qtbot.addWidget(dialog)
     assert dialog._lifetimes[0] == [[1.0, 4.5]]
     assert dialog._lifetimes[1] == [[1.0, 0.8]]
-    assert dialog._lifetimes[2] == [[1.0, 3.2]]          # the default, not a copy
+    assert dialog._lifetimes[2] == [[1.0, 3.2]]  # the default, not a copy
 
 
 def test_the_decay_editor_opens_on_the_species_it_was_asked_for(qapp, qtbot):

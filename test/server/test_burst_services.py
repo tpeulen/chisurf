@@ -114,9 +114,9 @@ def test_decay_names_and_axis(photons, slices):
 def test_coarsening_preserves_the_total(photons, slices):
     """Rebinning moves photons between bins; it must not lose any."""
     fine = bursts.from_bursts_decay(None, burst_slices=slices, channels=[[0]])["result"]
-    coarse = bursts.from_bursts_decay(
-        None, burst_slices=slices, channels=[[0]], coarsening=8
-    )["result"]
+    coarse = bursts.from_bursts_decay(None, burst_slices=slices, channels=[[0]], coarsening=8)[
+        "result"
+    ]
     assert coarse["decays"][0]["n_photons"] == fine["decays"][0]["n_photons"]
     assert len(coarse["decays"][0]["counts"]) < len(fine["decays"][0]["counts"])
 
@@ -220,9 +220,9 @@ def test_pch_conserves_photons_and_normalises(slices):
 
 def test_interior_counts_exactly_the_gated_photons(photons, slices):
     """Interior mode must see the gated photons and nothing else."""
-    result = bursts.from_bursts_pch(
-        None, burst_slices=slices, bin_time_us=200.0, mode="interior"
-    )["result"]
+    result = bursts.from_bursts_pch(None, burst_slices=slices, bin_time_us=200.0, mode="interior")[
+        "result"
+    ]
     assert result["n_photons"] == len(_selected(photons))
 
 
@@ -232,9 +232,9 @@ def test_span_includes_the_photons_between_the_bursts(photons, slices):
     This is the difference that decides whether P(k) can be read as a brightness:
     span keeps the quiet stretches, so the low-k side of the histogram is real.
     """
-    result = bursts.from_bursts_pch(
-        None, burst_slices=slices, bin_time_us=200.0, mode="span"
-    )["result"]
+    result = bursts.from_bursts_pch(None, burst_slices=slices, bin_time_us=200.0, mode="span")[
+        "result"
+    ]
     first, last = INTERVALS[0][0], INTERVALS[-1][1]
     assert result["n_photons"] == last - first + 1
     assert result["n_photons"] > len(_selected(photons))
@@ -258,9 +258,9 @@ def test_interior_says_it_is_biased_and_span_does_not(slices):
     interior = bursts.from_bursts_pch(
         None, burst_slices=slices, bin_time_us=200.0, mode="interior"
     )["result"]
-    span = bursts.from_bursts_pch(
-        None, burst_slices=slices, bin_time_us=200.0, mode="span"
-    )["result"]
+    span = bursts.from_bursts_pch(None, burst_slices=slices, bin_time_us=200.0, mode="span")[
+        "result"
+    ]
 
     assert interior["mode"] == "interior"
     assert "selection_bias" in interior
@@ -308,17 +308,12 @@ def test_a_wrong_container_type_still_reads_the_file(slices, photons):
     ``.spc`` being the one that bit), so the seam resolves the value instead of
     forwarding it, and falls back to detection.
     """
-    detected = bursts.from_bursts_decay(
-        None, burst_slices=slices, channels=[[0]]
-    )
+    detected = bursts.from_bursts_decay(None, burst_slices=slices, channels=[[0]])
     wrong = bursts.from_bursts_decay(
         None, burst_slices=slices, channels=[[0]], reading_routine="NOT-A-FORMAT"
     )
     assert wrong["ok"], wrong
-    assert (
-        wrong["result"]["decays"][0]["n_photons"]
-        == detected["result"]["decays"][0]["n_photons"]
-    )
+    assert wrong["result"]["decays"][0]["n_photons"] == detected["result"]["decays"][0]["n_photons"]
 
 
 def test_the_spc_alias_reads_a_bh_file(photons):

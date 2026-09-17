@@ -47,8 +47,9 @@ def second_derivative_operator(n: int) -> np.ndarray:
     return difference_operator(n, order=2)
 
 
-def _gcv_score(A: np.ndarray, b: np.ndarray, alpha: float,
-               AtA: np.ndarray, LtL: np.ndarray, Atb: np.ndarray) -> float:
+def _gcv_score(
+    A: np.ndarray, b: np.ndarray, alpha: float, AtA: np.ndarray, LtL: np.ndarray, Atb: np.ndarray
+) -> float:
     """GCV functional for the unconstrained Tikhonov solution at ``alpha``.
 
     ``AtA``, ``LtL`` and ``Atb`` are alpha-independent and are computed once
@@ -57,7 +58,7 @@ def _gcv_score(A: np.ndarray, b: np.ndarray, alpha: float,
     """
     n = A.shape[0]
     try:
-        inv = np.linalg.inv(AtA + alpha ** 2 * LtL)
+        inv = np.linalg.inv(AtA + alpha**2 * LtL)
     except np.linalg.LinAlgError:
         return np.inf
     # Influence (hat) matrix H = A (AtA + a^2 LtL)^-1 A^T; only its trace and
@@ -73,8 +74,9 @@ def _gcv_score(A: np.ndarray, b: np.ndarray, alpha: float,
     return n * float(resid @ resid) / denom
 
 
-def select_alpha(A: np.ndarray, b: np.ndarray, L: np.ndarray,
-                 alphas: np.ndarray | None = None) -> float:
+def select_alpha(
+    A: np.ndarray, b: np.ndarray, L: np.ndarray, alphas: np.ndarray | None = None
+) -> float:
     """Return the GCV-optimal regularisation weight ``alpha`` over a log grid."""
     if alphas is None:
         alphas = np.logspace(-4, 1, 24)
@@ -85,8 +87,9 @@ def select_alpha(A: np.ndarray, b: np.ndarray, L: np.ndarray,
     return float(alphas[int(np.argmin(scores))])
 
 
-def lcurve(A: np.ndarray, b: np.ndarray, L: np.ndarray,
-           alphas: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def lcurve(
+    A: np.ndarray, b: np.ndarray, L: np.ndarray, alphas: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Sample the L-curve of the non-negative Tikhonov problem.
 
     Returns ``(alphas, rho, eta)`` where ``rho = ||A P_a - b||`` (residual norm)
@@ -104,8 +107,9 @@ def lcurve(A: np.ndarray, b: np.ndarray, L: np.ndarray,
     return np.asarray(alphas, dtype=float), rho, eta
 
 
-def select_alpha_lcurve(A: np.ndarray, b: np.ndarray, L: np.ndarray,
-                        alphas: np.ndarray | None = None) -> float:
+def select_alpha_lcurve(
+    A: np.ndarray, b: np.ndarray, L: np.ndarray, alphas: np.ndarray | None = None
+) -> float:
     """Return the L-curve-corner regularisation weight ``alpha``.
 
     The corner (point of maximum curvature in log-log residual/roughness space)
@@ -121,8 +125,9 @@ def select_alpha_lcurve(A: np.ndarray, b: np.ndarray, L: np.ndarray,
     return float(a_grid[int(k)])
 
 
-def solve_tikhonov(A: np.ndarray, b: np.ndarray, alpha: float,
-                   L: np.ndarray | None = None) -> np.ndarray:
+def solve_tikhonov(
+    A: np.ndarray, b: np.ndarray, alpha: float, L: np.ndarray | None = None
+) -> np.ndarray:
     """Solve the non-negative Tikhonov problem for a fixed ``alpha``.
 
     Parameters
@@ -141,9 +146,7 @@ def solve_tikhonov(A: np.ndarray, b: np.ndarray, alpha: float,
     numpy.ndarray
         Non-negative solution ``P`` of shape ``(nr,)``.
     """
-    return tikhonov_nnls(
-        A, b, float(alpha), convention=SmoothnessWeight.AMPLITUDE, L=L, order=2
-    )
+    return tikhonov_nnls(A, b, float(alpha), convention=SmoothnessWeight.AMPLITUDE, L=L, order=2)
 
 
 def tikhonov_distance_distribution(
@@ -182,8 +185,11 @@ def tikhonov_distance_distribution(
     b = np.asarray(v_target, dtype=float)
     L = second_derivative_operator(r.size)
     if alpha is None or alpha <= 0:
-        alpha = (select_alpha_lcurve(A, b, L) if str(method).lower() == "lcurve"
-                 else select_alpha(A, b, L))
+        alpha = (
+            select_alpha_lcurve(A, b, L)
+            if str(method).lower() == "lcurve"
+            else select_alpha(A, b, L)
+        )
     p = solve_tikhonov(A, b, alpha, L)
     area = trapezoid(p, r)
     if area > 0:

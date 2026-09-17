@@ -257,9 +257,7 @@ def plugin_entry_points(manifest: dict[str, Any], directory: Any) -> dict[str, A
 
     for candidate in ("cli.py", "cli"):
         if (directory / candidate).exists():
-            found["cli"] = (
-                str(directory.name) if candidate == "cli" else f"{directory.name}.cli"
-            )
+            found["cli"] = str(directory.name) if candidate == "cli" else f"{directory.name}.cli"
             break
     for candidate in ("api", "core"):
         if (directory / candidate).is_dir():

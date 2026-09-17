@@ -218,6 +218,7 @@ included.
   spatial-frequency domain.
 - {cite}`digman2008b` — Number & Brightness: per-pixel mean and variance mapped
   to oligomeric state, the imaging counterpart of {ref}`concept-pch-fida`.
+  In ChiSurf: {ref}`concept-number-and-brightness`.
 
 ## See also
 

@@ -98,18 +98,19 @@ def _register_sphinx_roles() -> None:
         body = text.strip()
         caption = ""
         if "<" in body and body.endswith(">"):
-            caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1: -1]
+            caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1 : -1]
         resolved = resolve(body)
         label = caption or (resolved.label if resolved else body)
         if resolved is None:
             return [nodes.literal(rawtext, label)], []
-        return [nodes.reference(rawtext, "", nodes.literal(rawtext, label),
-                                refuri=body)], []
+        return [nodes.reference(rawtext, "", nodes.literal(rawtext, label), refuri=body)], []
 
     def _cite_role(name, rawtext, text, lineno, inliner, options=None, content=None):
         """``:cite:`key``` -> the short citation, linked to where the work lives."""
         from chisurf.plugins.core.help.api.bibliography import (
-            bibliography, entry_url, short_citation,
+            bibliography,
+            entry_url,
+            short_citation,
         )
 
         entries = bibliography()
@@ -134,8 +135,11 @@ def _register_sphinx_roles() -> None:
         except Exception:  # pragma: no cover
             continue
 
-    for role_name, handler in (("src", _source_role), ("code-src", _source_role),
-                               ("cite", _cite_role)):
+    for role_name, handler in (
+        ("src", _source_role),
+        ("code-src", _source_role),
+        ("cite", _cite_role),
+    ):
         try:
             roles.register_local_role(role_name, handler)
         except Exception:  # pragma: no cover
@@ -362,7 +366,7 @@ def _style_admonitions(body: str) -> str:
         if match is None:
             out.append(body[position:])
             return "".join(out)
-        out.append(body[position: match.start()])
+        out.append(body[position : match.start()])
         tag = match.group("tag")
         inner, end = _matching_block(body, match.end(), tag)
         # docutils spells the kind as ``admonition-see-also``; the stylesheet
@@ -380,11 +384,9 @@ def _style_admonitions(body: str) -> str:
         title_match = _ADMONITION_TITLE.match(inner)
         if title_match:
             title = title_match.group("title").strip()
-            inner = inner[title_match.end():]
+            inner = inner[title_match.end() :]
         kind = f"admonition {classes}".strip()
-        heading = (
-            f'<p class="admonition-title">{title}</p>' if title else ""
-        )
+        heading = f'<p class="admonition-title">{title}</p>' if title else ""
         out.append(
             f'<table class="{kind}" width="100%" cellpadding="9" cellspacing="0" '
             f'border="0"><tr><td class="{kind}">{heading}{inner}</td></tr></table>'
@@ -410,7 +412,7 @@ def _matching_block(body: str, start: int, tag: str) -> tuple[str, int]:
         depth -= 1
         position = next_close.end()
         if depth == 0:
-            return body[start: next_close.start()], position
+            return body[start : next_close.start()], position
     return body[start:], position
 
 

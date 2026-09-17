@@ -15,6 +15,7 @@ are replaced here with tests of what the functions do.
 The polarization copy that also lived in this file is consolidated into
 ``test_group_polarization_any_size.py``.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,10 +38,9 @@ def _two_fit_group() -> FitGroup:
     """A two-dataset lifetime group with its parameters discovered."""
     x = np.linspace(0, 10, 100)
     group = FitGroup(
-        data=ExperimentDataCurveGroup([
-            DataCurve(x=x, y=np.exp(-x / (i + 1)), name=f"Dataset {i}")
-            for i in range(2)
-        ]),
+        data=ExperimentDataCurveGroup(
+            [DataCurve(x=x, y=np.exp(-x / (i + 1)), name=f"Dataset {i}") for i in range(2)]
+        ),
         model_class=LifetimeModel,
     )
     for fit in group.grouped_fits:
@@ -53,7 +53,10 @@ def test_nuisance_parameters_are_the_instrument_group():
     model = _two_fit_group().grouped_fits[0].model
     nuisance = _collect_group_nuisance_parameter_names(model)
     assert {"background", "scatter", "n0", "timeshift"} <= nuisance
-    assert not {p.name for p in model.parameters_all if p.canonical_id.startswith("lifetime.")} & nuisance
+    assert (
+        not {p.name for p in model.parameters_all if p.canonical_id.startswith("lifetime.")}
+        & nuisance
+    )
 
 
 def test_grouped_fits_auto_link_non_nuisance_parameters():
@@ -63,11 +66,9 @@ def test_grouped_fits_auto_link_non_nuisance_parameters():
     assert masters > 0 and followers > 0
 
     first, second = (f.model.parameters_all_dict for f in group.grouped_fits)
-    nuisance = _collect_group_nuisance_parameter_names(
-        group.grouped_fits[0].model
-    )
+    nuisance = _collect_group_nuisance_parameter_names(group.grouped_fits[0].model)
 
-    linked = {n for n, p in second.items() if getattr(p, 'is_linked', False)}
+    linked = {n for n, p in second.items() if getattr(p, "is_linked", False)}
     assert linked, "grouping linked nothing at all"
     assert linked.isdisjoint(nuisance)
     for name in linked:
@@ -123,7 +124,5 @@ def test_the_global_fit_dataset_cannot_be_removed():
 def test_restore_global_fit_is_a_registered_action():
     """The GUI reaches the restore through the action registry, by this name."""
     catalog = chisurf.core.actions.get_action_catalog()
-    names = set(catalog) if isinstance(catalog, dict) else {
-        a.get('name', a) for a in catalog
-    }
-    assert 'dataset.restore_global_fit' in names
+    names = set(catalog) if isinstance(catalog, dict) else {a.get("name", a) for a in catalog}
+    assert "dataset.restore_global_fit" in names

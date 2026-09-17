@@ -12,8 +12,7 @@ from chisurf.core.fitting.parameter import FittingParameter
 
 
 def test_fitting_parameter_port_sync():
-    p = FittingParameter(name="test_p", value=10.0, lb=0.0, ub=20.0,
-                         bounds_on=True)
+    p = FittingParameter(name="test_p", value=10.0, lb=0.0, ub=20.0, bounds_on=True)
 
     # Check initial sync
     assert p.value == 10.0

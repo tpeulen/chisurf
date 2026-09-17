@@ -59,9 +59,7 @@ def _modules() -> list[pathlib.Path]:
     return sorted(p for p in CHIMOL.rglob("*.py") if "test" not in p.parts)
 
 
-@pytest.mark.parametrize(
-    "module", _modules(), ids=lambda p: str(p.relative_to(CHIMOL))
-)
+@pytest.mark.parametrize("module", _modules(), ids=lambda p: str(p.relative_to(CHIMOL)))
 def test_no_new_numba_importer(module: pathlib.Path):
     relative = str(module.relative_to(CHIMOL))
     if relative in ALLOWED:
@@ -80,7 +78,8 @@ def test_the_allow_list_holds_only_files_that_still_need_it():
     and the next session would go looking for a kernel that is not there.
     """
     stale = [
-        name for name in sorted(ALLOWED)
+        name
+        for name in sorted(ALLOWED)
         if not (CHIMOL / name).exists() or not _imports_numba(CHIMOL / name)
     ]
     assert not stale, f"strike these from ALLOWED: {stale}"

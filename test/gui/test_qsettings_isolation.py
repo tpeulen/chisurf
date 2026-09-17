@@ -27,10 +27,17 @@ def _unpatched_user_preferences_root() -> pathlib.Path:
     redirection covers the native form too — so the question has to go to the
     Qt class the subclass replaced.
     """
-    native = QtCore.QSettings.__mro__[1] if hasattr(QtCore.QSettings, "_chisurf_qa_root") else QtCore.QSettings
+    native = (
+        QtCore.QSettings.__mro__[1]
+        if hasattr(QtCore.QSettings, "_chisurf_qa_root")
+        else QtCore.QSettings
+    )
     return pathlib.Path(
         native(
-            native.NativeFormat, native.UserScope, "ChiSurf", "MainWindow",
+            native.NativeFormat,
+            native.UserScope,
+            "ChiSurf",
+            "MainWindow",
         ).fileName()
     ).parent
 

@@ -1,7 +1,6 @@
 """Headless (Qt-free) tests for the Rotate/Translate-Trajectory view-model."""
 
 import numpy as np
-import pytest
 
 
 def _read(path):
@@ -10,7 +9,7 @@ def _read(path):
     from chisurf.core.structure import trajectory_data as md
 
     xyz, _, _ = read_dcd(path)
-    return md.Trajectory(xyz, time=read_time_axis(path)[:len(xyz)])
+    return md.Trajectory(xyz, time=read_time_axis(path)[: len(xyz)])
 
 
 def _tiny_trajectory(path: str, n_frames: int = 4, spacing: float = 1.0) -> str:
@@ -37,8 +36,9 @@ def _tiny_trajectory(path: str, n_frames: int = 4, spacing: float = 1.0) -> str:
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
+
     write_dcd(path, xyz, delta=spacing)
-    pdb = str(path).replace('.dcd', '.pdb')
+    pdb = str(path).replace(".dcd", ".pdb")
     trajectory[0].save_pdb(pdb)
     return pdb
 

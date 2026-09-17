@@ -1,46 +1,48 @@
+import json
 import os
-import sys
 import pathlib
 import subprocess
+import sys
 import tempfile
-import yaml
 import threading
-import json
-from typing import Optional, Dict, Any, List, Tuple
 
 import numpy as np
-from qtpy import QtWidgets, QtCore, QtGui
+import yaml
 
-import chisurf.core.support.decorators
-import chisurf.gui.decorators
-import chisurf.gui.widgets.settings_editor
-import chisurf.core.fluorescence.tcspc.convolve
-import chisurf.core.fluorescence.general
-import chisurf.core.fio as io
-
-from chisurf.gui import dialogs
 # The figure is embedded through its Qt canvas, which needs no global backend.
 # This module used to call matplotlib.use('QtAgg') on import, which switched
 # pyplot for the whole process: a later plt.show() in the LLTF fitter then ran
 # a blocking Qt event loop instead of doing nothing.
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.plugins.fluorescence_decay.lltf.core.settings import get_default_settings
+import chisurf.core.fluorescence.general
+import chisurf.core.fluorescence.tcspc.convolve
+import chisurf.core.support.decorators
+import chisurf.gui.decorators
+import chisurf.gui.widgets.settings_editor
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.plugins.fluorescence_decay.lltf.core.settings import get_default_settings
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 LLTF_MODULE_PATH = "chisurf.plugins.fluorescence_decay.lltf.core"
+
 
 class QTextLogger(QtCore.QObject):
     """
     A QObject that you can assign to sys.stdout. It emits newText(str)
     whenever someone .write()s to it—and in the slot we update the QTextEdit.
     """
+
     newText = QtCore.Signal(str)
 
     def __init__(self, text_edit: QtWidgets.QPlainTextEdit):
@@ -65,9 +67,9 @@ class QTextLogger(QtCore.QObject):
         cursor.movePosition(QtGui.QTextCursor.End)
         self.text_edit.setTextCursor(cursor)
 
-        if '\r' in text:
+        if "\r" in text:
             # strip trailing newline, split off the overwritten line
-            new_part = text.strip('\r\n')
+            new_part = text.strip("\r\n")
             # remove the last line entirely:
             #   move cursor to end → select last block → remove
             cursor.select(QtGui.QTextCursor.BlockUnderCursor)
@@ -78,9 +80,7 @@ class QTextLogger(QtCore.QObject):
             self.text_edit.insertPlainText(text)
 
         # autoscroll
-        self.text_edit.verticalScrollBar().setValue(
-            self.text_edit.verticalScrollBar().maximum()
-        )
+        self.text_edit.verticalScrollBar().setValue(self.text_edit.verticalScrollBar().maximum())
 
 
 class LLTFSettingsEditor(chisurf.gui.widgets.settings_editor.SettingsEditor):
@@ -144,7 +144,7 @@ class ProcessOutputWidget(QtWidgets.QWidget):
 
         layout.addLayout(button_layout)
 
-    def run_process(self, cmd: List[str], cwd: Optional[str] = None):
+    def run_process(self, cmd: list[str], cwd: str | None = None):
         """
         Run a process and display its output.
 
@@ -177,14 +177,11 @@ class ProcessOutputWidget(QtWidgets.QWidget):
                 text=True,
                 cwd=cwd,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
             )
 
             # Start a thread to read the output
-            self.output_thread = threading.Thread(
-                target=self._read_output,
-                daemon=True
-            )
+            self.output_thread = threading.Thread(target=self._read_output, daemon=True)
             self.output_thread.start()
 
         except Exception as e:
@@ -199,7 +196,7 @@ class ProcessOutputWidget(QtWidgets.QWidget):
             if self.logger is None:
                 self.logger = QTextLogger(self.output_text)
 
-            for line in iter(self.process.stdout.readline, ''):
+            for line in iter(self.process.stdout.readline, ""):
                 if not line:
                     break
                 # Write directly to the logger
@@ -214,7 +211,7 @@ class ProcessOutputWidget(QtWidgets.QWidget):
                 self,
                 "_process_finished",
                 QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(int, self.process.returncode)
+                QtCore.Q_ARG(int, self.process.returncode),
             )
 
         except Exception as e:
@@ -222,10 +219,7 @@ class ProcessOutputWidget(QtWidgets.QWidget):
             if self.logger:
                 self.logger.write(f"Error reading process output: {str(e)}\n")
             QtCore.QMetaObject.invokeMethod(
-                self,
-                "_process_finished",
-                QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(int, -1)
+                self, "_process_finished", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(int, -1)
             )
 
     @QtCore.Slot(int)
@@ -553,7 +547,7 @@ class LLTFGUIWizard(ChisurfDockTool):
             print(f"Failed to load LLTF default settings: {exc}")
 
         if not os.path.exists(config_file):
-            with open(config_file, 'w') as f:
+            with open(config_file, "w") as f:
                 yaml.dump(default_config, f, default_flow_style=False)
 
         self.config_file = config_file
@@ -566,9 +560,9 @@ class LLTFGUIWizard(ChisurfDockTool):
         # Open file dialog to select decay file
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
-            'Open Decay Data File',
+            "Open Decay Data File",
             str(chisurf.working_path),
-            'Data Files (*.dat *.txt *.csv);;All Files (*.*)'
+            "Data Files (*.dat *.txt *.csv);;All Files (*.*)",
         )
         decay_file = filenames[0] if filenames else None
 
@@ -592,9 +586,9 @@ class LLTFGUIWizard(ChisurfDockTool):
         # Open file dialog to select IRF file
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
-            'Open IRF Data File',
+            "Open IRF Data File",
             str(chisurf.working_path),
-            'Data Files (*.dat *.txt *.csv);;All Files (*.*)'
+            "Data Files (*.dat *.txt *.csv);;All Files (*.*)",
         )
         irf_file = filenames[0] if filenames else None
 
@@ -630,9 +624,7 @@ class LLTFGUIWizard(ChisurfDockTool):
         """
         # Open directory dialog to select output directory
         output_dir = QtWidgets.QFileDialog.getExistingDirectory(
-            self,
-            'Select Output Directory',
-            str(chisurf.working_path)
+            self, "Select Output Directory", str(chisurf.working_path)
         )
 
         # Update working path if a directory was selected
@@ -661,13 +653,11 @@ class LLTFGUIWizard(ChisurfDockTool):
         Run the LTF analysis.
         """
         if not self.decay_file or not self.irf_file:
-            dialogs.warning(
-                self, "Warning", "Please load decay and IRF data first."
-            )
+            dialogs.warning(self, "Warning", "Please load decay and IRF data first.")
             return
 
         # Get output directory
-        if not hasattr(self, 'output_dir') or not self.output_dir:
+        if not hasattr(self, "output_dir") or not self.output_dir:
             # Use decay file directory as default
             self.output_dir = str(pathlib.Path(self.decay_file).parent)
             self.output_dir_edit.setText(self.output_dir)
@@ -692,12 +682,15 @@ class LLTFGUIWizard(ChisurfDockTool):
         # Build command
         cmd = [
             sys.executable,
-            "-m", LLTF_MODULE_PATH,
+            "-m",
+            LLTF_MODULE_PATH,
             "fit",
             self.decay_file,
             self.irf_file,
-            "-sp", self.output_dir,
-            "-o", self.output_file
+            "-sp",
+            self.output_dir,
+            "-o",
+            self.output_file,
         ]
 
         # Add options
@@ -731,7 +724,7 @@ class LLTFGUIWizard(ChisurfDockTool):
 
         try:
             # Load the fit results from the JSON file
-            with open(self.output_file, 'r') as f:
+            with open(self.output_file) as f:
                 self.last_fit_result = json.load(f)
 
             # Display the fit results
@@ -741,30 +734,30 @@ class LLTFGUIWizard(ChisurfDockTool):
             html = "<h3>Fit Results</h3>"
 
             # Add lifetimes
-            if 'lifetimes' in self.last_fit_result:
+            if "lifetimes" in self.last_fit_result:
                 html += "<h4>Lifetimes</h4><table border='1' cellpadding='4'>"
                 html += "<tr><th>Component</th><th>Amplitude</th><th>Lifetime (ns)</th></tr>"
 
-                for i, lifetime in enumerate(self.last_fit_result['lifetimes']):
-                    html += f"<tr><td>{i+1}</td><td>{lifetime['amplitude']:.3f}</td><td>{lifetime['lifetime']:.3f}</td></tr>"
+                for i, lifetime in enumerate(self.last_fit_result["lifetimes"]):
+                    html += f"<tr><td>{i + 1}</td><td>{lifetime['amplitude']:.3f}</td><td>{lifetime['lifetime']:.3f}</td></tr>"
 
                 html += "</table>"
 
             # Add chi-square
-            if 'chi_square' in self.last_fit_result:
+            if "chi_square" in self.last_fit_result:
                 html += f"<p><b>Chi-square:</b> {self.last_fit_result['chi_square']:.3f}</p>"
 
             # Add reduced chi-square
-            if 'reduced_chi_square' in self.last_fit_result:
+            if "reduced_chi_square" in self.last_fit_result:
                 html += f"<p><b>Reduced chi-square:</b> {self.last_fit_result['reduced_chi_square']:.3f}</p>"
 
             # Add time range
-            if 'time_range' in self.last_fit_result:
-                time_range = self.last_fit_result['time_range']
+            if "time_range" in self.last_fit_result:
+                time_range = self.last_fit_result["time_range"]
                 html += f"<p><b>Time range:</b> {time_range['start']:.3f} - {time_range['stop']:.3f} ns</p>"
 
             # Add number of lifetimes
-            if 'n_lifetimes' in self.last_fit_result:
+            if "n_lifetimes" in self.last_fit_result:
                 html += f"<p><b>Number of lifetimes:</b> {self.last_fit_result['n_lifetimes']}</p>"
 
             # Set the HTML content
@@ -783,11 +776,11 @@ class LLTFGUIWizard(ChisurfDockTool):
         """
         Create a plot of the fit results using matplotlib.
         """
-        if not hasattr(self, 'last_fit_result') or not self.last_fit_result:
+        if not hasattr(self, "last_fit_result") or not self.last_fit_result:
             return
 
         # Check if model data is available
-        if 'model' not in self.last_fit_result:
+        if "model" not in self.last_fit_result:
             print("No model data available for plotting")
             return
 
@@ -799,52 +792,46 @@ class LLTFGUIWizard(ChisurfDockTool):
         ax2 = self.figure.add_subplot(212, sharex=ax1)  # Bottom subplot for residuals
 
         # Get model data
-        model_time = self.last_fit_result['model']['time']
-        model_decay = self.last_fit_result['model']['decay']
+        model_time = self.last_fit_result["model"]["time"]
+        model_decay = self.last_fit_result["model"]["decay"]
 
         # Load the original data files to get the full decay and IRF
         try:
             # Load decay data
             decay_data = np.genfromtxt(
-                self.decay_file,
-                delimiter=None,
-                skip_header=0,
-                usecols=[0, 1]
+                self.decay_file, delimiter=None, skip_header=0, usecols=[0, 1]
             )
             time_axis = decay_data[:, 0]
             decay = decay_data[:, 1]
 
             # Load IRF data
-            irf_data = np.genfromtxt(
-                self.irf_file,
-                delimiter=None,
-                skip_header=0,
-                usecols=[0, 1]
-            )
+            irf_data = np.genfromtxt(self.irf_file, delimiter=None, skip_header=0, usecols=[0, 1])
             irf = irf_data[:, 1]
 
             # Get time range
-            time_range = self.last_fit_result['time_range']
-            start_idx = time_range['start_idx']
-            stop_idx = time_range['stop_idx']
+            time_range = self.last_fit_result["time_range"]
+            start_idx = time_range["start_idx"]
+            stop_idx = time_range["stop_idx"]
 
             # Plot decay data
-            ax1.semilogy(time_axis, decay, 'b-', label='Data', alpha=0.7)
+            ax1.semilogy(time_axis, decay, "b-", label="Data", alpha=0.7)
 
             # Plot model
-            ax1.semilogy(model_time, model_decay, 'r-', label='Fit', linewidth=2)
+            ax1.semilogy(model_time, model_decay, "r-", label="Fit", linewidth=2)
 
             # Plot IRF (scaled to the maximum of the decay data in the fit range)
             max_decay_in_range = np.max(decay[start_idx:stop_idx])
             max_irf = np.max(irf)
-            ax1.semilogy(time_axis, irf * max_decay_in_range / max_irf, 'g-', label='IRF', alpha=0.5)
+            ax1.semilogy(
+                time_axis, irf * max_decay_in_range / max_irf, "g-", label="IRF", alpha=0.5
+            )
 
             # Add vertical lines for analysis range
-            ax1.axvline(x=time_axis[start_idx], color='k', linestyle='--', alpha=0.5)
-            ax1.axvline(x=time_axis[stop_idx-1], color='k', linestyle='--', alpha=0.5)
+            ax1.axvline(x=time_axis[start_idx], color="k", linestyle="--", alpha=0.5)
+            ax1.axvline(x=time_axis[stop_idx - 1], color="k", linestyle="--", alpha=0.5)
 
             # Set labels and legend
-            ax1.set_ylabel('Counts')
+            ax1.set_ylabel("Counts")
             ax1.legend()
             ax1.grid(True, alpha=0.3)
 
@@ -854,30 +841,37 @@ class LLTFGUIWizard(ChisurfDockTool):
             weighted_residuals = residuals * weights
 
             # Plot residuals
-            ax2.plot(model_time, weighted_residuals, 'b-')
-            ax2.axhline(y=0, color='k', linestyle='-', alpha=0.5)
+            ax2.plot(model_time, weighted_residuals, "b-")
+            ax2.axhline(y=0, color="k", linestyle="-", alpha=0.5)
 
             # Add vertical lines for analysis range
-            ax2.axvline(x=time_axis[start_idx], color='k', linestyle='--', alpha=0.5)
-            ax2.axvline(x=time_axis[stop_idx-1], color='k', linestyle='--', alpha=0.5)
+            ax2.axvline(x=time_axis[start_idx], color="k", linestyle="--", alpha=0.5)
+            ax2.axvline(x=time_axis[stop_idx - 1], color="k", linestyle="--", alpha=0.5)
 
             # Set labels
-            ax2.set_xlabel('Time (ns)')
-            ax2.set_ylabel('Weighted Residuals')
+            ax2.set_xlabel("Time (ns)")
+            ax2.set_ylabel("Weighted Residuals")
             ax2.grid(True, alpha=0.3)
 
             # Add fit information
-            n_lifetimes = self.last_fit_result['n_lifetimes']
-            chi_square = self.last_fit_result['reduced_chi_square']
+            self.last_fit_result["n_lifetimes"]
+            chi_square = self.last_fit_result["reduced_chi_square"]
 
             info_text = f"χ² = {chi_square:.3f}\n"
-            for i, lifetime in enumerate(self.last_fit_result['lifetimes']):
-                info_text += f"τ{i+1} = {lifetime['lifetime']:.3f} ns, A{i+1} = {lifetime['amplitude']:.3f}\n"
+            for i, lifetime in enumerate(self.last_fit_result["lifetimes"]):
+                info_text += f"τ{i + 1} = {lifetime['lifetime']:.3f} ns, A{i + 1} = {lifetime['amplitude']:.3f}\n"
 
             # Add text box with fit information
-            props = dict(boxstyle='round', facecolor='white', alpha=0.7)
-            ax1.text(0.02, 0.98, info_text, transform=ax1.transAxes, 
-                    verticalalignment='top', bbox=props, fontsize=9)
+            props = dict(boxstyle="round", facecolor="white", alpha=0.7)
+            ax1.text(
+                0.02,
+                0.98,
+                info_text,
+                transform=ax1.transAxes,
+                verticalalignment="top",
+                bbox=props,
+                fontsize=9,
+            )
 
             # Adjust layout
             self.figure.tight_layout()

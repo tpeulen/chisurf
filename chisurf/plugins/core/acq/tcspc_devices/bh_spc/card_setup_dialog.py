@@ -5,17 +5,30 @@ This module provides a dialog for configuring the BH SPC card parameters.
 It allows users to set various parameters of the card, organized into logical groups.
 """
 
-import os
 import json
-from qtpy.QtWidgets import (
-    QDialog, QTabWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QPushButton, QLabel, QSpinBox, QDoubleSpinBox, QComboBox,
-    QCheckBox, QGroupBox, QDialogButtonBox, QFileDialog, QWidget,
-)
-from qtpy.QtCore import Qt
 
-from .wrapper import BHSPC, ParID, SPCMError, InitStatus
+from qtpy.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
 from chisurf.gui import dialogs
+
+from .wrapper import InitStatus, ParID, SPCMError
+
 
 class ParamWidget:
     """Base class for parameter widgets."""
@@ -107,7 +120,9 @@ class IntParamWidget(ParamWidget):
 class FloatParamWidget(ParamWidget):
     """Widget for float parameters."""
 
-    def __init__(self, label, param_id, device, mod_no=0, min_val=0.0, max_val=100.0, step=0.1, decimals=2):
+    def __init__(
+        self, label, param_id, device, mod_no=0, min_val=0.0, max_val=100.0, step=0.1, decimals=2
+    ):
         """Initialize the float parameter widget.
 
         Args:
@@ -218,7 +233,9 @@ class BHSPCCardSetupDialog(QDialog):
         self.create_mode_tab()
 
         # Create buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply)
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply
+        )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         button_box.button(QDialogButtonBox.Apply).clicked.connect(self.apply_settings)
@@ -242,10 +259,56 @@ class BHSPCCardSetupDialog(QDialog):
         layout = QGridLayout(tab)
 
         # Add CFD parameters
-        self.add_param_widget(layout, 0, 0, FloatParamWidget("CFD Limit Low (mV)", ParID.CFD_LIMIT_LOW, self.device, self.mod_no, -1000.0, 1000.0, 10.0))
-        self.add_param_widget(layout, 1, 0, FloatParamWidget("CFD Limit High (mV)", ParID.CFD_LIMIT_HIGH, self.device, self.mod_no, -1000.0, 1000.0, 10.0))
-        self.add_param_widget(layout, 2, 0, FloatParamWidget("CFD Zero Cross Level (mV)", ParID.CFD_ZC_LEVEL, self.device, self.mod_no, -100.0, 100.0, 1.0))
-        self.add_param_widget(layout, 3, 0, FloatParamWidget("CFD Holdoff (ns)", ParID.CFD_HOLDOFF, self.device, self.mod_no, 0.0, 100.0, 1.0))
+        self.add_param_widget(
+            layout,
+            0,
+            0,
+            FloatParamWidget(
+                "CFD Limit Low (mV)",
+                ParID.CFD_LIMIT_LOW,
+                self.device,
+                self.mod_no,
+                -1000.0,
+                1000.0,
+                10.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            1,
+            0,
+            FloatParamWidget(
+                "CFD Limit High (mV)",
+                ParID.CFD_LIMIT_HIGH,
+                self.device,
+                self.mod_no,
+                -1000.0,
+                1000.0,
+                10.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            2,
+            0,
+            FloatParamWidget(
+                "CFD Zero Cross Level (mV)",
+                ParID.CFD_ZC_LEVEL,
+                self.device,
+                self.mod_no,
+                -100.0,
+                100.0,
+                1.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            3,
+            0,
+            FloatParamWidget(
+                "CFD Holdoff (ns)", ParID.CFD_HOLDOFF, self.device, self.mod_no, 0.0, 100.0, 1.0
+            ),
+        )
 
         self.tab_widget.addTab(tab, "CFD")
 
@@ -255,10 +318,50 @@ class BHSPCCardSetupDialog(QDialog):
         layout = QGridLayout(tab)
 
         # Add Sync parameters
-        self.add_param_widget(layout, 0, 0, FloatParamWidget("Sync Zero Cross Level (mV)", ParID.SYNC_ZC_LEVEL, self.device, self.mod_no, -100.0, 100.0, 1.0))
-        self.add_param_widget(layout, 1, 0, IntParamWidget("Sync Frequency Divider", ParID.SYNC_FREQ_DIV, self.device, self.mod_no, 1, 16, 1))
-        self.add_param_widget(layout, 2, 0, FloatParamWidget("Sync Holdoff (ns)", ParID.SYNC_HOLDOFF, self.device, self.mod_no, 0.0, 100.0, 1.0))
-        self.add_param_widget(layout, 3, 0, FloatParamWidget("Sync Threshold (mV)", ParID.SYNC_THRESHOLD, self.device, self.mod_no, -1000.0, 1000.0, 10.0))
+        self.add_param_widget(
+            layout,
+            0,
+            0,
+            FloatParamWidget(
+                "Sync Zero Cross Level (mV)",
+                ParID.SYNC_ZC_LEVEL,
+                self.device,
+                self.mod_no,
+                -100.0,
+                100.0,
+                1.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            1,
+            0,
+            IntParamWidget(
+                "Sync Frequency Divider", ParID.SYNC_FREQ_DIV, self.device, self.mod_no, 1, 16, 1
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            2,
+            0,
+            FloatParamWidget(
+                "Sync Holdoff (ns)", ParID.SYNC_HOLDOFF, self.device, self.mod_no, 0.0, 100.0, 1.0
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            3,
+            0,
+            FloatParamWidget(
+                "Sync Threshold (mV)",
+                ParID.SYNC_THRESHOLD,
+                self.device,
+                self.mod_no,
+                -1000.0,
+                1000.0,
+                10.0,
+            ),
+        )
 
         self.tab_widget.addTab(tab, "Sync")
 
@@ -268,15 +371,69 @@ class BHSPCCardSetupDialog(QDialog):
         layout = QGridLayout(tab)
 
         # Add TAC parameters
-        self.add_param_widget(layout, 0, 0, FloatParamWidget("TAC Range (ns)", ParID.TAC_RANGE, self.device, self.mod_no, 0.0, 1000.0, 10.0))
+        self.add_param_widget(
+            layout,
+            0,
+            0,
+            FloatParamWidget(
+                "TAC Range (ns)", ParID.TAC_RANGE, self.device, self.mod_no, 0.0, 1000.0, 10.0
+            ),
+        )
 
         tac_gain_options = {1: "1", 2: "2", 4: "4", 8: "8"}
-        self.add_param_widget(layout, 1, 0, ComboParamWidget("TAC Gain", ParID.TAC_GAIN, self.device, self.mod_no, tac_gain_options))
+        self.add_param_widget(
+            layout,
+            1,
+            0,
+            ComboParamWidget(
+                "TAC Gain", ParID.TAC_GAIN, self.device, self.mod_no, tac_gain_options
+            ),
+        )
 
-        self.add_param_widget(layout, 2, 0, FloatParamWidget("TAC Offset (%)", ParID.TAC_OFFSET, self.device, self.mod_no, 0.0, 100.0, 1.0))
-        self.add_param_widget(layout, 3, 0, FloatParamWidget("TAC Limit Low (%)", ParID.TAC_LIMIT_LOW, self.device, self.mod_no, 0.0, 100.0, 1.0))
-        self.add_param_widget(layout, 4, 0, FloatParamWidget("TAC Limit High (%)", ParID.TAC_LIMIT_HIGH, self.device, self.mod_no, 0.0, 100.0, 1.0))
-        self.add_param_widget(layout, 5, 0, FloatParamWidget("TAC Enable Hold (ns)", ParID.TAC_ENABLE_HOLD, self.device, self.mod_no, 0.0, 100.0, 1.0))
+        self.add_param_widget(
+            layout,
+            2,
+            0,
+            FloatParamWidget(
+                "TAC Offset (%)", ParID.TAC_OFFSET, self.device, self.mod_no, 0.0, 100.0, 1.0
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            3,
+            0,
+            FloatParamWidget(
+                "TAC Limit Low (%)", ParID.TAC_LIMIT_LOW, self.device, self.mod_no, 0.0, 100.0, 1.0
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            4,
+            0,
+            FloatParamWidget(
+                "TAC Limit High (%)",
+                ParID.TAC_LIMIT_HIGH,
+                self.device,
+                self.mod_no,
+                0.0,
+                100.0,
+                1.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            5,
+            0,
+            FloatParamWidget(
+                "TAC Enable Hold (ns)",
+                ParID.TAC_ENABLE_HOLD,
+                self.device,
+                self.mod_no,
+                0.0,
+                100.0,
+                1.0,
+            ),
+        )
 
         self.tab_widget.addTab(tab, "TAC")
 
@@ -286,18 +443,92 @@ class BHSPCCardSetupDialog(QDialog):
         layout = QGridLayout(tab)
 
         # Add Timing parameters
-        self.add_param_widget(layout, 0, 0, FloatParamWidget("Collection Time (s)", ParID.COLLECT_TIME, self.device, self.mod_no, 0.001, 1000.0, 1.0))
-        self.add_param_widget(layout, 1, 0, FloatParamWidget("Display Time (s)", ParID.DISPLAY_TIME, self.device, self.mod_no, 0.001, 1000.0, 1.0))
-        self.add_param_widget(layout, 2, 0, FloatParamWidget("Repeat Time (s)", ParID.REPEAT_TIME, self.device, self.mod_no, 0.001, 1000.0, 1.0))
+        self.add_param_widget(
+            layout,
+            0,
+            0,
+            FloatParamWidget(
+                "Collection Time (s)",
+                ParID.COLLECT_TIME,
+                self.device,
+                self.mod_no,
+                0.001,
+                1000.0,
+                1.0,
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            1,
+            0,
+            FloatParamWidget(
+                "Display Time (s)", ParID.DISPLAY_TIME, self.device, self.mod_no, 0.001, 1000.0, 1.0
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            2,
+            0,
+            FloatParamWidget(
+                "Repeat Time (s)", ParID.REPEAT_TIME, self.device, self.mod_no, 0.001, 1000.0, 1.0
+            ),
+        )
 
         stop_options = {0: "No", 1: "Yes"}
-        self.add_param_widget(layout, 3, 0, ComboParamWidget("Stop on Time", ParID.STOP_ON_TIME, self.device, self.mod_no, stop_options))
-        self.add_param_widget(layout, 4, 0, ComboParamWidget("Stop on Overflow", ParID.STOP_ON_OVFL, self.device, self.mod_no, stop_options))
+        self.add_param_widget(
+            layout,
+            3,
+            0,
+            ComboParamWidget(
+                "Stop on Time", ParID.STOP_ON_TIME, self.device, self.mod_no, stop_options
+            ),
+        )
+        self.add_param_widget(
+            layout,
+            4,
+            0,
+            ComboParamWidget(
+                "Stop on Overflow", ParID.STOP_ON_OVFL, self.device, self.mod_no, stop_options
+            ),
+        )
 
-        self.add_param_widget(layout, 5, 0, FloatParamWidget("Rate Count Time (s)", ParID.RATE_COUNT_TIME, self.device, self.mod_no, 0.001, 10.0, 0.1))
+        self.add_param_widget(
+            layout,
+            5,
+            0,
+            FloatParamWidget(
+                "Rate Count Time (s)",
+                ParID.RATE_COUNT_TIME,
+                self.device,
+                self.mod_no,
+                0.001,
+                10.0,
+                0.1,
+            ),
+        )
 
-        macro_time_options = {0: "25 ns", 1: "50 ns", 2: "100 ns", 3: "200 ns", 4: "400 ns", 5: "800 ns", 6: "1.6 µs", 7: "3.2 µs"}
-        self.add_param_widget(layout, 6, 0, ComboParamWidget("Macro Time Clock", ParID.MACRO_TIME_CLK, self.device, self.mod_no, macro_time_options))
+        macro_time_options = {
+            0: "25 ns",
+            1: "50 ns",
+            2: "100 ns",
+            3: "200 ns",
+            4: "400 ns",
+            5: "800 ns",
+            6: "1.6 µs",
+            7: "3.2 µs",
+        }
+        self.add_param_widget(
+            layout,
+            6,
+            0,
+            ComboParamWidget(
+                "Macro Time Clock",
+                ParID.MACRO_TIME_CLK,
+                self.device,
+                self.mod_no,
+                macro_time_options,
+            ),
+        )
 
         self.tab_widget.addTab(tab, "Timing")
 
@@ -342,7 +573,7 @@ class BHSPCCardSetupDialog(QDialog):
         """Detect available cards and update the UI."""
         if not self.device:
             return
-            
+
         # Clear the current cards layout
         while self.cards_layout.count():
             item = self.cards_layout.takeAt(0)
@@ -362,9 +593,9 @@ class BHSPCCardSetupDialog(QDialog):
             # Create checkboxes for each card
             self.card_checkboxes = []
             for card in self.available_cards:
-                mod_no = card['module_number']
-                status = card['status']
-                active = card['active']
+                mod_no = card["module_number"]
+                status = card["status"]
+                active = card["active"]
 
                 checkbox = QCheckBox(f"Module {mod_no}: {status.message()}")
                 checkbox.setChecked(active)
@@ -396,13 +627,43 @@ class BHSPCCardSetupDialog(QDialog):
 
         # Add Mode parameters
         mode_options = {0: "Histogramming", 1: "FIFO", 2: "Scan", 3: "Imaging"}
-        self.add_param_widget(layout, 0, 0, ComboParamWidget("Mode", ParID.MODE, self.device, self.mod_no, mode_options))
+        self.add_param_widget(
+            layout,
+            0,
+            0,
+            ComboParamWidget("Mode", ParID.MODE, self.device, self.mod_no, mode_options),
+        )
 
         routing_options = {0: "Off", 1: "4 Bits", 2: "16 Bits"}
-        self.add_param_widget(layout, 1, 0, ComboParamWidget("Routing Mode", ParID.ROUTING_MODE, self.device, self.mod_no, routing_options))
+        self.add_param_widget(
+            layout,
+            1,
+            0,
+            ComboParamWidget(
+                "Routing Mode", ParID.ROUTING_MODE, self.device, self.mod_no, routing_options
+            ),
+        )
 
-        adc_resolution_options = {6: "6 Bits", 8: "8 Bits", 10: "10 Bits", 12: "12 Bits", 14: "14 Bits", 16: "16 Bits"}
-        self.add_param_widget(layout, 2, 0, ComboParamWidget("ADC Resolution", ParID.ADC_RESOLUTION, self.device, self.mod_no, adc_resolution_options))
+        adc_resolution_options = {
+            6: "6 Bits",
+            8: "8 Bits",
+            10: "10 Bits",
+            12: "12 Bits",
+            14: "14 Bits",
+            16: "16 Bits",
+        }
+        self.add_param_widget(
+            layout,
+            2,
+            0,
+            ComboParamWidget(
+                "ADC Resolution",
+                ParID.ADC_RESOLUTION,
+                self.device,
+                self.mod_no,
+                adc_resolution_options,
+            ),
+        )
 
         self.tab_widget.addTab(tab, "Mode")
 
@@ -473,7 +734,7 @@ class BHSPCCardSetupDialog(QDialog):
 
         try:
             # Write the settings to the file
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(settings, f, indent=4)
 
             dialogs.information(self, "Success", f"Settings saved to {file_path}")
@@ -491,7 +752,7 @@ class BHSPCCardSetupDialog(QDialog):
 
         try:
             # Read the settings from the file
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 settings = json.load(f)
 
             # Apply the settings to the widgets
@@ -505,15 +766,15 @@ class BHSPCCardSetupDialog(QDialog):
             # Apply the settings to the device
             if self.write_all_params():
                 dialogs.information(
-                    self, 
-                    "Success", 
-                    f"Settings loaded from {file_path}\n{success_count} parameters updated"
+                    self,
+                    "Success",
+                    f"Settings loaded from {file_path}\n{success_count} parameters updated",
                 )
             else:
                 dialogs.warning(
-                    self, 
-                    "Warning", 
-                    f"Settings loaded from {file_path}, but some could not be applied to the device"
+                    self,
+                    "Warning",
+                    f"Settings loaded from {file_path}, but some could not be applied to the device",
                 )
         except Exception as e:
             dialogs.error(self, "Error", f"Error loading settings: {e}")
@@ -521,7 +782,7 @@ class BHSPCCardSetupDialog(QDialog):
     def showEvent(self, event):
         """Handle the show event to read parameters."""
         super().showEvent(event)
-        
+
         if self.device:
             # Detect cards
             self.detect_cards()

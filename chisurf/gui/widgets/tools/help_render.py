@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +23,11 @@ __all__ = ["render_help", "show_in_browser"]
 
 def render_help(
     text: str,
-    path: Optional[pathlib.Path] = None,
+    path: pathlib.Path | None = None,
     *,
     widget=None,
     font_size: float = 10.5,
-) -> Optional[str]:
+) -> str | None:
     """Return *text* as themed HTML, or ``None`` when it cannot be rendered.
 
     Parameters
@@ -98,7 +97,7 @@ def render_help(
         return None
 
 
-def show_in_browser(browser, text: str, path: Optional[pathlib.Path] = None) -> None:
+def show_in_browser(browser, text: str, path: pathlib.Path | None = None) -> None:
     """Put a help page into *browser*, rendered, with a safe fallback.
 
     Falls back to Qt's own Markdown and then to plain text, so a renderer

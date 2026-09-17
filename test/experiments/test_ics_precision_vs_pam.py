@@ -25,6 +25,7 @@ its meshgrid), ChiSurf with xi along *columns*. Both flatten to the same
 vector -- lag ``(xi, psi)`` at index ``xi + size * psi`` -- so the covariance
 orderings agree and only 2-D grids need a transpose to line up.
 """
+
 from __future__ import annotations
 
 import math
@@ -62,21 +63,31 @@ def scalars():
     alpha = WZ / WR
     gamma = P.gamma_factors(False)
     volume = (NX * PS + 2) * (NY * PS + 2) * ((NX + NY) / 2 * PS)
-    omega = math.pi ** 1.5 * WR ** 3 * alpha
-    beta = 1.0 / alpha ** 2
-    tau_c = WR ** 2 / (4.0 * D)
+    omega = math.pi**1.5 * WR**3 * alpha
+    beta = 1.0 / alpha**2
+    tau_c = WR**2 / (4.0 * D)
     rise = math.sqrt(1.0 + beta * TP / tau_c) - 1.0
     norm = beta + rise
-    q = BRIGHTNESS * 4 * tau_c ** 2 * rise * (
-        beta * (1 + TP / tau_c)
-        * P._atanh_over_argument((1.0 - beta) * (rise / norm) ** 2) / norm
-        - 1.0
-    ) / (TP * beta)
+    q = (
+        BRIGHTNESS
+        * 4
+        * tau_c**2
+        * rise
+        * (
+            beta
+            * (1 + TP / tau_c)
+            * P._atanh_over_argument((1.0 - beta) * (rise / norm) ** 2)
+            / norm
+            - 1.0
+        )
+        / (TP * beta)
+    )
     n_apparent = N_PARTICLES * BRIGHTNESS * TP / q
     m = n_apparent * omega / volume
     f = n_apparent * q * omega * gamma[0] / volume
-    return dict(alpha=alpha, gamma=gamma, volume=volume, omega=omega, q=q,
-                n_apparent=n_apparent, m=m, f=f)
+    return dict(
+        alpha=alpha, gamma=gamma, volume=volume, omega=omega, q=q, n_apparent=n_apparent, m=m, f=f
+    )
 
 
 def _g3_reference_rule(rho1, rho2, rho3, d, w, alpha, tp, tl, s):
@@ -91,22 +102,21 @@ def _g3_reference_rule(rho1, rho2, rho3, d, w, alpha, tp, tl, s):
     t1 = abs(r1[0] * tp + r1[1] * tl)
     t2 = abs(r2[0] * tp + r2[1] * tl)
     t3 = abs(r3[0] * tp + r3[1] * tl)
-    a1, a2, a3 = (1 + 4 * d * t / w ** 2 for t in (t1, t2, t3))
+    a1, a2, a3 = (1 + 4 * d * t / w**2 for t in (t1, t2, t3))
     b1, b2, b3 = (1 + 4 * d * t / (alpha * w) ** 2 for t in (t1, t2, t3))
-    t7 = 8 * a1 * a2 * a3 - 8 * d * (t1 + t3) / w ** 2 - 4
+    t7 = 8 * a1 * a2 * a3 - 8 * d * (t1 + t3) / w**2 - 4
     t8 = 8 * b1 * b2 * b3 - 8 * d * (t1 + t3) / (alpha * w) ** 2 - 4
-    t9 = w ** 2 / 4 + 2 * d * t1
-    t10 = w ** 2 / 4 + 2 * d * t2
-    t11 = w ** 2 / 4 + 2 * d * t3
-    t12 = w ** 2 / 2 + 2 * d * t3
+    t9 = w**2 / 4 + 2 * d * t1
+    t10 = w**2 / 4 + 2 * d * t2
+    t11 = w**2 / 4 + 2 * d * t3
+    t12 = w**2 / 2 + 2 * d * t3
     e1 = math.exp(-0.5 * float(np.dot(r2 - r3, r2 - r3)) / t12)
-    v13 = r1 * t12 - r3 * w ** 2 / 4 + r2 * t10
-    e2 = math.exp(-0.5 * float(np.dot(v13, v13))
-                  / (t12 * (t10 * t12 + w ** 2 / 4 * t11)))
-    v15 = r1 * (w ** 2 / 4 * t11 + 2 * d * t2 * t12) + r3 * w ** 4 / 16 + r2 * t11
-    t17 = t9 * (t10 * t12 + w ** 2 / 4 * t11) * w ** 6 / 64 * t7
+    v13 = r1 * t12 - r3 * w**2 / 4 + r2 * t10
+    e2 = math.exp(-0.5 * float(np.dot(v13, v13)) / (t12 * (t10 * t12 + w**2 / 4 * t11)))
+    v15 = r1 * (w**2 / 4 * t11 + 2 * d * t2 * t12) + r3 * w**4 / 16 + r2 * t11
+    t17 = t9 * (t10 * t12 + w**2 / 4 * t11) * w**6 / 64 * t7
     e3 = math.exp(-0.5 * float(np.dot(v15, v15)) / t17)
-    return 8.0 * e1 * e2 * e3 * t7 ** -1.0 * t8 ** -0.5
+    return 8.0 * e1 * e2 * e3 * t7**-1.0 * t8**-0.5
 
 
 def _max_rel(a, b):
@@ -125,8 +135,7 @@ def test_the_scalar_block_matches_the_reference(reference, scalars):
     ChiSurf pulls that factor out as ``atanh(z)/z``. For an elongated focus the
     two must agree to machine precision, and this pins that they do.
     """
-    (alpha, volume, omega, _beta, _tau_c, _fact, q, n_apparent, m, f,
-     *gamma) = reference["scalars"]
+    (alpha, volume, omega, _beta, _tau_c, _fact, q, n_apparent, m, f, *gamma) = reference["scalars"]
 
     assert _max_rel(scalars["gamma"], gamma) < 1e-14
     assert _max_rel(scalars["volume"], volume) < 1e-14
@@ -171,8 +180,7 @@ def test_the_reference_g3_helper_is_a_faithful_transcription(reference, scalars)
     # and it is genuinely a different function from the shipped one
     worst = max(
         _max_rel(
-            P.triple_correlation(row[0:2], row[2:4], row[4:6],
-                                 D, WR, scalars["alpha"], TP, TL, PS),
+            P.triple_correlation(row[0:2], row[2:4], row[4:6], D, WR, scalars["alpha"], TP, TL, PS),
             row[6],
         )
         for row in reference["g3"]
@@ -192,8 +200,19 @@ def test_the_covariance_matches_the_reference_exactly(reference, scalars, monkey
     """
     monkeypatch.setattr(P, "triple_correlation", _g3_reference_rule)
     cov = P.correlation_covariance(
-        N_LAGS, NX, NY, D, scalars["f"], WR, scalars["alpha"], TP, TL, PS,
-        scalars["m"], scalars["q"], scalars["gamma"],
+        N_LAGS,
+        NX,
+        NY,
+        D,
+        scalars["f"],
+        WR,
+        scalars["alpha"],
+        TP,
+        TL,
+        PS,
+        scalars["m"],
+        scalars["q"],
+        scalars["gamma"],
     )
     assert cov.shape == reference["covariance"].shape
     assert _max_rel(cov, reference["covariance"]) < 1e-11
@@ -207,8 +226,19 @@ def test_the_only_deviation_from_the_reference_is_g3(reference, scalars):
     off that diagonal must therefore still be at full parity.
     """
     cov = P.correlation_covariance(
-        N_LAGS, NX, NY, D, scalars["f"], WR, scalars["alpha"], TP, TL, PS,
-        scalars["m"], scalars["q"], scalars["gamma"],
+        N_LAGS,
+        NX,
+        NY,
+        D,
+        scalars["f"],
+        WR,
+        scalars["alpha"],
+        TP,
+        TL,
+        PS,
+        scalars["m"],
+        scalars["q"],
+        scalars["gamma"],
     )
     ref = reference["covariance"]
     off = ~np.eye(ref.shape[0], dtype=bool)
@@ -231,10 +261,12 @@ def test_the_reference_g3_loses_its_time_dependence(scalars):
     """
     alpha = scalars["alpha"]
     lag = (0, 20)  # 20 line times = 20 ms, about 13 diffusion times
-    ref_tail = [_g3_reference_rule(lag, (0, 0), lag, D, WR, alpha, TP, TL, s)
-                for s in (1e-3, 1e-4, 1e-6)]
-    mine_tail = [P.triple_correlation(lag, (0, 0), lag, D, WR, alpha, TP, TL, s)
-                 for s in (1e-3, 1e-4, 1e-6)]
+    ref_tail = [
+        _g3_reference_rule(lag, (0, 0), lag, D, WR, alpha, TP, TL, s) for s in (1e-3, 1e-4, 1e-6)
+    ]
+    mine_tail = [
+        P.triple_correlation(lag, (0, 0), lag, D, WR, alpha, TP, TL, s) for s in (1e-3, 1e-4, 1e-6)
+    ]
 
     assert ref_tail[-1] > 0.999, "the reference should tend to perfect correlation"
     assert max(mine_tail) < 0.01, "chisurf should stay decorrelated"
@@ -252,12 +284,11 @@ def test_g3_agrees_with_the_two_point_function_on_the_same_time_scale(scalars):
     """
     alpha, tiny = scalars["alpha"], 1e-6
     for psi in (1, 2, 4):
-        g1 = float(P.correlation_grid(np.array(0.0), np.array(float(psi)),
-                                      D, WR, alpha, TP, TL, tiny))
-        mine = P.triple_correlation((0, psi), (0, 0), (0, psi),
-                                    D, WR, alpha, TP, TL, tiny)
-        ref = _g3_reference_rule((0, psi), (0, 0), (0, psi),
-                                 D, WR, alpha, TP, TL, tiny)
+        g1 = float(
+            P.correlation_grid(np.array(0.0), np.array(float(psi)), D, WR, alpha, TP, TL, tiny)
+        )
+        mine = P.triple_correlation((0, psi), (0, 0), (0, psi), D, WR, alpha, TP, TL, tiny)
+        ref = _g3_reference_rule((0, psi), (0, 0), (0, psi), D, WR, alpha, TP, TL, tiny)
         assert g1 < 0.7, "the two-point function should have decayed"
         assert mine < g1, "g3 decays at least as fast as g1"
         assert ref > 0.999, "the reference's g3 has not decayed at all"
@@ -272,9 +303,19 @@ def test_the_deviation_does_not_change_the_advice(scalars, monkeypatch):
     """
     from chisurf.plugins.calculator.rics_precision import core as pc
 
-    common = dict(nx=32, ny=32, pixel_size=PS, n_particles=N_PARTICLES,
-                  w_r=WR, w_z=WZ, brightness=BRIGHTNESS, n_images=100,
-                  n_lags=3, n_repeats=40, seed=1)
+    common = dict(
+        nx=32,
+        ny=32,
+        pixel_size=PS,
+        n_particles=N_PARTICLES,
+        w_r=WR,
+        w_z=WZ,
+        brightness=BRIGHTNESS,
+        n_images=100,
+        n_lags=3,
+        n_repeats=40,
+        seed=1,
+    )
     grid = pc.default_dwell_range(5)
 
     shipped = pc.sweep_dwell(D, grid, **common)

@@ -211,9 +211,7 @@ def state_decays(
         # One pass: bin every photon once, then scatter by (state, stream, channel).
         bin_of = np.clip(np.searchsorted(edges, micro, side="right") - 1, 0, n_bins - 1)
         chan_of = np.searchsorted(channels, chan)
-        flat = (
-            (states * n_streams + strm) * channels.size + chan_of
-        ) * n_bins + bin_of
+        flat = ((states * n_streams + strm) * channels.size + chan_of) * n_bins + bin_of
         valid = (states >= 0) & (states < n_states) & (strm >= 0) & (strm < n_streams)
         tally = np.bincount(flat[valid], minlength=counts.size)
         counts = tally[: counts.size].reshape(counts.shape)
@@ -267,9 +265,7 @@ def decay_table(decays: StateDecays):
     """
     n_states, n_streams, n_chan, n_bins = decays.counts.shape
     centers = decays.centers
-    centers_ns = (
-        decays.centers_ns() if decays.micro_time_ns else np.full(n_bins, np.nan)
-    )
+    centers_ns = decays.centers_ns() if decays.micro_time_ns else np.full(n_bins, np.nan)
     # One block per (state, stream, channel) that saw anything, stacked once at
     # the end rather than concatenated pairwise -- the shape is known, so there
     # is nothing to grow.
@@ -282,17 +278,23 @@ def decay_table(decays: StateDecays):
     ]
     if not keys:
         empty = np.zeros(0)
-        return store_from_arrays({
-            "State": empty.astype(np.int64), "Stream": empty.astype(np.int64),
-            "Channel": empty.astype(np.int64), "Micro Time": centers[:0],
-            "Micro Time (ns)": empty, "Counts": empty,
-        })
-    return store_from_arrays({
-        "State": np.repeat([s for s, _, _ in keys], n_bins).astype(np.int64),
-        "Stream": np.repeat([st for _, st, _ in keys], n_bins).astype(np.int64),
-        "Channel": np.repeat(
-            [decays.channels[c] for _, _, c in keys], n_bins).astype(np.int64),
-        "Micro Time": np.tile(centers, len(keys)),
-        "Micro Time (ns)": np.tile(centers_ns, len(keys)),
-        "Counts": np.concatenate([decays.counts[k] for k in keys]),
-    })
+        return store_from_arrays(
+            {
+                "State": empty.astype(np.int64),
+                "Stream": empty.astype(np.int64),
+                "Channel": empty.astype(np.int64),
+                "Micro Time": centers[:0],
+                "Micro Time (ns)": empty,
+                "Counts": empty,
+            }
+        )
+    return store_from_arrays(
+        {
+            "State": np.repeat([s for s, _, _ in keys], n_bins).astype(np.int64),
+            "Stream": np.repeat([st for _, st, _ in keys], n_bins).astype(np.int64),
+            "Channel": np.repeat([decays.channels[c] for _, _, c in keys], n_bins).astype(np.int64),
+            "Micro Time": np.tile(centers, len(keys)),
+            "Micro Time (ns)": np.tile(centers_ns, len(keys)),
+            "Counts": np.concatenate([decays.counts[k] for k in keys]),
+        }
+    )

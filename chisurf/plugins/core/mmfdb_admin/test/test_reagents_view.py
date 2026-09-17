@@ -24,9 +24,7 @@ def qapp():
 
 
 def _lot_names(view) -> set[str]:
-    return {
-        view.lot_table.item(r, 1).text() for r in range(view.lot_table.rowCount())
-    }
+    return {view.lot_table.item(r, 1).text() for r in range(view.lot_table.rowCount())}
 
 
 def test_view_lists_lots(db, qapp):

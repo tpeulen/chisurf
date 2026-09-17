@@ -1,32 +1,116 @@
 {
   "id": "burst_ebfret",
-  "version": "0.1.0",
-  "display_name": "Spectroscopy:Single-Molecule:ebFRET (binned traces)",
-  "description": "Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.",
+  "version": "0.2.0",
+  "display_name": "Spectroscopy:Single-Molecule:ebFRET",
+  "description": "ebFRET, ported from its MATLAB GUI: empirical-Bayes hidden Markov analysis of binned donor/acceptor smFRET time series. The same window -- time series with the Viterbi path, the ensemble histograms and parameter distributions, series/crop/state controls -- the same menus (load/save session, raw/SF-Tracer/SMD import, photobleaching and outlier removal, priors, summary/trace/SMD export) and the same analysis loop, run on the backend. Ships a simulated four-state demo.",
   "icon": "🪜",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
   "state_namespace": "burst_ebfret",
   "statefulness": {
     "enabled": true,
     "window": {
-      "enabled": false,
+      "enabled": true,
       "settings_key": "burst_ebfret_window"
     }
   },
   "experimental": true,
-  "experimental_message": "Experimental headless port of ebFRET's per-trace VBEM + empirical-Bayes hyperparameter loop. Validated for state recovery against ebFRET's own simulated-K04-N350 dataset; the single-prior (non-mixture) D=1 path only, and no GUI tool yet.",
+  "experimental_message": "A plain port of the ebFRET GUI. The VBEM/empirical-Bayes loop is pure NumPy and slower than ebFRET's compiled forward-backward; runs on large datasets take minutes per state count.",
   "entrypoints": {
     "cli": "ebfret=chisurf.plugins.burst.burst_ebfret.cli.main:cli",
-    "services": "chisurf.plugins.burst.burst_ebfret.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_ebfret.backend.services:register_services",
+    "gui": "chisurf.plugins.burst.burst_ebfret.gui.tool:EbfretTool"
   },
-  "operation_types": ["model_fitting"],
+  "operation_types": [
+    "model_fitting"
+  ],
   "rpc_methods": [
     {
       "name": "burst_ebfret.jobs.compute",
       "summary": "Fit an empirical-Bayes Gaussian HMM over a set of binned FRET traces.",
       "long_running": true
+    },
+    {
+      "name": "burst_ebfret.session.open",
+      "summary": "Open an ebFRET session (one main window)."
+    },
+    {
+      "name": "burst_ebfret.session.close",
+      "summary": "Stop and release a session."
+    },
+    {
+      "name": "burst_ebfret.session.status",
+      "summary": "Revision, running flag, controls and messages."
+    },
+    {
+      "name": "burst_ebfret.session.view",
+      "summary": "Plot lines, limits and control values to draw."
+    },
+    {
+      "name": "burst_ebfret.session.series_table",
+      "summary": "Label, file, group, crop and exclusion of every series."
+    },
+    {
+      "name": "burst_ebfret.session.load",
+      "summary": "File > Load: session, raw .dat, SF-Tracer .tsv or SMD .mat/.json/.json.gz."
+    },
+    {
+      "name": "burst_ebfret.session.smd_columns",
+      "summary": "Column labels of SMD files, for Assign Channels."
+    },
+    {
+      "name": "burst_ebfret.session.save",
+      "summary": "File > Save the session .mat."
+    },
+    {
+      "name": "burst_ebfret.session.set",
+      "summary": "Set one control (series, crop, states, restarts, precision, view flags)."
+    },
+    {
+      "name": "burst_ebfret.session.run",
+      "summary": "Run the empirical-Bayes analysis on the backend.",
+      "long_running": true
+    },
+    {
+      "name": "burst_ebfret.session.stop",
+      "summary": "Stop the running analysis."
+    },
+    {
+      "name": "burst_ebfret.session.reset",
+      "summary": "Reset the analysis (All or Current)."
+    },
+    {
+      "name": "burst_ebfret.session.remove_bleaching",
+      "summary": "Analysis > Remove Photo-bleaching."
+    },
+    {
+      "name": "burst_ebfret.session.clip_outliers",
+      "summary": "Analysis > Clip Outliers."
+    },
+    {
+      "name": "burst_ebfret.session.update_priors",
+      "summary": "Re-guess the priors (Auto)."
+    },
+    {
+      "name": "burst_ebfret.session.init_priors",
+      "summary": "Analysis > Set Priors."
+    },
+    {
+      "name": "burst_ebfret.session.export_summary",
+      "summary": "File > Export > Analysis Summary (.csv)."
+    },
+    {
+      "name": "burst_ebfret.session.export_traces",
+      "summary": "File > Export > Traces (.dat/.mat)."
+    },
+    {
+      "name": "burst_ebfret.session.export_smd",
+      "summary": "File > Export > Single-molecule Dataset (.mat/.json/.json.gz)."
     }
-  ],
-  "menu_hidden": true
+  ]
 }

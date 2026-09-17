@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from chisurf.core.project import Project, save_project, load_project
+from chisurf.core.project import Project, load_project, save_project
 
 
 def test_project_json_roundtrip(tmp_path):
@@ -28,6 +28,7 @@ def test_project_json_roundtrip(tmp_path):
 
     # Sanity-check the raw project object through the ptolib-backed reader.
     from chisurf.core.project import ProjectArchive
+
     archive = ProjectArchive.open(archive_path)
     raw = json.loads(archive.read_text("project.json"))
     archive.close()

@@ -46,6 +46,7 @@ class FilteredTableWidget(QtWidgets.QWidget):
 
         self.table = QtWidgets.QTableWidget()
         from chisurf.gui.widgets.general import apply_compact_table_style
+
         apply_compact_table_style(self.table)
         self.table.setColumnCount(1)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)

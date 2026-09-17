@@ -77,8 +77,17 @@ def save_pipeline(
             "INSERT INTO mmfdb_pipeline (pipeline_id, name, version, description, "
             "created_by_user_id, is_public, created_at, updated_at, deleted_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (pid, pipeline.name, pipeline.version, description or None,
-             created_by_user_id, 1 if is_public else 0, now, now, None),
+            (
+                pid,
+                pipeline.name,
+                pipeline.version,
+                description or None,
+                created_by_user_id,
+                1 if is_public else 0,
+                now,
+                now,
+                None,
+            ),
         )
         node_base = _next_id(db, "mmfdb_pipeline_node", "node_row_id")
         for i, node in enumerate(pipeline.nodes):
@@ -86,8 +95,16 @@ def save_pipeline(
                 "INSERT INTO mmfdb_pipeline_node (node_row_id, pipeline_id, node_name, "
                 "operation_type, parameters_json, created_at, updated_at, deleted_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (node_base + i, pid, node.name, node.operation_type,
-                 json.dumps(node.parameters or {}), now, now, None),
+                (
+                    node_base + i,
+                    pid,
+                    node.name,
+                    node.operation_type,
+                    json.dumps(node.parameters or {}),
+                    now,
+                    now,
+                    None,
+                ),
             )
         edge_base = _next_id(db, "mmfdb_pipeline_edge", "edge_row_id")
         for j, edge in enumerate(pipeline.edges):
@@ -95,8 +112,17 @@ def save_pipeline(
                 "INSERT INTO mmfdb_pipeline_edge (edge_row_id, pipeline_id, source_node, "
                 "source_port, target_node, target_port, created_at, updated_at, "
                 "deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (edge_base + j, pid, edge.source, edge.source_port, edge.target,
-                 edge.target_port, now, now, None),
+                (
+                    edge_base + j,
+                    pid,
+                    edge.source,
+                    edge.source_port,
+                    edge.target,
+                    edge.target_port,
+                    now,
+                    now,
+                    None,
+                ),
             )
     return pid
 
@@ -104,8 +130,7 @@ def save_pipeline(
 def get_pipeline(db: Any, pipeline_id: str) -> Pipeline | None:
     """Reconstruct a stored :class:`Pipeline` by id, or ``None`` if absent."""
     head = db.conn.execute(
-        "SELECT name, version FROM mmfdb_pipeline "
-        "WHERE pipeline_id = ? AND deleted_at IS NULL",
+        "SELECT name, version FROM mmfdb_pipeline WHERE pipeline_id = ? AND deleted_at IS NULL",
         (pipeline_id,),
     ).fetchone()
     if head is None:
@@ -121,9 +146,7 @@ def get_pipeline(db: Any, pipeline_id: str) -> Pipeline | None:
         "ORDER BY edge_row_id",
         (pipeline_id,),
     ).fetchall()
-    nodes = tuple(
-        PipelineNode(r[0], r[1], json.loads(r[2]) if r[2] else {}) for r in node_rows
-    )
+    nodes = tuple(PipelineNode(r[0], r[1], json.loads(r[2]) if r[2] else {}) for r in node_rows)
     edges = tuple(PipelineEdge(r[0], r[1], r[2], r[3]) for r in edge_rows)
     return Pipeline(name=head[0], nodes=nodes, edges=edges, version=head[1] or "1.0")
 
@@ -174,8 +197,17 @@ def record_pipeline_run(
             "INSERT INTO mmfdb_pipeline_run (pipeline_run_id, pipeline_id, name, status, "
             "created_by_user_id, is_public, created_at, updated_at, deleted_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (run_id, pipeline_id, name or run.pipeline_name, status,
-             created_by_user_id, 0, now, now, None),
+            (
+                run_id,
+                pipeline_id,
+                name or run.pipeline_name,
+                status,
+                created_by_user_id,
+                0,
+                now,
+                now,
+                None,
+            ),
         )
         row_base = _next_id(db, "mmfdb_pipeline_run_operation", "row_id")
         for ordinal, operation_id in enumerate(run.operation_ids):
@@ -192,8 +224,7 @@ def record_pipeline_run(
 def get_pipeline_run(db: Any, pipeline_run_id: str) -> dict[str, Any] | None:
     """Return a run row plus its ordered ``operation_ids``, or ``None``."""
     row = db.conn.execute(
-        "SELECT * FROM mmfdb_pipeline_run "
-        "WHERE pipeline_run_id = ? AND deleted_at IS NULL",
+        "SELECT * FROM mmfdb_pipeline_run WHERE pipeline_run_id = ? AND deleted_at IS NULL",
         (pipeline_run_id,),
     ).fetchone()
     if row is None:
@@ -210,9 +241,7 @@ def get_pipeline_run(db: Any, pipeline_run_id: str) -> dict[str, Any] | None:
     return result
 
 
-def list_pipeline_runs(
-    db: Any, pipeline_id: str | None = None
-) -> list[dict[str, Any]]:
+def list_pipeline_runs(db: Any, pipeline_id: str | None = None) -> list[dict[str, Any]]:
     """List pipeline runs (newest first), each with its operation count.
 
     Filtered to one ``pipeline_id`` when given, else all runs.

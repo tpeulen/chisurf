@@ -37,7 +37,7 @@ class H2mmTables:
     """The per-photon and per-burst result tables, as columnar stores."""
 
     photons: object  # tttrlib.DataStore — one row per photon
-    bursts: object   # tttrlib.DataStore — one row per burst
+    bursts: object  # tttrlib.DataStore — one row per burst
 
 
 def build_tables(
@@ -94,7 +94,7 @@ def build_tables(
     """
     macro_s = meta.macro_time.astype(np.float64) * float(base_time_s)
     photon_columns = {
-        "Mean Macro Time (s)": macro_s,   # ndX auto-axis name
+        "Mean Macro Time (s)": macro_s,  # ndX auto-axis name
         "Macro Time": meta.macro_time,
         "Micro Time": meta.micro_time,
         "Channel": meta.channel,
@@ -121,8 +121,7 @@ def build_tables(
         stream_groups = [("green", (0,))]
         if int(data.n_streams) > 1:
             stream_groups.append(("red", (1,)))
-    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int)))
-              for name, idx in stream_groups]
+    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int))) for name, idx in stream_groups]
 
     # Per-burst aggregation.
     offsets = data.burst_offsets
@@ -158,18 +157,20 @@ def build_tables(
             mask = np.isin(strm, idx)
             if micro_time_ns is not None and mask.any():
                 cols[f"Mean Microtime ({name})"].append(
-                    float(micro[mask].mean()) * float(micro_time_ns))
+                    float(micro[mask].mean()) * float(micro_time_ns)
+                )
             else:
                 cols[f"Mean Microtime ({name})"].append(np.nan)
         d = int(np.count_nonzero(np.isin(strm, donor_idx)))
         a = int(np.count_nonzero(np.isin(strm, acceptor_idx)))
         pr = a / (d + a) if (d + a) > 0 else np.nan
-        cols["FRET efficiency"].append(pr)   # measured apparent E (uncorrected)
+        cols["FRET efficiency"].append(pr)  # measured apparent E (uncorrected)
         cols["Proximity ratio"].append(pr)
         cols["Dominant State"].append(int(np.argmax(occ)))
         cols["Number of Transitions"].append(int(np.count_nonzero(np.diff(seg))))
         cols["Mean FRET E"].append(
-            float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan)
+            float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan
+        )
 
     return H2mmTables(photons=photons, bursts=store_from_arrays(cols))
 
@@ -217,8 +218,7 @@ def build_dwell_table(
         stream_groups = [("green", (0,))]
         if int(data.n_streams) > 1:
             stream_groups.append(("red", (1,)))
-    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int)))
-              for name, idx in stream_groups]
+    groups = [(str(name), np.atleast_1d(np.asarray(idx, dtype=int))) for name, idx in stream_groups]
 
     offsets = np.asarray(data.burst_offsets)
     macro = np.asarray(meta.macro_time, dtype=np.float64)
@@ -226,8 +226,12 @@ def build_dwell_table(
     streams_all = np.asarray(data.streams)
 
     cols: dict[str, list] = {
-        "Dwell": [], "Burst": [], "State": [], "Number of Photons": [],
-        "Dwell Time (ms)": [], "Mean Macro Time (s)": [],
+        "Dwell": [],
+        "Burst": [],
+        "State": [],
+        "Number of Photons": [],
+        "Dwell Time (ms)": [],
+        "Mean Macro Time (s)": [],
     }
     for name, _ in groups:
         cols[f"Mean Microtime ({name})"] = []
@@ -246,12 +250,14 @@ def build_dwell_table(
         cols["Number of Photons"].append(int(d.n_photons))
         cols["Dwell Time (ms)"].append(float(d.dur) * base_time_s * 1e3)
         cols["Mean Macro Time (s)"].append(
-            float(macro[s0:s1].mean()) * base_time_s if s1 > s0 else np.nan)
+            float(macro[s0:s1].mean()) * base_time_s if s1 > s0 else np.nan
+        )
         for name, idx in groups:
             mask = np.isin(streams_all[s0:s1], idx)
             if micro_time_ns is not None and mask.any():
                 cols[f"Mean Microtime ({name})"].append(
-                    float(micro[s0:s1][mask].mean()) * float(micro_time_ns))
+                    float(micro[s0:s1][mask].mean()) * float(micro_time_ns)
+                )
             else:
                 cols[f"Mean Microtime ({name})"].append(np.nan)
         cols["FRET efficiency"].append(float(d.e))
@@ -313,7 +319,6 @@ def write_csv(df, path: str | pathlib.Path) -> str:
     return str(path)
 
 
-
 #: Companion folder/extension for the per-burst H2MM results. Ends in ``4`` so
 #: ndX's burst-folder reader discovers it with no code change: it merges
 #: ``<ending>/<stem>.<ending>`` beside each ``.bur`` for any sibling directory
@@ -323,7 +328,11 @@ H2MM_COMPANION = "bh4"
 #: The columns a ``.bh4`` carries. ``H2MM Fitted`` is 0 for a burst H2MM skipped
 #: (too few photons), so "not fitted" is a value rather than an absence.
 H2MM_COMPANION_COLUMNS = [
-    "H2MM State", "H2MM Transitions", "H2MM Mean E", "H2MM Photons", "H2MM Fitted",
+    "H2MM State",
+    "H2MM Transitions",
+    "H2MM Mean E",
+    "H2MM Photons",
+    "H2MM Fitted",
 ]
 
 
@@ -367,17 +376,25 @@ def write_h2mm_container(
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
     written = write_burst_artifact(
-        source, burst_df,
-        name="h2mm", artifact_kind="burst_table",
-        operation_type="photon_hmm", row_grain="burst",
-        parameters=parameters, derived_from="bursts",
+        source,
+        burst_df,
+        name="h2mm",
+        artifact_kind="burst_table",
+        operation_type="photon_hmm",
+        row_grain="burst",
+        parameters=parameters,
+        derived_from="bursts",
     )
     if dwell_df is not None and len(dwell_df):
         write_burst_artifact(
-            source, dwell_df,
-            name="h2mm dwells", artifact_kind="dwell_table",
-            operation_type="photon_hmm", row_grain="dwell",
-            parameters=parameters, derived_from="h2mm",
+            source,
+            dwell_df,
+            name="h2mm dwells",
+            artifact_kind="dwell_table",
+            operation_type="photon_hmm",
+            row_grain="dwell",
+            parameters=parameters,
+            derived_from="h2mm",
             source_row_column="Burst",
             units={
                 "Dwell Time (ms)": "milliseconds",
@@ -478,14 +495,20 @@ def write_burst_companions(
             if b is None:
                 continue  # not analysed: zeros, and Fitted stays 0
             table[local] = (
-                dominant[b], transitions[b],
-                0.0 if np.isnan(mean_e[b]) else mean_e[b], photons[b], 1.0,
+                dominant[b],
+                transitions[b],
+                0.0 if np.isnan(mean_e[b]) else mean_e[b],
+                photons[b],
+                1.0,
             )
 
         written.append(
             write_companion(
-                out_root, H2MM_COMPANION, pathlib.Path(str(name)).stem,
-                H2MM_COMPANION_COLUMNS, table,
+                out_root,
+                H2MM_COMPANION,
+                pathlib.Path(str(name)).stem,
+                H2MM_COMPANION_COLUMNS,
+                table,
             )
         )
     return written

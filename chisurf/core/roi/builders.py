@@ -13,11 +13,9 @@ the area immediately around it, and that is what gets rejected here.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 
-from .roi import MaskROI, ROI
+from .roi import ROI, MaskROI
 
 
 def _box_mean(image: np.ndarray, size: int, mode: str = "nearest") -> np.ndarray:
@@ -44,7 +42,7 @@ def _box_mean(image: np.ndarray, size: int, mode: str = "nearest") -> np.ndarray
 
 def local_statistics(
     image: np.ndarray, size: int, mode: str = "nearest"
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the running mean and population variance over a square window.
 
     Parameters
@@ -67,23 +65,23 @@ def local_statistics(
     n = int(size)
     mean = _box_mean(image, n, mode)
     mean_sq = _box_mean(np.asarray(image, dtype=float) ** 2, n, mode)
-    var = mean_sq - mean ** 2
+    var = mean_sq - mean**2
     if n > 1:
-        var = var * (n ** 2 / (n ** 2 - 1.0))
+        var = var * (n**2 / (n**2 - 1.0))
     return mean, np.maximum(var, 0.0)
 
 
 def arbitrary_region(
     images: np.ndarray,
     *,
-    intensity_min: Optional[float] = None,
-    intensity_max: Optional[float] = None,
+    intensity_min: float | None = None,
+    intensity_max: float | None = None,
     window: int = 3,
     neighbourhood: int = 9,
-    intensity_fold_min: Optional[float] = None,
-    intensity_fold_max: Optional[float] = None,
-    variance_fold_min: Optional[float] = None,
-    variance_fold_max: Optional[float] = None,
+    intensity_fold_min: float | None = None,
+    intensity_fold_max: float | None = None,
+    variance_fold_min: float | None = None,
+    variance_fold_max: float | None = None,
     median_filter: bool = False,
     mode: str = "nearest",
     name: str = "arbitrary region",
@@ -163,9 +161,7 @@ def arbitrary_region(
     if stack.ndim != 3:
         raise ValueError(f"expected a 2-D frame or a 3-D stack; got {stack.shape}")
     if int(neighbourhood) <= int(window):
-        raise ValueError(
-            f"neighbourhood ({neighbourhood}) must be larger than window ({window})"
-        )
+        raise ValueError(f"neighbourhood ({neighbourhood}) must be larger than window ({window})")
 
     mean_image = stack.mean(axis=0)
     keep = np.ones(mean_image.shape, dtype=bool)
@@ -182,8 +178,10 @@ def arbitrary_region(
 
     # ── stage 2: local versus neighbourhood, evaluated per frame ──
     folds = (
-        intensity_fold_min, intensity_fold_max,
-        variance_fold_min, variance_fold_max,
+        intensity_fold_min,
+        intensity_fold_max,
+        variance_fold_min,
+        variance_fold_max,
     )
     if any(f is not None for f in folds):
         for frame in stack:

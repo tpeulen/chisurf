@@ -127,8 +127,9 @@ def test_int_slider_renders_a_slider(qapp):
 
     view = ds.ModelView(
         sections=(
-            ds.ValueSection(attr="position", kind="int", label="Pos", style="slider",
-                            minimum=0, maximum=100),
+            ds.ValueSection(
+                attr="position", kind="int", label="Pos", style="slider", minimum=0, maximum=100
+            ),
         )
     )
     model = _model(view, position=25)
@@ -167,8 +168,9 @@ def test_slider_follows_a_model_driven_change(qapp):
 
     view = ds.ModelView(
         sections=(
-            ds.ValueSection(attr="position", kind="int", label="Pos", style="slider",
-                            minimum=0, maximum=10),
+            ds.ValueSection(
+                attr="position", kind="int", label="Pos", style="slider", minimum=0, maximum=10
+            ),
         )
     )
     model = _model(view, position=0)

@@ -1,7 +1,8 @@
 """Collection of macros / functions that control parsed models."""
+
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 import chisurf as cs
 import chisurf.core.experiments
@@ -16,11 +17,14 @@ except Exception:  # pragma: no cover - robustness for environments without thes
 
 def _is_proxy_for(obj: Any, type_name: str) -> bool:
     """Check if *obj* is a proxy object whose DTO declares *type_name*."""
-    return hasattr(obj, '_data') and isinstance(getattr(obj, '_data', None), dict) \
-        and obj._data.get('type') == type_name
+    return (
+        hasattr(obj, "_data")
+        and isinstance(getattr(obj, "_data", None), dict)
+        and obj._data.get("type") == type_name
+    )
 
 
-def _as_iterable_fits(target: Any) -> List[Any]:
+def _as_iterable_fits(target: Any) -> list[Any]:
     """Normalize various target forms to a list of fit objects.
 
     Accepts a single Fit, a FitGroup (iterable over fits), any iterable of fits,
@@ -31,15 +35,15 @@ def _as_iterable_fits(target: Any) -> List[Any]:
 
     # Single Fit (real or proxy)
     try:
-        if isinstance(target, Fit) or _is_proxy_for(target, 'Fit'):
+        if isinstance(target, Fit) or _is_proxy_for(target, "Fit"):
             return [target]
     except Exception:
         pass
 
     # FitGroup (real or proxy)
     try:
-        if isinstance(target, FitGroup) or _is_proxy_for(target, 'FitGroup'):
-            return list(target) if hasattr(target, '__iter__') else [target]
+        if isinstance(target, FitGroup) or _is_proxy_for(target, "FitGroup"):
+            return list(target) if hasattr(target, "__iter__") else [target]
     except Exception:
         pass
 
@@ -54,7 +58,7 @@ def _as_iterable_fits(target: Any) -> List[Any]:
         return []
 
 
-def _resolve_target_fits(fit_idx: Any = None) -> List[Any]:
+def _resolve_target_fits(fit_idx: Any = None) -> list[Any]:
     """Resolve the requested targets into a list of fits, robustly.
 
     Resolution order:
@@ -102,7 +106,7 @@ def _resolve_target_fits(fit_idx: Any = None) -> List[Any]:
 def change_model(function_str: str, fit_idx: Any = None) -> bool:
     """Update the parsed-model equation string for target fits.
 
-    Parameters:
+    Parameters
       function_str: The equation to set on the parse model (e.g., "b+1/abs(N)*...").
       fit_idx: Targets to update. Accepted forms:
         - None: use current/selected fits if available; otherwise do nothing.
@@ -110,7 +114,7 @@ def change_model(function_str: str, fit_idx: Any = None) -> bool:
         - Fit or FitGroup instance
         - Iterable of Fit instances
 
-    Returns:
+    Returns
       True if at least one fit was updated; False if no suitable targets found.
     """
     targets = _resolve_target_fits(fit_idx)

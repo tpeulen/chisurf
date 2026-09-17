@@ -38,6 +38,7 @@ Use
 
 writes ``renders/chrome_baseline/<state>.png`` and ``inventory.json``.
 """
+
 from __future__ import annotations
 
 import json
@@ -145,10 +146,7 @@ def inventory(gui, width: int, height: int) -> dict[str, Any]:
     menus = [
         {
             "title": getattr(menu, "title", None),
-            "entries": [
-                getattr(e, "label", None)
-                for e in (getattr(menu, "entries", None) or [])
-            ],
+            "entries": [getattr(e, "label", None) for e in (getattr(menu, "entries", None) or [])],
         }
         for menu in getattr(gui, "_menus", []) or []
     ]
@@ -179,10 +177,9 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
     Needs Qt, because it is photographing the Qt implementation -- that is the
     point of a before-half. The after-half needs no font engine at all.
     """
-    from qtpy import QtGui, QtWidgets
-
     from chimol.hosts.qt import overlay as qt_overlay
     from chimol.ui.gui import InternalGui
+    from qtpy import QtGui, QtWidgets
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     assert app is not None  # keep it alive; see test_cmd_viewing's qapp note

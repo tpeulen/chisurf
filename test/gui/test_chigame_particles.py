@@ -54,8 +54,7 @@ def test_an_orb_flies_to_its_target_and_is_delivered():
 
 def test_an_orb_never_overshoots_its_target():
     """A step is capped at the distance left, which is what stops it orbiting."""
-    one = particles.Particle(x=0.0, y=0.0, target=(5.0, 0.0), speed=10_000.0,
-                             span=10.0)
+    one = particles.Particle(x=0.0, y=0.0, target=(5.0, 0.0), speed=10_000.0, span=10.0)
     one.step(1.0)
     assert one.x == pytest.approx(5.0)
     assert one.spent
@@ -137,6 +136,7 @@ def _scene(batch):
         With the default procedural pack and no font.
     """
     from chisurf.gui.chigame.scene import Scene
+
     return Scene(batch)
 
 
@@ -159,14 +159,12 @@ def test_particles_draw_through_the_pack_and_fade_as_they_go():
 def test_a_particle_never_names_its_own_colour():
     """The look stays swappable: the pack decides, the particle asks."""
     field = particles.Field()
-    field.burst((0.0, 0.0), count=2, kind="photon", name="halo",
-                emission_nm=488.0)
+    field.burst((0.0, 0.0), count=2, kind="photon", name="halo", emission_nm=488.0)
     blue = _Batch()
     field.draw(_scene(blue))
 
     other = particles.Field()
-    other.burst((0.0, 0.0), count=2, kind="photon", name="halo",
-                emission_nm=650.0)
+    other.burst((0.0, 0.0), count=2, kind="photon", name="halo", emission_nm=650.0)
     red = _Batch()
     other.draw(_scene(red))
     assert blue.quads[0]["color"][:3] != red.quads[0]["color"][:3]

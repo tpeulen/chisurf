@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from qtpy import QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.plugins.core.code_editor import CodeEditor
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
-from chisurf.gui import dialogs
 
 
 def test_code_editor_syncs_open_document_to_store(qapp, tmp_path) -> None:
@@ -189,7 +189,7 @@ def test_api_retriever_builds_context_from_source_index(tmp_path) -> None:
     (package / "__init__.py").write_text("", encoding="utf-8")
     (package / "api.py").write_text(
         "class Runner:\n"
-        "    \"\"\"Runs a demo analysis.\"\"\"\n"
+        '    """Runs a demo analysis."""\n'
         "    def run(self, name):\n"
         "        return name\n",
         encoding="utf-8",

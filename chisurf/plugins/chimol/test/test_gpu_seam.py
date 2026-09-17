@@ -16,13 +16,13 @@ else's package, so it is worth asserting: a wrong bit in a usage flag does not
 raise, it produces a buffer the driver refuses or, worse, accepts and draws
 wrong.
 """
+
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
 import pytest
-
 from chimol.render.gpu import enums
 
 #: The engine's source root.
@@ -69,9 +69,7 @@ def test_only_the_native_backend_imports_wgpu():
             continue
         text = path.read_text(encoding="utf-8")
         # The seam's own modules describe the binding in prose; only code counts.
-        code = "\n".join(
-            line for line in text.splitlines() if not line.lstrip().startswith("#")
-        )
+        code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
         if _IMPORTS_WGPU.search(code):
             offenders.append(str(path.relative_to(_CHIMOL)))
     assert not offenders, (

@@ -28,8 +28,6 @@ from __future__ import annotations
 
 import typing
 
-import tttrlib
-
 #: The registry category holding burst searches.
 BURST_SEARCH = "burst_search"
 #: The registry category holding readable/writable TTTR file containers.
@@ -40,7 +38,7 @@ FIT_MODEL = "fit"
 FIT_SETUP = "fit_setup"
 
 
-def registry() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
+def registry() -> dict[str, dict[str, typing.Any]]:
     """The whole registry as ``{category: {name: entry}}``.
 
     Not only tttrlib's any more: IMP.bff publishes its registry with the same
@@ -53,15 +51,16 @@ def registry() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
     the registry-driven features when available and fall back otherwise.
     """
     from chisurf.core.registry import catalog
+
     return catalog.registry()
 
 
-def categories() -> typing.List[str]:
+def categories() -> list[str]:
     """Names of the available registry categories."""
     return sorted(registry())
 
 
-def entries(category: str) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
+def entries(category: str) -> dict[str, dict[str, typing.Any]]:
     """Every entry of ``category``, keyed by name.
 
     Returns an empty dict for a category this tttrlib does not publish, so a
@@ -70,7 +69,7 @@ def entries(category: str) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
     return registry().get(category, {})
 
 
-def describe(category: str, name: str) -> typing.Dict[str, typing.Any]:
+def describe(category: str, name: str) -> dict[str, typing.Any]:
     """One registry entry.
 
     Raises
@@ -80,9 +79,7 @@ def describe(category: str, name: str) -> typing.Dict[str, typing.Any]:
     """
     available = registry()
     if category not in available:
-        raise ValueError(
-            f"unknown registry category {category!r}; available: {sorted(available)}"
-        )
+        raise ValueError(f"unknown registry category {category!r}; available: {sorted(available)}")
     if name not in available[category]:
         # Category names are snake_case identifiers; spell them out so the
         # message reads as prose rather than as a key.
@@ -98,7 +95,7 @@ def is_available(category: str = BURST_SEARCH) -> bool:
     return bool(entries(category))
 
 
-def defaults(category: str, name: str) -> typing.Dict[str, typing.Any]:
+def defaults(category: str, name: str) -> dict[str, typing.Any]:
     """Default parameters of an entry, as ``{name: value}``.
 
     Empty for an entry that describes something without parameters, such as a
@@ -115,8 +112,8 @@ def defaults(category: str, name: str) -> typing.Dict[str, typing.Any]:
 def entry_form_view(
     category: str,
     name: str,
-    values: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-    on_change: typing.Optional[typing.Callable] = None,
+    values: typing.Mapping[str, typing.Any] | None = None,
+    on_change: typing.Callable | None = None,
 ):
     """An :class:`~chisurf.gui.autoform.AutoForm` model for one registry entry.
 
@@ -138,9 +135,7 @@ def entry_form_view(
     """
     spec = describe(category, name)
     if not spec.get("params_schema"):
-        raise ValueError(
-            f"{category}/{name} publishes no parameters, so it has no form"
-        )
+        raise ValueError(f"{category}/{name} publishes no parameters, so it has no form")
     return GroupedEntryView(category, name, values=values, on_change=on_change)
 
 
@@ -173,23 +168,30 @@ def _group_sections(sections, properties, title, description):
         else:
             grouped.setdefault(name, []).append(section)
 
-    panels = [PanelSection(
-        title=title, description=description, n_col=1, sections=tuple(main),
-    )]
+    panels = [
+        PanelSection(
+            title=title,
+            description=description,
+            n_col=1,
+            sections=tuple(main),
+        )
+    ]
     # Advanced always sorts last: it is the panel a user should be able to
     # ignore, so it belongs at the bottom regardless of where the schema happened
     # to declare its first member.
     ordered = sorted(grouped, key=lambda n: (n == ADVANCED_GROUP, list(grouped).index(n)))
     for name in ordered:
         members = grouped[name]
-        panels.append(PanelSection(
-            title=name,
-            n_col=1,
-            # Advanced parameters are the ones a user should not have to see to
-            # get a sensible result, so that panel starts folded.
-            collapsed=(name == ADVANCED_GROUP),
-            sections=tuple(members),
-        ))
+        panels.append(
+            PanelSection(
+                title=name,
+                n_col=1,
+                # Advanced parameters are the ones a user should not have to see to
+                # get a sensible result, so that panel starts folded.
+                collapsed=(name == ADVANCED_GROUP),
+                sections=tuple(members),
+            )
+        )
     return tuple(panels)
 
 
@@ -207,15 +209,20 @@ class GroupedEntryView:
 
         spec = describe(category, name)
         self._inner_view = RpcMethodView(
-            spec, values=values or None, on_change=on_change,
+            spec,
+            values=values or None,
+            on_change=on_change,
             title=spec.get("label", name),
         )
         panel = self._inner_view.view_spec().sections[0]
-        self._view = ModelView(sections=_group_sections(
-            panel.sections,
-            (spec.get("params_schema") or {}).get("properties") or {},
-            panel.title, panel.description,
-        ))
+        self._view = ModelView(
+            sections=_group_sections(
+                panel.sections,
+                (spec.get("params_schema") or {}).get("properties") or {},
+                panel.title,
+                panel.description,
+            )
+        )
 
     @property
     def _params_group(self):
@@ -228,7 +235,7 @@ class GroupedEntryView:
         return self._inner_view.params()
 
 
-def _linked_property(spec: typing.Mapping) -> typing.Optional[typing.Tuple[str, str, str]]:
+def _linked_property(spec: typing.Mapping) -> tuple[str, str, str] | None:
     """Find a property whose schema is delegated to another registry entry.
 
     Returns ``(property_name, category, selector_property)`` for the first
@@ -265,12 +272,13 @@ class CompositeEntryView:
         self,
         category: str,
         name: str,
-        values: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-        on_change: typing.Optional[typing.Callable] = None,
+        values: typing.Mapping[str, typing.Any] | None = None,
+        on_change: typing.Callable | None = None,
     ):
-        from chisurf.core.dataspec import ModelView, PanelSection
-        from chisurf.core.dataspec.rpc import RpcMethodView
         import dataclasses
+
+        from chisurf.core.dataspec import ModelView
+        from chisurf.core.dataspec.rpc import RpcMethodView
 
         spec = describe(category, name)
         link = _linked_property(spec)
@@ -288,12 +296,12 @@ class CompositeEntryView:
         schema["properties"] = {
             k: v for k, v in schema["properties"].items() if k != self._inner_name
         }
-        schema["required"] = [
-            r for r in schema.get("required", ()) if r != self._inner_name
-        ]
+        schema["required"] = [r for r in schema.get("required", ()) if r != self._inner_name]
         outer_spec["params_schema"] = schema
         self._outer = RpcMethodView(
-            outer_spec, values=values or None, on_change=on_change,
+            outer_spec,
+            values=values or None,
+            on_change=on_change,
             title=spec.get("label", name),
         )
         self._outer_properties = schema["properties"]
@@ -301,31 +309,36 @@ class CompositeEntryView:
         inner_entry = entries(self._inner_category).get(self.selector_value)
         self._inner = None
         outer_panel = self._outer.view_spec().sections[0]
-        sections = list(_group_sections(
-            outer_panel.sections, self._outer_properties,
-            outer_panel.title, outer_panel.description,
-        ))
+        sections = list(
+            _group_sections(
+                outer_panel.sections,
+                self._outer_properties,
+                outer_panel.title,
+                outer_panel.description,
+            )
+        )
         if inner_entry is not None and inner_entry.get("params_schema"):
             self._inner = RpcMethodView(
-                inner_entry, values=inner_values or None, on_change=on_change,
+                inner_entry,
+                values=inner_values or None,
+                on_change=on_change,
                 title=inner_entry.get("label", self.selector_value),
             )
             # Sections bind through `target`, resolved with getattr on this
             # object; the inner sections are re-pointed at the inner group so the
             # two forms edit separate value dicts.
             inner_panel = self._inner.view_spec().sections[0]
-            inner_props = (inner_entry.get("params_schema") or {}).get(
-                "properties") or {}
+            inner_props = (inner_entry.get("params_schema") or {}).get("properties") or {}
             # Sections bind through `target`, resolved with getattr on this
             # object; the inner sections are re-pointed at the inner group so the
             # two forms edit separate value dicts. Grouping is applied after the
             # rebind so the nested parameters fold exactly like a top-level form.
             rebound = tuple(
-                dataclasses.replace(child, target="_inner_group")
-                for child in inner_panel.sections
+                dataclasses.replace(child, target="_inner_group") for child in inner_panel.sections
             )
             for panel in _group_sections(
-                rebound, inner_props,
+                rebound,
+                inner_props,
                 f"{inner_panel.title} parameters",
                 inner_entry.get("summary", ""),
             ):
@@ -346,14 +359,14 @@ class CompositeEntryView:
         """Current value of the property naming the inner entry."""
         return self._outer.params().get(self._selector, "")
 
-    def should_rebuild(self, built_for: typing.Optional[str]) -> bool:
+    def should_rebuild(self, built_for: str | None) -> bool:
         """Whether the nested panel is stale for the current selector value."""
         return built_for != self.selector_value
 
     def view_spec(self):
         return self._view
 
-    def params(self) -> typing.Dict[str, typing.Any]:
+    def params(self) -> dict[str, typing.Any]:
         """Outer parameters, with the nested form folded into the linked one."""
         out = self._outer.params()
         if self._inner is not None:
@@ -364,8 +377,8 @@ class CompositeEntryView:
 def entry_form_view_auto(
     category: str,
     name: str,
-    values: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-    on_change: typing.Optional[typing.Callable] = None,
+    values: typing.Mapping[str, typing.Any] | None = None,
+    on_change: typing.Callable | None = None,
 ):
     """A form model for any entry, nesting delegated parameters when present.
 

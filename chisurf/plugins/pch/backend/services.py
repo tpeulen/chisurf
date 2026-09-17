@@ -73,17 +73,13 @@ def _compute_handler(
         channels = channels or [0, 2]
         mask = np.isin(tttr.routing_channels, channels)
         bin_t = bin_time_us * 1e-6
-        masks_mt = (tttr.micro_times >= micro_time_min) & (
-            tttr.micro_times <= micro_time_max
-        )
+        masks_mt = (tttr.micro_times >= micro_time_min) & (tttr.micro_times <= micro_time_max)
         combined_mask = mask & masks_mt
         times = tttr.macro_times[combined_mask] * tttr.header.macro_time_resolution
         t_max = times.max()
         n_bins = int(np.ceil(t_max / bin_t))
         range_end = bin_t * n_bins
-        counts, edges = np.histogram(
-            times, bins=n_bins, range=(0, range_end)
-        )
+        counts, edges = np.histogram(times, bins=n_bins, range=(0, range_end))
         tcent = ((edges[:-1] + edges[1:]) / 2).tolist()
         hist_counts = np.bincount(counts, minlength=int(counts.max()) + 1)
         total_bins = int(counts.size)
@@ -151,14 +147,8 @@ def _fit_handler(
         )
         tb = total_bins or 1
         fit_high = fit_high if fit_high is not None else int(k[-1])
-        init_eps = (
-            initial_epsilons
-            if initial_epsilons
-            else [2.0] * n_components
-        )
-        init_Ns = (
-            initial_Ns if initial_Ns else [3.0] * n_components
-        )
+        init_eps = initial_epsilons if initial_epsilons else [2.0] * n_components
+        init_Ns = initial_Ns if initial_Ns else [3.0] * n_components
         mask_reg = (k >= fit_low) & (k <= fit_high)
         params_init = init_eps + init_Ns
 

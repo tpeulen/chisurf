@@ -13,19 +13,28 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis import interactions as inter
 from chimol.analysis.hbonds import type_atoms
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
-ATOM_DTYPE = np.dtype([
-    ("atom_name", "U4"), ("res_name", "U4"), ("res_id", "i4"),
-    ("chain", "U2"), ("element", "U2"), ("xyz", "f8", 3),
-])
+ATOM_DTYPE = np.dtype(
+    [
+        ("atom_name", "U4"),
+        ("res_name", "U4"),
+        ("res_id", "i4"),
+        ("chain", "U2"),
+        ("element", "U2"),
+        ("xyz", "f8", 3),
+    ]
+)
 
 
 def _atoms(rows) -> np.ndarray:
@@ -52,8 +61,8 @@ def _ring(centre, upright=False, radius=1.4, resi=1):
         angle = 2.0 * np.pi * k / 6.0
         offset = (
             np.array([radius * np.cos(angle), 0.0, radius * np.sin(angle)])
-            if upright else
-            np.array([radius * np.cos(angle), radius * np.sin(angle), 0.0])
+            if upright
+            else np.array([radius * np.cos(angle), radius * np.sin(angle), 0.0])
         )
         rows.append((name, "PHE", resi, "C", np.array(centre, float) + offset))
     return rows
@@ -93,22 +102,22 @@ def test_the_charge_table_is_pymols_asymmetric_one():
     bridge. PyMOL pins ARG's ``NH2`` to zero explicitly for this reason
     (PYMOL-5019), and only ``OD2``/``OE2`` carry the negative charge.
     """
-    atoms = _atoms([
-        ("NH1", "ARG", 1, "N", (0, 0, 0)),
-        ("NH2", "ARG", 1, "N", (1, 0, 0)),
-        ("OD1", "ASP", 2, "O", (2, 0, 0)),
-        ("OD2", "ASP", 2, "O", (3, 0, 0)),
-        ("OE1", "GLU", 3, "O", (4, 0, 0)),
-        ("OE2", "GLU", 3, "O", (5, 0, 0)),
-        ("NZ", "LYS", 4, "N", (6, 0, 0)),
-        ("ND1", "HIS", 5, "N", (7, 0, 0)),
-        ("ND1", "HIP", 6, "N", (8, 0, 0)),
-        ("OXT", "ALA", 7, "O", (9, 0, 0)),
-        ("OP2", "DG", 8, "O", (10, 0, 0)),
-    ])
-    assert list(inter.formal_charges(atoms)) == [
-        1, 0, 0, -1, 0, -1, 1, 0, 1, -1, -1
-    ]
+    atoms = _atoms(
+        [
+            ("NH1", "ARG", 1, "N", (0, 0, 0)),
+            ("NH2", "ARG", 1, "N", (1, 0, 0)),
+            ("OD1", "ASP", 2, "O", (2, 0, 0)),
+            ("OD2", "ASP", 2, "O", (3, 0, 0)),
+            ("OE1", "GLU", 3, "O", (4, 0, 0)),
+            ("OE2", "GLU", 3, "O", (5, 0, 0)),
+            ("NZ", "LYS", 4, "N", (6, 0, 0)),
+            ("ND1", "HIS", 5, "N", (7, 0, 0)),
+            ("ND1", "HIP", 6, "N", (8, 0, 0)),
+            ("OXT", "ALA", 7, "O", (9, 0, 0)),
+            ("OP2", "DG", 8, "O", (10, 0, 0)),
+        ]
+    )
+    assert list(inter.formal_charges(atoms)) == [1, 0, 0, -1, 0, -1, 1, 0, 1, -1, -1]
 
 
 def test_a_plain_histidine_is_neutral():
@@ -117,23 +126,32 @@ def test_a_plain_histidine_is_neutral():
     The consequence is visible: a HIS-ASP pair is *not* reported as a salt
     bridge unless the residue is named ``HIP``/``HISP``/``HISH``.
     """
-    charges = inter.formal_charges(_atoms([
-        ("ND1", "HIS", 1, "N", (0, 0, 0)),
-        ("OD2", "ASP", 2, "O", (0, 0, 3.0)),
-    ]))
+    charges = inter.formal_charges(
+        _atoms(
+            [
+                ("ND1", "HIS", 1, "N", (0, 0, 0)),
+                ("OD2", "ASP", 2, "O", (0, 0, 3.0)),
+            ]
+        )
+    )
     assert charges.tolist() == [0, -1], "HIS must be neutral, ASP OD2 charged"
-    assert inter.find_salt_bridges(_atoms([
-        ("ND1", "HIS", 1, "N", (0, 0, 0)),
-        ("OD2", "ASP", 2, "O", (0, 0, 3.0)),
-    ])) == []
+    assert (
+        inter.find_salt_bridges(
+            _atoms(
+                [
+                    ("ND1", "HIS", 1, "N", (0, 0, 0)),
+                    ("OD2", "ASP", 2, "O", (0, 0, 3.0)),
+                ]
+            )
+        )
+        == []
+    )
 
 
 def test_an_explicit_charge_in_the_file_wins():
     """The table fills in what is missing; it does not overrule what is known."""
     dtype = np.dtype(ATOM_DTYPE.descr + [("formal_charge", "f8")])
-    atoms = np.array(
-        [("NH1", "ARG", 1, "A", "N", (0.0, 0.0, 0.0), -1.0)], dtype=dtype
-    )
+    atoms = np.array([("NH1", "ARG", 1, "A", "N", (0.0, 0.0, 0.0), -1.0)], dtype=dtype)
     assert inter.formal_charges(atoms).tolist() == [-1]
 
 
@@ -157,14 +175,18 @@ def test_salt_bridges_on_a_real_protein(protein):
 
 def test_the_salt_bridge_cutoff_is_the_only_criterion():
     """No angle, no chemistry -- PyMOL's test is distance and sign."""
-    near = _atoms([
-        ("NZ", "LYS", 1, "N", (0, 0, 0)),
-        ("OE2", "GLU", 2, "O", (0, 0, 4.9)),
-    ])
-    far = _atoms([
-        ("NZ", "LYS", 1, "N", (0, 0, 0)),
-        ("OE2", "GLU", 2, "O", (0, 0, 5.1)),
-    ])
+    near = _atoms(
+        [
+            ("NZ", "LYS", 1, "N", (0, 0, 0)),
+            ("OE2", "GLU", 2, "O", (0, 0, 4.9)),
+        ]
+    )
+    far = _atoms(
+        [
+            ("NZ", "LYS", 1, "N", (0, 0, 0)),
+            ("OE2", "GLU", 2, "O", (0, 0, 5.1)),
+        ]
+    )
     assert len(inter.find_salt_bridges(near)) == 1
     assert inter.find_salt_bridges(far) == []
 
@@ -189,9 +211,7 @@ def test_the_planar_ring_set_is_the_aromatic_one(protein):
     assert sizes.count(5) == 4  # HIS + three TRP five-membered rings
     assert sizes.count(6) == 14
 
-    residues = {
-        str(atoms["res_name"][ring[0]]).strip().upper() for ring in rings
-    }
+    residues = {str(atoms["res_name"][ring[0]]).strip().upper() for ring in rings}
     assert "PRO" not in residues
 
 
@@ -224,18 +244,28 @@ def test_a_ligand_ring_needs_its_hydrogens():
     a PDB ligand. So this is a property of the input, not a gap against PyMOL,
     and the answer for a user is to load the hydrogenated structure.
     """
+
     def benzene(z, resi, hydrogens):
         rows = [
-            (f"C{k}", "LIG", resi, "C",
-             (1.4 * np.cos(2 * np.pi * k / 6), 1.4 * np.sin(2 * np.pi * k / 6), z))
+            (
+                f"C{k}",
+                "LIG",
+                resi,
+                "C",
+                (1.4 * np.cos(2 * np.pi * k / 6), 1.4 * np.sin(2 * np.pi * k / 6), z),
+            )
             for k in range(6)
         ]
         bonds = [(k, (k + 1) % 6) for k in range(6)]
         if hydrogens:
             rows += [
-                (f"H{k}", "LIG", resi, "H",
-                 (2.5 * np.cos(2 * np.pi * k / 6),
-                  2.5 * np.sin(2 * np.pi * k / 6), z))
+                (
+                    f"H{k}",
+                    "LIG",
+                    resi,
+                    "H",
+                    (2.5 * np.cos(2 * np.pi * k / 6), 2.5 * np.sin(2 * np.pi * k / 6), z),
+                )
                 for k in range(6)
             ]
             bonds += [(k, 6 + k) for k in range(6)]
@@ -249,9 +279,7 @@ def test_a_ligand_ring_needs_its_hydrogens():
         bonds = lower_bonds + [(i + offset, j + offset) for i, j in upper_bonds]
 
         hits = inter.find_pi_interactions(atoms, bonds, pication=False)
-        assert [hit.kind for hit in hits] == expected, (
-            f"hydrogens={hydrogens}"
-        )
+        assert [hit.kind for hit in hits] == expected, f"hydrogens={hydrogens}"
 
 
 def test_rings_side_by_side_in_one_plane_are_not_stacked():
@@ -262,44 +290,33 @@ def test_rings_side_by_side_in_one_plane_are_not_stacked():
     normals are more than 40° from the line joining the centres.
     """
     rows = _ring((0, 0, 0), resi=1) + _ring((4.0, 0, 0), resi=2)
-    hits = inter.find_pi_interactions(
-        _atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False
-    )
+    hits = inter.find_pi_interactions(_atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False)
     assert hits == []
 
 
 def test_a_perpendicular_ring_is_edge_to_face():
     """T-shaped stacking, which reaches further than face-to-face."""
-    rows = _ring((0, 0, 0), resi=1) + _ring(
-        (0, 0, 5.0), upright=True, resi=2
-    )
-    hits = inter.find_pi_interactions(
-        _atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False
-    )
+    rows = _ring((0, 0, 0), resi=1) + _ring((0, 0, 5.0), upright=True, resi=2)
+    hits = inter.find_pi_interactions(_atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False)
     assert [hit.kind for hit in hits] == ["edge-to-face"]
 
 
 def test_a_cation_over_a_ring_face_is_found_and_one_beside_it_is_not():
     """Pi-cation is a cone, not a sphere: 6.6 Å *and* within 30° of the axis."""
-    over = _atoms(
-        _ring((0, 0, 0), resi=1) + [("NZ", "LYS", 2, "N", (0, 0, 4.0))]
-    )
-    beside = _atoms(
-        _ring((0, 0, 0), resi=1) + [("NZ", "LYS", 2, "N", (5.0, 0, 0.5))]
-    )
+    over = _atoms(_ring((0, 0, 0), resi=1) + [("NZ", "LYS", 2, "N", (0, 0, 4.0))])
+    beside = _atoms(_ring((0, 0, 0), resi=1) + [("NZ", "LYS", 2, "N", (5.0, 0, 0.5))])
     bonds = _ring_bonds(0)
 
-    assert [h.kind for h in inter.find_pi_interactions(
-        over, bonds, pipi=False)] == ["pi-cation"]
+    assert [h.kind for h in inter.find_pi_interactions(over, bonds, pipi=False)] == ["pi-cation"]
     assert inter.find_pi_interactions(beside, bonds, pipi=False) == []
 
 
 def test_a_pi_interaction_ends_at_a_ring_centre_not_an_atom():
     """Which is why the finder returns points, and ``i``/``j`` may be -1."""
     rows = _ring((0, 0, 0), resi=1) + _ring((0, 0, 3.5), resi=2)
-    hit = inter.find_pi_interactions(
-        _atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False
-    )[0]
+    hit = inter.find_pi_interactions(_atoms(rows), _ring_bonds(0) + _ring_bonds(6), pication=False)[
+        0
+    ]
     assert hit.i == -1 and hit.j == -1
     assert np.allclose(hit.start, (0, 0, 0), atol=1e-6)
     assert np.allclose(hit.end, (0, 0, 3.5), atol=1e-6)
@@ -377,8 +394,8 @@ def cmd(qapp, tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not PDB.is_file():
         pytest.skip("no 148l fixture")

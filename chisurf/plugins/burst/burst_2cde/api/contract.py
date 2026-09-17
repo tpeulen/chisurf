@@ -39,6 +39,7 @@ def two_cde_request_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def service_success(result: dict[str, Any] | Any) -> dict[str, Any]:
     """Wrap a result in the standard JSON-RPC service envelope."""
     from .serialization import to_jsonable
+
     return {"ok": True, "result": to_jsonable(result)}
 
 
@@ -80,11 +81,20 @@ def contract_descriptor() -> dict[str, Any]:
                 "type": "object",
                 "properties": {
                     "donor_channels": {"type": "array", "items": {"type": "integer"}},
-                    "donor_micro_time_ranges": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2}},
+                    "donor_micro_time_ranges": {
+                        "type": "array",
+                        "items": {"type": "array", "minItems": 2, "maxItems": 2},
+                    },
                     "acceptor_channels": {"type": "array", "items": {"type": "integer"}},
-                    "acceptor_micro_time_ranges": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2}},
+                    "acceptor_micro_time_ranges": {
+                        "type": "array",
+                        "items": {"type": "array", "minItems": 2, "maxItems": 2},
+                    },
                     "acceptor_excitation_channels": {"type": "array", "items": {"type": "integer"}},
-                    "acceptor_excitation_micro_time_ranges": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2}},
+                    "acceptor_excitation_micro_time_ranges": {
+                        "type": "array",
+                        "items": {"type": "array", "minItems": 2, "maxItems": 2},
+                    },
                     "tau": {"type": "number"},
                     "kernel": {"type": "string", "enum": ["laplace", "gaussian"]},
                     "variant": {"type": "string", "enum": ["fret", "alex"]},

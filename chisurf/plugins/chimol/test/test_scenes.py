@@ -20,12 +20,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.services.views import SceneStore
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -41,8 +44,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -202,8 +205,8 @@ def test_the_camera_survives_a_change_of_representation(session):
     cmd.do("zoom")
 
     cmd.do("scene ribbon")
-    assert _state(view).show_cartoon                       # representation back
-    assert np.allclose(view.get_view_state(), stored, atol=1e-5)   # *and* camera
+    assert _state(view).show_cartoon  # representation back
+    assert np.allclose(view.get_view_state(), stored, atol=1e-5)  # *and* camera
 
 
 def test_a_scene_restores_colours(session):
@@ -236,8 +239,8 @@ def test_view_zero_leaves_the_camera_alone(session):
     current = list(view.get_view_state())
 
     cmd.do("scene ribbon, recall, view=0")
-    assert _state(view).show_cartoon                        # representation did change
-    assert np.allclose(view.get_view_state(), current, atol=1e-5)   # camera did not
+    assert _state(view).show_cartoon  # representation did change
+    assert np.allclose(view.get_view_state(), current, atol=1e-5)  # camera did not
 
 
 def test_rep_zero_leaves_the_representation_alone(session):
@@ -253,7 +256,7 @@ def test_rep_zero_leaves_the_representation_alone(session):
     cmd.do("turn y, 45")
 
     cmd.do("scene ribbon, recall, rep=0")
-    assert _spheres(view) > 0                               # still spheres
+    assert _spheres(view) > 0  # still spheres
     assert np.allclose(view.get_view_state(), stored, atol=1e-5)
 
 

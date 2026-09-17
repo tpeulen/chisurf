@@ -198,7 +198,9 @@ def image_correlation(
     w_imm_um = _pos(w_immobile, 1e-3)
 
     tau = lag_time(
-        xi, psi, delta,
+        xi,
+        psi,
+        delta,
         pixel_duration_us=pixel_duration,
         line_duration_ms=line_duration,
         frame_duration_ms=frame_duration,
@@ -212,9 +214,9 @@ def image_correlation(
     msd = mean_square_displacement(tau, diffusion_coefficient, alpha)
 
     # Diffusive amplitude decay: lateral always, axial only in 3D.
-    decay = 1.0 / (1.0 + msd / w_r_um ** 2)
+    decay = 1.0 / (1.0 + msd / w_r_um**2)
     if not two_d:
-        decay = decay / np.sqrt(1.0 + msd / w_z_um ** 2)
+        decay = decay / np.sqrt(1.0 + msd / w_z_um**2)
 
     # Blinking/triplet. a_triplet == 0 makes this exactly 1.
     at = float(a_triplet)
@@ -224,16 +226,16 @@ def image_correlation(
     else:
         triplet = 1.0
 
-    spatial = np.exp(-(dx ** 2 + dy ** 2) / (w_r_um ** 2 + msd))
+    spatial = np.exp(-(dx**2 + dy**2) / (w_r_um**2 + msd))
     mobile = triplet * decay * spatial
 
     # gamma: the shape factor of the detection volume.
-    gamma = 0.5 if two_d else 2.0 ** -1.5
+    gamma = 0.5 if two_d else 2.0**-1.5
 
     if n_imm > 0.0:
         dx_imm = a_nm * xi * 1.0e-3 - float(shift_x) * 1.0e-3
         dy_imm = a_nm * psi * 1.0e-3 - float(shift_y) * 1.0e-3
-        immobile = np.exp(-(dx_imm ** 2 + dy_imm ** 2) / w_imm_um ** 2)
+        immobile = np.exp(-(dx_imm**2 + dy_imm**2) / w_imm_um**2)
         amplitude = gamma / _pos(n_mobile + n_imm) ** 2
         return float(offset) + amplitude * (n_mobile * mobile + n_imm * immobile)
 
@@ -291,4 +293,4 @@ def ics_gaussian_2d(
     c, s = np.cos(float(angle)), np.sin(float(angle))
     u = (xr * c + yr * s) / s1
     v = (-xr * s + yr * c) / s2
-    return float(offset) + abs(float(amplitude)) * np.exp(-(u ** 2) - (v ** 2))
+    return float(offset) + abs(float(amplitude)) * np.exp(-(u**2) - (v**2))

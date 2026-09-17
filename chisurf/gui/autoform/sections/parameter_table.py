@@ -17,9 +17,9 @@ attribute on the section descriptor.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from functools import partial
 from math import floor, isfinite, log10
-from typing import Callable, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -185,9 +185,9 @@ class WheelEditTableView(QtWidgets.QTableView):
         if model is None:
             return False
         try:
-            position = event.position().toPoint()      # Qt6
+            position = event.position().toPoint()  # Qt6
         except AttributeError:
-            position = event.pos()                     # Qt5
+            position = event.pos()  # Qt5
         index = self.indexAt(position)
         if not index.isValid():
             return False
@@ -517,7 +517,9 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         """
         if col_id != "value":
             return None
-        if not (bool(getattr(param, "fixed", False)) or ParameterGroupTableModel._is_follower(param)):
+        if not (
+            bool(getattr(param, "fixed", False)) or ParameterGroupTableModel._is_follower(param)
+        ):
             return None
         palette = QtWidgets.QApplication.palette()
         return palette.brush(QtGui.QPalette.Disabled, QtGui.QPalette.Text)
@@ -545,7 +547,13 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
             return ""
         if col_id == "bounds_hi":
             b = param.bounds
-            if not is_output and b is not None and len(b) > 1 and b[1] is not None and param.bounds_on:
+            if (
+                not is_output
+                and b is not None
+                and len(b) > 1
+                and b[1] is not None
+                and param.bounds_on
+            ):
                 return f"{b[1]:.6g}"
             return ""
         if col_id == "bounds_on":
@@ -630,7 +638,9 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         # Hi cells into editable numbers, and a bound that excludes the current
         # value clamps it — with a single-cell signal those cells kept painting
         # the superseded text.
-        self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1))
+        self.dataChanged.emit(
+            self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1)
+        )
         return True
 
     # -- helpers ------------------------------------------------------------
@@ -788,9 +798,7 @@ class _ContentSizedTable:
         enlarging the host shows more rows rather than blank space. ``None``
         restores the size-to-content behaviour.
         """
-        self._min_visible_rows = (
-            None if min_visible_rows is None else max(1, int(min_visible_rows))
-        )
+        self._min_visible_rows = None if min_visible_rows is None else max(1, int(min_visible_rows))
         self._size_to_content()
 
     def _size_to_content(self) -> None:
@@ -810,7 +818,6 @@ class _ContentSizedTable:
         self._table.setMaximumHeight(max(content, floor))
         self._table.setMinimumHeight(min(floor, content))
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-
 
     def _tier_columns(self, tier: str) -> typing.List[int]:
         """Return the column indices belonging to `tier`.
@@ -838,7 +845,6 @@ class _ContentSizedTable:
         the author or the user asked to keep hidden.
         """
         return False
-
 
     def _apply_responsive_columns(self) -> None:
         """Hide low-priority columns that do not fit the current width.
@@ -1320,9 +1326,7 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     def has_bounds_columns(self) -> bool:
         """Return True when this table can show any Lo / Hi / Bounds column."""
         allowed = self._allowed_columns()
-        return allowed is None or bool(
-            {"bounds_lo", "bounds_hi", "bounds_on"} & allowed
-        )
+        return allowed is None or bool({"bounds_lo", "bounds_hi", "bounds_on"} & allowed)
 
     def set_bounds_visible(self, visible: bool) -> None:
         """Show or hide the Lo / Hi / Bounds columns.
@@ -1375,7 +1379,7 @@ def _group_header_label(label_text: str) -> str:
     amplitude column, the lifetime column).
     """
 
-    def _strip(match: "re.Match[str]") -> str:
+    def _strip(match: re.Match[str]) -> str:
         inner = re.sub(r"[,\s]*\d+\s*$", "", match.group(1)).strip()
         return f"<sub>{inner}</sub>" if inner else ""
 
@@ -1605,7 +1609,9 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         if not _set_param_value(param, col_id, value):
             return False
         # Row-wide, for the reason given in ``ParameterGroupTableModel.setData``.
-        self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1))
+        self.dataChanged.emit(
+            self.index(index.row(), 0), self.index(index.row(), self.columnCount() - 1)
+        )
         return True
 
 
@@ -1912,9 +1918,7 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         # information the column exists to show.
         share = (width - other) / len(value_columns) if width > 0 else 0
         fits = share >= max(table.sizeHintForColumn(col) for col in value_columns)
-        mode = (
-            QtWidgets.QHeaderView.Stretch if fits else QtWidgets.QHeaderView.ResizeToContents
-        )
+        mode = QtWidgets.QHeaderView.Stretch if fits else QtWidgets.QHeaderView.ResizeToContents
         if mode == getattr(self, "_value_mode", None):
             return
         self._value_mode = mode
@@ -1927,7 +1931,6 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
                 header.setSectionResizeMode(col, mode)
             except Exception:  # pragma: no cover - Qt4 fallback
                 header.setResizeMode(col, mode)
-
 
     def showEvent(self, event):  # noqa: N802 (Qt override)
         """Decide the columns when the table first gets a real width.

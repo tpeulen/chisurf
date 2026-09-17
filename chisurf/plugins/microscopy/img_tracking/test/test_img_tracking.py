@@ -19,8 +19,14 @@ PLUGIN = pathlib.Path(__file__).parent.parent
 def movie():
     """A small, well-posed movie with a known diffusion coefficient."""
     frames, _ = tk.simulate_particle_movie(
-        n_frames=40, shape=(160, 160), n_particles=6, diffusion_coefficient=0.5,
-        sigma_psf=1.5, amplitude=250.0, background=10.0, seed=1,
+        n_frames=40,
+        shape=(160, 160),
+        n_particles=6,
+        diffusion_coefficient=0.5,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=1,
     )
     return frames
 
@@ -85,11 +91,15 @@ def test_calibration_changes_the_units_not_the_physics(movie):
     """
     raw = core.analyse(movie, max_distance=4.0, min_track_length=10, n_bootstrap=0)
     cal = core.analyse(
-        movie, pixel_size=0.1, frame_interval=0.05, max_distance=4.0,
-        min_track_length=10, n_bootstrap=0,
+        movie,
+        pixel_size=0.1,
+        frame_interval=0.05,
+        max_distance=4.0,
+        min_track_length=10,
+        n_bootstrap=0,
     )
     assert cal.fit.diffusion_coefficient == pytest.approx(
-        raw.fit.diffusion_coefficient * 0.1 ** 2 / 0.05, rel=1e-6
+        raw.fit.diffusion_coefficient * 0.1**2 / 0.05, rel=1e-6
     )
     assert cal.info["calibrated"] is True
     assert "µm²/s" in cal.report()
@@ -97,7 +107,7 @@ def test_calibration_changes_the_units_not_the_physics(movie):
 
 def test_loading_a_missing_channel_is_refused(tmp_path):
     """A channel index past the end must say so, not silently take channel 0."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     path = tmp_path / "stack.tif"
     imwrite(str(path), np.zeros((4, 32, 32), dtype=np.uint16))
@@ -112,9 +122,14 @@ def test_the_rpc_can_simulate_and_track():
     """``img_tracking.jobs.simulate`` needs no files."""
     reply = services.simulate(
         {
-            "n_frames": 30, "shape": [128, 128], "n_particles": 5,
-            "diffusion_coefficient": 0.5, "seed": 2,
-            "max_distance": 4.0, "min_track_length": 8, "n_bootstrap": 20,
+            "n_frames": 30,
+            "shape": [128, 128],
+            "n_particles": 5,
+            "diffusion_coefficient": 0.5,
+            "seed": 2,
+            "max_distance": 4.0,
+            "min_track_length": 8,
+            "n_bootstrap": 20,
         }
     )
     assert reply["ok"], reply.get("error")
@@ -164,9 +179,25 @@ def test_the_cli_can_simulate_and_report(tmp_path):
     csv = tmp_path / "tracks.csv"
     result = CliRunner().invoke(
         cli,
-        ["--simulate", "--sim-frames", "30", "--sim-size", "128", "--sim-particles", "5",
-         "--max-distance", "4.0", "--min-track-length", "8", "--bootstrap", "20",
-         "--output", str(out), "--tracks-csv", str(csv)],
+        [
+            "--simulate",
+            "--sim-frames",
+            "30",
+            "--sim-size",
+            "128",
+            "--sim-particles",
+            "5",
+            "--max-distance",
+            "4.0",
+            "--min-track-length",
+            "8",
+            "--bootstrap",
+            "20",
+            "--output",
+            str(out),
+            "--tracks-csv",
+            str(csv),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert "D =" in result.output

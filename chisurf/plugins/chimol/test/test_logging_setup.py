@@ -17,10 +17,8 @@ works identically where no file can exist (the browser).
 from __future__ import annotations
 
 import logging
-import pathlib
 
 import pytest
-
 from chimol.core.settings.logging import (
     LOGGER,
     configure_logging,

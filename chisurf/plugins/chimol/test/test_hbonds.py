@@ -20,7 +20,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.hbonds import (
     HBond,
     HBondCriteria,
@@ -28,35 +27,41 @@ from chimol.analysis.hbonds import (
     type_atoms,
 )
 
-_PDB = pathlib.Path(__file__).resolve().parents[4] / "test" / "data" / (
-    "atomic_coordinates"
-) / "pdb_files"
+_PDB = (
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / ("atomic_coordinates")
+    / "pdb_files"
+)
 
 
 def _atoms(*rows) -> np.ndarray:
     """A minimal structured atom array: ``(name, resn, resi, element, xyz)``."""
-    dtype = np.dtype([
-        ("atom_name", "U4"), ("res_name", "U4"), ("res_id", "i4"),
-        ("element", "U2"), ("xyz", "f8", 3),
-    ])
-    return np.array(
-        [(n, r, i, e, tuple(v)) for n, r, i, e, v in rows], dtype=dtype
+    dtype = np.dtype(
+        [
+            ("atom_name", "U4"),
+            ("res_name", "U4"),
+            ("res_id", "i4"),
+            ("element", "U2"),
+            ("xyz", "f8", 3),
+        ]
     )
+    return np.array([(n, r, i, e, tuple(v)) for n, r, i, e, v in rows], dtype=dtype)
 
 
 def _read(name: str):
     """A fixture PDB with its bonds, keeping waters and ligands."""
-    from chisurf.core.fio.structure.coordinates import read_coordinates
     from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
 
+    from chisurf.core.fio.structure.coordinates import read_coordinates
+
     path = _PDB / name
     if not path.exists():
         pytest.skip(f"no {name} fixture")
-    atoms = read_coordinates(
-        str(path), keep_water=True, only_standard_residues=False
-    )
+    atoms = read_coordinates(str(path), keep_water=True, only_standard_residues=False)
     elements = np.char.strip(np.asarray(atoms["element"]).astype(str))
     bonds = build_bond_pairs_by_element(
         np.asarray(atoms["xyz"], dtype=float),
@@ -78,10 +83,7 @@ def test_the_cutoff_slides_from_center_to_edge():
     hbc = HBondCriteria()
     # curve(0) = 0 -> cutoff = center; curve(max_angle) = 1 -> cutoff = edge.
     for angle, expected in ((0.0, hbc.cutoff_center), (hbc.max_angle, hbc.cutoff_edge)):
-        curve = (
-            (angle ** hbc.power_a) * hbc.factor_a
-            + (angle ** hbc.power_b) * hbc.factor_b
-        )
+        curve = (angle**hbc.power_a) * hbc.factor_a + (angle**hbc.power_b) * hbc.factor_b
         cutoff = hbc.cutoff_edge * curve + hbc.cutoff_center * (1.0 - curve)
         assert cutoff == pytest.approx(expected, abs=1e-6)
 
@@ -90,7 +92,7 @@ def test_the_curve_is_monotone_between_the_two_ends():
     """A bent hydrogen bond is never allowed to be *longer* than a straight one."""
     hbc = HBondCriteria()
     angles = np.linspace(0.0, hbc.max_angle, 64)
-    curve = (angles ** hbc.power_a) * hbc.factor_a + (angles ** hbc.power_b) * hbc.factor_b
+    curve = (angles**hbc.power_a) * hbc.factor_a + (angles**hbc.power_b) * hbc.factor_b
     cutoffs = hbc.cutoff_edge * curve + hbc.cutoff_center * (1.0 - curve)
     assert np.all(np.diff(cutoffs) <= 1e-9)
 
@@ -104,9 +106,7 @@ def test_a_zero_edge_flattens_the_curve_to_a_plain_distance():
     don_to_h = np.array([1.0, 0.0, 0.0])
     h_to_acc = don_to_acc - don_to_h
     assert _test_hbond(don_to_acc, don_to_h, h_to_acc, None, hbc)
-    assert not _test_hbond(
-        don_to_acc * 1.1, don_to_h, don_to_acc * 1.1 - don_to_h, None, hbc
-    )
+    assert not _test_hbond(don_to_acc * 1.1, don_to_h, don_to_acc * 1.1 - don_to_h, None, hbc)
 
 
 def test_a_hydrogen_pointing_away_is_rejected():
@@ -118,9 +118,9 @@ def test_a_hydrogen_pointing_away_is_rejected():
     for degrees, accepted in ((0.0, True), (60.0, True), (70.0, False), (120.0, False)):
         radians = np.radians(degrees)
         don_to_h = np.array([np.cos(radians), np.sin(radians), 0.0])
-        assert _test_hbond(
-            don_to_acc, don_to_h, don_to_acc - don_to_h, None, hbc
-        ) is accepted, degrees
+        assert _test_hbond(don_to_acc, don_to_h, don_to_acc - don_to_h, None, hbc) is accepted, (
+            degrees
+        )
 
 
 def test_the_cone_rejects_a_hydrogen_behind_the_acceptor():
@@ -277,8 +277,10 @@ def test_the_helices_of_148l_hydrogen_bond_i_to_i_plus_four(lysozyme):
     res_ids = np.asarray(atoms["res_id"])
 
     helical = [
-        b for b in found
-        if names[b.donor] == "N" and names[b.acceptor] == "O"
+        b
+        for b in found
+        if names[b.donor] == "N"
+        and names[b.acceptor] == "O"
         and res_ids[b.donor] - res_ids[b.acceptor] == 4
     ]
     assert len(helical) > 40, f"only {len(helical)} i->i-4 backbone bonds"
@@ -290,10 +292,7 @@ def test_a_salt_bridge_is_found(lysozyme):
     found = find_hydrogen_bonds(atoms, bonds)
     names = np.char.strip(np.asarray(atoms["atom_name"]).astype(str))
     res = np.char.strip(np.asarray(atoms["res_name"]).astype(str))
-    pairs = {
-        (res[b.donor], names[b.donor], res[b.acceptor], names[b.acceptor])
-        for b in found
-    }
+    pairs = {(res[b.donor], names[b.donor], res[b.acceptor], names[b.acceptor]) for b in found}
     assert any(
         d_res == "ARG" and d_name.startswith("NH") and a_res == "GLU"
         for d_res, d_name, a_res, _a_name in pairs
@@ -354,12 +353,8 @@ def test_stripping_the_hydrogens_keeps_almost_every_contact(hydrogenated):
 
     index = np.nonzero(heavy)[0]
     remap = {int(original): new for new, original in enumerate(index)}
-    with_h = {
-        tuple(sorted((remap[b.donor], remap[b.acceptor]))) for b in run(atoms)
-    }
-    without_h = {
-        tuple(sorted((b.donor, b.acceptor))) for b in run(atoms[heavy])
-    }
+    with_h = {tuple(sorted((remap[b.donor], remap[b.acceptor]))) for b in run(atoms)}
+    without_h = {tuple(sorted((b.donor, b.acceptor))) for b in run(atoms[heavy])}
     assert with_h and without_h
     recall = len(with_h & without_h) / len(with_h)
     assert recall > 0.95, f"recall {recall:.1%}"

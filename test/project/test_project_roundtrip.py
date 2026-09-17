@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 # Consolidated test file: test_project_roundtrip.py
-
-
 # --- FROM test_project_fits_roundtrip.py ---
-
 import json
+
 import numpy as np
 import pytest
 
@@ -13,11 +11,10 @@ pytest.importorskip("chinet")
 
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
-from chisurf.core.models.model import ModelCurve
-
-from chisurf.core.project import Project, save_project, load_project
-from chisurf.core.project.fit_state import make_fit_record, apply_fit_record
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.core.models.model import ModelCurve
+from chisurf.core.project import Project, load_project, save_project
+from chisurf.core.project.fit_state import apply_fit_record, make_fit_record
 
 
 class DummyLinearModel(ModelCurve):
@@ -92,6 +89,7 @@ def test_project_fits_roundtrip_with_single_fit(tmp_path):
 
     # Inspect raw JSON to ensure fits structure is present
     import zipfile
+
     with zipfile.ZipFile(archive_path, "r") as zf:
         raw = json.loads(zf.read("project.json"))
 
@@ -127,11 +125,8 @@ def test_project_fits_roundtrip_with_single_fit(tmp_path):
     assert np.isclose(params2["p1"].value, -0.5)
     assert params2["p1"].fixed is True
 
+
 # --- FROM test_project_json_roundtrip.py ---
-
-import json
-
-from chisurf.core.project import Project, save_project, load_project
 
 
 def test_project_json_roundtrip(tmp_path):
@@ -157,6 +152,7 @@ def test_project_json_roundtrip(tmp_path):
 
     # Sanity-check the raw JSON structure
     import zipfile
+
     with zipfile.ZipFile(archive_path, "r") as zf:
         raw = json.loads(zf.read("project.json"))
 
@@ -177,17 +173,14 @@ def test_project_json_roundtrip(tmp_path):
     assert loaded.fits == p.fits
     assert loaded.ui_state == p.ui_state
 
+
 # --- FROM test_project_v3.py ---
-import json
 import os
 import tempfile
 import unittest
 
-from chisurf.core.project import Project, save_project, load_project
-
 
 class TestProjectFormat(unittest.TestCase):
-
     def test_v4_format_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             project_dir = os.path.join(tmpdir, "test_v4_project")
@@ -201,15 +194,15 @@ class TestProjectFormat(unittest.TestCase):
             p.datasets["ds1"] = {"path": "data/file1.dat", "checksum": "abc123", "uid": "ds-uid-1"}
             p.datasets["ds2"] = {"path": "data/file2.dat", "checksum": "def456", "uid": "ds-uid-2"}
             p.experiments["exp1"] = {"type": "tcspc", "dataset_id": "ds-uid-1", "uid": "exp-uid-1"}
-            p.fits.append({
-                "uid": "fit-uid-1",
-                "name": "fit1",
-                "dataset_uid": "ds-uid-1",
-                "created": "2024-01-01T00:00:00",
-                "local_fits": [
-                    {"uid": "lf-uid-1", "name": "local1", "parameters": []}
-                ]
-            })
+            p.fits.append(
+                {
+                    "uid": "fit-uid-1",
+                    "name": "fit1",
+                    "dataset_uid": "ds-uid-1",
+                    "created": "2024-01-01T00:00:00",
+                    "local_fits": [{"uid": "lf-uid-1", "name": "local1", "parameters": []}],
+                }
+            )
             p.ui_state["current_experiment_id"] = "exp-uid-1"
             p.metadata["checkpoint_interval"] = 50
 
@@ -217,6 +210,7 @@ class TestProjectFormat(unittest.TestCase):
             assert archive_path.is_file()
 
             import zipfile
+
             with zipfile.ZipFile(archive_path, "r") as zf:
                 raw = json.loads(zf.read("project.json"))
 
@@ -248,6 +242,7 @@ class TestProjectFormat(unittest.TestCase):
             archive_path = save_project(p, project_dir)
 
             import zipfile
+
             with zipfile.ZipFile(archive_path, "r") as zf:
                 raw = json.loads(zf.read("project.json"))
 
@@ -268,6 +263,7 @@ class TestProjectFormat(unittest.TestCase):
             archive_path = save_project(p, project_dir)
 
             import zipfile
+
             with zipfile.ZipFile(archive_path, "r") as zf:
                 raw = json.loads(zf.read("project.json"))
 
@@ -305,5 +301,3 @@ class TestProjectFormat(unittest.TestCase):
 
         self.assertEqual(p.list_dataset_uids(), ["a", "m", "z"])
         self.assertEqual(p.list_fit_uids(), ["fit1", "fit2", "fit3"])
-
-

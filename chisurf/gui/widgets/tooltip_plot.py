@@ -245,14 +245,14 @@ def _pixmap_to_html(pixmap: QtGui.QPixmap) -> str:
 
 
 def render_series_thumbnail(
-        series: typing.Iterable[tuple[typing.Any, typing.Any, str]],
-        *,
-        width: int = 300,
-        height: int = 140,
-        x_tick_step: float = None,
-        log_y: bool = False,
-        share_y: bool = False,
-        caption: str = None
+    series: typing.Iterable[tuple[typing.Any, typing.Any, str]],
+    *,
+    width: int = 300,
+    height: int = 140,
+    x_tick_step: float = None,
+    log_y: bool = False,
+    share_y: bool = False,
+    caption: str = None,
 ) -> str:
     """Render one or more ``(x, y, color)`` series as an HTML ``<img>`` thumbnail.
 
@@ -390,13 +390,7 @@ def _prefers_log(y) -> bool:
 
 
 def render_curve_thumbnail(
-        x,
-        y,
-        *,
-        width: int = 300,
-        height: int = 140,
-        color: str = DEFAULT_COLORS[0],
-        log_y: bool = None
+    x, y, *, width: int = 300, height: int = 140, color: str = DEFAULT_COLORS[0], log_y: bool = None
 ) -> str:
     """Render a single ``(x, y)`` curve as an HTML ``<img>`` thumbnail.
 
@@ -567,8 +561,12 @@ def fit_tooltip_html(fit, title: str = None) -> str:
     log_y = _prefers_log(series[0][1])
     try:
         img = render_series_thumbnail(
-            series, width=cfg["width"], height=cfg["height"],
-            log_y=log_y, share_y=True, caption="log" if log_y else None,
+            series,
+            width=cfg["width"],
+            height=cfg["height"],
+            log_y=log_y,
+            share_y=True,
+            caption="log" if log_y else None,
         )
     except Exception:
         img = ""

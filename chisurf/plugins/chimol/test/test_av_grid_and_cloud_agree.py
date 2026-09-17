@@ -22,19 +22,23 @@ for a fabricated backend that gets it wrong on purpose, since the real ones are
 (now) right and a test that only asks them proves nothing about the next
 change.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.plugins.labelling import av
 from chimol.plugins.labelling.av import AccessibleVolume
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 POSITION = {
@@ -138,8 +142,9 @@ def test_samples_and_no_grid_gives_a_grid():
 
 def test_the_shape_is_the_arrays_shape():
     """Not a second stored truth: the transpose updated one and not the other."""
-    volume = AccessibleVolume(points=_cloud(), grid_step=1.5,
-                              grid_shape=(1, 1, 1))   # a lie, on purpose
+    volume = AccessibleVolume(
+        points=_cloud(), grid_step=1.5, grid_shape=(1, 1, 1)
+    )  # a lie, on purpose
     assert tuple(volume.grid_shape) == np.asarray(volume.density).shape
 
 
@@ -148,14 +153,16 @@ def test_a_cloud_written_in_columns_is_read_as_one():
     cloud = _cloud(n=500)
     columns = AccessibleVolume(points=cloud.T.copy(), grid_step=1.5)
     assert columns.n_points == 500
-    assert np.allclose(columns.mean_position, AccessibleVolume(
-        points=cloud, grid_step=1.5).mean_position)
+    assert np.allclose(
+        columns.mean_position, AccessibleVolume(points=cloud, grid_step=1.5).mean_position
+    )
 
 
 def test_an_empty_av_is_still_a_valid_one():
     """A site walled in by its own neighbourhood: no samples, and no crash."""
-    volume = AccessibleVolume(points=np.zeros((0, 4)), grid_step=1.5,
-                              attachment_point=np.array([1.0, 2.0, 3.0]))
+    volume = AccessibleVolume(
+        points=np.zeros((0, 4)), grid_step=1.5, attachment_point=np.array([1.0, 2.0, 3.0])
+    )
     assert volume.n_points == 0 and not volume.has_volume
     assert np.asarray(volume.density).ndim == 3
     assert np.allclose(volume.mean_position, [1.0, 2.0, 3.0])

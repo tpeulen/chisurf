@@ -46,8 +46,9 @@ functions.* Biophysical Journal 97, 665-673 (2009).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -87,7 +88,7 @@ class FlowMap:
     quality: np.ndarray
     amplitude: np.ndarray
     timing: IcsTiming = field(default_factory=IcsTiming)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
     def speed(self) -> np.ndarray:
@@ -101,7 +102,7 @@ class FlowMap:
 
     def quiver(
         self, min_quality: float = 0.5, max_speed: float = 0.0
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Return the arrows worth drawing, as flat ``(x, y, vx, vy)``.
 
         Parameters
@@ -131,7 +132,7 @@ class FlowMap:
             self.vy[keep].ravel(),
         )
 
-    def summary(self, min_quality: float = 0.5) -> Dict[str, float]:
+    def summary(self, min_quality: float = 0.5) -> dict[str, float]:
         """Return mean speed, mean direction and coverage over the kept tiles.
 
         Parameters
@@ -151,8 +152,11 @@ class FlowMap:
         total = int(self.vx.size)
         if vx.size == 0:
             return {
-                "n_tiles": float(total), "n_kept": 0.0, "mean_speed": float("nan"),
-                "mean_vx": float("nan"), "mean_vy": float("nan"),
+                "n_tiles": float(total),
+                "n_kept": 0.0,
+                "mean_speed": float("nan"),
+                "mean_vx": float("nan"),
+                "mean_vy": float("nan"),
                 "coherence": float("nan"),
             }
         speed = np.hypot(vx, vy)
@@ -167,9 +171,7 @@ class FlowMap:
         }
 
 
-def tile_slices(
-    n: int, tile: int, step: int
-) -> list[Tuple[int, int]]:
+def tile_slices(n: int, tile: int, step: int) -> list[tuple[int, int]]:
     """Return the tile boundaries along one axis.
 
     Parameters
@@ -205,12 +207,12 @@ def stics_flow_map(
     images: np.ndarray,
     *,
     tile: int = 16,
-    step: Optional[int] = None,
-    frame_lags: Optional[Sequence[int]] = None,
-    timing: Optional[IcsTiming] = None,
+    step: int | None = None,
+    frame_lags: Sequence[int] | None = None,
+    timing: IcsTiming | None = None,
     subtract_average: str = "frame",
     window: int = 3,
-    search: Optional[int] = None,
+    search: int | None = None,
     method: str = "gauss",
     escape_fraction: float = 0.35,
 ) -> FlowMap:
@@ -283,9 +285,7 @@ def stics_flow_map(
     n_frames, ny, nx = stack.shape
     timing = (timing if timing is not None else IcsTiming()).resolved(n_lines=ny)
     if timing.frame_duration_ms <= 0.0 or timing.pixel_size_nm <= 0.0:
-        raise ValueError(
-            "a flow map needs a frame time and a pixel size on the timing"
-        )
+        raise ValueError("a flow map needs a frame time and a pixel size on the timing")
     lags = list(frame_lags) if frame_lags is not None else list(range(0, 6))
     if len(lags) < 2:
         raise ValueError("a velocity needs at least two frame lags")
@@ -321,9 +321,7 @@ def stics_flow_map(
             sub = np.ascontiguousarray(stack[:, y0:y1, x0:x1])
             try:
                 carpet = compute_ics_carpet(sub, settings)
-                flow = carpet.velocity(
-                    window=window, search=search_radius, method=method
-                )
+                flow = carpet.velocity(window=window, search=search_radius, method=method)
             except (ValueError, RuntimeError):
                 # One dead tile -- an empty region, a lag the stack is too short
                 # for -- must not take the whole map down with it.
@@ -352,8 +350,14 @@ def stics_flow_map(
         "n_escaped": int(np.count_nonzero(np.isfinite(amplitude) & ~np.isfinite(vx))),
     }
     return FlowMap(
-        x=x, y=y, vx=vx, vy=vy, quality=quality, amplitude=amplitude,
-        timing=timing, meta=meta,
+        x=x,
+        y=y,
+        vx=vx,
+        vy=vy,
+        quality=quality,
+        amplitude=amplitude,
+        timing=timing,
+        meta=meta,
     )
 
 
@@ -362,7 +366,7 @@ def pcf_flow_map(
     *,
     distance: int = 4,
     tile: int = 16,
-    timing: Optional[IcsTiming] = None,
+    timing: IcsTiming | None = None,
     min_prominence: float = 0.0,
     **kwargs: Any,
 ) -> FlowMap:
@@ -462,6 +466,12 @@ def pcf_flow_map(
         "n_frames": int(n_frames),
     }
     return FlowMap(
-        x=x, y=y, vx=vx, vy=np.zeros(shape), quality=quality,
-        amplitude=amplitude, timing=timing, meta=meta,
+        x=x,
+        y=y,
+        vx=vx,
+        vy=np.zeros(shape),
+        quality=quality,
+        amplitude=amplitude,
+        timing=timing,
+        meta=meta,
     )

@@ -11,8 +11,8 @@ the whole band (the director path), not scipy LM.  Pinned here:
   returns ``None`` for models that don't override it (Tikhonov/MaxEnt use
   fast re-inversion, not the director path).
 """
+
 import numpy as np
-import pytest
 
 from chisurf.core.models.deer import kernel as K
 
@@ -27,15 +27,28 @@ def _make_deer_data(r_mean=40.0, sigma=3.0, lam=0.35, bg_k=0.05, noise=0.0):
     if noise:
         rng = np.random.default_rng(1)
         v = v + rng.normal(0.0, noise, size=v.shape)
-    deer = {"t": t, "V": v, "V_imag": np.zeros_like(t), "phase": 0.0,
-            "t0": 0.0, "exp_type": "4pDEER", "scale": 1.0}
-    return DataCurve(name="synthetic-deer", load_filename_on_init=False,
-                     x=t, y=v, ey=np.full_like(v, max(noise, 1e-3)),
-                     meta_data={"deer": deer})
+    deer = {
+        "t": t,
+        "V": v,
+        "V_imag": np.zeros_like(t),
+        "phase": 0.0,
+        "t0": 0.0,
+        "exp_type": "4pDEER",
+        "scale": 1.0,
+    }
+    return DataCurve(
+        name="synthetic-deer",
+        load_filename_on_init=False,
+        x=t,
+        y=v,
+        ey=np.full_like(v, max(noise, 1e-3)),
+        meta_data={"deer": deer},
+    )
 
 
 def _make_fit(model_class, **kw):
     import chisurf.core.fitting.fit as fit_mod
+
     return fit_mod.Fit(model_class=model_class, data=_make_deer_data(**kw))
 
 
@@ -85,8 +98,8 @@ def test_gaussian_bootstrap_single_replica_matches_manual_fit():
 
     def unpack(x):
         mm = x[:n]
-        ss = np.abs(x[n:2 * n])
-        aa = np.concatenate([[a0[0]], np.abs(x[2 * n:])]) if n > 1 else np.array([a0[0]])
+        ss = np.abs(x[n : 2 * n])
+        aa = np.concatenate([[a0[0]], np.abs(x[2 * n :])]) if n > 1 else np.array([a0[0]])
         return mm, ss, aa
 
     def resid(x):
@@ -103,8 +116,9 @@ def test_gaussian_bootstrap_single_replica_matches_manual_fit():
     mm, ss, aa = unpack(x_fit)
     p_manual = dd_gauss_multi(r, mm, ss, aa)
 
-    np.testing.assert_allclose(p_director, p_manual, rtol=1e-8, atol=1e-10,
-                               err_msg="director replica != manual fit")
+    np.testing.assert_allclose(
+        p_director, p_manual, rtol=1e-8, atol=1e-10, err_msg="director replica != manual fit"
+    )
 
 
 def test_gaussian_bootstrap_band_brackets_point_estimate():
@@ -202,5 +216,6 @@ def test_rice_bootstrap_single_replica_matches_manual_fit():
     x_fit = np.asarray(m.x)
     p_manual = dd_rice(r, float(x_fit[0]), abs(float(x_fit[1])))
 
-    np.testing.assert_allclose(p_director, p_manual, rtol=1e-8, atol=1e-10,
-                               err_msg="Rice director replica != manual fit")
+    np.testing.assert_allclose(
+        p_director, p_manual, rtol=1e-8, atol=1e-10, err_msg="Rice director replica != manual fit"
+    )

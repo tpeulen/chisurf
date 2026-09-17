@@ -101,7 +101,7 @@ def test_a_rewritten_measurement_is_read_again(measurement):
     """Keyed on mtime and size, so a file replaced on disk is not served stale."""
     path, opens = measurement
     staging.open_tttr(str(path))
-    path.write_bytes(b"y" * 128)          # different size -> different key
+    path.write_bytes(b"y" * 128)  # different size -> different key
     staging.open_tttr(str(path))
     assert opens["n"] == 2
 

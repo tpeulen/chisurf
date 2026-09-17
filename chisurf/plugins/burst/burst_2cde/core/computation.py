@@ -10,7 +10,6 @@ reproduces the same reference when that class is unavailable.
 from __future__ import annotations
 
 import pathlib
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -51,25 +50,24 @@ def column_for_variant(variant: str) -> str:
 
 # The burst-analysis reader is shared with the BVA plugin (identical file
 # layout: First File / First Photon / Last Photon columns).
-from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis  # noqa: E402
 
 
-def _to_pairs(ranges) -> List[Tuple[int, int]]:
+def _to_pairs(ranges) -> list[tuple[int, int]]:
     return [(int(a), int(b)) for a, b in ranges]
 
 
 def compute_2cde(
     df,
-    tttrs: Dict[str, "tttrlib.TTTR"],
-    donor_channels: List[int] = (0, 8),
-    donor_micro_time_ranges: List[Tuple[int, int]] = ((0, 32768),),
-    acceptor_channels: List[int] = (1, 9),
-    acceptor_micro_time_ranges: List[Tuple[int, int]] = ((0, 32768),),
+    tttrs: dict[str, tttrlib.TTTR],
+    donor_channels: list[int] = (0, 8),
+    donor_micro_time_ranges: list[tuple[int, int]] = ((0, 32768),),
+    acceptor_channels: list[int] = (1, 9),
+    acceptor_micro_time_ranges: list[tuple[int, int]] = ((0, 32768),),
     tau: float = 100e-6,
     kernel: str = "laplace",
     variant: str = "fret",
-    acceptor_excitation_channels: List[int] | None = None,
-    acceptor_excitation_micro_time_ranges: List[Tuple[int, int]] | None = None,
+    acceptor_excitation_channels: list[int] | None = None,
+    acceptor_excitation_micro_time_ranges: list[tuple[int, int]] | None = None,
     progress_window=None,
 ):
     """Compute the per-burst 2CDE feature and add it as a dataframe column.
@@ -111,7 +109,7 @@ def compute_2cde(
     firsts = numeric_column(df, "First Photon")
     lasts = numeric_column(df, "Last Photon")
 
-    per_file: Dict[str, Tuple[List[int], List[Tuple[int, int]]]] = {}
+    per_file: dict[str, tuple[list[int], list[tuple[int, int]]]] = {}
     for i in range(n):
         ff = files[i]
         if ff not in tttrs:
@@ -120,9 +118,14 @@ def compute_2cde(
         rows_idx.append(i)
         bursts.append((int(firsts[i]), int(lasts[i])))
 
-    a_ex_ch = acceptor_channels if acceptor_excitation_channels is None else acceptor_excitation_channels
-    a_ex_mtr = (acceptor_micro_time_ranges if acceptor_excitation_micro_time_ranges is None
-                else acceptor_excitation_micro_time_ranges)
+    a_ex_ch = (
+        acceptor_channels if acceptor_excitation_channels is None else acceptor_excitation_channels
+    )
+    a_ex_mtr = (
+        acceptor_micro_time_ranges
+        if acceptor_excitation_micro_time_ranges is None
+        else acceptor_excitation_micro_time_ranges
+    )
 
     if not hasattr(tttrlib, "TwoCDE"):
         raise RuntimeError(
@@ -137,10 +140,17 @@ def compute_2cde(
         tttr = tttrs[ff]
         burst_pairs = np.asarray(bursts, dtype=np.int64).reshape(-1, 2)
         vals = _compute_file_cpp(
-            tttr, burst_pairs, tau, kernel, variant,
-            donor_channels, donor_micro_time_ranges,
-            acceptor_channels, acceptor_micro_time_ranges,
-            a_ex_ch, a_ex_mtr,
+            tttr,
+            burst_pairs,
+            tau,
+            kernel,
+            variant,
+            donor_channels,
+            donor_micro_time_ranges,
+            acceptor_channels,
+            acceptor_micro_time_ranges,
+            a_ex_ch,
+            a_ex_mtr,
         )
         for k, ri in enumerate(rows_idx):
             values[ri] = vals[k]
@@ -153,8 +163,17 @@ def compute_2cde(
 
 
 def _compute_file_cpp(
-    tttr, burst_pairs, tau, kernel, variant,
-    d_ch, d_mtr, a_ch, a_mtr, aex_ch, aex_mtr,
+    tttr,
+    burst_pairs,
+    tau,
+    kernel,
+    variant,
+    d_ch,
+    d_mtr,
+    a_ch,
+    a_mtr,
+    aex_ch,
+    aex_mtr,
 ) -> np.ndarray:
     """Fast path: tttrlib.TwoCDE burst feature (parallel over bursts)."""
     eng = tttrlib.TwoCDE(tttr)
@@ -224,8 +243,9 @@ def write_2cde_container(
     return written
 
 
-def write_2cde_analysis(df, analysis_folder: str, variant: str = "fret",
-                        progress_window=None) -> None:
+def write_2cde_analysis(
+    df, analysis_folder: str, variant: str = "fret", progress_window=None
+) -> None:
     """Write per-burst 2CDE values to companion files under a ``2c4/`` subfolder.
 
     One tab-separated file per source TTTR named after the ``.bur`` stem

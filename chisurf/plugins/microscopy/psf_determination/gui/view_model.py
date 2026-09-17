@@ -116,7 +116,9 @@ class PsfViewModel:
 
         circle = self._fit_circle
         return EllipseROI(
-            float(circle["x"]), float(circle["y"]), float(circle["r"]),
+            float(circle["x"]),
+            float(circle["y"]),
+            float(circle["r"]),
             name=f"PSF FWHM (z={int(circle['z'])})",
         )
 

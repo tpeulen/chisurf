@@ -36,5 +36,12 @@ from chimol.io.dcd import (
     write_dcd,
 )
 
-__all__ = ["DCDHeader", "DCDWriter", "dcd_info", "read_dcd",
-           "read_time_axis", "read_times", "write_dcd"]
+__all__ = [
+    "DCDHeader",
+    "DCDWriter",
+    "dcd_info",
+    "read_dcd",
+    "read_time_axis",
+    "read_times",
+    "write_dcd",
+]

@@ -21,7 +21,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.colors import (
     CHAIN_COLOR_CYCLE,
     _build_chain_color_array,
@@ -31,7 +30,11 @@ from chimol.plugins.presets.commands import PresetCommands
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -41,9 +44,7 @@ _PDB = (
 def test_the_cycle_is_pymols_in_pymols_order():
     """``util._color_cycle``, transcribed. The order is the meaning."""
     assert len(CHAIN_COLOR_CYCLE) == 40
-    assert CHAIN_COLOR_CYCLE[:5] == (
-        "carbon", "cyan", "lightmagenta", "yellow", "salmon"
-    )
+    assert CHAIN_COLOR_CYCLE[:5] == ("carbon", "cyan", "lightmagenta", "yellow", "salmon")
     assert CHAIN_COLOR_CYCLE[-1] == "brown"
 
 
@@ -74,7 +75,7 @@ def test_more_chains_than_colours_wraps():
     property of string sorting rather than of the cycle.
     """
     letters = [chr(ord("A") + i) for i in range(26)]
-    ids = letters + [a + b for a in "AB" for b in letters]      # A..Z, AA..BZ
+    ids = letters + [a + b for a in "AB" for b in letters]  # A..Z, AA..BZ
     chains = np.array(ids[:41])
     colors = _build_chain_color_array(chains, 41)
     order = {chid: i for i, chid in enumerate(sorted(set(chains.tolist())))}

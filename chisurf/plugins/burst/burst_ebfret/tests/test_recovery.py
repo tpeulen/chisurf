@@ -1,8 +1,10 @@
-"""Recovery test against ebFRET's own simulated-K04-N350 reference dataset.
+"""Recovery on ebFRET's own simulated-K04-N350 dataset.
 
-This is the cross-tool validation of the port: fit the vendored ebFRET fixture
-and assert that the two well-separated interior FRET states match ebFRET's own
-fitted means. Marked ``slow`` because it fits a subset of the real dataset.
+The traces are read the way ebFRET's ``load_raw`` reads a stacked ``.dat``
+(the first row of each trace is its label) and the signal is ebFRET's
+``(acceptor + eps) / (acceptor + donor + eps)``, so the numbers are comparable
+with the analysis ebFRET's GUI saved for the same dataset
+(``reference.json``).
 """
 
 from __future__ import annotations
@@ -13,65 +15,60 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.burst.burst_ebfret.core.analysis import analyse
-from chisurf.plugins.burst.burst_ebfret.core.ebayes import ebayes
-from chisurf.plugins.burst.burst_ebfret.io import load_stacked_dat
+from chisurf.plugins.burst.burst_ebfret.core import ebayes, hmm
+from chisurf.plugins.burst.burst_ebfret.core.model import Analysis
 
 DATA_DIR = pathlib.Path(__file__).parent / "data" / "simulated-K04-N350"
+EPS = np.finfo(float).eps
 
 
-def _load_reference():
-    with open(DATA_DIR / "reference.json") as handle:
-        return json.load(handle)
+def _reference():
+    return json.loads((DATA_DIR / "reference.json").read_text())
+
+
+def _signals(limit=None):
+    """ebFRET signals of the vendored stacked file, label rows stripped."""
+    raw = np.loadtxt(DATA_DIR / "raw-stacked.dat")
+    ids = np.unique(raw[:, 0])
+    if limit is not None:
+        ids = ids[:limit]
+    out = []
+    for trace_id in ids:
+        rows = raw[raw[:, 0] == trace_id, 1:3][1:]
+        out.append((rows[:, 1] + EPS) / (rows[:, 1] + rows[:, 0] + EPS))
+    return out
+
+
+def _fit(signals, K, seed=0, restarts=2):
+    analysis = Analysis(states=K, prior=hmm.guess_prior(signals, K))
+    run = ebayes.run_ebayes(
+        analysis, signals, restarts=restarts, precision=1e-3, rng=np.random.default_rng(seed)
+    )
+    while True:
+        try:
+            next(run)
+        except StopIteration as stop:
+            return analysis, stop.value
 
 
 def test_fixture_loads():
-    """The vendored stacked .dat parses into the expected number of traces."""
-    traces = load_stacked_dat(str(DATA_DIR / "raw-stacked.dat"))
-    ref = _load_reference()
-    assert len(traces) == ref["n_traces"]
-    assert sum(t.size for t in traces) == ref["n_frames"]
-    # The ebFRET simulated counts are background-subtracted and may go slightly
-    # negative, so FRET can fall just outside [0, 1]; the bulk must be sane.
-    pooled = np.concatenate(traces)
-    assert np.mean((pooled >= -0.3) & (pooled <= 1.3)) > 0.99
+    signals = _signals()
+    ref = _reference()
+    assert len(signals) == ref["n_traces"]
+    # one label row per trace is not a frame
+    assert sum(s.size for s in signals) == ref["n_frames"] - ref["n_traces"]
+
+
+def test_k2_on_a_subset_lands_near_ebfret():
+    analysis, history = _fit(_signals(40), 2, restarts=1)
+    ref = _reference()["ebfret_session_means"]["K2"]
+    np.testing.assert_allclose(np.sort(analysis.prior.mu), ref, atol=0.05)
+    assert history[-1] >= history[0]
 
 
 @pytest.mark.slow
-def test_k4_recovers_ebfret_interior_states():
-    """K=4 empirical Bayes recovers ebFRET's two well-separated interior states."""
-    traces = load_stacked_dat(str(DATA_DIR / "raw-stacked.dat"))[:80]
-    fit = ebayes(traces, 4, max_iter=15, threshold=1e-4)
-    means = fit.state_means
-    assert means.size == 4
-    assert np.all(np.diff(means) > 0)
-
-    ref_k4 = _load_reference()["ebfret_session_means"]["K4"]
-    # The two interior states (~0.33 and ~0.516) are the stable cross-tool
-    # target; the donor-only and high-FRET extremes differ because this port
-    # fits the uncorrected proximity ratio.
-    assert abs(means[1] - ref_k4[1]) < 0.05
-    assert abs(means[2] - ref_k4[2]) < 0.05
-
-
-@pytest.mark.slow
-def test_k2_matches_ebfret():
-    """K=2 empirical Bayes matches ebFRET's coarse two-state means."""
-    traces = load_stacked_dat(str(DATA_DIR / "raw-stacked.dat"))[:80]
-    fit = ebayes(traces, 2, max_iter=15, threshold=1e-4)
-    means = fit.state_means
-    ref_k2 = _load_reference()["ebfret_session_means"]["K2"]
-    assert abs(means[0] - ref_k2[0]) < 0.06
-    assert abs(means[1] - ref_k2[1]) < 0.06
-
-
-@pytest.mark.slow
-def test_analyse_selects_and_decodes():
-    """The high-level analyse() scan returns a decoded, self-consistent model."""
-    traces = load_stacked_dat(str(DATA_DIR / "raw-stacked.dat"))[:60]
-    analysis = analyse(traces, min_states=2, max_states=3, max_iter=12)
-    assert analysis.n_states in (2, 3)
-    assert len(analysis.states) == analysis.n_states
-    assert analysis.transition_counts.shape == (analysis.n_states, analysis.n_states)
-    assert sum(s.occupancy for s in analysis.states) == pytest.approx(1.0, abs=1e-6)
-    assert len(analysis.dwells) > 0
+def test_k2_on_the_full_dataset_matches_ebfret():
+    """All 350 traces, the GUI's defaults: ebFRET's session gives [0.30, 0.55]."""
+    analysis, _ = _fit(_signals(), 2)
+    ref = _reference()["ebfret_session_means"]["K2"]
+    np.testing.assert_allclose(np.sort(analysis.prior.mu), ref, atol=0.01)

@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Any
 
 import chisurf as cs
-
 from chisurf.core.project import Project
 from chisurf.core.project.archive import PROJECT_ARCHIVE_SUFFIX, PROJECT_JSON, ProjectArchive
 from chisurf.server.services import (
@@ -37,7 +36,7 @@ def get_project_info(state: SessionState) -> ServiceResult:
 def save_project(
     state: SessionState,
     target_path: str,
-    project_name: Optional[str] = None,
+    project_name: str | None = None,
 ) -> ServiceResult:
     """Save the current session as a ``.cs.pto`` project.
 
@@ -67,7 +66,7 @@ def save_project(
             try:
                 from chisurf.macros.core_fit import _build_fitgroup_payload
 
-                fit_datasets: Dict[str, Any] = {}
+                fit_datasets: dict[str, Any] = {}
 
                 def _register_ds(ds: Any) -> str:
                     uid = str(getattr(ds, "unique_identifier", "")) or f"ds_{len(fit_datasets)}"
@@ -130,7 +129,7 @@ def load_project(
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
 
-def _project_archive_path(target_path: str, project_name: Optional[str]) -> tuple[pathlib.Path, str]:
+def _project_archive_path(target_path: str, project_name: str | None) -> tuple[pathlib.Path, str]:
     path = pathlib.Path(target_path)
     if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX):
         return path, path.stem or (project_name or "chisurf_project")
@@ -147,7 +146,7 @@ def _project_archive_input_path(project_path: str) -> pathlib.Path:
     return pathlib.Path(f"{path}{PROJECT_ARCHIVE_SUFFIX}")
 
 
-def _safe_to_dict(obj: Any) -> Dict[str, Any]:
+def _safe_to_dict(obj: Any) -> dict[str, Any]:
     """Convert *obj* to a dict via ``to_dict()``, falling back to name/uid.
 
     Parameters
@@ -160,7 +159,10 @@ def _safe_to_dict(obj: Any) -> Dict[str, Any]:
         if hasattr(obj, "to_dict"):
             d = obj.to_dict()
             return _convert_numpy(d)
-        return {"name": str(getattr(obj, "name", "")), "uid": str(getattr(obj, "unique_identifier", ""))}
+        return {
+            "name": str(getattr(obj, "name", "")),
+            "uid": str(getattr(obj, "unique_identifier", "")),
+        }
     except Exception:
         return {}
 

@@ -6,6 +6,7 @@ def test_trace_browser_creation(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
     try:
         from chisurf.plugins.tttr.trace_browser import TraceBrowser
+
         widget = TraceBrowser()
         qtbot.addWidget(widget)
         assert isinstance(widget, QtWidgets.QWidget)
@@ -20,6 +21,7 @@ def test_trace_browser_supports_fractional_binning(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
     try:
         from chisurf.plugins.tttr.trace_browser import TraceBrowser
+
         widget = TraceBrowser()
         qtbot.addWidget(widget)
     except Exception:
@@ -36,6 +38,7 @@ def test_trace_browser_supports_fractional_binning(qapp, qtbot):
     # A fractional bin width must yield a distinct cache signature from a
     # neighbouring value (integer truncation used to collapse them to 0).
     import pathlib
+
     p = pathlib.Path(__file__)
     assert widget._trace_signature(p, 0.25) != widget._trace_signature(p, 0.75)
 

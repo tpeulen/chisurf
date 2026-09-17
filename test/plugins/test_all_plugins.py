@@ -10,6 +10,7 @@ What matters is the manifest: it is the contract the registry reads, and each
 at load time. A rename on either side turns into a plugin that quietly fails to
 appear in the menu, which is exactly the kind of failure nothing else catches.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -36,7 +37,8 @@ def _manifests() -> list[pathlib.Path]:
     correctly has none of those.
     """
     return sorted(
-        p for p in PLUGIN_ROOT.rglob("manifest.json")
+        p
+        for p in PLUGIN_ROOT.rglob("manifest.json")
         if "{{" not in str(p)  # the plugin template, not a plugin
         and not {"test", "tests"} & set(p.relative_to(PLUGIN_ROOT).parts)
     )
@@ -62,9 +64,7 @@ def _entrypoint_targets(manifest: dict) -> list[tuple[str, str, str]]:
     return out
 
 
-@pytest.mark.parametrize(
-    "manifest_path", _manifests(), ids=lambda p: p.parent.name
-)
+@pytest.mark.parametrize("manifest_path", _manifests(), ids=lambda p: p.parent.name)
 def test_plugin_entrypoints_import(manifest_path: pathlib.Path):
     """Each declared entrypoint imports and exposes the object it names."""
     manifest = json.loads(manifest_path.read_text())

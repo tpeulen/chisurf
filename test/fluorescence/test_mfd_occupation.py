@@ -70,9 +70,9 @@ def test_a_zero_window_is_the_static_mixture_too():
 @pytest.mark.parametrize(
     ("k01", "k10", "window"),
     [
-        (100.0, 100.0, 1e-3),      # a few transitions per burst
-        (2000.0, 800.0, 1e-3),     # fast exchange, strongly averaged
-        (20.0, 60.0, 1e-3),        # slow exchange, nearly static
+        (100.0, 100.0, 1e-3),  # a few transitions per burst
+        (2000.0, 800.0, 1e-3),  # fast exchange, strongly averaged
+        (20.0, 60.0, 1e-3),  # slow exchange, nearly static
         (500.0, 500.0, 5e-4),
     ],
 )
@@ -127,9 +127,7 @@ def test_distribution_matches_a_gillespie_sampler():
     edges = np.linspace(0.0, 1.0, 21)
     reference, _ = np.histogram(sampled[:, 0], bins=edges, density=False)
     reference = reference / reference.sum()
-    predicted, _ = np.histogram(
-        grid.fractions[:, 0], bins=edges, weights=grid.weights
-    )
+    predicted, _ = np.histogram(grid.fractions[:, 0], bins=edges, weights=grid.weights)
     # Total-variation distance; sampling noise alone is a few percent at 40k draws.
     assert 0.5 * np.abs(predicted - reference).sum() < 0.05
 
@@ -246,9 +244,7 @@ def test_uniform_arrivals_reproduce_the_uniform_sampling_formula():
     for rate in (200.0, 1000.0, 5000.0):
         matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
         _, uniform = two_state_occupation_variance(matrix, window)
-        assert photon_weighted_occupation_variance(times, rate) == pytest.approx(
-            uniform, rel=0.02
-        )
+        assert photon_weighted_occupation_variance(times, rate) == pytest.approx(uniform, rel=0.02)
 
 
 def test_photons_bunched_in_the_middle_average_less():
@@ -276,6 +272,4 @@ def test_photons_bunched_in_the_middle_average_less():
     assert photon_weighted_occupation_variance(bunched, rate) > uniform * 1.2
     assert effective_window(bunched, rate) < 0.75 * window
     # And an evenly-lit burst is unchanged, so nothing moves that should not.
-    assert effective_window(np.linspace(0.0, window, 4000), rate) == pytest.approx(
-        window, rel=0.05
-    )
+    assert effective_window(np.linspace(0.0, window, 4000), rate) == pytest.approx(window, rel=0.05)

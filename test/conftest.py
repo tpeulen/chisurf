@@ -1,6 +1,6 @@
 import os
-import sys
 import pathlib
+import sys
 import tempfile
 
 import pytest
@@ -50,8 +50,8 @@ def _hermetic_settings_dir():
     # does not copy the shipped curated source DB (which carries demo data and an
     # older schema). Tests get a clean DB; isolation is preserved.
     try:
-        from mmfdb.store.database_resolver import user_database_path
         from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import user_database_path
 
         user_db = user_database_path()
         user_db.parent.mkdir(parents=True, exist_ok=True)
@@ -65,11 +65,12 @@ def _hermetic_settings_dir():
 @pytest.fixture(autouse=True)
 def _guard_real_user_db():
     """Fail loudly if a test resolves chisurf state to the real ~/.chisurf."""
-    from chisurf.core.settings.path_utils import get_path
     from mmfdb.store.database_resolver import (
         object_store_root,
         user_database_path,
     )
+
+    from chisurf.core.settings.path_utils import get_path
 
     real = _REAL_SETTINGS_DIR.resolve()
     assert get_path("settings").resolve() != real, (
@@ -78,15 +79,16 @@ def _guard_real_user_db():
     assert real not in user_database_path().resolve().parents, (
         f"Test would use the REAL user database at {user_database_path()}."
     )
-    assert real not in object_store_root().resolve().parents and object_store_root().resolve() != real, (
-        f"Test would use the REAL object store at {object_store_root()}."
-    )
+    assert (
+        real not in object_store_root().resolve().parents and object_store_root().resolve() != real
+    ), f"Test would use the REAL object store at {object_store_root()}."
     yield
 
 
 # Import utils and setup paths (backward compatibility for tests that still use it)
 try:
     import utils
+
     utils.set_search_paths(TOPDIR)
 except ImportError:
     pass

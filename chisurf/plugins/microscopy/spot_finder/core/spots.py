@@ -158,8 +158,7 @@ class SpotFinderSettings:
         """
         if self.method not in METHODS:
             raise ValueError(
-                f"unknown detection method {self.method!r}; "
-                f"expected one of {', '.join(METHODS)}"
+                f"unknown detection method {self.method!r}; expected one of {', '.join(METHODS)}"
             )
         return self
 
@@ -220,9 +219,7 @@ class SpotFinderResult:
             occupied = ndi.binary_dilation(occupied, iterations=int(margin))
         background = ~occupied
         if self.analysis_roi is not None:
-            background &= self.analysis_roi.to_mask(
-                self.intensity.shape, image=self.intensity
-            )
+            background &= self.analysis_roi.to_mask(self.intensity.shape, image=self.intensity)
         if not background.any():
             return float("nan")
         return float(np.asarray(self.intensity)[background].mean())
@@ -377,9 +374,7 @@ def _by_threshold(smoothed, settings: SpotFinderSettings, inside) -> np.ndarray:
         return labels
 
     distance = ndi.distance_transform_edt(binary)
-    footprint = np.ones(
-        (settings.peak_footprint_size, settings.peak_footprint_size), dtype=bool
-    )
+    footprint = np.ones((settings.peak_footprint_size, settings.peak_footprint_size), dtype=bool)
     coords = peak_local_max(distance, footprint=footprint, labels=binary)
     seeds = np.zeros(distance.shape, dtype=bool)
     seeds[tuple(coords.T)] = True
@@ -485,9 +480,13 @@ def _filter(labels, extra, settings: SpotFinderSettings, shape):
     return labels, out
 
 
-def detect_from_file(path: str, settings: SpotFinderSettings, *,
-                     channels: Sequence[int] | None = None,
-                     frame: int = -1) -> SpotFinderResult:
+def detect_from_file(
+    path: str,
+    settings: SpotFinderSettings,
+    *,
+    channels: Sequence[int] | None = None,
+    frame: int = -1,
+) -> SpotFinderResult:
     """Load an image or photon file and detect in it.
 
     Parameters
@@ -511,8 +510,9 @@ def detect_from_file(path: str, settings: SpotFinderSettings, *,
     return detect(image, settings)
 
 
-def load_intensity(path: str, *, channels: Sequence[int] | None = None,
-                   frame: int = -1) -> np.ndarray:
+def load_intensity(
+    path: str, *, channels: Sequence[int] | None = None, frame: int = -1
+) -> np.ndarray:
     """Return the 2-D intensity image of an imaging file.
 
     Parameters

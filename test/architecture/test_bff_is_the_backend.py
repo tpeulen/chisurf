@@ -20,12 +20,12 @@ easy to grow back, and asserts that the one in use is bff's. None of them
 pins an *answer* -- the value tests live next to each subsystem; these pin
 the *provenance*.
 """
+
 from __future__ import annotations
 
+import IMP.bff as bff
 import numpy as np
 import pytest
-
-import IMP.bff as bff
 
 
 def test_a_parameter_is_a_bff_port():
@@ -67,8 +67,7 @@ def test_the_factor_graph_delegates_to_bff():
     ChiSurf keeps *discovery* (which parameter, at which vector position, in
     which local fit); triangulating a graph is not application knowledge.
     """
-    from chisurf.core.fitting.factorgraph import FactorGraph, VariableNode, \
-        FactorNode, LIKELIHOOD
+    from chisurf.core.fitting.factorgraph import LIKELIHOOD, FactorGraph, FactorNode, VariableNode
 
     graph = FactorGraph(
         variables=[VariableNode("a", "a", 0, 0), VariableNode("t", "t", 1, None)],
@@ -84,7 +83,8 @@ def test_the_residual_kernel_is_bffs():
 
     assert F._bff_weighted_residuals is not None, (
         "the residual fell back to numpy; bff is the backend or the build is "
-        "broken, and either way it should not pass silently")
+        "broken, and either way it should not pass silently"
+    )
     assert F._bff_weighted_residuals is bff.fit_weighted_residuals
 
 
@@ -145,13 +145,15 @@ def test_the_session_format_is_bffs():
     source = pathlib.Path(project_module.__file__).read_text(encoding="utf-8")
     assert "bff.GraphSession.load" in source, (
         "the session is no longer read by IMP.bff; chinet's format has an "
-        "owner and it is not this package")
+        "owner and it is not this package"
+    )
     ast.parse(source)
 
 
 def _description_node_types(family: str) -> set:
     """Every node type a BFF model description builds, read from the file the
-    view is generated from -- the view has no graph of its own to inspect."""
+    view is generated from -- the view has no graph of its own to inspect.
+    """
     import json
     import pathlib
 
@@ -191,10 +193,11 @@ def test_the_decay_curve_is_bffs_and_its_kernels_are_tttrlibs():
     fit = _lifetime_fit(tcspc_lifetime)
     minimizer, _ = M._description_objective(fit.model, [])
     # A proxy is made per access; the model is the same when its ports are.
-    graph, = minimizer._graph
+    (graph,) = minimizer._graph
     live = fit.model.problem
     assert graph.get_parameter("lifetime.tau.0").uid == live.get_parameter("lifetime.tau.0").uid, (
-        "a described lifetime fit is not minimised on the description's own graph")
+        "a described lifetime fit is not minimised on the description's own graph"
+    )
 
 
 def _lifetime_fit(model_class):
@@ -207,8 +210,7 @@ def _lifetime_fit(model_class):
     x = np.arange(n) * 0.1
     irf = np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)
     y = np.convolve(np.exp(-x / 3.1), irf / irf.sum())[:n] * 1e4 + 5.0
-    fit = F.Fit(model_class=model_class,
-                data=cs.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y)))
+    fit = F.Fit(model_class=model_class, data=cs.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y)))
     fit.model.set_dataset("response", cs.core.curve.Curve(x=x, y=irf))
     fit.model.set_scalar("period", 12.8)
     assert fit.model.problem is not None, fit.model.missing
@@ -226,8 +228,12 @@ def test_the_photophysics_upstream_of_the_decay_is_bffs_too():
     description, which is what lets the chain compose without the instrument
     node learning anything.
     """
-    for name in ("PhotophysicsLifetimeSpectrumNode", "PhotophysicsAnisotropySpectrumNode",
-                 "FRETSpectrumNode", "GaussianDistances"):
+    for name in (
+        "PhotophysicsLifetimeSpectrumNode",
+        "PhotophysicsAnisotropySpectrumNode",
+        "FRETSpectrumNode",
+        "GaussianDistances",
+    ):
         assert hasattr(bff, name), f"IMP.bff carries no {name}"
     assert "PhotophysicsAnisotropySpectrumNode" in _description_node_types("tcspc_polarized")
     fret = _description_node_types("tcspc_fret_gaussian")
@@ -267,24 +273,28 @@ def test_the_crosstalk_matrix_definition_is_bffs():
     from chisurf.core.fluorescence import crosstalk
 
     assert crosstalk._bff is bff, (
-        "the adapter is not wired to this IMP.bff; a second definition "
-        "would drift from the first")
+        "the adapter is not wired to this IMP.bff; a second definition would drift from the first"
+    )
 
     # the labelled construction -- subset, reorder, zero-fill -- is bff's
-    payload = {"rows": ["D", "A"], "columns": ["green", "red"],
-               "values": [[0.9, 0.1], [0.05, 0.95]]}
-    labelled = bff.PhotophysicsCrosstalkMatrix(payload["rows"], payload["columns"],
-                                   [0.9, 0.1, 0.05, 0.95])
-    via_adapter = crosstalk.matrix_from_payload(payload, rows=["A", "D", "X"],
-                                                columns=["red", "green"])
+    payload = {
+        "rows": ["D", "A"],
+        "columns": ["green", "red"],
+        "values": [[0.9, 0.1], [0.05, 0.95]],
+    }
+    labelled = bff.PhotophysicsCrosstalkMatrix(
+        payload["rows"], payload["columns"], [0.9, 0.1, 0.05, 0.95]
+    )
+    via_adapter = crosstalk.matrix_from_payload(
+        payload, rows=["A", "D", "X"], columns=["red", "green"]
+    )
     selected = labelled.select(["A", "D", "X"], ["red", "green"])
-    assert np.allclose(
-        via_adapter[0],
-        np.asarray(selected.get_values()).reshape(3, 2))
+    assert np.allclose(via_adapter[0], np.asarray(selected.get_values()).reshape(3, 2))
 
     # and the inverse is the kernel, not a numpy re-implementation
     m = np.array([[0.9, 0.1], [0.2, 0.8]])
     measured = crosstalk.apply_mixing(m, np.array([3.0, 5.0]))
     assert np.allclose(
         crosstalk.invert_mixing(m, measured),
-        np.asarray(bff.crosstalk_invert_mixing(m, 2, 2, measured, False, 0.0)))
+        np.asarray(bff.crosstalk_invert_mixing(m, 2, 2, measured, False, 0.0)),
+    )

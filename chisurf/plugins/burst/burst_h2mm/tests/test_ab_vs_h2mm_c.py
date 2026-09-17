@@ -27,9 +27,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core import engines as H
 from chisurf.plugins.burst.burst_h2mm.core import h2mm as _types
-from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
     bursts_from_dataframe,
 )
@@ -50,7 +50,9 @@ def _simulate_via_tttrlib(gt, n_bursts, burst_len, rate=0.25, seed=42):
     """
     rng = np.random.default_rng(seed)
     times_local = [
-        np.concatenate([[0], np.cumsum(rng.poisson(1.0 / rate, burst_len - 1) + 1)]).astype(np.int64)
+        np.concatenate([[0], np.cumsum(rng.poisson(1.0 / rate, burst_len - 1) + 1)]).astype(
+            np.int64
+        )
         for _ in range(n_bursts)
     ]
     streams_local = _types.simulate_bursts(gt, times_local, seed=seed + 7)
@@ -84,8 +86,8 @@ def _simulate_via_tttrlib(gt, n_bursts, burst_len, rate=0.25, seed=42):
     ch_all = np.asarray(tttr.routing_channels)
     ref_idx, ref_times = [], []
     for _, fp, lp in rows:
-        ref_idx.append(ch_all[fp:lp + 1].astype(np.uint32))
-        ref_times.append((mt_all[fp:lp + 1] - mt_all[fp]).astype(np.uint64))
+        ref_idx.append(ch_all[fp : lp + 1].astype(np.uint32))
+        ref_times.append((mt_all[fp : lp + 1] - mt_all[fp]).astype(np.uint64))
     return data, ref_idx, ref_times
 
 
@@ -124,8 +126,12 @@ def test_forward_loglik_matches_reference():
     trans = np.array([[0.95, 0.05], [0.05, 0.95]])
     obs = np.array([[0.7, 0.3], [0.3, 0.7]])
 
-    ref_ll = h2mm_c.H2MM_arr([h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy())], ref_idx, ref_times)[0].loglik
-    mine_ll = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0).loglik
+    ref_ll = h2mm_c.H2MM_arr(
+        [h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy())], ref_idx, ref_times
+    )[0].loglik
+    mine_ll = H.optimize(
+        _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0
+    ).loglik
 
     assert mine_ll == pytest.approx(ref_ll, rel=1e-6, abs=1e-4)
 
@@ -144,8 +150,15 @@ def test_one_em_step_matches_reference():
     obs = np.array([[0.7, 0.3], [0.3, 0.7]])
 
     with contextlib.redirect_stdout(io.StringIO()):
-        ref = h2mm_c.EM_H2MM_C(h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()), ref_idx, ref_times, max_iter=1)
-    mine = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0)
+        ref = h2mm_c.EM_H2MM_C(
+            h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()),
+            ref_idx,
+            ref_times,
+            max_iter=1,
+        )
+    mine = H.optimize(
+        _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0
+    )
 
     rp, rt, ro = _align(ref.prior, ref.trans, ref.obs)
     mp, mt, mo = _align(mine.prior, mine.trans, mine.obs)
@@ -183,15 +196,15 @@ def test_one_em_step_matches_reference():
 )
 def test_converged_model_matches_reference(gt, start):
     n = gt.n_states
-    data, ref_idx, ref_times = _simulate_via_tttrlib(
-        gt, n_bursts=350, burst_len=90, seed=10 + n
-    )
+    data, ref_idx, ref_times = _simulate_via_tttrlib(gt, n_bursts=350, burst_len=90, seed=10 + n)
     prior, trans, obs = start
 
     with contextlib.redirect_stdout(io.StringIO()):
         ref = h2mm_c.EM_H2MM_C(
             h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()),
-            ref_idx, ref_times, max_iter=500,
+            ref_idx,
+            ref_times,
+            max_iter=500,
         )
     mine = H.optimize(
         _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10
@@ -223,9 +236,16 @@ def test_viterbi_path_matches_reference():
     obs = np.array([[0.7, 0.3], [0.3, 0.7]])
 
     with contextlib.redirect_stdout(io.StringIO()):
-        ref = h2mm_c.EM_H2MM_C(h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()), ref_idx, ref_times, max_iter=500)
+        ref = h2mm_c.EM_H2MM_C(
+            h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()),
+            ref_idx,
+            ref_times,
+            max_iter=500,
+        )
         ref_vit = h2mm_c.viterbi_path(ref, ref_idx, ref_times)
-    mine = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10)
+    mine = H.optimize(
+        _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10
+    )
 
     ref_path = np.concatenate(list(ref_vit[0]))
     mine_path, _ = H.viterbi(mine, data)
@@ -279,7 +299,9 @@ def test_benchmark_vs_reference(n_states, capsys):
     t0 = time.perf_counter()
     mine = H.optimize(
         _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()),
-        data, max_iter=max_iter, tol=1e-12,
+        data,
+        max_iter=max_iter,
+        tol=1e-12,
     )
     t_mine = time.perf_counter() - t0
 
@@ -287,7 +309,9 @@ def test_benchmark_vs_reference(n_states, capsys):
         t0 = time.perf_counter()
         ref = h2mm_c.EM_H2MM_C(
             h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()),
-            ref_idx, ref_times, max_iter=max_iter,
+            ref_idx,
+            ref_times,
+            max_iter=max_iter,
         )
         t_ref = time.perf_counter() - t0
 
@@ -312,6 +336,4 @@ def test_benchmark_vs_reference(n_states, capsys):
     # Performance guard: stay under ~1.5x the reference wall-time per iteration.
     # Measured ~0.3-0.6x on dense bursts; the wide margin keeps this robust to
     # CI machine variance while still catching an O(N·n⁴)-style regression.
-    assert ratio < 1.5, (
-        f"ChiSurf H2MM {ratio:.2f}x the H2MM_C time/iter — performance regression"
-    )
+    assert ratio < 1.5, f"ChiSurf H2MM {ratio:.2f}x the H2MM_C time/iter — performance regression"

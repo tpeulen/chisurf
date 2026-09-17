@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from qtpy import QtCore
+
+if TYPE_CHECKING:
+    from chisurf.server.transport.zmq import ZmqClient
 
 
 class ZmqSubscriberPoller(QtCore.QObject):
@@ -21,7 +26,7 @@ class ZmqSubscriberPoller(QtCore.QObject):
 
     def __init__(
         self,
-        client: "ZmqClient",
+        client: ZmqClient,
         poll_interval_ms: int = 50,
         parent: QtCore.QObject | None = None,
     ):

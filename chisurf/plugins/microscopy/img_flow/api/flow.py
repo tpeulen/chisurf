@@ -41,8 +41,11 @@ def compute_map(filename: str, **kwargs: Any) -> dict[str, Any]:
         "n_escaped": int(analysis.n_escaped),
         "timing": analysis.timing.to_dict(),
         "min_quality": min_quality,
-        "meta": {k: v for k, v in analysis.meta.items()
-                 if isinstance(v, (str, int, float, bool, list, tuple))},
+        "meta": {
+            k: v
+            for k, v in analysis.meta.items()
+            if isinstance(v, (str, int, float, bool, list, tuple))
+        },
     }
     if output_path:
         result["output_path"] = _core.write_csv(analysis, output_path, min_quality)
@@ -59,10 +62,10 @@ def list_methods() -> dict[str, Any]:
         },
         "notes": {
             "stics": "Two-dimensional and direct. Blind to a flow too slow to "
-                     "shift the peak, and wrong if the peak leaves its tile.",
+            "shift the peak, and wrong if the peak leaves its tile.",
             "pcf": "One-dimensional along the fast scan axis, resolved per pixel, "
-                   "and the only one that reports *no* transport rather than slow "
-                   "transport — which is what a barrier looks like.",
+            "and the only one that reports *no* transport rather than slow "
+            "transport — which is what a barrier looks like.",
         },
     }
 

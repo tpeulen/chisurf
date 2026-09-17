@@ -6,6 +6,7 @@ required, so opening any SDT raised ``TypeError`` from ``np.arange``. These
 tests open the repository's own SDT and check what came out, which is what
 would have caught it.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -15,7 +16,14 @@ import pytest
 
 from chisurf.core.fio.fluorescence.sdtfile import SdtFile
 
-_SDT = pathlib.Path(__file__).resolve().parents[2] / "test" / "data" / "tcspc" / "BH_SDT" / "140507p.sdt"
+_SDT = (
+    pathlib.Path(__file__).resolve().parents[2]
+    / "test"
+    / "data"
+    / "tcspc"
+    / "BH_SDT"
+    / "140507p.sdt"
+)
 
 pytestmark = pytest.mark.skipif(not _SDT.exists(), reason="SDT test data not present")
 

@@ -46,8 +46,9 @@ needs_simulator = pytest.mark.skipif(
 # ──────────────────────────────────────────────────────────────────────────────
 # A synthetic stack, so the estimator can be tested without a 30 s simulation
 # ──────────────────────────────────────────────────────────────────────────────
-def drifting_stack(velocity=0.5, n=48, n_frames=80, n_molecules=60, width=1.6,
-                   brightness=30.0, seed=11, axis="x"):
+def drifting_stack(
+    velocity=0.5, n=48, n_frames=80, n_molecules=60, width=1.6, brightness=30.0, seed=11, axis="x"
+):
     """Return a ``(n_frames, n, n)`` stack of blobs drifting at *velocity* px/frame."""
     rng = np.random.default_rng(seed)
     molecules = rng.uniform(0, n, size=(n_molecules, 2))
@@ -62,7 +63,7 @@ def drifting_stack(velocity=0.5, n=48, n_frames=80, n_molecules=60, width=1.6,
                 cy = (cy + velocity * f) % n
             dx = np.minimum(np.abs(xs - cx), n - np.abs(xs - cx))
             dy = np.minimum(np.abs(ys - cy), n - np.abs(ys - cy))
-            image += np.exp(-(dx ** 2 + dy ** 2) / (2.0 * width ** 2))
+            image += np.exp(-(dx**2 + dy**2) / (2.0 * width**2))
         frames.append(image)
     return rng.poisson(np.asarray(frames) * brightness).astype(float)
 
@@ -70,8 +71,11 @@ def drifting_stack(velocity=0.5, n=48, n_frames=80, n_molecules=60, width=1.6,
 def timing_for(n=48, line_ms=0.32, pixel_nm=100.0):
     """Timing for an ``n``-line square scan."""
     return core.scan_timing(
-        n, pixel_duration_us=line_ms * 1e3 / n, line_duration_ms=line_ms,
-        frame_duration_ms=n * line_ms, pixel_size_nm=pixel_nm,
+        n,
+        pixel_duration_us=line_ms * 1e3 / n,
+        line_duration_ms=line_ms,
+        frame_duration_ms=n * line_ms,
+        pixel_size_nm=pixel_nm,
     )
 
 
@@ -230,16 +234,14 @@ def test_the_demo_reports_its_own_ground_truth(tmp_path):
     assert truth["v_max_um_s"] == DEMO["v_max"]
     # The peak displacement per frame is what bounds the usable lag range, so it
     # is part of the contract rather than something the user has to work out.
-    expected = truth["v_max_um_s"] * timing["frame_duration_ms"] * 1e-3 / (
-        timing["pixel_size_nm"] * 1e-3
+    expected = (
+        truth["v_max_um_s"] * timing["frame_duration_ms"] * 1e-3 / (timing["pixel_size_nm"] * 1e-3)
     )
     assert truth["peak_shift_px_per_frame"] == pytest.approx(expected, rel=1e-9)
 
     # The profile is parabolic and pinned to the walls of the scanned field.
     field = truth["field_um"]
-    assert expected_profile(np.asarray([0.5 * field]))[0] == pytest.approx(
-        truth["v_max_um_s"]
-    )
+    assert expected_profile(np.asarray([0.5 * field]))[0] == pytest.approx(truth["v_max_um_s"])
     assert expected_profile(np.asarray([0.0, field]))[0] == pytest.approx(0.0)
 
 
@@ -248,7 +250,7 @@ def test_the_demo_reports_its_own_ground_truth(tmp_path):
 # ──────────────────────────────────────────────────────────────────────────────
 def test_the_rpc_payload_is_plain_json(tmp_path):
     """Every layer above core has to survive a JSON round trip."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     path = tmp_path / "drift.tif"
     imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
@@ -267,7 +269,7 @@ def test_the_rpc_payload_is_plain_json(tmp_path):
 
 def test_the_client_speaks_the_contract(tmp_path):
     """The in-process client reaches every registered method."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     path = tmp_path / "drift.tif"
     imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
@@ -279,7 +281,11 @@ def test_the_client_speaks_the_contract(tmp_path):
     assert set(client.methods()["methods"]) == set(core.METHODS)
 
     result = client.flow_map(
-        str(path), tile=16, n_lags=4, pixel_duration_us=10.0, pixel_size_nm=100.0,
+        str(path),
+        tile=16,
+        n_lags=4,
+        pixel_duration_us=10.0,
+        pixel_size_nm=100.0,
         output_path=str(tmp_path / "vectors.csv"),
     )
     assert result["summary"]["n_kept"] > 0
@@ -298,8 +304,7 @@ def test_a_failing_call_comes_back_as_an_error_not_an_exception():
 
 def test_the_view_model_exposes_what_the_view_spec_names(tmp_path):
     """Every source the view.json names must exist and be callable Qt-free."""
-    from chisurf.core.fio.image import imread, imwrite
-
+    from chisurf.core.fio.image import imwrite
     from chisurf.plugins.microscopy.img_flow.gui.view_model import FlowViewModel
 
     path = tmp_path / "drift.tif"
@@ -415,8 +420,13 @@ def test_the_field_is_drawn_through_chiplot_and_nothing_falls_through(qapp):
 
     before = set(chiplot.passthrough_gaps())
     widget = QuiverSectionWidget(
-        Model(), "", image_source="flow_image", vectors_source="flow_vectors",
-        extent_source="flow_extent", scale_attr="arrow_scale", units="µm/s",
+        Model(),
+        "",
+        image_source="flow_image",
+        vectors_source="flow_vectors",
+        extent_source="flow_extent",
+        scale_attr="arrow_scale",
+        units="µm/s",
     )
     widget.refresh()
     assert "4 of 4 arrows" in widget.caption.text()

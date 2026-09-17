@@ -33,14 +33,14 @@ routed input reaches its body -- is `test_window_body_invalidation.py`, which
 drives real presses through a real renderer. This one is about the state a
 window draws that no press ever touches.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from emtk import redraw
-from emtk.testing import RecordingPainter
 from chimol.ui.gui._common import GuiWindow
 from chimol.ui.gui.gui import InternalGui
+from emtk import redraw
+from emtk.testing import RecordingPainter
 
 
 @pytest.fixture()
@@ -70,9 +70,9 @@ def _mouse_key(panel):
 @pytest.mark.parametrize(
     "field, value",
     [
-        ("state", (100, 464)),   # the frame counter, written by the playback loop
-        ("stride", 3),           # the stride slider
-        ("average", 5),          # the averaging slider
+        ("state", (100, 464)),  # the frame counter, written by the playback loop
+        ("stride", 3),  # the stride slider
+        ("average", 5),  # the averaging slider
         ("mouse_mode", "editing"),
         ("selecting", "residues"),
     ],
@@ -94,11 +94,14 @@ def test_a_window_still_caches_when_nothing_it_draws_moved(gui):
 def test_a_declared_key_is_what_the_window_is_cached_on(gui):
     """A body that says what it draws is keyed on exactly that."""
     drawn = {"rows": 1}
-    win = gui.add_window(GuiWindow(
-        key="declared", title="Declared",
-        body=lambda p, rect: None,
-        body_key=lambda: drawn["rows"],
-    ))
+    win = gui.add_window(
+        GuiWindow(
+            key="declared",
+            title="Declared",
+            body=lambda p, rect: None,
+            body_key=lambda: drawn["rows"],
+        )
+    )
     win.docked = False
     gui.layout(1200, 800)
 
@@ -108,14 +111,19 @@ def test_a_declared_key_is_what_the_window_is_cached_on(gui):
 
 
 def test_a_body_whose_summary_raises_is_redrawn_not_fatal(gui):
-    """emtk's contract: an unsummarisable body costs a repaint, not the window."""
+    """Emtk's contract: an unsummarisable body costs a repaint, not the window."""
+
     def broken():
         raise RuntimeError("no")
 
-    win = gui.add_window(GuiWindow(
-        key="broken", title="Broken",
-        body=lambda p, rect: None, body_key=broken,
-    ))
+    win = gui.add_window(
+        GuiWindow(
+            key="broken",
+            title="Broken",
+            body=lambda p, rect: None,
+            body_key=broken,
+        )
+    )
     win.docked = False
     gui.layout(1200, 800)
 

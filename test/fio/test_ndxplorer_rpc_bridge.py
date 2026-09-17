@@ -10,7 +10,6 @@ from __future__ import annotations
 import pathlib
 import sys
 
-import numpy as np
 import pytest
 
 from chisurf.plugins.ndxplorer.rpc_bridge import make_inprocess_chisurf_client

@@ -30,6 +30,7 @@ A model advertises what it can report by listing attribute names in a class-leve
 :attr:`derived_quantities` tuple; anything reachable by :func:`getattr` and
 returning a float qualifies. Nothing here is TCSPC-specific.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -85,8 +86,8 @@ def derived_quantity_names(model) -> typing.List[str]:
 
 
 def evaluate_derived(
-        model,
-        names: typing.Sequence[str],
+    model,
+    names: typing.Sequence[str],
 ) -> np.ndarray:
     """Read each named quantity off a model, as a float array.
 
@@ -123,12 +124,12 @@ def _thin(n: int, limit: int) -> np.ndarray:
 
 
 def _from_draws(
-        fit,
-        model,
-        names: typing.Sequence[str],
-        chain: dict,
-        p_value: float,
-        max_draws: int,
+    fit,
+    model,
+    names: typing.Sequence[str],
+    chain: dict,
+    p_value: float,
+    max_draws: int,
 ) -> typing.Optional[typing.List[typing.Dict[str, typing.Any]]]:
     """Evaluate the derived quantities at posterior draws. See module docstring."""
     from chisurf.core.fitting import engine as _engine
@@ -183,25 +184,29 @@ def _from_draws(
                 # bare "n/a" reads as a failure to compute rather than as an
                 # answer of zero width.
                 note = "constant over the posterior"
-            row.update({
-                "median": float(np.median(finite)) if finite.size else float("nan"),
-                "low": float("nan"),
-                "high": float("nan"),
-                "asymmetry": float("nan"),
-                "warning": note,
-            })
+            row.update(
+                {
+                    "median": float(np.median(finite)) if finite.size else float("nan"),
+                    "low": float("nan"),
+                    "high": float("nan"),
+                    "asymmetry": float("nan"),
+                    "warning": note,
+                }
+            )
         else:
             median = summary["median"]
-            row.update({
-                "median": median,
-                "low": median - summary["lower"],
-                "high": median + summary["upper"],
-                "sd": float(finite.std()) if finite.size else float("nan"),
-                "asymmetry": summary["asymmetry"],
-                "skew": summary["skew"],
-                "gaussian_ok": summary["gaussian_ok"],
-                "warning": summary["note"],
-            })
+            row.update(
+                {
+                    "median": median,
+                    "low": median - summary["lower"],
+                    "high": median + summary["upper"],
+                    "sd": float(finite.std()) if finite.size else float("nan"),
+                    "asymmetry": summary["asymmetry"],
+                    "skew": summary["skew"],
+                    "gaussian_ok": summary["gaussian_ok"],
+                    "warning": summary["note"],
+                }
+            )
         rows.append(row)
     return rows
 
@@ -235,6 +240,7 @@ def chain_verdict(fit) -> typing.Optional[bool]:
     if not entries:
         return None
     from chisurf.core.fitting import diagnostics as _dg
+
     for e in entries:
         rhat = e.get("rhat", float("nan"))
         ess = e.get("ess", 0.0)
@@ -255,9 +261,11 @@ def _effective_draws(chain: dict) -> typing.Optional[float]:
     if chains is None:
         return None
     from chisurf.core.fitting import diagnostics as _dg
+
     try:
-        ess = np.asarray(_dg.effective_sample_size(
-            np.asarray(chains, dtype=np.float64)), dtype=np.float64)
+        ess = np.asarray(
+            _dg.effective_sample_size(np.asarray(chains, dtype=np.float64)), dtype=np.float64
+        )
     except Exception:
         return None
     ess = ess[np.isfinite(ess)]
@@ -267,10 +275,10 @@ def _effective_draws(chain: dict) -> typing.Optional[float]:
 
 
 def _from_covariance(
-        fit,
-        model,
-        names: typing.Sequence[str],
-        p_value: float,
+    fit,
+    model,
+    names: typing.Sequence[str],
+    p_value: float,
 ) -> typing.Optional[typing.List[typing.Dict[str, typing.Any]]]:
     """Linear (delta-method) propagation through the covariance at the optimum."""
     import chisurf.core.fitting.fit as fit_module
@@ -323,21 +331,23 @@ def _from_covariance(
             variance = float(g @ cov @ g)
         sd_i = _sqrt(variance)
         value = float(at_optimum[i])
-        rows.append({
-            "name": str(name),
-            "value": value,
-            "median": value,
-            "low": value - z * sd_i,
-            "high": value + z * sd_i,
-            "sd": sd_i,
-            "method": "delta",
-            "p_value": float(p_value),
-            "asymmetry": float("nan"),
-            "warning": (
-                "linear propagation: symmetric by construction, so a bounded "
-                "or ratio-valued quantity is misstated at both ends"
-            ),
-        })
+        rows.append(
+            {
+                "name": str(name),
+                "value": value,
+                "median": value,
+                "low": value - z * sd_i,
+                "high": value + z * sd_i,
+                "sd": sd_i,
+                "method": "delta",
+                "p_value": float(p_value),
+                "asymmetry": float("nan"),
+                "warning": (
+                    "linear propagation: symmetric by construction, so a bounded "
+                    "or ratio-valued quantity is misstated at both ends"
+                ),
+            }
+        )
     return rows
 
 
@@ -349,11 +359,11 @@ def _sqrt(x: float) -> float:
 
 
 def derived_posterior(
-        fit,
-        names: typing.Optional[typing.Sequence[str]] = None,
-        p_value: float = 0.68,
-        model=None,
-        max_draws: int = MAX_DRAWS,
+    fit,
+    names: typing.Optional[typing.Sequence[str]] = None,
+    p_value: float = 0.68,
+    model=None,
+    max_draws: int = MAX_DRAWS,
 ) -> typing.List[typing.Dict[str, typing.Any]]:
     r"""Report each derived quantity with an interval, not just a number.
 
@@ -400,9 +410,11 @@ def derived_posterior(
 
     chain = getattr(fit, "sampling_chain", None)
     verdict = chain_verdict(fit)
-    if (verdict is not False
-            and isinstance(chain, dict)
-            and chain.get("parameter_values") is not None):
+    if (
+        verdict is not False
+        and isinstance(chain, dict)
+        and chain.get("parameter_values") is not None
+    ):
         rows = _from_draws(fit, model, names, chain, p_value, max_draws)
         if rows is not None:
             for row in rows:
@@ -417,21 +429,21 @@ def derived_posterior(
             # can see on the fit was not used.
             for row in rows:
                 row["converged"] = False
-                row["warning"] = (
-                    "chain did not converge, so it was not used; "
-                    + row["warning"]
-                )
+                row["warning"] = "chain did not converge, so it was not used; " + row["warning"]
         return rows
 
     value = evaluate_derived(model, names)
-    return [{
-        "name": str(name),
-        "value": float(value[i]),
-        "median": float(value[i]),
-        "low": float("nan"),
-        "high": float("nan"),
-        "method": "none",
-        "p_value": float(p_value),
-        "asymmetry": float("nan"),
-        "warning": "no uncertainty available: fit the model or sample it first",
-    } for i, name in enumerate(names)]
+    return [
+        {
+            "name": str(name),
+            "value": float(value[i]),
+            "median": float(value[i]),
+            "low": float("nan"),
+            "high": float("nan"),
+            "method": "none",
+            "p_value": float(p_value),
+            "asymmetry": float("nan"),
+            "warning": "no uncertainty available: fit the model or sample it first",
+        }
+        for i, name in enumerate(names)
+    ]

@@ -278,9 +278,7 @@ class AskPanel(QWidget):
         part the reader wants. The view goes to the last question instead.
         """
         body = "\n".join(self._turns) if self._turns else self._empty_html()
-        self.transcript.setHtml(
-            "<body style='font-size:10pt;'>" + body + "</body>"
-        )
+        self.transcript.setHtml("<body style='font-size:10pt;'>" + body + "</body>")
         if self._last_anchor:
             self.transcript.scrollToAnchor(self._last_anchor)
         else:
@@ -375,8 +373,11 @@ class AskPanel(QWidget):
             # stops the reader hunting for a page that was never there.
             sources += (
                 "<p style='color:#b04040; font-size:9pt;'>It also named "
-                + ("a page that does not exist: " if len(fabricated) == 1
-                   else "pages that do not exist: ")
+                + (
+                    "a page that does not exist: "
+                    if len(fabricated) == 1
+                    else "pages that do not exist: "
+                )
                 + ", ".join(_html.escape(str(name)) for name in fabricated)
                 + ". Do not trust the rest of this answer without checking it.</p>"
             )
@@ -385,11 +386,7 @@ class AskPanel(QWidget):
     @staticmethod
     def _error_html(answer: dict) -> str:
         reason = _html.escape(str(answer.get("error") or "no answer came back"))
-        return (
-            "<p style='color:#b04040;'>Could not answer: "
-            + reason
-            + "</p>"
-        )
+        return "<p style='color:#b04040;'>Could not answer: " + reason + "</p>"
 
     # ── links ─────────────────────────────────────────────────────────
 

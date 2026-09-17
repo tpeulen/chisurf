@@ -27,16 +27,16 @@ What this pins
   residue, which the old mapping could not do since the thumb ran out of
   travel first.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 
 @pytest.fixture(scope="module")
 def measured():
-    return probe('''
+    return probe("""
         app = open_app(size=(1000, 700))
         app.cmd.do("fetch 148L")
         app.cmd.do("info_panel off")
@@ -70,7 +70,7 @@ def measured():
         gui.drag(track.x - 50.0, y)
         emit("scroll_at_start", gui._seq_scroll)
         gui.release()
-    ''')
+    """)
 
 
 def test_the_strip_is_actually_scrollable(measured):
@@ -113,7 +113,7 @@ def test_scrolling_actually_redraws_the_strip():
     Measured in pixels for that reason. Every piece of state was already
     correct while the screen showed the previous frame.
     """
-    measured = probe('''
+    measured = probe("""
         app = open_app(size=(1000, 700))
         app.cmd.do("fetch 148L")
         app.cmd.do("info_panel off")
@@ -130,10 +130,9 @@ def test_scrolling_actually_redraws_the_strip():
 
         emit("scrolled", "yes" if moved else "no")
         emit("changed_pixels", int((before != after).sum()))
-    ''')
+    """)
 
     assert measured["scrolled"] == "yes", "the strip did not scroll at all"
     assert int(measured["changed_pixels"]) > 500, (
-        "scrolling the sequence changed no pixels: the cached chrome does not "
-        "know the strip moved"
+        "scrolling the sequence changed no pixels: the cached chrome does not know the strip moved"
     )

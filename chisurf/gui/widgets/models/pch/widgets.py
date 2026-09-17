@@ -12,6 +12,7 @@ client: those writes did nothing whenever the client was absent, and the bare
 The widget name stays importable because user copies of ``experiment_configs.yaml``
 *replace* the bundled model list and pickled projects pin class paths.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.pch.pch_model import PchMultiComponentModel

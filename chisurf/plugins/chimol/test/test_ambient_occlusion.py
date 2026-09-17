@@ -13,7 +13,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.geometry.ambient import occlusion_from_spheres
 
 _ORIGIN = np.array([[0.0, 0.0, 0.0]])
@@ -56,7 +55,7 @@ def _brute_force_occlusion(points, normals, centers, radii, max_distance, streng
         cos_theta = np.einsum("ijk,ik->ij", v, normals) / d
         sin_a = np.minimum(radii[None, :] / d, 1.0)
         cov = 1.0 - np.sqrt(np.maximum(1.0 - sin_a * sin_a, 0.0))
-    valid = (d2 < max_distance ** 2) & (d2 > 1e-12) & (d > radii[None, :]) & (cos_theta > 0.0)
+    valid = (d2 < max_distance**2) & (d2 > 1e-12) & (d > radii[None, :]) & (cos_theta > 0.0)
     contrib = np.where(valid, cos_theta * cov, 0.0)
     return np.clip(1.0 - np.exp(-strength * contrib.sum(axis=1)), 0.0, 1.0)
 
@@ -93,8 +92,10 @@ def test_an_occluder_on_the_horizon_barely_counts():
 def test_a_pit_is_darker_than_a_single_overhang():
     """Concavity is the signal; this is what the neighbour count could not see."""
     ring = np.array(
-        [[math.cos(t) * 3, math.sin(t) * 3, 2.0]
-         for t in np.linspace(0, 2 * math.pi, 8, endpoint=False)]
+        [
+            [math.cos(t) * 3, math.sin(t) * 3, 2.0]
+            for t in np.linspace(0, 2 * math.pi, 8, endpoint=False)
+        ]
     )
     pit = _occ(_UP, ring, np.full(8, 1.5), max_distance=12.0)
     one = _occ(_UP, ring[:1], np.full(1, 1.5), max_distance=12.0)
@@ -161,12 +162,8 @@ def test_the_indexed_and_brute_force_paths_agree():
     centers = rng.normal(size=(300, 3)) * 5.0
     radii = rng.uniform(1.0, 2.0, 300)
 
-    fast = occlusion_from_spheres(
-        points, normals, centers, radii, max_distance=8.0, strength=1.3
-    )
-    reference = _brute_force_occlusion(
-        points, normals, centers, radii, 8.0, 1.3
-    )
+    fast = occlusion_from_spheres(points, normals, centers, radii, max_distance=8.0, strength=1.3)
+    reference = _brute_force_occlusion(points, normals, centers, radii, 8.0, 1.3)
     assert np.allclose(fast, reference, atol=1e-12)
 
 
@@ -176,9 +173,7 @@ def test_a_scalar_radius_applies_to_every_occluder():
     per_occluder = occlusion_from_spheres(
         _ORIGIN, _UP, centers, np.full(20, 1.5), max_distance=12.0
     )
-    scalar = occlusion_from_spheres(
-        _ORIGIN, _UP, centers, 1.5, max_distance=12.0
-    )
+    scalar = occlusion_from_spheres(_ORIGIN, _UP, centers, 1.5, max_distance=12.0)
     assert np.allclose(per_occluder, scalar)
 
 
@@ -188,28 +183,30 @@ def test_a_scalar_radius_applies_to_every_occluder():
 @pytest.mark.parametrize(
     "points, normals, centers",
     [
-        (np.zeros((0, 3)), np.zeros((0, 3)), _ORIGIN),      # no vertices
-        (_ORIGIN, _UP, np.zeros((0, 3))),                    # no occluders
-        (_ORIGIN, np.zeros((2, 3)), _ORIGIN),                # mismatched normals
-        (np.zeros((1, 2)), np.zeros((1, 2)), _ORIGIN),       # not 3D
+        (np.zeros((0, 3)), np.zeros((0, 3)), _ORIGIN),  # no vertices
+        (_ORIGIN, _UP, np.zeros((0, 3))),  # no occluders
+        (_ORIGIN, np.zeros((2, 3)), _ORIGIN),  # mismatched normals
+        (np.zeros((1, 2)), np.zeros((1, 2)), _ORIGIN),  # not 3D
     ],
 )
 def test_malformed_input_returns_none(points, normals, centers):
-    assert occlusion_from_spheres(
-        points, normals, centers, 1.0, max_distance=12.0
-    ) is None
+    assert occlusion_from_spheres(points, normals, centers, 1.0, max_distance=12.0) is None
 
 
 def test_mismatched_radii_are_rejected():
-    assert occlusion_from_spheres(
-        _ORIGIN, _UP, np.zeros((3, 3)), np.ones(2), max_distance=12.0
-    ) is None
+    assert (
+        occlusion_from_spheres(_ORIGIN, _UP, np.zeros((3, 3)), np.ones(2), max_distance=12.0)
+        is None
+    )
 
 
 def test_a_zero_normal_does_not_produce_nan():
     """Degenerate normals happen at mesh seams; they must not poison a colour."""
     value = occlusion_from_spheres(
-        _ORIGIN, np.zeros((1, 3)), np.array([[0.0, 0.0, 3.0]]), 2.0,
+        _ORIGIN,
+        np.zeros((1, 3)),
+        np.array([[0.0, 0.0, 3.0]]),
+        2.0,
         max_distance=12.0,
     )
     assert value is not None
@@ -228,7 +225,11 @@ def test_normals_need_not_be_unit_length():
 # --------------------------------------------------------------------------- #
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -242,8 +243,8 @@ def qapp():
 @pytest.fixture
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     v = Viewer()
     v.resize(400, 300)
@@ -376,8 +377,7 @@ _LIGHT = np.array([0.0, 0.0, 1.0])
 
 def _shadow(normals, centers, radii, **kw) -> float:
     result = directional_occlusion(
-        _ORIGIN, normals, np.atleast_2d(centers), np.atleast_1d(radii),
-        _LIGHT, **kw
+        _ORIGIN, normals, np.atleast_2d(centers), np.atleast_1d(radii), _LIGHT, **kw
     )
     assert result is not None
     return float(result[0])
@@ -432,9 +432,9 @@ def test_occluders_beyond_the_reach_are_ignored():
 
 
 def test_a_degenerate_light_direction_is_rejected():
-    assert directional_occlusion(
-        _ORIGIN, _UP, np.array([[0.0, 0.0, 5.0]]), 2.0, np.zeros(3)
-    ) is None
+    assert (
+        directional_occlusion(_ORIGIN, _UP, np.array([[0.0, 0.0, 5.0]]), 2.0, np.zeros(3)) is None
+    )
 
 
 def test_shadowing_reaches_the_mesh_colours(view):
@@ -476,7 +476,8 @@ def test_no_occlusion_is_computed_while_frames_are_flying():
     """
     from toolkit_free import probe
 
-    written = probe('''
+    written = probe(
+        """
         import pathlib
         app = open_app(size=(900, 600))
         base = pathlib.Path("test/data/atomic_coordinates/trajectory/hgbp1")
@@ -522,7 +523,9 @@ def test_no_occlusion_is_computed_while_frames_are_flying():
         for i in range(21, 26):
             app.cmd.do("frame %d" % i)
         emit("playing_with_the_setting_on", str(len(calls)))
-    ''', timeout=900)
+    """,
+        timeout=900,
+    )
 
     assert int(written["first_frame"]) >= 1, "an unhurried frame is not baked"
     assert written["draft"] == "True", "ten frames in a row is not draft quality"
@@ -545,9 +548,8 @@ def test_beads_are_not_crowd_shaded_when_occlusion_is_off():
     one-reader rule (`_occlusion_enabled`) exists to prevent, in the one place
     that had not been converted to it.
     """
-    import numpy as np
-
     import chimol.core.services.occlusion as occlusion
+    import numpy as np
     from chimol.core.viewer.scene import SceneMixin
 
     class _Bare(SceneMixin):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 METHOD_LIST_DOCS = "help.docs.list"
 METHOD_READ_DOC = "help.docs.read"
@@ -15,7 +15,7 @@ METHOD_REVIEW_SET = "help.review.set"
 METHOD_REVIEW_CHECK = "help.review.check"
 
 
-def contract_descriptor() -> Dict[str, Any]:
+def contract_descriptor() -> dict[str, Any]:
     """Return the full contract descriptor for the Help plugin.
 
     Returns
@@ -247,7 +247,7 @@ def contract_descriptor() -> Dict[str, Any]:
     }
 
 
-def service_success(result: Any = None) -> Dict[str, Any]:
+def service_success(result: Any = None) -> dict[str, Any]:
     """Return a success envelope."""
     return {"ok": True, "result": result}
 
@@ -255,6 +255,6 @@ def service_success(result: Any = None) -> Dict[str, Any]:
 def service_error(
     message: str,
     error_code: str = "UNKNOWN",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return an error envelope."""
     return {"ok": False, "error": message, "error_code": error_code}

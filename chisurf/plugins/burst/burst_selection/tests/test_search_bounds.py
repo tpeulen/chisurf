@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.core.datastore import numeric_column
+from chisurf.core.datastore import numeric_column, store_from_rows
 from chisurf.plugins.burst.burst_selection.api.io import load_tttr
 from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisSettings,
@@ -35,7 +35,6 @@ from chisurf.plugins.burst.burst_selection.api.selection import (
     drop_short_bursts,
     find_bursts,
 )
-from chisurf.core.datastore import store_from_rows
 
 DATA = Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna"
 SPC = DATA / "m000.spc"
@@ -129,9 +128,7 @@ def _tttrlib_settings(dt_max: float, time_window: float) -> AnalysisSettings:
         max_gap=3,
         use_gap_fill=True,
     )
-    s.burst_detection = BurstDetectionSettings(
-        min_photons=60, photon_window=5, time_window=0.06
-    )
+    s.burst_detection = BurstDetectionSettings(min_photons=60, photon_window=5, time_window=0.06)
     return s
 
 

@@ -6,6 +6,7 @@ and that what it emits is valid Python. Both are checked here against small
 literal snippets, and, when the checkouts are present, against the two real
 sources chimol was ported from.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -80,12 +81,12 @@ def test_word_lists_are_keyed_by_the_function_that_declares_them():
     and the symptom is that ``goto`` colours as a keyword in a Python file.
     """
     found = tool.extract_word_lists(
-        'const Language* Language::C() {\n'
+        "const Language* Language::C() {\n"
         '    static const char* const keywords[] = { "break", "case" };\n'
-        '}\n'
-        'const Language* Language::Python() {\n'
+        "}\n"
+        "const Language* Language::Python() {\n"
         '    static const char* const keywords[] = { "def", "lambda" };\n'
-        '}\n'
+        "}\n"
     )
     assert found["C_keywords"] == ["break", "case"]
     assert found["Python_keywords"] == ["def", "lambda"]
@@ -191,10 +192,10 @@ def test_the_real_memory_editor_source_reports_no_options_struct():
     """
     source = CLUB.read_text(errors="replace")
     assert tool.extract_options(source, "Config") == []
-    assert tool.extract_enums(source)["DataFormat"] == ["DataFormat_Bin",
-                                                        "DataFormat_Dec",
-                                                        "DataFormat_Hex"]
-    text = tool.render_module(
-        "memory_demo", "MemoryDemo", "o", {}, [], [], {}, [], str(CLUB)
-    )
+    assert tool.extract_enums(source)["DataFormat"] == [
+        "DataFormat_Bin",
+        "DataFormat_Dec",
+        "DataFormat_Hex",
+    ]
+    text = tool.render_module("memory_demo", "MemoryDemo", "o", {}, [], [], {}, [], str(CLUB))
     assert "the widget keeps its options as plain members" in text

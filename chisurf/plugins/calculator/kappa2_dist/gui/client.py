@@ -48,5 +48,6 @@ class Kappa2DistClient:
         from chisurf.plugins.calculator.kappa2_dist.backend.services import (
             register_services,
         )
+
         register_services(dispatcher)
         return InProcessClient(dispatcher)

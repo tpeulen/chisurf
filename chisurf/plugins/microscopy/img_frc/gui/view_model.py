@@ -246,10 +246,7 @@ class FrcViewModel:
         if not result.crossed:
             self._status = "The FRC never crosses its threshold — see the help."
         else:
-            self._status = (
-                f"Resolution {result.resolution:.4g} {result.unit} "
-                f"({result.criterion})."
-            )
+            self._status = f"Resolution {result.resolution:.4g} {result.unit} ({result.criterion})."
         return True
 
     def export_csv(self, path: str) -> str:
@@ -285,11 +282,17 @@ class FrcViewModel:
             series.append(
                 {
                     "x": np.array([float(result.crossing)]),
-                    "y": np.array([float(np.interp(
-                        result.crossing,
-                        np.asarray(result.frequency, dtype=float),
-                        np.asarray(result.threshold, dtype=float),
-                    ))]),
+                    "y": np.array(
+                        [
+                            float(
+                                np.interp(
+                                    result.crossing,
+                                    np.asarray(result.frequency, dtype=float),
+                                    np.asarray(result.threshold, dtype=float),
+                                )
+                            )
+                        ]
+                    ),
                     "name": "resolution",
                     "color": "#f2c744",
                     "symbol": "d",
@@ -338,9 +341,7 @@ class FrcViewModel:
         unit = result.unit
         period = 1.0 / result.crossing if result.crossing else float("inf")
         pixel_note = (
-            ""
-            if unit == "nm"
-            else "<p><i>No pixel size given, so this is in pixels.</i></p>"
+            "" if unit == "nm" else "<p><i>No pixel size given, so this is in pixels.</i></p>"
         )
         return (
             f"<h3>{result.resolution:.4g} {unit}</h3>"

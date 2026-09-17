@@ -22,10 +22,10 @@ scopes itself with and the domain that state is indexed by -- and the seven
 hand-written lists that used to hold pieces of this (three in the show/hide
 command alone) read it instead.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.services.representations import (
     ATOMS,
     BUILTIN_REPRESENTATIONS,
@@ -33,7 +33,6 @@ from chimol.core.services.representations import (
     RESIDUES,
 )
 from toolkit_free import probe
-
 
 pytestmark = pytest.mark.usefixtures("bond_family")
 
@@ -51,13 +50,23 @@ def test_every_builtin_declares_where_its_state_lives():
 def test_the_ribbon_is_the_trace_and_the_spheres_are_the_atoms():
     """PyMOL's spellings, resolved in one place instead of five."""
     for alias, name in (
-        ("spheres", "atoms"), ("balls", "atoms"), ("ball", "atoms"),
-        ("ribbon", "trace"), ("ca_trace", "trace"), ("ribbon_trace", "trace"),
-        ("licorice", "sticks"), ("bonds", "sticks"),
-        ("wire", "lines"), ("wireframe", "lines"),
-        ("nb_spheres", "nonbonded"), ("points", "dots"),
-        ("surf", "surface"), ("mesh", "metaball"), ("metaballs", "metaball"),
-        ("label", "labels"), ("grid", "plane"),
+        ("spheres", "atoms"),
+        ("balls", "atoms"),
+        ("ball", "atoms"),
+        ("ribbon", "trace"),
+        ("ca_trace", "trace"),
+        ("ribbon_trace", "trace"),
+        ("licorice", "sticks"),
+        ("bonds", "sticks"),
+        ("wire", "lines"),
+        ("wireframe", "lines"),
+        ("nb_spheres", "nonbonded"),
+        ("points", "dots"),
+        ("surf", "surface"),
+        ("mesh", "metaball"),
+        ("metaballs", "metaball"),
+        ("label", "labels"),
+        ("grid", "plane"),
     ):
         spec = REPRESENTATIONS.get(alias)
         assert spec is not None and spec.name == name, f"{alias} -> {spec}"
@@ -66,8 +75,7 @@ def test_the_ribbon_is_the_trace_and_the_spheres_are_the_atoms():
 def test_the_cartoon_and_the_trace_are_the_per_residue_ones():
     assert REPRESENTATIONS.get("cartoon").domain == RESIDUES
     assert REPRESENTATIONS.get("trace").domain == RESIDUES
-    for name in ("atoms", "sticks", "lines", "nonbonded", "dots", "surface",
-                 "metaball", "labels"):
+    for name in ("atoms", "sticks", "lines", "nonbonded", "dots", "surface", "metaball", "labels"):
         assert REPRESENTATIONS.get(name).domain == ATOMS, name
 
 
@@ -119,8 +127,7 @@ def test_the_command_no_longer_carries_its_own_lists():
     from chimol.commands.builtin.rendering import RenderingMixin
 
     source = inspect.getsource(RenderingMixin._toggle_representation)
-    for gone in ('"ball_mask"', '"set_cartoon_visible"', "_ALL_REPRESENTATIONS",
-                 '"nb_spheres"'):
+    for gone in ('"ball_mask"', '"set_cartoon_visible"', "_ALL_REPRESENTATIONS", '"nb_spheres"'):
         assert gone not in source, f"the command still keeps its own table: {gone}"
 
 
@@ -264,12 +271,15 @@ def written():
     return probe(SCRIPT, timeout=900)
 
 
-@pytest.mark.parametrize("moment", [
-    "after hide everything",
-    "after showing each",
-    "after scoped show and hide",
-    "after residue reps",
-])
+@pytest.mark.parametrize(
+    "moment",
+    [
+        "after hide everything",
+        "after showing each",
+        "after scoped show and hide",
+        "after residue reps",
+    ],
+)
 def test_no_mask_is_written_in_the_wrong_domain(written, moment):
     assert written[moment] == "none", f"{moment}: {written[moment]}"
 
@@ -296,8 +306,7 @@ def test_an_unscoped_show_widens_the_scope_to_the_whole_object(written):
     """
     assert written["scoped_balls"] not in ("none", "0"), "the scoped show wrote no scope"
     assert written["global_balls"] == written["n_atoms"], (
-        f"`as spheres` left a scope of {written['global_balls']} of "
-        f"{written['n_atoms']} atoms"
+        f"`as spheres` left a scope of {written['global_balls']} of {written['n_atoms']} atoms"
     )
     assert int(written["traced_atoms"]) == int(written["n_atoms"]), (
         "the ray tracer sees a different molecule from the one on screen"
@@ -332,8 +341,9 @@ def test_no_scope_means_every_row_to_every_builder(written):
     """
     pairs = dict(part.split("=") for part in written["absent_vs_all"].split())
     assert len(pairs) >= 10, f"only {len(pairs)} representations were measured"
-    disagreed = {name: value for name, value in pairs.items()
-                 if value.split("/")[0] != value.split("/")[1]}
+    disagreed = {
+        name: value for name, value in pairs.items() if value.split("/")[0] != value.split("/")[1]
+    }
     assert not disagreed, f"absent scope drew something else: {disagreed}"
 
 

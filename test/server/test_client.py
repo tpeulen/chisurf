@@ -32,6 +32,7 @@ def zmq_server():
 
 # ── Legacy methods ────────────────────────────────────────────────
 
+
 def test_client_list_methods(zmq_server):
     cmd_port, pub_port, dispatcher, server = zmq_server
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
@@ -79,6 +80,7 @@ def test_client_connect_timeout():
 
 
 # ── Namespaced methods ───────────────────────────────────────────
+
 
 def test_client_meta_ping(zmq_server):
     cmd_port, pub_port, _, _ = zmq_server
@@ -184,6 +186,7 @@ def test_client_legacy_methods_still_work(zmq_server):
 
 # ── New namespaced mutation methods ───────────────────────────────
 
+
 def test_client_dataset_rename_no_dataset(zmq_server):
     """dataset__rename raises RemoteError when dataset does not exist."""
     cmd_port, pub_port, _, _ = zmq_server
@@ -197,12 +200,15 @@ def test_client_dataset_rename_with_dataset(zmq_server):
     """dataset__rename succeeds on a real dataset."""
     cmd_port, pub_port, _, _ = zmq_server
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
-    ds = client.call("dataset.load", {
-        "reader_name": "RenameReader",
-        "filename": "/tmp/rename_test.dat",
-        "name": "OriginalName",
-        "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
-    })
+    ds = client.call(
+        "dataset.load",
+        {
+            "reader_name": "RenameReader",
+            "filename": "/tmp/rename_test.dat",
+            "name": "OriginalName",
+            "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
+        },
+    )
     assert ds.get("ok") is True
     result = client.dataset__rename("Renamed", dataset_index=ds["dataset_index"])
     assert result.get("ok") is True
@@ -298,6 +304,7 @@ def test_client_graph_build_fits_empty(zmq_server):
 
 # ── Structured error tests ─────────────────────────────────────────
 
+
 def test_service_error_has_error_code(zmq_server):
     """Service-level 'fit not found' error raised as RemoteError."""
     cmd_port, pub_port, _, _ = zmq_server
@@ -343,7 +350,10 @@ def test_service_error_invalid_state_has_code(zmq_server):
 def test_remote_error_structured_on_transport_error():
     """RemoteError carries structured attributes on transport JSON-RPC error."""
     from chisurf.core.api._client import RemoteError
-    err = RemoteError("test error", error_code="NOT_FOUND", jsonrpc_code=-32601, exception_type="ValueError")
+
+    err = RemoteError(
+        "test error", error_code="NOT_FOUND", jsonrpc_code=-32601, exception_type="ValueError"
+    )
     assert err.error_code == "NOT_FOUND"
     assert err.jsonrpc_code == -32601
     assert err.exception_type == "ValueError"

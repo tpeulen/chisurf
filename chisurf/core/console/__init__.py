@@ -12,7 +12,7 @@ them is five callbacks passed to :class:`~chisurf.core.console.shell.Shell`
 (write, display, read_input, clear, edit_file); pass none of them and the shell
 is a perfectly usable head-less REPL that writes to ``sys.stdout``.
 
-See also
+See Also
 --------
 :mod:`chisurf.gui.chinsole` : the console widget.
 """

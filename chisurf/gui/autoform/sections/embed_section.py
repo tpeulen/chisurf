@@ -76,8 +76,7 @@ def _embed_section_factory(model, target=None, **options):
             return None
         if options.get("expanding", True):
             widget._autoform_expanding = True
-            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                 QtWidgets.QSizePolicy.Expanding)
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         return widget
 
     path = options.get("widget", "")

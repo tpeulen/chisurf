@@ -150,13 +150,10 @@ def health_of(record: dict[str, Any], disabled: bool) -> tuple[str, str]:
 
     """
     if record.get("deprecated"):
-        return "deprecated", str(
-            record.get("deprecation_message") or "This tool is deprecated."
-        )
+        return "deprecated", str(record.get("deprecation_message") or "This tool is deprecated.")
     if record.get("experimental"):
         return "experimental", str(
-            record.get("experimental_message")
-            or "This tool is experimental and not yet validated."
+            record.get("experimental_message") or "This tool is experimental and not yet validated."
         )
     if disabled:
         return "disabled", "Switched off in the plugin manager."
@@ -259,9 +256,7 @@ def dependants_of(rows: Iterable[PluginRow], plugin_id: str) -> list[str]:
     return []
 
 
-def _statefulness_summary(
-    plugin_id: str, name: str, settings: dict[str, Any] | None
-) -> str:
+def _statefulness_summary(plugin_id: str, name: str, settings: dict[str, Any] | None) -> str:
     """How window state is handled for one plugin.
 
     The old summary reported ``"plugin default"`` whenever there was no

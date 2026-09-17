@@ -35,6 +35,7 @@ session-scoped ``autouse`` fixture is therefore already too late. ``conftest``
 is imported before the test modules beside it, so the assignment below happens
 in time.
 """
+
 from __future__ import annotations
 
 import os

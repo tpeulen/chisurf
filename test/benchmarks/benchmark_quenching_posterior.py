@@ -48,12 +48,11 @@ import json
 import time
 from pathlib import Path
 
-import numpy as np
-
 import IMP
 import IMP.atom
 import IMP.bff
 import IMP.core
+import numpy as np
 from IMP.bff import (
     GridDiffusionSolver,
     atomic_quenching_parameters,
@@ -66,7 +65,9 @@ from IMP.bff import (
 from chisurf.core.fitting import deviance_residuals
 from chisurf.core.fitting.diagnostics import convergence_warnings, summarize
 from chisurf.core.fitting.ensemble import (
-    AdaptiveCovarianceMove, EnsembleSampler, EnsembleSliceSampler,
+    AdaptiveCovarianceMove,
+    EnsembleSampler,
+    EnsembleSliceSampler,
 )
 from chisurf.core.fitting.priors import LogNormalPrior, TruncatedNormalPrior
 
@@ -102,8 +103,7 @@ PARAMETERS = (
     ("free_diffusion", 8.0, LogNormalPrior(mu=float(np.log(8.0)), sigma=0.8)),
     # Applied once per contacting atom, so it compounds; only the top of the
     # range is meaningful and the prior says so rather than the bounds alone.
-    ("slow_factor", 0.985, TruncatedNormalPrior(
-        mu=1.0, sigma=0.05, lb=0.80, ub=1.0)),
+    ("slow_factor", 0.985, TruncatedNormalPrior(mu=1.0, sigma=0.05, lb=0.80, ub=1.0)),
 )
 NAMES = [p[0] for p in PARAMETERS]
 TRUTH = np.array([p[1] for p in PARAMETERS])
@@ -122,28 +122,37 @@ N_PEAK_COUNTS = 10_000
 
 def load_atoms(pdb_path):
     model = IMP.Model()
-    hierarchy = IMP.atom.read_pdb(
-        pdb_path, model, IMP.atom.NonWaterNonHydrogenPDBSelector())
-    dtype = [("chain", "U4"), ("res_id", "i8"), ("res_name", "U4"),
-             ("atom_name", "U4"), ("coord", "f8", 3), ("radius", "f8")]
+    hierarchy = IMP.atom.read_pdb(pdb_path, model, IMP.atom.NonWaterNonHydrogenPDBSelector())
+    dtype = [
+        ("chain", "U4"),
+        ("res_id", "i8"),
+        ("res_name", "U4"),
+        ("atom_name", "U4"),
+        ("coord", "f8", 3),
+        ("radius", "f8"),
+    ]
     rows = []
     for leaf in IMP.atom.get_leaves(hierarchy):
         atom = IMP.atom.Atom(leaf)
         residue = IMP.atom.get_residue(atom)
-        rows.append((
-            IMP.atom.get_chain(residue).get_id(), residue.get_index(),
-            residue.get_residue_type().get_string(),
-            atom.get_atom_type().get_string().strip(),
-            IMP.core.XYZ(leaf).get_coordinates(),
-            IMP.core.XYZR(leaf).get_radius(),
-        ))
+        rows.append(
+            (
+                IMP.atom.get_chain(residue).get_id(),
+                residue.get_index(),
+                residue.get_residue_type().get_string(),
+                atom.get_atom_type().get_string().strip(),
+                IMP.core.XYZ(leaf).get_coordinates(),
+                IMP.core.XYZR(leaf).get_radius(),
+            )
+        )
     return np.array(rows, dtype=dtype)
 
 
 def quencher_table(kQ_scale: float, rC: float):
     return {
-        residue: {atom: (float(ref["kQ"]) * kQ_scale, rC)
-                  for atom in IMP.bff.QUENCHER_ATOMS[residue]}
+        residue: {
+            atom: (float(ref["kQ"]) * kQ_scale, rC) for atom in IMP.bff.QUENCHER_ATOMS[residue]
+        }
         for residue, ref in IMP.bff.PET_QUENCHING_REFERENCE.items()
     }
 
@@ -155,14 +164,21 @@ class Site:
         self.site = site
         self.atoms = atoms
         self.av = IMP.bff.get_av(
-            np.zeros((1, 4)), np.zeros(3), 20.0, 0.5, (3.5, 3.5, 3.5),
-            disc_step=resolution, pdb_path=pdb_path,
+            np.zeros((1, 4)),
+            np.zeros(3),
+            20.0,
+            0.5,
+            (3.5, 3.5, 3.5),
+            disc_step=resolution,
+            pdb_path=pdb_path,
             source_info={
                 "chain_identifier": site["chain"],
                 "residue_seq_number": site["residue"],
                 "atom_name": site["atom"],
                 "simulation_type": "AV1",
-                "linker_length": 20.0, "linker_width": 0.5, "radius1": 3.5,
+                "linker_length": 20.0,
+                "linker_width": 0.5,
+                "radius1": 3.5,
                 "allowed_sphere_radius": 2.1,
             },
         )
@@ -191,18 +207,28 @@ class Site:
         kQ_scale, rC, free_diffusion, slow_factor = theta
         self.n_evaluations += 1
         d_map = diffusion_coefficient_map(
-            self.density, self.x0, self.dg, self.xyz,
-            free_diffusion=free_diffusion, min_distance=CONTACT_DISTANCE,
-            slow_factor=slow_factor)
-        kQ, rC_atoms = atomic_quenching_parameters(
-            self.atoms, quencher_table(kQ_scale, rC))
+            self.density,
+            self.x0,
+            self.dg,
+            self.xyz,
+            free_diffusion=free_diffusion,
+            min_distance=CONTACT_DISTANCE,
+            slow_factor=slow_factor,
+        )
+        kQ, rC_atoms = atomic_quenching_parameters(self.atoms, quencher_table(kQ_scale, rC))
         rate = quenching_rate_map(
-            self.density, self.x0, self.dg, self.xyz, kQ, rC_atoms,
-            tau0=TAU0, dye_radius=3.5)
+            self.density, self.x0, self.dg, self.xyz, kQ, rC_atoms, tau0=TAU0, dye_radius=3.5
+        )
         start = equilibrium_occupancy(d_map, self.bounds, "smoluchowski")
         solver = GridDiffusionSolver(
-            d_map, self.bounds, start, rate, t_step=self.t_step, dg=self.dg,
-            flux_form="smoluchowski")
+            d_map,
+            self.bounds,
+            start,
+            rate,
+            t_step=self.t_step,
+            dg=self.dg,
+            flux_form="smoluchowski",
+        )
         result = solver.run(max(1, int(T_MAX / self.t_step)), n_out=64)
         curve = np.interp(self.time, result.time, result.fluorescence)
         return curve / curve[0] if curve[0] > 0 else curve
@@ -227,7 +253,7 @@ def log_posterior(theta, sites, observed):
         if not np.all(np.isfinite(model)):
             return -np.inf
         residuals = deviance_residuals(data, model)
-        deviance += float(np.sum(residuals ** 2))
+        deviance += float(np.sum(residuals**2))
     # sum r^2 == 2I*, and the Poisson log-likelihood is -2I*/2 up to a constant.
     return log_prior - 0.5 * deviance
 
@@ -252,11 +278,13 @@ def residual_shape(site, data, theta) -> dict:
     else:
         expected, z_runs = np.nan, np.nan
     centred = residuals - residuals.mean()
-    denominator = float(np.sum(centred ** 2))
+    denominator = float(np.sum(centred**2))
     lag1 = float(np.sum(centred[1:] * centred[:-1]) / denominator) if denominator else np.nan
     return {
-        "reduced_2istar": float(np.sum(residuals ** 2) / max(len(residuals) - len(NAMES), 1)),
-        "runs": runs, "runs_expected": float(expected), "runs_z": float(z_runs),
+        "reduced_2istar": float(np.sum(residuals**2) / max(len(residuals) - len(NAMES), 1)),
+        "runs": runs,
+        "runs_expected": float(expected),
+        "runs_z": float(z_runs),
         "lag1_autocorrelation": lag1,
     }
 
@@ -284,25 +312,32 @@ def sample(sites, observed, n_walkers, n_steps, seed, label, sampler_kind="slice
     start = np.clip(start, BOUNDS[:, 0] * 1.01, BOUNDS[:, 1] * 0.99)
     if sampler_kind == "stretch":
         sampler = EnsembleSampler(
-            n_walkers, len(TRUTH), log_posterior, args=(sites, observed), seed=seed)
+            n_walkers, len(TRUTH), log_posterior, args=(sites, observed), seed=seed
+        )
     else:
         sampler = EnsembleSliceSampler(
-            n_walkers, len(TRUTH), log_posterior, args=(sites, observed),
-            moves=AdaptiveCovarianceMove(), seed=seed)
+            n_walkers,
+            len(TRUTH),
+            log_posterior,
+            args=(sites, observed),
+            moves=AdaptiveCovarianceMove(),
+            seed=seed,
+        )
     t0 = time.perf_counter()
     sampler.run_mcmc(start, n_steps)
     elapsed = time.perf_counter() - t0
-    chain = np.asarray(sampler.get_chain())          # (n_steps, n_walkers, ndim)
-    chain = np.transpose(chain, (1, 0, 2))           # -> (n_chains, n_draws, ndim)
+    chain = np.asarray(sampler.get_chain())  # (n_steps, n_walkers, ndim)
+    chain = np.transpose(chain, (1, 0, 2))  # -> (n_chains, n_draws, ndim)
     rows = summarize(chain, names=NAMES)
     print(f"\n  {label}: {n_walkers} walkers x {n_steps} steps, {elapsed:.0f} s")
-    print(f"    {'parameter':<16}{'truth':>8}{'median':>10}{'68% CI':>22}"
-          f"{'R-hat':>8}{'ESS':>8}")
+    print(f"    {'parameter':<16}{'truth':>8}{'median':>10}{'68% CI':>22}{'R-hat':>8}{'ESS':>8}")
     for row, truth in zip(rows, TRUTH):
         q = row["quantiles"]
         lo, med, hi = q["0.16"], q["0.5"], q["0.84"]
-        print(f"    {row['name']:<16}{truth:>8.3f}{med:>10.3f}"
-              f"{f'[{lo:.3f}, {hi:.3f}]':>22}{row['rhat']:>8.3f}{row['ess']:>8.0f}")
+        print(
+            f"    {row['name']:<16}{truth:>8.3f}{med:>10.3f}"
+            f"{f'[{lo:.3f}, {hi:.3f}]':>22}{row['rhat']:>8.3f}{row['ess']:>8.0f}"
+        )
     for warning in convergence_warnings(rows):
         print(f"    ! {warning}")
     return chain, rows, elapsed
@@ -313,65 +348,73 @@ def main() -> int:
     parser.add_argument("--resolution", type=float, default=2.5)
     parser.add_argument("--walkers", type=int, default=12)
     parser.add_argument("--steps", type=int, default=700)
-    parser.add_argument("--site-steps", type=int, default=400,
-                        help="steps for each single-site posterior (stage 1).")
-    parser.add_argument("--sampler", default="slice", choices=("slice", "stretch"),
-                        help="slice = adaptive-covariance ensemble slice "
-                             "(default, ~3x the ESS per evaluation on a "
-                             "correlated target); stretch = the affine-invariant "
-                             "stretch move, for comparison.")
+    parser.add_argument(
+        "--site-steps",
+        type=int,
+        default=400,
+        help="steps for each single-site posterior (stage 1).",
+    )
+    parser.add_argument(
+        "--sampler",
+        default="slice",
+        choices=("slice", "stretch"),
+        help="slice = adaptive-covariance ensemble slice "
+        "(default, ~3x the ESS per evaluation on a "
+        "correlated target); stretch = the affine-invariant "
+        "stretch move, for comparison.",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
     pdb_path = IMP.bff.get_example_path(STRUCTURE)
     atoms = load_atoms(pdb_path)
-    print(f"forward model: IMP.bff field solver, flux_form=smoluchowski, "
-          f"{args.resolution} A")
-    print(f"statistic: Poisson 2I* (chisurf.core.fitting.deviance_residuals)")
+    print(f"forward model: IMP.bff field solver, flux_form=smoluchowski, {args.resolution} A")
+    print("statistic: Poisson 2I* (chisurf.core.fitting.deviance_residuals)")
     print(f"sampler: {args.sampler}")
-    print(f"priors: " + ", ".join(f"{n}~{type(p).__name__}" for n, p in zip(NAMES, PRIORS)))
+    print("priors: " + ", ".join(f"{n}~{type(p).__name__}" for n, p in zip(NAMES, PRIORS)))
     print(f"contact_distance fixed at {CONTACT_DISTANCE} A (uninformative; see PRD-111)")
 
     sites = [Site(pdb_path, atoms, s, args.resolution) for s in SITES]
     rng = np.random.default_rng(args.seed)
     observed = [rng.poisson(site.counts(TRUTH)).astype(np.float64) for site in sites]
-    print(f"\ndata: {len(sites)} decays, genuine Poisson draws peaking at "
-          f"{N_PEAK_COUNTS} counts")
+    print(f"\ndata: {len(sites)} decays, genuine Poisson draws peaking at {N_PEAK_COUNTS} counts")
 
-    payload = {"resolution": args.resolution, "parameters": NAMES,
-               "truth": TRUTH.tolist(), "contact_distance": CONTACT_DISTANCE,
-               "single_site": [], "joint": None, "residual_shape": []}
+    payload = {
+        "resolution": args.resolution,
+        "parameters": NAMES,
+        "truth": TRUTH.tolist(),
+        "contact_distance": CONTACT_DISTANCE,
+        "single_site": [],
+        "joint": None,
+        "residual_shape": [],
+    }
 
     # Staged, the way FitGroup(local_first=True) is: each member, then the group.
     for site, data in zip(sites, observed):
         tag = f"A{site.site['residue']}.CB"
         _chain, rows, seconds = sample(
-            [site], [data], args.walkers, args.site_steps, args.seed,
-            f"{tag} alone", args.sampler)
-        payload["single_site"].append({
-            "site": tag, "seconds": seconds,
-            "summary": rows})
+            [site], [data], args.walkers, args.site_steps, args.seed, f"{tag} alone", args.sampler
+        )
+        payload["single_site"].append({"site": tag, "seconds": seconds, "summary": rows})
 
     chain, rows, seconds = sample(
-        sites, observed, args.walkers, args.steps, args.seed,
-        "all six jointly", args.sampler)
+        sites, observed, args.walkers, args.steps, args.seed, "all six jointly", args.sampler
+    )
     posterior_median = np.array([r["quantiles"]["0.5"] for r in rows])
-    payload["joint"] = {
-        "seconds": seconds, "median": posterior_median.tolist(),
-        "summary": rows}
+    payload["joint"] = {"seconds": seconds, "median": posterior_median.tolist(), "summary": rows}
 
-    print("\n  residual shape at the posterior median "
-          "(what a reduced chi-squared of 1.0 hides):")
-    print(f"    {'site':<10}{'2I*/dof':>10}{'runs':>7}{'expected':>10}"
-          f"{'z':>8}{'lag-1':>9}")
+    print("\n  residual shape at the posterior median (what a reduced chi-squared of 1.0 hides):")
+    print(f"    {'site':<10}{'2I*/dof':>10}{'runs':>7}{'expected':>10}{'z':>8}{'lag-1':>9}")
     for site, data in zip(sites, observed):
         shape = residual_shape(site, data, posterior_median)
         tag = f"A{site.site['residue']}.CB"
         payload["residual_shape"].append({"site": tag} | shape)
-        print(f"    {tag:<10}{shape['reduced_2istar']:>10.3f}{shape['runs']:>7d}"
-              f"{shape['runs_expected']:>10.1f}{shape['runs_z']:>8.2f}"
-              f"{shape['lag1_autocorrelation']:>9.3f}")
+        print(
+            f"    {tag:<10}{shape['reduced_2istar']:>10.3f}{shape['runs']:>7d}"
+            f"{shape['runs_expected']:>10.1f}{shape['runs_z']:>8.2f}"
+            f"{shape['lag1_autocorrelation']:>9.3f}"
+        )
 
     if args.out:
         args.out.write_text(json.dumps(payload, indent=2) + "\n")

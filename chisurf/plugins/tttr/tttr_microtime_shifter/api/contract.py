@@ -38,9 +38,7 @@ def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
             enabled=bool(raw.get("enabled", False)),
             sample_id=str(raw.get("sample_id") or ""),
             source_artifact_ids={
-                str(p): str(aid)
-                for p, aid in (raw.get("source_artifact_ids") or {}).items()
-                if aid
+                str(p): str(aid) for p, aid in (raw.get("source_artifact_ids") or {}).items() if aid
             },
             register_missing_inputs=bool(raw.get("register_missing_inputs", True)),
             setup_id=str(raw.get("setup_id") or ""),

@@ -67,9 +67,7 @@ def summarize_payload(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             else:
                 missing.append(str(position_name))
         if missing:
-            dangling_distances.append(
-                {"distance": distance_name, "missing_positions": missing}
-            )
+            dangling_distances.append({"distance": distance_name, "missing_positions": missing})
 
     missing_score_set_distances = []
     for score_set_name, score_set in model.score_sets.items():
@@ -163,9 +161,7 @@ def validate_payload(payload: Any) -> dict[str, Any]:
         errors.append(f"Score set '{item['score_set']}' references missing distance(s): {missing}")
 
     if summary["unused_positions"]:
-        warnings.append(
-            "Unused position(s): " + ", ".join(summary["unused_positions"])
-        )
+        warnings.append("Unused position(s): " + ", ".join(summary["unused_positions"]))
 
     return {
         "valid": not errors,

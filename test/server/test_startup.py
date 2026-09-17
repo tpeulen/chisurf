@@ -67,16 +67,17 @@ def test_rpc_is_available_returns_false_for_unreachable():
 
 def test_session_state_from_live_chisurf_returns_none_when_chisurf_unavailable():
     import sys
+
     orig = sys.modules.get("chisurf")
     if "chisurf" in sys.modules:
         del sys.modules["chisurf"]
     try:
         # Clear cached imports
-        import importlib
         for mod in list(sys.modules.keys()):
             if mod.startswith("chisurf.server.startup"):
                 del sys.modules[mod]
         from chisurf.server.startup import session_state_from_live_chisurf
+
         result = session_state_from_live_chisurf()
         assert result is None
     finally:
@@ -85,7 +86,8 @@ def test_session_state_from_live_chisurf_returns_none_when_chisurf_unavailable()
 
 
 def test_session_state_from_live_chisurf_with_mock():
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
+
     import chisurf.server.startup as startup_mod
 
     mock_cs = MagicMock()
@@ -102,7 +104,8 @@ def test_session_state_from_live_chisurf_with_mock():
 
 
 def test_sync_current_fit_uid_from_chisurf_current_fit():
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
+
     import chisurf.server.startup as startup_mod
     from chisurf.server.session import SessionState
 
@@ -120,29 +123,35 @@ def test_sync_current_fit_uid_from_chisurf_current_fit():
 
 def test_ensure_embedded_chisurf_rpc_server_returns_false_for_unreachable():
     from chisurf.server.startup import ensure_embedded_chisurf_rpc_server
+
     for port in (18765, 18766):
         available = ensure_embedded_chisurf_rpc_server(
-            "127.0.0.1", port, port + 1, timeout_s=0.5, state=None,
+            "127.0.0.1",
+            port,
+            port + 1,
+            timeout_s=0.5,
+            state=None,
         )
         assert available is False
 
 
 def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
+    import socket
+
     from chisurf.server.startup import (
         ensure_embedded_chisurf_rpc_server,
-        rpc_is_available,
     )
-    import socket
 
     def _find_free_port() -> int:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))
+            s.bind(("", 0))
             return s.getsockname()[1]
 
     cmd = _find_free_port()
     pub = _find_free_port()
 
     import zmq
+
     ctx = zmq.Context()
     rep = ctx.socket(zmq.REP)
     rep.bind(f"tcp://127.0.0.1:{cmd}")
@@ -164,7 +173,11 @@ def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
 
     try:
         available = ensure_embedded_chisurf_rpc_server(
-            "127.0.0.1", cmd, pub, timeout_s=2.0, state=None,
+            "127.0.0.1",
+            cmd,
+            pub,
+            timeout_s=2.0,
+            state=None,
         )
         assert available is True
     finally:
@@ -173,7 +186,8 @@ def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
 
 
 def test_sync_current_fit_uid_from_list_selected():
-    from unittest.mock import MagicMock, PropertyMock, patch
+    from unittest.mock import MagicMock, PropertyMock
+
     import chisurf.server.startup as startup_mod
     from chisurf.server.session import SessionState
 

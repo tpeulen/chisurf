@@ -88,8 +88,7 @@ def test_local_desktop_bootstrap_refuses_to_take_over_existing_identity(
 
     with MFDatabase(database) as db:
         row = db.conn.execute(
-            "SELECT is_admin, password_hash FROM flr_sample_users "
-            "WHERE user_id = 'admin'"
+            "SELECT is_admin, password_hash FROM flr_sample_users WHERE user_id = 'admin'"
         ).fetchone()
 
     assert tuple(row) == (0, None)

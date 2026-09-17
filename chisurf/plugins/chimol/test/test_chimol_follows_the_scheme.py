@@ -20,6 +20,7 @@ So this file pins the seam from chimol's side:
 * the same spec that chimol paints also loads in the Qt loader, which is what
   "one dialect" means operationally.
 """
+
 from __future__ import annotations
 
 import json

@@ -1,9 +1,7 @@
 """Qt widgets for selecting and creating MMFDB samples (PRD-39 GUI)."""
+
 from __future__ import annotations
 
-from qtpy import QtCore, QtWidgets
-
-from mmfdb.samples.external_refs import diff_sequences, fetch_uniprot
 from mmfdb.models import (
     EntityDefinition,
     FretPairDefinition,
@@ -11,7 +9,10 @@ from mmfdb.models import (
     ProbeDefinition,
     SampleDefinition,
 )
+from mmfdb.samples.external_refs import diff_sequences, fetch_uniprot
 from mmfdb.samples.sample_manager import create_sample, list_samples
+from qtpy import QtCore, QtWidgets
+
 from chisurf.gui import dialogs
 
 
@@ -220,11 +221,13 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         cache_dir = None
         if self._db is not None:
             import pathlib
+
             cache_dir = pathlib.Path(self._db.db_path).parent / "uniprot_cache"
         result = fetch_uniprot(accession, cache_dir=cache_dir)
         if result is None:
             dialogs.warning(
-                self, "Fetch failed",
+                self,
+                "Fetch failed",
                 f"Could not fetch UniProt entry {accession}. "
                 "Check the accession and network connectivity.",
             )
@@ -240,14 +243,10 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         construct = self.entity_sequence_edit.text().strip()
         reference = self.ref_sequence_edit.text().strip()
         if not construct:
-            dialogs.information(
-                self, "Diff", "Enter an entity sequence first."
-            )
+            dialogs.information(self, "Diff", "Enter an entity sequence first.")
             return
         if not reference:
-            dialogs.information(
-                self, "Diff", "Enter a reference sequence first (or click Fetch)."
-            )
+            dialogs.information(self, "Diff", "Enter a reference sequence first (or click Fetch).")
             return
         try:
             mutations = diff_sequences(construct, reference)
@@ -256,16 +255,15 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
             return
 
         if not mutations:
-            dialogs.information(
-                self, "Diff", "No differences found — construct matches reference."
-            )
+            dialogs.information(self, "Diff", "No differences found — construct matches reference.")
             return
 
         self._populate_mutation_table(mutations)
 
         count = len(mutations)
         dialogs.information(
-            self, "Diff complete",
+            self,
+            "Diff complete",
             f"Found {count} mutation{'s' if count != 1 else ''}. "
             "Review the mutations table and edit if needed.",
         )
@@ -304,21 +302,29 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
                 seq_id = int(seq_id_item.text().strip())
             except ValueError:
                 continue
-            mut_comp_id = (self._mut_table.item(row, 1).text().strip()
-                           if self._mut_table.item(row, 1) else "")
-            wt_comp_id = (self._mut_table.item(row, 2).text().strip()
-                          if self._mut_table.item(row, 2) else "")
-            auth_name = (self._mut_table.item(row, 3).text().strip()
-                         if self._mut_table.item(row, 3) else "")
-            kind = (self._mut_table.item(row, 4).text().strip()
-                    if self._mut_table.item(row, 4) else "engineered_mutation")
-            mutations.append(MutationDefinition(
-                seq_id=seq_id,
-                mut_comp_id=mut_comp_id,
-                wt_comp_id=wt_comp_id,
-                auth_name=auth_name,
-                kind=kind,
-            ))
+            mut_comp_id = (
+                self._mut_table.item(row, 1).text().strip() if self._mut_table.item(row, 1) else ""
+            )
+            wt_comp_id = (
+                self._mut_table.item(row, 2).text().strip() if self._mut_table.item(row, 2) else ""
+            )
+            auth_name = (
+                self._mut_table.item(row, 3).text().strip() if self._mut_table.item(row, 3) else ""
+            )
+            kind = (
+                self._mut_table.item(row, 4).text().strip()
+                if self._mut_table.item(row, 4)
+                else "engineered_mutation"
+            )
+            mutations.append(
+                MutationDefinition(
+                    seq_id=seq_id,
+                    mut_comp_id=mut_comp_id,
+                    wt_comp_id=wt_comp_id,
+                    auth_name=auth_name,
+                    kind=kind,
+                )
+            )
         return mutations
 
     # ── Accept ─────────────────────────────────────────────────────────

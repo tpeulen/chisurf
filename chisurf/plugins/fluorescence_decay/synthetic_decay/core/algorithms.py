@@ -6,6 +6,7 @@ A thin, JSON-serializable wrapper over the single canonical generator
 mathematics lives here — the API/CLI/RPC/GUI all funnel through this module,
 which funnels through core, so there is exactly one decay generator in ChiSurf.
 """
+
 from __future__ import annotations
 
 import pathlib

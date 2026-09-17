@@ -9,6 +9,7 @@ When ``record_provenance`` is enabled and a database connection is available,
 :meth:`ExperimentReader.get_data` automatically registers source files and
 derived data in the object store and records provenance in MMFDB.
 """
+
 from __future__ import annotations
 
 import abc
@@ -77,14 +78,14 @@ class ExperimentReader(chisurf.core.base.Base):
     derived_mime_type: str = "application/json"
 
     def __init__(
-            self,
-            *args,
-            controller: ExperimentReaderController = None,
-            db=None,
-            object_store=None,
-            record_provenance: bool = True,
-            sample_id: str | None = None,
-            **kwargs
+        self,
+        *args,
+        controller: ExperimentReaderController = None,
+        db=None,
+        object_store=None,
+        record_provenance: bool = True,
+        sample_id: str | None = None,
+        **kwargs,
     ):
         """Initialize the experiment reader.
 
@@ -171,8 +172,9 @@ class ExperimentReader(chisurf.core.base.Base):
         self._stage_progress_cb = progress_cb
         self._stage_cancel_cb = cancel_cb
 
-    def _open_tttr(self, path, routine=None, *, channel_luts=None,
-                   channel_shifts=None, apply_lut=None):
+    def _open_tttr(
+        self, path, routine=None, *, channel_luts=None, channel_shifts=None, apply_lut=None
+    ):
         """Build a ``tttrlib.TTTR``, staging the file locally first if slow.
 
         Drop-in replacement for ``tttrlib.TTTR(path[, routine])`` used by the
@@ -233,18 +235,11 @@ class ExperimentReader(chisurf.core.base.Base):
             Pickle-friendly state dictionary.
         """
         state = super().__getstate__()
-        state.update(
-            chisurf.core.base.to_elementary(self.__dict__.copy(), skip_qt_widgets=True)
-        )
+        state.update(chisurf.core.base.to_elementary(self.__dict__.copy(), skip_qt_widgets=True))
         return state
 
     @abc.abstractmethod
-    def read(
-            self,
-            filename: str = None,
-            *args,
-            **kwargs
-    ) -> chisurf.core.base.Data:
+    def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.base.Data:
         """Read experimental data from a file.
 
         Parameters
@@ -376,6 +371,7 @@ class ExperimentReader(chisurf.core.base.Base):
             from chisurf.gui.widgets.experiments.sample_selector_widget import (
                 show_sample_lookup_dialog,
             )
+
             show_sample_lookup_dialog(
                 self.controller,
                 str(filename),
@@ -509,12 +505,10 @@ class ExperimentReader(chisurf.core.base.Base):
 
         op_id = f"op_{uuid.uuid4().hex[:12]}"
         input_artifacts = [
-            {"artifact_id": f"src_{u[:12]}", "role": "source_file"}
-            for u in source_uuids
+            {"artifact_id": f"src_{u[:12]}", "role": "source_file"} for u in source_uuids
         ]
         output_artifacts = [
-            {"artifact_id": f"der_{u[:12]}", "role": "derived_data"}
-            for u in derived_uuids
+            {"artifact_id": f"der_{u[:12]}", "role": "derived_data"} for u in derived_uuids
         ]
         self.db.record_operation_with_artifacts(
             operation_id=op_id,

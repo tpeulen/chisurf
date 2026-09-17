@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf import typing
 import chisurf.core.plotting.transforms as plot_transforms
+from chisurf import typing
 
 
 def _window(context: plot_transforms.PlotReferenceContext) -> np.ndarray:
@@ -24,23 +24,29 @@ def _window(context: plot_transforms.PlotReferenceContext) -> np.ndarray:
         if y.size == data_x.size:
             xmin = int(getattr(context.fit, "xmin", 0))
             xmax = int(getattr(context.fit, "xmax", y.size))
-            y = y[max(0, xmin):min(y.size, xmax)]
+            y = y[max(0, xmin) : min(y.size, xmax)]
     except Exception:
         pass
     return y[np.isfinite(y)]
 
 
-def total_photons(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def total_photons(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """Counts divided by the total photons in the window."""
     denominator = float(np.nansum(_window(context)))
     if not np.isfinite(denominator) or denominator == 0.0:
         raise ValueError("total photon count is zero")
     return plot_transforms.PlotReferenceResult(
-        x=context.x, y=np.asarray(context.y, dtype=float) / denominator,
-        y_label="counts / total photons")
+        x=context.x,
+        y=np.asarray(context.y, dtype=float) / denominator,
+        y_label="counts / total photons",
+    )
 
 
-def peak_photons(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def peak_photons(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """Counts divided by the peak count in the window."""
     window = _window(context)
     if window.size == 0:
@@ -49,27 +55,42 @@ def peak_photons(context: plot_transforms.PlotReferenceContext) -> plot_transfor
     if not np.isfinite(denominator) or denominator == 0.0:
         raise ValueError("peak photon count is zero")
     return plot_transforms.PlotReferenceResult(
-        x=context.x, y=np.asarray(context.y, dtype=float) / denominator,
-        y_label="counts / peak photons")
+        x=context.x,
+        y=np.asarray(context.y, dtype=float) / denominator,
+        y_label="counts / peak photons",
+    )
 
 
 def _fit_range_parameter() -> plot_transforms.PlotReferenceParameter:
     return plot_transforms.PlotReferenceParameter(
-        key="fit_range_only", label="fit range", kind="bool", default=False)
+        key="fit_range_only", label="fit range", kind="bool", default=False
+    )
 
 
 def _total_photons_mode() -> plot_transforms.PlotReferenceMode:
     return plot_transforms.PlotReferenceMode(
-        key="tcspc_total_photons", label="Total photons", callback=total_photons,
-        parameters=(_fit_range_parameter(),), applies_to=("data", "model"),
-        y_label="counts / total photons", y_range=(0, 1.0), y_padding=0.05)
+        key="tcspc_total_photons",
+        label="Total photons",
+        callback=total_photons,
+        parameters=(_fit_range_parameter(),),
+        applies_to=("data", "model"),
+        y_label="counts / total photons",
+        y_range=(0, 1.0),
+        y_padding=0.05,
+    )
 
 
 def _peak_photons_mode() -> plot_transforms.PlotReferenceMode:
     return plot_transforms.PlotReferenceMode(
-        key="tcspc_peak_photons", label="Peak photons", callback=peak_photons,
-        parameters=(_fit_range_parameter(),), applies_to=("data", "model"),
-        y_label="counts / peak photons", y_range=(0, 1.0), y_padding=0.05)
+        key="tcspc_peak_photons",
+        label="Peak photons",
+        callback=peak_photons,
+        parameters=(_fit_range_parameter(),),
+        applies_to=("data", "model"),
+        y_label="counts / peak photons",
+        y_range=(0, 1.0),
+        y_padding=0.05,
+    )
 
 
 def _parameter(model, canonical: str, default: float) -> float:
@@ -98,7 +119,9 @@ def _group_channel(context: plot_transforms.PlotReferenceContext, code: float):
     return None
 
 
-def anisotropy_rt(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def anisotropy_rt(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """r(t) from a fit group's VV and VH members, drawn once, on the selected member."""
     from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
@@ -114,11 +137,13 @@ def anisotropy_rt(context: plot_transforms.PlotReferenceContext) -> plot_transfo
     p = context.parameters
     vv = vv - float(p.get("bg_vv", 0.0))
     vh = vh - float(p.get("bg_vh", 0.0))
-    t = np.asarray(context.x, dtype=float)[:vv.size]
+    t = np.asarray(context.x, dtype=float)[: vv.size]
     shift = float(p.get("vh_shift", 0.0))
     if shift:
         vh = np.interp(t, t + shift, vh)
-    tt, r_unc, r_cor = rt_curves(t, vv, vh, float(p.get("g", 1.0)), float(p.get("l1", 0.0)), float(p.get("l2", 0.0)))
+    tt, r_unc, r_cor = rt_curves(
+        t, vv, vh, float(p.get("g", 1.0)), float(p.get("l1", 0.0)), float(p.get("l2", 0.0))
+    )
     y = r_unc if str(p.get("variant", "corrected")) == "uncorrected" else r_cor
     return plot_transforms.PlotReferenceResult(x=tt, y=y, y_label="r(t)")
 
@@ -126,7 +151,9 @@ def anisotropy_rt(context: plot_transforms.PlotReferenceContext) -> plot_transfo
 def _anisotropy_rt_mode(model=None) -> plot_transforms.PlotReferenceMode:
     P = plot_transforms.PlotReferenceParameter
     return plot_transforms.PlotReferenceMode(
-        key="tcspc_anisotropy_rt", label="r(t) anisotropy", callback=anisotropy_rt,
+        key="tcspc_anisotropy_rt",
+        label="r(t) anisotropy",
+        callback=anisotropy_rt,
         parameters=(
             P("g", "g", "float", _parameter(model, "anisotropy.g", 1.0), step=0.01),
             P("l1", "l1", "float", _parameter(model, "anisotropy.l1", 0.0), step=0.001),
@@ -134,21 +161,38 @@ def _anisotropy_rt_mode(model=None) -> plot_transforms.PlotReferenceMode:
             P("bg_vv", "BgVV", "float", 0.0, step=1.0),
             P("bg_vh", "BgVH", "float", 0.0, step=1.0),
             P("vh_shift", "dVH", "float", 0.0, step=0.01),
-            P("variant", "variant", "choice", "corrected",
-              choices=(("corrected", "corrected"), ("uncorrected", "uncorrected"))),
+            P(
+                "variant",
+                "variant",
+                "choice",
+                "corrected",
+                choices=(("corrected", "corrected"), ("uncorrected", "uncorrected")),
+            ),
         ),
-        applies_to=("data", "model"), y_label="r(t)", y_range=(-0.05, 0.45), y_padding=0.0)
+        applies_to=("data", "model"),
+        y_label="r(t)",
+        y_range=(-0.05, 0.45),
+        y_padding=0.0,
+    )
 
 
-def donor_reference(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def donor_reference(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """A FRET curve divided by the donor-only decay the same model predicts.
 
     The reference is the model with its donor-only fraction at one -- the same
     donor, instrument and response -- so dividing leaves the transfer.
     """
     model = context.model
-    parameter = next((p for p in getattr(model, "parameters_all", ()) or ()
-                      if getattr(p, "canonical_id", None) == "fret.x_donly"), None)
+    parameter = next(
+        (
+            p
+            for p in getattr(model, "parameters_all", ()) or ()
+            if getattr(p, "canonical_id", None) == "fret.x_donly"
+        ),
+        None,
+    )
     if parameter is None:
         raise ValueError("the model has no donor-only fraction to take a reference from")
     held = parameter.value
@@ -173,16 +217,34 @@ def donor_reference(context: plot_transforms.PlotReferenceContext) -> plot_trans
     n = min(y.size, reference.size, np.asarray(context.x).size)
     with np.errstate(divide="ignore", invalid="ignore"):
         out = np.where(np.abs(reference[:n]) > 1e-15, y[:n] / reference[:n], np.nan)
-    return plot_transforms.PlotReferenceResult(x=np.asarray(context.x)[:n], y=out, y_label="counts / donor reference")
+    return plot_transforms.PlotReferenceResult(
+        x=np.asarray(context.x)[:n], y=out, y_label="counts / donor reference"
+    )
 
 
 def _donor_reference_mode(model=None) -> plot_transforms.PlotReferenceMode:
     return plot_transforms.PlotReferenceMode(
-        key="tcspc_donor_reference", label="Donor reference", callback=donor_reference,
-        parameters=(plot_transforms.PlotReferenceParameter(
-            key="scale", label="scale", kind="choice", default="data_peak",
-            choices=(("data_peak", "data peak"), ("reference_peak", "reference peak"), ("none", "none"))),),
-        applies_to=("data", "model"), y_label="counts / donor reference", y_range=(0, 1.0), y_padding=0.05)
+        key="tcspc_donor_reference",
+        label="Donor reference",
+        callback=donor_reference,
+        parameters=(
+            plot_transforms.PlotReferenceParameter(
+                key="scale",
+                label="scale",
+                kind="choice",
+                default="data_peak",
+                choices=(
+                    ("data_peak", "data peak"),
+                    ("reference_peak", "reference peak"),
+                    ("none", "none"),
+                ),
+            ),
+        ),
+        applies_to=("data", "model"),
+        y_label="counts / donor reference",
+        y_range=(0, 1.0),
+        y_padding=0.05,
+    )
 
 
 def _model_value(model, name: str, default: float) -> float:
@@ -201,45 +263,70 @@ def _fcs_value(context: plot_transforms.PlotReferenceContext, name: str, default
     return _model_value(context.model, name, default)
 
 
-def fcs_diffusion(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def fcs_diffusion(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """``(G - b) / Gdiff``: the curve with the baseline off, over the diffusion term alone."""
     from chisurf.core.fluorescence.fcs import fcs_diffusion_reference, normalize_fcs_curve
 
-    params = {name: _fcs_value(context, name, default)
-              for name, default in (("N", 1.0), ("td", float("nan")), ("s", float("nan")))}
+    params = {
+        name: _fcs_value(context, name, default)
+        for name, default in (("N", 1.0), ("td", float("nan")), ("s", float("nan")))
+    }
     reference = fcs_diffusion_reference(context.x, params)
     if reference is None:
         raise ValueError("FCS diffusion reference is unavailable")
     return plot_transforms.PlotReferenceResult(
-        x=context.x, y=normalize_fcs_curve(context.y, reference, _fcs_value(context, "b", 1.0)),
-        y_label="(G - b) / Gdiff")
+        x=context.x,
+        y=normalize_fcs_curve(context.y, reference, _fcs_value(context, "b", 1.0)),
+        y_label="(G - b) / Gdiff",
+    )
 
 
-def fcs_molecules(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+def fcs_molecules(
+    context: plot_transforms.PlotReferenceContext,
+) -> plot_transforms.PlotReferenceResult:
     """``N * (G - b)``: the amplitude per molecule."""
     n = _fcs_value(context, "N", 1.0)
     b = _fcs_value(context, "b", 1.0)
     return plot_transforms.PlotReferenceResult(
-        x=context.x, y=n * (np.asarray(context.y, dtype=float) - b), y_label="N * (G - b)")
+        x=context.x, y=n * (np.asarray(context.y, dtype=float) - b), y_label="N * (G - b)"
+    )
 
 
 def _fcs_parameter(model, key: str, **kw) -> plot_transforms.PlotReferenceParameter:
     return plot_transforms.PlotReferenceParameter(
-        key=key, label=key, kind="float", default=_model_value(model, key, 1.0), **kw)
+        key=key, label=key, kind="float", default=_model_value(model, key, 1.0), **kw
+    )
 
 
 def _fcs_diffusion_mode(model=None) -> plot_transforms.PlotReferenceMode:
     return plot_transforms.PlotReferenceMode(
-        key="fcs_diffusion", label="FCS diffusion", callback=fcs_diffusion,
+        key="fcs_diffusion",
+        label="FCS diffusion",
+        callback=fcs_diffusion,
         parameters=(_fcs_parameter(model, "b", step=0.01),),
-        applies_to=("data", "model"), y_label="(G - b) / Gdiff", y_range=(0, 1.0), y_padding=0.05)
+        applies_to=("data", "model"),
+        y_label="(G - b) / Gdiff",
+        y_range=(0, 1.0),
+        y_padding=0.05,
+    )
 
 
 def _fcs_molecules_mode(model=None) -> plot_transforms.PlotReferenceMode:
     return plot_transforms.PlotReferenceMode(
-        key="fcs_molecules", label="FCS molecules", callback=fcs_molecules,
-        parameters=(_fcs_parameter(model, "N", minimum=1e-12, step=0.1), _fcs_parameter(model, "b", step=0.01)),
-        applies_to=("data", "model"), y_label="N * (G - b)", y_range=(0, 1.05), y_padding=0.05)
+        key="fcs_molecules",
+        label="FCS molecules",
+        callback=fcs_molecules,
+        parameters=(
+            _fcs_parameter(model, "N", minimum=1e-12, step=0.1),
+            _fcs_parameter(model, "b", step=0.01),
+        ),
+        applies_to=("data", "model"),
+        y_label="N * (G - b)",
+        y_range=(0, 1.05),
+        y_padding=0.05,
+    )
 
 
 #: Name -> factory of a reference mode. The photon modes read only curves and
@@ -262,7 +349,12 @@ def photon_modes() -> typing.List[plot_transforms.PlotReferenceMode]:
     return [REFERENCE_MODES["tcspc_total_photons"](), REFERENCE_MODES["tcspc_peak_photons"]()]
 
 
-def modes_named(names: typing.Iterable[str], model=None) -> typing.List[plot_transforms.PlotReferenceMode]:
+def modes_named(
+    names: typing.Iterable[str], model=None
+) -> typing.List[plot_transforms.PlotReferenceMode]:
     """The registered modes for *names*, their defaults read from *model*; an unknown name is skipped."""
-    return [REFERENCE_MODES[n](model) if n in _MODEL_AWARE else REFERENCE_MODES[n]()
-            for n in names if n in REFERENCE_MODES]
+    return [
+        REFERENCE_MODES[n](model) if n in _MODEL_AWARE else REFERENCE_MODES[n]()
+        for n in names
+        if n in REFERENCE_MODES
+    ]

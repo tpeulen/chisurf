@@ -181,7 +181,12 @@ class ChisurfAPIIndexer:
 
     def _write_examples_markdown(self, symbols: list[dict[str, Any]]) -> None:
         """Write a compact markdown overview of indexed API symbols."""
-        content = ["# ChiSurf API Index", "", "Generated API symbols from the current source tree.", ""]
+        content = [
+            "# ChiSurf API Index",
+            "",
+            "Generated API symbols from the current source tree.",
+            "",
+        ]
         for symbol in symbols[:300]:
             content.append(f"- `{symbol['qualname']}` — {symbol['path']}:{symbol['line']}")
         self.wiki_root.mkdir(parents=True, exist_ok=True)

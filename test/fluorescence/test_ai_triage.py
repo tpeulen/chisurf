@@ -1,12 +1,9 @@
 """Tests for AI-assisted triage (PRD-06 Task 9)."""
+
 from __future__ import annotations
 
-import json
 from unittest import mock
 
-import pytest
-
-from chisurf.core.fluorescence.curation import ai_triage
 from chisurf.core.fluorescence.curation.ai_triage import (
     _call_llm,
     _parse_llm_reply,
@@ -34,8 +31,12 @@ def test_deterministic_missing_spectra():
 
 def test_deterministic_clean_probe():
     probe = {
-        "abs_max": "500", "em_max": "550", "qy": "0.8", "ext_coeff": "80000",
-        "has_abs": True, "has_em": True,
+        "abs_max": "500",
+        "em_max": "550",
+        "qy": "0.8",
+        "ext_coeff": "80000",
+        "has_abs": True,
+        "has_em": True,
     }
     result = run_deterministic_checks(probe)
     assert len(result["issues"]) == 0
@@ -45,8 +46,12 @@ def test_deterministic_clean_probe():
 def test_deterministic_quality_scoring():
     """Probe with only metadata issues (no missing spectra) gets medium."""
     probe = {
-        "abs_max": "500", "em_max": "495", "qy": "0.8", "ext_coeff": "80000",
-        "has_abs": True, "has_em": True,
+        "abs_max": "500",
+        "em_max": "495",
+        "qy": "0.8",
+        "ext_coeff": "80000",
+        "has_abs": True,
+        "has_em": True,
     }
     result = run_deterministic_checks(probe)
     assert result["proposed_quality"] == "medium"
@@ -74,6 +79,7 @@ def test_parse_llm_reply_invalid():
 
 # ── _call_llm: provider-neutral, no live network (PRD-06 Task 9) ──────────────
 
+
 def _fake_settings(**overrides):
     base = {
         "provider": "openai",
@@ -90,13 +96,19 @@ def _fake_settings(**overrides):
 
 def test_call_llm_posts_to_chat_completions_when_configured():
     """A configured provider POSTs to the OpenAI-compatible endpoint and returns text."""
-    settings = _fake_settings(api_key="sk-test", base_url="https://api.mistral.ai/v1",
-                              text_model="mistral-small-latest", model="mistral-small-latest")
+    settings = _fake_settings(
+        api_key="sk-test",
+        base_url="https://api.mistral.ai/v1",
+        text_model="mistral-small-latest",
+        model="mistral-small-latest",
+    )
     resp = mock.Mock()
     resp.raise_for_status = mock.Mock()
     resp.json.return_value = {"choices": [{"message": {"content": "hello"}}]}
-    with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("chisurf.core.support.http.post", return_value=resp) as post:
+    with (
+        mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings),
+        mock.patch("chisurf.core.support.http.post", return_value=resp) as post,
+    ):
         out = _call_llm("prompt", provider="mistral")
     assert out == "hello"
     assert post.call_count == 1
@@ -108,8 +120,12 @@ def test_call_llm_posts_to_chat_completions_when_configured():
 def test_call_llm_skips_when_no_key_and_remote():
     """Unconfigured default (cloud URL, no key) must NOT hit the network."""
     settings = _fake_settings(api_key="")  # openai cloud, no key
-    with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("chisurf.core.support.http.post", side_effect=AssertionError("network hit")) as post:
+    with (
+        mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings),
+        mock.patch(
+            "chisurf.core.support.http.post", side_effect=AssertionError("network hit")
+        ) as post,
+    ):
         out = _call_llm("prompt")
     assert out is None
     assert post.call_count == 0
@@ -117,13 +133,20 @@ def test_call_llm_skips_when_no_key_and_remote():
 
 def test_call_llm_allows_local_without_key():
     """A local provider (Ollama/LMStudio) works keyless."""
-    settings = _fake_settings(provider="local", base_url="http://localhost:11434/v1",
-                              text_model="llama3.2", model="llama3.2", api_key="")
+    settings = _fake_settings(
+        provider="local",
+        base_url="http://localhost:11434/v1",
+        text_model="llama3.2",
+        model="llama3.2",
+        api_key="",
+    )
     resp = mock.Mock()
     resp.raise_for_status = mock.Mock()
     resp.json.return_value = {"choices": [{"message": {"content": "{}"}}]}
-    with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("chisurf.core.support.http.post", return_value=resp) as post:
+    with (
+        mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings),
+        mock.patch("chisurf.core.support.http.post", return_value=resp) as post,
+    ):
         out = _call_llm("prompt", provider="local")
     assert out == "{}"
     assert post.call_count == 1
@@ -132,6 +155,8 @@ def test_call_llm_allows_local_without_key():
 
 def test_call_llm_no_model_skips():
     settings = _fake_settings(text_model="", model="")
-    with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("chisurf.core.support.http.post", side_effect=AssertionError("network hit")):
+    with (
+        mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings),
+        mock.patch("chisurf.core.support.http.post", side_effect=AssertionError("network hit")),
+    ):
         assert _call_llm("prompt") is None

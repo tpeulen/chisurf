@@ -30,9 +30,7 @@ class CodeEditorWindow(ChisurfDockTool):
     ):
         # The editor's own options must not reach QMainWindow, which raises
         # TypeError on the first one it does not recognise.
-        editor_kwargs = {
-            name: kwargs.pop(name) for name in self._EDITOR_KWARGS if name in kwargs
-        }
+        editor_kwargs = {name: kwargs.pop(name) for name in self._EDITOR_KWARGS if name in kwargs}
         super().__init__(*args, **kwargs)
         self.setWindowTitle("Code Editor")
         self.resize(1200, 800)
@@ -90,9 +88,7 @@ class CodeEditorWindow(ChisurfDockTool):
         self._kernel_placeholder.setAlignment(QtCore.Qt.AlignCenter)
         self._kernel_placeholder.setEnabled(False)
         self._kernel_stack.addWidget(self._kernel_placeholder)
-        self.kernel_dock = ChisurfDock(
-            "Kernel", self._kernel_stack, self, namespace="code_editor"
-        )
+        self.kernel_dock = ChisurfDock("Kernel", self._kernel_stack, self, namespace="code_editor")
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.kernel_dock)
         self.tabifyDockWidget(self.output_dock, self.kernel_dock)
         self.output_dock.raise_()  # show output by default
@@ -163,9 +159,7 @@ class CodeEditorWindow(ChisurfDockTool):
         Each notebook owns its own in-process shell, so there is one terminal
         per notebook tab and the dock shows whichever tab is in front.
         """
-        self.editor.tab_widget.currentChanged.connect(
-            lambda _index: self._sync_kernel_dock()
-        )
+        self.editor.tab_widget.currentChanged.connect(lambda _index: self._sync_kernel_dock())
         self.editor.tab_widget.tabCloseRequested.connect(
             lambda _index: QtCore.QTimer.singleShot(0, self._sync_kernel_dock)
         )
@@ -298,9 +292,7 @@ class CodeEditorWindow(ChisurfDockTool):
         toolbar.addAction(self.actions["settings"])
 
         spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
+        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         toolbar.addWidget(spacer)
 
         toolbar.addSeparator()

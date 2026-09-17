@@ -25,7 +25,6 @@ from chisurf.core.ml._gaussian import (
     _row_logsumexp,
 )
 
-
 # ---------------------------------------------------------------------------
 # the trap the two mixture copies shared and the HMM did not
 # ---------------------------------------------------------------------------
@@ -165,9 +164,7 @@ def test_the_ported_gate_converges_where_the_copy_it_replaced_did():
 def test_the_gate_still_recovers_three_known_components():
     """Ground-truth recovery, the property the gate exists for."""
     rng = np.random.default_rng(2)
-    x = np.concatenate(
-        [rng.normal(-2, 0.3, 300), rng.normal(0, 0.2, 300), rng.normal(3, 0.4, 300)]
-    )
+    x = np.concatenate([rng.normal(-2, 0.3, 300), rng.normal(0, 0.2, 300), rng.normal(3, 0.4, 300)])
     fit = accurate.gaussian_mixture_1d(x, 3)
     np.testing.assert_allclose(fit["means"], [-2.0, 0.0, 3.0], atol=0.05)
     np.testing.assert_allclose(fit["weights"], [1 / 3, 1 / 3, 1 / 3], atol=0.02)

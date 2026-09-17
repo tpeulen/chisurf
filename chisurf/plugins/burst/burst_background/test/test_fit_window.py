@@ -62,8 +62,7 @@ def test_the_slider_still_spans_the_whole_measurement():
     """Seeding narrow must not stop the user dragging out to the far tail."""
     streams = {"green": _exponential(4.0, 40_000, 4), "red": _exponential(1.0, 40_000, 5)}
     model = _model(streams)
-    assert model.max_dt_ms == pytest.approx(
-        max(float(s.max()) for s in streams.values()))
+    assert model.max_dt_ms == pytest.approx(max(float(s.max()) for s in streams.values()))
     assert model.fit_to_ms <= model.max_dt_ms
 
 

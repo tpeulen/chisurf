@@ -27,13 +27,13 @@ reports when given a resolution. Both are pinned below, the bad one included --
 if someone ever "simplifies" the reporting back to the per-atom form, the test
 that catches it has to know why.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
 import pytest
-
 from chimol.analysis.mapfit import (
     correlation_about_mean,
     fit_points_in_map,
@@ -159,9 +159,7 @@ def test_the_per_atom_correlation_does_not(atoms, displaced):
 def test_uniform_weights_give_no_per_atom_correlation(atoms):
     """Not zero -- ``nan``. Zero would read as a total failure."""
     target = simulate_map(atoms, 6.0)
-    value = correlation_about_mean(
-        np.ones(atoms.shape[0]), interpolate_values(target, atoms)
-    )
+    value = correlation_about_mean(np.ones(atoms.shape[0]), interpolate_values(target, atoms))
     assert np.isnan(value)
 
 
@@ -194,9 +192,7 @@ def test_the_fit_reports_a_correlation_that_agrees_with_it(atoms, displaced):
     target = simulate_map(atoms, 6.0)
     before = map_correlation(target, simulate_map(displaced, 6.0, on_grid=target))
     result = fit_points_in_map(displaced, target, max_steps=400)
-    after = map_correlation(
-        target, simulate_map(result.apply(displaced), 6.0, on_grid=target)
-    )
+    after = map_correlation(target, simulate_map(result.apply(displaced), 6.0, on_grid=target))
     assert after > before + 0.2, f"{before:.3f} -> {after:.3f}"
 
 

@@ -192,9 +192,7 @@ def _simulate_photons(settings: dict) -> dict[str, Any]:
             expected = peak_rate * piece_duration * 0.6
             n_photons = int(rng.poisson(expected))
             if n_photons:
-                offsets = np.clip(
-                    rng.normal(0.5, 0.22, size=n_photons), 0.0, 1.0
-                ) * piece_duration
+                offsets = np.clip(rng.normal(0.5, 0.22, size=n_photons), 0.0, 1.0) * piece_duration
                 photon_times = cursor + np.sort(offsets)
                 red = rng.random(n_photons) < efficiencies[index]
                 times.append(photon_times)
@@ -301,9 +299,7 @@ def _run_burst_search(source: pathlib.Path, settings: dict) -> pathlib.Path:
     analysis_settings.photon_filter.filter_active = True
     # The whole micro-time axis: the demo's micro times carry no information, and
     # a window would silently discard photons.
-    analysis_settings.photon_filter.microtime_ranges = [
-        (0, int(settings["micro_time_channels"]))
-    ]
+    analysis_settings.photon_filter.microtime_ranges = [(0, int(settings["micro_time_channels"]))]
     analysis_settings.photon_filter.delta_macro_time_filter.dT_max_active = False
     analysis_settings.photon_filter.delta_macro_time_filter.dT_min_active = False
 
@@ -399,7 +395,10 @@ def create_demo(
     _step(1.0, f"{n_bursts} bursts from {truth['n_molecules']} molecules.")
     logger.info(
         "Burst fusion demo: %d molecules (%d of them cut up) -> %d bursts in %s",
-        truth["n_molecules"], truth["n_crossings_split"], n_bursts, folder,
+        truth["n_molecules"],
+        truth["n_crossings_split"],
+        n_bursts,
+        folder,
     )
     return result
 

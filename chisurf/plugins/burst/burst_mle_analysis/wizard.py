@@ -1,24 +1,25 @@
-import typing
 import faulthandler
+import typing
 
-from chisurf.plugins.burst.burst_mle_analysis.utils import \
-    LazyTTTRDict, NumpyEncoder, FileListWidget, random_search_hpo
-from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
+from chisurf.plugins.burst.burst_mle_analysis.utils import (
+    FileListWidget,
+    LazyTTTRDict,
+    NumpyEncoder,
+)
 
 faulthandler.enable(all_threads=True)
 
-from typing import Union
-
-from qtpy import QtWidgets, QtCore
-from qtpy.QtWidgets import QFileDialog
-from chisurf.gui import chiplot
-import numpy as np
+import json
 from types import SimpleNamespace
 
-import json
+import numpy as np
+from qtpy import QtCore, QtWidgets
+from qtpy.QtWidgets import QFileDialog
 
+import chisurf as cs
 from chisurf.core.datastore import (
     column_names,
     concat_stores,
@@ -30,8 +31,7 @@ from chisurf.core.datastore import (
     take_where,
     write_csv_table,
 )
-import chisurf as cs
-
+from chisurf.gui import chiplot
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
@@ -85,23 +85,28 @@ def _host_widget_section(model, target=None, **options):
         # panel. Clear it so the page shows with the panel.
         widget.setVisible(True)
     return widget
-import chisurf.gui.decorators
-import chisurf.core.settings
-import chisurf.gui.widgets.wizard
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import \
-    load_detector_setups, save_detector_setups
+
 
 from pathlib import Path
+
 import tttrlib
-from typing import Dict
+
+import chisurf.core.settings
+import chisurf.gui.decorators
+import chisurf.gui.widgets.wizard
 from chisurf.core.fio import write_vv_vh
-from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
+    load_detector_setups,
+    save_detector_setups,
+)
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 class _MleParameterRows:
@@ -167,14 +172,29 @@ class _MleParameterRows:
     def columns(self) -> list:
         """Return the three columns: start it, hold it, read it back."""
         return [
-            {"attr": "values", "label": "Initial value", "decimals": 4,
-             "minimum_attr": "minimums", "maximum_attr": "maximums",
-             "description": "Starting value handed to the estimator."},
-            {"attr": "fixed", "label": "F", "kind": "bool",
-             "description": "Hold this parameter at its starting value."},
-            {"attr": "results", "label": "Fit", "kind": "readonly", "decimals": 4,
-             "minimum": -1e9, "maximum": 1e9,
-             "description": "Value the estimator returned."},
+            {
+                "attr": "values",
+                "label": "Initial value",
+                "decimals": 4,
+                "minimum_attr": "minimums",
+                "maximum_attr": "maximums",
+                "description": "Starting value handed to the estimator.",
+            },
+            {
+                "attr": "fixed",
+                "label": "F",
+                "kind": "bool",
+                "description": "Hold this parameter at its starting value.",
+            },
+            {
+                "attr": "results",
+                "label": "Fit",
+                "kind": "readonly",
+                "decimals": 4,
+                "minimum": -1e9,
+                "maximum": 1e9,
+                "description": "Value the estimator returned.",
+            },
         ]
 
     def on_edit(self, *_args) -> None:
@@ -186,13 +206,21 @@ class _MleParameterRows:
         """Return the declared table."""
         from chisurf.core.dataspec import load_view_spec
 
-        return load_view_spec({
-            "sections": [
-                {"type": "custom", "key": "state_table",
-                 "options": {"size_attr": "n", "row_labels_attr": "labels",
-                             "columns_source": "columns"}},
-            ]
-        })
+        return load_view_spec(
+            {
+                "sections": [
+                    {
+                        "type": "custom",
+                        "key": "state_table",
+                        "options": {
+                            "size_attr": "n",
+                            "row_labels_attr": "labels",
+                            "columns_source": "columns",
+                        },
+                    },
+                ]
+            }
+        )
 
 
 @persist_plugin_state("burst_mle_analysis")
@@ -216,12 +244,15 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         cols = MLELifetimeAnalysisWizard._burst_result_columns(color, model, param_names)
         for state in range(int(n_states)):
             sfx = f" S{state}"
-            cols += [f"Ng-p{sfx}", f"Ng-s{sfx}",
-                     f"Number of Photons (fit window){sfx} ({color})",
-                     f"2I*{sfx} ({color})", f"Tau{sfx} ({color})"]
+            cols += [
+                f"Ng-p{sfx}",
+                f"Ng-s{sfx}",
+                f"Number of Photons (fit window){sfx} ({color})",
+                f"2I*{sfx} ({color})",
+                f"Tau{sfx} ({color})",
+            ]
             if model == "fit23":
-                cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})",
-                         f"rho{sfx} ({color})"]
+                cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})", f"rho{sfx} ({color})"]
             else:
                 cols += [f"{nm}{sfx} ({color})" for nm in (param_names or ())]
             cols += [f"BIFL scatter?{sfx} ({color})", f"2I*: P+2S?{sfx} ({color})"]
@@ -239,20 +270,28 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         if model == "fit23":
             return [
-                'Ng-p-all', 'Ng-s-all',
-                f'Number of Photons (fit window) ({color})',
-                f'2I*  ({color})', f'Tau ({color})', f'gamma ({color})',
-                f'r0 ({color})', f'rho ({color})', f'BIFL scatter? ({color})',
-                f'2I*: P+2S? ({color})', f'r Scatter ({color})',
-                f'r Experimental ({color})',
+                "Ng-p-all",
+                "Ng-s-all",
+                f"Number of Photons (fit window) ({color})",
+                f"2I*  ({color})",
+                f"Tau ({color})",
+                f"gamma ({color})",
+                f"r0 ({color})",
+                f"rho ({color})",
+                f"BIFL scatter? ({color})",
+                f"2I*: P+2S? ({color})",
+                f"r Scatter ({color})",
+                f"r Experimental ({color})",
             ]
         cols = [
-            'Ng-p-all', 'Ng-s-all',
-            f'Number of Photons (fit window) ({color})',
-            f'2I*  ({color})', f'Tau ({color})',
+            "Ng-p-all",
+            "Ng-s-all",
+            f"Number of Photons (fit window) ({color})",
+            f"2I*  ({color})",
+            f"Tau ({color})",
         ]
-        cols += [f'{nm} ({color})' for nm in param_names]
-        cols += [f'BIFL scatter? ({color})', f'2I*: P+2S? ({color})']
+        cols += [f"{nm} ({color})" for nm in param_names]
+        cols += [f"BIFL scatter? ({color})", f"2I*: P+2S? ({color})"]
         return cols
 
     @property
@@ -296,9 +335,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             self._set_status("Split by state: the H2MM run resolved no states.")
             return {}, 0
         labelled = sum(int((a >= 0).sum()) for a in arrays.values())
-        self._set_status(
-            f"Split by state: {n_states} states, {labelled:,} photons labelled."
-        )
+        self._set_status(f"Split by state: {n_states} states, {labelled:,} photons labelled.")
         return arrays, n_states
 
     def _pool_state_decays(self, jobs, det_order, ctx, max_workers, progress=None):
@@ -323,11 +360,32 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         )
 
         pool_jobs = [
-            (bursts, rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype,
-             det_order, perdet_cfg, state_info)
-            for (_fname, bursts, rc_name, rc_shape, rc_dtype,
-                 mt_name, mt_shape, mt_dtype, _det_order, perdet_cfg, _shift,
-                 state_info) in jobs
+            (
+                bursts,
+                rc_name,
+                rc_shape,
+                rc_dtype,
+                mt_name,
+                mt_shape,
+                mt_dtype,
+                det_order,
+                perdet_cfg,
+                state_info,
+            )
+            for (
+                _fname,
+                bursts,
+                rc_name,
+                rc_shape,
+                rc_dtype,
+                mt_name,
+                mt_shape,
+                mt_dtype,
+                _det_order,
+                perdet_cfg,
+                _shift,
+                state_info,
+            ) in jobs
         ]
         totals: dict[str, np.ndarray] = {}
         done = 0
@@ -394,18 +452,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             cfg = perdet_cfg.get(det)
             if arr is None or cfg is None:
                 continue
-            n = int(cfg['half_len'])
-            s0 = max(0, int(cfg['sb']))
-            s1 = min(n, int(cfg['eb']))
+            n = int(cfg["half_len"])
+            s0 = max(0, int(cfg["sb"]))
+            s1 = min(n, int(cfg["eb"]))
             fitter = _build_fitter(cfg)
             per_state: dict[int, dict] = {}
             for state in range(arr.shape[0]):
                 cp = np.asarray(arr[state, 0], dtype=np.uint32)
                 cs_ = np.asarray(arr[state, 1], dtype=np.uint32)
                 cp_sum, cs_sum = int(cp.sum()), int(cs_.sum())
-                entry = {"x": None, "two_istar": float("nan"),
-                         "cp": cp_sum, "cs": cs_sum}
-                if (cp_sum + cs_sum) < int(cfg['min_photons']) or s1 <= s0:
+                entry = {"x": None, "two_istar": float("nan"), "cp": cp_sum, "cs": cs_sum}
+                if (cp_sum + cs_sum) < int(cfg["min_photons"]) or s1 <= s0:
                     per_state[state] = entry
                     continue
                 d = np.zeros(2 * n, dtype=np.float64)
@@ -413,13 +470,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 if do_shift:
                     _copy_shifted(cs_, d, n, s0, s1, do_shift, n)
                 else:
-                    d[n + s0: n + s1] = cs_[s0:s1]
+                    d[n + s0 : n + s1] = cs_[s0:s1]
                 try:
-                    res = fitter(data=d, initial_values=cfg['x0'], fixed=cfg['fixed'])
+                    res = fitter(data=d, initial_values=cfg["x0"], fixed=cfg["fixed"])
                 except Exception as exc:
-                    cs.logging.warning(
-                        f"Pooled fit failed for {det} state {state}: {exc}"
-                    )
+                    cs.logging.warning(f"Pooled fit failed for {det} state {state}: {exc}")
                     per_state[state] = entry
                     continue
                 entry["x"] = np.asarray(res.x, dtype=np.float64)
@@ -474,9 +529,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         Returns the rows and the files it wrote (empty when there was nothing to
         pool).
         """
-        pooled = self._pool_state_decays(
-            jobs, det_order, ctx, max_workers, progress=progress
-        )
+        pooled = self._pool_state_decays(jobs, det_order, ctx, max_workers, progress=progress)
         if not pooled:
             self.state_lifetimes = []
             return [], []
@@ -488,9 +541,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # produced no fit, no table and no seeds while the run otherwise
         # completed — the exact bias the seeding exists to remove.
         shared_cfg = next((j[9] for j in jobs if j[9]), {})
-        fits = self._fit_pooled_state_decays(
-            pooled, det_order, shared_cfg, int(self.shift or 0)
-        )
+        fits = self._fit_pooled_state_decays(pooled, det_order, shared_cfg, int(self.shift or 0))
         rows = self._state_lifetime_rows(fits, model, param_names)
         self.state_lifetimes = rows
         written = self.write_state_lifetimes(rows)
@@ -507,18 +558,18 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     x = entry["x"]
                     if x is None or not np.isfinite(x[0]) or float(x[0]) <= 0.0:
                         continue  # nothing was fitted; leave the panel's guess
-                    start = np.asarray(cfg['x0'], dtype=np.float64).copy()
+                    start = np.asarray(cfg["x0"], dtype=np.float64).copy()
                     start[0] = float(x[0])
                     seeds[int(state)] = start
                 if seeds:
-                    cfg['state_x0'] = seeds
+                    cfg["state_x0"] = seeds
                     seeded = max(seeded, len(seeds))
         taus = ", ".join(
-            f"S{r['State']} {r['Colour']} {r['Tau']:.2f} ns"
-            for r in rows if np.isfinite(r["Tau"])
+            f"S{r['State']} {r['Colour']} {r['Tau']:.2f} ns" for r in rows if np.isfinite(r["Tau"])
         )
         self._set_status(
-            f"Pooled state lifetimes ({seeded} seeded): {taus}" if taus
+            f"Pooled state lifetimes ({seeded} seeded): {taus}"
+            if taus
             else "Pooled state lifetimes: none could be fitted."
         )
         return rows, written
@@ -583,8 +634,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             for key, source in (("irf", self.irf_np), ("background", self.bg_np)):
                 entry[key] = np.asarray(source.get(det, []), dtype=float).ravel().tolist()
             detectors[det] = entry
-        return {"format": "chisurf-burst-experiment", "version": 1,
-                "detectors": detectors}
+        return {"format": "chisurf-burst-experiment", "version": 1, "detectors": detectors}
 
     def write_experiment_settings(self, analysis_dir) -> Path | None:
         """Write :meth:`experiment_settings` to ``Info/experiment_settings.json``.
@@ -643,10 +693,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # Attach "First Stem" and drop rows outside the selected files, in one pass.
         res: list[dict] = []
         for row in results:
-            stem = Path(row['First File']).stem
+            stem = Path(row["First File"]).stem
             if stem in selected_stems:
                 row = dict(row)
-                row['First Stem'] = stem
+                row["First Stem"] = stem
                 res.append(row)
         if not res:
             self._set_status("No burst-fit rows matched the selected files.")
@@ -662,15 +712,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         for det in dets:
             color = det.lower()
             letter = color[0]
-            cols = self._state_result_columns(
-                color, model, param_names, self._exported_state_count
-            )
+            cols = self._state_result_columns(color, model, param_names, self._exported_state_count)
             det_meta[det] = (color, letter, cols)
 
         # Group once by (First Stem, Detector), preserving first-seen order.
         groups: dict[tuple, list[dict]] = {}
         for row in res:
-            groups.setdefault((row['First Stem'], row.get('Detector')), []).append(row)
+            groups.setdefault((row["First Stem"], row.get("Detector")), []).append(row)
         total_tasks = len(groups)
 
         progress = _mle_progress(self, "Saving burst-fit results...", total_tasks)
@@ -737,16 +785,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
             out_file = out_dir / f"{stem}.b{letter}4"
             written_files.append(out_file)
-            with open(out_file, 'w', newline='') as f:
-                f.write('\t'.join(cols) + '\t\n')  # keep trailing tab + newline
-                np.savetxt(f, out, delimiter='\t', fmt='%.6f')
+            with open(out_file, "w", newline="") as f:
+                f.write("\t".join(cols) + "\t\n")  # keep trailing tab + newline
+                np.savetxt(f, out, delimiter="\t", fmt="%.6f")
 
             # Write channel settings once per folder (instrument description),
             # and the IRF/background once per analysis folder (experiment
             # description — sample-dependent, shared by every colour).
             if out_dir not in wrote_settings_for:
-                settings_file = out_dir / 'channel_settings.json'
-                with open(settings_file, 'w') as sf:
+                settings_file = out_dir / "channel_settings.json"
+                with open(settings_file, "w") as sf:
                     json.dump(self.channel_settings, sf, indent=4, cls=NumpyEncoder)
                 wrote_settings_for.add(out_dir)
                 self.write_experiment_settings(out_dir.parent)
@@ -802,12 +850,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             if source is None:
                 continue
             try:
-                written.append(Path(write_mle_container(
-                    source, tables,
-                    state_rows=self.state_lifetimes,
-                    experiment=experiment,
-                    parameters=settings,
-                )))
+                written.append(
+                    Path(
+                        write_mle_container(
+                            source,
+                            tables,
+                            state_rows=self.state_lifetimes,
+                            experiment=experiment,
+                            parameters=settings,
+                        )
+                    )
+                )
             except Exception as exc:
                 cs.logging.warning(f"Could not write the container for {stem}: {exc}")
         return written
@@ -826,10 +879,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return float(self.doubleSpinBox_irf_threshold_vv.value())
 
     @irf_threshold_vv.setter
-    def irf_threshold_vv(
-            self,
-            v: float
-    ):
+    def irf_threshold_vv(self, v: float):
         self.doubleSpinBox_irf_threshold_vv.setValue(v)
         try:
             if not self.doubleSpinBox_irf_threshold_vv.signalsBlocked():
@@ -842,10 +892,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return float(self.doubleSpinBox_irf_threshold_vh.value())
 
     @irf_threshold_vh.setter
-    def irf_threshold_vh(
-            self,
-            v: float
-    ):
+    def irf_threshold_vh(self, v: float):
         self.doubleSpinBox_irf_threshold_vh.setValue(v)
         try:
             if not self.doubleSpinBox_irf_threshold_vh.signalsBlocked():
@@ -858,10 +905,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return float(self.spinBox_min_photons.value())
 
     @min_photons.setter
-    def min_photons(
-            self,
-            v: int
-    ):
+    def min_photons(self, v: int):
         self.spinBox_min_photons.setValue(int(v))
 
     @property
@@ -869,10 +913,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return self.checkBox_irf_one_for_all.isChecked()
 
     @one_for_all_irf.setter
-    def one_for_all_irf(
-            self,
-            v: bool
-    ):
+    def one_for_all_irf(self, v: bool):
         self.checkBox_irf_one_for_all.setChecked(v)
 
     @property
@@ -880,10 +921,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return self.checkBox_bg_one_for_all.isChecked()
 
     @one_for_all_bg.setter
-    def one_for_all_bg(
-            self,
-            v: bool
-    ):
+    def one_for_all_bg(self, v: bool):
         self.checkBox_bg_one_for_all.setChecked(v)
 
     @property
@@ -998,12 +1036,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             stop = int(self.irf_stop)
 
             if start >= 0:
-                sp[:max(0, start)] = 0
-                ss[:max(0, start)] = 0
+                sp[: max(0, start)] = 0
+                ss[: max(0, start)] = 0
             if stop >= 0 and stop + 1 < sp.size:
-                sp[stop + 1:] = 0
+                sp[stop + 1 :] = 0
             if stop >= 0 and stop + 1 < ss.size:
-                ss[stop + 1:] = 0
+                ss[stop + 1 :] = 0
         except Exception:
             # be permissive if widgets not yet constructed
             pass
@@ -1264,10 +1302,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         Total integrated burst duration, in seconds.
         Returns 0.0 if no burst table is loaded or if the column is missing.
         """
-        if self.df_bursts is None or 'Duration (ms)' not in column_names(self.df_bursts):
+        if self.df_bursts is None or "Duration (ms)" not in column_names(self.df_bursts):
             return 0.0
         # sum durations (ms) and convert to seconds
-        total_ms = float(np.nansum(numeric_column(self.df_bursts, 'Duration (ms)')))
+        total_ms = float(np.nansum(numeric_column(self.df_bursts, "Duration (ms)")))
         return total_ms / 1000.0
 
     def _header_time_ns(self):
@@ -1327,10 +1365,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         Returns [start_bin, stop_bin] as set by the spin boxes.
         """
-        return [
-            self.spinBox_micro_time_start.value(),
-            self.spinBox_micro_time_stop.value()
-        ]
+        return [self.spinBox_micro_time_start.value(), self.spinBox_micro_time_stop.value()]
 
     @micro_time_range.setter
     def micro_time_range(self, value):
@@ -1362,7 +1397,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     @property
     def micro_time_binning(self):
-        return self.channel_definer.tttr_reading['micro_time_binning']
+        return self.channel_definer.tttr_reading["micro_time_binning"]
 
     @property
     def tttr_file_type(self):
@@ -1435,10 +1470,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return 1.0
 
     @g_factor.setter
-    def g_factor(
-            self,
-            v: float
-    ):
+    def g_factor(self, v: float):
         """
         Sets the g-factor value for the current detector.
         Updates the detector data structure directly.
@@ -1469,10 +1501,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return 0.0
 
     @l1.setter
-    def l1(
-            self,
-            v: float
-    ):
+    def l1(self, v: float):
         """
         Sets the l1 value for the current detector.
         Updates the detector data structure directly.
@@ -1503,10 +1532,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return 0.0
 
     @l2.setter
-    def l2(
-            self,
-            v: float
-    ):
+    def l2(self, v: float):
         """
         Sets the l2 value for the current detector.
         Updates the detector data structure directly.
@@ -1534,21 +1560,21 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         st = self.channel_settings.get(det, {})
         # micro-time
-        if 'micro_time_start' not in st or 'micro_time_stop' not in st:
+        if "micro_time_start" not in st or "micro_time_stop" not in st:
             sb, eb = self.micro_time_range
-            st['micro_time_start'] = int(sb)
-            st['micro_time_stop'] = int(eb)
-        if 'micro_time_binning' not in st:
-            st['micro_time_binning'] = int(self.micro_time_binning)
+            st["micro_time_start"] = int(sb)
+            st["micro_time_stop"] = int(eb)
+        if "micro_time_binning" not in st:
+            st["micro_time_binning"] = int(self.micro_time_binning)
         # thresholds and shifts
-        st.setdefault('irf_threshold_vv', float(getattr(self, 'irf_threshold_vv', 0.0)))
-        st.setdefault('irf_threshold_vh', float(getattr(self, 'irf_threshold_vh', 0.0)))
-        st.setdefault('shift', int(getattr(self, 'shift', 0)))
-        st.setdefault('shift_sp', float(getattr(self, 'shift_sp', 0.0)))
-        st.setdefault('shift_ss', float(getattr(self, 'shift_ss', 0.0)))
+        st.setdefault("irf_threshold_vv", float(getattr(self, "irf_threshold_vv", 0.0)))
+        st.setdefault("irf_threshold_vh", float(getattr(self, "irf_threshold_vh", 0.0)))
+        st.setdefault("shift", int(getattr(self, "shift", 0)))
+        st.setdefault("shift_sp", float(getattr(self, "shift_sp", 0.0)))
+        st.setdefault("shift_ss", float(getattr(self, "shift_ss", 0.0)))
         # timing
-        st.setdefault('dt', float(self.dt_effective))
-        st.setdefault('excitation_period', float(self.excitation_period))
+        st.setdefault("dt", float(self.dt_effective))
+        st.setdefault("excitation_period", float(self.excitation_period))
         # model parameters — the polarisation corrections belong to THIS detector
         # (``det``), so seed them from its own definition, not from ``self.g_factor``
         # (the *current* detector). Seeding from the current detector cached one
@@ -1558,17 +1584,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             det_def = self.channel_definer.detectors.get(det, {})
         except AttributeError:
             det_def = {}
-        st.setdefault('g_factor', float(det_def.get('g_factor', 1.0)))
-        st.setdefault('l1', float(det_def.get('l1', 0.0)))
-        st.setdefault('l2', float(det_def.get('l2', 0.0)))
+        st.setdefault("g_factor", float(det_def.get("g_factor", 1.0)))
+        st.setdefault("l1", float(det_def.get("l1", 0.0)))
+        st.setdefault("l2", float(det_def.get("l2", 0.0)))
         # initial guesses and fixed flags
         x0, fixed = self.fit_parameters
-        st.setdefault('initial_x0', np.array(x0))
-        st.setdefault('fixed_flags', np.array(fixed))
+        st.setdefault("initial_x0", np.array(x0))
+        st.setdefault("fixed_flags", np.array(fixed))
         # options and counts
-        st.setdefault('p2s_twoIstar', bool(getattr(self, 'p2s_twoIstar', False)))
-        st.setdefault('BIFL_scatter', bool(getattr(self, 'BIFL_scatter', False)))
-        st.setdefault('min_photons', int(getattr(self, 'min_photons', 0)))
+        st.setdefault("p2s_twoIstar", bool(getattr(self, "p2s_twoIstar", False)))
+        st.setdefault("BIFL_scatter", bool(getattr(self, "BIFL_scatter", False)))
+        st.setdefault("min_photons", int(getattr(self, "min_photons", 0)))
         # IRF/BG arrays are NOT stored here. irf_np[det]/bg_np[det] are the single
         # source of truth for the raw per-detector patterns (they persist across
         # detector switches); the .irf/.bg properties apply shift/window/threshold
@@ -1583,7 +1609,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         populates IRF/BG selectors, window combobox, and per-channel state.
         """
         dets = list(self.channel_definer.detectors.keys())
-        cs.logging.info('_init_channels_from_wizard')
+        cs.logging.info("_init_channels_from_wizard")
         if not dets:
             # detectorsChanged fires transiently with an empty set while the
             # detector table is being (re)loaded; nothing to build yet, and the
@@ -1648,11 +1674,14 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
     #: right panels with no special case.
     _DOCK_LAYOUT = (
         ("tab_detector", (("tab_detector", "Detector Definition"),)),
-        ("tab_files", (
-            ("groupBox_burst_files", "Burst Files"),
-            ("groupBox_irf_files", "IRF Files"),
-            ("groupBox_bg_files", "Background Files"),
-        )),
+        (
+            "tab_files",
+            (
+                ("groupBox_burst_files", "Burst Files"),
+                ("groupBox_irf_files", "IRF Files"),
+                ("groupBox_bg_files", "Background Files"),
+            ),
+        ),
         ("tab_parameters", (("tab_parameters", "Burst-MLE"),)),
     )
 
@@ -1673,9 +1702,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             for attr, title in getattr(self, "_dock_pages", ())
         )
         return ModelView(
-            sections=(
-                DockAreaSection(title="MLE", sections=panels, persist="burst_mle_dock"),
-            )
+            sections=(DockAreaSection(title="MLE", sections=panels, persist="burst_mle_dock"),)
         )
 
     def _convert_tabs_to_dock_shell(self):
@@ -1708,8 +1735,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # In the burst-analysis workflow the file inputs are supplied upstream
             # (Data Selection burst files; IRF & Background -> Send to MLE), so the
             # MLE panel's own file-drop docks are duplicates. Show only the fit.
-            _duplicate = {"tab_files", "groupBox_burst_files",
-                          "groupBox_irf_files", "groupBox_bg_files"}
+            _duplicate = {
+                "tab_files",
+                "groupBox_burst_files",
+                "groupBox_irf_files",
+                "groupBox_bg_files",
+            }
             pages = [(attr, title) for attr, title in pages if attr not in _duplicate]
         if not pages:
             return
@@ -1722,9 +1753,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             page = getattr(self, attr, None)
             if page is None:
                 continue
-            page.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-            )
+            page.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             if attr in file_boxes and hasattr(page, "setTitle"):
                 page.setTitle("")
 
@@ -1783,49 +1812,49 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         x0, fixed = self.fit_parameters
         start_bin, stop_bin = self.micro_time_range
         d = {
-            'micro_time_start': start_bin,
-            'micro_time_stop': stop_bin,
-            'micro_time_binning': self.micro_time_binning,
-            'irf_threshold_vv': self.irf_threshold_vv,
-            'irf_threshold_vh': self.irf_threshold_vh,
-            'shift': self.shift,
-            'shift_sp': self.shift_sp,
-            'shift_ss': self.shift_ss,
-            'dt': self.dt_effective,
-            'excitation_period': self.excitation_period,
-            'g_factor': self.g_factor,
-            'l1': self.l1,
-            'l2': self.l2,
+            "micro_time_start": start_bin,
+            "micro_time_stop": stop_bin,
+            "micro_time_binning": self.micro_time_binning,
+            "irf_threshold_vv": self.irf_threshold_vv,
+            "irf_threshold_vh": self.irf_threshold_vh,
+            "shift": self.shift,
+            "shift_sp": self.shift_sp,
+            "shift_ss": self.shift_ss,
+            "dt": self.dt_effective,
+            "excitation_period": self.excitation_period,
+            "g_factor": self.g_factor,
+            "l1": self.l1,
+            "l2": self.l2,
             # IRF/BG are not captured — they live in irf_np/bg_np (single source
             # of truth). Capturing the processed .irf/.bg here and restoring them
             # as raw re-applied shift/threshold every switch and corrupted them.
-            'initial_x0': np.array(x0),
-            'fixed_flags': fixed.astype(int),
-            'p2s_twoIstar': self.p2s_twoIstar,
-            'BIFL_scatter': self.BIFL_scatter,
-            'min_photons': self.min_photons
+            "initial_x0": np.array(x0),
+            "fixed_flags": fixed.astype(int),
+            "p2s_twoIstar": self.p2s_twoIstar,
+            "BIFL_scatter": self.BIFL_scatter,
+            "min_photons": self.min_photons,
         }
         return d
 
     def _apply_ui_state(self, state):
         """Push a saved state back into the widgets."""
         # — micro-time controls —
-        self.micro_time_range = (state['micro_time_start'], state['micro_time_stop'])
+        self.micro_time_range = (state["micro_time_start"], state["micro_time_stop"])
 
         # Update micro_time_binning in DetectorWizardPage instead of spinBox
-        micro_time_binning = state['micro_time_binning']
+        micro_time_binning = state["micro_time_binning"]
         self.channel_definer.micro_binning_combo.setCurrentText(str(micro_time_binning))
 
         # — IRF threshold & shifts —
-        self.irf_threshold_vv = state['irf_threshold_vv']
-        self.irf_threshold_vh = state['irf_threshold_vh']
-        self.shift = state['shift']
-        self.shift_sp = state['shift_sp']
-        self.shift_ss = state['shift_ss']
+        self.irf_threshold_vv = state["irf_threshold_vv"]
+        self.irf_threshold_vh = state["irf_threshold_vh"]
+        self.shift = state["shift"]
+        self.shift_sp = state["shift_sp"]
+        self.shift_ss = state["shift_ss"]
 
-        self.min_photons = state['min_photons']
-        self.p2s_twoIstar = state['p2s_twoIstar']
-        self.BIFL_scatter = state['BIFL_scatter']
+        self.min_photons = state["min_photons"]
+        self.p2s_twoIstar = state["p2s_twoIstar"]
+        self.BIFL_scatter = state["BIFL_scatter"]
 
         # G factor / l1 / l2 are NOT restored here. They are per-detector
         # calibration constants owned by the detector definition (channel_definer)
@@ -1836,8 +1865,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # (refreshed by _sync_polarization_widgets), so nothing needs restoring.
 
         # — initial‐guess & fixed flags —
-        x0 = state['initial_x0']
-        fixed = state['fixed_flags']
+        x0 = state["initial_x0"]
+        fixed = state["fixed_flags"]
         self.tau = x0[0]
         self.gamma = x0[1]
         self.r0 = x0[2]
@@ -1852,7 +1881,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # from a captured, already-processed copy corrupted them each switch.
 
     def _on_channel_changed(self, new_detector):
-        old = getattr(self, '_last_detector', None)
+        old = getattr(self, "_last_detector", None)
         if old is not None:
             # save old‐channel UI state
             self.channel_settings[old] = self._capture_current_ui_state()
@@ -1861,7 +1890,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         info = self.channel_definer.detectors.get(new_detector, {})
 
         # set the spinboxes to any channel‐specific micro‐time defaults
-        ranges = info.get('micro_time_ranges', [])
+        ranges = info.get("micro_time_ranges", [])
         if ranges:
             raw_start, raw_stop = ranges[0]
             bin_start = raw_start // self.micro_time_binning
@@ -1878,8 +1907,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # restore any previously‐saved UI state for this detector, but only if it's complete
         state = self.channel_settings.get(new_detector)
         required_keys = (
-            'micro_time_start', 'micro_time_stop', 'initial_x0', 'fixed_flags',
-            'g_factor', 'l1', 'l2',
+            "micro_time_start",
+            "micro_time_stop",
+            "initial_x0",
+            "fixed_flags",
+            "g_factor",
+            "l1",
+            "l2",
         )
         if isinstance(state, dict) and all(k in state for k in required_keys):
             widgets = (
@@ -1907,13 +1941,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 setups = load_detector_setups(setups_file)
 
                 # Check if the setup exists and has the detector with MLE settings
-                if (setup_name in setups.get("setups", {}) and
-                    "detectors" in setups["setups"][setup_name] and
-                    new_detector in setups["setups"][setup_name]["detectors"] and
-                    "mle_settings" in setups["setups"][setup_name]["detectors"][new_detector]):
-
+                if (
+                    setup_name in setups.get("setups", {})
+                    and "detectors" in setups["setups"][setup_name]
+                    and new_detector in setups["setups"][setup_name]["detectors"]
+                    and "mle_settings" in setups["setups"][setup_name]["detectors"][new_detector]
+                ):
                     # Get the MLE settings for the detector
-                    detector_params = setups["setups"][setup_name]["detectors"][new_detector]["mle_settings"]
+                    detector_params = setups["setups"][setup_name]["detectors"][new_detector][
+                        "mle_settings"
+                    ]
 
                     # Block signals to prevent multiple updates
                     widgets = (
@@ -1928,8 +1965,14 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     self.block_widget_signals(widgets)
 
                     # Update the UI with the loaded parameters (require new per-channel keys)
-                    if "micro_time_start" in detector_params and "micro_time_stop" in detector_params:
-                        self.micro_time_range = [detector_params["micro_time_start"], detector_params["micro_time_stop"]]
+                    if (
+                        "micro_time_start" in detector_params
+                        and "micro_time_stop" in detector_params
+                    ):
+                        self.micro_time_range = [
+                            detector_params["micro_time_start"],
+                            detector_params["micro_time_stop"],
+                        ]
                     if "irf_threshold_vv" in detector_params:
                         self.irf_threshold_vv = detector_params["irf_threshold_vv"]
                     if "irf_threshold_vh" in detector_params:
@@ -1965,7 +2008,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
                     # Unblock signals
                     self.unblock_widget_signals(widgets)
-        except Exception as e:
+        except Exception:
             # Silently ignore errors when loading MLE settings
             pass
 
@@ -2006,7 +2049,6 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         for w in widgets:
             w.blockSignals(False)
-
 
     def _switch_filewidget(self, widgets_dict: dict, active: str):
         """
@@ -2066,8 +2108,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # Populate combo boxes and connect signals to switch visible widget
         for combo, widgets_dict in (
-                (self.comboBox_irf_select, self.irf_file_widgets),
-                (self.comboBox_background_select, self.bg_file_widgets),
+            (self.comboBox_irf_select, self.irf_file_widgets),
+            (self.comboBox_background_select, self.bg_file_widgets),
         ):
             combo.clear()
             combo.addItems(dets)
@@ -2077,10 +2119,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             )
 
         # Ensure the correct widgets are shown once the UI is laid out
-        QtCore.QTimer.singleShot(0, lambda: (
-            self._switch_filewidget(self.irf_file_widgets, self.comboBox_irf_select.currentText()),
-            self._switch_filewidget(self.bg_file_widgets, self.comboBox_background_select.currentText())
-        ))
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: (
+                self._switch_filewidget(
+                    self.irf_file_widgets, self.comboBox_irf_select.currentText()
+                ),
+                self._switch_filewidget(
+                    self.bg_file_widgets, self.comboBox_background_select.currentText()
+                ),
+            ),
+        )
 
     def _update_hist_files(
         self,
@@ -2088,9 +2137,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         np_dict: dict,
         one_for_all: bool,
         normalize: int,
-        threshold: typing.Union[float, typing.Tuple[float, float]] = -1,
+        threshold: float | tuple[float, float] = -1,
         state_key: str = None,  # should be 'irf' or 'bg' when called
-        detector: Union[str, list[str]] = None
+        detector: str | list[str] = None,
     ):
         """
         Populate np_dict[det] with the summed histogram for the current detector,
@@ -2108,7 +2157,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         for det in dets:
             fw = widgets_dict.get(det)
-            files: typing.List[Path] = fw.get_selected_files() if fw else []
+            files: list[Path] = fw.get_selected_files() if fw else []
 
             # register every file so that LazyTTTRDict knows where to find it,
             # then grab the TTTR object (loading on first access).
@@ -2149,7 +2198,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     save_files=self.save_vv_vhs,
                     normalize_counts=normalize,
                     threshold=threshold,
-                    apply_vh_shift=False if state_key in ('irf', 'bg') else True
+                    apply_vh_shift=False if state_key in ("irf", "bg") else True,
                 )
                 # np_dict is irf_np/bg_np — the single source of truth. (We no
                 # longer also stash the array in channel_settings[det][state_key].)
@@ -2163,7 +2212,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             cs.logging.info("No burst data loaded.")
             return
 
-        first_file = np.asarray(self.df_bursts['First File'], dtype=object)[idx]
+        first_file = np.asarray(self.df_bursts["First File"], dtype=object)[idx]
         key = Path(str(first_file)).stem
         tttr = self.tttrs.get(key)
         if tttr is None:
@@ -2171,9 +2220,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return
         # ``Last Photon`` is inclusive (see ``_mp_worker._burst_slice``), so the
         # inspected burst must be the same photons the fit uses.
-        first_photon = numeric_column(self.df_bursts, 'First Photon')[idx]
-        last_photon = numeric_column(self.df_bursts, 'Last Photon')[idx]
-        burst = tttr[int(first_photon):int(last_photon) + 1]
+        first_photon = numeric_column(self.df_bursts, "First Photon")[idx]
+        last_photon = numeric_column(self.df_bursts, "Last Photon")[idx]
+        burst = tttr[int(first_photon) : int(last_photon) + 1]
 
         # clear any existing plots
         self.burst_layout.clear()
@@ -2182,21 +2231,25 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         for det in dets:
             # create a new subplot
             p = self.burst_layout.add_plot(title=f"Detector: {det}")
-            p.set_labels(bottom='Micro‐time channel', left='Counts')
+            p.set_labels(bottom="Micro‐time channel", left="Counts")
             p.set_log(x=False, y=True)
             p.set_ylim(-1, 2)
             p.grid(x=True, y=True)
 
             info = self.channel_definer.detectors[det]
-            chs = info['chs']
+            chs = info["chs"]
             pchs = chs[::2]
             schs = chs[1::2] if len(chs) > 1 else chs
 
             sb, eb = self.micro_time_range
             tp = self.filter_tttr(burst, self.micro_time_range, pchs)
             ts = self.filter_tttr(burst, self.micro_time_range, schs)
-            cp = tp.get_microtime_histogram(self.micro_time_binning)[0].astype(np.float64, copy=False)
-            cs_hist = ts.get_microtime_histogram(self.micro_time_binning)[0].astype(np.float64, copy=False)
+            cp = tp.get_microtime_histogram(self.micro_time_binning)[0].astype(
+                np.float64, copy=False
+            )
+            cs_hist = ts.get_microtime_histogram(self.micro_time_binning)[0].astype(
+                np.float64, copy=False
+            )
             # zero outside window for visualization
             if sb > 0:
                 cp[:sb] = 0
@@ -2214,8 +2267,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     # ── Programmatic UI (replaces the former wizard.ui) ────────────────────
     @staticmethod
-    def _dsb(decimals=2, minimum=0.0, maximum=99.0, value=0.0, step=None,
-             adaptive=False, readonly=False, nobuttons=False):
+    def _dsb(
+        decimals=2,
+        minimum=0.0,
+        maximum=99.0,
+        value=0.0,
+        step=None,
+        adaptive=False,
+        readonly=False,
+        nobuttons=False,
+    ):
         """Build a QDoubleSpinBox from the property set used across the UI."""
         sb = QtWidgets.QDoubleSpinBox()
         sb.setDecimals(decimals)
@@ -2376,14 +2437,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # menu. Populated at the end of this method, once every hosted widget
         # exists.
         from chisurf.gui.widgets.dock_area.dock_stacked_tab_bar import FlowLayout
+
         self.toolBar_mle = Q.QFrame()
         self.toolBar_mle.setObjectName("mle_toolbar")
-        self.toolBar_mle.setStyleSheet(
-            "#mle_toolbar { border-bottom: 1px solid palette(mid); }"
-        )
-        self._mle_toolbar_layout = FlowLayout(
-            self.toolBar_mle, margin=2, h_spacing=4, v_spacing=2
-        )
+        self.toolBar_mle.setStyleSheet("#mle_toolbar { border-bottom: 1px solid palette(mid); }")
+        self._mle_toolbar_layout = FlowLayout(self.toolBar_mle, margin=2, h_spacing=4, v_spacing=2)
         _page.addWidget(self.toolBar_mle)
 
         self._mle_splitter = Q.QSplitter(QtCore.Qt.Horizontal)
@@ -2448,9 +2506,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.doubleSpinBox_shift_ss = self._dsb(minimum=-99.0, maximum=99.0, adaptive=True)
         self.label_13 = Q.QLabel("Threshold")
         self.doubleSpinBox_irf_threshold_vv = self._dsb(
-            decimals=3, maximum=1.0, step=0.02, adaptive=True, value=0.15)
+            decimals=3, maximum=1.0, step=0.02, adaptive=True, value=0.15
+        )
         self.doubleSpinBox_irf_threshold_vh = self._dsb(
-            decimals=2, maximum=1.0, step=0.02, value=0.15)
+            decimals=2, maximum=1.0, step=0.02, value=0.15
+        )
         self.label_8 = Q.QLabel("IRF range")
         self.spinBox_irf_start = self._isb(-1, 999999, -1)
         self.spinBox_irf_start.setToolTip("Convolution start")
@@ -2468,6 +2528,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         g7.addWidget(self.spinBox_irf_start, 3, 1)
         g7.addWidget(self.spinBox_irf_stop, 3, 2)
         from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
         _irf_box = CollapsibleBox("IRF (shift · threshold · range)", expanded=False)
         _irf_box.add_widget(self.groupBox_2)
         grid3.addWidget(_irf_box, 1, 0)
@@ -2482,7 +2543,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.label_28.setToolTip("VV/VH channel shift (perpendicular relative to parallel).")
         self.doubleSpinBox_shift = self._dsb(decimals=0, minimum=-9999.0, maximum=9999.0)
         self.doubleSpinBox_shift.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
-        self.doubleSpinBox_shift.setToolTip("VV/VH channel shift (perpendicular relative to parallel).")
+        self.doubleSpinBox_shift.setToolTip(
+            "VV/VH channel shift (perpendicular relative to parallel)."
+        )
         self.label_24 = Q.QLabel("Scatter [Hz]")
         self.label_24.setToolTip("Scatter count rate (Hz).")
         self.label_24.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
@@ -2496,24 +2559,30 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # step) and feed the anisotropy of the fit. The Detector Definition tab is
         # hidden inside the embedded workflow, so display them here (read-only)
         # for the current detector; edit them in the detector setup.
-        _pol_tip = ("Polarisation correction for the current detector, defined in "
-                    "the detector setup (Channels step). Read-only here.")
+        _pol_tip = (
+            "Polarisation correction for the current detector, defined in "
+            "the detector setup (Channels step). Read-only here."
+        )
         self.label_g_factor = Q.QLabel("G")
         self.label_g_factor.setToolTip("Detector G factor (VV/VH sensitivity ratio). " + _pol_tip)
         self.label_g_factor.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
         self.doubleSpinBox_g_factor = self._dsb(
-            decimals=4, minimum=0.0, maximum=100.0, value=1.0, readonly=True, nobuttons=True)
+            decimals=4, minimum=0.0, maximum=100.0, value=1.0, readonly=True, nobuttons=True
+        )
         self.doubleSpinBox_g_factor.setToolTip(
-            "Detector G factor (VV/VH sensitivity ratio). " + _pol_tip)
+            "Detector G factor (VV/VH sensitivity ratio). " + _pol_tip
+        )
         self.label_l1 = Q.QLabel("l1")
         self.label_l1.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
         self.doubleSpinBox_l1 = self._dsb(
-            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True)
+            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True
+        )
         self.doubleSpinBox_l1.setToolTip("Mixing factor l1 (parallel leakage). " + _pol_tip)
         self.label_l2 = Q.QLabel("l2")
         self.label_l2.setSizePolicy(Q.QSizePolicy.Fixed, Q.QSizePolicy.Preferred)
         self.doubleSpinBox_l2 = self._dsb(
-            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True)
+            decimals=4, minimum=-1.0, maximum=1.0, value=0.0, readonly=True, nobuttons=True
+        )
         self.doubleSpinBox_l2.setToolTip("Mixing factor l2 (perpendicular leakage). " + _pol_tip)
         g4.addWidget(self.label_g_factor, 6, 0)
         g4.addWidget(self.doubleSpinBox_g_factor, 6, 1)
@@ -2566,26 +2635,36 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.doubleSpinBox_tau = self._dsb(decimals=3, maximum=20.0, adaptive=True, value=4.0)
         self.doubleSpinBox_tau.setSizePolicy(Q.QSizePolicy.Minimum, Q.QSizePolicy.Fixed)
         self.checkBox_fix_tau = Q.QCheckBox()
-        self.doubleSpinBox_tau_result = self._dsb(decimals=3, maximum=20.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_tau_result = self._dsb(
+            decimals=3, maximum=20.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_15, 6, 0)
         g.addWidget(self.doubleSpinBox_tau, 6, 1)
         g.addWidget(self.checkBox_fix_tau, 6, 3)
         g.addWidget(self.doubleSpinBox_tau_result, 6, 4)
         self.label_16 = Q.QLabel("γ")
         self.label_16.setToolTip("Scatter fraction gamma (0..1).")
-        self.doubleSpinBox_gamma = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.1)
+        self.doubleSpinBox_gamma = self._dsb(
+            decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.1
+        )
         self.checkBox_fix_gamma = Q.QCheckBox()
-        self.doubleSpinBox_gamma_result = self._dsb(decimals=3, maximum=1.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_gamma_result = self._dsb(
+            decimals=3, maximum=1.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_16, 7, 0)
         g.addWidget(self.doubleSpinBox_gamma, 7, 1)
         g.addWidget(self.checkBox_fix_gamma, 7, 3)
         g.addWidget(self.doubleSpinBox_gamma_result, 7, 4)
         self.label_17 = Q.QLabel("r₀")
         self.label_17.setToolTip("Fundamental anisotropy r0.")
-        self.doubleSpinBox_r0 = self._dsb(decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.38)
+        self.doubleSpinBox_r0 = self._dsb(
+            decimals=3, maximum=1.0, step=0.01, adaptive=True, value=0.38
+        )
         self.checkBox_fix_r0 = Q.QCheckBox()
         self.checkBox_fix_r0.setChecked(True)
-        self.doubleSpinBox_r0_result = self._dsb(decimals=3, maximum=1.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_r0_result = self._dsb(
+            decimals=3, maximum=1.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_17, 8, 0)
         g.addWidget(self.doubleSpinBox_r0, 8, 1)
         g.addWidget(self.checkBox_fix_r0, 8, 3)
@@ -2594,22 +2673,27 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.label_18.setToolTip("Rotational correlation time rho (ns).")
         self.doubleSpinBox_rho = self._dsb(decimals=3, maximum=999.0, adaptive=True, value=1.22)
         self.checkBox_fix_rho = Q.QCheckBox()
-        self.doubleSpinBox_rho_result = self._dsb(decimals=3, maximum=20.0, readonly=True, nobuttons=True)
+        self.doubleSpinBox_rho_result = self._dsb(
+            decimals=3, maximum=20.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_18, 9, 0)
         g.addWidget(self.doubleSpinBox_rho, 9, 1)
         g.addWidget(self.checkBox_fix_rho, 9, 3)
         g.addWidget(self.doubleSpinBox_rho_result, 9, 4)
         self.label_3 = Q.QLabel("Score")
         self.doubleSpinBox_twoIstar_result = self._dsb(
-            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True)
+            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_3, 10, 0)
         g.addWidget(self.doubleSpinBox_twoIstar_result, 10, 1)
         self.label_25 = Q.QLabel("rScatter")
         self.doubleSpinBox_r_scatter_result = self._dsb(
-            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True)
+            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True
+        )
         self.label_27 = Q.QLabel("rExp")
         self.doubleSpinBox_r_exp_result = self._dsb(
-            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True)
+            decimals=3, minimum=-1.0, maximum=1.0, readonly=True, nobuttons=True
+        )
         g.addWidget(self.label_25, 11, 0)
         g.addWidget(self.doubleSpinBox_r_scatter_result, 11, 1)
         g.addWidget(self.label_27, 11, 3)
@@ -2620,6 +2704,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.comboBox_fit_model = Q.QComboBox()
         try:
             from chisurf.core.fluorescence.mle import registry as _fit_reg
+
             for _name, _spec in _fit_reg.fit_models().items():
                 # This workflow builds the fit from dt/IRF/background (the
                 # ``fit2x`` construction). Only offer estimators whose class
@@ -2630,7 +2715,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 self.comboBox_fit_model.addItem(_spec.get("label", _name), _name)
                 self.comboBox_fit_model.setItemData(
                     self.comboBox_fit_model.count() - 1,
-                    _spec.get("summary", ""), QtCore.Qt.ToolTipRole,
+                    _spec.get("summary", ""),
+                    QtCore.Qt.ToolTipRole,
                 )
         except Exception:
             pass
@@ -2643,7 +2729,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.comboBox_fit_model.setItemData(
             self.comboBox_fit_model.count() - 1,
             "Multi-exponential fit of the decay tail only (no IRF deconvolution); "
-            "for FRET sensitised emission.", QtCore.Qt.ToolTipRole,
+            "for FRET sensitised emission.",
+            QtCore.Qt.ToolTipRole,
         )
         self.comboBox_fit_model.setToolTip(
             "Lifetime fit model (from the tttrlib registry). fit23 fits one "
@@ -2695,7 +2782,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self._dyn_grid = Q.QGridLayout(self.groupBox_dyn_params)
         self._dyn_grid.setContentsMargins(0, 0, 0, 0)
         self._dyn_grid.setSpacing(0)
-        self._dyn_params = None       # _MleParameterRows, built per model
+        self._dyn_params = None  # _MleParameterRows, built per model
         self._dyn_form = None
         self.groupBox_dyn_params.setVisible(False)
 
@@ -2757,9 +2844,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # A trailing spacer pushes the controls up (the Run button now lives in
         # the toolbar, so the column no longer ends on it).
-        grid3.addItem(
-            Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0
-        )
+        grid3.addItem(Q.QSpacerItem(20, 40, Q.QSizePolicy.Minimum, Q.QSizePolicy.Expanding), 5, 0)
         # Canonical Run action (same 🚀 button as every other plugin); it fits
         # every burst across all loaded files, so the shell's "Next" can trigger it.
         self.pushButton_process_bursts = action_button(
@@ -2805,7 +2890,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self._fit = None
         self.stop_processing = False
 
-        self._tttr_paths: Dict[str, Path] = {}
+        self._tttr_paths: dict[str, Path] = {}
         self.tttrs = LazyTTTRDict(self._tttr_paths, lambda: self.tttr_file_type)
 
         self.irf_np = {}
@@ -2820,9 +2905,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # File lists
         self.burst_files_list = FileListWidget(
-            parent=self,
-            file_added_callback=self.load_burst_data,
-            process_on_drop=True
+            parent=self, file_added_callback=self.load_burst_data, process_on_drop=True
         )
         self.verticalLayout_burst_files.addWidget(self.burst_files_list)
 
@@ -2865,17 +2948,15 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # Weighted‐residuals plot
         self.residual_plot = chiplot.Plot()
         # insert it *above* the decay plot, give it stretch=1 (residual)
-        self.verticalLayout_combined_plot.insertWidget(
-            0, self.residual_plot, 1
-        )
-        self.residual_plot.set_labels(left='Weighted residuals')
+        self.verticalLayout_combined_plot.insertWidget(0, self.residual_plot, 1)
+        self.residual_plot.set_labels(left="Weighted residuals")
         # link the x‐axes so they pan/zoom together
         self.residual_plot.link_x(self.combined_plot)
         self.residual_plot.grid(x=True, y=True)
 
         # Data plot, give it stretch=3 (combined)
         self.verticalLayout_combined_plot.addWidget(self.combined_plot, 3)
-        self.combined_plot.set_labels(bottom='Time (ch.)', left='Intensity')
+        self.combined_plot.set_labels(bottom="Time (ch.)", left="Intensity")
         self.combined_plot.set_log(y=True)
         self.combined_plot.set_ylim(-1, 5)
         # A legend so the four overlaid curves (data, model, IRF, background) are
@@ -2997,8 +3078,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.comboBox_window.currentTextChanged.connect(self.update_internal_fit_parameters)
 
         # --- Micro‐time range → update decay + fit ---
-        self.channel_definer.micro_binning_combo.currentTextChanged.connect(self._update_max_bins_from_tttr)
-        self.channel_definer.micro_binning_combo.currentTextChanged.connect(self.on_micro_time_range_changed)
+        self.channel_definer.micro_binning_combo.currentTextChanged.connect(
+            self._update_max_bins_from_tttr
+        )
+        self.channel_definer.micro_binning_combo.currentTextChanged.connect(
+            self.on_micro_time_range_changed
+        )
         self.spinBox_micro_time_start.valueChanged.connect(
             lambda val: self.spinBox_micro_time_stop.setMinimum(val + 1)
         )
@@ -3021,7 +3106,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             self.checkBox_fix_r0,
             self.checkBox_fix_rho,
             self.checkBox_2IStar,
-            self.checkBox_BIFL_scatter
+            self.checkBox_BIFL_scatter,
         )
         for chk in variable_checks:
             # Toggling a fix flag / option changes what is optimised -> re-fit.
@@ -3030,7 +3115,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # --- Other parameter updates ---
         self.spinBox_min_photons.valueChanged.connect(self.update_parameters)
         # persist min_photons per detector into channel_settings on change
-        self.spinBox_min_photons.valueChanged.connect(lambda val: self._save_min_photons_for_current_detector(val))
+        self.spinBox_min_photons.valueChanged.connect(
+            lambda val: self._save_min_photons_for_current_detector(val)
+        )
 
         # --- IRF parameter controls ---
         irf_controls = [
@@ -3046,9 +3133,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         ]
         for ctrl in irf_controls:
             # use currentTextChanged or stateChanged automatically based on widget type
-            signal = (getattr(ctrl, 'valueChanged', None) or
-                      getattr(ctrl, 'stateChanged', None) or
-                      getattr(ctrl, 'currentTextChanged'))
+            signal = (
+                getattr(ctrl, "valueChanged", None)
+                or getattr(ctrl, "stateChanged", None)
+                or getattr(ctrl, "currentTextChanged")
+            )
             signal.connect(self.on_irf_parameters_changed)
 
         # detectorsChanged -> _init_channels_from_wizard is wired once in
@@ -3133,8 +3222,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             one_for_all=self.one_for_all_irf,
             normalize=2,
             threshold=-1,
-            state_key='irf',
-            detector=detector
+            state_key="irf",
+            detector=detector,
         )
 
     def update_bg_files(self, detector=None):
@@ -3143,8 +3232,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             np_dict=self.bg_np,
             one_for_all=self.one_for_all_bg,
             normalize=3,
-            state_key='bg',
-            detector=detector
+            state_key="bg",
+            detector=detector,
         )
         # refresh the spinbox whenever bg changes
         self.update_scatter_count_rate_ui()
@@ -3194,7 +3283,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     if repetition_rate > 0:
                         # Convert repetition rate (MHz) to excitation period (ns)
                         excitation_period = 1000.0 / repetition_rate
-                        cs.logging.info(f"Updated excitation period to {excitation_period} ns based on repetition rate {repetition_rate} MHz")
+                        cs.logging.info(
+                            f"Updated excitation period to {excitation_period} ns based on repetition rate {repetition_rate} MHz"
+                        )
                 except (AttributeError, ValueError) as e:
                     cs.logging.info(f"Could not extract repetition rate from header: {e}")
 
@@ -3239,7 +3330,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         try:
             det = self.current_detector
             st = self.channel_settings.get(det, {})
-            st['min_photons'] = int(val)
+            st["min_photons"] = int(val)
             self.channel_settings[det] = st
         except Exception:
             pass
@@ -3268,8 +3359,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # — now *save* the new micro-time state for this detector —
         det = self.current_detector
         st = self.channel_settings.get(det, {})
-        st['micro_time_start'], st['micro_time_stop'] = self.micro_time_range
-        st['micro_time_binning'] = self.micro_time_binning
+        st["micro_time_start"], st["micro_time_stop"] = self.micro_time_range
+        st["micro_time_binning"] = self.micro_time_binning
         self.channel_settings[det] = st
 
     def get_current_vv_vhs(self):
@@ -3278,10 +3369,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return
 
         # gather detector channels and microtime settings
-        detector_info = getattr(self.channel_definer, 'detectors', {}).get(self.current_detector, {})
-        chs = detector_info.get('chs', [])
+        detector_info = getattr(self.channel_definer, "detectors", {}).get(
+            self.current_detector, {}
+        )
+        chs = detector_info.get("chs", [])
         if not chs:
-            cs.logging.info('Channels not found')
+            cs.logging.info("Channels not found")
             return
 
         mt_bin = self.micro_time_binning
@@ -3291,8 +3384,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # 2) Check if 'burst_file' column exists in the store
         names = column_names(self.df_bursts)
-        if 'burst_file' not in names:
-            cs.logging.info(f"'burst_file' column not found in burst table. Available columns: {names}")
+        if "burst_file" not in names:
+            cs.logging.info(
+                f"'burst_file' column not found in burst table. Available columns: {names}"
+            )
             # Try to use the first file if burst_file column doesn't exist
             if row_count(self.df_bursts) > 0:
                 df_this = self.df_bursts
@@ -3302,7 +3397,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 return
         else:
             # Filter df_bursts to just its rows
-            df_this = take_where(self.df_bursts, np.asarray(self.df_bursts["burst_file"]) == curr_bur)
+            df_this = take_where(
+                self.df_bursts, np.asarray(self.df_bursts["burst_file"]) == curr_bur
+            )
             if row_count(df_this) == 0:
                 cs.logging.info(f"No bursts found for {curr_bur!r}")
                 return
@@ -3321,7 +3418,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # get the list of photon‐indices for *all* bursts in this file
         indices = self.get_burst_indices_for_current_file()
         if not indices:
-            cs.logging.info('No indices found')
+            cs.logging.info("No indices found")
             return
         indices = np.array(indices)
 
@@ -3330,11 +3427,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # build the decay histogram over every burst in the file
         vv_vhs = self.make_vv_vh(
-            [burst_tttr],
-            chs,
-            self.micro_time_range,
-            mt_bin,
-            normalize_counts=-1
+            [burst_tttr], chs, self.micro_time_range, mt_bin, normalize_counts=-1
         )
 
         return vv_vhs
@@ -3420,10 +3513,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             detectors = self.channel_definer.detectors.keys()
 
         for detector in detectors:
-            info = getattr(self.channel_definer, 'detectors', {}).get(detector, {})
-            chs = info.get('chs', [])
+            info = getattr(self.channel_definer, "detectors", {}).get(detector, {})
+            chs = info.get("chs", [])
             if chs:
-                ranges = info.get('micro_time_ranges', [])
+                ranges = info.get("micro_time_ranges", [])
                 if ranges:
                     raw_start, raw_stop = ranges[0]
                     bin_start = raw_start // self.micro_time_binning
@@ -3437,7 +3530,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         self.stop_processing = True
         cs.logging.info("Stop button clicked, stopping burst processing")
-        
+
     def update_parameters(self):
         self._fit = None
         self.update_fit()
@@ -3494,8 +3587,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # Build the fit for the selected model, by registry name. Every model is
         # reached the same way, so there is no per-estimator construction here.
         from chisurf.core.fluorescence.mle.fit2x import (
-            Fit2x, Fit2xModel, Fit2xSettings,
+            Fit2x,
+            Fit2xModel,
+            Fit2xSettings,
         )
+
         settings = Fit2xSettings(
             dt=dt,
             period=period,
@@ -3539,16 +3635,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # rather than fit meaningless mismatched arrays.
         irf_len = int(np.asarray(self.irf_np.get(det, [])).size)
         if irf_len and len(d) != irf_len:
-            msg = (f"decay length {len(d)} != IRF length {irf_len} for {det!r} "
-                   f"(rebuild IRF at the current binning)")
+            msg = (
+                f"decay length {len(d)} != IRF length {irf_len} for {det!r} "
+                f"(rebuild IRF at the current binning)"
+            )
             cs.logging.info("MLE fit skipped: %s", msg)
             self._set_status(f"Cannot fit: {msg}")
             return
         if self.fit_model == "tail":
             res = self._run_tail_fit(d, det)
         else:
-            res = self.fit(data=d, initial_values=x0, fixed=fixed,
-                           include_model=True)
+            res = self.fit(data=d, initial_values=x0, fixed=fixed, include_model=True)
             # What was fitted and what the model predicts belong to the *result*,
             # not to the fitter: ``Fit2x`` is reusable and holds no per-fit state,
             # so the curves are recorded here for the plot rather than read back
@@ -3572,7 +3669,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return "no detector selected"
         # The tail fit needs no IRF (the prompt is excluded, not deconvolved).
         if self.fit_model != "tail" and (
-                det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0):
+            det not in self.irf_np or np.asarray(self.irf_np.get(det, [])).size == 0
+        ):
             return f"no IRF for detector {det!r} (load or send an IRF)"
         if det not in self.bg_np or np.asarray(self.bg_np.get(det, [])).size == 0:
             return f"no background for detector {det!r}"
@@ -3580,7 +3678,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return "no decay (load bursts / select a file)"
         return None
 
-    def _fit_diverged(self, fit_result) -> typing.Optional[str]:
+    def _fit_diverged(self, fit_result) -> str | None:
         """Human-readable reason the fit result is non-physical, or ``None``.
 
         Freeing ``gamma`` (the scattered-light fraction) is legitimate but
@@ -3597,8 +3695,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         except Exception:
             two_istar = 0.0
         if not np.isfinite(two_istar) or two_istar < 0.0:
-            return "invalid fit quality (2I* < 0) — gamma is unconstrained; " \
-                   "re-fix gamma or use a measured IRF/background"
+            return (
+                "invalid fit quality (2I* < 0) — gamma is unconstrained; "
+                "re-fix gamma or use a measured IRF/background"
+            )
         # The curves come from the recorded view, never from the fitter. A
         # ``getattr(self.fit, "model", [])`` here was *worse* than the plain
         # attribute read it replaced: ``Fit2x.model`` exists and is the estimator
@@ -3611,8 +3711,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         s_dat = float(np.nansum(data)) if data.size else 0.0
         s_mod = float(np.nansum(model)) if model.size else 0.0
         if s_dat > 0.0 and s_mod > 20.0 * s_dat:
-            return "model amplitude diverged — gamma is unconstrained; " \
-                   "re-fix gamma or use a measured IRF/background"
+            return (
+                "model amplitude diverged — gamma is unconstrained; "
+                "re-fix gamma or use a measured IRF/background"
+            )
         return None
 
     def _run_tail_fit(self, d, det):
@@ -3644,7 +3746,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         n = len(d) // 2
         bg_full = np.asarray(self.bg, dtype=np.float64)
         bg_half = bg_full[:n] if bg_full.size >= n else np.zeros(n, dtype=np.float64)
-        irf_half = np.zeros(n, dtype=np.float64)          # ignored in tail mode
+        irf_half = np.zeros(n, dtype=np.float64)  # ignored in tail mode
 
         opts = tttrlib.DecayFitNExpOptions()
         opts.dt = float(self.dt_effective)
@@ -3695,6 +3797,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         try:
             from chisurf.core.registry import tttrlib as _reg
+
             entry = _reg.describe(_reg.FIT_MODEL, model) or {}
             return int(entry.get("n_patterns", 0)) == 0
         except Exception:
@@ -3725,21 +3828,30 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return {
             "properties": {
                 "tail_start": {
-                    "title": "Tail start (ch.)", "default": 20.0,
-                    "minimum": 0.0, "maximum": 100000.0, "fixed_default": True,
+                    "title": "Tail start (ch.)",
+                    "default": 20.0,
+                    "minimum": 0.0,
+                    "maximum": 100000.0,
+                    "fixed_default": True,
                     "description": "First channel of the tail; earlier channels "
-                                   "(the rise/prompt) are excluded from the fit.",
+                    "(the rise/prompt) are excluded from the fit.",
                 },
                 "tau1": {
-                    "title": "Lifetime τ1 (ns)", "default": 2.0,
-                    "minimum": 0.01, "maximum": 100.0, "fixed_default": False,
+                    "title": "Lifetime τ1 (ns)",
+                    "default": 2.0,
+                    "minimum": 0.01,
+                    "maximum": 100.0,
+                    "fixed_default": False,
                     "description": "First tail lifetime.",
                 },
                 "tau2": {
-                    "title": "Lifetime τ2 (ns)", "default": 0.5,
-                    "minimum": 0.01, "maximum": 100.0, "fixed_default": False,
+                    "title": "Lifetime τ2 (ns)",
+                    "default": 0.5,
+                    "minimum": 0.01,
+                    "maximum": 100.0,
+                    "fixed_default": False,
                     "description": "Second tail lifetime (fix or set equal to τ1 "
-                                   "for a mono-exponential tail).",
+                    "for a mono-exponential tail).",
                 },
             },
             "required": ["tail_start", "tau1", "tau2"],
@@ -3751,6 +3863,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return self._tail_schema()
         try:
             from chisurf.core.registry import tttrlib as _reg
+
             return _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
         except Exception:
             return {}
@@ -3812,7 +3925,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         _score = QtWidgets.QLabel("Score")
         self.doubleSpinBox_dyn_score = self._dsb(
-            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True)
+            decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True
+        )
         self._dyn_grid.addWidget(_score, 1, 0)
         self._dyn_grid.addWidget(self.doubleSpinBox_dyn_score, 1, 1)
 
@@ -3870,8 +3984,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         tttr = self._current_tttr()
         det = self.current_detector
-        info = getattr(self.channel_definer, 'detectors', {}).get(det, {})
-        chs = info.get('chs', [])
+        info = getattr(self.channel_definer, "detectors", {}).get(det, {})
+        chs = info.get("chs", [])
         if tttr is None or not chs:
             return None
         idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
@@ -3885,8 +3999,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return None
         non_burst = np.ones(len(tttr), dtype=bool)
         non_burst[idx] = False
-        sel = non_burst & np.isin(np.asarray(tttr.routing_channels),
-                                  np.asarray(chs, dtype=int))
+        sel = non_burst & np.isin(np.asarray(tttr.routing_channels), np.asarray(chs, dtype=int))
         micro = np.asarray(tttr.micro_times)[sel]
         micro = micro[(micro >= 0) & (micro < n_full)]
         if micro.size == 0:
@@ -3900,8 +4013,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             return None
         return int(above[-1] - above[0] + 1)
 
-    def _auto_select_binning(self, target_counts_per_bin: float = 10.0,
-                             irf_oversample: float = 8.0):
+    def _auto_select_binning(
+        self, target_counts_per_bin: float = 10.0, irf_oversample: float = 8.0
+    ):
         """Pick a micro-time binning that is neither too fine nor too coarse.
 
         Two floors set the coarsest-needed binning; the larger wins:
@@ -3922,8 +4036,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         tttr = self._current_tttr()
         det = self.current_detector
-        info = getattr(self.channel_definer, 'detectors', {}).get(det, {})
-        chs = info.get('chs', [])
+        info = getattr(self.channel_definer, "detectors", {}).get(det, {})
+        chs = info.get("chs", [])
         if tttr is None or not chs:
             return None
         idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
@@ -3966,7 +4080,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         nb = d.size // 2
         if nb < 4:
             return
-        tot = d[:nb] + d[nb:2 * nb]
+        tot = d[:nb] + d[nb : 2 * nb]
         pk = float(tot.max()) if tot.size else 0.0
         if pk <= 0.0:
             return
@@ -4119,9 +4233,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         if host is not None:
             host.goto_workflow_role("irf_bg")
         else:
-            self._set_status(
-                "Open the Burst Analysis workflow to use the IRF & Background step"
-            )
+            self._set_status("Open the Burst Analysis workflow to use the IRF & Background step")
 
     def _get_channel_ranges_bins(self):
         """Return per-channel (vv, vh) start/stop in histogram bins for current detector.
@@ -4134,8 +4246,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         sb_vh = sb_def
         eb_vh = eb_def
         try:
-            info = getattr(self.channel_definer, 'detectors', {}).get(self.current_detector, {})
-            ranges = info.get('micro_time_ranges', None)
+            info = getattr(self.channel_definer, "detectors", {}).get(self.current_detector, {})
+            ranges = info.get("micro_time_ranges", None)
             if ranges and len(ranges) >= 2:
                 raw_vv = ranges[0]
                 raw_vh = ranges[1]
@@ -4177,12 +4289,14 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         n = len(data_full) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
         # clamp
-        vv_sb = max(0, int(vv_sb)); vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb)); vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
+        vv_sb = max(0, int(vv_sb))
+        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
+        vh_sb = max(0, int(vh_sb))
+        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
         data_vv = data_full[0:n][vv_sb:vv_eb]
-        data_vh = data_full[n:2*n][vh_sb:vh_eb]
+        data_vh = data_full[n : 2 * n][vh_sb:vh_eb]
         model_vv = model_full[0:n][vv_sb:vv_eb]
-        model_vh = model_full[n:2*n][vh_sb:vh_eb]
+        model_vh = model_full[n : 2 * n][vh_sb:vh_eb]
         data_rng = np.hstack([data_vv, data_vh])
         model_rng = np.hstack([model_vv, model_vh])
         # A diverged fit (gamma pinned at its bound) returns a model whose
@@ -4197,10 +4311,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             if cap > 0:
                 model_disp = np.clip(model_disp, 0.0, cap)
         channels = np.arange(data_rng.size)
-        self.combined_plot.scatter(channels, data_rng, size=3,
-                                   name='Data (VV|VH)')
-        self.combined_plot.line(channels, model_disp, pen='g',
-                                name='Model (fit)')
+        self.combined_plot.scatter(channels, data_rng, size=3, name="Data (VV|VH)")
+        self.combined_plot.line(channels, model_disp, pen="g", name="Model (fit)")
 
         # Plot IRF & BG within per-channel windows
         irf_full = self.irf.astype(np.float64, copy=True)
@@ -4208,11 +4320,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         n = len(irf_full) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
-        vv_sb = max(0, int(vv_sb)); vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb)); vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
+        vv_sb = max(0, int(vv_sb))
+        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
+        vh_sb = max(0, int(vh_sb))
+        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
 
-        irf_rng = np.hstack([irf_full[0:n][vv_sb:vv_eb], irf_full[n:2*n][vh_sb:vh_eb]])
-        bg_rng = np.hstack([bg_full[0:n][vv_sb:vv_eb], bg_full[n:2*n][vh_sb:vh_eb]])
+        irf_rng = np.hstack([irf_full[0:n][vv_sb:vv_eb], irf_full[n : 2 * n][vh_sb:vh_eb]])
+        bg_rng = np.hstack([bg_full[0:n][vv_sb:vv_eb], bg_full[n : 2 * n][vh_sb:vh_eb]])
 
         # Scale IRF and background to the data amplitude for display only. Both
         # keep their SHAPE (the scatter/background is not flat — it has the
@@ -4232,10 +4346,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # The tail fit does not deconvolve the IRF, so an IRF overlay would be
         # misleading (and may be a synthetic fallback of the wrong length).
         if self.fit_model != "tail":
-            self.combined_plot.line(np.arange(irf_rng.size), irf_rng,
-                                    pen='r', name='IRF')
-        self.combined_plot.line(np.arange(bg_rng.size), bg_rng,
-                                pen='b', name='Background')
+            self.combined_plot.line(np.arange(irf_rng.size), irf_rng, pen="r", name="IRF")
+        self.combined_plot.line(np.arange(bg_rng.size), bg_rng, pen="b", name="Background")
 
         # compute & plot weighted residuals
         data = np.asarray(view.data, dtype=float)
@@ -4250,12 +4362,15 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         resid = np.asarray(resid)
         n = len(resid) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
-        vv_sb = max(0, int(vv_sb)); vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb)); vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
-        resid_rng = np.hstack([resid[0:n][vv_sb:vv_eb], resid[n:2*n][vh_sb:vh_eb]])
+        vv_sb = max(0, int(vv_sb))
+        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
+        vh_sb = max(0, int(vh_sb))
+        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
+        resid_rng = np.hstack([resid[0:n][vv_sb:vv_eb], resid[n : 2 * n][vh_sb:vh_eb]])
 
-        self.residual_plot.line(np.arange(resid_rng.size), resid_rng,
-                                pen=pen, symbol='o', symbol_size=3)
+        self.residual_plot.line(
+            np.arange(resid_rng.size), resid_rng, pen=pen, symbol="o", symbol_size=3
+        )
 
         # Pin both plots to sane ranges. A background-dominated or diverged fit
         # can make the model / scaled background span ~1e±27, which explodes
@@ -4301,7 +4416,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         irf_cache = {}
         bg_cache = {}
         for det in self.channel_definer.detectors.keys():
-            st = self._ensure_channel_state(det)
+            self._ensure_channel_state(det)
             # Raw IRF/BG come from the single source of truth (irf_np/bg_np), not
             # channel_settings; this method applies shift/window/threshold below.
             raw_irf = np.array(self.irf_np.get(det, []), dtype=np.float64, copy=True)
@@ -4322,12 +4437,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 start = int(self.irf_start)
                 stop = int(self.irf_stop)
                 if start >= 0:
-                    sp[:max(0, start)] = 0
-                    ss[:max(0, start)] = 0
+                    sp[: max(0, start)] = 0
+                    ss[: max(0, start)] = 0
                 if stop >= 0 and stop + 1 < sp.size:
-                    sp[stop + 1:] = 0
+                    sp[stop + 1 :] = 0
                 if stop >= 0 and stop + 1 < ss.size:
-                    ss[stop + 1:] = 0
+                    ss[stop + 1 :] = 0
                 # 4) thresholding per channel
                 th_vv = float(self.irf_threshold_vv)
                 th_vh = float(self.irf_threshold_vh)
@@ -4352,11 +4467,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return irf_cache, bg_cache
 
     @staticmethod
-    def _hist2_split(mt_bins: np.ndarray,
-                     rc_slice: np.ndarray,
-                     is_p_lut: np.ndarray,
-                     is_s_lut: np.ndarray,
-                     half_len: int):
+    def _hist2_split(
+        mt_bins: np.ndarray,
+        rc_slice: np.ndarray,
+        is_p_lut: np.ndarray,
+        is_s_lut: np.ndarray,
+        half_len: int,
+    ):
         """
         One-pass P/S histogram:
           - classify photons as 0(P) / 1(S) via LUTs
@@ -4371,13 +4488,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         cls[sm] = 1
         valid = cls >= 0
         if not np.any(valid):
-            return (np.zeros(half_len, dtype=np.uint32),
-                    np.zeros(half_len, dtype=np.uint32))
+            return (np.zeros(half_len, dtype=np.uint32), np.zeros(half_len, dtype=np.uint32))
         b = mt_bins[valid]
         c = cls[valid].astype(np.int32, copy=False)
         h2 = np.bincount(b * 2 + c, minlength=2 * half_len)
-        return (h2[0::2].astype(np.uint32, copy=False),
-                h2[1::2].astype(np.uint32, copy=False))
+        return (h2[0::2].astype(np.uint32, copy=False), h2[1::2].astype(np.uint32, copy=False))
 
     def _set_inputs_frozen(self, frozen: bool) -> None:
         """Make the wizard read-only (or not) while a batch runs.
@@ -4467,8 +4582,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # it has to change the fingerprint: without it, ticking the box
             # after an H2MM run would report "Unchanged" and skip the refit.
             "split_by_state": bool(self.split_by_state),
-            "state_min_photons": int(self.state_min_photons)
-            if self.split_by_state else 0,
+            "state_min_photons": int(self.state_min_photons) if self.split_by_state else 0,
             # The LUTs and micro-time shifts applied inside the reader are not a
             # setting of this step, and they change every decay it fits.
             "_read_context": analysis_cache.photon_read_context(),
@@ -4479,10 +4593,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         from chisurf.core.runtime import analysis_cache
 
         return analysis_cache.fingerprint(
-            self.batch_input_files(), self.batch_settings(),
-            extra=analysis_cache.algorithm_tag(
-                "burst_mle", ALGORITHM_VERSION, "fit2x", "tttrlib"
-            ),
+            self.batch_input_files(),
+            self.batch_settings(),
+            extra=analysis_cache.algorithm_tag("burst_mle", ALGORITHM_VERSION, "fit2x", "tttrlib"),
         )
 
     def batch_stamp_path(self):
@@ -4512,11 +4625,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             flag_attention(button, on)
 
     def process_bursts(self, *, force: bool = False):
-        import os
-        import numpy as np
-        from concurrent.futures import ProcessPoolExecutor, as_completed
         import multiprocessing as mp
+        import os
+        from concurrent.futures import ProcessPoolExecutor, as_completed
         from multiprocessing import shared_memory
+
+        import numpy as np
+
         from chisurf.plugins.burst.burst_mle_analysis._mp_worker import process_one_file_worker
 
         if self.df_bursts is None or not self.tttrs:
@@ -4586,13 +4701,17 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # exception.
         shm_blocks = []
         try:
+
             def ui_pump(k: int):
                 if (k % 20) == 0:
                     QtWidgets.QApplication.processEvents()
 
             # Per-detector constants
             irf_cache, bg_cache = self._build_irf_bg_cache()
-            settings_cache = {det: self._ensure_channel_state(det) for det in self.channel_definer.detectors.keys()}
+            settings_cache = {
+                det: self._ensure_channel_state(det)
+                for det in self.channel_definer.detectors.keys()
+            }
             det_order = list(self.channel_definer.detectors.keys())
 
             # Diagnostics: a detector whose whole batch column comes back NaN (while the
@@ -4603,7 +4722,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 irf_sz = int(irf_arr.size)
                 irf_sum = float(irf_arr.sum()) if irf_sz else 0.0
                 # NB: not ``mp`` — that name is ``import multiprocessing as mp`` here.
-                min_ph = int(settings_cache[det].get('min_photons', 0))
+                min_ph = int(settings_cache[det].get("min_photons", 0))
                 cs.logging.info(
                     f"MLE batch: detector '{det}' IRF size={irf_sz} sum={irf_sum:.3g}, "
                     f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={min_ph}"
@@ -4630,8 +4749,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             global_mb = int(self.micro_time_binning)
             cur_dt = float(self.dt_effective)
             for _st in settings_cache.values():
-                _st['micro_time_binning'] = global_mb
-                _st['dt'] = cur_dt
+                _st["micro_time_binning"] = global_mb
+                _st["dt"] = cur_dt
 
             # windows, channels, rc max
             window_cache = {}
@@ -4639,16 +4758,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             rc_max_seen = 0
             for det, info in self.channel_definer.detectors.items():
                 st = settings_cache[det]
-                sb = int(st['micro_time_start']);
-                eb = int(st['micro_time_stop'])
+                sb = int(st["micro_time_start"])
+                eb = int(st["micro_time_stop"])
                 if eb <= sb:
                     sb, eb = map(int, self.micro_time_range)
                 window_cache[det] = (sb, eb)
 
-                chs = info.get('chs', [])
+                chs = info.get("chs", [])
                 pchs = chs[::2] if len(chs) >= 2 else chs
                 schs = chs[1::2] if len(chs) >= 2 else chs
-                pchs = np.asarray(pchs, dtype=int);
+                pchs = np.asarray(pchs, dtype=int)
                 schs = np.asarray(schs, dtype=int)
                 channels_cache[det] = (pchs, schs)
                 if len(chs):
@@ -4666,11 +4785,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             jobs = []
             shm_blocks = []  # to unlink at end
             first_file_col = np.array(
-                [str(v) for v in np.asarray(self.df_bursts['First File'], dtype=object)],
+                [str(v) for v in np.asarray(self.df_bursts["First File"], dtype=object)],
                 dtype=object,
             )
-            fp_col = numeric_column(self.df_bursts, 'First Photon')
-            lp_col = numeric_column(self.df_bursts, 'Last Photon')
+            fp_col = numeric_column(self.df_bursts, "First Photon")
+            lp_col = numeric_column(self.df_bursts, "Last Photon")
             burst_groups: dict = {}
             for fname in dict.fromkeys(first_file_col.tolist()):
                 mask = first_file_col == fname
@@ -4681,15 +4800,31 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 tttr = self.tttrs.get(key)
 
                 if tttr is None:
-                    jobs.append((fname, bursts,
-                                 None, None, None, None, None, None,
-                                 det_order, {}, int(self.shift or 0), None))
+                    jobs.append(
+                        (
+                            fname,
+                            bursts,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            det_order,
+                            {},
+                            int(self.shift or 0),
+                            None,
+                        )
+                    )
                     continue
 
                 rc_full = np.asarray(tttr.routing_channels)
                 mt_full = np.asarray(tttr.micro_times)
-                mt_bins_full = (mt_full // global_mb).astype(np.int32, copy=False) if global_mb > 1 else mt_full.astype(
-                    np.int32, copy=True)
+                mt_bins_full = (
+                    (mt_full // global_mb).astype(np.int32, copy=False)
+                    if global_mb > 1
+                    else mt_full.astype(np.int32, copy=True)
+                )
 
                 # compact dtypes to reduce bandwidth
                 if rc_full.dtype != np.uint16 and int(rc_full.max(initial=0)) <= 65535:
@@ -4701,7 +4836,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 rc_shm = shared_memory.SharedMemory(create=True, size=rc_full.nbytes)
                 np.ndarray(rc_full.shape, dtype=rc_full.dtype, buffer=rc_shm.buf)[:] = rc_full
                 mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins_full.nbytes)
-                np.ndarray(mt_bins_full.shape, dtype=mt_bins_full.dtype, buffer=mt_shm.buf)[:] = mt_bins_full
+                np.ndarray(mt_bins_full.shape, dtype=mt_bins_full.dtype, buffer=mt_shm.buf)[:] = (
+                    mt_bins_full
+                )
                 shm_blocks.extend([rc_shm, mt_shm])
 
                 # A third block: the per-photon state, indexed exactly as the
@@ -4712,11 +4849,16 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 if states_full is not None and n_states > 0:
                     states_full = np.ascontiguousarray(states_full, dtype=np.int8)
                     st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
-                    np.ndarray(states_full.shape, dtype=states_full.dtype,
-                               buffer=st_shm.buf)[:] = states_full
+                    np.ndarray(states_full.shape, dtype=states_full.dtype, buffer=st_shm.buf)[:] = (
+                        states_full
+                    )
                     shm_blocks.append(st_shm)
-                    state_info = (st_shm.name, states_full.shape,
-                                  str(states_full.dtype), int(n_states))
+                    state_info = (
+                        st_shm.name,
+                        states_full.shape,
+                        str(states_full.dtype),
+                        int(n_states),
+                    )
 
                 # Per-detector config (use class LUT: -1 ignore, 0=P, 1=S)
                 rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
@@ -4725,49 +4867,63 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     st = settings_cache[det]
                     pchs, schs = channels_cache[det]
                     class_lut = np.full(rc_max + 1, -1, dtype=np.int8)
-                    if pchs.size: class_lut[pchs] = 0
-                    if schs.size: class_lut[schs] = 1
+                    if pchs.size:
+                        class_lut[pchs] = 0
+                    if schs.size:
+                        class_lut[schs] = 1
                     half_len = max(1, irf_cache[det].size // 2)
                     # fit23 keeps its per-detector authored start vector; every other
                     # fit2x model shares the one start vector from the registry-driven
                     # editor (the editor is not per-detector).
                     if model == "fit23":
-                        x0 = np.asarray(st['initial_x0'], dtype=np.float64)
-                        fixed = np.asarray(st['fixed_flags'], dtype=np.int32)
+                        x0 = np.asarray(st["initial_x0"], dtype=np.float64)
+                        fixed = np.asarray(st["fixed_flags"], dtype=np.int32)
                     else:
                         x0 = np.asarray(batch_x0, dtype=np.float64)
                         fixed = np.asarray(batch_fixed, dtype=np.int32)
                     perdet_cfg[det] = {
-                        'sb': int(window_cache[det][0]),
-                        'eb': int(window_cache[det][1]),
-                        'half_len': half_len,
-                        'dt': float(st['dt']),
-                        'period': float(st['excitation_period']),
-                        'g_factor': float(st['g_factor']),
-                        'l1': float(st['l1']), 'l2': float(st['l2']),
-                        'p2s_twoIstar': bool(st['p2s_twoIstar']),
-                        'BIFL_scatter': bool(st['BIFL_scatter']),
-                        'min_photons': int(st['min_photons']),
+                        "sb": int(window_cache[det][0]),
+                        "eb": int(window_cache[det][1]),
+                        "half_len": half_len,
+                        "dt": float(st["dt"]),
+                        "period": float(st["excitation_period"]),
+                        "g_factor": float(st["g_factor"]),
+                        "l1": float(st["l1"]),
+                        "l2": float(st["l2"]),
+                        "p2s_twoIstar": bool(st["p2s_twoIstar"]),
+                        "BIFL_scatter": bool(st["BIFL_scatter"]),
+                        "min_photons": int(st["min_photons"]),
                         # A burst split by colour *and* state is thin, so the
                         # per-state passes get their own, lower floor.
-                        'state_min_photons': int(self.state_min_photons),
-                        'x0': x0,
-                        'fixed': fixed,
-                        'irf': np.asarray(irf_cache[det], dtype=np.float64),
-                        'bg': np.asarray(bg_cache[det], dtype=np.float64),
-                        'class_lut': class_lut,
-                        'model': model,
-                        'param_names': list(param_names),
+                        "state_min_photons": int(self.state_min_photons),
+                        "x0": x0,
+                        "fixed": fixed,
+                        "irf": np.asarray(irf_cache[det], dtype=np.float64),
+                        "bg": np.asarray(bg_cache[det], dtype=np.float64),
+                        "class_lut": class_lut,
+                        "model": model,
+                        "param_names": list(param_names),
                     }
 
-                jobs.append((fname, bursts,
-                             rc_shm.name, rc_full.shape, str(rc_full.dtype),
-                             mt_shm.name, mt_bins_full.shape, str(mt_bins_full.dtype),
-                             det_order, perdet_cfg, int(self.shift or 0),
-                             state_info))
+                jobs.append(
+                    (
+                        fname,
+                        bursts,
+                        rc_shm.name,
+                        rc_full.shape,
+                        str(rc_full.dtype),
+                        mt_shm.name,
+                        mt_bins_full.shape,
+                        str(mt_bins_full.dtype),
+                        det_order,
+                        perdet_cfg,
+                        int(self.shift or 0),
+                        state_info,
+                    )
+                )
 
             # Processes (leave one core for UI; cap by #files)
-            ctx = mp.get_context('spawn')
+            ctx = mp.get_context("spawn")
             max_workers = max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
         except BaseException:
             try:
@@ -4810,16 +4966,19 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 progress.setLabelText("Pooling state decays …")
                 ui_pump(0)
                 _rows, sidecars = self._apply_pooled_state_fits(
-                    jobs, det_order, ctx, max_workers, model, param_names,
+                    jobs,
+                    det_order,
+                    ctx,
+                    max_workers,
+                    model,
+                    param_names,
                     progress=progress,
                 )
                 progress.setLabelText("Processing bursts...")
             with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
                 # One job is one file; keep the mapping so a worker that dies can
                 # be named rather than silently subtracted from the table.
-                fut_file = {
-                    ex.submit(process_one_file_worker, j): str(j[0]) for j in jobs
-                }
+                fut_file = {ex.submit(process_one_file_worker, j): str(j[0]) for j in jobs}
                 for fut in as_completed(fut_file):
                     # Cancel has to be read *here*. Checked after the `with`
                     # block it is read once every future has already been joined,
@@ -4854,7 +5013,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # cleanup shared memory
             for block in shm_blocks:
                 try:
-                    block.close();
+                    block.close()
                     block.unlink()
                 except Exception:
                     pass
@@ -4886,7 +5045,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     nph = np.array([_coerce_float(row.get(nph_col)) for row in results])
                     if np.any(~np.isnan(nph)):
                         nph_min, nph_med, nph_max = (
-                            int(np.nanmin(nph)), int(np.nanmedian(nph)), int(np.nanmax(nph))
+                            int(np.nanmin(nph)),
+                            int(np.nanmedian(nph)),
+                            int(np.nanmax(nph)),
                         )
                         msg += (
                             f"; fit-window photons min/median/max="
@@ -4925,31 +5086,37 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             # again for nothing.
             settled = self.batch_settings()
             analysis_cache.write_stamp(
-                stamp_path, self.batch_fingerprint(), params=settled,
-                inputs=self.batch_input_files(), outputs=written, tool="burst_mle",
+                stamp_path,
+                self.batch_fingerprint(),
+                params=settled,
+                inputs=self.batch_input_files(),
+                outputs=written,
+                tool="burst_mle",
             )
 
     def make_vv_vh(
-            self,
-            tttr_list: typing.List[tttrlib.TTTR],
-            detector_chs: typing.List[int],
-            micro_time_range: typing.Tuple[int, int],
-            micro_time_binning: int,
-            save_files: bool = False,
-            normalize_counts: int = 1,
-            threshold: typing.Union[float, typing.Tuple[float, float]] = -1,
-            minlength: int = -1,
-            apply_vh_shift: bool = True
-    ) -> typing.List[np.ndarray]:
+        self,
+        tttr_list: list[tttrlib.TTTR],
+        detector_chs: list[int],
+        micro_time_range: tuple[int, int],
+        micro_time_binning: int,
+        save_files: bool = False,
+        normalize_counts: int = 1,
+        threshold: float | tuple[float, float] = -1,
+        minlength: int = -1,
+        apply_vh_shift: bool = True,
+    ) -> list[np.ndarray]:
         vv_vhs = list()
         # Determine per-channel ranges: fall back to provided micro_time_range for both
         sb_def, eb_def = micro_time_range
         # Try to get detector-specific ranges from the channel_definer
-        vv_sb = sb_def; vv_eb = eb_def
-        vh_sb = sb_def; vh_eb = eb_def
-        
-        info = getattr(self.channel_definer, 'detectors', {}).get(self.current_detector, {})
-        ranges = info.get('micro_time_ranges', None)
+        vv_sb = sb_def
+        vv_eb = eb_def
+        vh_sb = sb_def
+        vh_eb = eb_def
+
+        info = getattr(self.channel_definer, "detectors", {}).get(self.current_detector, {})
+        ranges = info.get("micro_time_ranges", None)
         if ranges and len(ranges) >= 2:
             raw_vv = ranges[0]
             raw_vh = ranges[1]
@@ -4969,7 +5136,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
             # Build full microtime histograms (default uses full range)
             cp = tp.get_microtime_histogram(micro_time_binning)[0].astype(np.float64, copy=False)
-            cs_hist = ts.get_microtime_histogram(micro_time_binning)[0].astype(np.float64, copy=False)
+            cs_hist = ts.get_microtime_histogram(micro_time_binning)[0].astype(
+                np.float64, copy=False
+            )
 
             # Apply integer VH shift BEFORE any other operation
             if apply_vh_shift and self.shift != 0:
@@ -5015,7 +5184,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                     cs_hist = cs_hist / cs_sum
             elif normalize_counts == 3:
                 # Normalize by acquisition time
-                acquisition_time = (tttr.macro_times[-1] - tttr.macro_times[0]) * tttr.header.macro_time_resolution
+                acquisition_time = (
+                    tttr.macro_times[-1] - tttr.macro_times[0]
+                ) * tttr.header.macro_time_resolution
                 if acquisition_time > 0:
                     cs_hist /= acquisition_time
                     cp /= acquisition_time
@@ -5026,9 +5197,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
             # Optional save
             if save_files:
-                basename = getattr(tttr, 'filename', None)
+                basename = getattr(tttr, "filename", None)
                 if basename:
-                    base = Path(basename).with_suffix('').as_posix()
+                    base = Path(basename).with_suffix("").as_posix()
                 else:
                     base = f"vv_vh_{idx}"
                 out_name = f"{base}_{''.join(map(str, detector_chs))}.dat"
@@ -5072,10 +5243,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # build a single “difference” event array with bincount
         # - at each start index we +1, at each (stop+1) we -1
         idxs = np.concatenate([starts, stops + 1])
-        weights = np.concatenate([
-            np.ones_like(starts, dtype=np.int32),
-            -np.ones_like(stops + 1, dtype=np.int32),
-        ])
+        weights = np.concatenate(
+            [
+                np.ones_like(starts, dtype=np.int32),
+                -np.ones_like(stops + 1, dtype=np.int32),
+            ]
+        )
         max_len = idxs.max() + 1
         events = np.bincount(idxs, weights, minlength=max_len)
 
@@ -5086,9 +5259,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return np.nonzero(coverage)[0].tolist()
 
     def read_burst_analysis(
-            self,
-            paris_path: Path,
-            pattern: str = "**/*.bur",
+        self,
+        paris_path: Path,
+        pattern: str = "**/*.bur",
     ) -> tuple[typing.Any, dict[str, tttrlib.TTTR]]:
         """Read every ``.bur`` file under *paris_path* into one burst table.
 
@@ -5117,18 +5290,19 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             raise ValueError(f"No burst files found in {paris_path!s}")
 
         # Check for JSON file in Info folder of the burst folder
-        info_directory = paris_path / 'Info'
+        info_directory = paris_path / "Info"
         json_file_path = info_directory / "photon_selection_parameters.json"
 
         # Use safe_open_file to read the JSON file if it exists
-        from chisurf.core.settings.file_utils import safe_open_file
         import json
+
+        from chisurf.core.settings.file_utils import safe_open_file
 
         json_data = safe_open_file(
             json_file_path,
             processor=json.load,
             default_value=None,
-            error_message=f"Could not read setup information from {json_file_path}"
+            error_message=f"Could not read setup information from {json_file_path}",
         )
 
         if json_data:
@@ -5138,7 +5312,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             if setup_info:
                 cs.logging.info("Using setup information from JSON file")
                 # If the channel_definer is available, we can update its settings
-                if hasattr(self, 'channel_definer') and setup_info.get("windows"):
+                if hasattr(self, "channel_definer") and setup_info.get("windows"):
                     self.channel_definer.windows = setup_info.get("windows", {})
                     self.channel_definer.detectors = setup_info.get("detectors", {})
                     cs.logging.info("Updated channel definitions from JSON file")
@@ -5154,9 +5328,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             tables.append(table)
         df = concat_stores(tables)
 
-        raw_files = dict.fromkeys(
-            str(v) for v in np.asarray(df["First File"], dtype=object)
-        )
+        raw_files = dict.fromkeys(str(v) for v in np.asarray(df["First File"], dtype=object))
         base_dir = paris_path.parent
         for fn in raw_files:
             # Extract just the filename part from the "First File" column
@@ -5211,7 +5383,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             "fix_gamma": self.fix_gamma,
             "fix_r0": self.fix_r0,
             "fix_rho": self.fix_rho,
-            "min_photons": int(self.min_photons)
+            "min_photons": int(self.min_photons),
         }
 
         # Get the setup data
@@ -5239,16 +5411,18 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
         # Save the updated setups
         if save_detector_setups(setups, setups_file):
-            self._set_status(f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'.")
+            self._set_status(
+                f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'."
+            )
         else:
             dialogs.error(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
 
     def optimize_hyperparameters(
-            self,
-            n_iter: int = 40,
-            bounds: dict | None = None,
-            seed: int | None = None,
-            weights: dict | None = None
+        self,
+        n_iter: int = 40,
+        bounds: dict | None = None,
+        seed: int | None = None,
+        weights: dict | None = None,
     ):
         """Delegate to external HPO function to keep this file lean.
 
@@ -5260,7 +5434,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         search must not leave the wizard disabled.
         """
         try:
-            from chisurf.plugins.burst.burst_mle_analysis.utils import optimize_hyperparameters as _opt_hpo
+            from chisurf.plugins.burst.burst_mle_analysis.utils import (
+                optimize_hyperparameters as _opt_hpo,
+            )
+
             self._set_inputs_frozen(True)
             return _opt_hpo(self, n_iter=n_iter, bounds=bounds, seed=seed, weights=weights)
         except Exception as e:
@@ -5279,7 +5456,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             self,
             "Save All Settings",
             str(Path.home() / "mle_wizard_settings.json"),
-            "JSON Files (*.json)"
+            "JSON Files (*.json)",
         )
         if not path:
             return
@@ -5298,10 +5475,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             "tttr_file_type": self.channel_definer.filetype or "Auto",
             "channel_settings": self.channel_settings,
             "detector_settings": detwiz.get_settings(),
-            "micro_time_binning": self.micro_time_binning
+            "micro_time_binning": self.micro_time_binning,
         }
 
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(payload, f, indent=4, cls=NumpyEncoder)
 
         # show the file in both line edits
@@ -5317,10 +5494,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """
         start = self._settings_start_directory()
         path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Load All Settings",
-            str(start),
-            "JSON Files (*.json)"
+            self, "Load All Settings", str(start), "JSON Files (*.json)"
         )
         if not path:
             return
@@ -5377,7 +5551,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 return
         else:
             try:
-                with open(source, "r") as fp:
+                with open(source) as fp:
                     payload = json.load(fp)
             except (OSError, ValueError) as exc:
                 cs.logging.error("could not read settings from %s: %s", source, exc)
@@ -5474,21 +5648,20 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.update_fit()
 
         self._set_status(
-            f"All settings loaded from:\n{source}" if source is not None
-            else "All settings loaded"
+            f"All settings loaded from:\n{source}" if source is not None else "All settings loaded"
         )
 
 
-if __name__ == 'plugin':
+if __name__ == "plugin":
     mle = MLELifetimeAnalysisWizard()
     mle.show()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
     mle = MLELifetimeAnalysisWizard()
-    mle.setWindowTitle('MLE Burstwise Analysis')
+    mle.setWindowTitle("MLE Burstwise Analysis")
     mle.show()
     sys.exit(app.exec_())

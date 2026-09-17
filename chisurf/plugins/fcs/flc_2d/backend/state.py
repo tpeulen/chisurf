@@ -25,7 +25,7 @@ class FlcTwoDState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FlcTwoDState":
+    def from_dict(cls, data: dict[str, Any]) -> FlcTwoDState:
         """Create state from a JSON-compatible payload."""
         return cls(
             tttr_path=data.get("tttr_path"),

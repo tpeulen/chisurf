@@ -10,6 +10,7 @@ With this mixin the picker needs no bespoke widget -- a ``choice`` over
 :attr:`~EquationCatalogueMixin.catalogue_names` writing
 :attr:`~EquationCatalogueMixin.model_name` is enough.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -127,8 +128,7 @@ class EquationCatalogueMixin:
             chisurf.logging.warning(f"ParseModel: no catalogue entry named {name!r}")
             return
         self._catalogue_state()["name"] = name
-        setattr(self, self.catalogue_target_attr,
-                str(entry.get(self.catalogue_source_key, "x*0")))
+        setattr(self, self.catalogue_target_attr, str(entry.get(self.catalogue_source_key, "x*0")))
         self.apply_initial_values(name)
 
     @property

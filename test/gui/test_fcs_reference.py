@@ -5,6 +5,7 @@ model's current values otherwise. They lived on the hand-built parse widget
 and were lost when that editor became JSON-described; they are registered in
 ``chisurf.core.plotting.reference_modes`` now and the FCS catalogue names them.
 """
+
 from __future__ import annotations
 
 import types
@@ -23,7 +24,8 @@ G = np.array([2.2, 2.0, 1.7])
 def _model(**values):
     """A model whose parameters have the given current values."""
     return types.SimpleNamespace(
-        parameters_all_dict={k: types.SimpleNamespace(value=v) for k, v in values.items()})
+        parameters_all_dict={k: types.SimpleNamespace(value=v) for k, v in values.items()}
+    )
 
 
 def _mode(key, model):
@@ -32,7 +34,8 @@ def _mode(key, model):
 
 def _context(model, y, **parameters):
     return plot_transforms.PlotReferenceContext(
-        fit=None, model=model, curve_key="data", x=X, y=y, curves={}, parameters=parameters)
+        fit=None, model=model, curve_key="data", x=X, y=y, curves={}, parameters=parameters
+    )
 
 
 def test_fcs_diffusion_reference_excludes_baseline():

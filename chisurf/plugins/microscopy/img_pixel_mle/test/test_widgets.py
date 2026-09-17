@@ -151,7 +151,7 @@ def test_fit_model_selector_rebuilds_parameter_rows():
     # The registry-driven selector: switching the fit model re-emits the
     # parameter editor with exactly that model's free parameters, and editing a
     # slot writes into the active model's start vector.
-    from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
+    from chisurf.core.fluorescence.mle.fit2x import Fit2xModel, parameter_names_of
     from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import (
         PixelMleViewModel,
     )

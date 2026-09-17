@@ -62,9 +62,9 @@ __all__ = [
 SEVERITIES = ("error", "warning", "info")
 
 _SEVERITY_STYLE = {
-    "error": ("⛔", "#b3261e"),      # ⛔
-    "warning": ("⚠", "#a1670a"),    # ⚠
-    "info": ("ℹ", "#31567f"),       # ℹ
+    "error": ("⛔", "#b3261e"),  # ⛔
+    "warning": ("⚠", "#a1670a"),  # ⚠
+    "info": ("ℹ", "#31567f"),  # ℹ
 }
 
 
@@ -102,7 +102,7 @@ class BoundMsg:
     code never constructs one directly.
     """
 
-    def __init__(self, unbound: Msg, group: "MessageGroup", name: str):
+    def __init__(self, unbound: Msg, group: MessageGroup, name: str):
         self._unbound = unbound
         self._group = group
         self._name = name
@@ -148,7 +148,7 @@ class BoundMsg:
             except Exception:
                 return self._unbound.format_string
 
-    def __call__(self, *args, **kwargs) -> "BoundMsg":
+    def __call__(self, *args, **kwargs) -> BoundMsg:
         """Raise the message, formatted with ``args``/``kwargs``.
 
         Raising an already-shown message with new arguments updates its text.
@@ -182,9 +182,9 @@ class MessageGroup:
     #: One of :data:`SEVERITIES`; set by the three concrete groups below.
     severity: str = "info"
 
-    def __init__(self, widget: "MessagesMixin"):
+    def __init__(self, widget: MessagesMixin):
         self.widget = widget
-        self._messages: typing.Dict[str, BoundMsg] = {}
+        self._messages: dict[str, BoundMsg] = {}
         # Walk the MRO so an inherited declaration is bound too, with the most
         # derived declaration winning.
         for cls in reversed(type(self).__mro__):
@@ -207,12 +207,12 @@ class MessageGroup:
             setattr(self, name, bound)
 
     @property
-    def messages(self) -> typing.Tuple[BoundMsg, ...]:
+    def messages(self) -> tuple[BoundMsg, ...]:
         """Every message declared in this group, bound."""
         return tuple(self._messages.values())
 
     @property
-    def active(self) -> typing.Tuple[BoundMsg, ...]:
+    def active(self) -> tuple[BoundMsg, ...]:
         """The messages currently shown, in declaration order."""
         return tuple(m for m in self._messages.values() if m.is_shown)
 
@@ -290,9 +290,7 @@ class MessageBar(QtWidgets.QWidget):
         if len(messages) > 1:
             text += f"  (+{len(messages) - 1})"
         metrics = QtGui.QFontMetrics(self._label.font())
-        self._label.setText(
-            metrics.elidedText(text, QtCore.Qt.ElideRight, self.max_width)
-        )
+        self._label.setText(metrics.elidedText(text, QtCore.Qt.ElideRight, self.max_width))
         self._label.setStyleSheet(f"color: {colour};")
         self.setToolTip(
             "\n".join(
@@ -338,12 +336,12 @@ class MessagesMixin:
     # -- querying -------------------------------------------------------------
 
     @property
-    def message_groups(self) -> typing.Tuple[MessageGroup, ...]:
+    def message_groups(self) -> tuple[MessageGroup, ...]:
         """The three bound groups, most severe first."""
         return (self.Error, self.Warning, self.Information)
 
     @property
-    def active_messages(self) -> typing.Tuple[BoundMsg, ...]:
+    def active_messages(self) -> tuple[BoundMsg, ...]:
         """Every active message, most severe first."""
         return tuple(m for group in self.message_groups for m in group.active)
 
@@ -355,8 +353,7 @@ class MessagesMixin:
     # -- rendering ------------------------------------------------------------
 
     def install_message_bar(
-            self,
-            host: typing.Union[QtWidgets.QLayout, QtWidgets.QStatusBar, None] = None
+        self, host: QtWidgets.QLayout | QtWidgets.QStatusBar | None = None
     ) -> MessageBar:
         """Create the message bar and place it in ``host``.
 
@@ -389,11 +386,9 @@ class MessagesMixin:
         bar = MessageBar(self if isinstance(self, QtWidgets.QWidget) else None)
         bar.setVisible(False)
         self._message_bar = bar
-        if host is not None and not isinstance(
-                host, (QtWidgets.QLayout, QtWidgets.QStatusBar)):
+        if host is not None and not isinstance(host, (QtWidgets.QLayout, QtWidgets.QStatusBar)):
             raise TypeError(
-                f"message bar host must be a QLayout or a QStatusBar, "
-                f"not {type(host).__name__}"
+                f"message bar host must be a QLayout or a QStatusBar, not {type(host).__name__}"
             )
         if isinstance(host, QtWidgets.QStatusBar):
             # No stretch: a stretched permanent widget squeezes the transient

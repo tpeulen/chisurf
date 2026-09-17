@@ -6,9 +6,9 @@ Covers: NaN/Inf handling, large payloads, concurrency, timeouts,
 connection loss, error propagation, rapid mutations.
 """
 
-import math
 import threading
 import time
+
 import pytest
 
 from chisurf.core.api._client import ChisurfClient, RemoteError
@@ -37,19 +37,21 @@ def server_client():
 
 
 class TestInfNanEdgeCases:
-
     def test_inf_value_in_curve_data(self, server_client):
         """Server accepts float('inf') in curve_data y values."""
         client, server = server_client
-        result = client.call("dataset.load", {
-            "reader_name": "InfReader",
-            "filename": "/tmp/inf_test.dat",
-            "name": "InfTest",
-            "curve_data": {
-                "x": [0.0, 1.0, 2.0],
-                "y": [float('inf'), 1.0, float('-inf')],
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "InfReader",
+                "filename": "/tmp/inf_test.dat",
+                "name": "InfTest",
+                "curve_data": {
+                    "x": [0.0, 1.0, 2.0],
+                    "y": [float("inf"), 1.0, float("-inf")],
+                },
             },
-        })
+        )
         assert result.get("ok") is True
 
         di = result["dataset_index"]
@@ -62,15 +64,18 @@ class TestInfNanEdgeCases:
     def test_nan_value_in_curve_data(self, server_client):
         """Server accepts float('nan') in curve_data."""
         client, server = server_client
-        result = client.call("dataset.load", {
-            "reader_name": "NaNReader",
-            "filename": "/tmp/nan_test.dat",
-            "name": "NaNTest",
-            "curve_data": {
-                "x": [0.0, 1.0],
-                "y": [float('nan'), 2.0],
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "NaNReader",
+                "filename": "/tmp/nan_test.dat",
+                "name": "NaNTest",
+                "curve_data": {
+                    "x": [0.0, 1.0],
+                    "y": [float("nan"), 2.0],
+                },
             },
-        })
+        )
         assert result.get("ok") is True
 
         di = result["dataset_index"]
@@ -83,12 +88,15 @@ class TestInfNanEdgeCases:
     def test_set_parameter_value_inf(self, server_client):
         """Setting parameter value to inf works server-side."""
         client, server = server_client
-        ds = client.call("dataset.load", {
-            "reader_name": "PInfReader",
-            "filename": "/tmp/pinf_test.dat",
-            "name": "PInfTest",
-            "curve_data": {"x": [0.0], "y": [1.0]},
-        })
+        ds = client.call(
+            "dataset.load",
+            {
+                "reader_name": "PInfReader",
+                "filename": "/tmp/pinf_test.dat",
+                "name": "PInfTest",
+                "curve_data": {"x": [0.0], "y": [1.0]},
+            },
+        )
         assert ds.get("ok") is True
         ft = client.fit__create(dataset_index=ds["dataset_index"], model_name=TCSPC_MODEL)
         if not ft.get("ok"):
@@ -98,18 +106,21 @@ class TestInfNanEdgeCases:
         if not params:
             pytest.skip("no parameters available")
         pname = params[0]["name"]
-        result = client.parameter__set_value(pname, float('inf'), fit_index=ft["fit_index"])
+        result = client.parameter__set_value(pname, float("inf"), fit_index=ft["fit_index"])
         assert result.get("ok") is True
 
     def test_nan_in_parameter_bounds(self, server_client):
         """NaN in parameter bounds is forwarded correctly."""
         client, server = server_client
-        ds = client.call("dataset.load", {
-            "reader_name": "BoundsNaN",
-            "filename": "/tmp/bounds_nan.dat",
-            "name": "BoundsNaN",
-            "curve_data": {"x": [0.0], "y": [1.0]},
-        })
+        ds = client.call(
+            "dataset.load",
+            {
+                "reader_name": "BoundsNaN",
+                "filename": "/tmp/bounds_nan.dat",
+                "name": "BoundsNaN",
+                "curve_data": {"x": [0.0], "y": [1.0]},
+            },
+        )
         assert ds.get("ok") is True
         ft = client.fit__create(dataset_index=ds["dataset_index"], model_name=TCSPC_MODEL)
         if not ft.get("ok"):
@@ -119,24 +130,28 @@ class TestInfNanEdgeCases:
         if not params:
             pytest.skip("no parameters available")
         pname = params[0]["name"]
-        result = client.parameter__set_bounds(pname, float('-inf'), float('inf'), fit_index=ft["fit_index"])
+        result = client.parameter__set_bounds(
+            pname, float("-inf"), float("inf"), fit_index=ft["fit_index"]
+        )
         assert result.get("ok") is True
 
 
 class TestLargePayloadEdgeCases:
-
     def test_large_x_y_arrays(self, server_client):
         """Large curve data arrays (100k points) transfer correctly."""
         client, server = server_client
         n = 100_000
         x = [float(i) for i in range(n)]
         y = [float(i * i) for i in range(n)]
-        result = client.call("dataset.load", {
-            "reader_name": "LargeReader",
-            "filename": "/tmp/large_test.dat",
-            "name": "LargeTest",
-            "curve_data": {"x": x, "y": y},
-        })
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "LargeReader",
+                "filename": "/tmp/large_test.dat",
+                "name": "LargeTest",
+                "curve_data": {"x": x, "y": y},
+            },
+        )
         assert result.get("ok") is True
         di = result["dataset_index"]
         info = client.dataset__get(dataset_index=di)
@@ -148,12 +163,15 @@ class TestLargePayloadEdgeCases:
         n = 10_000
         x = [float(i) for i in range(n)]
         y = [float(i * 0.5) for i in range(n)]
-        result = client.call("dataset.load", {
-            "reader_name": "RTReader",
-            "filename": "/tmp/rt_test.dat",
-            "name": "RTLarge",
-            "curve_data": {"x": x, "y": y},
-        })
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "RTReader",
+                "filename": "/tmp/rt_test.dat",
+                "name": "RTLarge",
+                "curve_data": {"x": x, "y": y},
+            },
+        )
         assert result.get("ok") is True
         di = result["dataset_index"]
         curve = client.dataset__curve_data(dataset_index=di)
@@ -165,7 +183,6 @@ class TestLargePayloadEdgeCases:
 
 
 class TestConcurrencyEdgeCases:
-
     def test_concurrent_pings(self, server_client):
         """Multiple concurrent pings complete successfully (each thread has own client)."""
         client, server = server_client
@@ -196,12 +213,15 @@ class TestConcurrencyEdgeCases:
         """Rapid add/clear cycles don't cause errors."""
         client, server = server_client
         for i in range(10):
-            r = client.call("dataset.load", {
-                "reader_name": "RapidReader",
-                "filename": f"/tmp/rapid_{i}.dat",
-                "name": f"Rapid{i}",
-                "curve_data": {"x": [0.0, 1.0], "y": [float(i), float(i + 1)]},
-            })
+            r = client.call(
+                "dataset.load",
+                {
+                    "reader_name": "RapidReader",
+                    "filename": f"/tmp/rapid_{i}.dat",
+                    "name": f"Rapid{i}",
+                    "curve_data": {"x": [0.0, 1.0], "y": [float(i), float(i + 1)]},
+                },
+            )
             assert r.get("ok") is True
         assert len(client.dataset__list()) == 10
         r = client.dataset__clear()
@@ -211,12 +231,15 @@ class TestConcurrencyEdgeCases:
     def test_rapid_fit_add_remove(self, server_client):
         """Rapid add/remove fit cycles work cleanly."""
         client, server = server_client
-        client.call("dataset.load", {
-            "reader_name": "RapidFit",
-            "filename": "/tmp/rapid_fit.dat",
-            "name": "RapidFitDS",
-            "curve_data": {"x": [0.0, 1.0, 2.0], "y": [0.0, 1.0, 4.0]},
-        })
+        client.call(
+            "dataset.load",
+            {
+                "reader_name": "RapidFit",
+                "filename": "/tmp/rapid_fit.dat",
+                "name": "RapidFitDS",
+                "curve_data": {"x": [0.0, 1.0, 2.0], "y": [0.0, 1.0, 4.0]},
+            },
+        )
         fits = []
         for i in range(5):
             ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
@@ -240,12 +263,15 @@ class TestConcurrencyEdgeCases:
                 c = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
                 c.connect()
                 for i in range(5):
-                    c.call("dataset.load", {
-                        "reader_name": "Concur",
-                        "filename": f"/tmp/concur_{i}.dat",
-                        "name": f"Concur{i}",
-                        "curve_data": {"x": [0.0], "y": [float(i)]},
-                    })
+                    c.call(
+                        "dataset.load",
+                        {
+                            "reader_name": "Concur",
+                            "filename": f"/tmp/concur_{i}.dat",
+                            "name": f"Concur{i}",
+                            "curve_data": {"x": [0.0], "y": [float(i)]},
+                        },
+                    )
                 c.close()
             except Exception as e:
                 errors.append(f"adder: {e}")
@@ -272,7 +298,6 @@ class TestConcurrencyEdgeCases:
 
 
 class TestTimeoutAndConnectionEdgeCases:
-
     def test_timeout_returns_error(self, server_client):
         """Short timeout on unreachable server returns error."""
         client, server = server_client
@@ -293,12 +318,15 @@ class TestTimeoutAndConnectionEdgeCases:
         """Params of the wrong type raise rather than crash the server."""
         client, server = server_client
         with pytest.raises(RemoteError):
-            client.call("dataset.load", {
-                "reader_name": "BadReader",
-                "filename": "/tmp/bad.dat",
-                "name": "Bad",
-                "curve_data": {"x": "not_a_list", "y": "also_not_a_list"},
-            })
+            client.call(
+                "dataset.load",
+                {
+                    "reader_name": "BadReader",
+                    "filename": "/tmp/bad.dat",
+                    "name": "Bad",
+                    "curve_data": {"x": "not_a_list", "y": "also_not_a_list"},
+                },
+            )
         assert client.meta__ping().get("ok") is True
 
     def test_missing_required_param(self, server_client):
@@ -318,7 +346,6 @@ class TestTimeoutAndConnectionEdgeCases:
 
 
 class TestErrorPropagation:
-
     def test_server_exception_returns_error(self):
         """When a service raises, dispatcher returns structured error."""
         from chisurf.server.dispatcher import ServiceDispatcher
@@ -339,6 +366,7 @@ class TestErrorPropagation:
         """Malformed JSON-RPC request returns parse error."""
         client, server = server_client
         import zmq
+
         ctx = zmq.Context()
         sock = ctx.socket(zmq.REQ)
         cmd_port = client._client._cmd_port
@@ -359,7 +387,6 @@ class TestErrorPropagation:
 
 
 class TestSerializerEdgeCases:
-
     def test_very_long_method_name(self, server_client):
         """A 500-character method name is unknown, not fatal."""
         client, server = server_client
@@ -371,12 +398,15 @@ class TestSerializerEdgeCases:
         """Unicode characters in names survive round trip."""
         client, server = server_client
         name = "Datenreihe äöü 测试 📊"
-        result = client.call("dataset.load", {
-            "reader_name": "UnicodeReader",
-            "filename": "/tmp/unicode_test.dat",
-            "name": name,
-            "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
-        })
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "UnicodeReader",
+                "filename": "/tmp/unicode_test.dat",
+                "name": name,
+                "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
+            },
+        )
         assert result.get("ok") is True
         info = client.dataset__get(dataset_index=result["dataset_index"])
         assert info.get("name") == name
@@ -384,12 +414,15 @@ class TestSerializerEdgeCases:
     def test_empty_curve_data(self, server_client):
         """Empty x/y lists in curve_data are accepted."""
         client, server = server_client
-        result = client.call("dataset.load", {
-            "reader_name": "EmptyReader",
-            "filename": "/tmp/empty.dat",
-            "name": "Empty",
-            "curve_data": {"x": [], "y": []},
-        })
+        result = client.call(
+            "dataset.load",
+            {
+                "reader_name": "EmptyReader",
+                "filename": "/tmp/empty.dat",
+                "name": "Empty",
+                "curve_data": {"x": [], "y": []},
+            },
+        )
         assert result.get("ok") is True
         info = client.dataset__get(dataset_index=result["dataset_index"])
         assert info.get("length") == 0

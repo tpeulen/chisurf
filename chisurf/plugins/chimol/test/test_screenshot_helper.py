@@ -9,6 +9,7 @@ These need a window server -- the whole point of the helper is that Qt's
 offscreen platform cannot make an OpenGL context -- so they skip where there is
 none rather than pretending to pass.
 """
+
 from __future__ import annotations
 
 import os
@@ -89,6 +90,7 @@ def test_the_window_grab_composites_the_gl_view_in(app):
     The GL child is painted a solid colour, so a whole-window grab that failed
     to composite would show the parent's background there instead.
     """
+
     class _Solid(QtWidgets.QOpenGLWidget):
         def paintGL(self):  # noqa: N802 - Qt API
             from OpenGL import GL

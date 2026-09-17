@@ -136,36 +136,45 @@ def write_legacy_export(
         rows: list = []
         blocks = [
             ("BURST SEARCH PARAMETERS", list((search_parameters or {}).items())),
-            ("THRESHOLDS", [
-                ("total_min", thresholds.total_min),
-                ("total_max", thresholds.total_max),
-                ("Tau_min", thresholds.duration_min_ms),
-                ("Tau_max", thresholds.duration_max_ms),
-                ("E_min", thresholds.e_range[0]),
-                ("E_max", thresholds.e_range[1]),
-                ("S_min", thresholds.s_range[0]),
-                ("S_max", thresholds.s_range[1]),
-                ("S_min_1D", thresholds.s_range_for_e[0]),
-                ("S_max_1D", thresholds.s_range_for_e[1]),
-                ("E_min_1D", thresholds.e_range_for_s[0]),
-                ("E_max_1D", thresholds.e_range_for_s[1]),
-            ]),
+            (
+                "THRESHOLDS",
+                [
+                    ("total_min", thresholds.total_min),
+                    ("total_max", thresholds.total_max),
+                    ("Tau_min", thresholds.duration_min_ms),
+                    ("Tau_max", thresholds.duration_max_ms),
+                    ("E_min", thresholds.e_range[0]),
+                    ("E_max", thresholds.e_range[1]),
+                    ("S_min", thresholds.s_range[0]),
+                    ("S_max", thresholds.s_range[1]),
+                    ("S_min_1D", thresholds.s_range_for_e[0]),
+                    ("S_max_1D", thresholds.s_range_for_e[1]),
+                    ("E_min_1D", thresholds.e_range_for_s[0]),
+                    ("E_max_1D", thresholds.e_range_for_s[1]),
+                ],
+            ),
             ("EXPERIMENTAL", (metadata or Metadata()).rows()),
-            ("ACCURATE FRET", [
-                ("bkg_DD", corrections.bg_dd),
-                ("bkg_DA", corrections.bg_da),
-                ("bkg_AA", corrections.bg_aa),
-                ("alpha", corrections.alpha),
-                ("delta", corrections.delta),
-                ("gamma", corrections.gamma),
-                ("beta", corrections.beta),
-            ]),
-            ("PLOT OPTIONS", [
-                ("bins_E", len(histograms.e_centres)),
-                ("bins_S", len(histograms.s_centres)),
-                ("n_bursts", int(histograms.e.size)),
-                ("n_bursts_total", int(histograms.n_bursts_total)),
-            ]),
+            (
+                "ACCURATE FRET",
+                [
+                    ("bkg_DD", corrections.bg_dd),
+                    ("bkg_DA", corrections.bg_da),
+                    ("bkg_AA", corrections.bg_aa),
+                    ("alpha", corrections.alpha),
+                    ("delta", corrections.delta),
+                    ("gamma", corrections.gamma),
+                    ("beta", corrections.beta),
+                ],
+            ),
+            (
+                "PLOT OPTIONS",
+                [
+                    ("bins_E", len(histograms.e_centres)),
+                    ("bins_S", len(histograms.s_centres)),
+                    ("n_bursts", int(histograms.e.size)),
+                    ("n_bursts_total", int(histograms.n_bursts_total)),
+                ],
+            ),
         ]
         for title, items in blocks:
             rows.append([title])
@@ -176,14 +185,16 @@ def write_legacy_export(
 
     if parts.e_histogram:
         path = stem.with_name(stem.name + "_hist_E.csv")
-        _write(path, _histogram_rows(
-            "E", histograms.e_centres, histograms.e_hist, e_fit, e_components))
+        _write(
+            path, _histogram_rows("E", histograms.e_centres, histograms.e_hist, e_fit, e_components)
+        )
         written.append(path)
 
     if parts.s_histogram:
         path = stem.with_name(stem.name + "_hist_S.csv")
-        _write(path, _histogram_rows(
-            "S", histograms.s_centres, histograms.s_hist, s_fit, s_components))
+        _write(
+            path, _histogram_rows("S", histograms.s_centres, histograms.s_hist, s_fit, s_components)
+        )
         written.append(path)
 
     if parts.histogram_2d:
@@ -195,8 +206,7 @@ def write_legacy_export(
 
     if parts.original_bursts:
         if not burst_table:
-            raise ValueError(
-                "parts.original_bursts is set but no burst_table was given")
+            raise ValueError("parts.original_bursts is set but no burst_table was given")
         names = list(burst_table)
         columns = [np.asarray(burst_table[name]).ravel() for name in names]
         rows = [["BURSTS"], names]
@@ -220,8 +230,12 @@ def _histogram_rows(axis: str, centres, counts, fit, components) -> list:
     header = [f"BIN CENTERS {axis}", f"{axis} HISTOGRAM", f"{axis} FIT"]
     header += [f"{axis} GUESS {i + 1}" for i in range(len(components))]
 
-    columns = [np.asarray(centres, dtype=float).ravel(),
-               np.asarray(counts, dtype=float).ravel(), fit_arr, *components]
+    columns = [
+        np.asarray(centres, dtype=float).ravel(),
+        np.asarray(counts, dtype=float).ravel(),
+        fit_arr,
+        *components,
+    ]
     height = max((c.size for c in columns), default=0)
     padded = [np.pad(c, (0, height - c.size)) for c in columns]
     return [header, *zip(*padded)]

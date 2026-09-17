@@ -21,7 +21,34 @@ from .colocalization import (
     spearman,
     van_steensel,
 )
+from .frap import (
+    FrapResult,
+    fit_rfrap,
+    normalise_frap_stack,
+    recovery_curve,
+    rfrap_model,
+)
 from .image_source import ImageStack, is_photon_stream, load_image_stack
+from .number_brightness import (
+    GAMMA_3D_GAUSSIAN,
+    NB_PIPELINE_DEFAULTS,
+    analog_calibration,
+    ccnb_maps,
+    correct_stack,
+    dead_time_correct,
+    detrend_segmented,
+    gaussian_filter_nan,
+    nb_default_ranges,
+    nb_gate_mask,
+    nb_histogram_2d,
+    nb_maps,
+    nb_pipeline,
+    nb_threshold_mask,
+    photon_counting_histogram,
+    prepare_stack,
+    smooth_map,
+    smoothing_kernel,
+)
 from .pixel_maps import (
     add_maps_to_hdf5,
     build_clsm,
@@ -37,7 +64,6 @@ from .pixel_maps import (
     mfd_intensity_column,
     micro_time_channels_per_period,
     micro_time_histogram,
-    nb_maps,
     phasor_frames,
     phasor_maps,
     prefill_windows,
@@ -52,24 +78,16 @@ from .pixel_maps import (
     windows_from_payload,
     write_imaging_hdf5,
 )
+from .ratio_fret import RatioTrace, ratio_image, ratio_trace
 from .simulate import (
+    DiffusionScan,
     Molecule,
     SimulatedImage,
     have_simulator,
     load_image_map,
-    simulate_clsm_from_maps,
-    DiffusionScan,
     simulate_clsm_diffusion,
+    simulate_clsm_from_maps,
     simulate_clsm_molecules,
-)
-
-from .ratio_fret import RatioTrace, ratio_image, ratio_trace
-from .frap import (
-    FrapResult,
-    fit_rfrap,
-    normalise_frap_stack,
-    recovery_curve,
-    rfrap_model,
 )
 
 __all__ = [
@@ -131,6 +149,23 @@ __all__ = [
     "total_line_durations",
     "mfd_intensity_column",
     "nb_maps",
+    "GAMMA_3D_GAUSSIAN",
+    "NB_PIPELINE_DEFAULTS",
+    "analog_calibration",
+    "ccnb_maps",
+    "correct_stack",
+    "dead_time_correct",
+    "detrend_segmented",
+    "gaussian_filter_nan",
+    "nb_default_ranges",
+    "nb_gate_mask",
+    "nb_histogram_2d",
+    "nb_pipeline",
+    "nb_threshold_mask",
+    "photon_counting_histogram",
+    "prepare_stack",
+    "smooth_map",
+    "smoothing_kernel",
     "phasor_frames",
     "phasor_maps",
     "intensity_maps",

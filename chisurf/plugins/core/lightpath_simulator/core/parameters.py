@@ -36,8 +36,12 @@ import numpy as np
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 
-__all__ = ["LightPathParameters", "register_lightpath_parameters",
-           "unregister_lightpath_parameters", "registered_lightpath_parameters"]
+__all__ = [
+    "LightPathParameters",
+    "register_lightpath_parameters",
+    "unregister_lightpath_parameters",
+    "registered_lightpath_parameters",
+]
 
 
 def _attribute_name(prefix: str, *parts: str) -> str:
@@ -79,9 +83,13 @@ class LightPathParameters(FittingParameterGroup):
         Labels found in the payload, in its order.
     """
 
-    def __init__(self, matrices: dict | None = None, name: str = "Optical path",
-                 quantum_yields: dict | None = None,
-                 detection_efficiencies: dict | None = None):
+    def __init__(
+        self,
+        matrices: dict | None = None,
+        name: str = "Optical path",
+        quantum_yields: dict | None = None,
+        detection_efficiencies: dict | None = None,
+    ):
         """Create the group from a light-path crosstalk payload."""
         super().__init__(name=name)
         self.lasers: list[str] = []
@@ -90,20 +98,31 @@ class LightPathParameters(FittingParameterGroup):
         #: ("ex"|"em"|"qy"|"g"|"factor", label…) -> FittingParameter
         self._by_key: dict[tuple, FittingParameter] = {}
         # Derived read-outs: recomputed by update_factors() from the probabilities.
-        self._gamma = FittingParameter(value=1.0, name="gamma (optics)", fixed=True,
-                                       lb=1e-6, ub=1e6, bounds_on=True)
-        self._alpha = FittingParameter(value=0.0, name="alpha (optics)", fixed=True,
-                                       lb=0.0, ub=1.0, bounds_on=True)
-        self._delta = FittingParameter(value=0.0, name="delta (optics)", fixed=True,
-                                       lb=0.0, ub=1.0, bounds_on=True)
+        self._gamma = FittingParameter(
+            value=1.0, name="gamma (optics)", fixed=True, lb=1e-6, ub=1e6, bounds_on=True
+        )
+        self._alpha = FittingParameter(
+            value=0.0, name="alpha (optics)", fixed=True, lb=0.0, ub=1.0, bounds_on=True
+        )
+        self._delta = FittingParameter(
+            value=0.0, name="delta (optics)", fixed=True, lb=0.0, ub=1.0, bounds_on=True
+        )
         if matrices:
-            self.adopt(matrices, quantum_yields=quantum_yields,
-                       detection_efficiencies=detection_efficiencies)
+            self.adopt(
+                matrices,
+                quantum_yields=quantum_yields,
+                detection_efficiencies=detection_efficiencies,
+            )
         self.find_parameters()
 
     # ── construction ──
-    def adopt(self, matrices: dict, *, quantum_yields: dict | None = None,
-              detection_efficiencies: dict | None = None) -> None:
+    def adopt(
+        self,
+        matrices: dict,
+        *,
+        quantum_yields: dict | None = None,
+        detection_efficiencies: dict | None = None,
+    ) -> None:
         """Create or update a parameter per matrix entry, quantum yield and efficiency.
 
         Parameters
@@ -124,25 +143,35 @@ class LightPathParameters(FittingParameterGroup):
         created = False
         for i, laser in enumerate(lasers):
             for j, dye in enumerate(dyes):
-                created |= self._set(("ex", laser, dye), f"ex[{laser}→{dye}]",
-                                     float(excitation[i, j]), (0.0, 1.0))
+                created |= self._set(
+                    ("ex", laser, dye), f"ex[{laser}→{dye}]", float(excitation[i, j]), (0.0, 1.0)
+                )
         for i, dye in enumerate(emission_dyes):
             for j, detector in enumerate(detectors):
-                created |= self._set(("em", dye, detector), f"em[{dye}→{detector}]",
-                                     float(emission[i, j]), (0.0, 1.0))
+                created |= self._set(
+                    ("em", dye, detector),
+                    f"em[{dye}→{detector}]",
+                    float(emission[i, j]),
+                    (0.0, 1.0),
+                )
         for dye in self.dyes:
-            created |= self._set(("qy", dye), f"QY[{dye}]",
-                                 float((quantum_yields or {}).get(dye, 1.0)), (0.0, 1.0))
+            created |= self._set(
+                ("qy", dye), f"QY[{dye}]", float((quantum_yields or {}).get(dye, 1.0)), (0.0, 1.0)
+            )
         for detector in self.detectors:
-            created |= self._set(("g", detector), f"g[{detector}]",
-                                 float((detection_efficiencies or {}).get(detector, 1.0)),
-                                 (0.0, 10.0))
+            created |= self._set(
+                ("g", detector),
+                f"g[{detector}]",
+                float((detection_efficiencies or {}).get(detector, 1.0)),
+                (0.0, 10.0),
+            )
         if created:
             self.find_parameters()
         self.update_factors()
 
-    def _set(self, key: tuple, label: str, value: float,
-             bounds: tuple[float, float] | None) -> bool:
+    def _set(
+        self, key: tuple, label: str, value: float, bounds: tuple[float, float] | None
+    ) -> bool:
         """Create or update one parameter; return True when it was created."""
         if not np.isfinite(value):
             return False
@@ -151,7 +180,9 @@ class LightPathParameters(FittingParameterGroup):
             parameter.value = float(value)
             return False
         parameter = FittingParameter(
-            value=float(value), name=label, fixed=False,
+            value=float(value),
+            name=label,
+            fixed=False,
             lb=bounds[0] if bounds else float("-inf"),
             ub=bounds[1] if bounds else float("inf"),
             bounds_on=bounds is not None,
@@ -200,21 +231,33 @@ class LightPathParameters(FittingParameterGroup):
         dict
             ``{"excitation": {...}, "emission": {...}}`` in the payload format.
         """
-        excitation = [[self.value("ex", laser, dye) for dye in self.dyes]
-                      for laser in self.lasers]
-        emission = [[self.value("em", dye, detector) for detector in self.detectors]
-                    for dye in self.dyes]
+        excitation = [[self.value("ex", laser, dye) for dye in self.dyes] for laser in self.lasers]
+        emission = [
+            [self.value("em", dye, detector) for detector in self.detectors] for dye in self.dyes
+        ]
         return {
-            "excitation": {"rows": list(self.lasers), "columns": list(self.dyes),
-                           "values": excitation},
-            "emission": {"rows": list(self.dyes), "columns": list(self.detectors),
-                         "values": emission},
+            "excitation": {
+                "rows": list(self.lasers),
+                "columns": list(self.dyes),
+                "values": excitation,
+            },
+            "emission": {
+                "rows": list(self.dyes),
+                "columns": list(self.detectors),
+                "values": emission,
+            },
         }
 
-    def update_factors(self, *, donor: str | None = None, acceptor: str | None = None,
-                       green_detector: str | None = None, red_detector: str | None = None,
-                       green_laser: str | None = None,
-                       red_laser: str | None = None) -> dict:
+    def update_factors(
+        self,
+        *,
+        donor: str | None = None,
+        acceptor: str | None = None,
+        green_detector: str | None = None,
+        red_detector: str | None = None,
+        green_laser: str | None = None,
+        red_laser: str | None = None,
+    ) -> dict:
         """Recompute ``gamma``/``alpha``/``delta`` from the current parameters.
 
         Parameters
@@ -243,7 +286,11 @@ class LightPathParameters(FittingParameterGroup):
         if not (donor and acceptor and green_detector and red_detector):
             return {"gamma": self.gamma, "alpha": self.alpha, "delta": self.delta}
         factors = lightpath_correction_factors(
-            self.as_matrices(), donor, acceptor, green_detector, red_detector,
+            self.as_matrices(),
+            donor,
+            acceptor,
+            green_detector,
+            red_detector,
             green_laser=green_laser or (self.lasers[0] if self.lasers else None),
             red_laser=red_laser or (self.lasers[1] if len(self.lasers) > 1 else None),
             gG=self.value("g", green_detector, default=1.0),
@@ -251,8 +298,11 @@ class LightPathParameters(FittingParameterGroup):
             qy_d=self.value("qy", donor, default=1.0),
             qy_a=self.value("qy", acceptor, default=1.0),
         )
-        for key, parameter in (("gamma", self._gamma), ("alpha", self._alpha),
-                               ("delta", self._delta)):
+        for key, parameter in (
+            ("gamma", self._gamma),
+            ("alpha", self._alpha),
+            ("delta", self._delta),
+        ):
             value = float(factors.get(key, float("nan")))
             if np.isfinite(value):
                 parameter.value = value
@@ -278,16 +328,19 @@ class LightPathParameters(FittingParameterGroup):
             Keyword arguments ready for ``auto_calibrate(..., lightpath=...)``.
         """
         donor = overrides.pop("donor", None) or (self.dyes[0] if self.dyes else None)
-        acceptor = overrides.pop("acceptor", None) or (
-            self.dyes[1] if len(self.dyes) > 1 else None)
+        acceptor = overrides.pop("acceptor", None) or (self.dyes[1] if len(self.dyes) > 1 else None)
         green = overrides.pop("green_detector", None) or (
-            self.detectors[0] if self.detectors else None)
+            self.detectors[0] if self.detectors else None
+        )
         red = overrides.pop("red_detector", None) or (
-            self.detectors[1] if len(self.detectors) > 1 else None)
+            self.detectors[1] if len(self.detectors) > 1 else None
+        )
         arguments = {
             "matrices": self.as_matrices(),
-            "donor": donor, "acceptor": acceptor,
-            "green_detector": green, "red_detector": red,
+            "donor": donor,
+            "acceptor": acceptor,
+            "green_detector": green,
+            "red_detector": red,
             "green_laser": self.lasers[0] if self.lasers else None,
             "red_laser": self.lasers[1] if len(self.lasers) > 1 else None,
             "gG": self.value("g", green, default=1.0),
@@ -303,11 +356,14 @@ class LightPathParameters(FittingParameterGroup):
 _REGISTERED: dict[str, LightPathParameters] = {}
 
 
-def register_lightpath_parameters(matrices: dict, *, owner_id: str = "lightpath",
-                                  label: str = "Optical path",
-                                  quantum_yields: dict | None = None,
-                                  detection_efficiencies: dict | None = None
-                                  ) -> LightPathParameters:
+def register_lightpath_parameters(
+    matrices: dict,
+    *,
+    owner_id: str = "lightpath",
+    label: str = "Optical path",
+    quantum_yields: dict | None = None,
+    detection_efficiencies: dict | None = None,
+) -> LightPathParameters:
     """Publish a simulated optical path in the Global View.
 
     Re-registering the same ``owner_id`` updates the existing group in place, so
@@ -335,14 +391,17 @@ def register_lightpath_parameters(matrices: dict, *, owner_id: str = "lightpath"
     group = _REGISTERED.get(owner_id)
     if group is None:
         group = LightPathParameters(
-            matrices, name=label, quantum_yields=quantum_yields,
+            matrices,
+            name=label,
+            quantum_yields=quantum_yields,
             detection_efficiencies=detection_efficiencies,
         )
         _REGISTERED[owner_id] = group
         register_parameter_group(group, owner_id=owner_id, label=label)
     else:
-        group.adopt(matrices, quantum_yields=quantum_yields,
-                    detection_efficiencies=detection_efficiencies)
+        group.adopt(
+            matrices, quantum_yields=quantum_yields, detection_efficiencies=detection_efficiencies
+        )
     return group
 
 

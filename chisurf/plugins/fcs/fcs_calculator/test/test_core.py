@@ -7,9 +7,19 @@ def test_core_compute_confocal_fix_D():
     from chisurf.plugins.fcs.fcs_calculator.core import compute_confocal
 
     r = compute_confocal(
-        tau_us=70.0, S=5.0, temp_C=20.0, eta_mPa_s=0.89, use_water_eta=True,
-        constraint="D", D_um2_s=400.0, rh_nm=0.5, veff_fL=0.4,
-        conc_nM=1.0, num_mols=0.0, invN=0.0, last_edited="conc",
+        tau_us=70.0,
+        S=5.0,
+        temp_C=20.0,
+        eta_mPa_s=0.89,
+        use_water_eta=True,
+        constraint="D",
+        D_um2_s=400.0,
+        rh_nm=0.5,
+        veff_fL=0.4,
+        conc_nM=1.0,
+        num_mols=0.0,
+        invN=0.0,
+        last_edited="conc",
     )
     assert abs(r["rh_nm"] - 0.5359) < 1e-3
     assert abs(r["veff_fL"] - 1.0436) < 1e-3
@@ -21,9 +31,19 @@ def test_inprocess_rpc_client_matches_core():
     from chisurf.plugins.fcs.fcs_calculator.gui.client import ConfocalCalcClient
 
     kwargs = dict(
-        tau_us=50.0, S=4.0, temp_C=25.0, eta_mPa_s=0.89, use_water_eta=True,
-        constraint="rh", D_um2_s=300.0, rh_nm=0.7, veff_fL=0.5,
-        conc_nM=2.0, num_mols=0.0, invN=0.0, last_edited="conc",
+        tau_us=50.0,
+        S=4.0,
+        temp_C=25.0,
+        eta_mPa_s=0.89,
+        use_water_eta=True,
+        constraint="rh",
+        D_um2_s=300.0,
+        rh_nm=0.7,
+        veff_fL=0.5,
+        conc_nM=2.0,
+        num_mols=0.0,
+        invN=0.0,
+        last_edited="conc",
     )
     direct = compute_confocal(**kwargs)
     r = ConfocalCalcClient().compute(**kwargs)

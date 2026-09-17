@@ -43,6 +43,7 @@ def _regions(sim):
     labels, _extra = detect_labels(sim.intensity, request_from_workflow(STANDARD).settings)
     return labels
 
+
 # Two molecules, distinct lifetimes, well separated.
 MOLECULES = [(8, 8, 1.0), (23, 23, 3.5)]
 
@@ -70,7 +71,9 @@ def _settings(sim, **overrides) -> RegionMleSettings:
 
 def test_segments_and_fits_two_simulated_molecules():
     sim = _sim()
-    result = fit_regions(sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
+    result = fit_regions(
+        sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
+    )
 
     assert isinstance(result, RegionMleResult)
     assert result.intensity_image.shape == (sim.n_pixel, sim.n_pixel)
@@ -79,8 +82,16 @@ def test_segments_and_fits_two_simulated_molecules():
 
     df = result.dataframe
     expected_cols = {
-        "label", "centroid_row", "centroid_col", "area", "n_photons_total",
-        "tau", "gamma", "r0", "rho", "2I*",
+        "label",
+        "centroid_row",
+        "centroid_col",
+        "area",
+        "n_photons_total",
+        "tau",
+        "gamma",
+        "r0",
+        "rho",
+        "2I*",
     }
     assert expected_cols.issubset(set(column_names(df)))
 
@@ -121,14 +132,11 @@ def test_batch_fit_matches_per_molecule(with_a_failing_region):
     common = dict(clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
     overrides = (
         dict(regions=_labels_with_an_empty_region(sim), min_photons=0)
-        if with_a_failing_region else {}
+        if with_a_failing_region
+        else {}
     )
-    batch = fit_regions(
-        sim.tttr, _settings(sim, **overrides), keep_curves=False, **common
-    )
-    serial = fit_regions(
-        sim.tttr, _settings(sim, **overrides), keep_curves=True, **common
-    )
+    batch = fit_regions(sim.tttr, _settings(sim, **overrides), keep_curves=False, **common)
+    serial = fit_regions(sim.tttr, _settings(sim, **overrides), keep_curves=True, **common)
     assert batch.n_molecules == serial.n_molecules
     assert batch.n_molecules == len(MOLECULES) + int(with_a_failing_region)
     assert column_names(batch.dataframe) == column_names(serial.dataframe)
@@ -180,8 +188,11 @@ def test_an_analysis_roi_confines_the_search():
     # (x0, y0, x1, y1) around the molecule at (row 8, col 8) only.
     around_first = RectangleROI(0, 0, 16, 16, name="patch")
     result = fit_regions(
-        sim.tttr, _settings(sim, roi=around_first), clsm=sim.clsm,
-        dt=sim.dt, period=sim.laser_period,
+        sim.tttr,
+        _settings(sim, roi=around_first),
+        clsm=sim.clsm,
+        dt=sim.dt,
+        period=sim.laser_period,
     )
     assert result.n_molecules == 1
     row, col = result.centroids[0]
@@ -196,8 +207,11 @@ def test_a_serialised_roi_survives_the_trip_through_settings():
     sim = _sim()
     as_dict = RectangleROI(0, 0, 16, 16).to_dict()
     result = fit_regions(
-        sim.tttr, _settings(sim, roi=as_dict), clsm=sim.clsm,
-        dt=sim.dt, period=sim.laser_period,
+        sim.tttr,
+        _settings(sim, roi=as_dict),
+        clsm=sim.clsm,
+        dt=sim.dt,
+        period=sim.laser_period,
     )
     assert result.n_molecules == 1
     assert result.analysis_roi is not None
@@ -242,9 +256,7 @@ def test_the_result_exposes_full_region_measurements():
         assert 0.0 <= prop.solidity <= 1.0
         assert prop.intensity_max > 0
     # The table's shape columns are those measurements, not a second opinion.
-    np.testing.assert_allclose(
-        numeric_column(result.dataframe, "area"), [p.area for p in props]
-    )
+    np.testing.assert_allclose(numeric_column(result.dataframe, "area"), [p.area for p in props])
 
 
 def test_the_preview_and_the_fit_use_the_same_regions():
@@ -254,9 +266,7 @@ def test_the_preview_and_the_fit_use_the_same_regions():
     sim = _sim()
     settings = _settings(sim)
     preview = region_preview(sim.intensity, settings)
-    fitted = fit_regions(
-        sim.tttr, settings, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
-    )
+    fitted = fit_regions(sim.tttr, settings, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
     assert preview.n_molecules == fitted.n_molecules
     np.testing.assert_array_equal(preview.label_image, fitted.label_image)
     assert np.isnan(numeric_column(preview.dataframe, "tau")).all()

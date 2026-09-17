@@ -9,9 +9,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
 
-Submit = Callable[
-    [Callable[[], Any], Callable[[Any], None], Callable[[str], None]], None
-]
+Submit = Callable[[Callable[[], Any], Callable[[Any], None], Callable[[str], None]], None]
 
 
 class _Worker(QtCore.QObject):
@@ -176,9 +174,7 @@ class ELabFTWView(QtWidgets.QWidget):
         self.connection_id = str(result["connection_id"])
         info = result.get("info") or {}
         version = info.get("version") or info.get("elabftw_version") or "unknown"
-        self.status_label.setText(
-            f"Connected to {result.get('endpoint', '')} (eLabFTW {version})"
-        )
+        self.status_label.setText(f"Connected to {result.get('endpoint', '')} (eLabFTW {version})")
         self._update_controls()
         self.refresh_remote()
 
@@ -219,9 +215,7 @@ class ELabFTWView(QtWidgets.QWidget):
         for row_index, row in enumerate(rows):
             checked = QtWidgets.QTableWidgetItem("")
             checked.setFlags(
-                QtCore.Qt.ItemIsEnabled
-                | QtCore.Qt.ItemIsSelectable
-                | QtCore.Qt.ItemIsUserCheckable
+                QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsUserCheckable
             )
             checked.setCheckState(QtCore.Qt.Unchecked)
             values = [

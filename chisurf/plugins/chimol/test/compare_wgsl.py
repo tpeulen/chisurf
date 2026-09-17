@@ -27,6 +27,7 @@ Use
 ---
     python -m chisurf.plugins.chimol.test.compare_wgsl cartoon sticks surface
 """
+
 from __future__ import annotations
 
 import json
@@ -37,9 +38,7 @@ import tempfile
 
 import numpy as np
 
-os.environ.setdefault(
-    "CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_compare_")
-)
+os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_compare_"))
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _DATA = _HERE.parents[3] / "test" / "data" / "atomic_coordinates" / "pdb_files"
@@ -84,9 +83,9 @@ def background_for(viewer) -> tuple[float, float, float]:
 def build(scene_name: str, entry: dict):
     """Replay one baseline scene headlessly and return ``(viewer, errors)``."""
     from chimol.commands.command import Cmd
+    from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
-    from chimol.core.viewer import Viewer
 
     viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_DATA / entry["structure"])
@@ -111,10 +110,9 @@ def build(scene_name: str, entry: dict):
 
 def compare(scene_name: str):
     """Render ``scene_name`` both ways and return ``(pair_image, errors, iou)``."""
-    from PIL import Image
-
     from chimol.render.pack import pack_scene
     from chimol.render.wgpu_backend import WgpuMeshRenderer
+    from PIL import Image
 
     manifest = json.loads((_BASELINE / "manifest.json").read_text())
     entry = manifest[scene_name]
@@ -124,12 +122,8 @@ def compare(scene_name: str):
     packed = pack_scene(viewer._scene)
     background = background_for(viewer)
 
-    gl_full = np.asarray(
-        Image.open(_BASELINE / f"{scene_name}_view.png").convert("RGB")
-    )
-    gl = gl_full[
-        rect["y"] : rect["y"] + rect["height"], rect["x"] : rect["x"] + rect["width"]
-    ]
+    gl_full = np.asarray(Image.open(_BASELINE / f"{scene_name}_view.png").convert("RGB"))
+    gl = gl_full[rect["y"] : rect["y"] + rect["height"], rect["x"] : rect["x"] + rect["width"]]
     wgsl = WgpuMeshRenderer(rect["width"], rect["height"]).render(
         packed, viewer.renderer.get_view_state(), background=background
     )

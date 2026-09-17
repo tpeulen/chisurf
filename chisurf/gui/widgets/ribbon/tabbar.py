@@ -1,5 +1,3 @@
-import typing
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 
@@ -11,9 +9,9 @@ class RibbonTabBar(QtWidgets.QTabBar):
     #: context category dark color height
     _contextCategoryDarkColorHeight = 5
 
-    _tabColors: typing.Dict[str, typing.Union[QtCore.Qt.GlobalColor, QtGui.QColor]] = {}
+    _tabColors: dict[str, QtCore.Qt.GlobalColor | QtGui.QColor] = {}
     _associated_tabs = {}
-    
+
     #: Signal emitted when tab bar is double-clicked
     doubleClicked = QtCore.Signal()
 
@@ -26,10 +24,10 @@ class RibbonTabBar(QtWidgets.QTabBar):
 
         self.currentChanged.connect(self.changeColor)
         self.setDrawBase(False)
-        
+
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
         """Handle mouse double-click event.
-        
+
         :param event: The mouse event.
         """
         super().mouseDoubleClickEvent(event)
@@ -46,7 +44,7 @@ class RibbonTabBar(QtWidgets.QTabBar):
                 return i
         return -1
 
-    def tabTitles(self) -> typing.List[str]:
+    def tabTitles(self) -> list[str]:
         """Return the titles of all tabs.
 
         :return: The titles of all tabs.
@@ -63,7 +61,7 @@ class RibbonTabBar(QtWidgets.QTabBar):
         self._tabColors[text] = color
         return super().addTab(text)
 
-    def addAssociatedTabs(self, name: str, texts: typing.List[str], color: QtGui.QColor) -> typing.List[int]:
+    def addAssociatedTabs(self, name: str, texts: list[str], color: QtGui.QColor) -> list[int]:
         """Add associated multiple tabs which have the same color to the tab bar.
 
         :param name: The name of the context category.
@@ -76,7 +74,7 @@ class RibbonTabBar(QtWidgets.QTabBar):
             self._associated_tabs[text] = [t for t in texts if t != text]
         return [self.addTab(text, color) for text in texts]
 
-    def removeAssociatedTabs(self, titles: typing.List[str]) -> None:
+    def removeAssociatedTabs(self, titles: list[str]) -> None:
         """Remove tabs with the given titles.
 
         :param titles: The titles of the tabs to remove.
@@ -98,11 +96,14 @@ class RibbonTabBar(QtWidgets.QTabBar):
 
     def changeColor(self, inx: int) -> None:
         """Change tab's color."""
-
         if self.count() > 0:
             currentTabText = self.tabText(inx)
             currentTabColor = self._tabColors[currentTabText]
             if currentTabColor is not None:
-                self.setStyleSheet("RibbonTabBar::tab:selected {color: %s;}" % QtGui.QColor(currentTabColor).name())
+                self.setStyleSheet(
+                    f"RibbonTabBar::tab:selected {{color: {QtGui.QColor(currentTabColor).name()};}}"
+                )
             else:
-                self.setStyleSheet("RibbonTabBar::tab:selected {color: %s;}" % self.palette().color(QtGui.QPalette.WindowText).name())
+                self.setStyleSheet(
+                    f"RibbonTabBar::tab:selected {{color: {self.palette().color(QtGui.QPalette.WindowText).name()};}}"
+                )

@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-import chisurf as cs
-import chisurf.logging
-from chisurf import typing
-from collections import deque
-
 import contextlib
 import inspect
+import json
 import math
 import os
 import re
+import time
+from collections import deque
+
 import numpy as np
 import scipy.linalg
 
-import chisurf.core.settings
+import chisurf as cs
 import chisurf.core.base
-import chisurf.core.fio
 import chisurf.core.curve
-import chisurf.core.experiments
 import chisurf.core.data
+import chisurf.core.experiments
+import chisurf.core.fio
 import chisurf.core.fitting.diagnostics
 import chisurf.core.fitting.engine
 import chisurf.core.fitting.factorgraph
@@ -26,15 +25,15 @@ import chisurf.core.fitting.minimizer
 import chisurf.core.fitting.parameter
 import chisurf.core.fitting.priors
 import chisurf.core.fitting.sample
-import chisurf.core.fitting.support_plane
-import chisurf.core.models
-import chisurf.core.math.statistics
-import chisurf.core.math.optimization
-from chisurf.core.math.optimization import OptimizationCancelled
 import chisurf.core.fitting.sampling_meta
-import time
-import json
-
+import chisurf.core.fitting.support_plane
+import chisurf.core.math.optimization
+import chisurf.core.math.statistics
+import chisurf.core.models
+import chisurf.core.settings
+import chisurf.logging
+from chisurf import typing
+from chisurf.core.math.optimization import OptimizationCancelled
 
 #: Relative accuracy assumed for the model function when the settings leave it
 #: unset. MINPACK derives its forward-difference step as ``sqrt(epsfcn) * |x|``,
@@ -141,9 +140,7 @@ class _StagedProgress:
         # Cancellation travels out through this call, so it is deliberately not
         # wrapped: swallowing here would leave a pressed Cancel button inert.
         try:
-            self._callback(
-                value, 1000, stage=self._stage + 1, n_stages=self.n_stages, **kwargs
-            )
+            self._callback(value, 1000, stage=self._stage + 1, n_stages=self.n_stages, **kwargs)
         except TypeError:
             self._callback(value, 1000)
 
@@ -313,11 +310,8 @@ class Fit(cs.core.base.Base):
 
     @model.setter
     def model(
-            self,
-            model: typing.Union[
-                cs.core.models.model.Model,
-                typing.Type[cs.core.models.model.Model]
-            ]
+        self,
+        model: typing.Union[cs.core.models.model.Model, typing.Type[cs.core.models.model.Model]],
     ):
         """Attach a model, given either the class to build or a built instance.
 
@@ -359,10 +353,7 @@ class Fit(cs.core.base.Base):
         elif model is None:
             self._model = None
         else:
-            raise TypeError(
-                f"a fit's model must be a Model or a Model subclass, "
-                f"got {model!r}"
-            )
+            raise TypeError(f"a fit's model must be a Model or a Model subclass, got {model!r}")
         # A fit is born consistent: attaching a model to data computes the
         # curve once, here, so every consumer -- the first plot draw, a
         # residual read, a chi2 display -- sees a real curve rather than the
@@ -376,8 +367,7 @@ class Fit(cs.core.base.Base):
             try:
                 self._model.update()
             except Exception as e:
-                cs.logging.debug(
-                    "initial model update at attach deferred: %s" % e)
+                cs.logging.debug(f"initial model update at attach deferred: {e}")
 
     @property
     def weighted_residuals(self) -> cs.core.curve.Curve:
@@ -388,13 +378,9 @@ class Fit(cs.core.base.Base):
         cs.core.curve.Curve
             Curve whose y-values are ``(data - model) / weights``.
         """
-        wres_x, _ = self.model[self.xmin:self.xmax]
+        wres_x, _ = self.model[self.xmin : self.xmax]
         wres_y = self.model.weighted_residuals
-        return cs.core.curve.Curve(
-            x=wres_x,
-            y=wres_y,
-            copy_array=False
-        )
+        return cs.core.curve.Curve(x=wres_x, y=wres_y, copy_array=False)
 
     @property
     def autocorrelation(self):
@@ -407,9 +393,7 @@ class Fit(cs.core.base.Base):
         """
         wres = self.weighted_residuals
         return cs.core.curve.Curve(
-            x=wres.x[1:],
-            y=cs.core.math.signal.autocorr(wres.y)[1:],
-            copy_array=False
+            x=wres.x[1:], y=cs.core.math.signal.autocorr(wres.y)[1:], copy_array=False
         )
 
     @property
@@ -421,11 +405,7 @@ class Fit(cs.core.base.Base):
         float
             Sum of squared weighted residuals.
         """
-        return get_chi2(
-            self.model.parameter_values,
-            model=self.model,
-            reduced=False
-        )
+        return get_chi2(self.model.parameter_values, model=self.model, reduced=False)
 
     @property
     def chi2r(self) -> float:
@@ -447,9 +427,7 @@ class Fit(cs.core.base.Base):
         float
             Test statistic for autocorrelation in residuals.
         """
-        return cs.core.math.statistics.durbin_watson(
-            self.weighted_residuals.y
-        )
+        return cs.core.math.statistics.durbin_watson(self.weighted_residuals.y)
 
     @property
     def name(self) -> str:
@@ -613,7 +591,6 @@ class Fit(cs.core.base.Base):
         effectively via a multiplicative 0/1 weight). If numeric, values are
         treated as multiplicative weights on the residuals.
         """
-
         return getattr(self, "_mask", None)
 
     @mask.setter
@@ -649,13 +626,11 @@ class Fit(cs.core.base.Base):
         differs.
         """
         over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(
-            self, self.model, what="jacobian")
+            self, self.model, what="jacobian"
+        )
         if over_the_graph is not None:
             return over_the_graph
-        _, grad = approx_grad(
-            self.model.parameter_values,
-            self
-        )
+        _, grad = approx_grad(self.model.parameter_values, self)
         return grad
 
     @property
@@ -672,17 +647,16 @@ class Fit(cs.core.base.Base):
         """Number of free (non-fixed, non-linked) parameters in the model."""
         return self.model.n_free
 
-
     def __init__(
-            self,
-            model_class: typing.Type[cs.core.models.Model] = type,
-            data: cs.core.data.DataCurve = None,
-            xmin: int = 0,
-            xmax: int = 0,
-            model_kw: typing.Dict = None,
-            group: list = None,
-            noise_model: str = None,
-            **kwargs
+        self,
+        model_class: typing.Type[cs.core.models.Model] = type,
+        data: cs.core.data.DataCurve = None,
+        xmin: int = 0,
+        xmax: int = 0,
+        model_kw: typing.Dict = None,
+        group: list = None,
+        noise_model: str = None,
+        **kwargs,
     ):
         """Create a :class:`Fit` with a given model class and data.
 
@@ -731,10 +705,7 @@ class Fit(cs.core.base.Base):
         self.results = deque(maxlen=500)
         self._mask = None
         if data is None:
-            data = cs.core.data.DataCurve(
-                x=np.arange(10),
-                y=np.arange(10)
-            )
+            data = cs.core.data.DataCurve(x=np.arange(10), y=np.arange(10))
         self._data = data
         self.plots = list()
         self._xmin, self._xmax = xmin, xmax
@@ -761,6 +732,7 @@ class Fit(cs.core.base.Base):
         # Try to pickle model; remove unpickleable attributes
         model_state = self.model.__getstate__()
         import pickle
+
         # Attempt to pickle each attribute
         for key in list(model_state.keys()):  # Use list to avoid modifying dict while iterating
             try:
@@ -769,8 +741,8 @@ class Fit(cs.core.base.Base):
                 # Remove unpickleable attributes
                 del model_state[key]
 
-        d['data'] = self.data.__getstate__()
-        d['model'] = model_state
+        d["data"] = self.data.__getstate__()
+        d["model"] = model_state
         return d
 
     def __setstate__(self, state):
@@ -781,8 +753,8 @@ class Fit(cs.core.base.Base):
         state : dict
             State dictionary produced by :meth:`__getstate__`.
         """
-        m = state.pop('model')
-        d = state.pop('data')
+        m = state.pop("model")
+        d = state.pop("data")
         self.model.__setstate__(m)
         self.data.__setstate__(d)
         super().__init__(**state)
@@ -796,7 +768,6 @@ class Fit(cs.core.base.Base):
         underlying model (and any nested parameter groups) control how their
         state is serialized.
         """
-
         model = getattr(self, "model", None)
         get_state = getattr(model, "get_state", None)
         if callable(get_state):
@@ -814,7 +785,6 @@ class Fit(cs.core.base.Base):
         fixed flags, links and any registered model-specific extras (e.g.
         TCSPC IRF/linearization) but does not change the data object.
         """
-
         if not isinstance(state, dict):
             return
         model = getattr(self, "model", None)
@@ -856,7 +826,7 @@ class Fit(cs.core.base.Base):
             p = pd[k]
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
-            if getattr(p, 'is_output', False):
+            if getattr(p, "is_output", False):
                 continue
             val = f"{p.value:.5g}"
             if p.fixed:
@@ -886,8 +856,8 @@ class Fit(cs.core.base.Base):
         lines = []
 
         priors = self.prior_summary()
-        informative = [e for e in priors if e['informative']]
-        box_only = [e['name'] for e in priors if not e['informative']]
+        informative = [e for e in priors if e["informative"]]
+        box_only = [e["name"] for e in priors if not e["informative"]]
         lines.append("\n  Priors")
         for e in informative:
             lines.append(f"    {e['name']:<12s}  {e['description']}")
@@ -910,20 +880,21 @@ class Fit(cs.core.base.Base):
         else:
             lines.append(f"    {'Name':<12s}  {'Value':<11s}  {'Interval':<25s}  Method")
             for e in post:
-                if e['method'] == 'none':
+                if e["method"] == "none":
                     interval, method = "n/a", "no estimate"
                 else:
                     interval = f"[{e['low']:.5g}, {e['high']:.5g}]"
                     method = {
-                        'mcmc': f"MCMC quantiles, p={e['p_value']:g}",
-                        'profile': f"chi2 scan, p={e['p_value']:g}",
-                    }.get(e['method'], f"covariance ±1σ, p≈{e['p_value']:g}")
-                lines.append(f"    {e['name']:<12s}  {e['value']:<11.5g}  {interval:<25s}  {method}")
+                        "mcmc": f"MCMC quantiles, p={e['p_value']:g}",
+                        "profile": f"chi2 scan, p={e['p_value']:g}",
+                    }.get(e["method"], f"covariance ±1σ, p≈{e['p_value']:g}")
+                lines.append(
+                    f"    {e['name']:<12s}  {e['value']:<11.5g}  {interval:<25s}  {method}"
+                )
 
         lines.extend(self._derived_report())
 
-        warnings = ((getattr(self, 'sampling_diagnostics', None) or {})
-                    .get('warnings') or [])
+        warnings = (getattr(self, "sampling_diagnostics", None) or {}).get("warnings") or []
         if warnings:
             lines.append("\n  Sampling did not converge")
             for w in warnings:
@@ -948,31 +919,33 @@ class Fit(cs.core.base.Base):
         lines = ["\n  Derived quantities"]
         lines.append(f"    {'Name':<32s}  {'Value':<11s}  {'Interval':<27s}  Method")
         method_text = {
-            'draws': 'posterior draws',
-            'delta': 'linear propagation',
-            'none': 'no estimate',
+            "draws": "posterior draws",
+            "delta": "linear propagation",
+            "none": "no estimate",
         }
         skewed = []
         for e in rows:
-            if e['method'] == 'none' or not np.isfinite(e.get('low', np.nan)):
-                interval = e.get('warning') or "n/a"
+            if e["method"] == "none" or not np.isfinite(e.get("low", np.nan)):
+                interval = e.get("warning") or "n/a"
             else:
                 interval = f"[{e['low']:.5g}, {e['high']:.5g}]"
-            method = method_text.get(e['method'], e['method'])
-            lines.append(
-                f"    {e['name']:<32s}  {e['value']:<11.5g}  {interval:<27s}  {method}")
-            if 'skewed' in (e.get('warning') or ''):
-                skewed.append(e['name'])
+            method = method_text.get(e["method"], e["method"])
+            lines.append(f"    {e['name']:<32s}  {e['value']:<11.5g}  {interval:<27s}  {method}")
+            if "skewed" in (e.get("warning") or ""):
+                skewed.append(e["name"])
         if skewed:
-            lines.append(f"    (skewed, so the interval is not value ± σ: "
-                         f"{', '.join(skewed)})")
-        elif rows and rows[0]['method'] == 'delta':
-            if rows[0].get('converged') is False:
-                lines.append("    (the chain on this fit did not converge and was "
-                             "not used; these are linear propagation)")
+            lines.append(f"    (skewed, so the interval is not value ± σ: {', '.join(skewed)})")
+        elif rows and rows[0]["method"] == "delta":
+            if rows[0].get("converged") is False:
+                lines.append(
+                    "    (the chain on this fit did not converge and was "
+                    "not used; these are linear propagation)"
+                )
             else:
-                lines.append("    (linear propagation: symmetric by construction — "
-                             "sample the fit for the true shape)")
+                lines.append(
+                    "    (linear propagation: symmetric by construction — "
+                    "sample the fit for the true shape)"
+                )
         return lines
 
     def prior_summary(self) -> typing.List[typing.Dict[str, typing.Any]]:
@@ -991,26 +964,25 @@ class Fit(cs.core.base.Base):
             p = self.model.parameters_all_dict[name]
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
-            if getattr(p, 'is_output', False):
+            if getattr(p, "is_output", False):
                 continue
             try:
-                prior = getattr(p, 'prior', None)
+                prior = getattr(p, "prior", None)
             except Exception:
                 prior = None
             if prior is None:
                 continue
             informative = not isinstance(prior, cs.core.fitting.priors.UniformPrior)
-            out.append({
-                'name': str(p.name),
-                'description': repr(prior),
-                'informative': bool(informative),
-            })
+            out.append(
+                {
+                    "name": str(p.name),
+                    "description": repr(prior),
+                    "informative": bool(informative),
+                }
+            )
         return out
 
-    def posterior_summary(
-            self,
-            p_value: float = 0.68
-    ) -> typing.List[typing.Dict[str, typing.Any]]:
+    def posterior_summary(self, p_value: float = 0.68) -> typing.List[typing.Dict[str, typing.Any]]:
         """Summarise each free parameter's marginal uncertainty about the optimum.
 
         Two very different estimates are reported under one roof, and the
@@ -1053,7 +1025,7 @@ class Fit(cs.core.base.Base):
             p = self.model.parameters_all_dict[name]
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
-            if getattr(p, 'is_output', False) or p.fixed:
+            if getattr(p, "is_output", False) or p.fixed:
                 continue
             names.append(str(p.name))
             engine.add_target(str(p.name))
@@ -1063,27 +1035,25 @@ class Fit(cs.core.base.Base):
         for name in names:
             m = engine.marginal(name)
             entry = {
-                'name': m.name,
-                'value': m.value,
-                'low': m.low,
-                'high': m.high,
-                'method': m.method,
-                'p_value': float(p_value),
+                "name": m.name,
+                "value": m.value,
+                "low": m.low,
+                "high": m.high,
+                "method": m.method,
+                "p_value": float(p_value),
             }
             # A ``laplace`` row is symmetric by construction. When a chain shows
             # the posterior is not, the row says so rather than leaving the
             # reader to assume the interval means what it looks like.
-            warning = (m.diagnostics or {}).get('warning')
+            warning = (m.diagnostics or {}).get("warning")
             if warning:
-                entry['warning'] = warning
-                entry['asymmetry'] = m.diagnostics['asymmetry']['asymmetry']
+                entry["warning"] = warning
+                entry["asymmetry"] = m.diagnostics["asymmetry"]["asymmetry"]
             out.append(entry)
         return out
 
     def derived_summary(
-            self,
-            p_value: float = 0.68,
-            max_draws: int = 2048
+        self, p_value: float = 0.68, max_draws: int = 2048
     ) -> typing.List[typing.Dict[str, typing.Any]]:
         r"""Attach an interval to the quantities the model reports but never fits.
 
@@ -1115,33 +1085,28 @@ class Fit(cs.core.base.Base):
             the model declares no derived quantities.
         """
         from chisurf.core.fitting import derived as _derived
-        return _derived.derived_posterior(
-            self, p_value=p_value, max_draws=max_draws)
+
+        return _derived.derived_posterior(self, p_value=p_value, max_draws=max_draws)
 
     def get_curves(
-            self,
-            copy_curves: bool = False,
-            *,
-            full_length: bool = False
+        self, copy_curves: bool = False, *, full_length: bool = False
     ) -> typing.OrderedDict[str, cs.core.curve.Curve]:
         """Return a mapping of named curves associated with this fit.
 
         The dictionary typically contains entries for ``"model"``,
         ``"data"``, ``"weighted residuals"`` and ``"autocorrelation"``.
         """
-        d = self.model.get_curves(
-            copy_curves=copy_curves
-        )
-        d['data'] = self.data
+        d = self.model.get_curves(copy_curves=copy_curves)
+        d["data"] = self.data
         if full_length:
             try:
-                x_full = np.asarray(getattr(self.data, 'x', []), dtype=float)
+                x_full = np.asarray(getattr(self.data, "x", []), dtype=float)
             except Exception:
                 x_full = np.asarray([], dtype=float)
             n = int(x_full.size)
 
             try:
-                xmin = int(getattr(self, 'xmin', 0))
+                xmin = int(getattr(self, "xmin", 0))
             except Exception:
                 xmin = 0
             if n <= 0:
@@ -1154,12 +1119,14 @@ class Fit(cs.core.base.Base):
                 wres_seg = np.asarray(wres_seg, dtype=float)
             except Exception:
                 try:
-                    wres_seg = np.asarray(getattr(self.model, 'weighted_residuals', []), dtype=float)
+                    wres_seg = np.asarray(
+                        getattr(self.model, "weighted_residuals", []), dtype=float
+                    )
                 except Exception:
                     wres_seg = np.asarray([], dtype=float)
 
             try:
-                _, mdl_seg = self.model[self.xmin:self.xmax]
+                _, mdl_seg = self.model[self.xmin : self.xmax]
                 mdl_seg = np.asarray(mdl_seg, dtype=float)
             except Exception:
                 mdl_seg = np.asarray([], dtype=float)
@@ -1173,17 +1140,17 @@ class Fit(cs.core.base.Base):
             y_wres = np.full(n, np.nan, dtype=float)
             y_mdl = np.full(n, np.nan, dtype=float)
             if window_len > 0:
-                y_wres[xmin:xmin + window_len] = wres_seg[:window_len]
-                y_mdl[xmin:xmin + window_len] = mdl_seg[:window_len]
+                y_wres[xmin : xmin + window_len] = wres_seg[:window_len]
+                y_mdl[xmin : xmin + window_len] = mdl_seg[:window_len]
 
-            d['weighted residuals'] = cs.core.curve.Curve(x=x_full, y=y_wres, copy_array=False)
-            d['model'] = cs.core.curve.Curve(x=x_full, y=y_mdl, copy_array=False)
+            d["weighted residuals"] = cs.core.curve.Curve(x=x_full, y=y_wres, copy_array=False)
+            d["model"] = cs.core.curve.Curve(x=x_full, y=y_mdl, copy_array=False)
         else:
-            d['weighted residuals'] = self.weighted_residuals
-        d['autocorrelation'] = self.autocorrelation
+            d["weighted residuals"] = self.weighted_residuals
+        d["autocorrelation"] = self.autocorrelation
         return d
 
-    def get_score(self, score_type: str = 'chi2'):
+    def get_score(self, score_type: str = "chi2"):
         """Return a scalar goodness-of-fit score.
 
         Parameters
@@ -1191,32 +1158,20 @@ class Fit(cs.core.base.Base):
         score_type : {"chi2", "chi2r"}
             Select unreduced or reduced chi².
         """
-        if score_type == 'chi2':
+        if score_type == "chi2":
             return self.chi2
-        elif score_type == 'chi2r':
+        elif score_type == "chi2r":
             return self.chi2r
 
     def get_chi2(
-            self,
-            parameter=None,
-            model: cs.core.models.Model = None,
-            reduced: bool = True
+        self, parameter=None, model: cs.core.models.Model = None, reduced: bool = True
     ) -> float:
         """Convenience wrapper around :func:`get_chi2` using this fit."""
         if model is None:
             model = self.model
-        return get_chi2(
-            parameter,
-            model,
-            reduced
-        )
+        return get_chi2(parameter, model, reduced)
 
-    def get_wres(
-            self,
-            parameter=None,
-            model=None,
-            **kwargs
-    ) -> np.ndarray:
+    def get_wres(self, parameter=None, model=None, **kwargs) -> np.ndarray:
         """Return weighted residuals for a model attached to this fit."""
         if model is None:
             model = self.model
@@ -1227,30 +1182,23 @@ class Fit(cs.core.base.Base):
         return _apply_fit_mask(model, wres)
 
     def save(
-            self,
-            filename: str,
-            file_type: str = 'csv',
-            save_curves: bool = False,
-            verbose: bool = False,
-            **kwargs
+        self,
+        filename: str,
+        file_type: str = "csv",
+        save_curves: bool = False,
+        verbose: bool = False,
+        **kwargs,
     ) -> None:
         """Save fit metadata and, optionally, all associated curves."""
-        super().save(
-            filename=filename,
-            file_type=file_type,
-            verbose=verbose
-        )
+        super().save(filename=filename, file_type=file_type, verbose=verbose)
         if save_curves:
             curve_dict = self.get_curves(full_length=True)
-            with open(filename+'_info.txt', mode='w') as fp:
+            with open(filename + "_info.txt", mode="w") as fp:
                 fp.write(str(self))
             for curve_key in curve_dict:
                 curve = curve_dict[curve_key]
-                curve_file_root = filename + "_%s" % curve_key
-                curve.save(
-                    filename=curve_file_root + '.' + file_type,
-                    file_type=file_type
-                )
+                curve_file_root = filename + f"_{curve_key}"
+                curve.save(filename=curve_file_root + "." + file_type, file_type=file_type)
 
     def run(self, *args, **kwargs) -> None:
         """Run a local least-squares optimization on this fit."""
@@ -1258,10 +1206,8 @@ class Fit(cs.core.base.Base):
         estimate_errors = bool(kwargs.pop("estimate_errors", True))
         finalize = bool(kwargs.pop("finalize", True))
         notify = bool(kwargs.pop("notify", True))
-        fitting_options = _leastsq_options(cs.core.settings.cs_settings['optimization']['leastsq'])
-        self.model.find_parameters(
-            parameter_type=cs.core.fitting.parameter.FittingParameter
-        )
+        fitting_options = _leastsq_options(cs.core.settings.cs_settings["optimization"]["leastsq"])
+        self.model.find_parameters(parameter_type=cs.core.fitting.parameter.FittingParameter)
         progress_callback = kwargs.get("progress_callback") or self._progress_callback
         cancelled = False
         # A covariance from an earlier run describes earlier parameters, and
@@ -1293,7 +1239,7 @@ class Fit(cs.core.base.Base):
                         n_free=self.model.n_free,
                         fit=self,
                         model=self.model,
-                        **fitting_options
+                        **fitting_options,
                     )
         except OptimizationCancelled:
             cancelled = True
@@ -1401,19 +1347,18 @@ class Fit(cs.core.base.Base):
             tp.link = sp
             self.model.finalize()
         except KeyError:
-            import chisurf.logging
             # Provide detailed diagnostics including requested keys and available ones.
             try:
-                tgt_keys = ', '.join(self.model.parameters_all_dict.keys())
+                tgt_keys = ", ".join(self.model.parameters_all_dict.keys())
             except Exception:
-                tgt_keys = '<unavailable>'
+                tgt_keys = "<unavailable>"
             try:
-                src_keys = ', '.join(source_fit.model.parameters_all_dict.keys())
+                src_keys = ", ".join(source_fit.model.parameters_all_dict.keys())
             except Exception:
-                src_keys = '<unavailable>'
+                src_keys = "<unavailable>"
             cs.logging.error(
-                "Parameter link failed: name not found. target='%s' in target_fit(keys=[%s]); "
-                "source='%s' in source_fit(keys=[%s])" % (target_name, tgt_keys, source_name, src_keys)
+                f"Parameter link failed: name not found. target='{target_name}' in target_fit(keys=[{tgt_keys}]); "
+                f"source='{source_name}' in source_fit(keys=[{src_keys}])"
             )
 
     def unlink_parameter(self, name: str):
@@ -1534,8 +1479,7 @@ class Fit(cs.core.base.Base):
             for a in amplitudes:
                 if not getattr(a, "redundant", False):
                     continue
-                cols = [index_of[id(s)] for s in amplitudes
-                        if s is not a and id(s) in index_of]
+                cols = [index_of[id(s)] for s in amplitudes if s is not a and id(s) in index_of]
                 if not cols:
                     a.error_estimate = None
                     continue
@@ -1555,22 +1499,26 @@ class Fit(cs.core.base.Base):
         self.model.update()
         try:
             from chisurf.server.startup import get_shared_event_bus
+
             bus = get_shared_event_bus()
             if bus is not None:
-                bus.publish("fit.updated", {
-                    "fit_uid": str(getattr(self, "unique_identifier", "") or ""),
-                    "fit_name": str(getattr(self, "name", "") or ""),
-                })
+                bus.publish(
+                    "fit.updated",
+                    {
+                        "fit_uid": str(getattr(self, "unique_identifier", "") or ""),
+                        "fit_name": str(getattr(self, "name", "") or ""),
+                    },
+                )
         except Exception:
-            pass          # headless without a bus: the recompute already happened
+            pass  # headless without a bus: the recompute already happened
 
     def grid_scan(
-            self,
-            parameters: typing.Sequence = None,
-            budget: int = None,
-            points: int = None,
-            apply_best: bool = True,
-            progress_callback: typing.Callable = None,
+        self,
+        parameters: typing.Sequence = None,
+        budget: int = None,
+        points: int = None,
+        apply_best: bool = True,
+        progress_callback: typing.Callable = None,
     ):
         """Scan a coarse grid over free parameters and jump to the best point.
 
@@ -1606,9 +1554,7 @@ class Fit(cs.core.base.Base):
         from chisurf.core.fitting import grid_scan as _grid_scan
 
         if parameters is None:
-            self.model.find_parameters(
-                parameter_type=cs.core.fitting.parameter.FittingParameter
-            )
+            self.model.find_parameters(parameter_type=cs.core.fitting.parameter.FittingParameter)
             parameters = list(self.model.parameters)
         parameters = list(parameters)
         state = {"n": 0}
@@ -1632,11 +1578,11 @@ class Fit(cs.core.base.Base):
         return result
 
     def chi2_scan(
-            self,
-            parameter_name: str,
-            rel_range: float = None,
-            scan_range: typing.Tuple[float, float] = (None, None),
-            n_steps: int = 30
+        self,
+        parameter_name: str,
+        rel_range: float = None,
+        scan_range: typing.Tuple[float, float] = (None, None),
+        n_steps: int = 30,
     ) -> typing.Tuple[np.array, np.array]:
         """Perform a chi2-scan on a parameter of the fit.
 
@@ -1649,27 +1595,24 @@ class Fit(cs.core.base.Base):
         """
         parameter = self.model.parameters_all_dict[parameter_name]
         if rel_range is None:
-            rel_range = max(
-                parameter.error_estimate * 3.0 / parameter.value,
-                0.25
-            )
+            rel_range = max(parameter.error_estimate * 3.0 / parameter.value, 0.25)
         r = cs.core.fitting.support_plane.scan_parameter(
             fit=self,
             parameter_name=parameter_name,
             rel_range=rel_range,
             scan_range=scan_range,
-            n_steps=n_steps
+            n_steps=n_steps,
         )
-        parameter.parameter_scan = r['parameter_values'], r['chi2r']
+        parameter.parameter_scan = r["parameter_values"], r["chi2r"]
         return parameter.parameter_scan
 
     def adaptive_chi2_scan(
-            self,
-            parameter_name: str,
-            scan_range: typing.Tuple[float, float] = (None, None),
-            p_value: float = 0.99,
-            max_points_per_side: int = 50,
-            **kwargs
+        self,
+        parameter_name: str,
+        scan_range: typing.Tuple[float, float] = (None, None),
+        p_value: float = 0.99,
+        max_points_per_side: int = 50,
+        **kwargs,
     ) -> typing.Dict:
         """Adaptive F-test-driven chi² scan for a parameter.
 
@@ -1684,9 +1627,9 @@ class Fit(cs.core.base.Base):
             max_points_per_side=max_points_per_side,
         )
         parameter = self.model.parameters_all_dict[parameter_name]
-        parameter.parameter_scan = r['parameter_values'], r['chi2r']
+        parameter.parameter_scan = r["parameter_values"], r["chi2r"]
         parameter.scan_result = r
-        crossings = r.get('crossings', (None, None))
+        crossings = r.get("crossings", (None, None))
         errors = []
         for crossing in crossings:
             try:
@@ -1822,9 +1765,7 @@ class FitGroup(Fit):
         float
             Test statistic for autocorrelation.
         """
-        return cs.core.math.statistics.durbin_watson(
-            self.weighted_residuals.y
-        )
+        return cs.core.math.statistics.durbin_watson(self.weighted_residuals.y)
 
     @property
     def mask(self):
@@ -1834,7 +1775,6 @@ class FitGroup(Fit):
         propagates any assignment to all member fits, so that both the global
         model and individual fits see the same residual weights.
         """
-
         return getattr(self.selected_fit, "mask", None)
 
     @mask.setter
@@ -1989,11 +1929,7 @@ class FitGroup(Fit):
             f.xmax = v
 
     def get_curves(
-            self,
-            copy_curves: bool = False,
-            idx: int = None,
-            *,
-            full_length: bool = False
+        self, copy_curves: bool = False, idx: int = None, *, full_length: bool = False
     ) -> typing.OrderedDict[str, cs.core.curve.Curve]:
         """Return curves for one or all grouped fits.
 
@@ -2016,13 +1952,7 @@ class FitGroup(Fit):
                         curves[new_curve_key] = fit_curves[curve_key]
         return curves
 
-    def save(
-            self,
-            filename: str,
-            file_type: str = 'txt',
-            verbose: bool = False,
-            **kwargs
-    ) -> None:
+    def save(self, filename: str, file_type: str = "txt", verbose: bool = False, **kwargs) -> None:
         """Save all grouped fits with derived per-fit filenames.
 
         Parameters
@@ -2041,10 +1971,7 @@ class FitGroup(Fit):
             base = os.path.splitext(os.path.basename(data_name))[0].strip()
             member_bases.append(base)
 
-        token_lists = [
-            [t for t in re.split(r"[\s_\-]+", b) if t]
-            for b in member_bases
-        ]
+        token_lists = [[t for t in re.split(r"[\s_\-]+", b) if t] for b in member_bases]
 
         # Token-aware common prefix/suffix to avoid character-level artifacts
         # like VV/VH collapsing to V/H.
@@ -2100,8 +2027,8 @@ class FitGroup(Fit):
                 suffix = f"{i:02d}"
 
             # Keep filesystem-friendly suffixes.
-            suffix = re.sub(r'[\\/:*?"<>|]+', '_', suffix)
-            suffix = re.sub(r'\s+', ' ', suffix).strip()
+            suffix = re.sub(r'[\\/:*?"<>|]+', "_", suffix)
+            suffix = re.sub(r"\s+", " ", suffix).strip()
 
             # Ensure uniqueness even for duplicate labels.
             if suffix in used_suffixes:
@@ -2110,12 +2037,7 @@ class FitGroup(Fit):
 
             fit_root = f"{root}_{suffix}"
             fit_filename = fit_root + ext if ext else fit_root
-            fit.save(
-                filename=fit_filename,
-                file_type=file_type,
-                verbose=verbose,
-                **kwargs
-            )
+            fit.save(filename=fit_filename, file_type=file_type, verbose=verbose, **kwargs)
 
     def finalize(self):
         """Finalize the global model and all grouped fits."""
@@ -2135,7 +2057,7 @@ class FitGroup(Fit):
         finalize = bool(kwargs.pop("finalize", True))
         notify = bool(kwargs.pop("notify", True))
         if local_first is None:
-            local_first = cs.core.settings.optimization['global_optimize_local_first']
+            local_first = cs.core.settings.optimization["global_optimize_local_first"]
         cancelled = False
         # A covariance from an earlier run describes earlier parameters.
         self.__dict__.pop("_cpp_covariance", None)
@@ -2159,7 +2081,7 @@ class FitGroup(Fit):
             for f in fit:
                 f.model.find_parameters()
             fit._model.find_parameters()
-            fitting_options = _leastsq_options(cs.core.settings.optimization['leastsq'])
+            fitting_options = _leastsq_options(cs.core.settings.optimization["leastsq"])
             bounds = [pi.bounds for pi in fit._model.parameters]
             progress_callback = staged.stage(staged.n_stages - 1)
             # Nothing about the structure changes while the optimiser runs, so
@@ -2184,7 +2106,7 @@ class FitGroup(Fit):
                     n_free=fit._model.n_free,
                     fit=fit,
                     model=fit._model,
-                    **fitting_options
+                    **fitting_options,
                 )
         except OptimizationCancelled:
             cancelled = True
@@ -2211,10 +2133,10 @@ class FitGroup(Fit):
             raise OptimizationCancelled()
 
     def __init__(
-            self,
-            data: cs.core.data.DataGroup,
-            model_class: typing.Type[cs.core.models.Model] = type,
-            model_kw: typing.Dict = None
+        self,
+        data: cs.core.data.DataGroup,
+        model_class: typing.Type[cs.core.models.Model] = type,
+        model_kw: typing.Dict = None,
     ):
         """Create a :class:`FitGroup` over a :class:`DataGroup`.
 
@@ -2228,27 +2150,17 @@ class FitGroup(Fit):
         for d in data:
             if model_kw is None:
                 model_kw = dict()
-            fit = Fit(
-                model_class=model_class,
-                data=d,
-                model_kw=model_kw,
-                group=self.grouped_fits
-            )
+            Fit(model_class=model_class, data=d, model_kw=model_kw, group=self.grouped_fits)
 
-        super().__init__(
-            data=data
-        )
-        self._model = cs.core.models.global_model.GlobalFitModel(
-            fit=self,
-            fits=self.grouped_fits
-        )
+        super().__init__(data=data)
+        self._model = cs.core.models.global_model.GlobalFitModel(fit=self, fits=self.grouped_fits)
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-        skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> typing.Dict:
         """Serialize the FitGroup and its grouped fits to a dictionary.
 
@@ -2270,14 +2182,15 @@ class FitGroup(Fit):
             remove_protected=remove_protected,
             copy_values=copy_values,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
-        d['grouped_fits'] = [
+        d["grouped_fits"] = [
             f.to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
-                convert_values_to_elementary=convert_values_to_elementary
-            ) for f in self.grouped_fits
+                convert_values_to_elementary=convert_values_to_elementary,
+            )
+            for f in self.grouped_fits
         ]
         return d
 
@@ -2351,26 +2264,26 @@ class FitGroup(Fit):
 #: run fills a disk, since a float64 costs ~25 characters there and 8 in
 #: ``hdf5``. Both open in nDXplorer.
 CHAIN_FORMATS = {
-    'er4': '.er4',
-    'hdf5': '.h5',
+    "er4": ".er4",
+    "hdf5": ".h5",
 }
 
 
 def sample_fit(
-        fit: Fit,
-        target_directory: str,
-        method: str = 'ensemble',
-        global_posterior: bool = False,
-        steps: int = 1000,
-        thin: int = 1,
-        chi2max: float = float("inf"),
-        n_runs: int = 10,
-        step_size: float = 0.1,
-        temp: float = 1.0,
-        check_cancel: typing.Callable = None,
-        progress_callback: typing.Callable = None,
-        chain_format: str = None,
-        **kwargs
+    fit: Fit,
+    target_directory: str,
+    method: str = "ensemble",
+    global_posterior: bool = False,
+    steps: int = 1000,
+    thin: int = 1,
+    chi2max: float = float("inf"),
+    n_runs: int = 10,
+    step_size: float = 0.1,
+    temp: float = 1.0,
+    check_cancel: typing.Callable = None,
+    progress_callback: typing.Callable = None,
+    chain_format: str = None,
+    **kwargs,
 ):
     """Sample free parameters of a fit and save the chain to disk.
 
@@ -2462,10 +2375,16 @@ def sample_fit(
     if global_posterior:
         sample_model = cs.core.fitting.factorgraph.posterior_model(fit)
         samplers = cs.core.fitting.sample.SAMPLERS
-        joint = [k for k, e in samplers.items() if e.get('samples_global_posterior')]
-        if samplers.get(cs.core.fitting.sample.resolve_sampler(method), {}).get('samples_global_posterior') is not True:
+        joint = [k for k, e in samplers.items() if e.get("samples_global_posterior")]
+        if (
+            samplers.get(cs.core.fitting.sample.resolve_sampler(method), {}).get(
+                "samples_global_posterior"
+            )
+            is not True
+        ):
             raise ValueError(
-                "global_posterior=True requires method=" + ", ".join(repr(k) for k in joint)
+                "global_posterior=True requires method="
+                + ", ".join(repr(k) for k in joint)
                 + "; the other samplers sample fit.model only."
             )
         sample_model.update()
@@ -2474,66 +2393,69 @@ def sample_fit(
     # so switching back and forth does not lose them -- and a sampler must not
     # be handed another one's. Anything it does not accept is dropped here, with
     # the per-sampler block for the chosen one merged in.
-    sampler_settings = kwargs.pop('samplers', None) or {}
+    sampler_settings = kwargs.pop("samplers", None) or {}
     # One canonical name from here on: the raw string is a hand-editable YAML
     # value, and 'Blocked' or 'mcmC' used to fall through to the ensemble
     # sampler in silence (RF-782).
     method = cs.core.fitting.sample.resolve_sampler(method)
     if isinstance(sampler_settings, dict):
         kwargs.update(sampler_settings.get(method, {}) or {})
-    accepted = set(
-        inspect.signature(cs.core.fitting.sample.sampler_function(method)).parameters
-    )
+    accepted = set(inspect.signature(cs.core.fitting.sample.sampler_function(method)).parameters)
     # Arguments this function supplies itself. A setting of the same name would
     # arrive twice at the call below ("got multiple values for keyword argument
     # 'nwalkers'"), so the run keeps ownership of them -- except the ensemble
     # size, which is genuinely worth overriding and is read back below.
     owned = {
-        'fit', 'model', 'steps', 'thin', 'chi2max', 'step_size', 'temp',
-        'callback', 'check_cancel', 'progress_bar',
+        "fit",
+        "model",
+        "steps",
+        "thin",
+        "chi2max",
+        "step_size",
+        "temp",
+        "callback",
+        "check_cancel",
+        "progress_bar",
     }
-    requested_walkers = kwargs.pop('nwalkers', None)
+    requested_walkers = kwargs.pop("nwalkers", None)
     dropped = sorted(set(kwargs) - accepted)
     if dropped:
-        cs.logging.info(
-            "%s does not take %s; ignoring", method, ", ".join(dropped)
-        )
+        cs.logging.info("%s does not take %s; ignoring", method, ", ".join(dropped))
     kwargs = {k: v for k, v in kwargs.items() if k in accepted and k not in owned}
 
     # save initial parameter values
     pv = sample_model.parameter_values
-    
+
     # Create timestamped directory
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     sampling_dir = os.path.join(target_directory, timestamp)
     os.makedirs(sampling_dir, exist_ok=True)
-    
+
     # Save project state (full save)
     from chisurf.macros.core_fit import save_project
+
     save_project(target_path=sampling_dir, project_name="project")
-    
+
     # Save parameters metadata
     params_meta = cs.core.fitting.sampling_meta.get_sampling_metadata(fit)
     params_path = os.path.join(sampling_dir, "parameters.json")
     with open(params_path, "w") as f:
         json.dump(params_meta, f, indent=4)
-        
+
     chains_dir = os.path.join(sampling_dir, "chains")
     os.makedirs(chains_dir, exist_ok=True)
 
     if chain_format is None:
         try:
-            chain_format = cs.core.settings.cs_settings['optimization']['sampling'].get(
-                'chain_format', 'er4'
+            chain_format = cs.core.settings.cs_settings["optimization"]["sampling"].get(
+                "chain_format", "er4"
             )
         except (KeyError, TypeError):
-            chain_format = 'er4'
-    chain_format = str(chain_format or 'er4').strip().lower()
+            chain_format = "er4"
+    chain_format = str(chain_format or "er4").strip().lower()
     if chain_format not in CHAIN_FORMATS:
-        cs.logging.warning(
-            "unknown chain format %r; writing %s", chain_format, 'er4'
-        )
-        chain_format = 'er4'
+        cs.logging.warning("unknown chain format %r; writing %s", chain_format, "er4")
+        chain_format = "er4"
     chain_suffix = CHAIN_FORMATS[chain_format]
 
     def chain_frame(r):
@@ -2552,16 +2474,16 @@ def sample_fit(
         rows : numpy.ndarray
             Finite draws, shape ``(n_draws, 2 + n_parameters)``.
         """
-        chi2 = np.asarray(r['chi2r'], dtype=np.float64)
-        parameter_values = np.asarray(r['parameter_values'], dtype=np.float64)
-        lnprior = r.get('lnprior')
+        chi2 = np.asarray(r["chi2r"], dtype=np.float64)
+        parameter_values = np.asarray(r["parameter_values"], dtype=np.float64)
+        lnprior = r.get("lnprior")
         if lnprior is None:
             lnprior = np.zeros_like(chi2)
         lnprior = np.asarray(lnprior, dtype=np.float64)
 
         keep = np.isfinite(chi2)
         rows = np.column_stack([chi2[keep], lnprior[keep], parameter_values[keep]])
-        return ['chi2r', 'lnprior'] + list(r['parameter_names']), rows
+        return ["chi2r", "lnprior"] + list(r["parameter_names"]), rows
 
     def save_chain_to_hdf5(r, fn_target):
         """Save a sampling result to an HDF5 table, one dataset per column.
@@ -2605,11 +2527,7 @@ def sample_fit(
         """
         names, rows = chain_frame(r)
         cs.core.fio.ascii.Csv().save(
-            rows.T,
-            fn_target,
-            delimiter='\t',
-            file_type='txt',
-            header="\t".join(names)
+            rows.T, fn_target, delimiter="\t", file_type="txt", header="\t".join(names)
         )
 
     def save_chain(r, fn_target):
@@ -2622,7 +2540,7 @@ def sample_fit(
         fn_target : str
             Target file path; its suffix already matches the format.
         """
-        if chain_format == 'hdf5':
+        if chain_format == "hdf5":
             save_chain_to_hdf5(r, fn_target)
         else:
             save_chain_to_file(r, fn_target)
@@ -2633,18 +2551,21 @@ def sample_fit(
 
     success = True
     # Sanitize fit name for use in filenames
-    safe_fit_name = "".join([c if c.isalnum() or c in (' ', '_', '-') else '_' for c in fit.name]).strip().replace(' ', '_')
+    safe_fit_name = (
+        "".join([c if c.isalnum() or c in (" ", "_", "-") else "_" for c in fit.name])
+        .strip()
+        .replace(" ", "_")
+    )
     for i_run in range(n_runs):
         if check_cancel and check_cancel():
             success = False
             break
-            
+
         base_fn = f"{safe_fit_name}_{i_run}"
         fn_final = os.path.join(chains_dir, base_fn + chain_suffix)
-        fn_partial = os.path.join(chains_dir, base_fn + '.partial' + chain_suffix)
+        fn_partial = os.path.join(chains_dir, base_fn + ".partial" + chain_suffix)
 
-        def sampler_callback(done, run_total, sampler=None, result=None,
-                             **cb_kwargs):
+        def sampler_callback(done, run_total, sampler=None, result=None, **cb_kwargs):
             """Callback invoked during sampling for intermediate saves.
 
             Parameters
@@ -2683,23 +2604,29 @@ def sample_fit(
         sampler_entry = cs.core.fitting.sample.SAMPLERS[method]
         sampler_function = cs.core.fitting.sample.sampler_function(method)
         offered = dict(
-            fit=fit, steps=steps, thin=thin, chi2max=chi2max, step_size=step_size, temp=temp,
-            callback=sampler_callback, check_cancel=check_cancel, sampler=method,
+            fit=fit,
+            steps=steps,
+            thin=thin,
+            chi2max=chi2max,
+            step_size=step_size,
+            temp=temp,
+            callback=sampler_callback,
+            check_cancel=check_cancel,
+            sampler=method,
         )
-        if sampler_entry.get('samples_global_posterior'):
-            offered['model'] = sample_model
+        if sampler_entry.get("samples_global_posterior"):
+            offered["model"] = sample_model
         parameters = inspect.signature(sampler_function).parameters
-        if 'nwalkers' in parameters:
+        if "nwalkers" in parameters:
             # at least 2 ndim + 2 and 10 walkers (the kernel's declared default
             # rule), unless the settings ask for a specific ensemble size
-            rule = sampler_entry.get('default_walkers') or {}
-            n_default = max(int(rule.get('per_dim', 2)) * int(fit.n_free) + int(rule.get('offset', 2)),
-                            int(rule.get('minimum', 10)))
-            offered['nwalkers'] = int(requested_walkers or n_default)
-        r = sampler_function(
-            **{k: v for k, v in offered.items() if k in parameters},
-            **kwargs
-        )
+            rule = sampler_entry.get("default_walkers") or {}
+            n_default = max(
+                int(rule.get("per_dim", 2)) * int(fit.n_free) + int(rule.get("offset", 2)),
+                int(rule.get("minimum", 10)),
+            )
+            offered["nwalkers"] = int(requested_walkers or n_default)
+        r = sampler_function(**{k: v for k, v in offered.items() if k in parameters}, **kwargs)
 
         if success:
             save_chain(r, fn_final)
@@ -2733,18 +2660,18 @@ def sample_fit(
     chain = pool_chains(run_results)
     sampling_chain = None
     if chain is not None:
-        burn_in = int((diagnostics or {}).get('burn_in', 0) or 0)
+        burn_in = int((diagnostics or {}).get("burn_in", 0) or 0)
         burn_in = max(0, min(burn_in, chain.shape[1] - 1))
         kept = chain[:, burn_in:, :]
         sampling_chain = {
-            'parameter_names': list(sample_model.parameter_names),
-            'parameter_values': kept.reshape(-1, kept.shape[2]),
-            'chains': kept,
-            'burn_in': burn_in,
+            "parameter_names": list(sample_model.parameter_names),
+            "parameter_values": kept.reshape(-1, kept.shape[2]),
+            "chains": kept,
+            "burn_in": burn_in,
         }
     fit.sampling_chain = sampling_chain
 
-    selected = getattr(fit, 'selected_fit', None)
+    selected = getattr(fit, "selected_fit", None)
     if selected is not None and selected is not fit:
         selected.sampling_diagnostics = diagnostics
         selected.sampling_chain = sampling_chain
@@ -2755,9 +2682,7 @@ def sample_fit(
     return diagnostics
 
 
-def pool_chains(
-        run_results: typing.Sequence[dict]
-) -> typing.Optional[np.ndarray]:
+def pool_chains(run_results: typing.Sequence[dict]) -> typing.Optional[np.ndarray]:
     """Stack the chains of several independent sampling runs.
 
     ``sample_fit`` performs ``n_runs`` independent runs and used to write each to
@@ -2782,7 +2707,7 @@ def pool_chains(
     """
     blocks = []
     for r in run_results:
-        c = r.get('chains') if isinstance(r, dict) else None
+        c = r.get("chains") if isinstance(r, dict) else None
         if c is None:
             continue
         c = np.asarray(c, dtype=np.float64)
@@ -2792,15 +2717,11 @@ def pool_chains(
         return None
     n_draws = min(b.shape[1] for b in blocks)
     n_par = min(b.shape[2] for b in blocks)
-    return np.concatenate(
-        [b[:, :n_draws, :n_par] for b in blocks], axis=0
-    )
+    return np.concatenate([b[:, :n_draws, :n_par] for b in blocks], axis=0)
 
 
 def _write_sampling_diagnostics(
-        run_results: typing.Sequence[dict],
-        model: cs.core.models.Model,
-        path: str
+    run_results: typing.Sequence[dict], model: cs.core.models.Model, path: str
 ) -> typing.Optional[dict]:
     """Summarise the pooled runs, write ``diagnostics.json`` and log the warnings.
 
@@ -2826,17 +2747,18 @@ def _write_sampling_diagnostics(
     summary = cs.core.fitting.diagnostics.summarize(chains, names=names)
     warnings = cs.core.fitting.diagnostics.convergence_warnings(summary)
     acceptance = [
-        float(r['acceptance_rate']) for r in run_results
-        if isinstance(r, dict) and np.isfinite(r.get('acceptance_rate', np.nan))
+        float(r["acceptance_rate"])
+        for r in run_results
+        if isinstance(r, dict) and np.isfinite(r.get("acceptance_rate", np.nan))
     ]
     report = {
-        'n_runs': len(run_results),
-        'n_chains': int(chains.shape[0]),
-        'n_draws': int(chains.shape[1]),
-        'burn_in': summary[0]['burn_in'] if summary else 0,
-        'acceptance_rate': float(np.mean(acceptance)) if acceptance else None,
-        'parameters': summary,
-        'warnings': warnings,
+        "n_runs": len(run_results),
+        "n_chains": int(chains.shape[0]),
+        "n_draws": int(chains.shape[1]),
+        "burn_in": summary[0]["burn_in"] if summary else 0,
+        "acceptance_rate": float(np.mean(acceptance)) if acceptance else None,
+        "parameters": summary,
+        "warnings": warnings,
     }
     try:
         with open(path, "w") as f:
@@ -2854,7 +2776,7 @@ def _write_sampling_diagnostics(
     return report
 
 
-#@nb.jit#(nopython=True)
+# @nb.jit#(nopython=True)
 #: Relative finite-difference step for :func:`approx_grad`. The square root of
 #: the machine epsilon is the standard optimum for a forward difference: it
 #: balances the truncation error (linear in the step) against the cancellation
@@ -2863,12 +2785,12 @@ FINITE_DIFFERENCE_STEP = float(np.sqrt(np.finfo(float).eps))
 
 
 def approx_grad(
-        xk: np.array,
-        fit: cs.core.fitting.fit.Fit,
-        epsilon: float = None,
-        args=(),
-        f0=None,
-        model: cs.core.models.Model = None
+    xk: np.array,
+    fit: cs.core.fitting.fit.Fit,
+    epsilon: float = None,
+    args=(),
+    f0=None,
+    model: cs.core.models.Model = None,
 ) -> typing.Tuple[float, np.array]:
     """Approximate gradient of the weighted residuals with respect to ``xk``.
 
@@ -2914,13 +2836,20 @@ def approx_grad(
     def f(values):
         """Weighted residuals of ``model`` at a parameter vector."""
         return get_wres(values, model)
+
     xk = np.asarray(xk, dtype=float)
     n_xk = len(xk)
     if f0 is None:
         f0 = f(xk)
     i = len(f0)
-    grad = np.zeros((n_xk, i, ), float)
-    ei = np.zeros((n_xk, ), float)
+    grad = np.zeros(
+        (
+            n_xk,
+            i,
+        ),
+        float,
+    )
+    ei = np.zeros((n_xk,), float)
 
     for k in range(n_xk):
         step = epsilon * max(abs(float(xk[k])), 1.0)
@@ -2979,7 +2908,7 @@ def _error_scale(fit) -> float:
     except Exception:
         return 1.0
     if ey.size == 0 or not np.all(ey == 1.0):
-        return 1.0          # real uncertainties: the covariance is already right
+        return 1.0  # real uncertainties: the covariance is already right
     try:
         chi2r = float(fit.chi2r)
     except Exception:
@@ -2990,11 +2919,11 @@ def _error_scale(fit) -> float:
 
 
 def covariance_matrix(
-        fit: cs.core.fitting.fit.Fit,
-        epsilon: float = None,
-        model: cs.core.models.Model = None,
-        f0: np.ndarray = None,
-        **kwargs
+    fit: cs.core.fitting.fit.Fit,
+    epsilon: float = None,
+    model: cs.core.models.Model = None,
+    f0: np.ndarray = None,
+    **kwargs,
 ) -> typing.Tuple[np.array, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
 
@@ -3034,8 +2963,7 @@ def covariance_matrix(
     # graph cannot represent falls through to the numpy path below, which is
     # the definition of the answer and stays the reference the C++ routine is
     # pinned against.
-    over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(
-        fit, model, epsilon)
+    over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(fit, model, epsilon)
     if over_the_graph is not None:
         return over_the_graph
     xk = np.array(model.parameter_values)
@@ -3046,8 +2974,7 @@ def covariance_matrix(
     # rtol=0, atol=0). Only a caller that can guarantee the model is current
     # for `xk` may pass it; everyone else leaves it None and pays for the
     # evaluation, which is why this is not simply read from the model here.
-    fi_v, partial_derivatives = approx_grad(
-        xk, fit, epsilon, model=model, f0=f0)
+    fi_v, partial_derivatives = approx_grad(xk, fit, epsilon, model=model, f0=f0)
 
     # find parameters which do not change the models
     # use only parameters which change the models
@@ -3064,31 +2991,24 @@ def covariance_matrix(
         da_alpha = pdi[i_alpha]
         for i_beta in range(n_important_parameters):
             da_beta = pdi[i_beta]
-            m[i_alpha, i_beta] = ((da_alpha * da_beta)).sum()
+            m[i_alpha, i_beta] = (da_alpha * da_beta).sum()
     try:
         cov_m = scipy.linalg.pinvh(m)
     except (scipy.linalg.LinAlgError, np.linalg.LinAlgError) as e:
         cs.logging.debug(f"Failed to compute covariance matrix: {e}")
         # np.zeros_like((n, n)) would build a length-2 vector from the shape
         # tuple rather than an n x n matrix.
-        cov_m = np.zeros(
-            (n_important_parameters, n_important_parameters),
-            dtype=float
-        )
+        cov_m = np.zeros((n_important_parameters, n_important_parameters), dtype=float)
     return cov_m, important_parameters
 
 
-def _apply_fit_mask(
-        model: cs.core.models.Model,
-        wres: np.array
-) -> np.array:
+def _apply_fit_mask(model: cs.core.models.Model, wres: np.array) -> np.array:
     """Apply an optional Fit-level mask to a residual vector.
 
     The mask is taken from ``model.fit.mask`` if available. Boolean masks are
     interpreted as 0/1 inclusion weights; numeric masks are used as
     multiplicative weights. The mask is truncated to the residual length.
     """
-
     if wres is None:
         return wres
 
@@ -3133,9 +3053,7 @@ def _apply_fit_mask(
 
 
 def _closest_quantile(
-        quantiles: typing.Dict[str, float],
-        target: float,
-        tolerance: float = 0.02
+    quantiles: typing.Dict[str, float], target: float, tolerance: float = 0.02
 ) -> typing.Optional[float]:
     """Return the stored quantile nearest ``target``, or ``None`` if none is close.
 
@@ -3202,9 +3120,7 @@ def _smooth_prior(parameter) -> typing.Optional[cs.core.fitting.priors.Prior]:
     return getattr(parameter, "prior", None)
 
 
-def _prior_residuals(
-        model: cs.core.models.Model
-) -> np.array:
+def _prior_residuals(model: cs.core.models.Model) -> np.array:
     """Return the concatenated prior-residual contributions of a model.
 
     Each free parameter that carries a prior contributes its
@@ -3241,9 +3157,7 @@ def _prior_residuals(
 
 
 def get_wres(
-        parameter_values: typing.List[float],
-        model: cs.core.models.Model,
-        include_priors: bool = False
+    parameter_values: typing.List[float], model: cs.core.models.Model, include_priors: bool = False
 ) -> np.array:
     """Return weighted residuals for a list of model parameters.
 
@@ -3268,16 +3182,14 @@ def get_wres(
     if include_priors:
         pr = _prior_residuals(model)
         if pr.size:
-            wres = np.concatenate(
-                [np.asarray(wres, dtype=np.float64).ravel(), pr]
-            )
+            wres = np.concatenate([np.asarray(wres, dtype=np.float64).ravel(), pr])
     return wres
 
 
 def get_chi2(
-        parameter_values: typing.List[float],
-        model: cs.core.models.model.ModelCurve,
-        reduced: bool = True
+    parameter_values: typing.List[float],
+    model: cs.core.models.model.ModelCurve,
+    reduced: bool = True,
 ) -> float:
     """Return either the reduced chi² or the sum of squares (chi²).
 
@@ -3320,7 +3232,7 @@ def get_chi2(
     >>> float(round(get_chi2([], m, reduced=True), 1))
     2.0
     """
-    chi2 = (get_wres(parameter_values, model)**2.0).sum()
+    chi2 = (get_wres(parameter_values, model) ** 2.0).sum()
     chi2 = np.inf if np.isnan(chi2) else chi2
     chi2r = chi2 / float(model.n_points - model.n_free - 1.0)
     if reduced:
@@ -3330,12 +3242,10 @@ def get_chi2(
 
 
 def lnprior(
-        parameter_values: typing.List[float],
-        fit: cs.core.fitting.fit.Fit,
-        bounds: typing.List[
-            typing.Tuple[float, float]
-        ] = None,
-        model: cs.core.models.Model = None
+    parameter_values: typing.List[float],
+    fit: cs.core.fitting.fit.Fit,
+    bounds: typing.List[typing.Tuple[float, float]] = None,
+    model: cs.core.models.Model = None,
 ) -> float:
     """Log-prior probability of a set of parameter values.
 
@@ -3382,7 +3292,7 @@ def lnprior(
     -inf
     """
     if bounds is not None:
-        for (bound, value) in zip(bounds, parameter_values):
+        for bound, value in zip(bounds, parameter_values):
             lb, ub = bound
             if lb is not None and value < lb:
                 return -np.inf
@@ -3413,13 +3323,11 @@ def lnprior(
 
 
 def lnprob_parts(
-        parameter_values: typing.List[float],
-        fit: Fit,
-        chi2max: float = float("inf"),
-        bounds: typing.List[
-            typing.Tuple[float, float]
-        ] = None,
-        model: cs.core.models.Model = None
+    parameter_values: typing.List[float],
+    fit: Fit,
+    chi2max: float = float("inf"),
+    bounds: typing.List[typing.Tuple[float, float]] = None,
+    model: cs.core.models.Model = None,
 ) -> typing.Tuple[float, float, float]:
     """Return the log-likelihood, log-prior and chi² of a parameter vector.
 
@@ -3458,13 +3366,11 @@ def lnprob_parts(
 
 
 def lnprob(
-        parameter_values: typing.List[float],
-        fit: Fit,
-        chi2max: float = float("inf"),
-        bounds: typing.List[
-            typing.Tuple[float, float]
-        ] = None,
-        model: cs.core.models.Model = None
+    parameter_values: typing.List[float],
+    fit: Fit,
+    chi2max: float = float("inf"),
+    bounds: typing.List[typing.Tuple[float, float]] = None,
+    model: cs.core.models.Model = None,
 ) -> float:
     """Log-posterior probability for use in MCMC sampling.
 
@@ -3520,13 +3426,7 @@ def lnprob(
     >>> lnprob([10.0], fit, chi2max=10.0, bounds=bounds)
     -inf
     """
-    lnlike, lp, _ = lnprob_parts(
-        parameter_values,
-        fit,
-        chi2max=chi2max,
-        bounds=bounds,
-        model=model
-    )
+    lnlike, lp, _ = lnprob_parts(parameter_values, fit, chi2max=chi2max, bounds=bounds, model=model)
     if not np.isfinite(lp):
         return float("-inf")
     return lnlike + lp

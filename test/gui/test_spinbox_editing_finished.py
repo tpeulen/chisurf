@@ -20,10 +20,10 @@ number.
 used to push fit results back into the widgets, and emitting there would write
 the value straight back into the model.
 """
+
 import pytest
 
 pytest.importorskip("qtpy")
-from qtpy import QtWidgets  # noqa: E402
 
 from chisurf.gui.widgets.fitting.scientific_spinbox import (  # noqa: E402
     ScientificDoubleSpinBox,
@@ -117,7 +117,8 @@ def test_typed_value_reaches_the_fitting_parameter(qtbot):
     sb.lineEdit().editingFinished.emit()
 
     assert float(p.value) == pytest.approx(9.25), (
-        "typed value never reached the model — the plot would show a stale curve")
+        "typed value never reached the model — the plot would show a stale curve"
+    )
 
 
 def test_stepped_value_reaches_the_fitting_parameter(qtbot):

@@ -1,11 +1,11 @@
 from __future__ import annotations
-import chisurf as cs
 
-from dataclasses import dataclass, field
 import json
 import threading
 import time
+from dataclasses import dataclass, field
 
+import chisurf as cs
 from chisurf import typing
 
 
@@ -37,6 +37,7 @@ class ActionSpec:
 
     def __post_init__(self):
         import inspect
+
         if self.handler is not None:
             try:
                 sig = inspect.signature(self.handler)
@@ -48,8 +49,8 @@ class ActionSpec:
         else:
             names = frozenset()
             has_var = True
-        object.__setattr__(self, '_handler_params', names)
-        object.__setattr__(self, '_handler_has_var_kw', has_var)
+        object.__setattr__(self, "_handler_params", names)
+        object.__setattr__(self, "_handler_has_var_kw", has_var)
 
     def filter_payload(self, payload: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
         if self._handler_has_var_kw:
@@ -74,7 +75,9 @@ class ActionSpec:
             "side_effect_class": str(self.side_effect_class),
         }
 
-    def validate_payload(self, payload: typing.Optional[typing.Dict[str, typing.Any]]) -> typing.Dict[str, typing.Any]:
+    def validate_payload(
+        self, payload: typing.Optional[typing.Dict[str, typing.Any]]
+    ) -> typing.Dict[str, typing.Any]:
         data = dict(payload or {})
         for key, expected in self.schema.items():
             if key not in data:
@@ -160,10 +163,10 @@ class ActionRegistry:
 
 class ActionDispatcher:
     def __init__(
-            self,
-            registry: ActionRegistry,
-            history_provider: typing.Callable[[], typing.Any],
-            scheduler: typing.Optional[typing.Callable[..., typing.Any]] = None,
+        self,
+        registry: ActionRegistry,
+        history_provider: typing.Callable[[], typing.Any],
+        scheduler: typing.Optional[typing.Callable[..., typing.Any]] = None,
     ):
         self.registry = registry
         self._history_provider = history_provider
@@ -183,11 +186,11 @@ class ActionDispatcher:
             return repr(value)
 
     def _fingerprint(
-            self,
-            action_type: str,
-            payload: typing.Dict[str, typing.Any],
-            source_uid: typing.Optional[str],
-            debounce_keys: typing.Optional[typing.Tuple[str, ...]] = None,
+        self,
+        action_type: str,
+        payload: typing.Dict[str, typing.Any],
+        source_uid: typing.Optional[str],
+        debounce_keys: typing.Optional[typing.Tuple[str, ...]] = None,
     ) -> str:
         if debounce_keys:
             identity_payload = {k: payload.get(k) for k in debounce_keys if k in payload}
@@ -217,14 +220,14 @@ class ActionDispatcher:
                     pass
 
     def _schedule_trailing_edge(
-            self,
-            spec: ActionSpec,
-            name: str,
-            payload: typing.Dict[str, typing.Any],
-            summary: typing.Optional[str],
-            source_uid: typing.Optional[str],
-            target_uid: typing.Optional[str],
-            fingerprint: str,
+        self,
+        spec: ActionSpec,
+        name: str,
+        payload: typing.Dict[str, typing.Any],
+        summary: typing.Optional[str],
+        source_uid: typing.Optional[str],
+        target_uid: typing.Optional[str],
+        fingerprint: str,
     ) -> None:
         with self._lock:
             self._cancel_pending(fingerprint)
@@ -238,7 +241,7 @@ class ActionDispatcher:
                         summary=summary,
                         source_uid=source_uid,
                         target_uid=target_uid,
-                        _is_trailing_edge=True
+                        _is_trailing_edge=True,
                     )
                     return
                 self.execute(
@@ -247,7 +250,7 @@ class ActionDispatcher:
                     summary=summary,
                     source_uid=source_uid,
                     target_uid=target_uid,
-                    _is_trailing_edge=True
+                    _is_trailing_edge=True,
                 )
 
             timer = threading.Timer(spec.debounce_ms / 1000.0, delayed_execute)
@@ -255,28 +258,33 @@ class ActionDispatcher:
             timer.start()
 
     def execute(
-            self,
-            name: str,
-            payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
-            summary: typing.Optional[str] = None,
-            source_uid: typing.Optional[str] = None,
-            target_uid: typing.Optional[str] = None,
-            _is_trailing_edge: bool = False,
-            **_kw
+        self,
+        name: str,
+        payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        summary: typing.Optional[str] = None,
+        source_uid: typing.Optional[str] = None,
+        target_uid: typing.Optional[str] = None,
+        _is_trailing_edge: bool = False,
+        **_kw,
     ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         canonical_name = self.registry.resolve_name(name)
         spec = self.registry.get(canonical_name)
         if spec is None:
             import logging
+
             logging.getLogger(__name__).warning("dispatch(%r): unknown action", name)
             return None
         normalized_payload = spec.validate_payload(payload)
 
-        fingerprint = self._fingerprint(canonical_name, normalized_payload, source_uid, spec.debounce_keys)
+        fingerprint = self._fingerprint(
+            canonical_name, normalized_payload, source_uid, spec.debounce_keys
+        )
 
         if not _is_trailing_edge:
             if self._is_within_debounce(fingerprint, spec.debounce_ms):
-                self._schedule_trailing_edge(spec, name, normalized_payload, summary, source_uid, target_uid, fingerprint)
+                self._schedule_trailing_edge(
+                    spec, name, normalized_payload, summary, source_uid, target_uid, fingerprint
+                )
                 return None
 
         self._cancel_pending(fingerprint)
@@ -326,11 +334,11 @@ def get_action_catalog() -> typing.List[typing.Dict[str, typing.Any]]:
 
 
 def record_action(
-        action_type: str,
-        summary: str,
-        payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        source_uid: typing.Optional[str] = None,
-        target_uid: typing.Optional[str] = None,
+    action_type: str,
+    summary: str,
+    payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    source_uid: typing.Optional[str] = None,
+    target_uid: typing.Optional[str] = None,
 ) -> typing.Optional[typing.Dict[str, typing.Any]]:
     payload_data = payload or {}
     history_obj = getattr(cs, "history", None)
@@ -347,11 +355,11 @@ def record_action(
 
 
 def invoke_action(
-        name: str,
-        payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        summary: typing.Optional[str] = None,
-        source_uid: typing.Optional[str] = None,
-        target_uid: typing.Optional[str] = None,
+    name: str,
+    payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    summary: typing.Optional[str] = None,
+    source_uid: typing.Optional[str] = None,
+    target_uid: typing.Optional[str] = None,
 ) -> typing.Optional[typing.Dict[str, typing.Any]]:
     """Alias for cs.core.actions.dispatch. Prefer using that directly."""
     return cs.core.actions.dispatch(name=str(name), payload=payload)

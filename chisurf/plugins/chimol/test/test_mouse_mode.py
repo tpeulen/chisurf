@@ -31,9 +31,7 @@ def test_no_drag_style_setting():
     live one carries whatever is in the user's `~/.chisurf/chimol_display.json`,
     which is not this test's business.
     """
-    shipped = json.loads(
-        (Path(config.__file__).with_name("chimol_display.json")).read_text()
-    )
+    shipped = json.loads((Path(config.__file__).with_name("chimol_display.json")).read_text())
     assert "mouse_mode" not in shipped["camera"]
 
 
@@ -54,9 +52,7 @@ def test_no_drag_style_helpers():
         "rotation_delta_multiplier",
         "pan_delta_multiplier",
     ):
-        assert not hasattr(mouse_modes, name), (
-            f"{name} is back: chimol has one drag style, PyMOL's"
-        )
+        assert not hasattr(mouse_modes, name), f"{name} is back: chimol has one drag style, PyMOL's"
 
 
 def test_mouse_mode_matrix_survives():

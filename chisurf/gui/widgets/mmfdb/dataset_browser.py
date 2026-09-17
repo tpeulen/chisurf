@@ -17,8 +17,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.widgets.general import apply_compact_table_style
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.general import apply_compact_table_style
 
 
 @dataclass
@@ -40,6 +40,7 @@ class DatasetSelection:
     metadata : dict
         Arbitrary metadata from the artifact.
     """
+
     artifact_id: str
     artifact_kind: str
     data_format: str | None
@@ -166,15 +167,21 @@ class MmfdbDatasetBrowser(QtWidgets.QWidget):
         # dataset list
         self.dataset_list = QtWidgets.QTableWidget(self)
         self.dataset_list.setColumnCount(6)
-        self.dataset_list.setHorizontalHeaderLabels([
-            "Filename", "Kind", "Format", "Sample Name", "Deposition Date", "Ref Count"
-        ])
+        self.dataset_list.setHorizontalHeaderLabels(
+            ["Filename", "Kind", "Format", "Sample Name", "Deposition Date", "Ref Count"]
+        )
         apply_compact_table_style(self.dataset_list)
         self.dataset_list.setSortingEnabled(True)
-        self.dataset_list.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.dataset_list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.dataset_list.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.dataset_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.dataset_list.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.dataset_list.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.dataset_list.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        )
         self.dataset_list.itemDoubleClicked.connect(self._on_dataset_activated)
         self.dataset_list.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self.dataset_list, 1)
@@ -219,7 +226,9 @@ class MmfdbDatasetBrowser(QtWidgets.QWidget):
         self.search_edit.setEnabled(connected)
         self.dataset_list.setEnabled(connected)
         self.prev_btn.setEnabled(connected and self._current_page > 0)
-        self.next_btn.setEnabled(connected and (self._current_page + 1) * self._page_size < self._total)
+        self.next_btn.setEnabled(
+            connected and (self._current_page + 1) * self._page_size < self._total
+        )
         if not connected:
             self.status_label.setText("MMFDB not connected")
             self.dataset_list.setRowCount(0)
@@ -242,14 +251,17 @@ class MmfdbDatasetBrowser(QtWidgets.QWidget):
             return
         scope = self.scope_combo.currentData() or "all"
         query = self.search_edit.text().strip() or None
-        result = self._call_rpc("mmfdb.datasets.browse", {
-            "scope": scope,
-            "query": query,
-            "kinds": self._kinds,
-            "formats": self._formats,
-            "limit": self._page_size,
-            "offset": self._current_page * self._page_size,
-        })
+        result = self._call_rpc(
+            "mmfdb.datasets.browse",
+            {
+                "scope": scope,
+                "query": query,
+                "kinds": self._kinds,
+                "formats": self._formats,
+                "limit": self._page_size,
+                "offset": self._current_page * self._page_size,
+            },
+        )
         self._datasets = result.get("datasets", [])
         self._total = result.get("total", 0)
         self._sample_counts = result.get("sample_counts", {})
@@ -279,7 +291,9 @@ class MmfdbDatasetBrowser(QtWidgets.QWidget):
             item_sample = QtWidgets.QTableWidgetItem(sample_name)
             item_created = QtWidgets.QTableWidgetItem(created_at)
             item_ref = QtWidgets.QTableWidgetItem()
-            item_ref.setData(QtCore.Qt.ItemDataRole.DisplayRole, ref_count if ref_count is not None else 0)
+            item_ref.setData(
+                QtCore.Qt.ItemDataRole.DisplayRole, ref_count if ref_count is not None else 0
+            )
 
             self.dataset_list.setItem(row_idx, 0, item_id)
             self.dataset_list.setItem(row_idx, 1, item_kind)
@@ -289,17 +303,13 @@ class MmfdbDatasetBrowser(QtWidgets.QWidget):
             self.dataset_list.setItem(row_idx, 5, item_ref)
         self.dataset_list.setSortingEnabled(was_sorting)
         self.dataset_list.blockSignals(False)
-        self.status_label.setText(
-            f"Showing {len(self._datasets)} of {self._total} datasets"
-        )
+        self.status_label.setText(f"Showing {len(self._datasets)} of {self._total} datasets")
 
     def _update_pagination(self) -> None:
         total_pages = max(1, (self._total + self._page_size - 1) // self._page_size)
         self.page_label.setText(f"Page {self._current_page + 1} of {total_pages}")
         self.prev_btn.setEnabled(self._current_page > 0)
-        self.next_btn.setEnabled(
-            (self._current_page + 1) * self._page_size < self._total
-        )
+        self.next_btn.setEnabled((self._current_page + 1) * self._page_size < self._total)
         self.total_label.setText(f"Total: {self._total}")
 
     # ── slots ──────────────────────────────────────────────────────
@@ -465,9 +475,7 @@ class MmfdbDatasetPickerDialog(QtWidgets.QDialog):
 
     def _on_accept(self) -> None:
         if self._selection is None:
-            dialogs.warning(
-                self, "No Selection", "Please select a dataset."
-            )
+            dialogs.warning(self, "No Selection", "Please select a dataset.")
             return
         self.accept()
 

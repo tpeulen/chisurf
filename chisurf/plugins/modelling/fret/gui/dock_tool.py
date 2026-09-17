@@ -19,8 +19,8 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 
 class _PdbListModel:
@@ -62,11 +62,14 @@ def _fmt_eta(seconds: float) -> str:
         return f"ETA {s // 60}m {s % 60}s"
     return f"ETA {s}s"
 
+
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except Exception:  # pragma: no cover - fallback when helper unavailable
+
     def persist_plugin_state(name):  # type: ignore
         return lambda c: c
+
 
 from ..core import stat as _stat
 
@@ -143,12 +146,17 @@ class _DockingModel:
         op = self.operation
         if op == "dock":
             req = {
-                "pdb_paths": self.pdb_list(), "fps_json": self.fps_json,
-                "output_dir": self.output_dir, "n_frames": self.n_frames,
-                "mc_steps": self.mc_steps, "n_best": self.n_best,
-                "fixed_body": self.fixed_body, "sigma_da": self.sigma_da,
+                "pdb_paths": self.pdb_list(),
+                "fps_json": self.fps_json,
+                "output_dir": self.output_dir,
+                "n_frames": self.n_frames,
+                "mc_steps": self.mc_steps,
+                "n_best": self.n_best,
+                "fixed_body": self.fixed_body,
+                "sigma_da": self.sigma_da,
                 "simulated_annealing": self.simulated_annealing,
-                "score_set": self.score_set, "method": self.method,
+                "score_set": self.score_set,
+                "method": self.method,
                 "refine_av_cycles": self.refine_av_cycles,
                 "ev_weight": self.ev_weight,
                 "save_distributions": self.save_distributions,
@@ -164,20 +172,26 @@ class _DockingModel:
             return op, req
         if op == "refine":
             return op, {
-                "pdb_paths": self.pdb_list(), "fps_json": self.fps_json,
-                "output_dir": self.output_dir, "score_set": self.score_set,
+                "pdb_paths": self.pdb_list(),
+                "fps_json": self.fps_json,
+                "output_dir": self.output_dir,
+                "score_set": self.score_set,
             }
         if op == "screen":
             return op, {
-                "pdb_inputs": self.pdb_list(), "fps_json": self.fps_json,
+                "pdb_inputs": self.pdb_list(),
+                "fps_json": self.fps_json,
                 "score_set": self.score_set,
                 "output_csv": str(pathlib.Path(self.output_dir) / "screen.csv")
-                if self.output_dir else None,
+                if self.output_dir
+                else None,
             }
         # score
         return op, {
-            "pdb_paths": self.pdb_list(), "fps_json": self.fps_json,
-            "score_set": self.score_set, "mean_position_restraint": True,
+            "pdb_paths": self.pdb_list(),
+            "fps_json": self.fps_json,
+            "score_set": self.score_set,
+            "mean_position_restraint": True,
             "sigma_da": self.sigma_da,
         }
 
@@ -186,8 +200,8 @@ def _run_op_child(op, params, q):
     """Run one operation in a worker process and put ``(status, payload)`` on q."""
     try:
         from ..api import operations as ops
-        fn = {"dock": ops.dock, "refine": ops.refine,
-              "screen": ops.screen, "score": ops.score}[op]
+
+        fn = {"dock": ops.dock, "refine": ops.refine, "screen": ops.screen, "score": ops.score}[op]
         q.put(("ok", fn(params)))
     except Exception:
         q.put(("err", traceback.format_exc()))
@@ -209,6 +223,7 @@ class _Worker(QtCore.QObject):
     def run(self) -> None:
         try:
             from ..api import operations as ops
+
             if self._op == "dock":
                 # Single dock runs in a terminable child process so Stop works
                 # for *any* method (PMI's Monte-Carlo execute_macro can't be
@@ -219,8 +234,9 @@ class _Worker(QtCore.QObject):
                 res = ops.estimate_errors(self._params, stop_check=self._stop_check)
                 self.finished.emit(res)
             else:
-                res = {"refine": ops.refine, "screen": ops.screen,
-                       "score": ops.score}[self._op](self._params)
+                res = {"refine": ops.refine, "screen": ops.screen, "score": ops.score}[self._op](
+                    self._params
+                )
                 self.finished.emit(res)
         except Exception:  # pragma: no cover - surfaced to the UI
             self.failed.emit(traceback.format_exc())
@@ -234,11 +250,11 @@ class _Worker(QtCore.QObject):
             ctx = mp.get_context("fork")
         except ValueError:  # no fork (e.g. Windows) -> run inline, no cancel
             from ..api import operations as ops
+
             self.finished.emit(ops.dock(self._params, stop_check=self._stop_check))
             return
         q = ctx.Queue()
-        proc = ctx.Process(target=_run_op_child, args=(self._op, self._params, q),
-                           daemon=True)
+        proc = ctx.Process(target=_run_op_child, args=(self._op, self._params, q), daemon=True)
         proc.start()
         while True:
             if self._stop_check is not None and self._stop_check():
@@ -274,7 +290,7 @@ class FretDockingTool(QtWidgets.QWidget):
         self._dialog = None
         self._t0 = 0.0
         self._total = 1
-        self._pending_pdb = None    # models queued by the preview debounce timer
+        self._pending_pdb = None  # models queued by the preview debounce timer
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -290,8 +306,11 @@ class FretDockingTool(QtWidgets.QWidget):
         self._act_save.setToolTip("Save the current inputs and parameters as a docking project.")
         tb.addSeparator()
         tb.addAction(f"{Glyphs.LABEL} fps.json", self._pick_fps).setToolTip(
-            "Choose the labelling/distance fps.json (or FPS LPs .txt) file.")
-        tb.addAction(f"{Glyphs.FOLDER} Output", self._pick_out).setToolTip("Choose the output directory.")
+            "Choose the labelling/distance fps.json (or FPS LPs .txt) file."
+        )
+        tb.addAction(f"{Glyphs.FOLDER} Output", self._pick_out).setToolTip(
+            "Choose the output directory."
+        )
         tb.addSeparator()
         self._act_run = tb.addAction(f"{Glyphs.RUN} Run", self._on_run)
         self._act_run.setToolTip("Run docking; results are appended to the table.")
@@ -309,15 +328,19 @@ class FretDockingTool(QtWidgets.QWidget):
         pv.setContentsMargins(6, 2, 6, 4)
         self._pdb_model = _PdbListModel(self._sync_pdb_model)
         self._pdb_widget = PathListWidget(
-            self._pdb_model, "files",
-            extensions=[".pdb"], add_folders=False, allow_duplicates=True,
+            self._pdb_model,
+            "files",
+            extensions=[".pdb"],
+            add_folders=False,
+            allow_duplicates=True,
             dialog_filter="PDB (*.pdb);;All files (*)",
             mmfdb_kinds=["structure"],
         )
         self._pdb_widget.setMaximumHeight(150)
         self._pdb_widget.setToolTip(
             "PDB files, one per rigid body; order = body_id 0,1,2… "
-            "(the same file twice = homodimer).")
+            "(the same file twice = homodimer)."
+        )
         self._pdb_widget.selectionChanged.connect(self._on_pdb_selected)
         pv.addWidget(self._pdb_widget)
         layout.addWidget(pdb_box)
@@ -327,12 +350,12 @@ class FretDockingTool(QtWidgets.QWidget):
 
         # Results live in dockable tabs: table, score plot, structure preview.
         from chisurf.gui.widgets.dock_area import DockArea
+
         self._dock_area = DockArea(self)
         layout.addWidget(self._dock_area, 1)
 
         self._table = QtWidgets.QTableWidget(0, 5)
-        self._table.setHorizontalHeaderLabels(
-            ["Trial", "Type", "Score", "Distances", "Best PDB"])
+        self._table.setHorizontalHeaderLabels(["Trial", "Type", "Score", "Distances", "Best PDB"])
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
@@ -342,17 +365,20 @@ class FretDockingTool(QtWidgets.QWidget):
         self._table.setSortingEnabled(True)  # click a header (e.g. Score) to sort
         self._table.setToolTip(
             "Per-trial results — click a column header to sort (e.g. by Score); "
-            "select a row to show that structure.")
+            "select a row to show that structure."
+        )
 
         self._plot = cp.Plot()
         self._plot.set_labels(bottom="Step", left="Total score")
         self._plot.grid(x=True, y=True)
         self._plot.setToolTip(
-            "Total restraint score vs step (CG iteration or MC frame; one curve per trial).")
+            "Total restraint score vs step (CG iteration or MC frame; one curve per trial)."
+        )
 
         # Structure preview: reusable AutoForm ChiMol section (viewer + frame
         # slider) bound to the model's ``preview_models`` list.
         from chisurf.gui.autoform.sections.chimol_section import ChiMolSectionWidget
+
         self._structure_view = ChiMolSectionWidget(self._model, "preview_models")
 
         self._dock_area.addTab(self._table, f"{Glyphs.CHART} Results")
@@ -425,8 +451,11 @@ class FretDockingTool(QtWidgets.QWidget):
 
     def _pick_fps(self) -> None:
         f, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select fps.json or FPS LPs .txt", "",
-            "FPS labelling (*.json *.txt);;All files (*)")
+            self,
+            "Select fps.json or FPS LPs .txt",
+            "",
+            "FPS labelling (*.json *.txt);;All files (*)",
+        )
         if f:
             self._model.fps_json = f
             self._form.sync_fields()
@@ -441,22 +470,26 @@ class FretDockingTool(QtWidgets.QWidget):
     def _model_params(self) -> dict:
         m = self._model
         return {
-            "n_frames": m.n_frames, "mc_steps": m.mc_steps, "n_best": m.n_best,
-            "fixed_body": m.fixed_body, "sigma_da": m.sigma_da,
+            "n_frames": m.n_frames,
+            "mc_steps": m.mc_steps,
+            "n_best": m.n_best,
+            "fixed_body": m.fixed_body,
+            "sigma_da": m.sigma_da,
             "simulated_annealing": m.simulated_annealing,
         }
 
     def _load_project(self) -> None:
         f, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load docking project", "", "Docking project (*.json);;All files (*)")
+            self, "Load docking project", "", "Docking project (*.json);;All files (*)"
+        )
         if not f:
             return
         try:
             from ..api.project import load_docking_project
+
             proj = load_docking_project(f)
         except Exception:
-            dialogs.error(
-                self, "Load failed", traceback.format_exc()[-2000:])
+            dialogs.error(self, "Load failed", traceback.format_exc()[-2000:])
             return
         m = self._model
         self._set_pdb_list(proj.pdb_paths)  # populates the list and m.pdb_paths
@@ -485,12 +518,16 @@ class FretDockingTool(QtWidgets.QWidget):
 
     def _save_project(self) -> None:
         f, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save docking project", "docking_project.json",
-            "Docking project (*.json);;All files (*)")
+            self,
+            "Save docking project",
+            "docking_project.json",
+            "Docking project (*.json);;All files (*)",
+        )
         if not f:
             return
         try:
             from ..api.project import save_docking_project
+
             save_docking_project(
                 f,
                 pdb_paths=self._model.pdb_list(),
@@ -505,8 +542,7 @@ class FretDockingTool(QtWidgets.QWidget):
                 pose_method=self._model.method,
             )
         except Exception:
-            dialogs.error(
-                self, "Save failed", traceback.format_exc()[-2000:])
+            dialogs.error(self, "Save failed", traceback.format_exc()[-2000:])
             return
         self._set_status(f"saved {pathlib.Path(f).name}")
         self._form.sync_fields()
@@ -552,7 +588,7 @@ class FretDockingTool(QtWidgets.QWidget):
         columns sort numerically and the overall best score is highlighted.
         """
         self._table.setSortingEnabled(False)
-        for (trial, score, n_dist, pdb) in rows:
+        for trial, score, n_dist, pdb in rows:
             r = self._table.rowCount()
             self._table.insertRow(r)
             score_txt = f"{score:.2f}" if score == score else "nan"
@@ -578,9 +614,9 @@ class FretDockingTool(QtWidgets.QWidget):
         A muted dark-green fill with white text (readable on light and dark
         themes); other rows keep the view's default colours.
         """
-        best_bg = QtGui.QColor(27, 94, 32)   # green 900 — contrasts with white
+        best_bg = QtGui.QColor(27, 94, 32)  # green 900 — contrasts with white
         best_fg = QtGui.QColor(255, 255, 255)
-        clear = QtGui.QBrush()               # empty brush -> theme default
+        clear = QtGui.QBrush()  # empty brush -> theme default
         for r in range(self._table.rowCount()):
             is_best = r == 0
             for c in range(self._table.columnCount()):
@@ -601,10 +637,8 @@ class FretDockingTool(QtWidgets.QWidget):
         """
         from chisurf.gui.progress import ChiSurfProgress
 
-        label = (f"Docking {n_trials} trials…" if op == "errors" else "Docking…")
-        return ChiSurfProgress(
-            self, label, 100, title="FRET Docking", cancel=self._stop_event.set
-        )
+        label = f"Docking {n_trials} trials…" if op == "errors" else "Docking…"
+        return ChiSurfProgress(self, label, 100, title="FRET Docking", cancel=self._stop_event.set)
 
     def _start_progress(self, op: str) -> None:
         """Prime the trace files and open the modal dialog (results are appended)."""
@@ -615,8 +649,7 @@ class FretDockingTool(QtWidgets.QWidget):
         n_trials = max(1, int(self._model.n_repeats)) if op == "errors" else 1
         self._total = n_frames * n_trials
         if out:  # stale trace files would make progress jump to 100% instantly
-            for sf in glob.glob(str(pathlib.Path(out) / "**" / self._trace_name()),
-                                recursive=True):
+            for sf in glob.glob(str(pathlib.Path(out) / "**" / self._trace_name()), recursive=True):
                 try:
                     pathlib.Path(sf).unlink()
                 except OSError:
@@ -723,7 +756,8 @@ class FretDockingTool(QtWidgets.QWidget):
             best = data.get("best_trial")
             self._fill_table(
                 [(d["trial"], d["score"], d["n_distances"], d.get("best_pdb")) for d in details],
-                best_trial=best, kind=kind,
+                best_trial=best,
+                kind=kind,
             )
             if details:
                 self._model.score = float(min(d["score"] for d in details))
@@ -731,14 +765,19 @@ class FretDockingTool(QtWidgets.QWidget):
             workers = data.get("n_workers", 1)
             par = f", {workers}x parallel" if workers and workers > 1 else ""
             done = len(details)
-            head = f"stopped after {done}/{data['n_trials']} trials" if stopped \
+            head = (
+                f"stopped after {done}/{data['n_trials']} trials"
+                if stopped
                 else f"{data['n_trials']} trials{par}"
-            spread = (f": mean {data['score_mean']:.1f} ± {data['score_std']:.1f}"
-                      if details else "")
+            )
+            spread = f": mean {data['score_mean']:.1f} ± {data['score_std']:.1f}" if details else ""
             unc = data.get("uncertainty") or {}
-            prec = (f"; precision {unc['mobile_rmsf_mean']:.1f} Å"
-                    if unc.get("mobile_rmsf_mean") == unc.get("mobile_rmsf_mean")
-                    and unc.get("n_models", 0) >= 2 else "")
+            prec = (
+                f"; precision {unc['mobile_rmsf_mean']:.1f} Å"
+                if unc.get("mobile_rmsf_mean") == unc.get("mobile_rmsf_mean")
+                and unc.get("n_models", 0) >= 2
+                else ""
+            )
             self._set_status(head + spread + prec)
             # step through all docked solutions with the ChiMol frame slider
             models = [d["best_pdb"] for d in details if d.get("best_pdb")]
@@ -754,9 +793,16 @@ class FretDockingTool(QtWidgets.QWidget):
                 self._model.poses = poses
                 self._model.pose_score = self._model.score
             self._fill_table(
-                [(0, self._model.score, self._model.n_distances,
-                  (data.get("best_pdbs") or [None])[0])],
-                best_trial=0, kind=kind,
+                [
+                    (
+                        0,
+                        self._model.score,
+                        self._model.n_distances,
+                        (data.get("best_pdbs") or [None])[0],
+                    )
+                ],
+                best_trial=0,
+                kind=kind,
             )
             # Prefer the docking trajectory (movie) when saved, else the
             # n-best models — both step through the ChiMol frame slider.
@@ -769,8 +815,8 @@ class FretDockingTool(QtWidgets.QWidget):
                 self._set_status(f"stopped (score {self._model.score:.1f})")
             else:
                 self._set_status(
-                    f"{kind}: score {self._model.score:.2f} · "
-                    f"{self._model.n_distances} distances")
+                    f"{kind}: score {self._model.score:.2f} · {self._model.n_distances} distances"
+                )
         elif "ranked" in data:
             self._model.n_distances = len(data["ranked"])
             self._set_status(f"ranked {len(data['ranked'])} structures")

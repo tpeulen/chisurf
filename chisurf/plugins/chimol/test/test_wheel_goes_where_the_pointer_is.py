@@ -12,10 +12,10 @@ knows what is where: :meth:`InternalGui.wheel_at` asks its parts in the order
 they are drawn and answers whether one of them took the notch. The camera is
 what happens when none of them did.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.ui.gui import GuiRow, GuiWindow, InternalGui
 
 
@@ -80,9 +80,7 @@ def test_an_open_menu_keeps_every_notch():
     from chimol.ui.menus.bar import MenuEntry
 
     gui = _gui()
-    gui.menubar = [("File", tuple(
-        MenuEntry(f"Item {index}", "help") for index in range(40)
-    ))]
+    gui.menubar = [("File", tuple(MenuEntry(f"Item {index}", "help") for index in range(40)))]
     gui.layout(900, 700)
     gui.open_menubar(0)
     assert gui.wheel_at(500.0, 400.0, -1) is True
@@ -93,7 +91,7 @@ def test_the_scene_gets_the_notch_when_the_pointer_is_on_the_scene():
     for y in range(120, 660, 20):
         for x in range(20, 880, 20):
             if not gui.wheel_at(x, y, 0) and not gui.wants(x, y):
-                return                      # found somewhere the camera owns
+                return  # found somewhere the camera owns
     raise AssertionError("no part of the viewport is left for the camera")
 
 
@@ -105,15 +103,14 @@ def test_the_renderer_no_longer_keeps_a_list_of_the_chromes_parts():
 
     source = inspect.getsource(CanvasRenderer.on_wheel)
     assert "wheel_at" in source
-    for gone in ("info_contains", "sequence_strip_contains", "wheel_window",
-                 "has_menu"):
+    for gone in ("info_contains", "sequence_strip_contains", "wheel_window", "has_menu"):
         assert gone not in source, f"the renderer still knows about {gone}"
 
 
 # --------------------------------------------------------------------------- #
 # ...for every panel, not the ones somebody remembered
 # --------------------------------------------------------------------------- #
-EVERY_PANEL = '''
+EVERY_PANEL = """
 app = open_app(size=(1200, 820))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("load 148l.pdb")
@@ -140,7 +137,7 @@ for win in list(gui.windows):
 emit("panels", ",".join(sorted(w.key for w in gui.windows if w.visible)))
 emit("leaked", ",".join(sorted(leaked)) or "none")
 emit("with_wheel", ",".join(sorted(scrolled)))
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -153,9 +150,7 @@ def every_panel():
 def test_no_panel_lets_a_notch_reach_the_camera(every_panel):
     """The property, over every panel the viewer can open at once."""
     assert every_panel["panels"], "no panels were open, so this proves nothing"
-    assert every_panel["leaked"] == "none", (
-        f"the molecule zoomed under: {every_panel['leaked']}"
-    )
+    assert every_panel["leaked"] == "none", f"the molecule zoomed under: {every_panel['leaked']}"
 
 
 def test_the_panels_that_scroll_take_the_notch_themselves(every_panel):

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -38,11 +38,8 @@ __all__ = [
 
 
 def read_burst_analysis(
-        paris_path: pathlib.Path,
-        tttr_file_type: str,
-        pattern: str = 'b*4*',
-        row_stride: int = 2
-) -> Tuple[Any, Dict[str, tttrlib.TTTR]]:
+    paris_path: pathlib.Path, tttr_file_type: str, pattern: str = "b*4*", row_stride: int = 2
+) -> tuple[Any, dict[str, tttrlib.TTTR]]:
     """Read a burst-analysis folder as one table, plus the photon streams it names.
 
     The burst table and its ``…4`` companions are stacked *row-wise* within a
@@ -98,10 +95,10 @@ def read_burst_analysis(
     table = new_store()
     for path in sorted(paris_path.glob(pattern)):
         parts = []
-        for fn in sorted(path.glob('*')):
+        for fn in sorted(path.glob("*")):
             # Skip non-burst sidecars (e.g. a ``bva_settings.json`` written into
             # ``bv4/``) — reading them as a tab table corrupts the merged table.
-            if not fn.is_file() or fn.suffix.lower() in {'.json', '.yaml', '.yml'}:
+            if not fn.is_file() or fn.suffix.lower() in {".json", ".yaml", ".yml"}:
                 continue
             parts.append(_read_strided(fn, row_stride))
         if not parts:
@@ -123,8 +120,8 @@ def read_burst_analysis(
     # measurement into the mapping the BVA engine slices bursts out of.
     from chisurf.core.fluorescence.burst.photons import is_sentinel_file_reference
 
-    tttrs: Dict[str, tttrlib.TTTR] = {}
-    for ff in dict.fromkeys(np.asarray(table['First File']).tolist()):
+    tttrs: dict[str, tttrlib.TTTR] = {}
+    for ff in dict.fromkeys(np.asarray(table["First File"]).tolist()):
         if ff in tttrs or is_sentinel_file_reference(ff):
             continue
         # ``ff`` is a filename string; coerce defensively so a stray numeric
@@ -151,12 +148,12 @@ def _read_strided(path: pathlib.Path, row_stride: int) -> Any:
         otherwise.
     """
     lines = path.read_text().splitlines()
-    names = lines[0].rstrip('\t').split('\t')
-    rows = [line.rstrip('\t').split('\t') for line in lines[2::row_stride]]
+    names = lines[0].rstrip("\t").split("\t")
+    rows = [line.rstrip("\t").split("\t") for line in lines[2::row_stride]]
     # Padded rather than reshaped: a short line is a truncated file, and a
     # reshape would silently roll its fields into the next burst's row.
     text = np.array(
-        [row[:len(names)] + [""] * (len(names) - len(row)) for row in rows], dtype=object
+        [row[: len(names)] + [""] * (len(names) - len(row)) for row in rows], dtype=object
     ).reshape(len(rows), len(names))
     columns = {}
     for i, name in enumerate(names):
@@ -175,17 +172,18 @@ def _read_strided(path: pathlib.Path, row_stride: int) -> Any:
 
 
 def _compute_bva_tttrlib(
-        table: Any,
-        tttrs: Dict[str, tttrlib.TTTR],
-        donor_channels,
-        donor_micro_time_ranges,
-        acceptor_channels,
-        acceptor_micro_time_ranges,
-        minimum_window_length: float,
-        number_of_photons_per_slice: int,
-) -> Tuple[np.ndarray, np.ndarray]:
+    table: Any,
+    tttrs: dict[str, tttrlib.TTTR],
+    donor_channels,
+    donor_micro_time_ranges,
+    acceptor_channels,
+    acceptor_micro_time_ranges,
+    minimum_window_length: float,
+    number_of_photons_per_slice: int,
+) -> tuple[np.ndarray, np.ndarray]:
     """Fast path: per-burst proximity-ratio mean/std via the tttrlib C++ BVA
-    (parallel over bursts). Returns arrays aligned to ``table`` row order."""
+    (parallel over bursts). Returns arrays aligned to ``table`` row order.
+    """
     files = np.asarray(table["First File"])
     firsts = numeric_column(table, "First Photon")
     lasts = numeric_column(table, "Last Photon")
@@ -195,7 +193,7 @@ def _compute_bva_tttrlib(
     stds = np.full(n, np.nan)
 
     # Group burst rows by their source file, preserving original row indices.
-    per_file: Dict[str, Tuple[List[int], List[int]]] = {}
+    per_file: dict[str, tuple[list[int], list[int]]] = {}
     for i in range(n):
         ff = files[i]
         if ff not in tttrs:
@@ -205,7 +203,9 @@ def _compute_bva_tttrlib(
         bursts.append(int(firsts[i]))
         bursts.append(int(lasts[i]))
 
-    to_pairs = lambda rs: [(int(a), int(b)) for a, b in rs]
+    def to_pairs(rs):
+        return [(int(a), int(b)) for a, b in rs]
+
     for ff, (rows_idx, bursts) in per_file.items():
         bva = tttrlib.BVA(tttrs[ff])
         bva.set_donor(list(donor_channels), to_pairs(donor_micro_time_ranges))
@@ -223,15 +223,15 @@ def _compute_bva_tttrlib(
 
 
 def compute_bva(
-        df: Any,
-        tttrs: Dict[str, tttrlib.TTTR],
-        donor_channels: List[int] = (0, 8),
-        donor_micro_time_ranges: List[Tuple[int, int]] = ((0, 4096),),
-        acceptor_channels: List[int] = (1, 9),
-        acceptor_micro_time_ranges: List[Tuple[int, int]] = ((0, 4096),),
-        minimum_window_length: float = 0.01,
-        number_of_photons_per_slice: int = -1,
-        progress_window=None,
+    df: Any,
+    tttrs: dict[str, tttrlib.TTTR],
+    donor_channels: list[int] = (0, 8),
+    donor_micro_time_ranges: list[tuple[int, int]] = ((0, 4096),),
+    acceptor_channels: list[int] = (1, 9),
+    acceptor_micro_time_ranges: list[tuple[int, int]] = ((0, 4096),),
+    minimum_window_length: float = 0.01,
+    number_of_photons_per_slice: int = -1,
+    progress_window=None,
 ) -> Any:
     """Compute BVA: proximity ratio mean and std per burst.
 
@@ -249,17 +249,27 @@ def compute_bva(
             "were empty. Rebuild tttrlib."
         )
     means, stds = _compute_bva_tttrlib(
-        df, tttrs, donor_channels, donor_micro_time_ranges,
-        acceptor_channels, acceptor_micro_time_ranges,
-        minimum_window_length, number_of_photons_per_slice,
+        df,
+        tttrs,
+        donor_channels,
+        donor_micro_time_ranges,
+        acceptor_channels,
+        acceptor_micro_time_ranges,
+        minimum_window_length,
+        number_of_photons_per_slice,
     )
     # Results are addressed by *original* row index: a ``.bur`` table is
     # interleaved (every other row is a sentinel whose ``First File`` names no
     # measurement), so a column shorter than the table would silently shift
     # every result onto the wrong burst.
-    df.append_columns(store_from_arrays({
-        'Proximity Ratio Mean': means, 'Proximity Ratio Std': stds,
-    }))
+    df.append_columns(
+        store_from_arrays(
+            {
+                "Proximity Ratio Mean": means,
+                "Proximity Ratio Std": stds,
+            }
+        )
+    )
     if progress_window:
         progress_window.set_value(row_count(df))
     return df

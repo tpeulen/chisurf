@@ -5,11 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-
-from chisurf.core.datastore import row_count, store_from_rows, column_names, numeric_column, row_count
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe
 from chisurf.plugins.burst.burst_selection.api import selection as selection_module
 from chisurf.plugins.burst.burst_selection.api.contract import (
@@ -78,7 +77,6 @@ def real_data_settings() -> AnalysisSettings:
     return settings
 
 
-
 def assert_tables_equal(left, right):
     """Compare two column-addressable tables, column for column.
 
@@ -92,8 +90,9 @@ def assert_tables_equal(left, right):
     for name in column_names(left):
         a, b = np.asarray(left[name]), np.asarray(right[name])
         if a.dtype.kind in "fiu" and b.dtype.kind in "fiu":
-            np.testing.assert_allclose(a.astype(float), b.astype(float),
-                                       equal_nan=True, err_msg=name)
+            np.testing.assert_allclose(
+                a.astype(float), b.astype(float), equal_nan=True, err_msg=name
+            )
         else:
             assert list(a) == list(b), name
 
@@ -232,9 +231,7 @@ def test_delta_macro_time_prefilters_the_burst_search() -> None:
             ),
             use_gap_fill=False,
         )
-        selected = apply_photon_filters(
-            tttr, settings, BurstDetectionSettings(min_photons=20)
-        )
+        selected = apply_photon_filters(tttr, settings, BurstDetectionSettings(min_photons=20))
         return float(selected.mean())
 
     off = fraction(0.15, active=False)
@@ -267,9 +264,7 @@ def test_delta_macro_time_prefilter_keeps_bursts_in_original_index_space() -> No
         ),
         use_gap_fill=False,
     )
-    selected = apply_photon_filters(
-        tttr, settings, BurstDetectionSettings(min_photons=20)
-    )
+    selected = apply_photon_filters(tttr, settings, BurstDetectionSettings(min_photons=20))
     assert selected.shape == (len(tttr),)
     assert selected.any()
 
@@ -411,7 +406,9 @@ def test_analyze_request_with_no_progress_callback_is_unchanged(monkeypatch) -> 
 
     def fake_analyze_file(path: str, **kwargs: object):
         return selection_module.AnalysisResult(
-            files=[path], dataframes={path: []}, metadata={},
+            files=[path],
+            dataframes={path: []},
+            metadata={},
         )
 
     monkeypatch.setattr(selection_module, "analyze_file", fake_analyze_file)
@@ -438,7 +435,10 @@ def test_analyze_file_duration_uses_macro_time_resolution_override() -> None:
 
     native_df = make_ui_dataframe(pd.DataFrame(native.dataframes[str(BH_SPC_FILE)]))
     overridden_df = make_ui_dataframe(pd.DataFrame(overridden.dataframes[str(BH_SPC_FILE)]))
-    assert numeric_column(overridden_df, "Duration (ms)")[0] == numeric_column(native_df, "Duration (ms)")[0] * 2.0
+    assert (
+        numeric_column(overridden_df, "Duration (ms)")[0]
+        == numeric_column(native_df, "Duration (ms)")[0] * 2.0
+    )
 
 
 def test_summarize_bursts_matches_core_helper() -> None:
@@ -523,9 +523,7 @@ def test_burst_dataframe_confidence_matches_tttrlib_per_burst() -> None:
 
     flat = [int(v) for pair in start_stop for v in pair[:2]]
     expected = np.asarray(tttr.burst_confidence(flat), dtype=float)
-    np.testing.assert_allclose(
-        numeric_column(df, "Confidence (sigma)"), expected
-    )
+    np.testing.assert_allclose(numeric_column(df, "Confidence (sigma)"), expected)
 
 
 def test_make_ui_dataframe_adds_proximity_ratio() -> None:
@@ -583,7 +581,8 @@ def test_extract_features_supports_chisurf_bur_columns() -> None:
 
 def test_extract_features_derives_proximity_ratio_from_green_red() -> None:
     """When there is no explicit Proximity Ratio column, the proximity ratio is
-    derived from green/red photon counts (PR = red / (red + green)), not 0."""
+    derived from green/red photon counts (PR = red / (red + green)), not 0.
+    """
     df = pd.DataFrame(
         {
             "Number of Photons": [10, 20, 0],
@@ -610,8 +609,7 @@ def test_extract_features_and_fit_gmm() -> None:
         }
     )
     features = extract_features([df])
-    assert column_names(features) == [
-        "nphotons", "duration", "brightness", "interphoton", "fret"]
+    assert column_names(features) == ["nphotons", "duration", "brightness", "interphoton", "fret"]
     fit = fit_gmm(features, GMMSettings(covariance_type="spherical"))
     assert fit["n_components"] == 1
     assert fit["labels"] == [0, 0, 0, 0]

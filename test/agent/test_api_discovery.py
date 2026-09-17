@@ -72,9 +72,7 @@ def test_asking_for_a_module_lists_what_is_in_it(context):
 
 
 def test_reading_a_function_still_returns_its_source(context):
-    result = codebase.read_api_source(
-        context, qualname=f"{MODULE}.compute_fret_from_efficiency"
-    )
+    result = codebase.read_api_source(context, qualname=f"{MODULE}.compute_fret_from_efficiency")
     assert "def compute_fret_from_efficiency" in result["source"]
 
 

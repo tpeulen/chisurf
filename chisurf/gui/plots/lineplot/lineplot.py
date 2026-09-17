@@ -1,20 +1,18 @@
 from __future__ import annotations
-import chisurf as cs
 
 import json
 from collections import OrderedDict
 from pathlib import Path
 
+import matplotlib.colors
 import numpy as np
 
+import chisurf as cs
 from chisurf import typing
-
-from chisurf.gui import QtWidgets, QtCore
-
+from chisurf.gui import QtCore, QtWidgets
 from chisurf.gui import chiplot as cp
-import matplotlib.colors
-
 from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
+
 try:
     from qtpy import sip
 except ImportError:
@@ -25,20 +23,18 @@ except ImportError:
 
 import chisurf.core.data
 import chisurf.core.experiments
-import chisurf.core.support.decorators
-import chisurf.gui.decorators
-import chisurf.core.math
 import chisurf.core.fitting
+import chisurf.core.math
+import chisurf.core.math.statistics
 import chisurf.core.plotting.transforms as plot_transforms
 import chisurf.core.settings
-import chisurf.core.math.statistics
+import chisurf.core.support.decorators
+import chisurf.gui.decorators
 from chisurf.gui.plots import plotbase
-from chisurf.core.actions import record_action
 
+colors = cs.core.settings.gui["plot"]["colors"]
 
-colors = cs.core.settings.gui['plot']['colors']
-
-_BUILTIN_PRESETS_PATH = Path(__file__).parent / 'reference_presets.json'
+_BUILTIN_PRESETS_PATH = Path(__file__).parent / "reference_presets.json"
 
 
 def _load_reference_presets() -> dict:
@@ -60,7 +56,7 @@ def _load_reference_presets() -> dict:
 
     user: dict[str, dict] = {}
     try:
-        user_path = cs.core.settings.get_path('settings') / 'reference_presets.json'
+        user_path = cs.core.settings.get_path("settings") / "reference_presets.json"
         if user_path.exists():
             with open(str(user_path)) as fh:
                 data = json.load(fh)
@@ -77,7 +73,7 @@ def _load_reference_presets() -> dict:
         entry.update(builtin.get(key, {}))
         entry.update(user.get(key, {}))
         # Convert JSON lists back to tuples for range fields
-        for rkey in ('y_range', 'x_range'):
+        for rkey in ("y_range", "x_range"):
             val = entry.get(rkey)
             if isinstance(val, list):
                 entry[rkey] = tuple(val)
@@ -86,68 +82,67 @@ def _load_reference_presets() -> dict:
 
 
 class LinePlotControl(QtWidgets.QWidget):
-
     director = {
-        'data': {
-            'lw': 1.0,
-            'color': colors['data'],
-            'target': 'main_plot',
-            'allow_reference_transform': True,
-            'allow_shift': True,
-            'allow_density': True,
-            'plot_only_region': False,
-            'auto_downsample': True,
+        "data": {
+            "lw": 1.0,
+            "color": colors["data"],
+            "target": "main_plot",
+            "allow_reference_transform": True,
+            "allow_shift": True,
+            "allow_density": True,
+            "plot_only_region": False,
+            "auto_downsample": True,
         },
-        'IRF': {
-            'lw': 2.0,
-            'color': colors['irf'],
-            'target': 'main_plot',
-            'allow_reference_transform': False,
-            'allow_shift': True,
-            'allow_density': True,
-            'plot_only_region': False
+        "IRF": {
+            "lw": 2.0,
+            "color": colors["irf"],
+            "target": "main_plot",
+            "allow_reference_transform": False,
+            "allow_shift": True,
+            "allow_density": True,
+            "plot_only_region": False,
         },
-        'model': {
-            'lw': 2.0,
-            'target': 'main_plot',
-            'color': colors['model'],
-            'allow_reference_transform': True,
-            'allow_shift': True,
-            'allow_density': True,
-            'plot_only_region': True
+        "model": {
+            "lw": 2.0,
+            "target": "main_plot",
+            "color": colors["model"],
+            "allow_reference_transform": True,
+            "allow_shift": True,
+            "allow_density": True,
+            "plot_only_region": True,
         },
-        'weighted residuals': {
-            'lw': 2.0,
-            'target': 'top_left_plot',
-            'label': 'w.res.',
-            'color': colors['residuals'],
-            'allow_reference_transform': False,
-            'allow_shift': True,
-            'allow_density': False,
-            'plot_only_region': False,
-            'auto_downsample': True,
+        "weighted residuals": {
+            "lw": 2.0,
+            "target": "top_left_plot",
+            "label": "w.res.",
+            "color": colors["residuals"],
+            "allow_reference_transform": False,
+            "allow_shift": True,
+            "allow_density": False,
+            "plot_only_region": False,
+            "auto_downsample": True,
         },
-        'autocorrelation': {
-            'lw': 2.0,
-            'target': 'top_right_plot',
-            'color': colors['auto_corr'],
-            'label': 'a.cor.',
-            'allow_reference_transform': False,
-            'allow_shift': True,
-            'allow_density': False,
-            'plot_only_region': False,
-            'auto_downsample': True,
+        "autocorrelation": {
+            "lw": 2.0,
+            "target": "top_right_plot",
+            "color": colors["auto_corr"],
+            "label": "a.cor.",
+            "allow_reference_transform": False,
+            "allow_shift": True,
+            "allow_density": False,
+            "plot_only_region": False,
+            "auto_downsample": True,
         },
-        'default': {
-            'lw': 2.0,
-            'color': colors['data'],
-            'target': 'main_plot',
-            'allow_reference_transform': False,
-            'allow_shift': True,
-            'allow_density': False,
-            'allow_clipping': False,
-            'plot_only_region': False
-        }
+        "default": {
+            "lw": 2.0,
+            "color": colors["data"],
+            "target": "main_plot",
+            "allow_reference_transform": False,
+            "allow_shift": True,
+            "allow_density": False,
+            "allow_clipping": False,
+            "plot_only_region": False,
+        },
     }
 
     def getCheckState(self, name):
@@ -160,25 +155,29 @@ class LinePlotControl(QtWidgets.QWidget):
     def fill_line_widget(self):
         self.treeWidget.blockSignals(True)
         for nbr, key in enumerate(self.parent.lines):
-            item = QtWidgets.QTreeWidgetItem(self.treeWidget, [str(nbr), '', key])
+            item = QtWidgets.QTreeWidgetItem(self.treeWidget, [str(nbr), "", key])
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             item.setCheckState(1, QtCore.Qt.Checked)
         self.treeWidget.blockSignals(False)
 
     @cs.gui.decorators.init_with_ui("linePlotWidget.ui")
     def __init__(
-            self,
-            parent=None,
-            scale_x: str = 'lin',
-            d_scaley: str = 'log',
-            r_scaley: str = 'lin',
-            xmin: float = 0.0,
-            ymin: float = 1.0
+        self,
+        parent=None,
+        scale_x: str = "lin",
+        d_scaley: str = "log",
+        r_scaley: str = "lin",
+        xmin: float = 0.0,
+        ymin: float = 1.0,
     ):
         self.parent = parent
-        self._reference_modes: typing.OrderedDict[str, plot_transforms.PlotReferenceMode] = OrderedDict()
+        self._reference_modes: typing.OrderedDict[str, plot_transforms.PlotReferenceMode] = (
+            OrderedDict()
+        )
         self._reference_parameter_widgets: typing.Dict[str, QtWidgets.QWidget] = {}
-        self._reference_parameter_specs: typing.Dict[str, plot_transforms.PlotReferenceParameter] = {}
+        self._reference_parameter_specs: typing.Dict[
+            str, plot_transforms.PlotReferenceParameter
+        ] = {}
         self._pending_reference_mode: str | None = None
         self._pending_reference_parameters: typing.Dict[str, typing.Any] = {}
         self._install_reference_controls()
@@ -219,13 +218,15 @@ class LinePlotControl(QtWidgets.QWidget):
         ref_layout.addWidget(self.comboBox_reference, 1)
 
         self.toolButton_reference_reset = QtWidgets.QToolButton(ref_row)
-        self.toolButton_reference_reset.setText("\U0001F504")
+        self.toolButton_reference_reset.setText("\U0001f504")
         self.toolButton_reference_reset.setToolTip("Reset reference-mode parameters")
         ref_layout.addWidget(self.toolButton_reference_reset)
 
         self.toolButton_reference_save = QtWidgets.QToolButton(ref_row)
-        self.toolButton_reference_save.setText("\U0001F4BE")
-        self.toolButton_reference_save.setToolTip("Save current axis range as default preset for this reference mode")
+        self.toolButton_reference_save.setText("\U0001f4be")
+        self.toolButton_reference_save.setToolTip(
+            "Save current axis range as default preset for this reference mode"
+        )
         self.toolButton_reference_save.clicked.connect(self._save_current_presets)
         ref_layout.addWidget(self.toolButton_reference_save)
 
@@ -320,8 +321,7 @@ class LinePlotControl(QtWidgets.QWidget):
         return self._reference_modes.get(key)
 
     def set_reference_modes(
-            self,
-            modes: typing.Iterable[plot_transforms.PlotReferenceMode]
+        self, modes: typing.Iterable[plot_transforms.PlotReferenceMode]
     ) -> None:
         """Populate the reference-mode selector.
 
@@ -376,8 +376,7 @@ class LinePlotControl(QtWidgets.QWidget):
         self._reference_parameter_specs = {}
 
     def _rebuild_reference_parameter_controls(
-            self,
-            values: typing.Mapping[str, typing.Any] | None = None
+        self, values: typing.Mapping[str, typing.Any] | None = None
     ) -> None:
         """Recreate controls for the selected mode's parameter specs.
 
@@ -407,8 +406,7 @@ class LinePlotControl(QtWidgets.QWidget):
         self._pending_reference_parameters = {}
 
     def _make_reference_parameter_widget(
-            self,
-            spec: plot_transforms.PlotReferenceParameter
+        self, spec: plot_transforms.PlotReferenceParameter
     ) -> QtWidgets.QWidget:
         """Create a Qt widget for a reference parameter.
 
@@ -457,9 +455,7 @@ class LinePlotControl(QtWidgets.QWidget):
         return widget
 
     def _reference_widget_value(
-            self,
-            widget: QtWidgets.QWidget,
-            spec: plot_transforms.PlotReferenceParameter
+        self, widget: QtWidgets.QWidget, spec: plot_transforms.PlotReferenceParameter
     ) -> typing.Any:
         """Return a reference parameter value from a widget.
 
@@ -485,10 +481,10 @@ class LinePlotControl(QtWidgets.QWidget):
         return float(widget.value())
 
     def _set_reference_widget_value(
-            self,
-            widget: QtWidgets.QWidget,
-            spec: plot_transforms.PlotReferenceParameter,
-            value: typing.Any
+        self,
+        widget: QtWidgets.QWidget,
+        spec: plot_transforms.PlotReferenceParameter,
+        value: typing.Any,
     ) -> None:
         """Set a reference parameter widget value.
 
@@ -540,17 +536,23 @@ class LinePlotControl(QtWidgets.QWidget):
         # Gather current axis values
         entry: dict = {}
         if self.checkBox_7.isChecked():
-            entry['y_range'] = [self.doubleSpinBox_2.value(), self.doubleSpinBox_4.value() if self.checkBox_8.isChecked() else 1.0]
+            entry["y_range"] = [
+                self.doubleSpinBox_2.value(),
+                self.doubleSpinBox_4.value() if self.checkBox_8.isChecked() else 1.0,
+            ]
         if self.checkBox_8.isChecked():
             ymin = self.doubleSpinBox_2.value() if self.checkBox_7.isChecked() else 0.0
-            entry['y_range'] = [ymin, self.doubleSpinBox_4.value()]
+            entry["y_range"] = [ymin, self.doubleSpinBox_4.value()]
         if self.checkBox_4.isChecked():
-            entry['x_range'] = [self.doubleSpinBox.value(), self.doubleSpinBox_3.value() if self.checkBox_6.isChecked() else 1.0]
+            entry["x_range"] = [
+                self.doubleSpinBox.value(),
+                self.doubleSpinBox_3.value() if self.checkBox_6.isChecked() else 1.0,
+            ]
         if self.checkBox_6.isChecked():
             xmin = self.doubleSpinBox.value() if self.checkBox_4.isChecked() else 0.0
-            entry['x_range'] = [xmin, self.doubleSpinBox_3.value()]
+            entry["x_range"] = [xmin, self.doubleSpinBox_3.value()]
         # Load existing user presets, update this mode, save
-        user_path = cs.core.settings.get_path('settings') / 'reference_presets.json'
+        user_path = cs.core.settings.get_path("settings") / "reference_presets.json"
         presets: dict = {}
         try:
             if user_path.exists():
@@ -562,7 +564,7 @@ class LinePlotControl(QtWidgets.QWidget):
             pass
         presets[str(mode.key)] = entry
         try:
-            with open(str(user_path), 'w') as fh:
+            with open(str(user_path), "w") as fh:
                 json.dump(presets, fh, indent=2)
             # Invalidate cache so the new presets are picked up
             self.parent.__class__._invalidate_presets_cache()
@@ -594,33 +596,33 @@ class LinePlotControl(QtWidgets.QWidget):
         """
         y-data is plotted logarithmically
         """
-        return 'log' if self.checkBox.isChecked() else 'linear'
+        return "log" if self.checkBox.isChecked() else "linear"
 
     @data_logy.setter
     def data_logy(self, v: str):
-        if v == 'lin':
+        if v == "lin":
             self.checkBox.setCheckState(0)
         else:
             self.checkBox.setCheckState(2)
 
     @property
     def scale_x(self) -> str:
-        return 'log' if self.checkBox_2.isChecked() else 'linear'
+        return "log" if self.checkBox_2.isChecked() else "linear"
 
     @scale_x.setter
     def scale_x(self, v: str):
-        if v == 'lin':
+        if v == "lin":
             self.checkBox_2.setCheckState(0)
         else:
             self.checkBox_2.setCheckState(2)
 
     @property
     def data_is_log_x(self) -> bool:
-        return self.scale_x == 'log'
+        return self.scale_x == "log"
 
     @property
     def data_is_log_y(self) -> bool:
-        return self.data_logy == 'log'
+        return self.data_logy == "log"
 
     @property
     def ymin(self) -> float:
@@ -796,7 +798,9 @@ class LinePlotControl(QtWidgets.QWidget):
                     item = self.treeWidget.topLevelItem(i)
                     key = item.text(2)
                     if key in visibility:
-                        item.setCheckState(1, QtCore.Qt.Checked if visibility[key] else QtCore.Qt.Unchecked)
+                        item.setCheckState(
+                            1, QtCore.Qt.Checked if visibility[key] else QtCore.Qt.Unchecked
+                        )
         finally:
             self.treeWidget.blockSignals(False)
         try:
@@ -818,14 +822,11 @@ class LinePlotControl(QtWidgets.QWidget):
 
 
 class LinePlot(plotbase.Plot):
-
     name = "Fit"
     regionChanged = QtCore.Signal(int, int)
 
     def get_bounds(
-            self,
-            fit: cs.core.fitting.fit.Fit,
-            region_selector: "cp.handles.Region"
+        self, fit: cs.core.fitting.fit.Fit, region_selector: cp.handles.Region
     ) -> typing.Tuple[int, int]:
         lb, ub = region_selector.bounds
 
@@ -837,23 +838,23 @@ class LinePlot(plotbase.Plot):
         x_len = len(data_x) - 1
 
         if self.plot_controller.data_is_log_x:
-            lb, ub = 10.0 ** lb, 10.0 ** ub
+            lb, ub = 10.0**lb, 10.0**ub
 
-        lb_i: int = np.searchsorted(data_x, lb, side='right')
-        ub_i: int = np.searchsorted(data_x, ub, side='left')
+        lb_i: int = np.searchsorted(data_x, lb, side="right")
+        ub_i: int = np.searchsorted(data_x, ub, side="left")
 
         return np.clip(lb_i - 1, 0, x_len), np.clip(ub_i, 0, x_len)
 
     def __init__(
-            self,
-            fit: cs.core.fitting.fit.FitGroup,
-            scale_x: str = 'lin',
-            d_scaley: str = 'lin',
-            r_scaley: str = 'lin',
-            x_label: str = 'x',
-            y_label: str = 'y',
-            curve_styles: typing.Dict | None = None,
-            **kwargs
+        self,
+        fit: cs.core.fitting.fit.FitGroup,
+        scale_x: str = "lin",
+        d_scaley: str = "lin",
+        r_scaley: str = "lin",
+        x_label: str = "x",
+        y_label: str = "y",
+        curve_styles: typing.Dict | None = None,
+        **kwargs,
     ):
         # Internal state of region selector
         self.lb_i: int = 0
@@ -862,13 +863,10 @@ class LinePlot(plotbase.Plot):
         self.curve_styles = curve_styles or {}
         self._base_y_label = y_label
 
-        kwargs['fit'] = fit
+        kwargs["fit"] = fit
         super().__init__(**kwargs)
         self.plot_controller = LinePlotControl(
-                parent=self,
-                scale_x=scale_x,
-                d_scaley=d_scaley,
-                r_scaley=r_scaley
+            parent=self, scale_x=scale_x, d_scaley=d_scaley, r_scaley=r_scaley
         )
 
         # If the plot is associated with a FitGroup containing multiple local fits,
@@ -889,13 +887,9 @@ class LinePlot(plotbase.Plot):
         p1.link_x(p3)
         p2.link_x(p3)
 
-        plots = {
-            'top_left_plot': p1,
-            'top_right_plot': p2,
-            'main_plot': p3
-        }
-        plots['top_left_plot'].set_axis_visible(bottom=False)
-        plots['top_right_plot'].set_axis_visible(bottom=False)
+        plots = {"top_left_plot": p1, "top_right_plot": p2, "main_plot": p3}
+        plots["top_left_plot"].set_axis_visible(bottom=False)
+        plots["top_right_plot"].set_axis_visible(bottom=False)
 
         # Vertical stack (chisurf dock impl): A.corr. residuals, residuals, data
         # — matching the former pyqtgraph DockArea arrangement. Titles are hidden
@@ -923,11 +917,11 @@ class LinePlot(plotbase.Plot):
         # Labels - draggable text box for the fit-quality metrics overlay. Yellow
         # text on a translucent-blue box, drawn on the data panel; created with
         # ignoreBounds so it never drives the view auto-range.
-        self.text = plots['main_plot'].text(
-            '',
+        self.text = plots["main_plot"].text(
+            "",
             (100, 0),
             color="#FF0",
-            border='w',
+            border="w",
             fill=(0, 0, 255, 100),
             anchor=(0, 0),
             draggable=True,
@@ -935,15 +929,15 @@ class LinePlot(plotbase.Plot):
         )
 
         # Fitting-region selector
-        if cs.core.settings.gui['plot']['enable_region_selector']:
+        if cs.core.settings.gui["plot"]["enable_region_selector"]:
             ca = list(matplotlib.colors.hex2color(colors["region_selector"]))
             co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
-            region = plots['main_plot'].region((0.0, 1.0), brush=co)
+            region = plots["main_plot"].region((0.0, 1.0), brush=co)
             self.region = region
 
             def onRegionUpdate(*_):
                 # Get the currently selected fit for region update
-                if hasattr(fit, 'selected_fit'):
+                if hasattr(fit, "selected_fit"):
                     current_fit = fit.selected_fit
                 else:
                     current_fit = fit
@@ -974,43 +968,40 @@ class LinePlot(plotbase.Plot):
             region.on_change(onRegionUpdate, final=True)
 
         # Grid
-        if cs.core.settings.gui['plot']['enable_grid']:
-            grid_alpha = float(cs.core.settings.gui['plot'].get('grid_alpha', 0.35))
-            if cs.core.settings.gui['plot']['show_data_grid']:
-                plots['main_plot'].grid(x=True, y=True, alpha=grid_alpha)
+        if cs.core.settings.gui["plot"]["enable_grid"]:
+            grid_alpha = float(cs.core.settings.gui["plot"].get("grid_alpha", 0.35))
+            if cs.core.settings.gui["plot"]["show_data_grid"]:
+                plots["main_plot"].grid(x=True, y=True, alpha=grid_alpha)
             # ``alpha`` is the grid's opacity, not an on/off flag — these two
             # panels asked for 1.0 and drew solid foreground-coloured stripes
             # across a strip only eighty pixels tall, burying the residuals.
             # It went unnoticed while the foreground was black on black, and
             # there was no way to turn it down: the value is a setting now.
-            if cs.core.settings.gui['plot']['show_residual_grid']:
-                plots['top_left_plot'].grid(x=True, y=True, alpha=grid_alpha)
-            if cs.core.settings.gui['plot']['show_acorr_grid']:
-                plots['top_right_plot'].grid(x=True, y=True, alpha=grid_alpha)
+            if cs.core.settings.gui["plot"]["show_residual_grid"]:
+                plots["top_left_plot"].grid(x=True, y=True, alpha=grid_alpha)
+            if cs.core.settings.gui["plot"]["show_acorr_grid"]:
+                plots["top_right_plot"].grid(x=True, y=True, alpha=grid_alpha)
         # Same story as "Label axes" below: a settings checkbox that no plot
         # read, so a legend could be asked for and never appear — and one that
         # never appears is one that cannot be dragged either. The curves are
         # already named, which is all a legend needs.
-        if cs.core.settings.gui['plot'].get('show_legend', False):
-            plots['main_plot'].legend()
+        if cs.core.settings.gui["plot"].get("show_legend", False):
+            plots["main_plot"].legend()
 
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
         # a narrow docked panel may prefer to give the data.
-        if cs.core.settings.gui['plot'].get('label_axis', True):
-            plots['top_left_plot'].set_labels(left="w.res.")
-            plots['top_right_plot'].set_labels(left="a.corr.")
-            plots['main_plot'].set_labels(left=y_label, bottom=x_label)
+        if cs.core.settings.gui["plot"].get("label_axis", True):
+            plots["top_left_plot"].set_labels(left="w.res.")
+            plots["top_right_plot"].set_labels(left="a.corr.")
+            plots["main_plot"].set_labels(left=y_label, bottom=x_label)
 
         lines = OrderedDict()
         curves = self.fit.get_curves()
         curves_keys = list(curves.keys())[::-1]
         for i, curve_key in enumerate(curves_keys):
             lines[curve_key] = self.add_plot(
-                curves=curves,
-                curve_key=curve_key,
-                plot_dict=plots,
-                index=i
+                curves=curves, curve_key=curve_key, plot_dict=plots, index=i
             )
         self.lines = lines
         self.plots = plots
@@ -1036,9 +1027,11 @@ class LinePlot(plotbase.Plot):
 
     def eventFilter(self, obj, event):
         """Re-apply the golden split while the user has not overridden it."""
-        if (obj is getattr(self, "plot_splitter", None)
-                and event.type() == QtCore.QEvent.Resize
-                and not getattr(self, "_split_is_users", False)):
+        if (
+            obj is getattr(self, "plot_splitter", None)
+            and event.type() == QtCore.QEvent.Resize
+            and not getattr(self, "_split_is_users", False)
+        ):
             self._apply_golden_split()
         return super().eventFilter(obj, event)
 
@@ -1048,7 +1041,6 @@ class LinePlot(plotbase.Plot):
         This keeps the plot readable for grouped fits (e.g. VV/VH, grouped FCS)
         without forcing the user to manually toggle the checkbox each time.
         """
-
         if bool(getattr(self, "_auto_display_group_applied", False)):
             return
         grouped_fits = getattr(self.fit, "grouped_fits", None)
@@ -1105,16 +1097,10 @@ class LinePlot(plotbase.Plot):
             line.set_clip_to_view(clip_to_view)
         return line
 
-    def add_plot(
-            self,
-            curves: typing.Dict,
-            curve_key: str,
-            plot_dict: typing.Dict,
-            index: int = 1
-    ):
+    def add_plot(self, curves: typing.Dict, curve_key: str, plot_dict: typing.Dict, index: int = 1):
         color_idx = index % len(cs.core.settings.colors)
-        pen_color = cs.core.settings.colors[color_idx]['hex']
-        lw = cs.core.settings.gui['plot']['line_width']
+        pen_color = cs.core.settings.colors[color_idx]["hex"]
+        lw = cs.core.settings.gui["plot"]["line_width"]
 
         director = self.plot_controller.director
 
@@ -1123,36 +1109,40 @@ class LinePlot(plotbase.Plot):
                 # if the curve name matches the template
                 if ik in curve_key:
                     curve_options = director[ik]
-                    target_plot = plot_dict[
-                        curve_options.get('target', 'main_plot')
-                    ]
-                    lw = curve_options.get('lw', lw)
-                    pen_color = curve_options.get('color', pen_color)
-                    label = curve_options.get('label', curve_key)
-                    auto_downsample = curve_options.get('auto_downsample', False)
-                    clip_to_view = curve_options.get('clip_to_view', auto_downsample)
+                    target_plot = plot_dict[curve_options.get("target", "main_plot")]
+                    lw = curve_options.get("lw", lw)
+                    pen_color = curve_options.get("color", pen_color)
+                    label = curve_options.get("label", curve_key)
+                    auto_downsample = curve_options.get("auto_downsample", False)
+                    clip_to_view = curve_options.get("clip_to_view", auto_downsample)
                     if curve_key != ik:
                         # make the line half as wide, and transparent (30%)
                         lw *= 0.5
-                        pen_color = '#4D' + pen_color.split('#')[1]
+                        pen_color = "#4D" + pen_color.split("#")[1]
                     line = self._make_line(
-                        target_plot, pen_color, lw, label,
-                        auto_downsample, clip_to_view,
+                        target_plot,
+                        pen_color,
+                        lw,
+                        label,
+                        auto_downsample,
+                        clip_to_view,
                     )
                     self._apply_curve_style(curve_key, line)
                     return line
         else:
             curve = curves[curve_key]
             if isinstance(curve, cs.core.data.DataCurve):
-                curve_options = director['default']
-                target_plot = plot_dict[
-                    curve_options.get('target', 'main_plot')
-                ]
-                auto_downsample = curve_options.get('auto_downsample', False)
-                clip_to_view = curve_options.get('clip_to_view', auto_downsample)
+                curve_options = director["default"]
+                target_plot = plot_dict[curve_options.get("target", "main_plot")]
+                auto_downsample = curve_options.get("auto_downsample", False)
+                clip_to_view = curve_options.get("clip_to_view", auto_downsample)
                 line = self._make_line(
-                    target_plot, pen_color, lw, curve_key,
-                    auto_downsample, clip_to_view,
+                    target_plot,
+                    pen_color,
+                    lw,
+                    curve_key,
+                    auto_downsample,
+                    clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
                 return line
@@ -1171,7 +1161,7 @@ class LinePlot(plotbase.Plot):
                 return styles[base]
         return None
 
-    def _apply_curve_style(self, curve_key: str, line: "cp.handles.Curve") -> None:
+    def _apply_curve_style(self, curve_key: str, line: cp.handles.Curve) -> None:
         style = self._get_curve_style(curve_key)
         if not style:
             return
@@ -1206,10 +1196,7 @@ class LinePlot(plotbase.Plot):
 
     _MERGED_PRESETS: typing.ClassVar[dict | None] = None
 
-    def _reference_modes_for_model(
-            self,
-            model
-    ) -> typing.List[plot_transforms.PlotReferenceMode]:
+    def _reference_modes_for_model(self, model) -> typing.List[plot_transforms.PlotReferenceMode]:
         """Return model-provided plot reference modes, merged with JSON presets.
 
         Parameters
@@ -1231,15 +1218,11 @@ class LinePlot(plotbase.Plot):
             cs.logging.warning("Could not query plot reference modes: %s", exc)
             return []
         modes = [
-            mode for mode in modes or []
-            if isinstance(mode, plot_transforms.PlotReferenceMode)
+            mode for mode in modes or [] if isinstance(mode, plot_transforms.PlotReferenceMode)
         ]
         # Merge JSON presets into each mode
         presets = self._get_merged_presets()
-        return [
-            self._apply_presets_to_mode(mode, presets.get(str(mode.key), {}))
-            for mode in modes
-        ]
+        return [self._apply_presets_to_mode(mode, presets.get(str(mode.key), {})) for mode in modes]
 
     @classmethod
     def _get_merged_presets(cls) -> dict:
@@ -1250,19 +1233,18 @@ class LinePlot(plotbase.Plot):
 
     @classmethod
     def _apply_presets_to_mode(
-            cls,
-            mode: plot_transforms.PlotReferenceMode,
-            preset: dict
+        cls, mode: plot_transforms.PlotReferenceMode, preset: dict
     ) -> plot_transforms.PlotReferenceMode:
         """Apply JSON preset fields onto a PlotReferenceMode, skipping None."""
         kwargs: dict = {}
-        for field_name in ('y_range', 'y_padding', 'x_range', 'x_padding'):
+        for field_name in ("y_range", "y_padding", "x_range", "x_padding"):
             val = preset.get(field_name)
             if val is not None:
                 kwargs[field_name] = val
         if not kwargs:
             return mode
         from dataclasses import replace
+
         return replace(mode, **kwargs)
 
     @classmethod
@@ -1306,9 +1288,12 @@ class LinePlot(plotbase.Plot):
         Using plain text avoids Qt rich-text parsing paths that have shown
         instability in some Windows save/switch workflows.
         """
-
         grouped_fits = getattr(self.fit, "grouped_fits", None)
-        show_group = bool(self.plot_controller.display_group) and isinstance(grouped_fits, (list, tuple)) and len(grouped_fits) > 1
+        show_group = (
+            bool(self.plot_controller.display_group)
+            and isinstance(grouped_fits, (list, tuple))
+            and len(grouped_fits) > 1
+        )
         current_idx = getattr(self.fit, "selected_fit_index", None)
         if not isinstance(current_idx, int):
             try:
@@ -1322,7 +1307,9 @@ class LinePlot(plotbase.Plot):
             except Exception:
                 return "?"
 
-        header = f"Range {int(getattr(current_fit, 'xmin', 0))}, {int(getattr(current_fit, 'xmax', 0))}"
+        header = (
+            f"Range {int(getattr(current_fit, 'xmin', 0))}, {int(getattr(current_fit, 'xmax', 0))}"
+        )
         if show_group:
             lines = [header, "chi2r\tDW"]
             for idx, f in enumerate(grouped_fits):
@@ -1332,11 +1319,13 @@ class LinePlot(plotbase.Plot):
                 lines.append(f"{marker}{chi2r}\t{dw}")
             return "\n".join(lines)
 
-        return "\n".join([
-            header,
-            f"chi2r={_fmt_float(getattr(current_fit, 'chi2r', None), nd=4)}",
-            f"DW={_fmt_float(getattr(current_fit, 'durbin_watson', None), nd=4)}",
-        ])
+        return "\n".join(
+            [
+                header,
+                f"chi2r={_fmt_float(getattr(current_fit, 'chi2r', None), nd=4)}",
+                f"DW={_fmt_float(getattr(current_fit, 'durbin_watson', None), nd=4)}",
+            ]
+        )
 
     @staticmethod
     def _axis_range(min_value, max_value, values, log_mode: bool = False):
@@ -1382,7 +1371,7 @@ class LinePlot(plotbase.Plot):
         director = self.plot_controller.director
 
         curves = fit.get_curves()
-        data = curves['data']
+        data = curves["data"]
 
         y_shift = self.plot_controller.y_shift
         x_shift = self.plot_controller.x_shift
@@ -1391,7 +1380,7 @@ class LinePlot(plotbase.Plot):
         # signals internally, so no manual blockSignals dance is needed)
 
         # Get the currently selected fit for region selector bounds
-        if hasattr(self.fit, 'selected_fit'):
+        if hasattr(self.fit, "selected_fit"):
             current_fit = self.fit.selected_fit
             current_data = current_fit.data
         else:
@@ -1400,7 +1389,7 @@ class LinePlot(plotbase.Plot):
 
         self._reference_y_label_override = None
         self._update_reference_modes(current_fit)
-            
+
         x_last = max(0, len(current_data.x) - 1)
         xmin_i = int(np.clip(getattr(current_fit, "xmin", 0), 0, x_last))
         xmax_i = int(np.clip(getattr(current_fit, "xmax", x_last), 0, x_last))
@@ -1422,21 +1411,23 @@ class LinePlot(plotbase.Plot):
         self.region.set_bounds(lb, ub)
 
         # Handle group display mode
-        if self.plot_controller.display_group and hasattr(self.fit, 'grouped_fits'):
+        if self.plot_controller.display_group and hasattr(self.fit, "grouped_fits"):
             # Display all fits in the group
             self._plot_group_curves(fit, data_log_x, data_log_y, director, x_shift, y_shift)
-        elif hasattr(self.fit, 'grouped_fits'):
+        elif hasattr(self.fit, "grouped_fits"):
             # FitGroup but display group disabled: only show active fit
             self._plot_active_fit_only(fit, data_log_x, data_log_y, director, x_shift, y_shift)
         else:
             # Normal single fit display
-            self._plot_single_fit_curves(fit, curves, data_log_x, data_log_y, director, x_shift, y_shift)
+            self._plot_single_fit_curves(
+                fit, curves, data_log_x, data_log_y, director, x_shift, y_shift
+            )
 
         # Set log-scales
-        self.plots['main_plot'].set_log(x=data_log_x, y=data_log_y)
-        self.plots['top_left_plot'].set_log(x=data_log_x)
-        self.plots['top_right_plot'].set_log(x=data_log_x)
-        self.plots['main_plot'].set_labels(
+        self.plots["main_plot"].set_log(x=data_log_x, y=data_log_y)
+        self.plots["top_left_plot"].set_log(x=data_log_x)
+        self.plots["top_right_plot"].set_log(x=data_log_x)
+        self.plots["main_plot"].set_labels(
             left=self._reference_y_label_override or self._base_y_label
         )
 
@@ -1459,14 +1450,22 @@ class LinePlot(plotbase.Plot):
             ref_mode = self._selected_reference_mode_for_model(model)
             if ref_mode is not None:
                 # Y-axis preset
-                if ref_mode.y_range is not None and not self.plot_controller.checkBox_7.isChecked() and not self.plot_controller.checkBox_8.isChecked():
+                if (
+                    ref_mode.y_range is not None
+                    and not self.plot_controller.checkBox_7.isChecked()
+                    and not self.plot_controller.checkBox_8.isChecked()
+                ):
                     y_lo, y_hi = ref_mode.y_range
                     span = y_hi - y_lo
                     pad = ref_mode.y_padding or 0.0
                     if span > 0:
                         yRange = [y_lo - span * pad, y_hi + span * pad]
                 # X-axis preset
-                if ref_mode.x_range is not None and not self.plot_controller.checkBox_4.isChecked() and not self.plot_controller.checkBox_6.isChecked():
+                if (
+                    ref_mode.x_range is not None
+                    and not self.plot_controller.checkBox_4.isChecked()
+                    and not self.plot_controller.checkBox_6.isChecked()
+                ):
                     x_lo, x_hi = ref_mode.x_range
                     span = x_hi - x_lo
                     pad = ref_mode.x_padding or 0.0
@@ -1475,9 +1474,11 @@ class LinePlot(plotbase.Plot):
         except Exception:
             pass
         if xRange is not None or yRange is not None:
-            self.plots['main_plot'].set_range(x=xRange, y=yRange)
+            self.plots["main_plot"].set_range(x=xRange, y=yRange)
 
-        if self._metrics_text_alive() and not bool(getattr(cs, "_suspend_plot_metrics_overlay", False)):
+        if self._metrics_text_alive() and not bool(
+            getattr(cs, "_suspend_plot_metrics_overlay", False)
+        ):
             try:
                 metrics_text = self._build_metrics_overlay_text(current_fit=current_fit)
                 # The overlay was created yellow; the text property setter keeps
@@ -1492,7 +1493,6 @@ class LinePlot(plotbase.Plot):
         For FitGroups with multiple local fits shown, present a compact table of
         chi2r and Durbin-Watson, with the current fit highlighted.
         """
-
         font_pt = 8
         try:
             # Keep it compact; allow user override if present.
@@ -1502,7 +1502,11 @@ class LinePlot(plotbase.Plot):
 
         # Determine whether this is a multi-fit group display.
         grouped_fits = getattr(self.fit, "grouped_fits", None)
-        show_group = bool(self.plot_controller.display_group) and isinstance(grouped_fits, (list, tuple)) and len(grouped_fits) > 1
+        show_group = (
+            bool(self.plot_controller.display_group)
+            and isinstance(grouped_fits, (list, tuple))
+            and len(grouped_fits) > 1
+        )
         current_idx = getattr(self.fit, "selected_fit_index", None)
         if not isinstance(current_idx, int):
             try:
@@ -1528,8 +1532,8 @@ class LinePlot(plotbase.Plot):
                 rows.append(
                     f"<tr style='{row_style}'>"
                     f"<td style='padding: 0px 6px 0px 0px; text-align:right;'>" + chi2r + "</td>"
-                    f"<td style='padding: 0px 0px 0px 6px; text-align:right;'>" + dw + "</td>"
-                    f"</tr>"
+                    "<td style='padding: 0px 0px 0px 6px; text-align:right;'>" + dw + "</td>"
+                    "</tr>"
                 )
 
             return (
@@ -1537,7 +1541,7 @@ class LinePlot(plotbase.Plot):
                 f"<div style='color:#FF0; font-size:{font_pt}pt;'>"
                 + f"<div>Range {int(getattr(current_fit, 'xmin', 0))}, {int(getattr(current_fit, 'xmax', 0))}</div>"
                 + "<table style='margin-top:3px; border-collapse:collapse;'>"
-                + f"<tr style='color:#aaaaaa; font-size:{max(7, font_pt-1)}pt;'>"
+                + f"<tr style='color:#aaaaaa; font-size:{max(7, font_pt - 1)}pt;'>"
                 + "<th style='text-align:right; padding: 0px 6px 1px 0px;'>chi2r</th>"
                 + "<th style='text-align:right; padding: 0px 0px 1px 6px;'>DW</th>"
                 + "</tr>"
@@ -1556,10 +1560,7 @@ class LinePlot(plotbase.Plot):
             "</span></div>"
         )
 
-    def _selected_reference_mode_for_model(
-            self,
-            model
-    ) -> plot_transforms.PlotReferenceMode | None:
+    def _selected_reference_mode_for_model(self, model) -> plot_transforms.PlotReferenceMode | None:
         """Return the selected reference mode for ``model``.
 
         Parameters
@@ -1581,16 +1582,16 @@ class LinePlot(plotbase.Plot):
         return None
 
     def _apply_reference_mode_to_curve(
-            self,
-            fit,
-            model,
-            curve_key: str,
-            x: np.ndarray,
-            y: np.ndarray,
-            curves: typing.Mapping[str, typing.Any],
-            group_fits: typing.Sequence | None = None,
-            group_index: int | None = None,
-            selected_group_index: int | None = None
+        self,
+        fit,
+        model,
+        curve_key: str,
+        x: np.ndarray,
+        y: np.ndarray,
+        curves: typing.Mapping[str, typing.Any],
+        group_fits: typing.Sequence | None = None,
+        group_index: int | None = None,
+        selected_group_index: int | None = None,
     ) -> plot_transforms.PlotReferenceResult:
         """Apply the selected reference mode to one curve.
 
@@ -1642,13 +1643,17 @@ class LinePlot(plotbase.Plot):
         try:
             result = mode.callback(context)
         except Exception as exc:
-            cs.logging.warning("Plot reference mode '%s' failed for %s: %s", mode.key, curve_key, exc)
+            cs.logging.warning(
+                "Plot reference mode '%s' failed for %s: %s", mode.key, curve_key, exc
+            )
             return plot_transforms.PlotReferenceResult(x=x, y=y)
 
         if result is None:
             return plot_transforms.PlotReferenceResult(x=x, y=y)
         if isinstance(result, plot_transforms.PlotReferenceResult):
-            self._reference_y_label_override = result.y_label or mode.y_label or self._reference_y_label_override
+            self._reference_y_label_override = (
+                result.y_label or mode.y_label or self._reference_y_label_override
+            )
             return result
         if isinstance(result, tuple) and len(result) >= 2:
             transformed = plot_transforms.PlotReferenceResult(
@@ -1667,19 +1672,21 @@ class LinePlot(plotbase.Plot):
             self._reference_y_label_override = mode.y_label
         return transformed
 
-    def _plot_single_fit_curves(self, fit, curves, data_log_x, data_log_y, director, x_shift, y_shift):
+    def _plot_single_fit_curves(
+        self, fit, curves, data_log_x, data_log_y, director, x_shift, y_shift
+    ):
         """Plot curves for a single fit (original behavior)"""
         curves_keys = list(curves.keys())[::-1]
         for i, curve_key in enumerate(curves_keys):
-            curve_settings = director.get(curve_key, director['default'])
+            curve_settings = director.get(curve_key, director["default"])
             curve = curves[curve_key]
 
             y = np.copy(curve.y)
             x = np.copy(curve.x)
 
-            line: "cp.handles.Curve" = self.lines[curve_key]
+            line: cp.handles.Curve = self.lines[curve_key]
 
-            if curve_settings.get('allow_reference_transform', False):
+            if curve_settings.get("allow_reference_transform", False):
                 result = self._apply_reference_mode_to_curve(
                     fit=fit,
                     model=getattr(fit, "model", None),
@@ -1695,17 +1702,17 @@ class LinePlot(plotbase.Plot):
                 x = np.asarray(result.x, dtype=float)
                 y = np.asarray(result.y, dtype=float)
 
-            if curve_settings['allow_shift']:
+            if curve_settings["allow_shift"]:
                 y += y_shift
                 x += x_shift
 
-            if self.plot_controller.is_density and curve_settings['allow_density']:
+            if self.plot_controller.is_density and curve_settings["allow_density"]:
                 y[1:] = y[1:] / np.diff(x)
 
             # Base data for plotting: either full curve or fit-range only
-            if curve_settings['plot_only_region'] and len(x) == len(curve.x):
-                x_plot = x[fit.xmin:fit.xmax]
-                y_plot = y[fit.xmin:fit.xmax]
+            if curve_settings["plot_only_region"] and len(x) == len(curve.x):
+                x_plot = x[fit.xmin : fit.xmax]
+                y_plot = y[fit.xmin : fit.xmax]
             else:
                 x_plot = x
                 y_plot = y
@@ -1718,24 +1725,22 @@ class LinePlot(plotbase.Plot):
 
     def _plot_group_curves(self, fit, data_log_x, data_log_y, director, x_shift, y_shift):
         """Plot curves for all fits in the group with highlighting"""
-        grouped_fits = getattr(fit, 'grouped_fits', [])
+        grouped_fits = getattr(fit, "grouped_fits", [])
         if not grouped_fits:
             # Fallback to single fit if no group
-            self._plot_single_fit_curves(fit, fit.get_curves(), data_log_x, data_log_y, director, x_shift, y_shift)
+            self._plot_single_fit_curves(
+                fit, fit.get_curves(), data_log_x, data_log_y, director, x_shift, y_shift
+            )
             return
 
-        current_fit_index = getattr(fit, 'selected_fit_index', 0)
+        current_fit_index = getattr(fit, "selected_fit_index", 0)
         wres_offsets = self._compute_group_curve_offsets(
-            grouped_fits,
-            current_fit_index,
-            curve_name='weighted residuals'
+            grouped_fits, current_fit_index, curve_name="weighted residuals"
         )
         acor_offsets = self._compute_group_curve_offsets(
-            grouped_fits,
-            current_fit_index,
-            curve_name='autocorrelation'
+            grouped_fits, current_fit_index, curve_name="autocorrelation"
         )
-        
+
         # Create line names for group fits
         group_line_names = {}
         for i, group_fit in enumerate(grouped_fits):
@@ -1747,12 +1752,12 @@ class LinePlot(plotbase.Plot):
         for line_name, (group_fit, curve_key) in group_line_names.items():
             group_curves = group_fit.get_curves()
             curve = group_curves[curve_key]
-            curve_settings = director.get(curve_key, director['default'])
+            curve_settings = director.get(curve_key, director["default"])
 
             y = np.copy(curve.y)
             x = np.copy(curve.x)
 
-            if curve_settings.get('allow_reference_transform', False):
+            if curve_settings.get("allow_reference_transform", False):
                 result = self._apply_reference_mode_to_curve(
                     fit=group_fit,
                     model=getattr(group_fit, "model", None),
@@ -1772,44 +1777,48 @@ class LinePlot(plotbase.Plot):
                 x = np.asarray(result.x, dtype=float)
                 y = np.asarray(result.y, dtype=float)
 
-            if curve_settings['allow_shift']:
+            if curve_settings["allow_shift"]:
                 y += y_shift
                 x += x_shift
 
-            if self.plot_controller.is_density and curve_settings['allow_density']:
+            if self.plot_controller.is_density and curve_settings["allow_density"]:
                 y[1:] = y[1:] / np.diff(x)
 
             # In grouped display mode, vertically separate weighted residuals so
             # each local-fit residual trace remains readable.
-            if 'weighted residuals' in curve_key:
+            if "weighted residuals" in curve_key:
                 fit_index = grouped_fits.index(group_fit)
                 y = y + wres_offsets.get(fit_index, 0.0)
-            elif 'autocorrelation' in curve_key:
+            elif "autocorrelation" in curve_key:
                 fit_index = grouped_fits.index(group_fit)
                 y = y + acor_offsets.get(fit_index, 0.0)
 
             # Get or create the line for this group curve
             if line_name not in self.lines:
                 # Create a new line for this group curve using the same logic as original lines
-                curve_options = director.get(curve_key, director['default'])
-                target_plot = self.plots[curve_settings['target']]
-                
+                curve_options = director.get(curve_key, director["default"])
+                target_plot = self.plots[curve_settings["target"]]
+
                 # Get color and width using the same logic as original line creation
-                lw = curve_options.get('lw', 2)
-                pen_color = curve_options.get('color', '#FFFFFF')
-                label = curve_options.get('label', curve_key)
-                auto_downsample = curve_options.get('auto_downsample', False)
-                clip_to_view = curve_options.get('clip_to_view', auto_downsample)
-                
+                lw = curve_options.get("lw", 2)
+                pen_color = curve_options.get("color", "#FFFFFF")
+                label = curve_options.get("label", curve_key)
+                auto_downsample = curve_options.get("auto_downsample", False)
+                clip_to_view = curve_options.get("clip_to_view", auto_downsample)
+
                 # Apply the same transparency logic for non-primary curves
-                if curve_key != curve_options.get('name', curve_key):
+                if curve_key != curve_options.get("name", curve_key):
                     # make the line half as wide, and transparent (30%)
                     lw *= 0.5
-                    pen_color = '#4D' + pen_color.split('#')[1]
+                    pen_color = "#4D" + pen_color.split("#")[1]
 
                 line = self._make_line(
-                    target_plot, pen_color, lw, label,
-                    auto_downsample, clip_to_view,
+                    target_plot,
+                    pen_color,
+                    lw,
+                    label,
+                    auto_downsample,
+                    clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
                 self.lines[line_name] = line
@@ -1817,9 +1826,9 @@ class LinePlot(plotbase.Plot):
                 line = self.lines[line_name]
 
             # Base data for plotting: either full curve or fit-range only
-            if curve_settings['plot_only_region'] and len(x) == len(curve.x):
-                x_plot = x[group_fit.xmin:group_fit.xmax]
-                y_plot = y[group_fit.xmin:group_fit.xmax]
+            if curve_settings["plot_only_region"] and len(x) == len(curve.x):
+                x_plot = x[group_fit.xmin : group_fit.xmax]
+                y_plot = y[group_fit.xmin : group_fit.xmax]
             else:
                 x_plot = x
                 y_plot = y
@@ -1850,33 +1859,31 @@ class LinePlot(plotbase.Plot):
     def _plot_active_fit_only(self, fit, data_log_x, data_log_y, director, x_shift, y_shift):
         """Plot only the currently selected fit from a FitGroup"""
         # Get the currently selected fit
-        current_fit = getattr(fit, 'selected_fit', fit)
+        current_fit = getattr(fit, "selected_fit", fit)
         current_curves = current_fit.get_curves()
-        
+
         # Hide all group lines first
-        grouped_fits = getattr(fit, 'grouped_fits', [])
+        grouped_fits = getattr(fit, "grouped_fits", [])
         for i, group_fit in enumerate(grouped_fits):
             group_curves = group_fit.get_curves()
             for curve_key in group_curves:
                 line_name = f"{curve_key}_{i}"
                 if line_name in self.lines:
                     self.lines[line_name].hide()
-        
+
         # Plot only the current fit using the single fit logic
-        self._plot_single_fit_curves(current_fit, current_curves, data_log_x, data_log_y, director, x_shift, y_shift)
+        self._plot_single_fit_curves(
+            current_fit, current_curves, data_log_x, data_log_y, director, x_shift, y_shift
+        )
 
     def _compute_group_curve_offsets(
-            self,
-            grouped_fits,
-            current_fit_index: int,
-            curve_name: str
+        self, grouped_fits, current_fit_index: int, curve_name: str
     ) -> typing.Dict[int, float]:
         """Return per-fit y-offsets for grouped residual-like curve display.
 
         The spacing is derived from residual amplitudes across the group and the
         active fit is centered at zero.
         """
-
         if len(grouped_fits) <= 1:
             return {}
 
@@ -1915,7 +1922,4 @@ class LinePlot(plotbase.Plot):
         # demonstration where each curve is shifted by a fixed y-step.
         spacing = max(1.0, 2.5 * typical_amp)
 
-        return {
-            idx: (idx - int(current_fit_index)) * spacing
-            for idx in range(len(grouped_fits))
-        }
+        return {idx: (idx - int(current_fit_index)) * spacing for idx in range(len(grouped_fits))}

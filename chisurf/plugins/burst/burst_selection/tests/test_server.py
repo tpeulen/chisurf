@@ -8,16 +8,16 @@ import time
 from pathlib import Path
 from typing import Any
 
+from chisurf.plugins.burst.burst_selection.api.contract import (
+    METHOD_ANALYZE_FILES,
+    METHOD_FIT_GMM,
+    METHOD_INSPECT_BUR,
+)
 from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisSettings,
     BurstDetectionSettings,
     DeltaMacroTimeFilterSettings,
     PhotonFilterSettings,
-)
-from chisurf.plugins.burst.burst_selection.api.contract import (
-    METHOD_ANALYZE_FILES,
-    METHOD_FIT_GMM,
-    METHOD_INSPECT_BUR,
 )
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_file
 from chisurf.plugins.burst.burst_selection.server import methods as server_module
@@ -37,7 +37,9 @@ def real_data_settings() -> AnalysisSettings:
         filter_active=False,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0),
     )
-    settings.burst_detection = BurstDetectionSettings(min_photons=20, photon_window=10, time_window=1e-3)
+    settings.burst_detection = BurstDetectionSettings(
+        min_photons=20, photon_window=10, time_window=1e-3
+    )
     return settings
 
 

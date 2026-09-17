@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-import itertools
-import re
 import json
-import sys
+import re
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from chisurf.core.structure import trajectory_data as md
 import numpy as np
 
 import chisurf.core.fio
+from chisurf.core.structure import trajectory_data as md
 
 
 @dataclass(frozen=True)
@@ -34,13 +32,13 @@ class LabelPosition:
     atom_name: str
 
 
-def parse_residue_ranges(text: str) -> List[int]:
+def parse_residue_ranges(text: str) -> list[int]:
     text = (text or "").strip()
     if not text:
         return []
 
     parts = re.split(r"[;,\s]+", text)
-    out: List[int] = []
+    out: list[int] = []
     for part in parts:
         if not part:
             continue
@@ -87,7 +85,9 @@ def find_residue(chain, resseq: int):
     return None
 
 
-def pick_atom_index(residue, atom_name: str, fallback_atom_name: Optional[str] = None) -> Optional[Tuple[int, str]]:
+def pick_atom_index(
+    residue, atom_name: str, fallback_atom_name: str | None = None
+) -> tuple[int, str] | None:
     for at in residue.atoms:
         if at.name == atom_name:
             return at.index, atom_name
@@ -103,12 +103,12 @@ def build_sites(
     chain_spec: str,
     residue_numbers: Sequence[int],
     atom_name: str,
-    fallback_atom_name: Optional[str] = None,
-) -> List[ResidueSite]:
+    fallback_atom_name: str | None = None,
+) -> list[ResidueSite]:
     chain = get_chain(traj.topology, chain_spec)
     chain_id = _chain_id_of(chain)
 
-    sites: List[ResidueSite] = []
+    sites: list[ResidueSite] = []
     for resseq in residue_numbers:
         res = find_residue(chain, int(resseq))
         if res is None:
@@ -130,7 +130,7 @@ def build_sites(
     return sites
 
 
-def build_atom_pairs(sites: Sequence[ResidueSite]) -> Tuple[np.ndarray, List[str]]:
+def build_atom_pairs(sites: Sequence[ResidueSite]) -> tuple[np.ndarray, list[str]]:
     if len(sites) < 2:
         return np.zeros((0, 2), dtype=np.int32), []
 
@@ -138,7 +138,7 @@ def build_atom_pairs(sites: Sequence[ResidueSite]) -> Tuple[np.ndarray, List[str
     idx_i, idx_j = np.triu_indices(len(sites), k=1)
     pairs = np.vstack([atom_indices[idx_i], atom_indices[idx_j]]).T.astype(np.int32, copy=False)
 
-    pair_names: List[str] = []
+    pair_names: list[str] = []
     for i, j in zip(idx_i.tolist(), idx_j.tolist()):
         si = sites[i]
         sj = sites[j]
@@ -161,7 +161,7 @@ def compute_efficiencies(
     d_a = d_nm.astype(np.float32, copy=False) * 10.0
     r0 = float(r0_angstrom)
     x = d_a / r0
-    return (1.0 / (1.0 + x ** 6)).astype(np.float32, copy=False)
+    return (1.0 / (1.0 + x**6)).astype(np.float32, copy=False)
 
 
 # `_select_av_backend` is gone. It chose between LabelLib and an
@@ -187,25 +187,25 @@ def _mean_efficiency_from_points(
     n1 = int(points1.shape[0])
     n2 = int(points2.shape[0])
     if n1 == 0 or n2 == 0:
-        return float('nan')
+        return float("nan")
 
     i1 = np.random.randint(0, n1, size=int(n_samples))
     i2 = np.random.randint(0, n2, size=int(n_samples))
     d = points1[i1] - points2[i2]
     r = np.sqrt((d * d).sum(axis=1))
     x = r / float(r0_angstrom)
-    return float(np.mean(1.0 / (1.0 + x ** 6)))
+    return float(np.mean(1.0 / (1.0 + x**6)))
 
 
 def compute_efficiencies_from_fps_av(
     traj: md.Trajectory,
-    fps: Dict,
-    pair_position_names: Sequence[Tuple[str, str]],
+    fps: dict,
+    pair_position_names: Sequence[tuple[str, str]],
     r0s_angstrom: np.ndarray,
     n_samples: int = 5000,
     max_points_per_av: int = 20000,
 ) -> np.ndarray:
-    pos_cfg = fps.get('Positions') or {}
+    pos_cfg = fps.get("Positions") or {}
     if not isinstance(pos_cfg, dict):
         raise ValueError("fps.json: 'Positions' must be a dict")
 
@@ -217,14 +217,14 @@ def compute_efficiencies_from_fps_av(
         if name not in pos_cfg:
             raise ValueError(f"fps.json is missing position '{name}'")
 
-    fd, tmp_pdb = tempfile.mkstemp(suffix='.pdb')
+    fd, tmp_pdb = tempfile.mkstemp(suffix=".pdb")
     try:
         effs = np.empty((traj.n_frames, len(pair_position_names)), dtype=np.float32)
 
         for frame_idx in range(traj.n_frames):
             traj[frame_idx].save_pdb(tmp_pdb)
 
-            av_points: Dict[str, np.ndarray] = {}
+            av_points: dict[str, np.ndarray] = {}
             import chisurf.core.structure
             import chisurf.core.structure.av
 
@@ -233,18 +233,20 @@ def compute_efficiencies_from_fps_av(
                 cfg = pos_cfg[name] or {}
                 av_obj = chisurf.core.structure.av.BasicAV(
                     structure,
-                    simulation_grid_resolution=float(cfg.get('simulation_grid_resolution', None) or 1.5),
-                    allowed_sphere_radius=float(cfg.get('allowed_sphere_radius', None) or 1.5),
-                    radius1=float(cfg.get('radius1', 3.5)),
-                    radius2=float(cfg.get('radius2', 4.5)),
-                    radius3=float(cfg.get('radius3', 3.5)),
-                    linker_width=float(cfg.get('linker_width', 0.5)),
-                    linker_length=float(cfg.get('linker_length', 20.0)),
-                    simulation_type=str(cfg.get('simulation_type', 'AV1')),
-                    chain_identifier=str(cfg.get('chain_identifier') or '').strip() or None,
-                    residue_name=str(cfg.get('residue_name') or '').strip() or None,
-                    residue_seq_number=int(cfg.get('residue_seq_number')),
-                    atom_name=str(cfg.get('atom_name') or 'CA').strip() or 'CA',
+                    simulation_grid_resolution=float(
+                        cfg.get("simulation_grid_resolution", None) or 1.5
+                    ),
+                    allowed_sphere_radius=float(cfg.get("allowed_sphere_radius", None) or 1.5),
+                    radius1=float(cfg.get("radius1", 3.5)),
+                    radius2=float(cfg.get("radius2", 4.5)),
+                    radius3=float(cfg.get("radius3", 3.5)),
+                    linker_width=float(cfg.get("linker_width", 0.5)),
+                    linker_length=float(cfg.get("linker_length", 20.0)),
+                    simulation_type=str(cfg.get("simulation_type", "AV1")),
+                    chain_identifier=str(cfg.get("chain_identifier") or "").strip() or None,
+                    residue_name=str(cfg.get("residue_name") or "").strip() or None,
+                    residue_seq_number=int(cfg.get("residue_seq_number")),
+                    atom_name=str(cfg.get("atom_name") or "CA").strip() or "CA",
                     position_name=str(name),
                 )
                 pts = np.asarray(av_obj.points[:, :3], dtype=np.float64)
@@ -265,17 +267,19 @@ def compute_efficiencies_from_fps_av(
     finally:
         try:
             import os
+
             os.close(fd)
         except Exception:
             pass
         try:
             import os
+
             os.remove(tmp_pdb)
         except Exception:
             pass
 
 
-def rmsd_matrix(traj: md.Trajectory, atom_selection: Optional[str] = None) -> np.ndarray:
+def rmsd_matrix(traj: md.Trajectory, atom_selection: str | None = None) -> np.ndarray:
     if atom_selection:
         atom_indices = traj.topology.select(atom_selection)
         if atom_indices.size == 0:
@@ -286,22 +290,24 @@ def rmsd_matrix(traj: md.Trajectory, atom_selection: Optional[str] = None) -> np
     n = traj.n_frames
     out = np.empty((n, n), dtype=np.float32)
     for i in range(n):
-        out[:, i] = md.rmsd(traj, traj, frame=i, atom_indices=atom_indices).astype(np.float32) * 10.0
+        out[:, i] = (
+            md.rmsd(traj, traj, frame=i, atom_indices=atom_indices).astype(np.float32) * 10.0
+        )
     return out
 
 
-def load_fps_json(path: Union[str, Path]) -> Dict:
+def load_fps_json(path: str | Path) -> dict:
     p = Path(path)
-    with chisurf.core.fio.zipped.open_maybe_zipped(filename=str(p), mode='r') as fp:
+    with chisurf.core.fio.zipped.open_maybe_zipped(filename=str(p), mode="r") as fp:
         return json.load(fp)
 
 
-def positions_from_fps_json(traj: md.Trajectory, fps: Dict) -> List[LabelPosition]:
+def positions_from_fps_json(traj: md.Trajectory, fps: dict) -> list[LabelPosition]:
     pos_dict = fps.get("Positions") or {}
     if not isinstance(pos_dict, dict):
         raise ValueError("fps.json: 'Positions' must be a dict")
 
-    positions: List[LabelPosition] = []
+    positions: list[LabelPosition] = []
     for name, cfg in pos_dict.items():
         if not isinstance(cfg, dict):
             continue
@@ -314,7 +320,7 @@ def positions_from_fps_json(traj: md.Trajectory, fps: Dict) -> List[LabelPositio
         resseq = int(resseq)
         resname_cfg = str(cfg.get("residue_name") or "").strip()
 
-        found_atom: Optional[Tuple[int, str, int, str, str]] = None
+        found_atom: tuple[int, str, int, str, str] | None = None
         for chain in traj.topology.chains:
             chain_id = _chain_id_of(chain)
             if chain_identifier and chain_id != chain_identifier:
@@ -353,9 +359,9 @@ def positions_from_fps_json(traj: md.Trajectory, fps: Dict) -> List[LabelPositio
 
 def candidate_pairs_from_fps_json(
     positions: Sequence[LabelPosition],
-    fps: Dict,
+    fps: dict,
     default_r0_angstrom: float,
-) -> Tuple[np.ndarray, List[str], np.ndarray, List[Tuple[str, str]]]:
+) -> tuple[np.ndarray, list[str], np.ndarray, list[tuple[str, str]]]:
     pos_by_name = {p.name: p for p in positions}
     if len(pos_by_name) < 2:
         return np.zeros((0, 2), dtype=np.int32), [], np.zeros((0,), dtype=np.float32), []
@@ -363,10 +369,10 @@ def candidate_pairs_from_fps_json(
     effs_section = fps.get("Mean FRET Efficiencies")
     dist_section = fps.get("Distances")
 
-    pairs: List[Tuple[int, int]] = []
-    pair_names: List[str] = []
-    r0s: List[float] = []
-    pair_position_names: List[Tuple[str, str]] = []
+    pairs: list[tuple[int, int]] = []
+    pair_names: list[str] = []
+    r0s: list[float] = []
+    pair_position_names: list[tuple[str, str]] = []
 
     def add_pair(p1_name: str, p2_name: str, r0: float):
         p1 = pos_by_name.get(p1_name)
@@ -402,16 +408,16 @@ def candidate_pairs_from_fps_json(
 
                 # If this distance entry looks like an experimental constraint, do not
                 # treat it as a candidate pair list.
-                if ('rda' in v) or ('prda' in v):
+                if ("rda" in v) or ("prda" in v):
                     use_distances_as_candidates = False
                     break
 
                 # Some templates store placeholders (distance/error = -1) to indicate
                 # "not measured yet"; treat those as candidate definitions.
-                if ('distance' in v) or ('error_pos' in v) or ('error_neg' in v):
-                    d = v.get('distance', None)
-                    en = v.get('error_neg', None)
-                    ep = v.get('error_pos', None)
+                if ("distance" in v) or ("error_pos" in v) or ("error_neg" in v):
+                    d = v.get("distance", None)
+                    en = v.get("error_neg", None)
+                    ep = v.get("error_pos", None)
                     is_placeholder = True
                     if d is not None and float(d) >= 0.0:
                         is_placeholder = False
@@ -466,4 +472,4 @@ def compute_efficiencies_per_pair_r0(
     d_a = d_nm.astype(np.float32, copy=False) * 10.0
     r0 = r0s_angstrom.astype(np.float32, copy=False)
     x = d_a / r0[None, :]
-    return (1.0 / (1.0 + x ** 6)).astype(np.float32, copy=False)
+    return (1.0 / (1.0 + x**6)).astype(np.float32, copy=False)

@@ -8,12 +8,11 @@ from qtpy import QtCore, QtGui, QtWidgets
 import chisurf as cs
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
-from chisurf.core.fio.staging import supported_container_types
+from chisurf.core.fio.staging import TTTR_FILE_FILTER, supported_container_types
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
 
 class _PchDetectorWidget(QtWidgets.QWidget):
@@ -48,7 +47,10 @@ class _PchDetectorWidget(QtWidgets.QWidget):
         self.combo_routine = QtWidgets.QComboBox()
         try:
             import tttrlib  # type: ignore[import]
-            supported = list(tttrlib.TTTR.get_supported_container_names()) or list(supported_container_types())
+
+            supported = list(tttrlib.TTTR.get_supported_container_names()) or list(
+                supported_container_types()
+            )
             self.combo_routine.addItems([str(s) for s in supported])
         except Exception:
             self.combo_routine.addItems(list(supported_container_types()))
@@ -216,16 +218,16 @@ class _PchDetectorWidget(QtWidgets.QWidget):
 
     def sync_from_reader(self, setup) -> None:
         """Refresh routine/channels display from a reader/setup object."""
-        rr = getattr(setup, 'reading_routine', None)
+        rr = getattr(setup, "reading_routine", None)
         if isinstance(rr, str) and rr:
             idx = self.combo_routine.findText(rr)
             if idx >= 0:
                 self.combo_routine.blockSignals(True)
                 self.combo_routine.setCurrentIndex(idx)
                 self.combo_routine.blockSignals(False)
-        chs = getattr(setup, 'channel_numbers', None)
+        chs = getattr(setup, "channel_numbers", None)
         if chs is None:
-            chs = [getattr(setup, 'channel', 0)]
+            chs = [getattr(setup, "channel", 0)]
         try:
             seq = list(chs)
         except TypeError:
@@ -237,11 +239,11 @@ class _PchDetectorWidget(QtWidgets.QWidget):
 
 def _register_pch_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("pch_detector")(_PchDetectorWidget)
 
 
 class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
-
     def get_filename(self) -> pathlib.Path:
         # Ensure current GUI values are pushed before opening the dialog.
         try:
@@ -258,7 +260,7 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return pathlib.Path(fn_prev)
 
         fn = cs.gui.widgets.open_files(
-            description='PCH TTTR file',
+            description="PCH TTTR file",
             file_type=TTTR_FILE_FILTER,
             working_path=None,
         )
@@ -283,6 +285,7 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         self._refresh_pending = False
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             layout.addWidget(self._settings_form)
             self._bind_detector_widget()
@@ -483,11 +486,11 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             data_obj = group
 
-        meta = getattr(data_obj, 'meta_data', {}) or {}
-        pch_meta = meta.get('pch', {}) or {}
+        meta = getattr(data_obj, "meta_data", {}) or {}
+        pch_meta = meta.get("pch", {}) or {}
 
-        k_vals = pch_meta.get('k_vals', getattr(data_obj, 'x', None))
-        p_exp = pch_meta.get('p_exp', getattr(data_obj, 'y', None))
+        k_vals = pch_meta.get("k_vals", getattr(data_obj, "x", None))
+        p_exp = pch_meta.get("p_exp", getattr(data_obj, "y", None))
 
         if k_vals is None or p_exp is None:
             return
@@ -536,11 +539,11 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
             except Exception:
                 data_obj = group
 
-            meta = getattr(data_obj, 'meta_data', {}) or {}
-            pch_meta = meta.get('pch', {}) or {}
+            meta = getattr(data_obj, "meta_data", {}) or {}
+            pch_meta = meta.get("pch", {}) or {}
 
-            hist_counts = pch_meta.get('hist_counts', None)
-            total_bins = pch_meta.get('total_bins', None)
+            hist_counts = pch_meta.get("hist_counts", None)
+            total_bins = pch_meta.get("total_bins", None)
             if hist_counts is None or total_bins is None:
                 continue
 
@@ -591,7 +594,7 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return
         try:
             self.preview_plot.clear()
-            self.preview_plot.scatter(self._preview_k, self._preview_p, symbol='o')
+            self.preview_plot.scatter(self._preview_k, self._preview_p, symbol="o")
             try:
                 self.preview_plot.set_log(y=True)
             except Exception:
@@ -634,6 +637,7 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         if paths:
             try:
                 import pathlib as _pl
+
                 path_objs = []
                 for pp in paths:
                     if isinstance(pp, _pl.Path):

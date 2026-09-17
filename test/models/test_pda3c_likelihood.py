@@ -16,10 +16,10 @@ from scipy import stats
 
 
 def _burst_log_likelihood_reference(
-        counts,
-        p,
-        background=None,
-        photon_number_pmf=None,
+    counts,
+    p,
+    background=None,
+    photon_number_pmf=None,
 ) -> np.ndarray:
     """The deleted ``pda3c.likelihood.burst_log_likelihood_reference``, frozen.
 
@@ -205,7 +205,7 @@ def test_zero_background_is_exactly_the_multinomial():
 
 
 def test_the_two_internal_background_paths_agree():
-    """tttrlib's truncated path must equal chisurf's untruncated per-burst one.
+    """Tttrlib's truncated path must equal chisurf's untruncated per-burst one.
 
     They are separately tested against the nested sum, but only on inputs small
     enough for the nested sum to run. This compares them to each other on inputs
@@ -249,7 +249,7 @@ def test_burst_count_does_not_change_the_per_burst_answer():
 
     whole = lk.burst_log_likelihood(counts, p, background)
     for j in (0, 5, 36):
-        one = lk.burst_log_likelihood(counts[j: j + 1], p, background)
+        one = lk.burst_log_likelihood(counts[j : j + 1], p, background)
         np.testing.assert_allclose(one[:, 0], whole[:, j], rtol=1e-10, atol=1e-10)
 
 
@@ -460,7 +460,7 @@ def test_collapsing_actually_saturates():
     rng = np.random.default_rng(11)
     small = collapse_bursts(rng.integers(0, 6, size=(500, 3)))[0].shape[0]
     large = collapse_bursts(rng.integers(0, 6, size=(50_000, 3)))[0].shape[0]
-    assert large <= 6 ** 3
+    assert large <= 6**3
     assert large / 50_000 < small / 500
 
 
@@ -531,8 +531,9 @@ def test_burst_log_likelihood_uses_tttrlib():
     from chisurf.core.fluorescence.pda3c import likelihood as L
 
     counts = np.array([[4, 3, 2], [7, 1, 1]])
-    obj = L._tttrlib_likelihood(counts.astype(float), np.array([1.0, 1.0, 1.0]),
-                                None, L.DEFAULT_TOLERANCE)
+    obj = L._tttrlib_likelihood(
+        counts.astype(float), np.array([1.0, 1.0, 1.0]), None, L.DEFAULT_TOLERANCE
+    )
     assert obj is not None, "tttrlib is not being used"
     assert obj.get_n_bursts() == 2 and obj.get_n_channels() == 3
 
@@ -554,9 +555,14 @@ def test_the_numpy_implementation_is_gone():
     """It was 14-920x slower and wrong on a p_c == 0 channel; tttrlib owns this."""
     from chisurf.core.fluorescence.pda3c import likelihood as L
 
-    for name in ("_burst_log_likelihood_numpy", "_channel_boxes",
-                 "_background_factors", "_tail_cutoff",
-                 "_KERNEL_ELEMENT_BUDGET", "burst_log_likelihood_reference"):
+    for name in (
+        "_burst_log_likelihood_numpy",
+        "_channel_boxes",
+        "_background_factors",
+        "_tail_cutoff",
+        "_KERNEL_ELEMENT_BUDGET",
+        "burst_log_likelihood_reference",
+    ):
         assert not hasattr(L, name), f"{name} should have been removed"
 
 

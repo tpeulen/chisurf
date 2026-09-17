@@ -78,8 +78,10 @@ class QuiverSectionWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         self.plot = cp.Plot()
-        self.plot.set_labels(bottom=str(options.get("x_label", "x") or "x"),
-                             left=str(options.get("y_label", "y") or "y"))
+        self.plot.set_labels(
+            bottom=str(options.get("x_label", "x") or "x"),
+            left=str(options.get("y_label", "y") or "y"),
+        )
         try:
             self.plot.set_aspect_locked(True)
             # Image coordinates: row 0 is the top row, so an un-inverted axis
@@ -133,17 +135,14 @@ class QuiverSectionWidget(QtWidgets.QWidget):
                 if extent is not None and len(extent) == 4:
                     x0, x1, y0, y1 = (float(v) for v in extent)
                     rect = (x0, y0, x1 - x0, y1 - y0)
-                self._items.append(
-                    self.plot.image(data.T, colormap="gray", rect=rect)
-                )
+                self._items.append(self.plot.image(data.T, colormap="gray", rect=rect))
 
         vectors = self._call(self._vectors_source) or []
-        scale = float(getattr(self._model, self._scale_attr, 1.0) or 1.0) \
-            if self._scale_attr else 1.0
+        scale = (
+            float(getattr(self._model, self._scale_attr, 1.0) or 1.0) if self._scale_attr else 1.0
+        )
         drawn, speeds = 0, []
-        magnitudes = [
-            float(np.hypot(v.get("dx", 0.0), v.get("dy", 0.0))) for v in vectors
-        ]
+        magnitudes = [float(np.hypot(v.get("dx", 0.0), v.get("dy", 0.0))) for v in vectors]
         largest = max(magnitudes) if magnitudes else 0.0
         for vector, magnitude in zip(vectors, magnitudes):
             if not np.isfinite(magnitude) or magnitude <= 0.0:
@@ -152,14 +151,15 @@ class QuiverSectionWidget(QtWidgets.QWidget):
             dx = float(vector.get("dx", 0.0)) * scale
             dy = float(vector.get("dy", 0.0)) * scale
             colour = self._colour(magnitude, largest)
-            self._items.append(
-                self.plot.line([x, x + dx], [y, y + dy], pen=colour, width=2)
-            )
+            self._items.append(self.plot.line([x, x + dx], [y, y + dy], pen=colour, width=2))
             self._items.append(
                 self.plot.arrow(
-                    x + dx, y + dy,
+                    x + dx,
+                    y + dy,
                     angle=float(np.degrees(np.arctan2(dy, dx))),
-                    size=9.0, brush=colour, pen=None,
+                    size=9.0,
+                    brush=colour,
+                    pen=None,
                 )
             )
             drawn += 1

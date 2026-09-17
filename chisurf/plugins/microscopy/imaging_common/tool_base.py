@@ -43,7 +43,11 @@ class _ComputeTask(QtCore.QRunnable):
     def run(self) -> None:  # noqa: N802 (Qt override)
         ok = False
         try:
-            ok = bool(self._model.compute(progress=lambda f, t: self.signals.progress.emit(float(f), str(t))))
+            ok = bool(
+                self._model.compute(
+                    progress=lambda f, t: self.signals.progress.emit(float(f), str(t))
+                )
+            )
         except Exception:
             logger.debug("background compute failed", exc_info=True)
             ok = False
@@ -92,7 +96,9 @@ class ImagingMapTool(QtWidgets.QWidget):
         a_run = toolbar.addAction("▶ Run")
         a_run.setToolTip("Compute the per-pixel maps from the loaded file.")
         a_run.triggered.connect(self.run_with_progress)
-        a_h5 = toolbar.addAction(getattr(self.model, "HDF5_ACTION_LABEL", f"{Glyphs.ADD} Add to HDF5"))
+        a_h5 = toolbar.addAction(
+            getattr(self.model, "HDF5_ACTION_LABEL", f"{Glyphs.ADD} Add to HDF5")
+        )
         a_h5.setToolTip("Add these fields to a standard imaging HDF5 (or create it).")
         a_h5.triggered.connect(self.model.add_to_hdf5)
         a_ndx = toolbar.addAction("🧭 ndX")

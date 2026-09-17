@@ -3,14 +3,15 @@
 Driven by a real confocal FLIM TTTR image from the ``tttr-data`` collection.
 Skips cleanly when tttrlib or the external test image is unavailable.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import numpy as np
+import pytest
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
-import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
 
@@ -21,13 +22,9 @@ from chisurf.plugins.microscopy.img_pixel_mle.core import (
     fit_pixel_lifetimes_from_file,
 )
 
-_FLIM_PTU = pathlib.Path(
-    "/Users/tpeulen/dev/tttr-data/imaging/pq/Microtime200_HH400/beads.ptu"
-)
+_FLIM_PTU = pathlib.Path("/Users/tpeulen/dev/tttr-data/imaging/pq/Microtime200_HH400/beads.ptu")
 
-pytestmark = pytest.mark.skipif(
-    not _FLIM_PTU.exists(), reason="tttr-data FLIM image not available"
-)
+pytestmark = pytest.mark.skipif(not _FLIM_PTU.exists(), reason="tttr-data FLIM image not available")
 
 _BINNING = 8
 
@@ -64,9 +61,19 @@ def test_core_fits_flim_image_headlessly():
     assert result.tau.shape == (1, 50, 50)
 
     expected_cols = {
-        "Y pixel", "X pixel", "Pixel Number", "Number of Photons (fit window)",
-        "tau", "gamma", "r0", "rho", "BIFL scatter fit?", "2I*: P+2S?",
-        "rS", "rE", "2I*",
+        "Y pixel",
+        "X pixel",
+        "Pixel Number",
+        "Number of Photons (fit window)",
+        "tau",
+        "gamma",
+        "r0",
+        "rho",
+        "BIFL scatter fit?",
+        "2I*: P+2S?",
+        "rS",
+        "rE",
+        "2I*",
     }
     assert expected_cols.issubset(set(column_names(df)))
 
@@ -104,24 +111,28 @@ def test_a_region_confines_the_fit_to_part_of_the_frame():
     # Inside the region the numbers are identical: the region selects, it does
     # not change the fit.
     inside = slice(0, 25)
-    np.testing.assert_allclose(
-        gated.tau[:, inside, inside], full.tau[:, inside, inside]
-    )
+    np.testing.assert_allclose(gated.tau[:, inside, inside], full.tau[:, inside, inside])
 
     # The serialised form travels through RPC and means the same thing.
-    as_dict = fit_pixel_lifetimes_from_file(
-        str(_FLIM_PTU), _settings(roi=quadrant.to_dict())
-    )
+    as_dict = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(roi=quadrant.to_dict()))
     assert as_dict.n_pixels_fit == gated.n_pixels_fit
 
 
 @pytest.mark.parametrize(
     "model, init, fixed, extra_cols",
     [
-        ("fit24", [2.0, 0.0, 2.0, 0.0, 0.0], [0, 1, 1, 1, 1],
-         {"tau1", "gamma", "tau2", "A2", "offset"}),
-        ("fit25", [0.5, 1.0, 2.0, 4.0, 0.0], [1, 1, 1, 1, 1],
-         {"tau1", "tau2", "tau3", "tau4", "gamma"}),
+        (
+            "fit24",
+            [2.0, 0.0, 2.0, 0.0, 0.0],
+            [0, 1, 1, 1, 1],
+            {"tau1", "gamma", "tau2", "A2", "offset"},
+        ),
+        (
+            "fit25",
+            [0.5, 1.0, 2.0, 4.0, 0.0],
+            [1, 1, 1, 1, 1],
+            {"tau1", "tau2", "tau3", "tau4", "gamma"},
+        ),
     ],
 )
 def test_core_fits_non_fit23_models(model, init, fixed, extra_cols):
@@ -140,8 +151,7 @@ def test_core_fits_non_fit23_models(model, init, fixed, extra_cols):
     assert not {"rS", "rE", "r0"} & set(column_names(df))
 
     assert result.n_pixels_fit > 0
-    tau = numeric_column(df, "tau")[
-        numeric_column(df, "Number of Photons (fit window)") > 0]
+    tau = numeric_column(df, "tau")[numeric_column(df, "Number of Photons (fit window)") > 0]
     assert np.all(np.isfinite(tau))
     assert np.all(tau > 0.0)
     assert int((result.tau > 0).sum()) == result.n_pixels_fit

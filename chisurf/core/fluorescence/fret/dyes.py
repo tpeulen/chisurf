@@ -263,8 +263,9 @@ def _dye_from_row(db, row) -> DyeProperties:
     )
 
 
-def list_dyes(*, db=None, db_path: str | None = None, usable_only: bool = True,
-              limit: int | None = None) -> list[DyeProperties]:
+def list_dyes(
+    *, db=None, db_path: str | None = None, usable_only: bool = True, limit: int | None = None
+) -> list[DyeProperties]:
     """List the dyes MMFDB can describe.
 
     Parameters
@@ -401,8 +402,9 @@ def absorption_spectrum(dye, *, db=None, db_path: str | None = None):
         return wavelength, shape / peak * float(resolved.extinction_coefficient)
 
 
-def extinction_at(dye, wavelength_nm: float, *, db=None,
-                  db_path: str | None = None) -> float | None:
+def extinction_at(
+    dye, wavelength_nm: float, *, db=None, db_path: str | None = None
+) -> float | None:
     """Molar extinction coefficient of a dye *at a given wavelength*.
 
     Excitation rarely happens at the absorption maximum, and the catalogued
@@ -434,9 +436,15 @@ def extinction_at(dye, wavelength_nm: float, *, db=None,
     return float(np.interp(float(wavelength_nm), grid, epsilon, left=0.0, right=0.0))
 
 
-def fret_pair(donor, acceptor, *, kappa2: float = 2.0 / 3.0,
-              refractive_index: float = 1.33, db=None,
-              db_path: str | None = None) -> FretPair | None:
+def fret_pair(
+    donor,
+    acceptor,
+    *,
+    kappa2: float = 2.0 / 3.0,
+    refractive_index: float = 1.33,
+    db=None,
+    db_path: str | None = None,
+) -> FretPair | None:
     """Resolve a donor/acceptor pair and everything MMFDB implies for it.
 
     Parameters
@@ -462,26 +470,30 @@ def fret_pair(donor, acceptor, *, kappa2: float = 2.0 / 3.0,
     with open_database(db_path, db) as handle:
         if handle is None:
             return None
-        donor_dye = (donor if isinstance(donor, DyeProperties)
-                     else dye_properties(donor, db=handle))
-        acceptor_dye = (acceptor if isinstance(acceptor, DyeProperties)
-                        else dye_properties(acceptor, db=handle))
+        donor_dye = donor if isinstance(donor, DyeProperties) else dye_properties(donor, db=handle)
+        acceptor_dye = (
+            acceptor if isinstance(acceptor, DyeProperties) else dye_properties(acceptor, db=handle)
+        )
         if donor_dye is None or acceptor_dye is None:
             return None
 
         provenance = {
-            "quantum_yield_donor": ("mmfdb:property" if donor_dye.quantum_yield
-                                    else "missing"),
-            "quantum_yield_acceptor": ("mmfdb:property" if acceptor_dye.quantum_yield
-                                       else "missing"),
+            "quantum_yield_donor": ("mmfdb:property" if donor_dye.quantum_yield else "missing"),
+            "quantum_yield_acceptor": (
+                "mmfdb:property" if acceptor_dye.quantum_yield else "missing"
+            ),
             "donor_lifetime": "mmfdb:property" if donor_dye.lifetime else "missing",
         }
         r0 = overlap = None
 
         emission = _spectrum(handle, donor_dye.probe_id, "emission")
         absorption = _spectrum(handle, acceptor_dye.probe_id, "absorption")
-        if (emission is not None and absorption is not None
-                and donor_dye.quantum_yield and acceptor_dye.extinction_coefficient):
+        if (
+            emission is not None
+            and absorption is not None
+            and donor_dye.quantum_yield
+            and acceptor_dye.extinction_coefficient
+        ):
             wl_d, f_d = emission
             wl_a, eps_a = absorption
             low = max(wl_d.min(), wl_a.min())
@@ -496,9 +508,12 @@ def fret_pair(donor, acceptor, *, kappa2: float = 2.0 / 3.0,
                     epsilon = shape / peak * float(acceptor_dye.extinction_coefficient)
                     try:
                         r0, overlap = forster_radius_from_spectra(
-                            grid, donor_emission, epsilon,
+                            grid,
+                            donor_emission,
+                            epsilon,
                             donor_quantum_yield=float(donor_dye.quantum_yield),
-                            kappa2=float(kappa2), refractive_index=float(refractive_index),
+                            kappa2=float(kappa2),
+                            refractive_index=float(refractive_index),
                         )
                         provenance["forster_radius"] = "mmfdb:spectra"
                     except ValueError:
@@ -515,9 +530,13 @@ def fret_pair(donor, acceptor, *, kappa2: float = 2.0 / 3.0,
         provenance.setdefault("forster_radius", "missing")
 
         return FretPair(
-            donor=donor_dye, acceptor=acceptor_dye, forster_radius=r0,
-            overlap_integral=overlap, kappa2=float(kappa2),
-            refractive_index=float(refractive_index), provenance=provenance,
+            donor=donor_dye,
+            acceptor=acceptor_dye,
+            forster_radius=r0,
+            overlap_integral=overlap,
+            kappa2=float(kappa2),
+            refractive_index=float(refractive_index),
+            provenance=provenance,
         )
 
 

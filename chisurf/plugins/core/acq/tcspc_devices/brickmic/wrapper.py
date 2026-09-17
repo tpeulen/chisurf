@@ -23,12 +23,11 @@ These parameters can be made user-configurable in a future iteration.
 
 from __future__ import annotations
 
-import os
-import time
-import threading
-import queue
 import logging
-from typing import List
+import os
+import queue
+import threading
+import time
 
 import numpy as np
 from qtpy.QtCore import Signal
@@ -45,14 +44,13 @@ logger = logging.getLogger(__name__)
 try:  # pragma: no cover - hardware specific
     from mcculw import ul
     from mcculw.enums import (
-        ScanOptions,
+        CounterDebounceTime,
+        CounterEdgeDetection,
         CounterMode,
+        CounterTickSize,
         FunctionType,
         InterfaceType,
-        CounterTickSize,
-        CounterEdgeDetection,
-        CounterDebounceTime,
-        ErrorCode,
+        ScanOptions,
         Status,
     )
     from mcculw.ul import ULError
@@ -115,7 +113,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         self._global_sample_index: int = 0
 
         # Streaming queue for BH 32-bit words (SPC-130 records)
-        self.data_queue: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=50)
+        self.data_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=50)
         self.current_buffer: np.ndarray = np.array([], dtype=np.uint32)
         self.buffer_index: int = 0
         self.stop_event = threading.Event()
@@ -124,7 +122,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         # SPC file writing configuration
         self.spc_output_path: str = ""
         self.N_ph_per_file: int = 100_000
-        self._file_write_buffer: List[bytes] = []
+        self._file_write_buffer: list[bytes] = []
         self._file_index: int = 0
         self._file_photons: int = 0
 
@@ -140,7 +138,6 @@ class BrickMicDevice(TCSPCDeviceABC):
         the acquisition rate. The exact value is not critical as long as
         it is self-consistent between online plots and SPC headers.
         """
-
         # One macro bin per hardware sample for now
         return 1.0 / float(self.acquisition_rate)
 
@@ -158,7 +155,6 @@ class BrickMicDevice(TCSPCDeviceABC):
         For now we assume a single USB board; this returns ``[0]`` when
         the MCC stack is available and at least one device is detected.
         """
-
         if not MCC_AVAILABLE:
             self.log_message("mcculw not available; BrickMic hardware disabled")
             return []
@@ -184,7 +180,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def initialize(self, simulation: bool = True) -> bool:  # type: ignore[override]
         """Initialize the BrickMic device and allocate the ring buffer."""
-
         if not MCC_AVAILABLE:
             self.log_message("mcculw not available - cannot initialize BrickMic")
             self.initialized = False
@@ -246,7 +241,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def start_measurement(self) -> bool:  # type: ignore[override]
         """Start continuous counter scan and background reader thread."""
-
         if not self.initialized or not MCC_AVAILABLE:
             self.log_message("BrickMic device not initialized or MCC unavailable")
             return False
@@ -260,9 +254,7 @@ class BrickMicDevice(TCSPCDeviceABC):
                 total_size,
                 int(self.acquisition_rate),
                 self.memhandle,
-                ScanOptions.BACKGROUND
-                | ScanOptions.CONTINUOUS
-                | ScanOptions.CTR32BIT,
+                ScanOptions.BACKGROUND | ScanOptions.CONTINUOUS | ScanOptions.CTR32BIT,
             )
             self.log_message(f"BrickMic: scan started at {scanrate} Hz")
 
@@ -296,7 +288,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def stop_measurement(self) -> bool:  # type: ignore[override]
         """Stop the continuous scan and the background reader."""
-
         if not self.initialized or not self.measurement_running:
             return False
 
@@ -326,7 +317,6 @@ class BrickMicDevice(TCSPCDeviceABC):
         ``max_words`` as a limit on 16-bit words, so we return at most
         ``max_words // 2`` 32-bit records.
         """
-
         import queue as queue_module
 
         if not self.initialized or not self.measurement_running:
@@ -338,9 +328,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         if len(self.current_buffer) > self.buffer_index:
             remaining = len(self.current_buffer) - self.buffer_index
             to_return = min(remaining, max_photons)
-            chunk = self.current_buffer[
-                self.buffer_index : self.buffer_index + to_return
-            ]
+            chunk = self.current_buffer[self.buffer_index : self.buffer_index + to_return]
             self.buffer_index += to_return
             if self.buffer_index >= len(self.current_buffer):
                 self.current_buffer = np.array([], dtype=np.uint32)
@@ -368,7 +356,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def get_fifo_usage(self):  # type: ignore[override]
         """Approximate FIFO usage from queue occupancy (0–100%)."""
-
         if not self.initialized:
             return {0: -1.0}
         if not self.measurement_running:
@@ -384,7 +371,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def close(self) -> None:  # type: ignore[override]
         """Close the device and free MCC resources."""
-
         try:
             if self.measurement_running:
                 self.stop_measurement()
@@ -408,7 +394,6 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def _background_reader(self) -> None:
         """Watch MCC ring buffer, generate BH records, and write SPC files."""
-
         if self._np_buffer is None:
             self.log_message("BrickMic: background reader started without buffer")
             self.measurement_running = False
@@ -425,9 +410,7 @@ class BrickMicDevice(TCSPCDeviceABC):
 
             while not self.stop_event.is_set():
                 try:
-                    cur_status, cur_idx = ul.get_status(
-                        self.board_num, FunctionType.CTRFUNCTION
-                    )
+                    cur_status, cur_idx = ul.get_status(self.board_num, FunctionType.CTRFUNCTION)
                 except Exception as e:  # pragma: no cover
                     self.log_message(f"BrickMic get_status error: {e}")
                     break
@@ -443,7 +426,7 @@ class BrickMicDevice(TCSPCDeviceABC):
                     time.sleep(0.002)
                     continue
 
-                records: List[int] = []
+                records: list[int] = []
 
                 for offset in range(num_new):
                     idx = (last_idx + offset) % total_size
@@ -516,7 +499,6 @@ class BrickMicDevice(TCSPCDeviceABC):
         - ``inv`` and ``mtov`` bits (bits 7 and 6 of ``b3``) are zero for
           normal photon records.
         """
-
         mt12 = int(macro_bin) & 0x0FFF
         ch4 = int(channel) & 0x0F
         tac12 = int(tac) & 0x0FFF
@@ -531,15 +513,12 @@ class BrickMicDevice(TCSPCDeviceABC):
 
     def _flush_spc_file(self) -> None:
         """Write accumulated SPC-130 records as a BH-SPC132 file."""
-
         if not self.spc_output_path or not self._file_write_buffer:
             return
 
         try:
             os.makedirs(self.spc_output_path, exist_ok=True)
-            filename = os.path.join(
-                self.spc_output_path, f"m{self._file_index:03d}.spc"
-            )
+            filename = os.path.join(self.spc_output_path, f"m{self._file_index:03d}.spc")
             spc_bytes_concat = b"".join(self._file_write_buffer)
             header = self._make_spc132_header()
             with open(filename, "wb") as f:
@@ -564,9 +543,10 @@ class BrickMicDevice(TCSPCDeviceABC):
         consistent with the BrickMic acquisition rate, but for intensity
         work the exact scale is not critical.
         """
-
         # Macrotime clock in ns: one bin per hardware sample
-        mtclk_ns = 1.0e9 / float(BRICKMIC_ACQUISITION_RATE if BRICKMIC_ACQUISITION_RATE > 0 else 1_000_000)
+        mtclk_ns = 1.0e9 / float(
+            BRICKMIC_ACQUISITION_RATE if BRICKMIC_ACQUISITION_RATE > 0 else 1_000_000
+        )
         mtclk_int = int(max(1, min(round(mtclk_ns * 10.0), (1 << 24) - 1)))
         return bytes(
             (

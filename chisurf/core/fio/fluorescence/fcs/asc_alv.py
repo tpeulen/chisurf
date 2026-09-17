@@ -1,17 +1,18 @@
 """ALV .ASC files"""
+
 from __future__ import annotations
 
+import csv
 import pathlib
 import warnings
+
 import numpy as np
-import csv
 
 import chisurf as cs
-# Import moved to function level to avoid circular imports
 
+# Import moved to function level to avoid circular imports
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
-
 
 
 class LoadALVError(Exception):
@@ -45,83 +46,83 @@ def openASC(path, filename=None):
 
 
 def openASC_old(path):
-    """ Read data from a .ASC file, created by
-        some ALV-6000 correlator.
+    """Read data from a .ASC file, created by
+    some ALV-6000 correlator.
 
-            ALV-6000/E-WIN Data
-            Date :    "2/20/2012"
-            ...
-            "Correlation"
-              1.25000E-004      3.00195E-001
-              2.50000E-004      1.13065E-001
-              3.75000E-004      7.60367E-002
-              5.00000E-004      6.29926E-002
-              6.25000E-004      5.34678E-002
-              7.50000E-004      4.11506E-002
-              8.75000E-004      4.36752E-002
-              1.00000E-003      4.63146E-002
-              1.12500E-003      3.78226E-002
-            ...
-              3.35544E+004     -2.05799E-006
-              3.77487E+004      4.09032E-006
-              4.19430E+004      4.26295E-006
-              4.61373E+004      1.40265E-005
-              5.03316E+004      1.61766E-005
-              5.45259E+004      2.19541E-005
-              5.87202E+004      3.26527E-005
-              6.29145E+004      2.72920E-005
+        ALV-6000/E-WIN Data
+        Date :    "2/20/2012"
+        ...
+        "Correlation"
+          1.25000E-004      3.00195E-001
+          2.50000E-004      1.13065E-001
+          3.75000E-004      7.60367E-002
+          5.00000E-004      6.29926E-002
+          6.25000E-004      5.34678E-002
+          7.50000E-004      4.11506E-002
+          8.75000E-004      4.36752E-002
+          1.00000E-003      4.63146E-002
+          1.12500E-003      3.78226E-002
+        ...
+          3.35544E+004     -2.05799E-006
+          3.77487E+004      4.09032E-006
+          4.19430E+004      4.26295E-006
+          4.61373E+004      1.40265E-005
+          5.03316E+004      1.61766E-005
+          5.45259E+004      2.19541E-005
+          5.87202E+004      3.26527E-005
+          6.29145E+004      2.72920E-005
 
-            "Count Rate"
-               1.17188          26.77194
-               2.34375          26.85045
-               3.51563          27.06382
-               4.68750          26.97932
-               5.85938          26.73694
-               7.03125          27.11332
-               8.20313          26.81376
-               9.37500          26.82741
-              10.54688          26.88801
-              11.71875          27.09710
-              12.89063          27.13209
-              14.06250          27.02200
-              15.23438          26.95287
-              16.40625          26.75657
-              17.57813          26.43056
-            ...
-             294.14063          27.22597
-             295.31250          26.40581
-             296.48438          26.33497
-             297.65625          25.96457
-             298.82813          26.71902
+        "Count Rate"
+           1.17188          26.77194
+           2.34375          26.85045
+           3.51563          27.06382
+           4.68750          26.97932
+           5.85938          26.73694
+           7.03125          27.11332
+           8.20313          26.81376
+           9.37500          26.82741
+          10.54688          26.88801
+          11.71875          27.09710
+          12.89063          27.13209
+          14.06250          27.02200
+          15.23438          26.95287
+          16.40625          26.75657
+          17.57813          26.43056
+        ...
+         294.14063          27.22597
+         295.31250          26.40581
+         296.48438          26.33497
+         297.65625          25.96457
+         298.82813          26.71902
 
-        1. We are interested in the "Correlation" section,
-        where the first column denotes tau in ms and the second row the
-        correlation signal. Values are separated by a tabulator "\t" (some " ").
+    1. We are interested in the "Correlation" section,
+    where the first column denotes tau in ms and the second row the
+    correlation signal. Values are separated by a tabulator "\t" (some " ").
 
-        2. We are also interested in the "Count Rate" section. Here the times
-        are saved as seconds and not ms like above.
+    2. We are also interested in the "Count Rate" section. Here the times
+    are saved as seconds and not ms like above.
 
-        3. There is some kind of mode where the ALV exports five runs at a
-        time and averages them. The sole correlation data is stored in the
-        file, but the trace is only stored as average or something.
-        So I would not recommend this. However, I added support for this.
-        PyCorrFit then only imports the average data.
-         ~ Paul, 2012-02-20
-        Correlation data starts at "Correlation (Multi, Averaged)".
+    3. There is some kind of mode where the ALV exports five runs at a
+    time and averages them. The sole correlation data is stored in the
+    file, but the trace is only stored as average or something.
+    So I would not recommend this. However, I added support for this.
+    PyCorrFit then only imports the average data.
+     ~ Paul, 2012-02-20
+    Correlation data starts at "Correlation (Multi, Averaged)".
 
-        Returns:
-        [0]:
-         An array with tuples containing two elements:
-         1st: tau in ms
-         2nd: corresponding correlation signal
-        [1]:
-         Intensity trace:
-         1st: time in ms
-         2nd: Trace in kHz
-        [2]:
-         An array with N elements, indicating, how many curves we are opening
-         from the file. Elements can be names and must be convertible to
-         strings.
+    Returns:
+    [0]:
+     An array with tuples containing two elements:
+     1st: tau in ms
+     2nd: corresponding correlation signal
+    [1]:
+     Intensity trace:
+     1st: time in ms
+     2nd: Trace in kHz
+    [2]:
+     An array with N elements, indicating, how many curves we are opening
+     from the file. Elements can be names and must be convertible to
+     strings.
     """
     filename = path.name
     with path.open("r", encoding="iso8859_15") as openfile:
@@ -131,13 +132,17 @@ def openASC_old(path):
     # Correlation function
     # Find out where the correlation function is
     for i in np.arange(len(Alldata)):
-        if Alldata[i].startswith('Mode'):
+        if Alldata[i].startswith("Mode"):
             mode = Alldata[i][5:].strip(' ":').strip().strip('"')
-            single_strings = ["a-ch0", "a-ch1", "auto ch0", "auto ch1",
-                              "fast auto ch0", "fast auto ch1",
-                              ]
-            if (mode.lower().count('single') or
-                    mode.lower().strip() in single_strings):
+            single_strings = [
+                "a-ch0",
+                "a-ch1",
+                "auto ch0",
+                "auto ch1",
+                "fast auto ch0",
+                "fast auto ch1",
+            ]
+            if mode.lower().count("single") or mode.lower().strip() in single_strings:
                 single = True
                 channel = mode.split(" ")[-1]
             else:
@@ -151,30 +156,29 @@ def openASC_old(path):
         if Alldata[i].startswith('"Correlation'):
             # This tells us if there is only one curve or if there are
             # multiple curves with an average.
-            if (Alldata[i].strip().lower() ==
-                    '"correlation (multi, averaged)"'):
+            if Alldata[i].strip().lower() == '"correlation (multi, averaged)"':
                 multidata = True
             else:
                 multidata = False
         if Alldata[i].startswith('"Correlation"'):
             # Start of correlation function
-            StartC = i+1
+            StartC = i + 1
         if Alldata[i].startswith('"Correlation (Multi, Averaged)"'):
             # Start of AVERAGED correlation function !!!
             # There are several curves now.
-            StartC = i+2
+            StartC = i + 2
         if Alldata[i].replace(" ", "").lower().strip() == '"countrate"':
             # takes care of "Count Rate" and "Countrate"
             # End of correlation function
-            EndC = i-1
+            EndC = i - 1
             # Start of trace (goes until end of file)
-            StartT = i+1
-        if Alldata[i].startswith('Monitor Diode'):
-            EndT = i-1
+            StartT = i + 1
+        if Alldata[i].startswith("Monitor Diode"):
+            EndT = i - 1
     # Get the header
-    Namedata = Alldata[StartC-1: StartC]
+    Namedata = Alldata[StartC - 1 : StartC]
     # Define *curvelist*
-    curvelist = csv.reader(Namedata, delimiter='\t').__next__()
+    curvelist = csv.reader(Namedata, delimiter="\t").__next__()
     if len(curvelist) <= 2:
         # Then we have just one single correlation curve
         curvelist = [""]
@@ -186,8 +190,8 @@ def openASC_old(path):
         # Last column is empty
         curvelist.remove(curvelist[-1])
     # Correlation function
-    Truedata = Alldata[StartC: EndC]
-    readdata = csv.reader(Truedata, delimiter='\t')
+    Truedata = Alldata[StartC:EndC]
+    readdata = csv.reader(Truedata, delimiter="\t")
     # Add lists to *data* according to the length of *curvelist*
     # One *independent* list per curve: `[[]] * n` would alias a single list
     # into every slot, so the row loop below would interleave all curves.
@@ -196,40 +200,38 @@ def openASC_old(path):
     for row in readdata:
         for i in np.arange(len(curvelist)):
             if len(row) > 0:
-                data[i].append((float(row[0]), float(row[i+1])))
+                data[i].append((float(row[0]), float(row[i + 1])))
     # Trace
     # Trace is stored in two columns
     # 1st column: time [s]
     # 2nd column: trace [kHz]
     # Get the trace
-    Tracedata = Alldata[StartT: EndT]
+    Tracedata = Alldata[StartT:EndT]
     timefactor = 1000  # because we want ms instead of s
-    readtrace = csv.reader(Tracedata, delimiter='\t')
+    readtrace = csv.reader(Tracedata, delimiter="\t")
     trace = list()
     trace2 = list()
     # Work through the rows
     for row in readtrace:
         # time in ms, countrate
         trace.append(list())
-        trace[0].append((float(row[0])*timefactor,
-                         float(row[1])))
+        trace[0].append((float(row[0]) * timefactor, float(row[1])))
         # Only trace[0] contains the trace!
-        for i in np.arange(len(curvelist)-1):
+        for i in np.arange(len(curvelist) - 1):
             trace.append(list())
-            trace[i+1].append((float(row[0])*timefactor, 0))
+            trace[i + 1].append((float(row[0]) * timefactor, 0))
         if not single:
-            k = len(curvelist)/2
+            k = len(curvelist) / 2
             if int(k) != k:
                 print("Problem with ALV data. Single mode not recognized.")
             # presumably dual mode. There is a second trace
             # time in ms, countrate
             trace2.append(list())
-            trace2[0].append((float(row[0])*timefactor,
-                              float(row[2])))
+            trace2[0].append((float(row[0]) * timefactor, float(row[2])))
             # Only trace2[0] contains the trace!
-            for i in np.arange(len(curvelist)-1):
+            for i in np.arange(len(curvelist) - 1):
                 trace2.append(list())
-                trace2[i+1].append((float(row[0])*timefactor, 0))
+                trace2[i + 1].append((float(row[0]) * timefactor, 0))
 
     # group the resulting curves
     corrlist = list()
@@ -243,16 +245,16 @@ def openASC_old(path):
             nav = 1
         else:
             nav = 0
-        splittrace = mysplit(trace[0], len(curvelist)-nav)
+        splittrace = mysplit(trace[0], len(curvelist) - nav)
         i = 0
         for t in range(len(curvelist)):
             typ = curvelist[t]
             if typ.lower()[:7] == "average":
-                typelist.append("{} average".format(channel))
+                typelist.append(f"{channel} average")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(np.array(trace[0]))
             else:
-                typelist.append("{} {}".format(accc, channel))
+                typelist.append(f"{accc} {channel}")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(splittrace[i])
                 i += 1
@@ -271,31 +273,31 @@ def openASC_old(path):
         else:
             nav = 0
         channel = "CH0"
-        splittrace = mysplit(trace[0], len(curvelist)/2-nav)
+        splittrace = mysplit(trace[0], len(curvelist) / 2 - nav)
         i = 0
-        for t in range(int(len(curvelist)/2)):
+        for t in range(int(len(curvelist) / 2)):
             typ = curvelist[t]
             if typ.lower()[:7] == "average":
-                typelist.append("{} average".format(channel))
+                typelist.append(f"{channel} average")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(np.array(trace[0]))
             else:
-                typelist.append("{} {}".format(accc, channel))
+                typelist.append(f"{accc} {channel}")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(splittrace[i])
                 i += 1
         # CHANNEL 1
         channel = "CH1"
-        splittrace2 = mysplit(trace2[0], len(curvelist)/2-nav)
+        splittrace2 = mysplit(trace2[0], len(curvelist) / 2 - nav)
         i = 0
-        for t in range(int(len(curvelist)/2), int(len(curvelist))):
+        for t in range(int(len(curvelist) / 2), int(len(curvelist))):
             typ = curvelist[t]
             if typ.lower()[:7] == "average":
-                typelist.append("{} average".format(channel))
+                typelist.append(f"{channel} average")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(np.array(trace2[0]))
             else:
-                typelist.append("{} {}".format(accc, channel))
+                typelist.append(f"{accc} {channel}")
                 corrlist.append(np.array(data[t]))
                 tracelist.append(splittrace2[i])
                 i += 1
@@ -306,40 +308,38 @@ def openASC_old(path):
             nav = 0
         # Dual mode, cross-correlation
         channel = "CC01"
-        splittrace = mysplit(trace[0], len(curvelist)/2-nav)
-        splittrace2 = mysplit(trace2[0], len(curvelist)/2-nav)
+        splittrace = mysplit(trace[0], len(curvelist) / 2 - nav)
+        splittrace2 = mysplit(trace2[0], len(curvelist) / 2 - nav)
         i = 0
-        for t in range(int(len(curvelist)/2)):
+        for t in range(int(len(curvelist) / 2)):
             typ = curvelist[t]
             if typ.lower()[:7] == "average":
-                typelist.append("{} average".format(channel))
+                typelist.append(f"{channel} average")
                 corrlist.append(np.array(data[t]))
-                tracelist.append([np.array(trace[0]),
-                                  np.array(trace2[0])])
+                tracelist.append([np.array(trace[0]), np.array(trace2[0])])
             else:
-                typelist.append("{} {}".format(accc, channel))
+                typelist.append(f"{accc} {channel}")
                 corrlist.append(np.array(data[t]))
                 tracelist.append([splittrace[i], splittrace2[i]])
                 i += 1
         # CHANNEL 1
         channel = "CC10"
         i = 0
-        for t in range(int(len(curvelist)/2), int(len(curvelist))):
+        for t in range(int(len(curvelist) / 2), int(len(curvelist))):
             typ = curvelist[t]
             if typ.lower()[:7] == "average":
-                typelist.append("{} average".format(channel))
+                typelist.append(f"{channel} average")
                 corrlist.append(np.array(data[t]))
                 # order must be the same as above
-                tracelist.append([np.array(trace[0]),
-                                  np.array(trace2[0])])
+                tracelist.append([np.array(trace[0]), np.array(trace2[0])])
             else:
-                typelist.append("{} {}".format(accc, channel))
+                typelist.append(f"{accc} {channel}")
                 corrlist.append(np.array(data[t]))
                 # order must be the same as above
                 tracelist.append([splittrace[i], splittrace2[i]])
                 i += 1
     else:
-        print("Could not detect data file format for: {}".format(filename))
+        print(f"Could not detect data file format for: {filename}")
         corrlist = np.array(data)
         tracelist = np.array(trace)
         typelist = curvelist
@@ -356,9 +356,7 @@ def openASC_old(path):
     return dictionary
 
 
-def openASC_ALV_7004(
-        path: pathlib.Path
-) -> typing.Dict:
+def openASC_ALV_7004(path: pathlib.Path) -> typing.Dict:
     """
     Opens ALV file format with header information "ALV-7004/USB"
 
@@ -427,9 +425,7 @@ def openASC_ALV_7004(
                 mul = 1.0
             duration_sec = mul * float(back.strip())
         elif "MeanCR" in item:
-            count_rates.append(
-                float(item.split(":")[1].strip())
-            )
+            count_rates.append(float(item.split(":")[1].strip()))
         i += 1
         if item.count("\t") == 4:
             if intrace:
@@ -474,15 +470,14 @@ def openASC_ALV_7004(
     corrlist = []
     tracelist = []
     filelist = []
-    if mode == False:
-        raise LoadALVError("Undetermined ALV file mode: {}".format(path))
+    if not mode:
+        raise LoadALVError(f"Undetermined ALV file mode: {path}")
     # Go through all modes
     if mode == "a-ch0+1  c-ch0/1+1/0":
         # For some reason, the traces columns show the values
         # of channel 1 and 2 in channels 3 and 4.
-        if not (np.allclose(trace1, trace3, rtol=.01) and
-                np.allclose(trace2, trace4, rtol=.01)):
-            raise LoadALVError("Unexpected data format: {}".format(path))
+        if not (np.allclose(trace1, trace3, rtol=0.01) and np.allclose(trace2, trace4, rtol=0.01)):
+            raise LoadALVError(f"Unexpected data format: {path}")
         if not np.allclose(corr1[:, 1], 0):
             corrlist.append(corr1)
             filelist.append(filename)
@@ -504,55 +499,63 @@ def openASC_ALV_7004(
             tracelist.append([trace1, trace2])
             typelist.append("CC21")
     elif mode in ["a-ch0", "a-ch0 a-"]:
-        if not (np.allclose(trace2[:, 1], 0) and
-                np.allclose(trace3[:, 1], 0) and
-                np.allclose(trace4[:, 1], 0) and
-                np.allclose(corr2[:, 1], 0) and
-                np.allclose(corr3[:, 1], 0) and
-                np.allclose(corr4[:, 1], 0)):
-            raise LoadALVError("Unexpected data format: {}".format(path))
+        if not (
+            np.allclose(trace2[:, 1], 0)
+            and np.allclose(trace3[:, 1], 0)
+            and np.allclose(trace4[:, 1], 0)
+            and np.allclose(corr2[:, 1], 0)
+            and np.allclose(corr3[:, 1], 0)
+            and np.allclose(corr4[:, 1], 0)
+        ):
+            raise LoadALVError(f"Unexpected data format: {path}")
         corrlist.append(corr1)
         filelist.append(filename)
         tracelist.append(trace1)
         typelist.append("AC")
     elif mode in ["a-ch1", "a-ch1 a-"]:
-        if not (np.allclose(trace1[:, 1], 0) and
-                np.allclose(trace3[:, 1], 0) and
-                np.allclose(trace4[:, 1], 0) and
-                np.allclose(corr1[:, 1], 0) and
-                np.allclose(corr3[:, 1], 0) and
-                np.allclose(corr4[:, 1], 0)):
-            raise LoadALVError("Unexpected data format: {}".format(path))
+        if not (
+            np.allclose(trace1[:, 1], 0)
+            and np.allclose(trace3[:, 1], 0)
+            and np.allclose(trace4[:, 1], 0)
+            and np.allclose(corr1[:, 1], 0)
+            and np.allclose(corr3[:, 1], 0)
+            and np.allclose(corr4[:, 1], 0)
+        ):
+            raise LoadALVError(f"Unexpected data format: {path}")
         corrlist.append(corr2)
         filelist.append(filename)
         tracelist.append(trace2)
         typelist.append("AC")
     elif mode in ["a-ch2", "a- a-ch2"]:
-        if not (np.allclose(trace1[:, 1], 0) and
-                np.allclose(trace2[:, 1], 0) and
-                np.allclose(trace4[:, 1], 0) and
-                np.allclose(corr1[:, 1], 0) and
-                np.allclose(corr2[:, 1], 0) and
-                np.allclose(corr4[:, 1], 0)):
-            raise LoadALVError("Unexpected data format: {}".format(path))
+        if not (
+            np.allclose(trace1[:, 1], 0)
+            and np.allclose(trace2[:, 1], 0)
+            and np.allclose(trace4[:, 1], 0)
+            and np.allclose(corr1[:, 1], 0)
+            and np.allclose(corr2[:, 1], 0)
+            and np.allclose(corr4[:, 1], 0)
+        ):
+            raise LoadALVError(f"Unexpected data format: {path}")
         corrlist.append(corr3)
         filelist.append(filename)
         tracelist.append(trace3)
         typelist.append("AC")
     elif mode in ["a-ch3", "a- a-ch3"]:
-        if not (np.allclose(trace1[:, 1], 0) and
-                np.allclose(trace2[:, 1], 0) and
-                np.allclose(trace3[:, 1], 0) and
-                np.allclose(corr1[:, 1], 0) and
-                np.allclose(corr2[:, 1], 0) and
-                np.allclose(corr3[:, 1], 0)):
-            raise LoadALVError("Unexpected data format: {}".format(path))
+        if not (
+            np.allclose(trace1[:, 1], 0)
+            and np.allclose(trace2[:, 1], 0)
+            and np.allclose(trace3[:, 1], 0)
+            and np.allclose(corr1[:, 1], 0)
+            and np.allclose(corr2[:, 1], 0)
+            and np.allclose(corr3[:, 1], 0)
+        ):
+            raise LoadALVError(f"Unexpected data format: {path}")
         corrlist.append(corr4)
         filelist.append(filename)
         tracelist.append(trace4)
         typelist.append("AC")
     else:
-        msg = "ALV mode '{}' not implemented yet.".format(mode)
+        msg = f"ALV mode '{mode}' not implemented yet."
         raise NotImplementedError(msg)
 
     dictionary = dict()
@@ -571,42 +574,39 @@ def openASC_ALV_7004(
 
 def mysplit(a, n):
     """
-       Split a trace into n equal parts by interpolation.
-       The signal average is preserved, but the signal variance will
-       decrease.
+    Split a trace into n equal parts by interpolation.
+    The signal average is preserved, but the signal variance will
+    decrease.
     """
     if n <= 1:
         return [np.array(a)]
     a = np.array(a)
     N = len(a)
-    lensplit = int(np.ceil(N/n))
+    lensplit = int(np.ceil(N / n))
 
     # xp is actually rounded -> recalculate
-    xp = np.linspace(a[:, 0][0], a[:, 0][-1], N,  endpoint=True)
+    xp = np.linspace(a[:, 0][0], a[:, 0][-1], N, endpoint=True)
 
     # let xp start at zero
     xp -= a[:, 0][0]
     yp = a[:, 1]
 
     # time frame for each new curve
-    #dx = xp[-1]/n
+    # dx = xp[-1]/n
 
     # perform interpolation of new trace
-    x, newstep = np.linspace(0, xp[-1], lensplit*n,
-                             endpoint=True, retstep=True)
+    x, newstep = np.linspace(0, xp[-1], lensplit * n, endpoint=True, retstep=True)
     # interpolating reduces the variance and possibly changes the avg
     y = np.interp(x, xp, yp)
 
-    data = np.zeros((lensplit*n, 2))
+    data = np.zeros((lensplit * n, 2))
     data[:, 0] = x + newstep
     # make sure that the average stays the same:
     data[:, 1] = y - np.average(y) + np.average(yp)
     return np.split(data, n)
 
 
-def read_asc_header(
-        filename: str
-) -> str:
+def read_asc_header(filename: str) -> str:
     """This returns the ASC header, i.e., the asc file content
     till the first correlation curve
 
@@ -622,7 +622,7 @@ def read_asc_header(
         The header of the asc file
 
     """
-    with open(filename, "r", encoding='iso-8859-1') as fp:
+    with open(filename, encoding="iso-8859-1") as fp:
         lines = fp.readlines()
         header_end = 0
         for i, line in enumerate(lines):
@@ -632,10 +632,7 @@ def read_asc_header(
         return "".join(lines[:header_end])
 
 
-def read_asc(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_asc(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read an ALV .asc file and return FCS datasets.
 
     Parameters
@@ -655,25 +652,15 @@ def read_asc(
     d = openASC(filename)
     correlations = list()
 
-    for i, correlation in enumerate(d['Correlation']):
+    for i, correlation in enumerate(d["Correlation"]):
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1] + 1.0
-        if isinstance(d['Trace'][i], list):
-            intensity_time = np.vstack(
-                [
-                    d['Trace'][i][0][:, 0],
-                    d['Trace'][i][1][:, 0]
-                ]
-            ).T
-            intensity = np.vstack(
-                [
-                    d['Trace'][i][0][:, 1],
-                    d['Trace'][i][1][:, 1]
-                ]
-            ).T
+        if isinstance(d["Trace"][i], list):
+            intensity_time = np.vstack([d["Trace"][i][0][:, 0], d["Trace"][i][1][:, 0]]).T
+            intensity = np.vstack([d["Trace"][i][0][:, 1], d["Trace"][i][1][:, 1]]).T
         else:
-            intensity_time = d['Trace'][i][:, 0]
-            intensity = d['Trace'][i][:, 1]
+            intensity_time = d["Trace"][i][:, 0]
+            intensity = d["Trace"][i][:, 1]
 
         # We want the intensity trace in seconds. Not in place: in the
         # autocorrelation branch ``intensity_time`` is a *view* into the
@@ -705,32 +692,25 @@ def read_asc(
             # against a mean of 60.3 on the sample file).
             aquisition_time = float(intensity_time[-1].mean())
             mean_count_rate = float(np.mean(intensity))
-        
+
         # Import here to avoid circular import
-        import chisurf.core.fluorescence.fcs
-        w = 1. / cs.core.fluorescence.fcs.noise(
+        w = 1.0 / cs.core.fluorescence.fcs.noise(
             correlation_time,
             correlation_amplitude,
             aquisition_time,
-            mean_count_rate=mean_count_rate
+            mean_count_rate=mean_count_rate,
         )
         corr: FCSDataset = {
-                'filename': filename,
-                'measurement_id': "%s_%s" % (filename, i),
-                'acquisition_time': aquisition_time,
-                'mean_count_rate': mean_count_rate,
-                'correlation_times': correlation_time.tolist(),
-                'correlation_amplitudes': correlation_amplitude.tolist(),
-                'correlation_amplitude_weights': w.tolist(),
-                'intensity_trace_times': intensity_time.tolist(),
-                'intensity_trace': intensity.tolist(),
-                'meta_data': {
-                    'header': read_asc_header(
-                        filename=filename
-                    )
-                }
-            }
-        correlations.append(
-            corr
-        )
+            "filename": filename,
+            "measurement_id": f"{filename}_{i}",
+            "acquisition_time": aquisition_time,
+            "mean_count_rate": mean_count_rate,
+            "correlation_times": correlation_time.tolist(),
+            "correlation_amplitudes": correlation_amplitude.tolist(),
+            "correlation_amplitude_weights": w.tolist(),
+            "intensity_trace_times": intensity_time.tolist(),
+            "intensity_trace": intensity.tolist(),
+            "meta_data": {"header": read_asc_header(filename=filename)},
+        }
+        correlations.append(corr)
     return correlations

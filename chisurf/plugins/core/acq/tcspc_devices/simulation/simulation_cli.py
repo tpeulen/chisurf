@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import click
 
@@ -26,9 +26,9 @@ def make_json_serializable(data: Any) -> Any:
         return {k: make_json_serializable(v) for k, v in data.items()}
     elif isinstance(data, (list, tuple)):
         return [make_json_serializable(x) for x in data]
-    elif hasattr(data, 'tolist'):  # Handles NumPy arrays and scalars
+    elif hasattr(data, "tolist"):  # Handles NumPy arrays and scalars
         return data.tolist()
-    elif hasattr(data, 'item'):  # Handles NumPy scalars
+    elif hasattr(data, "item"):  # Handles NumPy scalars
         return data.item()
     else:
         return data
@@ -38,34 +38,28 @@ def make_json_serializable(data: Any) -> Any:
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-DEFAULT_PARAMS: Dict[str, Any] = {
+DEFAULT_PARAMS: dict[str, Any] = {
     # Species parameters
     "N_species": 1,
     "M": [5.0],
     "D": [3.0],
-
     # Detection parameters - 6 channels for green/red/yellow P/S
     "N_channels": 6,
     "q": [50.0, 50.0, 0.0, 0.0, 0.0, 0.0],
     "q_bg": [0.001, 0.001, 0.001, 0.001, 0.001, 0.001],
-
     # Species transitions (radiative/non-radiative) - 2D arrays for NxN transitions
     "k_rad": [[0.0]],
     "k_nrad": [[0.0]],
-
     # Geometry
     "box_xy": 2.0,
     "box_z": 4.0,
     "focus_type": 0,
     "focus_param": [0.3, 2.0],
-
     # Simulation timing
     "dt": 0.01,
     "N_ph_max": 50000,
-
     # Excitation mode
     "excitation_mode": "CW",
-
     # TAC/IRF parameters
     "N_tac_channels": 4096,
     "tac_dt": 0.004069,
@@ -75,87 +69,75 @@ DEFAULT_PARAMS: Dict[str, Any] = {
     "gaussian_irf_mean": 1.5,
     "gaussian_irf_sigma": 0.0467,
     "irf_file": "",
-
     # Anisotropy
     "r0": 0.38,
     "g_factor": 1.0,
     "l1": 0.0308,
     "l2": 0.0368,
-
     # Background/scattering
     "parallel_scatter": 0.0,
     "perp_scatter": 0.0,
     "parallel_dark": 0.0,
     "perp_dark": 0.0,
-
     # Output
     "spc_output_path": "",
     "N_ph_per_file": 50000,
-
     # BH_SPC conversion - 6 channel mapping
     "pulsed_exc": 0,
     "ch_conversion": [8, 0, 9, 1, 10, 2, 11, 3, 12, 4, 13, 5],
-
     # RNG parameters
     "rng_mode": 0,
     "rmt1seed": 12345,
     "rmt2seed": 67890,
-
     # Channel enable flags
     "green_enabled": True,
     "red_enabled": False,
     "yellow_enabled": False,
-
     # Fluorescence decay parameters
     "decay_lifetimes": [[4.0, 4.0, 4.0]],
     "decay_patterns": [""],
     "rotational_correlation_times": [[0.4, 0.4, 0.4]],
-
     # Dark state parameters
     "k_bd": [0.0],
     "k_bb": [0.0],
     "k_db": [0.0],
     "darkstate_interconvert": False,
-
     # Focus-specific parameters
     "w0": 0.3,
     "z0": 2.0,
     "Rph": 0.15,
     "z0_CEF": 1.0,
-
     # Additional simulation parameters
     "tw": 0.01,
-
     # Throughput / performance knobs (native tttrlib Sim* engine; opt-in, exact by default).
     # See the acq plugin manifest.json rpc_methods params_schema for full per-knob docs.
-    "max_windows": 0,               # fixed-duration stop (windows); 0 = unlimited
-    "analytic_excitation": False,   # analytic Gaussian focus (no voxel grid)
-    "excitation_extent": [],        # [xy, z] grid half-extent (µm); [] = use the box
-    "psf_type": "gaussian3d",       # PSF model: gaussian3d|analytic_gaussian3d|gaussian_lorentzian|radial
-    "psf_zR": 1.0,                  # Rayleigh range (µm) for the gaussian_lorentzian PSF
-    "psf_file": "",                 # numeric radial PSF file (.npy/.npz/.mat) for psf_type="radial"
-    "psf_r_step": 0.05,             # numeric-PSF r spacing (µm) when not in the file
-    "psf_z_step": 0.05,             # numeric-PSF z spacing (µm) when not in the file
-    "per_molecule_skip": False,     # coasting: skip molecules far from the focus
-    "fast_grid_bbox": False,        # two-step field lookup (bbox reject before trilinear)
-    "independent_molecules": False, # per-molecule parallel timelines (needs max_windows > 0)
-    "active_margin": 0.0,           # shrink box to focus+margin (µm); 0 = off
-    "coast_safety": 3.0,            # coast step std <= dist-to-boundary / coast_safety
-    "min_coast_windows": 8,         # minimum sleep length (windows)
-    "focus_threshold": 0.001,       # fraction of peak defining the effective-focus box
+    "max_windows": 0,  # fixed-duration stop (windows); 0 = unlimited
+    "analytic_excitation": False,  # analytic Gaussian focus (no voxel grid)
+    "excitation_extent": [],  # [xy, z] grid half-extent (µm); [] = use the box
+    "psf_type": "gaussian3d",  # PSF model: gaussian3d|analytic_gaussian3d|gaussian_lorentzian|radial
+    "psf_zR": 1.0,  # Rayleigh range (µm) for the gaussian_lorentzian PSF
+    "psf_file": "",  # numeric radial PSF file (.npy/.npz/.mat) for psf_type="radial"
+    "psf_r_step": 0.05,  # numeric-PSF r spacing (µm) when not in the file
+    "psf_z_step": 0.05,  # numeric-PSF z spacing (µm) when not in the file
+    "per_molecule_skip": False,  # coasting: skip molecules far from the focus
+    "fast_grid_bbox": False,  # two-step field lookup (bbox reject before trilinear)
+    "independent_molecules": False,  # per-molecule parallel timelines (needs max_windows > 0)
+    "active_margin": 0.0,  # shrink box to focus+margin (µm); 0 = off
+    "coast_safety": 3.0,  # coast step std <= dist-to-boundary / coast_safety
+    "min_coast_windows": 8,  # minimum sleep length (windows)
+    "focus_threshold": 0.001,  # fraction of peak defining the effective-focus box
 }
 
 
-def _resize_list(values: List[float], n: int, default: float) -> List[float]:
+def _resize_list(values: list[float], n: int, default: float) -> list[float]:
     values = list(values)
     if len(values) >= n:
         return values[:n]
     return values + [default] * (n - len(values))
 
 
-def _init_kinetics(n_species: int) -> Dict[str, Any]:
+def _init_kinetics(n_species: int) -> dict[str, Any]:
     """Create default kinetic scheme arrays for a given number of species."""
-
     zeros_matrix = [[0.0 for _ in range(n_species)] for _ in range(n_species)]
     k_rad = zeros_matrix
     k_nrad = zeros_matrix
@@ -173,11 +155,10 @@ def _init_kinetics(n_species: int) -> Dict[str, Any]:
     }
 
 
-def _flatten_rates(matrix: Any, n_species: int) -> List[float]:
+def _flatten_rates(matrix: Any, n_species: int) -> list[float]:
     """Flatten a k_rad / k_nrad matrix from JSON into a 1D list."""
-
     if isinstance(matrix, list) and matrix and isinstance(matrix[0], list):
-        flat: List[float] = []
+        flat: list[float] = []
         for i in range(n_species):
             row = matrix[i] if i < len(matrix) else []
             for j in range(n_species):
@@ -197,14 +178,13 @@ def _flatten_rates(matrix: Any, n_species: int) -> List[float]:
     return seq + [0.0] * (needed - len(seq))
 
 
-def _prepare_dll_params(config: Dict[str, Any]) -> Dict[str, Any]:
+def _prepare_dll_params(config: dict[str, Any]) -> dict[str, Any]:
     """Normalize the configuration dictionary for the simulation engine.
 
     The key names are the Burbulator library's, kept because the config JSON
     files in the wild use them; the library itself is gone (see
     ``okf/references/burbulator-simulator.md``).
     """
-
     n_species = int(config.get("N_species", 1))
     if n_species <= 0:
         raise click.ClickException("N_species must be positive in the configuration")
@@ -261,9 +241,8 @@ def _prepare_dll_params(config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _prepare_conversion_params(config: Dict[str, Any]) -> Dict[str, Any]:
+def _prepare_conversion_params(config: dict[str, Any]) -> dict[str, Any]:
     """Prepare parameters for convert_to_spc132 (CW only)."""
-
     pulsed_exc = int(config.get("pulsed_exc", 0))
     if pulsed_exc:
         raise click.ClickException(
@@ -273,9 +252,7 @@ def _prepare_conversion_params(config: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     N_channels = int(config.get("N_channels", 6))
-    ch_conversion = list(
-        config.get("ch_conversion", [8, 0, 9, 1, 10, 2, 11, 3, 12, 4, 13, 5])
-    )
+    ch_conversion = list(config.get("ch_conversion", [8, 0, 9, 1, 10, 2, 11, 3, 12, 4, 13, 5]))
 
     N_tac_channels = int(config.get("N_tac_channels", 4096))
     tac_dt = float(config.get("tac_dt", 0.004069))
@@ -309,14 +286,18 @@ def main() -> None:
 # ---------------------------------------------------------------------------
 
 
-@main.command("config", help=(
-    "Generate a JSON configuration for the TCSPC simulation device. "
-    "Did you know that the EnhancedSimulationSetupDialog in the GUI "
-    "uses the same parameter structure? This step lets you build such a "
-    "configuration without opening the GUI."
-))
+@main.command(
+    "config",
+    help=(
+        "Generate a JSON configuration for the TCSPC simulation device. "
+        "Did you know that the EnhancedSimulationSetupDialog in the GUI "
+        "uses the same parameter structure? This step lets you build such a "
+        "configuration without opening the GUI."
+    ),
+)
 @click.option(
-    "--output", "output_path",
+    "--output",
+    "output_path",
     type=click.Path(dir_okay=False, writable=True),
     default="simulation_config.json",
     show_default=True,
@@ -378,8 +359,7 @@ def main() -> None:
     type=click.Path(file_okay=False, dir_okay=True, writable=True),
     default=None,
     help=(
-        "Optional default output directory for SPC files. "
-        "This can be overridden by the 'run' step."
+        "Optional default output directory for SPC files. This can be overridden by the 'run' step."
     ),
 )
 @click.option(
@@ -463,8 +443,7 @@ def main() -> None:
     default=50.0,
     show_default=True,
     help=(
-        "Brightness in green channels (G_P,G_S) for the lowest-FRET state "
-        "when using --fret-states."
+        "Brightness in green channels (G_P,G_S) for the lowest-FRET state when using --fret-states."
     ),
 )
 @click.option(
@@ -473,8 +452,7 @@ def main() -> None:
     default=5.0,
     show_default=True,
     help=(
-        "Brightness in red channels (R_P,R_S) for the lowest-FRET state "
-        "when using --fret-states."
+        "Brightness in red channels (R_P,R_S) for the lowest-FRET state when using --fret-states."
     ),
 )
 @click.option(
@@ -493,22 +471,21 @@ def main() -> None:
     default=50.0,
     show_default=True,
     help=(
-        "Brightness in red channels (R_P,R_S) for the highest-FRET state "
-        "when using --fret-states."
+        "Brightness in red channels (R_P,R_S) for the highest-FRET state when using --fret-states."
     ),
 )
 def config_cmd(
     output_path: str,
     n_species: int,
-    M_values: List[float],
-    D_values: List[float],
-    q_first: List[float],
+    M_values: list[float],
+    D_values: list[float],
+    q_first: list[float],
     excitation_mode: str,
     n_ph_max: int | None,
     spc_output_dir: str | None,
     fret_states: int,
     tau0_ns: float,
-    fret_eff: List[float],
+    fret_eff: list[float],
     exchange_rate_ms: float,
     fret_low_green: float,
     fret_low_red: float,
@@ -519,11 +496,10 @@ def config_cmd(
     irf_file: str | None,
 ) -> None:
     """Generate simulation configuration JSON (step 1)."""
-
     if n_species <= 0:
         raise click.ClickException("n-species must be positive")
 
-    params: Dict[str, Any] = dict(DEFAULT_PARAMS)
+    params: dict[str, Any] = dict(DEFAULT_PARAMS)
 
     # If an N-state FRET preset is requested, it defines the number of
     # species. Otherwise, use the user-provided n_species.
@@ -559,8 +535,7 @@ def config_cmd(
     if q_first:
         if len(q_first) != n_channels:
             raise click.ClickException(
-                f"--q-first-species requires exactly {n_channels} values, "
-                f"got {len(q_first)}."
+                f"--q-first-species requires exactly {n_channels} values, got {len(q_first)}."
             )
         for i, val in enumerate(q_first):
             q[i] = float(val)
@@ -573,33 +548,35 @@ def config_cmd(
     if fret_states > 0:
         if n_channels != 6:
             raise click.ClickException(
-                "--fret-states currently assumes N_channels=6 with "
-                "[G_P, G_S, R_P, R_S, Y_P, Y_S]."
+                "--fret-states currently assumes N_channels=6 with [G_P, G_S, R_P, R_S, Y_P, Y_S]."
             )
 
         rate_per_us = float(exchange_rate_ms) / 1000.0
         if rate_per_us < 0.0:
-            raise click.ClickException(
-                "--exchange-rate-ms must be non-negative"
-            )
+            raise click.ClickException("--exchange-rate-ms must be non-negative")
 
         # Linearly interpolate brightness between endpoints for each
         # FRET state index i in [0, fret_states-1].
         def _lerp(a: float, b: float, t: float) -> float:
             return a + (b - a) * t
 
-        q_fret: List[float] = []
+        q_fret: list[float] = []
         for i in range(fret_states):
             t = i / (fret_states - 1) if fret_states > 1 else 0.0
 
             green = _lerp(float(fret_low_green), float(fret_high_green), t)
             red = _lerp(float(fret_low_red), float(fret_high_red), t)
 
-            q_fret.extend([
-                green, green,  # G_P, G_S
-                red, red,      # R_P, R_S
-                0.0, 0.0,      # Y_P, Y_S (unused)
-            ])
+            q_fret.extend(
+                [
+                    green,
+                    green,  # G_P, G_S
+                    red,
+                    red,  # R_P, R_S
+                    0.0,
+                    0.0,  # Y_P, Y_S (unused)
+                ]
+            )
 
         params["q"] = q_fret
 
@@ -628,9 +605,7 @@ def config_cmd(
             lifetimes = []
             for i, E in enumerate(fret_eff):
                 if not (0.0 <= E <= 1.0):
-                    raise click.ClickException(
-                        f"FRET efficiency E[{i}]={E} is outside [0,1]."
-                    )
+                    raise click.ClickException(f"FRET efficiency E[{i}]={E} is outside [0,1].")
                 tau_i = float(tau0_ns) * (1.0 - float(E))
                 lifetimes.append(tau_i)
 
@@ -692,11 +667,14 @@ def config_cmd(
 # ---------------------------------------------------------------------------
 
 
-@main.command("run", help=(
-    "Run a TCSPC simulation from a JSON configuration and write SPC files. "
-    "The configuration can be generated by the GUI setup dialog or by the "
-    "'config' step of this script."
-))
+@main.command(
+    "run",
+    help=(
+        "Run a TCSPC simulation from a JSON configuration and write SPC files. "
+        "The configuration can be generated by the GUI setup dialog or by the "
+        "'config' step of this script."
+    ),
+)
 @click.argument(
     "config_file",
     type=click.Path(exists=True, dir_okay=False, readable=True),
@@ -733,8 +711,7 @@ def run_cmd(
     batch_size: int | None,
 ) -> None:
     """Run DLL-based simulation and write SPC files (step 2)."""
-
-    with open(config_file, "r", encoding="utf-8") as f:
+    with open(config_file, encoding="utf-8") as f:
         config = json.load(f)
 
     dll_params = _prepare_dll_params(config)
@@ -781,13 +758,12 @@ def run_cmd(
 
     if not tttrlib_available():
         raise click.ClickException(
-            "tttrlib with the Sim* photon simulator is required "
-            "(install/upgrade tttrlib)."
+            "tttrlib with the Sim* photon simulator is required (install/upgrade tttrlib)."
         )
 
     params = dict(config)
-    params.update(dll_params)      # normalized N_species/N_channels/q/D/M/box/focus/dt/N_ph_max
-    params.update(conv_params)     # pulsed_exc/ch_conversion/N_tac_channels/tac_dt/laser_period/tw
+    params.update(dll_params)  # normalized N_species/N_channels/q/D/M/box/focus/dt/N_ph_max
+    params.update(conv_params)  # pulsed_exc/ch_conversion/N_tac_channels/tac_dt/laser_period/tw
     params["N_ph_per_file"] = N_ph_per_file
     params["spc_output_path"] = spc_output_path
     params.setdefault("stream_words_per_batch", 65536)
@@ -797,7 +773,7 @@ def run_cmd(
         f"N_channels={params['N_channels']}, N_ph_max={params['N_ph_max']}"
     )
 
-    data_queue: "_queue.Queue" = _queue.Queue()
+    data_queue: _queue.Queue = _queue.Queue()
     stop_event = _threading.Event()
     simulator = TttrlibSimulator()
     if not simulator.simulate_photons_streaming(params, data_queue, stop_event):
@@ -814,9 +790,7 @@ def run_cmd(
         pass
 
     n_files = len(glob.glob(os.path.join(spc_output_path, "m*.spc")))
-    click.echo(
-        f"Simulation completed, wrote {n_files} SPC file(s) to {spc_output_path}"
-    )
+    click.echo(f"Simulation completed, wrote {n_files} SPC file(s) to {spc_output_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -824,6 +798,7 @@ def run_cmd(
 # ---------------------------------------------------------------------------
 try:
     from .pipeline_debug import pipeline_cmd
+
     main.add_command(pipeline_cmd, "pipeline")
 except ImportError:
     pass

@@ -47,10 +47,10 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_section
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -178,9 +178,7 @@ class DataSourceSection(QtWidgets.QWidget):
 
         client = picker.inprocess_client()
         if client is None:
-            dialogs.information(
-                self, "Database", "No MMFDB database is available in this session."
-            )
+            dialogs.information(self, "Database", "No MMFDB database is available in this session.")
             return
         paths = picker.pick_local_paths(
             parent=self, kinds=self._mmfdb_kinds, scope=self._mmfdb_scope, client=client

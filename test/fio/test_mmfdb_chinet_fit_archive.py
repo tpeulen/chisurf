@@ -4,13 +4,13 @@ import json
 
 import numpy as np
 import pytest
+from mmfdb.repository import MFDatabase
 
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
 from chisurf.core.fitting.parameter import FittingParameter
-from chisurf.core.project.mmfdb_adapter import archive_fit_to_mmfdb
-from mmfdb.repository import MFDatabase
 from chisurf.core.models.model import ModelCurve
+from chisurf.core.project.mmfdb_adapter import archive_fit_to_mmfdb
 
 
 class DummyLinearModelForMMFDB(ModelCurve):
@@ -113,8 +113,7 @@ def test_archive_fit_to_mmfdb_stores_fit_state_chinet_session_and_parameters(tmp
         roles = {row["role"] for row in op_links}
         assert {"chinet_session", "fit_state"}.issubset(roles)
         assert any(
-            row["direction"] == "input" and row["artifact_id"] == "dataset-1"
-            for row in op_links
+            row["direction"] == "input" and row["artifact_id"] == "dataset-1" for row in op_links
         )
 
         parameters = db.list_parameters(operation_id="op_fit")

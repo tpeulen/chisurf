@@ -6,11 +6,11 @@ rather than replace. These tests drive that accumulation logic without a display
 (offscreen Qt platform).
 """
 
-import utils
+import pathlib
 import sys
 import unittest
-import pathlib
 
+import utils
 from qtpy.QtWidgets import QApplication
 
 TOPDIR = pathlib.Path(__file__).parent.parent
@@ -19,12 +19,10 @@ utils.set_search_paths(TOPDIR)
 
 from chisurf.plugins.fret_line.gui.tool import FRETLineTool
 
-
 app = QApplication.instance() or QApplication(sys.argv)
 
 
 class Tests(unittest.TestCase):
-
     def setUp(self):
         self.tool = FRETLineTool()
         self.tool._refresh_sweep_targets()
@@ -85,9 +83,7 @@ class Tests(unittest.TestCase):
         self._compute_one(1)
         # both start visible and checked
         self.assertTrue(all(ln["visible"] for ln in self.tool._lines))
-        self.assertEqual(
-            self.tool._lines_list.item(0).checkState(), Qt.Checked
-        )
+        self.assertEqual(self.tool._lines_list.item(0).checkState(), Qt.Checked)
 
         # unticking a checkbox hides that line but keeps it in the list
         self.tool._lines_list.item(0).setCheckState(Qt.Unchecked)
@@ -111,7 +107,8 @@ class Tests(unittest.TestCase):
         self.assertTrue(self.tool._save_btn.isEnabled())
 
     def test_save_csv_all_lines(self):
-        import tempfile, os
+        import os
+        import tempfile
 
         self._compute_one(0)
         self._compute_one(1)
@@ -121,13 +118,14 @@ class Tests(unittest.TestCase):
             self.tool._lines  # noqa: B018  (ensure populated)
             from unittest import mock
 
-            with mock.patch.object(
-                self.tool, "_on_save", wraps=self.tool._on_save
-            ):
-                with mock.patch(
-                    "qtpy.QtWidgets.QFileDialog.getSaveFileName",
-                    return_value=(path, "CSV (*.csv)"),
-                ), mock.patch("qtpy.QtWidgets.QMessageBox.information"):
+            with mock.patch.object(self.tool, "_on_save", wraps=self.tool._on_save):
+                with (
+                    mock.patch(
+                        "qtpy.QtWidgets.QFileDialog.getSaveFileName",
+                        return_value=(path, "CSV (*.csv)"),
+                    ),
+                    mock.patch("qtpy.QtWidgets.QMessageBox.information"),
+                ):
                     self.tool._on_save()
             with open(path) as fh:
                 text = fh.read()

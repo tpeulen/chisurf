@@ -279,10 +279,16 @@ class PtoInspectorViewModel:
             ("Size", f"{item.size_bytes:,} B (reserved {item.capacity_bytes:,} B)"),
             ("Software", html.escape(item.software) or "—"),
             ("Dictionary", html.escape(item.dictionary) or "—"),
-            ("Run id", f"<code>{html.escape(item.settings_hash[:16])}…</code>"
-             if item.settings_hash else "—"),
-            ("Checksum", f"<code>{html.escape(item.checksum[:16])}…</code>"
-             if item.checksum else "—"),
+            (
+                "Run id",
+                f"<code>{html.escape(item.settings_hash[:16])}…</code>"
+                if item.settings_hash
+                else "—",
+            ),
+            (
+                "Checksum",
+                f"<code>{html.escape(item.checksum[:16])}…</code>" if item.checksum else "—",
+            ),
         ]
         if item.parents:
             names = []
@@ -295,9 +301,7 @@ class PtoInspectorViewModel:
                     f" on <code>{html.escape(item.source_row_column)}</code> = "
                     f"<code>{html.escape(item.target_row_column or item.source_row_column)}</code>"
                 )
-            rows.append(
-                (item.relationship or "derived from", ", ".join(names) + joined)
-            )
+            rows.append((item.relationship or "derived from", ", ".join(names) + joined))
         body = "".join(
             f"<tr><td style='padding-right:10px;color:#888;vertical-align:top'>{k}</td>"
             f"<td>{v}</td></tr>"

@@ -65,15 +65,25 @@ def filtered_correlation_datasets(
     names = result.labels
     out: list[dict] = []
     for i, g in result.auto.items():
-        out.append({
-            "x": lag_ms, "y": np.asarray(g, dtype=float).tolist(),
-            "species_a": i, "species_b": i, "name": f"{names[i]} × {names[i]}",
-        })
+        out.append(
+            {
+                "x": lag_ms,
+                "y": np.asarray(g, dtype=float).tolist(),
+                "species_a": i,
+                "species_b": i,
+                "name": f"{names[i]} × {names[i]}",
+            }
+        )
     for (i, j), g in result.cross.items():
-        out.append({
-            "x": lag_ms, "y": np.asarray(g, dtype=float).tolist(),
-            "species_a": i, "species_b": j, "name": f"{names[i]} × {names[j]}",
-        })
+        out.append(
+            {
+                "x": lag_ms,
+                "y": np.asarray(g, dtype=float).tolist(),
+                "species_a": i,
+                "species_b": j,
+                "name": f"{names[i]} × {names[j]}",
+            }
+        )
     return out
 
 

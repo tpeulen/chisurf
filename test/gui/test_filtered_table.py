@@ -5,6 +5,7 @@ guards against: ``TooltipItem`` was called with the generalized ``name=``/``key=
 keyword API while its ``__init__`` still used the old ``text``/``probe_id``
 signature, raising ``TypeError`` at runtime when the probe table populated.
 """
+
 import pytest
 from qtpy import QtCore, QtWidgets
 
@@ -23,7 +24,9 @@ def test_tooltip_item_generalized_kwargs(qapp):
     assert SpectraTooltipItem is TooltipItem
 
     calls = []
-    item = TooltipItem(name="Alexa488", key=42, render_fn=lambda k: calls.append(k) or f"<b>{k}</b>")
+    item = TooltipItem(
+        name="Alexa488", key=42, render_fn=lambda k: calls.append(k) or f"<b>{k}</b>"
+    )
     # tooltip is rendered lazily and cached
     assert item.data(QtCore.Qt.ToolTipRole) == "<b>42</b>"
     assert item.data(QtCore.Qt.ToolTipRole) == "<b>42</b>"

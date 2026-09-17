@@ -4,7 +4,8 @@ Abstract Base Class for TCSPC Device Wrappers
 This module defines the common interface that all TCSPC device wrappers must implement.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+
 from qtpy.QtCore import QObject, Signal
 
 

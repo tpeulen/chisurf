@@ -4,18 +4,17 @@ Uses a single shared server + client (module-scoped) to minimize ZMQ
 socket conflicts.  Each test resets server state via the shared client.
 """
 
-import json
 import math
 import os
+import tempfile
 import threading
 import time
-import tempfile
 
 import pytest
 
 from chisurf.core.api._client import ChisurfClient, RemoteError
+from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
 from chisurf.server.app import ChiSurfServer
-from chisurf.core.api._proxies import ProxyFitList, ProxyDatasetList
 from test.server.helpers import find_free_port
 
 #: A model the server can actually build. "TCSPC" is the name of the
@@ -75,10 +74,15 @@ _DEFAULT_Y = tuple(1000.0 * math.exp(-i / 8.0) + 5.0 for i in range(_N_POINTS))
 
 
 def _add_ds(c, name="TestDS", x=_DEFAULT_X, y=_DEFAULT_Y):
-    return c.call("dataset.load", {
-        "reader_name": f"{name}R", "filename": f"/tmp/{name}.dat",
-        "name": name, "curve_data": {"x": list(x), "y": list(y)},
-    })
+    return c.call(
+        "dataset.load",
+        {
+            "reader_name": f"{name}R",
+            "filename": f"/tmp/{name}.dat",
+            "name": name,
+            "curve_data": {"x": list(x), "y": list(y)},
+        },
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -96,7 +100,6 @@ def client():
 
 
 class TestProxyLifecycle:
-
     def test_add_dataset_through_proxy(self, client):
         dlist = ProxyDatasetList(client)
         assert len(dlist) == 0
@@ -186,7 +189,6 @@ class TestProxyLifecycle:
 
 
 class TestLargePayload:
-
     def test_large_10k(self, client):
         n = 10_000
         r = _add_ds(client, "L10k", range(n), [float(i * i) for i in range(n)])
@@ -201,11 +203,15 @@ class TestLargePayload:
         n = 100_000
         x = [float(i) for i in range(n)]
         y = [math.sin(i * 0.001) for i in range(n)]
-        r = client.call("dataset.load", {
-            "reader_name": "L100kR", "filename": "/tmp/l100k.dat",
-            "name": "L100k",
-            "curve_data": {"x": x, "y": y},
-        })
+        r = client.call(
+            "dataset.load",
+            {
+                "reader_name": "L100kR",
+                "filename": "/tmp/l100k.dat",
+                "name": "L100k",
+                "curve_data": {"x": x, "y": y},
+            },
+        )
         assert r.get("ok") is True
         curve = client.dataset__curve_data(dataset_index=r["dataset_index"])
         assert len(curve["x"]) == n
@@ -244,7 +250,6 @@ class TestLargePayload:
 
 
 class TestClientResilience:
-
     def test_ping_ok(self, client):
         r = client.meta__ping()
         assert r.get("ok") is True
@@ -296,7 +301,6 @@ class TestClientResilience:
 
 
 class TestParameterLifecycle:
-
     def _setup(self, client):
         _add_ds(client, "Param")
         ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
@@ -350,7 +354,9 @@ class TestParameterLifecycle:
         ft, params = self._setup(client)
         if len(params) < 2:
             pytest.skip("need 2+ params")
-        assert client.parameter__link(params[0]["name"], params[1]["name"], fit_index=ft["fit_index"]).get("ok")
+        assert client.parameter__link(
+            params[0]["name"], params[1]["name"], fit_index=ft["fit_index"]
+        ).get("ok")
         assert client.parameter__unlink(params[0]["name"], fit_index=ft["fit_index"]).get("ok")
 
     def test_linked_info(self, client):
@@ -370,7 +376,6 @@ class TestParameterLifecycle:
 
 
 class TestHighFrequency:
-
     def test_rapid_dataset_add(self, client):
         for i in range(50):
             _add_ds(client, f"R{i}", (0.0,), (float(i),))
@@ -403,6 +408,7 @@ class TestHighFrequency:
 
     def test_inprocess_bus_1000(self):
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         seen = []
         bus.subscribe("t", lambda e: seen.append(e))
@@ -413,6 +419,7 @@ class TestHighFrequency:
 
     def test_inprocess_bus_wildcard_500(self):
         from chisurf.server.eventbus import InProcessEventBus
+
         bus = InProcessEventBus()
         seen = []
         bus.subscribe("a.*", lambda e: seen.append(e))
@@ -489,7 +496,6 @@ class TestErrorBoundary:
 
 
 class TestSessionSaveLoad:
-
     def test_save_empty(self, client):
         """A project is one ``.cs.pto`` archive, not a directory of JSON."""
         client.dataset__clear()
@@ -527,7 +533,6 @@ class TestSessionSaveLoad:
 
 
 class TestSpecialFloats:
-
     def test_nan_via_curve_data(self, client):
         r = _add_ds(client, "NaNCD", (float("nan"), 1.0), (2.0, float("nan")))
         assert r.get("ok") is True
@@ -573,15 +578,21 @@ class TestZmqEvents:
     def test_empty_string_receives_all(self, zmq_pair):
         cl, srv = zmq_pair
         received = []
+
         def h(e):
             received.append(e)
+
         cl.subscribe(topic="", callback=h)
         time.sleep(0.3)
-        cl.call("dataset.load", {
-            "reader_name": "AllR", "filename": "/tmp/all.dat",
-            "name": "AllDS",
-            "curve_data": {"x": [0.0], "y": [1.0]},
-        })
+        cl.call(
+            "dataset.load",
+            {
+                "reader_name": "AllR",
+                "filename": "/tmp/all.dat",
+                "name": "AllDS",
+                "curve_data": {"x": [0.0], "y": [1.0]},
+            },
+        )
         time.sleep(0.5)
         cl.drain()
         assert len(received) > 0, f"got: {received}"
@@ -589,15 +600,21 @@ class TestZmqEvents:
     def test_topic_filter(self, zmq_pair):
         cl, srv = zmq_pair
         received = []
+
         def h(e):
             received.append(e)
+
         cl.subscribe(topic="fit.ran", callback=h)
         time.sleep(0.3)
-        cl.call("dataset.load", {
-            "reader_name": "FiltR", "filename": "/tmp/filt.dat",
-            "name": "FiltDS",
-            "curve_data": {"x": [0.0], "y": [1.0]},
-        })
+        cl.call(
+            "dataset.load",
+            {
+                "reader_name": "FiltR",
+                "filename": "/tmp/filt.dat",
+                "name": "FiltDS",
+                "curve_data": {"x": [0.0], "y": [1.0]},
+            },
+        )
         time.sleep(0.3)
         cl.drain()
         assert len(received) == 0, f"got: {received}"
@@ -605,15 +622,21 @@ class TestZmqEvents:
     def test_prefix_matches_subtopics(self, zmq_pair):
         cl, srv = zmq_pair
         received = []
+
         def h(e):
             received.append(e)
+
         cl.subscribe(topic="dataset.", callback=h)
         time.sleep(0.3)
-        cl.call("dataset.load", {
-            "reader_name": "PrefR", "filename": "/tmp/pref.dat",
-            "name": "PrefDS",
-            "curve_data": {"x": [0.0], "y": [1.0]},
-        })
+        cl.call(
+            "dataset.load",
+            {
+                "reader_name": "PrefR",
+                "filename": "/tmp/pref.dat",
+                "name": "PrefDS",
+                "curve_data": {"x": [0.0], "y": [1.0]},
+            },
+        )
         time.sleep(0.5)
         cl.drain()
         assert len(received) > 0, f"got: {received}"
@@ -623,7 +646,6 @@ class TestZmqEvents:
 
 
 class TestProxyRpcErrorHandling:
-
     def test_proxy_run_returns_error_dict_on_failure(self, client):
         _add_ds(client, "ErrRun")
         ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
@@ -695,7 +717,6 @@ class TestProxyRpcErrorHandling:
 
 
 class TestChisurfRunPattern:
-
     def test_run_expression_via_call(self, client):
         """Simulate chisurf.run(\"chisurf.fits[0].set_result_idx(2)\") pattern."""
         _add_ds(client, "RunPat")
@@ -728,7 +749,7 @@ class TestChisurfRunPattern:
         assert isinstance(r3, dict)
 
     def test_enumerate_fits_pattern(self, client):
-        """for idx, f in enumerate(chisurf.fits): ... pattern."""
+        """For idx, f in enumerate(chisurf.fits): ... pattern."""
         _add_ds(client, "EnumPat")
         ft1 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
         ft2 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
@@ -771,15 +792,18 @@ class TestChisurfRunPattern:
 
 
 class TestUnicodeData:
-
     def test_unicode_dataset_name(self, client):
         """Unicode characters in dataset name survive round-trip."""
         name = "DatenSatz_über_100_µs"
-        r = client.call("dataset.load", {
-            "reader_name": "UniR", "filename": "/tmp/uni.dat",
-            "name": name,
-            "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
-        })
+        r = client.call(
+            "dataset.load",
+            {
+                "reader_name": "UniR",
+                "filename": "/tmp/uni.dat",
+                "name": name,
+                "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
+            },
+        )
         assert r.get("ok") is True
         info = client.dataset__get(dataset_index=r["dataset_index"])
         assert info["name"] == name
@@ -787,8 +811,7 @@ class TestUnicodeData:
     def test_unicode_fit_name(self, client):
         """Unicode in fit name."""
         _add_ds(client, "UniFitDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="Fít_Nömé_über")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="Fít_Nömé_über")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
         info = client.fit__get(fit_index=ft["fit_index"])
@@ -796,12 +819,15 @@ class TestUnicodeData:
 
     def test_unicode_in_curve_data(self, client):
         """Unicode chars in filename (not in numeric data)."""
-        r = client.call("dataset.load", {
-            "reader_name": "UniCurveR",
-            "filename": "/tmp/ünïcödé.dat",
-            "name": "UnicodeCurve",
-            "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
-        })
+        r = client.call(
+            "dataset.load",
+            {
+                "reader_name": "UniCurveR",
+                "filename": "/tmp/ünïcödé.dat",
+                "name": "UnicodeCurve",
+                "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
+            },
+        )
         assert r.get("ok") is True
         curve = client.dataset__curve_data(dataset_index=r["dataset_index"])
         assert curve.get("ok") is True
@@ -825,7 +851,6 @@ class TestUnicodeData:
 
 
 class TestConcurrentOperations:
-
     def test_two_sequential_dataset_adds(self, client):
         """Sequential add_dataset calls from one client."""
         for i in range(5):
@@ -850,8 +875,7 @@ class TestConcurrentOperations:
         _add_ds(client, "LargeList")
         created = []
         for i in range(30):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                    fit_name=f"ListFit{i}")
+            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name=f"ListFit{i}")
             if ft.get("ok"):
                 created.append(ft)
         if not created:
@@ -864,8 +888,7 @@ class TestConcurrentOperations:
         _add_ds(client, "InterDS")
         created = []
         for i in range(10):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                    fit_name=f"Inter{i}")
+            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name=f"Inter{i}")
             if ft.get("ok"):
                 created.append(ft)
         if not created:
@@ -886,8 +909,7 @@ class TestProxyPluginPatterns:
     def test_fit_model_lazy_fetch_n_points(self, client):
         """fit.model.n_points lazy-fetches via fit__get when accessed through proxy."""
         _add_ds(client, "LazyN")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="LazyFit")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="LazyFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
 
@@ -901,8 +923,7 @@ class TestProxyPluginPatterns:
     def test_fit_data_filename_via_proxy(self, client):
         """fit.data.filename works through proxy lazy-fetch."""
         _add_ds(client, "LazyData", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="LazyFit2")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="LazyFit2")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
 
@@ -915,10 +936,11 @@ class TestProxyPluginPatterns:
 
     def test_fit_save_positional_args(self, client):
         """fit.save(path, 'csv') works with positional args through proxy."""
-        import tempfile, os
+        import os
+        import tempfile
+
         _add_ds(client, "SavePos", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="SaveFit")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="SaveFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
 
@@ -935,8 +957,7 @@ class TestProxyPluginPatterns:
     def test_enumerate_fits_attribute_access(self, client):
         """enumerate(fits) and attribute access works like plugins do."""
         _add_ds(client, "EnumDS", x=[0.0], y=[1.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="EnumFit")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="EnumFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
 
@@ -950,8 +971,7 @@ class TestProxyPluginPatterns:
     def test_parameters_all_through_proxy(self, client):
         """fit.model.parameters_all list access through proxy after lazy-fetch."""
         _add_ds(client, "ParamDS", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
-                                fit_name="ParamFit")
+        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL, fit_name="ParamFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
 

@@ -13,8 +13,9 @@ Covers three layers:
    bias vanishes as the prior widens.
 """
 
-import utils
 import pathlib
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -25,17 +26,17 @@ import numpy as np
 import pytest
 
 import chisurf.core.data
-import chisurf.core.models
-import chisurf.core.models.parse
 import chisurf.core.fitting
 import chisurf.core.fitting.fit
+import chisurf.core.models
+import chisurf.core.models.parse
 import chisurf.core.parameter
 from chisurf.core.fitting import priors as _priors
-
 
 # --------------------------------------------------------------------------
 # 1. Prior distributions
 # --------------------------------------------------------------------------
+
 
 def test_uniform_prior_is_a_bound():
     p = _priors.UniformPrior(1.0, 3.0)
@@ -66,11 +67,7 @@ def test_normal_prior_residual_is_tikhonov():
 def test_normal_prior_lnpdf_matches_scipy_free_formula():
     mu, sigma, x = 1.0, 2.0, 3.5
     p = _priors.NormalPrior(mu, sigma)
-    expected = (
-        -0.5 * ((x - mu) / sigma) ** 2
-        - math.log(sigma)
-        - 0.5 * math.log(2.0 * math.pi)
-    )
+    expected = -0.5 * ((x - mu) / sigma) ** 2 - math.log(sigma) - 0.5 * math.log(2.0 * math.pi)
     assert p.lnpdf(x) == pytest.approx(expected)
 
 
@@ -110,17 +107,21 @@ def test_exponential_prior_deviance_residual():
     assert r == pytest.approx(np.array([math.sqrt(2.0 * 4.0 / 2.0)]))
 
 
-@pytest.mark.parametrize("prior", [
-    _priors.UniformPrior(-1.0, 4.0),
-    _priors.NormalPrior(1.5, 0.3),
-    _priors.TruncatedNormalPrior(1.0, 0.5, 0.0, 2.0),
-    _priors.HalfNormalPrior(2.0, 0.1),
-    _priors.LogNormalPrior(-0.5, 0.8),
-    _priors.ExponentialPrior(3.0, 0.0),
-])
+@pytest.mark.parametrize(
+    "prior",
+    [
+        _priors.UniformPrior(-1.0, 4.0),
+        _priors.NormalPrior(1.5, 0.3),
+        _priors.TruncatedNormalPrior(1.0, 0.5, 0.0, 2.0),
+        _priors.HalfNormalPrior(2.0, 0.1),
+        _priors.LogNormalPrior(-0.5, 0.8),
+        _priors.ExponentialPrior(3.0, 0.0),
+    ],
+)
 def test_prior_state_roundtrip(prior):
     state = prior.get_state()
     import json
+
     json.dumps(state)  # must be JSON-serialisable
     restored = _priors.prior_from_state(state)
     assert type(restored) is type(prior)
@@ -136,6 +137,7 @@ def test_prior_from_state_none_and_unknown():
 # --------------------------------------------------------------------------
 # 2. Parameter.prior unified view (bounds are priors)
 # --------------------------------------------------------------------------
+
 
 def test_active_bound_surfaces_as_uniform_prior():
     p = chisurf.core.parameter.Parameter(value=2.0, bounds_on=True, lb=1.0, ub=3.0)
@@ -215,8 +217,10 @@ def test_prior_lives_on_port_and_survives_pickle():
 
 def test_port_prior_roundtrip():
     """The port (IMP.bff, chinet's successor) carries a prior dict through
-    its document round-trip."""
+    its document round-trip.
+    """
     from chisurf.core import nodes
+
     port = nodes._bff.GraphPort(value=1.0, name="p")
     assert port.prior is None
     port.prior = {"kind": "normal", "mu": 1.0, "sigma": 0.5}
@@ -229,6 +233,7 @@ def test_port_prior_roundtrip():
 # --------------------------------------------------------------------------
 # 3. End-to-end MAP fitting
 # --------------------------------------------------------------------------
+
 
 def _make_linear_fit(a_value=1.2, c_value=3.1, n_points=32):
     x = np.linspace(0.0, 10.0, n_points)
@@ -313,12 +318,11 @@ def test_lnprior_legacy_bounds_branch():
 # 4. Callback priors (most general) + conjugate combination
 # --------------------------------------------------------------------------
 
+
 def test_callable_prior_matches_gaussian():
     """A callback reproducing a Gaussian log-density matches NormalPrior."""
     mu, sigma = 2.0, 0.5
-    cp = _priors.CallablePrior(
-        lambda x: -0.5 * ((x - mu) / sigma) ** 2, mode=mu
-    )
+    cp = _priors.CallablePrior(lambda x: -0.5 * ((x - mu) / sigma) ** 2, mode=mu)
     ref = _priors.NormalPrior(mu, sigma)
     for x in (1.0, 2.0, 2.5, 3.3):
         # lnpdf differs only by the (constant) normalisation the callback omits.
@@ -328,9 +332,7 @@ def test_callable_prior_matches_gaussian():
 
 
 def test_callable_prior_explicit_residual():
-    cp = _priors.CallablePrior(
-        lambda x: -0.5 * x * x, residual=lambda x: 2.0 * x
-    )
+    cp = _priors.CallablePrior(lambda x: -0.5 * x * x, residual=lambda x: 2.0 * x)
     assert cp.residuals(1.5) == pytest.approx(np.array([3.0]))
 
 
@@ -338,7 +340,9 @@ def test_as_prior_wraps_callable():
     pr = _priors.as_prior(lambda x: -abs(x))
     assert isinstance(pr, _priors.CallablePrior)
     assert _priors.as_prior(None) is None
-    assert isinstance(_priors.as_prior({"kind": "normal", "mu": 0.0, "sigma": 1.0}), _priors.NormalPrior)
+    assert isinstance(
+        _priors.as_prior({"kind": "normal", "mu": 0.0, "sigma": 1.0}), _priors.NormalPrior
+    )
 
 
 def test_normal_times_normal_precision_weighted():
@@ -398,9 +402,7 @@ def test_callback_prior_enters_map_objective():
     fit = _make_linear_fit(a_value=1.2)
     a = fit.model.parameter_dict["a"]
     # Tight Gaussian-shaped callback centred at 2.0 (true value 1.2).
-    a.prior = _priors.CallablePrior(
-        lambda x: -0.5 * ((x - 2.0) / 1e-3) ** 2, mode=2.0
-    )
+    a.prior = _priors.CallablePrior(lambda x: -0.5 * ((x - 2.0) / 1e-3) ** 2, mode=2.0)
     fit.run()
     fit.run()
     assert fit.model.parameter_dict["a"].value == pytest.approx(2.0, abs=0.05)
@@ -409,6 +411,7 @@ def test_callback_prior_enters_map_objective():
 # --------------------------------------------------------------------------
 # 4. Prior / posterior reporting (the fit summary shown in the Info panel)
 # --------------------------------------------------------------------------
+
 
 def test_prior_summary_separates_informative_from_bounds():
     """A bound is a uniform prior, but it contributes nothing to the objective."""

@@ -12,6 +12,7 @@ that show *how* a chain failed, which a threshold cannot.
   grows linearly: twice the effort buys twice the information. Flattening means
   the extra draws are telling you nothing new.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -25,8 +26,14 @@ from chisurf.gui.plots.plotbase import Plot
 
 #: One colour per chain, distinguishable and stable across both tabs.
 CHAIN_COLOURS = (
-    "#4c9be8", "#e8834c", "#5cc98a", "#c96ec9",
-    "#e8c84c", "#7f7fe8", "#e85c7a", "#4cc9c9",
+    "#4c9be8",
+    "#e8834c",
+    "#5cc98a",
+    "#c96ec9",
+    "#e8c84c",
+    "#7f7fe8",
+    "#e85c7a",
+    "#4cc9c9",
 )
 
 
@@ -111,8 +118,7 @@ class SamplingDiagnosticsPlot(Plot):
         """Reload the chain and redraw both tabs."""
         super().update(*args, **kwargs)
         if not self._load():
-            for plot, notes in ((self.rank_plot, self.rank_notes),
-                                (self.ess_plot, self.ess_notes)):
+            for plot, notes in ((self.rank_plot, self.rank_notes), (self.ess_plot, self.ess_notes)):
                 plot.clear()
                 notes.setText(
                     "<i>no chain stored for this fit — run a sampling job "
@@ -158,11 +164,13 @@ class SamplingDiagnosticsPlot(Plot):
                 for i in range(per_chain.shape[1]):
                     xs.extend([edges[i], edges[i + 1]])
                     ys.extend([per_chain[c, i], per_chain[c, i]])
-                plot.line(xs, ys, pen=S.to_pen(_chain_colour(c), width=1.6),
-                          name=f"chain {c + 1}")
-            plot.line([0.0, 1.0], [expected, expected],
-                      pen=S.to_pen("#909090", width=1.2, style="dash"),
-                      name="expected")
+                plot.line(xs, ys, pen=S.to_pen(_chain_colour(c), width=1.6), name=f"chain {c + 1}")
+            plot.line(
+                [0.0, 1.0],
+                [expected, expected],
+                pen=S.to_pen("#909090", width=1.2, style="dash"),
+                name="expected",
+            )
             top = max(float(per_chain.max()), expected) * 1.15
             plot.set_range(x=(0.0, 1.0), y=(0.0, top), padding=0.0)
             plot.set_labels(left="draws")
@@ -177,7 +185,9 @@ class SamplingDiagnosticsPlot(Plot):
             deviation = (per_chain - expected) / max(expected, 1e-12)
             limit = max(0.35, float(np.abs(deviation).max()))
             plot.image(
-                deviation, colormap="coolwarm", levels=(-limit, limit),
+                deviation,
+                colormap="coolwarm",
+                levels=(-limit, limit),
                 rect=(0.0, 0.5, 1.0, float(n_chains)),
             )
             plot.set_range(x=(0.0, 1.0), y=(0.5, n_chains + 0.5), padding=0.0)
@@ -190,16 +200,14 @@ class SamplingDiagnosticsPlot(Plot):
         # converged run's worst bin is routinely tens of percent off, so a fixed
         # threshold fires on healthy chains and teaches the reader to ignore it.
         tau = float(dg.within_chain_tau(self._chains)[index])
-        z_max, z_null = dg.rank_uniformity(
-            per_chain, int(self._chains.shape[1]), 20, tau=tau
-        )
+        z_max, z_null = dg.rank_uniformity(per_chain, int(self._chains.shape[1]), 20, tau=tau)
         ratio = z_max / max(z_null, 1e-12)
         verdict = (
             "consistent with noise — the chains cover the same distribution"
-            if ratio < 1.5 else
-            "more structure than noise explains — worth a longer run"
-            if ratio < 2.5 else
-            "far beyond noise — the chains are not sampling the same distribution"
+            if ratio < 1.5
+            else "more structure than noise explains — worth a longer run"
+            if ratio < 2.5
+            else "far beyond noise — the chains are not sampling the same distribution"
         )
         self.rank_notes.setText(
             "<span style='color:#888'>each chain's share of the pooled ranks; "
@@ -224,16 +232,20 @@ class SamplingDiagnosticsPlot(Plot):
             return
 
         for k in range(ess.shape[1]):
-            plot.line(draws, ess[:, k], pen=S.to_pen(_chain_colour(k), width=1.6),
-                      name=self._names[k])
+            plot.line(
+                draws, ess[:, k], pen=S.to_pen(_chain_colour(k), width=1.6), name=self._names[k]
+            )
         # Linear growth is what a converged sampler does; the reference makes
         # "flattening" a comparison rather than a judgement call.
         final = float(np.nanmax(ess[-1])) if ess.size else 0.0
         if final > 0:
             slope = final / float(draws[-1])
-            plot.line(draws, slope * draws,
-                      pen=S.to_pen("#909090", width=1.2, style="dash"),
-                      name="linear growth")
+            plot.line(
+                draws,
+                slope * draws,
+                pen=S.to_pen("#909090", width=1.2, style="dash"),
+                name="linear growth",
+            )
         plot.grid(x=True, y=True, alpha=0.15)
 
         worst = float(np.nanmin(ess[-1]))
@@ -243,7 +255,10 @@ class SamplingDiagnosticsPlot(Plot):
             "flattening means the extra draws add nothing</span><br>"
             f"lowest ESS {worst:.0f} from "
             f"{draws[-1] * self._chains.shape[0]} draws ({ratio:.1%} efficiency)"
-            + ("" if worst >= dg.ESS_THRESHOLD else
-               f" — below the usual {dg.ESS_THRESHOLD:.0f} needed to quote a "
-               f"credible interval")
+            + (
+                ""
+                if worst >= dg.ESS_THRESHOLD
+                else f" — below the usual {dg.ESS_THRESHOLD:.0f} needed to quote a "
+                f"credible interval"
+            )
         )

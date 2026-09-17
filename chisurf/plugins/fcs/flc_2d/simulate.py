@@ -123,7 +123,7 @@ def simulate_photon_stream(
 
     config = {
         "settings": {
-            "dt": 1.0,                       # one macro-time unit per output tick
+            "dt": 1.0,  # one macro-time unit per output tick
             "n_ph_max": int(max_photons),
             "max_windows": max(1, int(round(float(total_time_s) / dt_s))),
             "n_channels": 1,
@@ -136,8 +136,11 @@ def simulate_photon_stream(
         },
         "box": {"xy": 1.0, "z": 1.0},
         "species": [
-            {"D": 0.0, "q": [float(inten[i]) * dt_s],
-             "decay": {**decay, "lifetimes": [float(tau[i])]}}
+            {
+                "D": 0.0,
+                "q": [float(inten[i]) * dt_s],
+                "decay": {**decay, "lifetimes": [float(tau[i])]},
+            }
             for i in range(n_states)
         ],
         "k_rad": [0.0] * (n_states * n_states),
@@ -145,9 +148,15 @@ def simulate_photon_stream(
         "background": [0.0],
         # One immobile molecule, started in a state drawn from equilibrium. A
         # population would let molecules enter and leave, which is diffusion.
-        "emitters": [{"x": 0.0, "y": 0.0, "z": 0.0,
-                      "species": int(np.random.default_rng(seed).choice(n_states, p=p_eq)),
-                      "mobile": False}],
+        "emitters": [
+            {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "species": int(np.random.default_rng(seed).choice(n_states, p=p_eq)),
+                "mobile": False,
+            }
+        ],
         "excitation": {"type": "uniform", "value": 1.0},
     }
 

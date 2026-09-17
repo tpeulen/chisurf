@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import pathlib
 import sys
 import traceback
-import pathlib
 
 try:
     from qtpy import QtWidgets, uic
@@ -40,7 +40,7 @@ class SimpleErrorDialog(QtWidgets.QDialog if QtWidgets is not None else object):
 
         try:
             # Import settings functions directly
-            from chisurf.core.settings import clear_settings_folder, clear_logging_files
+            from chisurf.core.settings import clear_logging_files, clear_settings_folder
 
             clear_settings_folder()
             clear_logging_files()
@@ -65,6 +65,7 @@ def main():
         # avoid allocation inside the signal handler.
         import faulthandler
         from datetime import datetime
+
         # faulthandler.enable() already registers SIGSEGV, SIGABRT, SIGBUS,
         # SIGFPE, SIGILL — do NOT call faulthandler.register(signal.SIGSEGV)
         # on top of it (that raises RuntimeError).
@@ -74,7 +75,6 @@ def main():
         faulthandler.enable(file=_fh, all_threads=True)
 
         # Import Qt and settings modules inside the try block to catch import errors
-        from chisurf.core.settings import clear_settings_folder, clear_logging_files
         from chisurf.gui import get_app
 
         # Start the application
@@ -90,6 +90,7 @@ def main():
         # trigger shutdown-time crashes in C extensions (e.g. Qt bindings) when
         # complex object graphs are torn down.
         import os
+
         os._exit(exit_code)
 
     except Exception as e:
@@ -111,7 +112,7 @@ def main():
 
             # Show the dialog
             dialog = SimpleErrorDialog(exception_text)
-            result = dialog.exec()
+            dialog.exec()
 
         except Exception as inner_e:
             # If PyQt5 fails, fall back to console output

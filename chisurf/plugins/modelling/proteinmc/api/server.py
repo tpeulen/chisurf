@@ -6,10 +6,8 @@ a ZMQ REQ/REP socket and broadcasts progress on a PUB socket.
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
-from pathlib import Path
 from typing import Any
 
 from chisurf.plugins.modelling.proteinmc.model import (
@@ -57,7 +55,10 @@ class ProteinMCApiServer:
         )
         _log.info(
             "ProteinMC API listening on tcp://%s:%s (cmd) / tcp://%s:%s (pub)",
-            self._host, self._cmd_port, self._host, self._pub_port,
+            self._host,
+            self._cmd_port,
+            self._host,
+            self._pub_port,
         )
         self._zmq.serve_forever()
 
@@ -103,15 +104,18 @@ class ProteinMCApiServer:
             return {"ok": False, "error": "Missing required parameter: structure_source"}
 
         def progress_callback(p: ProteinMCProgress) -> None:
-            self._broadcast("proteinmc.progress", {
-                "frame_index": p.frame_index,
-                "target_frames": p.target_frames,
-                "iteration": p.iteration,
-                "accepted": p.accepted,
-                "rejected": p.rejected,
-                "energy": p.energy,
-                "labeling_energy": p.labeling_energy,
-            })
+            self._broadcast(
+                "proteinmc.progress",
+                {
+                    "frame_index": p.frame_index,
+                    "target_frames": p.target_frames,
+                    "iteration": p.iteration,
+                    "accepted": p.accepted,
+                    "rejected": p.rejected,
+                    "energy": p.energy,
+                    "labeling_energy": p.labeling_energy,
+                },
+            )
 
         self._result: dict[str, Any] | None = None
         self._error: str | None = None

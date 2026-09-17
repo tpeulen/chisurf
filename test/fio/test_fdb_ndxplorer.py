@@ -6,12 +6,11 @@ import pathlib
 from unittest.mock import patch
 
 import numpy as np
-
-from mmfdb.repository import MFDatabase
 from mmfdb.admin.backend.ndxplorer_services import (
     load_burst_product_handler,
     record_analysis_handler,
 )
+from mmfdb.repository import MFDatabase
 
 
 def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
@@ -22,7 +21,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
     bur_dir = tmp_path / "bur_output"
     bur_subdir = bur_dir / "bi4_bur"
     bur_subdir.mkdir(parents=True, exist_ok=True)
-    
+
     # A .bur file shaped like the ones the writers produce: every line ends in a
     # **trailing tab**, which parses as an extra, nameless column. That artefact
     # is what the reader's "drop the last column" behaviour existed for.
@@ -50,7 +49,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
     with MFDatabase(db_path) as db:
         db.add_sample("sample_1")
         db.add_experiment("exp_1", sample_id="sample_1", status="complete")
-        
+
         # Add dummy raw reference
         raw_id = db.add_raw_data_reference(
             experiment_id="exp_1",
@@ -59,7 +58,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             file_path=str(tmp_path / "dummy.ptu"),
             checksum="0" * 64,
         )
-        
+
         # Add dummy burst selection run
         run_id = db.add_processing_run(
             experiment_id="exp_1",
@@ -67,7 +66,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             settings={"burst_detection": {"min_photons": 10}},
             status="succeeded",
         )
-        
+
         # Register the generated burst folder as product
         prod_id = db.add_processed_data_product(
             processing_id=run_id,
@@ -85,13 +84,13 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
         return_value=db_path,
     )
     patcher.start()
-    
+
     try:
         # 1. Test load_burst_product_handler
         result = load_burst_product_handler(processed_data_id=prod_id)
         assert result.get("ok") is True, f"Failed with: {result}"
         assert result["processed_data_id"] == prod_id
-        
+
         # Mean Macro Time (ms) becomes Mean Macro Time (s); the nameless column
         # from the trailing tab is dropped; `dummy_col` is a real column and
         # stays.
@@ -121,7 +120,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             "data": {"mask": [False, True]},
             "validation_status": "valid",
         }
-        
+
         rec_result = record_analysis_handler(
             experiment_id="exp_1",
             input_processed_data_ids=[prod_id],
@@ -130,19 +129,19 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             products=[selection_mask_product],
             software_version="1.0.0",
         )
-        
+
         assert rec_result["ok"] is True, rec_result
         ndx_run = rec_result["processing_run"]
         assert ndx_run["processing_type"] == "ndxplorer_selection"
         assert ndx_run["settings"] == analysis_settings
-        
+
         # Verify registered products list in response
         products = rec_result["products"]
         assert len(products) == 1
         mask_prod = products[0]
         assert mask_prod["product_type"] == "selection_mask"
         assert mask_prod["storage_mode"] == "embedded_json"
-        
+
         # Verify provenance in the database
         with MFDatabase(db_path) as db:
             # Check input_to edge: original burst product -> input_to -> ndxplorer run
@@ -153,7 +152,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
             )
             assert len(input_edges) == 1
             assert input_edges[0]["target_node_id"] == ndx_run["processing_id"]
-            
+
             # Check produced edge: ndxplorer run -> produced -> selection mask
             produced_edges = db.get_provenance_edges(
                 source_node_type="processing_run",

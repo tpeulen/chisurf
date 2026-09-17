@@ -24,7 +24,6 @@ Registered under the key ``"global_parameter_table"``; emit it from a model's
 from __future__ import annotations
 
 import re
-from typing import Any, List, Optional
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -34,6 +33,7 @@ from chisurf import logging
 from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.parameter import Parameter
 from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.parameter_table import (
     _BooleanToggleDelegate,
     _FloatEditDelegate,
@@ -43,7 +43,6 @@ from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import ChiTableWidget, TableFeature
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-from chisurf.gui import dialogs
 
 # ── column enumeration ──────────────────────────────────────────────────
 
@@ -60,8 +59,17 @@ COL_ERROR = 9
 COL_LINK = 10
 
 HEADERS = [
-    "Row", "Owner", "Local", "Parameter", "Value",
-    "Fixed", "Lo", "Hi", "Bounds", "Error", "Link row",
+    "Row",
+    "Owner",
+    "Local",
+    "Parameter",
+    "Value",
+    "Fixed",
+    "Lo",
+    "Hi",
+    "Bounds",
+    "Error",
+    "Link row",
 ]
 
 
@@ -75,13 +83,28 @@ class GlobalParamRow:
     """
 
     __slots__ = (
-        "kind", "owner_label", "local_label", "param", "param_uid",
-        "owner_uid", "fit_uid", "fit_index", "local_idx",
+        "kind",
+        "owner_label",
+        "local_label",
+        "param",
+        "param_uid",
+        "owner_uid",
+        "fit_uid",
+        "fit_index",
+        "local_idx",
     )
 
     def __init__(
-        self, kind, owner_label, local_label, param, param_uid,
-        owner_uid=None, fit_uid=None, fit_index=None, local_idx=None,
+        self,
+        kind,
+        owner_label,
+        local_label,
+        param,
+        param_uid,
+        owner_uid=None,
+        fit_uid=None,
+        fit_index=None,
+        local_idx=None,
     ):
         self.kind = kind
         self.owner_label = owner_label
@@ -98,7 +121,7 @@ def _uid(obj) -> str:
     return str(getattr(obj, "unique_identifier", "") or "")
 
 
-def enumerate_global_rows() -> List[GlobalParamRow]:
+def enumerate_global_rows() -> list[GlobalParamRow]:
     """Return every fitting parameter across fits and registered plugin groups.
 
     Fits come from the live ``chisurf.fits`` list (descending into
@@ -108,7 +131,7 @@ def enumerate_global_rows() -> List[GlobalParamRow]:
     """
     from chisurf.core.models.global_model import GlobalFitModel
 
-    rows: List[GlobalParamRow] = []
+    rows: list[GlobalParamRow] = []
     fits = list(getattr(cs, "fits", []) or [])
 
     for fi, fit in enumerate(fits):
@@ -120,23 +143,46 @@ def enumerate_global_rows() -> List[GlobalParamRow]:
             for li, local_fit in enumerate(fit.grouped_fits):
                 lmodel = getattr(local_fit, "model", None)
                 for p in getattr(lmodel, "parameters_all", []) or []:
-                    rows.append(GlobalParamRow(
-                        "fit", owner_label, f"[{li}]", p, _uid(p),
-                        owner_uid=_uid(lmodel), fit_uid=_uid(fit),
-                        fit_index=fi, local_idx=li,
-                    ))
+                    rows.append(
+                        GlobalParamRow(
+                            "fit",
+                            owner_label,
+                            f"[{li}]",
+                            p,
+                            _uid(p),
+                            owner_uid=_uid(lmodel),
+                            fit_uid=_uid(fit),
+                            fit_index=fi,
+                            local_idx=li,
+                        )
+                    )
         else:
             for p in getattr(model, "parameters_all", []) or []:
-                rows.append(GlobalParamRow(
-                    "fit", owner_label, "", p, _uid(p),
-                    owner_uid=_uid(model), fit_uid=_uid(fit), fit_index=fi,
-                ))
+                rows.append(
+                    GlobalParamRow(
+                        "fit",
+                        owner_label,
+                        "",
+                        p,
+                        _uid(p),
+                        owner_uid=_uid(model),
+                        fit_uid=_uid(fit),
+                        fit_index=fi,
+                    )
+                )
 
     for owner_id, label, group in iter_registered_parameter_groups():
         for p in getattr(group, "parameters_all", []) or []:
-            rows.append(GlobalParamRow(
-                "group", label, "", p, _uid(p), owner_uid=_uid(group),
-            ))
+            rows.append(
+                GlobalParamRow(
+                    "group",
+                    label,
+                    "",
+                    p,
+                    _uid(p),
+                    owner_uid=_uid(group),
+                )
+            )
 
     return rows
 
@@ -181,7 +227,11 @@ class FittingClientParamMutator:
 
     def set_bounds_on(self, row, bounds_on):
         fc = get_fitting_client()
-        return fc.set_parameter_bounds_on(bounds_on=bounds_on, **self._addr(row)) if fc else {"ok": False}
+        return (
+            fc.set_parameter_bounds_on(bounds_on=bounds_on, **self._addr(row))
+            if fc
+            else {"ok": False}
+        )
 
     def link(self, src, target):
         fc = get_fitting_client()
@@ -206,7 +256,7 @@ class GlobalParameterTableModel(QtCore.QAbstractTableModel):
 
     def __init__(self, mutator=None, parent=None):
         super().__init__(parent)
-        self._rows: List[GlobalParamRow] = []
+        self._rows: list[GlobalParamRow] = []
         self._mutator = mutator or FittingClientParamMutator()
 
     # -- population -------------------------------------------------------
@@ -217,7 +267,7 @@ class GlobalParameterTableModel(QtCore.QAbstractTableModel):
         self._rows = enumerate_global_rows()
         self.endResetModel()
 
-    def row_at(self, r: int) -> Optional[GlobalParamRow]:
+    def row_at(self, r: int) -> GlobalParamRow | None:
         return self._rows[r] if 0 <= r < len(self._rows) else None
 
     # -- shape ------------------------------------------------------------
@@ -304,7 +354,7 @@ class GlobalParameterTableModel(QtCore.QAbstractTableModel):
 
         return None
 
-    def _link_target_row(self, r: int) -> Optional[int]:
+    def _link_target_row(self, r: int) -> int | None:
         """Return the table-row index of the parameter *r* is linked to."""
         link = getattr(self._rows[r].param, "link", None)
         if link is None:
@@ -409,9 +459,7 @@ def _warn(message: str) -> None:
         logging.warning(message)
         return
     try:
-        dialogs.warning(
-            QtWidgets.QApplication.activeWindow(), "Linking", message
-        )
+        dialogs.warning(QtWidgets.QApplication.activeWindow(), "Linking", message)
     except Exception:
         logging.warning(message)
 
@@ -498,9 +546,7 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         # spare height instead of being capped at its size hint with dead space
         # under it. The marker is what AutoForm looks for when deciding which
         # section gets the stretch.
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._autoform_expanding = True
 
         self._subscribe_events()
@@ -559,7 +605,10 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         try:
             fc = get_fitting_client()
             if fc is not None:
-                cb = lambda *a, **k: self._on_external_change()
+
+                def cb(*a, **k):
+                    return self._on_external_change()
+
                 fc.subscribe("parameter.", cb)
                 fc.subscribe("fit.", cb)
         except Exception:

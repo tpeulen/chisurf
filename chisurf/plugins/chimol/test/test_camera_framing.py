@@ -15,7 +15,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.camera.view_state import (
     distance_for_radius,
     framing_centre,
@@ -24,7 +23,11 @@ from chimol.core.camera.view_state import (
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -38,8 +41,8 @@ def qapp():
 @pytest.fixture
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     v = Viewer()
     v.resize(800, 600)
@@ -228,9 +231,7 @@ def test_a_tiny_fragment_does_not_swallow_the_camera():
     single = np.zeros((1, 3))
     assert framing_radius(single) == pytest.approx(MIN_FRAMING_RADIUS)
     # And the floor scales with the scene, since chimol does not work in Angstrom.
-    assert framing_radius(single, scale=10.0) == pytest.approx(
-        MIN_FRAMING_RADIUS * 10.0
-    )
+    assert framing_radius(single, scale=10.0) == pytest.approx(MIN_FRAMING_RADIUS * 10.0)
 
 
 def test_the_floor_does_not_disturb_a_real_molecule():
@@ -383,7 +384,7 @@ def test_a_resize_preserves_a_hand_zoomed_view(view):
     renderer = view.renderer
     renderer.resize(900, 600)
     view.zoom()
-    renderer._distance *= 0.25          # what a few scroll clicks do
+    renderer._distance *= 0.25  # what a few scroll clicks do
     hand_zoomed = _distance(view)
 
     renderer.resize(400, 900)

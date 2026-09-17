@@ -5,19 +5,21 @@ from typing import Any
 # missing-file warning dialog needs it).  Keeping this module import-time
 # Qt-free lets the Qt-free server reuse ``load_detector_setups`` /
 # ``save_detector_setups`` from ``chisurf.server.services.detector_setups``.
-
 from mmfdb.repository import MFDatabase
-from chisurf.core.settings.path_utils import get_path
+
 from chisurf.core.fio.setup_store import (
     SetupTypeConfig,
     json_loads,
     load_mmfdb_setups,
     resolve_active_user_id,
-    save_setup_row as _save_row,
     save_setups,
 )
+from chisurf.core.fio.setup_store import (
+    save_setup_row as _save_row,
+)
+from chisurf.core.settings.path_utils import get_path
 
-DETECTOR_SETUPS_FILE = get_path('settings') / 'detector_setups.json'
+DETECTOR_SETUPS_FILE = get_path("settings") / "detector_setups.json"
 DETECTOR_SETUP_TYPE = "tttr_detector_setup"
 DETECTOR_SETUP_PREFS_ID = "tttr_detector_setup_preferences"
 
@@ -32,6 +34,7 @@ DETECTOR_CONFIG = SetupTypeConfig(
 
 def setup_id_for_name(name: str, user_id: str = "") -> str:
     from chisurf.core.fio.setup_store import setup_id_for_name as _sifn
+
     return _sifn(name, user_id, "tttr_detector_setup")
 
 
@@ -45,11 +48,13 @@ def _json_loads(value):
 
 def _db(db_path=None):
     from chisurf.core.fio.setup_store import get_db
+
     return get_db(db_path)
 
 
 def _use_mmfdb(file_path=None) -> bool:
     from chisurf.core.fio.setup_store import use_mmfdb
+
     return use_mmfdb(file_path, DETECTOR_SETUPS_FILE)
 
 
@@ -139,7 +144,8 @@ def _setup_row_data(
 
 def _detector_row_to_data(row: dict, db: MFDatabase) -> dict:
     """Callback for ``load_mmfdb_setups`` to extract detector data with child
-    table priority."""
+    table priority.
+    """
     full = None
     dcs, pws = None, None
     if row.get("setup_id"):
@@ -158,8 +164,12 @@ def _save_setup_row(
     is_public: bool | int | None = None,
 ) -> None:
     _save_row(
-        db, DETECTOR_CONFIG, setup_name, data,
-        user_id=user_id, is_public=is_public,
+        db,
+        DETECTOR_CONFIG,
+        setup_name,
+        data,
+        user_id=user_id,
+        is_public=is_public,
         detectors=data.get("detectors") or {},
         windows=data.get("windows") or {},
         timing_resolution=data.get("tttr_reading") or {},
@@ -179,11 +189,13 @@ def _detector_save_row_fn(
 
 def _load_mmfdb_detector_setups(db: MFDatabase, user_id: str | None = None) -> dict:
     from chisurf.core.fio.setup_store import load_mmfdb_setups
+
     return load_mmfdb_setups(db, DETECTOR_CONFIG, user_id, row_to_data=_detector_row_to_data)
 
 
 def _set_last_used(db: MFDatabase, setup_name: str) -> None:
     from chisurf.core.fio.setup_store import set_last_used
+
     set_last_used(db, DETECTOR_CONFIG, setup_name)
 
 
@@ -193,11 +205,15 @@ def _migrate_json_setups_to_mmfdb(
     user_id: str | None = None,
 ) -> bool:
     from chisurf.core.fio.setup_store import migrate_json_to_mmfdb
-    return migrate_json_to_mmfdb(db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn)
+
+    return migrate_json_to_mmfdb(
+        db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn
+    )
 
 
 def _load_json_detector_setups(path: pathlib.Path, file_path=None) -> dict:
     from chisurf.core.fio.setup_store import load_json_setups
+
     return load_json_setups(path, file_path=file_path)
 
 
@@ -223,7 +239,10 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
     try:
         import chisurf.core.settings
-        show_warning = bool(chisurf.core.settings.cs_settings.get('warn_missing_detector_setups', True))
+
+        show_warning = bool(
+            chisurf.core.settings.cs_settings.get("warn_missing_detector_setups", True)
+        )
     except Exception:
         show_warning = True
 
@@ -241,6 +260,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
         try:
             import chisurf as _chisurf_mod
+
             if is_default and getattr(_chisurf_mod, "__startup_in_progress__", False):
                 try:
                     _chisurf_mod.__pending_startup_onboarding__ = True
@@ -250,7 +270,12 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
         except Exception:
             pass
 
-        if show_warning and is_default and app_running and not _module_warning_shown("detector_setups_file"):
+        if (
+            show_warning
+            and is_default
+            and app_running
+            and not _module_warning_shown("detector_setups_file")
+        ):
             from chisurf.gui import dialogs
 
             _mark_warning_shown("detector_setups_file")
@@ -271,11 +296,15 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
             try:
                 if answer.checked:
-                    from chisurf.core.settings.settings_utils import set_warn_missing_detector_setups as _set_w
+                    from chisurf.core.settings.settings_utils import (
+                        set_warn_missing_detector_setups as _set_w,
+                    )
+
                     _set_w(False)
                     try:
                         import chisurf.core.settings
-                        chisurf.core.settings.cs_settings['warn_missing_detector_setups'] = False
+
+                        chisurf.core.settings.cs_settings["warn_missing_detector_setups"] = False
                     except Exception:
                         pass
             except Exception:
@@ -284,6 +313,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
             try:
                 if answer.key == "wizard":
                     from .tttr_channel_definition import DetectorWizard
+
                     wiz = DetectorWizard()
                     wiz.exec_()
                     if path.exists():
@@ -298,23 +328,31 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
 def _module_warning_shown(key: str) -> bool:
     from chisurf.gui.widgets.warning_once import was_warning_shown
+
     return was_warning_shown(key)
 
 
 def _mark_warning_shown(key: str) -> None:
     from chisurf.gui.widgets.warning_once import mark_warning_shown
+
     mark_warning_shown(key)
 
 
-def save_detector_setups(setups_data, file_path=None, replace=False, is_public=None,
-                         db_path=None, user_id=None):
+def save_detector_setups(
+    setups_data, file_path=None, replace=False, is_public=None, db_path=None, user_id=None
+):
     get_db_fn = (lambda: _db(db_path)) if db_path is not None else _db
     resolve_user_fn = (lambda: user_id) if user_id is not None else _resolve_active_user_id
     return save_setups(
-        setups_data, DETECTOR_CONFIG,
-        file_path=file_path, replace=replace, is_public=is_public,
+        setups_data,
+        DETECTOR_CONFIG,
+        file_path=file_path,
+        replace=replace,
+        is_public=is_public,
         save_row_fn=_detector_save_row_fn,
-        load_scoped_fn=lambda db, cfg, uid: load_mmfdb_setups(db, cfg, uid, row_to_data=_detector_row_to_data),
+        load_scoped_fn=lambda db, cfg, uid: load_mmfdb_setups(
+            db, cfg, uid, row_to_data=_detector_row_to_data
+        ),
         get_db_fn=get_db_fn,
         resolve_user_fn=resolve_user_fn,
     )

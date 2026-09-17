@@ -1,4 +1,5 @@
 """The AutoForm MMFDB login dialog: single-line password + collapsible advanced."""
+
 from __future__ import annotations
 
 import os
@@ -25,7 +26,8 @@ def test_login_dialog_password_masked_and_advanced_collapsible(qapp):
     d = ConnectionAuthDialog(user="admin", host="127.0.0.1", cmd_port=8765, pub_port=8766)
     # password is a masked single-line field
     masked = [
-        e for e in d.findChildren(QtWidgets.QLineEdit)
+        e
+        for e in d.findChildren(QtWidgets.QLineEdit)
         if e.echoMode() == QtWidgets.QLineEdit.Password
     ]
     assert len(masked) == 1
@@ -37,6 +39,9 @@ def test_login_dialog_password_masked_and_advanced_collapsible(qapp):
     d._model.host = "10.0.0.5"
     vals = d.values()
     assert vals == {
-        "user": "admin", "password": "pw",
-        "host": "10.0.0.5", "cmd_port": 8765, "pub_port": 8766,
+        "user": "admin",
+        "password": "pw",
+        "host": "10.0.0.5",
+        "cmd_port": 8765,
+        "pub_port": 8766,
     }

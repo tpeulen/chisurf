@@ -13,11 +13,14 @@ keeps the tool's sign (TCSPCDecay shifts the other way); a single excitation (``
 enough that no earlier pulse is left. The nuisance search is BFF's fit of the
 free instrument parameters instead of a coordinate walk.
 """
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple
+
+from collections.abc import Callable, Sequence
+from typing import Any
 
 import numpy as np
 
 MIN_PROB = 1e-12
+
 
 def load_tcspc_two_column(path: str) -> np.ndarray:
     """Load a two-column TCSPC text file ("Chan  Data") like extract2c.c.
@@ -28,7 +31,7 @@ def load_tcspc_two_column(path: str) -> np.ndarray:
     """
     chan = []
     data = []
-    with open(path, "r") as f:
+    with open(path) as f:
         for line in f:
             parts = line.strip().split()
             if len(parts) < 2:
@@ -45,7 +48,7 @@ def load_tcspc_two_column(path: str) -> np.ndarray:
     return np.asarray(data, dtype=float)
 
 
-def autofitrange(lamp: np.ndarray, decay: np.ndarray, threshold: float = 10.0) -> Tuple[int, int]:
+def autofitrange(lamp: np.ndarray, decay: np.ndarray, threshold: float = 10.0) -> tuple[int, int]:
     """Port of gfit/autofitrange.m.
 
     Parameters
@@ -93,7 +96,7 @@ def auto_fit_range_tcspc(
     start_at_peak: bool = True,
     skip_first: int = 0,
     skip_last: int = 0,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Auto fit range similar to chisurf.core.fluorescence.tcspc.initial_fit_range.
 
     Parameters
@@ -112,7 +115,6 @@ def auto_fit_range_tcspc(
     skip_first, skip_last : int
         Extra channels to skip at the beginning / end of the fit range.
     """
-
     decay = np.asarray(decay, dtype=float).ravel()
     n = decay.size
     if n == 0:
@@ -158,24 +160,28 @@ def auto_fit_range_tcspc(
     return start, stop
 
 
-
-def _lamp_background(lamp: np.ndarray, irf_background: Optional[float]) -> float:
+def _lamp_background(lamp: np.ndarray, irf_background: float | None) -> float:
     """The constant under the lamp: the tail median, unless given."""
     if irf_background is not None:
         return float(irf_background)
-    tail = lamp[-min(500, lamp.size):]
+    tail = lamp[-min(500, lamp.size) :]
     return float(np.median(tail)) if tail.size else 0.0
 
 
-def _fit_window(decay: np.ndarray, fitrange, fit_start_fraction: float) -> Tuple[int, int]:
+def _fit_window(decay: np.ndarray, fitrange, fit_start_fraction: float) -> tuple[int, int]:
     if fitrange is None:
-        return auto_fit_range_tcspc(decay, count_threshold=100.0, area=0.999,
-                                    start_fraction=float(fit_start_fraction), start_at_peak=True)
+        return auto_fit_range_tcspc(
+            decay,
+            count_threshold=100.0,
+            area=0.999,
+            start_fraction=float(fit_start_fraction),
+            start_at_peak=True,
+        )
     start, stop = int(fitrange[0]), int(fitrange[1])
     return max(0, start), min(decay.size - 1, stop)
 
 
-def _grid(values: np.ndarray, what: str) -> Tuple[float, float, int]:
+def _grid(values: np.ndarray, what: str) -> tuple[float, float, int]:
     values = np.asarray(values, dtype=float).ravel()
     values = values[values > 0.0]
     if values.size < 2:
@@ -185,9 +191,26 @@ def _grid(values: np.ndarray, what: str) -> Tuple[float, float, int]:
     return float(values[0]), float(values[-1]), int(values.size)
 
 
-def _solve(family: str, decay, lamp, dt, grid, fitrange, fit_start_fraction, period, nu, max_iter,
-           prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance,
-           extra_parameters: Dict[str, Tuple[float, bool, float, float]], scalars: Optional[Dict[str, float]] = None):
+def _solve(
+    family: str,
+    decay,
+    lamp,
+    dt,
+    grid,
+    fitrange,
+    fit_start_fraction,
+    period,
+    nu,
+    max_iter,
+    prior,
+    timeshift,
+    background,
+    lamp_scatter,
+    irf_background,
+    optimize_nuisance,
+    extra_parameters: dict[str, tuple[float, bool, float, float]],
+    scalars: dict[str, float] | None = None,
+):
     import IMP.bff as bff
 
     decay = np.asarray(decay, dtype=float).ravel()
@@ -204,7 +227,7 @@ def _solve(family: str, decay, lamp, dt, grid, fitrange, fit_start_fraction, per
     data.set_values_array(np.ascontiguousarray(decay))
     data.set_noise_family(bff.FIT_NOISE_FAMILY_POISSON)
     mask = np.zeros(n)
-    mask[start:stop + 1] = 1.0
+    mask[start : stop + 1] = 1.0
     data.set_mask_array(np.ascontiguousarray(mask))
     response = bff.FitDataset()
     response.set_values_array(np.ascontiguousarray(lamp))
@@ -265,34 +288,55 @@ def _solve(family: str, decay, lamp, dt, grid, fitrange, fit_start_fraction, per
     spectrum = np.asarray(problem.get_structure_output(key, f"{key}.{source}"), dtype=float)
     basis = port("basis", "basis").reshape(n, -1)
     amplitudes = port("maxent", "amplitudes")
-    value = lambda canonical: float(problem.get_parameter(canonical).value)
+
+    def value(canonical):
+        return float(problem.get_parameter(canonical).value)
+
     return problem, key, port, spectrum, basis, amplitudes, (start, stop), value
 
 
 def _result(decay, design, amplitudes, prepared, window, value, port, nu_input, prior, bins, dt):
     start, stop = window
-    y = np.asarray(decay, dtype=float)[start:stop + 1]
+    y = np.asarray(decay, dtype=float)[start : stop + 1]
     sigma = np.sqrt(np.maximum(y, 1.0))
-    fit_additive = value("instrument.background") + value("instrument.scatter") * prepared[start:stop + 1]
-    Fi = design[start:stop + 1] / sigma[:, None]
+    fit_additive = (
+        value("instrument.background") + value("instrument.scatter") * prepared[start : stop + 1]
+    )
+    Fi = design[start : stop + 1] / sigma[:, None]
     M = float(y.size)
     y_w = (y - fit_additive) / sigma
     chisq = float(port("maxent", "chisq")[0])
     entropy = float(port("maxent", "entropy")[0])
     nu = float(port("maxent", "nu")[0])
     lamp_scatter = 0.0
-    prior_vec = (np.full(bins, 1.0 / bins) if prior is None
-                 else np.maximum(np.asarray(prior, dtype=float), MIN_PROB) / np.sum(np.maximum(prior, MIN_PROB)))
+    prior_vec = (
+        np.full(bins, 1.0 / bins)
+        if prior is None
+        else np.maximum(np.asarray(prior, dtype=float), MIN_PROB)
+        / np.sum(np.maximum(prior, MIN_PROB))
+    )
     return {
-        "p": amplitudes, "chisq": chisq, "S": entropy, "Q": chisq - 0.5 * nu * entropy,
+        "p": amplitudes,
+        "chisq": chisq,
+        "S": entropy,
+        "Q": chisq - 0.5 * nu * entropy,
         "chisq_pearson": float(port("maxent", "chisq_pearson")[0]),
         "converged": bool(port("maxent", "converged")[0]),
-        "nu": nu, "nu_input": float(nu_input),
-        "fitrange": (int(start), int(stop)), "dt": float(dt),
-        "timeshift": -value("instrument.timeshift"), "background": value("instrument.background"),
-        "irf_background": value("instrument.response_background"), "lamp_scatter": lamp_scatter,
-        "fit_additive": fit_additive, "H": (2.0 / M) * (Fi.T @ Fi), "g0": (2.0 / M) * (y_w @ Fi),
-        "y": y, "sigma": sigma, "Fi": Fi, "prior": prior_vec,
+        "nu": nu,
+        "nu_input": float(nu_input),
+        "fitrange": (int(start), int(stop)),
+        "dt": float(dt),
+        "timeshift": -value("instrument.timeshift"),
+        "background": value("instrument.background"),
+        "irf_background": value("instrument.response_background"),
+        "lamp_scatter": lamp_scatter,
+        "fit_additive": fit_additive,
+        "H": (2.0 / M) * (Fi.T @ Fi),
+        "g0": (2.0 / M) * (y_w @ Fi),
+        "y": y,
+        "sigma": sigma,
+        "Fi": Fi,
+        "prior": prior_vec,
     }
 
 
@@ -300,27 +344,27 @@ def solve_lifetime_mem(
     decay: Sequence[float],
     lamp: Sequence[float],
     dt: float,
-    tau: Optional[Sequence[float]] = None,
+    tau: Sequence[float] | None = None,
     timeshift: float = 0.0,
     background: float = 0.0,
     lamp_scatter: float = 0.0,
-    fitrange: Optional[Tuple[int, int]] = None,
-    irf_background: Optional[float] = None,
+    fitrange: tuple[int, int] | None = None,
+    irf_background: float | None = None,
     fit_start_fraction: float = 0.9,
     nu: float = 1e-5,
-    progress_cb: Optional[Callable[[int, float, float, float, float], None]] = None,
+    progress_cb: Callable[[int, float, float, float, float], None] | None = None,
     max_iter: int = 200,
     tol: float = 1e-4,
-    period: Optional[float] = None,
+    period: float | None = None,
     optimize_nuisance: bool = False,
     nuisance_max_iter: int = 20,
-    nuisance_step_timeshift: Optional[float] = None,
-    nuisance_step_background: Optional[float] = None,
-    nuisance_step_irf_background: Optional[float] = None,
-    nuisance_step_x_donly: Optional[float] = None,
+    nuisance_step_timeshift: float | None = None,
+    nuisance_step_background: float | None = None,
+    nuisance_step_irf_background: float | None = None,
+    nuisance_step_x_donly: float | None = None,
     nuisance_param_tol: float = 1e-3,
-    prior: Optional[Sequence[float]] = None,
-) -> Dict[str, Any]:
+    prior: Sequence[float] | None = None,
+) -> dict[str, Any]:
     """MEM analysis of TCSPC lifetimes over an evenly spaced lifetime grid.
 
     The default grid spans 1.0–4.0 ns in 0.01 ns steps. ``timeshift`` is the
@@ -329,14 +373,39 @@ def solve_lifetime_mem(
     Returns the tool's result dictionary (``p``, ``tau``, ``Fi``, ``H``, ``g0``,
     ``y``, ``sigma``, ``fitrange``, ``fit_additive``, the instrument values used).
     """
-    tau_arr = np.arange(1.0, 4.0 + 1e-9, 0.01) if tau is None else np.asarray(tau, dtype=float).ravel()
+    tau_arr = (
+        np.arange(1.0, 4.0 + 1e-9, 0.01) if tau is None else np.asarray(tau, dtype=float).ravel()
+    )
     problem, key, port, spectrum, basis, amplitudes, window, value = _solve(
-        "tcspc_maxent_lifetime", decay, lamp, dt, tau_arr, fitrange, fit_start_fraction, period, nu, max_iter,
-        prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance, {})
+        "tcspc_maxent_lifetime",
+        decay,
+        lamp,
+        dt,
+        tau_arr,
+        fitrange,
+        fit_start_fraction,
+        period,
+        nu,
+        max_iter,
+        prior,
+        timeshift,
+        background,
+        lamp_scatter,
+        irf_background,
+        optimize_nuisance,
+        {},
+    )
     prepared = port("basis", "prepared_response")
-    result = _result(decay, basis, amplitudes, prepared, window, value, port, nu, prior, amplitudes.size, dt)
-    result.update({"tau": port("maxent", "distribution")[1::2], "lamp_scatter": float(lamp_scatter),
-                   "nuisance_optimized": bool(optimize_nuisance)})
+    result = _result(
+        decay, basis, amplitudes, prepared, window, value, port, nu, prior, amplitudes.size, dt
+    )
+    result.update(
+        {
+            "tau": port("maxent", "distribution")[1::2],
+            "lamp_scatter": float(lamp_scatter),
+            "nuisance_optimized": bool(optimize_nuisance),
+        }
+    )
     return result
 
 
@@ -344,31 +413,31 @@ def solve_fret_mem(
     decay: Sequence[float],
     lamp: Sequence[float],
     dt: float,
-    R: Optional[Sequence[float]] = None,
+    R: Sequence[float] | None = None,
     tau0: float = 4.1,
     R0: float = 52.0,
-    donly: Optional[Sequence[float]] = None,
+    donly: Sequence[float] | None = None,
     x_donly: float = 0.0,
     timeshift: float = 0.0,
     background: float = 0.0,
     lamp_scatter: float = 0.0,
-    fitrange: Optional[Tuple[int, int]] = None,
-    irf_background: Optional[float] = None,
+    fitrange: tuple[int, int] | None = None,
+    irf_background: float | None = None,
     fit_start_fraction: float = 0.9,
     nu: float = 1e-5,
-    progress_cb: Optional[Callable[[int, float, float, float, float], None]] = None,
+    progress_cb: Callable[[int, float, float, float, float], None] | None = None,
     max_iter: int = 200,
     tol: float = 1e-4,
-    period: Optional[float] = None,
+    period: float | None = None,
     optimize_nuisance: bool = False,
     nuisance_max_iter: int = 20,
-    nuisance_step_timeshift: Optional[float] = None,
-    nuisance_step_background: Optional[float] = None,
-    nuisance_step_irf_background: Optional[float] = None,
-    nuisance_step_x_donly: Optional[float] = None,
+    nuisance_step_timeshift: float | None = None,
+    nuisance_step_background: float | None = None,
+    nuisance_step_irf_background: float | None = None,
+    nuisance_step_x_donly: float | None = None,
     nuisance_param_tol: float = 1e-3,
-    prior: Optional[Sequence[float]] = None,
-) -> Dict[str, Any]:
+    prior: Sequence[float] | None = None,
+) -> dict[str, Any]:
     """Maximum-entropy inversion of a FRET decay to a distance distribution.
 
     Each grid distance quenches the donor (``donly`` pairs ``[c1, tau1, ...]``,
@@ -376,27 +445,62 @@ def solve_fret_mem(
     is donor only. The default grid is 18:0.5:120 Å, as in me_vin4_E.m.
     """
     R_arr = np.arange(18.0, 120.0 + 1e-9, 0.5) if R is None else np.asarray(R, dtype=float).ravel()
-    donly_arr = np.array([1.0, float(tau0)]) if donly is None else np.asarray(donly, dtype=float).ravel()
-    extra = {"fret.tau0": (float(tau0), False, 1e-9, 1e9), "fret.forster_radius": (float(R0), False, 1e-9, 1e9),
-             "fret.kappa2": (2.0 / 3.0, False, 0.0, 4.0),
-             "fret.x_donly": (float(x_donly), bool(optimize_nuisance), 0.0, 1.0)}
+    donly_arr = (
+        np.array([1.0, float(tau0)]) if donly is None else np.asarray(donly, dtype=float).ravel()
+    )
+    extra = {
+        "fret.tau0": (float(tau0), False, 1e-9, 1e9),
+        "fret.forster_radius": (float(R0), False, 1e-9, 1e9),
+        "fret.kappa2": (2.0 / 3.0, False, 0.0, 4.0),
+        "fret.x_donly": (float(x_donly), bool(optimize_nuisance), 0.0, 1.0),
+    }
     for i in range(donly_arr.size // 2):
         extra[f"donor.amplitude.{i}"] = (float(donly_arr[2 * i]), False, 0.0, 1e12)
         extra[f"donor.tau.{i}"] = (float(donly_arr[2 * i + 1]), False, 1e-9, 1e9)
     problem, key, port, spectrum, basis, amplitudes, window, value = _solve(
-        "tcspc_maxent_fret", decay, lamp, dt, R_arr, fitrange, fit_start_fraction, period, nu, max_iter,
-        prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance, extra,
-        scalars={"donor_lifetimes": donly_arr.size // 2})
+        "tcspc_maxent_fret",
+        decay,
+        lamp,
+        dt,
+        R_arr,
+        fitrange,
+        fit_start_fraction,
+        period,
+        nu,
+        max_iter,
+        prior,
+        timeshift,
+        background,
+        lamp_scatter,
+        irf_background,
+        optimize_nuisance,
+        extra,
+        scalars={"donor_lifetimes": donly_arr.size // 2},
+    )
     # The design, per distance: the quenched donor species with their
     # amplitudes, plus the donor-only part (FRETSpectrumNode's layout).
     per = donly_arr.size // 2
     distances = amplitudes.size
     weights = spectrum[0::2]
-    quenched = (basis[:, :distances * per] * weights[:distances * per]).reshape(basis.shape[0], distances, per).sum(2)
-    design = quenched + (basis[:, distances * per:] @ weights[distances * per:])[:, None]
+    quenched = (
+        (basis[:, : distances * per] * weights[: distances * per])
+        .reshape(basis.shape[0], distances, per)
+        .sum(2)
+    )
+    design = quenched + (basis[:, distances * per :] @ weights[distances * per :])[:, None]
     prepared = port("basis", "prepared_response")
-    result = _result(decay, design, amplitudes, prepared, window, value, port, nu, prior, distances, dt)
-    result.update({"R": port("maxent", "distribution")[1::2], "tau0": float(tau0), "R0": float(R0),
-                   "donly": donly_arr, "x_donly": value("fret.x_donly"), "lamp_scatter": float(lamp_scatter),
-                   "nuisance_optimized": bool(optimize_nuisance)})
+    result = _result(
+        decay, design, amplitudes, prepared, window, value, port, nu, prior, distances, dt
+    )
+    result.update(
+        {
+            "R": port("maxent", "distribution")[1::2],
+            "tau0": float(tau0),
+            "R0": float(R0),
+            "donly": donly_arr,
+            "x_donly": value("fret.x_donly"),
+            "lamp_scatter": float(lamp_scatter),
+            "nuisance_optimized": bool(optimize_nuisance),
+        }
+    )
     return result

@@ -9,15 +9,16 @@ from unittest.mock import MagicMock
 
 from chisurf.server.services.datasets import (
     add_dataset,
-    remove_datasets,
-    list_datasets,
     get_dataset_info,
+    list_datasets,
+    remove_datasets,
 )
 from chisurf.server.session import SessionState
 
 
 class DummyDataset:
     """Minimal dataset-like object that is not iterable."""
+
     def __init__(self, name="test", uid="dummy-uid"):
         self.name = name
         self.unique_identifier = uid
@@ -27,6 +28,7 @@ class DummyDataset:
 
 class DummyReader:
     """Minimal experiment reader that returns a DummyDataset."""
+
     name = "DummyReader"
     filename = "/path/to/test.ptu"
 
@@ -35,7 +37,6 @@ class DummyReader:
 
 
 class TestDatasetsService:
-
     def test_list_datasets_empty(self):
         state = SessionState()
         result = list_datasets(state)

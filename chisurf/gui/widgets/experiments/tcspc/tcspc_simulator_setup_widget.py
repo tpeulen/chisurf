@@ -103,9 +103,7 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
         self.toolButton_select_irf = QtWidgets.QToolButton(self)
         self.toolButton_select_irf.setText("Select IRF")
-        self.toolButton_select_irf.setToolTip(
-            "Select IRF dataset from imported TCSPC curves"
-        )
+        self.toolButton_select_irf.setToolTip("Select IRF dataset from imported TCSPC curves")
         irf_select_layout.addWidget(self.toolButton_select_irf)
 
         self.toolButton_unload_irf = QtWidgets.QToolButton(self)
@@ -168,9 +166,11 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         aniso_layout.addLayout(mode_layout)
         corr_layout = QtWidgets.QHBoxLayout()
         corr_layout.setContentsMargins(0, 0, 0, 0)
-        for attr, label, value in (("doubleSpinBox_g_factor", "g:", 1.0),
-                                   ("doubleSpinBox_l1", "l1:", 0.0),
-                                   ("doubleSpinBox_l2", "l2:", 0.0)):
+        for attr, label, value in (
+            ("doubleSpinBox_g_factor", "g:", 1.0),
+            ("doubleSpinBox_l1", "l1:", 0.0),
+            ("doubleSpinBox_l2", "l2:", 0.0),
+        ):
             spin = QtWidgets.QDoubleSpinBox(aniso_group)
             spin.setDecimals(4)
             if attr == "doubleSpinBox_g_factor":
@@ -180,9 +180,11 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
                 spin.setRange(-10.0, 10.0)
             spin.setValue(value)
             spin.setToolTip(
-                {attr: "Parallel/perpendicular detection sensitivity ratio.",
-                 "doubleSpinBox_l1": "Mixing factor of the parallel (VV) channel.",
-                 "doubleSpinBox_l2": "Mixing factor of the perpendicular (VH) channel."}[attr]
+                {
+                    attr: "Parallel/perpendicular detection sensitivity ratio.",
+                    "doubleSpinBox_l1": "Mixing factor of the parallel (VV) channel.",
+                    "doubleSpinBox_l2": "Mixing factor of the perpendicular (VH) channel.",
+                }[attr]
             )
             corr_layout.addWidget(QtWidgets.QLabel(label))
             corr_layout.addWidget(spin)
@@ -264,9 +266,7 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         # Anisotropy controls push into the setup like the .ui controls do
         # via actionParametersChanged.
         try:
-            self.comboBox_polarization.currentIndexChanged.connect(
-                self.onParametersChanged
-            )
+            self.comboBox_polarization.currentIndexChanged.connect(self.onParametersChanged)
             self.doubleSpinBox_g_factor.valueChanged.connect(self.onParametersChanged)
             self.doubleSpinBox_l1.valueChanged.connect(self.onParametersChanged)
             self.doubleSpinBox_l2.valueChanged.connect(self.onParametersChanged)
@@ -306,59 +306,59 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
             return
 
         # Update sample_name line edit
-        if hasattr(setup, 'sample_name'):
+        if hasattr(setup, "sample_name"):
             self.lineEdit.setText(setup.sample_name)
 
         # Update dt spin box
-        if hasattr(setup, 'dt'):
+        if hasattr(setup, "dt"):
             self.doubleSpinBox.setValue(setup.dt)
 
         # Update n_tac spin box
-        if hasattr(setup, 'n_tac'):
+        if hasattr(setup, "n_tac"):
             self.spinBox.setValue(setup.n_tac)
 
         # Update p0 spin box
-        if hasattr(setup, 'p0'):
+        if hasattr(setup, "p0"):
             self.spinBox_2.setValue(int(setup.p0))
 
         # Update lifetime_spectrum line edit
-        if hasattr(setup, 'lifetime_spectrum'):
+        if hasattr(setup, "lifetime_spectrum"):
             lt = setup.lifetime_spectrum
             if isinstance(lt, np.ndarray):
-                text = ', '.join(map(str, lt)) if lt.size > 0 else ''
+                text = ", ".join(map(str, lt)) if lt.size > 0 else ""
             elif isinstance(lt, (list, tuple)):
-                text = ', '.join(map(str, lt))
+                text = ", ".join(map(str, lt))
             elif lt is None:
-                text = ''
+                text = ""
             else:
                 text = str(lt)
             self.lineEdit_2.setText(text)
 
         # Anisotropy state
         try:
-            pol = str(getattr(setup, 'polarization', 'vm')).lower()
+            pol = str(getattr(setup, "polarization", "vm")).lower()
         except Exception:
-            pol = 'vm'
+            pol = "vm"
         try:
-            idx = self.comboBox_polarization.findData('vv/vh' if pol != 'vm' else 'vm')
+            idx = self.comboBox_polarization.findData("vv/vh" if pol != "vm" else "vm")
             if idx >= 0:
                 self.comboBox_polarization.setCurrentIndex(idx)
         except Exception:
             pass
         try:
-            self.doubleSpinBox_g_factor.setValue(float(getattr(setup, 'g_factor', 1.0)))
-            self.doubleSpinBox_l1.setValue(float(getattr(setup, 'l1', 0.0)))
-            self.doubleSpinBox_l2.setValue(float(getattr(setup, 'l2', 0.0)))
+            self.doubleSpinBox_g_factor.setValue(float(getattr(setup, "g_factor", 1.0)))
+            self.doubleSpinBox_l1.setValue(float(getattr(setup, "l1", 0.0)))
+            self.doubleSpinBox_l2.setValue(float(getattr(setup, "l2", 0.0)))
         except Exception:
             pass
         try:
-            rot = getattr(setup, 'rotation_spectrum', None)
+            rot = getattr(setup, "rotation_spectrum", None)
             if isinstance(rot, np.ndarray):
-                text = ', '.join(map(str, rot)) if rot.size > 0 else ''
+                text = ", ".join(map(str, rot)) if rot.size > 0 else ""
             elif isinstance(rot, (list, tuple)):
-                text = ', '.join(map(str, rot))
+                text = ", ".join(map(str, rot))
             else:
-                text = ''
+                text = ""
             self.lineEdit_rotation.setText(text)
         except Exception:
             pass
@@ -389,11 +389,11 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         # calibration attributes, so a fit over an added VV/VH dataset reads
         # the corrections the simulation ran with — like a VV/VH file load.
         try:
-            polarization = 'vv/vh' if self.comboBox_polarization.currentData() == 'vv/vh' else 'vm'
+            polarization = "vv/vh" if self.comboBox_polarization.currentData() == "vv/vh" else "vm"
             setup.polarization = polarization
             # ``is_vv_vh`` is the TCSPCReader property; its setter keeps the
             # use_header/dt_scaled bookkeeping consistent.
-            setup.is_vv_vh = polarization != 'vm'
+            setup.is_vv_vh = polarization != "vm"
             setup.g_factor = float(self.doubleSpinBox_g_factor.value())
             setup.l1 = float(self.doubleSpinBox_l1.value())
             setup.l2 = float(self.doubleSpinBox_l2.value())
@@ -415,7 +415,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         :meth:`onParametersChanged` is called so ``gui.current_setup``
         reflects the new spectrum.
         """
-
         import numpy as _np
         from qtpy import QtWidgets as _QtWidgets
 
@@ -477,7 +476,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
     def _parse_lifetime_spectrum(self) -> np.ndarray:
         """Parse the lifetime spectrum text into an interleaved numpy array."""
-
         text = self.lineEdit_2.text()
         parts = [p.strip() for p in str(text).replace(";", ",").split(",") if p.strip()]
         values = []
@@ -490,7 +488,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
     def _parse_rotation_spectrum(self) -> np.ndarray:
         """Parse the rotation-spectrum text into an interleaved numpy array."""
-
         text = self.lineEdit_rotation.text()
         parts = [p.strip() for p in str(text).replace(";", ",").split(",") if p.strip()]
         values = []
@@ -504,13 +501,12 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
     def _is_vvvh_mode(self) -> bool:
         """Return True when the mode combo selects the polarized VV/VH simulation."""
         try:
-            return self.comboBox_polarization.currentData() == 'vv/vh'
+            return self.comboBox_polarization.currentData() == "vv/vh"
         except Exception:
             return False
 
     def _update_irf_label(self) -> None:
         """Update the IRF source label based on the currently selected dataset."""
-
         try:
             ds = getattr(self, "_irf_dataset", None)
         except Exception:
@@ -534,7 +530,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
     def _on_irf_button_clicked(self) -> None:
         """Show the IRF selector window when the user clicks the select button."""
-
         try:
             self.irf_selector.show()
         except Exception:
@@ -542,7 +537,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
     def _on_irf_unload_clicked(self) -> None:
         """Unload the currently selected IRF and revert to Gaussian mode."""
-
         try:
             self._irf_dataset = None
         except Exception:
@@ -551,7 +545,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
     def _on_irf_selection_changed(self):
         """Callback used by the hidden IRF selector when the selection changes."""
-
         ds = None
         try:
             ds = self.irf_selector.selected_dataset
@@ -575,7 +568,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         The resolution itself lives in the core simulator so the reader-level
         ``read()`` path sees the same response.
         """
-
         from chisurf.core.experiments.tcspc.simulator import resolve_irf as _resolve_irf
 
         try:
@@ -603,7 +595,6 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         and **+ Data** buttons agree. The IRF used for the simulation is stored
         (scaled) for plotting.
         """
-
         import numpy as _np
 
         from chisurf.core.experiments.tcspc.simulator import simulate_decay as _simulate
@@ -706,7 +697,7 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
 
             r = anisotropy_rt(np.asarray(t, dtype=float), rot)
             self.anisotropy_plot.clear()
-            self.anisotropy_plot.line(t, r, pen='w')
+            self.anisotropy_plot.line(t, r, pen="w")
         except Exception:
             pass
 
@@ -724,15 +715,15 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
             self.simulation_plot.clear()
             if y is not None:
                 # Magic-angle decay
-                self.simulation_plot.line(t, y, pen='y')
+                self.simulation_plot.line(t, y, pen="y")
             else:
                 # Polarized pair: parallel and perpendicular channels
                 y = vv
-                self.simulation_plot.line(t, vv, pen='m')
-                self.simulation_plot.line(t, vh, pen='b')
+                self.simulation_plot.line(t, vv, pen="m")
+                self.simulation_plot.line(t, vh, pen="b")
             # IRF overlay (if available and matching length)
             if irf is not None and np.size(irf) == np.size(t):
-                self.simulation_plot.line(t, irf, pen='r')
+                self.simulation_plot.line(t, irf, pen="r")
             try:
                 self.simulation_plot.set_log(y=True)
             except Exception:
@@ -782,16 +773,18 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         experiment, setup and data_reader metadata so that it behaves like
         TCSPC datasets loaded via CSV/TTTR readers.
         """
-
         import numpy as _np
+
         from chisurf.macros import core_data as _core_data
 
         t = getattr(self, "_sim_t", None)
         y = getattr(self, "_sim_y", None)
         vv = getattr(self, "_sim_vv", None)
         vh = getattr(self, "_sim_vh", None)
-        if t is None or _np.size(t) == 0 or (
-                (y is None or _np.size(y) == 0) and (vv is None or vh is None)
+        if (
+            t is None
+            or _np.size(t) == 0
+            or ((y is None or _np.size(y) == 0) and (vv is None or vh is None))
         ):
             # If nothing simulated yet, try to simulate now
             t, y = self._simulate_decay()
@@ -813,15 +806,17 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
         gui = getattr(cs, "cs", None)
 
         try:
-            experiment = getattr(gui, 'current_experiment', None) if gui is not None else None
+            experiment = getattr(gui, "current_experiment", None) if gui is not None else None
         except Exception:
             experiment = None
         try:
-            setup = getattr(gui, 'current_setup', None) if gui is not None else None
+            setup = getattr(gui, "current_setup", None) if gui is not None else None
         except Exception:
             setup = None
         try:
-            experiment_reader = getattr(gui, 'current_experiment_reader', None) if gui is not None else None
+            experiment_reader = (
+                getattr(gui, "current_experiment_reader", None) if gui is not None else None
+            )
         except Exception:
             experiment_reader = None
 
@@ -844,13 +839,13 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
             # add_fit looks first.
             try:
                 pol_meta = {
-                    'polarization': 'vv/vh',
-                    'g_factor': float(self.doubleSpinBox_g_factor.value()),
-                    'l1': float(self.doubleSpinBox_l1.value()),
-                    'l2': float(self.doubleSpinBox_l2.value()),
+                    "polarization": "vv/vh",
+                    "g_factor": float(self.doubleSpinBox_g_factor.value()),
+                    "l1": float(self.doubleSpinBox_l1.value()),
+                    "l2": float(self.doubleSpinBox_l2.value()),
                 }
             except Exception:
-                pol_meta = {'polarization': 'vv/vh'}
+                pol_meta = {"polarization": "vv/vh"}
 
             curves = []
             for suffix, yy, eyy in (("VV", vv, ey_vv), ("VH", vh, ey_vh)):

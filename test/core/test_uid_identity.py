@@ -10,6 +10,7 @@ from chisurf.core.base import Base, find_objects
 
 class _ConcreteBase(Base):
     """Minimal concrete Base subclass for testing."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -61,8 +62,8 @@ def test_base_eq_with_non_base():
 
 def test_base_eq_with_none():
     b = _ConcreteBase()
-    assert (b is not None)
-    assert (b == None) is False
+    assert b is not None
+    assert (b is None) is False
 
 
 def test_base_set_dedup_by_uid():
@@ -184,7 +185,7 @@ def test_project_load_v3_raises():
 
 
 def test_project_load_v4_ok():
-    uid = str(uuid.uuid4())
+    str(uuid.uuid4())
     data = {
         "project_format_version": 4,
         "meta": {"name": "test"},
@@ -219,6 +220,7 @@ def test_find_by_uuid_invalid_input():
 def test_find_by_uuid_module_level():
     b = _ConcreteBase()
     from chisurf.core.base import find_by_uuid
+
     assert find_by_uuid(b.unique_identifier) is b
 
 
@@ -242,16 +244,18 @@ def test_find_by_uuid_after_copy():
 
 
 def test_parameter_eq_by_uid():
-    chinet = pytest.importorskip("chinet")
+    pytest.importorskip("chinet")
     from chisurf.core.parameter import Parameter
+
     p1 = Parameter(value=1.0)
     p2 = Parameter(value=1.0)
     assert p1 != p2
 
 
 def test_parameter_eq_same_uid():
-    chinet = pytest.importorskip("chinet")
+    pytest.importorskip("chinet")
     from chisurf.core.parameter import Parameter
+
     uid = str(uuid.uuid4())
     p1 = Parameter(value=1.0, unique_identifier=uid)
     p2 = Parameter(value=1.0, unique_identifier=uid)
@@ -260,8 +264,9 @@ def test_parameter_eq_same_uid():
 
 
 def test_parameter_set_dedup_by_uid():
-    chinet = pytest.importorskip("chinet")
+    pytest.importorskip("chinet")
     from chisurf.core.parameter import Parameter
+
     uid = str(uuid.uuid4())
     p1 = Parameter(value=1.0, unique_identifier=uid)
     p2 = Parameter(value=1.0, unique_identifier=uid)
@@ -270,8 +275,9 @@ def test_parameter_set_dedup_by_uid():
 
 
 def test_parameter_different_values_different_uids():
-    chinet = pytest.importorskip("chinet")
+    pytest.importorskip("chinet")
     from chisurf.core.parameter import Parameter
+
     p1 = Parameter(value=1.0)
     p2 = Parameter(value=2.0)
     assert p1 != p2
@@ -283,8 +289,9 @@ def test_parameter_different_values_different_uids():
 
 def test_fit_state_roundtrip_uid_keys():
     pytest.importorskip("chinet")
-    from chisurf.core.fitting.parameter import FittingParameterGroup, FittingParameter
+    from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.core.project.fit_state import _model_to_state
+
     pg = FittingParameterGroup()
     pg.tau = FittingParameter(name="tau", value=3.5)
     pg.amp = FittingParameter(name="amp", value=0.5)
@@ -299,8 +306,9 @@ def test_fit_state_roundtrip_uid_keys():
 
 def test_fit_state_uid_persistence():
     pytest.importorskip("chinet")
-    from chisurf.core.fitting.parameter import FittingParameterGroup, FittingParameter
+    from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.core.project.fit_state import _model_to_state
+
     pg = FittingParameterGroup()
     pg.tau = FittingParameter(name="tau", value=3.5)
     pg.find_parameters()
@@ -312,13 +320,14 @@ def test_fit_state_uid_persistence():
 
 def test_fit_state_intra_fit_link_by_uid():
     pytest.importorskip("chinet")
-    from chisurf.core.fitting.parameter import FittingParameterGroup, FittingParameter
+    from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.core.project.fit_state import _model_to_state
+
     master = FittingParameter(name="master", value=1.0)
     slave = FittingParameter(name="slave", value=0.0, link=master)
     pg = FittingParameterGroup()
-    pg.__dict__['master'] = master
-    pg.__dict__['slave'] = slave
+    pg.__dict__["master"] = master
+    pg.__dict__["slave"] = slave
     pg.find_parameters()
     state = _model_to_state(pg)
     uid_slave = str(slave.unique_identifier)

@@ -1,6 +1,5 @@
-import sys
-from pathlib import Path
 import sqlite3
+import sys
 
 # Add project root
 sys.path.append(r"e:\dev\chisurf")

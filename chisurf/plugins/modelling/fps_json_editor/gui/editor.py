@@ -6,19 +6,19 @@ import json
 import traceback
 from typing import Any
 
+from chimol.core.viewer import Viewer
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets as gui_widgets
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor import SimpleCodeEditor
 
-from chimol.core.viewer import Viewer
 from ..core.model import FpsJsonModel
 from .distance_panel import DistancePanel
 from .flexfit_panel import FlexFitPanel
 from .position_panel import PositionPanel
-from chisurf.gui import dialogs
 
 
 class FpsJsonEditor(QtWidgets.QWidget):
@@ -47,8 +47,7 @@ class FpsJsonEditor(QtWidgets.QWidget):
         self.mol_view_3d = Viewer()
         self.position_panel = PositionPanel(client=self._client, mol_view_3d=self.mol_view_3d)
         self.distance_panel = DistancePanel(
-            position_panel=self.position_panel,
-            mol_view_3d=self.mol_view_3d
+            position_panel=self.position_panel, mol_view_3d=self.mol_view_3d
         )
         self.flexfit_panel = FlexFitPanel()
         self.json_tab_widget = self._build_json_panel()
@@ -76,6 +75,7 @@ class FpsJsonEditor(QtWidgets.QWidget):
     def _make_default_client():
         """Create a default FpsJsonEditorClient with local in-process services."""
         from ..api.client import FpsJsonEditorClient
+
         return FpsJsonEditorClient()
 
     def _build_json_panel(self) -> QtWidgets.QWidget:
@@ -250,8 +250,12 @@ class FpsJsonEditor(QtWidgets.QWidget):
         try:
             self.fps_json_payload = json.loads(self.json_editor.text())
         except json.JSONDecodeError:
-            dialogs.error(self, "JSON Parse Error", "The editor content is not valid JSON.",
-                          detail=traceback.format_exc())
+            dialogs.error(
+                self,
+                "JSON Parse Error",
+                "The editor content is not valid JSON.",
+                detail=traceback.format_exc(),
+            )
 
     def onLoadJSON(self, filename: str | bool | None = None) -> None:
         """Load a JSON configuration file."""
@@ -265,8 +269,12 @@ class FpsJsonEditor(QtWidgets.QWidget):
                 self._model.load_file(filename)
                 self._refresh_ui()
             except Exception:
-                dialogs.error(self, "Load failed", "Failed to load the JSON file.",
-                              detail=traceback.format_exc())
+                dialogs.error(
+                    self,
+                    "Load failed",
+                    "Failed to load the JSON file.",
+                    detail=traceback.format_exc(),
+                )
 
     def onSaveJSON(self, filename: str | bool | None = None) -> None:
         """Save JSON configuration to a file."""
@@ -279,8 +287,12 @@ class FpsJsonEditor(QtWidgets.QWidget):
             try:
                 self._model.save_file(filename)
             except Exception:
-                dialogs.error(self, "Save failed", "Failed to save the JSON file.",
-                              detail=traceback.format_exc())
+                dialogs.error(
+                    self,
+                    "Save failed",
+                    "Failed to save the JSON file.",
+                    detail=traceback.format_exc(),
+                )
 
     def onClearAll(self) -> None:
         """Prompt to clear the entire data model."""

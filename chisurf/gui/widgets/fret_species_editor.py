@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pathlib
 from collections.abc import Callable
-from typing import Any
 
 import numpy as np
 
@@ -24,16 +23,18 @@ class FretSpeciesEditorModel:
 
     def __init__(self, *, n_bins: int = 256, bin_width: float = 0.05) -> None:
         self.name = "FRET species"
-        self.state = "da"                       # d_only | da | a_only
+        self.state = "da"  # d_only | da | a_only
         self.n_bins = int(n_bins)
         self.bin_width = float(bin_width)
         self.donor_rows: list[dict[str, float]] = [{"amplitude": 1.0, "lifetime": 4.0}]
         self.acceptor_rows: list[dict[str, float]] = [{"amplitude": 1.0, "lifetime": 2.0}]
         # FRET input
-        self.fret_mode = "efficiency"           # efficiency | distance
+        self.fret_mode = "efficiency"  # efficiency | distance
         self.transfer_efficiency = 0.5
         # Distance distribution (Gaussian components), reusing the fit inputs.
-        self.distance_rows: list[dict[str, float]] = [{"mean": 50.0, "sigma": 6.0, "amplitude": 1.0}]
+        self.distance_rows: list[dict[str, float]] = [
+            {"mean": 50.0, "sigma": 6.0, "amplitude": 1.0}
+        ]
         self.forster_radius = 52.0
         self.kappa2 = 2.0 / 3.0
         self.x_donly = 0.0
@@ -181,8 +182,12 @@ class FretSpeciesEditorModel:
 
         # Ideal (no-IRF) preview — the per-detector IRF is applied at compute time.
         return fret_species_patterns(
-            int(self.n_bins), self._species(), dt=float(self.bin_width), irf=None,
-            polarized=bool(self.polarized), normalize=True,
+            int(self.n_bins),
+            self._species(),
+            dt=float(self.bin_width),
+            irf=None,
+            polarized=bool(self.polarized),
+            normalize=True,
         )
 
     def channel_series(self) -> list[dict]:
@@ -195,8 +200,9 @@ class FretSpeciesEditorModel:
         for key, decay in patterns.items():
             base = key.split("_")[0]
             color = _COLORS.get(base, "#22d3ee")
-            series.append({"x": x, "y": np.maximum(decay, 1e-12).tolist(),
-                           "name": key, "color": color})
+            series.append(
+                {"x": x, "y": np.maximum(decay, 1e-12).tolist(), "name": key, "color": color}
+            )
         return series
 
     # -- output -------------------------------------------------------
@@ -214,11 +220,18 @@ class FretSpeciesEditorModel:
             "forster_radius": float(self.forster_radius),
             "kappa2": float(self.kappa2),
             "x_donly": float(self.x_donly),
-            "crosstalk": {"alpha": float(self.alpha), "beta": float(self.beta),
-                          "gamma": float(self.gamma), "delta": float(self.delta)},
-            "anisotropy": {"r_inf": float(self.r_inf), "g_factor": float(self.g_factor),
-                           "donor_spectrum": [dict(r) for r in self.donor_aniso_rows],
-                           "acceptor_spectrum": [dict(r) for r in self.acceptor_aniso_rows]},
+            "crosstalk": {
+                "alpha": float(self.alpha),
+                "beta": float(self.beta),
+                "gamma": float(self.gamma),
+                "delta": float(self.delta),
+            },
+            "anisotropy": {
+                "r_inf": float(self.r_inf),
+                "g_factor": float(self.g_factor),
+                "donor_spectrum": [dict(r) for r in self.donor_aniso_rows],
+                "acceptor_spectrum": [dict(r) for r in self.acceptor_aniso_rows],
+            },
             "bin_width": float(self.bin_width),
             "polarized": bool(self.polarized),
             "period_ns": float(self.period_ns),
@@ -231,29 +244,40 @@ class FretSpeciesEditorModel:
         self.donor_rows = self._rows_from(component.get("donor_spectrum"), self.donor_rows)
         self.acceptor_rows = self._rows_from(component.get("acceptor_spectrum"), self.acceptor_rows)
         self.fret_mode = str(component.get("fret_mode", self.fret_mode))
-        self.transfer_efficiency = float(component.get("transfer_efficiency", self.transfer_efficiency))
+        self.transfer_efficiency = float(
+            component.get("transfer_efficiency", self.transfer_efficiency)
+        )
         rows = component.get("distance_rows")
         if rows:
             self.distance_rows = [dict(r) for r in rows]
         elif "distance" in component:
-            self.distance_rows = [{"mean": float(component["distance"]), "sigma": 0.0, "amplitude": 1.0}]
+            self.distance_rows = [
+                {"mean": float(component["distance"]), "sigma": 0.0, "amplitude": 1.0}
+            ]
         self.forster_radius = float(component.get("forster_radius", self.forster_radius))
         self.kappa2 = float(component.get("kappa2", self.kappa2))
         self.x_donly = float(component.get("x_donly", self.x_donly))
         ct = component.get("crosstalk", {}) or {}
         self.alpha, self.beta = float(ct.get("alpha", self.alpha)), float(ct.get("beta", self.beta))
-        self.gamma, self.delta = float(ct.get("gamma", self.gamma)), float(ct.get("delta", self.delta))
+        self.gamma, self.delta = (
+            float(ct.get("gamma", self.gamma)),
+            float(ct.get("delta", self.delta)),
+        )
         an = component.get("anisotropy", {}) or {}
         self.r_inf = float(an.get("r_inf", self.r_inf))
         self.g_factor = float(an.get("g_factor", self.g_factor))
         if an.get("donor_spectrum"):
             self.donor_aniso_rows = [dict(r) for r in an["donor_spectrum"]]
         elif "donor_r0" in an:
-            self.donor_aniso_rows = [{"amplitude": float(an["donor_r0"]), "rho": float(an.get("donor_rho", 1.0))}]
+            self.donor_aniso_rows = [
+                {"amplitude": float(an["donor_r0"]), "rho": float(an.get("donor_rho", 1.0))}
+            ]
         if an.get("acceptor_spectrum"):
             self.acceptor_aniso_rows = [dict(r) for r in an["acceptor_spectrum"]]
         elif "acceptor_r0" in an:
-            self.acceptor_aniso_rows = [{"amplitude": float(an["acceptor_r0"]), "rho": float(an.get("acceptor_rho", 1.0))}]
+            self.acceptor_aniso_rows = [
+                {"amplitude": float(an["acceptor_r0"]), "rho": float(an.get("acceptor_rho", 1.0))}
+            ]
         self.bin_width = float(component.get("bin_width", self.bin_width))
         self.polarized = bool(component.get("polarized", self.polarized))
         self.period_ns = float(component.get("period_ns", self.period_ns))
@@ -264,5 +288,7 @@ class FretSpeciesEditorModel:
         if not spectrum:
             return default
         values = list(spectrum)
-        return [{"amplitude": float(a), "lifetime": float(t)}
-                for a, t in zip(values[0::2], values[1::2])]
+        return [
+            {"amplitude": float(a), "lifetime": float(t)}
+            for a, t in zip(values[0::2], values[1::2])
+        ]

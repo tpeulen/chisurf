@@ -1,90 +1,91 @@
-import utils
-import unittest
 import pathlib
+import unittest
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-import tempfile
 import copy
+import tempfile
+
 import numpy as np
 
 import chisurf.core.base
-import chisurf.core.experiments
 import chisurf.core.data
+import chisurf.core.experiments
 
 
-def get_data_values(
-        c_value: float = 3.1,
-        a_value: float = 1.2,
-        n_points: int = 32
-):
+def get_data_values(c_value: float = 3.1, a_value: float = 1.2, n_points: int = 32):
     x_data = np.linspace(0, 32, n_points)
-    y_data = c_value + a_value * x_data ** 2.0
+    y_data = c_value + a_value * x_data**2.0
     return x_data, y_data
 
 
 class Tests(unittest.TestCase):
-
     def test_model_abc_enforces_update_model(self):
         from chisurf.core.models.model import Model
+
         # Model now has metaclass=ABCMeta; a subclass that doesn't
         # override update_model() should raise at instantiation time.
         with self.assertRaises(TypeError):
+
             class BadModel(Model):
                 pass
-            BadModel()  # noqa: this line should never be reached
+
+            BadModel()  # this line should never be reached
 
     def test_model_abc_allows_concrete_subclass(self):
-        from chisurf.core.models.model import Model
         import unittest.mock
+
         import numpy as np
+
+        from chisurf.core.models.model import Model
+
         fit = unittest.mock.MagicMock()
         fit.data = np.array([1.0, 2.0])
+
         # A subclass that implements update_model() must work.
         class GoodModel(Model):
             def _update_model(self, **kwargs):
                 self.y = np.array([1.0, 2.0])
+
         instance = GoodModel(fit=fit)
-        self.assertTrue(hasattr(instance, 'update'))
+        self.assertTrue(hasattr(instance, "update"))
         # update() is concrete (not abstract) so calling it should work
         instance.update()
 
     def test_model_update_not_abstract(self):
-        from chisurf.core.models.model import Model
         import unittest.mock
+
         import numpy as np
+
+        from chisurf.core.models.model import Model
+
         fit = unittest.mock.MagicMock()
         fit.data = np.array([1.0, 2.0])
+
         class ModelWithOnlyUpdateModel(Model):
             def _update_model(self, **kwargs):
                 self.y = np.array([1.0, 2.0])
+
         instance = ModelWithOnlyUpdateModel(fit=fit)
         # update() has a default implementation; calling it should not raise
         instance.update()
 
     def test_base_init(self):
         b1 = chisurf.core.base.Base()
-        self.assertEqual(b1.name, 'Base')
-        b2 = chisurf.core.base.Base(name='B')
-        self.assertEqual(b2.name, 'B')
-        b3 = chisurf.core.base.Base(
-            name='B',
-            test_parameter='aa'
-        )
-        self.assertEqual(
-            b3.test_parameter,
-            'aa'
-        )
+        self.assertEqual(b1.name, "Base")
+        b2 = chisurf.core.base.Base(name="B")
+        self.assertEqual(b2.name, "B")
+        b3 = chisurf.core.base.Base(name="B", test_parameter="aa")
+        self.assertEqual(b3.test_parameter, "aa")
         test_name = "tes"
         b3.name = test_name
-        self.assertEqual(
-            b3.name,
-            test_name
-        )
+        self.assertEqual(b3.name, test_name)
 
     def test_base_copy(self):
-        b1 = chisurf.core.base.Base(name='B')
+        b1 = chisurf.core.base.Base(name="B")
         b2 = copy.copy(b1)
         # A copy keeps the identifier: identity is the *logical* object, so a
         # copy compares and hashes equal to its original. The full contract --
@@ -96,25 +97,19 @@ class Tests(unittest.TestCase):
         )
         self.assertEqual(b1, b2)
         b1.unique_identifier = b2.unique_identifier
-        self.assertDictEqual(
-            b1.to_dict(),
-            b2.to_dict()
-        )
+        self.assertDictEqual(b1.to_dict(), b2.to_dict())
 
     def test_base_dict(self):
         d = {
-            'name': 'B',
-            'test_parameter': 'aa',
-            'meta_data': {
-                'verbose': False,
-                'unique_identifier': 'e7f0eb02-cbab-4aa3-abf2-799aebe96a09'
-            }
+            "name": "B",
+            "test_parameter": "aa",
+            "meta_data": {
+                "verbose": False,
+                "unique_identifier": "e7f0eb02-cbab-4aa3-abf2-799aebe96a09",
+            },
         }
         b1 = chisurf.core.base.Base(**d)
-        self.assertEqual(
-            d,
-            b1.to_dict()
-        )
+        self.assertEqual(d, b1.to_dict())
         b2 = chisurf.core.base.Base()
         b2.from_dict(d)
         self.assertEqual(b1.to_dict(), b2.to_dict())
@@ -122,19 +117,13 @@ class Tests(unittest.TestCase):
     def test_base_uuid(self):
         b1 = chisurf.core.base.Base(value=2.0)
         b2 = chisurf.core.base.Base(value=2.0)
-        self.assertIsNot(
-            b1.unique_identifier,
-            b2.unique_identifier
-        )
+        self.assertIsNot(b1.unique_identifier, b2.unique_identifier)
         b2.from_dict(b1.to_dict())
 
-        self.assertEqual(
-            b1.unique_identifier,
-            b2.unique_identifier
-        )
+        self.assertEqual(b1.unique_identifier, b2.unique_identifier)
 
     def test_base_yaml(self):
-        yaml_string = 'meta_data:\n  unique_identifier: bf8aa948-d449-48a3-ace7-f361867582dd\n  verbose: false\nname: B\n'
+        yaml_string = "meta_data:\n  unique_identifier: bf8aa948-d449-48a3-ace7-f361867582dd\n  verbose: false\nname: B\n"
         b1 = chisurf.core.base.Base()
         b1.from_yaml(yaml_string, verbose=False)
 
@@ -147,14 +136,8 @@ class Tests(unittest.TestCase):
         self.assertEqual(b2.to_dict(), b3.to_dict())
         # test from_yaml
         b4 = chisurf.core.base.Base()
-        b4.from_yaml(
-            yaml_string=b2.to_yaml(),
-            verbose=True
-        )
-        self.assertEqual(
-            b4.to_dict(),
-            b2.to_dict()
-        )
+        b4.from_yaml(yaml_string=b2.to_yaml(), verbose=True)
+        self.assertEqual(b4.to_dict(), b2.to_dict())
 
     def test_json(self):
         json_string = '{\n    "meta_data": {\n        "unique_identifier": "bf8aa948-d449-48a3-ace7-f361867582dd",\n        "verbose": false\n    },\n    "name": "B"\n}'
@@ -170,132 +153,72 @@ class Tests(unittest.TestCase):
         self.assertEqual(b2.to_dict(), b3.to_dict())
         # test from_json
         b4 = chisurf.core.base.Base()
-        b4.from_json(
-            json_string=b2.to_json(),
-            verbose=True
-        )
-        self.assertEqual(
-            b4.to_dict(),
-            b2.to_dict()
-        )
+        b4.from_json(json_string=b2.to_json(), verbose=True)
+        self.assertEqual(b4.to_dict(), b2.to_dict())
 
     def test_base_save_load(self):
         import tempfile
+
         d = {
-            'meta_data': {
-                'unique_identifier': 'bf8aa948-d449-48a3-ace7-f361867582dd',
-                'verbose': False
+            "meta_data": {
+                "unique_identifier": "bf8aa948-d449-48a3-ace7-f361867582dd",
+                "verbose": False,
             },
-            'name': 'B'
+            "name": "B",
         }
 
         # JSON File
-        #file = tempfile.NamedTemporaryFile(
+        # file = tempfile.NamedTemporaryFile(
         #    suffix='.json'
-        #)
-        #filename = file.name
-        _, filename = tempfile.mkstemp(
-            suffix='.json'
-        )
+        # )
+        # filename = file.name
+        _, filename = tempfile.mkstemp(suffix=".json")
 
         b1 = chisurf.core.base.Base(**d)
-        b1.save(
-            filename=filename,
-            file_type='json',
-            verbose=True
-        )
+        b1.save(filename=filename, file_type="json", verbose=True)
         b2 = chisurf.core.base.Base()
-        b2.load(
-            filename=filename,
-            file_type='json'
-        )
-        self.assertEqual(
-            b2.to_dict(),
-            b1.to_dict()
-        )
+        b2.load(filename=filename, file_type="json")
+        self.assertEqual(b2.to_dict(), b1.to_dict())
 
         # YAML File
-        #file = tempfile.NamedTemporaryFile(
+        # file = tempfile.NamedTemporaryFile(
         #    suffix='.yaml'
-        #)
-        #filename = file.name
-        _, filename = tempfile.mkstemp(
-            suffix='.yaml'
-        )
+        # )
+        # filename = file.name
+        _, filename = tempfile.mkstemp(suffix=".yaml")
 
         b1 = chisurf.core.base.Base(**d)
-        b1.save(
-            filename=filename,
-            file_type='yaml'
-        )
+        b1.save(filename=filename, file_type="yaml")
         b2 = chisurf.core.base.Base()
-        b2.load(
-            filename=filename,
-            file_type='yaml'
-        )
-        self.assertEqual(
-            b2.to_dict(),
-            b1.to_dict()
-        )
-        b2.load(
-            filename="not a file",
-            file_type='yaml'
-        )
+        b2.load(filename=filename, file_type="yaml")
+        self.assertEqual(b2.to_dict(), b1.to_dict())
+        b2.load(filename="not a file", file_type="yaml")
 
     def test_clean_string(self):
         s1 = "ldldöö_ddd   dd**"
         s2 = "ldldoo_ddd_dd"
-        self.assertEqual(
-            chisurf.core.base.clean_string(s1),
-            s2
-        )
+        self.assertEqual(chisurf.core.base.clean_string(s1), s2)
 
     def test_data(self):
         # write some random data
         a = np.random.random(1000)
-        #file = tempfile.NamedTemporaryFile(
+        # file = tempfile.NamedTemporaryFile(
         #    suffix='.npy'
-        #)
-        #filename = file.name
-        _, filename = tempfile.mkstemp(
-            suffix='.npy'
-        )
+        # )
+        # filename = file.name
+        _, filename = tempfile.mkstemp(suffix=".npy")
 
-        np.save(
-            file=filename,
-            arr=a
-        )
-        d = chisurf.core.base.Data(
-            filename=filename,
-            embed_data=True
-        )
-        self.assertEqual(
-            len(d.data),
-            8128
-        )
-        self.assertEqual(
-            d.embed_data,
-            True
-        )
+        np.save(file=filename, arr=a)
+        d = chisurf.core.base.Data(filename=filename, embed_data=True)
+        self.assertEqual(len(d.data), 8128)
+        self.assertEqual(d.embed_data, True)
 
-        d = chisurf.core.base.Data(
-            filename=filename,
-            embed_data=False
-        )
-        self.assertEqual(
-            len(d.data),
-            0
-        )
+        d = chisurf.core.base.Data(filename=filename, embed_data=False)
+        self.assertEqual(len(d.data), 0)
 
         d.embed_data = False
-        self.assertEqual(
-            d.embed_data,
-            False
-        )
-        self.assertEqual(
-            d.data,
-            None
-        )
+        self.assertEqual(d.embed_data, False)
+        self.assertEqual(d.data, None)
 
     def test_hasattr(self):
         # Test that hasattr correctly returns True for existing attributes
@@ -318,44 +241,17 @@ class Tests(unittest.TestCase):
     def test_data_group(self):
         a_value = 1.2
         c_value = 3.1
-        x_data, y_data = get_data_values(
-            a_value=a_value,
-            c_value=c_value
-        )
-        data = chisurf.core.data.DataCurve(
-            x=x_data,
-            y=y_data,
-            ey=np.ones_like(y_data)
-        )
+        x_data, y_data = get_data_values(a_value=a_value, c_value=c_value)
+        data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=np.ones_like(y_data))
         data2 = copy.copy(data)
-        self.assertEqual(
-            np.allclose(
-                data2.y,
-                data.y
-            ),
-            True
-        )
-        self.assertEqual(
-            np.allclose(
-                data2.x,
-                data.x
-            ),
-            True
-        )
-        data_group = chisurf.core.data.DataGroup(
-            [data, data2]
-        )
+        self.assertEqual(np.allclose(data2.y, data.y), True)
+        self.assertEqual(np.allclose(data2.x, data.x), True)
+        data_group = chisurf.core.data.DataGroup([data, data2])
         data_group.current_dataset = 0
-        self.assertIs(
-            data_group.current_dataset,
-            data
-        )
+        self.assertIs(data_group.current_dataset, data)
         data_group.current_dataset = 1
-        self.assertIs(
-            data_group.current_dataset,
-            data2
-        )
+        self.assertIs(data_group.current_dataset, data2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

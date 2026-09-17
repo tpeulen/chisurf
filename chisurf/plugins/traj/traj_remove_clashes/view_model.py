@@ -58,7 +58,7 @@ def below_min_distance(
     re = np.zeros(n_frames, dtype=np.uint8)
 
     atoms = np.arange(xyz.shape[1]) if atom_list.shape[0] == 0 else atom_list
-    n_atoms = atoms.shape[0]
+    atoms.shape[0]
     min_distance2 = min_distance**2.0
 
     # The nested loops break out of both the moment one close pair is found, so
@@ -180,8 +180,7 @@ class RemoveClashesViewModel:
         writer = None
         kept_times: list[float] = []
         try:
-            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride,
-                                     top=topology):
+            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride, top=topology):
                 xyz = chunk.xyz.copy()
                 frames_below = below_min_distance(
                     xyz=xyz, min_distance=min_distance, atom_list=atom_list
@@ -192,14 +191,13 @@ class RemoveClashesViewModel:
                     # Frames are dropped here, so the surviving ones are no
                     # longer evenly spaced; the header can only record one
                     # interval, so it records the source's.
-                    spacing = (float(chunk.time[1] - chunk.time[0])
-                               if chunk.n_frames > 1 else 1.0)
-                    writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
-                                       delta=spacing or 1.0)
+                    spacing = float(chunk.time[1] - chunk.time[0]) if chunk.n_frames > 1 else 1.0
+                    writer = DCDWriter(
+                        target_filename, n_atoms=frame_0.n_atoms, delta=spacing or 1.0
+                    )
                 if len(xyz_clash_free):
                     writer.write(xyz_clash_free)
-                    kept_times.extend(
-                        np.asarray(chunk.time, dtype=np.float64)[selection].tolist())
+                    kept_times.extend(np.asarray(chunk.time, dtype=np.float64)[selection].tolist())
         finally:
             if writer is not None:
                 # Dropping frames leaves gaps, and a DCD header can only carry

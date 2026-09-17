@@ -8,10 +8,7 @@ from chisurf.core.structure import Structure
 
 
 def av_distance_distribution(
-        structure: Structure,
-        donor_av_parameter,
-        acceptor_av_parameter,
-        **kwargs
+    structure: Structure, donor_av_parameter, acceptor_av_parameter, **kwargs
 ):
     """Get the distance distribution between two accessible volumes defined by the parameters passed as
     an argument.
@@ -39,10 +36,7 @@ def av_distance_distribution(
 
 
 def av_fret_rate_spectrum(
-        structure: Structure,
-        donor_av_parameter,
-        acceptor_av_parameter,
-        **kwargs
+    structure: Structure, donor_av_parameter, acceptor_av_parameter, **kwargs
 ):
     """Get FRET-rate spectrum for a given donor and acceptor attachment point
 
@@ -54,23 +48,28 @@ def av_fret_rate_spectrum(
     Examples
     --------
 
-import chisurf.core.settings as mfm.structure    >>> structure = mfm.structure.Structure('./test/data/modelling/pdb_files/hGBP1_closed.pdb')
+    import chisurf.core.settings as mfm.structure    >>> structure = mfm.structure.Structure('./test/data/modelling/pdb_files/hGBP1_closed.pdb')
     >>> donor_description = {'residue_seq_number': 18, 'atom_name': 'CB'}
     >>> acceptor_description = {'residue_seq_number': 577, 'atom_name': 'CB'}
     >>> rs = av_fret_rate_spectrum(structure, donor_description, acceptor_description)
 
     """
-    forster_radius = kwargs.get('forster_radius', chisurf.core.settings.cs_settings['fret']['forster_radius'])
-    kappa2 = kwargs.get('forster_radius', chisurf.core.settings.cs_settings['fret']['kappa2'])
-    tau0 = kwargs.get('tau0', chisurf.core.settings.cs_settings['fret']['tau0'])
-    interleave = kwargs.get('interleave', True)
+    forster_radius = kwargs.get(
+        "forster_radius", chisurf.core.settings.cs_settings["fret"]["forster_radius"]
+    )
+    kappa2 = kwargs.get("forster_radius", chisurf.core.settings.cs_settings["fret"]["kappa2"])
+    tau0 = kwargs.get("tau0", chisurf.core.settings.cs_settings["fret"]["tau0"])
+    interleave = kwargs.get("interleave", True)
 
-    p_rda, rda = av_distance_distribution(structure, donor_av_parameter=donor_av_parameter, acceptor_av_parameter=acceptor_av_parameter, **kwargs)
+    p_rda, rda = av_distance_distribution(
+        structure,
+        donor_av_parameter=donor_av_parameter,
+        acceptor_av_parameter=acceptor_av_parameter,
+        **kwargs,
+    )
     d = np.array([[p_rda, rda]])
     rs = chisurf.core.fluorescence.general.distribution2rates(
-        d, tau0=tau0,
-        kappa2=kappa2,
-        forster_radius=forster_radius
+        d, tau0=tau0, kappa2=kappa2, forster_radius=forster_radius
     )
     if interleave:
         return np.hstack(rs).ravel([-1])
@@ -78,11 +77,7 @@ import chisurf.core.settings as mfm.structure    >>> structure = mfm.structure.S
         return rs
 
 
-def av_lifetime_spectrum(
-        structure: Structure,
-        donor_lifetime_spectrum: np.array,
-        **kwargs
-):
+def av_lifetime_spectrum(structure: Structure, donor_lifetime_spectrum: np.array, **kwargs):
     """Get an interleaved lifetime spectrum for a given donor lifetime spectrum given two definitions of
     a donor and an acceptor accessible volume. This function uses :py:meth:`~Structure.av_fret_rate_spectrum`
     to calculate the FRET-rate spectrum and uses this rate-spectrum to calculate the lifetime spectrum.
@@ -96,23 +91,20 @@ def av_lifetime_spectrum(
     Examples
     --------
 
-import chisurf.core.settings as mfm.structure    >>> structure = mfm.structure.Structure('./test/data/modelling/pdb_files/hGBP1_closed.pdb')
+    import chisurf.core.settings as mfm.structure    >>> structure = mfm.structure.Structure('./test/data/modelling/pdb_files/hGBP1_closed.pdb')
     >>> d_av = {'residue_seq_number': 18, 'atom_name': 'CB'} # donor attachment and description of the linker
     >>> a_av = {'residue_seq_number': 577, 'atom_name': 'CB'} # acceptor description and linker
     >>> ds = np.array([0.8, 4., 0.2, 1.5]) # donor_lifetime_spectrum
     >>> lifetime_spectrum = av_lifetime_spectrum(structure, ds, donor_av_parameter=d_av, acceptor_av_parameter=a_av)
     """
-    donly = kwargs.get('donly', 0.0)
+    donly = kwargs.get("donly", 0.0)
     rs = av_fret_rate_spectrum(structure, **kwargs)
-    return chisurf.core.fluorescence.general.rates2lifetimes(rs, donor_lifetime_spectrum, x_donly=donly)
+    return chisurf.core.fluorescence.general.rates2lifetimes(
+        rs, donor_lifetime_spectrum, x_donly=donly
+    )
 
 
-def av_filtered_fcs_weights(
-        structure: Structure,
-        lifetime_filters,
-        time_axis: np.array,
-        **kwargs
-):
+def av_filtered_fcs_weights(structure: Structure, lifetime_filters, time_axis: np.array, **kwargs):
     """Passes all ``kwargs`` parameters to the method in :py:meth:`~Structure.av_lifetime_spectrum` and
     calculates the filters weights for a set of lifetime filters ``lifetime_filters``.
 
@@ -175,7 +167,7 @@ def av_filtered_fcs_weights(
     hGBP1 two limiting states are known, with the fraction 0.66 (state-1) and 0.33 (state-2). Using corase-grained
     models of these limiting states fluorescence decays are calculated and the filters are determined.
 
-import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure.Structure('./test/data/modelling/trajectory/hgbp1/steps/0_major.pdb')
+    import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure.Structure('./test/data/modelling/trajectory/hgbp1/steps/0_major.pdb')
 
     >>> structure_1 = Structure('./test/data/modelling/trajectory/hgbp1/steps/3_minor.pdb')
     >>> structure_2 = Structure('./test/data/modelling/trajectory/hgbp1/steps/3_minor.pdb')
@@ -203,11 +195,13 @@ import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure
 
     """
     lifetime_spectrum = av_lifetime_spectrum(structure, **kwargs)
-    convolve = kwargs.get('convolve', None)
+    convolve = kwargs.get("convolve", None)
     if isinstance(convolve, chisurf.core.fluorescence.tcspc.convolve.Convolve):
         decay = convolve.convolve(data=lifetime_spectrum, **kwargs)
     else:
-        time_axis, decay = chisurf.core.fluorescence.calculate_fluorescence_decay(lifetime_spectrum, time_axis=time_axis)
+        time_axis, decay = chisurf.core.fluorescence.calculate_fluorescence_decay(
+            lifetime_spectrum, time_axis=time_axis
+        )
     weights = np.dot(lifetime_filters, decay)
     return weights
 
@@ -255,10 +249,7 @@ class LabeledStructure(Structure):
         return self._ds
 
     @donor_lifetime_spectrum.setter
-    def donor_lifetime_spectrum(
-            self,
-            v: np.array
-    ):
+    def donor_lifetime_spectrum(self, v: np.array):
         """Set the donor lifetime spectrum (amplitudes and lifetimes)."""
         self._ds = v
 
@@ -306,10 +297,7 @@ class LabeledStructure(Structure):
         p_rda, rda = self.distance_distribution
         d = np.array([[p_rda, rda]])
         rs = chisurf.core.fluorescence.general.distribution2rates(
-            d,
-            tau0=tau0,
-            kappa2=kappa2,
-            forster_radius=forster_radius
+            d, tau0=tau0, kappa2=kappa2, forster_radius=forster_radius
         )
         return np.hstack(rs).ravel([-1])
 
@@ -323,9 +311,13 @@ class LabeledStructure(Structure):
     @property
     def transfer_efficency(self) -> float:
         """FRET transfer efficiency computed from species-averaged lifetimes."""
-        tau_x_da = chisurf.core.fluorescence.general.species_averaged_lifetime(self.lifetime_spectrum)
-        tau_x_d0 = chisurf.core.fluorescence.general.species_averaged_lifetime(self.donor_lifetime_spectrum)
-        return 1. - tau_x_da / tau_x_d0
+        tau_x_da = chisurf.core.fluorescence.general.species_averaged_lifetime(
+            self.lifetime_spectrum
+        )
+        tau_x_d0 = chisurf.core.fluorescence.general.species_averaged_lifetime(
+            self.donor_lifetime_spectrum
+        )
+        return 1.0 - tau_x_da / tau_x_d0
 
     @property
     def donor_av(self):
@@ -339,26 +331,22 @@ class LabeledStructure(Structure):
 
     @property
     def pRDA(self):
-        """donor-acceptor distance distribution
-        """
+        """donor-acceptor distance distribution"""
         return self._donor_av.pRDA(self._acceptor_av)
 
     @property
     def dRDAE(self):
-        """fluorescence weighted averaged donor-acceptor distance
-        """
+        """Fluorescence weighted averaged donor-acceptor distance"""
         return self._donor_av.dRDAE(self._acceptor_av)
 
     @property
     def dRDA(self):
-        """average donor-acceptor distance
-        """
+        """Average donor-acceptor distance"""
         return self._donor_av.dRDA(self._acceptor_av)
 
     @property
     def dRmp(self):
-        """distance between the mean positions
-        """
+        """Distance between the mean positions"""
         return self._donor_av.dRmp(self._acceptor_av)
 
     def update(self):
@@ -366,18 +354,16 @@ class LabeledStructure(Structure):
         self._acceptor_av = chisurf.core.structure.av.ACV(self, **self._acceptor_description)
         self._donor_av = chisurf.core.structure.av.ACV(self, **self._donor_description)
 
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         """Initialize a LabeledStructure with optional donor/acceptor AV params."""
         super().__init__(*args, **kwargs)
-        self._donor_description = kwargs.get('donor_av_parameter', None)
-        self._acceptor_description = kwargs.get('acceptor_av_parameter', None)
+        self._donor_description = kwargs.get("donor_av_parameter", None)
+        self._acceptor_description = kwargs.get("acceptor_av_parameter", None)
         self._ds = np.array([1.0, 4.0], dtype=np.float64)
         self._donor_av = None
         self._acceptor_av = None
-        self.forster_radius = kwargs.get('forster_radius', chisurf.core.settings.cs_settings['fret']['forster_radius'])
-        self.tau0 = kwargs.get('tau0', chisurf.core.settings.cs_settings['fret']['tau0'])
-        self.kappa2 = kwargs.get('kappa2', chisurf.core.settings.cs_settings['fret']['kappa2'])
+        self.forster_radius = kwargs.get(
+            "forster_radius", chisurf.core.settings.cs_settings["fret"]["forster_radius"]
+        )
+        self.tau0 = kwargs.get("tau0", chisurf.core.settings.cs_settings["fret"]["tau0"])
+        self.kappa2 = kwargs.get("kappa2", chisurf.core.settings.cs_settings["fret"]["kappa2"])

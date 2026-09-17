@@ -3,17 +3,17 @@ from __future__ import annotations
 import copy
 import pathlib
 
-from chisurf import typing
+import IMP.bff as _bff
 import numpy as np
 import yaml
-
-import IMP.bff as _bff
 
 import chisurf.core.base
 import chisurf.core.curve
 import chisurf.core.fio
 import chisurf.core.fio.ascii
-from chisurf.core.fio.pto import SUFFIX, is_measurement as _is_measurement
+from chisurf import typing
+from chisurf.core.fio.pto import SUFFIX
+from chisurf.core.fio.pto import is_measurement as _is_measurement
 from chisurf.core.fio.staging import CONTAINER_SELECTOR
 
 
@@ -21,6 +21,8 @@ def _is_container(filename) -> bool:
     """Whether *filename* names a photon container, member selector and all."""
     path, _, _ = str(filename).partition(CONTAINER_SELECTOR)
     return _is_measurement(path)
+
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -37,11 +39,11 @@ class ExperimentalData(chisurf.core.base.Data):
     """
 
     meta_data: typing.Dict = None
-    data_reader: "ExperimentReader" = None
-    _experiment: "Experiment" = None
+    data_reader: ExperimentReader = None
+    _experiment: Experiment = None
 
     @property
-    def experiment(self) -> "Experiment":
+    def experiment(self) -> Experiment:
         """Return the experiment associated with this dataset.
 
         If ``_experiment`` is not set, attempts to retrieve it from the
@@ -58,10 +60,7 @@ class ExperimentalData(chisurf.core.base.Data):
             return self._experiment
 
     @experiment.setter
-    def experiment(
-            self,
-            v: "Experiment"
-    ) -> None:
+    def experiment(self, v: Experiment) -> None:
         """Set the experiment associated with this dataset."""
         self._experiment = v
 
@@ -71,18 +70,17 @@ class ExperimentalData(chisurf.core.base.Data):
         return state
 
     def __init__(
-            self,
-            data_reader: "ExperimentReader" = None,
-            experiment: "Experiment" = None,
-            filename: str = "None",
-            data: bytes = None,
-            embed_data: bool = None,
-            read_file_size_limit: int = None,
-
-            name: object = None,
-            verbose: bool = False,
-            unique_identifier: str = None,
-            **kwargs
+        self,
+        data_reader: ExperimentReader = None,
+        experiment: Experiment = None,
+        filename: str = "None",
+        data: bytes = None,
+        embed_data: bool = None,
+        read_file_size_limit: int = None,
+        name: object = None,
+        verbose: bool = False,
+        unique_identifier: str = None,
+        **kwargs,
     ):
         super().__init__(
             filename=filename,
@@ -92,17 +90,17 @@ class ExperimentalData(chisurf.core.base.Data):
             name=name,
             verbose=verbose,
             unique_identifier=unique_identifier,
-            **kwargs
+            **kwargs,
         )
         self._experiment = experiment
         self.data_reader = data_reader
 
     def to_dict(
-            self,
-            remove_protected: bool = True,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-        skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = True,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ):
         """Serialize this dataset, including its reader and experiment, to a dict.
 
@@ -124,28 +122,30 @@ class ExperimentalData(chisurf.core.base.Data):
             remove_protected=remove_protected,
             copy_values=copy_values,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
         try:
-            d['data_reader'] = self.data_reader.to_dict(
+            d["data_reader"] = self.data_reader.to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
-                convert_values_to_elementary=convert_values_to_elementary
+                convert_values_to_elementary=convert_values_to_elementary,
             )
         except AttributeError:
             import logging
-            logging.debug(f"data_reader has no to_dict method")
-            d['data_reader'] = None
+
+            logging.debug("data_reader has no to_dict method")
+            d["data_reader"] = None
         try:
-            d['experiment'] = self.experiment.to_dict(
+            d["experiment"] = self.experiment.to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
-                convert_values_to_elementary=convert_values_to_elementary
+                convert_values_to_elementary=convert_values_to_elementary,
             )
         except AttributeError:
             import logging
-            logging.debug(f"experiment has no to_dict method")
-            d['experiment'] = None
+
+            logging.debug("experiment has no to_dict method")
+            d["experiment"] = None
         return d
 
 
@@ -213,9 +213,7 @@ class DataCurve(*_DATACURVE_BASES):
     ``with curve.unlocked('ey'): ...`` to edit one in place.
     """
 
-    array_attributes = chisurf.core.curve.Curve.array_attributes + (
-        "ex", "ey", "mask"
-    )
+    array_attributes = chisurf.core.curve.Curve.array_attributes + ("ex", "ey", "mask")
 
     @property
     def coordinates(self) -> typing.Dict[str, np.ndarray]:
@@ -242,7 +240,7 @@ class DataCurve(*_DATACURVE_BASES):
                 self.y,
                 self.ex,
                 self.ey,
-                self.mask if self.mask is not None else np.ones_like(self.y)
+                self.mask if self.mask is not None else np.ones_like(self.y),
             ]
         )
 
@@ -258,19 +256,19 @@ class DataCurve(*_DATACURVE_BASES):
         self.set_data(*v)
 
     def __init__(
-            self,
-            x: np.ndarray = None,
-            y: np.ndarray = None,
-            ex: np.ndarray = None,
-            ey: np.ndarray = None,
-            mask: np.ndarray = None,
-            copy_array: bool = True,
-            filename: str = '',
-            data_reader: "ExperimentReader" = None,
-            experiment: "Experiment" = None,
-            load_filename_on_init: bool = True,
-            *args,
-            **kwargs
+        self,
+        x: np.ndarray = None,
+        y: np.ndarray = None,
+        ex: np.ndarray = None,
+        ey: np.ndarray = None,
+        mask: np.ndarray = None,
+        copy_array: bool = True,
+        filename: str = "",
+        data_reader: ExperimentReader = None,
+        experiment: Experiment = None,
+        load_filename_on_init: bool = True,
+        *args,
+        **kwargs,
     ):
         # Before the chisurf half, because `super().__init__` writes the
         # arrays and `set_data` syncs into a Dataset that must already exist.
@@ -284,7 +282,7 @@ class DataCurve(*_DATACURVE_BASES):
             data_reader=data_reader,
             experiment=experiment,
             *args,
-            **kwargs
+            **kwargs,
         )
         # The companions are initialised *before* the file is read, because
         # `load` writes the file's own `ex`/`ey`/`mask` columns and they must
@@ -346,7 +344,7 @@ class DataCurve(*_DATACURVE_BASES):
         s = "Dataset:\n"
         try:
             s += "filename: " + self.filename + "\n"
-            s += "length  : %s\n" % len(self)
+            s += f"length  : {len(self)}\n"
             s += "x\ty\terror-x\terror-y\n"
 
             if len(self.x) > 10:
@@ -356,10 +354,10 @@ class DataCurve(*_DATACURVE_BASES):
                 ley = self.ey[:4]
                 for i in range(3):
                     x, y, ex, ey = lx[i], ly[i], lex[i], ley[i]
-                    s += "{0:<12.3e}\t".format(x)
-                    s += "{0:<12.3e}\t".format(y)
-                    s += "{0:<12.3e}\t".format(ex)
-                    s += "{0:<12.3e}\t".format(ey)
+                    s += f"{x:<12.3e}\t"
+                    s += f"{y:<12.3e}\t"
+                    s += f"{ex:<12.3e}\t"
+                    s += f"{ey:<12.3e}\t"
                     s += "\n"
                 s += "....\n"
                 ux = self.x[-4:]
@@ -368,30 +366,31 @@ class DataCurve(*_DATACURVE_BASES):
                 uey = self.ey[-4:]
                 for i in range(2):
                     x, y, ex, ey = ux[i], uy[i], uex[i], uey[i]
-                    s += "{0:<12.3e}\t".format(x)
-                    s += "{0:<12.3e}\t".format(y)
-                    s += "{0:<12.3e}\t".format(ex)
-                    s += "{0:<12.3e}\t".format(ey)
+                    s += f"{x:<12.3e}\t"
+                    s += f"{y:<12.3e}\t"
+                    s += f"{ex:<12.3e}\t"
+                    s += f"{ey:<12.3e}\t"
                     s += "\n"
             else:
                 for i in range(len(self.x)):
                     x, y, ex, ey = self.x[i], self.y[i], self.ex[i], self.ey[i]
-                    s += "{0:<12.3e}\t".format(x)
-                    s += "{0:<12.3e}\t".format(y)
-                    s += "{0:<12.3e}\t".format(ex)
-                    s += "{0:<12.3e}\t".format(ey)
+                    s += f"{x:<12.3e}\t"
+                    s += f"{y:<12.3e}\t"
+                    s += f"{ex:<12.3e}\t"
+                    s += f"{ey:<12.3e}\t"
         except (AttributeError, KeyError) as e:
             import logging
+
             logging.debug(f"Error in Dataset.__str__: {e}")
             s += "This curve does not have complete data..."
         return s
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-        skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> typing.Dict:
         """Serialize the curve to a dict, including error arrays and mask.
 
@@ -414,19 +413,16 @@ class DataCurve(*_DATACURVE_BASES):
             remove_protected=remove_protected,
             copy_values=copy_values,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
         # The FitDataset half is rebuilt from these arrays, not serialized.
-        d.pop('this', None)
-        d['ex'] = self.ex.tolist()
-        d['ey'] = self.ey.tolist()
-        d['mask'] = self.mask.tolist()
+        d.pop("this", None)
+        d["ex"] = self.ex.tolist()
+        d["ey"] = self.ey.tolist()
+        d["mask"] = self.mask.tolist()
         return d
 
-    def from_dict(
-            self,
-            v: typing.Dict
-    ) -> None:
+    def from_dict(self, v: typing.Dict) -> None:
         """Restore curve state from a dictionary produced by :meth:`to_dict`.
 
         Parameters
@@ -436,18 +432,12 @@ class DataCurve(*_DATACURVE_BASES):
             keys with list-of-float values.
         """
         super().from_dict(v)
-        self.ex = np.array(v['ex'], dtype=np.float64)
-        self.ey = np.array(v['ey'], dtype=np.float64)
-        if 'mask' in v:
-            self.mask = np.array(v['mask'], dtype=np.float64)
+        self.ex = np.array(v["ex"], dtype=np.float64)
+        self.ey = np.array(v["ey"], dtype=np.float64)
+        if "mask" in v:
+            self.mask = np.array(v["mask"], dtype=np.float64)
 
-    def load(
-            self,
-            filename: str,
-            skiprows: int = 0,
-            file_type: str = 'csv',
-            **kwargs
-    ) -> None:
+    def load(self, filename: str, skiprows: int = 0, file_type: str = "csv", **kwargs) -> None:
         """Load curve data from a file.
 
         Supports CSV files with 1–5 columns (x, y, ex, ey, mask).
@@ -467,14 +457,9 @@ class DataCurve(*_DATACURVE_BASES):
         if _is_container(filename):
             self._load_container(filename)
             return
-        if file_type == 'csv':
+        if file_type == "csv":
             csv = chisurf.core.fio.ascii.Csv()
-            csv.load(
-                filename=filename,
-                skiprows=skiprows,
-                file_type=file_type,
-                **kwargs
-            )
+            csv.load(filename=filename, skiprows=skiprows, file_type=file_type, **kwargs)
             n_col, _ = csv.data.shape
             if n_col == 1:
                 self.x = csv.data[0]
@@ -509,11 +494,7 @@ class DataCurve(*_DATACURVE_BASES):
                 self.ex = np.ones(1)
                 self.ey = np.ones(1)
         else:
-            super().load(
-                filename=filename,
-                file_type=file_type,
-                **kwargs
-            )
+            super().load(filename=filename, file_type=file_type, **kwargs)
         # `load` assigns x/y/ex/ey/mask directly rather than through
         # `set_data`, so without this the Dataset half would still hold what
         # the constructor put there. Third write path, and the one every
@@ -521,12 +502,12 @@ class DataCurve(*_DATACURVE_BASES):
         self._sync_dataset()
 
     def save(
-            self,
-            filename: str,
-            file_type: str = 'yaml',
-            verbose: bool = False,
-            xmin: int = None,
-            xmax: int = None
+        self,
+        filename: str,
+        file_type: str = "yaml",
+        verbose: bool = False,
+        xmin: int = None,
+        xmax: int = None,
     ) -> None:
         """Save the curve data to a file.
 
@@ -550,16 +531,9 @@ class DataCurve(*_DATACURVE_BASES):
             csv = chisurf.core.fio.ascii.Csv()
             # self[xmin:xmax] now returns (x, y, ex, ey, mask)
             x, y, ex, ey, mask = self[xmin:xmax]
-            csv.save(
-                data=np.vstack([x, y, ex, ey, mask]),
-                filename=filename
-            )
+            csv.save(data=np.vstack([x, y, ex, ey, mask]), filename=filename)
         else:
-            super().save(
-                filename=filename,
-                file_type=file_type,
-                verbose=verbose
-            )
+            super().save(filename=filename, file_type=file_type, verbose=verbose)
 
     #: What this curve *is*, as an ``_mmfdb_artifact.artifact_kind`` term, and
     #: what produced it, as an ``_mmfdb_operation.operation_type`` term.
@@ -592,13 +566,15 @@ class DataCurve(*_DATACURVE_BASES):
         x, y, ex, ey, mask = self[xmin:xmax]
         path = pathlib.Path(filename)
         opener = (
-            Measurement.open(path, writable=True) if is_measurement(path)
+            Measurement.open(path, writable=True)
+            if is_measurement(path)
             else Measurement.create_empty(path)
         )
         with opener as m:
             m.put_curve(
                 self.name or path.stem,
-                x, y,
+                x,
+                y,
                 artifact_kind=self.ARTIFACT_KIND,
                 operation_type=self.OPERATION_TYPE,
                 # Written only when they carry information. A curve whose ex is
@@ -617,14 +593,15 @@ class DataCurve(*_DATACURVE_BASES):
 
         path, _, member = str(filename).partition(CONTAINER_SELECTOR)
         with Measurement.open(path) as m:
-            names = [o.name for o in m.artifacts()
-                     if m.tag(o.uid, "_mmfdb_artifact.row_grain") == "curve_point"]
+            names = [
+                o.name
+                for o in m.artifacts()
+                if m.tag(o.uid, "_mmfdb_artifact.row_grain") == "curve_point"
+            ]
             if not names:
                 raise ValueError(f"{path} holds no curve")
             if member and member not in names:
-                raise ValueError(
-                    f"{path} has no curve {member!r}; it holds {', '.join(names)}"
-                )
+                raise ValueError(f"{path} has no curve {member!r}; it holds {', '.join(names)}")
             curve = m.get_curve(member or names[0])
         self.set_data(
             x=curve["x"],
@@ -635,12 +612,12 @@ class DataCurve(*_DATACURVE_BASES):
         )
 
     def set_data(
-            self,
-            x: np.array,
-            y: np.array,
-            ex: np.array = None,
-            ey: np.array = None,
-            mask: np.array = None,
+        self,
+        x: np.array,
+        y: np.array,
+        ex: np.array = None,
+        ey: np.array = None,
+        mask: np.array = None,
     ) -> None:
         """Assign x, y, error, and mask arrays to the curve.
 
@@ -725,7 +702,7 @@ class DataCurve(*_DATACURVE_BASES):
         state.pop("this", None)
         return state
 
-    def _restored(self, state: dict) -> "DataCurve":
+    def _restored(self, state: dict) -> DataCurve:
         new = self.__class__.__new__(self.__class__)
         if _HAS_BFF_DATASET:
             _bff.FitDataset.__init__(new)
@@ -741,7 +718,9 @@ class DataCurve(*_DATACURVE_BASES):
         return self._restored(state)
 
     def __deepcopy__(self, memodict=None):
-        return self._restored(copy.deepcopy(self._python_state(), {} if memodict is None else memodict))
+        return self._restored(
+            copy.deepcopy(self._python_state(), {} if memodict is None else memodict)
+        )
 
     # -- the calculus, synced first so a direct `y = ...` cannot go stale ----
     def objective(self, model):
@@ -770,15 +749,11 @@ class DataCurve(*_DATACURVE_BASES):
         w : np.ndarray
             Weight values; ``ey`` is set to ``1 / w``.
         """
-        self.ey = 1. / w
+        self.ey = 1.0 / w
 
-    def __getitem__(self, key: typing.Union[slice, int, np.ndarray, str]) -> typing.Tuple[
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray
-    ]:
+    def __getitem__(
+        self, key: typing.Union[slice, int, np.ndarray, str]
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Index or slice the curve columns ``(x, y, ex, ey, mask)``.
 
         Parameters
@@ -841,7 +816,7 @@ class DataGroup(list, chisurf.core.base.Base):
         the dataset list showed after loading an FCS file. A stamped class name
         is not a name anyone chose, so it counts as absent here.
         """
-        name = self.__dict__.get('name')
+        name = self.__dict__.get("name")
         if name and name != type(self).__name__:
             return name
         if len(self) == 0:
@@ -858,7 +833,7 @@ class DataGroup(list, chisurf.core.base.Base):
         there and ``group.name = ...`` raised ``AttributeError: can't set
         attribute`` — which is what grouping datasets does.
         """
-        self.__dict__['name'] = str(v)
+        self.__dict__["name"] = str(v)
 
     @property
     def filename(self) -> str:
@@ -866,16 +841,16 @@ class DataGroup(list, chisurf.core.base.Base):
         if len(self) == 0:
             return "Empty group"
         first = self[0]
-        fn = getattr(first, '_filename', None)
+        fn = getattr(first, "_filename", None)
         if fn:
             return fn
-        return getattr(first, 'filename', str(first.name))
+        return getattr(first, "filename", str(first.name))
 
     def to_yaml(
-            self,
-            remove_protected: bool = False,
-            convert_values_to_elementary: bool = True,
-            skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = False,
+        convert_values_to_elementary: bool = True,
+        skip_qt_widgets: bool = False,
     ):
         """Serialize the group (including all contained datasets) to a YAML string.
 
@@ -896,16 +871,17 @@ class DataGroup(list, chisurf.core.base.Base):
         d = self.to_dict(
             remove_protected=remove_protected,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
         data = [
             d.to_dict(
                 remove_protected=remove_protected,
                 convert_values_to_elementary=convert_values_to_elementary,
-                skip_qt_widgets=skip_qt_widgets
-            ) for d in self
+                skip_qt_widgets=skip_qt_widgets,
+            )
+            for d in self
         ]
-        d['data'] = data
+        d["data"] = data
         return yaml.dump(data=d)
 
     def append(self, dataset: chisurf.core.base.Data):
@@ -926,12 +902,7 @@ class DataGroup(list, chisurf.core.base.Base):
                 if isinstance(d, ExperimentalData):
                     list.append(self, d)
 
-    def __init__(
-            self,
-            seq: typing.Sequence,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, seq: typing.Sequence, *args, **kwargs):
         self._current_dataset: int = 0
         list.__init__(self, seq)
         chisurf.core.base.Base.__init__(self, *args, **kwargs)
@@ -950,8 +921,7 @@ class DataCurveGroup(DataGroup):
         return self.current_dataset.x
 
     @x.setter
-    def x(self,
-          v: np.array):
+    def x(self, v: np.array):
         """Set the x-values of the current dataset."""
         self.current_dataset.x = v
 
@@ -961,8 +931,7 @@ class DataCurveGroup(DataGroup):
         return self.current_dataset.y
 
     @y.setter
-    def y(self,
-          v: np.array):
+    def y(self, v: np.array):
         """Set the y-values of the current dataset."""
         self.current_dataset.y = v
 
@@ -1067,14 +1036,10 @@ class ExperimentDataCurveGroup(ExperimentDataGroup, DataCurveGroup):
 
 
 def get_data(
-        curve_type: str = 'experiment',
-        data_set: typing.List[
-            chisurf.core.data.ExperimentalData
-        ] = None,
-        excludes_names: typing.List[str] = None
-) -> typing.List[
-    chisurf.core.data.ExperimentalData
-]:
+    curve_type: str = "experiment",
+    data_set: typing.List[chisurf.core.data.ExperimentalData] = None,
+    excludes_names: typing.List[str] = None,
+) -> typing.List[chisurf.core.data.ExperimentalData]:
     """Return experimental datasets, optionally excluding some by name.
 
     Parameters
@@ -1107,19 +1072,18 @@ def get_data(
     """
     if excludes_names is None:
         excludes_names = ["Global-fit"]
-    if curve_type == 'experiment':
+    if curve_type == "experiment":
         return [
-            d for d in data_set if (
-                    (
-                            isinstance(d, ExperimentalData) or
-                            isinstance(d, ExperimentDataGroup)
-                    ) and
-                    d.name not in excludes_names
+            d
+            for d in data_set
+            if (
+                (isinstance(d, ExperimentalData) or isinstance(d, ExperimentDataGroup))
+                and d.name not in excludes_names
             )
         ]
-    else: #elif curve_type == 'all':
+    else:  # elif curve_type == 'all':
         return [
-            d for d in data_set if
-            isinstance(d, ExperimentalData) or
-            isinstance(d, ExperimentDataGroup)
+            d
+            for d in data_set
+            if isinstance(d, ExperimentalData) or isinstance(d, ExperimentDataGroup)
         ]

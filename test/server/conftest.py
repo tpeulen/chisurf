@@ -52,6 +52,7 @@ def mock_experiment():
 def zmq_server_port():
     """Find a free port for ZMQ tests."""
     import socket
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         return s.getsockname()[1]

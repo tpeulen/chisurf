@@ -96,7 +96,10 @@ def _kappa(z: np.ndarray, R0: float, optics: Optics) -> np.ndarray:
 
 
 def mdf(
-    rho: np.ndarray, z: np.ndarray, w0: float, R0: float,
+    rho: np.ndarray,
+    z: np.ndarray,
+    w0: float,
+    R0: float,
     optics: Optics | None = None,
 ) -> np.ndarray:
     r"""Molecule-detection function :math:`U(\rho, z)` (normalised to its peak).
@@ -121,8 +124,11 @@ def mdf(
 
 
 def effective_volume(
-    w0: float, R0: float, optics: Optics | None = None,
-    n_grid: int = 4001, span: float = 60.0,
+    w0: float,
+    R0: float,
+    optics: Optics | None = None,
+    n_grid: int = 4001,
+    span: float = 60.0,
 ) -> float:
     r"""Effective detection volume :math:`V_\mathrm{eff}` (femtolitres-scale, um^3).
 
@@ -132,18 +138,33 @@ def effective_volume(
     optics out.
     """
     import IMP.bff as _bff
+
     optics = optics or Optics()
-    return float(_bff.fcs_mdf_effective_volume(
-        float(w0), float(R0),
-        float(optics.excitation_wavelength), float(optics.emission_wavelength),
-        float(optics.refractive_index), float(optics.pinhole_radius),
-        int(n_grid), float(span)))
+    return float(
+        _bff.fcs_mdf_effective_volume(
+            float(w0),
+            float(R0),
+            float(optics.excitation_wavelength),
+            float(optics.emission_wavelength),
+            float(optics.refractive_index),
+            float(optics.pinhole_radius),
+            int(n_grid),
+            float(span),
+        )
+    )
 
 
 def g_diff(
-    tau: np.ndarray, w0: float, R0: float, diffusion: float,
-    optics: Optics | None = None, n_grid: int = 201, span: float = 40.0,
-    normalize: bool = True, n_herm: int = 40, separation: float = 0.0,
+    tau: np.ndarray,
+    w0: float,
+    R0: float,
+    diffusion: float,
+    optics: Optics | None = None,
+    n_grid: int = 201,
+    span: float = 40.0,
+    normalize: bool = True,
+    n_herm: int = 40,
+    separation: float = 0.0,
 ) -> np.ndarray:
     r"""Diffusion autocorrelation for the Enderlein MDF.
 
@@ -191,21 +212,38 @@ def g_diff(
     # transcription in ``test/fluorescence/test_enderlein_fcs.py`` keeps the
     # math pinned.
     import IMP.bff as _bff
+
     optics = optics or Optics()
     tau = np.atleast_1d(np.asarray(tau, dtype=float))
-    return np.asarray(_bff.fcs_mdf_g_diff(
-        [float(t) for t in tau],
-        float(w0), float(R0), float(diffusion),
-        float(optics.excitation_wavelength), float(optics.emission_wavelength),
-        float(optics.refractive_index), float(optics.pinhole_radius),
-        int(n_grid), float(span), bool(normalize), int(n_herm),
-        float(separation)), dtype=float)
+    return np.asarray(
+        _bff.fcs_mdf_g_diff(
+            [float(t) for t in tau],
+            float(w0),
+            float(R0),
+            float(diffusion),
+            float(optics.excitation_wavelength),
+            float(optics.emission_wavelength),
+            float(optics.refractive_index),
+            float(optics.pinhole_radius),
+            int(n_grid),
+            float(span),
+            bool(normalize),
+            int(n_herm),
+            float(separation),
+        ),
+        dtype=float,
+    )
 
 
 def acf(
-    tau: np.ndarray, n_molecules: float, diffusion: float,
-    w0: float, R0: float, offset: float = 0.0,
-    optics: Optics | None = None, **kwargs,
+    tau: np.ndarray,
+    n_molecules: float,
+    diffusion: float,
+    w0: float,
+    R0: float,
+    offset: float = 0.0,
+    optics: Optics | None = None,
+    **kwargs,
 ) -> np.ndarray:
     r"""Full Enderlein-MDF FCS curve ``G(tau) = offset + (1/N) g(tau)``.
 

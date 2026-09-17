@@ -9,17 +9,17 @@ plugin GUI.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Mapping, Optional
-
 import logging
 import math
 import sys
+from collections.abc import Callable, Mapping
+from typing import Any, Optional
+
 import numpy as np
 
 from chisurf.core.fitting.ensemble import EnsembleSampler
 
 from .solver import MIN_PROB
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,6 @@ def _log_prob_mem(
     multiprocessing pool with
     :class:`chisurf.core.fitting.ensemble.EnsembleSampler`.
     """
-
     u_arr = np.asarray(u_vec, dtype=float).ravel()
     if u_arr.size != p0.size:
         return float("-inf")
@@ -105,16 +104,16 @@ ProgressCallback = Optional[Callable[[int, int], bool]]
 def sample_mem_distribution_mcmc(
     result: Mapping[str, Any],
     *,
-    filename: Optional[str] = None,
-    nwalkers: Optional[int] = None,
+    filename: str | None = None,
+    nwalkers: int | None = None,
     steps_total: int = 500,
     thin: int = 5,
     substeps: int = 50,
     progress_cb: ProgressCallback = None,
-    nprocs: Optional[int] = None,
-    csv_prefix: Optional[str] = None,
-    vectorized: Optional[bool] = None,
-) -> Dict[str, Any]:
+    nprocs: int | None = None,
+    csv_prefix: str | None = None,
+    vectorized: bool | None = None,
+) -> dict[str, Any]:
     """Sample the MEM distribution ``p`` with an affine-invariant ensemble sampler.
 
     The log-posterior is defined from the MaxEnt objective ``Q = chi^2 - 0.5 * nu * S``
@@ -173,7 +172,6 @@ def sample_mem_distribution_mcmc(
 
         Additional keys may be added in the future.
     """
-
     if vectorized is None:
         try:
             is_win = sys.platform.startswith("win")
@@ -183,9 +181,7 @@ def sample_mem_distribution_mcmc(
 
     # Axis and base distribution
     try:
-        dist_axis = np.asarray(
-            result.get("R", result.get("tau")), dtype=float
-        ).ravel()
+        dist_axis = np.asarray(result.get("R", result.get("tau")), dtype=float).ravel()
     except Exception:
         dist_axis = np.zeros(0, dtype=float)
 
@@ -293,8 +289,7 @@ def sample_mem_distribution_mcmc(
                 msg = str(exc)
                 if "Initial state has a large condition number" in msg:
                     logger.warning(
-                        "MEM sampling: %s; continuing with "
-                        "skip_initial_state_check=True",
+                        "MEM sampling: %s; continuing with skip_initial_state_check=True",
                         msg,
                     )
                     previous_state = sampler.run_mcmc(
@@ -349,7 +344,7 @@ def sample_mem_distribution_mcmc(
     p_mean = np.mean(p_used, axis=0)
     p_lo, p_med, p_hi = np.percentile(p_used, [16.0, 50.0, 84.0], axis=0)
 
-    stats: Dict[str, Any] = {
+    stats: dict[str, Any] = {
         "axis": dist_axis,
         "p_mem": p0,
         "p_mean": p_mean,
@@ -379,13 +374,13 @@ def sample_mem_distribution_mcmc(
         # the whole posterior is loaded at once anyway.
         np.savez_compressed(
             str(filename),
-            axis=dist_axis,                 # lifetime or distance axis
-            p_mem=p0,                       # original MEM distribution
-            p_mean=p_mean,                  # posterior mean
-            p_lo=p_lo,                      # 16th percentile
-            p_med=p_med,                    # median
-            p_hi=p_hi,                      # 84th percentile
-            p_samples=p_used,               # thinned MCMC samples
+            axis=dist_axis,  # lifetime or distance axis
+            p_mem=p0,  # original MEM distribution
+            p_mean=p_mean,  # posterior mean
+            p_lo=p_lo,  # 16th percentile
+            p_med=p_med,  # median
+            p_hi=p_hi,  # 84th percentile
+            p_samples=p_used,  # thinned MCMC samples
             mode="FRET" if "R" in result else "lifetime",
             nu=float(nu_val),
             nwalkers=int(nwalkers),
@@ -414,7 +409,6 @@ def _write_sampling_tsv_stack(prefix: str, samples: np.ndarray, max_cols: int = 
         Maximum number of columns per file. Higher values create fewer but
         wider files; lower values create more, narrower files.
     """
-
     arr = np.asarray(samples, dtype=float)
     if arr.ndim != 2 or arr.shape[0] == 0 or arr.shape[1] == 0:
         return

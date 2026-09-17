@@ -10,16 +10,16 @@ a per-atom CSV.
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
 
 def _read_pdb_atoms(path: str):
     """Return ``(lines, xyz)`` for ATOM/HETATM records of a PDB file."""
-    lines: List[str] = []
-    xyz: List[tuple] = []
-    chains: List[str] = []
+    lines: list[str] = []
+    xyz: list[tuple] = []
+    chains: list[str] = []
     with open(path) as fh:
         for line in fh:
             if line.startswith(("ATOM", "HETATM")):
@@ -42,9 +42,9 @@ def _kabsch(mobile: np.ndarray, target: np.ndarray):
 def estimate_position_uncertainty(
     pdb_paths: Sequence[str],
     fixed_chains: Sequence[str],
-    out_pdb: Optional[str] = None,
-    out_csv: Optional[str] = None,
-) -> Dict:
+    out_pdb: str | None = None,
+    out_csv: str | None = None,
+) -> dict:
     """Superpose docked models on the fixed body and report per-atom RMSF.
 
     Parameters
@@ -67,9 +67,14 @@ def estimate_position_uncertainty(
     """
     paths = [p for p in pdb_paths if p and os.path.exists(p)]
     if len(paths) < 2:
-        return {"n_models": len(paths), "rmsf_mean": float("nan"),
-                "rmsf_max": float("nan"), "mobile_rmsf_mean": float("nan"),
-                "uncertainty_pdb": None, "uncertainty_csv": None}
+        return {
+            "n_models": len(paths),
+            "rmsf_mean": float("nan"),
+            "rmsf_max": float("nan"),
+            "mobile_rmsf_mean": float("nan"),
+            "uncertainty_pdb": None,
+            "uncertainty_csv": None,
+        }
 
     lines0, xyz0, chains = _read_pdb_atoms(paths[0])
     fixed_mask = np.isin(chains, list(fixed_chains))
@@ -84,7 +89,7 @@ def estimate_position_uncertainty(
         r, t = _kabsch(xyz[fixed_mask], xyz0[fixed_mask])
         aligned.append((r @ xyz.T).T + t)
 
-    stack = np.stack(aligned)                  # (n_models, n_atoms, 3)
+    stack = np.stack(aligned)  # (n_models, n_atoms, 3)
     mean = stack.mean(0)
     rmsf = np.sqrt(((stack - mean) ** 2).sum(-1).mean(0))  # per-atom
 
@@ -92,6 +97,7 @@ def estimate_position_uncertainty(
         _write_bfactor_pdb(lines0, mean, rmsf, out_pdb)
     if out_csv:
         import csv
+
         with open(out_csv, "w", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(["atom_index", "chain", "rmsf"])

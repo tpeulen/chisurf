@@ -100,7 +100,7 @@ def test_uncertainties_ride_along_with_the_values(setups_file):
     sigmas = setup_calibration_uncertainties(setup)
     assert sigmas["gamma"] == pytest.approx(0.006)
     assert sigmas["alpha"] == pytest.approx(0.0007)
-    assert "beta" not in sigmas          # a missing sigma is dropped, not stored as None
+    assert "beta" not in sigmas  # a missing sigma is dropped, not stored as None
 
 
 def test_an_uncalibrated_setup_yields_the_defaults(setups_file):
@@ -134,7 +134,7 @@ def test_non_finite_and_junk_values_are_ignored(setups_file):
     fresh = CalibrationParameters()
     assert restored.gamma == pytest.approx(fresh.gamma)
     assert restored.alpha == pytest.approx(fresh.alpha)
-    assert restored.delta == pytest.approx(0.06)   # the one good value still lands
+    assert restored.delta == pytest.approx(0.06)  # the one good value still lands
 
 
 def test_a_tool_with_plain_scalar_fields_can_seed_itself(setups_file):

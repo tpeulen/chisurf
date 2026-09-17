@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import Evaluator, EvaluatorResult
 
@@ -26,8 +26,8 @@ class DistanceEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av1 = av_cache.get(self.position1)
         av2 = av_cache.get(self.position2)
@@ -35,6 +35,7 @@ class DistanceEvaluator(Evaluator):
             val = 0.0
         else:
             from ..core.distance import model_distance
+
             val = model_distance(av1, av2, self.distance_type, self.forster_radius)
         return EvaluatorResult(self.name, float(val), "Å")
 
@@ -60,8 +61,8 @@ class DistanceDistributionEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av1 = av_cache.get(self.position1)
         av2 = av_cache.get(self.position2)
@@ -69,6 +70,7 @@ class DistanceDistributionEvaluator(Evaluator):
             return EvaluatorResult(self.name, 0.0, "Å", {"histogram": [], "bin_edges": []})
 
         from ..core.distance import average_distance, histogram_rda
+
         mean_val = average_distance(av1, av2)
         p, rda_axis = histogram_rda(
             av1,

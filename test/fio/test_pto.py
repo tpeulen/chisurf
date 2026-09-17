@@ -21,7 +21,6 @@ import pandas as pd
 import pytest
 
 from chisurf.core.datastore import row_count
-
 from chisurf.core.fio.pto import (
     PROFILE,
     PROFILE_VERSION,
@@ -82,7 +81,7 @@ def test_the_instrument_file_comes_back_byte_for_byte(tmp_path: Path, measuremen
 def test_extraction_refuses_a_payload_that_does_not_match_its_checksum(
     tmp_path: Path, measurement: Path
 ):
-    """"Restorable" without verification is only "probably restorable"."""
+    """ "Restorable" without verification is only "probably restorable"."""
     with Measurement.open(measurement) as m:
         uid = m.instrument_uid
         offset = m._f.object(uid).offset
@@ -104,7 +103,8 @@ def test_a_clean_container_verifies(measurement: Path):
 
 def test_a_becker_hickl_sidecar_travels_with_its_primary(tmp_path: Path):
     """An .spc keeps half its header in a .set beside it, so the two have to be
-    handed to a reader together or it silently reads half a header."""
+    handed to a reader together or it silently reads half a header.
+    """
     if not SPC.exists():
         pytest.skip("no .spc test data")
     raw = tmp_path / "run.spc"
@@ -149,11 +149,10 @@ def test_create_embeds_several_files_in_one_container_lexically_sorted(tmp_path:
 # -- transparency --------------------------------------------------------------
 
 
-def test_photons_read_out_of_the_container_match_the_vendor_file(
-    tmp_path: Path, measurement: Path
-):
+def test_photons_read_out_of_the_container_match_the_vendor_file(tmp_path: Path, measurement: Path):
     """The point of embedding rather than decoding: the caller hands over a
-    path and never learns what the payload actually is."""
+    path and never learns what the payload actually is.
+    """
     import tttrlib
 
     direct = tttrlib.TTTR(str(tmp_path / "m000.ptu"))
@@ -164,13 +163,12 @@ def test_photons_read_out_of_the_container_match_the_vendor_file(
     np.testing.assert_array_equal(inside.routing_channels, direct.routing_channels)
 
 
-def test_the_reading_seam_accepts_a_container_and_a_member(
-    tmp_path: Path, measurement: Path
-):
+def test_the_reading_seam_accepts_a_container_and_a_member(tmp_path: Path, measurement: Path):
     """``open_tttr`` is the one seam every reader goes through, so a container
     has to work there and not only through ``tttrlib`` directly. The selector
     form is the part that needed care: only the text before the separator is a
-    path, and staging must not try to copy the whole spec."""
+    path, and staging must not try to copy the whole spec.
+    """
     from chisurf.core.fio.staging import open_tttr, split_container_spec
 
     direct = open_tttr(str(tmp_path / "m000.ptu"))
@@ -195,7 +193,8 @@ def test_it_identifies_itself(measurement: Path, tmp_path: Path):
 def test_recomputing_an_analysis_does_not_move_the_photon_stream(measurement: Path):
     """The reason the instrument file is written first and never rewritten:
     recomputing a burst table beside a multi-gigabyte stream must rewrite the
-    table, not the file."""
+    table, not the file.
+    """
     with Measurement.open(measurement, writable=True) as m:
         before = m._f.object(m.instrument_uid).offset
         size_before = measurement.stat().st_size
@@ -218,7 +217,8 @@ def test_recomputing_an_analysis_does_not_move_the_photon_stream(measurement: Pa
 
 def test_rerunning_with_the_same_settings_replaces_the_result(measurement: Path):
     """Without this a file grows one object per run, which is the directory
-    sprawl it exists to replace, moved inside a single file."""
+    sprawl it exists to replace, moved inside a single file.
+    """
     with Measurement.open(measurement, writable=True) as m:
         before = m._f.n_objects()
         for _ in range(5):
@@ -278,16 +278,22 @@ def test_replacing_a_result_leaves_the_container_readable(measurement: Path):
     """
     with Measurement.open(measurement, writable=True) as m:
         m.put_table(
-            "bursts", _bursts(3),
-            artifact_kind="burst_table", operation_type="burst_selection",
-            row_grain="burst", parameters={"min_photons": 60},
+            "bursts",
+            _bursts(3),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 60},
             derived_from=m.instrument_uid,
         )
     with Measurement.open(measurement, writable=True) as m:
         m.put_table(
-            "bursts", _bursts(20000),
-            artifact_kind="burst_table", operation_type="burst_selection",
-            row_grain="burst", parameters={"min_photons": 60},
+            "bursts",
+            _bursts(20000),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 60},
             derived_from=m.instrument_uid,
         )
     with Measurement.open(measurement) as m:
@@ -313,12 +319,11 @@ def test_changing_a_setting_produces_a_new_result(measurement: Path):
 # -- grain and keys ------------------------------------------------------------
 
 
-def test_a_finer_grained_table_declares_its_grain_and_its_key(
-    tmp_path: Path, measurement: Path
-):
+def test_a_finer_grained_table_declares_its_grain_and_its_key(tmp_path: Path, measurement: Path):
     """A dwell subdivides a burst. A format that can only carry one row per
     burst has nowhere to put it, which is why H2MM results ended up in five
-    files outside the companion system."""
+    files outside the companion system.
+    """
     with Measurement.open(measurement, writable=True) as m:
         bursts = m._resolve("bursts")
         dwells = pd.DataFrame(
@@ -401,7 +406,8 @@ def test_an_invented_unit_is_refused(measurement: Path):
 
 def test_an_artifact_may_have_several_parents(measurement: Path):
     """Fusing bursts produces a row made of more than one source, so the edge
-    arity has to be able to say so."""
+    arity has to be able to say so.
+    """
     with Measurement.open(measurement, writable=True) as m:
         photons, bursts = m.instrument_uid, m._resolve("bursts")
         uid = m.put_table(
@@ -422,18 +428,21 @@ def test_an_artifact_may_have_several_parents(measurement: Path):
 def test_an_invented_term_is_refused(measurement: Path):
     """The profile defines no vocabulary of its own, so a word that is not in
     the dictionary is a writer inventing one. Refusing at write time is what
-    keeps an unqueryable file from being produced."""
+    keeps an unqueryable file from being produced.
+    """
     with Measurement.open(measurement, writable=True) as m:
         with pytest.raises(PtoMfdbError, match="not a value of"):
             m.put_table(
-                "x", _bursts(2),
+                "x",
+                _bursts(2),
                 artifact_kind="burst_table",
                 operation_type="burst_selection",
                 row_grain="banana",
             )
         with pytest.raises(PtoMfdbError, match="not a value of"):
             m.put_table(
-                "x", _bursts(2),
+                "x",
+                _bursts(2),
                 artifact_kind="not_a_kind",
                 operation_type="burst_selection",
                 row_grain="burst",
@@ -442,7 +451,8 @@ def test_an_invented_term_is_refused(measurement: Path):
 
 def test_every_written_term_resolves_in_the_dictionary(measurement: Path):
     """Walks a produced file and checks it against the dictionaries, which is
-    what stops the profile drifting back into a private namespace."""
+    what stops the profile drifting back into a private namespace.
+    """
     from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
     paths = [
@@ -464,16 +474,15 @@ def test_every_written_term_resolves_in_the_dictionary(measurement: Path):
 
 def test_a_file_records_what_it_was_written_against(measurement: Path):
     """Four things drift independently, so a file recording one of them cannot
-    be diagnosed when it disagrees with a reader."""
+    be diagnosed when it disagrees with a reader.
+    """
     from mmfdb.schema.pdbx_metadata import extension_dictionary_version
 
     with Measurement.open(measurement) as m:
         assert m.tag(0, "_mmfdb_container.profile") == PROFILE
         assert m.tag(0, "_mmfdb_container.profile_version") == PROFILE_VERSION
         assert m.tag(0, "_mmfdb_container.format") == "pto"
-        assert m.tag(0, "_mmfdb_container.dictionary_version") == (
-            extension_dictionary_version()
-        )
+        assert m.tag(0, "_mmfdb_container.dictionary_version") == (extension_dictionary_version())
         assert len(m.tag(0, "_mmfdb_container.dictionary_hash")) == 64
 
 
@@ -484,7 +493,8 @@ def test_a_read_only_container_refuses_to_be_written(measurement: Path):
     with Measurement.open(measurement) as m:
         with pytest.raises(PtoMfdbError, match="read-only"):
             m.put_table(
-                "x", _bursts(2),
+                "x",
+                _bursts(2),
                 artifact_kind="burst_table",
                 operation_type="burst_selection",
                 row_grain="burst",
@@ -505,20 +515,21 @@ def test_disassembly_puts_every_object_back_on_disk(tmp_path: Path, measurement:
 def test_a_container_carries_a_plain_text_explanation_of_itself(measurement: Path):
     """A container outlives the software that wrote it. When the library will
     not install, what a person needs is not a specification somewhere else but a
-    paragraph in the file saying what the bytes are."""
+    paragraph in the file saying what the bytes are.
+    """
     with Measurement.open(measurement) as m:
         first = m.artifacts()[0]
         assert first.kind == "readme", "the preamble is not the first object"
         text = bytes(m._f.read(first.uid))
 
-    text.decode("ascii")                     # ASCII, not UTF-8, on purpose
+    text.decode("ascii")  # ASCII, not UTF-8, on purpose
     body = text.decode("ascii")
     for expected in (
-        "EBML",                              # what the framing is
-        "0x1A45DFA3",                        # where to start
-        "PtoKind",                           # how an object says what it is
-        "tttr_photon_stream",                # how to find the original data
-        "SHA-256",                           # how to verify it
+        "EBML",  # what the framing is
+        "0x1A45DFA3",  # where to start
+        "PtoKind",  # how an object says what it is
+        "tttr_photon_stream",  # how to find the original data
+        "SHA-256",  # how to verify it
     ):
         assert expected in body, f"the preamble does not mention {expected}"
 
@@ -538,7 +549,8 @@ def test_the_explanation_is_findable_in_the_raw_bytes(measurement: Path):
 def test_the_measurement_can_describe_itself(tmp_path: Path, measurement: Path):
     """Provenance says a burst table came from a photon stream. It does not say
     which sample, which dyes, which instrument -- and a file that cannot answer
-    those is a record of a computation, not of a measurement."""
+    those is a record of a computation, not of a measurement.
+    """
     with Measurement.open(measurement, writable=True) as m:
         m.put_metadata(
             {
@@ -558,7 +570,8 @@ def test_the_measurement_can_describe_itself(tmp_path: Path, measurement: Path):
 
 def test_metadata_the_dictionary_does_not_declare_is_refused(measurement: Path):
     """The point of mmCIF here is that the words mean something. Prose in a
-    field that looks structured is worse than no field."""
+    field that looks structured is worse than no field.
+    """
     with Measurement.open(measurement, writable=True) as m:
         with pytest.raises(PtoMfdbError, match="not a declared item"):
             m.put_metadata({"flr_sample": {"invented_item": 1}})

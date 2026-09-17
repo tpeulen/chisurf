@@ -9,8 +9,6 @@ the caller needs, but no solver options beyond what the port uses.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from ..base import BaseEstimator
@@ -74,8 +72,12 @@ class PCA(BaseEstimator):
         Retained component count.
     """
 
-    def __init__(self, n_components: Optional[int] = None,
-                 svd_solver: str = "auto", random_state: Optional[int] = None):
+    def __init__(
+        self,
+        n_components: int | None = None,
+        svd_solver: str = "auto",
+        random_state: int | None = None,
+    ):
         self.n_components = n_components
         self.svd_solver = svd_solver
         self.random_state = random_state
@@ -100,15 +102,11 @@ class PCA(BaseEstimator):
         self.explained_variance_ = eigvals[order][:n_comp].copy()
         # sklearn's ratio normalises by the *full* spectrum sum, which equals the
         # total (unbiased) centred variance, not just the retained part.
-        self.explained_variance_ratio_ = self.explained_variance_ / max(
-            eigvals.sum(), _EPS
-        )
+        self.explained_variance_ratio_ = self.explained_variance_ / max(eigvals.sum(), _EPS)
         self.components_ = eigvecs[:, order][:, :n_comp].T.copy()
         # Deterministic sign convention: the largest absolute loading per
         # component is positive, matching sklearn's svd_flip.
-        self.components_ = _svd_flip(
-            np.zeros((1, n_comp)), self.components_
-        )[1]
+        self.components_ = _svd_flip(np.zeros((1, n_comp)), self.components_)[1]
         self.n_components_ = n_comp
         return self
 
@@ -165,8 +163,12 @@ class IncrementalPCA(BaseEstimator):
         Retained component count.
     """
 
-    def __init__(self, n_components: Optional[int] = None, batch_size: Optional[int] = None,
-                 random_state: Optional[int] = None):
+    def __init__(
+        self,
+        n_components: int | None = None,
+        batch_size: int | None = None,
+        random_state: int | None = None,
+    ):
         self.n_components = n_components
         self.batch_size = batch_size
         self.random_state = random_state
@@ -214,9 +216,7 @@ class IncrementalPCA(BaseEstimator):
         self.explained_variance_ = eigvals[order[:n_comp]].copy()
         self.mean_ = mean
         self.n_components_ = n_comp
-        self.explained_variance_ratio_ = (
-            self.explained_variance_ / max(eigvals.sum(), _EPS)
-        )
+        self.explained_variance_ratio_ = self.explained_variance_ / max(eigvals.sum(), _EPS)
         self.n_samples_ = n
         return self
 

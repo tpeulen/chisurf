@@ -69,8 +69,14 @@ MAX_SECONDS = 360.0
 
 #: Signatures we know, and how many channels each means.
 SIGNATURES: dict[bytes, int] = {
-    b"M.K.": 4, b"M!K!": 4, b"FLT4": 4, b"4CHN": 4,
-    b"6CHN": 6, b"8CHN": 8, b"CD81": 8, b"OKTA": 8,
+    b"M.K.": 4,
+    b"M!K!": 4,
+    b"FLT4": 4,
+    b"4CHN": 4,
+    b"6CHN": 6,
+    b"8CHN": 8,
+    b"CD81": 8,
+    b"OKTA": 8,
 }
 
 #: The vibrato waveform, as ProTracker's own table: a sine over 64 steps.
@@ -202,22 +208,19 @@ def parse(raw: bytes) -> Module:
     if channels is None:
         raise ModuleError(f"unknown module signature {signature!r}")
 
-    instruments: list[Instrument] = [
-        Instrument("", np.zeros(0, np.float32), 0, 0, 0, 0)
-    ]
+    instruments: list[Instrument] = [Instrument("", np.zeros(0, np.float32), 0, 0, 0, 0)]
     lengths: list[tuple[int, int, int]] = []
     for index in range(INSTRUMENTS):
         at = 20 + index * 30
-        name = _text(raw[at:at + 22])
-        length = int.from_bytes(raw[at + 22:at + 24], "big") * 2
+        name = _text(raw[at : at + 22])
+        length = int.from_bytes(raw[at + 22 : at + 24], "big") * 2
         finetune = raw[at + 24] & 0x0F
         finetune = finetune - 16 if finetune > 7 else finetune
         volume = min(raw[at + 25], 64)
-        loop_start = int.from_bytes(raw[at + 26:at + 28], "big") * 2
-        loop_length = int.from_bytes(raw[at + 28:at + 30], "big") * 2
+        loop_start = int.from_bytes(raw[at + 26 : at + 28], "big") * 2
+        loop_length = int.from_bytes(raw[at + 28 : at + 30], "big") * 2
         instruments.append(
-            Instrument(name, np.zeros(0, np.float32), finetune, volume,
-                       loop_start, loop_length)
+            Instrument(name, np.zeros(0, np.float32), finetune, volume, loop_start, loop_length)
         )
         lengths.append((length, loop_start, loop_length))
 
@@ -240,7 +243,7 @@ def parse(raw: bytes) -> Module:
 
     cursor = needed
     for index, (length, loop_start, loop_length) in enumerate(lengths, start=1):
-        chunk = raw[cursor:cursor + length]
+        chunk = raw[cursor : cursor + length]
         cursor += length
         data = np.frombuffer(chunk, dtype=np.int8).astype(np.float32) / 128.0
         instrument = instruments[index]
@@ -248,13 +251,18 @@ def parse(raw: bytes) -> Module:
         # is not an error; it is clamped rather than refused.
         end = min(loop_start + loop_length, data.size)
         instruments[index] = dataclasses.replace(
-            instrument, data=data, loop_start=min(loop_start, data.size),
+            instrument,
+            data=data,
+            loop_start=min(loop_start, data.size),
             loop_length=max(0, end - min(loop_start, data.size)),
         )
 
     return Module(
-        title=_text(raw[:20]), channels=channels, instruments=instruments,
-        order=order, patterns=patterns,
+        title=_text(raw[:20]),
+        channels=channels,
+        instruments=instruments,
+        order=order,
+        patterns=patterns,
     )
 
 

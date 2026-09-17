@@ -16,9 +16,9 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +116,7 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory(filename)
 

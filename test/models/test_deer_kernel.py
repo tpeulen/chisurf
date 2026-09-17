@@ -3,6 +3,7 @@
 Anchor the reimplemented kernel/distributions/background to analytic limits and
 verify the Tikhonov inversion recovers a known distance.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -28,8 +29,8 @@ def test_kernel_matches_numerical_powder_average():
     Kmat = K.dipolar_kernel(t, r)
     xi = np.linspace(0.0, 1.0, 4001)
     for j, rj in enumerate(r):
-        w = K.DIPOLAR_CONSTANT / rj ** 3
-        ref = np.array([trapezoid(np.cos((3 * xi ** 2 - 1) * w * ti), xi) for ti in t])
+        w = K.DIPOLAR_CONSTANT / rj**3
+        ref = np.array([trapezoid(np.cos((3 * xi**2 - 1) * w * ti), xi) for ti in t])
         assert np.allclose(Kmat[:, j], ref, atol=2e-3)
 
 
@@ -44,8 +45,9 @@ def test_distributions_normalized():
 def test_background_limits():
     t = np.linspace(-1.0, 3.0, 50)
     assert np.allclose(K.background(t, "hom3d", 0.0), 1.0)
-    assert np.allclose(K.background(t, "strexp", 0.1, d=3.0),
-                       K.background(t, "exp", 0.1))  # d=3 -> mono-exponential
+    assert np.allclose(
+        K.background(t, "strexp", 0.1, d=3.0), K.background(t, "exp", 0.1)
+    )  # d=3 -> mono-exponential
     b = K.background(t, "hom3d", 0.2)
     assert np.all((b > 0) & (b <= 1.0 + 1e-9))
 
@@ -57,8 +59,8 @@ def test_deer_signal_shape_and_modulation():
     V = K.deer_signal(t, r, p, mod_depth=0.4, bg_model="hom3d", bg_k=0.05, scale=1.0)
     assert V.shape == t.shape
     assert np.all(np.isfinite(V))
-    assert abs(V[0] - 1.0) < 1e-6           # V(0) = 1 for B(0)=1, form factor 1
-    assert V.min() < V[0]                    # modulation dips below the origin
+    assert abs(V[0] - 1.0) < 1e-6  # V(0) = 1 for B(0)=1, form factor 1
+    assert V.min() < V[0]  # modulation dips below the origin
 
 
 def test_tikhonov_recovers_known_distance():

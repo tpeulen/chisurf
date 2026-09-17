@@ -119,7 +119,4 @@ def test_pathlib_relative_addresses_stay_docs_relative():
     """The address bar reads ``docs/...`` in a checkout and in an install."""
     docs = toc_api.docs_root()
     page = docs / "index.md"
-    assert (
-        pathlib.Path(page).relative_to(toc_api.repository_root()).as_posix()
-        == "docs/index.md"
-    )
+    assert pathlib.Path(page).relative_to(toc_api.repository_root()).as_posix() == "docs/index.md"

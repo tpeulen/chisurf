@@ -256,8 +256,7 @@ ALEX_PANELS = [
         "name": "BVA",
         "icon": Glyphs.CHART,
         "description": (
-            "Burst variance analysis: is a population one state, or fast "
-            "exchange between two?"
+            "Burst variance analysis: is a population one state, or fast exchange between two?"
         ),
         "factory": _burst_bva,
         "role": "bva",
@@ -347,8 +346,9 @@ class AlexSuiteTool(BurstAnalysisTool):
             current = widget.get_settings() or {}
         except Exception:
             current = {}
-        if current.get("detectors") == settings.get("detectors") and \
-                current.get("windows") == settings.get("windows"):
+        if current.get("detectors") == settings.get("detectors") and current.get(
+            "windows"
+        ) == settings.get("windows"):
             return
         try:
             widget.load_data_into_tables(settings)
@@ -419,8 +419,7 @@ class AlexSuiteTool(BurstAnalysisTool):
             save_detector_setups({"setups": {name: setup}, "last_used": name})
         except Exception as exc:
             logger.warning(
-                f"ALEX Suite: the setup was published but not saved where the "
-                f"pickers read — {exc}"
+                f"ALEX Suite: the setup was published but not saved where the pickers read — {exc}"
             )
 
     @staticmethod
@@ -440,8 +439,7 @@ class AlexSuiteTool(BurstAnalysisTool):
             add = getattr(panel, add_name, None)
             if callable(add):
                 try:
-                    add([str(path) for path in files]
-                        if add_name == "add_paths" else list(files))
+                    add([str(path) for path in files] if add_name == "add_paths" else list(files))
                 except Exception as exc:
                     logger.warning(f"ALEX Suite: could not set the files — {exc}")
                 return
@@ -455,8 +453,7 @@ class AlexSuiteTool(BurstAnalysisTool):
         calibration = self._calibration()
         corrections = getattr(widget, "set_corrections", None)
         if calibration and callable(corrections):
-            corrections(
-                gamma=calibration.get("gamma"), beta=calibration.get("beta"))
+            corrections(gamma=calibration.get("gamma"), beta=calibration.get("beta"))
 
     def _apply_context_to_legacy_export(self, widget: QtWidgets.QWidget) -> None:
         """Offer the workflow's burst files to the CSV export."""
@@ -539,8 +536,7 @@ class AlexSuiteTool(BurstAnalysisTool):
 
             settings_helpers.load_settings(
                 ndx,
-                settings_json_fn=str(
-                    settings_helpers.get_settings_path() / "mfd.settings.json"),
+                settings_json_fn=str(settings_helpers.get_settings_path() / "mfd.settings.json"),
             )
             logger.info(
                 f"ALEX Suite: loaded {len(ndx.equations)} ndX equations before "

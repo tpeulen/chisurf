@@ -8,6 +8,7 @@ a plausible, entirely wrong accessible volume (RF-379).
 
 Pure numpy plus the shipped T4 lysozyme structure — no IMP or AV backend.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -19,7 +20,11 @@ from ..core.av import _find_attachment_point, load_structure_with_vdw
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -43,18 +48,19 @@ def test_existing_atom_resolves_by_identity(atoms_148l):
 @pytest.mark.parametrize(
     "chain, resseq, atom_name",
     [
-        ("E", 134, "CG"),   # ALA 134 has no CG
-        ("E", 18, "SD"),    # residue exists, atom does not
-        ("A", 18, "CB"),    # chain does not exist
-        ("E", 300, "CA"),   # past the end of a 162-residue protein
-        ("E", 500, "CA"),   # past the end of the atom array as well
+        ("E", 134, "CG"),  # ALA 134 has no CG
+        ("E", 18, "SD"),  # residue exists, atom does not
+        ("A", 18, "CB"),  # chain does not exist
+        ("E", 300, "CA"),  # past the end of a 162-residue protein
+        ("E", 500, "CA"),  # past the end of the atom array as well
     ],
 )
 def test_missing_site_returns_none(atoms_148l, chain, resseq, atom_name):
     """An unresolvable site is a miss — never ``atoms[resseq - 1]``."""
-    assert _find_attachment_point(
-        atoms_148l, chain, resseq, atom_name, pdb_path=str(_PDB_148L)
-    ) is None
+    assert (
+        _find_attachment_point(atoms_148l, chain, resseq, atom_name, pdb_path=str(_PDB_148L))
+        is None
+    )
 
 
 def test_without_pdb_path_the_index_proxy_still_applies(atoms_148l):

@@ -321,7 +321,6 @@ def test_dock_area_is_inside_client_content(qtbot):
     assert dock_area.is_inside_client_content(outside_pos) is False
 
 
-
 def _split_state(sizes):
     """Return a two-pane vertical layout asking for *sizes*."""
     return {
@@ -331,10 +330,16 @@ def _split_state(sizes):
             "orientation": "vertical",
             "sizes": list(sizes),
             "children": [
-                {"type": "tab", "tabs": [{"widget_key": "Top", "tab_name": "Top"}],
-                 "current_index": 0},
-                {"type": "tab", "tabs": [{"widget_key": "Bottom", "tab_name": "Bottom"}],
-                 "current_index": 0},
+                {
+                    "type": "tab",
+                    "tabs": [{"widget_key": "Top", "tab_name": "Top"}],
+                    "current_index": 0,
+                },
+                {
+                    "type": "tab",
+                    "tabs": [{"widget_key": "Bottom", "tab_name": "Bottom"}],
+                    "current_index": 0,
+                },
             ],
         },
         "active_tab_widget": [0],
@@ -347,7 +352,8 @@ def _restore(dock_area, sizes):
     dock_area.addTab(top, "Top")
     dock_area.addTab(bottom, "Bottom")
     dock_area.set_layout_state(
-        _split_state(sizes), key_func=lambda w: dock_area.tabText(dock_area.indexOf(w)),
+        _split_state(sizes),
+        key_func=lambda w: dock_area.tabText(dock_area.indexOf(w)),
     )
     # Shown, or the splitter never lays out and every share stays at its minimum
     # -- which is also the state the authored sizes are first applied in.
@@ -498,8 +504,6 @@ def test_the_main_tab_widget_is_never_an_orphan(qtbot):
     QtWidgets.QApplication.processEvents()
 
     real = dock_area._tab_widget_for_page(page)
-    orphans = [
-        tw for tw in dock_area._find_tab_widgets() if tw is not real and tw.count() == 0
-    ]
+    orphans = [tw for tw in dock_area._find_tab_widgets() if tw is not real and tw.count() == 0]
     assert orphans, "the fixture produced no orphaned stack"
     assert dock_area.find_main_tab_widget() is real

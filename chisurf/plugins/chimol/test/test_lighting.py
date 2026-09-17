@@ -21,7 +21,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -72,9 +76,7 @@ def _state(viewer):
 def test_every_chimerax_preset_is_present():
     from chimol.commands.command import Cmd
 
-    assert set(Cmd.LIGHTING_PRESETS) >= {
-        "simple", "full", "soft", "gentle", "flat", "default"
-    }
+    assert set(Cmd.LIGHTING_PRESETS) >= {"simple", "full", "soft", "gentle", "flat", "default"}
 
 
 def test_a_preset_changes_the_lighting(session):
@@ -142,7 +144,8 @@ def test_a_preset_needing_nothing_extra_reports_no_gap(session):
 def test_soft_and_gentle_are_identical_until_multishadow_exists(session):
     """Not a bug: in ChimeraX they differ *only* in multishadow map size and
     depth bias, neither of which can be applied yet. Pinned so that when
-    multishadow lands, this test fails and forces the difference to be real."""
+    multishadow lands, this test fails and forces the difference to be real.
+    """
     viewer, _shared, do, _messages, _errors = session
     do("lighting soft")
     soft = _state(viewer)
@@ -171,9 +174,7 @@ def test_an_unknown_preset_lists_the_real_ones(session):
 def test_the_state_round_trips_through_the_setter(session):
     """The command layer needs no translation table because the names match."""
     viewer, _shared, _do, _messages, _errors = session
-    viewer.renderer.set_lighting(
-        key_light_intensity=0.25, ambient_light_intensity=0.75
-    )
+    viewer.renderer.set_lighting(key_light_intensity=0.25, ambient_light_intensity=0.75)
     state = _state(viewer)
     assert state["key_light_intensity"] == pytest.approx(0.25)
     assert state["ambient_light_intensity"] == pytest.approx(0.75)
@@ -258,10 +259,9 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
     """
     if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
         pytest.skip("a GL context cannot be created on the offscreen platform")
-    from qtpy import QtCore, QtGui
-
-    from chimol.render.scene import Geometry, Scene, SceneObject
     from chimol.core.viewer import Viewer
+    from chimol.render.scene import Geometry, Scene, SceneObject
+    from qtpy import QtCore, QtGui
 
     view = Viewer()
     view.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
@@ -275,9 +275,7 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
         th = np.radians(tilt)
         c, s = float(np.cos(th)), float(np.sin(th))
         rot = np.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
-        quad = np.array(
-            [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]], dtype=np.float32
-        ).dot(rot)
+        quad = np.array([[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]], dtype=np.float32).dot(rot)
         indices = np.array([0, 1, 2, 0, 2, 3])
         geo = Geometry(
             kind="mesh",
@@ -300,9 +298,11 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
         image = image.convertToFormat(QtGui.QImage.Format_RGBA8888)
         buf = image.bits()
         buf.setsize(image.width() * image.height() * 4)
-        return np.frombuffer(buf, dtype=np.uint8).reshape(
-            image.height(), image.width(), 4
-        )[..., :3].astype(int)
+        return (
+            np.frombuffer(buf, dtype=np.uint8)
+            .reshape(image.height(), image.width(), 4)[..., :3]
+            .astype(int)
+        )
     finally:
         view.close()
 
@@ -327,8 +327,7 @@ def test_the_key_light_moves_pixels(qapp):
     unlit = _framebuffer_frame(qapp, ambient=0.5, key=0.0)
     assert _region_mean(unlit) > 20, "the quad should be visible under pure ambient"
     assert _region_mean(lit) > _region_mean(unlit) + 15, (
-        f"the key light changed no pixels "
-        f"({_region_mean(lit):.1f} vs {_region_mean(unlit):.1f})"
+        f"the key light changed no pixels ({_region_mean(lit):.1f} vs {_region_mean(unlit):.1f})"
     )
 
 
@@ -369,13 +368,16 @@ def _window_with_molecule(qapp):
     """A real window showing 148L, or a skip when GL is unavailable."""
     if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
         pytest.skip("a GL context cannot be created on the offscreen platform")
-    from qtpy import QtCore
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtCore
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     window = MolViewPluginWindow()
     window.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
@@ -509,9 +511,9 @@ def test_the_sequence_strip_survives_an_effect_pass(qapp):
             "its ink when an effect was switched on; the composite blit is "
             "covering the band it is drawn in"
         )
-        assert np.abs(
-            after[:band].astype(int) - before[:band].astype(int)
-        ).max() < 40, "the strip band changed visibly, not just in antialiasing"
+        assert np.abs(after[:band].astype(int) - before[:band].astype(int)).max() < 40, (
+            "the strip band changed visibly, not just in antialiasing"
+        )
     finally:
         window.close()
 
@@ -542,7 +544,7 @@ def test_the_viewport_depth_cue_grades_instead_of_dimming(qapp):
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)
         cmd.set_error_callback(lambda _m: None)
-        cmd.do("as spheres")   # a solid body, so near and far both have pixels
+        cmd.do("as spheres")  # a solid body, so near and far both have pixels
 
         cmd.do("set depth_cue, off")
         off = _frame(window, qapp).astype(float)
@@ -559,8 +561,7 @@ def test_the_viewport_depth_cue_grades_instead_of_dimming(qapp):
         unfogged = float((values > 0.99).mean())
         fogged = float((values < 0.90).mean())
         assert fogged > 0.005, (
-            "nothing was fogged; `depth_cue` reached the viewport but changed "
-            "nothing"
+            "nothing was fogged; `depth_cue` reached the viewport but changed nothing"
         )
         assert unfogged > 0.20, (
             f"only {unfogged:.1%} of the molecule came out unfogged -- the cue "

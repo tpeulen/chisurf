@@ -47,8 +47,18 @@ SHELL_OBJECT = "__chinsole__"
 #: Statements that open a block. ``match`` and ``case`` are soft keywords and
 #: are handled by the trailing-colon rule instead, since ``match = 3`` is legal.
 _BLOCK_OPENERS = (
-    "if", "elif", "else", "for", "while", "def", "class", "with",
-    "try", "except", "finally", "async",
+    "if",
+    "elif",
+    "else",
+    "for",
+    "while",
+    "def",
+    "class",
+    "with",
+    "try",
+    "except",
+    "finally",
+    "async",
 )
 
 #: Statements after which the next line should dedent.
@@ -102,7 +112,7 @@ def split_cell_magic(raw: str) -> tuple[str, str, str] | None:
     if not raw.startswith(ESC_CELL_MAGIC):
         return None
     head, _, body = raw.partition("\n")
-    head = head[len(ESC_CELL_MAGIC):]
+    head = head[len(ESC_CELL_MAGIC) :]
     name, _, line = head.partition(" ")
     name = name.strip()
     if not name.isidentifier():
@@ -181,9 +191,7 @@ def transform_cell(raw: str, *, magic_names: typing.Container[str] = ()) -> str:
     cell = split_cell_magic(raw)
     if cell is not None:
         name, line, body = cell
-        return (
-            f"{SHELL_OBJECT}.run_cell_magic({_q(name)}, {_q(line)}, {_q(body)})"
-        )
+        return f"{SHELL_OBJECT}.run_cell_magic({_q(name)}, {_q(line)}, {_q(body)})"
 
     lines = raw.splitlines()
     out = [transform_line(line, magic_names=magic_names) for line in lines]
@@ -223,7 +231,7 @@ def strip_prompts(text: str) -> str:
             continue
         if line.startswith("Out["):
             continue
-        kept.append(line[match.end():])
+        kept.append(line[match.end() :])
     return "\n".join(kept)
 
 

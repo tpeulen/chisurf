@@ -21,19 +21,18 @@ point where two pieces of chrome overlap, the one painted **later** is the one
 either list and nothing notices -- which is exactly why this drifts unpunished
 until someone opens a panel that reaches a little further than before.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from toolkit_free import probe
-
 from chimol.ui.gui.layers import CHROME_LAYERS
+from toolkit_free import probe
 
 #: Bottom to top -- **read from the stack**, not restated here. A test that
 #: kept its own copy of the order would be a fourth list to drift.
 PAINT_ORDER = [layer.key for layer in CHROME_LAYERS]
 
-SCRIPT = '''
+SCRIPT = f'''
 app = open_app(size=(1200, 820))
 cmd, viewer = app.cmd, app.viewer
 gui = viewer.gui
@@ -41,7 +40,7 @@ cmd.do("load 148l.pdb")
 cmd.do("panels_all on")
 app.renderer._draw()
 
-PAINT_ORDER = %r
+PAINT_ORDER = {PAINT_ORDER!r}
 
 def rects():
     """Where each piece of chrome is, as predicates on a point."""
@@ -54,7 +53,7 @@ def rects():
     def panel_row(x, y):
         return any(r.contains(x, y) for r in gui._row_rects)
 
-    return {
+    return {{
         "info": lambda x, y: gui.info_contains(x, y),
         "sequence": lambda x, y: (gui.visible and gui.sequence_visible
                                   and (gui._seq_strip.contains(x, y)
@@ -76,7 +75,7 @@ def rects():
                               or gui._tour_close_rect.contains(x, y)),
         "tooltip": lambda x, y: False,
         "progress": lambda x, y: False,
-    }
+    }}
 
 def _in(box, x, y):
     bx, by, bw, bh = box
@@ -85,39 +84,39 @@ def _in(box, x, y):
 where = rects()
 
 #: kinds `hit_test` may answer that mean the same element as the key.
-SAME = {
-    "sequence": {"sequence", "residue", "scrollbar"},
+SAME = {{
+    "sequence": {{"sequence", "residue", "scrollbar"}},
     # The mouse-mode block *is* a window when the panels are floating -- its
     # rect and the `mouse` window's body are the same pixels -- so a click
     # there resolving to either is the same element answering.
     # The object list and the mouse-mode block are *windows* when the panels
     # float: their rects and their windows' bodies are the same pixels, so a
     # click resolving to either is the same element answering.
-    "windows": {"window", "wintitle", "winbody", "winclose", "wincollapse",
+    "windows": {{"window", "wintitle", "winbody", "winclose", "wincollapse",
                 "winresize", "row", "eye", "button", "group", "measurement",
                 "name", "panel", "objects_bar",
                 "block", "mode", "selecting", "timeline", "stride", "average",
-                "movie", "playback_slider"},
-    "status": {"uiscale", "status"},
-    "splitter": {"splitter"},
-    "column": {"row", "eye", "button", "group", "measurement", "name", "panel",
+                "movie", "playback_slider"}},
+    "status": {{"uiscale", "status"}},
+    "splitter": {{"splitter"}},
+    "column": {{"row", "eye", "button", "group", "measurement", "name", "panel",
                "objects_bar", "block", "mode",
                "selecting", "timeline", "stride", "average", "movie",
                "playback_slider", "wizard", "sequence", "residue", "scrollbar",
-               ""},
-    "panel": {"row", "eye", "button", "group", "measurement", "name", "panel",
-              "objects_bar"},
-    "block": {"block", "mode", "selecting", "timeline", "stride", "average",
-              "movie", "playback_slider"},
-    "wizard": {"wizard"},
-    "info": {"info"},
-    "command": {"command"},
-    "nerd": {"nerd"},
-    "menubar": {"menubar"},
-    "toolbar": {"toolbar"},
-    "menu": {"menu"},
-    "tour": {"tour"},
-}
+               ""}},
+    "panel": {{"row", "eye", "button", "group", "measurement", "name", "panel",
+              "objects_bar"}},
+    "block": {{"block", "mode", "selecting", "timeline", "stride", "average",
+              "movie", "playback_slider"}},
+    "wizard": {{"wizard"}},
+    "info": {{"info"}},
+    "command": {{"command"}},
+    "nerd": {{"nerd"}},
+    "menubar": {{"menubar"}},
+    "toolbar": {{"toolbar"}},
+    "menu": {{"menu"}},
+    "tour": {{"tour"}},
+}}
 
 def topmost(x, y):
     """The piece painted last at this point -- the one the eye sees."""
@@ -130,7 +129,7 @@ def topmost(x, y):
             continue
     return found
 
-bad = {}
+bad = {{}}
 overlaps = 0
 for y in range(2, 818, 3):
     for x in range(2, 1198, 3):
@@ -143,14 +142,14 @@ for y in range(2, 818, 3):
             continue
         overlaps += 1
         kind = str(gui.hit_test(x, y).kind)
-        if kind not in SAME.get(painted, {painted}):
-            key = "%%s over %%s -> hit %%s" %% ("+".join(covering), painted, kind or "(scene)")
+        if kind not in SAME.get(painted, {{painted}}):
+            key = "%s over %s -> hit %s" % ("+".join(covering), painted, kind or "(scene)")
             bad[key] = bad.get(key, 0) + 1
 
 emit("overlapping_points", overlaps)
 emit("panels", ",".join(sorted(w.key for w in gui.windows if w.visible)))
-emit("mismatches", "; ".join("%%s x%%d" %% (k, v) for k, v in sorted(bad.items())) or "none")
-''' % (PAINT_ORDER,)
+emit("mismatches", "; ".join("%s x%d" % (k, v) for k, v in sorted(bad.items())) or "none")
+'''
 
 
 @pytest.fixture(scope="module")

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.analysis.labels import (
     ATOM_PROPERTIES,
     evaluate_labels,
@@ -23,9 +22,15 @@ from chimol.analysis.labels import (
 
 def _atoms() -> np.ndarray:
     dtype = [
-        ("atom_name", "U4"), ("res_name", "U4"), ("chain", "U2"),
-        ("res_id", np.int64), ("element", "U2"), ("bfactor", float),
-        ("occupancy", float), ("radius", float), ("i", np.int64),
+        ("atom_name", "U4"),
+        ("res_name", "U4"),
+        ("chain", "U2"),
+        ("res_id", np.int64),
+        ("element", "U2"),
+        ("bfactor", float),
+        ("occupancy", float),
+        ("radius", float),
+        ("i", np.int64),
     ]
     return np.array(
         [
@@ -58,40 +63,30 @@ def test_pymols_own_residue_expression_works_verbatim():
 
 
 def test_oneletter_is_available():
-    _, texts = evaluate_labels(
-        _atoms(), _XYZ, "oneletter + resi", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(_atoms(), _XYZ, "oneletter + resi", np.array([True, False, False]))
     assert texts == ["A10"]
 
 
 def test_an_unknown_residue_gets_x_rather_than_failing():
     atoms = _atoms()
     atoms["res_name"][0] = "XYZ"
-    _, texts = evaluate_labels(
-        atoms, _XYZ, "oneletter", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(atoms, _XYZ, "oneletter", np.array([True, False, False]))
     assert texts == ["X"]
 
 
 def test_numeric_formatting_works():
-    _, texts = evaluate_labels(
-        _atoms(), _XYZ, "'%1.2f' % b", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(_atoms(), _XYZ, "'%1.2f' % b", np.array([True, False, False]))
     assert texts == ["12.35"]
 
 
 def test_coordinates_are_in_scope():
-    _, texts = evaluate_labels(
-        _atoms(), _XYZ, "'%.1f' % x", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(_atoms(), _XYZ, "'%.1f' % x", np.array([True, False, False]))
     assert texts == ["1.0"]
 
 
 def test_resi_is_a_string_because_insertion_codes_exist():
     """PyMOL gives `resi` as a string; `oneletter + resi` depends on it."""
-    _, texts = evaluate_labels(
-        _atoms(), _XYZ, "resi + '!'", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(_atoms(), _XYZ, "resi + '!'", np.array([True, False, False]))
     assert texts == ["10!"]
 
 
@@ -101,17 +96,13 @@ def test_an_empty_expression_clears():
 
 
 def test_a_selection_limits_which_atoms_are_labelled():
-    idx, _ = evaluate_labels(
-        _atoms(), _XYZ, "name", np.array([False, True, True])
-    )
+    idx, _ = evaluate_labels(_atoms(), _XYZ, "name", np.array([False, True, True]))
     assert idx.tolist() == [1, 2]
 
 
 def test_a_missing_field_still_resolves():
     """A structure without b-factors must not fail every expression using one."""
-    bare = np.array(
-        [("CA", 1)], dtype=[("atom_name", "U4"), ("res_id", np.int64)]
-    )
+    bare = np.array([("CA", 1)], dtype=[("atom_name", "U4"), ("res_id", np.int64)])
     _, texts = evaluate_labels(bare, _XYZ[:1], "'%s/%s' % (name, b)")
     assert texts == ["CA/0.0"]
 
@@ -119,7 +110,7 @@ def test_a_missing_field_still_resolves():
 def test_one_bad_atom_does_not_cost_the_others_their_labels():
     """An expression that fails on a single residue skips it and continues."""
     _, texts = evaluate_labels(_atoms(), _XYZ, "1.0 / (b - 20.5)")
-    assert len(texts) == 2      # the CA divides by zero and is skipped
+    assert len(texts) == 2  # the CA divides by zero and is skipped
 
 
 def test_a_syntax_error_is_raised_because_it_is_wrong_everywhere():
@@ -133,7 +124,7 @@ def test_a_syntax_error_is_raised_because_it_is_wrong_everywhere():
 def test_builtins_are_not_reachable():
     """A label expression arrives from a menu or a script; it must not open files."""
     _, texts = evaluate_labels(_atoms(), _XYZ, "open")
-    assert texts == []          # NameError per atom, so nothing is labelled
+    assert texts == []  # NameError per atom, so nothing is labelled
 
 
 def test_imports_are_not_reachable():
@@ -142,9 +133,7 @@ def test_imports_are_not_reachable():
 
 
 def test_the_formatting_helpers_that_are_allowed_still_work():
-    _, texts = evaluate_labels(
-        _atoms(), _XYZ, "str(round(b, 1))", np.array([True, False, False])
-    )
+    _, texts = evaluate_labels(_atoms(), _XYZ, "str(round(b, 1))", np.array([True, False, False]))
     assert texts == ["12.3"]
 
 
@@ -152,10 +141,22 @@ def test_the_formatting_helpers_that_are_allowed_still_work():
 # Menu expressions
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
-    "kind", ["clear", "residues", "residues (oneletter)", "chains", "atom name",
-             "element symbol", "residue name", "one letter code",
-             "residue identifier", "chain identifier", "b-factor", "occupancy",
-             "vdw radius"],
+    "kind",
+    [
+        "clear",
+        "residues",
+        "residues (oneletter)",
+        "chains",
+        "atom name",
+        "element symbol",
+        "residue name",
+        "one letter code",
+        "residue identifier",
+        "chain identifier",
+        "b-factor",
+        "occupancy",
+        "vdw radius",
+    ],
 )
 def test_every_menu_expression_evaluates(kind):
     expr = label_expression(kind)
@@ -167,8 +168,7 @@ def test_every_menu_expression_evaluates(kind):
 
 
 def test_the_property_names_are_pymols():
-    for name in ("name", "resn", "resi", "chain", "elem", "b", "q", "vdw",
-                 "index"):
+    for name in ("name", "resn", "resi", "chain", "elem", "b", "q", "vdw", "index"):
         assert name in ATOM_PROPERTIES
 
 
@@ -188,16 +188,21 @@ def loaded(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     view = Viewer()
     view.add_structure(
-        _read_full_model(cs_struct.Structure, pdb), name="148l",
+        _read_full_model(cs_struct.Structure, pdb),
+        name="148l",
         source_path=str(pdb),
     )
 
@@ -277,8 +282,5 @@ def test_the_label_menu_is_no_longer_disabled():
     """It was greyed out in its entirety because there was no label support."""
     from chimol.ui.menus.objects import LABEL_MENU
 
-    live = [
-        e for e in LABEL_MENU
-        if not e.is_separator and (e.command or e.children)
-    ]
+    live = [e for e in LABEL_MENU if not e.is_separator and (e.command or e.children)]
     assert len(live) >= 15

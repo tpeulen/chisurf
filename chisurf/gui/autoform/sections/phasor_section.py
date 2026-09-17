@@ -79,7 +79,8 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         # Universal semicircle: centre (0.5, 0), radius 0.5.
         theta = np.linspace(0.0, np.pi, 256)
         self._plot.line(
-            0.5 + 0.5 * np.cos(theta), 0.5 * np.sin(theta),
+            0.5 + 0.5 * np.cos(theta),
+            0.5 * np.sin(theta),
             pen=cp.to_pen((255, 255, 255, 200), width=1.5),
         )
         self._plot.set_xlim(0.0, 1.0)
@@ -259,9 +260,7 @@ class PhasorSectionWidget(QtWidgets.QWidget):
             item.remove()
         self._overlay_items = []
         source = (
-            getattr(self._model, self._overlays_source, None)
-            if self._overlays_source
-            else None
+            getattr(self._model, self._overlays_source, None) if self._overlays_source else None
         )
         if not callable(source):
             return
@@ -284,12 +283,18 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         x, y = ov.get("x", []), ov.get("y", [])
         if ov.get("kind") == "scatter":
             item = self._plot.scatter(
-                x, y, pen=color, brush=color,
-                size=style.get("size", 8), symbol=style.get("symbol", "o"),
+                x,
+                y,
+                pen=color,
+                brush=color,
+                size=style.get("size", 8),
+                symbol=style.get("symbol", "o"),
             )
             self._overlay_items.append(item)
             for xi, yi, label in zip(x, y, ov.get("labels", [])):
-                text = self._plot.text(str(label), (float(xi), float(yi)), color=color, anchor=(0, 1))
+                text = self._plot.text(
+                    str(label), (float(xi), float(yi)), color=color, anchor=(0, 1)
+                )
                 self._overlay_items.append(text)
         else:
             item = self._plot.line(x, y, pen=pen)

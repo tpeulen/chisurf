@@ -6,21 +6,36 @@ import pathlib
 from typing import Any
 
 import numpy as np
+from mmfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
 from qtpy import QtCore, QtWidgets
 
 from chisurf.core.fluorescence.fret.forster import forster_radius_from_spectra
-from mmfdb.store.database_resolver import resolve_database_path
-from mmfdb.repository import MFDatabase
 
-_EXT_COEFF_ALIASES = frozenset({
-    "ext_coeff", "molar_extinction", "molar_ec", "epsilon",
-    "extinction coefficient", "ext_coeff_max", "ec_max",
-})
+_EXT_COEFF_ALIASES = frozenset(
+    {
+        "ext_coeff",
+        "molar_extinction",
+        "molar_ec",
+        "epsilon",
+        "extinction coefficient",
+        "ext_coeff_max",
+        "ec_max",
+    }
+)
 
-_QY_ALIASES = frozenset({
-    "qy", "quantum yield", "phi", "phi_d", "qy_d", "quantum_yield",
-    "fluorescence quantum yield", "q_fluor",
-})
+_QY_ALIASES = frozenset(
+    {
+        "qy",
+        "quantum yield",
+        "phi",
+        "phi_d",
+        "qy_d",
+        "quantum_yield",
+        "fluorescence quantum yield",
+        "q_fluor",
+    }
+)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "forster_calculator.view.json"
 
@@ -86,9 +101,7 @@ def _lookup_optical_property(
     return None
 
 
-def _try_lookup_cached_r0(
-    db: MFDatabase, donor_name: str, acceptor_name: str
-) -> float | None:
+def _try_lookup_cached_r0(db: MFDatabase, donor_name: str, acceptor_name: str) -> float | None:
     row = db.conn.execute(
         """SELECT fr.forster_radius
            FROM flr_fret_forster_radius fr
@@ -104,14 +117,9 @@ def _try_lookup_cached_r0(
     return float(row[0]) if row else None
 
 
-def _spectrum_tooltip(
-    kind: str, data: dict[str, np.ndarray]
-) -> str:
+def _spectrum_tooltip(kind: str, data: dict[str, np.ndarray]) -> str:
     wl = data["wavelengths"]
-    return (
-        f"{kind} · {len(wl)} pts · "
-        f"{wl[0]:.0f}–{wl[-1]:.0f} nm"
-    )
+    return f"{kind} · {len(wl)} pts · {wl[0]:.0f}–{wl[-1]:.0f} nm"
 
 
 class ForsterCalculatorModel:
@@ -127,6 +135,7 @@ class ForsterCalculatorModel:
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
 
@@ -197,9 +206,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
         result_layout = QtWidgets.QHBoxLayout()
         self.result_label = QtWidgets.QLabel("")
         self.result_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.result_label.setStyleSheet(
-            "font-size: 14pt; font-weight: bold; padding: 8px;"
-        )
+        self.result_label.setStyleSheet("font-size: 14pt; font-weight: bold; padding: 8px;")
         result_layout.addWidget(self.result_label, 1)
 
         self.apply_btn = QtWidgets.QPushButton("Apply R₀ to model")
@@ -258,8 +265,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
                     self.donor_combo.addItem(p["chromophore_name"], pid)
                     idx = self.donor_combo.count() - 1
                     self.donor_combo.setItemData(
-                        idx, _spectrum_tooltip("emission", em),
-                        QtCore.Qt.ToolTipRole
+                        idx, _spectrum_tooltip("emission", em), QtCore.Qt.ToolTipRole
                     )
             self.donor_combo.blockSignals(False)
 
@@ -274,8 +280,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
                     self.acceptor_combo.addItem(p["chromophore_name"], pid)
                     idx = self.acceptor_combo.count() - 1
                     self.acceptor_combo.setItemData(
-                        idx, _spectrum_tooltip("absorption", ab),
-                        QtCore.Qt.ToolTipRole
+                        idx, _spectrum_tooltip("absorption", ab), QtCore.Qt.ToolTipRole
                     )
             self.acceptor_combo.blockSignals(False)
         finally:
@@ -435,7 +440,8 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
         pid = self._current_probe_id(self.donor_combo)
         if pid is not None and self.qy_spin is not None:
             self._auto_fill_property(
-                pid, _QY_ALIASES,
+                pid,
+                _QY_ALIASES,
                 lambda v: self.qy_spin.setValue(v),
             )
         self._schedule()
@@ -444,7 +450,8 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
         pid = self._current_probe_id(self.acceptor_combo)
         if pid is not None and self.ext_spin is not None:
             self._auto_fill_property(
-                pid, _EXT_COEFF_ALIASES,
+                pid,
+                _EXT_COEFF_ALIASES,
                 lambda v: self.ext_spin.setValue(v),
             )
         self._schedule()

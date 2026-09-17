@@ -11,15 +11,12 @@ from qtpy import QtWidgets
 
 from chisurf.gui import QtCore
 from chisurf.gui.widgets.navigation import NavigationPanelTool
-from chisurf.gui.widgets.wizard.tttr_correlator.tttr_correlator import (
-    WizardTTTRCorrelator,
-)
 from chisurf.plugins.fcs.fcs_correlator.wizard import FileAndStepsPage
-
 
 # ---------------------------------------------------------------------------
 # Workflow context
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FcsWorkflowContext:
@@ -38,6 +35,7 @@ class FcsWorkflowContext:
 # ---------------------------------------------------------------------------
 # Panel factory helpers
 # ---------------------------------------------------------------------------
+
 
 def _bind(tool: NavigationPanelTool, role: str, widget: QtWidgets.QWidget) -> None:
     binder = getattr(tool, "bind_workflow_panel", None)
@@ -62,6 +60,7 @@ def _panel_widget(tool: NavigationPanelTool, index: int) -> QtWidgets.QWidget | 
 # Panel factories
 # ---------------------------------------------------------------------------
 
+
 def _channel_def(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.fcs_channel_preset.gui.tool import FCSChannelWidget
 
@@ -83,6 +82,7 @@ def _photon_filter(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.fcs_correlator.filter_panel import (
         FilterSettingsModel,
     )
+
     model = FilterSettingsModel()
     form = AutoForm(model, parent=parent)
     model._form = form
@@ -97,6 +97,7 @@ def _correlator_panel(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.fcs_correlator.correlator_panel import (
         CorrelatorSettingsModel,
     )
+
     model = CorrelatorSettingsModel()
     form = AutoForm(model, parent=parent)
     model._form = form
@@ -111,6 +112,7 @@ def _fcs_merger(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.fcs_correlator.merger_panel import (
         MergerSettingsModel,
     )
+
     model = MergerSettingsModel()
     form = AutoForm(model, parent=parent)
     model._form = form
@@ -166,6 +168,7 @@ CORRELATOR_PANELS = [
 # ---------------------------------------------------------------------------
 # Main tool class
 # ---------------------------------------------------------------------------
+
 
 class FcsCorrelatorTool(NavigationPanelTool):
     """FCS Correlator — two-pane navigation tool replacing the QWizard.
@@ -249,9 +252,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
 
     def _bind_channel_def_panel(self, widget: QtWidgets.QWidget) -> None:
         try:
-            widget.setup_combo.currentIndexChanged.connect(
-                self._on_channel_setup_changed
-            )
+            widget.setup_combo.currentIndexChanged.connect(self._on_channel_setup_changed)
         except Exception:
             pass
 
@@ -295,15 +296,9 @@ class FcsCorrelatorTool(NavigationPanelTool):
         files = self._workflow_panels.get("files")
         if files is not None:
             try:
-                self.workflow_context.file_paths = [
-                    pathlib.Path(p) for p in files.checked_files
-                ]
-                self.workflow_context.use_photon_filter = (
-                    files.cb_photon_filter.isChecked()
-                )
-                self.workflow_context.use_fcs_merger = (
-                    files.cb_fcs_merger.isChecked()
-                )
+                self.workflow_context.file_paths = [pathlib.Path(p) for p in files.checked_files]
+                self.workflow_context.use_photon_filter = files.cb_photon_filter.isChecked()
+                self.workflow_context.use_fcs_merger = files.cb_fcs_merger.isChecked()
             except Exception:
                 pass
 
@@ -315,9 +310,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
         elif role == "merger":
             self._apply_context_to_merger(widget)
 
-    def _apply_context_to_filter(
-        self, widget: QtWidgets.QWidget
-    ) -> None:
+    def _apply_context_to_filter(self, widget: QtWidgets.QWidget) -> None:
         # The AutoForm filter panel only needs the selected files; container
         # type comes from the detector step, channels are entered as text.
         self._load_files_into_filter(widget)
@@ -337,9 +330,8 @@ class FcsCorrelatorTool(NavigationPanelTool):
         if model._files == expanded and model._tttr is not None:
             return
         filetype = str(
-            self.workflow_context.detector_settings.get("tttr_reading", {}).get(
-                "file_type", ""
-            ) or ""
+            self.workflow_context.detector_settings.get("tttr_reading", {}).get("file_type", "")
+            or ""
         )
         lut_kwargs = self._lut_open_kwargs()
         objs: dict = {}
@@ -352,9 +344,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
                 objs[str(p.resolve())] = tt
         model.set_tttr_objects(objs, expanded)
 
-    def _apply_context_to_correlator(
-        self, widget: QtWidgets.QWidget
-    ) -> None:
+    def _apply_context_to_correlator(self, widget: QtWidgets.QWidget) -> None:
         model = getattr(self, "_correlator_model", None)
         if model is None:
             return
@@ -364,25 +354,21 @@ class FcsCorrelatorTool(NavigationPanelTool):
         settings = self.workflow_context.detector_settings
         dets = settings.get("detectors", {}) or {}
         dets = {k: v for k, v in dets.items() if isinstance(k, str) and k.strip()}
-        model.load_fcs_presets(
-            settings.get("setup_name", ""), dets
-        )
+        model.load_fcs_presets(settings.get("setup_name", ""), dets)
         expanded = self._collect_expanded_files()
         if expanded:
             parent = pathlib.Path(expanded[0]).resolve().parent
             model._analysis_folder = parent
         # The detector step stores the container type under
         # ``tttr_reading.file_type``; there is no top-level "filetype" key.
-        filetype = str(
-            settings.get("tttr_reading", {}).get("file_type", "") or ""
-        )
+        filetype = str(settings.get("tttr_reading", {}).get("file_type", "") or "")
         if self.workflow_context.use_photon_filter:
             # Correlate the photons kept by the Photon/Burst filter step. Fall
             # back to the raw files if the filter panel has not produced a
             # usable selection yet, so the correlator is never left empty.
             filtered = self._filtered_tttr_from_panel()
-            model._tttr = filtered if filtered is not None else self._load_raw_combined(
-                expanded, filetype
+            model._tttr = (
+                filtered if filtered is not None else self._load_raw_combined(expanded, filetype)
             )
         elif expanded:
             model._tttr = self._load_raw_combined(expanded, filetype)
@@ -399,6 +385,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
 
     def _collect_expanded_files(self) -> list[str]:
         import tttrlib
+
         files = self.workflow_context.file_paths
         allowed = {
             f".{ext.lower()}" if not ext.startswith(".") else ext.lower()
@@ -514,11 +501,7 @@ class FcsCorrelatorTool(NavigationPanelTool):
             folder = analysis_folder / output_subdir if analysis_folder and output_subdir else None
             merger_model.set_correlations(correlations, folder)
         elif analysis_folder:
-            folder = (
-                analysis_folder / output_subdir
-                if output_subdir
-                else analysis_folder
-            )
+            folder = analysis_folder / output_subdir if output_subdir else analysis_folder
             merger_model.load_correlations(folder)
 
     @staticmethod
@@ -558,12 +541,8 @@ class FcsCorrelatorTool(NavigationPanelTool):
         files = self._workflow_panels.get("files")
         if files is not None:
             try:
-                self.workflow_context.use_photon_filter = (
-                    files.cb_photon_filter.isChecked()
-                )
-                self.workflow_context.use_fcs_merger = (
-                    files.cb_fcs_merger.isChecked()
-                )
+                self.workflow_context.use_photon_filter = files.cb_photon_filter.isChecked()
+                self.workflow_context.use_fcs_merger = files.cb_fcs_merger.isChecked()
             except Exception:
                 pass
         self._update_step_nav_state()

@@ -11,10 +11,10 @@ fluorescent proteins). These tests pin that behaviour:
 - reactive-group suffix merging is opt-in (``aggressive=True``) and never
   touches proteins.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from mmfdb.repository import MFDatabase
 
 
@@ -62,10 +62,22 @@ def _props(db, pid):
 
 def test_simple_duplicate_filter_merges_and_merges_metadata(db):
     """Same filter from two sources → one probe carrying both sources + all props."""
-    _add(db, "FB340-10", "filter", "thorlabs", "FB340-10",
-         props={"center_wavelength": "340", "bandwidth": "10"})
-    _add(db, "FB340-10", "filter", "3doptix", "http://x",
-         props={"Coating": "hard", "bandwidth": "10"})
+    _add(
+        db,
+        "FB340-10",
+        "filter",
+        "thorlabs",
+        "FB340-10",
+        props={"center_wavelength": "340", "bandwidth": "10"},
+    )
+    _add(
+        db,
+        "FB340-10",
+        "filter",
+        "3doptix",
+        "http://x",
+        props={"Coating": "hard", "bandwidth": "10"},
+    )
 
     res = db.consolidate_probes()
     assert res["deleted_probes"] == 1
@@ -121,7 +133,5 @@ def test_aggressive_merges_reactive_conjugates_for_dyes(db):
     assert res["deleted_probes"] == 1
     survivors = _names(db, "organic_dye")
     assert survivors == ["ATTO 647N"]
-    pid = db.conn.execute(
-        "SELECT probe_id FROM probes WHERE deleted_at IS NULL"
-    ).fetchone()[0]
+    pid = db.conn.execute("SELECT probe_id FROM probes WHERE deleted_at IS NULL").fetchone()[0]
     assert _props(db, pid).get("synonym") == "ATTO 647N NHS ester"

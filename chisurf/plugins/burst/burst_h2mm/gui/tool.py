@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pathlib
-import threading
 import time
 from typing import Any
 
@@ -11,8 +10,6 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore
 from qtpy.QtCore import (
-    QCoreApplication,
-    QObject,
     QSettings,
     QSize,
     Qt,
@@ -31,7 +28,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMainWindow,
     QSizePolicy,
     QSpinBox,
     QToolBar,
@@ -42,24 +38,23 @@ from qtpy.QtWidgets import (
 
 from chisurf import logging
 from chisurf.core.datastore import row_count
-from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
-from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.event_pump import pump_ui
-from chisurf.gui.widgets.messages import MessagesMixin, Msg
-from chisurf.gui.widgets.wizard import DetectorWizardPage
-from chisurf.core.runtime import analysis_cache
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
+from chisurf.core.runtime import analysis_cache
+from chisurf.gui.event_pump import pump_ui
+from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
+from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.tool_buttons import flag_attention
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+from chisurf.gui.widgets.wizard import DetectorWizardPage
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis, write_result_tables
 from ..core.engines import DECODER_LABELS, ENGINE_LABELS
 from ..core.engines import DECODERS as H2mmDecoders
 from ..core.engines import ENGINES as H2mmEngines
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 #: Bump in the same change that alters what this tool computes, so results
 #: written by the previous version stop reading as current.
@@ -67,8 +62,14 @@ ALGORITHM_VERSION = 1
 
 
 _STATE_COLORS = [
-    "#4e79a7", "#f28e2b", "#59a14f", "#e15759",
-    "#b07aa1", "#76b7b2", "#edc948", "#ff9da7",
+    "#4e79a7",
+    "#f28e2b",
+    "#59a14f",
+    "#e15759",
+    "#b07aa1",
+    "#76b7b2",
+    "#edc948",
+    "#ff9da7",
 ]
 
 
@@ -128,10 +129,14 @@ class LikelihoodScanDialog(QDialog):
 
         params = [p for p in ("E", "S") if any(s.param == p for s in scans)]
         for col, param in enumerate(params):
-            p = glw.addPlot(row=0, col=col,
-                            title=("FRET-E profile" if param == "E" else "Stoichiometry profile"))
-            p.setLabels(bottom=("Apparent FRET E" if param == "E" else "Stoichiometry S"),
-                        left="Δ(2·logL)")
+            p = glw.addPlot(
+                row=0,
+                col=col,
+                title=("FRET-E profile" if param == "E" else "Stoichiometry profile"),
+            )
+            p.setLabels(
+                bottom=("Apparent FRET E" if param == "E" else "Stoichiometry S"), left="Δ(2·logL)"
+            )
             p.setXRange(0, 1)
             p.setYRange(-0.3, 12)
             p.addLegend(offset=(-5, 5))
@@ -140,21 +145,35 @@ class LikelihoodScanDialog(QDialog):
                 color = color_fn(s.state)
                 dev = 2.0 * (np.max(s.loglik) - s.loglik)
                 p.plot(s.values, dev, pen=pg.mkPen(color, width=2), name=f"S{s.state}")
-                p.addItem(pg.InfiniteLine(pos=float(s.mle), angle=90,
-                          pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
-                region = pg.LinearRegionItem(values=(float(s.ci[0]), float(s.ci[1])),
-                                             brush=pg.mkBrush(color + "22"), movable=False)
+                p.addItem(
+                    pg.InfiniteLine(
+                        pos=float(s.mle), angle=90, pen=pg.mkPen(color, width=1, style=Qt.DashLine)
+                    )
+                )
+                region = pg.LinearRegionItem(
+                    values=(float(s.ci[0]), float(s.ci[1])),
+                    brush=pg.mkBrush(color + "22"),
+                    movable=False,
+                )
                 region.setZValue(-10)
                 p.addItem(region)
                 thr = s.threshold
                 if uncertainty is not None and s.state in rank_of:
                     r = rank_of[s.state]
-                    lo, hi = ((uncertainty.fret_lo[r], uncertainty.fret_hi[r]) if param == "E"
-                              else (uncertainty.stoich_lo[r], uncertainty.stoich_hi[r]))
+                    lo, hi = (
+                        (uncertainty.fret_lo[r], uncertainty.fret_hi[r])
+                        if param == "E"
+                        else (uncertainty.stoich_lo[r], uncertainty.stoich_hi[r])
+                    )
                     if np.isfinite(lo) and np.isfinite(hi):
                         for xb in (lo, hi):
-                            p.addItem(pg.InfiniteLine(pos=float(xb), angle=90,
-                                      pen=pg.mkPen(color, width=1, style=Qt.DotLine)))
+                            p.addItem(
+                                pg.InfiniteLine(
+                                    pos=float(xb),
+                                    angle=90,
+                                    pen=pg.mkPen(color, width=1, style=Qt.DotLine),
+                                )
+                            )
             p.addItem(pg.InfiniteLine(pos=thr, angle=0, pen=pg.mkPen("#888888", style=Qt.DashLine)))
 
         cap = QLabel(
@@ -271,26 +290,38 @@ class H2mmTool(ChisurfDockTool):
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop)
         # Tool-specific follow-ups (styled consistently, distinct from Run).
-        self.btn_uncert = styled_tool_button("±", kind="toggle", tooltip=(
-            "Uncertainty — bootstrap the selected model over bursts to put "
-            "confidence intervals on the per-state E/S (overlaid as error bars). "
-            "Compute-heavy — run after a fit."
-        ))
-        self.btn_llscan = styled_tool_button("\U0001f4c8", kind="toggle", tooltip=(
-            "LL scan — profile the log-likelihood in each state's E/S (holding the "
-            "rest fixed) → likelihood-based confidence intervals. A flat profile "
-            "flags an unidentifiable state. Run after a fit."
-        ))
+        self.btn_uncert = styled_tool_button(
+            "±",
+            kind="toggle",
+            tooltip=(
+                "Uncertainty — bootstrap the selected model over bursts to put "
+                "confidence intervals on the per-state E/S (overlaid as error bars). "
+                "Compute-heavy — run after a fit."
+            ),
+        )
+        self.btn_llscan = styled_tool_button(
+            "\U0001f4c8",
+            kind="toggle",
+            tooltip=(
+                "LL scan — profile the log-likelihood in each state's E/S (holding the "
+                "rest fixed) → likelihood-based confidence intervals. A flat profile "
+                "flags an unidentifiable state. Run after a fit."
+            ),
+        )
         self.btn_save = action_button("save", tooltip="Save the active plot")
         # The dwell grain had no way out of this window: `h2mm_dwells.csv` was
         # written and then opened by hand. One row per dwell is a table ndX is
         # made for — gate on state, duration, E/S, and drop the censored
         # burst-edge dwells with the flag that is already in it.
-        self.btn_dwells_ndx = styled_tool_button("\U0001f52c", kind="toggle", tooltip=(
-            "Dwells in ndX — open the per-dwell table (one row per Viterbi dwell: "
-            "state, photons, duration, E/S, Is Edge) in an ndX window. Run a fit "
-            "first."
-        ))
+        self.btn_dwells_ndx = styled_tool_button(
+            "\U0001f52c",
+            kind="toggle",
+            tooltip=(
+                "Dwells in ndX — open the per-dwell table (one row per Viterbi dwell: "
+                "state, photons, duration, E/S, Is Edge) in an ndX window. Run a fit "
+                "first."
+            ),
+        )
         self.btn_dwells_ndx.clicked.connect(self.open_dwells_in_ndx)
 
         self.toolbar.addWidget(self.btn_folder)
@@ -312,9 +343,7 @@ class H2mmTool(ChisurfDockTool):
         # The shared **Guide** / ``?`` pair, replacing a hand-rolled dialog that
         # carried this tool's help as an HTML literal. This window is a plain
         # ``QMainWindow``, so the free function attaches them rather than a mixin.
-        attach_help_and_guide(
-            self, self.toolbar, title="Photon-by-photon HMM — help"
-        )
+        attach_help_and_guide(self, self.toolbar, title="Photon-by-photon HMM — help")
 
     def _build_settings_tab(self) -> QWidget:
         w = QWidget()
@@ -333,7 +362,7 @@ class H2mmTool(ChisurfDockTool):
         self.cb_criterion.addItems(["bic", "icl"])
         self.sb_patience = QSpinBox()
         self.sb_patience.setRange(-1, 8)
-        self.sb_patience.setValue(1)   # default: safe early-stop (~1.6× faster scan)
+        self.sb_patience.setValue(1)  # default: safe early-stop (~1.6× faster scan)
         self.sb_patience.setSpecialValueText("off (scan all)")
         self.sb_patience.setToolTip(
             "Early-stop the state-count scan once the criterion rises "
@@ -393,14 +422,10 @@ class H2mmTool(ChisurfDockTool):
         # is worth being explicit about where it ends up.
         self.cb_photon_hdf5 = QCheckBox("HDF5")
         self.cb_photon_hdf5.setChecked(True)
-        self.cb_photon_hdf5.setToolTip(
-            "Write h2mm_photons.h5 — compact and fast to reload."
-        )
+        self.cb_photon_hdf5.setToolTip("Write h2mm_photons.h5 — compact and fast to reload.")
         self.cb_photon_csv = QCheckBox("CSV")
         self.cb_photon_csv.setChecked(True)
-        self.cb_photon_csv.setToolTip(
-            "Write h2mm_photons.csv — what every other tool can open."
-        )
+        self.cb_photon_csv.setToolTip("Write h2mm_photons.csv — what every other tool can open.")
         photon_row = QWidget()
         photon_h = QHBoxLayout(photon_row)
         photon_h.setContentsMargins(0, 0, 0, 0)
@@ -629,9 +654,7 @@ class H2mmTool(ChisurfDockTool):
         self._nano_filter_bar = QWidget()
         # Compact type, like the other in-plot toggles: the bar is chrome around
         # a small plot, and every pixel it takes comes off the decay.
-        self._nano_filter_bar.setStyleSheet(
-            "QCheckBox, QLabel { color: #aaa; font-size: 11px; }"
-        )
+        self._nano_filter_bar.setStyleSheet("QCheckBox, QLabel { color: #aaa; font-size: 11px; }")
         self._nano_filter_layout = FlowLayout(
             self._nano_filter_bar, margin=1, h_spacing=5, v_spacing=1
         )
@@ -708,6 +731,7 @@ class H2mmTool(ChisurfDockTool):
         flat tab order if the layout cannot be applied. Only used when there is no
         saved arrangement (see :meth:`_restore_dock_layout`).
         """
+
         def _tab(name: str) -> dict:
             return {"type": "tab", "current_index": 0, "tabs": [{"tab_name": name}]}
 
@@ -759,7 +783,9 @@ class H2mmTool(ChisurfDockTool):
             import json
 
             ini = QSettings(str(get_plugin_settings_path("burst_h2mm")), QSettings.IniFormat)
-            ini.setValue("dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True))
+            ini.setValue(
+                "dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True)
+            )
         except Exception:
             pass
 
@@ -806,7 +832,9 @@ class H2mmTool(ChisurfDockTool):
         def _stream(name: str) -> StreamSettings:
             d = detectors.get(name, {})
             ranges = [(int(a), int(b)) for a, b in d.get("micro_time_ranges", [])]
-            return StreamSettings(name=name or "stream", channels=list(d.get("chs", [])), micro_time_ranges=ranges)
+            return StreamSettings(
+                name=name or "stream", channels=list(d.get("chs", [])), micro_time_ranges=ranges
+            )
 
         streams = [_stream(self.cb_donor.currentText()), _stream(self.cb_acceptor.currentText())]
         # Optional acceptor-excitation (Aex) stream → stoichiometry (µsALEX/PIE).
@@ -904,14 +932,8 @@ class H2mmTool(ChisurfDockTool):
         self.Error.fit_failed.clear()
         settings = self._gather_settings()
         fingerprint = self.analysis_fingerprint(settings)
-        if (
-            not force
-            and self._result is not None
-            and self._result_cache.matches(fingerprint)
-        ):
-            self._status(
-                "Unchanged — kept the previous H2MM fit (🔁 Restart refits it)"
-            )
+        if not force and self._result is not None and self._result_cache.matches(fingerprint):
+            self._status("Unchanged — kept the previous H2MM fit (🔁 Restart refits it)")
             flag_attention(self.btn_restart, True)
             return
         flag_attention(self.btn_restart, False)
@@ -921,8 +943,13 @@ class H2mmTool(ChisurfDockTool):
         self.btn_stop.setEnabled(True)
         self._status("Fitting H2MM models \u2026")
         self._fit_task = ChiSurfProgress.run(
-            self, "Loading bursts \u2026", self._fit_worker, args=(settings,),
-            maximum=100, title="H2MM", owner=self.btn_run,
+            self,
+            "Loading bursts \u2026",
+            self._fit_worker,
+            args=(settings,),
+            maximum=100,
+            title="H2MM",
+            owner=self.btn_run,
             on_partial=self._plot_scan_live,
             on_result=self._on_fit_result,
             on_error=self.Error.fit_failed,
@@ -977,9 +1004,7 @@ class H2mmTool(ChisurfDockTool):
         """
         if not self.data_folder or self._fit_is_running():
             return
-        if self._result_cache.was_abandoned(
-            self.analysis_fingerprint(self._gather_settings())
-        ):
+        if self._result_cache.was_abandoned(self.analysis_fingerprint(self._gather_settings())):
             self._status("Stopped earlier — press Run to fit H2MM")
             return
         self._run_analysis()
@@ -1067,8 +1092,7 @@ class H2mmTool(ChisurfDockTool):
         msg = (
             f"Selected {result.n_states} states "
             f"({result.criterion.upper()}) from {result.n_bursts} bursts / "
-            f"{result.n_photons} photons"
-            + (f" (seed {seed})" if seed is not None else "")
+            f"{result.n_photons} photons" + (f" (seed {seed})" if seed is not None else "")
         )
         # The occupancy is what most readers take away, and the counted one is
         # biased under Viterbi — so report the posterior estimate here rather
@@ -1089,7 +1113,6 @@ class H2mmTool(ChisurfDockTool):
         if self._bundle is None or self._result is None:
             self._status("Run a fit before estimating uncertainty.")
             return
-        from ..core.analysis import bootstrap_uncertainty
 
         ana = self._bundle.analysis
         data = self._bundle.data
@@ -1099,9 +1122,13 @@ class H2mmTool(ChisurfDockTool):
         self.btn_uncert.setEnabled(False)
         self.Error.uncertainty_failed.clear()
         ChiSurfProgress.run(
-            self, "Bootstrapping \u2026", self._uncertainty_worker,
+            self,
+            "Bootstrapping \u2026",
+            self._uncertainty_worker,
             args=(data, ana, settings, n_boot),
-            maximum=n_boot, title="H2MM", owner=self.btn_uncert,
+            maximum=n_boot,
+            title="H2MM",
+            owner=self.btn_uncert,
             on_result=self._on_uncert_result,
             on_error=self.Error.uncertainty_failed,
             on_done=lambda: self.btn_uncert.setEnabled(True),
@@ -1124,7 +1151,10 @@ class H2mmTool(ChisurfDockTool):
         ana = self._bundle.analysis
         micro_ns = getattr(self._bundle, "micro_time_ns", None)
         return build_dwell_table(
-            self._bundle.data, meta, ana.dwells, ana.base_time_s,
+            self._bundle.data,
+            meta,
+            ana.dwells,
+            ana.base_time_s,
             stream_groups=colour_groups(ana, self._bundle.settings),
             micro_time_ns=(micro_ns if micro_ns else None),
         )
@@ -1180,14 +1210,15 @@ class H2mmTool(ChisurfDockTool):
 
         def _progress(done, total):
             task.raise_if_cancelled()
-            task.set_progress(
-                int(done), f"Bootstrapping \u2026 {int(done)}/{int(total)} resamples"
-            )
+            task.set_progress(int(done), f"Bootstrapping \u2026 {int(done)}/{int(total)} resamples")
 
         return bootstrap_uncertainty(
-            data, int(ana.best.n_states),
-            n_boot=n_boot, engine=getattr(settings, "engine", "em"),
-            n_restarts=1, max_iter=300,
+            data,
+            int(ana.best.n_states),
+            n_boot=n_boot,
+            engine=getattr(settings, "engine", "em"),
+            n_restarts=1,
+            max_iter=300,
             donor_streams=getattr(ana, "donor_streams", (0,)),
             acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
             aex_streams=getattr(ana, "aex_streams", None),
@@ -1199,8 +1230,10 @@ class H2mmTool(ChisurfDockTool):
         self._uncertainty = unc
         if self._bundle is not None:
             self._plot_dwell_fret(self._bundle.analysis)
-        self._status(f"Uncertainty from {unc.n_boot} bootstrap resamples "
-                     f"({unc.ci[0]:.0f}–{unc.ci[1]:.0f}% CI)")
+        self._status(
+            f"Uncertainty from {unc.n_boot} bootstrap resamples "
+            f"({unc.ci[0]:.0f}–{unc.ci[1]:.0f}% CI)"
+        )
 
     def _uncert_ranks(self, fret: np.ndarray) -> np.ndarray:
         """E-ascending rank of each native state (index into the Uncertainty arrays)."""
@@ -1214,7 +1247,6 @@ class H2mmTool(ChisurfDockTool):
         if self._bundle is None or self._result is None:
             self._status("Run a fit before the likelihood scan.")
             return
-        from ..core.analysis import profile_likelihood
 
         ana = self._bundle.analysis
         data = self._bundle.data
@@ -1224,9 +1256,13 @@ class H2mmTool(ChisurfDockTool):
         self.btn_llscan.setEnabled(False)
         self.Error.llscan_failed.clear()
         ChiSurfProgress.run(
-            self, "Likelihood scan \u2026", self._llscan_worker,
+            self,
+            "Likelihood scan \u2026",
+            self._llscan_worker,
             args=(data, model, ana, n_points),
-            maximum=100, title="H2MM", owner=self.btn_llscan,
+            maximum=100,
+            title="H2MM",
+            owner=self.btn_llscan,
             on_result=self._on_llscan_result,
             on_error=self.Error.llscan_failed,
             on_done=lambda: self.btn_llscan.setEnabled(True),
@@ -1239,16 +1275,16 @@ class H2mmTool(ChisurfDockTool):
         def _progress(done, total_):
             task.raise_if_cancelled()
             pct = int(100 * done / max(total_, 1))
-            task.set_progress(
-                pct, f"Likelihood scan \u2026 {int(done)}/{int(total_)} evaluations"
-            )
+            task.set_progress(pct, f"Likelihood scan \u2026 {int(done)}/{int(total_)} evaluations")
 
         return profile_likelihood(
-            data, model,
+            data,
+            model,
             donor_streams=getattr(ana, "donor_streams", (0,)),
             acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
             aex_streams=getattr(ana, "aex_streams", None),
-            n_points=n_points, progress=_progress,
+            n_points=n_points,
+            progress=_progress,
         )
 
     def _on_llscan_result(self, scans):
@@ -1264,10 +1300,12 @@ class H2mmTool(ChisurfDockTool):
             return
         ns = [f.n_states for f in fits]
         self._p_sel.clear()
-        self._p_sel.plot(ns, [f.bic for f in fits],
-                         pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC")
-        self._p_sel.plot(ns, [f.icl for f in fits],
-                         pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL")
+        self._p_sel.plot(
+            ns, [f.bic for f in fits], pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC"
+        )
+        self._p_sel.plot(
+            ns, [f.icl for f in fits], pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL"
+        )
 
         crit = self.cb_criterion.currentText()
         key = (lambda f: f.icl) if crit == "icl" else (lambda f: f.bic)
@@ -1351,15 +1389,27 @@ class H2mmTool(ChisurfDockTool):
                 if not m.any():
                     continue
                 color = self._state_color(i)
-                p.addItem(pg.ScatterPlotItem(
-                    e[m], s[m], size=5, pen=None,
-                    brush=pg.mkBrush(color + "80"), name=f"S{i}",
-                ))
+                p.addItem(
+                    pg.ScatterPlotItem(
+                        e[m],
+                        s[m],
+                        size=5,
+                        pen=None,
+                        brush=pg.mkBrush(color + "80"),
+                        name=f"S{i}",
+                    )
+                )
                 if np.isfinite(fret[i]) and np.isfinite(stoich[i]):
-                    p.addItem(pg.ScatterPlotItem(
-                        [fret[i]], [stoich[i]], size=15, symbol="x",
-                        pen=pg.mkPen(color, width=3), brush=None,
-                    ))
+                    p.addItem(
+                        pg.ScatterPlotItem(
+                            [fret[i]],
+                            [stoich[i]],
+                            size=15,
+                            symbol="x",
+                            pen=pg.mkPen(color, width=3),
+                            brush=None,
+                        )
+                    )
             self._overlay_es_uncert(p, fret, stoich)
             self._overlay_trans_arrows(p, fret, stoich, ana)
             return
@@ -1375,11 +1425,22 @@ class H2mmTool(ChisurfDockTool):
                 counts, edges = np.histogram(e[m], bins=41, range=(0, 1), weights=w[m])
                 centers = (edges[:-1] + edges[1:]) / 2
                 ymax = max(ymax, float(counts.max()))
-                p.plot(centers, counts, pen=pg.mkPen(color, width=2), fillLevel=0,
-                       brush=pg.mkBrush(color + "40"), name=f"S{i}")
+                p.plot(
+                    centers,
+                    counts,
+                    pen=pg.mkPen(color, width=2),
+                    fillLevel=0,
+                    brush=pg.mkBrush(color + "40"),
+                    name=f"S{i}",
+                )
             if np.isfinite(fret[i]):
-                p.addItem(pg.InfiniteLine(pos=float(fret[i]), angle=90,
-                          pen=pg.mkPen(color, width=1, style=Qt.DashLine)))
+                p.addItem(
+                    pg.InfiniteLine(
+                        pos=float(fret[i]),
+                        angle=90,
+                        pen=pg.mkPen(color, width=1, style=Qt.DashLine),
+                    )
+                )
         self._overlay_e_ci_bands(p, fret)
         # Kinetic scheme along the E axis: state nodes at a common top baseline.
         node_y = np.full_like(fret, ymax * 1.08)
@@ -1408,26 +1469,38 @@ class H2mmTool(ChisurfDockTool):
             for j in range(n):
                 if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0):
                     continue
-                if not (np.isfinite(xs[i]) and np.isfinite(xs[j])
-                        and np.isfinite(ys[i]) and np.isfinite(ys[j])):
+                if not (
+                    np.isfinite(xs[i])
+                    and np.isfinite(xs[j])
+                    and np.isfinite(ys[i])
+                    and np.isfinite(ys[j])
+                ):
                     continue
                 dx, dy = xs[j] - xs[i], ys[j] - ys[i]
                 length = float(np.hypot(dx, dy)) or 1.0
-                ox, oy = -dy / length, dx / length   # unit perpendicular
+                ox, oy = -dy / length, dx / length  # unit perpendicular
                 x0, y0 = xs[i] + ox * off, ys[i] + oy * off
                 x1, y1 = xs[j] + ox * off, ys[j] + oy * off
                 color = self._state_color(i)
                 width = 1.0 + 4.0 * (rates[i, j] / rmax)
                 p.plot([x0, x1], [y0, y1], pen=pg.mkPen(color, width=width))
                 ang = float(np.degrees(np.arctan2(y1 - y0, x1 - x0)))
-                p.addItem(pg.ArrowItem(pos=(x1, y1), angle=180 - ang,
-                                       headLen=12, brush=color, pen=None))
+                p.addItem(
+                    pg.ArrowItem(pos=(x1, y1), angle=180 - ang, headLen=12, brush=color, pen=None)
+                )
         if node_size:
             for i in range(n):
                 if np.isfinite(xs[i]) and np.isfinite(ys[i]):
-                    p.addItem(pg.ScatterPlotItem(
-                        [xs[i]], [ys[i]], size=node_size, symbol="o",
-                        pen=pg.mkPen("k"), brush=pg.mkBrush(self._state_color(i))))
+                    p.addItem(
+                        pg.ScatterPlotItem(
+                            [xs[i]],
+                            [ys[i]],
+                            size=node_size,
+                            symbol="o",
+                            pen=pg.mkPen("k"),
+                            brush=pg.mkBrush(self._state_color(i)),
+                        )
+                    )
 
     @staticmethod
     def _fmt_rate(v: float) -> str:
@@ -1460,7 +1533,7 @@ class H2mmTool(ChisurfDockTool):
         ticks = [[(i + 0.5, f"S{i}") for i in range(n)]]
         p.getAxis("bottom").setTicks(ticks)
         p.getAxis("left").setTicks(ticks)
-        for i in range(n):       # row i = from state, col j = to state
+        for i in range(n):  # row i = from state, col j = to state
             for j in range(n):
                 if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0):
                     continue
@@ -1521,11 +1594,18 @@ class H2mmTool(ChisurfDockTool):
             if np.isfinite(unc.stoich_lo[r]) and np.isfinite(unc.stoich_hi[r]):
                 bottom = max(stoich[i] - unc.stoich_lo[r], 0.0)
                 top = max(unc.stoich_hi[r] - stoich[i], 0.0)
-            p.addItem(pg.ErrorBarItem(
-                x=np.array([fret[i]]), y=np.array([stoich[i]]),
-                left=np.array([left]), right=np.array([right]),
-                top=np.array([top]), bottom=np.array([bottom]),
-                beam=0.02, pen=pg.mkPen(self._state_color(i), width=2)))
+            p.addItem(
+                pg.ErrorBarItem(
+                    x=np.array([fret[i]]),
+                    y=np.array([stoich[i]]),
+                    left=np.array([left]),
+                    right=np.array([right]),
+                    top=np.array([top]),
+                    bottom=np.array([bottom]),
+                    beam=0.02,
+                    pen=pg.mkPen(self._state_color(i), width=2),
+                )
+            )
 
     def _overlay_e_ci_bands(self, p, fret):
         """Draw translucent per-state E confidence bands on the dwell-E histogram."""
@@ -1539,7 +1619,9 @@ class H2mmTool(ChisurfDockTool):
                 continue
             region = pg.LinearRegionItem(
                 values=(float(unc.fret_lo[r]), float(unc.fret_hi[r])),
-                brush=pg.mkBrush(self._state_color(i) + "22"), movable=False)
+                brush=pg.mkBrush(self._state_color(i) + "22"),
+                movable=False,
+            )
             region.setZValue(-10)
             p.addItem(region)
 
@@ -1563,10 +1645,12 @@ class H2mmTool(ChisurfDockTool):
         """Bottom-left: BIC and ICL vs number of states."""
         self._p_sel.clear()
         ns = [f.n_states for f in res.scan]
-        self._p_sel.plot(ns, [f.bic for f in res.scan],
-                         pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC")
-        self._p_sel.plot(ns, [f.icl for f in res.scan],
-                         pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL")
+        self._p_sel.plot(
+            ns, [f.bic for f in res.scan], pen=pg.mkPen("#4e79a7", width=2), symbol="o", name="BIC"
+        )
+        self._p_sel.plot(
+            ns, [f.icl for f in res.scan], pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL"
+        )
 
     def _plot_dwell_times(self, ana):
         """Bottom-right: per-state dwell-time distributions (ms).
@@ -1589,8 +1673,9 @@ class H2mmTool(ChisurfDockTool):
                 continue
             counts, edges = np.histogram(arr * base_ms, bins=30)
             centers = (edges[:-1] + edges[1:]) / 2
-            self._p_dwell.plot(centers, counts, pen=pg.mkPen(self._state_color(i), width=2),
-                               name=f"S{i}")
+            self._p_dwell.plot(
+                centers, counts, pen=pg.mkPen(self._state_color(i), width=2), name=f"S{i}"
+            )
         title = "Dwell times (burst-edge dwells excluded)"
         if censored:
             title += f" — {', '.join(censored)}: no dwell ended within a burst"
@@ -1600,14 +1685,20 @@ class H2mmTool(ChisurfDockTool):
     #: light that produced it, so a green curve is green photons — the state is
     #: carried by the line style instead.
     _COLOUR_PENS = {
-        "green": "#2ca02c", "donor": "#2ca02c",
-        "red": "#d62728", "acceptor": "#d62728",
-        "yellow": "#e8b400", "aex": "#e8b400",
+        "green": "#2ca02c",
+        "donor": "#2ca02c",
+        "red": "#d62728",
+        "acceptor": "#d62728",
+        "yellow": "#e8b400",
+        "aex": "#e8b400",
     }
     #: Line style per state, so one plot can hold states × colours curves.
     _STATE_DASHES = [
-        QtCore.Qt.SolidLine, QtCore.Qt.DashLine, QtCore.Qt.DotLine,
-        QtCore.Qt.DashDotLine, QtCore.Qt.DashDotDotLine,
+        QtCore.Qt.SolidLine,
+        QtCore.Qt.DashLine,
+        QtCore.Qt.DotLine,
+        QtCore.Qt.DashDotLine,
+        QtCore.Qt.DashDotDotLine,
     ]
     #: How to say those styles in the title, since the legend names colours.
     _DASH_NAMES = ["solid", "dashed", "dotted", "dash-dot", "dash-dot-dot"]
@@ -1646,7 +1737,10 @@ class H2mmTool(ChisurfDockTool):
             return
 
         self._nano_decays = state_decays(
-            micro, meta.channel, self._bundle.data.streams, path,
+            micro,
+            meta.channel,
+            self._bundle.data.streams,
+            path,
             n_states=int(ana.fret.shape[0]),
             groups=colour_groups(ana, self._bundle.settings),
             micro_time_ns=getattr(self._bundle, "micro_time_ns", None),
@@ -1679,8 +1773,7 @@ class H2mmTool(ChisurfDockTool):
             # plot unreadable. The rest are one tick away, and visibly so.
             box.setChecked(previous_colours.get(colour, i == 0))
             box.setToolTip(
-                f"Show the {colour} decays "
-                f"(detectors {decays.colour_channels.get(colour, [])})"
+                f"Show the {colour} decays (detectors {decays.colour_channels.get(colour, [])})"
             )
             box.toggled.connect(self._draw_nanotime)
             self._nano_filter_layout.addWidget(box)
@@ -1710,7 +1803,8 @@ class H2mmTool(ChisurfDockTool):
         # With one colour on screen the legend only repeats what the ticked
         # checkbox already says, while sitting on top of the curve it names.
         selected = [
-            c for c in decays.colours
+            c
+            for c in decays.colours
             if (b := self._nano_colour_boxes.get(c)) is None or b.isChecked()
         ]
         label_curves = len(selected) > 1
@@ -1737,11 +1831,13 @@ class H2mmTool(ChisurfDockTool):
         except Exception:  # pragma: no cover - older pyqtgraph
             pass
         key = " · ".join(
-            f"{self._DASH_NAMES[s % len(self._DASH_NAMES)]} S{s}"
-            for s in sorted(states_drawn)
+            f"{self._DASH_NAMES[s % len(self._DASH_NAMES)]} S{s}" for s in sorted(states_drawn)
         )
-        p.setTitle(f"Per-state decay<br><span style='font-size:7pt'>{key}</span>"
-                   if key else "Per-state decay")
+        p.setTitle(
+            f"Per-state decay<br><span style='font-size:7pt'>{key}</span>"
+            if key
+            else "Per-state decay"
+        )
 
     # ── burst state-path viewer ──────────────────────────────────────
 
@@ -1809,17 +1905,25 @@ class H2mmTool(ChisurfDockTool):
                 if not m.any():
                     continue
                 sym = self._STREAM_SYMBOL[k % len(self._STREAM_SYMBOL)]
-                p.addItem(pg.ScatterPlotItem(
-                    t[m], ey[m], size=7, symbol=sym, pen=None,
-                    brush=pg.mkBrush(color),
-                ))
+                p.addItem(
+                    pg.ScatterPlotItem(
+                        t[m],
+                        ey[m],
+                        size=7,
+                        symbol=sym,
+                        pen=None,
+                        brush=pg.mkBrush(color),
+                    )
+                )
         n_tr = int(np.count_nonzero(np.diff(seg))) if seg.size else 0
         self._burst_label.setText(f"burst {b} · {e - s} photons · {n_tr} transitions")
 
     def _save_plot(self):
         # Plots are now separate docks; save the one whose dock is currently active,
         # falling back to the FRET plot if the active page isn't a plot dock.
-        current = self.dock_area.currentWidget() if hasattr(self.dock_area, "currentWidget") else None
+        current = (
+            self.dock_area.currentWidget() if hasattr(self.dock_area, "currentWidget") else None
+        )
         page = current if current in getattr(self, "_plot_pages", {}).values() else None
         if page is None:
             page = self._plot_pages.get(self._DOCK_FRET)

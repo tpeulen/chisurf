@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from ..api.contract import (
@@ -14,9 +15,6 @@ from ..core.calculations import (
     perrin_steady_state_anisotropy,
     solve_linked_l_from_steady_state,
 )
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +64,11 @@ def calculate_handler(
     flip: bool = False,
 ) -> dict[str, Any]:
     """ZMQ RPC handler for G-factor calculation."""
-    logger.info("ZMQ RPC calculate_handler: starting calculation (len=%d, use_bg=%s)", len(parallel_data), use_bg)
+    logger.info(
+        "ZMQ RPC calculate_handler: starting calculation (len=%d, use_bg=%s)",
+        len(parallel_data),
+        use_bg,
+    )
     res = calculate_g_factor_core(
         parallel_data=parallel_data,
         perpendicular_data=perpendicular_data,
@@ -108,13 +110,16 @@ def archive_g_factor_handler(
     auth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """ZMQ RPC handler to register reference decay and archive G-factor calibration in MMFDB."""
-    logger.info("ZMQ RPC archive_g_factor_handler: starting (file=%s, user=%s)", file_path, active_user)
+    logger.info(
+        "ZMQ RPC archive_g_factor_handler: starting (file=%s, user=%s)", file_path, active_user
+    )
     try:
-        from mmfdb.provenance.result_registry import register_raw_measurement, register_calibration
-        from mmfdb.store.database_resolver import resolve_database_path
-        from mmfdb.repository import MFDatabase
         import os
+
         import numpy as np
+        from mmfdb.provenance.result_registry import register_calibration, register_raw_measurement
+        from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import resolve_database_path
 
         db_path = resolve_database_path()
         if not db_path or not os.path.exists(os.path.dirname(db_path)):
@@ -128,6 +133,7 @@ def archive_g_factor_handler(
                 with MFDatabase(db_path) as db:
                     if auth:
                         from mmfdb.security.auth import principal_from_rpc_auth
+
                         principal = principal_from_rpc_auth(db.conn, auth)
                         if principal and not getattr(principal, "is_anonymous", False):
                             user_id = principal.user_id
@@ -144,12 +150,14 @@ def archive_g_factor_handler(
         decay_shift = parameters.get("decay_shift", 0.0)
         use_bg = parameters.get("use_bg", False)
         flip = parameters.get("flip", False)
-        
+
         region_min = parameters.get("region_min")
         region_max = parameters.get("region_max")
 
         if g_val is None:
-            logger.warning("archive_g_factor_handler: no g_factor provided; cannot archive calibration")
+            logger.warning(
+                "archive_g_factor_handler: no g_factor provided; cannot archive calibration"
+            )
             return {"ok": False, "error": "g_factor is required", "calibration_id": ""}
 
         # Compute the derived decays (background-corrected VV/VH and the
@@ -159,6 +167,7 @@ def archive_g_factor_handler(
         if os.path.exists(file_path):
             try:
                 from chisurf.core.fio import read_vv_vh as _read_vv_vh
+
                 if _read_vv_vh is not None:
                     vv, vh = _read_vv_vh(file_path, split=True)
                 else:
@@ -175,17 +184,20 @@ def archive_g_factor_handler(
                 t = np.arange(n, dtype=float)
 
                 bg_vv, bg_vh = 0.0, 0.0
-                bg_region = parameters.get("bg_region_bounds") or [t[int(n*0.05)], t[int(n*0.15)]]
+                bg_region = parameters.get("bg_region_bounds") or [
+                    t[int(n * 0.05)],
+                    t[int(n * 0.15)],
+                ]
                 if use_bg:
                     from ..core.calculations import compute_background_levels
-                    bg_vv, bg_vh = compute_background_levels(
-                        vv, vh, t, t + decay_shift, bg_region
-                    )
+
+                    bg_vv, bg_vh = compute_background_levels(vv, vh, t, t + decay_shift, bg_region)
 
                 vv_corr = np.maximum(vv - bg_vv, 0.0)
                 vh_corr = np.maximum(vh - bg_vh, 0.0)
 
-                from ..core.calculations import shift_interp_on_axis, compute_rt
+                from ..core.calculations import compute_rt, shift_interp_on_axis
+
                 vh_corr_shifted = shift_interp_on_axis(t, vh_corr, decay_shift)
                 r_corr = compute_rt(vv_corr, vh_corr_shifted, g_val, l1=l1, l2=l2)
 
@@ -209,7 +221,9 @@ def archive_g_factor_handler(
                     r_region = r_region[np.isfinite(r_region)]
                     r_inf = float(np.nanmean(r_region)) if r_region.size > 0 else np.nan
             except Exception as calc_err:
-                logger.warning("archive_g_factor_handler: failed to compute derived decays: %s", calc_err)
+                logger.warning(
+                    "archive_g_factor_handler: failed to compute derived decays: %s", calc_err
+                )
                 derived_decays = None
 
         # Build reference decay metadata
@@ -236,7 +250,9 @@ def archive_g_factor_handler(
                 metadata=meta,
             )
             if not ref_decay_id:
-                logger.warning("archive_g_factor_handler: register_raw_measurement returned empty ID")
+                logger.warning(
+                    "archive_g_factor_handler: register_raw_measurement returned empty ID"
+                )
 
             # Register the derived decays (corrected VV/VH + anisotropy r(t)) as a
             # processed_data artifact derived from the reference decay.
@@ -256,7 +272,9 @@ def archive_g_factor_handler(
                     },
                 )
                 if not derived_decay_id:
-                    logger.warning("archive_g_factor_handler: derived-decay registration returned empty ID")
+                    logger.warning(
+                        "archive_g_factor_handler: derived-decay registration returned empty ID"
+                    )
 
             # Prep calibration parameters
             calib_params = {

@@ -23,11 +23,11 @@ in CI measures the machine, not the code -- so they assert the two things that
 *cause* the cost instead: how many floats Python has to produce per quad, and
 how many GPU resources a repeated frame allocates.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from emtk import quad_painter as qp
 from emtk.quad_painter import QuadPainter
 
@@ -63,8 +63,12 @@ def test_the_six_vertices_are_the_two_triangles_in_the_winding_order():
     painter.fill_rect(10.0, 20.0, 30.0, 40.0, (255, 128, 0, 255))
     corners = painter.vertices()[:, :2]
     assert [tuple(one) for one in corners] == [
-        (10.0, 20.0), (40.0, 20.0), (40.0, 60.0),
-        (10.0, 20.0), (40.0, 60.0), (10.0, 60.0),
+        (10.0, 20.0),
+        (40.0, 20.0),
+        (40.0, 60.0),
+        (10.0, 20.0),
+        (40.0, 60.0),
+        (10.0, 60.0),
     ]
 
 
@@ -118,10 +122,10 @@ def test_glyphs_go_through_the_same_geometry_as_rectangles():
     glyphs = painter.vertices()
     assert glyphs.shape[0] == 2 * qp.VERTICES_PER_QUAD
     for start in (0, qp.VERTICES_PER_QUAD):
-        one = glyphs[start:start + qp.VERTICES_PER_QUAD]
-        assert one[0, 0] == one[3, 0] == one[5, 0]      # left edge
-        assert one[1, 0] == one[2, 0] == one[4, 0]      # right edge
-        assert one[0, 1] == one[1, 1] == one[3, 1]      # top edge
+        one = glyphs[start : start + qp.VERTICES_PER_QUAD]
+        assert one[0, 0] == one[3, 0] == one[5, 0]  # left edge
+        assert one[1, 0] == one[2, 0] == one[4, 0]  # right edge
+        assert one[0, 1] == one[1, 1] == one[3, 1]  # top edge
 
 
 def test_an_empty_painter_still_returns_the_right_shape():
@@ -134,8 +138,7 @@ def test_a_zero_sized_quad_is_dropped_on_both_paths():
     painter = QuadPainter(scale=1.0)
     painter.fill_rect(0.0, 0.0, 0.0, 10.0, (255, 255, 255, 255))
     painter.fill_rect(0.0, 0.0, 10.0, -1.0, (255, 255, 255, 255))
-    painter._quad(0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0,
-                  ((1.0, 1.0, 1.0, 1.0),) * 4)
+    painter._quad(0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, ((1.0, 1.0, 1.0, 1.0),) * 4)
     assert painter.vertices().shape == (0, qp.FLOATS_PER_VERTEX)
 
 
@@ -206,8 +209,7 @@ class _Backend:
         self.stats = FrameStats()
         self.width = 800
         self.height = 600
-        self._wgpu = type("W", (), {"BufferUsage": type(
-            "U", (), {"VERTEX": 1, "UNIFORM": 2})})()
+        self._wgpu = type("W", (), {"BufferUsage": type("U", (), {"VERTEX": 1, "UNIFORM": 2})})()
         self._ui_atlas_size = (512, 512)
         self._ui_layout = object()
         self._ui_sampler = object()

@@ -15,14 +15,14 @@ sets. What this file checks is that the whole of that survives -- the data
 shipping intact, the structure carrying every attachment atom, and the demo
 producing the objects, labels, lines and network it describes.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
 
-import pytest
-
 import chimol
+import pytest
 from toolkit_free import probe
 
 DEMOS = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos"
@@ -75,17 +75,14 @@ def test_the_structure_carries_every_attachment_atom(document):
     if not STRUCTURE.is_file():
         pytest.skip(f"missing {STRUCTURE}")
     atoms = [
-        line for line in STRUCTURE.read_text().splitlines()
-        if line.startswith(("ATOM  ", "HETATM"))
+        line for line in STRUCTURE.read_text().splitlines() if line.startswith(("ATOM  ", "HETATM"))
     ]
     for name, fields in document["Positions"].items():
         residue = int(fields["residue_seq_number"])
         wanted = str(fields["atom_name"]).strip()
         chain = str(fields["chain_identifier"]).strip()
         assert any(
-            line[21] == chain
-            and int(line[22:26]) == residue
-            and line[12:16].strip() == wanted
+            line[21] == chain and int(line[22:26]) == residue and line[12:16].strip() == wanted
             for line in atoms
         ), f"{name}: no {wanted} on residue {residue} of chain {chain}"
 
@@ -93,7 +90,7 @@ def test_the_structure_carries_every_attachment_atom(document):
 # --------------------------------------------------------------------------- #
 # What the demo builds
 # --------------------------------------------------------------------------- #
-SCRIPT = '''
+SCRIPT = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 errors = []
@@ -139,7 +136,7 @@ emit("lit", sum(1 for f in viewer.measurements.values()
 panel.hover(-999.0, -999.0, R())
 emit("lit_after_leaving", sum(1 for f in viewer.measurements.values()
                               if tuple(f.get("color", ())) == (0.25, 1.0, 0.92, 1.0)))
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -171,7 +168,7 @@ def test_it_draws_the_documents_distances(ran):
 def test_it_opens_the_network_on_one_dataset(ran):
     assert ran["panel"] == "FpsCirclePanel"
     assert ran["dataset"].startswith("chi2_C1_20p")
-    assert int(ran["datasets"]) == 8          # every distance, then seven sets
+    assert int(ran["datasets"]) == 8  # every distance, then seven sets
     assert ran["sectors"] == "A"
     assert int(ran["dots"]) == 17
     assert int(ran["chords"]) == 20
@@ -186,7 +183,7 @@ def test_hovering_a_position_lights_its_distances_and_then_lets_go(ran):
 # --------------------------------------------------------------------------- #
 # What the demo *looks* like
 # --------------------------------------------------------------------------- #
-LOOK = '''
+LOOK = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("demo t4l_network")
@@ -206,7 +203,7 @@ styles = {str((e.state.volume_levels or [{}])[0].get("style", "")) for e in clou
 emit("cloud_style", ",".join(sorted(styles)))
 alphas = {round(float((e.state.av_color or (0, 0, 0, 1))[3]), 2) for e in clouds}
 emit("cloud_alpha", ",".join(str(a) for a in sorted(alphas)))
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -225,9 +222,7 @@ def test_a_network_of_clouds_is_drawn_as_wireframe(look):
     """Seventeen solid contours are a fog with a structure somewhere in it."""
     assert int(look["clouds"]) == 17
     assert look["cloud_style"] == "mesh"
-    assert float(look["cloud_alpha"]) > 0.3, (
-        "a wireframe faded like a surface disappears"
-    )
+    assert float(look["cloud_alpha"]) > 0.3, "a wireframe faded like a surface disappears"
 
 
 def test_the_demo_starts_with_the_structure_visible(look):
@@ -245,7 +240,8 @@ def test_the_script_does_not_name_what_the_loader_invents():
     """
     script = (DEMOS / "t4l_network.cml").read_text()
     commands = [
-        line.strip() for line in script.splitlines()
+        line.strip()
+        for line in script.splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
     for line in commands:
@@ -254,7 +250,8 @@ def test_the_script_does_not_name_what_the_loader_invents():
 
 def test_two_dyes_are_still_solid_clouds():
     """The rule is about a *network*: `add_dye` on a pair keeps its surfaces."""
-    ran = probe('''
+    ran = probe(
+        """
 app = open_app(size=(600, 400))
 cmd, viewer = app.cmd, app.viewer
 cmd.do("load 148l.pdb")
@@ -266,7 +263,9 @@ emit("style", ",".join(sorted({
     str((e.state.volume_levels or [{}])[0].get("style", "")) for e in clouds
 })))
 emit("visible", sum(1 for e in clouds if e.visible))
-''', timeout=600)
+""",
+        timeout=600,
+    )
     assert int(ran["clouds"]) == 2
     assert ran["style"] == "surface"
     assert int(ran["visible"]) == 2
@@ -275,7 +274,7 @@ emit("visible", sum(1 for e in clouds if e.visible))
 # --------------------------------------------------------------------------- #
 # Selecting a position, on the structure
 # --------------------------------------------------------------------------- #
-PICK = '''
+PICK = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("demo t4l_network")
@@ -325,7 +324,7 @@ emit("drawn_widths", ",".join(f"{w}x{n}" for w, n in sorted(drawn.items())))
 panel.select(None)
 app.renderer._draw()
 emit("after", "%s|%s" % bead(chosen))
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -335,7 +334,7 @@ def picked():
 
 def _colour_and_size(text: str):
     colour, _, size = text.partition("|")
-    return eval(colour), float(size)          # noqa: S307 - our own emitted tuple
+    return eval(colour), float(size)  # noqa: S307 - our own emitted tuple
 
 
 def test_the_selected_position_is_magenta_and_bigger(picked):
@@ -355,9 +354,7 @@ def test_its_partners_are_cyan_and_the_rest_grey(picked):
     assert partner[:3] == pytest.approx(_scene_colour(PARTNER)[:3], abs=0.01)
     assert other[:3] == pytest.approx(_scene_colour(MUTED)[:3], abs=0.01)
     _selected, selected_size = _colour_and_size(picked["selected"])
-    assert selected_size > partner_size > other_size, (
-        "the three roles should be three sizes"
-    )
+    assert selected_size > partner_size > other_size, "the three roles should be three sizes"
 
 
 def test_the_selected_positions_distances_are_the_thick_ones(picked):
@@ -371,7 +368,8 @@ def test_the_scene_draws_the_lines_that_thick(picked):
     """A width on a measurement that the renderer ignores is a width nobody sees."""
     drawn = dict(
         (float(part.split("x")[0]), int(part.split("x")[1]))
-        for part in picked["drawn_widths"].split(",") if part
+        for part in picked["drawn_widths"].split(",")
+        if part
     )
     assert drawn, "no measurement lines were drawn at all"
     assert max(drawn) > min(drawn), "every line was drawn the same width"

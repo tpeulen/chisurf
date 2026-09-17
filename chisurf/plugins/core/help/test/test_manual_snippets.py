@@ -15,7 +15,6 @@ shown with.
 
 import importlib
 import inspect
-import pathlib
 import re
 
 import pytest
@@ -59,7 +58,9 @@ def _resolve(dotted: str) -> bool:
 
 
 @pytest.mark.parametrize(
-    "page,code", _snippets(), ids=lambda value: value if isinstance(value, str) and value.endswith(".rst") else ""
+    "page,code",
+    _snippets(),
+    ids=lambda value: value if isinstance(value, str) and value.endswith(".rst") else "",
 )
 def test_snippet_names_resolve(page, code):
     """Every ``chisurf.…`` name a manual snippet uses must still exist."""

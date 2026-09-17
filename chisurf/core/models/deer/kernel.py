@@ -128,8 +128,8 @@ def dd_rice(r: np.ndarray, nu: float, sigma: float) -> np.ndarray:
     sigma = max(float(sigma), 1e-6)
     nu = max(float(nu), 0.0)
     # i0e(x) = exp(-|x|) * I0(x): keeps the product finite for large argument.
-    arg = r * nu / sigma ** 2
-    p = (r / sigma ** 2) * np.exp(-(r ** 2 + nu ** 2) / (2.0 * sigma ** 2) + np.abs(arg)) * special.i0e(arg)
+    arg = r * nu / sigma**2
+    p = (r / sigma**2) * np.exp(-(r**2 + nu**2) / (2.0 * sigma**2) + np.abs(arg)) * special.i0e(arg)
     p = np.where(r > 0, p, 0.0)
     return _normalize(p, r)
 

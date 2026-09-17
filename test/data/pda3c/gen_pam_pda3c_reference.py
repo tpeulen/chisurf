@@ -108,8 +108,10 @@ def make_inputs() -> dict[str, np.ndarray]:
     """
     rng = np.random.default_rng(4242)
     n_bursts, n_points = 12, 5
-    inputs = {name: rng.integers(0, 10, n_bursts).astype(float)
-              for name in ("fbb", "fbg", "fbr", "fgg", "fgr")}
+    inputs = {
+        name: rng.integers(0, 10, n_bursts).astype(float)
+        for name in ("fbb", "fbg", "fbr", "fgg", "fgr")
+    }
     p_blue = rng.dirichlet(np.ones(3), size=n_points)
     inputs["p_bb"] = p_blue[:, 0]
     inputs["p_bg"] = p_blue[:, 1]
@@ -125,8 +127,12 @@ def main() -> None:
     from scipy.io import loadmat, savemat
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--pam", type=pathlib.Path, default=pathlib.Path("junk/PAM"),
-                        help="PAM checkout (default: junk/PAM)")
+    parser.add_argument(
+        "--pam",
+        type=pathlib.Path,
+        default=pathlib.Path("junk/PAM"),
+        help="PAM checkout (default: junk/PAM)",
+    )
     args = parser.parse_args()
     src = args.pam / KERNEL_DIR
     if not src.is_dir():
@@ -139,17 +145,33 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="pda3c_mex_") as tmp:
         build = pathlib.Path(tmp)
         subprocess.run(
-            ["mkoctfile", "--mex", "-O", "-I.", "-o", str(build / "eval_prob_3c_bg_lib.mex"),
-             *SOURCES],
-            cwd=str(src), check=True, capture_output=True, text=True,
+            [
+                "mkoctfile",
+                "--mex",
+                "-O",
+                "-I.",
+                "-o",
+                str(build / "eval_prob_3c_bg_lib.mex"),
+                *SOURCES,
+            ],
+            cwd=str(src),
+            check=True,
+            capture_output=True,
+            text=True,
         )
         (build / "ab_kernel.m").write_text(DRIVER)
         column = {"bg_blue", "bg_green", "nbg"}
-        savemat(str(build / "ab_input.mat"),
-                {k: (v.reshape(1, -1) if k in column else v.reshape(-1, 1))
-                 for k, v in inputs.items()})
-        subprocess.run(["octave", "--no-gui", "--quiet", "ab_kernel.m"],
-                       cwd=str(build), check=True, capture_output=True, text=True)
+        savemat(
+            str(build / "ab_input.mat"),
+            {k: (v.reshape(1, -1) if k in column else v.reshape(-1, 1)) for k, v in inputs.items()},
+        )
+        subprocess.run(
+            ["octave", "--no-gui", "--quiet", "ab_kernel.m"],
+            cwd=str(build),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         reference = loadmat(str(build / "ab_output.mat"))["P"]
 
     np.savez_compressed(OUT, P=reference, **inputs)

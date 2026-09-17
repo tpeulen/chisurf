@@ -10,7 +10,6 @@ silently shifting how molecules render.
 from __future__ import annotations
 
 import numpy as np
-
 from chimol.geometry import ambient
 from chimol.geometry.cartoon import (
     _build_frames,
@@ -89,10 +88,10 @@ def _ref_extrude(path, frames, sv, sn, colors, *, cap_first=True, cap_last=True,
         tnn = np.linalg.norm(tn, axis=1, keepdims=True)
         mk = tnn[:, 0] > 1e-10
         tn[mk] /= tnn[mk]
-        verts[base:base + s] = path[i:i + 1] + tv
-        norms[base:base + s] = tn
+        verts[base : base + s] = path[i : i + 1] + tv
+        norms[base : base + s] = tn
         if cols is not None and i < colors.shape[0]:
-            cols[base:base + s] = colors[i]
+            cols[base : base + s] = colors[i]
     faces = []
     for i in range(m - 1):
         i0, i1 = i * s, (i + 1) * s
@@ -106,7 +105,7 @@ def _ref_extrude(path, frames, sv, sn, colors, *, cap_first=True, cap_last=True,
     def cap(ring, rev):
         nonlocal nxt
         base = ring * s
-        verts[nxt] = verts[base:base + s].mean(axis=0)
+        verts[nxt] = verts[base : base + s].mean(axis=0)
         norms[nxt] = -frames[ring, :, 2] if rev else frames[ring, :, 2]
         if cols is not None:
             cols[nxt] = colors[min(ring, colors.shape[0] - 1)]
@@ -190,9 +189,9 @@ def _make_frames(rng, m):
 def test_rotations_from_z_matches_scalar():
     rng = np.random.default_rng(0)
     dirs = rng.standard_normal((300, 3))
-    dirs[0] = [0, 0, 1]      # parallel
-    dirs[1] = [0, 0, -1]     # anti-parallel
-    dirs[2] = [0, 0, 0]      # degenerate
+    dirs[0] = [0, 0, 1]  # parallel
+    dirs[1] = [0, 0, -1]  # anti-parallel
+    dirs[2] = [0, 0, 0]  # degenerate
     batch = _rotations_from_z(dirs)
     for i in range(dirs.shape[0]):
         assert np.allclose(batch[i], _rotation_from_z(dirs[i]), atol=1e-9)
@@ -228,8 +227,12 @@ def test_extrude_shape_parity():
         sn[:, 0] = 0
         colors = rng.random((m, 4)) if use_col else None
         vscale = (0.5 + rng.random(m)) if use_scale else None
-        ref = _ref_extrude(path, frames, sv, sn, colors, cap_first=caps[0], cap_last=caps[1], vert_scale=vscale)
-        new = _extrude_shape(path, frames, sv, sn, colors, cap_first=caps[0], cap_last=caps[1], vert_scale=vscale)
+        ref = _ref_extrude(
+            path, frames, sv, sn, colors, cap_first=caps[0], cap_last=caps[1], vert_scale=vscale
+        )
+        new = _extrude_shape(
+            path, frames, sv, sn, colors, cap_first=caps[0], cap_last=caps[1], vert_scale=vscale
+        )
         for a, b in zip(ref, new):
             if a is None:
                 assert b is None

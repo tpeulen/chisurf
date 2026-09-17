@@ -85,7 +85,9 @@ class ClsmGeneratorViewModel:
     @sel_lifetime_files.setter
     def sel_lifetime_files(self, value) -> None:
         self.lifetime_paths = [str(v) for v in (value or [])]
-        self._lifetime_in = [m for m in (self._load(p) for p in self.lifetime_paths) if m is not None]
+        self._lifetime_in = [
+            m for m in (self._load(p) for p in self.lifetime_paths) if m is not None
+        ]
         self.notify("loaded")
 
     @staticmethod
@@ -134,11 +136,15 @@ class ClsmGeneratorViewModel:
             self._sim = simulate_clsm_from_maps(
                 self._intensity_in,
                 self._lifetime_in if len(self._lifetime_in) > 1 else self._lifetime_in[0],
-                pixel_size=self.pixel_size, n_micro=self.n_micro, dt=self.dt,
+                pixel_size=self.pixel_size,
+                n_micro=self.n_micro,
+                dt=self.dt,
                 brightness_scale=self.brightness_scale,
                 n_lifetime_levels=self.n_lifetime_levels,
                 n_intensity_levels=self.n_intensity_levels,
-                irf_center=self.irf_center, irf_sigma=self.irf_sigma, dwell=self.dwell,
+                irf_center=self.irf_center,
+                irf_sigma=self.irf_sigma,
+                dwell=self.dwell,
             )
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("generation failed", exc_info=True)
@@ -214,7 +220,8 @@ class ClsmGeneratorViewModel:
             from chisurf.core.fio.fluorescence.imaging_container import write_image
 
             write_image(
-                path, np.asarray(self._sim.intensity, dtype=np.float32),
+                path,
+                np.asarray(self._sim.intensity, dtype=np.float32),
                 name="intensity",
                 artifact_kind="image_data",
                 operation_type="measurement_import",

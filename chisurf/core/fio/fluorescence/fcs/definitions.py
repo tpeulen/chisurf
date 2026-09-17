@@ -18,4 +18,3 @@ class FCSDataset(typing.TypedDict):
     intensity_trace: np.ndarray
     intensity_trace_name: str
     meta_data: typing.Dict
-

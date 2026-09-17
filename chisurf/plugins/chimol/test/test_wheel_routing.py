@@ -37,6 +37,7 @@ So the whole probe runs in a child process, which is the same device
 ``test_engine_is_portable.py`` uses and for the same reason: a global that can
 only be set once is a global that has to be set somewhere disposable.
 """
+
 from __future__ import annotations
 
 import os
@@ -52,7 +53,7 @@ _PDB = _ROOT / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
 
 #: The probe. Each check prints ``name=PASS`` or ``name=FAIL: why``, so a
 #: failure names the behaviour rather than only the exit status.
-_PROBE = '''
+_PROBE = """
 import sys
 
 failures = []
@@ -199,7 +200,7 @@ check("click_away_keeps_chrome", {"mouse", "objects"} & before <= after,
 
 app.close()
 sys.exit(1 if failures else 0)
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -216,7 +217,10 @@ def probe():
     script = f"PDB = {str(_PDB)!r}\n" + textwrap.dedent(_PROBE)
     result = subprocess.run(
         [sys.executable, "-c", script],
-        capture_output=True, text=True, cwd=str(_ROOT), env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(_ROOT),
+        env=env,
     )
     results = dict(
         line.split("=", 1)
@@ -224,10 +228,7 @@ def probe():
         if "=" in line and not line.startswith(" ")
     )
     if not results:
-        pytest.fail(
-            "the wheel probe produced nothing:\n"
-            + (result.stdout + result.stderr)[-3000:]
-        )
+        pytest.fail("the wheel probe produced nothing:\n" + (result.stdout + result.stderr)[-3000:])
     return results
 
 

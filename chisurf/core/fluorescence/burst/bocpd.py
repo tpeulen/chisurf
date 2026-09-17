@@ -11,6 +11,7 @@ arXiv:0710.3742 (2007).
 
 import numpy as np
 import tttrlib
+
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 
 
@@ -52,16 +53,16 @@ def bocpd_filter(
         Boolean mask of selected photons.
     """
     # accept old kwarg names silently
-    if 'alpha' in deprecated and deprecated['alpha'] is not None:
-        prior_count = deprecated['alpha']
-    if 'beta' in deprecated and deprecated['beta'] is not None:
-        prior_duration = deprecated['beta']
-    if 'hazard' in deprecated and deprecated['hazard'] is not None:
-        changepoint_prob = deprecated['hazard']
-    if 'L' in deprecated:
-        min_ph = deprecated['L']
-    if 'min_counts' in deprecated:
-        min_ph = deprecated['min_counts']
+    if "alpha" in deprecated and deprecated["alpha"] is not None:
+        prior_count = deprecated["alpha"]
+    if "beta" in deprecated and deprecated["beta"] is not None:
+        prior_duration = deprecated["beta"]
+    if "hazard" in deprecated and deprecated["hazard"] is not None:
+        changepoint_prob = deprecated["hazard"]
+    if "L" in deprecated:
+        min_ph = deprecated["L"]
+    if "min_counts" in deprecated:
+        min_ph = deprecated["min_counts"]
 
     start_stop = tttr.burst_search_bocpd(
         L=min_ph,
@@ -96,12 +97,12 @@ def bocpd_burst_detection(
     When *tttr* is provided, delegates to the C++ engine. Otherwise falls
     back to constructing a temporary TTTR from the timestamps.
     """
-    if 'alpha' in deprecated and deprecated['alpha'] is not None:
-        prior_count = deprecated['alpha']
-    if 'beta' in deprecated and deprecated['beta'] is not None:
-        prior_duration = deprecated['beta']
-    if 'hazard' in deprecated and deprecated['hazard'] is not None:
-        changepoint_prob = deprecated['hazard']
+    if "alpha" in deprecated and deprecated["alpha"] is not None:
+        prior_count = deprecated["alpha"]
+    if "beta" in deprecated and deprecated["beta"] is not None:
+        prior_duration = deprecated["beta"]
+    if "hazard" in deprecated and deprecated["hazard"] is not None:
+        changepoint_prob = deprecated["hazard"]
 
     if tttr is None:
         # construct a minimal TTTR from the union of timestamps
@@ -111,7 +112,7 @@ def bocpd_burst_detection(
         macro_times = (all_ts * 1e9).astype(np.uint64)
         micro_times = np.zeros(n, dtype=np.uint16)
         routing = np.zeros(n, dtype=np.int8)
-        routing[len(donor_timestamps):] = 1
+        routing[len(donor_timestamps) :] = 1
         routing = routing[idx]
         macro_times = np.sort(macro_times)
         event_types = np.ones(n, dtype=np.int8)
@@ -141,15 +142,17 @@ def bocpd_burst_detection(
     bursts = []
     for start_idx, stop_idx in arr:
         nd = stop_idx - start_idx + 1
-        bursts.append({
-            'start_bin': 0,
-            'end_bin': 0,
-            'start': macro_times[start_idx] * mt_res,
-            'end': macro_times[stop_idx] * mt_res,
-            'donor': nd,
-            'acceptor': 0,
-            'FRET': 0.0,
-        })
+        bursts.append(
+            {
+                "start_bin": 0,
+                "end_bin": 0,
+                "start": macro_times[start_idx] * mt_res,
+                "end": macro_times[stop_idx] * mt_res,
+                "donor": nd,
+                "acceptor": 0,
+                "FRET": 0.0,
+            }
+        )
 
     # bins/counts not needed for the C++ path but returned for API compat
     bins = np.array([])
@@ -173,18 +176,21 @@ def bocpd_burst_detection_multi(
 
     When *tttr* is provided, delegates to the C++ engine in one call.
     """
-    if 'alpha' in deprecated and deprecated['alpha'] is not None:
-        prior_count = deprecated['alpha']
-    if 'beta' in deprecated and deprecated['beta'] is not None:
-        prior_duration = deprecated['beta']
-    if 'hazard' in deprecated and deprecated['hazard'] is not None:
-        changepoint_prob = deprecated['hazard']
+    if "alpha" in deprecated and deprecated["alpha"] is not None:
+        prior_count = deprecated["alpha"]
+    if "beta" in deprecated and deprecated["beta"] is not None:
+        prior_duration = deprecated["beta"]
+    if "hazard" in deprecated and deprecated["hazard"] is not None:
+        changepoint_prob = deprecated["hazard"]
 
     if tttr is not None:
         start_stop = tttr.burst_search_bocpd(
-            L=min_counts, dt=dt,
-            prior_count=prior_count, prior_duration=prior_duration,
-            changepoint_prob=changepoint_prob, max_run=max_run,
+            L=min_counts,
+            dt=dt,
+            prior_count=prior_count,
+            prior_duration=prior_duration,
+            changepoint_prob=changepoint_prob,
+            max_run=max_run,
             per_channel=True,
         )
         arr = np.asarray(start_stop).reshape((-1, 2))
@@ -192,10 +198,14 @@ def bocpd_burst_detection_multi(
         bin_edges = np.array([])
         bursts = []
         for s, e in arr:
-            bursts.append({
-                'start_bin': 0, 'end_bin': 0,
-                'counts': [0], 'total_counts': int(e - s + 1),
-            })
+            bursts.append(
+                {
+                    "start_bin": 0,
+                    "end_bin": 0,
+                    "counts": [0],
+                    "total_counts": int(e - s + 1),
+                }
+            )
         return bursts, bin_edges, counts, np.array([]), None
 
     # fallback: pairwise union (same logic as old Python impl)
@@ -205,9 +215,13 @@ def bocpd_burst_detection_multi(
     n_channels = len(timestamps_list)
     if n_channels == 2:
         bursts, bins, D, A = bocpd_burst_detection(
-            timestamps_list[0], timestamps_list[1],
-            dt=dt, prior_count=prior_count, prior_duration=prior_duration,
-            changepoint_prob=changepoint_prob, max_run=max_run,
+            timestamps_list[0],
+            timestamps_list[1],
+            dt=dt,
+            prior_count=prior_count,
+            prior_duration=prior_duration,
+            changepoint_prob=changepoint_prob,
+            max_run=max_run,
             min_counts=min_counts,
         )
         counts = np.stack([D, A], axis=1) if len(D) > 0 else np.array([])
@@ -216,9 +230,13 @@ def bocpd_burst_detection_multi(
     # general case: pool timestamps and run single-channel
     all_ts = np.concatenate(timestamps_list)
     bursts, bins, D, A = bocpd_burst_detection(
-        all_ts, np.array([]),
-        dt=dt, prior_count=prior_count, prior_duration=prior_duration,
-        changepoint_prob=changepoint_prob, max_run=max_run,
+        all_ts,
+        np.array([]),
+        dt=dt,
+        prior_count=prior_count,
+        prior_duration=prior_duration,
+        changepoint_prob=changepoint_prob,
+        max_run=max_run,
         min_counts=min_counts,
     )
     return bursts, bins, np.array([]), np.array([]), None
@@ -230,12 +248,12 @@ def convert_bursts_to_start_stop(bursts, tttr: tttrlib.TTTR) -> np.ndarray:
         return np.array([], dtype=np.uint64).reshape(0, 2)
     macro_times = np.asarray(tttr.macro_times)
     time_unit = tttr.header.macro_time_resolution
-    starts_time = np.array([b['start'] for b in bursts])
-    ends_time = np.array([b['end'] for b in bursts])
+    starts_time = np.array([b["start"] for b in bursts])
+    ends_time = np.array([b["end"] for b in bursts])
     starts_mt = starts_time / time_unit
     ends_mt = ends_time / time_unit
     start_indices = np.searchsorted(macro_times, starts_mt)
-    end_indices = np.searchsorted(macro_times, ends_mt, side='right') - 1
+    end_indices = np.searchsorted(macro_times, ends_mt, side="right") - 1
     valid = start_indices <= end_indices
     if not np.any(valid):
         return np.array([], dtype=np.uint64).reshape(0, 2)

@@ -12,19 +12,16 @@ nearly so, which is the property the fixed-fit test pins.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
-from ..base import BaseEstimator
 from .._gaussian import (
     COVARIANCE_TYPES,
     _broadcast_covariance,
     _log_gaussian_density,
     _responsibilities,
     _row_logsumexp,
-    logsumexp,
 )
+from ..base import BaseEstimator
 
 #: Log-domain floor for responsibilities: a component with zero weight must not
 #: feed ``0 * log 0 = nan`` into the E-step.
@@ -94,18 +91,18 @@ class GaussianMixture(BaseEstimator):
         self,
         n_components: int = 1,
         covariance_type: str = "full",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         max_iter: int = 100,
         n_init: int = 1,
         init_params: str = "kmeans",
         tol: float = 1e-3,
         reg_covar: float = 1e-6,
-        weights_init: Optional[np.ndarray] = None,
-        means_init: Optional[np.ndarray] = None,
-        precisions_init: Optional[np.ndarray] = None,
-        fix_means: Optional[np.ndarray] = None,
-        fix_covariances: Optional[np.ndarray] = None,
-        covariances_init: Optional[np.ndarray] = None,
+        weights_init: np.ndarray | None = None,
+        means_init: np.ndarray | None = None,
+        precisions_init: np.ndarray | None = None,
+        fix_means: np.ndarray | None = None,
+        fix_covariances: np.ndarray | None = None,
+        covariances_init: np.ndarray | None = None,
     ):
         self.n_components = n_components
         self.covariance_type = covariance_type
@@ -122,9 +119,19 @@ class GaussianMixture(BaseEstimator):
         self.fix_covariances = fix_covariances
         self.covariances_init = covariances_init
         self._constructor_params = {
-            "n_components", "covariance_type", "random_state", "max_iter",
-            "n_init", "init_params", "tol", "reg_covar", "weights_init",
-            "means_init", "precisions_init", "fix_means", "fix_covariances",
+            "n_components",
+            "covariance_type",
+            "random_state",
+            "max_iter",
+            "n_init",
+            "init_params",
+            "tol",
+            "reg_covar",
+            "weights_init",
+            "means_init",
+            "precisions_init",
+            "fix_means",
+            "fix_covariances",
             "covariances_init",
         }
 
@@ -164,13 +171,9 @@ class GaussianMixture(BaseEstimator):
 
         # The fixed masks are stated once, at construction; their anchors are
         # the initial values, exactly as the companion tool's EM behaved.
-        fix_means = (
-            None if self.fix_means is None else np.asarray(self.fix_means, dtype=bool)
-        )
+        fix_means = None if self.fix_means is None else np.asarray(self.fix_means, dtype=bool)
         fix_covars = (
-            None
-            if self.fix_covariances is None
-            else np.asarray(self.fix_covariances, dtype=bool)
+            None if self.fix_covariances is None else np.asarray(self.fix_covariances, dtype=bool)
         )
         fix_means_vals = (
             None if fix_means is None else np.array(init["means"], dtype=float, copy=True)
@@ -231,19 +234,13 @@ class GaussianMixture(BaseEstimator):
         n_samples, n_features = X.shape
         n_components = self.n_components
         if n_components > n_samples:
-            raise ValueError(
-                f"n_components={n_components} exceeds n_samples={n_samples}"
-            )
+            raise ValueError(f"n_components={n_components} exceeds n_samples={n_samples}")
 
         if self.init_params == "kmeans" and self.means_init is None:
             from ..cluster import _kmeans  # local: avoids a circular import
 
-            _, labels, _, _ = _kmeans(
-                X, n_components, rng, n_init=1, max_iter=100, tol=1e-4
-            )
-            means = np.vstack(
-                [X[labels == c].mean(axis=0) for c in range(n_components)]
-            )
+            _, labels, _, _ = _kmeans(X, n_components, rng, n_init=1, max_iter=100, tol=1e-4)
+            means = np.vstack([X[labels == c].mean(axis=0) for c in range(n_components)])
         else:
             idx = rng.choice(n_samples, size=n_components, replace=False)
             means = X[idx]
@@ -304,8 +301,7 @@ class GaussianMixture(BaseEstimator):
         except Exception:
             reg = self.reg_covar
             full = np.tile(
-                np.diag(np.maximum(X.var(axis=0), np.finfo(float).tiny))
-                + reg * np.eye(X.shape[1]),
+                np.diag(np.maximum(X.var(axis=0), np.finfo(float).tiny)) + reg * np.eye(X.shape[1]),
                 (n_components, 1, 1),
             )
 
@@ -340,9 +336,7 @@ class GaussianMixture(BaseEstimator):
         prev_lb = -np.inf
         for it in range(1, self.max_iter + 1):
             # E-step -----------------------------------------------------------------
-            log_prob = _log_gaussian_density(
-                X, means, covars, self.covariance_type, reg
-            )
+            log_prob = _log_gaussian_density(X, means, covars, self.covariance_type, reg)
             with np.errstate(divide="ignore"):
                 log_prob += np.log(np.maximum(weights, np.finfo(float).tiny))[None, :]
             lb = _log_likelihood(log_prob)
@@ -511,5 +505,10 @@ def _clamp_covar(M: np.ndarray) -> np.ndarray:
     return (V * ev) @ V.T
 
 
-__all__ = ["GaussianMixture", "_n_parameters", "_log_likelihood", "_clamp_covar",
-           "_broadcast_covariance"]
+__all__ = [
+    "GaussianMixture",
+    "_n_parameters",
+    "_log_likelihood",
+    "_clamp_covar",
+    "_broadcast_covariance",
+]

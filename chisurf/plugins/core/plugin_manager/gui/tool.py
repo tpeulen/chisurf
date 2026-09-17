@@ -65,48 +65,66 @@ class PluginManagerWidget(ChisurfDockTool):
         Every action carries a tooltip, which is also what the guided tour
         matches its steps against.
         """
+
         def add(label: str, tooltip: str, slot) -> None:
             action = toolbar.addAction(label)
             action.setToolTip(tooltip)
             action.triggered.connect(slot)
 
-        add(f"{Glyphs.SAVE} Save",
+        add(
+            f"{Glyphs.SAVE} Save",
             "Write the plugin settings. Menu changes take effect after a restart.",
-            self._save)
-        add(f"{Glyphs.RESET} Revert",
-            "Discard every change made since the last save.",
-            self._revert)
+            self._save,
+        )
+        add(
+            f"{Glyphs.RESET} Revert", "Discard every change made since the last save.", self._revert
+        )
         toolbar.addSeparator()
-        add(f"{Glyphs.REFRESH} Rescan",
+        add(
+            f"{Glyphs.REFRESH} Rescan",
             "Walk the plugin folders again and rebuild the list.",
-            self._rescan)
+            self._rescan,
+        )
         toolbar.addSeparator()
-        add(f"{Glyphs.IMPORT} Install…",
-            "Install a plugin from a folder or a .zip archive into your personal "
-            "plugin directory.",
-            self._install)
-        add(f"{Glyphs.DELETE} Uninstall",
+        add(
+            f"{Glyphs.IMPORT} Install…",
+            "Install a plugin from a folder or a .zip archive into your personal plugin directory.",
+            self._install,
+        )
+        add(
+            f"{Glyphs.DELETE} Uninstall",
             "Delete the selected plugin. Only plugins you installed yourself can "
             "be removed; built-in ones are switched off instead.",
-            self._uninstall)
+            self._uninstall,
+        )
         toolbar.addSeparator()
-        add(f"{Glyphs.UP} Move up",
+        add(
+            f"{Glyphs.UP} Move up",
             "Move the selected plugin earlier in the menus.",
-            lambda: self.model.move_selected(-1))
-        add(f"{Glyphs.DOWN} Move down",
+            lambda: self.model.move_selected(-1),
+        )
+        add(
+            f"{Glyphs.DOWN} Move down",
             "Move the selected plugin later in the menus.",
-            lambda: self.model.move_selected(+1))
+            lambda: self.model.move_selected(+1),
+        )
         toolbar.addSeparator()
-        add(f"{Glyphs.EDIT} Rename…",
+        add(
+            f"{Glyphs.EDIT} Rename…",
             "Change the name this plugin shows in the menus. Edits the plugin's "
             "manifest, which is the field the menus actually read.",
-            self._rename)
-        add(f"{Glyphs.PALETTE} Icon…",
+            self._rename,
+        )
+        add(
+            f"{Glyphs.PALETTE} Icon…",
             "Choose, generate or clear the icon shown beside this plugin.",
-            self._edit_icon)
-        add(f"{Glyphs.FOLDER} Open folder",
+            self._edit_icon,
+        )
+        add(
+            f"{Glyphs.FOLDER} Open folder",
             "Open the selected plugin's directory in the file browser.",
-            self._open_folder)
+            self._open_folder,
+        )
 
     # -- model events ----------------------------------------------------
 
@@ -129,7 +147,8 @@ class PluginManagerWidget(ChisurfDockTool):
             self.model.set_status("Nothing to revert.")
             return
         if dialogs.confirm(
-            self, "Discard changes",
+            self,
+            "Discard changes",
             "Discard every plugin setting changed since the last save?",
         ):
             self.model.revert()
@@ -153,9 +172,7 @@ class PluginManagerWidget(ChisurfDockTool):
             self, "Choose a plugin archive", "", "Plugin archive (*.zip);;All files (*)"
         )
         if not source:
-            source = QtWidgets.QFileDialog.getExistingDirectory(
-                self, "Choose a plugin folder"
-            )
+            source = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose a plugin folder")
         if not source:
             return
 
@@ -191,9 +208,8 @@ class PluginManagerWidget(ChisurfDockTool):
         dependants = row.blocking_dependants(self.model.settings.disabled)
         message = f"Permanently delete {row.name!r} from\n{row.package_dir}?"
         if dependants:
-            message += (
-                "\n\nThese plugins require it and will stop working:\n  "
-                + "\n  ".join(dependants)
+            message += "\n\nThese plugins require it and will stop working:\n  " + "\n  ".join(
+                dependants
             )
         if not dialogs.confirm(self, "Uninstall plugin", message):
             return
@@ -252,7 +268,8 @@ class PluginManagerWidget(ChisurfDockTool):
         The old manager discarded every checkbox change silently on close.
         """
         if self.model.dirty and not dialogs.confirm(
-            self, "Unsaved changes",
+            self,
+            "Unsaved changes",
             "The plugin settings have changed but have not been saved.\n\nClose anyway?",
         ):
             event.ignore()

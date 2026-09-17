@@ -3,15 +3,15 @@ from __future__ import annotations
 import base64
 import copy
 import json
-from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture
 def project_db(tmp_path, monkeypatch):
-    from mmfdb.security.auth import create_session
     from mmfdb.repository import MFDatabase
+    from mmfdb.security.auth import create_session
+
     from chisurf.plugins.core.project_browser.backend import services
 
     db_path = tmp_path / "project_browser.db"
@@ -265,9 +265,7 @@ def test_branch_dag_and_version_graph_roots_and_leaves(
         main_child["version_id"],
         fork_child["version_id"],
     }
-    assert {
-        (edge["source"], edge["target"]) for edge in graph["graph"]["edges"]
-    } == {
+    assert {(edge["source"], edge["target"]) for edge in graph["graph"]["edges"]} == {
         (main_child["version_id"], root["version_id"]),
         (fork_child["version_id"], root["version_id"]),
     }
@@ -314,11 +312,15 @@ def test_import_collision_preview_requires_and_applies_remap(
 
     listed = list_projects_handler(auth=auth)
     assert listed["ok"] is True
-    projects = [project for project in listed["projects"] if project["project_id"] == saved["project_id"]]
+    projects = [
+        project for project in listed["projects"] if project["project_id"] == saved["project_id"]
+    ]
     assert projects[0]["version_count"] == 2
 
 
-def test_import_and_restore_a_regular_chisurf_pto_project(project_db, sample_project_payload, tmp_path):
+def test_import_and_restore_a_regular_chisurf_pto_project(
+    project_db, sample_project_payload, tmp_path
+):
     from chisurf.core.project import ProjectArchive
     from chisurf.core.project.archive import PROJECT_JSON
     from chisurf.plugins.core.project_browser.backend.services import (
@@ -359,13 +361,15 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
         "current_fit_index": 2,
         "fit_windows": {"global-fit": {"geometry": "serialized-window-state"}},
     }
-    payload["fits"] = [{
-        "id": "global-fit",
-        "name": "global fit",
-        "local_fits": [{"id": "local-a"}, {"id": "local-b"}],
-        "global_parameters": [{"uid": "tau-global", "name": "tau", "value": 4.1}],
-        "links": [{"source": "local-a:tau", "target": "tau-global"}],
-    }]
+    payload["fits"] = [
+        {
+            "id": "global-fit",
+            "name": "global fit",
+            "local_fits": [{"id": "local-a"}, {"id": "local-b"}],
+            "global_parameters": [{"uid": "tau-global", "name": "tau", "value": 4.1}],
+            "links": [{"source": "local-a:tau", "target": "tau-global"}],
+        }
+    ]
 
     saved = save_project_handler(
         auth=project_db["auth"],
@@ -380,8 +384,9 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
 
 
 def test_delete_version_requires_manage_permission(project_db, sample_project_payload):
-    from mmfdb.security.auth import create_session
     from mmfdb.repository import MFDatabase
+    from mmfdb.security.auth import create_session
+
     from chisurf.plugins.core.project_browser.backend.services import (
         delete_version_handler,
         list_projects_handler,

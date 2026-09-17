@@ -8,7 +8,7 @@ import numpy as np
 def _synthetic_curve(td_true: float = 1.0):
     tau = np.logspace(-3, 2, 60)
     s = 3.5
-    g = 0.5 * (1.0 / (1.0 + tau / td_true)) / np.sqrt(1.0 + tau / (td_true * s ** 2)) + 1.0
+    g = 0.5 * (1.0 / (1.0 + tau / td_true)) / np.sqrt(1.0 + tau / (td_true * s**2)) + 1.0
     return tau, g
 
 

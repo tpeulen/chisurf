@@ -23,7 +23,8 @@ rather than divided.
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -61,8 +62,10 @@ class RatioTrace:
         finite = r[np.isfinite(r)]
         if finite.size == 0:
             return float("nan")
-        return float(np.max(np.abs(finite - 1.0))) if self.normalisation != 1.0 else float(
-            np.max(finite) / np.min(finite) - 1.0
+        return (
+            float(np.max(np.abs(finite - 1.0)))
+            if self.normalisation != 1.0
+            else float(np.max(finite) / np.min(finite) - 1.0)
         )
 
     def to_dict(self) -> dict:
@@ -95,7 +98,9 @@ def _region_mean(stack: np.ndarray, roi: Any) -> np.ndarray:
 
     from chisurf.core.roi import ROI
 
-    mask = roi.to_mask(stack.shape[1:], image=stack) if isinstance(roi, ROI) else np.asarray(roi, bool)
+    mask = (
+        roi.to_mask(stack.shape[1:], image=stack) if isinstance(roi, ROI) else np.asarray(roi, bool)
+    )
     if mask.shape != stack.shape[1:]:
         raise ValueError("the region must match the frame shape")
     if not mask.any():
@@ -108,7 +113,7 @@ def ratio_trace(
     acceptor: np.ndarray,
     roi: Any = None,
     *,
-    baseline: Optional[Sequence[int]] = None,
+    baseline: Sequence[int] | None = None,
     frame_time: float = 1.0,
 ) -> RatioTrace:
     """Follow the acceptor/donor ratio of a region over time.
@@ -191,7 +196,7 @@ def ratio_trace(
 def ratio_image(
     donor: np.ndarray,
     acceptor: np.ndarray,
-    frames: Optional[Sequence[int]] = None,
+    frames: Sequence[int] | None = None,
     *,
     donor_roi: Any = None,
     acceptor_roi: Any = None,
@@ -271,7 +276,9 @@ def ratio_image(
     for roi, image in ((donor_roi, d), (acceptor_roi, a)):
         if roi is None:
             continue
-        mask = roi.to_mask(d_img.shape, image=image) if isinstance(roi, ROI) else np.asarray(roi, bool)
+        mask = (
+            roi.to_mask(d_img.shape, image=image) if isinstance(roi, ROI) else np.asarray(roi, bool)
+        )
         keep &= mask
 
     keep &= d_img > float(minimum_donor)

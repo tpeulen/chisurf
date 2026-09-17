@@ -40,7 +40,11 @@ def test_all_plugin_init_with_ui_paths_exist():
             if not isinstance(node, ast.Call):
                 continue
             fn = node.func
-            fn_name = fn.attr if isinstance(fn, ast.Attribute) else (fn.id if isinstance(fn, ast.Name) else "")
+            fn_name = (
+                fn.attr
+                if isinstance(fn, ast.Attribute)
+                else (fn.id if isinstance(fn, ast.Name) else "")
+            )
             if fn_name != "init_with_ui":
                 continue
 
@@ -84,12 +88,18 @@ def test_plugin_direct_loadui_string_targets_exist():
             if not isinstance(node, ast.Call):
                 continue
             fn = node.func
-            fn_name = fn.attr if isinstance(fn, ast.Attribute) else (fn.id if isinstance(fn, ast.Name) else "")
+            fn_name = (
+                fn.attr
+                if isinstance(fn, ast.Attribute)
+                else (fn.id if isinstance(fn, ast.Name) else "")
+            )
             if fn_name != "loadUi" or not node.args:
                 continue
 
             arg_source = ast.get_source_segment(source, node.args[0]) or ""
-            candidates = [a or b for a, b in re.findall(r'"([^"]+\.ui)"|\'([^\']+\.ui)\'', arg_source)]
+            candidates = [
+                a or b for a, b in re.findall(r'"([^"]+\.ui)"|\'([^\']+\.ui)\'', arg_source)
+            ]
             for ui_name in candidates:
                 ui_path = py_file.parent / ui_name
                 if not ui_path.exists():

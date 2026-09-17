@@ -11,9 +11,9 @@ from typing import Any
 from qtpy import QtWidgets
 
 from chisurf.core import dataspec as ds
+from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm, register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 
 @register_section("acq_channels")
@@ -76,7 +76,7 @@ def _schema_help() -> dict:
     """
     plugin_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     try:
-        with open(os.path.join(plugin_dir, "manifest.json"), "r", encoding="utf-8") as f:
+        with open(os.path.join(plugin_dir, "manifest.json"), encoding="utf-8") as f:
             manifest = json.load(f)
         for method in manifest.get("rpc_methods", []):
             if method.get("name") == "acq.simulation.run":
@@ -198,7 +198,9 @@ def _sized_matrix(values: Any, n: int) -> list[float]:
     return out
 
 
-def _expand_species_q(params: dict, n_species: int, enabled: tuple[bool, bool, bool]) -> list[float]:
+def _expand_species_q(
+    params: dict, n_species: int, enabled: tuple[bool, bool, bool]
+) -> list[float]:
     """Expand a legacy flat ``q`` (species × enabled-channels) into species×6 slots."""
     q = _flatten(params.get("q", [50.0, 50.0]))
     slots: list[int] = []
@@ -285,8 +287,9 @@ class SimulationSettingsModel:
 
     def enabled_colors(self) -> list:
         """Return the enabled detection colours, green as the fallback."""
-        return [c for c in self._CHANNEL_COLORS
-                if getattr(self, f"{c}_enabled", False)] or ["green"]
+        return [c for c in self._CHANNEL_COLORS if getattr(self, f"{c}_enabled", False)] or [
+            "green"
+        ]
 
     def species_columns(self) -> list:
         """Return the per-species columns for the ``state_table`` section.
@@ -298,27 +301,43 @@ class SimulationSettingsModel:
         addresses its slot.
         """
         columns = [
-            {"attr": "species_M", "label": "M", "default": 50.0,
-             "description": "Molecules (mean number in the box) for this species."},
-            {"attr": "species_D", "label": "D", "default": 3.0,
-             "description": "Diffusion coefficient (\u00b5m\u00b2/ms) for this species."},
+            {
+                "attr": "species_M",
+                "label": "M",
+                "default": 50.0,
+                "description": "Molecules (mean number in the box) for this species.",
+            },
+            {
+                "attr": "species_D",
+                "label": "D",
+                "default": 3.0,
+                "description": "Diffusion coefficient (\u00b5m\u00b2/ms) for this species.",
+            },
         ]
         for color in self.enabled_colors():
             base = self._CHANNEL_COLORS.index(color) * 2
             for polarisation, mark in ((0, "\u2225"), (1, "\u22a5")):
-                columns.append({
-                    "attr": "species_q", "stride": 6, "slot": base + polarisation,
-                    "label": f"{self._CHANNEL_ABBR[color]} {mark}",
-                    "maximum": 1e6,
-                    "description": f"{color.capitalize()} {'parallel' if polarisation == 0 else 'perpendicular'} brightness q.",
-                })
+                columns.append(
+                    {
+                        "attr": "species_q",
+                        "stride": 6,
+                        "slot": base + polarisation,
+                        "label": f"{self._CHANNEL_ABBR[color]} {mark}",
+                        "maximum": 1e6,
+                        "description": f"{color.capitalize()} {'parallel' if polarisation == 0 else 'perpendicular'} brightness q.",
+                    }
+                )
         # The decay is a whole spectrum, not a number, so the row opens an
         # editor rather than holding a cell. Having it on the row removes the
         # "which species am I editing" selector the dialog used to carry.
-        columns.append({
-            "action": "open_decay_dialog", "label": "Decay", "text": "\u2026",
-            "description": "Edit this species' lifetime spectrum, decay pattern and IRF.",
-        })
+        columns.append(
+            {
+                "action": "open_decay_dialog",
+                "label": "Decay",
+                "text": "\u2026",
+                "description": "Edit this species' lifetime spectrum, decay pattern and IRF.",
+            }
+        )
         return columns
 
     def species_trailing_rows(self) -> list:
@@ -419,29 +438,39 @@ class SimulationSettingsModel:
             psf_z_step=float(params.get("psf_z_step", 0.05)),
             decay_lifetimes=(
                 [list(s) for s in params["decay_lifetimes"]]
-                if params.get("decay_lifetimes") else [[3.2]]
+                if params.get("decay_lifetimes")
+                else [[3.2]]
             ),
             decay_pattern_files=(
                 [str(p or "") for p in params["decay_pattern_files"]]
-                if params.get("decay_pattern_files") else [""]
+                if params.get("decay_pattern_files")
+                else [""]
             ),
             irf_fwhm_ns=float(params.get("irf_fwhm_ns", 0.0)),
             k_rad=[float(v) for v in params["k_rad"]] if params.get("k_rad") else [0.0],
             k_nrad=[float(v) for v in params["k_nrad"]] if params.get("k_nrad") else [0.0],
             species_M=(
-                [float(v) for v in params["species_M"]] if params.get("species_M")
-                else [_list_get(molecules, s, 50.0)
-                      for s in range(max(1, int(params.get("N_species", 1))))]
+                [float(v) for v in params["species_M"]]
+                if params.get("species_M")
+                else [
+                    _list_get(molecules, s, 50.0)
+                    for s in range(max(1, int(params.get("N_species", 1))))
+                ]
             ),
             species_D=(
-                [float(v) for v in params["species_D"]] if params.get("species_D")
-                else [_list_get(diffusion, s, 3.0)
-                      for s in range(max(1, int(params.get("N_species", 1))))]
+                [float(v) for v in params["species_D"]]
+                if params.get("species_D")
+                else [
+                    _list_get(diffusion, s, 3.0)
+                    for s in range(max(1, int(params.get("N_species", 1))))
+                ]
             ),
             species_q=(
-                [float(v) for v in params["species_q"]] if params.get("species_q")
+                [float(v) for v in params["species_q"]]
+                if params.get("species_q")
                 else _expand_species_q(
-                    params, max(1, int(params.get("N_species", 1))),
+                    params,
+                    max(1, int(params.get("N_species", 1))),
                     (green_enabled, red_enabled, yellow_enabled),
                 )
             ),
@@ -484,8 +513,12 @@ class SimulationSettingsModel:
                             maximum=2_000_000_000,
                             description="Split the streamed SPC output into files of this many photons each.",
                         ),
-                        ds.ValueSection(attr="output_path", label="Output folder", kind="str",
-                            description="Folder where SPC/photon-stream files are written."),
+                        ds.ValueSection(
+                            attr="output_path",
+                            label="Output folder",
+                            kind="str",
+                            description="Folder where SPC/photon-stream files are written.",
+                        ),
                         ds.ValueSection(
                             attr="seed_diffusion",
                             label="Diffusion seed",
@@ -518,9 +551,11 @@ class SimulationSettingsModel:
                         ds.CustomSection(key="acq_channels"),
                         ds.CustomSection(
                             key="state_table",
-                            options={"size_attr": "n_species",
-                                     "columns_source": "species_columns",
-                                     "trailing_rows_source": "species_trailing_rows"},
+                            options={
+                                "size_attr": "n_species",
+                                "columns_source": "species_columns",
+                                "trailing_rows_source": "species_trailing_rows",
+                            },
                         ),
                     ),
                 ),
@@ -530,16 +565,28 @@ class SimulationSettingsModel:
                     description="Species-interconversion transition rates (radiative and non-radiative). Each button opens an N×N grid that tracks the species count and says how many transitions are set.",
                     sections=(
                         ds.CustomSection(
-                            key="rate_matrix", target="k_rad",
-                            options={"size_attr": "n_species", "minimum": 0.0,
-                                     "decimals": 4, "unit": "1/ms", "popup": True,
-                                     "title": "Radiative (k_rad)"},
+                            key="rate_matrix",
+                            target="k_rad",
+                            options={
+                                "size_attr": "n_species",
+                                "minimum": 0.0,
+                                "decimals": 4,
+                                "unit": "1/ms",
+                                "popup": True,
+                                "title": "Radiative (k_rad)",
+                            },
                         ),
                         ds.CustomSection(
-                            key="rate_matrix", target="k_nrad",
-                            options={"size_attr": "n_species", "minimum": 0.0,
-                                     "decimals": 4, "unit": "1/ms", "popup": True,
-                                     "title": "Non-radiative (k_nrad)"},
+                            key="rate_matrix",
+                            target="k_nrad",
+                            options={
+                                "size_attr": "n_species",
+                                "minimum": 0.0,
+                                "decimals": 4,
+                                "unit": "1/ms",
+                                "popup": True,
+                                "title": "Non-radiative (k_nrad)",
+                            },
                         ),
                     ),
                 ),
@@ -547,16 +594,33 @@ class SimulationSettingsModel:
                     title="Geometry",
                     n_col=2,
                     sections=(
-                        self._float_field("box_xy", "Box XY", minimum=0.001, decimals=4,
-                            description=_help("box_xy")),
-                        self._float_field("box_z", "Box Z", minimum=0.001, decimals=4,
-                            description=_help("box_z")),
-                        self._float_field("focus_w0", "Focus w0", minimum=0.001, decimals=4,
-                            description=_help("focus_param")),
-                        self._float_field("focus_z0", "Focus z0", minimum=0.001, decimals=4,
-                            description=_help("focus_param")),
-                        self._float_field("dt", "Step", minimum=0.000001, decimals=6,
-                            description=_help("dt")),
+                        self._float_field(
+                            "box_xy",
+                            "Box XY",
+                            minimum=0.001,
+                            decimals=4,
+                            description=_help("box_xy"),
+                        ),
+                        self._float_field(
+                            "box_z", "Box Z", minimum=0.001, decimals=4, description=_help("box_z")
+                        ),
+                        self._float_field(
+                            "focus_w0",
+                            "Focus w0",
+                            minimum=0.001,
+                            decimals=4,
+                            description=_help("focus_param"),
+                        ),
+                        self._float_field(
+                            "focus_z0",
+                            "Focus z0",
+                            minimum=0.001,
+                            decimals=4,
+                            description=_help("focus_param"),
+                        ),
+                        self._float_field(
+                            "dt", "Step", minimum=0.000001, decimals=6, description=_help("dt")
+                        ),
                     ),
                 ),
                 ds.PanelSection(
@@ -571,8 +635,13 @@ class SimulationSettingsModel:
                             maximum=1_000_000,
                             description=_help("N_tac_channels"),
                         ),
-                        self._float_field("tac_dt", "TAC dt", minimum=0.000001, decimals=6,
-                            description=_help("tac_dt")),
+                        self._float_field(
+                            "tac_dt",
+                            "TAC dt",
+                            minimum=0.000001,
+                            decimals=6,
+                            description=_help("tac_dt"),
+                        ),
                         self._float_field(
                             "laser_period",
                             "Laser period",
@@ -588,65 +657,104 @@ class SimulationSettingsModel:
                     description="Optional throughput knobs (native tttrlib Sim* engine). Speed/accuracy trade-offs — see each tooltip. Defaults reproduce the exact fixed-step engine.",
                     sections=(
                         ds.ToggleSection(
-                            attr="per_molecule_skip", label="Coasting",
+                            attr="per_molecule_skip",
+                            label="Coasting",
                             description=_help("per_molecule_skip"),
                         ),
                         ds.ToggleSection(
-                            attr="fast_grid_bbox", label="Two-step field lookup",
+                            attr="fast_grid_bbox",
+                            label="Two-step field lookup",
                             description=_help("fast_grid_bbox"),
                         ),
                         ds.ToggleSection(
-                            attr="independent_molecules", label="Independent molecules",
+                            attr="independent_molecules",
+                            label="Independent molecules",
                             description=_help("independent_molecules"),
                         ),
                         ds.ToggleSection(
-                            attr="analytic_excitation", label="Analytic Gaussian focus",
+                            attr="analytic_excitation",
+                            label="Analytic Gaussian focus",
                             description=_help("analytic_excitation"),
                         ),
                         ds.ChoiceSection(
-                            attr="psf_type", label="PSF / focus model",
-                            options=("gaussian3d", "analytic_gaussian3d",
-                                     "gaussian_lorentzian", "radial"),
-                            labels=("Gaussian 3D", "Analytic Gaussian",
-                                    "Gaussian-Lorentzian", "Numeric (radial)"),
+                            attr="psf_type",
+                            label="PSF / focus model",
+                            options=(
+                                "gaussian3d",
+                                "analytic_gaussian3d",
+                                "gaussian_lorentzian",
+                                "radial",
+                            ),
+                            labels=(
+                                "Gaussian 3D",
+                                "Analytic Gaussian",
+                                "Gaussian-Lorentzian",
+                                "Numeric (radial)",
+                            ),
                             description=_help("psf_type"),
                         ),
                         self._float_field(
-                            "psf_zR", "Rayleigh range zR (µm)", minimum=0.0, decimals=3,
+                            "psf_zR",
+                            "Rayleigh range zR (µm)",
+                            minimum=0.0,
+                            decimals=3,
                             description=_help("psf_zR"),
                         ),
                         ds.ValueSection(
-                            attr="psf_file", label="PSF file (radial)", kind="string",
+                            attr="psf_file",
+                            label="PSF file (radial)",
+                            kind="string",
                             description=_help("psf_file"),
                         ),
                         self._float_field(
-                            "psf_r_step", "PSF r step (µm)", minimum=0.0, decimals=4,
+                            "psf_r_step",
+                            "PSF r step (µm)",
+                            minimum=0.0,
+                            decimals=4,
                             description=_help("psf_r_step"),
                         ),
                         self._float_field(
-                            "psf_z_step", "PSF z step (µm)", minimum=0.0, decimals=4,
+                            "psf_z_step",
+                            "PSF z step (µm)",
+                            minimum=0.0,
+                            decimals=4,
                             description=_help("psf_z_step"),
                         ),
                         self._float_field(
-                            "active_margin", "Active margin (µm)", minimum=0.0, decimals=3,
+                            "active_margin",
+                            "Active margin (µm)",
+                            minimum=0.0,
+                            decimals=3,
                             description=_help("active_margin"),
                         ),
                         ds.ValueSection(
-                            attr="max_windows", label="Max windows", kind="int", minimum=0,
+                            attr="max_windows",
+                            label="Max windows",
+                            kind="int",
+                            minimum=0,
                             maximum=2_000_000_000,
                             description=_help("max_windows"),
                         ),
                         self._float_field(
-                            "coast_safety", "Coast safety", minimum=1.0, decimals=2,
+                            "coast_safety",
+                            "Coast safety",
+                            minimum=1.0,
+                            decimals=2,
                             description=_help("coast_safety"),
                         ),
                         ds.ValueSection(
-                            attr="min_coast_windows", label="Min coast windows", kind="int",
-                            minimum=1, maximum=1_000_000,
+                            attr="min_coast_windows",
+                            label="Min coast windows",
+                            kind="int",
+                            minimum=1,
+                            maximum=1_000_000,
                             description=_help("min_coast_windows"),
                         ),
                         self._float_field(
-                            "focus_threshold", "Focus threshold", minimum=0.0, decimals=6,
+                            "focus_threshold",
+                            "Focus threshold",
+                            minimum=0.0,
+                            decimals=6,
                             description=_help("focus_threshold"),
                         ),
                     ),
@@ -654,16 +762,28 @@ class SimulationSettingsModel:
                 ds.ButtonRowSection(
                     menu=f"{Glyphs.TOOLS} Tools",
                     buttons=(
-                        {"label": f"{Glyphs.DNA} Decay…", "action": "open_decay_dialog",
-                         "description": "Define the per-species fluorescence decay "
-                                        "(lifetimes / IRF) or load an existing decay pattern."},
-                        {"label": f"{Glyphs.OPEN} Load JSON", "action": "load_json",
-                         "description": "Load simulation parameters from a JSON file."},
-                        {"label": f"{Glyphs.SAVE} Save JSON", "action": "save_json",
-                         "description": "Save the current simulation parameters to a JSON file."},
-                        {"label": "🧾 View JSON", "action": "view_json",
-                         "description": "Show the current simulation parameters as JSON."},
-                    )
+                        {
+                            "label": f"{Glyphs.DNA} Decay…",
+                            "action": "open_decay_dialog",
+                            "description": "Define the per-species fluorescence decay "
+                            "(lifetimes / IRF) or load an existing decay pattern.",
+                        },
+                        {
+                            "label": f"{Glyphs.OPEN} Load JSON",
+                            "action": "load_json",
+                            "description": "Load simulation parameters from a JSON file.",
+                        },
+                        {
+                            "label": f"{Glyphs.SAVE} Save JSON",
+                            "action": "save_json",
+                            "description": "Save the current simulation parameters to a JSON file.",
+                        },
+                        {
+                            "label": "🧾 View JSON",
+                            "action": "view_json",
+                            "description": "Show the current simulation parameters as JSON.",
+                        },
+                    ),
                 ),
             )
         )
@@ -765,22 +885,17 @@ class SimulationSettingsModel:
             for slot in enabled_slots
         ]
         molecules = [
-            float(self.species_M[s]) if s < len(self.species_M) else 50.0
-            for s in range(n_species)
+            float(self.species_M[s]) if s < len(self.species_M) else 50.0 for s in range(n_species)
         ]
         diffusion = [
-            float(self.species_D[s]) if s < len(self.species_D) else 3.0
-            for s in range(n_species)
+            float(self.species_D[s]) if s < len(self.species_D) else 3.0 for s in range(n_species)
         ]
         # Size the per-species decay definitions to the species count.
         lifetimes = list(self.decay_lifetimes or [[[1.0, 3.2]]])
         pattern_files = list(self.decay_pattern_files or [""])
-        decay_lifetimes = [
-            list(lifetimes[i % len(lifetimes)]) for i in range(n_species)
-        ]
+        decay_lifetimes = [list(lifetimes[i % len(lifetimes)]) for i in range(n_species)]
         decay_pattern_files = [
-            str(pattern_files[i]) if i < len(pattern_files) else ""
-            for i in range(n_species)
+            str(pattern_files[i]) if i < len(pattern_files) else "" for i in range(n_species)
         ]
         return {
             "decay_lifetimes": decay_lifetimes,
@@ -920,7 +1035,7 @@ class DecaySettingsDialog(QtWidgets.QDialog):
 
         def _pairs(spec):
             out = []
-            for e in (spec or []):
+            for e in spec or []:
                 if isinstance(e, (list, tuple)) and len(e) >= 2:
                     out.append([float(e[0]), float(e[1])])
                 else:
@@ -994,9 +1109,7 @@ class DecaySettingsDialog(QtWidgets.QDialog):
         """Save the shared editor's current state back into species ``idx``."""
         rows = self.editor_model.spectrum_rows
         if rows:
-            self._lifetimes[idx] = [
-                [float(r["amplitude"]), float(r["lifetime"])] for r in rows
-            ]
+            self._lifetimes[idx] = [[float(r["amplitude"]), float(r["lifetime"])] for r in rows]
         self._patterns[idx] = self.editor_model.pattern_path
         # The Gaussian IRF FWHM is shared across all species.
         self._fwhm = float(self.editor_model.irf_fwhm_ns)

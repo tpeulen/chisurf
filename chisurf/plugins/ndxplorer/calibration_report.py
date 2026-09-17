@@ -18,9 +18,16 @@ from __future__ import annotations
 __all__ = ["show_calibration_report"]
 
 
-def show_calibration_report(parent, title: str, report: str, *, constants: dict,
-                            result: dict | None = None, ndx=None,
-                            saved: dict | None = None) -> None:
+def show_calibration_report(
+    parent,
+    title: str,
+    report: str,
+    *,
+    constants: dict,
+    result: dict | None = None,
+    ndx=None,
+    saved: dict | None = None,
+) -> None:
     """Show *report*, with Save calibration / Save report beside it.
 
     Parameters
@@ -42,8 +49,11 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
     """
     from qtpy import QtGui, QtWidgets
 
+    from chisurf.gui import dialogs
     from chisurf.plugins.ndxplorer.calibration_io import (
-        SUFFIX, container_of, save_calibration,
+        SUFFIX,
+        container_of,
+        save_calibration,
     )
 
     dialog = QtWidgets.QDialog(parent)
@@ -53,8 +63,7 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
     dialog.resize(900, 620)
     layout = QtWidgets.QVBoxLayout(dialog)
 
-    header = QtWidgets.QLabel(
-        "The correction factors were optimized against the loaded data.")
+    header = QtWidgets.QLabel("The correction factors were optimized against the loaded data.")
     header.setWordWrap(True)
     layout.addWidget(header)
 
@@ -72,8 +81,8 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
         where = saved.get("where")
         status.setText(
             f"Stored in the measurement: {saved.get('target', '')}"
-            if where == "container" else
-            f"Saved to {saved.get('target', '')}"
+            if where == "container"
+            else f"Saved to {saved.get('target', '')}"
             + (f" — {saved['warning']}" if saved.get("warning") else "")
         )
     elif saved and saved.get("error"):
@@ -92,13 +101,13 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
         container = container_of(ndx)
         if container:
             answer = dialogs.question(
-                dialog, "Save calibration",
+                dialog,
+                "Save calibration",
                 "Store the calibration in the measurement?\n\n"
                 f"{container}\n\n"
                 "Yes keeps it beside the photons and the burst table. "
                 "No writes a separate file instead.",
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
-                | QtWidgets.QMessageBox.Cancel,
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel,
                 # Nobody at the keyboard writes nothing.
                 QtWidgets.QMessageBox.Cancel,
             )
@@ -108,28 +117,34 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
                 out = save_calibration(constants, ndx=ndx, result=result, embed=True)
                 status.setText(
                     f"Stored in the measurement: {out.get('target', '')}"
-                    if out.get("ok") else f"Could not store: {out.get('error')}")
+                    if out.get("ok")
+                    else f"Could not store: {out.get('error')}"
+                )
                 return
         start = (container.rsplit(".", 1)[0] + SUFFIX) if container else ("calibration" + SUFFIX)
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            dialog, "Save calibration", start, f"FRET calibration (*{SUFFIX});;All files (*)")
+            dialog, "Save calibration", start, f"FRET calibration (*{SUFFIX});;All files (*)"
+        )
         if not path:
             return
         out = save_calibration(constants, ndx=ndx, path=path, result=result, embed=False)
-        status.setText(f"Saved to {out.get('target', '')}" if out.get("ok")
-                       else f"Could not save: {out.get('error')}")
+        status.setText(
+            f"Saved to {out.get('target', '')}"
+            if out.get("ok")
+            else f"Could not save: {out.get('error')}"
+        )
 
     def _save_report() -> None:
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            dialog, "Save report", "fret_calibration.txt",
-            "Text (*.txt);;All files (*)")
+            dialog, "Save report", "fret_calibration.txt", "Text (*.txt);;All files (*)"
+        )
         if not path:
             return
         try:
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(report + "\n")
             status.setText(f"Report written to {path}")
-        except Exception as exc:                           # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             status.setText(f"Could not write the report: {exc}")
 
     save_cal.clicked.connect(_save_calibration)

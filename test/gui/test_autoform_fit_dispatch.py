@@ -47,7 +47,8 @@ def test_committing_a_value_still_applies_it(qapp, unregistered_fit, caplog):
     model = unregistered_fit.model
     form = AutoForm(model)
     toggle = [
-        widget for widget in form.findChildren(_BoundControlMixin)
+        widget
+        for widget in form.findChildren(_BoundControlMixin)
         if getattr(getattr(widget, "_section", None), "attr", "") == "dynamic"
     ]
     assert toggle, "the Exchange panel should bind the dynamic toggle"
@@ -66,7 +67,8 @@ def test_the_guard_skips_dispatch_for_a_negative_index(monkeypatch):
 
     dispatched = []
     monkeypatch.setattr(
-        builtin.cs.core.actions, "dispatch",
+        builtin.cs.core.actions,
+        "dispatch",
         lambda **kwargs: dispatched.append(kwargs),
     )
     builtin._dispatch_fit_update(-1)

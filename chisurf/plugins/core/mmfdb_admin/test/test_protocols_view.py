@@ -58,7 +58,5 @@ def test_view_create_adds_protocol(db, qapp):
         view.new_category_combo.setCurrentText("analysis")
         view.create_protocol()
     assert "Created new_proto v1" in view.message_label.text()
-    names = {
-        view.protocol_table.item(r, 0).text() for r in range(view.protocol_table.rowCount())
-    }
+    names = {view.protocol_table.item(r, 0).text() for r in range(view.protocol_table.rowCount())}
     assert "new_proto" in names

@@ -19,7 +19,6 @@ from chisurf.core.agent.knowledge import (
     search_prose,
 )
 from chisurf.core.agent.skills import SkillLibrary
-from chisurf.core.agent.tools import codebase as codebase_tools
 
 BUNDLE = knowledge_base_root()
 CONCEPTS = sorted((BUNDLE / "concepts").glob("*.md"))

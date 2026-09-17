@@ -4,6 +4,7 @@ The link menu, the Global View and every scripted client read parameters through
 these DTOs, so an empty ``parameters_all`` here is not a cosmetic problem: it is
 a fit that appears to have no parameters at all.
 """
+
 from __future__ import annotations
 
 import numpy as np

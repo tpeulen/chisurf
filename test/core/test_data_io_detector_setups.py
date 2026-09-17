@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import pathlib
 
-import pytest
-
 from chisurf.core.data_io.detector_setups import (
     load_detector_setups,
     save_detector_setups,
@@ -14,7 +12,6 @@ from chisurf.core.data_io.detector_setups import (
 
 
 class TestDetectorSetupsIO:
-
     def test_load_no_file_returns_empty(self, tmp_path: pathlib.Path):
         result = load_detector_setups(file_path=tmp_path / "nonexistent.json")
         assert result == {"setups": {}}
@@ -51,7 +48,9 @@ class TestDetectorSetupsIO:
     def test_no_gui_import(self):
         import ast
         import inspect
+
         import chisurf.core.data_io.detector_setups as mod
+
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):

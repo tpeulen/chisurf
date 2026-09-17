@@ -44,13 +44,13 @@ from __future__ import annotations
 from qtpy import QtWidgets
 
 from chisurf.core.support import i18n
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.auto_form import AutoForm
 from chisurf.gui.glyphs import Glyphs
 
 # Registering the custom pairs section must happen before AutoForm builds.
 from . import sections  # noqa: F401
 from .view_model import FCSChannelViewModel
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state

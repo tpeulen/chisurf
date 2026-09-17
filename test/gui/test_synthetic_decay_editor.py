@@ -123,7 +123,6 @@ def test_time_shift_delays_peak():
 
 
 def test_periodic_convolution_adds_interpulse_tail():
-    import numpy as np
 
     from chisurf.core.fluorescence.decay import synthetic_decay
 

@@ -3,6 +3,7 @@
 Each test loads data for an experiment type and creates a fit.  Slow
 reader-heavy tests (TTTR-based experiments) are marked ``slow``.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
 import pytest
@@ -51,13 +52,19 @@ def _set_exp(exp_name: str, setup_name: str, **kw):
 
 def test_tcspc_lifetime_fit():
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
-    cs.macros.add_dataset(
-        filename="./test/data/tcspc/ibh_sample/Decay_577D.txt"
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
     )
+    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Decay_577D.txt")
     before = len(cs.fits)
     cs.core.actions.dispatch(
         name="fit.add",
@@ -67,31 +74,40 @@ def test_tcspc_lifetime_fit():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", [
-    "Lifetime",
-    "Lifetime: polarized",
-    "Lifetime mixture",
-    "FRET: Gaussian distances",
-    "FRET: discrete distances",
-    "FRET: worm-like chain",
-    "FRET: self-avoiding chain (SAW-ν)",
-    "FRET: Ising two-state chain",
-    "PDDEM: partial donor-donor energy migration",
-    "FRET: acceptor density (1, 2 or 3 dimensions)",
-    "Parse-Model",
-    "Lifetime: MaxEnt",
-    "FRET: MaxEnt distances",
-])
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "Lifetime",
+        "Lifetime: polarized",
+        "Lifetime mixture",
+        "FRET: Gaussian distances",
+        "FRET: discrete distances",
+        "FRET: worm-like chain",
+        "FRET: self-avoiding chain (SAW-ν)",
+        "FRET: Ising two-state chain",
+        "PDDEM: partial donor-donor energy migration",
+        "FRET: acceptor density (1, 2 or 3 dimensions)",
+        "Parse-Model",
+        "Lifetime: MaxEnt",
+        "FRET: MaxEnt distances",
+    ],
+)
 def test_tcspc_each_model(model_name):
     """Create a fit for each registered TCSPC model."""
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
-    cs.macros.add_dataset(
-        filename="./test/data/tcspc/ibh_sample/Decay_577D.txt"
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
     )
+    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Decay_577D.txt")
     before = len(cs.fits)
     cs.core.actions.dispatch(
         name="fit.add",
@@ -104,9 +120,7 @@ def test_tcspc_each_model(model_name):
 def test_fcs_parse_model_fit():
     _clear()
     _set_exp("FCS", "Seidel Kristine")
-    cs.macros.add_dataset(
-        filename="./test/data/fcs/kristine/Kristine_with_error.cor"
-    )
+    cs.macros.add_dataset(filename="./test/data/fcs/kristine/Kristine_with_error.cor")
     before = len(cs.fits)
     cs.core.actions.dispatch(
         name="fit.add",

@@ -1,23 +1,27 @@
 from pathlib import Path
-from qtpy import QtWidgets
+
 import numpy as np
-
-from chisurf.gui import chiplot as cp
-
 import tttrlib
-import chisurf.gui.decorators
+from qtpy import QtWidgets
+
 import chisurf.core.settings
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
+import chisurf.gui.decorators
+from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 VERBOSE = False
 
-SPECIAL_FILETYPES = {'.spc'}
+SPECIAL_FILETYPES = {".spc"}
+
 
 class _FileListModel:
     """Adapter exposing a microtime-histogram file list to the unified ``PathListWidget``.
@@ -41,20 +45,20 @@ class _FileListModel:
 class MicrotimeHistogram(QtWidgets.QWidget):
     # Class variable to store the singleton instance
     _instance = None
-    
+
     @classmethod
     def get_instance(cls):
         """
         Get the singleton instance of MicrotimeHistogram.
         If no instance exists, create one.
-        
+
         Returns:
             MicrotimeHistogram: The singleton instance
         """
         if cls._instance is None or not cls._instance.isVisible():
             cls._instance = MicrotimeHistogram()
         return cls._instance
-    
+
     @property
     def binning_factor(self) -> int:
         return int(self.comboBox_2.currentText())
@@ -62,7 +66,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
     @property
     def tttr_filetype(self) -> str | None:
         txt = self.comboBox.currentText()
-        if txt == 'Auto':
+        if txt == "Auto":
             # Container type must be set by user, but we still need to handle 'Auto' option
             # Return None to let tttrlib try auto-detection
             return None
@@ -72,35 +76,35 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         """
         Get the interleaved channel list from detector wizard page or UI input.
         The channels are expected to be in interleaved format: [par1, perp1, par2, perp2, ...]
-        
+
         Returns:
             list[int]: List of interleaved channel numbers
         """
         # First try to get channels from detector wizard page
-        if hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
+        if hasattr(self, "detector_wizard_page") and self.detector_wizard_page:
             # Try to get detector channels from the current detector
             detectors = self.detector_wizard_page.detectors
             if detectors:
                 detector_name = self.current_detector_name or None
                 if detector_name and detector_name in detectors:
                     detector = detectors[detector_name]
-                    if isinstance(detector, dict) and 'chs' in detector:
-                        return detector['chs']
-            
+                    if isinstance(detector, dict) and "chs" in detector:
+                        return detector["chs"]
+
             # If we couldn't get channels from the current detector, try the channels method
             channels = self.detector_wizard_page.channels()
             if channels:
                 # Combine parallel and perpendicular channels in interleaved format
-                if 'parallel' in channels and 'perpendicular' in channels:
+                if "parallel" in channels and "perpendicular" in channels:
                     par_chs = []
                     perp_chs = []
-                    
-                    for channel_info in channels['parallel']:
-                        par_chs.extend(channel_info.get('detector_chs', []))
-                    
-                    for channel_info in channels['perpendicular']:
-                        perp_chs.extend(channel_info.get('detector_chs', []))
-                    
+
+                    for channel_info in channels["parallel"]:
+                        par_chs.extend(channel_info.get("detector_chs", []))
+
+                    for channel_info in channels["perpendicular"]:
+                        perp_chs.extend(channel_info.get("detector_chs", []))
+
                     # Interleave the channels
                     interleaved = []
                     for i in range(max(len(par_chs), len(perp_chs))):
@@ -108,18 +112,18 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                             interleaved.append(par_chs[i])
                         if i < len(perp_chs):
                             interleaved.append(perp_chs[i])
-                    
+
                     if interleaved:
                         return interleaved
-        
+
         # Fall back to the original method if detector wizard page doesn't provide channels
         try:
             par_str = self.lineEdit_2.text()
             perp_str = self.lineEdit.text()
-            
+
             par_chs = [int(i) for i in par_str.split(",") if i.strip().isdigit()]
             perp_chs = [int(i) for i in perp_str.split(",") if i.strip().isdigit()]
-            
+
             # Interleave the channels
             interleaved = []
             for i in range(max(len(par_chs), len(perp_chs))):
@@ -127,12 +131,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     interleaved.append(par_chs[i])
                 if i < len(perp_chs):
                     interleaved.append(perp_chs[i])
-            
+
             return interleaved
         except ValueError:
             dialogs.warning(self, "Invalid Input", "Channel input is not valid.")
             return []
-    
+
     def _is_polarization_resolved(self) -> bool:
         """Whether the active setup is polarization-resolved (interleaved VV/VH).
 
@@ -173,58 +177,60 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             return []
         interleaved = self._get_interleaved_channels()
         return interleaved[1::2]  # Odd indices (1, 3, 5, ...)
-        
+
     @property
     def current_detector_name(self) -> str:
         """
         Get the current detector name from the detector selection combobox.
-        
+
         Returns:
             str: The current detector name or empty string if not available
         """
-        if hasattr(self, 'detector_selection_combobox') and self.detector_selection_combobox:
+        if hasattr(self, "detector_selection_combobox") and self.detector_selection_combobox:
             return self.detector_selection_combobox.currentText()
         return ""
-            
+
     def on_detector_selection_changed(self, index):
         """
         Handle changes in the detector selection combobox.
         Updates parallel/perpendicular channels and g-factor based on the selected detector.
         Clears the histogram as it's no longer valid for the new detector.
-        
-        Parameters:
+
+        Parameters
         -----------
         index : int
             The index of the selected item in the combobox
         """
         if index < 0 or not self.detector_wizard_page:
             return
-            
+
         # Clear the histogram plot as it's no longer valid for the new detector
-        if hasattr(self, 'plotWidget'):
+        if hasattr(self, "plotWidget"):
             self.plotWidget.clear()
             self.plotWidget.legend()  # Re-add legend after clearing
-            chisurf.logging.info(f"Cleared histogram plot due to detector change to: {self.detector_selection_combobox.currentText()}")
-        
+            chisurf.logging.info(
+                f"Cleared histogram plot due to detector change to: {self.detector_selection_combobox.currentText()}"
+            )
+
         # Reset histogram data
-        if hasattr(self, 'cumulative_ps'):
+        if hasattr(self, "cumulative_ps"):
             self.cumulative_ps = None
-        if hasattr(self, 'original_histograms'):
+        if hasattr(self, "original_histograms"):
             self.original_histograms = {}
-            
+
         # Get the selected detector name
         detector_name = self.current_detector_name
         if not detector_name:
             return
-            
+
         # Get all detectors from the DetectorWizardPage
         detectors = self.detector_wizard_page.detectors
         if not detectors:
             return
-            
+
         # Find the selected detector
         selected_detector = None
-        
+
         # Check if detectors is a dictionary (expected) or something else
         if isinstance(detectors, dict):
             # If it's a dictionary with detector names as keys, access directly
@@ -233,61 +239,77 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         else:
             # If it's a list, search through it
             for detector in detectors:
-                if isinstance(detector, dict) and 'name' in detector and detector['name'] == detector_name:
+                if (
+                    isinstance(detector, dict)
+                    and "name" in detector
+                    and detector["name"] == detector_name
+                ):
                     selected_detector = detector
                     break
-                elif hasattr(detector, 'get') and callable(detector.get):
+                elif hasattr(detector, "get") and callable(detector.get):
                     try:
-                        if detector.get('name') == detector_name:
+                        if detector.get("name") == detector_name:
                             selected_detector = detector
                             break
                     except (TypeError, AttributeError):
                         pass
-                
+
         if not selected_detector:
             return
-            
+
         # Safely get detector_chs based on object type
         detector_chs = []
         if isinstance(selected_detector, dict):
-            detector_chs = selected_detector.get('chs', [])  # Use 'chs' key as shown in the example data
-        elif hasattr(selected_detector, 'get') and callable(selected_detector.get):
+            detector_chs = selected_detector.get(
+                "chs", []
+            )  # Use 'chs' key as shown in the example data
+        elif hasattr(selected_detector, "get") and callable(selected_detector.get):
             try:
-                detector_chs = selected_detector.get('chs', [])  # Try 'chs' first
+                detector_chs = selected_detector.get("chs", [])  # Try 'chs' first
                 if not detector_chs:
-                    detector_chs = selected_detector.get('detector_chs', [])  # Fall back to 'detector_chs'
+                    detector_chs = selected_detector.get(
+                        "detector_chs", []
+                    )  # Fall back to 'detector_chs'
             except (TypeError, AttributeError):
                 pass
-        
+
         if detector_chs:
             # Extract parallel and perpendicular channels from interleaved format
             parallel_chs = detector_chs[::2]  # Even indices (0, 2, 4, ...)
             perpendicular_chs = detector_chs[1::2]  # Odd indices (1, 3, 5, ...)
-            
+
             # Update UI with the extracted channels
             self.lineEdit_2.setText(", ".join(map(str, parallel_chs)))  # Update parallel channels
-            self.lineEdit.setText(", ".join(map(str, perpendicular_chs)))  # Update perpendicular channels
-            
-            chisurf.logging.info(f"Updated channels from interleaved format: parallel={parallel_chs}, perpendicular={perpendicular_chs}")
-                
+            self.lineEdit.setText(
+                ", ".join(map(str, perpendicular_chs))
+            )  # Update perpendicular channels
+
+            chisurf.logging.info(
+                f"Updated channels from interleaved format: parallel={parallel_chs}, perpendicular={perpendicular_chs}"
+            )
+
         # Update g-factor if available - safely get g_factor based on object type
         g_factor = None
         if isinstance(selected_detector, dict):
-            g_factor = selected_detector.get('g_factor')  # Use 'g_factor' key as shown in the example data
-        elif hasattr(selected_detector, 'get') and callable(selected_detector.get):
+            g_factor = selected_detector.get(
+                "g_factor"
+            )  # Use 'g_factor' key as shown in the example data
+        elif hasattr(selected_detector, "get") and callable(selected_detector.get):
             try:
-                g_factor = selected_detector.get('g_factor')
+                g_factor = selected_detector.get("g_factor")
             except (TypeError, AttributeError):
                 pass
-            
+
         if g_factor is not None:
             # Update both the attribute and the UI
             self.g_factor = g_factor
             # No need to update lineEdit_gfactor here as the setter does it
 
         # Log the detector selection for debugging
-        chisurf.logging.info(f"Selected detector: {detector_name}, channels: {detector_chs}, g-factor: {g_factor}")
-    
+        chisurf.logging.info(
+            f"Selected detector: {detector_name}, channels: {detector_chs}, g-factor: {g_factor}"
+        )
+
     def on_detectors_changed(self):
         """
         Handle changes in detector setup from the DetectorWizardPage.
@@ -297,20 +319,20 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         setup_name = self.detector_wizard_page.setup_combo.currentText()
         if setup_name:
             chisurf.logging.info(f"Selected setup: {setup_name}")
-            
+
             # Update the setup selection combobox to match
-            if hasattr(self, 'setup_selection_combobox'):
+            if hasattr(self, "setup_selection_combobox"):
                 # Block signals to prevent triggering the change handler
                 self.setup_selection_combobox.blockSignals(True)
-                
+
                 # Find and select the matching setup in the combobox
                 index = self.setup_selection_combobox.findText(setup_name)
                 if index >= 0:
                     self.setup_selection_combobox.setCurrentIndex(index)
-                
+
                 # Unblock signals
                 self.setup_selection_combobox.blockSignals(False)
-        
+
         # Update the filetype combobox based on the selected setup
         filetype = self.detector_wizard_page.filetype
         if filetype:
@@ -319,7 +341,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             if index >= 0:
                 self.comboBox.setCurrentIndex(index)
                 chisurf.logging.info(f"Updated filetype to: {filetype}")
-        
+
         # Update the binning combobox based on the selected setup
         binning = self.detector_wizard_page.micro_binning_combo.currentText()
         if binning:
@@ -328,7 +350,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             if index >= 0:
                 self.comboBox_2.setCurrentIndex(index)
                 chisurf.logging.info(f"Updated binning to: {binning}")
-        
+
         # Update the dt field based on the selected setup. The detector setup
         # stores the (effective) micro-time resolution in PICOSECONDS; dt here is
         # in NANOSECONDS, so convert (ps -> ns).
@@ -338,7 +360,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             self.lineEdit_4.setText(f"{dt_ns:.6f}")
             self.time_resolution = dt_ns  # Update the time_resolution property
             chisurf.logging.info(f"Updated dt to: {dt_ns:.6f} ns")
-        
+
         # Populate the detector selection combobox
         self.detector_selection_combobox.clear()
         detectors = self.detector_wizard_page.detectors
@@ -346,13 +368,15 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             detector_names = list(detectors.keys())
             if detector_names:
                 self.detector_selection_combobox.addItems(detector_names)
-                chisurf.logging.info(f"Populated detector selection combobox with: {detector_names}")
+                chisurf.logging.info(
+                    f"Populated detector selection combobox with: {detector_names}"
+                )
             else:
                 chisurf.logging.warning("No valid detector names found")
-        
+
         # Update the parallel and perpendicular channel inputs in the UI
         channels = self.detector_wizard_page.channels()
-        
+
         if channels:
             # Extract parallel and perpendicular channels
             parallel_chs = []
@@ -365,16 +389,16 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     interleaved_chs.append(parallel_chs[i])
                 if i < len(perpendicular_chs):
                     interleaved_chs.append(perpendicular_chs[i])
-            
+
             # Update UI with the extracted channels
             if parallel_chs:
                 self.lineEdit_2.setText(", ".join(map(str, parallel_chs)))
                 chisurf.logging.info(f"Updated parallel channels to: {parallel_chs}")
-            
+
             if perpendicular_chs:
                 self.lineEdit.setText(", ".join(map(str, perpendicular_chs)))
                 chisurf.logging.info(f"Updated perpendicular channels to: {perpendicular_chs}")
-            
+
             chisurf.logging.info(f"Created interleaved channels: {interleaved_chs}")
 
     @property
@@ -389,7 +413,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
     def g_factor(self) -> float:
         """Get the current g-factor value."""
         return self._g_factor
-        
+
     @g_factor.setter
     def g_factor(self, value: float):
         """Set the g-factor value with validation."""
@@ -397,14 +421,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         float_value = float(value)
         self._g_factor = float_value
         # Update the UI if needed
-        if hasattr(self, 'lineEdit_gfactor'):
+        if hasattr(self, "lineEdit_gfactor"):
             self.lineEdit_gfactor.setText(f"{float_value:.6f}")
 
     @property
     def time_step(self) -> float:
         """Get the current time step (resolution) value in nanoseconds."""
         return self._time_step
-        
+
     @time_step.setter
     def time_step(self, value: float):
         """Set the time step value with validation."""
@@ -414,7 +438,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             raise ValueError("Time step must be positive")
         self._time_step = float_value
         # Update the UI if needed
-        if hasattr(self, 'lineEdit_4'):
+        if hasattr(self, "lineEdit_4"):
             self.lineEdit_4.setText(f"{float_value:.6f}")
         # Update time_resolution for backward compatibility
         self.time_resolution = float_value
@@ -435,7 +459,8 @@ class MicrotimeHistogram(QtWidgets.QWidget):
     def _warn_needs_type_selection(self, paths) -> None:
         """Warn that the given dropped files require a manual file-type selection."""
         dialogs.warning(
-            self, "File Type Requires Selection",
+            self,
+            "File Type Requires Selection",
             "The following files require manual file type selection:\n"
             + "\n".join(str(p) for p in paths),
         )
@@ -446,7 +471,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         burst_files = list(folder.glob("**/*.bur")) + list(folder.glob("**/*.bst"))
         return [str(f) for f in burst_files]
 
-    @chisurf.gui.decorators.init_with_ui("tttr/microtime_histogram/wizard.ui", path=chisurf.core.settings.plugin_path)
+    @chisurf.gui.decorators.init_with_ui(
+        "tttr/microtime_histogram/wizard.ui", path=chisurf.core.settings.plugin_path
+    )
     def __init__(self, *args, **kwargs):
         self._tttr = None
         self.tttr_folder = None  # Store the folder where TTTR files are found
@@ -456,7 +483,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Create the detector setup tab
         self.detector_setup_tab = QtWidgets.QWidget()
         self.detector_setup_layout = QtWidgets.QVBoxLayout(self.detector_setup_tab)
-        
+
         # Add DetectorWizardPage to the detector setup tab
         self.detector_wizard_page = DetectorWizardPage(
             show_edit_json=True,
@@ -466,23 +493,27 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             show_help=True,
             show_tttr_reading=True,
             show_tables=True,
-            show_add_inputs=True
+            show_add_inputs=True,
         )
         self.detector_setup_layout.addWidget(self.detector_wizard_page)
-        
+
         # Add the detector setup tab to the tab widget
         self.tabWidget.addTab(self.detector_setup_tab, "Detector Setup")
-        
+
         # Find the UI elements that are now defined in the UI file
         self.setup_info_label = self.findChild(QtWidgets.QLabel, "setup_info_label")
-        self.detector_selection_combobox = self.findChild(QtWidgets.QComboBox, "detector_selection_combobox")
-        
+        self.detector_selection_combobox = self.findChild(
+            QtWidgets.QComboBox, "detector_selection_combobox"
+        )
+
         # Find the setup selection combobox in the UI
-        self.setup_selection_combobox = self.findChild(QtWidgets.QComboBox, "setup_selection_combobox")
-        
+        self.setup_selection_combobox = self.findChild(
+            QtWidgets.QComboBox, "setup_selection_combobox"
+        )
+
         # Initialize the original UI elements
         self.comboBox.clear()
-        self.comboBox.addItems(['Auto'] + list(tttrlib.TTTR.get_supported_container_names()))
+        self.comboBox.addItems(["Auto"] + list(tttrlib.TTTR.get_supported_container_names()))
         self.comboBox.setEnabled(False)  # Disable the filetype combobox as requested
 
         # Initialize storage for original histograms
@@ -498,8 +529,11 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         self._main_file_model = _FileListModel(self.update_micro_time_resolution)
         self.listWidget = PathListWidget(
-            self._main_file_model, "files",
-            checkable=True, replace_on_drop=True, add_folders=False,
+            self._main_file_model,
+            "files",
+            checkable=True,
+            replace_on_drop=True,
+            add_folders=False,
             path_filter=self._file_type_ok,
         )
         self.listWidget.rejectedPaths.connect(self._warn_needs_type_selection)
@@ -507,8 +541,11 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         self._bid_file_model = _FileListModel(self.load_corresponding_tttr_files)
         self.listWidget_BID = PathListWidget(
-            self._bid_file_model, "files",
-            checkable=True, replace_on_drop=True, add_folders=True,
+            self._bid_file_model,
+            "files",
+            checkable=True,
+            replace_on_drop=True,
+            add_folders=True,
             path_filter=self._file_type_ok,
             folder_expander=self._expand_bid_folder,
         )
@@ -517,7 +554,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         self.plotWidget = cp.Plot()
         self.verticalLayout.addWidget(self.plotWidget)
-        self.plotWidget.set_labels(bottom='Micro Time (ns)', left='Counts')
+        self.plotWidget.set_labels(bottom="Micro Time (ns)", left="Counts")
         self.plotWidget.set_log(y=True)
         self.plotWidget.legend()
 
@@ -538,20 +575,22 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Connect G-factor input field to update g_factor attribute and update method
         self.lineEdit_gfactor.textChanged.connect(self.on_gfactor_changed)
-        
+
         # Connect time step input field to update time_step attribute
         self.lineEdit_4.textChanged.connect(self.on_time_step_changed)
-        
+
         # Connect detector wizard page signals
         self.detector_wizard_page.detectorsChanged.connect(self.on_detectors_changed)
-        
+
         # Connect detector selection combobox
-        self.detector_selection_combobox.currentIndexChanged.connect(self.on_detector_selection_changed)
-        
+        self.detector_selection_combobox.currentIndexChanged.connect(
+            self.on_detector_selection_changed
+        )
+
         # Populate and connect setup selection combobox
         self.populate_setup_selection_combobox()
         self.setup_selection_combobox.currentIndexChanged.connect(self.on_setup_selection_changed)
-        
+
         # Manually populate detector_selection_combobox after initialization
         self.on_detectors_changed()
 
@@ -559,42 +598,45 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         """
         Populate the setup selection combobox with available setups from the detector wizard page.
         """
-        if not hasattr(self, 'setup_selection_combobox') or not self.detector_wizard_page:
+        if not hasattr(self, "setup_selection_combobox") or not self.detector_wizard_page:
             return
-            
+
         # Block signals to prevent triggering the change handler while populating
         self.setup_selection_combobox.blockSignals(True)
         self.setup_selection_combobox.clear()
-        
+
         # Get the current setups file from the detector wizard page
         setups_file = self.detector_wizard_page.current_setups_file
-        
+
         # Load setups from the file
         from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
+
         setups = load_detector_setups(setups_file)
-        
+
         # Add all setup names to the combobox
         for setup_name in setups.get("setups", {}).keys():
             self.setup_selection_combobox.addItem(setup_name)
-            
+
         # If there's a current setup in the detector wizard page, select it
         current_setup = self.detector_wizard_page.current_setup_name
         if current_setup:
             index = self.setup_selection_combobox.findText(current_setup)
             if index >= 0:
                 self.setup_selection_combobox.setCurrentIndex(index)
-                
+
         # Unblock signals
         self.setup_selection_combobox.blockSignals(False)
-        
-        chisurf.logging.info(f"Populated setup selection combobox with {self.setup_selection_combobox.count()} setups")
-    
+
+        chisurf.logging.info(
+            f"Populated setup selection combobox with {self.setup_selection_combobox.count()} setups"
+        )
+
     def on_gfactor_changed(self, text):
         """
         Handle changes in the g-factor input field.
         Updates the g_factor attribute and calls update_timeshifts.
-        
-        Parameters:
+
+        Parameters
         -----------
         text : str
             The new text in the g-factor input field
@@ -610,8 +652,8 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         """
         Handle changes in the time step input field.
         Updates the time_step attribute.
-        
-        Parameters:
+
+        Parameters
         -----------
         text : str
             The new text in the time step input field
@@ -625,20 +667,20 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         """
         Handle changes in the setup selection combobox.
         Updates the detector wizard page with the selected setup.
-        
-        Parameters:
+
+        Parameters
         -----------
         index : int
             The index of the selected item in the combobox
         """
         if index < 0 or not self.detector_wizard_page:
             return
-            
+
         # Get the selected setup name
         setup_name = self.setup_selection_combobox.currentText()
         if not setup_name:
             return
-            
+
         # Update the setup in the detector wizard page
         # Find the index of the setup in the detector wizard page's combobox
         wizard_index = self.detector_wizard_page.setup_combo.findText(setup_name)
@@ -646,14 +688,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             # Set the current index in the detector wizard page's combobox
             # This will trigger the _on_setup_changed method in the detector wizard page
             self.detector_wizard_page.setup_combo.setCurrentIndex(wizard_index)
-            
+
             chisurf.logging.info(f"Selected setup: {setup_name}")
-    
+
     def load_corresponding_tttr_files(self, n_parent=4):
         """
         Search for TTTR files in the folder structure above the selected BID/BUR files up to n_parent levels.
         This method handles both individual BID files and .bur files from burstwise folders.
-        
+
         Optimization: Since all TTTR files are typically in the same folder, we only search for the
         folder location once (for the first file) and then use that folder for all subsequent files.
         The folder is stored as a class attribute for use in saving output files.
@@ -664,14 +706,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         for i, bid_file in enumerate(bid_files):
             # Handle different file extensions
-            if bid_file.suffix.lower() in ['.bur']:
+            if bid_file.suffix.lower() in [".bur"]:
                 # For .bur files, extract the base name (removing _X suffix if present)
                 base_name = bid_file.stem
                 # If the filename has a pattern like 'name_X', extract just 'name'
-                if '_' in base_name:
-                    parts = base_name.split('_')
+                if "_" in base_name:
+                    parts = base_name.split("_")
                     if len(parts) > 1 and parts[-1].isdigit():
-                        base_name = '_'.join(parts[:-1])
+                        base_name = "_".join(parts[:-1])
             else:
                 # For other files (like .bst), use the stem directly
                 base_name = bid_file.stem
@@ -681,18 +723,22 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 # Start searching from the parent folder
                 parent_folder = bid_file.parent
                 level = 0
-                
+
                 # Search up to n_parent levels up in the directory structure
                 while parent_folder != parent_folder.root and level < n_parent:
                     # Look for files that match the base name
                     matching_tttr_files = list(parent_folder.glob(f"{base_name}*"))
                     # Filter out .bur files and other non-TTTR files
-                    matching_tttr_files = [f for f in matching_tttr_files if f.suffix.lower() not in ['.bur', '.bst']]
+                    matching_tttr_files = [
+                        f for f in matching_tttr_files if f.suffix.lower() not in [".bur", ".bst"]
+                    ]
 
                     if matching_tttr_files:
                         # Store the folder where TTTR files were found
                         local_tttr_folder = parent_folder
-                        self.tttr_folder = parent_folder  # Store as class attribute for saving output
+                        self.tttr_folder = (
+                            parent_folder  # Store as class attribute for saving output
+                        )
                         # Add all matching files to the set
                         for tttr_file in matching_tttr_files:
                             tttr_files.add(tttr_file)
@@ -707,8 +753,10 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     # Look for files that match the base name in the known TTTR folder
                     matching_tttr_files = list(local_tttr_folder.glob(f"{base_name}*"))
                     # Filter out .bur files and other non-TTTR files
-                    matching_tttr_files = [f for f in matching_tttr_files if f.suffix.lower() not in ['.bur', '.bst']]
-                    
+                    matching_tttr_files = [
+                        f for f in matching_tttr_files if f.suffix.lower() not in [".bur", ".bst"]
+                    ]
+
                     # Add all matching files to the set
                     for tttr_file in matching_tttr_files:
                         tttr_files.add(tttr_file)
@@ -726,7 +774,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         If no histogram exists, compute it first.
         """
         # If cumulative_ps is not available but we have original histograms, update timeshifts
-        if (not hasattr(self, "cumulative_ps") or self.cumulative_ps is None) and self.original_histograms:
+        if (
+            not hasattr(self, "cumulative_ps") or self.cumulative_ps is None
+        ) and self.original_histograms:
             self.update_timeshifts()  # Update timeshifts to generate cumulative_ps
         # If we still don't have cumulative_ps, compute the full histogram
         elif not hasattr(self, "cumulative_ps") or self.cumulative_ps is None:
@@ -734,22 +784,24 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Check again after computation
         if self.cumulative_ps is None:
-            dialogs.warning(self, "No Data", "Failed to compute cumulative histogram before saving.")
+            dialogs.warning(
+                self, "No Data", "Failed to compute cumulative histogram before saving."
+            )
             return
 
         try:
             # Convert file_path to Path object if it's a string
             path_obj = Path(file_path) if isinstance(file_path, str) else file_path
-            
+
             # Ensure the directory exists
             path_obj.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Check if the path is just a directory or has no parent
-            if path_obj.name == '.' or path_obj.name == '' or str(path_obj) == '.':
+            if path_obj.name == "." or path_obj.name == "" or str(path_obj) == ".":
                 # Invalid path, use a default filename in the current directory
                 path_obj = Path.cwd() / "microtime_histogram.dat"
                 chisurf.logging.warning(f"Invalid save path. Using default: {path_obj}")
-            
+
             # Ensure data is saved as integers
             np.savetxt(str(path_obj), self.cumulative_ps.astype(int), fmt="%d")
 
@@ -775,7 +827,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         chisurf.logging.info("MicrotimeHistogram::adding histogram to chisurf")
 
         # If cumulative_ps is not available but we have original histograms, update timeshifts
-        if (not hasattr(self, "cumulative_ps") or self.cumulative_ps is None) and self.original_histograms:
+        if (
+            not hasattr(self, "cumulative_ps") or self.cumulative_ps is None
+        ) and self.original_histograms:
             self.update_timeshifts()  # Update timeshifts to generate cumulative_ps
         # If we still don't have cumulative_ps, compute the full histogram
         elif not hasattr(self, "cumulative_ps") or self.cumulative_ps is None:
@@ -802,9 +856,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         if not save_path.exists():
             # Display a message box to the user if file still doesn't exist
             dialogs.warning(
-                self, 
-                "No Histogram File", 
-                "No histogram file available. Please save histogram data before adding to ChiSurf."
+                self,
+                "No Histogram File",
+                "No histogram file available. Please save histogram data before adding to ChiSurf.",
             )
             return
 
@@ -854,7 +908,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Get the full path from lineEdit_5
         default_path = self.lineEdit_5.text()
-        
+
         # Open the save file dialog with the full path
         save_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save File", default_path, "Data Files (*.dat);;All Files (*)"
@@ -886,26 +940,26 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         self.listWidget.clear()  # Clear file list
         self.plotWidget.clear()  # Clear plot
         self.plotWidget.legend()  # Re-add legend after clearing
-        self.listWidget_BID.clear() # Clear bid files
+        self.listWidget_BID.clear()  # Clear bid files
         # Removed: self.comboBox.setCurrentIndex(0)  # Reset combobox to "Auto"
-        
+
     def load_bid_folder(self, folder_path, setup_name=None, auto_transfer=False):
         """
         Load a BID folder, clear existing data, and process the new folder.
-        
+
         Args:
             folder_path (str): Path to the folder containing BID/BUR/BST files
             setup_name (str, optional): Name of the setup to use
             auto_transfer (bool, optional): Whether to automatically transfer to ChiSurf
         """
         chisurf.logging.info(f"Loading BID folder: {folder_path}")
-        
+
         # Clear existing files and plots
         self.clear_files()
-        
+
         # Convert to Path object
         folder_path = Path(folder_path)
-        
+
         # If setup name is provided, select it
         if setup_name:
             # Find the index of the setup in the combobox
@@ -915,18 +969,18 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 chisurf.logging.info(f"Selected setup: {setup_name}")
             else:
                 chisurf.logging.warning(f"Setup '{setup_name}' not found in available setups")
-        
+
         # Find all .bst files in the BID folder
         bst_files = list(folder_path.glob("*.bst"))
         if not bst_files:
             chisurf.logging.warning(f"No .bst files found in {folder_path}")
-        
+
         # Add the files to the widget
         self.listWidget_BID.add_paths([str(f) for f in bst_files])
-        
+
         # Compute the microtime histogram
         self.compute_microtime_histogram()
-        
+
         # If auto-transfer is enabled, transfer the histogram to ChiSurf
         if auto_transfer:
             self.add_to_chisurf()
@@ -935,26 +989,26 @@ class MicrotimeHistogram(QtWidgets.QWidget):
     def optimize_filename(filename):
         """
         Optimize the filename by stripping numbered suffixes like '_000'.
-        
+
         Args:
             filename (str): The original filename (without extension)
-            
+
         Returns:
             str: The optimized filename
         """
         import re
-        
+
         # Pattern to match numbered suffixes with exactly 2, 3, or 4 digits
-        pattern = r'_\d{2,4}$'
-        
+        pattern = r"_\d{2,4}$"
+
         # Check if the filename has a numbered suffix
         if re.search(pattern, filename):
             # Remove the numbered suffix
-            optimized = re.sub(pattern, '', filename)
+            optimized = re.sub(pattern, "", filename)
             return optimized
-        
+
         return filename
-        
+
     def update_output_filename(self):
         """Update the output filename with full path based on selected files, channel numbers, and detector name."""
         try:
@@ -970,8 +1024,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Get the parallel (p) and perpendicular (s) channel numbers
         p_channels = ",".join(map(str, self.parallel_channels)) if self.parallel_channels else "all"
-        s_channels = ",".join(map(str, self.perpendicular_channels)) if self.perpendicular_channels else "all"
-        
+        s_channels = (
+            ",".join(map(str, self.perpendicular_channels))
+            if self.perpendicular_channels
+            else "all"
+        )
+
         detector_name = self.current_detector_name
 
         # Construct filename in format: filename_detector_(p)-(s).dat
@@ -992,29 +1050,35 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             save_directory = self.tttr_folder
         else:
             # Get the directory of the first selected file as fallback
-            chisurf.logging.warning("Neither BID/BUR files nor TTTR folder found, using selected file directory for output path.")
+            chisurf.logging.warning(
+                "Neither BID/BUR files nor TTTR folder found, using selected file directory for output path."
+            )
 
         # Create full path and set it in lineEdit_5
         try:
             # Ensure the directory exists
             save_directory.mkdir(parents=True, exist_ok=True)
-            
+
             # Create full path
             full_path = save_directory / output_filename
-            
+
             # Validate the path
             if not save_directory.is_dir():
                 # If save_directory is not a valid directory, use current directory
                 full_path = Path.cwd() / output_filename
-                chisurf.logging.warning(f"Invalid save directory. Using current directory: {full_path}")
-                
+                chisurf.logging.warning(
+                    f"Invalid save directory. Using current directory: {full_path}"
+                )
+
             self.lineEdit_5.setText(str(full_path))
             chisurf.logging.info(f"Output filename set to: {full_path}")
         except Exception as e:
             # If there's any error, use a default path in the current directory
             default_path = Path.cwd() / output_filename
             self.lineEdit_5.setText(str(default_path))
-            chisurf.logging.warning(f"Error setting output path: {str(e)}. Using default: {default_path}")
+            chisurf.logging.warning(
+                f"Error setting output path: {str(e)}. Using default: {default_path}"
+            )
 
     def update_micro_time_resolution(self):
         """Update micro time resolution and output filename when files or binning change."""
@@ -1026,26 +1090,34 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             if path.is_file():
                 # For SPC files, use resolution from DetectorWizard
                 if path.suffix.lower() in SPECIAL_FILETYPES:
-                    if hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
+                    if hasattr(self, "detector_wizard_page") and self.detector_wizard_page:
                         try:
                             # micro_time_le is in PICOSECONDS; dt/time_step is in
                             # NANOSECONDS, so convert (ps -> ns).
-                            micro_time_resolution = float(self.detector_wizard_page.micro_time_le.text())
+                            micro_time_resolution = float(
+                                self.detector_wizard_page.micro_time_le.text()
+                            )
                             binned_micro_time_resolution = micro_time_resolution * bf * 1e-3  # ns
-                            self.time_step = binned_micro_time_resolution  # Update time_step attribute
-                            chisurf.logging.info(f"Updated dt to: {binned_micro_time_resolution:.6f} ns for SPC file based on DetectorWizard")
+                            self.time_step = (
+                                binned_micro_time_resolution  # Update time_step attribute
+                            )
+                            chisurf.logging.info(
+                                f"Updated dt to: {binned_micro_time_resolution:.6f} ns for SPC file based on DetectorWizard"
+                            )
                         except (ValueError, TypeError, AttributeError) as e:
                             chisurf.logging.warning(f"Failed to update dt for SPC file: {str(e)}")
                     else:
-                        chisurf.logging.warning(f"Cannot update micro_time_resolution for SPC file: {path} - DetectorWizard not available")
+                        chisurf.logging.warning(
+                            f"Cannot update micro_time_resolution for SPC file: {path} - DetectorWizard not available"
+                        )
                     return
-                
+
                 # For non-SPC files, use tttr.header
                 t = tttrlib.TTTR(path.as_posix(), self.tttr_filetype)
                 micro_time_resolution = t.header.micro_time_resolution
                 binned_micro_time_resolution = micro_time_resolution * bf * 1e9
                 self.time_step = binned_micro_time_resolution  # Update time_step attribute
-        elif hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
+        elif hasattr(self, "detector_wizard_page") and self.detector_wizard_page:
             # If no files are loaded but we have a detector_wizard_page, calculate dt based on current binning
             # Get the base micro_time_resolution from detector_wizard_page
             try:
@@ -1054,7 +1126,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 micro_time_resolution = float(self.detector_wizard_page.micro_time_le.text())
                 binned_micro_time_resolution = micro_time_resolution * bf * 1e-3  # ns
                 self.time_step = binned_micro_time_resolution  # Update time_step attribute
-                chisurf.logging.info(f"Updated dt to: {binned_micro_time_resolution:.6f} ns based on binning change")
+                chisurf.logging.info(
+                    f"Updated dt to: {binned_micro_time_resolution:.6f} ns based on binning change"
+                )
             except (ValueError, TypeError, AttributeError) as e:
                 chisurf.logging.warning(f"Failed to update dt: {str(e)}")
 
@@ -1066,16 +1140,16 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         BUR files have a header row and additional columns.
         """
         bid_ranges = []
-        with open(bid_file, 'r') as f:
+        with open(bid_file) as f:
             # Check if this is a BUR file (has header row)
             first_line = f.readline().strip()
-            if first_line.startswith('First File') or first_line.startswith('First Photon'):
+            if first_line.startswith("First File") or first_line.startswith("First Photon"):
                 # This is a BUR file with headers
                 # Skip the second line (units/description)
                 f.readline()
                 # Process the rest of the file
                 for line in f:
-                    parts = line.strip().split('\t')
+                    parts = line.strip().split("\t")
                     if len(parts) >= 2:
                         # BUR files have "First Photon" and "Last Photon" columns
                         # The exact column indices may vary, so we'll try to find them
@@ -1091,7 +1165,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             else:
                 # This is a simple BID file
                 # Process the first line (which we've already read)
-                parts = first_line.split('\t')
+                parts = first_line.split("\t")
                 if len(parts) == 2:
                     try:
                         start, stop = map(int, parts)
@@ -1102,7 +1176,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
                 # Process the rest of the file
                 for line in f:
-                    parts = line.strip().split('\t')
+                    parts = line.strip().split("\t")
                     if len(parts) == 2:
                         try:
                             start, stop = map(int, parts)
@@ -1118,14 +1192,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         Create a boolean mask of all photons that are part of any burst.
         This is similar to the get_burst_indices_for_current_file method in the MLE plugin.
 
-        Parameters:
+        Parameters
         -----------
         tttr : tttrlib.TTTR
             The TTTR object containing all photons
         burst_ranges : list of tuples
             List of (start, stop) tuples representing burst ranges
 
-        Returns:
+        Returns
         --------
         numpy.ndarray
             Boolean mask of photons that are part of any burst
@@ -1140,10 +1214,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Build a single "difference" event array with bincount
         # - at each start index we +1, at each (stop+1) we -1
         idxs = np.concatenate([starts, stops + 1])
-        weights = np.concatenate([
-            np.ones_like(starts, dtype=np.int32),
-            -np.ones_like(stops + 1, dtype=np.int32),
-        ])
+        weights = np.concatenate(
+            [
+                np.ones_like(starts, dtype=np.int32),
+                -np.ones_like(stops + 1, dtype=np.int32),
+            ]
+        )
 
         # Find the maximum index to ensure our bincount covers all photons
         max_len = idxs.max() + 1
@@ -1161,12 +1237,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         """
         Calculate the Full Width at Half Maximum (FWHM) of a histogram.
 
-        Parameters:
+        Parameters
         -----------
         histogram : numpy.ndarray
             The histogram data
 
-        Returns:
+        Returns
         --------
         float
             The FWHM value in channel units
@@ -1213,17 +1289,19 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Apply timeshifts to the original histograms
         shifted_histograms = {}
         for key, histograms in self.original_histograms.items():
-            y_parallel_orig = histograms['parallel']
-            y_perpendicular_orig = histograms['perpendicular']
+            y_parallel_orig = histograms["parallel"]
+            y_perpendicular_orig = histograms["perpendicular"]
 
             # Apply timeshift to parallel channel (VV) if needed
             if vv_shift != 0:
                 if vv_shift > 0:
                     # Shift right (positive timeshift)
-                    y_parallel = np.pad(y_parallel_orig, (vv_shift, 0), 'constant')[:-vv_shift]
+                    y_parallel = np.pad(y_parallel_orig, (vv_shift, 0), "constant")[:-vv_shift]
                 else:
                     # Shift left (negative timeshift)
-                    y_parallel = np.pad(y_parallel_orig, (0, abs(vv_shift)), 'constant')[abs(vv_shift):]
+                    y_parallel = np.pad(y_parallel_orig, (0, abs(vv_shift)), "constant")[
+                        abs(vv_shift) :
+                    ]
             else:
                 y_parallel = y_parallel_orig.copy()
 
@@ -1231,17 +1309,18 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             if vh_shift != 0:
                 if vh_shift > 0:
                     # Shift right (positive timeshift)
-                    y_perpendicular = np.pad(y_perpendicular_orig, (vh_shift, 0), 'constant')[:-vh_shift]
+                    y_perpendicular = np.pad(y_perpendicular_orig, (vh_shift, 0), "constant")[
+                        :-vh_shift
+                    ]
                 else:
                     # Shift left (negative timeshift)
-                    y_perpendicular = np.pad(y_perpendicular_orig, (0, abs(vh_shift)), 'constant')[abs(vh_shift):]
+                    y_perpendicular = np.pad(y_perpendicular_orig, (0, abs(vh_shift)), "constant")[
+                        abs(vh_shift) :
+                    ]
             else:
                 y_perpendicular = y_perpendicular_orig.copy()
 
-            shifted_histograms[key] = {
-                'parallel': y_parallel,
-                'perpendicular': y_perpendicular
-            }
+            shifted_histograms[key] = {"parallel": y_parallel, "perpendicular": y_perpendicular}
 
             # We no longer plot individual files, only store them for cumulative plotting
             # Create x-axis arrays for both channels (for debugging purposes only)
@@ -1251,10 +1330,10 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Compute cumulative histograms for parallel and perpendicular channels separately
         cumulative_parallel = None
         cumulative_perpendicular = None
-        
+
         for key, histograms in shifted_histograms.items():
-            y_parallel = histograms['parallel']
-            y_perpendicular = histograms['perpendicular']
+            y_parallel = histograms["parallel"]
+            y_perpendicular = histograms["perpendicular"]
 
             # Add to cumulative parallel histogram
             if cumulative_parallel is None:
@@ -1265,13 +1344,21 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     if len(cumulative_parallel) != len(y_parallel):
                         # Resize the smaller array to match the larger one
                         if len(cumulative_parallel) < len(y_parallel):
-                            cumulative_parallel = np.pad(cumulative_parallel, (0, len(y_parallel) - len(cumulative_parallel)), 'constant')
+                            cumulative_parallel = np.pad(
+                                cumulative_parallel,
+                                (0, len(y_parallel) - len(cumulative_parallel)),
+                                "constant",
+                            )
                         else:
-                            y_parallel = np.pad(y_parallel, (0, len(cumulative_parallel) - len(y_parallel)), 'constant')
+                            y_parallel = np.pad(
+                                y_parallel,
+                                (0, len(cumulative_parallel) - len(y_parallel)),
+                                "constant",
+                            )
                     cumulative_parallel += np.array(y_parallel)
                 except ValueError as e:
                     chisurf.logging.error(f"Failed to add cumulative parallel histogram: {str(e)}")
-            
+
             # Add to cumulative perpendicular histogram
             if cumulative_perpendicular is None:
                 cumulative_perpendicular = np.array(y_perpendicular)
@@ -1281,19 +1368,35 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     if len(cumulative_perpendicular) != len(y_perpendicular):
                         # Resize the smaller array to match the larger one
                         if len(cumulative_perpendicular) < len(y_perpendicular):
-                            cumulative_perpendicular = np.pad(cumulative_perpendicular, (0, len(y_perpendicular) - len(cumulative_perpendicular)), 'constant')
+                            cumulative_perpendicular = np.pad(
+                                cumulative_perpendicular,
+                                (0, len(y_perpendicular) - len(cumulative_perpendicular)),
+                                "constant",
+                            )
                         else:
-                            y_perpendicular = np.pad(y_perpendicular, (0, len(cumulative_perpendicular) - len(y_perpendicular)), 'constant')
+                            y_perpendicular = np.pad(
+                                y_perpendicular,
+                                (0, len(cumulative_perpendicular) - len(y_perpendicular)),
+                                "constant",
+                            )
                     cumulative_perpendicular += np.array(y_perpendicular)
                 except ValueError as e:
-                    chisurf.logging.error(f"Failed to add cumulative perpendicular histogram: {str(e)}")
+                    chisurf.logging.error(
+                        f"Failed to add cumulative perpendicular histogram: {str(e)}"
+                    )
 
         # Create combined cumulative histogram for backward compatibility
         if cumulative_parallel is not None and cumulative_perpendicular is not None:
             # Make sure both arrays have the same length for hstack
             max_len = max(len(cumulative_parallel), len(cumulative_perpendicular))
-            parallel_padded = np.pad(cumulative_parallel, (0, max(0, max_len - len(cumulative_parallel))), 'constant')
-            perpendicular_padded = np.pad(cumulative_perpendicular, (0, max(0, max_len - len(cumulative_perpendicular))), 'constant')
+            parallel_padded = np.pad(
+                cumulative_parallel, (0, max(0, max_len - len(cumulative_parallel))), "constant"
+            )
+            perpendicular_padded = np.pad(
+                cumulative_perpendicular,
+                (0, max(0, max_len - len(cumulative_perpendicular))),
+                "constant",
+            )
             self.cumulative_ps = np.hstack((parallel_padded, perpendicular_padded))
         else:
             self.cumulative_ps = None
@@ -1303,10 +1406,17 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             # Create x-axis with proper time units
             x_parallel = np.arange(len(cumulative_parallel)) * self.time_resolution
             x_perpendicular = np.arange(len(cumulative_perpendicular)) * self.time_resolution
-            
+
             # Plot cumulative parallel and perpendicular data
-            self.plotWidget.line(x_parallel, cumulative_parallel, pen='r', name="Cumulative Parallel (VV)")
-            self.plotWidget.line(x_perpendicular, cumulative_perpendicular, pen='g', name="Cumulative Perpendicular (VH)")
+            self.plotWidget.line(
+                x_parallel, cumulative_parallel, pen="r", name="Cumulative Parallel (VV)"
+            )
+            self.plotWidget.line(
+                x_perpendicular,
+                cumulative_perpendicular,
+                pen="g",
+                name="Cumulative Perpendicular (VH)",
+            )
 
             # Calculate and display FWHM of VV + 2G*VH
             try:
@@ -1316,8 +1426,14 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 # Create combined histogram VV + 2G*VH using cumulative data
                 # Make sure both arrays have the same length
                 max_len = max(len(cumulative_parallel), len(cumulative_perpendicular))
-                parallel_padded = np.pad(cumulative_parallel, (0, max(0, max_len - len(cumulative_parallel))), 'constant')
-                perpendicular_padded = np.pad(cumulative_perpendicular, (0, max(0, max_len - len(cumulative_perpendicular))), 'constant')
+                parallel_padded = np.pad(
+                    cumulative_parallel, (0, max(0, max_len - len(cumulative_parallel))), "constant"
+                )
+                perpendicular_padded = np.pad(
+                    cumulative_perpendicular,
+                    (0, max(0, max_len - len(cumulative_perpendicular))),
+                    "constant",
+                )
 
                 # Apply formula VV + 2G*VH
                 combined_histogram = parallel_padded + 2 * g_factor * perpendicular_padded
@@ -1331,7 +1447,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
                 # Plot the combined histogram
                 x_combined = np.arange(len(combined_histogram)) * self.time_resolution
-                self.plotWidget.line(x_combined, combined_histogram, pen='y', name="Combined (VV + 2G*VH)")
+                self.plotWidget.line(
+                    x_combined, combined_histogram, pen="y", name="Combined (VV + 2G*VH)"
+                )
 
             except Exception as e:
                 chisurf.logging.error(f"Failed to calculate FWHM: {str(e)}")
@@ -1370,27 +1488,27 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         # Get channels from detector wizard page if available
         use_detector_wizard = False
         micro_time_ranges = {}
-        
-        if hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
+
+        if hasattr(self, "detector_wizard_page") and self.detector_wizard_page:
             channels = self.detector_wizard_page.channels()
             if channels:
                 use_detector_wizard = True
                 # Extract microtime ranges for parallel and perpendicular channels
-                if 'parallel' in channels:
-                    micro_time_ranges['parallel'] = [
-                        channel_info.get('micro_time_range', None) 
-                        for channel_info in channels['parallel']
+                if "parallel" in channels:
+                    micro_time_ranges["parallel"] = [
+                        channel_info.get("micro_time_range", None)
+                        for channel_info in channels["parallel"]
                     ]
-                if 'perpendicular' in channels:
-                    micro_time_ranges['perpendicular'] = [
-                        channel_info.get('micro_time_range', None) 
-                        for channel_info in channels['perpendicular']
+                if "perpendicular" in channels:
+                    micro_time_ranges["perpendicular"] = [
+                        channel_info.get("micro_time_range", None)
+                        for channel_info in channels["perpendicular"]
                     ]
-        
+
         chisurf.logging.info(f"channels parallel: {self.parallel_channels}")
         chisurf.logging.info(f"channels perpendicular: {self.perpendicular_channels}")
         if use_detector_wizard:
-            chisurf.logging.info(f"Using detector wizard page for channel configuration")
+            chisurf.logging.info("Using detector wizard page for channel configuration")
             chisurf.logging.info(f"Microtime ranges: {micro_time_ranges}")
 
         # Check for the presence of BID/BUR files
@@ -1405,13 +1523,13 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 ranges = self.load_bid_ranges(f)
 
                 # For .bur files, handle special naming convention
-                if f.suffix.lower() == '.bur':
+                if f.suffix.lower() == ".bur":
                     # Extract base name (removing _X suffix if present)
                     base_name = f.stem
-                    if '_' in base_name:
-                        parts = base_name.split('_')
+                    if "_" in base_name:
+                        parts = base_name.split("_")
                         if len(parts) > 1 and parts[-1].isdigit():
-                            base_name = '_'.join(parts[:-1])
+                            base_name = "_".join(parts[:-1])
 
                     # Add to dictionary with base name as key
                     bid_ranges[base_name] = ranges
@@ -1432,10 +1550,10 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                 tttr_base_name = tttr_stem
 
                 # For TTTR files that might have suffixes, try to extract the base name
-                if '_' in tttr_stem:
-                    parts = tttr_stem.split('_')
+                if "_" in tttr_stem:
+                    parts = tttr_stem.split("_")
                     if len(parts) > 1 and parts[-1].isdigit():
-                        tttr_base_name = '_'.join(parts[:-1])
+                        tttr_base_name = "_".join(parts[:-1])
 
                 # Check if we have ranges for this file (try different name variations)
                 matching_key = None
@@ -1472,7 +1590,9 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     # Create a new TTTR object with only the burst photons
                     t = d[burst_indices]
 
-                    chisurf.logging.info(f"Using {len(burst_indices)} burst photons from {path.name} (matched with {matching_key})")
+                    chisurf.logging.info(
+                        f"Using {len(burst_indices)} burst photons from {path.name} (matched with {matching_key})"
+                    )
                 elif bid_ranges:
                     chisurf.logging.info(f"Skipping {path.name} because BID/BUR range not found.")
                     continue  # Skip file if BID range exists but no match found
@@ -1489,21 +1609,27 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     # Not polarization-resolved: one unpolarized stream, no VV/VH split.
                     parallel_channels = list(interleaved_channels)
                     perpendicular_channels = []
-                
+
                 chisurf.logging.info(f"Using interleaved channels: {interleaved_channels}")
                 chisurf.logging.info(f"Parallel channels (even indices): {parallel_channels}")
-                chisurf.logging.info(f"Perpendicular channels (odd indices): {perpendicular_channels}")
-                
+                chisurf.logging.info(
+                    f"Perpendicular channels (odd indices): {perpendicular_channels}"
+                )
+
                 # Determine minlength from window upper bound if available
                 minlength_bins = -1
                 try:
-                    if use_detector_wizard and hasattr(self, 'detector_wizard_page') and self.detector_wizard_page:
+                    if (
+                        use_detector_wizard
+                        and hasattr(self, "detector_wizard_page")
+                        and self.detector_wizard_page
+                    ):
                         ch_info = self.detector_wizard_page.channels()
                         # Compute the maximum window upper bound across all entries
                         max_upper = None
                         for entries in ch_info.values():
                             for entry in entries:
-                                wr = entry.get('window_range')
+                                wr = entry.get("window_range")
                                 if wr and len(wr) == 2:
                                     upper = int(wr[1])
                                     if (max_upper is None) or (upper > max_upper):
@@ -1515,16 +1641,20 @@ class MicrotimeHistogram(QtWidgets.QWidget):
                     # Fallback to default behavior if anything goes wrong
                     minlength_bins = -1
 
-                y_parallel, _ = t.get_microtime_histogram(self.binning_factor, parallel_channels, minlength=minlength_bins)
-                y_perpendicular, _ = t.get_microtime_histogram(self.binning_factor, perpendicular_channels, minlength=minlength_bins)
+                y_parallel, _ = t.get_microtime_histogram(
+                    self.binning_factor, parallel_channels, minlength=minlength_bins
+                )
+                y_perpendicular, _ = t.get_microtime_histogram(
+                    self.binning_factor, perpendicular_channels, minlength=minlength_bins
+                )
 
                 # Get time resolution in nanoseconds
                 self.time_resolution = self.time_step
 
                 # Store the original histograms for later use
                 self.original_histograms[path.name] = {
-                    'parallel': y_parallel.copy(),
-                    'perpendicular': y_perpendicular.copy()
+                    "parallel": y_parallel.copy(),
+                    "perpendicular": y_perpendicular.copy(),
                 }
 
         # Apply timeshifts to the original histograms
@@ -1551,12 +1681,12 @@ if __name__ == "plugin":
     microtime_hist = MicrotimeHistogram()
     microtime_hist.show()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
     microtime_hist = MicrotimeHistogram()
-    microtime_hist.setWindowTitle('Microtime Histogram')
+    microtime_hist.setWindowTitle("Microtime Histogram")
     microtime_hist.show()
     sys.exit(app.exec_())

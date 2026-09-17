@@ -6,13 +6,13 @@ normalised to a baseline, and that the median filtering which makes a ratio map
 usable also costs real spatial resolution — a feature smaller than the kernel
 disappears entirely.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.imaging.ratio_fret import (
-    RatioTrace,
     ratio_image,
     ratio_trace,
 )
@@ -63,7 +63,7 @@ def test_both_channels_are_kept_so_a_move_can_be_attributed():
     """A ratio that changes is ambiguous until you see which channel moved."""
     d = np.ones((4, 4, 4))
     a = np.ones((4, 4, 4))
-    d[2:] = 0.5                       # the donor fell; the acceptor did not
+    d[2:] = 0.5  # the donor fell; the acceptor did not
 
     t = ratio_trace(d, a)
     np.testing.assert_allclose(t.ratio, [1, 1, 2, 2])
@@ -75,12 +75,12 @@ def test_a_region_restricts_the_trace():
     """Averaging over a region ignores everything outside it."""
     d = np.ones((3, 8, 8))
     a = np.ones((3, 8, 8))
-    a[:, :4, :] = 5.0                 # only the top half responds
+    a[:, :4, :] = 5.0  # only the top half responds
 
     whole = ratio_trace(d, a).ratio
     top = ratio_trace(d, a, roi=RectangleROI(-0.5, -0.5, 7.5, 3.5)).ratio
     np.testing.assert_allclose(top, 5.0)
-    assert whole[0] == pytest.approx(3.0)      # averaged with the quiet half
+    assert whole[0] == pytest.approx(3.0)  # averaged with the quiet half
 
 
 def test_response_summarises_the_excursion():
@@ -138,7 +138,7 @@ def test_the_median_filter_erases_features_smaller_than_its_kernel():
     """
     d = np.full((10, 16, 16), 100.0)
     a = np.full((10, 16, 16), 50.0)
-    a[:, 4:8, 4:8] = 200.0            # 4x4, smaller than the 5x5 kernel
+    a[:, 4:8, 4:8] = 200.0  # 4x4, smaller than the 5x5 kernel
 
     filtered = ratio_image(d, a)
     raw = ratio_image(d, a, channel_median=0, ratio_median=0)
@@ -162,7 +162,7 @@ def test_negative_intensities_do_not_flip_the_ratio():
     """Background subtraction can push pixels negative; that is not a signal."""
     d = np.full((4, 12, 12), 50.0)
     a = np.full((4, 12, 12), 25.0)
-    a[:, :3, :3] = -30.0              # over-subtracted corner
+    a[:, :3, :3] = -30.0  # over-subtracted corner
 
     m = ratio_image(d, a, ratio_median=0, channel_median=0)
     finite = m[np.isfinite(m)]
@@ -199,8 +199,9 @@ def test_map_and_trace_share_a_normalisation():
     a[4:] = 8.0
 
     trace = ratio_trace(d, a, baseline=(0, 4))
-    m = ratio_image(d, a, frames=(4, 8), normalisation=trace.normalisation,
-                    ratio_median=0, channel_median=0)
+    m = ratio_image(
+        d, a, frames=(4, 8), normalisation=trace.normalisation, ratio_median=0, channel_median=0
+    )
     assert trace.normalisation == pytest.approx(4.0)
     assert float(np.nanmedian(m)) == pytest.approx(2.0)
     assert trace.ratio[-1] == pytest.approx(2.0)
@@ -222,7 +223,7 @@ def test_an_undefined_neighbour_does_not_vote_in_the_median():
     """
     d = np.zeros((3, 40, 40))
     a = np.zeros((3, 40, 40))
-    d[:, 4:24, 4:24], a[:, 4:24, 4:24] = 100.0, 300.0     # a large cell at 3.0
+    d[:, 4:24, 4:24], a[:, 4:24, 4:24] = 100.0, 300.0  # a large cell at 3.0
     d[:, 30:36, 30:36], a[:, 30:36, 30:36] = 100.0, 100.0  # a small one at 1.0
 
     m = ratio_image(d, a, minimum_donor=1.0)
@@ -253,7 +254,7 @@ def test_the_masked_median_ignores_holes_and_keeps_them():
 
     img = np.full((5, 5), 1.0)
     img[:, 3:] = np.nan
-    img[2, 2] = 100.0                 # a spike with only two defined neighbours
+    img[2, 2] = 100.0  # a spike with only two defined neighbours
     out = masked_median_filter(img, 3)
 
     assert np.all(np.isnan(out[:, 3:])), "undefined pixels stay undefined"

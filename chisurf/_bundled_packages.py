@@ -38,11 +38,7 @@ def bootstrap_bundled_packages() -> tuple[Path, ...]:
     environment installation.
     """
     project_root = Path(__file__).resolve().parent.parent
-    existing = {
-        Path(entry).resolve()
-        for entry in sys.path
-        if entry
-    }
+    existing = {Path(entry).resolve() for entry in sys.path if entry}
     added: list[Path] = []
 
     for module_name, source_dir in _BUNDLED_PACKAGE_PATHS:
@@ -77,13 +73,13 @@ def environment_prefix(entry: Path) -> Path | None:
     """
     parent = entry.parent
     if entry.name in ("site-packages", "dist-packages"):
-        if parent.name.startswith("python"):           # <prefix>/lib/python3.12/…
+        if parent.name.startswith("python"):  # <prefix>/lib/python3.12/…
             return parent.parent.parent
-        if parent.name in ("Lib", "lib"):              # <prefix>/Lib/… (Windows)
+        if parent.name in ("Lib", "lib"):  # <prefix>/Lib/… (Windows)
             return parent.parent
         return None
     if entry.name.startswith("python3") and parent.name == "lib":
-        return parent.parent                           # the standard library itself
+        return parent.parent  # the standard library itself
     return None
 
 
@@ -148,6 +144,9 @@ def drop_foreign_environment_paths() -> tuple[str, ...]:
             "configuration with an environment's site-packages marked as a "
             "source root, or PYTHONPATH set for another environment. Set %s=1 "
             "to keep them.",
-            len(removed), sys.prefix, ", ".join(removed), _ALLOW_FOREIGN_VAR,
+            len(removed),
+            sys.prefix,
+            ", ".join(removed),
+            _ALLOW_FOREIGN_VAR,
         )
     return tuple(removed)

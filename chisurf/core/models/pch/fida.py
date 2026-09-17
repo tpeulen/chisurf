@@ -29,16 +29,17 @@ This is a port of the Fretica ``FPCHFida`` / ``FPCHFidaFit`` functions.
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
-
 import tttrlib as _ttl
 
 
 def dvdx_gaussian(
-    n_bins: int = 256, x_min: float = 1e-4, structure: float = 1.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+    n_bins: int = 256,
+    x_min: float = 1e-4,
+    structure: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
     r"""Spatial brightness profile ``w(x)`` for a 3-D Gaussian detection volume.
 
     For a 3-D Gaussian profile the volume with relative brightness :math:`\ge x`
@@ -70,8 +71,8 @@ def dvdx_gaussian(
 
 def fida_pch(
     k_max: int,
-    species: Sequence[Tuple[float, float]],
-    profile: Tuple[np.ndarray, np.ndarray] | None = None,
+    species: Sequence[tuple[float, float]],
+    profile: tuple[np.ndarray, np.ndarray] | None = None,
     background: float = 0.0,
     oversample: int = 8,
 ) -> np.ndarray:
@@ -105,13 +106,13 @@ def fida_pch(
     species_flat = []
     for q, n in species:
         species_flat.extend([float(q), float(n)])
-    return np.asarray(_ttl.fida_pch(
-        k_max, species_flat, len(species), float(background)
-    ))
+    return np.asarray(_ttl.fida_pch(k_max, species_flat, len(species), float(background)))
 
 
 def fida_residuals(
-    p_model: np.ndarray, counts: np.ndarray, n_bins: int,
+    p_model: np.ndarray,
+    counts: np.ndarray,
+    n_bins: int,
 ) -> np.ndarray:
     r"""Multinomial (Fretica ``FPCHFidaFit``) residuals for a PCH fit.
 
@@ -127,10 +128,10 @@ def fida_residuals(
 
 def fit_fida(
     counts: np.ndarray,
-    species_guess: Sequence[Tuple[float, float]],
+    species_guess: Sequence[tuple[float, float]],
     background: float = 0.0,
     fit_background: bool = False,
-    profile: Tuple[np.ndarray, np.ndarray] | None = None,
+    profile: tuple[np.ndarray, np.ndarray] | None = None,
     oversample: int = 8,
 ):
     r"""Fit a photon-counting histogram with the FIDA model (Fretica ``FPCHFidaFit``).

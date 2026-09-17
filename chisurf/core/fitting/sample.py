@@ -1,4 +1,5 @@
 """Parameter-space sampling backends (Metropolis and ensemble MCMC)."""
+
 from __future__ import annotations
 
 import collections.abc
@@ -51,12 +52,19 @@ def _rng(seed) -> np.random.Generator:
     if isinstance(seed, np.random.Generator):
         return seed
     if seed is None:
-        seed = int(np.random.randint(0, 2 ** 32 - 1))
+        seed = int(np.random.randint(0, 2**32 - 1))
     return np.random.default_rng(seed)
 
 
-def register_sampler(key, kernel=None, label=None, description=None, legacy=False,
-                     samples_global_posterior=False, aliases=()):
+def register_sampler(
+    key,
+    kernel=None,
+    label=None,
+    description=None,
+    legacy=False,
+    samples_global_posterior=False,
+    aliases=(),
+):
     """Register a sampling function in the registry (category ``sampler``).
 
     The sampler list, the dispatcher in :func:`chisurf.core.fitting.fit.sample_fit`,
@@ -82,45 +90,51 @@ def register_sampler(key, kernel=None, label=None, description=None, legacy=Fals
     aliases : sequence of str
         Further names that resolve to ``key``.
     """
+
     def decorate(function):
-        entry = {'function': function.__name__, 'legacy': bool(legacy),
-                 'samples_global_posterior': bool(samples_global_posterior), 'aliases': list(aliases)}
+        entry = {
+            "function": function.__name__,
+            "legacy": bool(legacy),
+            "samples_global_posterior": bool(samples_global_posterior),
+            "aliases": list(aliases),
+        }
         if kernel:
-            entry['kernel'] = kernel
+            entry["kernel"] = kernel
         if label:
-            entry['label'] = label
+            entry["label"] = label
         if description:
-            entry['description'] = description
-            entry.setdefault('summary', description)
-        entry.setdefault('params_schema', {})
-        _catalog.register('sampler', key, entry)
+            entry["description"] = description
+            entry.setdefault("summary", description)
+        entry.setdefault("params_schema", {})
+        _catalog.register("sampler", key, entry)
         return function
+
     return decorate
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
 @register_sampler(
-    'mcmc',
-    label='Metropolis (diagonal)',
+    "mcmc",
+    label="Metropolis (diagonal)",
     description=(
-        'The historical diagonal random walk. Kept for compatibility; on a '
-        'correlated posterior it crawls.'
+        "The historical diagonal random walk. Kept for compatibility; on a "
+        "correlated posterior it crawls."
     ),
     legacy=True,
 )
 def walk_mcmc(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        step_size: float,
-        temp: float = 1.0,
-        thin: int = 1,
-        chi2max: float = np.inf,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        target_acceptance: float = 0.3,
-        model: cs.core.models.Model = None,
-        seed: int | np.random.Generator = None
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    step_size: float,
+    temp: float = 1.0,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    target_acceptance: float = 0.3,
+    model: cs.core.models.Model = None,
+    seed: int | np.random.Generator = None,
 ) -> dict:
     """Sample the free parameters of a fit with a Metropolis random walk.
 
@@ -191,11 +205,23 @@ def walk_mcmc(
     # contract; see sampler_bff). The C++ metropolis with a single block is
     # the ported replacement for this walk's Robbins-Monro variant.
     from chisurf.core.fitting import sampler_bff
+
     graph_result = sampler_bff.sample_via_graph(
-        fit, model, "metropolis", steps=steps, thin=thin, chi2max=chi2max,
-        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
-        n_adapt=n_adapt, step_size=step_size,
-        blocks=[list(range(model.n_free))], use_curvature=False)
+        fit,
+        model,
+        "metropolis",
+        steps=steps,
+        thin=thin,
+        chi2max=chi2max,
+        temp=temp,
+        seed=seed,
+        callback=callback,
+        check_cancel=check_cancel,
+        n_adapt=n_adapt,
+        step_size=step_size,
+        blocks=[list(range(model.n_free))],
+        use_curvature=False,
+    )
     if graph_result is not None:
         return graph_result
 
@@ -222,11 +248,7 @@ def walk_mcmc(
     def _lnprob(state):
         """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
         lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
-            parameter_values=state,
-            fit=fit,
-            chi2max=chi2max,
-            bounds=bounds,
-            model=model
+            parameter_values=state, fit=fit, chi2max=chi2max, bounds=bounds, model=model
         )
         return lnlike + lnpr, lnpr, c2
 
@@ -321,23 +343,23 @@ def walk_mcmc(
     dof = float(model.n_points - model.n_free - 1.0)
 
     return {
-        'chi2r': chi2 / dof,
-        'lnprior': lnprior,
-        'parameter_values': parameter,
-        'parameter_names': model.parameter_names,
-        'acceptance_rate': n_accepted / float(max(1, i_step)),
+        "chi2r": chi2 / dof,
+        "lnprior": lnprior,
+        "parameter_values": parameter,
+        "parameter_names": model.parameter_names,
+        "acceptance_rate": n_accepted / float(max(1, i_step)),
         # One chain, with its per-draw structure kept so that the split R-hat
         # and the autocorrelation time can be computed from it.
-        'chains': parameter[np.newaxis, :, :],
+        "chains": parameter[np.newaxis, :, :],
     }
 
 
 def _seed_block_covariances(
-        fit: cs.core.fitting.fit.Fit,
-        blocks: list[np.ndarray],
-        state: np.ndarray,
-        step_size: float,
-        model: cs.core.models.Model = None
+    fit: cs.core.fitting.fit.Fit,
+    blocks: list[np.ndarray],
+    state: np.ndarray,
+    step_size: float,
+    model: cs.core.models.Model = None,
 ) -> list[np.ndarray]:
     """Return an initial proposal covariance for each block.
 
@@ -405,9 +427,7 @@ def _seed_block_covariances(
             candidate = full[np.ix_(block, block)]
             if np.all(np.isfinite(candidate)) and np.all(np.diag(candidate) > 0.0):
                 try:
-                    np.linalg.cholesky(
-                        candidate + 1e-12 * np.eye(k) * np.trace(candidate) / k
-                    )
+                    np.linalg.cholesky(candidate + 1e-12 * np.eye(k) * np.trace(candidate) / k)
                     cov_b = candidate
                 except np.linalg.LinAlgError:
                     cov_b = None
@@ -462,8 +482,14 @@ class _DualAveraging:
     the assumption dual averaging makes actually holds.
     """
 
-    def __init__(self, log_eps: float, target: float,
-                 gamma: float = 0.05, t0: float = 10.0, kappa: float = 0.75):
+    def __init__(
+        self,
+        log_eps: float,
+        target: float,
+        gamma: float = 0.05,
+        t0: float = 10.0,
+        kappa: float = 0.75,
+    ):
         """Start averaging around ``log_eps``, aiming at ``target`` acceptance.
 
         Parameters
@@ -514,10 +540,10 @@ class _DualAveraging:
 
 
 def _adaptation_windows(
-        n_adapt: int,
-        init_buffer: int = 75,
-        term_buffer: int = 50,
-        base_window: int = 25,
+    n_adapt: int,
+    init_buffer: int = 75,
+    term_buffer: int = 50,
+    base_window: int = 25,
 ) -> tuple[int, int, list[int]]:
     """Return ``(init_buffer, term_buffer, window_ends)`` for a warm-up.
 
@@ -611,22 +637,22 @@ def _regularised_covariance(draws: np.ndarray) -> np.ndarray | None:
     return weight * cov + (1.0 - weight) * np.diag(variance)
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
-@register_sampler('de', kernel='de', samples_global_posterior=True)
+@cs.core.fitting.factorgraph.frozen("fit", "model")
+@register_sampler("de", kernel="de", samples_global_posterior=True)
 def sample_differential_evolution(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        n_chains: int = None,
-        thin: int = 1,
-        chi2max: float = np.inf,
-        temp: float = 1.0,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        jitter: float = 1e-4,
-        snooker: float = 0.1,
-        model: cs.core.models.Model = None,
-        seed: int = None
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    n_chains: int = None,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    temp: float = 1.0,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    jitter: float = 1e-4,
+    snooker: float = 0.1,
+    model: cs.core.models.Model = None,
+    seed: int = None,
 ) -> dict:
     r"""Sample with Differential-Evolution MCMC (ter Braak).
 
@@ -711,10 +737,23 @@ def sample_differential_evolution(
 
     # A graph-eligible fit samples entirely in C++ (see sampler_bff).
     from chisurf.core.fitting import sampler_bff
+
     graph_result = sampler_bff.sample_via_graph(
-        fit, model, "de", steps=steps, thin=thin, chi2max=chi2max,
-        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
-        n_adapt=n_adapt, n_chains=n_chains, jitter=jitter, snooker=snooker)
+        fit,
+        model,
+        "de",
+        steps=steps,
+        thin=thin,
+        chi2max=chi2max,
+        temp=temp,
+        seed=seed,
+        callback=callback,
+        check_cancel=check_cancel,
+        n_adapt=n_adapt,
+        n_chains=n_chains,
+        jitter=jitter,
+        snooker=snooker,
+    )
     if graph_result is not None:
         return graph_result
 
@@ -732,8 +771,7 @@ def sample_differential_evolution(
     def _lnprob(vector):
         """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
         lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
-            parameter_values=list(vector), fit=fit, chi2max=chi2max,
-            bounds=bounds, model=model
+            parameter_values=list(vector), fit=fit, chi2max=chi2max, bounds=bounds, model=model
         )
         return lnlike + lnpr, lnpr, c2
 
@@ -788,8 +826,11 @@ def sample_differential_evolution(
                 log_jacobian = 0.5 * (dim - 1) * (math.log(new_norm) - math.log(norm))
             else:
                 j, k = rng.choice(others, size=2, replace=False)
-                proposal = (population[c] + gamma * (population[j] - population[k])
-                            + rng.normal(0.0, 1.0, dim) * noise)
+                proposal = (
+                    population[c]
+                    + gamma * (population[j] - population[k])
+                    + rng.normal(0.0, 1.0, dim) * noise
+                )
                 log_jacobian = 0.0
 
             candidate = _lnprob(proposal)
@@ -842,30 +883,30 @@ def sample_differential_evolution(
     # ``chains`` is one row per population member; the flat view stacks them.
     chains = recorded.transpose(1, 0, 2) if n_recorded else recorded.reshape(0, 0, dim)
     return {
-        'chi2r': chi2.reshape(-1) / dof,
-        'lnprior': lnprior.reshape(-1),
-        'parameter_values': recorded.reshape(-1, dim),
-        'parameter_names': model.parameter_names,
-        'chains': chains,
-        'acceptance_rate': n_accepted / float(max(1, n_proposed)),
-        'n_chains': n_chains,
+        "chi2r": chi2.reshape(-1) / dof,
+        "lnprior": lnprior.reshape(-1),
+        "parameter_values": recorded.reshape(-1, dim),
+        "parameter_names": model.parameter_names,
+        "chains": chains,
+        "acceptance_rate": n_accepted / float(max(1, n_proposed)),
+        "n_chains": n_chains,
     }
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
 def walk_mcmc_blocked(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        step_size: float = 0.1,
-        temp: float = 1.0,
-        thin: int = 1,
-        chi2max: float = np.inf,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        blocks: typing.Sequence[typing.Sequence[int]] = None,
-        model: cs.core.models.Model = None,
-        seed: int | np.random.Generator = None
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    step_size: float = 0.1,
+    temp: float = 1.0,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    blocks: typing.Sequence[typing.Sequence[int]] = None,
+    model: cs.core.models.Model = None,
+    seed: int | np.random.Generator = None,
 ) -> dict:
     """Sample a fit block by block, with a per-block correlated proposal.
 
@@ -944,11 +985,22 @@ def walk_mcmc_blocked(
     # A graph-eligible fit samples entirely in C++ (see sampler_bff), with
     # the same resolved block partition.
     from chisurf.core.fitting import sampler_bff
+
     graph_result = sampler_bff.sample_via_graph(
-        fit, model, "metropolis", steps=steps, thin=thin, chi2max=chi2max,
-        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
-        n_adapt=n_adapt, step_size=step_size,
-        blocks=[list(map(int, b)) for b in block_idx])
+        fit,
+        model,
+        "metropolis",
+        steps=steps,
+        thin=thin,
+        chi2max=chi2max,
+        temp=temp,
+        seed=seed,
+        callback=callback,
+        check_cancel=check_cancel,
+        n_adapt=n_adapt,
+        step_size=step_size,
+        blocks=[list(map(int, b)) for b in block_idx],
+    )
     if graph_result is not None:
         return graph_result
 
@@ -960,21 +1012,16 @@ def walk_mcmc_blocked(
     def _lnprob(vector):
         """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
         lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
-            parameter_values=vector, fit=fit, chi2max=chi2max,
-            bounds=bounds, model=model
+            parameter_values=vector, fit=fit, chi2max=chi2max, bounds=bounds, model=model
         )
         return lnlike + lnpr, lnpr, c2
 
-    cov, seeded_from_curvature = _seed_block_covariances(
-        fit, block_idx, state, step_size, model
-    )
+    cov, seeded_from_curvature = _seed_block_covariances(fit, block_idx, state, step_size, model)
     factor = [_cholesky_or_diagonal(c) for c in cov]
     # The optimal scaling of a random-walk Metropolis falls with the dimension
     # of the move, so each block gets the target appropriate to its own size.
-    target = [
-        0.44 if idx.size == 1 else max(0.234, 0.44 / np.sqrt(idx.size))
-        for idx in block_idx
-    ]
+    target = [0.44 if idx.size == 1 else max(0.234, 0.44 / np.sqrt(idx.size)) for idx in block_idx]
+
     # Once a block's covariance describes the posterior, 2.38/sqrt(d) is the
     # optimal multiplier -- so start there rather than at 1.0, which is too wide
     # by that same factor and costs the whole init buffer to walk back down.
@@ -983,9 +1030,7 @@ def walk_mcmc_blocked(
         return float(np.log(OPTIMAL_RWM_SCALING / np.sqrt(max(1, size))))
 
     log_scale = [_initial_log_scale(idx.size) for idx in block_idx]
-    adapters = [
-        _DualAveraging(log_scale[b], target[b]) for b in range(len(block_idx))
-    ]
+    adapters = [_DualAveraging(log_scale[b], target[b]) for b in range(len(block_idx))]
 
     parts = _lnprob(state)
     accepted = np.zeros(len(block_idx), dtype=np.int64)
@@ -1051,7 +1096,7 @@ def walk_mcmc_blocked(
                 # Once the chain has explored, the empirical covariance of where
                 # it has been beats any a-priori guess -- including the curvature
                 # at the optimum, which only describes the posterior locally.
-                visited = warmup[window_start:i + 1]
+                visited = warmup[window_start : i + 1]
                 for b, idx in enumerate(block_idx):
                     if seeded_from_curvature[b]:
                         # The curvature at the optimum *is* the posterior
@@ -1073,9 +1118,7 @@ def walk_mcmc_blocked(
                     # its shape keeps the one thing warm-up genuinely learns.
                     # The size is then re-derived by the acceptance-rate
                     # adaptation below, which is what that is for.
-                    current = np.exp(2.0 * log_scale[b]) * (
-                        factor[b] @ factor[b].T
-                    )
+                    current = np.exp(2.0 * log_scale[b]) * (factor[b] @ factor[b].T)
                     size = float(np.trace(current))
                     empirical_size = float(np.trace(empirical))
                     if not (empirical_size > 0.0 and np.isfinite(size) and size > 0.0):
@@ -1121,45 +1164,45 @@ def walk_mcmc_blocked(
     lnprior = lnprior[:n_recorded]
     chi2 = chi2[:n_recorded]
     dof = float(model.n_points - model.n_free - 1.0)
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         per_block = np.where(proposed > 0, accepted / np.maximum(proposed, 1), np.nan)
 
     return {
-        'chi2r': chi2 / dof,
-        'lnprior': lnprior,
-        'parameter_values': parameter,
-        'parameter_names': model.parameter_names,
-        'chains': parameter[np.newaxis, :, :],
-        'acceptance_rate': float(accepted.sum() / max(1, proposed.sum())),
-        'block_acceptance': per_block,
-        'block_sizes': [int(idx.size) for idx in block_idx],
+        "chi2r": chi2 / dof,
+        "lnprior": lnprior,
+        "parameter_values": parameter,
+        "parameter_names": model.parameter_names,
+        "chains": parameter[np.newaxis, :, :],
+        "acceptance_rate": float(accepted.sum() / max(1, proposed.sum())),
+        "block_acceptance": per_block,
+        "block_sizes": [int(idx.size) for idx in block_idx],
     }
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
 @register_sampler(
-    'blocked',
-    kernel='metropolis',
-    label='Blocked (covariance)',
+    "blocked",
+    kernel="metropolis",
+    label="Blocked (covariance)",
     description=(
-        'Proposes from a per-block covariance seeded by the curvature at '
-        'the optimum, with independent sub-problems sampled apart and '
-        'merged exactly. The one to reach for on a correlated posterior.'
+        "Proposes from a per-block covariance seeded by the curvature at "
+        "the optimum, with independent sub-problems sampled apart and "
+        "merged exactly. The one to reach for on a correlated posterior."
     ),
     samples_global_posterior=True,
 )
 def sample_independent_components(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        step_size: float = 0.1,
-        temp: float = 1.0,
-        thin: int = 1,
-        chi2max: float = np.inf,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        model: cs.core.models.Model = None,
-        seed: int = None
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    step_size: float = 0.1,
+    temp: float = 1.0,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    model: cs.core.models.Model = None,
+    seed: int = None,
 ) -> dict:
     r"""Sample each independent sub-problem separately and merge them exactly.
 
@@ -1245,15 +1288,25 @@ def sample_independent_components(
     components = _component_blocks(fit, model)
     if len(components) < 2:
         return walk_mcmc_blocked(
-            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
-            chi2max=chi2max, callback=callback, check_cancel=check_cancel,
-            n_adapt=n_adapt, model=model,
+            fit=fit,
+            steps=steps,
+            step_size=step_size,
+            temp=temp,
+            thin=thin,
+            chi2max=chi2max,
+            callback=callback,
+            check_cancel=check_cancel,
+            n_adapt=n_adapt,
+            model=model,
         )
 
     reference = np.asarray(model.parameter_values, dtype=np.float64)
     lnlike_0, lnprior_0, chi2_0 = cs.core.fitting.fit.lnprob_parts(
-        parameter_values=list(reference), fit=fit, chi2max=np.inf,
-        bounds=model.parameter_bounds, model=model
+        parameter_values=list(reference),
+        fit=fit,
+        chi2max=np.inf,
+        bounds=model.parameter_bounds,
+        model=model,
     )
 
     results = []
@@ -1265,9 +1318,16 @@ def sample_independent_components(
         model.parameter_values = list(reference)
         model.update()
         r = walk_mcmc_blocked(
-            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
-            chi2max=chi2max, check_cancel=check_cancel, n_adapt=n_adapt,
-            model=model, blocks=blocks,
+            fit=fit,
+            steps=steps,
+            step_size=step_size,
+            temp=temp,
+            thin=thin,
+            chi2max=chi2max,
+            check_cancel=check_cancel,
+            n_adapt=n_adapt,
+            model=model,
+            blocks=blocks,
         )
         results.append((indices, r))
         if callback:
@@ -1278,9 +1338,7 @@ def sample_independent_components(
     model.parameter_values = list(reference)
     model.update()
 
-    return _merge_components(
-        results, reference, chi2_0, lnprior_0, model, seed=seed
-    )
+    return _merge_components(results, reference, chi2_0, lnprior_0, model, seed=seed)
 
 
 def _shared_and_private(fit, model):
@@ -1307,7 +1365,8 @@ def _shared_and_private(fit, model):
     shared, private = [], {}
     for key in graph.variables:
         datasets = {
-            graph.factors[f].fit_index for f in graph.factors_of(key)
+            graph.factors[f].fit_index
+            for f in graph.factors_of(key)
             if graph.factors[f].kind == factorgraph.LIKELIHOOD
             and graph.factors[f].fit_index is not None
         }
@@ -1345,11 +1404,13 @@ def _shared_and_private(fit, model):
                 ordered_joint.append(j)
         if len(ordered_joint) != len(joint_idx):
             return None
-        groups.append((
-            local,
-            np.array(ordered_joint, dtype=int),
-            np.array(local_pos, dtype=int),
-        ))
+        groups.append(
+            (
+                local,
+                np.array(ordered_joint, dtype=int),
+                np.array(local_pos, dtype=int),
+            )
+        )
     if not groups:
         return None
     return np.array(sorted(shared), dtype=int), groups
@@ -1413,7 +1474,7 @@ def _profile_locals(groups, model, include_priors: bool = True):
             _restricted_wres(fitted, local_model, positions, include_priors),
             dtype=np.float64,
         )
-        chi2 = float((residuals ** 2).sum())
+        chi2 = float((residuals**2).sum())
         if not np.isfinite(chi2):
             return None
 
@@ -1452,29 +1513,29 @@ def _profile_locals(groups, model, include_priors: bool = True):
     return total, draws
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
 @register_sampler(
-    'collapsed',
-    label='Collapsed (linked global fit)',
+    "collapsed",
+    label="Collapsed (linked global fit)",
     description=(
-        'Integrates each dataset\'s private parameters out analytically '
-        'and samples only the shared ones -- the right choice for a linked '
-        'global fit, where linking lowers the dimension but makes the '
-        'posterior harder to sample.'
+        "Integrates each dataset's private parameters out analytically "
+        "and samples only the shared ones -- the right choice for a linked "
+        "global fit, where linking lowers the dimension but makes the "
+        "posterior harder to sample."
     ),
     samples_global_posterior=True,
 )
 def sample_marginal_shared(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        step_size: float = 0.1,
-        temp: float = 1.0,
-        thin: int = 1,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        model: cs.core.models.Model = None,
-        seed: int = None
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    step_size: float = 0.1,
+    temp: float = 1.0,
+    thin: int = 1,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    model: cs.core.models.Model = None,
+    seed: int = None,
 ) -> dict:
     r"""Sample only a global fit's *shared* parameters, integrating the rest out.
 
@@ -1547,9 +1608,16 @@ def sample_marginal_shared(
     split = _shared_and_private(fit, model)
     if split is None:
         return sample_independent_components(
-            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
-            callback=callback, check_cancel=check_cancel, n_adapt=n_adapt,
-            model=model, seed=seed,
+            fit=fit,
+            steps=steps,
+            step_size=step_size,
+            temp=temp,
+            thin=thin,
+            callback=callback,
+            check_cancel=check_cancel,
+            n_adapt=n_adapt,
+            model=model,
+            seed=seed,
         )
     shared_idx, groups = split
 
@@ -1597,15 +1665,21 @@ def sample_marginal_shared(
     current = _target(start)
     if current is None:
         cs.logging.warning(
-            "collapsed sampling: could not profile the local fits; "
-            "falling back to a joint chain"
+            "collapsed sampling: could not profile the local fits; falling back to a joint chain"
         )
         model.parameter_values = list(reference)
         model.update()
         return sample_independent_components(
-            fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
-            callback=callback, check_cancel=check_cancel, n_adapt=n_adapt,
-            model=model, seed=seed,
+            fit=fit,
+            steps=steps,
+            step_size=step_size,
+            temp=temp,
+            thin=thin,
+            callback=callback,
+            check_cancel=check_cancel,
+            n_adapt=n_adapt,
+            model=model,
+            seed=seed,
         )
 
     scale = np.abs(start) * step_size
@@ -1640,7 +1714,7 @@ def sample_marginal_shared(
             warm[i] = state
             log_scale += (alpha - target_acceptance) / (i + 1) ** 0.6
             if i == n_adapt // 2 and i > 2 * k_shared:
-                empirical = np.atleast_2d(np.cov(warm[:i + 1], rowvar=False))
+                empirical = np.atleast_2d(np.cov(warm[: i + 1], rowvar=False))
                 if np.all(np.isfinite(empirical)) and np.all(np.diag(empirical) > 0):
                     factor = _cholesky_or_diagonal(empirical)
                     log_scale = 0.0
@@ -1689,22 +1763,19 @@ def sample_marginal_shared(
     dof = float(model.n_points - model.n_free - 1.0)
 
     return {
-        'chi2r': chi2 / dof,
-        'lnprior': lnprior_out,
-        'parameter_values': joint,
-        'parameter_names': names,
-        'chains': joint[np.newaxis, :, :],
-        'acceptance_rate': n_accepted / float(max(1, n_steps)),
-        'shared_names': [names[i] for i in shared_idx],
-        'n_shared': int(k_shared),
-        'collapsed': True,
+        "chi2r": chi2 / dof,
+        "lnprior": lnprior_out,
+        "parameter_values": joint,
+        "parameter_names": names,
+        "chains": joint[np.newaxis, :, :],
+        "acceptance_rate": n_accepted / float(max(1, n_steps)),
+        "shared_names": [names[i] for i in shared_idx],
+        "n_shared": int(k_shared),
+        "collapsed": True,
     }
 
 
-def _component_blocks(
-        fit: cs.core.fitting.fit.Fit,
-        model: cs.core.models.Model
-) -> list:
+def _component_blocks(fit: cs.core.fitting.fit.Fit, model: cs.core.models.Model) -> list:
     """Return ``(indices, blocks)`` per independent component of the fit.
 
     ``indices`` are the component's positions in the free-parameter vector and
@@ -1713,6 +1784,7 @@ def _component_blocks(
     """
     try:
         from chisurf.core.fitting import factorgraph
+
         graph = factorgraph.build_factor_graph(fit, model=model)
         components = graph.connected_components()
         if len(components) < 2:
@@ -1720,14 +1792,8 @@ def _component_blocks(
         blocks_all = graph.sampling_blocks()
         out = []
         for component in components:
-            indices = sorted(
-                i for i in (graph.index_of(k) for k in component)
-                if i is not None
-            )
-            blocks = [
-                [graph.index_of(k) for k in b]
-                for b in blocks_all if set(b) <= component
-            ]
+            indices = sorted(i for i in (graph.index_of(k) for k in component) if i is not None)
+            blocks = [[graph.index_of(k) for k in b] for b in blocks_all if set(b) <= component]
             blocks = [[i for i in b if i is not None] for b in blocks]
             blocks = [b for b in blocks if b]
             covered = sorted(i for b in blocks for i in b)
@@ -1743,12 +1809,12 @@ def _component_blocks(
 
 
 def _merge_components(
-        results: list,
-        reference: np.ndarray,
-        chi2_0: float,
-        lnprior_0: float,
-        model: cs.core.models.Model,
-        seed: int = None
+    results: list,
+    reference: np.ndarray,
+    chi2_0: float,
+    lnprior_0: float,
+    model: cs.core.models.Model,
+    seed: int = None,
 ) -> dict:
     """Stack per-component chains into one joint chain.
 
@@ -1758,7 +1824,7 @@ def _merge_components(
     between components that the posterior does not have.
     """
     rng = _rng(seed)
-    n_draws = min(r['parameter_values'].shape[0] for _, r in results)
+    n_draws = min(r["parameter_values"].shape[0] for _, r in results)
     joint = np.tile(reference, (n_draws, 1))
     chi2 = np.zeros(n_draws, dtype=np.float64)
     lnprior = np.zeros(n_draws, dtype=np.float64)
@@ -1767,15 +1833,15 @@ def _merge_components(
     dof = float(model.n_points - model.n_free - 1.0)
     for indices, r in results:
         order = rng.permutation(n_draws)
-        joint[:, indices] = np.asarray(
-            r['parameter_values'], dtype=np.float64
-        )[:n_draws][order][:, indices]
-        chi2 += np.asarray(r['chi2r'], dtype=np.float64)[:n_draws][order] * dof
-        lnprior += np.asarray(r['lnprior'], dtype=np.float64)[:n_draws][order]
-        acceptance.append(float(r['acceptance_rate']))
+        joint[:, indices] = np.asarray(r["parameter_values"], dtype=np.float64)[:n_draws][order][
+            :, indices
+        ]
+        chi2 += np.asarray(r["chi2r"], dtype=np.float64)[:n_draws][order] * dof
+        lnprior += np.asarray(r["lnprior"], dtype=np.float64)[:n_draws][order]
+        acceptance.append(float(r["acceptance_rate"]))
         sizes.append(int(indices.size))
-        block_sizes.extend(r.get('block_sizes', []))
-        block_acceptance.extend(np.atleast_1d(r.get('block_acceptance', [])))
+        block_sizes.extend(r.get("block_sizes", []))
+        block_acceptance.extend(np.atleast_1d(r.get("block_acceptance", [])))
 
     # Undo the (C-1)-fold double counting of the shared reference state.
     overlap = len(results) - 1
@@ -1783,23 +1849,21 @@ def _merge_components(
     lnprior -= overlap * float(lnprior_0)
 
     return {
-        'chi2r': chi2 / dof,
-        'lnprior': lnprior,
-        'parameter_values': joint,
-        'parameter_names': model.parameter_names,
-        'chains': joint[np.newaxis, :, :],
-        'acceptance_rate': float(np.mean(acceptance)) if acceptance else float('nan'),
-        'block_sizes': block_sizes,
-        'block_acceptance': np.asarray(block_acceptance, dtype=float),
-        'n_components': len(results),
-        'component_sizes': sizes,
+        "chi2r": chi2 / dof,
+        "lnprior": lnprior,
+        "parameter_values": joint,
+        "parameter_names": model.parameter_names,
+        "chains": joint[np.newaxis, :, :],
+        "acceptance_rate": float(np.mean(acceptance)) if acceptance else float("nan"),
+        "block_sizes": block_sizes,
+        "block_acceptance": np.asarray(block_acceptance, dtype=float),
+        "n_components": len(results),
+        "component_sizes": sizes,
     }
 
 
 def _default_blocks(
-        fit: cs.core.fitting.fit.Fit,
-        dim: int,
-        model: cs.core.models.Model = None
+    fit: cs.core.fitting.fit.Fit, dim: int, model: cs.core.models.Model = None
 ) -> list[np.ndarray]:
     """Return the factor graph's sampling blocks as parameter-vector indices.
 
@@ -1808,9 +1872,8 @@ def _default_blocks(
     """
     try:
         from chisurf.core.fitting import factorgraph
-        graph = factorgraph.build_factor_graph(
-            fit, model=model if model is not None else fit.model
-        )
+
+        graph = factorgraph.build_factor_graph(fit, model=model if model is not None else fit.model)
         out = []
         for block in graph.sampling_blocks():
             idx = [graph.index_of(k) for k in block]
@@ -1822,7 +1885,9 @@ def _default_blocks(
             return out
         cs.logging.warning(
             "blocked sampling: factor graph covers %d of %d parameters; "
-            "falling back to a single block", len(covered), dim
+            "falling back to a single block",
+            len(covered),
+            dim,
         )
     except Exception as e:
         cs.logging.warning(f"blocked sampling: no factor graph ({e})")
@@ -1867,10 +1932,7 @@ def _ensemble_log_prob(parameter_values, fit, model=None, bounds=None, chi2max=n
 
 
 def _ensemble_walker_start(
-        model,
-        nwalkers: int,
-        std: float,
-        random: np.random.Generator
+    model, nwalkers: int, std: float, random: np.random.Generator
 ) -> np.ndarray:
     """Spread walkers around the current parameter values, inside the bounds.
 
@@ -1901,12 +1963,8 @@ def _ensemble_walker_start(
     p0 = np.asarray(model.parameter_values, dtype=np.float64)
     ndim = len(p0)
     bounds = list(model.parameter_bounds)
-    lower = np.array(
-        [b[0] if b[0] is not None else -np.inf for b in bounds], dtype=np.float64
-    )
-    upper = np.array(
-        [b[1] if b[1] is not None else np.inf for b in bounds], dtype=np.float64
-    )
+    lower = np.array([b[0] if b[0] is not None else -np.inf for b in bounds], dtype=np.float64)
+    upper = np.array([b[1] if b[1] is not None else np.inf for b in bounds], dtype=np.float64)
 
     spread = np.where(
         np.isfinite(lower) & np.isfinite(upper),
@@ -1926,16 +1984,16 @@ def _ensemble_walker_start(
 
 
 def _sample_ensemble(
-        sampler,
-        start: np.ndarray,
-        fit,
-        model,
-        steps: int,
-        thin: int,
-        substeps: int = None,
-        progress_bar=None,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None
+    sampler,
+    start: np.ndarray,
+    fit,
+    model,
+    steps: int,
+    thin: int,
+    substeps: int = None,
+    progress_bar=None,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
 ) -> dict:
     """Drive an ensemble sampler in chunks and return its chain as a result dict.
 
@@ -1975,12 +2033,12 @@ def _sample_ensemble(
     if substeps is None:
         try:
             substeps = int(
-                cs.core.settings.cs_settings['optimization']['sampling'].get('substeps', 100)
+                cs.core.settings.cs_settings["optimization"]["sampling"].get("substeps", 100)
             )
         except (KeyError, TypeError):
             substeps = 100
 
-    if progress_bar is not None and hasattr(progress_bar, 'setMaximum'):
+    if progress_bar is not None and hasattr(progress_bar, "setMaximum"):
         progress_bar.setMaximum(steps)
 
     # ``run_mcmc`` counts its ``nsteps`` in *stored* states when thinning, so
@@ -2026,22 +2084,22 @@ def _sample_ensemble(
     return ensemble_result(sampler, fit, model=model)
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
-@register_sampler('ensemble', kernel='stretch')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
+@register_sampler("ensemble", kernel="stretch")
 def sample_ensemble(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        nwalkers: int = None,
-        thin: int = 10,
-        std: float = 1e-3,
-        chi2max: float = np.inf,
-        progress_bar = None,
-        substeps: int = None,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        model: cs.core.models.Model = None,
-        seed=None,
-        stretch_scale: float = 2.0
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    nwalkers: int = None,
+    thin: int = 10,
+    std: float = 1e-3,
+    chi2max: float = np.inf,
+    progress_bar=None,
+    substeps: int = None,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    model: cs.core.models.Model = None,
+    seed=None,
+    stretch_scale: float = 2.0,
 ) -> dict:
     """Sample the parameter space with an affine-invariant ensemble of walkers.
 
@@ -2100,7 +2158,8 @@ def sample_ensemble(
     # progress bar is driven from the per-segment callback, in recorded
     # states, which is the same fraction `_sample_ensemble` reports.
     from chisurf.core.fitting import sampler_bff
-    if progress_bar is not None and hasattr(progress_bar, 'setMaximum'):
+
+    if progress_bar is not None and hasattr(progress_bar, "setMaximum"):
         progress_bar.setMaximum(max(1, int(steps) // max(1, int(thin))))
 
         def _bar_callback(done, total, result=None, _cb=callback):
@@ -2110,14 +2169,25 @@ def sample_ensemble(
                     _cb(done, total, result=result)
                 except TypeError:
                     _cb(done, total)
+
         _route_callback = _bar_callback
     else:
         _route_callback = callback
     graph_result = sampler_bff.sample_via_graph(
-        fit, model, "stretch", steps=steps, thin=thin, chi2max=chi2max,
-        seed=seed, callback=_route_callback, check_cancel=check_cancel,
-        substeps=substeps, nwalkers=nwalkers, stretch_scale=stretch_scale,
-        walker_start_std=std)
+        fit,
+        model,
+        "stretch",
+        steps=steps,
+        thin=thin,
+        chi2max=chi2max,
+        seed=seed,
+        callback=_route_callback,
+        check_cancel=check_cancel,
+        substeps=substeps,
+        nwalkers=nwalkers,
+        stretch_scale=stretch_scale,
+        walker_start_std=std,
+    )
     if graph_result is not None:
         return graph_result
 
@@ -2131,35 +2201,42 @@ def sample_ensemble(
         ndim=ndim,
         log_prob_fn=_ensemble_log_prob,
         args=[fit],
-        kwargs={'model': model, 'bounds': model.parameter_bounds, 'chi2max': chi2max},
+        kwargs={"model": model, "bounds": model.parameter_bounds, "chi2max": chi2max},
         stretch_scale=stretch_scale,
         seed=random,
     )
     start = _ensemble_walker_start(model, int(nwalkers), std, random)
     return _sample_ensemble(
-        sampler, start, fit, model, steps, thin,
-        substeps=substeps, progress_bar=progress_bar,
-        callback=callback, check_cancel=check_cancel,
+        sampler,
+        start,
+        fit,
+        model,
+        steps,
+        thin,
+        substeps=substeps,
+        progress_bar=progress_bar,
+        callback=callback,
+        check_cancel=check_cancel,
     )
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
-@register_sampler('slice', kernel='slice')
+@cs.core.fitting.factorgraph.frozen("fit", "model")
+@register_sampler("slice", kernel="slice")
 def sample_ensemble_slice(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
-        nwalkers: int = None,
-        thin: int = 1,
-        std: float = 1e-3,
-        chi2max: float = np.inf,
-        progress_bar = None,
-        substeps: int = None,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        model: cs.core.models.Model = None,
-        seed=None,
-        moves=None,
-        tune: bool = True
+    fit: cs.core.fitting.fit.Fit,
+    steps: int,
+    nwalkers: int = None,
+    thin: int = 1,
+    std: float = 1e-3,
+    chi2max: float = np.inf,
+    progress_bar=None,
+    substeps: int = None,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    model: cs.core.models.Model = None,
+    seed=None,
+    moves=None,
+    tune: bool = True,
 ) -> dict:
     """Sample the parameter space by ensemble *slice* sampling.
 
@@ -2223,23 +2300,28 @@ def sample_ensemble_slice(
         ndim=ndim,
         log_prob_fn=_ensemble_log_prob,
         args=[fit],
-        kwargs={'model': model, 'bounds': model.parameter_bounds, 'chi2max': chi2max},
+        kwargs={"model": model, "bounds": model.parameter_bounds, "chi2max": chi2max},
         moves=moves,
         tune=tune,
         seed=random,
     )
     start = _ensemble_walker_start(model, int(nwalkers), std, random)
     return _sample_ensemble(
-        sampler, start, fit, model, steps, thin,
-        substeps=substeps, progress_bar=progress_bar,
-        callback=callback, check_cancel=check_cancel,
+        sampler,
+        start,
+        fit,
+        model,
+        steps,
+        thin,
+        substeps=substeps,
+        progress_bar=progress_bar,
+        callback=callback,
+        check_cancel=check_cancel,
     )
 
 
 def ensemble_result(
-        sampler,
-        fit: cs.core.fitting.fit.Fit,
-        model: cs.core.models.Model = None
+    sampler, fit: cs.core.fitting.fit.Fit, model: cs.core.models.Model = None
 ) -> dict:
     """Extract the flattened chain of an ensemble sampler as a result dict.
 
@@ -2297,16 +2379,16 @@ def ensemble_result(
     try:
         acceptance = float(np.mean(sampler.acceptance_fraction))
     except Exception:
-        acceptance = float('nan')
+        acceptance = float("nan")
 
     return {
-        'chi2r': chi2 / dof,
-        'lnprior': lnprior,
-        'parameter_values': chain,
-        'parameter_names': model.parameter_names,
-        'chains': per_walker,
-        'acceptance_rate': acceptance,
-        'n_evaluations': int(getattr(sampler, 'n_evaluations', 0)),
+        "chi2r": chi2 / dof,
+        "lnprior": lnprior,
+        "parameter_values": chain,
+        "parameter_names": model.parameter_names,
+        "chains": per_walker,
+        "acceptance_rate": acceptance,
+        "n_evaluations": int(getattr(sampler, "n_evaluations", 0)),
     }
 
 
@@ -2323,14 +2405,14 @@ class _SamplerTable(collections.abc.Mapping):
     """
 
     def _entries(self):
-        merged = _catalog.registry('sampler')
+        merged = _catalog.registry("sampler")
         out = {}
         for key, entry in merged.items():
-            if entry.get('provider') == 'chisurf':
+            if entry.get("provider") == "chisurf":
                 out[key] = entry
-            elif not entry.get('requires_gradient') and entry.get('kind'):
-                out[key] = dict(entry, function='sample_registered_kernel')
-        ordered = sorted(out, key=lambda k: bool(out[k].get('legacy')))
+            elif not entry.get("requires_gradient") and entry.get("kind"):
+                out[key] = dict(entry, function="sample_registered_kernel")
+        ordered = sorted(out, key=lambda k: bool(out[k].get("legacy")))
         return {k: out[k] for k in ordered}
 
     def __getitem__(self, key):
@@ -2366,12 +2448,12 @@ def resolve_sampler(name: str) -> str:
         not the run.
     """
     try:
-        key = _catalog.resolve('sampler', name)
+        key = _catalog.resolve("sampler", name)
     except ValueError:
         key = None
     if key not in SAMPLERS:
         cs.logging.warning("unknown sampler %r; using 'ensemble'", name)
-        return 'ensemble'
+        return "ensemble"
     return key
 
 
@@ -2388,23 +2470,46 @@ def sampler_function(name: str):
     callable
         The sampling function from this module.
     """
-    return globals()[SAMPLERS[resolve_sampler(name)]['function']]
+    return globals()[SAMPLERS[resolve_sampler(name)]["function"]]
 
 
-def sample_registered_kernel(fit, steps: int, thin: int = 1, chi2max: float = np.inf, temp: float = 1.0,
-                             callback: typing.Callable = None, check_cancel: typing.Callable = None,
-                             model=None, seed=None, sampler: str = None, **settings) -> dict:
+def sample_registered_kernel(
+    fit,
+    steps: int,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    temp: float = 1.0,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    model=None,
+    seed=None,
+    sampler: str = None,
+    **settings,
+) -> dict:
     """Run an IMP.bff sampler kernel that has no chisurf function of its own.
 
     ``sampler`` is its registry key. Needs a fit whose objective builds as a
     graph; a fit that does not is refused rather than sampled some other way.
     """
     from chisurf.core.fitting import sampler_bff
+
     result = sampler_bff.sample_via_graph(
-        fit, model if model is not None else fit.model, sampler, steps=steps, thin=thin,
-        chi2max=chi2max, temp=temp, seed=seed, callback=callback, check_cancel=check_cancel, **settings)
+        fit,
+        model if model is not None else fit.model,
+        sampler,
+        steps=steps,
+        thin=thin,
+        chi2max=chi2max,
+        temp=temp,
+        seed=seed,
+        callback=callback,
+        check_cancel=check_cancel,
+        **settings,
+    )
     if result is None:
-        raise ValueError(f"sampler {sampler!r} runs only on a fit whose objective builds as a graph")
+        raise ValueError(
+            f"sampler {sampler!r} runs only on a fit whose objective builds as a graph"
+        )
     return result
 
 
@@ -2416,35 +2521,45 @@ def sampler_choices():
     list of tuple
         One pair per advertised sampler, in declaration order.
     """
-    return [(name, entry.get('label', name)) for name, entry in SAMPLERS.items()]
+    return [(name, entry.get("label", name)) for name, entry in SAMPLERS.items()]
 
 
 #: Arguments every sampler takes that are plumbing, not settings: the thing
 #: being sampled, the progress/cancel hooks, and the seams a caller wires up.
 #: They are excluded from what a sampler advertises.
-_SAMPLER_PLUMBING = frozenset({
-    'fit', 'model', 'progress_bar', 'callback', 'check_cancel', 'seed',
-    'moves', 'kwargs', 'args', 'self',
-    # How long to run and how many times are properties of the *run*, owned by
-    # sample_fit and set once for every sampler; advertising them per sampler
-    # would put two controls on one setting.
-    'steps',
-})
+_SAMPLER_PLUMBING = frozenset(
+    {
+        "fit",
+        "model",
+        "progress_bar",
+        "callback",
+        "check_cancel",
+        "seed",
+        "moves",
+        "kwargs",
+        "args",
+        "self",
+        # How long to run and how many times are properties of the *run*, owned by
+        # sample_fit and set once for every sampler; advertising them per sampler
+        # would put two controls on one setting.
+        "steps",
+    }
+)
 
 #: Display names for parameters whose spelling is not a label. Data, not
 #: logic: everything else is derived from the parameter name itself.
 _SETTING_LABELS = {
-    'chi2max': 'χ² max',
-    'steps': 'Steps',
-    'n_runs': 'Runs',
-    'substeps': 'Chunk',
-    'thin': 'Thin',
-    'step_size': 'Step size',
-    'std': 'Initial spread',
-    'temp': 'Temperature',
-    'n_chains': 'Chains',
-    'nwalkers': 'Walkers',
-    'stretch_scale': 'Stretch',
+    "chi2max": "χ² max",
+    "steps": "Steps",
+    "n_runs": "Runs",
+    "substeps": "Chunk",
+    "thin": "Thin",
+    "step_size": "Step size",
+    "std": "Initial spread",
+    "temp": "Temperature",
+    "n_chains": "Chains",
+    "nwalkers": "Walkers",
+    "stretch_scale": "Stretch",
 }
 
 #: Annotation -> the ``kind`` a view spec uses for it.
@@ -2453,10 +2568,14 @@ _SETTING_LABELS = {
 #: types alone can never hit -- which silently dropped every parameter that has
 #: no default to fall back on (RF-781).
 _SETTING_KINDS = {
-    int: 'int', 'int': 'int',
-    float: 'float', 'float': 'float',
-    bool: 'toggle', 'bool': 'toggle',
-    str: 'str', 'str': 'str',
+    int: "int",
+    "int": "int",
+    float: "float",
+    "float": "float",
+    bool: "toggle",
+    "bool": "toggle",
+    str: "str",
+    "str": "str",
 }
 
 
@@ -2475,14 +2594,19 @@ def _docstring_parameters(func) -> dict:
         together (``steps, thin, chi2max : int``) share the text, which is what
         the docstring meant.
     """
-    doc = inspect.getdoc(func) or ''
+    doc = inspect.getdoc(func) or ""
     lines = doc.splitlines()
     try:
-        start = next(
-            i for i, line in enumerate(lines)
-            if line.strip() == 'Parameters' and i + 1 < len(lines)
-            and set(lines[i + 1].strip()) == {'-'}
-        ) + 2
+        start = (
+            next(
+                i
+                for i, line in enumerate(lines)
+                if line.strip() == "Parameters"
+                and i + 1 < len(lines)
+                and set(lines[i + 1].strip()) == {"-"}
+            )
+            + 2
+        )
     except StopIteration:
         return {}
 
@@ -2491,18 +2615,18 @@ def _docstring_parameters(func) -> dict:
     def flush():
         """Attach the collected text to the names it was written for."""
         if names and buffer:
-            text = ' '.join(part.strip() for part in buffer if part.strip())
+            text = " ".join(part.strip() for part in buffer if part.strip())
             for name in names:
                 descriptions[name] = text
 
     for line in lines[start:]:
-        if line.strip() and not line.startswith((' ', '\t')):
-            if set(line.strip()) == {'-'}:      # the next section's underline
+        if line.strip() and not line.startswith((" ", "\t")):
+            if set(line.strip()) == {"-"}:  # the next section's underline
                 break
-            if ':' not in line:
+            if ":" not in line:
                 break
             flush()
-            names = [n.strip() for n in line.split(':', 1)[0].split(',')]
+            names = [n.strip() for n in line.split(":", 1)[0].split(",")]
             buffer = []
         else:
             buffer.append(line)
@@ -2524,7 +2648,7 @@ def setting_label(name: str) -> str:
         Its display name, derived from the name itself unless it is one of the
         few whose spelling is not a label.
     """
-    return _SETTING_LABELS.get(name, str(name).replace('_', ' ').capitalize())
+    return _SETTING_LABELS.get(name, str(name).replace("_", " ").capitalize())
 
 
 def sampler_settings(name: str) -> list:
@@ -2551,7 +2675,9 @@ def sampler_settings(name: str) -> list:
     sections = []
     for param in inspect.signature(func).parameters.values():
         if param.name in _SAMPLER_PLUMBING or param.kind in (
-                param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            param.VAR_POSITIONAL,
+            param.VAR_KEYWORD,
+        ):
             continue
         annotation = param.annotation
         if isinstance(annotation, str):
@@ -2565,17 +2691,17 @@ def sampler_settings(name: str) -> list:
         if isinstance(default, float) and not math.isfinite(default):
             default = None
         section = {
-            'type': 'toggle' if kind == 'toggle' else 'value',
-            'attr': param.name,
-            'label': setting_label(param.name),
-            'description': descriptions.get(param.name, ''),
+            "type": "toggle" if kind == "toggle" else "value",
+            "attr": param.name,
+            "label": setting_label(param.name),
+            "description": descriptions.get(param.name, ""),
         }
-        if kind != 'toggle':
-            section['kind'] = kind
-        if kind == 'float':
-            section['decimals'] = 4
+        if kind != "toggle":
+            section["kind"] = kind
+        if kind == "float":
+            section["decimals"] = 4
         if default is not None:
-            section['default'] = default
+            section["default"] = default
         sections.append(section)
     return sections
 
@@ -2603,23 +2729,23 @@ def optimizer_settings() -> list:
         Sections for the tolerances and limits the optimiser accepts.
     """
     knobs = (
-        ('ftol', 'float'),      # relative error in the sum of squares
-        ('xtol', 'float'),      # relative error in the solution
-        ('gtol', 'float'),      # orthogonality of residuals and Jacobian
-        ('maxfev', 'int'),      # evaluation budget; 0 means 200 * (n + 1)
-        ('epsfcn', 'float'),    # forward-difference step for the Jacobian
-        ('factor', 'int'),      # initial step bound
+        ("ftol", "float"),  # relative error in the sum of squares
+        ("xtol", "float"),  # relative error in the solution
+        ("gtol", "float"),  # orthogonality of residuals and Jacobian
+        ("maxfev", "int"),  # evaluation budget; 0 means 200 * (n + 1)
+        ("epsfcn", "float"),  # forward-difference step for the Jacobian
+        ("factor", "int"),  # initial step bound
     )
     sections = []
     for name, kind in knobs:
         section = {
-            'type': 'value',
-            'attr': name,
-            'label': setting_label(name),
-            'description': f"IMP.bff.FitMinimizer '{name}'.",
-            'kind': kind,
+            "type": "value",
+            "attr": name,
+            "label": setting_label(name),
+            "description": f"IMP.bff.FitMinimizer '{name}'.",
+            "kind": kind,
         }
-        if kind == 'float':
-            section['decimals'] = 10
+        if kind == "float":
+            section["decimals"] = 10
         sections.append(section)
     return sections

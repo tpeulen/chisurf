@@ -103,7 +103,9 @@ def resolve_tool_resource(
         if obj is None:
             return
         cls = obj if isinstance(obj, type) else type(obj)
-        module_file = getattr(sys.modules.get(getattr(cls, "__module__", ""), None), "__file__", None)
+        module_file = getattr(
+            sys.modules.get(getattr(cls, "__module__", ""), None), "__file__", None
+        )
         if module_file:
             bases.append(pathlib.Path(module_file).parent)
 
@@ -478,9 +480,7 @@ class HelpGuideMixin:
         if toolbar.property("_chisurf_right_spacer"):
             return
         spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
+        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         toolbar.addWidget(spacer)
         toolbar.setProperty("_chisurf_right_spacer", True)
 

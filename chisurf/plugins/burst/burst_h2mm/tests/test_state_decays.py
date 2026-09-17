@@ -11,10 +11,9 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, column_values, numeric_column
 import pytest
 
+from chisurf.core.datastore import column_names, column_values, numeric_column
 from chisurf.plugins.burst.burst_h2mm.core.decays import (
     colour_groups,
     decay_table,
@@ -26,9 +25,7 @@ GROUPS = [("green", (0,)), ("red", (1,))]
 
 def _photons(n_green, n_red, *, state, green_micro, red_micro, rng):
     """Photons of one state: green on channel 0, red on channel 1."""
-    micro = np.concatenate([
-        rng.poisson(green_micro, n_green), rng.poisson(red_micro, n_red)
-    ])
+    micro = np.concatenate([rng.poisson(green_micro, n_green), rng.poisson(red_micro, n_red)])
     chan = np.concatenate([np.zeros(n_green, int), np.ones(n_red, int)])
     strm = chan.copy()
     st = np.full(n_green + n_red, state, dtype=int)
@@ -38,8 +35,7 @@ def _photons(n_green, n_red, *, state, green_micro, red_micro, rng):
 def test_colours_are_never_summed_together():
     """The green curve must contain green photons and nothing else."""
     rng = np.random.default_rng(0)
-    micro, chan, strm, st = _photons(500, 500, state=0, green_micro=40,
-                                     red_micro=120, rng=rng)
+    micro, chan, strm, st = _photons(500, 500, state=0, green_micro=40, red_micro=120, rng=rng)
     d = state_decays(micro, chan, strm, st, n_states=1, groups=GROUPS, n_bins=64)
 
     green = d.colour_counts[0, 0]
@@ -86,7 +82,7 @@ def test_streams_sharing_a_detector_stay_apart():
     rng = np.random.default_rng(2)
     n = 400
     micro = np.concatenate([rng.poisson(30, n), rng.poisson(150, n)])
-    chan = np.ones(2 * n, dtype=int)          # one physical detector
+    chan = np.ones(2 * n, dtype=int)  # one physical detector
     strm = np.concatenate([np.ones(n, int), np.full(n, 2)])  # red vs yellow
     st = np.zeros(2 * n, dtype=int)
 
@@ -96,9 +92,7 @@ def test_streams_sharing_a_detector_stay_apart():
     assert d.channels.tolist() == [1], "both streams are on the same detector"
     assert d.colour_counts[0, 1].sum() == n
     assert d.colour_counts[0, 2].sum() == n
-    assert d.centers[np.argmax(d.colour_counts[0, 1])] < d.centers[
-        np.argmax(d.colour_counts[0, 2])
-    ]
+    assert d.centers[np.argmax(d.colour_counts[0, 1])] < d.centers[np.argmax(d.colour_counts[0, 2])]
 
 
 def test_per_detector_counts_are_kept_not_only_the_merge():
@@ -122,20 +116,26 @@ def test_per_detector_counts_are_kept_not_only_the_merge():
 
 def test_the_written_table_is_numeric_and_per_detector():
     rng = np.random.default_rng(4)
-    micro, chan, strm, st = _photons(200, 200, state=0, green_micro=40,
-                                     red_micro=120, rng=rng)
-    d = state_decays(micro, chan, strm, st, n_states=1, groups=GROUPS, n_bins=16,
-                     micro_time_ns=0.032)
+    micro, chan, strm, st = _photons(200, 200, state=0, green_micro=40, red_micro=120, rng=rng)
+    d = state_decays(
+        micro, chan, strm, st, n_states=1, groups=GROUPS, n_bins=16, micro_time_ns=0.032
+    )
     df = decay_table(d)
     assert set(column_names(df)) == {
-        "State", "Stream", "Channel", "Micro Time", "Micro Time (ns)", "Counts"
+        "State",
+        "Stream",
+        "Channel",
+        "Micro Time",
+        "Micro Time (ns)",
+        "Counts",
     }
     assert numeric_column(df, "Counts").sum() == 400
     assert sorted(np.unique(numeric_column(df, "Channel"))) == [0, 1]
     for i, col in enumerate(column_names(df)):
         assert np.issubdtype(column_values(df, i).dtype, np.number), f"{col} must be numeric"
-    assert np.allclose(numeric_column(df, "Micro Time (ns)"),
-                       numeric_column(df, "Micro Time") * 0.032)
+    assert np.allclose(
+        numeric_column(df, "Micro Time (ns)"), numeric_column(df, "Micro Time") * 0.032
+    )
 
 
 def test_mismatched_photon_arrays_are_refused():
@@ -156,9 +156,7 @@ def test_colour_groups_names_come_from_the_detectors():
     class _Settings:
         streams = [_Stream("gg"), _Stream("rr"), _Stream("yy")]
 
-    assert colour_groups(_Ana(), _Settings()) == [
-        ("gg", (0,)), ("rr", (1,)), ("yy", (2,))
-    ]
+    assert colour_groups(_Ana(), _Settings()) == [("gg", (0,)), ("rr", (1,)), ("yy", (2,))]
 
     class _NoAex(_Ana):
         aex_streams = ()
@@ -167,15 +165,15 @@ def test_colour_groups_names_come_from_the_detectors():
 
 
 def test_the_decay_panel_filters_by_colour_and_state(qapp, tmp_path):
-    """states × colours is more than one small plot can carry — so it is a choice.
+    """States × colours is more than one small plot can carry — so it is a choice.
 
     Defaults to the donor alone (every colour at once is what made the plot
     unreadable) with all states shown, and every control stays reachable.
     """
     import numpy as np
 
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
     from chisurf.plugins.burst.burst_h2mm.core.decays import state_decays
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
 
     tool = H2mmTool(embedded=True)
     try:
@@ -186,8 +184,13 @@ def test_the_decay_panel_filters_by_colour_and_state(qapp, tmp_path):
         strm = chan.copy()
         path = rng.integers(0, 2, n)
         decays = state_decays(
-            micro, chan, strm, path, n_states=2,
-            groups=[("green", (0,)), ("red", (1,))], n_bins=64,
+            micro,
+            chan,
+            strm,
+            path,
+            n_states=2,
+            groups=[("green", (0,)), ("red", (1,))],
+            n_bins=64,
         )
         tool._nano_decays = decays
         tool._rebuild_nano_filters(decays)
@@ -223,16 +226,15 @@ def test_the_decay_panel_filters_by_colour_and_state(qapp, tmp_path):
         tool.close()
 
 
-def test_a_gui_fit_writes_its_tables_where_the_next_step_looks(qapp, tmp_path,
-                                                               monkeypatch):
+def test_a_gui_fit_writes_its_tables_where_the_next_step_looks(qapp, tmp_path, monkeypatch):
     """A fit that leaves nothing on disk is invisible to everything downstream.
 
     Regression: only the CLI and the RPC service wrote the result tables, so a
     fit run from the panel left the per-photon state assignment in memory alone
     — and the state-wise MLE step reported a finished H2MM as "run H2MM first".
     """
-    from chisurf.plugins.burst.burst_h2mm.gui import tool as tool_mod
     from chisurf.core.fio.fluorescence.burst_states import h2mm_output_dir
+    from chisurf.plugins.burst.burst_h2mm.gui import tool as tool_mod
 
     written: list = []
 
@@ -253,11 +255,20 @@ def test_a_gui_fit_writes_its_tables_where_the_next_step_looks(qapp, tmp_path,
         tool._fit_t0 = 0.0
 
         class _Task:
-            def set_range(self, *a): pass
-            def set_text(self, *a): pass
-            def set_progress(self, *a): pass
-            def set_partial(self, *a): pass
-            def raise_if_cancelled(self): pass
+            def set_range(self, *a):
+                pass
+
+            def set_text(self, *a):
+                pass
+
+            def set_progress(self, *a):
+                pass
+
+            def set_partial(self, *a):
+                pass
+
+            def raise_if_cancelled(self):
+                pass
 
         tool._fit_worker(tool._gather_settings(), _Task())
         assert written == [tmp_path / "h2mm"], written

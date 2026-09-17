@@ -21,13 +21,13 @@ and the camera meet:
 * the wheel and the hover are *not* routed yet (two hit orders remain), and
   saying so here keeps the next step honest.
 """
+
 from __future__ import annotations
 
 import pytest
-
+from chimol.viewport.chrome_layer import ChromeLayer
 from emtk.events import LEFT_BUTTON, RIGHT_BUTTON
 from emtk.router import Consumed, Event, OverlayStack, Pass, Router
-from chimol.viewport.chrome_layer import ChromeLayer
 
 
 class _Gui:
@@ -152,8 +152,8 @@ def test_a_press_the_chrome_declines_after_a_lost_release_reaches_the_camera():
     canvas.router.dispatch(_press())
     gui.takes = False
     canvas.router.dispatch(_press(x=400, y=400))
-    assert gui.log[1] == ("release",)          # the standing capture torn down
-    assert canvas.camera == ["press"]          # and the press still got through
+    assert gui.log[1] == ("release",)  # the standing capture torn down
+    assert canvas.camera == ["press"]  # and the press still got through
 
 
 def test_the_grab_flag_reads_and_writes_the_one_slot(canvas):
@@ -185,4 +185,4 @@ def test_the_context_menu_takes_the_pointer_it_never_pressed_for(canvas):
     canvas._chrome_layer.grab()
     assert canvas.router.capturer is canvas._chrome_layer
     canvas.router.dispatch(Event("move", 20, 20, buttons=0))
-    assert canvas.camera == ["release"]         # the move stayed with the menu
+    assert canvas.camera == ["release"]  # the move stayed with the menu

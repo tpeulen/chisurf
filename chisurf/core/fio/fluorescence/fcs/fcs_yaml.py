@@ -4,16 +4,11 @@ import yaml
 
 import chisurf.core.base
 import chisurf.core.fio as io
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
-def write_yaml(
-        filename: str,
-        data: typing.List[FCSDataset],
-        verbose: bool = False
-) -> None:
+def write_yaml(filename: str, data: typing.List[FCSDataset], verbose: bool = False) -> None:
     """
 
     :param filename: the filename
@@ -29,23 +24,12 @@ def write_yaml(
     """
     if verbose:
         print("Writing yaml .yaml to file: ", filename)
-    txt = yaml.dump(
-        data=chisurf.core.base.to_elementary(
-            obj=data,
-            skip_qt_widgets=True
-        )
-    )
-    with io.zipped.open_maybe_zipped(
-            filename=filename,
-            mode='w'
-    ) as fp:
+    txt = yaml.dump(data=chisurf.core.base.to_elementary(obj=data, skip_qt_widgets=True))
+    with io.zipped.open_maybe_zipped(filename=filename, mode="w") as fp:
         fp.write(txt)
 
 
-def read_yaml(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_yaml(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read a YAML FCS file.
 
     Parameters

@@ -115,9 +115,7 @@ def test_tool_constructs(plugin_id: str, entrypoint: str):
     """The tool builds offscreen, opening no metadata store on the way."""
     module, _, cls_name = entrypoint.partition(":")
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
-    )
+    env["PYTHONPATH"] = os.pathsep.join(["modules/mmfdb/src", "modules/imp-tricks/src", "."])
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["MPLBACKEND"] = "Agg"
     code = _SNIPPET.format(module=module, cls=cls_name)
@@ -139,9 +137,7 @@ def test_tool_constructs(plugin_id: str, entrypoint: str):
         )
     if result.returncode != 0:
         if plugin_id in KNOWN_BROKEN:
-            pytest.xfail(
-                f"{plugin_id} fails while constructing, exit {result.returncode} (known)"
-            )
+            pytest.xfail(f"{plugin_id} fails while constructing, exit {result.returncode} (known)")
         tail = "\n".join(result.stderr.strip().splitlines()[-12:])
         if not tail and "CONSTRUCTED" in result.stdout:
             # Built fine and then died on the way out. A teardown crash is a

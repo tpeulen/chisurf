@@ -34,7 +34,7 @@ def _relative_luminance(colour: str) -> float:
     float
     """
     value = colour.lstrip("#")
-    channels = [int(value[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    channels = [int(value[i : i + 2], 16) / 255 for i in (0, 2, 4)]
     linear = [
         channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4
         for channel in channels
@@ -106,8 +106,7 @@ def test_theme_contrast(theme_name):
         if ratio < MINIMUM_RATIO:
             failures.append(f"{label} {colour} on {theme.background}: {ratio:.2f}:1")
     assert not failures, (
-        f"{theme_name} has unreadable colours (need {MINIMUM_RATIO}:1): "
-        + "; ".join(failures)
+        f"{theme_name} has unreadable colours (need {MINIMUM_RATIO}:1): " + "; ".join(failures)
     )
 
 
@@ -128,9 +127,7 @@ def test_selection_is_legible(theme_name):
     """Selected text must be readable against the selection highlight."""
     theme = THEMES[theme_name]
     ratio = contrast_ratio(theme.selection_fg, theme.selection_bg)
-    assert ratio >= 3.0, (
-        f"{theme_name}: selected text at {ratio:.2f}:1 on the selection colour"
-    )
+    assert ratio >= 3.0, f"{theme_name}: selected text at {ratio:.2f}:1 on the selection colour"
 
 
 def test_legacy_style_names_still_resolve():

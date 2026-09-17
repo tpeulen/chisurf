@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import zmq
@@ -34,9 +35,7 @@ def _json_default(o: Any) -> Any:
             return tolist()
         except Exception:
             pass
-    raise TypeError(
-        f"Object of type {o.__class__.__name__} is not JSON serializable"
-    )
+    raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
 
 def in_server_dispatch() -> bool:
@@ -65,7 +64,7 @@ class ZmqServer:
 
     def __init__(
         self,
-        handler: Callable[[str, Dict[str, Any]], Dict[str, Any]],
+        handler: Callable[[str, dict[str, Any]], dict[str, Any]],
         cmd_port: int = 8765,
         pub_port: int = 8766,
         host: str = "127.0.0.1",
@@ -94,7 +93,7 @@ class ZmqServer:
                 "which is not yet implemented. Use 127.0.0.1 (loopback) instead."
             )
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._ctx: zmq.Context | None = None
         self._rep_socket: zmq.Socket | None = None
         self._pub_socket: zmq.Socket | None = None
@@ -114,7 +113,10 @@ class ZmqServer:
         self._running = True
         _log.info(
             "ZMQ server listening on tcp://%s:%s (cmd) and tcp://%s:%s (pub)",
-            self._host, self._cmd_port, self._host, self._pub_port,
+            self._host,
+            self._cmd_port,
+            self._host,
+            self._pub_port,
         )
 
         poller = zmq.Poller()
@@ -138,7 +140,7 @@ class ZmqServer:
         """Signal the server loop to stop."""
         self._running = False
 
-    def broadcast_event(self, topic: str, payload: Dict[str, Any]) -> None:
+    def broadcast_event(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish an event on the PUB socket."""
         if self._pub_socket is None:
             return
@@ -153,16 +155,24 @@ class ZmqServer:
         try:
             raw = self._rep_socket.recv_json()
         except Exception:
-            self._rep_socket.send_json({"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None})
+            self._rep_socket.send_json(
+                {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None}
+            )
             return
 
-        if not isinstance(raw, dict) or not isinstance(raw.get("method"), str) or not raw.get("method"):
+        if (
+            not isinstance(raw, dict)
+            or not isinstance(raw.get("method"), str)
+            or not raw.get("method")
+        ):
             req_id = raw.get("id") if isinstance(raw, dict) else None
-            self._rep_socket.send_json({
-                "jsonrpc": "2.0",
-                "error": {"code": -32600, "message": "Invalid Request"},
-                "id": req_id,
-            })
+            self._rep_socket.send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                    "id": req_id,
+                }
+            )
             return
 
         if raw.get("jsonrpc") != "2.0":
@@ -183,30 +193,38 @@ class ZmqServer:
             # JSON-RPC error member so callers can distinguish success
             # from failure by the contract, not by sniffing fields.
             if isinstance(result, dict) and result.get("ok") is False:
-                self._rep_socket.send_json({
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": result.get("jsonrpc_code", -32603),
-                        "message": result.get("error", "Service error"),
-                        "data": {
-                            "error_code": result.get("error_code"),
-                            "exception_type": result.get("exception_type"),
+                self._rep_socket.send_json(
+                    {
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": result.get("jsonrpc_code", -32603),
+                            "message": result.get("error", "Service error"),
+                            "data": {
+                                "error_code": result.get("error_code"),
+                                "exception_type": result.get("exception_type"),
+                            },
                         },
+                        "id": req_id,
                     },
-                    "id": req_id,
-                }, default=_json_default)
+                    default=_json_default,
+                )
             else:
-                self._rep_socket.send_json({
-                    "jsonrpc": "2.0",
-                    "result": result,
-                    "id": req_id,
-                }, default=_json_default)
+                self._rep_socket.send_json(
+                    {
+                        "jsonrpc": "2.0",
+                        "result": result,
+                        "id": req_id,
+                    },
+                    default=_json_default,
+                )
         except Exception as e:
-            self._rep_socket.send_json({
-                "jsonrpc": "2.0",
-                "error": {"code": -32603, "message": str(e)},
-                "id": req_id,
-            })
+            self._rep_socket.send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32603, "message": str(e)},
+                    "id": req_id,
+                }
+            )
 
     def _cleanup(self) -> None:
         """Close ZMQ sockets and terminate the context."""
@@ -268,7 +286,7 @@ class ZmqClient:
         self._sub_socket: zmq.Socket | None = None
         self._request_id: int = 0
         # Subscriber dispatch is driven by drain() from the owning event loop.
-        self._subscribers: Dict[str, list[Callable]] = {}
+        self._subscribers: dict[str, list[Callable]] = {}
         self._call_lock = threading.RLock()
         self._closed = False
 
@@ -279,6 +297,7 @@ class ZmqClient:
         :meth:`call` will not do it silently.
         """
         import zmq
+
         self._closed = False
         if self._ctx is None:
             self._ctx = zmq.Context()
@@ -327,7 +346,7 @@ class ZmqClient:
                 pass
             self._req_socket = None
 
-    def call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Send a JSON-RPC request and wait for the response.
 
         A closed client stays closed. Reconnecting here instead built a fresh
@@ -338,13 +357,12 @@ class ZmqClient:
         """
         with self._call_lock:
             if self._closed:
-                raise RuntimeError(
-                    "this client is closed; call connect() to reopen it"
-                )
+                raise RuntimeError("this client is closed; call connect() to reopen it")
             if self._req_socket is None:
                 self.connect()
 
             import zmq
+
             self._request_id += 1
             msg = {
                 "jsonrpc": "2.0",
@@ -375,7 +393,7 @@ class ZmqClient:
 
             if self._req_socket not in socks:
                 self._reset_socket()
-                return {"ok": False, "error": "timeout: no response within {}ms".format(self._timeout_ms)}
+                return {"ok": False, "error": f"timeout: no response within {self._timeout_ms}ms"}
 
             try:
                 return self._req_socket.recv_json()
@@ -383,7 +401,7 @@ class ZmqClient:
                 self._reset_socket()
                 return {"ok": False, "error": f"recv failed: {e}"}
 
-    def subscribe(self, topic: str = "", callback: Optional[Callable] = None) -> Any:
+    def subscribe(self, topic: str = "", callback: Callable | None = None) -> Any:
         """Register a subscriber for *topic*.
 
         ZMQ uses prefix matching, so ``"dataset."`` matches
@@ -395,6 +413,7 @@ class ZmqClient:
         custom use.
         """
         import zmq
+
         if self._ctx is None:
             self._ctx = zmq.Context()
         if self._sub_socket is None:
@@ -455,7 +474,11 @@ class ZmqClient:
         while True:
             try:
                 topic_bytes, data = self._sub_socket.recv_multipart(flags=zmq.NOBLOCK)
-                topic = topic_bytes.decode("utf-8") if isinstance(topic_bytes, bytes) else str(topic_bytes)
+                topic = (
+                    topic_bytes.decode("utf-8")
+                    if isinstance(topic_bytes, bytes)
+                    else str(topic_bytes)
+                )
                 payload = json.loads(data.decode("utf-8"))
                 for pattern, cbs in list(self._subscribers.items()):
                     # Use same prefix-matching semantics as ZMQ SUBSCRIBE
@@ -467,7 +490,8 @@ class ZmqClient:
                             except Exception:
                                 _log.exception(
                                     "Subscriber callback error for topic '%s' (pattern '%s')",
-                                    topic, pattern,
+                                    topic,
+                                    pattern,
                                 )
             except zmq.Again:
                 break

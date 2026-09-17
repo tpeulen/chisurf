@@ -71,9 +71,7 @@ def test_a_shape_mismatch_is_refused(tmp_path):
 
 def test_non_finite_values_become_the_sentinel(tmp_path):
     """A skipped burst keeps its row; NaN would read differently per reader."""
-    path = write_companion(
-        tmp_path, "xx4", "m000", COLUMNS, [[np.nan, 1.0], [np.inf, 2.0]]
-    )
+    path = write_companion(tmp_path, "xx4", "m000", COLUMNS, [[np.nan, 1.0], [np.inf, 2.0]])
     _, back = read_companion(path)
     assert np.isfinite(back).all()
     assert back[0, 0] == 0.0 and back[1, 0] == 0.0
@@ -96,7 +94,5 @@ def test_the_h2mm_companion_columns_are_namespaced():
     """Columns from different companions land in one frame — names must not clash."""
     from chisurf.plugins.burst.burst_h2mm.core.export import H2MM_COMPANION_COLUMNS
 
-    assert all(c.startswith("H2MM ") for c in H2MM_COMPANION_COLUMNS), (
-        H2MM_COMPANION_COLUMNS
-    )
+    assert all(c.startswith("H2MM ") for c in H2MM_COMPANION_COLUMNS), H2MM_COMPANION_COLUMNS
     assert len(set(H2MM_COMPANION_COLUMNS)) == len(H2MM_COMPANION_COLUMNS)

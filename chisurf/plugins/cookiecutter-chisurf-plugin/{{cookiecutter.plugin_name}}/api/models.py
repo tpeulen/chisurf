@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 
 @dataclass
 class PluginSettings:
     """Example plugin settings DTO."""
+
     example_param: str = "default"
     example_number: float = 1.0
 
@@ -17,6 +18,4 @@ class PluginSettings:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PluginSettings:
-        return cls(**{k: v for k, v in data.items() if k in (
-            "example_param", "example_number"
-        )})
+        return cls(**{k: v for k, v in data.items() if k in ("example_param", "example_number")})

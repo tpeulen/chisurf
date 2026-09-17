@@ -29,14 +29,14 @@ from chisurf.core.models.pda2c.common import resolve_fit_settings
 
 
 def resample_s1s2(
-        pF,
-        amplitudes,
-        probabilities,
-        n_bursts: int,
-        background_ch1: float = 0.0,
-        background_ch2: float = 0.0,
-        seed: int = 1,
-        n_max: int | None = None,
+    pF,
+    amplitudes,
+    probabilities,
+    n_bursts: int,
+    background_ch1: float = 0.0,
+    background_ch2: float = 0.0,
+    seed: int = 1,
+    n_max: int | None = None,
 ) -> np.ndarray:
     """Draw a synthetic S1S2 histogram from a PDA amplitude spectrum.
 
@@ -127,11 +127,11 @@ def _poisson_chi2(observed: np.ndarray, expected: np.ndarray) -> float:
 
 
 def kinetic_consistency_check(
-        fit,
-        n_resamples: int = 200,
-        n_bursts: int | None = None,
-        seed: int = 1,
-        kw_hist: dict | None = None,
+    fit,
+    n_resamples: int = 200,
+    n_bursts: int | None = None,
+    seed: int = 1,
+    kw_hist: dict | None = None,
 ) -> dict:
     """Test whether measured bursts are consistent with a fitted PDA scheme.
 

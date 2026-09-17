@@ -62,6 +62,7 @@ def _run(argv: list[str]) -> None:
 
     # No CLI flags → launch the GUI.
     from qtpy import QtWidgets
+
     from .k2dgui import Kappa2Dist
 
     app = QtWidgets.QApplication(sys.argv)

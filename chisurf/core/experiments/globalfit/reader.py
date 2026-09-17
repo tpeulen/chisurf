@@ -1,12 +1,11 @@
 from __future__ import annotations
-from chisurf import typing
 
 import chisurf.core.data
+from chisurf import typing
 from chisurf.core.experiments.core.reader import ExperimentReader
 
 
 class GlobalFitSetup(ExperimentReader):
-
     operation_type = "global_fit"
     artifact_kind_derived = "fit_result"
 
@@ -29,12 +28,7 @@ class GlobalFitSetup(ExperimentReader):
         """
         return 0, 0
 
-    def read(
-            self,
-            name: str = "Global-fit",
-            *args,
-            **kwargs
-    ):
+    def read(self, name: str = "Global-fit", *args, **kwargs):
         """Create a placeholder data curve for global fitting.
 
         Parameters
@@ -47,15 +41,10 @@ class GlobalFitSetup(ExperimentReader):
         chisurf.core.data.DataCurve
             A singleton data curve with zero-valued x/y.
         """
-        return chisurf.core.data.DataCurve(
-            x=[0], y=[0],
-            setup=self,
-            name=name
-        )
+        return chisurf.core.data.DataCurve(x=[0], y=[0], setup=self, name=name)
 
     def __str__(self):
         """Human-readable string representation."""
-        s = 'Global-Fit\n'
-        s += 'Name: \t%s \n' % self.name
+        s = "Global-Fit\n"
+        s += f"Name: \t{self.name} \n"
         return s
-

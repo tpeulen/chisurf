@@ -38,8 +38,10 @@ def test_expiry_filter_and_expired_handler(db):
         create_reagent_lot_handler(kind="buffer", name="fresh", expiry="2999-01-01")
         create_reagent_lot_handler(kind="buffer", name="old", expiry="2000-01-01")
         visible = {l["name"] for l in list_reagent_lots_handler(kind="buffer")["lots"]}
-        all_lots = {l["name"] for l in list_reagent_lots_handler(
-            kind="buffer", include_expired=True)["lots"]}
+        all_lots = {
+            l["name"]
+            for l in list_reagent_lots_handler(kind="buffer", include_expired=True)["lots"]
+        }
         expired = {l["name"] for l in expired_reagent_lots_handler()["lots"]}
     assert visible == {"fresh"}
     assert all_lots == {"fresh", "old"}

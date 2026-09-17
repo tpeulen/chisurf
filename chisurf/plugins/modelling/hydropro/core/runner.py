@@ -11,9 +11,9 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 from .settings import HydroProSettings
 
@@ -33,10 +33,10 @@ class HydroResult:
     """Result of a single HYDRO run."""
 
     struct_file: str
-    diffusion_coefficient: Optional[float]
+    diffusion_coefficient: float | None
 
 
-def parse_diffusion_coefficient(res_path: Path) -> Optional[float]:
+def parse_diffusion_coefficient(res_path: Path) -> float | None:
     """Extract the translational diffusion coefficient (cm²/s) from a ``*.res``.
 
     Scans for the first ``diffusion coefficient: <value>`` line and returns the
@@ -56,34 +56,36 @@ def parse_diffusion_coefficient(res_path: Path) -> Optional[float]:
     return None
 
 
-def construct_input_file(struct_files: List[Path], input_path: Path) -> List[str]:
+def construct_input_file(struct_files: list[Path], input_path: Path) -> list[str]:
     """Write a HYDRO++ main input file (one block per structure).
 
     Returns the list of output basenames (without extension) used per case.
     """
-    output_basenames: List[str] = []
-    lines: List[str] = []
+    output_basenames: list[str] = []
+    lines: list[str] = []
     for idx, struct_file in enumerate(struct_files, start=1):
         title = struct_file.stem[:20].ljust(20)
         basename = f"case{idx:03d}"
         output_basenames.append(basename)
-        lines.extend([
-            title,
-            basename.ljust(30),
-            str(struct_file).ljust(30),
-            "12",        # ICASE (12 = recommended option for HYDRO++)
-            "20.0",      # Temperature (°C)
-            "0.010",     # Solvent viscosity (poise)
-            "100000.0",  # Molecular weight (Da)
-            "0.74",      # Partial specific volume (cm^3/g)
-            "1.0",       # Solution density (g/cm^3)
-            "0",         # NQ
-            "0.0",       # HMAX
-            "0",         # distance-distribution intervals
-            "0.0",       # RMAX
-            "0",         # NTRIALS
-            "1",         # IDIF
-        ])
+        lines.extend(
+            [
+                title,
+                basename.ljust(30),
+                str(struct_file).ljust(30),
+                "12",  # ICASE (12 = recommended option for HYDRO++)
+                "20.0",  # Temperature (°C)
+                "0.010",  # Solvent viscosity (poise)
+                "100000.0",  # Molecular weight (Da)
+                "0.74",  # Partial specific volume (cm^3/g)
+                "1.0",  # Solution density (g/cm^3)
+                "0",  # NQ
+                "0.0",  # HMAX
+                "0",  # distance-distribution intervals
+                "0.0",  # RMAX
+                "0",  # NTRIALS
+                "1",  # IDIF
+            ]
+        )
     lines.append("*")
     input_path.write_text("\n".join(lines))
     return output_basenames
@@ -91,12 +93,12 @@ def construct_input_file(struct_files: List[Path], input_path: Path) -> List[str
 
 def write_hydropro_input(
     struct_file: Path, job_dir: Path, settings: HydroProSettings
-) -> Tuple[str, Path]:
+) -> tuple[str, Path]:
     """Write a ``hydropro.dat`` for one structure. Returns (basename, path)."""
     generic = struct_file.stem
     title = (generic[:28] + "…") if len(generic) > 28 else generic
 
-    lines: List[str] = [
+    lines: list[str] = [
         f"{title}                        !TITLE (CHAR*20)",
         f"{generic}                        !FILENAME (base for outputs)",
         f"{struct_file.name}        !INPUT PDB filename (relative)",
@@ -137,16 +139,16 @@ def _noop_log(_msg: str) -> None:
 
 
 def run_hydro(
-    struct_files: List[Path],
+    struct_files: list[Path],
     settings: HydroProSettings,
     exe_path: Path,
-    work_dir: Optional[Path] = None,
+    work_dir: Path | None = None,
     *,
-    on_log: Optional[LogCallback] = None,
-    on_progress: Optional[ProgressCallback] = None,
-    should_cancel: Optional[CancelCallback] = None,
+    on_log: LogCallback | None = None,
+    on_progress: ProgressCallback | None = None,
+    should_cancel: CancelCallback | None = None,
     timeout: int = 300,
-) -> List[HydroResult]:
+) -> list[HydroResult]:
     """Run HYDROPRO / HYDRO++ over ``struct_files`` and return per-file results.
 
     The executable flavour is chosen from its filename (``hydropro`` → HYDROPRO,
@@ -162,7 +164,7 @@ def run_hydro(
 
     total = len(struct_files)
     is_hydropro = "hydropro" in exe_path.name.lower()
-    results: List[HydroResult] = []
+    results: list[HydroResult] = []
 
     for idx, struct_file in enumerate(struct_files, start=1):
         if should_cancel and should_cancel():
@@ -198,7 +200,7 @@ def run_hydro(
                 cwd=str(job_dir),
             )
             out_bytes, err_bytes = process.communicate(
-                input=f"{input_to_feed}\n".encode("utf-8"), timeout=timeout
+                input=f"{input_to_feed}\n".encode(), timeout=timeout
             )
             out_text = out_bytes.decode("utf-8", errors="ignore") if out_bytes else ""
             err_text = err_bytes.decode("utf-8", errors="ignore") if err_bytes else ""

@@ -20,19 +20,18 @@ and "these bursts" on a parameter histogram.
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from collections.abc import Iterable, Sequence
+from typing import Any, Optional
 
 import numpy as np
 
 #: Registry of ROI type name -> class, populated by ``__init_subclass__``.
-_ROI_TYPES: Dict[str, type] = {}
+_ROI_TYPES: dict[str, type] = {}
 
-Extent = Optional[Tuple[float, float, float, float]]
+Extent = Optional[tuple[float, float, float, float]]
 
 
-def pixel_centres(
-    shape: Sequence[int], extent: Extent = None
-) -> Tuple[np.ndarray, np.ndarray]:
+def pixel_centres(shape: Sequence[int], extent: Extent = None) -> tuple[np.ndarray, np.ndarray]:
     """Return the ``(x, y)`` coordinate of every pixel centre in a grid.
 
     Parameters
@@ -141,7 +140,7 @@ class ROI(abc.ABC):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
+        image: np.ndarray | None = None,
     ) -> np.ndarray:
         """Rasterise the region onto a pixel grid.
 
@@ -168,8 +167,8 @@ class ROI(abc.ABC):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Optional[Tuple[int, int, int, int]]:
+        image: np.ndarray | None = None,
+    ) -> tuple[int, int, int, int] | None:
         """Return the smallest box of pixels containing the region.
 
         Parameters
@@ -199,7 +198,7 @@ class ROI(abc.ABC):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
+        image: np.ndarray | None = None,
     ) -> np.ndarray:
         """Return the positions of the selected pixels in the flattened array.
 
@@ -232,10 +231,10 @@ class ROI(abc.ABC):
 
     def bounds(
         self,
-        shape: Optional[Sequence[int]] = None,
+        shape: Sequence[int] | None = None,
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Optional[Tuple[float, float, float, float]]:
+        image: np.ndarray | None = None,
+    ) -> tuple[float, float, float, float] | None:
         """Return the region's extent in its own coordinates.
 
         Where :meth:`bounding_box` answers in whole pixels, this answers in the
@@ -273,8 +272,8 @@ class ROI(abc.ABC):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Optional[Any]:
+        image: np.ndarray | None = None,
+    ) -> Any | None:
         """Measure the region: area, centroid, shape and intensity statistics.
 
         Parameters
@@ -297,32 +296,32 @@ class ROI(abc.ABC):
         return found[0] if found else None
 
     # --- composition -------------------------------------------------------
-    def __and__(self, other: "ROI") -> "CompositeROI":
+    def __and__(self, other: ROI) -> CompositeROI:
         """Return the intersection of two regions."""
         return CompositeROI("and", [self, other])
 
-    def __or__(self, other: "ROI") -> "CompositeROI":
+    def __or__(self, other: ROI) -> CompositeROI:
         """Return the union of two regions."""
         return CompositeROI("or", [self, other])
 
-    def __xor__(self, other: "ROI") -> "CompositeROI":
+    def __xor__(self, other: ROI) -> CompositeROI:
         """Return the symmetric difference of two regions."""
         return CompositeROI("xor", [self, other])
 
-    def __sub__(self, other: "ROI") -> "CompositeROI":
+    def __sub__(self, other: ROI) -> CompositeROI:
         """Return this region with another removed."""
         return CompositeROI("sub", [self, other])
 
-    def __invert__(self) -> "CompositeROI":
+    def __invert__(self) -> CompositeROI:
         """Return everything outside this region."""
         return CompositeROI("not", [self])
 
     # --- serialisation -----------------------------------------------------
     @abc.abstractmethod
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the type-specific parameters for :meth:`to_dict`."""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable description of the region.
 
         Returns
@@ -331,7 +330,7 @@ class ROI(abc.ABC):
             ``{"type": ..., "name": ..., **params}``, reversible with
             :func:`roi_from_dict`.
         """
-        out: Dict[str, Any] = {"type": self.type_name, "name": self.name}
+        out: dict[str, Any] = {"type": self.type_name, "name": self.name}
         out.update(self._params())
         return out
 
@@ -352,9 +351,7 @@ class RectangleROI(ROI):
 
     type_name = "rectangle"
 
-    def __init__(
-        self, x0: float, y0: float, x1: float, y1: float, name: str = ""
-    ) -> None:
+    def __init__(self, x0: float, y0: float, x1: float, y1: float, name: str = "") -> None:
         """Initialize from two opposite corners, in either order."""
         super().__init__(name=name)
         self.x0, self.x1 = (float(x0), float(x1)) if x0 <= x1 else (float(x1), float(x0))
@@ -364,27 +361,26 @@ class RectangleROI(ROI):
         """Return which points lie inside the rectangle."""
         p = _as_points(points)
         return (
-            (p[:, 0] >= self.x0)
-            & (p[:, 0] < self.x1)
-            & (p[:, 1] >= self.y0)
-            & (p[:, 1] < self.y1)
+            (p[:, 0] >= self.x0) & (p[:, 0] < self.x1) & (p[:, 1] >= self.y0) & (p[:, 1] < self.y1)
         )
 
     def bounds(
         self,
-        shape: Optional[Sequence[int]] = None,
+        shape: Sequence[int] | None = None,
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Tuple[float, float, float, float]:
+        image: np.ndarray | None = None,
+    ) -> tuple[float, float, float, float]:
         """Return the rectangle itself — no grid needed."""
         return (self.x0, self.y0, self.x1, self.y1)
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the corner coordinates."""
         return {"x0": self.x0, "y0": self.y0, "x1": self.x1, "y1": self.y1}
 
     @classmethod
-    def from_slices(cls, y_range: Sequence[int], x_range: Sequence[int], name: str = "") -> "RectangleROI":
+    def from_slices(
+        cls, y_range: Sequence[int], x_range: Sequence[int], name: str = ""
+    ) -> RectangleROI:
         """Build a rectangle from array slice bounds.
 
         Parameters
@@ -403,8 +399,10 @@ class RectangleROI(ROI):
         # Pixel centres sit at integers, so a slice [a, b) covers centres
         # a .. b-1; the half-open rectangle [a-0.5, b-0.5) selects exactly those.
         return cls(
-            float(x_range[0]) - 0.5, float(y_range[0]) - 0.5,
-            float(x_range[1]) - 0.5, float(y_range[1]) - 0.5,
+            float(x_range[0]) - 0.5,
+            float(y_range[0]) - 0.5,
+            float(x_range[1]) - 0.5,
+            float(y_range[1]) - 0.5,
             name=name,
         )
 
@@ -423,7 +421,7 @@ class EllipseROI(ROI):
         cx: float,
         cy: float,
         rx: float,
-        ry: Optional[float] = None,
+        ry: float | None = None,
         angle: float = 0.0,
         name: str = "",
     ) -> None:
@@ -458,21 +456,24 @@ class EllipseROI(ROI):
 
     def bounds(
         self,
-        shape: Optional[Sequence[int]] = None,
+        shape: Sequence[int] | None = None,
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Tuple[float, float, float, float]:
+        image: np.ndarray | None = None,
+    ) -> tuple[float, float, float, float]:
         """Return the ellipse's tightest box, rotation included."""
         c, s = abs(np.cos(self.angle)), abs(np.sin(self.angle))
         half_x = float(np.hypot(self.rx * c, self.ry * s))
         half_y = float(np.hypot(self.rx * s, self.ry * c))
         return (self.cx - half_x, self.cy - half_y, self.cx + half_x, self.cy + half_y)
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the centre, radii and rotation."""
         return {
-            "cx": self.cx, "cy": self.cy,
-            "rx": self.rx, "ry": self.ry, "angle": self.angle,
+            "cx": self.cx,
+            "cy": self.cy,
+            "rx": self.rx,
+            "ry": self.ry,
+            "angle": self.angle,
         }
 
 
@@ -490,9 +491,7 @@ class PolygonROI(ROI):
         super().__init__(name=name)
         v = np.atleast_2d(np.asarray(vertices, dtype=float))
         if v.ndim != 2 or v.shape[1] != 2 or v.shape[0] < 3:
-            raise ValueError(
-                f"a polygon needs at least 3 (x, y) vertices; got shape {v.shape}"
-            )
+            raise ValueError(f"a polygon needs at least 3 (x, y) vertices; got shape {v.shape}")
         self.vertices = v
 
     def contains(self, points: np.ndarray) -> np.ndarray:
@@ -520,16 +519,16 @@ class PolygonROI(ROI):
 
     def bounds(
         self,
-        shape: Optional[Sequence[int]] = None,
+        shape: Sequence[int] | None = None,
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Tuple[float, float, float, float]:
+        image: np.ndarray | None = None,
+    ) -> tuple[float, float, float, float]:
         """Return the box spanned by the vertices."""
         low = self.vertices.min(axis=0)
         high = self.vertices.max(axis=0)
         return (float(low[0]), float(low[1]), float(high[0]), float(high[1]))
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the vertex list."""
         return {"vertices": self.vertices.tolist()}
 
@@ -552,7 +551,7 @@ class MaskROI(ROI):
     def __init__(
         self,
         mask: np.ndarray,
-        offset: Tuple[int, int] = (0, 0),
+        offset: tuple[int, int] = (0, 0),
         name: str = "",
         extent: Extent = None,
     ) -> None:
@@ -660,7 +659,7 @@ class MaskROI(ROI):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
+        image: np.ndarray | None = None,
     ) -> np.ndarray:
         """Return the stored mask placed into an array of the requested shape.
 
@@ -677,17 +676,15 @@ class MaskROI(ROI):
         r_lo, c_lo = max(0, r0), max(0, c0)
         r_hi, c_hi = min(ny, r0 + mh), min(nx, c0 + mw)
         if r_hi > r_lo and c_hi > c_lo:
-            out[r_lo:r_hi, c_lo:c_hi] = self.mask[
-                r_lo - r0:r_hi - r0, c_lo - c0:c_hi - c0
-            ]
+            out[r_lo:r_hi, c_lo:c_hi] = self.mask[r_lo - r0 : r_hi - r0, c_lo - c0 : c_hi - c0]
         return out
 
     def bounds(
         self,
-        shape: Optional[Sequence[int]] = None,
+        shape: Sequence[int] | None = None,
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
-    ) -> Optional[Tuple[float, float, float, float]]:
+        image: np.ndarray | None = None,
+    ) -> tuple[float, float, float, float] | None:
         """Return the value-space box of the set cells, when the mask has axes."""
         if self.extent is None:
             return super().bounds(shape, extent, image)
@@ -699,13 +696,15 @@ class MaskROI(ROI):
         ny, nx = self.mask.shape
         dx, dy = (x1 - x0) / nx, (y1 - y0) / ny
         return (
-            x0 + cols[0] * dx, y0 + rows[0] * dy,
-            x0 + (cols[-1] + 1) * dx, y0 + (rows[-1] + 1) * dy,
+            x0 + cols[0] * dx,
+            y0 + rows[0] * dy,
+            x0 + (cols[-1] + 1) * dx,
+            y0 + (rows[-1] + 1) * dy,
         )
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the mask as nested lists, plus its offset or its extent."""
-        out: Dict[str, Any] = {"mask": self.mask.astype(np.uint8).tolist()}
+        out: dict[str, Any] = {"mask": self.mask.astype(np.uint8).tolist()}
         if self.extent is None:
             out["offset"] = list(self.offset)
         else:
@@ -726,8 +725,8 @@ class ThresholdROI(ROI):
 
     def __init__(
         self,
-        low: Optional[float] = None,
-        high: Optional[float] = None,
+        low: float | None = None,
+        high: float | None = None,
         percentile: bool = False,
         name: str = "",
     ) -> None:
@@ -759,7 +758,7 @@ class ThresholdROI(ROI):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
+        image: np.ndarray | None = None,
     ) -> np.ndarray:
         """Return the pixels of *image* whose value lies within the bounds.
 
@@ -812,7 +811,7 @@ class ThresholdROI(ROI):
             out &= img <= high
         return out
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the bounds and whether they are percentiles."""
         return {"low": self.low, "high": self.high, "percentile": self.percentile}
 
@@ -841,9 +840,9 @@ class CompositeROI(ROI):
         if not members:
             raise ValueError(f"operation {op!r} needs at least one region")
         self.op = op
-        self.rois: List[ROI] = members
+        self.rois: list[ROI] = members
 
-    def _combine(self, parts: List[np.ndarray]) -> np.ndarray:
+    def _combine(self, parts: list[np.ndarray]) -> np.ndarray:
         """Apply the operation to already-evaluated boolean arrays."""
         if self.op == "not":
             return ~parts[0]
@@ -867,7 +866,7 @@ class CompositeROI(ROI):
         self,
         shape: Sequence[int],
         extent: Extent = None,
-        image: Optional[np.ndarray] = None,
+        image: np.ndarray | None = None,
     ) -> np.ndarray:
         """Return the rasterised combined region.
 
@@ -876,12 +875,12 @@ class CompositeROI(ROI):
         """
         return self._combine([r.to_mask(shape, extent, image) for r in self.rois])
 
-    def _params(self) -> Dict[str, Any]:
+    def _params(self) -> dict[str, Any]:
         """Return the operation and the serialised operands."""
         return {"op": self.op, "rois": [r.to_dict() for r in self.rois]}
 
 
-def roi_from_dict(data: Dict[str, Any]) -> ROI:
+def roi_from_dict(data: dict[str, Any]) -> ROI:
     """Rebuild a region from its :meth:`ROI.to_dict` description.
 
     Parameters
@@ -920,18 +919,19 @@ def roi_from_dict(data: Dict[str, Any]) -> ROI:
             name=params.get("name", ""),
         )
     if cls is PolygonROI:
-        return PolygonROI(np.asarray(params["vertices"], dtype=float),
-                          name=params.get("name", ""))
+        return PolygonROI(np.asarray(params["vertices"], dtype=float), name=params.get("name", ""))
     if cls is MaskROI:
         stored_extent = params.get("extent")
-        return MaskROI(np.asarray(params["mask"], dtype=bool),
-                       offset=tuple(params.get("offset", (0, 0))),
-                       name=params.get("name", ""),
-                       extent=None if stored_extent is None else tuple(stored_extent))
+        return MaskROI(
+            np.asarray(params["mask"], dtype=bool),
+            offset=tuple(params.get("offset", (0, 0))),
+            name=params.get("name", ""),
+            extent=None if stored_extent is None else tuple(stored_extent),
+        )
     return cls(**params)
 
 
-def as_roi(value: Any) -> Optional[ROI]:
+def as_roi(value: Any) -> ROI | None:
     """Return *value* as a region, accepting its serialised form.
 
     Settings cross RPC boundaries and project files as plain data, so a region
@@ -984,7 +984,7 @@ def as_mask(
     region: Any,
     shape: Sequence[int],
     extent: Extent = None,
-    image: Optional[np.ndarray] = None,
+    image: np.ndarray | None = None,
 ) -> np.ndarray:
     """Return a boolean pixel mask from a region, an array, or nothing.
 
@@ -1071,9 +1071,7 @@ def union_of(rois: Sequence[ROI], name: str = "") -> ROI:
     return CompositeROI("or", members, name=name)
 
 
-def labels_to_rois(
-    labels: np.ndarray, crop: bool = True, background: int = 0
-) -> List[MaskROI]:
+def labels_to_rois(labels: np.ndarray, crop: bool = True, background: int = 0) -> list[MaskROI]:
     """Split a segmentation label image into one region per label.
 
     The bridge between segmentation and everything else: watershed output,
@@ -1109,7 +1107,7 @@ def labels_to_rois(
     if lab.ndim != 2:
         raise ValueError(f"labels must be a 2-D image; got shape {lab.shape}")
 
-    out: List[MaskROI] = []
+    out: list[MaskROI] = []
     for value in sorted(int(v) for v in np.unique(lab) if int(v) != int(background)):
         hit = lab == value
         if not crop:
@@ -1127,7 +1125,7 @@ def rois_to_labels(
     rois: Iterable[ROI],
     shape: Sequence[int],
     extent: Extent = None,
-    image: Optional[np.ndarray] = None,
+    image: np.ndarray | None = None,
 ) -> np.ndarray:
     """Rasterise several regions into one integer label image.
 

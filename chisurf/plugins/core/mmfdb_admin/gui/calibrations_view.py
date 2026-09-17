@@ -12,9 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from qtpy import QtWidgets
-
 from mmfdb.lifecycle.staleness import CALIBRATION_TYPES
+from qtpy import QtWidgets
 
 _CAL_COLUMNS = ("Type", "Method", "Value", "Notes", "Artifact ID")
 _CAL_KEYS = ("calibration_type", "method", "value", "notes", "artifact_id")
@@ -95,15 +94,14 @@ class CalibrationsView(QtWidgets.QWidget):
             self.message_label.setText("Enter a numeric value.")
             return
         result = self._client.create_calibration(
-            self.new_type_combo.currentText(), value,
+            self.new_type_combo.currentText(),
+            value,
             notes=self.new_notes_edit.text().strip(),
         )
         if result.get("error"):
             self.message_label.setText(f"Rejected: {result['error']}")
         else:
-            self.message_label.setText(
-                f"Registered {self.new_type_combo.currentText()} = {value}."
-            )
+            self.message_label.setText(f"Registered {self.new_type_combo.currentText()} = {value}.")
             self.new_value_edit.clear()
             self.new_notes_edit.clear()
         self.refresh()

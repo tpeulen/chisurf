@@ -1,17 +1,13 @@
 from __future__ import annotations
-from chisurf import typing
 
 import numpy as np
 
+from chisurf import typing
 
-window_function_types = ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']
+window_function_types = ["flat", "hanning", "hamming", "bartlett", "blackman"]
 
 
-def window(
-        data: np.array,
-        window_len: int,
-        window_function_type: str = 'bartlett'
-) -> np.array:
+def window(data: np.array, window_len: int, window_function_type: str = "bartlett") -> np.array:
     """
     Smooth the data using a window with the requested size.
 
@@ -52,25 +48,21 @@ def window(
         raise ValueError("Input vector needs to be bigger than window size.")
     if window_len < 3:
         return data
-    if window_function_type not in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+    if window_function_type not in ["flat", "hanning", "hamming", "bartlett", "blackman"]:
         raise ValueError(
             "Window must be one of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
         )
-    s = np.r_[2 * data[0] - data[window_len:1:-1], data,
-              2 * data[-1] - data[-1:-window_len:-1]]
-    if window_function_type == 'flat':  # moving average
-        w = np.ones(window_len, 'd')
+    s = np.r_[2 * data[0] - data[window_len:1:-1], data, 2 * data[-1] - data[-1:-window_len:-1]]
+    if window_function_type == "flat":  # moving average
+        w = np.ones(window_len, "d")
     else:
-        w = eval('np.' + window_function_type + '(window_len)')
-    y = np.convolve(w / w.sum(), s, mode='same')
-    return y[window_len-1:-window_len+1]
+        w = eval("np." + window_function_type + "(window_len)")
+    y = np.convolve(w / w.sum(), s, mode="same")
+    return y[window_len - 1 : -window_len + 1]
 
 
 def shift_array(
-        v: np.ndarray,
-        shift: float,
-        set_outside: bool = True,
-        outside_value: float = 0.0
+    v: np.ndarray, shift: float, set_outside: bool = True, outside_value: float = 0.0
 ) -> np.array:
     """
     Calculate a shifted version of the input array using linear interpolation for non-integer shifts.
@@ -102,7 +94,7 @@ def shift_array(
     # produced a *right* shift with wrapped data at index 0, and -1.5 shifted by
     # -0.5. Integer shifts happened to be correct, which hid it.
     ts_i = int(np.floor(ts))
-    ts_f = ts - ts_i                       # fractional part, always in [0, 1)
+    ts_f = ts - ts_i  # fractional part, always in [0, 1)
     if ts_f == 0.0:
         # Whole-sample shift: the interpolation weights are exactly 1 and 0, so
         # the second roll and both multiplies are wasted work. Identical result
@@ -121,27 +113,23 @@ def shift_array(
         # out-of-range sample's *share*, so the result is continuous in `shift`.
         if ts >= 0:
             edge = min(ts_i, n)
-            ysh[:edge] = outside_value     # both samples out of range
+            ysh[:edge] = outside_value  # both samples out of range
             if ts_f > 0.0 and edge < n:
                 # v[edge - ts_i - 1] == v[-1] is out of range; v[0] is not.
                 ysh[edge] = v[0] * (1.0 - ts_f) + outside_value * ts_f
         else:
-            edge = n + ts_i                # first channel with a sample past the end
+            edge = n + ts_i  # first channel with a sample past the end
             if ts_f > 0.0:
                 if 0 <= edge < n:
                     # v[edge - ts_i] == v[n] is out of range; v[n - 1] is not.
                     ysh[edge] = outside_value * (1.0 - ts_f) + v[n - 1] * ts_f
-                ysh[max(edge + 1, 0):] = outside_value
+                ysh[max(edge + 1, 0) :] = outside_value
             else:
-                ysh[max(edge, 0):] = outside_value
+                ysh[max(edge, 0) :] = outside_value
     return ysh
 
 
-def autocorr(
-        x: np.ndarray,
-        axis: int = 0,
-        normalize: bool = True
-) -> np.array:
+def autocorr(x: np.ndarray, axis: int = 0, normalize: bool = True) -> np.array:
     """
     Estimate the autocorrelation function of a time series using the FFT.
 
@@ -164,21 +152,13 @@ def autocorr(
         The autocorrelation function of the input time series.
     """
     if len(x) > 0:
-        return xcorr_fft(
-            in_1=x,
-            in_2=x,
-            axis=axis,
-            normalize=normalize
-        )
+        return xcorr_fft(in_1=x, in_2=x, axis=axis, normalize=normalize)
     else:
         return np.array([], dtype=x.dtype)
 
 
 def xcorr_fft(
-        in_1: np.ndarray,
-        in_2: np.ndarray,
-        axis: int = 0,
-        normalize: bool = True
+    in_1: np.ndarray, in_2: np.ndarray, axis: int = 0, normalize: bool = True
 ) -> np.ndarray:
     """
     Compute the cross-correlation function of two arrays using fast Fourier transforms.
@@ -225,10 +205,7 @@ def xcorr_fft(
 
 
 def calculate_fwhm(
-        x_values: np.ndarray,
-        y_values: np.ndarray,
-        background: float = 0.0,
-        verbose: bool = False
+    x_values: np.ndarray, y_values: np.ndarray, background: float = 0.0, verbose: bool = False
 ) -> typing.Tuple[float, typing.Tuple[int, int], typing.Tuple[float, float]]:
     """
     Calculate the full-width at half-maximum (FWHM) of a peak in a 1D curve.
@@ -265,7 +242,6 @@ def calculate_fwhm(
     >>> fwhm
     1.1111111111111107
     """
-
     # Ensure array-like inputs and handle empty or mismatched lengths safely.
     x_values = np.asarray(x_values)
     y_values = np.asarray(y_values)
@@ -301,15 +277,12 @@ def calculate_fwhm(
 
     if verbose:
         print("FWHM:")
-        print("lb, ub    : (%s, %s)" % (x_left, x_right))
-        print("fwhm: %s" % fwhm)
+        print(f"lb, ub    : ({x_left}, {x_right})")
+        print(f"fwhm: {fwhm}")
     return fwhm, (lb_i, ub_i), (x_left, x_right)
 
 
-def gaussian_kernel(
-        kernel_size: int = 21,
-        nsig: float = 3
-):
+def gaussian_kernel(kernel_size: int = 21, nsig: float = 3):
     """
     Generate a 2D Gaussian kernel array.
 
@@ -329,12 +302,13 @@ def gaussian_kernel(
     numpy-array
         The normalized 2D Gaussian kernel.
     """
-    interval = (2.0 * nsig + 1.) / kernel_size
-    x = np.linspace(-nsig - interval / 2., nsig + interval / 2., kernel_size + 1)
+    interval = (2.0 * nsig + 1.0) / kernel_size
+    x = np.linspace(-nsig - interval / 2.0, nsig + interval / 2.0, kernel_size + 1)
     # Imported here rather than at module scope: scipy.stats costs ~0.9 s and
     # this is its only use in the module, which is otherwise reached by every
     # model through chisurf.core.curve.
     import scipy.stats as st
+
     kern1d = np.diff(st.norm.cdf(x))
     kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
     kernel = kernel_raw / kernel_raw.sum()
@@ -382,11 +356,14 @@ def find_bursts(arr, max_gap=0):
     ``test/python/burstfilter/test_bursts_from_mask.py``.
     """
     import tttrlib
+
     mask = np.ascontiguousarray(np.asarray(arr) != 0, dtype=np.uint8)
     return tttrlib.BurstFilter.bursts_from_mask(mask, int(max_gap))
 
 
-def _fill_gaps_helper(arr: np.ndarray, starts: np.ndarray, stops: np.ndarray, small_gaps: np.ndarray) -> None:
+def _fill_gaps_helper(
+    arr: np.ndarray, starts: np.ndarray, stops: np.ndarray, small_gaps: np.ndarray
+) -> None:
     """Fill the gap after each burst in ``small_gaps`` with ones, in place.
 
     Parameters

@@ -10,6 +10,7 @@ list has been in the viewport's panel column all along, and the prompt is the
 in-viewport command line. Two views of one thing that can disagree is worse than
 one — and only one of them exists in a browser.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -71,9 +72,8 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def window():
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
@@ -111,9 +111,7 @@ def test_the_widget_claims_tab_while_something_is_being_typed(window):
     gui.focus_command(True)
     gui.command_line.set_text("zoo")
 
-    event = QtGui.QKeyEvent(
-        QtCore.QEvent.KeyPress, QtCore.Qt.Key_Tab, QtCore.Qt.NoModifier
-    )
+    event = QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Tab, QtCore.Qt.NoModifier)
     assert renderer.event(event)
     assert event.isAccepted()
     assert gui.command_line.text.startswith("zoo")
@@ -136,9 +134,7 @@ def test_the_3d_view_is_the_window(window):
     assert window.dock_area is None
     assert window.centralWidget() is window.viewer
     assert not hasattr(window, "hierarchy"), "the Qt hierarchy dock came back"
-    visible = [
-        bar for bar in window.findChildren(QtWidgets.QToolBar) if bar.isVisible()
-    ]
+    visible = [bar for bar in window.findChildren(QtWidgets.QToolBar) if bar.isVisible()]
     assert visible == [], visible
     assert not window.menuBar().isVisible(), "the menus are drawn in the viewport"
 

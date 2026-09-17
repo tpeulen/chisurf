@@ -826,9 +826,7 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
             kwargs[key] = tuple(float(v) for v in kwargs[key])
     if "labels" in kwargs and kwargs["labels"] is not None:
         # Choice option display strings — localize each.
-        kwargs["labels"] = tuple(
-            tr(x) if isinstance(x, str) and x else x for x in kwargs["labels"]
-        )
+        kwargs["labels"] = tuple(tr(x) if isinstance(x, str) and x else x for x in kwargs["labels"])
     if "columns" in kwargs and kwargs["columns"] is not None:
         if cls is TableSection:
             kwargs["columns"] = tuple(_tr_item(c) for c in kwargs["columns"])

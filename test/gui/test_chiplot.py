@@ -320,10 +320,7 @@ def test_legend_idempotent_refresh_loop(qapp):
         plot.line([0, 1, 2], [i, i + 1, i], name=f"c{i}")
     # Exactly one legend survives the repeated refresh.
     assert pi.legend is not None
-    scene_legends = [
-        it for it in pi.scene().items()
-        if it.__class__.__name__ == "LegendItem"
-    ]
+    scene_legends = [it for it in pi.scene().items() if it.__class__.__name__ == "LegendItem"]
     assert len(scene_legends) == 1
 
 
@@ -356,8 +353,13 @@ def test_text_fill_border(qapp):
     """
     plot = cp.Plot()
     t = plot.text(
-        "chi2 = 1.0", (1.0, 1.0), color="#FF0", anchor=(0, 0),
-        draggable=True, fill=(0, 0, 255, 100), border="w",
+        "chi2 = 1.0",
+        (1.0, 1.0),
+        color="#FF0",
+        anchor=(0, 0),
+        draggable=True,
+        fill=(0, 0, 255, 100),
+        border="w",
     )
     assert isinstance(t, cp.handles.Text)
     t.text = "chi2 = 2.0"
@@ -435,7 +437,7 @@ def test_migrated_panel_draw_patterns(qapp):
     plot.legend()
     x = np.linspace(0, 1, 20)
     plot.scatter(x, x, size=2, brush=(80, 180, 255, 200), pen=None, symbol="o", name="pts")
-    plot.line(x, x ** 2, pen="y", width=1, style="dash", name="dashed")
+    plot.line(x, x**2, pen="y", width=1, style="dash", name="dashed")
     plot.line(x, x, pen=cp.int_color(0, count=6).as_tuple(), width=1, name="int-color")
     reg = plot.region((0.1, 0.9), orientation="horizontal", brush=(80, 180, 255, 40), movable=True)
     reg.set_bounds(0.2, 0.8)
@@ -483,11 +485,25 @@ def test_spectrum_view_plots_traces(qapp):
 
     v = SpectrumView()
     wl = np.linspace(400, 700, 50)
-    v.plot_series([
-        {"name": "abs", "x": wl, "y": np.ones_like(wl), "color": (0, 100, 200), "style": "solid"},
-        {"name": "em", "x": wl, "y": np.ones_like(wl), "color": (200, 0, 0), "style": "dash"},
-        {"name": "dot", "x": wl, "y": np.ones_like(wl), "color": (145, 30, 180), "style": "dot"},
-    ])
+    v.plot_series(
+        [
+            {
+                "name": "abs",
+                "x": wl,
+                "y": np.ones_like(wl),
+                "color": (0, 100, 200),
+                "style": "solid",
+            },
+            {"name": "em", "x": wl, "y": np.ones_like(wl), "color": (200, 0, 0), "style": "dash"},
+            {
+                "name": "dot",
+                "x": wl,
+                "y": np.ones_like(wl),
+                "color": (145, 30, 180),
+                "style": "dot",
+            },
+        ]
+    )
     assert len(v.plot._series) == 3
     v.plot_series([])  # empty -> placeholder, no crash
     assert v.plot._series == []
@@ -607,10 +623,10 @@ def test_curve_get_data_roundtrip(qapp):
 
     plot = cp.Plot()
     x = np.arange(5, dtype=float)
-    c = plot.line(x, x ** 2)
+    c = plot.line(x, x**2)
     gx, gy = c.get_data()
     assert list(gx) == list(x)
-    assert list(gy) == list(x ** 2)
+    assert list(gy) == list(x**2)
 
 
 def test_grid_panels(qapp):
@@ -706,7 +722,9 @@ def test_module_passthrough_warns_once(qapp, recwarn):
     cp.reset_gaps()
     cp.mkBrush("g")
     cp.mkBrush("g")  # second access: no new warning
-    passthrough_warnings = [w for w in recwarn if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+    passthrough_warnings = [
+        w for w in recwarn if issubclass(w.category, cp.ChiplotPassthroughWarning)
+    ]
     assert len(passthrough_warnings) == 1
 
 
@@ -767,7 +785,8 @@ def test_instance_passthrough_to_native(qapp):
 
 def test_curve_set_opacity(qapp):
     """Curve.set_opacity sets whole-curve opacity (replaces the old 4-method
-    pyqtgraph transparency fallback used by the grouped LinePlot)."""
+    pyqtgraph transparency fallback used by the grouped LinePlot).
+    """
     plot = cp.Plot()
     c = plot.line([0, 1, 2], [0, 1, 0])
     c.set_opacity(0.4)
@@ -798,7 +817,8 @@ def test_curve_symbol_setters(qapp):
 
 def test_region_set_limits_constrains_drag(qapp):
     """Region.set_limits bounds the draggable range (pyqtgraph setBounds), which
-    is distinct from set_bounds (the current position) and must be signal-safe."""
+    is distinct from set_bounds (the current position) and must be signal-safe.
+    """
     plot = cp.Plot()
     reg = plot.region((2.0, 4.0), movable=True)
     seen = []
@@ -813,7 +833,8 @@ def test_region_set_limits_constrains_drag(qapp):
 
 def test_anchored_text_is_screen_pinned(qapp):
     """text(anchored=True) parents to the PlotItem (fixed screen offset) rather
-    than living at a data coordinate — the LinePlot fit-quality overlay."""
+    than living at a data coordinate — the LinePlot fit-quality overlay.
+    """
     plot = cp.Plot()
     data_txt = plot.text("data", (1.0, 2.0))
     anchored_txt = plot.text("pinned", (10, 0), anchored=True, draggable=True)
@@ -1010,12 +1031,14 @@ def test_backend_contract_matches_implementation():
 
     from chisurf.gui.chiplot.backends import emtk_backend as eb
 
-    pairs.extend([
-        (base.Canvas, eb.EmtkCanvas),
-        (base.GridCanvas, eb.EmtkGrid),
-        (base.ImageViewCanvas, eb.EmtkImageView),
-        (base.Backend, eb.EmtkBackend),
-    ])
+    pairs.extend(
+        [
+            (base.Canvas, eb.EmtkCanvas),
+            (base.GridCanvas, eb.EmtkGrid),
+            (base.ImageViewCanvas, eb.EmtkImageView),
+            (base.Backend, eb.EmtkBackend),
+        ]
+    )
 
     for abstract, concrete in pairs:
         unimplemented = sorted(getattr(concrete, "__abstractmethods__", ()))
@@ -1101,9 +1124,10 @@ def test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it(qapp, recwarn):
     plot = cp.Plot()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        plot.plot([0, 1], [0, 1])          # the pyqtgraph spelling
-    messages = [str(w.message) for w in caught
-                if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+        plot.plot([0, 1], [0, 1])  # the pyqtgraph spelling
+    messages = [
+        str(w.message) for w in caught if issubclass(w.category, cp.ChiplotPassthroughWarning)
+    ]
     assert messages, "falling through must warn"
     assert "Plot.line" in messages[0], messages[0]
     assert "Plot.plot" in _passthrough.passthrough_gaps()
@@ -1113,6 +1137,5 @@ def test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it(qapp, recwarn):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         cp.LinearRegionItem  # noqa: B018 - attribute access is the call
-    gap = [str(w.message) for w in caught
-           if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+    gap = [str(w.message) for w in caught if issubclass(w.category, cp.ChiplotPassthroughWarning)]
     assert gap and "migration gap" in gap[0], gap

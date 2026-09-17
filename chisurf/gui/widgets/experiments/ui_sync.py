@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Optional
-
-from qtpy import QtCore
+from collections.abc import Callable
+from typing import Any
 
 
 class SignalBlocker:
     """Context manager to temporarily block signals on a Qt widget.
-    
+
     Usage:
         with SignalBlocker(widget):
             widget.setValue(123)
@@ -82,7 +81,7 @@ class ReentrancyGuard:
     handle it.
     """
 
-    def __init__(self, key: Optional[str] = None):
+    def __init__(self, key: str | None = None):
         self.key = key or "default"
         self._lock_attr = f"_reentrancy_guard_{self.key}"
         #: acquisitions of *this* guard object, for context-manager use. A list
@@ -96,7 +95,7 @@ class ReentrancyGuard:
             if obj is None:
                 return func(*args, **kwargs)
             if getattr(obj, self._lock_attr, False):
-                return None                      # already running: this is the loop
+                return None  # already running: this is the loop
             setattr(obj, self._lock_attr, True)
             try:
                 return func(*args, **kwargs)
@@ -104,6 +103,7 @@ class ReentrancyGuard:
                 # Always release, or one raised exception wedges the method
                 # shut for the rest of the object's life.
                 setattr(obj, self._lock_attr, False)
+
         return wrapper
 
     def __enter__(self) -> bool:
@@ -130,11 +130,11 @@ def connected_signals_blocked(widget: Any, signal_name: str) -> bool:
 
 class UiSyncMixin:
     """Mixin class to provide common UI synchronization patterns.
-    
+
     Subclasses should implement:
         - updateUI(): reads from reader, updates widgets
         - onParametersChanged(): reads from widgets, updates reader
-    
+
     The mixin provides:
         - _sync_ui_from_reader(): calls updateUI with signal blocking
         - _sync_reader_from_ui(): calls onParametersChanged with guard
@@ -144,14 +144,14 @@ class UiSyncMixin:
 
     def _sync_ui_from_reader(self, *widget_names: str) -> None:
         """Call updateUI with signals blocked for specified widgets.
-        
+
         Args:
             *widget_names: Names of widget attributes to block signals on.
                           If empty, blocks signals on self.
         """
         if getattr(self, "_ui_sync_in_progress", False):
             return
-        
+
         self._ui_sync_in_progress = True
         try:
             widgets_to_block = []
@@ -162,7 +162,7 @@ class UiSyncMixin:
                         widgets_to_block.append(w)
             else:
                 widgets_to_block = [self]
-            
+
             with block_signals(*widgets_to_block):
                 self.updateUI()
         finally:
@@ -172,7 +172,7 @@ class UiSyncMixin:
         """Call onParametersChanged with reentrancy guard."""
         if getattr(self, "_sync_in_progress", False):
             return
-        
+
         self._sync_in_progress = True
         try:
             self.onParametersChanged()

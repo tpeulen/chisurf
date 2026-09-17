@@ -98,8 +98,7 @@ def demo_paths(directory: str | pathlib.Path | None = None) -> tuple:
     return directory / "spot_demo_mixture.ptu", directory / "spot_demo_mixture_irf.ptu"
 
 
-def create_demo(directory: str | pathlib.Path | None = None, *,
-                overwrite: bool = False) -> tuple:
+def create_demo(directory: str | pathlib.Path | None = None, *, overwrite: bool = False) -> tuple:
     """Write the demo scan and its IRF, reusing a cached pair when it matches.
 
     Parameters
@@ -135,14 +134,22 @@ def create_demo(directory: str | pathlib.Path | None = None, *,
     ]
 
     scan = simulate_molecule_mixture(
-        blobs, n_pixel=int(_CONFIG["n_pixel"]), n_micro=int(_CONFIG["n_micro"]),
-        dt=float(_CONFIG["dt"]), dwell=float(_CONFIG["dwell"]),
-        psf_w0=float(_CONFIG["psf_w0"]), seed=int(_CONFIG["seed"]),
+        blobs,
+        n_pixel=int(_CONFIG["n_pixel"]),
+        n_micro=int(_CONFIG["n_micro"]),
+        dt=float(_CONFIG["dt"]),
+        dwell=float(_CONFIG["dwell"]),
+        psf_w0=float(_CONFIG["psf_w0"]),
+        seed=int(_CONFIG["seed"]),
     )
     instrument = simulate_irf_measurement(
-        n_pixel=16, n_micro=int(_CONFIG["n_micro"]), dt=float(_CONFIG["dt"]),
-        dwell=float(_CONFIG["dwell"]), psf_w0=float(_CONFIG["psf_w0"]),
-        brightness=20000.0, seed=int(_CONFIG["irf_seed"]),
+        n_pixel=16,
+        n_micro=int(_CONFIG["n_micro"]),
+        dt=float(_CONFIG["dt"]),
+        dwell=float(_CONFIG["dwell"]),
+        psf_w0=float(_CONFIG["psf_w0"]),
+        brightness=20000.0,
+        seed=int(_CONFIG["irf_seed"]),
     )
     write_mixture_ptu(scan, sample)
     write_mixture_ptu(instrument, irf_path)

@@ -51,8 +51,9 @@ def test_resolve_session_carries_user_id(monkeypatch):
 
 def test_result_registry_wrapper_delegates(monkeypatch):
     """The legacy result_registry resolver returns the canonical identity."""
-    import chisurf.core.settings as settings
     from mmfdb.provenance.result_registry import _resolve_active_user_id
+
+    import chisurf.core.settings as settings
 
     monkeypatch.setitem(settings.cs_settings, "mmfdb", {"default_user_id": "carol"})
     assert _resolve_active_user_id() == resolve_active_user_id() == "carol"
@@ -60,11 +61,12 @@ def test_result_registry_wrapper_delegates(monkeypatch):
 
 def test_injected_session_stamps_owner(tmp_path):
     """A SessionContext threaded into register_* stamps that user as owner,
-    regardless of the configured default — the PRD-17 injection path."""
+    regardless of the configured default — the PRD-17 injection path.
+    """
     import os
 
-    from mmfdb.repository import MFDatabase
     from mmfdb.provenance.result_registry import register_raw_measurement, set_global_db
+    from mmfdb.repository import MFDatabase
 
     db = MFDatabase(os.path.join(tmp_path, "owner.db"))
     try:

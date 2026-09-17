@@ -15,18 +15,18 @@ from __future__ import annotations
 import os
 
 import pytest
-
 from mmfdb.provenance.compute_spec import (
     get_replay_executor,
     register_replay_executor,
     unregister_replay_executor,
 )
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import (
     register_raw_measurement,
     register_result,
     set_global_db,
 )
+from mmfdb.repository import MFDatabase
+
 from chisurf.core.pipeline import (
     Pipeline,
     PipelineEdge,
@@ -78,9 +78,7 @@ def _make_executor(kind: str):
 @pytest.fixture
 def fake_executors():
     """Register stand-in executors for both operation types; restore on teardown."""
-    prior = {
-        op: get_replay_executor(op) for op in ("microtime_shift", "burst_selection")
-    }
+    prior = {op: get_replay_executor(op) for op in ("microtime_shift", "burst_selection")}
     register_replay_executor("microtime_shift", _make_executor("processed_data"))
     register_replay_executor("burst_selection", _make_executor("burst_table"))
     try:

@@ -1,4 +1,5 @@
 """Tests for the canonical shared tool-button / action registry."""
+
 from __future__ import annotations
 
 import os
@@ -21,9 +22,9 @@ def qapp():
 
 def test_the_controls_are_the_transport_symbols_everyone_knows(qapp):
     """Run/pause/stop/restart read as media controls, not as invented icons."""
-    assert tb.TOOL_ACTIONS["run"].icon == Glyphs.RUN        # ▶
-    assert tb.TOOL_ACTIONS["pause"].icon == Glyphs.PAUSE    # ⏸
-    assert tb.TOOL_ACTIONS["stop"].icon == Glyphs.STOP      # ⏹
+    assert tb.TOOL_ACTIONS["run"].icon == Glyphs.RUN  # ▶
+    assert tb.TOOL_ACTIONS["pause"].icon == Glyphs.PAUSE  # ⏸
+    assert tb.TOOL_ACTIONS["stop"].icon == Glyphs.STOP  # ⏹
     assert tb.TOOL_ACTIONS["restart"].icon == Glyphs.RESTART  # 🔁
     # The background is what carries the meaning, so each control owns its own
     # accent. Sharing one is what made restart indistinguishable from run.
@@ -44,11 +45,10 @@ def test_the_control_accents_are_told_apart_by_colour(qapp):
     def accent(kind):
         css = tb.BTN_STYLES[kind]
         hexcol = re.search(r"background-color: #([0-9a-fA-F]{6})", css).group(1)
-        rgb = [int(hexcol[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        rgb = [int(hexcol[i : i + 2], 16) / 255 for i in (0, 2, 4)]
         return colorsys.rgb_to_hsv(*rgb)
 
-    controls = {k: accent(tb.TOOL_ACTIONS[k].kind)
-                for k in ("run", "pause", "stop", "restart")}
+    controls = {k: accent(tb.TOOL_ACTIONS[k].kind) for k in ("run", "pause", "stop", "restart")}
     hues = sorted(h * 360 for h, _, _ in controls.values())
     gaps = [b - a for a, b in zip(hues, hues[1:])]
     assert min(gaps) > 30, f"transport hues too close: {hues}"
@@ -68,7 +68,7 @@ def test_restart_is_not_refresh(qapp):
 
 def test_action_button_is_icon_only_with_object_name_and_tooltip(qapp):
     btn = tb.action_button("run", tooltip="Run BVA")
-    assert btn.text() == Glyphs.RUN              # icon only, space-efficient
+    assert btn.text() == Glyphs.RUN  # icon only, space-efficient
     assert btn.objectName() == "toolAction_run"  # stable, testable identity
     assert "Run" in btn.toolTip() and "Run BVA" in btn.toolTip()
 
@@ -118,7 +118,8 @@ def test_attention_actually_changes_how_the_button_is_drawn(qapp):
 
 
 def test_actions_have_a_stable_left_to_right_order(qapp):
-    order = [k for k in ("add", "folder", "batch", "run", "clear", "refresh", "save",
-                         "settings", "help")]
+    order = [
+        k for k in ("add", "folder", "batch", "run", "clear", "refresh", "save", "settings", "help")
+    ]
     got = [tb.TOOL_ACTIONS[k].order for k in order]
     assert got == sorted(got)  # canonical order is monotonic in this sequence

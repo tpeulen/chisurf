@@ -8,6 +8,7 @@ behaviour of the shared version and pin it against values the plugin produced
 tools is exactly the failure this centralisation exists to prevent, and a silent
 *change* to existing FCS results would be just as bad.
 """
+
 from __future__ import annotations
 
 import math
@@ -16,8 +17,6 @@ import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.diffusion import (
-    ETA_WATER_25C,
-    T_REFERENCE_K,
     celsius_to_kelvin,
     combined_waist,
     diffusion_at_temperature,
@@ -68,9 +67,7 @@ def test_diffusion_rises_with_temperature_at_about_2_to_3_percent_per_degree():
     warm = diffusion_at_temperature(470.0, 27.0)
     cold = diffusion_at_temperature(470.0, 23.0)
     assert warm > cold
-    assert (cold / diffusion_at_temperature(470.0, 25.0) - 1.0) == pytest.approx(
-        -0.05, abs=0.01
-    )
+    assert (cold / diffusion_at_temperature(470.0, 25.0) - 1.0) == pytest.approx(-0.05, abs=0.01)
 
 
 def test_viscosity_overrides_the_water_default():
@@ -117,14 +114,12 @@ def test_effective_volume_is_femtolitre_scale_for_a_confocal_focus():
     """
     v = effective_volume(30e-6, 470e-12, 5.0)
     assert 1e-19 < v < 1e-17
-    assert v * 1e18 == pytest.approx(0.37, abs=0.05)      # in fL
+    assert v * 1e18 == pytest.approx(0.37, abs=0.05)  # in fL
 
 
 def test_waist_and_diffusion_time_are_inverses():
-    """w = sqrt(4 D tau) and tau = w^2 / 4D agree."""
-    assert diffusion_time(lateral_waist(30e-6, 470.0), 470.0) == pytest.approx(
-        30e-6, rel=1e-12
-    )
+    """W = sqrt(4 D tau) and tau = w^2 / 4D agree."""
+    assert diffusion_time(lateral_waist(30e-6, 470.0), 470.0) == pytest.approx(30e-6, rel=1e-12)
 
 
 def test_waist_of_a_typical_confocal_focus():
@@ -134,8 +129,8 @@ def test_waist_of_a_typical_confocal_focus():
 
 def test_waist_units_follow_the_diffusion_coefficient():
     """µm²/s in gives µm out, so a calibration cannot silently change units."""
-    in_um = lateral_waist(30e-6, 470.0)              # µm²/s -> µm
-    in_m = lateral_waist(30e-6, 470e-12)             # m²/s  -> m
+    in_um = lateral_waist(30e-6, 470.0)  # µm²/s -> µm
+    in_m = lateral_waist(30e-6, 470e-12)  # m²/s  -> m
     assert in_m == pytest.approx(in_um * 1e-6, rel=1e-9)
 
 
@@ -192,9 +187,7 @@ def test_the_plugin_now_forwards_here():
     )
     t_k = celsius_to_kelvin(25.0)
     assert plugin.water_viscosity_Pa_s(t_k) == water_viscosity(t_k)
-    assert plugin.veff_from_tau_D_S(30e-6, 470e-12, 5.0) == effective_volume(
-        30e-6, 470e-12, 5.0
-    )
+    assert plugin.veff_from_tau_D_S(30e-6, 470e-12, 5.0) == effective_volume(30e-6, 470e-12, 5.0)
     assert plugin.scale_D_from_25C(470.0, t_k, water_viscosity(t_k)) == pytest.approx(
         diffusion_at_temperature(470.0, 25.0), rel=1e-12
     )

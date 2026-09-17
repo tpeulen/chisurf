@@ -4,6 +4,7 @@ Proves the declarative AutoForm form (a) renders one control per field, (b)
 reflects the initial settings, and (c) commits edits back so ``get_settings``
 returns them — i.e. AutoForm works as a non-model, fixed-form consumer.
 """
+
 import pytest
 from qtpy import QtWidgets
 
@@ -58,9 +59,7 @@ def test_gmm_dialog_commits_edits_without_a_fit(qapp):
     )
 
     dialog = GMMSettingsDialog(gmm_settings=dict(CUSTOM))
-    max_iter_spin = next(
-        s for s in dialog.findChildren(QtWidgets.QSpinBox) if s.value() == 500
-    )
+    max_iter_spin = next(s for s in dialog.findChildren(QtWidgets.QSpinBox) if s.value() == 500)
     max_iter_spin.setValue(999)  # valueChanged -> ValueWidget._commit -> setattr
     assert dialog.get_settings()["max_iter"] == 999
 

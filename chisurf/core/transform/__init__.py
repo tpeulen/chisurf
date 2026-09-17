@@ -7,19 +7,19 @@ background correction, correlation, …) obeys: declared typed input/output port
 typed node/ports on the data side.
 """
 
+from chisurf.core.transform.mmfdb import require_authenticated_session, session_from_auth
 from chisurf.core.transform.transformer import (
     PortSpec,
-    TransformInputs,
-    TransformResult,
     Transformer,
     TransformerConformanceError,
+    TransformInputs,
+    TransformResult,
     check_transformer_conformance,
     get_transformer,
     get_transformer_for_operation,
     list_transformers,
     register_transformer,
 )
-from chisurf.core.transform.mmfdb import require_authenticated_session, session_from_auth
 
 __all__ = [
     "PortSpec",

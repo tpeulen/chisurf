@@ -178,12 +178,26 @@ def simulate_clsm_molecules(
         sample.add_fluorophore(m.ix * pixel_size, m.iy * pixel_size, 0.0, taus.index(m.tau), False)
 
     tttr, clsm = _run_scan(
-        tttrlib, sample, n_channels=1, n_pixel=n_pixel, pixel_size=pixel_size,
-        n_micro=n_micro, dt=dt, dwell=dwell, psf_w0=psf_w0, fill_channels=[0],
+        tttrlib,
+        sample,
+        n_channels=1,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
+        dwell=dwell,
+        psf_w0=psf_w0,
+        fill_channels=[0],
     )
     return SimulatedImage(
-        tttr=tttr, clsm=clsm, molecules=mols, irf=irf,
-        n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
+        tttr=tttr,
+        clsm=clsm,
+        molecules=mols,
+        irf=irf,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
         laser_period=laser_period,
     )
 
@@ -335,7 +349,10 @@ def simulate_molecule_mixture(
         # One species per blob, so two blobs may share a lifetime without
         # sharing an identity — and so the truth is per object.
         species = _lifetime_species(
-            tttrlib, blob.tau, irf, dt,
+            tttrlib,
+            blob.tau,
+            irf,
+            dt,
             [float(blob.brightness), float(blob.brightness)],
         )
         species.r0 = float(blob.r0)
@@ -348,18 +365,30 @@ def simulate_molecule_mixture(
     sample.set_rate_matrices([0.0] * n_sp * n_sp, [0.0] * n_sp * n_sp)
     sample.set_background([0.0, 0.0])
     for index, blob in enumerate(items):
-        sample.add_fluorophore(
-            blob.ix * pixel_size, blob.iy * pixel_size, 0.0, index, False
-        )
+        sample.add_fluorophore(blob.ix * pixel_size, blob.iy * pixel_size, 0.0, index, False)
 
     tttr, clsm = _run_scan(
-        tttrlib, sample, n_channels=2, n_pixel=n_pixel, pixel_size=pixel_size,
-        n_micro=n_micro, dt=dt, dwell=dwell, psf_w0=psf_w0, fill_channels=[0, 1],
+        tttrlib,
+        sample,
+        n_channels=2,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
+        dwell=dwell,
+        psf_w0=psf_w0,
+        fill_channels=[0, 1],
         seed=int(seed),
     )
     return SimulatedMixture(
-        tttr=tttr, clsm=clsm, blobs=items, irf=irf,
-        n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
+        tttr=tttr,
+        clsm=clsm,
+        blobs=items,
+        irf=irf,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
         laser_period=laser_period,
     )
 
@@ -404,12 +433,18 @@ def simulate_irf_measurement(
     SimulatedMixture
         With one central "blob" whose lifetime is negligible.
     """
-    scatterer = Blob(ix=n_pixel // 2, iy=n_pixel // 2, tau=0.001, r0=0.0,
-                     brightness=brightness)
+    scatterer = Blob(ix=n_pixel // 2, iy=n_pixel // 2, tau=0.001, r0=0.0, brightness=brightness)
     return simulate_molecule_mixture(
-        [scatterer], n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro,
-        dt=dt, irf_center=irf_center, irf_sigma=irf_sigma, dwell=dwell,
-        psf_w0=psf_w0, seed=seed,
+        [scatterer],
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
+        irf_center=irf_center,
+        irf_sigma=irf_sigma,
+        dwell=dwell,
+        psf_w0=psf_w0,
+        seed=seed,
     )
 
 
@@ -440,9 +475,13 @@ def clsm_from_scan(tttr, n_pixel: int, channels=(0, 1)):
     import tttrlib
 
     clsm = tttrlib.CLSMImage(
-        tttr_data=tttr, marker_frame_start=[4], marker_line_start=1,
-        marker_line_stop=2, n_pixel_per_line=int(n_pixel),
-        use_pixel_markers=True, marker_pixel=8,
+        tttr_data=tttr,
+        marker_frame_start=[4],
+        marker_line_start=1,
+        marker_line_stop=2,
+        n_pixel_per_line=int(n_pixel),
+        use_pixel_markers=True,
+        marker_pixel=8,
         settings={"n_lines": int(n_pixel)},
     )
     clsm.fill(tttr, channels=list(channels))
@@ -696,7 +735,7 @@ def simulate_clsm_diffusion(
     settings = tttrlib.SimIntegrator()
     settings.dt = window_dt
     settings.n_channels = 1
-    settings.n_ph_max = 10 ** 12
+    settings.n_ph_max = 10**12
     settings.seed_diffusion = int(seed)
     settings.seed_emission = int(seed) + 1
     # Reject molecules outside the focus bounding box before interpolating the
@@ -738,8 +777,15 @@ def simulate_clsm_diffusion(
 
     _n_lines = n_pixel if n_lines is None else int(n_lines)
     scanner = tttrlib.SimScanner.uniform(
-        n_pixel, _n_lines, float(pixel_time), pixel_size, pixel_size,
-        -0.5 * scanned, -0.5 * scanned, tttrlib.SimMarkerConfig(), False,
+        n_pixel,
+        _n_lines,
+        float(pixel_time),
+        pixel_size,
+        pixel_size,
+        -0.5 * scanned,
+        -0.5 * scanned,
+        tttrlib.SimMarkerConfig(),
+        False,
     )
     for _ in range(int(n_frames)):
         engine.run_scan(scanner)
@@ -753,8 +799,7 @@ def simulate_clsm_diffusion(
     per_frame = n_pixel * _n_lines * windows_per_pixel
     total = per_frame * int(n_frames)
     windows = windows[(windows >= 0) & (windows < total)]
-    counts = np.bincount(windows // windows_per_pixel,
-                         minlength=n_pixel * _n_lines * int(n_frames))
+    counts = np.bincount(windows // windows_per_pixel, minlength=n_pixel * _n_lines * int(n_frames))
     images = counts.astype(float).reshape(int(n_frames), _n_lines, n_pixel)
 
     line_time = n_pixel * float(pixel_time)
@@ -783,8 +828,10 @@ def _gaussian_irf(n_micro: int, center: float, sigma: float) -> np.ndarray:
     from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA, synthetic_irf
 
     return synthetic_irf(
-        np.arange(int(n_micro), dtype=float), float(center),
-        float(sigma) / FWHM_TO_SIGMA, norm=True,
+        np.arange(int(n_micro), dtype=float),
+        float(center),
+        float(sigma) / FWHM_TO_SIGMA,
+        norm=True,
     )
 
 
@@ -836,9 +883,21 @@ def _lifetime_species(tttrlib, tau: float, irf: np.ndarray, dt: float, q):
     return species
 
 
-def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
-              dwell, psf_w0, fill_channels, window_dt: float = 0.01,
-              seed: int | None = None):
+def _run_scan(
+    tttrlib,
+    sample,
+    *,
+    n_channels,
+    n_pixel,
+    pixel_size,
+    n_micro,
+    dt,
+    dwell,
+    psf_w0,
+    fill_channels,
+    window_dt: float = 0.01,
+    seed: int | None = None,
+):
     """Raster-scan *sample* and reconstruct a filled ``CLSMImage``.
 
     ``window_dt`` is the integrator step, in the same time unit as *dwell*: the
@@ -866,8 +925,15 @@ def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
     engine = tttrlib.SimEngine(sample, excitation, tttrlib.VectorSimGrid([]), integrator)
     engine.run_scan(
         tttrlib.SimScanner.uniform(
-            n_pixel, n_pixel, dwell, pixel_size, pixel_size, 0.0, 0.0,
-            tttrlib.SimMarkerConfig(), False,
+            n_pixel,
+            n_pixel,
+            dwell,
+            pixel_size,
+            pixel_size,
+            0.0,
+            0.0,
+            tttrlib.SimMarkerConfig(),
+            False,
         )
     )
     tttr = tttrlib.TTTR(
@@ -877,8 +943,13 @@ def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
         np.asarray(engine.event_type(), np.int8),
     )
     clsm = tttrlib.CLSMImage(
-        tttr_data=tttr, marker_frame_start=[4], marker_line_start=1, marker_line_stop=2,
-        n_pixel_per_line=n_pixel, use_pixel_markers=True, marker_pixel=8,
+        tttr_data=tttr,
+        marker_frame_start=[4],
+        marker_line_start=1,
+        marker_line_stop=2,
+        n_pixel_per_line=n_pixel,
+        use_pixel_markers=True,
+        marker_pixel=8,
         settings={"n_lines": n_pixel},
     )
     clsm.fill(tttr, channels=list(fill_channels))
@@ -976,8 +1047,11 @@ def simulate_clsm_from_maps(
     intensity = np.asarray(intensity, dtype=float)
     if intensity.ndim != 2:
         raise ValueError(f"intensity must be 2-D, got {intensity.shape}")
-    maps = [np.asarray(lifetime, dtype=float)] if np.ndim(lifetime) == 2 else \
-        [np.asarray(m, dtype=float) for m in lifetime]
+    maps = (
+        [np.asarray(lifetime, dtype=float)]
+        if np.ndim(lifetime) == 2
+        else [np.asarray(m, dtype=float) for m in lifetime]
+    )
     for m in maps:
         if m.shape != intensity.shape:
             raise ValueError(f"lifetime map shape {m.shape} != intensity {intensity.shape}")
@@ -990,8 +1064,11 @@ def simulate_clsm_from_maps(
 
     # Quantisation grids for lifetime (per map) and intensity: both axes span
     # the observed range and snap to the nearest level (see :func:`_quantise`).
-    all_tau = np.concatenate([m[(np.isfinite(m)) & (m > 0)].ravel() for m in maps]) \
-        if any(np.isfinite(m).any() for m in maps) else np.array([1.0])
+    all_tau = (
+        np.concatenate([m[(np.isfinite(m)) & (m > 0)].ravel() for m in maps])
+        if any(np.isfinite(m).any() for m in maps)
+        else np.array([1.0])
+    )
     life_levels, _ = _quantise(all_tau, n_lifetime_levels)
     lit = inorm[inorm > 0]
     level_norm, index_lit = _quantise(lit if lit.size else np.array([1.0]), n_intensity_levels)
@@ -1028,18 +1105,36 @@ def simulate_clsm_from_maps(
                 sample.add_fluorophore(ix * pixel_size, iy * pixel_size, 0.0, sp, False)
 
     tttr, clsm = _run_scan(
-        tttrlib, sample, n_channels=n_det, n_pixel=n_pixel, pixel_size=pixel_size,
-        n_micro=n_micro, dt=dt, dwell=dwell, psf_w0=psf_w0, fill_channels=list(range(n_det)),
+        tttrlib,
+        sample,
+        n_channels=n_det,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
+        dwell=dwell,
+        psf_w0=psf_w0,
+        fill_channels=list(range(n_det)),
     )
     return SimulatedImage(
-        tttr=tttr, clsm=clsm, molecules=[], irf=irf,
-        n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
+        tttr=tttr,
+        clsm=clsm,
+        molecules=[],
+        irf=irf,
+        n_pixel=n_pixel,
+        pixel_size=pixel_size,
+        n_micro=n_micro,
+        dt=dt,
         laser_period=n_micro * dt,
     )
 
 
 def _build_flow_grid(
-    tttrlib, config: dict, box_xy: float, box_z: float, window_dt: float,
+    tttrlib,
+    config: dict,
+    box_xy: float,
+    box_z: float,
+    window_dt: float,
 ) -> Any:
     """Build a :class:`tttrlib.SimVectorGrid` from a user-facing config dict.
 
@@ -1073,7 +1168,12 @@ def _build_flow_grid(
         extent_z = float(config.get("extent_z", box_z))
         spacing = float(config.get("spacing", 0.2))
         return tttrlib.SimVectorGrid.poiseuille(
-            vmax, radius, ax, extent_xy, extent_z, spacing,
+            vmax,
+            radius,
+            ax,
+            extent_xy,
+            extent_z,
+            spacing,
         )
     elif ftype == "rotation":
         omega = float(config.get("omega", 1.0)) * scale
@@ -1084,14 +1184,21 @@ def _build_flow_grid(
         extent_z = float(config.get("extent_z", box_z))
         spacing = float(config.get("spacing", 0.2))
         return tttrlib.SimVectorGrid.rotation(
-            omega, ax, extent_xy, extent_z, spacing,
+            omega,
+            ax,
+            extent_xy,
+            extent_z,
+            spacing,
         )
     raise ValueError(f"unknown flow type: {ftype!r} (expected uniform/poiseuille/rotation)")
 
 
 def _build_occlusion_grid(
-    tttrlib, mask: np.ndarray,
-    box_xy: float, box_z: float, window_dt: float,
+    tttrlib,
+    mask: np.ndarray,
+    box_xy: float,
+    box_z: float,
+    window_dt: float,
 ) -> Any:
     """Build a :class:`tttrlib.SimGrid` occlusion mask from a numpy array.
 
@@ -1108,8 +1215,7 @@ def _build_occlusion_grid(
         nz, ny, nx = mask.shape
         arr = mask
     else:
-        raise ValueError(
-            f"occlusion mask must be 2D or 3D, got shape {mask.shape}")
+        raise ValueError(f"occlusion mask must be 2D or 3D, got shape {mask.shape}")
 
     dx = 2.0 * box_xy / nx
     dy = 2.0 * box_xy / ny

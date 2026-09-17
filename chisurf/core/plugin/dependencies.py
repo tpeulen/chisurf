@@ -76,9 +76,7 @@ class DependencyReport:
             lines.append("dependency cycle: " + " -> ".join(cycle + [cycle[0]]))
         for plugin_id, targets in sorted(self.unknown.items()):
             for target in targets:
-                lines.append(
-                    f"{plugin_id}: optionally requires {target!r}, which is not installed"
-                )
+                lines.append(f"{plugin_id}: optionally requires {target!r}, which is not installed")
         return lines
 
 
@@ -86,9 +84,7 @@ def _requirement_maps(manifest: Any) -> tuple[dict[str, str], dict[str, str]]:
     """The ``(requires, optional_requires)`` pair of a manifest or plain dict."""
     if isinstance(manifest, dict):
         return manifest.get("requires") or {}, manifest.get("optional_requires") or {}
-    return getattr(manifest, "requires", {}) or {}, getattr(
-        manifest, "optional_requires", {}
-    ) or {}
+    return getattr(manifest, "requires", {}) or {}, getattr(manifest, "optional_requires", {}) or {}
 
 
 def _identity(manifest: Any) -> tuple[str, str]:
@@ -145,8 +141,7 @@ def resolve(manifests: Iterable[Any]) -> DependencyReport:
             _, target_version = _identity(by_id[target])
             if specifier != ANY_VERSION and not is_satisfied_by(specifier, target_version):
                 report.out_of_bounds.setdefault(plugin_id, []).append(
-                    f"optionally requires {target} {specifier}, "
-                    f"but {target} is {target_version}"
+                    f"optionally requires {target} {specifier}, but {target} is {target_version}"
                 )
 
         hard[plugin_id] = satisfied
@@ -167,9 +162,7 @@ def _kahn(hard: dict[str, set[str]], report: DependencyReport) -> list[str]:
     completed: set[str] = set()
 
     while remaining:
-        ready = sorted(
-            plugin_id for plugin_id in remaining if hard[plugin_id] <= completed
-        )
+        ready = sorted(plugin_id for plugin_id in remaining if hard[plugin_id] <= completed)
         if not ready:
             # Everything left is in, or behind, a cycle. Record the strongly
             # blocked set and release it in id order so boot still finishes.

@@ -15,9 +15,7 @@ if _manifest is not None:
 else:
     name = "Setup:Plugins"
 
-description = (
-    "This tool manages the list of active/disabled plugins in ChiSurf."
-)
+description = "This tool manages the list of active/disabled plugins in ChiSurf."
 icon = "🔌"
 
 
@@ -48,4 +46,5 @@ if __name__ == "plugin":
     except Exception as exc:
         print(f"Failed to open Plugin Manager: {exc}")
         import traceback
+
         traceback.print_exc()

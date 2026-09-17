@@ -54,7 +54,7 @@ def test_dom_button_translation_names_the_engine_buttons():
     assert button_from_dom(2) == RIGHT_BUTTON
 
 
-_DRIVE = '''
+_DRIVE = """
     app = open_app(size=(1000, 800))
     errors = []
     app.cmd.set_message_callback(lambda _m: None)
@@ -126,7 +126,7 @@ _DRIVE = '''
     emit("eye", str(viewer.objects[oid2].visible != was))
 
     emit("errors", "; ".join(errors[:2]) or "none")
-'''
+"""
 
 
 def test_the_alpha_slider_drag_works_on_the_browser_chain():
@@ -157,7 +157,6 @@ def test_the_level_picker_on_the_browser_chain():
     assert m["errors"] == "none", m["errors"]
 
 
-
 #: The DOM's delivery order for a double click -- ``press, release, press,
 #: release, dblclick`` where the ``dblclick`` is one more press with **no
 #: release after it** -- on the object list, and then a plain click on the
@@ -165,7 +164,7 @@ def test_the_level_picker_on_the_browser_chain():
 #: held, and ``on_pointer_release`` returned on the held grab before the
 #: click could reach ``_handle_click`` -- the first click after any double
 #: click on the panel picked nothing.
-_UNPAIRED_DOUBLE_THEN_CLICK = '''
+_UNPAIRED_DOUBLE_THEN_CLICK = """
     app = open_app(size=(1000, 800))
     errors = []
     app.cmd.set_message_callback(lambda _m: None)
@@ -207,7 +206,7 @@ _UNPAIRED_DOUBLE_THEN_CLICK = '''
     renderer.on_pointer_release(x, y, LEFT_BUTTON, 0)
     emit("selected_after", str(len(viewer._selected_residues)))
     emit("errors", "; ".join(errors[:2]) or "none")
-'''
+"""
 
 
 def test_a_lost_release_does_not_swallow_the_next_click():

@@ -7,8 +7,6 @@ whichever tabs remain (the embedded workflow drops 'Detector Definition').
 
 from __future__ import annotations
 
-import pytest
-
 
 def _make_wizard(qapp):
     from qtpy import QtWidgets
@@ -89,20 +87,31 @@ def test_wizard_builds_without_ui_file(qapp):
 
     import chisurf.plugins.burst.burst_mle_analysis.wizard as wizard_mod
 
-    assert not (
-        pathlib.Path(wizard_mod.__file__).parent / "wizard.ui"
-    ).exists()
+    assert not (pathlib.Path(wizard_mod.__file__).parent / "wizard.ui").exists()
 
     w = _make_wizard(qapp)
     for name in (
-        "tabWidget", "tab_files", "tab_parameters",
-        "groupBox_burst_files", "groupBox_irf_files", "groupBox_bg_files",
-        "groupBox_model_params", "groupBox_2", "groupBox_fit_params",
-        "doubleSpinBox_tau", "doubleSpinBox_gamma", "doubleSpinBox_r0",
-        "doubleSpinBox_rho", "checkBox_fix_tau", "spinBox_min_photons",
-        "comboBox_window", "lineEdit_current_filename",
-        "pushButton_process_bursts", "verticalLayout_plots",
-        "verticalLayout_burst_files", "verticalLayout_irf_files",
+        "tabWidget",
+        "tab_files",
+        "tab_parameters",
+        "groupBox_burst_files",
+        "groupBox_irf_files",
+        "groupBox_bg_files",
+        "groupBox_model_params",
+        "groupBox_2",
+        "groupBox_fit_params",
+        "doubleSpinBox_tau",
+        "doubleSpinBox_gamma",
+        "doubleSpinBox_r0",
+        "doubleSpinBox_rho",
+        "checkBox_fix_tau",
+        "spinBox_min_photons",
+        "comboBox_window",
+        "lineEdit_current_filename",
+        "pushButton_process_bursts",
+        "verticalLayout_plots",
+        "verticalLayout_burst_files",
+        "verticalLayout_irf_files",
         "verticalLayout_bg_files",
     ):
         assert hasattr(w, name), f"missing programmatic widget: {name}"
@@ -134,9 +143,7 @@ def test_file_drops_are_separate_docks(qapp):
     w = _make_wizard(qapp)
     area = w.findChildren(DockArea)[0]
     tab_names = {
-        tw.tabText(i)
-        for tw in area.findChildren(QtWidgets.QTabWidget)
-        for i in range(tw.count())
+        tw.tabText(i) for tw in area.findChildren(QtWidgets.QTabWidget) for i in range(tw.count())
     }
     # Each file input and the Burst-MLE workspace is its own draggable dock.
     assert {"Burst Files", "IRF Files", "Background Files", "Burst-MLE"} <= tab_names
@@ -151,8 +158,9 @@ def test_file_drops_are_separate_docks(qapp):
 def test_embedded_hides_duplicate_file_docks(qapp):
     # In the burst-analysis workflow the file inputs are supplied upstream, so the
     # MLE panel hides its Burst/IRF/Background file docks and shows only the fit.
-    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
     from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
 
     host = QtWidgets.QWidget()
     embedded = tool_mod._burst_mle(host)  # sets _embedded=True
@@ -165,11 +173,12 @@ def test_embedded_hides_duplicate_file_docks(qapp):
 
 
 def test_embedded_drops_detector_panel(qapp):
+    from qtpy import QtWidgets
+
     from chisurf.plugins.burst.burst_analysis.gui.tool import _remove_tab_by_name
     from chisurf.plugins.burst.burst_mle_analysis.wizard import (
         MLELifetimeAnalysisWizard,
     )
-    from qtpy import QtWidgets
 
     w = MLELifetimeAnalysisWizard()
     # The workflow removes this tab synchronously before the deferred conversion.

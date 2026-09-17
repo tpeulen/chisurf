@@ -6,6 +6,7 @@ an out-of-fit parameter does not have: unlinking an ndX constant came back
 And a table drew a linked follower and a fixed parameter exactly like a free
 one, so which numbers the fit would actually move was invisible.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,9 +36,7 @@ def _fit() -> FitGroup:
     x = np.arange(1, 64, dtype=np.float64)
     y = 1000.0 * np.exp(-x / 10.0) + 1.0
     curve = data.DataCurve(x=x, y=y, ey=np.sqrt(y), name="decay")
-    return FitGroup(
-        data=data.DataCurveGroup([curve], name="decay"), model_class=LifetimeModel
-    )
+    return FitGroup(data=data.DataCurveGroup([curve], name="decay"), model_class=LifetimeModel)
 
 
 class _RecordingClient:
@@ -177,13 +176,15 @@ def test_a_parameter_is_addressed_by_its_own_fit_not_its_group(qapp, monkeypatch
 
     x = np.arange(1, 64, dtype=np.float64)
     curves = [
-        data.DataCurve(x=x, y=1000.0 * np.exp(-x / tau) + 1.0, ey=np.sqrt(
-            1000.0 * np.exp(-x / tau) + 1.0), name=f"decay{tau}")
+        data.DataCurve(
+            x=x,
+            y=1000.0 * np.exp(-x / tau) + 1.0,
+            ey=np.sqrt(1000.0 * np.exp(-x / tau) + 1.0),
+            name=f"decay{tau}",
+        )
         for tau in (10.0, 20.0)
     ]
-    fit = FitGroup(
-        data=data.DataCurveGroup(curves, name="decays"), model_class=LifetimeModel
-    )
+    fit = FitGroup(data=data.DataCurveGroup(curves, name="decays"), model_class=LifetimeModel)
     monkeypatch.setattr(chisurf, "fits", [fit], raising=False)
     members = list(fit.grouped_fits)
     assert len(members) == 2 and fit.selected_fit_index == 0

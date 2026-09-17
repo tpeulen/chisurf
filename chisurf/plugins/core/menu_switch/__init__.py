@@ -1,7 +1,7 @@
 """
 Menu Switch
 
-This plugin provides a simple toggle to switch between the traditional menu bar 
+This plugin provides a simple toggle to switch between the traditional menu bar
 and the modern ribbon interface in ChiSurf.
 
 Features:
@@ -24,7 +24,7 @@ name = "Setup:Menu Switch"
 icon = "🔄"
 
 # Import the main functionality
-from .menu_switch import run, MenuSwitchWidget
+from .menu_switch import MenuSwitchWidget, run
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed

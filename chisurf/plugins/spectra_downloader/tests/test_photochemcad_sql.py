@@ -4,6 +4,7 @@ PhotochemCAD is fetched as MySQL dumps; ``_parse_insert_rows`` must handle the
 quirks that previously broke the import: spaces after commas, NULLs, numeric vs
 string values, and escaped quotes. No network — the SQL is synthetic.
 """
+
 from __future__ import annotations
 
 from chisurf.plugins.spectra_downloader.download.photochemcad_common_compounds import (

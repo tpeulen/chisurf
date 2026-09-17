@@ -7,13 +7,8 @@ from chisurf.core.structure.potential.potentials import GoPotential
 
 
 class GoPotentialWidget(GoPotential, QtWidgets.QWidget):
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure = None,
-            **kwargs
-    ):
-        QtWidgets.QWidget.__init__(self, parent=kwargs.get('parent'))
+    def __init__(self, structure: chisurf.core.structure.Structure = None, **kwargs):
+        QtWidgets.QWidget.__init__(self, parent=kwargs.get("parent"))
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

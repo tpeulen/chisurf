@@ -1,5 +1,5 @@
-import unittest
 import pathlib
+import unittest
 
 import utils
 
@@ -61,18 +61,17 @@ class _Group(list):
 
 
 class CoreFitAnisotropyCalibrationTests(unittest.TestCase):
-
     def test_resolve_dataset_anisotropy_calibration_uses_reader_and_metadata(self):
         # Reader provides g_factor and l1, metadata provides l2 fallback.
         reader = _Reader(g_factor=1.23, l1=0.11, l2=None)
-        curve = _Curve(meta_data={'l2': 0.22}, data_reader=reader)
+        curve = _Curve(meta_data={"l2": 0.22}, data_reader=reader)
         group = _Group([curve], meta_data={}, data_reader=reader)
 
         calibration = _resolve_dataset_anisotropy_calibration(group)
 
-        self.assertAlmostEqual(calibration['g_factor'], 1.23)
-        self.assertAlmostEqual(calibration['l1'], 0.11)
-        self.assertAlmostEqual(calibration['l2'], 0.22)
+        self.assertAlmostEqual(calibration["g_factor"], 1.23)
+        self.assertAlmostEqual(calibration["l1"], 0.11)
+        self.assertAlmostEqual(calibration["l2"], 0.22)
 
     def test_apply_anisotropy_calibration_updates_top_and_grouped_fits(self):
         fit_group = _FitGroup()
@@ -80,10 +79,10 @@ class CoreFitAnisotropyCalibrationTests(unittest.TestCase):
         _apply_anisotropy_calibration_to_fit(
             fit_group,
             {
-                'g_factor': 1.45,
-                'l1': 0.015,
-                'l2': 0.025,
-            }
+                "g_factor": 1.45,
+                "l1": 0.015,
+                "l2": 0.025,
+            },
         )
 
         # Top fit
@@ -100,14 +99,14 @@ class CoreFitAnisotropyCalibrationTests(unittest.TestCase):
     def test_resolve_dataset_anisotropy_calibration_ignores_non_finite_values(self):
         # Non-finite reader values should be ignored to avoid feeding invalid
         # model kwargs into anisotropy parameter construction.
-        reader = _Reader(g_factor=float('nan'), l1=float('inf'), l2=0.22)
+        reader = _Reader(g_factor=float("nan"), l1=float("inf"), l2=0.22)
         group = _Group([_Curve(meta_data={})], meta_data={}, data_reader=reader)
 
         calibration = _resolve_dataset_anisotropy_calibration(group)
 
-        self.assertIsNone(calibration['g_factor'])
-        self.assertIsNone(calibration['l1'])
-        self.assertAlmostEqual(calibration['l2'], 0.22)
+        self.assertIsNone(calibration["g_factor"])
+        self.assertIsNone(calibration["l1"])
+        self.assertAlmostEqual(calibration["l2"], 0.22)
 
     def test_apply_anisotropy_calibration_ignores_non_finite_values(self):
         fit_group = _FitGroup()
@@ -120,10 +119,10 @@ class CoreFitAnisotropyCalibrationTests(unittest.TestCase):
         _apply_anisotropy_calibration_to_fit(
             fit_group,
             {
-                'g_factor': float('nan'),
-                'l1': float('inf'),
-                'l2': 0.02,
-            }
+                "g_factor": float("nan"),
+                "l1": float("inf"),
+                "l2": 0.02,
+            },
         )
 
         self.assertAlmostEqual(fit_group.model.anisotropy._g.value, 1.0)
@@ -131,5 +130,5 @@ class CoreFitAnisotropyCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(fit_group.model.anisotropy._l2.value, 0.02)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

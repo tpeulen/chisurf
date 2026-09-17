@@ -25,6 +25,7 @@ from chisurf.core.plugin import load_manifest
 if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
     from chimol.hosts.qt import MolViewPluginWindow
 
+
 def _place_chimol_settings_beside_chisurf_s() -> None:
     """Tell chimol to keep its settings where ChiSurf keeps everything else.
 
@@ -45,9 +46,9 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
     a plugin that will not load because a settings path could not be resolved.
     """
     try:
-        import chisurf.core.settings as _cs_settings
-
         from chimol.core.settings.dirs import set_settings_dir
+
+        import chisurf.core.settings as _cs_settings
 
         set_settings_dir(_cs_settings.get_path("settings"))
 
@@ -71,8 +72,7 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
         from chimol.plugins.demos.catalog import set_data_dirs
 
         _samples = (
-            pathlib.Path(__file__).resolve().parents[3]
-            / "test" / "data" / "atomic_coordinates"
+            pathlib.Path(__file__).resolve().parents[3] / "test" / "data" / "atomic_coordinates"
         )
         set_data_dirs(
             _samples / "pdb_files",
@@ -189,6 +189,7 @@ def main() -> None:
     ``--qt`` asks for.
     """
     from qtpy import QtWidgets
+
     app = QtWidgets.QApplication.instance()
     owns_app = app is None
     if app is None:

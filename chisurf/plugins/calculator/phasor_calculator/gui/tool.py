@@ -99,8 +99,11 @@ class _PhasorCalcModel:
             components=[[self.g1, self.s1], [self.g2, self.s2]],
             fractions=[f1, 1.0 - f1],
             cursors=[
-                {"center": [self.cursor_g, self.cursor_s],
-                 "radius": float(self.cursor_radius), "name": "cursor"}
+                {
+                    "center": [self.cursor_g, self.cursor_s],
+                    "radius": float(self.cursor_radius),
+                    "name": "cursor",
+                }
             ],
         )
 
@@ -168,7 +171,9 @@ class PhasorCalculatorTool(ChisurfDockTool):
             editor = getattr(vw, "editor", None)
             if editor is None:
                 continue
-            signal = getattr(editor, "editingFinished", None) or getattr(editor, "valueChanged", None)
+            signal = getattr(editor, "editingFinished", None) or getattr(
+                editor, "valueChanged", None
+            )
             if signal is not None:
                 signal.connect(self._on_change)
         for tw in self._form.findChildren(ToggleWidget):

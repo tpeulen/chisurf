@@ -6,15 +6,16 @@ import base64
 import json
 import tempfile
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QUrl
 
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 try:
     from qtpy import sip
@@ -406,9 +407,7 @@ class MMFDBWidget(NavigationPanelTool):
         # initialises these, so seed them here.
         self._failures: list[str] = []
         self._refresh_in_progress = False
-        self._object_preview_dir = tempfile.TemporaryDirectory(
-            prefix="chisurf-mmfdb-preview-"
-        )
+        self._object_preview_dir = tempfile.TemporaryDirectory(prefix="chisurf-mmfdb-preview-")
 
         # Selection state
         self.current_sample_id = None
@@ -454,21 +453,43 @@ class MMFDBWidget(NavigationPanelTool):
         # Initialize generic detail widgets
         self.user_detail_widget = MMFDBDetailWidget("user", parent=self)
         self.device_detail_widget = MMFDBDetailWidget("device", parent=self)
-        
+
         sample_providers = {
-            "measured_by_user_id": lambda: [(u["user_id"], u.get("display_name", u["user_id"])) for u in self.client.list_users()],
-            "measured_by_device_id": lambda: [(d["device_id"], d["name"]) for d in self.client.list_devices()],
+            "measured_by_user_id": lambda: [
+                (u["user_id"], u.get("display_name", u["user_id"]))
+                for u in self.client.list_users()
+            ],
+            "measured_by_device_id": lambda: [
+                (d["device_id"], d["name"]) for d in self.client.list_devices()
+            ],
         }
-        self.sample_detail_widget = MMFDBDetailWidget("sample", dropdown_providers=sample_providers, parent=self)
+        self.sample_detail_widget = MMFDBDetailWidget(
+            "sample", dropdown_providers=sample_providers, parent=self
+        )
 
         experiment_providers = {
-            "type_id": lambda: [(t["type_id"], t["name"]) for t in self.client.list_experiment_types()],
-            "sample_id": lambda: [(s["sample_id"], s.get("description") or s["sample_id"]) for s in self.client.list_samples()],
-            "measured_by_user_id": lambda: [(u["user_id"], u.get("display_name", u["user_id"])) for u in self.client.list_users()],
-            "measured_by_device_id": lambda: [(d["device_id"], d["name"]) for d in self.client.list_devices()],
-            "setup_definition_id": lambda: [(s["setup_id"], s["name"]) for s in self.client._call("mmfdb.setups.list").get("setups", [])],
+            "type_id": lambda: [
+                (t["type_id"], t["name"]) for t in self.client.list_experiment_types()
+            ],
+            "sample_id": lambda: [
+                (s["sample_id"], s.get("description") or s["sample_id"])
+                for s in self.client.list_samples()
+            ],
+            "measured_by_user_id": lambda: [
+                (u["user_id"], u.get("display_name", u["user_id"]))
+                for u in self.client.list_users()
+            ],
+            "measured_by_device_id": lambda: [
+                (d["device_id"], d["name"]) for d in self.client.list_devices()
+            ],
+            "setup_definition_id": lambda: [
+                (s["setup_id"], s["name"])
+                for s in self.client._call("mmfdb.setups.list").get("setups", [])
+            ],
         }
-        self.experiment_detail_widget = MMFDBDetailWidget("experiment", dropdown_providers=experiment_providers, parent=self)
+        self.experiment_detail_widget = MMFDBDetailWidget(
+            "experiment", dropdown_providers=experiment_providers, parent=self
+        )
         self.experiment_type_detail_widget = MMFDBDetailWidget("experiment_type", parent=self)
         self.branch_detail_widget = MMFDBDetailWidget("branch", parent=self)
         self.probe_detail_widget = MMFDBDetailWidget("probe", parent=self)
@@ -518,7 +539,9 @@ class MMFDBWidget(NavigationPanelTool):
             "mmfdb-admin is restricted to MMFDB administrators."
         )
 
-    def _ensure_authenticated(self, username: str | None = None, password: str | None = None) -> None:
+    def _ensure_authenticated(
+        self, username: str | None = None, password: str | None = None
+    ) -> None:
         """Acquire an MMFDB session token for the active user.
 
         Most ``mmfdb.*`` endpoints require authentication. We first attempt a
@@ -526,7 +549,7 @@ class MMFDBWidget(NavigationPanelTool):
         not set a password yet); if that fails we prompt the operator for the
         password, retrying up to three times. Cancelling the prompt is allowed
         — the widget still opens but most tables will surface auth errors.
-        
+
         Parameters
         ----------
         username : str, optional
@@ -549,9 +572,7 @@ class MMFDBWidget(NavigationPanelTool):
         # (e.g. a previous mmfdb-admin login). No password prompt if already
         # authenticated this session.
         if getattr(self.client, "mode", "embedded") == "remote":
-            _host, _cmd = credential_endpoint(
-                {"mode": "remote", "base_url": self.client.base_url}
-            )
+            _host, _cmd = credential_endpoint({"mode": "remote", "base_url": self.client.base_url})
             _pub = _cmd
         else:
             _host = getattr(self.client, "host", "127.0.0.1")
@@ -581,7 +602,7 @@ class MMFDBWidget(NavigationPanelTool):
             self._auth_login_user = user_id
             cache_session(user_id, getattr(self.client, "token", None), _host, _cmd, _pub)
             return
-            
+
         # Only show error if password was explicitly provided and non-empty
         # If password is empty or None, prompt for it
         if password is not None and password != "":
@@ -591,7 +612,7 @@ class MMFDBWidget(NavigationPanelTool):
                 "Invalid credentials. Please try again.",
             )
             return
-            
+
         # No password provided or it failed — prompt with the AutoForm login
         # dialog (single-line password; user/host/ports under "Advanced").
         from chisurf.plugins.core.mmfdb_admin.gui.connection_dialog import ConnectionAuthDialog
@@ -616,9 +637,7 @@ class MMFDBWidget(NavigationPanelTool):
             # Reconnect to a different server if the endpoint was changed.
             if getattr(self.client, "mode", "embedded") == "remote":
                 if values["host"] != self.client.base_url:
-                    self.client = MMFDBClient(
-                        mode="remote", base_url=values["host"]
-                    )
+                    self.client = MMFDBClient(mode="remote", base_url=values["host"])
                     _host, _cmd = credential_endpoint(
                         {"mode": "remote", "base_url": self.client.base_url}
                     )
@@ -642,14 +661,16 @@ class MMFDBWidget(NavigationPanelTool):
                     client_metadata=client_metadata,
                 )
             except Exception as exc:
-                dialogs.warning(
-                    self, "MMFDB login failed", str(exc)
-                )
+                dialogs.warning(self, "MMFDB login failed", str(exc))
                 continue
             if isinstance(result, dict) and result.get("ok"):
                 self._auth_login_user = user_id
                 cache_session(
-                    user_id, getattr(self.client, "token", None), _host, _cmd, _pub,
+                    user_id,
+                    getattr(self.client, "token", None),
+                    _host,
+                    _cmd,
+                    _pub,
                 )
                 return
             dialogs.warning(
@@ -672,7 +693,9 @@ class MMFDBWidget(NavigationPanelTool):
             chisurf.logging.warning("_disconnect_signal(self, signal: Any) -> None: %s", exc)
 
     @staticmethod
-    def _icon_button(icon: QtWidgets.QStyle.StandardPixmap, tooltip: str, slot: Any) -> QtWidgets.QToolButton:
+    def _icon_button(
+        icon: QtWidgets.QStyle.StandardPixmap, tooltip: str, slot: Any
+    ) -> QtWidgets.QToolButton:
         btn = QtWidgets.QToolButton()
         btn.setIcon(btn.style().standardIcon(icon))
         btn.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
@@ -684,7 +707,9 @@ class MMFDBWidget(NavigationPanelTool):
         return btn
 
     @staticmethod
-    def _text_icon_button(text: str, icon: QtWidgets.QStyle.StandardPixmap, tooltip: str, slot: Any) -> QtWidgets.QToolButton:
+    def _text_icon_button(
+        text: str, icon: QtWidgets.QStyle.StandardPixmap, tooltip: str, slot: Any
+    ) -> QtWidgets.QToolButton:
         btn = QtWidgets.QToolButton()
         btn.setText(text)
         btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
@@ -798,8 +823,12 @@ class MMFDBWidget(NavigationPanelTool):
             f"{Glyphs.CHECKBOX_OFF} Uncheck selected rows",
             lambda: self._set_selected_checks(table, False),
         )
-        menu.addAction(f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(table, True))
-        menu.addAction(f"{Glyphs.CHECKBOX_OFF} Uncheck all", lambda: self._set_all_checks(table, False))
+        menu.addAction(
+            f"{Glyphs.CHECKBOX_ON} Check all visible", lambda: self._set_all_checks(table, True)
+        )
+        menu.addAction(
+            f"{Glyphs.CHECKBOX_OFF} Uncheck all", lambda: self._set_all_checks(table, False)
+        )
         menu.addAction(f"{Glyphs.LOOP} Invert visible checks", lambda: self._invert_checks(table))
 
         menu.addSeparator()
@@ -869,7 +898,7 @@ class MMFDBWidget(NavigationPanelTool):
     def _set_selected_checks(table: QtWidgets.QTableWidget, checked: bool) -> None:
         """Check or uncheck only the selected rows."""
         state = QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked
-        selected = table.selectedItems() if hasattr(table, 'selectedItems') else []
+        selected = table.selectedItems() if hasattr(table, "selectedItems") else []
         rows = set()
         for item in selected:
             rows.add(item.row())
@@ -1026,13 +1055,19 @@ class MMFDBWidget(NavigationPanelTool):
 
         if save_slot:
             save_btn = self._text_icon_button(
-                f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save changes", save_slot
+                f"{Glyphs.SAVE} Save",
+                QtWidgets.QStyle.SP_DialogSaveButton,
+                "Save changes",
+                save_slot,
             )
             buttons_layout.addWidget(save_btn)
 
         if delete_slot:
             delete_btn = self._text_icon_button(
-                f"{Glyphs.DELETE} Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected", delete_slot
+                f"{Glyphs.DELETE} Delete",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Delete selected",
+                delete_slot,
             )
             buttons_layout.addWidget(delete_btn)
 
@@ -1053,9 +1088,7 @@ class MMFDBWidget(NavigationPanelTool):
         """Return a centered, checkable table item for column 0."""
         item = QtWidgets.QTableWidgetItem("")
         item.setFlags(
-            QtCore.Qt.ItemIsUserCheckable
-            | QtCore.Qt.ItemIsEnabled
-            | QtCore.Qt.ItemIsSelectable
+            QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
         )
         item.setCheckState(QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked)
         item.setTextAlignment(QtCore.Qt.AlignCenter)
@@ -1098,7 +1131,9 @@ class MMFDBWidget(NavigationPanelTool):
             item = table.item(row, 0)
             if item is None or not (item.flags() & QtCore.Qt.ItemIsUserCheckable):
                 continue
-            state = QtCore.Qt.Unchecked if item.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked
+            state = (
+                QtCore.Qt.Unchecked if item.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked
+            )
             item.setCheckState(state)
 
     @staticmethod
@@ -1182,9 +1217,7 @@ class MMFDBWidget(NavigationPanelTool):
                 + ("" if len(failures) <= 10 else f"\n…(+{len(failures) - 10} more)"),
             )
         else:
-            self.status_label.setText(
-                f"Deleted {len(ids)} {item_kind}(s) successfully."
-            )
+            self.status_label.setText(f"Deleted {len(ids)} {item_kind}(s) successfully.")
         self.refresh()
 
     # ------------------------------------------------------------------ #
@@ -1203,11 +1236,13 @@ class MMFDBWidget(NavigationPanelTool):
         out: dict[str, str] = {}
         for uid in ids:
             n_s = sum(
-                1 for s in samples
+                1
+                for s in samples
                 if s.get("measured_by_user_id") == uid or s.get("measured_by_user") == uid
             )
             n_e = sum(
-                1 for e in experiments
+                1
+                for e in experiments
                 if e.get("measured_by_user_id") == uid or e.get("measured_by_user") == uid
             )
             parts = []
@@ -1269,14 +1304,15 @@ class MMFDBWidget(NavigationPanelTool):
         out: dict[str, str] = {}
         for tid in ids:
             n = sum(
-                1 for e in experiments
+                1
+                for e in experiments
                 if str(e.get("type_id")) == tid or str(e.get("experiment_type_id")) == tid
             )
             if n:
                 out[tid] = f"{n} experiment(s)"
         return out
 
-    def _extra_buttons_for_spec(self, spec: "EntitySpec") -> list[QtWidgets.QWidget]:
+    def _extra_buttons_for_spec(self, spec: EntitySpec) -> list[QtWidgets.QWidget]:
         """Return ChiSurf-specific extra toolbar buttons for a given EntitySpec.
 
         These are per-entity actions that are NOT part of generic CRUD but are
@@ -1376,7 +1412,9 @@ class MMFDBWidget(NavigationPanelTool):
 
             validate_btn = QtWidgets.QToolButton()
             validate_btn.setText(f"{Glyphs.CHECK} Validate")
-            validate_btn.setToolTip("Set validation status for the selected processed-data artifact")
+            validate_btn.setToolTip(
+                "Set validation status for the selected processed-data artifact"
+            )
             validate_btn.clicked.connect(self._validate_selected_processed_product)
             btns.append(validate_btn)
 
@@ -1395,7 +1433,9 @@ class MMFDBWidget(NavigationPanelTool):
 
             detail_btn = QtWidgets.QToolButton()
             detail_btn.setText(f"{Glyphs.SEARCH} Details")
-            detail_btn.setToolTip("Show parameters and linked products for the selected analysis run")
+            detail_btn.setToolTip(
+                "Show parameters and linked products for the selected analysis run"
+            )
             detail_btn.clicked.connect(self._show_selected_analysis_details)
             btns.append(detail_btn)
 
@@ -1470,9 +1510,7 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             response = self.client.get_object(object_uuid)
             payload = base64.b64decode(response["data"], validate=True)
-            filename = Path(
-                str(data.get("original_filename") or object_uuid)
-            ).name
+            filename = Path(str(data.get("original_filename") or object_uuid)).name
             path = Path(self._object_preview_dir.name) / f"{object_uuid}-{filename}"
             path.write_bytes(payload)
             QtGui.QDesktopServices.openUrl(_qurl_for_location(str(path)))
@@ -1603,7 +1641,9 @@ class MMFDBWidget(NavigationPanelTool):
         if not artifact_id:
             dialogs.information(self, "No artifact selected", "Select an artifact row first.")
             return
-        current = str(self._selected_entity_dock_data(entity_key).get("validation_status") or "unvalidated")
+        current = str(
+            self._selected_entity_dock_data(entity_key).get("validation_status") or "unvalidated"
+        )
         choices = list(VALIDATION_STATUS_VALUES)
         status, ok = QtWidgets.QInputDialog.getItem(
             self,
@@ -1785,12 +1825,27 @@ class MMFDBWidget(NavigationPanelTool):
 
     #: Per-entity nav emoji, keyed by entity-registry key.
     _ENTITY_ICONS = {
-        "sample": Glyphs.TEST, "condition": "🌡️", "entity": Glyphs.DNA, "probe": "💡",
-        "position": "📍", "fret_pair": Glyphs.LINK, "experiment": Glyphs.SCIENCE,
-        "experiment_type": "🧾", "setup": Glyphs.SETTINGS, "detector_channel": Glyphs.ANTENNA,
-        "pie_window": "🪟", "fcs_pair": Glyphs.SHUFFLE, "device": "🖥️", "raw_data": Glyphs.OPEN,
-        "processing_run": "🏭", "processed_product": Glyphs.PACKAGE, "analysis": Glyphs.CHART_UP,
-        "object": "🧱", "project": Glyphs.FOLDER, "branch": "🌿", "user": Glyphs.USER,
+        "sample": Glyphs.TEST,
+        "condition": "🌡️",
+        "entity": Glyphs.DNA,
+        "probe": "💡",
+        "position": "📍",
+        "fret_pair": Glyphs.LINK,
+        "experiment": Glyphs.SCIENCE,
+        "experiment_type": "🧾",
+        "setup": Glyphs.SETTINGS,
+        "detector_channel": Glyphs.ANTENNA,
+        "pie_window": "🪟",
+        "fcs_pair": Glyphs.SHUFFLE,
+        "device": "🖥️",
+        "raw_data": Glyphs.OPEN,
+        "processing_run": "🏭",
+        "processed_product": Glyphs.PACKAGE,
+        "analysis": Glyphs.CHART_UP,
+        "object": "🧱",
+        "project": Glyphs.FOLDER,
+        "branch": "🌿",
+        "user": Glyphs.USER,
     }
 
     def _build_panels(self) -> list[dict[str, Any]]:
@@ -1805,50 +1860,102 @@ class MMFDBWidget(NavigationPanelTool):
         panels: list[dict[str, Any]] = [
             {"name": "Overview", "icon": Glyphs.CHART, "factory": lambda p: self.overview_tab()},
             {"name": "All items", "icon": "🗂", "factory": lambda p: self.all_items_tab()},
-            {"name": "Measurements", "icon": Glyphs.CHART_UP, "factory": lambda p: self.measurements_tab()},
+            {
+                "name": "Measurements",
+                "icon": Glyphs.CHART_UP,
+                "factory": lambda p: self.measurements_tab(),
+            },
         ]
 
         def _add_group_entities(group: str) -> None:
             if self._dictionary is None:
                 return
             for spec in [s for s in ENTITY_REGISTRY if s.group == group]:
-                panels.append({
-                    "name": spec.title,
-                    "icon": self._ENTITY_ICONS.get(spec.key, "•"),
-                    "entity_key": spec.key,
-                    "factory": self._entity_factory(spec),
-                })
+                panels.append(
+                    {
+                        "name": spec.title,
+                        "icon": self._ENTITY_ICONS.get(spec.key, "•"),
+                        "entity_key": spec.key,
+                        "factory": self._entity_factory(spec),
+                    }
+                )
 
         panels.append({"name": "Samples & chemistry", "icon": "🧫", "separator": True})
         _add_group_entities("Samples & chemistry")
-        panels.append({
-            "name": "Sample Metadata", "icon": Glyphs.LABEL, "entity_key": "metadata",
-            "factory": self._metadata_factory,
-        })
-        panels.append({
-            "name": "Spectra", "icon": "🌈", "factory": self._fluorophore_factory,
-        })
+        panels.append(
+            {
+                "name": "Sample Metadata",
+                "icon": Glyphs.LABEL,
+                "entity_key": "metadata",
+                "factory": self._metadata_factory,
+            }
+        )
+        panels.append(
+            {
+                "name": "Spectra",
+                "icon": "🌈",
+                "factory": self._fluorophore_factory,
+            }
+        )
 
         panels.append({"name": "Experiments & data", "icon": Glyphs.SCIENCE, "separator": True})
         _add_group_entities("Experiments & data")
 
         panels.append({"name": "Provenance", "icon": "🕸️", "separator": True})
         _add_group_entities("Provenance")
-        panels.append({"name": "Provenance Graph", "icon": "🕸️", "factory": lambda p: self.provenance_graph_dock()})
+        panels.append(
+            {
+                "name": "Provenance Graph",
+                "icon": "🕸️",
+                "factory": lambda p: self.provenance_graph_dock(),
+            }
+        )
 
         panels.append({"name": "Administration", "icon": "🛡️", "separator": True})
         _add_group_entities("Administration")
-        panels.append({"name": "Import / Export", "icon": Glyphs.REFRESH, "factory": lambda p: self.import_export_tab()})
-        panels.append({"name": "eLabFTW", "icon": "📓", "factory": lambda p: ELabFTWView(self.client, p)})
+        panels.append(
+            {
+                "name": "Import / Export",
+                "icon": Glyphs.REFRESH,
+                "factory": lambda p: self.import_export_tab(),
+            }
+        )
+        panels.append(
+            {"name": "eLabFTW", "icon": "📓", "factory": lambda p: ELabFTWView(self.client, p)}
+        )
 
         panels.append({"name": "Workflows & QC", "icon": Glyphs.TOOLBOX, "separator": True})
         panels += [
-            {"name": "Studies", "icon": Glyphs.DOCS, "factory": lambda p: StudiesView(self.client, p)},
-            {"name": "Protocols", "icon": Glyphs.COPY, "factory": lambda p: ProtocolsView(self.client, p)},
-            {"name": "Lifecycle", "icon": Glyphs.RESET, "factory": lambda p: LifecycleView(self.client, p)},
-            {"name": "Calibrations", "icon": Glyphs.TARGET, "factory": lambda p: CalibrationsView(self.client, p)},
-            {"name": "Reagent Lots", "icon": "🧴", "factory": lambda p: ReagentLotsView(self.client, p)},
-            {"name": "Pipelines", "icon": Glyphs.TOOLS, "factory": lambda p: PipelinesView(self.client, p)},
+            {
+                "name": "Studies",
+                "icon": Glyphs.DOCS,
+                "factory": lambda p: StudiesView(self.client, p),
+            },
+            {
+                "name": "Protocols",
+                "icon": Glyphs.COPY,
+                "factory": lambda p: ProtocolsView(self.client, p),
+            },
+            {
+                "name": "Lifecycle",
+                "icon": Glyphs.RESET,
+                "factory": lambda p: LifecycleView(self.client, p),
+            },
+            {
+                "name": "Calibrations",
+                "icon": Glyphs.TARGET,
+                "factory": lambda p: CalibrationsView(self.client, p),
+            },
+            {
+                "name": "Reagent Lots",
+                "icon": "🧴",
+                "factory": lambda p: ReagentLotsView(self.client, p),
+            },
+            {
+                "name": "Pipelines",
+                "icon": Glyphs.TOOLS,
+                "factory": lambda p: PipelinesView(self.client, p),
+            },
         ]
         return panels
 
@@ -1860,6 +1967,7 @@ class MMFDBWidget(NavigationPanelTool):
 
     def _entity_factory(self, spec: EntitySpec):
         """Build a lazy factory creating + registering an EntityDock for ``spec``."""
+
         def factory(parent):
             dock = EntityDock(
                 spec=spec,
@@ -1870,11 +1978,10 @@ class MMFDBWidget(NavigationPanelTool):
                 extra_buttons=self._extra_buttons_for_spec(spec),
             )
             self._entity_docks[spec.key] = dock
-            dock.jumpRequested.connect(
-                lambda ek, rid, _k=spec.key: self._jump_to_entity(ek, rid)
-            )
+            dock.jumpRequested.connect(lambda ek, rid, _k=spec.key: self._jump_to_entity(ek, rid))
             dock.statusMessage.connect(self.status_label.setText)
             return dock
+
         return factory
 
     def _metadata_factory(self, parent):
@@ -1957,7 +2064,9 @@ class MMFDBWidget(NavigationPanelTool):
     def setup_menu_bar(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
         file_menu.addAction(f"{Glyphs.IMPORT} &Import...", self.import_file)
-        file_menu.addAction(f"{Glyphs.EXPORT} &Export selected sample...", self.export_selected_sample)
+        file_menu.addAction(
+            f"{Glyphs.EXPORT} &Export selected sample...", self.export_selected_sample
+        )
         file_menu.addAction(f"{Glyphs.SAVE} &Backup database...", self.backup_database)
         file_menu.addAction(f"{Glyphs.RESET} Reset", self.reset_from_source)
         file_menu.addSeparator()
@@ -1992,9 +2101,7 @@ class MMFDBWidget(NavigationPanelTool):
         # different MMFDB server directly.
         toolbar.addWidget(QtWidgets.QLabel(" 🌐 "))
         self.server_edit = QtWidgets.QLineEdit(last_server)
-        self.server_edit.setPlaceholderText(
-            "http://127.0.0.1:8080" if remote_mode else "127.0.0.1"
-        )
+        self.server_edit.setPlaceholderText("http://127.0.0.1:8080" if remote_mode else "127.0.0.1")
         self.server_edit.setFixedWidth(230 if remote_mode else 130)
         self.server_edit.setToolTip(
             "Standalone MMFDB base URL" if remote_mode else "Embedded MMFDB server host"
@@ -2023,7 +2130,9 @@ class MMFDBWidget(NavigationPanelTool):
         self.password_edit.setFixedWidth(110)
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.password_edit.setPlaceholderText("(session)")
-        self.password_edit.setToolTip("MMFDB password — not needed if the session is already authorized")
+        self.password_edit.setToolTip(
+            "MMFDB password — not needed if the session is already authorized"
+        )
         self.password_edit.returnPressed.connect(self._on_login_clicked)
         toolbar.addWidget(self.password_edit)
 
@@ -2045,21 +2154,33 @@ class MMFDBWidget(NavigationPanelTool):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         toolbar.addWidget(spacer)
         toolbar.addSeparator()
-        
+
         self.refresh_action = toolbar.addAction(f"{Glyphs.REFRESH} Refresh", self.refresh)
         self.refresh_action.setToolTip("Reload MMFDB status and visible tables")
         self._transport_actions = [self.refresh_action]
         for text, slot, tip in (
-            (f"{Glyphs.DOWN} Import", self.import_file, "Import fluorescence/sample/project data into MMFDB"),
-            (f"{Glyphs.SAVE} Backup", self.backup_database, "Create a backup copy of the active MMFDB database"),
-            (f"{Glyphs.RESET} Reset", self.reset_from_source, "Reset the active MMFDB database. A backup is created first."),
+            (
+                f"{Glyphs.DOWN} Import",
+                self.import_file,
+                "Import fluorescence/sample/project data into MMFDB",
+            ),
+            (
+                f"{Glyphs.SAVE} Backup",
+                self.backup_database,
+                "Create a backup copy of the active MMFDB database",
+            ),
+            (
+                f"{Glyphs.RESET} Reset",
+                self.reset_from_source,
+                "Reset the active MMFDB database. A backup is created first.",
+            ),
         ):
             action = toolbar.addAction(text, slot)
             action.setToolTip(tip)
             self._transport_actions.append(action)
         self._set_transport_connected(False)
         self._update_login_actions(logged_in=False)
-        
+
         # Prefill username with current user
         self._update_username_prefill()
 
@@ -2090,7 +2211,7 @@ class MMFDBWidget(NavigationPanelTool):
     def _update_login_actions(self, *, logged_in: bool = False, connecting: bool = False) -> None:
         self.login_action.setVisible(not logged_in and not connecting)
         self.logout_action.setVisible(logged_in)
-        
+
         # Set connection status indicator with colored dot
         if connecting:
             self.user_label.setText(" ● ")
@@ -2108,7 +2229,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.user_label.setText(" ● ")
             self.user_label.setStyleSheet("color: #f44336; padding: 0 6px; font-weight: bold;")
             self.user_label.setToolTip("Not connected")
-        
+
         # Always ensure username is prefilled
         self._update_username_prefill()
 
@@ -2148,15 +2269,15 @@ class MMFDBWidget(NavigationPanelTool):
         # Show connecting state
         self._update_login_actions(logged_in=False, connecting=True)
         QtWidgets.QApplication.processEvents()
-        
+
         # Use server and port fields if available, otherwise fall back to URL parsing
-        if hasattr(self, 'server_edit') and hasattr(self, 'port_spin'):
+        if hasattr(self, "server_edit") and hasattr(self, "port_spin"):
             host = self.server_edit.text() or "127.0.0.1"
             port = self.port_spin.value()
             transport = "tcp"
         else:
             transport, host, port = self._parse_url(self.url_edit.text())
-        
+
         try:
             if transport == "inprocess":
                 self.client = MMFDBClient(inprocess=True)
@@ -2170,21 +2291,23 @@ class MMFDBWidget(NavigationPanelTool):
             dialogs.error(self, "Connection failed", str(exc))
             self._update_login_actions(logged_in=False, connecting=False)
             return
-        
+
         try:
             self._verify_admin_access()
         except PermissionError as exc:
             dialogs.error(self, "Access denied", str(exc))
             self._update_login_actions(logged_in=False, connecting=False)
             return
-        
+
         # Use username from toolbar field, or fall back to active user
         username = self.username_edit.text() or self._active_mmfdb_user_id()
         password = self.password_edit.text()
-        
+
         self._auth_login_user = None
         self._ensure_authenticated(username=username, password=password)
-        self._update_login_actions(logged_in=bool(getattr(self.client, "token", None)), connecting=False)
+        self._update_login_actions(
+            logged_in=bool(getattr(self.client, "token", None)), connecting=False
+        )
         self.refresh()
 
     def _on_logout_clicked(self) -> None:
@@ -2268,52 +2391,123 @@ class MMFDBWidget(NavigationPanelTool):
         and the table attribute + id column used for the selection.
         """
         return [
-            {"type": "sample", "list": lambda: self.client.list_samples(),
-             "id": "sample_id", "label": "description",
-             "tab": "Sample", "table": None, "id_col": 1},
-            {"type": "experiment", "list": lambda: self.client.list_experiments(),
-             "id": "experiment_id", "label": "sample_id",
-             "tab": "Experiments", "table": "experiments_table", "id_col": 0},
-            {"type": "user", "list": lambda: self.client.list_users(),
-             "id": "user_id", "label": "display_name",
-             "tab": "Users", "table": "users_table", "id_col": 0},
-            {"type": "device", "list": lambda: self.client.list_devices(),
-             "id": "device_id", "label": "name",
-             "tab": "Devices", "table": "devices_table", "id_col": 0},
-            {"type": "probe", "list": lambda: self.client.list_probes(),
-             "id": "probe_id", "label": "chromophore_name",
-             "tab": "Probes", "table": "probes_table", "id_col": 0},
-            {"type": "branch", "list": lambda: self.client.list_branches(),
-             "id": "branch_uuid", "label": "name",
-             "tab": "Branches", "table": "branches_table", "id_col": 1},
-            {"type": "experiment_type",
-             "list": lambda: self.client.list_experiment_types(),
-             "id": "type_id", "label": "name",
-             "tab": "Experiment types", "table": "experiment_types_table", "id_col": 0},
-            {"type": "setup",
-             "list": lambda: self.client._call("mmfdb.setups.list").get("setups", []),
-             "id": "setup_id", "label": "name",
-             "tab": "Setups", "table": "setups_table", "id_col": 0},
-            {"type": "raw_data", "list": lambda: self.client.list_raw_data(),
-             "id": "raw_data_id", "label": "data_type",
-             "tab": "Raw data", "table": "raw_data_table", "id_col": 0},
-            {"type": "processing_run",
-             "list": lambda: self.client.list_processing_runs(),
-             "id": "processing_id", "label": "processing_type",
-             "tab": "Processing runs", "table": "processing_runs_table",
-             "id_col": 0},
-            {"type": "processed_data",
-             "list": lambda: self.client.list_processed_data(),
-             "id": "processed_data_id", "label": "product_type",
-             "tab": "Processed products", "table": "processed_products_table",
-             "id_col": 0},
-            {"type": "analysis",
-             "list": lambda: self.client.list_analysis_runs(),
-             "id": "analysis_id", "label": "model_name",
-             "tab": "Analyses", "table": "analyses_table", "id_col": 0},
-            {"type": "project", "list": lambda: self.client.list_projects(),
-             "id": "analysis_id", "label": "model_name",
-             "tab": "Projects", "table": "projects_table", "id_col": 0},
+            {
+                "type": "sample",
+                "list": lambda: self.client.list_samples(),
+                "id": "sample_id",
+                "label": "description",
+                "tab": "Sample",
+                "table": None,
+                "id_col": 1,
+            },
+            {
+                "type": "experiment",
+                "list": lambda: self.client.list_experiments(),
+                "id": "experiment_id",
+                "label": "sample_id",
+                "tab": "Experiments",
+                "table": "experiments_table",
+                "id_col": 0,
+            },
+            {
+                "type": "user",
+                "list": lambda: self.client.list_users(),
+                "id": "user_id",
+                "label": "display_name",
+                "tab": "Users",
+                "table": "users_table",
+                "id_col": 0,
+            },
+            {
+                "type": "device",
+                "list": lambda: self.client.list_devices(),
+                "id": "device_id",
+                "label": "name",
+                "tab": "Devices",
+                "table": "devices_table",
+                "id_col": 0,
+            },
+            {
+                "type": "probe",
+                "list": lambda: self.client.list_probes(),
+                "id": "probe_id",
+                "label": "chromophore_name",
+                "tab": "Probes",
+                "table": "probes_table",
+                "id_col": 0,
+            },
+            {
+                "type": "branch",
+                "list": lambda: self.client.list_branches(),
+                "id": "branch_uuid",
+                "label": "name",
+                "tab": "Branches",
+                "table": "branches_table",
+                "id_col": 1,
+            },
+            {
+                "type": "experiment_type",
+                "list": lambda: self.client.list_experiment_types(),
+                "id": "type_id",
+                "label": "name",
+                "tab": "Experiment types",
+                "table": "experiment_types_table",
+                "id_col": 0,
+            },
+            {
+                "type": "setup",
+                "list": lambda: self.client._call("mmfdb.setups.list").get("setups", []),
+                "id": "setup_id",
+                "label": "name",
+                "tab": "Setups",
+                "table": "setups_table",
+                "id_col": 0,
+            },
+            {
+                "type": "raw_data",
+                "list": lambda: self.client.list_raw_data(),
+                "id": "raw_data_id",
+                "label": "data_type",
+                "tab": "Raw data",
+                "table": "raw_data_table",
+                "id_col": 0,
+            },
+            {
+                "type": "processing_run",
+                "list": lambda: self.client.list_processing_runs(),
+                "id": "processing_id",
+                "label": "processing_type",
+                "tab": "Processing runs",
+                "table": "processing_runs_table",
+                "id_col": 0,
+            },
+            {
+                "type": "processed_data",
+                "list": lambda: self.client.list_processed_data(),
+                "id": "processed_data_id",
+                "label": "product_type",
+                "tab": "Processed products",
+                "table": "processed_products_table",
+                "id_col": 0,
+            },
+            {
+                "type": "analysis",
+                "list": lambda: self.client.list_analysis_runs(),
+                "id": "analysis_id",
+                "label": "model_name",
+                "tab": "Analyses",
+                "table": "analyses_table",
+                "id_col": 0,
+            },
+            {
+                "type": "project",
+                "list": lambda: self.client.list_projects(),
+                "id": "analysis_id",
+                "label": "model_name",
+                "tab": "Projects",
+                "table": "projects_table",
+                "id_col": 0,
+            },
         ]
 
     def overview_tab(self) -> QtWidgets.QWidget:
@@ -2324,8 +2518,10 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setSpacing(6)
 
         refresh_btn = self._text_icon_button(
-            f"{Glyphs.REFRESH} Refresh overview", QtWidgets.QStyle.SP_BrowserReload,
-            "Reload database overview", self._refresh_overview
+            f"{Glyphs.REFRESH} Refresh overview",
+            QtWidgets.QStyle.SP_BrowserReload,
+            "Reload database overview",
+            self._refresh_overview,
         )
         layout.addWidget(refresh_btn)
 
@@ -2417,7 +2613,8 @@ class MMFDBWidget(NavigationPanelTool):
 
     def measurements_tab(self) -> QtWidgets.QWidget:
         """Unified Measurements dock — aggregates raw data, processing runs,
-        and processed products (Task 11.1)."""
+        and processed products (Task 11.1).
+        """
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -2431,17 +2628,31 @@ class MMFDBWidget(NavigationPanelTool):
         self.meas_search_edit = QtWidgets.QLineEdit()
         self.meas_search_edit.setPlaceholderText("Search...")
         filter_bar.addWidget(self.meas_search_edit)
-        filter_bar.addWidget(self._text_icon_button(
-            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
-            "Refresh measurements list", self._refresh_measurements
-        ))
+        filter_bar.addWidget(
+            self._text_icon_button(
+                f"{Glyphs.REFRESH} Refresh",
+                QtWidgets.QStyle.SP_BrowserReload,
+                "Refresh measurements list",
+                self._refresh_measurements,
+            )
+        )
         filter_bar.addStretch()
         layout.addLayout(filter_bar)
 
         self.measurements_table = QtWidgets.QTableWidget(0, 9)
         apply_compact_table_style(self.measurements_table)
         self.measurements_table.setHorizontalHeaderLabels(
-            ["kind", "id", "sample", "experiment", "status", "created", "location", "project", "sample QA"]
+            [
+                "kind",
+                "id",
+                "sample",
+                "experiment",
+                "status",
+                "created",
+                "location",
+                "project",
+                "sample QA",
+            ]
         )
         self.measurements_table.horizontalHeader().setStretchLastSection(True)
         self.measurements_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -2498,15 +2709,21 @@ class MMFDBWidget(NavigationPanelTool):
 
                 row = self.measurements_table.rowCount()
                 self.measurements_table.insertRow(row)
-                values = [kind, item_id, sample, experiment, status, created, location, project, sample_qa]
+                values = [
+                    kind,
+                    item_id,
+                    sample,
+                    experiment,
+                    status,
+                    created,
+                    location,
+                    project,
+                    sample_qa,
+                ]
                 for col, val in enumerate(values):
-                    self.measurements_table.setItem(
-                        row, col, QtWidgets.QTableWidgetItem(val)
-                    )
+                    self.measurements_table.setItem(row, col, QtWidgets.QTableWidgetItem(val))
 
-        self.status_label.setText(
-            f"Measurements: {self.measurements_table.rowCount()} rows"
-        )
+        self.status_label.setText(f"Measurements: {self.measurements_table.rowCount()} rows")
 
     def all_items_tab(self) -> QtWidgets.QWidget:
         widget = QtWidgets.QWidget()
@@ -2658,9 +2875,7 @@ class MMFDBWidget(NavigationPanelTool):
             else:
                 self.all_items_table.setRowHidden(row, False)
                 visible += 1
-        self.all_items_count_label.setText(
-            f"{visible} / {self.all_items_table.rowCount()}"
-        )
+        self.all_items_count_label.setText(f"{visible} / {self.all_items_table.rowCount()}")
 
     def _on_all_item_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         if item is None:
@@ -2759,14 +2974,8 @@ class MMFDBWidget(NavigationPanelTool):
         def _succeeded(summary: Any) -> None:
             self._mock_data_task_running = False
             if isinstance(summary, dict) and hasattr(self, "preview_edit"):
-                self.preview_edit.setPlainText(
-                    json.dumps(summary, indent=2, default=str)
-                )
-            raw_count = (
-                len(summary.get("raw_data_ids", []))
-                if isinstance(summary, dict)
-                else 0
-            )
+                self.preview_edit.setPlainText(json.dumps(summary, indent=2, default=str))
+            raw_count = len(summary.get("raw_data_ids", [])) if isinstance(summary, dict) else 0
             sample_id = summary.get("sample_id", "?") if isinstance(summary, dict) else "?"
             self._set_status_message(
                 "Mock data populated: "
@@ -2779,10 +2988,7 @@ class MMFDBWidget(NavigationPanelTool):
             self._set_transport_connected(previous_transport_state)
             self._set_status_message(f"Mock data population failed: {error}")
             if hasattr(self, "preview_edit"):
-                self.preview_edit.setPlainText(
-                    "Mock data population failed:\n\n"
-                    f"{error}"
-                )
+                self.preview_edit.setPlainText(f"Mock data population failed:\n\n{error}")
 
         self._run_background_task(
             label="Mock data population",
@@ -2828,10 +3034,30 @@ class MMFDBWidget(NavigationPanelTool):
         self.sample_id_edit.setPlaceholderText("Type sample id (autocomplete searches existing)")
 
         btn_row = QtWidgets.QHBoxLayout()
-        new_btn = self._text_icon_button(f"{Glyphs.TEST} New", QtWidgets.QStyle.SP_FileDialogNewFolder, "Create new sample", self.new_sample)
-        save_btn = self._text_icon_button(f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save sample", self.save_sample)
-        delete_btn = self._text_icon_button(f"{Glyphs.DELETE} Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete sample", self.delete_sample)
-        clear_btn = self._text_icon_button(f"{Glyphs.CLEAR} Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_form)
+        new_btn = self._text_icon_button(
+            f"{Glyphs.TEST} New",
+            QtWidgets.QStyle.SP_FileDialogNewFolder,
+            "Create new sample",
+            self.new_sample,
+        )
+        save_btn = self._text_icon_button(
+            f"{Glyphs.SAVE} Save",
+            QtWidgets.QStyle.SP_DialogSaveButton,
+            "Save sample",
+            self.save_sample,
+        )
+        delete_btn = self._text_icon_button(
+            f"{Glyphs.DELETE} Delete",
+            QtWidgets.QStyle.SP_TrashIcon,
+            "Delete sample",
+            self.delete_sample,
+        )
+        clear_btn = self._text_icon_button(
+            f"{Glyphs.CLEAR} Clear",
+            QtWidgets.QStyle.SP_DialogResetButton,
+            "Clear form",
+            self.clear_form,
+        )
         full_btn = self._text_icon_button(
             "Full description",
             QtWidgets.QStyle.SP_FileDialogDetailedView,
@@ -2877,8 +3103,22 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button("Add entity", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add entity row", self.add_entity_row))
-        buttons.addWidget(self._text_icon_button("Remove", QtWidgets.QStyle.SP_TrashIcon, "Remove selected entity row", self.remove_entity_row))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Add entity",
+                QtWidgets.QStyle.SP_FileDialogNewFolder,
+                "Add entity row",
+                self.add_entity_row,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Remove",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Remove selected entity row",
+                self.remove_entity_row,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.sample_entities_table = QtWidgets.QTableWidget(0, 5)
@@ -2901,15 +3141,39 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button("Add probe", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add probe row", self.add_probe_position_row))
-        buttons.addWidget(self._text_icon_button("Remove", QtWidgets.QStyle.SP_TrashIcon, "Remove selected probe row", self.remove_probe_position_row))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Add probe",
+                QtWidgets.QStyle.SP_FileDialogNewFolder,
+                "Add probe row",
+                self.add_probe_position_row,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Remove",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Remove selected probe row",
+                self.remove_probe_position_row,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.sample_probes_table = QtWidgets.QTableWidget(0, 12)
         self.sample_probes_table.setHorizontalHeaderLabels(
             [
-                "probe_name", "entity", "seq_id", "comp_id", "asym_id", "atom_id",
-                "mutation", "modification", "abs_nm", "em_nm", "QY", "sample_probe_id",
+                "probe_name",
+                "entity",
+                "seq_id",
+                "comp_id",
+                "asym_id",
+                "atom_id",
+                "mutation",
+                "modification",
+                "abs_nm",
+                "em_nm",
+                "QY",
+                "sample_probe_id",
             ]
         )
         self.sample_probes_table.setEditTriggers(
@@ -2928,8 +3192,22 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button("Add pair", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add FRET pair row", self.add_fret_pair_row))
-        buttons.addWidget(self._text_icon_button("Remove", QtWidgets.QStyle.SP_TrashIcon, "Remove selected FRET pair row", self.remove_fret_pair_row))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Add pair",
+                QtWidgets.QStyle.SP_FileDialogNewFolder,
+                "Add FRET pair row",
+                self.add_fret_pair_row,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Remove",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Remove selected FRET pair row",
+                self.remove_fret_pair_row,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.fret_pairs_table = QtWidgets.QTableWidget(0, 7)
@@ -2979,9 +3257,30 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button("Refresh", QtWidgets.QStyle.SP_BrowserReload, "Refresh full description", self.refresh_full_description_panel))
-        buttons.addWidget(self._text_icon_button("Copy", QtWidgets.QStyle.SP_DialogSaveButton, "Copy JSON", self.copy_full_description_json))
-        buttons.addWidget(self._text_icon_button("Validate", QtWidgets.QStyle.SP_DialogApplyButton, "Validate export", self.validate_selected_sample_export))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Refresh",
+                QtWidgets.QStyle.SP_BrowserReload,
+                "Refresh full description",
+                self.refresh_full_description_panel,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Copy",
+                QtWidgets.QStyle.SP_DialogSaveButton,
+                "Copy JSON",
+                self.copy_full_description_json,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Validate",
+                QtWidgets.QStyle.SP_DialogApplyButton,
+                "Validate export",
+                self.validate_selected_sample_export,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.full_description_edit = QtWidgets.QPlainTextEdit()
@@ -3014,7 +3313,14 @@ class MMFDBWidget(NavigationPanelTool):
         probe_name = COMMON_PROBE_NAMES[0] if COMMON_PROBE_NAMES else ""
         defaults = DEFAULT_FLUOROPHORE_SPECTRA.get(probe_name, {})
         values = [
-            probe_name, "", "", "", "A", "", "no", "no",
+            probe_name,
+            "",
+            "",
+            "",
+            "A",
+            "",
+            "no",
+            "no",
             defaults.get("absorption_wavelength_nm", ""),
             defaults.get("emission_wavelength_nm", ""),
             defaults.get("quantum_yield", ""),
@@ -3039,7 +3345,9 @@ class MMFDBWidget(NavigationPanelTool):
 
     def remove_fret_pair_row(self) -> None:
         """Remove selected FRET pair rows."""
-        for row in sorted({item.row() for item in self.fret_pairs_table.selectedItems()}, reverse=True):
+        for row in sorted(
+            {item.row() for item in self.fret_pairs_table.selectedItems()}, reverse=True
+        ):
             self.fret_pairs_table.removeRow(row)
 
     def _active_entities_table(self) -> QtWidgets.QTableWidget:
@@ -3053,16 +3361,12 @@ class MMFDBWidget(NavigationPanelTool):
             self.status_label.setText("Select or enter a sample id")
             return
         description = self.client.get_sample_full_description(sample_id)
-        self.full_description_edit.setPlainText(
-            json.dumps(description, indent=2, default=str)
-        )
+        self.full_description_edit.setPlainText(json.dumps(description, indent=2, default=str))
         self.status_label.setText(f"Loaded full description for {sample_id}")
 
     def copy_full_description_json(self) -> None:
         """Copy the embedded full-description JSON to the clipboard."""
-        QtWidgets.QApplication.clipboard().setText(
-            self.full_description_edit.toPlainText()
-        )
+        QtWidgets.QApplication.clipboard().setText(self.full_description_edit.toPlainText())
 
     def _auto_generate_uuid(self) -> None:
         if self._loading:
@@ -3124,12 +3428,22 @@ class MMFDBWidget(NavigationPanelTool):
         layout.addWidget(scroll, stretch=1)
 
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button(
-            f"{Glyphs.SAVE} Save", QtWidgets.QStyle.SP_DialogSaveButton, "Save condition", self.save_condition
-        ))
-        buttons.addWidget(self._text_icon_button(
-            f"{Glyphs.CLEAR} Clear", QtWidgets.QStyle.SP_DialogResetButton, "Clear form", self.clear_condition_form
-        ))
+        buttons.addWidget(
+            self._text_icon_button(
+                f"{Glyphs.SAVE} Save",
+                QtWidgets.QStyle.SP_DialogSaveButton,
+                "Save condition",
+                self.save_condition,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                f"{Glyphs.CLEAR} Clear",
+                QtWidgets.QStyle.SP_DialogResetButton,
+                "Clear form",
+                self.clear_condition_form,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         return widget
@@ -3144,8 +3458,12 @@ class MMFDBWidget(NavigationPanelTool):
             condition = {
                 "condition_id": cid,
                 "ph": None if data.get("ph") in (None, 0, 0.0) else float(data["ph"]),
-                "temperature": None if data.get("temperature") in (None, 0, 0.0) else float(data["temperature"]),
-                "ionic_strength": None if data.get("ionic_strength") in (None, 0, 0.0) else float(data["ionic_strength"]),
+                "temperature": None
+                if data.get("temperature") in (None, 0, 0.0)
+                else float(data["temperature"]),
+                "ionic_strength": None
+                if data.get("ionic_strength") in (None, 0, 0.0)
+                else float(data["ionic_strength"]),
                 "buffer_composition": data.get("buffer_composition") or None,
                 "details": data.get("details") or None,
             }
@@ -3175,10 +3493,38 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button("Refresh", QtWidgets.QStyle.SP_BrowserReload, "Refresh entities", self.refresh_entities_table))
-        buttons.addWidget(self._text_icon_button("New entity", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add entity row", self.add_entity_row))
-        buttons.addWidget(self._text_icon_button("Save row", QtWidgets.QStyle.SP_DialogSaveButton, "Save selected entity", self.save_selected_entity))
-        buttons.addWidget(self._text_icon_button("Delete", QtWidgets.QStyle.SP_TrashIcon, "Delete selected entity", self.delete_selected_entity))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Refresh",
+                QtWidgets.QStyle.SP_BrowserReload,
+                "Refresh entities",
+                self.refresh_entities_table,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "New entity",
+                QtWidgets.QStyle.SP_FileDialogNewFolder,
+                "Add entity row",
+                self.add_entity_row,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Save row",
+                QtWidgets.QStyle.SP_DialogSaveButton,
+                "Save selected entity",
+                self.save_selected_entity,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Delete",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Delete selected entity",
+                self.delete_selected_entity,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.entities_table = QtWidgets.QTableWidget(0, 5)
@@ -3200,8 +3546,17 @@ class MMFDBWidget(NavigationPanelTool):
         self.probes_table = QtWidgets.QTableWidget(0, 11)
         self.probes_table.setHorizontalHeaderLabels(
             [
-                "id", "name", "category", "origin", "link_type", "reactive",
-                "center_atom", "abs_nm", "em_nm", "QY", "ext_coeff",
+                "id",
+                "name",
+                "category",
+                "origin",
+                "link_type",
+                "reactive",
+                "center_atom",
+                "abs_nm",
+                "em_nm",
+                "QY",
+                "ext_coeff",
             ]
         )
         self.probes_table.horizontalHeader().setStretchLastSection(True)
@@ -3214,10 +3569,14 @@ class MMFDBWidget(NavigationPanelTool):
             id_col=0,
             delete_one_fn=lambda pid: self.client.delete_probe(int(pid)),
         )
-        
-        new_probe_btn = self._text_icon_button("New probe", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add probe", self.new_probe)
-        refresh_btn = self._text_icon_button("Refresh", QtWidgets.QStyle.SP_BrowserReload, "Refresh probes", self.fill_probes)
-        
+
+        new_probe_btn = self._text_icon_button(
+            "New probe", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add probe", self.new_probe
+        )
+        refresh_btn = self._text_icon_button(
+            "Refresh", QtWidgets.QStyle.SP_BrowserReload, "Refresh probes", self.fill_probes
+        )
+
         return self._create_standard_dock_tab(
             table=self.probes_table,
             detail_widget=self.probe_detail_widget,
@@ -3232,10 +3591,14 @@ class MMFDBWidget(NavigationPanelTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button(
-            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
-            "Reload probe positions", self.fill_positions
-        ))
+        buttons.addWidget(
+            self._text_icon_button(
+                f"{Glyphs.REFRESH} Refresh",
+                QtWidgets.QStyle.SP_BrowserReload,
+                "Reload probe positions",
+                self.fill_positions,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.positions_table = QtWidgets.QTableWidget(0, 13)
@@ -3274,26 +3637,48 @@ class MMFDBWidget(NavigationPanelTool):
         self.fp_sample_combo.setPlaceholderText("Select sample...")
         filter_bar.addWidget(QtWidgets.QLabel("Sample:"))
         filter_bar.addWidget(self.fp_sample_combo)
-        filter_bar.addWidget(self._text_icon_button(
-            f"{Glyphs.REFRESH} Refresh", QtWidgets.QStyle.SP_BrowserReload,
-            "Refresh FRET pairs for selected sample", self._refresh_fret_pairs_tab
-        ))
+        filter_bar.addWidget(
+            self._text_icon_button(
+                f"{Glyphs.REFRESH} Refresh",
+                QtWidgets.QStyle.SP_BrowserReload,
+                "Refresh FRET pairs for selected sample",
+                self._refresh_fret_pairs_tab,
+            )
+        )
         filter_bar.addStretch()
         layout.addLayout(filter_bar)
         buttons = QtWidgets.QHBoxLayout()
-        buttons.addWidget(self._text_icon_button(
-            "Add pair", QtWidgets.QStyle.SP_FileDialogNewFolder,
-            "Add FRET pair", self._add_fret_pair_standalone
-        ))
-        buttons.addWidget(self._text_icon_button(
-            "Delete", QtWidgets.QStyle.SP_TrashIcon,
-            "Delete selected FRET pair", self._delete_fret_pair_standalone
-        ))
+        buttons.addWidget(
+            self._text_icon_button(
+                "Add pair",
+                QtWidgets.QStyle.SP_FileDialogNewFolder,
+                "Add FRET pair",
+                self._add_fret_pair_standalone,
+            )
+        )
+        buttons.addWidget(
+            self._text_icon_button(
+                "Delete",
+                QtWidgets.QStyle.SP_TrashIcon,
+                "Delete selected FRET pair",
+                self._delete_fret_pair_standalone,
+            )
+        )
         buttons.addStretch()
         layout.addLayout(buttons)
         self.standalone_fret_pairs_table = QtWidgets.QTableWidget(0, 9)
         self.standalone_fret_pairs_table.setHorizontalHeaderLabels(
-            ["id", "sample", "donor", "acceptor", "R₀ (nm)", "κ²", "n", "overlap_integral", "details"]
+            [
+                "id",
+                "sample",
+                "donor",
+                "acceptor",
+                "R₀ (nm)",
+                "κ²",
+                "n",
+                "overlap_integral",
+                "details",
+            ]
         )
         self.standalone_fret_pairs_table.setEditTriggers(
             QtWidgets.QAbstractItemView.DoubleClicked
@@ -3341,28 +3726,50 @@ class MMFDBWidget(NavigationPanelTool):
         donor, ok1 = QtWidgets.QInputDialog.getText(self, "Donor probe", "Donor probe name:")
         if not ok1 or not donor.strip():
             return
-        acceptor, ok2 = QtWidgets.QInputDialog.getText(self, "Acceptor probe", "Acceptor probe name:")
+        acceptor, ok2 = QtWidgets.QInputDialog.getText(
+            self, "Acceptor probe", "Acceptor probe name:"
+        )
         if not ok2 or not acceptor.strip():
             return
-        r0, ok3 = QtWidgets.QInputDialog.getDouble(self, "Förster radius", "R₀ (nm):", 5.0, 0.0, 20.0, 2)
+        r0, ok3 = QtWidgets.QInputDialog.getDouble(
+            self, "Förster radius", "R₀ (nm):", 5.0, 0.0, 20.0, 2
+        )
         if not ok3:
             return
         try:
             probes = self.client.list_probes()
-            donor_id = next((p["probe_id"] for p in probes if p.get("chromophore_name", "").lower() == donor.strip().lower()), None)
-            acceptor_id = next((p["probe_id"] for p in probes if p.get("chromophore_name", "").lower() == acceptor.strip().lower()), None)
+            donor_id = next(
+                (
+                    p["probe_id"]
+                    for p in probes
+                    if p.get("chromophore_name", "").lower() == donor.strip().lower()
+                ),
+                None,
+            )
+            acceptor_id = next(
+                (
+                    p["probe_id"]
+                    for p in probes
+                    if p.get("chromophore_name", "").lower() == acceptor.strip().lower()
+                ),
+                None,
+            )
             if not donor_id or not acceptor_id:
                 self.status_label.setText("Could not resolve probe names to IDs")
                 return
-            result = self.client.save_fret_pair({
-                "sample_id": sample_id,
-                "donor_probe_id": donor_id,
-                "acceptor_probe_id": acceptor_id,
-                "forster_radius": r0,
-                "kappa_squared": 0.6666667,
-                "refractive_index": 1.4,
-            })
-            self.status_label.setText(f"Created FRET pair: {result.get('fret_pair', {}).get('forster_radius_id', '')}")
+            result = self.client.save_fret_pair(
+                {
+                    "sample_id": sample_id,
+                    "donor_probe_id": donor_id,
+                    "acceptor_probe_id": acceptor_id,
+                    "forster_radius": r0,
+                    "kappa_squared": 0.6666667,
+                    "refractive_index": 1.4,
+                }
+            )
+            self.status_label.setText(
+                f"Created FRET pair: {result.get('fret_pair', {}).get('forster_radius_id', '')}"
+            )
             self._refresh_fret_pairs_tab()
         except Exception as exc:
             dialogs.warning(self, "Failed to create FRET pair", str(exc))
@@ -3376,7 +3783,8 @@ class MMFDBWidget(NavigationPanelTool):
         row = selected[0].row()
         pair_id = self.standalone_fret_pairs_table.item(row, 0).text()
         reply = dialogs.question(
-            self, "Delete FRET pair",
+            self,
+            "Delete FRET pair",
             f"Delete FRET pair '{pair_id}'?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
@@ -3417,17 +3825,42 @@ class MMFDBWidget(NavigationPanelTool):
         file_row.setContentsMargins(0, 0, 0, 0)
         file_row.setSpacing(2)
         self.file_edit = QtWidgets.QLineEdit()
-        browse_button = self._text_icon_button(f"{Glyphs.OPEN} Browse", QtWidgets.QStyle.SP_DirOpenIcon, "Browse for file", self.browse_import_file)
+        browse_button = self._text_icon_button(
+            f"{Glyphs.OPEN} Browse",
+            QtWidgets.QStyle.SP_DirOpenIcon,
+            "Browse for file",
+            self.browse_import_file,
+        )
         file_row.addWidget(self.file_edit)
         file_row.addWidget(browse_button)
         layout.addLayout(file_row)
         buttons = QtWidgets.QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
-        import_button = self._text_icon_button(f"{Glyphs.IMPORT} Import file", QtWidgets.QStyle.SP_ArrowDown, "Import file into database", self.import_file)
-        export_button = self._text_icon_button(f"{Glyphs.EXPORT} Export selected sample", QtWidgets.QStyle.SP_ArrowUp, "Export selected sample to FLR CIF", self.export_selected_sample)
-        preview_button = self._text_icon_button(f"{Glyphs.EYE} Preview CIF", QtWidgets.QStyle.SP_FileDialogDetailedView, "Preview flrCIF output in the text area below", self.preview_cif)
-        export_table_button = self._text_icon_button(f"{Glyphs.CHART} Export table CSV/XLSX", QtWidgets.QStyle.SP_FileIcon, "Export sample table", self.export_table)
+        import_button = self._text_icon_button(
+            f"{Glyphs.IMPORT} Import file",
+            QtWidgets.QStyle.SP_ArrowDown,
+            "Import file into database",
+            self.import_file,
+        )
+        export_button = self._text_icon_button(
+            f"{Glyphs.EXPORT} Export selected sample",
+            QtWidgets.QStyle.SP_ArrowUp,
+            "Export selected sample to FLR CIF",
+            self.export_selected_sample,
+        )
+        preview_button = self._text_icon_button(
+            f"{Glyphs.EYE} Preview CIF",
+            QtWidgets.QStyle.SP_FileDialogDetailedView,
+            "Preview flrCIF output in the text area below",
+            self.preview_cif,
+        )
+        export_table_button = self._text_icon_button(
+            f"{Glyphs.CHART} Export table CSV/XLSX",
+            QtWidgets.QStyle.SP_FileIcon,
+            "Export sample table",
+            self.export_table,
+        )
         buttons.addWidget(import_button)
         buttons.addWidget(export_button)
         buttons.addWidget(preview_button)
@@ -3548,7 +3981,10 @@ class MMFDBWidget(NavigationPanelTool):
             self.new_user,
         )
         change_password_button = self._text_icon_button(
-            f"{Glyphs.KEY} Password", QtWidgets.QStyle.SP_DialogApplyButton, "Change password", self.change_user_password
+            f"{Glyphs.KEY} Password",
+            QtWidgets.QStyle.SP_DialogApplyButton,
+            "Change password",
+            self.change_user_password,
         )
 
         return self._create_standard_dock_tab(
@@ -3660,12 +4096,21 @@ class MMFDBWidget(NavigationPanelTool):
         )
 
     def experiments_tab(self) -> QtWidgets.QWidget:
-        filter_widget = self._build_filter_bar([
-            {"label": "Type:", "attr": "experiment_type_combo",
-             "default_data": -1, "cb": self._filter_experiments},
-            {"label": "Sample:", "attr": "experiment_sample_combo",
-             "cb": self._filter_experiments},
-        ])
+        filter_widget = self._build_filter_bar(
+            [
+                {
+                    "label": "Type:",
+                    "attr": "experiment_type_combo",
+                    "default_data": -1,
+                    "cb": self._filter_experiments,
+                },
+                {
+                    "label": "Sample:",
+                    "attr": "experiment_sample_combo",
+                    "cb": self._filter_experiments,
+                },
+            ]
+        )
 
         self.experiments_table = QtWidgets.QTableWidget(0, 8)
         self.experiments_table.setHorizontalHeaderLabels(
@@ -3689,17 +4134,46 @@ class MMFDBWidget(NavigationPanelTool):
         data_header.setStyleSheet("font-weight: bold; margin-top: 4px;")
         self.experiment_data_table = QtWidgets.QTableWidget(0, 8)
         self.experiment_data_table.setHorizontalHeaderLabels(
-            ["id", "type", "mode", "path/url/folder", "mime", "checksum", "reading options", "details"]
+            [
+                "id",
+                "type",
+                "mode",
+                "path/url/folder",
+                "mime",
+                "checksum",
+                "reading options",
+                "details",
+            ]
         )
         self.experiment_data_table.horizontalHeader().setStretchLastSection(True)
         self.experiment_data_table.itemSelectionChanged.connect(self.load_experiment_data)
         data_layout.addWidget(data_header)
         data_layout.addWidget(self.experiment_data_table, stretch=1)
 
-        add_data_button = self._text_icon_button(f"{Glyphs.ADD} Add", QtWidgets.QStyle.SP_FileDialogNewFolder, "Add data row", self.add_experiment_data_row)
-        save_data_button = self._text_icon_button(f"{Glyphs.SAVE} Save data", QtWidgets.QStyle.SP_DialogSaveButton, "Save data", self.save_experiment_data)
-        delete_data_button = self._text_icon_button(f"{Glyphs.DELETE} Del data", QtWidgets.QStyle.SP_TrashIcon, "Delete data", self.delete_experiment_data)
-        open_data_button = self._text_icon_button(f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open linked data", self.open_experiment_data)
+        add_data_button = self._text_icon_button(
+            f"{Glyphs.ADD} Add",
+            QtWidgets.QStyle.SP_FileDialogNewFolder,
+            "Add data row",
+            self.add_experiment_data_row,
+        )
+        save_data_button = self._text_icon_button(
+            f"{Glyphs.SAVE} Save data",
+            QtWidgets.QStyle.SP_DialogSaveButton,
+            "Save data",
+            self.save_experiment_data,
+        )
+        delete_data_button = self._text_icon_button(
+            f"{Glyphs.DELETE} Del data",
+            QtWidgets.QStyle.SP_TrashIcon,
+            "Delete data",
+            self.delete_experiment_data,
+        )
+        open_data_button = self._text_icon_button(
+            f"{Glyphs.OPEN} Open",
+            QtWidgets.QStyle.SP_DialogOpenButton,
+            "Open linked data",
+            self.open_experiment_data,
+        )
 
         return self._create_standard_dock_tab(
             table=self.experiments_table,
@@ -3740,25 +4214,26 @@ class MMFDBWidget(NavigationPanelTool):
             else:
                 action.setEnabled(bool(connected))
 
-
     def save_raw_data(self) -> None:
         raw_id = self.raw_id_edit.text()
-        if not raw_id: return
+        if not raw_id:
+            return
         import json
+
         details = self.raw_details_edit.toPlainText()
         try:
             details_dict = json.loads(details) if details else {}
         except json.JSONDecodeError:
             dialogs.warning(self, "Invalid JSON", "Details field must be valid JSON.")
             return
-        
+
         payload = {
             "raw_data_id": raw_id,
             "experiment_id": self.raw_exp_edit.text(),
             "data_type": self.raw_type_edit.text(),
             "storage_mode": self.raw_storage_edit.text(),
             "file_path": self.raw_path_edit.text(),
-            "details": details_dict
+            "details": details_dict,
         }
         try:
             self.client._call("mmfdb.raw_data.save", {"raw_data": payload})
@@ -3773,6 +4248,7 @@ class MMFDBWidget(NavigationPanelTool):
         if not prod_id:
             return
         import json
+
         details_raw = data.get("details") or data.get("metadata_json") or ""
         try:
             details_dict = json.loads(details_raw) if details_raw else {}
@@ -3794,7 +4270,7 @@ class MMFDBWidget(NavigationPanelTool):
             dialogs.warning(self, "Error", f"Failed to save: {e}")
 
     def save_processing_run(self) -> None:
-        pass # To be implemented via client._call
+        pass  # To be implemented via client._call
 
     def save_analysis(self) -> None:
         pass
@@ -3806,9 +4282,6 @@ class MMFDBWidget(NavigationPanelTool):
         pass
 
     def save_project_tab(self) -> None:
-        pass
-
-    def save_experiment_type(self) -> None:
         pass
 
     def refresh(self) -> None:
@@ -3825,7 +4298,11 @@ class MMFDBWidget(NavigationPanelTool):
             schema = status.get("schema_version", "?")
             sample_count = status.get("sample_count", "?")
             experiment_count = status.get("experiment_count", "?")
-            mode = "remote" if str(getattr(self.client, "mode", "embedded")) == "remote" else "embedded"
+            mode = (
+                "remote"
+                if str(getattr(self.client, "mode", "embedded")) == "remote"
+                else "embedded"
+            )
             status_text = (
                 f"{mode} | User DB: {user_db} | schema {schema} | "
                 f"samples {sample_count} | experiments {experiment_count}"
@@ -3961,18 +4438,20 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             self.sample_id_edit.setText(sample.get("sample_id", sample_id))
             self.uuid_edit.setText(sample.get("sample_uuid", ""))
-            self.description_edit.setText(sample.get("description") or sample.get("display_name", ""))
+            self.description_edit.setText(
+                sample.get("description") or sample.get("display_name", "")
+            )
             self.details_edit.setPlainText(sample.get("details", ""))
-            self.num_probes_spin.setValue(int(sample.get("num_of_probes") or len(sample.get("probes", [])) or 0))
+            self.num_probes_spin.setValue(
+                int(sample.get("num_of_probes") or len(sample.get("probes", [])) or 0)
+            )
             self.solvent_edit.setCurrentText(sample.get("solvent_phase") or "liquid")
             self.condition_id_edit.setText(sample.get("sample_condition_id", ""))
             self.assembly_id_edit.setText(sample.get("entity_assembly_id", ""))
             self.project_edit.setText(sample.get("project_id", ""))
             self.measured_at_edit.setText(sample.get("measured_at", ""))
             condition = sample.get("condition") or {}
-            temp_val = (
-                condition.get("temperature") or condition.get("temperature_k")
-            )
+            temp_val = condition.get("temperature") or condition.get("temperature_k")
             cond_data = {
                 "condition_id": condition.get("condition_id", ""),
                 "ph": condition.get("ph"),
@@ -3987,10 +4466,14 @@ class MMFDBWidget(NavigationPanelTool):
             if hasattr(self, "sample_condition_id_field"):
                 self.sample_condition_id_field.setText(condition.get("condition_id", ""))
                 self.sample_ph_spin.setValue(float(condition.get("ph") or 0))
-                self.sample_temperature_spin.setValue(
-                    float(condition.get("temperature") or 0)
+                self.sample_temperature_spin.setValue(float(condition.get("temperature") or 0))
+                self.sample_ionic_spin.setValue(
+                    float(
+                        condition.get("ionic_strength")
+                        or condition.get("salt_concentration_m")
+                        or 0
+                    )
                 )
-                self.sample_ionic_spin.setValue(float(condition.get("ionic_strength") or condition.get("salt_concentration_m") or 0))
                 self.sample_buffer_edit.setText(condition.get("buffer_composition", ""))
                 self.sample_condition_details_edit.setPlainText(condition.get("details", ""))
             self.fill_entities(sample.get("entities", []))
@@ -3999,9 +4482,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.fill_positions(sample.get("sample_probes", []))
             self.fill_fret_pairs(sample.get("fret_pairs", []))
             if hasattr(self, "full_description_edit"):
-                self.full_description_edit.setPlainText(
-                    json.dumps(sample, indent=2, default=str)
-                )
+                self.full_description_edit.setPlainText(json.dumps(sample, indent=2, default=str))
             self.fill_metadata(sample.get("key_values", []))
             self.fill_experiment_table(sample_id=sample_id)
             self.measured_by_combo.setCurrentText("")
@@ -4043,11 +4524,15 @@ class MMFDBWidget(NavigationPanelTool):
 
     def fill_entities(self, entities: list[dict[str, Any]]) -> None:
         try:
-            scoped_entities = self.client.list_entities(self.current_sample_id) if self.current_sample_id else []
+            scoped_entities = (
+                self.client.list_entities(self.current_sample_id) if self.current_sample_id else []
+            )
             if scoped_entities:
                 entities = scoped_entities
         except Exception as exc:
-            chisurf.logging.warning("fill_entities(self, entities: list[dict[str, Any]]) -> None: %s", exc)
+            chisurf.logging.warning(
+                "fill_entities(self, entities: list[dict[str, Any]]) -> None: %s", exc
+            )
         for table in self._entity_tables():
             table.setRowCount(0)
         count = 0
@@ -4076,8 +4561,7 @@ class MMFDBWidget(NavigationPanelTool):
             index = self.probes_table.rowCount()
             self.probes_table.insertRow(index)
             props = {
-                prop.get("property_name", ""): prop
-                for prop in row.get("optical_properties", [])
+                prop.get("property_name", ""): prop for prop in row.get("optical_properties", [])
             }
             values = [
                 row.get("probe_id", ""),
@@ -4126,9 +4610,7 @@ class MMFDBWidget(NavigationPanelTool):
         probe_id = data.get("probe_id")
         if not probe_id:
             return
-        answer = dialogs.question(
-            self, "Delete probe", f"Delete probe {probe_id}?"
-        )
+        answer = dialogs.question(self, "Delete probe", f"Delete probe {probe_id}?")
         if answer == QtWidgets.QMessageBox.Yes:
             self.client.delete_probe(int(probe_id))
             self.fill_probes()
@@ -4163,7 +4645,9 @@ class MMFDBWidget(NavigationPanelTool):
                 probe.get("sample_probe_id", ""),
             ]
             for column, value in enumerate(values):
-                self.sample_probes_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value or "")))
+                self.sample_probes_table.setItem(
+                    row, column, QtWidgets.QTableWidgetItem(str(value or ""))
+                )
 
     def fill_positions(self, mappings: list[dict[str, Any]] | None = None) -> None:
         if mappings is None or isinstance(mappings, bool):
@@ -4172,7 +4656,9 @@ class MMFDBWidget(NavigationPanelTool):
             try:
                 mappings = self.client.list_probe_positions(sample_id=self.current_sample_id)
             except Exception as exc:
-                chisurf.logging.warning("fill_positions(self, mappings: list[dict[str, Any]] | None = None) -> %s", exc)
+                chisurf.logging.warning(
+                    "fill_positions(self, mappings: list[dict[str, Any]] | None = None) -> %s", exc
+                )
         self.positions_table.setRowCount(0)
         for mapping in mappings:
             row = self.positions_table.rowCount()
@@ -4205,7 +4691,9 @@ class MMFDBWidget(NavigationPanelTool):
             try:
                 pairs = self.client.list_fret_pairs(self.current_sample_id)
             except Exception as exc:
-                chisurf.logging.warning("fill_fret_pairs(self, pairs: list[dict[str, Any]]) -> None: %s", exc)
+                chisurf.logging.warning(
+                    "fill_fret_pairs(self, pairs: list[dict[str, Any]]) -> None: %s", exc
+                )
         self.fret_pairs_table.setRowCount(0)
         for pair in pairs:
             row = self.fret_pairs_table.rowCount()
@@ -4220,7 +4708,9 @@ class MMFDBWidget(NavigationPanelTool):
                 pair.get("forster_radius_id", ""),
             ]
             for column, value in enumerate(values):
-                self.fret_pairs_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value or "")))
+                self.fret_pairs_table.setItem(
+                    row, column, QtWidgets.QTableWidgetItem(str(value or ""))
+                )
 
     def refresh_entities_table(self) -> None:
         """Refresh standalone entities from the new PRD-02 entity service."""
@@ -4273,7 +4763,13 @@ class MMFDBWidget(NavigationPanelTool):
         probe_name = COMMON_PROBE_NAMES[0] if COMMON_PROBE_NAMES else ""
         defaults = DEFAULT_FLUOROPHORE_SPECTRA.get(probe_name, {})
         values = [
-            "", probe_name, "dye", "extrinsic", "covalent", "no", "",
+            "",
+            probe_name,
+            "dye",
+            "extrinsic",
+            "covalent",
+            "no",
+            "",
             defaults.get("absorption_wavelength_nm", ""),
             defaults.get("emission_wavelength_nm", ""),
             defaults.get("quantum_yield", ""),
@@ -4295,9 +4791,11 @@ class MMFDBWidget(NavigationPanelTool):
             "fluorophore_type": data.get("fluorophore_type"),
             "description": data.get("description"),
             "is_curated": bool(data.get("is_curated")),
-            "quality_flag": int(data.get("quality_flag") or 0) if data.get("quality_flag") is not None else None,
+            "quality_flag": int(data.get("quality_flag") or 0)
+            if data.get("quality_flag") is not None
+            else None,
         }
-        
+
         probe["name"] = data.get("chromophore_name")
         probe_id_val = data.get("probe_id")
         if probe_id_val not in (None, "", 0):
@@ -4307,16 +4805,34 @@ class MMFDBWidget(NavigationPanelTool):
         probe_id = saved.get("probe_id")
         if probe_id:
             properties = [
-                {"property_name": "abs_max", "property_value": _float_or_none(data.get("abs_max")), "unit": "nm"},
-                {"property_name": "em_max", "property_value": _float_or_none(data.get("em_max")), "unit": "nm"},
-                {"property_name": "qy", "property_value": _float_or_none(data.get("qy")), "unit": ""},
-                {"property_name": "ext_coeff", "property_value": _float_or_none(data.get("ext_coeff")), "unit": "M^-1 cm^-1"},
+                {
+                    "property_name": "abs_max",
+                    "property_value": _float_or_none(data.get("abs_max")),
+                    "unit": "nm",
+                },
+                {
+                    "property_name": "em_max",
+                    "property_value": _float_or_none(data.get("em_max")),
+                    "unit": "nm",
+                },
+                {
+                    "property_name": "qy",
+                    "property_value": _float_or_none(data.get("qy")),
+                    "unit": "",
+                },
+                {
+                    "property_name": "ext_coeff",
+                    "property_value": _float_or_none(data.get("ext_coeff")),
+                    "unit": "M^-1 cm^-1",
+                },
             ]
             self.client.save_probe_optical_properties(
                 int(probe_id),
                 [prop for prop in properties if prop["property_value"] is not None],
             )
-        self.status_label.setText(f"Saved probe {saved.get('chromophore_name', probe.get('chromophore_name', ''))}")
+        self.status_label.setText(
+            f"Saved probe {saved.get('chromophore_name', probe.get('chromophore_name', ''))}"
+        )
         self.fill_probes()
 
     def _entity_tables(self) -> list[QtWidgets.QTableWidget]:
@@ -4341,9 +4857,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.metadata_editor.set_data(key_values)
         sample_id = (self.current_sample_id or self.sample_id_edit.text()).strip()
         if sample_id:
-            self.metadata_sample_label.setText(
-                f"Editing metadata for sample: <b>{sample_id}</b>"
-            )
+            self.metadata_sample_label.setText(f"Editing metadata for sample: <b>{sample_id}</b>")
         else:
             self.metadata_sample_label.setText("No sample selected")
 
@@ -4382,7 +4896,8 @@ class MMFDBWidget(NavigationPanelTool):
                         index
                         for index, entity in enumerate(entities)
                         if entity_id
-                        and entity_id in {entity.get("entity_id"), entity.get("name"), entity.get("common_name")}
+                        and entity_id
+                        in {entity.get("entity_id"), entity.get("name"), entity.get("common_name")}
                     ),
                     0,
                 )
@@ -4397,9 +4912,15 @@ class MMFDBWidget(NavigationPanelTool):
                         "atom_id": _table_text(self.sample_probes_table, row, 5),
                         "mutation_flag": _table_text(self.sample_probes_table, row, 6) or "no",
                         "modification_flag": _table_text(self.sample_probes_table, row, 7) or "no",
-                        "absorption_wavelength_nm": _float_or_none(_table_text(self.sample_probes_table, row, 8)),
-                        "emission_wavelength_nm": _float_or_none(_table_text(self.sample_probes_table, row, 9)),
-                        "quantum_yield": _float_or_none(_table_text(self.sample_probes_table, row, 10)),
+                        "absorption_wavelength_nm": _float_or_none(
+                            _table_text(self.sample_probes_table, row, 8)
+                        ),
+                        "emission_wavelength_nm": _float_or_none(
+                            _table_text(self.sample_probes_table, row, 9)
+                        ),
+                        "quantum_yield": _float_or_none(
+                            _table_text(self.sample_probes_table, row, 10)
+                        ),
                     }
                 )
         fret_pairs = []
@@ -4418,10 +4939,16 @@ class MMFDBWidget(NavigationPanelTool):
                         "acceptor_probe": acceptor,
                         "probe_1_index": probe_names.index(donor),
                         "probe_2_index": probe_names.index(acceptor),
-                        "forster_radius_nm": _float_or_none(_table_text(self.fret_pairs_table, row, 2)),
+                        "forster_radius_nm": _float_or_none(
+                            _table_text(self.fret_pairs_table, row, 2)
+                        ),
                         "kappa_squared": _float_or_none(_table_text(self.fret_pairs_table, row, 3)),
-                        "refractive_index": _float_or_none(_table_text(self.fret_pairs_table, row, 4)),
-                        "overlap_integral": _float_or_none(_table_text(self.fret_pairs_table, row, 5)),
+                        "refractive_index": _float_or_none(
+                            _table_text(self.fret_pairs_table, row, 4)
+                        ),
+                        "overlap_integral": _float_or_none(
+                            _table_text(self.fret_pairs_table, row, 5)
+                        ),
                         "forster_radius_id": _table_text(self.fret_pairs_table, row, 6),
                     }
                 )
@@ -4447,15 +4974,11 @@ class MMFDBWidget(NavigationPanelTool):
         )
         ph_value = self.sample_ph_spin.value() if hasattr(self, "sample_ph_spin") else 0
         temperature_value = (
-            self.sample_temperature_spin.value()
-            if hasattr(self, "sample_temperature_spin")
-            else 0
+            self.sample_temperature_spin.value() if hasattr(self, "sample_temperature_spin") else 0
         )
         ionic_value = self.sample_ionic_spin.value() if hasattr(self, "sample_ionic_spin") else 0
         buffer_text = (
-            self.sample_buffer_edit.text().strip()
-            if hasattr(self, "sample_buffer_edit")
-            else ""
+            self.sample_buffer_edit.text().strip() if hasattr(self, "sample_buffer_edit") else ""
         )
         condition_details = (
             self.sample_condition_details_edit.toPlainText().strip()
@@ -4556,9 +5079,7 @@ class MMFDBWidget(NavigationPanelTool):
         """Set or clear the selected user's MMFDB password."""
         user_id = self.user_detail_widget.get_data().get("user_id")
         if not user_id:
-            dialogs.warning(
-                self, "Selection Required", "Please select or save a user first."
-            )
+            dialogs.warning(self, "Selection Required", "Please select or save a user first.")
             return
         user = self._selected_user_payload()
         is_admin = bool(user.get("is_admin")) if user else False
@@ -4685,10 +5206,15 @@ class MMFDBWidget(NavigationPanelTool):
         uuid_val = self.branch_detail_widget.get_data().get("branch_uuid")
         if not uuid_val:
             return
-        if dialogs.question(
-            self, "Confirm Delete", f"Are you sure you want to delete branch with UUID {uuid_val}?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
-        ) != QtWidgets.QMessageBox.Yes:
+        if (
+            dialogs.question(
+                self,
+                "Confirm Delete",
+                f"Are you sure you want to delete branch with UUID {uuid_val}?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            )
+            != QtWidgets.QMessageBox.Yes
+        ):
             return
         try:
             self.client.delete_branch(uuid_val)
@@ -4727,7 +5253,9 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             branch = self.client.get_user_active_branch(user_id)
             if branch:
-                self.active_branch_label.setText(f"{branch.get('name')} ({branch.get('branch_uuid')})")
+                self.active_branch_label.setText(
+                    f"{branch.get('name')} ({branch.get('branch_uuid')})"
+                )
             else:
                 self.active_branch_label.setText("None (Default main)")
         except Exception:
@@ -4763,13 +5291,15 @@ class MMFDBWidget(NavigationPanelTool):
         name = self.branches_table.item(row, 0).text()
         branch_uuid = self.branches_table.item(row, 1).text()
         head_operation_id = self.branches_table.item(row, 3).text()
-        self.branch_detail_widget.set_data({
-            "branch_uuid": "",
-            "name": f"{name}-branch",
-            "parent_branch_uuid": branch_uuid,
-            "head_operation_id": head_operation_id,
-            "description": f"Parallel branch from {name}",
-        })
+        self.branch_detail_widget.set_data(
+            {
+                "branch_uuid": "",
+                "name": f"{name}-branch",
+                "parent_branch_uuid": branch_uuid,
+                "head_operation_id": head_operation_id,
+                "description": f"Parallel branch from {name}",
+            }
+        )
 
     def create_time_branch(self) -> None:
         """Create and activate a branch at the requested operation."""
@@ -4873,9 +5403,7 @@ class MMFDBWidget(NavigationPanelTool):
         experiment_id = data.get("experiment_id")
         if not experiment_id:
             return
-        answer = dialogs.question(
-            self, "Delete experiment", f"Delete experiment {experiment_id}?"
-        )
+        answer = dialogs.question(self, "Delete experiment", f"Delete experiment {experiment_id}?")
         if answer == QtWidgets.QMessageBox.Yes:
             self.client.delete_experiment(experiment_id)
             self.refresh()
@@ -4894,7 +5422,12 @@ class MMFDBWidget(NavigationPanelTool):
         storage_mode = (
             self.experiment_data_table.item(row, 2).text() if row >= 0 else "link"
         ) or "link"
-        file_path = location if storage_mode == "link" and not location.startswith(("http://", "https://", "file://")) else None
+        file_path = (
+            location
+            if storage_mode == "link"
+            and not location.startswith(("http://", "https://", "file://"))
+            else None
+        )
         url = location if location.startswith(("http://", "https://", "file://")) else None
         folder_path = location if storage_mode == "folder" else None
         return {
@@ -4938,9 +5471,7 @@ class MMFDBWidget(NavigationPanelTool):
         data_id = self.experiment_data_table.item(row, 0).text()
         if not data_id:
             return
-        answer = dialogs.question(
-            self, "Delete experiment data", f"Delete data record {data_id}?"
-        )
+        answer = dialogs.question(self, "Delete experiment data", f"Delete data record {data_id}?")
         if answer == QtWidgets.QMessageBox.Yes:
             self.client.delete_experiment_data(int(data_id))
             self.refresh()
@@ -5011,7 +5542,9 @@ class MMFDBWidget(NavigationPanelTool):
                     cell_item.setData(QtCore.Qt.UserRole, item)
                 self.experiment_types_table.setItem(row, column, cell_item)
 
-    def fill_experiment_table(self, sample_id: str | None = None, type_id: int | None = None) -> None:
+    def fill_experiment_table(
+        self, sample_id: str | None = None, type_id: int | None = None
+    ) -> None:
         if self._is_deleted() or self._is_widget_deleted(self.experiments_table):
             return
         self.experiments_table.setRowCount(0)
@@ -5130,9 +5663,7 @@ class MMFDBWidget(NavigationPanelTool):
         description = self.client.get_sample_full_description(sample_id)
         if hasattr(self, "sample_subtabs") and hasattr(self, "full_description_edit"):
             self.sample_subtabs.setCurrentWidget(self.full_description_edit.parentWidget())
-            self.full_description_edit.setPlainText(
-                json.dumps(description, indent=2, default=str)
-            )
+            self.full_description_edit.setPlainText(json.dumps(description, indent=2, default=str))
         if hasattr(self, "preview_edit"):
             self.preview_edit.setPlainText(json.dumps(description, indent=2, default=str))
         self.status_label.setText(f"Loaded full description for {sample_id}")
@@ -5247,9 +5778,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.positions_table.setRowCount(0)
         self.metadata_editor.clear()
         if hasattr(self, "metadata_sample_label"):
-            self.metadata_sample_label.setText(
-                f"Editing metadata for sample: <b>{sample_id}</b>"
-            )
+            self.metadata_sample_label.setText(f"Editing metadata for sample: <b>{sample_id}</b>")
 
     def delete_sample(self) -> None:
         sample_id = self.sample_id_edit.text().strip()
@@ -5300,7 +5829,9 @@ class MMFDBWidget(NavigationPanelTool):
                     msg += f"\n• {w}"
                 msg += "\n\nExport anyway?"
                 reply = dialogs.question(
-                    self, "Export validation warnings", msg,
+                    self,
+                    "Export validation warnings",
+                    msg,
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 )
                 if reply != QtWidgets.QMessageBox.Yes:
@@ -5407,7 +5938,9 @@ class MMFDBWidget(NavigationPanelTool):
             row = self.projects_table.rowCount()
             self.projects_table.insertRow(row)
             flat_item = dict(item)
-            flat_item["project_id"] = item.get("analysis_id") or item.get("version_id") or item.get("project_id", "")
+            flat_item["project_id"] = (
+                item.get("analysis_id") or item.get("version_id") or item.get("project_id", "")
+            )
             flat_item["name"] = item.get("model_name") or item.get("project_name") or ""
             flat_item["description"] = item.get("notes", "")
 
@@ -5448,6 +5981,7 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             import chisurf as cs
             from chisurf.core.actions import dispatch
+
             result = dispatch("project.restore", {"project_id": project_id})
             if result.get("ok") and hasattr(cs, "cs") and cs.cs is not None:
                 cs.cs._current_project_id = result.get("project_id")
@@ -5455,16 +5989,10 @@ class MMFDBWidget(NavigationPanelTool):
                 cs.cs._current_project_name = result.get("project_name")
                 cs.cs._current_project_visibility = result.get("visibility", "private")
             dialogs.information(
-                self,
-                "Project Restored",
-                "Successfully restored project state from database."
+                self, "Project Restored", "Successfully restored project state from database."
             )
         except Exception as exc:
-            dialogs.error(
-                self,
-                "Restore Failed",
-                f"Failed to restore project: {exc}"
-            )
+            dialogs.error(self, "Restore Failed", f"Failed to restore project: {exc}")
 
     def delete_selected_project(self) -> None:
         data = self.project_detail_widget.get_data()
@@ -5478,7 +6006,7 @@ class MMFDBWidget(NavigationPanelTool):
             "Delete Project Version",
             f"Are you sure you want to delete the archived project version '{project_id}' from the database?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No
+            QtWidgets.QMessageBox.No,
         )
         if confirm != QtWidgets.QMessageBox.Yes:
             return
@@ -5488,20 +6016,24 @@ class MMFDBWidget(NavigationPanelTool):
             dialogs.information(
                 self,
                 "Project Version Deleted",
-                "Project version successfully deleted from the database."
+                "Project version successfully deleted from the database.",
             )
             self.refresh()
         except Exception as exc:
-            dialogs.error(
-                self,
-                "Delete Failed",
-                f"Failed to delete project version: {exc}"
-            )
+            dialogs.error(self, "Delete Failed", f"Failed to delete project version: {exc}")
 
     def setups_tab(self) -> QtWidgets.QWidget:
         self.setups_table = QtWidgets.QTableWidget(0, 7)
         self.setups_table.setHorizontalHeaderLabels(
-            ["setup id", "name", "instrument type", "details", "lasers/detectors", "owner", "public"]
+            [
+                "setup id",
+                "name",
+                "instrument type",
+                "details",
+                "lasers/detectors",
+                "owner",
+                "public",
+            ]
         )
         self.setups_table.horizontalHeader().setStretchLastSection(True)
         self.setups_table.itemSelectionChanged.connect(self.load_setup)
@@ -5516,7 +6048,10 @@ class MMFDBWidget(NavigationPanelTool):
         self.setup_validation_label.setWordWrap(True)
 
         validate_setup_button = self._text_icon_button(
-            f"{Glyphs.SUCCESS} Validate setup", QtWidgets.QStyle.SP_DialogApplyButton, "Validate setup", self.validate_setup
+            f"{Glyphs.SUCCESS} Validate setup",
+            QtWidgets.QStyle.SP_DialogApplyButton,
+            "Validate setup",
+            self.validate_setup,
         )
 
         return self._create_standard_dock_tab(
@@ -5595,7 +6130,7 @@ class MMFDBWidget(NavigationPanelTool):
             "Delete Setup",
             f"Are you sure you want to delete the setup definition '{setup_id}'?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No
+            QtWidgets.QMessageBox.No,
         )
         if confirm != QtWidgets.QMessageBox.Yes:
             return
@@ -5632,9 +6167,16 @@ class MMFDBWidget(NavigationPanelTool):
         self.raw_data_table = QtWidgets.QTableWidget(0, 10)
         self.raw_data_table.setHorizontalHeaderLabels(
             [
-                "raw data id", "experiment id", "data type", "storage mode",
-                "path/url/folder", "validation", "checksum", "acquired at",
-                "sample", "sample QA",
+                "raw data id",
+                "experiment id",
+                "data type",
+                "storage mode",
+                "path/url/folder",
+                "validation",
+                "checksum",
+                "acquired at",
+                "sample",
+                "sample QA",
             ]
         )
         self.raw_data_table.horizontalHeader().setStretchLastSection(True)
@@ -5643,10 +6185,16 @@ class MMFDBWidget(NavigationPanelTool):
         self.raw_data_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         btn_open = self._text_icon_button(
-            f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open raw data file/URL", self._on_raw_open_clicked
+            f"{Glyphs.OPEN} Open",
+            QtWidgets.QStyle.SP_DialogOpenButton,
+            "Open raw data file/URL",
+            self._on_raw_open_clicked,
         )
         btn_copy = self._text_icon_button(
-            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy raw data ID to clipboard", self._on_raw_copy_clicked
+            f"{Glyphs.COPY} Copy ID",
+            QtWidgets.QStyle.SP_FileIcon,
+            "Copy raw data ID to clipboard",
+            self._on_raw_copy_clicked,
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -5704,12 +6252,13 @@ class MMFDBWidget(NavigationPanelTool):
             item = self.client.get_raw_data(raw_id) or {}
         except Exception:
             item = {}
-        
+
         flat_item = dict(item)
         flat_item["location"] = _processed_location(item)
         import json
+
         flat_item["details"] = json.dumps(item, indent=2)
-        
+
         self.raw_data_detail_widget.set_data(flat_item)
 
     def _on_raw_open_clicked(self) -> None:
@@ -5743,7 +6292,16 @@ class MMFDBWidget(NavigationPanelTool):
     def processing_runs_tab(self) -> QtWidgets.QWidget:
         self.processing_runs_table = QtWidgets.QTableWidget(0, 8)
         self.processing_runs_table.setHorizontalHeaderLabels(
-            ["processing id", "experiment id", "type", "started at", "status", "raw count", "product count", "operator"]
+            [
+                "processing id",
+                "experiment id",
+                "type",
+                "started at",
+                "status",
+                "raw count",
+                "product count",
+                "operator",
+            ]
         )
         self.processing_runs_table.horizontalHeader().setStretchLastSection(True)
         self.processing_runs_table.itemSelectionChanged.connect(self.load_processing_run)
@@ -5751,7 +6309,10 @@ class MMFDBWidget(NavigationPanelTool):
         self.processing_runs_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 
         btn_copy = self._text_icon_button(
-            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy processing ID to clipboard", self._on_proc_copy_clicked
+            f"{Glyphs.COPY} Copy ID",
+            QtWidgets.QStyle.SP_FileIcon,
+            "Copy processing ID to clipboard",
+            self._on_proc_copy_clicked,
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -5787,7 +6348,7 @@ class MMFDBWidget(NavigationPanelTool):
                 item.get("status", ""),
                 item.get("input_raw_count", ""),
                 item.get("output_product_count", ""),
-                item.get("operator_user_id", "")
+                item.get("operator_user_id", ""),
             ]
             for column, value in enumerate(values):
                 cell_item = QtWidgets.QTableWidgetItem(str(value or ""))
@@ -5807,12 +6368,13 @@ class MMFDBWidget(NavigationPanelTool):
             item = self.client.get_processing_run(proc_id) or {}
         except Exception:
             item = {}
-        
+
         flat_item = dict(item)
         flat_item["type"] = item.get("processing_type")
         import json
+
         flat_item["settings"] = json.dumps(item, indent=2)
-        
+
         self.processing_run_detail_widget.set_data(flat_item)
 
     def _on_proc_copy_clicked(self) -> None:
@@ -5826,20 +6388,44 @@ class MMFDBWidget(NavigationPanelTool):
             self._set_provenance_seed("processing_run", str(proc_id))
 
     def processed_products_tab(self) -> QtWidgets.QWidget:
-        PROD_TYPES = ["all", "bur", "tcspc_decay", "fcs_correlation", "pda_histogram",
-                      "irf_curve", "hdf5", "zip", "gmm_summary", "spectra", "fit_results"]
-        filter_widget = self._build_filter_bar([
-            {"label": "Product type:", "attr": "prod_filter_combo",
-             "items": PROD_TYPES, "signal": "currentTextChanged",
-             "cb": self.fill_processed_products_table},
-        ])
+        PROD_TYPES = [
+            "all",
+            "bur",
+            "tcspc_decay",
+            "fcs_correlation",
+            "pda_histogram",
+            "irf_curve",
+            "hdf5",
+            "zip",
+            "gmm_summary",
+            "spectra",
+            "fit_results",
+        ]
+        filter_widget = self._build_filter_bar(
+            [
+                {
+                    "label": "Product type:",
+                    "attr": "prod_filter_combo",
+                    "items": PROD_TYPES,
+                    "signal": "currentTextChanged",
+                    "cb": self.fill_processed_products_table,
+                },
+            ]
+        )
 
         self.processed_products_table = QtWidgets.QTableWidget(0, 10)
         self.processed_products_table.setHorizontalHeaderLabels(
             [
-                "product id", "processing id", "product type", "storage mode",
-                "path/url/folder", "validation", "checksum", "row count",
-                "sample", "sample QA",
+                "product id",
+                "processing id",
+                "product type",
+                "storage mode",
+                "path/url/folder",
+                "validation",
+                "checksum",
+                "row count",
+                "sample",
+                "sample QA",
             ]
         )
         self.processed_products_table.horizontalHeader().setStretchLastSection(True)
@@ -5851,7 +6437,10 @@ class MMFDBWidget(NavigationPanelTool):
         )
 
         btn_open = self._text_icon_button(
-            f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open processed product", self._on_prod_open_clicked
+            f"{Glyphs.OPEN} Open",
+            QtWidgets.QStyle.SP_DialogOpenButton,
+            "Open processed product",
+            self._on_prod_open_clicked,
         )
         ndx_button = self._text_icon_button(
             f"{Glyphs.SCIENCE} Open in ndX",
@@ -5860,7 +6449,10 @@ class MMFDBWidget(NavigationPanelTool):
             self.open_in_ndxplorer,
         )
         btn_copy = self._text_icon_button(
-            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy product ID to clipboard", self._on_prod_copy_clicked
+            f"{Glyphs.COPY} Copy ID",
+            QtWidgets.QStyle.SP_FileIcon,
+            "Copy product ID to clipboard",
+            self._on_prod_copy_clicked,
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -5909,8 +6501,12 @@ class MMFDBWidget(NavigationPanelTool):
                 item.get("sample_name", ""),
             ]
             for column, value in enumerate(values):
-                self.processed_products_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value or "")))
-            self.processed_products_table.setItem(row, len(values), _sample_quality_table_item(item))
+                self.processed_products_table.setItem(
+                    row, column, QtWidgets.QTableWidgetItem(str(value or ""))
+                )
+            self.processed_products_table.setItem(
+                row, len(values), _sample_quality_table_item(item)
+            )
 
     def load_processed_product(self) -> None:
         if self._is_deleted() or self._is_widget_deleted(self.processed_products_table):
@@ -5964,12 +6560,16 @@ class MMFDBWidget(NavigationPanelTool):
             return
 
         from pathlib import Path
+
         path = Path(path_str)
         if not path.exists():
-            dialogs.error(self, "File Not Found", f"The file or directory does not exist:\n{path_str}")
+            dialogs.error(
+                self, "File Not Found", f"The file or directory does not exist:\n{path_str}"
+            )
             return
 
         import sys
+
         root = Path(__file__).resolve().parents[5]
         ndx_path = root / "modules" / "ndxplorer"
         if ndx_path.is_dir() and str(ndx_path) not in sys.path:
@@ -6046,8 +6646,14 @@ class MMFDBWidget(NavigationPanelTool):
         self.objects_table = QtWidgets.QTableWidget(0, 8)
         self.objects_table.setHorizontalHeaderLabels(
             [
-                "object uuid", "md5", "original filename", "size bytes",
-                "mime type", "refcount", "created at", "created by",
+                "object uuid",
+                "md5",
+                "original filename",
+                "size bytes",
+                "mime type",
+                "refcount",
+                "created at",
+                "created by",
             ]
         )
         self.objects_table.horizontalHeader().setStretchLastSection(True)
@@ -6106,7 +6712,9 @@ class MMFDBWidget(NavigationPanelTool):
                 item.get("created_by_user_uuid", ""),
             ]
             for column, value in enumerate(values):
-                self.objects_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value or "")))
+                self.objects_table.setItem(
+                    row, column, QtWidgets.QTableWidgetItem(str(value or ""))
+                )
 
     def load_object(self) -> None:
         """Load selected object details into the form."""
@@ -6170,6 +6778,7 @@ class MMFDBWidget(NavigationPanelTool):
             return
         try:
             from mmfdb.store.database_resolver import object_store_root
+
             path = object_store_root() / storage_path
             QtGui.QDesktopServices.openUrl(_qurl_for_location(str(path)))
         except Exception as exc:
@@ -6184,7 +6793,10 @@ class MMFDBWidget(NavigationPanelTool):
         self.analyses_table.itemSelectionChanged.connect(self.load_analysis)
 
         btn_copy = self._text_icon_button(
-            f"{Glyphs.COPY} Copy ID", QtWidgets.QStyle.SP_FileIcon, "Copy analysis ID to clipboard", self._on_analysis_copy_clicked
+            f"{Glyphs.COPY} Copy ID",
+            QtWidgets.QStyle.SP_FileIcon,
+            "Copy analysis ID to clipboard",
+            self._on_analysis_copy_clicked,
         )
         btn_seed = self._text_icon_button(
             "🌱 Use as provenance seed",
@@ -6219,10 +6831,12 @@ class MMFDBWidget(NavigationPanelTool):
                 item.get("experiment_id", ""),
                 item.get("analysis_type", ""),
                 item.get("model_name", ""),
-                item.get("created_at", "")
+                item.get("created_at", ""),
             ]
             for column, value in enumerate(values):
-                self.analyses_table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value or "")))
+                self.analyses_table.setItem(
+                    row, column, QtWidgets.QTableWidgetItem(str(value or ""))
+                )
 
     def load_analysis(self) -> None:
         if self._is_deleted() or self._is_widget_deleted(self.analyses_table):
@@ -6240,6 +6854,7 @@ class MMFDBWidget(NavigationPanelTool):
         flat_item = dict(item)
         flat_item["type"] = item.get("analysis_type")
         import json
+
         flat_item["settings"] = json.dumps(item, indent=2)
         self.analysis_detail_widget.set_data(flat_item)
 
@@ -6261,12 +6876,18 @@ class MMFDBWidget(NavigationPanelTool):
         layout = QtWidgets.QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        layout.addWidget(QtWidgets.QLabel("Select a raw data, processing run, processed product, or analysis record, then use \"Use as provenance seed\" to load its graph."))
+        layout.addWidget(
+            QtWidgets.QLabel(
+                'Select a raw data, processing run, processed product, or analysis record, then use "Use as provenance seed" to load its graph.'
+            )
+        )
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.addWidget(QtWidgets.QLabel("Seed Type:"))
         self.prov_seed_type_combo = QtWidgets.QComboBox()
-        self.prov_seed_type_combo.addItems(["raw_data", "processing_run", "processed_data", "analysis_run", "analysis_parameter"])
+        self.prov_seed_type_combo.addItems(
+            ["raw_data", "processing_run", "processed_data", "analysis_run", "analysis_parameter"]
+        )
         toolbar.addWidget(self.prov_seed_type_combo)
 
         toolbar.addWidget(QtWidgets.QLabel("Seed ID:"))
@@ -6328,14 +6949,23 @@ class MMFDBWidget(NavigationPanelTool):
         left_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
 
         self.prov_edge_table = QtWidgets.QTableWidget(0, 7)
-        self.prov_edge_table.setHorizontalHeaderLabels([
-            "edge id", "source type", "source id", "relationship", "target type", "target id", "processing id"
-        ])
+        self.prov_edge_table.setHorizontalHeaderLabels(
+            [
+                "edge id",
+                "source type",
+                "source id",
+                "relationship",
+                "target type",
+                "target id",
+                "processing id",
+            ]
+        )
         self.prov_edge_table.horizontalHeader().setStretchLastSection(True)
         self.prov_edge_table.itemSelectionChanged.connect(self.on_prov_edge_selected)
         left_splitter.addWidget(self.prov_edge_table)
 
         from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
+
         self.prov_node_editor = NodeGraphWidget(read_only=True)
         self.prov_node_editor.nodeSelected.connect(self.on_prov_node_selected_in_editor)
         self.prov_node_editor.edgeSelected.connect(self.on_prov_edge_selected_in_editor)
@@ -6397,7 +7027,9 @@ class MMFDBWidget(NavigationPanelTool):
             dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         try:
-            res = self.client.export_provenance_graph(seed_node_type=seed_type, seed_node_id=seed_id)
+            res = self.client.export_provenance_graph(
+                seed_node_type=seed_type, seed_node_id=seed_id
+            )
             self._display_provenance_graph(_unwrap_provenance_graph_response(res))
         except Exception as e:
             chisurf.logging.error("Failed to load MMFDB provenance graph", exc_info=True)
@@ -6407,6 +7039,7 @@ class MMFDBWidget(NavigationPanelTool):
         from chisurf.plugins.core.mmfdb_admin.gui.provenance_graph import (
             mmfdb_graph_to_node_editor_graph,
         )
+
         ne_graph = mmfdb_graph_to_node_editor_graph(graph)
         self.prov_node_editor.load_graph_dict(ne_graph)
         self._show_provenance_graph_dock()
@@ -6417,13 +7050,27 @@ class MMFDBWidget(NavigationPanelTool):
         for e in edges:
             row = self.prov_edge_table.rowCount()
             self.prov_edge_table.insertRow(row)
-            self.prov_edge_table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(e.get("edge_id") or "")))
-            self.prov_edge_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(e.get("source_node_type") or "")))
-            self.prov_edge_table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(e.get("source_node_id") or "")))
-            self.prov_edge_table.setItem(row, 3, QtWidgets.QTableWidgetItem(str(e.get("relationship_type") or "")))
-            self.prov_edge_table.setItem(row, 4, QtWidgets.QTableWidgetItem(str(e.get("target_node_type") or "")))
-            self.prov_edge_table.setItem(row, 5, QtWidgets.QTableWidgetItem(str(e.get("target_node_id") or "")))
-            self.prov_edge_table.setItem(row, 6, QtWidgets.QTableWidgetItem(str(e.get("processing_id") or "")))
+            self.prov_edge_table.setItem(
+                row, 0, QtWidgets.QTableWidgetItem(str(e.get("edge_id") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 1, QtWidgets.QTableWidgetItem(str(e.get("source_node_type") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 2, QtWidgets.QTableWidgetItem(str(e.get("source_node_id") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 3, QtWidgets.QTableWidgetItem(str(e.get("relationship_type") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 4, QtWidgets.QTableWidgetItem(str(e.get("target_node_type") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 5, QtWidgets.QTableWidgetItem(str(e.get("target_node_id") or ""))
+            )
+            self.prov_edge_table.setItem(
+                row, 6, QtWidgets.QTableWidgetItem(str(e.get("processing_id") or ""))
+            )
             self.prov_edge_table.item(row, 0).setData(QtCore.Qt.UserRole, e)
 
     def export_provenance_json_action(self) -> None:
@@ -6438,7 +7085,9 @@ class MMFDBWidget(NavigationPanelTool):
         if not path_str:
             return
         try:
-            res = self.client.export_provenance_graph(seed_node_type=seed_type, seed_node_id=seed_id)
+            res = self.client.export_provenance_graph(
+                seed_node_type=seed_type, seed_node_id=seed_id
+            )
             with open(path_str, "w") as f:
                 json.dump(res, f, indent=2)
             dialogs.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
@@ -6461,7 +7110,7 @@ class MMFDBWidget(NavigationPanelTool):
                 target_zip_path=path_str,
                 seed_node_type=seed_type,
                 seed_node_id=seed_id,
-                include_external_data=False
+                include_external_data=False,
             )
             dialogs.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
         except Exception as e:

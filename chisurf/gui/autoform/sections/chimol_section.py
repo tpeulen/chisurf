@@ -38,8 +38,9 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
 
     AUTOFORM_REFRESH = True  # AutoForm.refresh_plots() will call refresh()
 
-    def __init__(self, model, target: str, *, height: int = 320,
-                 scale_factor: float = 1.0, **options) -> None:
+    def __init__(
+        self, model, target: str, *, height: int = 320, scale_factor: float = 1.0, **options
+    ) -> None:
         super().__init__()
         self._model = model
         self._target = target
@@ -48,7 +49,7 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
         self._scale_factor = float(scale_factor)
         self._viewer = None
         self._object_id = None
-        self._loaded_key = None       # dedupe signature of the last load
+        self._loaded_key = None  # dedupe signature of the last load
         self._n_frames = 0
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -132,6 +133,7 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
             return self._viewer or None
         try:
             from chimol.core.viewer import Viewer
+
             try:
                 self._viewer = Viewer(self._host, scale_factor=self._scale_factor)
             except TypeError:  # older Viewer without the kwarg
@@ -139,7 +141,8 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
             self._host.layout().addWidget(self._viewer)
         except Exception:
             placeholder = QtWidgets.QLabel(
-                "3D preview needs the ChiMol plugin (install via the package manager).")
+                "3D preview needs the ChiMol plugin (install via the package manager)."
+            )
             placeholder.setAlignment(QtCore.Qt.AlignCenter)
             placeholder.setWordWrap(True)
             self._host.layout().addWidget(placeholder)
@@ -165,13 +168,15 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
 
     def _load(self, viewer, paths) -> None:
         from chimol.io.structure import load_structure_payload
+
         try:
             from chisurf.core.structure import Structure as _Struct
         except Exception:
             _Struct = None
 
         structure, coords0 = load_structure_payload(
-            pathlib.Path(paths[0]), structure_factory=_Struct)
+            pathlib.Path(paths[0]), structure_factory=_Struct
+        )
         name = pathlib.Path(paths[0]).stem
         if self._object_id is not None:
             try:
@@ -182,7 +187,8 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
             oid = viewer.add_structure(structure, name=name, source_path=paths[0])
         elif coords0 is not None:
             oid = viewer.add_coordinates(
-                np.asarray(coords0, dtype=float), name=name, source_path=paths[0])
+                np.asarray(coords0, dtype=float), name=name, source_path=paths[0]
+            )
         else:
             return
         self._object_id = oid

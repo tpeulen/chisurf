@@ -24,9 +24,27 @@ def test_lfcs_widget_refresh_plot(qapp, qtbot):
     widget = LifetimeFcsSimWidget()
     qtbot.addWidget(widget)
     datasets = [
-        {"x": [1e-3, 1e-2, 1e-1], "y": [2.0, 1.5, 1.0], "species_a": 0, "species_b": 0, "name": "auto0"},
-        {"x": [1e-3, 1e-2, 1e-1], "y": [3.0, 2.0, 1.0], "species_a": 1, "species_b": 1, "name": "auto1"},
-        {"x": [1e-3, 1e-2, 1e-1], "y": [1.0, 1.2, 1.0], "species_a": 0, "species_b": 1, "name": "cross"},
+        {
+            "x": [1e-3, 1e-2, 1e-1],
+            "y": [2.0, 1.5, 1.0],
+            "species_a": 0,
+            "species_b": 0,
+            "name": "auto0",
+        },
+        {
+            "x": [1e-3, 1e-2, 1e-1],
+            "y": [3.0, 2.0, 1.0],
+            "species_a": 1,
+            "species_b": 1,
+            "name": "auto1",
+        },
+        {
+            "x": [1e-3, 1e-2, 1e-1],
+            "y": [1.0, 1.2, 1.0],
+            "species_a": 0,
+            "species_b": 1,
+            "name": "cross",
+        },
     ]
     widget._refresh_plot(datasets)
     # three curves plotted (two autos + one cross)

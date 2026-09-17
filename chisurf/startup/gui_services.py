@@ -17,26 +17,12 @@ def _get_window(context):
 
 def gui_imports(context) -> None:
     """Import core GUI modules needed for the main window scaffold."""
-    import chisurf.core.settings
-    import chisurf.core.base
-    import chisurf.core.support.common
-    import chisurf.core.curve
-    import chisurf.core.support.decorators
-    import chisurf.core.parameter
-    import chisurf.core.experiments
-    import chisurf.core.fio
-    import chisurf.gui.decorators
-    import chisurf.gui.widgets.ipython
-    import chisurf.gui.widgets
-    import chisurf.macros
-    import chisurf.core.math
     if cs.core.settings.exceptions_on_gui:
-        import chisurf.gui.exception_hook
+        pass
 
 
 def setup_ipython(context) -> None:
     """Create the IPython console widget."""
-    import chisurf.gui.widgets
     cs.console = cs.gui.widgets.ipython.QIPythonWidget()
     cs.console.history_widget = None
 
@@ -44,13 +30,11 @@ def setup_ipython(context) -> None:
 def startup_interface(context) -> object:
     """Create the main window and return it via context.dependencies."""
     from chisurf.gui.main import Main
+
     window = Main()
     cs.cs = window
-    import chisurf.core.base
     cs.core.base.set_safe_import_notify(
-        lambda title, text: dialogs.information(
-            window, title, text
-        )
+        lambda title, text: dialogs.information(window, title, text)
     )
     return window
 
@@ -58,6 +42,7 @@ def startup_interface(context) -> object:
 def setup_logging(context) -> None:
     """Attach logging widgets to the main window status bar."""
     from chisurf.gui import setup_logging_widgets
+
     window = _get_window(context)
     if window is not None:
         setup_logging_widgets(window)
@@ -95,6 +80,7 @@ def init_executors(context) -> None:
     """Initialize GUI executors."""
     try:
         from chisurf.gui import initialize_gui_executors
+
         initialize_gui_executors()
     except Exception:
         pass
@@ -109,12 +95,15 @@ def arrange_widgets(context) -> None:
 
 def setup_style(context) -> None:
     """Apply the configured stylesheet."""
-    from chisurf.gui import set_app_style
     from qtpy import QtWidgets
+
+    from chisurf.gui import set_app_style
+
     app = QtWidgets.QApplication.instance()
     if app is not None:
         set_app_style(app)
     from chisurf.gui import setup_gui
+
     qt_app = QtWidgets.QApplication.instance()
     if qt_app is not None:
         try:
@@ -125,21 +114,20 @@ def setup_style(context) -> None:
 
 def deferred_gui_imports(context) -> None:
     """Import heavy functional submodules."""
-    import chisurf.core.fitting
-    import chisurf.core.fluorescence
-    import chisurf.core.models
-    import chisurf.gui.plots
-    import chisurf.core.structure
 
 
 def populate_plugins(context) -> None:
     """Populate the plugin menu."""
     from chisurf.gui import setup_gui
+
     window = _get_window(context)
     if window is not None:
         from qtpy import QtWidgets
+
         try:
-            setup_gui(app=QtWidgets.QApplication.instance(), stage="populate_plugins", window=window)
+            setup_gui(
+                app=QtWidgets.QApplication.instance(), stage="populate_plugins", window=window
+            )
         except Exception:
             pass
 
@@ -147,9 +135,11 @@ def populate_plugins(context) -> None:
 def check_updates(context) -> None:
     """Check for application updates."""
     from chisurf.gui import setup_gui
+
     window = _get_window(context)
     if window is not None:
         from qtpy import QtWidgets
+
         try:
             setup_gui(app=QtWidgets.QApplication.instance(), stage="check_updates", window=window)
         except Exception:
@@ -160,6 +150,7 @@ def warmup_imports(context) -> None:
     """Preload modules for a snappier first interaction."""
     try:
         from chisurf.gui.misc_helpers import warmup_imports as _warmup
+
         _warmup()
     except Exception:
         pass

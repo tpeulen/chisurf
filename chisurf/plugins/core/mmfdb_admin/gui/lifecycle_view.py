@@ -87,10 +87,7 @@ class LifecycleView(QtWidgets.QWidget):
 
     def _allowed_next_states(self, entity_type: str, current: str | None) -> list[str]:
         spec = self._defs.get(entity_type, {})
-        return [
-            to for frm, to in spec.get("transitions", [])
-            if (frm if frm else None) == current
-        ]
+        return [to for frm, to in spec.get("transitions", []) if (frm if frm else None) == current]
 
     def refresh(self) -> None:
         """Reload the current state, the legal next states, and the history."""

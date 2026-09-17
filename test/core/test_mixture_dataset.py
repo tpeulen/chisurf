@@ -143,7 +143,9 @@ def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity, demo_file
 
     irf_tttr = tttrlib.TTTR(str(demo_files[1]))
     irf_full, background = build_irf_vv_vh(
-        irf_tttr, detector_chs=[0, 1], micro_time_range=(0, N_MICRO),
+        irf_tttr,
+        detector_chs=[0, 1],
+        micro_time_range=(0, N_MICRO),
         micro_time_binning=1,
     )
 
@@ -167,10 +169,13 @@ def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity, demo_file
     table = result.dataframe
     names = column_names(table)
     taus = np.asarray(column_values(table, names.index("tau")), dtype=float)
-    rows = np.stack([
-        np.asarray(column_values(table, names.index("centroid_row")), dtype=float),
-        np.asarray(column_values(table, names.index("centroid_col")), dtype=float),
-    ], axis=1)
+    rows = np.stack(
+        [
+            np.asarray(column_values(table, names.index("centroid_row")), dtype=float),
+            np.asarray(column_values(table, names.index("centroid_col")), dtype=float),
+        ],
+        axis=1,
+    )
 
     # Pair each fitted region with the blob it sits on, so the comparison is
     # per object rather than against a sorted list that could line up by luck.
@@ -210,22 +215,33 @@ def test_the_lifetimes_are_told_apart(scan, intensity, demo_files):
     detect.clear_border = False
     labels, _extra = detect_labels(intensity, detect)
     irf_full, background = build_irf_vv_vh(
-        tttrlib.TTTR(str(demo_files[1])), detector_chs=[0, 1],
-        micro_time_range=(0, N_MICRO), micro_time_binning=1,
+        tttrlib.TTTR(str(demo_files[1])),
+        detector_chs=[0, 1],
+        micro_time_range=(0, N_MICRO),
+        micro_time_binning=1,
     )
     result = fit_regions(
         tttr,
         RegionMleSettings(
-            detector_chs=[0, 1], micro_time_range=(0, N_MICRO), micro_time_binning=1,
-            irf=irf_full, background=background, regions=labels, min_photons=100,
-            tau=2.0, fix_r0=True, fix_rho=True, p2s_twoIstar=True,
+            detector_chs=[0, 1],
+            micro_time_range=(0, N_MICRO),
+            micro_time_binning=1,
+            irf=irf_full,
+            background=background,
+            regions=labels,
+            min_photons=100,
+            tau=2.0,
+            fix_r0=True,
+            fix_rho=True,
+            p2s_twoIstar=True,
         ),
-        clsm=clsm, dt=DT, period=N_MICRO * DT,
+        clsm=clsm,
+        dt=DT,
+        period=N_MICRO * DT,
     )
 
     names = column_names(result.dataframe)
-    taus = np.sort(np.asarray(
-        column_values(result.dataframe, names.index("tau")), dtype=float))
+    taus = np.sort(np.asarray(column_values(result.dataframe, names.index("tau")), dtype=float))
     truth = np.sort(np.asarray([b[2] for b in BLOBS]))
 
     # The shortest fitted lifetime belongs to the shortest simulated one, and so

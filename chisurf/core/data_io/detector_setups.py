@@ -9,7 +9,7 @@ from chisurf.core.settings.path_utils import get_path
 
 logger = logging.getLogger(__name__)
 
-DETECTOR_SETUPS_FILE = get_path('settings') / 'detector_setups.json'
+DETECTOR_SETUPS_FILE = get_path("settings") / "detector_setups.json"
 
 
 def load_detector_setups(
@@ -180,7 +180,5 @@ def set_setup_calibration(
         logger.warning("Cannot store a calibration: no detector setup named %r", setup_name)
         return False
     setup[SETUP_CALIBRATION_FIELD] = dict(payload or {})
-    save_detector_setups(
-        {"setups": setups, "last_used": data.get("last_used") or ""}, file_path
-    )
+    save_detector_setups({"setups": setups, "last_used": data.get("last_used") or ""}, file_path)
     return True

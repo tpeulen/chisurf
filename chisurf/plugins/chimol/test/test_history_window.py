@@ -7,14 +7,14 @@ end of the list was losing the answer. It is a
 :class:`~emtk.widgets.list_view.ListView` now, so the whole ring is
 reachable and only the visible rows are ever built.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from emtk.testing import RecordingPainter
-from emtk.widgets.list_view import ListView
 from chimol.plugins.history.window import HistoryWindow
 from chimol.ui.gui import Rect
+from emtk.testing import RecordingPainter
+from emtk.widgets.list_view import ListView
 
 
 class _Change:

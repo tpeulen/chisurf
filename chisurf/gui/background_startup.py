@@ -7,12 +7,12 @@ It is a thin adapter over ``chisurf.startup.services.AppStartupServiceManager``.
 
 from __future__ import annotations
 
-import chisurf as cs
 import traceback
-from typing import Any, Callable, Optional
+from collections.abc import Callable
 
 from qtpy import QtCore
 
+import chisurf as cs
 from chisurf.startup.services import (
     AppStartupContext,
     AppStartupServiceManager,
@@ -41,8 +41,8 @@ class BackgroundStartupRunner(QtCore.QObject):
         self,
         window,
         manager: AppStartupServiceManager,
-        on_complete: Optional[Callable[[], None]] = None,
-        parent: Optional[QtCore.QObject] = None,
+        on_complete: Callable[[], None] | None = None,
+        parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._window = window
@@ -73,10 +73,7 @@ class BackgroundStartupRunner(QtCore.QObject):
 
         self._set_status(spec.label, self._index, len(self._specs))
 
-        dependencies = {
-            dep: self._manager.get_service_result(dep)
-            for dep in spec.depends_on
-        }
+        dependencies = {dep: self._manager.get_service_result(dep) for dep in spec.depends_on}
         context = AppStartupContext(
             dispatcher=self._manager.dispatcher,
             state=self._manager.state,
@@ -94,8 +91,7 @@ class BackgroundStartupRunner(QtCore.QObject):
         except Exception:
             try:
                 cs.logging.error(
-                    f"Background startup stage '{spec.id}' failed:\n"
-                    + traceback.format_exc()
+                    f"Background startup stage '{spec.id}' failed:\n" + traceback.format_exc()
                 )
             except Exception:
                 pass
@@ -139,6 +135,7 @@ class BackgroundStartupRunner(QtCore.QObject):
             pass
         try:
             from qtpy import QtWidgets
+
             app = QtWidgets.QApplication.instance()
             if app is not None:
                 app.processEvents()

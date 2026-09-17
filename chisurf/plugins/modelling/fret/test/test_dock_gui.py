@@ -65,7 +65,7 @@ def test_build_params_screen():
 
 
 def test_repeats_route_to_errors():
-    """dock + n_repeats>1 becomes an 'errors' (repeated-docking) request."""
+    """Dock + n_repeats>1 becomes an 'errors' (repeated-docking) request."""
     from chisurf.plugins.modelling.fret.gui.dock_tool import _DockingModel
 
     m = _DockingModel()
@@ -82,11 +82,14 @@ def test_repeats_route_to_errors():
 def test_pdb_list_widget_homodimer_and_roundtrip(qapp, tmp_path):
     """The unified PDB path list keeps a repeated (homodimer) file, syncs the
     comma-joined model string, removes one occurrence by row, and round-trips a
-    project load verbatim."""
+    project load verbatim.
+    """
     from chisurf.plugins.modelling.fret.gui.dock_tool import FretDockingTool
 
-    a = tmp_path / "bodyA.pdb"; a.write_text("ATOM\n")
-    b = tmp_path / "bodyB.pdb"; b.write_text("ATOM\n")
+    a = tmp_path / "bodyA.pdb"
+    a.write_text("ATOM\n")
+    b = tmp_path / "bodyB.pdb"
+    b.write_text("ATOM\n")
 
     w = FretDockingTool()
     # homodimer: same structure for body 0 and 1, plus a distinct body 2
@@ -122,17 +125,28 @@ def test_results_table_and_plot(qapp, tmp_path):
         d = tmp_path / f"trial_{t:03d}"
         d.mkdir()
         (d / "stat.0.out").write_text(
-            "HEADER\n{1: '%f', 4: '0'}\n{1: '%f', 4: '1'}\n" % (score + 5, score)
+            f"HEADER\n{{1: '{score + 5:f}', 4: '0'}}\n{{1: '{score:f}', 4: '1'}}\n"
         )
     result = {
         "status": "ok",
         "data": {
-            "n_trials": 2, "score_mean": 10.0, "score_std": 2.0, "best_trial": 1,
+            "n_trials": 2,
+            "score_mean": 10.0,
+            "score_std": 2.0,
+            "best_trial": 1,
             "trial_details": [
-                {"trial": 0, "score": 12.0, "n_distances": 4,
-                 "best_pdb": str(tmp_path / "trial_000/pdbs/model.0.pdb")},
-                {"trial": 1, "score": 8.0, "n_distances": 4,
-                 "best_pdb": str(tmp_path / "trial_001/pdbs/model.0.pdb")},
+                {
+                    "trial": 0,
+                    "score": 12.0,
+                    "n_distances": 4,
+                    "best_pdb": str(tmp_path / "trial_000/pdbs/model.0.pdb"),
+                },
+                {
+                    "trial": 1,
+                    "score": 8.0,
+                    "n_distances": 4,
+                    "best_pdb": str(tmp_path / "trial_001/pdbs/model.0.pdb"),
+                },
             ],
         },
     }

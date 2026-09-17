@@ -88,16 +88,23 @@ class Kernel:
 
         self.wgpu = wgpu
         self.device = device
-        self.layout = device.create_bind_group_layout(entries=[
-            {"binding": 0, "visibility": wgpu.ShaderStage.COMPUTE,
-             "buffer": {"type": wgpu.BufferBindingType.read_only_storage}},
-            {"binding": 1, "visibility": wgpu.ShaderStage.COMPUTE,
-             "buffer": {"type": wgpu.BufferBindingType.storage}},
-        ])
+        self.layout = device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.read_only_storage},
+                },
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.storage},
+                },
+            ]
+        )
         self.pipeline = device.create_compute_pipeline(
             layout=device.create_pipeline_layout(bind_group_layouts=[self.layout]),
-            compute={"module": device.create_shader_module(code=SHADER),
-                     "entry_point": "main"},
+            compute={"module": device.create_shader_module(code=SHADER), "entry_point": "main"},
         )
 
     def buffers(self, values: np.ndarray):
@@ -114,17 +121,20 @@ class Kernel:
             ``(source, destination, bind group)``.
         """
         wgpu = self.wgpu
-        source = self.device.create_buffer_with_data(
-            data=values, usage=wgpu.BufferUsage.STORAGE)
+        source = self.device.create_buffer_with_data(data=values, usage=wgpu.BufferUsage.STORAGE)
         destination = self.device.create_buffer(
-            size=values.nbytes,
-            usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC)
-        bind = self.device.create_bind_group(layout=self.layout, entries=[
-            {"binding": 0, "resource": {"buffer": source, "offset": 0,
-                                        "size": values.nbytes}},
-            {"binding": 1, "resource": {"buffer": destination, "offset": 0,
-                                        "size": values.nbytes}},
-        ])
+            size=values.nbytes, usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
+        )
+        bind = self.device.create_bind_group(
+            layout=self.layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": source, "offset": 0, "size": values.nbytes}},
+                {
+                    "binding": 1,
+                    "resource": {"buffer": destination, "offset": 0, "size": values.nbytes},
+                },
+            ],
+        )
         return source, destination, bind
 
     def dispatch(self, bind, count: int) -> None:
@@ -218,24 +228,29 @@ def main(argv: list[str]) -> int:
         return 1
 
     info = adapter.info
-    print(f"adapter: {info.get('device')} ({info.get('backend_type')}), "
-          f"wgpu {wgpu.__version__}")
+    print(f"adapter: {info.get('device')} ({info.get('backend_type')}), wgpu {wgpu.__version__}")
     limits = device.limits
-    print("limits: workgroup <= "
-          f"{limits.get('max-compute-invocations-per-workgroup')} invocations, "
-          f"{limits.get('max-compute-workgroups-per-dimension')} workgroups/dimension, "
-          f"{limits.get('max-compute-workgroup-storage-size')} B workgroup storage")
+    print(
+        "limits: workgroup <= "
+        f"{limits.get('max-compute-invocations-per-workgroup')} invocations, "
+        f"{limits.get('max-compute-workgroups-per-dimension')} workgroups/dimension, "
+        f"{limits.get('max-compute-workgroup-storage-size')} B workgroup storage"
+    )
     print()
 
     kernel = Kernel(device)
-    print("| elements | kernel [ms] | round trip [ms] | numpy [ms] | kernel vs numpy "
-          "| round trip vs numpy |")
+    print(
+        "| elements | kernel [ms] | round trip [ms] | numpy [ms] | kernel vs numpy "
+        "| round trip vs numpy |"
+    )
     print("| ---: | ---: | ---: | ---: | ---: | ---: |")
     for count in SIZES:
         kernel_ms, trip_ms, numpy_ms, error = measure(kernel, count, options.repeats)
-        print(f"| {count:,} | {kernel_ms:.3f} | {trip_ms:.3f} | {numpy_ms:.3f} "
-              f"| {numpy_ms / max(kernel_ms, 1e-9):.1f}x "
-              f"| {numpy_ms / max(trip_ms, 1e-9):.1f}x |")
+        print(
+            f"| {count:,} | {kernel_ms:.3f} | {trip_ms:.3f} | {numpy_ms:.3f} "
+            f"| {numpy_ms / max(kernel_ms, 1e-9):.1f}x "
+            f"| {numpy_ms / max(trip_ms, 1e-9):.1f}x |"
+        )
         assert error < 1e-1, f"kernel disagrees with numpy by {error}"
     return 0
 

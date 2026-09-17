@@ -14,6 +14,7 @@ the vocabulary probabilistic-graphical-model tools settled on:
 - **Junction tree** — the cliques an elimination order produces, and what they
   share.
 """
+
 from __future__ import annotations
 
 import math
@@ -48,8 +49,7 @@ def _uncertainty_colour(value) -> str:
         return "#808080"
     v = float(min(1.0, max(0.0, value)))
     # Teal (well determined) -> amber -> red (poorly determined).
-    stops = ((0.0, (0x3C, 0xB4, 0xA0)), (0.5, (0xE0, 0xB8, 0x4C)),
-             (1.0, (0xD9, 0x53, 0x4F)))
+    stops = ((0.0, (0x3C, 0xB4, 0xA0)), (0.5, (0xE0, 0xB8, 0x4C)), (1.0, (0xD9, 0x53, 0x4F)))
     for (p0, c0), (p1, c1) in zip(stops, stops[1:]):
         if v <= p1:
             t = 0.0 if p1 == p0 else (v - p0) / (p1 - p0)
@@ -191,29 +191,30 @@ class PosteriorGraphPlot(Plot):
                     anchor = (0.5, 0.5)
                 plot.text(
                     edge.label,
-                    (x0 + t * dx + 0.4 * label_drop * nx_,
-                     y0 + t * dy + label_drop * ny_),
-                    color="#b0b0b0", anchor=anchor,
+                    (x0 + t * dx + 0.4 * label_drop * nx_, y0 + t * dy + label_drop * ny_),
+                    color="#b0b0b0",
+                    anchor=anchor,
                 )
 
         # Nodes, grouped by (symbol, colour) so each marker style is one call.
         grouped: dict = {}
         for node in view.nodes:
             symbol = KIND_SYMBOL.get(node.kind, "o")
-            colour = (_uncertainty_colour(node.value)
-                      if node.kind == "parameter" else "#5a7fa8")
+            colour = _uncertainty_colour(node.value) if node.kind == "parameter" else "#5a7fa8"
             grouped.setdefault((symbol, colour, node.size), []).append(node)
         for (symbol, colour, size), members in grouped.items():
             plot.scatter(
-                [n.x for n in members], [n.y for n in members],
-                size=16.0 * float(size), brush=colour,
-                pen=S.to_pen("#202020", width=1.0), symbol=symbol,
+                [n.x for n in members],
+                [n.y for n in members],
+                size=16.0 * float(size),
+                brush=colour,
+                pen=S.to_pen("#202020", width=1.0),
+                symbol=symbol,
             )
 
         for node in view.nodes:
             # Below the marker, so a label never sits on the node it names.
-            plot.text(node.label, (node.x, node.y - label_drop),
-                      color="#e8e8e8", anchor=(0.5, 0.0))
+            plot.text(node.label, (node.x, node.y - label_drop), color="#e8e8e8", anchor=(0.5, 0.0))
 
         x_span = max(max(xs) - min(xs), 0.5)
         plot.set_range(

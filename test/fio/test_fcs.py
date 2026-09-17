@@ -1,4 +1,5 @@
 """FCS metadata and the correlator.com SIN reader."""
+
 from __future__ import annotations
 
 import pathlib
@@ -40,10 +41,8 @@ def test_resolve_total_rate_returns_none_for_invalid_meta() -> None:
     assert resolve_total_mean_count_rate(None) is None
 
 
-import chisurf as cs
 import chisurf.core.fio.fluorescence.fcs as fcs_io
 import chisurf.core.fio.fluorescence.fcs.sin_correlator as sin_reader
-
 
 DATA_ROOT = pathlib.Path(__file__).parent / "data" / "fcs"
 if DATA_ROOT.is_dir():
@@ -66,7 +65,6 @@ def _assert_fcs_dataset_dict(ds: dict) -> None:
     This intentionally does not check numerical values, only that required
     keys are present and array-like fields have consistent lengths.
     """
-
     required_keys = [
         "filename",
         "measurement_id",
@@ -88,7 +86,6 @@ def _assert_fcs_dataset_dict(ds: dict) -> None:
 @_needs_sin_files
 def test_read_sin_low_level() -> None:
     """Low-level reader should return a non-empty list of FCSDataset dicts."""
-
     fn = SIN_FILES[0]
     ds_list = sin_reader.read_sin(str(fn), verbose=False)
 
@@ -102,7 +99,6 @@ def test_read_sin_low_level() -> None:
 @_needs_sin_files
 def test_read_sin_via_read_fcs_dispatcher() -> None:
     """High-level read_fcs dispatcher should wrap SIN datasets into DataCurves."""
-
     fn = SIN_FILES[0]
     group = fcs_io.read_fcs(filename=str(fn), reader_name="sin")
 

@@ -212,24 +212,35 @@ class _Spotlight(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
         shade = QtGui.QColor(0, 0, 0, 110)
         full = self.rect()
-        hole = self._rect.adjusted(-6, -6, 6, 6) if (
-            self._rect.isValid() and not self._rect.isEmpty()
-        ) else QtCore.QRect()
+        hole = (
+            self._rect.adjusted(-6, -6, 6, 6)
+            if (self._rect.isValid() and not self._rect.isEmpty())
+            else QtCore.QRect()
+        )
 
         if hole.isEmpty():
             painter.fillRect(full, shade)
         else:
             hole = hole.intersected(full)
-            painter.fillRect(QtCore.QRect(full.left(), full.top(),
-                                          full.width(), hole.top() - full.top()), shade)
-            painter.fillRect(QtCore.QRect(full.left(), hole.bottom() + 1,
-                                          full.width(), full.bottom() - hole.bottom()),
-                             shade)
-            painter.fillRect(QtCore.QRect(full.left(), hole.top(),
-                                          hole.left() - full.left(), hole.height()), shade)
-            painter.fillRect(QtCore.QRect(hole.right() + 1, hole.top(),
-                                          full.right() - hole.right(), hole.height()),
-                             shade)
+            painter.fillRect(
+                QtCore.QRect(full.left(), full.top(), full.width(), hole.top() - full.top()), shade
+            )
+            painter.fillRect(
+                QtCore.QRect(
+                    full.left(), hole.bottom() + 1, full.width(), full.bottom() - hole.bottom()
+                ),
+                shade,
+            )
+            painter.fillRect(
+                QtCore.QRect(full.left(), hole.top(), hole.left() - full.left(), hole.height()),
+                shade,
+            )
+            painter.fillRect(
+                QtCore.QRect(
+                    hole.right() + 1, hole.top(), full.right() - hole.right(), hole.height()
+                ),
+                shade,
+            )
             painter.setPen(QtGui.QPen(QtGui.QColor(255, 190, 60), 2))
             painter.setBrush(QtCore.Qt.NoBrush)
             painter.drawRoundedRect(hole.adjusted(1, 1, -1, -1), 6, 6)
@@ -399,7 +410,6 @@ class _Bubble(QtWidgets.QFrame):
             if open_source(url):
                 return
         open_link(url)
-
 
 
 def _links_html(links) -> str:
@@ -663,9 +673,7 @@ class GuidedTour(QtCore.QObject):
         return None
 
     @staticmethod
-    def _select_wizard_step(
-        stack: QtWidgets.QStackedWidget, page: QtWidgets.QWidget
-    ) -> None:
+    def _select_wizard_step(stack: QtWidgets.QStackedWidget, page: QtWidgets.QWidget) -> None:
         """Move a wizard to the step holding *page*, through its nav list.
 
         The list is the thing that drives the page, the title and the subtitle
@@ -831,9 +839,7 @@ class GuidedTour(QtCore.QObject):
         bubble.body.setText(step.text + _links_html(step.links))
         bubble.counter.setText(f"{self._index + 1} / {len(self._steps)}")
         bubble.back_button.setEnabled(self._index > 0)
-        bubble.next_button.setText(
-            "Done" if self._index + 1 >= len(self._steps) else "Next ▶"
-        )
+        bubble.next_button.setText("Done" if self._index + 1 >= len(self._steps) else "Next ▶")
 
         spotlight.setGeometry(self._host.rect())
         widget = self.resolve_target(step.target)
@@ -913,9 +919,7 @@ class GuidedTour(QtCore.QObject):
             self._disconnect()
             if self._bubble is None:
                 return
-            self._bubble.prompt.setText(
-                "<span style='color:#2a8a4a'>✓ done — press Next</span>"
-            )
+            self._bubble.prompt.setText("<span style='color:#2a8a4a'>✓ done — press Next</span>")
             self._bubble.next_button.setEnabled(True)
             self._bubble.next_button.setDefault(True)
             self._bubble.next_button.setFocus()
@@ -938,8 +942,14 @@ class GuidedTour(QtCore.QObject):
             # Auto-detect, most specific first: a toolbar button is backed by a
             # QAction, a plain button emits clicked, and a field is "used" when
             # its value changes rather than when it is clicked.
-            for guess in ("triggered", "clicked", "editingFinished",
-                          "valueChanged", "currentIndexChanged", "textChanged"):
+            for guess in (
+                "triggered",
+                "clicked",
+                "editingFinished",
+                "valueChanged",
+                "currentIndexChanged",
+                "textChanged",
+            ):
                 signal = getattr(candidate, guess, None)
                 if signal is not None and hasattr(signal, "connect"):
                     return signal
@@ -1036,22 +1046,18 @@ class GuidedTour(QtCore.QObject):
             (rect.left(), rect.bottom() + margin),
             (rect.right() - width, rect.bottom() + margin),
             (rect.center().x() - width // 2, rect.bottom() + margin),
-
             # 2. Above (aligned left, right, center)
             (rect.left(), rect.top() - margin - height),
             (rect.right() - width, rect.top() - margin - height),
             (rect.center().x() - width // 2, rect.top() - margin - height),
-
             # 3. Right (aligned top, bottom, center)
             (rect.right() + margin, rect.top()),
             (rect.right() + margin, rect.bottom() - height),
             (rect.right() + margin, rect.center().y() - height // 2),
-
             # 4. Left (aligned top, bottom, center)
             (rect.left() - margin - width, rect.top()),
             (rect.left() - margin - width, rect.bottom() - height),
             (rect.left() - margin - width, rect.center().y() - height // 2),
-
             # 5. Host window corners as fallback
             (host.right() - width - margin, host.top() + margin),
             (host.left() + margin, host.top() + margin),

@@ -11,7 +11,6 @@ from chisurf.history import OperationHistory
 
 
 class TestHistory(unittest.TestCase):
-
     def test_record_and_subscribe(self):
         history = OperationHistory()
         seen = []

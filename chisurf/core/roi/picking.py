@@ -88,8 +88,9 @@ class PickedSpot:
         return spot_roi(self, name=name)
 
 
-def fit_gaussian_spot(image, y, x, *, window: int = 9,
-                      max_shift: float | None = None) -> PickedSpot:
+def fit_gaussian_spot(
+    image, y, x, *, window: int = 9, max_shift: float | None = None
+) -> PickedSpot:
     """Fit a 2-D Gaussian to the spot near ``(y, x)``.
 
     Parameters
@@ -145,25 +146,37 @@ def fit_gaussian_spot(image, y, x, *, window: int = 9,
     coords_y, coords_x = rows.ravel(), cols.ravel()
     values = patch.ravel()
 
-    p0 = np.array([
-        float(local[0]), float(local[1]),
-        max(1.0, patch.shape[0] / 5.0), max(1.0, patch.shape[1] / 5.0),
-        peak - background, background,
-    ])
+    p0 = np.array(
+        [
+            float(local[0]),
+            float(local[1]),
+            max(1.0, patch.shape[0] / 5.0),
+            max(1.0, patch.shape[1] / 5.0),
+            peak - background,
+            background,
+        ]
+    )
 
     def residuals(p):
         cy, cx, sy, sx, amp, off = p
-        model = amp * np.exp(
-            -0.5 * (((coords_y - cy) / sy) ** 2 + ((coords_x - cx) / sx) ** 2)
-        ) + off
+        model = (
+            amp * np.exp(-0.5 * (((coords_y - cy) / sy) ** 2 + ((coords_x - cx) / sx) ** 2)) + off
+        )
         return model - values
 
     result = least_squares(
-        residuals, p0,
+        residuals,
+        p0,
         bounds=(
             [0.0, 0.0, 0.4, 0.4, 0.0, -np.inf],
-            [patch.shape[0] - 1.0, patch.shape[1] - 1.0,
-             float(patch.shape[0]), float(patch.shape[1]), np.inf, np.inf],
+            [
+                patch.shape[0] - 1.0,
+                patch.shape[1] - 1.0,
+                float(patch.shape[0]),
+                float(patch.shape[1]),
+                np.inf,
+                np.inf,
+            ],
         ),
         max_nfev=400,
     )
@@ -173,8 +186,13 @@ def fit_gaussian_spot(image, y, x, *, window: int = 9,
     limit = float(max_shift) if max_shift is not None else half
     shift = float(np.hypot(fitted_y - y, fitted_x - x))
     spot = PickedSpot(
-        y=fitted_y, x=fitted_x, sigma_y=sy, sigma_x=sx,
-        amplitude=amp, background=off, success=True,
+        y=fitted_y,
+        x=fitted_x,
+        sigma_y=sy,
+        sigma_x=sx,
+        amplitude=amp,
+        background=off,
+        success=True,
     )
     if not result.success:
         spot.success, spot.reason = False, "the fit did not converge"
@@ -213,7 +231,8 @@ def spot_roi(spot: PickedSpot, name: str = "", *, radius_sigmas: float = SIGMA_T
     from chisurf.core.roi import EllipseROI
 
     return EllipseROI(
-        float(spot.x), float(spot.y),
+        float(spot.x),
+        float(spot.y),
         max(1.0, radius_sigmas * float(spot.sigma_x)),
         max(1.0, radius_sigmas * float(spot.sigma_y)),
         name=name or "picked",
@@ -252,8 +271,9 @@ class PickedCluster:
     reason: str = ""
 
 
-def fit_gaussian_cluster(points, x, y, *, radius: float, iterations: int = 3,
-                         min_points: int = 10) -> PickedCluster:
+def fit_gaussian_cluster(
+    points, x, y, *, radius: float, iterations: int = 3, min_points: int = 10
+) -> PickedCluster:
     """Fit a 2-D Gaussian to the population clicked at ``(x, y)``.
 
     Where :func:`fit_gaussian_spot` fits pixel values, this fits point density,
@@ -309,19 +329,22 @@ def fit_gaussian_cluster(points, x, y, *, radius: float, iterations: int = 3,
     n = int(inside.sum())
     if n < max(2, min_points):
         return PickedCluster(
-            centre, np.zeros((2, 2)), n_points=n,
+            centre,
+            np.zeros((2, 2)),
+            n_points=n,
             reason=f"only {n} point(s) within {radius:g} of the click — "
-                   "widen the radius or click where the population is",
+            "widen the radius or click where the population is",
         )
 
     cov = np.cov(data[inside].T)
     if not np.isfinite(cov).all() or np.linalg.det(cov) <= 0:
         return PickedCluster(
-            centre, np.zeros((2, 2)), n_points=n,
+            centre,
+            np.zeros((2, 2)),
+            n_points=n,
             reason="the points are collinear — no ellipse describes them",
         )
-    return PickedCluster(mu=centre, cov=np.asarray(cov, dtype=float),
-                         n_points=n, success=True)
+    return PickedCluster(mu=centre, cov=np.asarray(cov, dtype=float), n_points=n, success=True)
 
 
 def cluster_roi(cluster: PickedCluster, name: str = "", *, sigma: float = 2.0):
@@ -348,6 +371,4 @@ def cluster_roi(cluster: PickedCluster, name: str = "", *, sigma: float = 2.0):
     """
     from chisurf.core.roi.selections import ellipse_from_covariance
 
-    return ellipse_from_covariance(
-        cluster.mu, cluster.cov, sigma=sigma, name=name or "picked"
-    )
+    return ellipse_from_covariance(cluster.mu, cluster.cov, sigma=sigma, name=name or "picked")

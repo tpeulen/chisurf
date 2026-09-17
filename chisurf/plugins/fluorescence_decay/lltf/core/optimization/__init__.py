@@ -10,4 +10,4 @@ including a plain Python objective like this plugin's.
 
 from chisurf.core.fitting.minimizer import minimize
 
-__all__ = ['minimize']
+__all__ = ["minimize"]

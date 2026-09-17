@@ -27,6 +27,7 @@ from collections.abc import Callable
 
 import numpy as np
 
+
 def default_chunk_count() -> int:
     """Chunks to split the photon stream into for the 2D-FDC pass.
 
@@ -129,16 +130,23 @@ def create_2d_fdc_numba_int(
 
     log_ticks = np.zeros(int(logt_imax_in) + 1, dtype=np.int64)
     tttrlib.fdc_log_ticks(t_imax, log_ticks)
-    lin_ticks = np.concatenate(
-        [[-1], np.arange(0, t_imax + factor, factor)]
-    ).astype(np.int64)
+    lin_ticks = np.concatenate([[-1], np.arange(0, t_imax + factor, factor)]).astype(np.int64)
 
     out_log = np.zeros((len(log_ticks) - 1) ** 2, dtype=np.int64)
     out_lin = np.zeros((len(lin_ticks) - 1) ** 2, dtype=np.int64)
     tttrlib.fdc_scan_two_axes(
-        macro, micro, np.array([int(dT_ticks)], dtype=np.int64), int(ddT_ticks),
-        int(tMin_over_tStep), int(tMax_over_tStep), log_ticks, lin_ticks,
-        int(n_chunks), out_log, out_lin, t_imax,
+        macro,
+        micro,
+        np.array([int(dT_ticks)], dtype=np.int64),
+        int(ddT_ticks),
+        int(tMin_over_tStep),
+        int(tMax_over_tStep),
+        log_ticks,
+        lin_ticks,
+        int(n_chunks),
+        out_log,
+        out_lin,
+        t_imax,
     )
 
     mat_log = out_log.reshape(int(logt_imax_in), int(logt_imax_in))
@@ -151,8 +159,6 @@ def create_2d_fdc_numba_int(
     mat_lin = out_lin.reshape(len(lin_ticks) - 1, len(lin_ticks) - 1)[1:lint_imax, 1:lint_imax]
     mat_lint = (factor * np.arange(lint_imax, dtype=np.int64))[: lint_imax - 1]
     return mat_lin, mat_lint, mat_log, logt_ticks
-
-
 
 
 def _fdc_scan_log_kernel(
@@ -183,12 +189,16 @@ def _fdc_scan_log_kernel(
     tttrlib.fdc_scan_axis(
         np.ascontiguousarray(macro_times, dtype=np.int64),
         np.ascontiguousarray(micro_times, dtype=np.int64),
-        lags, int(ddT_ticks), int(tMin_over_tStep), int(tMax_over_tStep),
-        ticks, int(n_chunks), out, t_imax,
+        lags,
+        int(ddT_ticks),
+        int(tMin_over_tStep),
+        int(tMax_over_tStep),
+        ticks,
+        int(n_chunks),
+        out,
+        t_imax,
     )
     return out.reshape(lags.size, int(logt_imax_in), int(logt_imax_in))
-
-
 
 
 class TwoDFDCreatorNumbaInt:

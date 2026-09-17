@@ -170,7 +170,7 @@ def post_mistral_json_with_retries(endpoint, path, headers, payload, timeout, *,
         if attempt == max_attempts - 1:
             break
         retry_after = retry_after_seconds(response)
-        delay = retry_after if retry_after is not None else 2 ** attempt
+        delay = retry_after if retry_after is not None else 2**attempt
         logger.warning(
             "Mistral icon generation rate-limited on /%s; retrying in %.1f seconds",
             path,
@@ -268,8 +268,12 @@ def request_mistral_generated_icon_bytes(
         "completion_args": {"temperature": 0.3, "top_p": 0.95},
     }
     agent_response = post_mistral_json_with_retries(
-        config.endpoint, "agents", headers=headers, payload=agent_payload,
-        timeout=60, sleep=sleep,
+        config.endpoint,
+        "agents",
+        headers=headers,
+        payload=agent_payload,
+        timeout=60,
+        sleep=sleep,
     )
     agent_id = agent_response.json().get("id")
     if not agent_id:
@@ -278,10 +282,12 @@ def request_mistral_generated_icon_bytes(
     if not prompt:
         prompt = ai_icon_prompt(plugin_info)
     conversation_response = post_mistral_json_with_retries(
-        config.endpoint, "conversations",
+        config.endpoint,
+        "conversations",
         headers=headers,
         payload={"agent_id": agent_id, "inputs": prompt, "stream": False},
-        timeout=120, sleep=sleep,
+        timeout=120,
+        sleep=sleep,
     )
     file_id = extract_mistral_file_id(conversation_response.json())
     if not file_id:
@@ -323,27 +329,41 @@ def icon_symbol_pair(plugin_name: str, description: str) -> tuple[str, str]:
 #: One table rather than the two eight-branch if-chains this replaced, whose
 #: keyword lists were duplicated verbatim and could drift apart.
 _TOPICS: tuple[tuple[tuple[str, ...], str, tuple[str, str]], ...] = (
-    (("fcs", "correlation"),
-     "fluorescence correlation data, smooth decay curve, focused detection volume",
-     ("correlation curve", "confocal detection spot")),
-    (("decay", "lifetime", "tcspc"),
-     "fluorescence lifetime decay, photon timing, clean exponential curve",
-     ("decay curve", "single photon pulse")),
-    (("molecule", "protein", "structure", "trajectory"),
-     "molecular structure, connected atoms, scientific 3D geometry",
-     ("molecular node network", "subtle 3D depth cue")),
-    (("image", "microscopy", "camera"),
-     "scientific image analysis, microscope field, focused signal",
-     ("microscope image frame", "bright analytical feature")),
-    (("database", "sample", "repository"),
-     "organized scientific records, structured data, sample archive",
-     ("stacked data cylinder", "sample marker")),
-    (("plot", "graph", "histogram"),
-     "scientific plotting, measured data trend, clean analytical chart",
-     ("clean graph curve", "data point cluster")),
-    (("settings", "manager", "setup", "plugin"),
-     "software configuration, modular plugin component, scientific tool",
-     ("modular hexagon", "calibration dot")),
+    (
+        ("fcs", "correlation"),
+        "fluorescence correlation data, smooth decay curve, focused detection volume",
+        ("correlation curve", "confocal detection spot"),
+    ),
+    (
+        ("decay", "lifetime", "tcspc"),
+        "fluorescence lifetime decay, photon timing, clean exponential curve",
+        ("decay curve", "single photon pulse"),
+    ),
+    (
+        ("molecule", "protein", "structure", "trajectory"),
+        "molecular structure, connected atoms, scientific 3D geometry",
+        ("molecular node network", "subtle 3D depth cue"),
+    ),
+    (
+        ("image", "microscopy", "camera"),
+        "scientific image analysis, microscope field, focused signal",
+        ("microscope image frame", "bright analytical feature"),
+    ),
+    (
+        ("database", "sample", "repository"),
+        "organized scientific records, structured data, sample archive",
+        ("stacked data cylinder", "sample marker"),
+    ),
+    (
+        ("plot", "graph", "histogram"),
+        "scientific plotting, measured data trend, clean analytical chart",
+        ("clean graph curve", "data point cluster"),
+    ),
+    (
+        ("settings", "manager", "setup", "plugin"),
+        "software configuration, modular plugin component, scientific tool",
+        ("modular hexagon", "calibration dot"),
+    ),
 )
 
 _FALLBACK = (

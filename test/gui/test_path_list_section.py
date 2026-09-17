@@ -50,9 +50,7 @@ def test_add_from_mmfdb_commits_resolved_path(qapp, tmp_path, monkeypatch):
     from chisurf.gui.widgets.mmfdb import picker
 
     monkeypatch.setattr(picker, "inprocess_client", lambda: object())
-    monkeypatch.setattr(
-        picker, "pick_local_paths", lambda *a, **k: [sample]
-    )
+    monkeypatch.setattr(picker, "pick_local_paths", lambda *a, **k: [sample])
 
     model = _Model()
     widget = PathListWidget(model, "files", extensions=[".ptu"])
@@ -70,9 +68,7 @@ def test_add_from_mmfdb_without_database_is_quiet(qapp, monkeypatch):
     from chisurf.gui.widgets.mmfdb import picker
 
     monkeypatch.setattr(picker, "inprocess_client", lambda: None)
-    monkeypatch.setattr(
-        QtWidgets.QMessageBox, "information", staticmethod(lambda *a, **k: None)
-    )
+    monkeypatch.setattr(QtWidgets.QMessageBox, "information", staticmethod(lambda *a, **k: None))
 
     model = _Model()
     widget = PathListWidget(model, "files")
@@ -83,8 +79,10 @@ def test_add_from_mmfdb_without_database_is_quiet(qapp, monkeypatch):
 
 def test_public_api_add_paths_and_clear(qapp, tmp_path):
     """add_paths / paths / clear expose the list to standalone hosts."""
-    f1 = tmp_path / "a.ptu"; f1.write_bytes(b"1")
-    f2 = tmp_path / "b.ptu"; f2.write_bytes(b"2")
+    f1 = tmp_path / "a.ptu"
+    f1.write_bytes(b"1")
+    f2 = tmp_path / "b.ptu"
+    f2.write_bytes(b"2")
     model = _Model()
     widget = PathListWidget(model, "files", extensions=[".ptu"])
 
@@ -99,8 +97,10 @@ def test_public_api_add_paths_and_clear(qapp, tmp_path):
 
 def test_selection_signal_and_select_first(qapp, tmp_path):
     """select_first auto-selects row 0; selectionChanged reports the selection."""
-    f1 = tmp_path / "a.ptu"; f1.write_bytes(b"1")
-    f2 = tmp_path / "b.ptu"; f2.write_bytes(b"2")
+    f1 = tmp_path / "a.ptu"
+    f1.write_bytes(b"1")
+    f2 = tmp_path / "b.ptu"
+    f2.write_bytes(b"2")
     model = _Model()
     widget = PathListWidget(model, "files", extensions=[".ptu"], select_first=True)
 
@@ -118,7 +118,7 @@ def test_selection_signal_and_select_first(qapp, tmp_path):
 
 
 def test_checkable_mode(qapp, tmp_path):
-    """checkable adds ticks (default checked), preserves state across refresh, All/None work."""
+    """Checkable adds ticks (default checked), preserves state across refresh, All/None work."""
     from qtpy import QtCore
 
     fs = [tmp_path / f"f{i}.dat" for i in range(3)]
@@ -155,11 +155,12 @@ def test_path_filter_overrides_extension_check(qapp, tmp_path):
     """A path_filter predicate accepts files a plain suffix test would reject (e.g. .ptu.gz)."""
     model = _Model()
     w = PathListWidget(
-        model, "files",
+        model,
+        "files",
         path_filter=lambda p: p.lower().endswith((".ptu", ".ptu.gz")),
     )
     assert w._accepts("/data/run.ptu") is True
-    assert w._accepts("/data/run.ptu.gz") is True     # compressed — suffix is .gz
+    assert w._accepts("/data/run.ptu.gz") is True  # compressed — suffix is .gz
     assert w._accepts("/data/run.txt") is False
 
 
@@ -177,8 +178,10 @@ def test_replace_on_drop(qapp, tmp_path):
 
 def test_allow_duplicates_keeps_repeats_and_removes_by_row(qapp, tmp_path):
     """allow_duplicates keeps the same path twice; removal drops only one occurrence."""
-    a = tmp_path / "a.pdb"; a.write_bytes(b"1")
-    b = tmp_path / "b.pdb"; b.write_bytes(b"2")
+    a = tmp_path / "a.pdb"
+    a.write_bytes(b"1")
+    b = tmp_path / "b.pdb"
+    b.write_bytes(b"2")
     model = _Model()
     w = PathListWidget(model, "files", extensions=[".pdb"], allow_duplicates=True)
 
@@ -200,7 +203,8 @@ def test_allow_duplicates_rejects_checkable(qapp):
 
 def test_set_paths_loads_verbatim_including_missing(qapp, tmp_path):
     """set_paths stores the list exactly — no expansion, no existence filtering."""
-    a = tmp_path / "a.pdb"; a.write_bytes(b"1")
+    a = tmp_path / "a.pdb"
+    a.write_bytes(b"1")
     missing = tmp_path / "gone.pdb"  # never created
     model = _Model()
     w = PathListWidget(model, "files", extensions=[".pdb"], allow_duplicates=True)
@@ -246,7 +250,7 @@ def test_a_list_filled_programmatically_reaches_the_widget(qapp, tmp_path):
     w = PathListWidget(model, "files")
     assert w.paths() == []
 
-    model.files = [str(a)]          # exactly what a hand-off does
+    model.files = [str(a)]  # exactly what a hand-off does
     # ``paths()`` reads the model, so it is already right; the *visible* list is
     # the thing that was left behind, and it is the only thing the user sees.
     assert w._list.count() == 0, "nothing has told the widget yet"

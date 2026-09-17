@@ -211,8 +211,7 @@ class ColocViewModel:
         edges_b = self._result.histogram.get("edges_b")
         if edges_a is None or edges_b is None or len(edges_a) < 2:
             return (0.0, 1.0, 0.0, 1.0)
-        return (float(edges_a[0]), float(edges_a[-1]),
-                float(edges_b[0]), float(edges_b[-1]))
+        return (float(edges_a[0]), float(edges_a[-1]), float(edges_b[0]), float(edges_b[-1]))
 
     def _sync_box_gate(self) -> None:
         """Keep the typed rectangle in step with the region list.
@@ -231,7 +230,8 @@ class ColocViewModel:
         from chisurf.core.roi import RectangleROI
 
         box = RectangleROI(
-            self.gate_a_min, self.gate_b_min,
+            self.gate_a_min,
+            self.gate_b_min,
             float(np.nextafter(self.gate_a_max, np.inf)),
             float(np.nextafter(self.gate_b_max, np.inf)),
             name="box",
@@ -417,9 +417,7 @@ class ColocViewModel:
             # The histogram is indexed [a_bin, b_bin] and drawn with A
             # horizontal, so the region — which wants rows along y — takes the
             # transpose.
-            self.gates.add(
-                MaskROI.from_histogram(painted.T, edges_a, edges_b, name="painted")
-            )
+            self.gates.add(MaskROI.from_histogram(painted.T, edges_a, edges_b, name="painted"))
             self.gate_enabled = True
         self.notify("gate")
         self.compute()

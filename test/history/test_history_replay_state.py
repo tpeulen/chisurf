@@ -10,7 +10,6 @@ from chisurf.history import replay as history_replay
 
 
 class TestHistoryReplayState(unittest.TestCase):
-
     def test_reconstruct_navigation_state(self):
         events = [
             {"action_type": "dataset_add", "payload": {"loaded_names": ["d1"]}},
@@ -358,12 +357,6 @@ class TestHistoryReplayState(unittest.TestCase):
         self.assertEqual(state["fit_ranges"]["fg"]["xmin"], 10)
         self.assertEqual(state["setup"]["experiment"], "TCSPC")
 
-
-
-
-
-
-
     def test_reconstruct_model_state(self):
         events = [
             {
@@ -399,23 +392,23 @@ class TestHistoryReplayState(unittest.TestCase):
         ]
 
         state = history_replay.reconstruct_model_state(events)
-        
+
         # Check that the fit group was tracked
         self.assertIn("fit-u1", state)
-        
+
         fg_state = state["fit-u1"]
         self.assertEqual(fg_state["fit_group_uid"], "fit-u1")
-        
+
         # Check that local fits were tracked (default local_0)
         self.assertIn("local_0", fg_state["local_fits"])
-        
+
         local_state = fg_state["local_fits"]["local_0"]
-        
+
         # Check components - the remove should overwrite the add
         self.assertEqual(len(local_state["components"]), 1)
         self.assertEqual(local_state["components"][0]["name"], "gaussian1")
         self.assertEqual(local_state["components"][0]["action"], "remove")
-        
+
         # Check config
         self.assertIn("correction_pileup", local_state["config"])
         self.assertEqual(local_state["config"]["correction_pileup"], 0.05)
@@ -431,21 +424,21 @@ class TestHistoryReplayState(unittest.TestCase):
             },
             {
                 "action_type": "model_add_component",
-                "source_uid": "fit-u2", 
+                "source_uid": "fit-u2",
                 "payload": {"component_name": "comp2"},
             },
         ]
 
         state = history_replay.reconstruct_model_state(events)
-        
+
         # Check that both fit groups were tracked
         self.assertIn("fit-u1", state)
         self.assertIn("fit-u2", state)
-        
+
         # Check components in each fit
         self.assertEqual(len(state["fit-u1"]["local_fits"]["local_0"]["components"]), 1)
         self.assertEqual(state["fit-u1"]["local_fits"]["local_0"]["components"][0]["name"], "comp1")
-        
+
         self.assertEqual(len(state["fit-u2"]["local_fits"]["local_0"]["components"]), 1)
         self.assertEqual(state["fit-u2"]["local_fits"]["local_0"]["components"][0]["name"], "comp2")
 

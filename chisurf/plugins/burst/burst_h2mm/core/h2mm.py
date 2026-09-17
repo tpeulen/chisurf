@@ -355,7 +355,7 @@ def simulate_bursts(
                 -1 if seed is None else int(seed),
             )
             return [np.asarray(s, dtype=np.int32) for s in out]
-    except Exception:                                    # pragma: no cover
+    except Exception:  # pragma: no cover
         pass
 
     rng = np.random.default_rng(seed)
@@ -372,5 +372,3 @@ def simulate_bursts(
             s[n] = rng.choice(model.n_streams, p=model.obs[state])
         streams_out.append(s)
     return streams_out
-
-

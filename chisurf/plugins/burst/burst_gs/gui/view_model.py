@@ -8,9 +8,9 @@ and report text that ``burst_gs.view.json`` reads.
 from __future__ import annotations
 
 import logging
-from concurrent.futures import CancelledError
 import pathlib
 from collections.abc import Callable
+from concurrent.futures import CancelledError
 
 import numpy as np
 
@@ -244,7 +244,8 @@ class BurstGsViewModel:
 
         try:
             _c.write_container(
-                files[0], self._analysis,
+                files[0],
+                self._analysis,
                 # The inputs that decide the answer, so a re-run with the same
                 # ones replaces this rather than adding beside it.
                 parameters={

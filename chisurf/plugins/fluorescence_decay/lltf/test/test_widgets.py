@@ -5,6 +5,7 @@ from qtpy import QtWidgets
 def test_process_output_widget_creation(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import ProcessOutputWidget
+
     widget = ProcessOutputWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -18,6 +19,7 @@ def test_process_output_widget_creation(qapp, qtbot):
 def test_import_lltf_gui_wizard(qapp):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
+
     assert LLTFGUIWizard is not None
 
 
@@ -32,6 +34,7 @@ def test_edit_config_opens_settings_editor(qapp, qtbot):
         LLTFGUIWizard,
         LLTFSettingsEditor,
     )
+
     wizard = LLTFGUIWizard(verbose=False)
     qtbot.addWidget(wizard)
 

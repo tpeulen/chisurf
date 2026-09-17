@@ -40,13 +40,13 @@ def test_load_pairs_coordinates_with_a_topology(trajectory):
     assert trajectory.n_frames == 3
     assert trajectory.n_atoms == 5235
     assert trajectory.topology.n_atoms == 5235
-    assert trajectory.top is trajectory.topology       # the short name the tree uses
+    assert trajectory.top is trajectory.topology  # the short name the tree uses
 
 
 def test_rmsd_matches_the_reference(trajectory):
     got = traj_ops.rmsd(trajectory, trajectory, frame=0)
     np.testing.assert_allclose(got, EXPECTED["rmsd_all"], rtol=0, atol=1e-3)
-    assert got[0] == pytest.approx(0.0, abs=1e-6)      # a frame against itself
+    assert got[0] == pytest.approx(0.0, abs=1e-6)  # a frame against itself
 
 
 def test_rmsd_on_a_subset_matches_the_reference(trajectory):
@@ -74,12 +74,16 @@ def test_rmsd_is_invariant_to_rotation_and_translation(trajectory):
     # value would grow with the displacement instead of staying put.
     moved = traj_ops.Trajectory(trajectory.xyz.copy(), trajectory.topology)
     angle = 0.7
-    rotation = np.array([[np.cos(angle), -np.sin(angle), 0],
-                         [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
+    rotation = np.array(
+        [[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]
+    )
     moved.xyz = (moved.xyz @ rotation.T + 12.0).astype(np.float32)
     np.testing.assert_allclose(
         traj_ops.rmsd(moved, trajectory, frame=0),
-        traj_ops.rmsd(trajectory, trajectory, frame=0), rtol=0, atol=1e-3)
+        traj_ops.rmsd(trajectory, trajectory, frame=0),
+        rtol=0,
+        atol=1e-3,
+    )
 
 
 def test_superpose_matches_the_reference(trajectory):
@@ -100,8 +104,9 @@ def test_superpose_does_not_mirror(trajectory):
     The giveaway is a suspiciously small RMSD, so this checks the determinant
     directly: superposing a deliberately mirrored copy must not recover it.
     """
-    mirrored = traj_ops.Trajectory(trajectory.xyz.copy() * np.array([1, 1, -1], np.float32),
-                                   trajectory.topology)
+    mirrored = traj_ops.Trajectory(
+        trajectory.xyz.copy() * np.array([1, 1, -1], np.float32), trajectory.topology
+    )
     before = traj_ops.rmsd(mirrored, trajectory, frame=0)[0]
     mirrored.superpose(trajectory, frame=0)
     after = float(np.sqrt(((mirrored.xyz[0] - trajectory.xyz[0]) ** 2).sum(axis=1).mean()))
@@ -149,8 +154,7 @@ def test_iterload_covers_every_frame():
 def test_load_frame_returns_one_frame():
     frame = traj_ops.load_frame(str(DCD), 1, top=str(PDB))
     assert frame.n_frames == 1
-    np.testing.assert_array_equal(
-        frame.xyz[0], traj_ops.load(str(DCD), top=str(PDB)).xyz[1])
+    np.testing.assert_array_equal(frame.xyz[0], traj_ops.load(str(DCD), top=str(PDB)).xyz[1])
 
 
 def test_a_coordinate_file_without_a_topology_is_refused():

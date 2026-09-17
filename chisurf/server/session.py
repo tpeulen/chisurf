@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -12,18 +12,19 @@ class SessionState:
     the GUI connects as a client and reads/writes through ZMQ RPC.
     """
 
-    datasets: List[Any] = field(default_factory=list)
-    fits: List[Any] = field(default_factory=list)
-    experiments: Dict[str, Any] = field(default_factory=dict)
-    plugins: Dict[str, Any] = field(default_factory=dict)
-    current_experiment: Optional[str] = None
-    current_setup: Optional[str] = None
-    current_fit_uid: Optional[str] = None
-    flr_database: Optional[Any] = None
+    datasets: list[Any] = field(default_factory=list)
+    fits: list[Any] = field(default_factory=list)
+    experiments: dict[str, Any] = field(default_factory=dict)
+    plugins: dict[str, Any] = field(default_factory=dict)
+    current_experiment: str | None = None
+    current_setup: str | None = None
+    current_fit_uid: str | None = None
+    flr_database: Any | None = None
 
     def __post_init__(self):
         """Initialise the project registry after dataclass field assignment."""
         from chisurf.core.project.registry import Registry
+
         self.registry = Registry()
 
     # ── mutation helpers ────────────────────────────────────────────
@@ -51,7 +52,7 @@ class SessionState:
         self.fits.append(fit)
 
     @staticmethod
-    def _resolve_uid(obj: Any) -> Optional[str]:
+    def _resolve_uid(obj: Any) -> str | None:
         """Extract the unique identifier from an object or dict.
 
         Parameters
@@ -65,7 +66,7 @@ class SessionState:
             return obj.get("unique_identifier") or obj.get("uid")
         return getattr(obj, "unique_identifier", None)
 
-    def remove_dataset(self, index: Optional[int] = None, uid: Optional[str] = None) -> bool:
+    def remove_dataset(self, index: int | None = None, uid: str | None = None) -> bool:
         """Remove a dataset by index or uid.
 
         Parameters
@@ -87,7 +88,7 @@ class SessionState:
             return True
         return False
 
-    def remove_fit(self, index: Optional[int] = None, uid: Optional[str] = None) -> bool:
+    def remove_fit(self, index: int | None = None, uid: str | None = None) -> bool:
         """Remove a fit by index or uid.
 
         Parameters
@@ -123,7 +124,7 @@ class SessionState:
     # ── out-of-fit parameter groups ─────────────────────────────────
 
     @property
-    def registered_parameter_groups(self) -> List[Any]:
+    def registered_parameter_groups(self) -> list[Any]:
         """Return out-of-fit parameter groups as ``(owner_id, label, group)``.
 
         Delegates to the process-global
@@ -173,16 +174,14 @@ class SessionState:
 
     # ── snapshot ────────────────────────────────────────────────────
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the session state to a dictionary."""
         return {
             "dataset_count": len(self.datasets),
             "fit_count": len(self.fits),
             "experiment_names": sorted(self.experiments.keys()),
             "plugins": {
-                name: plugin_state.to_dict()
-                if hasattr(plugin_state, "to_dict")
-                else plugin_state
+                name: plugin_state.to_dict() if hasattr(plugin_state, "to_dict") else plugin_state
                 for name, plugin_state in self.plugins.items()
             },
             "current_experiment": self.current_experiment,

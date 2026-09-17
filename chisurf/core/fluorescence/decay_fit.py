@@ -34,16 +34,29 @@ def _poisson_sigma(decay: np.ndarray, weights: Any | None) -> np.ndarray:
     return np.sqrt(np.maximum(np.asarray(decay, dtype=float), 1.0))
 
 
-def _basis(lifetimes: np.ndarray, n_bins: int, bin_width: float,
-           irf: Any | None, start_bin: int, period: float | None = None) -> np.ndarray:
+def _basis(
+    lifetimes: np.ndarray,
+    n_bins: int,
+    bin_width: float,
+    irf: Any | None,
+    start_bin: int,
+    period: float | None = None,
+) -> np.ndarray:
     """Design matrix ``B[bin, i]`` — a unit-sum decay per lifetime.
 
     ``period`` (ns), when given, switches to a periodic convolution that models the
     finite laser repetition period (previous-pulse tail wraps into the window).
     """
     cols = [
-        synthetic_decay(n_bins, [float(t)], bin_width=bin_width, irf=irf,
-                        start_bin=start_bin, normalize=True, period=period)
+        synthetic_decay(
+            n_bins,
+            [float(t)],
+            bin_width=bin_width,
+            irf=irf,
+            start_bin=start_bin,
+            normalize=True,
+            period=period,
+        )
         for t in lifetimes
     ]
     return np.stack(cols, axis=1)
@@ -86,7 +99,7 @@ def fit_component_amplitudes(
         "amplitudes": amplitudes,
         "reconstruction": recon,
         "weighted_residuals": wres,
-        "chi2_reduced": float(np.sum(wres ** 2) / dof),
+        "chi2_reduced": float(np.sum(wres**2) / dof),
     }
 
 
@@ -177,7 +190,7 @@ def fit_lifetime_components(
             scat = np.asarray(irf_used, dtype=float).ravel()
             if scat.size != n_bins:
                 fixed = np.zeros(n_bins, dtype=float)
-                fixed[:min(n_bins, scat.size)] = scat[:min(n_bins, scat.size)]
+                fixed[: min(n_bins, scat.size)] = scat[: min(n_bins, scat.size)]
                 scat = fixed
             s = scat.sum()
             if s > 0:
@@ -215,8 +228,11 @@ def fit_lifetime_components(
         lb.append(np.log(f_lo))
         ub.append(np.log(f_hi))
         # center / shift
-        c_lo, c_hi = (irf_center_bounds if irf_center_bounds is not None
-                      else (0.0, float(time_ns[-1]) if time_ns.size > 1 else 1.0))
+        c_lo, c_hi = (
+            irf_center_bounds
+            if irf_center_bounds is not None
+            else (0.0, float(time_ns[-1]) if time_ns.size > 1 else 1.0)
+        )
         if irf_center0 is not None:
             c0 = float(irf_center0)
         else:
@@ -231,7 +247,11 @@ def fit_lifetime_components(
         ub.append(s_hi)
 
     result = least_squares(
-        residual, np.asarray(x0), bounds=(lb, ub), max_nfev=int(max_nfev), method="trf",
+        residual,
+        np.asarray(x0),
+        bounds=(lb, ub),
+        max_nfev=int(max_nfev),
+        method="trf",
     )
     lifetimes, amplitudes, nuisance_amps, recon = _reconstruct(result.x)
     wres = (recon - decay) / sigma
@@ -253,7 +273,7 @@ def fit_lifetime_components(
         "lifetime_spectrum": spectrum,
         "reconstruction": recon,
         "weighted_residuals": wres,
-        "chi2_reduced": float(np.sum(wres ** 2) / dof),
+        "chi2_reduced": float(np.sum(wres**2) / dof),
         "irf_fwhm": float(np.exp(result.x[n])) if fit_irf else None,
         "irf_center": float(result.x[n + 1]) if fit_irf else None,
         "irf_skew": float(result.x[n + 2]) if fit_irf else None,

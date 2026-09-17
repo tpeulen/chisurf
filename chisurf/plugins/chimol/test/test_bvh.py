@@ -21,14 +21,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chimol.render import compute
 from chimol.render import bvh as bvh_module
+from chimol.render import compute
 from chimol.render.bvh import _MAX_LEAF, build_bvh, build_bvh_cached, primitive_bounds
 
-pytestmark = pytest.mark.skipif(
-    not compute.available(), reason="no WebGPU adapter on this machine"
-)
+pytestmark = pytest.mark.skipif(not compute.available(), reason="no WebGPU adapter on this machine")
 
 
 def _tree(centers, radii, tris):
@@ -110,9 +107,7 @@ def test_tree_agrees_with_exhaustive_search(n_spheres, n_tris):
 
     mismatches = []
     for k in range(origins.shape[0]):
-        want_t, want_prim = _exhaustive(
-            origins[k], directions[k], 1e-6, centers, radii, tris
-        )
+        want_t, want_prim = _exhaustive(origins[k], directions[k], 1e-6, centers, radii, tris)
         # f32 in the shader against f64 here, so the distance is compared with a
         # tolerance; the *primitive* must match exactly, since picking a
         # different surface is the failure this test exists for.
@@ -131,7 +126,8 @@ def test_a_ray_that_meets_nothing_reports_nothing():
     tris = np.zeros((0, 3, 3))
     t, prim = compute.closest_hit(
         _scene(centers, radii, tris),
-        np.array([[0.0, 0.0, 50.0]]), np.array([[0.0, 1.0, 0.0]]),
+        np.array([[0.0, 0.0, 50.0]]),
+        np.array([[0.0, 1.0, 0.0]]),
     )
     assert prim[0] == -1
     assert np.isinf(t[0])
@@ -149,7 +145,8 @@ def test_an_axis_aligned_triangle_is_not_lost():
     radii = np.zeros(0)
     t, prim = compute.closest_hit(
         _scene(centers, radii, tris),
-        np.array([[0.0, 5.0, 0.0]]), np.array([[0.0, -1.0, 0.0]]),
+        np.array([[0.0, 5.0, 0.0]]),
+        np.array([[0.0, -1.0, 0.0]]),
     )
     assert prim[0] == 0
     assert t[0] == pytest.approx(5.0, abs=1e-4)
@@ -176,9 +173,7 @@ def test_skip_excludes_exactly_one_primitive():
 def test_every_primitive_is_owned_by_exactly_one_leaf():
     rng = np.random.default_rng(7)
     centers, radii, tris = _random_scene(rng, 150, 150)
-    node_min, node_max, node_left, node_start, node_count, prim_index = _tree(
-        centers, radii, tris
-    )
+    node_min, node_max, node_left, node_start, node_count, prim_index = _tree(centers, radii, tris)
     n_prims = centers.shape[0] + tris.shape[0]
 
     assert sorted(prim_index.tolist()) == list(range(n_prims)), (
@@ -226,7 +221,8 @@ def test_an_empty_scene_builds_a_usable_tree():
     empty_t = np.zeros((0, 3, 3))
     _, prim = compute.closest_hit(
         _scene(empty_c, empty_r, empty_t),
-        np.zeros((1, 3)), np.array([[0.0, 0.0, 1.0]]),
+        np.zeros((1, 3)),
+        np.array([[0.0, 0.0, 1.0]]),
     )
     assert prim[0] == -1
 
@@ -308,7 +304,7 @@ def test_cost_grows_far_slower_than_the_triangle_count():
     """
     import time
 
-    from chimol.render.raytracer import RayCamera, Sphere, trace
+    from chimol.render.raytracer import RayCamera, trace
 
     def scene_kwargs(n_tris: int) -> dict:
         rng = np.random.default_rng(3)
@@ -321,9 +317,13 @@ def test_cost_grows_far_slower_than_the_triangle_count():
             far_clip=80.0,
         )
         return dict(
-            spheres=[], camera=camera,
+            spheres=[],
+            camera=camera,
             light_directions=np.array([[0.0, 0.0, 1.0]]),
-            width=960, height=720, ssaa=1, shadow=False,
+            width=960,
+            height=720,
+            ssaa=1,
+            shadow=False,
             tri_vertices=tris,
             tri_vnormals=np.tile(np.array([0.0, 0.0, 1.0]), (n_tris, 3, 1)),
             tri_colors=np.full((n_tris, 3), 0.7),
@@ -359,13 +359,14 @@ def test_the_tracer_says_so_when_there_is_no_device(monkeypatch):
     monkeypatch.setattr(compute, "raytrace", lambda *a, **k: None)
     with pytest.raises(raytracer.NoComputeDevice):
         raytracer.trace(
-            spheres=[raytracer.Sphere(center=np.zeros(3), radius=1.0,
-                                      color=np.ones(3))],
+            spheres=[raytracer.Sphere(center=np.zeros(3), radius=1.0, color=np.ones(3))],
             camera=raytracer.RayCamera(
                 origin=np.array([0.0, 0.0, 10.0]),
                 forward=np.array([0.0, 0.0, -1.0]),
                 up=np.array([0.0, 1.0, 0.0]),
             ),
             light_directions=np.array([[0.0, 0.0, 1.0]]),
-            width=8, height=8, ssaa=1,
+            width=8,
+            height=8,
+            ssaa=1,
         )

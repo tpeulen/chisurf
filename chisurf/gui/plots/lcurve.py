@@ -29,10 +29,15 @@ class LCurvePlot(plotbase.Plot):
         self._pw.grid(x=True, y=True, alpha=0.3)
         self._pw.set_labels(bottom="residual ||K P - F||", left="roughness ||L P||")
         self._curve = self._pw.line(
-            [], [], pen=cp.to_pen("#2f80ed", width=2),
-            symbol="o", symbol_size=6, symbol_brush="#2f80ed", symbol_pen="w")
-        self._corner = self._pw.scatter(
-            [], [], symbol="x", size=16, brush="#ffd166", pen="#ffd166")
+            [],
+            [],
+            pen=cp.to_pen("#2f80ed", width=2),
+            symbol="o",
+            symbol_size=6,
+            symbol_brush="#2f80ed",
+            symbol_pen="w",
+        )
+        self._corner = self._pw.scatter([], [], symbol="x", size=16, brush="#ffd166", pen="#ffd166")
 
     def _model(self):
         """Return the selected fit's model, or ``None``."""

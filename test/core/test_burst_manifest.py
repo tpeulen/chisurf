@@ -16,7 +16,6 @@ These cover the manifest that closes that gap.
 
 from __future__ import annotations
 
-import json
 import pathlib
 
 import pytest
@@ -87,15 +86,14 @@ def test_a_second_measurement_is_appended_not_replaced(tmp_path, spc_tttr):
 
     manifest = read_analysis_manifest(tmp_path)
     assert {pathlib.Path(s["path"]).name for s in manifest["sources"]} == {
-        "m000.spc", "m001.spc",
+        "m000.spc",
+        "m001.spc",
     }
 
 
 def test_re_running_updates_rather_than_duplicates(tmp_path, spc_tttr):
     """The same source analysed twice is one entry, the newer one."""
-    write_analysis_manifest(
-        tmp_path, [describe_tttr_source(SPC, spc_tttr, container_type="PTU")]
-    )
+    write_analysis_manifest(tmp_path, [describe_tttr_source(SPC, spc_tttr, container_type="PTU")])
     write_analysis_manifest(
         tmp_path, [describe_tttr_source(SPC, spc_tttr, container_type="SPC-130")]
     )
@@ -113,8 +111,7 @@ def test_lookup_matches_on_name_so_a_moved_analysis_still_works(tmp_path, spc_tt
     """
     write_analysis_manifest(
         tmp_path,
-        [describe_tttr_source("/instrument/raw/m000.spc", spc_tttr,
-                              container_type="SPC-130")],
+        [describe_tttr_source("/instrument/raw/m000.spc", spc_tttr, container_type="SPC-130")],
     )
     manifest = read_analysis_manifest(tmp_path)
     found = reading_settings_for("/somewhere/else/entirely/m000.spc", manifest)
@@ -208,8 +205,7 @@ def test_a_real_analysis_records_settings_that_can_be_read_back(tmp_path):
     analysis = tmp_path / "analysis"
     analysis.mkdir()
 
-    sel.analyze_file(str(staged), output_dir=str(analysis),
-                     mti_output_dir=str(analysis))
+    sel.analyze_file(str(staged), output_dir=str(analysis), mti_output_dir=str(analysis))
 
     restored = restore_settings(analysis)
     assert restored, "the analysis recorded no settings"
@@ -230,10 +226,12 @@ def test_a_form_is_repopulated_from_the_folder(tmp_path, spc_tttr, qt_app_for_fo
             self.min_photons = 1
 
         def view_spec(self):
-            return ModelView(sections=(
-                ValueSection(label="Threshold", kind="int", attr="threshold"),
-                ValueSection(label="Min photons", kind="int", attr="min_photons"),
-            ))
+            return ModelView(
+                sections=(
+                    ValueSection(label="Threshold", kind="int", attr="threshold"),
+                    ValueSection(label="Min photons", kind="int", attr="min_photons"),
+                )
+            )
 
     write_analysis_manifest(
         tmp_path,

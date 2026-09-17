@@ -32,7 +32,7 @@ def test_generate_and_analyze_example_dataset(tmp_path):
         n_restarts=1,
         max_iter=200,
         min_photons=5,
-        file_type="auto",   # Photon-HDF5 is auto-detected
+        file_type="auto",  # Photon-HDF5 is auto-detected
     )
     result, bundle = run_analysis(settings, analysis_folder=str(tmp_path))
 
@@ -77,15 +77,13 @@ def test_packing_simulated_bursts_keeps_the_photons_it_was_given():
 
     rng = np.random.default_rng(0)
     times = [
-        np.concatenate([[0], np.cumsum(rng.poisson(4, 29) + 1)]).astype(np.int64)
-        for _ in range(5)
+        np.concatenate([[0], np.cumsum(rng.poisson(4, 29) + 1)]).astype(np.int64) for _ in range(5)
     ]
     streams = [rng.integers(0, 2, t.size) for t in times]
     definitions = [StreamDef(f"s{i}", [i]) for i in range(2)]
 
     tttr, frame = pack_simulated_bursts(times, streams)
-    photons = bursts_from_dataframe(frame, {"sim.spc": tttr}, definitions,
-                                    min_photons=1)
+    photons = bursts_from_dataframe(frame, {"sim.spc": tttr}, definitions, min_photons=1)
 
     counts = np.diff(photons.burst_offsets)
     assert list(counts) == [int(t.size) for t in times]

@@ -54,8 +54,9 @@ def test_the_diagnostics_panel_is_wired_to_real_methods(qapp, model_path):
     """Every button action names a method that exists, and every info a property."""
     model = _fit(model_path).model
     spec = model.view_spec()
-    panels = [s for s in spec.flat_sections()
-              if getattr(s, "buttons", None) or getattr(s, "source", None)]
+    panels = [
+        s for s in spec.flat_sections() if getattr(s, "buttons", None) or getattr(s, "source", None)
+    ]
     actions = [b["action"] for s in panels for b in getattr(s, "buttons", ())]
     sources = [s.source for s in panels if getattr(s, "source", None)]
     assert "run_consistency_check" in actions
@@ -75,7 +76,7 @@ def test_the_check_runs_and_reports_a_p_value(qapp):
     assert set(result) >= {"p_value", "consistent", "chi2_measured", "hist_measured"}
     assert 0.0 < result["p_value"] <= 1.0
     assert "p = " in model.consistency_html()
-    assert ("consistent" in model.consistency_html())
+    assert "consistent" in model.consistency_html()
 
 
 def test_data_the_model_did_not_generate_is_reported_inconsistent(qapp):
@@ -97,7 +98,7 @@ def test_data_the_model_did_not_generate_is_reported_inconsistent(qapp):
     fit.data.y = fit.data.pda["s1s2"].ravel(order="C")
     fit.data.ey = tcspc.counting_noise(fit.data.y)
 
-    model.distances._means[0].value = 70.0          # nowhere near the data
+    model.distances._means[0].value = 70.0  # nowhere near the data
     result = model.run_consistency_check()
     assert result["consistent"] is False
     assert "inconsistent" in model.consistency_html()
@@ -144,8 +145,7 @@ def test_an_unreadable_light_path_is_reported_not_raised(qapp, tmp_path):
     assert "failed" in model.lightpath_html()
 
 
-def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_path,
-                                                                  monkeypatch):
+def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_path, monkeypatch):
     """Guessing the donor/acceptor pair would silently rescale every correction."""
     from chisurf.core.models.pda2c import common
 
@@ -153,10 +153,8 @@ def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_pat
     graph.write_text(json.dumps({"nodes": [], "edges": []}))
     matrices = {
         "crosstalk_matrices": {
-            "excitation": {"rows": ["488"],
-                           "columns": ["D", "A", "A2"], "values": []},
-            "emission": {"rows": ["D", "A", "A2"],
-                         "columns": ["green", "red"], "values": []},
+            "excitation": {"rows": ["488"], "columns": ["D", "A", "A2"], "values": []},
+            "emission": {"rows": ["D", "A", "A2"], "columns": ["green", "red"], "values": []},
         }
     }
     monkeypatch.setattr(
@@ -168,7 +166,7 @@ def test_a_setup_that_is_not_two_by_two_is_refused_with_its_labels(qapp, tmp_pat
     assert model.apply_light_path() == {}
     assert "Ambiguous setup" in model.lightpath_html()
     assert "3 dyes" in model.lightpath_html()
-    assert "A2" in model.lightpath_html()          # says which, so it can be fixed
+    assert "A2" in model.lightpath_html()  # says which, so it can be fixed
     assert common is not None
 
 
@@ -177,12 +175,16 @@ def test_a_two_by_two_setup_is_applied_and_summarised(qapp, tmp_path, monkeypatc
     graph.write_text(json.dumps({"nodes": [], "edges": []}))
     matrices = {
         "crosstalk_matrices": {
-            "excitation": {"rows": ["488", "640"],
-                           "columns": ["Alexa488", "Alexa647"],
-                           "values": [[1.0, 0.05], [0.0, 1.0]]},
-            "emission": {"rows": ["Alexa488", "Alexa647"],
-                         "columns": ["green", "red"],
-                         "values": [[0.92, 0.08], [0.02, 0.98]]},
+            "excitation": {
+                "rows": ["488", "640"],
+                "columns": ["Alexa488", "Alexa647"],
+                "values": [[1.0, 0.05], [0.0, 1.0]],
+            },
+            "emission": {
+                "rows": ["Alexa488", "Alexa647"],
+                "columns": ["green", "red"],
+                "values": [[0.92, 0.08], [0.02, 0.98]],
+            },
         }
     }
     monkeypatch.setattr(

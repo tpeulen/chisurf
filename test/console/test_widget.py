@@ -14,7 +14,6 @@ pytest.importorskip("qtpy")
 from qtpy import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from chisurf.gui.chinsole import Chinsole, ConsoleConfig, ConsoleRole  # noqa: E402
-from chisurf.gui.chinsole.view import BLOCK_INPUT, PromptBlockData  # noqa: E402
 
 
 @pytest.fixture()
@@ -61,6 +60,7 @@ def press(widget, key, modifier=QtCore.Qt.NoModifier, text=""):
 # execution through the widget
 # ----------------------------------------------------------------------
 
+
 def test_result_is_shown(console):
     """A trailing expression is echoed under an ``Out`` prompt."""
     run(console, "6*7")
@@ -97,6 +97,7 @@ def test_continuation_is_indented(console):
 # ----------------------------------------------------------------------
 # prompt protection
 # ----------------------------------------------------------------------
+
 
 def test_prompt_position_tracks_the_input_area(console):
     """Everything before the prompt is out of bounds."""
@@ -149,6 +150,7 @@ def test_input_buffer_strips_continuation_prompts(console):
 # clipboard
 # ----------------------------------------------------------------------
 
+
 def test_copy_strips_prompts(console):
     """Copying a transcript yields runnable code, not ``In [1]:`` noise."""
     run(console, "x = 1")
@@ -181,6 +183,7 @@ def test_paste_leaves_ordinary_code_alone(console):
 # history
 # ----------------------------------------------------------------------
 
+
 def test_history_walks_backwards(console):
     """Up recalls the previous entry."""
     run(console, "first = 1")
@@ -204,6 +207,7 @@ def test_history_restores_what_was_being_typed(console):
 # ----------------------------------------------------------------------
 # recording
 # ----------------------------------------------------------------------
+
 
 def test_macro_records_only_while_recording(console):
     """Start and stop bound what ends up in the macro."""
@@ -238,18 +242,17 @@ def test_macro_round_trips_through_a_file(console, tmp_path):
 # roles
 # ----------------------------------------------------------------------
 
+
 def test_command_role_has_a_line_input(qtbot):
-    """chimol's role puts input on its own line, under the output."""
-    widget = Chinsole(ConsoleConfig(role=ConsoleRole.COMMAND, history_path=False,
-                                    session_log=None))
+    """Chimol's role puts input on its own line, under the output."""
+    widget = Chinsole(ConsoleConfig(role=ConsoleRole.COMMAND, history_path=False, session_log=None))
     qtbot.addWidget(widget)
     assert widget.input_line is not None
 
 
 def test_output_role_takes_no_input(qtbot):
     """The code editor's panel is read-only and shows no prompt."""
-    widget = Chinsole(ConsoleConfig(role=ConsoleRole.OUTPUT, history_path=False,
-                                    session_log=None))
+    widget = Chinsole(ConsoleConfig(role=ConsoleRole.OUTPUT, history_path=False, session_log=None))
     qtbot.addWidget(widget)
     assert widget.input_line is None
     assert "In [" not in widget.view.toPlainText()
@@ -263,8 +266,9 @@ def test_output_role_stays_promptless_after_clear(qtbot):
     output panel. Construction alone does not catch it — the panel is cleared
     before each run.
     """
-    widget = Chinsole(ConsoleConfig(role=ConsoleRole.OUTPUT, history_path=False,
-                                    session_log=None, banner=""))
+    widget = Chinsole(
+        ConsoleConfig(role=ConsoleRole.OUTPUT, history_path=False, session_log=None, banner="")
+    )
     qtbot.addWidget(widget)
     widget.clear()
     widget.append_output("script output\n")
@@ -279,8 +283,7 @@ def test_interactive_role_reprompts_after_clear(console):
 
 def test_prefill_selects_the_placeholder(qtbot):
     """A menu entry can put a command in the input with a part selected."""
-    widget = Chinsole(ConsoleConfig(role=ConsoleRole.COMMAND, history_path=False,
-                                    session_log=None))
+    widget = Chinsole(ConsoleConfig(role=ConsoleRole.COMMAND, history_path=False, session_log=None))
     qtbot.addWidget(widget)
     widget.prefill("color <colour>, sele", "<colour>")
     assert widget.input_line.selectedText() == "<colour>"
@@ -289,6 +292,7 @@ def test_prefill_selects_the_placeholder(qtbot):
 # ----------------------------------------------------------------------
 # themes and output volume
 # ----------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("style", ["linux", "lightbg", "nocolor"])
 def test_legacy_style_names_apply(console, style):
@@ -322,6 +326,7 @@ def test_prompt_survives_scrollback_trimming(console):
 # ----------------------------------------------------------------------
 # the pager
 # ----------------------------------------------------------------------
+
 
 def test_long_output_goes_to_the_pager(console):
     """``obj?`` fills the pager instead of burying the transcript.
@@ -377,6 +382,7 @@ def test_the_pager_follows_the_theme(console):
 # ----------------------------------------------------------------------
 # help and the guided tour
 # ----------------------------------------------------------------------
+
 
 def test_the_console_ships_help_and_a_tour():
     """Both files exist beside the widget.
@@ -457,8 +463,7 @@ def test_help_links_resolve():
     root = pathlib.Path(__file__).resolve().parents[2]
     text = (root / "chisurf" / "gui" / "chinsole" / "help.md").read_text(encoding="utf-8")
     missing = [
-        target for target in re.findall(r"\]\((docs/[^)]+)\)", text)
-        if not (root / target).exists()
+        target for target in re.findall(r"\]\((docs/[^)]+)\)", text) if not (root / target).exists()
     ]
     assert not missing, f"help links to pages that do not exist: {missing}"
 

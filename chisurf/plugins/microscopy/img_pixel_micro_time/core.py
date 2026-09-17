@@ -45,9 +45,7 @@ def compute_mean_micro_time(
     if res_ns < 0.0:
         micro_res = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
         res_ns = micro_res * 1e9 if micro_res > 0.0 else -1.0
-    mt = np.asarray(
-        clsm.get_mean_micro_time(tttr, res_ns, int(n_ph_min), True), dtype=float
-    )
+    mt = np.asarray(clsm.get_mean_micro_time(tttr, res_ns, int(n_ph_min), True), dtype=float)
     if mt.ndim == 3:
         mt = mt[0]
     mt = np.nan_to_num(mt)

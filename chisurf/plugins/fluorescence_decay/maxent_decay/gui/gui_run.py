@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
-from chisurf.plugins.fluorescence_decay.maxent_decay.core.solver import solve_fret_mem, solve_lifetime_mem
-from .qt_stack import ensure_qt_stack
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.plugins.fluorescence_decay.maxent_decay.core.solver import (
+    solve_fret_mem,
+    solve_lifetime_mem,
+)
+
+from .qt_stack import ensure_qt_stack
 
 
 class _MaxentRunMixin:
@@ -33,7 +37,7 @@ class _MaxentRunMixin:
         ts_val = float(ts_channels)
         bg_val = float(self.spin_background.value())
         irf_bg_input = float(self.spin_irf_bg.value())
-        irf_bg_arg: Optional[float]
+        irf_bg_arg: float | None
         if irf_bg_input > 0.0:
             irf_bg_arg = irf_bg_input
         else:
@@ -48,7 +52,7 @@ class _MaxentRunMixin:
         x_donly_val = None
         donly_vec = None
         tau = None
-        prior_vec: Optional[Sequence[float]] = None
+        prior_vec: Sequence[float] | None = None
 
         if is_fret:
             tau0_val = float(self.spin_tau0.value())
@@ -91,7 +95,7 @@ class _MaxentRunMixin:
             log10_max = log10_center + 2.0
         n_nu = 16
         log_grid = np.linspace(log10_min, log10_max, n_nu)
-        nu_grid = 10.0 ** log_grid
+        nu_grid = 10.0**log_grid
 
         chi2_vals = np.empty_like(nu_grid, dtype=float)
         sol_vals = np.empty_like(nu_grid, dtype=float)
@@ -173,7 +177,9 @@ class _MaxentRunMixin:
             mask = np.isfinite(chi2_vals) & np.isfinite(sol_vals)
             if np.any(mask) and getattr(chisurf, "math", None) is not None:
                 try:
-                    corner_idx = chisurf.core.math.regularization.discrete_lcurve_corner(chi2_vals, sol_vals)
+                    corner_idx = chisurf.core.math.regularization.discrete_lcurve_corner(
+                        chi2_vals, sol_vals
+                    )
                 except Exception:
                     corner_idx = None
         except Exception:
@@ -192,7 +198,7 @@ class _MaxentRunMixin:
         chi2_vals: np.ndarray,
         sol_vals: np.ndarray,
         nu_grid: np.ndarray,
-        corner_idx: Optional[int],
+        corner_idx: int | None,
     ) -> None:
         if getattr(self, "plot_lcurve", None) is None:
             return
@@ -266,7 +272,7 @@ class _MaxentRunMixin:
         fit_start_fraction = float(self.spin_start_frac.value())
         use_periodic = bool(self.chk_use_periodic.isChecked())
 
-        prior_vec: Optional[Sequence[float]] = None
+        prior_vec: Sequence[float] | None = None
         if (not is_fret) and self._prior_vec is not None:
             if self._prior_vec.size != tau.size:
                 raise ValueError(
@@ -300,7 +306,7 @@ class _MaxentRunMixin:
         ts_val = float(ts_channels)
         bg_val = float(self.spin_background.value())
         irf_bg_input = float(self.spin_irf_bg.value())
-        irf_bg_arg: Optional[float]
+        irf_bg_arg: float | None
         if irf_bg_input > 0.0:
             irf_bg_arg = irf_bg_input
         else:

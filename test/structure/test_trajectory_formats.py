@@ -31,6 +31,7 @@ DCD = DATA / "dcd/hgbp1_transition.dcd"
 @pytest.fixture
 def trajectory_file():
     from chisurf.core.structure.trajectory import TrajectoryFile
+
     return TrajectoryFile
 
 
@@ -39,15 +40,18 @@ def _reference(path, kind):
     from chisurf.core.fio.trajectory import read_dcd
 
     xyz, _, _ = read_dcd(str(path))
-    return xyz                                 # DCD is already angstroms
+    return xyz  # DCD is already angstroms
 
 
-@pytest.mark.parametrize("path, kind, atol", [
-    # The loaded coordinates must be the file's own -- not recentred, not
-    # rescaled. DCD stores angstroms, which the interior also uses, so no
-    # conversion happens anywhere and the comparison is exact.
-    (DCD, "dcd", 0.0),
-])
+@pytest.mark.parametrize(
+    "path, kind, atol",
+    [
+        # The loaded coordinates must be the file's own -- not recentred, not
+        # rescaled. DCD stores angstroms, which the interior also uses, so no
+        # conversion happens anywhere and the comparison is exact.
+        (DCD, "dcd", 0.0),
+    ],
+)
 def test_a_coordinate_trajectory_loads_with_a_topology(trajectory_file, path, kind, atol):
     traj = trajectory_file(str(path), topology=str(TOPOLOGY))
     assert traj.xyz.shape == (3, 5235, 3)

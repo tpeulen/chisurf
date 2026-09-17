@@ -1,6 +1,3 @@
-import json
-from pathlib import Path
-
 import numpy as np
 import pytest
 from qtpy.QtCore import Qt
@@ -158,17 +155,17 @@ def test_auto_save_after_g_factor(qtbot, monkeypatch, setups_file, initial_data)
     custom_close_event(None)
 
     saved_data = load_detector_setups(setups_file)
-    updated_g_factor = saved_data["setups"]["test_setup"]["detectors"]["test_detector"][
-        "g_factor"
-    ]
-    assert (
-        updated_g_factor == 1.234
-    ), f"G-factor was not updated. Expected 1.234, got {updated_g_factor}"
+    updated_g_factor = saved_data["setups"]["test_setup"]["detectors"]["test_detector"]["g_factor"]
+    assert updated_g_factor == 1.234, (
+        f"G-factor was not updated. Expected 1.234, got {updated_g_factor}"
+    )
 
 
 def test_g_factor_decay_uuid_roundtrip(qtbot, setups_file, initial_data) -> None:
     # Set a custom g_factor_decay_uuid in the initial data
-    initial_data["setups"]["test_setup"]["detectors"]["test_detector"]["g_factor_decay_uuid"] = "some-uuid-1234"
+    initial_data["setups"]["test_setup"]["detectors"]["test_detector"]["g_factor_decay_uuid"] = (
+        "some-uuid-1234"
+    )
     save_detector_setups(initial_data, setups_file)
 
     wizard = DetectorWizard(json_file=setups_file)
@@ -186,4 +183,3 @@ def test_g_factor_decay_uuid_roundtrip(qtbot, setups_file, initial_data) -> None
     # Retrieve settings and verify round-trip
     settings = page.get_settings()
     assert settings["detectors"]["test_detector"]["g_factor_decay_uuid"] == "some-uuid-1234"
-

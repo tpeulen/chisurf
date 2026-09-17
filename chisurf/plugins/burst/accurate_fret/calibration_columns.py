@@ -17,8 +17,7 @@ import pathlib
 
 import yaml
 
-__all__ = ["calibration_columns", "column_for_factor", "factor_for_column",
-           "is_derived"]
+__all__ = ["calibration_columns", "column_for_factor", "factor_for_column", "is_derived"]
 
 _DECLARATION = pathlib.Path(__file__).with_name("calibration_columns.yaml")
 

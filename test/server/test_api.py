@@ -1,8 +1,6 @@
 from __future__ import annotations
+
 import chisurf as cs
-
-import pytest
-
 from chisurf.core.api import ChiSurfAPI
 from chisurf.core.api.context import PluginContext
 
@@ -111,8 +109,9 @@ class DummyClient:
         self._calls.append("parameter__set_bounds")
         return {"ok": True}
 
-    def graph__build(self, fit_indices=None, fit_uids=None, include_fixed=True,
-                     connect_owners=False):
+    def graph__build(
+        self, fit_indices=None, fit_uids=None, include_fixed=True, connect_owners=False
+    ):
         self._calls.append("graph__build")
         return {"ok": True, "graph": {"nodes": [], "edges": []}}
 
@@ -134,7 +133,6 @@ class DummyClient:
 
 
 class TestChiSurfAPI:
-
     def test_create_local_mode(self):
         api = ChiSurfAPI(mode="local")
         assert api.mode == "local"
@@ -350,7 +348,11 @@ class TestChiSurfAPI:
             edges = result["graph"]["edges"]
 
             assert [n["node_type"] for n in nodes] == [
-                "fit", "parameter", "fit", "parameter", "parameter"
+                "fit",
+                "parameter",
+                "fit",
+                "parameter",
+                "parameter",
             ]
             assert nodes[1]["value"] == 3.0
             # Every parameter hangs off its own fit ...
@@ -377,7 +379,6 @@ class TestChiSurfAPI:
 
 
 class TestPluginContext:
-
     def test_creation(self):
         client = DummyClient()
         api = ChiSurfAPI(client=client, mode="server")

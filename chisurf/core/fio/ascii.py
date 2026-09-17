@@ -1,17 +1,16 @@
 from __future__ import annotations
-from chisurf import typing
 
-import csv
 import os
 import re
+
 import numpy as np
 
-import chisurf.core.fio as io
 import chisurf as cs
-from chisurf import logging
-
+import chisurf.core.fio as io
+from chisurf import logging, typing
 
 # ----------------------------- Utilities ---------------------------------
+
 
 def _verbose_default() -> bool:
     """Resolve the ``verbose`` flag from settings at call time.
@@ -23,7 +22,7 @@ def _verbose_default() -> bool:
     imported before settings had been materialized.
     """
     try:
-        return bool(cs.core.settings.cs_settings.get('verbose', False))
+        return bool(cs.core.settings.cs_settings.get("verbose", False))
     except Exception:
         return False
 
@@ -70,10 +69,9 @@ def _windows_extended_path(filename: str) -> str:
 
     On Windows, deep project/data folder structures can exceed the traditional
     MAX_PATH limit and trigger ``FileNotFoundError`` even when parent folders
-    exist. Prefixing absolute paths with ``\\?\`` opts into extended-length
+    exist. Prefixing absolute paths with ``\\?\\`` opts into extended-length
     path handling.
     """
-
     if os.name != "nt":
         return filename
 
@@ -144,7 +142,9 @@ def _is_number_token(tok: str, decimal_comma: bool = False) -> bool:
         return False
 
 
-def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None, str | None, int, bool, list[str]]:
+def _find_table_region(
+    fp, max_scan_lines: int = 5000
+) -> tuple[int, int | None, str | None, int, bool, list[str]]:
     """
     Pure column-count based detection (no block markers, no numeric heuristics), with a
     small addition: if the first complete-width row contains non-numeric tokens,
@@ -168,9 +168,11 @@ def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None,
 
     N = len(lines)
     candidates = [",", "\t", ";", "|", None]  # None => whitespace
-    has_comma_digits = any(re.search(r"\d,\d", ln) for ln in lines[:min(N, 2000)])
+    has_comma_digits = any(re.search(r"\d,\d", ln) for ln in lines[: min(N, 2000)])
 
-    best = dict(score=-1.0, delim=None, complete_cols=0, first_idx=0, header_idx=None, dec_comma=False)
+    best = dict(
+        score=-1.0, delim=None, complete_cols=0, first_idx=0, header_idx=None, dec_comma=False
+    )
 
     for delim in candidates:
         # Build ncols per line (0 for empty / single token -> not a table row)
@@ -205,7 +207,9 @@ def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None,
 
         ### NEW: decide whether the first complete-width row is a header row
         toks_first = _tokenize(lines[first_complete], delim)
-        non_numeric_in_first = any(not _is_number_token(t, decimal_comma=dec_flag) for t in toks_first)
+        non_numeric_in_first = any(
+            not _is_number_token(t, decimal_comma=dec_flag) for t in toks_first
+        )
         # By default, assume header is the line *before* the first complete row (legacy behavior)
         header_idx = None
         if first_complete > 0:
@@ -215,9 +219,14 @@ def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None,
             if prev_cols == 0:
                 header_idx = prev  # unsplittable -> header/preamble
             elif 2 <= prev_cols < complete_cols and prev_cols >= enough_cols_threshold:
-                header_idx = prev   # splits but fewer cols -> header
+                header_idx = prev  # splits but fewer cols -> header
             # If blank just before, allow stepping back one more if that line splits "enough"
-            if header_idx is None and prev_cols == 0 and prev - 1 >= 0 and ncols[prev - 1] >= enough_cols_threshold:
+            if (
+                header_idx is None
+                and prev_cols == 0
+                and prev - 1 >= 0
+                and ncols[prev - 1] >= enough_cols_threshold
+            ):
                 header_idx = prev - 1
 
         # If the first complete-width row looks like a header (contains non-numeric tokens),
@@ -243,7 +252,7 @@ def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None,
                 complete_cols=complete_cols,
                 first_idx=first_idx_use,  # NOTE: uses possibly +1 if header promoted
                 header_idx=header_idx,
-                dec_comma=dec_flag
+                dec_comma=dec_flag,
             )
 
     # Fallback if nothing usable was found
@@ -261,7 +270,14 @@ def _find_table_region(fp, max_scan_lines: int = 5000) -> tuple[int, int | None,
         f"_find_table_region: best delim={repr(best['delim'])} complete_cols={best['complete_cols']} "
         f"first_idx={best['first_idx']} header_idx={best['header_idx']} decimal_comma={best['dec_comma']}"
     )
-    return best["first_idx"], best["header_idx"], best["delim"], best["complete_cols"], best["dec_comma"], sniff_sample
+    return (
+        best["first_idx"],
+        best["header_idx"],
+        best["delim"],
+        best["complete_cols"],
+        best["dec_comma"],
+        sniff_sample,
+    )
 
 
 def _decimal_comma_converters(ncols: int):
@@ -280,9 +296,11 @@ def _decimal_comma_converters(ncols: int):
     """
     Build converters dict for genfromtxt to interpret decimal commas (e.g., 1,23) as floats.
     """
+
     def conv_factory():
         """Create a converter function for decimal-comma strings."""
         return lambda s: float(_decode(s).strip().replace(",", "."))
+
     convs = {i: conv_factory() for i in range(ncols)}
     logging.debug(f"_decimal_comma_converters: created converters for ncols={ncols}")
     return convs
@@ -292,12 +310,12 @@ def _decimal_comma_converters(ncols: int):
 
 
 def save_xy(
-        filename: str,
-        x: np.ndarray,
-        y: np.ndarray,
-        verbose: bool = None,
-        fmt: str = "%.3f\t%.3f",
-        header_string: str = None
+    filename: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    verbose: bool = None,
+    fmt: str = "%.3f\t%.3f",
+    header_string: str = None,
 ) -> None:
     """
     Saves data x, y to file in format (csv/tsv). x and y should have the same length.
@@ -305,12 +323,14 @@ def save_xy(
     if verbose is None:
         verbose = _verbose_default()
     if verbose:
-        logging.info("Writing histogram to file: %s" % filename)
+        logging.info(f"Writing histogram to file: {filename}")
         try:
-            logging.debug(f"save_xy: n_points={min(len(x), len(y))} fmt={fmt!r} header_present={header_string is not None}")
+            logging.debug(
+                f"save_xy: n_points={min(len(x), len(y))} fmt={fmt!r} header_present={header_string is not None}"
+            )
         except Exception:
             pass
-    with _open_maybe_zipped(filename=filename, mode='w') as fp:
+    with _open_maybe_zipped(filename=filename, mode="w") as fp:
         if header_string is not None:
             fp.write(header_string)
             if not header_string.endswith("\n"):
@@ -321,11 +341,11 @@ def save_xy(
 
 
 def load_xy(
-        filename: str,
-        verbose: bool = None,
-        usecols: typing.Tuple[int, int] = None,
-        skiprows: int = 0,
-        delimiter: str = "\t"
+    filename: str,
+    verbose: bool = None,
+    usecols: typing.Tuple[int, int] = None,
+    skiprows: int = 0,
+    delimiter: str = "\t",
 ) -> typing.Tuple[np.array, np.array]:
     """Load x,y data from a text file.
 
@@ -353,18 +373,17 @@ def load_xy(
         verbose = _verbose_default()
     if verbose:
         logging.info(f"Loading file: {filename}")
-        logging.debug(f"load_xy params: usecols={usecols}, skiprows={skiprows}, delimiter={repr(delimiter)}")
-    data = np.loadtxt(
-        filename,
-        skiprows=skiprows,
-        usecols=usecols,
-        delimiter=delimiter
+        logging.debug(
+            f"load_xy params: usecols={usecols}, skiprows={skiprows}, delimiter={repr(delimiter)}"
+        )
+    data = np.loadtxt(filename, skiprows=skiprows, usecols=usecols, delimiter=delimiter)
+    logging.debug(
+        f"load_xy loaded array shape={getattr(data, 'shape', None)} dtype={getattr(data, 'dtype', None)}"
     )
-    logging.debug(f"load_xy loaded array shape={getattr(data, 'shape', None)} dtype={getattr(data, 'dtype', None)}")
     return data.T[0], data.T[1]
 
 
-class Csv(object):
+class Csv:
     """
     Csv is a class to handle delimited text files (CSV/TSV/whitespace) with robust, marker-free
     detection of header and data regions based purely on column counts.
@@ -393,24 +412,24 @@ class Csv(object):
     """
 
     def __init__(
-            self,
-            *args,
-            filename: str = None,
-            colspecs: typing.List[int] = None,
-            use_header: bool = False,
-            x_on: bool = True,
-            y_on: bool = True,
-            col_x: int = 0,
-            col_y: int = 1,
-            col_ex: int = 2,
-            col_ey: int = 3,
-            reverse: bool = False,
-            error_x_on: bool = False,
-            directory: str = '.',
-            skiprows: int = 9,
-            verbose: bool = None,
-            file_type: str = 'csv',
-            **kwargs
+        self,
+        *args,
+        filename: str = None,
+        colspecs: typing.List[int] = None,
+        use_header: bool = False,
+        x_on: bool = True,
+        y_on: bool = True,
+        col_x: int = 0,
+        col_y: int = 1,
+        col_ex: int = 2,
+        col_ey: int = 3,
+        reverse: bool = False,
+        error_x_on: bool = False,
+        directory: str = ".",
+        skiprows: int = 9,
+        verbose: bool = None,
+        file_type: str = "csv",
+        **kwargs,
     ):
         """Initialize Csv object, optionally loading a file.
 
@@ -458,7 +477,7 @@ class Csv(object):
         self.verbose = verbose
 
         self._header: list[str] | None = None
-        self._data = kwargs.get('data', None)
+        self._data = kwargs.get("data", None)
 
         if colspecs is None:
             colspecs = (15, 17, 17)
@@ -485,16 +504,16 @@ class Csv(object):
         return self._filename
 
     def load(
-            self,
-            filename: str,
-            skiprows: int = None,
-            use_header: bool = None,
-            verbose: bool = None,
-            delimiter: str = None,
-            file_type: str = None,
-            infer_delimiter: bool = True,
-            usecols: typing.List[int] = None,
-            **kwargs
+        self,
+        filename: str,
+        skiprows: int = None,
+        use_header: bool = None,
+        verbose: bool = None,
+        delimiter: str = None,
+        file_type: str = None,
+        infer_delimiter: bool = True,
+        usecols: typing.List[int] = None,
+        **kwargs,
     ) -> None:
         """
         Load a file into the Csv object.
@@ -525,14 +544,25 @@ class Csv(object):
 
             # ---- Auto-detect table region (column-count logic + header-on-first-row handling) ----
             try:
-                with _open_maybe_zipped(filename=filename, mode='r') as fp:
-                    auto_skip, header_idx, auto_delim, ncols_auto, dec_comma, sniff_sample = _find_table_region(fp)
+                with _open_maybe_zipped(filename=filename, mode="r") as fp:
+                    auto_skip, header_idx, auto_delim, ncols_auto, dec_comma, sniff_sample = (
+                        _find_table_region(fp)
+                    )
             except Exception:
-                auto_skip, header_idx, auto_delim, ncols_auto, dec_comma, sniff_sample = 0, None, None, 0, False, []
+                auto_skip, header_idx, auto_delim, ncols_auto, dec_comma, sniff_sample = (
+                    0,
+                    None,
+                    None,
+                    0,
+                    False,
+                    [],
+                )
 
             # Decide skiprows
             if skiprows is None:
-                skiprows_eff = auto_skip  # already advanced past header row if it was detected there
+                skiprows_eff = (
+                    auto_skip  # already advanced past header row if it was detected there
+                )
             else:
                 # If user provided a value, respect it (but don't undercut auto_skip if they passed too small).
                 skiprows_eff = max(skiprows, auto_skip)
@@ -545,7 +575,7 @@ class Csv(object):
             self._header = None
             if header_idx is not None:
                 try:
-                    with _open_maybe_zipped(filename=filename, mode='r') as fp:
+                    with _open_maybe_zipped(filename=filename, mode="r") as fp:
                         for _ in range(header_idx):
                             fp.readline()
                         hdr_line = _decode(fp.readline())
@@ -554,7 +584,9 @@ class Csv(object):
                     if toks:
                         self._header = toks
                         if self.verbose:
-                            logging.debug(f"Csv.load: header tokens detected n={len(toks)} sample={toks[:min(5,len(toks))]}")
+                            logging.debug(
+                                f"Csv.load: header tokens detected n={len(toks)} sample={toks[: min(5, len(toks))]}"
+                            )
                 except Exception:
                     self._header = None
 
@@ -571,16 +603,16 @@ class Csv(object):
                     pass
 
             # ---- Load data ----
-            if file_type == 'csv':
+            if file_type == "csv":
                 load_kwargs = dict(
                     fname=filename,
-                    delimiter=delimiter,                  # None → any whitespace
+                    delimiter=delimiter,  # None → any whitespace
                     skip_header=skiprows_eff if skiprows_eff is not None else 0,
                     usecols=usecols,
                     autostrip=True,
                     comments=None,
                     invalid_raise=False,
-                    filling_values=np.nan
+                    filling_values=np.nan,
                 )
                 if dec_comma and delimiter != ",":
                     max_cols = ncols_auto if ncols_auto > 0 else 256
@@ -588,7 +620,10 @@ class Csv(object):
 
                 if self.verbose:
                     # Log a compact view of kwargs without dumping converters functions
-                    kw_preview = {k: ("<converters>" if k == "converters" else v) for k, v in load_kwargs.items()}
+                    kw_preview = {
+                        k: ("<converters>" if k == "converters" else v)
+                        for k, v in load_kwargs.items()
+                    }
                     logging.debug(f"Csv.load: np.genfromtxt kwargs: {kw_preview}")
                 d = np.genfromtxt(**load_kwargs)
 
@@ -599,11 +634,11 @@ class Csv(object):
                     delimiter=colspecs,
                     skip_header=skiprows_eff if skiprows_eff is not None else 0,
                     usecols=usecols,
-                    names='infer' if use_header else None,
+                    names="infer" if use_header else None,
                     comments=None,
                     invalid_raise=False,
                     filling_values=np.nan,
-                    **kwargs
+                    **kwargs,
                 )
 
             # Normalize shape for downstream code
@@ -614,7 +649,9 @@ class Csv(object):
 
             if self.verbose:
                 try:
-                    logging.info(f"Csv.load: loaded shape={d.shape} dtype={getattr(d, 'dtype', None)}")
+                    logging.info(
+                        f"Csv.load: loaded shape={d.shape} dtype={getattr(d, 'dtype', None)}"
+                    )
                 except Exception:
                     pass
 
@@ -623,12 +660,12 @@ class Csv(object):
             cs.logging.warning(f"File {filename} not found")
 
     def save(
-            self,
-            data: np.ndarray,
-            filename: str,
-            delimiter: str = '\t',
-            file_type: str = 'txt',
-            header: str = ''
+        self,
+        data: np.ndarray,
+        filename: str,
+        delimiter: str = "\t",
+        file_type: str = "txt",
+        header: str = "",
     ):
         """Save data to a file.
 
@@ -648,33 +685,25 @@ class Csv(object):
         self._data = data
         filename = _windows_extended_path(filename)
         if self.verbose:
-            shape = getattr(data, 'shape', None)
-            s = """Saving
+            shape = getattr(data, "shape", None)
+            s = f"""Saving
             ------
-            filename: %s
-            reading_routine: %s
-            delimiter: %s
-            object_type: %s
-            shape: %s
-            """ % (filename, file_type, delimiter, type(data), shape)
+            filename: {filename}
+            reading_routine: {file_type}
+            delimiter: {delimiter}
+            object_type: {type(data)}
+            shape: {shape}
+            """
             logging.info(s)
             try:
                 hdr_len = len(header.splitlines()) if isinstance(header, str) and header else 0
                 logging.debug(f"Csv.save: header lines={hdr_len}")
             except Exception:
                 pass
-        if file_type == 'txt':
-            np.savetxt(
-                filename,
-                data.T,
-                delimiter=delimiter,
-                header=header
-            )
-        if file_type == 'npy':
-            np.save(
-                filename,
-                data.T
-            )
+        if file_type == "txt":
+            np.savetxt(filename, data.T, delimiter=delimiter, header=header)
+        if file_type == "npy":
+            np.save(filename, data.T)
 
     @property
     def n_cols(self) -> int:

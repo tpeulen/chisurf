@@ -7,7 +7,8 @@ import os
 # Map chisurf.logging to the standard logging module to support
 # "import chisurf.logging" throughout the codebase.
 import sys
-sys.modules['chisurf.logging'] = logging
+
+sys.modules["chisurf.logging"] = logging
 import pathlib
 import typing
 
@@ -24,14 +25,13 @@ del _sys_path_setup
 
 import chisurf.core.info
 
-
 __version__ = chisurf.core.info.__version__
 
-fits: typing.List["chisurf.core.fitting.fit.FitGroup"] = list()
-imported_datasets: typing.List["chisurf.core.data.DataGroup"] = list()
+fits: list[chisurf.core.fitting.fit.FitGroup] = list()
+imported_datasets: list[chisurf.core.data.DataGroup] = list()
 
 
-def registered_parameter_groups() -> typing.List[typing.Tuple[str, str, typing.Any]]:
+def registered_parameter_groups() -> list[tuple[str, str, typing.Any]]:
     """Return parameter groups registered outside ``fits`` (e.g. by plugins).
 
     Thin re-export of
@@ -44,10 +44,17 @@ def registered_parameter_groups() -> typing.List[typing.Tuple[str, str, typing.A
     )
 
     return iter_registered_parameter_groups()
-run = lambda x: x   # This is replaced during initialization to execute commands via a command line interface
-cs = None         # The current instance of ChiSurf
+
+
+def run(x):
+    return (
+        x  # This is replaced during initialization to execute commands via a command line interface
+    )
+
+
+cs = None  # The current instance of ChiSurf
 console = None
-experiment: typing.Dict[str, "chisurf.core.experiments.core.experiment.Experiment"] = dict()
+experiment: dict[str, chisurf.core.experiments.core.experiment.Experiment] = dict()
 working_path = pathlib.Path().home()
 verbose = False  # Updated lazily when settings are loaded
 
@@ -83,18 +90,21 @@ class _LazySettingsSubmodule(types.ModuleType):
         return dir(mod)
 
 
-sys.modules['chisurf.settings'] = _LazySettingsModule('chisurf.settings')
-sys.modules['chisurf.settings.path_utils'] = _LazySettingsSubmodule('chisurf.settings.path_utils', 'chisurf.core.settings.path_utils')
-sys.modules['chisurf.settings.ai_settings'] = _LazySettingsSubmodule('chisurf.settings.ai_settings', 'chisurf.core.settings.ai_settings')
+sys.modules["chisurf.settings"] = _LazySettingsModule("chisurf.settings")
+sys.modules["chisurf.settings.path_utils"] = _LazySettingsSubmodule(
+    "chisurf.settings.path_utils", "chisurf.core.settings.path_utils"
+)
+sys.modules["chisurf.settings.ai_settings"] = _LazySettingsSubmodule(
+    "chisurf.settings.ai_settings", "chisurf.core.settings.ai_settings"
+)
 
 
 def _load_settings_module():
     global _SETTINGS_MODULE
     if _SETTINGS_MODULE is None:
         _SETTINGS_MODULE = importlib.import_module("chisurf.core.settings")
-        sys.modules['chisurf.settings'] = _SETTINGS_MODULE
+        sys.modules["chisurf.settings"] = _SETTINGS_MODULE
     return _SETTINGS_MODULE
-
 
 
 def _apply_logging_settings(settings_module) -> None:
@@ -114,9 +124,9 @@ def _apply_logging_settings(settings_module) -> None:
     has_file = False
     for handler in list(root.handlers):
         try:
-            if isinstance(handler, logging.FileHandler) and getattr(handler, "baseFilename", None) == (
-                str(log_file) if log_file else None
-            ):
+            if isinstance(handler, logging.FileHandler) and getattr(
+                handler, "baseFilename", None
+            ) == (str(log_file) if log_file else None):
                 has_file = True
         except Exception:
             continue
@@ -124,7 +134,9 @@ def _apply_logging_settings(settings_module) -> None:
         try:
             fh = logging.FileHandler(str(log_file), encoding="utf-8")
             fh.setLevel(level)
-            fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+            fh.setFormatter(
+                logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+            )
             root.addHandler(fh)
         except Exception:
             pass
@@ -154,7 +166,10 @@ def _initialize_logging() -> None:
     root = logging.getLogger()
     root.setLevel(level)
 
-    has_stream = any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in root.handlers)
+    has_stream = any(
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+        for h in root.handlers
+    )
     if not has_stream:
         sh = logging.StreamHandler(stream=sys.stderr)
         sh.setLevel(level)

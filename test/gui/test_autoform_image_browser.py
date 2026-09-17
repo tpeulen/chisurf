@@ -55,20 +55,24 @@ class _BrowserModel:
     def view_spec(self):
         import chisurf.core.dataspec as ds
 
-        return ds.ModelView(sections=(ds.CustomSection(
-            key="image_browser",
-            target="current_image",
-            options={
-                "entries_source": "browse_entries",
-                "entry_attr": "current",
-                "selected_ids_attr": "selected_ids",
-                "select_call": "select_entry",
-                "info_source": "entry_info",
-                "filter": True,
-                "rating_call": "set_rating",
-                "max_rating": 3,
-            },
-        ),))
+        return ds.ModelView(
+            sections=(
+                ds.CustomSection(
+                    key="image_browser",
+                    target="current_image",
+                    options={
+                        "entries_source": "browse_entries",
+                        "entry_attr": "current",
+                        "selected_ids_attr": "selected_ids",
+                        "select_call": "select_entry",
+                        "info_source": "entry_info",
+                        "filter": True,
+                        "rating_call": "set_rating",
+                        "max_rating": 3,
+                    },
+                ),
+            )
+        )
 
 
 def _browser(form):

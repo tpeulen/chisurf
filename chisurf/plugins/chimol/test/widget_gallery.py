@@ -26,6 +26,7 @@ Use
 
 writes ``renders/widget_gallery/<page>.png``, one page per family.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -134,9 +135,7 @@ def _buttons_rows() -> list[tuple]:
     ]
     for name in ("LEFT", "RIGHT", "UP", "DOWN"):
         value = getattr(b, f"DIR_{name}")
-        rows.append(
-            (f"ArrowButton {name.lower()}", lambda v=value: b.ArrowButton(v), ROW_H, 26.0)
-        )
+        rows.append((f"ArrowButton {name.lower()}", lambda v=value: b.ArrowButton(v), ROW_H, 26.0))
     rows += [
         ("CheckboxFlags all", lambda: b.CheckboxFlags("all", 0b111, 0b111)),
         ("CheckboxFlags mixed", lambda: b.CheckboxFlags("mixed", 0b101, 0b111)),
@@ -155,9 +154,7 @@ def _text_rows() -> list[tuple]:
         ("TextDisabled", lambda: t.TextDisabled("no map loaded")),
         (
             "TextWrapped",
-            lambda: t.TextWrapped(
-                "A caption long enough that it has to fold onto several lines."
-            ),
+            lambda: t.TextWrapped("A caption long enough that it has to fold onto several lines."),
             52.0,
         ),
         ("LabelText", lambda: t.LabelText("resolution", "2.10 A")),
@@ -242,7 +239,10 @@ def _combo_rows() -> list[tuple]:
 
     return [
         ("ComboBox (closed)", lambda: c.ComboBox("style", options, 2)),
-        ("ComboBox (no arrow)", lambda: c.ComboBox("style", options, 0, flags=c.COMBO_NO_ARROW_BUTTON)),
+        (
+            "ComboBox (no arrow)",
+            lambda: c.ComboBox("style", options, 0, flags=c.COMBO_NO_ARROW_BUTTON),
+        ),
         ("ComboBox (open)", _Open, 132.0),
     ]
 
@@ -255,7 +255,10 @@ def _selection_rows() -> list[tuple]:
         ("Selectable", lambda: s.Selectable("chain A", False)),
         ("Selectable (selected)", lambda: s.Selectable("chain B", True)),
         ("Selectable (disabled)", lambda: s.Selectable("chain C", False, s.SELECTABLE_DISABLED)),
-        ("CollapsingHeader", lambda: s.CollapsingHeader("Density", True, children=["level", "step"])),
+        (
+            "CollapsingHeader",
+            lambda: s.CollapsingHeader("Density", True, children=["level", "step"]),
+        ),
         ("  ... closable", lambda: s.CollapsingHeader("Maps", False, closable=True)),
         (
             "SelectableList",
@@ -398,9 +401,7 @@ def _tables_rows() -> list[tuple]:
         ),
         (
             "DataTable (frozen row)",
-            lambda: tb.DataTable(
-                ["chain", "atoms", "kind", "res"], rows * 3, freeze_rows=1
-            ),
+            lambda: tb.DataTable(["chain", "atoms", "kind", "res"], rows * 3, freeze_rows=1),
             110.0,
         ),
     ]
@@ -523,7 +524,12 @@ def _text_editor_rows() -> list[tuple]:
 
     def whitespace():
         """A chimol script with whitespace shown and a marker on a line."""
-        editor = te.TextEditor(script, te.Language.commands(("fetch", "select", "color", "show"), ("all", "polymer"), name="chimol"))
+        editor = te.TextEditor(
+            script,
+            te.Language.commands(
+                ("fetch", "select", "color", "show"), ("all", "polymer"), name="chimol"
+            ),
+        )
         editor.config.show_spaces = True
         editor.config.show_tabs = True
         editor.add_marker(2, (220, 90, 80), (220, 140, 130), "unknown selection")
@@ -616,10 +622,9 @@ def capture(page: str, out_dir: pathlib.Path = OUT_DIR) -> pathlib.Path:
     pathlib.Path
         The file written.
     """
-    from qtpy import QtGui
-
     from emtk import painter as painter_mod
     from emtk.qt_painter import QtPainter
+    from qtpy import QtGui
 
     rows = [
         (

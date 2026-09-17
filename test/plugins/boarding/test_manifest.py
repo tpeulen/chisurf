@@ -32,9 +32,7 @@ def test_boarding_manifest_loads_and_hides_from_menu():
 def test_boarding_iter_plugins_uses_manifest_metadata():
     """Ensure manifest metadata drives plugin discovery."""
     boarding_plugins = [
-        info
-        for info in chisurf.plugins.iter_plugins()
-        if info.get("manifest_id") == "boarding"
+        info for info in chisurf.plugins.iter_plugins() if info.get("manifest_id") == "boarding"
     ]
 
     assert len(boarding_plugins) == 1

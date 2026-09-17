@@ -5,6 +5,7 @@ same quantities as BFF description parameters (``fret.tau0``,
 ``fret.forster_radius``, ``fret.kappa2``, ``fret.x_donly``); this group is the
 classic-model form for the models that are not descriptions.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -50,40 +51,67 @@ class FRETParameters(FittingParameterGroup):
     @property
     def xDOnly(self) -> float:
         """Donor-only fraction (molecules without acceptor)."""
-        return np.sqrt(self._xDonly.value ** 2)
+        return np.sqrt(self._xDonly.value**2)
 
     @xDOnly.setter
     def xDOnly(self, v: float):
         self._xDonly.value = v
 
     def __init__(
-            self,
-            forster_radius: float = cs.core.settings.fret['forster_radius'],
-            tau0: float = cs.core.settings.fret['tau0'],
-            xDOnly: float = 0.0,
-            kappa2: float = 0.66667,
-            **kwargs
+        self,
+        forster_radius: float = cs.core.settings.fret["forster_radius"],
+        tau0: float = cs.core.settings.fret["tau0"],
+        xDOnly: float = 0.0,
+        kappa2: float = 0.66667,
+        **kwargs,
     ):
-        model = kwargs.get('models', None)
+        model = kwargs.get("models", None)
         self._tauD0 = FittingParameter(
-            name='t0', label_text='&tau;<sub>0</sub>', value=tau0, fixed=True, model=model,
-            description='Donor lifetime in the absence of the acceptor (ns).')
+            name="t0",
+            label_text="&tau;<sub>0</sub>",
+            value=tau0,
+            fixed=True,
+            model=model,
+            description="Donor lifetime in the absence of the acceptor (ns).",
+        )
         self._forster_radius = FittingParameter(
-            name='R0', label_text='R<sub>0</sub>', value=forster_radius, fixed=True, model=model,
-            description='Forster radius R0 of the donor-acceptor pair (Angstrom).')
+            name="R0",
+            label_text="R<sub>0</sub>",
+            value=forster_radius,
+            fixed=True,
+            model=model,
+            description="Forster radius R0 of the donor-acceptor pair (Angstrom).",
+        )
         self._kappa2 = FittingParameter(
-            name='k2', label_text='&kappa;<sup>2</sup>', value=kappa2, fixed=True, lb=0.0, ub=4.0,
-            bounds_on=False, models=model,
-            description='Orientation factor kappa-squared governing dipole-dipole coupling in FRET (0–4).')
+            name="k2",
+            label_text="&kappa;<sup>2</sup>",
+            value=kappa2,
+            fixed=True,
+            lb=0.0,
+            ub=4.0,
+            bounds_on=False,
+            models=model,
+            description="Orientation factor kappa-squared governing dipole-dipole coupling in FRET (0–4).",
+        )
         self._xDonly = FittingParameter(
-            name='xDOnly', label_text='x<sub>D,0</sub>', value=xDOnly, fixed=False, lb=0.0, ub=1.0,
-            bounds_on=True, model=model,
-            description='Fraction of donor-only molecules (no active acceptor) in the sample.')
-        super().__init__(parameters=[self._tauD0, self._forster_radius, self._kappa2, self._xDonly], **kwargs)
+            name="xDOnly",
+            label_text="x<sub>D,0</sub>",
+            value=xDOnly,
+            fixed=False,
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            model=model,
+            description="Fraction of donor-only molecules (no active acceptor) in the sample.",
+        )
+        super().__init__(
+            parameters=[self._tauD0, self._forster_radius, self._kappa2, self._xDonly], **kwargs
+        )
 
 
-def set_forster_radius_from_probes(fret_params: FRETParameters, donor_name: str, acceptor_name: str,
-                                   db=None) -> bool:
+def set_forster_radius_from_probes(
+    fret_params: FRETParameters, donor_name: str, acceptor_name: str, db=None
+) -> bool:
     r"""Look up *R*\ :sub:`0` in the MMFDB fluorophore database and set it; ``True`` when found."""
     from chisurf.core.fluorescence.fret.forster import lookup_forster_radius
 

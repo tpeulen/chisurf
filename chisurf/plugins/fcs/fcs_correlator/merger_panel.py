@@ -11,8 +11,8 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 from chisurf.core.dataspec import load_view_spec
-from chisurf.gui.autoform import register_section
 from chisurf.gui import dialogs
+from chisurf.gui.autoform import register_section
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -22,7 +22,7 @@ class MergerSettingsModel:
 
     def __init__(self):
         self.folder_path = ""
-        self._correlations: typing.List[dict] = []
+        self._correlations: list[dict] = []
         self._selected_index: int = -1
         self._form: typing.Any = None
 
@@ -37,9 +37,7 @@ class MergerSettingsModel:
             included = cor.get("use_curve", True)
             highlighted = i == self._selected_index
             try:
-                color = cs.core.settings.colors[i % len(cs.core.settings.colors)][
-                    "hex"
-                ]
+                color = cs.core.settings.colors[i % len(cs.core.settings.colors)]["hex"]
             except Exception:
                 color = "y"
             # The row selected in the table is drawn white and thick so it
@@ -76,6 +74,7 @@ class MergerSettingsModel:
         from chisurf.core.fluorescence.fcs.merge import (
             compute_average_correlations,
         )
+
         selected = [c for c in self._correlations if c.get("use_curve", True)]
         if not selected:
             selected = self._correlations
@@ -102,6 +101,7 @@ class MergerSettingsModel:
         from chisurf.core.fluorescence.fcs.merge import (
             parse_correlation_folder,
         )
+
         raw = parse_correlation_folder(folder)
         for cor in raw:
             cor["use_curve"] = True
@@ -112,7 +112,7 @@ class MergerSettingsModel:
 
     def set_correlations(
         self,
-        correlations: typing.List[dict],
+        correlations: list[dict],
         source_folder: pathlib.Path | None = None,
     ) -> None:
         self._correlations.clear()
@@ -136,6 +136,7 @@ class MergerSettingsModel:
 
     def save_mean(self, filename: pathlib.Path | None = None) -> None:
         from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
+
         mean = self.compute_mean()
         if mean is None:
             dialogs.warning(None, "No Data", "No correlations to save.")
@@ -205,9 +206,7 @@ class _MergerFolderPicker(QtWidgets.QWidget):
         layout.addStretch(1)
 
     def _on_browse(self) -> None:
-        folder = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Correlation Folder"
-        )
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Correlation Folder")
         if folder:
             self._model.folder_path = folder
             self._model.load_correlations(pathlib.Path(folder))
@@ -265,9 +264,7 @@ class _MergerTable(QtWidgets.QWidget):
 
             checkbox = QtWidgets.QTableWidgetItem()
             checkbox.setFlags(
-                QtCore.Qt.ItemIsUserCheckable
-                | QtCore.Qt.ItemIsEnabled
-                | QtCore.Qt.ItemIsSelectable
+                QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             )
             checkbox.setCheckState(
                 QtCore.Qt.Checked if cor.get("use_curve", True) else QtCore.Qt.Unchecked
@@ -295,9 +292,7 @@ class _MergerTable(QtWidgets.QWidget):
 
             self.table.setItem(rc, 2, QtWidgets.QTableWidgetItem(f"{cr_a:.2f}"))
             self.table.setItem(rc, 3, QtWidgets.QTableWidgetItem(f"{cr_b:.2f}"))
-            self.table.setItem(
-                rc, 4, QtWidgets.QTableWidgetItem(f"{duration:.2f}")
-            )
+            self.table.setItem(rc, 4, QtWidgets.QTableWidgetItem(f"{duration:.2f}"))
 
         self.table.resizeRowsToContents()
         self.table.blockSignals(False)
@@ -342,9 +337,7 @@ class _MergerControls(QtWidgets.QWidget):
         mean = self._model.compute_mean()
         if mean is not None:
             self.info.setText(
-                f"{n} curve(s), "
-                f"dur={mean['duration']:.1f}s, "
-                f"CR={mean['count_rate']:.1f} kHz"
+                f"{n} curve(s), dur={mean['duration']:.1f}s, CR={mean['count_rate']:.1f} kHz"
             )
         else:
             self.info.setText(f"{n} curve(s)")
@@ -383,7 +376,8 @@ class _CorrPlot(QtWidgets.QWidget):
         self.plot.clear()
         for s in series:
             self.plot.line(
-                s.get("x", []), s.get("y", []),
+                s.get("x", []),
+                s.get("y", []),
                 pen=s.get("color", "y"),
                 width=int(s.get("width", 1)),
                 style=s.get("style", "solid"),

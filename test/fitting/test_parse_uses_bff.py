@@ -68,6 +68,7 @@ class BffIsAvailableTests(unittest.TestCase):
         attribute ever disappears, the model must not quietly use one of those.
         """
         import IMP.bff as bff
+
         self.assertTrue(hasattr(bff.GraphExpression, "compute_curve"))
 
 
@@ -80,11 +81,13 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
 
     def test_the_catalogue_is_not_empty(self):
         """Guards the tests below: an empty catalogue would pass vacuously."""
-        self.assertGreater(len(self.equations), 20,
-                           f"found only {len(self.equations)} equations under {MODELS}")
+        self.assertGreater(
+            len(self.equations), 20, f"found only {len(self.equations)} equations under {MODELS}"
+        )
 
     def test_every_shipped_equation_compiles_for_the_engine(self):
         import IMP.bff as bff
+
         refused = []
         for equation in self.equations:
             try:
@@ -93,20 +96,33 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
             except Exception as e:
                 refused.append((equation, str(e)[:80]))
         self.assertEqual(
-            refused, [],
+            refused,
+            [],
             f"{len(refused)} of {len(self.equations)} shipped equations no "
             f"longer compile for the C++ engine, so those models have fallen "
-            f"back to eval():\n" +
-            "\n".join(f"  {q}\n    {why}" for q, why in refused[:10]))
+            f"back to eval():\n" + "\n".join(f"  {q}\n    {why}" for q, why in refused[:10]),
+        )
 
     def test_the_engine_agrees_with_the_interpreter(self):
         """Compiling is not enough -- it has to give the same curve."""
         import IMP.bff as bff
-        env = {"__builtins__": {}, "exp": np.exp, "sqrt": np.sqrt,
-               "abs": np.abs, "log": np.log, "log10": np.log10,
-               "sin": np.sin, "cos": np.cos, "tan": np.tan,
-               "pi": np.pi, "e": np.e, "pow": np.power,
-               "min": np.minimum, "max": np.maximum}
+
+        env = {
+            "__builtins__": {},
+            "exp": np.exp,
+            "sqrt": np.sqrt,
+            "abs": np.abs,
+            "log": np.log,
+            "log10": np.log10,
+            "sin": np.sin,
+            "cos": np.cos,
+            "tan": np.tan,
+            "pi": np.pi,
+            "e": np.e,
+            "pow": np.power,
+            "min": np.minimum,
+            "max": np.maximum,
+        }
         x = np.linspace(0.01, 10.0, 512)
         checked = 0
         for equation in self.equations:
@@ -120,16 +136,14 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
                 # carpet's xi/psi/tau) has no single x to compare along.
                 continue
             names = [v for v in ex.get_variable_names() if v != "x"]
-            values = np.array([1.3 + 0.1 * i for i in range(len(names))],
-                              dtype=float)
+            values = np.array([1.3 + 0.1 * i for i in range(len(names))], dtype=float)
             scope = dict(env, x=x, **dict(zip(names, values)))
             try:
                 want = np.atleast_1d(eval(equation, {"__builtins__": {}}, scope))
             except Exception:
                 continue  # no interpreter oracle for this one
             got = ex.compute_curve(names, values, "x", x)
-            np.testing.assert_allclose(got, want, rtol=1e-10, equal_nan=True,
-                                       err_msg=equation)
+            np.testing.assert_allclose(got, want, rtol=1e-10, equal_nan=True, err_msg=equation)
             checked += 1
         self.assertGreater(checked, 20, "too few equations had an oracle")
 
@@ -150,6 +164,7 @@ class ParseModelTakesTheCppPathTests(unittest.TestCase):
     def bare_model(self, equation):
         """A ParseModel far enough constructed to parse, and no further."""
         from chisurf.core.models.parse.parse import ParseModel
+
         m = ParseModel.__new__(ParseModel)
         m._keys = []
         m._count = 0
@@ -178,11 +193,12 @@ class ParseModelTakesTheCppPathTests(unittest.TestCase):
             if not m.evaluates_in_cpp:
                 fell_back.append(equation)
         self.assertEqual(
-            fell_back, [],
+            fell_back,
+            [],
             f"{len(fell_back)} of {len(equations)} shipped equations fall back "
             f"to eval() after parse_code(), so those fits pay an interpreter "
-            f"round trip per iteration:\n" +
-            "\n".join(f"  {q}" for q in fell_back[:10]))
+            f"round trip per iteration:\n" + "\n".join(f"  {q}" for q in fell_back[:10]),
+        )
 
     def test_parsing_finds_the_same_names_the_engine_does(self):
         """The model passes `_keys` to `compute_curve`, which binds by name.
@@ -196,8 +212,7 @@ class ParseModelTakesTheCppPathTests(unittest.TestCase):
             m.parse_code()
             if not m.evaluates_in_cpp:
                 continue
-            engine_names = {v for v in m._expression.get_variable_names()
-                            if v != "x"}
+            engine_names = {v for v in m._expression.get_variable_names() if v != "x"}
             with self.subTest(equation):
                 self.assertEqual(set(m._keys), engine_names)
 
@@ -235,6 +250,7 @@ class ScannerDefectsFoundByTheComparisonTests(unittest.TestCase):
 
     def bare_model(self, equation):
         from chisurf.core.models.parse.parse import ParseModel
+
         m = ParseModel.__new__(ParseModel)
         m._keys, m._count = [], 0
         m._parameters_equation, m._func_listeners = [], []
@@ -278,9 +294,10 @@ class ScannerDefectsFoundByTheComparisonTests(unittest.TestCase):
 
     def test_the_repaired_model_now_evaluates(self):
         """End to end for the equation that used to raise: it produces a curve."""
-        import IMP.bff as bff
-        eq = ("p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))"
-              "+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))")
+        eq = (
+            "p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))"
+            "+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))"
+        )
         m = self.bare_model(eq)
         m.parse_code()
         self.assertTrue(m.evaluates_in_cpp)
@@ -310,6 +327,7 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         from chisurf.core.data import DataCurve
         from chisurf.core.fitting.fit import Fit
         from chisurf.core.models.parse.parse import ParseModel
+
         x = np.linspace(0.1, 10.0, n)
         fit = Fit(model_class=ParseModel, data=DataCurve(x=x, y=np.zeros_like(x)))
         model = fit.model
@@ -329,9 +347,11 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         self.assertEqual(model.evaluation_counts, (0, 0))
         model.update()
         self.assertEqual(
-            model.evaluation_counts, (1, 0),
+            model.evaluation_counts,
+            (1, 0),
             "_update_model() did not take the C++ path; the counters say "
-            f"{model.evaluation_counts} (cpp, python)")
+            f"{model.evaluation_counts} (cpp, python)",
+        )
 
     def test_repeated_iterations_stay_in_cpp(self):
         """A fit is thousands of these. None may drift onto the interpreter."""
@@ -360,7 +380,8 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         """
         model, _ = self.build(
             "p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))"
-            "+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))")
+            "+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))"
+        )
         self.assertIn("xD", model._keys)
         model.update()
         self.assertEqual(model.evaluation_counts, (1, 0))
@@ -404,10 +425,12 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
             if python or not cpp:
                 fell_back.append((equation, f"counts {(cpp, python)}"))
         self.assertEqual(
-            fell_back, [],
+            fell_back,
+            [],
             f"{len(fell_back)} of {len(equations)} shipped equations do not "
-            f"evaluate in C++ through a real fit:\n" +
-            "\n".join(f"  {q}\n    {why}" for q, why in fell_back[:10]))
+            f"evaluate in C++ through a real fit:\n"
+            + "\n".join(f"  {q}\n    {why}" for q, why in fell_back[:10]),
+        )
 
 
 class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
@@ -424,6 +447,7 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
         from chisurf.core.data import DataCurve
         from chisurf.core.fitting.fit import Fit
         from chisurf.core.models.parse.parse import ParseModel
+
         x = np.linspace(0.1, 10.0, n)
         fit = Fit(model_class=ParseModel, data=DataCurve(x=x, y=np.zeros_like(x)))
         model = fit.model
@@ -448,19 +472,19 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
         unbound = []
         for equation in catalogue_equations():
             model, _ = self.build(equation, n=32)
-            if model.evaluates_in_cpp and \
-                    not model._expression.has_parameter_binding():
+            if model.evaluates_in_cpp and not model._expression.has_parameter_binding():
                 unbound.append(equation)
-        self.assertEqual(unbound, [],
-                         f"{len(unbound)} equations compiled but were not bound")
+        self.assertEqual(unbound, [], f"{len(unbound)} equations compiled but were not bound")
 
     def test_the_bound_call_agrees_with_the_named_one(self):
         """Binding is an optimisation; it may not change a single value."""
         import IMP.bff as bff
+
         x = np.linspace(0.01, 10.0, 512)
-        for equation, names in [("b+a1*exp(-x/t1)", ["b", "a1", "t1"]),
-                                ("b+1/N*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)",
-                                 ["b", "N", "td", "s"])]:
+        for equation, names in [
+            ("b+a1*exp(-x/t1)", ["b", "a1", "t1"]),
+            ("b+1/N*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)", ["b", "N", "td", "s"]),
+        ]:
             ex = bff.GraphExpression("m")
             ex.set_expression(equation)
             ex.bind_parameters(names, "x")
@@ -468,36 +492,39 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
             with self.subTest(equation):
                 np.testing.assert_allclose(
                     ex.compute_curve_bound(values, x),
-                    ex.compute_curve(names, values, "x", x), rtol=1e-15)
+                    ex.compute_curve(names, values, "x", x),
+                    rtol=1e-15,
+                )
 
     def test_a_binding_that_no_longer_matches_is_refused(self):
         """Wrong slots would give a wrong curve, not an error, so it throws."""
         import IMP.bff as bff
+
         ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         ex.bind_parameters(["b", "a1", "t1"], "x")
         x = np.linspace(0.1, 5.0, 16)
         with self.assertRaises(ValueError):
-            ex.compute_curve_bound(np.array([1.0, 2.0]), x)   # two, not three
+            ex.compute_curve_bound(np.array([1.0, 2.0]), x)  # two, not three
 
     def test_evaluating_before_binding_is_refused(self):
         import IMP.bff as bff
+
         ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         with self.assertRaises(ValueError):
-            ex.compute_curve_bound(np.array([1.0, 2.0, 3.0]),
-                                   np.linspace(0.1, 5.0, 16))
+            ex.compute_curve_bound(np.array([1.0, 2.0, 3.0]), np.linspace(0.1, 5.0, 16))
 
     def test_a_new_equation_drops_the_old_binding(self):
         """Reusing it would evaluate the new equation from the old slots."""
         import IMP.bff as bff
+
         ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         ex.bind_parameters(["b", "a1", "t1"], "x")
         ex.set_expression("p+q*x")
         with self.assertRaises(ValueError):
-            ex.compute_curve_bound(np.array([1.0, 2.0, 3.0]),
-                                   np.linspace(0.1, 5.0, 16))
+            ex.compute_curve_bound(np.array([1.0, 2.0, 3.0]), np.linspace(0.1, 5.0, 16))
 
 
 if __name__ == "__main__":

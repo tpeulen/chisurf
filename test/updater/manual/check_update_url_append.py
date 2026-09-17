@@ -1,5 +1,5 @@
-import sys
 import pathlib
+import sys
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
@@ -25,7 +25,9 @@ remote_url_with_slash = "https://github.com/Fluorescence-Tools/chisurf/releases/
 updater = ChiSurfUpdater(update_url=remote_url_with_slash)
 print(f"\nOriginal remote URL (with trailing slash): {remote_url_with_slash}")
 print(f"Modified remote URL: {updater.update_url}")
-print(f"'/conda' appended correctly: {updater.update_url == 'https://github.com/Fluorescence-Tools/chisurf/releases/conda'}")
+print(
+    f"'/conda' appended correctly: {updater.update_url == 'https://github.com/Fluorescence-Tools/chisurf/releases/conda'}"
+)
 
 # Test with a local folder URL
 local_url = "Q:\\chisurf\\conda"

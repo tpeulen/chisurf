@@ -19,6 +19,7 @@ Pinned here:
 * the refusals: `"mdf"` mode, and a free `bg` on a dataset with no
   count-rate metadata (the parameter would be unclaimable).
 """
+
 import numpy as np
 import pytest
 
@@ -27,8 +28,7 @@ import chisurf.core.fitting.fit as F
 import chisurf.core.fitting.minimizer as M
 from chisurf.core.models.fcs.general import GeneralFCSModel
 
-pytestmark = pytest.mark.skipif(
-    not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
 
 
 def _tau_ms(n=256):
@@ -39,8 +39,7 @@ def make_fit(y=None, meta=None, n=256):
     tau = _tau_ms(n)
     if y is None:
         y = np.ones_like(tau)
-    data = chisurf.core.data.DataCurve(
-        x=tau, y=y, ey=np.full(tau.size, 1e-3))
+    data = chisurf.core.data.DataCurve(x=tau, y=y, ey=np.full(tau.size, 1e-3))
     if meta:
         data.meta_data.update(meta)
     fit = F.Fit(model_class=GeneralFCSModel, data=data)
@@ -72,10 +71,9 @@ def test_the_node_curve_is_the_python_curve(mode):
     model = fit.model
     model.diffusion_mode = mode
     _arm_everything(model)
-    group = {"two_focus": model.two_focus,
-             "species": model.species}.get(mode, model.gauss)
-    group._diam.value = 400.0     # two-focus factor armed in every mode
-    group._bg.value = 4.0         # count-rate background factor armed
+    group = {"two_focus": model.two_focus, "species": model.species}.get(mode, model.gauss)
+    group._diam.value = 400.0  # two-focus factor armed in every mode
+    group._bg.value = 4.0  # count-rate background factor armed
     if mode == "species":
         model.species._x_1.value = 0.7
         model.species._D_1.value = 500.0
@@ -84,8 +82,8 @@ def test_the_node_curve_is_the_python_curve(mode):
     model.find_parameters()
     model.update()
     np.testing.assert_allclose(
-        _node_curve(fit), np.asarray(model.y, dtype=float),
-        rtol=1e-12, atol=1e-14)
+        _node_curve(fit), np.asarray(model.y, dtype=float), rtol=1e-12, atol=1e-14
+    )
 
 
 def test_neutral_defaults_are_exactly_neutral():
@@ -93,8 +91,8 @@ def test_neutral_defaults_are_exactly_neutral():
     fit = make_fit()
     fit.model.update()
     np.testing.assert_allclose(
-        _node_curve(fit), np.asarray(fit.model.y, dtype=float),
-        rtol=1e-12, atol=1e-14)
+        _node_curve(fit), np.asarray(fit.model.y, dtype=float), rtol=1e-12, atol=1e-14
+    )
 
 
 def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
@@ -136,9 +134,8 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
 
     assert model.gauss.N == pytest.approx(truth["N"], rel=2e-2)
     assert model.gauss.D == pytest.approx(truth["D"], rel=2e-2)
-    assert float(model.bunching._bt[0].value) == pytest.approx(
-        truth["bt"], rel=5e-2)
-    assert during <= 2      # the post-run display refresh only
+    assert float(model.bunching._bt[0].value) == pytest.approx(truth["bt"], rel=5e-2)
+    assert during <= 2  # the post-run display refresh only
 
 
 def test_mdf_mode_takes_the_graph_and_the_curve_is_the_python_curve():
@@ -168,9 +165,8 @@ def test_mdf_mode_takes_the_graph_and_the_curve_is_the_python_curve():
     m, _ = built
     chi2, carried, keepalive, producer = m._graph
     assert producer is not None, "the mdf path must carry its producer node"
-    chi2.update()   # the Minimizer's own call: it must pull the producer
-    node_y = np.asarray(
-        keepalive[0].get_output_port("chi2_model").value, dtype=float)
+    chi2.update()  # the Minimizer's own call: it must pull the producer
+    node_y = np.asarray(keepalive[0].get_output_port("chi2_model").value, dtype=float)
     np.testing.assert_allclose(node_y, python_y, rtol=1e-12, atol=1e-14)
 
     # And the chain is live: a producer-port write must reach the misfit
@@ -178,17 +174,17 @@ def test_mdf_mode_takes_the_graph_and_the_curve_is_the_python_curve():
     dport = producer.get_input_port("D")
     dport.value = float(dport.value) * 3.0
     chi2.update()
-    moved = np.asarray(
-        keepalive[0].get_output_port("chi2_model").value, dtype=float)
+    moved = np.asarray(keepalive[0].get_output_port("chi2_model").value, dtype=float)
     assert not np.array_equal(moved, node_y)
 
-    fit.run()   # end to end, on the graph
+    fit.run()  # end to end, on the graph
 
 
 def test_a_free_bg_without_count_rate_metadata_refuses():
     """Without the count-rate constant the equation has no ``bg`` variable,
     so a *free* ``bg`` would be unclaimable — the builder must refuse
-    rather than silently freeze it."""
+    rather than silently freeze it.
+    """
     fit = make_fit()
     fit.model.gauss._bg.fixed = False
     fit.model.find_parameters()

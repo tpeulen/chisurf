@@ -52,7 +52,7 @@ def _simulate_time_average(rate_matrix, values, window, n=20000, seed=0):
 
 
 THREE_STATE = np.array(
-    [                       # [target, source], Hz
+    [  # [target, source], Hz
         [0.0, 800.0, 100.0],
         [500.0, 0.0, 600.0],
         [200.0, 300.0, 0.0],
@@ -74,8 +74,7 @@ def test_equilibrium_populations_are_stationary():
     assert populations.sum() == pytest.approx(1.0)
     assert np.all(populations > 0)
     # Stationarity is the definition: Q p = 0.
-    assert np.allclose(generator_from_rate_matrix(THREE_STATE) @ populations, 0.0,
-                       atol=1e-10)
+    assert np.allclose(generator_from_rate_matrix(THREE_STATE) @ populations, 0.0, atol=1e-10)
 
 
 def test_the_mean_is_the_equilibrium_average_at_any_window():
@@ -143,10 +142,10 @@ def test_two_state_moments_agree_with_the_exact_occupation_law():
     from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     p1, k_ex = 0.3, 4.0
-    window = 1.0                      # the exact law works in units of the window
+    window = 1.0  # the exact law works in units of the window
     # k_ex = (k1 + k2) * T, and k1 = k_ex * p2, k2 = k_ex * p1.
     rate_matrix = np.array([[0.0, k_ex * p1], [k_ex * (1 - p1), 0.0]])
-    values = np.array([1.0, 0.0])     # observable = "is in state 1" -> time fraction
+    values = np.array([1.0, 0.0])  # observable = "is in state 1" -> time fraction
 
     mean, variance = time_averaged_moments(rate_matrix, values, window)
     fractions, weights = two_state_occupation_quadrature(p1, k_ex)
@@ -168,9 +167,7 @@ def test_the_quadrature_reproduces_the_moments_it_was_matched_to():
 
     for window in (1e-5, 5e-4, 1e-2):
         mean, variance = time_averaged_moments(THREE_STATE, EFFICIENCIES, window)
-        nodes, weights = szabo_gopich_quadrature(
-            THREE_STATE, EFFICIENCIES, window, n_nodes=256
-        )
+        nodes, weights = szabo_gopich_quadrature(THREE_STATE, EFFICIENCIES, window, n_nodes=256)
         assert weights.sum() == pytest.approx(1.0)
         assert np.all((nodes >= 0.0) & (nodes <= 1.0))
         assert float(weights @ nodes) == pytest.approx(mean, abs=5e-3)
@@ -212,9 +209,7 @@ def test_slow_exchange_keeps_the_states_apart():
     """In the static limit the mass sits near the individual state values."""
     from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 
-    nodes, weights = szabo_gopich_quadrature(
-        THREE_STATE, EFFICIENCIES, 1e-9, n_nodes=256
-    )
+    nodes, weights = szabo_gopich_quadrature(THREE_STATE, EFFICIENCIES, 1e-9, n_nodes=256)
     # Bounded support, and a spread comparable to the state separation rather
     # than a narrow peak at the average.
     assert np.all((nodes >= 0.0) & (nodes <= 1.0))
@@ -233,9 +228,7 @@ def test_the_quadrature_stays_on_the_support_the_states_can_reach():
     from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 
     for window in (1e-9, 1e-5, 5e-4, 1e-2, 100.0):
-        nodes, _ = szabo_gopich_quadrature(
-            THREE_STATE, EFFICIENCIES, window, n_nodes=256
-        )
+        nodes, _ = szabo_gopich_quadrature(THREE_STATE, EFFICIENCIES, window, n_nodes=256)
         assert nodes.min() >= EFFICIENCIES.min() - 1e-9, window
         assert nodes.max() <= EFFICIENCIES.max() + 1e-9, window
 
@@ -261,12 +254,10 @@ def test_slow_two_state_exchange_follows_the_exact_occupation_law(k_ex):
 
     values = np.array([0.35, 0.65])
     p1 = 0.5
-    window = 1.0                      # the exact law works in units of the window
+    window = 1.0  # the exact law works in units of the window
     rate_matrix = np.array([[0.0, k_ex * p1], [k_ex * (1 - p1), 0.0]])
 
-    nodes, weights = szabo_gopich_quadrature(
-        rate_matrix, values, window, n_nodes=2048
-    )
+    nodes, weights = szabo_gopich_quadrature(rate_matrix, values, window, n_nodes=2048)
     fractions, exact_weights = two_state_occupation_quadrature(p1, k_ex)
     exact_nodes = values[1] + fractions * (values[0] - values[1])
 
@@ -274,9 +265,9 @@ def test_slow_two_state_exchange_follows_the_exact_occupation_law(k_ex):
         h, _ = np.histogram(x, bins=np.linspace(0.0, 1.0, 82), weights=w)
         return h / h.sum()
 
-    total_variation = 0.5 * np.abs(
-        binned(nodes, weights) - binned(exact_nodes, exact_weights)
-    ).sum()
+    total_variation = (
+        0.5 * np.abs(binned(nodes, weights) - binned(exact_nodes, exact_weights)).sum()
+    )
     assert total_variation < 0.16, total_variation
     assert np.all((nodes >= values.min() - 1e-9) & (nodes <= values.max() + 1e-9))
 
@@ -329,7 +320,7 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
     base = model.states.rate_matrix().copy()
 
     def total_variation(scale):
-        model.states.rate_matrix = (lambda b=base * scale: b)
+        model.states.rate_matrix = lambda b=base * scale: b
         model.method = "szabo-gopich"
         model.update()
         analytic = np.array(model.y, copy=True)
@@ -338,9 +329,7 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
         sampled = np.array(model.y, copy=True)
         assert np.all(np.isfinite(analytic)) and analytic.sum() > 0
         assert np.all(np.isfinite(sampled)) and sampled.sum() > 0
-        return 0.5 * np.abs(
-            analytic / analytic.sum() - sampled / sampled.sum()
-        ).sum()
+        return 0.5 * np.abs(analytic / analytic.sum() - sampled / sampled.sum()).sum()
 
     # Exchanging: the two routes describe the same distribution.
     assert total_variation(10.0) < 0.03
@@ -359,7 +348,7 @@ def test_the_analytic_route_is_deterministic():
     model = fit.model
     model.update()
     first = np.array(model.y, copy=True)
-    model.seed = model.seed + 1          # only affects the Monte-Carlo route
+    model.seed = model.seed + 1  # only affects the Monte-Carlo route
     model.update()
     assert np.array_equal(first, np.array(model.y))
 
@@ -379,9 +368,7 @@ def test_three_colour_model_takes_a_rate_matrix():
     static = model.total_log_likelihood()
 
     model.dynamic = True
-    model.rate_matrix = np.array(
-        [[0.0, 400.0, 100.0], [300.0, 0.0, 200.0], [150.0, 250.0, 0.0]]
-    )
+    model.rate_matrix = np.array([[0.0, 400.0, 100.0], [300.0, 0.0, 200.0], [150.0, 250.0, 0.0]])
     model.setup._window.value = 2e-3
     dynamic = model.total_log_likelihood()
 
@@ -419,9 +406,7 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
     model.dynamic = True
     model.setup._window.value = 2e-3
     # Fast enough that a two-moment match is adequate (many transitions/window).
-    model.rate_matrix = np.array(
-        [[0.0, 4e4, 1e4], [3e4, 0.0, 2e4], [1.5e4, 2.5e4, 0.0]]
-    )
+    model.rate_matrix = np.array([[0.0, 4e4, 1e4], [3e4, 0.0, 2e4], [1.5e4, 2.5e4, 0.0]])
 
     exact = model.total_log_likelihood()
     assert np.isfinite(exact)
@@ -431,8 +416,9 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
     from chisurf.core.fluorescence.kinetics import equilibrium_populations
 
     setup = model.setup.as_setup()
-    blue = np.stack([model._mean_channel_probabilities(s, setup)[0]
-                     for s in model.species.as_species()])
+    blue = np.stack(
+        [model._mean_channel_probabilities(s, setup)[0] for s in model.species.as_species()]
+    )
     expected = equilibrium_populations(model.rate_matrix) @ blue
     assert expected.sum() == pytest.approx(1.0)
 
@@ -479,7 +465,7 @@ def test_the_simulated_route_works_where_the_approximation_does_not():
     model.rate_matrix = np.array([[0.0, 5.0, 1.0], [3.0, 0.0, 2.0], [1.5, 2.5, 0.0]])
 
     slow = model.total_log_likelihood()
-    model.rate_matrix = model.rate_matrix * 1e4      # same states, fast exchange
+    model.rate_matrix = model.rate_matrix * 1e4  # same states, fast exchange
     fast = model.total_log_likelihood()
 
     assert np.isfinite(slow) and np.isfinite(fast)
@@ -523,6 +509,7 @@ def test_the_sampled_occupancy_matches_the_closed_form(rate):
     # Averaged over windows, the occupancy is the equilibrium population.
     assert np.allclose(sampled.mean(axis=0), equilibrium_populations(K), atol=0.02)
 
+
 def test_sampled_occupancy_recovers_the_equilibrium_populations():
     from chisurf.core.fluorescence.kinetics import (
         equilibrium_populations,
@@ -542,7 +529,7 @@ def test_sampled_occupancy_is_deterministic_for_a_fixed_seed():
     a = occupation_time_fractions(K, 1e-3, 500, seed=11)
     b = occupation_time_fractions(K, 1e-3, 500, seed=11)
     c = occupation_time_fractions(K, 1e-3, 500, seed=12)
-    assert np.array_equal(a, b)          # a fit objective must not wander
+    assert np.array_equal(a, b)  # a fit objective must not wander
     assert not np.array_equal(a, c)
 
 
@@ -582,6 +569,5 @@ def test_the_engine_is_usable_after_another_swig_extension_loads_first():
         pytest.skip("installed simulation engine predates the state log")
 
     system = tttrlib.SimSystem()
-    system.set_rate_matrices(tttrlib.VectorDouble([0.0] * 9),
-                             tttrlib.VectorDouble([1.0] * 9))
+    system.set_rate_matrices(tttrlib.VectorDouble([0.0] * 9), tttrlib.VectorDouble([1.0] * 9))
     assert len(system.k_nrad()) == 9

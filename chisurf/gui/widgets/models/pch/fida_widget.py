@@ -8,6 +8,7 @@ presentation, and the parameter's own controller binding already repaints it.
 The widget name stays importable because user copies of ``experiment_configs.yaml``
 *replace* the bundled model list and pickled projects pin class paths.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.pch.fida_model import FidaModel

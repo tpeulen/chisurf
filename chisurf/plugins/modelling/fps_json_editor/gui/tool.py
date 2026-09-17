@@ -65,7 +65,9 @@ class FpsJsonEditorTool(ChisurfDockTool):
         toolbar.addAction(clear_action)
 
         spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
+        spacer.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         toolbar.addWidget(spacer)
 
         help_action = QtWidgets.QAction(f"{Glyphs.INFO} Help", self)

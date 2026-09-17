@@ -109,10 +109,7 @@ def test_edit_value_routes_by_uid(qapp, qtbot):
         w = GlobalParameterTableWidget(mutator=mut)
         qtbot.addWidget(w)
         # Find the row for 'tau'.
-        r = next(
-            i for i in range(w._model.rowCount())
-            if w._model.row_at(i).param.name == "tau"
-        )
+        r = next(i for i in range(w._model.rowCount()) if w._model.row_at(i).param.name == "tau")
         idx = w._model.index(r, COL_VALUE)
         assert w._model.setData(idx, 4.2, QtCore.Qt.EditRole)
         assert any(c[0] == "set_value" for c in mut.calls)

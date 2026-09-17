@@ -12,6 +12,7 @@ sounds: every other test of the command layer calls
 ``_run_object_menu_command``, which is the *menu* path, so the console could be
 completely broken with the whole suite green. It was.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -45,9 +46,7 @@ def console(qapp):
 # --------------------------------------------------------------------------- #
 # The rule
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize(
-    "line", ["ray", "split_chains", "orient", "zoom", "undo", "reinit"]
-)
+@pytest.mark.parametrize("line", ["ray", "split_chains", "orient", "zoom", "undo", "reinit"])
 def test_a_bare_command_runs_as_a_command(console, line):
     """The regression, one name per case.
 
@@ -72,7 +71,8 @@ def test_python_still_wins_when_the_name_exists(console, line):
 
 def test_a_command_with_arguments_still_routes(console):
     """It always did -- `fetch 1f5n` is not valid Python -- but it must not
-    regress while the bare case is fixed."""
+    regress while the bare case is fixed.
+    """
     panel, _window, _qapp = console
     assert panel._is_command("color red, all")
     assert panel._is_command("set fog_start, 0.5")
@@ -80,7 +80,8 @@ def test_a_command_with_arguments_still_routes(console):
 
 def test_an_unknown_word_goes_to_the_command_layer(console):
     """So a typo is reported as an unknown command rather than as a Python
-    ``NameError``, which at a command prompt explains nothing."""
+    ``NameError``, which at a command prompt explains nothing.
+    """
     panel, _window, _qapp = console
     assert panel._is_command("splitt_chains")
 
@@ -95,7 +96,11 @@ def test_split_chains_typed_into_the_console_splits_the_chains(console, tmp_path
     panel, window, qapp = console
     pdb = (
         pathlib.Path(__file__).resolve().parents[2]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not pdb.is_file():
         pytest.skip(f"missing fixture {pdb}")
@@ -123,7 +128,8 @@ def test_split_chains_typed_into_the_console_splits_the_chains(console, tmp_path
 def test_tab_completes_a_command(console, typed, expected):
     """Nothing asked the dispatcher for completions: Tab went straight to the
     Python completer, which knows no chimol command and returned nothing, so
-    completion appeared not to work at all."""
+    completion appeared not to work at all.
+    """
     panel, _window, _qapp = console
     result = panel._dispatcher_completions(typed, len(typed))
     assert result is not None, typed

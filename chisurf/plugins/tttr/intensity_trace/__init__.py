@@ -1,9 +1,9 @@
 """
 Intensity Trace Analysis for Single-Molecule Data
 
-This plugin provides tools for analyzing fluorescence intensity time traces from 
-single-molecule experiments. It enables researchers to extract dynamic information 
-from photon counting data, particularly for studying conformational changes, 
+This plugin provides tools for analyzing fluorescence intensity time traces from
+single-molecule experiments. It enables researchers to extract dynamic information
+from photon counting data, particularly for studying conformational changes,
 molecular interactions, and reaction kinetics at the single-molecule level.
 
 Features:
@@ -26,7 +26,7 @@ The plugin implements a comprehensive workflow for single-molecule state analysi
 5. For FRET data, calculate efficiency distributions for each state
 
 Ideal for analyzing single-molecule FRET, protein folding/unfolding, enzyme dynamics,
-ligand binding, blinking behavior, or any other dynamic processes that can be 
+ligand binding, blinking behavior, or any other dynamic processes that can be
 observed in fluorescence intensity traces. The HMM approach is particularly powerful
 for detecting states in noisy data with overlapping distributions.
 """
@@ -37,40 +37,55 @@ icon = "📶"
 name = "Spectroscopy:Single-Molecule:Intensity trace"
 
 
-import sys
 import pathlib
+import sys
+
 import numpy as np
-from scipy.optimize import curve_fit
-
-from qtpy.QtCore import Qt
-from qtpy.QtGui import QPainterPath, QBrush, QColor, QPen
-from qtpy.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QToolButton, QFileDialog, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox,
-    QDialog, QCheckBox, QGridLayout, QTabWidget, QGroupBox, QDialogButtonBox, 
-    QGraphicsPathItem, QSizePolicy
-)
-from qtpy import QtWidgets
-from qtpy import QtGui, QtCore
-
 import pyqtgraph as pg
-from pyqtgraph import TextItem, ImageItem, colormap
-
 import tttrlib
-
-# Chisurf imports for detector setup
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
-    DetectorWizardPage, DetectorWizard, load_detector_setups
+from pyqtgraph import ImageItem, TextItem, colormap
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QBrush, QColor, QPainterPath, QPen
+from qtpy.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGraphicsPathItem,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QTabWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
+from scipy.optimize import curve_fit
 
 # Logging
 from chisurf import logging
 
+# Chisurf imports for detector setup
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
+    DetectorWizard,
+    DetectorWizardPage,
+    load_detector_setups,
+)
+
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
 
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".", file_path=None):
@@ -103,15 +118,19 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
             output_file = pathlib.Path(output_dir) / f"{base_name}_state_{state}.bst"
         else:
             output_file = pathlib.Path(output_dir) / f"burst_ids_state_{state}.bst"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             for start_bin, stop_bin in bursts:
                 # Convert bin indices back to TTTR indices
                 start_time = time_axis[start_bin]
                 stop_time = time_axis[stop_bin] + time_window_s
 
                 macro_time_resolution = tttr_obj.header.macro_time_resolution
-                start_tttr_idx = np.searchsorted(tttr_obj.macro_times, start_time / macro_time_resolution)
-                stop_tttr_idx = np.searchsorted(tttr_obj.macro_times, stop_time / macro_time_resolution)
+                start_tttr_idx = np.searchsorted(
+                    tttr_obj.macro_times, start_time / macro_time_resolution
+                )
+                stop_tttr_idx = np.searchsorted(
+                    tttr_obj.macro_times, stop_time / macro_time_resolution
+                )
 
                 f.write(f"{start_tttr_idx}\t{stop_tttr_idx}\n")
 
@@ -201,11 +220,11 @@ class DistPlotWindow(QtWidgets.QDialog):
             plot.plot(x_vals, y_vals, stepMode=False, fillLevel=0, brush=color)
 
             # clean up axes (we're showing titles instead)
-            plot.hideAxis('left')
+            plot.hideAxis("left")
             if idx == len(hists) - 1:
-                plot.setLabel('bottom', 'FRET Efficiency')
+                plot.setLabel("bottom", "FRET Efficiency")
             else:
-                plot.hideAxis('bottom')
+                plot.hideAxis("bottom")
 
             plots.append(plot)
 
@@ -228,9 +247,9 @@ class ElbowPlotWindow(QtWidgets.QDialog):
         states, bic_values = zip(*bics)
         bic_values = np.array(bic_values)
         valid = ~np.isnan(bic_values)
-        self.plot_widget.plot(np.array(states)[valid], bic_values[valid], pen='b', symbol='o')
-        self.plot_widget.setLabel('bottom', 'Number of States')
-        self.plot_widget.setLabel('left', 'BIC (lower is better)')
+        self.plot_widget.plot(np.array(states)[valid], bic_values[valid], pen="b", symbol="o")
+        self.plot_widget.setLabel("bottom", "Number of States")
+        self.plot_widget.setLabel("left", "BIC (lower is better)")
 
 
 class DwellTimeWindow(QtWidgets.QDialog):
@@ -331,7 +350,7 @@ class DwellTimeWindow(QtWidgets.QDialog):
                     self._exp_func,
                     x_center[mask],
                     y[mask],
-                    p0=(y.max(), (x_center * y).sum() / y.sum())
+                    p0=(y.max(), (x_center * y).sum() / y.sum()),
                 )
                 A_fit, tau_fit = popt
                 self.fits[state] = (A_fit, tau_fit)
@@ -353,14 +372,14 @@ class DwellTimeWindow(QtWidgets.QDialog):
                 # Plot fit curve
                 x_fit = np.linspace(min_bin, max_bin, 200)
                 y_fit = self._exp_func(x_fit, *popt)
-                plot.plot(x_fit, y_fit, pen=pg.mkPen('r', width=2))
+                plot.plot(x_fit, y_fit, pen=pg.mkPen("r", width=2))
             except Exception:
                 pass
 
             color = (state * 40 % 255, 100, 150, 150)
             plot.plot(x_center, y, stepMode=False, fillLevel=0, brush=color)
-            plot.setLabel('bottom', f'Dwell Time (ms) - State {state}')
-            plot.hideAxis('left')
+            plot.setLabel("bottom", f"Dwell Time (ms) - State {state}")
+            plot.hideAxis("left")
 
         if len(plots) > 1:
             for p in plots[1:]:
@@ -376,7 +395,7 @@ class DwellTimeWindow(QtWidgets.QDialog):
         if not file_path:
             return
 
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             f.write("State,BinCenter,Count\n")
             for state, (x_center, y) in self.histograms.items():
                 for xc, yc in zip(x_center, y):
@@ -399,14 +418,14 @@ class TransitionMatrixWindow(QtWidgets.QDialog):
         img.setLookupTable(cmap.getLookupTable())
         img.setLevels([0, np.max(matrix)])
         plot_widget.addItem(img)
-        plot_widget.setLabel('left', 'To State')
-        plot_widget.setLabel('bottom', 'From State')
+        plot_widget.setLabel("left", "To State")
+        plot_widget.setLabel("bottom", "From State")
         plot_widget.getViewBox().invertY(True)
         layout.addWidget(plot_widget)
         self.setLayout(layout)
 
-class IntensityPlotWidget(QtWidgets.QWidget):
 
+class IntensityPlotWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.plot_widget = pg.GraphicsLayoutWidget()
@@ -426,15 +445,15 @@ class IntensityPlotWidget(QtWidgets.QWidget):
         self.v_lines = []
 
     def _create_log_hist_plot(self, linked_y_plot, show_x_axis):
-        log_axis = pg.AxisItem(orientation='bottom', logMode=True)
-        hist_plot = pg.PlotItem(axisItems={'bottom': log_axis})
+        log_axis = pg.AxisItem(orientation="bottom", logMode=True)
+        hist_plot = pg.PlotItem(axisItems={"bottom": log_axis})
         hist_plot.setYLink(linked_y_plot)
         hist_plot.getViewBox().invertX(False)
-        hist_plot.hideAxis('left')
+        hist_plot.hideAxis("left")
         if not show_x_axis:
-            hist_plot.hideAxis('bottom')
+            hist_plot.hideAxis("bottom")
         else:
-            hist_plot.setLabel('bottom', 'Counts (log)')
+            hist_plot.setLabel("bottom", "Counts (log)")
         return hist_plot
 
     def _add_fill_between_yaxis_and_curve(self, plot, x_data, y_data, color=(255, 0, 0, 80)):
@@ -470,7 +489,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
             print(f"{trace_plot.name}: {trace_plot.getYRange()}")
 
     def _apply_y_override_if_any(self):
-        ov = getattr(self, '_y_range_override', None)
+        ov = getattr(self, "_y_range_override", None)
         if ov and isinstance(ov, tuple) and len(ov) == 2:
             a, b = ov
             for trace_plot, _ in self.plots:
@@ -480,10 +499,16 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                     pass
 
     def plot_trace_and_histogram(
-        self, time_axis, traces, channel_labels=None,
-        bin_count=100, time_window_ms=10.0,
-        hist_min=None, hist_max=None, hmm_states=None,
-        show_window_lines=False
+        self,
+        time_axis,
+        traces,
+        channel_labels=None,
+        bin_count=100,
+        time_window_ms=10.0,
+        hist_min=None,
+        hist_max=None,
+        hmm_states=None,
+        show_window_lines=False,
     ):
         self.plot_widget.clear()
         self.plots.clear()
@@ -499,7 +524,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
         for i in range(n_channels):
             trace = traces[:, i]
             label = channel_labels[i]
-            show_x = (i == n_channels)
+            show_x = i == n_channels
 
             trace_plot = self.plot_widget.addPlot(row=i, col=0)
             try:
@@ -508,14 +533,14 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                 trace_plot.layout.setContentsMargins(0, 0, 0, 0)
             except Exception:
                 pass
-            trace_plot.setDownsampling(auto=True, mode='peak')
+            trace_plot.setDownsampling(auto=True, mode="peak")
             trace_plot.setClipToView(True)
-            trace_plot.plot(time_axis, trace, pen='b', name=str(label))
-            trace_plot.setLabel('left', f'{label}\nCounts / {int(time_window_ms)} ms')
+            trace_plot.plot(time_axis, trace, pen="b", name=str(label))
+            trace_plot.setLabel("left", f"{label}\nCounts / {int(time_window_ms)} ms")
             if not show_x:
-                trace_plot.hideAxis('bottom')
+                trace_plot.hideAxis("bottom")
             else:
-                trace_plot.setLabel('bottom', 'Time', units='s')
+                trace_plot.setLabel("bottom", "Time", units="s")
 
             hist_plot = self._create_log_hist_plot(trace_plot, show_x)
             self.plot_widget.addItem(hist_plot, row=i, col=1)
@@ -533,7 +558,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
             if len(data) > 0:
                 counts, bins = np.histogram(data, bins=bin_count, density=False)
                 centers = 0.5 * (bins[:-1] + bins[1:])
-                hist_plot.addItem(pg.PlotCurveItem(counts, centers[1:], pen='r', stepMode=True))
+                hist_plot.addItem(pg.PlotCurveItem(counts, centers[1:], pen="r", stepMode=True))
                 self._add_fill_between_yaxis_and_curve(hist_plot, counts, centers)
 
             self.plots.append((trace_plot, hist_plot))
@@ -544,9 +569,9 @@ class IntensityPlotWidget(QtWidgets.QWidget):
             trace_plot.addLegend()
         except Exception:
             pass
-        trace_plot.plot(time_axis, combined, pen='g', name='Sum')
-        trace_plot.setLabel('left', f'Sum\nCounts / {int(time_window_ms)} ms')
-        trace_plot.setLabel('bottom', 'Time', units='s')
+        trace_plot.plot(time_axis, combined, pen="g", name="Sum")
+        trace_plot.setLabel("left", f"Sum\nCounts / {int(time_window_ms)} ms")
+        trace_plot.setLabel("bottom", "Time", units="s")
 
         hist_plot = self._create_log_hist_plot(trace_plot, True)
         self.plot_widget.addItem(hist_plot, row=n_channels, col=1)
@@ -558,7 +583,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
         if len(data) > 0:
             counts, bins = np.histogram(data, bins=bin_count, density=False)
             centers = 0.5 * (bins[:-1] + bins[1:])
-            curve = pg.PlotCurveItem(counts, centers[1:], pen='r', stepMode=True)
+            curve = pg.PlotCurveItem(counts, centers[1:], pen="r", stepMode=True)
             hist_plot.addItem(curve)
             self._add_fill_between_yaxis_and_curve(hist_plot, counts, centers)
 
@@ -573,7 +598,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                 step = max(1, n // 200)
                 positions = time_axis[::step]
                 pen = pg.mkPen(color=(150, 150, 150, 120), width=1)
-                for (pitem, _h) in self.plots:
+                for pitem, _h in self.plots:
                     for x in positions:
                         vline = pg.InfiniteLine(pos=x, angle=90, pen=pen)
                         pitem.addItem(vline)
@@ -581,11 +606,11 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                 pass
 
         if hmm_states is not None:
-            state_plot = self.plot_widget.addPlot(row=n_channels+1, col=0, colspan=1)
+            state_plot = self.plot_widget.addPlot(row=n_channels + 1, col=0, colspan=1)
             state_plot.setXLink(self.plots[0][0])
-            state_plot.plot(time_axis, hmm_states, pen='y')
-            state_plot.setLabel('left', 'Hidden States')
-            state_plot.setLabel('bottom', 'Time', units='s')
+            state_plot.plot(time_axis, hmm_states, pen="y")
+            state_plot.setLabel("left", "Hidden States")
+            state_plot.setLabel("bottom", "Time", units="s")
 
             combined_vals = traces.sum(axis=1)
             means = []
@@ -598,14 +623,16 @@ class IntensityPlotWidget(QtWidgets.QWidget):
             sorted_states = remap[hmm_states]
 
             state_plot.clear()
-            state_plot.plot(time_axis, sorted_states, pen='y')
+            state_plot.plot(time_axis, sorted_states, pen="y")
 
             counts = np.bincount(sorted_states, minlength=len(order))
-            state_hist = self.plot_widget.addPlot(row=n_channels+1, col=1, colspan=1)
-            bg = pg.BarGraphItem(x=np.arange(len(order)), height=counts, width=0.8, brush=(200, 200, 100, 200))
+            state_hist = self.plot_widget.addPlot(row=n_channels + 1, col=1, colspan=1)
+            bg = pg.BarGraphItem(
+                x=np.arange(len(order)), height=counts, width=0.8, brush=(200, 200, 100, 200)
+            )
             state_hist.addItem(bg)
-            state_hist.setLabel('bottom', 'State (sorted)')
-            state_hist.setLabel('left', 'Count')
+            state_hist.setLabel("bottom", "State (sorted)")
+            state_hist.setLabel("left", "Count")
 
             if traces.shape[1] >= 2:
                 ch0 = traces[:, 0]
@@ -628,8 +655,8 @@ class IntensityPlotWidget(QtWidgets.QWidget):
 
                 fret_plot = self.plot_widget.addPlot(row=n_channels + 2, col=0)
                 fret_plot.setXLink(self.plots[0][0])
-                fret_plot.setLabel('left', 'FRET Hist\nper State')
-                fret_plot.setLabel('bottom', 'FRET Efficiency')
+                fret_plot.setLabel("left", "FRET Hist\nper State")
+                fret_plot.setLabel("bottom", "FRET Efficiency")
 
                 hist_plot = pg.PlotItem()
                 self.plot_widget.addItem(hist_plot, row=n_channels + 2, col=1)
@@ -637,13 +664,18 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                 for state, state_fret in fret_by_state.items():
                     hist, _ = np.histogram(state_fret, bins=bins, density=True)
                     combined_hist += hist
-                    hist_plot.plot(bin_centers, hist[1:], stepMode=True, fillLevel=0,
-                                   brush=(state * 50 % 255, 100, 180, 100))
+                    hist_plot.plot(
+                        bin_centers,
+                        hist[1:],
+                        stepMode=True,
+                        fillLevel=0,
+                        brush=(state * 50 % 255, 100, 180, 100),
+                    )
 
                 # Add combined histogram
-                hist_plot.plot(bin_centers, combined_hist[1:], stepMode=True, pen='k')
+                hist_plot.plot(bin_centers, combined_hist[1:], stepMode=True, pen="k")
 
-                fret_plot.plot(time_axis, fret_eff, pen='m')
+                fret_plot.plot(time_axis, fret_eff, pen="m")
 
         for plot, _ in self.plots[1:]:
             plot.setXLink(self.plots[0][0])
@@ -654,6 +686,7 @@ class IntensityPlotWidget(QtWidgets.QWidget):
             self._apply_y_override_if_any()
         except Exception:
             pass
+
 
 @persist_plugin_state("intensity_trace")
 class IntensityTrace(QtWidgets.QWidget):
@@ -677,29 +710,33 @@ class IntensityTrace(QtWidgets.QWidget):
         self.file_path_edit = QtWidgets.QLineEdit()
         self.file_path_edit.setReadOnly(True)
         self.file_path_edit.setPlaceholderText("No file selected")
-        self.file_path_edit.setToolTip("Current TTTR file path (read-only; click to select and copy)")
+        self.file_path_edit.setToolTip(
+            "Current TTTR file path (read-only; click to select and copy)"
+        )
 
         # Compatibility: provide a file_label-like interface expected by callers
         class _FileLabelCompat:
             def __init__(self, line_edit: QtWidgets.QLineEdit):
                 self._le = line_edit
+
             def setText(self, text: str):
                 t = str(text) if text is not None else ""
                 tl = t.lower()
                 if tl.startswith("selected file:"):
                     # Keep only the path part after the first ':'
                     try:
-                        t = t.split(':', 1)[1].strip()
+                        t = t.split(":", 1)[1].strip()
                     except Exception:
                         pass
                 self._le.setText(t)
+
             def text(self) -> str:
                 return self._le.text()
 
         # Expose compatibility attribute used by other modules (e.g., Trace Browser)
         self.file_label = _FileLabelCompat(self.file_path_edit)
 
-        self.load_button    = QtWidgets.QToolButton()
+        self.load_button = QtWidgets.QToolButton()
         self.load_button.setText("Load TTTR")
         self.load_button.clicked.connect(self.load_file)
         self.load_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
@@ -707,38 +744,46 @@ class IntensityTrace(QtWidgets.QWidget):
         self.setup_button = QtWidgets.QToolButton()
         self.setup_button.setText("Setup")
         self.setup_button.clicked.connect(self._open_setup_dialog)
-        self.setup_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.setup_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
 
-        self.save_button    = QtWidgets.QToolButton()
+        self.save_button = QtWidgets.QToolButton()
         self.save_button.setText("Save Traces")
         self.save_button.clicked.connect(self.save_output)
         self.save_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        self.dist_button    = QtWidgets.QToolButton()
+        self.dist_button = QtWidgets.QToolButton()
         self.dist_button.setText("FRET Distributions")
         self.dist_button.clicked.connect(self.show_fret_distributions)
         self.dist_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        self.elbow_button   = QtWidgets.QToolButton()
+        self.elbow_button = QtWidgets.QToolButton()
         self.elbow_button.setText("BIC Elbow")
         self.elbow_button.clicked.connect(self.show_elbow_plot)
-        self.elbow_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.elbow_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
 
-        self.hmm_button     = QtWidgets.QToolButton()
+        self.hmm_button = QtWidgets.QToolButton()
         self.hmm_button.setText("Compute HMM")
         self.hmm_button.clicked.connect(self.perform_hmm)
         self.hmm_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.hmm_button.setStyleSheet("font-weight: bold;")
 
-        self.matrix_button  = QtWidgets.QToolButton()
+        self.matrix_button = QtWidgets.QToolButton()
         self.matrix_button.setText("HMM Matrix")
         self.matrix_button.clicked.connect(self.show_matrix)
-        self.matrix_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.matrix_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
 
-        self.dwell_button   = QtWidgets.QToolButton()
+        self.dwell_button = QtWidgets.QToolButton()
         self.dwell_button.setText("Dwell Times")
         self.dwell_button.clicked.connect(self.show_dwell_times)
-        self.dwell_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.dwell_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
 
         # 3) Instantiate input fields and spin boxes
         # Time window (ms) as double spin box with adaptive step
@@ -846,7 +891,9 @@ class IntensityTrace(QtWidgets.QWidget):
 
         hmm_main_layout.addWidget(self.hmm_button)
 
-        horizonalspacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        horizonalspacer = QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         hmm_main_layout.addItem(horizonalspacer)
 
         hmm_right_layout = QtWidgets.QHBoxLayout()
@@ -907,20 +954,22 @@ class IntensityTrace(QtWidgets.QWidget):
             page = DetectorWizardPage()
             # Preload existing settings if present
             try:
-                if self._detector_settings is not None and hasattr(page, 'set_settings'):
+                if self._detector_settings is not None and hasattr(page, "set_settings"):
                     page.set_settings(self._detector_settings)
             except Exception:
                 pass
 
             lay.addWidget(page)
-            btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+            btns = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+            )
             lay.addWidget(btns)
             btns.accepted.connect(dlg.accept)
             btns.rejected.connect(dlg.reject)
 
             if dlg.exec_() == QtWidgets.QDialog.Accepted:
                 # Read settings back from the page
-                if hasattr(page, 'get_settings'):
+                if hasattr(page, "get_settings"):
                     self._detector_settings = page.get_settings()
                     logging.info("IntensityTrace: Updated detector settings from embedded page")
                     # Refresh detector selection choices in UI
@@ -968,7 +1017,7 @@ class IntensityTrace(QtWidgets.QWidget):
         fp = self.file_path_edit.text().strip()
         if fp:
             self.load_file(file_path=fp)
-    
+
     def _on_detector_selection_changed(self):
         """Handle detector selection change in list widget (legacy method for compatibility)."""
         # Re-process if a file is loaded
@@ -988,52 +1037,59 @@ class IntensityTrace(QtWidgets.QWidget):
                 checkbox.setParent(None)
                 checkbox.deleteLater()
             self.detector_checkboxes.clear()
-            
+
             # Get detector names from DetectorWizard settings
             detector_names = []
             settings = None
-            
+
             # Debug: Check current settings
             print(f"DEBUG: _detector_settings = {self._detector_settings}")
-            
+
             try:
                 # Try to get settings from current instance first
                 if isinstance(self._detector_settings, dict) and self._detector_settings:
                     settings = self._detector_settings
-                    print(f"DEBUG: Using in-memory settings")
+                    print("DEBUG: Using in-memory settings")
                 else:
                     # Load from central detector setups file
-                    print(f"DEBUG: Loading from central setups file")
+                    print("DEBUG: Loading from central setups file")
                     setups_data = load_detector_setups()
                     print(f"DEBUG: setups_data = {setups_data}")
                     if setups_data:
-                        last_used = setups_data.get('last_used')
-                        setups = setups_data.get('setups', {})
-                        print(f"DEBUG: last_used = {last_used}, available setups = {list(setups.keys()) if setups else None}")
+                        last_used = setups_data.get("last_used")
+                        setups = setups_data.get("setups", {})
+                        print(
+                            f"DEBUG: last_used = {last_used}, available setups = {list(setups.keys()) if setups else None}"
+                        )
                         if last_used and last_used in setups:
                             settings = setups[last_used]
                             print(f"DEBUG: Loaded settings for '{last_used}'")
                             # Adopt these settings if we don't have any
-                            if not isinstance(self._detector_settings, dict) or not self._detector_settings:
+                            if (
+                                not isinstance(self._detector_settings, dict)
+                                or not self._detector_settings
+                            ):
                                 self._detector_settings = settings
-                                print(f"DEBUG: Adopted settings into _detector_settings")
-                
+                                print("DEBUG: Adopted settings into _detector_settings")
+
                 if settings:
-                    print(f"DEBUG: Settings available, building detector checkboxes directly from settings")
+                    print(
+                        "DEBUG: Settings available, building detector checkboxes directly from settings"
+                    )
                     # Build detector mapping directly from settings (ignore windows, use only detectors)
                     detectors = settings.get("detectors", {})
                     print(f"DEBUG: Found {len(detectors)} detectors")
-                    
+
                     # Use detector names directly
                     detector_names = list(detectors.keys()) if detectors else []
                     print(f"DEBUG: detector_names = {detector_names}")
                 else:
-                    print(f"DEBUG: No settings available")
-                    
+                    print("DEBUG: No settings available")
+
             except Exception as e:
                 print(f"DEBUG: Exception in settings loading: {e}")
                 logging.warning(f"IntensityTrace: Failed to get detectors from DetectorWizard: {e}")
-            
+
             # Add individual detector checkboxes
             for dname in detector_names:
                 checkbox = QtWidgets.QCheckBox(str(dname))
@@ -1042,10 +1098,10 @@ class IntensityTrace(QtWidgets.QWidget):
                 self.detector_checkbox_layout.addWidget(checkbox)
                 self.detector_checkboxes[str(dname)] = checkbox
                 print(f"DEBUG: Added detector checkbox '{dname}'")
-            
+
             # If no detectors found, add fallback routing channel options
             if not detector_names:
-                print(f"DEBUG: No detectors found, adding fallback routing channels")
+                print("DEBUG: No detectors found, adding fallback routing channels")
                 # Add common routing channels as fallback
                 for ch in [0, 1, 2, 3, 4, 5, 6, 7]:
                     checkbox = QtWidgets.QCheckBox(f"Routing Channel {ch}")
@@ -1054,9 +1110,9 @@ class IntensityTrace(QtWidgets.QWidget):
                     self.detector_checkbox_layout.addWidget(checkbox)
                     self.detector_checkboxes[f"routing_{ch}"] = checkbox
                     print(f"DEBUG: Added fallback routing channel checkbox {ch}")
-            
+
             print(f"DEBUG: Total checkboxes: {len(self.detector_checkboxes)}")
-            
+
         except Exception as e:
             print(f"DEBUG: Exception in _refresh_detector_checkboxes: {e}")
             logging.error(f"IntensityTrace: Error refreshing detector checkboxes: {e}")
@@ -1089,18 +1145,19 @@ class IntensityTrace(QtWidgets.QWidget):
                 s = str(e).strip().lower()
                 if not s:
                     continue
-                if not s.startswith('.'):
-                    s = '.' + s
+                if not s.startswith("."):
+                    s = "." + s
                 if s not in norm:
                     norm.append(s)
             if norm:
-                patterns = ' '.join(f"*{e}" for e in norm)
+                patterns = " ".join(f"*{e}" for e in norm)
                 filter_str = f"TTTR Files ({patterns});;All Files (*)"
             else:
                 filter_str = "All Files (*)"
 
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, "Open TTTR File", "", filter_str)
+                self, "Open TTTR File", "", filter_str
+            )
 
         if not file_path:
             return
@@ -1117,7 +1174,7 @@ class IntensityTrace(QtWidgets.QWidget):
                     selected_detectors.append(detector_name)
         except Exception:
             selected_detectors = []
-        
+
         # Keep info fields synced
         try:
             self._update_detector_info_fields()
@@ -1127,16 +1184,22 @@ class IntensityTrace(QtWidgets.QWidget):
         time_axis, padded, all_chs = self.process_ptu(
             pathlib.Path(str(file_path)), time_window_s, selected_detectors=selected_detectors
         )
-        self.current_data = {'time_axis': time_axis, 'padded': padded, 'channels': all_chs, 'window_ms': time_window_ms, 'hmm_states': None}
+        self.current_data = {
+            "time_axis": time_axis,
+            "padded": padded,
+            "channels": all_chs,
+            "window_ms": time_window_ms,
+            "hmm_states": None,
+        }
         self.update_plot()
 
     def show_fret_distributions(self):
         # Requires HMM states and at least two channels
-        if not getattr(self, 'current_data', None):
+        if not getattr(self, "current_data", None):
             return
-        states = self.current_data.get('hmm_states')
-        padded = self.current_data.get('padded')
-        if states is None or padded is None or getattr(padded, 'shape', (0,0))[1] < 2:
+        states = self.current_data.get("hmm_states")
+        padded = self.current_data.get("padded")
+        if states is None or padded is None or getattr(padded, "shape", (0, 0))[1] < 2:
             return
         # Compute FRET efficiency (ch0 / total)
         ch0 = padded[:, 0]
@@ -1149,10 +1212,10 @@ class IntensityTrace(QtWidgets.QWidget):
         dlg.exec_()
 
     def show_elbow_plot(self):
-        if not getattr(self, 'current_data', None):
+        if not getattr(self, "current_data", None):
             return
-        padded = self.current_data.get('padded')
-        if padded is None or getattr(padded, 'size', 0) == 0:
+        padded = self.current_data.get("padded")
+        if padded is None or getattr(padded, "size", 0) == 0:
             return
         max_states = int(self.hmm_components_spinner.maximum())
         bics = compute_bic_curve(padded, max_states=max_states)
@@ -1160,20 +1223,20 @@ class IntensityTrace(QtWidgets.QWidget):
         dlg.exec_()
 
     def show_dwell_times(self):
-        if not getattr(self, 'current_data', None):
+        if not getattr(self, "current_data", None):
             return
-        states = self.current_data.get('hmm_states')
+        states = self.current_data.get("hmm_states")
         if states is None:
             return
-        time_step = float(self.current_data.get('window_ms', 0.0)) / 1000.0
+        time_step = float(self.current_data.get("window_ms", 0.0)) / 1000.0
         dwell_times = compute_dwell_times(states, time_step)
         dlg = DwellTimeWindow(dwell_times, self)
         dlg.exec_()
 
     def show_matrix(self):
-        if not getattr(self, 'current_data', None):
+        if not getattr(self, "current_data", None):
             return
-        matrix = self.current_data.get('transmat')
+        matrix = self.current_data.get("transmat")
         if matrix is None:
             return
         dlg = TransitionMatrixWindow(matrix, self)
@@ -1183,17 +1246,17 @@ class IntensityTrace(QtWidgets.QWidget):
         if not self.current_data:
             return
         n_comp = self.hmm_components_spinner.value()
-        traces = self.current_data['padded']
+        traces = self.current_data["padded"]
         hmm_states, transmat = self.apply_hmm(traces, n_components=n_comp)
-        self.current_data['hmm_states'] = hmm_states
-        self.current_data['transmat'] = transmat
+        self.current_data["hmm_states"] = hmm_states
+        self.current_data["transmat"] = transmat
 
         # Save outputs in structured subfolders
         try:
             tttr_path = pathlib.Path(self.file_path_edit.text()).resolve()
             # Build folder name: <filename>_HMM#<NbrState>_<XX>ms
             stem = tttr_path.stem
-            time_window_ms = int(round(self.current_data.get('window_ms', 0)))
+            time_window_ms = int(round(self.current_data.get("window_ms", 0)))
             folder_name = f"{stem}_HMM#{n_comp}_{time_window_ms}ms"
             base_dir = tttr_path.parent / folder_name
             bst_dir = base_dir / "bst"
@@ -1207,22 +1270,28 @@ class IntensityTrace(QtWidgets.QWidget):
             logging.info(f"IntensityTrace: Saving burst IDs to {bst_dir}")
             save_burst_ids(
                 hmm_states,
-                self.current_data['time_axis'],
-                self.current_data['window_ms'] / 1000.0,
+                self.current_data["time_axis"],
+                self.current_data["window_ms"] / 1000.0,
                 tttrlib.TTTR(str(tttr_path)),
                 output_dir=str(bst_dir),
-                file_path=self.file_path_edit.text()
+                file_path=self.file_path_edit.text(),
             )
 
             # 2) Save traces (with optional HMM state) under traces/
-            time_axis = np.asarray(self.current_data.get('time_axis'))
-            padded = np.asarray(self.current_data.get('padded'))
-            labels = self.current_data.get('channels') or []
-            states = self.current_data.get('hmm_states')
+            time_axis = np.asarray(self.current_data.get("time_axis"))
+            padded = np.asarray(self.current_data.get("padded"))
+            labels = self.current_data.get("channels") or []
+            states = self.current_data.get("hmm_states")
 
             if time_axis.size > 0 and padded.size > 0:
-                chan_labels = [str(l) for l in labels] if len(labels) == padded.shape[1] else [f"ch{i}" for i in range(padded.shape[1])]
-                header_cols = ["time_s"] + chan_labels + (["HMM_State"] if states is not None else [])
+                chan_labels = (
+                    [str(l) for l in labels]
+                    if len(labels) == padded.shape[1]
+                    else [f"ch{i}" for i in range(padded.shape[1])]
+                )
+                header_cols = (
+                    ["time_s"] + chan_labels + (["HMM_State"] if states is not None else [])
+                )
                 cols = [time_axis]
                 for i in range(padded.shape[1]):
                     cols.append(padded[:, i])
@@ -1231,7 +1300,14 @@ class IntensityTrace(QtWidgets.QWidget):
                 data = np.column_stack(cols)
                 csv_path = traces_dir / f"{stem}_traces.csv"
                 fmts = ["%.6f"] * (1 + padded.shape[1]) + (["%d"] if states is not None else [])
-                np.savetxt(str(csv_path), data, delimiter=",", header=",".join(header_cols), comments="", fmt=fmts)
+                np.savetxt(
+                    str(csv_path),
+                    data,
+                    delimiter=",",
+                    header=",".join(header_cols),
+                    comments="",
+                    fmt=fmts,
+                )
                 logging.info(f"IntensityTrace: Saved traces to {csv_path}")
 
                 # 2a) Save hidden state trajectory
@@ -1239,7 +1315,14 @@ class IntensityTrace(QtWidgets.QWidget):
                     state_traj = np.column_stack([time_axis, np.asarray(states, dtype=int)])
                     state_hdr = "time_s,HMM_State"
                     state_path = traces_dir / f"{stem}_state_traj.csv"
-                    np.savetxt(str(state_path), state_traj, delimiter=",", header=state_hdr, comments="", fmt=["%.6f", "%d"])
+                    np.savetxt(
+                        str(state_path),
+                        state_traj,
+                        delimiter=",",
+                        header=state_hdr,
+                        comments="",
+                        fmt=["%.6f", "%d"],
+                    )
                     logging.info(f"IntensityTrace: Saved state trajectory to {state_path}")
 
                 # 2b) Save FRET trajectory if at least two channels
@@ -1250,7 +1333,14 @@ class IntensityTrace(QtWidgets.QWidget):
                     fret_traj = np.column_stack([time_axis, fret_eff])
                     fret_hdr = "time_s,FRET_efficiency"
                     fret_path = traces_dir / f"{stem}_fret_traj.csv"
-                    np.savetxt(str(fret_path), fret_traj, delimiter=",", header=fret_hdr, comments="", fmt=["%.6f", "%.6f"])
+                    np.savetxt(
+                        str(fret_path),
+                        fret_traj,
+                        delimiter=",",
+                        header=fret_hdr,
+                        comments="",
+                        fmt=["%.6f", "%.6f"],
+                    )
                     logging.info(f"IntensityTrace: Saved FRET trajectory to {fret_path}")
 
             # 3) Save histograms under hist/
@@ -1258,8 +1348,8 @@ class IntensityTrace(QtWidgets.QWidget):
             bin_count = int(self.bin_spinner.value())
             hist_min = self.hist_min_input.value()
             hist_max = self.hist_max_input.value()
-            if "padded" in self.current_data and np.size(self.current_data['padded']) > 0:
-                traces_arr = np.asarray(self.current_data['padded'])
+            if "padded" in self.current_data and np.size(self.current_data["padded"]) > 0:
+                traces_arr = np.asarray(self.current_data["padded"])
                 # Per-channel histograms
                 for i in range(traces_arr.shape[1]):
                     vals = traces_arr[:, i]
@@ -1273,7 +1363,14 @@ class IntensityTrace(QtWidgets.QWidget):
                     chan_label = str(labels[i]) if i < len(labels) else f"ch{i}"
                     out_path = hists_dir / f"{stem}_hist_{chan_label}.csv"
                     header = "bin_center,counts"
-                    np.savetxt(str(out_path), np.column_stack([centers, counts]), delimiter=",", header=header, comments="", fmt=["%.6f", "%d"])
+                    np.savetxt(
+                        str(out_path),
+                        np.column_stack([centers, counts]),
+                        delimiter=",",
+                        header=header,
+                        comments="",
+                        fmt=["%.6f", "%d"],
+                    )
                     logging.info(f"IntensityTrace: Saved histogram for {chan_label} to {out_path}")
 
                 # Combined histogram
@@ -1286,7 +1383,14 @@ class IntensityTrace(QtWidgets.QWidget):
                     centers = 0.5 * (bins[:-1] + bins[1:])
                     out_path = hists_dir / f"{stem}_hist_sum.csv"
                     header = "bin_center,counts"
-                    np.savetxt(str(out_path), np.column_stack([centers, counts]), delimiter=",", header=header, comments="", fmt=["%.6f", "%d"])
+                    np.savetxt(
+                        str(out_path),
+                        np.column_stack([centers, counts]),
+                        delimiter=",",
+                        header=header,
+                        comments="",
+                        fmt=["%.6f", "%d"],
+                    )
                     logging.info(f"IntensityTrace: Saved combined histogram to {out_path}")
 
                 # FRET histogram if applicable
@@ -1295,11 +1399,20 @@ class IntensityTrace(QtWidgets.QWidget):
                     total = np.clip(traces_arr.sum(axis=1), 1e-12, None)
                     fret_eff = ch0 / total
                     bins = np.linspace(0.0, 1.0, 51)
-                    hist, edges = np.histogram(fret_eff[np.isfinite(fret_eff)], bins=bins, density=True)
+                    hist, edges = np.histogram(
+                        fret_eff[np.isfinite(fret_eff)], bins=bins, density=True
+                    )
                     centers = 0.5 * (edges[:-1] + edges[1:])
                     out_path = hists_dir / f"{stem}_fret_hist.csv"
                     header = "fret_bin_center,density"
-                    np.savetxt(str(out_path), np.column_stack([centers, hist]), delimiter=",", header=header, comments="", fmt=["%.6f", "%.6f"])
+                    np.savetxt(
+                        str(out_path),
+                        np.column_stack([centers, hist]),
+                        delimiter=",",
+                        header=header,
+                        comments="",
+                        fmt=["%.6f", "%.6f"],
+                    )
                     logging.info(f"IntensityTrace: Saved FRET histogram to {out_path}")
         except Exception as e:
             logging.error(f"IntensityTrace: Failed to save HMM outputs: {e}")
@@ -1319,17 +1432,21 @@ class IntensityTrace(QtWidgets.QWidget):
             return
 
         try:
-            time_axis = np.asarray(self.current_data.get('time_axis'))
-            padded = np.asarray(self.current_data.get('padded'))
-            labels = self.current_data.get('channels') or []
-            states = self.current_data.get('hmm_states')
+            time_axis = np.asarray(self.current_data.get("time_axis"))
+            padded = np.asarray(self.current_data.get("padded"))
+            labels = self.current_data.get("channels") or []
+            states = self.current_data.get("hmm_states")
 
             if time_axis.size == 0 or padded.size == 0:
                 logging.warning("IntensityTrace: No data to save.")
                 return
 
             # Prepare CSV header
-            chan_labels = [str(l) for l in labels] if len(labels) == padded.shape[1] else [f"ch{i}" for i in range(padded.shape[1])]
+            chan_labels = (
+                [str(l) for l in labels]
+                if len(labels) == padded.shape[1]
+                else [f"ch{i}" for i in range(padded.shape[1])]
+            )
             header_cols = ["time_s"] + chan_labels
             include_states = states is not None and len(states) == len(time_axis)
             if include_states:
@@ -1358,22 +1475,29 @@ class IntensityTrace(QtWidgets.QWidget):
         hist_min = self.hist_min_input.value()
         hist_max = self.hist_max_input.value()
         self.plot_widget.plot_trace_and_histogram(
-            self.current_data['time_axis'], self.current_data['padded'], self.current_data['channels'],
-            bin_count=bin_count, time_window_ms=self.current_data['window_ms'],
-            hist_min=hist_min, hist_max=hist_max, hmm_states=self.current_data.get('hmm_states')
+            self.current_data["time_axis"],
+            self.current_data["padded"],
+            self.current_data["channels"],
+            bin_count=bin_count,
+            time_window_ms=self.current_data["window_ms"],
+            hist_min=hist_min,
+            hist_max=hist_max,
+            hmm_states=self.current_data.get("hmm_states"),
         )
 
     def process_ptu(self, ptu_file, time_window_length, selected_detectors=None):
         """
         Compute intensity traces for a TTTR file using DetectorWizard detector mapping or fallback to routing channels.
-        
+
         Args:
             ptu_file: Path to TTTR file
             time_window_length: Time window in seconds
             selected_detectors: List of selected detector names, or None for all detectors
         """
         tttr_obj = tttrlib.TTTR(str(ptu_file))
-        logging.info(f"IntensityTrace: Processing {ptu_file} with bin {time_window_length}s and detectors={selected_detectors}")
+        logging.info(
+            f"IntensityTrace: Processing {ptu_file} with bin {time_window_length}s and detectors={selected_detectors}"
+        )
 
         # Get detector mapping directly from settings (ignore windows)
         detectors = None
@@ -1388,14 +1512,14 @@ class IntensityTrace(QtWidgets.QWidget):
         mt = tttr_obj.micro_times
         labels = []
         traces = []
-        
+
         # Handle fallback to routing channels if no detectors
         if not detectors:
             logging.info("IntensityTrace: Using fallback routing channel mode")
             # For fallback, use first selected detector or "__all__" if none selected
             fallback_channel = selected_detectors[0] if selected_detectors else "__all__"
             return self._process_routing_channels(tttr_obj, time_window_length, fallback_channel)
-        
+
         # Determine which detectors to process
         detectors_to_process = []
         if not selected_detectors or len(selected_detectors) == 0:
@@ -1407,28 +1531,30 @@ class IntensityTrace(QtWidgets.QWidget):
                 if det_name in detectors:
                     detectors_to_process.append(det_name)
                 else:
-                    logging.warning(f"IntensityTrace: Selected detector '{det_name}' not found in settings")
-        
+                    logging.warning(
+                        f"IntensityTrace: Selected detector '{det_name}' not found in settings"
+                    )
+
         if not detectors_to_process:
             logging.warning("IntensityTrace: No valid detectors to process")
-            return np.array([]), np.zeros((0,0)), []
-            
+            return np.array([]), np.zeros((0, 0)), []
+
         for dname in detectors_to_process:
             try:
                 dinfo = detectors[dname]
-                det_chs = dinfo.get('chs', []) or []
-                micro_time_ranges = dinfo.get('micro_time_ranges', []) or []
-                
+                det_chs = dinfo.get("chs", []) or []
+                micro_time_ranges = dinfo.get("micro_time_ranges", []) or []
+
                 if not det_chs:
                     logging.warning(f"IntensityTrace: Detector '{dname}' has no routing channels")
                     continue
-                
+
                 # Build mask for this detector
                 total_mask = np.zeros(rc.shape, dtype=bool)
-                
+
                 # Create routing channel mask
                 ch_mask = np.isin(rc, np.array(det_chs, dtype=rc.dtype))
-                
+
                 # Apply microtime ranges if present
                 if micro_time_ranges:
                     mt_mask = np.zeros_like(ch_mask, dtype=bool)
@@ -1447,7 +1573,9 @@ class IntensityTrace(QtWidgets.QWidget):
                 # Extract photons and create trace
                 idxs = np.where(total_mask)[0]
                 if idxs.size == 0:
-                    logging.warning(f"IntensityTrace: Detector '{dname}' has no photons after gating; adding empty trace")
+                    logging.warning(
+                        f"IntensityTrace: Detector '{dname}' has no photons after gating; adding empty trace"
+                    )
                     traces.append(np.array([], dtype=float))
                     labels.append(str(dname))
                     continue
@@ -1456,18 +1584,20 @@ class IntensityTrace(QtWidgets.QWidget):
                 counts = sub_tttr.get_intensity_trace(time_window_length)
                 traces.append(counts)
                 labels.append(str(dname))
-                logging.info(f"IntensityTrace: Processed detector '{dname}': {len(counts)} bins, {idxs.size} photons")
-                
+                logging.info(
+                    f"IntensityTrace: Processed detector '{dname}': {len(counts)} bins, {idxs.size} photons"
+                )
+
             except Exception as e:
                 logging.warning(f"IntensityTrace: Error processing detector '{dname}': {e}")
                 continue
 
         # Pad traces to common length
         num_bins = max((len(t) for t in traces), default=0)
-        padded = np.zeros((num_bins, len(traces))) if num_bins > 0 else np.zeros((0,0))
+        padded = np.zeros((num_bins, len(traces))) if num_bins > 0 else np.zeros((0, 0))
         for i, t in enumerate(traces):
             if len(t) > 0:
-                padded[:len(t), i] = t
+                padded[: len(t), i] = t
         time_axis = np.arange(num_bins) * time_window_length if num_bins > 0 else np.array([])
         return time_axis, padded, labels
 
@@ -1476,13 +1606,13 @@ class IntensityTrace(QtWidgets.QWidget):
         Fallback method to process routing channels when DetectorWizard mapping is not available.
         """
         logging.info(f"IntensityTrace: Processing routing channels, selected={selected_channel}")
-        
+
         rc = tttr_obj.routing_channels
         all_routing_channels = sorted(tttr_obj.get_used_routing_channels())
-        
+
         labels = []
         traces = []
-        
+
         # Determine which routing channels to process
         channels_to_process = []
         if selected_channel == "__all__":
@@ -1497,47 +1627,55 @@ class IntensityTrace(QtWidgets.QWidget):
                     logging.info(f"IntensityTrace: Processing routing channel {ch_num}")
                 else:
                     logging.warning(f"IntensityTrace: Routing channel {ch_num} not found in file")
-                    return np.array([]), np.zeros((0,0)), []
+                    return np.array([]), np.zeros((0, 0)), []
             except (ValueError, IndexError):
-                logging.warning(f"IntensityTrace: Invalid routing channel format: {selected_channel}")
-                return np.array([]), np.zeros((0,0)), []
+                logging.warning(
+                    f"IntensityTrace: Invalid routing channel format: {selected_channel}"
+                )
+                return np.array([]), np.zeros((0, 0)), []
         else:
-            logging.warning(f"IntensityTrace: Invalid channel selection for routing mode: {selected_channel}")
-            return np.array([]), np.zeros((0,0)), []
-        
+            logging.warning(
+                f"IntensityTrace: Invalid channel selection for routing mode: {selected_channel}"
+            )
+            return np.array([]), np.zeros((0, 0)), []
+
         # Process each routing channel
         for ch in channels_to_process:
             try:
                 # Create mask for this routing channel
-                mask = (rc == ch)
+                mask = rc == ch
                 idxs = np.where(mask)[0]
-                
+
                 if idxs.size == 0:
                     logging.warning(f"IntensityTrace: Routing channel {ch} has no photons")
                     traces.append(np.array([], dtype=float))
                     labels.append(f"Ch{ch}")
                     continue
-                
+
                 # Create sub-TTTR and compute trace
                 sub_tttr = tttr_obj[idxs]
                 counts = sub_tttr.get_intensity_trace(time_window_length)
                 traces.append(counts)
                 labels.append(f"Ch{ch}")
-                logging.info(f"IntensityTrace: Processed routing channel {ch}: {len(counts)} bins, {idxs.size} photons")
-                
+                logging.info(
+                    f"IntensityTrace: Processed routing channel {ch}: {len(counts)} bins, {idxs.size} photons"
+                )
+
             except Exception as e:
                 logging.warning(f"IntensityTrace: Error processing routing channel {ch}: {e}")
                 continue
-        
+
         # Pad traces to common length
         num_bins = max((len(t) for t in traces), default=0)
-        padded = np.zeros((num_bins, len(traces))) if num_bins > 0 else np.zeros((0,0))
+        padded = np.zeros((num_bins, len(traces))) if num_bins > 0 else np.zeros((0, 0))
         for i, t in enumerate(traces):
             if len(t) > 0:
-                padded[:len(t), i] = t
-        
+                padded[: len(t), i] = t
+
         time_axis = np.arange(num_bins) * time_window_length if num_bins > 0 else np.array([])
-        logging.info(f"IntensityTrace: Routing channel processing complete: {len(traces)} traces, {num_bins} bins")
+        logging.info(
+            f"IntensityTrace: Routing channel processing complete: {len(traces)} traces, {num_bins} bins"
+        )
         return time_axis, padded, labels
 
     def apply_hmm(self, traces, n_components=2):
@@ -1562,12 +1700,15 @@ class IntensityTrace(QtWidgets.QWidget):
         from chisurf.plugins.core.hmm.api import HmmSettings
         from chisurf.plugins.core.hmm.core import fit_traces
 
-        logging.info(f"IntensityTrace: Running HMM with {n_components} components on traces shape={getattr(traces, 'shape', None)}")
+        logging.info(
+            f"IntensityTrace: Running HMM with {n_components} components on traces shape={getattr(traces, 'shape', None)}"
+        )
         fit = fit_traces(
             np.asarray(traces, dtype=float),
             HmmSettings(n_states=n_components, covariance_type="full", n_iter=1000),
         )
         return fit.state_array, np.asarray(fit.transmat)
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

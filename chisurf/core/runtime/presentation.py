@@ -38,6 +38,7 @@ From the view, once, at start-up::
     import chisurf.gui
     presentation.set_presenter(chisurf.gui.run_on_gui_thread)
 """
+
 from __future__ import annotations
 
 import typing
@@ -47,10 +48,10 @@ import chisurf.logging
 __all__ = ["set_presenter", "get_presenter", "notify", "defer"]
 
 #: The view's "run this where a view may be touched", or ``None`` headless.
-_presenter: typing.Optional[typing.Callable] = None
+_presenter: typing.Callable | None = None
 
 #: The view's "run this soon, but not inside the current call", or ``None``.
-_deferrer: typing.Optional[typing.Callable] = None
+_deferrer: typing.Callable | None = None
 
 
 def set_presenter(presenter=None, deferrer=None) -> None:
@@ -95,8 +96,7 @@ def notify(func, *args, **kwargs):
             return func(*args, **kwargs)
         return target(func, *args, **kwargs)
     except Exception:
-        chisurf.logging.debug(
-            "presentation.notify: %r failed", func, exc_info=True)
+        chisurf.logging.debug("presentation.notify: %r failed", func, exc_info=True)
         return None
 
 
@@ -113,7 +113,6 @@ def defer(func, *args, **kwargs):
         try:
             return _deferrer(lambda: func(*args, **kwargs))
         except Exception:
-            chisurf.logging.debug(
-                "presentation.defer: %r failed", func, exc_info=True)
+            chisurf.logging.debug("presentation.defer: %r failed", func, exc_info=True)
             return None
     return notify(func, *args, **kwargs)

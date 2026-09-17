@@ -182,10 +182,8 @@ def auto_alex_windows(
     period = int(alex_period)
     edges = np.linspace(0, period, n_bins + 1)
     counts, _ = np.histogram(phase, bins=edges)
-    donor_counts, _ = np.histogram(
-        phase[np.isin(rc, list(donor_channels))], bins=edges)
-    acceptor_counts, _ = np.histogram(
-        phase[np.isin(rc, list(acceptor_channels))], bins=edges)
+    donor_counts, _ = np.histogram(phase[np.isin(rc, list(donor_channels))], bins=edges)
+    acceptor_counts, _ = np.histogram(phase[np.isin(rc, list(acceptor_channels))], bins=edges)
 
     nonzero = counts[counts > 0]
     if nonzero.size == 0:
@@ -357,7 +355,7 @@ def detect_alex_period(
             "fewer than 1000 photons in the donor/acceptor channels — check the "
             "channel assignment before detecting the ALEX period"
         )
-    idx = np.flatnonzero(keep)[:int(n_photons)]
+    idx = np.flatnonzero(keep)[: int(n_photons)]
     t = macro[idx].astype(np.int64)
     t = t - t[0]
     sign = np.where(is_donor[idx], 1.0, -1.0)
@@ -506,9 +504,7 @@ def detect_alex_channels(
     if channels is None:
         present, counts_per_channel = np.unique(rc, return_counts=True)
         if present.size < 2:
-            raise ValueError(
-                f"only channel {present.tolist()} carries photons; ALEX needs two"
-            )
+            raise ValueError(f"only channel {present.tolist()} carries photons; ALEX needs two")
         order = np.argsort(counts_per_channel)[::-1][:2]
         channels = sorted(int(present[i]) for i in order)
     a, b = (int(c) for c in channels)
@@ -539,8 +535,10 @@ def detect_alex_channels(
         return float(hist[mask].sum()) / max(int(mask.sum()), 1)
 
     rates = {
-        (a, "first"): rate(hist_a, first), (b, "first"): rate(hist_b, first),
-        (a, "second"): rate(hist_a, second), (b, "second"): rate(hist_b, second),
+        (a, "first"): rate(hist_a, first),
+        (b, "first"): rate(hist_b, first),
+        (a, "second"): rate(hist_a, second),
+        (b, "second"): rate(hist_b, second),
     }
     # For each candidate donor, how dark it is in the window where it is darkest,
     # relative to the other window. The real donor is the one that goes dark.

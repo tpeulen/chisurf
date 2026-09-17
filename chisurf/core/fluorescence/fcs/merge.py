@@ -9,22 +9,20 @@ optional ``ey`` and per-channel ``channel_a`` / ``channel_b`` count dicts.
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
 
-def compute_average_correlations(correlations: List[dict]) -> dict:
+def compute_average_correlations(correlations: list[dict]) -> dict:
     """Weighted-average a list of correlation dicts into a single curve.
 
     Mirrors the legacy ``WizardFcsMerger.compute_average_correlations``: the
     per-curve Suren weights are used only when more than one curve is merged,
     the acquisition time is summed, and the count rate is duration-weighted.
     """
-    import chisurf.core.fluorescence.fcs as _fcs
-
-    taus: List[np.ndarray] = []
-    cors: List[np.ndarray] = []
+    taus: list[np.ndarray] = []
+    cors: list[np.ndarray] = []
     acquisition_time = 0.0
     weighted_count_rate_sum = 0.0
     n_curves = len(correlations)
@@ -34,18 +32,14 @@ def compute_average_correlations(correlations: List[dict]) -> dict:
         cor = np.array(correlation["y"], dtype=float)
         duration = float(correlation["duration"])
         acquisition_time += duration
-        counts = (
-            correlation["channel_a"]["counts"] + correlation["channel_b"]["counts"]
-        )
+        counts = correlation["channel_a"]["counts"] + correlation["channel_b"]["counts"]
         cr = (counts / 2.0) / duration / 1000.0 if duration > 0 else 0.0
         weighted_count_rate_sum += duration * cr
         taus.append(tau)
         cors.append(cor)
 
     ys = np.array(cors)
-    avg_count_rate = (
-        weighted_count_rate_sum / acquisition_time if acquisition_time > 0 else 0.0
-    )
+    avg_count_rate = weighted_count_rate_sum / acquisition_time if acquisition_time > 0 else 0.0
 
     if n_curves == 1:
         ey = np.zeros_like(ys[0])
@@ -61,7 +55,7 @@ def compute_average_correlations(correlations: List[dict]) -> dict:
     }
 
 
-def _correlation_from_cor_array(arr: np.ndarray) -> Dict[str, Any]:
+def _correlation_from_cor_array(arr: np.ndarray) -> dict[str, Any]:
     """Build a correlation dict from a loaded ``.cor`` array (PAM/ChiSurf format)."""
     if arr.ndim == 1 and arr.size >= 2:
         arr = arr.reshape(-1, arr.size)
@@ -86,10 +80,10 @@ def _correlation_from_cor_array(arr: np.ndarray) -> Dict[str, Any]:
     }
 
 
-def parse_correlation_folder(folder: pathlib.Path) -> List[Dict[str, Any]]:
+def parse_correlation_folder(folder: pathlib.Path) -> list[dict[str, Any]]:
     """Load all ``.cor`` (and legacy ``.json.gz``) correlation chunks in a folder."""
     folder = pathlib.Path(folder)
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     if not folder.is_dir():
         return out
 
@@ -139,7 +133,9 @@ def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
         suren_column[1] = correlation["count_rate"]
     if np.any(ey > 0):
         ey = _fcs.complete_noise(
-            x, y, ey,
+            x,
+            y,
+            ey,
             float(correlation["duration"]),
             float(correlation["count_rate"]),
         )
@@ -149,7 +145,7 @@ def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
     np.savetxt(str(filename), c.T, delimiter="\t", fmt="%.5g")
 
 
-def merge_folder(folder: pathlib.Path, output: Optional[pathlib.Path] = None) -> Dict[str, Any]:
+def merge_folder(folder: pathlib.Path, output: pathlib.Path | None = None) -> dict[str, Any]:
     """Parse, average and (optionally) save the correlations in ``folder``.
 
     Returns the merged correlation as a transport-friendly dict.

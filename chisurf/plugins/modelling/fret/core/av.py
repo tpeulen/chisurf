@@ -18,20 +18,17 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Dict, Optional, Tuple
 
 import numpy as np
-
-from . import io
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AccessibleVolume:
@@ -41,10 +38,10 @@ class AccessibleVolume:
     density: np.ndarray  # (nx, ny, nz) float32 — 3D voxel density
     grid_origin: np.ndarray  # (3,) float64
     grid_step: float
-    grid_shape: Tuple[int, int, int]
+    grid_shape: tuple[int, int, int]
     attachment_point: np.ndarray  # (3,) float64
     position_name: str = ""
-    params: Dict = field(default_factory=dict)
+    params: dict = field(default_factory=dict)
 
     @property
     def n_points(self) -> int:
@@ -67,6 +64,7 @@ class AccessibleVolume:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def _active_backend_name() -> str:
     """Name of the accessible-volume backend in use.
@@ -106,10 +104,10 @@ def compute_av(
     source_xyz: np.ndarray,
     linker_length: float,
     linker_width: float,
-    radii: Tuple[float, float, float],
+    radii: tuple[float, float, float],
     disc_step: float = 1.5,
-    pdb_path: Optional[str] = None,
-    source_info: Optional[Dict] = None,
+    pdb_path: str | None = None,
+    source_info: dict | None = None,
 ) -> AccessibleVolume:
     """Compute one accessible volume.
 
@@ -172,9 +170,9 @@ def compute_av(
     )
 
     ng = int(result.ng)
-    density = np.ascontiguousarray(
-        np.asarray(result.get_density(), dtype=np.float32)
-    ).reshape((ng, ng, ng))
+    density = np.ascontiguousarray(np.asarray(result.get_density(), dtype=np.float32)).reshape(
+        (ng, ng, ng)
+    )
     points = np.asarray(result.points, dtype=np.float64).reshape(-1, 4)
     return AccessibleVolume(
         points=points,
@@ -188,10 +186,10 @@ def compute_av(
 
 def compute_avs_for_structure(
     atoms: np.ndarray,
-    positions: Dict,
+    positions: dict,
     pdb_path: str | list[str] | None = None,
-    disc_step: Optional[float] = None,
-) -> Dict[str, AccessibleVolume]:
+    disc_step: float | None = None,
+) -> dict[str, AccessibleVolume]:
     """Compute AVs for all positions in an fps.json ``Positions`` dict.
 
     Parameters
@@ -210,7 +208,7 @@ def compute_avs_for_structure(
     else:
         pdb_paths = []
 
-    avs: Dict[str, AccessibleVolume] = {}
+    avs: dict[str, AccessibleVolume] = {}
     for pname, pdef in positions.items():
         bi = int(pdef.get("body_id", 0))
         curr_pdb = pdb_paths[bi] if bi < len(pdb_paths) else (pdb_paths[0] if pdb_paths else None)
@@ -268,9 +266,24 @@ def compute_avs_for_structure(
 
 # From FPS data/vdW.txt (selected common elements)
 VDW_RADII = {
-    1: 1.20, 2: 1.40, 3: 1.82, 4: 1.53, 5: 1.92, 6: 1.70, 7: 1.55,
-    8: 1.52, 9: 1.47, 12: 1.73, 14: 2.10, 15: 1.80, 16: 1.80,
-    17: 1.75, 19: 2.27, 20: 1.97, 26: 1.56, 30: 1.39,
+    1: 1.20,
+    2: 1.40,
+    3: 1.82,
+    4: 1.53,
+    5: 1.92,
+    6: 1.70,
+    7: 1.55,
+    8: 1.52,
+    9: 1.47,
+    12: 1.73,
+    14: 2.10,
+    15: 1.80,
+    16: 1.80,
+    17: 1.75,
+    19: 2.27,
+    20: 1.97,
+    26: 1.56,
+    30: 1.39,
 }
 _DEFAULT_VDW = 1.70
 _ELEMENT_NUMBERS = {
@@ -392,21 +405,25 @@ def _load_pdb_records_cached(
             atom_name = line[12:16].strip()
             element = _element_symbol_from_pdb_line(line)
             atomic_number = _ELEMENT_NUMBERS.get(element, 0)
-            rows.append((
-                chain,
-                resseq,
-                atom_name,
-                xyz[0],
-                xyz[1],
-                xyz[2],
-                VDW_RADII.get(atomic_number, _DEFAULT_VDW),
-            ))
+            rows.append(
+                (
+                    chain,
+                    resseq,
+                    atom_name,
+                    xyz[0],
+                    xyz[1],
+                    xyz[2],
+                    VDW_RADII.get(atomic_number, _DEFAULT_VDW),
+                )
+            )
     if not rows:
         raise ValueError(f"No ATOM/HETATM coordinates found in '{pdb_path}'")
     return tuple(rows)
 
 
-def _cached_pdb_records(pdb_path: str) -> tuple[tuple[str, int, str, float, float, float, float], ...]:
+def _cached_pdb_records(
+    pdb_path: str,
+) -> tuple[tuple[str, int, str, float, float, float, float], ...]:
     """Return cached PDB records for a path.
 
     Parameters
@@ -468,8 +485,7 @@ def load_structure_with_vdw(pdb_path: str) -> np.ndarray:
     import IMP.bff as bff
 
     return np.ascontiguousarray(
-        np.asarray(bff.load_structure_with_vdw(str(pdb_path)),
-                   dtype=np.float64).reshape(-1, 4)
+        np.asarray(bff.load_structure_with_vdw(str(pdb_path)), dtype=np.float64).reshape(-1, 4)
     )
 
 
@@ -478,8 +494,8 @@ def _find_attachment_point(
     chain: str,
     resseq: int,
     atom_name: str,
-    pdb_path: Optional[str] = None,
-) -> Optional[np.ndarray]:
+    pdb_path: str | None = None,
+) -> np.ndarray | None:
     """Find the coordinates of an attachment atom.
 
     If pdb_path is provided, the atom is resolved by identity — chain, residue
@@ -519,7 +535,10 @@ def _find_attachment_point(
                     return np.array([x, y, z], dtype=np.float64)
         logger.warning(
             "Attachment atom '%s:%s:%s' does not exist in %s",
-            chain, resseq, atom_name, pdb_path,
+            chain,
+            resseq,
+            atom_name,
+            pdb_path,
         )
         return None
 
@@ -530,7 +549,7 @@ def _strip_residue_atoms(
     atoms: np.ndarray,
     chain: str,
     resseq: int,
-    pdb_path: Optional[str] = None,
+    pdb_path: str | None = None,
 ) -> np.ndarray:
     """Remove the attachment residue's atoms from the coordinate array.
 

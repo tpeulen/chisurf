@@ -127,16 +127,13 @@ def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
         scroller.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         scroller.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroller.setWidget(row_widget)
-        scroller.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        scroller.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         # The hint has to be taken after the row is installed on a widget, or it
         # is the empty layout's -- and the horizontal scroll bar lives *inside*
         # the fixed height, so without its share the buttons are cropped top and
         # bottom by exactly the bar's thickness.
         scroller.setFixedHeight(
-            row_widget.sizeHint().height()
-            + scroller.horizontalScrollBar().sizeHint().height()
-            + 6
+            row_widget.sizeHint().height() + scroller.horizontalScrollBar().sizeHint().height() + 6
         )
         layout.addWidget(scroller)
         # Only now is the row installed on a widget and the adopted widgets
@@ -230,8 +227,9 @@ class _StatusTask:
     only swaps *where the handle comes from*, not how it drives it.
     """
 
-    def __init__(self, shell: NavigationPanelTool, message: str, maximum: int = 0,
-                 cancel=None) -> None:
+    def __init__(
+        self, shell: NavigationPanelTool, message: str, maximum: int = 0, cancel=None
+    ) -> None:
         self._shell = shell
         self._cancel_cb = cancel
         self._canceled = False
@@ -796,9 +794,7 @@ class NavigationPanelTool(ChisurfDockTool):
         self._btn_prev.clicked.connect(self.goto_prev_step)
         self._btn_next = QtWidgets.QToolButton()
         self._btn_next.setText("Next ▶")
-        self._btn_next.setToolTip(
-            "Process all loaded files in this step, then go to the next step"
-        )
+        self._btn_next.setToolTip("Process all loaded files in this step, then go to the next step")
         self._btn_next.clicked.connect(self._on_next_clicked)
         self._btn_ff = QtWidgets.QToolButton()
         self._btn_ff.setText("⏩")
@@ -911,8 +907,9 @@ class NavigationPanelTool(ChisurfDockTool):
             task.cancel()
 
     # -- _StatusTask back-end (only the active task may write the bar) --------
-    def _activate_task(self, task: _StatusTask, message: str, maximum: int,
-                       has_cancel: bool) -> None:
+    def _activate_task(
+        self, task: _StatusTask, message: str, maximum: int, has_cancel: bool
+    ) -> None:
         self._active_task = task
         self._status_message.setText(message or "")
         self._status_progress.setRange(0, int(maximum))
@@ -1138,9 +1135,11 @@ class NavigationPanelTool(ChisurfDockTool):
         """
         self._steps_blocked = bool(blocked)
         enabled = not blocked
-        for widget in (getattr(self, "nav_list", None),
-                       getattr(self, "_btn_prev", None),
-                       getattr(self, "_btn_next", None)):
+        for widget in (
+            getattr(self, "nav_list", None),
+            getattr(self, "_btn_prev", None),
+            getattr(self, "_btn_next", None),
+        ):
             if widget is not None:
                 widget.setEnabled(enabled)
         if blocked:
@@ -1186,12 +1185,8 @@ class NavigationPanelTool(ChisurfDockTool):
         if not hasattr(self, "_btn_next"):
             return
         cur = self.nav_list.currentRow()
-        self._btn_next.setEnabled(
-            any(not p.get("separator") for p in self.panels[cur + 1:])
-        )
-        self._btn_prev.setEnabled(
-            any(not p.get("separator") for p in self.panels[:max(cur, 0)])
-        )
+        self._btn_next.setEnabled(any(not p.get("separator") for p in self.panels[cur + 1 :]))
+        self._btn_prev.setEnabled(any(not p.get("separator") for p in self.panels[: max(cur, 0)]))
 
     def _on_search_changed(self, text: str) -> None:
         """Filter the nav list to panels whose name matches ``text``.

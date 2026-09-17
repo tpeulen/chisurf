@@ -28,6 +28,7 @@ cell = BUILTIN.cell
 # running code
 # ----------------------------------------------------------------------
 
+
 @line("run")
 def _run(shell, args: str):
     """Run a Python file. ``-i`` runs it in the interactive namespace."""
@@ -227,8 +228,12 @@ def _run_timeit(shell, statement: str, options):
             "TimeitResult",
             (),
             {
-                "best": best, "worst": max(per_loop), "average": mean,
-                "stdev": spread, "loops": number, "repeat": options.repeat,
+                "best": best,
+                "worst": max(per_loop),
+                "average": mean,
+                "stdev": spread,
+                "loops": number,
+                "repeat": options.repeat,
                 "timings": per_loop,
                 "__repr__": lambda self: f"<TimeitResult {_seconds(best)} per loop>",
             },
@@ -299,6 +304,7 @@ def _profile(shell, source: str):
 # the filesystem
 # ----------------------------------------------------------------------
 
+
 @line("pwd")
 def _pwd(shell, args: str):
     """Print the working directory."""
@@ -354,9 +360,7 @@ def _ls(shell, args: str):
     target = pathlib.Path(rest[0] if rest else ".").expanduser()
 
     try:
-        entries = sorted(
-            os.scandir(target), key=lambda e: (not e.is_dir(), e.name.lower())
-        )
+        entries = sorted(os.scandir(target), key=lambda e: (not e.is_dir(), e.name.lower()))
     except OSError as exc:
         raise MagicError(f"could not list {target}: {exc}") from exc
 
@@ -378,7 +382,7 @@ def _ls(shell, args: str):
         return None
 
     names = [entry.name + (os.sep if entry.is_dir() else "") for entry in entries]
-    shell.write(_columnise(names) )
+    shell.write(_columnise(names))
     return None
 
 
@@ -401,7 +405,7 @@ def _columnise(names: typing.Sequence[str], width: int = 80) -> str:
     rows = (len(names) + columns - 1) // columns
     lines = []
     for row in range(rows):
-        cells = names[row * columns:(row + 1) * columns]
+        cells = names[row * columns : (row + 1) * columns]
         lines.append("".join(name.ljust(longest) for name in cells).rstrip())
     return "\n".join(lines) + "\n"
 
@@ -428,6 +432,7 @@ def _writefile(shell, args: str, body: str):
 # the namespace
 # ----------------------------------------------------------------------
 
+
 def _user_names(shell) -> list[str]:
     """Return the interesting names in the user namespace.
 
@@ -442,14 +447,25 @@ def _user_names(shell) -> list[str]:
     from chisurf.core.console.transform import SHELL_OBJECT
 
     hidden = {
-        SHELL_OBJECT, "get_ipython", "In", "Out", "_ih", "_oh", "_", "__", "___",
-        "_i", "_ii", "_iii", "exit", "quit",
+        SHELL_OBJECT,
+        "get_ipython",
+        "In",
+        "Out",
+        "_ih",
+        "_oh",
+        "_",
+        "__",
+        "___",
+        "_i",
+        "_ii",
+        "_iii",
+        "exit",
+        "quit",
     }
     return sorted(
-        name for name, value in shell.user_ns.items()
-        if not name.startswith("_")
-        and name not in hidden
-        and not _is_module_or_builtin(value)
+        name
+        for name, value in shell.user_ns.items()
+        if not name.startswith("_") and name not in hidden and not _is_module_or_builtin(value)
     )
 
 
@@ -548,10 +564,7 @@ def _history(shell, args: str):
         needle = known.grep.lower()
         entries = [(n, s) for n, s in entries if needle in s.lower()]
 
-    lines = [
-        (f"{number:>4}: {source}" if known.numbers else source)
-        for number, source in entries
-    ]
+    lines = [(f"{number:>4}: {source}" if known.numbers else source) for number, source in entries]
     text = "\n".join(lines) + ("\n" if lines else "")
 
     if known.path:
@@ -565,6 +578,7 @@ def _history(shell, args: str):
 # ----------------------------------------------------------------------
 # introspection and configuration
 # ----------------------------------------------------------------------
+
 
 @line("pinfo")
 def _pinfo(shell, args: str):
@@ -795,6 +809,7 @@ def _edit(shell, args: str):
 # environment
 # ----------------------------------------------------------------------
 
+
 @line("env")
 def _env(shell, args: str):
     """Show, or set, environment variables."""
@@ -869,7 +884,8 @@ def _capture(shell, args: str, body: str):
             "CapturedIO",
             (),
             {
-                "stdout": out.getvalue(), "stderr": err.getvalue(),
+                "stdout": out.getvalue(),
+                "stderr": err.getvalue(),
                 "__repr__": lambda self: self.stdout,
                 "show": lambda self: shell.write(self.stdout),
             },
@@ -902,7 +918,6 @@ def _run_with(shell, body: str, interpreter: str):
     -------
     None
     """
-    import subprocess
     import tempfile
 
     with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False, encoding="utf-8") as handle:
@@ -941,8 +956,7 @@ def _latex(shell, args: str, body: str):
 def _javascript(shell, args: str, body: str):
     """Not supported: ChiSurf's console has no JavaScript engine."""
     raise MagicError(
-        "%%javascript needs a browser; ChiSurf's console renders Qt rich text, "
-        "not a web page"
+        "%%javascript needs a browser; ChiSurf's console renders Qt rich text, not a web page"
     )
 
 

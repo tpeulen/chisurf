@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.analysis.atom_order import (
     permute_atom_state,
     subset_atom_state,
@@ -40,9 +39,14 @@ from chimol.geometry.cartoon import (
 # --------------------------------------------------------------------------- #
 def _toy_atoms(n_res: int = 4, chains: tuple[str, ...] = ("A",)) -> np.ndarray:
     """A structured atom array with a real N/CA/C/O backbone per residue."""
-    dtype = np.dtype([
-        ("atom_name", "U4"), ("res_id", "i8"), ("chain", "U2"), ("xyz", "f8", 3),
-    ])
+    dtype = np.dtype(
+        [
+            ("atom_name", "U4"),
+            ("res_id", "i8"),
+            ("chain", "U2"),
+            ("xyz", "f8", 3),
+        ]
+    )
     rows = []
     for chain in chains:
         for res in range(1, n_res + 1):
@@ -90,7 +94,10 @@ def test_passing_the_map_changes_nothing_about_the_answer():
     ca = np.zeros((5, 3))
     fresh = _build_trace_ups(atoms, res_ids, ca, chain_ids)
     cached = _build_trace_ups(
-        atoms, res_ids, ca, chain_ids,
+        atoms,
+        res_ids,
+        ca,
+        chain_ids,
         index_map=backbone_index_map(atoms, res_ids, chain_ids),
     )
     assert np.allclose(fresh, cached, atol=0, rtol=0)
@@ -173,7 +180,7 @@ def test_caps_add_the_fan_triangles():
     capped = _extrusion_faces(5, 6, True, True)
     # Two fans of (s - 2) triangles each.
     assert capped.shape[0] == uncapped.shape[0] + 2 * (6 - 2)
-    assert capped[:uncapped.shape[0]].tolist() == uncapped.tolist()
+    assert capped[: uncapped.shape[0]].tolist() == uncapped.tolist()
 
 
 # --------------------------------------------------------------------------- #
@@ -192,22 +199,20 @@ def test_the_vectorised_sign_sweep_matches_the_loop():
     for _ in range(20):
         vectors = rng.normal(size=(40, 3))
         vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
-        assert np.allclose(
-            _flip_for_sign_continuity(vectors.copy()), _sign_sweep_by_hand(vectors)
-        )
+        assert np.allclose(_flip_for_sign_continuity(vectors.copy()), _sign_sweep_by_hand(vectors))
 
 
 def test_exactly_perpendicular_neighbours_take_the_scan():
     """Where the running-product identity does not hold, behaviour is preserved."""
-    vectors = np.array([
-        [1.0, 0.0, 0.0],
-        [-1.0, 0.0, 0.0],   # opposes -> flipped
-        [0.0, 1.0, 0.0],    # exactly perpendicular to the flipped predecessor
-        [0.0, -1.0, 0.0],
-    ])
-    assert np.allclose(
-        _flip_for_sign_continuity(vectors.copy()), _sign_sweep_by_hand(vectors)
+    vectors = np.array(
+        [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],  # opposes -> flipped
+            [0.0, 1.0, 0.0],  # exactly perpendicular to the flipped predecessor
+            [0.0, -1.0, 0.0],
+        ]
     )
+    assert np.allclose(_flip_for_sign_continuity(vectors.copy()), _sign_sweep_by_hand(vectors))
 
 
 # --------------------------------------------------------------------------- #
@@ -275,8 +280,8 @@ def test_frames_arriving_back_to_back_are_drafted(qapp):
 
     view = Viewer()
     try:
-        view._note_frame_change()      # first: nothing to compare against
-        view._note_frame_change()      # hard on its heels -> a scrub
+        view._note_frame_change()  # first: nothing to compare against
+        view._note_frame_change()  # hard on its heels -> a scrub
         assert view._draft_quality is True
     finally:
         view.deleteLater()
@@ -296,7 +301,7 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
         clock[0] += 0.01
         view._note_frame_change()
         assert view._draft_quality is True
-        clock[0] += 5.0                # the user stopped scrubbing
+        clock[0] += 5.0  # the user stopped scrubbing
         view._note_frame_change()
         assert view._draft_quality is False
     finally:
@@ -335,7 +340,7 @@ def test_interpolation_lands_between_the_two_frames(qapp):
     view = Viewer()
     try:
         frames = np.zeros((3, 4, 3), dtype=float)
-        frames[1, :, 0] = 10.0          # frame 1 is 10 A along x
+        frames[1, :, 0] = 10.0  # frame 1 is 10 A along x
         frames[2, :, 0] = 20.0
         view.add_coordinates(frames[0])
         view.set_frames(frames)
@@ -347,9 +352,7 @@ def test_interpolation_lands_between_the_two_frames(qapp):
 
         def shown_at(position):
             view.set_frame_position(position)
-            return np.asarray(
-                view._get_active_state().all_atom_coords, dtype=float
-            )
+            return np.asarray(view._get_active_state().all_atom_coords, dtype=float)
 
         assert shown_at(0.0) == pytest.approx(stored[0])
         assert shown_at(0.5) == pytest.approx(0.5 * (stored[0] + stored[1]))
@@ -413,7 +416,6 @@ def _ring_shape(s: int):
     return verts, norms
 
 
-
 # The pair of tests that used to live here compared the compiled path against a
 # pure-Python one and forced `_HAVE_NUMBA = False` to exercise the second. Both
 # are gone with the branch they tested: numba is a hard requirement now, so
@@ -445,12 +447,16 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
 
     view = Viewer()
@@ -513,12 +519,16 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
 
     view = Viewer()

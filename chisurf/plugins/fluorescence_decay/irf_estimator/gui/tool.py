@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 import os
 import tempfile
@@ -11,16 +10,13 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea, DockSplitter
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 from ..api.models import IRFEstimationSettings
 from ..core.estimation import estimate_irf as _estimate_irf
-from chisurf.gui import dialogs
-
-from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
-
 
 # The tool used to carry its own ``HelpDialog`` — a hard-coded summary plus the
 # CLI reference. It is gone: the shared ``?`` modal renders ``gui/help.md``, so
@@ -104,9 +100,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self._status_bar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._status_bar)
         self.status_time_label = QtWidgets.QLabel("Time axis: Not available")
-        self.status_time_label.setStyleSheet(
-            "color: #888; font-style: italic; padding: 0 8px;"
-        )
+        self.status_time_label.setStyleSheet("color: #888; font-style: italic; padding: 0 8px;")
         self._status_bar.addPermanentWidget(self.status_time_label)
         self._status_bar.showMessage("Ready")
 
@@ -143,9 +137,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.dt_spinbox.setValue(1.0)
         self.dt_spinbox.setDecimals(4)
         self.dt_spinbox.setSingleStep(0.01)
-        self.dt_spinbox.setToolTip(
-            "Time per channel in nanoseconds (automatically set from data)"
-        )
+        self.dt_spinbox.setToolTip("Time per channel in nanoseconds (automatically set from data)")
         self.dt_spinbox.setEnabled(False)
         self.dt_spinbox.valueChanged.connect(lambda v: setattr(self, "dt", v))
         grid.addWidget(self.dt_spinbox, 0, 1)
@@ -155,9 +147,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.window_length_spinbox.setRange(5, 500)
         self.window_length_spinbox.setValue(11)
         self.window_length_spinbox.setSingleStep(2)
-        self.window_length_spinbox.setToolTip(
-            "Savitzky-Golay filter window length (must be odd)"
-        )
+        self.window_length_spinbox.setToolTip("Savitzky-Golay filter window length (must be odd)")
         self.window_length_spinbox.valueChanged.connect(self._on_parameter_changed)
         grid.addWidget(self.window_length_spinbox, 1, 1)
 
@@ -178,9 +168,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.rl_iterations_spinbox.setRange(5, 2000)
         self.rl_iterations_spinbox.setValue(500)
         self.rl_iterations_spinbox.setSingleStep(10)
-        self.rl_iterations_spinbox.setToolTip(
-            "Richardson-Lucy deconvolution iterations"
-        )
+        self.rl_iterations_spinbox.setToolTip("Richardson-Lucy deconvolution iterations")
         self.rl_iterations_spinbox.valueChanged.connect(self._on_parameter_changed)
         grid.addWidget(self.rl_iterations_spinbox, 3, 1)
 
@@ -202,9 +190,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.background_spinbox.setValue(0.0)
         self.background_spinbox.setDecimals(2)
         self.background_spinbox.setSingleStep(1.0)
-        self.background_spinbox.setToolTip(
-            "Manual background offset (0 = auto-estimate)"
-        )
+        self.background_spinbox.setToolTip("Manual background offset (0 = auto-estimate)")
         self.background_spinbox.valueChanged.connect(self._on_background_changed)
         grid.addWidget(self.background_spinbox, 5, 1)
 
@@ -212,9 +198,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.range_selection_checkbox.setToolTip(
             "Select a range in the decay plot to use for IRF estimation"
         )
-        self.range_selection_checkbox.stateChanged.connect(
-            self._on_range_selection_changed
-        )
+        self.range_selection_checkbox.stateChanged.connect(self._on_range_selection_changed)
         grid.addWidget(self.range_selection_checkbox, 6, 0)
 
         self.auto_update_checkbox = QtWidgets.QCheckBox("\U0001f504 Auto-Update IRF")
@@ -300,24 +284,18 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.results_panel = results_panel
         self.plot_panel = plot_panel
 
-        self.dock_area._all_widgets.extend(
-            [params_panel, results_panel, plot_panel]
-        )
+        self.dock_area._all_widgets.extend([params_panel, results_panel, plot_panel])
         self.dock_area._tab_names[params_panel] = "IRF Est Parameters"
         self.dock_area._tab_names[results_panel] = "Est Results"
         self.dock_area._tab_names[plot_panel] = "Plots"
 
-        right_splitter = DockSplitter(
-            QtCore.Qt.Orientation.Vertical, self.dock_area
-        )
+        right_splitter = DockSplitter(QtCore.Qt.Orientation.Vertical, self.dock_area)
         right_splitter.addWidget(plot_panel)
         right_splitter.addWidget(results_panel)
         right_splitter.setStretchFactor(0, 3)
         right_splitter.setStretchFactor(1, 1)
 
-        main_splitter = DockSplitter(
-            QtCore.Qt.Orientation.Horizontal, self.dock_area
-        )
+        main_splitter = DockSplitter(QtCore.Qt.Orientation.Horizontal, self.dock_area)
         main_splitter.addWidget(params_panel)
         main_splitter.addWidget(right_splitter)
         main_splitter.setStretchFactor(0, 1)
@@ -415,9 +393,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         # Adjacent stretches share the slack rather than adding, so the helper
         # must not add a second one and strand the pair mid-bar.
         toolbar.setProperty("_chisurf_right_spacer", True)
-        attach_help_and_guide(
-            self, toolbar, title="Blind IRF estimation — help"
-        )
+        attach_help_and_guide(self, toolbar, title="Blind IRF estimation — help")
 
     # ------------------------------------------------------------------
     # Dock context menu
@@ -463,9 +439,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         try:
             settings = QtCore.QSettings("chisurf", "IRFEstimatorTool")
             layout_state = self.dock_area.get_layout_state()
-            settings.setValue(
-                "dock_layout", json.dumps(layout_state, sort_keys=True)
-            )
+            settings.setValue("dock_layout", json.dumps(layout_state, sort_keys=True))
             settings.sync()
         except Exception:
             pass
@@ -506,11 +480,14 @@ class IRFEstimatorTool(ChisurfDockTool):
         if file_path is None or isinstance(file_path, bool):
             try:
                 import chisurf as cs
+
                 start_dir = str(getattr(cs, "working_path", "") or "")
             except Exception:
                 start_dir = ""
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, "Load Decay File", start_dir,
+                self,
+                "Load Decay File",
+                start_dir,
                 "VV/VH Files (*.dat);;All Files (*)",
             )
             if not file_path:
@@ -521,6 +498,7 @@ class IRFEstimatorTool(ChisurfDockTool):
 
         try:
             from chisurf.core.fio import read_vv_vh
+
             data, metadata = read_vv_vh(file_path, return_metadata=True)
             data = np.asarray(data, dtype=np.float32)
 
@@ -547,7 +525,8 @@ class IRFEstimatorTool(ChisurfDockTool):
 
         except Exception as e:
             dialogs.error(
-                self, "Error Loading File",
+                self,
+                "Error Loading File",
                 f"Failed to load decay file:\n{str(e)}",
             )
             self.data_info_label.setText(f"Error: {str(e)}")
@@ -566,7 +545,8 @@ class IRFEstimatorTool(ChisurfDockTool):
             self.dataset_selector.show()
         except Exception as e:
             dialogs.error(
-                self, "Error",
+                self,
+                "Error",
                 f"Failed to open dataset selector:\n{str(e)}",
             )
 
@@ -578,7 +558,8 @@ class IRFEstimatorTool(ChisurfDockTool):
                 self._load_dataset(selected)
         except Exception as e:
             dialogs.error(
-                self, "Error",
+                self,
+                "Error",
                 f"Failed to load selected dataset:\n{str(e)}",
             )
 
@@ -597,13 +578,9 @@ class IRFEstimatorTool(ChisurfDockTool):
                 self.current_file_path = getattr(dataset, "filename", None)
                 name = getattr(dataset, "name", "Unnamed")
                 exp = getattr(dataset, "experiment", None)
-                exp_name = (
-                    getattr(exp, "name", "Uncategorized") if exp else "Uncategorized"
-                )
+                exp_name = getattr(exp, "name", "Uncategorized") if exp else "Uncategorized"
                 self.data_info_label.setText(f"Dataset: {exp_name} - {name}")
-                self._process_decay_data(
-                    np.column_stack((x_data, y_data)), dt
-                )
+                self._process_decay_data(np.column_stack((x_data, y_data)), dt)
             elif hasattr(dataset, "data"):
                 data = np.asarray(dataset.data, dtype=np.float32)
                 dt = float(getattr(dataset, "dt", 1.0))
@@ -615,32 +592,26 @@ class IRFEstimatorTool(ChisurfDockTool):
                     if len(decay_data) > 1:
                         dt = float(np.mean(np.diff(decay_data[:, 0])))
                 else:
-                    raise ValueError(
-                        f"Unsupported data shape: {data.shape}"
-                    )
+                    raise ValueError(f"Unsupported data shape: {data.shape}")
                 self.current_dataset = dataset
                 self.current_file_path = getattr(dataset, "filename", None)
                 name = getattr(dataset, "name", "Unnamed")
                 exp = getattr(dataset, "experiment", None)
-                exp_name = (
-                    getattr(exp, "name", "Uncategorized") if exp else "Uncategorized"
-                )
+                exp_name = getattr(exp, "name", "Uncategorized") if exp else "Uncategorized"
                 self.data_info_label.setText(f"Dataset: {exp_name} - {name}")
                 self._process_decay_data(decay_data, dt)
             else:
                 raise ValueError(
-                    "Unsupported dataset format. "
-                    "Expected 'x' and 'y' or 'data' attributes."
+                    "Unsupported dataset format. Expected 'x' and 'y' or 'data' attributes."
                 )
         except Exception as e:
             dialogs.error(
-                self, "Error",
+                self,
+                "Error",
                 f"Failed to load dataset:\n{str(e)}",
             )
 
-    def _process_decay_data(
-        self, decay_data: np.ndarray, dt: float
-    ) -> None:
+    def _process_decay_data(self, decay_data: np.ndarray, dt: float) -> None:
         """Process loaded decay data (common path for file and dataset)."""
         decay_data = np.asarray(decay_data, dtype=np.float32)
         if decay_data.ndim == 1:
@@ -681,9 +652,7 @@ class IRFEstimatorTool(ChisurfDockTool):
     def estimate_irf(self) -> None:
         """Estimate IRF from loaded decay data with full iterations."""
         if self.decay_data is None:
-            dialogs.warning(
-                self, "No Data", "Please load a decay file first."
-            )
+            dialogs.warning(self, "No Data", "Please load a decay file first.")
             return
 
         if self.is_estimating:
@@ -717,17 +686,12 @@ class IRFEstimatorTool(ChisurfDockTool):
             self._update_all_plots()
             self._update_control_states()
 
-            self._status_bar.showMessage(
-                "IRF estimation completed", 5000
-            )
+            self._status_bar.showMessage("IRF estimation completed", 5000)
         except Exception as e:
-            dialogs.error(
-                self, "Estimation Error", str(e)
-            )
-            self._status_bar.showMessage(
-                "IRF estimation failed", 5000
-            )
+            dialogs.error(self, "Estimation Error", str(e))
+            self._status_bar.showMessage("IRF estimation failed", 5000)
             import traceback
+
             traceback.print_exc()
         finally:
             self.is_estimating = False
@@ -796,9 +760,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         )
 
         if self.manual_background > 0:
-            decay_corrected = np.maximum(
-                self.decay_data_original - self.manual_background, 0.1
-            )
+            decay_corrected = np.maximum(self.decay_data_original - self.manual_background, 0.1)
             self.main_plot.line(
                 self.channel_axis,
                 decay_corrected,
@@ -809,12 +771,8 @@ class IRFEstimatorTool(ChisurfDockTool):
             )
 
         if self.irf_data is not None:
-            irf_scaled = self.irf_data * (
-                self.decay_data.max() / self.irf_data.max()
-            )
-            irf_thresholded = np.where(
-                irf_scaled >= 1.0, irf_scaled, np.nan
-            )
+            irf_scaled = self.irf_data * (self.decay_data.max() / self.irf_data.max())
+            irf_thresholded = np.where(irf_scaled >= 1.0, irf_scaled, np.nan)
             self.main_plot.line(
                 self.channel_axis,
                 irf_thresholded,
@@ -842,9 +800,7 @@ class IRFEstimatorTool(ChisurfDockTool):
                 kernel = np.maximum(kernel, 0)
                 kernel = kernel / kernel.sum()
 
-                forward = partial_convolution_fft(
-                    self.irf_data.reshape(-1, 1), kernel, axis=0
-                )
+                forward = partial_convolution_fft(self.irf_data.reshape(-1, 1), kernel, axis=0)
                 forward += self.irf_params["C"]
 
                 self.main_plot.line(
@@ -885,26 +841,16 @@ class IRFEstimatorTool(ChisurfDockTool):
 
     def _on_parameter_changed(self) -> None:
         """Handle estimation parameter changes with optional auto-update."""
-        if (
-            self.auto_update_enabled
-            and self.irf_data is not None
-            and not self.is_estimating
-        ):
+        if self.auto_update_enabled and self.irf_data is not None and not self.is_estimating:
             self._estimate_irf_quick()
 
     def _on_background_changed(self, value: float) -> None:
         """Handle manual background value changes."""
         self.manual_background = value
         if self.decay_data_original is not None:
-            self.decay_data = np.maximum(
-                self.decay_data_original - self.manual_background, 0.0
-            )
+            self.decay_data = np.maximum(self.decay_data_original - self.manual_background, 0.0)
             self._update_all_plots()
-            if (
-                self.auto_update_enabled
-                and self.irf_data is not None
-                and not self.is_estimating
-            ):
+            if self.auto_update_enabled and self.irf_data is not None and not self.is_estimating:
                 self._estimate_irf_quick()
 
     def _on_range_selection_changed(self) -> None:
@@ -935,19 +881,20 @@ class IRFEstimatorTool(ChisurfDockTool):
     def save_irf(self) -> None:
         """Save the estimated IRF in VV/VH format."""
         if self.irf_data is None or len(self.irf_data) == 0:
-            dialogs.warning(
-                self, "No IRF", "Please estimate an IRF first."
-            )
+            dialogs.warning(self, "No IRF", "Please estimate an IRF first.")
             return
 
         try:
             import chisurf as cs
+
             start_dir = str(getattr(cs, "working_path", "") or "")
         except Exception:
             start_dir = ""
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save IRF", start_dir,
+            self,
+            "Save IRF",
+            start_dir,
             "VV/VH Files (*.dat);;All Files (*)",
         )
         if not file_path:
@@ -957,37 +904,30 @@ class IRFEstimatorTool(ChisurfDockTool):
 
         try:
             from chisurf.core.fio import write_vv_vh
+
             irf_data = np.asarray(self.irf_data).flatten()
             write_vv_vh(file_path, irf_data, irf_data)
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-                raise RuntimeError(
-                    "Failed to save IRF file or file is empty"
-                )
+                raise RuntimeError("Failed to save IRF file or file is empty")
             dialogs.information(
-                self, "Success",
+                self,
+                "Success",
                 f"IRF successfully saved to:\n{file_path}",
             )
         except Exception as e:
-            dialogs.error(
-                self, "Save Error", str(e)
-            )
+            dialogs.error(self, "Save Error", str(e))
 
     def add_to_chisurf(self) -> None:
         """Transfer the estimated IRF to ChiSurf as a dataset."""
         if self.irf_data is None or len(self.irf_data) == 0:
-            dialogs.warning(
-                self, "No IRF", "Please estimate an IRF first."
-            )
+            dialogs.warning(self, "No IRF", "Please estimate an IRF first.")
             return
 
         irf_data = np.asarray(self.irf_data, dtype=float).flatten()
         if len(irf_data) == 0:
             return
         if not np.isfinite(irf_data).all():
-            dialogs.error(
-                self, "Error",
-                "IRF data contains NaN or infinite values."
-            )
+            dialogs.error(self, "Error", "IRF data contains NaN or infinite values.")
             return
 
         try:
@@ -997,9 +937,7 @@ class IRFEstimatorTool(ChisurfDockTool):
             os.close(fd)
 
             temp_dir = os.path.dirname(tmp_path)
-            temp_file = os.path.join(
-                temp_dir, f"temp_{os.urandom(8).hex()}.dat"
-            )
+            temp_file = os.path.join(temp_dir, f"temp_{os.urandom(8).hex()}.dat")
             write_vv_vh(temp_file, irf_data, irf_data)
 
             if os.path.exists(tmp_path):
@@ -1007,6 +945,7 @@ class IRFEstimatorTool(ChisurfDockTool):
             os.rename(temp_file, tmp_path)
 
             import chisurf as cs
+
             filename = Path(tmp_path).name
 
             if hasattr(cs, "core") and hasattr(cs.core, "actions"):
@@ -1037,17 +976,20 @@ class IRFEstimatorTool(ChisurfDockTool):
                     },
                 )
                 dialogs.information(
-                    self, "Success",
+                    self,
+                    "Success",
                     f"IRF '{filename}' has been transferred to ChiSurf.",
                 )
             else:
                 dialogs.information(
-                    self, "IRF Ready",
+                    self,
+                    "IRF Ready",
                     f"IRF saved to:\n{tmp_path}\n\n"
                     "You can now load this file as an IRF in your analysis.",
                 )
         except Exception as e:
             dialogs.error(
-                self, "Error",
+                self,
+                "Error",
                 f"Failed to transfer IRF:\n{str(e)}",
             )

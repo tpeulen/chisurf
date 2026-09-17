@@ -44,12 +44,7 @@ _GUI_ROOTS = ("chisurf/plugins", "chisurf/gui")
 
 def _is_gui_module(path: Path) -> bool:
     sp = path.as_posix()
-    return (
-        "/gui" in sp
-        or sp.endswith("tool.py")
-        or "wizard" in sp
-        or "widget" in sp
-    )
+    return "/gui" in sp or sp.endswith("tool.py") or "wizard" in sp or "widget" in sp
 
 
 def _call_name(node: ast.Call) -> str | None:
@@ -124,9 +119,7 @@ def test_guard_detects_a_planted_violation(tmp_path):
     """The guard itself catches a construction-time MMFDB write (meta-test)."""
     planted = tmp_path / "gui_bad.py"
     planted.write_text(
-        "class W:\n"
-        "    def __init__(self):\n"
-        "        register_result(kind='x')\n",
+        "class W:\n    def __init__(self):\n        register_result(kind='x')\n",
         encoding="utf-8",
     )
     assert _violations_in_file(planted) == [("register_result", 3)]

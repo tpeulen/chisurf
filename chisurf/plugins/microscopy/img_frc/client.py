@@ -43,9 +43,7 @@ class FrcClient:
         """Switch this client to a ZMQ transport connected to ``host:port``."""
         from chisurf.server.transport.zmq import ZmqClient
 
-        self._client = ZmqClient(
-            host=self._host, cmd_port=self._cmd_port, pub_port=self._pub_port
-        )
+        self._client = ZmqClient(host=self._host, cmd_port=self._cmd_port, pub_port=self._pub_port)
         return self._client
 
     def _call(self, method: str, params: dict[str, Any] | None = None) -> Any:

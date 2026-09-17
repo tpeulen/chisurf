@@ -12,7 +12,8 @@ unchanged: ``commitRequested`` / ``dataChanged`` signals, ``set_data(dict)``,
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
@@ -48,7 +49,9 @@ def _section_for_field(
 
     if widget == "choice":
         return ds.ChoiceSection(
-            attr=name, label=label, options=tuple(getattr(fs, "choices", ())),
+            attr=name,
+            label=label,
+            options=tuple(getattr(fs, "choices", ())),
             description=tooltip,
         )
     if widget == "bool":
@@ -59,8 +62,12 @@ def _section_for_field(
         )
     if widget == "text":
         return ds.ValueSection(
-            attr=name, label=label, kind="text", read_only=read_only,
-            placeholder=placeholder, description=tooltip,
+            attr=name,
+            label=label,
+            kind="text",
+            read_only=read_only,
+            placeholder=placeholder,
+            description=tooltip,
         )
     if widget == "date":
         return ds.ValueSection(
@@ -68,8 +75,12 @@ def _section_for_field(
         )
     # str / fallback
     return ds.ValueSection(
-        attr=name, label=label, kind="str", read_only=read_only,
-        placeholder=placeholder, description=tooltip,
+        attr=name,
+        label=label,
+        kind="str",
+        read_only=read_only,
+        placeholder=placeholder,
+        description=tooltip,
     )
 
 
@@ -99,10 +110,7 @@ class _EntityModel:
 
     def __setattr__(self, name: str, value: Any) -> None:
         object.__setattr__(self, name, value)
-        if (
-            name in getattr(self, "_field_names", ())
-            and not getattr(self, "_suspend", True)
-        ):
+        if name in getattr(self, "_field_names", ()) and not getattr(self, "_suspend", True):
             cb = getattr(self, "_on_commit", None)
             if cb is not None:
                 cb()
@@ -177,9 +185,7 @@ class EntityForm(QtWidgets.QWidget):
         object.__setattr__(self._model, "_suspend", True)
         try:
             for fs in self._specs:
-                object.__setattr__(
-                    self._model, fs.name, self._coerce_in(fs, data.get(fs.name))
-                )
+                object.__setattr__(self._model, fs.name, self._coerce_in(fs, data.get(fs.name)))
             self._form.sync_fields()
         finally:
             object.__setattr__(self._model, "_suspend", False)

@@ -115,9 +115,7 @@ def test_state_scan_prefers_the_generating_state_count():
 
 def test_rpc_handlers_round_trip_through_json():
     trace, _ = make_trace(1200)
-    payload = fit_handler(
-        traces=trace.tolist(), settings={"n_states": 2, "time_step": 0.001}
-    )
+    payload = fit_handler(traces=trace.tolist(), settings={"n_states": 2, "time_step": 0.001})
     # Must survive serialisation: this is what crosses the ZMQ boundary.
     restored = json.loads(json.dumps(payload))
     assert restored["n_states"] == 2

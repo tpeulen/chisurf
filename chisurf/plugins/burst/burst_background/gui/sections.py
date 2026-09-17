@@ -16,10 +16,10 @@ import numpy as np
 from qtpy import QtWidgets
 
 from chisurf.gui import chiplot as cp
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tool_buttons import styled_tool_button
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -161,8 +161,13 @@ class _IhtPlotSection(QtWidgets.QWidget):
             y = np.asarray(s["y"], dtype=float)
             if s.get("symbol"):
                 self.plot.scatter(
-                    x, y, size=3, brush=(*_rgb(s["color"]), 90),
-                    pen=None, symbol="o", name=s.get("name"),
+                    x,
+                    y,
+                    size=3,
+                    brush=(*_rgb(s["color"]), 90),
+                    pen=None,
+                    symbol="o",
+                    name=s.get("name"),
                 )
             else:
                 self.plot.line(x, y, pen=s["color"], width=s.get("width", 2))
@@ -184,7 +189,8 @@ class _IhtPlotSection(QtWidgets.QWidget):
             return
         region = self.plot.region(
             (math.log10(low), math.log10(high)),
-            brush=(255, 255, 255, 26), movable=True,
+            brush=(255, 255, 255, 26),
+            movable=True,
         )
         region.on_change(self._on_dragged, final=True)
         self._region = region
@@ -195,8 +201,8 @@ class _IhtPlotSection(QtWidgets.QWidget):
             return
         self._updating = True
         try:
-            self._model.fit_from_ms = float(10.0 ** low)
-            self._model.fit_to_ms = float(10.0 ** high)
+            self._model.fit_from_ms = float(10.0**low)
+            self._model.fit_to_ms = float(10.0**high)
             self._model.update()
         finally:
             self._updating = False

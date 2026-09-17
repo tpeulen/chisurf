@@ -6,6 +6,7 @@ burst search criteria using the TTTR object's burst_search method.
 
 import numpy as np
 import tttrlib
+
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 
 
@@ -15,7 +16,7 @@ def cusum_filter(
     background_rate: int,
     sb_ratio: float,
     alpha: float = 0.05,
-    beta: float = 0.05
+    beta: float = 0.05,
 ) -> np.ndarray:
     """Filter photons based on CUSUM/SPRT burst search criteria.
 
@@ -44,12 +45,7 @@ def cusum_filter(
     """
     # Call the TTTR object's burst_search method in CUSUM mode
     start_stop = tttr.burst_search(
-        L=min_ph,
-        m=background_rate,
-        T=sb_ratio,
-        mode="cusum_sprt",
-        alpha=alpha,
-        beta=beta
+        L=min_ph, m=background_rate, T=sb_ratio, mode="cusum_sprt", alpha=alpha, beta=beta
     )
 
     # Reshape the result into a 2D array of start-stop pairs

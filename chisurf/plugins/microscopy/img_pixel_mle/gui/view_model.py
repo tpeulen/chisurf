@@ -20,10 +20,10 @@ import os
 import pathlib
 from collections.abc import Callable
 
-from chisurf.core.datastore import numeric_column, row_count, write_csv_table
 import numpy as np
 
-from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
+from chisurf.core.datastore import numeric_column, row_count, write_csv_table
+from chisurf.core.fluorescence.mle.fit2x import Fit2xModel, parameter_names_of
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
 from ..api.models import PixelMleSettings as ApiSettings
@@ -45,16 +45,16 @@ _FIT_MODEL_LABELS = (
 #: (fit25 fixes its four candidate lifetimes, fit24 frees tau1/tau2), so it lives
 #: in :data:`_MODEL_FIXED_DEFAULT`.
 _PARAM_META = {
-    "tau":    {"label": "τ (ns)",  "default": 2.0,  "min": 0.0, "max": 100.0},
-    "tau1":   {"label": "τ1 (ns)", "default": 2.0,  "min": 0.0, "max": 100.0},
-    "tau2":   {"label": "τ2 (ns)", "default": 0.5,  "min": 0.0, "max": 100.0},
-    "tau3":   {"label": "τ3 (ns)", "default": 4.0,  "min": 0.0, "max": 100.0},
-    "tau4":   {"label": "τ4 (ns)", "default": 8.0,  "min": 0.0, "max": 100.0},
-    "gamma":  {"label": "γ",       "default": 0.0,  "min": 0.0, "max": 1.0},
-    "A2":     {"label": "A2",      "default": 0.5,  "min": 0.0, "max": 1.0},
-    "offset": {"label": "offset",  "default": 0.0,  "min": 0.0, "max": 1e6},
-    "r0":     {"label": "r0",      "default": 0.38, "min": 0.0, "max": 0.4},
-    "rho":    {"label": "ρ (ns)",  "default": 1.0,  "min": 0.0, "max": 1000.0},
+    "tau": {"label": "τ (ns)", "default": 2.0, "min": 0.0, "max": 100.0},
+    "tau1": {"label": "τ1 (ns)", "default": 2.0, "min": 0.0, "max": 100.0},
+    "tau2": {"label": "τ2 (ns)", "default": 0.5, "min": 0.0, "max": 100.0},
+    "tau3": {"label": "τ3 (ns)", "default": 4.0, "min": 0.0, "max": 100.0},
+    "tau4": {"label": "τ4 (ns)", "default": 8.0, "min": 0.0, "max": 100.0},
+    "gamma": {"label": "γ", "default": 0.0, "min": 0.0, "max": 1.0},
+    "A2": {"label": "A2", "default": 0.5, "min": 0.0, "max": 1.0},
+    "offset": {"label": "offset", "default": 0.0, "min": 0.0, "max": 1e6},
+    "r0": {"label": "r0", "default": 0.38, "min": 0.0, "max": 0.4},
+    "rho": {"label": "ρ (ns)", "default": 1.0, "min": 0.0, "max": 1000.0},
 }
 
 #: Default fixed mask per model (1 = fixed). fit23 frees τ only; fit24 frees the
@@ -113,8 +113,11 @@ class PixelMleViewModel(MleObserverMixin):
             # Insert the model combo + parameter panel just before "IRF
             # preparation" (falls back to appending if the anchor is absent).
             at = next(
-                (i for i, s in enumerate(rows)
-                 if s.get("type") == "panel" and str(s.get("title", "")).startswith("IRF")),
+                (
+                    i
+                    for i, s in enumerate(rows)
+                    if s.get("type") == "panel" and str(s.get("title", "")).startswith("IRF")
+                ),
                 len(rows),
             )
             rows[at:at] = [self._fit_model_choice_dict(), self._fit_param_panel_dict()]
@@ -134,13 +137,16 @@ class PixelMleViewModel(MleObserverMixin):
     def _fit_model_choice_dict(self) -> dict:
         """Build the fit-model combo section (a ``choice`` bound to ``fit_model``)."""
         return {
-            "type": "choice", "attr": "fit_model", "call": "set_fit_model",
-            "label": "Fit model", "options": list(_FIT_MODELS),
+            "type": "choice",
+            "attr": "fit_model",
+            "call": "set_fit_model",
+            "label": "Fit model",
+            "options": list(_FIT_MODELS),
             "labels": list(_FIT_MODEL_LABELS),
             "description": "Per-pixel fit2x estimator. fit23 = one lifetime + "
-                           "anisotropy; fit24 = bi-exponential; fit25 = pick the "
-                           "best of four fixed lifetimes. The τ map is x[0] for "
-                           "every model.",
+            "anisotropy; fit24 = bi-exponential; fit25 = pick the "
+            "best of four fixed lifetimes. The τ map is x[0] for "
+            "every model.",
         }
 
     def _fit_param_panel_dict(self) -> dict:
@@ -149,20 +155,32 @@ class PixelMleViewModel(MleObserverMixin):
         sections = []
         for i, nm in enumerate(names):
             meta = _PARAM_META.get(nm, {})
-            sections.append({
-                "type": "value", "attr": f"p{i}_value", "kind": "float",
-                "label": meta.get("label", nm), "decimals": 3,
-                "minimum": float(meta.get("min", 0.0)),
-                "maximum": float(meta.get("max", 1e6)),
-                "description": f"Initial value of {nm}.",
-            })
-            sections.append({
-                "type": "toggle", "attr": f"p{i}_fix", "label": "fix",
-                "description": f"Hold {nm} fixed during the fit.",
-            })
+            sections.append(
+                {
+                    "type": "value",
+                    "attr": f"p{i}_value",
+                    "kind": "float",
+                    "label": meta.get("label", nm),
+                    "decimals": 3,
+                    "minimum": float(meta.get("min", 0.0)),
+                    "maximum": float(meta.get("max", 1e6)),
+                    "description": f"Initial value of {nm}.",
+                }
+            )
+            sections.append(
+                {
+                    "type": "toggle",
+                    "attr": f"p{i}_fix",
+                    "label": "fix",
+                    "description": f"Hold {nm} fixed during the fit.",
+                }
+            )
         return {
-            "type": "panel", "title": f"Fit parameters ({self._fit_model})",
-            "n_col": 2, "collapsed": False, "sections": sections,
+            "type": "panel",
+            "title": f"Fit parameters ({self._fit_model})",
+            "n_col": 2,
+            "collapsed": False,
+            "sections": sections,
         }
 
     # ── fit-model selection ──
@@ -309,9 +327,7 @@ class PixelMleViewModel(MleObserverMixin):
     micro_time_start = scalar(
         "micro_time_start", int, "Fit-window start (binned micro-time channel)."
     )
-    micro_time_stop = scalar(
-        "micro_time_stop", int, "Fit-window stop (binned micro-time channel)."
-    )
+    micro_time_stop = scalar("micro_time_stop", int, "Fit-window stop (binned micro-time channel).")
     micro_time_binning = scalar("micro_time_binning", int, "Micro-time down-binning factor.")
     irf_threshold = scalar(
         "irf_threshold", float, "IRF threshold fraction (bins below are zeroed)."
@@ -352,6 +368,7 @@ class PixelMleViewModel(MleObserverMixin):
             self.roi = None
             self.status_text = f"Could not read region: {exc}"
         self.notify("roi")
+
     tau = scalar("tau", float, "Initial lifetime (ns).")
     gamma = scalar("gamma", float, "Initial scatter fraction.")
     r0 = scalar("r0", float, "Initial fundamental anisotropy.")
@@ -554,13 +571,16 @@ class PixelMleViewModel(MleObserverMixin):
         out_dir = os.path.dirname(path) or "."
         stem = pathlib.Path(path).stem
         try:
-            write_csv_table(os.path.join(out_dir, f"{stem}_pixel_mle.csv"), dataframe, delimiter=",")
+            write_csv_table(
+                os.path.join(out_dir, f"{stem}_pixel_mle.csv"), dataframe, delimiter=","
+            )
         except Exception:
             logger.debug("CSV export failed for %s", path, exc_info=True)
 
 
 def _slot_value_property(i: int):
     """Make a float property bound to slot *i* of the active model's start vector."""
+
     def getter(self: PixelMleViewModel) -> float:
         x0, _ = self._ensure_model_params(self._fit_model)
         return float(x0[i]) if i < len(x0) else 0.0
@@ -575,6 +595,7 @@ def _slot_value_property(i: int):
 
 def _slot_fix_property(i: int):
     """Make a bool property bound to slot *i* of the active model's fixed mask."""
+
     def getter(self: PixelMleViewModel) -> bool:
         _, fx = self._ensure_model_params(self._fit_model)
         return bool(fx[i]) if i < len(fx) else False

@@ -1,7 +1,9 @@
 """Contract tests for the support-plane scans (RF-628, RF-633..RF-635)."""
-import utils
-import unittest
+
 import pathlib
+import unittest
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -9,9 +11,9 @@ utils.set_search_paths(TOPDIR)
 import numpy as np
 
 import chisurf.core.data
-import chisurf.core.models.parse
 import chisurf.core.fitting.fit
 import chisurf.core.fitting.support_plane as support_plane
+import chisurf.core.models.parse
 
 
 def make_fit(n_points: int = 32):
@@ -28,13 +30,12 @@ def make_fit(n_points: int = 32):
         A fit whose model exposes the free parameters ``a`` and ``c``.
     """
     x_data = np.linspace(0, 32, n_points)
-    y_data = 3.1 + 1.2 * x_data ** 2.0
+    y_data = 3.1 + 1.2 * x_data**2.0
     data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=np.ones_like(y_data))
     fit = chisurf.core.fitting.fit.FitGroup(
-        data=chisurf.core.data.DataGroup([data]),
-        model_class=chisurf.core.models.parse.ParseModel
+        data=chisurf.core.data.DataGroup([data]), model_class=chisurf.core.models.parse.ParseModel
     )
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.fit_range = 0, len(fit.model.y) - 1
     fit.model.update()
     fit.run()
@@ -64,13 +65,12 @@ def make_noisy_fit(sign: float = 1.0, n_points: int = 64):
     x_data = np.linspace(0, 32, n_points)
     sigma = 5.0
     residual = sigma * np.sin(np.arange(n_points) * 1.7)
-    y_data = 3.1 + sign * 1.2 * x_data ** 2.0 + residual
+    y_data = 3.1 + sign * 1.2 * x_data**2.0 + residual
     data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=np.full_like(y_data, sigma))
     fit = chisurf.core.fitting.fit.FitGroup(
-        data=chisurf.core.data.DataGroup([data]),
-        model_class=chisurf.core.models.parse.ParseModel
+        data=chisurf.core.data.DataGroup([data]), model_class=chisurf.core.models.parse.ParseModel
     )
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.fit_range = 0, len(fit.model.y) - 1
     fit.model.update()
     fit.run()
@@ -83,10 +83,10 @@ class AdaptiveScanBoundaryTests(unittest.TestCase):
     def test_positive_parameter_keeps_a_symmetric_interval(self):
         """The auto lower clamp must not swallow the whole lower side."""
         fit = make_noisy_fit(sign=+1.0)
-        v0 = fit.model.parameters_all_dict['a'].value
+        v0 = fit.model.parameters_all_dict["a"].value
         self.assertGreater(v0, 0.0)
-        r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name='a', p_value=0.99)
-        low, high = r['crossings']
+        r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name="a", p_value=0.99)
+        low, high = r["crossings"]
         self.assertIsNotNone(low)
         self.assertIsNotNone(high)
         self.assertAlmostEqual((high - v0) / (v0 - low), 1.0, places=2)
@@ -97,9 +97,9 @@ class AdaptiveScanBoundaryTests(unittest.TestCase):
         negative = make_noisy_fit(sign=-1.0)
         widths = []
         for fit in (positive, negative):
-            v0 = fit.model.parameters_all_dict['a'].value
-            r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name='a', p_value=0.99)
-            low, high = r['crossings']
+            v0 = fit.model.parameters_all_dict["a"].value
+            r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name="a", p_value=0.99)
+            low, high = r["crossings"]
             widths.append((abs(v0 - low), abs(high - v0)))
         for reference, measured in zip(widths[1], widths[0]):
             self.assertAlmostEqual(measured / reference, 1.0, places=3)
@@ -107,26 +107,26 @@ class AdaptiveScanBoundaryTests(unittest.TestCase):
     def test_scan_stops_at_a_declared_lower_limit(self):
         """A limit inside the interval truncates the side without coarsening it."""
         fit = make_noisy_fit(sign=+1.0)
-        v0 = fit.model.parameters_all_dict['a'].value
+        v0 = fit.model.parameters_all_dict["a"].value
         limit = v0 - 2.0e-3
         r = support_plane.adaptive_scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(limit, None), p_value=0.99
+            fit=fit, parameter_name="a", scan_range=(limit, None), p_value=0.99
         )
-        values = np.asarray(r['parameter_values'])
+        values = np.asarray(r["parameter_values"])
         self.assertGreaterEqual(float(values.min()), limit - 1e-12)
         self.assertGreater(int((values < v0).sum()), 10)
-        self.assertIsNone(r['crossings'][0])
+        self.assertIsNone(r["crossings"][0])
 
     def test_limit_at_the_optimum_leaves_that_side_unscanned(self):
         """``p_min == v0`` is a limit, not an invitation to scan below it."""
         fit = make_noisy_fit(sign=+1.0)
-        v0 = fit.model.parameters_all_dict['a'].value
+        v0 = fit.model.parameters_all_dict["a"].value
         r = support_plane.adaptive_scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(v0, None), p_value=0.99
+            fit=fit, parameter_name="a", scan_range=(v0, None), p_value=0.99
         )
-        values = np.asarray(r['parameter_values'])
+        values = np.asarray(r["parameter_values"])
         self.assertEqual(int((values < v0).sum()), 0)
-        self.assertIsNone(r['crossings'][0])
+        self.assertIsNone(r["crossings"][0])
 
 
 class SupportPlaneScanRangeTests(unittest.TestCase):
@@ -136,10 +136,9 @@ class SupportPlaneScanRangeTests(unittest.TestCase):
         """A pinned lower end survives an open upper end (RF-633)."""
         fit = make_fit()
         r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(1.0, None),
-            rel_range=0.2, n_steps=5
+            fit=fit, parameter_name="a", scan_range=(1.0, None), rel_range=0.2, n_steps=5
         )
-        values = r['parameter_values']
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[0]), 1.0, places=12)
         self.assertGreater(float(values[-1]), 1.0)
 
@@ -147,22 +146,20 @@ class SupportPlaneScanRangeTests(unittest.TestCase):
         """A pinned upper end survives an open lower end (RF-633)."""
         fit = make_fit()
         r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(None, 2.0),
-            rel_range=0.2, n_steps=5
+            fit=fit, parameter_name="a", scan_range=(None, 2.0), rel_range=0.2, n_steps=5
         )
-        values = r['parameter_values']
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[-1]), 2.0, places=12)
         self.assertLess(float(values[0]), 2.0)
 
     def test_both_ends_open_uses_relative_window(self):
         """Without a scan_range the window stays the relative one."""
         fit = make_fit()
-        v0 = fit.model.parameters_all_dict['a'].value
+        v0 = fit.model.parameters_all_dict["a"].value
         r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(None, None),
-            rel_range=0.2, n_steps=5
+            fit=fit, parameter_name="a", scan_range=(None, None), rel_range=0.2, n_steps=5
         )
-        values = r['parameter_values']
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[0]), v0 * 0.8, places=12)
         self.assertAlmostEqual(float(values[-1]), v0 * 1.2, places=12)
 
@@ -170,10 +167,9 @@ class SupportPlaneScanRangeTests(unittest.TestCase):
         """An inverted (p_min > p_max) pair comes back ascending."""
         fit = make_fit()
         r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', scan_range=(2.0, 1.0),
-            rel_range=0.2, n_steps=5
+            fit=fit, parameter_name="a", scan_range=(2.0, 1.0), rel_range=0.2, n_steps=5
         )
-        values = r['parameter_values']
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[0]), 1.0, places=12)
         self.assertAlmostEqual(float(values[-1]), 2.0, places=12)
 
@@ -184,11 +180,9 @@ class SupportPlaneScanWindowTests(unittest.TestCase):
     def test_zero_valued_parameter_scans_a_finite_window(self):
         """A parameter at zero has no relative scale, so the span is absolute."""
         fit = make_fit()
-        fit.model.parameters_all_dict['a'].value = 0.0
-        r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', rel_range=0.2, n_steps=5
-        )
-        values = r['parameter_values']
+        fit.model.parameters_all_dict["a"].value = 0.0
+        r = support_plane.scan_parameter(fit=fit, parameter_name="a", rel_range=0.2, n_steps=5)
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[0]), -0.2, places=12)
         self.assertAlmostEqual(float(values[-1]), 0.2, places=12)
         self.assertEqual(len(np.unique(values)), 5)
@@ -196,11 +190,9 @@ class SupportPlaneScanWindowTests(unittest.TestCase):
     def test_negative_parameter_gives_an_ascending_axis(self):
         """A negative value keeps the window magnitude but ascends."""
         fit = make_fit()
-        fit.model.parameters_all_dict['a'].value = -2.0
-        r = support_plane.scan_parameter(
-            fit=fit, parameter_name='a', rel_range=0.2, n_steps=5
-        )
-        values = r['parameter_values']
+        fit.model.parameters_all_dict["a"].value = -2.0
+        r = support_plane.scan_parameter(fit=fit, parameter_name="a", rel_range=0.2, n_steps=5)
+        values = r["parameter_values"]
         self.assertAlmostEqual(float(values[0]), -2.4, places=12)
         self.assertAlmostEqual(float(values[-1]), -1.6, places=12)
         self.assertTrue(np.all(np.diff(values) > 0))
@@ -218,26 +210,24 @@ class SupportPlaneScanRestoreTests(unittest.TestCase):
     def test_failing_fit_restores_parameter_state(self):
         """State is restored through a `finally`, not only on success."""
         fit = make_fit()
-        parameter = fit.model.parameters_all_dict['a']
+        parameter = fit.model.parameters_all_dict["a"]
         value_before = parameter.value
         fixed_before = parameter.fixed
         self.assertFalse(fixed_before)
 
         original_run = fit.run
-        calls = {'n': 0}
+        calls = {"n": 0}
 
         def failing_run(*args, **kwargs):
-            calls['n'] += 1
-            if calls['n'] == 3:
-                raise RuntimeError('fit blew up')
+            calls["n"] += 1
+            if calls["n"] == 3:
+                raise RuntimeError("fit blew up")
             return original_run(*args, **kwargs)
 
         fit.run = failing_run
         try:
             with self.assertRaises(RuntimeError):
-                support_plane.scan_parameter(
-                    fit=fit, parameter_name='a', rel_range=0.2, n_steps=5
-                )
+                support_plane.scan_parameter(fit=fit, parameter_name="a", rel_range=0.2, n_steps=5)
         finally:
             fit.run = original_run
 
@@ -245,5 +235,5 @@ class SupportPlaneScanRestoreTests(unittest.TestCase):
         self.assertAlmostEqual(parameter.value, value_before, places=12)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

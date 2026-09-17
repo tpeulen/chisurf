@@ -59,8 +59,7 @@ class _TimeWindowSection(QtWidgets.QWidget):
         # governs *every* dock -- the trace, the dT plot, the filter view and the
         # decay all draw the window it selects -- and a control that lives in one
         # dock reads as belonging to that dock alone.
-        layout = (QtWidgets.QHBoxLayout(self) if self._compact
-                  else QtWidgets.QVBoxLayout(self))
+        layout = QtWidgets.QHBoxLayout(self) if self._compact else QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4 if not self._compact else 6)
 
@@ -186,8 +185,7 @@ class _TimeWindowSection(QtWidgets.QWidget):
             return
         if not self.enabled_box.isChecked():
             self.caption.setText(
-                f"Whole measurement — {span:.1f} s, "
-                f"{self._model.timeline_file_count()} file(s)."
+                f"Whole measurement — {span:.1f} s, {self._model.timeline_file_count()} file(s)."
             )
             return
         start = self._position_s(span)

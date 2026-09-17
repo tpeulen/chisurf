@@ -21,18 +21,19 @@ from mmfdb.provenance.compute_spec import (
     replay,
     unregister_replay_executor,
 )
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import (
     register_raw_measurement,
     register_result,
     set_global_db,
 )
+from mmfdb.repository import MFDatabase
+from mmfdb.security.auth import create_session
+
+from chisurf.core.transform.mmfdb import session_from_auth
 
 # Importing the plugin module self-registers the replay executor.
 from chisurf.plugins.tttr.tttr_microtime_shifter.api import replay as _replay  # noqa: F401
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import OPERATION_TYPE
-from chisurf.core.transform.mmfdb import session_from_auth
-from mmfdb.security.auth import create_session
 
 _FIXTURES = (
     "test/data/clsm/Leica_SP5.ptu",
@@ -58,9 +59,7 @@ def chain(tmp_path):
     # Re-register idempotently: the replay-executor registry is process-global and
     # other test files exercise/clear the "microtime_shift" slot, so don't rely on
     # import-time registration surviving cross-file ordering.
-    _replay.register_replay_executor(
-        OPERATION_TYPE, _replay.microtime_shift_replay_executor
-    )
+    _replay.register_replay_executor(OPERATION_TYPE, _replay.microtime_shift_replay_executor)
     db = MFDatabase(os.path.join(tmp_path, "replay.db"))
     db.ensure_user("microtime-replay-user")
     token = create_session(db.conn, "microtime-replay-user")["token"]
@@ -120,6 +119,4 @@ def test_missing_executor_raises_after_unregister(chain):
             recompute(db, ids["shifted"])
     finally:
         # restore for any later-collected tests sharing the process registry
-        _replay.register_replay_executor(
-            OPERATION_TYPE, _replay.microtime_shift_replay_executor
-        )
+        _replay.register_replay_executor(OPERATION_TYPE, _replay.microtime_shift_replay_executor)

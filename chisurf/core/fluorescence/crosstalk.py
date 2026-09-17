@@ -38,7 +38,7 @@ import numpy as np
 try:
     import IMP.bff as _bff
 
-    if not hasattr(_bff, 'PhotophysicsCrosstalkMatrix'):
+    if not hasattr(_bff, "PhotophysicsCrosstalkMatrix"):
         raise ImportError("IMP.bff is present but carries no CrosstalkMatrix")
 except ImportError as _exc:
     _bff = None
@@ -101,8 +101,7 @@ def matrix_from_payload(payload, rows=None, columns=None):
     values = np.asarray(payload["values"], dtype=float)
     if values.size != len(payload_rows) * len(payload_cols):
         raise ValueError(
-            f"payload values {values.shape} do not tile "
-            f"{len(payload_rows)} x {len(payload_cols)}"
+            f"payload values {values.shape} do not tile {len(payload_rows)} x {len(payload_cols)}"
         )
     labelled = _bff.PhotophysicsCrosstalkMatrix(
         payload_rows, payload_cols, [float(v) for v in values.ravel()]
@@ -175,8 +174,7 @@ def invert_mixing(matrix, measured, *, nonneg: bool = False, ridge: float = 0.0)
     m = np.ascontiguousarray(matrix, dtype=float)
     y = np.ascontiguousarray(measured, dtype=float)
     n_src, n_det = m.shape
-    out = _bff.crosstalk_invert_mixing(m, n_src, n_det, y, bool(nonneg),
-                                       float(ridge))
+    out = _bff.crosstalk_invert_mixing(m, n_src, n_det, y, bool(nonneg), float(ridge))
     return np.asarray(out).reshape((n_src,) + y.shape[1:])
 
 
@@ -233,16 +231,17 @@ def photon_shuffle_unmix(counts, matrix, *, abundances=None, seed=None, rng=None
                 f"{(n_src,) + y.shape[1:]}"
             )
         flat_abundances = a
-    out = _bff.crosstalk_shuffle_unmix(m, n_src, n_det, y, flat_abundances,
-                                       0 if seed is None else int(seed))
+    out = _bff.crosstalk_shuffle_unmix(
+        m, n_src, n_det, y, flat_abundances, 0 if seed is None else int(seed)
+    )
     # the kernel publishes a double view; the draw is integral by
     # construction, and the contract here is an integer photon stream
-    return np.rint(np.asarray(out)).astype(np.int64).reshape(
-        (n_src,) + y.shape[1:])
+    return np.rint(np.asarray(out)).astype(np.int64).reshape((n_src,) + y.shape[1:])
 
 
-def correct_three_cube(idd, ida, iaa, *, donor_leak: float, direct_excitation: float,
-                       gamma: float = 1.0):
+def correct_three_cube(
+    idd, ida, iaa, *, donor_leak: float, direct_excitation: float, gamma: float = 1.0
+):
     """Three-cube ratiometric FRET correction (Gordon/Nagy/Lee).
 
     Forwarded to tttrlib's ``SpectralCrosstalk`` — the engine owner of the
@@ -302,8 +301,12 @@ def correct_three_cube(idd, ida, iaa, *, donor_leak: float, direct_excitation: f
     flat = [np.ascontiguousarray(x).ravel() for x in (idd_b, ida_b, iaa_b)]
     shape = idd_b.shape
     out = _tttrlib.correct_three_cube_batch(
-        flat[0], flat[1], flat[2],
-        float(gamma), float(donor_leak), float(direct_excitation),
+        flat[0],
+        flat[1],
+        flat[2],
+        float(gamma),
+        float(donor_leak),
+        float(direct_excitation),
     )
     # flat [E, S, Fc] per element
     fc = np.asarray(out[2::3]).reshape(shape)

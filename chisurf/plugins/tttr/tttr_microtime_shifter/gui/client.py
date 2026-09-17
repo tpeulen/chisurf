@@ -11,7 +11,6 @@ from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -213,6 +212,7 @@ class MicrotimeShifterClient:
         from chisurf.plugins.tttr.tttr_microtime_shifter.backend.services import (
             register_services,
         )
+
         register_services(
             dispatcher,
             mmfdb_db_provider=mmfdb_db_provider,

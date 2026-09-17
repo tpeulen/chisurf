@@ -46,7 +46,24 @@ class _FakeDispatcher:
 def test_load_app_startup_services_uses_prefixed_config_order():
     """Prefixed config filenames define default startup order."""
     specs = load_app_startup_services()
-    assert [spec.id for spec in specs] == ["mmfdb", "gui_imports", "setup_ipython", "startup_interface", "setup_logging", "init_setups", "restore_setup_defaults", "define_actions", "load_tools", "init_executors", "arrange_widgets", "setup_style", "deferred_gui_imports", "populate_plugins", "check_updates", "warmup_imports"]
+    assert [spec.id for spec in specs] == [
+        "mmfdb",
+        "gui_imports",
+        "setup_ipython",
+        "startup_interface",
+        "setup_logging",
+        "init_setups",
+        "restore_setup_defaults",
+        "define_actions",
+        "load_tools",
+        "init_executors",
+        "arrange_widgets",
+        "setup_style",
+        "deferred_gui_imports",
+        "populate_plugins",
+        "check_updates",
+        "warmup_imports",
+    ]
     mmfdb_spec = next(s for s in specs if s.id == "mmfdb")
     assert mmfdb_spec.surface == "server"
     assert mmfdb_spec.phase == "pre_server_listen"
@@ -133,8 +150,10 @@ def test_app_startup_manager_reports_background_failure_without_waiting():
     This is what makes a generous ``ready_timeout`` safe: the budget only bounds a
     *hung* service, because a failing one marks itself ready on the way out.
     """
+
     def load(entrypoint: str):
         """Return an entrypoint that raises instead of becoming ready."""
+
         def register(context):
             """Fail before marking the service ready."""
             raise RuntimeError("boom")
@@ -195,7 +214,9 @@ def test_app_startup_manager_filters_by_phase():
     """Filtering by phase returns only matching specs."""
     specs = [
         AppStartupServiceSpec(id="splash", entrypoint="pkg:splash", surface="gui", phase="splash"),
-        AppStartupServiceSpec(id="post", entrypoint="pkg:post", surface="gui", phase="post_gui_show"),
+        AppStartupServiceSpec(
+            id="post", entrypoint="pkg:post", surface="gui", phase="post_gui_show"
+        ),
     ]
     manager = AppStartupServiceManager.from_specs(specs)
 
@@ -207,7 +228,9 @@ def test_app_startup_manager_filters_by_surface_and_phase():
     """Filtering by both surface and phase returns only matching specs."""
     specs = [
         AppStartupServiceSpec(id="a", entrypoint="pkg:a", surface="gui", phase="splash"),
-        AppStartupServiceSpec(id="b", entrypoint="pkg:b", surface="server", phase="pre_server_listen"),
+        AppStartupServiceSpec(
+            id="b", entrypoint="pkg:b", surface="server", phase="pre_server_listen"
+        ),
         AppStartupServiceSpec(id="c", entrypoint="pkg:c", surface="gui", phase="post_gui_show"),
     ]
     manager = AppStartupServiceManager.from_specs(specs)
@@ -217,76 +240,120 @@ def test_app_startup_manager_filters_by_surface_and_phase():
 
 
 def test_app_startup_spec_from_dict_validates_surface():
-    """surface must be a string when provided."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "surface": "gui",
-    })
+    """Surface must be a string when provided."""
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "surface": "gui",
+        }
+    )
     assert spec.surface == "gui"
 
     with pytest.raises(ValueError, match="surface"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "surface": 42,
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "surface": 42,
+            }
+        )
 
 
 def test_app_startup_spec_from_dict_validates_phase():
-    """phase must be a string when provided."""
+    """Phase must be a string when provided."""
     with pytest.raises(ValueError, match="phase"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "phase": 42,
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "phase": 42,
+            }
+        )
 
 
 def test_app_startup_spec_from_dict_validates_progress():
-    """progress must be an integer in range 0-100."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "progress": 50,
-    })
+    """Progress must be an integer in range 0-100."""
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "progress": 50,
+        }
+    )
     assert spec.progress == 50
 
     with pytest.raises(ValueError, match="progress"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "progress": 150,
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "progress": 150,
+            }
+        )
 
     with pytest.raises(ValueError, match="progress"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "progress": "high",
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "progress": "high",
+            }
+        )
 
 
 def test_app_startup_spec_from_dict_validates_thread():
-    """thread must be 'main' or 'background'."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "thread": "background",
-    })
+    """Thread must be 'main' or 'background'."""
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "thread": "background",
+        }
+    )
     assert spec.thread == "background"
 
     with pytest.raises(ValueError, match="thread"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "thread": "other",
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "thread": "other",
+            }
+        )
 
 
 def test_app_startup_spec_from_dict_validates_label():
-    """label must be a string when provided."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "label": "My Service",
-    })
+    """Label must be a string when provided."""
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "label": "My Service",
+        }
+    )
     assert spec.label == "My Service"
 
 
 def test_app_startup_spec_from_dict_validates_requires():
-    """requires must be a list of strings."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "requires": ["main_window"],
-    })
+    """Requires must be a list of strings."""
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "requires": ["main_window"],
+        }
+    )
     assert spec.requires == ("main_window",)
 
     with pytest.raises(ValueError, match="requires"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "requires": "not_a_list",
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "requires": "not_a_list",
+            }
+        )
 
 
 def test_app_startup_manager_start_respects_stage_callbacks():
@@ -307,6 +374,7 @@ def test_app_startup_manager_start_respects_stage_callbacks():
         def load(self, entrypoint):
             def fake_service(context):
                 context.mark_ready()
+
             return fake_service
 
     manager = AppStartupServiceManager.from_specs(specs, loader=_FakeLoader())
@@ -322,14 +390,17 @@ def test_app_startup_manager_start_respects_stage_callbacks():
 
 def test_app_startup_manager_get_service_result():
     """get_service_result returns the result of a completed service."""
+
     def make_service(value):
         def svc(context):
             context.mark_ready()
             return value
+
         return svc
 
     class _TestLoader:
         _values = iter(["result_a", "result_b"])
+
         def load(self, entrypoint):
             val = next(self._values)
             return lambda ctx: val
@@ -348,13 +419,16 @@ def test_app_startup_manager_get_service_result():
 
 # ── enabled_if validation tests ──────────────────────────────────────────
 
+
 def test_enabled_if_from_dict_setting_source():
     """enabled_if with a setting source parses correctly."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test",
-        "entrypoint": "pkg:test",
-        "enabled_if": {"setting": "gui.some_feature", "equals": True},
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "enabled_if": {"setting": "gui.some_feature", "equals": True},
+        }
+    )
     assert spec.enabled_if is not None
     assert spec.enabled_if.source_type == "setting"
     assert spec.enabled_if.source_key == "gui.some_feature"
@@ -363,11 +437,13 @@ def test_enabled_if_from_dict_setting_source():
 
 def test_enabled_if_from_dict_env_source():
     """enabled_if with an env source parses correctly."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test",
-        "entrypoint": "pkg:test",
-        "enabled_if": {"env": "CHISURF_FEATURE_X", "exists": True},
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "enabled_if": {"env": "CHISURF_FEATURE_X", "exists": True},
+        }
+    )
     assert spec.enabled_if is not None
     assert spec.enabled_if.source_type == "env"
     assert spec.enabled_if.source_key == "CHISURF_FEATURE_X"
@@ -376,11 +452,13 @@ def test_enabled_if_from_dict_env_source():
 
 def test_enabled_if_from_dict_attribute_source():
     """enabled_if with an attribute source parses correctly."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test",
-        "entrypoint": "pkg:test",
-        "enabled_if": {"attribute": "metadata.experimental", "truthy": True},
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "enabled_if": {"attribute": "metadata.experimental", "truthy": True},
+        }
+    )
     assert spec.enabled_if is not None
     assert spec.enabled_if.source_type == "attribute"
     assert spec.enabled_if.source_key == "metadata.experimental"
@@ -390,56 +468,79 @@ def test_enabled_if_from_dict_attribute_source():
 def test_enabled_if_from_dict_missing_source_key():
     """enabled_if without exactly one source key raises."""
     with pytest.raises(ValueError, match="exactly one source key"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test",
-            "enabled_if": {"equals": True},
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "enabled_if": {"equals": True},
+            }
+        )
 
 
 def test_enabled_if_from_dict_missing_comparison_key():
     """enabled_if without at least one comparison key raises."""
     with pytest.raises(ValueError, match="at least one comparison"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test",
-            "enabled_if": {"setting": "x"},
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "enabled_if": {"setting": "x"},
+            }
+        )
 
 
 def test_enabled_if_from_dict_multiple_source_keys():
     """enabled_if with multiple source keys raises."""
     with pytest.raises(ValueError, match="exactly one source key"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test",
-            "enabled_if": {"setting": "x", "env": "Y"},
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "enabled_if": {"setting": "x", "env": "Y"},
+            }
+        )
 
 
 def test_enabled_if_from_dict_non_object():
     """enabled_if must be an object."""
     with pytest.raises(ValueError, match="enabled_if.*object"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "enabled_if": "yes",
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "enabled_if": "yes",
+            }
+        )
 
 
 def test_run_if_dependency_skipped_validation():
     """run_if_dependency_skipped must be a boolean."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "run_if_dependency_skipped": True,
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "run_if_dependency_skipped": True,
+        }
+    )
     assert spec.run_if_dependency_skipped is True
 
     with pytest.raises(ValueError, match="boolean"):
-        AppStartupServiceSpec.from_dict({
-            "id": "test", "entrypoint": "pkg:test", "run_if_dependency_skipped": "yes",
-        })
+        AppStartupServiceSpec.from_dict(
+            {
+                "id": "test",
+                "entrypoint": "pkg:test",
+                "run_if_dependency_skipped": "yes",
+            }
+        )
 
 
 # ── enabled_if evaluation tests ──────────────────────────────────────────
 
+
 def test_enabled_if_setting_equals_true_skips_when_false():
     """A service with setting equals true is skipped when the setting is falsy."""
     import chisurf.core.settings
+
     chisurf.core.settings.cs_settings["test_feature"] = False
 
     spec = AppStartupServiceSpec(
@@ -461,6 +562,7 @@ def test_enabled_if_setting_equals_true_skips_when_false():
 def test_enabled_if_setting_equals_true_runs_when_true():
     """A service with setting equals true is enabled when the setting is truthy."""
     import chisurf.core.settings
+
     chisurf.core.settings.cs_settings["test_feature"] = True
 
     spec = AppStartupServiceSpec(
@@ -473,6 +575,7 @@ def test_enabled_if_setting_equals_true_runs_when_true():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     manager = AppStartupServiceManager.from_specs([spec], loader=_FakeLoader())
@@ -499,6 +602,7 @@ def test_enabled_if_env_exists_skips_when_missing():
 def test_enabled_if_env_exists_runs_when_set():
     """A service with env exists runs when the env var is set."""
     import os
+
     os.environ["CHISURF_TEST_FEATURE"] = "1"
 
     spec = AppStartupServiceSpec(
@@ -511,6 +615,7 @@ def test_enabled_if_env_exists_runs_when_set():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     manager = AppStartupServiceManager.from_specs([spec], loader=_FakeLoader())
@@ -523,6 +628,7 @@ def test_enabled_if_env_exists_runs_when_set():
 def test_enabled_if_not_exists_skips_when_var_is_set():
     """A service with env exists=false is skipped when the var IS set."""
     import os
+
     os.environ["CHISURF_TEST_SKIP"] = "1"
 
     spec = AppStartupServiceSpec(
@@ -538,6 +644,7 @@ def test_enabled_if_not_exists_skips_when_var_is_set():
 
 
 # ── Dependency skipping tests ────────────────────────────────────────────
+
 
 def test_dependency_skipped_skips_dependent():
     """A dependent of a skipped service is also skipped."""
@@ -582,6 +689,7 @@ def test_run_if_dependency_skipped_allows_independent():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     manager = AppStartupServiceManager.from_specs(specs, loader=_FakeLoader())
@@ -591,8 +699,9 @@ def test_run_if_dependency_skipped_allows_independent():
 
 
 def test_entrypoints_always_returns_all_configured():
-    """entrypoints returns all configured entrypoints (configured-owner semantics)."""
+    """Entrypoints returns all configured entrypoints (configured-owner semantics)."""
     import chisurf.core.settings
+
     chisurf.core.settings.cs_settings["test_flag"] = False
 
     specs = [
@@ -611,6 +720,7 @@ def test_entrypoints_always_returns_all_configured():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     manager = AppStartupServiceManager.from_specs(specs, loader=_FakeLoader())
@@ -642,6 +752,7 @@ def test_on_stage_skip_callback_invoked():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     def on_skip(payload):
@@ -717,32 +828,48 @@ def test_config_background_services_budget_a_cold_import():
 
 # ── Deprecated background alias ─────────────────────────────────────────
 
+
 def test_background_deprecated_alias_maps_to_thread():
     """'background' in from_dict maps to thread field."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "background": True,
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "background": True,
+        }
+    )
     assert spec.thread == "background"
 
-    spec_false = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "background": False,
-    })
+    spec_false = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "background": False,
+        }
+    )
     assert spec_false.thread == "main"
 
 
 def test_thread_field_takes_precedence_over_background():
     """'thread' takes precedence when both thread and background are set."""
-    spec = AppStartupServiceSpec.from_dict({
-        "id": "test", "entrypoint": "pkg:test", "thread": "main", "background": True,
-    })
+    spec = AppStartupServiceSpec.from_dict(
+        {
+            "id": "test",
+            "entrypoint": "pkg:test",
+            "thread": "main",
+            "background": True,
+        }
+    )
     assert spec.thread == "main"
 
 
 # ── Env equals coercion ────────────────────────────────────────────────
 
+
 def test_env_equals_boolean_coercion():
     """Env equals with bool coerces common truthy/falsy strings."""
     import os
+
     os.environ["CHISURF_TEST_BOOL"] = "true"
 
     spec_true = AppStartupServiceSpec(
@@ -760,6 +887,7 @@ def test_env_equals_boolean_coercion():
 def test_env_equals_boolean_false_coercion():
     """Env equals false with '0' string evaluates correctly."""
     import os
+
     os.environ["CHISURF_TEST_BOOL"] = "0"
 
     spec_false = AppStartupServiceSpec(
@@ -777,6 +905,7 @@ def test_env_equals_boolean_false_coercion():
 def test_env_equals_string_no_coercion():
     """Env equals with string compares literally."""
     import os
+
     os.environ["CHISURF_TEST_STR"] = "production"
 
     spec = AppStartupServiceSpec(
@@ -792,6 +921,7 @@ def test_env_equals_string_no_coercion():
 
 
 # ── Attribute condition deferred evaluation ────────────────────────────
+
 
 def test_attribute_condition_deferred_to_execution():
     """Attribute conditions are not evaluated upfront by resolve_enabled()."""
@@ -819,6 +949,7 @@ def test_attribute_condition_skips_at_runtime_when_context_lacks_attr():
         def load(self, entrypoint):
             def svc(ctx):
                 ctx.mark_ready()
+
             return svc
 
     manager = AppStartupServiceManager.from_specs([spec], loader=_FakeLoader())
@@ -829,6 +960,7 @@ def test_attribute_condition_skips_at_runtime_when_context_lacks_attr():
 
 def test_attribute_condition_runs_when_context_has_attr():
     """Attribute condition allows the service when the shared context has the expected attribute."""
+
     class _Window:
         visible = True
 
@@ -840,6 +972,7 @@ def test_attribute_condition_runs_when_context_has_attr():
                 started.append(entrypoint)
                 ctx.main_window = _Window()
                 ctx.mark_ready()
+
             return svc
 
     # Service that sets main_window

@@ -38,9 +38,7 @@ DEFAULT_MAX_POINTS = 150_000
 MIN_CURVE_POINTS = 1000
 
 
-def per_curve_budget(
-    total: int, n_curves: int, *, minimum: int = MIN_CURVE_POINTS
-) -> int:
+def per_curve_budget(total: int, n_curves: int, *, minimum: int = MIN_CURVE_POINTS) -> int:
     """Split a **per-plot** point budget across the curves sharing that plot.
 
     The budget is a property of the widget, not of a call to it: what makes a

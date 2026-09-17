@@ -31,7 +31,9 @@ pytest.importorskip("IMP.bff")
 
 from chisurf.plugins.fluorescence_decay.maxent_decay.core import solver
 
-_FIXTURE = pathlib.Path(__file__).resolve().parents[1] / "data" / "numba_parity" / "maxent_tcspc.npz"
+_FIXTURE = (
+    pathlib.Path(__file__).resolve().parents[1] / "data" / "numba_parity" / "maxent_tcspc.npz"
+)
 
 
 @pytest.fixture(scope="module")
@@ -43,25 +45,44 @@ def reference():
 def _cases(reference):
     for i in range(int(reference["n_design"])):
         prefix = f"design{i}_"
-        yield {k[len(prefix):]: reference[k] for k in reference if k.startswith(prefix)}
+        yield {k[len(prefix) :]: reference[k] for k in reference if k.startswith(prefix)}
 
 
 def _design(reference, case):
     period = float(case["period"])
-    common = dict(dt=float(case["dt"]), fitrange=(int(case["fitstart"]), int(case["fitstop"])),
-                  timeshift=float(case["timeshift"]), background=float(case["background"]),
-                  lamp_scatter=float(case["lamp_scatter"]), period=period if period > 0 else None, max_iter=5)
+    common = dict(
+        dt=float(case["dt"]),
+        fitrange=(int(case["fitstart"]), int(case["fitstop"])),
+        timeshift=float(case["timeshift"]),
+        background=float(case["background"]),
+        lamp_scatter=float(case["lamp_scatter"]),
+        period=period if period > 0 else None,
+        max_iter=5,
+    )
     if str(case["kind"]) == "life":
-        result = solver.solve_lifetime_mem(reference["decay"], reference["irf"], tau=case["tau"],
-                                           irf_background=0.0, **common)
+        result = solver.solve_lifetime_mem(
+            reference["decay"], reference["irf"], tau=case["tau"], irf_background=0.0, **common
+        )
         lamp_background = 0.0
     else:
-        result = solver.solve_fret_mem(reference["decay"], reference["irf"], R=case["R"], tau0=float(case["tau0"]),
-                                       R0=float(case["R0"]), donly=case["donly"], x_donly=float(case["x_donly"]),
-                                       irf_background=float(case["irf_background"]), **common)
+        result = solver.solve_fret_mem(
+            reference["decay"],
+            reference["irf"],
+            R=case["R"],
+            tau0=float(case["tau0"]),
+            R0=float(case["R0"]),
+            donly=case["donly"],
+            x_donly=float(case["x_donly"]),
+            irf_background=float(case["irf_background"]),
+            **common,
+        )
         lamp_background = float(case["irf_background"])
     lamp_area = float(np.clip(reference["irf"] - lamp_background, 0.0, None).sum())
-    return result["Fi"] * result["sigma"][:, None] * lamp_area, case["Fi"] * case["sigma"][:, None], result
+    return (
+        result["Fi"] * result["sigma"][:, None] * lamp_area,
+        case["Fi"] * case["sigma"][:, None],
+        result,
+    )
 
 
 def test_the_fixture_covers_both_axes_and_both_convolutions(reference):

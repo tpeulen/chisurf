@@ -16,9 +16,15 @@ RATE = audio.SAMPLE_RATE
 C2 = 428
 
 
-def build(rows: dict, *, samples: int = 64, loop: bool = True,
-          order: tuple[int, ...] = (0,), volume: int = 64,
-          finetune: int = 0) -> bytes:
+def build(
+    rows: dict,
+    *,
+    samples: int = 64,
+    loop: bool = True,
+    order: tuple[int, ...] = (0,),
+    volume: int = 64,
+    finetune: int = 0,
+) -> bytes:
     """Write a minimal but real 4-channel MOD.
 
     Building one here rather than committing a binary keeps the test honest
@@ -67,15 +73,15 @@ def build(rows: dict, *, samples: int = 64, loop: bool = True,
     for pattern in range(max(order) + 1):
         for row in range(tracker.ROWS):
             for channel in range(4):
-                period, instrument, effect, param = rows.get(
-                    (pattern, row, channel), (0, 0, 0, 0)
+                period, instrument, effect, param = rows.get((pattern, row, channel), (0, 0, 0, 0))
+                out += bytes(
+                    [
+                        (instrument & 0xF0) | ((period >> 8) & 0x0F),
+                        period & 0xFF,
+                        ((instrument & 0x0F) << 4) | (effect & 0x0F),
+                        param & 0xFF,
+                    ]
                 )
-                out += bytes([
-                    (instrument & 0xF0) | ((period >> 8) & 0x0F),
-                    period & 0xFF,
-                    ((instrument & 0x0F) << 4) | (effect & 0x0F),
-                    param & 0xFF,
-                ])
     wave = np.where(np.arange(samples) < samples // 2, 100, -100).astype(np.int8)
     return bytes(out) + wave.tobytes()
 
@@ -136,7 +142,7 @@ def test_a_note_plays_at_the_pitch_its_period_says():
         raw = build({(0, 0, 0): (period, 1, 0, 0)})
         audio_ = tracker.render(tracker.parse(raw), RATE)
         expected = tracker.PAL_CLOCK / (period * 2) / 64.0
-        assert abs(_pitch(audio_[:RATE // 2]) - expected) < expected * 0.05
+        assert abs(_pitch(audio_[: RATE // 2]) - expected) < expected * 0.05
 
 
 def test_the_song_lasts_as_long_as_its_speed_and_tempo_say():
@@ -155,39 +161,47 @@ def test_a_non_looping_sample_stops_and_a_looping_one_does_not():
     """A one-shot that keeps sounding is the classic module-player artefact."""
     short = build({(0, 0, 0): (C2, 1, 0, 0)}, samples=32, loop=False)
     signal = tracker.render(tracker.parse(short), RATE)
-    tail = np.abs(signal[int(0.5 * RATE):]).mean()
+    tail = np.abs(signal[int(0.5 * RATE) :]).mean()
     assert tail < 1e-4, "a one-shot has to actually stop"
 
     held = build({(0, 0, 0): (C2, 1, 0, 0)}, samples=32, loop=True)
     signal = tracker.render(tracker.parse(held), RATE)
-    assert np.abs(signal[int(0.5 * RATE):]).mean() > 0.05
+    assert np.abs(signal[int(0.5 * RATE) :]).mean() > 0.05
 
 
 def test_set_volume_and_volume_slide_are_heard():
     """Effect C and effect A, which is most of a module's dynamics."""
     loud = tracker.render(tracker.parse(build({(0, 0, 0): (C2, 1, 0x0C, 64)})), RATE)
     quiet = tracker.render(tracker.parse(build({(0, 0, 0): (C2, 1, 0x0C, 8)})), RATE)
-    assert np.abs(quiet[:RATE // 4]).mean() < np.abs(loud[:RATE // 4]).mean() / 3
+    assert np.abs(quiet[: RATE // 4]).mean() < np.abs(loud[: RATE // 4]).mean() / 3
 
-    faded = tracker.parse(build({
-        (0, 0, 0): (C2, 1, 0x0C, 64),
-        **{(0, row, 0): (0, 0, 0x0A, 0x08) for row in range(1, 16)},
-    }))
+    faded = tracker.parse(
+        build(
+            {
+                (0, 0, 0): (C2, 1, 0x0C, 64),
+                **{(0, row, 0): (0, 0, 0x0A, 0x08) for row in range(1, 16)},
+            }
+        )
+    )
     signal = tracker.render(faded, RATE)
-    early = np.abs(signal[:RATE // 8]).mean()
-    later = np.abs(signal[RATE // 2:RATE // 2 + RATE // 8]).mean()
+    early = np.abs(signal[: RATE // 8]).mean()
+    later = np.abs(signal[RATE // 2 : RATE // 2 + RATE // 8]).mean()
     assert later < early / 2, "a volume slide has to slide"
 
 
 def test_portamento_bends_the_pitch():
     """Effects 1 and 2, which move the period rather than restart the note."""
-    up = tracker.parse(build({
-        (0, 0, 0): (C2, 1, 0, 0),
-        **{(0, row, 0): (0, 0, 0x01, 0x20) for row in range(1, 24)},
-    }))
+    up = tracker.parse(
+        build(
+            {
+                (0, 0, 0): (C2, 1, 0, 0),
+                **{(0, row, 0): (0, 0, 0x01, 0x20) for row in range(1, 24)},
+            }
+        )
+    )
     signal = tracker.render(up, RATE)
-    first = _pitch(signal[:RATE // 8])
-    later = _pitch(signal[RATE // 2:RATE // 2 + RATE // 8])
+    first = _pitch(signal[: RATE // 8])
+    later = _pitch(signal[RATE // 2 : RATE // 2 + RATE // 8])
     assert later > first * 1.2, (first, later)
 
 
@@ -200,8 +214,10 @@ def test_a_pattern_break_and_a_position_jump_go_where_they_say():
     # Two positions; pattern 0 breaks out on row 0, so almost none of it plays.
     broken = build({(0, 0, 0): (C2, 1, 0x0D, 0)}, order=(0, 1))
     whole = build({(0, 0, 0): (C2, 1, 0, 0)}, order=(0, 1))
-    assert tracker.render(tracker.parse(broken), RATE).size < \
-        tracker.render(tracker.parse(whole), RATE).size / 1.8
+    assert (
+        tracker.render(tracker.parse(broken), RATE).size
+        < tracker.render(tracker.parse(whole), RATE).size / 1.8
+    )
 
     # A jump backwards is a loop, and the player must notice and stop.
     looped = build({(0, 63, 0): (C2, 1, 0x0B, 0)}, order=(0,))
@@ -214,7 +230,7 @@ def test_rubbish_is_refused_rather_than_played():
     with pytest.raises(tracker.ModuleError):
         tracker.parse(b"not a module")
     with pytest.raises(tracker.ModuleError):
-        tracker.parse(bytes(2000))          # right size, no signature
+        tracker.parse(bytes(2000))  # right size, no signature
     truncated = build({(0, 0, 0): (C2, 1, 0, 0)})[:1200]
     with pytest.raises(tracker.ModuleError):
         tracker.parse(truncated)
@@ -222,7 +238,7 @@ def test_rubbish_is_refused_rather_than_played():
 
 def test_an_unknown_effect_is_ignored_and_not_fatal():
     """Ignoring what we do not implement is the honest behaviour."""
-    raw = build({(0, 0, 0): (C2, 1, 0x0E, 0xC3)})   # E-commands are unhandled
+    raw = build({(0, 0, 0): (C2, 1, 0x0E, 0xC3)})  # E-commands are unhandled
     signal = tracker.render(tracker.parse(raw), RATE)
     assert signal.size > 0 and np.abs(signal).max() > 0.05
 
@@ -251,7 +267,8 @@ def test_a_missing_or_broken_module_falls_back_to_the_synthesiser(tmp_path):
 
 def test_a_module_carries_its_own_attribution():
     """Tracker authors sign their work in the sample names, and a CC-BY module
-    needs that text to reach a credits screen rather than being thrown away."""
+    needs that text to reach a credits screen rather than being thrown away.
+    """
     module = tracker.parse(build({}))
     assert "TEST SONG" in module.credits
     assert "square" in module.credits

@@ -31,7 +31,6 @@ pytest.importorskip("rendercanvas", reason="the offscreen canvas host")
 
 from toolkit_free import probe  # noqa: E402
 
-
 _DRIVE = """
     app = open_app(size=(1000, 780))
     app.cmd.set_message_callback(lambda _m: None)

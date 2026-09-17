@@ -1,24 +1,27 @@
-import os
-import json
 import pathlib
+
 import numpy as np
-import pytest
+
 import chisurf as cs
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
-from chisurf.core.models.model import ModelCurve
 from chisurf.core.fitting.parameter import FittingParameter
-from chisurf.core.project import Project, save_project
-from chisurf.macros.core_fit import add_fit, save_project as macro_save_project, load_project as macro_load_project
+from chisurf.core.models.model import ModelCurve
+from chisurf.macros.core_fit import add_fit
+from chisurf.macros.core_fit import load_project as macro_load_project
+from chisurf.macros.core_fit import save_project as macro_save_project
+
 
 # Mock cs global state for tests
 class MockCS:
     def __init__(self):
         self.current_experiment = None
-        self.dataset_selector = type('DS', (), {'selected_curve_index': 0})()
+        self.dataset_selector = type("DS", (), {"selected_curve_index": 0})()
+
 
 class E2ELinearModel(ModelCurve):
     """Small concrete model used for E2E tests."""
+
     name = "E2ELinearModel"
 
     def __init__(self, fit: Fit, **kwargs):
@@ -33,13 +36,14 @@ class E2ELinearModel(ModelCurve):
         self.x = x
         self.y = float(self.p0.value) + x
 
+
 def test_e2e_with_real_file_headless(tmp_path):
     # Setup
     val_p0 = 7.5
     csv_file = tmp_path / "data.csv"
     with open(csv_file, "w") as f:
         f.write("x,y\n0,1\n1,2\n2,3\n")
-        
+
     orig_imported_datasets = getattr(cs, "imported_datasets", [])
     orig_fits = getattr(cs, "fits", [])
     orig_cs = getattr(cs, "cs", None)
@@ -50,44 +54,47 @@ def test_e2e_with_real_file_headless(tmp_path):
         cs.fits = []
         # TRUE HEADLESS
         cs.cs = None
-        
+
         print("--- Phase 2: Create dataset ---")
         # Use a real DataCurve that points to the file
-        ds = DataCurve(x=np.arange(3, dtype=float), y=np.arange(3, dtype=float)+1.0, name="real_ds")
+        ds = DataCurve(
+            x=np.arange(3, dtype=float), y=np.arange(3, dtype=float) + 1.0, name="real_ds"
+        )
         ds.path = str(csv_file)
         cs.imported_datasets.append(ds)
-        
+
         # We need to ensure the experiment and model are resolvable
         class MockExperiment:
             name = "MockExp"
             model_names = ["E2ELinearModel"]
             model_classes = [E2ELinearModel]
+
         mock_exp = MockExperiment()
         ds.experiment = mock_exp
-        
+
         print("--- Phase 3: Add fit ---")
         # Add fit and modify param
         add_fit(dataset_indices=[0], model_name="E2ELinearModel")
         assert len(cs.fits) == 1
         fit = cs.fits[0]
         fit.model.p0.value = val_p0
-        
+
         print("--- Phase 4: Save project ---")
         saved_path = macro_save_project(str(tmp_path), "e2e_headless")
         assert saved_path is not None, "save_project returned None"
         assert saved_path.is_file()
         assert saved_path.name.endswith(".cs.pto")
         # The project is at tmp_path/e2e_headless.cs.pto (not inside a directory)
-        
+
         print("--- Phase 5: Reload ---")
         # Restart simulation
         cs.imported_datasets = []
         cs.fits = []
         cs.cs = None
-        
+
         # Reload from the .cs.pto project path returned by save
         macro_load_project(str(saved_path))
-        
+
         print("--- Phase 6: Verify ---")
         # Verify
         assert len(cs.fits) == 1
@@ -96,10 +103,11 @@ def test_e2e_with_real_file_headless(tmp_path):
         print(f"Loaded p0 value: {loaded_fit.model.p0.value}")
         assert np.isclose(loaded_fit.model.p0.value, val_p0)
         print("--- Success! ---")
-        
+
     except Exception as e:
         print(f"\n--- FAILED with error: {e} ---")
         import traceback
+
         traceback.print_exc()
         raise e
     finally:
@@ -107,8 +115,10 @@ def test_e2e_with_real_file_headless(tmp_path):
         cs.fits = orig_fits
         cs.cs = orig_cs
 
+
 if __name__ == "__main__":
     import pathlib
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         test_e2e_with_real_file_headless(pathlib.Path(tmp_dir))

@@ -237,34 +237,66 @@ class MinesweeperChiGame(chigame.Game):
                 cell = self.game.board[row][col]
                 at = self._cell_center(row, col)
                 if not cell.revealed:
-                    scene.draw("ui", "pixel", at=at, size=(CELL - 2.0, CELL - 2.0),
-                               color=(0.19, 0.21, 0.25, 1.0))
+                    scene.draw(
+                        "ui",
+                        "pixel",
+                        at=at,
+                        size=(CELL - 2.0, CELL - 2.0),
+                        color=(0.19, 0.21, 0.25, 1.0),
+                    )
                     if cell.flagged:
-                        scene.draw("photon", "flag", at=at, size=(CELL * 0.34, CELL * 0.34),
-                                   emission_nm=488.0)
+                        scene.draw(
+                            "photon",
+                            "flag",
+                            at=at,
+                            size=(CELL * 0.34, CELL * 0.34),
+                            emission_nm=488.0,
+                        )
                     continue
-                scene.draw("ui", "pixel", at=at, size=(CELL - 2.0, CELL - 2.0),
-                           color=(0.10, 0.11, 0.13, 1.0))
+                scene.draw(
+                    "ui",
+                    "pixel",
+                    at=at,
+                    size=(CELL - 2.0, CELL - 2.0),
+                    color=(0.10, 0.11, 0.13, 1.0),
+                )
                 if cell.mine:
                     # A hot pixel: it is emitting when it should not be.
-                    scene.draw("photon", "hot", at=at, size=(CELL * 0.5, CELL * 0.5),
-                               emission_nm=660.0)
+                    scene.draw(
+                        "photon", "hot", at=at, size=(CELL * 0.5, CELL * 0.5), emission_nm=660.0
+                    )
                 elif cell.adjacent_mines:
                     nm = COUNT_NM[cell.adjacent_mines]
-                    scene.text(str(cell.adjacent_mines), at=(at[0], at[1]),
-                               height=CELL * 0.62, align="center",
-                               color=(*wavelength_to_srgb(nm), 1.0))
+                    scene.text(
+                        str(cell.adjacent_mines),
+                        at=(at[0], at[1]),
+                        height=CELL * 0.62,
+                        align="center",
+                        color=(*wavelength_to_srgb(nm), 1.0),
+                    )
 
         # The cursor is game state, so picking is exact by construction.
-        scene.draw("aura", "cursor", at=self._cell_center(self.cursor_row, self.cursor_col),
-                   size=(CELL + 4.0, CELL + 4.0))
+        scene.draw(
+            "aura",
+            "cursor",
+            at=self._cell_center(self.cursor_row, self.cursor_col),
+            size=(CELL + 4.0, CELL + 4.0),
+        )
 
         top = ORIGIN_Y - 34.0
-        scene.text(f"Hot pixels: {self.game.flags_remaining}", at=(ORIGIN_X, top),
-                   height=13.0, color=(0.78, 0.82, 0.88, 1.0))
-        scene.text(self.difficulty_names[self.difficulty_index],
-                   at=(ORIGIN_X + width, top), height=13.0, align="right",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            f"Hot pixels: {self.game.flags_remaining}",
+            at=(ORIGIN_X, top),
+            height=13.0,
+            color=(0.78, 0.82, 0.88, 1.0),
+        )
+        scene.text(
+            self.difficulty_names[self.difficulty_index],
+            at=(ORIGIN_X + width, top),
+            height=13.0,
+            align="right",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
 
         if self.game.status is GameStatus.WON:
             banner, tint = "Array mapped", (0.35, 0.85, 0.80, 1.0)
@@ -273,15 +305,28 @@ class MinesweeperChiGame(chigame.Game):
         else:
             banner, tint = self.message, (0.44, 0.48, 0.55, 1.0)
         if banner:
-            scene.text(banner, at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 22.0),
-                       height=16.0, align="center", color=tint)
+            scene.text(
+                banner,
+                at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 22.0),
+                height=16.0,
+                align="center",
+                color=tint,
+            )
 
-        scene.text("Move   Confirm scan   Menu flag",
-                   at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 44.0),
-                   height=12.0, align="center", color=(0.44, 0.48, 0.55, 1.0))
-        scene.text("Cancel reset   L/R preset",
-                   at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 62.0),
-                   height=12.0, align="center", color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "Move   Confirm scan   Menu flag",
+            at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 44.0),
+            height=12.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
+        scene.text(
+            "Cancel reset   L/R preset",
+            at=(ORIGIN_X + width * 0.5, ORIGIN_Y + height + 62.0),
+            height=12.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
 
 
 @persist_plugin_state("minesweeper")

@@ -9,6 +9,7 @@ it injects ``__name__``/``__file__``, puts the macro's directory on
 ``sys.path`` so sibling imports resolve, and restores ``sys.path`` afterwards.
 None of that needs a main window, so these run in the non-GUI suite.
 """
+
 import pathlib
 import sys
 

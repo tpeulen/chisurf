@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import logging
 import selectors
-import socket
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any
 
 _LOG = logging.getLogger("chisurf.server.startup")
 
@@ -56,7 +55,7 @@ def terminate_and_collect_stderr(
     return text[:limit]
 
 
-def rpc_config_from_settings(namespace: str = "agent") -> Dict[str, Any]:
+def rpc_config_from_settings(namespace: str = "agent") -> dict[str, Any]:
     """Read RPC connection parameters from ChiSurf editor settings.
 
     Parameters
@@ -73,12 +72,13 @@ def rpc_config_from_settings(namespace: str = "agent") -> Dict[str, Any]:
         ``"chisurf"`` and ``"editor"`` keys.
 
     """
-    config: Dict[str, Any] = {
+    config: dict[str, Any] = {
         "chisurf": {"host": "127.0.0.1", "cmd_port": 8765, "pub_port": 8766},
         "editor": {"host": "127.0.0.1", "cmd_port": 8775, "pub_port": 8776},
     }
     try:
         from chisurf.plugins.core.code_editor.settings import get_editor_settings
+
         settings = get_editor_settings()
         if namespace == "agent":
             config["chisurf"]["host"] = str(settings.get("agent_chisurf_rpc_host", "127.0.0.1"))
@@ -99,7 +99,7 @@ def rpc_config_from_settings(namespace: str = "agent") -> Dict[str, Any]:
 def rpc_is_available(
     host: str,
     cmd_port: int,
-    pub_port: Optional[int] = None,
+    pub_port: int | None = None,
     timeout_ms: int = 500,
 ) -> bool:
     """Check whether a ZMQ JSON-RPC server is reachable.
@@ -177,9 +177,9 @@ def get_shared_event_bus() -> Any:
     """
     try:
         import chisurf as _cs
-        server = (
-            getattr(_cs, "__chisurf_rpc_server__", None)
-            or getattr(_cs, "__mmfdb_rpc_server__", None)
+
+        server = getattr(_cs, "__chisurf_rpc_server__", None) or getattr(
+            _cs, "__mmfdb_rpc_server__", None
         )
         if server is not None:
             return getattr(server, "event_bus", None)
@@ -205,9 +205,11 @@ def session_state_from_live_chisurf() -> Any:
     """
     try:
         import chisurf as _cs
+
         if not hasattr(_cs, "fits") or not hasattr(_cs, "imported_datasets"):
             return None
         from chisurf.server.session import SessionState
+
         state = SessionState(
             datasets=_cs.imported_datasets,
             fits=_cs.fits,
@@ -235,6 +237,7 @@ def sync_current_fit_uid_from_live_chisurf(state: Any) -> None:
     """
     try:
         import chisurf as _cs
+
         uid = None
         candidates = [
             getattr(_cs, "current_fit", None),
@@ -307,6 +310,7 @@ def ensure_embedded_chisurf_rpc_server(
 
     """
     import time
+
     deadline = time.perf_counter() + timeout_s
     while time.perf_counter() < deadline:
         if rpc_is_available(host, cmd_port, pub_port, timeout_ms=500):
@@ -315,6 +319,7 @@ def ensure_embedded_chisurf_rpc_server(
     if state is not None:
         try:
             from chisurf.server.app import ChiSurfServer
+
             server = ChiSurfServer(
                 cmd_port=cmd_port,
                 pub_port=pub_port,
@@ -322,6 +327,7 @@ def ensure_embedded_chisurf_rpc_server(
                 state=state,
             )
             import threading
+
             t = threading.Thread(target=server.serve_forever, daemon=True)
             t.start()
             time.sleep(0.3)

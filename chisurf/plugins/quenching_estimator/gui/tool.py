@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from qtpy import QtWidgets
-
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
 _MANIFEST_PATH = Path(__file__).parents[1] / "manifest.json"

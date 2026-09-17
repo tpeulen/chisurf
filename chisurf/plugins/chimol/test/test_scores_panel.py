@@ -22,14 +22,14 @@ That is what this pins, on chimol's own controls: the list is
 issues ``frame N`` -- so it works in the browser and the toolkit-free window
 too, and every scrub is echoed at the prompt like a typed command.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from emtk.testing import RecordingPainter
 from chimol.plugins.scores.window import ScoresPanel
 from chimol.ui.gui import Rect
+from emtk.testing import RecordingPainter
 
 BOX = Rect(0.0, 0.0, 520.0, 260.0)
 FRAMES = 50
@@ -50,10 +50,18 @@ class _Viewer:
     """Just the doors the panel reads: the active object, and the frame."""
 
     def __init__(self, series=None, frame=12):
-        self.objects = {"a": _Entry(_State(series if series is not None else {
-            "Total Score": np.arange(FRAMES, dtype=float),
-            "ConnectivityRestraint": np.sin(np.arange(FRAMES, dtype=float)),
-        }))}
+        self.objects = {
+            "a": _Entry(
+                _State(
+                    series
+                    if series is not None
+                    else {
+                        "Total Score": np.arange(FRAMES, dtype=float),
+                        "ConnectivityRestraint": np.sin(np.arange(FRAMES, dtype=float)),
+                    }
+                )
+            )
+        }
         self.frame = frame
         self.set_frames: list[int] = []
 
@@ -104,11 +112,11 @@ def test_the_panel_opens_with_something_plotted(panel):
 
 def test_choosing_a_series_plots_it(panel):
     _draw(panel)
-    row_y = BOX.y + 6.0 + 14.0 + 14.0 + 1.0      # the second row of the list
+    row_y = BOX.y + 6.0 + 14.0 + 14.0 + 1.0  # the second row of the list
     panel.press(20.0, row_y, BOX)
     assert panel.list.selection.selection() == [1]
     strings = _draw(panel).strings
-    assert "Total Score" in strings               # the legend names it
+    assert "Total Score" in strings  # the legend names it
 
 
 def test_a_press_in_the_graph_scrubs_the_trajectory(panel):
@@ -140,9 +148,9 @@ def test_the_frame_is_clamped_to_the_trajectory(panel):
     _draw(panel)
     x, y, w, h = panel._plot_box
     panel.press(x + w * 0.5, y + 5.0, BOX)
-    panel.drag(x + w * 4, y + 5.0, BOX)           # dragged far past the right edge
+    panel.drag(x + w * 4, y + 5.0, BOX)  # dragged far past the right edge
     assert int(panel.cmd.lines[-1].split()[1]) == FRAMES - 1
-    panel.drag(x - w * 4, y + 5.0, BOX)           # and far past the left one
+    panel.drag(x - w * 4, y + 5.0, BOX)  # and far past the left one
     assert int(panel.cmd.lines[-1].split()[1]) == 0
 
 
@@ -151,7 +159,7 @@ def test_without_a_command_object_the_viewer_is_asked_directly():
     panel = ScoresPanel(viewer, None)
     _draw(panel)
     x, y, w, h = panel._plot_box
-    panel.press(x + w * 0.9, y + 5.0, BOX)   # not where the frame already is
+    panel.press(x + w * 0.9, y + 5.0, BOX)  # not where the frame already is
     assert viewer.set_frames, "nothing moved the frame"
 
 
@@ -165,7 +173,8 @@ def test_a_trajectory_with_no_recorded_scores_still_has_something_to_show():
     """The demo everybody opens records none, and an empty graph teaches
     nothing about the panel. What the *motion* says stands in: Rg, RMSD, the
     thickness, and -- where the file stores a radius per frame -- how many
-    particles are actually there."""
+    particles are actually there.
+    """
     panel = ScoresPanel(_Viewer(series={}), _Cmd())
     _draw(panel)
     assert panel.rows.names == ["· RMSD to frame 1", "· Rg", "· thickness"]
@@ -192,10 +201,15 @@ def test_a_single_frame_object_has_no_series_at_all():
 
 
 def test_a_series_that_is_all_nan_is_left_out():
-    panel = ScoresPanel(_Viewer(series={
-        "good": np.arange(FRAMES, dtype=float),
-        "empty": np.full(FRAMES, np.nan),
-    }), _Cmd())
+    panel = ScoresPanel(
+        _Viewer(
+            series={
+                "good": np.arange(FRAMES, dtype=float),
+                "empty": np.full(FRAMES, np.nan),
+            }
+        ),
+        _Cmd(),
+    )
     _draw(panel)
     assert "good" in panel.rows.names
     assert "empty" not in panel.rows.names

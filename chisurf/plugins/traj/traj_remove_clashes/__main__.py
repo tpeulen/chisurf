@@ -1,6 +1,8 @@
 import sys
-from .widget import RemoveClashedFrames
+
 from qtpy import QtWidgets
+
+from .widget import RemoveClashedFrames
 
 
 def main():

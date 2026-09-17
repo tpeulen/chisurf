@@ -108,9 +108,15 @@ class Pda2cDynamicNStates(RateMatrixMixin, FittingParameterGroup):
         # spinner that disagrees with how the data was segmented silently
         # rescales every rate. The model reads it from the dataset instead.
         self._n_windows = FittingParameter(
-            value=2000, name="n_windows", lb=100, ub=200000, bounds_on=True, fixed=True,
+            value=2000,
+            name="n_windows",
+            lb=100,
+            ub=200000,
+            bounds_on=True,
+            fixed=True,
             label_text="N<sub>win</sub>",
-            description='Number of observation windows sampled by the Monte-Carlo dynamic route.')
+            description="Number of observation windows sampled by the Monte-Carlo dynamic route.",
+        )
         self.n_states = int(n_states)
 
     # -- size ---------------------------------------------------------------
@@ -132,15 +138,28 @@ class Pda2cDynamicNStates(RateMatrixMixin, FittingParameterGroup):
             self._s.pop()
         while len(self._R) < target:
             index = len(self._R) + 1
-            self._R.append(FittingParameter(
-                value=_DEFAULT_DISTANCES[(index - 1) % len(_DEFAULT_DISTANCES)],
-                name=f"R{index}", lb=1.0, ub=200.0, bounds_on=True,
-                label_text=f"R<sub>{index}</sub>",
-                description=f'Mean donor-acceptor distance of state {index} (Angstrom).'))
-            self._s.append(FittingParameter(
-                value=6.0, name=f"s{index}", lb=0.5, ub=50.0, bounds_on=True,
-                label_text=f"s<sub>{index}</sub>",
-                description=f'Width of the distance distribution of state {index} (Angstrom).'))
+            self._R.append(
+                FittingParameter(
+                    value=_DEFAULT_DISTANCES[(index - 1) % len(_DEFAULT_DISTANCES)],
+                    name=f"R{index}",
+                    lb=1.0,
+                    ub=200.0,
+                    bounds_on=True,
+                    label_text=f"R<sub>{index}</sub>",
+                    description=f"Mean donor-acceptor distance of state {index} (Angstrom).",
+                )
+            )
+            self._s.append(
+                FittingParameter(
+                    value=6.0,
+                    name=f"s{index}",
+                    lb=0.5,
+                    ub=50.0,
+                    bounds_on=True,
+                    label_text=f"s<sub>{index}</sub>",
+                    description=f"Width of the distance distribution of state {index} (Angstrom).",
+                )
+            )
 
         self._rebuild_rates(target)
 
@@ -198,9 +217,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         """
         super().__init__(fit, **kwargs)
         self.nuisance = nuisance or Pda2cFretNuisance(name="pda_fret_nuisance", fit=fit, **kwargs)
-        self.states = states or Pda2cDynamicNStates(
-            name="pda_dynamic_n_states", fit=fit, **kwargs
-        )
+        self.states = states or Pda2cDynamicNStates(name="pda_dynamic_n_states", fit=fit, **kwargs)
         self.fret_parameters = chisurf.core.models.fret_parameters.FRETParameters()
         self.n_hist = int(n_hist)
         #: How the time-averaged probability distribution is obtained.
@@ -244,7 +261,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         self.states.n_states = value
         self.states.find_parameters()
         self.find_parameters()
-        self._mc_cache_key = None          # the rate matrix changed shape
+        self._mc_cache_key = None  # the rate matrix changed shape
 
     @property
     def state_names(self) -> list:
@@ -299,10 +316,9 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         E = distance_to_fret_efficiency(r, R0)
         pG = green_probability_from_efficiency(E, self.nuisance)
 
-        pG_states = np.array([
-            self._mean_green_probability(R, s, r, pG)
-            for R, s in zip(st.distances, st.sigmas)
-        ])
+        pG_states = np.array(
+            [self._mean_green_probability(R, s, r, pG) for R, s in zip(st.distances, st.sigmas)]
+        )
 
         if self.method == "szabo-gopich":
             # Analytic: keep the exact first two moments of the time-averaged
@@ -311,7 +327,9 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
             from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 
             centers, weights = szabo_gopich_quadrature(
-                self.states.rate_matrix(), pG_states, self.observation_time,
+                self.states.rate_matrix(),
+                pG_states,
+                self.observation_time,
                 n_nodes=self.n_hist,
             )
         else:

@@ -20,6 +20,7 @@ Everything here is a *starting value*: each estimate is deliberately crude and
 robust rather than precise, and the fit refines it. The point is only to start in
 the right basin.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -75,7 +76,7 @@ def _valley(counts: np.ndarray, start: int, stop: int) -> int:
     """Return the index of the emptiest bin between two peaks."""
     if stop <= start + 1:
         return int(start)
-    return int(start + 1 + np.argmin(counts[start + 1:stop]))
+    return int(start + 1 + np.argmin(counts[start + 1 : stop]))
 
 
 def _donor_only_split(ratio_marginal: np.ndarray) -> tuple[int, int]:

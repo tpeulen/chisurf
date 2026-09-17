@@ -1,24 +1,24 @@
 from __future__ import annotations
 
+import base64
 import json
 import uuid
-import base64
 from pathlib import Path
 from typing import Any
 
-from chisurf import logging
-from mmfdb.store.database_resolver import resolve_database_path
 from mmfdb.repository import MFDatabase
+from mmfdb.schema._sqlutil import _json_loads, _utc_now
 from mmfdb.security.auth import (
-    PERM_READ,
     PERM_MANAGE,
+    PERM_READ,
     filter_readable,
     principal_from_rpc_auth,
-    require_authenticated,
     require_access,
+    require_authenticated,
 )
-from mmfdb.schema._sqlutil import _json_loads, _utc_now
-from chisurf.core.project.archive import ProjectArchive, PROJECT_JSON, DATA_DIR
+from mmfdb.store.database_resolver import resolve_database_path
+
+from chisurf.core.project.archive import DATA_DIR, PROJECT_JSON, ProjectArchive
 from chisurf.server.services import INVALID_INPUT, NOT_FOUND, OPERATION_FAILED, service_error
 
 MMFDB_EXPORT_JSON = "mmfdb_export.json"
@@ -175,8 +175,11 @@ def list_projects_handler(
 
         if not principal.is_admin:
             projects_raw = filter_readable(
-                conn, principal, "operation",
-                projects_raw, id_key="operation_id",
+                conn,
+                principal,
+                "operation",
+                projects_raw,
+                id_key="operation_id",
             )
             if not show_public:
                 filtered = []
@@ -192,7 +195,8 @@ def list_projects_handler(
         if search:
             sl = search.lower()
             projects_raw = [
-                p for p in projects_raw
+                p
+                for p in projects_raw
                 if sl in (p.get("model_name") or "").lower()
                 or sl in (p.get("project_id") or "").lower()
                 or sl in (p.get("notes") or "").lower()
@@ -237,7 +241,9 @@ def list_projects_handler(
 
         return {
             "ok": True,
-            "projects": sorted(grouped.values(), key=lambda x: x.get("updated_at", ""), reverse=True),
+            "projects": sorted(
+                grouped.values(), key=lambda x: x.get("updated_at", ""), reverse=True
+            ),
         }
     except Exception as exc:
         return service_error(str(exc), error_code=OPERATION_FAILED, exception=exc)
@@ -260,6 +266,7 @@ def save_project_handler(
         user_id = principal.user_id or "user_default"
 
         import uuid as _uuid
+
         if not project_id:
             project_id = f"proj_{_uuid.uuid4().hex[:12]}"
         version_id = f"ver_{_uuid.uuid4().hex[:12]}"
@@ -277,7 +284,12 @@ def save_project_handler(
                 branch_uuid = f"br_{_uuid.uuid4().hex[:12]}"
                 conn.execute(
                     "INSERT OR IGNORE INTO mmfdb_branch (branch_uuid, name, description, created_by_user_id) VALUES (?, ?, ?, ?)",
-                    (branch_uuid, f"project_{project_id}", f"Default branch for {project_id}", user_id),
+                    (
+                        branch_uuid,
+                        f"project_{project_id}",
+                        f"Default branch for {project_id}",
+                        user_id,
+                    ),
                 )
                 conn.commit()
 
@@ -327,6 +339,7 @@ def save_project_handler(
         with db.transaction():
             if visibility == "public":
                 import mmfdb.security.auth as authmod
+
                 authmod.chmod(conn, principal, "operation", version_id, 0o704)
             db.add_audit_log(
                 action="archive",
@@ -338,7 +351,8 @@ def save_project_handler(
                     "version_number": version_number,
                     "branch_uuid": branch_uuid,
                     "user_id": user_id,
-                    "artifact_count": len(result.get("dataset_artifacts", [])) + len(result.get("fit_artifacts", [])),
+                    "artifact_count": len(result.get("dataset_artifacts", []))
+                    + len(result.get("fit_artifacts", [])),
                 },
             )
 
@@ -350,7 +364,8 @@ def save_project_handler(
             "branch_uuid": branch_uuid,
             "project_name": project_name or "",
             "visibility": visibility,
-            "artifact_count": len(result.get("dataset_artifacts", [])) + len(result.get("fit_artifacts", [])),
+            "artifact_count": len(result.get("dataset_artifacts", []))
+            + len(result.get("fit_artifacts", [])),
             "parameter_count": result.get("parameter_count", 0),
             "edge_count": result.get("edge_count", 0),
         }
@@ -375,6 +390,7 @@ def _reconstruct_payload(
     if isinstance(stored_payload, dict):
         return stored_payload
     from mmfdb.project.project_archiver import restore_project_from_artifacts
+
     artifact_payload = restore_project_from_artifacts(db, version_id)
     if artifact_payload:
         return {
@@ -455,7 +471,10 @@ def restore_project_handler(
                 action="restore",
                 target_type="project",
                 target_id=version_id,
-                details={"project_id": result.get("project_id"), "project_name": result.get("project_name")},
+                details={
+                    "project_id": result.get("project_id"),
+                    "project_name": result.get("project_name"),
+                },
             )
             return {
                 "ok": True,
@@ -487,7 +506,10 @@ def restore_project_handler(
                 action="restore",
                 target_type="project",
                 target_id=latest_id,
-                details={"project_id": result.get("project_id"), "project_name": result.get("project_name")},
+                details={
+                    "project_id": result.get("project_id"),
+                    "project_name": result.get("project_name"),
+                },
             )
             return {
                 "ok": True,
@@ -506,19 +528,29 @@ def restore_project_handler(
 def _gather_project_dependencies(conn: Any, db: MFDatabase, version_id: str) -> dict[str, Any]:
     run = db.get_analysis_run_full(version_id)
     if not run:
-        return {"operations": [], "artifacts": [], "objects": [], "parameters": [], "provenance_edges": []}
+        return {
+            "operations": [],
+            "artifacts": [],
+            "objects": [],
+            "parameters": [],
+            "provenance_edges": [],
+        }
 
     meta = run.get("metadata") or _json_loads(run.get("metadata_json")) or {}
-    operations = [{
-        "operation_id": run.get("analysis_id", version_id),
-        "operation_type": run.get("analysis_type", "project"),
-        "experiment_id": run.get("experiment_id"),
-        "operator_user_id": run.get("operator_user_id"),
-        "settings": _json_loads(run.get("settings_json")) if isinstance(run.get("settings_json"), str) else run.get("settings_json"),
-        "metadata": meta,
-        "status": run.get("convergence_status", run.get("status")),
-        "created_at": run.get("created_at"),
-    }]
+    operations = [
+        {
+            "operation_id": run.get("analysis_id", version_id),
+            "operation_type": run.get("analysis_type", "project"),
+            "experiment_id": run.get("experiment_id"),
+            "operator_user_id": run.get("operator_user_id"),
+            "settings": _json_loads(run.get("settings_json"))
+            if isinstance(run.get("settings_json"), str)
+            else run.get("settings_json"),
+            "metadata": meta,
+            "status": run.get("convergence_status", run.get("status")),
+            "created_at": run.get("created_at"),
+        }
+    ]
 
     artifacts = []
     objects = []
@@ -673,13 +705,18 @@ def _find_collisions(conn: Any, export_meta: dict[str, Any]) -> dict[str, list[s
     for op in deps.get("operations", []):
         oid = op.get("operation_id", "")
         if oid:
-            row = conn.execute("SELECT 1 FROM mmfdb_operation WHERE operation_id = ? AND deleted_at IS NULL", (oid,)).fetchone()
+            row = conn.execute(
+                "SELECT 1 FROM mmfdb_operation WHERE operation_id = ? AND deleted_at IS NULL",
+                (oid,),
+            ).fetchone()
             if row:
                 collisions["operations"].append(oid)
     for art in deps.get("artifacts", []):
         aid = art.get("artifact_id", art.get("processed_data_id", art.get("raw_data_id", "")))
         if aid:
-            row = conn.execute("SELECT 1 FROM mmfdb_artifact WHERE artifact_id = ? AND deleted_at IS NULL", (aid,)).fetchone()
+            row = conn.execute(
+                "SELECT 1 FROM mmfdb_artifact WHERE artifact_id = ? AND deleted_at IS NULL", (aid,)
+            ).fetchone()
             if row:
                 collisions["artifacts"].append(aid)
     for obj in deps.get("objects", []):
@@ -691,7 +728,10 @@ def _find_collisions(conn: Any, export_meta: dict[str, Any]) -> dict[str, list[s
     for param in deps.get("parameters", []):
         pu = param.get("parameter_uuid", param.get("parameter_id", ""))
         if pu:
-            row = conn.execute("SELECT 1 FROM mmfdb_parameter WHERE parameter_uuid = ? AND deleted_at IS NULL", (pu,)).fetchone()
+            row = conn.execute(
+                "SELECT 1 FROM mmfdb_parameter WHERE parameter_uuid = ? AND deleted_at IS NULL",
+                (pu,),
+            ).fetchone()
             if row:
                 collisions["parameters"].append(pu)
     return collisions
@@ -710,8 +750,11 @@ def _generate_id_remap(collisions: dict[str, list[str]]) -> dict[str, dict[str, 
     return remap
 
 
-def _apply_remap_to_export(export_meta: dict[str, Any], remap: dict[str, dict[str, str]]) -> dict[str, Any]:
+def _apply_remap_to_export(
+    export_meta: dict[str, Any], remap: dict[str, dict[str, str]]
+) -> dict[str, Any]:
     import copy
+
     meta = copy.deepcopy(export_meta)
     deps = meta.setdefault("dependencies", {})
 
@@ -765,8 +808,6 @@ def _populate_mmfdb_from_export(
     deps = export_meta.get("dependencies", {})
     origin = export_meta.get("origin", {})
 
-    prev_project_id: str | None = None
-    prev_version_number: int | None = None
     project_id = origin.get("project_id", f"proj_{uuid.uuid4().hex[:12]}")
     version_number = origin.get("version_number", 1)
 
@@ -818,7 +859,12 @@ def _populate_mmfdb_from_export(
                 object_uuid_map[ou] = obj_result["object_uuid"]
 
         for art in deps.get("artifacts", []):
-            aid = art.get("artifact_id") or art.get("processed_data_id") or art.get("raw_data_id") or ""
+            aid = (
+                art.get("artifact_id")
+                or art.get("processed_data_id")
+                or art.get("raw_data_id")
+                or ""
+            )
             if not aid:
                 continue
             ou = art.get("object_uuid", "")
@@ -898,7 +944,9 @@ def import_preview_handler(
         elif file_path:
             data = Path(file_path).read_bytes()
         else:
-            return service_error("Either archive_base64 or file_path is required", error_code=INVALID_INPUT)
+            return service_error(
+                "Either archive_base64 or file_path is required", error_code=INVALID_INPUT
+            )
 
         archive = ProjectArchive.open_bytes(data)
         if not archive.has_entry(MMFDB_EXPORT_JSON):
@@ -911,10 +959,13 @@ def import_preview_handler(
                 payload = json.loads(archive.read_text(PROJECT_JSON))
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 return service_error(
-                    f"Invalid project.json: {exc}", error_code=INVALID_INPUT,
+                    f"Invalid project.json: {exc}",
+                    error_code=INVALID_INPUT,
                 )
             if not isinstance(payload, dict):
-                return service_error("project.json must contain an object", error_code=INVALID_INPUT)
+                return service_error(
+                    "project.json must contain an object", error_code=INVALID_INPUT
+                )
             meta = payload.get("meta") or {}
             return {
                 "ok": True,
@@ -974,7 +1025,9 @@ def import_csp_handler(
         elif file_path:
             data = Path(file_path).read_bytes()
         else:
-            return service_error("Either archive_base64 or file_path is required", error_code=INVALID_INPUT)
+            return service_error(
+                "Either archive_base64 or file_path is required", error_code=INVALID_INPUT
+            )
 
         archive = ProjectArchive.open_bytes(data)
         if not archive.has_entry(MMFDB_EXPORT_JSON):
@@ -987,10 +1040,13 @@ def import_csp_handler(
                 payload = json.loads(archive.read_text(PROJECT_JSON))
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 return service_error(
-                    f"Invalid project.json: {exc}", error_code=INVALID_INPUT,
+                    f"Invalid project.json: {exc}",
+                    error_code=INVALID_INPUT,
                 )
             if not isinstance(payload, dict):
-                return service_error("project.json must contain an object", error_code=INVALID_INPUT)
+                return service_error(
+                    "project.json must contain an object", error_code=INVALID_INPUT
+                )
             meta = payload.get("meta") or {}
             result = save_project_handler(
                 auth=auth,
@@ -1017,9 +1073,7 @@ def import_csp_handler(
                 )
             remap = _generate_id_remap(collisions)
             export_meta = _apply_remap_to_export(export_meta, remap)
-            export_meta["id_remap"] = {
-                cat: mapping for cat, mapping in remap.items() if mapping
-            }
+            export_meta["id_remap"] = {cat: mapping for cat, mapping in remap.items() if mapping}
         else:
             export_meta["id_remap"] = {}
 
@@ -1096,18 +1150,28 @@ def create_branch_handler(
         user_id = principal.user_id or "user_default"
 
         if not project_id or not from_version_id or not branch_name:
-            return service_error("project_id, from_version_id, and branch_name are required", error_code=INVALID_INPUT)
+            return service_error(
+                "project_id, from_version_id, and branch_name are required",
+                error_code=INVALID_INPUT,
+            )
 
         require_access(conn, principal, "operation", from_version_id, PERM_READ)
 
         import uuid as _uuid
+
         branch_uuid = f"br_{_uuid.uuid4().hex[:12]}"
 
         with db.transaction():
             conn.execute(
                 """INSERT INTO mmfdb_branch (branch_uuid, name, description, head_operation_id, created_by_user_id)
                    VALUES (?, ?, ?, ?, ?)""",
-                (branch_uuid, branch_name, f"Forked from {from_version_id}", from_version_id, user_id),
+                (
+                    branch_uuid,
+                    branch_name,
+                    f"Forked from {from_version_id}",
+                    from_version_id,
+                    user_id,
+                ),
             )
             db.add_audit_log(
                 action="create_branch",
@@ -1189,12 +1253,18 @@ def list_branches_handler(
             ).fetchone()
             count = vn_count[0] if vn_count else 0
 
-            branches.append({
-                "branch_uuid": branch_row["branch_uuid"] if isinstance(branch_row, dict) else branch_row[0],
-                "name": branch_row["name"] if isinstance(branch_row, dict) else branch_row[1],
-                "head_version_id": branch_row["head_operation_id"] if isinstance(branch_row, dict) else branch_row[2],
-                "version_count": count,
-            })
+            branches.append(
+                {
+                    "branch_uuid": branch_row["branch_uuid"]
+                    if isinstance(branch_row, dict)
+                    else branch_row[0],
+                    "name": branch_row["name"] if isinstance(branch_row, dict) else branch_row[1],
+                    "head_version_id": branch_row["head_operation_id"]
+                    if isinstance(branch_row, dict)
+                    else branch_row[2],
+                    "version_count": count,
+                }
+            )
 
         return {"ok": True, "branches": branches}
     except Exception as exc:
@@ -1244,16 +1314,18 @@ def get_version_graph_handler(
             meta = _json_loads(meta_raw) if isinstance(meta_raw, str) else (meta_raw or {})
 
             node_ids.add(op_id)
-            nodes.append({
-                "version_id": op_id,
-                "version_number": meta.get("version_number", 0),
-                "branch_uuid": meta.get("branch_uuid"),
-                "project_name": meta.get("project_name", ""),
-                "notes": meta.get("notes", ""),
-                "fit_count": meta.get("fit_count", 0),
-                "dataset_count": meta.get("dataset_count", 0),
-                "created_at": created,
-            })
+            nodes.append(
+                {
+                    "version_id": op_id,
+                    "version_number": meta.get("version_number", 0),
+                    "branch_uuid": meta.get("branch_uuid"),
+                    "project_name": meta.get("project_name", ""),
+                    "notes": meta.get("notes", ""),
+                    "fit_count": meta.get("fit_count", 0),
+                    "dataset_count": meta.get("dataset_count", 0),
+                    "created_at": created,
+                }
+            )
 
         # Build edges from parent_version_id metadata
         edges = []
@@ -1268,11 +1340,13 @@ def get_version_graph_handler(
                     parent_id = meta.get("parent_version_id")
                     break
             if parent_id and parent_id in node_ids:
-                edges.append({
-                    "source": node["version_id"],
-                    "target": parent_id,
-                    "relationship": "supersedes",
-                })
+                edges.append(
+                    {
+                        "source": node["version_id"],
+                        "target": parent_id,
+                        "relationship": "supersedes",
+                    }
+                )
 
         # Also query mmfdb_edge for supersedes edges. A supersedes edge is stored
         # as newer_version -> parent_version.
@@ -1367,17 +1441,19 @@ def list_project_artifacts_handler(
         artifacts = list(artifacts_by_id.values())
         result = []
         for art in artifacts:
-            result.append({
-                "artifact_id": art.get("artifact_id"),
-                "artifact_kind": art.get("artifact_kind"),
-                "role": art.get("role"),
-                "direction": art.get("direction"),
-                "storage_mode": art.get("storage_mode"),
-                "object_uuid": art.get("object_uuid"),
-                "size_bytes": art.get("size_bytes"),
-                "data_format": art.get("data_format"),
-                "file_path": art.get("file_path"),
-            })
+            result.append(
+                {
+                    "artifact_id": art.get("artifact_id"),
+                    "artifact_kind": art.get("artifact_kind"),
+                    "role": art.get("role"),
+                    "direction": art.get("direction"),
+                    "storage_mode": art.get("storage_mode"),
+                    "object_uuid": art.get("object_uuid"),
+                    "size_bytes": art.get("size_bytes"),
+                    "data_format": art.get("data_format"),
+                    "file_path": art.get("file_path"),
+                }
+            )
 
         return {"ok": True, "artifacts": result}
     except Exception as exc:
@@ -1426,20 +1502,30 @@ def list_project_parameters_handler(
                 (op_id,),
             ).fetchall()
             for prow in params:
-                meta = _json_loads(prow["metadata_json"] if isinstance(prow, dict) else prow[8]) or {}
-                parameters.append({
-                    "parameter_uuid": prow["parameter_uuid"] if isinstance(prow, dict) else prow[0],
-                    "operation_id": op_id,
-                    "name": prow["name"] if isinstance(prow, dict) else prow[1],
-                    "value": prow["value"] if isinstance(prow, dict) else prow[2],
-                    "initial_value": prow["initial_value"] if isinstance(prow, dict) else prow[3],
-                    "lower_bound": prow["lower_bound"] if isinstance(prow, dict) else prow[4],
-                    "upper_bound": prow["upper_bound"] if isinstance(prow, dict) else prow[5],
-                    "bounds_on": prow["bounds_on"] if isinstance(prow, dict) else prow[6],
-                    "parameter_type": prow["parameter_type"] if isinstance(prow, dict) else prow[7],
-                    "link_target": meta.get("link_target"),
-                    "fit_parameter_uid": meta.get("fit_parameter_uid"),
-                })
+                meta = (
+                    _json_loads(prow["metadata_json"] if isinstance(prow, dict) else prow[8]) or {}
+                )
+                parameters.append(
+                    {
+                        "parameter_uuid": prow["parameter_uuid"]
+                        if isinstance(prow, dict)
+                        else prow[0],
+                        "operation_id": op_id,
+                        "name": prow["name"] if isinstance(prow, dict) else prow[1],
+                        "value": prow["value"] if isinstance(prow, dict) else prow[2],
+                        "initial_value": prow["initial_value"]
+                        if isinstance(prow, dict)
+                        else prow[3],
+                        "lower_bound": prow["lower_bound"] if isinstance(prow, dict) else prow[4],
+                        "upper_bound": prow["upper_bound"] if isinstance(prow, dict) else prow[5],
+                        "bounds_on": prow["bounds_on"] if isinstance(prow, dict) else prow[6],
+                        "parameter_type": prow["parameter_type"]
+                        if isinstance(prow, dict)
+                        else prow[7],
+                        "link_target": meta.get("link_target"),
+                        "fit_parameter_uid": meta.get("fit_parameter_uid"),
+                    }
+                )
 
         return {"ok": True, "parameters": parameters}
     except Exception as exc:

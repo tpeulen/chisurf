@@ -26,6 +26,7 @@ Run
 ---
     PYTHONPATH=. python test/benchmarks/benchmark_chimol_ray.py
 """
+
 from __future__ import annotations
 
 import os
@@ -41,7 +42,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 #: Representations worth timing: every one the tracer draws differently.
@@ -70,7 +75,8 @@ def scene_geometry(scene) -> tuple[int, int]:
             n_sph += len(geom.meta["spheres"]["centers"])
         elif geom.kind == "mesh":
             n_tri += (
-                geom.indices.shape[0] if geom.indices is not None
+                geom.indices.shape[0]
+                if geom.indices is not None
                 else np.asarray(geom.positions).shape[0] // 3
             )
         elif geom.kind in ("points", "line"):
@@ -84,8 +90,8 @@ def main() -> int:
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.render.raytracer import _camera_from_view_state, render_scene
 
     window = MolViewPluginWindow()
@@ -106,8 +112,10 @@ def main() -> int:
     cmd.do("as cartoon")
     render_scene(*current(), LIGHTS, 16, 12, ssaa=1)
 
-    print(f"{PDB.name}: ray tracing at {BENCH_W}x{BENCH_H}, "
-          f"{BENCH_SSAA}x{BENCH_SSAA} samples per pixel\n")
+    print(
+        f"{PDB.name}: ray tracing at {BENCH_W}x{BENCH_H}, "
+        f"{BENCH_SSAA}x{BENCH_SSAA} samples per pixel\n"
+    )
     print(f"{'representation':<16}{'trace (s)':>11}{'spheres':>10}{'triangles':>12}")
     print("-" * 49)
     for rep in REPRESENTATIONS:
@@ -132,8 +140,10 @@ def main() -> int:
         render_scene(scene, camera, LIGHTS, width, height, ssaa=ssaa)
         elapsed = time.perf_counter() - started
         samples = width * height * ssaa * ssaa
-        print(f"{f'{width}x{height} ssaa{ssaa}':<16}{samples:>12,}"
-              f"{elapsed:>11.3f}{elapsed / samples * 1e6:>12.3f}")
+        print(
+            f"{f'{width}x{height} ssaa{ssaa}':<16}{samples:>12,}"
+            f"{elapsed:>11.3f}{elapsed / samples * 1e6:>12.3f}"
+        )
 
     del app
     return 0

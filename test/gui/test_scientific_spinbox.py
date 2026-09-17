@@ -8,6 +8,7 @@ appropriately in additive and decimal modes.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

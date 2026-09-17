@@ -19,9 +19,8 @@ what lets the same overlay serve an image and an ``E``–``S`` histogram.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
-
-import numpy as np
+from collections.abc import Callable
+from typing import Any
 
 from chisurf.core.roi import EllipseROI, PolygonROI, RectangleROI, RegionCollection
 
@@ -61,7 +60,7 @@ def roi_from_handle(handle: Any, template: Any) -> Any:
     return RectangleROI(x, y, x + w, y + h, name=name)
 
 
-def _handle_spec(roi: Any) -> Optional[Dict[str, Any]]:
+def _handle_spec(roi: Any) -> dict[str, Any] | None:
     """Return the ``add_roi`` arguments drawing *roi*, or ``None`` if undrawable.
 
     A painted mask, a threshold or a composite has no handle: there is no small
@@ -121,7 +120,7 @@ class RegionOverlay:
         canvas: Any,
         collection_getter: Callable[[], RegionCollection],
         *,
-        on_change: Optional[Callable[[], None]] = None,
+        on_change: Callable[[], None] | None = None,
         live: bool = False,
         movable: bool = True,
     ) -> None:
@@ -131,8 +130,8 @@ class RegionOverlay:
         self._on_change = on_change
         self._live = bool(live)
         self._movable = bool(movable)
-        self._handles: List[Any] = []
-        self._names: List[str] = []
+        self._handles: list[Any] = []
+        self._names: list[str] = []
         self._syncing = False
 
     @property
@@ -170,7 +169,8 @@ class RegionOverlay:
             # :meth:`select`, and picking a row would appear to recolour it.
             handle = self._canvas.add_roi(
                 pen=self._pen_for(entry, len(self._handles)),
-                movable=self._movable, **spec,
+                movable=self._movable,
+                **spec,
             )
             if self._movable:
                 handle.on_change(

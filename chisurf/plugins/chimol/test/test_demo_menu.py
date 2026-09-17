@@ -8,6 +8,7 @@ Now `demo <key>` runs one, `demo` lists them, and the menu is *generated* from
 the same `DEMOS` table: a demo added there and forgotten here would otherwise
 ship and be unreachable.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -65,9 +66,8 @@ def test_the_viewport_bar_lists_demo_exactly_once(qapp_window):
 
 @pytest.fixture(scope="module")
 def qapp_window():
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
@@ -96,9 +96,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
     qapp_window._run_object_menu_command("demo")
     gui = qapp_window.viewer.gui
     assert gui._info_title == "Demos"
-    assert [name for name, _doc in gui._info_items] == [
-        key for key, _t, _n in DEMOS
-    ]
+    assert [name for name, _doc in gui._info_items] == [key for key, _t, _n in DEMOS]
     for key, _t, _n in DEMOS:
         assert gui._info_commands.get(key) == f"demo {key}"
 

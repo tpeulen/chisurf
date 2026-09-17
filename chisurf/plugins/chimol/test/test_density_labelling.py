@@ -19,7 +19,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -78,10 +82,9 @@ def test_the_panel_lists_and_switches_between_densities(session):
     # two originals for the tests below (a re-attach would rename: names
     # are unique).
     shared.do("add_dye resi 8 and name CB, Cy3")
-    third = [
-        oid for oid, entry in viewer.objects.items()
-        if getattr(entry, "name", "") == "E8_CB"
-    ][0]
+    third = [oid for oid, entry in viewer.objects.items() if getattr(entry, "name", "") == "E8_CB"][
+        0
+    ]
     model.select_object(third)
     assert model._grid() is not None
     assert model._object_id == third
@@ -96,10 +99,7 @@ def test_the_panel_lists_and_switches_between_densities(session):
 def test_the_smoothing_slider_pins_and_relaxes(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
-    oid = [
-        o for o, e in viewer.objects.items()
-        if getattr(e.state, "av", None) is not None
-    ][0]
+    oid = [o for o, e in viewer.objects.items() if getattr(e.state, "av", None) is not None][0]
     assert viewer.get_volume_smoothing(oid) == -1, "preset decides by default"
     assert viewer.set_volume_smoothing(4, object_id=oid)
     assert viewer.get_volume_smoothing(oid) == 4
@@ -114,12 +114,10 @@ def test_the_alpha_edit_recolors_without_recontouring(session):
     """An alpha change must not pay for marching cubes it already has."""
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
-    oid = [
-        o for o, e in viewer.objects.items()
-        if getattr(e.state, "av", None) is not None
-    ][0]
+    oid = [o for o, e in viewer.objects.items() if getattr(e.state, "av", None) is not None][0]
     mesh = next(
-        o for o in viewer._scene.objects
+        o
+        for o in viewer._scene.objects
         if o.id.startswith(f"{oid}:volume_") and o.geometry.kind == "mesh"
     )
     verts_before = np.asarray(mesh.geometry.positions).copy()
@@ -131,7 +129,8 @@ def test_the_alpha_edit_recolors_without_recontouring(session):
     assert viewer.recolor_volume(oid)
     # Same mesh object, same geometry, new colours: no contouring happened.
     after = next(
-        o for o in viewer._scene.objects
+        o
+        for o in viewer._scene.objects
         if o.id.startswith(f"{oid}:volume_") and o.geometry.kind == "mesh"
     )
     assert np.array_equal(np.asarray(after.geometry.positions), verts_before)
@@ -227,13 +226,26 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
     class _Recorder:
         CHAR_W = 7.0
 
-        def fill_rect(self, *a, **k): pass
-        def stroke_rect(self, *a, **k): pass
-        def text(self, *a, **k): pass
-        def push_clip(self, *a, **k): pass
-        def pop_clip(self, *a, **k): pass
-        def text_width(self, s): return len(str(s)) * self.CHAR_W
-        def line_height(self): return 16.0
+        def fill_rect(self, *a, **k):
+            pass
+
+        def stroke_rect(self, *a, **k):
+            pass
+
+        def text(self, *a, **k):
+            pass
+
+        def push_clip(self, *a, **k):
+            pass
+
+        def pop_clip(self, *a, **k):
+            pass
+
+        def text_width(self, s):
+            return len(str(s)) * self.CHAR_W
+
+        def line_height(self):
+            return 16.0
 
     gui = viewer.gui
     window = gui.window("density")
@@ -275,13 +287,26 @@ class _PanelRecorder:
 
     CHAR_W = 7.0
 
-    def fill_rect(self, *a, **k): pass
-    def stroke_rect(self, *a, **k): pass
-    def text(self, *a, **k): pass
-    def push_clip(self, *a, **k): pass
-    def pop_clip(self, *a, **k): pass
-    def text_width(self, s): return len(str(s)) * self.CHAR_W
-    def line_height(self): return 16.0
+    def fill_rect(self, *a, **k):
+        pass
+
+    def stroke_rect(self, *a, **k):
+        pass
+
+    def text(self, *a, **k):
+        pass
+
+    def push_clip(self, *a, **k):
+        pass
+
+    def pop_clip(self, *a, **k):
+        pass
+
+    def text_width(self, s):
+        return len(str(s)) * self.CHAR_W
+
+    def line_height(self):
+        return 16.0
 
 
 def _draw_rows(panel, gui):
@@ -335,15 +360,15 @@ def test_a_rows_context_menu_sets_that_densitys_display(session):
 
     # A click elsewhere closes the menu without acting.
     assert panel.context_press(row2.x + 60, row2.y + 2, gui.window_body(gui.window("density")))
-    panel.press(row2.x + 1.0, row2.y + row2.h + 40.0,
-                gui.window_body(gui.window("density")))
+    panel.press(row2.x + 1.0, row2.y + row2.h + 40.0, gui.window_body(gui.window("density")))
     assert panel._ctx_oid is None
     assert errors == [], errors[:2]
 
 
 def test_the_chrome_routes_a_window_right_press(session):
     """`mouse_press(right=True)` on the density window opens the row menu --
-    the `on_context` hook, not just the panel method."""
+    the `on_context` hook, not just the panel method.
+    """
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     gui = viewer.gui
@@ -365,7 +390,8 @@ def test_the_chrome_routes_a_window_right_press(session):
 def test_the_smooth_slider_snaps_and_a_click_sets_it(session):
     """Whole passes only; a click on the track sets the value at once; a repaint
     while the thumb is held does not snap it back (the bug that made the slider
-    'work only on release, sometimes')."""
+    'work only on release, sometimes').
+    """
     from emtk.testing import RecordingPainter
 
     win, shared, errors, qapp, tmp = session
@@ -380,7 +406,7 @@ def test_the_smooth_slider_snaps_and_a_click_sets_it(session):
     box = panel._smooth_box
     assert box is not None, "no smooth slider row"
     oid = panel.model._object_id
-    assert oid, 'the panel drives no map'
+    assert oid, "the panel drives no map"
 
     # a click three quarters along the track -> a whole number of passes, applied on the press
     x = box.x + box.w * 0.75

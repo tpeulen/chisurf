@@ -94,9 +94,7 @@ def test_a_global_model_accepts_both_pda_families(qapp):
 
     residuals = host.model.weighted_residuals
     assert residuals.ndim == 1
-    expected = (
-        two_model.weighted_residuals.size + three_model.weighted_residuals.size
-    )
+    expected = two_model.weighted_residuals.size + three_model.weighted_residuals.size
     assert residuals.size == expected
     assert np.all(np.isfinite(residuals))
 
@@ -137,8 +135,8 @@ def test_the_joint_fit_recovers_the_shared_distance(qapp):
     three, _, three_mean = _three_colour_fit()
     two, _, two_mean = _two_colour_fit()
 
-    three_mean.link = two_mean          # one free distance across both
-    two_mean.value = 46.0               # start well away from the truth
+    three_mean.link = two_mean  # one free distance across both
+    two_mean.value = 46.0  # start well away from the truth
     two.model.find_parameters()
     three.model.find_parameters()
 

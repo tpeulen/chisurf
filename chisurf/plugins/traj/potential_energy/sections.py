@@ -27,11 +27,11 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 logger = logging.getLogger(__name__)
 
@@ -198,9 +198,7 @@ class _SetupSection(QtWidgets.QWidget):
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory(str(filename))
 
@@ -336,9 +334,7 @@ class _RunSection(QtWidgets.QWidget):
         with ChiSurfProgress(self._btn, "Scoring frames…", 0, cancellable=False) as self._task:
             try:
                 count = self._model.process(energy_file, progress_cb=self._on_progress)
-                dialogs.information(
-                    self, "Processing complete", f"Processed {count} frame(s)."
-                )
+                dialogs.information(self, "Processing complete", f"Processed {count} frame(s).")
             except Exception as exc:  # noqa: BLE001
                 dialogs.error(self, "Processing failed", str(exc))
             finally:

@@ -19,7 +19,9 @@ def manual(tmp_path, monkeypatch):
     return docs / "manual"
 
 
-def _page(manual: pathlib.Path, name: str = "page.rst", text: str = "Title\n=====\n") -> pathlib.Path:
+def _page(
+    manual: pathlib.Path, name: str = "page.rst", text: str = "Title\n=====\n"
+) -> pathlib.Path:
     path = manual / name
     path.write_text(text, encoding="utf-8")
     return path

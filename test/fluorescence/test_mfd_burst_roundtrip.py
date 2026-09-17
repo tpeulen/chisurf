@@ -141,9 +141,7 @@ def test_the_produced_folder_fits(produced):
 
     data = load_mfd_data(
         produced,
-        axes=HistogramAxes.default(
-            n_ratio=30, n_micro_time=30, micro_time_range=(2.0, 8.0)
-        ),
+        axes=HistogramAxes.default(n_ratio=30, n_micro_time=30, micro_time_range=(2.0, 8.0)),
         min_green_photons=20,
     )
     model = MfdModel(

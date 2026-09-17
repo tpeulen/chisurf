@@ -50,13 +50,11 @@ def register(cls):
     """
 
     class RegisteredClass(cls):
-
         _instances = set()
 
         @classmethod
         def get_instances(cls) -> weakref.ReferenceType:
-            """Returns all instances of the class as a generator
-            """
+            """Returns all instances of the class as a generator"""
             dead = set()
             for ref in cls._instances:
                 obj = ref()
@@ -71,9 +69,7 @@ def register(cls):
             # unique_identifier are available before we add the weakref
             # to _instances (weakref.ref.__hash__ delegates to self.__hash__).
             super().__init__(*args, **kwargs)
-            self._instances.add(
-                weakref.ref(self)
-            )
+            self._instances.add(weakref.ref(self))
             self.__class__.__name__ = cls.__name__
 
     return RegisteredClass
@@ -90,10 +86,12 @@ def set_module(module):
 
         assert example.__module__ == 'numpy'
     """
+
     def decorator(func):
         if module is not None:
             func.__module__ = module
         return func
+
     return decorator
 
 
@@ -348,8 +346,12 @@ def deprecated(deprecated_in=None, removed_in=None, current_version=_UNSET, deta
             if should_warn:
                 cls = UnsupportedWarning if is_unsupported else DeprecatedWarning
                 warnings.warn(
-                    cls(getattr(function, "__name__", repr(function)),
-                        deprecated_in, removed_in, details),
+                    cls(
+                        getattr(function, "__name__", repr(function)),
+                        deprecated_in,
+                        removed_in,
+                        details,
+                    ),
                     category=DeprecationWarning,
                     stacklevel=2,
                 )
@@ -360,5 +362,3 @@ def deprecated(deprecated_in=None, removed_in=None, current_version=_UNSET, deta
         return _inner
 
     return _decorate
-
-

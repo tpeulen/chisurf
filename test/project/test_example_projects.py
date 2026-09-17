@@ -23,7 +23,6 @@ import chisurf.gui  # noqa: E402,F401  # ensure cs.gui is a module
 import chisurf.gui.widgets  # noqa: E402,F401  # ensure cs.gui.widgets resolves
 from chisurf.macros.core_fit import load_project_data  # noqa: E402
 
-
 EXAMPLES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "examples", "projects")
 )
@@ -165,4 +164,3 @@ def test_reinitialize_application_does_not_overwrite_cs_gui():
         assert cs.gui.widgets.__name__ == "chisurf.gui.widgets"
     finally:
         cs.cs = saved_cs_cs
-

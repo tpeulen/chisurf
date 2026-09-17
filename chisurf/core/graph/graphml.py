@@ -71,7 +71,7 @@ def _format(value, type_name: str) -> str:
 
 
 def _collect_keys(
-        items: typing.Iterable[dict],
+    items: typing.Iterable[dict],
 ) -> dict[str, str]:
     """Return ``attribute name -> GraphML type`` over a set of attribute dicts."""
     out: dict[str, str] = {}
@@ -84,10 +84,10 @@ def _collect_keys(
 
 
 def write_graphml(
-        graph: Graph,
-        path,
-        encoding: str = "utf-8",
-        prettyprint: bool = True,
+    graph: Graph,
+    path,
+    encoding: str = "utf-8",
+    prettyprint: bool = True,
 ) -> None:
     """Write ``graph`` to ``path`` as GraphML.
 
@@ -108,9 +108,7 @@ def write_graphml(
         Indent the document so a human can read it.
     """
     node_keys = _collect_keys(attrs for _, attrs in graph.nodes.items())
-    edge_keys = _collect_keys(
-        graph.get_edge_data(u, v, {}) for u, v in graph.edges
-    )
+    edge_keys = _collect_keys(graph.get_edge_data(u, v, {}) for u, v in graph.edges)
 
     root = ET.Element("graphml", {"xmlns": NS})
     key_ids: dict[tuple[str, str], str] = {}
@@ -118,21 +116,33 @@ def write_graphml(
         for name in keys:
             key_id = f"d{len(key_ids)}"
             key_ids[(scope, name)] = key_id
-            ET.SubElement(root, "key", {
-                "id": key_id,
-                "for": scope,
-                "attr.name": name,
-                "attr.type": keys[name],
-            })
+            ET.SubElement(
+                root,
+                "key",
+                {
+                    "id": key_id,
+                    "for": scope,
+                    "attr.name": name,
+                    "attr.type": keys[name],
+                },
+            )
 
-    graph_element = ET.SubElement(root, "graph", {
-        "edgedefault": "directed" if graph.is_directed() else "undirected",
-    })
+    graph_element = ET.SubElement(
+        root,
+        "graph",
+        {
+            "edgedefault": "directed" if graph.is_directed() else "undirected",
+        },
+    )
     for name, value in graph.graph.items():
         if value is not None:
-            ET.SubElement(graph_element, "data", {
-                "key": name,
-            }).text = str(value)
+            ET.SubElement(
+                graph_element,
+                "data",
+                {
+                    "key": name,
+                },
+            ).text = str(value)
 
     for node, attrs in graph.nodes.items():
         element = ET.SubElement(graph_element, "node", {"id": str(node)})
@@ -143,9 +153,15 @@ def write_graphml(
             data.text = _format(value, node_keys[name])
 
     for index, (u, v) in enumerate(graph.edges):
-        element = ET.SubElement(graph_element, "edge", {
-            "id": f"e{index}", "source": str(u), "target": str(v),
-        })
+        element = ET.SubElement(
+            graph_element,
+            "edge",
+            {
+                "id": f"e{index}",
+                "source": str(u),
+                "target": str(v),
+            },
+        )
         for name, value in graph.get_edge_data(u, v, {}).items():
             if value is None:
                 continue

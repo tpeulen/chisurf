@@ -8,20 +8,15 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 from pathlib import Path
 
-import pytest
-
-from mmfdb.schema import schema
-from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
 from mmfdb.repository import MFDatabase
+from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    _resolve_active_user_id,
     _save_setup_row,
     setup_id_for_name,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -42,7 +37,8 @@ def _db(tmp_path: Path) -> MFDatabase:
 
 def test_save_setup_creates_structured_child_tables(tmp_path: Path) -> None:
     """Saving a detector setup creates queryable mmfdb_setup_detector_channel
-    and mmfdb_setup_pie_window rows plus the parent mmfdb_setup row."""
+    and mmfdb_setup_pie_window rows plus the parent mmfdb_setup row.
+    """
     db = _db(tmp_path)
     try:
         setup_name = "Test MFD Setup"
@@ -96,7 +92,8 @@ def test_save_setup_creates_structured_child_tables(tmp_path: Path) -> None:
 
 def test_legacy_json_import_backfills_structured_tables(tmp_path: Path) -> None:
     """Importing legacy detector_setups.json data via _save_setup_row creates
-    structured child rows matching the original JSON payload."""
+    structured child rows matching the original JSON payload.
+    """
     db = _db(tmp_path)
     try:
         setup_name = "Legacy MFD Setup"
@@ -158,12 +155,22 @@ def _setup_dictionary_mapper(tmp_path: Path):
     return build_dictionary_schema_map(db_path)
 
 
-_SETUP_CATEGORIES = {"mmfdb_setup", "mmfdb_setup_detector_channel", "mmfdb_setup_pie_window", "mmfdb_setup_fcs_pair", "mmfdb_setup_calibration", "mmfdb_artifact", "mmfdb_parameter", "mmfdb_operation_parameter_def"}
+_SETUP_CATEGORIES = {
+    "mmfdb_setup",
+    "mmfdb_setup_detector_channel",
+    "mmfdb_setup_pie_window",
+    "mmfdb_setup_fcs_pair",
+    "mmfdb_setup_calibration",
+    "mmfdb_artifact",
+    "mmfdb_parameter",
+    "mmfdb_operation_parameter_def",
+}
 
 
 def test_every_setup_dictionary_item_maps_to_live_column(tmp_path: Path) -> None:
     """Every dictionary item in the setup/detector/window categories maps to a
-    live column — no curated allow-list, no omissions."""
+    live column — no curated allow-list, no omissions.
+    """
     mapper = _setup_dictionary_mapper(tmp_path)
     failures: list[str] = []
     for cat_name in _SETUP_CATEGORIES:
@@ -180,20 +187,18 @@ def test_every_setup_dictionary_item_maps_to_live_column(tmp_path: Path) -> None
             ok, message = mapper.validate_mapping(full_name)
             if not ok:
                 failures.append(f"{full_name}: {message}")
-    assert not failures, f"Dictionary-schema mapping failures:\n" + "\n".join(failures)
+    assert not failures, "Dictionary-schema mapping failures:\n" + "\n".join(failures)
 
 
 def test_no_setup_dictionary_items_are_unmapped(tmp_path: Path) -> None:
     """None of the setup/detector/window dictionary items appear in the
-    unmapped list from get_unmapped_flr_items()."""
+    unmapped list from get_unmapped_flr_items().
+    """
     mapper = _setup_dictionary_mapper(tmp_path)
     unmapped = mapper.get_unmapped_flr_items()
-    unmapped_in_categories = [
-        u for u in unmapped if u.category in _SETUP_CATEGORIES
-    ]
-    assert not unmapped_in_categories, (
-        f"Items should not be unmapped:\n" +
-        "\n".join(f"  {u.dictionary_name}: {u.reason}" for u in unmapped_in_categories)
+    unmapped_in_categories = [u for u in unmapped if u.category in _SETUP_CATEGORIES]
+    assert not unmapped_in_categories, "Items should not be unmapped:\n" + "\n".join(
+        f"  {u.dictionary_name}: {u.reason}" for u in unmapped_in_categories
     )
 
 
@@ -201,19 +206,15 @@ def test_fresh_db_has_no_legacy_or_duplicate_tables(tmp_path: Path) -> None:
     """PRD-19: a freshly built MMFDB contains no legacy ``fdb_*`` tables and no
     duplicate-of-flrCIF ``mmfdb_sample``/``mmfdb_experiment`` tables, while the
     canonical tables are present. Guards the dictionary-driven schema against
-    legacy regressions."""
+    legacy regressions.
+    """
     import sqlite3
 
     db_path = os.path.join(tmp_path, "legacy_check.db")
     MFDatabase(db_path).close()
     con = sqlite3.connect(db_path)
     try:
-        tables = {
-            r[0]
-            for r in con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
-        }
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     finally:
         con.close()
 
@@ -247,11 +248,12 @@ def _admin_auth(db_path: str) -> dict:
 
 def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
     """mmfdb.setups.list returns detector_channels and pie_windows keys."""
-    from mmfdb.admin.backend.services import (
-        list_setups_handler,
-        get_setup_handler,
-    )
     from unittest.mock import patch
+
+    from mmfdb.admin.backend.services import (
+        get_setup_handler,
+        list_setups_handler,
+    )
 
     db_path = os.path.join(tmp_path, "test_rpc.db")
     with MFDatabase(db_path):
@@ -278,6 +280,7 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
         from mmfdb.admin.backend.services import (
             save_setup_handler,
         )
+
         setup_payload = {
             "setup_id": "rpc_test_setup",
             "name": "RPC Test Setup",
@@ -309,13 +312,12 @@ def test_list_setups_handler_returns_structured_fields(tmp_path: Path) -> None:
 
 def test_setup_detail_rpc_includes_child_tables(tmp_path: Path) -> None:
     """mmfdb.setups.get returns detector_channels and pie_windows lists."""
-    from mmfdb.admin.backend.services import (
-        save_setup_handler,
-    )
+    from unittest.mock import patch
+
     from mmfdb.admin.backend.services import (
         get_setup_handler,
+        save_setup_handler,
     )
-    from unittest.mock import patch
 
     db_path = os.path.join(tmp_path, "test_detail.db")
     with MFDatabase(db_path):

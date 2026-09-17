@@ -182,9 +182,7 @@ def rates_from_rate_matrix(matrix) -> np.ndarray:
     """
     matrix = np.asarray(matrix, dtype=float)
     n = matrix.shape[0]
-    return np.array(
-        [matrix[t, s] for s in range(n) for t in range(n) if s != t], dtype=float
-    )
+    return np.array([matrix[t, s] for s in range(n) for t in range(n) if s != t], dtype=float)
 
 
 def transitions_per_window(rate_matrix, window: float) -> float:
@@ -272,13 +270,13 @@ def time_averaged_moments(rate_matrix, values, window: float):
     deviation = values - mean
     window = float(max(window, 0.0))
     if window <= 0.0:
-        return mean, float(populations @ deviation ** 2)
+        return mean, float(populations @ deviation**2)
 
     eigenvalues, eigenvectors = np.linalg.eig(generator)
     try:
         inverse = np.linalg.inv(eigenvectors)
     except np.linalg.LinAlgError:  # pragma: no cover - defective generator
-        return mean, float(populations @ deviation ** 2)
+        return mean, float(populations @ deviation**2)
 
     # C(t) = sum_k amplitude_k exp(lambda_k t), from the spectral decomposition.
     # The generator acts on populations as dp/dt = Q p, so exp(Qt) propagates a
@@ -298,16 +296,23 @@ def time_averaged_moments(rate_matrix, values, window: float):
         factor = np.where(
             np.abs(lam) < 1e-8,
             1.0 + lam / 3.0,
-            2.0 * (np.exp(np.clip(lam.real, -700.0, 0.0) + 1j * lam.imag) - 1.0 - lam)
-            / np.where(np.abs(lam) < 1e-8, 1.0, lam ** 2),
+            2.0
+            * (np.exp(np.clip(lam.real, -700.0, 0.0) + 1j * lam.imag) - 1.0 - lam)
+            / np.where(np.abs(lam) < 1e-8, 1.0, lam**2),
         )
     variance = float(np.real(amplitudes @ factor))
-    static = float(populations @ deviation ** 2)
+    static = float(populations @ deviation**2)
     return mean, float(np.clip(variance, 0.0, static))
 
 
-def szabo_gopich_quadrature(rate_matrix, values, window: float, n_nodes: int = 32,
-                            lower: float | None = None, upper: float | None = None):
+def szabo_gopich_quadrature(
+    rate_matrix,
+    values,
+    window: float,
+    n_nodes: int = 32,
+    lower: float | None = None,
+    upper: float | None = None,
+):
     """Return nodes and weights over a time-averaged, bounded observable.
 
     The Szabo–Gopich step: keep the exact mean and variance from
@@ -394,13 +399,14 @@ def _engine_records_state_trajectory() -> bool:
     """Whether the installed simulation library exposes its kinetics sampler."""
     try:
         import tttrlib
-    except ImportError:                                          # pragma: no cover
+    except ImportError:  # pragma: no cover
         return False
     return hasattr(tttrlib, "sim_occupation_fractions")
 
 
-def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
-                              seed: int = 1) -> np.ndarray:
+def occupation_time_fractions(
+    rate_matrix, window: float, n_samples: int, seed: int = 1
+) -> np.ndarray:
     """Return per-window state occupancies of an arbitrary kinetic scheme.
 
     The general answer where :func:`szabo_gopich_quadrature` is only a two-moment
@@ -467,4 +473,3 @@ def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
         int(seed),
     )
     return np.ascontiguousarray(np.asarray(flat, dtype=float).reshape(n_samples, n))
-

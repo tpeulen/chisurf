@@ -1,4 +1,5 @@
 """Tests for the AutoForm-backed entity detail form (EntityForm)."""
+
 from __future__ import annotations
 
 import os
@@ -25,18 +26,23 @@ def _specs():
         FieldSpec(name="description", label="Description", widget="str"),
         FieldSpec(name="num_of_probes", label="# Probes", widget="int"),
         FieldSpec(name="conc", label="Conc", widget="float"),
-        FieldSpec(name="solvent_phase", label="Phase", widget="choice",
-                  choices=["liquid", "vitrified", "other"]),
+        FieldSpec(
+            name="solvent_phase",
+            label="Phase",
+            widget="choice",
+            choices=["liquid", "vitrified", "other"],
+        ),
         FieldSpec(name="details", label="Details", widget="text"),
         FieldSpec(name="is_public", label="Public", widget="bool"),
-        FieldSpec(name="condition_id", label="Condition", widget="str",
-                  fk_target="condition"),
+        FieldSpec(name="condition_id", label="Condition", widget="str", fk_target="condition"),
     ]
 
 
 def test_all_field_kinds_build(qapp):
     from chisurf.gui.autoform.sections.builtin import (
-        ChoiceWidget, ToggleWidget, ValueWidget,
+        ChoiceWidget,
+        ToggleWidget,
+        ValueWidget,
     )
     from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
 
@@ -54,11 +60,18 @@ def test_set_get_roundtrip(qapp):
 
     fk = {"condition_id": lambda: [("c1", "c1 — A"), ("c2", "c2 — B")]}
     f = EntityForm(_specs(), dropdown_providers=fk)
-    f.set_data({
-        "sample_id": "s1", "description": "my sample", "num_of_probes": 2,
-        "conc": 1.5, "solvent_phase": "vitrified", "details": "line1\nline2",
-        "is_public": 1, "condition_id": "c2",
-    })
+    f.set_data(
+        {
+            "sample_id": "s1",
+            "description": "my sample",
+            "num_of_probes": 2,
+            "conc": 1.5,
+            "solvent_phase": "vitrified",
+            "details": "line1\nline2",
+            "is_public": 1,
+            "condition_id": "c2",
+        }
+    )
     out = f.get_data()
     assert out["sample_id"] == "s1"
     assert out["description"] == "my sample"
@@ -84,8 +97,8 @@ def test_commit_signal_not_fired_during_load(qapp):
 
 
 def test_json_fields_roundtrip(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.entity_schema import FieldSpec
     from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+    from chisurf.plugins.core.mmfdb_admin.gui.entity_schema import FieldSpec
 
     specs = [
         FieldSpec(name="laser_wavelengths", widget="text"),

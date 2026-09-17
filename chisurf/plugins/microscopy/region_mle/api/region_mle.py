@@ -83,7 +83,8 @@ def analyze_request(request: RegionMleRequest) -> RegionMleResult:
             )
 
             write_imaging_table(
-                ptu_path, df,
+                ptu_path,
+                df,
                 name="molecules",
                 artifact_kind="localization_table",
                 operation_type="molecule_localization",

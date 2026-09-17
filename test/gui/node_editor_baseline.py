@@ -22,6 +22,7 @@ Run it as::
 Images and a JSON control inventory land in ``/tmp/chisurf-migration``
 (override with ``CHISURF_MIGRATION_DIR``).
 """
+
 from __future__ import annotations
 
 import json
@@ -190,23 +191,45 @@ _SMALL_GRAPH = {
 #: renders a blank graph rather than an error.
 _PROVENANCE_GRAPH = {
     "nodes": [
-        {"node_type": "operation", "node_id": "op1", "name": "import",
-         "method": "read_tttr", "timestamp": "2026-09-02"},
+        {
+            "node_type": "operation",
+            "node_id": "op1",
+            "name": "import",
+            "method": "read_tttr",
+            "timestamp": "2026-09-02",
+        },
         {"node_type": "artifact", "node_id": "art1", "name": "raw.ptu"},
-        {"node_type": "operation", "node_id": "op2", "name": "correlate",
-         "method": "fcs", "timestamp": "2026-09-02"},
+        {
+            "node_type": "operation",
+            "node_id": "op2",
+            "name": "correlate",
+            "method": "fcs",
+            "timestamp": "2026-09-02",
+        },
         {"node_type": "artifact", "node_id": "art2", "name": "g(t)"},
     ],
     "edges": [
-        {"source_node_type": "operation", "source_node_id": "op1",
-         "target_node_type": "artifact", "target_node_id": "art1",
-         "relationship_type": "produces"},
-        {"source_node_type": "artifact", "source_node_id": "art1",
-         "target_node_type": "operation", "target_node_id": "op2",
-         "relationship_type": "consumes"},
-        {"source_node_type": "operation", "source_node_id": "op2",
-         "target_node_type": "artifact", "target_node_id": "art2",
-         "relationship_type": "produces"},
+        {
+            "source_node_type": "operation",
+            "source_node_id": "op1",
+            "target_node_type": "artifact",
+            "target_node_id": "art1",
+            "relationship_type": "produces",
+        },
+        {
+            "source_node_type": "artifact",
+            "source_node_id": "art1",
+            "target_node_type": "operation",
+            "target_node_id": "op2",
+            "relationship_type": "consumes",
+        },
+        {
+            "source_node_type": "operation",
+            "source_node_id": "op2",
+            "target_node_type": "artifact",
+            "target_node_id": "art2",
+            "relationship_type": "produces",
+        },
     ],
 }
 
@@ -268,9 +291,7 @@ def graph_inventory(widget: typing.Any) -> dict:
             }
             for n in nodes
         },
-        "config_keys": sorted(
-            {k for n in nodes for k in (n.get("config") or {})}
-        ),
+        "config_keys": sorted({k for n in nodes for k in (n.get("config") or {})}),
         "edge_count": len(graph.get("edges") or []),
         "edges": sorted(
             "{}:{} -> {}:{}".format(

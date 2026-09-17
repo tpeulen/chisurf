@@ -66,13 +66,25 @@ class BunchingTerms(FittingParameterGroup):
         # expression disagree with it. Inside the declared bounds the two
         # are exactly the same function.
         a = FittingParameter(
-            value=ba, name=f"ba{i}", lb=0.0, ub=0.999, fixed=fixed,
+            value=ba,
+            name=f"ba{i}",
+            lb=0.0,
+            ub=0.999,
+            fixed=fixed,
             bounds_on=True,
-            label_text=f"a<sub>b{i}</sub>", registry_id="fcs.bunching.ba")
+            label_text=f"a<sub>b{i}</sub>",
+            registry_id="fcs.bunching.ba",
+        )
         t = FittingParameter(
-            value=bt, name=f"bt{i}", lb=1e-6, ub=1e3, fixed=fixed,
+            value=bt,
+            name=f"bt{i}",
+            lb=1e-6,
+            ub=1e3,
+            fixed=fixed,
             bounds_on=True,
-            label_text=f"&tau;<sub>b{i}</sub>[ms]", registry_id="fcs.bunching.bt")
+            label_text=f"&tau;<sub>b{i}</sub>[ms]",
+            registry_id="fcs.bunching.bt",
+        )
         self._ba.append(a)
         self._bt.append(t)
 
@@ -136,13 +148,25 @@ class AnticorrTerms(FittingParameterGroup):
             act = 1.0 * (10 ** (i - 1))
         # Enforced for the same reason as the bunching bounds above.
         a = FittingParameter(
-            value=aca, name=f"aca{i}", lb=0.0, ub=1.0, fixed=fixed,
+            value=aca,
+            name=f"aca{i}",
+            lb=0.0,
+            ub=1.0,
+            fixed=fixed,
             bounds_on=True,
-            label_text=f"a<sub>ac{i}</sub>", registry_id="fcs.anticorr.aca")
+            label_text=f"a<sub>ac{i}</sub>",
+            registry_id="fcs.anticorr.aca",
+        )
         t = FittingParameter(
-            value=act, name=f"act{i}", lb=1e-3, ub=1e6, fixed=fixed,
+            value=act,
+            name=f"act{i}",
+            lb=1e-3,
+            ub=1e6,
+            fixed=fixed,
             bounds_on=True,
-            label_text=f"&tau;<sub>ac{i}</sub>[ns]", registry_id="fcs.anticorr.act")
+            label_text=f"&tau;<sub>ac{i}</sub>[ns]",
+            registry_id="fcs.anticorr.act",
+        )
         self._aca.append(a)
         self._act.append(t)
 

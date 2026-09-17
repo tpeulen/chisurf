@@ -4,7 +4,8 @@ import enum
 import threading
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 class JobStatus(str, enum.Enum):
@@ -31,7 +32,7 @@ class Job:
         self,
         job_id: str,
         action: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ):
         """Initialise a job.
 
@@ -50,13 +51,13 @@ class Job:
         self.params = params or {}
         self.status = JobStatus.QUEUED
         self.result: Any = None
-        self.error: Optional[str] = None
+        self.error: str | None = None
         self.progress: int = 0
-        self.started_at: Optional[float] = None
-        self.finished_at: Optional[float] = None
+        self.started_at: float | None = None
+        self.finished_at: float | None = None
         self._cancel_event = threading.Event()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the job to a plain dictionary."""
         return {
             "job_id": self.job_id,
@@ -88,10 +89,10 @@ class JobManager:
 
         """
         self._lock = threading.RLock()
-        self._jobs: Dict[str, Job] = {}
+        self._jobs: dict[str, Job] = {}
         self._max_history = max(0, int(max_history))
 
-    def create_job(self, action: str, params: Optional[Dict[str, Any]] = None) -> Job:
+    def create_job(self, action: str, params: dict[str, Any] | None = None) -> Job:
         """Create a new queued job with a generated UUID.
 
         Parameters
@@ -108,7 +109,7 @@ class JobManager:
             self._jobs[job_id] = job
         return job
 
-    def get_job(self, job_id: str) -> Optional[Job]:
+    def get_job(self, job_id: str) -> Job | None:
         """Return a job by its ID, or ``None``.
 
         Parameters
@@ -252,7 +253,7 @@ class JobManager:
             return False
         return job._cancel_event.is_set()
 
-    def list_jobs(self, status: Optional[JobStatus] = None) -> List[Job]:
+    def list_jobs(self, status: JobStatus | None = None) -> list[Job]:
         """Return all jobs, optionally filtered by status.
 
         Parameters
@@ -289,13 +290,13 @@ class JobManager:
 
     # ── synchronous execution helpers ───────────────────────────────
 
-    def run_fn(self, action: str, params: Optional[Dict[str, Any]], fn: Callable) -> Job:
+    def run_fn(self, action: str, params: dict[str, Any] | None, fn: Callable) -> Job:
         """Synchronously create and execute a job.  Returns the completed job."""
         job = self.create_job(action, params)
         self._execute_job(job, fn)
         return job
 
-    def run_threaded(self, action: str, params: Optional[Dict[str, Any]], fn: Callable) -> Job:
+    def run_threaded(self, action: str, params: dict[str, Any] | None, fn: Callable) -> Job:
         """Run *fn* in a daemon thread.  Returns the job immediately (RUNNING)."""
         return self.start_threaded(self.create_job(action, params), fn)
 

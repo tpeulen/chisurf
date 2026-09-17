@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import json
 import threading
-import uuid
 from importlib import resources
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 def encode_request(
     method: str,
-    params: Optional[Dict[str, Any]] = None,
-    request_id: Optional[int] = None,
-) -> Dict[str, Any]:
+    params: dict[str, Any] | None = None,
+    request_id: int | None = None,
+) -> dict[str, Any]:
     """Build a JSON-RPC 2.0 request dict."""
-    msg: Dict[str, Any] = {
+    msg: dict[str, Any] = {
         "jsonrpc": "2.0",
         "method": method,
         "id": request_id if request_id is not None else _next_id(),
@@ -23,7 +22,7 @@ def encode_request(
     return msg
 
 
-def decode_request(msg: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, Any], Optional[int]]]:
+def decode_request(msg: dict[str, Any]) -> tuple[str, dict[str, Any], int | None] | None:
     """Validate and split a JSON-RPC request into (method, params, id).
 
     Returns ``None`` if the message is not a valid request.
@@ -42,8 +41,8 @@ def decode_request(msg: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, Any], O
 
 def encode_response(
     result: Any,
-    request_id: Optional[int] = None,
-) -> Dict[str, Any]:
+    request_id: int | None = None,
+) -> dict[str, Any]:
     """Build a JSON-RPC 2.0 success response dict."""
     return {
         "jsonrpc": "2.0",
@@ -56,10 +55,10 @@ def encode_error(
     code: int,
     message: str,
     data: Any = None,
-    request_id: Optional[int] = None,
-) -> Dict[str, Any]:
+    request_id: int | None = None,
+) -> dict[str, Any]:
     """Build a JSON-RPC 2.0 error response dict."""
-    err: Dict[str, Any] = {"code": code, "message": message}
+    err: dict[str, Any] = {"code": code, "message": message}
     if data is not None:
         err["data"] = data
     return {
@@ -69,7 +68,7 @@ def encode_error(
     }
 
 
-def decode_response(msg: Dict[str, Any]) -> Tuple[Optional[Any], Optional[Dict[str, Any]], Optional[int]]:
+def decode_response(msg: dict[str, Any]) -> tuple[Any | None, dict[str, Any] | None, int | None]:
     """Split a JSON-RPC response into (result, error, id).
 
     Exactly one of *result* or *error* will be non-``None``.
@@ -319,7 +318,13 @@ METHOD_PARAM_SCHEMAS = {
     },
     "fit.create": {
         "required_params": [],
-        "optional_params": ["dataset_index", "dataset_indices", "model_name", "fit_name", "model_kw"],
+        "optional_params": [
+            "dataset_index",
+            "dataset_indices",
+            "model_name",
+            "fit_name",
+            "model_kw",
+        ],
         "result": "FitCreateResult",
     },
     "fit.update": {
@@ -364,7 +369,14 @@ METHOD_PARAM_SCHEMAS = {
     },
     "editor.document.ruff_fix": {
         "required_params": [],
-        "optional_params": ["document_id", "path", "expected_revision", "apply_to_document", "extra_args", "timeout_ms"],
+        "optional_params": [
+            "document_id",
+            "path",
+            "expected_revision",
+            "apply_to_document",
+            "extra_args",
+            "timeout_ms",
+        ],
         "result": "EditorRuffResult",
     },
     "parameter.get": {
@@ -375,40 +387,60 @@ METHOD_PARAM_SCHEMAS = {
     "parameter.set_value": {
         "required_params": ["value"],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },
     "parameter.set_fixed": {
         "required_params": ["fixed"],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },
     "parameter.set_bounds": {
         "required_params": ["bounds"],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },
     "parameter.set_bounds_on": {
         "required_params": ["bounds_on"],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },
     "parameter.set_prior": {
         "required_params": ["prior"],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },
@@ -433,8 +465,12 @@ METHOD_PARAM_SCHEMAS = {
     "parameter.unlink": {
         "required_params": [],
         "optional_params": [
-            "parameter_name", "fit_index", "fit_uid", "local_idx",
-            "parameter_uid", "owner_uid",
+            "parameter_name",
+            "fit_index",
+            "fit_uid",
+            "local_idx",
+            "parameter_uid",
+            "owner_uid",
         ],
         "result": "ActionResult",
     },

@@ -1,41 +1,42 @@
 from __future__ import annotations
 
-import os
-import math
 import copy
+import math
 
 import numpy as np
 
-import chisurf.core.fluorescence
-import chisurf.core.structure.av
-import chisurf.core.structure
-
 # Numba kernels from imp-tricks (hard requirement)
 from IMP.cgmol.statpot._kernels import (
-    _mj_kernel,
     _hbond_kernel,
+    _mj_kernel,
+)
+from IMP.cgmol.sterics._kernels import (
+    _asa_kernel,
+    _clash_kernel,
+    _go_kernel,
+    _sphere_points,
 )
 from IMP.cgmol.sterics._kernels import (
     _go_init as _go_init_kernel,
-    _go_kernel,
-    _clash_kernel,
-    _sphere_points,
-    _asa_kernel,
 )
+
+import chisurf.core.fluorescence
+import chisurf.core.structure
+import chisurf.core.structure.av
 
 
 def centroid2(
-        atom_lookup,
-        res_types,
-        ca_dist,
-        r,
-        potential,
-        cutoff: float = 6.5,
-        centroid_pos: int = 4,
-        min_dist: float = 3.5,
-        max_dist: float = 19.0,
-        bin_width: float = 0.05,
-        repulsion: float = 100.0
+    atom_lookup,
+    res_types,
+    ca_dist,
+    r,
+    potential,
+    cutoff: float = 6.5,
+    centroid_pos: int = 4,
+    min_dist: float = 3.5,
+    max_dist: float = 19.0,
+    bin_width: float = 0.05,
+    repulsion: float = 100.0,
 ):
     """
     Calculate the potential energy given the UNRES GBV-Sidechain potential and
@@ -85,13 +86,12 @@ def centroid2(
     --------
     J. Comp. Chem. Vol. 18, 7, 849-873, 1997
     """
-
     nRes = atom_lookup.shape[0]
 
     E, nCont = 0.0, 0
     for residue_i in range(nRes):
         c_beta_atom_nbr_i = atom_lookup[residue_i, centroid_pos]
-        if c_beta_atom_nbr_i < 0: # no side-chain -> next
+        if c_beta_atom_nbr_i < 0:  # no side-chain -> next
             continue
 
         residue_type_i = res_types[residue_i]
@@ -112,7 +112,7 @@ def centroid2(
             yj = r[c_beta_atom_nbr_j, 1]
             zj = r[c_beta_atom_nbr_j, 2]
 
-            dij = math.sqrt((xi-xj)**2 + (yi-yj)**2 + (zi-zj)**2)
+            dij = math.sqrt((xi - xj) ** 2 + (yi - yj) ** 2 + (zi - zj) ** 2)
 
             if dij < min_dist:
                 E += repulsion
@@ -125,33 +125,29 @@ def centroid2(
 
 
 def internal_potential(
-        internal_coordinates,
-        equilibrium_internal=None,
-        k_bond: float = 0.5,
-        k_angle: float = 0.1,
-        k_dihedral: float = 0.05
+    internal_coordinates,
+    equilibrium_internal=None,
+    k_bond: float = 0.5,
+    k_angle: float = 0.1,
+    k_dihedral: float = 0.05,
 ) -> float:
-    """ Simple potential based internal coordinates for C-alpha bead model
-    """
+    """Simple potential based internal coordinates for C-alpha bead model"""
     if equilibrium_internal is None:
         return 0.0
     e = 0.0
     if k_bond > 0:
-        bond = k_bond * (internal_coordinates['b'] - equilibrium_internal['b'])**2
+        bond = k_bond * (internal_coordinates["b"] - equilibrium_internal["b"]) ** 2
         e += bond.sum()
     if k_angle > 0:
-        angle = k_angle * (internal_coordinates['a'] - equilibrium_internal['a'])**2
+        angle = k_angle * (internal_coordinates["a"] - equilibrium_internal["a"]) ** 2
         e += angle.sum()
     if k_dihedral > 0:
-        dihedral = k_dihedral * (internal_coordinates['d'] - equilibrium_internal['d'])**2
+        dihedral = k_dihedral * (internal_coordinates["d"] - equilibrium_internal["d"]) ** 2
         e += dihedral.sum()
     return e
 
 
-def internal_potential_calpha(
-        structure: chisurf.core.structure.Structure,
-        **kwargs
-) -> float:
+def internal_potential_calpha(structure: chisurf.core.structure.Structure, **kwargs) -> float:
     """Calculates a *internal* potential based on the similarity of the bonds length, angles, and dihedrals
     to a reference structure.
 
@@ -159,17 +155,14 @@ def internal_potential_calpha(
     :param kwargs:
     :return:
     """
-    eq = kwargs.get('equilibrium_internal', None)
-    kb = kwargs.get('k_bonds', 0.5)
-    ka = kwargs.get('k_angle', 0.1)
-    kd = kwargs.get('k_dihedral', 0.05)
+    eq = kwargs.get("equilibrium_internal", None)
+    kb = kwargs.get("k_bonds", 0.5)
+    ka = kwargs.get("k_angle", 0.1)
+    kd = kwargs.get("k_dihedral", 0.05)
     return internal_potential(structure.internal_coordinates, eq, kb, ka, kd)
 
 
-def lj_calpha(
-        ca_coordinates: np.ndarray,
-        rm: float = 3.8208650279
-) -> float:
+def lj_calpha(ca_coordinates: np.ndarray, rm: float = 3.8208650279) -> float:
     """Truncated Lennard Jones
 
     :param ca_coordinates:
@@ -184,34 +177,26 @@ def lj_calpha(
         x_i, y_i, z_i = ca_coordinates[i]
         for j in range(i + 1, n_atoms):
             x_j, y_j, z_j = ca_coordinates[j]
-            r2 = (x_i - x_j)**2 + (y_i - y_j)**2 + (z_i - z_j)**2
+            r2 = (x_i - x_j) ** 2 + (y_i - y_j) ** 2 + (z_i - z_j) ** 2
             sr = (rm2 / r2) ** 3
-            energy += sr * (sr - 2.)
+            energy += sr * (sr - 2.0)
     return energy
 
 
-def lennard_jones_calpha(
-        structure: chisurf.core.structure.Structure,
-        rm: float = 3.8208650279
-):
+def lennard_jones_calpha(structure: chisurf.core.structure.Structure, rm: float = 3.8208650279):
     """
 
     :param structure: a structure object
     :param rm: is the C-alpha equilibrium distance
     :return:
     """
-    sel = chisurf.core.structure.get_atom_index_by_name(
-        structure.atoms, ['CA']
-    )
+    sel = chisurf.core.structure.get_atom_index_by_name(structure.atoms, ["CA"])
     ca_atoms = structure.atoms.take(sel)
-    return lj_calpha(ca_atoms['xyz'][0], rm)
+    return lj_calpha(ca_atoms["xyz"][0], rm)
 
 
 def gb(
-        xyz: np.ndarray,
-        epsilon: float = 4.0,
-        epsilon0: float = 80.1,
-        cutoff: float = 12.0
+    xyz: np.ndarray, epsilon: float = 4.0, epsilon0: float = 80.1, cutoff: float = 12.0
 ) -> float:
     """
     Generalized Born http://en.wikipedia.org/wiki/Implicit_solvation
@@ -222,13 +207,12 @@ def gb(
     :param cutoff: cutoff-distance in Angstrom
     :return:
     """
-
     nAtoms = xyz.shape[0]
-    cutoff2 = cutoff ** 2
-    rs = xyz['xyz']
-    a_radii = xyz['radius']
-    a_charge = xyz['charge']
-    pre = 1. / (8 * 3.14159265359) * (1. / epsilon0 - 1. / epsilon)
+    cutoff2 = cutoff**2
+    rs = xyz["xyz"]
+    a_radii = xyz["radius"]
+    a_charge = xyz["charge"]
+    pre = 1.0 / (8 * 3.14159265359) * (1.0 / epsilon0 - 1.0 / epsilon)
 
     energy = 0.0
     for i in range(nAtoms):
@@ -247,7 +231,7 @@ def gb(
             r2y = rs[j, 1]
             r2z = rs[j, 2]
             aj = a_radii[j]
-            rij2 = (r1x - r2x)*(r1x - r2x) + (r1y - r2y)*(r1y - r2y) + (r1z - r2z)*(r1z - r2z)
+            rij2 = (r1x - r2x) * (r1x - r2x) + (r1y - r2y) * (r1y - r2y) + (r1z - r2z) * (r1z - r2z)
             if rij2 > cutoff2:
                 continue
             else:
@@ -256,15 +240,11 @@ def gb(
                 D = rij2 / (4.0 * aij2)
                 fgbr = math.sqrt(rij2 + aij2 * math.exp(-D))
                 fgbc = math.sqrt(cutoff + aij2 * math.exp(-D))
-                energy = energy + qij / fgbr - qij/fgbc
+                energy = energy + qij / fgbr - qij / fgbc
     return energy * pre
 
 
-def go(
-        ca_dist: np.ndarray,
-        energy_matrix: np.ndarray,
-        rm_matrix: np.ndarray
-):
+def go(ca_dist: np.ndarray, energy_matrix: np.ndarray, rm_matrix: np.ndarray):
     """
     If cutoff is True the LJ-Potential is cutoff and shifted at 2.5 sigma
 
@@ -275,7 +255,6 @@ def go(
     :param cutoff:
     :return:
     """
-
     tmp = 0.0
     energy = 0.0  # total energy
     n_residues = ca_dist.shape[0]
@@ -285,119 +264,106 @@ def go(
             rm = rm_matrix[i, j]
             r = ca_dist[i, j]
             if rm < r < rm * 2.5:
-                sr = 2*(rm / r) ** 6
+                sr = 2 * (rm / r) ** 6
                 tmp -= sr
-                tmp += sr ** 2 / 4.0
+                tmp += sr**2 / 4.0
                 tmp *= epsilon
                 tmp += 0.00818 * epsilon
             else:
-                tmp = - epsilon
+                tmp = -epsilon
             energy += tmp
     return energy
 
 
-class Ramachandran(object):
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            filename: str = None
-    ):
+class Ramachandran:
+    def __init__(self, structure: chisurf.core.structure.Structure, filename: str = None):
         """
         :param filename:
         :return:
         """
         if filename is None:
             from chisurf.core.settings.path_utils import get_path
-            filename = str(get_path('chisurf') / 'core/structure/potential/database/rama_ala_pro_gly.npy')
+
+            filename = str(
+                get_path("chisurf") / "core/structure/potential/database/rama_ala_pro_gly.npy"
+            )
         self.structure = structure
-        self.name = 'rama'
+        self.name = "rama"
         self.filename = filename
         self.ramaPot = np.load(self.filename)
 
     def getEnergy(self) -> float:
         """Calculate and return the Ramachandran potential energy."""
         import logging
-        logging.warning(
-            "Ramachandran potential: ramaEnergy C function not available — returning 0"
-        )
+
+        logging.warning("Ramachandran potential: ramaEnergy C function not available — returning 0")
         self.E = 0.0
         return 0.0
 
 
-class Electrostatics(object):
-
-    def __init__(
-            self,
-            structure,
-            type: str = 'gb'):
+class Electrostatics:
+    def __init__(self, structure, type: str = "gb"):
         """
         :param type:
         :return:
         """
         self.structure = structure
-        self.name = 'ele'
+        self.name = "ele"
 
     def getEnergy(self) -> float:
         """Calculate and return the electrostatic (GB) energy."""
         structure = self.structure
-        #Eel = mfm.structure.potential.cPotentials_.gb(structure.xyz)
+        # Eel = mfm.structure.potential.cPotentials_.gb(structure.xyz)
         Eel = gb(structure.xyz)
         self.E = Eel
         return Eel
 
 
-class LJ_Bead(object):
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure
-    ):
+class LJ_Bead:
+    def __init__(self, structure: chisurf.core.structure.Structure):
         """Initialize a Lennard-Jones bead potential for *structure*."""
         self.structure = structure
-        self.name = 'LJ_bead'
+        self.name = "LJ_bead"
 
     def getEnergy(self) -> float:
         """Calculate and return the Lennard-Jones bead energy."""
         structure = self.structure
-        self.E = lennard_jones_calpha(structure.atoms['xyz'])
+        self.E = lennard_jones_calpha(structure.atoms["xyz"])
         return self.E
 
 
-class HPotential(object):
-
-    name = 'H-Bond'
+class HPotential:
+    name = "H-Bond"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            cutoff_ca: float = 8.0,
-            cutoff_hbond: float = 3.0,
-            potential: str = None,
-            **kwargs
+        self,
+        structure: chisurf.core.structure.Structure,
+        cutoff_ca: float = 8.0,
+        cutoff_hbond: float = 3.0,
+        potential: str = None,
+        **kwargs,
     ):
         """Initialize the hydrogen bond potential with cutoff and parameter settings."""
         if potential is None:
             from chisurf.core.settings.path_utils import get_path
-            potential = str(get_path('chisurf') / 'core/structure/potential/database/hb.npy')
+
+            potential = str(get_path("chisurf") / "core/structure/potential/database/hb.npy")
         self.structure = structure
         self.cutoffH = cutoff_hbond
         self.cutoffCA = cutoff_ca
         self.potential = potential
-        self.oh = kwargs.get('oh', 1.0)
-        self.on = kwargs.get('on', 1.0)
-        self.cn = kwargs.get('cn', 1.0)
-        self.ch = kwargs.get('ch', 1.0)
+        self.oh = kwargs.get("oh", 1.0)
+        self.on = kwargs.get("on", 1.0)
+        self.cn = kwargs.get("cn", 1.0)
+        self.ch = kwargs.get("ch", 1.0)
         self.updateParameter()
 
     def getEnergy(self):
         """Calculate and return the hydrogen bond potential energy."""
         s1 = self.structure
-        cca2 = self.cutoffCA ** 2
-        ch2 = self.cutoffH ** 2
-        nHbond, Ehbond = _hbond_kernel(
-            s1.l_res, s1.dist_ca, s1.xyz, self._hPot, cca2, ch2
-        )
+        cca2 = self.cutoffCA**2
+        ch2 = self.cutoffH**2
+        nHbond, Ehbond = _hbond_kernel(s1.l_res, s1.dist_ca, s1.xyz, self._hPot, cca2, ch2)
         self.E = Ehbond
         self.nHbond = nHbond
         return self.E
@@ -433,19 +399,18 @@ class HPotential(object):
         self.hPot = self._hPot
 
 
-class GoPotential(object):
-
-    name = 'go'
+class GoPotential:
+    name = "go"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            epsilon: float = 1.0,
-            cutoff: float = 6.5,
-            native_cutoff_on: bool = True,
-            nnEFactor: float = 0.7,
-            non_native_contact_on: bool = True,
-            **kwargs
+        self,
+        structure: chisurf.core.structure.Structure,
+        epsilon: float = 1.0,
+        cutoff: float = 6.5,
+        native_cutoff_on: bool = True,
+        nnEFactor: float = 0.7,
+        non_native_contact_on: bool = True,
+        **kwargs,
     ):
         """Initialize a Go-like potential for *structure*."""
         self.structure = structure
@@ -458,33 +423,31 @@ class GoPotential(object):
 
     def setGo(self):
         """Initialize the Gō potential energy and contact matrices."""
-        if not hasattr(self, 'epsilon'):
+        if not hasattr(self, "epsilon"):
             return
         c = self.structure
         if c is None:
             return
-        nnEFactor = getattr(self, 'nnEFactor', 0.7) if getattr(self, 'non_native_contact_on', True) else 0.0
-        cutoff = getattr(self, 'cutoff', 6.5) if getattr(self, 'native_cutoff_on', True) else 1e6
-        self.eMatrix, self.sMatrix = _go_init_kernel(
-            c.dist_ca, self.epsilon, nnEFactor, cutoff
+        nnEFactor = (
+            getattr(self, "nnEFactor", 0.7) if getattr(self, "non_native_contact_on", True) else 0.0
         )
+        cutoff = getattr(self, "cutoff", 6.5) if getattr(self, "native_cutoff_on", True) else 1e6
+        self.eMatrix, self.sMatrix = _go_init_kernel(c.dist_ca, self.epsilon, nnEFactor, cutoff)
 
     def getEnergy(self):
         """Calculate and return the Gō potential energy."""
         c = self.structure
-        Etot = _go_kernel(
-            c.dist_ca, self.eMatrix, self.sMatrix
-        )
+        Etot = _go_kernel(c.dist_ca, self.eMatrix, self.sMatrix)
         self.E = Etot
         return Etot
 
     def getNbrNonNative(self):
         """Return the number of non-native contacts."""
-        return getattr(self, 'nNN', 0)
+        return getattr(self, "nNN", 0)
 
     def getNbrNative(self):
         """Return the number of native contacts."""
-        return getattr(self, 'nNa', 0)
+        return getattr(self, "nNa", 0)
 
     def set_sMatrix(self, sMatrix):
         """Set the sigma (distance) matrix for the Gō potential."""
@@ -499,20 +462,20 @@ class GoPotential(object):
         self.nMatrix = nMatrix
 
 
-class MJPotential(object):
-
-    name = 'Miyazawa-Jernigan'
+class MJPotential:
+    name = "Miyazawa-Jernigan"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            filename: str = None,
-            ca_cutcoff: float = 6.5
+        self,
+        structure: chisurf.core.structure.Structure,
+        filename: str = None,
+        ca_cutcoff: float = 6.5,
     ):
         """Initialize a Miyazawa-Jernigan potential for *structure*."""
         if filename is None:
             from chisurf.core.settings.path_utils import get_path
-            filename = str(get_path('chisurf') / 'core/structure/potential/database/mj.npy')
+
+            filename = str(get_path("chisurf") / "core/structure/potential/database/mj.npy")
         self.filename = filename
         self.structure = structure
         self.potential = filename
@@ -543,7 +506,7 @@ class MJPotential(object):
         return self.nCont
 
 
-class CEPotential(object):
+class CEPotential:
     """
     Examples
     --------
@@ -556,35 +519,33 @@ class CEPotential(object):
     -0.15896629131635745
     """
 
-    name = 'Iso-UNRES'
+    name = "Iso-UNRES"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            potential: str = None,
-            **kwargs
+        self, structure: chisurf.core.structure.Structure, potential: str = None, **kwargs
     ):
         """
         scaling_factor : factor to scale energies from kCal/mol to kT=1.0 at 298K
         """
         scaling_factor = 0.593
         self.structure = structure
-        self.ca_cutoff = kwargs.get('ca_cutoff', 15.0)
+        self.ca_cutoff = kwargs.get("ca_cutoff", 15.0)
         self._potential = None
 
         if potential is None:
             from chisurf.core.settings.path_utils import get_path
-            potential = str(get_path('chisurf') / 'core/structure/potential/database/unres.npy')
+
+            potential = str(get_path("chisurf") / "core/structure/potential/database/unres.npy")
 
         self.potential = potential
         self.scaling_factor = scaling_factor
         # the number of the atom in the lookup table
         # (4=C-beta, 1=C-alpha, see: mfm.structure.protein internal_atom_numbers)
-        self.centroid_number = kwargs.get('centroid_number', 4)
-        self.repulsion = kwargs.get('repulsion', 100.0)
-        self.min_dist = kwargs.get('min_dist', 3.5)
-        self._max_dist = kwargs.get('max_dist', 19.0)
-        self._bin_width = kwargs.get('bin_width', 0.05)
+        self.centroid_number = kwargs.get("centroid_number", 4)
+        self.repulsion = kwargs.get("repulsion", 100.0)
+        self.min_dist = kwargs.get("min_dist", 3.5)
+        self._max_dist = kwargs.get("max_dist", 19.0)
+        self._bin_width = kwargs.get("bin_width", 0.05)
 
     @property
     def potential(self):
@@ -592,18 +553,11 @@ class CEPotential(object):
         return self._potential
 
     @potential.setter
-    def potential(
-            self,
-            v
-    ):
+    def potential(self, v):
         """Load the UNRES potential matrix from a file."""
         self._potential = np.load(v)
 
-    def getEnergy(
-            self,
-            cutoff=None,
-            **kwargs
-    ) -> float:
+    def getEnergy(self, cutoff=None, **kwargs) -> float:
         """Calculate and return the UNRES centroid potential energy."""
         cutoff = cutoff if cutoff is not None else self.ca_cutoff
         c = self.structure
@@ -611,15 +565,21 @@ class CEPotential(object):
         dist_ca = np.ascontiguousarray(c.dist_ca)
         residue_types = np.ascontiguousarray(c.residue_types)
         l_res = np.ascontiguousarray(c.l_res)
-        centroid_pos = kwargs.get('centroid_number', self.centroid_number)
-        repulsion = kwargs.get('repulsion', self.repulsion)
-        min_dist = kwargs.get('min_dist', self.min_dist)
+        centroid_pos = kwargs.get("centroid_number", self.centroid_number)
+        repulsion = kwargs.get("repulsion", self.repulsion)
+        min_dist = kwargs.get("min_dist", self.min_dist)
         nCont, E = centroid2(
-            l_res, residue_types, dist_ca, coord,
-            self.potential, cutoff=cutoff,
-            centroid_pos=centroid_pos, min_dist=min_dist,
-            max_dist=self._max_dist, bin_width=self._bin_width,
-            repulsion=repulsion
+            l_res,
+            residue_types,
+            dist_ca,
+            coord,
+            self.potential,
+            cutoff=cutoff,
+            centroid_pos=centroid_pos,
+            min_dist=min_dist,
+            max_dist=self._max_dist,
+            bin_width=self._bin_width,
+            repulsion=repulsion,
         )
 
         self.nCont = nCont
@@ -630,19 +590,18 @@ class CEPotential(object):
         return self.nCont
 
 
-class ASA(object):
-
-    name = 'Asa-Ca'
+class ASA:
+    name = "Asa-Ca"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            probe: float = 1.0,
-            n_sphere_point: int = 590,
-            radius: float = 2.5,
+        self,
+        structure: chisurf.core.structure.Structure,
+        probe: float = 1.0,
+        n_sphere_point: int = 590,
+        radius: float = 2.5,
     ):
         """Initialize an ASA-Cα solvent-accessible-surface potential."""
-        super(ASA, self).__init__()
+        super().__init__()
         self.structure = structure
         self.probe = probe
         self.n_sphere_point = n_sphere_point
@@ -653,26 +612,20 @@ class ASA(object):
         """Calculate and return the accessible surface area."""
         c = self.structure
         asa_val = _asa_kernel(
-            c.xyz,
-            c.l_res,
-            c.dist_ca,
-            self.sphere_points,
-            self.probe,
-            self.radius
+            c.xyz, c.l_res, c.dist_ca, self.sphere_points, self.probe, self.radius
         )
         return asa_val
 
 
-class ClashPotential(object):
-
-    name = 'Clash-Potential'
+class ClashPotential:
+    name = "Clash-Potential"
 
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure = None,
-            clash_tolerance: float = 2.0,
-            covalent_radius: float = 1.5,
-            **kwargs
+        self,
+        structure: chisurf.core.structure.Structure = None,
+        clash_tolerance: float = 2.0,
+        covalent_radius: float = 1.5,
+        **kwargs,
     ):
         """
         :param kwargs:
@@ -695,23 +648,13 @@ class ClashPotential(object):
     def getEnergy(self) -> float:
         """Calculate and return the clash (steric) potential energy."""
         c = self.structure
-        return _clash_kernel(
-            c.xyz,
-            c.vdw,
-            self.clash_tolerance,
-            self.covalent_radius
-        )
+        return _clash_kernel(c.xyz, c.vdw, self.clash_tolerance, self.covalent_radius)
 
 
 class RadiusGyration:
+    name = "Radius-Gyration"
 
-    name = 'Radius-Gyration'
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            **kwargs
-    ):
+    def __init__(self, structure: chisurf.core.structure.Structure, **kwargs):
         """Initialize a radius-of-gyration potential for *structure*."""
         self.structure = structure
 

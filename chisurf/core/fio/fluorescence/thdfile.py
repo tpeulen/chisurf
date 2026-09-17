@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import numpy as np
 import os
+
+import numpy as np
 
 import chisurf.core.data
 import chisurf.core.fio
 import chisurf.core.fluorescence
-
 from chisurf import typing
 
 
 class THDReader:
     """PicoQUant THD file reader.
-    
+
     Reads PicoQUant THD files (TCSPC data) and extracts histogram data.
-    
+
     Attributes
     ----------
     filepath : str
@@ -24,6 +24,7 @@ class THDReader:
     histogram_data : numpy.ndarray
         Histogram data extracted from the file
     """
+
     def __init__(self, filepath):
         """Initialize THDReader with a file path.
 
@@ -43,22 +44,26 @@ class THDReader:
             content = f.read()
 
         # Parse header fields
-        self.header["Device"] = content[0:16].decode('ascii', errors='ignore').strip('\x00')
-        self.header["Version"] = content[16:24].decode('ascii', errors='ignore').strip('\x00')
-        self.header["Software"] = content[24:56].decode('ascii', errors='ignore').strip('\x00')
-        self.header["Software Version"] = content[56:72].decode('ascii', errors='ignore').strip('\x00')
-        self.header["Date and Time"] = content[72:104].decode('ascii', errors='ignore').strip('\x00')
-        self.header["Title"] = content[104:136].decode('ascii', errors='ignore').strip('\x00')
+        self.header["Device"] = content[0:16].decode("ascii", errors="ignore").strip("\x00")
+        self.header["Version"] = content[16:24].decode("ascii", errors="ignore").strip("\x00")
+        self.header["Software"] = content[24:56].decode("ascii", errors="ignore").strip("\x00")
+        self.header["Software Version"] = (
+            content[56:72].decode("ascii", errors="ignore").strip("\x00")
+        )
+        self.header["Date and Time"] = (
+            content[72:104].decode("ascii", errors="ignore").strip("\x00")
+        )
+        self.header["Title"] = content[104:136].decode("ascii", errors="ignore").strip("\x00")
 
         # Histogram starts after 688
         histogram_start = 688
         histogram_bytes = content[histogram_start:]
         num_bins = len(histogram_bytes) // 4  # 4 bytes per bin
-        self.histogram_data = np.frombuffer(histogram_bytes, dtype='<u4', count=num_bins)
+        self.histogram_data = np.frombuffer(histogram_bytes, dtype="<u4", count=num_bins)
 
     def get_header(self):
         """Return the header information.
-        
+
         Returns
         -------
         dict
@@ -68,7 +73,7 @@ class THDReader:
 
     def get_histogram(self):
         """Return the histogram data.
-        
+
         Returns
         -------
         numpy.ndarray
@@ -78,7 +83,7 @@ class THDReader:
 
     def get_histogram_as_dict(self):
         """Return the histogram data as a dictionary.
-        
+
         Returns
         -------
         dict
@@ -92,15 +97,15 @@ class THDReader:
 
 
 def read_tcspc_thd(
-        filename: str = None,
-        dt: float = 1.0,
-        rebin: typing.Tuple[int, int] = (1, 1),
-        experiment: chisurf.core.experiments.core.Experiment = None,
-        *args,
-        **kwargs
+    filename: str = None,
+    dt: float = 1.0,
+    rebin: typing.Tuple[int, int] = (1, 1),
+    experiment: chisurf.core.experiments.core.Experiment = None,
+    *args,
+    **kwargs,
 ) -> chisurf.core.data.DataCurveGroup:
     """Read TCSPC data from a THD file.
-    
+
     Parameters
     ----------
     filename : str, optional
@@ -111,7 +116,7 @@ def read_tcspc_thd(
         Rebinning factors for x and y axes, by default (1, 1)
     experiment : chisurf.core.experiments.core.Experiment, optional
         Experiment object, by default None
-    
+
     Returns
     -------
     chisurf.core.data.DataCurveGroup
@@ -119,39 +124,33 @@ def read_tcspc_thd(
     """
     # Load data
     rebin_x, rebin_y = rebin
-    
+
     # Read THD file
     thd_reader = THDReader(filename)
     y = thd_reader.get_histogram()
-    
+
     # Create time axis
     x = np.arange(len(y), dtype=np.float64) * dt
-    
+
     # Rebin data if needed
     if rebin_y > 1:
         # Calculate new length after rebinning
         new_length = len(y) // rebin_y
         # Reshape and sum along the rebinning axis
-        y = y[:new_length * rebin_y].reshape(-1, rebin_y).sum(axis=1)
+        y = y[: new_length * rebin_y].reshape(-1, rebin_y).sum(axis=1)
         # Adjust time axis
-        x = x[:new_length * rebin_y:rebin_y]
-    
+        x = x[: new_length * rebin_y : rebin_y]
+
     # Calculate error (assuming Poisson statistics)
     ey = np.sqrt(y)
-    
+
     # Create data curve
     data = chisurf.core.data.DataCurve(
-        x=x,
-        y=y,
-        ex=np.zeros_like(x),
-        ey=ey,
-        experiment=experiment,
-        name=filename,
-        **kwargs
+        x=x, y=y, ex=np.zeros_like(x), ey=ey, experiment=experiment, name=filename, **kwargs
     )
     data.filename = filename
-    
+
     # Create data group
     data_group = chisurf.core.data.DataCurveGroup([data], filename)
-    
+
     return data_group

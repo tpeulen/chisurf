@@ -11,21 +11,20 @@ from __future__ import annotations
 import pathlib
 from collections.abc import Callable
 
-
 _VIEW = pathlib.Path(__file__).with_name("instrument_options.view.json")
 
 #: Field name → default value. These are the instrument constants the plugin uses.
 DEFAULTS: dict[str, float | bool] = {
     # Hellenkamp 2018 nomenclature, matching ``fret.species_decay.Crosstalk``.
-    "alpha": 0.0,       # donor leakage into the acceptor (red) channel
-    "beta": 1.0,        # excitation-flux ratio (acceptor vs donor laser)
-    "gamma": 1.0,       # detection / quantum-yield correction
-    "delta": 0.0,       # direct acceptor excitation by the donor laser
-    "g_factor": 1.0,    # polarization detection ratio (parallel / perpendicular)
-    "l1": 0.0,          # polarization mixing factor 1
-    "l2": 0.0,          # polarization mixing factor 2
+    "alpha": 0.0,  # donor leakage into the acceptor (red) channel
+    "beta": 1.0,  # excitation-flux ratio (acceptor vs donor laser)
+    "gamma": 1.0,  # detection / quantum-yield correction
+    "delta": 0.0,  # direct acceptor excitation by the donor laser
+    "g_factor": 1.0,  # polarization detection ratio (parallel / perpendicular)
+    "l1": 0.0,  # polarization mixing factor 1
+    "l2": 0.0,  # polarization mixing factor 2
     "forster_radius": 52.0,  # Förster radius R0 (Å)
-    "period_ns": 0.0,   # laser period (ns); 0 ⇒ use the full micro-time window
+    "period_ns": 0.0,  # laser period (ns); 0 ⇒ use the full micro-time window
     "periodic": False,  # enable periodic (wrap-around) convolution
 }
 
@@ -60,8 +59,9 @@ class InstrumentViewModel:
         for key in DEFAULTS:
             if key in values and values[key] is not None:
                 try:
-                    setattr(self, key,
-                            bool(values[key]) if key == "periodic" else float(values[key]))
+                    setattr(
+                        self, key, bool(values[key]) if key == "periodic" else float(values[key])
+                    )
                 except (TypeError, ValueError):
                     pass
         if self._refresh is not None:

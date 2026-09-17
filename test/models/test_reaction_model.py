@@ -5,6 +5,7 @@ Its predecessor ``ReactionWidget`` was abstract — it never implemented
 the reaction system below it carried several failures that only a caller would
 find. Each test here is one of them.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,12 +18,18 @@ def _reaction_system():
 
     rs = ReactionSystem()
     rs.add_reaction(
-        educts=[0], products=[1],
-        educt_stoichiometry=[1], product_stoichometry=[1], rate=2.0,
+        educts=[0],
+        products=[1],
+        educt_stoichiometry=[1],
+        product_stoichometry=[1],
+        rate=2.0,
     )
     rs.add_reaction(
-        educts=[1], products=[0],
-        educt_stoichiometry=[1], product_stoichometry=[1], rate=1.0,
+        educts=[1],
+        products=[0],
+        educt_stoichiometry=[1],
+        product_stoichometry=[1],
+        rate=1.0,
     )
     return rs
 
@@ -94,14 +101,15 @@ def test_reaction_system_rates_are_fittable():
 def _make_fit():
     """Return a fit over a synthetic single-exponential relaxation."""
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.data import DataCurve
     from chisurf.core.models.stopped_flow.reaction import ReactionModel
 
     x = np.linspace(0.0, 10.0, 200)
     data = DataCurve(
-        name="stopped-flow", load_filename_on_init=False,
-        x=x, y=1.0 - 0.5 * np.exp(-x),
+        name="stopped-flow",
+        load_filename_on_init=False,
+        x=x,
+        y=1.0 - 0.5 * np.exp(-x),
     )
     return fit_mod.Fit(model_class=ReactionModel, data=data)
 

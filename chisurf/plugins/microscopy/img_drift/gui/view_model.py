@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -72,7 +73,7 @@ class DriftViewModel:
         return self._status
 
     @property
-    def result(self) -> "_core.DriftResult | None":
+    def result(self) -> _core.DriftResult | None:
         """The last measurement, or ``None`` before one has run."""
         return self._result
 
@@ -106,9 +107,7 @@ class DriftViewModel:
         if self.channel not in self._channel_names and not isinstance(self.channel, int):
             self.channel = 0
         if stack.n_frames < 2:
-            self._status = (
-                f"{stack.n_frames} frame(s): drift correction needs at least two."
-            )
+            self._status = f"{stack.n_frames} frame(s): drift correction needs at least two."
             return False
         self._status = (
             f"{stack.n_frames} frames, {stack.n_channels} channel(s), "
@@ -155,9 +154,7 @@ class DriftViewModel:
 
         total = self._result.total_drift
         verdict = (
-            "below one pixel — correction changes nothing"
-            if total < 1.0
-            else f"{total:.1f} px"
+            "below one pixel — correction changes nothing" if total < 1.0 else f"{total:.1f} px"
         )
         self._status = f"Max drift {verdict} over {self._result.n_frames} frames."
         return True
@@ -185,8 +182,10 @@ class DriftViewModel:
             written["shifts"] = _core.write_shifts_csv(self._result.shifts, shifts_path)
         if stack_path:
             data, _ = _core.corrected_stack(
-                self.filename, self.channel,
-                shifts=self._result.shifts, mode=self.mode,
+                self.filename,
+                self.channel,
+                shifts=self._result.shifts,
+                mode=self.mode,
             )
             written["stack"] = _core.write_stack_tiff(data, stack_path)
         return written
@@ -203,8 +202,13 @@ class DriftViewModel:
         return [
             {"x": frames, "y": sh[:, 1], "name": "dx", "color": "#4c9be8"},
             {"x": frames, "y": sh[:, 0], "name": "dy", "color": "#e8734c"},
-            {"x": frames, "y": np.hypot(sh[:, 0], sh[:, 1]),
-             "name": "|d|", "color": "#b0b0b0", "width": 2},
+            {
+                "x": frames,
+                "y": np.hypot(sh[:, 0], sh[:, 1]),
+                "name": "|d|",
+                "color": "#b0b0b0",
+                "width": 2,
+            },
         ]
 
     def shift_rows(self) -> list[dict]:

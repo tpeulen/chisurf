@@ -8,9 +8,7 @@ import chisurf.core.experiments
 
 
 def set_linearization(
-        idx: int = None,
-        curve_name: str = None,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
+    idx: int = None, curve_name: str = None, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
     if fit is None:
         gui = cs.cs
@@ -24,23 +22,18 @@ def set_linearization(
     except Exception:
         return
 
-    for f in fit[fit.selected_fit_index:]:
-        f.model.corrections.lintable = cs.core.data.DataCurve(
-            x=lin_table.x,
-            y=lin_table.y
-        )
+    for f in fit[fit.selected_fit_index :]:
+        f.model.corrections.lintable = cs.core.data.DataCurve(x=lin_table.x, y=lin_table.y)
         f.model.corrections.correct_dnl = True
 
     lin_name = curve_name
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         f.model.corrections.lineEdit.setText(str(lin_name or ""))
         f.model.corrections.checkBox.setChecked(True)
     fit.update()
 
 
-def unload_lintable(
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def unload_lintable(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -48,7 +41,7 @@ def unload_lintable(
     if fit is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         try:
             f.model.corrections.unload_lintable()
         except Exception:
@@ -57,9 +50,7 @@ def unload_lintable(
 
 
 def set_correction(
-        correction_type: str,
-        value: typing.Any,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
+    correction_type: str, value: typing.Any, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
     if fit is None:
         gui = cs.cs
@@ -68,7 +59,7 @@ def set_correction(
     if fit is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         try:
             setattr(f.model.corrections, correction_type, value)
         except Exception:
@@ -77,9 +68,7 @@ def set_correction(
 
 
 def normalize_amplitudes(
-        normalize: bool = True,
-        name: str = "amplitudes",
-        fit: cs.core.fitting.fit.FitGroup = None
+    normalize: bool = True, name: str = "amplitudes", fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
     if fit is None:
         gui = cs.cs
@@ -102,9 +91,9 @@ def normalize_amplitudes(
 
 
 def absolute_amplitudes(
-        use_absolute_amplitudes: bool = True,
-        name: str = "amplitudes",
-        fit: cs.core.fitting.fit.FitGroup = None
+    use_absolute_amplitudes: bool = True,
+    name: str = "amplitudes",
+    fit: cs.core.fitting.fit.FitGroup = None,
 ) -> None:
     if fit is None:
         gui = cs.cs
@@ -126,10 +115,7 @@ def absolute_amplitudes(
             continue
 
 
-def remove_component(
-        name: str,
-        fit: cs.core.fitting.fit.FitGroup = None
-) -> None:
+def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -159,10 +145,8 @@ def remove_component(
 
 
 def _resolve_selected_curve(
-        dataset_idx: int,
-        curve_name: str,
-        selector: typing.Any = None
-) -> typing.Optional['cs.core.curve.Curve']:
+    dataset_idx: int, curve_name: str, selector: typing.Any = None
+) -> cs.core.curve.Curve | None:
     """Resolve the curve a data-selector picked, by index then by name.
 
     The index refers to the selector's own dataset list when there is one (a
@@ -216,11 +200,7 @@ def _resolve_selected_curve(
     return None
 
 
-def change_irf(
-        dataset_idx: int,
-        irf_name: str,
-        fit: cs.core.fitting.fit.FitGroup = None
-) -> None:
+def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -234,11 +214,11 @@ def change_irf(
     if irf_curve is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         f.model.convolve._irf = cs.core.data.DataCurve(x=irf_curve.x, y=irf_curve.y)
 
     fit.update()
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         # Presentation only: pure (Qt-free) models have no line edit, and a
         # missing one must not undo the IRF that was just attached above.
         try:
@@ -247,9 +227,7 @@ def change_irf(
             pass
 
 
-def unload_irf(
-        fit: cs.core.fitting.fit.FitGroup = None
-) -> None:
+def unload_irf(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -257,7 +235,7 @@ def unload_irf(
     if fit is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         try:
             f.model.convolve.unload_irf()
         except Exception:
@@ -273,9 +251,7 @@ def unload_irf(
 
 
 def set_background_curve(
-        dataset_idx: int,
-        curve_name: str,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
+    dataset_idx: int, curve_name: str, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
     """Attach a measured background decay to the model's `generic` group.
 
@@ -305,17 +281,13 @@ def set_background_curve(
     if curve is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
-        f.model.generic.background_curve = cs.core.data.DataCurve(
-            x=curve.x, y=curve.y
-        )
+    for f in fit[fit.selected_fit_index :]:
+        f.model.generic.background_curve = cs.core.data.DataCurve(x=curve.x, y=curve.y)
 
     fit.update()
 
 
-def unload_background_curve(
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def unload_background_curve(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -323,7 +295,7 @@ def unload_background_curve(
     if fit is None:
         return
 
-    for f in fit[fit.selected_fit_index:]:
+    for f in fit[fit.selected_fit_index :]:
         # The group is ``generic`` -- this read ``f.model.nuisance`` for as long
         # as the action existed, so the AttributeError was swallowed by the bare
         # ``except`` below and unloading silently did nothing.
@@ -331,9 +303,7 @@ def unload_background_curve(
     fit.update()
 
 
-def _update_model(
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def _update_model(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -344,10 +314,7 @@ def _update_model(
     fit.update()
 
 
-def add_component(
-        name: str,
-        fit: cs.core.fitting.fit.FitGroup = None
-) -> None:
+def add_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -375,10 +342,7 @@ def add_component(
             continue
 
 
-def remove_local_fit(
-        row: int,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def remove_local_fit(row: int, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -390,9 +354,7 @@ def remove_local_fit(
         pass
 
 
-def clear_local_fits(
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def clear_local_fits(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -404,10 +366,7 @@ def clear_local_fits(
         pass
 
 
-def append_global_parameter(
-        parameter_name: str,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -419,12 +378,10 @@ def append_global_parameter(
         pass
 
 
-def append_fit(
-        fit_index: int,
-        fit: 'cs.core.fitting.fit.FitGroup' = None
-) -> None:
+def append_fit(fit_index: int, fit: cs.core.fitting.fit.FitGroup = None) -> None:
     # Local import to ensure symbol resolution in static analyzers and at runtime
     import chisurf as _cs
+
     if fit is None:
         gui = _cs.cs
         fit = gui.current_fit
@@ -459,10 +416,8 @@ def append_fit(
             _cs.logging.info(
                 f"macros.model.append_fit: appended via {used_path} to receiver={type(recv).__name__}"
             )
-    except Exception as e:
+    except Exception:
         try:
             _cs.logging.exception("macros.model.append_fit: exception while appending")
         except Exception:
             pass
-
-

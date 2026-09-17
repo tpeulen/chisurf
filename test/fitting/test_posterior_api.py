@@ -5,6 +5,7 @@ answer the same question. These tests pin the one query surface --
 ``fit.posterior`` on the server and ``ChiSurfAPI.posterior`` in process -- and
 that its payload survives the trip to JSON.
 """
+
 import json
 
 import numpy as np
@@ -30,14 +31,14 @@ def _fit(seed: int = 0):
     """Return a converged ``c + a*x**2`` fit."""
     rng = np.random.default_rng(seed)
     x = np.linspace(0.0, 5.0, 64)
-    y = 3.1 + 1.2 * x ** 2 + rng.normal(0.0, 0.05, x.size)
+    y = 3.1 + 1.2 * x**2 + rng.normal(0.0, 0.05, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.full_like(y, 0.05))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([data]),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     fit.run()
     return fit
@@ -78,14 +79,10 @@ def test_targets_joint_and_conditioning_all_reach_the_engine():
     state = _State([fit])
     names = list(fit.model.parameter_names)
 
-    only = fit_service.fit_posterior(
-        state, fit_index=0, engine="laplace", targets=[names[0]]
-    )
+    only = fit_service.fit_posterior(state, fit_index=0, engine="laplace", targets=[names[0]])
     assert [m["name"] for m in only["marginals"]] == [names[0]]
 
-    joint = fit_service.fit_posterior(
-        state, fit_index=0, engine="laplace", joint=names
-    )
+    joint = fit_service.fit_posterior(state, fit_index=0, engine="laplace", joint=names)
     assert joint["joint"] is not None
     corr = np.asarray(joint["joint"]["correlation"])
     assert corr.shape == (2, 2)
@@ -93,23 +90,25 @@ def test_targets_joint_and_conditioning_all_reach_the_engine():
 
     base = fit_service.fit_posterior(state, fit_index=0, engine="laplace")
     held = fit_service.fit_posterior(
-        state, fit_index=0, engine="laplace",
+        state,
+        fit_index=0,
+        engine="laplace",
         condition={names[0]: float(base["marginals"][0]["value"]) + 0.1},
         targets=[names[1]],
     )
     assert held["ok"]
     # Conditioning re-optimises the rest, and these two are correlated.
     unconditioned = [m for m in base["marginals"] if m["name"] == names[1]][0]
-    assert held["marginals"][0]["value"] != pytest.approx(
-        unconditioned["value"], abs=1e-9
-    )
+    assert held["marginals"][0]["value"] != pytest.approx(unconditioned["value"], abs=1e-9)
 
 
 def test_the_payload_survives_json():
     """It goes over a JSON-RPC transport, so it must contain no numpy scalars."""
     fit = _fit()
     r = fit_service.fit_posterior(
-        _State([fit]), fit_index=0, engine="laplace",
+        _State([fit]),
+        fit_index=0,
+        engine="laplace",
         joint=list(fit.model.parameter_names),
     )
     encoded = json.dumps(r)
@@ -147,6 +146,7 @@ def test_the_rpc_is_registered():
     """An unregistered service function is unreachable however good it is."""
     import json as _json
     import pathlib
+
     spec = _json.loads(
         (pathlib.Path(cs.__file__).parent / "server" / "server_methods.json").read_text()
     )

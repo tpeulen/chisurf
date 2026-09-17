@@ -1,9 +1,10 @@
 """Headless optical path simulator — no Qt dependency."""
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -13,14 +14,16 @@ from .crosstalk import WAVELENGTHS, propagate_node, split_emission_key
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class NodeState:
     id: str
     node_type: str
-    config: Dict[str, Any] = field(default_factory=dict)
-    input_spectra: Dict = field(default_factory=dict)
-    output_spectra: Dict = field(default_factory=dict)
-    node_char: Optional[Any] = None
+    config: dict[str, Any] = field(default_factory=dict)
+    input_spectra: dict = field(default_factory=dict)
+    output_spectra: dict = field(default_factory=dict)
+    node_char: Any | None = None
+
 
 class OpticalPathSimulator:
     """
@@ -32,10 +35,11 @@ class OpticalPathSimulator:
         results = sim.propagate()
         setting = sim.to_instrument_setting()
     """
+
     def __init__(self, db):
         self.db = db
-        self._states: Dict[str, NodeState] = {}
-        self._graph: Optional[GraphDef] = None
+        self._states: dict[str, NodeState] = {}
+        self._graph: GraphDef | None = None
 
     def load_from_dict(self, scene_dict: dict) -> None:
         """Load from a plain graph dict (graph-schema v1, as the editor saves it)."""
@@ -45,7 +49,7 @@ class OpticalPathSimulator:
             for n in self._graph.nodes
         }
 
-    def propagate(self) -> Dict[str, NodeState]:
+    def propagate(self) -> dict[str, NodeState]:
         """Run multi-pass propagation. Returns dict of NodeState by node_id."""
         if not self._graph:
             return {}
@@ -53,10 +57,11 @@ class OpticalPathSimulator:
         # Build adjacency for propagation
         nodes_dict = {n.id: n for n in self._graph.nodes}
         out_adj = {n_id: {} for n_id in nodes_dict}
-        
+
         for edge in self._graph.edges:
             src, tgt = edge.source, edge.target
-            if src not in nodes_dict or tgt not in nodes_dict: continue
+            if src not in nodes_dict or tgt not in nodes_dict:
+                continue
 
             # Graph-schema v1 port indices are per-direction: a source_port
             # counts through the source's outputs, a target_port through the
@@ -65,14 +70,16 @@ class OpticalPathSimulator:
             # indices, and their output-side edges are lost on such a load.)
             src_node = nodes_dict[src]
             tgt_node = nodes_dict[tgt]
-            if edge.source_port >= len(src_node.outputs): continue
-            if edge.target_port >= len(tgt_node.inputs): continue
+            if edge.source_port >= len(src_node.outputs):
+                continue
+            if edge.target_port >= len(tgt_node.inputs):
+                continue
 
             s_p = src_node.outputs[edge.source_port]
-            s_p_name = s_p.name if hasattr(s_p, 'name') else str(s_p)
+            s_p_name = s_p.name if hasattr(s_p, "name") else str(s_p)
 
             t_p = tgt_node.inputs[edge.target_port]
-            t_p_name = t_p.name if hasattr(t_p, 'name') else str(t_p)
+            t_p_name = t_p.name if hasattr(t_p, "name") else str(t_p)
 
             out_adj[src].setdefault(s_p_name, []).append((tgt, t_p_name))
 
@@ -85,28 +92,33 @@ class OpticalPathSimulator:
 
         # 2. Multi-pass propagation
         to_process = [n_id for n_id, ns in self._states.items() if ns.node_type == "light_source"]
-        if not to_process: to_process = list(self._states.keys())
-        
+        if not to_process:
+            to_process = list(self._states.keys())
+
         # Limit iterations to prevent infinite loops in cyclic graphs
         max_iters = len(self._states) * 2
         iters = 0
-        
+
         while to_process and iters < max_iters:
             n_id = to_process.pop(0)
-            if n_id not in self._states: continue
+            if n_id not in self._states:
+                continue
             ns = self._states[n_id]
-            
-            out_specs, node_char = propagate_node(ns.node_type, ns.config, ns.input_spectra, self.db)
+
+            out_specs, node_char = propagate_node(
+                ns.node_type, ns.config, ns.input_spectra, self.db
+            )
             ns.node_char = node_char
             ns.output_spectra = out_specs
-            
+
             for p_name, port_dict in out_specs.items():
                 for tgt_id, tgt_p_name in out_adj.get(n_id, {}).get(p_name, []):
-                    if tgt_id not in self._states: continue
+                    if tgt_id not in self._states:
+                        continue
                     tgt_ns = self._states[tgt_id]
                     tgt_inputs = tgt_ns.input_spectra
                     tgt_in = tgt_inputs.setdefault(tgt_p_name, {})
-                    
+
                     for src_id, spec in port_dict.items():
                         if isinstance(spec, np.ndarray):
                             if src_id not in tgt_in or not isinstance(tgt_in[src_id], np.ndarray):
@@ -117,13 +129,14 @@ class OpticalPathSimulator:
                                 tgt_in[src_id].update(spec)
                             else:
                                 tgt_in[src_id] = spec
-                    
-                    if tgt_id not in to_process: to_process.append(tgt_id)
+
+                    if tgt_id not in to_process:
+                        to_process.append(tgt_id)
             iters += 1
-            
+
         return self._states
 
-    def get_detector_signals(self) -> List[Dict]:
+    def get_detector_signals(self) -> list[dict]:
         """Return [{laser, detector, dye, intensity}] rows."""
         row_data = []
         for n_id, ns in self._states.items():
@@ -131,32 +144,30 @@ class OpticalPathSimulator:
                 det_name = ns.config.get("detector_name", f"Detector {n_id}")
                 signals = ns.config.get("_last_signals", {})
                 for src_key, val in signals.items():
-                    if val <= 1e-12: continue
-                    
+                    if val <= 1e-12:
+                        continue
+
                     dye, laser = split_emission_key(src_key)
                     if laser is None:
                         dye, laser = "None", src_key
 
                     if " (QY:" in dye:
                         dye = dye.split(" (QY:")[0]
-                        
-                    row_data.append({
-                        "laser": laser,
-                        "detector": det_name,
-                        "dye": dye,
-                        "intensity": val
-                    })
+
+                    row_data.append(
+                        {"laser": laser, "detector": det_name, "dye": dye, "intensity": val}
+                    )
         row_data.sort(key=lambda x: (x["laser"], x["detector"], x["dye"]))
         return row_data
 
     @staticmethod
     def _matrix_from_records(
-        records: List[Dict],
+        records: list[dict],
         row_key: str,
         column_key: str,
         value_key: str,
         value_label: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build a JSON-safe matrix payload from row records."""
         row_labels = sorted({str(record[row_key]) for record in records})
         column_labels = sorted({str(record[column_key]) for record in records})
@@ -165,10 +176,7 @@ class OpticalPathSimulator:
             for record in records
         }
         values = [
-            [
-                values_by_key.get((row_label, column_label), 0.0)
-                for column_label in column_labels
-            ]
+            [values_by_key.get((row_label, column_label), 0.0) for column_label in column_labels]
             for row_label in row_labels
         ]
         return {
@@ -179,9 +187,9 @@ class OpticalPathSimulator:
             "value": value_label,
         }
 
-    def get_excitation_rows(self) -> List[Dict]:
+    def get_excitation_rows(self) -> list[dict]:
         """Return excitation probabilities by laser and dye."""
-        by_key: Dict[tuple[str, str], float] = {}
+        by_key: dict[tuple[str, str], float] = {}
         for ns in self._states.values():
             if ns.node_type != "sample":
                 continue
@@ -198,16 +206,15 @@ class OpticalPathSimulator:
             for (laser, dye), value in sorted(by_key.items())
         ]
 
-    def get_crosstalk_matrices(self) -> Dict[str, Any]:
+    def get_crosstalk_matrices(self) -> dict[str, Any]:
         """Return excitation, emission, and detected-intensity matrices."""
         excitation_records = self.get_excitation_rows()
         detector_records = self.get_detector_signals()
         excitation_by_key = {
-            (row["laser"], row["dye"]): row["excitation"]
-            for row in excitation_records
+            (row["laser"], row["dye"]): row["excitation"] for row in excitation_records
         }
 
-        emission_accumulator: Dict[tuple[str, str], list[float]] = {}
+        emission_accumulator: dict[tuple[str, str], list[float]] = {}
         detected_records = []
         for row in detector_records:
             laser = str(row["laser"])
@@ -223,9 +230,7 @@ class OpticalPathSimulator:
             )
             excitation = excitation_by_key.get((laser, dye), 0.0)
             if excitation > 0.0:
-                emission_accumulator.setdefault((dye, detector), []).append(
-                    intensity / excitation
-                )
+                emission_accumulator.setdefault((dye, detector), []).append(intensity / excitation)
 
         emission_records = [
             {
@@ -263,4 +268,5 @@ class OpticalPathSimulator:
     def to_instrument_setting(self) -> Any:
         """Build mmCIF-ready InstrumentSetting from current propagated state."""
         from .mmcif_export import build_instrument_setting
+
         return build_instrument_setting(self._states, self.db)

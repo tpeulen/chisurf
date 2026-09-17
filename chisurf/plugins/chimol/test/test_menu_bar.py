@@ -9,7 +9,6 @@ PyMOL's name and position, and that nothing on the bar is a dead button.
 from __future__ import annotations
 
 import pytest
-
 from chimol.hosts.qt.menu_bar import (
     EXTRA_MENUS,
     MENU_BAR,
@@ -18,8 +17,19 @@ from chimol.hosts.qt.menu_bar import (
 )
 
 #: PyMOL's own bar, from pymol/_gui.py:get_menudata.
-_PYMOL_BAR = ["File", "Edit", "Build", "Movie", "Display", "Setting", "Scene",
-              "Mouse", "Wizard", "Plugin", "Help"]
+_PYMOL_BAR = [
+    "File",
+    "Edit",
+    "Build",
+    "Movie",
+    "Display",
+    "Setting",
+    "Scene",
+    "Mouse",
+    "Wizard",
+    "Plugin",
+    "Help",
+]
 
 
 def test_the_bar_keeps_pymols_names_and_order():
@@ -34,18 +44,13 @@ def test_the_bar_keeps_pymols_names_and_order():
     from chimol.hosts.qt.menu_bar import FOLDED_MENUS
 
     ours = [title for title, _ in MENU_BAR if title not in EXTRA_MENUS]
-    assert ours == [
-        t for t in _PYMOL_BAR
-        if t not in OMITTED_MENUS and t not in FOLDED_MENUS
-    ]
+    assert ours == [t for t in _PYMOL_BAR if t not in OMITTED_MENUS and t not in FOLDED_MENUS]
     assert not (set(FOLDED_MENUS) & set(OMITTED_MENUS)), (
         "a menu is either folded or omitted, not both"
     )
     on_bar = {title for title, _ in MENU_BAR}
     assert EXTRA_MENUS <= on_bar, "an extra menu is declared but not built"
-    assert not (EXTRA_MENUS & set(_PYMOL_BAR)), (
-        "a menu PyMOL also has cannot be an extra"
-    )
+    assert not (EXTRA_MENUS & set(_PYMOL_BAR)), "a menu PyMOL also has cannot be an extra"
 
 
 def test_omitted_menus_are_the_ones_chimol_cannot_fill():
@@ -73,11 +78,8 @@ def test_the_bar_matches_a_live_pymol():
     import re
 
     source = (pathlib.Path(pymol.__file__).parent / "_gui.py").read_text()
-    body = source[source.index("def get_menudata"):]
-    live = [
-        m.group(1)
-        for m in re.finditer(r"^            \('menu', '([^']+)'", body, re.M)
-    ]
+    body = source[source.index("def get_menudata") :]
+    live = [m.group(1) for m in re.finditer(r"^            \('menu', '([^']+)'", body, re.M)]
     assert live == _PYMOL_BAR
 
 
@@ -154,9 +156,8 @@ def qapp():
 
 
 def test_the_bar_installs_and_acts(qapp):
-    from qtpy import QtWidgets
-
     from chimol.core.settings.config import _DISPLAY_CONFIG
+    from qtpy import QtWidgets
 
     issued: list[str] = []
     window = QtWidgets.QMainWindow()
@@ -167,12 +168,10 @@ def test_the_bar_installs_and_acts(qapp):
 
     installed = [t for t, _ in menu_bar()]
     assert [a.text() for a in bar.actions()] == installed
-    assert installed[:len(MENU_BAR)] == [t for t, _ in MENU_BAR]
+    assert installed[: len(MENU_BAR)] == [t for t, _ in MENU_BAR]
 
     setting = next(a.menu() for a in bar.actions() if a.text() == "Setting")
-    occlusion = next(
-        a.menu() for a in setting.actions() if a.text() == "Ambient Occlusion"
-    )
+    occlusion = next(a.menu() for a in setting.actions() if a.text() == "Ambient Occlusion")
     next(a for a in occlusion.actions() if a.text() == "Off").trigger()
     assert issued == ["set occlusion.enabled, off"]
     assert _DISPLAY_CONFIG is not None  # imported for the reader's benefit
@@ -185,10 +184,9 @@ def test_a_special_entry_calls_its_handler(qapp):
     the plain `config` command), so the mechanism is exercised directly
     rather than through an entry that happens to use it today.
     """
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.menu_bar import _populate
     from chimol.ui.menus.objects import MenuEntry
+    from qtpy import QtWidgets
 
     calls: list[str] = []
     menu = QtWidgets.QMenu()

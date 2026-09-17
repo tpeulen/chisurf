@@ -16,6 +16,7 @@ width in Python and does not truncate, so a two-character id written through it
 shifts every following column and produces a file no reader parses. The writer
 truncates explicitly and says which chains it flattened.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -103,8 +104,6 @@ def test_the_structure_repr_uses_the_same_columns(chain):
     structure._atoms = atoms
     structure.filename = None
 
-    line = next(
-        ln for ln in str(structure).splitlines() if ln.startswith("ATOM")
-    )
+    line = next(ln for ln in str(structure).splitlines() if ln.startswith("ATOM"))
     assert line[21] == chain[0]
     assert line[22:26] == "   1", "residue number moved"

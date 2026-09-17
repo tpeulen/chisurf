@@ -73,7 +73,8 @@ def _structure_axes(model: Any) -> dict[str, tuple[int, list[int], int]]:
         for other in keys:
             parts = other.split(".")
             if len(parts) == len(tokens) and all(
-                    parts[j] == tokens[j] for j in range(len(tokens)) if j != i + 1):
+                parts[j] == tokens[j] for j in range(len(tokens)) if j != i + 1
+            ):
                 if parts[i + 1].isdigit():
                     counts.add(int(parts[i + 1]))
         if len(counts) < 2:
@@ -105,7 +106,8 @@ def component_groups(model: Any) -> dict[str, int]:
 
 def _list_groups(model: Any) -> dict[str, int]:
     """Component groups of an equation model: attributes that behave like a
-    list of repeated components (``append``, ``pop``, ``len``)."""
+    list of repeated components (``append``, ``pop``, ``len``).
+    """
     groups: dict[str, int] = {}
     seen: dict[int, str] = {}
     for name in dir(model):
@@ -399,8 +401,9 @@ def set_irf(
 
     before = chi2r(fit_object)
     if remove:
-        cs.core.actions.dispatch(name="model.unset_dataset",
-                                 payload={"slot": "response", "fit_index": fit_index})
+        cs.core.actions.dispatch(
+            name="model.unset_dataset", payload={"slot": "response", "fit_index": fit_index}
+        )
         return {"ok": True, "fit": fit_index, "irf": None, "chi2r_before": _round(before, 4)}
 
     if irf is None:

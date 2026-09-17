@@ -23,6 +23,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf.core.fitting
 from chisurf.core.actions import record_action
 from chisurf.core.datastore import row_count, rows_from_table, store_from_rows
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.chitable import (
@@ -33,7 +34,6 @@ from chisurf.gui.widgets.chitable import (
     DataStoreSource,
 )
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-from chisurf.gui import dialogs
 
 #: Curves that already have a dedicated column and must not be repeated.
 _SUPPORT_EXCLUSIONS = {"data", "model", "weighted residuals", "autocorrelation"}
@@ -449,9 +449,7 @@ class FitTablePlot(plotbase.Plot):
 
         table = self._parameter_frame(param_dict)
         if row_count(table) == 0:
-            dialogs.information(
-                self, "No parameters", "Model exposes no editable parameters."
-            )
+            dialogs.information(self, "No parameters", "Model exposes no editable parameters.")
             return
 
         # Held by reference: DataStoreSource mutates the store it wraps in

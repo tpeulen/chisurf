@@ -131,7 +131,9 @@ class SyntheticDecayEditorModel:
         from qtpy import QtWidgets
 
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            None, "Load decay pattern", "",
+            None,
+            "Load decay pattern",
+            "",
             "Decay (*.txt *.dat *.csv *.npy);;All files (*)",
         )
         if path:
@@ -185,8 +187,11 @@ class SyntheticDecayEditorModel:
 
         spec = self.lifetime_spectrum
         return synthetic_decay(
-            int(self.n_bins), spec[1::2], amplitudes=spec[0::2],
-            bin_width=float(self.bin_width), irf=self._irf(),
+            int(self.n_bins),
+            spec[1::2],
+            amplitudes=spec[0::2],
+            bin_width=float(self.bin_width),
+            irf=self._irf(),
             period=(float(self.period_ns) if self.period_ns > 0.0 else None),
             time_shift=float(self.time_shift_ns),
             normalize=not self.shot_noise,

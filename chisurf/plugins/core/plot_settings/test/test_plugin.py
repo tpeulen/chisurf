@@ -23,7 +23,9 @@ def qapp():
 
 def test_manifest_loads():
     from pathlib import Path
+
     from chisurf.core.plugin import load_manifest
+
     m = load_manifest(Path(__file__).parent.parent / "manifest.json")
     assert m is not None
     assert m.id == "plot_settings"
@@ -32,14 +34,16 @@ def test_manifest_loads():
 
 def test_widget_constructs(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     assert w.windowTitle() == "Plot Settings"
     assert w.backend_combo.count() >= 2
 
 
 def test_backend_combo_lists_all_backends(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
     from chisurf.gui.chiplot import available_backends
+    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     items = {w.backend_combo.itemText(i) for i in range(w.backend_combo.count())}
     assert items == set(available_backends())
@@ -47,6 +51,7 @@ def test_backend_combo_lists_all_backends(qapp):
 
 def test_color_buttons_exist(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     for key in ("data", "model", "irf", "residuals", "auto_corr", "region_selector"):
         assert key in w._color_buttons
@@ -56,6 +61,7 @@ def test_color_buttons_exist(qapp):
 
 def test_collect_settings_round_trip(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     w._color_buttons["data"].color = "#ff0000"
     w.line_width.setValue(3.0)
@@ -80,20 +86,34 @@ def test_loading_does_not_overwrite_what_it_is_reading(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
 
     known = {
-        "backend": "pyqtgraph", "line_width": 2.0, "font_size": 9,
-        "enable_grid": True, "grid_alpha": 0.4,
-        "show_data_grid": True, "show_residual_grid": False,
-        "show_acorr_grid": True, "enable_region_selector": True,
-        "show_legend": True, "hideTitle": False, "label_axis": True,
+        "backend": "pyqtgraph",
+        "line_width": 2.0,
+        "font_size": 9,
+        "enable_grid": True,
+        "grid_alpha": 0.4,
+        "show_data_grid": True,
+        "show_residual_grid": False,
+        "show_acorr_grid": True,
+        "enable_region_selector": True,
+        "show_legend": True,
+        "hideTitle": False,
+        "label_axis": True,
         "colors": {
-            "data": "#ffa629", "model": "#d400cd", "irf": "#4284f5",
-            "residuals": "#df0101", "auto_corr": "#ff00ff",
-            "region_selector": "#26a298", "region_selector_alpha": 60,
-            "active_transparency": 1.0, "inactive_transparency": 0.2,
+            "data": "#ffa629",
+            "model": "#d400cd",
+            "irf": "#4284f5",
+            "residuals": "#df0101",
+            "auto_corr": "#ff00ff",
+            "region_selector": "#26a298",
+            "region_selector_alpha": 60,
+            "active_transparency": 1.0,
+            "inactive_transparency": 0.2,
         },
         "pyqtgraph_config": {
-            "antialias": True, "background": "k",
-            "foreground": "d", "leftButtonPan": True,
+            "antialias": True,
+            "background": "k",
+            "foreground": "d",
+            "leftButtonPan": True,
         },
     }
     previous = css.cs_settings.get("gui", {}).get("plot")
@@ -121,16 +141,27 @@ def test_every_plot_setting_the_dialog_writes_is_reachable(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
 
     written = set(PlotSettingsWidget()._collect_settings())
-    for key in ("backend", "font_size", "line_width", "enable_grid",
-                "grid_alpha", "show_data_grid", "show_residual_grid",
-                "show_acorr_grid", "enable_region_selector", "show_legend",
-                "hideTitle", "label_axis"):
+    for key in (
+        "backend",
+        "font_size",
+        "line_width",
+        "enable_grid",
+        "grid_alpha",
+        "show_data_grid",
+        "show_residual_grid",
+        "show_acorr_grid",
+        "enable_region_selector",
+        "show_legend",
+        "hideTitle",
+        "label_axis",
+    ):
         assert key in written, key
 
 
 def test_apply_settings_updates_cs_settings(qapp):
-    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
     import chisurf.core.settings as css
+    from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     w.backend_combo.setCurrentText("pyqtgraph")
     w._apply_settings()
@@ -139,6 +170,7 @@ def test_apply_settings_updates_cs_settings(qapp):
 
 def test_grab_non_null(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     w = PlotSettingsWidget()
     pm = w.grab()
     assert not pm.isNull()
@@ -148,6 +180,7 @@ def test_grab_non_null(qapp):
 def test_plots_panel_in_settings_navigation(qapp):
     """The Plots panel is registered in the Settings navigation host."""
     from chisurf.plugins.core.setup.gui.tool import SETTINGS_PANELS
+
     names = [p["name"] for p in SETTINGS_PANELS]
     assert "Plots" in names
     plots = [p for p in SETTINGS_PANELS if p["name"] == "Plots"][0]
@@ -158,7 +191,9 @@ def test_plots_panel_in_settings_navigation(qapp):
 def test_manifest_menu_hidden(qapp):
     """The plugin is menu-hidden (opened via Settings, not as standalone)."""
     from pathlib import Path
+
     from chisurf.core.plugin import load_manifest
+
     m = load_manifest(Path(__file__).parent.parent / "manifest.json")
     assert m.menu_hidden is True
 
@@ -166,6 +201,7 @@ def test_manifest_menu_hidden(qapp):
 def test_settings_tool_loads_plots_panel(qapp):
     """Selecting the Plots row in Settings shows PlotSettingsWidget."""
     from chisurf.plugins.core.setup.gui.tool import UnifiedSettingsTool
+
     tool = UnifiedSettingsTool()
     tool.show()
     qapp.processEvents()
@@ -180,6 +216,7 @@ def test_settings_tool_loads_plots_panel(qapp):
     qapp.processEvents()
     qapp.processEvents()
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
+
     psw = tool.stacked_widget.findChild(PlotSettingsWidget)
     assert psw is not None, "PlotSettingsWidget did not load"
     assert psw.isVisible()

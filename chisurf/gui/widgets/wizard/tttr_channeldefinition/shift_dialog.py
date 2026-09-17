@@ -19,8 +19,15 @@ from chisurf.gui import chiplot as cp
 class MicrotimeShiftDialog(QtWidgets.QDialog):
     """Interactive per-channel micro-time shift alignment (LUT-aware)."""
 
-    def __init__(self, path, routine=None, channel_luts=None, channel_shifts=None,
-                 apply_lut=False, parent=None):
+    def __init__(
+        self,
+        path,
+        routine=None,
+        channel_luts=None,
+        channel_shifts=None,
+        apply_lut=False,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Adjust micro-time shifts")
         self.resize(820, 520)
@@ -33,8 +40,9 @@ class MicrotimeShiftDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         info = QtWidgets.QLabel(
             "Align each routing channel's micro-time histogram. Shifts wrap and are "
-            "applied on the LUT-linearized axis." if apply_lut else
-            "Align each routing channel's micro-time histogram (shifts wrap)."
+            "applied on the LUT-linearized axis."
+            if apply_lut
+            else "Align each routing channel's micro-time histogram (shifts wrap)."
         )
         info.setStyleSheet("color: #9ba3af; font-size: 11px;")
         info.setWordWrap(True)
@@ -82,12 +90,17 @@ class MicrotimeShiftDialog(QtWidgets.QDialog):
         try:
             from chisurf.core.fio.staging import open_tttr
 
-                        # cache=False: this page applies the setup's LUT to the object
+            # cache=False: this page applies the setup's LUT to the object
             # it holds (``_apply_setup_lut_to_tttr``), and a shared handle
             # mutated in place would hand the corrected decay to every other
             # reader of the same file -- including the one asking for raw.
-            tttr = open_tttr(str(path), routine or None, cache=False,
-                             channel_luts=channel_luts, apply_lut=bool(apply_lut))
+            tttr = open_tttr(
+                str(path),
+                routine or None,
+                cache=False,
+                channel_luts=channel_luts,
+                apply_lut=bool(apply_lut),
+            )
             self._n_mt = int(tttr.header.get_effective_number_of_micro_time_channels())
             for ch in sorted(int(c) for c in tttr.get_used_routing_channels()):
                 sel = tttr.get_tttr_by_channel([ch])

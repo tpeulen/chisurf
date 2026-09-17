@@ -50,9 +50,7 @@ def test_file_order_is_not_a_change(burst_files):
 
 
 def test_key_order_is_not_a_change(burst_files):
-    assert fingerprint(burst_files, {"a": 1, "b": 2}) == fingerprint(
-        burst_files, {"b": 2, "a": 1}
-    )
+    assert fingerprint(burst_files, {"a": 1, "b": 2}) == fingerprint(burst_files, {"b": 2, "a": 1})
 
 
 def test_a_changed_setting_changes_the_fingerprint(burst_files):
@@ -111,14 +109,10 @@ def test_settings_that_are_not_plain_json_still_fingerprint(tmp_path, burst_file
             self.tau = tau
             self._cache = object()  # private state must not enter the fingerprint
 
-    a = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path,
-                                  "s": Settings(1.0)})
-    b = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path,
-                                  "s": Settings(1.0)})
-    c = fingerprint(burst_files, {"chans": np.array([0, 2]), "out": tmp_path,
-                                  "s": Settings(1.0)})
-    d = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path,
-                                  "s": Settings(2.0)})
+    a = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path, "s": Settings(1.0)})
+    b = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path, "s": Settings(1.0)})
+    c = fingerprint(burst_files, {"chans": np.array([0, 2]), "out": tmp_path, "s": Settings(1.0)})
+    d = fingerprint(burst_files, {"chans": np.array([0, 1]), "out": tmp_path, "s": Settings(2.0)})
     assert a == b
     assert a != c, "a changed channel list must recompute"
     assert a != d, "a changed settings object must recompute"
@@ -131,8 +125,7 @@ def test_stamp_round_trip_and_is_current(tmp_path, burst_files):
     stamp = tmp_path / "bv4" / "bva.stamp.json"
     fp = fingerprint(burst_files, {"tau": 1})
 
-    write_stamp(stamp, fp, params={"tau": 1}, inputs=burst_files, outputs=[out],
-                tool="bva")
+    write_stamp(stamp, fp, params={"tau": 1}, inputs=burst_files, outputs=[out], tool="bva")
     payload = read_stamp(stamp)
     assert payload["tool"] == "bva"
     entry = stamp_entry(stamp, fp)
@@ -266,9 +259,7 @@ def test_the_code_that_computed_the_result_is_part_of_the_fingerprint(burst_file
     assert before != after
 
     # A library that is not installed is reported, not raised.
-    assert library_version("definitely_not_a_module_xyz") == (
-        "definitely_not_a_module_xyz=absent"
-    )
+    assert library_version("definitely_not_a_module_xyz") == ("definitely_not_a_module_xyz=absent")
     tag = algorithm_tag("burst_mle", 1, "definitely_not_a_module_xyz")
     assert tag.startswith("burst_mle/v1|")
 

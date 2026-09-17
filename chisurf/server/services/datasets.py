@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from chisurf.server.services import (
+    INVALID_INPUT,
+    INVALID_STATE,
+    NOT_FOUND,
+    OPERATION_FAILED,
     ServiceResult,
     service_error,
-    NOT_FOUND,
-    INVALID_INPUT,
-    OPERATION_FAILED,
-    INVALID_STATE,
 )
 from chisurf.server.session import SessionState
 
@@ -29,7 +29,7 @@ def _is_global_fit_dataset(dataset: Any) -> bool:
     return name in {"global-fit", "global dataset", "global-fit dataset"}
 
 
-def _find_fits_using_dataset(dataset: Any, state: SessionState) -> List[Any]:
+def _find_fits_using_dataset(dataset: Any, state: SessionState) -> list[Any]:
     """Return all fits whose data references *dataset*.
 
     Parameters
@@ -55,7 +55,9 @@ def _find_fits_using_dataset(dataset: Any, state: SessionState) -> List[Any]:
     return dependent
 
 
-def _dataset_dto(dataset: Any, index: Optional[int], *, include_length: bool = False) -> Dict[str, Any]:
+def _dataset_dto(
+    dataset: Any, index: int | None, *, include_length: bool = False
+) -> dict[str, Any]:
     """Build a serialisable summary dict for a dataset.
 
     Parameters
@@ -83,8 +85,8 @@ def _dataset_dto(dataset: Any, index: Optional[int], *, include_length: bool = F
 
 def _resolve_dataset(
     state: SessionState,
-    dataset_index: Optional[int] = None,
-    dataset_uid: Optional[str] = None,
+    dataset_index: int | None = None,
+    dataset_uid: str | None = None,
 ) -> tuple[Any, int]:
     """Look up a dataset by index or uid.
 
@@ -111,11 +113,11 @@ def _resolve_dataset(
 
 
 def _validated_dataset_indices(
-    datasets: List[Any],
+    datasets: list[Any],
     dataset_indices: Any,
     *,
     empty_message: str,
-) -> tuple[List[int], Optional[ServiceResult]]:
+) -> tuple[list[int], ServiceResult | None]:
     """Validate and deduplicate a list of dataset indices.
 
     Returns ``(indices, None)`` on success or ``([], error)`` on failure.
@@ -131,7 +133,9 @@ def _validated_dataset_indices(
 
     """
     if not hasattr(dataset_indices, "__iter__") or isinstance(dataset_indices, (str, bytes)):
-        return [], service_error("dataset_indices must be an iterable of ints", error_code=INVALID_INPUT)
+        return [], service_error(
+            "dataset_indices must be an iterable of ints", error_code=INVALID_INPUT
+        )
     try:
         indices = sorted(set(int(i) for i in dataset_indices))
     except Exception as e:
@@ -161,8 +165,8 @@ def list_datasets(state: SessionState) -> ServiceResult:
 
 def get_dataset_info(
     state: SessionState,
-    dataset_index: Optional[int] = None,
-    dataset_uid: Optional[str] = None,
+    dataset_index: int | None = None,
+    dataset_uid: str | None = None,
 ) -> ServiceResult:
     """Return detailed info for a single dataset.
 
@@ -188,10 +192,10 @@ def get_dataset_info(
 def add_dataset(
     state: SessionState,
     reader: Any = None,
-    reader_name: Optional[str] = None,
-    filename: Optional[str] = None,
-    name: Optional[str] = None,
-    curve_data: Optional[Dict[str, Any]] = None,
+    reader_name: str | None = None,
+    filename: str | None = None,
+    name: str | None = None,
+    curve_data: dict[str, Any] | None = None,
     _from_controller: bool = False,
     event_bus: Any = None,
 ) -> ServiceResult:
@@ -219,19 +223,41 @@ def add_dataset(
     """
     if reader is None and reader_name and filename:
         try:
-            import numpy as np
-            from chisurf.core.data import DataCurve
             import pathlib
+
+            import numpy as np
+
+            from chisurf.core.data import DataCurve
+
             p = pathlib.Path(filename)
-            x = np.array(curve_data.get("x", []), dtype=float) if curve_data and "x" in curve_data else None
-            y = np.array(curve_data.get("y", []), dtype=float) if curve_data and "y" in curve_data else None
-            ex = np.array(curve_data.get("ex", []), dtype=float) if curve_data and "ex" in curve_data else None
-            ey = np.array(curve_data.get("ey", []), dtype=float) if curve_data and "ey" in curve_data else None
+            x = (
+                np.array(curve_data.get("x", []), dtype=float)
+                if curve_data and "x" in curve_data
+                else None
+            )
+            y = (
+                np.array(curve_data.get("y", []), dtype=float)
+                if curve_data and "y" in curve_data
+                else None
+            )
+            ex = (
+                np.array(curve_data.get("ex", []), dtype=float)
+                if curve_data and "ex" in curve_data
+                else None
+            )
+            ey = (
+                np.array(curve_data.get("ey", []), dtype=float)
+                if curve_data and "ey" in curve_data
+                else None
+            )
             ds = DataCurve(name=str(name or p.stem or "dataset"), x=x, y=y, ex=ex, ey=ey)
             ds.filename = str(p.resolve())
             state.add_dataset(ds)
             if event_bus is not None and not _from_controller:
-                event_bus.publish("dataset.added", {"dataset_index": len(state.datasets) - 1, "name": str(name or p.name)})
+                event_bus.publish(
+                    "dataset.added",
+                    {"dataset_index": len(state.datasets) - 1, "name": str(name or p.name)},
+                )
             return {
                 "ok": True,
                 "uid": str(getattr(ds, "unique_identifier", "") or ""),
@@ -239,7 +265,9 @@ def add_dataset(
                 "dataset_index": len(state.datasets) - 1,
             }
         except Exception as e:
-            return service_error(f"failed to create remote dataset: {e}", error_code=OPERATION_FAILED, exception=e)
+            return service_error(
+                f"failed to create remote dataset: {e}", error_code=OPERATION_FAILED, exception=e
+            )
 
     if reader is None:
         return service_error("no reader provided", error_code=INVALID_INPUT)
@@ -261,7 +289,9 @@ def add_dataset(
             state.add_dataset(dataset_group)
 
     if event_bus is not None and not _from_controller:
-        event_bus.publish("dataset.added", {"dataset_index": len(state.datasets) - 1, "name": dataset_name})
+        event_bus.publish(
+            "dataset.added", {"dataset_index": len(state.datasets) - 1, "name": dataset_name}
+        )
 
     return {
         "ok": True,
@@ -273,8 +303,8 @@ def add_dataset(
 
 def dataset_rename(
     state: SessionState,
-    dataset_index: Optional[int] = None,
-    dataset_uid: Optional[str] = None,
+    dataset_index: int | None = None,
+    dataset_uid: str | None = None,
     new_name: str = "",
 ) -> ServiceResult:
     """Rename a dataset.
@@ -303,8 +333,8 @@ def dataset_rename(
 
 def dataset_group(
     state: SessionState,
-    dataset_indices: List[int],
-    group_name: Optional[str] = None,
+    dataset_indices: list[int],
+    group_name: str | None = None,
 ) -> ServiceResult:
     """Group selected datasets into an ``ExperimentDataGroup``.
 
@@ -337,6 +367,7 @@ def dataset_group(
 
     try:
         from chisurf.core.data import ExperimentDataGroup
+
         group = ExperimentDataGroup()
         group.name = str(group_name or "Data-Group")
         for ds in selected:
@@ -356,7 +387,7 @@ def dataset_group(
 
 def dataset_ungroup(
     state: SessionState,
-    dataset_indices: List[int],
+    dataset_indices: list[int],
 ) -> ServiceResult:
     """Ungroup previously grouped datasets at *dataset_indices*.
 
@@ -403,8 +434,8 @@ def dataset_ungroup(
 
 def remove_datasets(
     state: SessionState,
-    dataset_indices: Optional[List[int]] = None,
-    dataset_uids: Optional[List[str]] = None,
+    dataset_indices: list[int] | None = None,
+    dataset_uids: list[str] | None = None,
     _from_controller: bool = False,
     event_bus: Any = None,
 ) -> ServiceResult:
@@ -424,7 +455,7 @@ def remove_datasets(
         Event bus for broadcasting.
 
     """
-    indices: List[int] = []
+    indices: list[int] = []
 
     if dataset_uids:
         all_ds = list(state.datasets)
@@ -462,7 +493,9 @@ def remove_datasets(
     state.datasets[:] = kept
 
     if event_bus is not None and not _from_controller:
-        event_bus.publish("dataset.removed", {"removed_count": len(to_remove), "remaining_count": len(kept)})
+        event_bus.publish(
+            "dataset.removed", {"removed_count": len(to_remove), "remaining_count": len(kept)}
+        )
 
     return {
         "ok": True,
@@ -491,14 +524,15 @@ def clear_datasets(state: SessionState, event_bus: Any = None) -> ServiceResult:
     return {"ok": True, "cleared_count": count}
 
 
-def _sanitize_float_list(values: Any) -> Optional[List[Optional[float]]]:
+def _sanitize_float_list(values: Any) -> list[float | None] | None:
     """Convert an iterable to a JSON-safe list of floats, replacing NaN/Inf with None."""
     import numpy as np
+
     if values is None:
         return None
     try:
         arr = np.asarray(values, dtype=float)
-        result: List[Optional[float]] = []
+        result: list[float | None] = []
         for v in arr.flat:
             if np.isnan(v) or np.isinf(v):
                 result.append(None)
@@ -511,15 +545,15 @@ def _sanitize_float_list(values: Any) -> Optional[List[Optional[float]]]:
 
 def get_dataset_curve_data(
     state: SessionState,
-    dataset_index: Optional[int] = None,
-    dataset_uid: Optional[str] = None,
+    dataset_index: int | None = None,
+    dataset_uid: str | None = None,
 ) -> ServiceResult:
     """Return x/y/ex/ey arrays for a dataset."""
     d, _ = _resolve_dataset(state, dataset_index, dataset_uid)
     if d is None:
         return service_error("dataset not found", error_code=NOT_FOUND)
     try:
-        result: Dict[str, Any] = {"ok": True}
+        result: dict[str, Any] = {"ok": True}
         result["x"] = _sanitize_float_list(getattr(d, "x", None))
         result["y"] = _sanitize_float_list(getattr(d, "y", None))
         result["ex"] = _sanitize_float_list(getattr(d, "ex", None))

@@ -24,10 +24,11 @@ a directory name to be found, so nothing needs to be skipped.
 
 from __future__ import annotations
 
-import numpy as np
-
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+
+import numpy as np
 
 __all__ = ["write_mle_container"]
 
@@ -139,7 +140,8 @@ def write_mle_container(
         if table is None:
             continue
         written = write_burst_artifact(
-            source, table,
+            source,
+            table,
             name=f"mle {str(detector).lower()}",
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
@@ -153,7 +155,8 @@ def write_mle_container(
 
     if state_rows is not None and len(state_rows):
         written = write_burst_artifact(
-            source, store_from_rows(list(state_rows)),
+            source,
+            store_from_rows(list(state_rows)),
             name="mle state lifetimes",
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
@@ -163,10 +166,13 @@ def write_mle_container(
             derived_from=[f"mle {str(d).lower()}" for d in tables] or "bursts",
             source_row_column="State",
             units={
-                "Tau": "nanoseconds", "rho": "nanoseconds",
-                "Photons": "photons", "Photons (parallel)": "photons",
+                "Tau": "nanoseconds",
+                "rho": "nanoseconds",
+                "Photons": "photons",
+                "Photons (parallel)": "photons",
                 "Photons (perpendicular)": "photons",
-                "2I*": "dimensionless", "gamma": "dimensionless",
+                "2I*": "dimensionless",
+                "gamma": "dimensionless",
                 "r0": "dimensionless",
             },
             out_dir=out_dir,
@@ -187,12 +193,12 @@ def write_mle_container(
         if background.size == n:
             curve["Background"] = background
         written = write_burst_artifact(
-            source, store_from_arrays(curve),
+            source,
+            store_from_arrays(curve),
             name=f"irf {str(detector).lower()}",
             artifact_kind="irf_curve",
             operation_type="calibration",
-            algorithm=_IRF_ALGORITHM.get(
-                str((parameters or {}).get("irf_model", "")).lower(), ""),
+            algorithm=_IRF_ALGORITHM.get(str((parameters or {}).get("irf_model", "")).lower(), ""),
             row_grain="curve_point",
             parameters=parameters,
             # Not derived from the bursts: an instrument response is measured
@@ -200,8 +206,7 @@ def write_mle_container(
             # attaches it to the photon stream it calibrated, which is the
             # narrowest true statement available.
             derived_from=(),
-            units={"Channel": "dimensionless", "IRF": "counts",
-                   "Background": "counts_per_second"},
+            units={"Channel": "dimensionless", "IRF": "counts", "Background": "counts_per_second"},
             out_dir=out_dir,
         )
     return written

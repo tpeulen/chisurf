@@ -24,7 +24,6 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
-    DEFAULT_DATABASE_PATH,
     FluorophoreDatabase,
 )
 
@@ -268,7 +267,9 @@ def import_photochemcad_common_compounds(db: FluorophoreDatabase, common_dir: Pa
                             with open(img_path, "rb") as img_f:
                                 img_data = img_f.read()
                             img_ext = img_path.suffix.lower().replace(".", "")
-                            db.add_probe_image(item_id, img_data, fmt=img_ext, image_name=img_path.name)
+                            db.add_probe_image(
+                                item_id, img_data, fmt=img_ext, image_name=img_path.name
+                            )
                         except Exception as e:  # pragma: no cover - defensive
                             print(f"  WARNING: failed to add image {img_path}: {e}")
                     else:
@@ -405,8 +406,10 @@ def download_photochemcad_from_web(db: FluorophoreDatabase) -> int:
 
     def _arrays(points):
         pts = sorted(points)
-        return (np.array([p[0] for p in pts], dtype=float),
-                np.array([p[1] for p in pts], dtype=float))
+        return (
+            np.array([p[0] for p in pts], dtype=float),
+            np.array([p[1] for p in pts], dtype=float),
+        )
 
     ri = {c: i for i, c in enumerate(rcols)}
 
@@ -416,12 +419,18 @@ def download_photochemcad_from_web(db: FluorophoreDatabase) -> int:
     # records column → canonical optical-property label (register_component
     # further canonicalizes Quantum Yield → qy, Extinction Coefficient → ext_coeff…)
     prop_map = {
-        "class": "Class", "cas": "CAS", "source": "Source compound",
+        "class": "Class",
+        "cas": "CAS",
+        "source": "Source compound",
         "wavelength_abs": "Absorption max wavelength (nm)",
-        "epsilon_abs": "Extinction Coefficient", "solvent_abs": "Absorption solvent",
-        "reference_abs": "Absorption reference", "ems": "Emission max wavelength (nm)",
-        "quantum_yield_ems": "Quantum Yield", "solvent_ems": "Emission solvent",
-        "reference_ems": "Emission reference", "source_url": "source_url",
+        "epsilon_abs": "Extinction Coefficient",
+        "solvent_abs": "Absorption solvent",
+        "reference_abs": "Absorption reference",
+        "ems": "Emission max wavelength (nm)",
+        "quantum_yield_ems": "Quantum Yield",
+        "solvent_ems": "Emission solvent",
+        "reference_ems": "Emission reference",
+        "source_url": "source_url",
     }
 
     count = 0
@@ -465,9 +474,10 @@ def main():
 
     def _add(parser):
         parser.add_argument(
-            "--pcad-dir", default=None,
+            "--pcad-dir",
+            default=None,
             help="Optional local PhotochemCAD 'Common Compounds' dir (offline "
-                 "fallback). If omitted, data is fetched from the web mirror.",
+            "fallback). If omitted, data is fetched from the web mirror.",
         )
 
     def _run(db, args):
@@ -482,7 +492,8 @@ def main():
 
     scraper_main(
         "Download PhotochemCAD common compounds (web) into the staging DB",
-        _run, _add,
+        _run,
+        _add,
     )
 
 

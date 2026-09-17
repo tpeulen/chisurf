@@ -9,7 +9,6 @@ distance used for fast docking.
 from __future__ import annotations
 
 import csv
-from typing import Dict, Optional
 
 import numpy as np
 
@@ -19,14 +18,14 @@ from . import distance as _dist
 
 def compute_distance_distributions(
     pdb_path: str,
-    positions: Dict,
-    distances: Dict,
-    out_csv: Optional[str] = None,
+    positions: dict,
+    distances: dict,
+    out_csv: str | None = None,
     *,
     rda_min: float = 1.0,
     rda_max: float = 200.0,
     n_bins: int = 100,
-) -> Dict:
+) -> dict:
     """Return per-pair ``P(R_DA)`` distributions for the structure at ``pdb_path``.
 
     Parameters
@@ -49,7 +48,7 @@ def compute_distance_distributions(
     avs = _av.compute_avs_for_structure(atoms, positions, pdb_path=pdb_path)
 
     rda_axis = None
-    pairs: Dict[str, Dict] = {}
+    pairs: dict[str, dict] = {}
     for name, d in distances.items():
         av1 = avs.get(d.get("position1_name"))
         av2 = avs.get(d.get("position2_name"))
@@ -57,8 +56,8 @@ def compute_distance_distributions(
             continue
         # histogram_rda returns (histogram, bin_edges)
         p, edges = _dist.histogram_rda(
-            av1, av2, rda_min=rda_min, rda_max=rda_max, n_rda_bins=n_bins,
-            normalize=True)
+            av1, av2, rda_min=rda_min, rda_max=rda_max, n_rda_bins=n_bins, normalize=True
+        )
         centers = 0.5 * (np.asarray(edges[:-1]) + np.asarray(edges[1:]))
         rda_axis = centers
         p = np.asarray(p, dtype=float)
@@ -72,8 +71,7 @@ def compute_distance_distributions(
             w = csv.writer(fh)
             w.writerow(["R_DA"] + names)
             for i, r in enumerate(rda_axis):
-                w.writerow([round(float(r), 2)]
-                           + [round(pairs[n]["p"][i], 6) for n in names])
+                w.writerow([round(float(r), 2)] + [round(pairs[n]["p"][i], 6) for n in names])
 
     return {
         "rda_axis": rda_axis.tolist() if rda_axis is not None else [],

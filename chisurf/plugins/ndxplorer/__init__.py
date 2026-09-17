@@ -1,7 +1,7 @@
 """
 ndX
 
-This plugin provides a powerful interface for analyzing and visualizing multidimensional 
+This plugin provides a powerful interface for analyzing and visualizing multidimensional
 fluorescence data within ChiSurf.
 
 Features:
@@ -12,20 +12,21 @@ Features:
 - Support for FRET efficiency calculations and proximity ratio analysis
 - Application to both solution-based measurements and image spectroscopy data
 
-The ndX tool is particularly useful for analyzing complex fluorescence datasets 
-where multiple parameters need to be correlated, such as fluorescence intensity, 
-lifetime, anisotropy, and spectral information. It provides an intuitive interface 
+The ndX tool is particularly useful for analyzing complex fluorescence datasets
+where multiple parameters need to be correlated, such as fluorescence intensity,
+lifetime, anisotropy, and spectral information. It provides an intuitive interface
 for exploring relationships between different fluorescence parameters.
 
-For single-molecule experiments, ndX enables detailed burst analysis with 
-capabilities to select, filter, and categorize individual molecule detection events 
-based on multiple criteria. The tool also supports advanced FRET analysis with 
+For single-molecule experiments, ndX enables detailed burst analysis with
+capabilities to select, filter, and categorize individual molecule detection events
+based on multiple criteria. The tool also supports advanced FRET analysis with
 various correction factors and calculation methods.
 
-When working with image spectroscopy data, ndX allows pixel-by-pixel analysis 
-of multiparameter fluorescence information, enabling spatial correlation of 
+When working with image spectroscopy data, ndX allows pixel-by-pixel analysis
+of multiparameter fluorescence information, enabling spatial correlation of
 spectroscopic properties.
 """
+
 from chisurf.gui import dialogs
 
 name = "Main:Tools:ndX"
@@ -36,11 +37,12 @@ from chisurf.gui.glyphs import Glyphs
 log = cs.logging.info
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     import ndxplorer
     from qtpy.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     ndx = ndxplorer.NDXplorer()
     ndx.show()
@@ -51,12 +53,14 @@ if __name__ == '__main__':
 if __name__ == "plugin":
     import pathlib
     import sys
+
     _ndxplorer_module = pathlib.Path(__file__).resolve().parents[3] / "modules" / "ndxplorer"
     if _ndxplorer_module.is_dir():
         p = str(_ndxplorer_module)
         if p not in sys.path:
             sys.path.insert(0, p)
     import ndxplorer
+
     try:
         # Inject the in-process ChiSurf client so the phasor / FRET-line toolbar
         # is available; falls back to a plain window if the RPC stack is missing.
@@ -99,9 +103,7 @@ if __name__ == "plugin":
             path = resolve_dataset_path(client, sel.artifact_id)
             if not path:
                 return
-            QtCore.QTimer.singleShot(
-                0, lambda: open_path_like_drop(ndx, str(path))
-            )
+            QtCore.QTimer.singleShot(0, lambda: open_path_like_drop(ndx, str(path)))
 
         toolbar = ndx.addToolBar("MMFDB")
         toolbar.setObjectName("ndxplorerMmfdbToolbar")
@@ -125,7 +127,6 @@ if __name__ == "plugin":
     # Calibrate the loaded measurement: the correction constants ndx applies
     # should follow from the data in the window, not from typed-in guesses.
     try:
-
         from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
         def _optimize_calibration() -> None:
@@ -136,7 +137,8 @@ if __name__ == "plugin":
 
             constants = dict(getattr(ndx, "constants", {}) or {})
             options = ask_calibration_options(
-                ndx, donor_lifetime=float(constants.get("tauD0", 4.0) or 4.0))
+                ndx, donor_lifetime=float(constants.get("tauD0", 4.0) or 4.0)
+            )
             if options is None:
                 return
             # A calibration is six refinement passes plus fifty bootstrap
@@ -146,6 +148,7 @@ if __name__ == "plugin":
             from chisurf.gui.progress import ChiSurfProgress
 
             with ChiSurfProgress(ndx, "FRET calibration…", 100) as bar:
+
                 def _report(step: int, total: int, message: str) -> bool:
                     """Drive the bar; False stops the calibration."""
                     if total > 0:
@@ -153,8 +156,7 @@ if __name__ == "plugin":
                     bar.update_progress(int(step), message)
                     return not bar.wasCanceled()
 
-                result = optimize_calibration_from_ndx(
-                    ndx, progress=_report, **options.as_kwargs())
+                result = optimize_calibration_from_ndx(ndx, progress=_report, **options.as_kwargs())
             if not result.get("ok"):
                 dialogs.warning(
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
@@ -178,27 +180,39 @@ if __name__ == "plugin":
                 lines += ["", "Held fixed (not calibrated):"]
                 lines += [
                     f"  {name}: kept {value:.4f}"
-                    + (f" — this measurement would have given {determined[name]:.4f}"
-                       if name in determined else "")
+                    + (
+                        f" — this measurement would have given {determined[name]:.4f}"
+                        if name in determined
+                        else ""
+                    )
                     for name, value in held.items()
                 ]
             per_burst = result.get("background_per_burst") or []
             fitted_bg = result.get("background_fitted") or {}
             if result.get("background") == "fit":
-                lines += ["", (
-                    "Background, fitted from the reference populations: "
-                    + ", ".join(f"{k} = {v:.2f}" for k, v in fitted_bg.items())
-                ) if fitted_bg else (
-                    "Background: the reference populations were too small to fit "
-                    "one — the window's constants were used"
-                )]
+                lines += [
+                    "",
+                    (
+                        "Background, fitted from the reference populations: "
+                        + ", ".join(f"{k} = {v:.2f}" for k, v in fitted_bg.items())
+                    )
+                    if fitted_bg
+                    else (
+                        "Background: the reference populations were too small to fit "
+                        "one — the window's constants were used"
+                    ),
+                ]
             elif result.get("background") == "measurement":
-                lines += ["", (
-                    "Background: per burst, from this measurement's own "
-                    f"estimate ({', '.join(per_burst)})" if per_burst else
-                    "Background: the container has no stored estimate — the "
-                    "window's own constants were used"
-                )]
+                lines += [
+                    "",
+                    (
+                        "Background: per burst, from this measurement's own "
+                        f"estimate ({', '.join(per_burst)})"
+                        if per_burst
+                        else "Background: the container has no stored estimate — the "
+                        "window's own constants were used"
+                    ),
+                ]
             elif result.get("background") == "none":
                 lines += ["", "Background: none (set to zero)"]
             if result["injected"]:
@@ -212,16 +226,22 @@ if __name__ == "plugin":
 
                 saved = save_calibration(
                     dict(getattr(ndx, "constants", {}) or {}),
-                    ndx=ndx, result=result, embed=True,
+                    ndx=ndx,
+                    result=result,
+                    embed=True,
                 )
             from chisurf.plugins.ndxplorer.calibration_report import (
                 show_calibration_report,
             )
 
             show_calibration_report(
-                ndx, "FRET calibration — applied", "\n".join(lines),
+                ndx,
+                "FRET calibration — applied",
+                "\n".join(lines),
                 constants=dict(getattr(ndx, "constants", {}) or {}),
-                result=result, ndx=ndx, saved=saved,
+                result=result,
+                ndx=ndx,
+                saved=saved,
             )
 
         calibration_toolbar = ndx.addToolBar("Accurate FRET")
@@ -241,25 +261,31 @@ if __name__ == "plugin":
 
         def _save_calibration() -> None:
             """Store the window's current constants as a calibration."""
-            from chisurf.plugins.ndxplorer.calibration_io import (
-                SUFFIX, container_of, save_calibration,
-            )
             from qtpy import QtWidgets
+
+            from chisurf.plugins.ndxplorer.calibration_io import (
+                SUFFIX,
+                container_of,
+                save_calibration,
+            )
 
             constants = dict(getattr(ndx, "constants", {}) or {})
             if not constants:
-                dialogs.warning(ndx, "FRET calibration",
-                                "This window carries no constants to save.")
+                dialogs.warning(
+                    ndx, "FRET calibration", "This window carries no constants to save."
+                )
                 return
             container = container_of(ndx)
             if container:
                 answer = dialogs.question(
-                    ndx, "Save calibration",
+                    ndx,
+                    "Save calibration",
                     "Store the calibration in the measurement?\n\n"
                     f"{container}\n\n"
                     "Yes keeps it beside the photons and the burst table. "
                     "No writes a separate file instead.",
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    QtWidgets.QMessageBox.Yes
+                    | QtWidgets.QMessageBox.No
                     | QtWidgets.QMessageBox.Cancel,
                     # Nobody at the keyboard writes nothing.
                     QtWidgets.QMessageBox.Cancel,
@@ -269,38 +295,51 @@ if __name__ == "plugin":
                 if answer == QtWidgets.QMessageBox.Yes:
                     out = save_calibration(constants, ndx=ndx, embed=True)
                     dialogs.information(
-                        ndx, "FRET calibration",
-                        f"Stored in {out.get('target', '')}" if out.get("ok")
-                        else f"Could not store: {out.get('error')}")
+                        ndx,
+                        "FRET calibration",
+                        f"Stored in {out.get('target', '')}"
+                        if out.get("ok")
+                        else f"Could not store: {out.get('error')}",
+                    )
                     return
-            start = (container.rsplit(".", 1)[0] + SUFFIX) if container else ("calibration" + SUFFIX)
+            start = (
+                (container.rsplit(".", 1)[0] + SUFFIX) if container else ("calibration" + SUFFIX)
+            )
             path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                ndx, "Save calibration", start,
-                f"FRET calibration (*{SUFFIX});;All files (*)")
+                ndx, "Save calibration", start, f"FRET calibration (*{SUFFIX});;All files (*)"
+            )
             if not path:
                 return
             out = save_calibration(constants, ndx=ndx, path=path, embed=False)
             dialogs.information(
-                ndx, "FRET calibration",
-                f"Saved to {out.get('target', '')}" if out.get("ok")
-                else f"Could not save: {out.get('error')}")
+                ndx,
+                "FRET calibration",
+                f"Saved to {out.get('target', '')}"
+                if out.get("ok")
+                else f"Could not save: {out.get('error')}",
+            )
 
         def _load_calibration() -> None:
             """Read a calibration back and, if the user agrees, apply it."""
-            from chisurf.plugins.ndxplorer.calibration_io import (
-                SUFFIX, load_calibration, stored_calibrations,
-            )
             from qtpy import QtWidgets
+
+            from chisurf.plugins.ndxplorer.calibration_io import (
+                SUFFIX,
+                load_calibration,
+                stored_calibrations,
+            )
 
             stored = stored_calibrations(ndx)
             loaded = None
             if stored:
                 answer = dialogs.question(
-                    ndx, "Load calibration",
+                    ndx,
+                    "Load calibration",
                     f"This measurement carries {len(stored)} stored "
                     f"calibration(s).\n\nLoad the most recent one? "
                     f"No opens a file instead.",
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    QtWidgets.QMessageBox.Yes
+                    | QtWidgets.QMessageBox.No
                     | QtWidgets.QMessageBox.Cancel,
                     # Nobody at the keyboard loads nothing.
                     QtWidgets.QMessageBox.Cancel,
@@ -311,8 +350,8 @@ if __name__ == "plugin":
                     loaded = load_calibration(ndx=ndx)
             if loaded is None:
                 path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                    ndx, "Load calibration", "",
-                    f"FRET calibration (*{SUFFIX});;All files (*)")
+                    ndx, "Load calibration", "", f"FRET calibration (*{SUFFIX});;All files (*)"
+                )
                 if not path:
                     return
                 loaded = load_calibration(path=path)
@@ -330,18 +369,25 @@ if __name__ == "plugin":
                 if before.get(name) != value
             ]
             detail = "\n".join(
-                [f"Saved {loaded.get('saved_utc', '')} ({loaded.get('where')}: "
-                 f"{loaded.get('target', '')})"]
+                [
+                    f"Saved {loaded.get('saved_utc', '')} ({loaded.get('where')}: "
+                    f"{loaded.get('target', '')})"
+                ]
                 + ([f"Note: {loaded['note']}"] if loaded.get("note") else [])
                 + ["", ("Changes:" if changes else "Nothing would change.")]
                 + changes
             )
-            if dialogs.question(
-                    ndx, "Load calibration",
+            if (
+                dialogs.question(
+                    ndx,
+                    "Load calibration",
                     "Apply this calibration to the window?\n\n" + detail,
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                     # Nobody at the keyboard changes nothing.
-                    QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
+                    QtWidgets.QMessageBox.No,
+                )
+                != QtWidgets.QMessageBox.Yes
+            ):
                 return
             ndx.constants = {**before, **constants}
             data_source = getattr(ndx, "data_source", None)
@@ -363,8 +409,11 @@ if __name__ == "plugin":
                 )
 
                 show_calibration_report(
-                    ndx, "FRET calibration — loaded", loaded["report"],
-                    constants=dict(ndx.constants), ndx=ndx,
+                    ndx,
+                    "FRET calibration — loaded",
+                    loaded["report"],
+                    constants=dict(ndx.constants),
+                    ndx=ndx,
                 )
 
         save_action = calibration_toolbar.addAction("💾 Save calibration")
@@ -385,6 +434,7 @@ if __name__ == "plugin":
         load_action.triggered.connect(_load_calibration)
 
         if ndx_parameters is not None:
+
             def _sync_constants() -> None:
                 """Apply constants edited in the Global View, then read back."""
                 ndx_parameters.push(ndx)
@@ -401,4 +451,3 @@ if __name__ == "plugin":
 
 
 cli_entrypoint = "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"
-

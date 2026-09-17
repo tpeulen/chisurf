@@ -1,7 +1,6 @@
 import pathlib
 
 import numpy as np
-
 import tttrlib
 
 import chisurf as cs
@@ -49,12 +48,12 @@ def _parse_micro_time_ranges(text: str) -> list:
     if not text:
         return []
     windows = []
-    for segment in text.split(';'):
+    for segment in text.split(";"):
         segment = segment.strip()
         if not segment:
             continue
         try:
-            bounds = [int(j) for j in segment.split('-')]
+            bounds = [int(j) for j in segment.split("-")]
         except ValueError:
             continue
         if len(bounds) >= 2:
@@ -226,11 +225,13 @@ class _PdaDetectorWidget(QtWidgets.QWidget):
         # to the reader on the first change, and a default that disagreed would
         # quietly overwrite the configured channels.
         channels = self._configured(
-            "channels", COLOUR_CHANNELS[self.n_colors],
+            "channels",
+            COLOUR_CHANNELS[self.n_colors],
             lambda group: ", ".join(str(c) for c in group),
         )
         windows = self._configured(
-            "micro_time_ranges", COLOUR_WINDOWS[self.n_colors],
+            "micro_time_ranges",
+            COLOUR_WINDOWS[self.n_colors],
             _format_micro_time_ranges,
         )
 
@@ -335,15 +336,12 @@ class _PdaTimeWindowWidget(QtWidgets.QWidget):
 
 def _register_pda_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("pda_detector")(_PdaDetectorWidget)
     register_section("pda_tw")(_PdaTimeWindowWidget)
 
 
-class Pda2cTTTRWidget(
-    QtWidgets.QWidget,
-    reader.ExperimentReaderController
-):
-
+class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
     class DropFileList(QtWidgets.QListWidget):
         def __init__(self, parent=None, accept_exts=None, dir_resolver=None):
             super().__init__(parent)
@@ -415,9 +413,7 @@ class Pda2cTTTRWidget(
                     self.addItem(item)
                     self._visible_count += 1
             except Exception:
-                logging.warning(
-                    "PDA: Failed to add dropped file to list: %s", sp, exc_info=True
-                )
+                logging.warning("PDA: Failed to add dropped file to list: %s", sp, exc_info=True)
             self._update_overflow_item()
 
         def _update_overflow_item(self):
@@ -497,10 +493,18 @@ class Pda2cTTTRWidget(
                         # Walk up a few levels in case the list is nested in
                         # intermediate layouts/containers.
                         steps = 0
-                        while owner is not None and not hasattr(owner, "_on_load_dropped_files_clicked") and steps < 4:
+                        while (
+                            owner is not None
+                            and not hasattr(owner, "_on_load_dropped_files_clicked")
+                            and steps < 4
+                        ):
                             owner = owner.parent()
                             steps += 1
-                        if owner is not None and getattr(owner, "checkBox", None) is not None and owner.checkBox.isChecked():
+                        if (
+                            owner is not None
+                            and getattr(owner, "checkBox", None) is not None
+                            and owner.checkBox.isChecked()
+                        ):
                             # Schedule the heavy loading routine on the event
                             # loop to avoid running it re-entrantly inside the
                             # dropEvent handler, which can destabilize
@@ -510,15 +514,12 @@ class Pda2cTTTRWidget(
                     except Exception:
                         # Auto-load on drop is best-effort and must not break
                         # normal dragging behavior.
-                        logging.warning(
-                            "PDA: Auto-load on drop failed; ignoring.", exc_info=True
-                        )
+                        logging.warning("PDA: Auto-load on drop failed; ignoring.", exc_info=True)
                 else:
                     event.ignore()
             except Exception:
                 logging.warning(
-                    "PDA: Unexpected error in DropFileList.dropEvent; ignoring drop.",
-                    exc_info=True
+                    "PDA: Unexpected error in DropFileList.dropEvent; ignoring drop.", exc_info=True
                 )
                 event.ignore()
 
@@ -626,6 +627,7 @@ class Pda2cTTTRWidget(
         self._settings_form = None
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             main_layout.addWidget(self._settings_form)
 
@@ -743,18 +745,18 @@ class Pda2cTTTRWidget(
                     s = str(e).strip().lower()
                     if not s:
                         continue
-                    if not s.startswith('.'):
-                        s = '.' + s
+                    if not s.startswith("."):
+                        s = "." + s
                     exts.add(s)
         except Exception:
             exts = set()
         if not exts:
-            exts = {'.ptu', '.ht3', '.spc', '.h5', '.hdf5'}
+            exts = {".ptu", ".ht3", ".spc", ".h5", ".hdf5"}
         return exts
 
     def _init_filedrop_area(self):
         # Accepted extensions: BID and TTTR families (lowercase)
-        bid_exts = {'.bid', '.bur', '.bst'}
+        bid_exts = {".bid", ".bur", ".bst"}
         tttr_exts = set(e.lower() for e in self._get_tttr_supported_exts())
         self._accepted_exts = set(e.lower() for e in bid_exts | tttr_exts)
         self._tttr_exts = tttr_exts
@@ -763,19 +765,29 @@ class Pda2cTTTRWidget(
         self.drop_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         # A subtle frame to indicate dropping area (no heavy styling)
         self.drop_label.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.drop_label.setToolTip("Drag and drop TTTR files, BID/BUR/BST files, or burst analysis folders (bi4_bur). Checked files are used.")
+        self.drop_label.setToolTip(
+            "Drag and drop TTTR files, BID/BUR/BST files, or burst analysis folders (bi4_bur). Checked files are used."
+        )
         # List widget for files
-        self.file_list = Pda2cTTTRWidget.DropFileList(parent=self, accept_exts=self._accepted_exts, dir_resolver=self._expand_burst_folder)
+        self.file_list = Pda2cTTTRWidget.DropFileList(
+            parent=self, accept_exts=self._accepted_exts, dir_resolver=self._expand_burst_folder
+        )
         # Notify parameter changes when items toggled
         self.file_list.itemChanged.connect(lambda _: self.actionParametersChanged.trigger())
         # Also notify when rows are inserted/removed (e.g., via context menu)
         try:
-            self.file_list.model().rowsInserted.connect(lambda *args: self.actionParametersChanged.trigger())
-            self.file_list.model().rowsRemoved.connect(lambda *args: self.actionParametersChanged.trigger())
+            self.file_list.model().rowsInserted.connect(
+                lambda *args: self.actionParametersChanged.trigger()
+            )
+            self.file_list.model().rowsRemoved.connect(
+                lambda *args: self.actionParametersChanged.trigger()
+            )
         except Exception:
             pass
         # Insert into the bottom verticalLayout defined in the .ui
-        if hasattr(self, 'verticalLayout') and isinstance(self.verticalLayout, QtWidgets.QVBoxLayout):
+        if hasattr(self, "verticalLayout") and isinstance(
+            self.verticalLayout, QtWidgets.QVBoxLayout
+        ):
             self.verticalLayout.addWidget(self.drop_label)
             self.verticalLayout.addWidget(self.file_list)
             # Add small buttons row below the drop list
@@ -786,6 +798,7 @@ class Pda2cTTTRWidget(
             btn_row.addWidget(self.load_button)
             self.clear_button = QtWidgets.QPushButton("Clear")
             self.clear_button.setToolTip("Clear all dropped files from the list")
+
             # Use the widget's clear_all helper when available so that both
             # the visual items and the internal path cache are reset.
             def _on_clear_clicked():
@@ -808,6 +821,7 @@ class Pda2cTTTRWidget(
             btn_row.addWidget(self.clear_button)
             btn_row.addStretch(1)
             self.verticalLayout.addLayout(btn_row)
+
         # Internal accessor for used files
         def _get_used_files_impl():
             try:
@@ -840,20 +854,22 @@ class Pda2cTTTRWidget(
         where First File == Last File == file name. Bursts spanning multiple files are ignored.
         """
         slices = {}
+
         # Helper: locate a bur directory near a given TTTR file
         def find_bur_dir(tttr_path: pathlib.Path):
             # search up to 3 levels for a dir that contains 'bi4_bur' or 'bur'
             for up in [tttr_path.parent, tttr_path.parent.parent, tttr_path.parent.parent.parent]:
                 if up is None:
                     continue
-                if (up / 'bi4_bur').is_dir():
-                    return up / 'bi4_bur'
-                if (up / 'bur').is_dir():
-                    return up / 'bur'
+                if (up / "bi4_bur").is_dir():
+                    return up / "bi4_bur"
+                if (up / "bur").is_dir():
+                    return up / "bur"
                 # also handle the case where current folder is bi4_bur/bur
-                if up.name.lower() in ('bi4_bur', 'bur'):
+                if up.name.lower() in ("bi4_bur", "bur"):
                     return up
             return None
+
         # Aggregate all BUR files per potential root
         bur_cache = {}
         for f in tttr_files:
@@ -863,7 +879,7 @@ class Pda2cTTTRWidget(
                 continue
             key = str(bur_dir)
             if key not in bur_cache:
-                bur_cache[key] = list(sorted(bur_dir.glob('*.bur')))
+                bur_cache[key] = list(sorted(bur_dir.glob("*.bur")))
         if not bur_cache:
             return {}
         # Build filename-based slice lists
@@ -887,12 +903,11 @@ class Pda2cTTTRWidget(
                             if first_file not in tttr_names:
                                 logging.debug(
                                     "PDA: TTTR file referenced in BUR not found among selected TTTR files: %s (BUR: %s)",
-                                    first_file, str(bur_path)
+                                    first_file,
+                                    str(bur_path),
                                 )
                                 continue
-                        slices.setdefault(tttr_names[first_file], []).append(
-                            (int(a), int(b))
-                        )
+                        slices.setdefault(tttr_names[first_file], []).append((int(a), int(b)))
                     except Exception:
                         continue
         return self._merge_intervals(slices)
@@ -922,7 +937,7 @@ class Pda2cTTTRWidget(
                 bur_path = pathlib.Path(bur)
                 if not bur_path.exists():
                     continue
-                if bur_path.parent.name.lower() in ('bi4_bur', 'bur'):
+                if bur_path.parent.name.lower() in ("bi4_bur", "bur"):
                     root_hint = bur_path.parent.parent
                 else:
                     root_hint = bur_path.parent
@@ -964,7 +979,7 @@ class Pda2cTTTRWidget(
 
                     # Prefer sibling 'hdf5' directory if present (typical MFD HDF5 layout)
                     try:
-                        hdf5_dir = base / 'hdf5'
+                        hdf5_dir = base / "hdf5"
                         if hdf5_dir.is_dir():
                             key_hdf5 = str(hdf5_dir)
                             if key_hdf5 not in seen:
@@ -1024,7 +1039,7 @@ class Pda2cTTTRWidget(
             for root in roots_for_bur or []:
                 try:
                     # Direct join, preserving any subdirectories encoded in name_str
-                    cand = (root / name_str)
+                    cand = root / name_str
                     if cand.is_file():
                         return cand
                 except Exception:
@@ -1033,7 +1048,7 @@ class Pda2cTTTRWidget(
                 # Fallback: same stem with any supported TTTR extension in this folder
                 try:
                     for ext in self._tttr_exts:
-                        alt = (root / f"{stem}{ext}")
+                        alt = root / f"{stem}{ext}"
                         if alt.is_file():
                             return alt
                 except Exception:
@@ -1068,7 +1083,7 @@ class Pda2cTTTRWidget(
                 # if present, otherwise the BUR's parent directory).
                 analysis_root = None
                 try:
-                    if bur_path.parent.name.lower() in ('bi4_bur', 'bur'):
+                    if bur_path.parent.name.lower() in ("bi4_bur", "bur"):
                         analysis_root = bur_path.parent.parent
                     else:
                         analysis_root = bur_path.parent
@@ -1138,7 +1153,9 @@ class Pda2cTTTRWidget(
                         resolved_path = _resolve_name_in_roots(name_str, roots_for_bur)
                     except Exception:
                         resolved_path = None
-                    resolved_cache[name_str] = str(resolved_path) if resolved_path is not None else None
+                    resolved_cache[name_str] = (
+                        str(resolved_path) if resolved_path is not None else None
+                    )
                     # As soon as we find a real TTTR file for this analysis root,
                     # remember its parent directory as the preferred TTTR folder so
                     # subsequent BUR files from the same root do not need to re-walk
@@ -1204,14 +1221,12 @@ class Pda2cTTTRWidget(
             if not base_dir.exists() or not base_dir.is_dir():
                 return []
             # Prefer .bur files directly in the folder; if none, search recursively
-            bur_files = [p for p in base_dir.glob('*.bur') if p.is_file()]
+            bur_files = [p for p in base_dir.glob("*.bur") if p.is_file()]
             if not bur_files:
-                bur_files = [p for p in base_dir.rglob('*.bur') if p.is_file()]
+                bur_files = [p for p in base_dir.rglob("*.bur") if p.is_file()]
             return [str(p) for p in sorted(bur_files)]
         except Exception:
-            logging.warning(
-                "PDA: Error expanding burst folder: %s", str(base_dir), exc_info=True
-            )
+            logging.warning("PDA: Error expanding burst folder: %s", str(base_dir), exc_info=True)
             return []
 
     def _merge_intervals(self, mapping):
@@ -1333,8 +1348,7 @@ class Pda2cTTTRWidget(
             # than blanking a hand-entered channel list.
             return
         selected = [
-            self._detectors.get(combo.currentText(), {}) or {}
-            for combo in self.detector_combos
+            self._detectors.get(combo.currentText(), {}) or {} for combo in self.detector_combos
         ]
         for detector, edit in zip(selected, self.channel_edits):
             edit.setText(", ".join(str(i) for i in detector.get("chs", [])))
@@ -1363,7 +1377,7 @@ class Pda2cTTTRWidget(
 
         # reading routine
         try:
-            rr = getattr(setup, 'reading_routine', None)
+            rr = getattr(setup, "reading_routine", None)
             if isinstance(rr, str) and rr:
                 self.comboBox.setCurrentText(rr)
         except Exception:
@@ -1371,7 +1385,7 @@ class Pda2cTTTRWidget(
 
         # one channel group per colour
         try:
-            channels = list(getattr(setup, 'channels', None) or [])
+            channels = list(getattr(setup, "channels", None) or [])
             for group, edit in zip(channels, self.channel_edits):
                 edit.setText(", ".join(str(c) for c in (group or [])))
         except Exception:
@@ -1380,7 +1394,7 @@ class Pda2cTTTRWidget(
         # micro-time windows: one per detector (two colours) or one per
         # excitation period (three)
         try:
-            ranges = list(getattr(setup, 'micro_time_ranges', None) or [])
+            ranges = list(getattr(setup, "micro_time_ranges", None) or [])
             for window, edit in zip(ranges, self.window_edits):
                 edit.setText(self._format_window_value(window or []))
         except Exception:
@@ -1391,7 +1405,7 @@ class Pda2cTTTRWidget(
 
         # base time window (convert from seconds to ms)
         try:
-            tw_s = float(getattr(setup, 'minimum_time_window_length', 0.0) or 0.0)
+            tw_s = float(getattr(setup, "minimum_time_window_length", 0.0) or 0.0)
             if tw_s > 0.0:
                 self.doubleSpinBox.setValue(tw_s * 1000.0)
         except Exception:
@@ -1402,7 +1416,7 @@ class Pda2cTTTRWidget(
         groups = []
         for edit in self.channel_edits:
             text = edit.text().strip()
-            groups.append([int(k) for k in text.split(',')] if text else [])
+            groups.append([int(k) for k in text.split(",")] if text else [])
         return groups
 
     def _parse_windows(self) -> list:
@@ -1423,8 +1437,12 @@ class Pda2cTTTRWidget(
     def onParametersChanged(self):
         channels = self._parse_channels()
         micro_time_ranges = self._parse_windows()
-        minimum_number_of_photons = int(getattr(self.experiment_reader, 'minimum_number_of_photons', 15) or 15)
-        maximum_number_of_photons = int(getattr(self.experiment_reader, 'maximum_number_of_photons', 500) or 500)
+        minimum_number_of_photons = int(
+            getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15
+        )
+        maximum_number_of_photons = int(
+            getattr(self.experiment_reader, "maximum_number_of_photons", 500) or 500
+        )
         base_tw_ms = float(self.doubleSpinBox.value())
         base_tw_s = base_tw_ms / 1000.0 if base_tw_ms > 0.0 else 0.0
 
@@ -1494,7 +1512,7 @@ class Pda2cTTTRWidget(
         if lw is None:
             return
         try:
-            n_ph = int(getattr(self.experiment_reader, 'minimum_number_of_photons', 15) or 15)
+            n_ph = int(getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15)
             tw_ms = float(self.doubleSpinBox.value())
         except Exception:
             return
@@ -1594,16 +1612,16 @@ class Pda2cTTTRWidget(
 
     def get_filename(self) -> pathlib.Path:
         return cs.gui.widgets.open_files(
-            description='HT3/PTU/SPC file',
-            file_type='All files (*.*)',
-            working_path=None
+            description="HT3/PTU/SPC file", file_type="All files (*.*)", working_path=None
         )
 
     def _on_load_dropped_files_clicked(self):
         try:
-            files = self._get_used_files() if hasattr(self, '_get_used_files') else []
+            files = self._get_used_files() if hasattr(self, "_get_used_files") else []
             try:
-                logging.info("PDA TRACE: _on_load_dropped_files_clicked: got %d dropped path(s)", len(files))
+                logging.info(
+                    "PDA TRACE: _on_load_dropped_files_clicked: got %d dropped path(s)", len(files)
+                )
             except Exception:
                 pass
             if not files:
@@ -1613,7 +1631,7 @@ class Pda2cTTTRWidget(
 
             progress_dialog = None
             try:
-                parent = getattr(cs, 'cs', None)
+                parent = getattr(cs, "cs", None)
             except Exception:
                 parent = None
             if not isinstance(parent, QtWidgets.QWidget):
@@ -1630,11 +1648,11 @@ class Pda2cTTTRWidget(
 
             try:
                 try:
-                    gui = getattr(cs, 'cs', None)
+                    gui = getattr(cs, "cs", None)
                 except Exception:
                     gui = None
-                progress_bar = getattr(gui, 'progress_bar', None)
-                status_label = getattr(gui, 'status_label', None)
+                progress_bar = getattr(gui, "progress_bar", None)
+                status_label = getattr(gui, "status_label", None)
                 progress_backup = None
                 status_backup = None
                 if progress_bar is not None:
@@ -1642,7 +1660,7 @@ class Pda2cTTTRWidget(
                         progress_backup = (
                             progress_bar.minimum(),
                             progress_bar.maximum(),
-                            progress_bar.value()
+                            progress_bar.value(),
                         )
                     except Exception:
                         progress_backup = None
@@ -1666,13 +1684,15 @@ class Pda2cTTTRWidget(
                                 expanded = self._expand_burst_folder(p)
                             except Exception:
                                 logging.warning(
-                                    "PDA: Error expanding burst folder during load: %s", str(p), exc_info=True
+                                    "PDA: Error expanding burst folder during load: %s",
+                                    str(p),
+                                    exc_info=True,
                                 )
                                 expanded = []
                             bur_files.extend(expanded or [])
                         else:
                             suffix = p.suffix.lower()
-                            if suffix == '.bur':
+                            if suffix == ".bur":
                                 bur_files.append(str(p))
                             elif suffix in self._tttr_exts:
                                 tttr_files.append(str(p))
@@ -1687,7 +1707,8 @@ class Pda2cTTTRWidget(
                 try:
                     logging.info(
                         "PDA TRACE: classified dropped items -> %d BUR file(s), %d TTTR file(s)",
-                        len(bur_files), len(tttr_files)
+                        len(bur_files),
+                        len(tttr_files),
                     )
                 except Exception:
                     pass
@@ -1696,40 +1717,49 @@ class Pda2cTTTRWidget(
                 max_tttr_files = 1024
                 if len(bur_files) > max_bur_files:
                     logging.warning(
-                        "PDA: Too many BUR files selected (%d); aborting load.",
-                        len(bur_files)
+                        "PDA: Too many BUR files selected (%d); aborting load.", len(bur_files)
                     )
                     dialogs.warning(
                         self,
                         "Too many BUR files",
                         f"You selected {len(bur_files)} BUR files. "
-                        f"For stability, please process them in smaller batches (<= {max_bur_files} at once)."
+                        f"For stability, please process them in smaller batches (<= {max_bur_files} at once).",
                     )
                     return
                 if len(tttr_files) > max_tttr_files:
                     logging.warning(
                         "PDA: Too many TTTR files selected (%d); limiting to first %d.",
-                        len(tttr_files), max_tttr_files
+                        len(tttr_files),
+                        max_tttr_files,
                     )
                     dialogs.warning(
                         self,
                         "Too many files",
                         f"You selected {len(tttr_files)} TTTR files. "
                         f"For stability, only the first {max_tttr_files} will be loaded.\n\n"
-                        "Consider using BUR tables or smaller batches if you need to process more files."
+                        "Consider using BUR tables or smaller batches if you need to process more files.",
                     )
                     tttr_files = tttr_files[:max_tttr_files]
                 if not bur_files and not tttr_files:
-                    logging.warning("PDA: Dropped items contain neither BUR nor TTTR files to load.")
+                    logging.warning(
+                        "PDA: Dropped items contain neither BUR nor TTTR files to load."
+                    )
                     dialogs.warning(
-                        self, "No files", "Please drop .bur burst files or TTTR files "
-                                          "(e.g., .ptu, .ht3, .spc, .sdt, .t3r, .t2r, .phu, .phd) to load.")
+                        self,
+                        "No files",
+                        "Please drop .bur burst files or TTTR files "
+                        "(e.g., .ptu, .ht3, .spc, .sdt, .t3r, .t2r, .phu, .phd) to load.",
+                    )
                     return
 
                 channels = self._parse_channels()
                 micro_time_ranges = self._parse_windows()
-                maximum_number_of_photons = int(getattr(self.experiment_reader, 'maximum_number_of_photons', 500) or 500)
-                minimum_number_of_photons = int(getattr(self.experiment_reader, 'minimum_number_of_photons', 15) or 15)
+                maximum_number_of_photons = int(
+                    getattr(self.experiment_reader, "maximum_number_of_photons", 500) or 500
+                )
+                minimum_number_of_photons = int(
+                    getattr(self.experiment_reader, "minimum_number_of_photons", 15) or 15
+                )
                 base_tw_ms = float(self.doubleSpinBox.value())
                 minimum_time_window_length = base_tw_ms / 1000.0  # UI is ms, reader expects seconds
                 reading_routine = self.comboBox.currentText()
@@ -1739,19 +1769,27 @@ class Pda2cTTTRWidget(
                 # from the current spinboxes for backward compatibility.
                 self._sync_tw_configs_from_list()
                 tw_cfgs = list(getattr(self, "_tw_configs", []) or [])
-                if not tw_cfgs and minimum_number_of_photons > 0 and minimum_time_window_length > 0.0:
+                if (
+                    not tw_cfgs
+                    and minimum_number_of_photons > 0
+                    and minimum_time_window_length > 0.0
+                ):
                     tw_cfgs.append((minimum_number_of_photons, minimum_time_window_length))
 
-                logging.info(f"PDA: Preparing to load {len(tttr_files)} TTTR file(s) with routine '{reading_routine}'.")
-                logging.debug({
-                    'n_colors': self.n_colors,
-                    'channels': channels,
-                    'micro_time_ranges': micro_time_ranges,
-                    'max_photons': maximum_number_of_photons,
-                    'min_photons': minimum_number_of_photons,
-                    'min_time_window_s': minimum_time_window_length,
-                    'tw_configs': tw_cfgs,
-                })
+                logging.info(
+                    f"PDA: Preparing to load {len(tttr_files)} TTTR file(s) with routine '{reading_routine}'."
+                )
+                logging.debug(
+                    {
+                        "n_colors": self.n_colors,
+                        "channels": channels,
+                        "micro_time_ranges": micro_time_ranges,
+                        "max_photons": maximum_number_of_photons,
+                        "min_photons": minimum_number_of_photons,
+                        "min_time_window_s": minimum_time_window_length,
+                        "tw_configs": tw_cfgs,
+                    }
+                )
                 pda_reader = Pda2cReader(
                     channels=channels,
                     micro_time_ranges=micro_time_ranges,
@@ -1761,15 +1799,15 @@ class Pda2cTTTRWidget(
                     minimum_time_window_length=minimum_time_window_length,
                     tw_configs=tw_cfgs,
                     n_colors=self.n_colors,
-                    segmentation=getattr(self.experiment_reader, 'segmentation', 'burst'),
+                    segmentation=getattr(self.experiment_reader, "segmentation", "burst"),
                 )
                 # Attach the correct experiment to the reader so get_data can set d.experiment
                 try:
-                    bound_experiment = getattr(self.experiment_reader, 'experiment', None)
-                    pda_reader.experiment = bound_experiment or cs.core.experiments.types.get('pda')
+                    bound_experiment = getattr(self.experiment_reader, "experiment", None)
+                    pda_reader.experiment = bound_experiment or cs.core.experiments.types.get("pda")
                 except Exception:
                     # Fallback to the bound reader's experiment if types lookup fails
-                    pda_reader.experiment = getattr(self.experiment_reader, 'experiment', None)
+                    pda_reader.experiment = getattr(self.experiment_reader, "experiment", None)
                 try:
                     pda_reader.controller = self
                 except Exception:
@@ -1782,7 +1820,9 @@ class Pda2cTTTRWidget(
                     pass
 
                 if bur_files:
-                    logging.info(f"PDA: Resolving TTTR files and slices from {len(bur_files)} selected BUR file(s).")
+                    logging.info(
+                        f"PDA: Resolving TTTR files and slices from {len(bur_files)} selected BUR file(s)."
+                    )
                     if progress_bar is not None:
                         try:
                             progress_bar.setMinimum(0)
@@ -1810,7 +1850,9 @@ class Pda2cTTTRWidget(
                         """
                         try:
                             if status_label is not None:
-                                status_label.setText(f"Resolving: {pathlib.Path(current).name} ({i}/{total})")
+                                status_label.setText(
+                                    f"Resolving: {pathlib.Path(current).name} ({i}/{total})"
+                                )
                             if progress_bar is not None:
                                 try:
                                     if total:
@@ -1824,8 +1866,7 @@ class Pda2cTTTRWidget(
                             if progress_dialog is not None:
                                 try:
                                     progress_dialog.update_progress(
-                                        i,
-                                        f"Resolving: {pathlib.Path(current).name} ({i}/{total})"
+                                        i, f"Resolving: {pathlib.Path(current).name} ({i}/{total})"
                                     )
                                 except Exception:
                                     pass
@@ -1843,13 +1884,12 @@ class Pda2cTTTRWidget(
                     try:
                         logging.info(
                             "PDA TRACE: starting _resolve_tttr_and_slices_from_bur for %d BUR file(s)",
-                            len(bur_files)
+                            len(bur_files),
                         )
                     except Exception:
                         pass
                     tttr_files_resolved, burst_slices = self._resolve_tttr_and_slices_from_bur(
-                        bur_files,
-                        progress_callback=_progress_cb
+                        bur_files, progress_callback=_progress_cb
                     )
                     tttr_files = tttr_files_resolved
                     try:
@@ -1859,28 +1899,36 @@ class Pda2cTTTRWidget(
                     try:
                         logging.info(
                             "PDA TRACE: _resolve_tttr_and_slices_from_bur finished -> %d TTTR file(s), %d slice file key(s)",
-                            len(tttr_files), n_slices_keys
+                            len(tttr_files),
+                            n_slices_keys,
                         )
                     except Exception:
                         pass
                     if len(tttr_files) > max_tttr_files:
                         logging.warning(
                             "PDA: Too many TTTR files resolved from BUR tables (%d); limiting to first %d.",
-                            len(tttr_files), max_tttr_files
+                            len(tttr_files),
+                            max_tttr_files,
                         )
                         dialogs.warning(
                             self,
                             "Too many files",
                             f"Burst tables reference {len(tttr_files)} TTTR files. "
-                            f"For stability, only the first {max_tttr_files} will be loaded."
+                            f"For stability, only the first {max_tttr_files} will be loaded.",
                         )
                         tttr_files = tttr_files[:max_tttr_files]
                         if burst_slices:
                             keep = set(tttr_files)
                             burst_slices = {k: v for k, v in burst_slices.items() if k in keep}
                     if not tttr_files:
-                        logging.warning("PDA: No TTTR files could be resolved from selected BUR files.")
-                        dialogs.warning(self, "No TTTR files found", "Could not resolve any TTTR files from the selected BUR files.")
+                        logging.warning(
+                            "PDA: No TTTR files could be resolved from selected BUR files."
+                        )
+                        dialogs.warning(
+                            self,
+                            "No TTTR files found",
+                            "Could not resolve any TTTR files from the selected BUR files.",
+                        )
                         return
                 else:
                     if progress_bar is not None:
@@ -1905,7 +1953,7 @@ class Pda2cTTTRWidget(
                     try:
                         logging.info(
                             "PDA TRACE: starting _compute_burst_slices_for_files for %d TTTR file(s)",
-                            len(tttr_files)
+                            len(tttr_files),
                         )
                     except Exception:
                         pass
@@ -1917,7 +1965,7 @@ class Pda2cTTTRWidget(
                     try:
                         logging.info(
                             "PDA TRACE: _compute_burst_slices_for_files finished -> %d slice file key(s)",
-                            n_slices_keys
+                            n_slices_keys,
                         )
                     except Exception:
                         pass
@@ -1927,18 +1975,21 @@ class Pda2cTTTRWidget(
                         total_slices = sum(len(v) for v in burst_slices.values())
                     except Exception:
                         total_slices = 0
-                    logging.info(f"PDA: Applying burst slicing from BUR files: {total_slices} slices across {len(burst_slices)} file(s).")
-                    logging.debug({'burst_slices_keys': list(burst_slices.keys())})
+                    logging.info(
+                        f"PDA: Applying burst slicing from BUR files: {total_slices} slices across {len(burst_slices)} file(s)."
+                    )
+                    logging.debug({"burst_slices_keys": list(burst_slices.keys())})
 
                 filenames_arg = "|".join(tttr_files)
                 try:
                     logging.info(
                         "PDA TRACE: prepared filenames_arg for add_dataset with %d TTTR file(s); burst_slices_present=%s",
-                        len(tttr_files), bool(burst_slices)
+                        len(tttr_files),
+                        bool(burst_slices),
                     )
                 except Exception:
                     pass
-                logging.debug({'tttr_files': tttr_files})
+                logging.debug({"tttr_files": tttr_files})
                 if progress_bar is not None:
                     try:
                         progress_bar.setMinimum(0)
@@ -1954,21 +2005,34 @@ class Pda2cTTTRWidget(
                 if progress_dialog is not None:
                     try:
                         progress_dialog.setRange(0, 0)
-                        progress_dialog.update_progress(0, "Loading TTTR data and computing histograms...")
+                        progress_dialog.update_progress(
+                            0, "Loading TTTR data and computing histograms..."
+                        )
                     except Exception:
                         pass
                 QtWidgets.QApplication.processEvents()
                 try:
-                    logging.info("PDA TRACE: calling core_data_macros.add_dataset (burst_slices=%s)", bool(burst_slices))
+                    logging.info(
+                        "PDA TRACE: calling core_data_macros.add_dataset (burst_slices=%s)",
+                        bool(burst_slices),
+                    )
                 except Exception:
                     pass
                 if burst_slices:
-                    core_data_macros.add_dataset(experiment_reader=pda_reader, filename=filenames_arg, burst_slices=burst_slices)
+                    core_data_macros.add_dataset(
+                        experiment_reader=pda_reader,
+                        filename=filenames_arg,
+                        burst_slices=burst_slices,
+                    )
                 else:
-                    core_data_macros.add_dataset(experiment_reader=pda_reader, filename=filenames_arg)
+                    core_data_macros.add_dataset(
+                        experiment_reader=pda_reader, filename=filenames_arg
+                    )
 
                 try:
-                    logging.info(f"PDA TRACE: add_dataset returned successfully; loaded {len(tttr_files)} TTTR file(s).")
+                    logging.info(
+                        f"PDA TRACE: add_dataset returned successfully; loaded {len(tttr_files)} TTTR file(s)."
+                    )
                 except Exception:
                     pass
                 try:

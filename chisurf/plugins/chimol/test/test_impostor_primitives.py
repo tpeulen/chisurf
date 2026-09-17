@@ -16,14 +16,14 @@ tests check is the pair of claims that makes the change safe:
 
 The rendering half needs a GPU and skips without one.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
+from chimol.core.camera.view_state import pack_view_state
 from chimol.render.pack import pack_scene
 from chimol.render.scene import Geometry, Scene, SceneObject
-from chimol.core.camera.view_state import pack_view_state
 from chimol.render.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)
@@ -51,12 +51,8 @@ def test_one_instance_per_bond_carrying_both_ends_and_both_colours():
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 2.0, 0.0]],
         dtype=np.float32,
     )
-    colors = np.array(
-        [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 1]], dtype=np.float32
-    )
-    geometry = Geometry(
-        kind="cylinders", positions=positions, colors=colors, meta={"radius": 0.3}
-    )
+    colors = np.array([[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 1]], dtype=np.float32)
+    geometry = Geometry(kind="cylinders", positions=positions, colors=colors, meta={"radius": 0.3})
     packed = _packed([SceneObject(id="sticks", geometry=geometry)])
     rows = WgpuMeshRenderer.interleave_cylinders(packed.objects[0].geometry)
 
@@ -83,9 +79,7 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
     colours = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
     radii = np.array([1.2, 1.8])
 
-    obj = Viewer._build_balls_impostors(
-        Viewer.__new__(Viewer), centres, colours, radii
-    )
+    obj = Viewer._build_balls_impostors(Viewer.__new__(Viewer), centres, colours, radii)
     assert obj.geometry.kind == "points"
     assert obj.geometry.meta["world_radius"] is True
     spheres = obj.geometry.meta["spheres"]
@@ -111,12 +105,13 @@ def renderer():
 
 def _render(renderer, objects) -> np.ndarray:
     view = pack_view_state(
-        rotation=np.eye(3), distance=24.0, target=(0.0, 0.0, 0.0),
-        near=12.0, far=40.0,
+        rotation=np.eye(3),
+        distance=24.0,
+        target=(0.0, 0.0, 0.0),
+        near=12.0,
+        far=40.0,
     )
-    return renderer.render(
-        _packed(objects), view, background=(0.0, 0.0, 0.0), target_radius=6.0
-    )
+    return renderer.render(_packed(objects), view, background=(0.0, 0.0, 0.0), target_radius=6.0)
 
 
 def _silhouette(frame: np.ndarray) -> np.ndarray:
@@ -132,15 +127,16 @@ def test_a_cylinder_impostor_matches_the_tube_it_replaces(renderer):
     radius = 0.6
 
     mesh = _build_stick_mesh(
-        np.array([[0, 1]]), np.vstack((start, end)),
-        np.ones((2, 4)), radius=radius, segments_circle=12,
+        np.array([[0, 1]]),
+        np.vstack((start, end)),
+        np.ones((2, 4)),
+        radius=radius,
+        segments_circle=12,
     )
     verts, norms, faces, cols = mesh
     tube = SceneObject(
         id="tube",
-        geometry=Geometry(
-            kind="mesh", positions=verts, indices=faces, normals=norms, colors=cols
-        ),
+        geometry=Geometry(kind="mesh", positions=verts, indices=faces, normals=norms, colors=cols),
     )
     impostor = SceneObject(
         id="cyl",
@@ -166,9 +162,7 @@ def test_a_stick_is_split_between_its_two_atoms(renderer):
         geometry=Geometry(
             kind="cylinders",
             positions=np.array([[-4.0, 0.0, 0.0], [4.0, 0.0, 0.0]], dtype=np.float32),
-            colors=np.array(
-                [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]], dtype=np.float32
-            ),
+            colors=np.array([[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]], dtype=np.float32),
             meta={"radius": 0.8},
         ),
     )
@@ -176,7 +170,7 @@ def test_a_stick_is_split_between_its_two_atoms(renderer):
     height, width = frame.shape[:2]
     row = frame[height // 2]
     left = row[: width // 2]
-    right = row[width // 2:]
+    right = row[width // 2 :]
     assert (left[:, 0] > left[:, 2] + 30).any(), "the left half is not red"
     assert (right[:, 2] > right[:, 0] + 30).any(), "the right half is not blue"
 

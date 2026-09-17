@@ -11,6 +11,7 @@ PyMOL's submenu is also not one entry but **49**: `util.cnc` (colour H/N/O/S,
 leave carbon), eight `util.cba` carbon colours, four more sets of eight, and a
 hydrogen set. Transcribed from ``junk/pymol-open-source/modules/pymol/menu.py``.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -22,7 +23,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 

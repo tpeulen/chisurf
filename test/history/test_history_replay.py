@@ -6,7 +6,6 @@
 # --- FROM test_history_persistence.py ---
 import pathlib
 import unittest
-from unittest import mock
 
 import utils
 
@@ -14,7 +13,8 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 from chisurf.history import OperationHistory
-import chisurf as cs
+
+
 class TestHistoryPersistence(unittest.TestCase):
     def setUp(self):
         self.history = OperationHistory()
@@ -36,7 +36,7 @@ class TestHistoryPersistence(unittest.TestCase):
             "timestamp": "2023-01-01T00:00:00Z",
             "action_type": "test",
             "summary": "Test event",
-            "payload": {}
+            "payload": {},
         }
         self.assertTrue(self.history.validate_event(valid_event))
 
@@ -54,7 +54,7 @@ class TestHistoryPersistence(unittest.TestCase):
             "timestamp": "2023-01-01T00:00:00Z",
             "action_type": "test",
             "summary": "Test event",
-            "payload": "not a dict"  # Should be dict
+            "payload": "not a dict",  # Should be dict
         }
         self.assertFalse(self.history.validate_event(invalid_event2))
 
@@ -93,7 +93,9 @@ class TestHistoryPersistence(unittest.TestCase):
         repair_report = self.history.repair_history()
         self.assertTrue(repair_report["repair_successful"])
         self.assertEqual(repair_report["events_removed"], 2)
-        self.assertEqual(repair_report["events_after"], 3)  # Should be back to original 3 valid events
+        self.assertEqual(
+            repair_report["events_after"], 3
+        )  # Should be back to original 3 valid events
 
         # Verify history is now valid
         integrity_report = self.history.validate_history_integrity()
@@ -102,35 +104,35 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_save_load_with_metadata(self):
         """Test saving and loading history with metadata."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history.jsonl")
-            
+
             # Save history
             saved_path = self.history.save_jsonl(filepath)
             self.assertTrue(saved_path.exists())
-            
+
             # Check metadata is included
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 first_line = f.readline()
                 self.assertTrue(first_line.startswith("# CHISURF HISTORY METADATA:"))
 
     def test_load_with_version_validation(self):
         """Test loading history with version validation."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history.jsonl")
-            
+
             # Save history
             self.history.save_jsonl(filepath)
-            
+
             # Load history
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Verify load was successful
             self.assertTrue(load_result["success"])
             self.assertEqual(load_result["loaded_events"], 3)
@@ -139,20 +141,24 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_load_incompatible_version(self):
         """Test loading history with incompatible version."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_history_incompatible.jsonl")
-            
+
             # Create file with incompatible version
-            with open(filepath, 'w') as f:
-                f.write('# CHISURF HISTORY METADATA: {"history_version": "2.0", "event_count": 1}\n')
-                f.write('{"event_id": "test", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test", "payload": {}}\n')
-            
+            with open(filepath, "w") as f:
+                f.write(
+                    '# CHISURF HISTORY METADATA: {"history_version": "2.0", "event_count": 1}\n'
+                )
+                f.write(
+                    '{"event_id": "test", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test", "payload": {}}\n'
+                )
+
             # Try to load
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Should detect incompatibility but still load (for forward compatibility)
             self.assertTrue(load_result["success"])
             self.assertEqual(load_result["compatibility"], "incompatible")
@@ -160,24 +166,32 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_corrupted_history_recovery(self):
         """Test loading and recovering from corrupted history."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test_corrupted.jsonl")
-            
+
             # Create corrupted history file
-            with open(filepath, 'w') as f:
-                f.write('# CHISURF HISTORY METADATA: {"history_version": "1.0", "event_count": 3}\n')
-                f.write('{"event_id": "test1", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test1", "payload": {}}\n')
+            with open(filepath, "w") as f:
+                f.write(
+                    '# CHISURF HISTORY METADATA: {"history_version": "1.0", "event_count": 3}\n'
+                )
+                f.write(
+                    '{"event_id": "test1", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test1", "payload": {}}\n'
+                )
                 f.write('{"invalid": "event"}\n')  # Invalid event
-                f.write('{"event_id": "test2", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test2", "payload": {}}\n')
-                f.write('not valid json at all\n')  # Invalid JSON
-                f.write('{"event_id": "test3", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test3", "payload": {}}\n')
-            
+                f.write(
+                    '{"event_id": "test2", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test2", "payload": {}}\n'
+                )
+                f.write("not valid json at all\n")  # Invalid JSON
+                f.write(
+                    '{"event_id": "test3", "timestamp": "2023-01-01T00:00:00Z", "action_type": "test", "summary": "test3", "payload": {}}\n'
+                )
+
             # Load should detect corruption and attempt repair
             load_result = self.history.load_jsonl(filepath, replace=True)
-            
+
             # Should succeed but report errors
             self.assertTrue(load_result["success"])
             self.assertGreater(len(load_result["errors"]), 0)
@@ -186,38 +200,38 @@ class TestHistoryPersistence(unittest.TestCase):
 
     def test_backup_and_restore(self):
         """Test backup and restore functionality."""
-        import tempfile
         import os
-        
+        import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = os.path.join(tmpdir, "backups")
-            
+
             # Create backup
             backup_result = self.history.create_backup(backup_dir)
             self.assertTrue(backup_result["success"])
             self.assertTrue(backup_result["backup_path"].endswith(".jsonl"))
             self.assertEqual(backup_result["event_count"], 3)
-            
+
             # Verify backup file exists
             backup_path = backup_result["backup_path"]
             self.assertTrue(os.path.exists(backup_path))
-            
+
             # Clear current history
             self.history.clear()
             self.assertEqual(len(self.history.list_events()), 0)
-            
+
             # Restore from backup
             restore_result = self.history.restore_from_backup(backup_path)
             self.assertTrue(restore_result["success"])
             self.assertEqual(restore_result["loaded_events"], 3)
-            
+
             # Verify history was restored
             self.assertEqual(len(self.history.list_events()), 3)
 
     def test_history_stats(self):
         """Test history statistics functionality."""
         stats = self.history.get_history_stats()
-        
+
         self.assertEqual(stats["event_count"], 3)
         self.assertEqual(stats["checkpoint_count"], 0)
         self.assertIsNotNone(stats["oldest_event"])
@@ -260,14 +274,13 @@ class TestHistoryPersistence(unittest.TestCase):
         # Test auto-compaction threshold
         auto_compact_report = self.history.auto_compact_if_needed()
         self.assertFalse(auto_compact_report["compaction_performed"])
-        
+
         # Add more events to trigger auto-compaction
         while len(self.history.list_events()) < 2001:
             self.history.record("test_action", "Bulk event", {"bulk": True})
-        
+
         auto_compact_report = self.history.auto_compact_if_needed()
         self.assertTrue(auto_compact_report.get("compaction_successful", False))
-
 
 
 # --- FROM test_history_replay_state.py ---
@@ -283,7 +296,6 @@ from chisurf.history import replay as history_replay
 
 
 class TestHistoryReplayState(unittest.TestCase):
-
     def test_reconstruct_navigation_state(self):
         events = [
             {"action_type": "dataset_add", "payload": {"loaded_names": ["d1"]}},
@@ -631,12 +643,6 @@ class TestHistoryReplayState(unittest.TestCase):
         self.assertEqual(state["fit_ranges"]["fg"]["xmin"], 10)
         self.assertEqual(state["setup"]["experiment"], "TCSPC")
 
-
-
-
-
-
-
     def test_reconstruct_model_state(self):
         events = [
             {
@@ -672,23 +678,23 @@ class TestHistoryReplayState(unittest.TestCase):
         ]
 
         state = history_replay.reconstruct_model_state(events)
-        
+
         # Check that the fit group was tracked
         self.assertIn("fit-u1", state)
-        
+
         fg_state = state["fit-u1"]
         self.assertEqual(fg_state["fit_group_uid"], "fit-u1")
-        
+
         # Check that local fits were tracked (default local_0)
         self.assertIn("local_0", fg_state["local_fits"])
-        
+
         local_state = fg_state["local_fits"]["local_0"]
-        
+
         # Check components - the remove should overwrite the add
         self.assertEqual(len(local_state["components"]), 1)
         self.assertEqual(local_state["components"][0]["name"], "gaussian1")
         self.assertEqual(local_state["components"][0]["action"], "remove")
-        
+
         # Check config
         self.assertIn("correction_pileup", local_state["config"])
         self.assertEqual(local_state["config"]["correction_pileup"], 0.05)
@@ -704,24 +710,23 @@ class TestHistoryReplayState(unittest.TestCase):
             },
             {
                 "action_type": "model_add_component",
-                "source_uid": "fit-u2", 
+                "source_uid": "fit-u2",
                 "payload": {"component_name": "comp2"},
             },
         ]
 
         state = history_replay.reconstruct_model_state(events)
-        
+
         # Check that both fit groups were tracked
         self.assertIn("fit-u1", state)
         self.assertIn("fit-u2", state)
-        
+
         # Check components in each fit
         self.assertEqual(len(state["fit-u1"]["local_fits"]["local_0"]["components"]), 1)
         self.assertEqual(state["fit-u1"]["local_fits"]["local_0"]["components"][0]["name"], "comp1")
-        
+
         self.assertEqual(len(state["fit-u2"]["local_fits"]["local_0"]["components"]), 1)
         self.assertEqual(state["fit-u2"]["local_fits"]["local_0"]["components"][0]["name"], "comp2")
-
 
 
 # --- FROM test_history_replay_fitlink.py ---
@@ -732,8 +737,6 @@ import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
-
-from chisurf.history import OperationHistory
 
 
 def _make_state_handlers(state):
@@ -758,7 +761,9 @@ def _make_state_handlers(state):
 
     def on_parameter_link(event):
         payload = event.get("payload", {})
-        src_fit_uid = str(payload.get("source_fit_uid") or payload.get("fit_uid") or event.get("source_uid") or "")
+        src_fit_uid = str(
+            payload.get("source_fit_uid") or payload.get("fit_uid") or event.get("source_uid") or ""
+        )
         src_param = str(payload.get("source_parameter") or payload.get("parameter_name") or "")
         tgt_fit_uid = str(payload.get("target_fit_uid") or "")
         tgt_param = str(payload.get("target_parameter") or "")
@@ -794,7 +799,6 @@ def _make_state_handlers(state):
 
 
 class TestHistoryReplayFitLink(unittest.TestCase):
-
     def test_replay_equivalence_for_fit_and_link_actions(self):
         events = [
             {
@@ -853,7 +857,11 @@ class TestHistoryReplayFitLink(unittest.TestCase):
     def test_replay_reports_handler_errors(self):
         events = [
             {"action_type": "fit_add", "source_uid": "fit-A", "payload": {"fit_uid": "fit-A"}},
-            {"action_type": "parameter_value", "source_uid": "fit-A", "payload": {"fit_uid": "fit-A", "parameter_name": "tau", "new_value": 1.0}},
+            {
+                "action_type": "parameter_value",
+                "source_uid": "fit-A",
+                "payload": {"fit_uid": "fit-A", "parameter_name": "tau", "new_value": 1.0},
+            },
         ]
 
         state = {"fits": {}, "links": {}}
@@ -900,10 +908,12 @@ class TestHistoryReplayFitLink(unittest.TestCase):
 
             def on_group(event):
                 payload = event.get("payload", {})
-                state["groups"].append({
-                    "name": str(payload.get("group_name", "Data-Group")),
-                    "size": int(payload.get("group_size", 0)),
-                })
+                state["groups"].append(
+                    {
+                        "name": str(payload.get("group_name", "Data-Group")),
+                        "size": int(payload.get("group_size", 0)),
+                    }
+                )
 
             def on_remove(event):
                 names = set(str(n) for n in event.get("payload", {}).get("removed_names", []))
@@ -939,7 +949,12 @@ class TestHistoryReplayFitLink(unittest.TestCase):
             {
                 "action_type": "fit_run_finish",
                 "source_uid": "fit-A",
-                "payload": {"fit_name": "Fit A", "success": True, "elapsed_ms": 1234, "result_count": 3},
+                "payload": {
+                    "fit_name": "Fit A",
+                    "success": True,
+                    "elapsed_ms": 1234,
+                    "result_count": 3,
+                },
             },
         ]
 
@@ -1067,5 +1082,3 @@ class TestHistoryReplayFitLink(unittest.TestCase):
         self.assertEqual(report["skipped"], 0)
         self.assertEqual(report["errors"], [])
         self.assertDictEqual(replay_state, expected_state)
-
-

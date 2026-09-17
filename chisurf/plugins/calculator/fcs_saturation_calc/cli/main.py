@@ -53,7 +53,11 @@ SCHEMES = {
     help="MMFDB dye name; reads epsilon at --wavelength from its spectrum, overriding -e.",
 )
 @click.option(
-    "--wavelength", type=float, default=488.0, show_default=True, help="Excitation wavelength in nm."
+    "--wavelength",
+    type=float,
+    default=488.0,
+    show_default=True,
+    help="Excitation wavelength in nm.",
 )
 @click.option("--w-r", type=float, default=250.0, show_default=True, help="Lateral waist in nm.")
 @click.option("--w-z", type=float, default=1000.0, show_default=True, help="Axial waist in nm.")

@@ -1,28 +1,37 @@
-import sys
-import math
 import json
-from typing import Dict, List
+import math
+import sys
 
-from qtpy.QtWidgets import (
-    QAbstractSpinBox, QApplication, QWidget, QGridLayout, QLabel, QDoubleSpinBox,
-    QRadioButton, QGroupBox, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy,
-    QComboBox, QTextEdit, QPushButton, QDialog, QDialogButtonBox, QButtonGroup,
-    QCheckBox, QFileDialog,
-)
-from qtpy.QtCore import Qt
 from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import (
+    QAbstractSpinBox,
+    QApplication,
+    QButtonGroup,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
 
-from .core.algorithms import *  # noqa: F401,F403
-from .core.algorithms import compute_confocal, dye_names, get_dye, N_PER_nM_fL
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 # ========= GUI =========
 import pathlib
+
+from .core.algorithms import *  # noqa: F401,F403
+from .core.algorithms import N_PER_nM_fL, dye_names, get_dye
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fcs_calculator.view.json"
 
@@ -51,16 +60,12 @@ def _mark_computed(sb: QDoubleSpinBox, computed: bool) -> None:
     make the editable colour drift to whatever the last call painted.
     """
     app_palette = QApplication.palette(sb)
-    colour = app_palette.color(
-        QPalette.Disabled if computed else QPalette.Active, QPalette.Base
-    )
+    colour = app_palette.color(QPalette.Disabled if computed else QPalette.Active, QPalette.Base)
     pal = sb.palette()
     for group in (QPalette.Active, QPalette.Inactive):
         pal.setColor(group, QPalette.Base, colour)
     sb.setPalette(pal)
-    sb.setButtonSymbols(
-        QAbstractSpinBox.NoButtons if computed else QAbstractSpinBox.UpDownArrows
-    )
+    sb.setButtonSymbols(QAbstractSpinBox.NoButtons if computed else QAbstractSpinBox.UpDownArrows)
 
 
 class _ConfocalModel:
@@ -86,6 +91,7 @@ class _ConfocalModel:
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
 
@@ -179,6 +185,7 @@ class _JsonSection(QWidget):
 
 def _register_confocal_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("confocal_constraint")(_ConstraintSection)
     register_section("confocal_dye")(_DyeSection)
     register_section("confocal_shape")(_ShapeSection)
@@ -205,8 +212,9 @@ class ConfocalCalcWidget(QWidget):
         super().__init__(parent)
         self.setWindowTitle("FCS Confocal Calculator — τ, D, rₕ, Veff, Concentration")
         self._in_update = False
-        self._last_edited = 'conc'  # driver for N↔c coupling
+        self._last_edited = "conc"  # driver for N↔c coupling
         from .gui.client import ConfocalCalcClient
+
         self._client = ConfocalCalcClient()
         self._setup_ui()
         self._connect_signals()
@@ -314,12 +322,22 @@ class ConfocalCalcWidget(QWidget):
         val : float
             Initial value.
         """
-        sb.setRange(lo, hi); sb.setDecimals(dec); sb.setValue(val)
+        sb.setRange(lo, hi)
+        sb.setDecimals(dec)
+        sb.setValue(val)
 
     def _connect_signals(self):
         """Wire Qt signals to the widget's update and recompute slots."""
         # Core fields trigger recompute
-        for w in (self.tau_us, self.D_um2_s, self.rh_nm, self.S, self.veff_fL, self.temp_C, self.eta_mPa_s):
+        for w in (
+            self.tau_us,
+            self.D_um2_s,
+            self.rh_nm,
+            self.S,
+            self.veff_fL,
+            self.temp_C,
+            self.eta_mPa_s,
+        ):
             w.valueChanged.connect(self._recompute)
         # Bi-directional coupling (user edits drive the other)
         self.conc_nM.valueChanged.connect(self._conc_changed)
@@ -388,14 +406,15 @@ class ConfocalCalcWidget(QWidget):
         val : float
             New concentration in nM.
         """
-        if self._in_update: return
-        self._last_edited = 'conc'
+        if self._in_update:
+            return
+        self._last_edited = "conc"
         V_fL = self.veff_fL.value()
         if V_fL > 0:
             N = val * V_fL * N_PER_nM_fL
             self._set_spin(self.num_mols, N)
             if N > 0:
-                self._set_spin(self.invN, 1.0/N)
+                self._set_spin(self.invN, 1.0 / N)
             else:
                 self._set_spin(self.invN, 0.0)
 
@@ -407,14 +426,15 @@ class ConfocalCalcWidget(QWidget):
         val : float
             New number of molecules.
         """
-        if self._in_update: return
-        self._last_edited = 'N'
+        if self._in_update:
+            return
+        self._last_edited = "N"
         V_fL = self.veff_fL.value()
         if V_fL > 0:
             conc = val / (V_fL * N_PER_nM_fL)
             self._set_spin(self.conc_nM, conc)
             if val > 0:
-                self._set_spin(self.invN, 1.0/val)
+                self._set_spin(self.invN, 1.0 / val)
             else:
                 self._set_spin(self.invN, 0.0)
 
@@ -426,10 +446,11 @@ class ConfocalCalcWidget(QWidget):
         val : float
             New value of 1/N.
         """
-        if self._in_update: return
-        self._last_edited = 'invN'
+        if self._in_update:
+            return
+        self._last_edited = "invN"
         V_fL = self.veff_fL.value()
-        N = 1.0/val if val > 0 else 0.0
+        N = 1.0 / val if val > 0 else 0.0
         self._set_spin(self.num_mols, N)
         if V_fL > 0:
             conc = (N / (V_fL * N_PER_nM_fL)) if V_fL > 0 else 0.0
@@ -506,7 +527,7 @@ class ConfocalCalcWidget(QWidget):
         except Exception:
             pass
 
-    def _collect_settings(self) -> Dict:
+    def _collect_settings(self) -> dict:
         """Return a dictionary snapshot of all current settings (for JSON export).
 
         Returns
@@ -515,7 +536,9 @@ class ConfocalCalcWidget(QWidget):
             Mapping from setting name to its current value.
         """
         shape = self.shape_combo.currentText()
-        fix_mode = "D" if self.rb_fix_D.isChecked() else ("rh" if self.rb_fix_rh.isChecked() else "V")
+        fix_mode = (
+            "D" if self.rb_fix_D.isChecked() else ("rh" if self.rb_fix_rh.isChecked() else "V")
+        )
         return {
             "tau_us": self.tau_us.value(),
             "D_um2_s": self.D_um2_s.value(),
@@ -536,7 +559,7 @@ class ConfocalCalcWidget(QWidget):
             "shape_aspect": self.shape_aspect.value(),
         }
 
-    def _apply_settings(self, data: Dict):
+    def _apply_settings(self, data: dict):
         """Apply a settings dict (as produced by :meth:`_collect_settings`) to the widget.
 
         Parameters
@@ -632,7 +655,7 @@ class ConfocalCalcWidget(QWidget):
         if not path:
             return
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)
         except Exception:
             # Fail silently; caller can retry or ignore
@@ -688,13 +711,18 @@ class ConfocalCalcWidget(QWidget):
                 constraint = "D"
 
             r = self._client.compute(
-                tau_us=self.tau_us.value(), S=self.S.value(),
-                temp_C=self.temp_C.value(), eta_mPa_s=self.eta_mPa_s.value(),
+                tau_us=self.tau_us.value(),
+                S=self.S.value(),
+                temp_C=self.temp_C.value(),
+                eta_mPa_s=self.eta_mPa_s.value(),
                 use_water_eta=bool(self.use_water_eta.isChecked()),
                 constraint=constraint,
-                D_um2_s=self.D_um2_s.value(), rh_nm=self.rh_nm.value(),
-                veff_fL=self.veff_fL.value(), conc_nM=self.conc_nM.value(),
-                num_mols=self.num_mols.value(), invN=self.invN.value(),
+                D_um2_s=self.D_um2_s.value(),
+                rh_nm=self.rh_nm.value(),
+                veff_fL=self.veff_fL.value(),
+                conc_nM=self.conc_nM.value(),
+                num_mols=self.num_mols.value(),
+                invN=self.invN.value(),
                 last_edited=self._last_edited or "conc",
             )
             if not r.get("ok"):
@@ -721,9 +749,9 @@ def main():
     sys.exit(app.exec_())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
-if __name__ == 'plugin':
+if __name__ == "plugin":
     plugin = ConfocalCalcWidget()
     plugin.show()

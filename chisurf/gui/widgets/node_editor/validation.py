@@ -1,6 +1,6 @@
 """Custom exceptions and validation helpers for node editor graphs."""
 
-from typing import Dict, List, Any
+from typing import Any
 
 
 class NodeGraphValidationError(ValueError):
@@ -11,7 +11,7 @@ class NodeGraphValidationError(ValueError):
         self.path = path
 
 
-def validate_graph_dict(data: Dict[str, Any]) -> None:
+def validate_graph_dict(data: dict[str, Any]) -> None:
     """Validate a graph dictionary against the JSON schema v1.
 
     Raises NodeGraphValidationError if invalid.
@@ -65,7 +65,11 @@ def validate_graph_dict(data: Dict[str, Any]) -> None:
             raise NodeGraphValidationError("outputs must be an array", f"{path}.outputs")
         if not isinstance(node["config"], dict):
             raise NodeGraphValidationError("config must be an object", f"{path}.config")
-        if not isinstance(node["pos"], list) or len(node["pos"]) != 2 or not all(isinstance(x, (int, float)) for x in node["pos"]):
+        if (
+            not isinstance(node["pos"], list)
+            or len(node["pos"]) != 2
+            or not all(isinstance(x, (int, float)) for x in node["pos"])
+        ):
             raise NodeGraphValidationError("pos must be [x, y] floats", f"{path}.pos")
         if not isinstance(node["collapsed"], bool):
             raise NodeGraphValidationError("collapsed must be a boolean", f"{path}.collapsed")
@@ -79,7 +83,9 @@ def validate_graph_dict(data: Dict[str, Any]) -> None:
                     continue  # Simple format
                 elif isinstance(port, dict):
                     if "name" not in port or not isinstance(port["name"], str):
-                        raise NodeGraphValidationError("Port name must be a string", f"{port_path}.name")
+                        raise NodeGraphValidationError(
+                            "Port name must be a string", f"{port_path}.name"
+                        )
                 else:
                     raise NodeGraphValidationError("Port must be string or object", port_path)
 
@@ -104,6 +110,10 @@ def validate_graph_dict(data: Dict[str, Any]) -> None:
         if not isinstance(target_id, str) or target_id not in node_ids:
             raise NodeGraphValidationError(f"Invalid target node '{target_id}'", f"{path}.target")
         if not isinstance(source_port, int) or source_port < 0:
-            raise NodeGraphValidationError("source_port must be non-negative integer", f"{path}.source_port")
+            raise NodeGraphValidationError(
+                "source_port must be non-negative integer", f"{path}.source_port"
+            )
         if not isinstance(target_port, int) or target_port < 0:
-            raise NodeGraphValidationError("target_port must be non-negative integer", f"{path}.target_port")
+            raise NodeGraphValidationError(
+                "target_port must be non-negative integer", f"{path}.target_port"
+            )

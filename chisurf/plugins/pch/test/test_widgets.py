@@ -1,13 +1,16 @@
 import unittest.mock
 
+
 class TestPCHApp:
     def test_creation(self, qapp):
         from chisurf.plugins.pch.gui.tool import PCHApp
+
         widget = PCHApp()
         assert widget is not None
 
     def test_window_title(self, qapp):
         from chisurf.plugins.pch.gui.tool import PCHApp
+
         widget = PCHApp()
         assert "PCH" in widget.windowTitle()
 
@@ -87,7 +90,7 @@ class TestPCHMessages:
         widget._on_compute()
         assert widget.Error.no_file.is_shown
         widget._filename = "some.ptu"
-        widget._on_compute()          # fails later, but not on the precondition
+        widget._on_compute()  # fails later, but not on the precondition
         assert not widget.Error.no_file.is_shown
 
     def test_every_condition_is_declared(self, qapp):
@@ -136,7 +139,7 @@ class TestPCHBackgroundCompute:
             qapp.processEvents()
         assert widget._result is not None
         assert widget.action_fit.isEnabled()
-        assert widget.action_compute.isEnabled()      # on_done re-enabled it
+        assert widget.action_compute.isEnabled()  # on_done re-enabled it
 
     def test_a_backend_failure_becomes_a_declared_condition(self, qapp):
         from chisurf.plugins.pch.gui.tool import PCHApp
@@ -174,7 +177,8 @@ class TestPCHReviewFixes:
 
     def test_more_than_one_species_can_be_configured(self, qapp):
         """`len()` of an int raised out of the spin box's slot, so multi-species
-        PCH fitting had never been reachable from this GUI."""
+        PCH fitting had never been reachable from this GUI.
+        """
         from chisurf.plugins.pch.gui.tool import PCHApp
 
         widget = PCHApp()

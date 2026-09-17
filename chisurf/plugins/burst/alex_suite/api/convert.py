@@ -107,9 +107,12 @@ def alex_to_pto(
         for source in sources:
             intermediate = staging / f"{source.stem}{suffix}.ptu"
             core.convert_file(
-                str(source), str(intermediate),
-                alex_period=int(alex_period), period_shift=int(period_shift),
-                output_format="PTU", input_format="Auto",
+                str(source),
+                str(intermediate),
+                alex_period=int(alex_period),
+                period_shift=int(period_shift),
+                output_format="PTU",
+                input_format="Auto",
             )
             intermediates.append(intermediate)
 
@@ -197,8 +200,7 @@ def detect_and_convert(
     # can then be made on the folded phase.
     auto = donor_channels is None or acceptor_channels is None
     if auto:
-        present, counts = np.unique(np.asarray(tttr.routing_channels),
-                                    return_counts=True)
+        present, counts = np.unique(np.asarray(tttr.routing_channels), return_counts=True)
         if present.size < 2:
             raise ValueError(
                 f"only routing channel {present.tolist()} carries photons; "
@@ -208,8 +210,10 @@ def detect_and_convert(
         donor_channels, acceptor_channels = [busiest[0]], [busiest[1]]
 
     detected = core.detect_alex_period(
-        tttr.macro_times, tttr.routing_channels,
-        donor_channels=donor_channels, acceptor_channels=acceptor_channels,
+        tttr.macro_times,
+        tttr.routing_channels,
+        donor_channels=donor_channels,
+        acceptor_channels=acceptor_channels,
     )
     confidence = float(detected["confidence"])
     if period is None:
@@ -230,7 +234,9 @@ def detect_and_convert(
     contrast = None
     if auto:
         assignment = core.detect_alex_channels(
-            folded.micro_times, folded.routing_channels, alex_period=period,
+            folded.micro_times,
+            folded.routing_channels,
+            alex_period=period,
             channels=list(donor_channels) + list(acceptor_channels),
         )
         donor_channels = assignment["donor"]
@@ -242,8 +248,10 @@ def detect_and_convert(
             "under acceptor excitation)"
         )
     windows = core.auto_alex_windows(
-        folded.micro_times, folded.routing_channels,
-        donor_channels=donor_channels, acceptor_channels=acceptor_channels,
+        folded.micro_times,
+        folded.routing_channels,
+        donor_channels=donor_channels,
+        acceptor_channels=acceptor_channels,
         alex_period=period,
     )
 
@@ -253,8 +261,7 @@ def detect_and_convert(
         if progress is not None:
             progress(0, len(paths), f"{len(paths)} file(s)")
         try:
-            converted.append(alex_to_pto(
-                paths, alex_period=period, out_dir=out_dir))
+            converted.append(alex_to_pto(paths, alex_period=period, out_dir=out_dir))
         except Exception as exc:
             logger.warning(f"ALEX Suite: could not convert the measurement — {exc}")
             failed.extend((path, str(exc)) for path in paths)

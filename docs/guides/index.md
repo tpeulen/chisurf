@@ -109,6 +109,7 @@ irf_estimation
 24_scan_images
 48_regions
 38_colocalization
+67_number_and_brightness
 43_drift_correction
 50_particle_tracking
 51_frc_resolution
@@ -189,6 +190,7 @@ irf_estimation
 | [Multispot (8-spot) smFRET](36_multispot.md) | per-channel burst analysis |
 | [TAC linearization: microtime LUTs](37_tttr_microtime_lut.md) | `tttr_lut_tools` plugin, `staging.open_tttr` |
 | [Two-channel colocalization](38_colocalization.md) | `img_coloc` plugin, `imaging.colocalization` |
+| [Number & Brightness](67_number_and_brightness.md) | `img_pixel_nb` plugin, `imaging.number_brightness` |
 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | [Asking the documentation](70_ask_the_documentation.md) | Help browser **Ask** panel, `csc help ask`, `help.docs.ask` |

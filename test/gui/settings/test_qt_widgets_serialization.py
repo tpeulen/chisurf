@@ -1,7 +1,9 @@
 import logging
+
 import pytest
 import yaml
 from qtpy.QtWidgets import QSpinBox
+
 from chisurf.core.base import Base
 
 
@@ -16,6 +18,7 @@ class QtSerializationWidget(Base):
 @pytest.fixture
 def qapp():
     from qtpy.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
@@ -43,8 +46,7 @@ def test_without_the_flag_the_widget_survives_into_the_elementary_dict(qapp, cap
     result = test_widget.to_dict(convert_values_to_elementary=True)
 
     assert isinstance(result["spinbox"], QSpinBox), (
-        "the widget is now converted or dropped — say so here, and in "
-        "to_elementary's contract"
+        "the widget is now converted or dropped — say so here, and in to_elementary's contract"
     )
     with pytest.raises(Exception):
         yaml.safe_dump(result)

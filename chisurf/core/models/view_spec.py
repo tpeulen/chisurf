@@ -6,6 +6,7 @@ not just models. Existing imports (``from chisurf.core.models import view_spec``
 keep working through this re-export; new code should import from
 :mod:`chisurf.core.dataspec` directly.
 """
+
 from __future__ import annotations
 
 from chisurf.core.dataspec import (  # noqa: F401
@@ -21,8 +22,8 @@ from chisurf.core.dataspec import (  # noqa: F401
     ParameterGroupView,
     PlotSpec,
     Section,
-    ToggleSection,
     ToggleRowSection,
+    ToggleSection,
     ValueSection,
     _section_from_dict,
     load_view_spec,

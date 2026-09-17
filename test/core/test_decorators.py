@@ -1,7 +1,8 @@
-import utils
-import unittest
 import pathlib
+import unittest
 import warnings
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -26,14 +27,13 @@ def _warn_of(function, *args, **kwargs):
 
 
 class Tests(unittest.TestCase):
-
     def test_register(self):
         @chisurf.core.support.decorators.register
-        class A1():
+        class A1:
             pass
 
         @chisurf.core.support.decorators.register
-        class B():
+        class B:
             pass
 
         @chisurf.core.support.decorators.register
@@ -48,32 +48,19 @@ class Tests(unittest.TestCase):
         a2_1 = A2()
         a3_1 = A3()
         b = B()
-        self.assertEqual(
-            a1_2 in a1_1.get_instances(),
-            True
-        )
-        self.assertEqual(
-            a2_1 in a1_1.get_instances(),
-            False
-        )
-        self.assertEqual(
-            a3_1 in a1_1.get_instances(),
-            True
-        )
-        self.assertEqual(
-            b in a1_1.get_instances(),
-            False
-        )
+        self.assertEqual(a1_2 in a1_1.get_instances(), True)
+        self.assertEqual(a2_1 in a1_1.get_instances(), False)
+        self.assertEqual(a3_1 in a1_1.get_instances(), True)
+        self.assertEqual(b in a1_1.get_instances(), False)
 
     def test_set_module(self):
-        name = 'test_module_name'
+        name = "test_module_name"
+
         @chisurf.core.support.decorators.set_module(name)
         def example():
             pass
-        self.assertEqual(
-            example.__module__,
-            name
-        )
+
+        self.assertEqual(example.__module__, name)
 
 
 class DeprecationTests(unittest.TestCase):
@@ -85,15 +72,9 @@ class DeprecationTests(unittest.TestCase):
         self.assertLess(_version_key("19.10.31"), _version_key("20.01.01"))
 
     def test_deprecation_state_reaches_the_unsupported_branch(self):
-        self.assertEqual(
-            _deprecation_state("19.10.31", "20.01.01", "26.dev4401"), (True, True)
-        )
-        self.assertEqual(
-            _deprecation_state("19.10.31", "20.01.01", "19.11.01"), (True, False)
-        )
-        self.assertEqual(
-            _deprecation_state("27.01.01", None, "26.dev4401"), (False, False)
-        )
+        self.assertEqual(_deprecation_state("19.10.31", "20.01.01", "26.dev4401"), (True, True))
+        self.assertEqual(_deprecation_state("19.10.31", "20.01.01", "19.11.01"), (True, False))
+        self.assertEqual(_deprecation_state("27.01.01", None, "26.dev4401"), (False, False))
 
     def test_running_version_is_the_default(self):
         # RF-662: the default used to be None, which short-circuited the

@@ -13,9 +13,9 @@ import utils
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-import chisurf.core.parameter  # noqa: F401  (initialises settings)
-import chisurf.core.models  # noqa: F401
 import chisurf.core.fitting.parameter as fp
+import chisurf.core.models  # noqa: F401
+import chisurf.core.parameter  # noqa: F401  (initialises settings)
 from chisurf.plugins.core.globalview.api.graph import build_graph
 
 
@@ -73,7 +73,8 @@ def test_include_fixed_filters_group_params():
     g = _group(["free1", "fixed1"])
     g.parameters_all_dict["fixed1"].fixed = True
     res = build_graph(
-        fit_list=[], include_fixed=False,
+        fit_list=[],
+        include_fixed=False,
         group_list=[("plugin_x", "Plugin X", g)],
     )
     names = {n.name for n in res.nodes if n.node_type == "parameter"}

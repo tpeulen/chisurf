@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Optional
-
 from chisurf.server.services import (
-    ServiceResult,
-    service_error,
     NOT_FOUND,
     OPERATION_FAILED,
+    ServiceResult,
     _resolve_fit,
+    service_error,
 )
 from chisurf.server.session import SessionState
 
 
 def model_finalize(
     state: SessionState,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Finalize a model on either a specific fit or by model name."""
     fit, _ = _resolve_fit(state, fit_index, fit_uid)
@@ -37,9 +35,9 @@ def model_finalize(
 def model_set_parse_function(
     state: SessionState,
     parse_function: str,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
     fit_index: int = 0,
-    fit_uid: Optional[str] = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Set the parse function on a model.
 

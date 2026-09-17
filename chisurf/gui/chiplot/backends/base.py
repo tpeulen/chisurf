@@ -621,14 +621,13 @@ class Backend(abc.ABC):
     def create_image_view(self, **opts) -> ImageViewCanvas:
         """Create an :class:`ImageViewCanvas`."""
 
-    def create_volume_view(self, **opts) -> "VolumeViewCanvas":
+    def create_volume_view(self, **opts) -> VolumeViewCanvas:
         """Create a :class:`VolumeViewCanvas`.
 
         Not abstract: a backend without a 3-D renderer should say so plainly
         rather than fail to instantiate.
         """
-        raise NotImplementedError(
-            f"the {self.name!r} backend has no 3-D volume renderer")
+        raise NotImplementedError(f"the {self.name!r} backend has no 3-D volume renderer")
 
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:

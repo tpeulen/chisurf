@@ -22,7 +22,13 @@ class TraceBrowserClient:
         """Wrap *client* or create a local in-process client."""
         self._client = client or self._make_local_client()
 
-    def list_files(self, folder: str, recursive: bool = False, setup_settings: dict[str, Any] | None = None, selected_channels: list[int] | None = None) -> list[dict[str, Any]]:
+    def list_files(
+        self,
+        folder: str,
+        recursive: bool = False,
+        setup_settings: dict[str, Any] | None = None,
+        selected_channels: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
         """List trace files through RPC."""
         result = self._call(
             METHOD_LIST_FILES,
@@ -45,7 +51,14 @@ class TraceBrowserClient:
         result = self._call(METHOD_SET_METADATA, {"folder": folder, "metadata": metadata})
         return bool(result and result.get("ok"))
 
-    def load_trace(self, path: str, time_window_ms: float, setup_settings: dict[str, Any] | None = None, selected_channels: list[int] | None = None, cache_folder: str | None = None) -> dict[str, Any] | None:
+    def load_trace(
+        self,
+        path: str,
+        time_window_ms: float,
+        setup_settings: dict[str, Any] | None = None,
+        selected_channels: list[int] | None = None,
+        cache_folder: str | None = None,
+    ) -> dict[str, Any] | None:
         """Load binned trace data through RPC."""
         result = self._call(
             METHOD_LOAD_TRACE,
@@ -59,7 +72,14 @@ class TraceBrowserClient:
         )
         return result.get("trace") if result else None
 
-    def export_csv(self, paths: list[str], output_dir: str, time_window_ms: float, setup_settings: dict[str, Any] | None = None, selected_channels: list[int] | None = None) -> list[str]:
+    def export_csv(
+        self,
+        paths: list[str],
+        output_dir: str,
+        time_window_ms: float,
+        setup_settings: dict[str, Any] | None = None,
+        selected_channels: list[int] | None = None,
+    ) -> list[str]:
         """Export traces to CSV through RPC."""
         result = self._call(
             METHOD_EXPORT_CSV,

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import tttrlib
@@ -274,9 +274,7 @@ class AcquisitionPipeline:
             if 0 <= int(channel) < self._window_of_channel.size:
                 self._window_of_channel[int(channel)] = window
 
-        self._decay = tttrlib.StreamingDecayHistogram(
-            cfg.n_microtime_bins, n_windows
-        )
+        self._decay = tttrlib.StreamingDecayHistogram(cfg.n_microtime_bins, n_windows)
         self._correlators = [
             tttrlib.StreamingCorrelator(
                 cfg.correlator_n_bins, cfg.correlator_n_casc, cfg.macrotime_clock
@@ -425,9 +423,7 @@ class AcquisitionPipeline:
         self._count_rate_times.append(now)
         span = (now - previous) if previous is not None else 0.0
 
-        counts = np.bincount(
-            windows[windows >= 0], minlength=len(self.config.channels)
-        )
+        counts = np.bincount(windows[windows >= 0], minlength=len(self.config.channels))
         total = 0.0
         for i in range(len(self.config.channels)):
             self._channel_totals[i] += int(counts[i])
@@ -455,9 +451,7 @@ class AcquisitionPipeline:
                 self.stop_reason = f"Time limit reached ({elapsed:.1f} s)"
                 return
         if cfg.photon_limit > 0 and self.total_photons >= cfg.photon_limit:
-            self.stop_reason = (
-                f"Photon limit reached ({self.total_photons:,} photons)"
-            )
+            self.stop_reason = f"Photon limit reached ({self.total_photons:,} photons)"
 
     # ------------------------------------------------------------------
     # Reading the state
@@ -468,10 +462,7 @@ class AcquisitionPipeline:
         """Acquisition time as the photons report it, not as the wall clock does."""
         if self._first_macro_time is None:
             return 0.0
-        return (
-            float(self.last_macro_time - self._first_macro_time)
-            * self.config.macrotime_clock
-        )
+        return float(self.last_macro_time - self._first_macro_time) * self.config.macrotime_clock
 
     @property
     def mean_count_rate_khz(self) -> float:
@@ -533,17 +524,13 @@ class AcquisitionPipeline:
             "channel_totals": list(self._channel_totals),
             "mean_count_rate_khz": self.mean_count_rate_khz,
             "elapsed_s": self.elapsed_s,
-            "burst_count": (
-                self._bursts.burst_count if self._bursts is not None else None
-            ),
+            "burst_count": (self._bursts.burst_count if self._bursts is not None else None),
             "burst_rate_hz": (
                 (self._bursts.burst_count / self.elapsed_s)
                 if self._bursts is not None and self.elapsed_s > 0
                 else 0.0
             ),
-            "phasor": (
-                tuple(self._phasor.get_phasor()) if self._phasor is not None else None
-            ),
+            "phasor": (tuple(self._phasor.get_phasor()) if self._phasor is not None else None),
             "stop_reason": self.stop_reason,
         }
 

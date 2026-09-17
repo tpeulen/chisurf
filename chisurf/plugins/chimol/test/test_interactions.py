@@ -19,7 +19,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.clashes import (
     BAD_COLOR,
     GOOD_COLOR,
@@ -35,20 +34,28 @@ from chimol.analysis.hbond_networks import (
 )
 from chimol.analysis.hbonds import HBond
 
-_PDB = pathlib.Path(__file__).resolve().parents[4] / "test" / "data" / (
-    "atomic_coordinates"
-) / "pdb_files"
+_PDB = (
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / ("atomic_coordinates")
+    / "pdb_files"
+)
 
 
 def _atoms(*rows) -> np.ndarray:
     """``(name, resn, resi, chain, element, xyz)`` as a structured array."""
-    dtype = np.dtype([
-        ("atom_name", "U4"), ("res_name", "U4"), ("res_id", "i4"),
-        ("chain", "U2"), ("element", "U2"), ("xyz", "f8", 3),
-    ])
-    return np.array(
-        [(n, r, i, c, e, tuple(v)) for n, r, i, c, e, v in rows], dtype=dtype
+    dtype = np.dtype(
+        [
+            ("atom_name", "U4"),
+            ("res_name", "U4"),
+            ("res_id", "i4"),
+            ("chain", "U2"),
+            ("element", "U2"),
+            ("xyz", "f8", 3),
+        ]
     )
+    return np.array([(n, r, i, c, e, tuple(v)) for n, r, i, c, e, v in rows], dtype=dtype)
 
 
 # --------------------------------------------------------------------------- #
@@ -116,9 +123,14 @@ def test_bonded_neighbours_never_clash():
     torsion the geometry already fixes is not something to draw a red line
     across -- and drawing them buries the real clashes in intra-residue haze.
     """
-    coords = np.array([
-        [0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [2.2, 1.2, 0.0], [2.9, 0.1, 0.0],
-    ])
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [2.2, 1.2, 0.0],
+            [2.9, 0.1, 0.0],
+        ]
+    )
     radii = np.full(4, 1.7)
     bonds = [(0, 1), (1, 2), (2, 3)]
 
@@ -130,9 +142,14 @@ def test_bonded_neighbours_never_clash():
 
 def test_a_one_four_pair_uses_the_softer_scale():
     """`sculpt_vdw_scale14` is 0.90 against 0.97, so a 1-4 pair strains less."""
-    coords = np.array([
-        [0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [2.2, 1.2, 0.0], [2.9, 0.1, 0.0],
-    ])
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [2.2, 1.2, 0.0],
+            [2.9, 0.1, 0.0],
+        ]
+    )
     radii = np.full(4, 1.7)
     bonded = find_clashes(coords, radii, [(0, 1), (1, 2), (2, 3)])
     free = find_clashes(coords, radii, [])
@@ -144,9 +161,7 @@ def test_a_one_four_pair_uses_the_softer_scale():
 def test_the_bump_colour_runs_green_to_red_where_pymol_puts_it():
     criteria = ClashCriteria()
     assert clash_color(criteria.vis_mid - 0.01, criteria) == pytest.approx(GOOD_COLOR)
-    assert clash_color(
-        criteria.vis_mid + criteria.vis_max, criteria
-    ) == pytest.approx(BAD_COLOR)
+    assert clash_color(criteria.vis_mid + criteria.vis_max, criteria) == pytest.approx(BAD_COLOR)
     half = clash_color(criteria.vis_mid + criteria.vis_max / 2, criteria)
     assert half[0] == pytest.approx(0.5 * GOOD_COLOR[0] + 0.5 * BAD_COLOR[0])
 
@@ -173,8 +188,11 @@ def test_the_subject_restricts_which_pairs_are_looked_at():
 # --------------------------------------------------------------------------- #
 def _bond(donor: int, acceptor: int) -> HBond:
     return HBond(
-        donor=donor, acceptor=acceptor, hydrogen=None,
-        hydrogen_xyz=np.zeros(3), distance=2.9,
+        donor=donor,
+        acceptor=acceptor,
+        hydrogen=None,
+        hydrogen_xyz=np.zeros(3),
+        distance=2.9,
     )
 
 
@@ -218,9 +236,7 @@ def test_water_bridges_two_halves_or_does_not(monkeypatch):
     )
     assert without == []
 
-    wire = find_hbond_networks(
-        atoms, None, bonds=bonds, options=NetworkOptions(waters="only")
-    )
+    wire = find_hbond_networks(atoms, None, bonds=bonds, options=NetworkOptions(waters="only"))
     assert wire == []
 
 
@@ -233,9 +249,7 @@ def test_a_water_wire_is_found_on_its_own():
     )
     bonds = [_bond(0, 1), _bond(1, 2), _bond(2, 3)]
 
-    wire = find_hbond_networks(
-        atoms, None, bonds=bonds, options=NetworkOptions(waters="only")
-    )
+    wire = find_hbond_networks(atoms, None, bonds=bonds, options=NetworkOptions(waters="only"))
 
     assert [net.size for net in wire] == [2]
     assert wire[0].waters == 3
@@ -251,9 +265,7 @@ def test_min_size_drops_the_lone_surface_contacts():
     )
     bonds = [_bond(0, 1), _bond(1, 2), _bond(3, 4)]
 
-    kept = find_hbond_networks(
-        atoms, None, bonds=bonds, options=NetworkOptions(min_size=2)
-    )
+    kept = find_hbond_networks(atoms, None, bonds=bonds, options=NetworkOptions(min_size=2))
 
     assert [net.size for net in kept] == [2]
 
@@ -280,17 +292,16 @@ def test_the_colours_are_stable_and_cycle():
 # On a real structure
 # --------------------------------------------------------------------------- #
 def _read(name: str):
-    from chisurf.core.fio.structure.coordinates import read_coordinates
     from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
 
+    from chisurf.core.fio.structure.coordinates import read_coordinates
+
     path = _PDB / name
     if not path.exists():
         pytest.skip(f"no {name} fixture")
-    atoms = read_coordinates(
-        str(path), keep_water=True, only_standard_residues=False
-    )
+    atoms = read_coordinates(str(path), keep_water=True, only_standard_residues=False)
     elements = np.char.strip(np.asarray(atoms["element"]).astype(str))
     bonds = build_bond_pairs_by_element(
         np.asarray(atoms["xyz"], dtype=float),
@@ -409,7 +420,8 @@ def test_hydrogens_follow_the_structure():
     from chimol.plugins.mutagenesis.rotamers import build_rotamers
 
     backbone = {
-        "N": np.zeros(3), "CA": np.array([1.458, 0.0, 0.0]),
+        "N": np.zeros(3),
+        "CA": np.array([1.458, 0.0, 0.0]),
         "C": np.array([2.0, 1.42, 0.0]),
     }
     with_h = build_rotamers("SER", backbone, hydrogens=True)
@@ -483,8 +495,8 @@ def wizard_cmd(qapp, tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     src = _PDB / "148l.pdb"
     if not src.is_file():
@@ -511,9 +523,7 @@ def _panel(window):
 
 
 def _residue_name(window, resi: int) -> str:
-    entry = next(
-        e for e in window.viewer.objects.values() if e.name == "148l"
-    )
+    entry = next(e for e in window.viewer.objects.values() if e.name == "148l")
     rows = np.nonzero(np.asarray(entry.state.atoms["res_id"], dtype=int) == resi)[0]
     return str(entry.state.atoms["res_name"][rows[0]]).strip()
 
@@ -677,13 +687,11 @@ def test_the_bump_check_can_be_turned_off(wizard_cmd):
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
-    assert any(
-        key.startswith("_bump_check") for key in window.viewer.measurements
-    ), "the bump check drew nothing"
+    assert any(key.startswith("_bump_check") for key in window.viewer.measurements), (
+        "the bump check drew nothing"
+    )
 
     cmd.do("wizard bump, toggle")
 
-    assert not any(
-        key.startswith("_bump_check") for key in window.viewer.measurements
-    )
+    assert not any(key.startswith("_bump_check") for key in window.viewer.measurements)
     assert any("off" in label for _k, label in _panel(window))

@@ -158,9 +158,7 @@ class TestTheGreetingFollowsTheMode:
         text = panel._greeting_for(AgentMode.CHAT_ONLY)
         assert "editor" in text.lower()
 
-    @pytest.mark.parametrize(
-        "mode_name", ["CHISURF_TOOLS", "FULL_CONTROL"]
-    )
+    @pytest.mark.parametrize("mode_name", ["CHISURF_TOOLS", "FULL_CONTROL"])
     def test_a_tool_mode_talks_about_operating_chisurf(self, qapp, mode_name):
         """A mode that runs fits must not tell the user to select code."""
         from chisurf.plugins.core.code_editor.agent_panel import AgentMode

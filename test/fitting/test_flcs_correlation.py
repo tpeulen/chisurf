@@ -116,16 +116,17 @@ def test_the_packed_matrix_lands_on_the_right_species_pairs():
     # Three species filters over 64 micro-time bins with distinct shapes,
     # so every misassigned row moves a number.
     bins = np.arange(64, dtype=float)
-    f = np.vstack([
-        np.exp(-bins / 8.0),
-        np.exp(-((bins - 30.0) / 10.0) ** 2),
-        0.02 + 0.015 * bins / 63.0,
-    ])
+    f = np.vstack(
+        [
+            np.exp(-bins / 8.0),
+            np.exp(-(((bins - 30.0) / 10.0) ** 2)),
+            0.02 + 0.015 * bins / 63.0,
+        ]
+    )
     streams = species_weight_streams(f, micro, None)
     assert len(streams) == 3
 
-    single = species_filtered_correlation(
-        macro, micro, f, 1e-8, n_bins=8, n_casc=12, method="wahl")
+    single = species_filtered_correlation(macro, micro, f, 1e-8, n_bins=8, n_casc=12, method="wahl")
 
     def _pair(wa, wb):
         c = tttrlib.Correlator()
@@ -138,10 +139,16 @@ def test_the_packed_matrix_lands_on_the_right_species_pairs():
 
     for i in range(3):
         np.testing.assert_allclose(
-            single.auto[i], _pair(streams[i], streams[i]),
-            rtol=1e-10, err_msg=f"auto[{i}] landed on the wrong row")
+            single.auto[i],
+            _pair(streams[i], streams[i]),
+            rtol=1e-10,
+            err_msg=f"auto[{i}] landed on the wrong row",
+        )
     for i in range(3):
         for j in range(i + 1, 3):
             np.testing.assert_allclose(
-                single.cross[(i, j)], _pair(streams[i], streams[j]),
-                rtol=1e-10, err_msg=f"cross[({i},{j})] landed on the wrong row")
+                single.cross[(i, j)],
+                _pair(streams[i], streams[j]),
+                rtol=1e-10,
+                err_msg=f"cross[({i},{j})] landed on the wrong row",
+            )

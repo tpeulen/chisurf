@@ -136,7 +136,12 @@ class RpcLogWriter:
                 self._rpc_available = False
                 self._close_client()
 
-        self._local.log(getattr(logging, level.upper(), logging.INFO), "%s%s", message, f" | {extra}" if extra else "")
+        self._local.log(
+            getattr(logging, level.upper(), logging.INFO),
+            "%s%s",
+            message,
+            f" | {extra}" if extra else "",
+        )
 
     def _get_client(self) -> Any:
         """Return the cached ZMQ JSON-RPC client.

@@ -6,7 +6,6 @@ ndX can draw FRET lines and phasor lines through one uniform path.
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from chisurf.plugins.fret_line.backend.services import register_services
@@ -34,8 +33,13 @@ def test_overlays_method_registered(dispatcher):
 def test_overlays_returns_lineset_shape(dispatcher):
     res = dispatcher.dispatch(
         "fret_line.overlays",
-        {"components": _COMPONENTS, "sweep": _SWEEP, "param_min": 20.0,
-         "param_max": 100.0, "n_points": 8},
+        {
+            "components": _COMPONENTS,
+            "sweep": _SWEEP,
+            "param_min": 20.0,
+            "param_max": 100.0,
+            "n_points": 8,
+        },
     )
     assert res["ok"], res
     overlays = res["result"]["overlays"]
@@ -51,8 +55,14 @@ def test_overlays_returns_lineset_shape(dispatcher):
 def test_projection_choice(dispatcher):
     res = dispatcher.dispatch(
         "fret_line.overlays",
-        {"components": _COMPONENTS, "sweep": _SWEEP, "param_min": 20.0,
-         "param_max": 100.0, "n_points": 6, "line": "tau_x_vs_tau_f"},
+        {
+            "components": _COMPONENTS,
+            "sweep": _SWEEP,
+            "param_min": 20.0,
+            "param_max": 100.0,
+            "n_points": 6,
+            "line": "tau_x_vs_tau_f",
+        },
     )
     assert res["ok"], res
     assert res["result"]["overlays"][0]["axes"]["y"] == "tau_x"
@@ -61,8 +71,14 @@ def test_projection_choice(dispatcher):
 def test_unknown_projection_fails(dispatcher):
     res = dispatcher.dispatch(
         "fret_line.overlays",
-        {"components": _COMPONENTS, "sweep": _SWEEP, "param_min": 20.0,
-         "param_max": 100.0, "n_points": 4, "line": "bogus"},
+        {
+            "components": _COMPONENTS,
+            "sweep": _SWEEP,
+            "param_min": 20.0,
+            "param_max": 100.0,
+            "n_points": 4,
+            "line": "bogus",
+        },
     )
     assert not res["ok"]
     assert "bogus" in res["error"]

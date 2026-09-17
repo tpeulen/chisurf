@@ -6,6 +6,7 @@ the chrome precisely so the browser gets it for free, and this is what says
 that is still true. It opens the panel in a real page, feeds it a small plan
 through the command layer, and asks the chrome what it drew.
 """
+
 from __future__ import annotations
 
 import socket
@@ -30,7 +31,9 @@ def server():
     port = _free_port()
     process = subprocess.Popen(
         [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
-        cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=str(_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     for _ in range(100):
         try:

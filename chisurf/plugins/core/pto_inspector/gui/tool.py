@@ -51,9 +51,7 @@ class PtoInspectorTool(ChisurfDockTool):
         )
         a_verify.triggered.connect(self._verify)
         self._a_tool = toolbar.addAction("▶ Open tool")
-        self._a_tool.setToolTip(
-            "Open the tool that performs the selected artifact's operation."
-        )
+        self._a_tool.setToolTip("Open the tool that performs the selected artifact's operation.")
         self._a_tool.triggered.connect(self.open_tool)
         self._a_tool.setEnabled(False)
         a_export = toolbar.addAction("💾 Export")
@@ -164,8 +162,9 @@ class PtoInspectorTool(ChisurfDockTool):
                     fn(self.model.filename)
                     break
                 except Exception:
-                    logger.debug("%s.%s(%s) failed", entry, setter, self.model.filename,
-                                 exc_info=True)
+                    logger.debug(
+                        "%s.%s(%s) failed", entry, setter, self.model.filename, exc_info=True
+                    )
         try:
             from chisurf.core.plugin.registry import apply_manifest_statefulness
 

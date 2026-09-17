@@ -8,7 +8,7 @@ server/in-process ``ServiceDispatcher`` via the plugin manifest's
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from ..api import operations as ops
 
@@ -29,7 +29,7 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register("fret.estimate_errors", lambda params: ops.estimate_errors(params or {}))
 
 
-def list_methods() -> Dict[str, str]:
+def list_methods() -> dict[str, str]:
     """Return the RPC method catalogue."""
     return {
         "fret.info_backends": "Report IMP/IMP.bff backend availability.",

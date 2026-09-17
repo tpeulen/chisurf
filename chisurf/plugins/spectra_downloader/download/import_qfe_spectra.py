@@ -24,7 +24,7 @@ from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
 def parse_ini_file(ini_path):
     """Parse an .ini file and return a dictionary of sections."""
     # Allow duplicate keys by reading manually
-    with open(ini_path, encoding='utf-8') as f:
+    with open(ini_path, encoding="utf-8") as f:
         content = f.read()
 
     # Split into sections
@@ -32,18 +32,18 @@ def parse_ini_file(ini_path):
     current_section = None
     current_data = {}
 
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         line = line.strip()
-        if not line or line.startswith(';') or line.startswith('#'):
+        if not line or line.startswith(";") or line.startswith("#"):
             continue
-        if line.startswith('[') and line.endswith(']'):
+        if line.startswith("[") and line.endswith("]"):
             # Save previous section
             if current_section:
                 sections[current_section] = current_data
             current_section = line[1:-1]
             current_data = {}
-        elif '=' in line and current_section:
-            key, value = line.split('=', 1)
+        elif "=" in line and current_section:
+            key, value = line.split("=", 1)
             key = key.strip()
             value = value.strip()
             current_data[key] = value
@@ -54,10 +54,11 @@ def parse_ini_file(ini_path):
 
     return sections
 
+
 def load_spectrum(spec_path):
     """Load a .spec file and return wavelength and intensity arrays."""
     try:
-        data = np.loadtxt(spec_path, delimiter=',', comments='#')
+        data = np.loadtxt(spec_path, delimiter=",", comments="#")
         if data.shape[1] >= 2:
             wavelengths = data[:, 0]
             if data.shape[1] >= 3:  # Fluorophore format: wavelength, absorption, emission
@@ -71,6 +72,7 @@ def load_spectrum(spec_path):
         print(f"Error loading spectrum {spec_path}: {e}")
         return None, None
 
+
 def _qfe_properties(props, exclude):
     """Collect non-spectrum .ini keys as a property dict for register_component."""
     return {k: v for k, v in props.items() if k not in exclude}
@@ -83,24 +85,26 @@ def import_fluorophores(db, assets_dir, ini_data):
     for name, props in ini_data.items():
         try:
             spectra = {}
-            abs_spec = props.get('spectrum_abs', '')
+            abs_spec = props.get("spectrum_abs", "")
             if abs_spec and os.path.exists(assets_dir / abs_spec):
                 result = load_spectrum(assets_dir / abs_spec)
                 if result and len(result) >= 2:
-                    spectra['absorption'] = (result[0], result[1])
-            em_spec = props.get('spectrum_fl', '')
+                    spectra["absorption"] = (result[0], result[1])
+            em_spec = props.get("spectrum_fl", "")
             if em_spec and os.path.exists(assets_dir / em_spec):
                 result = load_spectrum(assets_dir / em_spec)
                 if result and len(result) >= 2:
-                    spectra['emission'] = (result[0], result[1])
+                    spectra["emission"] = (result[0], result[1])
 
             db.register_component(
                 name=name,
                 source="qfe",
                 kind="organic_dye",
                 source_ref=name,
-                description=props.get('reference', ''),
-                properties=_qfe_properties(props, {'spectrum_fl', 'spectrum_abs', 'folder', 'reference'}),
+                description=props.get("reference", ""),
+                properties=_qfe_properties(
+                    props, {"spectrum_fl", "spectrum_abs", "folder", "reference"}
+                ),
                 spectra=spectra,
             )
             print(f"Imported fluorophore: {name}")
@@ -115,19 +119,19 @@ def import_filters(db, assets_dir, ini_data):
     for name, props in ini_data.items():
         try:
             spectra = None
-            spec_file = props.get('spectrum', '')
+            spec_file = props.get("spectrum", "")
             if spec_file and os.path.exists(assets_dir / spec_file):
                 wavelengths, values = load_spectrum(assets_dir / spec_file)
                 if wavelengths is not None:
-                    spectra = {'transmission': (wavelengths, values)}
+                    spectra = {"transmission": (wavelengths, values)}
 
             db.register_component(
                 name=name,
                 source="qfe",
                 kind="filter",
                 source_ref=name,
-                description=props.get('description', ''),
-                properties=_qfe_properties(props, {'spectrum', 'folder', 'description'}),
+                description=props.get("description", ""),
+                properties=_qfe_properties(props, {"spectrum", "folder", "description"}),
                 spectra=spectra,
             )
             print(f"Imported filter: {name}")
@@ -142,19 +146,19 @@ def import_lightsources(db, assets_dir, ini_data):
     for name, props in ini_data.items():
         try:
             spectra = None
-            spec_file = props.get('spectrum', '')
+            spec_file = props.get("spectrum", "")
             if spec_file and os.path.exists(assets_dir / spec_file):
                 wavelengths, values = load_spectrum(assets_dir / spec_file)
                 if wavelengths is not None:
-                    spectra = {'emission': (wavelengths, values)}
+                    spectra = {"emission": (wavelengths, values)}
 
             db.register_component(
                 name=name,
                 source="qfe",
                 kind="light_source",
                 source_ref=name,
-                description=props.get('description', ''),
-                properties=_qfe_properties(props, {'spectrum', 'folder', 'description'}),
+                description=props.get("description", ""),
+                properties=_qfe_properties(props, {"spectrum", "folder", "description"}),
                 spectra=spectra,
             )
             print(f"Imported light source: {name}")
@@ -169,30 +173,35 @@ def import_detectors(db, assets_dir, ini_data):
     for name, props in ini_data.items():
         try:
             spectra = None
-            spec_file = props.get('spectrum', '')
+            spec_file = props.get("spectrum", "")
             if spec_file and os.path.exists(assets_dir / spec_file):
                 wavelengths, values = load_spectrum(assets_dir / spec_file)
                 if wavelengths is not None:
-                    spectra = {'quantum_efficiency': (wavelengths, values)}
+                    spectra = {"quantum_efficiency": (wavelengths, values)}
 
             db.register_component(
                 name=name,
                 source="qfe",
                 kind="detector",
                 source_ref=name,
-                description=props.get('description', ''),
-                properties=_qfe_properties(props, {'spectrum', 'folder', 'description'}),
+                description=props.get("description", ""),
+                properties=_qfe_properties(props, {"spectrum", "folder", "description"}),
                 spectra=spectra,
             )
             print(f"Imported detector: {name}")
         except Exception as e:
             print(f"Error importing detector {name}: {e}")
 
+
 def main():
     """Import QuickFit spectra assets into the configured MMFDB database."""
-    parser = argparse.ArgumentParser(description="Import qfe_spectraviewer spectra into ChiSurf database")
+    parser = argparse.ArgumentParser(
+        description="Import qfe_spectraviewer spectra into ChiSurf database"
+    )
     parser.add_argument("assets_dir", help="Path to qfe_spectraviewer assets directory")
-    parser.add_argument("--db", help="MMFDB SQLite database path", default=str(DEFAULT_DATABASE_PATH))
+    parser.add_argument(
+        "--db", help="MMFDB SQLite database path", default=str(DEFAULT_DATABASE_PATH)
+    )
     args = parser.parse_args()
 
     assets_path = Path(args.assets_dir)
@@ -205,7 +214,6 @@ def main():
     # Initialize database
     db = FluorophoreDatabase(args.db)
     with db:
-
         # Import fluorophores
         fluorophore_ini = assets_path / "fluorophors.ini"
         if fluorophore_ini.exists():
@@ -231,6 +239,7 @@ def main():
             import_detectors(db, assets_path, detectors_data)
 
     print("Import complete!")
+
 
 if __name__ == "__main__":
     main()

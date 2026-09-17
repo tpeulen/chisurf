@@ -101,7 +101,9 @@ def test_overlay_contract():
     overlay = static_fret_line(TAU_D0).as_overlay()
     assert overlay["kind"] == "curve"
     assert overlay["axes"] == {
-        "x": "tau_f", "y": "e_fret", "label": "E vs fluorescence-averaged lifetime"
+        "x": "tau_f",
+        "y": "e_fret",
+        "label": "E vs fluorescence-averaged lifetime",
     }
     assert len(overlay["x"]) == len(overlay["y"])
 
@@ -116,16 +118,29 @@ def test_parity_with_the_model_based_generator():
     discretizes P(R) on its own logarithmic distance axis).
     """
     algorithms = pytest.importorskip("chisurf.plugins.fret_line.core.algorithms")
-    components = [{
-        "model_name": "FRET: FD (Gaussian)",
-        "n_components": 1,
-        "params": {"distance.mean.0": 50.0, "distance.sigma.0": SIGMA, "distance.amplitude.0": 1.0,
-                   "fret.x_donly": 0.0, "fret.forster_radius": R0, "donor.tau.0": TAU_D0,
-                   "donor.amplitude.0": 1.0, "fret.tau0": TAU_D0},
-    }]
+    components = [
+        {
+            "model_name": "FRET: FD (Gaussian)",
+            "n_components": 1,
+            "params": {
+                "distance.mean.0": 50.0,
+                "distance.sigma.0": SIGMA,
+                "distance.amplitude.0": 1.0,
+                "fret.x_donly": 0.0,
+                "fret.forster_radius": R0,
+                "donor.tau.0": TAU_D0,
+                "donor.amplitude.0": 1.0,
+                "fret.tau0": TAU_D0,
+            },
+        }
+    ]
     res = algorithms.compute_fret_line(
-        components, {"kind": "param", "component": 0, "name": "distance.mean.0"},
-        20.0, 120.0, 40, tau_d0=TAU_D0,
+        components,
+        {"kind": "param", "component": 0, "name": "distance.mean.0"},
+        20.0,
+        120.0,
+        40,
+        tau_d0=TAU_D0,
     )
     assert res["ok"], res.get("error")
     tau_f = np.asarray(res["result"]["tau_f"])

@@ -7,7 +7,7 @@ are referenced by UID and stored in the server's private object store.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -17,13 +17,13 @@ class BurstSelectionState:
     Lives under ``session_state.plugins["burst_selection"]``.
     """
 
-    selected_files: List[str] = field(default_factory=list)
-    last_job_id: Optional[str] = None
-    last_job_status: Optional[str] = None
-    last_result_summary: Optional[Dict[str, Any]] = None
-    settings: Dict[str, Any] = field(default_factory=dict)
+    selected_files: list[str] = field(default_factory=list)
+    last_job_id: str | None = None
+    last_job_status: str | None = None
+    last_result_summary: dict[str, Any] | None = None
+    settings: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "selected_files": list(self.selected_files),
             "last_job_id": self.last_job_id,
@@ -33,7 +33,7 @@ class BurstSelectionState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> BurstSelectionState:
+    def from_dict(cls, data: dict[str, Any]) -> BurstSelectionState:
         return cls(
             selected_files=list(data.get("selected_files", [])),
             last_job_id=data.get("last_job_id"),

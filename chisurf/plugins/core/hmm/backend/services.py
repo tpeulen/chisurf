@@ -16,8 +16,14 @@ from ..core.analysis import fit_traces, scan_state_counts
 METHOD_FIT = "hmm.fit"
 METHOD_SCAN = "hmm.scan"
 
-__all__ = ["METHOD_FIT", "METHOD_SCAN", "fit_handler", "list_methods", "register_services",
-           "scan_handler"]
+__all__ = [
+    "METHOD_FIT",
+    "METHOD_SCAN",
+    "fit_handler",
+    "list_methods",
+    "register_services",
+    "scan_handler",
+]
 
 
 def register_services(dispatcher: Any) -> None:

@@ -1,10 +1,9 @@
 import sys
-from pathlib import Path
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 
 class DownloadPanel(QtWidgets.QWidget):
@@ -27,7 +26,7 @@ class DownloadPanel(QtWidgets.QWidget):
         self.source_combo = QtWidgets.QComboBox()
         self.top_layout.addWidget(self.source_combo)
 
-        self.run_btn = QtWidgets.QPushButton("\U000025B6 Run Selected Script")
+        self.run_btn = QtWidgets.QPushButton("\U000025b6 Run Selected Script")
         self.run_btn.clicked.connect(self.run_script)
         self.top_layout.addWidget(self.run_btn)
 
@@ -40,7 +39,9 @@ class DownloadPanel(QtWidgets.QWidget):
         self.scraped_info.setWordWrap(True)
         self.info_layout.addWidget(self.scraped_info, 1)
         self.browse_source_btn = QtWidgets.QPushButton(f"{Glyphs.SEARCH} Browse this source")
-        self.browse_source_btn.setToolTip("Browse the already-scraped data for the selected source.")
+        self.browse_source_btn.setToolTip(
+            "Browse the already-scraped data for the selected source."
+        )
         self.browse_source_btn.clicked.connect(self._browse_selected_source)
         self.info_layout.addWidget(self.browse_source_btn)
         self.layout.addLayout(self.info_layout)
@@ -66,6 +67,7 @@ class DownloadPanel(QtWidgets.QWidget):
     def get_available_download_scripts(self):
         """Return runnable scrapers keyed by display label (from the registry)."""
         from chisurf.plugins.spectra_downloader.download._base import SCRAPERS
+
         return {spec.label: spec.module for spec in SCRAPERS}
 
     def run_script(self):
@@ -87,10 +89,15 @@ class DownloadPanel(QtWidgets.QWidget):
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.finished.connect(self.process_finished)
 
-        self.process.start(sys.executable, [
-            "-m", f"chisurf.plugins.spectra_downloader.download.{module}",
-            "--db", str(self.db.db_path),
-        ])
+        self.process.start(
+            sys.executable,
+            [
+                "-m",
+                f"chisurf.plugins.spectra_downloader.download.{module}",
+                "--db",
+                str(self.db.db_path),
+            ],
+        )
 
     def _source_slug(self, module):
         """Canonical provenance slug for a scraper module (from the registry)."""

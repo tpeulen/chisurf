@@ -68,14 +68,20 @@ class AboutDialog(QDialog):
 
         logo = QPixmap(":/icons/icons/cs_logo.png")
         if logo.isNull():
-            logo_path = pathlib.Path(chisurf.__file__).parent / "gui" / "resources" / "icons" / "cs_logo.png"
+            logo_path = (
+                pathlib.Path(chisurf.__file__).parent
+                / "gui"
+                / "resources"
+                / "icons"
+                / "cs_logo.png"
+            )
             logo = QPixmap(str(logo_path))
 
         if not logo.isNull():
             self.textEdit.document().addResource(
                 1,  # QTextDocument.ImageResource
                 QUrl(":/icons/icons/cs_logo.png"),
-                logo
+                logo,
             )
 
         self.textEdit.setHtml(
@@ -86,7 +92,9 @@ p, li { white-space: pre-wrap; }
 <p style=" margin-top:20px; margin-bottom:12px; text-align:center;"><img src=":/icons/icons/cs_logo.png" width="64" height="64" /></p>
 <p style=" margin-top:12px; margin-bottom:4px;"><span style=" font-family:'Arial'; font-size:16pt; font-weight:600; color:#ff5500;">ChiSurf</span></p>
 <p style=" margin-top:4px; margin-bottom:12px; font-size:11pt;">Fluorescence Data Analysis</p>
-<p style=" margin-top:20px; margin-bottom:4px; font-size:10pt;"><strong>Version:</strong> """ + str(__import__('chisurf.core.info', fromlist=['__version__']).__version__) + """</p>
+<p style=" margin-top:20px; margin-bottom:4px; font-size:10pt;"><strong>Version:</strong> """
+            + str(__import__("chisurf.core.info", fromlist=["__version__"]).__version__)
+            + """</p>
 <p style=" margin-top:12px; margin-bottom:4px; font-size:10pt;">Development: Thomas-Otavio Peulen</p>
 <p style=" margin-top:4px; margin-bottom:12px; font-size:9pt; color:#555555;">thomas.peulen@tu-dortmund.de</p>
 <p style=" margin-top:20px; margin-bottom:4px; font-size:9pt; color:#888888;">Repository: github.com/fluorescence-tools/chisurf</p>
@@ -100,6 +108,7 @@ p, li { white-space: pre-wrap; }
 
         layout.addWidget(self.textEdit, 0, 0)
         layout.addWidget(self.toolButton, 1, 0)
+
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed

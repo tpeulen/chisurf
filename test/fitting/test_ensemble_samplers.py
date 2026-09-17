@@ -10,6 +10,7 @@ The bar is set from the Monte-Carlo error of the runs below, not tightened until
 it passes: a bound that a correct sampler fails one run in twenty is not a test,
 it is a coin toss in the suite. Every run is seeded.
 """
+
 import numpy as np
 import pytest
 
@@ -32,11 +33,13 @@ STEPS = {EnsembleSampler: 6000, EnsembleSliceSampler: 800}
 
 MU = np.array([1.0, -2.0, 0.5])
 RHO = 0.95
-COV = np.array([
-    [1.0, RHO, RHO ** 2],
-    [RHO, 1.0, RHO],
-    [RHO ** 2, RHO, 1.0],
-])
+COV = np.array(
+    [
+        [1.0, RHO, RHO**2],
+        [RHO, 1.0, RHO],
+        [RHO**2, RHO, 1.0],
+    ]
+)
 PRECISION = np.linalg.inv(COV)
 
 
@@ -178,9 +181,7 @@ def test_the_stretch_acceptance_fraction_is_in_a_usable_range():
     assert sampler.n_evaluations == 16 * (500 + 1)
 
 
-@pytest.mark.parametrize(
-    "move", [DifferentialMove(), CovarianceMove(), AdaptiveCovarianceMove()]
-)
+@pytest.mark.parametrize("move", [DifferentialMove(), CovarianceMove(), AdaptiveCovarianceMove()])
 def test_every_slice_direction_proposal_samples_the_same_posterior(move):
     """The direction may be chosen freely; the invariant distribution may not change."""
     sampler = EnsembleSliceSampler(16, 3, _log_prob, moves=move, seed=10)
@@ -228,6 +229,7 @@ def test_the_slice_sampler_is_not_slower_per_evaluation_than_the_stretch_move():
 
 def test_a_pool_and_the_serial_path_agree():
     """The ``map``-based parallel path must not change the chain it produces."""
+
     class SerialPool:
         """Minimal stand-in with the ``map`` interface a real pool provides."""
 

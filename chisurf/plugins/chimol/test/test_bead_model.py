@@ -15,16 +15,16 @@ The eight-spoke nuclear pore (`PDBDEV_00000012`, 234,184 beads) is the case that
 forced all three: it took 430 s and ~11 GB to open as a cartoon splined through
 beads, against 1.6 s and 0.7 GB as spheres.
 """
+
 from __future__ import annotations
 
 import math
 
 import numpy as np
 import pytest
-
-from chimol.io.atoms import make_bead_rows
 from chimol.core.model.atoms_util import _bead_mask, _is_bead_model
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import make_bead_rows
 
 
 # --------------------------------------------------------------------------- #
@@ -173,9 +173,14 @@ def test_a_protein_does_not_take_the_bead_path(qapp_chimol):
     atoms, xyz, radii = _bead_atoms(n=16)
     atoms["res_name"] = "ALA"
     view = Viewer()
-    view.set_coordinates(xyz, trace_coords=xyz, res_ids=atoms["res_id"],
-                         res_names=atoms["res_name"], chain_ids=atoms["chain"],
-                         atoms=atoms)
+    view.set_coordinates(
+        xyz,
+        trace_coords=xyz,
+        res_ids=atoms["res_id"],
+        res_names=atoms["res_name"],
+        chain_ids=atoms["chain"],
+        atoms=atoms,
+    )
     assert view._bead_scene_object({"impostor_min_atoms": 1}, None) is None
 
 
@@ -191,9 +196,7 @@ def _hybrid(n_atomic: int = 8, n_beads: int = 40):
     radii[:n_atomic] = 1.7
     # Real backbone spacing, or nothing is within a bonding cutoff and the
     # "bonded over its atoms" check would pass for the wrong reason.
-    backbone = np.array(
-        [[0.0, 0.0, 0.0], [1.46, 0.0, 0.0], [2.01, 1.42, 0.0], [1.25, 2.39, 0.0]]
-    )
+    backbone = np.array([[0.0, 0.0, 0.0], [1.46, 0.0, 0.0], [2.01, 1.42, 0.0], [1.25, 2.39, 0.0]])
     for res in range(n_atomic // 4):
         xyz[res * 4 : res * 4 + 4] = backbone + np.array([res * 3.3, 0.0, 0.0])
     atoms["xyz"][:n_atomic] = xyz[:n_atomic]
@@ -274,7 +277,7 @@ def test_a_hybrid_is_bonded_over_its_atoms_only(hybrid_view):
 def test_the_atomic_balls_are_still_drawn(hybrid_view):
     """`_bead_scene_object` must not short-circuit the generic ball path."""
     view, atoms, _res_names = hybrid_view
-    beads = _bead_mask(atoms)
+    _bead_mask(atoms)
     view._ball_mask = np.ones(len(atoms), dtype=bool)
     view._show_atoms = True
     objects = view._update_atoms(

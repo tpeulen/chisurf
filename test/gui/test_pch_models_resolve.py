@@ -24,6 +24,7 @@ def qapp():
 
 def _pch_model_paths():
     import yaml
+
     import chisurf.core.settings as settings
 
     cfg = pathlib.Path(settings.__file__).parent / "experiment_configs.yaml"
@@ -51,7 +52,9 @@ def test_every_configured_pch_model_resolves_with_a_name(qapp):
             problems.append(f"{path}: missing/empty .name")
         else:
             names.append(str(name))
-    assert not problems, "configured PCH models that won't appear in the menu:\n" + "\n".join(problems)
+    assert not problems, "configured PCH models that won't appear in the menu:\n" + "\n".join(
+        problems
+    )
     assert any("FIDA" in n for n in names), f"FIDA model missing from {names}"
 
 

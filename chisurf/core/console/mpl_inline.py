@@ -83,9 +83,7 @@ def flush_figures(shell: typing.Any) -> None:
     import io
 
     fmt, dpi, bbox = _figure_format(shell)
-    mime = {"png": "image/png", "svg": "image/svg+xml", "jpeg": "image/jpeg"}.get(
-        fmt, "image/png"
-    )
+    mime = {"png": "image/png", "svg": "image/svg+xml", "jpeg": "image/jpeg"}.get(fmt, "image/png")
 
     for manager in managers:
         figure = manager.canvas.figure

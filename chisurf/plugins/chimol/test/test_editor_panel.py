@@ -5,14 +5,14 @@ toolkit-free host and the browser had no editor. Now it is an
 ``EditorPanel`` in the chrome; the text and hex editors draw a scrollbar
 when they are taller than their box, take the wheel, and drag its thumb.
 """
+
 from __future__ import annotations
 
 import pathlib
 
+import chimol
 import numpy as np
 import pytest
-
-import chimol
 from emtk.testing import RecordingPainter
 
 _PDB = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
@@ -41,7 +41,7 @@ def test_the_text_editor_shows_a_scrollbar_and_scrolls(tmp_path):
 
     editor = TextEditor("\n".join(f"line {i}" for i in range(200)))
     p = RecordingPainter()
-    editor.draw(p, 0, 0, 300, 160)          # 10 lines visible of 200
+    editor.draw(p, 0, 0, 300, 160)  # 10 lines visible of 200
     assert editor.vbar.needed()
     assert p.fills, "no bar drawn"
     bar_x = 300 - editor.vbar.width
@@ -56,8 +56,8 @@ def test_the_text_editor_shows_a_scrollbar_and_scrolls(tmp_path):
 
 
 def test_the_hex_editor_shows_a_scrollbar(tmp_path):
-    from emtk.widgets.memory_editor import MemoryEditor
     from chimol.core.services.memory_probe import ArraySource
+    from emtk.widgets.memory_editor import MemoryEditor
 
     ed = MemoryEditor()
     ed.set_source(ArraySource(np.arange(16384, dtype=np.uint8), "probe"))
@@ -101,7 +101,13 @@ def test_editor_opens_in_the_viewport_and_save_writes(app, tmp_path):
 
 def test_fps_edit_opens_the_plan_and_save_reloads_it(app, tmp_path):
     plan = tmp_path / "plan.fps.json"
-    plan.write_text(pathlib.Path(chimol.__file__).resolve().parents[1].joinpath("examples", "labeling_network.fps.json").read_text())
+    plan.write_text(
+        pathlib.Path(chimol.__file__)
+        .resolve()
+        .parents[1]
+        .joinpath("examples", "labeling_network.fps.json")
+        .read_text()
+    )
     errors: list[str] = []
     app.cmd.set_error_callback(errors.append)
     app.cmd.do(f'load "{_PDB}"')
@@ -113,5 +119,5 @@ def test_fps_edit_opens_the_plan_and_save_reloads_it(app, tmp_path):
     assert '"Positions"' in panel.editor.text or "positions" in panel.editor.text.lower()
     said: list[str] = []
     app.cmd.set_message_callback(said.append)
-    assert panel.save()                       # reloads through fps_load
+    assert panel.save()  # reloads through fps_load
     assert any(line.startswith("fps_load") for line in said) or errors, (said, errors)

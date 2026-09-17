@@ -52,7 +52,7 @@ class _LanguageNotifier(QtCore.QObject):
 language_notifier = _LanguageNotifier()
 
 
-def _live_notifier() -> "_LanguageNotifier":
+def _live_notifier() -> _LanguageNotifier:
     """Return :data:`language_notifier`, recreating it if its C++ side was deleted.
 
     A module-level ``QObject`` can outlive its underlying C++ object across
@@ -67,6 +67,7 @@ def _live_notifier() -> "_LanguageNotifier":
     except RuntimeError:
         language_notifier = _LanguageNotifier()
     return language_notifier
+
 
 #: Human-readable, self-endonym display names for known locale codes. Codes not
 #: listed fall back to the bare code so a new ``.qm`` is still selectable.
@@ -126,10 +127,10 @@ _FLAG_SPECS: dict[str, tuple[str, object]] = {
 
 #: Cache of painted flag icons keyed by ``(code, height)`` so repeated menu/combo
 #: rebuilds don't re-paint.
-_flag_icon_cache: dict[tuple[str, int], "QtGui.QIcon"] = {}
+_flag_icon_cache: dict[tuple[str, int], QtGui.QIcon] = {}
 
 
-def _flag_pixmap(code: str, w: int, h: int) -> "QtGui.QPixmap":
+def _flag_pixmap(code: str, w: int, h: int) -> QtGui.QPixmap:
     """Paint a flag for ``code`` into a ``w×h`` pixmap (HiDPI-aware)."""
     app = QtWidgets.QApplication.instance()
     dpr = float(app.devicePixelRatio()) if app is not None else 1.0
@@ -188,7 +189,7 @@ def _flag_pixmap(code: str, w: int, h: int) -> "QtGui.QPixmap":
     return pm
 
 
-def _draw_star(p: "QtGui.QPainter", centre: "QtCore.QPointF", r: float, colour: "QtGui.QColor") -> None:
+def _draw_star(p: QtGui.QPainter, centre: QtCore.QPointF, r: float, colour: QtGui.QColor) -> None:
     """Draw a filled five-pointed star centred at ``centre`` with radius ``r``."""
     import math
 
@@ -198,14 +199,16 @@ def _draw_star(p: "QtGui.QPainter", centre: "QtCore.QPointF", r: float, colour: 
         poly.append(QtCore.QPointF(centre.x() + r * math.cos(ang), centre.y() + r * math.sin(ang)))
         inner = -math.pi / 2 + (i + 0.5) * 2 * math.pi / 5
         poly.append(
-            QtCore.QPointF(centre.x() + r * 0.4 * math.cos(inner), centre.y() + r * 0.4 * math.sin(inner))
+            QtCore.QPointF(
+                centre.x() + r * 0.4 * math.cos(inner), centre.y() + r * 0.4 * math.sin(inner)
+            )
         )
     p.setPen(QtCore.Qt.PenStyle.NoPen)
     p.setBrush(colour)
     p.drawPolygon(poly)
 
 
-def _draw_union_jack(p: "QtGui.QPainter", w: int, h: int) -> None:
+def _draw_union_jack(p: QtGui.QPainter, w: int, h: int) -> None:
     """Paint a simplified but recognisable Union Jack into a ``w×h`` area."""
     blue = QtGui.QColor("#012169")
     white = QtGui.QColor("#FFFFFF")
@@ -231,7 +234,7 @@ def _draw_union_jack(p: "QtGui.QPainter", w: int, h: int) -> None:
     p.fillRect(QtCore.QRectF(0, (h - hh2) / 2, w, hh2), red)
 
 
-def language_flag_icon(code: str, height: int = 14) -> "QtGui.QIcon":
+def language_flag_icon(code: str, height: int = 14) -> QtGui.QIcon:
     """Return a painted flag :class:`QIcon` for ``code`` (cached by size).
 
     Painted icons are used instead of emoji flags because regional-indicator

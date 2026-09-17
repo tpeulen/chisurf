@@ -11,6 +11,7 @@ every chain's copy -- one residue marked 104 atoms instead of 13, and one picked
 *atom* mapped back to eight residues. Every count here is cross-checked against
 the atom table rather than against another part of the same code.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -24,7 +25,11 @@ pytest.importorskip("qtpy")
 #: chain-aware lookup from an id-only one, which is how the bug survived.
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "1rtd.pdb"
 )
 FALLBACK = PDB.with_name("148l.pdb")
 
@@ -115,7 +120,7 @@ def test_each_level_selects_what_it_says(session):
     run, viewer = session
     _atoms, chains, res_ids = _atom_table(viewer)
     pick = _a_multi_chain_pick(viewer)
-    chain, resi = chains[pick], res_ids[pick]
+    chain, _resi = chains[pick], res_ids[pick]
     residues_in_chain = len(
         set(zip(chains[chains == chain].tolist(), res_ids[chains == chain].tolist()))
     )
@@ -154,9 +159,7 @@ def test_the_atoms_level_marks_one_atom(session):
         residues = viewer._residues_holding_selected_atoms([])
         assert len(residues) == 1, "one atom reached more than one residue"
         viewer._selected_residues = residues
-        marks = viewer._selection_atom_positions(
-            np.asarray(viewer._coords, dtype=float)
-        )
+        marks = viewer._selection_atom_positions(np.asarray(viewer._coords, dtype=float))
         assert marks is not None and len(marks) == 1
     finally:
         viewer._selected_atoms = []
@@ -195,8 +198,8 @@ def test_atom_selection_merges_like_the_residue_one(session):
 
 def test_the_block_row_cycles_and_is_hit_testable(session):
     """The row was drawn and unreachable, which is what made the word a label."""
-    from chimol.ui.input.mouse_modes import SELECTION_LEVELS
     from chimol.ui.gui import InternalGui
+    from chimol.ui.input.mouse_modes import SELECTION_LEVELS
 
     sent: list[str] = []
     gui = InternalGui(run_command=sent.append)

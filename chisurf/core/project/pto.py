@@ -12,8 +12,8 @@ import json
 import os
 import pathlib
 import tempfile
-from typing import Any, Mapping, Optional
-
+from collections.abc import Mapping
+from typing import Any
 
 PROJECT_SUFFIX = ".cs.pto"
 PROFILE = "ChiSurf.Project"
@@ -88,7 +88,7 @@ def write_project(
     path: str | pathlib.Path,
     payload: Mapping[str, Any],
     *,
-    session_bytes: Optional[bytes] = None,
+    session_bytes: bytes | None = None,
 ) -> pathlib.Path:
     """Write one validated PTO project, then atomically publish it.
 
@@ -104,7 +104,9 @@ def write_project(
     tttrlib = _tttrlib()
     handle = tttrlib.PtoFile()
     try:
-        if not handle.create(str(temporary), str(payload.get("meta", {}).get("name") or target.stem)):
+        if not handle.create(
+            str(temporary), str(payload.get("meta", {}).get("name") or target.stem)
+        ):
             raise ProjectPtoError(f"Could not create {temporary}: {handle.error()}")
         handle.set_writing_app("ChiSurf")
         _tag_text(tttrlib, handle, "chisurf.profile", PROFILE)
@@ -135,7 +137,7 @@ def write_project(
             temporary.unlink()
 
 
-def read_project(path: str | pathlib.Path) -> tuple[dict[str, Any], Optional[bytes]]:
+def read_project(path: str | pathlib.Path) -> tuple[dict[str, Any], bytes | None]:
     """Read and validate the portable project payload and optional BFF session."""
     source = pathlib.Path(path)
     if not source.is_file():
@@ -148,8 +150,12 @@ def read_project(path: str | pathlib.Path) -> tuple[dict[str, Any], Optional[byt
         problems = _problems(handle)
         if problems:
             raise ProjectPtoError(f"PTO validation failed for {source}: {'; '.join(problems)}")
-        profile = next((tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile"), "")
-        version = next((tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile_version"), "")
+        profile = next(
+            (tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile"), ""
+        )
+        version = next(
+            (tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile_version"), ""
+        )
         if profile != PROFILE or version != str(PROFILE_VERSION):
             raise ProjectPtoError(
                 f"Unsupported ChiSurf PTO profile {profile!r} version {version!r}"
@@ -162,7 +168,11 @@ def read_project(path: str | pathlib.Path) -> tuple[dict[str, Any], Optional[byt
         if not isinstance(payload, dict):
             raise ProjectPtoError("Project payload must be a JSON object")
         session = None
-        matches = [obj.uid for obj in handle.objects() if obj.kind == _SESSION_KIND and obj.name == _SESSION_NAME]
+        matches = [
+            obj.uid
+            for obj in handle.objects()
+            if obj.kind == _SESSION_KIND and obj.name == _SESSION_NAME
+        ]
         if len(matches) > 1:
             raise ProjectPtoError("Project contains more than one native graph session")
         if matches:
@@ -229,10 +239,16 @@ def read_entries(path: str | pathlib.Path) -> dict[str, bytes]:
         problems = _problems(handle)
         if problems:
             raise ProjectPtoError(f"PTO validation failed for {source}: {'; '.join(problems)}")
-        profile = next((tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile"), "")
-        version = next((tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile_version"), "")
+        profile = next(
+            (tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile"), ""
+        )
+        version = next(
+            (tag.text for tag in handle.tags_for(0) if tag.name == "chisurf.profile_version"), ""
+        )
         if profile != PROFILE or version != str(PROFILE_VERSION):
-            raise ProjectPtoError(f"Unsupported ChiSurf PTO profile {profile!r} version {version!r}")
+            raise ProjectPtoError(
+                f"Unsupported ChiSurf PTO profile {profile!r} version {version!r}"
+            )
         entries: dict[str, bytes] = {}
         for obj in handle.objects():
             if obj.kind != _ARCHIVE_ENTRY_KIND:

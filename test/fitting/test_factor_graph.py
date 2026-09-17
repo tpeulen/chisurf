@@ -6,6 +6,7 @@ every evaluation. These tests pin the graph that makes the factorisation
 explicit: which datasets a parameter touches (relevance), how the fit decomposes
 into blocks and separators, and what its treewidth is.
 """
+
 import numpy as np
 import pytest
 
@@ -44,23 +45,21 @@ def _global_fit(n_datasets: int = 4, seed: int = 0):
     x = np.linspace(0.0, 5.0, N_POINTS)
     curves = []
     for k in range(n_datasets):
-        y = 3.1 + (1.0 + 0.1 * k) * x ** 2 + rng.normal(0.0, SIGMA, x.size)
-        curves.append(
-            chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
-        )
+        y = 3.1 + (1.0 + 0.1 * k) * x**2 + rng.normal(0.0, SIGMA, x.size)
+        curves.append(chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup(curves),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     for f in fit:
         f.fit_range = 0, len(f.model.y)
-        f.model.func = 'c+a*x**2'
+        f.model.func = "c+a*x**2"
         f.model.find_parameters()
     fit._model.find_parameters()
     return fit
 
 
-def _link_across(fit, name: str = 'a'):
+def _link_across(fit, name: str = "a"):
     """Link the named parameter of every local fit to the first fit's copy."""
     master = [p for p in fit[0].model.parameters_all if p.name == name][0]
     for local in list(fit)[1:]:
@@ -103,7 +102,7 @@ def test_unlinked_group_decomposes_into_independent_datasets():
 def test_linking_a_parameter_creates_a_star_with_one_separator():
     """A shared parameter couples the datasets through a single separator."""
     fit = _global_fit(4)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
     # The three linked copies are no longer free.
@@ -112,14 +111,14 @@ def test_linking_a_parameter_creates_a_star_with_one_separator():
 
     seps = [s for s in g.separators() if s]
     assert len(seps) == 1
-    assert _named(g, seps[0]) == ('1:a',)
+    assert _named(g, seps[0]) == ("1:a",)
 
     # Every block is one dataset's local parameter plus the shared one.
     blocks = g.blocks()
     assert len(blocks) == 4
     for b in blocks:
         names = set(_named(g, b))
-        assert '1:a' in names
+        assert "1:a" in names
         assert len(names) == 2
     # A star stays cheap however many datasets hang off it.
     assert g.treewidth == 1
@@ -128,17 +127,17 @@ def test_linking_a_parameter_creates_a_star_with_one_separator():
 def test_relevance_maps_parameters_to_the_datasets_they_touch():
     """A local parameter must reach one dataset, a shared one must reach all."""
     fit = _global_fit(4)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
-    shared = [v for v in g.variables.values() if v.name == '1:a'][0]
+    shared = [v for v in g.variables.values() if v.name == "1:a"][0]
     assert g.affected_fits_from_indices([shared.index]) == [0, 1, 2, 3]
 
     for v in g.variables.values():
-        if v.name == '1:a':
+        if v.name == "1:a":
             continue
         # '2:c' belongs to local fit index 1, and so on.
-        expected = int(v.name.split(':')[0]) - 1
+        expected = int(v.name.split(":")[0]) - 1
         assert g.affected_fits_from_indices([v.index]) == [expected]
 
 
@@ -147,7 +146,7 @@ def test_relevance_of_an_unlinked_group_is_one_dataset_each():
     fit = _global_fit(3)
     g = build_factor_graph(fit)
     for v in g.variables.values():
-        expected = int(v.name.split(':')[0]) - 1
+        expected = int(v.name.split(":")[0]) - 1
         assert g.affected_fits_from_indices([v.index]) == [expected]
     # And the union of all of them is every dataset.
     all_idx = [v.index for v in g.variables.values()]
@@ -157,7 +156,7 @@ def test_relevance_of_an_unlinked_group_is_one_dataset_each():
 def test_fixed_parameters_leave_the_graph():
     """Fixing a parameter removes it as a variable but keeps the dataset."""
     fit = _global_fit(2)
-    p = [q for q in fit[0].model.parameters_all if q.name == 'c'][0]
+    p = [q for q in fit[0].model.parameters_all if q.name == "c"][0]
     p.fixed = True
     for local in fit:
         local.model.find_parameters()
@@ -165,7 +164,7 @@ def test_fixed_parameters_leave_the_graph():
 
     g = build_factor_graph(fit)
     assert len(g) == 3
-    assert '1:c' not in {v.name for v in g.variables.values()}
+    assert "1:c" not in {v.name for v in g.variables.values()}
     # The dataset still has a likelihood factor, now over one variable.
     like = [f for f in g.likelihood_factors() if f.fit_index == 0][0]
     assert len(like.scope) == 1
@@ -178,13 +177,13 @@ def test_informative_priors_become_factors_but_bounds_do_not():
     g_plain = build_factor_graph(fit)
     assert [f for f in g_plain.factors.values() if f.kind == PRIOR] == []
 
-    p = [q for q in fit[0].model.parameters_all if q.name == 'c'][0]
+    p = [q for q in fit[0].model.parameters_all if q.name == "c"][0]
     p.prior = NormalPrior(mu=3.1, sigma=0.1)
     g_prior = build_factor_graph(fit)
     priors = [f for f in g_prior.factors.values() if f.kind == PRIOR]
     assert len(priors) == 1
     assert len(priors[0].scope) == 1
-    assert g_prior.variables[priors[0].scope[0]].name == '1:c'
+    assert g_prior.variables[priors[0].scope[0]].name == "1:c"
     # A prior is a unary factor: it constrains but does not couple, so it must
     # not change which datasets a parameter reaches.
     assert g_prior.affected_fits(priors[0].scope) == [0]
@@ -217,13 +216,11 @@ def _single_fit(seed: int = 1):
     """
     rng = np.random.default_rng(seed)
     x = np.linspace(0.0, 5.0, N_POINTS)
-    y = 3.1 + 1.2 * x ** 2 + rng.normal(0.0, SIGMA, x.size)
+    y = 3.1 + 1.2 * x**2 + rng.normal(0.0, SIGMA, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
-    fit = chisurf.core.fitting.fit.Fit(
-        data=data, model_class=chisurf.core.models.parse.ParseModel
-    )
+    fit = chisurf.core.fitting.fit.Fit(data=data, model_class=chisurf.core.models.parse.ParseModel)
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     return fit
 
@@ -239,28 +236,28 @@ def test_single_fit_is_one_clique():
 def test_elimination_orders_are_deterministic_and_validated():
     """Both heuristics must be reproducible; an unknown one must be refused."""
     fit = _global_fit(4)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
     assert g.elimination_order() == g.elimination_order()
-    assert sorted(g.elimination_order('min_degree')) == sorted(g.variables)
+    assert sorted(g.elimination_order("min_degree")) == sorted(g.variables)
     with pytest.raises(ValueError):
-        g.elimination_order('cheapest')
+        g.elimination_order("cheapest")
 
 
 def test_junction_tree_edges_carry_their_separator():
     """Every clique-tree edge must expose the variables its cliques share."""
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
     tree = g.junction_tree()
 
     assert tree.number_of_nodes() == 3
     assert tree.number_of_edges() == 2
     for a, b, data in tree.edges(data=True):
-        sep = data['separator']
+        sep = data["separator"]
         assert set(sep) == set(a) & set(b)
-        assert _named(g, sep) == ('1:a',)
+        assert _named(g, sep) == ("1:a",)
 
 
 def test_structure_version_invalidates_a_cached_graph():
@@ -280,11 +277,11 @@ def test_structure_version_invalidates_a_cached_graph():
 def test_describe_reports_the_identifiability_statement():
     """The report must name the shared parameters, not just count things."""
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     text = build_factor_graph(fit).describe()
-    assert 'treewidth' in text
-    assert '1:a' in text
-    assert 'components     : 1' in text
+    assert "treewidth" in text
+    assert "1:a" in text
+    assert "components     : 1" in text
 
 
 def test_structural_queries_are_computed_once_per_graph():
@@ -298,7 +295,7 @@ def test_structural_queries_are_computed_once_per_graph():
     defending does.)
     """
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
     order = g.elimination_order()
@@ -323,12 +320,12 @@ def test_structural_queries_are_computed_once_per_graph():
 def test_cached_structures_are_handed_out_as_copies():
     """A caller that mutates a returned list must not corrupt the cache."""
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
     order = g.elimination_order()
-    order.append('bogus')
-    assert 'bogus' not in g.elimination_order()
+    order.append("bogus")
+    assert "bogus" not in g.elimination_order()
 
     cliques = g.cliques()
     cliques.clear()
@@ -345,9 +342,7 @@ def test_a_complete_graph_skips_the_greedy_elimination():
     g = build_factor_graph(_single_fit())
     assert g.treewidth == len(g) - 1
     assert g.cliques() == [tuple(sorted(g.variables))]
-    assert g.elimination_order() == sorted(
-        g.variables, key=lambda key: g.index_of(key)
-    )
+    assert g.elimination_order() == sorted(g.variables, key=lambda key: g.index_of(key))
 
 
 def test_a_star_is_not_mistaken_for_a_complete_graph():
@@ -361,7 +356,7 @@ def test_a_star_is_not_mistaken_for_a_complete_graph():
     It is the shape a global fit *has*, and nothing said anything was wrong.
     """
     fit = _global_fit(3)
-    _link_across(fit, 'a')
+    _link_across(fit, "a")
     g = build_factor_graph(fit)
 
     assert len(g) == 4

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import Evaluator, EvaluatorResult
 
@@ -10,16 +10,17 @@ from .base import Evaluator, EvaluatorResult
 class Chi2Evaluator(Evaluator):
     """Evaluates total chi2 over a set of distance restraints."""
 
-    def __init__(self, name: str, restraints: List[Dict[str, Any]]) -> None:
+    def __init__(self, name: str, restraints: list[dict[str, Any]]) -> None:
         super().__init__(name)
         self.restraints = restraints
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
-        from ..core.distance import model_distance, chi2_score
+        from ..core.distance import chi2_score, model_distance
+
         total_chi2 = 0.0
         for r in self.restraints:
             pos1 = r["position1"]
@@ -45,16 +46,17 @@ class Chi2Evaluator(Evaluator):
 class ReducedChi2Evaluator(Evaluator):
     """Evaluates reduced chi2, i.e., chi2 / (n_valid - 1)."""
 
-    def __init__(self, name: str, restraints: List[Dict[str, Any]]) -> None:
+    def __init__(self, name: str, restraints: list[dict[str, Any]]) -> None:
         super().__init__(name)
         self.restraints = restraints
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
-        from ..core.distance import model_distance, chi2_score
+        from ..core.distance import chi2_score, model_distance
+
         total_chi2 = 0.0
         n_valid = 0
         for r in self.restraints:
@@ -109,15 +111,16 @@ class Chi2ContributionEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av1 = av_cache.get(self.position1)
         av2 = av_cache.get(self.position2)
         if av1 is None or av2 is None or not av1.has_volume or not av2.has_volume:
             return EvaluatorResult(self.name, 0.0, "")
 
-        from ..core.distance import model_distance, chi2_score
+        from ..core.distance import chi2_score, model_distance
+
         d_model = model_distance(av1, av2, self.distance_type, self.forster_radius)
         contrib = chi2_score(d_model, self.distance, self.error_neg, self.error_pos)
         return EvaluatorResult(self.name, float(contrib), "")

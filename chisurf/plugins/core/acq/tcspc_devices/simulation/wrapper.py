@@ -12,8 +12,8 @@ from datetime import datetime
 import numpy as np
 from qtpy.QtCore import Signal
 
-from .core.streaming import TttrlibSimulator
 from ..abc import TCSPCDeviceABC
+from .core.streaming import TttrlibSimulator
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +308,7 @@ class SimulationDevice(TCSPCDeviceABC):
         """
         remaining = len(self.current_buffer) - self.buffer_index
         to_return = min(remaining, max_records)
-        chunk = self.current_buffer[self.buffer_index:self.buffer_index + to_return]
+        chunk = self.current_buffer[self.buffer_index : self.buffer_index + to_return]
         self.buffer_index += to_return
         if self.buffer_index >= len(self.current_buffer):
             self.current_buffer = np.array([], dtype=np.uint32)

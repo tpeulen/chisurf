@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+
 from chisurf.server.eventbus import EventBus, InProcessEventBus
 
 

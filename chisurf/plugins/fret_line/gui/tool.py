@@ -31,16 +31,18 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 import chisurf.core.data as _data
 import chisurf.core.fitting.fit as _fit
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.models.model_editor import build_model_editor
 
 from ..core.algorithms import compute_fret_line_for_models, sweep_targets_for_models
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 # display name → "module:attribute" of the BFF-described view class
@@ -516,7 +518,8 @@ class FRETLineTool(QtWidgets.QWidget):
             current.add(owner_id)
             try:
                 register_parameter_group(
-                    model, owner_id=owner_id,
+                    model,
+                    owner_id=owner_id,
                     label=f"FRET Line C{i}: {comp.get('label', '')}",
                 )
             except Exception:
@@ -620,7 +623,7 @@ class FRETLineTool(QtWidgets.QWidget):
         self._line_show_all_btn.setEnabled(has)
         self._line_hide_all_btn.setEnabled(has)
 
-    def _on_line_item_changed(self, item: "QtWidgets.QListWidgetItem") -> None:
+    def _on_line_item_changed(self, item: QtWidgets.QListWidgetItem) -> None:
         row = self._lines_list.row(item)
         if not (0 <= row < len(self._lines)):
             return
@@ -716,9 +719,7 @@ class FRETLineTool(QtWidgets.QWidget):
                             f"{ln['name']},{sweep},{ln['log']},{comps},"
                             f"{p:.8g},{tf:.8g},{tx:.8g},{e:.8g}\n"
                         )
-            dialogs.information(
-                self, "Saved", f"Saved {len(self._lines)} line(s) to:\n{path}"
-            )
+            dialogs.information(self, "Saved", f"Saved {len(self._lines)} line(s) to:\n{path}")
         except Exception as exc:
             dialogs.error(self, "Save error", str(exc))
 
@@ -740,9 +741,7 @@ class FRETLineTool(QtWidgets.QWidget):
             if isinstance(w, CurveOverlayWidget) and w.isVisible()
         ]
         if not overlays:
-            dialogs.information(
-                self, "Push to ndX", "No visible ndX Overlay panel found."
-            )
+            dialogs.information(self, "Push to ndX", "No visible ndX Overlay panel found.")
             return
 
         def _make_curve(line):

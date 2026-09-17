@@ -79,9 +79,9 @@ class HistoryManager:
     """
 
     def __init__(
-            self,
-            path: pathlib.Path | bool | None = None,
-            max_entries: int = 5000,
+        self,
+        path: pathlib.Path | bool | None = None,
+        max_entries: int = 5000,
     ) -> None:
         self.max_entries = max_entries
         self.entries: list[str] = []
@@ -130,7 +130,7 @@ class HistoryManager:
             return
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            payload = "\n".join(_encode(entry) for entry in self.entries[-self.max_entries:])
+            payload = "\n".join(_encode(entry) for entry in self.entries[-self.max_entries :])
             self.path.write_text(payload + "\n", encoding="utf-8")
         except OSError:
             pass

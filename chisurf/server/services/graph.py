@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from chisurf.server.services import ServiceResult
 from chisurf.server.session import SessionState
 
 
-def _safe_float(val: Any) -> Optional[float]:
+def _safe_float(val: Any) -> float | None:
     """Convert *val* to float, returning ``None`` on failure.
 
     Parameters
@@ -23,8 +23,8 @@ def _safe_float(val: Any) -> Optional[float]:
 
 def build_fit_graph(
     state: SessionState,
-    fit_indices: Optional[List[int]] = None,
-    fit_uids: Optional[List[str]] = None,
+    fit_indices: list[int] | None = None,
+    fit_uids: list[str] | None = None,
     include_fixed: bool = True,
     connect_owners: bool = False,
 ) -> ServiceResult:
@@ -49,10 +49,10 @@ def build_fit_graph(
     else:
         selected = list(enumerate(fits))
 
-    nodes: List[Dict[str, Any]] = []
-    edges: List[Dict[str, Any]] = []
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
     node_idx = 0
-    fit_node_ids: Dict[int, int] = {}  # fit_index -> node_idx
+    fit_node_ids: dict[int, int] = {}  # fit_index -> node_idx
 
     for fit_idx, fit in selected:
         fit_name = str(getattr(fit, "name", "fit"))
@@ -130,10 +130,9 @@ def build_fit_graph(
     # session — three fits of one model turned one link into three arrows, two
     # of them fiction.
     by_uid = {
-        n["param_uid"]: n for n in nodes
-        if n["node_type"] == "parameter" and n.get("param_uid")
+        n["param_uid"]: n for n in nodes if n["node_type"] == "parameter" and n.get("param_uid")
     }
-    by_name: Dict[str, Any] = {}
+    by_name: dict[str, Any] = {}
     for n in nodes:
         if n["node_type"] == "parameter":
             by_name.setdefault(n["name"], n)
@@ -153,7 +152,7 @@ def build_fit_graph(
     if connect_owners:
         owners = [n for n in nodes if n["node_type"] in ("fit", "group")]
         for i, a in enumerate(owners):
-            for b in owners[i + 1:]:
+            for b in owners[i + 1 :]:
                 edges.append({"source": a["node_idx"], "target": b["node_idx"]})
 
     return {

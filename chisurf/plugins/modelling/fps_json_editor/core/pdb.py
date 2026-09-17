@@ -7,14 +7,14 @@ plugin. This module re-exports it so the plugin's own imports keep working.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from chisurf.core.fio.structure.fetch import (  # noqa: F401
     RCSB_PDB_URL_TEMPLATE,
-    default_cache_dir as _shared_cache_dir,
     download_pdb_file,
     download_structure,
     pdb_source_url,
 )
-from pathlib import Path
 
 __all__ = [
     "RCSB_PDB_URL_TEMPLATE",

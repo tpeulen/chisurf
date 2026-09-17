@@ -14,12 +14,12 @@ layout. The controls sat in two ``QGroupBox``\ es above the plot in a grid whose
 second column absorbed the whole window width, which is why a spin box for a
 number between 0 and 1 was eight hundred pixels wide.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from chisurf.core import graph as cg
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
@@ -28,6 +28,7 @@ import chisurf.core.models
 import chisurf.core.parameter
 import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.core import graph as cg
 from chisurf.core.parameter import Parameter
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
@@ -46,7 +47,9 @@ from chisurf.plugins.core.globalview.gui.network_widget import ParameterNetworkW
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 GRAPH_LAYOUTS = [
@@ -83,7 +86,7 @@ class GraphWizard(ChisurfDockTool):
 
     def __init__(
         self,
-        fit_list: Optional[List[Any]] = None,
+        fit_list: list[Any] | None = None,
         parent=None,
         connect_owners: bool = False,
         include_fixed: bool = False,
@@ -97,15 +100,15 @@ class GraphWizard(ChisurfDockTool):
         self.fit_list = fit_list
 
         self.G: cg.Graph = None
-        self.node_objects: Dict[Any, Any] = {}
-        self.node_data: Dict[str, Any] = {}
-        self.connections: List[List[int]] = []
+        self.node_objects: dict[Any, Any] = {}
+        self.node_data: dict[str, Any] = {}
+        self.connections: list[list[int]] = []
 
         #: Structure of the network as last drawn — node names, kinds and edges.
         #: A value changing is not a reason to re-run a layout algorithm; only a
         #: parameter appearing, disappearing, or changing what it *is* (fixed,
         #: linked, free) can move a node.
-        self._signature: Optional[tuple] = None
+        self._signature: tuple | None = None
         #: Set when a change arrived that has not been drawn — because auto
         #: refresh is off, or because the window is not on screen.
         self._stale = False
@@ -166,17 +169,16 @@ class GraphWizard(ChisurfDockTool):
         self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolbar)
 
         self._btn_load = action_button(
-            "add", tooltip="Load a parameter network from a GraphML (.gml) file",
+            "add",
+            tooltip="Load a parameter network from a GraphML (.gml) file",
         )
         self._btn_save = action_button(
-            "save", tooltip="Save the current parameter network to a GraphML (.gml) file",
+            "save",
+            tooltip="Save the current parameter network to a GraphML (.gml) file",
         )
         self._btn_redraw = action_button(
             "refresh",
-            tooltip=(
-                "Rebuild the network from the current fits and links, and lay it "
-                "out again"
-            ),
+            tooltip=("Rebuild the network from the current fits and links, and lay it out again"),
         )
         # Icon-only everywhere else, but this is the one button someone reaches
         # for when the picture disagrees with the fits, so it says so.
@@ -224,13 +226,14 @@ class GraphWizard(ChisurfDockTool):
         self._btn_reset_view = QtWidgets.QToolButton()
         self._btn_reset_view.setText("⌖")
         self._btn_reset_view.setToolTip(
-            "Fit the network back into the panel — undoes zoom, pan and any "
-            "nodes you dragged"
+            "Fit the network back into the panel — undoes zoom, pan and any nodes you dragged"
         )
         self.toolbar.addWidget(self._btn_reset_view)
 
         self.add_toolbar_help(
-            self.toolbar, resource="help.md", title="Global View — help",
+            self.toolbar,
+            resource="help.md",
+            title="Global View — help",
         )
 
     def _build_view_panel(self) -> QtWidgets.QWidget:
@@ -352,9 +355,7 @@ class GraphWizard(ChisurfDockTool):
         self._combo_layout.currentIndexChanged.connect(
             lambda _=None: self.recompute_graph(force=True)
         )
-        self._spin_graph_scale.valueChanged.connect(
-            lambda _=None: self.recompute_graph(force=True)
-        )
+        self._spin_graph_scale.valueChanged.connect(lambda _=None: self.recompute_graph(force=True))
         # Node size is pure appearance — it does not change the layout, so it
         # repaints rather than re-running the layout algorithm.
         self._spin_node_size.valueChanged.connect(self._apply_node_size)
@@ -463,16 +464,18 @@ class GraphWizard(ChisurfDockTool):
 
     def make_graph_plot(
         self,
-        fit_list: List[Any],
+        fit_list: list[Any],
         update_callback=None,
         node_size: float = 13.0,
         connect_owners: bool = False,
         include_fixed: bool = True,
         force: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Rebuild the network and draw it. Returns the node bookkeeping."""
         connections, node_data = self.make_graph(
-            connect_owners, fit_list=fit_list, include_fixed=include_fixed,
+            connect_owners,
+            fit_list=fit_list,
+            include_fixed=include_fixed,
         )
         edges = self._reindexed_edges(connections, node_data["ids"])
         signature = (
@@ -502,7 +505,7 @@ class GraphWizard(ChisurfDockTool):
         return node_data
 
     @staticmethod
-    def _reindexed_edges(connections, node_ids) -> List[List[int]]:
+    def _reindexed_edges(connections, node_ids) -> list[list[int]]:
         """Re-express edges as positions in `node_ids`.
 
         The canvas indexes nodes by their position in the arrays it is handed,
@@ -543,9 +546,7 @@ class GraphWizard(ChisurfDockTool):
     def _mark_stale(self) -> None:
         """Say the picture no longer matches the fits."""
         self._stale = True
-        self.statusBar().showMessage(
-            "The fits changed — press ⟳ Refresh to redraw the network."
-        )
+        self.statusBar().showMessage("The fits changed — press ⟳ Refresh to redraw the network.")
 
     def _on_auto_toggled(self, enabled: bool) -> None:
         """Catch up immediately when automatic refreshing is switched back on."""
@@ -557,7 +558,7 @@ class GraphWizard(ChisurfDockTool):
                 5000,
             )
 
-    def showEvent(self, event) -> None:                          # noqa: N802 (Qt)
+    def showEvent(self, event) -> None:  # noqa: N802 (Qt)
         """Catch up on changes that arrived while the window was hidden."""
         super().showEvent(event)
         # Now the docks have their real geometry, so what the user does to them
@@ -570,7 +571,7 @@ class GraphWizard(ChisurfDockTool):
         """Start remembering dock arrangements (deferred until after layout)."""
         self._layout_ready = True
 
-    def _update_status(self, node_data: Dict[str, Any]) -> None:
+    def _update_status(self, node_data: dict[str, Any]) -> None:
         """Report what is on screen, since an empty canvas is otherwise mute."""
         types = node_data.get("types", [])
         n_owner = sum(1 for t in types if t in (0, 4))
@@ -590,15 +591,13 @@ class GraphWizard(ChisurfDockTool):
         self,
         connect_owners: bool = False,
         include_fixed: bool = False,
-        fit_list: Optional[List[Any]] = None,
+        fit_list: list[Any] | None = None,
     ):
         """Build the graph and the per-node bookkeeping the GUI needs."""
         if fit_list is None:
             fc = get_fitting_client()
             fit_list = fc.get_fit_objects() if fc is not None else []
-        G, node_objects, connections = self.build_graph(
-            include_fixed, fit_list, connect_owners
-        )
+        G, node_objects, connections = self.build_graph(include_fixed, fit_list, connect_owners)
 
         node_names = []
         node_ids = []
@@ -626,13 +625,11 @@ class GraphWizard(ChisurfDockTool):
         # not say which one is being edited — and the editor panel showed
         # exactly that: two rows both labelled ``tau1``.
         owner_of = {
-            src: tgt for src, tgt in connections
+            src: tgt
+            for src, tgt in connections
             if G.nodes.get(tgt, {}).get("node.type") in ("fit", "group")
         }
-        owners = [
-            str(G.nodes.get(owner_of.get(k), {}).get("node.name", ""))
-            for k in node_ids
-        ]
+        owners = [str(G.nodes.get(owner_of.get(k), {}).get("node.name", "")) for k in node_ids]
 
         self.G = G
         return connections, {
@@ -647,9 +644,9 @@ class GraphWizard(ChisurfDockTool):
     @staticmethod
     def build_graph(
         include_fixed: bool = True,
-        fit_list: List[Any] = None,
+        fit_list: list[Any] = None,
         connect_owners: bool = False,
-        group_list: Optional[List[Any]] = None,
+        group_list: list[Any] | None = None,
         **kwargs,
     ):
         """Build the node graph and resolve every node to its live object.
@@ -671,9 +668,13 @@ class GraphWizard(ChisurfDockTool):
             from chisurf.core.registry.parameter_groups import (
                 iter_registered_parameter_groups,
             )
+
             group_list = iter_registered_parameter_groups()
         api_result = api_build_graph(
-            fit_list, include_fixed, connect_owners, group_list=group_list,
+            fit_list,
+            include_fixed,
+            connect_owners,
+            group_list=group_list,
         )
         G = graph_result_to_graph(api_result)
 
@@ -694,9 +695,9 @@ class GraphWizard(ChisurfDockTool):
                 obj = Base.find_by_uuid(n.param_uid) if n.param_uid else None
                 if obj is None and 0 <= n.fit_idx < len(fit_list):
                     try:
-                        obj = getattr(
-                            fit_list[n.fit_idx].model, "parameters_all_dict", {}
-                        ).get(n.name)
+                        obj = getattr(fit_list[n.fit_idx].model, "parameters_all_dict", {}).get(
+                            n.name
+                        )
                     except Exception:
                         obj = None
                 node_objects[n.node_idx] = obj
@@ -726,13 +727,10 @@ class GraphWizard(ChisurfDockTool):
         return self._check_clear_all.isChecked()
 
     @property
-    def selected_nodes(self) -> List[Any]:
+    def selected_nodes(self) -> list[Any]:
         """Return the live objects behind the selected nodes, oldest first."""
         objects = self.node_data.get("objects", [])
-        return [
-            objects[i] for i in self.graph_widget.selected_nodes_idx
-            if 0 <= i < len(objects)
-        ]
+        return [objects[i] for i in self.graph_widget.selected_nodes_idx if 0 <= i < len(objects)]
 
     @property
     def graph_layout(self) -> str:
@@ -765,7 +763,8 @@ class GraphWizard(ChisurfDockTool):
         """Show an editor for every selected parameter, under its owner's name."""
         cs.gui.widgets.general.clear_layout(self.parameter_layout)
         indices = [
-            i for i in self.graph_widget.selected_nodes_idx
+            i
+            for i in self.graph_widget.selected_nodes_idx
             if 0 <= i < len(self.node_data.get("objects", []))
         ]
         owners = self.node_data.get("owners", [])
@@ -791,7 +790,7 @@ class GraphWizard(ChisurfDockTool):
 
     # ── linking ───────────────────────────────────────────────────────
 
-    def _fit_idx_for_node(self, obj: Any) -> Optional[int]:
+    def _fit_idx_for_node(self, obj: Any) -> int | None:
         try:
             idx = self.node_data.get("objects", []).index(obj)
             return self.node_data.get("fit_indices", [])[idx]
@@ -873,7 +872,8 @@ class GraphWizard(ChisurfDockTool):
                 for p in getattr(fit.model, "parameters_all", []):
                     if fc is not None:
                         fc.unlink_parameter(
-                            parameter_name=str(p.name), fit_index=fit_idx,
+                            parameter_name=str(p.name),
+                            fit_index=fit_idx,
                         )
         else:
             for n in self.selected_nodes:
@@ -883,7 +883,8 @@ class GraphWizard(ChisurfDockTool):
                 if fc is not None:
                     if fit_idx is not None and fit_idx >= 0:
                         fc.unlink_parameter(
-                            parameter_name=str(n.name), fit_index=fit_idx,
+                            parameter_name=str(n.name),
+                            fit_index=fit_idx,
                         )
                     else:
                         fc.unlink_parameter(
@@ -937,18 +938,17 @@ class GraphWizard(ChisurfDockTool):
         uid = G.nodes[node].get("param.uid", "")
         if uid:
             from chisurf.core.base import Base
+
             p = Base.find_by_uuid(uid)
             if p is not None:
                 return p
         fit = self.get_fit(G, node)
         if fit is None:
             return None
-        return getattr(fit.model, "parameters_all_dict", {}).get(
-            G.nodes[node]["node.name"]
-        )
+        return getattr(fit.model, "parameters_all_dict", {}).get(G.nodes[node]["node.name"])
 
     @staticmethod
-    def _node_param_address(G: cg.Graph, node: Any, param: Any) -> Dict[str, Any]:
+    def _node_param_address(G: cg.Graph, node: Any, param: Any) -> dict[str, Any]:
         """Return the RPC address kwargs for a graph node's parameter.
 
         Fit parameters keep the fit-addressed path (``parameter_name`` +
@@ -990,9 +990,7 @@ class GraphWizard(ChisurfDockTool):
                 if tgt_idx is not None and tgt_idx >= 0:
                     kw["target_fit_index"] = tgt_idx
                 else:
-                    kw["target_parameter_uid"] = str(
-                        getattr(p1, "unique_identifier", "")
-                    )
+                    kw["target_parameter_uid"] = str(getattr(p1, "unique_identifier", ""))
                 fc.link_parameters(**kw)
 
         self.recompute_graph()
@@ -1016,7 +1014,9 @@ class GraphWizard(ChisurfDockTool):
             # The event may arrive off the GUI thread, so it is bounced through
             # the event loop before touching a widget; ``_on_change_event`` then
             # coalesces the burst.
-            cb = lambda p: QtCore.QTimer.singleShot(0, self._on_change_event)
+            def cb(p):
+                return QtCore.QTimer.singleShot(0, self._on_change_event)
+
             fc.subscribe(topic, cb)
             self._subscription_tokens.append((topic, cb))
 

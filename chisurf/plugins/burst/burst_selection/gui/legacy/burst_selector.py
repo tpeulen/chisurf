@@ -24,7 +24,10 @@ from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 from chisurf.gui.progress import ChiSurfProgress
@@ -38,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 class DirectoryDropListWidget(QtWidgets.QListWidget):
     """QListWidget that accepts folder drops and emits a list of dropped paths."""
+
     pathsDropped = QtCore.Signal(list)
 
     def __init__(self, parent=None):
@@ -90,7 +94,8 @@ class BatchProcessingDialog(QtWidgets.QDialog):
     containing TTTR files, list them, and process sequentially using the
     provided BrickMicWizard instance.
     """
-    def __init__(self, parent_wizard: 'BurstSelectionTool'):
+
+    def __init__(self, parent_wizard: "BurstSelectionTool"):
         super().__init__(parent_wizard)
         self.wizard = parent_wizard
         self.setWindowTitle("Batch Burst Analysis")
@@ -127,9 +132,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
         self.btn_clear.clicked.connect(self.list_widget.clear)
         self.btn_process.clicked.connect(self._process)
 
-        self.allowed_extensions = {
-            '.ht3', '.ptu', '.spc', '.hdf', '.h5'
-        }
+        self.allowed_extensions = {".ht3", ".ptu", ".spc", ".hdf", ".h5"}
         logger.debug("BatchProcessingDialog allowed_extensions=%s", sorted(self.allowed_extensions))
 
     # --- Helpers ---
@@ -174,7 +177,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                     else:
                         # recurse into subfolders
                         found_any = False
-                        for sub in p.rglob('*'):
+                        for sub in p.rglob("*"):
                             if sub.is_dir():
                                 sub_files = self._folder_has_tttr_files(sub)
                                 if sub_files:
@@ -219,7 +222,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
             except Exception:
                 pass
 
-            logger.info("Processing folder %d/%d: %s", i+1, n, folder_str)
+            logger.info("Processing folder %d/%d: %s", i + 1, n, folder_str)
 
             # Collect TTTR files in this folder (non-recursive)
             files = []
@@ -240,7 +243,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
             # Simulate a drop of the folder path into the lineEdit-driven injector
             # The injector expands directories to files and runs the canonical loading flow
-            self.wizard.burst_finder.settings['tttr_filenames'] = files
+            self.wizard.burst_finder.settings["tttr_filenames"] = files
 
             # For user feedback show the folder in the line edit
             try:
@@ -261,8 +264,11 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                 except Exception:
                     pass
 
-            logger.debug("Batch: populated via drop handler; current files=%s", self.wizard.burst_finder.settings.get('tttr_filenames'))
-            progress.update_progress(i, text=f"Processing {folder.name} ({i+1}/{n})")
+            logger.debug(
+                "Batch: populated via drop handler; current files=%s",
+                self.wizard.burst_finder.settings.get("tttr_filenames"),
+            )
+            progress.update_progress(i, text=f"Processing {folder.name} ({i + 1}/{n})")
             QtWidgets.QApplication.processEvents()
             try:
                 self.wizard.process_all_files()
@@ -277,7 +283,9 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                     item.setBackground(QtGui.QBrush(QtGui.QColor(255, 200, 200)))
                 except Exception:
                     pass
-                logger.exception("Error processing folder '%s' with files=%s: %s", folder_str, files, e)
+                logger.exception(
+                    "Error processing folder '%s' with files=%s: %s", folder_str, files, e
+                )
                 dialogs.warning(self, "Error", f"Error processing folder:\n{folder_str}\n\n{e}")
 
             progress.update_progress(i + 1)
@@ -289,7 +297,6 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
 @persist_plugin_state("burst_selection")
 class BurstSelectionTool(ChisurfDockTool):
-
     def open_batch_dialog(self):
         dlg = BatchProcessingDialog(self)
         dlg.exec_()
@@ -311,7 +318,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
         # Use max_components from gmm_settings if not specified
         if max_components is None:
-            max_components = self.gmm_settings['max_components']
+            max_components = self.gmm_settings["max_components"]
 
         n_components_range = range(1, min(max_components + 1, len(data)))
         bic_scores = []
@@ -320,12 +327,12 @@ class BurstSelectionTool(ChisurfDockTool):
             # Fit GMM for this number of components
             gmm = GaussianMixture(
                 n_components=n_components,
-                covariance_type=self.gmm_settings['covariance_type'],
-                random_state=self.gmm_settings['random_state'],
-                max_iter=self.gmm_settings['max_iter'],
-                n_init=self.gmm_settings['n_init'],
-                tol=self.gmm_settings['tol'],
-                reg_covar=self.gmm_settings['reg_covar']
+                covariance_type=self.gmm_settings["covariance_type"],
+                random_state=self.gmm_settings["random_state"],
+                max_iter=self.gmm_settings["max_iter"],
+                n_init=self.gmm_settings["n_init"],
+                tol=self.gmm_settings["tol"],
+                reg_covar=self.gmm_settings["reg_covar"],
             )
             gmm.fit(data)
             bic_scores.append(gmm.bic(data))
@@ -341,9 +348,7 @@ class BurstSelectionTool(ChisurfDockTool):
         If the user accepts, replace current_df and refresh the UI.
         """
         if self.current_df is None:
-            dialogs.warning(
-                self, "No Data", "No burst data loaded—nothing to show."
-            )
+            dialogs.warning(self, "No Data", "No burst data loaded—nothing to show.")
             return
 
         edited = edit_store(self.current_df, parent=self, title="Burst Results")
@@ -354,14 +359,19 @@ class BurstSelectionTool(ChisurfDockTool):
         self.populate_table(self.current_df)
         self.update_histogram()
 
-
-    @chisurf.gui.decorators.init_with_ui("gui.ui", path=chisurf.core.settings.plugin_path / "burst" / "burst_selection" / "gui" / "assets")
-    def __init__(self, *args, 
-                 show_channel_selection=True,
-                 show_clear_button=False, 
-                 show_decay_button=False, 
-                 show_filter_button=False, 
-                 **kwargs):
+    @chisurf.gui.decorators.init_with_ui(
+        "gui.ui",
+        path=chisurf.core.settings.plugin_path / "burst" / "burst_selection" / "gui" / "assets",
+    )
+    def __init__(
+        self,
+        *args,
+        show_channel_selection=True,
+        show_clear_button=False,
+        show_decay_button=False,
+        show_filter_button=False,
+        **kwargs,
+    ):
         # ---------------------------------------------------------
         # Initialization
         # ---------------------------------------------------------
@@ -379,13 +389,13 @@ class BurstSelectionTool(ChisurfDockTool):
 
         # Initialize GMM settings with default values
         self.gmm_settings = {
-            'covariance_type': 'full',
-            'random_state': 42,
-            'max_iter': 300,  # Increased from 100 to allow more iterations for convergence
-            'n_init': 10,     # Increased from 5 to try more initializations
-            'tol': 1e-3,
-            'max_components': 10,
-            'reg_covar': 1e-6  # Add regularization to prevent singular covariance matrices
+            "covariance_type": "full",
+            "random_state": 42,
+            "max_iter": 300,  # Increased from 100 to allow more iterations for convergence
+            "n_init": 10,  # Increased from 5 to try more initializations
+            "tol": 1e-3,
+            "max_components": 10,
+            "reg_covar": 1e-6,  # Add regularization to prevent singular covariance matrices
         }
 
         # Create the channel settings dialog
@@ -395,8 +405,7 @@ class BurstSelectionTool(ChisurfDockTool):
         dialog_layout = QtWidgets.QVBoxLayout(self.channel_settings_dialog)
 
         self.channel_definer = chisurf.gui.widgets.wizard.DetectorWizardPage(
-            parent=self.channel_settings_dialog,
-            json_file=None
+            parent=self.channel_settings_dialog, json_file=None
         )
         dialog_layout.addWidget(self.channel_definer)
 
@@ -415,13 +424,13 @@ class BurstSelectionTool(ChisurfDockTool):
             show_burst=False,
             show_mcs=True,
             show_decay=False,
-            show_filter=False
+            show_filter=False,
         )
         self.verticalLayout_2.addWidget(self.burst_finder)
 
         # Create a chiplot Plot for the histogram.
         self.plotWidget = cp.Plot()
-        self.plotWidget.set_labels(bottom='Value', left='Frequency')
+        self.plotWidget.set_labels(bottom="Value", left="Frequency")
         while self.verticalLayout_4.count():
             child = self.verticalLayout_4.takeAt(0)
             if child.widget():
@@ -436,7 +445,9 @@ class BurstSelectionTool(ChisurfDockTool):
 
         # Add a checkbox for auto-determining optimal components
         self.checkBox_auto_components = QtWidgets.QCheckBox("Auto-determine optimal components")
-        self.checkBox_auto_components.setToolTip("Automatically determine the optimal number of Gaussian components using BIC")
+        self.checkBox_auto_components.setToolTip(
+            "Automatically determine the optimal number of Gaussian components using BIC"
+        )
         self.verticalLayout_3.addWidget(self.checkBox_auto_components)
 
         # Connect signals to update the histogram
@@ -456,7 +467,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self.pushButton_batch.clicked.connect(self.open_batch_dialog)
         except Exception:
             pass
-        
+
         # Connect checkBox_FileCSV and checkBox_FileMFDHDF to their respective handlers
         self.checkBox_FileCSV.stateChanged.connect(self.on_file_format_toggled)
         self.checkBox_FileMFDHDF.stateChanged.connect(self.on_mfd_hdf_toggled)
@@ -502,7 +513,7 @@ class BurstSelectionTool(ChisurfDockTool):
         logger.info("Main window drop: %d file(s) -> %s", len(file_paths), file_paths)
 
         # Store in burst_finder.settings and auto-process
-        self.burst_finder.settings['tttr_filenames'] = list(file_paths)
+        self.burst_finder.settings["tttr_filenames"] = list(file_paths)
         self.process_all_files()
 
     # --------------------------------------------------------------------------
@@ -515,8 +526,12 @@ class BurstSelectionTool(ChisurfDockTool):
         """
         from chisurf.core.datastore import column_names
 
-        tttr_files = self.burst_finder.settings.get('tttr_filenames', [])
-        logger.debug("process_all_files: tttr_filenames count=%d types=%s", len(tttr_files) if tttr_files else 0, list({type(f).__name__ for f in (tttr_files or [])}))
+        tttr_files = self.burst_finder.settings.get("tttr_filenames", [])
+        logger.debug(
+            "process_all_files: tttr_filenames count=%d types=%s",
+            len(tttr_files) if tttr_files else 0,
+            list({type(f).__name__ for f in (tttr_files or [])}),
+        )
         if not tttr_files:
             logger.info("No TTTR files to process.")
             return
@@ -526,14 +541,14 @@ class BurstSelectionTool(ChisurfDockTool):
         output_types = set()
         if self.checkBox_FileCSV.isChecked():
             output_types.add("bur")
-            
+
         if not output_types:
             logging.warning("No output format selected; aborting burst selection processing.")
             return
 
         # Check if zip output is requested
         zip_output = self.checkBox_ZipOutput.isChecked()
-        
+
         # Check if folder removal is requested
         remove_folder = self.checkBox_RemoveFolder.isChecked()
 
@@ -556,7 +571,6 @@ class BurstSelectionTool(ChisurfDockTool):
             file_path = Path(fn)
 
             try:
-
                 df = burst_gui.load_burst_dataframe(file_path, self.burst_finder.target_path)
                 if df is None:
                     logging.info("Warning: .bur file not found for: %s", file_path)
@@ -638,7 +652,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
         # Set labels
         self.plotWidget.set_title(f"Histogram of {selected_feature}")
-        self.plotWidget.set_labels(bottom=selected_feature, left='Frequency')
+        self.plotWidget.set_labels(bottom=selected_feature, left="Frequency")
 
         # Calculate histogram
         filtered_data = data[~np.isnan(data)][1::2]
@@ -666,16 +680,18 @@ class BurstSelectionTool(ChisurfDockTool):
             self.doubleSpinBox_3.blockSignals(False)
             self.doubleSpinBox_4.blockSignals(False)
 
-            logging.info(f"Adjusted histogram range to [{min_val}, {max_val}] because min was >= max")
+            logging.info(
+                f"Adjusted histogram range to [{min_val}, {max_val}] because min was >= max"
+            )
 
         y, x = np.histogram(filtered_data, bins=num_bins, range=(min_val, max_val))
 
         # Create bar graph for histogram
-        width = (x[1] - x[0])
+        width = x[1] - x[0]
         x_centers = (x[:-1] + x[1:]) / 2
 
         # Create histogram bars (blue at ~0.7 alpha, black outline).
-        self.plotWidget.bars(x_centers, y, width=width, brush=(0, 0, 255, 178), pen='k')
+        self.plotWidget.bars(x_centers, y, width=width, brush=(0, 0, 255, 178), pen="k")
 
         # Prepare data for GMM - reshape to 2D array required by sklearn
         data_for_gmm = filtered_data.reshape(-1, 1)
@@ -704,12 +720,12 @@ class BurstSelectionTool(ChisurfDockTool):
                 # Initialize and fit the GMM model using settings from gmm_settings
                 gmm = GaussianMixture(
                     n_components=k,
-                    covariance_type=self.gmm_settings['covariance_type'],
-                    random_state=self.gmm_settings['random_state'],
-                    max_iter=self.gmm_settings['max_iter'],
-                    n_init=self.gmm_settings['n_init'],
-                    tol=self.gmm_settings['tol'],
-                    reg_covar=self.gmm_settings['reg_covar']
+                    covariance_type=self.gmm_settings["covariance_type"],
+                    random_state=self.gmm_settings["random_state"],
+                    max_iter=self.gmm_settings["max_iter"],
+                    n_init=self.gmm_settings["n_init"],
+                    tol=self.gmm_settings["tol"],
+                    reg_covar=self.gmm_settings["reg_covar"],
                 )
                 gmm.fit(data_for_gmm)
 
@@ -728,7 +744,11 @@ class BurstSelectionTool(ChisurfDockTool):
                     weight = gmm.weights_[i]
 
                     # Calculate the Gaussian PDF for this component
-                    y_gauss_i = weight * np.exp(-0.5 * ((x_fit.ravel() - mean) ** 2) / var) / np.sqrt(2 * np.pi * var)
+                    y_gauss_i = (
+                        weight
+                        * np.exp(-0.5 * ((x_fit.ravel() - mean) ** 2) / var)
+                        / np.sqrt(2 * np.pi * var)
+                    )
                     component_probs.append(y_gauss_i)
 
                 # Scale the GMM probabilities to match the histogram height
@@ -736,7 +756,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 y_fit = y_fit_probs * scale_factor
 
                 # Plot sum of all Gaussians
-                self.plotWidget.line(x_fit.ravel(), y_fit, pen='r', width=2, name='GMM Fit')
+                self.plotWidget.line(x_fit.ravel(), y_fit, pen="r", width=2, name="GMM Fit")
 
                 # Plot individual Gaussian components
                 for i in range(k):
@@ -750,8 +770,8 @@ class BurstSelectionTool(ChisurfDockTool):
                         y_gauss_i,
                         pen=color,
                         width=1,
-                        style='dash',
-                        name=f'Gaussian {i + 1}',
+                        style="dash",
+                        name=f"Gaussian {i + 1}",
                     )
 
                 # Add legend
@@ -798,10 +818,14 @@ class BurstSelectionTool(ChisurfDockTool):
                 self.plainTextEdit.setPlainText(err_msg)
 
                 # Additional debug info
-                if hasattr(e, '__module__') and 'chisurf.core.ml' in e.__module__:
-                    logging.info(f"This appears to be a GMM fitting error. Check data format and GMM parameters.")
+                if hasattr(e, "__module__") and "chisurf.core.ml" in e.__module__:
+                    logging.info(
+                        "This appears to be a GMM fitting error. Check data format and GMM parameters."
+                    )
                     if len(filtered_data) < k:
-                        logging.info(f"Not enough data points ({len(filtered_data)}) for {k} components. Try reducing the number of components.")
+                        logging.info(
+                            f"Not enough data points ({len(filtered_data)}) for {k} components. Try reducing the number of components."
+                        )
         else:
             self.plainTextEdit.clear()
 
@@ -811,37 +835,39 @@ class BurstSelectionTool(ChisurfDockTool):
         menubar = self.menuBar()
 
         # Create Settings menu
-        settings_menu = menubar.addMenu('Settings')
+        settings_menu = menubar.addMenu("Settings")
 
         # Create View menu
-        view_menu = menubar.addMenu('View')
+        view_menu = menubar.addMenu("View")
 
         # Create UI Elements submenu
-        ui_elements_menu = view_menu.addMenu('UI Elements')
+        ui_elements_menu = view_menu.addMenu("UI Elements")
 
         # Add actions for showing/hiding UI elements
-        channel_selection_action = QtWidgets.QAction('Show Channel Selection', self)
+        channel_selection_action = QtWidgets.QAction("Show Channel Selection", self)
         channel_selection_action.setCheckable(True)
-        channel_selection_action.setChecked(self.show_channel_selection)  # Set based on initial parameter
+        channel_selection_action.setChecked(
+            self.show_channel_selection
+        )  # Set based on initial parameter
         channel_selection_action.triggered.connect(self.toggle_channel_selection)
         ui_elements_menu.addAction(channel_selection_action)
         self.channel_selection_action = channel_selection_action
 
-        clear_button_action = QtWidgets.QAction('Show Clear Button', self)
+        clear_button_action = QtWidgets.QAction("Show Clear Button", self)
         clear_button_action.setCheckable(True)
         clear_button_action.setChecked(self.show_clear_button)  # Set based on initial parameter
         clear_button_action.triggered.connect(self.toggle_clear_button)
         ui_elements_menu.addAction(clear_button_action)
         self.clear_button_action = clear_button_action
 
-        decay_button_action = QtWidgets.QAction('Show Decay Button', self)
+        decay_button_action = QtWidgets.QAction("Show Decay Button", self)
         decay_button_action.setCheckable(True)
         decay_button_action.setChecked(self.show_decay_button)  # Set based on initial parameter
         decay_button_action.triggered.connect(self.toggle_decay_button)
         ui_elements_menu.addAction(decay_button_action)
         self.decay_button_action = decay_button_action
 
-        filter_button_action = QtWidgets.QAction('Show Filter Button', self)
+        filter_button_action = QtWidgets.QAction("Show Filter Button", self)
         filter_button_action.setCheckable(True)
         filter_button_action.setChecked(self.show_filter_button)  # Set based on initial parameter
         filter_button_action.triggered.connect(self.toggle_filter_button)
@@ -849,12 +875,12 @@ class BurstSelectionTool(ChisurfDockTool):
         self.filter_button_action = filter_button_action
 
         # Add action for showing channel settings
-        channel_settings_action = QtWidgets.QAction('Channels', self)
+        channel_settings_action = QtWidgets.QAction("Channels", self)
         channel_settings_action.triggered.connect(self.show_channel_settings)
         settings_menu.addAction(channel_settings_action)
 
         # Add action for showing GMM settings
-        gmm_settings_action = QtWidgets.QAction('GMM', self)
+        gmm_settings_action = QtWidgets.QAction("GMM", self)
         gmm_settings_action.triggered.connect(self.show_gmm_settings)
         settings_menu.addAction(gmm_settings_action)
 
@@ -926,10 +952,12 @@ class BurstSelectionTool(ChisurfDockTool):
         self.progressBar.setValue(0)
 
         logging.info("Data cleared.")
-        
+
     def _sync_output_format_controls(self) -> None:
         """Synchronize output-format checkboxes after a toggle change."""
-        has_output_format = self.checkBox_FileCSV.isChecked() or self.checkBox_FileMFDHDF.isChecked()
+        has_output_format = (
+            self.checkBox_FileCSV.isChecked() or self.checkBox_FileMFDHDF.isChecked()
+        )
         self.checkBox_ZipOutput.setEnabled(has_output_format)
         if not has_output_format:
             self.checkBox_ZipOutput.setChecked(False)

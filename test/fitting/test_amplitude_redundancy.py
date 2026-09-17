@@ -7,9 +7,10 @@ n to the optimiser makes the Jacobian's amplitude block rank-deficient, which
 destroys the reported uncertainties. The view therefore holds
 ``lifetime.amplitude.0`` fixed; the others stay free.
 """
+
 import numpy as np
 
-from .test_tcspc_fit_convergence import _build, _chi2r, TRUE_AMPS, TRUE_TAUS
+from .test_tcspc_fit_convergence import TRUE_AMPS, TRUE_TAUS, _build, _chi2r
 
 
 def _by_id(m):

@@ -14,12 +14,12 @@ None of this needs a GUI toolkit or a GPU. That is the point of the module it
 tests, and :func:`test_the_prompt_paints_without_a_toolkit` says so by painting
 a frame through the software quad rasteriser.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from emtk import events, keys
 from chimol.ui.gui import GuiRow, InternalGui
+from emtk import events, keys
 from emtk.widgets.command_line import CommandLine
 
 SIZE = (900, 600)
@@ -80,6 +80,7 @@ def test_submitting_runs_the_line_and_logs_it():
 
 def test_a_failing_command_is_logged_rather_than_raised():
     """A mistyped command must not travel up into the host's paint loop."""
+
     def _boom(_line: str) -> None:
         raise ValueError("no such colour")
 
@@ -221,6 +222,7 @@ def test_clicking_the_prompt_focuses_it_and_places_the_caret():
     assert gui.command_line.focused is True
 
     from chimol.ui.gui import char_width
+
     # chimol's prompt, not emtk's: the toolkit draws a command line for
     # whoever asks and does not know whose it is.
     from chimol.ui.gui._common import PROMPT

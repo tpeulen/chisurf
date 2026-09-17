@@ -7,7 +7,6 @@ viewer) and the ``rotate`` / ``translate`` object-transform commands.
 from __future__ import annotations
 
 import numpy as np
-
 from chimol.commands.command import Cmd
 from chimol.testing.mock_viewer import MockViewer, MockWindow
 
@@ -36,8 +35,8 @@ def test_rotate_applies_pymol_rotation():
     cmd, viewer, oid = _cmd_with_object()
     cmd.do("rotate x, 90")
     coords = viewer.objects[oid].state.all_atom_coords
-    assert np.allclose(coords[0], [1.0, 0.0, 0.0], atol=1e-6)   # on axis
-    assert np.allclose(coords[1], [0.0, 0.0, 1.0], atol=1e-6)   # y -> z
+    assert np.allclose(coords[0], [1.0, 0.0, 0.0], atol=1e-6)  # on axis
+    assert np.allclose(coords[1], [0.0, 0.0, 1.0], atol=1e-6)  # y -> z
     assert np.allclose(coords[2], [0.0, -1.0, 0.0], atol=1e-6)  # z -> -y
 
 
@@ -87,17 +86,22 @@ def test_translate_is_in_angstrom_not_scene_units(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
 
     from chimol.commands.command import Cmd
+    from chimol.core.viewer import Viewer
     from chimol.io.export import unscale_coordinates
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import Viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     view = Viewer()
     view.add_structure(
-        _read_full_model(cs_struct.Structure, pdb), name="148l",
+        _read_full_model(cs_struct.Structure, pdb),
+        name="148l",
         source_path=str(pdb),
     )
 

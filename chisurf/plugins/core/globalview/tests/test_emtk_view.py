@@ -4,6 +4,7 @@ No display and no Qt. The old canvas could only be checked by looking at it,
 because everything it knew was in the paint method; here the graph is a
 document, so what it claims can be asserted.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -15,7 +16,6 @@ emtk = pytest.importorskip("emtk")
 from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
 from chisurf.plugins.core.globalview.gui.emtk_view import (  # noqa: E402
     EDGE_COLOURS,
-    apply_network_style,
     KIND_COLOURS,
     NODE_FIT,
     NODE_GROUP,
@@ -23,6 +23,7 @@ from chisurf.plugins.core.globalview.gui.emtk_view import (  # noqa: E402
     NODE_PARAM_FREE,
     NODE_PARAM_LINKED,
     GlobalViewContent,
+    apply_network_style,
     graph_result_to_document,
 )
 
@@ -30,9 +31,21 @@ from chisurf.plugins.core.globalview.gui.emtk_view import (  # noqa: E402
 def _node(index: int, node_type: str, name: str, **overrides) -> SimpleNamespace:
     """Build one ``GraphNode``-shaped record, with the fields the adapter sets."""
     fields = dict(
-        node_idx=index, node_type=node_type, name=name, fit_idx=0, value=None,
-        fixed=False, is_linked=False, link_name="", link_uid="", fit_name="",
-        data_filename="", model="", param_uid="", owner_uid="", owner_id="",
+        node_idx=index,
+        node_type=node_type,
+        name=name,
+        fit_idx=0,
+        value=None,
+        fixed=False,
+        is_linked=False,
+        link_name="",
+        link_uid="",
+        fit_name="",
+        data_filename="",
+        model="",
+        param_uid="",
+        owner_uid="",
+        owner_id="",
     )
     fields.update(overrides)
     return SimpleNamespace(**fields)
@@ -54,8 +67,8 @@ def _result() -> SimpleNamespace:
             SimpleNamespace(source=0, target=3),
             SimpleNamespace(source=1, target=4),
             SimpleNamespace(source=1, target=5),
-            SimpleNamespace(source=4, target=2),   # follower -> master
-            SimpleNamespace(source=0, target=1),   # base
+            SimpleNamespace(source=4, target=2),  # follower -> master
+            SimpleNamespace(source=0, target=1),  # base
         ],
     )
 
@@ -79,8 +92,7 @@ def test_every_node_kind_is_recognised():
     )
     document = graph_result_to_document(result)
     kinds = [n.config["kind"] for n in document.nodes]
-    assert kinds == [NODE_FIT, NODE_GROUP, NODE_PARAM_FIXED,
-                     NODE_PARAM_LINKED, NODE_PARAM_FREE]
+    assert kinds == [NODE_FIT, NODE_GROUP, NODE_PARAM_FIXED, NODE_PARAM_LINKED, NODE_PARAM_FREE]
 
 
 def test_each_kind_has_a_colour_of_its_own():
@@ -112,8 +124,7 @@ def test_the_three_edge_kinds_are_told_apart_by_their_endpoints():
     """
     document = graph_result_to_document(_result())
     kinds = [e.config["kind"] for e in document.edges]
-    assert kinds == ["ownership", "ownership", "ownership", "ownership",
-                     "link", "base"]
+    assert kinds == ["ownership", "ownership", "ownership", "ownership", "link", "base"]
 
 
 def test_each_edge_kind_is_drawn_differently():
@@ -165,10 +176,17 @@ def test_a_disc_label_is_drawn_once():
     """
     from emtk.testing import RecordingPainter
 
-    document = graph_result_to_document(_result(), {
-        0: (0.0, 0.0), 1: (0.0, 300.0), 2: (260.0, -120.0),
-        3: (260.0, 40.0), 4: (260.0, 220.0), 5: (260.0, 360.0),
-    })
+    document = graph_result_to_document(
+        _result(),
+        {
+            0: (0.0, 0.0),
+            1: (0.0, 300.0),
+            2: (260.0, -120.0),
+            3: (260.0, 40.0),
+            4: (260.0, 220.0),
+            5: (260.0, 360.0),
+        },
+    )
     control = GraphControl(document, read_only=True, content=GlobalViewContent())
     apply_network_style(control.editor)
     control.set_document(document, fit=False)
@@ -220,10 +238,17 @@ def test_the_network_draws_with_no_display():
     """Six nodes and six edges, through a painter that owns nothing."""
     from emtk.testing import RecordingPainter
 
-    document = graph_result_to_document(_result(), {
-        0: (0.0, 0.0), 1: (0.0, 300.0), 2: (260.0, -120.0),
-        3: (260.0, 40.0), 4: (260.0, 220.0), 5: (260.0, 360.0),
-    })
+    document = graph_result_to_document(
+        _result(),
+        {
+            0: (0.0, 0.0),
+            1: (0.0, 300.0),
+            2: (260.0, -120.0),
+            3: (260.0, 40.0),
+            4: (260.0, 220.0),
+            5: (260.0, 360.0),
+        },
+    )
     control = GraphControl(document, read_only=True, content=GlobalViewContent())
     control.set_document(document, fit=False)
     painter = RecordingPainter()
@@ -310,14 +335,16 @@ def test_a_drawn_link_is_reported_and_not_drawn():
 
     document = graph_result_to_document(_result())
     reported: list = []
-    control = GraphControl(document, content=GlobalViewContent(),
-                           on_link=lambda s, t: reported.append((s, t)))
+    control = GraphControl(
+        document, content=GlobalViewContent(), on_link=lambda s, t: reported.append((s, t))
+    )
     control.set_document(document, fit=False)
     control.draw(RecordingPainter(), 0, 0, 900, 520)
 
     before = len(document.edges)
     control.editor._link_created = (
-        document.pin_id("2", 0, True), document.pin_id("5", 0, False),
+        document.pin_id("2", 0, True),
+        document.pin_id("5", 0, False),
     )
     control._apply_interactions()
 

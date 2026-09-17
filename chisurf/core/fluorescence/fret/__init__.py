@@ -1,7 +1,7 @@
 import numpy as np
 
-from chisurf.core.fluorescence.intensity import nusiance
 import chisurf.core.fluorescence.fret.acceptor as acceptor
+from chisurf.core.fluorescence.intensity import nusiance
 
 # Note: Global parameters assumed to be defined elsewhere in the module/environment:
 #   Bg         : Background signal for the green channel.
@@ -12,12 +12,9 @@ import chisurf.core.fluorescence.fret.acceptor as acceptor
 #   Gfactor    : Correction factor for the green channel detector sensitivity.
 #   R0         : Förster radius.
 
+
 @nusiance
-def sg_sr(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def sg_sr(Sg, Sr, **kwargs) -> float:
     """
     Calculate the raw intensity ratio of the green to red signals.
 
@@ -47,21 +44,17 @@ def sg_sr(
     if Sr != 0:
         return float(Sg) / float(Sr)
     else:
-        return float('nan')
+        return float("nan")
 
 
 @nusiance
-def fg_fr(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def fg_fr(Sg, Sr, **kwargs) -> float:
     """
     Calculate the ratio of corrected fluorescence intensities.
 
     The green fluorescence intensity Fg and the red fluorescence intensity Fr
     are corrected for background and cross-talk:
-    
+
         Fg = Sg - Bg
         Fr = Sr - Br - (Fg * crosstalk)
 
@@ -91,17 +84,13 @@ def fg_fr(
 
 
 @nusiance
-def proximity_ratio(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def proximity_ratio(Sg, Sr, **kwargs) -> float:
     """
     Compute the proximity ratio for FRET experiments.
 
     The proximity ratio is defined as the fraction of the total (uncorrected)
     intensity that is detected in the red channel:
-    
+
         proximity_ratio = Sr / (Sg + Sr)
 
     This measure is widely used in single-molecule FRET experiments to provide
@@ -125,20 +114,16 @@ def proximity_ratio(
 
 
 @nusiance
-def apparent_fret_efficiency(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def apparent_fret_efficiency(Sg, Sr, **kwargs) -> float:
     """
     Calculate the apparent FRET efficiency from corrected fluorescence intensities.
 
     The apparent FRET efficiency is defined as:
-    
+
         E_app = Fr / (Fg + Fr)
 
     where the corrected intensities are computed as:
-    
+
         Fg = Sg - Bg
         Fr = Sr - Br - (Fg * crosstalk)
 
@@ -165,18 +150,14 @@ def apparent_fret_efficiency(
 
 
 @nusiance
-def fret_efficiency(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def fret_efficiency(Sg, Sr, **kwargs) -> float:
     """
     Calculate the corrected FRET efficiency using fluorescence intensity corrections.
 
     The corrected FRET efficiency is computed by first correcting the measured
     intensities for background and cross-talk, and then scaling them by the
     detector sensitivity (Gfactor) and dye quantum yields. The calculations are:
-    
+
         Fg = Sg - Bg
         Fa = (Sr - Br - Fg * crosstalk) / phiA
 
@@ -210,11 +191,7 @@ def fret_efficiency(
 
 
 @nusiance
-def fluorescence_weighted_distance(
-        Sg,
-        Sr,
-        **kwargs
-) -> float:
+def fluorescence_weighted_distance(Sg, Sr, **kwargs) -> float:
     """
     Compute the fluorescence-weighted donor–acceptor distance.
 
@@ -249,20 +226,17 @@ def fluorescence_weighted_distance(
     """
     Fg = Sg - Bg
     Fa = (Sr - Br - Fg * crosstalk) / phiA
-    return R0 * np.exp((1.0/6.0) * np.log(Fg / (Gfactor * phiD * Fa)))
+    return R0 * np.exp((1.0 / 6.0) * np.log(Fg / (Gfactor * phiD * Fa)))
 
 
 @nusiance
-def fret_efficency_to_fdfa(
-        E,
-        **kwargs
-):
+def fret_efficency_to_fdfa(E, **kwargs):
     """
     Convert FRET transfer efficiency to the donor–acceptor intensity ratio (FD/FA).
 
     This function converts the FRET efficiency E to the intensity ratio FD/FA using
     the relationship:
-    
+
         FD/FA = (phiA / phiD) * (1/E - 1)
 
     where phiA and phiD are the acceptor and donor quantum yields, respectively.

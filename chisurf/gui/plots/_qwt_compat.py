@@ -35,7 +35,7 @@ class _PgPlot(cp.Plot):
             self.set_aspect_locked(True)
 
     # guiqwt: ``win.get_plot()`` returned the plot; here the widget is the plot.
-    def get_plot(self) -> "_PgPlot":
+    def get_plot(self) -> _PgPlot:
         return self
 
     def add_item(self, item) -> None:
@@ -134,7 +134,11 @@ class _PgHistogram:
             return
         # step=True (edges of len y+1) draws the histogram outline; fill shades it.
         self._handle = self._plot.line(
-            self._edges, self._counts, pen=self._color, step=True, fill=self._color,
+            self._edges,
+            self._counts,
+            pen=self._color,
+            step=True,
+            fill=self._color,
         )
 
 

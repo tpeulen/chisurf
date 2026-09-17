@@ -15,8 +15,9 @@ registry (for execution).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 from mmfdb.provenance.compute_spec import (
     ComputeSpec,
@@ -24,6 +25,7 @@ from mmfdb.provenance.compute_spec import (
     get_compute_spec,
     get_replay_executor,
 )
+
 from chisurf.core.pipeline.model import Pipeline, topological_order, validate_pipeline
 
 

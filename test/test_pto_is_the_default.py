@@ -15,7 +15,6 @@ being the format they all produced.
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -130,7 +129,8 @@ def test_the_bid_converter_writes_the_container_by_default():
 def test_every_imaging_tool_declares_what_it_did(name: str):
     """The container records the operation, so a per-pixel lifetime and a
     per-pixel phasor are distinguishable as analyses rather than only as column
-    names."""
+    names.
+    """
     from chisurf.plugins.microscopy.imaging_common.base import ImagingMapViewModel
 
     subclasses = {
@@ -165,8 +165,14 @@ def _all_subclasses(cls) -> set:
 # -- import ---------------------------------------------------------------------
 
 SPC = (
-    ROOT / "plugins" / "burst" / "burst_selection" / "tests" / "data"
-    / "bh_spc132_sm_dna" / "m000.spc"
+    ROOT
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "m000.spc"
 )
 
 
@@ -189,9 +195,7 @@ def test_opening_a_vendor_file_produces_the_measurement(tmp_path: Path):
 
     vendor = Photons([str(source)], None)
     contained = Photons([str(container)], None)
-    np.testing.assert_array_equal(
-        np.asarray(vendor.macro_times), np.asarray(contained.macro_times)
-    )
+    np.testing.assert_array_equal(np.asarray(vendor.macro_times), np.asarray(contained.macro_times))
     np.testing.assert_array_equal(
         np.asarray(vendor.routing_channels), np.asarray(contained.routing_channels)
     )

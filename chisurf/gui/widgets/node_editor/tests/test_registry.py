@@ -2,8 +2,8 @@
 
 import pytest
 
-from chisurf.gui.widgets.node_editor.registry import registry, NodeType
 from chisurf.gui.widgets.node_editor.model import PortSpec
+from chisurf.gui.widgets.node_editor.registry import NodeType, registry
 
 
 def test_registry_register_and_get():
@@ -17,7 +17,7 @@ def test_registry_register_and_get():
         inputs=[PortSpec("In", False)],
         outputs=[PortSpec("Out", True)],
         factory=lambda cfg: None,
-        default_config={"value": 1}
+        default_config={"value": 1},
     )
 
     registry.register(node_type)
@@ -32,20 +32,8 @@ def test_registry_duplicate_id():
     """Test that registering duplicate ID raises error."""
     registry._types.clear()
 
-    node_type1 = NodeType(
-        id="dup",
-        title="First",
-        inputs=[],
-        outputs=[],
-        factory=None
-    )
-    node_type2 = NodeType(
-        id="dup",
-        title="Second",
-        inputs=[],
-        outputs=[],
-        factory=None
-    )
+    node_type1 = NodeType(id="dup", title="First", inputs=[], outputs=[], factory=None)
+    node_type2 = NodeType(id="dup", title="Second", inputs=[], outputs=[], factory=None)
 
     registry.register(node_type1)
     with pytest.raises(ValueError, match="already registered"):

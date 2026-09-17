@@ -46,15 +46,11 @@ def _convert_value(field_type: type[Any], value: Any) -> Any:
         if len(args) == 2 and args[1] is Ellipsis:
             return tuple(_convert_value(args[0], item) for item in value)
         return tuple(
-            _convert_value(item_type, item)
-            for item_type, item in zip(args, value, strict=False)
+            _convert_value(item_type, item) for item_type, item in zip(args, value, strict=False)
         )
     if origin is dict:
         key_type, value_type = get_args(field_type)
-        return {
-            key_type(key): _convert_value(value_type, item)
-            for key, item in value.items()
-        }
+        return {key_type(key): _convert_value(value_type, item) for key, item in value.items()}
     return value
 
 

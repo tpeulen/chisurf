@@ -100,9 +100,7 @@ class ExecutionResult:
     def success(self) -> bool:
         """bool: Whether the cell ran without error or interruption."""
         return (
-            self.error_before_exec is None
-            and self.error_in_exec is None
-            and not self.interrupted
+            self.error_before_exec is None and self.error_in_exec is None and not self.interrupted
         )
 
     def raise_error(self) -> None:
@@ -144,18 +142,19 @@ class Shell:
     """
 
     def __init__(
-            self,
-            user_ns: dict | None = None,
-            *,
-            write: typing.Callable[[str, str], None] | None = None,
-            display: typing.Callable[[dict, dict, str, int | None], None] | None = None,
-            read_input: typing.Callable[[str, bool], str] | None = None,
-            clear: typing.Callable[[], None] | None = None,
-            edit_file: typing.Callable[[str, int], None] | None = None,
-            history: typing.Any = None,
-            magics: typing.Any = None,
+        self,
+        user_ns: dict | None = None,
+        *,
+        write: typing.Callable[[str, str], None] | None = None,
+        display: typing.Callable[[dict, dict, str, int | None], None] | None = None,
+        read_input: typing.Callable[[str, bool], str] | None = None,
+        clear: typing.Callable[[], None] | None = None,
+        edit_file: typing.Callable[[str, int], None] | None = None,
+        history: typing.Any = None,
+        magics: typing.Any = None,
     ) -> None:
         from chisurf.core.console import magics as magics_module
+
         # Importing for the side effect of populating ``BUILTIN``; the module
         # is a registry of decorated functions, so it must be imported before
         # the registry is copied or every shell starts with no magics at all.
@@ -214,7 +213,7 @@ class Shell:
         if not hasattr(builtins, "get_ipython"):
             builtins.get_ipython = self.get_ipython
 
-    def get_ipython(self) -> "Shell":
+    def get_ipython(self) -> Shell:
         """Return this shell.
 
         Named for the function every interactive Python snippet reaches for.
@@ -302,12 +301,12 @@ class Shell:
             sys.__stderr__.write(text)
 
     def display_data(
-            self,
-            data: dict,
-            metadata: dict | None = None,
-            *,
-            kind: str = "display_data",
-            execution_count: int | None = None,
+        self,
+        data: dict,
+        metadata: dict | None = None,
+        *,
+        kind: str = "display_data",
+        execution_count: int | None = None,
     ) -> None:
         """Publish a MIME bundle to the console.
 
@@ -438,12 +437,12 @@ class Shell:
             sys.stdout, sys.stderr, sys.stdin, sys.displayhook = saved
 
     def run_cell(
-            self,
-            raw: str,
-            *,
-            store_history: bool = True,
-            silent: bool = False,
-            filename: str | None = None,
+        self,
+        raw: str,
+        *,
+        store_history: bool = True,
+        silent: bool = False,
+        filename: str | None = None,
     ) -> ExecutionResult:
         """Run one cell.
 
@@ -463,9 +462,7 @@ class Shell:
         ExecutionResult
         """
         if self._busy:
-            self.write_err(
-                "the console is already running a command; wait for it to finish\n"
-            )
+            self.write_err("the console is already running a command; wait for it to finish\n")
             return ExecutionResult(raw, raw, self.execution_count)
 
         count = self.execution_count
@@ -642,10 +639,10 @@ class Shell:
         return self.run_line_magic(name, line)
 
     def register_magic_function(
-            self,
-            func: typing.Callable,
-            magic_kind: str = "line",
-            magic_name: str | None = None,
+        self,
+        func: typing.Callable,
+        magic_kind: str = "line",
+        magic_name: str | None = None,
     ) -> None:
         """Register *func* as a magic.
 
@@ -766,9 +763,7 @@ class Shell:
         -------
         CompletionResult
         """
-        return self.completer.complete(
-            line, cursor_pos if cursor_pos is not None else len(line)
-        )
+        return self.completer.complete(line, cursor_pos if cursor_pos is not None else len(line))
 
     def check_complete(self, source: str) -> tuple[str, str]:
         """Return whether *source* is a finished cell.

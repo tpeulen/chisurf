@@ -38,7 +38,6 @@ chisurf/plugins/microscopy/img_calibration/gui
 chisurf/plugins/microscopy/img_pixel_intensity/gui
 chisurf/plugins/microscopy/img_pixel_micro_time/gui
 chisurf/plugins/microscopy/img_pixel_mle/gui
-chisurf/plugins/microscopy/img_pixel_nb/gui
 chisurf/plugins/microscopy/img_pixel_phasor/gui
 chisurf/plugins/microscopy/psf_determination/gui
 chisurf/plugins/misc/games/breakout

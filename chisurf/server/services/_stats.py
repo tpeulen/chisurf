@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
-def _recorded_float(fit: Any, name: str) -> Optional[float]:
+def _recorded_float(fit: Any, name: str) -> float | None:
     """Return what a run recorded under *name*, without evaluating anything.
 
     Read straight from the instance dictionary: ``chi2`` and ``chi2r`` are
@@ -17,7 +17,7 @@ def _recorded_float(fit: Any, name: str) -> Optional[float]:
         return None
 
 
-def _safe_chi2(fit: Any, *, compute: bool = False) -> Optional[float]:
+def _safe_chi2(fit: Any, *, compute: bool = False) -> float | None:
     """Return the chi-squared value of *fit*, or ``None``.
 
     Parameters
@@ -39,7 +39,7 @@ def _safe_chi2(fit: Any, *, compute: bool = False) -> Optional[float]:
         return None
 
 
-def _safe_chi2r(fit: Any, *, compute: bool = False) -> Optional[float]:
+def _safe_chi2r(fit: Any, *, compute: bool = False) -> float | None:
     """Return the reduced chi-squared value of *fit*, or ``None``.
 
     Parameters
@@ -60,7 +60,7 @@ def _safe_chi2r(fit: Any, *, compute: bool = False) -> Optional[float]:
         return None
 
 
-def _safe_n_points(fit: Any) -> Optional[int]:
+def _safe_n_points(fit: Any) -> int | None:
     """Return the number of fit points, or ``None`` on failure.
 
     Parameters
@@ -78,7 +78,7 @@ def _safe_n_points(fit: Any) -> Optional[int]:
     return None
 
 
-def _safe_n_free(fit: Any) -> Optional[int]:
+def _safe_n_free(fit: Any) -> int | None:
     """Return the number of free (non-fixed) parameters, or ``None``.
 
     Parameters
@@ -96,7 +96,7 @@ def _safe_n_free(fit: Any) -> Optional[int]:
     return None
 
 
-def _group_names(model: Any) -> Dict[int, str]:
+def _group_names(model: Any) -> dict[int, str]:
     """Map ``id(parameter)`` to the name of the sub-group that owns it.
 
     A model presents its parameters through nested
@@ -105,7 +105,7 @@ def _group_names(model: Any) -> Dict[int, str]:
     that structure, so it is carried alongside and the link menu rebuilds the
     per-group submenus from it.
     """
-    names: Dict[int, str] = {}
+    names: dict[int, str] = {}
     for group in getattr(model, "aggregated_parameters", None) or []:
         group_name = str(getattr(group, "name", "") or "")
         for p in getattr(group, "parameters_all", None) or []:
@@ -113,7 +113,7 @@ def _group_names(model: Any) -> Dict[int, str]:
     return names
 
 
-def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> Dict[str, Any]:
+def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> dict[str, Any]:
     """Serialise one parameter for a fit DTO."""
     return {
         "name": str(getattr(p, "name", "")),
@@ -130,7 +130,7 @@ def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> Dict[str, Any]:
     }
 
 
-def _collect_param_list(fit: Any, fit_uid: str = "") -> List[Dict[str, Any]]:
+def _collect_param_list(fit: Any, fit_uid: str = "") -> list[dict[str, Any]]:
     """Return parameters as an ordered list (for proxy ``parameters_all``).
 
     A failure is logged rather than swallowed: an empty list here reads as "this
@@ -148,13 +148,11 @@ def _collect_param_list(fit: Any, fit_uid: str = "") -> List[Dict[str, Any]]:
     except Exception:
         import chisurf.logging
 
-        chisurf.logging.exception(
-            "could not read the parameters of fit '%s'", fit_uid or "?"
-        )
+        chisurf.logging.exception("could not read the parameters of fit '%s'", fit_uid or "?")
         return []
 
 
-def _collect_member_list(fit: Any) -> List[Dict[str, Any]]:
+def _collect_member_list(fit: Any) -> list[dict[str, Any]]:
     """Return the member fits of a fit group, each with its own parameters.
 
     A :class:`~chisurf.core.fitting.fit.FitGroup` answers ``model`` with the
@@ -165,19 +163,21 @@ def _collect_member_list(fit: Any) -> List[Dict[str, Any]]:
     grouped = getattr(fit, "grouped_fits", None)
     if not grouped:
         return []
-    members: List[Dict[str, Any]] = []
+    members: list[dict[str, Any]] = []
     for idx, member in enumerate(grouped):
         member_uid = str(getattr(member, "unique_identifier", "") or "")
-        members.append({
-            "local_idx": idx,
-            "uid": member_uid,
-            "name": str(getattr(member, "name", "") or f"fit {idx}"),
-            "parameters_all": _collect_param_list(member, fit_uid=member_uid),
-        })
+        members.append(
+            {
+                "local_idx": idx,
+                "uid": member_uid,
+                "name": str(getattr(member, "name", "") or f"fit {idx}"),
+                "parameters_all": _collect_param_list(member, fit_uid=member_uid),
+            }
+        )
     return members
 
 
-def _collect_fit_params(fit: Any) -> Dict[str, Dict[str, Any]]:
+def _collect_fit_params(fit: Any) -> dict[str, dict[str, Any]]:
     """Return a dict of parameter-name → parameter properties.
 
     Parameters

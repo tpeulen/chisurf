@@ -278,9 +278,7 @@ class DockArea(QtWidgets.QWidget):
         #: Page -> the (tab widget, index) it was closed from, so :meth:`showTab`
         #: can put it back where it belongs rather than in the first stack it
         #: finds.
-        self._hidden_home: dict[
-            QtWidgets.QWidget, tuple[QtWidgets.QWidget, int]
-        ] = {}
+        self._hidden_home: dict[QtWidgets.QWidget, tuple[QtWidgets.QWidget, int]] = {}
         #: Splitters whose authored sizes still have to be applied against real
         #: geometry; see :meth:`_apply_pending_splitter_sizes`.
         self._pending_splitter_sizes: list[tuple[QtWidgets.QSplitter, list[int]]] = []
@@ -556,10 +554,6 @@ class DockArea(QtWidgets.QWidget):
             self._overlay.set_highlight(rect)
         else:
             self._overlay.hide()
-
-    def hide_overlay(self) -> None:
-        """Hide the drop zone overlay."""
-        self._overlay.hide()
 
     def _widget_key(self, widget: QtWidgets.QWidget, key_func=None) -> str:
         """Return a stable key for a docked page widget.
@@ -858,9 +852,7 @@ class DockArea(QtWidgets.QWidget):
                 # the child's minimum, so an authored 700/170 came back as
                 # roughly a quarter to the view and the rest to the console --
                 # silently, in every layout that asks for a split.
-                self._pending_splitter_sizes.append(
-                    (splitter, [int(size) for size in sizes])
-                )
+                self._pending_splitter_sizes.append((splitter, [int(size) for size in sizes]))
             return splitter
         return None
 
@@ -904,9 +896,7 @@ class DockArea(QtWidgets.QWidget):
             else splitter.height()
         )
         if span > 0:
-            splitter.setSizes(
-                [max(1, int(round(size * span / total))) for size in sizes]
-            )
+            splitter.setSizes([max(1, int(round(size * span / total))) for size in sizes])
 
     def resizeEvent(self, event) -> None:
         """Keep every authored split at its proportions as the area resizes."""
@@ -929,9 +919,7 @@ class DockArea(QtWidgets.QWidget):
                 total = sum(sizes)
                 if span <= 0 or total <= 0:
                     continue
-                splitter.setSizes(
-                    [max(1, int(round(size * span / total))) for size in sizes]
-                )
+                splitter.setSizes([max(1, int(round(size * span / total))) for size in sizes])
             except RuntimeError:
                 self._authored_proportions.pop(splitter, None)
 

@@ -149,8 +149,8 @@ def test_gui_plugins_are_discoverable():
     plugins = gui_plugins()
     assert len(plugins) > 50, f"only found {len(plugins)} GUI plugins — enumeration broke"
     unresolved = [p.id for p in plugins if p.directory is None]
-    assert not unresolved, (
-        "these manifests name a GUI module that is not on disk: " + ", ".join(unresolved)
+    assert not unresolved, "these manifests name a GUI module that is not on disk: " + ", ".join(
+        unresolved
     )
 
 
@@ -197,9 +197,7 @@ def test_allowlist_has_no_stale_entries():
     )
 
 
-@pytest.mark.parametrize(
-    "plugin", [p for p in gui_plugins() if p.has_guide()], ids=lambda p: p.id
-)
+@pytest.mark.parametrize("plugin", [p for p in gui_plugins() if p.has_guide()], ids=lambda p: p.id)
 def test_guide_is_a_tour_not_a_slideshow(plugin: GuiPlugin):
     """A shipped ``guide.json`` parses, has real steps, and waits on the user.
 
@@ -225,9 +223,7 @@ def test_guide_is_a_tour_not_a_slideshow(plugin: GuiPlugin):
     )
 
 
-@pytest.mark.parametrize(
-    "plugin", [p for p in gui_plugins() if p.has_guide()], ids=lambda p: p.id
-)
+@pytest.mark.parametrize("plugin", [p for p in gui_plugins() if p.has_guide()], ids=lambda p: p.id)
 def test_guide_steps_point_at_real_widgets(plugin: GuiPlugin):
     """Every ``target`` names a section that exists in the tool's view spec.
 
@@ -274,9 +270,7 @@ def test_guide_steps_point_at_real_widgets(plugin: GuiPlugin):
                     if str(name) in other
                     else ""
                 )
-                unresolved.append(
-                    f"step {step.get('title')!r} targets {field}={name!r}{hint}"
-                )
+                unresolved.append(f"step {step.get('title')!r} targets {field}={name!r}{hint}")
     assert not unresolved, (
         f"{plugin.relative}/guide.json points at controls that are not in its "
         f"view spec — these steps will silently show centred instead of "
@@ -314,9 +308,7 @@ def _collect_view_names(node, keys: set[str], attrs: set[str]) -> None:
             _collect_view_names(item, keys, attrs)
 
 
-@pytest.mark.parametrize(
-    "plugin", [p for p in gui_plugins() if p.has_help()], ids=lambda p: p.id
-)
+@pytest.mark.parametrize("plugin", [p for p in gui_plugins() if p.has_help()], ids=lambda p: p.id)
 def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
     """A shipped ``help.md`` says something, and its doc links resolve.
 

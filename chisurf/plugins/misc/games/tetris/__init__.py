@@ -16,7 +16,7 @@ from chisurf.plugins.misc.games.tetris.tetris import Tetris
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 name = _manifest.display_name if _manifest is not None else "Tools:Miscellaneous:Games:Tetris"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     game = Tetris()
     game.show()

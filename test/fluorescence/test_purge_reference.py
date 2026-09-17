@@ -5,6 +5,7 @@ existing probes (+ spectra / optical properties / images) and re-import from a
 freshly scraped staging DB. The purge refuses to run if any sample / FRET /
 reagent row still references a probe, so user data is never orphaned.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -13,7 +14,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from mmfdb.repository import MFDatabase
 
 

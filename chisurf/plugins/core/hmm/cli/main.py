@@ -61,13 +61,20 @@ def _settings(states, covariance, iterations, tol, time_step, seed, no_accelerat
 
 
 _COMMON = [
-    click.option("--covariance", default="full",
-                 type=click.Choice(["spherical", "diag", "full", "tied"]),
-                 help="Emission covariance parameterisation"),
+    click.option(
+        "--covariance",
+        default="full",
+        type=click.Choice(["spherical", "diag", "full", "tied"]),
+        help="Emission covariance parameterisation",
+    ),
     click.option("--iterations", default=1000, type=int, help="Maximum EM maps"),
     click.option("--tol", default=1e-2, type=float, help="Log-likelihood convergence threshold"),
-    click.option("--time-step", default=1.0, type=float,
-                 help="Duration of one bin in seconds (dwell times use it)"),
+    click.option(
+        "--time-step",
+        default=1.0,
+        type=float,
+        help="Duration of one bin in seconds (dwell times use it)",
+    ),
     click.option("--seed", default=0, type=int, help="Initialisation seed"),
     click.option("--no-accelerate", is_flag=True, help="Plain Baum-Welch, without SQUAREM"),
     click.option("--output", "-o", type=click.Path(), help="Write the JSON result here"),
@@ -120,8 +127,18 @@ def fit(trace_file, states, covariance, iterations, tol, time_step, seed, no_acc
 @click.option("--min-states", default=1, type=int, help="Smallest state count to try")
 @click.option("--max-states", default=6, type=int, help="Largest state count to try")
 @_add_options
-def scan(trace_file, min_states, max_states, covariance, iterations, tol, time_step, seed,
-         no_accelerate, output):
+def scan(
+    trace_file,
+    min_states,
+    max_states,
+    covariance,
+    iterations,
+    tol,
+    time_step,
+    seed,
+    no_accelerate,
+    output,
+):
     """Score state counts on TRACE_FILE by AIC and BIC."""
     result = scan_state_counts(
         load_trace(trace_file),

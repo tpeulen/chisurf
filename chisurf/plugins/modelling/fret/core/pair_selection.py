@@ -4,21 +4,17 @@ from __future__ import annotations
 
 import glob
 import os
-from typing import Dict, List, Optional, Tuple
 
-from chisurf.core.structure import trajectory_data as md
 import numpy as np
 
-from .olga_greedy import select_informative_pairs
-from . import av as _av
-from . import io as _io
+from chisurf.core.structure import trajectory_data as md
 
 
 def preprocess_efficiency_matrix(
     effs: np.ndarray,
     rmsds: np.ndarray,
     max_nan_fraction: float = 0.20,
-) -> Tuple[np.ndarray, np.ndarray, List[int]]:
+) -> tuple[np.ndarray, np.ndarray, list[int]]:
     """NaN preprocessing matching OLGA's GetInformativePairsDialog.cpp.
 
     Steps (in order):
@@ -70,7 +66,7 @@ def compute_rmsd_matrix_from_pdb_dir(
     pdb_dir: str,
     selection: str = "name CA",
     pattern: str = "*.pdb",
-) -> Tuple[np.ndarray, List[str]]:
+) -> tuple[np.ndarray, list[str]]:
     """Build all-vs-all RMSD matrix from a directory of PDB files.
 
     Uses superposition (Kabsch) before RMSD computation.
@@ -103,7 +99,9 @@ def compute_rmsd_matrix_from_pdb_dir(
     n = len(paths)
     rmsds = np.zeros((n, n), dtype=np.float32)
     for i in range(n):
-        rmsds[i, :] = md.rmsd(combined, combined, frame=i, atom_indices=atom_indices, precentered=False)
+        rmsds[i, :] = md.rmsd(
+            combined, combined, frame=i, atom_indices=atom_indices, precentered=False
+        )
 
     filenames = [os.path.basename(p) for p in paths]
     return rmsds, filenames
@@ -111,12 +109,12 @@ def compute_rmsd_matrix_from_pdb_dir(
 
 def compute_efficiency_matrix_from_evaluators(
     pdb_dir: str,
-    positions: Dict,
-    distances: Dict,
-    forster_radii: Optional[Dict[str, float]] = None,
+    positions: dict,
+    distances: dict,
+    forster_radii: dict[str, float] | None = None,
     pattern: str = "*.pdb",
     n_threads: int = 1,
-) -> Tuple[np.ndarray, List[str]]:
+) -> tuple[np.ndarray, list[str]]:
     """Compute (n_frames, n_pairs) FRET efficiency matrix.
 
     Uses FretEfficiencyEvaluator for each distance pair.
@@ -142,8 +140,8 @@ def compute_efficiency_matrix_from_evaluators(
     effs : (n_frames, n_pairs) float32 — may contain NaN
     pair_names : list of str — distance keys in column order
     """
-    from .evaluate import evaluate_directory
     from ..evaluators import FretEfficiencyEvaluator
+    from .evaluate import evaluate_directory
 
     evaluators = []
     pair_names = sorted(distances.keys())
@@ -160,7 +158,9 @@ def compute_efficiency_matrix_from_evaluators(
 
         evaluators.append(FretEfficiencyEvaluator(k, pos1, pos2, R0))
 
-    storage = evaluate_directory(pdb_dir, positions, evaluators, pattern=pattern, n_threads=n_threads)
+    storage = evaluate_directory(
+        pdb_dir, positions, evaluators, pattern=pattern, n_threads=n_threads
+    )
 
     n_frames = len(storage.filenames)
     n_pairs = len(evaluators)
@@ -172,7 +172,7 @@ def compute_efficiency_matrix_from_evaluators(
 
 
 def write_pair_selection_report(
-    selected_pair_names: List[str],
+    selected_pair_names: list[str],
     precision_decay: np.ndarray,
     initial_rmsd: float,
     output_path: str,
@@ -209,7 +209,7 @@ def compute_rmsd_matrix_from_trajectory(
     top_path: str,
     traj_path: str,
     selection: str = "name CA",
-) -> Tuple[np.ndarray, List[str]]:
+) -> tuple[np.ndarray, list[str]]:
     """Build all-vs-all RMSD matrix from a trajectory file.
 
     Uses superposition (Kabsch) before RMSD computation.
@@ -245,10 +245,10 @@ def compute_rmsd_matrix_from_trajectory(
 def compute_efficiency_matrix_from_evaluators_trajectory(
     top_path: str,
     traj_path: str,
-    positions: Dict,
-    distances: Dict,
-    forster_radii: Optional[Dict[str, float]] = None,
-) -> Tuple[np.ndarray, List[str]]:
+    positions: dict,
+    distances: dict,
+    forster_radii: dict[str, float] | None = None,
+) -> tuple[np.ndarray, list[str]]:
     """Compute (n_frames, n_pairs) FRET efficiency matrix from a trajectory.
 
     Uses FretEfficiencyEvaluator for each distance pair.
@@ -271,8 +271,8 @@ def compute_efficiency_matrix_from_evaluators_trajectory(
     effs : (n_frames, n_pairs) float32 — may contain NaN
     pair_names : list of str — distance keys in column order
     """
-    from .evaluate import evaluate_trajectory
     from ..evaluators import FretEfficiencyEvaluator
+    from .evaluate import evaluate_trajectory
 
     evaluators = []
     pair_names = sorted(distances.keys())
@@ -298,4 +298,3 @@ def compute_efficiency_matrix_from_evaluators_trajectory(
         effs[:, p_idx] = storage.results[ev.name]
 
     return effs, pair_names
-

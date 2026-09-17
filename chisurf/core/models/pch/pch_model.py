@@ -30,7 +30,7 @@ class PchMultiComponentModel(ModelCurve):
     DEFAULT_BRIGHTNESS = 2.0
     DEFAULT_OCCUPANCY = 3.0
 
-    def __init__(self, fit: "chisurf.core.fitting.fit.Fit", *args, **kwargs) -> None:
+    def __init__(self, fit: chisurf.core.fitting.fit.Fit, *args, **kwargs) -> None:
         """Create the model with one active component.
 
         Parameters
@@ -42,13 +42,18 @@ class PchMultiComponentModel(ModelCurve):
 
         def _p(name, value, label):
             return FittingParameter(
-                name=name, label_text=label, value=value, lb=0.0, ub=1.0e6,
-                bounds_on=False, fixed=False, registry_id=f"pch.{name}",
+                name=name,
+                label_text=label,
+                value=value,
+                lb=0.0,
+                ub=1.0e6,
+                bounds_on=False,
+                fixed=False,
+                registry_id=f"pch.{name}",
             )
 
         self._eps = [
-            _p(f"eps{i}", self.DEFAULT_BRIGHTNESS if i == 1 else 0.0,
-               f"&epsilon;<sub>{i}</sub>")
+            _p(f"eps{i}", self.DEFAULT_BRIGHTNESS if i == 1 else 0.0, f"&epsilon;<sub>{i}</sub>")
             for i in range(1, self.MAX_COMPONENTS + 1)
         ]
         self._n = [
@@ -69,7 +74,8 @@ class PchMultiComponentModel(ModelCurve):
     def n_components(self) -> int:
         """Number of components currently switched on."""
         return sum(
-            1 for eps, n in zip(self._eps, self._n)
+            1
+            for eps, n in zip(self._eps, self._n)
             if float(eps.value) > 0.0 and float(n.value) > 0.0
         )
 
@@ -89,14 +95,13 @@ class PchMultiComponentModel(ModelCurve):
             eps.fixed = False
             n.fixed = False
             return
-        chisurf.logging.info(
-            f"PCH: already at the maximum of {self.MAX_COMPONENTS} components"
-        )
+        chisurf.logging.info(f"PCH: already at the maximum of {self.MAX_COMPONENTS} components")
 
     def remove_component(self) -> None:
         """Switch off the last active component, keeping at least one."""
         active = [
-            i for i, (eps, n) in enumerate(zip(self._eps, self._n))
+            i
+            for i, (eps, n) in enumerate(zip(self._eps, self._n))
             if float(eps.value) > 0.0 and float(n.value) > 0.0
         ]
         if len(active) <= 1:

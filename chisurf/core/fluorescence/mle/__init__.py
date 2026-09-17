@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from .fit2x import (
     HAVE_TTTRLIB,
-    parameter_names_of,
     Fit2x,
     Fit2xBatch,
     Fit2xModel,
     Fit2xResult,
     Fit2xSettings,
     assemble_vv_vh,
+    parameter_names_of,
 )
 from .irf import interpolate_shift
 from .setup import DetectorSetup, parse_detector_setup

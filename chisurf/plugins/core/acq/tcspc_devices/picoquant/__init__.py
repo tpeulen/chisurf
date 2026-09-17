@@ -9,11 +9,7 @@ The module is designed to be manufacturer-agnostic, allowing for
 future extension to other hardware.
 """
 
-from .wrapper import PicoQuantAPI, PicoQuantDevice
 from .setup_dialog import PicoQuantSetupDialog
+from .wrapper import PicoQuantAPI, PicoQuantDevice
 
-__all__ = [
-    'PicoQuantAPI',
-    'PicoQuantDevice',
-    'PicoQuantSetupDialog'
-]
+__all__ = ["PicoQuantAPI", "PicoQuantDevice", "PicoQuantSetupDialog"]

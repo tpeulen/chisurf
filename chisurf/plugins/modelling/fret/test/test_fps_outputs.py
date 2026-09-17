@@ -9,6 +9,7 @@ Covers requirements that were implemented but untested:
 
 All pure numpy — no IMP, AV backend, or external data.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -104,9 +105,7 @@ def test_compute_rmsd_superpose_recovers_rigid_transform():
     # a known rotation (90° about z) + translation
     theta = np.pi / 2
     rot = np.array(
-        [[np.cos(theta), -np.sin(theta), 0.0],
-         [np.sin(theta), np.cos(theta), 0.0],
-         [0.0, 0.0, 1.0]]
+        [[np.cos(theta), -np.sin(theta), 0.0], [np.sin(theta), np.cos(theta), 0.0], [0.0, 0.0, 1.0]]
     )
     b = a @ rot.T + np.array([10.0, -5.0, 3.0])
 
@@ -182,7 +181,7 @@ def test_av_volume_evaluator():
     # 4 points, grid_step 1.5 -> volume = 4 * 1.5**3
     av = _make_av([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], grid_step=1.5)
     res = AVVolumeEvaluator("vol", "A").evaluate({"A": av})
-    assert res.value == pytest.approx(4 * 1.5 ** 3)
+    assert res.value == pytest.approx(4 * 1.5**3)
     assert res.unit == "Å³"
 
 

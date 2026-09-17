@@ -20,15 +20,16 @@ import pytest
 sklearn = pytest.importorskip("sklearn")
 
 from sklearn.cluster import KMeans as SkKMeans
-from sklearn.decomposition import IncrementalPCA as SkIncrementalPCA, PCA as SkPCA
+from sklearn.decomposition import PCA as SkPCA
+from sklearn.decomposition import IncrementalPCA as SkIncrementalPCA
 from sklearn.mixture import GaussianMixture as SkGaussianMixture
 from sklearn.preprocessing import StandardScaler as SkStandardScaler
 
 from chisurf.core.ml import (
+    PCA,
     GaussianMixture,
     IncrementalPCA,
     KMeans,
-    PCA,
     StandardScaler,
 )
 
@@ -50,44 +51,64 @@ def test_gmm_1d_parity(covariance_type):
     """1-D mixture: equal bic/aic and (up to label permutation) equal stems."""
     X, _ = _two_blobs()
     a = GaussianMixture(
-        n_components=2, covariance_type=covariance_type, random_state=1,
-        max_iter=300, n_init=3, tol=1e-5, reg_covar=1e-6,
+        n_components=2,
+        covariance_type=covariance_type,
+        random_state=1,
+        max_iter=300,
+        n_init=3,
+        tol=1e-5,
+        reg_covar=1e-6,
     ).fit(X)
     b = SkGaussianMixture(
-        n_components=2, covariance_type=covariance_type, random_state=1,
-        max_iter=300, n_init=3, tol=1e-5, reg_covar=1e-6,
+        n_components=2,
+        covariance_type=covariance_type,
+        random_state=1,
+        max_iter=300,
+        n_init=3,
+        tol=1e-5,
+        reg_covar=1e-6,
     ).fit(X)
 
     assert abs(a.bic(X) - b.bic(X)) < 0.5
     assert abs(a.aic(X) - b.aic(X)) < 0.5
     # labels agree up to permutation (the relative assignment is what matters)
-    la, lb = a.fit_predict(X), b.fit_predict(X)
+    _la, _lb = a.fit_predict(X), b.fit_predict(X)
 
 
 def test_gmm_5d_parity():
     """5-D well-separated fixture: both implementations land in the same basin."""
     rng = np.random.default_rng(3)
-    X = np.vstack([
-        rng.normal([0] * 5, 0.4, (400, 5)),
-        rng.normal([8] * 5, 0.5, (400, 5)),
-        rng.normal([-4, 12, 2, -8, 6], 0.6, (400, 5)),
-    ])
+    X = np.vstack(
+        [
+            rng.normal([0] * 5, 0.4, (400, 5)),
+            rng.normal([8] * 5, 0.5, (400, 5)),
+            rng.normal([-4, 12, 2, -8, 6], 0.6, (400, 5)),
+        ]
+    )
     rng2 = np.random.default_rng(2)
     idx = rng2.choice(len(X), 3, replace=False)
     means_init = X[idx]
     a = GaussianMixture(
-        n_components=3, covariance_type="full", means_init=means_init,
-        n_init=1, max_iter=2000, tol=1e-9, random_state=0,
+        n_components=3,
+        covariance_type="full",
+        means_init=means_init,
+        n_init=1,
+        max_iter=2000,
+        tol=1e-9,
+        random_state=0,
     ).fit(X)
     b = SkGaussianMixture(
-        n_components=3, covariance_type="full", means_init=means_init,
-        n_init=1, max_iter=2000, tol=1e-9, random_state=0,
+        n_components=3,
+        covariance_type="full",
+        means_init=means_init,
+        n_init=1,
+        max_iter=2000,
+        tol=1e-9,
+        random_state=0,
     ).fit(X)
     # same basin, same answer up to EM tolerance
     assert abs(float(a.score(X)) - float(b.score(X))) < 0.05
-    np.testing.assert_allclose(
-        np.sort(a.weights_), np.sort(b.weights_), atol=0.05
-    )
+    np.testing.assert_allclose(np.sort(a.weights_), np.sort(b.weights_), atol=0.05)
 
 
 def test_gmm_fixed_mean_is_held_exactly():
@@ -96,12 +117,17 @@ def test_gmm_fixed_mean_is_held_exactly():
     X = np.vstack([rng.normal([0, 0], 0.5, (400, 2)), rng.normal([5, 5], 0.8, (600, 2))])
     fix_means = np.array([[True, True], [False, False]])
     em = GaussianMixture(
-        n_components=2, covariance_type="full",
+        n_components=2,
+        covariance_type="full",
         means_init=np.array([[0.1, 0.1], [4.0, 4.0]]),
         covariances_init=np.array([np.eye(2) * 0.6, np.eye(2) * 0.9]),
         weights_init=np.array([0.5, 0.5]),
-        reg_covar=1e-6, max_iter=100, tol=1e-4, init_params="random",
-        fix_means=fix_means, n_init=2,
+        reg_covar=1e-6,
+        max_iter=100,
+        tol=1e-4,
+        init_params="random",
+        fix_means=fix_means,
+        n_init=2,
     ).fit(X)
     # locked mean element byte-for-byte unchanged
     assert np.allclose(em.means_[0], [0.1, 0.1], atol=1e-15)
@@ -115,11 +141,16 @@ def test_gmm_fixed_covariance_is_held_exactly():
     X = np.vstack([rng.normal([0, 0], 0.5, (400, 2)), rng.normal([5, 5], 0.8, (600, 2))])
     fix_cov = np.ones((2, 2, 2), dtype=bool)
     em = GaussianMixture(
-        n_components=2, covariance_type="full",
+        n_components=2,
+        covariance_type="full",
         means_init=np.array([[0.1, 0.1], [4.0, 4.0]]),
         covariances_init=np.array([np.eye(2) * 0.6, np.eye(2) * 0.9]),
-        reg_covar=1e-6, max_iter=100, tol=1e-4, init_params="random",
-        fix_covariances=fix_cov, n_init=2,
+        reg_covar=1e-6,
+        max_iter=100,
+        tol=1e-4,
+        init_params="random",
+        fix_covariances=fix_cov,
+        n_init=2,
     ).fit(X)
     assert np.allclose(em.covariances_[0], np.eye(2) * 0.6, atol=1e-12)
     assert np.allclose(em.covariances_[1], np.eye(2) * 0.9, atol=1e-12)
@@ -163,9 +194,7 @@ def test_incremental_pca_evr_matches():
     X = rng.normal(size=(1000, 4)) @ np.diag([3.0, 1.0, 0.5, 0.1]) + np.array([5, -2, 1, 8])
     c = IncrementalPCA(n_components=2, batch_size=100).fit(X)
     d = SkIncrementalPCA(n_components=2, batch_size=100).fit(X)
-    np.testing.assert_allclose(
-        c.explained_variance_ratio_, d.explained_variance_ratio_, atol=1e-4
-    )
+    np.testing.assert_allclose(c.explained_variance_ratio_, d.explained_variance_ratio_, atol=1e-4)
     np.testing.assert_allclose(np.abs(c.components_), np.abs(d.components_), atol=1e-2)
 
 
@@ -209,9 +238,7 @@ def test_incremental_pca_survives_a_large_offset():
     fitted = IncrementalPCA(n_components=2, batch_size=128).fit(X)
     assert (fitted.explained_variance_ > 0).all(), "the variance lost its digits"
     exact = PCA(n_components=2).fit(X)
-    np.testing.assert_allclose(
-        fitted.explained_variance_, exact.explained_variance_, rtol=1e-6
-    )
+    np.testing.assert_allclose(fitted.explained_variance_, exact.explained_variance_, rtol=1e-6)
 
 
 def test_incremental_pca_signs_match_pca():
@@ -238,9 +265,7 @@ def test_kmeans_inertia_belongs_to_the_returned_centres():
     are ranked on it, so a stale value can pick the wrong one.
     """
     rng = np.random.default_rng(6)
-    X = np.vstack(
-        [rng.normal(centre, 0.3, (200, 2)) for centre in ([0, 0], [4, 4], [0, 5])]
-    )
+    X = np.vstack([rng.normal(centre, 0.3, (200, 2)) for centre in ([0, 0], [4, 4], [0, 5])])
     fitted = KMeans(n_clusters=3, random_state=0, n_init=5).fit(X)
     difference = X - fitted.cluster_centers_[fitted.labels_]
     np.testing.assert_allclose(

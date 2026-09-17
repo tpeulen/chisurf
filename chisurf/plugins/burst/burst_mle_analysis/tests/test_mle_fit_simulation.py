@@ -16,11 +16,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 import tttrlib
 
 from chisurf.core.fluorescence.mle.fit2x import (
-    Fit2x, Fit2xModel, Fit2xSettings,
+    Fit2x,
+    Fit2xModel,
+    Fit2xSettings,
 )
 
 
@@ -28,8 +29,14 @@ def _fitter(irf, bg, dt, period):
     """The estimator under test, built through the same seam chisurf uses."""
     return Fit2x(
         Fit2xSettings(
-            dt=dt, period=period, irf=irf, background=bg,
-            g_factor=1.0, l1=0.0, l2=0.0, soft_bifl_scatter=False,
+            dt=dt,
+            period=period,
+            irf=irf,
+            background=bg,
+            g_factor=1.0,
+            l1=0.0,
+            l2=0.0,
+            soft_bifl_scatter=False,
         ),
         model=Fit2xModel.FIT23,
     )
@@ -40,11 +47,18 @@ def _simulate(tau_true, n=128, dt=0.05, period=32.0, counts=30000, seed=1):
     t = np.arange(n)
     irf_half = np.exp(-0.5 * ((t - 10) / 1.2) ** 2)
     irf_half /= irf_half.sum()
-    irf = np.concatenate([irf_half, irf_half])            # clean, narrow IRF
-    bg = np.ones(2 * n) / (2 * n)                          # flat background
+    irf = np.concatenate([irf_half, irf_half])  # clean, narrow IRF
+    bg = np.ones(2 * n) / (2 * n)  # flat background
     setup = tttrlib.setup_vector(
-        "fit23", dt=dt, period=period, g_factor=1.0, l1=0.0, l2=0.0,
-        convolution_stop=n - 1, soft_bifl_scatter_flag=False)
+        "fit23",
+        dt=dt,
+        period=period,
+        g_factor=1.0,
+        l1=0.0,
+        l2=0.0,
+        convolution_stop=n - 1,
+        soft_bifl_scatter_flag=False,
+    )
     fit = tttrlib.DecayFit2("fit23", setup, irf.tolist())
     problem = tttrlib.DecayFitProblem(2, n, dt)
     problem.irf = tttrlib.VectorDouble(irf.tolist())
@@ -59,7 +73,7 @@ def test_fit23_recovers_known_lifetime(tau_true):
     data, irf, bg, dt, period = _simulate(tau_true)
     res = _fitter(irf, bg, dt, period).fit(
         data,
-        initial_values=[1.0, 0.0, 0.0, 1.0],   # deliberately wrong start
+        initial_values=[1.0, 0.0, 0.0, 1.0],  # deliberately wrong start
         fixed=[0, 1, 1, 1],
     )
     recovered = float(res.x[0])

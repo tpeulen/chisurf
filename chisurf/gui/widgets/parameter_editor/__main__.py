@@ -1,6 +1,8 @@
 import sys
-from . import parameter_editor
+
 from qtpy import QtWidgets
+
+from . import parameter_editor
 
 
 def main():

@@ -23,6 +23,7 @@ K = importlib.import_module("chisurf.core.ml.cluster._kmeans")
 
 # ── the loops, as they were ───────────────────────────────────────────────────
 
+
 def _reference_seed(X, n_clusters, uniforms):
     """``_kmeanspp_seed`` as an element-at-a-time loop."""
     n_samples, n_features = X.shape
@@ -30,8 +31,9 @@ def _reference_seed(X, n_clusters, uniforms):
     centers = np.empty((n_clusters, n_features))
     index = min(int(uniforms[0] * n_samples), n_samples - 1)
     centers[0] = X[index]
-    closest = np.array([sum((X[t, j] - centers[0, j]) ** 2 for j in range(n_features))
-                        for t in range(n_samples)])
+    closest = np.array(
+        [sum((X[t, j] - centers[0, j]) ** 2 for j in range(n_features)) for t in range(n_samples)]
+    )
     for c in range(1, n_clusters):
         total = 0.0
         for t in range(n_samples):
@@ -103,8 +105,7 @@ def _reference_lloyd(X, centers, labels, max_iter, tol):
                 for t in range(n_samples):
                     if labels[t] == c:
                         continue
-                    acc = sum((X[t, j] - centers[labels[t], j]) ** 2
-                              for j in range(n_features))
+                    acc = sum((X[t, j] - centers[labels[t], j]) ** 2 for j in range(n_features))
                     if acc > worst_distance:
                         worst_distance, worst_index = acc, t
                 shift += tol + 1.0
@@ -123,6 +124,7 @@ def _reference_lloyd(X, centers, labels, max_iter, tol):
 
 
 # ── the parity ───────────────────────────────────────────────────────────────
+
 
 def _samples(rng, n=400, n_features=1, n_blobs=3):
     """Well-separated blobs, the shape a mixture initialisation actually sees."""
@@ -158,8 +160,8 @@ def test_lloyd_converges_where_the_loop_did(n_features, n_clusters):
 
     np.testing.assert_allclose(fast_centers, slow_centers)
     np.testing.assert_array_equal(fast_labels, slow_labels)
-    assert fast[1] == slow[1]                       # same number of sweeps
-    assert fast[0] == pytest.approx(slow[0])        # same inertia
+    assert fast[1] == slow[1]  # same number of sweeps
+    assert fast[0] == pytest.approx(slow[0])  # same inertia
 
 
 def test_an_emptied_cluster_is_reseeded_the_same_way():

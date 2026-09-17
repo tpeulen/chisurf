@@ -336,7 +336,7 @@ def compute_homo_fret_backmap(
         return {"k_homo": np.nan, "R_DA": R_DA, "t_RM": np.nan, "rho": rho, "tau0": tau0, "R0": R0}
 
     ratio = R0 / R_DA
-    k_homo = (ratio ** 6) / tau0
+    k_homo = (ratio**6) / tau0
 
     denom = (2.0 * k_homo) + (1.0 / rho)
     t_RM = 1.0 / denom if denom > 0 else np.nan

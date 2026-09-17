@@ -1,33 +1,30 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 
 import numpy as np
 
 import chisurf.core.base
 import chisurf.core.fio
-import chisurf.core.fio.ascii
 import chisurf.core.fio as io
-import chisurf.core.fio.fluorescence.fcs.definitions
+import chisurf.core.fio.ascii
 import chisurf.core.fio.fluorescence.fcs.asc_alv
 import chisurf.core.fio.fluorescence.fcs.china
 import chisurf.core.fio.fluorescence.fcs.confocor3
-import chisurf.core.fio.fluorescence.fcs.kristine
-import chisurf.core.fio.fluorescence.fcs.pycorrfit
-import chisurf.core.fio.fluorescence.fcs.pq_dat
+import chisurf.core.fio.fluorescence.fcs.definitions
 import chisurf.core.fio.fluorescence.fcs.fcs_yaml
+import chisurf.core.fio.fluorescence.fcs.kristine
+import chisurf.core.fio.fluorescence.fcs.pq_dat
+import chisurf.core.fio.fluorescence.fcs.pycorrfit
 import chisurf.core.fio.fluorescence.fcs.ries_mat
 import chisurf.core.fio.fluorescence.fcs.sin_correlator
 import chisurf.core.fluorescence.fcs as fcs_utils
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
-def make_curve_kwargs(
-        r: FCSDataset
-):
+def make_curve_kwargs(r: FCSDataset):
     """This function takes a *FCSDataset* and prepares a dictionary
     that can be used to initialize a *DataCurve*
 
@@ -44,41 +41,41 @@ def make_curve_kwargs(
     # a set of main keys are used to define FCS curves
     # with associated weights
     main_keys = [
-        'measurement_id',
-        'correlation_times',
-        'correlation_amplitudes',
-        'correlation_amplitude_weights'
+        "measurement_id",
+        "correlation_times",
+        "correlation_amplitudes",
+        "correlation_amplitude_weights",
     ]
-    filename = r.get('filename')
-    x = np.array(r.get('correlation_times'))
+    filename = r.get("filename")
+    x = np.array(r.get("correlation_times"))
     # all other keys are stored in the meta data dict
-    meta_data = r.pop('meta_data', dict())
+    meta_data = r.pop("meta_data", dict())
     for key in r.keys():
         if key not in main_keys:
             meta_data[key] = r.get(key, None)
     meta_data["experiment_name"] = "FCS"
     meta_data["filename"] = filename
     curve_kwargs = {
-        "name": r.get('measurement_id'),
+        "name": r.get("measurement_id"),
         "x": x,
-        "y": np.array(r.get('correlation_amplitudes')),
+        "y": np.array(r.get("correlation_amplitudes")),
         "ex": np.ones_like(x),
-        "ey": 1. / np.array(r.get('correlation_amplitude_weights')),
-        "mask": np.array(r.get('mask')) if 'mask' in r else np.ones_like(x),
+        "ey": 1.0 / np.array(r.get("correlation_amplitude_weights")),
+        "mask": np.array(r.get("mask")) if "mask" in r else np.ones_like(x),
         "filename": filename,
         "meta_data": meta_data,
-        "load_filename_on_init": False
+        "load_filename_on_init": False,
     }
     return curve_kwargs
 
 
 def read_fcs(
-        filename: str,
-        data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None,
-        reader_name: str = 'csv',
-        verbose: bool = False,
-        experiment: chisurf.core.experiments.core.experiment.Experiment = None,
-        **kwargs
+    filename: str,
+    data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None,
+    reader_name: str = "csv",
+    verbose: bool = False,
+    experiment: chisurf.core.experiments.core.experiment.Experiment = None,
+    **kwargs,
 ) -> chisurf.core.data.ExperimentDataCurveGroup:
     """
 
@@ -96,67 +93,59 @@ def read_fcs(
     :param kwargs:
     :return:
     """
-
     import chisurf.core.fio.fluorescence.pqres
 
     # Optional re-weighting configuration. These keys are consumed here and
     # not forwarded to the low-level readers to keep their signatures stable.
-    weight_mode = kwargs.pop('weight_mode', None)
-    weight_kwargs = kwargs.pop('weight_kwargs', None) or {}
+    weight_mode = kwargs.pop("weight_mode", None)
+    weight_kwargs = kwargs.pop("weight_kwargs", None) or {}
     name_reader = {
-        'confocor3': chisurf.core.fio.fluorescence.fcs.confocor3.read_zeiss_fcs,
-        'china-mat': chisurf.core.fio.fluorescence.fcs.china.read_china_mat,
-        'alv': chisurf.core.fio.fluorescence.fcs.asc_alv.read_asc,
-        'pq.dat': chisurf.core.fio.fluorescence.fcs.pq_dat.read_dat,
-        'yaml': chisurf.core.fio.fluorescence.fcs.fcs_yaml.read_yaml,
-        'kristine': chisurf.core.fio.fluorescence.fcs.kristine.read_kristine,
-        'sin': chisurf.core.fio.fluorescence.fcs.sin_correlator.read_sin,
-        'ries-mat': chisurf.core.fio.fluorescence.fcs.ries_mat.read_ries_mat,
-        'pycorrfit': chisurf.core.fio.fluorescence.fcs.pycorrfit.read_pycorrfit,
-        'pqres': chisurf.core.fio.fluorescence.pqres.read_pqres_fcs
+        "confocor3": chisurf.core.fio.fluorescence.fcs.confocor3.read_zeiss_fcs,
+        "china-mat": chisurf.core.fio.fluorescence.fcs.china.read_china_mat,
+        "alv": chisurf.core.fio.fluorescence.fcs.asc_alv.read_asc,
+        "pq.dat": chisurf.core.fio.fluorescence.fcs.pq_dat.read_dat,
+        "yaml": chisurf.core.fio.fluorescence.fcs.fcs_yaml.read_yaml,
+        "kristine": chisurf.core.fio.fluorescence.fcs.kristine.read_kristine,
+        "sin": chisurf.core.fio.fluorescence.fcs.sin_correlator.read_sin,
+        "ries-mat": chisurf.core.fio.fluorescence.fcs.ries_mat.read_ries_mat,
+        "pycorrfit": chisurf.core.fio.fluorescence.fcs.pycorrfit.read_pycorrfit,
+        "pqres": chisurf.core.fio.fluorescence.pqres.read_pqres_fcs,
     }
 
     data_sets: typing.List[chisurf.core.data.DataCurve] = list()
     ds: typing.List[FCSDataset] = list()
     # Files that contain single FCS curves
-    if reader_name == 'csv':
+    if reader_name == "csv":
         csv = chisurf.core.fio.ascii.Csv()
-        csv.load(
-            filename=filename,
-            verbose=chisurf.core.settings.cs_settings['verbose'],
-            **kwargs
-        )
+        csv.load(filename=filename, verbose=chisurf.core.settings.cs_settings["verbose"], **kwargs)
         x, y = csv.data[0], csv.data[1]
         ey = csv.data[2]
         m = csv.data[3] if len(csv.data) > 3 else np.ones_like(x)
         ds = [
             {
-                'correlation_times': x.tolist(),
-                'correlation_amplitudes': y.tolist(),
-                'correlation_amplitude_weights': (1. / ey).tolist(),
-                'mask': m.tolist(),
-                'filename': filename,
-                'measurement_id': os.path.basename(filename)
+                "correlation_times": x.tolist(),
+                "correlation_amplitudes": y.tolist(),
+                "correlation_amplitude_weights": (1.0 / ey).tolist(),
+                "mask": m.tolist(),
+                "filename": filename,
+                "measurement_id": os.path.basename(filename),
             }
         ]
     # Files with multiple curves per file
     elif reader_name in [
-        'china-mat',
-        'confocor3',
-        'alv',
-        'pq.dat',
-        'yaml',
-        'kristine',
-        'sin',
-        'ries-mat',
-        'pycorrfit',
-        'pqres'
+        "china-mat",
+        "confocor3",
+        "alv",
+        "pq.dat",
+        "yaml",
+        "kristine",
+        "sin",
+        "ries-mat",
+        "pycorrfit",
+        "pqres",
     ]:
         reader = name_reader[reader_name]
-        ds: typing.List[FCSDataset] = reader(
-            filename=filename,
-            verbose=verbose
-        )
+        ds: typing.List[FCSDataset] = reader(filename=filename, verbose=verbose)
 
     # Ensure that each dataset has correlation-amplitude weights. If the
     # reader did not provide any (older files or formats without error
@@ -167,8 +156,8 @@ def read_fcs(
         for r in ds:
             has_weights = False
             try:
-                if 'correlation_amplitude_weights' in r:
-                    w_existing = r.get('correlation_amplitude_weights')
+                if "correlation_amplitude_weights" in r:
+                    w_existing = r.get("correlation_amplitude_weights")
                     has_weights = w_existing is not None
             except Exception:
                 has_weights = False
@@ -177,19 +166,19 @@ def read_fcs(
                 continue
 
             try:
-                times = np.asarray(r.get('correlation_times'), dtype=float)
-                corr = np.asarray(r.get('correlation_amplitudes'), dtype=float)
+                times = np.asarray(r.get("correlation_times"), dtype=float)
+                corr = np.asarray(r.get("correlation_amplitudes"), dtype=float)
             except Exception:
                 continue
             if times.size == 0 or corr.size == 0:
                 continue
 
             try:
-                acq = float(r.get('acquisition_time', 1.0))
+                acq = float(r.get("acquisition_time", 1.0))
             except Exception:
                 acq = 1.0
             try:
-                mean_cr = float(r.get('mean_count_rate', 1.0))
+                mean_cr = float(r.get("mean_count_rate", 1.0))
             except Exception:
                 mean_cr = 1.0
 
@@ -209,7 +198,7 @@ def read_fcs(
                 continue
 
             try:
-                r['correlation_amplitude_weights'] = new_w.tolist()
+                r["correlation_amplitude_weights"] = new_w.tolist()
             except Exception:
                 try:
                     r.correlation_amplitude_weights = new_w.tolist()  # type: ignore[attr-defined]
@@ -220,8 +209,8 @@ def read_fcs(
                 log.info(
                     "FCS: no noise weights found in file '%s' (measurement_id=%s); "
                     "using Suren noise model as default.",
-                    r.get('filename', filename),
-                    r.get('measurement_id', None),
+                    r.get("filename", filename),
+                    r.get("measurement_id", None),
                 )
             except Exception:
                 # Logging is non-critical; ignore any issues here.
@@ -233,21 +222,21 @@ def read_fcs(
     if ds and weight_mode is not None:
         for r in ds:
             try:
-                times = np.asarray(r.get('correlation_times'), dtype=float)
-                corr = np.asarray(r.get('correlation_amplitudes'), dtype=float)
+                times = np.asarray(r.get("correlation_times"), dtype=float)
+                corr = np.asarray(r.get("correlation_amplitudes"), dtype=float)
             except Exception:
                 continue
             if times.size == 0 or corr.size == 0:
                 continue
             try:
-                acq = float(r.get('acquisition_time', 1.0))
+                acq = float(r.get("acquisition_time", 1.0))
             except Exception:
                 acq = 1.0
             try:
-                mean_cr = float(r.get('mean_count_rate', 1.0))
+                mean_cr = float(r.get("mean_count_rate", 1.0))
             except Exception:
                 mean_cr = 1.0
-            existing_w = r.get('correlation_amplitude_weights', None)
+            existing_w = r.get("correlation_amplitude_weights", None)
             try:
                 if existing_w is not None:
                     existing_w = np.asarray(existing_w, dtype=float)
@@ -269,7 +258,7 @@ def read_fcs(
                 continue
 
             try:
-                r['correlation_amplitude_weights'] = new_w.tolist()
+                r["correlation_amplitude_weights"] = new_w.tolist()
             except Exception:
                 # Fallback for non-mutable FCSDataset implementations
                 try:
@@ -308,11 +297,7 @@ def read_fcs(
     return chisurf.core.data.ExperimentDataCurveGroup(data_sets)
 
 
-def write_single_fcs(
-        data_set: chisurf.core.data.DataCurve,
-        fn: str,
-        file_type: str
-):
+def write_single_fcs(data_set: chisurf.core.data.DataCurve, fn: str, file_type: str):
     """Write a single FCS curve to a file.
 
     Parameters
@@ -343,18 +328,18 @@ def write_single_fcs(
             correlation_amplitude=correlation_amplitude,
             correlation_time=correlation_time,
             correlation_amplitude_uncertainty=correlation_amplitude_uncertainty,
-            mask=getattr(data_set, 'mask', None),
+            mask=getattr(data_set, "mask", None),
             acquisition_time=aquisition_time,
             mean_countrate=mean_countrate,
         )
 
 
 def write_fcs(
-        data: chisurf.core.data.ExperimentDataCurveGroup,
-        filename: str,
-        file_type: str,
-        verbose: bool = True,
-        mode: str = 'w'
+    data: chisurf.core.data.ExperimentDataCurveGroup,
+    filename: str,
+    file_type: str,
+    verbose: bool = True,
+    mode: str = "w",
 ):
     """Write FCS data to a file in the specified format.
 
@@ -382,29 +367,13 @@ def write_fcs(
         if len(data) > 1:
             basename, ext = os.path.splitext(filename)
             for i, d in enumerate(data):
-                write_single_fcs(
-                    data_set=d,
-                    fn=basename + "_%02d" % i + ext,
-                    file_type=file_type
-                )
+                write_single_fcs(data_set=d, fn=basename + "_%02d" % i + ext, file_type=file_type)
         else:
-            write_single_fcs(
-                data_set=data[0],
-                fn=filename,
-                file_type=file_type
-            )
+            write_single_fcs(data_set=data[0], fn=filename, file_type=file_type)
     elif file_type in multi_fcs_datatypes:
         if verbose:
             print("Writing file with multiple FCS curves per file")
         if file_type == "yaml":
-            txt = data.to_yaml(
-                remove_protected=True,
-                convert_values_to_elementary=True
-            )
-            with io.zipped.open_maybe_zipped(
-                filename=filename,
-                mode=mode
-            ) as fp:
-                fp.write(
-                    txt
-                )
+            txt = data.to_yaml(remove_protected=True, convert_values_to_elementary=True)
+            with io.zipped.open_maybe_zipped(filename=filename, mode=mode) as fp:
+                fp.write(txt)

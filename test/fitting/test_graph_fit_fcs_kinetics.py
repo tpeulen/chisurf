@@ -11,6 +11,7 @@ closed-form FCS modes use.  Pinned here:
 * "fast" mode and no-power mode refuse the graph (they are closed-form, not
   a numerical kernel).
 """
+
 import numpy as np
 import pytest
 
@@ -19,8 +20,7 @@ import chisurf.core.fitting.fit as F
 import chisurf.core.fitting.minimizer as M
 from chisurf.core.models.fcs.kinetics import FCSKineticsModel
 
-pytestmark = pytest.mark.skipif(
-    not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
 
 
 def _tau_ms(n=128):
@@ -31,8 +31,7 @@ def make_fit(y=None, meta=None, n=128):
     tau = _tau_ms(n)
     if y is None:
         y = np.ones_like(tau)
-    data = chisurf.core.data.DataCurve(
-        x=tau, y=y, ey=np.full(tau.size, 1e-3))
+    data = chisurf.core.data.DataCurve(x=tau, y=y, ey=np.full(tau.size, 1e-3))
     if meta:
         data.meta_data.update(meta)
     fit = F.Fit(model_class=FCSKineticsModel, data=data)
@@ -44,14 +43,14 @@ def make_fit(y=None, meta=None, n=128):
 def _arm_saturation(model):
     """Engage the photokinetic scheme with a non-zero power."""
     sat = model.saturation
-    sat._power.value = 20.0       # 20 mW — active
+    sat._power.value = 20.0  # 20 mW — active
     sat._extinction.value = 73000.0
     sat._N.value = 2.5
     sat._b.value = 1.0
-    sat._bg.value = 4.0           # count-rate background factor armed
-    sat._w_r.value = 250.0        # nm
-    sat._w_z.value = 1250.0       # nm
-    sat._D.value = 400.0          # um^2/s
+    sat._bg.value = 4.0  # count-rate background factor armed
+    sat._w_r.value = 250.0  # nm
+    sat._w_z.value = 1250.0  # nm
+    sat._D.value = 400.0  # um^2/s
     # All scheme parameters (rate matrices, brightness) stay fixed: they
     # are configuration on the C++ node, not ports, so freeing one refuses
     # the graph (unclaimable-port rule) — the same design as MDF optics.
@@ -103,8 +102,9 @@ def test_the_node_curve_is_the_python_curve_full_mode():
     py_y = np.asarray(model.y, dtype=float)
 
     assert node_y.shape == py_y.shape, f"shape mismatch: {node_y.shape} vs {py_y.shape}"
-    np.testing.assert_allclose(node_y, py_y, rtol=1e-10, atol=1e-12,
-                               err_msg="graph node curve != python curve")
+    np.testing.assert_allclose(
+        node_y, py_y, rtol=1e-10, atol=1e-12, err_msg="graph node curve != python curve"
+    )
 
 
 def test_fast_mode_refuses_graph():

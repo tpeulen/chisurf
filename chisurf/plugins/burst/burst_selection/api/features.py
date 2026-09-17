@@ -134,13 +134,17 @@ def extract_features(frames: Sequence[Any]) -> Any:
         # Column-wise, not one record per burst: the arrays are already the
         # right shape, and building a million dicts to take them apart again was
         # the whole cost of this function.
-        parts.append(store_from_arrays({
-            "nphotons": np.asarray(n_photons, dtype=float),
-            "duration": np.asarray(duration, dtype=float),
-            "brightness": np.asarray(brightness, dtype=float),
-            "interphoton": np.asarray(interphoton, dtype=float),
-            "fret": np.asarray(fret, dtype=float),
-        }))
+        parts.append(
+            store_from_arrays(
+                {
+                    "nphotons": np.asarray(n_photons, dtype=float),
+                    "duration": np.asarray(duration, dtype=float),
+                    "brightness": np.asarray(brightness, dtype=float),
+                    "interphoton": np.asarray(interphoton, dtype=float),
+                    "fret": np.asarray(fret, dtype=float),
+                }
+            )
+        )
     if not parts:
         empty = new_store()
         for name in _FEATURE_COLUMNS:

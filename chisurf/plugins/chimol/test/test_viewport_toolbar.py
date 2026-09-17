@@ -9,6 +9,7 @@ Two commands had to exist for that: `toggle_rep` (a button that only ever
 *shows* is a button you press once — the Qt widget was checkable, which is
 exactly the coupling being removed) and `info_panel`.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -26,12 +27,17 @@ def gui():
     ran: list[str] = []
     panel = InternalGui(run_command=ran.append)
     panel.toolbar = list(TOOLBAR)
-    panel.menubar = [("File", ())]          # a bar with no entries: height only
+    panel.menubar = [("File", ())]  # a bar with no entries: height only
     panel.sequence_visible = True
     panel.sequences = [
-        SequenceRow(name="148l/E", codes="MNIFEMLRIDEGLRL", object_id="o1",
-                    chain="E", numbers=list(range(1, 16)),
-                    residue_indices=list(range(15)))
+        SequenceRow(
+            name="148l/E",
+            codes="MNIFEMLRIDEGLRL",
+            object_id="o1",
+            chain="E",
+            numbers=list(range(1, 16)),
+            residue_indices=list(range(15)),
+        )
     ]
     panel.layout(*SIZE)
     panel.ran = ran
@@ -96,13 +102,16 @@ def test_no_toolbar_when_the_host_supplies_none():
 def window():
     import pathlib
 
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not pdb.is_file():
         pytest.skip(f"missing fixture {pdb}")
@@ -157,6 +166,4 @@ def test_info_panel_toggles_and_can_be_set(window):
 
 def test_the_window_hands_the_toolbar_to_the_chrome(window):
     gui = window.viewer.gui
-    assert [label for label, _c, _n in gui.toolbar] == [
-        label for label, _c, _n in TOOLBAR
-    ]
+    assert [label for label, _c, _n in gui.toolbar] == [label for label, _c, _n in TOOLBAR]

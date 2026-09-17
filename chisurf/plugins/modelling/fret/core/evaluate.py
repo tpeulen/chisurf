@@ -6,22 +6,20 @@ import concurrent.futures
 import glob
 import os
 import tempfile
-from typing import Dict, List, Optional
 
 import numpy as np
 
+from ..evaluators import EvaluationStorage, Evaluator, EvaluatorResult
 from . import av as _av
 from . import distance as _distance
-from . import io as _io
 from .engine import DistanceRestraint, RigidBody
-from ..evaluators import Evaluator, EvaluatorResult, EvaluationStorage
 
 
 def score_bodies(
-    bodies: List[RigidBody],
-    restraints: List[DistanceRestraint],
+    bodies: list[RigidBody],
+    restraints: list[DistanceRestraint],
     only_active: bool = True,
-) -> tuple[float, List[tuple]]:
+) -> tuple[float, list[tuple]]:
     """Score a rigid-body pose against distance restraints without IMP.
 
     This is the Qt-free, IMP-free counterpart of the IMP docking scorer: for each
@@ -48,7 +46,7 @@ def score_bodies(
         One ``(name, rmp, model_distance, chi2)`` tuple per scored restraint.
     """
     chi2_total = 0.0
-    per_restraint: List[tuple] = []
+    per_restraint: list[tuple] = []
     for r in restraints:
         if only_active and not r.active:
             continue
@@ -64,8 +62,8 @@ def score_bodies(
 
 def make_bodies_for_structure(
     atoms_xyzr: np.ndarray,
-    positions: Dict,
-) -> List[RigidBody]:
+    positions: dict,
+) -> list[RigidBody]:
     """Helper to construct basic RigidBody objects for evaluation."""
     body_map = {pname: int(pdef.get("body_id", 0)) for pname, pdef in positions.items()}
     n_bodies = max(body_map.values()) + 1 if body_map else 1
@@ -89,10 +87,10 @@ def make_bodies_for_structure(
 
 def evaluate_structure(
     pdb_path: str,
-    positions: Dict,
-    evaluators: List[Evaluator],
-    disc_step: Optional[float] = None,
-) -> Dict[str, EvaluatorResult]:
+    positions: dict,
+    evaluators: list[Evaluator],
+    disc_step: float | None = None,
+) -> dict[str, EvaluatorResult]:
     """Run all evaluators on a single PDB structure.
 
     Parameters
@@ -112,7 +110,9 @@ def evaluate_structure(
         Evaluated metrics.
     """
     atoms_xyzr = _av.load_structure_with_vdw(pdb_path)
-    avs = _av.compute_avs_for_structure(atoms_xyzr, positions, pdb_path=pdb_path, disc_step=disc_step)
+    avs = _av.compute_avs_for_structure(
+        atoms_xyzr, positions, pdb_path=pdb_path, disc_step=disc_step
+    )
     bodies = make_bodies_for_structure(atoms_xyzr, positions)
 
     results = {}
@@ -123,11 +123,11 @@ def evaluate_structure(
 
 def evaluate_directory(
     pdb_dir: str,
-    positions: Dict,
-    evaluators: List[Evaluator],
+    positions: dict,
+    evaluators: list[Evaluator],
     pattern: str = "*.pdb",
     n_threads: int = 1,
-    disc_step: Optional[float] = None,
+    disc_step: float | None = None,
 ) -> EvaluationStorage:
     """Run all evaluators on all PDB files matching a pattern in a directory.
 
@@ -159,7 +159,7 @@ def evaluate_directory(
         try:
             res = evaluate_structure(path, positions, evaluators, disc_step=disc_step)
             return basename, res
-        except Exception as e:
+        except Exception:
             # Return empty/default result on error
             return basename, {ev.name: EvaluatorResult(ev.name, np.nan) for ev in evaluators}
 
@@ -180,9 +180,9 @@ def evaluate_directory(
 def evaluate_trajectory(
     top_path: str,
     traj_path: str,
-    positions: Dict,
-    evaluators: List[Evaluator],
-    disc_step: Optional[float] = None,
+    positions: dict,
+    evaluators: list[Evaluator],
+    disc_step: float | None = None,
 ) -> EvaluationStorage:
     """Run all evaluators on each frame of a trajectory using MDTraj.
 
@@ -205,6 +205,7 @@ def evaluate_trajectory(
         Accumulated results.
     """
     from chisurf.core.structure import trajectory_data as md
+
     t = md.load(traj_path, top=top_path)
     storage = EvaluationStorage()
 
@@ -232,7 +233,9 @@ def evaluate_trajectory(
             pdb_path = tmp_f.name
         try:
             t[f_idx].save_pdb(pdb_path)
-            avs = _av.compute_avs_for_structure(atoms_xyzr, positions, pdb_path=pdb_path, disc_step=disc_step)
+            avs = _av.compute_avs_for_structure(
+                atoms_xyzr, positions, pdb_path=pdb_path, disc_step=disc_step
+            )
         finally:
             try:
                 os.unlink(pdb_path)

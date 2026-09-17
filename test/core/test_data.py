@@ -1,8 +1,8 @@
 import pathlib
+import tempfile
 
 import numpy as np
 import pytest
-import tempfile
 
 import chisurf.core.data
 
@@ -29,7 +29,6 @@ def sample_data_group(sample_curve_short):
 
 
 class TestExperimentalData:
-
     def test_init_defaults(self):
         d = chisurf.core.data.ExperimentalData()
         assert d.data_reader is None
@@ -58,7 +57,6 @@ class TestExperimentalData:
 
 
 class TestDataCurve:
-
     def test_init_defaults(self):
         c = chisurf.core.data.DataCurve()
         assert c.ex is not None
@@ -142,7 +140,7 @@ class TestDataCurve:
         ``ey`` and ``mask`` have to follow, or ``data``, ``__getitem__`` and
         ``to_dict`` report a dataset whose columns disagree about how long it is.
         """
-        with sample_curve.unlocked('ey', 'mask'):
+        with sample_curve.unlocked("ey", "mask"):
             sample_curve.ey[:] = 3.0
             sample_curve.mask[:] = 0.0
         sample_curve.y = np.ones(4)
@@ -162,7 +160,7 @@ class TestDataCurve:
             y=np.array([3.0, 4.0]),
             ex=np.array([0.5, 0.5]),
             ey=np.array([2.0, 2.0]),
-            mask=np.array([0.0, 0.0])
+            mask=np.array([0.0, 0.0]),
         )
         sample_curve_short.x = np.arange(5.0)
         assert [len(column) for column in sample_curve_short[:]] == [5] * 5
@@ -198,8 +196,7 @@ class TestDataCurve:
         try:
             sample_curve.save(tmpname, file_type="csv")
             c2 = chisurf.core.data.DataCurve(
-                x=np.zeros_like(sample_curve.x),
-                y=np.zeros_like(sample_curve.y)
+                x=np.zeros_like(sample_curve.x), y=np.zeros_like(sample_curve.y)
             )
             c2.load(tmpname, file_type="csv")
             np.testing.assert_array_almost_equal(c2.x, sample_curve.x)
@@ -209,9 +206,7 @@ class TestDataCurve:
 
     def test_load_csv_5col(self):
         """Load CSV with 5 columns (x, y, ex, ey, mask)."""
-        with tempfile.NamedTemporaryFile(
-                suffix=".csv", mode="w", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".csv", mode="w", delete=False) as f:
             f.write("1.0,10.0,0.1,0.2,1.0\n2.0,20.0,0.1,0.2,0.0\n")
             tmpname = f.name
         try:
@@ -237,7 +232,7 @@ class TestDataCurve:
                 x=np.array([1.0, 2.0]),
                 y=np.array([10.0, 20.0]),
                 filename=tmpname,
-                load_filename_on_init=False
+                load_filename_on_init=False,
             )
             assert c.filename == tmpname
             g = chisurf.core.data.DataCurveGroup([c])
@@ -252,7 +247,6 @@ class TestDataCurve:
 
 
 class TestDataGroup:
-
     def test_init_empty(self):
         g = chisurf.core.data.DataGroup([])
         assert len(g) == 0
@@ -317,7 +311,7 @@ class TestDataGroup:
             chisurf.core.data.DataCurveGroup,
             chisurf.core.data.ExperimentDataGroup,
             chisurf.core.data.ExperimentDataCurveGroup,
-        ]
+        ],
     )
     def test_save_yaml(self, group_type, sample_curve_short, tmp_path):
         """Saving a group as YAML (the default file type) must not raise."""
@@ -330,7 +324,6 @@ class TestDataGroup:
 
 
 class TestDataCurveGroup:
-
     def test_init(self, sample_curve):
         c2 = chisurf.core.data.DataCurve(x=np.array([0.0]), y=np.array([1.0]), name="B")
         g = chisurf.core.data.DataCurveGroup([sample_curve, c2])
@@ -374,7 +367,6 @@ class TestDataCurveGroup:
 
 
 class TestExperimentDataGroup:
-
     def test_init(self):
         d = chisurf.core.data.ExperimentalData(name="E1", experiment="mock_exp")
         g = chisurf.core.data.ExperimentDataGroup([d])
@@ -387,7 +379,6 @@ class TestExperimentDataGroup:
 
 
 class TestExperimentDataCurveGroup:
-
     def test_init(self):
         c = chisurf.core.data.DataCurve(name="C1", experiment="exp1")
         g = chisurf.core.data.ExperimentDataCurveGroup([c])
@@ -395,7 +386,6 @@ class TestExperimentDataCurveGroup:
 
 
 class TestGetData:
-
     def test_get_data_experiment_type(self):
         d1 = chisurf.core.data.ExperimentalData(name="A")
         d2 = chisurf.core.data.ExperimentalData(name="Global-fit")

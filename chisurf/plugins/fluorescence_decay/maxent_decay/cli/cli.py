@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import click
 
@@ -41,7 +40,15 @@ def cli() -> None:
 @click.option("--tau-max", type=float, default=6.0, show_default=True)
 @click.option("--tau-bins", type=int, default=192, show_default=True)
 @click.option("--nu", type=float, default=1e-3, show_default=True)
-def lifetime(decay_path: str, irf_path: str, dt: float, tau_min: float, tau_max: float, tau_bins: int, nu: float) -> None:
+def lifetime(
+    decay_path: str,
+    irf_path: str,
+    dt: float,
+    tau_min: float,
+    tau_max: float,
+    tau_bins: int,
+    nu: float,
+) -> None:
     """Run lifetime MEM from two-column text files."""
     result = run_lifetime_mem_from_arrays(
         decay=_load_two_column(decay_path),
@@ -63,7 +70,9 @@ def lifetime(decay_path: str, irf_path: str, dt: float, tau_min: float, tau_max:
 @click.option("--tau0", type=float, default=4.1, show_default=True)
 @click.option("--r-bins", type=int, default=96, show_default=True)
 @click.option("--nu", type=float, default=5e-2, show_default=True)
-def fret(decay_path: str, irf_path: str, dt: float, r0: float, tau0: float, r_bins: int, nu: float) -> None:
+def fret(
+    decay_path: str, irf_path: str, dt: float, r0: float, tau0: float, r_bins: int, nu: float
+) -> None:
     """Run FRET distance MEM from two-column text files."""
     result = run_fret_mem_from_arrays(
         decay=_load_two_column(decay_path),

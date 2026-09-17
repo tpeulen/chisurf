@@ -130,8 +130,7 @@ class BackgroundRunWidget(QtWidgets.QWidget):
         method = getattr(self._model, action, None)
         if not callable(method):
             logging.warning(
-                f"background_run: {action!r} is not a method of "
-                f"{type(self._model).__name__}"
+                f"background_run: {action!r} is not a method of {type(self._model).__name__}"
             )
             return
         method()

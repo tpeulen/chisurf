@@ -7,8 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 PLUGIN_DIR = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((PLUGIN_DIR / "manifest.json").read_text(encoding="utf8"))
 
@@ -16,14 +14,13 @@ MANIFEST = json.loads((PLUGIN_DIR / "manifest.json").read_text(encoding="utf8"))
 def _quest_manifest() -> dict:
     import quest
 
-    return json.loads(
-        (Path(quest.__file__).parent / "manifest.json").read_text(encoding="utf8")
-    )
+    return json.loads((Path(quest.__file__).parent / "manifest.json").read_text(encoding="utf8"))
 
 
 class TestTheManifest:
     """`LAY-05`'s ChiSurf half: the plugin had no manifest at all and loaded
-    through the host's legacy AST discovery."""
+    through the host's legacy AST discovery.
+    """
 
     def test_it_declares_the_three_entry_points(self) -> None:
         entrypoints = MANIFEST["entrypoints"]
@@ -45,9 +42,7 @@ class TestTheManifest:
             registered_method_names,
         )
 
-        assert {m["name"] for m in MANIFEST["rpc_methods"]} == set(
-            registered_method_names()
-        )
+        assert {m["name"] for m in MANIFEST["rpc_methods"]} == set(registered_method_names())
 
     def test_the_version_tracks_quest(self) -> None:
         assert MANIFEST["version"] == _quest_manifest()["version"]
@@ -75,7 +70,7 @@ class TestItDoesNotImportQuestAtStartup:
         )
         assert result.returncode == 0, result.stderr[-2000:]
         leaked = [
-            line[len("LEAKED:"):]
+            line[len("LEAKED:") :]
             for line in result.stdout.splitlines()
             if line.startswith("LEAKED:")
         ][0]
@@ -94,7 +89,7 @@ class TestItDoesNotImportQuestAtStartup:
         )
         assert result.returncode == 0, result.stderr[-2000:]
         leaked = [
-            line[len("LEAKED:"):]
+            line[len("LEAKED:") :]
             for line in result.stdout.splitlines()
             if line.startswith("LEAKED:")
         ][0]

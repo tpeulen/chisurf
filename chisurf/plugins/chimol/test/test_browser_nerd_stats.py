@@ -14,6 +14,7 @@ found no stats and published nothing, and the dbg window snapshotted a
 (``CanvasRenderer.frame_stats``), the page installs its own, and the dbg window
 asks *per draw* rather than keeping whatever existed when it was opened.
 """
+
 from __future__ import annotations
 
 import socket
@@ -38,7 +39,9 @@ def server():
     port = _free_port()
     process = subprocess.Popen(
         [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
-        cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=str(_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     for _ in range(100):
         try:
@@ -126,7 +129,7 @@ def test_switching_it_off_takes_the_readout_away(readout):
     assert counting in ("False", "false"), (
         f"the counters are still being collected with nobody reading them: {counting}"
     )
-    _do(readout, "nerd_mode on")          # leave it as the later tests expect
+    _do(readout, "nerd_mode on")  # leave it as the later tests expect
     for _ in range(4):
         readout.evaluate("() => globalThis.chimolViewer.draw()")
         readout.wait_for_timeout(60)

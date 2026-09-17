@@ -15,7 +15,6 @@ import numpy as np
 import pytest
 
 from chisurf.core.datastore import row_count
-from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
 from chisurf.core.fio.analysis_path import (
     artifact_name,
     export_tree,
@@ -25,11 +24,17 @@ from chisurf.core.fio.analysis_path import (
     split_artifact_name,
     split_container_path,
 )
+from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
 
 DATA = (
     Path(__file__).resolve().parents[2]
-    / "chisurf" / "plugins" / "burst" / "burst_selection"
-    / "tests" / "data" / "bh_spc132_sm_dna"
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 SPC = DATA / "m000.spc"
 
@@ -91,7 +96,9 @@ def _analyse(container, min_photons: int) -> str:
     settings = AnalysisSettings()
     settings.output_formats = ["pto"]
     settings.photon_filter = PhotonFilterSettings(
-        channels=[], filter_active=True, used_filter="count_rate",
+        channels=[],
+        filter_active=True,
+        used_filter="count_rate",
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
     )
     settings.burst_detection = BurstDetectionSettings(
@@ -130,13 +137,11 @@ def test_several_analyses_of_one_measurement_are_separately_addressable(analysed
 
 def test_without_a_run_the_most_recent_analysis_is_read(analysed):
     container, paths = analysed
-    assert row_count(read_burst_table(container)) == row_count(
-        read_burst_table(paths[-1])
-    )
+    assert row_count(read_burst_table(container)) == row_count(read_burst_table(paths[-1]))
 
 
 def test_naming_an_analysis_that_is_not_there_lists_the_ones_that_are(analysed):
-    """"Not found" without a listing is the unhelpful half of an error."""
+    """ "Not found" without a listing is the unhelpful half of an error."""
     container, _paths = analysed
     with pytest.raises(FileNotFoundError) as caught:
         read_tables(f"{container}/no such run")
@@ -217,7 +222,9 @@ def test_the_container_holds_the_bur_byte_for_byte(tmp_path: Path):
         s = AnalysisSettings()
         s.output_formats = formats
         s.photon_filter = PhotonFilterSettings(
-            channels=[], filter_active=True, used_filter="count_rate",
+            channels=[],
+            filter_active=True,
+            used_filter="count_rate",
             delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
         )
         s.burst_detection = BurstDetectionSettings(
@@ -243,9 +250,7 @@ def test_the_container_holds_the_bur_byte_for_byte(tmp_path: Path):
     (pto_dir / SPC.name).write_bytes(SPC.read_bytes())
     container = pto_api.convert(pto_dir / SPC.name)
     result = analyze_request(
-        AnalysisRequest(
-            files=[str(container)], settings=_settings(["pto"]), legacy_output=True
-        )
+        AnalysisRequest(files=[str(container)], settings=_settings(["pto"]), legacy_output=True)
     )
     assert result.metadata["n_bursts"] == folder.metadata["n_bursts"]
 
@@ -265,8 +270,6 @@ def test_the_burst_table_names_the_measurement_not_the_box(tmp_path: Path):
     would otherwise look for an `m000.pto` that is not there beside the
     `m000.spc` it just recovered.
     """
-    import numpy as np
-
     from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
     from chisurf.plugins.burst.burst_selection.api.models import (
         AnalysisRequest,
@@ -287,9 +290,7 @@ def test_the_burst_table_names_the_measurement_not_the_box(tmp_path: Path):
     settings.burst_detection = BurstDetectionSettings(
         min_photons=60, photon_window=10, time_window=1e-3
     )
-    analyze_request(
-        AnalysisRequest(files=[str(container)], settings=settings, legacy_output=False)
-    )
+    analyze_request(AnalysisRequest(files=[str(container)], settings=settings, legacy_output=False))
 
     named = {str(v) for v in np.asarray(read_burst_table(container)["First File"])}
     assert named == {SPC.name}
@@ -308,8 +309,6 @@ def test_a_merged_container_produces_a_sane_burst_table(tmp_path: Path):
     the guard is on the *table*: durations that fit inside the measurement,
     macro times that do too, and a burst that has photons having a duration.
     """
-    import numpy as np
-
     from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
     from chisurf.core.fio.staging import open_tttr
     from chisurf.plugins.burst.burst_selection.api.models import (
@@ -331,7 +330,9 @@ def test_a_merged_container_produces_a_sane_burst_table(tmp_path: Path):
     settings = AnalysisSettings()
     settings.output_formats = ["pto"]
     settings.photon_filter = PhotonFilterSettings(
-        channels=[], filter_active=True, used_filter="count_rate",
+        channels=[],
+        filter_active=True,
+        used_filter="count_rate",
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
     )
     settings.burst_detection = BurstDetectionSettings(

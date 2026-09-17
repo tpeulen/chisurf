@@ -380,12 +380,21 @@ def bootstrap_uncertainty(
     for b in range(int(n_boot)):
         idx = rng.integers(0, n_b, n_b)
         sub = _subset_bursts(data, idx)
-        fit = fit_one(sub, n_states, engine, n_restarts=n_restarts,
-                      max_iter=max_iter, tol=tol, seed=int(rng.integers(0, 2**31 - 1)))
+        fit = fit_one(
+            sub,
+            n_states,
+            engine,
+            n_restarts=n_restarts,
+            max_iter=max_iter,
+            tol=tol,
+            seed=int(rng.integers(0, 2**31 - 1)),
+        )
         e = state_fret(fit, acceptor_streams, donor_streams)
         order = np.argsort(e)
         e_samples.append(e[order])
-        s_samples.append(state_stoichiometry(fit, donor_streams, acceptor_streams, aex_streams)[order])
+        s_samples.append(
+            state_stoichiometry(fit, donor_streams, acceptor_streams, aex_streams)[order]
+        )
         esc_samples.append((1.0 - np.diag(fit.trans))[order])
         if progress is not None:
             progress(b + 1, int(n_boot))
@@ -407,9 +416,15 @@ def bootstrap_uncertainty(
         return Uncertainty(
             n_boot=int(n_boot),
             ci=(float(lo), float(hi)),
-            fret_lo=_pct(e_arr, lo), fret_hi=_pct(e_arr, hi), fret_std=_std(e_arr),
-            stoich_lo=_pct(s_arr, lo), stoich_hi=_pct(s_arr, hi), stoich_std=_std(s_arr),
-            escape_lo=_pct(esc_arr, lo), escape_hi=_pct(esc_arr, hi), escape_std=_std(esc_arr),
+            fret_lo=_pct(e_arr, lo),
+            fret_hi=_pct(e_arr, hi),
+            fret_std=_std(e_arr),
+            stoich_lo=_pct(s_arr, lo),
+            stoich_hi=_pct(s_arr, hi),
+            stoich_std=_std(s_arr),
+            escape_lo=_pct(esc_arr, lo),
+            escape_hi=_pct(esc_arr, hi),
+            escape_std=_std(esc_arr),
         )
 
 
@@ -483,13 +498,18 @@ def _model_with_state_e(
     dex = float(row[donor].sum() + row[acceptor].sum())
     _rescale_group(row, donor, (1.0 - new_e) * dex)
     _rescale_group(row, acceptor, new_e * dex)
-    return H2mmModel(prior=np.array(model.prior, copy=True),
-                     trans=np.array(model.trans, copy=True), obs=obs)
+    return H2mmModel(
+        prior=np.array(model.prior, copy=True), trans=np.array(model.trans, copy=True), obs=obs
+    )
 
 
 def _model_with_state_s(
-    model: H2mmModel, state: int, new_s: float,
-    donor: np.ndarray, acceptor: np.ndarray, aex: np.ndarray,
+    model: H2mmModel,
+    state: int,
+    new_s: float,
+    donor: np.ndarray,
+    acceptor: np.ndarray,
+    aex: np.ndarray,
 ) -> H2mmModel:
     """Copy ``model`` with state ``state``'s stoichiometry S set to ``new_s``.
 
@@ -507,8 +527,9 @@ def _model_with_state_s(
     else:
         _rescale_group(row, np.concatenate([donor, acceptor]), new_dex)
     _rescale_group(row, aex, (1.0 - new_s) * total)
-    return H2mmModel(prior=np.array(model.prior, copy=True),
-                     trans=np.array(model.trans, copy=True), obs=obs)
+    return H2mmModel(
+        prior=np.array(model.prior, copy=True), trans=np.array(model.trans, copy=True), obs=obs
+    )
 
 
 def _ci_from_scan(values: np.ndarray, loglik: np.ndarray, threshold: float) -> tuple[float, float]:
@@ -567,8 +588,11 @@ def profile_likelihood(
     n_states = model.n_states
 
     e0 = state_fret(model, acceptor, donor)
-    s0 = (state_stoichiometry(model, donor, acceptor, aex)
-          if aex is not None else np.full(n_states, np.nan))
+    s0 = (
+        state_stoichiometry(model, donor, acceptor, aex)
+        if aex is not None
+        else np.full(n_states, np.nan)
+    )
 
     jobs: list[tuple[int, str]] = [(i, "E") for i in range(n_states) if np.isfinite(e0[i])]
     if aex is not None:
@@ -579,7 +603,9 @@ def profile_likelihood(
     scans: list[LikelihoodScan] = []
     for state, param in jobs:
         centre = e0[state] if param == "E" else s0[state]
-        grid = np.clip(np.linspace(centre - half_width, centre + half_width, int(n_points)), 0.0, 1.0)
+        grid = np.clip(
+            np.linspace(centre - half_width, centre + half_width, int(n_points)), 0.0, 1.0
+        )
         grid = np.unique(grid)
         ll = np.empty(grid.shape[0], dtype=np.float64)
         for k, v in enumerate(grid):
@@ -591,9 +617,17 @@ def profile_likelihood(
             done += 1
             if progress is not None:
                 progress(done, total)
-        scans.append(LikelihoodScan(
-            state=state, param=param, values=grid, loglik=ll,
-            mle=float(centre), ci=_ci_from_scan(grid, ll, threshold), threshold=float(threshold)))
+        scans.append(
+            LikelihoodScan(
+                state=state,
+                param=param,
+                values=grid,
+                loglik=ll,
+                mle=float(centre),
+                ci=_ci_from_scan(grid, ll, threshold),
+                threshold=float(threshold),
+            )
+        )
     return scans
 
 
@@ -652,9 +686,15 @@ def scan_states(
                 progress(_c + done / max(mx, 1), total, fits)
 
         model = fit_one(
-            data, k, engine,
-            surrogates=surrogates, refine_iters=refine_iters,
-            n_restarts=n_restarts, max_iter=max_iter, tol=tol, seed=seed,
+            data,
+            k,
+            engine,
+            surrogates=surrogates,
+            refine_iters=refine_iters,
+            n_restarts=n_restarts,
+            max_iter=max_iter,
+            tol=tol,
+            seed=seed,
             on_iter=on_iter,
         )
         _, icl = viterbi(model, data)
@@ -742,9 +782,17 @@ def _dwells_and_transitions(
         # consumer shares one definition of "edge".
         edge = g0 == int(offsets[b]) or g1 == int(offsets[b + 1])
         dwells.append(
-            Dwell(burst=b, state=st, dur=int(dur), n_photons=int(g1 - g0),
-                  e=float(e), s=float(s), start=int(g0), stop=int(g1),
-                  is_edge=bool(edge))
+            Dwell(
+                burst=b,
+                state=st,
+                dur=int(dur),
+                n_photons=int(g1 - g0),
+                e=float(e),
+                s=float(s),
+                start=int(g0),
+                stop=int(g1),
+                is_edge=bool(edge),
+            )
         )
 
     for b in range(data.n_bursts):
@@ -763,8 +811,9 @@ def _dwells_and_transitions(
         run_start = 0
         for rel in range(1, e - s):
             if seg[rel] != seg[rel - 1]:
-                _record_dwell(b, int(seg[rel - 1]), s + run_start, s + rel,
-                              int(t[rel] - t[run_start]))
+                _record_dwell(
+                    b, int(seg[rel - 1]), s + run_start, s + rel, int(t[rel] - t[run_start])
+                )
                 transitions.append(
                     Transition(
                         burst=b,
@@ -860,10 +909,18 @@ def analyze(
         The selected model plus its diagnostics.
     """
     scan = scan_states(
-        data, state_counts, n_restarts=n_restarts,
-        max_iter=max_iter, tol=tol, seed=seed,
-        engine=engine, surrogates=surrogates, refine_iters=refine_iters,
-        criterion=criterion, patience=patience, progress=progress,
+        data,
+        state_counts,
+        n_restarts=n_restarts,
+        max_iter=max_iter,
+        tol=tol,
+        seed=seed,
+        engine=engine,
+        surrogates=surrogates,
+        refine_iters=refine_iters,
+        criterion=criterion,
+        patience=patience,
+        progress=progress,
     )
     key = (lambda f: f.icl) if criterion.lower() == "icl" else (lambda f: f.bic)
     best = min(scan, key=key)
@@ -909,14 +966,20 @@ def analyze(
         dwell_decoder = "viterbi"
 
     dwell_durs, dwells, transitions, populations = _dwells_and_transitions(
-        best.model, data, fret, dwell_path,
-        donor_streams=donor_streams, acceptor_streams=acceptor_streams, aex_streams=aex_streams,
+        best.model,
+        data,
+        fret,
+        dwell_path,
+        donor_streams=donor_streams,
+        acceptor_streams=acceptor_streams,
+        aex_streams=aex_streams,
     )
     # Populations must describe the assignment the rest of the result carries,
     # which under "jitter" is `path`, not the Viterbi path the dwells came from.
     if dwell_decoder != decoder:
-        counts = np.bincount(np.asarray(path, dtype=np.int64),
-                             minlength=best.model.n_states).astype(np.float64)
+        counts = np.bincount(
+            np.asarray(path, dtype=np.int64), minlength=best.model.n_states
+        ).astype(np.float64)
         populations = counts / counts.sum() if counts.sum() > 0 else counts
     dwell_arrays = {s: np.asarray(v, dtype=np.float64) for s, v in dwell_durs.items()}
 

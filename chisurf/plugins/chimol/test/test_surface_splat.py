@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
+from chimol.core.camera.view_state import pack_view_state
 from chimol.render.pack import pack_scene
 from chimol.render.scene import Geometry, Scene, SceneObject
 from chimol.render.surface_quality import apply_surface_quality
-from chimol.core.camera.view_state import pack_view_state
 from chimol.render.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)
@@ -65,10 +64,8 @@ def test_gauss_geometry_routes_to_gauss_pipeline():
 
 
 def test_splat_surface_rendered_frame_is_not_flat():
-    wgpu = pytest.importorskip("wgpu")
-    positions = np.array(
-        [[0.0, 0.0, 0.0], [0.8, 0.0, 0.0], [0.0, 0.8, 0.0]], dtype=np.float32
-    )
+    pytest.importorskip("wgpu")
+    positions = np.array([[0.0, 0.0, 0.0], [0.8, 0.0, 0.0], [0.0, 0.8, 0.0]], dtype=np.float32)
     colors = np.array(
         [[1.0, 0.2, 0.2, 1.0], [0.2, 1.0, 0.2, 1.0], [0.2, 0.2, 1.0, 1.0]],
         dtype=np.float32,

@@ -11,8 +11,9 @@ from .. import core as _core
 @click.argument("filename", type=click.Path(exists=True))
 @click.option("--channel", "-c", multiple=True, type=int, default=(0,), help="Detector channel(s).")
 @click.option("--output", "-o", type=click.Path(), default=None, help="Output imaging HDF5 path.")
-@click.option("--container", is_flag=True,
-              help="Also write the map into <filename>.pto, beside the photons")
+@click.option(
+    "--container", is_flag=True, help="Also write the map into <filename>.pto, beside the photons"
+)
 def cli(filename, channel, output, container):
     """Compute the per-pixel intensity map and create a standard imaging HDF5."""
     import numpy as np
@@ -32,14 +33,19 @@ def cli(filename, channel, output, container):
         )
 
         path = write_imaging_table(
-            filename, maps_to_table(maps),
+            filename,
+            maps_to_table(maps),
             name="intensity",
             artifact_kind="pixel_map",
             operation_type="image_analysis",
             row_grain="pixel",
             parameters={"channels": list(channel)},
-            units={"X pixel": "pixels", "Y pixel": "pixels",
-                   "Pixel Number": "dimensionless", "intensity": "counts"},
+            units={
+                "X pixel": "pixels",
+                "Y pixel": "pixels",
+                "Pixel Number": "dimensionless",
+                "intensity": "counts",
+            },
         )
         click.echo(f"wrote {path}")
 

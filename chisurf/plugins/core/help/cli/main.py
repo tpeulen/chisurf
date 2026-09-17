@@ -102,8 +102,7 @@ def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
         )
     if answer.fabricated:
         click.echo(
-            "It also named pages that do not exist: "
-            + ", ".join(answer.fabricated),
+            "It also named pages that do not exist: " + ", ".join(answer.fabricated),
             err=True,
         )
     if not answer.ok:
@@ -111,9 +110,7 @@ def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
 
 
 @cli.command("review-check")
-@click.option(
-    "--quiet", is_flag=True, help="Print only the summary line, not each page."
-)
+@click.option("--quiet", is_flag=True, help="Print only the summary line, not each page.")
 def review_check(quiet: bool):
     """Fail if any review-tracked page is unreviewed or stale.
 
@@ -160,9 +157,7 @@ def review_list(status: str):
     from chisurf.plugins.core.help.api import review
 
     report = review.scan()
-    pages = report.pages if status == "all" else [
-        p for p in report.pages if p.status == status
-    ]
+    pages = report.pages if status == "all" else [p for p in report.pages if p.status == status]
     if not pages:
         click.echo("No matching pages.")
         return
@@ -185,9 +180,7 @@ def review_list(status: str):
         "running application, and it does not clear the release gate."
     ),
 )
-@click.option(
-    "--unreview", is_flag=True, help="Clear the sign-off instead of granting it."
-)
+@click.option("--unreview", is_flag=True, help="Clear the sign-off instead of granting it.")
 def review_set(path: tuple, reviewer: str, ai: bool, unreview: bool):
     """Record that PATH has been reviewed (or clear that record).
 

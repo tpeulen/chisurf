@@ -1,7 +1,7 @@
 """
 Burst MLE Lifetime Analysis
 
-This plugin provides a powerful interface for analyzing fluorescence lifetime data 
+This plugin provides a powerful interface for analyzing fluorescence lifetime data
 from single-molecule experiments using Maximum Likelihood Estimation (MLE).
 
 Features:

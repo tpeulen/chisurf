@@ -31,9 +31,7 @@ class ScriptedLLM:
     def __init__(self, script):
         from chisurf.core.agent.llm import LLMSettings
 
-        self.settings = LLMSettings(
-            base_url="http://test", model="test-model", supports_tools=True
-        )
+        self.settings = LLMSettings(base_url="http://test", model="test-model", supports_tools=True)
         self.script = list(script)
 
     def complete(self, messages, tools=None):
@@ -119,9 +117,7 @@ def test_it_cites_the_pages_it_read():
 
     assert answer.ok
     assert "gamma" in answer.text.lower()
-    assert [page["document"] for page in answer.pages] == [
-        "docs/concepts/accurate_fret.md"
-    ]
+    assert [page["document"] for page in answer.pages] == ["docs/concepts/accurate_fret.md"]
     assert answer.pages[0]["type"] == "Concept"
 
 
@@ -143,8 +139,7 @@ def test_the_same_page_is_cited_once():
     session = _session(
         [
             ("read_documentation", {"document": "docs/concepts/fret.md"}),
-            ("read_documentation",
-             {"document": "docs/concepts/fret.md", "section": "Efficiency"}),
+            ("read_documentation", {"document": "docs/concepts/fret.md", "section": "Efficiency"}),
             "…",
         ]
     )
@@ -202,9 +197,7 @@ def test_a_real_page_named_in_the_prose_is_left_alone():
 
 
 def test_verify_citations_is_usable_on_its_own():
-    text, bad = ask_api.verify_citations(
-        "See docs/concepts/fret.md and docs/nope/missing.md."
-    )
+    text, bad = ask_api.verify_citations("See docs/concepts/fret.md and docs/nope/missing.md.")
     assert bad == ["docs/nope/missing.md"]
     assert "docs/concepts/fret.md" in text
 
@@ -225,9 +218,7 @@ def test_an_answer_with_no_read_is_sent_back_once():
     answer = ask_api.ask("can ChiSurf simulate a photon stream?", session=session)
 
     assert answer.grounded
-    assert [p["document"] for p in answer.pages] == [
-        "docs/concepts/photophysics_simulation.md"
-    ]
+    assert [p["document"] for p in answer.pages] == ["docs/concepts/photophysics_simulation.md"]
     assert "simulates photon streams" in answer.text
     # Both turns count as one answer: the search from the first is still
     # reported, and the steps are the sum.
@@ -280,8 +271,9 @@ def test_availability_explains_itself_when_nothing_is_configured(monkeypatch):
         base_url = ""
         api_key = ""
 
-    monkeypatch.setattr(llm_module.LLMSettings, "from_provider",
-                        classmethod(lambda cls, *a, **k: Bare()))
+    monkeypatch.setattr(
+        llm_module.LLMSettings, "from_provider", classmethod(lambda cls, *a, **k: Bare())
+    )
     available, reason = ask_api.is_available()
     assert not available
     assert "Settings" in reason

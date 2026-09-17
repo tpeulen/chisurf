@@ -15,9 +15,9 @@ import logging
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,9 @@ class _SetupSection(QtWidgets.QWidget):
         bar.addWidget(self._file_lbl, 1)
         bar.addWidget(
             _tool_button(
-                f"{Glyphs.REFRESH} Update channels", "Rebuild channels/detectors from the setup.", self._update
+                f"{Glyphs.REFRESH} Update channels",
+                "Rebuild channels/detectors from the setup.",
+                self._update,
             )
         )
         layout.addLayout(bar)
@@ -278,7 +280,9 @@ class _TransportSection(QtWidgets.QWidget):
         layout.setSpacing(4)
 
         bar = QtWidgets.QHBoxLayout()
-        bar.addWidget(_tool_button(f"{Glyphs.REFRESH} Update", "Recompute the waterfall.", self._update))
+        bar.addWidget(
+            _tool_button(f"{Glyphs.REFRESH} Update", "Recompute the waterfall.", self._update)
+        )
         bar.addWidget(_tool_button(f"{Glyphs.RUN} Play", "Synthesize and play audio.", self._play))
         self._btn_pause = _tool_button(f"{Glyphs.PAUSE} Pause", "Pause playback.", self._pause)
         self._btn_stop = _tool_button(f"{Glyphs.STOP} Stop", "Stop playback.", self._stop)

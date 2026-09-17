@@ -4,11 +4,9 @@ import os.path
 import pathlib
 
 import numpy as np
-import tttrlib
 
 import chisurf.core.data
 import chisurf.core.fluorescence.tcspc
-
 from chisurf import typing
 
 from .reader import TCSPCReader
@@ -24,17 +22,17 @@ class TCSPCTTTRReader(TCSPCReader):
     derived_mime_type = "application/json"
 
     def __init__(
-            self,
-            *args,
-            channel_numbers=None,
-            channel: int = 0,
-            micro_time_coarsening: int = 1,
-            micro_time_shift: int = 0,
-            reading_routine: str | None = None,
-            channel_luts: dict | None = None,
-            channel_shifts: dict | None = None,
-            apply_lut: bool = False,
-            **kwargs
+        self,
+        *args,
+        channel_numbers=None,
+        channel: int = 0,
+        micro_time_coarsening: int = 1,
+        micro_time_shift: int = 0,
+        reading_routine: str | None = None,
+        channel_luts: dict | None = None,
+        channel_shifts: dict | None = None,
+        apply_lut: bool = False,
+        **kwargs,
     ):
         """Initialize a TCSPC TTTR reader.
 
@@ -114,6 +112,7 @@ class TCSPCTTTRReader(TCSPCReader):
     def view_spec(self):
         """Return the declarative editor spec for the TCSPC-TTTR reader."""
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
     def _get_channels(self) -> typing.Tuple[int, ...]:
@@ -284,7 +283,7 @@ class TCSPCTTTRReader(TCSPCReader):
             meta_data=meta_data,
             experiment=self.experiment,
             data_reader=self,
-            ey=chisurf.core.fluorescence.tcspc.counting_noise(y)
+            ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
         )
         data_set.filename = filename
         data_group = chisurf.core.data.DataGroup([data_set])

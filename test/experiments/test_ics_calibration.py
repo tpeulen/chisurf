@@ -8,6 +8,7 @@ the waist. A raster scan samples lag times from microseconds (fast axis) to
 milliseconds (slow axis), and that spread separates D from w_r, so a bad
 reference shows up as a poor fit instead.
 """
+
 from __future__ import annotations
 
 import math
@@ -24,8 +25,9 @@ from chisurf.core.experiments.ics.data import IcsCarpet, IcsTiming
 from chisurf.core.models.ics.models import image_correlation
 
 TRUE_WR, TRUE_WZ, D_REF = 0.27, 1.35, 300.0
-TIMING = IcsTiming(pixel_duration_us=11.1, line_duration_ms=3.33,
-                   frame_duration_ms=0.0, pixel_size_nm=50.0)
+TIMING = IcsTiming(
+    pixel_duration_us=11.1, line_duration_ms=3.33, frame_duration_ms=0.0, pixel_size_nm=50.0
+)
 
 
 def _dye_carpet(w_r=TRUE_WR, w_z=TRUE_WZ, d=D_REF, n=2.5, offset=0.01, size=41):
@@ -34,15 +36,25 @@ def _dye_carpet(w_r=TRUE_WR, w_z=TRUE_WZ, d=D_REF, n=2.5, offset=0.01, size=41):
     line = (line - size // 2).astype(float)
     pix = (pix - size // 2).astype(float)
     g = image_correlation(
-        pix[None], line[None], np.zeros((1, 1, 1)),
-        n=n, diffusion_coefficient=d, offset=offset, w_r=w_r, w_z=w_z,
+        pix[None],
+        line[None],
+        np.zeros((1, 1, 1)),
+        n=n,
+        diffusion_coefficient=d,
+        offset=offset,
+        w_r=w_r,
+        w_z=w_z,
         pixel_duration=TIMING.pixel_duration_us,
         line_duration=TIMING.line_duration_ms,
         pixel_size=TIMING.pixel_size_nm,
     )
     return IcsCarpet(
-        correlation=np.asarray(g), error=np.ones_like(g),
-        pixel_shift=pix, line_shift=line, frame_lags=np.array([0]), timing=TIMING,
+        correlation=np.asarray(g),
+        error=np.ones_like(g),
+        pixel_shift=pix,
+        line_shift=line,
+        frame_lags=np.array([0]),
+        timing=TIMING,
     )
 
 
@@ -72,9 +84,7 @@ def test_calibration_survives_noise():
 
 def test_fixing_the_axial_waist_holds_it():
     """Released only when the data can constrain it; otherwise it must not move."""
-    cal = calibrate_waist(
-        _dye_carpet(), diffusion_coefficient=D_REF, w_z=1.8, fit_axial=False
-    )
+    cal = calibrate_waist(_dye_carpet(), diffusion_coefficient=D_REF, w_z=1.8, fit_axial=False)
     assert cal.w_z == 1.8
     # the lateral waist is still recovered, since it dominates the shape
     assert cal.w_r == pytest.approx(TRUE_WR, rel=0.05)
@@ -128,15 +138,9 @@ def test_temperature_enters_through_the_reference_value():
     from chisurf.core.fluorescence.diffusion import diffusion_at_temperature
 
     carpet = _dye_carpet()
-    warm = calibrate_waist(
-        carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 30.0)
-    )
-    cold = calibrate_waist(
-        carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 20.0)
-    )
-    exact = calibrate_waist(
-        carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 25.0)
-    )
+    warm = calibrate_waist(carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 30.0))
+    cold = calibrate_waist(carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 20.0))
+    exact = calibrate_waist(carpet, diffusion_coefficient=diffusion_at_temperature(D_REF, 25.0))
     # The waist moves with the assumed temperature, monotonically...
     assert cold.w_r < exact.w_r < warm.w_r
     # ...but only slightly, because the scan separates D from w_r. The real
@@ -149,8 +153,7 @@ def test_reported_temperature_error_matches_the_sqrt_propagation():
     """w_r goes as sqrt(D), so its error is half the relative error in D."""
     from chisurf.core.fluorescence.diffusion import temperature_sensitivity
 
-    cal = calibrate_waist(_dye_carpet(), diffusion_coefficient=D_REF,
-                          temperature_c=25.0)
+    cal = calibrate_waist(_dye_carpet(), diffusion_coefficient=D_REF, temperature_c=25.0)
     assert cal.temperature_error(1.0) == pytest.approx(
         0.5 * temperature_sensitivity(25.0), rel=1e-9
     )
@@ -162,8 +165,7 @@ def test_a_named_dye_goes_through_the_metadata_store():
     """Naming a catalogued species resolves D without an explicit number."""
     from chisurf.core.fluorescence import dyes
 
-    names = [n for n in dyes.dye_names()
-             if np.isfinite(dyes.diffusion_coefficient_25C(n))]
+    names = [n for n in dyes.dye_names() if np.isfinite(dyes.diffusion_coefficient_25C(n))]
     if not names:
         pytest.skip("no reference dyes with diffusion coefficients available")
 
@@ -175,9 +177,7 @@ def test_a_named_dye_goes_through_the_metadata_store():
     # the D actually used is the store value corrected to 22 degrees
     from chisurf.core.fluorescence.diffusion import reference_diffusion
 
-    assert cal.diffusion_coefficient == pytest.approx(
-        reference_diffusion(name, 22.0), rel=1e-12
-    )
+    assert cal.diffusion_coefficient == pytest.approx(reference_diffusion(name, 22.0), rel=1e-12)
 
 
 # --- two channels ----------------------------------------------------------
@@ -188,8 +188,8 @@ def test_cross_channel_waist_lies_between_the_two():
     cc = cross_channel_calibration(a, b)
 
     assert a.w_r < cc.w_r < b.w_r
-    assert cc.w_r == pytest.approx(math.sqrt(0.5 * (0.24 ** 2 + 0.32 ** 2)), rel=1e-12)
-    assert cc.w_z == pytest.approx(math.sqrt(0.5 * (1.2 ** 2 + 1.6 ** 2)), rel=1e-12)
+    assert cc.w_r == pytest.approx(math.sqrt(0.5 * (0.24**2 + 0.32**2)), rel=1e-12)
+    assert cc.w_z == pytest.approx(math.sqrt(0.5 * (1.2**2 + 1.6**2)), rel=1e-12)
 
 
 def test_identical_channels_combine_to_themselves():
@@ -210,14 +210,19 @@ def test_calibrated_waists_make_a_sample_measurement_absolute():
 
     cal = calibrate_waist(_dye_carpet(), diffusion_coefficient=D_REF)
 
-    d_sample = 12.0                        # a slow, labelled species
+    d_sample = 12.0  # a slow, labelled species
     sample = _dye_carpet(d=d_sample, n=1.4, offset=0.0)
 
     def residual(p):
         model = image_correlation(
-            sample.pixel_shift[None], sample.line_shift[None], np.zeros((1, 1, 1)),
-            n=p[0], diffusion_coefficient=p[1], offset=0.0,
-            w_r=cal.w_r, w_z=cal.w_z,            # fixed by the calibration
+            sample.pixel_shift[None],
+            sample.line_shift[None],
+            np.zeros((1, 1, 1)),
+            n=p[0],
+            diffusion_coefficient=p[1],
+            offset=0.0,
+            w_r=cal.w_r,
+            w_z=cal.w_z,  # fixed by the calibration
             pixel_duration=TIMING.pixel_duration_us,
             line_duration=TIMING.line_duration_ms,
             pixel_size=TIMING.pixel_size_nm,

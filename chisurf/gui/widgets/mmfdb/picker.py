@@ -78,8 +78,9 @@ def _authenticate(client: typing.Any) -> None:
 
     token = None
     try:
-        import chisurf.core.settings as cs_settings
         from mmfdb.security.credentials import load_runtime_session_token
+
+        import chisurf.core.settings as cs_settings
 
         config = cs_settings.cs_settings.get("mmfdb", {})
         server_host = str(config.get("last_server", host))
@@ -116,7 +117,7 @@ def reset_session_client() -> None:
     _SESSION_CLIENT_FAILED = False
 
 
-def resolve_local_path(client: typing.Any, selection: typing.Any) -> typing.Optional[str]:
+def resolve_local_path(client: typing.Any, selection: typing.Any) -> str | None:
     """Resolve a picked dataset to a local file path.
 
     Uses the selection's own ``local_path`` when the picker already resolved it,
@@ -136,10 +137,10 @@ def resolve_local_path(client: typing.Any, selection: typing.Any) -> typing.Opti
 def pick_local_paths(
     parent: typing.Any = None,
     *,
-    kinds: typing.Optional[typing.Sequence[str]] = None,
+    kinds: typing.Sequence[str] | None = None,
     scope: str = "all",
     client: typing.Any = None,
-) -> typing.List[Path]:
+) -> list[Path]:
     """Open the MMFDB dataset picker and return the chosen local path(s).
 
     Returns an empty list when MMFDB is unavailable, the user cancels, or the

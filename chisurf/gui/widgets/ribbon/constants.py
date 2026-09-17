@@ -18,7 +18,7 @@ Context = RibbonCategoryStyle.Context
 contextColors = [
     QtGui.QColor(42, 130, 218),  # Blue
     QtGui.QColor(46, 204, 113),  # Green
-    QtGui.QColor(231, 76, 60),   # Red
+    QtGui.QColor(231, 76, 60),  # Red
     QtGui.QColor(241, 196, 15),  # Yellow
     QtGui.QColor(155, 89, 182),  # Purple
     QtGui.QColor(52, 152, 219),  # Light blue

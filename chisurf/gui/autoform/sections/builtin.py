@@ -208,7 +208,9 @@ class CurveInputWidget(QtWidgets.QWidget):
             return
         fit_index = self._own_fit_index()
         payload = dict(getattr(section, "action_fixed", {}) or {})
-        payload.update({section.index_key: idx, section.name_key: name, "fit_index": int(fit_index)})
+        payload.update(
+            {section.index_key: idx, section.name_key: name, "fit_index": int(fit_index)}
+        )
         try:
             if section.select_action and fit_index >= 0:
                 cs.core.actions.dispatch(name=section.select_action, payload=payload)
@@ -862,9 +864,7 @@ class TableWidget(QtWidgets.QTableWidget):
                 # that fits perfectly well grew a horizontal scroll bar and hid
                 # its last column behind it.
                 try:
-                    self.horizontalHeader().setSectionResizeMode(
-                        i, QtWidgets.QHeaderView.Stretch
-                    )
+                    self.horizontalHeader().setSectionResizeMode(i, QtWidgets.QHeaderView.Stretch)
                 except Exception:
                     pass
         if getattr(section, "height", 0):
@@ -910,10 +910,14 @@ class TableWidget(QtWidgets.QTableWidget):
         rows = self._rows()
         self.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            row_dict = dict(row) if isinstance(row, dict) else {
-                str(c.get("key")): self._row_value(row, str(c.get("key")))
-                for c in self._columns
-            }
+            row_dict = (
+                dict(row)
+                if isinstance(row, dict)
+                else {
+                    str(c.get("key")): self._row_value(row, str(c.get("key")))
+                    for c in self._columns
+                }
+            )
             for c, column in enumerate(self._columns):
                 key = str(column.get("key") or "")
                 value = self._row_value(row, key)
@@ -1049,8 +1053,7 @@ class InfoWidget(QtWidgets.QTextBrowser):
             value = getattr(self._model, source, None)
             if value is None and not hasattr(self._model, source):
                 logging.warning(
-                    f"InfoWidget: source {source!r} not found on "
-                    f"{type(self._model).__name__}"
+                    f"InfoWidget: source {source!r} not found on {type(self._model).__name__}"
                 )
             else:
                 try:
@@ -1118,15 +1121,13 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
         # ``kind == "int"`` test ahead of it swallows every integer slider and
         # renders a bare spin box -- no error, no warning, just a control the
         # spec asked for and did not get.
-        wants_slider = (
-            section.kind in ("float", "int")
-            and (getattr(section, "style", "") == "slider"
-                 or getattr(section, "slider", False))
+        wants_slider = section.kind in ("float", "int") and (
+            getattr(section, "style", "") == "slider" or getattr(section, "slider", False)
         )
         if wants_slider:
             min_val = float(section.minimum) if section.minimum is not None else 0.0
             max_val = float(section.maximum) if section.maximum is not None else 100.0
-            is_float = (section.kind == "float")
+            is_float = section.kind == "float"
             self.editor = QtWidgets.QDoubleSpinBox() if is_float else QtWidgets.QSpinBox()
             if is_float:
                 self.editor.setDecimals(int(section.decimals))
@@ -1157,8 +1158,11 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             def _to_ratio(v: float) -> float:
                 clamped = max(min_val, min(max_val, v))
                 if log_scale:
-                    return ((math.log10(clamped) - log_lo) / (log_hi - log_lo)
-                            if log_hi > log_lo else 0.0)
+                    return (
+                        (math.log10(clamped) - log_lo) / (log_hi - log_lo)
+                        if log_hi > log_lo
+                        else 0.0
+                    )
                 return (clamped - min_val) / (max_val - min_val) if max_val > min_val else 0.0
 
             def _from_ratio(ratio: float) -> float:
@@ -1184,7 +1188,12 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 spin_to_slider(c_val)
 
             if not read_only:
-                self.editor.valueChanged.connect(lambda v: (spin_to_slider(float(v)), self._commit(float(v) if is_float else int(v))))
+                self.editor.valueChanged.connect(
+                    lambda v: (
+                        spin_to_slider(float(v)),
+                        self._commit(float(v) if is_float else int(v)),
+                    )
+                )
                 slider.valueChanged.connect(slider_to_spin)
 
             # Kept so :meth:`sync` can move the handle. Without it a value the
@@ -1212,9 +1221,12 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             if not read_only:
                 self.editor.valueChanged.connect(lambda v: self._commit(int(v)))
         elif section.kind == "float":
-            use_scientific = (getattr(section, "style", "") == "scientific" or getattr(section, "scientific", False))
+            use_scientific = getattr(section, "style", "") == "scientific" or getattr(
+                section, "scientific", False
+            )
             if use_scientific:
                 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+
                 min_v = float(section.minimum) if section.minimum is not None else 0.0
                 max_v = float(section.maximum) if section.maximum is not None else 1e9
                 step_v = float(section.step) if section.step else None
@@ -1227,14 +1239,18 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                     step=step_v,
                 )
                 if not read_only:
-                    self.editor.sigValueChanged.connect(lambda obj: self._commit(float(obj.value())))
+                    self.editor.sigValueChanged.connect(
+                        lambda obj: self._commit(float(obj.value()))
+                    )
             else:
                 self.editor = QtWidgets.QDoubleSpinBox()
                 self.editor.setDecimals(int(section.decimals))
                 self.editor.setMinimum(
                     float(section.minimum) if section.minimum is not None else -1e308
                 )
-                self.editor.setMaximum(float(section.maximum) if section.maximum is not None else 1e308)
+                self.editor.setMaximum(
+                    float(section.maximum) if section.maximum is not None else 1e308
+                )
                 if section.step:
                     self.editor.setSingleStep(float(section.step))
                 if section.suffix:
@@ -1712,8 +1728,10 @@ class PlotWidget(QtWidgets.QWidget):
         efficiency lives in 0…1 — so a few divide-by-almost-zero outliers cannot
         squeeze the interesting data into a line.
         """
-        for axis, bounds in (("x", getattr(self._section, "x_range", ())),
-                             ("y", getattr(self._section, "y_range", ()))):
+        for axis, bounds in (
+            ("x", getattr(self._section, "x_range", ())),
+            ("y", getattr(self._section, "y_range", ())),
+        ):
             if bounds and len(bounds) == 2:
                 try:
                     setter = self.plot.set_xlim if axis == "x" else self.plot.set_ylim
@@ -1784,6 +1802,7 @@ class PlotWidget(QtWidgets.QWidget):
             self.plot.set_log(x=log_x, y=log_y)
             self._log_axes = tuple((("bottom",) if log_x else ()) + (("left",) if log_y else ()))
             self._thin_log_ticks()
+
 
 class LCurveWidget(QtWidgets.QWidget):
     """Reusable L-curve view (residual vs solution norm, log-log, corner marked).
@@ -1858,9 +1877,7 @@ class LCurveWidget(QtWidgets.QWidget):
         lay.setSpacing(4)
 
         def _spin(value, lo, hi, step, decimals=None):
-            box = (
-                QtWidgets.QSpinBox() if decimals is None else QtWidgets.QDoubleSpinBox()
-            )
+            box = QtWidgets.QSpinBox() if decimals is None else QtWidgets.QDoubleSpinBox()
             if decimals is not None:
                 box.setDecimals(decimals)
             box.setRange(lo, hi)
@@ -1941,9 +1958,7 @@ class LCurveWidget(QtWidgets.QWidget):
         if not ok.any() or x <= 0 or y <= 0:
             return
         d = np.full(rho.shape, np.inf)
-        d[ok] = (np.log10(rho[ok]) - np.log10(x)) ** 2 + (
-            np.log10(eta[ok]) - np.log10(y)
-        ) ** 2
+        d[ok] = (np.log10(rho[ok]) - np.log10(x)) ** 2 + (np.log10(eta[ok]) - np.log10(y)) ** 2
         self._select(int(np.argmin(d)))
 
     def refresh(self) -> None:
@@ -1970,7 +1985,12 @@ class LCurveWidget(QtWidgets.QWidget):
         corner = getattr(data, "corner_point", None)
         if corner is not None:
             self._plot.scatter(
-                [corner[0]], [corner[1]], symbol="o", size=12, brush="r", pen="r",
+                [corner[0]],
+                [corner[1]],
+                symbol="o",
+                size=12,
+                brush="r",
+                pen="r",
                 name="chosen",
             )
 
@@ -2644,7 +2664,6 @@ class ImageMapWidget(QtWidgets.QWidget):
                 except Exception:  # pragma: no cover - CircleROI optional
                     self._roi_item = None
 
-
     def _apply_extent(self) -> None:
         """Place the image on real axes when the model supplies an extent.
 
@@ -2680,9 +2699,7 @@ class ImageMapWidget(QtWidgets.QWidget):
             try:
                 (vx0, vx1), (vy0, vy1) = view.viewRange()
                 span_x, span_y = x1 - x0, y1 - y0
-                off_extent = (
-                    vx1 - vx0 > 10.0 * span_x or vy1 - vy0 > 10.0 * span_y
-                )
+                off_extent = vx1 - vx0 > 10.0 * span_x or vy1 - vy0 > 10.0 * span_y
             except Exception:
                 off_extent = False
         if changed or off_extent:
@@ -2690,8 +2707,17 @@ class ImageMapWidget(QtWidgets.QWidget):
             view.autoRange()
 
     # ── surface for the shared region overlay ──────────────────────────
-    def add_roi(self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0),
-                pen="y", movable=True, rotatable=False, points=None):
+    def add_roi(
+        self,
+        *,
+        kind="rect",
+        pos=(0.0, 0.0),
+        size=(10.0, 10.0),
+        pen="y",
+        movable=True,
+        rotatable=False,
+        points=None,
+    ):
         """Add a draggable region shape, returning a chiplot ROI handle.
 
         This is the whole surface
@@ -2737,8 +2763,13 @@ class ImageMapWidget(QtWidgets.QWidget):
         # on a chiplot canvas this widget owns — see the chiplot concept.)
         surface = B._PgImageView.wrap(self._image)
         return surface.add_roi(
-            kind=kind, pos=tuple(pos), size=tuple(size), pen=S.to_pen(pen),
-            movable=movable, rotatable=rotatable, points=points,
+            kind=kind,
+            pos=tuple(pos),
+            size=tuple(size),
+            pen=S.to_pen(pen),
+            movable=movable,
+            rotatable=rotatable,
+            points=points,
         )
 
     # ── refresh ────────────────────────────────────────────────────────
@@ -2767,8 +2798,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         size = self._rect_roi.size()
         x0, y0 = float(pos.x()), float(pos.y())
         try:
-            fn(RectangleROI(x0, y0, x0 + float(size.x()), y0 + float(size.y()),
-                            name="gate"))
+            fn(RectangleROI(x0, y0, x0 + float(size.x()), y0 + float(size.y()), name="gate"))
         except Exception:
             logging.debug("region callback failed", exc_info=True)
 
@@ -3002,6 +3032,7 @@ class FitMixerWidget(QtWidgets.QWidget):
                 # Listing a model the mixture refused would show a mixture
                 # that is not the one being fitted.
                 import chisurf as cs
+
                 cs.logging.warning(f"could not add {f.name!r} to the mixture: {error}")
                 continue
             self.fit_list.addItem(f"{i}: {f.name}")

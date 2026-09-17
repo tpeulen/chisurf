@@ -9,8 +9,9 @@ and a conformance check that gates new transformers.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -130,13 +131,9 @@ def check_transformer_conformance(transformer: Transformer, conn: Any = None) ->
         if not getattr(transformer, attr, None):
             raise TransformerConformanceError(f"transformer missing {attr!r}")
     if not getattr(transformer, "input_spec", None):
-        raise TransformerConformanceError(
-            f"{transformer.transformer_id}: no input_spec declared"
-        )
+        raise TransformerConformanceError(f"{transformer.transformer_id}: no input_spec declared")
     if not getattr(transformer, "output_spec", None):
-        raise TransformerConformanceError(
-            f"{transformer.transformer_id}: no output_spec declared"
-        )
+        raise TransformerConformanceError(f"{transformer.transformer_id}: no output_spec declared")
     for spec in list(transformer.input_spec) + list(transformer.output_spec):
         if not isinstance(spec, PortSpec) or not spec.kinds:
             raise TransformerConformanceError(

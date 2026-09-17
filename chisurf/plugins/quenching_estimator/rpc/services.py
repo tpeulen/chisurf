@@ -25,7 +25,6 @@ def register_services(dispatcher: Any) -> None:
         Anything with ``register(name, handler)`` — ChiSurf's
         ``ServiceDispatcher``, or QuEst's own.
     """
-
     from quest.rpc.services import register_services as _register
 
     _register(dispatcher)
@@ -33,7 +32,6 @@ def register_services(dispatcher: Any) -> None:
 
 def registered_method_names() -> tuple[str, ...]:
     """The names :func:`register_services` will add, without registering them."""
-
     from quest.rpc.services import METHODS
 
     return tuple(METHODS)

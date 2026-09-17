@@ -59,8 +59,13 @@ def load_csv(path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     if not rows:
         raise ValueError(f"No numeric data found in {path!r}")
 
-    arr = np.array([r[: max(len(x) for x in rows)] + [np.nan] * (max(len(x) for x in rows) - len(r))
-                    for r in rows], dtype=float)
+    arr = np.array(
+        [
+            r[: max(len(x) for x in rows)] + [np.nan] * (max(len(x) for x in rows) - len(r))
+            for r in rows
+        ],
+        dtype=float,
+    )
     t_raw = arr[:, 0]
     mult = _detect_time_unit(header)
     if mult is None:

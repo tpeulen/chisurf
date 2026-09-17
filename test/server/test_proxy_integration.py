@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 """Integration-style tests for the clean typed proxy classes."""
-import chisurf as cs
 from unittest.mock import MagicMock, patch
 
+import chisurf as cs
 from chisurf.core.api._client import ChisurfClient
 from chisurf.core.api._proxies import (
-    FitProxy,
-    DatasetProxy,
     DataProxy,
+    DatasetProxy,
+    FitProxy,
     ParameterProxy,
     ProxyDatasetList,
     ProxyFitList,
@@ -32,20 +32,28 @@ class TestIsinstancePatterns:
 
     def test_is_proxy_for_recognizes_fit(self):
         """_is_proxy_for checks _data.type field."""
-        proxy = FitProxy({
-            "uid": "f1", "name": "Fit1", "type": "FitGroup",
-            "chi2": 1.5,
-            "data": {"name": "Data", "uid": "ds1"},
-            "model": {"name": "Lifetime", "parameters_all": []},
-        })
+        proxy = FitProxy(
+            {
+                "uid": "f1",
+                "name": "Fit1",
+                "type": "FitGroup",
+                "chi2": 1.5,
+                "data": {"name": "Data", "uid": "ds1"},
+                "model": {"name": "Lifetime", "parameters_all": []},
+            }
+        )
         assert _is_proxy_for(proxy, "FitGroup")
         assert not _is_proxy_for(proxy, "DataCurve")
 
     def test_is_proxy_for_data_curve(self):
         """_is_proxy_for correctly identifies a DataCurve."""
-        proxy = DatasetProxy({
-            "uid": "ds1", "name": "DataCurve", "type": "DataCurve",
-        })
+        proxy = DatasetProxy(
+            {
+                "uid": "ds1",
+                "name": "DataCurve",
+                "type": "DataCurve",
+            }
+        )
         assert _is_proxy_for(proxy, "DataCurve")
         assert not _is_proxy_for(proxy, "FitGroup")
 
@@ -58,7 +66,9 @@ class TestPluginIterationPatterns:
         client = MagicMock(spec=ChisurfClient)
         client.fit__list.return_value = [
             {
-                "uid": "f1", "name": "Fit1", "chi2": 1.5,
+                "uid": "f1",
+                "name": "Fit1",
+                "chi2": 1.5,
                 "model": {
                     "name": "Lifetime",
                     "parameters_all": [
@@ -85,7 +95,8 @@ class TestPluginIterationPatterns:
         client = MagicMock(spec=ChisurfClient)
         client.fit__list.return_value = [
             {
-                "uid": "f1", "name": "GroupFit",
+                "uid": "f1",
+                "name": "GroupFit",
                 "model": {
                     "name": "MultiExp",
                     "parameters_all": [
@@ -108,7 +119,8 @@ class TestPluginIterationPatterns:
         client = MagicMock(spec=ChisurfClient)
         client.fit__list.return_value = [
             {
-                "uid": "f1", "name": "FitWithData",
+                "uid": "f1",
+                "name": "FitWithData",
                 "chi2": 1.2,
                 "data": {
                     "name": "MyData",
@@ -148,9 +160,15 @@ class TestProxyMutationPatterns:
         """param.set_value(4.5) → server call."""
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "value": 3.0, "fit_uid": "f1", "fixed": False,
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "value": 3.0,
+                "fit_uid": "f1",
+                "fixed": False,
+            },
+            client=client,
+        )
         param.set_value(4.5)
         client.call.assert_called_once_with(
             "parameter.set_value",
@@ -160,9 +178,14 @@ class TestProxyMutationPatterns:
     def test_param_set_fixed_via_method(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "fixed": False, "fit_uid": "f1",
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "fixed": False,
+                "fit_uid": "f1",
+            },
+            client=client,
+        )
         param.set_fixed(True)
         client.call.assert_called_once_with(
             "parameter.set_fixed",
@@ -172,9 +195,14 @@ class TestProxyMutationPatterns:
     def test_param_set_bounds_via_method(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "bounds": (0.0, 10.0), "fit_uid": "f1",
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "bounds": (0.0, 10.0),
+                "fit_uid": "f1",
+            },
+            client=client,
+        )
         param.set_bounds((1.0, 20.0))
         client.call.assert_called_once_with(
             "parameter.set_bounds",
@@ -184,9 +212,14 @@ class TestProxyMutationPatterns:
     def test_param_set_bounds_on_via_method(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "bounds_on": False, "fit_uid": "f1",
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "bounds_on": False,
+                "fit_uid": "f1",
+            },
+            client=client,
+        )
         param.set_bounds_on(True)
         client.call.assert_called_once_with(
             "parameter.set_bounds_on",
@@ -196,9 +229,13 @@ class TestProxyMutationPatterns:
     def test_param_link_to_via_method(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "fit_uid": "f1",
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "fit_uid": "f1",
+            },
+            client=client,
+        )
         param.link_to("tau2")
         client.call.assert_called_once_with(
             "parameter.link",
@@ -208,9 +245,13 @@ class TestProxyMutationPatterns:
     def test_param_unlink_via_method(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
-        param = ParameterProxy({
-            "name": "tau1", "fit_uid": "f1",
-        }, client=client)
+        param = ParameterProxy(
+            {
+                "name": "tau1",
+                "fit_uid": "f1",
+            },
+            client=client,
+        )
         param.unlink()
         client.call.assert_called_once_with(
             "parameter.unlink",
@@ -244,21 +285,21 @@ class TestProxyUpdateMethod:
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True, "chi2_before": 3.0}
         fit = FitProxy({"uid": "f1", "name": "RunTest"}, client=client)
-        result = fit.run()
+        fit.run()
         client.call.assert_called_once_with("fit.run", {"fit_uid": "f1"})
 
     def test_model_finalize_calls_server(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
         fit = FitProxy({"uid": "f1", "name": "FinalizeTest"}, client=client)
-        result = fit.model_finalize()
+        fit.model_finalize()
         client.call.assert_called_once_with("model.finalize", {"fit_uid": "f1"})
 
     def test_model_set_parse_function(self):
         client = MagicMock(spec=ChisurfClient)
         client.call.return_value = {"ok": True}
         fit = FitProxy({"uid": "f1", "name": "ParseFnTest"}, client=client)
-        result = fit.model_set_parse_function("expr")
+        fit.model_set_parse_function("expr")
         client.call.assert_called_once_with(
             "model.set_parse_function",
             {"fit_uid": "f1", "function_name": "expr"},
@@ -278,9 +319,7 @@ class TestProxyListMutations:
         dlist = ProxyDatasetList(client)
         popped = dlist.pop(0)
         assert popped.uid == "ds1"
-        client.dataset__remove.assert_called_once_with(
-            dataset_indices=[], dataset_uids=["ds1"]
-        )
+        client.dataset__remove.assert_called_once_with(dataset_indices=[], dataset_uids=["ds1"])
 
     def test_fit_clear_then_list_empty(self):
         client = MagicMock(spec=ChisurfClient)
@@ -313,10 +352,13 @@ class TestModelParseIntegration:
     def test_as_iterable_fits_with_proxy(self):
         """_as_iterable_fits works with FitProxy objects."""
         from chisurf.macros.model_parse import _as_iterable_fits
+
         client = MagicMock(spec=ChisurfClient)
         client.fit__list.return_value = [
             {
-                "uid": "f1", "name": "Fit1", "type": "FitGroup",
+                "uid": "f1",
+                "name": "Fit1",
+                "type": "FitGroup",
                 "chi2": 1.5,
                 "model": {"name": "Lifetime", "parameters_all": []},
                 "data": {"name": "Data1", "uid": "ds1"},
@@ -346,10 +388,15 @@ class TestServerModeGuards:
 
     def test_server_mode_read_works(self):
         """Read-only access works on FitProxy."""
-        fit = FitProxy({
-            "uid": "f1", "name": "ReadOnly", "type": "FitGroup",
-            "chi2": 1.5, "model": {"name": "Lifetime"},
-        })
+        fit = FitProxy(
+            {
+                "uid": "f1",
+                "name": "ReadOnly",
+                "type": "FitGroup",
+                "chi2": 1.5,
+                "model": {"name": "Lifetime"},
+            }
+        )
         assert fit.name == "ReadOnly"
         assert fit.chi2 == 1.5
 
@@ -392,7 +439,7 @@ class TestChisurfRunPattern:
         assert result.get("ok") is True
 
     def test_enumerate_pattern(self):
-        """for fit_idx, f in enumerate(cs.fits) GUI pattern."""
+        """For fit_idx, f in enumerate(cs.fits) GUI pattern."""
         client = MagicMock(spec=ChisurfClient)
         client.fit__list.return_value = [
             {"uid": "f1", "name": "Fit1", "chi2": 1.0},

@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 
-def get_ui_state(main_window: typing.Any) -> typing.Dict[str, typing.Any]:
+def get_ui_state(main_window: typing.Any) -> dict[str, typing.Any]:
     """Capture UI state from main window and all sub-windows.
 
     Returns a dict with:
@@ -13,7 +13,7 @@ def get_ui_state(main_window: typing.Any) -> typing.Dict[str, typing.Any]:
     - fit_selector: current selection
     - active_tabs: which tabs are active in each panel
     """
-    state: typing.Dict[str, typing.Any] = {}
+    state: dict[str, typing.Any] = {}
 
     if main_window is None:
         return state
@@ -67,7 +67,7 @@ def get_ui_state(main_window: typing.Any) -> typing.Dict[str, typing.Any]:
     return state
 
 
-def set_ui_state(main_window: typing.Any, state: typing.Dict[str, typing.Any]) -> bool:
+def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
     """Apply UI state to main window.
 
     Returns True if successful, False otherwise.
@@ -125,9 +125,9 @@ def set_ui_state(main_window: typing.Any, state: typing.Dict[str, typing.Any]) -
     return success
 
 
-def get_dataset_selector_state(main_window: typing.Any) -> typing.Dict[str, typing.Any]:
+def get_dataset_selector_state(main_window: typing.Any) -> dict[str, typing.Any]:
     """Get dataset selector state (selection, expanded groups)."""
-    state: typing.Dict[str, typing.Any] = {}
+    state: dict[str, typing.Any] = {}
 
     if main_window is None:
         return state
@@ -147,7 +147,7 @@ def get_dataset_selector_state(main_window: typing.Any) -> typing.Dict[str, typi
     return state
 
 
-def set_dataset_selector_state(main_window: typing.Any, state: typing.Dict[str, typing.Any]) -> bool:
+def set_dataset_selector_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
     """Apply dataset selector state."""
     if main_window is None:
         return False
@@ -168,9 +168,9 @@ def set_dataset_selector_state(main_window: typing.Any, state: typing.Dict[str, 
     return False
 
 
-def get_fit_selector_state(main_window: typing.Any) -> typing.Dict[str, typing.Any]:
+def get_fit_selector_state(main_window: typing.Any) -> dict[str, typing.Any]:
     """Get fit selector state (selected fit group, selected local fit)."""
-    state: typing.Dict[str, typing.Any] = {}
+    state: dict[str, typing.Any] = {}
 
     if main_window is None:
         return state
@@ -190,7 +190,7 @@ def get_fit_selector_state(main_window: typing.Any) -> typing.Dict[str, typing.A
     return state
 
 
-def set_fit_selector_state(main_window: typing.Any, state: typing.Dict[str, typing.Any]) -> bool:
+def set_fit_selector_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
     """Apply fit selector state."""
     if main_window is None:
         return False
@@ -211,16 +211,16 @@ def set_fit_selector_state(main_window: typing.Any, state: typing.Dict[str, typi
     return False
 
 
-def get_active_tabs(main_window: typing.Any) -> typing.Dict[str, int]:
+def get_active_tabs(main_window: typing.Any) -> dict[str, int]:
     """Get active tab indices for main panels."""
-    tabs: typing.Dict[str, int] = {}
+    tabs: dict[str, int] = {}
 
     if main_window is None:
         return tabs
 
     panel_names = [
         "datasetPanel",
-        "experimentPanel", 
+        "experimentPanel",
         "analysisPanel",
         "plotPanel",
     ]
@@ -238,7 +238,7 @@ def get_active_tabs(main_window: typing.Any) -> typing.Dict[str, int]:
     return tabs
 
 
-def set_active_tabs(main_window: typing.Any, tabs: typing.Dict[str, int]) -> None:
+def set_active_tabs(main_window: typing.Any, tabs: dict[str, int]) -> None:
     """Set active tab indices for main panels."""
     if main_window is None:
         return

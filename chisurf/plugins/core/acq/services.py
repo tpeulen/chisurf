@@ -11,13 +11,13 @@ entrypoint at server start.
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict
+from typing import Any
 
 #: RPC method name; mirrors ``rpc_methods[0].name`` in ``manifest.json``.
 METHOD_SIMULATION_RUN = "acq.simulation.run"
 
 
-def simulation_run(params: Dict[str, Any]) -> Dict[str, Any]:
+def simulation_run(params: dict[str, Any]) -> dict[str, Any]:
     """Run one photon-stream simulation and (optionally) write SPC output.
 
     Parameters
@@ -39,14 +39,13 @@ def simulation_run(params: Dict[str, Any]) -> Dict[str, Any]:
 
     if not tttrlib_available():
         raise RuntimeError(
-            "tttrlib with the Sim* photon simulator is required "
-            "(install/upgrade tttrlib)."
+            "tttrlib with the Sim* photon simulator is required (install/upgrade tttrlib)."
         )
 
     params = dict(params or {})
     engine = build_engine(params)
     engine.run()
-    result: Dict[str, Any] = {"n_photons": int(engine.n_photons()), "output_path": None}
+    result: dict[str, Any] = {"n_photons": int(engine.n_photons()), "output_path": None}
 
     out_path = params.get("spc_output_path") or params.get("output_path")
     if out_path:

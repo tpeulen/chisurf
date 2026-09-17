@@ -19,12 +19,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.plugins.labelling import av
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 POSITION = {
@@ -58,9 +61,7 @@ def test_numpy_computes_a_cloud_that_clears_the_atoms(position):
     # point is farther out than the linker can reach -- the two halves of the
     # geometric model, checked straight against the structure it claims.
     atoms = av.load_structure_with_vdw(str(PDB))
-    clean = av.strip_residue_atoms(
-        atoms, "E", 119, pdb_path=str(PDB)
-    )
+    clean = av.strip_residue_atoms(atoms, "E", 119, pdb_path=str(PDB))
     pts = volume.points[:, :3]
     gap = np.linalg.norm(pts[:, None, :] - clean[None, :256, :3], axis=2)
     assert float(gap.min()) >= float(clean[:256, 3].min()) + 3.5 - 1e-6
@@ -79,7 +80,8 @@ def test_numpy_is_deterministic(position):
 
 def test_auto_prefers_the_physics_when_it_is_there(position):
     """`auto` keeps picking imp-bff where it exists; numpy is the fallback,
-    not the replacement."""
+    not the replacement.
+    """
     if not PDB.is_file() or "imp-bff" not in av.available_backends():
         pytest.skip("imp-bff not importable here")
     volume = av.compute_av(str(PDB), dict(position))
@@ -109,22 +111,21 @@ def test_the_attachment_residue_is_not_an_obstacle(position):
         pytest.skip(f"missing fixture {PDB}")
     records = av._cached_pdb_records(str(PDB))
     residue_xyz = np.array(
-        [r[3:6] for r in records
-         if r[1] == position["residue_seq_number"]
-         and r[0] == position["chain_identifier"]]
+        [
+            r[3:6]
+            for r in records
+            if r[1] == position["residue_seq_number"] and r[0] == position["chain_identifier"]
+        ]
     )
     assert residue_xyz.shape[0] > 1, "fixture lost residue 119?"
     backends = [b for b in ("numpy", "imp-bff") if b in av.available_backends()]
     assert backends, "no backend to test"
     for backend in backends:
         volume = av.compute_av(str(PDB), dict(position), backend=backend)
-        near = np.linalg.norm(
-            volume.points[:, None, :3] - residue_xyz[None, :, :], axis=2
-        )
+        near = np.linalg.norm(volume.points[:, None, :3] - residue_xyz[None, :, :], axis=2)
         inside = int((near < 3.4).any(axis=1).sum())
         assert inside > 0, (
-            f"{backend}: the attachment residue still blocks -- {inside} "
-            "points in its own space"
+            f"{backend}: the attachment residue still blocks -- {inside} points in its own space"
         )
 
 
@@ -139,8 +140,10 @@ def test_the_stripped_pdb_strips_the_side_chain_not_the_backbone(position):
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     stripped = av._stripped_pdb_for(
-        str(PDB), position["chain_identifier"],
-        position["residue_seq_number"], position["atom_name"],
+        str(PDB),
+        position["chain_identifier"],
+        position["residue_seq_number"],
+        position["atom_name"],
     )
     kept = _residue_atom_names(stripped, position)
     assert kept == ["N", "CA", "C", "O", "CB"], (
@@ -148,15 +151,19 @@ def test_the_stripped_pdb_strips_the_side_chain_not_the_backbone(position):
     )
     # A declared mask in the same vocabulary is honoured as given...
     declared = av._stripped_pdb_for(
-        str(PDB), position["chain_identifier"],
-        position["residue_seq_number"], position["atom_name"],
+        str(PDB),
+        position["chain_identifier"],
+        position["residue_seq_number"],
+        position["atom_name"],
         strip_mask="chain E and resid 119 and not name N+CA+C+O+CB",
     )
     assert _residue_atom_names(declared, position) == ["N", "CA", "C", "O", "CB"]
     # ...including one that would eat the attachment atom: it survives.
     survives = av._stripped_pdb_for(
-        str(PDB), position["chain_identifier"],
-        position["residue_seq_number"], position["atom_name"],
+        str(PDB),
+        position["chain_identifier"],
+        position["residue_seq_number"],
+        position["atom_name"],
         strip_mask=f"chain E and resid {position['residue_seq_number']}",
     )
     assert _residue_atom_names(survives, position) == ["CB"]
@@ -167,22 +174,28 @@ def test_the_stripped_pdb_strips_the_side_chain_not_the_backbone(position):
     # The dialect is handled where the foreign documents are read, not by
     # loosening the grammar: `av.translate_strip_mask`.
     dialect = av._stripped_pdb_for(
-        str(PDB), position["chain_identifier"],
-        position["residue_seq_number"], position["atom_name"],
+        str(PDB),
+        position["chain_identifier"],
+        position["residue_seq_number"],
+        position["atom_name"],
         strip_mask="chain E and resid 119 and not name CA CB C N O",
     )
     assert _residue_atom_names(dialect, position) == ["N", "CA", "C", "O", "CB"]
     # A mask that is nonsense in *either* dialect is still refused, loudly.
     with pytest.raises(ValueError):
         av._stripped_pdb_for(
-            str(PDB), position["chain_identifier"],
-            position["residue_seq_number"], position["atom_name"],
+            str(PDB),
+            position["chain_identifier"],
+            position["residue_seq_number"],
+            position["atom_name"],
             strip_mask="chain E and resid 119 and not glorp CB",
         )
     # ... and the cache answers the same file for the same site.
     again = av._stripped_pdb_for(
-        str(PDB), position["chain_identifier"],
-        position["residue_seq_number"], position["atom_name"],
+        str(PDB),
+        position["chain_identifier"],
+        position["residue_seq_number"],
+        position["atom_name"],
     )
     assert again == stripped
 
@@ -240,7 +253,7 @@ def test_a_documents_strip_mask_is_translated_not_the_grammar_loosened():
     is translated at the seam that reads it rather than by teaching the shared
     grammar a second dialect it would then have to keep for ever.
     """
-    from chimol.core.selection.parser import Parser, ParserError, tokenize
+    from chimol.core.selection.parser import Parser, tokenize
     from chimol.plugins.labelling.av import translate_strip_mask
 
     def parse(expression):
@@ -249,10 +262,10 @@ def test_a_documents_strip_mask_is_translated_not_the_grammar_loosened():
     theirs = "(resid 5 and not name CA+CB+C+N+O) or resname HOH SOL WAT DU CL NA"
     ours = translate_strip_mask(theirs)
     assert "resname HOH+SOL+WAT+DU+CL+NA" in ours
-    parse(ours)                               # ...and it parses
+    parse(ours)  # ...and it parses
 
-    parsed = parse("resname HOH SOL WAT")     # the grammar keeps its answer:
-    assert parsed is not None                 # it parses as "resname HOH" and
+    parsed = parse("resname HOH SOL WAT")  # the grammar keeps its answer:
+    assert parsed is not None  # it parses as "resname HOH" and
     # a *name* SOL, which is what PyMOL then refuses when it evaluates it.
 
 

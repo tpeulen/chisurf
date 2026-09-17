@@ -3,9 +3,8 @@ import pathlib
 import tttrlib
 
 import chisurf.gui.decorators
-
-from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 def install_file_drop(page):
@@ -19,14 +18,14 @@ def install_file_drop(page):
         """
         # Generate allowed extensions dynamically from tttrlib
         allowed_extensions = {
-            f".{ext.lower()}" if not ext.startswith('.') else ext.lower()
+            f".{ext.lower()}" if not ext.startswith(".") else ext.lower()
             for ext in tttrlib.TTTR.get_supported_container_names()
         }
 
         # Expand directories: if an entry in tttr_filenames is a folder,
         # replace it with all files (in that folder only) with allowed extensions.
         expanded_files = []
-        for path_str in page.settings['tttr_filenames']:
+        for path_str in page.settings["tttr_filenames"]:
             p = pathlib.Path(path_str).resolve()
             if p.is_dir():
                 for child in p.iterdir():
@@ -35,7 +34,7 @@ def install_file_drop(page):
             else:
                 expanded_files.append(str(p))
         # IMPORTANT: mutate the existing list in-place to preserve the drag/drop injector reference
-        lst = page.settings.get('tttr_filenames')
+        lst = page.settings.get("tttr_filenames")
         if isinstance(lst, list):
             lst[:] = expanded_files
 
@@ -45,7 +44,7 @@ def install_file_drop(page):
         requires_filetype_selection = False
         restricted_files = []
 
-        for fn in page.settings['tttr_filenames']:
+        for fn in page.settings["tttr_filenames"]:
             p = pathlib.Path(fn).resolve()
             file_extension = p.suffix.lower()
 
@@ -57,10 +56,11 @@ def install_file_drop(page):
 
         if requires_filetype_selection:
             dialogs.warning(
-                page, "File Type Required",
+                page,
+                "File Type Required",
                 "The following files require an explicit file type selection before loading:\n\n"
                 + "\n".join(restricted_files)
-                + "\n\nPlease select the correct file type from the dropdown menu."
+                + "\n\nPlease select the correct file type from the dropdown menu.",
             )
             page.onClearFiles()
             return  # Prevent loading any files
@@ -71,12 +71,12 @@ def install_file_drop(page):
         # we've already shown a warning in the filetype property
 
         # Proceed with loading the files and showing progress
-        total_files = len(page.settings['tttr_filenames'])
+        total_files = len(page.settings["tttr_filenames"])
         progress_window = ChiSurfProgress(
             page, "Processing files...", total_files, title="Loading Files"
         )
 
-        for i, fn in enumerate(page.settings['tttr_filenames'], start=1):
+        for i, fn in enumerate(page.settings["tttr_filenames"], start=1):
             p = pathlib.Path(fn).resolve()
             p_str = str(p)
 
@@ -101,7 +101,7 @@ def install_file_drop(page):
                             "Error Loading File",
                             f"Failed to load file '{p.name}' with the selected setup.\n\n"
                             f"Error: {str(e)}\n\n"
-                            f"Please check that you have selected the correct setup for this file type."
+                            f"Please check that you have selected the correct setup for this file type.",
                         )
                         page.onClearFiles()
                         return  # Exit early to prevent undefined state
@@ -110,7 +110,7 @@ def install_file_drop(page):
 
         progress_window.close()
 
-        n_files = len(page.settings['tttr_filenames'])
+        n_files = len(page.settings["tttr_filenames"])
         page.spinBox_4.setMaximum(n_files - 1)
         if n_files > 0:
             page.spinBox_4.setValue(n_files - 1)
@@ -121,5 +121,5 @@ def install_file_drop(page):
     # Expose the drop handler so external code (e.g., batch processing) can reuse the standard flow
     page._after_file_drop = after_file_drop
     chisurf.gui.decorators.lineEdit_dragFile_injector(
-        page.lineEdit, call=after_file_drop, target=page.settings['tttr_filenames']
+        page.lineEdit, call=after_file_drop, target=page.settings["tttr_filenames"]
     )

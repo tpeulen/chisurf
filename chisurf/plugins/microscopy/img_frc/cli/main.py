@@ -11,36 +11,97 @@ from ..client import FrcClient
 
 @click.command()
 @click.argument("filename", type=click.Path(exists=True))
-@click.option("--split", type=click.Choice(["even_odd", "halves", "channels", "two_files"]),
-              default="even_odd", show_default=True,
-              help="How to cut the acquisition into two independent halves.")
-@click.option("--channel", "-c", default="0", show_default=True,
-              help="Channel to measure, by index or by name.")
-@click.option("--channel-2", default=None,
-              help="Second channel for --split channels (default: the next one).")
-@click.option("--second", "second_filename", type=click.Path(exists=True), default=None,
-              help="Second acquisition for --split two_files.")
-@click.option("--pixel-size", "pixel_size_nm", type=float, default=None,
-              help="Pixel size in nm. Without it the resolution is in pixels.")
-@click.option("--criterion", type=click.Choice(["fixed_1/7", "half_bit", "two_sigma"]),
-              default="fixed_1/7", show_default=True,
-              help="Threshold convention; quote it with the number.")
-@click.option("--bin-width", type=float, default=None,
-              help="Ring width in cycles/pixel (default: one Fourier pixel).")
-@click.option("--smooth", type=int, default=3, show_default=True,
-              help="Rings averaged before the threshold crossing is read.")
-@click.option("--axis-order", type=click.Choice(["auto", "frames", "channels"]),
-              default="auto", show_default=True,
-              help="TIFF only: read a 3-D file's leading axis as frames or as channels.")
-@click.option("--windows", type=str, default=None,
-              help="Photon streams: JSON of named detector windows.")
-@click.option("--channels", type=str, default=None,
-              help="Photon streams: comma-separated routing channels to fill.")
-@click.option("--out-csv", "output_path", type=click.Path(), default=None,
-              help="Write the curve, threshold and ring counts to a CSV file.")
+@click.option(
+    "--split",
+    type=click.Choice(["even_odd", "halves", "channels", "two_files"]),
+    default="even_odd",
+    show_default=True,
+    help="How to cut the acquisition into two independent halves.",
+)
+@click.option(
+    "--channel",
+    "-c",
+    default="0",
+    show_default=True,
+    help="Channel to measure, by index or by name.",
+)
+@click.option(
+    "--channel-2", default=None, help="Second channel for --split channels (default: the next one)."
+)
+@click.option(
+    "--second",
+    "second_filename",
+    type=click.Path(exists=True),
+    default=None,
+    help="Second acquisition for --split two_files.",
+)
+@click.option(
+    "--pixel-size",
+    "pixel_size_nm",
+    type=float,
+    default=None,
+    help="Pixel size in nm. Without it the resolution is in pixels.",
+)
+@click.option(
+    "--criterion",
+    type=click.Choice(["fixed_1/7", "half_bit", "two_sigma"]),
+    default="fixed_1/7",
+    show_default=True,
+    help="Threshold convention; quote it with the number.",
+)
+@click.option(
+    "--bin-width",
+    type=float,
+    default=None,
+    help="Ring width in cycles/pixel (default: one Fourier pixel).",
+)
+@click.option(
+    "--smooth",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Rings averaged before the threshold crossing is read.",
+)
+@click.option(
+    "--axis-order",
+    type=click.Choice(["auto", "frames", "channels"]),
+    default="auto",
+    show_default=True,
+    help="TIFF only: read a 3-D file's leading axis as frames or as channels.",
+)
+@click.option(
+    "--windows", type=str, default=None, help="Photon streams: JSON of named detector windows."
+)
+@click.option(
+    "--channels",
+    type=str,
+    default=None,
+    help="Photon streams: comma-separated routing channels to fill.",
+)
+@click.option(
+    "--out-csv",
+    "output_path",
+    type=click.Path(),
+    default=None,
+    help="Write the curve, threshold and ring counts to a CSV file.",
+)
 @click.option("--json", "as_json", is_flag=True, help="Print the result as JSON.")
-def cli(filename, split, channel, channel_2, second_filename, pixel_size_nm, criterion,
-        bin_width, smooth, axis_order, windows, channels, output_path, as_json):
+def cli(
+    filename,
+    split,
+    channel,
+    channel_2,
+    second_filename,
+    pixel_size_nm,
+    criterion,
+    bin_width,
+    smooth,
+    axis_order,
+    windows,
+    channels,
+    output_path,
+    as_json,
+):
     """Measure the resolution of FILENAME (a TIFF stack or a photon stream).
 
     The FRC asks how far into the fine detail two independent halves of the same

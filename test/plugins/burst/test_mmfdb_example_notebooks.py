@@ -99,8 +99,13 @@ def test_example_notebook_executes(notebook: Path, requires: tuple[str, ...]) ->
 
     result = subprocess.run(
         [
-            sys.executable, "-m", "nbconvert",
-            "--to", "notebook", "--execute", "--stdout",
+            sys.executable,
+            "-m",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--stdout",
             "--ExecutePreprocessor.timeout=600",
             notebook.name,
         ],

@@ -280,9 +280,7 @@ def test_saved_regions_round_trip_through_the_selection():
     assert vm.selection_roi() is None
 
     vm.apply_roi("cell")
-    np.testing.assert_array_equal(
-        vm.selection_mask > 0, vm.regions.roi("cell").to_mask((16, 16))
-    )
+    np.testing.assert_array_equal(vm.selection_mask > 0, vm.regions.roi("cell").to_mask((16, 16)))
 
     vm.remove_roi("cell")
     assert vm.regions.names == []

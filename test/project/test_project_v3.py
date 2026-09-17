@@ -3,11 +3,10 @@ import os
 import tempfile
 import unittest
 
-from chisurf.core.project import Project, ProjectArchive, save_project, load_project
+from chisurf.core.project import Project, ProjectArchive, load_project, save_project
 
 
 class TestProjectFormat(unittest.TestCase):
-
     def test_v4_format_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             project_dir = os.path.join(tmpdir, "test_v4_project")
@@ -21,15 +20,15 @@ class TestProjectFormat(unittest.TestCase):
             p.datasets["ds1"] = {"path": "data/file1.dat", "checksum": "abc123", "uid": "ds-uid-1"}
             p.datasets["ds2"] = {"path": "data/file2.dat", "checksum": "def456", "uid": "ds-uid-2"}
             p.experiments["exp1"] = {"type": "tcspc", "dataset_id": "ds-uid-1", "uid": "exp-uid-1"}
-            p.fits.append({
-                "uid": "fit-uid-1",
-                "name": "fit1",
-                "dataset_uid": "ds-uid-1",
-                "created": "2024-01-01T00:00:00",
-                "local_fits": [
-                    {"uid": "lf-uid-1", "name": "local1", "parameters": []}
-                ]
-            })
+            p.fits.append(
+                {
+                    "uid": "fit-uid-1",
+                    "name": "fit1",
+                    "dataset_uid": "ds-uid-1",
+                    "created": "2024-01-01T00:00:00",
+                    "local_fits": [{"uid": "lf-uid-1", "name": "local1", "parameters": []}],
+                }
+            )
             p.ui_state["current_experiment_id"] = "exp-uid-1"
             p.metadata["checkpoint_interval"] = 50
 

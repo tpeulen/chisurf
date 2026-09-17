@@ -1,7 +1,7 @@
-import utils
-import os
-import unittest
 import pathlib
+import unittest
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 
@@ -13,7 +13,6 @@ import chisurf.core.math.regularization as regularization
 
 
 class Tests(unittest.TestCase):
-
     def test_csvd(self):
         """Test compact SVD function."""
         A = np.random.randn(10, 5)
@@ -103,5 +102,5 @@ class Tests(unittest.TestCase):
         self.assertLess(k, rho.size)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

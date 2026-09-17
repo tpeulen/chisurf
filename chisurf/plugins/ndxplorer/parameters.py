@@ -49,11 +49,14 @@ __all__ = [
 #: (a quantum yield cannot exceed 1), not to guess limits for unknown entries.
 CONSTANT_BOUNDS: dict[str, tuple[float, float]] = {
     "gG/gR": (1e-6, 1e6),
-    "alpha": (0.0, 1.0),        # donor leakage
-    "beta": (0.0, 1.0),         # ndx "beta" is the direct-excitation coefficient
-    "r": (1e-6, 1e6),           # scales I_AA in the stoichiometry (1/beta_Hellenkamp)
-    "Bg": (0.0, 1e6), "Br": (0.0, 1e6), "By": (0.0, 1e6),
-    "PhiA": (0.0, 1.0), "PhiD": (0.0, 1.0),
+    "alpha": (0.0, 1.0),  # donor leakage
+    "beta": (0.0, 1.0),  # ndx "beta" is the direct-excitation coefficient
+    "r": (1e-6, 1e6),  # scales I_AA in the stoichiometry (1/beta_Hellenkamp)
+    "Bg": (0.0, 1e6),
+    "Br": (0.0, 1e6),
+    "By": (0.0, 1e6),
+    "PhiA": (0.0, 1.0),
+    "PhiD": (0.0, 1.0),
     "forster_radius": (1.0, 200.0),
     "tauD0": (1e-3, 1e3),
     "kappa2": (0.0, 4.0),
@@ -152,7 +155,9 @@ class NdxConstants(FittingParameterGroup):
             if parameter is None:
                 bounds = CONSTANT_BOUNDS.get(str(key))
                 parameter = FittingParameter(
-                    value=number, name=str(key), fixed=False,
+                    value=number,
+                    name=str(key),
+                    fixed=False,
                     lb=bounds[0] if bounds else float("-inf"),
                     ub=bounds[1] if bounds else float("inf"),
                     bounds_on=bounds is not None,
@@ -267,8 +272,9 @@ class NdxConstants(FittingParameterGroup):
 _BOUND: dict[str, tuple[NdxConstants, object]] = {}
 
 
-def bind_ndx_parameters(ndx, *, owner_id: str = "ndxplorer",
-                        label: str = "ndX constants") -> NdxConstants:
+def bind_ndx_parameters(
+    ndx, *, owner_id: str = "ndxplorer", label: str = "ndX constants"
+) -> NdxConstants:
     """Expose a window's constants as fitting parameters in the Global View.
 
     Parameters

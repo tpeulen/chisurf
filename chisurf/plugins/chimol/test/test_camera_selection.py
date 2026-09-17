@@ -32,7 +32,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -200,9 +204,9 @@ def test_zoom_on_a_ligand_centres_on_it(session):
         viewer.objects[viewer.get_active_object_id()].state.raw_center, dtype=float
     )
     pivot = _view(viewer)[12:15] / scale + raw_centre
-    ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[
-        _mask(shared, viewer, "resn NAG")
-    ].mean(axis=0)
+    ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[_mask(shared, viewer, "resn NAG")].mean(
+        axis=0
+    )
     assert float(np.linalg.norm(pivot - ligand)) < 1.0
 
 
@@ -216,9 +220,9 @@ def test_center_on_a_ligand_moves_the_pivot(session):
         viewer.objects[viewer.get_active_object_id()].state.raw_center, dtype=float
     )
     pivot = _view(viewer)[12:15] / scale + raw_centre
-    ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[
-        _mask(shared, viewer, "resn NAG")
-    ].mean(axis=0)
+    ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[_mask(shared, viewer, "resn NAG")].mean(
+        axis=0
+    )
     assert float(np.linalg.norm(pivot - ligand)) < 1.0
 
 

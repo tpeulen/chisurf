@@ -39,8 +39,6 @@ package excludes the point, and its ``min_samples=5`` is this one's
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from ..base import BaseEstimator
@@ -154,9 +152,7 @@ def mutual_reachability_mst(
 
     import tttrlib
 
-    return np.asarray(
-        tttrlib.mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64
-    )
+    return np.asarray(tttrlib.mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -511,9 +507,7 @@ def _epsilon_search(
         eps = 1.0 / float(rows[0])
         if eps < epsilon:
             if leaf not in processed:
-                node = _traverse_upwards(
-                    cluster_tree, epsilon, leaf, allow_single_cluster
-                )
+                node = _traverse_upwards(cluster_tree, epsilon, leaf, allow_single_cluster)
                 selected.append(node)
                 for sub in _bfs_from_cluster_tree(cluster_tree, node):
                     if sub != node:
@@ -654,7 +648,7 @@ def _get_clusters(
     cluster_selection_method: str = "eom",
     allow_single_cluster: bool = False,
     cluster_selection_epsilon: float = 0.0,
-    max_cluster_size: Optional[int] = None,
+    max_cluster_size: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Select clusters from the condensed tree and label every point."""
     node_list = sorted(stability.keys(), reverse=True)
@@ -681,10 +675,7 @@ def _get_clusters(
         for node in node_list:
             children = cluster_tree["child"][cluster_tree["parent"] == node]
             subtree_stability = float(sum(stability[int(c)] for c in children))
-            if (
-                subtree_stability > stability[node]
-                or cluster_sizes.get(node, 0) > max_cluster_size
-            ):
+            if subtree_stability > stability[node] or cluster_sizes.get(node, 0) > max_cluster_size:
                 is_cluster[node] = False
                 stability[node] = subtree_stability
             else:
@@ -694,9 +685,7 @@ def _get_clusters(
 
         if cluster_selection_epsilon != 0.0 and cluster_tree.shape[0] > 0:
             eom_clusters = [c for c in is_cluster if is_cluster[c]]
-            if len(eom_clusters) == 1 and eom_clusters[0] == int(
-                cluster_tree["parent"].min()
-            ):
+            if len(eom_clusters) == 1 and eom_clusters[0] == int(cluster_tree["parent"].min()):
                 selected = set(eom_clusters) if allow_single_cluster else set()
             else:
                 selected = _epsilon_search(
@@ -725,8 +714,7 @@ def _get_clusters(
             is_cluster[c] = c in selected
     else:
         raise ValueError(
-            "cluster_selection_method must be 'eom' or 'leaf', got "
-            f"{cluster_selection_method!r}"
+            f"cluster_selection_method must be 'eom' or 'leaf', got {cluster_selection_method!r}"
         )
 
     clusters = {c for c in is_cluster if is_cluster[c]}
@@ -741,9 +729,7 @@ def _get_clusters(
         cluster_selection_epsilon,
     )
     probabilities = _get_probabilities(condensed, reverse_map, labels)
-    persistence = np.array(
-        [stability[c] for c in sorted(clusters)], dtype=np.float64
-    )
+    persistence = np.array([stability[c] for c in sorted(clusters)], dtype=np.float64)
     return labels, probabilities, persistence
 
 
@@ -753,7 +739,7 @@ def tree_to_labels(
     cluster_selection_method: str = "eom",
     allow_single_cluster: bool = False,
     cluster_selection_epsilon: float = 0.0,
-    max_cluster_size: Optional[int] = None,
+    max_cluster_size: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Condense a dendrogram and read a flat clustering out of it.
 
@@ -834,14 +820,14 @@ class HDBSCAN(BaseEstimator):
     def __init__(
         self,
         min_cluster_size: int = 5,
-        min_samples: Optional[int] = None,
+        min_samples: int | None = None,
         cluster_selection_epsilon: float = 0.0,
-        max_cluster_size: Optional[int] = None,
+        max_cluster_size: int | None = None,
         metric: str = "euclidean",
         alpha: float = 1.0,
         cluster_selection_method: str = "eom",
         allow_single_cluster: bool = False,
-        store_centers: Optional[str] = None,
+        store_centers: str | None = None,
         prediction_data: bool = False,
     ):
         self.min_cluster_size = min_cluster_size
@@ -876,18 +862,14 @@ class HDBSCAN(BaseEstimator):
         """
         X = np.ascontiguousarray(np.atleast_2d(np.asarray(X, dtype=np.float64)))
         if self.metric != "euclidean":
-            raise ValueError(
-                f"metric={self.metric!r} is not implemented; only 'euclidean' is."
-            )
+            raise ValueError(f"metric={self.metric!r} is not implemented; only 'euclidean' is.")
         n_total = X.shape[0]
         finite = np.isfinite(X).all(axis=1)
         data = X if finite.all() else X[finite]
         n_samples = data.shape[0]
 
         min_cluster_size = max(2, int(self.min_cluster_size))
-        min_samples = (
-            min_cluster_size if self.min_samples is None else int(self.min_samples)
-        )
+        min_samples = min_cluster_size if self.min_samples is None else int(self.min_samples)
         # The size check comes first: a data set too small to hold one cluster
         # is answered with "all noise", and complaining about the neighbour rank
         # would be answering a question nobody asked.
@@ -911,9 +893,7 @@ class HDBSCAN(BaseEstimator):
                 self.centroids_ = np.empty((0, X.shape[1]), dtype=np.float64)
             return self
 
-        mst = mutual_reachability_mst(
-            data, min_samples=min_samples, alpha=float(self.alpha)
-        )
+        mst = mutual_reachability_mst(data, min_samples=min_samples, alpha=float(self.alpha))
         hierarchy = single_linkage_tree(mst)
         labels, probabilities, persistence, condensed = tree_to_labels(
             hierarchy,

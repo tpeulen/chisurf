@@ -27,9 +27,7 @@ class DeerController(reader.ExperimentReaderController, QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        label = QtWidgets.QLabel(
-            "DEER: open a Bruker BES3T (.DSC/.DTA) or CSV/text trace."
-        )
+        label = QtWidgets.QLabel("DEER: open a Bruker BES3T (.DSC/.DTA) or CSV/text trace.")
         label.setWordWrap(True)
         layout.addWidget(label)
 

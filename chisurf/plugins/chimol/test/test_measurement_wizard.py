@@ -10,6 +10,7 @@ transforms the positions it is given into scene space, so a measurement built
 from the scene array is scaled and centred twice and lands nowhere near the
 atoms. Both are pinned here.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -21,7 +22,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -134,12 +139,8 @@ def test_angle_and_dihedral_need_three_and_four_picks(session):
         viewer.pick_hook(k)
         assert viewer.measurements, "three atoms did not make an angle"
         u, v = xyz[i] - xyz[j], xyz[k] - xyz[j]
-        truth = np.degrees(np.arccos(
-            np.dot(u, v) / np.linalg.norm(u) / np.linalg.norm(v)
-        ))
-        assert _value(_last_measurement_message(viewer)) == pytest.approx(
-            truth, abs=0.05
-        )
+        truth = np.degrees(np.arccos(np.dot(u, v) / np.linalg.norm(u) / np.linalg.norm(v)))
+        assert _value(_last_measurement_message(viewer)) == pytest.approx(truth, abs=0.05)
 
         run("wizard delete, all")
         run("wizard mode, dihedral")

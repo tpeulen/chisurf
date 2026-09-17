@@ -21,7 +21,9 @@ import chisurf.core.data
 import chisurf.core.fitting.fit as F
 from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
 
-REFERENCE = json.loads((pathlib.Path(__file__).parent / "data" / "parsed_decay_reference.json").read_text())
+REFERENCE = json.loads(
+    (pathlib.Path(__file__).parent / "data" / "parsed_decay_reference.json").read_text()
+)
 
 
 def _view(y=None):
@@ -60,20 +62,27 @@ def test_every_equation_under_every_instrument_setting_reproduces_the_classic_cu
     assert problem is not None, model.missing
     model.structure = record["entry"]
     _set(problem, record["values"])
-    _set(problem, {
-        "instrument.timeshift": settings["ts"],
-        "instrument.scatter": settings["sc"],
-        "instrument.background": settings["bg"],
-        "instrument.n0": settings["n0"],
-    })
+    _set(
+        problem,
+        {
+            "instrument.timeshift": settings["ts"],
+            "instrument.scatter": settings["sc"],
+            "instrument.background": settings["bg"],
+            "instrument.n0": settings["n0"],
+        },
+    )
     model.update()
     np.testing.assert_allclose(model.y, record["y"], rtol=1e-9, atol=1e-9)
     if settings["autoscale"]:
-        assert problem.get_parameter("instrument.n0").value == pytest.approx(record["n0_after"], rel=1e-9)
+        assert problem.get_parameter("instrument.n0").value == pytest.approx(
+            record["n0_after"], rel=1e-9
+        )
 
 
 def test_a_fit_recovers_the_equation_that_made_the_decay():
-    record = REFERENCE["cases"][next(k for k in sorted(REFERENCE["cases"]) if k.endswith("|shifted"))]
+    record = REFERENCE["cases"][
+        next(k for k in sorted(REFERENCE["cases"]) if k.endswith("|shifted"))
+    ]
     fit, model = _view()
     problem = model.problem
     model.structure = record["entry"]

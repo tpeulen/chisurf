@@ -9,8 +9,6 @@ import threading
 
 import pytest
 
-from chisurf.gui import QtWidgets
-
 
 def _drive(qapp, predicate, limit=400):
     """Spin the event loop until *predicate* holds (or we give up)."""
@@ -42,7 +40,7 @@ class _Stub:
             if block is not None:
                 block.wait(5.0)
             if progress is not None:
-                progress(1.0, "done")      # raises if cancelled
+                progress(1.0, "done")  # raises if cancelled
             if raises is not None:
                 raise raises
             return outcome
@@ -63,10 +61,10 @@ def tool_class(request):
 
 
 class TestBurstToolsUseTheTaskLayer:
-
     def test_the_hand_rolled_thread_is_gone(self, tool_class):
         """The duplicated QRunnable machinery must not come back."""
         import inspect
+
         source = inspect.getsource(inspect.getmodule(tool_class))
         assert "_ComputeTask" not in source
         assert "QThreadPool" not in source
@@ -121,7 +119,7 @@ class TestBurstToolsUseTheTaskLayer:
         tool.run_with_progress()
         block.set()
         _drive(qapp, lambda: False, limit=50)
-        assert stub.calls <= 2      # the first is superseded, not duplicated
+        assert stub.calls <= 2  # the first is superseded, not duplicated
 
 
 class TestH2mmUsesTheTaskLayer:
@@ -157,14 +155,17 @@ class TestH2mmUsesTheTaskLayer:
         assert tool.Error.no_folder.is_shown
 
     def test_the_fit_streams_snapshots_and_delivers_its_result(
-            self, qapp, qtbot, tmp_path, monkeypatch):
+        self, qapp, qtbot, tmp_path, monkeypatch
+    ):
         from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
 
         drawn = []
-        monkeypatch.setattr(mod.H2mmTool, "_plot_scan_live",
-                            lambda self, fits: drawn.append(list(fits)))
-        monkeypatch.setattr(mod.H2mmTool, "_on_fit_result",
-                            lambda self, payload: drawn.append(("result", payload)))
+        monkeypatch.setattr(
+            mod.H2mmTool, "_plot_scan_live", lambda self, fits: drawn.append(list(fits))
+        )
+        monkeypatch.setattr(
+            mod.H2mmTool, "_on_fit_result", lambda self, payload: drawn.append(("result", payload))
+        )
 
         def fake_run_analysis(settings, analysis_folder=None, progress=None):
             for i in (1.0, 2.0):
@@ -176,10 +177,11 @@ class TestH2mmUsesTheTaskLayer:
         tool._run_analysis()
         assert _drive(qapp, lambda: any(d[0] == "result" for d in drawn if isinstance(d, tuple)))
         assert ["fit1"] in drawn and ["fit1", "fit2"] not in drawn or True
-        assert tool.btn_run.isEnabled()          # on_done re-enabled it
+        assert tool.btn_run.isEnabled()  # on_done re-enabled it
 
     def test_a_fit_failure_is_a_declared_condition_not_a_modal(
-            self, qapp, qtbot, tmp_path, monkeypatch):
+        self, qapp, qtbot, tmp_path, monkeypatch
+    ):
         from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
 
         def boom(settings, analysis_folder=None, progress=None):
@@ -201,7 +203,7 @@ class TestH2mmUsesTheTaskLayer:
         def slow(settings, analysis_folder=None, progress=None):
             started.set()
             block.wait(5.0)
-            progress(1.0, 3, [])        # raises once cancelled
+            progress(1.0, 3, [])  # raises once cancelled
             return ("never", "never")
 
         monkeypatch.setattr(mod, "run_analysis", slow)
@@ -211,4 +213,4 @@ class TestH2mmUsesTheTaskLayer:
         tool._chisurf_status_progress._on_cancel()
         block.set()
         assert _drive(qapp, lambda: tool.btn_run.isEnabled())
-        assert not tool.Error.fit_failed.is_shown     # cancelled is not failed
+        assert not tool.Error.fit_failed.is_shown  # cancelled is not failed

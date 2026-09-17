@@ -417,11 +417,17 @@ def _watch_focus(host: GameHost, widget) -> None:
     except Exception:  # pragma: no cover - no Qt in this build
         return
 
-    watched = frozenset({
-        QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Close,
-        QEvent.Type.WindowActivate, QEvent.Type.WindowDeactivate,
-        QEvent.Type.WindowStateChange, QEvent.Type.ApplicationStateChange,
-    })
+    watched = frozenset(
+        {
+            QEvent.Type.Show,
+            QEvent.Type.Hide,
+            QEvent.Type.Close,
+            QEvent.Type.WindowActivate,
+            QEvent.Type.WindowDeactivate,
+            QEvent.Type.WindowStateChange,
+            QEvent.Type.ApplicationStateChange,
+        }
+    )
 
     class _Watcher(QObject):
         """Keeps the mixer in step with the window."""

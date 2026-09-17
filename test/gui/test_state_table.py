@@ -35,20 +35,25 @@ class _Model:
         """Return the spec binding the table to this model."""
         from chisurf.core.dataspec import load_view_spec
 
-        return load_view_spec({
-            "sections": [
-                {"type": "custom", "key": "state_table",
-                 "options": {
-                     "size_attr": "n",
-                     "columns": [
-                         {"attr": "weight", "label": "w", "default": 7.0},
-                         {"attr": "pair", "label": "a", "stride": 2, "slot": 0},
-                         {"attr": "pair", "label": "b", "stride": 2, "slot": 1},
-                     ],
-                     "trailing_rows_source": "trailing",
-                 }},
-            ]
-        })
+        return load_view_spec(
+            {
+                "sections": [
+                    {
+                        "type": "custom",
+                        "key": "state_table",
+                        "options": {
+                            "size_attr": "n",
+                            "columns": [
+                                {"attr": "weight", "label": "w", "default": 7.0},
+                                {"attr": "pair", "label": "a", "stride": 2, "slot": 0},
+                                {"attr": "pair", "label": "b", "stride": 2, "slot": 1},
+                            ],
+                            "trailing_rows_source": "trailing",
+                        },
+                    },
+                ]
+            }
+        )
 
     def trailing(self):
         """Return one extra row whose only live cell is a scalar attribute."""
@@ -67,7 +72,7 @@ def test_rows_are_states_and_columns_are_properties(qapp):
     """The grid's shape comes from the size attribute and the column specs."""
     model = _Model()
     _, table = _table(model, qapp)
-    assert table.table.rowCount() == 3          # 2 states + the trailing row
+    assert table.table.rowCount() == 3  # 2 states + the trailing row
     assert table.table.columnCount() == 3
     assert [table.table.horizontalHeaderItem(i).text() for i in range(3)] == ["w", "a", "b"]
     assert table._cells[(0, 0)].value() == pytest.approx(1.0)
@@ -109,7 +114,7 @@ def test_growing_the_count_extends_the_stores(qapp):
     _, table = _table(model, qapp)
     model.n = 4
     table.refresh()
-    assert table.table.rowCount() == 5           # 4 states + trailing
+    assert table.table.rowCount() == 5  # 4 states + trailing
     assert model.weight == pytest.approx([1.0, 2.0, 7.0, 7.0])
     assert len(model.pair) == 8
     assert table._cells[(3, 0)].value() == pytest.approx(7.0)
@@ -120,12 +125,12 @@ def test_a_trailing_row_edits_a_scalar_not_a_state(qapp):
     model = _Model()
     _, table = _table(model, qapp)
     row = 2
-    assert (row, 0) not in table._cells          # declared as None -> not editable
+    assert (row, 0) not in table._cells  # declared as None -> not editable
     assert table.table.item(row, 0).text() == "—"
     assert table._cells[(row, 1)].value() == pytest.approx(0.5)
     table._cells[(row, 1)].setValue(0.25)
     assert model.floor == pytest.approx(0.25)
-    assert model.weight == pytest.approx([1.0, 2.0])   # untouched by the BG row
+    assert model.weight == pytest.approx([1.0, 2.0])  # untouched by the BG row
 
 
 def test_the_last_row_is_visible(qapp):
@@ -139,7 +144,7 @@ def test_the_last_row_is_visible(qapp):
     model.weight = [1.0] * 5
     model.pair = [0.0] * 10
     form, table = _table(model, qapp)
-    form.resize(300, 400)            # narrow enough to need a horizontal scrollbar
+    form.resize(300, 400)  # narrow enough to need a horizontal scrollbar
     qapp.processEvents()
     last = table.table.rowCount() - 1
     bottom = table.table.rowViewportPosition(last) + table.table.rowHeight(last)
@@ -162,12 +167,17 @@ def test_columns_can_come_from_the_model(qapp):
             return cols
 
         def view_spec(self):
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "state_table",
-                     "options": {"size_attr": "n", "columns_source": "columns"}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "state_table",
+                            "options": {"size_attr": "n", "columns_source": "columns"},
+                        },
+                    ]
+                }
+            )
 
     model = _Dynamic()
     _, table = _table(model, qapp)
@@ -196,19 +206,31 @@ def test_an_action_column_is_a_button_per_row(qapp):
 
         def edit(self, row):
             self.opened.append(int(row))
-            self.weight[row] = 42.0          # an action may change the row
+            self.weight[row] = 42.0  # an action may change the row
 
         def view_spec(self):
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "state_table",
-                     "options": {"size_attr": "n", "columns": [
-                         {"attr": "weight", "label": "w"},
-                         {"action": "edit", "label": "Edit", "text": "…",
-                          "description": "Open the editor for this state."},
-                     ]}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "state_table",
+                            "options": {
+                                "size_attr": "n",
+                                "columns": [
+                                    {"attr": "weight", "label": "w"},
+                                    {
+                                        "action": "edit",
+                                        "label": "Edit",
+                                        "text": "…",
+                                        "description": "Open the editor for this state.",
+                                    },
+                                ],
+                            },
+                        },
+                    ]
+                }
+            )
 
     model = _WithAction()
     _, table = _table(model, qapp)
@@ -249,19 +271,36 @@ def test_bool_readonly_and_per_row_bounds(qapp):
             return len(self.labels)
 
         def view_spec(self):
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "state_table",
-                     "options": {"size_attr": "n", "row_labels_attr": "labels",
-                                 "columns": [
-                                     {"attr": "values", "label": "v",
-                                      "minimum_attr": "lo", "maximum_attr": "hi"},
-                                     {"attr": "fixed", "label": "F", "kind": "bool"},
-                                     {"attr": "results", "label": "Fit",
-                                      "kind": "readonly", "minimum": -1e9, "maximum": 1e9},
-                                 ]}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "state_table",
+                            "options": {
+                                "size_attr": "n",
+                                "row_labels_attr": "labels",
+                                "columns": [
+                                    {
+                                        "attr": "values",
+                                        "label": "v",
+                                        "minimum_attr": "lo",
+                                        "maximum_attr": "hi",
+                                    },
+                                    {"attr": "fixed", "label": "F", "kind": "bool"},
+                                    {
+                                        "attr": "results",
+                                        "label": "Fit",
+                                        "kind": "readonly",
+                                        "minimum": -1e9,
+                                        "maximum": 1e9,
+                                    },
+                                ],
+                            },
+                        },
+                    ]
+                }
+            )
 
     model = _Params()
     _, table = _table(model, qapp)

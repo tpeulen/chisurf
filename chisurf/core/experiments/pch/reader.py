@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Optional, Sequence, Tuple
-
 import pathlib
+from collections.abc import Sequence
 
 import numpy as np
 import tttrlib
@@ -34,10 +33,10 @@ class PCHReader(ExperimentReader):
         self,
         name: str = "PCH (TTTR)",
         reading_routine: str | None = "PTU",
-        channels: Optional[Sequence[int]] = None,
+        channels: Sequence[int] | None = None,
         channel: int = 0,
         bin_time_us: float = 100.0,
-        micro_time_range: Optional[Tuple[int, int]] = (0, 65535),
+        micro_time_range: tuple[int, int] | None = (0, 65535),
         *args,
         **kwargs,
     ) -> None:
@@ -64,14 +63,18 @@ class PCHReader(ExperimentReader):
         # Optional list of routing channels defining the logical tttr_channeldefinition. If
         # not provided, fall back to a single channel index.
         self.channel = int(channel)
-        self.channel_numbers: Optional[Sequence[int]] = channels
+        self.channel_numbers: Sequence[int] | None = channels
         self.bin_time_us = float(bin_time_us)
-        self.micro_time_range: Optional[Tuple[int, int]] = (
-            int(micro_time_range[0]),
-            int(micro_time_range[1]),
-        ) if isinstance(micro_time_range, (tuple, list)) and len(micro_time_range) >= 2 else None
+        self.micro_time_range: tuple[int, int] | None = (
+            (
+                int(micro_time_range[0]),
+                int(micro_time_range[1]),
+            )
+            if isinstance(micro_time_range, (tuple, list)) and len(micro_time_range) >= 2
+            else None
+        )
 
-    def autofitrange(self, data, **kwargs) -> Tuple[int, int]:  # type: ignore[override]
+    def autofitrange(self, data, **kwargs) -> tuple[int, int]:  # type: ignore[override]
         """Return the full data range as the default fit interval.
 
         Parameters
@@ -120,9 +123,10 @@ class PCHReader(ExperimentReader):
     def view_spec(self):
         """Return the declarative editor spec for PCH reader settings."""
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
-    def _get_channels(self) -> Tuple[int, ...]:
+    def _get_channels(self) -> tuple[int, ...]:
         """Return the sorted tuple of routing channel numbers.
 
         Uses ``channel_numbers`` if set, otherwise falls back to
@@ -141,7 +145,7 @@ class PCHReader(ExperimentReader):
         except Exception:
             return (int(self.channel),)
 
-    def _get_micro_time_range(self) -> Optional[Tuple[int, int]]:
+    def _get_micro_time_range(self) -> tuple[int, int] | None:
         """Return the micro-time window as a ``(start, stop)`` tuple.
 
         Returns
@@ -161,18 +165,17 @@ class PCHReader(ExperimentReader):
 
     def _compute_trace_and_histogram(
         self,
-        tttr: "tttrlib.TTTR",
+        tttr: tttrlib.TTTR,
         channels: Sequence[int],
         bin_time_us: float,
-        micro_time_range: Optional[Tuple[int, int]],
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        micro_time_range: tuple[int, int] | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Return (t_centers, trace_counts, k_vals, p_exp).
 
         The implementation mirrors the logic used in the standalone PCH plugin
         (chisurf.plugins.pch.PCHApp.compute_trace_pch) but without any GUI
         dependencies.
         """
-
         # Routing-channel selection
         try:
             rc = np.asarray(tttr.routing_channels)

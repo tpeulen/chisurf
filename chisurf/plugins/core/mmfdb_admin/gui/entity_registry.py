@@ -7,7 +7,7 @@ category, and which group an entity belongs to.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -37,6 +37,7 @@ class EntitySpec:
     writable : bool
         Whether this entity supports create/save/delete. True by default.
     """
+
     key: str
     title: str
     category: str
@@ -66,7 +67,7 @@ ENTITY_REGISTRY: list[EntitySpec] = [
         rpc="samples",
         id_field="sample_id",
         group="Samples & chemistry",
-        schema_type="sample",   # bridge: flr_sample dic is sparse; legacy covers FK fields
+        schema_type="sample",  # bridge: flr_sample dic is sparse; legacy covers FK fields
     ),
     EntitySpec(
         key="condition",
@@ -273,15 +274,18 @@ ENTITY_REGISTRY: list[EntitySpec] = [
 
 def build_registry_dict() -> dict[str, dict[str, Any]]:
     """Build a dict form of the registry for FK resolution."""
-    return {spec.key: {
-        "key": spec.key,
-        "title": spec.title,
-        "category": spec.category,
-        "rpc": spec.rpc,
-        "id_field": spec.id_field,
-        "group": spec.group,
-        "list_key": spec.list_key,
-        "item_key": spec.item_key,
-        "writable": spec.writable,
-        "schema_type": spec.schema_type,
-    } for spec in ENTITY_REGISTRY}
+    return {
+        spec.key: {
+            "key": spec.key,
+            "title": spec.title,
+            "category": spec.category,
+            "rpc": spec.rpc,
+            "id_field": spec.id_field,
+            "group": spec.group,
+            "list_key": spec.list_key,
+            "item_key": spec.item_key,
+            "writable": spec.writable,
+            "schema_type": spec.schema_type,
+        }
+        for spec in ENTITY_REGISTRY
+    }

@@ -6,10 +6,10 @@ thread, and is rendered from ``proteinmc.view.json``. Each test below is the
 behaviour its widget-driven predecessor asserted, moved onto whatever now owns
 it — which is why most of them no longer need a display at all.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -292,8 +292,11 @@ def test_editor_renders_the_run_controls_and_the_term_tables(qapp):
 
     tables = editor.findChildren(QtWidgets.QTableWidget)
     headers = [
-        {t.horizontalHeaderItem(c).text() for c in range(t.columnCount())
-         if t.horizontalHeaderItem(c) is not None}
+        {
+            t.horizontalHeaderItem(c).text()
+            for c in range(t.columnCount())
+            if t.horizontalHeaderItem(c) is not None
+        }
         for t in tables
     ]
     assert any({"Term", "Weight"} <= h for h in headers), headers
@@ -364,7 +367,7 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
         min_value=0,
         max_value=100,
         parent=main_win,
-        window_modality=QtCore.Qt.NonModal
+        window_modality=QtCore.Qt.NonModal,
     )
     dialog.show()
     qtbot.addWidget(dialog)
@@ -384,13 +387,17 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     assert len(statusbar_widgets) == 1
 
     # 3. Restore by double-clicking status bar widget
-    event = QtGui.QMouseEvent(
-        QtCore.QEvent.MouseButtonDblClick,
-        QtCore.QPointF(5, 5),
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier
-    ) if hasattr(QtGui, "QMouseEvent") else None
+    event = (
+        QtGui.QMouseEvent(
+            QtCore.QEvent.MouseButtonDblClick,
+            QtCore.QPointF(5, 5),
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
+        if hasattr(QtGui, "QMouseEvent")
+        else None
+    )
 
     if event:
         dialog._statusbar_widget.mouseDoubleClickEvent(event)

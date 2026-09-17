@@ -13,12 +13,15 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.io.structure import _read_full_model
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 # 148L carries no waters but six hetero residues (API, BME, DAL, FGA, MUB, NAG)
@@ -43,9 +46,7 @@ _N_TRACED_HETERO_ATOMS = 15
 # only record for that residue. With no CA it cannot enter the trace, so the
 # cartoon never draws it -- and the display mask picks it up alongside the ligands.
 _N_UNTRACED_POLYMER_ATOMS = 1
-_N_DISPLAYED = (
-    _N_HETATM + _N_UNTRACED_POLYMER_ATOMS - _N_TRACED_HETERO_ATOMS
-)
+_N_DISPLAYED = _N_HETATM + _N_UNTRACED_POLYMER_ATOMS - _N_TRACED_HETERO_ATOMS
 
 
 @pytest.fixture(scope="module")

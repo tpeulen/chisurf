@@ -124,8 +124,7 @@ def test_cli_roi_option_reaches_the_settings(tmp_path, monkeypatch):
 
     roi_file = tmp_path / "patch.json"
     save_rois(
-        [RectangleROI(0, 0, 16, 16, name="left"),
-         RectangleROI(32, 32, 48, 48, name="right")],
+        [RectangleROI(0, 0, 16, 16, name="left"), RectangleROI(32, 32, 48, 48, name="right")],
         str(roi_file),
     )
     image = tmp_path / "img.ptu"
@@ -136,19 +135,18 @@ def test_cli_roi_option_reaches_the_settings(tmp_path, monkeypatch):
     seen = {}
 
     def fake_fit(ptu_path, irf_path, settings, **kwargs):
-        seen['roi'] = settings.analysis_roi()
+        seen["roi"] = settings.analysis_roi()
         return _fake_result(1)
 
     monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
     result = CliRunner().invoke(
         cli,
-        ["analyze", "-i", str(irf), "-o", str(tmp_path),
-         "--roi", str(roi_file), str(image)],
+        ["analyze", "-i", str(irf), "-o", str(tmp_path), "--roi", str(roi_file), str(image)],
     )
     assert result.exit_code == 0, result.output
 
-    roi = seen['roi']
+    roi = seen["roi"]
     assert roi is not None
     # The union covers both rectangles and nothing between them.
     inside = roi.contains(np.array([[8.0, 8.0], [40.0, 40.0], [24.0, 24.0]]))
@@ -170,13 +168,11 @@ def test_cli_without_roi_leaves_the_whole_frame(tmp_path, monkeypatch):
     seen = {}
 
     def fake_fit(ptu_path, irf_path, settings, **kwargs):
-        seen['roi'] = settings.analysis_roi()
+        seen["roi"] = settings.analysis_roi()
         return _fake_result(1)
 
     monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
-    result = CliRunner().invoke(
-        cli, ["analyze", "-i", str(irf), "-o", str(tmp_path), str(image)]
-    )
+    result = CliRunner().invoke(cli, ["analyze", "-i", str(irf), "-o", str(tmp_path), str(image)])
     assert result.exit_code == 0, result.output
-    assert seen['roi'] is None
+    assert seen["roi"] is None

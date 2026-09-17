@@ -82,9 +82,7 @@ class PrecisionSweep:
         """
         return {
             "dwell_s": np.asarray(self.dwell, dtype=float).tolist(),
-            "relative_error": [
-                _or_none(e) for e in np.asarray(self.relative_error, dtype=float)
-            ],
+            "relative_error": [_or_none(e) for e in np.asarray(self.relative_error, dtype=float)],
             "best_dwell_s": _or_none(self.best_dwell),
             "best_error": _or_none(self.best_error),
             "current": self.current.to_dict() if self.current is not None else None,
@@ -199,8 +197,7 @@ def sweep_dwell(
             progress(i / max(len(dwell), 1), f"{d * 1e6:.3g} µs")
         try:
             errors[i] = rics_precision(
-                diffusion_coefficient, pixel_time=float(d), line_time=float(lt),
-                nx=nx, **kwargs
+                diffusion_coefficient, pixel_time=float(d), line_time=float(lt), nx=nx, **kwargs
             ).relative_error
         except UnrealisableScan:
             # An acquisition that cannot be performed -- a line shorter than the
@@ -215,8 +212,11 @@ def sweep_dwell(
         lt = current_line_time or line_time_for(current_dwell, nx, line_overhead, line_floor)
         try:
             current = rics_precision(
-                diffusion_coefficient, pixel_time=float(current_dwell),
-                line_time=float(lt), nx=nx, **kwargs
+                diffusion_coefficient,
+                pixel_time=float(current_dwell),
+                line_time=float(lt),
+                nx=nx,
+                **kwargs,
             )
         except UnrealisableScan:
             # The user's own settings may describe no realisable acquisition;
@@ -225,9 +225,7 @@ def sweep_dwell(
 
     if progress:
         progress(1.0, "done")
-    return PrecisionSweep(
-        dwell=dwell, relative_error=errors, line_time=lines, current=current
-    )
+    return PrecisionSweep(dwell=dwell, relative_error=errors, line_time=lines, current=current)
 
 
 def default_dwell_range(n: int = 9, low: float = 5e-7, high: float = 5e-4) -> list[float]:

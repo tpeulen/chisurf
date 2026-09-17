@@ -1,13 +1,11 @@
 """Tests for MMFDB sample management."""
+
 from __future__ import annotations
 
 import os
 import tempfile
 
 import pytest
-
-from chisurf.core.data import DataCurve
-from chisurf.core.experiments.core.reader import ExperimentReader
 from mmfdb.models import (
     EntityDefinition,
     FretPairDefinition,
@@ -26,6 +24,9 @@ from mmfdb.samples.sample_manager import (
     link_artifact_to_sample,
     list_samples,
 )
+
+from chisurf.core.data import DataCurve
+from chisurf.core.experiments.core.reader import ExperimentReader
 
 
 @pytest.fixture
@@ -280,15 +281,16 @@ def test_sample_definition_invalid_probe_name_warns(caplog):
     Per PRD-02: unknown probe names should WARN (not reject), since custom
     dyes are valid. Only entity_type should hard-reject.
     """
-    from mmfdb.models import COMMON_PROBE_NAMES
     import logging
+
+    from mmfdb.models import COMMON_PROBE_NAMES
 
     invalid_probe = "invalid_probe_xyz"
     assert invalid_probe not in COMMON_PROBE_NAMES
 
     # Should not raise - only logs a warning
     with caplog.at_level(logging.WARNING):
-        definition = SampleDefinition(
+        SampleDefinition(
             name="invalid_sample",
             probes=[ProbeDefinition(name=invalid_probe, seq_id=1)],
             validate_vocabulary=True,
@@ -411,7 +413,7 @@ def test_create_sample_with_fret_pairs_and_positions(db):
             EntityDefinition(
                 name="T4 Lysozyme",
                 entity_type="protein",
-                sequence=list("MNGTELK")  # truncated for test
+                sequence=list("MNGTELK"),  # truncated for test
             ),
         ],
         probes=[
@@ -424,14 +426,14 @@ def test_create_sample_with_fret_pairs_and_positions(db):
                 probe_1_index=0,
                 probe_2_index=1,
                 forster_radius_nm=5.4,
-                kappa_squared=2.0/3.0,
+                kappa_squared=2.0 / 3.0,
                 refractive_index=1.4,
             ),
             FretPairDefinition(
                 probe_1_index=1,
                 probe_2_index=2,
                 forster_radius_nm=6.2,
-                kappa_squared=2.0/3.0,
+                kappa_squared=2.0 / 3.0,
                 refractive_index=1.4,
             ),
         ],

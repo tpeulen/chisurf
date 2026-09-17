@@ -19,15 +19,15 @@ from __future__ import annotations
 import atexit
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
 import warnings
+from collections.abc import Callable
+from typing import Any
 
 from chisurf.core.api._client import ChisurfClient, RemoteError
 
-
 # ── Global adapter instance ─────────────────────────────────────────
 
-_FITTING_CLIENT: Optional["FittingClient"] = None
+_FITTING_CLIENT: FittingClient | None = None
 """Module-level singleton fitting client used by all migrated widgets.
 
 Set via :func:`install_fitting_client` during application startup
@@ -36,7 +36,7 @@ Set via :func:`install_fitting_client` during application startup
 """
 
 
-def ensure_fitting_client() -> "FittingClient":
+def ensure_fitting_client() -> FittingClient:
     """Return the current :class:`FittingClient`, creating one with no ZMQ
     client if none is installed yet.
 
@@ -51,7 +51,7 @@ def ensure_fitting_client() -> "FittingClient":
     return _FITTING_CLIENT
 
 
-def install_fitting_client(client: Optional[ChisurfClient] = None) -> "FittingClient":
+def install_fitting_client(client: ChisurfClient | None = None) -> FittingClient:
     """Install the global :class:`FittingClient` adapter.
 
     Call this once during app startup, after the ZMQ client is
@@ -74,7 +74,7 @@ def install_fitting_client(client: Optional[ChisurfClient] = None) -> "FittingCl
     return _FITTING_CLIENT
 
 
-def get_fitting_client() -> Optional["FittingClient"]:
+def get_fitting_client() -> FittingClient | None:
     """Return the global :class:`FittingClient` or ``None``.
 
     Returns ``None`` when no :class:`FittingClient` has been installed
@@ -110,7 +110,7 @@ class FittingClient:
 
     def __init__(
         self,
-        client: Optional[ChisurfClient] = None,
+        client: ChisurfClient | None = None,
     ) -> None:
         self._client = client
         self._last_bootstrap_warning: float = 0.0
@@ -122,7 +122,7 @@ class FittingClient:
         except Exception:
             return False
 
-    def _try_rpc(self, method: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _try_rpc(self, method: str, params: dict[str, Any]) -> dict[str, Any] | None:
         """Call an RPC method, logging any failure.
 
         Parameters
@@ -148,6 +148,7 @@ class FittingClient:
             self._try_bootstrap_transport()
         if not self._rpc_available:
             import chisurf.logging
+
             chisurf.logging.warning(
                 "FittingClient: RPC not available (no client) for method '%s'", method
             )
@@ -161,16 +162,17 @@ class FittingClient:
                 return None
             if "fit not found" in msg or "parameter not found" in msg:
                 import chisurf.logging
+
                 chisurf.logging.debug("FittingClient: RPC call '%s' (%s)", method, msg)
                 return None
             import chisurf.logging
+
             chisurf.logging.warning("FittingClient: RPC call '%s' failed: %s", method, e)
             return None
         except Exception:
             import chisurf.logging
-            chisurf.logging.exception(
-                "FittingClient: RPC call '%s' failed", method
-            )
+
+            chisurf.logging.exception("FittingClient: RPC call '%s' failed", method)
             return None
 
     def _in_server_dispatch(self) -> bool:
@@ -204,9 +206,8 @@ class FittingClient:
             pub_port = int(mmfdb_cfg.get("pub_port", cmd_port + 1))
             timeout_ms = int(mmfdb_cfg.get("fitting_timeout_ms", 5000))
 
-            server = (
-                getattr(chisurf, "__chisurf_rpc_server__", None)
-                or getattr(chisurf, "__mmfdb_rpc_server__", None)
+            server = getattr(chisurf, "__chisurf_rpc_server__", None) or getattr(
+                chisurf, "__mmfdb_rpc_server__", None
             )
             if not rpc_is_available(host, cmd_port, pub_port, timeout_ms=100):
                 if server is not None:
@@ -320,14 +321,14 @@ class FittingClient:
 
     # ── Fit CRUD ─────────────────────────────────────────────────────
 
-    def list_fits(self) -> List[Dict[str, Any]]:
+    def list_fits(self) -> list[dict[str, Any]]:
         result = self._try_rpc("fit.list", {})
         if result is not None:
             return (result or {}).get("fits", [])
         return []
 
-    def get_fit(self, fit_uid: Optional[str] = None, fit_index: Optional[int] = None) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+    def get_fit(self, fit_uid: str | None = None, fit_index: int | None = None) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -339,12 +340,12 @@ class FittingClient:
 
     def create_fit(
         self,
-        dataset_indices: Optional[List[int]] = None,
-        model_name: Optional[str] = None,
-        fit_name: Optional[str] = None,
-        model_kw: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        dataset_indices: list[int] | None = None,
+        model_name: str | None = None,
+        fit_name: str | None = None,
+        model_kw: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if dataset_indices is not None:
             params["dataset_indices"] = dataset_indices
         if model_name is not None:
@@ -360,10 +361,10 @@ class FittingClient:
 
     def remove_fits(
         self,
-        fit_indices: Optional[List[int]] = None,
-        fit_uids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        fit_indices: list[int] | None = None,
+        fit_uids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_indices is not None:
             params["fit_indices"] = fit_indices
         if fit_uids is not None:
@@ -373,13 +374,13 @@ class FittingClient:
             return result
         return {"ok": False, "removed_count": 0, "remaining_count": 0}
 
-    def clear_fits(self) -> Dict[str, Any]:
+    def clear_fits(self) -> dict[str, Any]:
         result = self._try_rpc("fit.clear", {})
         if result is not None:
             return result
         return {"ok": False}
 
-    def reorder_fits(self, fit_order: List[str]) -> Dict[str, Any]:
+    def reorder_fits(self, fit_order: list[str]) -> dict[str, Any]:
         result = self._try_rpc("fit.reorder", {"fit_order": fit_order})
         if result is not None:
             return result
@@ -410,9 +411,8 @@ class FittingClient:
         try:
             import chisurf
 
-            server = (
-                getattr(chisurf, "__chisurf_rpc_server__", None)
-                or getattr(chisurf, "__mmfdb_rpc_server__", None)
+            server = getattr(chisurf, "__chisurf_rpc_server__", None) or getattr(
+                chisurf, "__mmfdb_rpc_server__", None
             )
             return getattr(server, "dispatcher", None)
         except Exception:
@@ -420,9 +420,9 @@ class FittingClient:
 
     def run_fit(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
         """Run a fit, in this process when the server is in this process.
 
         A fit is the one call with no bound on how long it takes, and sending it
@@ -441,7 +441,7 @@ class FittingClient:
         A genuinely remote server still goes over the wire, where a blocking
         call is what the transport is for.
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -461,10 +461,10 @@ class FittingClient:
 
     def update_fit(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -477,12 +477,12 @@ class FittingClient:
     def save_fit(
         self,
         filename: str = "fit_export",
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         file_type: str = "csv",
         save_curves: bool = False,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
             "filename": filename,
             "file_type": file_type,
             "save_curves": save_curves,
@@ -499,10 +499,10 @@ class FittingClient:
     def set_fit_dataset(
         self,
         fit_index: int,
-        dataset_index: Optional[int] = None,
-        dataset_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"fit_index": fit_index}
+        dataset_index: int | None = None,
+        dataset_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"fit_index": fit_index}
         if dataset_index is not None:
             params["dataset_index"] = dataset_index
         if dataset_uid is not None:
@@ -516,9 +516,9 @@ class FittingClient:
         self,
         fit_index: int,
         result_idx: int,
-        fit_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"fit_index": fit_index, "result_idx": result_idx}
+        fit_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"fit_index": fit_index, "result_idx": result_idx}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         result = self._try_rpc("fit.set_result_idx", params)
@@ -528,12 +528,12 @@ class FittingClient:
 
     def set_fit_range(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         xmin: int = 0,
         xmax: int = 0,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"xmin": xmin, "xmax": xmax}
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"xmin": xmin, "xmax": xmax}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -545,10 +545,10 @@ class FittingClient:
 
     def auto_fit_range(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -560,11 +560,11 @@ class FittingClient:
 
     def set_fit_mask(
         self,
-        mask: List[float],
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"mask": mask}
+        mask: list[float],
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"mask": mask}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -576,8 +576,10 @@ class FittingClient:
 
     # ── Fit selection ────────────────────────────────────────────────
 
-    def select_fit(self, fit_uid: Optional[str] = None, fit_index: Optional[int] = None) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+    def select_fit(
+        self, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -587,7 +589,7 @@ class FittingClient:
             return result
         return {"ok": False}
 
-    def get_active_fit(self) -> Dict[str, Any]:
+    def get_active_fit(self) -> dict[str, Any]:
         result = self._try_rpc("fit.select", {"_action": "get"})
         if result is not None:
             return result.get("fit", {})
@@ -595,34 +597,52 @@ class FittingClient:
 
     # ── Fit group operations ─────────────────────────────────────────
 
-    def group_select_member(self, fit_uid: str, member_index: int) -> Dict[str, Any]:
-        result = self._try_rpc("fit.group.select_member", {
-            "fit_uid": fit_uid, "member_index": member_index,
-        })
+    def group_select_member(self, fit_uid: str, member_index: int) -> dict[str, Any]:
+        result = self._try_rpc(
+            "fit.group.select_member",
+            {
+                "fit_uid": fit_uid,
+                "member_index": member_index,
+            },
+        )
         if result is not None:
             return result
         return {"ok": False}
 
-    def group_add_member(self, group_fit_uid: str, member_fit_uid: str) -> Dict[str, Any]:
-        result = self._try_rpc("fit.group.add_member", {
-            "group_fit_uid": group_fit_uid, "member_fit_uid": member_fit_uid,
-        })
+    def group_add_member(self, group_fit_uid: str, member_fit_uid: str) -> dict[str, Any]:
+        result = self._try_rpc(
+            "fit.group.add_member",
+            {
+                "group_fit_uid": group_fit_uid,
+                "member_fit_uid": member_fit_uid,
+            },
+        )
         if result is not None:
             return result
         return {"ok": False}
 
-    def group_remove_member(self, group_fit_uid: str, member_index: int) -> Dict[str, Any]:
-        result = self._try_rpc("fit.group.remove_member", {
-            "group_fit_uid": group_fit_uid, "member_index": member_index,
-        })
+    def group_remove_member(self, group_fit_uid: str, member_index: int) -> dict[str, Any]:
+        result = self._try_rpc(
+            "fit.group.remove_member",
+            {
+                "group_fit_uid": group_fit_uid,
+                "member_index": member_index,
+            },
+        )
         if result is not None:
             return result
         return {"ok": False}
 
-    def group_link_parameters_by_name(self, group_fit_uid: str, parameter_name: str) -> Dict[str, Any]:
-        result = self._try_rpc("fit.group.link_parameters_by_name", {
-            "group_fit_uid": group_fit_uid, "parameter_name": parameter_name,
-        })
+    def group_link_parameters_by_name(
+        self, group_fit_uid: str, parameter_name: str
+    ) -> dict[str, Any]:
+        result = self._try_rpc(
+            "fit.group.link_parameters_by_name",
+            {
+                "group_fit_uid": group_fit_uid,
+                "parameter_name": parameter_name,
+            },
+        )
         if result is not None:
             return result
         return {"ok": False}
@@ -632,10 +652,10 @@ class FittingClient:
     def get_parameter(
         self,
         parameter_name: str,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parameter_name": parameter_name}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parameter_name": parameter_name}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -649,13 +669,13 @@ class FittingClient:
         self,
         parameter_name: str,
         value: float,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parameter_name": parameter_name, "value": value}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parameter_name": parameter_name, "value": value}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -675,13 +695,13 @@ class FittingClient:
         self,
         parameter_name: str,
         fixed: bool,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parameter_name": parameter_name, "fixed": fixed}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parameter_name": parameter_name, "fixed": fixed}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -700,14 +720,14 @@ class FittingClient:
     def set_parameter_bounds(
         self,
         parameter_name: str,
-        bounds: Tuple[float, float],
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {
+        bounds: tuple[float, float],
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
             "parameter_name": parameter_name,
             "bounds": list(bounds),
         }
@@ -730,13 +750,13 @@ class FittingClient:
         self,
         parameter_name: str,
         bounds_on: bool,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parameter_name": parameter_name, "bounds_on": bounds_on}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parameter_name": parameter_name, "bounds_on": bounds_on}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -755,13 +775,13 @@ class FittingClient:
     def set_parameter_prior(
         self,
         parameter_name: str,
-        prior: Optional[Dict[str, Any]],
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        prior: dict[str, Any] | None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
         """Set (or clear) a parameter's prior via its serialisable state dict.
 
         Parameters
@@ -773,7 +793,7 @@ class FittingClient:
             or ``None`` to clear the prior. Callback priors are runtime-only and
             cannot be transported over RPC.
         """
-        params: Dict[str, Any] = {"parameter_name": parameter_name, "prior": prior}
+        params: dict[str, Any] = {"parameter_name": parameter_name, "prior": prior}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -793,18 +813,18 @@ class FittingClient:
         self,
         parameter_name: str,
         target_parameter_name: str,
-        fit_index: Optional[int] = None,
-        target_fit_index: Optional[int] = None,
-        fit_uid: Optional[str] = None,
-        target_fit_uid: Optional[str] = None,
-        local_idx: Optional[int] = None,
-        target_local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-        target_parameter_uid: Optional[str] = None,
-        target_owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {
+        fit_index: int | None = None,
+        target_fit_index: int | None = None,
+        fit_uid: str | None = None,
+        target_fit_uid: str | None = None,
+        local_idx: int | None = None,
+        target_local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+        target_parameter_uid: str | None = None,
+        target_owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
             "parameter_name": parameter_name,
             "target_parameter_name": target_parameter_name,
         }
@@ -838,13 +858,13 @@ class FittingClient:
     def unlink_parameter(
         self,
         parameter_name: str,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-        local_idx: Optional[int] = None,
-        parameter_uid: Optional[str] = None,
-        owner_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parameter_name": parameter_name}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+        local_idx: int | None = None,
+        parameter_uid: str | None = None,
+        owner_uid: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parameter_name": parameter_name}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -864,10 +884,10 @@ class FittingClient:
 
     def model_finalize(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -880,10 +900,10 @@ class FittingClient:
     def model_set_parse_function(
         self,
         parse_function: str,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"parse_function": parse_function}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"parse_function": parse_function}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -896,11 +916,11 @@ class FittingClient:
     def model_add_component(
         self,
         component_type: str,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"component_type": component_type}
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"component_type": component_type}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -914,10 +934,10 @@ class FittingClient:
     def model_remove_component(
         self,
         component_index: int,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"component_index": component_index}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"component_index": component_index}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -929,10 +949,10 @@ class FittingClient:
 
     def model_get_state(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {}
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -944,11 +964,11 @@ class FittingClient:
 
     def model_set_state(
         self,
-        state_data: Dict[str, Any],
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"state_data": state_data}
+        state_data: dict[str, Any],
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"state_data": state_data}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -963,11 +983,11 @@ class FittingClient:
     def get_plot_data(
         self,
         plot_type: str = "fit_data",
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {"plot_type": plot_type}
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"plot_type": plot_type}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
@@ -982,14 +1002,14 @@ class FittingClient:
 
     def start_sampling(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         n_steps: int = 1000,
         n_runs: int = 1,
-        target_directory: Optional[str] = None,
+        target_directory: str | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
             "n_steps": n_steps,
             "n_runs": n_runs,
         }
@@ -1005,13 +1025,13 @@ class FittingClient:
             return result
         return {"ok": False}
 
-    def cancel_sampling(self, job_id: str) -> Dict[str, Any]:
+    def cancel_sampling(self, job_id: str) -> dict[str, Any]:
         result = self._try_rpc("fit.sample.cancel", {"job_id": job_id})
         if result is not None:
             return result
         return {"ok": False}
 
-    def sampling_status(self, job_id: str) -> Dict[str, Any]:
+    def sampling_status(self, job_id: str) -> dict[str, Any]:
         result = self._try_rpc("fit.sample.status", {"job_id": job_id})
         if result is not None:
             return result
@@ -1022,12 +1042,12 @@ class FittingClient:
     def start_parameter_scan(
         self,
         parameter_name: str,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
         n_steps: int = 50,
         range_factor: float = 2.0,
-    ) -> Dict[str, Any]:
-        params: Dict[str, Any] = {
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
             "parameter_name": parameter_name,
             "n_steps": n_steps,
             "range_factor": range_factor,
@@ -1041,13 +1061,13 @@ class FittingClient:
             return result
         return {"ok": False}
 
-    def cancel_parameter_scan(self, job_id: str) -> Dict[str, Any]:
+    def cancel_parameter_scan(self, job_id: str) -> dict[str, Any]:
         result = self._try_rpc("fit.parameter_scan.cancel", {"job_id": job_id})
         if result is not None:
             return result
         return {"ok": False}
 
-    def parameter_scan_result(self, job_id: str) -> Dict[str, Any]:
+    def parameter_scan_result(self, job_id: str) -> dict[str, Any]:
         result = self._try_rpc("fit.parameter_scan.result", {"job_id": job_id})
         if result is not None:
             return result
@@ -1055,7 +1075,7 @@ class FittingClient:
 
     # ── GlobalView helpers ─────────────────────────────────────────────
 
-    def get_fit_objects(self) -> List[Any]:
+    def get_fit_objects(self) -> list[Any]:
         """Return a snapshot of fit objects from the global fit list.
 
         .. deprecated::
@@ -1068,6 +1088,7 @@ class FittingClient:
         )
         try:
             import chisurf as cs
+
             return list(getattr(cs, "fits", []))
         except Exception:
             return []
@@ -1094,9 +1115,9 @@ class FittingClient:
 
     def parameter_dict(
         self,
-        fit_uid: Optional[str] = None,
-        fit_index: Optional[int] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+        fit_uid: str | None = None,
+        fit_index: int | None = None,
+    ) -> dict[str, dict[str, Any]]:
         fit = self.get_fit(fit_uid=fit_uid, fit_index=fit_index)
         return fit.get("parameters", {})
 

@@ -24,12 +24,12 @@ and experimental optimization.
 
 name = "Main:Tools:Acquisition"
 
+import logging as _py_logging
 import os
 import time
-import numpy as np
 from pathlib import Path
-import logging as _py_logging
 
+import numpy as np
 
 # ---------------------------------------------------------------------------
 # Optional GUI / plugin imports
@@ -38,34 +38,36 @@ import logging as _py_logging
 GUI_AVAILABLE = False
 
 try:
+    from qtpy.QtCore import Qt, QThread, QTimer, Signal
     from qtpy.QtWidgets import (
-        QWidget,
-        QVBoxLayout,
-        QHBoxLayout,
-        QGridLayout,
-        QPushButton,
-        QLabel,
-        QSpinBox,
-        QDoubleSpinBox,
-        QComboBox,
-        QFileDialog,
-        QProgressBar,
-        QCheckBox,
-        QGroupBox,
-        QTabWidget,
-        QMessageBox,
-        QMenuBar,
         QAction,
-        QTextEdit,
+        QCheckBox,
+        QComboBox,
         QDialog,
-        QMdiSubWindow,
         QDockWidget,
-        QToolButton,
-        QSizePolicy,
+        QDoubleSpinBox,
+        QFileDialog,
+        QGridLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
         QLCDNumber,
+        QMdiSubWindow,
+        QMenuBar,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QSizePolicy,
+        QSpinBox,
+        QTabWidget,
+        QTextEdit,
+        QToolButton,
+        QVBoxLayout,
+        QWidget,
     )
-    from qtpy.QtCore import QTimer, QThread, Qt, Signal
+
     from chisurf.gui import chiplot
+
     GUI_AVAILABLE = True
 except Exception:  # Qt stack not available – CLI-only use is still allowed
     GUI_AVAILABLE = False
@@ -73,28 +75,18 @@ except Exception:  # Qt stack not available – CLI-only use is still allowed
 
 if GUI_AVAILABLE:
     # Import the BH SPC wrapper from the BH-specific subpackage
-    from .tcspc_devices.bh_spc import (
-        DLLOperationMode,
-        InitStatus,
-        ParID,
-        SPCMError,
-        BHSPC,
-        minimal_spcm_ini,
-        ini_file,
-        BHSPCCardSetupDialog,
-    )
-    # Use the tcspc_devices for the generic TCSPCDevice factory
-    from .tcspc_devices import TCSPCDevice
-
     # Import tttrlib for correlation
     import tttrlib
+
+    import chisurf
+    from chisurf import logging
 
     # Import for saving data
     from chisurf.core.fio.ascii import save_xy
     from chisurf.core.fio.fluorescence.fcs.kristine import write_kristine
 
-    import chisurf
-    from chisurf import logging
+    # Import controller classes
+    from .gui.controllers import *  # noqa: F401,F403
 
     # Import main classes
     from .gui.tool import AcquisitionThread, SMAcquisitionManager
@@ -102,8 +94,18 @@ if GUI_AVAILABLE:
     # Import window classes
     from .gui.windows import *  # noqa: F401,F403
 
-    # Import controller classes
-    from .gui.controllers import *  # noqa: F401,F403
+    # Use the tcspc_devices for the generic TCSPCDevice factory
+    from .tcspc_devices import TCSPCDevice
+    from .tcspc_devices.bh_spc import (
+        BHSPC,
+        BHSPCCardSetupDialog,
+        DLLOperationMode,
+        InitStatus,
+        ParID,
+        SPCMError,
+        ini_file,
+        minimal_spcm_ini,
+    )
 
     # Module-level logger for this file (chisurf logging)
     logger = logging.getLogger(__name__)
@@ -114,4 +116,3 @@ else:
 if __name__ == "plugin" and GUI_AVAILABLE:
     logger.info("Loading SM Acquisition plugin...")
     acquisition_manager = SMAcquisitionManager()
-

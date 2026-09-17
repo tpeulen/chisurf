@@ -1,10 +1,9 @@
-"""GUI tests for the FRET Docking & Screening plugin and fps.json editor.
-"""
+"""GUI tests for the FRET Docking & Screening plugin and fps.json editor."""
 
 from __future__ import annotations
 
-from chisurf.plugins.modelling.fret.gui import FretDockingTool
 from chisurf.plugins.modelling.fps_json_editor.gui.editor import FpsJsonEditor
+from chisurf.plugins.modelling.fret.gui import FretDockingTool
 
 
 def test_docking_tool_opens(qtbot):
@@ -14,6 +13,7 @@ def test_docking_tool_opens(qtbot):
     assert "Docking" in window.windowTitle()
     # AutoForm rendered the view.json into field widgets
     from chisurf.gui.autoform.sections.builtin import ValueWidget
+
     assert window._form.findChildren(ValueWidget)
     assert window._model.operation == "dock"
 
@@ -51,7 +51,7 @@ def test_fps_json_editor_payload_roundtrip(qtbot):
                 "radius2": 0.0,
                 "radius3": 0.0,
                 "simulation_grid_resolution": 1.5,
-                "body_id": 0
+                "body_id": 0,
             }
         },
         "Distances": {
@@ -62,14 +62,10 @@ def test_fps_json_editor_payload_roundtrip(qtbot):
                 "position2_name": "D2",
                 "distance": 45.0,
                 "error_neg": 5.0,
-                "error_pos": 5.0
+                "error_pos": 5.0,
             }
         },
-        "χ²": {
-            "Group1": {
-                "distances": ["D1_D2"]
-            }
-        }
+        "χ²": {"Group1": {"distances": ["D1_D2"]}},
     }
 
     editor.fps_json_payload = payload

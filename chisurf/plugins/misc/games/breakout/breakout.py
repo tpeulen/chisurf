@@ -284,9 +284,7 @@ class BreakoutGame(chigame.Game):
             return
 
         half = PADDLE_W * 0.5
-        self.paddle_x = min(
-            max(self.paddle_x + keys.axis()[0] * PADDLE_SPEED * dt, half), W - half
-        )
+        self.paddle_x = min(max(self.paddle_x + keys.axis()[0] * PADDLE_SPEED * dt, half), W - half)
 
         if self.stuck:
             self.ball_x = self.paddle_x
@@ -396,9 +394,9 @@ class BreakoutGame(chigame.Game):
         for brick in self.bricks:
             if not brick.alive:
                 continue
-            depleted = brick.hp < brick.max_hp
             scene.draw(
-                "photon", "halo",
+                "photon",
+                "halo",
                 at=(brick.x, brick.y),
                 size=(brick.w * 0.62, brick.h * 1.5),
                 emission_nm=brick.nm,
@@ -408,7 +406,8 @@ class BreakoutGame(chigame.Game):
             if not brick.alive:
                 continue
             scene.draw(
-                "band", f"{brick.nm:.0f}",
+                "band",
+                f"{brick.nm:.0f}",
                 at=(brick.x, brick.y),
                 size=(brick.w, brick.h),
                 state="depleted" if brick.hp < brick.max_hp else "idle",
@@ -416,44 +415,83 @@ class BreakoutGame(chigame.Game):
             )
 
         # The paddle is the detector: chrome hardware on a rail, not a bat.
-        scene.draw("detector", "apd", at=(self.paddle_x, PADDLE_Y),
-                   size=(PADDLE_W, PADDLE_H))
-        scene.draw("mount", "rail", at=(W * 0.5, PADDLE_Y + PADDLE_H * 0.5 + 7.0),
-                   size=(W, 2.0), color=(0.26, 0.29, 0.34, 1.0))
+        scene.draw("detector", "apd", at=(self.paddle_x, PADDLE_Y), size=(PADDLE_W, PADDLE_H))
+        scene.draw(
+            "mount",
+            "rail",
+            at=(W * 0.5, PADDLE_Y + PADDLE_H * 0.5 + 7.0),
+            size=(W, 2.0),
+            color=(0.26, 0.29, 0.34, 1.0),
+        )
 
         for particle in self.particles:
             fade = max(particle.life / particle.max_life, 0.0)
-            scene.draw("photon", "emitted", at=(particle.x, particle.y),
-                       size=(2.5 * fade + 1.0, 2.5 * fade + 1.0),
-                       emission_nm=particle.nm)
+            scene.draw(
+                "photon",
+                "emitted",
+                at=(particle.x, particle.y),
+                size=(2.5 * fade + 1.0, 2.5 * fade + 1.0),
+                emission_nm=particle.nm,
+            )
 
-        scene.draw("photon", "probe", at=(self.ball_x, self.ball_y),
-                   size=(BALL_SIZE, BALL_SIZE), emission_nm=self.ball_nm)
+        scene.draw(
+            "photon",
+            "probe",
+            at=(self.ball_x, self.ball_y),
+            size=(BALL_SIZE, BALL_SIZE),
+            emission_nm=self.ball_nm,
+        )
 
         scene.text(f"Counts: {self.score}", at=(14.0, 20.0), height=17.0)
         scene.text(f"Scan: {self.level}", at=(W * 0.5, 20.0), height=17.0, align="center")
         scene.text("Pulses:", at=(W - 76.0, 20.0), height=17.0, align="right")
         for index in range(self.lives):
-            scene.draw("photon", "pulse", at=(W - 56.0 + index * 20.0, 20.0),
-                       size=(7.0, 7.0), emission_nm=EXCITATION_NM)
+            scene.draw(
+                "photon",
+                "pulse",
+                at=(W - 56.0 + index * 20.0, 20.0),
+                size=(7.0, 7.0),
+                emission_nm=EXCITATION_NM,
+            )
 
         if self.stuck and self.message is None and not self.paused:
-            scene.text("Confirm to fire", at=(W * 0.5, H * 0.45), height=20.0,
-                       align="center", color=(0.62, 0.68, 0.78, 1.0))
+            scene.text(
+                "Confirm to fire",
+                at=(W * 0.5, H * 0.45),
+                height=20.0,
+                align="center",
+                color=(0.62, 0.68, 0.78, 1.0),
+            )
         if self.paused:
-            scene.text("HELD", at=(W * 0.5, H * 0.45), height=40.0,
-                       align="center", color=(0.35, 0.85, 0.80, 1.0))
+            scene.text(
+                "HELD",
+                at=(W * 0.5, H * 0.45),
+                height=40.0,
+                align="center",
+                color=(0.35, 0.85, 0.80, 1.0),
+            )
         if self.message is not None:
             scene.draw("ui", "panel", at=(W * 0.5, H * 0.5), size=(420.0, 110.0))
-            scene.text(self.message, at=(W * 0.5, H * 0.5 - 14.0), height=30.0,
-                       align="center", color=(0.90, 0.32, 0.30, 1.0))
-            scene.text("Confirm for a fresh sample", at=(W * 0.5, H * 0.5 + 24.0),
-                       height=15.0, align="center")
+            scene.text(
+                self.message,
+                at=(W * 0.5, H * 0.5 - 14.0),
+                height=30.0,
+                align="center",
+                color=(0.90, 0.32, 0.30, 1.0),
+            )
+            scene.text(
+                "Confirm for a fresh sample",
+                at=(W * 0.5, H * 0.5 + 24.0),
+                height=15.0,
+                align="center",
+            )
 
         scene.text(
             "Left/Right detector   Confirm fire   Menu hold   Cancel reset   R sound"
             + ("   [muted]" if self.muted else ""),
-            at=(W * 0.5, H - 12.0), height=13.0, align="center",
+            at=(W * 0.5, H - 12.0),
+            height=13.0,
+            align="center",
             color=(0.44, 0.48, 0.55, 1.0),
         )
 

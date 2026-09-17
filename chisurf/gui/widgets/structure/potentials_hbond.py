@@ -10,20 +10,12 @@ from chisurf.gui.widgets.warning_once import show_warning_once
 
 
 class HPotentialWidget(HPotential, QtWidgets.QWidget):
-
-    def __init__(
-            self,
-            structure,
-            parent,
-            cutoff_ca=8.0,
-            cutoff_hbond=3.0,
-            potential=None
-    ):
+    def __init__(self, structure, parent, cutoff_ca=8.0, cutoff_hbond=3.0, potential=None):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
         # Set default potential path if not provided
         if potential is None:
-            potential = str(get_path('chisurf') / 'core/structure/potential/database/hb.npy')
+            potential = str(get_path("chisurf") / "core/structure/potential/database/hb.npy")
 
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -51,10 +43,7 @@ class HPotentialWidget(HPotential, QtWidgets.QWidget):
 
         cutoff_row.addItem(
             QtWidgets.QSpacerItem(
-                40,
-                20,
-                QtWidgets.QSizePolicy.Expanding,
-                QtWidgets.QSizePolicy.Minimum
+                40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
             )
         )
 
@@ -101,20 +90,13 @@ class HPotentialWidget(HPotential, QtWidgets.QWidget):
         self.checkBox_4.stateChanged[int].connect(self.updateParameter)
         self.cutoffCA = cutoff_ca
         self.cutoffH = cutoff_hbond
-        super().__init__(
-            structure,
-            cutoff_ca,
-            cutoff_hbond
-        )
+        super().__init__(structure, cutoff_ca, cutoff_hbond)
 
         # Set initial potential
         self.potential = potential
 
     def onOpenFile(self):
-        filename = chisurf.gui.widgets.get_filename(
-            'Open File',
-            'NumPy data files (*.npy)'
-        )
+        filename = chisurf.gui.widgets.get_filename("Open File", "NumPy data files (*.npy)")
         self.potential = filename
 
     @property
@@ -140,7 +122,7 @@ class HPotentialWidget(HPotential, QtWidgets.QWidget):
                 f"The H-bond potential file should be located at:\n"
                 f"{v}\n\n"
                 f"Please check if the file exists or use the '...' button\n"
-                f"to select a different potential file."
+                f"to select a different potential file.",
             )
             # Create a dummy potential to prevent crashes
             self._hPot = np.zeros((20, 20))  # Minimal dummy potential
@@ -150,7 +132,7 @@ class HPotentialWidget(HPotential, QtWidgets.QWidget):
             show_warning_once(
                 "hbond_potential_file_error",
                 "H-Bond Potential File Error",
-                f"Error loading H-bond potential file {v}:\n{str(e)}"
+                f"Error loading H-bond potential file {v}:\n{str(e)}",
             )
             # Create a dummy potential to prevent crashes
             self._hPot = np.zeros((20, 20))  # Minimal dummy potential

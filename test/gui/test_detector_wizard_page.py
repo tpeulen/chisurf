@@ -4,6 +4,7 @@ The headless repository/load tests do not build the widget, so a missing
 Qt import (e.g. ``QComboBox`` for the calibration-date combobox) would slip
 through. This test constructs the page to catch import/NameError regressions.
 """
+
 from __future__ import annotations
 
 

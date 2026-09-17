@@ -87,8 +87,7 @@ def import_from_archive(
         params.append(type_like)
     where = " AND ".join(clauses)
     rows = arc.execute(
-        f"SELECT p.* FROM probes p LEFT JOIN probe_types t ON p.type_id = t.type_id "
-        f"WHERE {where}",
+        f"SELECT p.* FROM probes p LEFT JOIN probe_types t ON p.type_id = t.type_id WHERE {where}",
         params,
     ).fetchall()
 
@@ -137,8 +136,10 @@ def import_from_archive(
 
     arc.close()
     selector = name_like or type_like or "*"
-    print(f"Recovered {recovered} '{selector}' probes from {archive_path} "
-          f"(source={source}, kind={kind}).")
+    print(
+        f"Recovered {recovered} '{selector}' probes from {archive_path} "
+        f"(source={source}, kind={kind})."
+    )
     return recovered
 
 
@@ -150,7 +151,9 @@ def main() -> None:
     parser.add_argument("--archive", required=True, help="Archived spectra.db path")
     parser.add_argument("--db", default=str(DEFAULT_DATABASE_PATH), help="Target spectra.db")
     parser.add_argument("--name-like", default=None, help="Name LIKE pattern, e.g. 'ATTO%%'")
-    parser.add_argument("--type-like", default=None, help="Probe-type LIKE pattern, e.g. 'photochemcad%%'")
+    parser.add_argument(
+        "--type-like", default=None, help="Probe-type LIKE pattern, e.g. 'photochemcad%%'"
+    )
     parser.add_argument("--source", required=True, help="Provenance source slug, e.g. atto")
     parser.add_argument("--kind", required=True, help="Component kind, e.g. organic_dye")
     parser.add_argument("--source-ref", default=None, help="Optional source reference")
@@ -159,8 +162,13 @@ def main() -> None:
     db = FluorophoreDatabase(args.db)
     with db:
         import_from_archive(
-            db, args.archive, args.source, args.kind,
-            name_like=args.name_like, type_like=args.type_like, source_ref=args.source_ref,
+            db,
+            args.archive,
+            args.source,
+            args.kind,
+            name_like=args.name_like,
+            type_like=args.type_like,
+            source_ref=args.source_ref,
         )
 
 

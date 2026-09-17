@@ -131,8 +131,13 @@ def bursts_from_dataframe(
     rows = None
     if need_meta:
         times, stream_idx, micro, chan, index, rows = extract_burst_photons(
-            df, tttrs, streams, time_scale=time_scale,
-            min_photons=min_photons, with_meta=True, with_rows=True,
+            df,
+            tttrs,
+            streams,
+            time_scale=time_scale,
+            min_photons=min_photons,
+            with_meta=True,
+            with_rows=True,
         )
     else:
         times, stream_idx = extract_burst_photons(

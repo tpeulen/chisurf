@@ -105,8 +105,5 @@ def test_the_description_becomes_the_caption_tooltip(qapp, marker_section):
             description="Confines the molecule search to one patch.",
         )
     )
-    tips = {
-        label.text(): label.toolTip()
-        for label in form.findChildren(QtWidgets.QLabel)
-    }
+    tips = {label.text(): label.toolTip() for label in form.findChildren(QtWidgets.QLabel)}
     assert tips["Analysis region"] == "Confines the molecule search to one patch."

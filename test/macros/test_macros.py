@@ -17,6 +17,7 @@ run relates to the next. Plain-``exec`` semantics live in
 ``test_simple_macro.py``, and the main-window entry point in
 ``test_macro_exec.py``.
 """
+
 import pytest
 from qtpy import QtWidgets
 
@@ -24,14 +25,13 @@ from qtpy import QtWidgets
 # Qt does not raise, it aborts the whole process and takes the test session
 # with it. The non-GUI suite has no application, so skip at import time.
 if QtWidgets.QApplication.instance() is None:
-    pytest.skip(
-        "the ChiSurf main window needs a QApplication", allow_module_level=True
-    )
+    pytest.skip("the ChiSurf main window needs a QApplication", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
 def main_window():
     from chisurf.gui.main import Main
+
     return Main()
 
 
@@ -39,10 +39,7 @@ def test_exec_executor_sees_the_macro_globals(main_window, tmp_path):
     """``__file__`` reaches the macro, so it can find its own resources."""
     marker = tmp_path / "seen.txt"
     macro = tmp_path / "reports_its_file.py"
-    macro.write_text(
-        "import pathlib\n"
-        f"pathlib.Path(r'{marker}').write_text(__file__)\n"
-    )
+    macro.write_text(f"import pathlib\npathlib.Path(r'{marker}').write_text(__file__)\n")
 
     main_window.onRunMacro(filename=macro, executor="exec")
 
@@ -61,8 +58,7 @@ def test_two_macros_do_not_share_state(main_window, tmp_path):
     marker = tmp_path / "leak.txt"
     second = tmp_path / "looks_for_it.py"
     second.write_text(
-        "import pathlib\n"
-        f"pathlib.Path(r'{marker}').write_text(str('LEAKED' in dir()))\n"
+        f"import pathlib\npathlib.Path(r'{marker}').write_text(str('LEAKED' in dir()))\n"
     )
 
     main_window.onRunMacro(filename=first, executor="exec")

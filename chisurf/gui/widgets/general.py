@@ -1,5 +1,4 @@
 from __future__ import annotations
-from chisurf import typing
 
 import fnmatch
 import numbers
@@ -7,20 +6,19 @@ import os
 import pathlib
 import re
 import time
-
-from chisurf.gui import QtGui, QtWidgets, QtCore
 from io import BytesIO
 
+import chisurf as cs
+import chisurf.core.base
+import chisurf.core.curve
 import chisurf.core.fio
 import chisurf.core.settings
-import chisurf.core.curve
-import chisurf.core.base
-import chisurf as cs
-def get_widgets_in_layout(
-        layout: QtWidgets.QLayout
-):
-    """Returns a list of all widgets within a layout
-    """
+from chisurf import typing
+from chisurf.gui import QtCore, QtGui, QtWidgets
+
+
+def get_widgets_in_layout(layout: QtWidgets.QLayout):
+    """Returns a list of all widgets within a layout"""
     return (layout.itemAt(i) for i in range(layout.count()))
 
 
@@ -47,19 +45,15 @@ def clear_layout(layout: QtWidgets.QLayout):
             clear_layout(child.layout())
 
 
-def hide_items_in_layout(
-        layout: QtWidgets.QLayout
-):
-    """Hides all items within a Qt-layout
-    """
+def hide_items_in_layout(layout: QtWidgets.QLayout):
+    """Hides all items within a Qt-layout"""
     for i in range(layout.count()):
         item = layout.itemAt(i)
-        if type(item) == QtWidgets.QWidgetItem:
+        if type(item) is QtWidgets.QWidgetItem:
             item.widget().hide()
 
 
 class FileList(QtWidgets.QListWidget):
-
     @property
     def filenames(self) -> typing.List[str]:
         fn = list()
@@ -82,20 +76,19 @@ class FileList(QtWidgets.QListWidget):
             for url in event.mimeData().urls():
                 s = str(url.toLocalFile())
                 url.setScheme("")
-                if s.endswith(self.filename_ending) or \
-                        s.endswith(self.filename_ending+'.gz') or \
-                        s.endswith(self.filename_ending+'.bz2') or \
-                        s.endswith(self.filename_ending+'.zip'):
+                if (
+                    s.endswith(self.filename_ending)
+                    or s.endswith(self.filename_ending + ".gz")
+                    or s.endswith(self.filename_ending + ".bz2")
+                    or s.endswith(self.filename_ending + ".zip")
+                ):
                     self.addItem(s)
             event.acceptProposedAction()
         else:
             super().dropEvent(event)
 
     def __init__(
-            self,
-            accept_drops: bool = True,
-            filename_ending: str = "*",
-            icon: QtGui.QIcon = None
+        self, accept_drops: bool = True, filename_ending: str = "*", icon: QtGui.QIcon = None
     ):
         """
         :param accept_drops: if True accepts files that are dropped into the list
@@ -108,9 +101,7 @@ class FileList(QtWidgets.QListWidget):
 
         if accept_drops:
             self.setAcceptDrops(True)
-            self.setDragDropMode(
-                QtWidgets.QAbstractItemView.InternalMove
-            )
+            self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
 
         if icon is None:
             icon = QtGui.QIcon(":/icons/icons/list-add.png")
@@ -367,7 +358,11 @@ class LogListWidget(QtWidgets.QTableWidget):
         if record is not None:
             full_time = getattr(record, "asctime", "")
             level = getattr(record, "levelname", "")
-            source = getattr(record, "pathname", "") or getattr(record, "module", "") or getattr(record, "name", "")
+            source = (
+                getattr(record, "pathname", "")
+                or getattr(record, "module", "")
+                or getattr(record, "name", "")
+            )
 
         match = self._LOG_PATTERN.match(text)
         if match:
@@ -383,7 +378,12 @@ class LogListWidget(QtWidgets.QTableWidget):
             return ""
         # Fast path for the standard "%Y-%m-%d %H:%M:%S[,%f]" stamp: a slice
         # instead of a strptime/strftime round trip per record.
-        if len(full_time) >= 19 and full_time[4] == "-" and full_time[10] == " " and full_time[13] == ":":
+        if (
+            len(full_time) >= 19
+            and full_time[4] == "-"
+            and full_time[10] == " "
+            and full_time[13] == ":"
+        ):
             return full_time[11:19]
         for fmt in ("%Y-%m-%d %H:%M:%S,%f", "%Y-%m-%d %H:%M:%S"):
             try:
@@ -393,12 +393,12 @@ class LogListWidget(QtWidgets.QTableWidget):
         return full_time
 
 
-
 class EnterAwarePlainTextEdit(QtWidgets.QPlainTextEdit):
     """
     A QPlainTextEdit that emits a signal when Enter is pressed (without Shift).
     Also supports history navigation with Up/Down arrow keys.
     """
+
     sendRequested = QtCore.Signal()
     historyPrevRequested = QtCore.Signal()
     historyNextRequested = QtCore.Signal()
@@ -426,9 +426,7 @@ class EnterAwarePlainTextEdit(QtWidgets.QPlainTextEdit):
 
 
 def get_filename(
-        description: str = '',
-        file_type: str = 'All files (*.*)',
-        working_path: pathlib.Path = None
+    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
 ) -> pathlib.Path:
     """Open a file within a working path. If no path is specified the last
     path is used. After using this function the current working path of the
@@ -445,10 +443,7 @@ def get_filename(
             cs.working_path = pathlib.Path.home()
         working_path = cs.working_path
     filename_str, _ = QtWidgets.QFileDialog.getOpenFileName(
-        None,
-        description,
-        str(working_path.absolute()),
-        file_type
+        None, description, str(working_path.absolute()), file_type
     )
     filename = pathlib.Path(filename_str)
     try:
@@ -460,9 +455,7 @@ def get_filename(
 
 
 def open_files(
-        description: str = '',
-        file_type: str = 'All files (*.*)',
-        working_path: pathlib.Path = None
+    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
 ):
     """Open a file within a working path. If no path is specified the last
     path is used. After using this function the current working path of the
@@ -477,10 +470,7 @@ def open_files(
     if working_path is None:
         working_path = cs.working_path
     filenames = QtWidgets.QFileDialog.getOpenFileNames(
-        None,
-        description,
-        str(working_path.absolute()),
-        file_type
+        None, description, str(working_path.absolute()), file_type
     )[0]
     try:
         # Only update the working path if at least one file was selected
@@ -490,14 +480,14 @@ def open_files(
     except Exception as e:
         # Log the error but don't show it to the user
         import logging
+
         logging.error(f"Error in open_files: {e}")
 
     return filenames
 
+
 def save_file(
-        description: str = '',
-        file_type: str = 'All files (*.*)',
-        working_path: pathlib.Path = None
+    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
 ) -> str:
     """Opens a file save dialog. If cancel is clicked, returns None.
 
@@ -515,10 +505,7 @@ def save_file(
         working_path = cs.working_path
 
     filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-        None,
-        caption=description,
-        directory=str(working_path.absolute()),
-        filter=file_type
+        None, caption=description, directory=str(working_path.absolute()), filter=file_type
     )
 
     # If cancel is clicked, filename will be an empty string.
@@ -531,10 +518,10 @@ def save_file(
 
 
 def get_directory(
-        filename_ending: str = None,
-        get_files: bool = False,
-        directory: pathlib.Path = None,
-        caption: str = None
+    filename_ending: str = None,
+    get_files: bool = False,
+    directory: pathlib.Path = None,
+    caption: str = None,
 ) -> typing.Tuple[pathlib.Path, typing.List[str]]:
     """Opens a new window where you can choose a directory. The current
     working path is updated to this directory.
@@ -550,7 +537,9 @@ def get_directory(
         directory = cs.working_path
     caption_text = caption or "Select Directory"
     if isinstance(directory, pathlib.Path):
-        directory_str = QtWidgets.QFileDialog.getExistingDirectory(None, caption_text, str(directory.absolute()))
+        directory_str = QtWidgets.QFileDialog.getExistingDirectory(
+            None, caption_text, str(directory.absolute())
+        )
     else:
         directory_str = QtWidgets.QFileDialog.getExistingDirectory(None, caption_text)
     # If cancel is clicked, return None and do not update working path
@@ -567,10 +556,7 @@ def get_directory(
         return directory, filenames
 
 
-def make_widget_from_yaml(
-        variable_dictionary,
-        name: str = ''
-):
+def make_widget_from_yaml(variable_dictionary, name: str = ""):
     """
     >>> import numbers
     >>> import collections
@@ -579,17 +565,13 @@ def make_widget_from_yaml(
     >>> od =dict(sorted(d.items()))
     >>> w = make_widget_from_yaml(od, 'test')
     >>> w.show()
-    :param variable_dictionary: 
-    :param name: 
-    :return: 
+    :param variable_dictionary:
+    :param name:
+    :return:
     """
-    
     from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 
-    def make_group(
-            d,
-            name: str = ''
-    ):
+    def make_group(d, name: str = ""):
         g = QtWidgets.QGroupBox()
         g.setTitle(str(name))
         layout = QtWidgets.QFormLayout()
@@ -599,7 +581,7 @@ def make_widget_from_yaml(
             label = QtWidgets.QLabel(str(key))
             value = d[key]
             if isinstance(value, dict):
-                wd = make_group(value, '')
+                wd = make_group(value, "")
                 layout.addRow(str(key), wd)
             else:
                 if isinstance(value, bool):
@@ -616,11 +598,7 @@ def make_widget_from_yaml(
     return make_group(variable_dictionary, name)
 
 
-def tex2svg(
-        formula: str,
-        fontsize: int = 12,
-        dpi: int = 300
-):
+def tex2svg(formula: str, fontsize: int = 12, dpi: int = 300):
     """Render TeX formula to SVG.
     Args:
         formula (str): TeX formula.
@@ -632,17 +610,17 @@ def tex2svg(
     import matplotlib.pyplot as plt
 
     fig = plt.figure(figsize=(0.01, 0.01))
-    fig.text(0, 0, r'${}$'.format(formula), fontsize=fontsize)
+    fig.text(0, 0, rf"${formula}$", fontsize=fontsize)
 
     output = BytesIO()
     fig.savefig(
         output,
         dpi=dpi,
         transparent=True,
-        format='svg',
-        bbox_inches='tight',
+        format="svg",
+        bbox_inches="tight",
         pad_inches=0.0,
-        frameon=False
+        frameon=False,
     )
     plt.close(fig)
 
@@ -673,66 +651,45 @@ class Controller(QtWidgets.QWidget, cs.core.base.Base):
     Used by FittingControllerWidget
     """
 
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
     ):
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
         )
-        d.update(
-            {
-                'type': 'controller',
-                'class': self.__class__.__name__
-            }
-        )
+        d.update({"type": "controller", "class": self.__class__.__name__})
         return d
 
 
-class View(
-    QtWidgets.QWidget,
-    cs.core.base.Base
-):
+class View(QtWidgets.QWidget, cs.core.base.Base):
     """
     Used by Plot
     """
 
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
     def update(self, *args, **kwargs) -> None:
         super().update()
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
     ):
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
         )
-        d.update(
-            {
-                'type': 'view',
-                'class': self.__class__.__name__
-            }
-        )
+        d.update({"type": "view", "class": self.__class__.__name__})
         return d

@@ -126,12 +126,20 @@ def gaussian_focus(
     dict
     """
     if analytic:
-        return {"type": "analytic_gaussian3d", "w0": float(w0), "z0": float(z0),
-                "amplitude": float(amplitude)}
+        return {
+            "type": "analytic_gaussian3d",
+            "w0": float(w0),
+            "z0": float(z0),
+            "amplitude": float(amplitude),
+        }
     return {
-        "type": "gaussian3d", "w0": float(w0), "z0": float(z0),
-        "extent_xy": float(extent_xy), "extent_z": float(extent_z),
-        "spacing": float(spacing), "amplitude": float(amplitude),
+        "type": "gaussian3d",
+        "w0": float(w0),
+        "z0": float(z0),
+        "extent_xy": float(extent_xy),
+        "extent_z": float(extent_z),
+        "spacing": float(spacing),
+        "amplitude": float(amplitude),
     }
 
 

@@ -43,16 +43,12 @@ def _settings() -> AnalysisSettings:
         filter_active=False,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
     )
-    s.burst_detection = BurstDetectionSettings(
-        min_photons=60, photon_window=10, time_window=1e-3
-    )
+    s.burst_detection = BurstDetectionSettings(min_photons=60, photon_window=10, time_window=1e-3)
     return s
 
 
 def _analyze(path: Path) -> None:
-    analyze_request(
-        AnalysisRequest(files=[str(path)], settings=_settings(), legacy_output=False)
-    )
+    analyze_request(AnalysisRequest(files=[str(path)], settings=_settings(), legacy_output=False))
 
 
 def test_a_merged_measurement_records_every_stream_it_came_from(tmp_path: Path):

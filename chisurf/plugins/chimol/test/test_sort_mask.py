@@ -26,7 +26,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.atom_order import (
     ATOM_INDEXED_FIELDS,
     GREEK_PRIORITY,
@@ -37,7 +36,11 @@ from chimol.analysis.atom_order import (
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -112,9 +115,7 @@ def test_an_unknown_name_gets_a_defined_place():
 def protein():
     from chisurf.core.fio.structure.coordinates import read_coordinates
 
-    return read_coordinates(
-        str(_PDB), keep_water=True, only_standard_residues=False
-    )
+    return read_coordinates(str(_PDB), keep_water=True, only_standard_residues=False)
 
 
 def test_sorting_is_a_permutation(protein):
@@ -125,9 +126,7 @@ def test_sorting_is_a_permutation(protein):
 def test_sorting_is_idempotent(protein):
     once = protein[sort_order(protein)]
     twice = once[sort_order(once)]
-    assert np.array_equal(
-        np.asarray(once["atom_name"]), np.asarray(twice["atom_name"])
-    )
+    assert np.array_equal(np.asarray(once["atom_name"]), np.asarray(twice["atom_name"]))
 
 
 def test_residues_stay_together(protein):
@@ -264,9 +263,7 @@ def _labels(state, mask_field):
         return set()
     names = np.char.strip(np.asarray(state.atoms["atom_name"]).astype(str))
     res_ids = np.asarray(state.atoms["res_id"])
-    return {
-        f"{res_ids[k]}:{names[k]}" for k in np.nonzero(np.asarray(mask, bool))[0]
-    }
+    return {f"{res_ids[k]}:{names[k]}" for k in np.nonzero(np.asarray(mask, bool))[0]}
 
 
 def test_sort_reorders_a_freshly_loaded_structure(session):
@@ -339,10 +336,7 @@ def test_per_atom_colours_follow_the_atoms_through_a_sort(session):
         f"{res_ids[k]}:{names[k]}:{k}": tuple(np.round(colours[k], 5))
         for k in range(0, len(names), 97)
     }
-    keyed = {
-        f"{res_ids[k]}:{names[k]}": tuple(np.round(colours[k], 5))
-        for k in range(len(names))
-    }
+    keyed = {f"{res_ids[k]}:{names[k]}": tuple(np.round(colours[k], 5)) for k in range(len(names))}
     do("sort")
     assert errors == []
     state = _state(viewer)

@@ -82,9 +82,7 @@ class TestInjectUserModels(unittest.TestCase):
         """
         self._write_override(
             "20260101",
-            "ORIGINAL = 'overridden'\n"
-            "def added_by_user():\n"
-            "    return 42\n",
+            "ORIGINAL = 'overridden'\ndef added_by_user():\n    return 42\n",
         )
         chisurf.core.models.inject_user_models()
 

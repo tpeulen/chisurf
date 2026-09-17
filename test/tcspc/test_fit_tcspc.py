@@ -1,6 +1,7 @@
-import utils
-import unittest
 import pathlib
+import unittest
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 
@@ -13,18 +14,24 @@ from chisurf.core.models.description import for_family
 
 class FitTests(unittest.TestCase):
     """A donor-only and a donor-acceptor decay of the IBH sample, fitted with a
-    shared donor lifetime: the described lifetime and Gaussian FRET models."""
+    shared donor lifetime: the described lifetime and Gaussian FRET models.
+    """
 
     def test_data_group(self):
         dt = 0.0141
-        tcspc_experiment = chisurf.core.experiments.core.Experiment(name='TCSPC')
+        tcspc_experiment = chisurf.core.experiments.core.Experiment(name="TCSPC")
         tcspc_reader = chisurf.core.experiments.tcspc.TCSPCReader(
-            is_vv_vh=False, skiprows=10, dt=dt, experiment=tcspc_experiment)
-        irf = tcspc_reader.read(filename='./test/data/tcspc/ibh_sample/Prompt.txt')
-        decay_dd_d0 = tcspc_reader.read(filename='./test/data/tcspc/ibh_sample/Decay_577D.txt')
-        decay_dd_da = tcspc_reader.read(filename='./test/data/tcspc/ibh_sample/Decay_577D+577A+GTPgS.txt')
+            is_vv_vh=False, skiprows=10, dt=dt, experiment=tcspc_experiment
+        )
+        irf = tcspc_reader.read(filename="./test/data/tcspc/ibh_sample/Prompt.txt")
+        decay_dd_d0 = tcspc_reader.read(filename="./test/data/tcspc/ibh_sample/Decay_577D.txt")
+        decay_dd_da = tcspc_reader.read(
+            filename="./test/data/tcspc/ibh_sample/Decay_577D+577A+GTPgS.txt"
+        )
 
-        fit_d0 = chisurf.core.fitting.fit.FitGroup(data=decay_dd_d0, model_class=for_family("tcspc_lifetime"))
+        fit_d0 = chisurf.core.fitting.fit.FitGroup(
+            data=decay_dd_d0, model_class=for_family("tcspc_lifetime")
+        )
         model_d0 = fit_d0.model
         model_d0.set_dataset("response", irf[0])
         self.assertIsNotNone(model_d0.problem, model_d0.missing)
@@ -34,7 +41,9 @@ class FitTests(unittest.TestCase):
         fit_d0.run()
         self.assertLess(fit_d0.chi2, chi2_d0_before_fit)
 
-        fit_da = chisurf.core.fitting.fit.FitGroup(data=decay_dd_da, model_class=for_family("tcspc_fret_gaussian"))
+        fit_da = chisurf.core.fitting.fit.FitGroup(
+            data=decay_dd_da, model_class=for_family("tcspc_fret_gaussian")
+        )
         model_da = fit_da.model
         model_da.set_dataset("response", irf[0])
         self.assertIsNotNone(model_da.problem, model_da.missing)
@@ -50,5 +59,5 @@ class FitTests(unittest.TestCase):
         self.assertAlmostEqual(by_id["donor.tau.0"].value, d0["lifetime.tau.0"].value)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

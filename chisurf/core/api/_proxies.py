@@ -1,8 +1,9 @@
 from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import Any
+
 import chisurf as cs
-
-from typing import Any, Dict, Iterator, List, Optional, Union
-
 from chisurf.core.api._client import ChisurfClient
 
 
@@ -21,24 +22,24 @@ def install_proxies(client: ChisurfClient) -> None:
 class DataProxy:
     """Typed wrapper for a dataset's data sub-dict (fit.data). Read-only."""
 
-    def __init__(self, data: dict, client: Optional[ChisurfClient] = None):
+    def __init__(self, data: dict, client: ChisurfClient | None = None):
         self._data = data
         self._client = client
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         return self._data.get("name")
 
     @property
-    def uid(self) -> Optional[str]:
+    def uid(self) -> str | None:
         return self._data.get("uid")
 
     @property
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str | None:
         return self._data.get("filename")
 
     @property
-    def experiment(self) -> Optional[str]:
+    def experiment(self) -> str | None:
         return self._data.get("experiment")
 
     def __repr__(self) -> str:
@@ -48,7 +49,7 @@ class DataProxy:
 class ParameterProxy:
     """Typed wrapper for a parameter dict with explicit mutation methods."""
 
-    def __init__(self, data: dict, client: Optional[ChisurfClient] = None):
+    def __init__(self, data: dict, client: ChisurfClient | None = None):
         self._data = data
         self._client = client
 
@@ -59,11 +60,11 @@ class ParameterProxy:
         return self._data.get("name", "")
 
     @property
-    def fit_uid(self) -> Optional[str]:
+    def fit_uid(self) -> str | None:
         return self._data.get("fit_uid")
 
     @property
-    def value(self) -> Optional[float]:
+    def value(self) -> float | None:
         return self._data.get("value")
 
     @property
@@ -87,7 +88,7 @@ class ParameterProxy:
         return self._data.get("linked_to", "")
 
     @property
-    def error_estimate(self) -> Optional[float]:
+    def error_estimate(self) -> float | None:
         return self._data.get("error_estimate")
 
     # --- Mutation methods ---
@@ -95,45 +96,74 @@ class ParameterProxy:
     def set_value(self, value: float) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.set_value", {
-            "parameter_name": self.name, "value": value, "fit_uid": self.fit_uid,
-        })
+        return self._client.call(
+            "parameter.set_value",
+            {
+                "parameter_name": self.name,
+                "value": value,
+                "fit_uid": self.fit_uid,
+            },
+        )
 
     def set_fixed(self, fixed: bool) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.set_fixed", {
-            "parameter_name": self.name, "fixed": fixed, "fit_uid": self.fit_uid,
-        })
+        return self._client.call(
+            "parameter.set_fixed",
+            {
+                "parameter_name": self.name,
+                "fixed": fixed,
+                "fit_uid": self.fit_uid,
+            },
+        )
 
     def set_bounds(self, bounds: tuple) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.set_bounds", {
-            "parameter_name": self.name, "bounds": list(bounds), "fit_uid": self.fit_uid,
-        })
+        return self._client.call(
+            "parameter.set_bounds",
+            {
+                "parameter_name": self.name,
+                "bounds": list(bounds),
+                "fit_uid": self.fit_uid,
+            },
+        )
 
     def set_bounds_on(self, bounds_on: bool) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.set_bounds_on", {
-            "parameter_name": self.name, "bounds_on": bounds_on, "fit_uid": self.fit_uid,
-        })
+        return self._client.call(
+            "parameter.set_bounds_on",
+            {
+                "parameter_name": self.name,
+                "bounds_on": bounds_on,
+                "fit_uid": self.fit_uid,
+            },
+        )
 
     def link_to(self, target_parameter_name: str, **kw) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.link", {
-            "parameter_name": self.name, "target_parameter_name": target_parameter_name,
-            "fit_uid": self.fit_uid, **kw,
-        })
+        return self._client.call(
+            "parameter.link",
+            {
+                "parameter_name": self.name,
+                "target_parameter_name": target_parameter_name,
+                "fit_uid": self.fit_uid,
+                **kw,
+            },
+        )
 
     def unlink(self) -> dict:
         if self._client is None:
             raise RuntimeError("No client available")
-        return self._client.call("parameter.unlink", {
-            "parameter_name": self.name, "fit_uid": self.fit_uid,
-        })
+        return self._client.call(
+            "parameter.unlink",
+            {
+                "parameter_name": self.name,
+                "fit_uid": self.fit_uid,
+            },
+        )
 
     def __repr__(self) -> str:
         return f"<ParameterProxy {self.name}>"
@@ -142,33 +172,33 @@ class ParameterProxy:
 class ModelProxy:
     """Typed wrapper for the model sub-dict of a fit. Read-only."""
 
-    def __init__(self, data: dict, client: Optional[ChisurfClient] = None):
+    def __init__(self, data: dict, client: ChisurfClient | None = None):
         self._data = data
         self._client = client
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         return self._data.get("name")
 
     @property
-    def n_points(self) -> Optional[int]:
+    def n_points(self) -> int | None:
         return self._data.get("n_points")
 
     @property
-    def n_free(self) -> Optional[int]:
+    def n_free(self) -> int | None:
         return self._data.get("n_free")
 
     @property
-    def chi2r(self) -> Optional[float]:
+    def chi2r(self) -> float | None:
         return self._data.get("chi2r")
 
     @property
-    def parameters_all(self) -> List[ParameterProxy]:
+    def parameters_all(self) -> list[ParameterProxy]:
         plist = self._data.get("parameters_all", [])
         return [ParameterProxy(p, client=self._client) for p in plist]
 
     @property
-    def parameters_all_dict(self) -> Dict[str, ParameterProxy]:
+    def parameters_all_dict(self) -> dict[str, ParameterProxy]:
         return {p.name: p for p in self.parameters_all}
 
     def __repr__(self) -> str:
@@ -178,14 +208,14 @@ class ModelProxy:
 class FitProxy:
     """Typed wrapper for a fit response dict with explicit action methods."""
 
-    def __init__(self, data: dict, client: Optional[ChisurfClient] = None):
+    def __init__(self, data: dict, client: ChisurfClient | None = None):
         self._data = data
         self._client = client
 
     # --- Read-only properties ---
 
     @property
-    def uid(self) -> Optional[str]:
+    def uid(self) -> str | None:
         return self._data.get("uid")
 
     @property
@@ -197,23 +227,23 @@ class FitProxy:
         return self._data.get("type", "")
 
     @property
-    def index(self) -> Optional[int]:
+    def index(self) -> int | None:
         return self._data.get("index")
 
     @property
-    def chi2(self) -> Optional[float]:
+    def chi2(self) -> float | None:
         return self._data.get("chi2")
 
     @property
-    def chi2r(self) -> Optional[float]:
+    def chi2r(self) -> float | None:
         return self._data.get("chi2r")
 
     @property
-    def n_points(self) -> Optional[int]:
+    def n_points(self) -> int | None:
         return self._data.get("n_points")
 
     @property
-    def n_free(self) -> Optional[int]:
+    def n_free(self) -> int | None:
         return self._data.get("n_free")
 
     @property
@@ -221,7 +251,7 @@ class FitProxy:
         return self._data.get("dataset_name", "")
 
     @property
-    def dataset_uid(self) -> Optional[str]:
+    def dataset_uid(self) -> str | None:
         return self._data.get("dataset_uid")
 
     @property
@@ -231,29 +261,29 @@ class FitProxy:
     # --- Sub-object properties ---
 
     @property
-    def data(self) -> Optional[DataProxy]:
+    def data(self) -> DataProxy | None:
         d = self._data.get("data")
         if d:
             return DataProxy(d, client=self._client)
         return None
 
     @property
-    def model(self) -> Optional[ModelProxy]:
+    def model(self) -> ModelProxy | None:
         m = self._data.get("model")
         if m:
             return ModelProxy(m, client=self._client)
         return None
 
     @property
-    def parameters_all(self) -> List[ParameterProxy]:
+    def parameters_all(self) -> list[ParameterProxy]:
         return self.model.parameters_all if self.model else []
 
     @property
-    def parameters_all_dict(self) -> Dict[str, ParameterProxy]:
+    def parameters_all_dict(self) -> dict[str, ParameterProxy]:
         return self.model.parameters_all_dict if self.model else {}
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         return self._data.get("parameters", {})
 
     # --- RPC action methods ---
@@ -267,30 +297,51 @@ class FitProxy:
         return self._require_client().call("fit.run", {"fit_uid": self.uid, **kw})
 
     def save(self, filename: str, file_type: str = "csv", **kw) -> dict:
-        return self._require_client().call("fit.save", {
-            "fit_uid": self.uid, "filename": filename, "file_type": file_type, **kw,
-        })
+        return self._require_client().call(
+            "fit.save",
+            {
+                "fit_uid": self.uid,
+                "filename": filename,
+                "file_type": file_type,
+                **kw,
+            },
+        )
 
     def update(self, **kw) -> dict:
         return self._require_client().call("fit.update", {"fit_uid": self.uid, **kw})
 
     def set_result_idx(self, result_idx: int, **kw) -> dict:
-        return self._require_client().call("fit.set_result_idx", {
-            "fit_uid": self.uid, "result_idx": result_idx, **kw,
-        })
+        return self._require_client().call(
+            "fit.set_result_idx",
+            {
+                "fit_uid": self.uid,
+                "result_idx": result_idx,
+                **kw,
+            },
+        )
 
-    def set_dataset(self, dataset_index: Optional[int] = None, dataset_uid: Optional[str] = None) -> dict:
-        return self._require_client().call("fit.set_dataset", {
-            "fit_uid": self.uid, "dataset_index": dataset_index, "dataset_uid": dataset_uid,
-        })
+    def set_dataset(self, dataset_index: int | None = None, dataset_uid: str | None = None) -> dict:
+        return self._require_client().call(
+            "fit.set_dataset",
+            {
+                "fit_uid": self.uid,
+                "dataset_index": dataset_index,
+                "dataset_uid": dataset_uid,
+            },
+        )
 
     def model_finalize(self, **kw) -> dict:
         return self._require_client().call("model.finalize", {"fit_uid": self.uid, **kw})
 
     def model_set_parse_function(self, function_name: str, **kw) -> dict:
-        return self._require_client().call("model.set_parse_function", {
-            "fit_uid": self.uid, "function_name": function_name, **kw,
-        })
+        return self._require_client().call(
+            "model.set_parse_function",
+            {
+                "fit_uid": self.uid,
+                "function_name": function_name,
+                **kw,
+            },
+        )
 
     def __repr__(self) -> str:
         return f"<FitProxy {self.name}>"
@@ -299,15 +350,15 @@ class FitProxy:
 class DatasetProxy:
     """Typed wrapper for a dataset response dict."""
 
-    def __init__(self, data: dict, client: Optional[ChisurfClient] = None):
+    def __init__(self, data: dict, client: ChisurfClient | None = None):
         self._data = data
         self._client = client
-        self._curve_cache: Optional[dict] = None
+        self._curve_cache: dict | None = None
 
     # --- Read-only properties ---
 
     @property
-    def uid(self) -> Optional[str]:
+    def uid(self) -> str | None:
         return self._data.get("uid")
 
     @property
@@ -319,7 +370,7 @@ class DatasetProxy:
         return self._data.get("type", "")
 
     @property
-    def index(self) -> Optional[int]:
+    def index(self) -> int | None:
         return self._data.get("index")
 
     @property
@@ -331,7 +382,7 @@ class DatasetProxy:
         return self._data.get("experiment", "")
 
     @property
-    def length(self) -> Optional[int]:
+    def length(self) -> int | None:
         return self._data.get("length")
 
     # --- Explicit curve data method ---
@@ -352,9 +403,9 @@ class ProxyList:
 
     def __init__(self, client: ChisurfClient):
         self._client = client
-        self._cache: Optional[List[Dict[str, Any]]] = None
+        self._cache: list[dict[str, Any]] | None = None
 
-    def _fetch(self) -> List[Dict[str, Any]]:
+    def _fetch(self) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     def _invalidate(self) -> None:
@@ -378,7 +429,7 @@ class ProxyList:
             return any(d.get("uid") == uid for d in self._fetch())
         return False
 
-    def index(self, item: Any, start: int = 0, stop: Optional[int] = None) -> int:
+    def index(self, item: Any, start: int = 0, stop: int | None = None) -> int:
         items = self._fetch()
         uid = getattr(item, "uid", None)
         if isinstance(item, (FitProxy, DatasetProxy)):
@@ -443,7 +494,7 @@ class ProxyList:
             self._add_item(item)
         self._invalidate()
 
-    def __delitem__(self, index: Union[int, slice]) -> None:
+    def __delitem__(self, index: int | slice) -> None:
         if isinstance(index, slice):
             indices = list(range(*index.indices(len(self._fetch()))))
             if indices:
@@ -457,7 +508,7 @@ class ProxyList:
                 self._remove_items(indices=[actual])
         self._invalidate()
 
-    def __setitem__(self, index: Union[int, slice], value: Any) -> None:
+    def __setitem__(self, index: int | slice, value: Any) -> None:
         """Replace an element or a slice of the server-side list.
 
         A slice assigned an empty sequence deletes that slice.  Anything else
@@ -492,7 +543,7 @@ class ProxyList:
 class ProxyDatasetList(ProxyList):
     """Proxy for ``cs.imported_datasets``."""
 
-    def _fetch(self) -> List[Dict[str, Any]]:
+    def _fetch(self) -> list[dict[str, Any]]:
         resp = self._client.dataset__list()
         return list(resp) if resp else []
 
@@ -516,7 +567,7 @@ class ProxyDatasetList(ProxyList):
 class ProxyFitList(ProxyList):
     """Proxy for ``cs.fits``."""
 
-    def _fetch(self) -> List[Dict[str, Any]]:
+    def _fetch(self) -> list[dict[str, Any]]:
         resp = self._client.fit__list()
         return list(resp) if resp else []
 

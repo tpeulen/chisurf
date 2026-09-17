@@ -1,54 +1,46 @@
 from __future__ import annotations
-from chisurf import typing
 
-import sys
 import re
+import sys
 
 import numpy as np
 
-from chisurf.gui import QtWidgets
-from chisurf.gui import chiplot as cp
-
-import chisurf.core.support.decorators
 import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.experiments
 import chisurf.core.fluorescence.tcspc
-
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets.experiments.widgets
 import chisurf.gui.widgets.fio
+from chisurf import typing
+from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
-plot_settings = chisurf.core.settings.gui['plot']
-lw = plot_settings['line_width']
+plot_settings = chisurf.core.settings.gui["plot"]
+lw = plot_settings["line_width"]
 
 
 @persist_plugin_state("tttr_histogram")
-class HistogramTTTR(
-    QtWidgets.QWidget,
-    chisurf.core.curve.CurveGroup
-):
-
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="tttr_histogram.ui"
-    )
+class HistogramTTTR(QtWidgets.QWidget, chisurf.core.curve.CurveGroup):
+    @chisurf.gui.decorators.init_with_ui(ui_filename="tttr_histogram.ui")
     def __init__(self):
         self.setContentsMargins(0, 0, 0, 0)
         self._curves = list()
         self.tcspc_setup_widget = TcspcTTTRWidget()
-        self.verticalLayout.addWidget(
-            self.tcspc_setup_widget
-        )
+        self.verticalLayout.addWidget(self.tcspc_setup_widget)
         self.curve_selector = chisurf.gui.widgets.experiments.widgets.ExperimentalDataSelector(
             get_data_sets=self.get_data_curves,
             click_close=False,
-            experiment=chisurf.core.experiments.types['tcspc']
+            experiment=chisurf.core.experiments.types["tcspc"],
         )
         self.verticalLayout_6.addWidget(self.curve_selector)
         self.plot = cp.Plot()
@@ -57,9 +49,7 @@ class HistogramTTTR(
         self.curve_selector.onRemoveDataset = self.remove_curve
 
         # Actions
-        self.tcspc_setup_widget.pushButton.clicked.connect(
-            self.add_curve
-        )
+        self.tcspc_setup_widget.pushButton.clicked.connect(self.add_curve)
 
     @property
     def curve_name(self):
@@ -69,14 +59,9 @@ class HistogramTTTR(
         else:
             return s
 
-    def remove_curve(
-            self,
-            selected_index: typing.List[int] = None
-    ):
+    def remove_curve(self, selected_index: typing.List[int] = None):
         if selected_index is None:
-            selected_index = [
-                i.row() for i in self.curve_selector.selectedIndexes()
-            ]
+            selected_index = [i.row() for i in self.curve_selector.selectedIndexes()]
         super().remove_curve(selected_index)
         self.curve_selector.update()
         self.plot_curves()
@@ -92,18 +77,13 @@ class HistogramTTTR(
         current_curve = self.curve_selector.selected_curve_index
         for i, curve in enumerate(self._curves):
             l = lw * 0.5 if i != current_curve else 1.5 * lw
-            color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]['hex']
+            color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]["hex"]
             self.plot.line(curve.x, curve.y, pen=color, width=l, name=curve.name)
 
         self.plot.set_log(x=False, y=True)
         self.plot.grid(x=True, y=True, alpha=1.0)
 
-    def add_curve(
-            self,
-            *args,
-            v: chisurf.core.curve.Curve = None,
-            **kwargs
-    ):
+    def add_curve(self, *args, v: chisurf.core.curve.Curve = None, **kwargs):
         if v is None:
             v = self.tcspc_setup_widget.load_data()
             self.curve_selector.update()
@@ -112,17 +92,12 @@ class HistogramTTTR(
 
 
 @persist_plugin_state("tcspc_tttr")
-class TcspcTTTRWidget(
-    QtWidgets.QWidget
-):
-
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="tcspcTTTRWidget.ui"
-    )
+class TcspcTTTRWidget(QtWidgets.QWidget):
+    @chisurf.gui.decorators.init_with_ui(ui_filename="tcspcTTTRWidget.ui")
     def __init__(
-            self,
-            *args,
-            **kwargs,
+        self,
+        *args,
+        **kwargs,
     ):
         self.spcFileWidget = chisurf.gui.widgets.fio.SpcFileWidget(self)
         self.layout().insertWidget(0, self.spcFileWidget)
@@ -143,9 +118,7 @@ class TcspcTTTRWidget(
 
     @property
     def div(self) -> int:
-        return int(
-            self.comboBox.currentText()
-        )
+        return int(self.comboBox.currentText())
 
     @property
     def rep_rate(self):
@@ -161,9 +134,7 @@ class TcspcTTTRWidget(
 
     @property
     def histSelection(self):
-        return str(
-            self.lineEdit.text()
-        ).replace(" ", "").upper()
+        return str(self.lineEdit.text()).replace(" ", "").upper()
 
     @property
     def inverted_selection(self):
@@ -200,47 +171,35 @@ class TcspcTTTRWidget(
 
         ta = selection_tac.compressed().astype(np.int32)
         ta //= self.div
-        hist = np.bincount(
-            ta,
-            minlength=self.spcFileWidget.photons.n_tac
-        )
+        hist = np.bincount(ta, minlength=self.spcFileWidget.photons.n_tac)
         self.y = hist.astype(np.float64)
         self.x = np.arange(len(hist), dtype=np.float64) + 1.0
         self.x *= self.spcFileWidget.photons.dt
         self.xt = self.x
 
-        ex = r'(ROUT==\d+)'
+        ex = r"(ROUT==\d+)"
         routCh = re.findall(ex, self.histSelection)
-        self.chs = [int(ch.split('==')[1]) for ch in routCh]
-        self.lineEdit_3.setText("%s" % self.chs)
+        self.chs = [int(ch.split("==")[1]) for ch in routCh]
+        self.lineEdit_3.setText(f"{self.chs}")
 
     def onTacDivChanged(self):
         self.dtBase = self.spcFileWidget.dt
         self.tacDiv = float(self.comboBox.currentText())
         self.nTAC = (self.spcFileWidget.nTAC + 1) / self.tacDiv
         self.dt = self.dtBase * self.tacDiv
-        self.lineEdit_2.setText("%.3f" % self.dt)
+        self.lineEdit_2.setText(f"{self.dt:.3f}")
 
     def onLoadFile(self):
-        #self.nROUT = self.spcFileWidget.nROUT
+        # self.nROUT = self.spcFileWidget.nROUT
         self.onTacDivChanged()
 
-    def load_data(
-            self,
-            *args,
-            **kwargs
-    ):
+    def load_data(self, *args, **kwargs):
         self.make_histogram()
         x = self.x
         y = self.y
         name = self.spcFileWidget.sample_name + "_" + str(self.chs)
         d = chisurf.core.data.DataCurve(
-            x=x,
-            y=y,
-            ey=chisurf.core.fluorescence.tcspc.counting_noise(
-                decay=y
-            ),
-            name=name
+            x=x, y=y, ey=chisurf.core.fluorescence.tcspc.counting_noise(decay=y), name=name
         )
         return d
 

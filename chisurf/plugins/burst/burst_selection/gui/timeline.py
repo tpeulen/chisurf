@@ -92,16 +92,18 @@ def build_timeline(diagnostics, offsets_ms) -> list[Segment]:
         start_s = float(offsets_ms[index]) / 1000.0 if index < len(offsets_ms) else 0.0
         duration_s = float(macro_times[-1] - macro_times[0]) * resolution_s
         path = diag.get("path")
-        segments.append(Segment(
-            index=index,
-            name=pathlib.Path(str(path)).name if path else f"file {index + 1}",
-            start_s=start_s,
-            stop_s=start_s + duration_s,
-            first_photon=first_photon,
-            n_photons=n_photons,
-            macro_times=macro_times,
-            resolution_s=resolution_s,
-        ))
+        segments.append(
+            Segment(
+                index=index,
+                name=pathlib.Path(str(path)).name if path else f"file {index + 1}",
+                start_s=start_s,
+                stop_s=start_s + duration_s,
+                first_photon=first_photon,
+                n_photons=n_photons,
+                macro_times=macro_times,
+                resolution_s=resolution_s,
+            )
+        )
         first_photon += n_photons
     return segments
 

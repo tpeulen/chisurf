@@ -329,9 +329,7 @@ class TableSource:
 MAX_CHOICE_LABELS = 64
 
 #: ``Column.dtype`` strings that make an integer column.
-_INT_DTYPES = frozenset(
-    {"int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"}
-)
+_INT_DTYPES = frozenset({"int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"})
 
 
 def kind_from_column_dtype(dtype: str) -> str:

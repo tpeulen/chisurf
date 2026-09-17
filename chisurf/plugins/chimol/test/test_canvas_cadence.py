@@ -27,8 +27,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
-from chimol.viewport.canvas import CanvasRenderer, _IDLE_GAP
+from chimol.viewport.canvas import _IDLE_GAP, CanvasRenderer
 
 
 # --------------------------------------------------------------------------- #
@@ -83,8 +82,7 @@ def test_the_frame_ceiling_is_above_every_refresh_rate_a_screen_has():
     from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
 
     assert DEFAULT_MAX_FPS >= max(REFRESH_RATES), (
-        f"a {DEFAULT_MAX_FPS} fps ceiling halves the rate on a "
-        f"{max(REFRESH_RATES)} Hz screen"
+        f"a {DEFAULT_MAX_FPS} fps ceiling halves the rate on a {max(REFRESH_RATES)} Hz screen"
     )
 
 
@@ -94,13 +92,17 @@ def test_the_shipped_configuration_agrees_with_the_default():
     import pathlib
 
     import chimol
-    from chimol.core.settings.config import _DISPLAY_CONFIG
     from chimol.core.settings import registry
+    from chimol.core.settings.config import _DISPLAY_CONFIG
     from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
 
     shipped = json.loads(
-        (pathlib.Path(chimol.__file__).resolve().parent
-         / "core" / "settings" / "chimol_display.json").read_text()
+        (
+            pathlib.Path(chimol.__file__).resolve().parent
+            / "core"
+            / "settings"
+            / "chimol_display.json"
+        ).read_text()
     )
     assert shipped["renderer"]["max_fps"] == DEFAULT_MAX_FPS
     assert _DISPLAY_CONFIG["renderer"]["max_fps"] == DEFAULT_MAX_FPS
@@ -117,7 +119,6 @@ def test_an_existing_configuration_is_lifted_off_the_old_ceiling():
     """
     from chimol.core.settings.config import (
         DISPLAY_CONFIG_MIGRATIONS,
-        DISPLAY_CONFIG_VERSION,
     )
     from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
 
@@ -146,14 +147,11 @@ def test_a_window_is_never_asked_to_present_to_the_screen_by_default(monkeypatch
     the same Qt window measures 128 fps through the compositor once the
     ceiling is above the refresh rate.)
     """
-    import pytest
-
     pytest.importorskip("qtpy")
     from chimol.hosts.qt import wgpu_view
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "cocoa")
-    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance",
-                        staticmethod(lambda: None))
+    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance", staticmethod(lambda: None))
     for platform in ("darwin", "linux", "win32"):
         monkeypatch.setattr(wgpu_view.sys, "platform", platform, raising=False)
         assert wgpu_view.resolve_present_method() is None, (
@@ -171,21 +169,16 @@ def test_a_platform_with_no_display_is_never_asked_to_present_to_one(monkeypatch
     found. It holds however the setting is spelled: an explicit `screen` from
     a configuration file is still refused here.
     """
-    import pytest
-
     pytest.importorskip("qtpy")
     from chimol.core.settings.config import _DISPLAY_CONFIG
     from chimol.hosts.qt import wgpu_view
 
-    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance",
-                        staticmethod(lambda: None))
+    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance", staticmethod(lambda: None))
     section = dict(_DISPLAY_CONFIG.get("renderer") or {})
     for platform in ("offscreen", "minimal", "vnc"):
         monkeypatch.setenv("QT_QPA_PLATFORM", platform)
         for asked in ("auto", "screen"):
-            monkeypatch.setitem(
-                _DISPLAY_CONFIG, "renderer", {**section, "present_method": asked}
-            )
+            monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {**section, "present_method": asked})
             assert wgpu_view.resolve_present_method() != "screen", (
                 f"{platform} was asked to present to a screen it has none of"
             )
@@ -216,7 +209,8 @@ def test_set_max_fps_calls_rendercanvas_set_update_mode():
 
 def test_set_max_fps_leaves_the_update_mode_alone():
     """Only the ceiling changes; the mode stays the "ondemand" the window was
-    built with, so this cannot turn a viewport into `continuous`."""
+    built with, so this cannot turn a viewport into `continuous`.
+    """
     surface = _FakeSurface()
     host = _FakeHost(surface)
 
@@ -229,7 +223,8 @@ def test_set_max_fps_leaves_the_update_mode_alone():
 
 def test_set_max_fps_clamps_below_one():
     """``rendercanvas`` raises for anything under 1; a bad value must not
-    crash a draw."""
+    crash a draw.
+    """
     surface = _FakeSurface()
     host = _FakeHost(surface)
 
@@ -288,7 +283,10 @@ def _fake_host(*, nerd: bool = False, debug: bool = False) -> SimpleNamespace:
     """
     gui = SimpleNamespace(nerd=nerd, debug_overlays=debug)
     host = SimpleNamespace(
-        _idle_settle_timer=None, _idle_settling=False, updated=0, _internal_gui=gui,
+        _idle_settle_timer=None,
+        _idle_settling=False,
+        updated=0,
+        _internal_gui=gui,
     )
     host.update = lambda: setattr(host, "updated", host.updated + 1)
     host._on_idle_settle_timeout = lambda: CanvasRenderer._on_idle_settle_timeout(host)
@@ -298,9 +296,7 @@ def _fake_host(*, nerd: bool = False, debug: bool = False) -> SimpleNamespace:
 
 def test_arm_idle_settle_starts_a_singleshot_timer_past_the_idle_gap(monkeypatch):
     """With no readout on screen the timer is the one-shot settle."""
-    monkeypatch.setattr(
-        "chimol.hosts.toolkit.Timer", _FakeTimer, raising=True
-    )
+    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
     host = _fake_host()
 
     CanvasRenderer._arm_idle_settle(host)
@@ -317,23 +313,20 @@ def test_a_live_readout_ticks_at_the_idle_tick_interval(monkeypatch):
     Past the idle gap it would only ever redraw after the rate had already
     been cleared to zero, which is a settle, not a counter.
     """
-    monkeypatch.setattr(
-        "chimol.hosts.toolkit.Timer", _FakeTimer, raising=True
-    )
+    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
     from chimol.render.frame_stats import nerd_idle_tick_interval
 
     host = _fake_host(nerd=True)
     CanvasRenderer._arm_idle_settle(host)
 
-    assert host._idle_settle_timer.started_ms == max(
-        int(nerd_idle_tick_interval() * 1000), 16
-    )
+    assert host._idle_settle_timer.started_ms == max(int(nerd_idle_tick_interval() * 1000), 16)
 
 
 def test_the_idle_tick_is_slower_than_the_publish_tick():
     """It costs a whole frame, not a re-read, so it must not run at the
     publish rate -- an instrument that redraws the scene to report the rate
-    is an instrument that changes the rate."""
+    is an instrument that changes the rate.
+    """
     from chimol.render.frame_stats import nerd_idle_tick_interval, nerd_report_interval
 
     assert nerd_idle_tick_interval() > nerd_report_interval()
@@ -341,10 +334,9 @@ def test_the_idle_tick_is_slower_than_the_publish_tick():
 
 def test_the_idle_tick_can_be_switched_off_entirely(monkeypatch):
     """0 is a real value: no redraws at all, the rate settles to zero and
-    stays there. That is the setting to use while measuring."""
-    monkeypatch.setattr(
-        "chimol.hosts.toolkit.Timer", _FakeTimer, raising=True
-    )
+    stays there. That is the setting to use while measuring.
+    """
+    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
     monkeypatch.setattr(
         "chimol.render.frame_stats.nerd_idle_tick_interval",
         lambda: 0.0,
@@ -358,9 +350,7 @@ def test_the_idle_tick_can_be_switched_off_entirely(monkeypatch):
 
 
 def test_the_settle_timer_asks_for_another_draw(monkeypatch):
-    monkeypatch.setattr(
-        "chimol.hosts.toolkit.Timer", _FakeTimer, raising=True
-    )
+    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
     host = _fake_host()
 
     CanvasRenderer._arm_idle_settle(host)
@@ -384,7 +374,8 @@ def test_a_real_draw_arms_the_idle_settle_timer():
 
 def test_the_settle_draw_does_not_rearm_when_no_readout_is_shown():
     """With nothing to keep live, the follow-up draw settles the rate to zero
-    once and stops -- an idle viewport nobody is measuring goes fully quiet."""
+    once and stops -- an idle viewport nobody is measuring goes fully quiet.
+    """
     calls = []
     host = _fake_host()
     host._idle_settling = True
@@ -400,10 +391,11 @@ def test_a_live_readout_keeps_rearming_so_the_counter_runs():
     """The reported bug: the counter only advanced when something *else*
     repainted the chrome (a hover crossing a control), because the settle draw
     deliberately did not rearm. With a readout on screen it must rearm --
-    including after its own draw -- or the number freezes between hovers."""
+    including after its own draw -- or the number freezes between hovers.
+    """
     calls = []
     host = _fake_host(nerd=True)
-    host._idle_settling = True          # this draw *is* the timer's own
+    host._idle_settling = True  # this draw *is* the timer's own
     host._arm_idle_settle = lambda: calls.append(1)
 
     CanvasRenderer._note_frame_drawn(host)
@@ -414,7 +406,8 @@ def test_a_live_readout_keeps_rearming_so_the_counter_runs():
 
 def test_the_status_band_rate_also_counts_as_a_live_readout():
     """`debug_overlays` draws the plain rate without nerd mode's graphs; it is
-    just as frozen if the tick stops."""
+    just as frozen if the tick stops.
+    """
     host = _fake_host(debug=True)
     assert CanvasRenderer._readout_is_live(host) is True
 

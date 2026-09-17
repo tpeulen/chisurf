@@ -9,7 +9,6 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf
 from chisurf.gui.widgets.general import apply_compact_table_style
 
 logger = logging.getLogger("chisurf.rpc")
@@ -72,7 +71,9 @@ class RPCMonitorWidget(QtWidgets.QWidget):
 
         # Table
         self._table = QtWidgets.QTableWidget(0, 6, self)
-        self._table.setHorizontalHeaderLabels(["Time", "Origin", "Target", "What", "Duration", "Status"])
+        self._table.setHorizontalHeaderLabels(
+            ["Time", "Origin", "Target", "What", "Duration", "Status"]
+        )
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         apply_compact_table_style(self._table)
         self._table.horizontalHeader().setStretchLastSection(False)

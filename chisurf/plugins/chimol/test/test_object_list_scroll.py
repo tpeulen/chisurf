@@ -12,10 +12,10 @@ hit test, the hover and the per-row buttons all address rows by index, so a
 list that *skips* the rows it cannot draw renumbers them, and a click on one
 object toggles another.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.ui.gui import GuiRow, InternalGui
 
 
@@ -83,9 +83,7 @@ def test_a_click_lands_on_the_row_that_is_drawn_there():
         if rect.w <= 0:
             continue
         hit = gui.hit_test(rect.x + rect.w / 2, rect.y + rect.h / 2)
-        assert hit.row == index, (
-            f"a click in row {index}'s rectangle answered row {hit.row}"
-        )
+        assert hit.row == index, f"a click in row {index}'s rectangle answered row {hit.row}"
         break
 
 
@@ -94,7 +92,7 @@ def test_dragging_the_bar_moves_the_list():
     bar = gui.objects_bar()
     panel = gui.panel_rect
     assert gui.press_objects_bar(bar.x + 2.0, bar.y + 2.0)
-    gui.drag_objects_bar(panel.y + panel.h)          # thumb to the bottom
+    gui.drag_objects_bar(panel.y + panel.h)  # thumb to the bottom
     assert gui._objects_scroll == pytest.approx(gui._panel_overflow)
     gui.release_objects_bar()
     assert gui._objects_bar_drag is None

@@ -33,8 +33,6 @@ either side of it instead of going wholesale to whichever was queued first.
 
 from __future__ import annotations
 
-from typing import Optional, Union
-
 import numpy as np
 
 __all__ = [
@@ -64,8 +62,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def gaussian(image, sigma=1.0, *, mode: str = "nearest", cval: float = 0.0,
-             truncate: float = 4.0):
+def gaussian(image, sigma=1.0, *, mode: str = "nearest", cval: float = 0.0, truncate: float = 4.0):
     """Gaussian-smooth ``image``.
 
     Parameters
@@ -205,8 +202,7 @@ def clear_border(labels, buffer_size: int = 0, bgval: int = 0, mask=None, *, out
             raise TypeError("mask must be boolean")
         if out.shape != mask.shape:
             raise ValueError(
-                f"labels and mask must have the same shape, got {out.shape} and "
-                f"{mask.shape}"
+                f"labels and mask must have the same shape, got {out.shape} and {mask.shape}"
             )
         borders = ~mask
     else:
@@ -332,9 +328,7 @@ def _border_width(image, min_distance, exclude_border):
         return (exclude_border,) * image.ndim
     if isinstance(exclude_border, tuple):
         if len(exclude_border) != image.ndim:
-            raise ValueError(
-                "exclude_border must have one entry per image dimension"
-            )
+            raise ValueError("exclude_border must have one entry per image dimension")
         for width in exclude_border:
             if not isinstance(width, int) or width < 0:
                 raise ValueError("exclude_border entries must be non-negative ints")
@@ -345,9 +339,9 @@ def _border_width(image, min_distance, exclude_border):
 def peak_local_max(
     image,
     min_distance: int = 1,
-    threshold_abs: Optional[float] = None,
-    threshold_rel: Optional[float] = None,
-    exclude_border: Union[bool, int, tuple] = True,
+    threshold_abs: float | None = None,
+    threshold_rel: float | None = None,
+    exclude_border: bool | int | tuple = True,
     num_peaks=np.inf,
     footprint=None,
     labels=None,
@@ -429,9 +423,7 @@ def peak_local_max(
         # neighbouring object would suppress this one's peak.
         window[~inside] = background
         mask = _peak_mask(window, footprint, threshold, inside)
-        coordinates = _brightest(
-            window, mask, num_peaks_per_label, min_distance, p_norm
-        )
+        coordinates = _brightest(window, mask, num_peaks_per_label, min_distance, p_norm)
         for axis, piece in enumerate(region):
             coordinates[:, axis] += piece.start
         per_label.append(coordinates)
@@ -588,8 +580,7 @@ def _flood(image, marker_locations, offsets, mask, output):
             while position > 0:
                 parent = (position - 1) // 2
                 if heap_value[parent] < neighbour_value or (
-                    heap_value[parent] == neighbour_value
-                    and heap_age[parent] <= age_counter
+                    heap_value[parent] == neighbour_value and heap_age[parent] <= age_counter
                 ):
                     break
                 heap_value[position] = heap_value[parent]
@@ -628,12 +619,10 @@ def _raveled_neighbour_offsets(shape, footprint, center=None):
     equidistant neighbours in the footprint's own C order.
     """
     footprint = np.asarray(footprint, dtype=bool)
-    ndim = len(shape)
+    len(shape)
     if center is None:
         center = tuple(size // 2 for size in footprint.shape)
-    offsets = np.stack(
-        [index - c for index, c in zip(np.nonzero(footprint), center)], axis=-1
-    )
+    offsets = np.stack([index - c for index, c in zip(np.nonzero(footprint), center)], axis=-1)
     ravel_factors = np.cumprod((tuple(shape[1:]) + (1,))[::-1])[::-1]
     raveled = (offsets * ravel_factors).sum(axis=1)
     distances = np.sqrt(np.sum(offsets.astype(float) ** 2, axis=1))
@@ -686,13 +675,9 @@ def watershed(
     from scipy import ndimage
 
     if compactness:
-        raise NotImplementedError(
-            "compact watershed is not implemented; pass compactness=0"
-        )
+        raise NotImplementedError("compact watershed is not implemented; pass compactness=0")
     if watershed_line:
-        raise NotImplementedError(
-            "watershed lines are not implemented; pass watershed_line=False"
-        )
+        raise NotImplementedError("watershed lines are not implemented; pass watershed_line=False")
 
     image = np.asarray(image, dtype=np.float64)
     if markers is None or np.isscalar(markers):
@@ -703,8 +688,7 @@ def watershed(
     markers = np.asarray(markers)
     if markers.shape != image.shape:
         raise ValueError(
-            f"markers {markers.shape} and image {image.shape} must have the "
-            "same shape"
+            f"markers {markers.shape} and image {image.shape} must have the same shape"
         )
 
     if mask is None:
@@ -712,18 +696,14 @@ def watershed(
     else:
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != image.shape:
-            raise ValueError(
-                f"mask {mask.shape} and image {image.shape} must have the same shape"
-            )
+            raise ValueError(f"mask {mask.shape} and image {image.shape} must have the same shape")
         # A marker outside the mask would flood nothing and, worse, would leave
         # a label in the output that no pixel belongs to.
         markers = np.where(mask, markers, 0)
 
     if isinstance(connectivity, (int, np.integer)):
         if not 1 <= connectivity <= image.ndim:
-            raise ValueError(
-                f"connectivity must be between 1 and {image.ndim}, got {connectivity}"
-            )
+            raise ValueError(f"connectivity must be between 1 and {image.ndim}, got {connectivity}")
         structure = ndimage.generate_binary_structure(image.ndim, int(connectivity))
         centre = None
     else:
@@ -881,9 +861,7 @@ def relabel_sequential(labels, offset: int = 1):
 
     present = np.unique(labels)
     if present.size and present[0] == 0:
-        renumbered = np.concatenate(
-            [[0], np.arange(offset, offset + present.size - 1)]
-        )
+        renumbered = np.concatenate([[0], np.arange(offset, offset + present.size - 1)])
     else:
         renumbered = np.arange(offset, offset + present.size)
 
@@ -960,9 +938,9 @@ def find_boundaries(labels, connectivity: int = 1, mode: str = "thick", backgrou
     # A pixel is on a boundary when the neighbourhood maximum and minimum
     # disagree — the grey dilation/erosion pair, which works on labels and not
     # just on a mask.
-    boundaries = ndimage.grey_dilation(
+    boundaries = ndimage.grey_dilation(labels, footprint=structure) != ndimage.grey_erosion(
         labels, footprint=structure
-    ) != ndimage.grey_erosion(labels, footprint=structure)
+    )
     if mode == "thick":
         return boundaries
     if mode == "inner":
@@ -990,8 +968,15 @@ def find_boundaries(labels, connectivity: int = 1, mode: str = "thick", backgrou
 # ---------------------------------------------------------------------------
 
 
-def difference_of_gaussians(image, low_sigma, high_sigma=None, *, mode: str = "nearest",
-                            cval: float = 0.0, truncate: float = 4.0):
+def difference_of_gaussians(
+    image,
+    low_sigma,
+    high_sigma=None,
+    *,
+    mode: str = "nearest",
+    cval: float = 0.0,
+    truncate: float = 4.0,
+):
     """Band-pass ``image`` by subtracting two Gaussian blurs.
 
     One pass removes both nuisances at once: the narrow blur keeps structure at
@@ -1030,9 +1015,7 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *, mode: str = "n
     low = low * np.ones(image.ndim)
     high = high * np.ones(image.ndim)
     if np.any(high < low):
-        raise ValueError(
-            "high_sigma must be at least low_sigma, or the band is inverted"
-        )
+        raise ValueError("high_sigma must be at least low_sigma, or the band is inverted")
     narrow = gaussian(image, low, mode=mode, cval=cval, truncate=truncate)
     wide = gaussian(image, high, mode=mode, cval=cval, truncate=truncate)
     return narrow - wide
@@ -1093,9 +1076,8 @@ def _blob_overlap(first, second) -> float:
     ratio_b = np.clip(
         (separation**2 + radius_b**2 - radius_a**2) / (2 * separation * radius_b), -1, 1
     )
-    area = (
-        radius_a**2 * (np.arccos(ratio_a) - ratio_a * np.sqrt(1 - ratio_a**2))
-        + radius_b**2 * (np.arccos(ratio_b) - ratio_b * np.sqrt(1 - ratio_b**2))
+    area = radius_a**2 * (np.arccos(ratio_a) - ratio_a * np.sqrt(1 - ratio_a**2)) + radius_b**2 * (
+        np.arccos(ratio_b) - ratio_b * np.sqrt(1 - ratio_b**2)
     )
     return float(area / (np.pi * min(radius_a, radius_b) ** 2))
 
@@ -1130,9 +1112,14 @@ def _prune_blobs(blobs, overlap: float):
     return kept if len(kept) else np.empty((0, blobs.shape[1]))
 
 
-def blob_dog(image, min_sigma: float = 1.0, max_sigma: float = 50.0,
-             sigma_ratio: float = 1.6, threshold: float = 0.5,
-             overlap: float = 0.5):
+def blob_dog(
+    image,
+    min_sigma: float = 1.0,
+    max_sigma: float = 50.0,
+    sigma_ratio: float = 1.6,
+    threshold: float = 0.5,
+    overlap: float = 0.5,
+):
     """Find bright round spots by a difference-of-Gaussians scale space.
 
     The image is band-passed at a geometric ladder of scales; a spot registers
@@ -1181,9 +1168,15 @@ def blob_dog(image, min_sigma: float = 1.0, max_sigma: float = 50.0,
     return _blobs_from_cube(cube, sigmas, threshold, overlap, image.ndim)
 
 
-def blob_log(image, min_sigma: float = 1.0, max_sigma: float = 50.0,
-             num_sigma: int = 10, threshold: float = 0.2, overlap: float = 0.5,
-             log_scale: bool = False):
+def blob_log(
+    image,
+    min_sigma: float = 1.0,
+    max_sigma: float = 50.0,
+    num_sigma: int = 10,
+    threshold: float = 0.2,
+    overlap: float = 0.5,
+    log_scale: bool = False,
+):
     """Find bright round spots by a Laplacian-of-Gaussian scale space.
 
     The exact form of what :func:`blob_dog` approximates: slower, because every
@@ -1238,9 +1231,7 @@ def _blobs_from_cube(cube, sigmas, threshold, overlap, ndim):
     )
     if not len(peaks):
         return np.empty((0, ndim + 1))
-    blobs = np.column_stack(
-        [peaks[:, :ndim].astype(float), sigmas[peaks[:, -1]].astype(float)]
-    )
+    blobs = np.column_stack([peaks[:, :ndim].astype(float), sigmas[peaks[:, -1]].astype(float)])
     return _prune_blobs(blobs, overlap)
 
 
@@ -1249,8 +1240,12 @@ def _blobs_from_cube(cube, sigmas, threshold, overlap, ndim):
 # ---------------------------------------------------------------------------
 
 
-def find_contours(image, level: Optional[float] = None,
-                  fully_connected: str = "low", positive_orientation: str = "low"):
+def find_contours(
+    image,
+    level: float | None = None,
+    fully_connected: str = "low",
+    positive_orientation: str = "low",
+):
     """Trace iso-value contours through ``image`` by marching squares.
 
     This is the way back from a raster to geometry: a segmentation traced into

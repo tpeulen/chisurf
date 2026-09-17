@@ -3,6 +3,7 @@
 The first login caches a token; re-opening mmfdb-admin or the scraper's
 "Add to MMFDB" reuses it without asking for a password again.
 """
+
 from __future__ import annotations
 
 import pytest

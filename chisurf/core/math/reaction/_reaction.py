@@ -23,7 +23,7 @@ same semantics is used automatically.
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, List, Sequence, Tuple
+from collections.abc import Callable, Iterable, Sequence
 
 import numpy as np
 from numpy.random import multinomial
@@ -76,7 +76,6 @@ def _gssa_loop(
     copies the same interpreted code, one of them merely reached through a
     dispatcher. Only one is kept.
     """
-
     l = len(pv_funcs)
     pv = np.zeros(l, dtype=DTYPE)
 
@@ -156,7 +155,7 @@ class Model:
             propensities for each reaction channel.
         """
         # keep legacy attribute names from the Cython implementation
-        self.vn: List[str] = list(vnames)
+        self.vn: list[str] = list(vnames)
         self.rates = np.asarray(rates, dtype=DTYPE)
         self.inits = np.asarray(inits, dtype=DTYPE)
         self.tm = np.asarray(tmat, dtype=DTYPE)
@@ -181,7 +180,6 @@ class Model:
         Only ``method='SSA'`` is currently implemented, matching the
         legacy Cython backend.
         """
-
         res = np.zeros((tmax, self.nvars, reps), dtype=DTYPE)
         tvec = np.arange(tmax, dtype=DTYPE)
         self.res = res
@@ -206,16 +204,14 @@ class Model:
         self.series = res
         self.steps = int(steps)
 
-    def getStats(self) -> Tuple[np.ndarray, np.ndarray, int]:
+    def getStats(self) -> tuple[np.ndarray, np.ndarray, int]:
         """Return ``(time, series, steps)`` as in the original Model."""
-
         if self.res is None:
             raise RuntimeError("Model.run() must be called before getStats().")
         return self.time, self.series, self.steps
 
     def GSSA(self, tmax: int = 50, round: int = 0) -> int:  # noqa: A003 - keep API name
         """Run a single SSA trajectory into the existing ``res`` array."""
-
         if self.res is None:
             raise RuntimeError("Model.run() must be called before GSSA().")
 
@@ -237,17 +233,14 @@ class Model:
         This is a stub kept for API compatibility with the original
         Cython class. It currently raises ``NotImplementedError``.
         """
-
         raise NotImplementedError("Composition-reaction (CR) is not implemented.")
 
 
 def l1(r: np.ndarray, ini: np.ndarray) -> float:
     """Example propensity: bimolecular reaction rate r[0] * x0 * x1."""
-
     return float(r[0] * ini[0] * ini[1])
 
 
 def l2(r: np.ndarray, ini: np.ndarray) -> float:
     """Example propensity: unimolecular decay r[1] * x1."""
-
     return float(r[1] * ini[1])

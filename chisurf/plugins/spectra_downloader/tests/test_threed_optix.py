@@ -1,13 +1,13 @@
-import numpy as np
-import pytest
 from unittest.mock import MagicMock, patch
 
-from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
+import pytest
+
 from chisurf.plugins.spectra_downloader.download.threed_optix import (
-    scrape_product_detail,
     download_threed_optix_to_db,
     parse_wl,
+    scrape_product_detail,
 )
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
 # Sample HTML snippets matching 3DOptix layout
 MOCK_INDEX_HTML = """
@@ -63,9 +63,11 @@ MOCK_DETAIL_HTML = """
 </html>
 """
 
+
 @pytest.fixture
 def db():
     return FluorophoreDatabase(":memory:")
+
 
 def test_parse_wl():
     assert parse_wl("325 nm") == 325.0
@@ -73,8 +75,6 @@ def test_parse_wl():
     assert parse_wl("1200") == 1200.0
     assert parse_wl("") is None
     assert parse_wl(None) is None
-
-
 
 
 def test_scrape_product_detail():
@@ -89,6 +89,7 @@ def test_scrape_product_detail():
         assert res["coating"] == "Opt RSF-325RU"
         assert res["properties"]["Cut On Frequency"] == "325 nm"
         assert res["material"]["Name"] == "UVFS"
+
 
 def test_download_threed_optix_to_db(db):
     with patch("requests.get") as mock_get:
@@ -123,6 +124,3 @@ def test_download_threed_optix_to_db(db):
         assert props.get("Subtype") == "Longpass Filter"
         assert props.get("Cut On Frequency") == "325 nm"
         assert props.get("Material Name") == "UVFS"
-        
-
-

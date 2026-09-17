@@ -23,7 +23,6 @@ from typing import Any
 # and its error reads like a missing dependency rather than an ordering
 # problem. Establishing the binding here means no game has to remember.
 import qtpy.QtWidgets  # noqa: F401
-
 import wgpu
 
 #: Texture format requested when a context cannot state a preference.

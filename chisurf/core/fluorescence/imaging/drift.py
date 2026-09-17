@@ -15,7 +15,7 @@ assumes pure translation: no rotation, no scaling.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -51,7 +51,7 @@ def _reference_stack(images: np.ndarray, reference: str) -> np.ndarray:
     raise ValueError(f"unknown reference {reference!r}; expected one of {REFERENCES}")
 
 
-def _peak_shift(correlation: np.ndarray, subpixel: bool) -> Tuple[float, float]:
+def _peak_shift(correlation: np.ndarray, subpixel: bool) -> tuple[float, float]:
     """Return the ``(dy, dx)`` offset of the correlation peak from the centre.
 
     Parameters
@@ -169,9 +169,7 @@ def estimate_drift(
     for k in range(first, n_frames):
         a = refs[k] - refs[k].mean()
         b = stack[k] - stack[k].mean()
-        corr = np.fft.fftshift(
-            np.real(np.fft.ifft2(np.fft.fft2(a) * np.conj(np.fft.fft2(b))))
-        )
+        corr = np.fft.fftshift(np.real(np.fft.ifft2(np.fft.fft2(a) * np.conj(np.fft.fft2(b)))))
         if gaussian_filter is not None:
             # Wrap, not the default reflect: an FFT cross-correlation is
             # *circular*, so the lag axis has no edge — index 0 and index n-1
@@ -238,9 +236,7 @@ def apply_drift(
     if stack.ndim != 3:
         raise ValueError(f"drift correction needs a (n_frames, ny, nx) stack; got {stack.shape}")
     if sh.shape != (stack.shape[0], 2):
-        raise ValueError(
-            f"shifts must be ({stack.shape[0]}, 2) to match the stack; got {sh.shape}"
-        )
+        raise ValueError(f"shifts must be ({stack.shape[0]}, 2) to match the stack; got {sh.shape}")
     if mode not in ("wrap", "constant"):
         raise ValueError(f"unknown mode {mode!r}; expected 'wrap' or 'constant'")
 
@@ -257,7 +253,7 @@ def apply_drift(
             sy0, sy1 = max(0, -iy), min(ny, ny - iy)
             sx0, sx1 = max(0, -ix), min(nx, nx - ix)
             if sy1 > sy0 and sx1 > sx0:
-                frame[sy0 + iy:sy1 + iy, sx0 + ix:sx1 + ix] = stack[k, sy0:sy1, sx0:sx1]
+                frame[sy0 + iy : sy1 + iy, sx0 + ix : sx1 + ix] = stack[k, sy0:sy1, sx0:sx1]
             out[k] = frame
     return out
 
@@ -270,7 +266,7 @@ def correct_drift(
     subpixel: bool = False,
     mode: str = "wrap",
     cval: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Estimate and remove inter-frame drift in one step.
 
     Parameters
@@ -290,9 +286,7 @@ def correct_drift(
         than the beam waist means the long frame lags were compromised before
         correction.
     """
-    shifts = estimate_drift(
-        images, reference=reference, roi=roi, smooth=smooth, subpixel=subpixel
-    )
+    shifts = estimate_drift(images, reference=reference, roi=roi, smooth=smooth, subpixel=subpixel)
     return apply_drift(images, shifts, mode=mode, cval=cval), shifts
 
 
@@ -346,7 +340,7 @@ def clsm_transform_pairs(
     cols = np.arange(n_pixels)
     grid_y, grid_x = np.meshgrid(rows, cols, indexing="ij")
 
-    pairs: List[np.ndarray] = []
+    pairs: list[np.ndarray] = []
     for f in range(n_frames):
         dy, dx = int(round(-sh[f, 0])), int(round(-sh[f, 1]))
         ty, tx = grid_y + dy, grid_x + dx
@@ -368,7 +362,7 @@ def clsm_transform_pairs(
 
 def correct_clsm_drift(
     clsm,
-    channel_image: Optional[np.ndarray] = None,
+    channel_image: np.ndarray | None = None,
     reference: str = "first",
     roi=None,
     smooth: float = 2.0,
@@ -412,8 +406,11 @@ def correct_clsm_drift(
         )
 
     shifts = estimate_drift(
-        source.astype(float), reference=reference, roi=roi,
-        smooth=smooth, subpixel=subpixel,
+        source.astype(float),
+        reference=reference,
+        roi=roi,
+        smooth=smooth,
+        subpixel=subpixel,
     )
     pairs = clsm_transform_pairs((n_frames, n_lines, n_pixels), shifts, mode=mode)
     if pairs.size:

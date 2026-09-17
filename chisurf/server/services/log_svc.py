@@ -6,7 +6,6 @@ from typing import Any
 from chisurf.server.services import INVALID_INPUT, ServiceResult, service_error
 from chisurf.server.session import SessionState
 
-
 _LEVELS = {
     "debug": logging.DEBUG,
     "info": logging.INFO,

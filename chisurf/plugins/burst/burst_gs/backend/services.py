@@ -33,13 +33,14 @@ def _bursts_from_params(params: dict) -> gs.PhotonBursts:
         offsets = np.asarray(offsets, dtype=np.int64)
         flat_t = np.asarray(times, dtype=np.float64)
         flat_c = np.asarray(colors, dtype=np.int32)
-        per_burst_t = [flat_t[offsets[i]:offsets[i + 1]] for i in range(offsets.size - 1)]
-        per_burst_c = [flat_c[offsets[i]:offsets[i + 1]] for i in range(offsets.size - 1)]
+        per_burst_t = [flat_t[offsets[i] : offsets[i + 1]] for i in range(offsets.size - 1)]
+        per_burst_c = [flat_c[offsets[i] : offsets[i + 1]] for i in range(offsets.size - 1)]
     else:
         per_burst_t = [np.asarray(t, dtype=np.float64) for t in times]
         per_burst_c = [np.asarray(c, dtype=np.int32) for c in colors]
     return gs.PhotonBursts.from_lists(
-        per_burst_t, per_burst_c,
+        per_burst_t,
+        per_burst_c,
         n_colors=None if n_colors is None else int(n_colors),
         min_photons=int(params.get("min_photons", 2)),
     )

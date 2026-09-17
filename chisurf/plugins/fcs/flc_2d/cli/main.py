@@ -41,8 +41,12 @@ def metadata(tttr_file: str, routing: tuple[int, ...], output: str | None) -> No
 @cli.command("lifetime")
 @click.argument("tttr_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--routing", type=int, multiple=True, help="Routing channel to keep. Repeatable.")
-@click.option("--tau-min", default=0.3, show_default=True, type=float, help="Minimum lifetime in ns.")
-@click.option("--tau-max", default=8.0, show_default=True, type=float, help="Maximum lifetime in ns.")
+@click.option(
+    "--tau-min", default=0.3, show_default=True, type=float, help="Minimum lifetime in ns."
+)
+@click.option(
+    "--tau-max", default=8.0, show_default=True, type=float, help="Maximum lifetime in ns."
+)
 @click.option("--components", default=40, show_default=True, type=int, help="Lifetime grid size.")
 @click.option(
     "--method",

@@ -93,9 +93,7 @@ def clip_names(name: str) -> tuple[str, ...]:
     handle = archive(name)
     if handle is None:
         return ()
-    return tuple(sorted(
-        entry[:-4] for entry in handle.namelist() if entry.endswith(".snd")
-    ))
+    return tuple(sorted(entry[:-4] for entry in handle.namelist() if entry.endswith(".snd")))
 
 
 @functools.lru_cache(maxsize=64)
@@ -158,7 +156,7 @@ def _harmonics(shape: str, freq: float) -> list[tuple[int, float]]:
             k = 2 * index + 1
             if k * freq >= limit:
                 break
-            parts.append((k, (-1.0) ** index * 8.0 / (math.pi ** 2) / (k * k)))
+            parts.append((k, (-1.0) ** index * 8.0 / (math.pi**2) / (k * k)))
         return parts
     if shape in ("square", "pulse"):
         span = 9 if shape == "square" else 7
@@ -177,8 +175,9 @@ def _harmonics(shape: str, freq: float) -> list[tuple[int, float]]:
     return [(1, 1.0)]
 
 
-def _tone(shape: str, freq: float, count: int, vibrato: float = 0.0,
-          detune: float = 0.0) -> np.ndarray:
+def _tone(
+    shape: str, freq: float, count: int, vibrato: float = 0.0, detune: float = 0.0
+) -> np.ndarray:
     """One note's raw waveform.
 
     Parameters
@@ -224,8 +223,13 @@ def _tone(shape: str, freq: float, count: int, vibrato: float = 0.0,
     return out
 
 
-def _adsr(count: int, attack: float = 0.010, decay: float = 0.10,
-          sustain: float = 0.70, release: float = 0.14) -> np.ndarray:
+def _adsr(
+    count: int,
+    attack: float = 0.010,
+    decay: float = 0.10,
+    sustain: float = 0.70,
+    release: float = 0.14,
+) -> np.ndarray:
     """Amplitude envelope for one note.
 
     Parameters
@@ -250,10 +254,10 @@ def _adsr(count: int, attack: float = 0.010, decay: float = 0.10,
         env[:rise] = np.linspace(0.0, 1.0, rise)
     fall = min(int(decay * SAMPLE_RATE), count - rise)
     if fall > 0:
-        env[rise:rise + fall] = np.linspace(1.0, sustain, fall)
+        env[rise : rise + fall] = np.linspace(1.0, sustain, fall)
     tail = min(int(release * SAMPLE_RATE), count)
     if tail > 0:
-        env[count - tail:] *= np.linspace(1.0, 0.0, tail) ** 1.5
+        env[count - tail :] *= np.linspace(1.0, 0.0, tail) ** 1.5
     return env
 
 
@@ -270,7 +274,7 @@ def _drum(kind: str) -> np.ndarray:
     numpy.ndarray
         Samples. Empty for anything else, so a pattern may use ``-`` freely.
     """
-    rng = np.random.default_rng(abs(hash(kind)) % (2 ** 31))
+    rng = np.random.default_rng(abs(hash(kind)) % (2**31))
     if kind == "k":
         count = int(0.16 * SAMPLE_RATE)
         time = np.arange(count) / SAMPLE_RATE
@@ -337,8 +341,7 @@ def _notes(entries) -> list[tuple[float | None, float]]:
         if entry is None:
             parsed.append((None, 1.0))
         elif isinstance(entry, (list, tuple)):
-            parsed.append((None if entry[0] is None else float(entry[0]),
-                           float(entry[1])))
+            parsed.append((None if entry[0] is None else float(entry[0]), float(entry[1])))
         else:
             parsed.append((float(entry), 1.0))
     return parsed
@@ -380,7 +383,7 @@ def _render_voice(voice: dict, root: float, eighth: int, total: int) -> np.ndarr
             count = min(sounding, total - cursor)
             freq = root * (2.0 ** ((semitone + octave) / 12.0))
             wave_ = _tone(shape, freq, count, vibrato=vibrato, detune=detune)
-            out[cursor:cursor + count] += gain * wave_ * _adsr(count, sustain=sustain)
+            out[cursor : cursor + count] += gain * wave_ * _adsr(count, sustain=sustain)
         cursor += span
     return out
 
@@ -416,7 +419,7 @@ def _render_drums(pattern: str, eighth: int, total: int, gain: float) -> np.ndar
         at = step * eighth
         count = min(hit.size, total - at)
         if count > 0:
-            out[at:at + count] += gain * hit[:count]
+            out[at : at + count] += gain * hit[:count]
     return out
 
 
@@ -465,10 +468,12 @@ def render_track(track: dict) -> bytes:
     eighth = max(1, int(SAMPLE_RATE * 30.0 / max(tempo, 1.0)))
 
     voices: list[dict] = []
-    for name, default in (("pad", {"wave": "sine", "gain": 0.10, "octave": -1}),
-                          ("bass", {"wave": "triangle", "gain": 0.26, "octave": -1}),
-                          ("harmony", {"wave": "triangle", "gain": 0.12}),
-                          ("melody", {"wave": "triangle", "gain": 0.30})):
+    for name, default in (
+        ("pad", {"wave": "sine", "gain": 0.10, "octave": -1}),
+        ("bass", {"wave": "triangle", "gain": 0.26, "octave": -1}),
+        ("harmony", {"wave": "triangle", "gain": 0.12}),
+        ("melody", {"wave": "triangle", "gain": 0.30}),
+    ):
         entry = track.get(name)
         if entry is None:
             continue
@@ -512,8 +517,9 @@ def render_track(track: dict) -> bytes:
     return (np.clip(mix, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
 
 
-def render_blip(frequency: float, duration: float, shape: str = "triangle",
-                bend: float = 0.0) -> bytes:
+def render_blip(
+    frequency: float, duration: float, shape: str = "triangle", bend: float = 0.0
+) -> bytes:
     """Synthesise a short sound effect.
 
     Parameters
@@ -540,8 +546,9 @@ def render_blip(frequency: float, duration: float, shape: str = "triangle",
     wave_ = np.zeros(count)
     for number, amplitude in _harmonics(shape, float(np.max(sweep))):
         wave_ += amplitude * np.sin(2.0 * math.pi * number * phase)
-    envelope = _adsr(count, attack=0.004, decay=duration * 0.35,
-                     sustain=0.35, release=duration * 0.5)
+    envelope = _adsr(
+        count, attack=0.004, decay=duration * 0.35, sustain=0.35, release=duration * 0.5
+    )
     out = 0.34 * wave_ * envelope
     return (np.clip(out, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
 
@@ -697,9 +704,10 @@ class Audio:
             self._music = None
         if track is None:
             return
-        key = "music-" + hashlib.sha256(
-            json.dumps(track, sort_keys=True).encode("utf-8")
-        ).hexdigest()[:16]
+        key = (
+            "music-"
+            + hashlib.sha256(json.dumps(track, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        )
         # A track that names a shipped clip is stored at the clip's own rate,
         # not the synthesiser's; a WAV that lies about its rate plays at the
         # wrong pitch and at the wrong speed.
@@ -709,14 +717,14 @@ class Audio:
             found = clip(str(recorded), "music")
             if found is not None:
                 rate = found[1]
-        effect = self._load(key, render_track(track), bool(track.get("loop", True)),
-                            rate)
+        effect = self._load(key, render_track(track), bool(track.get("loop", True)), rate)
         if effect is not None:
             effect.play()
             self._music = effect
 
-    def sfx(self, name: str, frequency: float = 660.0, duration: float = 0.08,
-            bend: float = 0.0) -> None:
+    def sfx(
+        self, name: str, frequency: float = 660.0, duration: float = 0.08, bend: float = 0.0
+    ) -> None:
         """Play a short sound effect.
 
         Parameters
@@ -744,8 +752,9 @@ class Audio:
         if found is not None:
             effect = self._load(f"sfx-{name}", found[0], loop=False, rate=found[1])
         else:
-            effect = self._load(f"sfx-{name}", render_blip(frequency, duration, bend=bend),
-                                loop=False)
+            effect = self._load(
+                f"sfx-{name}", render_blip(frequency, duration, bend=bend), loop=False
+            )
         if effect is not None:
             effect.play()
 

@@ -20,20 +20,39 @@ pytest.importorskip("IMP.bff")
 from chisurf.core.fluorescence.fret import fret_line as FL
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 
-REFERENCE = json.loads((pathlib.Path(__file__).parent / "data" / "fret_line_classic_reference.json").read_text())
+REFERENCE = json.loads(
+    (pathlib.Path(__file__).parent / "data" / "fret_line_classic_reference.json").read_text()
+)
 
 #: The classic tool's parameter names, as the reference records them, and what they are now.
-CLASSIC = {"R(G,1)": "distance.mean.0", "R(G,2)": "distance.mean.1", "x(G,2)": "distance.amplitude.1",
-           "s(G,1)": "distance.sigma.0", "s(G,2)": "distance.sigma.1", "xDOnly": "fret.x_donly",
-           "R(d,1)": "distance.mean.0", "R(d,2)": "distance.mean.1", "x(d,2)": "distance.amplitude.1",
-           "l": "chain.contour_length", "tL1": "lifetime.tau.0"}
-FAMILY = {"FRET: FD (Gaussian)": "tcspc_fret_gaussian", "FRET: FD (Worm-like chain)": "tcspc_fret_worm_like_chain",
-          "FRET: FD (Discrete)": "tcspc_fret_discrete", "Lifetime": "tcspc_lifetime"}
+CLASSIC = {
+    "R(G,1)": "distance.mean.0",
+    "R(G,2)": "distance.mean.1",
+    "x(G,2)": "distance.amplitude.1",
+    "s(G,1)": "distance.sigma.0",
+    "s(G,2)": "distance.sigma.1",
+    "xDOnly": "fret.x_donly",
+    "R(d,1)": "distance.mean.0",
+    "R(d,2)": "distance.mean.1",
+    "x(d,2)": "distance.amplitude.1",
+    "l": "chain.contour_length",
+    "tL1": "lifetime.tau.0",
+}
+FAMILY = {
+    "FRET: FD (Gaussian)": "tcspc_fret_gaussian",
+    "FRET: FD (Worm-like chain)": "tcspc_fret_worm_like_chain",
+    "FRET: FD (Discrete)": "tcspc_fret_discrete",
+    "Lifetime": "tcspc_lifetime",
+}
 
 
 def _gaussian_line(n_points=20, parameter_range=(20.0, 100.0)):
-    fl = FL.FRETLineGenerator("tcspc_fret_gaussian", n_points=n_points, parameter_range=parameter_range,
-                              parameter_name="distance.mean.0")
+    fl = FL.FRETLineGenerator(
+        "tcspc_fret_gaussian",
+        n_points=n_points,
+        parameter_range=parameter_range,
+        parameter_name="distance.mean.0",
+    )
     fl.parameter("fret.x_donly").value = 0.0
     fl.parameter("distance.mean.0").value = 55.0
     fl.parameter("distance.sigma.0").value = 10.0
@@ -68,7 +87,9 @@ def test_the_classic_fret_line_tool_is_reproduced(case):
     # The classic mixer kept a fraction off zero at the sweep's ends: a few parts in 1e9 there.
     rtol = 1e-7 if len(views) > 1 else 1e-12
     for quantity in ("tau_x", "tau_f", "e_fret"):
-        np.testing.assert_allclose(got[quantity], REFERENCE[case]["result"][quantity], rtol=rtol, err_msg=quantity)
+        np.testing.assert_allclose(
+            got[quantity], REFERENCE[case]["result"][quantity], rtol=rtol, err_msg=quantity
+        )
 
 
 def test_lifetime_averages_obey_their_inequality():
@@ -121,17 +142,33 @@ def test_static_line_matches_the_analytic_line():
     fl = FL.StaticFRETLine(n_points=40, parameter_range=(20.0, 120.0))
     fl.update()
     tau_d0 = fl.donor_species_averaged_lifetime
-    analytic = static_fret_line(tau_d0, r0=fl.parameter("fret.forster_radius").value, sigma=fl.sigma,
-                                distance_range=(10.0, 200.0), n_points=400)
-    inside = (fl.fluorescence_averaged_lifetimes > 0.2) & (fl.fluorescence_averaged_lifetimes < 0.95 * tau_d0)
+    analytic = static_fret_line(
+        tau_d0,
+        r0=fl.parameter("fret.forster_radius").value,
+        sigma=fl.sigma,
+        distance_range=(10.0, 200.0),
+        n_points=400,
+    )
+    inside = (fl.fluorescence_averaged_lifetimes > 0.2) & (
+        fl.fluorescence_averaged_lifetimes < 0.95 * tau_d0
+    )
     assert inside.any()
-    difference = np.abs(fl.fret_efficiencies[inside] - analytic.efficiency_at(fl.fluorescence_averaged_lifetimes[inside]))
+    difference = np.abs(
+        fl.fret_efficiencies[inside]
+        - analytic.efficiency_at(fl.fluorescence_averaged_lifetimes[inside])
+    )
     assert float(np.max(difference)) < 0.02
 
 
 def test_dynamic_line_lies_between_its_two_states():
-    fl = FL.DynamicFRETLine(distance_1=40.0, distance_2=80.0, sigma_1=6.0, sigma_2=6.0,
-                            n_points=20, parameter_range=(0.0, 10.0))
+    fl = FL.DynamicFRETLine(
+        distance_1=40.0,
+        distance_2=80.0,
+        sigma_1=6.0,
+        sigma_2=6.0,
+        n_points=20,
+        parameter_range=(0.0, 10.0),
+    )
     assert fl.sigma == (6.0, 6.0)
     fl.update()
     tau_x = fl.species_averaged_lifetimes

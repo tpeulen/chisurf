@@ -4,12 +4,11 @@ from types import MethodType
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
-
+from chimol.core.viewer import Viewer
 from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-from chimol.core.viewer import Viewer
+from qtpy import QtWidgets
 
 
 @pytest.fixture
@@ -83,13 +82,7 @@ def test_add_sphere_returns_key_string(qt_app):
 def test_generate_surface_mesh_from_points_for_av_cloud():
     grid = np.linspace(-2.0, 2.0, 9)
     coords = np.array(
-        [
-            [x, y, z]
-            for x in grid
-            for y in grid
-            for z in grid
-            if x * x + y * y + z * z <= 4.0
-        ],
+        [[x, y, z] for x in grid for y in grid for z in grid if x * x + y * y + z * z <= 4.0],
         dtype=float,
     )
 
@@ -133,13 +126,7 @@ def test_add_surface_overlay_builds_mesh_scene_object():
 
     grid = np.linspace(-1.5, 1.5, 7)
     coords = np.array(
-        [
-            [x, y, z]
-            for x in grid
-            for y in grid
-            for z in grid
-            if x * x + y * y + z * z <= 2.25
-        ],
+        [[x, y, z] for x in grid for y in grid for z in grid if x * x + y * y + z * z <= 2.25],
         dtype=float,
     )
     Viewer.add_surface_overlay(

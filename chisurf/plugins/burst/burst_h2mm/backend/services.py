@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 def register_services(dispatcher: Any) -> None:
     """Register H2MM RPC handlers with a ServiceDispatcher."""
     dispatcher.register(METHOD_COMPUTE, lambda params: compute_handler(**(params or {})))
-    dispatcher.register(METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {})))
+    dispatcher.register(
+        METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {}))
+    )
     dispatcher.register(METHOD_DESCRIBE_CONTRACT, lambda params: contract_handler(**(params or {})))
 
 
@@ -103,7 +105,9 @@ def run_analysis(
         for s in settings.streams
     ]
     data, meta = bursts_from_dataframe(
-        df, tttrs, stream_defs,
+        df,
+        tttrs,
+        stream_defs,
         time_scale=int(settings.time_scale),
         min_photons=int(settings.min_photons),
         return_meta=True,
@@ -122,7 +126,9 @@ def run_analysis(
                 "H2MM: %d unique inter-photon Δt (time_scale=%d) — each EM map "
                 "rebuilds that many propagators, so fits will be slow. Increase "
                 "'Macro-time scale' (e.g. to %d) to speed up ~%.0fx.",
-                n_slots, int(settings.time_scale), int(settings.time_scale) * 100,
+                n_slots,
+                int(settings.time_scale),
+                int(settings.time_scale) * 100,
                 n_slots / 3000.0,
             )
         except Exception:
@@ -217,13 +223,16 @@ def _write_state_tttr(result, bundle, out_dir, burst_df, burst_rows) -> None:
     tttrs = getattr(bundle, "tttrs", None)
     meta = getattr(bundle, "meta", None)
     if not tttrs or meta is None or burst_rows is None or burst_df is None:
-        logger.warning("state TTTR output requested but the source photons are "
-                       "not available - skipped")
+        logger.warning(
+            "state TTTR output requested but the source photons are not available - skipped"
+        )
         return
     if "First File" not in column_names(burst_df):
-        logger.warning("state TTTR output needs the burst table's 'First File' "
-                       "column to know which measurement each photon came from "
-                       "- skipped")
+        logger.warning(
+            "state TTTR output needs the burst table's 'First File' "
+            "column to know which measurement each photon came from "
+            "- skipped"
+        )
         return
 
     from ..core.state_tttr import write_state_tttr
@@ -231,8 +240,12 @@ def _write_state_tttr(result, bundle, out_dir, burst_df, burst_rows) -> None:
     ana = bundle.analysis
     try:
         written = write_state_tttr(
-            meta, ana.path, np.asarray(bundle.data.streams), tttrs,
-            burst_rows, list(np.asarray(burst_df["First File"]).astype(str)),
+            meta,
+            ana.path,
+            np.asarray(bundle.data.streams),
+            tttrs,
+            burst_rows,
+            list(np.asarray(burst_df["First File"]).astype(str)),
             out_dir,
             model=ana.best.model,
             decoder=str(getattr(ana, "decoder", "viterbi")),
@@ -279,8 +292,11 @@ def write_result_tables(
     # ndX tables -- it answers a different need and must not be skipped just
     # because the per-photon table was turned off.
     _write_state_tttr(
-        result, bundle, out_dir,
-        getattr(bundle, "burst_df", None), getattr(meta, "burst_rows", None),
+        result,
+        bundle,
+        out_dir,
+        getattr(bundle, "burst_df", None),
+        getattr(meta, "burst_rows", None),
     )
 
     if meta is None or not getattr(bundle.settings, "write_photons", True):
@@ -303,7 +319,11 @@ def write_result_tables(
         result.output_paths.setdefault("sources", ",".join(source_names))
 
     tables = build_tables(
-        bundle.data, meta, ana.path, ana.fret, ana.base_time_s,
+        bundle.data,
+        meta,
+        ana.path,
+        ana.fret,
+        ana.base_time_s,
         stream_groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
         burst_sources=burst_sources,
@@ -325,15 +345,16 @@ def write_result_tables(
         except Exception:  # pragma: no cover - pytables optional
             want_csv = True
     if want_csv:
-        result.output_paths["photons_csv"] = write_csv(
-            tables.photons, out_dir / "h2mm_photons.csv"
-        )
+        result.output_paths["photons_csv"] = write_csv(tables.photons, out_dir / "h2mm_photons.csv")
     result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
 
     # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
     # (min photons, drop burst-edge dwells, select by state/duration).
     dwells_df = build_dwell_table(
-        bundle.data, meta, ana.dwells, ana.base_time_s,
+        bundle.data,
+        meta,
+        ana.dwells,
+        ana.base_time_s,
         stream_groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
     )
@@ -343,8 +364,12 @@ def write_result_tables(
     # detection colour, so this is written at the finest meaningful key --
     # (state, stream, routing channel) -- and merged upwards by the reader.
     decays = state_decays(
-        meta.micro_time, meta.channel, bundle.data.streams, ana.path,
-        n_states=int(ana.fret.shape[0]), groups=stream_groups,
+        meta.micro_time,
+        meta.channel,
+        bundle.data.streams,
+        ana.path,
+        n_states=int(ana.fret.shape[0]),
+        groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
     )
     result.output_paths["state_decays_csv"] = write_csv(
@@ -356,8 +381,12 @@ def write_result_tables(
     # bursts can be gated on it. Written to the *analysis* folder, not this
     # output folder: that is where the .bur files and their bv4/2c4 siblings are.
     companions = write_burst_companions(
-        getattr(bundle, "burst_df", None), getattr(meta, "burst_rows", None),
-        bundle.data, ana.path, ana.fret, pathlib.Path(out_dir).parent,
+        getattr(bundle, "burst_df", None),
+        getattr(meta, "burst_rows", None),
+        bundle.data,
+        ana.path,
+        ana.fret,
+        pathlib.Path(out_dir).parent,
     )
     for target in companions:
         result.output_paths[f"companion_{target.stem}"] = str(target)

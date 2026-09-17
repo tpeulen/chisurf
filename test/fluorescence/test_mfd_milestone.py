@@ -73,9 +73,7 @@ def data():
     """Return the measurement, loaded once."""
     return load_mfd_data(
         ANALYSIS,
-        axes=HistogramAxes.default(
-            n_ratio=60, n_micro_time=60, micro_time_range=(2.0, 8.0)
-        ),
+        axes=HistogramAxes.default(n_ratio=60, n_micro_time=60, micro_time_range=(2.0, 8.0)),
         min_green_photons=20,
     )
 
@@ -163,20 +161,14 @@ def test_both_populations_sit_where_the_data_puts_them(marginals):
     """The cloud's position, on both axes and for both populations."""
     donor = marginals["donor_only"]
     fret = marginals["fret"]
-    assert donor["ratio"]["model"][0] == pytest.approx(
-        donor["ratio"]["data"][0], abs=0.01
-    )
+    assert donor["ratio"]["model"][0] == pytest.approx(donor["ratio"]["data"][0], abs=0.01)
     assert fret["ratio"]["model"][0] == pytest.approx(fret["ratio"]["data"][0], abs=0.02)
     # The lifetime axis separates the two populations the right way round: the
     # donor-only molecules are unquenched, so they arrive later.
     assert donor["micro_time"]["data"][0] > fret["micro_time"]["data"][0] + 0.5
     assert donor["micro_time"]["model"][0] > fret["micro_time"]["model"][0] + 0.5
-    assert donor["micro_time"]["model"][0] == pytest.approx(
-        donor["micro_time"]["data"][0], abs=0.2
-    )
-    assert fret["micro_time"]["model"][0] == pytest.approx(
-        fret["micro_time"]["data"][0], abs=0.25
-    )
+    assert donor["micro_time"]["model"][0] == pytest.approx(donor["micro_time"]["data"][0], abs=0.2)
+    assert fret["micro_time"]["model"][0] == pytest.approx(fret["micro_time"]["data"][0], abs=0.25)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

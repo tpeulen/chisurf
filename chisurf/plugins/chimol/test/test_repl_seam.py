@@ -13,12 +13,12 @@ that usually rots: that a host *can* take the decision over, and that the
 answer chimol gives when nobody does is the **real rule** rather than a stub
 that quietly routes everything one way.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from chimol import repl
 
 
@@ -147,7 +147,7 @@ def test_an_unfinished_block_is_neither_language_yet():
 
 
 def test_the_builtin_rule_needs_nothing_but_the_standard_library():
-    """chimol runs where there is no ChiSurf, so the fallback must be portable.
+    """Chimol runs where there is no ChiSurf, so the fallback must be portable.
 
     Checked as an import graph rather than by reading: the point is that the
     module a browser build ships cannot reach ChiSurf or a toolkit.
@@ -211,11 +211,9 @@ def test_the_fallback_agrees_with_the_console_it_stands_in_for():
     ns = {"viewer": object(), "objects": []}
     mine = repl.router()
     disagreements = [
-        (line, mine.is_command(line, namespace=ns),
-         dispatch.is_command(line, namespace=ns))
+        (line, mine.is_command(line, namespace=ns), dispatch.is_command(line, namespace=ns))
         for line in _CORPUS
-        if mine.is_command(line, namespace=ns)
-        is not dispatch.is_command(line, namespace=ns)
+        if mine.is_command(line, namespace=ns) is not dispatch.is_command(line, namespace=ns)
     ]
     assert not disagreements, (
         "chimol's built-in router and ChiSurf's console disagree about "
@@ -229,13 +227,12 @@ def test_the_fallback_agrees_about_unfinished_blocks():
 
     mine = repl.router()
     disagreements = [
-        line for line in _CORPUS
-        if mine.is_incomplete_python(line)
-        is not dispatch.is_incomplete_python(line)
+        line
+        for line in _CORPUS
+        if mine.is_incomplete_python(line) is not dispatch.is_incomplete_python(line)
     ]
-    assert not disagreements, (
-        "the two routers disagree about which lines are unfinished: "
-        + repr(disagreements)
+    assert not disagreements, "the two routers disagree about which lines are unfinished: " + repr(
+        disagreements
     )
 
 

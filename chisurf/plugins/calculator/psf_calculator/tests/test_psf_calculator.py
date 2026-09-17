@@ -5,6 +5,7 @@ is that this plugin computes something physically sane, writes files another
 program can actually read, and ships the guide and help the plugin standard
 requires.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,7 +83,7 @@ def test_fwhm_interpolates_between_samples():
     sigma = true_fwhm / 2.3548200450309493
     for step in (30.0, 10.0, 3.0):
         x = np.arange(-40, 41) * step
-        measured = PSFModel._fwhm(np.exp(-(x ** 2) / (2 * sigma ** 2)), step)
+        measured = PSFModel._fwhm(np.exp(-(x**2) / (2 * sigma**2)), step)
         assert measured == pytest.approx(true_fwhm, rel=0.01), step
 
 
@@ -152,8 +153,7 @@ def test_guide_points_at_real_attributes():
     missing = [
         step["title"]
         for step in steps
-        if (step.get("target") or {}).get("attr")
-        and step["target"]["attr"] not in bound
+        if (step.get("target") or {}).get("attr") and step["target"]["attr"] not in bound
     ]
     assert not missing, f"guide steps target unbound attributes: {missing}"
 

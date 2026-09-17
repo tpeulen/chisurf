@@ -5,7 +5,6 @@ import sys
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf as cs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.syntax import (
     JSONHighlighter,
@@ -51,7 +50,7 @@ __all__ = [
 class FindBar(QtWidgets.QWidget):
     """Notepad++-style find bar floating at the bottom of the editor viewport."""
 
-    def __init__(self, editor: "TextEditor") -> None:
+    def __init__(self, editor: TextEditor) -> None:
         super().__init__(editor.viewport())
         self._editor = editor
         self._matches: list[tuple[int, int]] = []
@@ -220,9 +219,7 @@ class FindBar(QtWidgets.QWidget):
 
         self._set_input_state("found")
         cursor_pos = self._editor.textCursor().position()
-        self._current = next(
-            (i for i, (s, _) in enumerate(self._matches) if s >= cursor_pos), 0
-        )
+        self._current = next((i for i, (s, _) in enumerate(self._matches) if s >= cursor_pos), 0)
         self._select_current()
 
     def _build_selections(self, current: int) -> list:
@@ -298,17 +295,17 @@ class TextEditor(QtWidgets.QPlainTextEdit):
     definitionRequested = QtCore.Signal(str, int, int)
 
     def __init__(
-            self,
-            parent=None,
-            font_family: str = None,
-            font_point_size: float = None,
-            margins_background_color: str = None,
-            marker_background_color: str = None,
-            caret_line_background_color: str = None,
-            caret_line_visible: bool = None,
-            line_numbers_visible: bool = None,
-            language: str = None,
-            **kwargs
+        self,
+        parent=None,
+        font_family: str = None,
+        font_point_size: float = None,
+        margins_background_color: str = None,
+        marker_background_color: str = None,
+        caret_line_background_color: str = None,
+        caret_line_visible: bool = None,
+        line_numbers_visible: bool = None,
+        language: str = None,
+        **kwargs,
     ):
         """
         Initialize the text editor.
@@ -407,7 +404,7 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         self._find_bar = FindBar(self)
         for key, slot in [
             ("Ctrl+F", self._find_bar.open_bar),
-            ("F3",      self._find_bar.find_next),
+            ("F3", self._find_bar.find_next),
             ("Shift+F3", self._find_bar.find_prev),
         ]:
             sc = QtWidgets.QShortcut(QtGui.QKeySequence(key), self)
@@ -504,7 +501,7 @@ class TextEditor(QtWidgets.QPlainTextEdit):
             max_num //= 10
             digits += 1
 
-        space = 10 + self.fontMetrics().horizontalAdvance('9') * digits
+        space = 10 + self.fontMetrics().horizontalAdvance("9") * digits
         return space
 
     def update_line_number_area_width(self, _):
@@ -533,8 +530,8 @@ class TextEditor(QtWidgets.QPlainTextEdit):
     def line_number_area_paint_event(self, event):
         """Paint the line number area."""
         painter = QtGui.QPainter(self.line_number_area)
-        bg_color = QtGui.QColor('green')
-        text_color = QtGui.QColor('white')
+        bg_color = QtGui.QColor("green")
+        text_color = QtGui.QColor("white")
         painter.fillRect(event.rect(), bg_color)
 
         block = self.firstVisibleBlock()
@@ -613,7 +610,7 @@ class TextEditor(QtWidgets.QPlainTextEdit):
             line_number = self.textCursor().blockNumber()
 
         if self._nav_index < len(self._nav_history) - 1:
-            self._nav_history = self._nav_history[:self._nav_index + 1]
+            self._nav_history = self._nav_history[: self._nav_index + 1]
 
         if self._nav_history and self._nav_history[-1] == (file_path, line_number):
             return
@@ -639,16 +636,16 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         import re
 
         content = self.toPlainText()
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         imports = []
         for line in lines:
-            m = re.match(r'^\s*import\s+(\S+)', line)
+            m = re.match(r"^\s*import\s+(\S+)", line)
             if m:
-                imports.append(m.group(1).split('.')[0])
-            m = re.match(r'^\s*from\s+(\S+)\s+import', line)
+                imports.append(m.group(1).split(".")[0])
+            m = re.match(r"^\s*from\s+(\S+)\s+import", line)
             if m:
-                imports.append(m.group(1).split('.')[0])
+                imports.append(m.group(1).split(".")[0])
 
         for mod_name in set(imports):
             try:
@@ -720,11 +717,9 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         scheme = settings.get("color_scheme")
         if scheme in EDITOR_COLOR_SCHEMES:
             merged.update(EDITOR_COLOR_SCHEMES[scheme])
-        merged.update({
-            key: value
-            for key, value in settings.items()
-            if key in EDITOR_SETTINGS_KEYS
-        })
+        merged.update(
+            {key: value for key, value in settings.items() if key in EDITOR_SETTINGS_KEYS}
+        )
 
         self._editor_settings = merged
         self.language = normalize_editor_language(merged.get("language"))
@@ -786,8 +781,7 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         opt = self.document().defaultTextOption()
         flags = opt.flags()
         ws_flags = (
-            QtGui.QTextOption.ShowTabsAndSpaces
-            | QtGui.QTextOption.ShowLineAndParagraphSeparators
+            QtGui.QTextOption.ShowTabsAndSpaces | QtGui.QTextOption.ShowLineAndParagraphSeparators
         )
         if self.show_whitespace:
             flags |= ws_flags
@@ -831,14 +825,15 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         self.setPalette(palette)
 
 
-
 def __getattr__(name: str):
     """Lazily expose compatibility imports from split editor modules."""
     if name == "CodeEditor":
         from chisurf.plugins.core.code_editor.editor import CodeEditor
+
         return CodeEditor
     if name == "CodeEditorWindow":
         from chisurf.plugins.core.code_editor.window import CodeEditorWindow
+
         return CodeEditorWindow
     raise AttributeError(name)
 
@@ -846,6 +841,7 @@ def __getattr__(name: str):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     from chisurf.plugins.core.code_editor.window import CodeEditorWindow
+
     editor = CodeEditorWindow()
     editor.show()
     app.exec_()

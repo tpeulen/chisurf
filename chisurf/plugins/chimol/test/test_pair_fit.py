@@ -18,7 +18,11 @@ import pytest
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -34,8 +38,8 @@ def displaced(qapp):
     """A structure and a rigidly displaced copy of it, with a command runner."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -70,9 +74,7 @@ def displaced(qapp):
             [-np.sin(angle), 0.0, np.cos(angle)],
         ]
     )
-    view.apply_transform_to_object(
-        rotation, np.array([150.0, 60.0, -90.0]), object_id=ids["mob"]
-    )
+    view.apply_transform_to_object(rotation, np.array([150.0, 60.0, -90.0]), object_id=ids["mob"])
     return cmd, view, ids, messages, errors
 
 
@@ -81,9 +83,7 @@ def _xyz(view, ids, name) -> np.ndarray:
 
 
 def _rmsd(view, ids) -> float:
-    return float(
-        np.sqrt(((_xyz(view, ids, "ref") - _xyz(view, ids, "mob")) ** 2).sum(1).mean())
-    )
+    return float(np.sqrt(((_xyz(view, ids, "ref") - _xyz(view, ids, "mob")) ** 2).sum(1).mean()))
 
 
 # --------------------------------------------------------------------------- #
@@ -162,9 +162,7 @@ def test_three_selections_are_refused(displaced):
 def test_mismatched_counts_are_refused_with_both_numbers(displaced):
     """Pairs are matched in order, so unequal counts have no meaning."""
     cmd, _, _, _, errors = displaced
-    cmd.do(
-        "pair_fit mob and resi 10-20 and name CA, ref and resi 10-30 and name CA"
-    )
+    cmd.do("pair_fit mob and resi 10-20 and name CA, ref and resi 10-30 and name CA")
     assert errors
     assert "11 atoms" in errors[-1] and "21" in errors[-1]
 

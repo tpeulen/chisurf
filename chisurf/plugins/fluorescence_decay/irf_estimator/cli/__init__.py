@@ -10,12 +10,38 @@ from ..core.estimation import estimate_irf
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False), required=True, help="Path to a VV/VH decay file.")
+@click.option(
+    "--file",
+    "file_path",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="Path to a VV/VH decay file.",
+)
 @click.option("--dt", default=1.0, show_default=True, type=float, help="Time per channel in ns.")
-@click.option("--window-length", default=11, show_default=True, type=int, help="Savitzky-Golay filter window length.")
-@click.option("--polyorder", default=3, show_default=True, type=int, help="Savitzky-Golay polynomial order.")
-@click.option("--rl-iterations", default=500, show_default=True, type=int, help="Richardson-Lucy deconvolution iterations.")
-@click.option("--regularization", default=3, show_default=True, type=int, help="Median filter regularization size.")
+@click.option(
+    "--window-length",
+    default=11,
+    show_default=True,
+    type=int,
+    help="Savitzky-Golay filter window length.",
+)
+@click.option(
+    "--polyorder", default=3, show_default=True, type=int, help="Savitzky-Golay polynomial order."
+)
+@click.option(
+    "--rl-iterations",
+    default=500,
+    show_default=True,
+    type=int,
+    help="Richardson-Lucy deconvolution iterations.",
+)
+@click.option(
+    "--regularization",
+    default=3,
+    show_default=True,
+    type=int,
+    help="Median filter regularization size.",
+)
 @click.option("--output", type=click.Path(dir_okay=False), help="Output path for estimated IRF.")
 def cli(
     file_path: str,

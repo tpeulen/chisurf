@@ -38,7 +38,6 @@ def bva_request_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 def service_success(result: dict[str, Any] | Any) -> dict[str, Any]:
     """Wrap a result in the standard JSON-RPC service envelope."""
-    from .serialization import to_jsonable
     return {"ok": True, "result": to_jsonable(result)}
 
 
@@ -80,9 +79,15 @@ def contract_descriptor() -> dict[str, Any]:
                 "type": "object",
                 "properties": {
                     "donor_channels": {"type": "array", "items": {"type": "integer"}},
-                    "donor_micro_time_ranges": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2}},
+                    "donor_micro_time_ranges": {
+                        "type": "array",
+                        "items": {"type": "array", "minItems": 2, "maxItems": 2},
+                    },
                     "acceptor_channels": {"type": "array", "items": {"type": "integer"}},
-                    "acceptor_micro_time_ranges": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2}},
+                    "acceptor_micro_time_ranges": {
+                        "type": "array",
+                        "items": {"type": "array", "minItems": 2, "maxItems": 2},
+                    },
                     "minimum_window_length": {"type": "number"},
                     "number_of_photons_per_slice": {"type": "integer"},
                     "file_type": {"type": "string"},

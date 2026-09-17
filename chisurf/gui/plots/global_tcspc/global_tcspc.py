@@ -1,26 +1,25 @@
 from __future__ import annotations
 
 import numpy as np
-from chisurf.gui.plots._qwt_compat import make, CurveDialog
 
 import chisurf.gui.decorators
+from chisurf.gui.plots._qwt_compat import CurveDialog, make
 from chisurf.gui.plots.plotbase import Plot
 
 
 class GlobalEt(Plot):
-
     name = "GlobalEt"
 
     @chisurf.gui.decorators.init_with_ui(ui_filename="et_plot_layout.ui")
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.FitGroup,
-            f_scalex: str = 'log',
-            f_scaley: str = 'lin',
-            e_scalex: str = 'log',
-            e_scaley: str = 'lin',
-            *args,
-            **kwargs
+        self,
+        fit: chisurf.core.fitting.fit.FitGroup,
+        f_scalex: str = "log",
+        f_scaley: str = "lin",
+        e_scalex: str = "log",
+        e_scaley: str = "lin",
+        *args,
+        **kwargs,
     ):
         self.fit = fit
 
@@ -29,7 +28,7 @@ class GlobalEt(Plot):
         plot = fd.get_plot()
         self.p_rda_plot = plot
         self.verticalLayout_12.addWidget(fd)
-        self.p_rda_curve = make.curve([1],  [1], color="r", linewidth=2)
+        self.p_rda_curve = make.curve([1], [1], color="r", linewidth=2)
         plot.add_item(self.p_rda_curve)
 
         ## Fluorescence intensity plot
@@ -39,8 +38,8 @@ class GlobalEt(Plot):
 
         title = make.label("FDA,FD0", "R", (0, 10), "R")
         plot.add_item(title)
-        self.fd0_curve = make.curve([1],  [1], color="g", linewidth=2)
-        self.fda_curve = make.curve([1],  [1], color="r", linewidth=2)
+        self.fd0_curve = make.curve([1], [1], color="g", linewidth=2)
+        self.fda_curve = make.curve([1], [1], color="r", linewidth=2)
         plot.add_item(self.fd0_curve)
         plot.add_item(self.fda_curve)
         self.fd_plot = plot
@@ -51,7 +50,7 @@ class GlobalEt(Plot):
         win = CurveDialog(edit=False, toolbar=False)
         plot = win.get_plot()
         plot.do_autoscale(True)
-        self.et_curve = make.curve([1],  [1], color="b", linewidth=2)
+        self.et_curve = make.curve([1], [1], color="b", linewidth=2)
         plot.add_item(self.et_curve)
         title = make.label("E(t)", "R", (0, 10), "R")
         plot.add_item(title)
@@ -63,37 +62,37 @@ class GlobalEt(Plot):
         win = CurveDialog(edit=False, toolbar=True)
         plot = win.get_plot()
         plot.do_autoscale(True)
-        self.wres_curve = make.curve([1],  [1], color="m", linewidth=2)
+        self.wres_curve = make.curve([1], [1], color="m", linewidth=2)
         plot.add_item(self.wres_curve)
         title = make.label("w.res", "R", (0, 10), "R")
         plot.add_item(title)
         self.wres_plot = plot
-        self.wres_plot.set_scales('lin', 'lin')
+        self.wres_plot.set_scales("lin", "lin")
         self.verticalLayout_3.addWidget(plot)
 
         ## L-Curve plot
         win = CurveDialog(edit=False, toolbar=True)
         plot = win.get_plot()
         plot.do_autoscale(True)
-        self.l_curve_1 = make.curve([1],  [1], color="k", linewidth=2)
+        self.l_curve_1 = make.curve([1], [1], color="k", linewidth=2)
         plot.add_item(self.l_curve_1)
         title = make.label("Reg.", "R", (0, 10), "R")
-        plot.set_titles(ylabel='reg. par', xlabel='Chi2r')
+        plot.set_titles(ylabel="reg. par", xlabel="Chi2r")
         plot.add_item(title)
         self.l_curve_plot_1 = plot
-        self.l_curve_plot_1.set_scales('lin', 'lin')
+        self.l_curve_plot_1.set_scales("lin", "lin")
         self.verticalLayout_4.addWidget(self.l_curve_plot_1)
 
         win = CurveDialog(edit=False, toolbar=True)
         plot = win.get_plot()
         plot.do_autoscale(True)
-        self.l_curve_2 = make.curve([1],  [1], color="k", linewidth=2)
+        self.l_curve_2 = make.curve([1], [1], color="k", linewidth=2)
         plot.add_item(self.l_curve_2)
         title = make.label("L-Curve", "R", (0, 10), "R")
-        plot.set_titles(ylabel='|x| (sol. norm)', xlabel='Chi2r')
+        plot.set_titles(ylabel="|x| (sol. norm)", xlabel="Chi2r")
         plot.add_item(title)
         self.l_curve_plot_2 = plot
-        self.l_curve_plot_2.set_scales('log', 'log')
+        self.l_curve_plot_2.set_scales("log", "log")
         self.verticalLayout_7.addWidget(self.l_curve_plot_2)
 
     def update_all(self, *args, **kwargs):
@@ -101,11 +100,11 @@ class GlobalEt(Plot):
         self.p_rda_curve.set_data(model.r_DA, model.p_rDA)
         self.p_rda_plot.do_autoscale()
 
-        self.fda_curve.set_data(model.times,  model.fda)
-        self.fd0_curve.set_data(model.times,  model.fd0)
+        self.fda_curve.set_data(model.times, model.fda)
+        self.fd0_curve.set_data(model.times, model.fd0)
         self.fd_plot.do_autoscale()
 
-        self.et_curve.set_data(model.times,  model.et)
+        self.et_curve.set_data(model.times, model.et)
         self.et_plot.do_autoscale()
 
         self.l_curve_1.set_data(model.l_curve_chi2, model.l_curve_reg)

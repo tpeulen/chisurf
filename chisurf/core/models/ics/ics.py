@@ -11,6 +11,7 @@ STICS/TICS), and releasing ``alpha`` is iMSD.
 ``IcsGaussian2DModel`` names the same model: the 2D Gaussian is an entry of the
 catalogue, not a model of its own.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -19,7 +20,9 @@ from chisurf.core.models.description import for_catalogue
 
 ImageCorrelationModel = for_catalogue(
     pathlib.Path(__file__).parent / "models.yaml",
-    name="Image correlation (RICS/STICS/TICS/iMSD)", module=__name__)
+    name="Image correlation (RICS/STICS/TICS/iMSD)",
+    module=__name__,
+)
 IcsGaussian2DModel = ImageCorrelationModel
 
 __all__ = ["ImageCorrelationModel", "IcsGaussian2DModel"]

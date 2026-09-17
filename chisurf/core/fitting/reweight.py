@@ -43,6 +43,7 @@ posterior within the region that chain explored. A new prior that moves the mass
 somewhere the chain never visited is exactly the case :math:`\hat k` flags, and
 the answer there is to sample again rather than to reweight.
 """
+
 from __future__ import annotations
 
 import math
@@ -173,12 +174,12 @@ def _gpd_quantile(p: np.ndarray, k: float, sigma: float) -> np.ndarray:
     """
     t = -np.log1p(-p)
     if abs(k) < 1e-10:
-        return sigma * t          # the exponential limit as k -> 0
+        return sigma * t  # the exponential limit as k -> 0
     return sigma * np.expm1(k * t) / k
 
 
 def pareto_smoothed_log_weights(
-        log_ratios: np.ndarray,
+    log_ratios: np.ndarray,
 ) -> typing.Tuple[np.ndarray, float]:
     r"""Return stabilised log importance weights and the Pareto shape.
 
@@ -251,9 +252,7 @@ def pareto_smoothed_log_weights(
                 k_hat, sigma = gpd_fit(y[y > 0.0])
                 if np.isfinite(k_hat) and np.isfinite(sigma) and sigma > 0.0:
                     p = (np.arange(1.0, tail_len + 1.0) - 0.5) / tail_len
-                    lw[tail_idx] = cutoff + np.log1p(
-                        _gpd_quantile(p, k_hat, sigma)
-                    )
+                    lw[tail_idx] = cutoff + np.log1p(_gpd_quantile(p, k_hat, sigma))
 
     # Truncate at the largest raw weight, then normalise.
     lw = np.minimum(lw, 0.0)
@@ -294,9 +293,9 @@ def importance_ess(log_weights: np.ndarray) -> float:
 
 
 def weighted_quantile(
-        values: np.ndarray,
-        weights: np.ndarray,
-        q: float,
+    values: np.ndarray,
+    weights: np.ndarray,
+    q: float,
 ) -> float:
     """Return a weighted quantile of a sample.
 
@@ -331,10 +330,10 @@ def weighted_quantile(
 
 
 def weighted_summary(
-        samples: np.ndarray,
-        log_weights: np.ndarray,
-        names: typing.Sequence[str] = None,
-        quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
+    samples: np.ndarray,
+    log_weights: np.ndarray,
+    names: typing.Sequence[str] = None,
+    quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.List[typing.Dict[str, typing.Any]]:
     """Summarise draws under importance weights, one entry per parameter.
 
@@ -382,11 +381,16 @@ def weighted_summary(
         column = flat[:, k]
         ok = np.isfinite(column) & (w > 0.0)
         if not ok.any():
-            out.append({
-                "name": str(names[k]), "mean": float("nan"), "sd": float("nan"),
-                "quantiles": {str(q): float("nan") for q in quantiles},
-                "ess": ess, "n_draws": int(flat.shape[0]),
-            })
+            out.append(
+                {
+                    "name": str(names[k]),
+                    "mean": float("nan"),
+                    "sd": float("nan"),
+                    "quantiles": {str(q): float("nan") for q in quantiles},
+                    "ess": ess,
+                    "n_draws": int(flat.shape[0]),
+                }
+            )
             continue
         values, weights = column[ok], w[ok]
         weights = weights / weights.sum()
@@ -396,25 +400,26 @@ def weighted_summary(
         denominator = 1.0 - float(np.square(weights).sum())
         var = float(weights @ np.square(values - mean))
         sd = math.sqrt(var / denominator) if denominator > 0.0 else float("nan")
-        out.append({
-            "name": str(names[k]),
-            "mean": mean,
-            "sd": sd,
-            "quantiles": {
-                str(q): weighted_quantile(values, weights, float(q))
-                for q in quantiles
-            },
-            "ess": ess,
-            "n_draws": int(flat.shape[0]),
-        })
+        out.append(
+            {
+                "name": str(names[k]),
+                "mean": mean,
+                "sd": sd,
+                "quantiles": {
+                    str(q): weighted_quantile(values, weights, float(q)) for q in quantiles
+                },
+                "ess": ess,
+                "n_draws": int(flat.shape[0]),
+            }
+        )
     return out
 
 
 def reweight(
-        samples: np.ndarray,
-        log_ratios: np.ndarray,
-        names: typing.Sequence[str] = None,
-        quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
+    samples: np.ndarray,
+    log_ratios: np.ndarray,
+    names: typing.Sequence[str] = None,
+    quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.Dict[str, typing.Any]:
     """Reweight a set of draws by given log importance ratios.
 
@@ -463,8 +468,7 @@ def reweight(
         )
     if n and ess < 0.1 * n:
         warnings.append(
-            f"the reweighting kept an effective {ess:.0f} of {n} draws "
-            f"({100.0 * ess / n:.1f}%)"
+            f"the reweighting kept an effective {ess:.0f} of {n} draws ({100.0 * ess / n:.1f}%)"
         )
     return {
         "parameters": summary,
@@ -477,11 +481,11 @@ def reweight(
 
 
 def reweight_prior(
-        result: typing.Dict[str, typing.Any],
-        priors: typing.Dict[str, typing.Any],
-        model=None,
-        old_priors: typing.Dict[str, typing.Any] = None,
-        quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
+    result: typing.Dict[str, typing.Any],
+    priors: typing.Dict[str, typing.Any],
+    model=None,
+    old_priors: typing.Dict[str, typing.Any] = None,
+    quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.Dict[str, typing.Any]:
     r"""Ask what a stored chain would have looked like under different priors.
 
@@ -561,9 +565,7 @@ def reweight_prior(
         for kind, prior, sign in (("new", new_prior, 1.0), ("old", old_prior, -1.0)):
             if prior is None:
                 continue
-            contribution = np.array(
-                [prior.lnpdf(float(v)) for v in column], dtype=np.float64
-            )
+            contribution = np.array([prior.lnpdf(float(v)) for v in column], dtype=np.float64)
             log_ratios += sign * contribution
 
     out = reweight(flat, log_ratios, names=names, quantiles=quantiles)

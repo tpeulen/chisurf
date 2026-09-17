@@ -17,24 +17,28 @@ The sweep runs bare forms twice, once with a structure loaded and once on an
 empty scene, because the two paths through a command are usually different --
 and "nothing is loaded" is the state a viewer starts in.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: Commands the sweep does not call, and why. Kept short on purpose: a command
 #: excluded here is a command nothing checks.
 SKIP = {
-    "quit", "exit",            # end the process the sweep is running in
-    "system", "shell",         # run something outside chimol
-    "fetch",                   # reaches the network
-    "demo", "tour",            # covered, and slowly, by test_demos_and_tours
-    "plugins",                 # re-imports every plugin module
-    "sleep", "wait",           # block the sweep
+    "quit",
+    "exit",  # end the process the sweep is running in
+    "system",
+    "shell",  # run something outside chimol
+    "fetch",  # reaches the network
+    "demo",
+    "tour",  # covered, and slowly, by test_demos_and_tours
+    "plugins",  # re-imports every plugin module
+    "sleep",
+    "wait",  # block the sweep
 }
 
-SCRIPT = f'''
+SCRIPT = f"""
 # Bare forms of `movie`, `png`, `save` and friends write their default file
 # into the working directory; from the checkout that left orbit.gif and its
 # frames in the repository root. The sweep runs somewhere disposable.
@@ -72,7 +76,7 @@ sweep("empty")
 cmd.do("load 148l.pdb")
 sweep("loaded")
 emit("done", "yes")
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -89,9 +93,7 @@ def test_the_sweep_ran(swept):
 @pytest.mark.parametrize("scene", ["empty", "loaded"])
 def test_no_command_leaks_an_exception(swept, scene):
     leaks = {
-        key.split(":", 1)[1]: value
-        for key, value in swept.items()
-        if key.startswith(f"{scene}:")
+        key.split(":", 1)[1]: value for key, value in swept.items() if key.startswith(f"{scene}:")
     }
     assert not leaks, (
         f"these commands answered with an internal error on an {scene} scene "

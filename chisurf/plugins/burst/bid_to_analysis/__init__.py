@@ -14,27 +14,32 @@ Workflow per BID file:
 The plugin exposes a simple GUI file dialog when launched from the Plugins menu.
 It can also be called programmatically via convert_bid_file(pathlike).
 """
+
 from __future__ import annotations
 
-from typing import Iterable, List, Tuple, Optional, Dict, Set
+import json
 import os
 import pathlib
 import time
-import json
+import zipfile
+from collections.abc import Iterable
+from typing import Dict, List, Optional, Set, Tuple
+
+import numpy as np
+
+import chisurf as cs
+import chisurf.core.fio as io
+from chisurf import logging
 from chisurf.core.datastore import (
     concat_stores,
     read_csv_table,
     row_count,
-    set_constant as _set_constant,
     take_rows,
     write_csv_table,
 )
-import numpy as np
-import zipfile
-
-import chisurf as cs
-from chisurf import logging
-import chisurf.core.fio as io
+from chisurf.core.datastore import (
+    set_constant as _set_constant,
+)
 
 try:
     import tttrlib
@@ -43,7 +48,7 @@ except Exception:  # pragma: no cover
 
 # Qt is only required when launched as a GUI plugin
 try:  # pragma: no cover - optional at runtime
-    from qtpy import QtWidgets, QtCore
+    from qtpy import QtCore, QtWidgets
 except Exception:  # pragma: no cover
     QtWidgets = None  # type: ignore
     QtCore = None  # type: ignore
@@ -54,12 +59,16 @@ from chisurf.core.fio.fluorescence.burst import (
     write_mti_summary,
 )
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
+
 # Detector setup wizard page for defining detectors/windows like the Trace Browser
 try:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage, DetectorWizard  # type: ignore
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition import (  # type: ignore
+        DetectorWizard,
+        DetectorWizardPage,
+    )
 except Exception:
     DetectorWizardPage = None  # type: ignore
-    DetectorWizard = None # type: ignore
+    DetectorWizard = None  # type: ignore
 
 
 # Plugin name in menu
@@ -84,7 +93,7 @@ icon = "🔗"
 from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 
 
-def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathlib.Path]:
+def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> pathlib.Path | None:
     """Find TTTR file matching a BID stem by searching up the directory tree.
 
     Searches up to 4 levels up from start_dir.
@@ -95,6 +104,7 @@ def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathl
     - BID stem starts with the TTTR stem (to allow BID suffixes like "_state1")
     Preference order: exact > candidate.stem startswith(BID) > BID startswith(candidate.stem) > substring fallback.
     """
+
     def _score(candidate: pathlib.Path) -> tuple:
         cstem = candidate.stem
         if cstem == bid_stem:
@@ -118,7 +128,7 @@ def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathl
             continue
 
         # Collect all TTTR files in this base folder
-        files: List[pathlib.Path] = []
+        files: list[pathlib.Path] = []
         for ext in _TTTR_EXTENSIONS:
             files.extend(current_dir.glob(f"*{ext}"))
 
@@ -152,7 +162,7 @@ def _load_tttr(tttr_path: pathlib.Path) -> tttrlib.TTTR:
     return open_tttr(tttr_path)
 
 
-def _default_windows_detectors(tttr: "tttrlib.TTTR") -> Tuple[dict, dict]:
+def _default_windows_detectors(tttr: tttrlib.TTTR) -> tuple[dict, dict]:
     """Create simple default windows and detectors covering the full range.
 
     - windows: one window 'All' covering full micro-time range
@@ -174,7 +184,7 @@ def _default_windows_detectors(tttr: "tttrlib.TTTR") -> Tuple[dict, dict]:
     return windows, detectors
 
 
-def _read_bid_start_stop(bid_path: pathlib.Path) -> List[Tuple[int, int]]:
+def _read_bid_start_stop(bid_path: pathlib.Path) -> list[tuple[int, int]]:
     """Read BID file assumed to contain two integer columns: start stop (inclusive or exclusive stop).
 
     The file is interpreted as start and stop indices. If stop <= start, the row is ignored later.
@@ -191,6 +201,7 @@ def _read_bid_start_stop(bid_path: pathlib.Path) -> List[Tuple[int, int]]:
 
 def _get_unique_folder_path(base_path: pathlib.Path) -> pathlib.Path:
     """Return a unique folder path by appending -NNN if needed (like the wizard)."""
+
     def name_taken(p: pathlib.Path) -> bool:
         return p.exists()
 
@@ -207,8 +218,12 @@ def _get_unique_folder_path(base_path: pathlib.Path) -> pathlib.Path:
     return base_path.parent / f"{base_path.name}-{ts}"
 
 
-def _prepare_output_dir(base_dir: pathlib.Path, target_folder_name: str, unique_folder: bool) -> pathlib.Path:
-    logging.debug(f"_prepare_output_dir called with: base_dir={base_dir}, target_folder_name={target_folder_name}, unique_folder={unique_folder}")
+def _prepare_output_dir(
+    base_dir: pathlib.Path, target_folder_name: str, unique_folder: bool
+) -> pathlib.Path:
+    logging.debug(
+        f"_prepare_output_dir called with: base_dir={base_dir}, target_folder_name={target_folder_name}, unique_folder={unique_folder}"
+    )
     out_dir = base_dir / target_folder_name
     logging.debug(f"Initial out_dir: {out_dir}")
     if unique_folder:
@@ -219,7 +234,9 @@ def _prepare_output_dir(base_dir: pathlib.Path, target_folder_name: str, unique_
     return out_dir
 
 
-def _infer_windows_detectors(tttr: "tttrlib.TTTR", windows: Optional[dict], detectors: Optional[dict]) -> Tuple[dict, dict]:
+def _infer_windows_detectors(
+    tttr: tttrlib.TTTR, windows: dict | None, detectors: dict | None
+) -> tuple[dict, dict]:
     if windows is None or detectors is None:
         w, d = _default_windows_detectors(tttr)
         if windows is None:
@@ -229,8 +246,15 @@ def _infer_windows_detectors(tttr: "tttrlib.TTTR", windows: Optional[dict], dete
     return windows, detectors
 
 
-def _write_info_files(output_dir: pathlib.Path, files: List[pathlib.Path], detectors: dict, windows: dict, selected_setup: Optional[str] = None, bid_files: Optional[List[pathlib.Path]] = None) -> None:
-    info_dir = output_dir / 'Info'
+def _write_info_files(
+    output_dir: pathlib.Path,
+    files: list[pathlib.Path],
+    detectors: dict,
+    windows: dict,
+    selected_setup: str | None = None,
+    bid_files: list[pathlib.Path] | None = None,
+) -> None:
+    info_dir = output_dir / "Info"
     info_dir.mkdir(parents=True, exist_ok=True)
 
     # Derive channels and microtime ranges from detectors
@@ -244,45 +268,47 @@ def _write_info_files(output_dir: pathlib.Path, files: List[pathlib.Path], detec
             if r not in microtime_ranges:
                 microtime_ranges.append(r)
     params = {
-        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'selected_setup': (selected_setup or 'BID'),
-        'channels': sorted(set(channels)),
-        'decay_coarse': None,
-        'microtime_ranges': microtime_ranges,
-        'files': [p.name for p in files],
-        'filter_mode': 'bid',
-        'filter_active': False,
-        'use_gap_fill': False,
-        'max_gap': 0,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "selected_setup": (selected_setup or "BID"),
+        "channels": sorted(set(channels)),
+        "decay_coarse": None,
+        "microtime_ranges": microtime_ranges,
+        "files": [p.name for p in files],
+        "filter_mode": "bid",
+        "filter_active": False,
+        "use_gap_fill": False,
+        "max_gap": 0,
     }
-    with open(info_dir / 'photon_selection_parameters.json', 'w') as f:
+    with open(info_dir / "photon_selection_parameters.json", "w") as f:
         json.dump(params, f, indent=4)
-    with open(info_dir / 'datetime.txt', 'w') as f:
-        now = time.strftime('%Y-%m-%d'), time.strftime('%H:%M:%S')
+    with open(info_dir / "datetime.txt", "w") as f:
+        now = time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S")
         f.write(f"Date: {now[0]}\nTime: {now[1]}\n")
 
     if bid_files:
-        with open(info_dir / 'burst_files.txt', 'w') as f:
+        with open(info_dir / "burst_files.txt", "w") as f:
             for p in bid_files:
                 f.write(f"{p.name}\n")
 
 
-def _write_sl5(output_dir: pathlib.Path, tttr_path: pathlib.Path, filetype: str, selected_mask: np.ndarray) -> None:
-    sl5_dir = output_dir / 'sl5'
+def _write_sl5(
+    output_dir: pathlib.Path, tttr_path: pathlib.Path, filetype: str, selected_mask: np.ndarray
+) -> None:
+    sl5_dir = output_dir / "sl5"
     sl5_dir.mkdir(parents=True, exist_ok=True)
     data = {
-        'filename': os.path.relpath(tttr_path, output_dir),
-        'filetype': filetype,
-        'count_rate_filter': {},
-        'delta_macro_time_filter': {},
-        'filter': io.compress_numpy_array(selected_mask.astype(np.uint8))
+        "filename": os.path.relpath(tttr_path, output_dir),
+        "filetype": filetype,
+        "count_rate_filter": {},
+        "delta_macro_time_filter": {},
+        "filter": io.compress_numpy_array(selected_mask.astype(np.uint8)),
     }
     out_file = sl5_dir / f"{tttr_path.stem}.json.gz"
-    with io.open_maybe_zipped(out_file, 'w') as f:
+    with io.open_maybe_zipped(out_file, "w") as f:
         f.write(json.dumps(data))
 
 
-def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List) -> None:
+def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: list) -> None:
     """Write the combined burst tables to one columnar HDF5 file.
 
     The encoding this used to build by hand -- integers downcast, floats
@@ -303,28 +329,29 @@ def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List) -> None:
 
     if not dataframes:
         return
-    hdf5_dir = output_dir / 'hdf5'
+    hdf5_dir = output_dir / "hdf5"
     hdf5_dir.mkdir(parents=True, exist_ok=True)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     write_burst_hdf5(dataframes, hdf5_dir / f"burst_data_{timestamp}.h5")
 
 
-def zip_output_folder(output_folder: pathlib.Path) -> Optional[pathlib.Path]:
+def zip_output_folder(output_folder: pathlib.Path) -> pathlib.Path | None:
     """Zip the output folder to a unique .zip next to it; return zip path."""
+
     def unique_zip_path(base: pathlib.Path) -> pathlib.Path:
-        p = base.with_suffix('.zip')
+        p = base.with_suffix(".zip")
         if not p.exists():
             return p
         for i in range(1, 1000):
             p2 = base.parent / f"{base.name}-{i:03d}.zip"
             if not p2.exists():
                 return p2
-        ts = time.strftime('%Y%m%d-%H%M%S')
+        ts = time.strftime("%Y%m%d-%H%M%S")
         return base.parent / f"{base.name}-{ts}.zip"
 
     output_folder = pathlib.Path(output_folder)
     zip_path = unique_zip_path(output_folder)
-    with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(output_folder):
             root_path = pathlib.Path(root)
             for f in files:
@@ -334,12 +361,21 @@ def zip_output_folder(output_folder: pathlib.Path) -> Optional[pathlib.Path]:
     return zip_path
 
 
-def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows: Optional[dict], detectors: Optional[dict], output_types: Set[str], bid_index: int = 1) -> Tuple[pathlib.Path, 'tttrlib.TTTR', dict, dict, 'tttrlib.DataStore', np.ndarray]:
+def _per_file_process(
+    bid_path: pathlib.Path,
+    output_dir: pathlib.Path,
+    windows: dict | None,
+    detectors: dict | None,
+    output_types: set[str],
+    bid_index: int = 1,
+) -> tuple[pathlib.Path, tttrlib.TTTR, dict, dict, tttrlib.DataStore, np.ndarray]:
     bid_path = pathlib.Path(bid_path)
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
     if tttr_path is None:
-        raise FileNotFoundError(f"Could not locate TTTR file for BID '{bid_path.name}' (stem='{stem}')")
+        raise FileNotFoundError(
+            f"Could not locate TTTR file for BID '{bid_path.name}' (stem='{stem}')"
+        )
     tttr = _load_tttr(tttr_path)
 
     windows, detectors = _infer_windows_detectors(tttr, windows, detectors)
@@ -368,18 +404,19 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
     # BUR output
     bur_path = None
     if "bur" in output_types:
-        bur_dir = output_dir / 'bi4_bur'
+        bur_dir = output_dir / "bi4_bur"
         bur_dir.mkdir(parents=True, exist_ok=True)
         bur_path = bur_dir / f"{tttr_path.stem}.bur"
         # If a BUR for this TTTR already exists, append new bursts instead of overwriting
         try:
             include_zeros = True  # we used include_interleaved_zeros when creating df
             if bur_path.exists():
-                existing_store = read_csv_table(bur_path, delimiter='\t')
+                existing_store = read_csv_table(bur_path, delimiter="\t")
                 # Avoid duplicate leading zero-row when appending: drop first row of the new df
                 df_to_append = (
                     take_rows(df, np.arange(1, row_count(df)))
-                    if include_zeros and row_count(df) > 0 else df
+                    if include_zeros and row_count(df) > 0
+                    else df
                 )
                 if existing_store is not None:
                     combined = concat_stores([existing_store, df_to_append])
@@ -393,14 +430,19 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
             write_dataframe_to_bur(df, str(bur_path))
         # MTI summary
         try:
-            max_macro_time_s = float(tttr.macro_times[-1]) * float(tttr.header.macro_time_resolution)
+            max_macro_time_s = float(tttr.macro_times[-1]) * float(
+                tttr.header.macro_time_resolution
+            )
         except Exception:
             max_macro_time_s = 0.0
         write_mti_summary(tttr_path, output_dir, max_macro_time_s, append=True)
 
     if "pto" in output_types:
         _write_container(
-            tttr_path, bid_path, df, bid_index,
+            tttr_path,
+            bid_path,
+            df,
+            bid_index,
             interleaved=("bur" in output_types),
         )
 
@@ -414,7 +456,7 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
     # For HDF5 collection
     if df is not None:
         df_copy = df.copy()
-        _set_constant(df_copy, 'Source File', str(tttr_path))
+        _set_constant(df_copy, "Source File", str(tttr_path))
     else:
         df_copy = df
 
@@ -475,7 +517,8 @@ def _write_container(
                 data_format="bin",
             )
             m.put_table(
-                "bursts", table,
+                "bursts",
+                table,
                 artifact_kind="burst_table",
                 operation_type="import",
                 row_grain="burst",
@@ -484,23 +527,21 @@ def _write_container(
                 units=units_for(table),
             )
     except Exception as exc:
-        logging.warning(
-            f"Could not write the container for {tttr_path}: {exc}"
-        )
+        logging.warning(f"Could not write the container for {tttr_path}: {exc}")
 
 
 def convert_bid_file(
     bid_path: os.PathLike | str,
     analysis_folder: os.PathLike | str | None = None,
     *,
-    output_types: Optional[Set[str]] = None,
-    windows: Optional[dict] = None,
-    detectors: Optional[dict] = None,
-    target_path: str = 'analysis',
+    output_types: set[str] | None = None,
+    windows: dict | None = None,
+    detectors: dict | None = None,
+    target_path: str = "analysis",
     unique_folder: bool = False,
     zip_output: bool = False,
     remove_folder: bool = False,
-    selected_setup: Optional[str] = None,
+    selected_setup: str | None = None,
     bid_index: int = 1,
 ) -> pathlib.Path:
     """Convert a single BID file into an analysis folder.
@@ -520,7 +561,9 @@ def convert_bid_file(
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
     if tttr_path is None:
-        raise FileNotFoundError(f"Could not locate TTTR file for BID '{bid_path.name}' (stem='{stem}')")
+        raise FileNotFoundError(
+            f"Could not locate TTTR file for BID '{bid_path.name}' (stem='{stem}')"
+        )
     output_dir = _prepare_output_dir(tttr_path.parent, bid_path.stem, unique_folder)
 
     # Default outputs
@@ -528,7 +571,9 @@ def convert_bid_file(
         output_types = {"pto"}
 
     # Process this single file
-    bur_path, tttr, dets, wins, df, selected = _per_file_process(bid_path, output_dir, windows, detectors, output_types, bid_index=bid_index)
+    bur_path, tttr, dets, wins, df, selected = _per_file_process(
+        bid_path, output_dir, windows, detectors, output_types, bid_index=bid_index
+    )
 
     # Info files
     _write_info_files(output_dir, [tttr_path], dets, wins, selected_setup=selected_setup)
@@ -542,6 +587,7 @@ def convert_bid_file(
         zip_name = zip_output_folder(output_dir)  # define below
         if remove_folder and zip_name:
             import shutil
+
             shutil.rmtree(output_dir, ignore_errors=True)
 
     return bur_path if ("bur" in output_types and bur_path is not None) else output_dir
@@ -551,15 +597,15 @@ def convert_many(
     bid_paths: Iterable[os.PathLike | str],
     analysis_folder: os.PathLike | str | None = None,
     *,
-    output_types: Optional[Set[str]] = None,
-    windows: Optional[dict] = None,
-    detectors: Optional[dict] = None,
-    target_path: str = 'analysis',
+    output_types: set[str] | None = None,
+    windows: dict | None = None,
+    detectors: dict | None = None,
+    target_path: str = "analysis",
     unique_folder: bool = True,
     zip_output: bool = False,
     remove_folder: bool = False,
-    selected_setup: Optional[str] = None,
-) -> List[pathlib.Path]:
+    selected_setup: str | None = None,
+) -> list[pathlib.Path]:
     bid_paths = [pathlib.Path(p) for p in bid_paths]
     if not bid_paths:
         return []
@@ -573,13 +619,15 @@ def convert_many(
     if output_types is None:
         output_types = {"pto"}
 
-    bur_paths: List[pathlib.Path] = []
-    dfs_for_hdf5: List = []
-    tttr_paths_for_info: List[pathlib.Path] = []
+    bur_paths: list[pathlib.Path] = []
+    dfs_for_hdf5: list = []
+    tttr_paths_for_info: list[pathlib.Path] = []
 
     for i, p in enumerate(bid_paths, start=1):
         try:
-            bur_path, tttr, dets, wins, df, selected = _per_file_process(p, output_dir, windows, detectors, output_types, bid_index=i)
+            bur_path, tttr, dets, wins, df, selected = _per_file_process(
+                p, output_dir, windows, detectors, output_types, bid_index=i
+            )
             if bur_path is not None:
                 bur_paths.append(bur_path)
             if df is not None:
@@ -597,7 +645,13 @@ def convert_many(
             w, d = _infer_windows_detectors(tmp_tttr, windows, detectors)
         else:
             w, d = windows, detectors
-        _write_info_files(output_dir, [pathlib.Path(tp) for tp in tttr_paths_for_info if tp], d, w, selected_setup=selected_setup)
+        _write_info_files(
+            output_dir,
+            [pathlib.Path(tp) for tp in tttr_paths_for_info if tp],
+            d,
+            w,
+            selected_setup=selected_setup,
+        )
 
     if "hdf5" in output_types and dfs_for_hdf5:
         _write_hdf5_combined(output_dir, dfs_for_hdf5)
@@ -606,6 +660,7 @@ def convert_many(
         zip_name = zip_output_folder(output_dir)
         if remove_folder and zip_name:
             import shutil
+
             shutil.rmtree(output_dir, ignore_errors=True)
 
     return bur_paths
@@ -613,6 +668,7 @@ def convert_many(
 
 # --- Simple GUI with drag-and-drop list ---
 if QtWidgets is not None:
+
     class BidToAnalysisGUI(QtWidgets.QDialog):
         BID_EXTS = {".bid", ".bst", ".txt"}
 
@@ -650,7 +706,10 @@ if QtWidgets is not None:
             if self.detector_page is not None:
                 setup_layout.addWidget(self.detector_page)
             else:
-                lbl = QtWidgets.QLabel("Detector setup UI not available. Default auto-detectors will be used.", setup_widget)
+                lbl = QtWidgets.QLabel(
+                    "Detector setup UI not available. Default auto-detectors will be used.",
+                    setup_widget,
+                )
                 lbl.setWordWrap(True)
                 setup_layout.addWidget(lbl)
             self.tabs.addTab(setup_widget, "Setup")
@@ -660,7 +719,9 @@ if QtWidgets is not None:
             files_layout = QtWidgets.QVBoxLayout(files_widget)
 
             self.table = QtWidgets.QTableWidget(0, 4, files_widget)
-            self.table.setHorizontalHeaderLabels(["BID file", "TTTR file", "Output folder", "Status"])
+            self.table.setHorizontalHeaderLabels(
+                ["BID file", "TTTR file", "Output folder", "Status"]
+            )
             self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
             self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
             try:
@@ -726,7 +787,7 @@ if QtWidgets is not None:
             self.table.setRowCount(0)
             self.log.clear()
 
-        def add_files(self, paths: List[pathlib.Path]):
+        def add_files(self, paths: list[pathlib.Path]):
             for p in paths:
                 if p.suffix.lower() not in self.BID_EXTS:
                     continue
@@ -749,7 +810,7 @@ if QtWidgets is not None:
             self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(""))
             self._set_status(row, "Ready" if tttr else "Missing TTTR", error=(tttr is None))
 
-        def _set_status(self, row: int, text: str, error: bool=False):
+        def _set_status(self, row: int, text: str, error: bool = False):
             it = self.table.item(row, 3)
             if it is None:
                 it = QtWidgets.QTableWidgetItem("")
@@ -773,12 +834,12 @@ if QtWidgets is not None:
             setup_windows = None
             setup_detectors = None
             setup_name = None
-            if getattr(self, 'detector_page', None) is not None:
+            if getattr(self, "detector_page", None) is not None:
                 try:
                     settings = self.detector_page.get_settings()
-                    setup_windows = settings.get('windows') or None
-                    setup_detectors = settings.get('detectors') or None
-                    setup_name = getattr(self.detector_page, 'current_setup_name', None)
+                    setup_windows = settings.get("windows") or None
+                    setup_detectors = settings.get("detectors") or None
+                    setup_name = getattr(self.detector_page, "current_setup_name", None)
                 except Exception:
                     setup_windows = None
                     setup_detectors = None
@@ -791,7 +852,11 @@ if QtWidgets is not None:
                 if not bid_item:
                     continue
                 bid = pathlib.Path(bid_item.data(QtCore.Qt.UserRole))
-                tttr_path = pathlib.Path(tttr_item.text()) if tttr_item and tttr_item.text() and tttr_item.text() != "TTTR not found" else None
+                tttr_path = (
+                    pathlib.Path(tttr_item.text())
+                    if tttr_item and tttr_item.text() and tttr_item.text() != "TTTR not found"
+                    else None
+                )
                 if tttr_path is None or not tttr_path.exists():
                     self._set_status(row, "TTTR not found", error=True)
                     continue
@@ -820,6 +885,7 @@ if QtWidgets is not None:
             #     self._set_status(row, f"Error: {exc}", error=True)
             #     self.log_info(f"Error processing {bid.name}: {exc}")
             self.log_info(f"Finished: {ok}/{n} files processed.")
+
 
 # --- GUI entry ---
 if __name__ == "plugin":  # launched from Plugins menu

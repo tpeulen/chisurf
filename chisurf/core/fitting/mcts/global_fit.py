@@ -57,9 +57,7 @@ class _LogicalGroup:
     initial: tuple[float | None, ...]
 
 
-def _reason(
-    code: str, message: str, feature: str = ""
-) -> NativeSearchPreparation:
+def _reason(code: str, message: str, feature: str = "") -> NativeSearchPreparation:
     return unsupported(CAPABILITY_ID, code, message, feature)
 
 
@@ -123,8 +121,7 @@ def _member_structures(
         unknown = set(structure.free_groups) - group_keys
         if unknown:
             raise ValueError(
-                f"member structure {structure.key!r} names unknown groups: "
-                f"{sorted(unknown)!r}"
+                f"member structure {structure.key!r} names unknown groups: {sorted(unknown)!r}"
             )
     actions: dict[str, list[NativeAction]] = {key: [] for key in structures}
     for action in declaration.actions:
@@ -145,9 +142,7 @@ def _score(declarations: Sequence[NativeSearchDeclaration]) -> NativeScore:
     """
     scores = [declaration.score for declaration in declarations]
     if any(
-        score.residual_output != "residuals"
-        or score.score_output
-        or score.acceptable_output
+        score.residual_output != "residuals" or score.score_output or score.acceptable_output
         for score in scores
     ):
         raise ValueError(
@@ -161,23 +156,17 @@ def _score(declarations: Sequence[NativeSearchDeclaration]) -> NativeScore:
     if not positive:
         penalty = 0.0
     elif len(positive) != len(penalties):
-        raise ValueError(
-            "members disagree on whether model complexity is penalized"
-        )
+        raise ValueError("members disagree on whether model complexity is penalized")
     else:
         largest = max(2.0 * value for value in positive)
         penalty = 0.5 * (
-            largest
-            + math.log(sum(math.exp(2.0 * value - largest) for value in positive))
+            largest + math.log(sum(math.exp(2.0 * value - largest) for value in positive))
         )
     return NativeScore(residual_output="residuals", complexity_penalty=penalty)
 
 
 def _state_key(state: tuple[str, ...]) -> str:
-    return "|".join(
-        f"member-{index + 1}={quote(key, safe='')}"
-        for index, key in enumerate(state)
-    )
+    return "|".join(f"member-{index + 1}={quote(key, safe='')}" for index, key in enumerate(state))
 
 
 def _combined_action_key(
@@ -205,9 +194,7 @@ def prepare_global_model_search(
     from chisurf.core.models.global_model.globalfit import GlobalFitModel
 
     if not isinstance(fit, FitGroup):
-        return _reason(
-            "not_global_fit", "native global model search requires a FitGroup"
-        )
+        return _reason("not_global_fit", "native global model search requires a FitGroup")
     objective_model = getattr(fit, "_model", None)
     if not isinstance(objective_model, GlobalFitModel):
         return _reason(
@@ -305,8 +292,7 @@ def prepare_global_model_search(
                         f"member {index + 1} group {group.key!r} has invalid seed dimensions"
                     )
                 if any(
-                    value is not None and not math.isfinite(value)
-                    for value in (*seeds, *initial)
+                    value is not None and not math.isfinite(value) for value in (*seeds, *initial)
                 ):
                     raise ValueError(
                         f"member {index + 1} group {group.key!r} has a non-finite seed"
@@ -399,8 +385,7 @@ def prepare_global_model_search(
                                 str(owner.name),
                             )
                     values = tuple(
-                        old if old is not None else new
-                        for old, new in zip(existing, values)
+                        old if old is not None else new for old, new in zip(existing, values)
                     )
                 shared_values[marker] = values
             else:
@@ -451,9 +436,7 @@ def prepare_global_model_search(
                 return False
         return True
 
-    initial_state = tuple(
-        declaration.initial_structure for declaration in declarations
-    )
+    initial_state = tuple(declaration.initial_structure for declaration in declarations)
     if not consistent(initial_state):
         return _reason(
             "shared_initial_structure_mismatch",
@@ -518,9 +501,12 @@ def prepare_global_model_search(
             )
         actions.append(NativeAction(key, "terminate", key, prior=0.25, terminal=True))
 
-    capability_id = CAPABILITY_ID + "[" + ",".join(
-        declaration.capability_id for declaration in declarations
-    ) + "]"
+    capability_id = (
+        CAPABILITY_ID
+        + "["
+        + ",".join(declaration.capability_id for declaration in declarations)
+        + "]"
+    )
     combined = NativeSearchDeclaration(
         capability_id=capability_id,
         fit=fit,

@@ -46,6 +46,6 @@ def test_table_plot_avoids_resize_to_contents_and_hidden_refresh_contract():
             f"{name} sets an O(rows) header resize policy; keep the interactive default"
         )
 
-    assert "copy_curves=False" in plot          # do not duplicate the fit's arrays
-    assert "if not self.isVisible():" in plot   # hidden plots do not refresh
+    assert "copy_curves=False" in plot  # do not duplicate the fit's arrays
+    assert "if not self.isVisible():" in plot  # hidden plots do not refresh
     assert "self._refresh_pending = True" in plot

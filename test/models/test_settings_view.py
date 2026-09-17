@@ -73,14 +73,15 @@ def test_groups_bind_and_mutate_the_live_dict_with_callback():
     # AutoForm resolves a section's target via getattr(model, target), then
     # writes via setattr(group, attr, value). Replicate that here.
     sec = next(
-        s for s in view.view_spec().sections
+        s
+        for s in view.view_spec().sections
         if not isinstance(s, vs.PanelSection) and s.attr == "threshold"
     )
     group = getattr(view, sec.target)
     setattr(group, sec.attr, 42)
 
-    assert data["threshold"] == 42          # mutated in place
-    assert fired == [1]                     # callback fired once
+    assert data["threshold"] == 42  # mutated in place
+    assert fired == [1]  # callback fired once
     assert getattr(group, "threshold") == 42  # readable back through the group
 
 

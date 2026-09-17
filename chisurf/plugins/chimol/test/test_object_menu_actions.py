@@ -19,9 +19,8 @@ import copy
 import pathlib
 
 import pytest
-
-from chimol.ui.menus import objects as om
 from chimol.core.settings.config import _DISPLAY_CONFIG
+from chimol.ui.menus import objects as om
 
 
 @pytest.fixture(autouse=True)
@@ -45,9 +44,13 @@ def _restore_display_settings():
     _DISPLAY_CONFIG.clear()
     _DISPLAY_CONFIG.update(snapshot)
 
+
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
 )
 #: Six residues, a metal ion and eight waters -- small enough that 150-odd window
 #: loads stay quick, complete enough that every menu entry has something to act
@@ -214,13 +217,8 @@ def test_a_menu_entry_runs(window, template):
     for _ in range(5):
         app.processEvents()
 
-    unexpected = [
-        e for e in errors
-        if not any(reason in e for reason in _FIXTURE_CANNOT_ANSWER)
-    ]
-    assert unexpected == [], (
-        f"{template!r} -> {unexpected[-1] if unexpected else ''}"
-    )
+    unexpected = [e for e in errors if not any(reason in e for reason in _FIXTURE_CANNOT_ANSWER)]
+    assert unexpected == [], f"{template!r} -> {unexpected[-1] if unexpected else ''}"
 
 
 @pytest.mark.parametrize("entry", _disabled())
@@ -277,8 +275,16 @@ def test_the_colour_menu_spellings_are_accepted(window, mode):
 
 @pytest.mark.parametrize(
     "colour",
-    ["wheat", "palegreen", "lightblue", "paleyellow",
-     "lightpink", "palecyan", "lightorange", "bluewhite"],
+    [
+        "wheat",
+        "palegreen",
+        "lightblue",
+        "paleyellow",
+        "lightpink",
+        "palecyan",
+        "lightorange",
+        "bluewhite",
+    ],
 )
 def test_every_tint_in_the_menu_exists(colour):
     """The tints menu once listed `yellowtint`, which is not a PyMOL colour."""

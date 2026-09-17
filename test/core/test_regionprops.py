@@ -9,6 +9,7 @@ drawn ROI exactly as it measures a segmentation label, and its numbers are the
 established ones — checked against ``skimage.measure.regionprops`` where that is
 installed, and against closed-form geometry where it is not.
 """
+
 from __future__ import annotations
 
 import math
@@ -81,8 +82,8 @@ def test_labels_are_measured_in_order_however_they_are_numbered():
     their order.
     """
     labels = np.zeros((8, 8), dtype=int)
-    labels[1:3, 1:3] = 9        # out of order and non-contiguous ...
-    labels[5:7, 5:7] = 2        # ... with a gap before it
+    labels[1:3, 1:3] = 9  # out of order and non-contiguous ...
+    labels[5:7, 5:7] = 2  # ... with a gap before it
     props = regionprops(labels)
     assert [p.label for p in props] == [2, 9]
     assert [p.area for p in props] == [4, 4]
@@ -125,9 +126,7 @@ def test_an_unsigned_label_image_measures_like_any_other(blobs):
     ours = regionprops(as_uint, intensity)
     assert [p.label for p in ours] == [p.label for p in theirs]
     np.testing.assert_allclose([p.area for p in ours], [p.area for p in theirs])
-    np.testing.assert_allclose(
-        [p.intensity_mean for p in ours], [p.intensity_mean for p in theirs]
-    )
+    np.testing.assert_allclose([p.intensity_mean for p in ours], [p.intensity_mean for p in theirs])
 
 
 def test_rois_are_measured_in_the_order_given():
@@ -307,9 +306,7 @@ def test_multi_component_properties_are_split_like_skimage(blobs):
     """``centroid`` becomes ``centroid-0``/``centroid-1``, separator and all."""
     labels, intensity = blobs
     ours = regionprops_table(labels, intensity, ["label", "centroid", "area"])
-    theirs = skimage_measure.regionprops_table(
-        labels, intensity, ("label", "centroid", "area")
-    )
+    theirs = skimage_measure.regionprops_table(labels, intensity, ("label", "centroid", "area"))
     assert list(ours) == list(theirs)
     for key in theirs:
         np.testing.assert_allclose(ours[key], theirs[key])
@@ -339,12 +336,14 @@ def test_extra_properties_are_measured_too():
         return float(intensity[mask].sum() / mask.sum())
 
     image = np.full((6, 6), 4.0)
-    props = regionprops(np.ones((6, 6), dtype=bool), image,
-                        extra_properties=[photon_density])
+    props = regionprops(np.ones((6, 6), dtype=bool), image, extra_properties=[photon_density])
     assert props[0].photon_density == 4.0
-    table = regionprops_table(np.ones((6, 6), dtype=bool), image,
-                              ["label", "photon_density"],
-                              extra_properties=[photon_density])
+    table = regionprops_table(
+        np.ones((6, 6), dtype=bool),
+        image,
+        ["label", "photon_density"],
+        extra_properties=[photon_density],
+    )
     assert table["photon_density"].tolist() == [4.0]
 
 
@@ -369,13 +368,33 @@ def test_roi_properties_shortcut_and_bounding_box():
 @pytest.mark.parametrize(
     "name",
     [
-        "area", "area_bbox", "area_convex", "area_filled", "bbox", "centroid",
-        "centroid_local", "centroid_weighted", "eccentricity",
-        "equivalent_diameter_area", "euler_number", "extent",
-        "axis_major_length", "axis_minor_length", "inertia_tensor",
-        "inertia_tensor_eigvals", "intensity_max", "intensity_mean",
-        "intensity_min", "intensity_std", "moments", "moments_central",
-        "num_pixels", "orientation", "perimeter", "perimeter_crofton", "solidity",
+        "area",
+        "area_bbox",
+        "area_convex",
+        "area_filled",
+        "bbox",
+        "centroid",
+        "centroid_local",
+        "centroid_weighted",
+        "eccentricity",
+        "equivalent_diameter_area",
+        "euler_number",
+        "extent",
+        "axis_major_length",
+        "axis_minor_length",
+        "inertia_tensor",
+        "inertia_tensor_eigvals",
+        "intensity_max",
+        "intensity_mean",
+        "intensity_min",
+        "intensity_std",
+        "moments",
+        "moments_central",
+        "num_pixels",
+        "orientation",
+        "perimeter",
+        "perimeter_crofton",
+        "solidity",
     ],
 )
 def test_matches_skimage_regionprops(blobs, name):
@@ -395,8 +414,9 @@ def test_matches_skimage_regionprops(blobs, name):
 
     for a, b in zip(theirs, ours):
         expected = np.asarray(getattr(a, name), dtype=float)
-        np.testing.assert_allclose(np.asarray(getattr(b, name), dtype=float), expected,
-                                   rtol=1e-9, atol=1e-9)
+        np.testing.assert_allclose(
+            np.asarray(getattr(b, name), dtype=float), expected, rtol=1e-9, atol=1e-9
+        )
 
 
 def test_feret_diameter_is_close_to_skimages(blobs):
@@ -445,12 +465,29 @@ def test_properties_are_computed_once():
 #: pixels, so both libraries refuse an anisotropic spacing rather than return a
 #: number that looks plausible.
 SPACING_PROPERTIES = (
-    "area", "area_bbox", "area_convex", "area_filled", "num_pixels",
-    "centroid", "centroid_local", "centroid_weighted", "centroid_weighted_local",
-    "axis_major_length", "axis_minor_length", "eccentricity",
-    "equivalent_diameter_area", "extent", "feret_diameter_max",
-    "inertia_tensor", "inertia_tensor_eigvals", "solidity", "euler_number",
-    "moments", "moments_central", "moments_weighted", "moments_weighted_central",
+    "area",
+    "area_bbox",
+    "area_convex",
+    "area_filled",
+    "num_pixels",
+    "centroid",
+    "centroid_local",
+    "centroid_weighted",
+    "centroid_weighted_local",
+    "axis_major_length",
+    "axis_minor_length",
+    "eccentricity",
+    "equivalent_diameter_area",
+    "extent",
+    "feret_diameter_max",
+    "inertia_tensor",
+    "inertia_tensor_eigvals",
+    "solidity",
+    "euler_number",
+    "moments",
+    "moments_central",
+    "moments_weighted",
+    "moments_weighted_central",
 )
 
 
@@ -463,10 +500,11 @@ def test_every_scaled_property_matches_skimage_under_a_spacing(blobs, spacing):
     :func:`test_a_symmetric_region_has_no_orientation_to_agree_on`.
     """
     labels, intensity = blobs
-    theirs = {p.label: p for p in skimage_measure.regionprops(
-        labels, intensity_image=intensity, spacing=spacing)}
-    ours = {p.label: p for p in regionprops(
-        labels, intensity_image=intensity, spacing=spacing)}
+    theirs = {
+        p.label: p
+        for p in skimage_measure.regionprops(labels, intensity_image=intensity, spacing=spacing)
+    }
+    ours = {p.label: p for p in regionprops(labels, intensity_image=intensity, spacing=spacing)}
     assert set(ours) == set(theirs)
 
     for name in SPACING_PROPERTIES:
@@ -474,7 +512,8 @@ def test_every_scaled_property_matches_skimage_under_a_spacing(blobs, spacing):
             np.testing.assert_allclose(
                 np.asarray(getattr(ours[key], name), dtype=float),
                 np.asarray(getattr(theirs[key], name), dtype=float),
-                rtol=1e-8, atol=1e-8,
+                rtol=1e-8,
+                atol=1e-8,
                 err_msg=f"{name} of region {key} at spacing {spacing}",
             )
 
@@ -482,7 +521,7 @@ def test_every_scaled_property_matches_skimage_under_a_spacing(blobs, spacing):
 def test_area_becomes_physical_but_a_pixel_count_never_does():
     """``area`` carries units under a spacing; ``num_pixels`` is always a count."""
     labels = np.zeros((30, 30), dtype=int)
-    labels[5:15, 8:20] = 1                      # 10 x 12 = 120 pixels
+    labels[5:15, 8:20] = 1  # 10 x 12 = 120 pixels
 
     plain = regionprops(labels)[0]
     assert plain.area == 120 and plain.num_pixels == 120
@@ -497,16 +536,14 @@ def test_a_spacing_moves_the_centroid_into_the_same_units():
     labels[5:15, 8:20] = 1
     plain = regionprops(labels)[0]
     scaled = regionprops(labels, spacing=(2.0, 0.5))[0]
-    assert scaled.centroid == pytest.approx(
-        (plain.centroid[0] * 2.0, plain.centroid[1] * 0.5)
-    )
+    assert scaled.centroid == pytest.approx((plain.centroid[0] * 2.0, plain.centroid[1] * 0.5))
 
 
 def test_a_ratio_is_unchanged_by_an_isotropic_spacing():
     """`extent` and `solidity` are areas over areas, so the units cancel."""
     labels = np.zeros((40, 40), dtype=int)
     labels[5:25, 8:30] = 1
-    labels[10:14, 12:16] = 0                     # a hole, so solidity < 1
+    labels[10:14, 12:16] = 0  # a hole, so solidity < 1
     plain = regionprops(labels)[0]
     scaled = regionprops(labels, spacing=0.37)[0]
     assert scaled.extent == pytest.approx(plain.extent)
@@ -536,9 +573,7 @@ def test_an_anisotropic_perimeter_is_refused_rather_than_guessed():
 def test_the_table_takes_a_spacing_too():
     labels = np.zeros((30, 30), dtype=int)
     labels[5:15, 8:20] = 1
-    table = regionprops_table(
-        labels, properties=("label", "area", "centroid"), spacing=(2.0, 3.0)
-    )
+    table = regionprops_table(labels, properties=("label", "area", "centroid"), spacing=(2.0, 3.0))
     assert table["area"][0] == pytest.approx(720.0)
     assert table["centroid-0"][0] == pytest.approx(19.0)
 
@@ -592,15 +627,17 @@ def test_every_scikit_image_property_exists_here(blobs):
     assert not missing, f"scikit-image properties with no counterpart: {missing}"
 
 
-@pytest.mark.parametrize("name", ["moments_normalized", "moments_weighted_normalized",
-                                  "moments_hu", "moments_weighted_hu"])
+@pytest.mark.parametrize(
+    "name",
+    ["moments_normalized", "moments_weighted_normalized", "moments_hu", "moments_weighted_hu"],
+)
 def test_the_moment_invariants_match_skimage(blobs, name):
     """Hu's invariants are a shape *signature*: same object, different size and
     angle, same numbers. They are only useful if they are the same numbers
-    everyone else computes."""
+    everyone else computes.
+    """
     labels, intensity = blobs
-    theirs = {p.label: p for p in skimage_measure.regionprops(
-        labels, intensity_image=intensity)}
+    theirs = {p.label: p for p in skimage_measure.regionprops(labels, intensity_image=intensity)}
     ours = {p.label: p for p in regionprops(labels, intensity_image=intensity)}
     for key in theirs:
         a = np.asarray(getattr(ours[key], name), dtype=float)
@@ -612,7 +649,8 @@ def test_the_moment_invariants_match_skimage(blobs, name):
 
 def test_hu_invariants_are_refused_under_a_spacing():
     """The normalisation divides by one scale, which is not what an anisotropic
-    pixel does; scikit-image refuses the same case."""
+    pixel does; scikit-image refuses the same case.
+    """
     labels = np.zeros((20, 20), dtype=int)
     labels[4:10, 5:14] = 1
     props = regionprops(labels, spacing=(1.0, 2.0))[0]
@@ -638,13 +676,19 @@ def test_an_offset_moves_the_coordinates_and_nothing_else():
 
 @pytest.mark.parametrize(
     "old, modern",
-    [("Area", "area"), ("BoundingBox", "bbox"), ("max_intensity", "intensity_max"),
-     ("weighted_centroid", "centroid_weighted"), ("equivalent_diameter",
-      "equivalent_diameter_area"), ("major_axis_length", "axis_major_length")],
+    [
+        ("Area", "area"),
+        ("BoundingBox", "bbox"),
+        ("max_intensity", "intensity_max"),
+        ("weighted_centroid", "centroid_weighted"),
+        ("equivalent_diameter", "equivalent_diameter_area"),
+        ("major_axis_length", "axis_major_length"),
+    ],
 )
 def test_a_historical_scikit_image_name_still_answers(blobs, old, modern):
     """There is a lot of code written against older releases; refusing its
-    property names only makes it fail for no reason."""
+    property names only makes it fail for no reason.
+    """
     labels, intensity = blobs
     props = regionprops(labels, intensity_image=intensity)[0]
     assert props[old] is not None
@@ -652,8 +696,10 @@ def test_a_historical_scikit_image_name_still_answers(blobs, old, modern):
         np.asarray(props[old], dtype=float),
         np.asarray(getattr(props, modern), dtype=float),
     )
-    assert np.allclose(np.asarray(getattr(props, old), dtype=float),
-                       np.asarray(getattr(props, modern), dtype=float))
+    assert np.allclose(
+        np.asarray(getattr(props, old), dtype=float),
+        np.asarray(getattr(props, modern), dtype=float),
+    )
 
 
 def test_every_historical_name_resolves(blobs):
@@ -667,10 +713,12 @@ def test_every_historical_name_resolves(blobs):
 
 def test_a_historical_name_works_in_the_table(blobs):
     labels, intensity = blobs
-    table = regionprops_table(labels, intensity_image=intensity,
-                              properties=("label", "Area", "max_intensity"))
-    modern = regionprops_table(labels, intensity_image=intensity,
-                               properties=("label", "area", "intensity_max"))
+    table = regionprops_table(
+        labels, intensity_image=intensity, properties=("label", "Area", "max_intensity")
+    )
+    modern = regionprops_table(
+        labels, intensity_image=intensity, properties=("label", "area", "intensity_max")
+    )
     np.testing.assert_allclose(table["Area"], modern["area"])
     np.testing.assert_allclose(table["max_intensity"], modern["intensity_max"])
 

@@ -1,17 +1,16 @@
-"""Integration tests using reference example files from Olga/FPS.
-"""
+"""Integration tests using reference example files from Olga/FPS."""
 
 from __future__ import annotations
 
 import os
 import pathlib
 import tempfile
-import pytest
+
 import numpy as np
 
 from .. import av as _av
-from .. import io as _io
 from .. import evaluate as _evaluate
+from .. import io as _io
 
 _OLGA_T4L_DIR = pathlib.Path(__file__).resolve().parents[1] / "examples" / "olga_t4l"
 OLGA_T4L_DIR = str(_OLGA_T4L_DIR)
@@ -36,11 +35,11 @@ def test_compute_avs_on_olga_pdb():
     """Verify we can load the T4L PDB and compute AVs on it using the loaded positions."""
     assert os.path.exists(PDB_FILE)
     positions, _, _, _ = _io.read_fps_json(SCREENING_JSON)
-    
+
     # Load PDB with VdW radii
     atoms_xyzr = _av.load_structure_with_vdw(PDB_FILE)
     assert atoms_xyzr.shape[0] > 0
-    
+
     # Compute AVs for the three positions
     avs = _av.compute_avs_for_structure(atoms_xyzr, positions, pdb_path=PDB_FILE)
     assert len(avs) == 3
@@ -54,16 +53,19 @@ def test_evaluate_olga_structure():
     """Verify we can evaluate the T4L PDB structure using evaluators read from the JSON."""
     positions, _, _, _ = _io.read_fps_json(SCREENING_JSON)
     evaluators = _io.read_evaluators_json(SCREENING_JSON)
-    
+
     if not evaluators:
         # Construct them manually from distances
         _, distances, _, _ = _io.read_fps_json(SCREENING_JSON)
         from ..evaluators import DistanceEvaluator
+
         evaluators = [
-            DistanceEvaluator(name, d["position1_name"], d["position2_name"], distance_type=d["distance_type"])
+            DistanceEvaluator(
+                name, d["position1_name"], d["position2_name"], distance_type=d["distance_type"]
+            )
             for name, d in distances.items()
         ]
-        
+
     res = _evaluate.evaluate_structure(PDB_FILE, positions, evaluators)
     assert len(res) > 0
     for name, r in res.items():
@@ -73,13 +75,12 @@ def test_evaluate_olga_structure():
 def test_project_save_load():
     """Verify that project save and load functions work correctly via Project schema."""
     from chisurf.core.project import Project
-    import shutil
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a mock project directory
         proj_dir = os.path.join(tmpdir, "test_fret_proj")
         os.makedirs(proj_dir)
-        
+
         # We can simulate the FretDockWizard save/load state
         ui_fret = {
             "fps_json": {"Positions": {}, "Distances": {}},
@@ -92,15 +93,13 @@ def test_project_save_load():
                 "max_force": 50.0,
                 "n_trials": 2,
                 "k_clash": 5.0,
-            }
+            },
         }
-        
+
         project = Project(
-            name="test_proj",
-            description="Mock project",
-            ui_state={"fret_dock_wizard": ui_fret}
+            name="test_proj", description="Mock project", ui_state={"fret_dock_wizard": ui_fret}
         )
-        
+
         # Save (a directory target becomes ``project.csp`` inside it)
         project.save(proj_dir)
         assert os.path.exists(os.path.join(proj_dir, "project.csp"))
@@ -113,12 +112,12 @@ def test_project_save_load():
         assert loaded_ui["docking"]["max_iter"] == 1000
 
 
-
 def test_click_cli_backends():
     """Verify the click CLI info-backends command runs successfully."""
     from click.testing import CliRunner
+
     from ..cli import main
-    
+
     runner = CliRunner()
     result = runner.invoke(main, ["info-backends"])
     assert result.exit_code == 0
@@ -129,8 +128,9 @@ def test_click_cli_backends():
 def test_click_cli_info():
     """Verify the click CLI info command works on reference fps.json."""
     from click.testing import CliRunner
+
     from ..cli import main
-    
+
     runner = CliRunner()
     result = runner.invoke(main, ["info", "--fps", SCREENING_JSON])
     assert result.exit_code == 0
@@ -142,22 +142,21 @@ def test_click_cli_info():
 def test_fastapi_endpoints():
     """Verify the FastAPI routing endpoints return valid responses."""
     from fastapi.testclient import TestClient
+
     from ..api import app
-    
+
     client = TestClient(app)
-    
+
     # 1. Test /info-backends
     resp = client.get("/fret/info-backends")
     assert resp.status_code == 200
     data = resp.json()
     assert "active_backend" in data
     assert "has_labellib" in data
-    
+
     # 2. Test /info
     resp = client.post("/fret/info", json={"fps_path": SCREENING_JSON})
     assert resp.status_code == 200
     data = resp.json()
     assert data["positions_count"] == 3
     assert data["distances_count"] == 2
-
-

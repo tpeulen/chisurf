@@ -42,11 +42,11 @@ class QIPythonWidget(Chinsole):
     """
 
     def __init__(
-            self,
-            history_widget=None,
-            recording: bool = False,
-            *args,
-            **kwargs,
+        self,
+        history_widget=None,
+        recording: bool = False,
+        *args,
+        **kwargs,
     ) -> None:
         config = kwargs.pop("config", None) or ConsoleConfig(
             role=ConsoleRole.INTERACTIVE,

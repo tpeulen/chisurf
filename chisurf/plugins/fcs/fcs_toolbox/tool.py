@@ -25,6 +25,7 @@ from chisurf.plugins.fcs.fcs_correlator.tool import CORRELATOR_PANELS, FcsCorrel
 # Optional-tool panel factories
 # ---------------------------------------------------------------------------
 
+
 def _make_2dflcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     from chisurf.plugins.fcs.flc_2d import TwoDFCSPlugin
 

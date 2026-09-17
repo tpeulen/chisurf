@@ -14,7 +14,7 @@ log.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 class UncaughtHook(QtCore.QObject):
     def __init__(self, *args, **kwargs):
-        super(UncaughtHook, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # this registers the exception_hook() function as hook with the Python interpreter
         sys.excepthook = self.exception_hook
@@ -51,7 +51,9 @@ class UncaughtHook(QtCore.QObject):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
         else:
             exc_info = (exc_type, exc_value, exc_traceback)
-            log_msg = "\n".join(["".join(traceback.format_tb(exc_traceback)), f"{exc_type.__name__}: {exc_value}"])
+            log_msg = "\n".join(
+                ["".join(traceback.format_tb(exc_traceback)), f"{exc_type.__name__}: {exc_value}"]
+            )
             log.critical(f"Uncaught exception:\n {log_msg}", exc_info=exc_info)
 
             # trigger message box show

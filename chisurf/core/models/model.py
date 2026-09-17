@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import abc
-
-from chisurf import typing
-
 from collections import OrderedDict
 
 import numpy as np
 
-import chisurf.core.parameter
 import chisurf.core.curve
-
+import chisurf.core.parameter
+from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameterGroup
 
 
@@ -79,13 +76,9 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         ``self.fit.data`` and ``self.fit.model`` between ``xmin`` and
         ``xmax`` as defined on the associated :class:`Fit` instance.
         """
-        return self.get_wres(
-            self.fit,
-            xmin=self.fit.xmin,
-            xmax=self.fit.xmax
-        )
+        return self.get_wres(self.fit, xmin=self.fit.xmin, xmax=self.fit.xmax)
 
-    def view_spec(self) -> "chisurf.core.models.view_spec.ModelView":
+    def view_spec(self) -> chisurf.core.models.view_spec.ModelView:
         """Return a UI-agnostic description of this model's editor.
 
         Resolution order:
@@ -110,8 +103,9 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         """
         import inspect
         import pathlib
-        from chisurf.core.models import view_spec as _vs
+
         from chisurf.core.fitting.parameter import FittingParameterGroup
+        from chisurf.core.models import view_spec as _vs
 
         # Resolve ``view_spec_file`` relative to the module of the class that
         # *declares* it, not ``type(self)``. Legacy model-widgets (e.g. the
@@ -119,8 +113,11 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         # ``view_spec_file``; resolving against the widget's own module would
         # look for the JSON in the wrong directory.
         decl_cls = next(
-            (c for c in type(self).__mro__ if "view_spec_file" in c.__dict__
-             and c.__dict__["view_spec_file"]),
+            (
+                c
+                for c in type(self).__mro__
+                if "view_spec_file" in c.__dict__ and c.__dict__["view_spec_file"]
+            ),
             None,
         )
         spec_file = decl_cls.__dict__["view_spec_file"] if decl_cls else None
@@ -131,6 +128,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
                 return _vs.load_view_spec(path)
             except Exception as exc:
                 import chisurf.logging
+
                 chisurf.logging.error(
                     f"Failed to load view spec {spec_file!r} for {type(self).__name__}: {exc}"
                 )
@@ -194,7 +192,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             d = [v for v in self.__dict__.values() if v is not self]
             pgs = chisurf.core.base.find_objects(
                 search_iterable=d,
-                searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup
+                searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup,
             )
             for pg in pgs:
                 # ``update`` historically existed only on the GUI widget
@@ -209,6 +207,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
                     pg_update()
                 except Exception as e:
                     import logging
+
                     logging.warning(f"Failed to update parameter group {pg}: {e}")
                     continue
 
@@ -222,15 +221,15 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         """
         import chisurf.core.base
         import chisurf.core.fitting.parameter
-        
+
         # 1. Finalize ourselves (Model is a FittingParameterGroup)
         super().finalize()
-        
+
         # 2. Finalize all sub-groups discovered via attributes
         d = [v for v in self.__dict__.values() if v is not self]
         pgs = chisurf.core.base.find_objects(
             search_iterable=d,
-            searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup
+            searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup,
         )
         for pg in set(pgs):
             if hasattr(pg, "finalize") and pg is not self:
@@ -238,13 +237,11 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
                     pg.finalize()
                 except Exception as e:
                     import chisurf.logging
+
                     chisurf.logging.error(f"Failed to finalize parameter group: {e}")
 
     def get_wres(
-            self,
-            fit: chisurf.core.fitting.fit.Fit,
-            xmin: int = None,
-            xmax: int = None
+        self, fit: chisurf.core.fitting.fit.Fit, xmin: int = None, xmax: int = None
     ) -> np.ndarray:
         """Compute weighted residuals for a given :class:`Fit` instance.
 
@@ -297,7 +294,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         """
         state = super().__getstate__()
         return state
-    
+
     def __setstate__(self, state):
         """Restore model state from a pickled representation.
 
@@ -321,7 +318,6 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         both from :class:`Fit` and directly from models. Subclasses may
         override this for custom behaviour but should generally extend it.
         """
-
         try:
             from chisurf.core.project import fit_state as _fit_state
         except Exception:
@@ -353,7 +349,6 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         Structural elements such as the number of lifetime or Gaussian
         components are applied before scalar parameters and links.
         """
-
         if not isinstance(state, dict):
             return
 
@@ -389,7 +384,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             p = pd[k]
             if not isinstance(p, chisurf.core.fitting.parameter.FittingParameter):
                 continue
-            if getattr(p, 'is_output', False):
+            if getattr(p, "is_output", False):
                 continue
             val = f"{p.value:.5g}"
             if p.fixed:
@@ -465,7 +460,7 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
     @property
     def x(self) -> np.ndarray:
         """Abscissa array of the model curve."""
-        return self.__dict__['d'][0]
+        return self.__dict__["d"][0]
 
     @x.setter
     def x(self, v: np.ndarray):
@@ -474,13 +469,13 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
         The storage is write-locked (see :class:`chisurf.core.curve.NCurve`), so
         the axis write happens inside the curve's own unlock context.
         """
-        with self.unlocked('d'):
-            self.__dict__['d'][0] = v
+        with self.unlocked("d"):
+            self.__dict__["d"][0] = v
 
     @property
     def y(self) -> np.array:
         """Ordinate array of the model curve."""
-        return self.__dict__['d'][1]
+        return self.__dict__["d"][1]
 
     @y.setter
     def y(self, v: np.ndarray):
@@ -488,8 +483,8 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
 
         See :meth:`x` — the write goes through the curve's unlock context.
         """
-        with self.unlocked('d'):
-            self.__dict__['d'][1] = v
+        with self.unlocked("d"):
+            self.__dict__["d"][1] = v
 
     def __init__(self, fit: chisurf.core.fitting.fit.Fit, *args, **kwargs):
         """Create a new curve-based model attached to ``fit``.
@@ -502,24 +497,21 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
             x = np.array([], dtype=np.float64)
         else:
             x = fit.data.x
-        chisurf.core.curve.Curve.__init__(
-            self,
-            x=x, y=np.zeros_like(x),
-            *args,
-            **kwargs
-        )
+        chisurf.core.curve.Curve.__init__(self, x=x, y=np.zeros_like(x), *args, **kwargs)
 
-    def get_curves(self, copy_curves: bool = False) -> typing.OrderedDict[str, chisurf.core.curve.Curve]:
+    def get_curves(
+        self, copy_curves: bool = False
+    ) -> typing.OrderedDict[str, chisurf.core.curve.Curve]:
         """Return a mapping of named curves produced by this model.
 
         Currently a single entry ``"model"`` is provided, containing the
         full model curve as a :class:`chisurf.core.curve.Curve` instance.
         """
-        #xmin = self.fit.xmin
-        #xmax = self.fit.xmax
+        # xmin = self.fit.xmin
+        # xmax = self.fit.xmax
         d = OrderedDict()
-        #d['model'] = chisurf.core.curve.Curve(x=self.x[xmin:xmax], y=self.y[xmin:xmax], copy_array=copy_curves)
-        d['model'] = chisurf.core.curve.Curve(x=self.x, y=self.y, copy_array=copy_curves)
+        # d['model'] = chisurf.core.curve.Curve(x=self.x[xmin:xmax], y=self.y[xmin:xmax], copy_array=copy_curves)
+        d["model"] = chisurf.core.curve.Curve(x=self.x, y=self.y, copy_array=copy_curves)
         return d
 
     def __getitem__(self, key) -> typing.Tuple[np.ndarray, np.ndarray]:

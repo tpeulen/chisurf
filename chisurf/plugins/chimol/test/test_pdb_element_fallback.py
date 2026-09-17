@@ -20,7 +20,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.io.structure import (
     _element_symbol_from_pdb_line,
     _parse_pdb_backbone,

@@ -1,4 +1,5 @@
 """PSF calculator: AutoForm controls beside a live 3-D volume view."""
+
 from __future__ import annotations
 
 import logging
@@ -14,6 +15,7 @@ from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from ..core import PSFModel
 
 logger = logging.getLogger(__name__)
+
 
 @register_section("psf_volume_view")
 def _psf_volume_view(model=None, target=None, **options):
@@ -48,7 +50,7 @@ class _Worker(QtCore.QRunnable):
     def run(self):
         try:
             self.signals.done.emit(self._model.compute())
-        except Exception as exc:                       # pragma: no cover - GUI path
+        except Exception as exc:  # pragma: no cover - GUI path
             logger.warning("PSF computation failed", exc_info=True)
             self.signals.failed.emit(str(exc))
 
@@ -79,8 +81,8 @@ class PSFCalculator(ChisurfDockTool):
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
         self._add_export_button(toolbar)
         self.add_toolbar_help(
-            toolbar, resource="help.md", title="PSF calculator — Help",
-            model=self)
+            toolbar, resource="help.md", title="PSF calculator — Help", model=self
+        )
         self.addToolBar(toolbar)
 
         # The spec is a dock_area, so the parameter panels and the 3-D view are
@@ -94,7 +96,7 @@ class PSFCalculator(ChisurfDockTool):
         self.setCentralWidget(central)
 
         self.view = self.auto_form.section_widget(key="psf_volume_view")
-        if self.view is None:                      # spec not applied
+        if self.view is None:  # spec not applied
             self.view = cp.VolumeView()
             layout.addWidget(self.view)
 
@@ -126,8 +128,7 @@ class PSFCalculator(ChisurfDockTool):
         signal, so the tool listens to the built widgets. This has to be redone
         after ``rebuilt``, which replaces them.
         """
-        from chisurf.gui.autoform.sections.builtin import (
-            ChoiceWidget, ToggleWidget, ValueWidget)
+        from chisurf.gui.autoform.sections.builtin import ChoiceWidget, ToggleWidget, ValueWidget
 
         for vw in self.auto_form.findChildren(ValueWidget):
             editor = getattr(vw, "editor", None)
@@ -169,10 +170,13 @@ class PSFCalculator(ChisurfDockTool):
 
     def _show(self, volume) -> None:
         self.view.set_scale(1.0, 1.0, self.model.z_step_nm / self.model.pixel_size_nm)
-        self.view.set_volume(volume, colormap=self.model.colormap,
-                             threshold=self.model.threshold, gamma=self.model.gamma)
-        segments = (self.model.polarization_segments()
-                    if self.model.show_polarization else None)
+        self.view.set_volume(
+            volume,
+            colormap=self.model.colormap,
+            threshold=self.model.threshold,
+            gamma=self.model.gamma,
+        )
+        segments = self.model.polarization_segments() if self.model.show_polarization else None
         self.view.set_vectors(segments, color=(0.4, 1.0, 0.9, 0.9), width=2.0)
 
         # The summary is an info section, and only a field sync repaints it.
@@ -191,22 +195,28 @@ class PSFCalculator(ChisurfDockTool):
         button = QtWidgets.QToolButton()
         button.setText("💾 Export")
         button.setObjectName("psf_export_button")
-        button.setToolTip(
-            "Save the computed volume as a NumPy array or an ImageJ TIFF stack.")
+        button.setToolTip("Save the computed volume as a NumPy array or an ImageJ TIFF stack.")
         button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
         menu = QtWidgets.QMenu(button)
         menu.setToolTipsVisible(True)
         for label, suffix, filt, tip in (
-            ("NumPy array (.npy)", ".npy", "NumPy array (*.npy)",
-             "Full float precision, no metadata."),
-            ("ImageJ TIFF stack (.tif)", ".tif", "TIFF stack (*.tif *.tiff)",
-             "32-bit stack carrying the voxel size, so ImageJ scales it correctly."),
+            (
+                "NumPy array (.npy)",
+                ".npy",
+                "NumPy array (*.npy)",
+                "Full float precision, no metadata.",
+            ),
+            (
+                "ImageJ TIFF stack (.tif)",
+                ".tif",
+                "TIFF stack (*.tif *.tiff)",
+                "32-bit stack carrying the voxel size, so ImageJ scales it correctly.",
+            ),
         ):
             act = menu.addAction(label)
             act.setToolTip(tip)
-            act.triggered.connect(
-                lambda checked=False, s=suffix, f=filt: self.export_volume(s, f))
+            act.triggered.connect(lambda checked=False, s=suffix, f=filt: self.export_volume(s, f))
         button.setMenu(menu)
         # Name the action a widget-action would otherwise leave blank: the
         # guided tour finds a toolbar button by its action's text, so a step
@@ -222,7 +232,8 @@ class PSFCalculator(ChisurfDockTool):
         if self.model.volume is None:
             dialogs.warning(
                 "Nothing to export",
-                "The PSF has not been computed yet -- wait for the view to fill in.")
+                "The PSF has not been computed yet -- wait for the view to fill in.",
+            )
             return
         filename = save_file(
             description=f"Export PSF as {suffix}",

@@ -166,7 +166,7 @@ class FileCategoryMixin:
                         icon=icon,
                         slot=lambda _chk=False, pp=p: self._open_recent_from_ribbon(pp),
                         tooltip=str(p),
-                        alignment=Qt.AlignLeft | Qt.AlignTop
+                        alignment=Qt.AlignLeft | Qt.AlignTop,
                     )
                 except Exception:
                     continue
@@ -179,7 +179,7 @@ class FileCategoryMixin:
                     icon=clear_icon,
                     slot=lambda _chk=False: self._clear_recent_from_ribbon(),
                     tooltip="Clear recent projects list",
-                    alignment=Qt.AlignLeft | Qt.AlignTop
+                    alignment=Qt.AlignLeft | Qt.AlignTop,
                 )
             except Exception:
                 pass

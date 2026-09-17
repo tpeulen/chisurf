@@ -1,12 +1,13 @@
 import numpy as np
-
-from chisurf.core.datastore import column_names, numeric_column, row_count, take_rows
 import pandas as pd
 from qtpy import QtWidgets
+
+from chisurf.core.datastore import column_names, numeric_column, row_count, take_rows
 
 
 def test_burst_browser_widget(qapp, qtbot):
     from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
+
     widget = BurstBrowserWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -30,25 +31,27 @@ def test_read_bur_with_companions_merges_bv4_and_2c4(tmp_path):
     from chisurf.plugins.burst.burst_bva.core.computation import write_bv4_analysis
 
     n = 5
-    src = pd.DataFrame({
-        "First File": ["m000.spc"] * n,
-        "First Photon": range(n),
-        "Last Photon": range(1, n + 1),
-        "Proximity Ratio Mean": np.linspace(0.1, 0.9, n),
-        "Proximity Ratio Std": np.linspace(0.01, 0.05, n),
-        COLUMN_FRET_2CDE: np.linspace(10.0, 40.0, n),
-    })
+    src = pd.DataFrame(
+        {
+            "First File": ["m000.spc"] * n,
+            "First Photon": range(n),
+            "Last Photon": range(1, n + 1),
+            "Proximity Ratio Mean": np.linspace(0.1, 0.9, n),
+            "Proximity Ratio Std": np.linspace(0.01, 0.05, n),
+            COLUMN_FRET_2CDE: np.linspace(10.0, 40.0, n),
+        }
+    )
     burd = tmp_path / "bi4_bur"
     burd.mkdir(parents=True)
     _interleave(src, ["First Photon", "Last Photon"]).to_csv(
         burd / "m000.bur", sep="\t", index=False
     )
-    write_bv4_analysis(src, str(tmp_path))          # -> bv4/m000.bv4
+    write_bv4_analysis(src, str(tmp_path))  # -> bv4/m000.bv4
     write_2cde_analysis(src, str(tmp_path), variant="fret")  # -> 2c4/m000.2c4
 
     merged = burstio.read_bur_with_companions(burd / "m000.bur")
-    assert "Proximity Ratio Std" in column_names(merged)   # from BVA
-    assert COLUMN_FRET_2CDE in column_names(merged)          # from 2CDE
+    assert "Proximity Ratio Std" in column_names(merged)  # from BVA
+    assert COLUMN_FRET_2CDE in column_names(merged)  # from 2CDE
     # Values land on the burst (odd) rows of the interleaved table.
     odd = take_rows(merged, np.arange(1, row_count(merged), 2))
     assert np.allclose(numeric_column(odd, "Proximity Ratio Std"), src["Proximity Ratio Std"])

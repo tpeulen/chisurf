@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from mmfdb.repository import MFDatabase
+
 from chisurf.core.transform import check_transformer_conformance, get_transformer
 from chisurf.plugins.burst.burst_selection.api.transformer import (
     BurstSelectionTransformer,
@@ -51,7 +52,8 @@ def test_flat_params_map_to_nested_settings():
 
 def test_burst_params_roundtrip_with_extract():
     """The adapter's mapping is the inverse of extract_burst_parameters for the
-    declared names — the values an operation records map back to settings."""
+    declared names — the values an operation records map back to settings.
+    """
     from chisurf.plugins.burst.burst_selection.api.mmfdb import extract_burst_parameters
     from chisurf.plugins.burst.burst_selection.api.models import AnalysisRequest
 

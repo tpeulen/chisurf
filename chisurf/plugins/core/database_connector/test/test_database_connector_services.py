@@ -9,6 +9,7 @@ import pytest
 def seeded_db(tmp_path, monkeypatch):
     from mmfdb.config import configure_runtime, reset_runtime_config
     from mmfdb.repository import MFDatabase
+
     from chisurf.plugins.core.database_connector import services
 
     # Clear any host-registered resolver so the reset behaviour under test does
@@ -100,6 +101,7 @@ def test_repository_is_available_through_inprocess_rpc(seeded_db):
 
 def test_backup_import_export_and_reset_use_temporary_mmfdb(seeded_db, tmp_path):
     from mmfdb.repository import MFDatabase
+
     from chisurf.plugins.core.database_connector.services import (
         backup_handler,
         export_sample_handler,

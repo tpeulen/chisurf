@@ -15,6 +15,7 @@ Regression tests for three defects in ``covariance_matrix`` / ``approx_grad``:
 The reference is the analytic least-squares covariance ``sigma^2 (X'X)^-1``,
 which is exact for the linear model used here.
 """
+
 import numpy as np
 import pytest
 
@@ -39,7 +40,7 @@ def _quadratic_fit(scale: float = 1.0, seed: int = 1):
     rng = np.random.default_rng(seed)
     sigma = 0.05 * scale
     x = np.linspace(0.0, 5.0, 64)
-    y = scale * (3.1 + 1.2 * x ** 2) + rng.normal(0.0, sigma, x.size)
+    y = scale * (3.1 + 1.2 * x**2) + rng.normal(0.0, sigma, x.size)
 
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * sigma)
     fit = fit_module.FitGroup(
@@ -47,16 +48,16 @@ def _quadratic_fit(scale: float = 1.0, seed: int = 1):
         model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     fit.run()
 
     # The analytic covariance must be built over exactly the points the
     # weighted residuals cover.
     n = len(fit.model.weighted_residuals)
-    columns = {'c': np.ones(n), 'a': x[:n] ** 2}
+    columns = {"c": np.ones(n), "a": x[:n] ** 2}
     design = np.column_stack([columns[p.name] for p in fit.model.parameters])
-    covariance = sigma ** 2 * np.linalg.inv(design.T @ design)
+    covariance = sigma**2 * np.linalg.inv(design.T @ design)
     return fit, np.sqrt(np.diag(covariance))
 
 
@@ -128,27 +129,26 @@ def test_covariance_matches_the_poisson_fisher_information(noise_model):
     for f in fit:
         f.noise_model = noise_model
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'a*exp(-x/tau)'
+    fit.model.func = "a*exp(-x/tau)"
     fit.model.find_parameters()
     values = fit.model.parameters_all_dict
-    values['a'].value, values['tau'].value = 4000.0, 3.0
+    values["a"].value, values["tau"].value = 4000.0, 3.0
     fit.run()
     fit.update_error_estimates()
 
     fitted = dict(zip(fit.model.parameter_names, fit.model.parameter_values))
-    a, tau = fitted['a'], fitted['tau']
+    a, tau = fitted["a"], fitted["tau"]
     assert a == pytest.approx(a_true, rel=0.05)
     assert tau == pytest.approx(tau_true, rel=0.05)
 
     n = len(fit.model.weighted_residuals)
     xx = x[:n]
     mu = a * np.exp(-xx / tau)
-    derivatives = {'a': mu / a, 'tau': mu * xx / tau ** 2}
+    derivatives = {"a": mu / a, "tau": mu * xx / tau**2}
     order = [p.name for p in fit.model.parameters]
-    information = np.array([
-        [np.sum(derivatives[j] * derivatives[k] / mu) for k in order]
-        for j in order
-    ])
+    information = np.array(
+        [[np.sum(derivatives[j] * derivatives[k] / mu) for k in order] for j in order]
+    )
     fisher_std = np.sqrt(np.diag(np.linalg.inv(information)))
 
     for parameter, expected in zip(fit.model.parameters, fisher_std):
@@ -164,11 +164,9 @@ def test_covariance_errors_agree_with_the_sampled_posterior():
     fit, analytic_std = _quadratic_fit()
     fit.update_error_estimates()
 
-    r = chisurf.core.fitting.sample.walk_mcmc(
-        fit=fit, steps=8000, step_size=0.01, temp=1.0, thin=1
-    )
-    samples = np.asarray(r['parameter_values'], dtype=float)
-    samples = samples[len(samples) // 5:]
+    r = chisurf.core.fitting.sample.walk_mcmc(fit=fit, steps=8000, step_size=0.01, temp=1.0, thin=1)
+    samples = np.asarray(r["parameter_values"], dtype=float)
+    samples = samples[len(samples) // 5 :]
 
     for i, parameter in enumerate(fit.model.parameters):
         assert samples[:, i].std() == pytest.approx(parameter.error_estimate, rel=0.25)

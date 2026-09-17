@@ -117,9 +117,7 @@ def test_native_winner_is_applied_once_and_records_one_accepted_event(monkeypatc
             (received_problem, state.get_structure_key())
         )
     )
-    prepared = NativeSearchPreparation(
-        "test.native", problem=problem, binding=binding
-    )
+    prepared = NativeSearchPreparation("test.native", problem=problem, binding=binding)
     monkeypatch.setattr(
         "chisurf.core.fitting.mcts.dispatcher.prepare_model_search",
         lambda _fit: prepared,
@@ -130,9 +128,7 @@ def test_native_winner_is_applied_once_and_records_one_accepted_event(monkeypatc
         searches.append((received_problem, settings, should_cancel()))
         return _Result()
 
-    monkeypatch.setattr(
-        "chisurf.core.fitting.mcts.execution.run_native_search", run_native
-    )
+    monkeypatch.setattr("chisurf.core.fitting.mcts.execution.run_native_search", run_native)
     _run_inline(monkeypatch)
 
     controller.onRunMCTS()
@@ -211,9 +207,7 @@ def test_controller_runs_a_real_parse_fit_through_bff(monkeypatch):
     assert fit.model.parameter_dict["offset"].value == pytest.approx(1.5)
     assert fit.model.parameter_dict["slope"].value == pytest.approx(2.25)
     assert len(controller.history) == 1
-    assert controller.history[0]["payload"]["capability_id"] == (
-        "chisurf.fixed-structure.v1"
-    )
+    assert controller.history[0]["payload"]["capability_id"] == ("chisurf.fixed-structure.v1")
 
 
 @pytest.mark.parametrize("available", [True, False])

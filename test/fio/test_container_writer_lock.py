@@ -18,12 +18,17 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.core.fio.pto import Measurement, PtoMfdbError
+from chisurf.core.fio.pto import Measurement
 
 DATA = (
     Path(__file__).resolve().parents[2]
-    / "chisurf" / "plugins" / "burst" / "burst_selection"
-    / "tests" / "data" / "bh_spc132_sm_dna"
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 SPC = DATA / "m000.spc"
 
@@ -96,9 +101,9 @@ def test_the_lock_is_released_when_the_writer_raises(container: Path):
 
 def test_two_analyses_of_one_measurement_do_not_race(container: Path):
     """The case this came from: a re-run while the first is still writing."""
-    from chisurf.core.datastore import store_from_arrays
-
     import numpy as np
+
+    from chisurf.core.datastore import store_from_arrays
 
     with Measurement.open(container, writable=True) as first:
         first.put_table(

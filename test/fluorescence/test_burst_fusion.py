@@ -39,7 +39,10 @@ def _poisson_stream(rate_hz: float, duration_s: float, seed: int = 0) -> np.ndar
 
 
 def _recurring_stream(
-    n_molecules: int, duration_s: float, recur: int = 3, spacing_s: float = 2e-3,
+    n_molecules: int,
+    duration_s: float,
+    recur: int = 3,
+    spacing_s: float = 2e-3,
     seed: int = 0,
 ) -> np.ndarray:
     """Each molecule leaves ``recur`` bursts a fixed short time apart."""

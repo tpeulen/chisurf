@@ -8,7 +8,6 @@ from chisurf.core.models.structure.rmf import (
     StructureRmfWriter,
 )
 
-
 __all__ = [
     "ProteinMCRmfWriter",
     "RmfWriterError",

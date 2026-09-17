@@ -10,16 +10,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
-import chisurf.logging
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.metadata_editor import (
     ALL_METADATA_KEYS,
     MetadataEditor,
     key_description,
 )
-from chisurf.gui import dialogs
 
 
 class MetadataDock(QtWidgets.QWidget):
@@ -216,11 +215,14 @@ class MetadataDock(QtWidgets.QWidget):
         self._editor.set_data(key_values)
         # Add any DB-loaded keys not in the static list to the detail key combo
         for k in getattr(self._editor, "_extra_keys", []):
-            if self._detail_key.findText(k, QtCore.Qt.MatchFixedString | QtCore.Qt.MatchCaseSensitive) == -1:
+            if (
+                self._detail_key.findText(
+                    k, QtCore.Qt.MatchFixedString | QtCore.Qt.MatchCaseSensitive
+                )
+                == -1
+            ):
                 self._detail_key.addItem(k)
-        self._status_label.setText(
-            f"Sample <b>{sample_id}</b>: {len(key_values)} metadata keys"
-        )
+        self._status_label.setText(f"Sample <b>{sample_id}</b>: {len(key_values)} metadata keys")
 
     def _save_metadata(self) -> None:
         if not self._current_sample_id:
@@ -328,7 +330,7 @@ class MetadataDock(QtWidgets.QWidget):
                 sample = self._client.get_sample(sid)
             except Exception:
                 continue
-            for kv in (sample.get("key_values") or []):
+            for kv in sample.get("key_values") or []:
                 if kv.get("key") == key:
                     v = kv.get("value", "")
                     if v and v not in seen:

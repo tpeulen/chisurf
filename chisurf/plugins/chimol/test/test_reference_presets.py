@@ -27,13 +27,13 @@ What this pins
   strands and was indistinguishable from the default. The strand is
   `cartoon_rect_*`.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
 
 import pytest
-
 from chimol.plugins.presets.commands import load_reference_presets
 
 PRESETS = load_reference_presets()
@@ -67,7 +67,7 @@ def test_the_menu_takes_its_tooltips_from_the_json():
     from chimol.commands import Cmd
     from chimol.ui.menus import bar
 
-    Cmd(None)                     # the section is the presets plugin's
+    Cmd(None)  # the section is the presets plugin's
     described = {
         str(entry.command): str(entry.note)
         for entry in bar.PRESET_MENU
@@ -113,7 +113,7 @@ def test_every_preset_runs_and_changes_the_picture():
 
     keys = KEYS
     lines = "\n".join(f"        run({key!r})" for key in keys)
-    measured = probe(f'''
+    measured = probe(f"""
         app = open_app(size=(420, 320))
         errors = []
         app.cmd.set_error_callback(errors.append)
@@ -139,16 +139,15 @@ def test_every_preset_runs_and_changes_the_picture():
             before = after
 
 {lines}
-    ''')
+    """)
 
     for key in keys:
         assert measured[f"errors:{key}"] == "none", (
             f"preset_cx {key} errored: {measured[f'errors:{key}']}"
         )
     moved = [k for k in keys if float(measured[f"changed:{k}"]) > 0.2]
-    assert len(moved) >= len(keys) - 2, (
-        "presets that changed nothing: "
-        + ", ".join(k for k in keys if float(measured[f"changed:{k}"]) <= 0.2)
+    assert len(moved) >= len(keys) - 2, "presets that changed nothing: " + ", ".join(
+        k for k in keys if float(measured[f"changed:{k}"]) <= 0.2
     )
 
 
@@ -159,6 +158,7 @@ def test_the_ribbon_presets_differ_from_one_another():
     set, and a pixel threshold on three cartoons of one protein is either
     always red or so loose it proves nothing.
     """
+
     def settings_of(key):
         found = {}
         for line in PRESETS[key]["commands"]:
@@ -169,15 +169,20 @@ def test_the_ribbon_presets_differ_from_one_another():
         return found
 
     ribbons, cylinders, licorice = (
-        settings_of("ribbons"), settings_of("cylinders"), settings_of("licorice")
+        settings_of("ribbons"),
+        settings_of("cylinders"),
+        settings_of("licorice"),
     )
 
     # The helix section is `oval`; the strand is `rect`. Setting only the first
     # is what made licorice indistinguishable from the default.
-    for name in ("cartoon_oval_length", "cartoon_oval_width",
-                 "cartoon_rect_length", "cartoon_rect_width"):
-        for key, values in (("ribbons", ribbons), ("cylinders", cylinders),
-                            ("licorice", licorice)):
+    for name in (
+        "cartoon_oval_length",
+        "cartoon_oval_width",
+        "cartoon_rect_length",
+        "cartoon_rect_width",
+    ):
+        for key, values in (("ribbons", ribbons), ("cylinders", cylinders), ("licorice", licorice)):
             assert name in values, f"{key} does not set {name}"
 
     assert cylinders["cartoon_oval_length"] == cylinders["cartoon_oval_width"], (

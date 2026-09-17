@@ -43,10 +43,7 @@ def _demo_pipeline() -> Pipeline:
 
 
 def _pipeline_names(view) -> set[str]:
-    return {
-        view.pipeline_table.item(r, 0).text()
-        for r in range(view.pipeline_table.rowCount())
-    }
+    return {view.pipeline_table.item(r, 0).text() for r in range(view.pipeline_table.rowCount())}
 
 
 def test_view_lists_pipelines(db, qapp):

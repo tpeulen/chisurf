@@ -20,23 +20,31 @@ a stopwatch on a loaded machine measures the machine:
   what made a circle of a hundred chords expensive, quads being the thing it
   was not short of.
 """
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
-from emtk.quad_painter import QuadPainter
 from chimol.ui.gui import GuiRow, GuiWindow, InternalGui
+from emtk.quad_painter import QuadPainter
 
 
 def _gui(rows: int = 120) -> InternalGui:
     gui = InternalGui()
-    gui.set_rows([GuiRow(name="all", is_header=True)]
-                 + [GuiRow(name=f"object_{index}") for index in range(rows)])
-    gui.add_window(GuiWindow(key="panel", title="Panel", x=40.0, y=90.0,
-                             w=240.0, h=200.0,
-                             body=lambda p, rect: p.text(
-                                 rect.x, rect.y, rect.w, 14.0, 0x81, "body", (200,) * 3)))
+    gui.set_rows(
+        [GuiRow(name="all", is_header=True)]
+        + [GuiRow(name=f"object_{index}") for index in range(rows)]
+    )
+    gui.add_window(
+        GuiWindow(
+            key="panel",
+            title="Panel",
+            x=40.0,
+            y=90.0,
+            w=240.0,
+            h=200.0,
+            body=lambda p, rect: p.text(rect.x, rect.y, rect.w, 14.0, 0x81, "body", (200,) * 3),
+        )
+    )
     gui.layout(1000, 700)
     return gui
 
@@ -100,7 +108,7 @@ def test_the_blocks_still_draw_the_whole_chrome():
     """Split for caching, identical on screen: same vertices, same order."""
     gui = _gui()
     whole = QuadPainter(scale=1.0)
-    gui.paint(whole)          # `paint` draws the over-window half itself
+    gui.paint(whole)  # `paint` draws the over-window half itself
 
     pieces = []
     for _key, paint in gui.paint_blocks(lambda: None):
@@ -145,8 +153,8 @@ def test_a_band_of_triangles_is_one_painter_call():
     circle = CirclePlot(0, 0, 400, 400)
     circle.sector("E", (1, 164))
     circle.sector("S", (1, 40))
-    circle.link(("E", 10, 30), ("S", 5, 20))          # a ribbon
-    circle.link(("E", 20, 20), ("S", 8, 8))           # a line
+    circle.link(("E", 10, 30), ("S", 5, 20))  # a ribbon
+    circle.link(("E", 20, 20), ("S", 8, 8))  # a line
     circle.draw(painter)
     assert calls["n"] == 0, f"{calls['n']} triangles emitted one at a time"
     assert len(painter.vertices()) > 100, "and it still drew something"

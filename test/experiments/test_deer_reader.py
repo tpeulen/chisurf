@@ -1,4 +1,5 @@
 """Round-trip tests for the DEER experiment reader (CSV + real Bruker data)."""
+
 from __future__ import annotations
 
 import pathlib
@@ -116,6 +117,6 @@ def test_real_bruker_fits_gaussian():
     fit.run()
     model = fit.model
     r_fit = model.gaussians.means[0]
-    assert 15.0 < r_fit < 100.0          # physically plausible spin-label distance (Å)
+    assert 15.0 < r_fit < 100.0  # physically plausible spin-label distance (Å)
     assert np.all(np.isfinite(model.y))
     assert np.isfinite(fit.chi2r)

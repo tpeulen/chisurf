@@ -8,7 +8,7 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 import chisurf as cs
-from chisurf.core.actions._infra import ActionSpec, ActionRegistry, ActionDispatcher
+from chisurf.core.actions._infra import ActionDispatcher, ActionRegistry, ActionSpec
 
 # The parameter actions that are debounced and address a fit by ``fit_index``.
 FIT_SCOPED_ACTIONS = (

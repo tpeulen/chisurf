@@ -81,7 +81,9 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         # panel nobody reads.
         intro = QtWidgets.QLabel(
             "<b>µs-ALEX only</b> — already PIE / ns-ALEX? Skip this step; "
-            "step 1 already has your setup.", self)
+            "step 1 already has your setup.",
+            self,
+        )
         intro.setToolTip(
             "In µs-ALEX the lasers alternate in time, so which laser was on is "
             "in the photon's macro-time. This step measures the alternation and "
@@ -194,12 +196,16 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             "red": (self.red_lo, self.red_hi),
         }
         for name, (lo, hi), hint in (
-            ("green", self._spins["green"],
-             "Donor-excitation window ('prompt'): I_DD and I_DA are counted "
-             "inside it."),
-            ("red", self._spins["red"],
-             "Acceptor-excitation window ('delayed'): I_AA is counted inside "
-             "it."),
+            (
+                "green",
+                self._spins["green"],
+                "Donor-excitation window ('prompt'): I_DD and I_DA are counted inside it.",
+            ),
+            (
+                "red",
+                self._spins["red"],
+                "Acceptor-excitation window ('delayed'): I_AA is counted inside it.",
+            ),
         ):
             for spin in (lo, hi):
                 spin.setToolTip(
@@ -330,19 +336,20 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         windows = self._windows_from_spins()
         if windows is None:
             self.status_label.setText(
-                "Each gate needs a start below its end — the setup was not "
-                "changed."
+                "Each gate needs a start below its end — the setup was not changed."
             )
             return
         self._result["windows"] = windows
         setup = build_setup(
-            windows, self._result["donor_channels"],
-            self._result["acceptor_channels"], self._result["period"])
+            windows,
+            self._result["donor_channels"],
+            self._result["acceptor_channels"],
+            self._result["period"],
+        )
         adopt = getattr(self._workflow, "adopt_alex_conversion", None)
         if callable(adopt):
             adopt(setup, self._converted)
-        self._write_detail(
-            self._result["period"], self._result["confidence"], windows)
+        self._write_detail(self._result["period"], self._result["confidence"], windows)
         self.status_label.setText(
             f"Gates {windows['green'][0]}\u2013{windows['green'][1]} and "
             f"{windows['red'][0]}\u2013{windows['red'][1]} published as "
@@ -367,10 +374,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         if not self._files:
             return
         if self._files == previous and self._result is not None:
-            return          # same measurement, already detected -- nothing to redo
-        self.status_label.setText(
-            f"{len(self._files)} file(s) — detecting the alternation…"
-        )
+            return  # same measurement, already detected -- nothing to redo
+        self.status_label.setText(f"{len(self._files)} file(s) — detecting the alternation…")
         self.detail_label.setText("")
         self._autorun_timer.start(0)
 
@@ -460,17 +465,21 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         from chisurf.plugins.tttr.ptu_alex_creator import core
 
         reporter = find_status_reporter(self)
-        task = reporter.begin_task(
-            "ALEX: detecting the alternation…",
-            len(self._files) if convert else 0) if reporter else None
+        task = (
+            reporter.begin_task(
+                "ALEX: detecting the alternation…", len(self._files) if convert else 0
+            )
+            if reporter
+            else None
+        )
 
         def report(done, total, what):
             if task is not None:
                 task.setValue(done)
                 task.setLabelText(
                     f"ALEX: embedding {total} file(s) into one .pto — {what}…"
-                    if done < total else
-                    f"ALEX: wrote {what}"
+                    if done < total
+                    else f"ALEX: wrote {what}"
                 )
 
         # A typed period overrides the measurement; 0 is the box's "auto".
@@ -486,7 +495,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         try:
             outcome = detect_and_convert(
                 self._files,
-                donor_channels=donor, acceptor_channels=acceptor,
+                donor_channels=donor,
+                acceptor_channels=acceptor,
                 period=manual_period,
                 progress=report,
                 dry_run=not convert,
@@ -526,11 +536,16 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         if folded is None:
             first = self._files[0]
             folded = core.apply_alex(
-                core.load(str(first), core.resolve_filetype("Auto", str(first))),
-                period, 0)
+                core.load(str(first), core.resolve_filetype("Auto", str(first))), period, 0
+            )
         self._plot_phase(folded, outcome["windows"], donor, acceptor, period)
-        self._report(period, outcome["confidence"], outcome["windows"], folded,
-                     outcome.get("channel_contrast"))
+        self._report(
+            period,
+            outcome["confidence"],
+            outcome["windows"],
+            folded,
+            outcome.get("channel_contrast"),
+        )
 
         setup = build_setup(outcome["windows"], donor, acceptor, period)
         if not convert:
@@ -554,8 +569,7 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             return False
         if period is not None and int(period) != int(self._result["period"]):
             return False
-        for given, detected in ((donor, "donor_channels"),
-                                (acceptor, "acceptor_channels")):
+        for given, detected in ((donor, "donor_channels"), (acceptor, "acceptor_channels")):
             if given is not None and list(given) != list(self._result[detected]):
                 return False
         return True
@@ -567,9 +581,11 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         outcome = self._result
         period = int(outcome["period"])
         reporter = find_status_reporter(self)
-        task = reporter.begin_task(
-            f"ALEX: embedding {len(self._files)} file(s) into one .pto…",
-            0) if reporter else None
+        task = (
+            reporter.begin_task(f"ALEX: embedding {len(self._files)} file(s) into one .pto…", 0)
+            if reporter
+            else None
+        )
         try:
             container = alex_to_pto(self._files, alex_period=period)
         except Exception as exc:
@@ -584,8 +600,9 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         outcome["failed"] = []
         self._converted = [container]
         windows = self._windows_from_spins() or outcome["windows"]
-        setup = build_setup(windows, outcome["donor_channels"],
-                            outcome["acceptor_channels"], period)
+        setup = build_setup(
+            windows, outcome["donor_channels"], outcome["acceptor_channels"], period
+        )
         self._publish(setup, [container], [])
 
     def _publish(self, setup: dict, converted, failed) -> None:
@@ -636,16 +653,17 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         micro = f" = {period * resolution * 1e6:.1f} µs" if resolution else ""
         self._micro_suffix = micro
         verdict = (
-            "a clear alternation" if confidence > 50 else
-            "a weak alternation; check the channel assignment, or this may not "
-            "be µs-ALEX data"
+            "a clear alternation"
+            if confidence > 50
+            else "a weak alternation; check the channel assignment, or this may not be µs-ALEX data"
         )
         g_lo, g_hi = windows["green"]
         r_lo, r_hi = windows["red"]
         self._write_detail(period, confidence, windows)
         channels = (
-            "" if contrast is None else
-            f"\n\nThe donor and acceptor channels were assigned from the data: "
+            ""
+            if contrast is None
+            else f"\n\nThe donor and acceptor channels were assigned from the data: "
             f"the donor detector is {contrast:.0%} as bright under acceptor "
             f"excitation, which is the only thing that settles which is which."
         )
@@ -729,12 +747,27 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
         "setup_name": SETUP_NAME,
         "windows": {"prompt": prompt, "delayed": delayed},
         "detectors": {
-            "green": {"chs": donor_chs, "micro_time_ranges": [prompt],
-                      "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-            "red": {"chs": acceptor_chs, "micro_time_ranges": [prompt],
-                    "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-            "yellow": {"chs": acceptor_chs, "micro_time_ranges": [delayed],
-                       "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+            "green": {
+                "chs": donor_chs,
+                "micro_time_ranges": [prompt],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+            },
+            "red": {
+                "chs": acceptor_chs,
+                "micro_time_ranges": [prompt],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+            },
+            "yellow": {
+                "chs": acceptor_chs,
+                "micro_time_ranges": [delayed],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+            },
         },
         "tttr_reading": {
             "file_type": "PTO",

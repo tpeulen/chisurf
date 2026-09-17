@@ -20,7 +20,6 @@ from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (
     FilterSettings,
     FilterSettingsModel,
 )
-from chisurf.plugins.burst.burst_selection.api.models import AnalysisSettings
 from chisurf.plugins.burst.burst_selection.gui.adapter import (
     analysis_settings_from_wizard,
     apply_analysis_folder,
@@ -124,8 +123,13 @@ class Wizard:
         self.checkBox_RemoveFolder = Checkbox(False)
         self.checkBox_auto_components = Checkbox(False)
         self.gmm_settings = {
-            "covariance_type": "full", "random_state": 42, "max_iter": 100,
-            "n_init": 1, "tol": 1e-3, "max_components": 5, "reg_covar": 1e-6,
+            "covariance_type": "full",
+            "random_state": 42,
+            "max_iter": 100,
+            "n_init": 1,
+            "tol": 1e-3,
+            "max_components": 5,
+            "reg_covar": 1e-6,
         }
 
 
@@ -150,7 +154,7 @@ def wizard():
 
 
 def test_settings_survive_a_full_round_trip(wizard):
-    """widgets → settings → widgets must return to the same values."""
+    """Widgets → settings → widgets must return to the same values."""
     captured = analysis_settings_from_wizard(wizard)
     before = analysis_settings_from_wizard(wizard)
 
@@ -238,8 +242,9 @@ def test_restoring_from_a_real_analysis_folder(wizard, tmp_path):
     # settings in the container instead.
     settings = sel.AnalysisSettings()
     settings.output_formats = ["bur"]
-    sel.analyze_file(str(staged), settings=settings, output_dir=str(analysis),
-                     mti_output_dir=str(analysis))
+    sel.analyze_file(
+        str(staged), settings=settings, output_dir=str(analysis), mti_output_dir=str(analysis)
+    )
 
     wizard.burst_finder.min_ph = 1
     notes = apply_analysis_folder(wizard, analysis)
@@ -270,7 +275,8 @@ def test_mle_loader_accepts_a_burst_folder(tmp_path, monkeypatch):
     )
 
     write_analysis_manifest(
-        tmp_path, [{"path": "m000.spc", "container_type": "SPC-130"}],
+        tmp_path,
+        [{"path": "m000.spc", "container_type": "SPC-130"}],
         settings={"micro_time_binning": 4},
     )
 
@@ -280,9 +286,7 @@ def test_mle_loader_accepts_a_burst_folder(tmp_path, monkeypatch):
         applied.update(payload)
         applied["__source__"] = source
 
-    monkeypatch.setattr(
-        MLELifetimeAnalysisWizard, "apply_settings_payload", record, raising=True
-    )
+    monkeypatch.setattr(MLELifetimeAnalysisWizard, "apply_settings_payload", record, raising=True)
     MLELifetimeAnalysisWizard.load_settings_from(
         MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard), tmp_path
     )
@@ -305,8 +309,10 @@ def test_mle_loader_still_reads_a_plain_settings_file(tmp_path, monkeypatch):
 
     applied = {}
     monkeypatch.setattr(
-        MLELifetimeAnalysisWizard, "apply_settings_payload",
-        lambda self, payload, source=None: applied.update(payload), raising=True,
+        MLELifetimeAnalysisWizard,
+        "apply_settings_payload",
+        lambda self, payload, source=None: applied.update(payload),
+        raising=True,
     )
     MLELifetimeAnalysisWizard.load_settings_from(
         MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard), path
@@ -322,8 +328,10 @@ def test_mle_loader_reports_rather_than_raises_on_junk(tmp_path, monkeypatch):
 
     called = []
     monkeypatch.setattr(
-        MLELifetimeAnalysisWizard, "apply_settings_payload",
-        lambda self, payload, source=None: called.append(payload), raising=True,
+        MLELifetimeAnalysisWizard,
+        "apply_settings_payload",
+        lambda self, payload, source=None: called.append(payload),
+        raising=True,
     )
     blank = MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard)
 

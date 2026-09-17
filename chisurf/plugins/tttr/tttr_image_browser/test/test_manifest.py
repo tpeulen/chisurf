@@ -10,8 +10,17 @@ def test_manifest_loads():
     assert manifest.id == "tttr_image_browser"
     assert manifest.version == "2.0.0"
     assert manifest.display_name == "Imaging:Tools:Image Browser"
-    assert manifest.entrypoints.gui == "chisurf.plugins.tttr.tttr_image_browser.gui.tool:TTTRImageBrowserTool"
-    assert manifest.entrypoints.cli == "tttr-image-browser=chisurf.plugins.tttr.tttr_image_browser.cli:cli"
-    assert manifest.entrypoints.services == "chisurf.plugins.tttr.tttr_image_browser.backend.services:register_services"
+    assert (
+        manifest.entrypoints.gui
+        == "chisurf.plugins.tttr.tttr_image_browser.gui.tool:TTTRImageBrowserTool"
+    )
+    assert (
+        manifest.entrypoints.cli
+        == "tttr-image-browser=chisurf.plugins.tttr.tttr_image_browser.cli:cli"
+    )
+    assert (
+        manifest.entrypoints.services
+        == "chisurf.plugins.tttr.tttr_image_browser.backend.services:register_services"
+    )
     assert len(manifest.rpc_methods) == 6
     assert manifest.state_namespace == "tttr_image_browser"

@@ -136,7 +136,10 @@ def test_a_region_gates_the_scatter_plane_like_the_rectangle_does():
         signal, signal, threshold_a=1.0, threshold_b=1.0, gate=(50.0, 100.0, 50.0, 100.0)
     )
     as_region = coloc.colocalization_metrics(
-        signal, signal, threshold_a=1.0, threshold_b=1.0,
+        signal,
+        signal,
+        threshold_a=1.0,
+        threshold_b=1.0,
         gate=RectangleROI(50.0, 50.0, 100.0, 100.0),
     )
     assert as_region.metrics["n_pixels_gated"] == pytest.approx(
@@ -146,7 +149,10 @@ def test_a_region_gates_the_scatter_plane_like_the_rectangle_does():
     assert as_region.metrics["gate"]["type"] == "rectangle"
 
     elliptical = coloc.colocalization_metrics(
-        signal, signal, threshold_a=1.0, threshold_b=1.0,
+        signal,
+        signal,
+        threshold_a=1.0,
+        threshold_b=1.0,
         gate=EllipseROI(75.0, 75.0, 25.0),
     )
     # An inscribed ellipse selects less than the box around it, and more than
@@ -160,7 +166,8 @@ def test_a_region_gates_the_scatter_plane_like_the_rectangle_does():
 @pytest.fixture
 def two_channel_tiff(tmp_path):
     """Write a 2-frame, 2-channel TIFF stack and return ``(path, channel_a, channel_b)``."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     signal = _blob_image()
     a = np.stack([signal, signal])
     b = np.stack([0.7 * signal, 0.7 * signal])
@@ -183,7 +190,8 @@ def test_load_image_stack_reads_tcyx(two_channel_tiff):
 
 def test_load_image_stack_single_plane(tmp_path):
     """A plain 2-D image becomes a one-frame, one-channel stack."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "single.tif"
     imwrite(str(path), _blob_image().astype(np.float32))
     stack = load_image_stack(path)
@@ -202,7 +210,8 @@ def test_compute_colocalization_on_tiff(two_channel_tiff):
 
 def test_compute_colocalization_needs_two_channels(tmp_path):
     """A single-channel image is rejected with a clear error."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "one.tif"
     imwrite(str(path), _blob_image().astype(np.float32))
     with pytest.raises(ValueError, match="needs two"):
@@ -253,7 +262,7 @@ def test_a_painted_population_gates_the_scatter(two_channel_tiff):
     assert vm.compute() is True
     assert vm.gate_paint is not None  # allocated to the histogram's shape
 
-    vm.gate_paint[vm.bins // 2:, vm.bins // 2:] = 1.0  # the bright quadrant
+    vm.gate_paint[vm.bins // 2 :, vm.bins // 2 :] = 1.0  # the bright quadrant
     vm.on_gate_painted()
     assert vm.gate_enabled is True
     gate = vm._gate()
@@ -590,8 +599,7 @@ def test_object_analysis_respects_the_roi():
 
 def test_view_model_exposes_the_object_views():
     """The object map and the distance histogram reach the tool."""
-    from chisurf.core.fio.image import imread, imwrite
-
+    from chisurf.core.fio.image import imwrite
     from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
 
     a = _puncta_image([(30, 30), (70, 70), (100, 40)])
@@ -669,7 +677,7 @@ def test_cli_exposes_every_analysis(cli_runner, tmp_path):
     """Costes, the shift profile, the 2-D plane, profiles and objects are all reachable."""
     import json
 
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
     from chisurf.plugins.microscopy.img_coloc.cli import cli
 
     a = _puncta_image([(30, 30), (70, 70), (100, 40)])
@@ -710,7 +718,7 @@ def test_cli_exposes_every_analysis(cli_runner, tmp_path):
 
 def test_cli_rejects_a_single_channel_image(cli_runner, tmp_path):
     """A one-channel file fails loudly instead of reporting nonsense."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
     from chisurf.plugins.microscopy.img_coloc.cli import cli
 
     path = tmp_path / "one.tif"
@@ -742,14 +750,20 @@ def _gated_model():
 
     rng = np.random.default_rng(3)
     a = rng.uniform(0.0, 1.0, (32, 32))
-    b = a * 0.8 + rng.normal(0, 0.02, (32, 32))
+    a * 0.8 + rng.normal(0, 0.02, (32, 32))
 
     vm = ColocViewModel()
-    vm._result = type("R", (), {"histogram": {
-        "edges_a": np.linspace(0.0, 1.0, 65),
-        "edges_b": np.linspace(0.0, 1.0, 65),
-        "histogram": np.zeros((64, 64)),
-    }})()
+    vm._result = type(
+        "R",
+        (),
+        {
+            "histogram": {
+                "edges_a": np.linspace(0.0, 1.0, 65),
+                "edges_b": np.linspace(0.0, 1.0, 65),
+                "histogram": np.zeros((64, 64)),
+            }
+        },
+    )()
     return vm
 
 
@@ -768,7 +782,7 @@ def test_the_typed_box_and_a_painted_population_combine_rather_than_override():
     gate = vm._gate()
     assert gate is not None
     inside = gate.contains(np.array([[0.25, 0.25], [0.80, 0.80], [0.25, 0.90]]))
-    assert inside.tolist() == [True, True, False]     # union of the two
+    assert inside.tolist() == [True, True, False]  # union of the two
 
     # Intersecting them is now expressible at all.
     vm.gates.combine = "and"
@@ -777,7 +791,8 @@ def test_the_typed_box_and_a_painted_population_combine_rather_than_override():
 
 def test_the_typed_box_includes_its_upper_bound():
     """A RectangleROI is half-open; a typed range is not, and the difference is
-    exactly the brightest pixel."""
+    exactly the brightest pixel.
+    """
     import numpy as np
 
     vm = _gated_model()

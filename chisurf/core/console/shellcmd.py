@@ -38,7 +38,7 @@ class SList(list):
 
         return [pathlib.Path(line) for line in self]
 
-    def grep(self, pattern: str, prune: bool = False) -> "SList":
+    def grep(self, pattern: str, prune: bool = False) -> SList:
         """Return the lines matching *pattern*.
 
         Parameters
@@ -55,11 +55,9 @@ class SList(list):
         import re
 
         compiled = re.compile(pattern)
-        return SList(
-            line for line in self if bool(compiled.search(line)) is not prune
-        )
+        return SList(line for line in self if bool(compiled.search(line)) is not prune)
 
-    def fields(self, *indices: int) -> "SList":
+    def fields(self, *indices: int) -> SList:
         """Return whitespace-separated fields of each line.
 
         Parameters
@@ -137,7 +135,7 @@ def expand_variables(cmd: str, namespace: typing.Mapping[str, typing.Any]) -> st
             out.append(char)
             index += 1
             continue
-        rest = result[index + 1:]
+        rest = result[index + 1 :]
         name = ""
         for candidate in rest:
             if candidate.isalnum() or candidate == "_":

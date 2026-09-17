@@ -10,7 +10,6 @@ The boundary conventions differ between queries and are part of what is pinned:
 from __future__ import annotations
 
 import numpy as np
-
 from chimol.geometry.neighbors import (
     ball_lists,
     blocked_cross_pairs,
@@ -54,7 +53,9 @@ def test_shade_from_atoms_matches_brute_force():
     cutoff = float(sigmas.max() * 2.5)
 
     col_sum, wsum, grad, nearest = shade_from_atoms(verts, atoms, colors, sigmas, cutoff)
-    mesh = np.where(wsum[:, None] > 0, col_sum / np.where(wsum > 0, wsum, 1)[:, None], colors[nearest])
+    mesh = np.where(
+        wsum[:, None] > 0, col_sum / np.where(wsum > 0, wsum, 1)[:, None], colors[nearest]
+    )
 
     ref = np.zeros((1200, 4))
     for i in range(1200):
@@ -125,9 +126,7 @@ def test_blocked_cross_pairs_covers_every_pair_whatever_the_budget():
     a = rng.standard_normal((400, 3)) * 6.0
     b = rng.standard_normal((300, 3)) * 6.0
     r = 3.0
-    expected = np.argwhere(
-        np.sum((a[:, None, :] - b[None, :, :]) ** 2, axis=2) <= r * r
-    )
+    expected = np.argwhere(np.sum((a[:, None, :] - b[None, :, :]) ** 2, axis=2) <= r * r)
 
     for budget in (17, 1000, 10_000_000):
         rows = []
@@ -162,7 +161,6 @@ def test_pair_indices_are_intp_so_bincount_accepts_them():
     with nothing in the message about integers.
     """
     import numpy as np
-
     from chimol.geometry.grid_pairs import (
         pairs_within,
         self_pairs_within_grid,

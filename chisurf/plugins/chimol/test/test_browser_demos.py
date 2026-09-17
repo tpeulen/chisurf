@@ -16,6 +16,7 @@ command layer -- is executed together, so it is the test that means it.
 The page is one Pyodide boot per module (a minute); the demos then take a
 few seconds each, the network ones twenty to thirty.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -25,7 +26,6 @@ import sys
 import time
 
 import pytest
-
 from test_browser_render import CHROMIUM_FLAGS, _free_port
 
 pytestmark = pytest.mark.slow
@@ -59,19 +59,47 @@ DEMOS = [
 #: (it waits for the reader), so the *commands* are what a page must be able
 #: to run; the pointing is the chrome's business.
 TOURS = {
-    "fit_in_map": (True, [
-        "delete all", "fetch EMD-3061", "map_info", "isosurface dens, EMD-3061",
-        "density_panel on", "volume_level EMD-3061, 0.06", "hide_dust EMD-3061, 30",
-        "fetch 5A63", "translate [6, -4, 3], 5a63", "fitmap 5a63", "molmap 5a63, 3.4, sim",
-    ]),
-    "superpose": (True, [
-        "delete all", "fetch 1DG3", "fetch 1F5N", "color skyblue, 1dg3",
-        "align 1f5n, 1dg3", "super 1f5n, 1dg3", "rms 1f5n, 1dg3", "zoom 1f5n",
-    ]),
-    "labelling": (False, [
-        "delete all", "load 148l.pdb", "wizard labelling", "wizard pick, 920",
-        "wizard dye, Cy5", "wizard apply", "wizard done",
-    ]),
+    "fit_in_map": (
+        True,
+        [
+            "delete all",
+            "fetch EMD-3061",
+            "map_info",
+            "isosurface dens, EMD-3061",
+            "density_panel on",
+            "volume_level EMD-3061, 0.06",
+            "hide_dust EMD-3061, 30",
+            "fetch 5A63",
+            "translate [6, -4, 3], 5a63",
+            "fitmap 5a63",
+            "molmap 5a63, 3.4, sim",
+        ],
+    ),
+    "superpose": (
+        True,
+        [
+            "delete all",
+            "fetch 1DG3",
+            "fetch 1F5N",
+            "color skyblue, 1dg3",
+            "align 1f5n, 1dg3",
+            "super 1f5n, 1dg3",
+            "rms 1f5n, 1dg3",
+            "zoom 1f5n",
+        ],
+    ),
+    "labelling": (
+        False,
+        [
+            "delete all",
+            "load 148l.pdb",
+            "wizard labelling",
+            "wizard pick, 920",
+            "wizard dye, Cy5",
+            "wizard apply",
+            "wizard done",
+        ],
+    ),
 }
 
 
@@ -92,7 +120,9 @@ def server():
     port = _free_port()
     process = subprocess.Popen(
         [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
-        cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=str(_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     url = f"http://127.0.0.1:{port}/"
     for _ in range(100):
@@ -274,8 +304,8 @@ def test_ray_traces_a_picture_from_the_prompt(page):
     _run(page, "delete all")
     _run(page, "load 148l.pdb")
     _run(page, "as cartoon")
-    page.mouse.click(120, 400)                  # put the info panel away
-    page.keyboard.press("Enter")                # focus the prompt
+    page.mouse.click(120, 400)  # put the info panel away
+    page.keyboard.press("Enter")  # focus the prompt
     page.keyboard.type("ray /mnt/ray_test.png, 96, 72", delay=5)
     page.keyboard.press("Enter")
     page.wait_for_function(

@@ -25,8 +25,6 @@ view draws can be asserted without a display.
 
 from __future__ import annotations
 
-import typing
-
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
@@ -83,7 +81,7 @@ class AnisotropyDiagnostics(QtWidgets.QWidget):
         self._model = model
         self._group = getattr(model, target, None)
         #: The r(t) window is modeless, so it must be kept alive by a reference.
-        self._rt_window: typing.Optional[QtWidgets.QWidget] = None
+        self._rt_window: QtWidgets.QWidget | None = None
 
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -140,21 +138,27 @@ class AnisotropyDiagnostics(QtWidgets.QWidget):
             return
         if cp is None:
             dialogs.warning(
-                self, "Anisotropy decays",
-                "The plotting backend is not available, cannot plot anisotropy decays.")
+                self,
+                "Anisotropy decays",
+                "The plotting backend is not available, cannot plot anisotropy decays.",
+            )
             return
         group = self._group
         extract = getattr(group, "_extract_vv_vh_raw_for_diag", None)
         if not callable(extract):
             dialogs.warning(
-                self, "Anisotropy decays",
-                "This model's anisotropy group offers no VV/VH diagnostics.")
+                self,
+                "Anisotropy decays",
+                "This model's anisotropy group offers no VV/VH diagnostics.",
+            )
             return
         t_raw, vv_raw, vh_raw, defaults = extract()
         if t_raw is None or vv_raw is None or vh_raw is None or defaults is None:
             dialogs.information(
-                self, "Anisotropy decays",
-                "VV/VH channels are not available for anisotropy-decay diagnostics.")
+                self,
+                "Anisotropy decays",
+                "VV/VH channels are not available for anisotropy-decay diagnostics.",
+            )
             return
         self._rt_window = _RtWindow(group, t_raw, vv_raw, vh_raw, defaults, parent=self)
         self._rt_window.show()
@@ -184,15 +188,24 @@ class _RtWindow(QtWidgets.QWidget):
         self.bg_vv_sb = _spin(self, defaults["bg_vv"], 1.0, 3)
         self.bg_vh_sb = _spin(self, defaults["bg_vh"], 1.0, 3)
         self.shift_sb = _spin(
-            self, float(defaults["shift_vh"]) - float(defaults["shift_vv"]), 0.01, 4)
-        for col, (label, widget) in enumerate((
-            ("g:", self.g_sb), ("l1:", self.l1_sb), ("l2:", self.l2_sb),
-        )):
+            self, float(defaults["shift_vh"]) - float(defaults["shift_vv"]), 0.01, 4
+        )
+        for col, (label, widget) in enumerate(
+            (
+                ("g:", self.g_sb),
+                ("l1:", self.l1_sb),
+                ("l2:", self.l2_sb),
+            )
+        ):
             controls.addWidget(QtWidgets.QLabel(label), 0, 2 * col)
             controls.addWidget(widget, 0, 2 * col + 1)
-        for col, (label, widget) in enumerate((
-            ("BgVV:", self.bg_vv_sb), ("BgVH:", self.bg_vh_sb), ("dVH-VV:", self.shift_sb),
-        )):
+        for col, (label, widget) in enumerate(
+            (
+                ("BgVV:", self.bg_vv_sb),
+                ("BgVH:", self.bg_vh_sb),
+                ("dVH-VV:", self.shift_sb),
+            )
+        ):
             controls.addWidget(QtWidgets.QLabel(label), 1, 2 * col)
             controls.addWidget(widget, 1, 2 * col + 1)
 
@@ -213,7 +226,8 @@ class _RtWindow(QtWidgets.QWidget):
         self.plot.legend()
         self._curves = {
             name: self.plot.line(
-                [], [],
+                [],
+                [],
                 pen=cp.to_pen(colour, width=2, **({"style": style} if style else {})),
                 name=name,
             )
@@ -229,8 +243,7 @@ class _RtWindow(QtWidgets.QWidget):
 
         self.link_l.toggled.connect(self._on_link_toggled)
         self.l1_sb.valueChanged.connect(lambda _: self._sync_l2())
-        for sb in (self.g_sb, self.l1_sb, self.l2_sb,
-                   self.bg_vv_sb, self.bg_vh_sb, self.shift_sb):
+        for sb in (self.g_sb, self.l1_sb, self.l2_sb, self.bg_vv_sb, self.bg_vh_sb, self.shift_sb):
             sb.valueChanged.connect(lambda _: self.recompute())
         reset.clicked.connect(self._reset)
 
@@ -258,8 +271,13 @@ class _RtWindow(QtWidgets.QWidget):
     def _reset(self) -> None:
         """Restore every factor to what the fit is using."""
         d = self._defaults
-        for widget, key in ((self.g_sb, "g"), (self.l1_sb, "l1"), (self.l2_sb, "l2"),
-                            (self.bg_vv_sb, "bg_vv"), (self.bg_vh_sb, "bg_vh")):
+        for widget, key in (
+            (self.g_sb, "g"),
+            (self.l1_sb, "l1"),
+            (self.l2_sb, "l2"),
+            (self.bg_vv_sb, "bg_vv"),
+            (self.bg_vh_sb, "bg_vh"),
+        ):
             widget.setValue(float(d[key]))
         self.shift_sb.setValue(float(d["shift_vh"]) - float(d["shift_vv"]))
         self.link_l.setChecked(True)
@@ -273,8 +291,12 @@ class _RtWindow(QtWidgets.QWidget):
         vh = np.asarray(vh, dtype=np.float64) - float(self.bg_vh_sb.value())
         vh = group._shift_trace_to_reference(t, vh, float(self.shift_sb.value()))
         return group.rt_from_channels(
-            t, vv, vh,
-            float(self.g_sb.value()), float(self.l1_sb.value()), float(self.l2_sb.value()),
+            t,
+            vv,
+            vh,
+            float(self.g_sb.value()),
+            float(self.l1_sb.value()),
+            float(self.l2_sb.value()),
         )
 
     def recompute(self) -> None:
@@ -312,12 +334,14 @@ class _RtWindow(QtWidgets.QWidget):
         s = self._state
         t, r_du, r_dc = s.get("t"), s.get("r_data_unc"), s.get("r_data_cor")
         if t is None or r_du is None or r_dc is None:
-            dialogs.information(
-                self, "Save anisotropy decay", "No anisotropy decay data to save.")
+            dialogs.information(self, "Save anisotropy decay", "No anisotropy decay data to save.")
             return
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save anisotropy decay", "anisotropy_decay.csv",
-            "CSV files (*.csv);;All files (*)")
+            self,
+            "Save anisotropy decay",
+            "anisotropy_decay.csv",
+            "CSV files (*.csv);;All files (*)",
+        )
         if not filename:
             return
         tm, rmu, rmc = s.get("t_model"), s.get("r_model_unc"), s.get("r_model_cor")
@@ -331,9 +355,9 @@ class _RtWindow(QtWidgets.QWidget):
                 n = max(len(t), len(tm))
                 arr = np.full((n, 6), np.nan, dtype=float)
                 for col, values in enumerate((t, r_du, r_dc)):
-                    arr[:len(t), col] = values
+                    arr[: len(t), col] = values
                 for col, values in enumerate((tm, rmu, rmc), start=3):
-                    arr[:len(tm), col] = values
+                    arr[: len(tm), col] = values
                 header = (
                     "time_data,r_data_uncorrected,r_data_corrected,"
                     "time_model,r_model_uncorrected,r_model_corrected"
@@ -341,5 +365,4 @@ class _RtWindow(QtWidgets.QWidget):
             np.savetxt(filename, arr, delimiter=",", header=header, comments="")
         except Exception as exc:
             logging.warning(f"anisotropy diagnostics: CSV export failed: {exc}")
-            dialogs.warning(
-                self, "Save anisotropy decay", f"Failed to save file:\n{exc}")
+            dialogs.warning(self, "Save anisotropy decay", f"Failed to save file:\n{exc}")

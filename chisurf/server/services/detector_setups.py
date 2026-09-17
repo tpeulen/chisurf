@@ -171,6 +171,4 @@ def set_current(
             return resolved
         _store(state)["active"] = dict(resolved.get("result") or {})
         return {"ok": True, "result": {"active": True, "name": name}}
-    return service_error(
-        "Provide either 'settings' or 'name'.", error_code=INVALID_INPUT
-    )
+    return service_error("Provide either 'settings' or 'name'.", error_code=INVALID_INPUT)

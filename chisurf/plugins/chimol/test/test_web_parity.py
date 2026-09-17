@@ -34,6 +34,7 @@ the tool's own command line rather than re-deriving it. Slow: it starts a page
 and waits for Pyodide, which is a minute, in the suite that already pays for
 one.
 """
+
 from __future__ import annotations
 
 import json
@@ -66,23 +67,25 @@ def comparison(tmp_path_factory):
     # repository root. The package root is put on the path explicitly, since a
     # relative entry would no longer point at it.
     root = pathlib.Path(__file__).resolve().parents[4]
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(root), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(root), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
     finished = subprocess.run(
-        [sys.executable, "-m", "chisurf.plugins.chimol.test.web_parity",
-         "--out", str(out)],
-        capture_output=True, text=True, env=env, timeout=1800, cwd=str(out),
+        [sys.executable, "-m", "chisurf.plugins.chimol.test.web_parity", "--out", str(out)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=1800,
+        cwd=str(out),
     )
     desktop = out / "desktop.json"
     browser = out / "browser.json"
     if not (desktop.is_file() and browser.is_file()):
         pytest.fail(
             "the capture wrote no report\n"
-            + finished.stdout[-3000:] + "\n" + finished.stderr[-3000:]
+            + finished.stdout[-3000:]
+            + "\n"
+            + finished.stderr[-3000:]
         )
-    return parity.compare(
-        json.loads(desktop.read_text()), json.loads(browser.read_text())
-    )
+    return parity.compare(json.loads(desktop.read_text()), json.loads(browser.read_text()))
 
 
 def test_the_two_hosts_register_the_same_commands(comparison):

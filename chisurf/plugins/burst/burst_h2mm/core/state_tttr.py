@@ -170,13 +170,15 @@ def write_state_tttr(
     if path.shape != stream_index.shape:
         raise ValueError(
             f"path has {path.size} entries but stream_index has "
-            f"{stream_index.size}; both are one per analysed photon")
+            f"{stream_index.size}; both are one per analysed photon"
+        )
     n_states = int(n_states if n_states is not None else (path.max() + 1 if path.size else 1))
     n_streams = int(stream_index.max() + 1) if stream_index.size else 1
     if n_states > UNASSIGNED:
         raise ValueError(
             f"{n_states} states does not fit the per-photon uint8 state array "
-            f"(255 marks 'unassigned')")
+            f"(255 marks 'unassigned')"
+        )
 
     result = StateTttrOutput()
 
@@ -202,7 +204,9 @@ def write_state_tttr(
         # same file tttrlib's own split writes.
         cmap = tttrlib.HmmChannelMap.allocate(
             sorted({int(c) for c in np.unique(src_channels)}),
-            n_streams, n_states, int(max_channel),
+            n_streams,
+            n_states,
+            int(max_channel),
         )
         result.channel_maps[stem] = {
             "source": cmap.source_map,
@@ -221,7 +225,8 @@ def write_state_tttr(
                 raise RuntimeError(
                     f"{stem}: routing channel(s) "
                     f"{sorted(set(src_channels[new_ch < 0].tolist()))} are not in "
-                    f"the channel map - the TTTR changed under the analysis")
+                    f"the channel map - the TTTR changed under the analysis"
+                )
             assigned = states != UNASSIGNED
             if assigned.any():
                 new_ch[assigned] = cmap.channels_np[

@@ -9,12 +9,12 @@ never hit (missing tttrlib fields, an unset micro-time window).
 
 from __future__ import annotations
 
-from chisurf.plugins.burst.burst_selection.gui.adapter import (
-    photon_filter_settings_from_wizard,
-)
 from chisurf.plugins.burst.burst_selection.api.models import (
     BurstFilterMode,
     TttrlibSearchSettings,
+)
+from chisurf.plugins.burst.burst_selection.gui.adapter import (
+    photon_filter_settings_from_wizard,
 )
 
 

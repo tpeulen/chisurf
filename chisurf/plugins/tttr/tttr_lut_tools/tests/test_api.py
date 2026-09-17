@@ -30,8 +30,9 @@ def test_infer_n_bins_snaps_to_nice():
 
 def test_settings_round_trip(tmp_path):
     luts = {0: [0.0, 1.0, 2.5, 4.0], 8: [0.0, 2.0, 4.0]}
-    d = api.settings.build_settings_dict(luts, {0: 3}, reading_routine="SPC-130",
-                                         used_channels=[0, 8], created="t0")
+    d = api.settings.build_settings_dict(
+        luts, {0: 3}, reading_routine="SPC-130", used_channels=[0, 8], created="t0"
+    )
     p = tmp_path / "s.tttr.json"
     api.settings.save_settings(str(p), d)
     back = api.settings.load_settings(str(p))

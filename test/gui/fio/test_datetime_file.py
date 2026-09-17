@@ -1,7 +1,7 @@
-import pathlib
-import tempfile
-import shutil
 import json
+import pathlib
+import shutil
+import tempfile
 from datetime import datetime
 
 from chisurf.gui.widgets.wizard.tttr_photonfilter import WizardTTTRPhotonFilter
@@ -23,11 +23,11 @@ def test_datetime_file(qapp, qtbot):
     filter_widget.lineEdit_2.setText(test_folder)
 
     mock_filename = str(pathlib.Path(temp_dir) / "test_file.ptu")
-    filter_widget.settings['tttr_filenames'] = [mock_filename]
+    filter_widget.settings["tttr_filenames"] = [mock_filename]
 
     original_dirs = filter_widget.original_directories
 
-    info_dir = original_dirs[0] / 'Info'
+    info_dir = original_dirs[0] / "Info"
     info_dir.mkdir(exist_ok=True, parents=True)
 
     parameters = filter_widget.get_burst_selection_parameters()
@@ -39,10 +39,10 @@ def test_datetime_file(qapp, qtbot):
     timestamp = current_datetime.strftime("%Y%m%d-%H%M%S")
     datetime_filename = info_dir / "datetime.txt"
 
-    with open(params_filename, 'w') as f:
+    with open(params_filename, "w") as f:
         json.dump(parameters, f, indent=4)
 
-    with open(datetime_filename, 'w') as f:
+    with open(datetime_filename, "w") as f:
         f.write(f"Date: {current_datetime.strftime('%Y-%m-%d')}\n")
         f.write(f"Time: {current_datetime.strftime('%H:%M:%S')}\n")
         f.write(f"Timestamp: {timestamp}\n")
@@ -50,7 +50,7 @@ def test_datetime_file(qapp, qtbot):
     assert params_filename.exists()
     assert datetime_filename.exists()
 
-    with open(datetime_filename, 'r') as f:
+    with open(datetime_filename) as f:
         content = f.read()
 
     assert "Date: " in content

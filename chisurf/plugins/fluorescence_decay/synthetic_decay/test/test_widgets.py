@@ -132,7 +132,6 @@ def test_send_to_fit_creates_polarized_group():
     import chisurf as cs
     from chisurf.core.models.description import for_family
     from chisurf.macros import core_data, core_fit
-
     from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.view_model import (
         SyntheticDecayViewModel,
     )

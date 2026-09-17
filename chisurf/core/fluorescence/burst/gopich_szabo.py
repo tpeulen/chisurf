@@ -76,9 +76,8 @@ reimplemented here, not copied.
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass, field
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -188,8 +187,7 @@ def _engine(rate_matrix, emission, cache: EngineCache | None = None):
         import tttrlib
     except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
         raise RuntimeError(
-            "the Gopich-Szabo engine is provided by tttrlib, which could not be "
-            "imported"
+            "the Gopich-Szabo engine is provided by tttrlib, which could not be imported"
         ) from exc
     if not hasattr(tttrlib, "GopichSzabo"):
         raise RuntimeError(
@@ -202,14 +200,13 @@ def _engine(rate_matrix, emission, cache: EngineCache | None = None):
     n_colors = int(emission.shape[1])
     engine = cache.get(n_states, n_colors) if cache is not None else tttrlib.GopichSzabo()
     ok = engine.set_scheme(
-        rate_matrix.flatten().tolist(), emission.flatten().tolist(),
-        n_states, n_colors,
+        rate_matrix.flatten().tolist(),
+        emission.flatten().tolist(),
+        n_states,
+        n_colors,
     )
     if not ok:
-        raise ValueError(
-            f"the compiled Gopich-Szabo engine refused a "
-            f"{n_states}-state scheme"
-        )
+        raise ValueError(f"the compiled Gopich-Szabo engine refused a {n_states}-state scheme")
     return engine
 
 
@@ -271,7 +268,7 @@ class PhotonBursts:
         colors: Sequence[np.ndarray],
         n_colors: int | None = None,
         min_photons: int = 2,
-    ) -> "PhotonBursts":
+    ) -> PhotonBursts:
         """Build from per-burst arrays, dropping bursts that are too short.
 
         Parameters
@@ -357,8 +354,9 @@ def emission_from_efficiencies(efficiencies) -> np.ndarray:
     return np.column_stack([1.0 - e, e])
 
 
-def transition_state_model(k_forward: float, k_backward: float, transit_time: float,
-                           efficiencies, transit_efficiency=None):
+def transition_state_model(
+    k_forward: float, k_backward: float, transit_time: float, efficiencies, transit_efficiency=None
+):
     """Return the three-state scheme that gives transitions a finite duration.
 
     A two-state fit assumes transitions are instantaneous. They are not, and
@@ -408,10 +406,10 @@ def transition_state_model(k_forward: float, k_backward: float, transit_time: fl
         raise ValueError("the transition-state model is built on two end states")
     middle = float(np.mean(e)) if transit_efficiency is None else float(transit_efficiency)
     matrix = np.zeros((3, 3), dtype=float)
-    matrix[1, 0] = 2.0 * float(k_forward)   # 1 -> intermediate
+    matrix[1, 0] = 2.0 * float(k_forward)  # 1 -> intermediate
     matrix[1, 2] = 2.0 * float(k_backward)  # 2 -> intermediate
-    matrix[0, 1] = k_transit                # intermediate -> 1
-    matrix[2, 1] = k_transit                # intermediate -> 2
+    matrix[0, 1] = k_transit  # intermediate -> 1
+    matrix[2, 1] = k_transit  # intermediate -> 2
     return matrix, np.array([e[0], middle, e[1]], dtype=float)
 
 
@@ -503,8 +501,9 @@ def _validate_emission(emission) -> np.ndarray:
 # ──────────────────────────────────────────────────────────────────────────────
 # Public likelihood
 # ──────────────────────────────────────────────────────────────────────────────
-def log_likelihood(bursts: PhotonBursts, rate_matrix, emission,
-                   *, _engine_cache: EngineCache | None = None) -> float:
+def log_likelihood(
+    bursts: PhotonBursts, rate_matrix, emission, *, _engine_cache: EngineCache | None = None
+) -> float:
     """Return the total log-likelihood of a kinetic scheme given the photons.
 
     Runs on tttrlib's C++ GopichSzabo engine, which is required: the in-tree
@@ -562,13 +561,19 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission,
     # Everything else is the library's. This used to fall back to an in-tree
     # numba copy kept for a library defect that rejected disconnected schemes;
     # that defect is fixed, so the copy is gone and a refusal now raises.
-    return float(_engine(rate_matrix, emission, cache=_engine_cache).log_likelihood(
-        bursts.times, bursts.colors, bursts.offsets
-    ))
+    return float(
+        _engine(rate_matrix, emission, cache=_engine_cache).log_likelihood(
+            bursts.times, bursts.colors, bursts.offsets
+        )
+    )
 
 
-def log_likelihood_multi(datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
-                         rate_matrix, *, _engine_cache: EngineCache | None = None) -> float:
+def log_likelihood_multi(
+    datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
+    rate_matrix,
+    *,
+    _engine_cache: EngineCache | None = None,
+) -> float:
     """Return the log-likelihood of several photon sets sharing one rate matrix.
 
     This is how a three-colour measurement is fitted: the two-colour photons
@@ -645,9 +650,7 @@ def viterbi(bursts: PhotonBursts, rate_matrix, emission):
     # accumulated log-likelihood competes with a transition term decaying only
     # as exp(-dt/tau). "Our bursts are well separated" is not a defence.
     return np.asarray(
-        _engine(rate_matrix, emission).viterbi(
-            bursts.times, bursts.colors, bursts.offsets
-        ),
+        _engine(rate_matrix, emission).viterbi(bursts.times, bursts.colors, bursts.offsets),
         dtype=np.int32,
     )
 
@@ -841,8 +844,9 @@ def fit(
     def objective(vector):
         """Negative log-likelihood; the optimiser minimises this."""
         matrix, efficiencies = unpack(vector)
-        value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies),
-                               _engine_cache=engine_cache)
+        value = log_likelihood(
+            bursts, matrix, emission_from_efficiencies(efficiencies), _engine_cache=engine_cache
+        )
         calls["n"] += 1
         if progress is not None and calls["n"] % 20 == 0:
             progress(
@@ -863,18 +867,25 @@ def fit(
     key = method.lower().replace("_", "-")
     if key == "l-bfgs-b":
         outcome = minimize(
-            objective, start, method="L-BFGS-B", bounds=bounds,
+            objective,
+            start,
+            method="L-BFGS-B",
+            bounds=bounds,
             options={"maxiter": int(max_iterations)},
         )
     else:
         outcome = minimize(
-            objective, start, method="Nelder-Mead", bounds=bounds,
+            objective,
+            start,
+            method="Nelder-Mead",
+            bounds=bounds,
             options={"maxiter": int(max_iterations), "fatol": 1e-4, "xatol": 1e-4},
         )
 
     matrix, efficiencies = unpack(np.asarray(outcome.x, dtype=float))
-    value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies),
-                           _engine_cache=engine_cache)
+    value = log_likelihood(
+        bursts, matrix, emission_from_efficiencies(efficiencies), _engine_cache=engine_cache
+    )
     n_parameters = n_rates + (0 if fix_efficiencies else n_states)
     if progress is not None:
         progress(1.0, "done")
@@ -964,6 +975,7 @@ def transition_time_scan(
             )
         except ValueError:
             continue
-        out[i] = log_likelihood(bursts, matrix, emission_from_efficiencies(three),
-                                _engine_cache=engine_cache)
+        out[i] = log_likelihood(
+            bursts, matrix, emission_from_efficiencies(three), _engine_cache=engine_cache
+        )
     return transit_times, out - baseline, float(baseline)

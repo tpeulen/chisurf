@@ -25,12 +25,12 @@ Falling back to position is deliberately *not* a rule. Refusing to pair is
 better than a confident wrong number, so a genuinely unrelated pair of
 selections now errors.
 """
+
 from __future__ import annotations
 
 import re
 
 import pytest
-
 from toolkit_free import probe
 
 #: Residues 30-160 of 148L, taken from 148L itself. The correct RMSD against
@@ -40,7 +40,7 @@ _FRAGMENT = "148l and resi 30-160"
 
 @pytest.fixture(scope="module")
 def measured():
-    return probe(f'''
+    return probe(f"""
         app = open_app(size=(500, 380))
         app.cmd.do("fetch 148L")
         app.cmd.do("create frag, {_FRAGMENT}")
@@ -77,7 +77,7 @@ def measured():
         sign = np.sign(np.linalg.det(vt.T @ u.T))
         rotation = vt.T @ np.diag([1.0, 1.0, sign]) @ u.T
         emit("positional_rmsd", float(np.sqrt(((((d @ rotation.T) - e) ** 2).sum()) / n)))
-    ''')
+    """)
 
 
 def test_the_fragment_is_shorter_than_its_parent(measured):

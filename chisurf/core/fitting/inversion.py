@@ -328,9 +328,13 @@ def _engine():
     try:
         import IMP.bff as bff
     except ImportError as error:  # pragma: no cover - a hard dependency
-        raise RuntimeError("regularised inversion needs IMP.bff, which is not importable") from error
+        raise RuntimeError(
+            "regularised inversion needs IMP.bff, which is not importable"
+        ) from error
     if not hasattr(bff, "maxent_invert"):
-        raise RuntimeError("the installed IMP.bff has no maximum-entropy inversion (maxent_invert); rebuild it")
+        raise RuntimeError(
+            "the installed IMP.bff has no maximum-entropy inversion (maxent_invert); rebuild it"
+        )
     return bff.maxent_invert
 
 
@@ -426,13 +430,16 @@ def maxent(
     if normalise:
         return _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol)
     return np.asarray(
-        _engine()(flat, b, w, m, nu, int(n_rows), int(n_cols), int(max_iter), float(tol)).get_amplitudes(),
+        _engine()(
+            flat, b, w, m, nu, int(n_rows), int(n_cols), int(max_iter), float(tol)
+        ).get_amplitudes(),
         dtype=float,
     )
 
 
-def _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol,
-                    n_outer: int = 40, sum_tol: float = 1.0e-9):
+def _maxent_simplex(
+    flat, b, w, m, nu, n_rows, n_cols, max_iter, tol, n_outer: int = 40, sum_tol: float = 1.0e-9
+):
     r"""Maximum entropy with the solution constrained to ``sum(x) == 1``.
 
     The engine solves the unconstrained problem, and simply rescaling its
@@ -459,8 +466,17 @@ def _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol,
 
     def solve(log_c):
         return np.asarray(
-            engine(flat, b, w, m * float(np.exp(log_c)), nu,
-                   int(n_rows), int(n_cols), int(max_iter), float(tol)).get_amplitudes(),
+            engine(
+                flat,
+                b,
+                w,
+                m * float(np.exp(log_c)),
+                nu,
+                int(n_rows),
+                int(n_cols),
+                int(max_iter),
+                float(tol),
+            ).get_amplitudes(),
             dtype=float,
         )
 

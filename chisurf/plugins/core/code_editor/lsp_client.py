@@ -236,8 +236,8 @@ class PythonLspClient(QtCore.QObject):
             if length <= 0 or len(self._buffer) < header_end + 4 + length:
                 return
             start = header_end + 4
-            message = bytes(self._buffer[start:start + length])
-            del self._buffer[:start + length]
+            message = bytes(self._buffer[start : start + length])
+            del self._buffer[: start + length]
             self._handle_message(json.loads(message.decode("utf-8")))
 
     def _read_stderr(self) -> None:

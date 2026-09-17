@@ -21,17 +21,21 @@ def qapp():
 def test_table_section_loads_from_json():
     import chisurf.core.dataspec as ds
 
-    view = ds.load_view_spec({
-        "sections": [{
-            "type": "table",
-            "source": "rows",
-            "selected_attr": "selected",
-            "columns": [
-                {"key": "sample_id", "label": "Sample"},
-                {"key": "description", "label": "Description"},
-            ],
-        }]
-    })
+    view = ds.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "table",
+                    "source": "rows",
+                    "selected_attr": "selected",
+                    "columns": [
+                        {"key": "sample_id", "label": "Sample"},
+                        {"key": "description", "label": "Description"},
+                    ],
+                }
+            ]
+        }
+    )
 
     section = view.sections[0]
     assert isinstance(section, ds.TableSection)
@@ -61,15 +65,19 @@ def test_autoform_renders_table_and_selection(qapp):
             self.activated = row
 
         def view_spec(self):
-            return ds.ModelView(sections=(ds.TableSection(
-                source="rows",
-                selected_attr="selected",
-                activated_call="open_row",
-                columns=(
-                    {"key": "sample_id", "label": "Sample"},
-                    {"key": "description", "label": "Description"},
-                ),
-            ),))
+            return ds.ModelView(
+                sections=(
+                    ds.TableSection(
+                        source="rows",
+                        selected_attr="selected",
+                        activated_call="open_row",
+                        columns=(
+                            {"key": "sample_id", "label": "Sample"},
+                            {"key": "description", "label": "Description"},
+                        ),
+                    ),
+                )
+            )
 
     model = Model()
     form = AutoForm(model)
@@ -97,10 +105,14 @@ def test_table_refreshes_from_model(qapp):
             return self._rows
 
         def view_spec(self):
-            return ds.ModelView(sections=(ds.TableSection(
-                source="rows",
-                columns=({"key": "id", "label": "ID"},),
-            ),))
+            return ds.ModelView(
+                sections=(
+                    ds.TableSection(
+                        source="rows",
+                        columns=({"key": "id", "label": "ID"},),
+                    ),
+                )
+            )
 
     model = Model()
     form = AutoForm(model)
@@ -123,15 +135,19 @@ def test_editable_table_dispatches_cell_updates(qapp):
             self.rows[row][key] = float(value)
 
         def view_spec(self):
-            return ds.ModelView(sections=(ds.TableSection(
-                source="rows",
-                editable=True,
-                update_call="update_cell",
-                columns=(
-                    {"key": "amplitude", "label": "Amplitude"},
-                    {"key": "lifetime", "label": "Lifetime"},
-                ),
-            ),))
+            return ds.ModelView(
+                sections=(
+                    ds.TableSection(
+                        source="rows",
+                        editable=True,
+                        update_call="update_cell",
+                        columns=(
+                            {"key": "amplitude", "label": "Amplitude"},
+                            {"key": "lifetime", "label": "Lifetime"},
+                        ),
+                    ),
+                )
+            )
 
     model = Model()
     form = AutoForm(model)

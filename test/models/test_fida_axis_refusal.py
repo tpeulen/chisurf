@@ -23,7 +23,8 @@ from chisurf.core.models.pch.fida_model import FidaModel
 
 def _make_fit(x, y):
     curve = chisurf.core.data.DataCurve(
-        x=np.asarray(x, dtype=float), y=np.asarray(y, dtype=float),
+        x=np.asarray(x, dtype=float),
+        y=np.asarray(y, dtype=float),
         ey=np.ones_like(np.asarray(y, dtype=float)),
     )
     fit = fit_module.Fit(model_class=FidaModel, data=curve)

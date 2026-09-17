@@ -73,9 +73,7 @@ def test_guard_is_released_when_qt_raises(qapp, monkeypatch):
 def test_input_can_be_excluded(qapp, monkeypatch):
     """Passive repaints must not deliver clicks into a running operation."""
     seen = []
-    monkeypatch.setattr(
-        QtCore.QCoreApplication, "processEvents", lambda *a: seen.append(a)
-    )
+    monkeypatch.setattr(QtCore.QCoreApplication, "processEvents", lambda *a: seen.append(a))
 
     try:
         pump_ui()

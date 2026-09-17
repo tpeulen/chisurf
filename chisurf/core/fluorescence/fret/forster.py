@@ -128,6 +128,7 @@ def lookup_forster_radius(
         try:
             from mmfdb.repository import MFDatabase
             from mmfdb.store.database_resolver import resolve_database_path
+
             db = MFDatabase(resolve_database_path(), readonly=True)
         except Exception:
             return None

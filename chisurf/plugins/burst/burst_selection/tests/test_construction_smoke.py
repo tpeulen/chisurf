@@ -19,7 +19,6 @@ except ImportError:
 
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
-
 _needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
 _needs_offscreen = pytest.mark.skipif(
     os.environ.get("QT_QPA_PLATFORM", "") != "offscreen",
@@ -33,7 +32,7 @@ def test_tool_constructs_without_crash() -> None:
     """The BurstSelectionTool constructs without crashing (read-only init)."""
     from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = BurstSelectionTool()
     try:
         assert tool.windowTitle() == "Burst Selection"
@@ -53,7 +52,7 @@ def test_tool_drag_drop_dispatches_to_add_paths(monkeypatch) -> None:
     """The base window drop hook routes to the tool's ``_add_paths``."""
     from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = BurstSelectionTool()
     try:
         captured = []

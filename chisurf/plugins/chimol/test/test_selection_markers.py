@@ -16,15 +16,15 @@ can select anything:
 The rendering half needs a GPU and skips without one; everything else is
 arithmetic.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
+from chimol.core.camera.view_state import pack_view_state
 from chimol.render import markers
 from chimol.render.pack import pack_scene
 from chimol.render.scene import Scene
-from chimol.core.camera.view_state import pack_view_state
 
 
 # ── the geometry ─────────────────────────────────────────────────────────
@@ -99,8 +99,7 @@ def test_a_plain_point_cloud_still_gets_impostors():
         colors=np.ones((3, 4), dtype=np.float32),
     )
     packed = pack_scene(
-        Scene(objects=[SceneObject(id="dots", geometry=geometry)],
-              center=(0, 0, 0), radius=1.0)
+        Scene(objects=[SceneObject(id="dots", geometry=geometry)], center=(0, 0, 0), radius=1.0)
     )
     assert WgpuMeshRenderer.pipeline_for(packed.objects[0].geometry) == "impostor"
 
@@ -122,8 +121,11 @@ def _frame(renderer, width: float, distance: float = 40.0) -> np.ndarray:
     objects = markers.selection_markers([[0.0, 0.0, 0.0]], width)
     packed = pack_scene(Scene(objects=objects, center=(0, 0, 0), radius=1.0))
     view = pack_view_state(
-        rotation=np.eye(3), distance=distance, target=(0.0, 0.0, 0.0),
-        near=distance - 10.0, far=distance + 10.0,
+        rotation=np.eye(3),
+        distance=distance,
+        target=(0.0, 0.0, 0.0),
+        near=distance - 10.0,
+        far=distance + 10.0,
     )
     return renderer.render(packed, view, background=(0.0, 0.0, 0.0))
 

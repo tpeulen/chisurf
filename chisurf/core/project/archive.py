@@ -137,7 +137,9 @@ class ProjectArchive:
         """
         self.write_bytes(name, text.encode("utf-8"), overwrite=overwrite)
 
-    def write_bytes(self, name: str, data: bytes | bytearray | memoryview, overwrite: bool = False) -> None:
+    def write_bytes(
+        self, name: str, data: bytes | bytearray | memoryview, overwrite: bool = False
+    ) -> None:
         """Write a binary entry to the archive.
 
         Parameters

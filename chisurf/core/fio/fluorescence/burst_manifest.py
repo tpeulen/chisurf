@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = [
     "MANIFEST_NAME",
@@ -54,9 +54,9 @@ def describe_tttr_source(
     path: pathlib.Path | str,
     tttr: Any,
     *,
-    container_type: Optional[str] = None,
-    settings: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    container_type: str | None = None,
+    settings: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Record how one source file was read, from the open object itself.
 
     Read off the live ``tttrlib.TTTR`` rather than taken on trust from the
@@ -82,7 +82,7 @@ def describe_tttr_source(
     dict
         One ``sources`` entry.
     """
-    entry: Dict[str, Any] = {"path": str(path)}
+    entry: dict[str, Any] = {"path": str(path)}
 
     detected = container_type
     if detected is None:
@@ -121,11 +121,11 @@ def describe_tttr_source(
 
 def write_analysis_manifest(
     analysis_dir: pathlib.Path | str,
-    sources: List[Dict[str, Any]],
+    sources: list[dict[str, Any]],
     *,
-    settings: Optional[Dict[str, Any]] = None,
-    software_version: Optional[str] = None,
-    view_state: Optional[Dict[str, Any]] = None,
+    settings: dict[str, Any] | None = None,
+    software_version: str | None = None,
+    view_state: dict[str, Any] | None = None,
 ) -> pathlib.Path:
     """Write (or extend) the reading manifest of a burst-analysis folder.
 
@@ -160,7 +160,7 @@ def write_analysis_manifest(
     info_dir.mkdir(parents=True, exist_ok=True)
     target = info_dir / MANIFEST_NAME
 
-    manifest: Dict[str, Any] = {
+    manifest: dict[str, Any] = {
         "format": "chisurf-burst-analysis",
         "version": MANIFEST_VERSION,
         "sources": [],
@@ -194,9 +194,7 @@ def write_analysis_manifest(
     return target
 
 
-def read_analysis_manifest(
-    start: pathlib.Path | str, max_up: int = 4
-) -> Optional[Dict[str, Any]]:
+def read_analysis_manifest(start: pathlib.Path | str, max_up: int = 4) -> dict[str, Any] | None:
     """Find the manifest for a `.bur` file, a folder, or anything beside them.
 
     Searches *start* and its parents for ``Info/analysis.json``, because callers
@@ -234,8 +232,8 @@ def read_analysis_manifest(
 
 
 def reading_settings_for(
-    source_path: pathlib.Path | str, manifest: Optional[Dict[str, Any]]
-) -> Dict[str, Any]:
+    source_path: pathlib.Path | str, manifest: dict[str, Any] | None
+) -> dict[str, Any]:
     """Return the recorded reading settings for one source measurement.
 
     Matched on the file name rather than the full path: burst analyses are
@@ -268,7 +266,7 @@ def reading_settings_for(
     return {}
 
 
-def source_inputs(start: pathlib.Path | str) -> List[pathlib.Path]:
+def source_inputs(start: pathlib.Path | str) -> list[pathlib.Path]:
     """Every file a burst analysis was computed *from*, for change detection.
 
     A burst table is a set of pointers into photon streams, so a step that fits
@@ -314,7 +312,7 @@ def source_inputs(start: pathlib.Path | str) -> List[pathlib.Path]:
     return []
 
 
-def restore_settings(start: pathlib.Path | str) -> Dict[str, Any]:
+def restore_settings(start: pathlib.Path | str) -> dict[str, Any]:
     """The analysis settings recorded in a burst folder, ready to restore.
 
     The manifest is not only a record of *how the data was read*; it carries the

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.render.raytracer import (
     TRACEABLE_KINDS,
     RayCamera,
@@ -50,8 +49,13 @@ def _camera(distance: float = 10.0, fov: float = 45.0, far: float | None = None)
 #: A flat, unlit surface: whatever brightness comes back is the albedo times the
 #: fog, with no shading to confuse the measurement.
 _FLAT = dict(
-    ambient=1.0, diffuse=0.0, specular=0.0, direct_specular=0.0,
-    shadow=False, gamma=0.0, color_blend=False,
+    ambient=1.0,
+    diffuse=0.0,
+    specular=0.0,
+    direct_specular=0.0,
+    shadow=False,
+    gamma=0.0,
+    color_blend=False,
 )
 
 
@@ -103,8 +107,8 @@ def test_pairs_and_strips_are_split_the_way_the_gl_backend_draws_them():
     pos = np.array([[0.0, 0, 0], [1.0, 0, 0], [2.0, 0, 0], [3.0, 0, 0]])
     pairs = Geometry(kind="line", positions=pos)
     strip = Geometry(kind="line", positions=pos, meta={"mode": "line_strip"})
-    assert _line_segments(pairs)[0].shape[0] == 2   # (0,1) and (2,3)
-    assert _line_segments(strip)[0].shape[0] == 3   # (0,1), (1,2), (2,3)
+    assert _line_segments(pairs)[0].shape[0] == 2  # (0,1) and (2,3)
+    assert _line_segments(strip)[0].shape[0] == 3  # (0,1), (1,2), (2,3)
 
 
 def test_a_segment_becomes_a_shaft_with_two_round_caps():
@@ -135,9 +139,12 @@ def test_a_segment_becomes_a_shaft_with_two_round_caps():
 def test_each_half_keeps_its_own_end_colour():
     """PyMOL splits a two-coloured line at the midpoint (`CGO_SPLITLINE`)."""
     caps, verts, _, cols = _sausages(
-        np.array([[0.0, 0, 0]]), np.array([[2.0, 0, 0]]),
-        np.array([[1.0, 0, 0]]), np.array([[0.0, 0, 1.0]]),
-        radius=0.1, sides=8,
+        np.array([[0.0, 0, 0]]),
+        np.array([[2.0, 0, 0]]),
+        np.array([[1.0, 0, 0]]),
+        np.array([[0.0, 0, 1.0]]),
+        radius=0.1,
+        sides=8,
     )
     first_half, second_half = cols[:16], cols[16:]
     assert np.allclose(first_half, [1.0, 0.0, 0.0])
@@ -193,8 +200,14 @@ def test_an_explicit_line_radius_wins_outright():
 def test_lines_actually_reach_the_image():
     scene = _line_scene()
     img = render_scene(
-        scene=scene, camera=_camera(), light_directions=np.array([[0.0, 0.0, 1.0]]),
-        width=64, height=64, ssaa=1, background=(0, 0, 0), line_width=6.0,
+        scene=scene,
+        camera=_camera(),
+        light_directions=np.array([[0.0, 0.0, 1.0]]),
+        width=64,
+        height=64,
+        ssaa=1,
+        background=(0, 0, 0),
+        line_width=6.0,
     )
     assert img.shape == (64, 64, 3)
     assert int((img.max(axis=2) > 8).sum()) > 0, "the wireframe drew nothing"
@@ -212,8 +225,14 @@ def test_a_strip_draws_the_joins_a_pair_list_does_not():
         )
         scene = Scene(objects=[SceneObject(id="l", geometry=geom)], radius=1.0)
         img = render_scene(
-            scene=scene, camera=_camera(), light_directions=np.array([[0.0, 0.0, 1.0]]),
-            width=64, height=64, ssaa=1, background=(0, 0, 0), line_width=6.0,
+            scene=scene,
+            camera=_camera(),
+            light_directions=np.array([[0.0, 0.0, 1.0]]),
+            width=64,
+            height=64,
+            ssaa=1,
+            background=(0, 0, 0),
+            line_width=6.0,
         )
         lit[mode] = int((img.max(axis=2) > 8).sum())
     assert lit["line_strip"] > lit["lines"]
@@ -234,8 +253,12 @@ def _fog_probe(**kw) -> tuple[float, float]:
         spheres=[Sphere(center=np.zeros(3), radius=1.0, color=np.full(3, 0.6))],
         camera=_FOG_CAM,
         light_directions=np.array([[0.0, 0.0, 1.0]]),
-        width=48, height=48, ssaa=1, background=(0, 0, 0),
-        **_FLAT, **kw,
+        width=48,
+        height=48,
+        ssaa=1,
+        background=(0, 0, 0),
+        **_FLAT,
+        **kw,
     )
     lit = img.reshape(-1, 3)
     lit = lit[lit.max(axis=1) > 4]
@@ -282,7 +305,10 @@ def test_render_scene_fits_the_depth_cue_to_the_scene_by_default():
     common = dict(
         camera=_FOG_CAM,
         light_directions=np.array([[0.0, 0.0, 1.0]]),
-        width=48, height=48, ssaa=1, background=(0, 0, 0),
+        width=48,
+        height=48,
+        ssaa=1,
+        background=(0, 0, 0),
         **_FLAT,
     )
     fitted = render_scene(scene=scene, **common)
@@ -316,13 +342,21 @@ def _veil_probe(mode: int, groups: tuple[int, int]) -> float:
     try:
         img = trace(
             spheres=[
-                Sphere(center=np.zeros(3), radius=2.0, color=np.ones(3), alpha=0.5, group=groups[0]),
-                Sphere(center=np.zeros(3), radius=1.0, color=np.ones(3), alpha=0.5, group=groups[1]),
+                Sphere(
+                    center=np.zeros(3), radius=2.0, color=np.ones(3), alpha=0.5, group=groups[0]
+                ),
+                Sphere(
+                    center=np.zeros(3), radius=1.0, color=np.ones(3), alpha=0.5, group=groups[1]
+                ),
             ],
             camera=_camera(10.0),
             light_directions=np.array([[0.0, 0.0, 1.0]]),
-            width=32, height=32, ssaa=1, background=(0, 0, 0),
-            depth_cue=False, max_layers=8,
+            width=32,
+            height=32,
+            ssaa=1,
+            background=(0, 0, 0),
+            depth_cue=False,
+            max_layers=8,
             **_FLAT,
         )
     finally:

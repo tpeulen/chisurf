@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
 
 def _bff():
@@ -80,9 +81,7 @@ def DockingParameters(**kwargs):  # noqa: N802 - it is a type name upstream
         if key in _PLUGIN_ONLY:
             continue
         if not hasattr(params, key):
-            raise AttributeError(
-                f"DockingParameters has no field {key!r}"
-            )
+            raise AttributeError(f"DockingParameters has no field {key!r}")
         setattr(params, key, value)
     return params
 
@@ -123,7 +122,7 @@ def DockingResult(**kwargs):  # noqa: N802 - it is a type name upstream
     return result
 
 
-def _stop(stop_check: Optional[Callable[[], bool]]):
+def _stop(stop_check: Callable[[], bool] | None):
     """Wrap a Python predicate as the ``DockingStop`` the engine asks.
 
     Parameters
@@ -185,16 +184,14 @@ class Result(dict):
         try:
             return self[name]
         except KeyError:
-            raise AttributeError(
-                f"docking result has no field {name!r}"
-            ) from None
+            raise AttributeError(f"docking result has no field {name!r}") from None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return this result as a plain dict."""
         return dict(self)
 
 
-def _as_dict(result) -> "Result":
+def _as_dict(result) -> Result:
     """Render a ``DockingResult`` as plain data.
 
     Parameters
@@ -285,12 +282,8 @@ def _write_distributions(result, fps_json_path: str, output_dir: str) -> None:
         return
     out_csv = os.path.join(str(output_dir), "distributions.csv")
     try:
-        positions, distances, _score_sets, _extra = _io.read_fps_json(
-            str(fps_json_path)
-        )
-        _distr.compute_distance_distributions(
-            docked[0], positions, distances, out_csv=out_csv
-        )
+        positions, distances, _score_sets, _extra = _io.read_fps_json(str(fps_json_path))
+        _distr.compute_distance_distributions(docked[0], positions, distances, out_csv=out_csv)
     except Exception as exc:  # noqa: BLE001 - a diagnostic, not the run
         result["extra"]["distributions_error"] = str(exc)
         return
@@ -302,9 +295,9 @@ def dock(
     fps_json_path: str,
     output_dir: str,
     params=None,
-    stop_check: Optional[Callable[[], bool]] = None,
+    stop_check: Callable[[], bool] | None = None,
     initial_poses=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Dock by sampling, with the backend ``params.sampler`` names.
 
     Parameters
@@ -348,9 +341,9 @@ def dock_minimize(
     fps_json_path: str,
     output_dir: str,
     params=None,
-    stop_check: Optional[Callable[[], bool]] = None,
+    stop_check: Callable[[], bool] | None = None,
     initial_poses=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Dock by FRET-restrained energy minimisation.
 
     The deterministic road, and FPS's: a local descent from where the input
@@ -385,7 +378,7 @@ def refine(
     score_set: str = "",
     steps: int = 500,
     ev_weight: float = 1.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Polish a pose in place: minimise, write the structure and the table.
 
     Parameters
@@ -423,7 +416,7 @@ def score(
     mean_position_restraint: bool = False,
     ev_weight: float = 1.0,
     sigma_da: float = 6.0,
-) -> "Result":
+) -> Result:
     """Score the structures as they stand, without moving them.
 
     The assembly is built, the volumes computed and the network evaluated
@@ -470,7 +463,7 @@ def screen(
     score_set: str = "",
     output_csv: str = "",
     mean_position_restraint: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Score a library of structures and rank them.
 
     Parameters
@@ -519,7 +512,7 @@ def screen(
     return out
 
 
-def _fixed_body_chains(pdb_paths: Sequence[str], params) -> List[str]:
+def _fixed_body_chains(pdb_paths: Sequence[str], params) -> list[str]:
     """The chain ids of the body held fixed during docking.
 
     Parameters
@@ -558,9 +551,9 @@ def estimate_errors(
     n_trials: int = 10,
     params=None,
     minimize: bool = True,
-    stop_check: Optional[Callable[[], bool]] = None,
-    n_workers: Optional[int] = None,
-) -> Dict[str, Any]:
+    stop_check: Callable[[], bool] | None = None,
+    n_workers: int | None = None,
+) -> dict[str, Any]:
     """Repeat docking from independent random starts and report the spread.
 
     The precision the distances actually pin down, as opposed to the score one
@@ -651,7 +644,7 @@ def build_assembly(
     )
 
 
-def capture_poses(assembly) -> List[Dict[str, Any]]:
+def capture_poses(assembly) -> list[dict[str, Any]]:
     """The assembly's current pose, one entry per rigid body.
 
     Parameters
@@ -743,12 +736,16 @@ def ensure_fps_json(fps_path: str, pdb_paths: Sequence[str] = ()) -> str:
     converted = os.path.splitext(path)[0] + ".fps.json"
     try:
         document = bff.read_fps_json(path, [str(p) for p in pdb_paths], False)
-        bff.write_fps_json(converted, document.positions, document.distances,
-                           document.score_sets or "{}", document.extra or "{}", False)
+        bff.write_fps_json(
+            converted,
+            document.positions,
+            document.distances,
+            document.score_sets or "{}",
+            document.extra or "{}",
+            False,
+        )
     except Exception as exc:
-        raise RuntimeError(
-            f"could not convert the labelling file {path}: {exc}"
-        ) from exc
+        raise RuntimeError(f"could not convert the labelling file {path}: {exc}") from exc
     return converted
 
 

@@ -28,10 +28,12 @@ def cli():
 @click.option("--limit", default=0, type=int, help="Fit only the first N traces (0 = all)")
 @click.option("--seed", default=0, type=int, help="Prior-initialisation seed")
 @click.option("--output", "-o", type=click.Path(), help="Write the JSON summary to this path")
-@click.option("--container", is_flag=True,
-              help="Also write the result into <dat_file>.pto, beside the traces")
-def compute(dat_file, min_states, max_states, max_iter, vbem_max_iter, limit, seed,
-            output, container):
+@click.option(
+    "--container", is_flag=True, help="Also write the result into <dat_file>.pto, beside the traces"
+)
+def compute(
+    dat_file, min_states, max_states, max_iter, vbem_max_iter, limit, seed, output, container
+):
     """Fit an ebFRET model to a stacked ``[id, donor, acceptor]`` ``.dat`` file."""
     traces = load_stacked_dat(dat_file)
     if limit > 0:
@@ -53,11 +55,15 @@ def compute(dat_file, min_states, max_states, max_iter, vbem_max_iter, limit, se
         from chisurf.plugins.burst.burst_ebfret.core.analysis import write_container
 
         path = write_container(
-            dat_file, analysis,
+            dat_file,
+            analysis,
             parameters={
-                "min_states": min_states, "max_states": max_states,
-                "max_iter": max_iter, "vbem_max_iter": vbem_max_iter,
-                "limit": limit, "seed": seed,
+                "min_states": min_states,
+                "max_states": max_states,
+                "max_iter": max_iter,
+                "vbem_max_iter": vbem_max_iter,
+                "limit": limit,
+                "seed": seed,
             },
         )
         click.echo(f"container: {path}")

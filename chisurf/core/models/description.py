@@ -20,7 +20,6 @@ import json
 
 import numpy as np
 
-import chisurf.core.fitting.parameter
 from chisurf import typing
 from chisurf.core.fitting import factorgraph
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
@@ -42,7 +41,7 @@ class DescriptionParameter(FittingParameter):
     current and for whichever one a search reaches.
     """
 
-    def __init__(self, view: "DescriptionModel", canonical_id: str, port, **kwargs):
+    def __init__(self, view: DescriptionModel, canonical_id: str, port, **kwargs):
         self.__dict__["_view"] = None
         super().__init__(port=port, name=kwargs.pop("name", canonical_id), **kwargs)
         self.canonical_id = canonical_id
@@ -89,7 +88,7 @@ class DescriptionParameter(FittingParameter):
 class DescriptionGroup(FittingParameterGroup):
     """The parameters of one ``group`` a description declares."""
 
-    def __init__(self, view: "DescriptionModel", key: str, parameters, **kwargs):
+    def __init__(self, view: DescriptionModel, key: str, parameters, **kwargs):
         super().__init__(parameters=list(parameters), **kwargs)
         self.name = kwargs.get("name", key)
         self.__dict__["_view"] = view
@@ -108,7 +107,7 @@ class _Scalars:
     dotted ``attr`` without the view knowing any scalar's name.
     """
 
-    def __init__(self, view: "DescriptionModel"):
+    def __init__(self, view: DescriptionModel):
         object.__setattr__(self, "_view", view)
 
     def __getattr__(self, name: str):
@@ -135,8 +134,7 @@ def _measurement(coordinates, y, ey=None, mask=None):
             dataset.set_coordinate_array(k, str(name), np.ascontiguousarray(values))
     if ey is not None:
         dataset.set_noise_family(_bff.FIT_NOISE_FAMILY_STORED)
-        dataset.set_stored_variance_array(
-            np.ascontiguousarray(np.asarray(ey, dtype=float) ** 2))
+        dataset.set_stored_variance_array(np.ascontiguousarray(np.asarray(ey, dtype=float) ** 2))
     if mask is not None:
         dataset.set_mask_array(np.ascontiguousarray(np.asarray(mask, dtype=float)))
     return dataset
@@ -153,6 +151,7 @@ def _coordinates_of(curve) -> typing.Optional[dict]:
 def _read_catalogue(path) -> dict:
     """A ChiSurf equation catalogue (YAML or JSON) as plain data."""
     import pathlib
+
     import yaml
 
     text = pathlib.Path(path).read_text()
@@ -177,7 +176,8 @@ class DescriptionModel(ModelCurve):
     @property
     def _document(self) -> dict:
         """The description as BFF reads it now -- a catalogue's structures appear
-        once the measurement that decides which variables are axes is bound."""
+        once the measurement that decides which variables are axes is bound.
+        """
         return json.loads(self._spec.get_description_json())
 
     # --- equations ---------------------------------------------------------------
@@ -248,7 +248,7 @@ class DescriptionModel(ModelCurve):
         self._scalars: typing.Dict[str, float] = {}
         self._groups: typing.Dict[str, DescriptionGroup] = {}
         #: The models this one reads a published output of (a mixture's species).
-        self._source_models: typing.List["DescriptionModel"] = []
+        self._source_models: typing.List[DescriptionModel] = []
         self._source_names: typing.List[str] = []
         self._bound_ports: typing.List[str] = []
         # A port the description gives a default for (a MaxEnt prior) is bound
@@ -261,7 +261,12 @@ class DescriptionModel(ModelCurve):
         # reported with an uncertainty like any other.
         presentation = self.presentation
         self.__dict__["derived_quantities"] = tuple(
-            [*presentation.get("statistics", {}), *presentation.get("reports", {}), *presentation.get("values", {})])
+            [
+                *presentation.get("statistics", {}),
+                *presentation.get("reports", {}),
+                *presentation.get("values", {}),
+            ]
+        )
         self._assign_group_position(fit)
 
     def _assign_group_position(self, fit) -> None:
@@ -275,13 +280,22 @@ class DescriptionModel(ModelCurve):
         """
         rule = self.presentation.get("group_position")
         group = getattr(fit, "group", None)
-        if not rule or rule.get("scalar") not in self.scalar_names() or not isinstance(group, list) or not group:
+        if (
+            not rule
+            or rule.get("scalar") not in self.scalar_names()
+            or not isinstance(group, list)
+            or not group
+        ):
             return
         for index, member in enumerate(group):
             model = self if member is fit else member.__dict__.get("_model")
             if not isinstance(model, DescriptionModel) or model.family != self.family:
                 continue
-            value = rule["single"] if len(group) == 1 else rule["alternate"][index % len(rule["alternate"])]
+            value = (
+                rule["single"]
+                if len(group) == 1
+                else rule["alternate"][index % len(rule["alternate"])]
+            )
             model.set_scalar(rule["scalar"], float(value))
 
     # --- what the description says ------------------------------------------
@@ -344,7 +358,11 @@ class DescriptionModel(ModelCurve):
         if default is None:
             return None
         try:
-            return float(default) if not isinstance(default, str) else float(self._spec.evaluate(default))
+            return (
+                float(default)
+                if not isinstance(default, str)
+                else float(self._spec.evaluate(default))
+            )
         except Exception:
             return None
 
@@ -364,13 +382,14 @@ class DescriptionModel(ModelCurve):
         xmin = int(getattr(fit, "xmin", 0) or 0)
         xmax = getattr(fit, "xmax", None)
         xmax = len(y) if xmax is None else int(xmax)
-        window[max(0, xmin):max(0, min(len(y), xmax))] = 1.0
+        window[max(0, xmin) : max(0, min(len(y), xmax))] = 1.0
         user_mask = getattr(fit, "mask", None)
         if user_mask is not None and np.size(user_mask) == len(y):
             window = window * (np.asarray(user_mask, dtype=float).ravel() != 0)
         # By content: a curve's arrays are not guaranteed to be the same objects
         # from one read to the next, and rebinding rebuilds the model's graphs.
         import hashlib
+
         digest = hashlib.blake2b(digest_size=16)
         for part in (y, ey, window, *((x or {}).values())):
             if part is not None:
@@ -503,15 +522,17 @@ class DescriptionModel(ModelCurve):
             parameter = known.get(canonical)
             if parameter is None or parameter._port.uid != port.uid:
                 parameter = DescriptionParameter(
-                    self, canonical, port, name=entry.get("name", canonical))
+                    self, canonical, port, name=entry.get("name", canonical)
+                )
             by_group.setdefault(entry.get("group", "equation"), []).append(parameter)
         for key, parameters in by_group.items():
             # A group named like something the model already has (its
             # ``parameters`` list, say) would shadow it; such a group is
             # reached under ``<name>_group`` instead.
             attribute = key if not hasattr(type(self), key) else f"{key}_group"
-            group = DescriptionGroup(self, key, parameters,
-                                     name=labels.get(key, key.replace("_", " ").capitalize()))
+            group = DescriptionGroup(
+                self, key, parameters, name=labels.get(key, key.replace("_", " ").capitalize())
+            )
             self._groups[attribute] = group
             self.__dict__[attribute] = group
         self.__dict__["_adopting"] = True
@@ -533,6 +554,7 @@ class DescriptionModel(ModelCurve):
         a family class, because there is none.
         """
         import pathlib
+
         from chisurf.core.models import view_spec as vs
 
         authored = pathlib.Path(__file__).parent / "views" / f"{self.family}.view.json"
@@ -542,19 +564,31 @@ class DescriptionModel(ModelCurve):
         slot_info = presentation.get("datasets", {})
         scalar_info = presentation.get("scalars", {})
         sections = [
-            vs.ChoiceSection(label="Equation" if self._catalogue else "Model", attr="structure",
-                             options_source="structure_options",
-                             rebuild_on_change=True),
-            *((vs.ValueSection(label="Equation", kind="expression", attr="func"),)
-              if self._catalogue else ()),
-            vs.PanelSection(title="Measurements", sections=tuple(
-                vs.CurveInputSection(
-                    label=slot_info.get(slot, {}).get("label", slot),
-                    select_action="model.set_dataset",
-                    unload_action="model.unset_dataset",
-                    index_key="idx", name_key="name",
-                    action_fixed={"slot": slot})
-                for slot in self.dataset_slots())),
+            vs.ChoiceSection(
+                label="Equation" if self._catalogue else "Model",
+                attr="structure",
+                options_source="structure_options",
+                rebuild_on_change=True,
+            ),
+            *(
+                (vs.ValueSection(label="Equation", kind="expression", attr="func"),)
+                if self._catalogue
+                else ()
+            ),
+            vs.PanelSection(
+                title="Measurements",
+                sections=tuple(
+                    vs.CurveInputSection(
+                        label=slot_info.get(slot, {}).get("label", slot),
+                        select_action="model.set_dataset",
+                        unload_action="model.unset_dataset",
+                        index_key="idx",
+                        name_key="name",
+                        action_fixed={"slot": slot},
+                    )
+                    for slot in self.dataset_slots()
+                ),
+            ),
         ]
         settings = []
         # A description that presents its scalars lists the ones a user sets;
@@ -565,65 +599,130 @@ class DescriptionModel(ModelCurve):
                 continue
             info = scalar_info.get(name, {})
             if info.get("kind") == "flag":
-                settings.append(vs.ToggleSection(label=info.get("label", name), attr=f"scalars.{name}"))
+                settings.append(
+                    vs.ToggleSection(label=info.get("label", name), attr=f"scalars.{name}")
+                )
             else:
-                settings.append(vs.ValueSection(label=info.get("label", name), kind="float", attr=f"scalars.{name}"))
+                settings.append(
+                    vs.ValueSection(
+                        label=info.get("label", name), kind="float", attr=f"scalars.{name}"
+                    )
+                )
         sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
         if presentation.get("regularization"):
-            sections.append(vs.PanelSection(title="L-curve", collapsed=True, sections=(
-                vs.CustomSection(key="lcurve", target="l_curve", options={
-                    "compute_action": "compute_l_curve", "select_action": "set_reg_from_lcurve_index",
-                    "n_points": 16}),)))
+            sections.append(
+                vs.PanelSection(
+                    title="L-curve",
+                    collapsed=True,
+                    sections=(
+                        vs.CustomSection(
+                            key="lcurve",
+                            target="l_curve",
+                            options={
+                                "compute_action": "compute_l_curve",
+                                "select_action": "set_reg_from_lcurve_index",
+                                "n_points": 16,
+                            },
+                        ),
+                    ),
+                )
+            )
         sources = self.source_info
         if sources and sources.get("kind") != "values":
-            sections.append(vs.PanelSection(title=sources.get("label", "Models"), sections=(
-                vs.CustomSection(key="fit_mixer"),)))
-        source_parameter = (sources.get("parameter", "").split("{")[0]
-                            if sources and sources.get("kind") != "values" else "")
+            sections.append(
+                vs.PanelSection(
+                    title=sources.get("label", "Models"),
+                    sections=(vs.CustomSection(key="fit_mixer"),),
+                )
+            )
+        source_parameter = (
+            sources.get("parameter", "").split("{")[0]
+            if sources and sources.get("kind") != "values"
+            else ""
+        )
         for attribute, group in self._groups.items():
             if source_parameter and all(
-                    p.canonical_id.startswith(source_parameter) for p in group.parameters_all):
+                p.canonical_id.startswith(source_parameter) for p in group.parameters_all
+            ):
                 # Shown with its source by the models section.
                 continue
-            sections.append(vs.ParameterGroupTableSection(
-                target=attribute, title=group.name,
-                parameters_source="visible_parameters", collapsible=False))
+            sections.append(
+                vs.ParameterGroupTableSection(
+                    target=attribute,
+                    title=group.name,
+                    parameters_source="visible_parameters",
+                    collapsible=False,
+                )
+            )
         grid = (getattr(getattr(self.fit, "data", None), "meta_data", None) or {}).get("grid") or {}
         if len(tuple(grid.get("shape", ()) or ())) >= 2:
             # A measurement on a grid is shown as images; the accessors are
             # generic, reading the grid its reader recorded.
             module = "chisurf.core.models.grid_images"
             plots = (
-                vs.PlotSpec("residual2d", {
-                    "sources": {
-                        "Residual": {"accessor": f"{module}:get_grid_residual_image",
-                                     "accessor_kwargs": {"weighted": True, "frame_index": 0}},
-                        "Data": {"accessor": f"{module}:get_grid_data_image",
-                                 "accessor_kwargs": {"frame_index": 0}},
-                        "Model": {"accessor": f"{module}:get_grid_model_image",
-                                  "accessor_kwargs": {"frame_index": 0}},
+                vs.PlotSpec(
+                    "residual2d",
+                    {
+                        "sources": {
+                            "Residual": {
+                                "accessor": f"{module}:get_grid_residual_image",
+                                "accessor_kwargs": {"weighted": True, "frame_index": 0},
+                            },
+                            "Data": {
+                                "accessor": f"{module}:get_grid_data_image",
+                                "accessor_kwargs": {"frame_index": 0},
+                            },
+                            "Model": {
+                                "accessor": f"{module}:get_grid_model_image",
+                                "accessor_kwargs": {"frame_index": 0},
+                            },
+                        },
+                        "frame_kw": "frame_index",
+                        "max_frames_accessor": f"{module}:get_grid_n_frames",
+                        "frame_label": "Frame",
                     },
-                    "frame_kw": "frame_index",
-                    "max_frames_accessor": f"{module}:get_grid_n_frames",
-                    "frame_label": "Frame",
-                }),
+                ),
                 vs.PlotSpec("fit_info"),
                 vs.PlotSpec("parameter_scan"),
             )
         else:
             axis = presentation.get("axis", {})
-            plots = [vs.PlotSpec("line", {"x_label": axis.get("x", "x"), "y_label": axis.get("y", "y"),
-                                          **({"d_scaley": axis["scale_y"]} if "scale_y" in axis else {})}),
-                     vs.PlotSpec("fit_table"), vs.PlotSpec("fit_info"), vs.PlotSpec("parameter_scan")]
+            plots = [
+                vs.PlotSpec(
+                    "line",
+                    {
+                        "x_label": axis.get("x", "x"),
+                        "y_label": axis.get("y", "y"),
+                        **({"d_scaley": axis["scale_y"]} if "scale_y" in axis else {}),
+                    },
+                ),
+                vs.PlotSpec("fit_table"),
+                vs.PlotSpec("fit_info"),
+                vs.PlotSpec("parameter_scan"),
+            ]
             distributions = presentation.get("distributions", {})
             if distributions:
-                plots.append(vs.PlotSpec("distribution", {"distribution_options": {
-                    info.get("label", name): {
-                        "attribute": name, "accessor": "interleaved_to_two_columns",
-                        "accessor_kwargs": {"sort": True},
-                        "curve_options": {"stepMode": False, "connect": False,
-                                          "bar_mode": "sticks", "symbol": "o"}}
-                    for name, info in distributions.items()}}))
+                plots.append(
+                    vs.PlotSpec(
+                        "distribution",
+                        {
+                            "distribution_options": {
+                                info.get("label", name): {
+                                    "attribute": name,
+                                    "accessor": "interleaved_to_two_columns",
+                                    "accessor_kwargs": {"sort": True},
+                                    "curve_options": {
+                                        "stepMode": False,
+                                        "connect": False,
+                                        "bar_mode": "sticks",
+                                        "symbol": "o",
+                                    },
+                                }
+                                for name, info in distributions.items()
+                            }
+                        },
+                    )
+                )
             plots.append(vs.PlotSpec("residual"))
             plots = tuple(plots)
         return vs.ModelView(sections=tuple(sections), plots=plots)
@@ -655,16 +754,21 @@ class DescriptionModel(ModelCurve):
 
     def _publishes(self, model) -> bool:
         output = self.source_info.get("output")
-        return (isinstance(model, DescriptionModel) and model is not self and bool(output)
-                and output in model._document.get("outputs", {}))
+        return (
+            isinstance(model, DescriptionModel)
+            and model is not self
+            and bool(output)
+            and output in model._document.get("outputs", {})
+        )
 
     @property
     def source_fits(self) -> list:
         """Every open fit whose model publishes what this model reads."""
         import chisurf
+
         found = []
         for group in list(getattr(chisurf, "fits", []) or []):
-            for fit in (list(group) if hasattr(group, "__iter__") else [group]):
+            for fit in list(group) if hasattr(group, "__iter__") else [group]:
                 if self._publishes(getattr(fit, "model", None)):
                     found.append(fit)
         return found
@@ -682,10 +786,16 @@ class DescriptionModel(ModelCurve):
         if not self._publishes(model):
             raise TypeError(
                 f"{type(model).__name__} publishes no {info['output']!r}; only a model "
-                "BFF describes can be read here")
+                "BFF describes can be read here"
+            )
         self._source_models.append(model)
-        self._source_names.append(name or str(getattr(getattr(model, "fit", None), "name", "")
-                                              or f"model {len(self._source_models)}"))
+        self._source_names.append(
+            name
+            or str(
+                getattr(getattr(model, "fit", None), "name", "")
+                or f"model {len(self._source_models)}"
+            )
+        )
         self._bind_sources()
 
     def append_values(self, values, name: typing.Optional[str] = None) -> None:
@@ -742,8 +852,10 @@ class DescriptionModel(ModelCurve):
             else:
                 problem = source.problem
                 if problem is None:
-                    raise ValueError(f"{self._source_names[i]!r} is incomplete: missing "
-                                     + ", ".join(source.missing))
+                    raise ValueError(
+                        f"{self._source_names[i]!r} is incomplete: missing "
+                        + ", ".join(source.missing)
+                    )
                 self._spec.set_port(name, problem.get_output_port(info["output"]))
             self._bound_ports.append(name)
         self.set_scalar(info["count"], float(max(1, len(self._source_models))))
@@ -757,8 +869,11 @@ class DescriptionModel(ModelCurve):
         if not info.get("parameter") or self.problem is None:
             return []
         by_id = {p.canonical_id: p for g in self._groups.values() for p in g.parameters_all}
-        return [by_id[info["parameter"].format(i=i)] for i in range(len(self._source_models))
-                if info["parameter"].format(i=i) in by_id]
+        return [
+            by_id[info["parameter"].format(i=i)]
+            for i in range(len(self._source_models))
+            if info["parameter"].format(i=i) in by_id
+        ]
 
     # --- topology --------------------------------------------------------------
     def structure_options(self) -> typing.List[typing.Tuple[str, str]]:
@@ -831,12 +946,14 @@ class DescriptionModel(ModelCurve):
             outputs = {}
             for key, info in {**statistics, **reports, **values}.items():
                 outputs[key] = FittingParameter(
-                    value=0.0, name=info.get("label", key), fixed=True, is_output=True)
+                    value=0.0, name=info.get("label", key), fixed=True, is_output=True
+                )
                 # Not a parameter of the BFF model: derived from it, shown beside it.
                 outputs[key].canonical_id = f"output.{key}"
             self.__dict__["_statistic_parameters"] = outputs
             self.__dict__["outputs"] = FittingParameterGroup(
-                parameters=list(outputs.values()), name="Outputs")
+                parameters=list(outputs.values()), name="Outputs"
+            )
             self._forget_discovery()
         for key in (*statistics, *reports, *values):
             try:
@@ -849,6 +966,7 @@ class DescriptionModel(ModelCurve):
         presentation = self.presentation
         if key in presentation.get("statistics", {}):
             import chisurf.core.fluorescence.general as general
+
             info = presentation["statistics"][key]
             # One distribution, or several a statistic compares (a FRET
             # efficiency is the contrast of two lifetime spectra).
@@ -871,13 +989,22 @@ class DescriptionModel(ModelCurve):
         ``presentation.nuisance_groups``, or the ``instrument`` group.
         """
         groups = set(self.presentation.get("nuisance_groups", ["instrument"]))
-        return {p.name for key, group in self._groups.items() if key in groups for p in group.parameters_all}
+        return {
+            p.name
+            for key, group in self._groups.items()
+            if key in groups
+            for p in group.parameters_all
+        }
 
     def _node_value(self, info: dict) -> float:
         """A scalar a description names by node and port, from the live model."""
         problem = self.problem
         active = problem.get_active_structure()
-        return float(np.atleast_1d(problem.get_structure_port(active, f"{active}.{info['node']}", info["port"]))[0])
+        return float(
+            np.atleast_1d(
+                problem.get_structure_port(active, f"{active}.{info['node']}", info["port"])
+            )[0]
+        )
 
     # --- regularization ----------------------------------------------------------
     @property
@@ -885,8 +1012,12 @@ class DescriptionModel(ModelCurve):
         """The last regularization sweep (:meth:`compute_l_curve`), or None."""
         return self.__dict__.get("_l_curve")
 
-    def compute_l_curve(self, n_points: int = 16, log10_min: typing.Optional[float] = None,
-                        log10_max: typing.Optional[float] = None) -> None:
+    def compute_l_curve(
+        self,
+        n_points: int = 16,
+        log10_min: typing.Optional[float] = None,
+        log10_max: typing.Optional[float] = None,
+    ) -> None:
         """Sweep the description's regularization parameter and record misfit against solution.
 
         ``presentation.regularization`` names the parameter (a log10 weight)
@@ -922,7 +1053,8 @@ class DescriptionModel(ModelCurve):
         except Exception:
             pass
         self.__dict__["_l_curve"] = regularization.LCurveData(
-            reg=10.0 ** weights, residual_norm=misfit, solution_norm=solution, corner_index=corner)
+            reg=10.0**weights, residual_norm=misfit, solution_norm=solution, corner_index=corner
+        )
         self.__dict__["_l_curve_log10"] = weights
 
     def set_reg_from_lcurve_index(self, index: int) -> None:
@@ -941,6 +1073,7 @@ class DescriptionModel(ModelCurve):
     def _call_report(self, problem, info: dict):
         """A report's function on its arguments: `#parameter`, `@axis.<name>` or a number."""
         import importlib
+
         module_name, function_name = info["function"].split(":")
         function = getattr(importlib.import_module(module_name), function_name)
         axes = self._structure_axes(problem.get_active_structure())
@@ -949,7 +1082,7 @@ class DescriptionModel(ModelCurve):
             if isinstance(reference, str) and reference.startswith("#"):
                 arguments[name] = float(problem.get_parameter(reference[1:]).value)
             elif isinstance(reference, str) and reference.startswith("@axis."):
-                arguments[name] = axes[reference[len("@axis."):]]
+                arguments[name] = axes[reference[len("@axis.") :]]
             else:
                 arguments[name] = reference
         return function(**arguments)
@@ -957,6 +1090,7 @@ class DescriptionModel(ModelCurve):
     def _structure_axes(self, key: str) -> dict:
         """The axis values of a structure key, read against the description's template key."""
         import re
+
         template = (self._document.get("template") or {}).get("key", "")
         names = re.findall(r"\{(\w+)\}", template)
         if not names:
@@ -1043,8 +1177,10 @@ class DescriptionModel(ModelCurve):
             # By name: a source is another fit, which a project restores itself.
             "source_fits": list(self._source_names),
             "datasets": {
-                slot: {"x": np.asarray(getattr(c, "x", []), dtype=float).tolist(),
-                       "y": np.asarray(c.y, dtype=float).tolist()}
+                slot: {
+                    "x": np.asarray(getattr(c, "x", []), dtype=float).tolist(),
+                    "y": np.asarray(c.y, dtype=float).tolist(),
+                }
                 for slot, c in self._sources.items()
             },
         }
@@ -1058,10 +1194,13 @@ class DescriptionModel(ModelCurve):
 
     def set_state(self, state: dict) -> None:
         import chisurf.core.curve
+
         for name, value in state.get("scalars", {}).items():
             self.set_scalar(name, value)
         for slot, curve in state.get("datasets", {}).items():
-            self.set_dataset(slot, chisurf.core.curve.Curve(x=np.asarray(curve["x"]), y=np.asarray(curve["y"])))
+            self.set_dataset(
+                slot, chisurf.core.curve.Curve(x=np.asarray(curve["x"]), y=np.asarray(curve["y"]))
+            )
         problem = self.problem
         if problem is None or "values" not in state:
             return
@@ -1100,8 +1239,13 @@ def for_family(family: str) -> type:
     return cls
 
 
-def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Optional[str] = None,
-                  frame: str = "equations", reference_modes: typing.Sequence[str] = ()) -> type:
+def for_catalogue(
+    path,
+    name: typing.Optional[str] = None,
+    module: typing.Optional[str] = None,
+    frame: str = "equations",
+    reference_modes: typing.Sequence[str] = (),
+) -> type:
     """The model class ChiSurf lists for one equation catalogue.
 
     The catalogue is ChiSurf's (YAML beside the experiment's models); BFF
@@ -1119,8 +1263,12 @@ def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Option
     path = pathlib.Path(path).resolve()
     cls = _FAMILIES.get(f"{frame}:{path}")
     if cls is None:
-        attributes = {"catalogue_path": path, "family": frame, "__module__": module or __name__,
-                      "reference_modes": tuple(reference_modes)}
+        attributes = {
+            "catalogue_path": path,
+            "family": frame,
+            "__module__": module or __name__,
+            "reference_modes": tuple(reference_modes),
+        }
         if name:
             attributes["name"] = name
         cls = type(f"EquationModel_{path.parent.name}", (DescriptionModel,), attributes)
@@ -1142,4 +1290,10 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["DescriptionGroup", "DescriptionModel", "DescriptionParameter", "for_catalogue", "for_family"]
+__all__ = [
+    "DescriptionGroup",
+    "DescriptionModel",
+    "DescriptionParameter",
+    "for_catalogue",
+    "for_family",
+]

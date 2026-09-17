@@ -15,8 +15,8 @@ Two things live here:
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
     DEFAULT_DATABASE_PATH,
@@ -28,9 +28,9 @@ from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
 class ScraperSpec:
     """Declarative description of one source scraper (wiring only)."""
 
-    module: str       # download/<module>.py (run via `python -m ...download.<module>`)
-    label: str        # human-readable name
-    source: str       # canonical provenance slug stamped on its probes
+    module: str  # download/<module>.py (run via `python -m ...download.<module>`)
+    label: str  # human-readable name
+    source: str  # canonical provenance slug stamped on its probes
     default: bool = True  # included in `run-all` when no --only subset is given
 
 
@@ -86,7 +86,8 @@ def scraper_main(
     """
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
-        "--db", default=str(DEFAULT_DATABASE_PATH),
+        "--db",
+        default=str(DEFAULT_DATABASE_PATH),
         help="Staging spectra.db path (default: the bundled reference DB).",
     )
     if add_arguments is not None:

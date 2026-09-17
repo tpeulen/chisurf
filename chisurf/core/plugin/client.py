@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 
 class PluginClient(Protocol):
@@ -12,9 +13,9 @@ class PluginClient(Protocol):
     def call(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """Execute an RPC method and return the parsed response.
 
         Parameters
@@ -42,7 +43,7 @@ class PluginClient(Protocol):
     def subscribe(
         self,
         topic: str,
-        callback: Callable[[Dict[str, Any]], None],
+        callback: Callable[[dict[str, Any]], None],
     ) -> str:
         """Subscribe to event topic glob.
 
@@ -95,15 +96,15 @@ class InProcessClient:
 
         """
         self._dispatcher = dispatcher
-        self._subscriptions: Dict[str, List[tuple[str, Callable]]] = {}
-        self._pattern_subs: List[tuple[str, str, Callable]] = []
+        self._subscriptions: dict[str, list[tuple[str, Callable]]] = {}
+        self._pattern_subs: list[tuple[str, str, Callable]] = []
 
     def call(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """Dispatch *method* directly to the ServiceDispatcher.
 
         Parameters
@@ -126,13 +127,12 @@ class InProcessClient:
     def subscribe(
         self,
         topic: str,
-        callback: Callable[[Dict[str, Any]], None],
+        callback: Callable[[dict[str, Any]], None],
     ) -> str:
         """Register a subscription.
 
         Uses fnmatch-style pattern matching.
         """
-        import fnmatch
         import uuid
 
         token = str(uuid.uuid4())
@@ -150,9 +150,7 @@ class InProcessClient:
             ]
             if not self._subscriptions[topic]:
                 del self._subscriptions[topic]
-        self._pattern_subs = [
-            (p, t, h) for p, t, h in self._pattern_subs if t != token
-        ]
+        self._pattern_subs = [(p, t, h) for p, t, h in self._pattern_subs if t != token]
 
     @property
     def is_connected(self) -> bool:

@@ -36,12 +36,12 @@ deliberate exceptions are carved out and named:
     Free-form by design: it is forwarded verbatim to a registered factory,
     whose signature is Python, not JSON.
 """
+
 from __future__ import annotations
 
 import dataclasses
 import json
 import pathlib
-import typing
 
 __all__ = [
     "GUIDE_SCHEMA_PATH",
@@ -92,8 +92,16 @@ _VIEW_TOP_LEVEL = {
 #: string field -- which is how ``kind: "path"`` shipped twice, rendering with
 #: no browse button and nothing to say so.
 VALUE_KINDS = (
-    "int", "float", "str", "text", "expression", "date",
-    "password", "secret", "file", "directory",
+    "int",
+    "float",
+    "str",
+    "text",
+    "expression",
+    "date",
+    "password",
+    "secret",
+    "file",
+    "directory",
 )
 
 #: Free-form section keys whose contents are forwarded to Python.
@@ -111,24 +119,56 @@ _CUSTOM_OPTION_KEYS: dict[str, set[str]] = {
     "embed": {"widget", "attr", "kwargs", "pass_model", "expanding"},
     "scalar_table": {"rows", "call", "title"},
     "background_run": {
-        "start_action", "stop_action", "running_attr", "progress_attr",
-        "status_attr", "start_label", "start_description",
-        "stop_label", "stop_description", "interval_ms",
+        "start_action",
+        "stop_action",
+        "running_attr",
+        "progress_attr",
+        "status_attr",
+        "start_label",
+        "start_description",
+        "stop_label",
+        "stop_description",
+        "interval_ms",
     },
     "rate_matrix": {
-        "attr", "size_attr", "labels_attr", "minimum", "maximum",
-        "decimals", "diagonal", "unit_attr", "unit", "title",
-        "popup", "disable_row0",
+        "attr",
+        "size_attr",
+        "labels_attr",
+        "minimum",
+        "maximum",
+        "decimals",
+        "diagonal",
+        "unit_attr",
+        "unit",
+        "title",
+        "popup",
+        "disable_row0",
     },
     "path_list": {
-        "extensions", "path_filter", "add_folders", "dialog_filter",
-        "mmfdb", "mmfdb_kinds", "mmfdb_scope", "select_first",
-        "checkable", "allow_duplicates", "replace_on_drop",
-        "folder_expander", "guards", "max_height", "title",
+        "extensions",
+        "path_filter",
+        "add_folders",
+        "dialog_filter",
+        "mmfdb",
+        "mmfdb_kinds",
+        "mmfdb_scope",
+        "select_first",
+        "checkable",
+        "allow_duplicates",
+        "replace_on_drop",
+        "folder_expander",
+        "guards",
+        "max_height",
+        "title",
     },
     "lcurve": {
-        "compute_action", "select_action", "log10_min", "log10_max",
-        "n_points", "x_label", "y_label",
+        "compute_action",
+        "select_action",
+        "log10_min",
+        "log10_max",
+        "n_points",
+        "x_label",
+        "y_label",
     },
     "fitting_parameter": {"prior", "label"},
 }
@@ -147,8 +187,12 @@ def _json_type(annotation) -> dict:
     if "Mapping" in text or "Dict" in text or "dict" in text:
         return {"type": "object"}
     optional = "Optional" in text or "None" in text
-    for needle, kind in (("bool", "boolean"), ("int", "integer"), ("float", "number"),
-                         ("str", "string")):
+    for needle, kind in (
+        ("bool", "boolean"),
+        ("int", "integer"),
+        ("float", "number"),
+        ("str", "string"),
+    ):
         if needle in text:
             return {"type": [kind, "null"]} if optional else {"type": kind}
     return {}
@@ -196,21 +240,23 @@ def build_view_schema() -> dict:
     if "custom" in branches:
         conditions = []
         for key, allowed in sorted(_CUSTOM_OPTION_KEYS.items()):
-            conditions.append({
-                "if": {
-                    "properties": {"key": {"const": key}},
-                    "required": ["key"],
-                },
-                "then": {
-                    "properties": {
-                        "options": {
-                            "type": "object",
-                            "properties": {k: {} for k in sorted(allowed)},
-                            "additionalProperties": False,
+            conditions.append(
+                {
+                    "if": {
+                        "properties": {"key": {"const": key}},
+                        "required": ["key"],
+                    },
+                    "then": {
+                        "properties": {
+                            "options": {
+                                "type": "object",
+                                "properties": {k: {} for k in sorted(allowed)},
+                                "additionalProperties": False,
+                            },
                         },
                     },
-                },
-            })
+                }
+            )
         if conditions:
             existing = branches["custom"].get("allOf", [])
             branches["custom"]["allOf"] = existing + conditions
@@ -246,7 +292,8 @@ def build_view_schema() -> dict:
                         "then": branch,
                     }
                     for name, branch in sorted(branches.items())
-                ] + [
+                ]
+                + [
                     # No `type` at all: the loader defaults to
                     # `parameter_group`, and a `steps` entry omits it
                     # entirely -- as all nineteen shipped wizard steps do, so
@@ -295,11 +342,20 @@ def build_guide_schema() -> dict:
             "panel": {"type": "string", "description": "A navigation-panel row, by substring."},
             "tab": {"type": "string", "description": "A dock or tab label, by substring."},
             "name": {"type": "string", "description": "A widget objectName, exact or by suffix."},
-            "action": {"type": "string", "description": "A toolbar action's text, or a button's text or tooltip."},
-            "attr": {"type": "string", "description": "The model attribute a view-spec field is bound to."},
+            "action": {
+                "type": "string",
+                "description": "A toolbar action's text, or a button's text or tooltip.",
+            },
+            "attr": {
+                "type": "string",
+                "description": "The model attribute a view-spec field is bound to.",
+            },
             "key": {"type": "string", "description": "A custom section's key."},
             "title": {"type": "string", "description": "A section title, exactly."},
-            "command": {"type": "boolean", "description": "The command prompt (chimol's painted tours)."},
+            "command": {
+                "type": "boolean",
+                "description": "The command prompt (chimol's painted tours).",
+            },
             "menu": {"type": "string", "description": "A menu-bar title (chimol's painted tours)."},
             "toolbar": {"type": "string", "description": "A toolbar button's label (chimol)."},
             "object": {"type": "string", "description": "An object-list row, by name (chimol)."},
@@ -329,7 +385,10 @@ def build_guide_schema() -> dict:
         "properties": {
             "_comment": {"type": "string"},
             "title": {"type": "string"},
-            "text": {"type": "string", "description": "Rich text; <b> and <i> are honoured by the Qt tour."},
+            "text": {
+                "type": "string",
+                "description": "Rich text; <b> and <i> are honoured by the Qt tour.",
+            },
             "target": target,
             "await": {
                 "description": (
@@ -414,9 +473,7 @@ def build_guide_schema() -> dict:
                         "_comment": {"type": "string"},
                         "$schema": {
                             "type": "string",
-                            "description": (
-                                "JSON Schema URI for editor validation."
-                            ),
+                            "description": ("JSON Schema URI for editor validation."),
                         },
                         "title": {"type": "string"},
                         "steps": {"type": "array", "items": step},
@@ -448,8 +505,11 @@ def _validate(data, schema, label: str) -> list[str]:
         where = "/".join(str(part) for part in error.path) or label
         # A oneOf failure reports the union, which is unreadable. The useful
         # half is the deepest cause, which is what the reader needs.
-        cause = min(error.context, key=lambda e: len(list(e.path)), default=None) \
-            if error.context else None
+        cause = (
+            min(error.context, key=lambda e: len(list(e.path)), default=None)
+            if error.context
+            else None
+        )
         messages.append(f"{where}: {(cause or error).message}")
     return messages
 
@@ -521,17 +581,18 @@ def generate_starter_view_spec(model) -> dict:
                 continue
             seen.add(id(value))
             title = getattr(value, "name", None) or attr_name.replace("_", " ").title()
-            sections.append({
-                "type": "parameter_group_table",
-                "target": attr_name,
-                "title": title,
-                "collapsible": True,
-            })
+            sections.append(
+                {
+                    "type": "parameter_group_table",
+                    "target": attr_name,
+                    "title": title,
+                    "collapsible": True,
+                }
+            )
 
     return {
         "_comment": (
-            "Auto-generated starter view spec — edit as needed. "
-            "Validate with the view spec schema."
+            "Auto-generated starter view spec — edit as needed. Validate with the view spec schema."
         ),
         "sections": sections,
         "plots": [

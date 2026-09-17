@@ -96,9 +96,9 @@ def client_config(mmfdb_settings: Mapping[str, Any] | None = None) -> dict[str, 
                     settings.get("pub_port", _DEFAULT_CLIENT_CONFIG["pub_port"]),
                 )
             ),
-            "base_url": str(
-                configured.get("base_url", _DEFAULT_CLIENT_CONFIG["base_url"])
-            ).rstrip("/"),
+            "base_url": str(configured.get("base_url", _DEFAULT_CLIENT_CONFIG["base_url"])).rstrip(
+                "/"
+            ),
             "allow_insecure_http": configured.get(
                 "allow_insecure_http",
                 _DEFAULT_CLIENT_CONFIG["allow_insecure_http"],
@@ -174,9 +174,7 @@ class MMFDBClient:
         self.host = str(host or configured["host"])
         self.cmd_port = int(cmd_port if cmd_port is not None else configured["cmd_port"])
         self.pub_port = int(pub_port if pub_port is not None else configured["pub_port"])
-        effective_timeout = int(
-            timeout_ms if timeout_ms is not None else configured["timeout_ms"]
-        )
+        effective_timeout = int(timeout_ms if timeout_ms is not None else configured["timeout_ms"])
         if client is None:
             if inprocess:
                 client = self._make_inprocess_client()
@@ -302,9 +300,7 @@ class MMFDBClient:
         return self._call("mmfdb.protocols.list", {"scope": scope}).get("protocols", [])
 
     def get_protocol(self, name: str, version: Any = "latest") -> dict[str, Any]:
-        return self._call(
-            "mmfdb.protocols.get", {"name": name, "version": version}
-        )
+        return self._call("mmfdb.protocols.get", {"name": name, "version": version})
 
     def list_protocol_versions(self, name: str) -> list[dict[str, Any]]:
         return self._call("mmfdb.protocols.versions", {"name": name}).get("versions", [])
@@ -331,9 +327,7 @@ class MMFDBClient:
         )
 
     def protocol_for_operation(self, operation_id: str) -> dict[str, Any]:
-        return self._call(
-            "mmfdb.protocols.for_operation", {"operation_id": operation_id}
-        )
+        return self._call("mmfdb.protocols.for_operation", {"operation_id": operation_id})
 
     def list_studies(self, scope: str = "all") -> list[dict[str, Any]]:
         return self._call("mmfdb.studies.list", {"scope": scope}).get("studies", [])
@@ -354,8 +348,12 @@ class MMFDBClient:
     ) -> dict[str, Any]:
         return self._call(
             "mmfdb.studies.members.add",
-            {"study_id": study_id, "member_type": member_type,
-             "member_id": member_id, "role": role},
+            {
+                "study_id": study_id,
+                "member_type": member_type,
+                "member_id": member_id,
+                "role": role,
+            },
         )
 
     def set_study_field(self, study_id: str, key: str, value: str) -> dict[str, Any]:
@@ -375,13 +373,22 @@ class MMFDBClient:
         ).get("lots", [])
 
     def create_reagent_lot(
-        self, kind: str, name: str, lot_number: str = "",
-        vendor: str = "", expiry: str | None = None,
+        self,
+        kind: str,
+        name: str,
+        lot_number: str = "",
+        vendor: str = "",
+        expiry: str | None = None,
     ) -> dict[str, Any]:
         return self._call(
             "mmfdb.reagents.create",
-            {"kind": kind, "name": name, "lot_number": lot_number,
-             "vendor": vendor, "expiry": expiry},
+            {
+                "kind": kind,
+                "name": name,
+                "lot_number": lot_number,
+                "vendor": vendor,
+                "expiry": expiry,
+            },
         )
 
     def expired_reagent_lots(self) -> list[dict[str, Any]]:
@@ -398,8 +405,7 @@ class MMFDBClient:
     ) -> dict[str, Any]:
         return self._call(
             "mmfdb.reagents.usage.add",
-            {"lot_id": lot_id, "target_type": target_type,
-             "target_id": target_id, "role": role},
+            {"lot_id": lot_id, "target_type": target_type, "target_id": target_id, "role": role},
         )
 
     # -- calibration provenance (PRD-05) -------------------------------------
@@ -411,13 +417,20 @@ class MMFDBClient:
         return self._call("mmfdb.calibrations.stale").get("stale", [])
 
     def create_calibration(
-        self, calibration_type: str, value: float,
-        method: str = "user_provided", notes: str = "",
+        self,
+        calibration_type: str,
+        value: float,
+        method: str = "user_provided",
+        notes: str = "",
     ) -> dict[str, Any]:
         return self._call(
             "mmfdb.calibrations.create",
-            {"calibration_type": calibration_type, "value": value,
-             "method": method, "notes": notes},
+            {
+                "calibration_type": calibration_type,
+                "value": value,
+                "method": method,
+                "notes": notes,
+            },
         )
 
     # -- pipelines / workflows (PRD-22) --------------------------------------
@@ -429,9 +442,7 @@ class MMFDBClient:
         return self._call("mmfdb.pipelines.get", {"pipeline_id": pipeline_id})
 
     def list_pipeline_runs(self, pipeline_id: str | None = None) -> list[dict[str, Any]]:
-        return self._call(
-            "mmfdb.pipelines.runs", {"pipeline_id": pipeline_id}
-        ).get("runs", [])
+        return self._call("mmfdb.pipelines.runs", {"pipeline_id": pipeline_id}).get("runs", [])
 
     # -- eLabFTW synchronization -------------------------------------------
 
@@ -458,9 +469,7 @@ class MMFDBClient:
         )
 
     def disconnect_elabftw(self, connection_id: str) -> None:
-        self._call(
-            "mmfdb.elabftw.disconnect", {"connection_id": connection_id}
-        )
+        self._call("mmfdb.elabftw.disconnect", {"connection_id": connection_id})
 
     def list_elabftw_experiments(
         self,
@@ -517,10 +526,14 @@ class MMFDBClient:
         )
 
     def get_sample_condition(self, condition_id: str) -> dict[str, Any]:
-        return self._call("mmfdb.sample_conditions.get", {"condition_id": condition_id}).get("condition", {})
+        return self._call("mmfdb.sample_conditions.get", {"condition_id": condition_id}).get(
+            "condition", {}
+        )
 
     def save_sample_condition(self, condition: dict[str, Any]) -> dict[str, Any]:
-        return self._call("mmfdb.sample_conditions.save", {"condition": condition}).get("condition", {})
+        return self._call("mmfdb.sample_conditions.save", {"condition": condition}).get(
+            "condition", {}
+        )
 
     def list_probes(self) -> list[dict[str, Any]]:
         return self._call("mmfdb.probes.list").get("probes", [])
@@ -638,10 +651,16 @@ class MMFDBClient:
     def save_user(self, user: dict[str, Any]) -> list[dict[str, Any]]:
         return self._call("mmfdb.users.save", {"user": user}).get("users", [])
 
-    def delete_user(self, user_id: str, force: bool = False, requester_id: str = None) -> list[dict[str, Any]]:
-        return self._call("mmfdb.users.delete", {"user_id": user_id, "force": force, "requester_id": requester_id}).get("users", [])
+    def delete_user(
+        self, user_id: str, force: bool = False, requester_id: str = None
+    ) -> list[dict[str, Any]]:
+        return self._call(
+            "mmfdb.users.delete", {"user_id": user_id, "force": force, "requester_id": requester_id}
+        ).get("users", [])
 
-    def change_password(self, user_id: str, password: str, requester_id: str = None) -> dict[str, Any]:
+    def change_password(
+        self, user_id: str, password: str, requester_id: str = None
+    ) -> dict[str, Any]:
         return self._call("mmfdb.security.auth.change_password", {"password": password})
 
     def list_devices(self) -> list[dict[str, Any]]:
@@ -804,22 +823,25 @@ class MMFDBClient:
             versions = project.get("versions", []) or []
             latest = versions[0] if versions else project
             row = dict(project)
-            row.update({
-                "analysis_id": latest.get("version_id") or project.get("latest_version_id"),
-                "analysis_run_id": latest.get("version_id") or project.get("latest_version_id"),
-                "analysis_type": "project",
-                "model_name": latest.get("project_name") or project.get("project_name", ""),
-                "project_name": project.get("project_name", ""),
-                "project_id": project.get("project_id", ""),
-                "version_id": latest.get("version_id", ""),
-                "version_number": latest.get("version_number", 1),
-                "experiment_id": "",
-                "created_at": latest.get("created_at") or project.get("created_at", ""),
-                "updated_at": project.get("updated_at", latest.get("created_at", "")),
-                "notes": latest.get("notes") or project.get("notes", ""),
-                "owner_user_id": latest.get("owner_user_id") or project.get("owner_user_id", ""),
-                "visibility": project.get("visibility", latest.get("visibility", "private")),
-            })
+            row.update(
+                {
+                    "analysis_id": latest.get("version_id") or project.get("latest_version_id"),
+                    "analysis_run_id": latest.get("version_id") or project.get("latest_version_id"),
+                    "analysis_type": "project",
+                    "model_name": latest.get("project_name") or project.get("project_name", ""),
+                    "project_name": project.get("project_name", ""),
+                    "project_id": project.get("project_id", ""),
+                    "version_id": latest.get("version_id", ""),
+                    "version_number": latest.get("version_number", 1),
+                    "experiment_id": "",
+                    "created_at": latest.get("created_at") or project.get("created_at", ""),
+                    "updated_at": project.get("updated_at", latest.get("created_at", "")),
+                    "notes": latest.get("notes") or project.get("notes", ""),
+                    "owner_user_id": latest.get("owner_user_id")
+                    or project.get("owner_user_id", ""),
+                    "visibility": project.get("visibility", latest.get("visibility", "private")),
+                }
+            )
             rows.append(row)
         return rows
 
@@ -828,7 +850,9 @@ class MMFDBClient:
 
         return ProjectBrowserClient(mmfdb_client=self).delete_version(version_id=project_id)
 
-    def list_raw_data(self, experiment_id: str | None = None, data_type: str | None = None) -> list[dict[str, Any]]:
+    def list_raw_data(
+        self, experiment_id: str | None = None, data_type: str | None = None
+    ) -> list[dict[str, Any]]:
         params: dict[str, Any] = {}
         if experiment_id is not None:
             params["experiment_id"] = experiment_id
@@ -857,7 +881,9 @@ class MMFDBClient:
             },
         ).get("artifact", {})
 
-    def list_processing_runs(self, experiment_id: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list_processing_runs(
+        self, experiment_id: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
         rows = self._call("mmfdb.processing.list").get("processing", [])
         if experiment_id is not None:
             rows = [row for row in rows if row.get("experiment_id") == experiment_id]
@@ -866,9 +892,13 @@ class MMFDBClient:
         return rows
 
     def get_processing_run(self, processing_id: str) -> dict[str, Any]:
-        return self._call("processing.burst_selection.get", {"processing_id": processing_id}).get("processing_run", {})
+        return self._call("processing.burst_selection.get", {"processing_id": processing_id}).get(
+            "processing_run", {}
+        )
 
-    def list_processed_data(self, processing_id: str | None = None, product_type: str | None = None) -> list[dict[str, Any]]:
+    def list_processed_data(
+        self, processing_id: str | None = None, product_type: str | None = None
+    ) -> list[dict[str, Any]]:
         rows = self._call("mmfdb.processed_data.list").get("processed_data", [])
         if processing_id is not None:
             rows = [row for row in rows if row.get("processing_id") == processing_id]
@@ -877,10 +907,16 @@ class MMFDBClient:
         return rows
 
     def get_processed_data(self, processed_data_id: str) -> dict[str, Any]:
-        return self._call("mmfdb.processed_data.get", {"product_id": processed_data_id}).get("processed_data", {})
+        return self._call("mmfdb.processed_data.get", {"product_id": processed_data_id}).get(
+            "processed_data", {}
+        )
 
-    def list_analysis_runs(self, experiment_id: str | None = None, analysis_type: str | None = None) -> list[dict[str, Any]]:
-        return self._call("analysis.run.list", {"experiment_id": experiment_id, "analysis_type": analysis_type}).get("analysis_runs", [])
+    def list_analysis_runs(
+        self, experiment_id: str | None = None, analysis_type: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._call(
+            "analysis.run.list", {"experiment_id": experiment_id, "analysis_type": analysis_type}
+        ).get("analysis_runs", [])
 
     def get_analysis_run(self, analysis_id: str) -> dict[str, Any]:
         return self._call("analysis.run.get", {"analysis_id": analysis_id}).get("analysis_run", {})
@@ -889,10 +925,14 @@ class MMFDBClient:
         return self._call("mmfdb.analysis.full", {"analysis_id": analysis_id}).get("analysis", {})
 
     def dependencies_upstream(self, node_type: str, node_id: str) -> dict[str, Any]:
-        return self._call("provenance.dependencies.upstream", {"node_type": node_type, "node_id": node_id})
+        return self._call(
+            "provenance.dependencies.upstream", {"node_type": node_type, "node_id": node_id}
+        )
 
     def dependencies_downstream(self, node_type: str, node_id: str) -> dict[str, Any]:
-        return self._call("provenance.dependencies.downstream", {"node_type": node_type, "node_id": node_id})
+        return self._call(
+            "provenance.dependencies.downstream", {"node_type": node_type, "node_id": node_id}
+        )
 
     def list_provenance_edges(self, **filters: Any) -> list[dict[str, Any]]:
         return self._call("provenance.edges.list", filters).get("provenance_edges", [])
@@ -995,19 +1035,26 @@ class MMFDBClient:
         ).get("branch_uuid")
 
     def get_branch(self, branch_uuid_or_name: str) -> dict[str, Any]:
-        return self._call("mmfdb.v1.branches.get", {"branch_uuid_or_name": branch_uuid_or_name}).get("branch")
+        return self._call(
+            "mmfdb.v1.branches.get", {"branch_uuid_or_name": branch_uuid_or_name}
+        ).get("branch")
 
     def list_branches(self) -> list[dict[str, Any]]:
         return self._call("mmfdb.v1.branches.list").get("branches", [])
 
     def update_branch_head(self, branch_uuid: str, head_operation_id: str | None) -> None:
-        self._call("mmfdb.v1.branches.update_head", {"branch_uuid": branch_uuid, "head_operation_id": head_operation_id})
+        self._call(
+            "mmfdb.v1.branches.update_head",
+            {"branch_uuid": branch_uuid, "head_operation_id": head_operation_id},
+        )
 
     def delete_branch(self, branch_uuid: str) -> None:
         self._call("mmfdb.v1.branches.delete", {"branch_uuid": branch_uuid})
 
     def set_user_active_branch(self, user_id: str, branch_uuid: str) -> None:
-        self._call("mmfdb.v1.users.set_active_branch", {"user_id": user_id, "branch_uuid": branch_uuid})
+        self._call(
+            "mmfdb.v1.users.set_active_branch", {"user_id": user_id, "branch_uuid": branch_uuid}
+        )
 
     def get_user_active_branch(self, user_id: str) -> dict[str, Any]:
         return self._call("mmfdb.v1.users.get_active_branch", {"user_id": user_id}).get("branch")
@@ -1034,7 +1081,6 @@ class MMFDBClient:
             },
         ).get("branch")
 
-
     # ---- Auth methods ----
 
     @property
@@ -1045,7 +1091,13 @@ class MMFDBClient:
     def token(self, value: str | None) -> None:
         self._token = value
 
-    def login(self, user_id: str, password: str = "", client_metadata: dict | None = None, quiet: bool = False) -> dict[str, Any]:
+    def login(
+        self,
+        user_id: str,
+        password: str = "",
+        client_metadata: dict | None = None,
+        quiet: bool = False,
+    ) -> dict[str, Any]:
         """Login and store the session token.
 
         Parameters
@@ -1061,11 +1113,15 @@ class MMFDBClient:
             stored token and a passwordless login first and *expects* those
             to be declined, so they must not spam the log.
         """
-        result = self._call_raw("mmfdb.security.auth.login", {
-            "user_id": user_id,
-            "password": password,
-            "client_metadata": client_metadata,
-        }, quiet=quiet)
+        result = self._call_raw(
+            "mmfdb.security.auth.login",
+            {
+                "user_id": user_id,
+                "password": password,
+                "client_metadata": client_metadata,
+            },
+            quiet=quiet,
+        )
         if result.get("ok"):
             self._token = result.get("token")
         return result
@@ -1089,7 +1145,9 @@ class MMFDBClient:
 
     def sessions_list(self, user_id: str | None = None) -> list[dict[str, Any]]:
         """List active sessions."""
-        return self._call("mmfdb.security.auth.sessions.list", {"user_id": user_id}).get("sessions", [])
+        return self._call("mmfdb.security.auth.sessions.list", {"user_id": user_id}).get(
+            "sessions", []
+        )
 
     def sessions_revoke(self, session_id: str) -> dict[str, Any]:
         """Revoke a session by ID."""
@@ -1116,7 +1174,9 @@ class MMFDBClient:
         return self._call("mmfdb.groups.members.list", {"group_id": group_id}).get("members", [])
 
     def members_add(self, group_id: str, user_id: str, role: str = "member") -> dict[str, Any]:
-        return self._call("mmfdb.groups.members.add", {"group_id": group_id, "user_id": user_id, "role": role})
+        return self._call(
+            "mmfdb.groups.members.add", {"group_id": group_id, "user_id": user_id, "role": role}
+        )
 
     def members_remove(self, group_id: str, user_id: str) -> dict[str, Any]:
         return self._call("mmfdb.groups.members.remove", {"group_id": group_id, "user_id": user_id})
@@ -1124,16 +1184,31 @@ class MMFDBClient:
     # ---- Permission methods ----
 
     def permissions_get(self, object_type: str, object_id: str) -> dict[str, Any]:
-        return self._call("mmfdb.permissions.get", {"object_type": object_type, "object_id": object_id}).get("acl")
+        return self._call(
+            "mmfdb.permissions.get", {"object_type": object_type, "object_id": object_id}
+        ).get("acl")
 
     def permissions_chmod(self, object_type: str, object_id: str, mode: int) -> dict[str, Any]:
-        return self._call("mmfdb.permissions.chmod", {"object_type": object_type, "object_id": object_id, "mode": mode})
+        return self._call(
+            "mmfdb.permissions.chmod",
+            {"object_type": object_type, "object_id": object_id, "mode": mode},
+        )
 
-    def permissions_chown(self, object_type: str, object_id: str, owner_user_id: str) -> dict[str, Any]:
-        return self._call("mmfdb.permissions.chown", {"object_type": object_type, "object_id": object_id, "owner_user_id": owner_user_id})
+    def permissions_chown(
+        self, object_type: str, object_id: str, owner_user_id: str
+    ) -> dict[str, Any]:
+        return self._call(
+            "mmfdb.permissions.chown",
+            {"object_type": object_type, "object_id": object_id, "owner_user_id": owner_user_id},
+        )
 
-    def permissions_chgrp(self, object_type: str, object_id: str, owner_group_id: str) -> dict[str, Any]:
-        return self._call("mmfdb.permissions.chgrp", {"object_type": object_type, "object_id": object_id, "owner_group_id": owner_group_id})
+    def permissions_chgrp(
+        self, object_type: str, object_id: str, owner_group_id: str
+    ) -> dict[str, Any]:
+        return self._call(
+            "mmfdb.permissions.chgrp",
+            {"object_type": object_type, "object_id": object_id, "owner_group_id": owner_group_id},
+        )
 
     def permissions_grant(
         self,
@@ -1144,14 +1219,17 @@ class MMFDBClient:
         permissions: int,
         effect: str = "allow",
     ) -> dict[str, Any]:
-        return self._call("mmfdb.permissions.grant", {
-            "object_type": object_type,
-            "object_id": object_id,
-            "subject_type": subject_type,
-            "subject_id": subject_id,
-            "permissions": permissions,
-            "effect": effect,
-        })
+        return self._call(
+            "mmfdb.permissions.grant",
+            {
+                "object_type": object_type,
+                "object_id": object_id,
+                "subject_type": subject_type,
+                "subject_id": subject_id,
+                "permissions": permissions,
+                "effect": effect,
+            },
+        )
 
     def permissions_revoke(self, entry_id: int) -> dict[str, Any]:
         return self._call("mmfdb.permissions.revoke", {"entry_id": entry_id})
@@ -1369,7 +1447,9 @@ class MMFDBClient:
 
     # ---- Internal ----
 
-    def call(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
+    def call(
+        self, method: str, params: dict[str, Any] | None = None, quiet: bool = False
+    ) -> dict[str, Any]:
         """Public RPC entry point (auth-injecting, envelope-unwrapping).
 
         External consumers (the dataset browser widget, plugin GUIs) call
@@ -1387,13 +1467,17 @@ class MMFDBClient:
         """
         return self._call(method, params, quiet=quiet)
 
-    def _call(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
+    def _call(
+        self, method: str, params: dict[str, Any] | None = None, quiet: bool = False
+    ) -> dict[str, Any]:
         params = dict(params or {})
         if self._token and "auth" not in params:
             params["auth"] = {"token": self._token}
         return self._call_raw(method, params, quiet=quiet)
 
-    def _call_raw(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
+    def _call_raw(
+        self, method: str, params: dict[str, Any] | None = None, quiet: bool = False
+    ) -> dict[str, Any]:
         result = self._client.call(method, params or {})
         if result.get("jsonrpc") == "2.0" and "error" in result:
             error = result["error"]

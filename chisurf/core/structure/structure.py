@@ -1,5 +1,4 @@
 from __future__ import annotations
-from chisurf import typing
 
 import copy
 import os
@@ -7,21 +6,16 @@ import tempfile
 
 import numpy as np
 
+import chisurf.core.base
 import chisurf.core.fio
 import chisurf.core.fio.structure.coordinates
-import chisurf.core.base
+from chisurf import typing
 
-clusterCriteria = [
-    'maxclust',
-    'inconsistent',
-    'distance'
-]
+clusterCriteria = ["maxclust", "inconsistent", "distance"]
 
 
 def add_backbone_amide_hydrogens(
-        atoms: np.ndarray,
-        bond_length: float = 1.01,
-        max_peptide_bond: float = 1.45
+    atoms: np.ndarray, bond_length: float = 1.01, max_peptide_bond: float = 1.45
 ) -> np.ndarray:
     """Return *atoms* with a backbone amide hydrogen appended per residue.
 
@@ -61,16 +55,16 @@ def add_backbone_amide_hydrogens(
         return atoms
 
     tetrahedral_cos = -1.0 / 3.0
-    tetrahedral_sin = (1.0 - tetrahedral_cos ** 2) ** 0.5
+    tetrahedral_sin = (1.0 - tetrahedral_cos**2) ** 0.5
 
     residues: list[tuple[str, int, list[int]]] = []
     index_by_key: dict[tuple[str, int], int] = {}
     for i in range(atoms.size):
-        key = (str(atoms['chain'][i]), int(atoms['res_id'][i]))
+        key = (str(atoms["chain"][i]), int(atoms["res_id"][i]))
         pos = index_by_key.get(key)
         if pos is None:
             index_by_key[key] = len(residues)
-            residues.append([str(atoms['res_name'][i]), key, [i]])
+            residues.append([str(atoms["res_name"][i]), key, [i]])
         else:
             residues[pos][2].append(i)
 
@@ -79,21 +73,21 @@ def add_backbone_amide_hydrogens(
     prev_c_xyz = None
     for res_name, (chain, res_id), idx in residues:
         res_atoms = atoms[idx]
-        names = res_atoms['atom_name']
+        names = res_atoms["atom_name"]
 
         def get_xyz(name: str, _names=names, _res_atoms=res_atoms):
             mask = _names == name
-            return _res_atoms['xyz'][mask][0] if mask.any() else None
+            return _res_atoms["xyz"][mask][0] if mask.any() else None
 
-        n_xyz = get_xyz('N')
-        ca_xyz = get_xyz('CA')
-        c_xyz = get_xyz('C')
-        has_h = bool((names == 'H').any())
+        n_xyz = get_xyz("N")
+        ca_xyz = get_xyz("CA")
+        c_xyz = get_xyz("C")
+        has_h = bool((names == "H").any())
 
         h_dir = None
         if (
             not has_h
-            and res_name.strip().upper() != 'PRO'
+            and res_name.strip().upper() != "PRO"
             and n_xyz is not None
             and ca_xyz is not None
         ):
@@ -128,12 +122,12 @@ def add_backbone_amide_hydrogens(
 
         if h_dir is not None:
             row = np.zeros(1, dtype=atoms.dtype)
-            row['chain'] = chain
-            row['res_id'] = res_id
-            row['res_name'] = res_name
-            row['atom_name'] = 'H'
-            row['element'] = 'H'
-            row['xyz'] = n_xyz + bond_length * h_dir
+            row["chain"] = chain
+            row["res_id"] = res_id
+            row["res_name"] = res_name
+            row["atom_name"] = "H"
+            row["element"] = "H"
+            row["xyz"] = n_xyz + bond_length * h_dir
             new_rows.append(row)
 
         prev_chain = chain
@@ -143,13 +137,14 @@ def add_backbone_amide_hydrogens(
         return atoms
 
     added = np.concatenate(new_rows)
-    next_i = int(atoms['i'].max()) + 1 if atoms.size else 0
-    next_atom_id = int(atoms['atom_id'].max()) + 1 if atoms.size else 0
-    added['i'] = np.arange(next_i, next_i + added.size)
-    added['atom_id'] = np.arange(next_atom_id, next_atom_id + added.size)
+    next_i = int(atoms["i"].max()) + 1 if atoms.size else 0
+    next_atom_id = int(atoms["atom_id"].max()) + 1 if atoms.size else 0
+    added["i"] = np.arange(next_i, next_i + added.size)
+    added["atom_id"] = np.arange(next_atom_id, next_atom_id + added.size)
     try:
         import chisurf.core.support.common
-        added['mass'] = chisurf.core.support.common.atom_weights['H']
+
+        added["mass"] = chisurf.core.support.common.atom_weights["H"]
     except (ImportError, KeyError):
         pass
     return np.concatenate([atoms, added])
@@ -227,18 +222,18 @@ class Structure(chisurf.core.base.Base):
     """
 
     def __init__(
-            self,
-            p_object=None,
-            *args,
-            auto_update: bool = False,
-            filename: str = None,
-            verbose: bool = False,
-            pdb_id: str = None,
-            protonate: bool = False,
-            keep_water: bool = False,
-            only_standard_residues: bool = True,
-            radii: str = "charmm",
-            **kwargs
+        self,
+        p_object=None,
+        *args,
+        auto_update: bool = False,
+        filename: str = None,
+        verbose: bool = False,
+        pdb_id: str = None,
+        protonate: bool = False,
+        keep_water: bool = False,
+        only_standard_residues: bool = True,
+        radii: str = "charmm",
+        **kwargs,
     ):
         """Initialize a :class:`Structure` from a PDB file, PDB id, or copy.
 
@@ -329,52 +324,41 @@ class Structure(chisurf.core.base.Base):
             return np.zeros(
                 1,
                 dtype={
-                    'names': chisurf.core.fio.structure.coordinates.keys,
-                    'formats': chisurf.core.fio.structure.coordinates.formats
-                }
+                    "names": chisurf.core.fio.structure.coordinates.keys,
+                    "formats": chisurf.core.fio.structure.coordinates.formats,
+                },
             )
 
     @atoms.setter
-    def atoms(
-            self,
-            v: np.array
-    ):
+    def atoms(self, v: np.array):
         """Set the array of atoms (must be a NumPy structured array)."""
         if isinstance(v, np.ndarray):
             self._atoms = v
 
     @property
     def xyz(self) -> np.array:
-        """Cartesian coordinates of all atoms
-        """
-        return self.atoms['xyz']
+        """Cartesian coordinates of all atoms"""
+        return self.atoms["xyz"]
 
     @xyz.setter
-    def xyz(
-            self,
-            v: np.array
-    ):
+    def xyz(self, v: np.array):
         """Set cartesian coordinates of all atoms."""
-        self.atoms['xyz'] = v
+        self.atoms["xyz"] = v
 
     @property
     def vdw(self) -> np.array:
-        """Van der Waals radii of all atoms
-        """
-        return self.atoms['radius']
+        """Van der Waals radii of all atoms"""
+        return self.atoms["radius"]
 
     @vdw.setter
-    def vdw(
-            self,
-            v: np.array
-    ):
+    def vdw(self, v: np.array):
         """Set Van der Waals radii of all atoms."""
-        self.atoms['radius'] = v
+        self.atoms["radius"] = v
 
     @property
     def residue_names(self) -> typing.List[str]:
         """Sorted list of unique residue names (e.g. three-letter codes)."""
-        res_name = list(set(self.atoms['res_name']))
+        res_name = list(set(self.atoms["res_name"]))
         res_name.sort()
         return res_name
 
@@ -382,9 +366,7 @@ class Structure(chisurf.core.base.Base):
     def residue_dict(self):
         """Dictionary mapping residue IDs to dictionaries of their atoms."""
         if self._residue_dict is None:
-            residue_dict = chisurf.core.structure.make_dictionary_of_atoms(
-                self.atoms
-            )
+            residue_dict = chisurf.core.structure.make_dictionary_of_atoms(self.atoms)
             self._residue_dict = residue_dict
         return self._residue_dict
 
@@ -401,18 +383,15 @@ class Structure(chisurf.core.base.Base):
     @property
     def atom_types(self):
         """Set of all unique atom names present in the structure."""
-        return set(self.atoms['atom_name'])
+        return set(self.atoms["atom_name"])
 
     @property
     def residue_ids(self) -> typing.List[int]:
         """List of unique residue IDs."""
-        residue_ids = list(set(self.atoms['res_id']))
+        residue_ids = list(set(self.atoms["res_id"]))
         return residue_ids
 
-    def get_atom_index(
-            self,
-            atom_names
-    ):
+    def get_atom_index(self, atom_names):
         """Returns a list of the indeces with a given atom name
 
         :param atom_names: list of string of the atom-names
@@ -422,19 +401,18 @@ class Structure(chisurf.core.base.Base):
 
     @property
     def b_factors(self):
-        """B-factors of the C-alpha atoms
-        """
-        sel = chisurf.core.structure.get_atom_index_by_name(self.atoms, ['CA'])[0]
-        bfac = self.atoms[sel]['bfactor']
+        """B-factors of the C-alpha atoms"""
+        sel = chisurf.core.structure.get_atom_index_by_name(self.atoms, ["CA"])[0]
+        bfac = self.atoms[sel]["bfactor"]
         return bfac
 
     @b_factors.setter
     def b_factors(self, v):
         """Set b-factors of C-alpha atoms."""
         s = self
-        sel = chisurf.core.structure.get_atom_index_by_name(s.atoms, ['CA'])[0]
+        sel = chisurf.core.structure.get_atom_index_by_name(s.atoms, ["CA"])[0]
         for ai, bi in zip(sel, v):
-            s._atoms[ai]['bfactor'] = bi
+            s._atoms[ai]["bfactor"] = bi
 
     @property
     def radius_gyration(self) -> float:
@@ -452,11 +430,7 @@ class Structure(chisurf.core.base.Base):
         rG = np.sqrt(((coord - rM) ** 2).sum(axis=1).mean())
         return float(rG)
 
-    def append_potential(
-            self,
-            function,
-            kwargs: typing.Dict = None
-    ):
+    def append_potential(self, function, kwargs: typing.Dict = None):
         """
 
         :param function:
@@ -476,9 +450,7 @@ class Structure(chisurf.core.base.Base):
         """
         if kwargs is None:
             kwargs = dict()
-        self._potentials.append(
-            [function, kwargs]
-        )
+        self._potentials.append([function, kwargs])
 
     def update_coordinates(self):
         """Update cartesian coordinates if auto_update is enabled."""
@@ -486,10 +458,10 @@ class Structure(chisurf.core.base.Base):
             self.update()
 
     def write(
-            self,
-            filename: str = None,
-            append_model: bool = False,
-            append_coordinates: bool = False,
+        self,
+        filename: str = None,
+        append_model: bool = False,
+        append_coordinates: bool = False,
     ):
         """
         Write the structure to a filename. By default it uses PDB files
@@ -501,12 +473,9 @@ class Structure(chisurf.core.base.Base):
         if filename is None:
             filename = self._filename
         aw = np.copy(self.atoms)
-        aw['xyz'] = self.xyz
+        aw["xyz"] = self.xyz
         self.io.write_pdb(
-            filename,
-            aw,
-            append_model=append_model,
-            append_coordinates=append_coordinates
+            filename, aw, append_model=append_model, append_coordinates=append_coordinates
         )
 
     def protonate(self) -> None:
@@ -522,10 +491,7 @@ class Structure(chisurf.core.base.Base):
         """
         self.atoms = add_backbone_amide_hydrogens(self.atoms)
 
-    def update(
-            self,
-            **kwargs
-    ):
+    def update(self, **kwargs):
         """Update internal state. Base implementation is a no-op."""
         pass
 
@@ -540,12 +506,26 @@ class Structure(chisurf.core.base.Base):
                 # column a PDB file has would shift every following field. Chain
                 # ids of two or more characters are ordinary in mmCIF -- the
                 # eight-spoke nuclear pore has 518 of them.
-                s += "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" % \
-                     ("ATOM ",
-                      at['atom_id'], at['atom_name'], " ", at['res_name'], at['chain'],
-                      at['res_id'], " ",
-                      at['xyz'][0], at['xyz'][1], at['xyz'][2],
-                      0.0, 0.0, "  ", at['element'])
+                s += (
+                    "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n"
+                    % (
+                        "ATOM ",
+                        at["atom_id"],
+                        at["atom_name"],
+                        " ",
+                        at["res_name"],
+                        at["chain"],
+                        at["res_id"],
+                        " ",
+                        at["xyz"][0],
+                        at["xyz"][1],
+                        at["xyz"][2],
+                        0.0,
+                        0.0,
+                        "  ",
+                        at["element"],
+                    )
+                )
         return s + "END\n"
 
     def __deepcopy__(self, memo):
@@ -556,11 +536,7 @@ class Structure(chisurf.core.base.Base):
         return new
 
 
-def onRMSF(
-        structures,
-        selectedNbrs: typing.List[int],
-        atomName: str = None,
-        **kwargs):
+def onRMSF(structures, selectedNbrs: typing.List[int], atomName: str = None, **kwargs):
     """Calculates the root mean square deviation with respect to the average structure
     for a given set of structures. The structures do not have to be aligned.
 
@@ -570,7 +546,7 @@ def onRMSF(
     :param weights:
     :return:
     """
-    weights = kwargs.get('weights', np.ones(len(selectedNbrs), dtype=np.float32))
+    weights = kwargs.get("weights", np.ones(len(selectedNbrs), dtype=np.float32))
     weights /= sum(weights)
 
     candidateStructures = [copy.deepcopy(structures[i]) for i in selectedNbrs]
@@ -579,21 +555,21 @@ def onRMSF(
     print("aligning selected structures with respect to reference")
     for s in candidateStructures:
         super_impose(reference, s)
-    print("Getting %s-atoms of reference" % atomName)
+    print(f"Getting {atomName}-atoms of reference")
     ar = reference.getAtoms(atomName=atomName)
-    cr = ar['xyz']
+    cr = ar["xyz"]
     msf = np.zeros(len(ar), dtype=np.float32)
     for i, s in enumerate(candidateStructures):
         a = s.getAtoms(atomName=atomName)
-        ca = a['xyz']
+        ca = a["xyz"]
         msf += weights[i] * np.sum((cr - ca) ** 2, axis=1)
     return np.sqrt(msf)
 
 
 def rmsd(
-        structure_a: chisurf.core.structure.Structure,
-        structure_b: chisurf.core.structure.Structure,
-        atom_indices=None
+    structure_a: chisurf.core.structure.Structure,
+    structure_b: chisurf.core.structure.Structure,
+    atom_indices=None,
 ):
     """Calculates the root-mean-squared deviation between two structures. In case the indices of the atoms are
     provided only the, respective atoms are used to calculate the RMSD.
@@ -625,13 +601,13 @@ def rmsd(
     else:
         a = structure_a.xyz
         b = structure_b.xyz
-    return float(np.sqrt(1. / a.shape[0] * ((a - b) ** 2).sum()))
+    return float(np.sqrt(1.0 / a.shape[0] * ((a - b) ** 2).sum()))
 
 
 def super_impose(
-        structure_ref: chisurf.core.structure.Structure,
-        structure_align: chisurf.core.structure.Structure,
-        atom_indices=None
+    structure_ref: chisurf.core.structure.Structure,
+    structure_align: chisurf.core.structure.Structure,
+    atom_indices=None,
 ):
     """Superimpose two structures
 
@@ -667,13 +643,9 @@ def super_impose(
     structure_align.xyz = np.dot(al, rot)
 
 
-def find_best(
-        target,
-        reference,
-        atom_indices=None
-):
+def find_best(target, reference, atom_indices=None):
     """
-    target and reference are both trajectories
+    Target and reference are both trajectories
     (:class:`chisurf.core.structure.trajectory_data.Trajectory`);
     reference is of length 1, target of arbitrary length
 
@@ -701,11 +673,11 @@ def make_dictionary_of_atoms(atoms):
     :return: dict
     """
     residue_dict = dict()
-    for res in list(set(atoms['res_id'])):
-        at_nbr = np.where(atoms['res_id'] == res)
+    for res in list(set(atoms["res_id"])):
+        at_nbr = np.where(atoms["res_id"] == res)
         residue_dict[res] = dict()
         for atom in atoms[at_nbr]:
-            residue_dict[res][atom['atom_name']] = atom
+            residue_dict[res][atom["atom_name"]] = atom
     return residue_dict
 
 
@@ -743,18 +715,14 @@ def get_coordinates_of_residues(atoms, quencher, verbose=False):
     atom_idx = get_atom_index_of_residue_types(atoms, quencher)
     coordinates = dict()
     for res_key in quencher:
-        coordinates[res_key] = atoms['xyz'][atom_idx[res_key]]
+        coordinates[res_key] = atoms["xyz"][atom_idx[res_key]]
     if verbose:
-        print("Quencher atom-indeces: \n %s" % atom_idx)
-        print("Quencher coordinates: \n %s" % coordinates)
+        print(f"Quencher atom-indeces: \n {atom_idx}")
+        print(f"Quencher coordinates: \n {coordinates}")
     return coordinates
 
 
-def get_atom_index_of_residue_types(
-        pdb,
-        res_types,
-        verbose: bool = False
-):
+def get_atom_index_of_residue_types(pdb, res_types, verbose: bool = False):
     """
     Returns atom-indices given a selection of residue types and atom names as dict.
     The selection is based on dictionaries. For each residue-type only the atoms within a
@@ -790,7 +758,9 @@ def get_atom_index_of_residue_types(
     for residue_key in res_types:
         atoms = []
         for atom_name in res_types[residue_key]:
-            atoms.append(np.where((pdb['res_name'] == residue_key) & (pdb['atom_name'] == atom_name))[0])
+            atoms.append(
+                np.where((pdb["res_name"] == residue_key) & (pdb["atom_name"] == atom_name))[0]
+            )
         if len(atoms) > 0:
             atom_idx[residue_key] = np.array(np.hstack(atoms), dtype=np.uint32)
         else:
@@ -798,11 +768,7 @@ def get_atom_index_of_residue_types(
     return atom_idx
 
 
-def get_atom_index_by_name(
-        pdb,
-        atom_names,
-        verbose: bool = False
-):
+def get_atom_index_by_name(pdb, atom_names, verbose: bool = False):
     """
     Returns atom-indices given a an atomic name as list.
 
@@ -834,13 +800,11 @@ def get_atom_index_by_name(
     """
     atoms = []
     for atom_name in atom_names:
-        atoms.append(np.where((pdb['atom_name'] == atom_name))[0])
+        atoms.append(np.where(pdb["atom_name"] == atom_name)[0])
     return atoms
 
 
-def sequence(
-        structure_obj
-) -> typing.Dict:
+def sequence(structure_obj) -> typing.Dict:
     """Return dictionary of sequences keyed to chain and type of sequence used.
 
     :param structure_obj: Structure
@@ -848,7 +812,7 @@ def sequence(
     # Check to see if there are multiple model.  If there are, only look
     # at the first model.
     p = structure_obj.atoms
-    atoms = [a for a in p if a['atom_name'] == "CA "]
+    atoms = [a for a in p if a["atom_name"] == "CA "]
     chain_dict = dict([(l[21], []) for l in atoms])
     for c in list(chain_dict.keys()):
         chain_dict[c] = [l[17:20] for l in atoms if l[21] == c]
@@ -863,18 +827,18 @@ def count_atoms(topology_dict):
     :return: int
     """
     n_atoms = 0
-    for chain in topology_dict['chains']:
-        for residue in chain['residues']:
-            n_atoms += len(residue['atoms'])
+    for chain in topology_dict["chains"]:
+        for residue in chain["residues"]:
+            n_atoms += len(residue["atoms"])
     return n_atoms
 
 
 def average(
-        structures: typing.List[chisurf.core.structure.Structure],
-        weights: typing.List[float] = None,
-        write: bool = True,
-        filename: str = None,
-        verbose: bool = True
+    structures: typing.List[chisurf.core.structure.Structure],
+    weights: typing.List[float] = None,
+    write: bool = True,
+    filename: str = None,
+    verbose: bool = True,
 ) -> chisurf.core.structure.Structure:
     """
     Calculates weighted average of a list of structures.
@@ -894,9 +858,7 @@ def average(
     'c:\\users\\peulen\\appdata\\local\\temp\\average.pdb'
     """
     if weights is None:
-        weights = np.ones(
-            len(structures), dtype=np.float64
-        )
+        weights = np.ones(len(structures), dtype=np.float64)
         weights /= weights.sum()
     else:
         weights = np.array(weights)
@@ -907,12 +869,10 @@ def average(
     for i, s in enumerate(structures):
         avg.xyz += weights[i] * s.xyz
     if filename is None:
-        filename = os.path.join(
-            tempfile.tempdir, "average.pdb"
-        )
+        filename = os.path.join(tempfile.tempdir, "average.pdb")
     if write:
         if verbose:
-            print("Writing average to file: %s" % filename)
+            print(f"Writing average to file: {filename}")
         avg.filename = filename
         avg.write()
     return avg

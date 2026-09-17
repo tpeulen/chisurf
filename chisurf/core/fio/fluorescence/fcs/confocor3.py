@@ -1,40 +1,43 @@
 """ALV .ASC files"""
+
 import chisurf as cs
+
 """Confocor .fcs files"""
 import csv
 import pathlib
 import warnings
 
 import numpy as np
-import chisurf.core.fluorescence.fcs
 
-from . import util
+import chisurf.core.fluorescence.fcs
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
+
+from . import util
 
 
 def openFCS(path, filename=None):
     """
-        Load data from Zeiss Confocor3
-        Data is imported sequenially from the file.
-        PyCorrFit will give each curve an id which corresponds to the
-        position of the curve in the .fcs file.
+    Load data from Zeiss Confocor3
+    Data is imported sequenially from the file.
+    PyCorrFit will give each curve an id which corresponds to the
+    position of the curve in the .fcs file.
 
-        The AIM software can save data as multiple or single data files.
-        The type is identified by the first line of the .fcs file.
+    The AIM software can save data as multiple or single data files.
+    The type is identified by the first line of the .fcs file.
 
-        This works with files from the Confocor2, Confocor3 (AIM) and
-        files created from the newer ZEN Software.
+    This works with files from the Confocor2, Confocor3 (AIM) and
+    files created from the newer ZEN Software.
 
-        This function is a wrapper combining *openFCS_Single* and
-        *openFCS_Multiple*
+    This function is a wrapper combining *openFCS_Single* and
+    *openFCS_Multiple*
     """
     path = pathlib.Path(path)
     if filename is not None:
         warnings.warn("Using `filename` is deprecated.", DeprecationWarning)
         path = path / filename
 
-    with path.open('r') as fd:
+    with path.open("r") as fd:
         identitystring = fd.readline().strip()[:20]
 
     if identitystring == "Carl Zeiss ConfoCor3":
@@ -44,13 +47,13 @@ def openFCS(path, filename=None):
 
 
 def openFCS_Multiple(path):
-    """ Load data from Zeiss Confocor3
-        Data is imported sequenially from the file.
-        PyCorrFit will give each curve an id which corresponds to the
-        position of the curve in the .fcs file.
+    """Load data from Zeiss Confocor3
+    Data is imported sequenially from the file.
+    PyCorrFit will give each curve an id which corresponds to the
+    position of the curve in the .fcs file.
 
-        This works with files from the Confocor2, Confocor3 (AIM) and
-        files created from the newer ZEN Software.
+    This works with files from the Confocor2, Confocor3 (AIM) and
+    files created from the newer ZEN Software.
     """
     filename = path.name
     # TODO:
@@ -68,8 +71,8 @@ def openFCS_Multiple(path):
     # and should import something
     fcsset = False
     # The names of the traces
-    aclist = []     # All autocorrelation functions
-    cclist = []     # All cross-correlation functions
+    aclist = []  # All autocorrelation functions
+    cclist = []  # All cross-correlation functions
     # The intensity traces
     traces = []
     # we use "AcquisitionTime" to match up curves
@@ -82,12 +85,12 @@ def openFCS_Multiple(path):
     # The names of the correlation channels
     channels = {}
     ac_count = 0
-    while i <= len(Alldata)-1:
+    while i <= len(Alldata) - 1:
         if Alldata[i].count("FcsDataSet") == 1:
             # We are in a "FcsDataSet" section
             fcsset = True
             gottrace = False
-        if fcsset == True:
+        if fcsset:
             # Check key-value
             if Alldata[i].count("="):
                 current_key = Alldata[i].split("=")[0].strip()
@@ -96,7 +99,7 @@ def openFCS_Multiple(path):
                 i = i + 1
                 continue
             # Extract data
-            if  current_key == "AcquisitionTime":
+            if current_key == "AcquisitionTime":
                 thistime = current_value
             elif current_key == "Channel":
                 # Find out what type of correlation curve we have.
@@ -111,12 +114,11 @@ def openFCS_Multiple(path):
                     if chid not in channels:
                         ac_count += 1
                         channels[chid] = ac_count
-                    FoundType = "AC"+str(channels[chid])
+                    FoundType = "AC" + str(channels[chid])
                     aclist.append(FoundType)
                     actimelist.append(thistime)
                 elif FCStype.startswith(idcross):
-                    chid1, chid2 = FCStype[len(idcross):].strip().split(
-                        " versus detector ")
+                    chid1, chid2 = FCStype[len(idcross) :].strip().split(" versus detector ")
                     if chid1 in channels:
                         chnum1 = channels[chid1]
                     else:
@@ -125,14 +127,13 @@ def openFCS_Multiple(path):
                         chnum2 = channels[chid2]
                     else:
                         raise NotImplementedError("AC must come before CC!")
-                    FoundType = "CC"+str(chnum1)+str(chnum2)
+                    FoundType = "CC" + str(chnum1) + str(chnum2)
                     cclist.append(FoundType)
                     cctimelist.append(thistime)
                 else:
                     # Jump out of this set. We will continue at
                     # the next "FcsDataSet"-section.
-                    warnings.warn("Unknown channel configuration "
-                                  "'{}' in '{}'!".format(FCStype, path))
+                    warnings.warn(f"Unknown channel configuration '{FCStype}' in '{path}'!")
                     fcsset = False
             elif current_key == "CountRateArray":
                 # Start importing the trace. This is a little difficult, since
@@ -140,17 +141,16 @@ def openFCS_Multiple(path):
                 # the trace and import a lighter version of it.
                 tracelength = int(current_value.split()[0])
                 if tracelength != 0:
-                    tracedata = Alldata[i+1: i+tracelength+1]
+                    tracedata = Alldata[i + 1 : i + tracelength + 1]
                     # Jump foward in the index
                     i = i + tracelength
-                    readtrace = csv.reader(tracedata, delimiter='\t')
+                    readtrace = csv.reader(tracedata, delimiter="\t")
 
                     trace = []
                     for row in readtrace:
                         # tau in ms, trace in kHz
                         # So we need to put some factors here
-                        trace.append((float(row[3])*1000,
-                                      float(row[4])/1000))
+                        trace.append((float(row[3]) * 1000, float(row[4]) / 1000))
                     trace = np.array(trace)
                     # If the trace is too big. Wee need to bin it.
                     newtrace = util.downsample_trace(trace)
@@ -158,8 +158,7 @@ def openFCS_Multiple(path):
                     traces.append(newtrace)
                     if FoundType[:2] != "AC":
                         # For every trace there is an entry in aclist
-                        print("Trace data saved in CC section." +
-                              "I cannot handle that.")
+                        print("Trace data saved in CC section." + "I cannot handle that.")
                     gottrace = True
             elif current_key == "CorrelationArraySize":
                 # Get the correlation information
@@ -170,15 +169,14 @@ def openFCS_Multiple(path):
                     if (gottrace is False) and (FoundType[:2] == "AC"):
                         # We think we know that there is no trace in CC curves
                         traces.append(None)
-                    corrdata = Alldata[i + 2: i + corrlength + 2]
+                    corrdata = Alldata[i + 2 : i + corrlength + 2]
                     # Jump foward
                     i = i + corrlength
-                    readcorr = csv.reader(corrdata, delimiter='\t')
+                    readcorr = csv.reader(corrdata, delimiter="\t")
                     corr = []
                     for row in readcorr:
                         # tau in ms, corr-function
-                        corr.append((float(row[3])*1000,
-                                     float(row[4])-1))
+                        corr.append((float(row[3]) * 1000, float(row[4]) - 1))
                     if FoundType[:2] == "AC":
                         ac_correlations.append(np.array(corr))
                     elif FoundType[:2] == "CC":
@@ -189,7 +187,7 @@ def openFCS_Multiple(path):
                     if FoundType[:2] == "AC":
                         # append a dummy correlation curve
                         ac_correlations.append(None)
-                        if gottrace == False:
+                        if not gottrace:
                             # append a dummy trace
                             traces.append(None)
                     elif FoundType[:2] == "CC":
@@ -235,23 +233,21 @@ def openFCS_Multiple(path):
     for tid in actimelist:
         if tid not in knowntimes:
             knowntimes.append(tid)
-            #n = actimelist.count(tid)
+            # n = actimelist.count(tid)
             actids = np.where(np.array(actimelist) == tid)[0]
             cctids = np.where(np.array(cctimelist) == tid)[0]
 
             if len(actids) == 0:
-                warnings.warn("File {} timepoint {} has no AC data.".
-                              format(filename, tid))
+                warnings.warn(f"File {filename} timepoint {tid} has no AC data.")
             elif len(actids) == 1:
                 # single AC curve
                 if ac_correlations[actids[0]] is not None:
                     curvelist.append(aclist[actids[0]])
-                    tracelist.append(1*traces[actids[0]])
+                    tracelist.append(1 * traces[actids[0]])
                     corrlist.append(ac_correlations[actids[0]])
                 else:
                     if traces[actids[0]] is not None:
-                        warnings.warn(
-                            "File {} curve {} does not contain AC data.".format(filename, tid))
+                        warnings.warn(f"File {filename} curve {tid} does not contain AC data.")
             elif len(actids) == 2:
                 # Get AC data
                 if aclist[actids[0]] == "AC1":
@@ -265,8 +261,7 @@ def openFCS_Multiple(path):
                     acdat2 = ac_correlations[actids[0]]
                     trace2 = traces[actids[0]]
                 else:
-                    warnings.warn(
-                        "File {} curve {}: unknown AC data.".format(filename, tid))
+                    warnings.warn(f"File {filename} curve {tid}: unknown AC data.")
                     continue
 
                 if acdat1 is not None:
@@ -289,8 +284,7 @@ def openFCS_Multiple(path):
                         ccdat12 = cc_correlations[cctids[1]]
                         ccdat21 = cc_correlations[cctids[0]]
                     else:
-                        warnings.warn(
-                            "File {} curve {}: unknown CC data.".format(filename, tid))
+                        warnings.warn(f"File {filename} curve {tid}: unknown CC data.")
                         continue
 
                     tracecc = [trace1, trace2]
@@ -356,7 +350,7 @@ def openFCS_Single(path):
     # instead of failing on an undefined name.
     newtrace = None
     corr = None
-    while i <= len(Alldata)-1:
+    while i <= len(Alldata) - 1:
         if Alldata[i].partition("=")[0].strip() == "##DATA TYPE":
             # Find out what type of correlation curve we have.
             # Might be interesting to the user.
@@ -368,9 +362,9 @@ def openFCS_Single(path):
                 tracecurve = True
                 fcscurve = False
             else:
-                raise SyntaxError("Unknown file syntax: "+Type)
+                raise SyntaxError("Unknown file syntax: " + Type)
         i = i + 1
-        if tracecurve == True:
+        if tracecurve:
             if Alldata[i].partition("=")[0].strip() == "##NPOINTS":
                 # Start importing the trace. This is a little difficult, since
                 # traces in those files are usually very large. We will bin
@@ -379,46 +373,43 @@ def openFCS_Single(path):
                 # Trace starts 3 lines after this.
                 i = i + 3
                 if tracelength != 0:
-                    tracedata = Alldata[i: i+tracelength]
+                    tracedata = Alldata[i : i + tracelength]
                     # Jump foward in the index
                     i = i + tracelength
-                    readtrace = csv.reader(tracedata, delimiter=',')
+                    readtrace = csv.reader(tracedata, delimiter=",")
                     trace = []
                     for row in readtrace:
                         # tau in ms, trace in kHz
                         # So we need to put some factors here
-                        trace.append((float(row[0])*1000, float(row[1])))
+                        trace.append((float(row[0]) * 1000, float(row[1])))
                     trace = np.array(trace)
                     # If the trace is too big. Wee need to bin it.
                     newtrace = util.downsample_trace(trace)
                 tracecurve = False
-        if fcscurve == True:
+        if fcscurve:
             if Alldata[i].partition("=")[0].strip() == "##NPOINTS":
                 # Get the correlation information
                 corrlength = int(Alldata[i].partition("=")[2].strip())
                 i = i + 2
                 if corrlength != 0:
-                    corrdata = Alldata[i: i+corrlength]
+                    corrdata = Alldata[i : i + corrlength]
                     # Jump foward
                     i = i + corrlength
-                    readcorr = csv.reader(corrdata, delimiter=',')
+                    readcorr = csv.reader(corrdata, delimiter=",")
                     corr = []
                     for row in readcorr:
                         # tau in ms, corr-function
-                        corr.append((float(row[0]), float(row[1])-1))
+                        corr.append((float(row[0]), float(row[1]) - 1))
                     corr = np.array(corr)
                 fcscurve = False
 
     missing = [
-        name for name, data in (
-            ("FCS Correlogram", corr),
-            ("FCS Count Rates", newtrace)
-        ) if data is None
+        name
+        for name, data in (("FCS Correlogram", corr), ("FCS Count Rates", newtrace))
+        if data is None
     ]
     if missing:
-        raise SyntaxError(
-            f"No {' and no '.join(missing)} data in single-curve file: {path}"
-        )
+        raise SyntaxError(f"No {' and no '.join(missing)} data in single-curve file: {path}")
 
     # Check for correlation at lag-time zero, which lead to a bug (#64)
     # on mac OSx and potentially affects fitting.
@@ -432,10 +423,7 @@ def openFCS_Single(path):
     return dictionary
 
 
-def read_zeiss_fcs(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_zeiss_fcs(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read a Zeiss Confocor .fcs file and return FCS datasets.
 
     Parameters
@@ -455,7 +443,7 @@ def read_zeiss_fcs(
     d = openFCS(filename)
 
     correlations = list()
-    for i, correlation in enumerate(d['Correlation']):
+    for i, correlation in enumerate(d["Correlation"]):
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1] + 1.0
 
@@ -464,12 +452,12 @@ def read_zeiss_fcs(
         # and they must not be confused for repeats of one another, so the
         # kind the parser already determined is kept in the name and in the
         # meta data instead of being discarded.
-        curve_type = str(d['Type'][i]) if i < len(d['Type']) else ""
-        measurement_id = "%s_%s" % (d['Filename'][i], i)
+        curve_type = str(d["Type"][i]) if i < len(d["Type"]) else ""
+        measurement_id = "{}_{}".format(d["Filename"][i], i)
         if curve_type:
-            measurement_id = "%s_%s" % (measurement_id, curve_type)
+            measurement_id = f"{measurement_id}_{curve_type}"
 
-        trace = d['Trace'][i]
+        trace = d["Trace"][i]
         if len(trace) == 2:
             # Cross correlation and two channels.
             # The trace column is already a rate in kHz, so the mean count
@@ -501,38 +489,30 @@ def read_zeiss_fcs(
             # Mean aquisition time
             aquisition_time = 0.5 * (aquisition_time_ch1 + aquisition_time_ch2) / 1000.0
 
-            w = 1. / cs.core.fluorescence.fcs.noise(
+            w = 1.0 / cs.core.fluorescence.fcs.noise(
                 correlation_time,
                 correlation_amplitude,
                 aquisition_time,
-                mean_count_rate=mean_count_rate
+                mean_count_rate=mean_count_rate,
             )
 
             correlations.append(
                 {
-                    'filename': filename,
-                    'measurement_id': measurement_id,
-                    'correlation_type': curve_type,
-                    'acquisition_time': aquisition_time,
-                    'mean_count_rate': mean_count_rate,
-                    'mean_count_rate_total': mean_count_rate_total,
-                    'mean_count_rate_semantics': 'per_detector_mean',
-                    'detector_count': 2,
-                    'correlation_times': correlation_time.tolist(),
-                    'correlation_amplitudes': correlation_amplitude.tolist(),
-                    'correlation_amplitude_weights': w.tolist(),
-                    'intensity_trace_times': np.vstack(
-                        [
-                            intensity_time_ch1,
-                            intensity_time_ch2
-                        ]
+                    "filename": filename,
+                    "measurement_id": measurement_id,
+                    "correlation_type": curve_type,
+                    "acquisition_time": aquisition_time,
+                    "mean_count_rate": mean_count_rate,
+                    "mean_count_rate_total": mean_count_rate_total,
+                    "mean_count_rate_semantics": "per_detector_mean",
+                    "detector_count": 2,
+                    "correlation_times": correlation_time.tolist(),
+                    "correlation_amplitudes": correlation_amplitude.tolist(),
+                    "correlation_amplitude_weights": w.tolist(),
+                    "intensity_trace_times": np.vstack(
+                        [intensity_time_ch1, intensity_time_ch2]
                     ).tolist(),
-                    'intensity_trace': np.vstack(
-                        [
-                            intensity_ch1,
-                            intensity_ch2
-                        ]
-                    ).tolist()
+                    "intensity_trace": np.vstack([intensity_ch1, intensity_ch2]).tolist(),
                 }
             )
         else:
@@ -543,25 +523,25 @@ def read_zeiss_fcs(
             aquisition_time = intensity_time[-1] / 1000.0
             mean_count_rate = float(np.mean(intensity))
 
-            w = 1. / cs.core.fluorescence.fcs.noise(
+            w = 1.0 / cs.core.fluorescence.fcs.noise(
                 correlation_time,
                 correlation_amplitude,
                 aquisition_time,
-                mean_count_rate=mean_count_rate
+                mean_count_rate=mean_count_rate,
             )
 
             correlations.append(
                 {
-                    'filename': filename,
-                    'measurement_id': measurement_id,
-                    'correlation_type': curve_type,
-                    'acquisition_time': aquisition_time,
-                    'mean_count_rate': mean_count_rate,
-                    'correlation_times': correlation_time.tolist(),
-                    'correlation_amplitudes': correlation_amplitude.tolist(),
-                    'correlation_amplitude_weights': w.tolist(),
-                    'intensity_trace_times': intensity_time.tolist(),
-                    'intensity_trace': intensity.tolist(),
+                    "filename": filename,
+                    "measurement_id": measurement_id,
+                    "correlation_type": curve_type,
+                    "acquisition_time": aquisition_time,
+                    "mean_count_rate": mean_count_rate,
+                    "correlation_times": correlation_time.tolist(),
+                    "correlation_amplitudes": correlation_amplitude.tolist(),
+                    "correlation_amplitude_weights": w.tolist(),
+                    "intensity_trace_times": intensity_time.tolist(),
+                    "intensity_trace": intensity.tolist(),
                 }
             )
 

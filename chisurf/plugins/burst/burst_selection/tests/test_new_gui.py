@@ -6,19 +6,17 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, numeric_column
 import pandas as pd
-
 from mmfdb.models import SampleDefinition
 from mmfdb.repository import MFDatabase
 from mmfdb.samples.sample_manager import create_sample
+
+from chisurf.core.datastore import column_names, numeric_column
+from chisurf.core.runtime import analysis_cache
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    _resolve_active_user_id,
     setup_id_for_name,
 )
-from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_selection import USE_LEGACY_GUI
 from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 from chisurf.plugins.burst.burst_selection.gui import tool as tool_module
@@ -77,8 +75,12 @@ def test_diagnostic_pens_distinguish_all_and_selected_photons() -> None:
     """All-photon and selected-photon diagnostic layers must use different colors."""
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
 
-    assert BurstSelectionTool._diagnostic_pen(tool, 0) != BurstSelectionTool._diagnostic_pen(tool, 0, selected=True)
-    assert BurstSelectionTool._diagnostic_pen(tool, 1) != BurstSelectionTool._diagnostic_pen(tool, 1, selected=True)
+    assert BurstSelectionTool._diagnostic_pen(tool, 0) != BurstSelectionTool._diagnostic_pen(
+        tool, 0, selected=True
+    )
+    assert BurstSelectionTool._diagnostic_pen(tool, 1) != BurstSelectionTool._diagnostic_pen(
+        tool, 1, selected=True
+    )
 
 
 def test_macro_time_offsets_continue_across_file_boundaries() -> None:
@@ -212,7 +214,9 @@ def test_populate_feature_combo_survives_a_same_length_refresh(qapp) -> None:
     BurstSelectionTool._populate_feature_combo(tool, second)
 
     assert first_items == ["Number of Photons", "Proximity Ratio"]
-    assert [tool.feature_combo.itemText(i) for i in range(tool.feature_combo.count())] == first_items
+    assert [
+        tool.feature_combo.itemText(i) for i in range(tool.feature_combo.count())
+    ] == first_items
 
 
 def test_make_ui_dataframe_computes_proximity_ratio() -> None:
@@ -254,7 +258,9 @@ def test_show_selected_file_result_updates_selected_table_and_histogram() -> Non
 
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool._last_frames_by_file = {path.resolve(): frame}
-    tool._fill_table = lambda df: calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
+    tool._fill_table = lambda df: (
+        calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
+    )
     tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
 
@@ -307,7 +313,9 @@ def test_analyze_selected_file_updates_selected_table_and_histogram() -> None:
     tool._selected_filetype = "SPC-130"
     tool._status_bar = type("FakeStatusBar", (), {"showMessage": lambda self, message: None})()
     tool.summary = type("FakeSummary", (), {"setPlainText": lambda self, text: None})()
-    tool._fill_table = lambda df: calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
+    tool._fill_table = lambda df: (
+        calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
+    )
     tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
     calls: list[str] = []
@@ -318,7 +326,9 @@ def test_analyze_selected_file_updates_selected_table_and_histogram() -> None:
     assert client.calls[0]["legacy_output"] is False
     assert client.calls[0]["selected_setup"] == "Test setup"
     assert client.calls[0]["legacy_parameters"] == {"decay_coarse": 8}
-    assert numeric_column(tool._last_frames_by_file[path.resolve()], "Number of Photons").tolist() == [12]
+    assert numeric_column(
+        tool._last_frames_by_file[path.resolve()], "Number of Photons"
+    ).tolist() == [12]
     assert numeric_column(tool._last_bur_frames[0], "Number of Photons").tolist() == [12]
     assert calls == ["table:1", "features:10", "histogram"]
 
@@ -371,8 +381,9 @@ def test_analyze_selected_file_does_not_archive_preview() -> None:
 def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
     """Registering raw input should make future content-MD5 lookups find the sample."""
     db = MFDatabase(tmp_path / "mmfdb.sqlite")
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.security.auth import create_session
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     db.ensure_user("gui-test-user")
     token = create_session(db.conn, "gui-test-user")["token"]
@@ -397,11 +408,14 @@ def test_mmfdb_raw_registration_binds_content_to_sample(tmp_path: Path) -> None:
         assert _sample_id_for_raw_path(db, raw_path) == sample_id
 
 
-def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path, monkeypatch: object) -> None:
+def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(
+    tmp_path: Path, monkeypatch: object
+) -> None:
     """MMFDB output should open sample registration when raw content has no sample."""
     db = MFDatabase(tmp_path / "mmfdb.sqlite")
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.security.auth import create_session
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     db.ensure_user("gui-context-user")
     token = create_session(db.conn, "gui-context-user")["token"]
@@ -454,9 +468,7 @@ def test_prepare_mmfdb_context_prompts_when_raw_sample_is_missing(tmp_path: Path
     assert context["sample_id"] == sample_id
     assert set(context["source_artifact_ids"]) == {str(path.resolve()) for path in raw_paths}
     assert context["register_missing_inputs"] is True
-    assert context["setup_id"] == setup_id_for_name(
-        "BH SPC-130 setup", user_id=session.user_id
-    )
+    assert context["setup_id"] == setup_id_for_name("BH SPC-130 setup", user_id=session.user_id)
     assert db.get_setup(context["setup_id"]) is not None
     assert all(_sample_id_for_raw_path(db, raw_path) == sample_id for raw_path in raw_paths)
 
@@ -478,7 +490,12 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
             self.calls.append({"file_paths": file_paths, **kwargs})
             return {
                 "dataframes": {str(path): [{"Number of Photons": 12}] for path in paths},
-                "metadata": {"n_files": len(paths), "n_bursts": len(paths), "n_photons": 12 * len(paths), "n_selected": 12 * len(paths)},
+                "metadata": {
+                    "n_files": len(paths),
+                    "n_bursts": len(paths),
+                    "n_photons": 12 * len(paths),
+                    "n_selected": 12 * len(paths),
+                },
             }
 
     class FakeDialog:
@@ -513,11 +530,21 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
             class _Handle:
                 """Minimal `TaskHandle` stand-in."""
 
-                def set_progress(self, *_a, **_k): return None
-                def set_range(self, *_a, **_k): return None
-                def set_text(self, *_a, **_k): return None
-                def set_partial(self, *_a, **_k): return None
-                def raise_if_cancelled(self): return None
+                def set_progress(self, *_a, **_k):
+                    return None
+
+                def set_range(self, *_a, **_k):
+                    return None
+
+                def set_text(self, *_a, **_k):
+                    return None
+
+                def set_partial(self, *_a, **_k):
+                    return None
+
+                def raise_if_cancelled(self):
+                    return None
+
                 is_cancelled = False
 
             result = func(*args, _Handle(), **(kwargs or {}))
@@ -567,7 +594,9 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
     tool._display_frame_set = lambda frames, current_settings, indices: True
     tool._load_tttr_for_plots = lambda paths, current_settings: None
     tool.update_burst_plots = lambda: None
-    tool.summary = type("FakeSummary", (), {"setPlainText": lambda self, text: summary_text.append(text)})()
+    tool.summary = type(
+        "FakeSummary", (), {"setPlainText": lambda self, text: summary_text.append(text)}
+    )()
 
     BurstSelectionTool.analyze_files(tool)
 
@@ -659,9 +688,7 @@ def test_the_destination_follows_the_input() -> None:
     assert decide(SimpleNamespace(_file_paths=[Path("m000.pto")])) == ["pto"]
     assert decide(SimpleNamespace(_file_paths=[Path("m000.spc")])) == ["bur"]
     # Each measurement still gets the one destination it can use.
-    assert decide(
-        SimpleNamespace(_file_paths=[Path("a.pto"), Path("b.ptu")])
-    ) == ["pto", "bur"]
+    assert decide(SimpleNamespace(_file_paths=[Path("a.pto"), Path("b.ptu")])) == ["pto", "bur"]
     # Nothing loaded: the container, which is what a fresh panel should say.
     assert decide(SimpleNamespace(_file_paths=[])) == ["pto"]
 
@@ -707,7 +734,9 @@ def test_update_selected_files_stacks_cached_results() -> None:
     tool._fill_table = lambda df: calls.append(f"table:{len(df)}")
     tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
-    tool._load_tttr_for_plots = lambda selected_paths, current_settings: calls.append(f"diagnostics:{selected_paths[0].name}")
+    tool._load_tttr_for_plots = lambda selected_paths, current_settings: calls.append(
+        f"diagnostics:{selected_paths[0].name}"
+    )
 
     BurstSelectionTool._update_selected_files(tool, [path_a, path_b], settings)
 
@@ -743,8 +772,12 @@ def test_filter_settings_change_updates_selected_file_plots() -> None:
     tool._file_paths = [path]
     tool._status_bar = type("FakeStatusBar", (), {"showMessage": lambda self, message: None})()
     tool._settings_from_controls = lambda: settings
-    tool._analyze_selected_files = lambda selected_paths, current_settings: calls.append(("analyze", selected_paths, current_settings))
-    tool._load_tttr_for_plots = lambda selected_paths, current_settings: calls.append(("diagnostics", selected_paths, current_settings))
+    tool._analyze_selected_files = lambda selected_paths, current_settings: calls.append(
+        ("analyze", selected_paths, current_settings)
+    )
+    tool._load_tttr_for_plots = lambda selected_paths, current_settings: calls.append(
+        ("diagnostics", selected_paths, current_settings)
+    )
     calls: list[tuple[str, list[Path], FakeSettings]] = []
 
     BurstSelectionTool._on_filter_settings_changed(tool)
@@ -1387,7 +1420,12 @@ def test_update_burst_plots_skips_closed_mcs_dock() -> None:
     tool.filter_plot = FakePlot()
     tool._diagnostic_plot_features = {
         "Filter": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
-        "MCS": {"initial_enabled": True, "check": FakeCheck(True), "widget": object(), "dock_widget": object()},
+        "MCS": {
+            "initial_enabled": True,
+            "check": FakeCheck(True),
+            "widget": object(),
+            "dock_widget": object(),
+        },
         "Decay": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
         "Burst length": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
     }
@@ -1566,6 +1604,7 @@ def test_dock_close_callback_hides_non_file_docks() -> None:
 
 def test_dock_visibility_menu_lists_available_docks() -> None:
     """Dock context menu should list all available docks with check states."""
+
     class FakeSignal:
         """Minimal signal stand-in."""
 
@@ -1661,6 +1700,7 @@ def test_burst_durations_use_macro_time_resolution_ms() -> None:
 
 def test_client_analyze_files_passes_detector_setup_context() -> None:
     """Detector setup context must be forwarded to the RPC analyze method."""
+
     class FakeClient:
         """Minimal client stub that records RPC calls."""
 

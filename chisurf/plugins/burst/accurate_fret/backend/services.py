@@ -25,7 +25,9 @@ def _serialize(result: _core.CalibrationResult) -> dict:
         "messages": result.calibration.messages,
         "converged": bool(result.calibration.converged),
         "report": result.calibration.report(),
-        "static_line": None if line is None else {
+        "static_line": None
+        if line is None
+        else {
             "tau_f": np.asarray(line.tau_f).tolist(),
             "efficiency": np.asarray(line.efficiency).tolist(),
         },
@@ -79,8 +81,11 @@ def calibrate_file(params: dict) -> dict:
         columns = _core.read_burst_table(path)
         mapping = {**_core.guess_columns(columns), **wanted}
         arrays = {
-            role: (None if mapping.get(role) not in columns
-                   else np.asarray(columns[mapping[role]], dtype=float))
+            role: (
+                None
+                if mapping.get(role) not in columns
+                else np.asarray(columns[mapping[role]], dtype=float)
+            )
             for role in ("i_dd", "i_da", "i_aa", "tau_f")
         }
         if arrays["i_dd"] is None or arrays["i_da"] is None:

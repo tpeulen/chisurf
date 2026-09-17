@@ -27,6 +27,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from chisurf.core.fluorescence.simulation.alex_sm import (
     ALEX_PERIOD,
@@ -34,9 +35,10 @@ from chisurf.core.fluorescence.simulation.alex_sm import (
     CH_DONOR,
     GREEN_WINDOW,
     RED_WINDOW,
+)
+from chisurf.core.fluorescence.simulation.alex_sm import (
     simulate_alex_sm as _simulate_alex_sm,
 )
-import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
 
@@ -57,11 +59,16 @@ SM_CONTAINER, SM_RECORD_TYPE = 7, 11
 MACRO_RESOLUTION = 1.25e-8
 TY_FLOAT8 = 536870920  # tttrlib tag type for an 8-byte float
 
+
 def _es_per_burst(tttr, bursts, windows):
     """Count DD/DA/AA per burst using the detected ALEX windows."""
     masks = alex_stream_masks(
-        tttr.micro_times, tttr.routing_channels, windows,
-        donor_channels=[CH_DONOR], acceptor_channels=[CH_ACCEPTOR])
+        tttr.micro_times,
+        tttr.routing_channels,
+        windows,
+        donor_channels=[CH_DONOR],
+        acceptor_channels=[CH_ACCEPTOR],
+    )
     dd, da, aa = masks["DD"], masks["DA"], masks["AA"]
     i_dd = np.zeros(len(bursts))
     i_da = np.zeros(len(bursts))
@@ -119,9 +126,13 @@ def test_auto_alex_windows_recovers_laser_windows():
         tttr = load(fn, "SM")
         apply_alex(tttr, ALEX_PERIOD, 0)
         win = auto_alex_windows(
-            tttr.micro_times, tttr.routing_channels,
-            donor_channels=[CH_DONOR], acceptor_channels=[CH_ACCEPTOR],
-            alex_period=ALEX_PERIOD, guard=0.06)
+            tttr.micro_times,
+            tttr.routing_channels,
+            donor_channels=[CH_DONOR],
+            acceptor_channels=[CH_ACCEPTOR],
+            alex_period=ALEX_PERIOD,
+            guard=0.06,
+        )
 
         g_lo, g_hi = win["green"]
         r_lo, r_hi = win["red"]
@@ -141,12 +152,16 @@ def test_auto_split_raises_on_continuous_wave():
     """A single fully-occupied period is not ALEX and raises."""
     rng = np.random.RandomState(0)
     n = 20000
-    phase = rng.randint(0, ALEX_PERIOD, n)         # uniform over the whole period
+    phase = rng.randint(0, ALEX_PERIOD, n)  # uniform over the whole period
     rc = rng.randint(0, 2, n).astype(np.int8)
     with pytest.raises(ValueError):
-        auto_alex_windows(phase, rc, donor_channels=[CH_DONOR],
-                          acceptor_channels=[CH_ACCEPTOR],
-                          alex_period=ALEX_PERIOD)
+        auto_alex_windows(
+            phase,
+            rc,
+            donor_channels=[CH_DONOR],
+            acceptor_channels=[CH_ACCEPTOR],
+            alex_period=ALEX_PERIOD,
+        )
 
 
 def test_alex_es_recovers_two_populations():
@@ -162,13 +177,16 @@ def test_alex_es_recovers_two_populations():
         tttr = load(fn, "SM")
         apply_alex(tttr, ALEX_PERIOD, 0)
         win = auto_alex_windows(
-            tttr.micro_times, tttr.routing_channels,
-            donor_channels=[CH_DONOR], acceptor_channels=[CH_ACCEPTOR],
-            alex_period=ALEX_PERIOD)
+            tttr.micro_times,
+            tttr.routing_channels,
+            donor_channels=[CH_DONOR],
+            acceptor_channels=[CH_ACCEPTOR],
+            alex_period=ALEX_PERIOD,
+        )
 
-        bursts = np.asarray(
-            tttr.burst_search(L=40, m=10, T=1.0e-3, mode="sliding_window")
-        ).reshape(-1, 2)
+        bursts = np.asarray(tttr.burst_search(L=40, m=10, T=1.0e-3, mode="sliding_window")).reshape(
+            -1, 2
+        )
         assert len(bursts) == n_sim
 
         i_dd, i_da, i_aa = _es_per_burst(tttr, bursts, win)
@@ -183,8 +201,7 @@ def test_alex_es_recovers_two_populations():
         assert float(high.mean()) == pytest.approx(0.80, abs=0.03)
 
         # With an identity calibration corrected_es must agree with apparent_es.
-        ces = corrected_es(i_dd, i_da, i_aa, gamma=1.0, alpha=0.0,
-                           beta=1.0, delta=0.0)
+        ces = corrected_es(i_dd, i_da, i_aa, gamma=1.0, alpha=0.0, beta=1.0, delta=0.0)
         np.testing.assert_allclose(np.asarray(ces["E"]), E, atol=1e-9)
         np.testing.assert_allclose(np.asarray(ces["S"]), S, atol=1e-9)
     finally:
@@ -215,11 +232,10 @@ def test_real_reference_sm_loads():
     tttr = load(fn, "SM")
     assert len(tttr) > 0
     assert int(np.asarray(tttr.micro_times).max()) == 0
-    assert tttr.header.macro_time_resolution == pytest.approx(
-        MACRO_RESOLUTION, rel=1e-6)
+    assert tttr.header.macro_time_resolution == pytest.approx(MACRO_RESOLUTION, rel=1e-6)
     # Folding + burst search must run on real data.
     apply_alex(tttr, ALEX_PERIOD, 0)
-    bursts = np.asarray(
-        tttr.burst_search(L=40, m=10, T=1.0e-3, mode="sliding_window")
-    ).reshape(-1, 2)
+    bursts = np.asarray(tttr.burst_search(L=40, m=10, T=1.0e-3, mode="sliding_window")).reshape(
+        -1, 2
+    )
     assert len(bursts) >= 0

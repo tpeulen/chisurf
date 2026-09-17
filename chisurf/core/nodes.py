@@ -25,6 +25,7 @@ import inspect
 
 try:
     import IMP.bff as _bff
+
     if not hasattr(_bff, "GraphPort"):
         raise ImportError("IMP.bff is present but carries no Port runtime")
 except ImportError as _exc:  # pragma: no cover - env without IMP
@@ -74,9 +75,7 @@ if _bff is not None:
                 default = 0.0
                 if param.default is not inspect.Parameter.empty:
                     default = param.default
-                self.add_input_port(
-                    pname, _bff.GraphPort(value=default, name=pname)
-                )
+                self.add_input_port(pname, _bff.GraphPort(value=default, name=pname))
 
             # Evaluate with default arguments to see whether the function
             # returns a dictionary of named output ports.
@@ -93,9 +92,7 @@ if _bff is not None:
 
             if isinstance(res, dict):
                 for k in res.keys():
-                    self.add_output_port(
-                        k, _bff.GraphPort(value=0.0, name=k, is_output=True)
-                    )
+                    self.add_output_port(k, _bff.GraphPort(value=0.0, name=k, is_output=True))
             else:
                 self.add_output_port(
                     "out_00",

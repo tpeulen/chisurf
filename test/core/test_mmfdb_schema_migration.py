@@ -1,15 +1,14 @@
 """Tests for MMFDB schema migration (DATA-02), DDL consolidation (DATA-03),
-and plugin identity (INC-06)."""
+and plugin identity (INC-06).
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sqlite3
 import tempfile
-import os
-
-import pytest
 
 from mmfdb.schema import schema
 
@@ -73,7 +72,14 @@ def test_persistent_db_reopened_is_idempotent():
 def test_ndxplorer_has_manifest():
     """INC-06 guard: ndX must have a valid manifest.json."""
     from chisurf.core.plugin.manifest import validate_manifest
-    mf = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "plugins" / "ndxplorer" / "manifest.json"
+
+    mf = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "chisurf"
+        / "plugins"
+        / "ndxplorer"
+        / "manifest.json"
+    )
     assert mf.is_file(), f"ndxplorer manifest not found at {mf}"
     data = json.loads(mf.read_text())
     errors = validate_manifest(data)
@@ -86,8 +92,10 @@ def test_ndxplorer_has_manifest():
 
 def test_canonical_and_permissive_ddl_differ_only_by_check():
     """Verify the canonical and permissive DDL for each mmfdb_* table
-    are structurally identical modulo CHECK constraints (DATA-03 guardrail)."""
+    are structurally identical modulo CHECK constraints (DATA-03 guardrail).
+    """
     import re
+
     for tn in schema._CANONICAL_TABLE_NAMES:
         permissive = schema._build_permissive_ddl(tn)
         canonical = schema._build_canonical_ddl(tn)
@@ -104,10 +112,16 @@ def test_canonical_and_permissive_ddl_differ_only_by_check():
         assert p_cols == c_cols, f"{tn}: columns differ between permissive and canonical"
 
         # Same table constraints
-        p_constraints = {line.strip() for line in permissive.split("\n")
-                         if line.strip().startswith(("PRIMARY", "UNIQUE", "FOREIGN"))}
-        c_constraints = {line.strip() for line in canonical.split("\n")
-                         if line.strip().startswith(("PRIMARY", "UNIQUE", "FOREIGN"))}
+        p_constraints = {
+            line.strip()
+            for line in permissive.split("\n")
+            if line.strip().startswith(("PRIMARY", "UNIQUE", "FOREIGN"))
+        }
+        c_constraints = {
+            line.strip()
+            for line in canonical.split("\n")
+            if line.strip().startswith(("PRIMARY", "UNIQUE", "FOREIGN"))
+        }
         assert p_constraints == c_constraints, f"{tn}: table constraints differ"
 
         # Canonical has CHECK, permissive does not
@@ -119,15 +133,17 @@ def test_canonical_and_permissive_ddl_differ_only_by_check():
 
 def test_create_tables_no_duplicate_canonical_ddl():
     """All canonical mmfdb_* DDL in CREATE_TABLES_SQL is generated from
-    _CANONICAL_TABLE_DEFS — no hand-written duplicates (DATA-03 guardrail)."""
+    _CANONICAL_TABLE_DEFS — no hand-written duplicates (DATA-03 guardrail).
+    """
     import re
+
     for tn in schema._CANONICAL_TABLE_NAMES:
         expected = schema._build_permissive_ddl(tn)
         matches = [
-            sql for sql in schema.CREATE_TABLES_SQL
-            if isinstance(sql, str) and re.match(
-                rf"CREATE TABLE IF NOT EXISTS {re.escape(tn)}\b", sql
-            )
+            sql
+            for sql in schema.CREATE_TABLES_SQL
+            if isinstance(sql, str)
+            and re.match(rf"CREATE TABLE IF NOT EXISTS {re.escape(tn)}\b", sql)
         ]
         assert len(matches) == 1, (
             f"{tn}: expected exactly 1 DDL in CREATE_TABLES_SQL, found {len(matches)}"

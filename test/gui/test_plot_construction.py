@@ -11,6 +11,7 @@ plot widgets:
   ``get_win()`` -- so anything building a plot without full GUI startup hit a
   swallowed ``AttributeError`` and took a degraded path.
 """
+
 import os
 
 import numpy as np
@@ -46,14 +47,17 @@ def test_autorange_compat_is_applied_on_import():
     import pyqtgraph as pg
 
     import chisurf.gui.chiplot.backends.pyqtgraph_backend  # noqa: F401
+
     assert hasattr(pg.PlotWidget, "autoRangeEnabled"), (
         "PlotWidget.autoRangeEnabled missing -- plots built outside GUI startup "
-        "will hit a swallowed AttributeError and take a degraded path")
+        "will hit a swallowed AttributeError and take a degraded path"
+    )
 
 
 def test_residual_plot_accepts_a_plain_fit(app, single_fit):
     """Regression: this raised TypeError: 'Fit' object is not iterable."""
     from chisurf.gui.plots.wr_plot import ResidualPlot
+
     p = ResidualPlot(single_fit)
     assert len(p.curves) == 1, "a lone Fit is a group of one"
     p.update()

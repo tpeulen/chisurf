@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any
 
 import click
 
 from ..api.contract import (
     contract_descriptor,
-    shift_request_from_payload,
     shift_result_to_payload,
 )
 from ..api.models import ShiftResult
@@ -36,7 +33,9 @@ def cli(ctx: click.Context, version: bool) -> None:
 @click.argument("files", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @click.option("--global-shift", default=0, type=int, help="Global micro-time shift.")
 @click.option(
-    "--channel-shift", "channel_shifts", multiple=True,
+    "--channel-shift",
+    "channel_shifts",
+    multiple=True,
     type=(int, int),
     help="Per-channel shift as CHANNEL VALUE (repeatable).",
 )

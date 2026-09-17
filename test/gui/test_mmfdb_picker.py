@@ -32,8 +32,8 @@ def test_inprocess_client_is_a_shared_singleton(monkeypatch):
 
     a = picker.inprocess_client()
     b = picker.inprocess_client()
-    assert a is b            # one global session, reused
-    assert len(built) == 1   # built exactly once
+    assert a is b  # one global session, reused
+    assert len(built) == 1  # built exactly once
 
 
 def test_construction_failure_is_remembered(monkeypatch):
@@ -49,7 +49,7 @@ def test_construction_failure_is_remembered(monkeypatch):
 
     assert picker.inprocess_client() is None
     assert picker.inprocess_client() is None
-    assert len(calls) == 1   # the expensive attempt is not retried each click
+    assert len(calls) == 1  # the expensive attempt is not retried each click
 
 
 def test_reset_forces_rebuild(monkeypatch):

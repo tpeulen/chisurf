@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-from itertools import tee
-from chisurf import typing
-
 import copy
-from math import floor
+from itertools import tee
 
 import numpy as np
 
+from chisurf import typing
+
 
 def distance_between_gaussian(
-        distances: np.ndarray,
-        separation_distance: float,
-        sigma: float,
-        normalize: bool = False
+    distances: np.ndarray, separation_distance: float, sigma: float, normalize: bool = False
 ) -> np.ndarray:
     """Calculate a Gaussian distribution of distances.
 
@@ -50,7 +46,7 @@ def distance_between_gaussian(
        ``okf/log.md`` 2026-09-02 (21) in imp.bff. Renaming it to say what it
        is (a Gaussian weight) would end the collision, and is worth doing.
     """
-    result = np.exp(-(distances - separation_distance) ** 2 / (2 * sigma ** 2))
+    result = np.exp(-((distances - separation_distance) ** 2) / (2 * sigma**2))
     result = np.where(np.isfinite(result), result, 0.0)
     s = np.sum(result)
     if normalize and s > 0:
@@ -58,11 +54,7 @@ def distance_between_gaussian(
     return result
 
 
-def histogram_rebin(
-        bin_edges: np.ndarray,
-        counts: np.ndarray,
-        new_bin_edges: np.ndarray
-):
+def histogram_rebin(bin_edges: np.ndarray, counts: np.ndarray, new_bin_edges: np.ndarray):
     """Interpolates a histogram to a new set of bin edges.
 
     This function returns the histogram values corresponding to a new set of bin edges.
@@ -110,10 +102,7 @@ def histogram_rebin(
         return re
 
 
-def overlapping_region(
-        dataset1,
-        dataset2
-):
+def overlapping_region(dataset1, dataset2):
     """Find the overlapping region between two datasets based on their x-values.
 
     Each dataset is a tuple of (x, y) arrays. This function computes the common x-range
@@ -190,13 +179,10 @@ def overlapping_region(
 
 
 def align_x_spacing(
-        dataset1: typing.Tuple[np.ndarray, np.ndarray],
-        dataset2: typing.Tuple[np.ndarray, np.ndarray],
-        method: str = 'linear-close'
-) -> typing.Tuple[
-    typing.Tuple[np.ndarray, np.ndarray],
-    typing.Tuple[np.ndarray, np.ndarray]
-]:
+    dataset1: typing.Tuple[np.ndarray, np.ndarray],
+    dataset2: typing.Tuple[np.ndarray, np.ndarray],
+    method: str = "linear-close",
+) -> typing.Tuple[typing.Tuple[np.ndarray, np.ndarray], typing.Tuple[np.ndarray, np.ndarray]]:
     """Align the x-spacing of two datasets using a template and rescaling method.
 
     This function takes two datasets (each a tuple of (x, y) arrays) and aligns the x-values of the dataset
@@ -243,7 +229,7 @@ def align_x_spacing(
     nx = copy.deepcopy(tx)
     ny = copy.deepcopy(ty)
 
-    if method == 'linear-close':
+    if method == "linear-close":
         j = 0  # counter for template array
         ry1 = ry[0]
         rx1 = rx[0]
@@ -279,12 +265,7 @@ def align_x_spacing(
     return (rx1, ry1), (rx2, ry2)
 
 
-def bin_count(
-        data: np.ndarray,
-        bin_width: int = 16,
-        bin_min: int = 0,
-        bin_max: int = 4095
-):
+def bin_count(data: np.ndarray, bin_width: int = 16, bin_min: int = 0, bin_max: int = 4095):
     """
     Count the number of occurrences of each value in an array of non-negative integers.
 
@@ -310,16 +291,13 @@ def bin_count(
     bins = np.arange(n_min, n_max, dtype=np.float32)
     bins *= bin_width
     for i in range(data.shape[0]):
-        bin_index = int(np.rint((data[i] / bin_width)) - n_min)
+        bin_index = int(np.rint(data[i] / bin_width) - n_min)
         if bin_index < n_bins:
             count[bin_index] += 1
     return bins, count
 
 
-def minmax(
-        x: np.ndarray,
-        ignore_zero: bool = False
-):
+def minmax(x: np.ndarray, ignore_zero: bool = False):
     """Compute the minimum and maximum values of an array.
 
     If ignore_zero is True, zeros in the array will be ignored when computing the minimum value.
@@ -348,13 +326,7 @@ def minmax(
     return min_v, max_v
 
 
-def histogram1D(
-        values,
-        weights,
-        n_bins: int = 101,
-        tth_max: float = -1e12,
-        tth_min: float = 1e12
-):
+def histogram1D(values, weights, n_bins: int = 101, tth_max: float = -1e12, tth_min: float = 1e12):
     """Compute a 1D histogram with linear binning between specified limits.
 
     The histogram is computed by linearly binning the input values between tth_min and tth_max
@@ -382,17 +354,13 @@ def histogram1D(
     # floor(), matching the original: at v == tth_max the index is exactly
     # n_bins - 1, so the top bin is closed and nothing lands out of range.
     index = np.floor((values[inside] - tth_min) * bin_width).astype(np.intp)
-    hist = np.bincount(
-        index, weights=np.asarray(weights)[inside], minlength=n_bins
-    ).astype(np.float64)
+    hist = np.bincount(index, weights=np.asarray(weights)[inside], minlength=n_bins).astype(
+        np.float64
+    )
     return axis, hist
 
 
-def discriminate(
-        values: np.ndarray,
-        weights: np.ndarray,
-        discriminator: float
-):
+def discriminate(values: np.ndarray, weights: np.ndarray, discriminator: float):
     """Filter values and weights based on a discriminator threshold.
 
     This function selects elements from the input arrays where the corresponding weight is greater than
@@ -411,10 +379,7 @@ def discriminate(
     return np.asarray(values)[keep], np.asarray(weights)[keep]
 
 
-def smooth(
-        x: np.ndarray,
-        m: int
-) -> np.ndarray:
+def smooth(x: np.ndarray, m: int) -> np.ndarray:
     """Smooth an array with a centred moving average.
 
     Output element `i` is the mean of the input samples in the window
@@ -453,8 +418,7 @@ def smooth(
 
 
 def first_distribution_pair(
-        d: np.ndarray,
-        sort: bool = False
+    d: np.ndarray, sort: bool = False
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Return the (density, axis) pair of the first entry of a distribution array.
 
@@ -488,8 +452,7 @@ def first_distribution_pair(
 
 
 def distribution_pair(
-        d: typing.Tuple[np.ndarray, np.ndarray],
-        sort: bool = False
+    d: typing.Tuple[np.ndarray, np.ndarray], sort: bool = False
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Return a ``(density, axis)`` pair unchanged.
 
@@ -515,8 +478,7 @@ def distribution_pair(
 
 
 def interleaved_to_two_columns(
-        ls: np.ndarray,
-        sort: bool = False
+    ls: np.ndarray, sort: bool = False
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Convert an interleaved spectrum into two-column data.
@@ -547,10 +509,7 @@ def interleaved_to_two_columns(
         return lt[:, 0], lt[:, 1]
 
 
-def two_column_to_interleaved(
-        x: np.ndarray,
-        t: np.ndarray
-) -> np.ndarray:
+def two_column_to_interleaved(x: np.ndarray, t: np.ndarray) -> np.ndarray:
     """Convert two-column lifetime spectra into an interleaved format.
 
     The two input arrays (amplitudes and lifetimes) are interleaved to form a single array.
@@ -562,14 +521,11 @@ def two_column_to_interleaved(
     :return: numpy array
         Interleaved array containing amplitude and lifetime values.
     """
-    c = np.vstack((x, t)).reshape(-1, order='F')
+    c = np.vstack((x, t)).reshape(-1, order="F")
     return c
 
 
-def elte2(
-        e1: np.array,
-        e2: np.array
-) -> np.array:
+def elte2(e1: np.array, e2: np.array) -> np.array:
     """
     Combine two interleaved lifetime spectra into a new spectrum.
 
@@ -604,10 +560,7 @@ def elte2(
     return r
 
 
-def ere2(
-        e1: np.ndarray,
-        e2: np.ndarray
-) -> np.array:
+def ere2(e1: np.ndarray, e2: np.ndarray) -> np.array:
     """
     Combine two interleaved rate spectra into a new spectrum.
 
@@ -638,9 +591,7 @@ def ere2(
     return r
 
 
-def invert_interleaved(
-        interleaved_spectrum: np.ndarray
-) -> np.ndarray:
+def invert_interleaved(interleaved_spectrum: np.ndarray) -> np.ndarray:
     """Convert an interleaved lifetime spectrum to a rate spectrum and vice versa.
 
     For each pair in the interleaved spectrum, the amplitude remains unchanged while the second value
@@ -660,15 +611,12 @@ def invert_interleaved(
     """
     n1 = interleaved_spectrum.shape[0] // 2
     r = np.empty(n1 * 2, dtype=np.float64)
-    r[0::2] = interleaved_spectrum[0:n1 * 2:2]
-    r[1::2] = 1.0 / interleaved_spectrum[1:n1 * 2:2]
+    r[0::2] = interleaved_spectrum[0 : n1 * 2 : 2]
+    r[1::2] = 1.0 / interleaved_spectrum[1 : n1 * 2 : 2]
     return r
 
 
-def e1tn(
-        e1: np.array,
-        n: float
-) -> np.array:
+def e1tn(e1: np.array, n: float) -> np.array:
     """
     Multiply the amplitude components of an interleaved spectrum by a constant factor.
 
@@ -694,10 +642,7 @@ def e1tn(
     return e1
 
 
-def e1ti2(
-        e1: np.array,
-        e2: np.array
-) -> np.array:
+def e1ti2(e1: np.array, e2: np.array) -> np.array:
     """
     Combine two interleaved spectra by multiplying corresponding amplitude and rate/lifetime components.
 

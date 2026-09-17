@@ -19,9 +19,10 @@ import pathlib
 import tempfile
 from collections.abc import Callable
 
-from ..core import runner
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+
+from ..core import runner
 
 logger = logging.getLogger(__name__)
 

@@ -5,13 +5,14 @@ This module provides a clean programmatic interface for computing lifetime
 filters for filtered FCS/FLCS analysis. It can be used independently of the
 GUI or CLI.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Dict, List
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 import numpy as np
 
@@ -22,14 +23,14 @@ class UnmixResult:
 
     component_counts: np.ndarray
     fractions: np.ndarray
-    component_decays: List[np.ndarray]
+    component_decays: list[np.ndarray]
     reconstruction: np.ndarray
     weighted_residuals: np.ndarray
     background_counts: float = 0.0
     nuisance_counts: np.ndarray | None = None
-    nuisance_labels: List[str] | None = None
+    nuisance_labels: list[str] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "component_counts": self.component_counts.tolist(),
             "fractions": self.fractions.tolist(),
@@ -47,6 +48,7 @@ class UnmixResult:
 
 class DetectionMode(Enum):
     """Detection mode for filter computation."""
+
     SINGLE = "single"  # Single channel (standard)
     MFD = "mfd"  # Multi-parameter Fluorescence Detection (parallel + perpendicular)
 
@@ -61,12 +63,12 @@ from chisurf.core.fluorescence.decay import (  # noqa: E402,F401
 
 def unmix_decay(
     total_decay: np.ndarray,
-    component_decays: List[np.ndarray],
+    component_decays: list[np.ndarray],
     *,
     fit_background: bool = False,
     poisson_weighted: bool = True,
-    nuisance_decays: List[np.ndarray] | None = None,
-    nuisance_labels: List[str] | None = None,
+    nuisance_decays: list[np.ndarray] | None = None,
+    nuisance_labels: list[str] | None = None,
 ) -> UnmixResult:
     """Fit a mixed decay as a non-negative sum of known component patterns.
 
@@ -144,13 +146,13 @@ def unmix_decay(
 
 def compute_synthetic_filters(
     total_decay: np.ndarray,
-    lifetimes: List[float] | np.ndarray,
+    lifetimes: list[float] | np.ndarray,
     *,
     bin_width: float = 1.0,
     start_bin: int = 0,
-    irf: np.ndarray | List[float] | None = None,
+    irf: np.ndarray | list[float] | None = None,
     fit_background: bool = False,
-    metadata: Dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> FilterResult:
     """Generate lifetime components, unmix ``total_decay``, and compute filters."""
     total = np.asarray(total_decay, dtype=float)
@@ -167,20 +169,22 @@ def compute_synthetic_filters(
     ]
     unmixing = unmix_decay(total, patterns, fit_background=fit_background)
     result_metadata = dict(metadata or {})
-    result_metadata.update({
-        "synthetic_components": [
-            {"lifetime": float(tau), "bin_width": float(bin_width), "start_bin": int(start_bin)}
-            for tau in taus
-        ],
-        "unmixing": unmixing.to_dict(),
-    })
+    result_metadata.update(
+        {
+            "synthetic_components": [
+                {"lifetime": float(tau), "bin_width": float(bin_width), "start_bin": int(start_bin)}
+                for tau in taus
+            ],
+            "unmixing": unmixing.to_dict(),
+        }
+    )
     return compute_filters(total, patterns, metadata=result_metadata)
 
 
 @dataclass
 class FilterResult:
     """Result container for fFCS filter computation (single channel).
-    
+
     Attributes
     ----------
     filters : np.ndarray
@@ -203,18 +207,19 @@ class FilterResult:
     species_patterns : list, optional
         File lists or synthetic source descriptors for each species pattern.
     """
+
     filters: np.ndarray
     reconstruction: np.ndarray
     weighted_residuals: np.ndarray
     total_decay: np.ndarray
-    species_decays: List[np.ndarray]
-    metadata: Dict[str, Any]
+    species_decays: list[np.ndarray]
+    metadata: dict[str, Any]
     mode: DetectionMode = DetectionMode.SINGLE
-    total_path: str | List[str] | None = None
-    species_patterns: List[Any] | None = None
+    total_path: str | list[str] | None = None
+    species_patterns: list[Any] | None = None
     nuisance_count: int = 0
-    nuisance_labels: List[str] | None = None
-    
+    nuisance_labels: list[str] | None = None
+
     @property
     def n_species(self) -> int:
         """Number of correlation species (excluding nuisance filters)."""
@@ -224,7 +229,7 @@ class FilterResult:
     def n_filters(self) -> int:
         """Total filter count, including nuisance-rejection filters."""
         return self.filters.shape[0]
-    
+
     @property
     def n_bins(self) -> int:
         """Number of TAC bins."""
@@ -236,9 +241,9 @@ class FilterResult:
         A single-detector result applies one filter set to all photons; the
         2-D matrix is exactly what the correlator's single-axis weighting takes.
         """
-        return self.filters[:self.n_species]
+        return self.filters[: self.n_species]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "mode": self.mode.value,
@@ -253,18 +258,18 @@ class FilterResult:
             "total_decay": self.total_decay.tolist(),
             "species_decays": [s.tolist() for s in self.species_decays],
         }
-    
+
     def to_json(self, path: str | pathlib.Path, **kwargs) -> None:
         """Save result to JSON file."""
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(self.to_dict(), f, **kwargs)
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> FilterResult:
+    def from_dict(cls, data: dict[str, Any]) -> FilterResult:
         """Load from dictionary."""
         mode_str = data.get("mode", "single")
         mode = DetectionMode(mode_str) if isinstance(mode_str, str) else DetectionMode.SINGLE
-        
+
         return cls(
             filters=np.array(data["filters"]),
             reconstruction=np.array(data["reconstruction"]),
@@ -278,11 +283,11 @@ class FilterResult:
             nuisance_count=int(data.get("nuisance_count", 0)),
             nuisance_labels=list(data.get("nuisance_labels", [])),
         )
-    
+
     @classmethod
     def from_json(cls, path: str | pathlib.Path) -> FilterResult:
         """Load from JSON file."""
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = json.load(f)
         return cls.from_dict(data)
 
@@ -290,6 +295,7 @@ class FilterResult:
 @dataclass
 class FilterResultMFD:
     """Result container for MFD filter computation."""
+
     filters_par: np.ndarray
     filters_perp: np.ndarray
     reconstruction_par: np.ndarray
@@ -298,13 +304,13 @@ class FilterResultMFD:
     weighted_residuals_perp: np.ndarray
     total_decay_par: np.ndarray
     total_decay_perp: np.ndarray
-    species_decays_par: List[np.ndarray]
-    species_decays_perp: List[np.ndarray]
-    metadata: Dict[str, Any]
+    species_decays_par: list[np.ndarray]
+    species_decays_perp: list[np.ndarray]
+    metadata: dict[str, Any]
     mode: DetectionMode = DetectionMode.MFD
     nuisance_count: int = 0
-    nuisance_labels: List[str] | None = None
-    
+    nuisance_labels: list[str] | None = None
+
     @property
     def n_species(self) -> int:
         return self.filters_par.shape[0] - int(self.nuisance_count)
@@ -312,7 +318,7 @@ class FilterResultMFD:
     @property
     def n_filters(self) -> int:
         return self.filters_par.shape[0]
-    
+
     @property
     def n_bins(self) -> int:
         return self.filters_par.shape[1]
@@ -325,11 +331,11 @@ class FilterResultMFD:
         perpendicular detectors get ``filters_perp`` (mirroring PAM's per-photon
         par/perp filter application).
         """
-        table = {int(ch): self.filters_par[:self.n_species] for ch in par_channels}
-        table.update({int(ch): self.filters_perp[:self.n_species] for ch in perp_channels})
+        table = {int(ch): self.filters_par[: self.n_species] for ch in par_channels}
+        table.update({int(ch): self.filters_perp[: self.n_species] for ch in perp_channels})
         return table
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "mode": self.mode.value,
             "metadata": self.metadata,
@@ -346,13 +352,13 @@ class FilterResultMFD:
             "nuisance_count": int(self.nuisance_count),
             "nuisance_labels": list(self.nuisance_labels or []),
         }
-    
+
     def to_json(self, path: str | pathlib.Path, **kwargs) -> None:
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(self.to_dict(), f, **kwargs)
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> FilterResultMFD:
+    def from_dict(cls, data: dict[str, Any]) -> FilterResultMFD:
         return cls(
             filters_par=np.array(data["filters_par"]),
             filters_perp=np.array(data["filters_perp"]),
@@ -368,29 +374,29 @@ class FilterResultMFD:
             nuisance_count=int(data.get("nuisance_count", 0)),
             nuisance_labels=list(data.get("nuisance_labels", [])),
         )
-    
+
     @classmethod
     def from_json(cls, path: str | pathlib.Path) -> FilterResultMFD:
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = json.load(f)
         return cls.from_dict(data)
 
 
 def compute_filters(
     total_decay: np.ndarray,
-    species_decays: List[np.ndarray],
-    metadata: Dict[str, Any] | None = None,
-    total_path: List[str] | None = None,
-    species_patterns: List[Any] | None = None,
-    nuisance_decays: List[np.ndarray] | None = None,
-    nuisance_labels: List[str] | None = None,
+    species_decays: list[np.ndarray],
+    metadata: dict[str, Any] | None = None,
+    total_path: list[str] | None = None,
+    species_patterns: list[Any] | None = None,
+    nuisance_decays: list[np.ndarray] | None = None,
+    nuisance_labels: list[str] | None = None,
     reject_nuisance: bool = True,
 ) -> FilterResult:
     """Compute fFCS lifetime filters.
-    
+
     Implements the weighted least-squares filter computation of PAM's
     BurstBrowser ``Calc_fFCS_Filters`` (see ``calc_ffcs_filters``).
-    
+
     Algorithm
     ---------
     1. Normalize species decay patterns: D = D / sum(D, axis=0)
@@ -398,7 +404,7 @@ def compute_filters(
     3. Compute filter matrix: F = (D^T W D)^(-1) D^T W
     4. Reconstruction: sum((D^T W D)^(-1) D^T, axis=0)
     5. Weighted residuals: (total - reconstruction) / sqrt(max(total, 1))
-    
+
     Parameters
     ----------
     total_decay : array_like
@@ -412,7 +418,7 @@ def compute_filters(
         Absolute path to the total decay file for project persistence.
     species_patterns : list, optional
         File lists or synthetic source descriptors for each species pattern.
-    
+
     Returns
     -------
     FilterResult
@@ -420,12 +426,12 @@ def compute_filters(
     """
     # Import here to avoid circular dependencies
     from chisurf.core.fluorescence.fcs.filtered import calc_ffcs_filters
-    
+
     # Validate inputs
     total = np.asarray(total_decay, dtype=float)
     if total.ndim != 1:
         raise ValueError("total_decay must be a 1D array")
-    
+
     species = [np.asarray(s, dtype=float) for s in species_decays]
     nuisance = [np.asarray(s, dtype=float) for s in (nuisance_decays or [])]
     basis = species + nuisance
@@ -434,30 +440,31 @@ def compute_filters(
             raise ValueError(f"species_decays[{i}] must be a 1D array")
         if s.size != total.size:
             raise ValueError(
-                f"species_decays[{i}] has {s.size} bins, "
-                f"but total_decay has {total.size} bins"
+                f"species_decays[{i}] has {s.size} bins, but total_decay has {total.size} bins"
             )
-    
+
     # Compute filters (calc_ffcs_filters implements the core PAM logic)
     filters, recon, wres = calc_ffcs_filters(total, basis)
     labels = list(nuisance_labels or [])
     if len(labels) != len(nuisance):
         raise ValueError("nuisance_labels must match nuisance_decays")
     nuisance_count = len(nuisance) if reject_nuisance else 0
-    
+
     # Build metadata
     if metadata is None:
         metadata = {}
-    
-    metadata.update({
-        "description": "Filtered FCS lifetime filters computed by ChiSurf",
-        "n_species": int(len(species)),
-        "n_filters": int(filters.shape[0]),
-        "nuisance_labels": labels,
-        "reject_nuisance": bool(reject_nuisance),
-        "n_bins": int(filters.shape[1]),
-    })
-    
+
+    metadata.update(
+        {
+            "description": "Filtered FCS lifetime filters computed by ChiSurf",
+            "n_species": int(len(species)),
+            "n_filters": int(filters.shape[0]),
+            "nuisance_labels": labels,
+            "reject_nuisance": bool(reject_nuisance),
+            "n_bins": int(filters.shape[1]),
+        }
+    )
+
     return FilterResult(
         filters=filters,
         reconstruction=recon,
@@ -485,7 +492,7 @@ def load_histogram(path: str | pathlib.Path) -> np.ndarray:
 
 def compute_filters_from_files(
     total_path: str | pathlib.Path,
-    species_paths: List[str | pathlib.Path],
+    species_paths: list[str | pathlib.Path],
 ) -> FilterResult:
     """Compute filters from histogram files."""
     total_path = pathlib.Path(total_path)
@@ -502,31 +509,31 @@ def compute_filters_from_files(
 def compute_filters_mfd(
     total_decay_par: np.ndarray,
     total_decay_perp: np.ndarray,
-    species_decays_par: List[np.ndarray],
-    species_decays_perp: List[np.ndarray],
-    metadata: Dict[str, Any] | None = None,
-    nuisance_decays_par: List[np.ndarray] | None = None,
-    nuisance_decays_perp: List[np.ndarray] | None = None,
-    nuisance_labels: List[str] | None = None,
+    species_decays_par: list[np.ndarray],
+    species_decays_perp: list[np.ndarray],
+    metadata: dict[str, Any] | None = None,
+    nuisance_decays_par: list[np.ndarray] | None = None,
+    nuisance_decays_perp: list[np.ndarray] | None = None,
+    nuisance_labels: list[str] | None = None,
     reject_nuisance: bool = True,
 ) -> FilterResultMFD:
     """Compute fFCS lifetime filters for MFD data."""
     from chisurf.core.fluorescence.fcs.filtered import calc_ffcs_filters
-    
+
     total_par = np.asarray(total_decay_par, dtype=float)
     total_perp = np.asarray(total_decay_perp, dtype=float)
-    
+
     if total_par.ndim != 1 or total_perp.ndim != 1:
         raise ValueError("total_decay_par and total_decay_perp must be 1D arrays")
-    
+
     if total_par.size != total_perp.size:
         raise ValueError("Parallel and perpendicular decays must have the same size.")
-    
+
     species_par = [np.asarray(s, dtype=float) for s in species_decays_par]
     species_perp = [np.asarray(s, dtype=float) for s in species_decays_perp]
     nuisance_par = [np.asarray(s, dtype=float) for s in (nuisance_decays_par or [])]
     nuisance_perp = [np.asarray(s, dtype=float) for s in (nuisance_decays_perp or [])]
-    
+
     if len(species_par) != len(species_perp):
         raise ValueError("Number of species must match between channels.")
     if len(nuisance_par) != len(nuisance_perp):
@@ -540,20 +547,22 @@ def compute_filters_mfd(
 
     filters_par, recon_par, wres_par = calc_ffcs_filters(total_par, basis_par)
     filters_perp, recon_perp, wres_perp = calc_ffcs_filters(total_perp, basis_perp)
-    
+
     if metadata is None:
         metadata = {}
-    
-    metadata.update({
-        "description": "Filtered FCS MFD lifetime filters computed by ChiSurf",
-        "mode": "mfd",
-        "n_species": int(len(species_par)),
-        "n_filters": int(filters_par.shape[0]),
-        "nuisance_labels": labels,
-        "reject_nuisance": bool(reject_nuisance),
-        "n_bins": int(filters_par.shape[1]),
-    })
-    
+
+    metadata.update(
+        {
+            "description": "Filtered FCS MFD lifetime filters computed by ChiSurf",
+            "mode": "mfd",
+            "n_species": int(len(species_par)),
+            "n_filters": int(filters_par.shape[0]),
+            "nuisance_labels": labels,
+            "reject_nuisance": bool(reject_nuisance),
+            "n_bins": int(filters_par.shape[1]),
+        }
+    )
+
     return FilterResultMFD(
         filters_par=filters_par,
         filters_perp=filters_perp,
@@ -574,8 +583,8 @@ def compute_filters_mfd(
 def compute_filters_mfd_from_files(
     total_par_path: str | pathlib.Path,
     total_perp_path: str | pathlib.Path,
-    species_par_paths: List[str | pathlib.Path],
-    species_perp_paths: List[str | pathlib.Path],
+    species_par_paths: list[str | pathlib.Path],
+    species_perp_paths: list[str | pathlib.Path],
 ) -> FilterResultMFD:
     """Compute MFD filters from histogram files."""
     total_par_path = pathlib.Path(total_par_path)
@@ -584,10 +593,10 @@ def compute_filters_mfd_from_files(
     total_perp = load_histogram(total_perp_path)
     species_par = [load_histogram(p) for p in [pathlib.Path(p) for p in species_par_paths]]
     species_perp = [load_histogram(p) for p in [pathlib.Path(p) for p in species_perp_paths]]
-    
+
     metadata = {
         "total_decay_par_file": str(total_par_path.absolute()),
         "total_decay_perp_file": str(total_perp_path.absolute()),
     }
-    
+
     return compute_filters_mfd(total_par, total_perp, species_par, species_perp, metadata=metadata)

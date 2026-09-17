@@ -215,8 +215,10 @@ def series_relaxation_times(group) -> list[tuple[float, float]]:
         saturation = fit.model.saturation
         modes = relaxation_spectrum(
             excitation_rate_peak(
-                saturation.power, saturation.extinction,
-                saturation.w_r_nm * 1e-9, saturation.wavelength_m,
+                saturation.power,
+                saturation.extinction,
+                saturation.w_r_nm * 1e-9,
+                saturation.wavelength_m,
             ),
             saturation.dark_matrix_hz,
             saturation.exc.rate_matrix(),
@@ -277,10 +279,17 @@ def simulate_power_series(
     curves = []
     for power_mW in powers_mW:
         shape = saturated_curve_shape(
-            tau_ms * 1e-3, power_mW * 1e-3, extinction,
-            dark_matrix, exc_matrix, brightness,
-            w_r_nm * 1e-9, w_z_nm * 1e-9, D_um2s * 1e-12,
-            include_bunching=True, wavelength_m=wavelength_nm * 1e-9,
+            tau_ms * 1e-3,
+            power_mW * 1e-3,
+            extinction,
+            dark_matrix,
+            exc_matrix,
+            brightness,
+            w_r_nm * 1e-9,
+            w_z_nm * 1e-9,
+            D_um2s * 1e-12,
+            include_bunching=True,
+            wavelength_m=wavelength_nm * 1e-9,
         )
         y = baseline + shape / n_molecules
         error = np.full_like(y, max(noise, 1e-6))
@@ -288,8 +297,11 @@ def simulate_power_series(
             y = y + rng.normal(0.0, noise, size=y.shape)
         curves.append(
             DataCurve(
-                name=f"{power_mW:g} mW", load_filename_on_init=False,
-                x=tau_ms, y=y, ey=error,
+                name=f"{power_mW:g} mW",
+                load_filename_on_init=False,
+                x=tau_ms,
+                y=y,
+                ey=error,
             )
         )
     return curves

@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from mmfdb.repository import MFDatabase
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from chisurf.core.settings import cs_settings
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
@@ -18,7 +19,6 @@ from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     _simulate_with_db,
     resolve_db_path,
 )
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ TEMPLATE_LIBRARY_DIR = Path(__file__).resolve().parents[1] / "templates"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalize_pid(pid):
     if pid is None:
@@ -59,7 +60,7 @@ def _make_combo(parent, probes, filter_key):
             match = p.get("category") in cats
         else:
             match = bool(p.get(filter_key))
-            
+
         if match:
             combo.addItem(p["name"], p["probe_id"])
     return combo
@@ -193,7 +194,15 @@ class _SingleProbeTable(QtWidgets.QWidget):
 
     changed = QtCore.Signal()
 
-    def __init__(self, probes, db_path=None, filter_key=None, parent=None, show_header=True, header_text="Probe"):
+    def __init__(
+        self,
+        probes,
+        db_path=None,
+        filter_key=None,
+        parent=None,
+        show_header=True,
+        header_text="Probe",
+    ):
         super().__init__(parent)
         self.probes = probes
         self._db_path = db_path
@@ -214,11 +223,11 @@ class _SingleProbeTable(QtWidgets.QWidget):
         )
         if self._show_header:
             self.set_header_text(self._header_text)
-        self.filtered_table.set_item_factory(lambda item, key: _SpectraTooltipItem(
-            name=item.get("name", ""),
-            key=key,
-            render_fn=self._tooltip_html
-        ))
+        self.filtered_table.set_item_factory(
+            lambda item, key: _SpectraTooltipItem(
+                name=item.get("name", ""), key=key, render_fn=self._tooltip_html
+            )
+        )
         self.filtered_table.selectionChanged.connect(self.changed.emit)
         layout.addWidget(self.filtered_table)
 
@@ -256,7 +265,9 @@ class _SingleProbeTable(QtWidgets.QWidget):
         else:
             items = self.probes
         self.filtered_table.set_data(items, key_fn=lambda x: x.get("probe_id"))
-        self.filtered_table.set_filter_fn(lambda item, text: text.lower() in item.get("name", "").lower())
+        self.filtered_table.set_filter_fn(
+            lambda item, text: text.lower() in item.get("name", "").lower()
+        )
         self.filtered_table.set_selected(selected_probe_id)
 
     def get_selected_probe_id(self):
@@ -282,6 +293,7 @@ class _SingleProbeTable(QtWidgets.QWidget):
 # Graph ↔ config conversion
 # ---------------------------------------------------------------------------
 
+
 def _graph_to_config(graph: dict) -> dict:
     """Convert a GraphDef graph dict back into an easy-mode config dict.
 
@@ -296,9 +308,7 @@ def _graph_to_config(graph: dict) -> dict:
     forward: dict[str, list[tuple[int, str, int]]] = {}
     for e in edges_list:
         src = e["source"]
-        forward.setdefault(src, []).append(
-            (e["source_port"], e["target"], e["target_port"])
-        )
+        forward.setdefault(src, []).append((e["source_port"], e["target"], e["target_port"]))
 
     def node_type_of(nid: str) -> str:
         nd = nodes_map.get(nid)
@@ -361,23 +371,25 @@ def _graph_to_config(graph: dict) -> dict:
 
     def _add_detector_from_chain(start_id: str) -> None:
         """Resolve a filter→detector chain and add the detector."""
-        dname, bp_pid, qe_pid = _resolve_detector_chain(
-            start_id, nodes_map, forward
+        dname, bp_pid, qe_pid = _resolve_detector_chain(start_id, nodes_map, forward)
+        detectors.append(
+            {
+                "name": dname,
+                "bandpass_probe_id": bp_pid,
+                "qe_probe_id": qe_pid,
+            }
         )
-        detectors.append({
-            "name": dname,
-            "bandpass_probe_id": bp_pid,
-            "qe_probe_id": qe_pid,
-        })
 
     def _walk_splitter(splitter_id: str, visited: set[str]) -> str | None:
         """Record one emission splitter and find the next one."""
         nd = nodes_map.get(splitter_id, {})
         cfg = nd.get("config", {})
-        splitters.append({
-            "type": cfg.get("splitter_type", "Dichroic"),
-            "probe_id": cfg.get("probe_id"),
-        })
+        splitters.append(
+            {
+                "type": cfg.get("splitter_type", "Dichroic"),
+                "probe_id": cfg.get("probe_id"),
+            }
+        )
         # Detector on transmission port (port 1)
         for sp, tgt, tp in forward.get(splitter_id, []):
             if sp == 1:
@@ -428,11 +440,13 @@ def _graph_to_config(graph: dict) -> dict:
         if n["type"] == "detector":
             dname = _node_display_name(n, "detector_name", "Detector")
             if dname not in found_det_names:
-                detectors.append({
-                    "name": dname,
-                    "bandpass_probe_id": None,
-                    "qe_probe_id": n.get("config", {}).get("probe_id"),
-                })
+                detectors.append(
+                    {
+                        "name": dname,
+                        "bandpass_probe_id": None,
+                        "qe_probe_id": n.get("config", {}).get("probe_id"),
+                    }
+                )
                 found_det_names.add(dname)
 
     # Fallback 2: if no splitters found but detectors exist, infer the
@@ -540,7 +554,8 @@ def _repair_easy_topology_edges(graph: dict) -> None:
     if exci_fw is not None and exci_fw in nodes:
         nodes.remove(exci_fw)
         edges[:] = [
-            edge for edge in edges
+            edge
+            for edge in edges
             if edge.get("source") != exci_fw.get("id") and edge.get("target") != exci_fw.get("id")
         ]
 
@@ -576,12 +591,14 @@ def _repair_easy_topology_edges(graph: dict) -> None:
                 and existing.get("target_port") == target_port
             ):
                 edges.remove(existing)
-        edges.append({
-            "source": source.get("id"),
-            "source_port": source_port,
-            "target": target.get("id"),
-            "target_port": target_port,
-        })
+        edges.append(
+            {
+                "source": source.get("id"),
+                "source_port": source_port,
+                "target": target.get("id"),
+                "target_port": target_port,
+            }
+        )
 
     # Output ports by name, schema-indexed: "Out" is 0, "Dye Data" 1.
     add_edge(light, 0, sample, 0)
@@ -625,6 +642,7 @@ def _first_node(nodes_by_type: dict[str, list[dict]], node_type: str) -> dict | 
 
 def _sort_channel_nodes(nodes: list[dict]) -> list[dict]:
     """Sort channel-like nodes by embedded number and then by screen position."""
+
     def key(node: dict) -> tuple[int, float, float, str]:
         title = str(node.get("title") or node.get("config", {}).get("detector_name") or "")
         number = _extract_first_int(title)
@@ -706,9 +724,15 @@ def _add_detector_chain_edge(
 # Graph builder — constructs a GraphDef-compatible dict
 # ---------------------------------------------------------------------------
 
+
 def _node(
-    id: str, type_: str, title: str, inputs: list, outputs: list,
-    config: dict, pos: tuple[float, float],
+    id: str,
+    type_: str,
+    title: str,
+    inputs: list,
+    outputs: list,
+    config: dict,
+    pos: tuple[float, float],
 ) -> dict:
     """Build a validated node dict (auto-adds collapsed and version)."""
     return {
@@ -745,12 +769,17 @@ def build_easy_graph(config: dict) -> dict:
 
     # 1. Light source
     lasers = config.get("lasers", "488:1.0, 640:1.0")
-    nodes.append(_node(
-        id=light_id, type_="light_source", title="Light Source",
-        inputs=[], outputs=["Light"],
-        config={"source_mode": "manual", "manual_lines": lasers},
-        pos=(50.0, 200.0),
-    ))
+    nodes.append(
+        _node(
+            id=light_id,
+            type_="light_source",
+            title="Light Source",
+            inputs=[],
+            outputs=["Light"],
+            config={"source_mode": "manual", "manual_lines": lasers},
+            pos=(50.0, 200.0),
+        )
+    )
 
     # 2. Sample
     dye_ids = []
@@ -760,26 +789,35 @@ def build_easy_graph(config: dict) -> dict:
         if pid is not None:
             dye_ids.append(pid)
             dye_props[pid_str] = props
-    nodes.append(_node(
-        id=sample_id, type_="sample", title="Sample / Fluorophore",
-        inputs=["In"], outputs=["Out", "Dye Data"],
-        config={
-            "probe_ids": dye_ids,
-            "probe_id": dye_ids[0] if dye_ids else None,
-            "dye_properties": dye_props,
-        },
-        pos=(300.0, 200.0),
-    ))
+    nodes.append(
+        _node(
+            id=sample_id,
+            type_="sample",
+            title="Sample / Fluorophore",
+            inputs=["In"],
+            outputs=["Out", "Dye Data"],
+            config={
+                "probe_ids": dye_ids,
+                "probe_id": dye_ids[0] if dye_ids else None,
+                "dye_properties": dye_props,
+            },
+            pos=(300.0, 200.0),
+        )
+    )
 
     # 3. Excitation dichroic — emission path
     exci_pid = _normalize_pid(config.get("excitation_dichroic_probe_id"))
-    nodes.append(_node(
-        id=exci_id, type_="splitter",
-        title="Excitation Dichroic",
-        inputs=["In"], outputs=["Transmission", "Reflection"],
-        config={"probe_id": exci_pid},
-        pos=(500.0, 200.0),
-    ))
+    nodes.append(
+        _node(
+            id=exci_id,
+            type_="splitter",
+            title="Excitation Dichroic",
+            inputs=["In"],
+            outputs=["Transmission", "Reflection"],
+            config={"probe_id": exci_pid},
+            pos=(500.0, 200.0),
+        )
+    )
     # Schema port indices: source ports count through outputs, target ports
     # through inputs. The sample's "Out" is output 0, "Dye Data" output 1; a
     # splitter's Transmission is output 0, its Reflection output 1.
@@ -818,14 +856,20 @@ def build_easy_graph(config: dict) -> dict:
         splitter_ids.append(sp_id)
         sp_pid = _normalize_pid(sp.get("probe_id"))
         sp_type = sp.get("type", "Dichroic")
-        nodes.append(_node(
-            id=sp_id, type_="splitter",
-            title=f"{sp_type} Splitter {i + 1}",
-            inputs=["In"], outputs=["Transmission", "Reflection"],
-            config={"probe_id": sp_pid, "splitter_type": sp_type},
-            pos=(550.0 + i * 30.0, 200.0 + i * 80.0),
-        ))
-        edges.append({"source": prev_node_id, "source_port": prev_port, "target": sp_id, "target_port": 0})
+        nodes.append(
+            _node(
+                id=sp_id,
+                type_="splitter",
+                title=f"{sp_type} Splitter {i + 1}",
+                inputs=["In"],
+                outputs=["Transmission", "Reflection"],
+                config={"probe_id": sp_pid, "splitter_type": sp_type},
+                pos=(550.0 + i * 30.0, 200.0 + i * 80.0),
+            )
+        )
+        edges.append(
+            {"source": prev_node_id, "source_port": prev_port, "target": sp_id, "target_port": 0}
+        )
 
         # Transmission → detector i
         det = detectors[i] if i < len(detectors) else {}
@@ -838,26 +882,43 @@ def build_easy_graph(config: dict) -> dict:
 
         if bp_pid:
             bp_node_id = str(uuid.uuid4())
-            nodes.append(_node(
-                id=bp_node_id, type_="filter",
-                title=f"Bandpass: {det_name}",
-                inputs=["In"], outputs=["Out"],
-                config={"probe_id": bp_pid},
-                pos=(700.0 + i * 30.0, 100.0 + i * 200.0),
-            ))
-            edges.append({"source": chain_node, "source_port": chain_port, "target": bp_node_id, "target_port": 0})
+            nodes.append(
+                _node(
+                    id=bp_node_id,
+                    type_="filter",
+                    title=f"Bandpass: {det_name}",
+                    inputs=["In"],
+                    outputs=["Out"],
+                    config={"probe_id": bp_pid},
+                    pos=(700.0 + i * 30.0, 100.0 + i * 200.0),
+                )
+            )
+            edges.append(
+                {
+                    "source": chain_node,
+                    "source_port": chain_port,
+                    "target": bp_node_id,
+                    "target_port": 0,
+                }
+            )
             chain_node = bp_node_id
             chain_port = 0
 
         qe_pid = _normalize_pid(det.get("qe_probe_id"))
-        nodes.append(_node(
-            id=dn_id, type_="detector",
-            title=det_name,
-            inputs=["In"], outputs=[],
-            config={"detector_name": det_name, "probe_id": qe_pid},
-            pos=(850.0 + i * 30.0, 100.0 + i * 200.0),
-        ))
-        edges.append({"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0})
+        nodes.append(
+            _node(
+                id=dn_id,
+                type_="detector",
+                title=det_name,
+                inputs=["In"],
+                outputs=[],
+                config={"detector_name": det_name, "probe_id": qe_pid},
+                pos=(850.0 + i * 30.0, 100.0 + i * 200.0),
+            )
+        )
+        edges.append(
+            {"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0}
+        )
 
         # Next splitter feeds from this splitter's Reflection
         prev_node_id = sp_id
@@ -876,41 +937,62 @@ def build_easy_graph(config: dict) -> dict:
 
         if bp_pid:
             bp_node_id = str(uuid.uuid4())
-            nodes.append(_node(
-                id=bp_node_id, type_="filter",
-                title=f"Bandpass: {det_name}",
-                inputs=["In"], outputs=["Out"],
-                config={"probe_id": bp_pid},
-                pos=(700.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
-            ))
-            edges.append({"source": chain_node, "source_port": chain_port, "target": bp_node_id, "target_port": 0})
+            nodes.append(
+                _node(
+                    id=bp_node_id,
+                    type_="filter",
+                    title=f"Bandpass: {det_name}",
+                    inputs=["In"],
+                    outputs=["Out"],
+                    config={"probe_id": bp_pid},
+                    pos=(700.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
+                )
+            )
+            edges.append(
+                {
+                    "source": chain_node,
+                    "source_port": chain_port,
+                    "target": bp_node_id,
+                    "target_port": 0,
+                }
+            )
             chain_node = bp_node_id
             chain_port = 0
 
         qe_pid = _normalize_pid(det.get("qe_probe_id"))
-        nodes.append(_node(
-            id=dn_id, type_="detector",
-            title=det_name,
-            inputs=["In"], outputs=[],
-            config={"detector_name": det_name, "probe_id": qe_pid},
-            pos=(850.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
-        ))
-        edges.append({"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0})
+        nodes.append(
+            _node(
+                id=dn_id,
+                type_="detector",
+                title=det_name,
+                inputs=["In"],
+                outputs=[],
+                config={"detector_name": det_name, "probe_id": qe_pid},
+                pos=(850.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
+            )
+        )
+        edges.append(
+            {"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0}
+        )
 
     # 5. Förster radius node
     kappa2 = config.get("kappa2", 0.6667)
     n_val = config.get("n", 1.33)
-    nodes.append(_node(
-        id=forster_id, type_="forster_radius", title="Förster Radius",
-        inputs=[
-            "Dye Data",
-            {"name": "kappa2", "type": "number"},
-            {"name": "n", "type": "number"},
-        ],
-        outputs=[],
-        config={"kappa2": kappa2, "n": n_val, "_last_results": []},
-        pos=(300.0, 500.0),
-    ))
+    nodes.append(
+        _node(
+            id=forster_id,
+            type_="forster_radius",
+            title="Förster Radius",
+            inputs=[
+                "Dye Data",
+                {"name": "kappa2", "type": "number"},
+                {"name": "n", "type": "number"},
+            ],
+            outputs=[],
+            config={"kappa2": kappa2, "n": n_val, "_last_results": []},
+            pos=(300.0, 500.0),
+        )
+    )
     edges.append({"source": sample_id, "source_port": 1, "target": forster_id, "target_port": 0})
 
     return {"nodes": nodes, "edges": edges, "version": 1}
@@ -919,6 +1001,7 @@ def build_easy_graph(config: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Preset I/O
 # ---------------------------------------------------------------------------
+
 
 def save_easy_preset(config: dict, path: str | Path) -> None:
     with open(path, "w") as f:
@@ -961,6 +1044,7 @@ def _persist_fret_setting(key: str, value: float) -> None:
         import yaml
 
         from chisurf.core.settings.path_utils import get_path
+
         settings_file = get_path("settings") / "settings_chisurf.yaml"
         data = {}
         try:
@@ -1036,9 +1120,7 @@ class _DyeTableWidget(QtWidgets.QWidget):
         vh.setVisible(False)
         vh.setDefaultSectionSize(16)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        self.table.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        self.table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         layout.addWidget(self.table)
 
         self.filter_edit.textChanged.connect(self._on_filter)
@@ -1075,8 +1157,11 @@ class _DyeTableWidget(QtWidgets.QWidget):
         self.table.setRowCount(0)
         selected_ids = selected_ids or []
         dye_props = dye_props or {}
-        valid = [(p["probe_id"], p["name"], p.get("qy", 1.0), p.get("ec", 1.0))
-                 for p in self.probes if p.get("has_abs") and p.get("has_em")]
+        valid = [
+            (p["probe_id"], p["name"], p.get("qy", 1.0), p.get("ec", 1.0))
+            for p in self.probes
+            if p.get("has_abs") and p.get("has_em")
+        ]
         self.table.setRowCount(len(valid))
         for row, (pid, name, dqy, dec) in enumerate(valid):
             ni = _SpectraTooltipItem(name, pid, render_fn=self._tooltip_html)
@@ -1177,10 +1262,12 @@ class _EmissionSplitterTableWidget(QtWidgets.QWidget):
             probe_cb = self.table.cellWidget(row, 1)
             if type_cb is None:
                 continue
-            result.append({
-                "type": type_cb.currentText(),
-                "probe_id": _combo_value(probe_cb),
-            })
+            result.append(
+                {
+                    "type": type_cb.currentText(),
+                    "probe_id": _combo_value(probe_cb),
+                }
+            )
         return result
 
     def set_splitters(self, splitters: list[dict]):
@@ -1269,11 +1356,13 @@ class _DetectorTableWidget(QtWidgets.QWidget):
             name = ni.text().strip()
             if not name:
                 continue
-            result.append({
-                "name": name,
-                "bandpass_probe_id": _combo_value(self.table.cellWidget(row, 1)),
-                "qe_probe_id": _combo_value(self.table.cellWidget(row, 2)),
-            })
+            result.append(
+                {
+                    "name": name,
+                    "bandpass_probe_id": _combo_value(self.table.cellWidget(row, 1)),
+                    "qe_probe_id": _combo_value(self.table.cellWidget(row, 2)),
+                }
+            )
         return result
 
     def set_detector_names(self, names: list[str]):
@@ -1295,6 +1384,7 @@ from chisurf.gui.widgets.spectra_tooltip import (
 # ---------------------------------------------------------------------------
 # Easy mode widget — load optical path (full graph) and change filters/dyes
 # ---------------------------------------------------------------------------
+
 
 class LightPathEasyWidget(QtWidgets.QWidget):
     """Easy mode: load an optical path preset, then pick the spectra probes."""
@@ -1396,7 +1486,12 @@ class LightPathEasyWidget(QtWidgets.QWidget):
         sec_optics.add_row("Lasers:", self._lasers_edit)
 
         # Excitation dichroic — table header acts as the label
-        self._exci_table = _SingleProbeTable(self.probes, db_path=self._db_path, filter_key="category:dichroic", header_text="Exci. Dichroic")
+        self._exci_table = _SingleProbeTable(
+            self.probes,
+            db_path=self._db_path,
+            filter_key="category:dichroic",
+            header_text="Exci. Dichroic",
+        )
         self._exci_table.set_selected_probe_id(cfg.get("excitation_dichroic_probe_id"))
         self._exci_table.changed.connect(self._schedule_recalc)
         sec_optics.add_widget(self._exci_table)
@@ -1412,7 +1507,12 @@ class LightPathEasyWidget(QtWidgets.QWidget):
         self._splitter_tables = []
         for i, sp in enumerate(splitters):
             sp_type = sp.get("type", "Dichroic")
-            tbl = _SingleProbeTable(self.probes, db_path=self._db_path, filter_key="category:dichroic,polarizer", header_text=f"Splitter {i + 1}")
+            tbl = _SingleProbeTable(
+                self.probes,
+                db_path=self._db_path,
+                filter_key="category:dichroic,polarizer",
+                header_text=f"Splitter {i + 1}",
+            )
             tbl._splitter_type = sp_type
             tbl.set_selected_probe_id(sp.get("probe_id"))
             tbl.changed.connect(self._schedule_recalc)
@@ -1428,7 +1528,12 @@ class LightPathEasyWidget(QtWidgets.QWidget):
         n_missing = n_det - 1 - len(splitters)
         splitter_idx = len(splitters) + 1
         for i in range(n_missing):
-            tbl = _SingleProbeTable(self.probes, db_path=self._db_path, filter_key="category:dichroic,polarizer", header_text=f"Splitter {splitter_idx}")
+            tbl = _SingleProbeTable(
+                self.probes,
+                db_path=self._db_path,
+                filter_key="category:dichroic,polarizer",
+                header_text=f"Splitter {splitter_idx}",
+            )
             tbl._splitter_type = "Dichroic"
             tbl.changed.connect(self._schedule_recalc)
             sec_optics.add_widget(tbl)
@@ -1444,9 +1549,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
         self._detector_widgets = []
         is_polarizer = _is_polarizer_template(detectors[:n_det])
         det_grid_w = QtWidgets.QWidget()
-        det_grid_w.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        det_grid_w.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         det_grid = QtWidgets.QGridLayout(det_grid_w)
         det_grid.setContentsMargins(0, 0, 0, 0)
         det_grid.setSpacing(2)
@@ -1475,14 +1578,24 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             else:
                 label = f"C{i + 1}"
 
-            bp_tbl = _SingleProbeTable(self.probes, db_path=self._db_path,
-                                       filter_key="category:filter", show_header=True, header_text=label)
+            bp_tbl = _SingleProbeTable(
+                self.probes,
+                db_path=self._db_path,
+                filter_key="category:filter",
+                show_header=True,
+                header_text=label,
+            )
             bp_tbl.set_selected_probe_id(det.get("bandpass_probe_id"))
             bp_tbl.changed.connect(self._schedule_recalc)
             det_grid.addWidget(bp_tbl, i + 1, 0)
 
-            qe_tbl = _SingleProbeTable(self.probes, db_path=self._db_path,
-                                       filter_key="category:detector", show_header=True, header_text="QE")
+            qe_tbl = _SingleProbeTable(
+                self.probes,
+                db_path=self._db_path,
+                filter_key="category:detector",
+                show_header=True,
+                header_text="QE",
+            )
             qe_tbl.set_selected_probe_id(det.get("qe_probe_id"))
             qe_tbl.changed.connect(self._schedule_recalc)
             det_grid.addWidget(qe_tbl, i + 1, 1)
@@ -1593,9 +1706,9 @@ class LightPathEasyWidget(QtWidgets.QWidget):
 
     def _connect_controls(self):
         """Connect signals for controls created by _populate_form."""
-        if hasattr(self, 'btn_calc') and self.btn_calc is not None:
+        if hasattr(self, "btn_calc") and self.btn_calc is not None:
             self.btn_calc.clicked.connect(self.recalculate)
-        if hasattr(self, 'auto_recalc_cb') and self.auto_recalc_cb is not None:
+        if hasattr(self, "auto_recalc_cb") and self.auto_recalc_cb is not None:
             self.auto_recalc_cb.toggled.connect(self._on_auto_recalc)
 
     def _rebuild_graph(self, cfg: dict | None = None) -> None:
@@ -1604,6 +1717,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             cfg = self._get_config()
         graph = build_easy_graph(cfg)
         from chisurf.plugins.core.lightpath_simulator.gui.tool import LightPathSimulatorWidget
+
         parent = self.parentWidget()
         while parent is not None and not isinstance(parent, LightPathSimulatorWidget):
             parent = parent.parentWidget()
@@ -1712,6 +1826,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
 
     def _on_edit(self):
         from chisurf.plugins.core.lightpath_simulator.gui.tool import LightPathSimulatorWidget
+
         parent = self.parentWidget()
         while parent is not None and not isinstance(parent, LightPathSimulatorWidget):
             parent = parent.parentWidget()
@@ -1760,11 +1875,13 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             splitters.append({"type": spl_meta, "probe_id": tbl.get_selected_probe_id()})
         detectors = []
         for dw in self._detector_widgets:
-            detectors.append({
-                "name": dw["name"],
-                "bandpass_probe_id": dw["bp"].get_selected_probe_id(),
-                "qe_probe_id": dw["qe"].get_selected_probe_id(),
-            })
+            detectors.append(
+                {
+                    "name": dw["name"],
+                    "bandpass_probe_id": dw["bp"].get_selected_probe_id(),
+                    "qe_probe_id": dw["qe"].get_selected_probe_id(),
+                }
+            )
         splitters = _clean_splitters_for_detector_count(splitters, len(detectors))
         dyes = self.dye_table.get_selected_dyes()
         kappa2 = self.kappa2_spin.value() if hasattr(self, "kappa2_spin") else 0.6667
@@ -1885,13 +2002,18 @@ class LightPathEasyWidget(QtWidgets.QWidget):
 # Standalone dialog
 # ---------------------------------------------------------------------------
 
+
 class LightPathEasyDialog(QtWidgets.QDialog):
     """Dialog wrapping LightPathEasyWidget for use from Detector Wizard."""
 
-    def __init__(self, probes: list[dict], parent=None,
-                 detector_names: list[str] | None = None,
-                 optical_config: dict | None = None,
-                 db_path: str | None = None):
+    def __init__(
+        self,
+        probes: list[dict],
+        parent=None,
+        detector_names: list[str] | None = None,
+        optical_config: dict | None = None,
+        db_path: str | None = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Optical Setup — Easy Mode")
         self.resize(620, 700)
@@ -1901,7 +2023,8 @@ class LightPathEasyDialog(QtWidgets.QDialog):
         layout.addWidget(self.easy_widget, 1)
 
         bb = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         layout.addWidget(bb)

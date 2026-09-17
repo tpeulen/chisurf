@@ -1,6 +1,8 @@
 import sys
-from .widget import SaveTopology
+
 from qtpy import QtWidgets
+
+from .widget import SaveTopology
 
 
 def main():

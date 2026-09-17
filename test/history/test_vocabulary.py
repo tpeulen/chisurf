@@ -15,10 +15,11 @@ Headless: no Qt, no DB.
 
 from __future__ import annotations
 
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
+
 import chisurf as cs
 import chisurf.core.actions  # noqa: F401  (triggers @action registration)
 from chisurf.core.actions import canonical, get_action_catalog
-from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 
 def test_canonical_collapses_separators():

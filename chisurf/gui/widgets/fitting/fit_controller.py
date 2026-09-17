@@ -3,27 +3,23 @@ from __future__ import annotations
 import os
 import time
 import typing
-import pathlib
-import textwrap
 
 import numpy as np
-from qtpy import QtWidgets, uic, QtCore, QtGui
-import matplotlib.colors as mcolors
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
-import chisurf.logging
 import chisurf.core.data
 import chisurf.core.fitting
+import chisurf.core.settings
 import chisurf.core.support.decorators
 import chisurf.gui.decorators
-import chisurf.core.settings
-
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.gui.widgets.general import Controller
-from chisurf.core.math.optimization import OptimizationCancelled
+import chisurf.logging
 from chisurf.core.actions import record_action
+from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui.widgets.general import Controller
 
 #: ProteinMC drives the Sampling button itself and has no generic Fit, so this
 #: controller has to recognise it. Matching on ``model.name`` is the primary
@@ -32,7 +28,6 @@ _PROTEINMC_CLASS_NAMES = ("ProteinMCModel", "ProteinMCModelWidget")
 
 
 class FittingControllerWidget(Controller):
-
     @staticmethod
     def _iter_fit_parameters_to_finalize(fit):
         """Yield parameters owned by the current fit or fit group."""
@@ -43,8 +38,8 @@ class FittingControllerWidget(Controller):
             model = getattr(local_fit, "model", None)
             yield from getattr(model, "parameters_all", [])
 
-    def _collect_parameter_snapshot(self) -> typing.List[typing.Dict[str, typing.Any]]:
-        snapshot: typing.List[typing.Dict[str, typing.Any]] = []
+    def _collect_parameter_snapshot(self) -> list[dict[str, typing.Any]]:
+        snapshot: list[dict[str, typing.Any]] = []
         try:
             fit_group_name = str(getattr(self.fit, "name", ""))
             local_fits = list(getattr(self.fit, "grouped_fits", []))
@@ -67,22 +62,24 @@ class FittingControllerWidget(Controller):
                     except Exception:
                         lb = None
                         ub = None
-                    snapshot.append({
-                        "fit_group": fit_group_name,
-                        "local_fit": local_fit_name,
-                        "parameter_name": str(getattr(param, "name", "")),
-                        "value": float(getattr(param, "value", 0.0)),
-                        "fixed": bool(getattr(param, "fixed", False)),
-                        "bounds_on": bool(getattr(param, "bounds_on", False)),
-                        "lower": lb,
-                        "upper": ub,
-                    })
+                    snapshot.append(
+                        {
+                            "fit_group": fit_group_name,
+                            "local_fit": local_fit_name,
+                            "parameter_name": str(getattr(param, "name", "")),
+                            "value": float(getattr(param, "value", 0.0)),
+                            "fixed": bool(getattr(param, "fixed", False)),
+                            "bounds_on": bool(getattr(param, "bounds_on", False)),
+                            "lower": lb,
+                            "upper": ub,
+                        }
+                    )
         except Exception:
             return []
         return snapshot
 
-    def _collect_fit_range_snapshot(self) -> typing.List[typing.Dict[str, typing.Any]]:
-        snapshot: typing.List[typing.Dict[str, typing.Any]] = []
+    def _collect_fit_range_snapshot(self) -> list[dict[str, typing.Any]]:
+        snapshot: list[dict[str, typing.Any]] = []
         try:
             fit_group_name = str(getattr(self.fit, "name", ""))
             local_fits = list(getattr(self.fit, "grouped_fits", []))
@@ -90,17 +87,21 @@ class FittingControllerWidget(Controller):
                 local_fits = [self.fit]
             for local_fit in local_fits:
                 xmin, xmax = getattr(local_fit, "fit_range", (None, None))
-                snapshot.append({
-                    "fit_group": fit_group_name,
-                    "local_fit": str(getattr(local_fit, "name", "")),
-                    "xmin": int(xmin),
-                    "xmax": int(xmax),
-                })
+                snapshot.append(
+                    {
+                        "fit_group": fit_group_name,
+                        "local_fit": str(getattr(local_fit, "name", "")),
+                        "xmin": int(xmin),
+                        "xmax": int(xmax),
+                    }
+                )
         except Exception:
             return []
         return snapshot
 
-    def _record_history(self, action_type: str, summary: str, payload: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
+    def _record_history(
+        self, action_type: str, summary: str, payload: dict[str, typing.Any] | None = None
+    ) -> None:
         try:
             source_uid = str(getattr(self.fit, "unique_identifier", ""))
             if str(action_type) in {"fit_run_start", "fit_run_finish", "fit_run_abort"}:
@@ -141,12 +142,10 @@ class FittingControllerWidget(Controller):
 
         try:
             chain_format = str(
-                cs.core.settings.cs_settings['optimization']['sampling'].get(
-                    'chain_format', 'er4'
-                )
+                cs.core.settings.cs_settings["optimization"]["sampling"].get("chain_format", "er4")
             )
         except (KeyError, TypeError, AttributeError):
-            chain_format = 'er4'
+            chain_format = "er4"
 
         #: Controls lifted out of the form's grid, by attribute.
         self._moved_fields = {}
@@ -164,48 +163,53 @@ class FittingControllerWidget(Controller):
         # dock has spare, which is how a five-row panel ends up half empty above
         # the model editor.
         for widget in (self.form, self):
-            widget.setSizePolicy(
-                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum
-            )
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
 
         # The names the rest of the controller was written against. Binding the
         # concrete editors keeps one source of truth for the layout (the spec)
         # without rewriting behaviour that is not being changed.
-        self.comboBox = self._editor('dataset_index')
-        self.spinBox_2 = self._editor('xmin')
-        self.spinBox = self._editor('xmax')
-        self.spinBox_4 = self._editor('xmin2')
-        self.spinBox_6 = self._editor('xmax2')
-        self.spinBox_3 = self._editor('result_index')
-        self.checkBox = self._editor('local_first')
+        self.comboBox = self._editor("dataset_index")
+        self.spinBox_2 = self._editor("xmin")
+        self.spinBox = self._editor("xmax")
+        self.spinBox_4 = self._editor("xmin2")
+        self.spinBox_6 = self._editor("xmax2")
+        self.spinBox_3 = self._editor("result_index")
+        self.checkBox = self._editor("local_first")
 
-        self.button_fit = self._button('fit')
-        self.button_mcts = self._button('mcts')
-        self.button_sample = self._button('sample')
-        self.button_auto_fit_range = self._button('auto_range')
-        self.button_dataset_select = self._button('select_dataset')
+        self.button_fit = self._button("fit")
+        self.button_mcts = self._button("mcts")
+        self.button_sample = self._button("sample")
+        self.button_auto_fit_range = self._button("auto_range")
+        self.button_dataset_select = self._button("select_dataset")
         # One foldable box now, so the group the ProteinMC path used to hide is
         # gone; what it meant -- "this fit is not optimised from here" -- is the
         # Fit button and the two fields that belong to it.
         self.groupBox = self.form.section_widget(title="Fit")
-        self.button_settings = self._button('settings')
+        self.button_settings = self._button("settings")
         self._emphasise(self.button_fit)
         self._emphasise(self.button_sample)
         for button in (
-            self.button_fit, self.button_mcts, self.button_sample,
-            self.button_settings, self.button_auto_fit_range,
+            self.button_fit,
+            self.button_mcts,
+            self.button_sample,
+            self.button_settings,
+            self.button_auto_fit_range,
             self.button_dataset_select,
         ):
             if button is not None:
                 button.setMinimumHeight(28)
-        self._move_toggle_into_action_row('local_first')
+        self._move_toggle_into_action_row("local_first")
 
         # The actions the designer file carried. Nothing outside this widget
         # triggers them, but the connections below are the widget's own vocabulary.
         for name in (
-                "actionFit", "actionAutoFitRange", "actionFit_range_changed",
-                "actionChange_dataset", "actionSelectionChanged", "actionErrorEstimate",
-                "actionMCTS",
+            "actionFit",
+            "actionAutoFitRange",
+            "actionFit_range_changed",
+            "actionChange_dataset",
+            "actionSelectionChanged",
+            "actionErrorEstimate",
+            "actionMCTS",
         ):
             setattr(self, name, QtWidgets.QAction(name, self))
 
@@ -218,9 +222,7 @@ class FittingControllerWidget(Controller):
             )
         for box in (self.spinBox, self.spinBox_2, self.spinBox_4, self.spinBox_6):
             if box is not None:
-                box.editingFinished.connect(
-                    lambda *_a: self.actionFit_range_changed.trigger()
-                )
+                box.editingFinished.connect(lambda *_a: self.actionFit_range_changed.trigger())
 
     def _field(self, attr: str):
         """Return the field container AutoForm built for one bound attribute.
@@ -264,9 +266,7 @@ class FittingControllerWidget(Controller):
         font.setBold(True)
         button.setFont(font)
         button.setMinimumHeight(28)
-        button.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-        )
+        button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
 
     def _set_fitting_controls_visible(self, visible: bool) -> None:
@@ -283,7 +283,7 @@ class FittingControllerWidget(Controller):
         """
         if self.button_fit is not None:
             self.button_fit.setVisible(bool(visible))
-        for attr in ('result_index', 'local_first'):
+        for attr in ("result_index", "local_first"):
             self._set_field_visible(attr, visible)
 
     def _move_toggle_into_action_row(self, attr: str) -> None:
@@ -339,8 +339,8 @@ class FittingControllerWidget(Controller):
             return
         # The panel shows two of them; take the new values.
         try:
-            sampling = cs.core.settings.cs_settings['optimization']['sampling']
-            self.controls.chain_format = str(sampling.get('chain_format', 'er4'))
+            sampling = cs.core.settings.cs_settings["optimization"]["sampling"]
+            self.controls.chain_format = str(sampling.get("chain_format", "er4"))
         except (KeyError, TypeError, AttributeError):
             pass
 
@@ -408,8 +408,10 @@ class FittingControllerWidget(Controller):
                 return widget
         # Fall back to the label, which is what the spec pairs with the action.
         labels = {
-            'fit': 'Fit', 'sample': 'Sample', 'auto_range': 'auto',
-            'select_dataset': '…',
+            "fit": "Fit",
+            "sample": "Sample",
+            "auto_range": "auto",
+            "select_dataset": "…",
         }
         wanted = labels.get(action)
         for widget in self.form.findChildren(QtWidgets.QAbstractButton):
@@ -430,21 +432,18 @@ class FittingControllerWidget(Controller):
         except (AttributeError, RuntimeError):
             pass
         try:
-            return str(cs.core.settings.cs_settings['optimization']['sampling'].get(
-                'chain_format', 'er4'
-            ))
+            return str(
+                cs.core.settings.cs_settings["optimization"]["sampling"].get("chain_format", "er4")
+            )
         except (KeyError, TypeError, AttributeError):
-            return 'er4' 
+            return "er4"
 
     @property
     def selected_fit(self) -> int:
         return int(self.comboBox.currentIndex())
 
     @selected_fit.setter
-    def selected_fit(
-            self,
-            v: int
-    ):
+    def selected_fit(self, v: int):
         self.comboBox.setCurrentIndex(int(v))
 
     @property
@@ -476,17 +475,17 @@ class FittingControllerWidget(Controller):
             The configured value, or ``default``.
         """
         try:
-            return cs.core.settings.cs_settings['optimization']['sampling'].get(key, default)
+            return cs.core.settings.cs_settings["optimization"]["sampling"].get(key, default)
         except (KeyError, TypeError, AttributeError):
             return default
 
     @property
     def n_steps(self) -> int:
-        return int(self._sampling_setting('steps', 1000))
+        return int(self._sampling_setting("steps", 1000))
 
     @property
     def n_runs(self) -> int:
-        return int(self._sampling_setting('n_runs', 10))
+        return int(self._sampling_setting("n_runs", 10))
 
     def _format_dataset_label(self, name: str, max_length: int = 40) -> str:
         try:
@@ -531,9 +530,7 @@ class FittingControllerWidget(Controller):
                 fit_index=fit_index,
                 dataset_uid=dataset_uid,
             )
-        full_name = os.path.basename(
-            getattr(dataset, 'name', getattr(dataset, 'filename', ''))
-        )
+        full_name = os.path.basename(getattr(dataset, "name", getattr(dataset, "filename", "")))
         display_name = self._format_dataset_label(full_name)
         idx = self.comboBox.currentIndex()
         self.comboBox.setItemText(idx, display_name)
@@ -548,13 +545,13 @@ class FittingControllerWidget(Controller):
         self.curve_select.update()
 
     def __init__(
-            self,
-            fit: cs.core.fitting.fit.FitGroup = None,
-            hide_fit_button: bool = False,
-            hide_range: bool = False,
-            hide_fitting: bool = False,
-            *args,
-            **kwargs
+        self,
+        fit: cs.core.fitting.fit.FitGroup = None,
+        hide_fit_button: bool = False,
+        hide_range: bool = False,
+        hide_fitting: bool = False,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
@@ -563,19 +560,19 @@ class FittingControllerWidget(Controller):
             parent=None,
             fit=fit,
             change_event=self.change_dataset,
-            experiment=fit.data.experiment.__class__
+            experiment=fit.data.experiment.__class__,
         )
 
         labels = []
         if fit is not None:
             for f in fit:
-                data = getattr(f, 'data', None)
+                data = getattr(f, "data", None)
                 try:
                     base_name = os.path.basename(
-                        getattr(data, 'name', getattr(data, 'filename', ''))
+                        getattr(data, "name", getattr(data, "filename", ""))
                     )
                 except Exception:
-                    base_name = getattr(data, 'name', 'Unknown')
+                    base_name = getattr(data, "name", "Unknown")
                 labels.append((self._format_dataset_label(base_name), base_name))
         self._build_controls(labels)
 
@@ -613,6 +610,7 @@ class FittingControllerWidget(Controller):
                 f(*args, **kwargs)
                 if kwargs.get("notify", True):
                     self.update()
+
             return update_new
 
         self.fit.run = wrapper(self.fit.run)
@@ -644,15 +642,17 @@ class FittingControllerWidget(Controller):
             self.button_fit.hide()
         if hide_range:
             self.button_auto_fit_range.hide()
-            self._set_field_visible('xmax', False)
-            self._set_field_visible('xmin', False)
+            self._set_field_visible("xmax", False)
+            self._set_field_visible("xmin", False)
         if hide_fitting:
             self.hide()
 
         self._apply_proteinmc_controls()
 
         try:
-            self.comboBox.currentIndexChanged.connect(lambda *_args: self._apply_proteinmc_controls())
+            self.comboBox.currentIndexChanged.connect(
+                lambda *_args: self._apply_proteinmc_controls()
+            )
         except Exception:
             pass
 
@@ -663,7 +663,6 @@ class FittingControllerWidget(Controller):
 
     def _apply_proteinmc_controls(self) -> None:
         """Disable generic fitting controls when this controller hosts ProteinMC."""
-
         if self._is_proteinmc_fit():
             self.actionFit.setEnabled(False)
             self._set_fitting_controls_visible(False)
@@ -686,9 +685,9 @@ class FittingControllerWidget(Controller):
             # Steps and runs used to live here as spin boxes; they are sampling
             # settings now, so there is nothing left to re-enable.
             pass
+
     def _candidate_sampling_models(self) -> list:
         """Return models that may handle the Sampling button themselves."""
-
         models = []
 
         direct_model = getattr(self.fit, "model", None)
@@ -729,7 +728,6 @@ class FittingControllerWidget(Controller):
 
     def _model_sampling_handler(self):
         """Return a model-defined Sampling-button handler if one exists."""
-
         for model in self._candidate_sampling_models():
             for method_name in ("run_sampling", "sample", "on_sample", "start_sampling"):
                 method = getattr(model, method_name, None)
@@ -739,7 +737,6 @@ class FittingControllerWidget(Controller):
 
     def _is_proteinmc_fit(self) -> bool:
         """Return True if any candidate model is ProteinMC."""
-
         for model in self._candidate_sampling_models():
             model_name = str(getattr(model, "name", "") or getattr(model.__class__, "name", ""))
             class_name = str(getattr(model.__class__, "__name__", ""))
@@ -749,7 +746,6 @@ class FittingControllerWidget(Controller):
 
     def _proteinmc_model_widget(self):
         """Return the active ProteinMC model widget, if this fit uses one."""
-
         for model in self._candidate_sampling_models():
             model_name = str(getattr(model, "name", "") or getattr(model.__class__, "name", ""))
             class_name = str(getattr(model.__class__, "__name__", ""))
@@ -760,15 +756,17 @@ class FittingControllerWidget(Controller):
     def _install_code_badge(self):
         """Install a code badge for dev mode source jumping."""
         try:
-            import chisurf.core.settings
             if not cs.core.settings.is_dev_mode():
                 return
-            if hasattr(self, '_chisurf_code_badge_installed'):
+            if hasattr(self, "_chisurf_code_badge_installed"):
                 return
-            from chisurf.gui.widgets.code_badge import install_code_badge
             from chisurf.gui.devtools.source_jump import resolve_fit_window_source
-            resolver = lambda: resolve_fit_window_source(self)
-            install_code_badge(self, resolver, corner='top-right', margin=4)
+            from chisurf.gui.widgets.code_badge import install_code_badge
+
+            def resolver():
+                return resolve_fit_window_source(self)
+
+            install_code_badge(self, resolver, corner="top-right", margin=4)
             self._chisurf_code_badge_installed = True
         except Exception:
             pass
@@ -840,36 +838,37 @@ class FittingControllerWidget(Controller):
                 cs.logging.exception("Model-defined sampling failed")
             return
         if self._is_proteinmc_fit():
-            cs.logging.warning("ProteinMC must handle Sampling itself; refusing to run generic ensemble sampling.")
+            cs.logging.warning(
+                "ProteinMC must handle Sampling itself; refusing to run generic ensemble sampling."
+            )
             return
 
         fit_name = str(getattr(self.fit, "name", ""))
         cs.logging.info(f"Sampling analysis: {fit_name}")
-        target_dir, _ = cs.gui.widgets.get_directory(caption="Select Target Folder for Sampling Results")
+        target_dir, _ = cs.gui.widgets.get_directory(
+            caption="Select Target Folder for Sampling Results"
+        )
         if target_dir is None:
             cs.logging.info("Sampling canceled!")
             return
-        
+
         target_dir_str = str(target_dir)
-        
-        kw = cs.core.settings.cs_settings['optimization']['sampling'].copy()
-        kw['n_runs'] = self.n_runs
-        kw['steps'] = self.n_steps
+
+        kw = cs.core.settings.cs_settings["optimization"]["sampling"].copy()
+        kw["n_runs"] = self.n_runs
+        kw["steps"] = self.n_steps
         # The panel's choice wins over the setting: it is the one the user just
         # made, and it decides whether the run leaves behind text or a table a
         # quarter of the size.
-        kw['chain_format'] = self.chain_format
-        
+        kw["chain_format"] = self.chain_format
+
         fc = get_fitting_client()
         if fc is not None:
             # Forward the configured backend (``method``: blocked / collapsed /
             # ensemble / slice / mcmc) and the rest of ``optimization.sampling``. These used
             # to be assembled here and then dropped, so the choice of sampler
             # never left the GUI.
-            extra = {
-                k: v for k, v in kw.items()
-                if k not in ('steps', 'n_runs')
-            }
+            extra = {k: v for k, v in kw.items() if k not in ("steps", "n_runs")}
             result = fc.start_sampling(
                 fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
                 n_steps=self.n_steps,
@@ -877,7 +876,7 @@ class FittingControllerWidget(Controller):
                 target_directory=target_dir_str,
                 **extra,
             )
-            method = extra.get('method', 'ensemble')
+            method = extra.get("method", "ensemble")
             cs.logging.info(f"Sampling started on server (method={method}).")
             job_id = (result or {}).get("job_id")
             if job_id:
@@ -901,6 +900,7 @@ class FittingControllerWidget(Controller):
         interval_ms : int, optional
             Polling interval in milliseconds.
         """
+
         def _poll():
             try:
                 status = fitting_client.sampling_status(job_id) or {}
@@ -977,8 +977,7 @@ class FittingControllerWidget(Controller):
                 dialog = None
 
             def _on_progress(
-                done: int, total: int, chi2=None, chi2r=None,
-                stage=None, n_stages=None, **_kwargs
+                done: int, total: int, chi2=None, chi2r=None, stage=None, n_stages=None, **_kwargs
             ) -> None:
                 """Update the progress dialog from least-squares callbacks.
 
@@ -991,7 +990,6 @@ class FittingControllerWidget(Controller):
                 so that the optimizer aborts cleanly while keeping the
                 current parameter values.
                 """
-
                 if dialog is None:
                     return
 
@@ -1038,7 +1036,9 @@ class FittingControllerWidget(Controller):
                     elapsed = time.perf_counter() - t0
                     remaining = (elapsed / float(done)) * (float(total) - done)
                     if remaining > 3600:
-                        parts.append(f"ETA: {int(remaining // 3600)}h {int((remaining % 3600) // 60)}m")
+                        parts.append(
+                            f"ETA: {int(remaining // 3600)}h {int((remaining % 3600) // 60)}m"
+                        )
                     elif remaining > 60:
                         parts.append(f"ETA: {int(remaining // 60)}m {int(remaining % 60)}s")
                     else:
@@ -1135,7 +1135,7 @@ class FittingControllerWidget(Controller):
                     final_text = "Fitting finished!" if success else "Fitting aborted."
                     # Close immediately by default; user can override via settings.
                     try:
-                        delay_ms = int(cs.core.settings.gui.get('fit_progress_close_delay_ms', 0))
+                        delay_ms = int(cs.core.settings.gui.get("fit_progress_close_delay_ms", 0))
                     except Exception:
                         delay_ms = 0
                     dialog.finish(final_text=final_text, auto_close=True, close_delay_ms=delay_ms)
@@ -1151,8 +1151,7 @@ class FittingControllerWidget(Controller):
         self._record_history(
             action_type="fit_run_finish" if success else "fit_run_abort",
             summary=(
-                f"fit {'finished' if success else 'aborted'}: {self.fit.name} "
-                f"({elapsed_ms} ms)"
+                f"fit {'finished' if success else 'aborted'}: {self.fit.name} ({elapsed_ms} ms)"
             ),
             payload={
                 "fit_name": str(getattr(self.fit, "name", "")),
@@ -1192,10 +1191,10 @@ class FittingControllerWidget(Controller):
             cs.logging.exception("BFF model-search preparation failed")
             return
         if not prepared.supported:
-            details = "; ".join(
-                f"{reason.code}: {reason.message}"
-                for reason in prepared.reasons
-            ) or "the fit has no native model-search declaration"
+            details = (
+                "; ".join(f"{reason.code}: {reason.message}" for reason in prepared.reasons)
+                or "the fit has no native model-search declaration"
+            )
             cs.logging.warning(
                 f"BFF model search is unavailable for "
                 f"{getattr(fit, 'name', 'this fit')!r}: {details}"
@@ -1268,8 +1267,7 @@ class FittingControllerWidget(Controller):
 
         def _error(error):
             cs.logging.error(
-                f"BFF model search failed for "
-                f"{getattr(fit, 'name', 'fit')!r}: {error}"
+                f"BFF model search failed for {getattr(fit, 'name', 'fit')!r}: {error}"
             )
 
         run_in_background(
@@ -1354,7 +1352,7 @@ class FittingControllerWidget(Controller):
         self.spinBox_6.setValue(v)
 
     def onFitRangeChanged(self, event, xmin: int = None, xmax: int = None):
-        cs.logging.info(f'onFitRangeChanged: {xmin, xmax}')
+        cs.logging.info(f"onFitRangeChanged: {xmin, xmax}")
         if xmin is not None:
             self.xmin = xmin
         if xmax is not None:
@@ -1366,12 +1364,12 @@ class FittingControllerWidget(Controller):
                 xmin=self.xmin,
                 xmax=self.xmax,
             )
-        if getattr(self, '_is_2d_dataset', False):
+        if getattr(self, "_is_2d_dataset", False):
             try:
                 self._update_2d_mask_from_spinboxes()
             except Exception as e:
-                cs.logging.warning(f'Failed to update 2D mask from spinboxes: {e}')
-        if getattr(self, '_auto_fit_range_in_progress', False):
+                cs.logging.warning(f"Failed to update 2D mask from spinboxes: {e}")
+        if getattr(self, "_auto_fit_range_in_progress", False):
             return
         if fc is not None:
             fc.update_fit(
@@ -1385,8 +1383,7 @@ class FittingControllerWidget(Controller):
             try:
                 self.fit.update()
             except Exception as e:
-                cs.logging.warning(f'fit update after range change failed: {e}')
-
+                cs.logging.warning(f"fit update after range change failed: {e}")
 
     def onAutoFitRange(self):
         """Apply the reader-provided default fit range and update the fit."""
@@ -1410,7 +1407,7 @@ class FittingControllerWidget(Controller):
                 except Exception:
                     return
 
-            cs.logging.info(f'onAutoFitRange: {xmin_1d, xmax_1d}')
+            cs.logging.info(f"onAutoFitRange: {xmin_1d, xmax_1d}")
 
             try:
                 self._auto_fit_range_in_progress = True
@@ -1426,7 +1423,7 @@ class FittingControllerWidget(Controller):
                     pass
 
             try:
-                if getattr(self, '_is_2d_dataset', False) and self._2d_shape is not None:
+                if getattr(self, "_is_2d_dataset", False) and self._2d_shape is not None:
                     ny, nx = int(self._2d_shape[0]), int(self._2d_shape[1])
                     self.spinBox_2.setRange(0, max(0, nx - 1))
                     self.spinBox_4.setRange(0, max(0, nx - 1))
@@ -1447,7 +1444,7 @@ class FittingControllerWidget(Controller):
                     try:
                         self._update_2d_mask_from_spinboxes()
                     except Exception as e:
-                        cs.logging.warning(f'Failed to update 2D mask after 2D autofitrange: {e}')
+                        cs.logging.warning(f"Failed to update 2D mask after 2D autofitrange: {e}")
                 else:
                     self.xmin, self.xmax = (xmin_1d, xmax_1d)
                     if fc is not None and not range_applied_by_rpc:
@@ -1468,7 +1465,9 @@ class FittingControllerWidget(Controller):
                             try:
                                 fit.update()
                             except Exception as e:
-                                cs.logging.warning(f"Local fit update after auto fit range failed: {e}")
+                                cs.logging.warning(
+                                    f"Local fit update after auto fit range failed: {e}"
+                                )
                         try:
                             payload = {
                                 "fit_group": str(getattr(fit, "name", "")),
@@ -1478,12 +1477,14 @@ class FittingControllerWidget(Controller):
                                 "is_2d": is_2d,
                             }
                             if is_2d:
-                                payload.update({
-                                    "x_min": xmin_val,
-                                    "x_max": xmin2_val,
-                                    "y_min": xmax_val,
-                                    "y_max": xmax2_val,
-                                })
+                                payload.update(
+                                    {
+                                        "x_min": xmin_val,
+                                        "x_max": xmin2_val,
+                                        "y_min": xmax_val,
+                                        "y_max": xmax2_val,
+                                    }
+                                )
                             self._record_history(
                                 action_type="fit_range_set",
                                 summary=f"auto fit range for '{getattr(fit, 'name', '')}' to [{xmin_val}, {xmax_val})",
@@ -1550,7 +1551,6 @@ class FittingControllerWidget(Controller):
         populating this metadata; the controller itself stays agnostic of the
         concrete experiment/model types.
         """
-
         data = None
         try:
             data = self.fit.data
@@ -1567,16 +1567,16 @@ class FittingControllerWidget(Controller):
             return
 
         try:
-            meta_all = getattr(data, 'meta_data', {}) or {}
+            meta_all = getattr(data, "meta_data", {}) or {}
         except Exception:
             meta_all = {}
-        grid_meta = meta_all.get('grid', {}) or {}
+        grid_meta = meta_all.get("grid", {}) or {}
 
         try:
-            ndim = int(grid_meta.get('ndim', 1))
+            ndim = int(grid_meta.get("ndim", 1))
         except Exception:
             ndim = 1
-        shape = grid_meta.get('shape', None)
+        shape = grid_meta.get("shape", None)
 
         if ndim == 2 and shape is not None:
             try:
@@ -1585,7 +1585,7 @@ class FittingControllerWidget(Controller):
                     self._is_2d_dataset = True
                     self._2d_shape = (ny, nx)
                     self._grid_meta = grid_meta
-                    self._grid_order = grid_meta.get('order', 'C')
+                    self._grid_order = grid_meta.get("order", "C")
             except Exception:
                 pass
 
@@ -1611,15 +1611,23 @@ class FittingControllerWidget(Controller):
                 # Make sure the secondary spin boxes are visible and enabled
                 self.spinBox_4.setEnabled(True)
                 self.spinBox_6.setEnabled(True)
-                self._set_field_visible('xmin2', True)
-                self._set_field_visible('xmax2', True)
+                self._set_field_visible("xmin2", True)
+                self._set_field_visible("xmax2", True)
 
                 # Update mask when any of the 2D range spin boxes changes.
                 try:
-                    self.spinBox_2.editingFinished.connect(lambda: self._update_2d_mask_from_spinboxes())
-                    self.spinBox_4.editingFinished.connect(lambda: self._update_2d_mask_from_spinboxes())
-                    self.spinBox.editingFinished.connect(lambda: self._update_2d_mask_from_spinboxes())
-                    self.spinBox_6.editingFinished.connect(lambda: self._update_2d_mask_from_spinboxes())
+                    self.spinBox_2.editingFinished.connect(
+                        lambda: self._update_2d_mask_from_spinboxes()
+                    )
+                    self.spinBox_4.editingFinished.connect(
+                        lambda: self._update_2d_mask_from_spinboxes()
+                    )
+                    self.spinBox.editingFinished.connect(
+                        lambda: self._update_2d_mask_from_spinboxes()
+                    )
+                    self.spinBox_6.editingFinished.connect(
+                        lambda: self._update_2d_mask_from_spinboxes()
+                    )
                 except Exception:
                     pass
             else:
@@ -1628,17 +1636,17 @@ class FittingControllerWidget(Controller):
                 # suggesting a 2D selection.
                 self.spinBox_4.setEnabled(False)
                 self.spinBox_6.setEnabled(False)
-                self._set_field_visible('xmin2', False)
-                self._set_field_visible('xmax2', False)
+                self._set_field_visible("xmin2", False)
+                self._set_field_visible("xmax2", False)
         except Exception:
             pass
 
     def _update_2d_mask_from_spinboxes(self) -> None:
-        if not getattr(self, '_is_2d_dataset', False):
+        if not getattr(self, "_is_2d_dataset", False):
             return
 
         try:
-            data = self.fit.data
+            pass
         except Exception:
             return
 
@@ -1667,21 +1675,23 @@ class FittingControllerWidget(Controller):
                 )
             return
 
-        grid_meta = getattr(self, '_grid_meta', {}) or {}
+        grid_meta = getattr(self, "_grid_meta", {}) or {}
 
         mask_data = None
-        if 'row_indices' in grid_meta and 'col_indices' in grid_meta:
+        if "row_indices" in grid_meta and "col_indices" in grid_meta:
             try:
-                row_indices = np.asarray(grid_meta.get('row_indices'), dtype=np.int64)
-                col_indices = np.asarray(grid_meta.get('col_indices'), dtype=np.int64)
+                row_indices = np.asarray(grid_meta.get("row_indices"), dtype=np.int64)
+                col_indices = np.asarray(grid_meta.get("col_indices"), dtype=np.int64)
             except Exception:
                 return
             if row_indices.size == 0 or col_indices.size == 0:
                 return
             n = min(row_indices.size, col_indices.size)
             mask = (
-                (col_indices[:n] >= x0) & (col_indices[:n] <= x1) &
-                (row_indices[:n] >= y0) & (row_indices[:n] <= y1)
+                (col_indices[:n] >= x0)
+                & (col_indices[:n] <= x1)
+                & (row_indices[:n] >= y0)
+                & (row_indices[:n] <= y1)
             )
             mask_data = mask.astype(float)
         else:
@@ -1690,10 +1700,7 @@ class FittingControllerWidget(Controller):
             except Exception:
                 ny_img, nx_img = ny, nx
             yy, xx = np.indices((ny_img, nx_img))
-            mask_2d = (
-                (xx >= x0) & (xx <= x1) &
-                (yy >= y0) & (yy <= y1)
-            )
+            mask_2d = (xx >= x0) & (xx <= x1) & (yy >= y0) & (yy <= y1)
             mask_data = mask_2d.ravel().astype(float)
 
         if mask_data is not None:

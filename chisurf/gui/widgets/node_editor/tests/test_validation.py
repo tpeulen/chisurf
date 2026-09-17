@@ -20,10 +20,10 @@ def test_valid_minimal_graph():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             }
         ],
-        "edges": []
+        "edges": [],
     }
     validate_graph_dict(data)  # Should not raise
 
@@ -40,7 +40,7 @@ def test_valid_graph_with_edge():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             },
             {
                 "id": "n1",
@@ -50,12 +50,10 @@ def test_valid_graph_with_edge():
                 "outputs": [],
                 "config": {},
                 "pos": [100.0, 0.0],
-                "collapsed": False
-            }
+                "collapsed": False,
+            },
         ],
-        "edges": [
-            {"source": "n0", "source_port": 0, "target": "n1", "target_port": 0}
-        ]
+        "edges": [{"source": "n0", "source_port": 0, "target": "n1", "target_port": 0}],
     }
     validate_graph_dict(data)  # Should not raise
 
@@ -85,7 +83,7 @@ def test_invalid_duplicate_node_id():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             },
             {
                 "id": "n0",  # Duplicate
@@ -95,10 +93,10 @@ def test_invalid_duplicate_node_id():
                 "outputs": [],
                 "config": {},
                 "pos": [100.0, 0.0],
-                "collapsed": False
-            }
+                "collapsed": False,
+            },
         ],
-        "edges": []
+        "edges": [],
     }
     with pytest.raises(NodeGraphValidationError, match="Duplicate node id"):
         validate_graph_dict(data)
@@ -116,10 +114,10 @@ def test_invalid_missing_node_field():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             }
         ],
-        "edges": []
+        "edges": [],
     }
     with pytest.raises(NodeGraphValidationError, match="Missing required field 'title'"):
         validate_graph_dict(data)
@@ -137,12 +135,10 @@ def test_invalid_edge_invalid_source():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             }
         ],
-        "edges": [
-            {"source": "nonexistent", "source_port": 0, "target": "n0", "target_port": 0}
-        ]
+        "edges": [{"source": "nonexistent", "source_port": 0, "target": "n0", "target_port": 0}],
     }
     with pytest.raises(NodeGraphValidationError, match="Invalid source node"):
         validate_graph_dict(data)
@@ -160,12 +156,10 @@ def test_invalid_edge_negative_port():
                 "outputs": ["Value"],
                 "config": {},
                 "pos": [0.0, 0.0],
-                "collapsed": False
+                "collapsed": False,
             }
         ],
-        "edges": [
-            {"source": "n0", "source_port": -1, "target": "n0", "target_port": 0}
-        ]
+        "edges": [{"source": "n0", "source_port": -1, "target": "n0", "target_port": 0}],
     }
     with pytest.raises(NodeGraphValidationError, match="source_port must be non-negative integer"):
         validate_graph_dict(data)

@@ -15,6 +15,7 @@ copies had drifted into three different rules:
 Nothing here needs Qt, so the rule is testable at the level it exists at, and
 the last test refuses to let a fourth copy appear.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -27,9 +28,7 @@ from chisurf.core.console import dispatch
 # --------------------------------------------------------------------------- #
 # The rule
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize(
-    "line", ["ray", "split_chains", "orient", "zoom", "undo", "reinit"]
-)
+@pytest.mark.parametrize("line", ["ray", "split_chains", "orient", "zoom", "undo", "reinit"])
 def test_a_bare_command_is_a_command(line):
     """Valid Python, and bound to nothing -- evaluating it can only raise."""
     assert dispatch.is_command(line, namespace={})
@@ -125,10 +124,8 @@ def test_no_prompt_reimplements_the_rule():
         if not path.is_file():
             pytest.skip(f"missing {path}")
         source = path.read_text()
-        assert "dispatch.is_command" in source, (
-            f"{path.name} does not use the shared rule"
-        )
-        assert 'compile(' not in source, (
+        assert "dispatch.is_command" in source, f"{path.name} does not use the shared rule"
+        assert "compile(" not in source, (
             f"{path.name} compiles the line itself -- that is the rule being "
             f"written out a fourth time; call chisurf.core.console.dispatch"
         )

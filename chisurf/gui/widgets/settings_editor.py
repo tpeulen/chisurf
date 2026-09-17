@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import pathlib
-import yaml
-import re
 import os
+import pathlib
+import re
 
+import yaml
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
-import chisurf.core.fio as io
-from chisurf import logging
 import chisurf.core.settings
-from chisurf.core.settings import cs_settings
+from chisurf import logging
 from chisurf.gui import dialogs
 
 LIST_SEP = "|"
@@ -147,6 +145,7 @@ def _build_help_section_map_for_file(basename: str) -> dict[str, str]:
     # Unknown YAML file: no mapping
     return {}
 
+
 def _build_documentation_dict() -> dict:
     """Build a mapping from setting keys to their descriptions from the markdown docs."""
     try:
@@ -158,16 +157,18 @@ def _build_documentation_dict() -> dict:
         text = md_path.read_text(encoding="utf-8")
     except Exception:
         return {}
-    
+
     doc_dict = {}
     current_root = None
     current_keys = []
     current_desc = []
-    
+
     def save_current():
-        if not current_keys: return
+        if not current_keys:
+            return
         desc = " ".join(current_desc).strip()
-        if not desc: return
+        if not desc:
+            return
         for k in current_keys:
             if current_root:
                 doc_dict[f"{current_root}.{k}"] = desc
@@ -175,7 +176,7 @@ def _build_documentation_dict() -> dict:
                 doc_dict[k] = desc
 
     for line in text.splitlines():
-        m_root = re.match(r'^###\s+[\d\.]+\s+`([^`]+)`(.*)', line)
+        m_root = re.match(r"^###\s+[\d\.]+\s+`([^`]+)`(.*)", line)
         if m_root:
             save_current()
             current_root = m_root.group(1)
@@ -188,21 +189,21 @@ def _build_documentation_dict() -> dict:
             current_keys = []
             current_desc = []
             continue
-            
-        if re.match(r'^###\s+[\d\.]+\s+Top', line, re.IGNORECASE):
+
+        if re.match(r"^###\s+[\d\.]+\s+Top", line, re.IGNORECASE):
             save_current()
             current_root = None
             current_keys = []
             current_desc = []
             continue
-            
-        if re.match(r'^- \*\*', line):
+
+        if re.match(r"^- \*\*", line):
             save_current()
-            keys_raw = re.findall(r'\*\*`?([^`\*]+)`?\*\*', line)
+            keys_raw = re.findall(r"\*\*`?([^`\*]+)`?\*\*", line)
             if keys_raw:
                 current_keys = keys_raw
             current_desc = []
-            
+
             after_keys = line
             for kr in keys_raw:
                 after_keys = after_keys.replace(f"**`{kr}`**", "").replace(f"**{kr}**", "")
@@ -210,7 +211,7 @@ def _build_documentation_dict() -> dict:
             if after_keys:
                 current_desc.append(after_keys)
             continue
-            
+
         if current_keys:
             if line.startswith("###"):
                 pass
@@ -218,9 +219,10 @@ def _build_documentation_dict() -> dict:
                 continue
             else:
                 current_desc.append(line.strip())
-                
+
     save_current()
     return doc_dict
+
 
 # Custom YAML representer for floats to preserve scientific notation
 def float_representer(dumper, value):
@@ -244,26 +246,27 @@ def float_representer(dumper, value):
         # Format with scientific notation, preserving precision
         text = f"{value:.10e}"
         # Remove trailing zeros in the exponent part
-        text = re.sub(r'e(\+|-)0*(\d+)', r'e\1\2', text)
+        text = re.sub(r"e(\+|-)0*(\d+)", r"e\1\2", text)
         # Remove trailing zeros in the mantissa part
-        text = re.sub(r'\.(\d*?)0+e', r'.\1e', text)
+        text = re.sub(r"\.(\d*?)0+e", r".\1e", text)
         # If mantissa ends with a decimal point, remove it
-        text = re.sub(r'\.e', r'e', text)
-        
+        text = re.sub(r"\.e", r"e", text)
+
         # Ensure we preserve the original format for extreme values
         if abs(value) < 1e-10 or abs(value) > 1e10:
             # For extreme values, ensure we keep the decimal point and at least one digit
-            if '.0e' in text:
+            if ".0e" in text:
                 # Already has the format we want
                 pass
-            elif 'e' in text and '.' not in text:
+            elif "e" in text and "." not in text:
                 # Add .0 before the exponent
-                text = text.replace('e', '.0e')
-        
-        return dumper.represent_scalar('tag:yaml.org,2002:float', text)
+                text = text.replace("e", ".0e")
+
+        return dumper.represent_scalar("tag:yaml.org,2002:float", text)
     else:
         # Use default representation for regular floats
-        return dumper.represent_scalar('tag:yaml.org,2002:float', str(value))
+        return dumper.represent_scalar("tag:yaml.org,2002:float", str(value))
+
 
 class SettingsDumper(yaml.Dumper):
     """Dumper that writes the settings file's floats in scientific notation.
@@ -303,7 +306,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
         if not isinstance(value, str):
             return False
         # Match standard hex color format: #RRGGBB
-        return bool(re.match(r'^#[0-9A-Fa-f]{6}$', value))
+        return bool(re.match(r"^#[0-9A-Fa-f]{6}$", value))
 
     def paint(self, painter, option, index):
         """Custom painting for color values."""
@@ -328,7 +331,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
                 painter.drawRect(color_rect)
 
                 # Draw text
-                text_rect = QtCore.QRect(rect.left() + 30, rect.top(), rect.width() - 35, rect.height())
+                text_rect = QtCore.QRect(
+                    rect.left() + 30, rect.top(), rect.width() - 35, rect.height()
+                )
                 painter.setPen(text_color)
                 painter.drawText(text_rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, value)
                 return
@@ -362,10 +367,12 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             return self._create_folder_editor(parent, value, tooltip)
 
         # Create appropriate editor based on data type
-        if data_type == bool or (isinstance(value, str) and value.strip().lower() in ("true", "false")):
+        if data_type is bool or (
+            isinstance(value, str) and value.strip().lower() in ("true", "false")
+        ):
             editor = QtWidgets.QCheckBox(parent)
             # Determine checked state robustly for both bools and string booleans
-            checked = value if data_type == bool else (str(value).strip().lower() == "true")
+            checked = value if data_type is bool else (str(value).strip().lower() == "true")
             editor.setChecked(bool(checked))
             if tooltip:
                 editor.setToolTip(tooltip)
@@ -376,7 +383,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             # For hex color values, use a color dialog
             button = QtWidgets.QPushButton(parent)
             button.setText(value)
-            button.setStyleSheet(f"background-color: {value}; color: {'black' if sum(QtGui.QColor(value).getRgb()[:3]) > 382 else 'white'};")
+            button.setStyleSheet(
+                f"background-color: {value}; color: {'black' if sum(QtGui.QColor(value).getRgb()[:3]) > 382 else 'white'};"
+            )
             button.clicked.connect(lambda: self._choose_color(button))
             if tooltip:
                 button.setToolTip(tooltip)
@@ -390,21 +399,21 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             return editor
         elif data_type in (int, float):
             # For numbers, use a spin box or line edit depending on the value
-            if data_type == int:
+            if data_type is int:
                 editor = QtWidgets.QSpinBox(parent)
                 # The range must contain the value, or Qt clamps it and the
                 # clamped number is what gets saved. A fixed +/-1e6 silently
                 # rewrote database.read_file_size_limit (104857600) and
                 # data_loading.probe_bytes (16777216) the moment either row was
                 # opened. Qt's own int range is the real ceiling here.
-                limit = 2 ** 31 - 1
+                limit = 2**31 - 1
                 span = max(abs(int(value)) * 2, 1_000_000)
                 editor.setRange(max(-span, -limit), min(span, limit))
                 editor.setValue(value)
             else:
                 # Check if the float is in scientific notation or has many decimal places
                 str_value = str(value)
-                if 'e' in str_value.lower() or abs(value) < 0.0001 or abs(value) > 1000000:
+                if "e" in str_value.lower() or abs(value) < 0.0001 or abs(value) > 1000000:
                     # For scientific notation or extreme values, use a line edit
                     editor = QtWidgets.QLineEdit(parent)
                     editor.setText(str_value)
@@ -529,7 +538,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             logging.log(1, f"Error while listing package styles: {e}")
 
         try:
-            user_styles_dir = cs.core.settings.get_path('settings') / 'styles'
+            user_styles_dir = cs.core.settings.get_path("settings") / "styles"
             if user_styles_dir.is_dir():
                 for p in sorted(user_styles_dir.glob("*.qss")):
                     name = p.name
@@ -598,7 +607,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
         if color.isValid():
             hex_color = f"#{color.red():02x}{color.green():02x}{color.blue():02x}"
             button.setText(hex_color)
-            button.setStyleSheet(f"background-color: {hex_color}; color: {'black' if sum(color.getRgb()[:3]) > 382 else 'white'};")
+            button.setStyleSheet(
+                f"background-color: {hex_color}; color: {'black' if sum(color.getRgb()[:3]) > 382 else 'white'};"
+            )
 
     def _browse_file(self, line_edit):
         """Open a file dialog and set the selected file path."""
@@ -682,7 +693,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             model.setData(index, new_value, QtCore.Qt.UserRole)
             return
 
-        if data_type == bool:
+        if data_type is bool:
             # For boolean values, get from checkbox
             if hasattr(editor, "isChecked"):
                 try:
@@ -692,7 +703,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             else:
                 # Fallback in case of unexpected editor type
                 try:
-                    new_value = (str(editor.currentText()) == "True")
+                    new_value = str(editor.currentText()) == "True"
                 except Exception:
                     new_value = bool(value)
             model.setData(index, new_value, QtCore.Qt.EditRole)
@@ -718,12 +729,12 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
 
             model.setData(index, type(value)(items), QtCore.Qt.EditRole)
             model.setData(index, type(value)(items), QtCore.Qt.UserRole)
-        elif data_type == int:
+        elif data_type is int:
             # For integers, get from spin box
             spin_box = editor
             model.setData(index, spin_box.value(), QtCore.Qt.EditRole)
             model.setData(index, spin_box.value(), QtCore.Qt.UserRole)
-        elif data_type == float:
+        elif data_type is float:
             # For floats, get from double spin box or line edit
             if isinstance(editor, QtWidgets.QDoubleSpinBox):
                 new_value = editor.value()
@@ -739,7 +750,9 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
                     model.setData(index, new_value, QtCore.Qt.UserRole)
                 except ValueError:
                     # If conversion fails, keep the original value
-                    logging.log(1, f"Warning: Could not convert '{text}' to float. Using original value.")
+                    logging.log(
+                        1, f"Warning: Could not convert '{text}' to float. Using original value."
+                    )
                     model.setData(index, value, QtCore.Qt.EditRole)
                     model.setData(index, value, QtCore.Qt.UserRole)
         elif isinstance(value, str) and os.path.sep in value:
@@ -755,7 +768,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
 
             # Try to convert to the original data type
             try:
-                if data_type != str:
+                if data_type is not str:
                     converted_value = data_type(text)
                     model.setData(index, converted_value, QtCore.Qt.EditRole)
                     model.setData(index, converted_value, QtCore.Qt.UserRole)
@@ -859,7 +872,7 @@ class SettingsTreeModel(QtGui.QStandardItemModel):
             elif isinstance(value, float):
                 # For floats, preserve scientific notation if present
                 str_value = str(value)
-                if 'e' in str_value.lower():
+                if "e" in str_value.lower():
                     # Ensure scientific notation is preserved
                     value_item.setText(str_value)
                 else:
@@ -882,9 +895,10 @@ class SettingsTreeModel(QtGui.QStandardItemModel):
             help_item = QtGui.QStandardItem()
             help_item.setEditable(False)
             topic = get_help_topic_for_setting(current_path, getattr(self, "source_filename", None))
-            
+
             if desc:
                 import textwrap
+
                 wrapped_desc = textwrap.fill(desc, width=60)
                 help_item.setText(wrapped_desc)
                 help_item.setToolTip(desc)
@@ -1070,7 +1084,7 @@ class SettingsEditor(QtWidgets.QWidget):
         filename: str = None,
         documentation_dict: dict = None,
         window_title: str = "Settings Editor",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the settings editor.
@@ -1128,8 +1142,9 @@ class SettingsEditor(QtWidgets.QWidget):
         self.tree_view = QtWidgets.QTreeView()
         self.tree_view.setAlternatingRowColors(True)
         self.tree_view.setSortingEnabled(False)
-        self.tree_view.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked | 
-                                       QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.tree_view.setEditTriggers(
+            QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed
+        )
         self.tree_view.setWordWrap(True)
 
         # Create model
@@ -1189,6 +1204,7 @@ class SettingsEditor(QtWidgets.QWidget):
         Walks the settings tree comparing each value cell's resolved path via the
         delegate; returns ``None`` when the path is absent.
         """
+
         def walk(item):
             for r in range(item.rowCount()):
                 key_item = item.child(r, 0)
@@ -1270,7 +1286,7 @@ class SettingsEditor(QtWidgets.QWidget):
             self.tree_view.resizeRowsToContents()
 
             # Clear search bar to show all items
-            if hasattr(self, 'search_bar'):
+            if hasattr(self, "search_bar"):
                 self.search_bar.clear()
 
         except Exception as e:
@@ -1363,11 +1379,15 @@ class SettingsEditor(QtWidgets.QWidget):
 
             # Show this row if it matches or has matching children
             if key_match or value_match or child_match:
-                index = self.tree_view.model().index(row, 0, self.tree_view.model().indexFromItem(item))
+                index = self.tree_view.model().index(
+                    row, 0, self.tree_view.model().indexFromItem(item)
+                )
                 self.tree_view.setRowHidden(row, index.parent(), False)
                 match_found = True
             else:
-                index = self.tree_view.model().index(row, 0, self.tree_view.model().indexFromItem(item))
+                index = self.tree_view.model().index(
+                    row, 0, self.tree_view.model().indexFromItem(item)
+                )
                 self.tree_view.setRowHidden(row, index.parent(), True)
 
         return match_found
@@ -1393,19 +1413,15 @@ class SettingsEditor(QtWidgets.QWidget):
             settings_dict = _overrides_only(self.filename, settings_dict)
 
             # Save to file
-            with open(self.filename, 'w', encoding="utf-8") as file:
-                yaml.dump(
-                    settings_dict, file, default_flow_style=False, Dumper=SettingsDumper
-                )
+            with open(self.filename, "w", encoding="utf-8") as file:
+                yaml.dump(settings_dict, file, default_flow_style=False, Dumper=SettingsDumper)
 
             self.path_label.setText(str(self.filename))
             logging.log(0, f"Settings saved to {self.filename}")
 
         except Exception as e:
             logging.log(1, f"Error saving settings to {self.filename}: {e}")
-            dialogs.error(
-                self, "Save Error", f"Error saving settings: {str(e)}"
-            )
+            dialogs.error(self, "Save Error", f"Error saving settings: {str(e)}")
 
     def on_tree_view_clicked(self, index: QtCore.QModelIndex):
         """Handle clicks in the settings tree.
@@ -1467,7 +1483,9 @@ class SettingsEditor(QtWidgets.QWidget):
             if window is None or not isinstance(window, help_plugin.HelpWidget):
                 window = help_plugin.HelpWidget()
                 try:
-                    window.destroyed.connect(lambda _=None: setattr(cs, "_settings_help_window", None))
+                    window.destroyed.connect(
+                        lambda _=None: setattr(cs, "_settings_help_window", None)
+                    )
                 except Exception:
                     pass
                 cs._settings_help_window = window
@@ -1555,6 +1573,7 @@ class SettingsEditor(QtWidgets.QWidget):
 
 if __name__ == "__main__":
     import sys
+
     from qtpy.QtWidgets import QApplication
 
     app = QApplication(sys.argv)

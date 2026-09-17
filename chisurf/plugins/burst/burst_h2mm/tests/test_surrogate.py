@@ -8,9 +8,7 @@ import pytest
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
 from chisurf.plugins.burst.burst_h2mm.core import surrogate as S
 
-pytestmark = pytest.mark.skipif(
-    not S.surrogate_available(), reason="scikit-learn not installed"
-)
+pytestmark = pytest.mark.skipif(not S.surrogate_available(), reason="scikit-learn not installed")
 
 
 def _two_state_data(seed=1, n_bursts=200):
@@ -52,9 +50,14 @@ def test_encode_decode_roundtrip():
 def test_train_predict_recovers_states():
     # Small/fast training run — enough to recover a clear 2-state model.
     sm = S.train_surrogate(
-        n_states=2, n_streams=2, n_samples=400,
-        hidden_layer_sizes=(128, 64), max_iter=300,
-        n_bursts=120, burst_len=70, seed=3,
+        n_states=2,
+        n_streams=2,
+        n_samples=400,
+        hidden_layer_sizes=(128, 64),
+        max_iter=300,
+        n_bursts=120,
+        burst_len=70,
+        seed=3,
     )
     data, gt = _two_state_data(seed=7, n_bursts=250)
     est = sm.predict(data)
@@ -77,18 +80,21 @@ def test_estimate_via_fit_one_and_refine():
     ``"surrogate-refine"`` is the entry point, and ``fit_states`` is plain EM.
     """
     sm = S.train_surrogate(
-        n_states=2, n_streams=2, n_samples=400,
-        hidden_layer_sizes=(128, 64), max_iter=300,
-        n_bursts=120, burst_len=70, seed=3,
+        n_states=2,
+        n_streams=2,
+        n_samples=400,
+        hidden_layer_sizes=(128, 64),
+        max_iter=300,
+        n_bursts=120,
+        burst_len=70,
+        seed=3,
     )
     data, _ = _two_state_data(seed=9, n_bursts=250)
 
     one_shot = engines.fit_one(data, 2, "surrogate", surrogates={2: sm})
     assert one_shot.n_states == 2
 
-    refined = engines.fit_one(
-        data, 2, "surrogate-refine", surrogates={2: sm}, refine_iters=50
-    )
+    refined = engines.fit_one(data, 2, "surrogate-refine", surrogates={2: sm}, refine_iters=50)
     # Polishing must not lower the likelihood below the pure surrogate estimate.
     assert np.isfinite(refined.loglik)
     assert refined.n_iter > 0
@@ -96,8 +102,14 @@ def test_estimate_via_fit_one_and_refine():
 
 def test_save_load_roundtrip(tmp_path):
     sm = S.train_surrogate(
-        n_states=2, n_streams=2, n_samples=200,
-        hidden_layer_sizes=(64,), max_iter=150, n_bursts=80, burst_len=60, seed=1,
+        n_states=2,
+        n_streams=2,
+        n_samples=200,
+        hidden_layer_sizes=(64,),
+        max_iter=150,
+        n_bursts=80,
+        burst_len=60,
+        seed=1,
     )
     p = tmp_path / "surrogate.pkl"
     sm.save(p)

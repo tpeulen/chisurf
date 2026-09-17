@@ -12,8 +12,11 @@ class ImgPixelPhasorTool(ImagingMapTool):
 
     def __init__(self, parent=None, embedded: bool = False, view_model=None, **kwargs):
         super().__init__(
-            view_model or PhasorImgViewModel(), title="Phasor-FLIM",
-            parent=parent, embedded=embedded, **kwargs,
+            view_model or PhasorImgViewModel(),
+            title="Phasor-FLIM",
+            parent=parent,
+            embedded=embedded,
+            **kwargs,
         )
         self.cursor_overlay = self._connect_cursors()
 
@@ -36,8 +39,9 @@ class ImgPixelPhasorTool(ImagingMapTool):
         if editor is None or plane is None:
             return None
 
-        overlay = RegionOverlay(plane, lambda: self.model.cursors,
-                                on_change=self._on_cursors_changed)
+        overlay = RegionOverlay(
+            plane, lambda: self.model.cursors, on_change=self._on_cursors_changed
+        )
         editor.changed.connect(self._on_cursors_changed)
         editor.changed.connect(overlay.refresh)
         editor.selectionChanged.connect(overlay.select)

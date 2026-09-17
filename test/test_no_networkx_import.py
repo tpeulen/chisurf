@@ -27,9 +27,7 @@ _ALLOWED = {
     "test/test_no_networkx_import.py",
 }
 
-_IMPORT_PATTERN = re.compile(
-    r"^\s*(?:import\s+networkx|from\s+networkx[\s.])", re.MULTILINE
-)
+_IMPORT_PATTERN = re.compile(r"^\s*(?:import\s+networkx|from\s+networkx[\s.])", re.MULTILINE)
 
 
 def _python_sources():

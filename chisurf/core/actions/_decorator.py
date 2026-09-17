@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import functools
 import inspect
 import threading
+
 import chisurf as cs
 from chisurf import typing
 
@@ -59,15 +61,20 @@ def action(
     side_effect_class : str
         Broad category of side-effect: ``"state"``, ``"execution"``, ``"diagnostic"``.
     """
+
     def decorator(func: typing.Callable[..., typing.Any]):
-        from chisurf.core.actions._infra import ActionSpec
         import chisurf as cs
+        from chisurf.core.actions._infra import ActionSpec
+
         effective_schema = schema
         if effective_schema is None:
             effective_schema = {}
             sig = inspect.signature(func)
             for pname, param in sig.parameters.items():
-                if param.default is inspect.Parameter.empty and param.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                if param.default is inspect.Parameter.empty and param.kind not in (
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD,
+                ):
                     ann = param.annotation
                     if ann is not inspect.Parameter.empty:
                         effective_schema[pname] = ann

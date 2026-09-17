@@ -27,14 +27,14 @@ def _two_lifetime_model(frequency_mhz=80.0, tau_a=3.2, tau_b=1.6):
     rng = np.random.default_rng(7)
     ny = nx = 64
     yy, xx = np.mgrid[0:ny, 0:nx]
-    left = (xx < nx // 2)
+    left = xx < nx // 2
     tau = np.where(left, tau_a, tau_b)
     photons = rng.poisson(400.0, (ny, nx)).astype(float)
 
-    omega = 2.0 * np.pi * frequency_mhz * 1e-3      # rad/ns
+    omega = 2.0 * np.pi * frequency_mhz * 1e-3  # rad/ns
     wt = omega * tau
-    g = 1.0 / (1.0 + wt ** 2)
-    s = wt / (1.0 + wt ** 2)
+    g = 1.0 / (1.0 + wt**2)
+    s = wt / (1.0 + wt**2)
     noise = 0.005
     g = g + rng.normal(0, noise, (ny, nx))
     s = s + rng.normal(0, noise, (ny, nx))
@@ -45,7 +45,7 @@ def _two_lifetime_model(frequency_mhz=80.0, tau_a=3.2, tau_b=1.6):
 
     def phasor_of(t):
         w = omega * t
-        return 1.0 / (1.0 + w ** 2), w / (1.0 + w ** 2)
+        return 1.0 / (1.0 + w**2), w / (1.0 + w**2)
 
     return vm, phasor_of(tau_a), phasor_of(tau_b), left
 
@@ -70,8 +70,9 @@ def test_the_density_is_drawn_with_g_horizontal_and_lands_on_the_semicircle():
     density = vm.phasor_histogram_map(bins=200)
 
     g, s = _peak_coordinates(density, vm.PHASOR_G_RANGE, vm.PHASOR_S_RANGE)
-    assert (g, s) == pytest.approx((ga, sa), abs=0.02) or \
-           (g, s) == pytest.approx((gb, sb), abs=0.02)
+    assert (g, s) == pytest.approx((ga, sa), abs=0.02) or (g, s) == pytest.approx(
+        (gb, sb), abs=0.02
+    )
 
     # On the semicircle of centre (0.5, 0) and radius 0.5, to within a bin.
     assert np.hypot(g - 0.5, s) == pytest.approx(0.5, abs=0.02)
@@ -79,11 +80,11 @@ def test_the_density_is_drawn_with_g_horizontal_and_lands_on_the_semicircle():
 
 def test_the_movie_frames_use_the_same_orientation_as_the_static_map():
     """Two sources for one plot; disagreeing about axes is how one rots."""
+    import inspect
+
     from chisurf.plugins.microscopy.img_pixel_phasor.gui.view_model import (
         PhasorImgViewModel,
     )
-
-    import inspect
 
     source = inspect.getsource(PhasorImgViewModel.phasor_histogram_frames)
     assert "hist.T" in source, "the movie stack must transpose like the static map"
@@ -111,9 +112,9 @@ def test_two_cursors_combine_and_one_can_be_switched_off():
     vm.cursors.add(EllipseROI(ga, sa, 0.03, 0.03, name="unquenched"))
     vm.cursors.add(EllipseROI(gb, sb, 0.03, 0.03, name="FRET"))
 
-    assert vm.cursor_mask().mean() > 0.95          # union covers both halves
+    assert vm.cursor_mask().mean() > 0.95  # union covers both halves
     vm.cursors.set_enabled("FRET", False)
-    assert vm.cursor_mask()[~left].mean() < 0.05   # and drops one when unticked
+    assert vm.cursor_mask()[~left].mean() < 0.05  # and drops one when unticked
 
 
 def test_inverting_a_cursor_selects_everything_else():

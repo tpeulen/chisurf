@@ -14,6 +14,7 @@ what made a hand-written *model widget* definable at all. There are none left
 (PRD-38), ``model_widget.py`` is deleted, and the file had been red since the
 module it named as its worked example was removed.
 """
+
 from __future__ import annotations
 
 import importlib

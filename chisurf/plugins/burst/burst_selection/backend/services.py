@@ -11,8 +11,6 @@ from typing import TYPE_CHECKING, Any
 
 from chisurf.core.datastore import rows_from_table
 
-from ..api.features import extract_features, fit_gmm
-from ..api.io import load_tttr
 from ..api.contract import (
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
@@ -23,6 +21,8 @@ from ..api.contract import (
     contract_descriptor,
     service_success,
 )
+from ..api.features import extract_features, fit_gmm
+from ..api.io import load_tttr
 from ..api.mmfdb import BurstMMFDBPipeline, registration_result_to_payload
 from ..api.models import AnalysisSettings
 from ..api.selection import analyze_request
@@ -37,10 +37,10 @@ if TYPE_CHECKING:
 def register_services(
     dispatcher: Any,
     *,
-    mmfdb_db: "MMFDBClientBase | None" = None,
-    mmfdb_db_provider: "Callable[[], MMFDBClientBase | None] | None" = None,
-    mmfdb_session: "SessionContext | None" = None,
-    mmfdb_session_provider: "Callable[[], SessionContext | None] | None" = None,
+    mmfdb_db: MMFDBClientBase | None = None,
+    mmfdb_db_provider: Callable[[], MMFDBClientBase | None] | None = None,
+    mmfdb_session: SessionContext | None = None,
+    mmfdb_session_provider: Callable[[], SessionContext | None] | None = None,
 ) -> None:
     """Register Burst Selection RPC handlers with a ServiceDispatcher.
 
@@ -107,9 +107,9 @@ def analyze_files_handler(
     selected_setup: str | None = None,
     legacy_parameters: dict[str, Any] | None = None,
     mmfdb: dict[str, Any] | None = None,
-    mmfdb_db: "MMFDBClientBase | None" = None,
-    mmfdb_session: "SessionContext | None" = None,
-    progress_callback: "Callable[[int, int, str], None] | None" = None,
+    mmfdb_db: MMFDBClientBase | None = None,
+    mmfdb_session: SessionContext | None = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, Any]:
     """Run Burst Selection analysis over TTTR files.
 
@@ -184,17 +184,17 @@ def analyze_files_handler(
 
 
 def _provided_db(
-    db: "MMFDBClientBase | None",
-    provider: "Callable[[], MMFDBClientBase | None] | None",
-) -> "MMFDBClientBase | None":
+    db: MMFDBClientBase | None,
+    provider: Callable[[], MMFDBClientBase | None] | None,
+) -> MMFDBClientBase | None:
     """Resolve a request-scoped database supplied by the composition root."""
     return provider() if provider is not None else db
 
 
 def _provided_session(
-    session: "SessionContext | None",
-    provider: "Callable[[], SessionContext | None] | None",
-) -> "SessionContext | None":
+    session: SessionContext | None,
+    provider: Callable[[], SessionContext | None] | None,
+) -> SessionContext | None:
     """Resolve a request-scoped authenticated session."""
     return provider() if provider is not None else session
 
@@ -307,9 +307,7 @@ def diagnostics_handler(
     try:
         import numpy as np
 
-        analysis_settings = (
-            settings_from_dict(settings) if settings else AnalysisSettings()
-        )
+        analysis_settings = settings_from_dict(settings) if settings else AnalysisSettings()
         tttr = load_tttr(path)
         from ..api.selection import apply_photon_filters, find_bursts
 

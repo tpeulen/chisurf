@@ -254,11 +254,13 @@ class RegionMleViewModel(MleObserverMixin):
                 tau = float(rec.get("tau", float("nan")))
                 # Un-fitted (preview) molecules show their area instead of τ.
                 badge = f"τ={tau:.2f} ns" if np.isfinite(tau) else f"{int(rec.get('area', 0))} px"
-                entries.append({
-                    "id": idx,
-                    "label": f"{file_tag}Region {int(rec.get('label', idx))}",
-                    "badge": badge,
-                })
+                entries.append(
+                    {
+                        "id": idx,
+                        "label": f"{file_tag}Region {int(rec.get('label', idx))}",
+                        "badge": badge,
+                    }
+                )
                 idx += 1
         return entries
 
@@ -311,7 +313,8 @@ class RegionMleViewModel(MleObserverMixin):
         if model.size != data.size:
             model = np.zeros_like(data)
         return decay_curves(
-            data, model,
+            data,
+            model,
             irf=self.settings.irf,
             background=self.settings.background,
         )
@@ -330,7 +333,9 @@ class RegionMleViewModel(MleObserverMixin):
         if row < len(result.model_curves):
             model = np.asarray(result.model_curves[row], dtype=float)
             if model.size == data.size:
-                series.append({"x": x, "y": model, "name": "Fit", "color": "#ef4444", "style": "dash"})
+                series.append(
+                    {"x": x, "y": model, "name": "Fit", "color": "#ef4444", "style": "dash"}
+                )
         return series
 
     def current_molecule_info(self) -> str:
@@ -453,9 +458,7 @@ class RegionMleViewModel(MleObserverMixin):
 
         # Through the frame boundary: `concat_stores` refuses a frame, and a
         # result computed before the store migration is still one.
-        tables = [
-            as_table(r.dataframe) for r in self.results if row_count(r.dataframe)
-        ]
+        tables = [as_table(r.dataframe) for r in self.results if row_count(r.dataframe)]
         if not tables:
             self.status_text = "No regions to export."
             self.notify("done")
@@ -463,8 +466,7 @@ class RegionMleViewModel(MleObserverMixin):
         sep = "," if str(path).lower().endswith(".csv") else "\t"
         combined = concat_stores(tables)
         write_csv_table(path, combined, delimiter=sep)
-        self.status_text = (
-            f"Exported {row_count(combined)} region(s) to {pathlib.Path(path).name}")
+        self.status_text = f"Exported {row_count(combined)} region(s) to {pathlib.Path(path).name}"
         self.notify("exported")
         return str(path)
 
@@ -618,24 +620,26 @@ class RegionMleViewModel(MleObserverMixin):
         names = column_names(df)
         if "source_ptu" in names:
             sources = np.asarray(df["source_ptu"]).astype(str)
-            groups = [(s, take_where(df, sources == s))
-                      for s in dict.fromkeys(sources.tolist())]
+            groups = [(s, take_where(df, sources == s)) for s in dict.fromkeys(sources.tolist())]
         else:
             groups = [(str(p), df)]
         for source, sub in groups:
             intensity = self._load_intensity(p, source)
             centroids = (
-                np.column_stack([numeric_column(sub, "centroid_row"),
-                                 numeric_column(sub, "centroid_col")])
+                np.column_stack(
+                    [numeric_column(sub, "centroid_row"), numeric_column(sub, "centroid_col")]
+                )
                 if {"centroid_row", "centroid_col"}.issubset(column_names(sub))
                 else np.zeros((row_count(sub), 2))
             )
-            self.results.append(RegionMleResult(
-                dataframe=sub,
-                intensity_image=intensity,
-                label_image=np.zeros(intensity.shape, dtype=np.int32),
-                centroids=centroids,
-            ))
+            self.results.append(
+                RegionMleResult(
+                    dataframe=sub,
+                    intensity_image=intensity,
+                    label_image=np.zeros(intensity.shape, dtype=np.int32),
+                    centroids=centroids,
+                )
+            )
         self.current_molecule = 0
         n = sum(r.n_molecules for r in self.results)
         self.status_text = f"Loaded {n} region(s) from {p.name}"
@@ -646,7 +650,9 @@ class RegionMleViewModel(MleObserverMixin):
         """Load the intensity image saved next to a molecule TSV (else a 1x1 blank)."""
         for candidate in (
             tsv_path.parent / "intensity.npy",
-            pathlib.Path(str(source)).parent / f"{pathlib.Path(str(source)).stem}_analysis" / "intensity.npy",
+            pathlib.Path(str(source)).parent
+            / f"{pathlib.Path(str(source)).stem}_analysis"
+            / "intensity.npy",
         ):
             try:
                 if candidate.exists():

@@ -117,9 +117,7 @@ def test_a_persisted_arrangement_wins_over_the_authored_one(qapp, tmp_path, monk
 
     # ``_persist_settings`` imports this lazily from the helpers module, so that
     # is where the redirect has to land.
-    monkeypatch.setattr(
-        helpers, "get_plugin_settings_path", lambda key: tmp_path / f"{key}.ini"
-    )
+    monkeypatch.setattr(helpers, "get_plugin_settings_path", lambda key: tmp_path / f"{key}.ini")
     spec = json.loads(json.dumps(SPEC))
     spec["sections"][0]["persist"] = "autoform_dock_sizes_test"
 

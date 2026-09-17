@@ -1,4 +1,5 @@
 """Tests for the NavigationPanelTool left-pane search filter."""
+
 from __future__ import annotations
 
 import os
@@ -34,9 +35,7 @@ def _panels():
 
 def _visible(w):
     return [
-        w.panels[i]["name"]
-        for i in range(w.nav_list.count())
-        if not w.nav_list.item(i).isHidden()
+        w.panels[i]["name"] for i in range(w.nav_list.count()) if not w.nav_list.item(i).isHidden()
     ]
 
 

@@ -180,8 +180,8 @@ def is_directed_acyclic_graph(graph) -> bool:
 
 
 def _strongly_connected_components(
-        nodes: list,
-        succ: dict[typing.Any, list],
+    nodes: list,
+    succ: dict[typing.Any, list],
 ) -> list[list]:
     """Return the strongly connected components of a sub-graph.
 
@@ -284,13 +284,8 @@ def simple_cycles(graph: DiGraph) -> typing.Iterator[list]:
     remaining = sorted(graph.nodes, key=order.get)
     while remaining:
         subgraph_nodes = set(remaining)
-        succ = {
-            n: [s for s in succ_all[n] if s in subgraph_nodes and s != n]
-            for n in remaining
-        }
-        components = [
-            c for c in _strongly_connected_components(remaining, succ) if len(c) > 1
-        ]
+        succ = {n: [s for s in succ_all[n] if s in subgraph_nodes and s != n] for n in remaining}
+        components = [c for c in _strongly_connected_components(remaining, succ) if len(c) > 1]
         if not components:
             break
         # Start from the smallest-index node of the component holding it, which
@@ -388,10 +383,7 @@ def _spanning_tree(graph: Graph, weight: str, maximise: bool) -> Graph:
     for node, attr in graph.nodes.items():
         tree.add_node(node, **attr)
 
-    edges = [
-        (u, v, float(graph.get_edge_data(u, v, {}).get(weight, 1.0)))
-        for u, v in graph.edges
-    ]
+    edges = [(u, v, float(graph.get_edge_data(u, v, {}).get(weight, 1.0))) for u, v in graph.edges]
     sign = -1.0 if maximise else 1.0
     ordered = sorted(range(len(edges)), key=lambda i: (sign * edges[i][2], i))
 
@@ -418,9 +410,10 @@ def _spanning_tree(graph: Graph, weight: str, maximise: bool) -> Graph:
 
 # -- distances ------------------------------------------------------------
 
+
 def shortest_path_length(
-        graph: Graph,
-        weight: str = None,
+    graph: Graph,
+    weight: str = None,
 ) -> dict[typing.Any, dict[typing.Any, float]]:
     """Return all-pairs shortest path lengths.
 
@@ -444,7 +437,8 @@ def shortest_path_length(
     out = {}
     for source in graph.nodes:
         out[source] = (
-            _bfs_lengths(graph, source) if weight is None
+            _bfs_lengths(graph, source)
+            if weight is None
             else _dijkstra_lengths(graph, source, weight)
         )
     return out
@@ -468,9 +462,9 @@ def _bfs_lengths(graph: Graph, source) -> dict[typing.Any, float]:
 
 
 def _dijkstra_lengths(
-        graph: Graph,
-        source,
-        weight: str,
+    graph: Graph,
+    source,
+    weight: str,
 ) -> dict[typing.Any, float]:
     """Return weighted distances from ``source`` by Dijkstra's algorithm."""
     dist: dict[typing.Any, float] = {}
@@ -488,8 +482,6 @@ def _dijkstra_lengths(
                 continue
             step = float(graph.get_edge_data(node, nbr, {}).get(weight, 1.0))
             if step < 0.0:
-                raise ValueError(
-                    f"negative edge weight {step!r} on ({node!r}, {nbr!r})"
-                )
+                raise ValueError(f"negative edge weight {step!r} on ({node!r}, {nbr!r})")
             heapq.heappush(heap, (d + step, order[nbr], nbr))
     return dist

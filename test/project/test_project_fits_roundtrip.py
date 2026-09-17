@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+
 import numpy as np
 import pytest
 
@@ -8,11 +9,10 @@ pytest.importorskip("chinet")
 
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
-from chisurf.core.models.model import ModelCurve
-
-from chisurf.core.project import Project, save_project, load_project
-from chisurf.core.project.fit_state import make_fit_record, apply_fit_record
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.core.models.model import ModelCurve
+from chisurf.core.project import Project, load_project, save_project
+from chisurf.core.project.fit_state import apply_fit_record, make_fit_record
 
 
 class DummyLinearModel(ModelCurve):
@@ -87,6 +87,7 @@ def test_project_fits_roundtrip_with_single_fit(tmp_path):
 
     # Inspect raw JSON to ensure fits structure is present
     import zipfile
+
     with zipfile.ZipFile(archive_path, "r") as zf:
         raw = json.loads(zf.read("project.json"))
 

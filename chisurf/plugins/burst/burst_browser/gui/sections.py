@@ -42,9 +42,9 @@ class _BurstTableModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
         self._table = table
         self._names = column_names(table) if table is not None else []
-        self._columns = [
-            column_values(table, i) for i in range(len(self._names))
-        ] if table is not None else []
+        self._columns = (
+            [column_values(table, i) for i in range(len(self._names))] if table is not None else []
+        )
         self._rows = np.arange(row_count(table), dtype=int) if table is not None else None
         self.endResetModel()
 
@@ -77,8 +77,12 @@ class _BurstTableModel(QtCore.QAbstractTableModel):
         return len(self._names)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if (not index.isValid() or self._table is None or self._rows is None
-                or role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole)):
+        if (
+            not index.isValid()
+            or self._table is None
+            or self._rows is None
+            or role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole)
+        ):
             return None
         try:
             value = self._columns[index.column()][int(self._rows[index.row()])]
@@ -174,11 +178,13 @@ class _ControlsSection(QtWidgets.QWidget):
         self.e_min, self.e_max = _f(), _f()
         self.s_min, self.s_max = _f(), _f()
         self.size_min, self.size_max = _i(), _i()
-        for row, (lbl_a, a, lbl_b, b) in enumerate((
-            ("E min", self.e_min, "E max", self.e_max),
-            ("S min", self.s_min, "S max", self.s_max),
-            ("Size min", self.size_min, "Size max", self.size_max),
-        )):
+        for row, (lbl_a, a, lbl_b, b) in enumerate(
+            (
+                ("E min", self.e_min, "E max", self.e_max),
+                ("S min", self.s_min, "S max", self.s_max),
+                ("Size min", self.size_min, "Size max", self.size_max),
+            )
+        ):
             grid.addWidget(QtWidgets.QLabel(lbl_a), row, 0)
             grid.addWidget(a, row, 1)
             grid.addWidget(QtWidgets.QLabel(lbl_b), row, 2)
@@ -194,8 +200,7 @@ class _ControlsSection(QtWidgets.QWidget):
         # Wiring.
         self.detector_combo.currentIndexChanged.connect(self._on_detector)
         self.column_combo.currentIndexChanged.connect(self._on_column)
-        for w in (self.e_min, self.e_max, self.s_min, self.s_max,
-                  self.size_min, self.size_max):
+        for w in (self.e_min, self.e_max, self.s_min, self.s_max, self.size_min, self.size_max):
             w.valueChanged.connect(self._on_gate)
         self.use_selection.toggled.connect(self._on_toggle)
 
@@ -219,8 +224,9 @@ class _ControlsSection(QtWidgets.QWidget):
                 # Seed gating ranges/values from the data.
                 self._seed_range(self.e_min, self.e_max, m.e_min, m.e_max, m.have_E)
                 self._seed_range(self.s_min, self.s_max, m.s_min, m.s_max, m.have_S)
-                self._seed_int(self.size_min, self.size_max, m.size_min, m.size_max,
-                               m._col_size is not None)
+                self._seed_int(
+                    self.size_min, self.size_max, m.size_min, m.size_max, m._col_size is not None
+                )
                 self.use_selection.setChecked(bool(m.use_selection))
         finally:
             self._syncing = False

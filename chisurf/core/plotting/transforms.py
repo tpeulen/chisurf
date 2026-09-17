@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import numpy as np
 
@@ -167,4 +166,3 @@ class PlotReferenceMode:
             return context.curve_key in set(self.applies_to)
         except Exception:
             return False
-

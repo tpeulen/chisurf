@@ -90,9 +90,7 @@ class RicsPrecisionTool(ChisurfDockTool):
 
     def _on_finished(self, ok: bool) -> None:
         """Refresh the form once the background run finished."""
-        self.statusBar().showMessage(
-            self.model.status if ok else "Prediction failed", 8000
-        )
+        self.statusBar().showMessage(self.model.status if ok else "Prediction failed", 8000)
         self._refresh()
 
     def _export_csv(self) -> None:
@@ -106,9 +104,7 @@ class RicsPrecisionTool(ChisurfDockTool):
             return
         rows = self.model.sweep_rows()
         lines = ["dwell_us,line_ms,frame_ms,error_percent"]
-        lines += [
-            f"{r['dwell']},{r['line']},{r['frame']},{r['error']}" for r in rows
-        ]
+        lines += [f"{r['dwell']},{r['line']},{r['frame']},{r['error']}" for r in rows]
         with open(path, "w") as fh:
             fh.write("\n".join(lines) + "\n")
         self.statusBar().showMessage(f"Wrote {path}", 8000)

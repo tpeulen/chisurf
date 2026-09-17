@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Dict, List, Optional
 
 try:  # optional — compact binary encoding
     import msgpack  # type: ignore
@@ -43,12 +42,12 @@ POSE_PAYLOAD_VERSION = 1
 
 
 def encode_poses(
-    poses: List[Dict],
+    poses: list[dict],
     *,
-    score: Optional[float] = None,
+    score: float | None = None,
     method: str = "",
-    frame: Optional[int] = None,
-) -> Dict:
+    frame: int | None = None,
+) -> dict:
     """Pack a list of poses into a compact, self-describing blob dict.
 
     Parameters
@@ -85,7 +84,7 @@ def _b64(raw: bytes) -> str:
     return base64.b64encode(raw).decode("ascii")
 
 
-def decode_poses(blob: Dict) -> Dict:
+def decode_poses(blob: dict) -> dict:
     """Unpack a blob produced by :func:`encode_poses`.
 
     Parameters

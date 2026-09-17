@@ -12,12 +12,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import chisurf.logging
-
-from qtpy import QtCore, QtGui, QtWidgets
-
 from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
+from qtpy import QtCore, QtWidgets
+
+import chisurf.logging
+from chisurf.gui import dialogs
 
 from .entity_registry import EntitySpec, build_registry_dict
 from .mixins import (
@@ -28,7 +28,6 @@ from .mixins import (
     SchemaMixin,
     TableMixin,
 )
-from chisurf.gui import dialogs
 
 
 class EntityDock(
@@ -186,9 +185,7 @@ class EntityDock(
         if not self._spec.writable:
             return
         # Decide what ID to pre-fill for user-defined string IDs
-        id_spec = next(
-            (fs for fs in self.field_specs if fs.name == self._spec.id_field), None
-        )
+        id_spec = next((fs for fs in self.field_specs if fs.name == self._spec.id_field), None)
         if id_spec and id_spec.readonly:
             # Auto-generated ID (e.g. integer PK, UUID): let the server assign
             new_data: dict[str, Any] = {}

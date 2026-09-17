@@ -68,17 +68,19 @@ def test_load_analysis_from_disk(tmp_path):
 
     analysis = tmp_path / "cell_analysis"
     analysis.mkdir()
-    pd.DataFrame({
-        "source_ptu": [str(tmp_path / "cell.ptu")] * 2,
-        "label": [1, 2],
-        "centroid_row": [8.0, 23.0],
-        "centroid_col": [8.0, 23.0],
-        "n_photons_total": [220, 300],
-        "tau": [1.02, 3.48],
-        "gamma": [0.0, 0.0],
-        "rho": [1.0, 1.0],
-        "2I*": [0.4, 0.6],
-    }).to_csv(analysis / "molecule_data.tsv", sep="\t", index=False)
+    pd.DataFrame(
+        {
+            "source_ptu": [str(tmp_path / "cell.ptu")] * 2,
+            "label": [1, 2],
+            "centroid_row": [8.0, 23.0],
+            "centroid_col": [8.0, 23.0],
+            "n_photons_total": [220, 300],
+            "tau": [1.02, 3.48],
+            "gamma": [0.0, 0.0],
+            "rho": [1.0, 1.0],
+            "2I*": [0.4, 0.6],
+        }
+    ).to_csv(analysis / "molecule_data.tsv", sep="\t", index=False)
     np.save(analysis / "intensity.npy", np.arange(16.0).reshape(4, 4))
 
     vm = RegionMleViewModel()
@@ -110,13 +112,22 @@ def test_unfitted_molecules_show_area_badge():
     from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
     vm = RegionMleViewModel()
-    vm.results = [RegionMleResult(
-        dataframe=pd.DataFrame({"label": [1, 2], "area": [7, 12], "tau": [np.nan, np.nan],
-                                "centroid_row": [1.0, 2.0], "centroid_col": [1.0, 2.0]}),
-        intensity_image=np.zeros((4, 4)),
-        label_image=np.zeros((4, 4), dtype=int),
-        centroids=np.array([[1.0, 1.0], [2.0, 2.0]]),
-    )]
+    vm.results = [
+        RegionMleResult(
+            dataframe=pd.DataFrame(
+                {
+                    "label": [1, 2],
+                    "area": [7, 12],
+                    "tau": [np.nan, np.nan],
+                    "centroid_row": [1.0, 2.0],
+                    "centroid_col": [1.0, 2.0],
+                }
+            ),
+            intensity_image=np.zeros((4, 4)),
+            label_image=np.zeros((4, 4), dtype=int),
+            centroids=np.array([[1.0, 1.0], [2.0, 2.0]]),
+        )
+    ]
     assert [e["badge"] for e in vm.molecule_entries()] == ["7 px", "12 px"]
 
 
@@ -233,17 +244,19 @@ def test_the_measured_molecules_come_back_as_regions():
     )
 
     labels = np.zeros((32, 32), dtype=int)
-    labels[4:8, 4:16] = 1      # elongated along the columns
-    labels[20:28, 22:26] = 2   # elongated along the rows
+    labels[4:8, 4:16] = 1  # elongated along the columns
+    labels[20:28, 22:26] = 2  # elongated along the rows
     intensity = np.where(labels > 0, 50.0, 2.0)
 
     vm = RegionMleViewModel()
-    vm.results = [RegionMleResult(
-        dataframe=pd.DataFrame({"label": [1, 2], "tau": [2.0, 3.0]}),
-        intensity_image=intensity,
-        label_image=labels,
-        centroids=np.zeros((2, 2)),
-    )]
+    vm.results = [
+        RegionMleResult(
+            dataframe=pd.DataFrame({"label": [1, 2], "tau": [2.0, 3.0]}),
+            intensity_image=intensity,
+            label_image=labels,
+            centroids=np.zeros((2, 2)),
+        )
+    ]
 
     molecules = vm.molecule_regions()
     assert molecules.names == ["Mol 1", "Mol 2"]

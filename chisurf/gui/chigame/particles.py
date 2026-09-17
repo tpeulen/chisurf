@@ -143,8 +143,7 @@ class Particle:
         if self.age >= self.span:
             return True
         if self.target is not None:
-            return math.hypot(self.target[0] - self.x,
-                              self.target[1] - self.y) <= ARRIVAL
+            return math.hypot(self.target[0] - self.x, self.target[1] - self.y) <= ARRIVAL
         return False
 
     def step(self, dt: float) -> None:
@@ -227,10 +226,15 @@ class Field:
         self.particles.append(particle)
         return particle
 
-    def rise(self, text: str, at: tuple[float, float],
-             color: tuple[float, float, float, float] = (1.0, 0.92, 0.45, 1.0),
-             span: float = 1.2, distance: float = 16.0,
-             height: float = 7.0) -> Particle | None:
+    def rise(
+        self,
+        text: str,
+        at: tuple[float, float],
+        color: tuple[float, float, float, float] = (1.0, 0.92, 0.45, 1.0),
+        span: float = 1.2,
+        distance: float = 16.0,
+        height: float = 7.0,
+    ) -> Particle | None:
         """A number or a word that floats up from a point and fades.
 
         Parameters
@@ -253,13 +257,25 @@ class Field:
         Particle or None
             The particle, or ``None`` when the field was full.
         """
-        return self.add(Particle(x=at[0], y=at[1], span=span, rise=distance,
-                                 color=color, text=text, height=height))
+        return self.add(
+            Particle(
+                x=at[0], y=at[1], span=span, rise=distance, color=color, text=text, height=height
+            )
+        )
 
-    def orbs(self, at: tuple[float, float], target: tuple[float, float],
-             count: int = 5, speed: float = 70.0, kind: str = "photon",
-             name: str = "", size: float = 2.6, span: float = 1.5,
-             scatter: float = 4.0, **hints) -> list[Particle]:
+    def orbs(
+        self,
+        at: tuple[float, float],
+        target: tuple[float, float],
+        count: int = 5,
+        speed: float = 70.0,
+        kind: str = "photon",
+        name: str = "",
+        size: float = 2.6,
+        span: float = 1.5,
+        scatter: float = 4.0,
+        **hints,
+    ) -> list[Particle]:
         """A handful of things that fly from one place to another.
 
         The scatter at the spawn point is what makes several orbs read as
@@ -295,22 +311,37 @@ class Field:
         """
         made = []
         for _ in range(max(0, int(count))):
-            one = self.add(Particle(
-                x=at[0] + self._rng.uniform(-scatter, scatter),
-                y=at[1] + self._rng.uniform(-scatter, scatter),
-                span=span, target=tuple(target),
-                speed=speed * self._rng.uniform(0.8, 1.25),
-                kind=kind, name=name, size=size, hints=dict(hints),
-            ))
+            one = self.add(
+                Particle(
+                    x=at[0] + self._rng.uniform(-scatter, scatter),
+                    y=at[1] + self._rng.uniform(-scatter, scatter),
+                    span=span,
+                    target=tuple(target),
+                    speed=speed * self._rng.uniform(0.8, 1.25),
+                    kind=kind,
+                    name=name,
+                    size=size,
+                    hints=dict(hints),
+                )
+            )
             if one is not None:
                 made.append(one)
         return made
 
-    def burst(self, at: tuple[float, float], count: int = 8,
-              kind: str = "photon", name: str = "", size: float = 1.8,
-              span: float = 0.55, speed: float = 40.0, gravity: float = 0.0,
-              drag: float = 2.4, radius: float = 0.0,
-              **hints) -> list[Particle]:
+    def burst(
+        self,
+        at: tuple[float, float],
+        count: int = 8,
+        kind: str = "photon",
+        name: str = "",
+        size: float = 1.8,
+        span: float = 0.55,
+        speed: float = 40.0,
+        gravity: float = 0.0,
+        drag: float = 2.4,
+        radius: float = 0.0,
+        **hints,
+    ) -> list[Particle]:
         """A one-shot spray outward from a point.
 
         Parameters
@@ -351,17 +382,23 @@ class Field:
         """
         made = []
         for index in range(max(0, int(count))):
-            angle = (index / max(1, count)) * math.tau + \
-                self._rng.uniform(-0.25, 0.25)
+            angle = (index / max(1, count)) * math.tau + self._rng.uniform(-0.25, 0.25)
             rate = speed * self._rng.uniform(0.55, 1.35)
-            one = self.add(Particle(
-                x=at[0] + math.cos(angle) * radius,
-                y=at[1] + math.sin(angle) * radius,
-                vx=math.cos(angle) * rate, vy=math.sin(angle) * rate,
-                span=span * self._rng.uniform(0.7, 1.3),
-                kind=kind, name=name, size=size,
-                gravity=gravity, drag=drag, hints=dict(hints),
-            ))
+            one = self.add(
+                Particle(
+                    x=at[0] + math.cos(angle) * radius,
+                    y=at[1] + math.sin(angle) * radius,
+                    vx=math.cos(angle) * rate,
+                    vy=math.sin(angle) * rate,
+                    span=span * self._rng.uniform(0.7, 1.3),
+                    kind=kind,
+                    name=name,
+                    size=size,
+                    gravity=gravity,
+                    drag=drag,
+                    hints=dict(hints),
+                )
+            )
             if one is not None:
                 made.append(one)
         return made
@@ -392,10 +429,13 @@ class Field:
             fade = one.fade
             if one.text:
                 colour = one.color or (1.0, 1.0, 1.0, 1.0)
-                scene.text(one.text, at=(one.x, one.y), height=one.height,
-                           color=(colour[0], colour[1], colour[2],
-                                  colour[3] * fade),
-                           align="center")
+                scene.text(
+                    one.text,
+                    at=(one.x, one.y),
+                    height=one.height,
+                    color=(colour[0], colour[1], colour[2], colour[3] * fade),
+                    align="center",
+                )
                 continue
             hints = dict(one.hints)
             if one.color is not None:
@@ -403,5 +443,4 @@ class Field:
             # `alpha` is a Scene-level hint that scales whatever the pack
             # chose, so a particle fades without knowing its own colour.
             hints["alpha"] = fade * float(hints.get("alpha", 1.0))
-            scene.draw(one.kind, one.name, at=(one.x, one.y),
-                       size=(one.size, one.size), **hints)
+            scene.draw(one.kind, one.name, at=(one.x, one.y), size=(one.size, one.size), **hints)

@@ -19,6 +19,7 @@ They read the built scene rather than a pixel, because the geometry is what the
 setting produces; shading is applied on top of it and would make an exact colour
 comparison a test of the ambient occlusion instead.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -30,7 +31,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 #: The three overrides, the geometry each must reach, and a colour to set.
@@ -51,8 +56,8 @@ def qapp():
 @pytest.fixture
 def viewer(qapp):
     """A window with 148L shown as cartoon, sticks and surface at once."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.core.settings.registry import set_setting
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -135,8 +140,7 @@ def test_an_override_reaches_only_its_own_representation(viewer):
     """
     win, run = viewer
     untouched = {
-        geometry_id: _hue(win, geometry_id)
-        for _name, geometry_id, _value, _channel in CASES
+        geometry_id: _hue(win, geometry_id) for _name, geometry_id, _value, _channel in CASES
     }
     run("set stick_color, blue")
     for _name, geometry_id, _value, _channel in CASES:

@@ -11,28 +11,27 @@ becomes, where a position lands, how many chords are drawn and what colours
 them. `FpsCirclePanel.build` returns the plot rather than drawing it for
 exactly that reason.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
 
-import pytest
-
 import chimol
-from emtk.testing import RecordingPainter
+import pytest
 from chimol.plugins.labelling.circle_window import (
     FpsCirclePanel,
     efficiency,
     make_fps_circle_panel,
 )
 from chimol.plugins.labelling.fps import FpsModel
+from emtk.testing import RecordingPainter
 
 #: The shipped example plan, found through the package rather than by counting
 #: parent directories -- chimol is a checkout of its own, not a subdirectory of
 #: this one, and a path that silently misses turns this file into a skip.
 EXAMPLE = (
-    pathlib.Path(chimol.__file__).resolve().parent.parent
-    / "examples" / "labeling_network.fps.json"
+    pathlib.Path(chimol.__file__).resolve().parent.parent / "examples" / "labeling_network.fps.json"
 )
 
 
@@ -47,7 +46,7 @@ def _model(positions, distances=None) -> FpsModel:
 
 def _panel(model) -> FpsCirclePanel:
     panel = FpsCirclePanel(viewer=None, model=model)
-    panel.source = "a file"        # so `refresh` does not reach for a viewer
+    panel.source = "a file"  # so `refresh` does not reach for a viewer
     return panel
 
 
@@ -61,29 +60,41 @@ class _Rect:
 # --------------------------------------------------------------------------- #
 def test_a_chain_becomes_a_sector_spanning_what_it_labels():
     """Not the whole chain: a plan labels a handful of sites."""
-    panel = _panel(_model({
-        "a": {"chain_identifier": "E", "residue_seq_number": 40},
-        "b": {"chain_identifier": "E", "residue_seq_number": 60},
-    }))
-    (low, high), = panel.chains().values()
+    panel = _panel(
+        _model(
+            {
+                "a": {"chain_identifier": "E", "residue_seq_number": 40},
+                "b": {"chain_identifier": "E", "residue_seq_number": 60},
+            }
+        )
+    )
+    ((low, high),) = panel.chains().values()
     assert low < 40 and high > 60
     assert high - low < 120, "the sector covers far more than the plan does"
 
 
 def test_every_chain_gets_its_own_sector():
-    panel = _panel(_model({
-        "a": {"chain_identifier": "E", "residue_seq_number": 40},
-        "b": {"chain_identifier": "S", "residue_seq_number": 12},
-    }))
+    panel = _panel(
+        _model(
+            {
+                "a": {"chain_identifier": "E", "residue_seq_number": 40},
+                "b": {"chain_identifier": "S", "residue_seq_number": 12},
+            }
+        )
+    )
     circle = panel.build(0, 0, 400, 400)
     assert sorted(s.name for s in circle.sectors) == ["E", "S"]
 
 
 def test_a_position_lands_at_its_residue_number():
-    panel = _panel(_model({
-        "start": {"chain_identifier": "E", "residue_seq_number": 10},
-        "end": {"chain_identifier": "E", "residue_seq_number": 90},
-    }))
+    panel = _panel(
+        _model(
+            {
+                "start": {"chain_identifier": "E", "residue_seq_number": 10},
+                "end": {"chain_identifier": "E", "residue_seq_number": 90},
+            }
+        )
+    )
     circle = panel.build(0, 0, 400, 400)
     sector = circle.get_sector("E")
     assert len(circle._points) == 2
@@ -93,13 +104,15 @@ def test_a_position_lands_at_its_residue_number():
 
 
 def test_each_distance_becomes_one_chord():
-    panel = _panel(_model(
-        {
-            "a": {"chain_identifier": "E", "residue_seq_number": 10},
-            "b": {"chain_identifier": "E", "residue_seq_number": 90},
-        },
-        {"a_b": {"position1_name": "a", "position2_name": "b"}},
-    ))
+    panel = _panel(
+        _model(
+            {
+                "a": {"chain_identifier": "E", "residue_seq_number": 10},
+                "b": {"chain_identifier": "E", "residue_seq_number": 90},
+            },
+            {"a_b": {"position1_name": "a", "position2_name": "b"}},
+        )
+    )
     circle = panel.build(0, 0, 400, 400)
     assert len(circle._links) == 1
     assert circle._links[0].width > 0.0, "a position is a point, so its chord is a line"
@@ -107,18 +120,24 @@ def test_each_distance_becomes_one_chord():
 
 def test_a_distance_naming_a_position_that_is_not_there_is_skipped():
     """A document being edited is a document that is briefly wrong."""
-    panel = _panel(_model(
-        {"a": {"chain_identifier": "E", "residue_seq_number": 10}},
-        {"a_ghost": {"position1_name": "a", "position2_name": "ghost"}},
-    ))
+    panel = _panel(
+        _model(
+            {"a": {"chain_identifier": "E", "residue_seq_number": 10}},
+            {"a_ghost": {"position1_name": "a", "position2_name": "ghost"}},
+        )
+    )
     assert panel.build(0, 0, 400, 400)._links == []
 
 
 def test_a_position_with_no_residue_number_is_skipped_not_fatal():
-    panel = _panel(_model({
-        "broken": {"chain_identifier": "E", "residue_seq_number": "not a number"},
-        "fine": {"chain_identifier": "E", "residue_seq_number": 20},
-    }))
+    panel = _panel(
+        _model(
+            {
+                "broken": {"chain_identifier": "E", "residue_seq_number": "not a number"},
+                "fine": {"chain_identifier": "E", "residue_seq_number": 20},
+            }
+        )
+    )
     circle = panel.build(0, 0, 400, 400)
     assert len(circle._points) == 1
 
@@ -130,24 +149,34 @@ def test_efficiency_is_the_forster_curve():
     assert efficiency(52.0, 52.0) == pytest.approx(0.5)
     assert efficiency(26.0, 52.0) > 0.98
     assert efficiency(104.0, 52.0) < 0.02
-    assert efficiency(30.0, 0.0) == 0.0        # a pair with no R0 says nothing
+    assert efficiency(30.0, 0.0) == 0.0  # a pair with no R0 says nothing
 
 
 def test_a_short_pair_and_a_long_one_are_not_the_same_colour():
     """The whole reason the chord is coloured: measurable, or not."""
-    panel = _panel(_model(
-        {
-            "a": {"chain_identifier": "E", "residue_seq_number": 10},
-            "b": {"chain_identifier": "E", "residue_seq_number": 50},
-            "c": {"chain_identifier": "E", "residue_seq_number": 90},
-        },
-        {
-            "a_b": {"position1_name": "a", "position2_name": "b",
-                    "distance": 25.0, "Forster_radius": 52.0},
-            "a_c": {"position1_name": "a", "position2_name": "c",
-                    "distance": 95.0, "Forster_radius": 52.0},
-        },
-    ))
+    panel = _panel(
+        _model(
+            {
+                "a": {"chain_identifier": "E", "residue_seq_number": 10},
+                "b": {"chain_identifier": "E", "residue_seq_number": 50},
+                "c": {"chain_identifier": "E", "residue_seq_number": 90},
+            },
+            {
+                "a_b": {
+                    "position1_name": "a",
+                    "position2_name": "b",
+                    "distance": 25.0,
+                    "Forster_radius": 52.0,
+                },
+                "a_c": {
+                    "position1_name": "a",
+                    "position2_name": "c",
+                    "distance": 95.0,
+                    "Forster_radius": 52.0,
+                },
+            },
+        )
+    )
     hot, cold = panel.build(0, 0, 400, 400)._links
     assert hot.colour != cold.colour
     assert hot.colour[0] > cold.colour[0], "the measurable pair should read warmer"
@@ -155,13 +184,15 @@ def test_a_short_pair_and_a_long_one_are_not_the_same_colour():
 
 
 def test_a_distance_with_no_declared_value_still_draws():
-    panel = _panel(_model(
-        {
-            "a": {"chain_identifier": "E", "residue_seq_number": 10},
-            "b": {"chain_identifier": "E", "residue_seq_number": 90},
-        },
-        {"a_b": {"position1_name": "a", "position2_name": "b"}},
-    ))
+    panel = _panel(
+        _model(
+            {
+                "a": {"chain_identifier": "E", "residue_seq_number": 10},
+                "b": {"chain_identifier": "E", "residue_seq_number": 90},
+            },
+            {"a_b": {"position1_name": "a", "position2_name": "b"}},
+        )
+    )
     assert len(panel.build(0, 0, 400, 400)._links) == 1
 
 
@@ -240,12 +271,24 @@ def _network() -> FpsModel:
             "c": {"chain_identifier": "E", "residue_seq_number": 90},
         },
         {
-            "a-b_C1": {"position1_name": "a", "position2_name": "b",
-                       "distance": 30.0, "Forster_radius": 52.0},
-            "a-c_C1": {"position1_name": "a", "position2_name": "c",
-                       "distance": 70.0, "Forster_radius": 52.0},
-            "b-c_C2": {"position1_name": "b", "position2_name": "c",
-                       "distance": 45.0, "Forster_radius": 52.0},
+            "a-b_C1": {
+                "position1_name": "a",
+                "position2_name": "b",
+                "distance": 30.0,
+                "Forster_radius": 52.0,
+            },
+            "a-c_C1": {
+                "position1_name": "a",
+                "position2_name": "c",
+                "distance": 70.0,
+                "Forster_radius": 52.0,
+            },
+            "b-c_C2": {
+                "position1_name": "b",
+                "position2_name": "c",
+                "distance": 45.0,
+                "Forster_radius": 52.0,
+            },
         },
     )
     model.score_sets = {
@@ -259,7 +302,9 @@ def test_the_documents_score_sets_are_the_datasets():
     """An fps.json's chi-squared sections are subsets of its distances."""
     panel = _panel(_network())
     assert [label for label, _keys in panel.datasets()] == [
-        "All distances", "chi2_C1 (2)", "chi2_C2 (1)",
+        "All distances",
+        "chi2_C1 (2)",
+        "chi2_C2 (1)",
     ]
 
 
@@ -287,12 +332,14 @@ def test_choosing_a_set_the_document_does_not_have_is_refused():
 def test_the_choice_governs_the_lines_in_the_scene_too():
     """One switch, both pictures -- ninety-nine lines is a hairball either way."""
     panel = _panel(_network())
-    panel.viewer = _Scene({
-        "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
-        "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
-        "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1]},
-        "by_hand": {"kind": "distance", "color": [1, 1, 0, 1]},
-    })
+    panel.viewer = _Scene(
+        {
+            "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
+            "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
+            "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1]},
+            "by_hand": {"kind": "distance", "color": [1, 1, 0, 1]},
+        }
+    )
     panel.choose("chi2_C2")
     visible = {n for n, f in panel.viewer.measurements.items() if f.get("visible", True)}
     assert visible == {"b-c_C2", "by_hand"}, (
@@ -305,7 +352,7 @@ def test_the_choice_governs_the_lines_in_the_scene_too():
 # --------------------------------------------------------------------------- #
 def _hovering(panel, name):
     """Put the pointer on *name*'s dot, as the chrome would."""
-    panel.build(0, 0, 400, 400)          # fills the dot table
+    panel.build(0, 0, 400, 400)  # fills the dot table
     x, y = panel._dots[name]
     return panel.hover(x, y, _Rect())
 
@@ -326,22 +373,19 @@ def test_the_pointer_leaving_the_panel_clears_the_hover():
 
 def test_hovering_lights_the_positions_own_distances_in_the_scene():
     panel = _panel(_network())
-    panel.viewer = _Scene({
-        "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1],
-                   "positions_named": ("a", "b")},
-        "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1],
-                   "positions_named": ("b", "c")},
-        "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1],
-                   "positions_named": ("a", "c")},
-    })
+    panel.viewer = _Scene(
+        {
+            "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1], "positions_named": ("a", "b")},
+            "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1], "positions_named": ("b", "c")},
+            "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1], "positions_named": ("a", "c")},
+        }
+    )
     _hovering(panel, "b")
-    lit = {n for n, f in panel.viewer.measurements.items()
-           if tuple(f["color"]) != (1, 1, 0, 1)}
+    lit = {n for n, f in panel.viewer.measurements.items() if tuple(f["color"]) != (1, 1, 0, 1)}
     assert lit == {"a-b_C1", "b-c_C2"}
 
     panel.hover(-500.0, -500.0, _Rect())
-    assert all(tuple(f["color"]) == (1, 1, 0, 1)
-               for f in panel.viewer.measurements.values()), (
+    assert all(tuple(f["color"]) == (1, 1, 0, 1) for f in panel.viewer.measurements.values()), (
         "the highlight outlived the hover"
     )
 
@@ -431,8 +475,7 @@ def test_the_json_tab_shows_the_document_and_applies_it_back():
     panel.draw(RecordingPainter(), _Rect())
     text = panel._json_editor().text
     assert '"Positions"' in text and '"Distances"' in text
-    panel._json.set_text(text.replace('"residue_seq_number": 10',
-                                      '"residue_seq_number": 11'))
+    panel._json.set_text(text.replace('"residue_seq_number": 10', '"residue_seq_number": 11'))
     assert panel.apply_json()
     assert panel.model.positions["a"]["residue_seq_number"] == 11
 
@@ -494,13 +537,13 @@ def test_the_partners_are_the_ones_it_is_measured_against():
 def test_the_partners_are_taken_from_the_dataset_that_is_drawn():
     """What is on screen is what the question is about."""
     panel = _panel(_network())
-    panel.choose("chi2_C2")            # only b-c
+    panel.choose("chi2_C2")  # only b-c
     assert panel.partners("a") == set()
     assert panel.partners("b") == {"c"}
 
 
 def test_the_circle_draws_the_three_roles():
-    from chimol.plugins.labelling.circle_window import MUTED, PARTNER, SELECTED
+    from chimol.plugins.labelling.circle_window import PARTNER, SELECTED
 
     panel = _panel(_network())
     panel.select("a")
@@ -528,7 +571,7 @@ def test_a_selected_positions_chords_are_thick_and_the_rest_are_not():
 
 
 def test_chords_are_not_hairlines_when_nothing_is_selected():
-    """"Thicker in general": a hundred chords at one pixel is a smudge."""
+    """ "Thicker in general": a hundred chords at one pixel is a smudge."""
     panel = _panel(_network())
     assert all(link.width >= 2.0 for link in panel.build(0, 0, 400, 400)._links)
 

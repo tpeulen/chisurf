@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 import json
+
 from qtpy import QtWidgets
 
-import chisurf.gui.widgets
 import chisurf.core.structure
+import chisurf.gui.widgets
 from chisurf.core.structure.potential.av_potential import AvPotential
 
 
 class AvPotentialWidget(AvPotential, QtWidgets.QWidget):
-
-    def __init__(
-            self,
-            structure: chisurf.core.structure.Structure = None,
-            parent=None
-    ):
+    def __init__(self, structure: chisurf.core.structure.Structure = None, parent=None):
         QtWidgets.QWidget.__init__(self, parent=parent)
-        
+
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -63,14 +59,13 @@ class AvPotentialWidget(AvPotential, QtWidgets.QWidget):
         self.actionOpenLabeling = QtWidgets.QAction("OpenLabeling", self)
         self.actionOpenLabeling.triggered.connect(self.onLoadAvJSON)
         self.toolButton.clicked.connect(self.actionOpenLabeling.trigger)
-        
+
         # Now initialize the parent class after Qt widgets are set up
         AvPotential.__init__(self)
 
     def onLoadAvJSON(self):
         self.labeling_file = chisurf.gui.widgets.get_filename(
-            description='Open FPS-JSON',
-            file_type='FPS-file (*.fps.json)'
+            description="Open FPS-JSON", file_type="FPS-file (*.fps.json)"
         )
 
     @property

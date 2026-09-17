@@ -18,6 +18,7 @@ collapsed-layout failures an eye skims past.
 
 See the migration rule in ``okf/workflows/testing.md``.
 """
+
 from __future__ import annotations
 
 import os
@@ -27,16 +28,14 @@ import typing
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 #: Where pairs are written. Override with ``CHISURF_MIGRATION_DIR``.
-DEFAULT_DIR = pathlib.Path(
-    os.environ.get("CHISURF_MIGRATION_DIR", "/tmp/chisurf-migration")
-)
+DEFAULT_DIR = pathlib.Path(os.environ.get("CHISURF_MIGRATION_DIR", "/tmp/chisurf-migration"))
 
 
 def capture(
     widget: typing.Any,
     name: str,
     phase: str,
-    out_dir: typing.Optional[pathlib.Path] = None,
+    out_dir: pathlib.Path | None = None,
     width: int = 460,
     min_height: int = 600,
     expand_panels: bool = True,
@@ -147,7 +146,7 @@ def _normalize_control_text(text: str) -> str:
     return re.sub(r"\s+", "", out).lower()
 
 
-def _table_texts(widget: typing.Any) -> typing.Set[str]:
+def _table_texts(widget: typing.Any) -> set[str]:
     """Collect the text a table *displays*, headers and cells alike.
 
     Without this, every port to a `parameter_group_table` reports each parameter
@@ -174,7 +173,7 @@ def _table_texts(widget: typing.Any) -> typing.Set[str]:
         except (TypeError, AttributeError):
             return 1
 
-    found: typing.Set[str] = set()
+    found: set[str] = set()
     for view in widget.findChildren(QtWidgets.QAbstractItemView):
         model = view.model()
         if model is None:
@@ -219,16 +218,16 @@ def control_inventory(widget: typing.Any) -> dict:
     """
     from qtpy import QtWidgets
 
-    labels = sorted({
-        w.text().strip()
-        for w in widget.findChildren(QtWidgets.QLabel)
-        if w.text().strip()
-    })
-    buttons = sorted({
-        b.text().strip()
-        for b in widget.findChildren(QtWidgets.QAbstractButton)
-        if b.text().strip()
-    })
+    labels = sorted(
+        {w.text().strip() for w in widget.findChildren(QtWidgets.QLabel) if w.text().strip()}
+    )
+    buttons = sorted(
+        {
+            b.text().strip()
+            for b in widget.findChildren(QtWidgets.QAbstractButton)
+            if b.text().strip()
+        }
+    )
     controls = {_normalize_control_text(t) for t in labels + buttons}
     controls |= _table_texts(widget)
     controls.discard("")
@@ -262,8 +261,7 @@ def compare_inventories(before: dict, after: dict) -> dict:
         "lost": sorted(set(before["controls"]) - set(after["controls"])),
         "gained": sorted(set(after["controls"]) - set(before["controls"])),
         "counts": {
-            k: (before[k], after[k])
-            for k in ("line_edits", "combos", "spin_boxes", "tables")
+            k: (before[k], after[k]) for k in ("line_edits", "combos", "spin_boxes", "tables")
         },
     }
 
@@ -294,7 +292,8 @@ def layout_tripwire(widget: typing.Any, min_visible: int = 5) -> list:
         problems.append(f"editor rendered at {widget.width()}x{widget.height()}")
 
     visible = [
-        w for w in widget.findChildren(QtWidgets.QWidget)
+        w
+        for w in widget.findChildren(QtWidgets.QWidget)
         if w.isVisible() and w.width() > 0 and w.height() > 0
     ]
     if len(visible) < min_visible:
@@ -304,7 +303,5 @@ def layout_tripwire(widget: typing.Any, min_visible: int = 5) -> list:
     for w in visible:
         if not w.isWindow() and w.parentWidget() is widget:
             if not rect.intersects(w.geometry()):
-                problems.append(
-                    f"{type(w).__name__} at {w.geometry()} lies outside the editor"
-                )
+                problems.append(f"{type(w).__name__} at {w.geometry()} lies outside the editor")
     return problems

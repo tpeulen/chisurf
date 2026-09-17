@@ -12,9 +12,9 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 from chisurf.core.dataspec import load_view_spec
 from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
+from chisurf.gui import dialogs
 from chisurf.gui.autoform import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
@@ -22,7 +22,7 @@ _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
 def parse_microtime_ranges(
     s: str,
-) -> typing.List[typing.Tuple[int, int]] | None:
+) -> list[tuple[int, int]] | None:
     if not s:
         return None
     text = str(s).strip()
@@ -35,7 +35,7 @@ def parse_microtime_ranges(
             segments.append(item)
     if not segments:
         return None
-    ranges: typing.List[typing.Tuple[int, int]] = []
+    ranges: list[tuple[int, int]] = []
     for seg in segments:
         seg = seg.strip()
         if not seg:
@@ -49,7 +49,7 @@ def parse_microtime_ranges(
                 b_txt = seg
             else:
                 a_txt = seg[:pos]
-                b_txt = seg[pos + 1:]
+                b_txt = seg[pos + 1 :]
         a = int(a_txt.strip())
         b = int(b_txt.strip())
         if a <= b:
@@ -59,7 +59,7 @@ def parse_microtime_ranges(
     return ranges if ranges else None
 
 
-def parse_channels(s: str) -> typing.List[int]:
+def parse_channels(s: str) -> list[int]:
     if not s:
         return []
     return [int(x) for x in s.replace(",", " ").split()]
@@ -67,24 +67,14 @@ def parse_channels(s: str) -> typing.List[int]:
 
 class CorrelatorSettingsModel:
     def __init__(self):
-        self.n_bins = int(
-            cs.core.settings.cs_settings.get("correlator", {}).get("B", 3)
-        )
+        self.n_bins = int(cs.core.settings.cs_settings.get("correlator", {}).get("B", 3))
         self.n_casc = int(
-            cs.core.settings.cs_settings.get("correlator", {}).get(
-                "number_of_cascades", 20
-            )
+            cs.core.settings.cs_settings.get("correlator", {}).get("number_of_cascades", 20)
         )
-        self.n_splits = int(
-            cs.core.settings.cs_settings.get("correlator", {}).get("split", 1)
-        )
-        self.make_fine = bool(
-            cs.core.settings.cs_settings.get("correlator", {}).get("fine", False)
-        )
+        self.n_splits = int(cs.core.settings.cs_settings.get("correlator", {}).get("split", 1))
+        self.make_fine = bool(cs.core.settings.cs_settings.get("correlator", {}).get("fine", False))
         self.microtime_binning = int(
-            cs.core.settings.cs_settings.get("correlator", {}).get(
-                "microtime_binning", 1
-            )
+            cs.core.settings.cs_settings.get("correlator", {}).get("microtime_binning", 1)
         )
         self.channel_a = ""
         self.channel_b = ""
@@ -92,12 +82,12 @@ class CorrelatorSettingsModel:
         self.microtime_range_b = ""
 
         self._tttr: tttrlib.TTTR | None = None
-        self._correlations: typing.List[dict] = []
+        self._correlations: list[dict] = []
         self._channel_defs: dict = {}
         self._analysis_folder = pathlib.Path()
         self._output_subdir = pathlib.Path("cr5")
 
-        self._fcs_presets: typing.List[dict] = []
+        self._fcs_presets: list[dict] = []
         self._fcs_preset_detectors: dict = {}
         self._fcs_preset_corr: dict = {}
 
@@ -309,16 +299,18 @@ class CorrelatorSettingsModel:
             is_cross = d["species_a"] != d["species_b"]
             if is_cross != want_cross:
                 continue
-            self._correlations.append({
-                "x": d["x"],
-                "y": d["y"],
-                "correlation_settings": self.get_correlation_settings(),
-                "chunk": 0,
-                "duration": 0.0,
-                "name": d["name"],
-                "channel_a": {"species": i},
-                "channel_b": {"species": j},
-            })
+            self._correlations.append(
+                {
+                    "x": d["x"],
+                    "y": d["y"],
+                    "correlation_settings": self.get_correlation_settings(),
+                    "chunk": 0,
+                    "duration": 0.0,
+                    "name": d["name"],
+                    "channel_a": {"species": i},
+                    "channel_b": {"species": j},
+                }
+            )
 
     def _correlate_one(self, tttr, ch1, ch2, settings, idx):
         t = tttr.macro_times
@@ -423,9 +415,9 @@ class CorrelatorSettingsModel:
         self._fcs_preset_corr = block.get("correlator", {}) if isinstance(block, dict) else {}
 
     @staticmethod
-    def _default_pairs_from_detectors(detectors: dict) -> typing.List[dict]:
+    def _default_pairs_from_detectors(detectors: dict) -> list[dict]:
         names = [n for n in detectors if isinstance(n, str) and n.strip()]
-        pairs: typing.List[dict] = []
+        pairs: list[dict] = []
         for n in names:
             pairs.append({"name": f"{n} ACF", "channel_a": n, "channel_b": n, "kind": "ACF"})
         for i in range(len(names)):
@@ -652,8 +644,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         self.btn_unload = QtWidgets.QToolButton()
         self.btn_unload.setText(f"{Glyphs.CLOSE} Unload")
         self.btn_unload.setToolTip(
-            "Remove the loaded lifetime filters and return to detector-channel "
-            "correlation."
+            "Remove the loaded lifetime filters and return to detector-channel correlation."
         )
         self.btn_unload.clicked.connect(self._on_unload)
         layout.addWidget(self.btn_unload)
@@ -693,9 +684,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         try:
             n = self._model.load_lifetime_filter_file(path)
         except Exception as exc:  # pragma: no cover - GUI error path
-            dialogs.error(
-                self.window() or self, "Filter load failed", str(exc)
-            )
+            dialogs.error(self.window() or self, "Filter load failed", str(exc))
             return
         self._refresh_panel()
         self._status.setText(f"{n} species loaded.")

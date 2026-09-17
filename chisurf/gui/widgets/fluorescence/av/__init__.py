@@ -4,7 +4,7 @@ import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.structure
 import chisurf.gui.widgets
-from chisurf.core.structure.av.parameters import ProteinQuenching, Dye, Sticking
+from chisurf.core.structure.av.parameters import Dye, ProteinQuenching, Sticking
 from chisurf.gui.widgets.fitting import FittingParameterWidget
 from chisurf.gui.widgets.fluorescence.av.accessible_volume import AVProperties
 
@@ -14,7 +14,7 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
     def quencher(self):
         p = dict()
         for qn in str(self.lineEdit_3.text()).split():
-            p[qn] = ['CB']
+            p[qn] = ["CB"]
         return p
 
     @quencher.setter
@@ -39,40 +39,30 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
     def __init__(self, **kwargs):
 
         QtWidgets.QGroupBox.__init__(self)
-        self.setTitle('Quenching')
+        self.setTitle("Quenching")
         self.lineEdit_6 = QtWidgets.QLineEdit()
-        self.lineEdit_6.setText('CA C HA N')
+        self.lineEdit_6.setText("CA C HA N")
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
         self.lineEdit_3 = QtWidgets.QLineEdit()
-        lab = QtWidgets.QLabel('Quenching AA')
+        lab = QtWidgets.QLabel("Quenching AA")
         ProteinQuenching.__init__(self, **kwargs)
         self.quencher = kwargs.get(
-            'quenching_amino_acids',
-            {
-                'TRP': ['CB'],
-                'TYR': ['CB'],
-                'HIS': ['CB'],
-                'PRO': ['CB']
-            }
+            "quenching_amino_acids", {"TRP": ["CB"], "TYR": ["CB"], "HIS": ["CB"], "PRO": ["CB"]}
         )
-        kq = kwargs.get('k_quench_protein', 5.0)
+        kq = kwargs.get("k_quench_protein", 5.0)
         print(f"kq: {kq}")
         # Create a FittingParameter from the k_quench_scale parameter
-        k_quench_param = chisurf.core.fitting.parameter.FittingParameter(
-            value=kq,
-            name='kQ'
-        )
+        k_quench_param = chisurf.core.fitting.parameter.FittingParameter(value=kq, name="kQ")
         # Create the GUI widget using make_fitting_parameter_widget
         self._k_quench_scale = chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
-            k_quench_param,
-            label_text='kQ'
+            k_quench_param, label_text="kQ"
         )
 
         self.groupBox = QtWidgets.QGroupBox()
         self.groupBox.setCheckable(True)
         self.groupBox.setDisabled(True)
-        self.groupBox.setTitle('Exclude atoms')
+        self.groupBox.setTitle("Exclude atoms")
         layout.addWidget(self._k_quench_scale, 0, 0, 1, 2)
         layout.addWidget(self.lineEdit_3, 1, 1)
         layout.addWidget(lab, 1, 0)
@@ -84,7 +74,6 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
 
 
 class DyeWidget(Dye, QtWidgets.QGroupBox):
-
     @property
     def dye_name(self):
         return str(self.dye_select.currentText())
@@ -97,12 +86,12 @@ class DyeWidget(Dye, QtWidgets.QGroupBox):
         self.update_parameter()
 
     def __init__(
-            self,
-            critical_distance: float = 7.0,
-            diffusion_coefficient: float = 5.0,
-            tau0: float = 4.0,
-            title: str = '',
-            **kwargs
+        self,
+        critical_distance: float = 7.0,
+        diffusion_coefficient: float = 5.0,
+        tau0: float = 4.0,
+        title: str = "",
+        **kwargs,
     ):
         QtWidgets.QGroupBox.__init__(self)
         self.dye_select = QtWidgets.QComboBox()
@@ -126,79 +115,74 @@ class DyeWidget(Dye, QtWidgets.QGroupBox):
         gl.addWidget(self.dye_select, 0, 0, 1, 2)
 
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._critical_distance),
-            1, 0
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
+                self._critical_distance
+            ),
+            1,
+            0,
         )
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._diffusion_coefficient),
-            2, 0
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
+                self._diffusion_coefficient
+            ),
+            2,
+            0,
         )
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._tau0),
-            3, 0
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._tau0), 3, 0
         )
 
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_length),
-            1, 1
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_length), 1, 1
         )
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_width),
-            2, 1
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_width), 2, 1
         )
         gl.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_radius),
-            3, 1
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._av_radius), 3, 1
         )
         self.dye_select.currentIndexChanged[int].connect(self.update_parameter)
         self.update_parameter()
 
 
 class StickingWidget(Sticking, QtWidgets.QGroupBox):
-
     @property
     def sticky_mode(self):
         if self.radioButton.isChecked():
-            return 'surface'
+            return "surface"
         elif self.radioButton_2.isChecked():
-            return 'quencher'
+            return "quencher"
 
     @sticky_mode.setter
     def sticky_mode(self, v):
-        if v == 'surface':
+        if v == "surface":
             self.radioButton.setChecked(True)
             self.radioButton_2.setChecked(False)
-        elif v == 'quencher':
+        elif v == "quencher":
             self.radioButton.setChecked(False)
             self.radioButton_2.setChecked(True)
 
     def __init__(
-            self,
-            fit: 'chisurf.core.fitting.fit.Fit',
-            structure: 'chisurf.core.structure.Structure',
-            **kwargs
+        self,
+        fit: "chisurf.core.fitting.fit.Fit",
+        structure: "chisurf.core.structure.Structure",
+        **kwargs,
     ):
         super().__init__(fit, structure, **kwargs)
 
-        self.setTitle('Sticking')
+        self.setTitle("Sticking")
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
-        self.radioButton = QtWidgets.QRadioButton('Surface')
-        self.radioButton_2 = QtWidgets.QRadioButton('Quencher')
+        self.radioButton = QtWidgets.QRadioButton("Surface")
+        self.radioButton_2 = QtWidgets.QRadioButton("Quencher")
 
         layout.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
-                self._slow_radius
-            ),
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._slow_radius),
             0,
-            1
+            1,
         )
         layout.addWidget(
-            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(
-                self._slow_fact
-            ),
-            1,
-            1
+            chisurf.gui.widgets.fitting.widgets.make_fitting_parameter_widget(self._slow_fact), 1, 1
         )
 
         layout.addWidget(self.radioButton, 0, 0)

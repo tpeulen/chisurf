@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 
 from .qt_stack import ensure_qt_stack
@@ -16,7 +14,7 @@ class _MaxentHelpersMixin:
             raise ValueError("Invalid tau grid parameters")
         return np.linspace(tmin, tmax, bins, dtype=float)
 
-    def _get_fitrange_arg(self, n: int) -> Optional[Tuple[int, int]]:
+    def _get_fitrange_arg(self, n: int) -> tuple[int, int] | None:
         fitrange = self._fit_range
         if fitrange is None:
             fit = self._current_fit()
@@ -57,21 +55,21 @@ class _MaxentHelpersMixin:
             return self._donly_vec
         return np.array([1.0, float(tau0_val)], dtype=float)
 
-    def _get_dist_prior_for_axis(self, r_axis: np.ndarray) -> Optional[np.ndarray]:
+    def _get_dist_prior_for_axis(self, r_axis: np.ndarray) -> np.ndarray | None:
         if self._dist_prior_vec is None:
             return None
         if self._dist_prior_vec.size != np.asarray(r_axis, dtype=float).ravel().size:
             return None
         return self._dist_prior_vec
 
-    def _get_period_arg(self, use_periodic: bool) -> Optional[float]:
+    def _get_period_arg(self, use_periodic: bool) -> float | None:
         if not use_periodic:
             return None
         return max(float(self.spin_period.value()), 1e-3)
 
     def _get_nuisance_settings(
         self,
-    ) -> Tuple[bool, Optional[float], Optional[float], Optional[float], Optional[float]]:
+    ) -> tuple[bool, float | None, float | None, float | None, float | None]:
         optimize_nuisance = bool(self.chk_fit_nuisance.isChecked())
 
         fix_ts = bool(
@@ -83,12 +81,10 @@ class _MaxentHelpersMixin:
             and self.chk_fix_background.isChecked()
         )
         fix_irf_bg = bool(
-            getattr(self, "chk_fix_irf_bg", None) is not None
-            and self.chk_fix_irf_bg.isChecked()
+            getattr(self, "chk_fix_irf_bg", None) is not None and self.chk_fix_irf_bg.isChecked()
         )
         fix_x_donly = bool(
-            getattr(self, "chk_fix_x_donly", None) is not None
-            and self.chk_fix_x_donly.isChecked()
+            getattr(self, "chk_fix_x_donly", None) is not None and self.chk_fix_x_donly.isChecked()
         )
 
         nuisance_step_timeshift = 0.0 if fix_ts else None
@@ -104,7 +100,7 @@ class _MaxentHelpersMixin:
             nuisance_step_x_donly,
         )
 
-    def _get_decay_and_dt(self) -> Tuple[np.ndarray, float, np.ndarray]:
+    def _get_decay_and_dt(self) -> tuple[np.ndarray, float, np.ndarray]:
         fit = self._current_fit()
         if fit is None or getattr(fit, "data", None) is None:
             raise RuntimeError("No current fit / data available")
@@ -165,7 +161,7 @@ class _MaxentHelpersMixin:
         lamp[0] = 1.0
         return lamp
 
-    def _estimate_irf_fwhm(self, t: np.ndarray, lamp: np.ndarray) -> Optional[float]:
+    def _estimate_irf_fwhm(self, t: np.ndarray, lamp: np.ndarray) -> float | None:
         t_arr = np.asarray(t, dtype=float).ravel()
         lamp_arr = np.asarray(lamp, dtype=float).ravel()
         if t_arr.size != lamp_arr.size or t_arr.size < 3:
@@ -190,7 +186,7 @@ class _MaxentHelpersMixin:
         self,
         decay: np.ndarray,
         t: np.ndarray,
-        lamp: Optional[np.ndarray],
+        lamp: np.ndarray | None,
     ) -> None:
         ensure_qt_stack()
 

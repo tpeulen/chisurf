@@ -13,9 +13,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+
 from .client import MfdPrepareClient
 
 logger = logging.getLogger(__name__)
@@ -60,9 +61,7 @@ class MfdPrepareTool(ChisurfDockTool):
         layout.addWidget(self.result_text, stretch=1)
 
     def _browse_folder(self) -> None:
-        folder = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select burst folder"
-        )
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select burst folder")
         if folder:
             self._folder = folder
             self.folder_label.setText(str(Path(folder).name))
@@ -80,9 +79,7 @@ class MfdPrepareTool(ChisurfDockTool):
                 from ..api import prepare_folder
                 from ..api.models import PrepareRequest
 
-                result = prepare_folder(
-                    PrepareRequest(folder=self._folder)
-                ).to_dict()
+                result = prepare_folder(PrepareRequest(folder=self._folder)).to_dict()
             if result.get("error"):
                 self.result_text.setPlainText(f"Error: {result['error']}")
             elif result.get("ok"):

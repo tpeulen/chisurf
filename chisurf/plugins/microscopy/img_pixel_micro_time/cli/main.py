@@ -14,9 +14,7 @@ from .. import core as _core
 @click.option("--output", "-o", type=click.Path(), default=None, help="Output HDF5 path.")
 def cli(filename, channel, min_photons, output):
     """Compute a per-pixel mean-micro-time map from a TTTR imaging FILENAME."""
-    result = _core.compute_mean_micro_time(
-        filename, channels=tuple(channel), n_ph_min=min_photons
-    )
+    result = _core.compute_mean_micro_time(filename, channels=tuple(channel), n_ph_min=min_photons)
     maps = result["maps"]
     ny, nx = result["shape"]
     import numpy as np

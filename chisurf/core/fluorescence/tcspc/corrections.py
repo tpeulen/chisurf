@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 
-import chisurf.core.math
-
 #: Largest per-pulse detection probability Coates' eq. 4 is evaluated at. A
 #: probability of exactly one corresponds to a detection in every excitation
 #: pulse and makes ``-log(1 - p)`` diverge.
@@ -11,12 +9,12 @@ MAX_DETECTION_PROBABILITY = 1.0 - 1e-12
 
 
 def compute_linearization_table(
-        data: np.ndarray,
-        window_length: int,
-        window_function_type: str,
-        x_min: int,
-        x_max: int,
-        fill_value: float = 1.0
+    data: np.ndarray,
+    window_length: int,
+    window_function_type: str,
+    x_min: int,
+    x_max: int,
+    fill_value: float = 1.0,
 ) -> np.ndarray:
     """Calculate a table to account for differential non-linearities.
 
@@ -98,18 +96,25 @@ def compute_linearization_table(
     # the two cannot drift apart.
     import IMP.bff
 
-    return np.asarray(IMP.bff.linearization_table(
-        np.ascontiguousarray(np.asarray(data, dtype=float)), int(window_length),
-        str(window_function_type), int(x_min), int(x_max), float(fill_value)))
+    return np.asarray(
+        IMP.bff.linearization_table(
+            np.ascontiguousarray(np.asarray(data, dtype=float)),
+            int(window_length),
+            str(window_function_type),
+            int(x_min),
+            int(x_max),
+            float(fill_value),
+        )
+    )
 
 
 def add_pile_up_to_model(
-        data: np.ndarray,
-        model: np.ndarray,
-        rep_rate: float,
-        dead_time: float,
-        measurement_time: float,
-        modify_inplace: bool
+    data: np.ndarray,
+    model: np.ndarray,
+    rep_rate: float,
+    dead_time: float,
+    measurement_time: float,
+    modify_inplace: bool,
 ) -> np.ndarray:
     """Add pile up effect to model function.
 
@@ -169,15 +174,14 @@ def add_pile_up_to_model(
     # arranges the arrays; keeping the numpy body beside the kernel would be
     # a second implementation, and two implementations disagree silently.
     import tttrlib
+
     out = model if modify_inplace else np.array(model, dtype=np.float64)
     out = np.ascontiguousarray(out, dtype=np.float64)
     data64 = np.ascontiguousarray(data, dtype=np.float64)
     tttrlib.add_pile_up_to_model(
-        out, data64,
-        float(rep_rate), float(dead_time), float(measurement_time),
-        "coates", 0, -1)
+        out, data64, float(rep_rate), float(dead_time), float(measurement_time), "coates", 0, -1
+    )
     if modify_inplace and out is not model:
         model[...] = out
         return model
     return out
-

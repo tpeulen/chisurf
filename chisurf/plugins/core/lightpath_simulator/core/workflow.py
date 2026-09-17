@@ -172,9 +172,6 @@ def _configured_spectra_db_path() -> Path | None:
     return None
 
 
-
-
-
 def _utc_stamp() -> str:
     """Return a compact UTC timestamp for operation IDs."""
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -366,10 +363,7 @@ def _spectra_types_by_probe_id(db: MFDatabase) -> dict[int, set[str]]:
     palette only needs probe ownership and spectrum type, so query those stable
     fields directly.
     """
-    columns = {
-        row["name"]
-        for row in db.conn.execute("PRAGMA table_info(spectra)").fetchall()
-    }
+    columns = {row["name"] for row in db.conn.execute("PRAGMA table_info(spectra)").fetchall()}
     if "probe_id" in columns:
         probe_column = "probe_id"
     elif "item_id" in columns:
@@ -383,7 +377,7 @@ def _spectra_types_by_probe_id(db: MFDatabase) -> dict[int, set[str]]:
     rows = db.conn.execute(
         f"""SELECT {probe_column} AS probe_id, spectrum_type
             FROM spectra
-            WHERE {' AND '.join(where)}"""
+            WHERE {" AND ".join(where)}"""
     ).fetchall()
 
     by_probe: dict[int, set[str]] = {}
@@ -425,7 +419,9 @@ def get_probes_info(db_path: str | None = None) -> dict[str, Any]:
             res.append(
                 {
                     "probe_id": probe_id,
-                    "name": probe.get("chromophore_name") or probe.get("name") or f"Probe {probe_id}",
+                    "name": probe.get("chromophore_name")
+                    or probe.get("name")
+                    or f"Probe {probe_id}",
                     "category": probe.get("category", "other"),
                     "has_abs": has_absorption(types),
                     "has_em": "emission" in types,

@@ -98,8 +98,7 @@ def test_every_hard_edge_is_declared_in_requires():
     assert not undeclared, (
         "These plugins import a sibling at module import time without declaring "
         "it. Add the target to 'requires' in the source plugin's manifest.json "
-        f"(value {ANY_VERSION!r} unless a real bound is needed):\n  "
-        + "\n  ".join(undeclared)
+        f"(value {ANY_VERSION!r} unless a real bound is needed):\n  " + "\n  ".join(undeclared)
     )
 
 
@@ -303,17 +302,25 @@ def test_the_allowlist_has_no_stale_entries():
 @pytest.mark.parametrize(
     "manifest, why",
     [
-        ({"id": "a", "version": "1.0.0", "requires": {"b": "nonsense"}},
-         "a specifier that is not PEP 440"),
-        ({"id": "a", "version": "1.0.0", "requires": {"a": ANY_VERSION}},
-         "a plugin depending on itself"),
-        ({"id": "a", "version": "1.0.0", "requires": {"b": ANY_VERSION},
-          "optional_requires": {"b": ANY_VERSION}},
-         "an id in both requirement maps"),
-        ({"id": "a", "version": "1.0.0", "requires": {"b": 3}},
-         "a non-string specifier"),
-        ({"id": "a", "version": "1.0.0", "requires": ["b"]},
-         "a list instead of a map"),
+        (
+            {"id": "a", "version": "1.0.0", "requires": {"b": "nonsense"}},
+            "a specifier that is not PEP 440",
+        ),
+        (
+            {"id": "a", "version": "1.0.0", "requires": {"a": ANY_VERSION}},
+            "a plugin depending on itself",
+        ),
+        (
+            {
+                "id": "a",
+                "version": "1.0.0",
+                "requires": {"b": ANY_VERSION},
+                "optional_requires": {"b": ANY_VERSION},
+            },
+            "an id in both requirement maps",
+        ),
+        ({"id": "a", "version": "1.0.0", "requires": {"b": 3}}, "a non-string specifier"),
+        ({"id": "a", "version": "1.0.0", "requires": ["b"]}, "a list instead of a map"),
     ],
 )
 def test_the_validator_rejects_what_the_resolver_could_not_use(manifest, why):
@@ -358,8 +365,7 @@ def test_the_extractor_does_not_read_prose_as_an_edge():
     from chisurf.core.plugin.edges import _ImportVisitor
 
     source = (
-        "# see chisurf.plugins.core.help for the rules\n"
-        "x = 1  # chisurf.plugins.burst.burst_bva\n"
+        "# see chisurf.plugins.core.help for the rules\nx = 1  # chisurf.plugins.burst.burst_bva\n"
     )
     visitor = _ImportVisitor("chisurf.plugins.demo.thing")
     visitor.visit(ast.parse(source))

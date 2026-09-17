@@ -7,6 +7,7 @@ answer scrolled straight past and `help` was, in practice, unreadable.
 The panel holds it. It also had to learn to scroll: a panel that silently shows
 the first fifteen lines of an answer is worse than one that says nothing.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -17,15 +18,18 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
 @pytest.fixture(scope="module")
 def session():
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -158,7 +162,8 @@ def test_help_setting_goes_to_the_panel_too(session):
 
 def test_the_panel_draws_a_scroll_bar_when_it_overflows(session):
     """It scrolled on the wheel and said nothing: a page that ends
-    mid-sentence reads as truncated rather than scrolled."""
+    mid-sentence reads as truncated rather than scrolled.
+    """
     from chimol.hosts.qt import overlay as qt_overlay
 
     window, _app = session

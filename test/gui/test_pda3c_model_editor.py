@@ -26,8 +26,13 @@ def _simulated_fit(correlation: float = 0.0, n_bursts: int = 1500, seed: int = 3
     from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
     reader = Pda3cSimulatorReader(
-        n_bursts=n_bursts, correlation=correlation, seed=seed,
-        r_gr=52.0, r_bg=46.0, r_br=68.0, sigma=6.0,
+        n_bursts=n_bursts,
+        correlation=correlation,
+        seed=seed,
+        r_gr=52.0,
+        r_bg=46.0,
+        r_br=68.0,
+        sigma=6.0,
     )
     data = reader.read()[0]
     return fit_mod.Fit(model_class=Pda3cModel, data=data)
@@ -180,15 +185,13 @@ def test_the_residual_is_the_likelihood_in_disguise(qapp):
         model.species.means_of(0)[0].value = r_gr
         model.update()
         wres = np.asarray(model.get_wres(fit), dtype=float)
-        return float(np.sum(wres ** 2)), model.total_log_likelihood()
+        return float(np.sum(wres**2)), model.total_log_likelihood()
 
     reference_sum, reference_ll = objective_and_likelihood(52.0)
     moved_sum, moved_ll = objective_and_likelihood(58.0)
 
     # Constant offset (the saturated term) cancels in the difference.
-    assert (moved_sum - reference_sum) == pytest.approx(
-        -2.0 * (moved_ll - reference_ll), rel=1e-6
-    )
+    assert (moved_sum - reference_sum) == pytest.approx(-2.0 * (moved_ll - reference_ll), rel=1e-6)
     assert moved_sum > reference_sum, "the wrong distance must cost more"
 
 
@@ -261,12 +264,12 @@ def test_swapped_labels_add_a_mirror_population(qapp):
     fit = _simulated_fit(n_bursts=200)
     model = fit.model
     species = model.species
-    species.means_of(0)[0].value = 55.0   # R_GR
-    species.means_of(0)[1].value = 40.0   # R_BG
-    species.means_of(0)[2].value = 70.0   # R_BR
-    species.correlations_of(0)[0].value = 0.5   # rho(GR,BG)
+    species.means_of(0)[0].value = 55.0  # R_GR
+    species.means_of(0)[1].value = 40.0  # R_BG
+    species.means_of(0)[2].value = 70.0  # R_BR
+    species.correlations_of(0)[0].value = 0.5  # rho(GR,BG)
     species.correlations_of(0)[1].value = -0.2  # rho(GR,BR)
-    species.correlations_of(0)[2].value = 0.3   # rho(BG,BR)
+    species.correlations_of(0)[2].value = 0.3  # rho(BG,BR)
 
     assert len(species.as_species(1.0)) == 1
 
@@ -432,7 +435,7 @@ def test_a_prior_pulls_the_fit_and_is_reported(qapp):
     # sharp likelihood (2500 bursts give this distance a ~0.1 A standard error),
     # so asserting monotonicity is the honest test; asserting a fixed shift
     # would only be asserting the burst count.
-    loose = fit_with(50.0)   # effectively flat
+    loose = fit_with(50.0)  # effectively flat
     tight = fit_with(0.5)
     assert tight < loose, (loose, tight)
     assert tight < unbiased - 0.2, (unbiased, tight)
@@ -479,16 +482,16 @@ def test_both_error_surface_routes_bracket_the_truth(qapp):
     assert chain["acceptance_rate"] > 0.05, "chain is stuck"
 
     samples = np.asarray(chain["parameter_values"], dtype=float)[:, 0]
-    samples = samples[len(samples) // 5:]
+    samples = samples[len(samples) // 5 :]
     low, high = np.percentile(samples, [0.5, 99.5])
     assert low < truth < high, f"99% credible interval [{low:.2f}, {high:.2f}] misses {truth}"
 
     mean.value = truth
     fit.run()
     scan = fit.adaptive_chi2_scan(mean.name, p_value=0.99)
-    spa_low, spa_high = confidence_intervals_from_scan_result(
-        scan, p_values=(0.99,)
-    )[0]["crossings"]
+    spa_low, spa_high = confidence_intervals_from_scan_result(scan, p_values=(0.99,))[0][
+        "crossings"
+    ]
     assert spa_low is not None and spa_low < truth < spa_high
 
     # The two widths are NOT asserted to agree, and that is deliberate: they
@@ -536,8 +539,8 @@ def test_no_exchange_reproduces_the_static_mixture(qapp):
 
 def test_fast_exchange_collapses_to_one_averaged_population(qapp):
     """At very fast exchange every molecule sees the same time-averaged state."""
-    fit, model = _two_state_fit(k_ex=1e6)   # a true limit: at 5e3 the residual
-    model.dynamic = True                   # spread in f is still worth 0.15%
+    fit, model = _two_state_fit(k_ex=1e6)  # a true limit: at 5e3 the residual
+    model.dynamic = True  # spread in f is still worth 0.15%
     fast = model.total_log_likelihood()
 
     # A single species at the occupancy-weighted average probability is the
@@ -552,10 +555,12 @@ def test_fast_exchange_collapses_to_one_averaged_population(qapp):
 
     counts = model.burst_counts()
     averaged = burst_log_likelihood(
-        counts.blue, (x1 * blue_1 + (1 - x1) * blue_2)[None, :],
+        counts.blue,
+        (x1 * blue_1 + (1 - x1) * blue_2)[None, :],
         model.setup.background_blue,
     ) + burst_log_likelihood(
-        counts.green, (x1 * green_1 + (1 - x1) * green_2)[None, :],
+        counts.green,
+        (x1 * green_1 + (1 - x1) * green_2)[None, :],
         model.setup.background_green,
     )
     expected = float(np.sum(counts.multiplicity * averaged[0]))
@@ -606,8 +611,15 @@ def test_the_guide_worked_example_still_produces_its_documented_numbers(qapp):
     from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
     reader = Pda3cSimulatorReader(
-        n_bursts=6000, r_gr=52.0, r_bg=46.0, r_br=68.0,
-        sigma=6.0, correlation=0.8, photons_blue=40.0, photons_green=35.0, seed=11,
+        n_bursts=6000,
+        r_gr=52.0,
+        r_bg=46.0,
+        r_br=68.0,
+        sigma=6.0,
+        correlation=0.8,
+        photons_blue=40.0,
+        photons_green=35.0,
+        seed=11,
     )
     fit = fit_mod.Fit(model_class=Pda3cModel, data=reader.read()[0])
     model = fit.model

@@ -15,9 +15,9 @@ class AnisotropyResult:
 
 
 def perrin_steady_state_anisotropy(
-        tau: float,
-        rho: float,
-        r0: float = 0.38,
+    tau: float,
+    rho: float,
+    r0: float = 0.38,
 ) -> float:
     """Compute the Perrin steady-state anisotropy.
 
@@ -48,9 +48,9 @@ def perrin_steady_state_anisotropy(
 
 
 def compute_g_factor_isotropic(
-        s_p,
-        s_s,
-        axis: int | None = None,
+    s_p,
+    s_s,
+    axis: int | None = None,
 ) -> float:
     """Compute the G-factor assuming isotropic rotational diffusion.
 
@@ -83,14 +83,14 @@ def compute_g_factor_isotropic(
 
 
 def compute_g_factor_perrin(
-        s_p,
-        s_s,
-        tau: float,
-        rho: float,
-        r0: float = 0.38,
-        l1: float = 0.0,
-        l2: float = 0.0,
-        axis: int | None = None,
+    s_p,
+    s_s,
+    tau: float,
+    rho: float,
+    r0: float = 0.38,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    axis: int | None = None,
 ) -> float:
     """Compute G from integrated channels using Perrin-corrected anisotropy.
 
@@ -116,16 +116,16 @@ def compute_g_factor_perrin(
 
 
 def anisotropy_from_integrals(
-        s_p,
-        s_s,
-        G: float,
-        l1: float = 0.0,
-        l2: float = 0.0,
-        gamma: float = 0.0,
-        B_p: float = 0.0,
-        B_s: float = 0.0,
-        axis: int | None = None,
-        scatter_corrected: bool = False,
+    s_p,
+    s_s,
+    G: float,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    gamma: float = 0.0,
+    B_p: float = 0.0,
+    B_s: float = 0.0,
+    axis: int | None = None,
+    scatter_corrected: bool = False,
 ) -> AnisotropyResult:
     """Compute anisotropy from integrated signal intensities.
 
@@ -189,9 +189,9 @@ def anisotropy_from_integrals(
 
     num_s = (g * sp - ss) - float(gamma) * (1.0 - 1.5 * chi) * s_ges
     den_s = (
-            (1.0 - 3.0 * float(l2)) * g * sp
-            + (2.0 - 3.0 * float(l1)) * ss
-            - float(gamma) * (1.0 - 3.0 * float(l2) - 1.5 * chi * (1.0 - 2.0 * float(l2))) * s_ges
+        (1.0 - 3.0 * float(l2)) * g * sp
+        + (2.0 - 3.0 * float(l1)) * ss
+        - float(gamma) * (1.0 - 3.0 * float(l2) - 1.5 * chi * (1.0 - 2.0 * float(l2))) * s_ges
     )
     if den_s == 0.0:
         raise ZeroDivisionError("Denominator in r_S is zero")

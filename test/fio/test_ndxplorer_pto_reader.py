@@ -86,7 +86,8 @@ def test_the_container_and_the_folder_hold_the_same_bursts(analysed: dict):
 
 def test_the_macro_time_column_arrives_in_seconds_either_way(analysed: dict):
     """The folder reader renames ms to s; a container-loaded set must match, or
-    every downstream axis silently depends on where the data came from."""
+    every downstream axis silently depends on where the data came from.
+    """
     from ndxplorer.io.reader import read_burst_analysis
 
     from_folder = read_burst_analysis(analysed["output_folder"])
@@ -104,15 +105,11 @@ def test_a_second_search_does_not_get_merged_into_the_first(tmp_path: Path):
     source = tmp_path / SPC.name
     source.write_bytes(SPC.read_bytes())
     first = analyze_request(
-        AnalysisRequest(
-            files=[str(source)], settings=_settings(20), legacy_output=False
-        )
+        AnalysisRequest(files=[str(source)], settings=_settings(20), legacy_output=False)
     )
     container = first.output_paths["pto"]
     second = analyze_request(
-        AnalysisRequest(
-            files=[container], settings=_settings(200), legacy_output=False
-        )
+        AnalysisRequest(files=[container], settings=_settings(200), legacy_output=False)
     )
 
     loaded = read_burst_analysis(container)

@@ -16,15 +16,15 @@ import utils
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-import chisurf.core.parameter  # noqa: F401  (initialises chisurf.core.settings)
-import chisurf.core.models  # noqa: F401
 import chisurf.core.fitting.parameter as fp
+import chisurf.core.models  # noqa: F401
+import chisurf.core.parameter  # noqa: F401  (initialises chisurf.core.settings)
 from chisurf.server.services.parameters import (
     get_parameter,
-    set_parameter_value,
-    set_parameter_fixed,
     parameter_link,
     parameter_unlink,
+    set_parameter_fixed,
+    set_parameter_value,
 )
 from chisurf.server.session import SessionState
 
@@ -38,7 +38,6 @@ def _group(names):
 
 
 class TestParameterUidPath:
-
     def test_get_by_parameter_uid(self):
         g = _group(["tau"])
         p = g.parameters_all_dict["tau"]
@@ -59,7 +58,8 @@ class TestParameterUidPath:
         p = g.parameters_all_dict["tau"]
         state = SessionState(fits=[])
         result = set_parameter_value(
-            state, value=7.0,
+            state,
+            value=7.0,
             parameter_uid=p.unique_identifier,
             owner_uid=g.unique_identifier,
         )
@@ -72,7 +72,9 @@ class TestParameterUidPath:
         p.fixed = False
         state = SessionState(fits=[])
         result = set_parameter_fixed(
-            state, fixed=True, parameter_uid=p.unique_identifier,
+            state,
+            fixed=True,
+            parameter_uid=p.unique_identifier,
         )
         assert result["ok"]
         assert p.fixed is True
@@ -128,7 +130,8 @@ class TestParameterUidPath:
 
         state = SessionState(fits=[])
         result = parameter_unlink(
-            state, parameter_uid=follower.unique_identifier,
+            state,
+            parameter_uid=follower.unique_identifier,
         )
         assert result["ok"]
         assert not follower.is_linked

@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-from chisurf.plugins.core.model_manager.api.records import ModelRow, collect_model_rows
+from chisurf.plugins.core.model_manager.api.records import collect_model_rows
 from chisurf.plugins.core.model_manager.gui.view_model import ModelManagerViewModel
 
 
@@ -34,13 +32,19 @@ class _FakeExperiment:
 
 def _registry():
     return {
-        "tcspc": _FakeExperiment("TCSPC", [
-            _FakeModel("Lifetime", "pkg.tcspc", "Lifetime"),
-            _FakeModel("Parse-Model", "pkg.tcspc.parse", "ParseTCSPC"),
-        ]),
-        "fcs": _FakeExperiment("FCS", [
-            _FakeModel("Parse-Model", "pkg.fcs.parse", "ParseFCS"),
-        ]),
+        "tcspc": _FakeExperiment(
+            "TCSPC",
+            [
+                _FakeModel("Lifetime", "pkg.tcspc", "Lifetime"),
+                _FakeModel("Parse-Model", "pkg.tcspc.parse", "ParseTCSPC"),
+            ],
+        ),
+        "fcs": _FakeExperiment(
+            "FCS",
+            [
+                _FakeModel("Parse-Model", "pkg.fcs.parse", "ParseFCS"),
+            ],
+        ),
     }
 
 
@@ -120,9 +124,7 @@ def test_revert_restores_the_saved_state():
 
 def test_stale_entries_are_found_and_droppable():
     """The shipped defaults carried two names matching no model."""
-    model = ModelManagerViewModel(
-        settings_block={"disabled_models": ["Lifetime", "Et-Model free"]}
-    )
+    model = ModelManagerViewModel(settings_block={"disabled_models": ["Lifetime", "Et-Model free"]})
     model._rows = collect_model_rows(_registry(), disabled=["Lifetime", "Et-Model free"])
     assert model.stale_entries() == ["Et-Model free"]
     assert "match no model" in model.status_text()
@@ -178,6 +180,8 @@ def test_every_bound_attribute_exists_on_the_model():
     """A view spec naming a missing attribute renders a dead control."""
     from chisurf.plugins.core.model_manager.gui.view_model import (
         _VIEW_JSON,
+    )
+    from chisurf.plugins.core.model_manager.gui.view_model import (
         ModelManagerViewModel as VM,
     )
 

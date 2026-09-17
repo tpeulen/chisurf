@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class GlobalViewState:
     """Serializable state for the GlobalView plugin window."""
+
     namespace: str = "globalview"
-    selected_fit_indices: List[int] = field(default_factory=list)
+    selected_fit_indices: list[int] = field(default_factory=list)
     graph_layout: str = "kamada_kawai"
     include_fixed: bool = True
     connect_owners: bool = False
@@ -22,7 +23,7 @@ class GlobalViewClient:
     Wraps a ZmqClient connected to the running ChiSurf RPC server.
     """
 
-    def __init__(self, client: Optional[Any] = None):
+    def __init__(self, client: Any | None = None):
         self._client = client if client is not None else self._make_local_client()
 
     @staticmethod
@@ -35,8 +36,10 @@ class GlobalViewClient:
             Connected ZMQ client using the MMFDB RPC port settings.
         """
         from chisurf.server.transport.zmq import ZmqClient
+
         try:
             import chisurf.core.settings as _cs_settings
+
             mmfdb_cfg = _cs_settings.cs_settings.get("mmfdb", {}) or {}
         except Exception:
             mmfdb_cfg = {}
@@ -48,7 +51,7 @@ class GlobalViewClient:
         client.connect()
         return client
 
-    def call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Call an RPC method, logging any failure.
 
         Parameters
@@ -67,18 +70,19 @@ class GlobalViewClient:
             return self._client.call(method, params or {})
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("GlobalViewClient: RPC call '%s' failed", method)
             return {"ok": False}
 
     def build_graph(
         self,
-        fit_indices: Optional[List[int]] = None,
-        fit_uids: Optional[List[str]] = None,
+        fit_indices: list[int] | None = None,
+        fit_uids: list[str] | None = None,
         include_fixed: bool = True,
         connect_owners: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build a parameter relationship graph from fit objects."""
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "include_fixed": include_fixed,
             "connect_owners": connect_owners,
         }
@@ -90,12 +94,12 @@ class GlobalViewClient:
 
     def list_parameters(
         self,
-        fit_indices: Optional[List[int]] = None,
-        fit_uids: Optional[List[str]] = None,
+        fit_indices: list[int] | None = None,
+        fit_uids: list[str] | None = None,
         include_fixed: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """List all parameters across fits."""
-        params: Dict[str, Any] = {"include_fixed": include_fixed}
+        params: dict[str, Any] = {"include_fixed": include_fixed}
         if fit_indices is not None:
             params["fit_indices"] = fit_indices
         if fit_uids is not None:
@@ -108,25 +112,31 @@ class GlobalViewClient:
         target_parameter_name: str,
         source_fit_index: int,
         target_fit_index: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Link two parameters by name across fits."""
-        return self.call("globalview.parameters.link", {
-            "source_parameter_name": source_parameter_name,
-            "target_parameter_name": target_parameter_name,
-            "source_fit_index": source_fit_index,
-            "target_fit_index": target_fit_index,
-        })
+        return self.call(
+            "globalview.parameters.link",
+            {
+                "source_parameter_name": source_parameter_name,
+                "target_parameter_name": target_parameter_name,
+                "source_fit_index": source_fit_index,
+                "target_fit_index": target_fit_index,
+            },
+        )
 
     def unlink_parameter(
         self,
         parameter_name: str,
         fit_index: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Unlink a parameter."""
-        return self.call("globalview.parameters.unlink", {
-            "parameter_name": parameter_name,
-            "fit_index": fit_index,
-        })
+        return self.call(
+            "globalview.parameters.unlink",
+            {
+                "parameter_name": parameter_name,
+                "fit_index": fit_index,
+            },
+        )
 
     @property
     def is_connected(self) -> bool:

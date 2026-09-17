@@ -8,25 +8,26 @@ these DTOs instead of reading live fit/model/data objects directly.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from chisurf.server.services import (
-    ServiceResult,
-    service_error,
-    NOT_FOUND,
     INVALID_INPUT,
+    NOT_FOUND,
     OPERATION_FAILED,
+    ServiceResult,
     _resolve_fit,
+    service_error,
 )
 from chisurf.server.session import SessionState
 
 
 def _sanitize_float_list(values: Any) -> list:
     """Convert numpy array or list to JSON-safe float list.
-    
+
     Replaces NaN/Inf with None.
     """
     import numpy as np
+
     if values is None:
         return []
     try:
@@ -45,8 +46,8 @@ def _sanitize_float_list(values: Any) -> list:
 def plot_fit_data(
     state: SessionState,
     plot_type: str = "fit_data",
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     **kwargs: Any,
 ) -> ServiceResult:
     """Return structured plot data for a fit.
@@ -105,33 +106,44 @@ def _build_fit_data_plot(fit: Any, **kwargs: Any) -> ServiceResult:
     curves = []
     data = getattr(fit, "data", None)
     if data is not None:
-        curves.append({
-            "label": "data",
-            "x": _sanitize_float_list(getattr(data, "x", None)),
-            "y": _sanitize_float_list(getattr(data, "y", None)),
-            "style": {"color": "black", "line_style": "None", "marker": "o", "marker_size": 4},
-        })
+        curves.append(
+            {
+                "label": "data",
+                "x": _sanitize_float_list(getattr(data, "x", None)),
+                "y": _sanitize_float_list(getattr(data, "y", None)),
+                "style": {"color": "black", "line_style": "None", "marker": "o", "marker_size": 4},
+            }
+        )
         # Error bars
         ey = getattr(data, "ey", None)
         if ey is not None:
-            curves.append({
-                "label": "error",
-                "x": _sanitize_float_list(getattr(data, "x", None)),
-                "y": _sanitize_float_list(ey),
-                "style": {"color": "gray", "line_style": "None", "marker": "None", "plot_type": "error_bar"},
-            })
+            curves.append(
+                {
+                    "label": "error",
+                    "x": _sanitize_float_list(getattr(data, "x", None)),
+                    "y": _sanitize_float_list(ey),
+                    "style": {
+                        "color": "gray",
+                        "line_style": "None",
+                        "marker": "None",
+                        "plot_type": "error_bar",
+                    },
+                }
+            )
 
     model = getattr(fit, "model", None)
     if model is not None:
         fx = getattr(model, "x", None)
         fy = getattr(model, "y", None)
         if fx is not None and fy is not None:
-            curves.append({
-                "label": "fit",
-                "x": _sanitize_float_list(fx),
-                "y": _sanitize_float_list(fy),
-                "style": {"color": "red", "line_width": 2},
-            })
+            curves.append(
+                {
+                    "label": "fit",
+                    "x": _sanitize_float_list(fx),
+                    "y": _sanitize_float_list(fy),
+                    "style": {"color": "red", "line_width": 2},
+                }
+            )
 
     # Fit curve (combined)
     fit_curve = getattr(fit, "fit", None)
@@ -139,12 +151,14 @@ def _build_fit_data_plot(fit: Any, **kwargs: Any) -> ServiceResult:
         fx = getattr(fit_curve, "x", None)
         fy = getattr(fit_curve, "y", None)
         if fx is not None and fy is not None:
-            curves.append({
-                "label": "fit_curve",
-                "x": _sanitize_float_list(fx),
-                "y": _sanitize_float_list(fy),
-                "style": {"color": "red", "line_width": 2},
-            })
+            curves.append(
+                {
+                    "label": "fit_curve",
+                    "x": _sanitize_float_list(fx),
+                    "y": _sanitize_float_list(fy),
+                    "style": {"color": "red", "line_width": 2},
+                }
+            )
 
     stats = _build_stats(fit)
     return {"ok": True, "plot": {"type": "fit_data", "curves": curves, "stats": stats}}
@@ -158,19 +172,28 @@ def _build_residual_plot(fit: Any, **kwargs: Any) -> ServiceResult:
         residuals = getattr(model, "residuals", None)
         x = getattr(model, "x", getattr(getattr(fit, "data", None), "x", None))
         if x is not None and residuals is not None:
-            curves.append({
-                "label": "weighted residuals",
-                "x": _sanitize_float_list(x),
-                "y": _sanitize_float_list(residuals),
-                "style": {"color": "blue", "line_style": "None", "marker": "o", "marker_size": 4},
-            })
+            curves.append(
+                {
+                    "label": "weighted residuals",
+                    "x": _sanitize_float_list(x),
+                    "y": _sanitize_float_list(residuals),
+                    "style": {
+                        "color": "blue",
+                        "line_style": "None",
+                        "marker": "o",
+                        "marker_size": 4,
+                    },
+                }
+            )
             # Zero line
-            curves.append({
-                "label": "zero",
-                "x": _sanitize_float_list(x),
-                "y": [0.0] * len(x),
-                "style": {"color": "gray", "line_width": 1, "line_style": "--"},
-            })
+            curves.append(
+                {
+                    "label": "zero",
+                    "x": _sanitize_float_list(x),
+                    "y": [0.0] * len(x),
+                    "style": {"color": "gray", "line_width": 1, "line_style": "--"},
+                }
+            )
     return {"ok": True, "plot": {"type": "residual", "curves": curves}}
 
 
@@ -188,8 +211,12 @@ def _build_distribution_plot(fit: Any, **kwargs: Any) -> ServiceResult:
         if dist_name:
             dist_data = getattr(model, dist_name, None)
         else:
-            for candidate in ("distribution", "distance_distribution",
-                              "rate_distribution", "lifetime_distribution"):
+            for candidate in (
+                "distribution",
+                "distance_distribution",
+                "rate_distribution",
+                "lifetime_distribution",
+            ):
                 dist_data = getattr(model, candidate, None)
                 if dist_data is not None:
                     break
@@ -197,12 +224,14 @@ def _build_distribution_plot(fit: Any, **kwargs: Any) -> ServiceResult:
             dx = getattr(dist_data, "x", getattr(dist_data, "centers", None))
             dy = getattr(dist_data, "y", getattr(dist_data, "amplitudes", None))
             if dx is not None and dy is not None:
-                curves.append({
-                    "label": "distribution",
-                    "x": _sanitize_float_list(dx),
-                    "y": _sanitize_float_list(dy),
-                    "style": {"color": "red", "line_width": 2},
-                })
+                curves.append(
+                    {
+                        "label": "distribution",
+                        "x": _sanitize_float_list(dx),
+                        "y": _sanitize_float_list(dy),
+                        "style": {"color": "red", "line_width": 2},
+                    }
+                )
     return {"ok": True, "plot": {"type": "distribution", "curves": curves}}
 
 
@@ -214,13 +243,15 @@ def _build_table_plot(fit: Any, **kwargs: Any) -> ServiceResult:
     if model is not None:
         params = getattr(model, "parameters_all_dict", {}) or {}
         for name, p in params.items():
-            rows.append({
-                "name": name,
-                "value": getattr(p, "value", None),
-                "fixed": bool(getattr(p, "fixed", False)),
-                "bounds": getattr(p, "bounds", None),
-                "error_estimate": getattr(p, "error_estimate", None),
-            })
+            rows.append(
+                {
+                    "name": name,
+                    "value": getattr(p, "value", None),
+                    "fixed": bool(getattr(p, "fixed", False)),
+                    "bounds": getattr(p, "bounds", None),
+                    "error_estimate": getattr(p, "error_estimate", None),
+                }
+            )
     stats = _build_stats(fit)
     return {
         "ok": True,
@@ -239,12 +270,14 @@ def _build_scan_plot(fit: Any, **kwargs: Any) -> ServiceResult:
     values = kwargs.get("values", [])
     chi2 = kwargs.get("chi2", [])
     if values and chi2:
-        curves.append({
-            "label": "scan",
-            "x": list(values),
-            "y": list(chi2),
-            "style": {"color": "blue", "line_width": 2, "marker": "o", "marker_size": 4},
-        })
+        curves.append(
+            {
+                "label": "scan",
+                "x": list(values),
+                "y": list(chi2),
+                "style": {"color": "blue", "line_width": 2, "marker": "o", "marker_size": 4},
+            }
+        )
     return {"ok": True, "plot": {"type": "scan", "curves": curves}}
 
 
@@ -265,9 +298,10 @@ def _build_surface_plot(fit: Any, **kwargs: Any) -> ServiceResult:
     }
 
 
-def _build_stats(fit: Any) -> Dict[str, Any]:
+def _build_stats(fit: Any) -> dict[str, Any]:
     """Build a stats dict from a fit."""
-    from chisurf.server.services._stats import _safe_chi2, _safe_chi2r, _safe_n_points, _safe_n_free
+    from chisurf.server.services._stats import _safe_chi2, _safe_chi2r, _safe_n_free, _safe_n_points
+
     dw = None
     try:
         model = getattr(fit, "model", None)
@@ -275,8 +309,9 @@ def _build_stats(fit: Any) -> Dict[str, Any]:
             residuals = getattr(model, "residuals", None)
             if residuals is not None and len(residuals) > 1:
                 import numpy as np
+
                 r = np.asarray(residuals, dtype=float)
-                dw = float(np.sum(np.diff(r) ** 2) / np.sum(r ** 2))
+                dw = float(np.sum(np.diff(r) ** 2) / np.sum(r**2))
     except Exception:
         pass
     return {

@@ -12,6 +12,7 @@ token at all.
 The same class of bug is already recorded in the tokenizer for `1dg3`, which
 used to lex as INT + IDENT. This is its punctuation half.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -65,13 +66,16 @@ def test_anything_else_is_quoted(name):
 def hyphenated(request):
     import pathlib
 
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not pdb.is_file():
         pytest.skip(f"missing fixture {pdb}")

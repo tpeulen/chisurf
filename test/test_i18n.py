@@ -69,8 +69,8 @@ def test_backend_exception_falls_back_to_source():
 
 
 def test_view_spec_titles_localized_on_parse():
-    from chisurf.core.support import i18n
     from chisurf.core.dataspec import _section_from_dict
+    from chisurf.core.support import i18n
 
     i18n.set_translation_backend(lambda ctx, text: {"Convolution": "Faltung"}.get(text, text))
     sec = _section_from_dict({"type": "panel", "title": "Convolution"})
@@ -78,8 +78,8 @@ def test_view_spec_titles_localized_on_parse():
 
 
 def test_nested_item_and_label_text_localized():
-    from chisurf.core.support import i18n
     from chisurf.core.dataspec import _section_from_dict
+    from chisurf.core.support import i18n
 
     de = {"On": "Ein", "Off": "Aus", "Run": "Start"}
     i18n.set_translation_backend(lambda ctx, text: de.get(text, text))
@@ -94,8 +94,8 @@ def test_nested_item_and_label_text_localized():
 
 
 def test_manifest_localizes_description_not_identity_keys():
-    from chisurf.core.support import i18n
     from chisurf.core.plugin.manifest import PluginManifest
+    from chisurf.core.support import i18n
 
     i18n.set_translation_backend(
         lambda ctx, text: {"A helpful tool": "Ein hilfreiches Werkzeug"}.get(text, text)

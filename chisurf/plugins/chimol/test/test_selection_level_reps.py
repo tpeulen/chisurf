@@ -6,6 +6,7 @@ viewport selection resolved through the residue list -- which exists at every
 level because it drives the sequence-strip highlight -- and silently widened
 the atom picks.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -26,12 +27,16 @@ def qapp():
 @pytest.fixture
 def shell(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not pdb.is_file():
         pytest.skip("148l.pdb fixture not present")
@@ -69,9 +74,7 @@ def test_sele_at_atom_level_means_exactly_the_picked_atoms(shell):
     _residue, atoms = _atoms_of_first_residue(view)
     picked = [int(atoms[0]), int(atoms[1])]
     view._apply_atom_selection(picked, mode="set")
-    view._apply_selection_indices(
-        view._residues_holding_selected_atoms([]), None, mode="set"
-    )
+    view._apply_selection_indices(view._residues_holding_selected_atoms([]), None, mode="set")
 
     cmd.do("show sticks, sele")
     assert not errors, errors

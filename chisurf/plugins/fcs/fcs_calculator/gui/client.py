@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
 
@@ -13,10 +13,10 @@ class ConfocalCalcClient:
     def __init__(self, client: Any = None):
         self._client = client if client is not None else self._make_local_client()
 
-    def compute(self, **params) -> Dict[str, Any]:
+    def compute(self, **params) -> dict[str, Any]:
         return self._client.call("fcs_calculator.compute", params)
 
-    def water_viscosity(self, temp_C: float) -> Dict[str, Any]:
+    def water_viscosity(self, temp_C: float) -> dict[str, Any]:
         return self._client.call("fcs_calculator.water_viscosity", {"temp_C": temp_C})
 
     @staticmethod

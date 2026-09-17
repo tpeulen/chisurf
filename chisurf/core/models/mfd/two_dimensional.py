@@ -114,15 +114,11 @@ class MfdCalibration(FittingParameterGroup):
         self._r0 = FittingParameter(
             name="R0", value=52.0, lb=5.0, ub=200.0, bounds_on=True, fixed=True
         )
-        self._tau_d0 = FittingParameter(
-            name="tauD0", value=4.0, lb=0.05, ub=30.0, bounds_on=True
-        )
+        self._tau_d0 = FittingParameter(name="tauD0", value=4.0, lb=0.05, ub=30.0, bounds_on=True)
         self._tau_a = FittingParameter(
             name="tauA", value=3.0, lb=0.05, ub=30.0, bounds_on=True, fixed=True
         )
-        self._alpha = FittingParameter(
-            name="alpha", value=0.0, lb=0.0, ub=1.0, bounds_on=True
-        )
+        self._alpha = FittingParameter(name="alpha", value=0.0, lb=0.0, ub=1.0, bounds_on=True)
         self._delta = FittingParameter(
             name="delta", value=0.0, lb=0.0, ub=1.0, bounds_on=True, fixed=True
         )
@@ -201,9 +197,7 @@ class MfdStates(FittingParameterGroup):
         while len(self._distances) < target:
             index = len(self._distances) + 1
             self._distances.append(
-                FittingParameter(
-                    name=f"R{index}", value=50.0, lb=5.0, ub=250.0, bounds_on=True
-                )
+                FittingParameter(name=f"R{index}", value=50.0, lb=5.0, ub=250.0, bounds_on=True)
             )
             self._fractions.append(
                 FittingParameter(
@@ -212,7 +206,11 @@ class MfdStates(FittingParameterGroup):
                     # allow a state to be more populated than the reference. At
                     # ub=1 no state could ever exceed half the population, and a
                     # fit that wanted more simply sat on the bound.
-                    name=f"x{index}", value=1.0, lb=0.0, ub=100.0, bounds_on=True,
+                    name=f"x{index}",
+                    value=1.0,
+                    lb=0.0,
+                    ub=100.0,
+                    bounds_on=True,
                     fixed=(index == 1),
                 )
             )
@@ -221,9 +219,7 @@ class MfdStates(FittingParameterGroup):
     @property
     def states(self) -> list[FretState]:
         """Return the compute layer's view of the states."""
-        return [
-            FretState(distance=float(p.value), name=p.name) for p in self._distances
-        ]
+        return [FretState(distance=float(p.value), name=p.name) for p in self._distances]
 
     @property
     def populations(self) -> np.ndarray:
@@ -667,9 +663,7 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
             ("Donor-photon cut", f"{summary['min_green_photons']}"),
         ]
         for name, response in data.responses.items():
-            rows.append(
-                (f"{name} background", f"{response.background_rate * 1e-3:.3f} kHz")
-            )
+            rows.append((f"{name} background", f"{response.background_rate * 1e-3:.3f} kHz"))
         return rows
 
     def summary_text(self) -> str:
@@ -699,10 +693,7 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         if not rows:
             return "<i>No MFD dataset.</i>"
         body = "".join(f"<tr><td>{k}</td><td><b>{v}</b></td></tr>" for k, v in rows)
-        return (
-            "<table cellspacing='4'>" + body + "</table>"
-            f"<p><i>{self._COVARIANCE_CAVEAT}</i></p>"
-        )
+        return "<table cellspacing='4'>" + body + f"</table><p><i>{self._COVARIANCE_CAVEAT}</i></p>"
 
     def burstwise_score(self, max_bursts: int | None = 800, seed: int = 0):
         """Score this model photon by photon, as the maximum-likelihood reference.
@@ -763,9 +754,7 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         data = burst_payload(self.fit.data)
         if data is None:
             raise ValueError("this fit has no MFD dataset")
-        return bootstrap_uncertainties(
-            refit, data, n_resamples=n_resamples, seed=seed
-        )
+        return bootstrap_uncertainties(refit, data, n_resamples=n_resamples, seed=seed)
 
     def parameter_uncertainties(self):
         """Refuse to report uncertainties the histogram source cannot support.

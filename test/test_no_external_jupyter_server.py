@@ -61,9 +61,7 @@ def test_jupyter_entrypoints_are_gone_from_source():
     ]
     offenders = []
     for path in sources:
-        for lineno, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), start=1
-        ):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if any(needle in line for needle in needles):
                 offenders.append(f"{path}:{lineno}: {line.strip()}")
     assert not offenders, (

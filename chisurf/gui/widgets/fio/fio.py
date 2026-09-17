@@ -3,10 +3,10 @@ from __future__ import annotations
 import numpy as np
 from qtpy import QtWidgets
 
-import chisurf.core.support.decorators
 import chisurf.core.base
-import chisurf.gui.decorators
 import chisurf.core.structure
+import chisurf.core.support.decorators
+import chisurf.gui.decorators
 import chisurf.gui.widgets
 
 #: File dialog filter for photon data, re-exported from the reading seam.
@@ -19,13 +19,8 @@ from chisurf.core.fio.pto import SUFFIX  # noqa: E402
 from chisurf.core.fio.staging import TTTR_FILE_FILTER  # noqa: E402,F401
 
 
-class SpcFileWidget(
-    QtWidgets.QWidget
-):
-
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="spcSampleSelectWidget.ui"
-    )
+class SpcFileWidget(QtWidgets.QWidget):
+    @chisurf.gui.decorators.init_with_ui(ui_filename="spcSampleSelectWidget.ui")
     def __init__(self, *args, **kwargs):
         self._photons = None
         self.filenames = list()
@@ -62,28 +57,22 @@ class SpcFileWidget(
         self.lineEdit_3.setText(", ".join(str(int(c)) for c in channels))
         self.number_of_photons = self._photons.nPh
         self.measurement_time = self._photons.measurement_time
-        self.lineEdit_7.setText("%.2f" % self.count_rate)
+        self.lineEdit_7.setText(f"{self.count_rate:.2f}")
 
     @property
     def measurement_time(self) -> float:
         return float(self._photons.measurement_time)
 
     @measurement_time.setter
-    def measurement_time(
-            self,
-            v: float
-    ):
-        self.lineEdit_6.setText("%.1f" % v)
+    def measurement_time(self, v: float):
+        self.lineEdit_6.setText(f"{v:.1f}")
 
     @property
     def number_of_photons(self) -> int:
         return int(self.lineEdit_5.value())
 
     @number_of_photons.setter
-    def number_of_photons(
-            self,
-            v: int
-    ):
+    def number_of_photons(self, v: int):
         self.lineEdit_5.setText(str(v))
 
     @property
@@ -91,10 +80,7 @@ class SpcFileWidget(
         return float(self.doubleSpinBox_2.value())
 
     @rep_rate.setter
-    def rep_rate(
-            self,
-            v: float
-    ):
+    def rep_rate(self, v: float):
         self.doubleSpinBox_2.setValue(v)
 
     @property
@@ -102,10 +88,7 @@ class SpcFileWidget(
         return int(self.lineEdit.text())
 
     @nTAC.setter
-    def nTAC(
-            self,
-            v: int
-    ):
+    def nTAC(self, v: int):
         self.lineEdit.setText(str(v))
 
     @property
@@ -126,15 +109,10 @@ class SpcFileWidget(
     def filename(self) -> str:
         try:
             return self.filenames[0]
-        except:
+        except Exception:
             return "--"
 
-    def onLoadSample(
-            self,
-            event,
-            filenames: str = None,
-            file_type: str = None
-    ) -> None:
+    def onLoadSample(self, event, filenames: str = None, file_type: str = None) -> None:
         """Load a TTTR measurement, asking for the file if none is given.
 
         Parameters
@@ -150,10 +128,7 @@ class SpcFileWidget(
         if file_type is None:
             file_type = self.file_type
         if filenames is None:
-            filename = chisurf.gui.widgets.get_filename(
-                'Open TTTR file',
-                TTTR_FILE_FILTER
-            )
+            filename = chisurf.gui.widgets.get_filename("Open TTTR file", TTTR_FILE_FILTER)
             filenames = [str(filename)]
 
         # Prefer the measurement's container when one is already there, and
@@ -180,8 +155,8 @@ class SpcFileWidget(
         if self._photons is not None:
             self._photons.close()
         self._photons = chisurf.core.fio.fluorescence.photons.Photons(filenames, file_type)
-        #self.samples = self._photons.samples
-        #self.comboBox.addItems(self._photons.sample_names)
+        # self.samples = self._photons.samples
+        # self.comboBox.addItems(self._photons.sample_names)
         self.onSampleChanged()
 
     @property
@@ -196,28 +171,16 @@ class SpcFileWidget(
         super().closeEvent(event)
 
 
-class CsvWidget(
-    chisurf.core.base.Base,
-    QtWidgets.QWidget
-):
-
-    @chisurf.gui.decorators.init_with_ui(
-        ui_filename="csvInput.ui"
-    )
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+class CsvWidget(chisurf.core.base.Base, QtWidgets.QWidget):
+    @chisurf.gui.decorators.init_with_ui(ui_filename="csvInput.ui")
+    def __init__(self, *args, **kwargs):
         self.actionUseHeader.triggered.connect(self.changeCsvParameter)
         self.actionSkiprows.triggered.connect(self.changeCsvParameter)
         self.actionColspecs.triggered.connect(self.changeCsvParameter)
         self.actionCsvType.triggered.connect(self.changeCsvParameter)
         self.actionSetError.triggered.connect(self.changeCsvParameter)
-        self.actionColumnsChanged.triggered.connect(
-            self.changeCsvParameter
-        )
-        self.verbose = kwargs.get('verbose', chisurf.core.settings.cs_settings['verbose'])
+        self.actionColumnsChanged.triggered.connect(self.changeCsvParameter)
+        self.verbose = kwargs.get("verbose", chisurf.core.settings.cs_settings["verbose"])
 
     def changeCsvParameter(self):
         set_errx_on = bool(self.checkBox_3.isChecked())
@@ -227,26 +190,26 @@ class CsvWidget(
         n_skip = int(self.spinBox.value())
         # If "Auto" is selected, the reading routine will be automatically determined based on the file extension
         if self.radioButton_4.isChecked():
-            mode = 'auto'
+            mode = "auto"
         elif self.radioButton_2.isChecked():
-            mode = 'csv'
+            mode = "csv"
         elif self.radioButton.isChecked():
-            mode = 'fwf'
+            mode = "fwf"
         else:
-            mode = 'yaml'
+            mode = "yaml"
         chisurf.run(
             "\n".join(
                 [
-                    "cs.current_setup.error_y_on = %s" % set_erry_on,
-                    "cs.current_setup.error_x_on = %s" % set_errx_on,
-                    "cs.current_setup.colspecs = '%s'" % colspecs,
-                    "cs.current_setup.use_header = %s" % use_header,
-                    "cs.current_setup.skiprows = %s" % n_skip,
-                    "cs.current_setup.reading_routine = '%s'" % mode,
-                    "cs.current_setup.col_ey = %s" % self.spinBox_5.value(),
-                    "cs.current_setup.col_ex = %s" % self.spinBox_3.value(),
-                    "cs.current_setup.col_x = %s" % self.spinBox_2.value(),
-                    "cs.current_setup.col_y = %s" % self.spinBox_4.value()
+                    f"cs.current_setup.error_y_on = {set_erry_on}",
+                    f"cs.current_setup.error_x_on = {set_errx_on}",
+                    f"cs.current_setup.colspecs = '{colspecs}'",
+                    f"cs.current_setup.use_header = {use_header}",
+                    f"cs.current_setup.skiprows = {n_skip}",
+                    f"cs.current_setup.reading_routine = '{mode}'",
+                    f"cs.current_setup.col_ey = {self.spinBox_5.value()}",
+                    f"cs.current_setup.col_ex = {self.spinBox_3.value()}",
+                    f"cs.current_setup.col_x = {self.spinBox_2.value()}",
+                    f"cs.current_setup.col_y = {self.spinBox_4.value()}",
                 ]
             )
         )
@@ -256,10 +219,7 @@ class CsvWidget(
         return str(self.lineEdit_8.text())
 
     @filename.setter
-    def filename(
-            self,
-            v: str
-    ):
+    def filename(self, v: str):
         self.lineEdit_8.setText(v)
 
 

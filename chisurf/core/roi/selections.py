@@ -30,7 +30,8 @@ region collection they all survive, because
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable, Optional, Sequence, Tuple
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -111,8 +112,8 @@ def ellipse_from_covariance(
 
 
 def roi_from_selection(
-    selection: Any, axes: Tuple[int, int] = (0, 1), name: str = ""
-) -> Optional[ROI]:
+    selection: Any, axes: tuple[int, int] = (0, 1), name: str = ""
+) -> ROI | None:
     """Return an ndX selection as a region, or ``None`` if it has no shape.
 
     Duck-typed: the selection is recognised by the attributes it carries, not by
@@ -164,7 +165,9 @@ def roi_from_selection(
         if idx != tuple(axes):
             return None
         return ellipse_from_covariance(
-            selection.mu, selection.cov, float(getattr(selection, "sigma", 1.0)),
+            selection.mu,
+            selection.cov,
+            float(getattr(selection, "sigma", 1.0)),
             name=label,
         )
 
@@ -173,15 +176,17 @@ def roi_from_selection(
         if index not in tuple(axes):
             return None
         return interval_roi(
-            selection.lower, selection.upper,
-            axis=0 if index == axes[0] else 1, name=label,
+            selection.lower,
+            selection.upper,
+            axis=0 if index == axes[0] else 1,
+            name=label,
         )
 
     return None
 
 
 def collection_from_selections(
-    selections: Iterable[Any], axes: Tuple[int, int] = (0, 1), name: str = "selection"
+    selections: Iterable[Any], axes: tuple[int, int] = (0, 1), name: str = "selection"
 ) -> RegionCollection:
     """Return ndX's selection list as a region collection.
 
@@ -220,7 +225,7 @@ def collection_from_selections(
 
 
 def excluded_mask(
-    collection: RegionCollection, data: np.ndarray, axes: Tuple[int, int] = (0, 1)
+    collection: RegionCollection, data: np.ndarray, axes: tuple[int, int] = (0, 1)
 ) -> np.ndarray:
     """Return ndX's mask shape and convention for a region collection.
 

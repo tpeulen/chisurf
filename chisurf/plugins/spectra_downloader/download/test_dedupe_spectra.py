@@ -48,9 +48,15 @@ def test_assess_flags_bad_spectra():
     """Empty, non-monotonic, negative and all-zero curves are flagged; a clean one is not."""
     conn = _make_db()
     conn.execute("INSERT INTO probes (probe_id, chromophore_name) VALUES (1, 'x')")
-    _add_spectrum(conn, 1, 1, "emission", [400, 410, 420, 430, 440], [0.1, 0.5, 1.0, 0.5, 0.1])  # clean
-    _add_spectrum(conn, 2, 1, "absorption", [400, 420, 410, 430, 440], [0.1, 0.2, 0.3, 0.2, 0.1])  # non-monotonic
-    _add_spectrum(conn, 3, 1, "transmission", [400, 410, 420, 430, 440], [-0.01, 0.5, 1.0, 0.5, 0.1])  # negative
+    _add_spectrum(
+        conn, 1, 1, "emission", [400, 410, 420, 430, 440], [0.1, 0.5, 1.0, 0.5, 0.1]
+    )  # clean
+    _add_spectrum(
+        conn, 2, 1, "absorption", [400, 420, 410, 430, 440], [0.1, 0.2, 0.3, 0.2, 0.1]
+    )  # non-monotonic
+    _add_spectrum(
+        conn, 3, 1, "transmission", [400, 410, 420, 430, 440], [-0.01, 0.5, 1.0, 0.5, 0.1]
+    )  # negative
     _add_spectrum(conn, 4, 1, "excitation", [], [])  # empty
     conn.commit()
 
@@ -66,8 +72,12 @@ def test_assess_flags_bad_spectra():
 def test_merge_group_unions_spectra_and_soft_deletes_duplicate():
     """Merging pulls the duplicate's missing spectra into the primary and soft-deletes it."""
     conn = _make_db()
-    conn.execute("INSERT INTO probes (probe_id, chromophore_name, source) VALUES (1, 'EGFP', 'fpbase')")
-    conn.execute("INSERT INTO probes (probe_id, chromophore_name, source) VALUES (2, 'EGFP (long)', 'chroma')")
+    conn.execute(
+        "INSERT INTO probes (probe_id, chromophore_name, source) VALUES (1, 'EGFP', 'fpbase')"
+    )
+    conn.execute(
+        "INSERT INTO probes (probe_id, chromophore_name, source) VALUES (2, 'EGFP (long)', 'chroma')"
+    )
     _add_spectrum(conn, 1, 1, "absorption", [400, 410], [0.1, 0.9])
     _add_spectrum(conn, 2, 1, "emission", [500, 510], [0.9, 0.1])
     _add_spectrum(conn, 3, 2, "emission", [500, 510], [0.8, 0.2])  # overlaps -> ignored
@@ -85,7 +95,10 @@ def test_merge_group_unions_spectra_and_soft_deletes_duplicate():
     }
     assert live == {"absorption", "emission", "excitation"}
     # longest name kept, duplicate soft-deleted.
-    assert conn.execute("SELECT chromophore_name FROM probes WHERE probe_id=1").fetchone()[0] == "EGFP (long)"
+    assert (
+        conn.execute("SELECT chromophore_name FROM probes WHERE probe_id=1").fetchone()[0]
+        == "EGFP (long)"
+    )
     assert conn.execute("SELECT deleted_at FROM probes WHERE probe_id=2").fetchone()[0] is not None
 
 
@@ -113,12 +126,24 @@ def test_bayes_classifier_ranks_pairs():
 def test_find_candidates_surfaces_fuzzy_pair_only():
     """A fuzzy near-duplicate is highlighted; an unrelated dye is not."""
     conn = _make_db()
-    conn.execute("INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (1,'Cy5','organic_dye','chroma')")
-    conn.execute("INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (2,'Cyanine 5','organic_dye','photochemcad')")
-    conn.execute("INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (3,'EGFP','protein','fpbase')")
+    conn.execute(
+        "INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (1,'Cy5','organic_dye','chroma')"
+    )
+    conn.execute(
+        "INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (2,'Cyanine 5','organic_dye','photochemcad')"
+    )
+    conn.execute(
+        "INSERT INTO probes (probe_id, chromophore_name, category, source) VALUES (3,'EGFP','protein','fpbase')"
+    )
     for pid, amax, emax in ((1, 649, 670), (2, 650, 671), (3, 488, 507)):
-        conn.execute("INSERT INTO optical_properties (probe_id, property_name, property_value) VALUES (?, 'abs_max', ?)", (pid, amax))
-        conn.execute("INSERT INTO optical_properties (probe_id, property_name, property_value) VALUES (?, 'em_max', ?)", (pid, emax))
+        conn.execute(
+            "INSERT INTO optical_properties (probe_id, property_name, property_value) VALUES (?, 'abs_max', ?)",
+            (pid, amax),
+        )
+        conn.execute(
+            "INSERT INTO optical_properties (probe_id, property_name, property_value) VALUES (?, 'em_max', ?)",
+            (pid, emax),
+        )
     conn.commit()
 
     cands = ds.find_duplicate_candidates(conn, min_prob=0.5)

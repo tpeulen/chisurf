@@ -190,11 +190,15 @@ def test_the_cli_runs_a_recipe(tmp_path: Path):
 
     field = _write_field(tmp_path / "field.tif")
     recipe = tmp_path / "mine.json"
-    recipe.write_text(json.dumps({
-        "workflow": STANDARD,
-        "name": "molecules",
-        "settings": {"clear_border": False},
-    }))
+    recipe.write_text(
+        json.dumps(
+            {
+                "workflow": STANDARD,
+                "name": "molecules",
+                "settings": {"clear_border": False},
+            }
+        )
+    )
 
     result = CliRunner().invoke(cli, ["run", str(recipe), str(field)])
 
@@ -217,15 +221,25 @@ def test_an_untouched_option_keeps_the_workflow_value(tmp_path: Path):
     field = _write_field(tmp_path / "field.tif")
     out = tmp_path / "used.json"
 
-    result = CliRunner().invoke(cli, [
-        "detect", str(field), "--workflow", "camera_spots",
-        "--min-area", "3", "--dry-run", "--save-workflow", str(out),
-    ])
+    result = CliRunner().invoke(
+        cli,
+        [
+            "detect",
+            str(field),
+            "--workflow",
+            "camera_spots",
+            "--min-area",
+            "3",
+            "--dry-run",
+            "--save-workflow",
+            str(out),
+        ],
+    )
 
     assert result.exit_code == 0, result.output
     document = json.loads(out.read_text())
-    assert document["settings"]["min_area"] == 3          # typed, so it wins
-    assert document["settings"]["method"] == "log"        # untyped, so the workflow's
+    assert document["settings"]["min_area"] == 3  # typed, so it wins
+    assert document["settings"]["method"] == "log"  # untyped, so the workflow's
     assert document["settings"]["max_sigma"] == 4.0
     assert document["workflow"] == "camera_spots"
 
@@ -238,18 +252,24 @@ def test_a_saved_workflow_reruns_the_same_detection(tmp_path: Path):
     saved = tmp_path / "saved.json"
 
     runner = CliRunner()
-    first = runner.invoke(cli, [
-        "detect", str(by_options), "--threshold", "40", "--keep-border",
-        "--save-workflow", str(saved),
-    ])
+    first = runner.invoke(
+        cli,
+        [
+            "detect",
+            str(by_options),
+            "--threshold",
+            "40",
+            "--keep-border",
+            "--save-workflow",
+            str(saved),
+        ],
+    )
     assert first.exit_code == 0, first.output
 
     second = runner.invoke(cli, ["run", str(saved), str(by_recipe)])
     assert second.exit_code == 0, second.output
 
-    np.testing.assert_array_equal(
-        read_regions(by_options).labels, read_regions(by_recipe).labels
-    )
+    np.testing.assert_array_equal(read_regions(by_options).labels, read_regions(by_recipe).labels)
 
 
 # ── the cross-plugin handoff ──
@@ -258,12 +278,14 @@ def test_prepare_resolves_files_and_channels_from_a_workflow_context(tmp_path: P
         _handle_prepare_workflow,
     )
 
-    response = _handle_prepare_workflow({
-        "workflow_context": {
-            "raw_files": [str(tmp_path / "a.ptu"), str(tmp_path / "b.ptu")],
-            "channel_settings": {"green": {"chs": [0, 1]}, "red": {"chs": [2]}},
+    response = _handle_prepare_workflow(
+        {
+            "workflow_context": {
+                "raw_files": [str(tmp_path / "a.ptu"), str(tmp_path / "b.ptu")],
+                "channel_settings": {"green": {"chs": [0, 1]}, "red": {"chs": [2]}},
+            }
         }
-    })
+    )
 
     assert response["ok"] is True, response
     data = response["result"]
@@ -288,7 +310,7 @@ def test_picking_a_workflow_replaces_every_setting_not_just_the_method():
     from chisurf.plugins.microscopy.spot_finder.gui.view_model import SpotFinderViewModel
 
     vm = SpotFinderViewModel()
-    vm.settings.threshold = 999.0            # a value from the previous recipe
+    vm.settings.threshold = 999.0  # a value from the previous recipe
     vm.workflow = "camera_spots"
 
     assert vm.settings.method == "log"

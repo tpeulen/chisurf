@@ -58,5 +58,3 @@ class DecayResult:
     noise: list[float]
     n_photons: int
     output_path: str = ""
-
-

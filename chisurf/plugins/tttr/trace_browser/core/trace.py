@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.plugins.tttr.intensity_trace.__init__ import IntensityTrace
+from chisurf.plugins.tttr.intensity_trace import IntensityTrace
 from chisurf.plugins.tttr.trace_browser.api.models import TraceLoadResult
 
 
@@ -29,7 +29,12 @@ def cache_dir_for(folder: pathlib.Path, file_path: pathlib.Path) -> pathlib.Path
     return path
 
 
-def trace_signature(file_path: pathlib.Path, window_ms: float, setup_settings: dict[str, Any] | None, selected_channels: list[int] | None) -> str:
+def trace_signature(
+    file_path: pathlib.Path,
+    window_ms: float,
+    setup_settings: dict[str, Any] | None,
+    selected_channels: list[int] | None,
+) -> str:
     """Return a stable cache signature for a trace load."""
     try:
         stat = file_path.stat()
@@ -58,16 +63,30 @@ def trace_signature(file_path: pathlib.Path, window_ms: float, setup_settings: d
         "win_ms": float(window_ms),
         "mode": mode,
     }
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
 
 
-def cache_file(file_path: pathlib.Path, folder: pathlib.Path, window_ms: float, setup_settings: dict[str, Any] | None, selected_channels: list[int] | None) -> pathlib.Path:
+def cache_file(
+    file_path: pathlib.Path,
+    folder: pathlib.Path,
+    window_ms: float,
+    setup_settings: dict[str, Any] | None,
+    selected_channels: list[int] | None,
+) -> pathlib.Path:
     """Return the on-disk cache file for a trace."""
     sig = trace_signature(file_path, window_ms, setup_settings, selected_channels)
     return cache_dir_for(folder, file_path) / f"{file_path.stem}_{sig}.npz"
 
 
-def load_cached(file_path: pathlib.Path, folder: pathlib.Path, window_ms: float, setup_settings: dict[str, Any] | None, selected_channels: list[int] | None) -> tuple[np.ndarray, np.ndarray, list[str]] | None:
+def load_cached(
+    file_path: pathlib.Path,
+    folder: pathlib.Path,
+    window_ms: float,
+    setup_settings: dict[str, Any] | None,
+    selected_channels: list[int] | None,
+) -> tuple[np.ndarray, np.ndarray, list[str]] | None:
     """Load a cached trace if present."""
     try:
         path = cache_file(file_path, folder, window_ms, setup_settings, selected_channels)
@@ -82,11 +101,22 @@ def load_cached(file_path: pathlib.Path, folder: pathlib.Path, window_ms: float,
         return None
 
 
-def save_cached(file_path: pathlib.Path, folder: pathlib.Path, window_ms: float, setup_settings: dict[str, Any] | None, selected_channels: list[int] | None, time_axis: np.ndarray, counts: np.ndarray, labels: list[str]) -> None:
+def save_cached(
+    file_path: pathlib.Path,
+    folder: pathlib.Path,
+    window_ms: float,
+    setup_settings: dict[str, Any] | None,
+    selected_channels: list[int] | None,
+    time_axis: np.ndarray,
+    counts: np.ndarray,
+    labels: list[str],
+) -> None:
     """Save a computed trace to disk cache."""
     try:
         path = cache_file(file_path, folder, window_ms, setup_settings, selected_channels)
-        np.savez_compressed(str(path), time_axis=time_axis, padded=counts, labels=np.array(labels, dtype=object))
+        np.savez_compressed(
+            str(path), time_axis=time_axis, padded=counts, labels=np.array(labels, dtype=object)
+        )
     except Exception:
         pass
 
@@ -123,9 +153,20 @@ def load_trace(
                     channels = sorted(tttr_obj.get_used_routing_channels())
                 except Exception:
                     channels = []
-            time_axis, counts, channels = IntensityTrace().process_ptu(file_path, time_window_s, channels)
+            time_axis, counts, channels = IntensityTrace().process_ptu(
+                file_path, time_window_s, channels
+            )
             labels = [str(channel) for channel in channels]
-        save_cached(file_path, folder, window_ms, setup_settings, selected_channels, time_axis, counts, labels)
+        save_cached(
+            file_path,
+            folder,
+            window_ms,
+            setup_settings,
+            selected_channels,
+            time_axis,
+            counts,
+            labels,
+        )
     result = TraceLoadResult(
         path=str(file_path),
         time_axis=np.asarray(time_axis).tolist(),

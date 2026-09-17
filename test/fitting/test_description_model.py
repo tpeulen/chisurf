@@ -17,14 +17,16 @@ bff = pytest.importorskip("IMP.bff")
 
 import chisurf.core.curve
 import chisurf.core.data
-import chisurf.core.models.model
 import chisurf.core.fitting.fit as fitting
+import chisurf.core.models.model
 from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
 from chisurf.core.models.description import DescriptionModel, for_family
 
 #: ChiSurf's classic LifetimeModel at the numbers the parity tests below use,
 #: recorded before it was removed (see the file's _comment).
-CLASSIC = json.loads((pathlib.Path(__file__).parent / "data" / "classic_tcspc_reference.json").read_text())["lifetime"]
+CLASSIC = json.loads(
+    (pathlib.Path(__file__).parent / "data" / "classic_tcspc_reference.json").read_text()
+)["lifetime"]
 
 N = 128
 DT = 0.048
@@ -68,8 +70,9 @@ def _simulated():
         port.fixed = False
         port.value = value
     active = problem.get_active_structure()
-    return np.array(problem.get_structure_output(
-        active, problem.get_structure_curve_node(active, "decay")))
+    return np.array(
+        problem.get_structure_output(active, problem.get_structure_curve_node(active, "decay"))
+    )
 
 
 def test_the_family_is_data_and_the_class_is_generic():
@@ -83,7 +86,7 @@ def test_an_incomplete_model_says_what_it_is_missing():
     x = _axis()
     data = chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N))
     fit = fitting.Fit(model_class=for_family("tcspc_lifetime"), data=data)
-    fit.model.set_scalar("generated_response", 0.0)     # a measured IRF, and none loaded
+    fit.model.set_scalar("generated_response", 0.0)  # a measured IRF, and none loaded
     assert fit.model.problem is None
     assert fit.model.missing == ["response"]
 
@@ -94,7 +97,7 @@ def test_parameters_are_the_models_own_ports():
     assert problem is not None, model.missing
     for parameter in model.parameters_all:
         if getattr(parameter, "is_output", False):
-            continue                # a statistic shown beside the parameters, not a port
+            continue  # a statistic shown beside the parameters, not a port
         assert parameter._port.uid == problem.get_parameter(parameter.canonical_id).uid
 
 
@@ -103,7 +106,9 @@ def test_the_curve_is_the_models_output():
     model.update()
     problem = model.problem
     active = problem.get_active_structure()
-    expected = problem.get_structure_output(active, problem.get_structure_curve_node(active, "decay"))
+    expected = problem.get_structure_output(
+        active, problem.get_structure_curve_node(active, "decay")
+    )
     assert np.asarray(model.y) == pytest.approx(np.asarray(expected))
 
 
@@ -112,7 +117,11 @@ def test_picking_a_topology_shows_its_rows_and_frees_them():
     model.structure = "lifetime.components.2"
     lifetimes = model.lifetimes.visible_parameters()
     assert [p.canonical_id for p in lifetimes] == [
-        "lifetime.amplitude.0", "lifetime.tau.0", "lifetime.amplitude.1", "lifetime.tau.1"]
+        "lifetime.amplitude.0",
+        "lifetime.tau.0",
+        "lifetime.amplitude.1",
+        "lifetime.tau.1",
+    ]
     free = {p.canonical_id for p in model.parameters}
     assert {"lifetime.tau.0", "lifetime.tau.1", "lifetime.amplitude.1"} <= free
 
@@ -123,12 +132,14 @@ def test_a_fit_writes_the_model_in_place_and_recovers_the_truth():
     model.structure = "lifetime.components.2"
     starts = {"lifetime.tau.0": 2.5, "lifetime.amplitude.1": 0.6, "lifetime.tau.1": 0.8}
     for parameter in model.parameters_all:
-        if getattr(parameter, 'is_output', False):
+        if getattr(parameter, "is_output", False):
             continue
         if parameter.canonical_id in starts:
             parameter.value = starts[parameter.canonical_id]
     fit.run()
-    values = {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)}
+    values = {
+        p.canonical_id: p.value for p in model.parameters_all if not getattr(p, "is_output", False)
+    }
     for canonical in ("lifetime.tau.0", "lifetime.tau.1", "lifetime.amplitude.1"):
         assert values[canonical] == pytest.approx(TRUTH[canonical], rel=1e-3), canonical
         assert values[canonical] == model.problem.get_parameter(canonical).value
@@ -136,7 +147,7 @@ def test_a_fit_writes_the_model_in_place_and_recovers_the_truth():
 
 def test_fixing_holds_for_every_topology_and_freeing_releases_the_instrument():
     _, model = _view()
-    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, 'is_output', False)}
+    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, "is_output", False)}
     by_id["instrument.n0"].fixed = True
     model.structure = "lifetime.components.3"
     assert by_id["instrument.n0"].fixed
@@ -148,11 +159,19 @@ def test_fixing_holds_for_every_topology_and_freeing_releases_the_instrument():
 
 def test_new_data_keeps_every_port_the_view_holds():
     fit, model = _view()
-    ports = {p.canonical_id: p._port.uid for p in model.parameters_all if not getattr(p, 'is_output', False)}
+    ports = {
+        p.canonical_id: p._port.uid
+        for p in model.parameters_all
+        if not getattr(p, "is_output", False)
+    }
     model.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=np.roll(_irf(), 2)))
     fit.data = chisurf.core.data.DataCurve(x=_axis(), y=np.full(N, 50.0), ey=np.full(N, 7.0))
     assert model.problem is not None
-    assert {p.canonical_id: p._port.uid for p in model.parameters_all if not getattr(p, 'is_output', False)} == ports
+    assert {
+        p.canonical_id: p._port.uid
+        for p in model.parameters_all
+        if not getattr(p, "is_output", False)
+    } == ports
     for canonical, uid in ports.items():
         assert model.problem.get_parameter(canonical).uid == uid
 
@@ -162,7 +181,10 @@ def test_the_search_leaves_the_model_at_its_winner_without_a_copy():
     fit, model = _view(y)
     prepared = prepare_model_search(fit)
     assert prepared.supported, prepared.reasons
-    assert prepared.problem.get_parameter("lifetime.tau.0").uid == model.problem.get_parameter("lifetime.tau.0").uid
+    assert (
+        prepared.problem.get_parameter("lifetime.tau.0").uid
+        == model.problem.get_parameter("lifetime.tau.0").uid
+    )
     config = bff.ModelSearchConfig()
     config.set_number_of_simulations(16)
     config.set_dirichlet_fraction(0.0)
@@ -171,25 +193,33 @@ def test_the_search_leaves_the_model_at_its_winner_without_a_copy():
     best = search.run().get_best_state()
     prepared.binding.apply_state(prepared.problem, best)
     assert model.structure == best.get_structure_key() == "lifetime.components.2"
-    taus = sorted(p.value for p in model.lifetimes.visible_parameters() if p.canonical_id.startswith("lifetime.tau"))
+    taus = sorted(
+        p.value
+        for p in model.lifetimes.visible_parameters()
+        if p.canonical_id.startswith("lifetime.tau")
+    )
     assert taus == pytest.approx([0.6, 3.2], rel=1e-2)
 
 
 def test_a_refused_search_puts_the_model_back():
     fit, model = _view(_simulated())
-    before = {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)}
+    before = {
+        p.canonical_id: p.value for p in model.parameters_all if not getattr(p, "is_output", False)
+    }
     structure = model.structure
     prepared = prepare_model_search(fit)
     prepared.problem.get_initial_state()
     prepared.binding.restore(prepared.problem)
-    assert {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)} == before
+    assert {
+        p.canonical_id: p.value for p in model.parameters_all if not getattr(p, "is_output", False)
+    } == before
     assert model.structure == structure
 
 
 def test_state_round_trips_without_rebuilding_twice():
     fit, model = _view()
     model.structure = "lifetime.components.2"
-    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, 'is_output', False)}
+    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, "is_output", False)}
     by_id["lifetime.tau.1"].value = 1.7
     by_id["instrument.n0"].fixed = True
     state = model.get_state()
@@ -220,8 +250,12 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
     and BFF now does the same in the graph, so the view needs no Python curve.
     """
     x = _axis()
-    irf = _irf() + 6.0                      # a lamp background under the IRF
-    y = np.random.default_rng(4).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 10).astype(float)
+    irf = _irf() + 6.0  # a lamp background under the IRF
+    y = (
+        np.random.default_rng(4)
+        .poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 10)
+        .astype(float)
+    )
     ey = np.sqrt(np.maximum(y, 1.0))
     reference = np.asarray(CLASSIC["irf_preparation"])
 
@@ -234,10 +268,15 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
     model.structure = "lifetime.components.2"
     amplitudes = CLASSIC["amplitudes"]
     values = {
-        "lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
-        "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
-        "instrument.response_background": 6.5, "instrument.timeshift": 0.7,
-        "instrument.n0": 9000.0, "instrument.scatter": 0.02, "instrument.background": 3.0,
+        "lifetime.amplitude.0": amplitudes[0],
+        "lifetime.tau.0": 3.2,
+        "lifetime.amplitude.1": amplitudes[1],
+        "lifetime.tau.1": 0.6,
+        "instrument.response_background": 6.5,
+        "instrument.timeshift": 0.7,
+        "instrument.n0": 9000.0,
+        "instrument.scatter": 0.02,
+        "instrument.background": 3.0,
     }
     for name, value in values.items():
         port = problem.get_parameter(name)
@@ -253,7 +292,11 @@ def test_the_view_reproduces_the_classic_background_pattern():
     """A measured background decay, split from the fluorescence by measurement time."""
     x = _axis()
     pattern = 30.0 + 20.0 * np.exp(-0.5 * ((x - 2.5) / 0.6) ** 2)
-    y = np.random.default_rng(8).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 40).astype(float)
+    y = (
+        np.random.default_rng(8)
+        .poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 40)
+        .astype(float)
+    )
     ey = np.sqrt(np.maximum(y, 1.0))
     reference = np.asarray(CLASSIC["background_pattern"])
 
@@ -264,8 +307,12 @@ def test_the_view_reproduces_the_classic_background_pattern():
     model.set_scalar("t_decay", 3.0)
     problem = model.problem
     model.structure = "lifetime.components.1"
-    for name, value in {"lifetime.tau.0": 2.1, "instrument.timeshift": 0.8, "instrument.n0": 1.0,
-                        "instrument.background": 0.0}.items():
+    for name, value in {
+        "lifetime.tau.0": 2.1,
+        "instrument.timeshift": 0.8,
+        "instrument.n0": 1.0,
+        "instrument.background": 0.0,
+    }.items():
         port = problem.get_parameter(name)
         held = port.fixed
         port.fixed = False
@@ -278,7 +325,11 @@ def test_the_view_reproduces_the_classic_background_pattern():
 def _view_at_classic_numbers(configure_view, n_lifetimes=2):
     """The view over the decay and IRF the classic parity cases used, at their numbers."""
     x = _axis()
-    y = np.random.default_rng(11).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
+    y = (
+        np.random.default_rng(11)
+        .poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20)
+        .astype(float)
+    )
     ey = np.sqrt(np.maximum(y, 1.0))
     fit, model = _view(y)
     fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
@@ -286,8 +337,13 @@ def _view_at_classic_numbers(configure_view, n_lifetimes=2):
     problem = model.problem
     model.structure = f"lifetime.components.{n_lifetimes}"
     amplitudes = CLASSIC["amplitudes"]
-    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
-              "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
+    values = {
+        "lifetime.amplitude.0": amplitudes[0],
+        "lifetime.tau.0": 3.2,
+        "instrument.n0": 5000.0,
+        "instrument.scatter": 0.01,
+        "instrument.background": 2.0,
+    }
     if n_lifetimes == 2:
         values.update({"lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6})
     for name, value in values.items():
@@ -307,11 +363,14 @@ def test_the_view_reproduces_the_classic_convolution_modes(mode, convolve):
         model.set_scalar("convolve", 1.0 if convolve else 0.0)
 
     got = _view_at_classic_numbers(view).y
-    np.testing.assert_allclose(got, CLASSIC["convolution"][f"{mode}-{convolve}"], rtol=1e-9, atol=1e-9)
+    np.testing.assert_allclose(
+        got, CLASSIC["convolution"][f"{mode}-{convolve}"], rtol=1e-9, atol=1e-9
+    )
 
 
 def test_the_view_reproduces_the_classic_generated_irf():
     """No IRF loaded: both model it as a generalized-normal peak at the decay's rise."""
+
     def view(model):
         model.unset_dataset("response")
         model.set_scalar("generated_response", 1.0)
@@ -351,7 +410,11 @@ def test_the_polarized_view_reproduces_the_classic_anisotropy(polarization, code
     """VV, VH and VV/VH decays with two rotations, g and the l1/l2 mixing."""
     x = _axis()
     irf = _irf()
-    y = np.random.default_rng(12).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
+    y = (
+        np.random.default_rng(12)
+        .poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20)
+        .astype(float)
+    )
     ey = np.sqrt(np.maximum(y, 1.0))
     reference = np.asarray(CLASSIC["polarized"][polarization])
     amplitudes = CLASSIC["amplitudes"]
@@ -367,12 +430,23 @@ def test_the_polarized_view_reproduces_the_classic_anisotropy(polarization, code
     problem = model.problem
     assert problem is not None, model.missing
     model.structure = "lifetime.components.2.rotations.2"
-    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
-              "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
-              "rotation.amplitude.0": rotations[0], "rotation.time.0": 0.8,
-              "rotation.amplitude.1": rotations[1], "rotation.time.1": 4.0,
-              "anisotropy.r0": 0.36, "anisotropy.g": 1.2, "anisotropy.l1": 0.03, "anisotropy.l2": 0.04,
-              "instrument.n0": 5000.0, "instrument.scatter": 0.0, "instrument.background": 0.0}
+    values = {
+        "lifetime.amplitude.0": amplitudes[0],
+        "lifetime.tau.0": 3.2,
+        "lifetime.amplitude.1": amplitudes[1],
+        "lifetime.tau.1": 0.6,
+        "rotation.amplitude.0": rotations[0],
+        "rotation.time.0": 0.8,
+        "rotation.amplitude.1": rotations[1],
+        "rotation.time.1": 4.0,
+        "anisotropy.r0": 0.36,
+        "anisotropy.g": 1.2,
+        "anisotropy.l1": 0.03,
+        "anisotropy.l2": 0.04,
+        "instrument.n0": 5000.0,
+        "instrument.scatter": 0.0,
+        "instrument.background": 0.0,
+    }
     for name, value in values.items():
         port = problem.get_parameter(name)
         held = port.fixed
@@ -403,29 +477,39 @@ def test_the_view_presents_the_classic_outputs():
     """The lifetime distribution, the averaged lifetimes and the photon modes."""
     view = _view_at_classic_numbers(lambda m: None)
     spectrum = np.asarray(view.lifetime_spectrum)
-    np.testing.assert_allclose(np.sort(spectrum[1::2]), np.sort(CLASSIC["lifetime_spectrum"][1::2]), rtol=1e-12)
+    np.testing.assert_allclose(
+        np.sort(spectrum[1::2]), np.sort(CLASSIC["lifetime_spectrum"][1::2]), rtol=1e-12
+    )
     outputs = {p.name: p.value for p in view.parameters_all if getattr(p, "is_output", False)}
     assert outputs["<tau>x"] == pytest.approx(CLASSIC["tau_x"], rel=1e-12)
     assert outputs["<tau>F"] == pytest.approx(CLASSIC["tau_f"], rel=1e-12)
-    assert {m.key for m in view.get_plot_reference_modes()} == {"tcspc_total_photons", "tcspc_peak_photons"}
+    assert {m.key for m in view.get_plot_reference_modes()} == {
+        "tcspc_total_photons",
+        "tcspc_peak_photons",
+    }
     assert "distribution" in [plot.key for plot in view.view_spec().plots]
 
 
 def test_a_lifetime_linked_across_two_views_is_fitted_globally():
     """A ChiSurf link between two described models: one lifetime, two decays."""
     y = _simulated()
-    curves = [chisurf.core.data.DataCurve(x=_axis(), y=y.copy(), ey=np.sqrt(np.maximum(y, 1.0)))
-              for _ in range(2)]
-    group = fitting.FitGroup(data=chisurf.core.data.DataGroup(curves),
-                             model_class=for_family("tcspc_lifetime"))
+    curves = [
+        chisurf.core.data.DataCurve(x=_axis(), y=y.copy(), ey=np.sqrt(np.maximum(y, 1.0)))
+        for _ in range(2)
+    ]
+    group = fitting.FitGroup(
+        data=chisurf.core.data.DataGroup(curves), model_class=for_family("tcspc_lifetime")
+    )
     for member in group:
         member.xmin, member.xmax = 0, N
         member.model.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=_irf()))
         member.model.set_scalar("period", PERIOD)
         assert member.model.problem is not None, member.model.missing
         member.model.structure = "lifetime.components.2"
-    first, second = ({p.canonical_id: p for p in m.model.parameters_all
-                      if not getattr(p, "is_output", False)} for m in group)
+    first, second = (
+        {p.canonical_id: p for p in m.model.parameters_all if not getattr(p, "is_output", False)}
+        for m in group
+    )
     second["lifetime.tau.0"].link = first["lifetime.tau.0"]
     for member in group:
         member.model.find_parameters()
@@ -449,10 +533,15 @@ def test_a_described_model_offers_model_search_and_a_refused_one_does_not(monkey
     assert dispatcher.model_search_available(fit)
 
     x = _axis()
-    other = fitting.Fit(model_class=_ClassicStandIn,
-                        data=chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N)))
-    monkeypatch.setattr(dispatcher, "declare_model_search",
-                        lambda _fit: unsupported("test", "no_native_graph", "a Python node"))
+    other = fitting.Fit(
+        model_class=_ClassicStandIn,
+        data=chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N)),
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "declare_model_search",
+        lambda _fit: unsupported("test", "no_native_graph", "a Python node"),
+    )
     assert not dispatcher.model_search_available(other)
 
 
@@ -480,8 +569,10 @@ def _lifetime_view(taus, amplitudes, y=None):
 def _mixture_view(sources, y=None):
     x = _axis()
     y = np.full(N, 10.0) if y is None else y
-    fit = fitting.Fit(model_class=for_family("tcspc_mixture"),
-                      data=chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0))))
+    fit = fitting.Fit(
+        model_class=for_family("tcspc_mixture"),
+        data=chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0))),
+    )
     fit.xmin, fit.xmax = 0, N
     model = fit.model
     model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=_irf()))
@@ -511,8 +602,11 @@ def test_a_mixture_view_mixes_the_lifetimes_of_other_views():
             port.fixed = held
         model.update()
     np.testing.assert_allclose(np.asarray(mixture.y), np.asarray(reference.y), rtol=1e-9, atol=1e-9)
-    assert "fit_mixer" in [getattr(s, "key", "") for panel in mixture.view_spec().sections
-                           for s in getattr(panel, "sections", ())]
+    assert "fit_mixer" in [
+        getattr(s, "key", "")
+        for panel in mixture.view_spec().sections
+        for s in getattr(panel, "sections", ())
+    ]
 
 
 def test_a_mixture_fit_recovers_the_fractions_of_fixed_species():
@@ -555,8 +649,12 @@ def test_a_lifetime_spectrum_is_evaluated_and_the_model_put_back():
     before = {p.canonical_id: p.value for p in model.parameters_all}
 
     amplitude_0 = _view()[1].problem.get_parameter("lifetime.amplitude.0").value
-    spectrum = [amplitude_0, TRUTH["lifetime.tau.0"],
-                TRUTH["lifetime.amplitude.1"], TRUTH["lifetime.tau.1"]]
+    spectrum = [
+        amplitude_0,
+        TRUTH["lifetime.tau.0"],
+        TRUTH["lifetime.amplitude.1"],
+        TRUTH["lifetime.tau.1"],
+    ]
     decay = compute_model_decay(model, spectrum)
 
     np.testing.assert_allclose(decay, np.maximum(truth, 0.0), rtol=1e-9, atol=1e-9)

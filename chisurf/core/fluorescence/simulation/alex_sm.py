@@ -122,9 +122,7 @@ def simulate_alex_sm(path, populations, *, seed: int = 1, smear: float = 0.08):
     chan = chan[order].astype(np.int8)
 
     data = tttrlib.TTTR()
-    data.append_events(
-        macro, np.zeros(macro.size, np.uint16), chan, np.zeros(macro.size, np.int8)
-    )
+    data.append_events(macro, np.zeros(macro.size, np.uint16), chan, np.zeros(macro.size, np.int8))
     data.header.tttr_container_type = SM_CONTAINER
     data.header.tttr_record_type = SM_RECORD_TYPE
     data.header.set_tag("MeasDesc_GlobalResolution", MACRO_RESOLUTION, TY_FLOAT8)

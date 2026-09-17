@@ -142,7 +142,11 @@ def _mmfdb_context_from_payload(payload: dict[str, Any]) -> MMFDBContext:
 
 def service_success(result: AnalysisResult | dict[str, Any]) -> dict[str, Any]:
     """Wrap an API result in the standard JSON-RPC service envelope."""
-    payload = analysis_result_to_payload(result) if isinstance(result, AnalysisResult) else to_jsonable(result)
+    payload = (
+        analysis_result_to_payload(result)
+        if isinstance(result, AnalysisResult)
+        else to_jsonable(result)
+    )
     return {"ok": True, "result": payload}
 
 

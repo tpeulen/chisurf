@@ -6,23 +6,24 @@ It includes classes and functions for initializing and controlling
 BH SPC devices, as well as for acquiring data from them.
 """
 
-import os
 import array
+import contextlib
 import ctypes
 import enum
-import contextlib
+import os
 import tempfile
+
 import numpy as np
-from qtpy.QtCore import QObject
-from abc import ABC, abstractmethod
 
 from ..abc import TCSPCDeviceABC
 
 PICOQUANT_AVAILABLE = False
 
+
 # Direct wrapper for the BH SPC DLL
 class DLLOperationMode(enum.Enum):
     """Enum for the operation mode of SPCM-DLL."""
+
     HARDWARE = 0
     SIMULATE_SPC_600 = 600
     SIMULATE_SPC_630 = 630
@@ -51,8 +52,10 @@ class DLLOperationMode(enum.Enum):
     SIMULATE_SPC_QC_104 = 104
     SIMULATE_SPC_QC_004 = 4
 
+
 class InitStatus(enum.Enum):
     """Enum for the initialization status of an SPC module."""
+
     INIT_OK = 0
     INIT_NOT_DONE = -1
     INIT_WRONG_EEP_CHKSUM = -2
@@ -86,13 +89,14 @@ class InitStatus(enum.Enum):
             self.INIT_LICENSE_NOT_VALID: "License key not applicable",
             self.INIT_LICENSE_DATE_EXP: "License key expired",
             self.INIT_CANT_OPEN_USB_CARD: "Cannot open USB card",
-            self.INIT_XILINX_ERR: "FPGA configuration error"
+            self.INIT_XILINX_ERR: "FPGA configuration error",
         }
         return messages.get(self, "Unknown error")
 
 
 class ParID(enum.Enum):
     """Enum of SPC parameter ids."""
+
     CFD_LIMIT_LOW = 0
     CFD_LIMIT_HIGH = 1
     CFD_ZC_LEVEL = 2
@@ -154,9 +158,12 @@ class ParID(enum.Enum):
     TDC_OFFSET3 = 58
     TDC_OFFSET4 = 59
 
+
 class SPCMError(Exception):
     """Exception raised for errors in the SPCM DLL."""
+
     pass
+
 
 class BHSPC:
     """Direct wrapper for the BH SPC DLL."""
@@ -206,7 +213,11 @@ class BHSPC:
         self.dll.SPC_set_parameter.restype = ctypes.c_short
 
         # SPC_get_parameter
-        self.dll.SPC_get_parameter.argtypes = [ctypes.c_short, ctypes.c_short, ctypes.POINTER(ctypes.c_float)]
+        self.dll.SPC_get_parameter.argtypes = [
+            ctypes.c_short,
+            ctypes.c_short,
+            ctypes.POINTER(ctypes.c_float),
+        ]
         self.dll.SPC_get_parameter.restype = ctypes.c_short
 
         # SPC_start_measurement
@@ -218,7 +229,11 @@ class BHSPC:
         self.dll.SPC_stop_measurement.restype = ctypes.c_short
 
         # SPC_read_fifo
-        self.dll.SPC_read_fifo.argtypes = [ctypes.c_short, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ushort)]
+        self.dll.SPC_read_fifo.argtypes = [
+            ctypes.c_short,
+            ctypes.POINTER(ctypes.c_ulong),
+            ctypes.POINTER(ctypes.c_ushort),
+        ]
         self.dll.SPC_read_fifo.restype = ctypes.c_short
 
         # SPC_get_fifo_usage
@@ -310,8 +325,8 @@ class BHSPC:
             raise SPCMError(f"Error reading FIFO: {result}")
 
         # Convert to array.array
-        data_array = array.array('H')
-        data_array.extend(data[:count.value])
+        data_array = array.array("H")
+        data_array.extend(data[: count.value])
 
         return data_array
 
@@ -352,21 +367,21 @@ class BHSPC:
                 # If the card is initialized successfully, add it to the list
                 if init_status == InitStatus.INIT_OK:
                     card_info = {
-                        'module_number': mod_no,
-                        'status': init_status,
-                        'active': mod_no in self.active_cards
+                        "module_number": mod_no,
+                        "status": init_status,
+                        "active": mod_no in self.active_cards,
                     }
                     cards.append(card_info)
                 # If we get a specific error that indicates no card, skip
-                elif init_status in [InitStatus.INIT_WRONG_MOD_ID, InitStatus.INIT_CANT_OPEN_PCI_CARD, InitStatus.INIT_CANT_OPEN_USB_CARD]:
+                elif init_status in [
+                    InitStatus.INIT_WRONG_MOD_ID,
+                    InitStatus.INIT_CANT_OPEN_PCI_CARD,
+                    InitStatus.INIT_CANT_OPEN_USB_CARD,
+                ]:
                     continue
                 # For other errors, add the card with the error status
                 else:
-                    card_info = {
-                        'module_number': mod_no,
-                        'status': init_status,
-                        'active': False
-                    }
+                    card_info = {"module_number": mod_no, "status": init_status, "active": False}
                     cards.append(card_info)
 
         return cards
@@ -400,6 +415,7 @@ simulation = {mode}
 [spc_module]
 """
 
+
 @contextlib.contextmanager
 def ini_file(text):
     """Context manager providing a temporary .ini file with the given text."""
@@ -408,6 +424,7 @@ def ini_file(text):
         with open(ininame, mode="w") as inifile:
             inifile.write(text)
         yield ininame
+
 
 class BHSPCDevice(TCSPCDeviceABC):
     """BH SPC device wrapper implementing the TCSPC device interface."""
@@ -431,11 +448,9 @@ class BHSPCDevice(TCSPCDeviceABC):
         try:
             if simulation:
                 # In simulation mode, create a single simulated card
-                self.available_cards = [{
-                    'module_number': 0,
-                    'status': InitStatus.INIT_OK,
-                    'active': True
-                }]
+                self.available_cards = [
+                    {"module_number": 0, "status": InitStatus.INIT_OK, "active": True}
+                ]
             else:
                 # Detect real hardware
                 self.available_cards = self.bh_spc.detect_cards()
@@ -467,7 +482,7 @@ class BHSPCDevice(TCSPCDeviceABC):
 
             # If no cards are active, set the first available card as active
             if not self.active_cards and self.available_cards:
-                self.set_active_cards([self.available_cards[0]['module_number']])
+                self.set_active_cards([self.available_cards[0]["module_number"]])
 
             # Create a temporary ini file for initialization
             mode = DLLOperationMode.SIMULATE_SPC_830 if simulation else DLLOperationMode.HARDWARE
@@ -479,7 +494,9 @@ class BHSPCDevice(TCSPCDeviceABC):
             for mod_no in self.active_cards:
                 init_status = self.bh_spc.get_init_status(mod_no)
                 if init_status != InitStatus.INIT_OK:
-                    self.log_message(f"Initialization failed for module {mod_no}: {init_status.message()}")
+                    self.log_message(
+                        f"Initialization failed for module {mod_no}: {init_status.message()}"
+                    )
                     success = False
                 else:
                     # Set FIFO mode
@@ -516,10 +533,10 @@ class BHSPCDevice(TCSPCDeviceABC):
 
             if success:
                 self.measurement_running = True
-                
+
                 # Write instrument info file if we have an output path
                 self._write_instrument_info_file()
-                
+
                 return True
             else:
                 self.log_message("BH SPC measurement failed to start on one or more cards")
@@ -606,52 +623,38 @@ class BHSPCDevice(TCSPCDeviceABC):
             self.log_message(f"Error getting BH SPC FIFO usage: {e}")
             return {mod_no: -1 for mod_no in self.active_cards}
 
-    def close(self):
-        """Close the device."""
-        try:
-            if self.measurement_running:
-                self.stop_measurement()
-            self.bh_spc.close()
-            self.initialized = False
-            self.active_cards = []
-            self.available_cards = []
-            self.log_message("BH SPC device closed")
-        except Exception as e:
-            self.log_message(f"Error closing BH SPC device: {e}")
-
-
     def _write_instrument_info_file(self):
         """Write instrument settings info file."""
         try:
             # Create output directory if not exists
             import os
             from datetime import datetime
-            
+
             # Use current working directory as base if no specific output path
             output_dir = os.getcwd()
             info_file_path = os.path.join(output_dir, "bh_spc_instrument_info.txt")
-            
-            with open(info_file_path, 'w') as f:
+
+            with open(info_file_path, "w") as f:
                 f.write("BH SPC Instrument Settings\n")
                 f.write("=" * 30 + "\n\n")
                 f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                
+
                 f.write("Device Information:\n")
                 f.write("-" * 20 + "\n")
-                f.write(f"Device Type: BH SPC\n")
+                f.write("Device Type: BH SPC\n")
                 f.write(f"Initialized: {self.initialized}\n")
                 f.write(f"Active Cards: {self.active_cards}\n")
                 f.write(f"Available Cards: {len(self.available_cards)}\n\n")
-                
+
                 # Get current parameters for each active card
                 for mod_no in self.active_cards:
                     f.write(f"Card {mod_no} Parameters:\n")
                     f.write("-" * 20 + "\n")
-                    
+
                     # Try to get key parameters
                     param_names = {
                         ParID.CFD_LIMIT_LOW: "CFD Limit Low",
-                        ParID.CFD_LIMIT_HIGH: "CFD Limit High", 
+                        ParID.CFD_LIMIT_HIGH: "CFD Limit High",
                         ParID.CFD_ZC_LEVEL: "CFD Zero Cross Level",
                         ParID.TAC_RANGE: "TAC Range",
                         ParID.TAC_GAIN: "TAC Gain",
@@ -662,22 +665,21 @@ class BHSPCDevice(TCSPCDeviceABC):
                         ParID.MACRO_TIME_CLK: "Macro Time Clock",
                         ParID.MODE: "Mode",
                         ParID.SCAN_SIZE_X: "Scan Size X",
-                        ParID.SCAN_SIZE_Y: "Scan Size Y"
+                        ParID.SCAN_SIZE_Y: "Scan Size Y",
                     }
-                    
+
                     for par_id, name in param_names.items():
                         try:
                             value = self.bh_spc.get_parameter(mod_no, par_id)
                             f.write(f"{name}: {value}\n")
                         except Exception as e:
                             f.write(f"{name}: Error reading ({e})\n")
-                    
+
                     f.write("\n")
-                
+
             self.log_message(f"BH SPC instrument info written to {info_file_path}")
         except Exception as e:
             self.log_message(f"Failed to write BH SPC instrument info file: {e}")
-
 
     def close(self):
         """Close the device."""

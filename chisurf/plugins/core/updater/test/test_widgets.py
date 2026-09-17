@@ -3,6 +3,7 @@ from qtpy import QtWidgets
 
 def test_package_manager_widget_creation(qapp, qtbot):
     from chisurf.plugins.core.updater.package_widget import PackageManagerWidget
+
     widget = PackageManagerWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -15,6 +16,7 @@ def test_package_manager_dialog_creation(qapp, qtbot):
         PackageManagerDialog,
         PackageManagerWidget,
     )
+
     dialog = PackageManagerDialog()
     qtbot.addWidget(dialog)
     assert isinstance(dialog, QtWidgets.QDialog)

@@ -37,6 +37,7 @@ Run::
 
 and paste the table into ``docs/development/benchmarks.md``.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -58,11 +59,22 @@ SEEDS = (11, 12, 13)
 #: count here: a flat background spread over the laser period drags every mean
 #: micro time toward the middle of the window and dilutes the lifetime axis.
 MEASUREMENT = dict(
-    n_photons=300_000, alex=False, polarized=True,
-    efficiencies=(0.2, 0.8), donor_only=0.05, acceptor_only=0.0,
-    gamma=1.0, alpha=0.0, beta=1.0, delta=0.0,
-    concentration=1.0, brightness=400.0, background=0.02, rho=1.0,
-    irf_centre=1.0, irf_width=0.1,
+    n_photons=300_000,
+    alex=False,
+    polarized=True,
+    efficiencies=(0.2, 0.8),
+    donor_only=0.05,
+    acceptor_only=0.0,
+    gamma=1.0,
+    alpha=0.0,
+    beta=1.0,
+    delta=0.0,
+    concentration=1.0,
+    brightness=400.0,
+    background=0.02,
+    rho=1.0,
+    irf_centre=1.0,
+    irf_width=0.1,
 )
 
 #: Distances giving E = 0.2 and E = 0.8 at the optics below. Solved from
@@ -85,11 +97,13 @@ def _model(rate):
     from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
 
     optics = Optics(r0=52.0, tau_d0=4.0, sigma=SIGMA, gamma=1.0, alpha=0.0, delta=0.0)
-    states = [FretState(distance=d, name=n)
-              for d, n in zip(DISTANCES, ("low", "high"))]
+    states = [FretState(distance=d, name=n) for d, n in zip(DISTANCES, ("low", "high"))]
     matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
     return MfdKineticModel(
-        optics=optics, states=states, populations=[0.5, 0.5], donor_only=0.05,
+        optics=optics,
+        states=states,
+        populations=[0.5, 0.5],
+        donor_only=0.05,
         rate_matrix=matrix,
     )
 
@@ -102,8 +116,7 @@ def _measure(rate, seed, directory):
     matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
     sim = simulate_smfret(**MEASUREMENT, seed=seed, rate_matrix=matrix)
     folder = sim.write_folder(directory, bursts="truth", stem=f"r{int(rate)}s{seed}")
-    return load_mfd_data(folder, min_green_photons=20,
-                         responses=None), sim
+    return load_mfd_data(folder, min_green_photons=20, responses=None), sim
 
 
 def fit_rate(data, *, start=800.0):
@@ -140,8 +153,10 @@ def fit_rate(data, *, start=800.0):
     # no gradient and only assumes the objective is unimodal in the bracket.
     started = time.perf_counter()
     result = minimize_scalar(
-        objective, bounds=(np.log(start / 40.0), np.log(start * 40.0)),
-        method="bounded", options={"xatol": 2e-3},
+        objective,
+        bounds=(np.log(start / 40.0), np.log(start * 40.0)),
+        method="bounded",
+        options={"xatol": 2e-3},
     )
     return float(np.exp(result.x)), time.perf_counter() - started
 
@@ -163,8 +178,10 @@ def main():
         seconds = np.array([v[1] for v in values])
         bias = float(np.median(fitted) / rate - 1.0)
         rmse = float(np.sqrt(np.mean((fitted / rate - 1.0) ** 2)))
-        print(f"| {rate:g} | {np.median(fitted):.0f} | {bias:+.1%} | "
-              f"{rmse:.1%} | {np.mean(seconds):.1f} |")
+        print(
+            f"| {rate:g} | {np.median(fitted):.0f} | {bias:+.1%} | "
+            f"{rmse:.1%} | {np.mean(seconds):.1f} |"
+        )
 
 
 if __name__ == "__main__":

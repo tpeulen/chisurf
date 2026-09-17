@@ -81,8 +81,14 @@ class GaussDiffusion(FittingParameterGroup):
         """Initialize the classic 3-D-Gaussian diffusion parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, bounds_on=True, fixed=False, registry_id="fcs_gauss.N",
-            description='Average number of fluorescent particles in the observation volume.'
+            value=1.0,
+            name="N",
+            lb=1e-6,
+            ub=1e9,
+            bounds_on=True,
+            fixed=False,
+            registry_id="fcs_gauss.N",
+            description="Average number of fluorescent particles in the observation volume.",
         )
         self._D = FittingParameter(
             value=300.0,
@@ -93,7 +99,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="D[µm²/s]",
             registry_id="fcs_gauss.D",
-            description='Translational diffusion coefficient of the fluorophore (µm²/s).'
+            description="Translational diffusion coefficient of the fluorophore (µm²/s).",
         )
         self._w_r = FittingParameter(
             value=250.0,
@@ -104,7 +110,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="w<sub>r</sub>[nm]",
             registry_id="fcs_gauss.w_r",
-            description='Radial waist (1/e²) of the detection PSF (nm).'
+            description="Radial waist (1/e²) of the detection PSF (nm).",
         )
         self._w_z = FittingParameter(
             value=1000.0,
@@ -115,11 +121,16 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="w<sub>z</sub>[nm]",
             registry_id="fcs_gauss.w_z",
-            description='Axial waist (1/e²) of the detection PSF (nm).'
+            description="Axial waist (1/e²) of the detection PSF (nm).",
         )
         self._b = FittingParameter(
-            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b",
-            description='Additive baseline/offset of the correlation function.'
+            value=1.0,
+            name="b",
+            lb=-10.0,
+            ub=10.0,
+            fixed=False,
+            registry_id="fcs_gauss.b",
+            description="Additive baseline/offset of the correlation function.",
         )
         self._diam = FittingParameter(
             value=0.0,
@@ -129,7 +140,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=True,
             label_text="d<sub>foci</sub>[nm]",
             registry_id="fcs_gauss.diam",
-            description='Lateral distance between the two foci in a dual-focus FCS setup (nm).'
+            description="Lateral distance between the two foci in a dual-focus FCS setup (nm).",
         )
         self._bg = FittingParameter(
             value=0.0,
@@ -139,7 +150,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=True,
             label_text="BG[kHz]",
             registry_id="fcs_gauss.bg",
-            description='Background count rate (kHz).'
+            description="Background count rate (kHz).",
         )
         self._s = FittingParameter(
             value=float("nan"),
@@ -148,7 +159,7 @@ class GaussDiffusion(FittingParameterGroup):
             is_output=True,
             label_text="s",
             registry_id="fcs_gauss.s",
-            description='Output: structure parameter s = z0/w0 (axial-to-radial extent of the detection volume).'
+            description="Output: structure parameter s = z0/w0 (axial-to-radial extent of the detection volume).",
         )
         self._brightness = FittingParameter(
             value=float("nan"),
@@ -157,7 +168,7 @@ class GaussDiffusion(FittingParameterGroup):
             is_output=True,
             label_text="&epsilon;[kHz]",
             registry_id="fcs_gauss.brightness",
-            description='Output: molecular brightness (counts per molecule per second, kHz).'
+            description="Output: molecular brightness (counts per molecule per second, kHz).",
         )
 
     N = property(lambda s: float(s._N.value))
@@ -223,8 +234,13 @@ class DiffusionSpecies(GaussDiffusion):
                 pname = f"{prefix}_{i}"
                 value, fixed = old.get(pname, (default, False))
                 parameter = FittingParameter(
-                    value=float(value), name=pname, lb=bounds[0], ub=bounds[1],
-                    bounds_on=True, fixed=bool(fixed), label_text=label,
+                    value=float(value),
+                    name=pname,
+                    lb=bounds[0],
+                    ub=bounds[1],
+                    bounds_on=True,
+                    fixed=bool(fixed),
+                    label_text=label,
                     registry_id=f"fcs_species.{pname}",
                 )
                 setattr(self, f"_{pname}", parameter)
@@ -277,7 +293,13 @@ class DiffusionSpecies(GaussDiffusion):
     def find_parameters(self):
         """Expose the optics and the per-component parameters, not the unused D."""
         self._parameters = [
-            self._N, self._w_r, self._w_z, self._b, self._diam, self._bg, *self._species
+            self._N,
+            self._w_r,
+            self._w_z,
+            self._b,
+            self._diam,
+            self._bg,
+            *self._species,
         ]
         return self._parameters
 
@@ -370,9 +392,11 @@ class GeneralFCSModel(ModelCurve):
     def _inactive_diffusion_groups(self) -> list:
         """Return the diffusion parameter groups the active mode does not use."""
         mdf = [self.mdf_physical, self.mdf_optics, self.mdf_outputs]
-        others = {"mdf": [self.gauss, self.two_focus, self.species],
-                  "two_focus": mdf + [self.gauss, self.species],
-                  "species": mdf + [self.gauss, self.two_focus]}
+        others = {
+            "mdf": [self.gauss, self.two_focus, self.species],
+            "two_focus": mdf + [self.gauss, self.species],
+            "species": mdf + [self.gauss, self.two_focus],
+        }
         return others.get(self.diffusion_mode, mdf + [self.two_focus, self.species])
 
     @property
@@ -495,6 +519,7 @@ class GeneralFCSModel(ModelCurve):
 
         meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
         from chisurf.core.fluorescence.fcs.normalization import resolve_total_mean_count_rate
+
         mean_cr_total = resolve_total_mean_count_rate(meta)
         diff_obj = getattr(self, self.diffusion_mode, None)
         bg_val = float(getattr(diff_obj, "bg", 0.0)) if diff_obj is not None else 0.0
@@ -525,8 +550,8 @@ class GeneralFCSModel(ModelCurve):
     def _count_rate_constant(self):
         """The dataset's total mean count rate, or ``None`` when absent."""
         meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
-        from chisurf.core.fluorescence.fcs.normalization import (
-            resolve_total_mean_count_rate)
+        from chisurf.core.fluorescence.fcs.normalization import resolve_total_mean_count_rate
+
         cr = resolve_total_mean_count_rate(meta)
         return float(cr) if cr is not None and cr > 0 else None
 
@@ -550,11 +575,11 @@ class GeneralFCSModel(ModelCurve):
         if mode == "species":
             n = self.species.n_species
             parts = [
-                "max(x_%d, 0.0)*(%s)" % (i, component.format(D="D_%d" % i))
-                for i in range(1, n + 1)]
+                "max(x_%d, 0.0)*(%s)" % (i, component.format(D="D_%d" % i)) for i in range(1, n + 1)
+            ]
             total = " + ".join("max(x_%d, 0.0)" % i for i in range(1, n + 1))
-            return "(%s)/max(%s, 1e-30)" % (" + ".join(parts), total)
-        return "(%s)" % component.format(D="D")
+            return "({})/max({}, 1e-30)".format(" + ".join(parts), total)
+        return "({})".format(component.format(D="D"))
 
     @property
     def func(self) -> str | None:
@@ -569,17 +594,17 @@ class GeneralFCSModel(ModelCurve):
             return None
         factors = [g]
         factors += [
-            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i)
-            for i in range(1, len(self.bunching) + 1)]
+            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i) for i in range(1, len(self.bunching) + 1)
+        ]
         factors += [
-            "(1.0 - aca%d*exp(-x/(act%d*1e-6)))" % (i, i)
-            for i in range(1, len(self.anticorr) + 1)]
+            "(1.0 - aca%d*exp(-x/(act%d*1e-6)))" % (i, i) for i in range(1, len(self.anticorr) + 1)
+        ]
         cr = self._count_rate_constant()
         if cr is not None:
-            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+            amplitude = f"max(0.0, ({cr!r} - bg)/{cr!r})**2/N"
         else:
             amplitude = "1.0/N"
-        return "b + (%s)*%s" % (amplitude, "*".join(factors))
+        return "b + ({})*{}".format(amplitude, "*".join(factors))
 
     @property
     def _expression(self):
@@ -600,10 +625,8 @@ class GeneralFCSModel(ModelCurve):
             out += self.bunching._ba + self.bunching._bt
             out += self.anticorr._aca + self.anticorr._act
             return out
-        group = {"two_focus": self.two_focus,
-                 "species": self.species}.get(mode, self.gauss)
-        out = [group._N, group._w_r, group._w_z, group._b, group._diam,
-               group._bg]
+        group = {"two_focus": self.two_focus, "species": self.species}.get(mode, self.gauss)
+        out = [group._N, group._w_r, group._w_z, group._b, group._diam, group._bg]
         if mode == "species":
             out += list(group._species)
         else:

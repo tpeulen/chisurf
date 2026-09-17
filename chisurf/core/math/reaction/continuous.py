@@ -2,21 +2,16 @@ from __future__ import annotations
 
 from functools import reduce
 
-from chisurf import typing
-
 import numpy as np
 from scipy.integrate import odeint
 
 import chisurf.core.fitting.parameter
 import chisurf.core.parameter
+from chisurf import typing
 
 
 def stoichometry_matrix(
-        n_species: int,
-        educts,
-        products,
-        educts_stoichometry,
-        products_stoichometry
+    n_species: int, educts, products, educts_stoichometry, products_stoichometry
 ):
     """
     Computes the stoichiometry matrix for a given chemical reaction system.
@@ -26,7 +21,7 @@ def stoichometry_matrix(
     stoichiometry coefficients. The resulting matrix provides information about
     how each reaction transforms the number of molecules of each species.
 
-    Parameters:
+    Parameters
         n_species (int): The total number of chemical species in the system.
         educts (List[List[int]]): The indices of reactant species for each reaction.
         products (List[List[int]]): The indices of product species for each reaction.
@@ -35,7 +30,7 @@ def stoichometry_matrix(
         products_stoichometry (List[List[float]]): The stoichiometric coefficients
             for products of each reaction.
 
-    Returns:
+    Returns
         np.ndarray: A 2D array of shape (n_species, n_reactions) representing the
             stoichiometry matrix, where rows correspond to species and columns
             correspond to reactions.
@@ -51,7 +46,7 @@ def stoichometry_matrix(
     return m
 
 
-class ChemicalSpecies(object):
+class ChemicalSpecies:
     """
     Represents a chemical species with a name and an optional description.
 
@@ -59,6 +54,7 @@ class ChemicalSpecies(object):
     description, which describe the species' identity and details. It allows retrieval
     of these properties using the relevant accessors.
     """
+
     @property
     def name(self) -> str:
         """
@@ -89,27 +85,23 @@ class ChemicalSpecies(object):
         """
         return self._description
 
-    def __init__(
-            self,
-            name: str,
-            description: str = ""
-    ):
+    def __init__(self, name: str, description: str = ""):
         """
-            Initializes an instance of the class to handle specific data and
-            assign initial values to attributes.
+        Initializes an instance of the class to handle specific data and
+        assign initial values to attributes.
 
-            Parameters
-            ----------
-            name : str
-                A name to uniquely identify the instance.
-            description : str, optional
-                A brief description of the instance, defaults to an empty string.
+        Parameters
+        ----------
+        name : str
+            A name to uniquely identify the instance.
+        description : str, optional
+            A brief description of the instance, defaults to an empty string.
         """
         self._name = name
         self._description = description
 
 
-class ReactionSystem(object):
+class ReactionSystem:
     """
     ReactionSystem is a computational framework to model, analyze, and simulate
     chemical reactions in continuous time. It supports uni-molecular and
@@ -156,68 +148,65 @@ class ReactionSystem(object):
     Usage to model complex chemical reaction systems with various reaction
     types, define associated properties, and simulate temporal dynamics.
     """
-    def __init__(
-            self,
-            verbose: bool = None,
-            **kwargs
-    ):
+
+    def __init__(self, verbose: bool = None, **kwargs):
         """
-            Initializes the class with optional configurations for verbosity and additional
-            attributes used within the model. The class includes attributes for managing
-            concentrations, brightness of species, and temporal data. Additionally, lists for
-            reactants, products, stoichiometry, and rates are initialized for chemical
-            reaction modeling.
+        Initializes the class with optional configurations for verbosity and additional
+        attributes used within the model. The class includes attributes for managing
+        concentrations, brightness of species, and temporal data. Additionally, lists for
+        reactants, products, stoichiometry, and rates are initialized for chemical
+        reaction modeling.
 
-            Parameters
-            ----------
-            verbose : bool, optional
-                Indicates whether verbose mode is enabled. Default is the value of chisurf.core.settings.cs_settings['verbose'].
-            **kwargs : dict, optional
-                Arbitrary keyword arguments that may include:
-                - 'concentrations' : np.ndarray, optional
-                    A 2D numpy array specifying the concentrations of species.
-                - 'species_brightness' : np.ndarray, optional
-                    A 2D numpy array specifying the brightness values of species.
-                - 'times' : np.ndarray, optional
-                    A 1D numpy array specifying time points related to the reactions.
+        Parameters
+        ----------
+        verbose : bool, optional
+            Indicates whether verbose mode is enabled. Default is the value of chisurf.core.settings.cs_settings['verbose'].
+        **kwargs : dict, optional
+            Arbitrary keyword arguments that may include:
+            - 'concentrations' : np.ndarray, optional
+                A 2D numpy array specifying the concentrations of species.
+            - 'species_brightness' : np.ndarray, optional
+                A 2D numpy array specifying the brightness values of species.
+            - 'times' : np.ndarray, optional
+                A 1D numpy array specifying time points related to the reactions.
 
-            Attributes
-            ----------
-            verbose : bool
-                Stores the verbosity state of the object.
-            _concentrations : np.ndarray
-                A matrix representing concentrations of species over time.
-            _species_brightness : np.ndarray
-                A matrix representing the brightness of species.
-            _times : np.ndarray
-                A list of time values for the reaction system.
-            educts : list
-                List of educt reactants involved in reactions.
-            products : list
-                List of product species resulting from reactions.
-            educts_stoichometry : list
-                Stochastic coefficients for each educt in reactions.
-            products_stoichometry : list
-                Stochastic coefficients for each product in reactions.
-            rates : list
-                Rate constants associated with the reactions.
-            _initial_concentrations : list
-                Initial concentrations of species in the system.
-            _xmin : int
-                Minimum time or x-axis limit for simulations/representations.
-            _xmax : int, optional
-                Maximum time or x-axis limit for simulations/representations.
+        Attributes
+        ----------
+        verbose : bool
+            Stores the verbosity state of the object.
+        _concentrations : np.ndarray
+            A matrix representing concentrations of species over time.
+        _species_brightness : np.ndarray
+            A matrix representing the brightness of species.
+        _times : np.ndarray
+            A list of time values for the reaction system.
+        educts : list
+            List of educt reactants involved in reactions.
+        products : list
+            List of product species resulting from reactions.
+        educts_stoichometry : list
+            Stochastic coefficients for each educt in reactions.
+        products_stoichometry : list
+            Stochastic coefficients for each product in reactions.
+        rates : list
+            Rate constants associated with the reactions.
+        _initial_concentrations : list
+            Initial concentrations of species in the system.
+        _xmin : int
+            Minimum time or x-axis limit for simulations/representations.
+        _xmax : int, optional
+            Maximum time or x-axis limit for simulations/representations.
         """
         if verbose is None:
-            verbose = chisurf.core.settings.cs_settings['verbose']
+            verbose = chisurf.core.settings.cs_settings["verbose"]
         self.verbose = verbose
-        self._concentrations = kwargs.get('concentrations', np.array([[1.0], [1.]], dtype=np.float64))
-        self._species_brightness = []
-        if 'species_brightness' in kwargs:
-            self.species_brightness = kwargs['species_brightness']
-        self._times = kwargs.get(
-            'times', np.array([0.0, 1.0], dtype=np.float64)
+        self._concentrations = kwargs.get(
+            "concentrations", np.array([[1.0], [1.0]], dtype=np.float64)
         )
+        self._species_brightness = []
+        if "species_brightness" in kwargs:
+            self.species_brightness = kwargs["species_brightness"]
+        self._times = kwargs.get("times", np.array([0.0, 1.0], dtype=np.float64))
 
         self.educts = list()
         self.products = list()
@@ -275,13 +264,13 @@ class ReactionSystem(object):
     @property
     def n_species(self):
         """
-            Retrieves the number of unique species involved in the reaction.
+        Retrieves the number of unique species involved in the reaction.
 
-            This property calculates the total number of species (educts and products)
-            by identifying the highest species index and adding 1. If there are no
-            valid educts or products, it returns 0.
+        This property calculates the total number of species (educts and products)
+        by identifying the highest species index and adding 1. If there are no
+        valid educts or products, it returns 0.
 
-            @return: The total number of unique species as an integer.
+        @return: The total number of unique species as an integer.
         """
         try:
             flat = reduce(lambda x, y: list(x) + list(y), self.educts + self.products)
@@ -298,7 +287,7 @@ class ReactionSystem(object):
         :param verbose: bool
         :return:
 
-        Example
+        Example:
         =======
         >>> from chisurf.core.models.stopped_flow import ReactionSystem
         >>> rs = ReactionSystem()
@@ -327,7 +316,7 @@ class ReactionSystem(object):
         :param int:
         :return:
 
-        Example
+        Example:
         =======
         >>> from chisurf.core.models.stopped_flow import ReactionSystem
         >>> rs = ReactionSystem()
@@ -346,25 +335,25 @@ class ReactionSystem(object):
 
         s = ""
         for i, a in enumerate(zip(educts, educt_stoichiometry)):
-            s += "%s * [%s]" % (a[1], a[0])
+            s += f"{a[1]} * [{a[0]}]"
             s += " + " if i + 1 < len(educts) else " "
         s += " -> "
         for i, a in enumerate(zip(products, product_stoichometry)):
-            s += "%s * [%s]" % (a[1], a[0])
+            s += f"{a[1]} * [{a[0]}]"
             s += " + " if i + 1 < len(products) else " "
         if include_rate:
-            s += "\trate: %.5f" % rate
+            s += f"\trate: {rate:.5f}"
         return s
 
     def add_reaction(
-            self,
-            educts,
-            products,
-            educt_stoichiometry,
-            product_stoichometry,
-            rate,
-            fixed=True,
-            verbose=False
+        self,
+        educts,
+        products,
+        educt_stoichiometry,
+        product_stoichometry,
+        rate,
+        fixed=True,
+        verbose=False,
     ):
         """Add a reaction to the reaction system.
 
@@ -386,24 +375,13 @@ class ReactionSystem(object):
             If True, print information about the added reaction.
         """
         verbose = self.verbose or verbose
-        educt_stoichiometry = np.array(
-            educt_stoichiometry,
-            dtype=np.float64
-        )
-        product_stoichometry = np.array(
-            product_stoichometry,
-            dtype=np.float64
-        )
+        educt_stoichiometry = np.array(educt_stoichiometry, dtype=np.float64)
+        product_stoichometry = np.array(product_stoichometry, dtype=np.float64)
 
         self.educts.append(educts)
         self.products.append(products)
         self.educts_stoichometry.append(educt_stoichiometry)
-        self.products_stoichometry.append(
-            np.array(
-                product_stoichometry,
-                dtype=np.float64
-            )
-        )
+        self.products_stoichometry.append(np.array(product_stoichometry, dtype=np.float64))
         # A ``Parameter`` is not fittable, and the rate constants are the whole
         # point of the fit; the hand-written editor papered over this by
         # appending its own widget-backed parameters instead of calling this.
@@ -449,12 +427,7 @@ class ReactionSystem(object):
             )
         ]
 
-    def rate_equation(
-            self,
-            y,
-            t,
-            reactions
-    ):
+    def rate_equation(self, y, t, reactions):
         """
 
         :param y: array
@@ -465,7 +438,7 @@ class ReactionSystem(object):
             list of tuples as obtained by the attribute :py:attr:`.reactions`
         :return:
 
-        Example
+        Example:
         =======
         >>> from chisurf.core.models.stopped_flow import ReactionSystem
         >>> rs = ReactionSystem()
@@ -477,7 +450,7 @@ class ReactionSystem(object):
         """
         re = np.zeros_like(y)
         for e, p, es, ps, r in reactions:
-            fr = (y[e]**es).prod() * r
+            fr = (y[e] ** es).prod() * r
             re[e] -= fr * es
             re[p] += fr * ps
         return re
@@ -502,11 +475,7 @@ class ReactionSystem(object):
         np.ndarray
             1-D array of initial concentration values.
         """
-        return np.array(
-            [
-                c.value for c in self._initial_concentrations
-            ], dtype=np.float64
-        )
+        return np.array([c.value for c in self._initial_concentrations], dtype=np.float64)
 
     @initial_concentrations.setter
     def initial_concentrations(self, v):
@@ -553,10 +522,7 @@ class ReactionSystem(object):
         return self._times
 
     @times.setter
-    def times(
-            self,
-            v
-    ):
+    def times(self, v):
         """Set the time points.
 
         Parameters
@@ -576,9 +542,9 @@ class ReactionSystem(object):
             rs.rate_equation,
             rs.initial_concentrations.flatten(),
             rs.times,
-            args=(rs.reactions, ),
+            args=(rs.reactions,),
             full_output=True,
-            mxstep=15000000
+            mxstep=15000000,
         )
         self._concentrations = res[0]
 
@@ -594,10 +560,7 @@ class ReactionSystem(object):
         return [float(v.value) for v in self._species_brightness]
 
     @species_brightness.setter
-    def species_brightness(
-            self,
-            v
-    ):
+    def species_brightness(self, v):
         """Set the brightness values for each species.
 
         The values are wrapped in fitting parameters, mirroring

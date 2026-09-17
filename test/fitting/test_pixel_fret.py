@@ -16,8 +16,8 @@ def _synthetic_flim(h=16, w=20, tot=800.0, alpha=0.08, delta=0.05, gamma=1.4):
     """Return (intensity[2,2,H,W], true_E[H,W]) for a left-to-right E gradient."""
     x = np.linspace(0.1, 0.8, w)[None, :] * np.ones((h, 1))  # E gradient across W
     e_true = x
-    emission = np.array([[1.0, alpha], [0.0, gamma]])        # source x detector
-    excitation = np.array([[1.0, delta], [0.0, 1.0]])        # laser x source
+    emission = np.array([[1.0, alpha], [0.0, gamma]])  # source x detector
+    excitation = np.array([[1.0, delta], [0.0, 1.0]])  # laser x source
 
     # per-pixel true emission, then apply the emission matrix
     e_emit = np.zeros((2, 2, h, w))
@@ -42,8 +42,8 @@ def test_min_counts_masks_photon_starved_pixels():
     intensity[:, :, :, :3] = 0.0
     res = corrected_es_image(intensity, excitation, emission, min_counts=10.0)
     e_img = np.asarray(res[(0, 1)]["E"])
-    assert np.all(np.isnan(e_img[:, :3]))           # starved border masked
-    assert np.all(np.isfinite(e_img[:, 3:]))        # rest intact
+    assert np.all(np.isnan(e_img[:, :3]))  # starved border masked
+    assert np.all(np.isfinite(e_img[:, 3:]))  # rest intact
     assert np.allclose(e_img[:, 3:], e_true[:, 3:], atol=1e-9)
 
 
@@ -51,11 +51,13 @@ def test_stable_unmix_bounded_on_noisy_illconditioned_image():
     """Ill-conditioned emission + shot noise: stable stays in range more than naive."""
     h, w = 12, 12
     excitation = np.array([[1.0, 0.04, 0.03], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-    emission = np.array([
-        [1.0, 0.05, 0.05],
-        [0.0, 1.00, 0.98],
-        [0.0, 0.98, 1.00],
-    ])
+    emission = np.array(
+        [
+            [1.0, 0.05, 0.05],
+            [0.0, 1.00, 0.98],
+            [0.0, 0.98, 1.00],
+        ]
+    )
     e01 = np.full((h, w), 0.35)
     e02 = np.full((h, w), 0.35)
     tot = 900.0
@@ -69,10 +71,10 @@ def test_stable_unmix_bounded_on_noisy_illconditioned_image():
     rng = np.random.default_rng(0)
     noisy = clean + rng.normal(0.0, 25.0, size=clean.shape)
 
-    naive = np.asarray(corrected_es_image(noisy, excitation, emission,
-                                          pairs=[(0, 1)])[(0, 1)]["E"])
-    stable = np.asarray(corrected_es_image(noisy, excitation, emission,
-                                           pairs=[(0, 1)], unmix="stable")[(0, 1)]["E"])
+    naive = np.asarray(corrected_es_image(noisy, excitation, emission, pairs=[(0, 1)])[(0, 1)]["E"])
+    stable = np.asarray(
+        corrected_es_image(noisy, excitation, emission, pairs=[(0, 1)], unmix="stable")[(0, 1)]["E"]
+    )
 
     def frac_out(e):
         return np.mean((e < -0.05) | (e > 1.05))
@@ -83,10 +85,10 @@ def test_stable_unmix_bounded_on_noisy_illconditioned_image():
 def test_pixel_source_photons_shuffle_is_integer_and_preserving():
     d = np.array([[1.0, 0.1], [0.0, 1.0]])
     rng = np.random.default_rng(1)
-    counts = rng.integers(0, 300, size=(2, 8, 9))    # (n_det, H, W)
+    counts = rng.integers(0, 300, size=(2, 8, 9))  # (n_det, H, W)
     src = pixel_source_photons(counts, d, unmix="shuffle", seed=2)
     assert src.shape == (2, 8, 9)
-    assert np.array_equal(src, np.rint(src))          # integer
+    assert np.array_equal(src, np.rint(src))  # integer
     assert np.array_equal(src.sum(axis=0), counts.sum(axis=0))  # counts preserved per pixel
 
     stable = pixel_source_photons(counts, d, unmix="stable")

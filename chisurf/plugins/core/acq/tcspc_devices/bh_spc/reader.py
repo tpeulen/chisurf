@@ -1,5 +1,6 @@
 import re
 
+
 class BeckerHicklSPCSetupReader:
     """
     Reader for Becker & Hickl SPC Setup (.set) Files (e.g., from SPC-830 TCSPC modules).
@@ -47,7 +48,7 @@ class BeckerHicklSPCSetupReader:
         for section, content in self.sections.items():
             for line in content.splitlines():
                 line = line.strip()
-                match = re.match(r'#(PR|SP)\s+\[([\w_]+),([A-Z]),(.*)\]', line)
+                match = re.match(r"#(PR|SP)\s+\[([\w_]+),([A-Z]),(.*)\]", line)
                 if match:
                     param_type = match.group(1)  # PR or SP
                     param_name = match.group(2)
@@ -57,7 +58,7 @@ class BeckerHicklSPCSetupReader:
                         "section": section,
                         "type": param_type,
                         "data_type": param_data_type,
-                        "value": param_value
+                        "value": param_value,
                     }
 
     def get_sections(self):
@@ -79,4 +80,3 @@ class BeckerHicklSPCSetupReader:
     def to_dict(self):
         """Returns a clean dictionary: param name → value (string form)."""
         return {name: param["value"] for name, param in self.parameters.items()}
-

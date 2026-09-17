@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import logging
 
-import pytest
 from chisurf.server.dispatcher import ServiceDispatcher
-from chisurf.server.services import service_error, NOT_FOUND, INVALID_INPUT, OPERATION_FAILED
+from chisurf.server.services import INVALID_INPUT, NOT_FOUND, OPERATION_FAILED, service_error
 from chisurf.server.session import SessionState
 
 
@@ -23,7 +22,6 @@ def invalid_params_handler(params: dict) -> dict:
 
 
 class TestServiceErrorHelper:
-
     def test_service_error_basic(self):
         result = service_error("something went wrong", error_code=OPERATION_FAILED)
         assert result["ok"] is False
@@ -64,7 +62,6 @@ class TestServiceErrorHelper:
 
 
 class TestServiceDispatcher:
-
     def test_register_and_dispatch(self):
         d = ServiceDispatcher(SessionState())
         d.register("double", sample_handler)

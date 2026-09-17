@@ -182,9 +182,7 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             self.table.set_store(data, editable=self._editable)
             return
 
-        if isinstance(data, list) and (
-            not data or isinstance(data[0], dict)
-        ):
+        if isinstance(data, list) and (not data or isinstance(data[0], dict)):
             specs = self._make_column_specs(data)
             self._records = data
             # No ``editable=`` here: RecordSource does not take one, and

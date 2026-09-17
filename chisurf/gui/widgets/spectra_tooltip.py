@@ -6,6 +6,7 @@ the spectra-specific renderer used by the light-path simulator. Pair them as
 ``TooltipItem(name, key, render_fn=lambda k: render_spectra_thumbnail(k, adapter))``.
 ``SpectraTooltipItem`` is kept as a backwards-compatible alias.
 """
+
 from __future__ import annotations
 
 from chisurf.gui.widgets.tooltip_plot import (  # noqa: F401  (re-exported)
@@ -43,11 +44,7 @@ def render_spectra_thumbnail(probe_id: int, adapter) -> str:
         adapter.get_probe_spectrum(probe_id, kind)
         for kind in ("absorption", "emission", "transmission")
     ]
-    series = [
-        (spec[0], spec[1], color)
-        for spec, color in zip(spectra, _SPECTRA_COLORS)
-        if spec
-    ]
+    series = [(spec[0], spec[1], color) for spec, color in zip(spectra, _SPECTRA_COLORS) if spec]
     if not series:
         return ""
     return render_series_thumbnail(series, width=300, height=130, x_tick_step=50)

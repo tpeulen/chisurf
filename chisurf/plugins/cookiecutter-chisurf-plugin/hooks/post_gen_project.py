@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 
 # Get the cookiecutter variables
 plugin_name = "{{ cookiecutter.plugin_name }}"

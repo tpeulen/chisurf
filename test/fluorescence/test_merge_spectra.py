@@ -6,6 +6,7 @@ the merge keeps every record canonical (category / source / spectra) and that a
 catalogue part scraped by two sources collapses to one probe carrying both
 sources.
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -14,8 +15,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 from chisurf.plugins.spectra_downloader.download.merge import merge_all
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
 
 def _spec(n=12):
@@ -41,15 +42,21 @@ def _source_db(path, items):
 
 def test_merge_all_unions_and_dedups(workdir):
     # Source A (thorlabs): a bandpass filter
-    a = _source_db(workdir / "thorlabs.db", [
-        dict(name="FB340-10", source="thorlabs", kind="bandpass", source_ref="FB340-10"),
-        dict(name="APD120A2", source="thorlabs", kind="apd"),
-    ])
+    a = _source_db(
+        workdir / "thorlabs.db",
+        [
+            dict(name="FB340-10", source="thorlabs", kind="bandpass", source_ref="FB340-10"),
+            dict(name="APD120A2", source="thorlabs", kind="apd"),
+        ],
+    )
     # Source B (chroma): a dye + the SAME filter under a punctuation variant
-    b = _source_db(workdir / "chroma.db", [
-        dict(name="Alexa 488", source="chroma", kind="organic_dye"),
-        dict(name="FB340 10", source="chroma", kind="bandpass", source_ref="ET340"),
-    ])
+    b = _source_db(
+        workdir / "chroma.db",
+        [
+            dict(name="Alexa 488", source="chroma", kind="organic_dye"),
+            dict(name="FB340 10", source="chroma", kind="bandpass", source_ref="ET340"),
+        ],
+    )
 
     target = workdir / "spectra.db"
     summary = merge_all(str(target), [a, b], consolidate=True)

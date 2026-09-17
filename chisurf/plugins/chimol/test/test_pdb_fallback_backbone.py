@@ -12,7 +12,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.io.structure import (
     StructurePayload,
     _parse_pdb_backbone,
@@ -67,9 +66,13 @@ def test_trace_breaks_at_residue_gaps_and_chain_changes(tmp_path: pathlib.Path) 
     lines = []
     serial = 1
     for chain, res_id, x in [
-        ("A", 1, 0.0), ("A", 2, 3.8), ("A", 3, 7.6),
-        ("A", 40, 60.0), ("A", 41, 63.8),
-        ("B", 1, 90.0), ("B", 2, 93.8),
+        ("A", 1, 0.0),
+        ("A", 2, 3.8),
+        ("A", 3, 7.6),
+        ("A", 40, 60.0),
+        ("A", 41, 63.8),
+        ("B", 1, 90.0),
+        ("B", 2, 93.8),
     ]:
         lines.append(
             f"ATOM  {serial:5d}  CA  ALA {chain}{res_id:4d}    "
@@ -171,7 +174,11 @@ def test_empty_file_raises(tmp_path: pathlib.Path) -> None:
 
 _FALLBACK_PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -208,9 +215,7 @@ def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
     """Without this the cartoon has nothing to shape and draws a loop tube."""
     from chimol.core.viewer import Viewer
 
-    structure, backbone = load_structure_payload(
-        _FALLBACK_PDB, structure_factory=None
-    )
+    structure, backbone = load_structure_payload(_FALLBACK_PDB, structure_factory=None)
     assert structure is None
 
     view = Viewer()

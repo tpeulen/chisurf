@@ -3,11 +3,9 @@
 import pathlib
 
 import numpy as np
-import pytest
-
-from chisurf.core.structure.trajectory_data import Trajectory
 from qtpy import QtWidgets
 
+from chisurf.core.structure.trajectory_data import Trajectory
 from chisurf.gui.widgets.pdb import PDBSelector
 
 

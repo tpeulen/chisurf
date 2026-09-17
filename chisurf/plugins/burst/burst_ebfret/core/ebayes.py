@@ -1,317 +1,221 @@
-"""Empirical-Bayes hierarchical fitting of a Gaussian HMM over many FRET traces.
+"""The empirical-Bayes analysis loop of ebFRET's main window, without the window.
 
-This is the outer loop of the ebFRET method: run per-trace variational Bayes
-(:func:`~chisurf.plugins.burst.burst_ebfret.core.vbem.vbem_single`) against a
-shared prior, then re-estimate that prior from all trace posteriors with a
-conjugate hyper-parameter (h-step) update, and iterate until the summed
-evidence converges. Tying every trace to one prior ("empirical Bayes") is what
-separates ebFRET from a plain per-trace HMM fit and makes state recovery robust
-across a heterogeneous population.
+``MainWindow/run_ebayes.m`` alternates two steps for one number of states:
+``run_vbayes`` fits every series' posterior against the shared prior (in
+batches of 24, redrawing the plots between batches), then ``h_step``
+re-estimates the prior from all posteriors and their statistics. It stops
+when the summed lower bound improves by less than ``precision * |L|``, when
+the iteration limit is exceeded, or when the user presses *Stop*.
 
-The Dirichlet and Normal-Gamma h-step updates are ported from ebFRET's
-``+dist/+dirichlet/h_step.m`` and ``+dist/+normgamma/h_step.m``. Only the
-single-prior (non-mixture) ``D = 1`` path is implemented.
+Both are ported here as **generators**: they do the work in place on a
+:class:`~chisurf.plugins.burst.burst_ebfret.core.model.Analysis` and yield an
+event after every batch and every iteration. That is where the reference
+refreshes its plots and checks the *Stop* button, so a caller -- a worker
+thread, the backend service, a test -- gets the same points to redraw and to
+stop at, and the loop itself knows nothing about who is watching.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator, Sequence
 
 import numpy as np
-from scipy.special import digamma, polygamma
 
-from .vbem import GaussHmmPrior, VbemResult, vbem_single
+from . import hmm
+from .model import Analysis
 
-__all__ = ["EbayesResult", "init_prior", "dirichlet_hstep", "normal_gamma_hstep", "ebayes"]
-
-_EPS = 1e-12
+__all__ = ["run_ebayes", "run_vbayes"]
 
 
-@dataclass
-class EbayesResult:
-    """Result of an empirical-Bayes fit over a set of traces.
-
-    Attributes
-    ----------
-    prior : GaussHmmPrior
-        Converged shared prior (the empirical-Bayes hyper-parameters).
-    traces : list of VbemResult
-        Per-trace variational fits under the final prior.
-    evidence : float
-        Summed lower bound over all traces at convergence.
-    evidence_history : list of float
-        Summed lower bound after each empirical-Bayes iteration.
-    n_iter : int
-        Number of empirical-Bayes iterations performed.
-    converged : bool
-        Whether the summed evidence converged before ``max_iter``.
-
-    Notes
-    -----
-    ``state_means`` returns the converged prior emission means sorted ascending,
-    which is the natural summary for comparing recovered FRET states.
-    """
-
-    prior: GaussHmmPrior
-    traces: list[VbemResult]
-    evidence: float
-    evidence_history: list[float]
-    n_iter: int
-    converged: bool
-
-    @property
-    def state_means(self) -> np.ndarray:
-        """Converged prior emission means (FRET), sorted ascending."""
-        return np.sort(self.prior.m)
-
-
-def init_prior(
-    traces: list[np.ndarray],
-    n_states: int,
-    *,
-    self_transition: float = 10.0,
-    emission_conf: float = 0.25,
-    precision_conf: float = 2.5,
-    seed: int | None = None,
-) -> GaussHmmPrior:
-    """Construct a weakly-informative shared prior from pooled trace statistics.
+def _grow(analysis: Analysis, n_series: int) -> None:
+    """Make the per-series fields of ``analysis`` at least ``n_series`` long.
 
     Parameters
     ----------
-    traces : list of numpy.ndarray
-        FRET-efficiency traces.
-    n_states : int
-        Number of hidden states ``K``.
-    self_transition : float, optional
-        Extra Dirichlet count added to the transition-matrix diagonal to favour
-        state persistence.
-    emission_conf : float, optional
-        Prior confidence ``beta`` on the emission means (in pseudo-counts).
-    precision_conf : float, optional
-        Prior Gamma shape ``a`` on the emission precisions.
-    seed : int, optional
-        Unused placeholder for API symmetry; initialisation is deterministic
-        (state means placed at pooled quantiles).
-
-    Returns
-    -------
-    GaussHmmPrior
+    analysis : Analysis
+        Analysis to extend in place.
+    n_series : int
+        Number of series.
     """
-    pooled = np.concatenate([np.asarray(t, dtype=float).ravel() for t in traces])
-    quantiles = np.linspace(0.0, 1.0, n_states + 2)[1:-1]
-    means = np.quantile(pooled, quantiles)
-    var = max(float(np.var(pooled)), 1e-4)
-    e_lambda = 1.0 / var
-
-    pi = np.ones(n_states)
-    a_trans = np.ones((n_states, n_states)) + self_transition * np.eye(n_states)
-    m = np.array(means, dtype=float)
-    beta = np.full(n_states, emission_conf)
-    a = np.full(n_states, precision_conf)
-    b = a / e_lambda  # so that E[lambda] = a / b = 1 / var
-    return GaussHmmPrior(pi=pi, A=a_trans, m=m, beta=beta, a=a, b=b)
-
-
-def dirichlet_hstep(
-    w: np.ndarray,
-    *,
-    alpha0: np.ndarray | None = None,
-    max_iter: int = 1000,
-    threshold: float = 1e-6,
-) -> np.ndarray:
-    """Empirical-Bayes update of a Dirichlet prior (Newton).
-
-    Solves ``psi(alpha_k) - psi(sum alpha) = mean_n E[ln theta_k]`` for the
-    shared parameters ``alpha`` given per-trace posterior parameters ``w``.
-
-    Parameters
-    ----------
-    w : numpy.ndarray
-        Posterior Dirichlet parameters, shape ``(N, K)`` for ``N`` traces.
-    alpha0 : numpy.ndarray, optional
-        Initial guess, shape ``(K,)``. Defaults to ones.
-    max_iter : int, optional
-        Maximum Newton iterations.
-    threshold : float, optional
-        Relative-step convergence threshold.
-
-    Returns
-    -------
-    numpy.ndarray
-        Estimated Dirichlet parameters, shape ``(K,)``.
-    """
-    w = np.asarray(w, dtype=float) + _EPS
-    n_states = w.shape[1]
-    e_log_q = np.mean(digamma(w) - digamma(w.sum(axis=1, keepdims=True)), axis=0)
-
-    alpha = np.ones(n_states) if alpha0 is None else np.array(alpha0, dtype=float)
-    for _ in range(max_iter):
-        alpha_sum = alpha.sum()
-        grad = digamma(alpha_sum) - digamma(alpha) + e_log_q
-        z = polygamma(1, alpha_sum)  # trigamma of the total
-        q = -polygamma(1, alpha)  # -trigamma of each component
-        b = np.sum(grad / q) / (1.0 / z + np.sum(1.0 / q))
-        dalpha = (grad - b) / q
-        # Keep alpha positive: shrink the step if it would drive a component
-        # below 1e-3 of its current value.
-        pos = dalpha > 0
-        if np.any(pos):
-            step = np.min(np.minimum((1.0 - 1e-3) * alpha[pos] / dalpha[pos], 1.0))
-        else:
-            step = 1.0
-        if np.max(np.abs(dalpha) / (alpha + _EPS)) < threshold:
-            break
-        alpha = alpha - step * dalpha
-    return alpha
-
-
-def normal_gamma_hstep(
-    post: GaussHmmPrior,
-    posteriors: list[GaussHmmPrior],
-    *,
-    a0: float = 2.0,
-    max_iter: int = 1000,
-    threshold: float = 1e-6,
-    beta_floor: float = 1e-3,
-    a_floor: float = 1.0 + 1e-3,
-) -> GaussHmmPrior:
-    """Empirical-Bayes update of the Normal-Gamma emission prior.
-
-    Ported from ebFRET ``+dist/+normgamma/h_step.m``: match the shared prior to
-    the population-averaged posterior moments of the emission mean and
-    precision, solving ``psi(a) - log(a) = E[log lambda] - log E[lambda]`` by
-    Newton iteration for the precision shape.
-
-    Parameters
-    ----------
-    post : GaussHmmPrior
-        Prior whose non-emission fields (``pi``, ``A``) are carried through
-        unchanged; only the emission fields are re-estimated here.
-    posteriors : list of GaussHmmPrior
-        Per-trace variational posteriors.
-    a0 : float, optional
-        Initial precision shape for the Newton solver.
-    max_iter, threshold : int, float, optional
-        Newton solver controls.
-    beta_floor, a_floor : float, optional
-        Lower constraints on ``beta`` and ``a`` matching ebFRET.
-
-    Returns
-    -------
-    GaussHmmPrior
-        A copy of ``post`` with updated ``m``, ``beta``, ``a``, ``b``.
-    """
-    m = np.stack([p.m for p in posteriors], axis=1)  # (K, N)
-    beta = np.stack([p.beta for p in posteriors], axis=1)
-    a = np.stack([p.a for p in posteriors], axis=1)
-    b = np.stack([p.b for p in posteriors], axis=1)
-
-    e_lambda = np.mean(a / b, axis=1)  # (K,)
-    e_ml = np.mean(m * a / b, axis=1)
-    e_m2l = np.mean(1.0 / beta + m**2 * a / b, axis=1)
-    e_log_lambda = np.mean(digamma(a) - np.log(b), axis=1)
-
-    target = e_log_lambda - np.log(e_lambda)
-    a_new = np.full(post.n_states, a0, dtype=float)
-    for _ in range(max_iter):
-        grad = digamma(a_new) - np.log(a_new) - target
-        hess = polygamma(1, a_new) - 1.0 / a_new
-        da = grad / hess
-        a_new = np.maximum(a_new - da, 1.0 + 1e-3 * (a_new - 1.0))
-        if np.all(np.abs(da) / a_new < threshold):
-            break
-
-    u_m = e_ml / e_lambda
-    u_beta = 1.0 / (e_m2l - e_ml**2 / e_lambda)
-    u_b = a_new / e_lambda
-
-    u_beta = np.maximum(u_beta, beta_floor)
-    u_a = np.maximum(a_new, a_floor)
-
-    out = post.copy()
-    out.m = u_m
-    out.beta = u_beta
-    out.a = u_a
-    out.b = u_b
-    return out
-
-
-def ebayes(
-    traces: list[np.ndarray],
-    n_states: int,
-    *,
-    prior: GaussHmmPrior | None = None,
-    max_iter: int = 20,
-    threshold: float = 1e-4,
-    vbem_max_iter: int = 100,
-    vbem_threshold: float = 1e-5,
-    seed: int | None = None,
-) -> EbayesResult:
-    """Fit a Gaussian HMM over many FRET traces by empirical Bayes.
-
-    Parameters
-    ----------
-    traces : list of numpy.ndarray
-        FRET-efficiency traces (variable length allowed).
-    n_states : int
-        Number of hidden states ``K``.
-    prior : GaussHmmPrior, optional
-        Initial shared prior. Defaults to :func:`init_prior`.
-    max_iter : int, optional
-        Maximum empirical-Bayes iterations.
-    threshold : float, optional
-        Relative summed-evidence convergence threshold.
-    vbem_max_iter, vbem_threshold : int, float, optional
-        Per-trace VBEM controls.
-    seed : int, optional
-        Seed forwarded to :func:`init_prior` (deterministic init).
-
-    Returns
-    -------
-    EbayesResult
-    """
-    if prior is None:
-        prior = init_prior(traces, n_states, seed=seed)
-    traces = [np.asarray(t, dtype=float).ravel() for t in traces]
-
-    evidence_history: list[float] = []
-    results: list[VbemResult] = []
-    last_evidence = -np.inf
-    converged = False
-    n_iter = 0
-    for n_iter in range(1, max_iter + 1):
-        results = [
-            vbem_single(t, prior, max_iter=vbem_max_iter, threshold=vbem_threshold) for t in traces
-        ]
-        evidence = float(sum(r.lower_bound for r in results))
-        evidence_history.append(evidence)
-
-        posteriors = [r.posterior for r in results]
-        pi = dirichlet_hstep(np.stack([p.pi for p in posteriors], axis=0))
-        a_trans = np.stack(
-            [
-                dirichlet_hstep(np.stack([p.A[k] for p in posteriors], axis=0))
-                for k in range(n_states)
-            ],
-            axis=0,
+    for name in ("posterior", "expect", "viterbi"):
+        values = getattr(analysis, name)
+        if len(values) < n_series:
+            values.extend([None] * (n_series - len(values)))
+    if analysis.lowerbound.size < n_series:
+        analysis.lowerbound = np.concatenate(
+            [analysis.lowerbound, np.zeros(n_series - analysis.lowerbound.size)]
         )
-        updated = normal_gamma_hstep(prior, posteriors)
-        updated.pi = pi
-        updated.A = a_trans
-        prior = updated
+    if analysis.restart.size < n_series:
+        analysis.restart = np.concatenate(
+            [analysis.restart, np.zeros(n_series - analysis.restart.size, dtype=int)]
+        )
 
-        if np.isfinite(last_evidence) and abs(evidence - last_evidence) < threshold * max(
-            1.0, abs(last_evidence)
+
+def run_vbayes(
+    analysis: Analysis,
+    signals: Sequence,
+    *,
+    restarts: int,
+    threshold: float,
+    series: Sequence[int] | None = None,
+    rng: np.random.Generator | None = None,
+    should_stop: Callable[[], bool] = lambda: False,
+    batch_size: int = 24,
+    vb_threshold: float = 1e-5,
+    vb_max_iter: int = 100,
+) -> Iterator[list[int]]:
+    """Fit the posterior of every series against the prior (``run_vbayes.m``).
+
+    Parameters
+    ----------
+    analysis : Analysis
+        Updated in place: ``posterior``, ``expect``, ``viterbi``,
+        ``lowerbound`` and ``restart`` of each fitted series.
+    signals : sequence of array_like or None
+        Cropped, clipped signal per series; ``None`` or empty for an excluded
+        series, which is skipped and left untouched.
+    restarts : int
+        The *Restarts* control.
+    threshold : float
+        The *Precision* control (used to pick between restarts).
+    series : sequence of int, optional
+        0-based series to fit; all by default.
+    rng : numpy.random.Generator, optional
+        Random source for restarts drawn from the prior.
+    should_stop : callable
+        Polled before each batch; ``True`` ends the generator early.
+    batch_size : int
+        Series per batch (24 in the reference).
+    vb_threshold, vb_max_iter : float, int
+        Per-series VBEM convergence controls (the reference uses ``vbayes``'s
+        defaults).
+
+    Yields
+    ------
+    list of int
+        The 0-based series of each batch that were stored.
+
+    Raises
+    ------
+    ValueError
+        When ``analysis.prior`` is not set.
+    """
+    if analysis.prior is None:
+        raise ValueError("the analysis has no prior; initialise it before running")
+    rng = np.random.default_rng() if rng is None else rng
+    n_series = len(signals)
+    series = list(range(n_series)) if series is None else list(series)
+    _grow(analysis, n_series)
+    u = analysis.prior
+    for start in range(0, len(series), batch_size):
+        if should_stop():
+            return
+        batch = series[start : start + batch_size]
+        stored = []
+        for n in batch:
+            x = signals[n]
+            if x is None or np.size(x) == 0:
+                continue
+            fit = hmm.vbayes_series(
+                x,
+                u,
+                analysis.posterior[n],
+                restarts,
+                threshold,
+                rng,
+                vb_threshold=vb_threshold,
+                vb_max_iter=vb_max_iter,
+            )
+            analysis.posterior[n] = fit["posterior"]
+            analysis.expect[n] = fit["expect"]
+            analysis.viterbi[n] = fit["viterbi"]
+            analysis.lowerbound[n] = fit["lowerbound"]
+            analysis.restart[n] = fit["restart"]
+            stored.append(n)
+        yield stored
+
+
+def run_ebayes(
+    analysis: Analysis,
+    signals: Sequence,
+    *,
+    restarts: int = 2,
+    precision: float = 1e-3,
+    max_iter: int = 100,
+    rng: np.random.Generator | None = None,
+    should_stop: Callable[[], bool] = lambda: False,
+    vb_threshold: float = 1e-5,
+    vb_max_iter: int = 100,
+):
+    """Empirical-Bayes iterations for one number of states (``run_ebayes.m``).
+
+    Each iteration runs :func:`run_vbayes` over all series, sums the lower
+    bound over the included ones, and -- unless the loop ends -- replaces the
+    prior by :func:`~chisurf.plugins.burst.burst_ebfret.core.hmm.h_step` of
+    their posteriors and statistics.
+
+    Parameters
+    ----------
+    analysis : Analysis
+        Updated in place, prior included.
+    signals : sequence of array_like or None
+        Cropped, clipped signal per series; ``None``/empty when excluded.
+    restarts : int
+        The *Restarts* control.
+    precision : float
+        The *Precision* control: VBEM restart threshold and relative
+        convergence threshold of the summed lower bound.
+    max_iter : int
+        The loop stops once ``it > max_iter``.
+    rng : numpy.random.Generator, optional
+        Random source for restarts.
+    should_stop : callable
+        The *Stop* button; polled between batches and before each h-step.
+    vb_threshold, vb_max_iter : float, int
+        Per-series VBEM controls.
+
+    Yields
+    ------
+    dict
+        ``{"kind": "batch", "series": [...]}`` after each batch and
+        ``{"kind": "iteration", "it": it, "L": L, "dL": dL}`` after each
+        iteration (``dL`` is the relative change, ``NaN`` on the first).
+
+    Returns
+    -------
+    list of float
+        Summed lower bound per iteration (the generator's return value).
+    """
+    if analysis.prior is None:
+        raise ValueError("the analysis has no prior; initialise it before running")
+    rng = np.random.default_rng() if rng is None else rng
+    included = [n for n, x in enumerate(signals) if x is not None and np.size(x) > 0]
+    L: list[float] = []
+    it = 1
+    while True:
+        for batch in run_vbayes(
+            analysis,
+            signals,
+            restarts=restarts,
+            threshold=precision,
+            rng=rng,
+            should_stop=should_stop,
+            vb_threshold=vb_threshold,
+            vb_max_iter=vb_max_iter,
         ):
-            converged = True
+            yield {"kind": "batch", "series": batch}
+        L.append(float(np.sum(analysis.lowerbound[included])))
+        # MATLAB prints NaN/Inf here for a zero bound (e.g. every fit invalid)
+        dL = float("nan") if it == 1 or L[-1] == 0 else (L[-1] - L[-2]) / abs(L[-1])
+        yield {"kind": "iteration", "it": it, "L": L[-1], "dL": dL}
+        if it > max_iter:
             break
-        last_evidence = evidence
-
-    return EbayesResult(
-        prior=prior,
-        traces=results,
-        evidence=evidence_history[-1] if evidence_history else float("nan"),
-        evidence_history=evidence_history,
-        n_iter=n_iter,
-        converged=converged,
-    )
+        if it > 1 and (L[-1] - L[-2]) < precision * abs(L[-1]):
+            break
+        if should_stop():
+            return L
+        posteriors = [analysis.posterior[n] for n in included if analysis.posterior[n] is not None]
+        expect = [analysis.expect[n] for n in included]
+        analysis.prior = hmm.h_step(posteriors, analysis.prior, expect=expect)
+        it += 1
+    return L

@@ -82,7 +82,8 @@ def write_imaging_table(
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
 
     return write_burst_artifact(
-        source, table,
+        source,
+        table,
         name=name,
         artifact_kind=artifact_kind,
         operation_type=operation_type,
@@ -171,7 +172,8 @@ def write_image(
     with open_measurement(source, out_dir) as m:
         parents = [uid for uid in (m._f.find(label) for label in wanted) if uid]
         m.put_blob(
-            name, payload,
+            name,
+            payload,
             artifact_kind=artifact_kind,
             data_format="tiff",
             operation_type=operation_type,

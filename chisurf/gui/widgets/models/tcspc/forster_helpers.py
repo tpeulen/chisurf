@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from qtpy import QtWidgets
+
 from chisurf.gui import dialogs
+
 
 def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
     """Open the Förster radius calculator widget using MMFDB spectra."""
-    if not hasattr(owner, '_forster_calculator_window'):
+    if not hasattr(owner, "_forster_calculator_window"):
         try:
             from chisurf.gui.widgets.models.tcspc.forster_calculator_dialog import (
                 ForsterCalculatorWidget,
             )
+
             owner._forster_calculator_window = ForsterCalculatorWidget()
 
             def on_forster_radius_calculated(r0_angstrom: float):
@@ -24,8 +25,14 @@ def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
                         # Try to update the GUI widget if possible
                         try:
                             param = getattr(fret_params, "_forster_radius", None)
-                            controller = getattr(param, "controller", None) if param is not None else None
-                            widget_value = getattr(controller, "widget_value", None) if controller is not None else None
+                            controller = (
+                                getattr(param, "controller", None) if param is not None else None
+                            )
+                            widget_value = (
+                                getattr(controller, "widget_value", None)
+                                if controller is not None
+                                else None
+                            )
                             if widget_value is not None:
                                 try:
                                     widget_value.blockSignals(True)
@@ -44,24 +51,20 @@ def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
                                 pass
                 except Exception as ex:
                     import logging
+
                     logging.warning(f"Failed to populate Forster radius: {ex}")
 
             from qtpy import QtCore
+
             owner._forster_calculator_window.forster_radius_calculated.connect(
                 on_forster_radius_calculated, type=QtCore.Qt.UniqueConnection
             )
 
         except Exception as e:
-            dialogs.error(
-                owner,
-                "Error",
-                f"Could not open Förster radius calculator:\n{e}"
-            )
+            dialogs.error(owner, "Error", f"Could not open Förster radius calculator:\n{e}")
             return
 
     # Show and bring to front
     owner._forster_calculator_window.show()
     owner._forster_calculator_window.raise_()
     owner._forster_calculator_window.activateWindow()
-
-

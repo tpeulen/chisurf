@@ -17,6 +17,7 @@ sticking. Now the drag may re-contour at *preview* quality (the reduced drag
 budget, throttled), the full-quality contour is cut once on release, and a
 level change never rebuilds the rest of the scene.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,9 +36,9 @@ def qapp():
 @pytest.fixture
 def loaded(qapp):
     """Build a window with a small map, its view model, and the panel."""
+    from chimol.core.model.volume import VolumeGrid
     from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.plugins.density.window import DensityWindow
-    from chimol.core.model.volume import VolumeGrid
 
     win = MolViewPluginWindow()
     win.resize(900, 640)
@@ -128,7 +129,7 @@ def test_a_press_that_hits_nothing_does_not_start_a_drag(loaded):
     """Otherwise the camera loses every click that lands on an empty panel."""
     _win, gui, window, panel, _model, _oid = loaded
     body = gui.window_body(window)
-    gui.mouse_press(body.x + 4, body.y + 4)   # above the plot, on no control
+    gui.mouse_press(body.x + 4, body.y + 4)  # above the plot, on no control
     assert panel._held is None
     gui.release()
 
@@ -177,9 +178,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
 
     def recording_set(levels, object_id=None, *, rebuild=True, preview=False):
         writes.append((rebuild, preview))
-        return original_set(
-            levels, object_id=object_id, rebuild=rebuild, preview=preview
-        )
+        return original_set(levels, object_id=object_id, rebuild=rebuild, preview=preview)
 
     viewer.update_view = counting_update
     viewer.set_volume_levels = recording_set
@@ -215,8 +214,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
     )
     full = [w for w in after if w == (True, False)]
     assert len(full) == 1, (
-        f"{len(full)} full-quality contours for one drag; release should cut "
-        "exactly one"
+        f"{len(full)} full-quality contours for one drag; release should cut exactly one"
     )
 
 
@@ -240,9 +238,7 @@ def test_each_mode_builds_its_own_geometry(loaded, mode, kind):
     model.set_levels([{"level": 0.35, "color": (0.5, 0.7, 1.0, 1.0)}], rebuild=True)
 
     assert viewer.set_volume_mode(mode, object_id=object_id)
-    built = [
-        obj.geometry.kind for obj in viewer._scene.objects if "volume" in obj.id
-    ]
+    built = [obj.geometry.kind for obj in viewer._scene.objects if "volume" in obj.id]
     assert built == [kind], f"{mode} built {built}"
     assert viewer.get_volume_mode(object_id) == mode
 
@@ -315,7 +311,7 @@ def test_the_colour_well_opens_a_palette_and_a_cell_recolours(loaded):
     _redraw(panel, gui, window)
     assert panel._picker_cells, "an open palette laid out no cells"
 
-    cell, rgb = panel._picker_cells[14]     # an arbitrary non-first cell
+    cell, rgb = panel._picker_cells[14]  # an arbitrary non-first cell
     before_alpha = float(model.levels[0]["color"][3])
     gui.mouse_press(cell.x + 1, cell.y + 1)
     gui.release()
@@ -389,7 +385,7 @@ def test_a_marker_dragged_off_the_histogram_is_deleted_on_release(loaded):
     level_kept = float(model.levels[0]["level"])
 
     gui.mouse_press(x2, plot.y + plot.h / 2)
-    gui.drag(x2, plot.y + plot.h + 60)      # well below the histogram
+    gui.drag(x2, plot.y + plot.h + 60)  # well below the histogram
     assert panel._delete_armed
     gui.release()
 
@@ -463,12 +459,12 @@ def test_an_indexed_line_geometry_is_expanded_to_its_edges():
     from chimol.render.pack import PackedGeometry
     from chimol.render.wgpu_backend import WgpuMeshRenderer
 
-    positions = np.array(
-        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float32
-    )
+    positions = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float32)
     colors = np.tile(np.array([[1, 0, 0, 1]], dtype=np.float32), (4, 1))
     geometry = PackedGeometry(
-        kind="line", positions=positions, colors=colors,
+        kind="line",
+        positions=positions,
+        colors=colors,
         indices=np.array([0, 2, 1, 3], dtype=np.uint32),
     )
     packed = WgpuMeshRenderer.interleave_lines(geometry)
@@ -496,9 +492,7 @@ def test_mesh_draws_the_square_net_with_lit_lines(loaded):
     edges = np.asarray(geometry.indices).reshape(-1, 2)
     verts = np.asarray(geometry.positions)
     shares = (verts[edges[:, 0]] == verts[edges[:, 1]]).any(axis=1)
-    assert shares.all(), (
-        f"{int((~shares).sum())} mesh edges lie in no principal grid plane"
-    )
+    assert shares.all(), f"{int((~shares).sum())} mesh edges lie in no principal grid plane"
     brightness = np.asarray(geometry.colors)[:, :3].sum(axis=1)
     assert float(brightness.std()) > 0.0, (
         "mesh lines must be shaded by the surface normal, not flat"
@@ -525,15 +519,14 @@ def test_subdivision_quadruples_and_welds():
 
 def test_smoothing_relaxes_noise_without_moving_the_shape():
     """surface_smoothing pulls the noise in while the mean radius holds."""
-    from chimol.geometry.refine import smooth_vertex_positions
     from chimol.core.model.volume import VolumeGrid
+    from chimol.geometry.refine import smooth_vertex_positions
 
     rng = np.random.default_rng(3)
     z, y, x = np.mgrid[-16:16, -16:16, -16:16]
-    values = (
-        np.exp(-(x * x + y * y + z * z) / 80.0)
-        + 0.05 * rng.standard_normal(x.shape)
-    ).astype(np.float32)
+    values = (np.exp(-(x * x + y * y + z * z) / 80.0) + 0.05 * rng.standard_normal(x.shape)).astype(
+        np.float32
+    )
     grid = VolumeGrid.from_array(values)
     verts, faces, _normals = grid.isosurface(0.5)
 
@@ -582,7 +575,7 @@ def test_quality_presets_change_the_drawn_surface(loaded):
 def test_the_panel_offers_the_quality_row(loaded):
     _win, gui, window, panel, model, _oid = loaded
     assert panel._quality_rects, "the quality buttons were not laid out"
-    box, quality = panel._quality_rects[2]     # "smooth"
+    box, quality = panel._quality_rects[2]  # "smooth"
     assert quality == "smooth"
     gui.mouse_press(box.x + 2, box.y + 2)
     gui.release()
@@ -600,7 +593,7 @@ def _speckled_map():
     values = np.exp(-(x * x + y * y + z * z) / 60.0).astype(np.float32)
     rng = np.random.default_rng(11)
     corners = rng.integers(0, 40, size=(30, 3))
-    keep = (np.abs(corners - 20) > 12).any(axis=1)   # away from the blob
+    keep = (np.abs(corners - 20) > 12).any(axis=1)  # away from the blob
     for i, j, k in corners[keep]:
         values[i, j, k] = 1.0
     return VolumeGrid.from_array(values, name="speckled")
@@ -621,7 +614,6 @@ def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
     # And everything kept is bigger than the threshold implies: no kept
     # triangle belongs to a single-voxel speckle.
     assert (np.zeros(0) if kept.size else None) is not None or True
-
 
 
 def _shell(qapp):
@@ -670,9 +662,7 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     view.add_volume(grid, name="blob")
     cmd.do("volume_gaussian blob, 1.5")
     assert not errors, errors
-    names = [
-        getattr(entry, "name", oid) for oid, entry in view.objects.items()
-    ]
+    names = [getattr(entry, "name", oid) for oid, entry in view.objects.items()]
     assert any("gaussian" in str(n) for n in names), names
 
     from chimol.core.model.volume import gaussian_filtered
@@ -750,7 +740,7 @@ def test_a_double_press_on_a_slider_still_reaches_the_slider(loaded):
     _redraw(panel, gui, window)
     oid = model._object_id
     box, slider = panel._row_alpha[oid]
-    alpha_before = model.alpha_for(oid)
+    model.alpha_for(oid)
 
     # First of the pair, then the double press -- both on the slider.
     gui.mouse_press(box.x + box.w * 0.2, box.y + 3)

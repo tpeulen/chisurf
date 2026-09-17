@@ -116,8 +116,11 @@ class FlowViewModel:
             self._status = (
                 f"{pathlib.Path(self.filename).name}: {n_frames} frames of "
                 f"{ny}x{nx}, {len(self._channel_names)} channel(s). "
-                + ("Ready." if n_frames >= 3
-                   else "Too few frames — a flow map needs the sample to move between them.")
+                + (
+                    "Ready."
+                    if n_frames >= 3
+                    else "Too few frames — a flow map needs the sample to move between them."
+                )
             )
         except Exception as exc:
             logger.debug("could not read %s", self.filename, exc_info=True)
@@ -217,13 +220,9 @@ class FlowViewModel:
         summary = analysis.summary(self.min_quality)
         kept, total = int(summary["n_kept"]), int(summary["n_tiles"])
         if kept:
-            self._status = (
-                f"{kept}/{total} tiles, mean speed {summary['mean_speed']:.3g} µm/s"
-            )
+            self._status = f"{kept}/{total} tiles, mean speed {summary['mean_speed']:.3g} µm/s"
             if analysis.n_escaped:
-                self._status += (
-                    f" — {analysis.n_escaped} tile(s) refused (peak left the tile)"
-                )
+                self._status += f" — {analysis.n_escaped} tile(s) refused (peak left the tile)"
         else:
             # Strip the markup: this line goes to a status bar, not a browser.
             import re
@@ -281,10 +280,23 @@ class FlowViewModel:
             mean_speed = np.nanmean(speed, axis=1)
         y = np.asarray(self._result.y)[:, 0]
         series = [
-            {"x": list(y), "y": list(mean_speed), "name": "speed",
-             "color": "#ffb000", "width": 2, "symbol": "o", "symbol_size": 7},
-            {"x": list(y), "y": list(mean_vx), "name": "v_x",
-             "color": "#4da6ff", "width": 1, "style": "dash"},
+            {
+                "x": list(y),
+                "y": list(mean_speed),
+                "name": "speed",
+                "color": "#ffb000",
+                "width": 2,
+                "symbol": "o",
+                "symbol_size": 7,
+            },
+            {
+                "x": list(y),
+                "y": list(mean_vx),
+                "name": "v_x",
+                "color": "#4da6ff",
+                "width": 1,
+                "style": "dash",
+            },
         ]
         truth = self.demo_truth
         if truth:
@@ -293,8 +305,9 @@ class FlowViewModel:
             series.append(
                 {
                     "x": list(y),
-                    "y": list(expected_profile(y, v_max=truth["v_max_um_s"],
-                                               field_um=truth["field_um"])),
+                    "y": list(
+                        expected_profile(y, v_max=truth["v_max_um_s"], field_um=truth["field_um"])
+                    ),
                     "name": "simulated truth",
                     "color": "#2ca02c",
                     "width": 2,
@@ -349,17 +362,18 @@ class FlowViewModel:
             return f"<p>{self._status}</p>"
         summary = self._result.summary(self.min_quality)
         if not summary["n_kept"]:
-            return (
-                "<p><b>No arrows.</b><br/>" + self.diagnose() + "</p>"
-            )
+            return "<p><b>No arrows.</b><br/>" + self.diagnose() + "</p>"
         rows = [
             f"<b>{summary['mean_speed']:.4g} µm/s</b> mean speed "
             f"({int(summary['n_kept'])} of {int(summary['n_tiles'])} tiles)",
             f"mean vector ({summary['mean_vx']:.3g}, {summary['mean_vy']:.3g}) µm/s "
             f"at {summary['angle_deg']:.0f}°",
             f"coherence {summary['coherence']:.2f} — "
-            + ("one direction everywhere" if summary["coherence"] > 0.8
-               else "a structured field, not a uniform one"),
+            + (
+                "one direction everywhere"
+                if summary["coherence"] > 0.8
+                else "a structured field, not a uniform one"
+            ),
         ]
         if self._result.n_escaped:
             rows.append(
@@ -391,8 +405,7 @@ class FlowViewModel:
         if not isinstance(payload, dict):
             return
         self.detectors = dict(payload.get("detectors") or {})
-        for key in ("pixel_duration_us", "line_duration_ms",
-                    "frame_duration_ms", "pixel_size_nm"):
+        for key in ("pixel_duration_us", "line_duration_ms", "frame_duration_ms", "pixel_size_nm"):
             value = payload.get(key)
             if isinstance(value, (int, float)) and float(value) > 0:
                 setattr(self, key, float(value))

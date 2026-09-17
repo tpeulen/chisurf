@@ -2,6 +2,7 @@
 
 Creates two fits and exercises link/unlink actions.
 """
+
 from __future__ import annotations
 
 import os
@@ -10,10 +11,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
-import pytest
 
 import chisurf as cs
 import chisurf.gui
@@ -40,20 +40,16 @@ def _setup():
     gui.comboBox_setupSelect.setCurrentIndex(setup_idx)
     gui._refresh_setup_ui()
     gui.current_setup.skiprows = 11
-    gui.current_setup.reading_routine = 'csv'
+    gui.current_setup.reading_routine = "csv"
     gui.current_setup.is_vv_vh = False
     gui.current_setup.use_header = True
     gui.current_setup.matrix_columns = []
-    gui.current_setup.polarization = 'vm'
+    gui.current_setup.polarization = "vm"
     gui.current_setup.rep_rate = 10.0
     gui.current_setup.dt = 0.0141
 
-    cs.macros.add_dataset(
-        filename="./test/data/tcspc/ibh_sample/Decay_577D.txt"
-    )
-    cs.macros.add_dataset(
-        filename="./test/data/tcspc/ibh_sample/Prompt.txt"
-    )
+    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Decay_577D.txt")
+    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Prompt.txt")
 
     cs.core.actions.dispatch(
         name="fit.add",

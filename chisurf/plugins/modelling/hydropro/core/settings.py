@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, fields
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
@@ -14,22 +14,22 @@ class HydroProSettings:
     written verbatim into the ``hydropro.dat`` main input file.
     """
 
-    indmode: int = 1            # 1 atomic/shell, 2 residue/shell, 4 residue/bead
-    aer: float = 2.9            # AER per manual (Å)
-    nsig: int = 6               # number of sigma values; -1 for automatic
-    sigmin: float = 1.0         # only when nsig != -1
-    sigmax: float = 2.0         # only when nsig != -1
-    t: float = 20.0             # temperature (°C)
-    eta: float = 0.01           # solvent viscosity (poise)
-    rm: float = 100000.0        # molecular weight (Da)
-    vbar: float = 0.74          # partial specific volume (cm^3/g)
-    rho: float = 1.0            # solution density (g/cm^3)
-    nq: int = -1                # scattering values; 0 omit, -1 automatic, >0 provide qmax
-    qmax: float = 0.0           # only when nq > 0
-    ns: int = -1                # distance distribution intervals; 0 omit, -1 automatic, >0 provide rmax
-    rmax: float = 0.0           # only when ns > 0
-    ntrials: int = 0            # Monte Carlo covolume trials
-    idif: int = 1               # 1 to output full diffusion tensors
+    indmode: int = 1  # 1 atomic/shell, 2 residue/shell, 4 residue/bead
+    aer: float = 2.9  # AER per manual (Å)
+    nsig: int = 6  # number of sigma values; -1 for automatic
+    sigmin: float = 1.0  # only when nsig != -1
+    sigmax: float = 2.0  # only when nsig != -1
+    t: float = 20.0  # temperature (°C)
+    eta: float = 0.01  # solvent viscosity (poise)
+    rm: float = 100000.0  # molecular weight (Da)
+    vbar: float = 0.74  # partial specific volume (cm^3/g)
+    rho: float = 1.0  # solution density (g/cm^3)
+    nq: int = -1  # scattering values; 0 omit, -1 automatic, >0 provide qmax
+    qmax: float = 0.0  # only when nq > 0
+    ns: int = -1  # distance distribution intervals; 0 omit, -1 automatic, >0 provide rmax
+    rmax: float = 0.0  # only when ns > 0
+    ntrials: int = 0  # Monte Carlo covolume trials
+    idif: int = 1  # 1 to output full diffusion tensors
 
     def validate(self) -> None:
         """Raise :class:`ValueError` if the parameter combination is invalid."""
@@ -42,13 +42,13 @@ class HydroProSettings:
         if self.ns > 0 and self.rmax <= 0:
             raise ValueError("RMAX must be > 0 when NS > 0")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HydroProSettings":
+    def from_dict(cls, data: dict[str, Any]) -> HydroProSettings:
         """Build settings from a mapping, coercing each field to its type."""
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
         for f in fields(cls):
             if f.name not in data or data[f.name] is None:
                 continue

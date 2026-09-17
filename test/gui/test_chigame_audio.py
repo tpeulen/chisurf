@@ -30,8 +30,9 @@ def _samples(track: dict) -> np.ndarray:
 def test_a_note_is_the_pitch_it_says_it_is():
     """The sequencer's one non-negotiable job."""
     for semitone, expected in ((0, 440.0), (12, 880.0), (7, 440.0 * 2 ** (7 / 12))):
-        pcm = _samples({"root": 440.0, "tempo": 60,
-                        "melody": {"wave": "sine", "notes": [[semitone, 4]]}})
+        pcm = _samples(
+            {"root": 440.0, "tempo": 60, "melody": {"wave": "sine", "notes": [[semitone, 4]]}}
+        )
         spectrum = np.abs(np.fft.rfft(pcm * np.hanning(pcm.size)))
         freqs = np.fft.rfftfreq(pcm.size, 1.0 / audio.SAMPLE_RATE)
         peak = freqs[spectrum.argmax()]
@@ -41,11 +42,10 @@ def test_a_note_is_the_pitch_it_says_it_is():
 def test_a_rest_is_silent_and_a_held_note_is_held():
     """Without either, a track is a metronome playing a scale."""
     eighth = int(audio.SAMPLE_RATE * 30.0 / 120.0)
-    pcm = _samples({"root": 440.0, "tempo": 120,
-                    "melody": [[0, 2], None, None, [0, 2]]})
+    pcm = _samples({"root": 440.0, "tempo": 120, "melody": [[0, 2], None, None, [0, 2]]})
     assert pcm.size == pytest.approx(6 * eighth, rel=0.02)
-    held = np.abs(pcm[:2 * eighth]).mean()
-    rest = np.abs(pcm[int(2.2 * eighth):int(3.8 * eighth)]).mean()
+    held = np.abs(pcm[: 2 * eighth]).mean()
+    rest = np.abs(pcm[int(2.2 * eighth) : int(3.8 * eighth)]).mean()
     assert held > 0.02
     assert rest < held / 50.0, "a rest has to actually be a rest"
 
@@ -58,9 +58,9 @@ def test_the_waveforms_are_band_limited():
     its energy above Nyquist, where it aliases down into the audible band.
     """
     for shape in ("square", "saw", "triangle"):
-        pcm = _samples({"root": 880.0, "tempo": 60,
-                        "melody": {"wave": shape, "notes": [[0, 4]]},
-                        "tone": 1.0})
+        pcm = _samples(
+            {"root": 880.0, "tempo": 60, "melody": {"wave": shape, "notes": [[0, 4]]}, "tone": 1.0}
+        )
         spectrum = np.abs(np.fft.rfft(pcm)) ** 2
         freqs = np.fft.rfftfreq(pcm.size, 1.0 / audio.SAMPLE_RATE)
         # Every partial the synthesiser emits is a harmonic of 880 Hz, so
@@ -101,8 +101,7 @@ def test_every_shipped_track_is_long_enough_to_be_a_piece():
         # a scale exercise however long you make it.
         melody = track.get("melody")
         notes = melody["notes"] if isinstance(melody, dict) else melody
-        assert any(entry is None or isinstance(entry, (list, tuple))
-                   for entry in notes), name
+        assert any(entry is None or isinstance(entry, (list, tuple)) for entry in notes), name
 
 
 def test_every_context_has_a_track_and_they_are_not_the_same_piece():
@@ -150,15 +149,19 @@ def test_suspending_twice_and_resuming_unsuspended_are_both_harmless():
 
 def test_a_blip_bends_and_fades_to_nothing():
     """A flat tone with hard edges is a beep; an effect is an event."""
-    pcm = np.frombuffer(audio.render_blip(440.0, 0.12, bend=12.0),
-                        dtype="<i2").astype(float) / 32768.0
+    pcm = (
+        np.frombuffer(audio.render_blip(440.0, 0.12, bend=12.0), dtype="<i2").astype(float)
+        / 32768.0
+    )
     assert pcm.size == pytest.approx(int(0.12 * audio.SAMPLE_RATE), rel=0.02)
     assert abs(pcm[0]) < 0.02 and abs(pcm[-1]) < 0.02
     half = pcm.size // 2
     first = np.fft.rfftfreq(half, 1.0 / audio.SAMPLE_RATE)[
-        np.abs(np.fft.rfft(pcm[:half] * np.hanning(half))).argmax()]
+        np.abs(np.fft.rfft(pcm[:half] * np.hanning(half))).argmax()
+    ]
     second = np.fft.rfftfreq(half, 1.0 / audio.SAMPLE_RATE)[
-        np.abs(np.fft.rfft(pcm[half:half * 2] * np.hanning(half))).argmax()]
+        np.abs(np.fft.rfft(pcm[half : half * 2] * np.hanning(half))).argmax()
+    ]
     assert second > first * 1.2, "the bend has to be audible"
 
 
@@ -182,8 +185,8 @@ def test_a_game_in_a_window_nobody_is_looking_at_goes_quiet(qapp):
     # backgrounded either -- a headless capture has to keep running.
     assert host.attend() is True
 
-    host.audio.enabled = True          # pretend Qt multimedia is present
-    host.audio._sound_cls = None       # ...but never actually load a sample
+    host.audio.enabled = True  # pretend Qt multimedia is present
+    host.audio._sound_cls = None  # ...but never actually load a sample
     host.sync_audio()
     assert not host.audio.suspended
 

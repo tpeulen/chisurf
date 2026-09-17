@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
-from typing import Any
 
-import numpy as np
 import pytest
-
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import set_global_db
+from mmfdb.repository import MFDatabase
+
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.mmfdb import (
     MicrotimeShiftMMFDBPipeline,
     ShiftRegistrationResult,
@@ -31,8 +27,9 @@ def _fresh_db(tmp_path: Path) -> MFDatabase:
 
 
 def _authenticated_session(db: MFDatabase):
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.security.auth import create_session
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     db.ensure_user("shift-test-user")
     token = create_session(db.conn, "shift-test-user")["token"]
@@ -107,7 +104,7 @@ def test_mmfdb_dedup_same_content(tmp_path: Path) -> None:
     request.files = [str(input_file)]
 
     # We test via direct pipeline calls
-    pipeline = MicrotimeShiftMMFDBPipeline()
+    MicrotimeShiftMMFDBPipeline()
     md5 = _file_md5(str(input_file))
     # Without a real DB, we just verify no crash
     assert isinstance(md5, str)
@@ -173,9 +170,7 @@ def test_enabled_archival_without_authenticated_session_writes_nothing(
     )
     db = _fresh_db(tmp_path)
     try:
-        registration = MicrotimeShiftMMFDBPipeline(db=db).register_run(
-            request, result
-        )
+        registration = MicrotimeShiftMMFDBPipeline(db=db).register_run(request, result)
 
         assert registration.input_artifacts == {}
         assert registration.output_artifacts == {}

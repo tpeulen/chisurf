@@ -16,19 +16,27 @@ def main(argv: list[str] | None = None) -> None:
     """
     parser = argparse.ArgumentParser(description="ChiSurf ZMQ/JSON-RPC server")
     parser.add_argument(
-        "--cmd-port", type=int, default=8765,
+        "--cmd-port",
+        type=int,
+        default=8765,
         help="TCP port for the REQ/REP command socket (default: 8765)",
     )
     parser.add_argument(
-        "--pub-port", type=int, default=8766,
+        "--pub-port",
+        type=int,
+        default=8766,
         help="TCP port for the PUB event socket (default: 8766)",
     )
     parser.add_argument(
-        "--host", type=str, default="127.0.0.1",
+        "--host",
+        type=str,
+        default="127.0.0.1",
         help="Bind address (default: 127.0.0.1)",
     )
     parser.add_argument(
-        "--log-level", type=str, default="INFO",
+        "--log-level",
+        type=str,
+        default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Logging level (default: INFO)",
     )

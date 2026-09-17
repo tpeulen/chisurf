@@ -49,15 +49,15 @@ class FusionActionBar(QtWidgets.QWidget):
             "run",
             on_click=self.fuse,
             tooltip="Fuse the bursts and write them as a new burst-analysis "
-                    "folder — the folder the later steps then analyse. The "
-                    "source folder is not changed.",
+            "folder — the folder the later steps then analyse. The "
+            "source folder is not changed.",
         )
         self.analyze_button = action_button(
             "refresh",
             on_click=self.analyze,
             tooltip="Estimate the same-molecule probability and preview what "
-                    "this threshold would fuse. Writes nothing — press it as "
-                    "often as you like while choosing a threshold.",
+            "this threshold would fuse. Writes nothing — press it as "
+            "often as you like while choosing a threshold.",
         )
         layout.addWidget(self.fuse_button)
         layout.addWidget(self.analyze_button)

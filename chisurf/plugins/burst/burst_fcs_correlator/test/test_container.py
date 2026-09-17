@@ -27,7 +27,11 @@ from chisurf.plugins.burst.burst_fcs_correlator.core.export import (
 
 SPC = (
     Path(__file__).resolve().parents[2]
-    / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna" / "m000.spc"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "m000.spc"
 )
 
 pytestmark = pytest.mark.skipif(not SPC.exists(), reason="no BH SPC test data")
@@ -78,9 +82,7 @@ def test_a_diffusion_time_says_it_is_milliseconds(source: Path):
         # A unit is an attribute of the column, so the table comes back as a
         # store — a frame has nowhere to keep one.
         table = m.get_store("burst fcs")
-        units = {
-            name: m.column_units(table, name) for name in column_names(table)
-        }
+        units = {name: m.column_units(table, name) for name in column_names(table)}
     assert units["td_mean__green-red"] == "milliseconds"
     assert units["td_peak__green-red"] == "milliseconds"
     # An index is dimensionless, which is a claim; "" would mean unknown.

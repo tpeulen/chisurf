@@ -16,12 +16,12 @@ scrolling is a wheel — a menu whose remainder can only be reached by a wheel i
 a menu whose remainder most people never find. Its title now says which page it
 is on, and the arrows beside the title turn it.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from chimol.ui.menus.objects import MenuEntry
 from chimol.ui.gui import BASE_FONT_PT, GuiRow, InternalGui, char_width
+from chimol.ui.menus.objects import MenuEntry
 
 WIDTH, HEIGHT = 900, 600
 

@@ -16,12 +16,8 @@ here: a stale flag on disk no longer forces it on, the switch is symmetric, a
 second viewer does not inherit it, and nothing is written to the user's
 settings by switching an instrument on.
 """
+
 from __future__ import annotations
-
-import json
-import pathlib
-
-import pytest
 
 from types import SimpleNamespace
 
@@ -73,7 +69,7 @@ def test_switching_it_on_and_off_is_symmetric():
     assert gui.nerd
     cmd.do("nerd off")
     assert not gui.nerd
-    cmd.do("nerd")            # no argument toggles
+    cmd.do("nerd")  # no argument toggles
     assert gui.nerd
     cmd.do("nerd")
     assert not gui.nerd
@@ -105,15 +101,13 @@ def test_a_flag_left_in_an_old_settings_file_is_not_read(tmp_path, monkeypatch):
 
     monkeypatch.setitem(config._DISPLAY_CONFIG.setdefault("layout", {}), "nerd", True)
     cmd = _cmd()
-    assert not cmd.window.viewer.gui.nerd, (
-        "a leftover saved flag switches the readout on again"
-    )
+    assert not cmd.window.viewer.gui.nerd, "a leftover saved flag switches the readout on again"
 
 
 def test_reinit_puts_it_back_to_off():
     cmd = _cmd()
     gui = cmd.window.viewer.gui
-    gui._baseline = gui.capture_baseline()      # taken on the first paint
+    gui._baseline = gui.capture_baseline()  # taken on the first paint
     cmd.do("nerd on")
     assert gui.nerd
     gui.reset_session()

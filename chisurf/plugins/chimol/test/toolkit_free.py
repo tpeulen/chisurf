@@ -36,6 +36,7 @@ Use
 The script runs with ``open_app`` and ``emit`` already defined. ``emit(key,
 value)`` writes one ``key=value`` line, which is what comes back in the dict.
 """
+
 from __future__ import annotations
 
 import os
@@ -124,11 +125,7 @@ def _looks_like_key(text: str) -> bool:
     ellipsis and carriage returns a progress bar prints (``Computing…``).
     """
     return (
-        bool(text)
-        and text[0].isalpha()
-        and text.isascii()
-        and "\r" not in text
-        and len(text) < 120
+        bool(text) and text[0].isalpha() and text.isascii() and "\r" not in text and len(text) < 120
     )
 
 
@@ -158,9 +155,7 @@ def probe(script: str, *, timeout: int = 300, block_qt: bool = False) -> dict[st
     env["CHIMOL_TOOLKIT"] = "none"
     env["CHIMOL_CANVAS"] = "offscreen"
     # Never write into the developer's own settings while testing.
-    env.setdefault(
-        "CHIMOL_SETTINGS_DIR", str(ROOT / "build" / "test-chimol-settings")
-    )
+    env.setdefault("CHIMOL_SETTINGS_DIR", str(ROOT / "build" / "test-chimol-settings"))
 
     source = _PREAMBLE + (_QT_BLOCK if block_qt else "") + textwrap.dedent(script)
     try:

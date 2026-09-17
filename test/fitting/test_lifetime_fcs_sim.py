@@ -57,8 +57,13 @@ def test_static_species_separate_by_diffusion_time():
     sim = simulate_lifetime_fcs((1.0, 4.0), (8.0, 0.5), n_photons=N_PHOTONS, seed=1)
     filters, _, _ = calc_ffcs_filters(sim.total_decay, sim.reference_decays)
     res = species_filtered_correlation(
-        sim.macro_times, sim.micro_times, filters, sim.macro_time_resolution_s,
-        n_bins=8, n_casc=22, labels=["fast", "slow"],
+        sim.macro_times,
+        sim.micro_times,
+        filters,
+        sim.macro_time_resolution_s,
+        n_bins=8,
+        n_casc=22,
+        labels=["fast", "slow"],
     )
     lag, g_fast, g_slow, g_cross = res.lag_s, res.auto[0], res.auto[1], res.cross[(0, 1)]
 
@@ -76,12 +81,20 @@ def test_static_species_separate_by_diffusion_time():
 def test_interconversion_shows_cross_correlation_peak():
     # Two states, identical diffusion, exchanging while they cross the focus.
     sim = simulate_lifetime_fcs(
-        (1.0, 4.0), (0.15, 0.15), exchange_rate_ms=5.0, n_photons=N_PHOTONS, seed=2,
+        (1.0, 4.0),
+        (0.15, 0.15),
+        exchange_rate_ms=5.0,
+        n_photons=N_PHOTONS,
+        seed=2,
     )
     filters, _, _ = calc_ffcs_filters(sim.total_decay, sim.reference_decays)
     res = species_filtered_correlation(
-        sim.macro_times, sim.micro_times, filters, sim.macro_time_resolution_s,
-        n_bins=8, n_casc=22,
+        sim.macro_times,
+        sim.micro_times,
+        filters,
+        sim.macro_time_resolution_s,
+        n_bins=8,
+        n_casc=22,
     )
     lag, g_cross = res.lag_s, res.cross[(0, 1)]
     band = (lag > 2e-5) & (lag < 1e-3)

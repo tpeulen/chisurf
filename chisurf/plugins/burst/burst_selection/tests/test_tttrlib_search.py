@@ -34,7 +34,7 @@ def photons():
 
 
 def test_registry_is_published():
-    """tttrlib advertises its burst searches with enough detail to build a UI."""
+    """Tttrlib advertises its burst searches with enough detail to build a UI."""
     algorithms = tttrlib_search.algorithms()
     assert tttrlib_search.is_available()
     assert {"sliding_window", "cusum_sprt", "maxtree"} <= set(algorithms)
@@ -45,9 +45,9 @@ def test_registry_is_published():
         assert properties, f"{name} publishes no parameters"
         for prop_name, prop in properties.items():
             # A generated form needs a type, a label and a starting value.
-            assert prop["type"] in (
-                "integer", "number", "boolean", "string", "array", "object"
-            ), prop_name
+            assert prop["type"] in ("integer", "number", "boolean", "string", "array", "object"), (
+                prop_name
+            )
             assert prop["title"] and prop["description"], prop_name
             if "default" not in prop:
                 # Legitimate when only the caller can decide the value — a
@@ -78,9 +78,7 @@ def test_coincident_requires_a_grouping(photons):
         tttrlib_search.search(photons, "coincident")
     # Supplied, it runs. The fixture is single-channel, so one group is all
     # that can agree and the result is just that group's own bursts.
-    bursts = tttrlib_search.search(
-        photons, "coincident", {"channel_groups": [[0]]}
-    )
+    bursts = tttrlib_search.search(photons, "coincident", {"channel_groups": [[0]]})
     assert bursts.ndim == 2 and bursts.shape[1] == 2
 
 
@@ -163,6 +161,7 @@ def test_form_spec_is_generated_from_the_registry():
 
 # --- composite entries: parameters delegated to another registry entry ---------
 
+
 def test_composite_entry_nests_the_inner_schema():
     """The coincident search's inner parameters become a real nested panel.
 
@@ -183,9 +182,7 @@ def test_composite_entry_nests_the_inner_schema():
     assert not any("parameters" in label.lower() for label in outer)
 
     # The inner schema is rendered in full, spread over its foldable groups.
-    nested = {
-        section.label for panel in panels[1:] for section in panel.sections
-    }
+    nested = {section.label for panel in panels[1:] for section in panel.sections}
     maxtree = registry.describe("burst_search", "maxtree")["params_schema"]
     assert nested == {prop["title"] for prop in maxtree["properties"].values()}
 
@@ -195,8 +192,7 @@ def test_composite_params_fold_the_nested_values_back():
 
     view = registry.entry_form_view_auto("burst_search", "coincident")
     params = view.params()
-    assert set(params) >= {"channel_groups", "algorithm", "min_groups", "L",
-                           "parameters"}
+    assert set(params) >= {"channel_groups", "algorithm", "min_groups", "L", "parameters"}
     assert params["parameters"] == registry.defaults("burst_search", "maxtree")
 
 
@@ -215,17 +211,16 @@ def test_composite_rebuilds_against_a_different_inner_entry():
     from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto(
-        "burst_search", "coincident",
+        "burst_search",
+        "coincident",
         values={"algorithm": "kalman", "channel_groups": [[0], [1]]},
     )
     assert view.selector_value == "kalman"
     params = view.params()
     assert params["channel_groups"] == [[0], [1]]
-    assert set(params["parameters"]) == set(
-        registry.defaults("burst_search", "kalman")
-    )
+    assert set(params["parameters"]) == set(registry.defaults("burst_search", "kalman"))
     inner = {s.label for s in view.view_spec().sections[1].sections}
-    assert "Detection threshold (sigma)" in inner   # a Kalman-only parameter
+    assert "Detection threshold (sigma)" in inner  # a Kalman-only parameter
 
 
 def test_plain_entries_are_not_composite():
@@ -243,12 +238,11 @@ def test_plain_entries_are_not_composite():
 
 def test_parameters_are_split_into_foldable_groups():
     """A dozen parameters in one column is unreadable; the schema says how to
-    group them, so the grouping is the algorithm's decision, not the GUI's."""
+    group them, so the grouping is the algorithm's decision, not the GUI's.
+    """
     from chisurf.core.registry import tttrlib as registry
 
-    panels = registry.entry_form_view_auto(
-        "burst_search", "maxtree"
-    ).view_spec().sections
+    panels = registry.entry_form_view_auto("burst_search", "maxtree").view_spec().sections
     titles = [panel.title for panel in panels]
     assert len(panels) > 1, "expected the parameters to be grouped"
     assert registry.ADVANCED_GROUP in titles
@@ -258,9 +252,7 @@ def test_parameters_are_split_into_foldable_groups():
     # Every parameter still appears exactly once across the panels.
     labels = [s.label for panel in panels for s in panel.sections]
     schema = registry.describe("burst_search", "maxtree")["params_schema"]
-    assert sorted(labels) == sorted(
-        prop["title"] for prop in schema["properties"].values()
-    )
+    assert sorted(labels) == sorted(prop["title"] for prop in schema["properties"].values())
 
 
 def test_nested_values_reach_the_search(photons):
@@ -268,7 +260,8 @@ def test_nested_values_reach_the_search(photons):
     from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto(
-        "burst_search", "coincident",
+        "burst_search",
+        "coincident",
         values={"channel_groups": [[0]], "parameters": {"L": 400}},
     )
     params = view.params()
@@ -280,6 +273,7 @@ def test_nested_values_reach_the_search(photons):
 
 
 # --- the "you selected the whole trace" guard ----------------------------------
+
 
 def test_degenerate_coverage_is_warned_and_still_masked(photons, monkeypatch, caplog):
     """A search that selects almost everything is flagged, not silently accepted.
@@ -334,7 +328,8 @@ def test_warn_if_degenerate_threshold_is_the_documented_fraction(caplog):
 def test_empty_search_masks_nothing(photons, monkeypatch):
     """No bursts found means an all-false mask, and no confidence bookkeeping."""
     monkeypatch.setattr(
-        tttrlib_search, "search",
+        tttrlib_search,
+        "search",
         lambda *a, **k: np.empty((0, 2), dtype=np.int64),
     )
     mask = tttrlib_search.tttrlib_burst_filter(photons, "maxtree")
@@ -343,6 +338,7 @@ def test_empty_search_masks_nothing(photons, monkeypatch):
 
 
 # --- retired and unavailable modes in the dispatcher ---------------------------
+
 
 def test_bocpd_mode_dispatches_to_tttrlib(photons):
     """BOCPD is now backed by tttrlib's C++ engine."""

@@ -207,17 +207,14 @@ class MDConverterViewModel:
             # One file: read the whole trajectory and write it out. This used
             # to shell out to an external converter, which is the same loop
             # with an argv in the middle.
-            whole = md.load(self.trajectory, top=self.topology_file or None,
-                            stride=args.stride)
+            whole = md.load(self.trajectory, top=self.topology_file or None, stride=args.stride)
             if args.index is not None:
                 whole = whole[args.index]
             whole.save(args.output)
             # Say what was written. "Conversion done" over a zero-frame output
             # reads exactly like a good run -- and a stride or an index that
             # selects nothing is the easy way to get one.
-            self.append_log(
-                f"Wrote {whole.n_frames} frames of {whole.n_atoms} atoms"
-            )
+            self.append_log(f"Wrote {whole.n_frames} frames of {whole.n_atoms} atoms")
         self.append_log("Conversion done")
 
 

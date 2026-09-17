@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from mmfdb.repository import MFDatabase
 from mmfdb.schema._sqlutil import _utc_now
 
@@ -371,9 +370,7 @@ class FluorophoreDatabase(MFDatabase):
                     continue
                 yield (stype or default_spectrum), (x, y)
             return
-        raise TypeError(
-            "spectra must be a {type: (x, y)} mapping or a single (x, y) tuple"
-        )
+        raise TypeError("spectra must be a {type: (x, y)} mapping or a single (x, y) tuple")
 
     def add_probe_type(
         self,
@@ -733,7 +730,9 @@ class FluorophoreDatabase(MFDatabase):
     def delete_entity(self, entity_id: str) -> None:
         """Delete an entity and dependent legacy rows."""
         with self.conn:
-            self.conn.execute("DELETE FROM flr_poly_probe_position WHERE entity_id = ?", (entity_id,))
+            self.conn.execute(
+                "DELETE FROM flr_poly_probe_position WHERE entity_id = ?", (entity_id,)
+            )
             self.conn.execute("DELETE FROM entity_poly_seq WHERE entity_id = ?", (entity_id,))
             self.conn.execute("DELETE FROM entities WHERE entity_id = ?", (entity_id,))
 

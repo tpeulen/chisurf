@@ -24,17 +24,13 @@ from chisurf.core.parameter import ParameterGroup
 
 
 class Dye(ParameterGroup):
-
     @property
     def simulation_grid_resolution(self):
         """Grid spacing for the AV simulation in Angstrom."""
         return self._simulation_grid_resolution.value
 
     @simulation_grid_resolution.setter
-    def simulation_grid_resolution(
-            self,
-            v: float
-    ):
+    def simulation_grid_resolution(self, v: float):
         """Set the simulation grid spacing (Angstrom)."""
         self._simulation_grid_resolution.value = v
 
@@ -44,10 +40,7 @@ class Dye(ParameterGroup):
         return self._tau0.value
 
     @tau0.setter
-    def tau0(
-            self,
-            v: float
-    ):
+    def tau0(self, v: float):
         """Set the fluorescence lifetime of the dye (ns)."""
         self._tau0.value = v
 
@@ -105,17 +98,17 @@ class Dye(ParameterGroup):
     def av_parameter(self):
         """Dictionary of AV parameters (linker_length, linker_width, radius1)."""
         p = dict()
-        p['linker_length'] = self.av_length
-        p['linker_width'] = self.av_width
-        p['radius1'] = self.av_radius
+        p["linker_length"] = self.av_length
+        p["linker_width"] = self.av_width
+        p["radius1"] = self.av_radius
         return p
 
     @av_parameter.setter
     def av_parameter(self, d):
         """Set all AV parameters at once from a dict."""
-        self.av_length = d['linker_length']
-        self.av_width = d['linker_width']
-        self.av_radius = d['radius1']
+        self.av_length = d["linker_length"]
+        self.av_width = d["linker_width"]
+        self.av_radius = d["radius1"]
 
     @property
     def dye_definition(self):
@@ -142,8 +135,8 @@ class Dye(ParameterGroup):
 
     def get_av(self, **kwargs):
         """Get the accessible volume (ACV) for the current dye parameters."""
-        structure = kwargs.get('structure', self.structure)
-        sticking = kwargs.get('sticking', self.sticking)
+        structure = kwargs.get("structure", self.structure)
+        sticking = kwargs.get("sticking", self.sticking)
 
         av = chisurf.core.structure.av.ACV(
             structure=structure,
@@ -152,93 +145,72 @@ class Dye(ParameterGroup):
             chain_identifier=self.attachment_chain,
             simulation_grid_resolution=self.simulation_grid_resolution,
             save_av=False,
-            **self.av_parameter
+            **self.av_parameter,
         )
-        av.calc_acv(slow_centers=sticking.slow_center,
-                    slow_radius=sticking.slow_radius,
-                    verbose=self.verbose)
+        av.calc_acv(
+            slow_centers=sticking.slow_center,
+            slow_radius=sticking.slow_radius,
+            verbose=self.verbose,
+        )
         return av
 
     def update_parameter(self):
         """Update AV and diffusion parameters from the dye definition dictionary."""
         try:
             if isinstance(self.dye_definition, dict):
-                self.av_length = self.dye_definition.get('av_length', self.av_length)
-                self.av_width = self.dye_definition.get('av_linker_width', self.av_width)
-                self.av_radius = self.dye_definition.get('av_radius1', self.av_radius)
-                self.diffusion_coefficient = self.dye_definition.get('diffusion_coefficient', self.diffusion_coefficient)
-                self.critical_distance = self.dye_definition.get('quenching_distance', self.critical_distance)
+                self.av_length = self.dye_definition.get("av_length", self.av_length)
+                self.av_width = self.dye_definition.get("av_linker_width", self.av_width)
+                self.av_radius = self.dye_definition.get("av_radius1", self.av_radius)
+                self.diffusion_coefficient = self.dye_definition.get(
+                    "diffusion_coefficient", self.diffusion_coefficient
+                )
+                self.critical_distance = self.dye_definition.get(
+                    "quenching_distance", self.critical_distance
+                )
         except (TypeError, KeyError, AttributeError):
             # If dye_definition is not a dictionary or doesn't have the required keys,
             # we'll keep the current values
             pass
 
-    def __init__(
-            self,
-            sticking,
-            **kwargs
-    ):
+    def __init__(self, sticking, **kwargs):
         """Initialize a Dye with default AV parameters and a sticking context."""
         ParameterGroup.__init__(self)
-        self.verbose = kwargs.get('verbose', chisurf.core.settings.cs_settings['verbose'])
+        self.verbose = kwargs.get("verbose", chisurf.core.settings.cs_settings["verbose"])
         self.sticking = sticking
         self.structure = sticking.structure
-        self.model = kwargs.get('model', None)
+        self.model = kwargs.get("model", None)
 
-        self._critical_distance = chisurf.core.parameter.Parameter(
-            value=7.0,
-            name='RQ'
-        )
-        self._diffusion_coefficient = chisurf.core.parameter.Parameter(
-            value=5.0,
-            name='D[A2/ns]'
-        )
-        self._tau0 = chisurf.core.parameter.Parameter(
-            value=4.0,
-            name='tau0[ns]'
-        )
+        self._critical_distance = chisurf.core.parameter.Parameter(value=7.0, name="RQ")
+        self._diffusion_coefficient = chisurf.core.parameter.Parameter(value=5.0, name="D[A2/ns]")
+        self._tau0 = chisurf.core.parameter.Parameter(value=4.0, name="tau0[ns]")
         self._simulation_grid_resolution = chisurf.core.parameter.Parameter(
-            value=0.5,
-            name='grid spacing'
+            value=0.5, name="grid spacing"
         )
 
-        self._av_length = chisurf.core.parameter.Parameter(
-            name='L',
-            value=20.0
-        )
-        self._av_width = chisurf.core.parameter.Parameter(
-            name='W',
-            value=0.5
-        )
-        self._av_radius = chisurf.core.parameter.Parameter(
-            name='R',
-            value=3.0
-        )
+        self._av_length = chisurf.core.parameter.Parameter(name="L", value=20.0)
+        self._av_width = chisurf.core.parameter.Parameter(name="W", value=0.5)
+        self._av_radius = chisurf.core.parameter.Parameter(name="R", value=3.0)
 
-        self.attachment_residue = kwargs.get('attachment_residue', None)
-        self.attachment_atom = kwargs.get('attachment_atom', None)
-        self.attachment_chain = kwargs.get('attachment_chain', None)
+        self.attachment_residue = kwargs.get("attachment_residue", None)
+        self.attachment_atom = kwargs.get("attachment_atom", None)
+        self.attachment_chain = kwargs.get("attachment_chain", None)
 
-        self.critical_distance = kwargs.get('critical_distance', 5.0)
-        self.diffusion_coefficient = kwargs.get('diffusion_coefficient', 10.0)
-        self.tau0 = kwargs.get('tau0', 4.0)
+        self.critical_distance = kwargs.get("critical_distance", 5.0)
+        self.diffusion_coefficient = kwargs.get("diffusion_coefficient", 10.0)
+        self.tau0 = kwargs.get("tau0", 4.0)
 
-        self.av_length = kwargs.get('av_length', 20.0)
-        self.av_width = kwargs.get('av_width', 0.5)
-        self.av_radius = kwargs.get('av_radius', 1.5)
-        self.simulation_grid_resolution = kwargs.get(
-            'simulation_grid_resolution',
-            0.5
-        )
+        self.av_length = kwargs.get("av_length", 20.0)
+        self.av_width = kwargs.get("av_width", 0.5)
+        self.av_radius = kwargs.get("av_radius", 1.5)
+        self.simulation_grid_resolution = kwargs.get("simulation_grid_resolution", 0.5)
 
-        dye_name = str(kwargs.get('dye_name', None))
+        dye_name = str(kwargs.get("dye_name", None))
         if dye_name in chisurf.core.structure.av.dye_names:
             self._dye_name = dye_name
             self.update_parameter()
 
 
 class Sticking(ParameterGroup):
-
     @property
     def slow_fact(self):
         """Slowing factor of the dye close to a slow-center. The diffusion
@@ -265,13 +237,12 @@ class Sticking(ParameterGroup):
 
     @property
     def slow_center(self):
-        """The location of the slow part of the accessible volume.
-        """
-        coordinates = self.structure.atoms['xyz']
-        if self.sticky_mode == 'surface' or self.quenching_parameter is None:
-            slow_atoms = np.where(self.structure.atoms['atom_name'] == 'CA')[0]
+        """The location of the slow part of the accessible volume."""
+        coordinates = self.structure.atoms["xyz"]
+        if self.sticky_mode == "surface" or self.quenching_parameter is None:
+            slow_atoms = np.where(self.structure.atoms["atom_name"] == "CA")[0]
             coordinates = coordinates[slow_atoms]
-        elif self.sticky_mode == 'quencher':
+        elif self.sticky_mode == "quencher":
             coordinates = self.quenching_parameter.xyz
         return coordinates
 
@@ -291,11 +262,11 @@ class Sticking(ParameterGroup):
         self._sticky_mode = v
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.Fit,
-            structure: chisurf.core.structure.Structure,
-            quenching_parameter=None,
-            **kwargs
+        self,
+        fit: chisurf.core.fitting.fit.Fit,
+        structure: chisurf.core.structure.Structure,
+        quenching_parameter=None,
+        **kwargs,
     ):
         """
 
@@ -304,24 +275,21 @@ class Sticking(ParameterGroup):
         :param kwargs:
         """
         super().__init__(fit, **kwargs)
-        self.verbose = kwargs.get('verbose', chisurf.core.settings.cs_settings['verbose'])
+        self.verbose = kwargs.get("verbose", chisurf.core.settings.cs_settings["verbose"])
         self.quenching_parameter = quenching_parameter
         self.structure = structure
-        self.model = kwargs.get('model', None)
+        self.model = kwargs.get("model", None)
         self._slow_radius = chisurf.core.parameter.Parameter(
-            name='Rs',
-            value=kwargs.get('slow_radius', 8.5)
+            name="Rs", value=kwargs.get("slow_radius", 8.5)
         )
         self._slow_fact = chisurf.core.parameter.Parameter(
-            name='slow fact',
-            value=kwargs.get('slow_fact', 0.1)
+            name="slow fact", value=kwargs.get("slow_fact", 0.1)
         )
         # sticking reading_routine is either surface quencher
-        self._sticky_mode = kwargs.get('sticky_mode', 'surface')
+        self._sticky_mode = kwargs.get("sticky_mode", "surface")
 
 
 class ProteinQuenching(ParameterGroup):
-
     @property
     def kQ_scale(self):
         """Scaling factor for all quenching rates."""
@@ -381,27 +349,25 @@ class ProteinQuenching(ParameterGroup):
         atoms = self.structure.atoms
         for residue_key in v:
             if self.all_atoms_quench:
-                atoms_idx = np.where(atoms['res_name'] == residue_key)[0]
+                atoms_idx = np.where(atoms["res_name"] == residue_key)[0]
             else:
                 atoms_idx = np.where(
-                    (atoms['res_name'] == residue_key) & (atoms['atom_name'] == 'CB')
+                    (atoms["res_name"] == residue_key) & (atoms["atom_name"] == "CB")
                 )[0]
 
             # Check if v[residue_key] is a list or a dictionary
             if isinstance(v[residue_key], list):
                 # If it's a list, convert it to a dictionary with a default rate of 1.0
                 q_new[residue_key] = {
-                    'rate': 1.0,
-                    'atoms': v[residue_key],
+                    "rate": 1.0,
+                    "atoms": v[residue_key],
                 }
             else:
                 # If it's a dictionary, use the rate from the dictionary
                 q_new[residue_key] = {
-                    'rate': v[residue_key]['rate'],
-                    'atoms': list(
-                        set(
-                            atoms[atoms_idx]['atom_name']
-                        ).difference(self._excluded_atoms)
+                    "rate": v[residue_key]["rate"],
+                    "atoms": list(
+                        set(atoms[atoms_idx]["atom_name"]).difference(self._excluded_atoms)
                     ),
                 }
         v = q_new
@@ -409,89 +375,66 @@ class ProteinQuenching(ParameterGroup):
         # determine atom-indices and coordinates
         for residue_key in v:
             atoms_idx = []
-            for atom_name in v[residue_key]['atoms']:
+            for atom_name in v[residue_key]["atoms"]:
                 idx = np.where(
-                    (atoms['res_name'] == residue_key) & (self.structure.atoms['atom_name'] == atom_name)
+                    (atoms["res_name"] == residue_key)
+                    & (self.structure.atoms["atom_name"] == atom_name)
                 )[0]
                 atoms_idx += list(idx)
-            v[residue_key]['coordinates'] = self.structure.atoms[atoms_idx]['xyz']
-            v[residue_key]['atom_idx'] = np.array(atoms_idx, dtype=np.int32)
+            v[residue_key]["coordinates"] = self.structure.atoms[atoms_idx]["xyz"]
+            v[residue_key]["atom_idx"] = np.array(atoms_idx, dtype=np.int32)
         self._quencher = v
 
     @property
     def k_quench(self):
-        """An array associating to each atom a quenching rate
-        """
-        r = np.hstack([
-            [self.quencher[residue_key]['rate']] * len(self.quencher[residue_key]['atom_idx'])
-            for residue_key in self.quencher
-        ])
+        """An array associating to each atom a quenching rate"""
+        r = np.hstack(
+            [
+                [self.quencher[residue_key]["rate"]] * len(self.quencher[residue_key]["atom_idx"])
+                for residue_key in self.quencher
+            ]
+        )
         re = r * self.kQ_scale
         return re.astype(np.float32)
 
     @property
     def xyz(self):
-        """Coordinates of the quenching atoms
-        """
-        atom_idx = np.hstack([
-            self.quencher[residue_key]['atom_idx']
-            for residue_key in self.quencher
-        ])
+        """Coordinates of the quenching atoms"""
+        atom_idx = np.hstack(
+            [self.quencher[residue_key]["atom_idx"] for residue_key in self.quencher]
+        )
         return self.structure.xyz[atom_idx]
 
     def __str__(self):
         """Multi-line description of the protein-quenching configuration."""
         s = ParameterGroup.__str__(self)
-        s += "\tstructure: %s\n" % self.structure.name
+        s += f"\tstructure: {self.structure.name}\n"
         s += "\tquencher:\n"
         for q in self.quencher:
-            s += "\t\t%s: %s\n" % (q, self.quencher[q])
-        s += "\tall atoms of aa quench: %s\n" % self.all_atoms_quench
-        s += "\texcluded atoms        : %s\n" % self._excluded_atoms
-        s += "\tn of quenching atoms  : %s\n" % self.xyz.shape[0]
+            s += f"\t\t{q}: {self.quencher[q]}\n"
+        s += f"\tall atoms of aa quench: {self.all_atoms_quench}\n"
+        s += f"\texcluded atoms        : {self._excluded_atoms}\n"
+        s += f"\tn of quenching atoms  : {self.xyz.shape[0]}\n"
         return s
 
     def __init__(self, structure, **kwargs):
         """Initialize a ProteinQuenching for the given structure."""
-        self.verbose = kwargs.get('verbose', chisurf.core.settings.cs_settings['verbose'])
+        self.verbose = kwargs.get("verbose", chisurf.core.settings.cs_settings["verbose"])
         self.structure = structure
 
         self._quencher = None
-        self._all_atoms_quench = kwargs.get('all_atoms_quench', False)
+        self._all_atoms_quench = kwargs.get("all_atoms_quench", False)
         self._k_quench_scale = chisurf.core.parameter.Parameter(
-            value=kwargs.get('quench_scale', 0.01),
-            name='kQ scale'
+            value=kwargs.get("quench_scale", 0.01), name="kQ scale"
         )
-        self._excluded_atoms = kwargs.get(
-            'excluded_atoms',
-            set(['CA', 'C', 'N', 'HA'])
-        )
-        self.quencher = kwargs.get('quenching_amino_acids',
-                                   {
-                                       'MET': {
-                                           'atoms': ['CB'],
-                                           'rate': 1.7,
-                                           'atom_idx': []
-                                       },
-                                       'TRP': {
-                                           'atoms': ['CB'],
-                                           'rate': 3.5,
-                                           'atom_idx': []
-                                       },
-                                       'TYR': {
-                                           'atoms': ['CB'],
-                                           'rate': 3.5,
-                                           'atom_idx': []
-                                       },
-                                       'HIS': {
-                                           'atoms': ['CB'],
-                                           'rate': 1.5,
-                                           'atom_idx': []
-                                       },
-                                       'PRO': {
-                                           'atoms': ['CB'],
-                                           'rate': 1.5,
-                                           'atom_idx': []
-                                       }
-                                   }
+        self._excluded_atoms = kwargs.get("excluded_atoms", set(["CA", "C", "N", "HA"]))
+        self.quencher = kwargs.get(
+            "quenching_amino_acids",
+            {
+                "MET": {"atoms": ["CB"], "rate": 1.7, "atom_idx": []},
+                "TRP": {"atoms": ["CB"], "rate": 3.5, "atom_idx": []},
+                "TYR": {"atoms": ["CB"], "rate": 3.5, "atom_idx": []},
+                "HIS": {"atoms": ["CB"], "rate": 1.5, "atom_idx": []},
+                "PRO": {"atoms": ["CB"], "rate": 1.5, "atom_idx": []},
+            },
         )

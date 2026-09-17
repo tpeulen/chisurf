@@ -60,11 +60,16 @@ def _distribution_series(mean, sigma, chi_active, xform=None, wide=False, trim=F
             if keep.any():
                 x, w = x[keep], w[keep]
         active = chi_active if kind == "chi" else not chi_active
-        out.append({
-            "x": x, "y": w, "name": "chi" if kind == "chi" else "Gaussian",
-            "color": color, "width": 2 if active else 1,
-            "style": "solid" if active else "dash",
-        })
+        out.append(
+            {
+                "x": x,
+                "y": w,
+                "name": "chi" if kind == "chi" else "Gaussian",
+                "color": color,
+                "width": 2 if active else 1,
+                "style": "solid" if active else "dash",
+            }
+        )
     return out
 
 
@@ -83,12 +88,14 @@ class _FretModel:
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_GUI_DIR / "fret.view.json")
 
     def _rate(self, r):
         from chisurf.plugins.calculator.fret_calculator.core.algorithms import (
             distance_to_fret_rate_constant,
         )
+
         return distance_to_fret_rate_constant(r, self.R0, self.tau0, 0.667)
 
     def distance_plot_series(self) -> list[dict]:
@@ -97,7 +104,11 @@ class _FretModel:
     def rate_plot_series(self) -> list[dict]:
         # FRET-rate-constant distribution induced by the distance distribution.
         return _distribution_series(
-            self.R, self.sigma, bool(self.use_chi), xform=self._rate, trim=True,
+            self.R,
+            self.sigma,
+            bool(self.use_chi),
+            xform=self._rate,
+            trim=True,
         )
 
 
@@ -116,12 +127,14 @@ class _HomoFretModel:
 
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_GUI_DIR / "homofret.view.json")
 
     def _rate(self, r):
         from chisurf.plugins.calculator.fret_calculator.core.algorithms import (
             distance_to_fret_rate_constant,
         )
+
         return distance_to_fret_rate_constant(r, self.R0, self.tau0, 0.667)
 
     def distance_plot_series(self) -> list[dict]:
@@ -138,8 +151,11 @@ class _HomoFretModel:
             return 1.0 / (1.0 / rho + 2.0 * np.asarray(self._rate(r), dtype=float))
 
         return _distribution_series(
-            self.R_DA, self.sigma, bool(self.use_chi),
-            xform=_tau, trim=True,
+            self.R_DA,
+            self.sigma,
+            bool(self.use_chi),
+            xform=_tau,
+            trim=True,
         )
 
 
@@ -179,7 +195,9 @@ def _grid_label(text: str, tip: str = "") -> QtWidgets.QLabel:
 class _FretTab(QtWidgets.QWidget):
     """HeteroFRET calculator tab."""
 
-    def __init__(self, client: FretCalculatorClient, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self, client: FretCalculatorClient, parent: QtWidgets.QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self._client = client
         self._building = False
@@ -219,8 +237,13 @@ class _FretTab(QtWidgets.QWidget):
         # Any parameter edit refreshes the distribution plots (the specific
         # handler runs first and updates the fields, then this syncs+redraws).
         for w in (
-            self.spin_tau0, self.spin_R0, self.spin_tau,
-            self.spin_R, self.spin_sigma, self.spin_E, self.spin_kFRET,
+            self.spin_tau0,
+            self.spin_R0,
+            self.spin_tau,
+            self.spin_R,
+            self.spin_sigma,
+            self.spin_E,
+            self.spin_kFRET,
         ):
             w.editingFinished.connect(self._update_distribution_plot)
 
@@ -256,8 +279,13 @@ class _FretTab(QtWidgets.QWidget):
 
     def _block(self, flag: bool) -> None:
         for w in (
-            self.spin_tau0, self.spin_R0, self.spin_tau,
-            self.spin_R, self.spin_sigma, self.spin_E, self.spin_kFRET,
+            self.spin_tau0,
+            self.spin_R0,
+            self.spin_tau,
+            self.spin_R,
+            self.spin_sigma,
+            self.spin_E,
+            self.spin_kFRET,
         ):
             w.blockSignals(flag)
 
@@ -331,7 +359,9 @@ class _FretTab(QtWidgets.QWidget):
 class _HomoFretTab(QtWidgets.QWidget):
     """HomoFRET calculator tab."""
 
-    def __init__(self, client: FretCalculatorClient, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self, client: FretCalculatorClient, parent: QtWidgets.QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self._client = client
         self._building = False
@@ -367,8 +397,12 @@ class _HomoFretTab(QtWidgets.QWidget):
         self.check_chi.toggled.connect(self._update_distribution_plot)
         # Any parameter edit refreshes the distribution plots.
         for w in (
-            self.spin_tau0, self.spin_R0, self.spin_tRM,
-            self.spin_rho, self.spin_Rhomo, self.spin_sigma,
+            self.spin_tau0,
+            self.spin_R0,
+            self.spin_tRM,
+            self.spin_rho,
+            self.spin_Rhomo,
+            self.spin_sigma,
         ):
             w.editingFinished.connect(self._update_distribution_plot)
 

@@ -41,7 +41,6 @@ def __getattr__(name: str) -> Any:
     test use; `QuEstTool` is what the manifest points at. They are the same
     widget, and neither is imported until asked for.
     """
-
     if name in {"QuEstTool", "QuEstWindow"}:
         from .gui.tool import QuEstTool
 

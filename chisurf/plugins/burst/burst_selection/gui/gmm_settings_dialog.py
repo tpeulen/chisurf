@@ -5,6 +5,7 @@ BrickMicWizard for histogram fitting. The form is declared once as a
 ``dataspec`` ``ModelView`` and rendered by :class:`AutoForm`, instead of
 hand-building one widget per field (PRD-40).
 """
+
 from types import SimpleNamespace
 
 from qtpy import QtWidgets
@@ -25,25 +26,68 @@ DEFAULT_GMM_SETTINGS = {
 
 def _gmm_view_spec() -> ds.ModelView:
     """Return the declarative description of the GMM settings form."""
-    return ds.ModelView(sections=(
-        ds.ChoiceSection(target="settings", attr="covariance_type",
-                         label="Covariance Type:",
-                         options=("full", "tied", "diag", "spherical")),
-        ds.ValueSection(target="settings", attr="random_state", kind="int",
-                        label="Random State:", minimum=0, maximum=1000),
-        ds.ValueSection(target="settings", attr="max_iter", kind="int",
-                        label="Max Iterations:", minimum=10, maximum=1000),
-        ds.ValueSection(target="settings", attr="n_init", kind="int",
-                        label="Number of Initializations:", minimum=1, maximum=20),
-        ds.ValueSection(target="settings", attr="tol", kind="float",
-                        label="Convergence Threshold:", minimum=1e-6, maximum=1e-1,
-                        decimals=6, step=1e-4),
-        ds.ValueSection(target="settings", attr="max_components", kind="int",
-                        label="Max Components for Auto:", minimum=2, maximum=20),
-        ds.ValueSection(target="settings", attr="reg_covar", kind="float",
-                        label="Covariance Regularization:", minimum=1e-10, maximum=1e-1,
-                        decimals=10, step=1e-7),
-    ))
+    return ds.ModelView(
+        sections=(
+            ds.ChoiceSection(
+                target="settings",
+                attr="covariance_type",
+                label="Covariance Type:",
+                options=("full", "tied", "diag", "spherical"),
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="random_state",
+                kind="int",
+                label="Random State:",
+                minimum=0,
+                maximum=1000,
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="max_iter",
+                kind="int",
+                label="Max Iterations:",
+                minimum=10,
+                maximum=1000,
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="n_init",
+                kind="int",
+                label="Number of Initializations:",
+                minimum=1,
+                maximum=20,
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="tol",
+                kind="float",
+                label="Convergence Threshold:",
+                minimum=1e-6,
+                maximum=1e-1,
+                decimals=6,
+                step=1e-4,
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="max_components",
+                kind="int",
+                label="Max Components for Auto:",
+                minimum=2,
+                maximum=20,
+            ),
+            ds.ValueSection(
+                target="settings",
+                attr="reg_covar",
+                kind="float",
+                label="Covariance Regularization:",
+                minimum=1e-10,
+                maximum=1e-1,
+                decimals=10,
+                step=1e-7,
+            ),
+        )
+    )
 
 
 class _GMMDataset:

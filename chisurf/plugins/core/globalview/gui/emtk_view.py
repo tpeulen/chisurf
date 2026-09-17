@@ -31,6 +31,7 @@ a cosmetic loss -- it is a claim the picture makes that the model does not:
 
 :func:`emtk.nodes.link` takes a per-link colour for exactly this.
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,12 +40,12 @@ import typing
 from emtk import im
 from emtk import nodes as emtk_nodes
 
-from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import (
     GraphDocument,
     GraphEdge,
     GraphNode,
 )
+from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.model import PortSpec
 
 __all__ = [
@@ -126,8 +127,7 @@ KIND_LABELS: dict = {
 }
 
 #: Legend order: owners first, then parameters by how much freedom they have.
-LEGEND_ORDER: tuple = (NODE_FIT, NODE_GROUP, NODE_PARAM_FREE,
-                       NODE_PARAM_LINKED, NODE_PARAM_FIXED)
+LEGEND_ORDER: tuple = (NODE_FIT, NODE_GROUP, NODE_PARAM_FREE, NODE_PARAM_LINKED, NODE_PARAM_FIXED)
 
 #: Pin names. Every node carries exactly one of each, because a link here joins
 #: two *nodes* rather than two of a node's several outputs -- a parameter has
@@ -162,7 +162,7 @@ def _node_kind(entry: typing.Any) -> int:
 
 def graph_result_to_document(
     result: typing.Any,
-    positions: typing.Optional[dict] = None,
+    positions: dict | None = None,
     include_fixed: bool = True,
 ) -> GraphDocument:
     """Turn the RPC's graph into a document the node editor can draw.
@@ -248,11 +248,15 @@ def graph_result_to_document(
             kind = "ownership"
         else:
             kind = "link"
-        document.add_edge(GraphEdge(
-            source=str(edge.source), source_port=0,
-            target=str(edge.target), target_port=0,
-            config={"kind": kind},
-        ))
+        document.add_edge(
+            GraphEdge(
+                source=str(edge.source),
+                source_port=0,
+                target=str(edge.target),
+                target_port=0,
+                config={"kind": kind},
+            )
+        )
     return document
 
 
@@ -313,8 +317,9 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
     because it is not part of the graph: it does not pan, it does not zoom, and
     it must not be caught by a box selection.
     """
-    present = [k for k in LEGEND_ORDER
-               if any(int(n.config.get("kind", -1)) == k for n in document.nodes)]
+    present = [
+        k for k in LEGEND_ORDER if any(int(n.config.get("kind", -1)) == k for n in document.nodes)
+    ]
     if not present:
         return
 
@@ -322,15 +327,14 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
     row = draw.calc_text_size("X")[1] + 3.0
     width = max(draw.calc_text_size(KIND_LABELS[k])[0] for k in present) + 34.0
     x, y = box[0] + 8.0, box[1] + 8.0
-    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0),
-                         (18, 20, 24, 205), 4.0)
-    draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0),
-                  (70, 76, 86, 180), 4.0)
+    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0), (18, 20, 24, 205), 4.0)
+    draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0), (70, 76, 86, 180), 4.0)
     for index, kind in enumerate(present):
         centre_y = y + 4.0 + row * index + row * 0.5
         draw.add_circle_filled((x + 14.0, centre_y), 5.0, KIND_COLOURS[kind])
-        draw.add_text((x + 24.0, centre_y - row * 0.5 + 1.0),
-                      (216, 220, 228, 255), KIND_LABELS[kind])
+        draw.add_text(
+            (x + 24.0, centre_y - row * 0.5 + 1.0), (216, 220, 228, 255), KIND_LABELS[kind]
+        )
 
 
 class GlobalViewContent(NodeContentRenderer):
@@ -373,8 +377,10 @@ class GlobalViewContent(NodeContentRenderer):
             whole job is to show what follows what.
         """
         owners = {NODE_FIT, NODE_GROUP}
-        return (int(source.config.get("kind", -1)) not in owners
-                and int(target.config.get("kind", -1)) not in owners)
+        return (
+            int(source.config.get("kind", -1)) not in owners
+            and int(target.config.get("kind", -1)) not in owners
+        )
 
     def node_shape(self, node: GraphNode) -> tuple:
         """Every node is a disc, sized by what kind it is.
@@ -398,7 +404,7 @@ class GlobalViewContent(NodeContentRenderer):
         radius = KIND_RADIUS.get(kind, 11.0) * self.radius_scale
         return (emtk_nodes.NodeShape.DISC, label, radius)
 
-    def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
+    def node_style(self, node: GraphNode) -> tuple | None:
         """Colour the disc by what kind of node this is.
 
         Parameters
@@ -413,7 +419,7 @@ class GlobalViewContent(NodeContentRenderer):
         """
         return KIND_COLOURS.get(int(node.config.get("kind", -1)))
 
-    def link_style(self, edge: typing.Any) -> typing.Optional[tuple]:
+    def link_style(self, edge: typing.Any) -> tuple | None:
         """Colour an edge by which of the three claims it makes.
 
         Parameters
@@ -494,12 +500,17 @@ def document_from_arrays(positions, edges, names, kinds) -> GraphDocument:
     for index, name in enumerate(names):
         kind = int(kinds[index]) if index < len(kinds) else NODE_PARAM_FREE
         x, y = positions[index] if index < len(positions) else (0.0, index * 90.0)
-        document.add_node(GraphNode(
-            node_id=str(index), node_type="parameter", title=str(name),
-            inputs=[PortSpec(name=PORT_IN, is_output=False, port_type="param")],
-            outputs=[PortSpec(name=PORT_OUT, is_output=True, port_type="param")],
-            config={"kind": kind}, pos=(float(x), float(y)),
-        ))
+        document.add_node(
+            GraphNode(
+                node_id=str(index),
+                node_type="parameter",
+                title=str(name),
+                inputs=[PortSpec(name=PORT_IN, is_output=False, port_type="param")],
+                outputs=[PortSpec(name=PORT_OUT, is_output=True, port_type="param")],
+                config={"kind": kind},
+                pos=(float(x), float(y)),
+            )
+        )
 
     owners = {NODE_FIT, NODE_GROUP}
     for source, target in edges:
@@ -512,6 +523,5 @@ def document_from_arrays(positions, edges, names, kinds) -> GraphDocument:
             kind = "ownership"
         else:
             kind = "link"
-        document.add_edge(GraphEdge(str(source), 0, str(target), 0,
-                                    config={"kind": kind}))
+        document.add_edge(GraphEdge(str(source), 0, str(target), 0, config={"kind": kind}))
     return document

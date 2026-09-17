@@ -13,6 +13,7 @@ These tests need no files: they pin the contract the plot depends on — that a
 fit can hand back the model curve it computed, aligned with the data it was
 given — using a synthetic decay.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -64,7 +65,9 @@ def test_a_fit_returns_the_model_curve_it_computed():
     data = _decay(settings)
 
     result = fitter.fit(
-        data, initial_values=[2.0, 0.0, 0.38, 1.2], fixed=[0, -1, -1, -1],
+        data,
+        initial_values=[2.0, 0.0, 0.38, 1.2],
+        fixed=[0, -1, -1, -1],
         include_model=True,
     )
 
@@ -90,7 +93,7 @@ def test_the_fitter_exposes_no_per_fit_state():
     """
     fitter = Fit2x(_settings(), model=Fit2xModel.FIT23)
     assert not hasattr(fitter, "data")
-    assert fitter.model is Fit2xModel.FIT23   # a model *kind*, never a curve
+    assert fitter.model is Fit2xModel.FIT23  # a model *kind*, never a curve
     assert not isinstance(fitter.model, np.ndarray)
 
 
@@ -110,7 +113,9 @@ def test_residuals_can_be_formed_from_data_and_model():
     fitter = Fit2x(settings, model=Fit2xModel.FIT23)
     data = _decay(settings)
     result = fitter.fit(
-        data, initial_values=[2.0, 0.0, 0.38, 1.2], fixed=[0, -1, -1, -1],
+        data,
+        initial_values=[2.0, 0.0, 0.38, 1.2],
+        fixed=[0, -1, -1, -1],
         include_model=True,
     )
 
@@ -137,21 +142,18 @@ def test_no_wizard_code_reads_curves_off_the_fitter():
     """
     import re
 
-    source = (
-        pathlib.Path(__file__).resolve().parents[1] / "wizard.py"
-    ).read_text()
+    source = (pathlib.Path(__file__).resolve().parents[1] / "wizard.py").read_text()
 
     offenders = []
     for n, line in enumerate(source.splitlines(), start=1):
-        code = line.split("#", 1)[0]          # ignore prose about the bug
+        code = line.split("#", 1)[0]  # ignore prose about the bug
         if re.search(r"self\.fit\.(data|model)\b", code) or re.search(
             r"getattr\(\s*self\.fit\s*,\s*[\"']\s*(data|model)", code
         ):
             offenders.append(f"{n}: {line.strip()}")
 
     assert not offenders, (
-        "read the fitted curves from self._fit_view, not from the fitter:\n"
-        + "\n".join(offenders)
+        "read the fitted curves from self._fit_view, not from the fitter:\n" + "\n".join(offenders)
     )
 
 
@@ -172,12 +174,14 @@ def test_a_result_is_read_by_name_and_not_subscripted():
     settings = _settings()
     fitter = Fit2x(settings, model=Fit2xModel.FIT23)
     result = fitter.fit(
-        _decay(settings), initial_values=[2.0, 0.0, 0.38, 1.2],
-        fixed=[0, -1, -1, -1], include_model=True,
+        _decay(settings),
+        initial_values=[2.0, 0.0, 0.38, 1.2],
+        fixed=[0, -1, -1, -1],
+        include_model=True,
     )
 
     with pytest.raises(TypeError):
-        result["x"]                       # the shape the call site assumed
+        result["x"]  # the shape the call site assumed
 
     assert np.asarray(result.x).size >= 4
     assert np.isfinite(float(result.twoIstar))
@@ -192,21 +196,19 @@ def test_the_wizard_does_not_subscript_a_fit_result():
     """A guard for the call sites, since the end-to-end test is skipped here."""
     import re
 
-    source = (
-        pathlib.Path(__file__).resolve().parents[1] / "wizard.py"
-    ).read_text()
+    source = (pathlib.Path(__file__).resolve().parents[1] / "wizard.py").read_text()
 
     offenders = []
     for n, line in enumerate(source.splitlines(), start=1):
         code = line.split("#", 1)[0]
         # Named keys only: `res` is also a DataFrame in the export path, where
         # subscripting it is exactly right.
-        if re.search(r"\bres\[[\"'](x|twoIstar|fixed|results|model_curve)[\"']\]", code) \
-                or re.search(r"[\"'](x|twoIstar)[\"']\s+in\s+res\b", code):
+        if re.search(
+            r"\bres\[[\"'](x|twoIstar|fixed|results|model_curve)[\"']\]", code
+        ) or re.search(r"[\"'](x|twoIstar)[\"']\s+in\s+res\b", code):
             offenders.append(f"{n}: {line.strip()}")
 
     assert not offenders, (
         "a Fit2xResult is read by attribute (res.x, res.twoIstar, "
-        "res.as_dict(), res.result(name)), never subscripted:\n"
-        + "\n".join(offenders)
+        "res.as_dict(), res.result(name)), never subscripted:\n" + "\n".join(offenders)
     )

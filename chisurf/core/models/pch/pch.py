@@ -201,9 +201,7 @@ def pch_open_system(k_vals, brightness, avgN, maxN=30):
         ``P(k)``, the photon-counting histogram of the species.
     """
     return np.asarray(
-        tttrlib.pch_open_system(
-            _k_max(k_vals), float(brightness), float(avgN), int(maxN)
-        ),
+        tttrlib.pch_open_system(_k_max(k_vals), float(brightness), float(avgN), int(maxN)),
         dtype=float,
     )
 

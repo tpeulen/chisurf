@@ -139,10 +139,19 @@ def test_the_list_style_stacks_a_wide_component(qtbot):
             self.group = group
 
         def view_spec(self):
-            return ModelView(sections=(DynamicGroupSection(
-                target="group", rows_source="rows", row_width=WIDTH,
-                style="list", remote=False, min_rows=0, collapsible=False,
-            ),))
+            return ModelView(
+                sections=(
+                    DynamicGroupSection(
+                        target="group",
+                        rows_source="rows",
+                        row_width=WIDTH,
+                        style="list",
+                        remote=False,
+                        min_rows=0,
+                        collapsible=False,
+                    ),
+                )
+            )
 
     group = _Group()
     form = AutoForm(_View(group))
@@ -154,8 +163,11 @@ def test_the_list_style_stacks_a_wide_component(qtbot):
     # The section's add/del still drive the group, and del takes the selected
     # component — which a stacked row names by division.
     table.table_view.selectRow(0)
-    remove = [b for b in form.findChildren(QtWidgets.QToolButton)
-              if b.toolTip() == "Remove the selected component, or the last one"]
+    remove = [
+        b
+        for b in form.findChildren(QtWidgets.QToolButton)
+        if b.toolTip() == "Remove the selected component, or the last one"
+    ]
     assert len(remove) == 1, "the section must offer one remove button"
     remove[0].click()
     assert table.table_model.rowCount() == WIDTH

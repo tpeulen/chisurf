@@ -140,9 +140,7 @@ def write_companion(
         )
     table = np.asarray(rows, dtype=float)
     if table.ndim != 2 or table.shape[1] != len(columns):
-        raise CompanionError(
-            f"rows shape {table.shape} does not match {len(columns)} columns"
-        )
+        raise CompanionError(f"rows shape {table.shape} does not match {len(columns)} columns")
     if not np.isfinite(table).all():
         # NaN/inf survive the write but poison a positional merge downstream
         # differently per reader; make the sentinel explicit instead.

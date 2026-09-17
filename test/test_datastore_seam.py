@@ -258,7 +258,8 @@ def test_is_missing_does_not_treat_an_empty_string_as_missing():
 def test_a_written_table_comes_back_column_for_column(store, tmp_path):
     """The whole point of the file half: what goes in is what comes out, in the
     dtypes it went in with — a float32 column and an integer column with a
-    hole both stay exactly that, where a frame's own writer would widen them."""
+    hole both stay exactly that, where a frame's own writer would widen them.
+    """
     path = tmp_path / "t.h5"
     write_table(path, store)
 
@@ -278,7 +279,8 @@ def test_a_written_table_comes_back_column_for_column(store, tmp_path):
 def test_a_masked_integer_cell_survives_the_file_as_a_mask(tmp_path):
     """Not as a NaN, which is the thing a frame cannot do: the column would have
     to become floats to carry one, and then "not measured" and "zero" are the
-    same as far as the dtype is concerned."""
+    same as far as the dtype is concerned.
+    """
     store = store_from_arrays({"count": np.array([1, 2, 3], dtype="int32")})
     clear_cell(store, 1, 0)
     path = tmp_path / "t.h5"
@@ -293,7 +295,8 @@ def test_a_masked_integer_cell_survives_the_file_as_a_mask(tmp_path):
 def test_a_text_column_survives_as_a_dictionary(tmp_path):
     """A repeated label costs a code, not a string. This is what makes a burst
     table with a "First File" column smaller on disk than the frame it
-    replaces rather than larger."""
+    replaces rather than larger.
+    """
     labels = np.array(["Green", "Red", "Green", "Red"] * 32, dtype=object)
     path = tmp_path / "t.h5"
     write_table(path, {"First File": labels})
@@ -307,7 +310,8 @@ def test_a_text_column_survives_as_a_dictionary(tmp_path):
 def test_meta_is_a_child_group_and_not_a_repeated_column(store, tmp_path):
     """A back-reference to the photon file belongs beside the results. Writing
     it as a column would repeat one string once per row, and a second write
-    used to truncate the first table away entirely."""
+    used to truncate the first table away entirely.
+    """
     path = tmp_path / "t.h5"
     write_table(path, store, meta={"source_tttr": "/data/run.ptu"})
 
@@ -319,7 +323,8 @@ def test_meta_is_a_child_group_and_not_a_repeated_column(store, tmp_path):
 def test_a_file_that_is_not_a_columnar_table_reads_as_none(tmp_path):
     """Not as an empty table. The reader answers a foreign file with no columns
     rather than an error, so a caller that only catches exceptions opens every
-    one of them blank and reports success."""
+    one of them blank and reports success.
+    """
     path = tmp_path / "not.h5"
     path.write_bytes(b"not an HDF5 file at all")
     assert read_table(path) is None
@@ -342,7 +347,8 @@ def test_read_results_table_prefers_the_columnar_layout(store, tmp_path):
 def test_a_file_in_neither_layout_declines_by_name(tmp_path):
     """A named decline, not an empty table: a caller merging into an existing
     file has to tell "nothing was there" from "I could not read what was
-    there", because treating the second as the first discards an analysis."""
+    there", because treating the second as the first discards an analysis.
+    """
     path = tmp_path / "not.h5"
     path.write_bytes(b"not an HDF5 file at all")
     with pytest.raises(OSError):
@@ -353,7 +359,8 @@ def test_a_frame_written_file_is_refused_rather_than_read(tmp_path):
     """The fallback that used to open these is gone on purpose: it needs an
     optional package a solved environment does not carry, so it worked on a
     developer's machine and failed on everyone else's — the same defect as the
-    writers it was there to soften. Such a file is one to convert."""
+    writers it was there to soften. Such a file is one to convert.
+    """
     pytest.importorskip("tables")
     frame = pd.DataFrame({"a": [1.0, 2.0]})
     path = tmp_path / "legacy.h5"
@@ -384,7 +391,8 @@ def test_a_missing_number_is_an_empty_field_not_the_text_nan(tmp_path):
     """What a frame's writer produces, and what the reader here takes back as
     missing. Converted straight across, a store would write the literal "nan":
     a frame says missing with a NaN and a store says it with its mask, and the
-    two have to be put back in step at the text boundary."""
+    two have to be put back in step at the text boundary.
+    """
     text = write_csv_table(None, {"x": np.array([1.0, np.nan, 3.0])})
     assert text.splitlines()[1:] == ["1.0", "", "3.0"]
 
@@ -400,9 +408,12 @@ def test_an_integral_float_keeps_its_decimal_point(tmp_path):
     shorter text. Not the same COLUMN, though, to a reader inferring types from
     text: an all-integral column stops looking like a real one, and an all-zero
     column is exactly what a burst companion carries for skipped bursts. So the
-    seam asks for the decimal point, and a caller has to opt out of it."""
+    seam asks for the decimal point, and a caller has to opt out of it.
+    """
     assert write_csv_table(None, {"x": np.array([12.0, 1.5, 0.0])}).splitlines()[1:] == [
-        "12.0", "1.5", "0.0"
+        "12.0",
+        "1.5",
+        "0.0",
     ]
     assert write_csv_table(
         None, {"x": np.array([12.0, 1.5, 0.0])}, keep_decimal_point=False
@@ -438,7 +449,8 @@ def test_a_real_bur_file_is_written_byte_for_byte_as_before(tmp_path):
 
 def test_the_text_otherwise_matches_the_frame_writer(tmp_path):
     """Everything except the integral floats: separators, header, column order,
-    text values, integers, and a full-precision double."""
+    text values, integers, and a full-precision double.
+    """
     frame = pd.DataFrame(
         {
             "n": np.array([1, 2], dtype=np.int64),
@@ -462,7 +474,8 @@ def test_the_text_otherwise_matches_the_frame_writer(tmp_path):
 
 def test_a_file_this_reader_declines_is_none_not_a_wrong_answer(tmp_path):
     """A decimal comma is a file for the general reader. Guessing is what makes
-    one machine read a table another machine reads differently."""
+    one machine read a table another machine reads differently.
+    """
     path = tmp_path / "comma.csv"
     path.write_text("a;b\n1,5;2,5\n")
     store = read_csv_table(path, delimiter=";")
@@ -472,8 +485,9 @@ def test_a_file_this_reader_declines_is_none_not_a_wrong_answer(tmp_path):
 
 
 def test_writing_only_some_columns_keeps_their_order(tmp_path):
-    text = write_csv_table(None, {"a": np.arange(2.0), "b": np.arange(2.0), "c": np.arange(2.0)},
-                           columns=["c", "a"])
+    text = write_csv_table(
+        None, {"a": np.arange(2.0), "b": np.arange(2.0), "c": np.arange(2.0)}, columns=["c", "a"]
+    )
     assert text.splitlines()[0] == "c\ta"
 
 
@@ -482,7 +496,8 @@ def test_writing_only_some_columns_keeps_their_order(tmp_path):
 
 def test_rows_become_columns_in_first_seen_order(tmp_path):
     """The shape an API hands back, which otherwise goes through a frame purely
-    to be turned column-wise again."""
+    to be turned column-wise again.
+    """
     rows = [{"b": 1.0, "a": 2.0}, {"a": 3.0, "b": 4.0}]
     store = store_from_rows(rows)
     assert [store[i].name() for i in range(store.n_columns())] == ["b", "a"]
@@ -491,7 +506,8 @@ def test_rows_become_columns_in_first_seen_order(tmp_path):
 
 def test_a_key_some_rows_lack_is_masked_not_filled(tmp_path):
     """The distinction a store has and a frame does not: the cell says "not
-    measured" rather than carrying a sentinel someone has to remember."""
+    measured" rather than carrying a sentinel someone has to remember.
+    """
     store = store_from_rows([{"a": 1.0}, {"a": 2.0, "b": 5.0}])
     assert not store["b"].valid(0)
     assert store["b"].valid(1)
@@ -545,8 +561,10 @@ def test_burst_tables_read_columnar_and_agree_with_the_frame_reader(monkeypatch)
         frame = reference(path, sep="\t")
         for name in columns:
             np.testing.assert_allclose(
-                columns[name], frame[name].to_numpy(dtype=float),
-                equal_nan=True, err_msg=f"{path}:{name}",
+                columns[name],
+                frame[name].to_numpy(dtype=float),
+                equal_nan=True,
+                err_msg=f"{path}:{name}",
             )
         assert len(next(iter(columns.values()))) == len(frame), path
 
@@ -585,11 +603,11 @@ def test_a_column_array_outlives_the_store_it_came_from():
     expected = np.arange(1000, dtype=float) * 3.0
     path.write_text("a\tb\n" + "".join(f"{v}\t{v * 2}\n" for v in expected))
 
-    columns = _read_delimited(path)          # the store is dropped in here
+    columns = _read_delimited(path)  # the store is dropped in here
     import gc
 
     gc.collect()
-    ballast = [np.full(1000, 7.0) for _ in range(50)]   # reuse any freed block
+    ballast = [np.full(1000, 7.0) for _ in range(50)]  # reuse any freed block
     assert ballast
     np.testing.assert_allclose(columns["a"], expected)
     np.testing.assert_allclose(columns["b"], expected * 2)
@@ -597,7 +615,8 @@ def test_a_column_array_outlives_the_store_it_came_from():
 
 def test_a_raw_column_view_also_outlives_its_store():
     """The library-level guarantee the one above depends on, exercised directly
-    through every accessor the fix had to cover."""
+    through every accessor the fix had to cover.
+    """
     import gc
 
     import tttrlib
@@ -620,7 +639,8 @@ def test_a_raw_column_view_also_outlives_its_store():
 def test_column_values_is_still_a_view():
     """Zero-copy is the point of the store, and it is also why writing through
     the array writes into the store. If this ever starts copying, both of those
-    change, and it should be noticed rather than assumed."""
+    change, and it should be noticed rather than assumed.
+    """
     store = store_from_arrays({"x": np.arange(8, dtype=float)})
     values = column_values(store, 0)
     values[0] = 42.0
@@ -630,14 +650,16 @@ def test_column_values_is_still_a_view():
 def test_an_integer_column_from_rows_stays_an_integer():
     """Not cosmetic: these rows are written straight out as text, so an integer
     becoming a float changes a shipped file format that other programs parse.
-    Caught by an MMFDB round-trip expecting "10" and getting "10.0"."""
+    Caught by an MMFDB round-trip expecting "10" and getting "10.0".
+    """
     text = write_csv_table(None, [{"n": 0, "m": 10}, {"n": 1, "m": 20}])
     assert text.splitlines()[1:] == ["0\t10", "1\t20"]
 
 
 def test_a_none_value_from_rows_is_missing_not_zero():
     """A key a row lacks and a key whose value is None mean the same thing —
-    not measured. Masking only the first turned the second into a silent 0."""
+    not measured. Masking only the first turned the second into a silent 0.
+    """
     store = store_from_rows([{"a": 1, "b": None}, {"a": 2, "b": 3}])
     assert not store["b"].valid(0)
     assert store["b"].valid(1)
@@ -650,7 +672,8 @@ def test_a_none_value_from_rows_is_missing_not_zero():
 def test_concat_keeps_the_integer_dtype_a_frame_would_widen():
     """The whole argument for stacking stores rather than frames. A column one
     side lacks leaves its rows *not measured*; a frame has to widen int64 to
-    float64 to hold the NaN, and the dtype cannot be recovered afterwards."""
+    float64 to hold the NaN, and the dtype cannot be recovered afterwards.
+    """
     a = store_from_arrays({"n": np.array([1, 2], dtype=np.int32)})
     b = store_from_arrays({"n": np.array([3], dtype=np.int32), "extra": np.array([1.5])})
 
@@ -673,7 +696,8 @@ def test_concat_lines_columns_up_by_name_not_position():
 
 def test_concat_refuses_a_dtype_conflict_by_name():
     """Not promoted. Widening a float32 to meet a float64 loses the dtype the
-    store exists to keep, and would do it silently."""
+    store exists to keep, and would do it silently.
+    """
     a = store_from_arrays({"n": np.array([1], dtype=np.int32)})
     b = store_from_arrays({"n": np.array([1.0])})
     with pytest.raises(ValueError, match="n"):
@@ -695,8 +719,7 @@ def test_inner_join_keeps_only_the_shared_columns():
 def test_take_materialises_a_selection_a_mask_can_only_describe():
     """The reason filtering a table used to need a frame."""
     store = store_from_arrays(
-        {"n": np.array([1, 2, 3], dtype=np.int32),
-         "lbl": np.array(["x", "y", "z"], dtype=object)}
+        {"n": np.array([1, 2, 3], dtype=np.int32), "lbl": np.array(["x", "y", "z"], dtype=object)}
     )
     out = take_where(store, np.array([True, False, True]))
     assert out.n_rows() == 2
@@ -714,7 +737,8 @@ def test_numeric_column_finds_a_stores_columns_by_name():
     """A store has BOTH ``names`` and ``columns``, and its ``columns`` are Column
     objects rather than names. Asking for ``columns`` first matches nothing, so
     every lookup answers "absent" — which this function reports as all-NaN, not
-    as an error. A whole statistics block came back NaN that way."""
+    as an error. A whole statistics block came back NaN that way.
+    """
     store = store_from_arrays({"Number of Photons": np.array([10.0, 20.0, 30.0])})
     np.testing.assert_array_equal(numeric_column(store, "Number of Photons"), [10.0, 20.0, 30.0])
     assert np.isnan(numeric_column(store, "not a column")).all()
@@ -722,7 +746,8 @@ def test_numeric_column_finds_a_stores_columns_by_name():
 
 def test_numeric_column_coerces_the_same_way_for_frame_mapping_and_store():
     """``numeric_column`` is duck-typed and never imports pandas itself — a real
-    frame still works if a caller hands it one, which is what this pins."""
+    frame still works if a caller hands it one, which is what this pins.
+    """
     values = ["1", "x", "3"]
     expected = [1.0, np.nan, 3.0]
     frame = pd.DataFrame({"a": values})
@@ -738,7 +763,8 @@ def test_writing_a_table_does_not_change_it():
     column instead, and the mask is part of the table: *writing* one marked
     every NaN row "not measured" afterwards. Measured before the fix, has_mask()
     went False -> True across a write and the caller's next read of that column
-    saw missing values it never put there."""
+    saw missing values it never put there.
+    """
     store = store_from_arrays({"x": np.array([1.0, np.nan, 3.0])})
     assert write_csv_table(None, store).splitlines()[1:] == ["1.0", "", "3.0"]
     assert not store["x"].has_mask()
@@ -771,10 +797,9 @@ def test_a_constant_column_is_the_same_in_every_container():
 
 def test_a_constant_text_column_is_dictionary_encoded():
     """One string plus N codes, not N strings — the shape that makes a store
-    worth having for exactly this kind of column."""
+    worth having for exactly this kind of column.
+    """
     from chisurf.core.datastore import STRING_DTYPE, set_constant
 
-    store = set_constant(
-        store_from_arrays({"a": np.arange(1000)}), "source", "m000.spc"
-    )
+    store = set_constant(store_from_arrays({"a": np.arange(1000)}), "source", "m000.spc")
     assert store["source"].dtype == STRING_DTYPE

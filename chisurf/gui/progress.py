@@ -221,9 +221,17 @@ class ChiSurfProgress:
         bar's task, an ``EnhancedProgressDialog``, or a :class:`_LoggingBackend`.
     """
 
-    def __init__(self, parent=None, text: str = "", maximum: int = 0, *,
-                 title: str = "Progress", cancellable: bool = True,
-                 cancel=None, autoclose: bool = True) -> None:
+    def __init__(
+        self,
+        parent=None,
+        text: str = "",
+        maximum: int = 0,
+        *,
+        title: str = "Progress",
+        cancellable: bool = True,
+        cancel=None,
+        autoclose: bool = True,
+    ) -> None:
         self._text = str(text)
         self._maximum = int(maximum)
         self._autoclose = bool(autoclose)

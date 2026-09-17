@@ -7,6 +7,7 @@ existed after the parse models became data-described (PRD-38). They are a
 the *generated* editor rather than a hand-written widget, and the behaviour it
 asserts is the one every parse model gets.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,18 +22,17 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 def equation_field(qapp):
     """Return the ``ExpressionInput`` of a generated TCSPC parse editor."""
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.data import DataCurve
     from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
     from chisurf.gui.widgets.expression_input import ExpressionInput
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.linspace(0.05, 25, 256)
-    data = DataCurve(name="synthetic", load_filename_on_init=False,
-                     x=x, y=np.exp(-x / 4.0) + 1.0)
+    data = DataCurve(name="synthetic", load_filename_on_init=False, x=x, y=np.exp(-x / 4.0) + 1.0)
     model = fit_mod.Fit(model_class=ParseDecayModel, data=data).model
     # The equations are convolved with a response, which the model needs.
     from chisurf.core.curve import Curve
+
     model.set_dataset("response", Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)))
     model.set_scalar("period", 12.5)
     editor = build_model_editor(model)

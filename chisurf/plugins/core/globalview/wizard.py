@@ -8,6 +8,7 @@ if __name__ == "plugin":
 
 if __name__ == "__main__":
     import sys
+
     from qtpy import QtWidgets
 
     app = QtWidgets.QApplication(sys.argv)

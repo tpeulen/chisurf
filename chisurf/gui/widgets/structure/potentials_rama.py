@@ -11,18 +11,16 @@ from chisurf.gui.widgets.warning_once import show_warning_once
 
 
 class RamachandranWidget(Ramachandran, QtWidgets.QWidget):
-
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            filename: str = None,
-            parent=None
+        self, structure: chisurf.core.structure.Structure, filename: str = None, parent=None
     ):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
         # Set default filename path if not provided
         if filename is None:
-            filename = str(get_path('chisurf') / 'core/structure/potential/database/rama_ala_pro_gly.npy')
+            filename = str(
+                get_path("chisurf") / "core/structure/potential/database/rama_ala_pro_gly.npy"
+            )
 
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -43,16 +41,10 @@ class RamachandranWidget(Ramachandran, QtWidgets.QWidget):
         self.toolButton.clicked.connect(self.actionLoad_potential.trigger)
 
         # Initialize the parent Ramachandran class
-        super().__init__(
-            structure,
-            filename
-        )
+        super().__init__(structure, filename)
 
     def onOpenFile(self):
-        filename = chisurf.gui.widgets.get_filename(
-            'Open File',
-            'NumPy data files (*.npy)'
-        )
+        filename = chisurf.gui.widgets.get_filename("Open File", "NumPy data files (*.npy)")
         self.filename = filename
 
     @property
@@ -73,7 +65,7 @@ class RamachandranWidget(Ramachandran, QtWidgets.QWidget):
                 f"The Ramachandran potential file should be located at:\n"
                 f"{v}\n\n"
                 f"Please check if the file exists or use the '...' button\n"
-                f"to select a different potential file."
+                f"to select a different potential file.",
             )
             # Create a dummy potential to prevent crashes
             self._filename = v
@@ -83,7 +75,7 @@ class RamachandranWidget(Ramachandran, QtWidgets.QWidget):
             show_warning_once(
                 "rama_potential_file_error",
                 "Ramachandran Potential File Error",
-                f"Error loading Ramachandran potential file {v}:\n{str(e)}"
+                f"Error loading Ramachandran potential file {v}:\n{str(e)}",
             )
             # Create a dummy potential to prevent crashes
             self._filename = v

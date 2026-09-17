@@ -12,16 +12,16 @@ and asserts the end state: every optical category present, provenance populated,
 cross-source duplicates merged (metadata unioned), spectra carried through, and
 the admin/session gate honoured.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
-import pytest
-
 from mmfdb.repository import MFDatabase
-from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
+
 from chisurf.plugins.spectra_downloader.download.merge import merge_all
+from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
 
 def _spec(n=12):
@@ -41,34 +41,66 @@ def _source_db(path: Path, items: list[dict]) -> str:
 
 def test_pipeline_scrape_merge_import_all(tmp_path):
     # -- stage 1+2: per-source scrapes (substituted for the expensive network) --
-    thorlabs = _source_db(tmp_path / "thorlabs.db", [
-        dict(name="FB340-10", source="thorlabs", kind="bandpass", source_ref="FB340-10",
-             properties={"Center Wavelength (nm)": "340", "Bandwidth (nm)": "10"},
-             spectra={"transmission": _spec()}),
-        dict(name="APD120A2", source="thorlabs", kind="apd",
-             spectra={"responsivity": _spec()}),
-    ])
-    chroma = _source_db(tmp_path / "chroma.db", [
-        dict(name="T495lpxr", source="chroma", kind="dichroic", spectra={"transmission": _spec()}),
-        dict(name="SOLA", source="chroma", kind="light_source", spectra={"emission": _spec()}),
-        # SAME bandpass as Thorlabs, punctuation variant → must dedup + union source
-        dict(name="FB340 10", source="chroma", kind="bandpass", source_ref="ET340",
-             properties={"Coating": "hard"}, spectra={"transmission": _spec()}),
-    ])
-    fpbase = _source_db(tmp_path / "fpbase.db", [
-        dict(name="EGFP", source="fpbase", kind="fluorescent_protein", source_ref="egfp",
-             properties={"Quantum Yield": "0.6"},
-             spectra={"absorption": _spec(), "emission": _spec()}),
-        dict(name="Alexa 488", source="fpbase", kind="organic_dye", cas="247144-90-7",
-             spectra={"absorption": _spec()}),
-    ])
+    thorlabs = _source_db(
+        tmp_path / "thorlabs.db",
+        [
+            dict(
+                name="FB340-10",
+                source="thorlabs",
+                kind="bandpass",
+                source_ref="FB340-10",
+                properties={"Center Wavelength (nm)": "340", "Bandwidth (nm)": "10"},
+                spectra={"transmission": _spec()},
+            ),
+            dict(name="APD120A2", source="thorlabs", kind="apd", spectra={"responsivity": _spec()}),
+        ],
+    )
+    chroma = _source_db(
+        tmp_path / "chroma.db",
+        [
+            dict(
+                name="T495lpxr", source="chroma", kind="dichroic", spectra={"transmission": _spec()}
+            ),
+            dict(name="SOLA", source="chroma", kind="light_source", spectra={"emission": _spec()}),
+            # SAME bandpass as Thorlabs, punctuation variant → must dedup + union source
+            dict(
+                name="FB340 10",
+                source="chroma",
+                kind="bandpass",
+                source_ref="ET340",
+                properties={"Coating": "hard"},
+                spectra={"transmission": _spec()},
+            ),
+        ],
+    )
+    fpbase = _source_db(
+        tmp_path / "fpbase.db",
+        [
+            dict(
+                name="EGFP",
+                source="fpbase",
+                kind="fluorescent_protein",
+                source_ref="egfp",
+                properties={"Quantum Yield": "0.6"},
+                spectra={"absorption": _spec(), "emission": _spec()},
+            ),
+            dict(
+                name="Alexa 488",
+                source="fpbase",
+                kind="organic_dye",
+                cas="247144-90-7",
+                spectra={"absorption": _spec()},
+            ),
+        ],
+    )
 
     # -- stage 2.5: merge per-source DBs into one staging DB + dedup ----------
     staging = tmp_path / "spectra.db"
     summary = merge_all(str(staging), [thorlabs, chroma, fpbase], consolidate=True)
     assert summary[thorlabs] == 2 and summary[chroma] == 3 and summary[fpbase] == 2
     # the duplicate bandpass collapsed (7 ingested − 1 merged = 6)
-    staged = FluorophoreDatabase(str(staging)); staged.connect()
+    staged = FluorophoreDatabase(str(staging))
+    staged.connect()
     n_staged = staged.conn.execute(
         "SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL"
     ).fetchone()[0]
@@ -88,6 +120,7 @@ def test_pipeline_scrape_merge_import_all(tmp_path):
 
     # session/permission gate: the active admin may add without a password
     from chisurf.plugins.core.mmfdb_admin.gui.session import local_admin_status
+
     is_admin, _ = local_admin_status(str(mmfdb_path), "user_default")
     assert is_admin
 
@@ -106,7 +139,9 @@ def test_pipeline_scrape_merge_import_all(tmp_path):
             )
         }
         # every optical class made it through
-        assert {"filter", "detector", "dichroic", "light_source", "protein", "organic_dye"} <= set(cats)
+        assert {"filter", "detector", "dichroic", "light_source", "protein", "organic_dye"} <= set(
+            cats
+        )
         # provenance populated for all, none empty
         empty = db.conn.execute(
             "SELECT COUNT(*) FROM probes WHERE (source IS NULL OR source='') AND deleted_at IS NULL"
@@ -120,7 +155,9 @@ def test_pipeline_scrape_merge_import_all(tmp_path):
         # spectra carried through (protein has abs+em, detector its responsivity)
         stypes = {
             r["spectrum_type"]
-            for r in db.conn.execute("SELECT DISTINCT spectrum_type FROM spectra WHERE deleted_at IS NULL")
+            for r in db.conn.execute(
+                "SELECT DISTINCT spectrum_type FROM spectra WHERE deleted_at IS NULL"
+            )
         }
         assert {"absorption", "emission", "transmission", "responsivity"} <= stypes
         # CAS canonicalized onto the dye

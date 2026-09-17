@@ -7,6 +7,7 @@ first step is rank-deficient -- with ``alpha`` sitting on its lower bound. On a
 real measurement that converged to a crosstalk of 0.31, placing the model's
 donor-only population at a proximity ratio of 0.24 while the data's sat at 0.012.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -80,23 +81,23 @@ def test_seeding_moves_a_real_fit_into_a_better_basin(data):
 
     def chi2(alpha, tau_d0, donor_only, distances, populations):
         model = MfdKineticModel(
-            optics=Optics(r0=52.0, tau_d0=tau_d0, tau_a=3.0, alpha=alpha,
-                          delta=0.0, gamma=1.0, sigma=6.0),
-            states=[FretState(distance=d, name=f"R{i}")
-                    for i, d in enumerate(distances, 1)],
+            optics=Optics(
+                r0=52.0, tau_d0=tau_d0, tau_a=3.0, alpha=alpha, delta=0.0, gamma=1.0, sigma=6.0
+            ),
+            states=[FretState(distance=d, name=f"R{i}") for i, d in enumerate(distances, 1)],
             populations=np.asarray(populations, dtype=float),
             donor_only=donor_only,
         )
         predicted = model.histogram(data)
         observed = np.asarray(data.observed.counts, dtype=float)
         scale = observed.sum() / predicted.sum()
-        return float(np.sum((observed - predicted * scale) ** 2
-                            / np.maximum(predicted * scale, 1.0)))
+        return float(
+            np.sum((observed - predicted * scale) ** 2 / np.maximum(predicted * scale, 1.0))
+        )
 
     generic = chi2(0.0, 4.0, 0.2, [50.0, 50.0], [1.0, 1.0])
     start = estimate_starting_values(data, n_states=2)
-    seeded = chi2(start.alpha, start.tau_d0, start.donor_only,
-                  start.distances, start.populations)
+    seeded = chi2(start.alpha, start.tau_d0, start.donor_only, start.distances, start.populations)
     assert seeded < generic, f"seeded start {seeded:.1f} is no better than {generic:.1f}"
 
 

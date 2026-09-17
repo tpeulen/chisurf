@@ -36,6 +36,7 @@ def _resolve_backend_name() -> str:
         return env_name
     try:
         from chisurf.core import settings as _cs
+
         name = _cs.cs_settings.get("gui", {}).get("plot", {}).get("backend")
         if name:
             return name

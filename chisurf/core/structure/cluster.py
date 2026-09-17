@@ -1,10 +1,11 @@
 from __future__ import annotations
-from chisurf import typing
-import numpy as np
 
+import numpy as np
 from scipy.cluster import hierarchy
 from scipy.cluster.hierarchy import fcluster
-from chisurf.core.structure import rmsd, average, find_best, Structure
+
+from chisurf import typing
+from chisurf.core.structure import Structure, average, find_best, rmsd
 
 
 def findSmallestCluster(clusters):
@@ -18,18 +19,18 @@ def findSmallestCluster(clusters):
 
 
 def cluster(
-        structures: typing.List[Structure],
-        threshold: int = 5000,
-        criterion: str = 'maxclust',
-        Z=None,
-        distances=None,
-        directory: str = None
+    structures: typing.List[Structure],
+    threshold: int = 5000,
+    criterion: str = "maxclust",
+    Z=None,
+    distances=None,
+    directory: str = None,
 ):
     """Perform hierarchical clustering on a list of structures using RMSD distances."""
     # http://www.mathworks.de/de/help/stats/hierarchical-clustering.html
     print("Performing cluster-analysis")
     k = 0
-    #start_time = time.time()
+    # start_time = time.time()
     nStructures = len(structures)
     if distances is None:
         distances = np.empty(nStructures * (nStructures - 1) // 2)
@@ -38,47 +39,36 @@ def cluster(
                 distances[k] = rmsd(structures[j], structures[i])
                 k += 1
             m = (nStructures * nStructures - 1) // 2
-            print('RMSD computation %s/%s : %.1f%%' % (k, m, float(k) / m * 100.0))
+            print(f"RMSD computation {k}/{m} : {float(k) / m * 100.0:.1f}%")
         if directory is not None:
             print("Saving distance-matrix")
-            np.save(directory + '/' + 'clDistances.npy', distances)
+            np.save(directory + "/" + "clDistances.npy", distances)
 
-    print('mean pairwise distance ', np.mean(distances))
-    print('stddev pairwise distance', np.std(distances))
+    print("mean pairwise distance ", np.mean(distances))
+    print("stddev pairwise distance", np.std(distances))
 
     if Z is None:
         # run hierarchical clustering on the distance matrix
-        print('\n\nRunning hierarchical clustering (UPGMA)...')
-        Z = hierarchy.linkage(
-            distances,
-            method='average',
-            preserve_input=True
-        )
+        print("\n\nRunning hierarchical clustering (UPGMA)...")
+        Z = hierarchy.linkage(distances, method="average", preserve_input=True)
         # get flat clusters from the linkage matrix corresponding to states
         if directory is not None:
             print("Saving cluster-results")
-            np.save(directory + '/' + 'clLinkage.npy', Z)
+            np.save(directory + "/" + "clLinkage.npy", Z)
 
-    print('\n\nFlattening the clusters...')
-    assignments = fcluster(
-        Z,
-        t=threshold,
-        criterion=criterion
-    )
+    print("\n\nFlattening the clusters...")
+    assignments = fcluster(Z, t=threshold, criterion=criterion)
     cl = dict()
     for c in np.unique(assignments):
         cl[c] = list()
     for i, a in enumerate(assignments):
         cl[a] += [i]
-        #print "Needed time: %.3f seconds" % (time.time() - start_time)
-    print('Number of clusters found', len(np.unique(assignments)))
+        # print "Needed time: %.3f seconds" % (time.time() - start_time)
+    print("Number of clusters found", len(np.unique(assignments)))
     return Z, cl, assignments, distances
 
 
-def find_representative(
-        trajectory,
-        cl
-):
+def find_representative(trajectory, cl):
     """
     :param trajectory: a list of structures
     :param c: a list of numbers (positions in structures) belonging to one cluster
@@ -86,6 +76,8 @@ def find_representative(
     """
     structuresInCluster = [trajectory[i] for i in cl]
     averageStructureInCluster = average(structuresInCluster)
-    idx, representativeStructureInCluster = find_best(averageStructureInCluster, structuresInCluster)
+    idx, representativeStructureInCluster = find_best(
+        averageStructureInCluster, structuresInCluster
+    )
     idxOfRepresentativeStructure = cl[idx]
     return idxOfRepresentativeStructure

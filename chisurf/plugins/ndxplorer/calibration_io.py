@@ -24,10 +24,9 @@ question a reader has a year later.
 
 from __future__ import annotations
 
-import logging
-
 import datetime
 import json
+import logging
 import pathlib
 from typing import Any
 
@@ -75,14 +74,26 @@ def _payload(constants: dict, *, result: dict | None = None, note: str = "") -> 
     doc: dict[str, Any] = {
         "format": "chisurf.fret_calibration",
         "version": VERSION,
-        "saved_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="microseconds"),
-        "constants": {str(k): (float(v) if isinstance(v, (int, float)) else v)
-                      for k, v in dict(constants or {}).items()},
+        "saved_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="microseconds"
+        ),
+        "constants": {
+            str(k): (float(v) if isinstance(v, (int, float)) else v)
+            for k, v in dict(constants or {}).items()
+        },
     }
     if note:
         doc["note"] = str(note)
-    for key in ("factors", "uncertainties", "held", "determined", "report",
-                "background", "background_fitted", "columns"):
+    for key in (
+        "factors",
+        "uncertainties",
+        "held",
+        "determined",
+        "report",
+        "background",
+        "background_fitted",
+        "columns",
+    ):
         if key in result and result[key] not in (None, {}, []):
             doc[key] = result[key]
     return json.dumps(doc, indent=2, sort_keys=True).encode("utf-8")
@@ -137,7 +148,7 @@ def _prune_calibrations(measurement, keep: int = CALIBRATION_HISTORY) -> int:
     entries.sort()
     uids = [uid for _, _, uid in entries]
     dropped = 0
-    for uid in uids[:max(0, len(uids) - int(keep))]:
+    for uid in uids[: max(0, len(uids) - int(keep))]:
         try:
             if remove(uid):
                 dropped += 1
@@ -146,9 +157,15 @@ def _prune_calibrations(measurement, keep: int = CALIBRATION_HISTORY) -> int:
     return dropped
 
 
-def save_calibration(constants: dict, *, ndx=None, path: str | None = None,
-                     result: dict | None = None, note: str = "",
-                     embed: bool = True) -> dict:
+def save_calibration(
+    constants: dict,
+    *,
+    ndx=None,
+    path: str | None = None,
+    result: dict | None = None,
+    note: str = "",
+    embed: bool = True,
+) -> dict:
     """Write a calibration to the measurement container, or to a file.
 
     Parameters
@@ -183,18 +200,22 @@ def save_calibration(constants: dict, *, ndx=None, path: str | None = None,
 
                 with Measurement.open(container, writable=True) as measurement:
                     measurement.put_blob(
-                        CALIBRATION_ARTIFACT, data,
-                        artifact_kind="calibration_data", data_format="json",
+                        CALIBRATION_ARTIFACT,
+                        data,
+                        artifact_kind="calibration_data",
+                        data_format="json",
                         operation_type="calibration",
                         mime_type="application/json",
                     )
                     dropped = _prune_calibrations(measurement)
                 if dropped:
                     logging.info(
-                        "calibration saved; dropped %d older one(s), keeping "
-                        "the last %d", dropped, CALIBRATION_HISTORY)
+                        "calibration saved; dropped %d older one(s), keeping the last %d",
+                        dropped,
+                        CALIBRATION_HISTORY,
+                    )
                 return {"ok": True, "where": "container", "target": container}
-            except Exception as exc:                       # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 # Fall through to the file route rather than lose the numbers:
                 # a read-only container or a lock held by another window is a
                 # reason to write elsewhere, not a reason to write nothing.
@@ -203,14 +224,18 @@ def save_calibration(constants: dict, *, ndx=None, path: str | None = None,
                     stem = pathlib.Path(container).with_suffix("")
                     path = str(stem) + SUFFIX
                 pathlib.Path(path).write_bytes(data)
-                return {"ok": True, "where": "file", "target": path,
-                        "warning": f"could not write into the container ({fallback})"}
+                return {
+                    "ok": True,
+                    "where": "file",
+                    "target": path,
+                    "warning": f"could not write into the container ({fallback})",
+                }
 
     if path is None:
         return {"ok": False, "error": "no container for this window and no path given"}
     try:
         pathlib.Path(path).write_bytes(data)
-    except Exception as exc:                               # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)}
     return {"ok": True, "where": "file", "target": path}
 
@@ -245,18 +270,17 @@ def stored_calibrations(ndx=None, container: str | None = None) -> list[dict]:
                     continue
                 try:
                     doc = json.loads(bytes(measurement.get_blob(obj.uid)).decode("utf-8"))
-                except Exception:                          # noqa: BLE001
+                except Exception:  # noqa: BLE001
                     continue
                 doc["uid"] = int(obj.uid)
                 out.append(doc)
         out.sort(key=lambda d: (str(d.get("saved_utc", "")), int(d.get("uid", 0))))
         return out
-    except Exception:                                      # noqa: BLE001
+    except Exception:  # noqa: BLE001
         return []
 
 
-def load_calibration(*, ndx=None, path: str | None = None,
-                     uid: int | None = None) -> dict:
+def load_calibration(*, ndx=None, path: str | None = None, uid: int | None = None) -> dict:
     """Read a calibration back.
 
     With *path*, reads that file. Otherwise reads the newest calibration stored
@@ -273,14 +297,20 @@ def load_calibration(*, ndx=None, path: str | None = None,
     if path:
         try:
             doc = json.loads(pathlib.Path(path).read_text("utf-8"))
-        except Exception as exc:                           # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
         if doc.get("format") != "chisurf.fret_calibration":
             return {"ok": False, "error": f"{path} is not a ChiSurf FRET calibration"}
-        return {"ok": True, "where": "file", "target": path,
-                "constants": doc.get("constants") or {},
-                "saved_utc": doc.get("saved_utc", ""), "note": doc.get("note", ""),
-                "report": doc.get("report", ""), "document": doc}
+        return {
+            "ok": True,
+            "where": "file",
+            "target": path,
+            "constants": doc.get("constants") or {},
+            "saved_utc": doc.get("saved_utc", ""),
+            "note": doc.get("note", ""),
+            "report": doc.get("report", ""),
+            "document": doc,
+        }
 
     stored = stored_calibrations(ndx)
     if not stored:
@@ -288,7 +318,13 @@ def load_calibration(*, ndx=None, path: str | None = None,
     if uid is not None:
         stored = [d for d in stored if d.get("uid") == int(uid)] or stored
     doc = stored[-1]
-    return {"ok": True, "where": "container", "target": container_of(ndx),
-            "constants": doc.get("constants") or {},
-            "saved_utc": doc.get("saved_utc", ""), "note": doc.get("note", ""),
-            "report": doc.get("report", ""), "document": doc}
+    return {
+        "ok": True,
+        "where": "container",
+        "target": container_of(ndx),
+        "constants": doc.get("constants") or {},
+        "saved_utc": doc.get("saved_utc", ""),
+        "note": doc.get("note", ""),
+        "report": doc.get("report", ""),
+        "document": doc,
+    }

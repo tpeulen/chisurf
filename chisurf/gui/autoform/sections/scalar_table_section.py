@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from .parameter_table import _RichTextDelegate
 from .registry import register_section
@@ -144,7 +144,9 @@ class ScalarTableWidget(QtWidgets.QWidget):
             else:
                 text = f"{float(value):.{decimals}g}" if value is not None else ""
             item.setText(text)
-            item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
+            item.setFlags(
+                QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+            )
             item.setTextAlignment(int(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
         return item
 

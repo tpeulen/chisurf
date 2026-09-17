@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -10,35 +9,38 @@ from chisurf.core.structure.structure import Structure
 
 from . import io
 
-
 # ---------------------------------------------------------------------------
 # Simulation result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SimulationResult:
     """Result of a single docking simulation."""
+
     converged: bool = False
     iterations: int = 0
     energy: float = 0.0
     clash_energy: float = 0.0
     restraint_energy: float = 0.0
-    translations: List[np.ndarray] = field(default_factory=list)
-    rotations: List[np.ndarray] = field(default_factory=list)
-    model_distances: Dict[str, float] = field(default_factory=dict)
+    translations: list[np.ndarray] = field(default_factory=list)
+    rotations: list[np.ndarray] = field(default_factory=list)
+    model_distances: dict[str, float] = field(default_factory=dict)
     rmsd: float = 0.0
     internal_number: int = 0
-    force_norms: List[float] = field(default_factory=list)
-    torque_norms: List[float] = field(default_factory=list)
+    force_norms: list[float] = field(default_factory=list)
+    torque_norms: list[float] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
 # Screening result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ScreeningResult:
     """Result of screening one structure against FRET restraints."""
+
     filename: str = ""
     chi2: float = 0.0
     reduced_chi2: float = 0.0
@@ -49,20 +51,21 @@ class ScreeningResult:
     n_violations_3sigma: int = 0
     n_nan: int = 0
     ref_rmsd: float = 0.0
-    model_distances: Dict[str, float] = field(default_factory=dict)
-    chi2_contributions: Dict[str, float] = field(default_factory=dict)
+    model_distances: dict[str, float] = field(default_factory=dict)
+    chi2_contributions: dict[str, float] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
 # Output writers
 # ---------------------------------------------------------------------------
 
+
 def write_docking_results_pdb(
-    results: List[SimulationResult],
-    atoms_per_body: List[np.ndarray],
+    results: list[SimulationResult],
+    atoms_per_body: list[np.ndarray],
     output_dir: str,
     prefix: str = "dock",
-) -> List[str]:
+) -> list[str]:
     """Write docking results as multi-model PDB files.
 
     One PDB file per body, each MODEL entry is a docking trial.
@@ -95,7 +98,7 @@ def write_docking_results_pdb(
 
 
 def _make_coordinates_structure(
-    atoms_per_body: List[np.ndarray],
+    atoms_per_body: list[np.ndarray],
 ) -> Structure:
     """Create a ChiSurf structure whose chains correspond to docking bodies."""
     atoms_list = []
@@ -120,8 +123,8 @@ def _make_coordinates_structure(
 
 
 def write_docking_results_rmf(
-    results: List[SimulationResult],
-    atoms_per_body: List[np.ndarray],
+    results: list[SimulationResult],
+    atoms_per_body: list[np.ndarray],
     output_path: str,
 ) -> None:
     """Write docking results as a multi-frame PMI-compatible RMF file.
@@ -156,7 +159,7 @@ def write_docking_results_rmf(
 
 
 def write_screening_results_csv(
-    results: List[ScreeningResult],
+    results: list[ScreeningResult],
     output_path: str,
 ) -> None:
     """Write screening results as a CSV table."""
@@ -176,8 +179,8 @@ def write_screening_results_csv(
 
 
 def write_pymol_pml(
-    results: List[SimulationResult],
-    atoms_per_body: List[np.ndarray],
+    results: list[SimulationResult],
+    atoms_per_body: list[np.ndarray],
     output_path: str,
     pdb_prefix: str = "dock",
 ) -> None:
@@ -209,8 +212,8 @@ def write_pymol_pml(
 
 
 def write_r_table(
-    results: List[SimulationResult],
-    distances: Dict,
+    results: list[SimulationResult],
+    distances: dict,
     output_path: str,
 ) -> None:
     """Write model distances in R-readable tab-separated format.
@@ -241,9 +244,9 @@ def write_r_table(
 
 
 def write_chi2_table(
-    results: List[SimulationResult],
-    distances: Dict,
-    experimental_distances: Optional[Dict],
+    results: list[SimulationResult],
+    distances: dict,
+    experimental_distances: dict | None,
     output_path: str,
 ) -> None:
     """Write per-distance chi2 contributions for all trials.
@@ -263,6 +266,7 @@ def write_chi2_table(
         Target file path for output table.
     """
     from .distance import chi2_score
+
     if experimental_distances is None:
         experimental_distances = {}
     keys = sorted(distances.keys())
@@ -284,4 +288,3 @@ def write_chi2_table(
         lines.append("\t".join(row))
     with open(output_path, "w") as f:
         f.write("\n".join(lines) + "\n")
-

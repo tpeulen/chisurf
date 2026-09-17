@@ -16,6 +16,7 @@ The material side of the same look -- translucency -- is not testable here: it
 lives in GLSL and needs a real GL context, which the suite does not have. It is
 verified by rendering and inspecting, per the project's GUI rule.
 """
+
 from __future__ import annotations
 
 import functools
@@ -24,10 +25,9 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.core.settings.config import get_package_display_config_path
-from chimol.io.atoms import make_bead_rows
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import make_bead_rows
 
 
 @pytest.fixture(scope="module")
@@ -58,9 +58,7 @@ def blob(_qt_app):
     xyz = np.vstack([left, right, bridge])
 
     view = Viewer()
-    view.set_coordinates(
-        xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 1.7)
-    )
+    view.set_coordinates(xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 1.7))
     view.set_metaballs_visible(True)
     view._draft_quality = False
     return view
@@ -75,23 +73,19 @@ def _shipped_metaball() -> dict:
     reading it asks "what does this machine do", and the answer differs per
     machine -- this suite is about what everyone gets.
     """
-    return json.loads(
-        get_package_display_config_path().read_text(encoding="utf-8")
-    )["metaball"]
+    return json.loads(get_package_display_config_path().read_text(encoding="utf-8"))["metaball"]
 
 
 def _mesh(view, **overrides):
     """Build the metaball and return its vertices and triangles."""
     cfg = dict(_shipped_metaball(), **overrides)
-    objects = view._update_metaballs(
-        np.asarray(view._coords, dtype=float), cfg, None
-    )
+    objects = view._update_metaballs(np.asarray(view._coords, dtype=float), cfg, None)
     assert objects, "the metaball builder produced nothing"
     geometry = objects[0].geometry
     vertices = np.asarray(geometry.positions, dtype=float)
-    faces = np.asarray(
-        geometry.faces if hasattr(geometry, "faces") else geometry.indices
-    ).reshape(-1, 3)
+    faces = np.asarray(geometry.faces if hasattr(geometry, "faces") else geometry.indices).reshape(
+        -1, 3
+    )
     return vertices, faces
 
 
@@ -150,9 +144,7 @@ def test_iso_value_still_controls_the_surface(blob):
     """
     loose = _enclosed_volume(*_mesh(blob, iso_value=0.05))
     tight = _enclosed_volume(*_mesh(blob, iso_value=0.5))
-    assert tight < 0.75 * loose, (
-        f"iso_value barely moved the surface: {loose:.3g} -> {tight:.3g}"
-    )
+    assert tight < 0.75 * loose, f"iso_value barely moved the surface: {loose:.3g} -> {tight:.3g}"
 
 
 def test_the_waist_between_two_lobes_survives(blob):
@@ -179,9 +171,7 @@ def test_the_waist_between_two_lobes_survives(blob):
 
     waist = thickness(centre)
     lobe = max(thickness(centre - 0.3 * span), thickness(centre + 0.3 * span))
-    assert waist < 0.9 * lobe, (
-        f"the neck filled in: waist {waist:.2f} vs lobe {lobe:.2f}"
-    )
+    assert waist < 0.9 * lobe, f"the neck filled in: waist {waist:.2f} vs lobe {lobe:.2f}"
 
 
 def test_a_wider_sigma_costs_more_than_it_looks(blob):
@@ -219,10 +209,7 @@ def _load(name: str, view_name: str):
     """Load a structure from the test data into a viewer showing metaballs."""
     from chimol.io.structure import load_structure_payload
 
-    root = (
-        pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates"
-    )
+    root = pathlib.Path(__file__).resolve().parents[4] / "test" / "data" / "atomic_coordinates"
     for candidate in (root / "pdb_files" / name, root / "trajectory" / "hgbp1" / name):
         if candidate.is_file():
             break

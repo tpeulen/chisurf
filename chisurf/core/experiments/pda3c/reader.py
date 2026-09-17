@@ -153,21 +153,21 @@ class Pda3cSimulatorReader(ExperimentReader):
     name = "PDA3c simulator"
 
     def __init__(
-            self,
-            n_bursts: int = 4000,
-            r_gr: float = 52.0,
-            r_bg: float = 46.0,
-            r_br: float = 68.0,
-            sigma: float = 6.0,
-            correlation: float = 0.0,
-            photons_blue: float = 40.0,
-            photons_green: float = 35.0,
-            r0_bg: float = 49.0,
-            r0_br: float = 52.0,
-            r0_gr: float = 51.0,
-            seed: int = 1,
-            *args,
-            **kwargs,
+        self,
+        n_bursts: int = 4000,
+        r_gr: float = 52.0,
+        r_bg: float = 46.0,
+        r_br: float = 68.0,
+        sigma: float = 6.0,
+        correlation: float = 0.0,
+        photons_blue: float = 40.0,
+        photons_green: float = 35.0,
+        r0_bg: float = 49.0,
+        r0_br: float = 52.0,
+        r0_gr: float = 51.0,
+        seed: int = 1,
+        *args,
+        **kwargs,
     ):
         """Initialize the simulator with the ground truth it will generate.
 
@@ -221,9 +221,7 @@ class Pda3cSimulatorReader(ExperimentReader):
             simulate_bursts,
         )
 
-        setup = ThreeColorSetup.from_scalars(
-            r0_bg=self.r0_bg, r0_br=self.r0_br, r0_gr=self.r0_gr
-        )
+        setup = ThreeColorSetup.from_scalars(r0_bg=self.r0_bg, r0_br=self.r0_br, r0_gr=self.r0_gr)
         covariance = covariance_from_statistics(
             np.full(3, self.sigma), [self.correlation, 0.0, 0.0]
         )
@@ -235,8 +233,11 @@ class Pda3cSimulatorReader(ExperimentReader):
             )
         ]
         counts = simulate_bursts(
-            self.n_bursts, species, setup,
-            photons_blue=self.photons_blue, photons_green=self.photons_green,
+            self.n_bursts,
+            species,
+            setup,
+            photons_blue=self.photons_blue,
+            photons_green=self.photons_green,
             seed=self.seed,
         )
         curve = _wrap(counts.blue, counts.green, name=f"PDA3c-sim-{self.seed}")

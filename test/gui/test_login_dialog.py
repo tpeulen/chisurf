@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui import LoginDialog, QtWidgets, _format_login_error, dialogs
+from chisurf.gui import LoginDialog, _format_login_error, dialogs
 
 
 def test_format_login_error_extracts_jsonrpc_message() -> None:

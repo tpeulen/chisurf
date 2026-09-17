@@ -98,7 +98,10 @@ class ChiSurfServer:
         """Run the ZMQ event loop (blocking)."""
         _log.info(
             "ChiSurfServer starting on %s:%s (cmd) and %s:%s (pub)",
-            self._host, self._cmd_port, self._host, self._pub_port,
+            self._host,
+            self._cmd_port,
+            self._host,
+            self._pub_port,
         )
         self._zmq_server.serve_forever()
 
@@ -126,6 +129,7 @@ class ChiSurfServer:
     def _init_flr_database():
         """Create or attach the FLR database."""
         from mmfdb.repository import MFDatabase
+
         return MFDatabase()
 
     def _zmq_dispatch(self, method: str, params: dict | None = None) -> dict:

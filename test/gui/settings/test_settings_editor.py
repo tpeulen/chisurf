@@ -1,14 +1,13 @@
-import re
-import yaml
 import ast
-from pathlib import Path
+import re
 
+import yaml
 from qtpy import QtCore
-
 
 # ---------------------------------------------------------------------------
 # Part 1 — YAML round‑trip: list preservation through YAML serialization
 # ---------------------------------------------------------------------------
+
 
 def _convert_lists_to_strings(data):
     if isinstance(data, dict):
@@ -19,28 +18,25 @@ def _convert_lists_to_strings(data):
 
 
 def _convert_string_to_list(value_str):
-    if (
-        ('{' in value_str and '}' in value_str)
-        or ('[' in value_str and ']' in value_str)
-    ):
+    if ("{" in value_str and "}" in value_str) or ("[" in value_str and "]" in value_str):
         try:
-            prepared_str = '[' + value_str.replace("'", '"') + ']'
+            prepared_str = "[" + value_str.replace("'", '"') + "]"
             return ast.literal_eval(prepared_str)
         except (SyntaxError, ValueError):
             pass
-    items = [item.strip() for item in value_str.split(',')]
+    items = [item.strip() for item in value_str.split(",")]
     converted_items = []
     for item in items:
         lower = item.lower()
-        if lower == 'true':
+        if lower == "true":
             converted_items.append(True)
-        elif lower == 'false':
+        elif lower == "false":
             converted_items.append(False)
-        elif lower in ('none', 'null'):
+        elif lower in ("none", "null"):
             converted_items.append(None)
         elif item.isdigit():
             converted_items.append(int(item))
-        elif re.match(r'^-?\d+(\.\d+)?$', item):
+        elif re.match(r"^-?\d+(\.\d+)?$", item):
             converted_items.append(float(item))
         else:
             converted_items.append(item)
@@ -52,7 +48,7 @@ def _get_dict_from_item(data):
     for key, value in data.items():
         if isinstance(value, dict):
             result[key] = _get_dict_from_item(value)
-        elif isinstance(value, str) and ',' in value:
+        elif isinstance(value, str) and "," in value:
             result[key] = _convert_string_to_list(value)
         else:
             result[key] = value
@@ -61,33 +57,28 @@ def _get_dict_from_item(data):
 
 def test_yaml_round_trip_preserves_lists(tmp_path):
     test_data = {
-        'simple_list': [1, 2, 3, 4, 5],
-        'string_list': ['a', 'b', 'c', 'd'],
-        'mixed_list': [1, 'string', 3.14, True, None],
-        'nested_list': [[1, 2], [3, 4]],
-        'complex': {
-            'list_of_dicts': [
-                {'name': 'item1', 'value': 1},
-                {'name': 'item2', 'value': 2}
-            ],
-            'nested': {
-                'deep_list': [10, 20, 30]
-            }
-        }
+        "simple_list": [1, 2, 3, 4, 5],
+        "string_list": ["a", "b", "c", "d"],
+        "mixed_list": [1, "string", 3.14, True, None],
+        "nested_list": [[1, 2], [3, 4]],
+        "complex": {
+            "list_of_dicts": [{"name": "item1", "value": 1}, {"name": "item2", "value": 2}],
+            "nested": {"deep_list": [10, 20, 30]},
+        },
     }
 
     yaml_path = tmp_path / "test.yaml"
-    with open(yaml_path, 'w', encoding='utf-8') as f:
+    with open(yaml_path, "w", encoding="utf-8") as f:
         yaml.dump(test_data, f, default_flow_style=False)
 
-    with open(yaml_path, 'r', encoding='utf-8') as f:
+    with open(yaml_path, encoding="utf-8") as f:
         loaded_data = yaml.safe_load(f)
 
     string_data = _convert_lists_to_strings(loaded_data)
     retrieved_data = _get_dict_from_item(string_data)
 
     retrieved_path = tmp_path / "test_retrieved.yaml"
-    with open(retrieved_path, 'w', encoding='utf-8') as f:
+    with open(retrieved_path, "w", encoding="utf-8") as f:
         yaml.dump(retrieved_data, f, default_flow_style=False)
 
     _verify_lists_preserved(test_data, retrieved_data)
@@ -131,6 +122,7 @@ def _verify_dict_lists(parent_key, original_dict, retrieved_dict):
 # ---------------------------------------------------------------------------
 # Part 2 — Mock SettingsTreeModel: simulate editor model round‑trip
 # ---------------------------------------------------------------------------
+
 
 class MockQStandardItem:
     def __init__(self, text=""):
@@ -241,7 +233,7 @@ class MockSettingsTreeModel:
                         value = False
                     elif value_str.isdigit():
                         value = int(value_str)
-                    elif re.match(r'^-?\d+(\.\d+)?$', value_str):
+                    elif re.match(r"^-?\d+(\.\d+)?$", value_str):
                         value = float(value_str)
             result_dict[key] = value
         return result_dict
@@ -249,35 +241,32 @@ class MockSettingsTreeModel:
 
 def test_mock_model_round_trip_preserves_plugin_lists(qapp, tmp_path):
     test_data = {
-        'plugins': {
-            'disabled_models': [
-                'Et-Model free',
-                'Dye-diffusion'
+        "plugins": {
+            "disabled_models": ["Et-Model free", "Dye-diffusion"],
+            "disabled_plugins": [
+                "TTTR:Splitter",
+                "TTTR:Correlate",
+                "TTTR:Generate Decay",
+                "Tools:Bayesian FRET Analysis",
+                "Single-Molecule:FIDA-2D",
+                "Single-Molecule:FIDA",
             ],
-            'disabled_plugins': [
-                'TTTR:Splitter',
-                'TTTR:Correlate',
-                'TTTR:Generate Decay',
-                'Tools:Bayesian FRET Analysis',
-                'Single-Molecule:FIDA-2D',
-                'Single-Molecule:FIDA'
+            "hide_disabled_models": True,
+            "hide_disabled_plugins": True,
+            "icons_enabled": True,
+            "plugin_order": {},
+            "toolbar_plugins": [
+                "Tools:Histogram-Microtime",
+                "FCS:Correlator",
+                "Single-Molecule:Burst-Selection",
+                "Single-Molecule:Burst MLE Lifetime Analysis",
+                "Tools:ndX",
             ],
-            'hide_disabled_models': True,
-            'hide_disabled_plugins': True,
-            'icons_enabled': True,
-            'plugin_order': {},
-            'toolbar_plugins': [
-                'Tools:Histogram-Microtime',
-                'FCS:Correlator',
-                'Single-Molecule:Burst-Selection',
-                'Single-Molecule:Burst MLE Lifetime Analysis',
-                'Tools:ndX'
-            ]
         }
     }
 
     yaml_path = tmp_path / "test.yaml"
-    with open(yaml_path, 'w', encoding='utf-8') as f:
+    with open(yaml_path, "w", encoding="utf-8") as f:
         yaml.dump(test_data, f, default_flow_style=False)
 
     model = MockSettingsTreeModel()
@@ -285,10 +274,10 @@ def test_mock_model_round_trip_preserves_plugin_lists(qapp, tmp_path):
     retrieved_data = model.get_settings_dict()
 
     retrieved_path = tmp_path / "test_retrieved.yaml"
-    with open(retrieved_path, 'w', encoding='utf-8') as f:
+    with open(retrieved_path, "w", encoding="utf-8") as f:
         yaml.dump(retrieved_data, f, default_flow_style=False)
 
-    toolbar = retrieved_data['plugins']['toolbar_plugins']
+    toolbar = retrieved_data["plugins"]["toolbar_plugins"]
     assert isinstance(toolbar, list), f"toolbar_plugins is {type(toolbar)}, expected list"
     assert len(toolbar) > 0, "toolbar_plugins should not be empty"
     assert "FCS:Correlator" in toolbar

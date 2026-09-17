@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from chisurf.server.transport.zmq import ZmqClient
 
@@ -38,10 +39,10 @@ class ProteinMCApiClient:
         self,
         structure_source: str,
         *,
-        flexfit_set: Optional[str] = None,
-        settings: Optional[dict[str, Any]] = None,
-        settings_file: Optional[str] = None,
-        output_file: Optional[str] = None,
+        flexfit_set: str | None = None,
+        settings: dict[str, Any] | None = None,
+        settings_file: str | None = None,
+        output_file: str | None = None,
     ) -> dict[str, Any]:
         """Start a ProteinMC run."""
         params: dict[str, Any] = {

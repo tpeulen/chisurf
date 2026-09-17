@@ -1,7 +1,6 @@
 """Headless tests for the model view-spec layer (no Qt required)."""
-from __future__ import annotations
 
-import json
+from __future__ import annotations
 
 import numpy as np
 
@@ -26,6 +25,7 @@ def test_view_spec_vocabulary_is_pure_data():
 def _make_view(family):
     """A BFF-described TCSPC view on a tiny in-memory fit, or skip."""
     import pytest
+
     pytest.importorskip("IMP.bff")
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
@@ -35,7 +35,7 @@ def _make_view(family):
     fit = fit_mod.Fit(model_class=for_family(family), data=DataCurve(x=x, y=np.ones_like(x)))
     model = fit.model
     if "generated_response" in model.scalar_names():
-        model.set_scalar("generated_response", 1.0)   # a modelled IRF: the model builds
+        model.set_scalar("generated_response", 1.0)  # a modelled IRF: the model builds
     model.problem
     return model
 
@@ -57,15 +57,25 @@ def test_lifetime_model_view_spec_structure():
 
 def test_curve_input_section_loads_from_json():
     """The curve_input section type round-trips through the JSON loader as pure
-    data (no Qt), carrying the action names and payload keys (PRD-38)."""
-    spec = vs.load_view_spec({
-        "sections": [
-            {"type": "curve_input", "target": "convolve", "label": "IRF",
-             "select_action": "model.change_irf", "unload_action": "model.unload_irf",
-             "index_key": "irf_idx", "name_key": "irf_name", "name_attr": "irf"},
-        ],
-        "plots": [],
-    })
+    data (no Qt), carrying the action names and payload keys (PRD-38).
+    """
+    spec = vs.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "curve_input",
+                    "target": "convolve",
+                    "label": "IRF",
+                    "select_action": "model.change_irf",
+                    "unload_action": "model.unload_irf",
+                    "index_key": "irf_idx",
+                    "name_key": "irf_name",
+                    "name_attr": "irf",
+                },
+            ],
+            "plots": [],
+        }
+    )
     sec = spec.sections[0]
     assert isinstance(sec, vs.CurveInputSection)
     assert sec.target == "convolve" and sec.label == "IRF"
@@ -85,17 +95,35 @@ def test_lifetime_view_has_irf_curve_input():
 
 def test_choice_and_toggle_sections_load_from_json():
     """choice/toggle section types round-trip as pure data with their binding
-    fields (attr- or action-bound)."""
-    spec = vs.load_view_spec({
-        "sections": [
-            {"type": "choice", "target": "convolve", "attr": "mode", "label": "Type",
-             "options": ["per", "exp", "full"]},
-            {"type": "toggle", "target": "convolve", "attr": "do_convolution", "label": "Convolve"},
-            {"type": "choice", "target": "corrections", "attr": "window_function",
-             "label": "Smoothing", "options_source": "window_function_types"},
-        ],
-        "plots": [],
-    })
+    fields (attr- or action-bound).
+    """
+    spec = vs.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "choice",
+                    "target": "convolve",
+                    "attr": "mode",
+                    "label": "Type",
+                    "options": ["per", "exp", "full"],
+                },
+                {
+                    "type": "toggle",
+                    "target": "convolve",
+                    "attr": "do_convolution",
+                    "label": "Convolve",
+                },
+                {
+                    "type": "choice",
+                    "target": "corrections",
+                    "attr": "window_function",
+                    "label": "Smoothing",
+                    "options_source": "window_function_types",
+                },
+            ],
+            "plots": [],
+        }
+    )
     choice, toggle, smoothing = spec.sections
     assert isinstance(choice, vs.ChoiceSection)
     assert choice.attr == "mode" and choice.options == ("per", "exp", "full")
@@ -106,14 +134,22 @@ def test_choice_and_toggle_sections_load_from_json():
 def test_lifetime_view_exposes_its_settings():
     """What the hand-written widget's controls set are the description's scalars."""
     spec = _make_view("tcspc_lifetime").view_spec()
-    attrs = {s.attr for s in spec.flat_sections() if isinstance(s, (vs.ToggleSection, vs.ValueSection))}
-    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up", "scalars.autoscale",
-            "scalars.lin_window"} <= attrs
+    attrs = {
+        s.attr for s in spec.flat_sections() if isinstance(s, (vs.ToggleSection, vs.ValueSection))
+    }
+    assert {
+        "scalars.convolve",
+        "scalars.periodic_excitation",
+        "scalars.pile_up",
+        "scalars.autoscale",
+        "scalars.lin_window",
+    } <= attrs
 
 
 def test_parameter_group_view_adapter_builds_a_section():
     """PRD-40 Task 4: a FittingParameterGroup renders via ParameterGroupView with
-    no JSON — the adapter yields a one-section ModelView targeting the group."""
+    no JSON — the adapter yields a one-section ModelView targeting the group.
+    """
     from chisurf.core import dataspec as ds
     from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 
@@ -130,8 +166,8 @@ def test_parameter_group_view_adapter_builds_a_section():
     assert len(view.sections) == 1
     section = view.sections[0]
     assert isinstance(section, ds.ParameterGroupSection)
-    assert section.target == "group"        # resolved by AutoForm via getattr
-    assert section.title == "kinetics"       # defaults to the group's name
+    assert section.target == "group"  # resolved by AutoForm via getattr
+    assert section.title == "kinetics"  # defaults to the group's name
     assert section.collapsed is True
     # the adapter exposes the group at the resolved attribute name
     assert ds.ParameterGroupView(group).group is group
@@ -139,15 +175,30 @@ def test_parameter_group_view_adapter_builds_a_section():
 
 def test_value_section_loads_from_json():
     """PRD-40: the generic scalar field (int/float/str) parses from JSON."""
-    spec = vs.load_view_spec({
-        "sections": [
-            {"type": "value", "label": "N bins", "kind": "int",
-             "target": "setup", "attr": "n_bins", "minimum": 1, "maximum": 64},
-            {"type": "value", "label": "Name", "kind": "str",
-             "target": "setup", "attr": "name", "placeholder": "untitled"},
-        ],
-        "plots": [],
-    })
+    spec = vs.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "value",
+                    "label": "N bins",
+                    "kind": "int",
+                    "target": "setup",
+                    "attr": "n_bins",
+                    "minimum": 1,
+                    "maximum": 64,
+                },
+                {
+                    "type": "value",
+                    "label": "Name",
+                    "kind": "str",
+                    "target": "setup",
+                    "attr": "name",
+                    "placeholder": "untitled",
+                },
+            ],
+            "plots": [],
+        }
+    )
     n_bins, name = spec.sections
     assert isinstance(n_bins, vs.ValueSection)
     assert n_bins.kind == "int" and n_bins.attr == "n_bins"
@@ -157,29 +208,32 @@ def test_value_section_loads_from_json():
 
 def test_parameter_group_table_section_round_trips_from_json():
     """PRD-44: ParameterGroupTableSection parses from JSON with column
-    subsetting and folds through flat_sections()."""
-    spec = vs.load_view_spec({
-        "sections": [
-            {
-                "type": "parameter_group_table",
-                "target": "convolve",
-                "collapsible": False,
-                "columns": ["name", "value", "fixed", "error"],
-            },
-            {
-                "type": "panel",
-                "title": "Outer",
-                "sections": [
-                    {
-                        "type": "parameter_group_table",
-                        "target": "lifetimes",
-                        "columns": ["name", "value"],
-                    },
-                ],
-            },
-        ],
-        "plots": [],
-    })
+    subsetting and folds through flat_sections().
+    """
+    spec = vs.load_view_spec(
+        {
+            "sections": [
+                {
+                    "type": "parameter_group_table",
+                    "target": "convolve",
+                    "collapsible": False,
+                    "columns": ["name", "value", "fixed", "error"],
+                },
+                {
+                    "type": "panel",
+                    "title": "Outer",
+                    "sections": [
+                        {
+                            "type": "parameter_group_table",
+                            "target": "lifetimes",
+                            "columns": ["name", "value"],
+                        },
+                    ],
+                },
+            ],
+            "plots": [],
+        }
+    )
     assert len(spec.sections) == 2
 
     table = spec.sections[0]
@@ -208,11 +262,13 @@ def test_parameter_group_table_section_round_trips_from_json():
     assert "lifetimes" in spec.section_targets()
 
     # empty columns means all columns
-    spec2 = vs.load_view_spec({
-        "sections": [
-            {"type": "parameter_group_table", "target": "g", "columns": []},
-        ],
-    })
+    spec2 = vs.load_view_spec(
+        {
+            "sections": [
+                {"type": "parameter_group_table", "target": "g", "columns": []},
+            ],
+        }
+    )
     assert spec2.sections[0].columns == ()
 
 
@@ -247,12 +303,15 @@ def test_plot_section_axis_ranges_are_parsed():
     """
     from chisurf.core.dataspec import _section_from_dict
 
-    section = _section_from_dict({
-        "type": "plot", "source": "es_series", "x_range": [-0.1, 1.1], "y_range": [-0.1, 1.1],
-    })
+    section = _section_from_dict(
+        {
+            "type": "plot",
+            "source": "es_series",
+            "x_range": [-0.1, 1.1],
+            "y_range": [-0.1, 1.1],
+        }
+    )
     assert section.x_range == (-0.1, 1.1)
     assert section.y_range == (-0.1, 1.1)
     # absent by default -> the renderer autoscales
     assert _section_from_dict({"type": "plot", "source": "s"}).x_range == ()
-
-

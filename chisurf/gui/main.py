@@ -1,55 +1,52 @@
 from __future__ import annotations
 
-import os
 import ast
-import json
+import os
 import pathlib
 import re
-import traceback
-
-import chisurf.gui
-import chisurf.macros.core_fit
-from chisurf import typing
 
 import numpy as np
-from chisurf import logging
-from chisurf.gui import QtWidgets, QtGui, QtCore, uic
-from chisurf.gui.gui_tweaks import apply_dock_tab_colors
-from chisurf.gui import misc_helpers, project_helpers, fit_helpers
-
 
 import chisurf as cs
-import chisurf.core.support.decorators
 import chisurf.core.base
-import chisurf.core.fio
 import chisurf.core.experiments
-import chisurf.macros
+import chisurf.core.fio
 import chisurf.core.settings
-from chisurf.core.actions import record_action
-
-import chisurf.gui.widgets.settings_editor
-import chisurf.gui.widgets
-import chisurf.gui.widgets.fitting
-import chisurf.gui.widgets.history_browser
-import chisurf.gui.widgets.experiments.modelling
-import chisurf.gui.widgets as _gw
+import chisurf.core.support.decorators
+import chisurf.gui
 
 # Heavy imports moved to deferred/local usage or warmup_imports
 # import cs.core.models
 # import cs.plugins
 # import cs.core.fitting
 import chisurf.gui.resources
-
-
-
+import chisurf.gui.widgets
+import chisurf.gui.widgets as _gw
+import chisurf.gui.widgets.experiments.modelling
+import chisurf.gui.widgets.fitting
+import chisurf.gui.widgets.history_browser
+import chisurf.gui.widgets.settings_editor
+import chisurf.macros
+import chisurf.macros.core_fit
+from chisurf import typing
+from chisurf.core.actions import record_action
+from chisurf.gui import (
+    QtCore,
+    QtGui,
+    QtWidgets,
+    dialogs,
+    fit_helpers,
+    misc_helpers,
+    uic,
+)
+from chisurf.gui.gui_tweaks import apply_dock_tab_colors
 from chisurf.gui.main_helper import (
+    DevMixin,
+    HistoryMixin,
     ProjectMixin,
     SetupMixin,
-    HistoryMixin,
     StateMixin,
-    DevMixin,
 )
-from chisurf.gui import dialogs
 
 
 def find_toolbar_plugin(plugin_infos: list, target_name: str):
@@ -83,9 +80,10 @@ def find_toolbar_plugin(plugin_infos: list, target_name: str):
     dict or None
         The matching plugin info, or ``None`` when nothing matches unambiguously.
     """
+
     def key(name: str) -> str:
-        leaf = name.split(':')[-1].strip() if ':' in name else name
-        return re.sub(r'[^a-z0-9]', '', leaf.casefold())
+        leaf = name.split(":")[-1].strip() if ":" in name else name
+        return re.sub(r"[^a-z0-9]", "", leaf.casefold())
 
     target = key(target_name)
     if not target:
@@ -93,19 +91,20 @@ def find_toolbar_plugin(plugin_infos: list, target_name: str):
 
     candidates = []
     for info in plugin_infos:
-        pname = info.get('plugin_name') or info.get('module_name') or ''
+        pname = info.get("plugin_name") or info.get("module_name") or ""
         if not pname:
             continue
         if pname == target_name:
             return info
-        candidates.append((info, {key(pname), key(info.get('module_name') or '')} - {''}))
+        candidates.append((info, {key(pname), key(info.get("module_name") or "")} - {""}))
 
     for info, keys in candidates:
         if target in keys:
             return info
 
     near = [
-        info for info, keys in candidates
+        info
+        for info, keys in candidates
         if any(k.startswith(target) or target.startswith(k) for k in keys)
     ]
     return near[0] if len(near) == 1 else None
@@ -235,34 +234,34 @@ class Main(
         i = self.current_setup_idx
         j = i
         setup_found = False
-        for j, s in enumerate(
-                self.current_experiment.readers
-        ):
+        for j, s in enumerate(self.current_experiment.readers):
             if s.name == name:
                 setup_found = True
                 break
         if not setup_found:
-            dialogs.information(None, "Setup Not Found", f"Setup '{name}' does not exist in the current experiment.")
+            dialogs.information(
+                None, "Setup Not Found", f"Setup '{name}' does not exist in the current experiment."
+            )
             return
         if j != i:
             self.current_setup_idx = j
             self._refresh_setup_ui()
-            
+
     @property
     def filter_hide_enabled(self) -> bool:
         """
         Property to check if the hide filter checkbox is checked.
-        
+
         Returns:
             bool: True if non-matching log entries should be hidden, False otherwise
         """
         return self.checkBox_filter_hide.isChecked()
-        
+
     @filter_hide_enabled.setter
     def filter_hide_enabled(self, value: bool) -> None:
         """
         Property to set the state of the hide filter checkbox.
-        
+
         Args:
             value (bool): True to hide non-matching log entries, False to gray them out
         """
@@ -270,14 +269,10 @@ class Main(
 
     @property
     def current_experiment_reader(self):
-        if isinstance(
-            self.current_setup,
-            cs.core.experiments.core.reader.ExperimentReader
-        ):
+        if isinstance(self.current_setup, cs.core.experiments.core.reader.ExperimentReader):
             return self.current_setup
         elif isinstance(
-                self.current_setup,
-                cs.core.experiments.core.reader.ExperimentReaderController
+            self.current_setup, cs.core.experiments.core.reader.ExperimentReaderController
         ):
             return self.current_setup.experiment_reader
 
@@ -391,20 +386,19 @@ class Main(
         except Exception:
             pass
 
-
     def closeEvent(self, event: QtGui.QCloseEvent):
         # Always save window state regardless of confirmation
         try:
             self._save_window_state()
         except Exception:
             pass
-        if cs.core.settings.gui['confirm_close_program']:
+        if cs.core.settings.gui["confirm_close_program"]:
             reply = dialogs.question(
                 self,
-                'Message',
+                "Message",
                 "Are you sure to quit?",
                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                default=QtWidgets.QMessageBox.No
+                default=QtWidgets.QMessageBox.No,
             )
             if reply != QtWidgets.QMessageBox.Yes:
                 event.ignore()
@@ -433,8 +427,6 @@ class Main(
 
         event.accept()
 
-
-
     def subWindowActivated(self):
         sub_window = self.mdiarea.currentSubWindow()
         if sub_window is not None:
@@ -446,7 +438,7 @@ class Main(
             _gw.hide_items_in_layout(self.plotOptionsLayout)
 
             # Handle fit windows first
-            if hasattr(sub_window, 'fit') and sub_window.fit is not None:
+            if hasattr(sub_window, "fit") and sub_window.fit is not None:
                 for fit_idx, f in enumerate(cs.fits):
                     if f == sub_window.fit:
                         if self.current_fit is not cs.fits[fit_idx]:
@@ -465,7 +457,10 @@ class Main(
                 self.current_fit_widget.show()
                 sub_window.current_plot_controller.show()
             # Handle plugin windows with plot controllers (like sm_acquisition)
-            elif hasattr(sub_window, 'current_plot_controller') and sub_window.current_plot_controller is not None:
+            elif (
+                hasattr(sub_window, "current_plot_controller")
+                and sub_window.current_plot_controller is not None
+            ):
                 # Add and show the plugin's plot controller
                 self.plotOptionsLayout.addWidget(sub_window.current_plot_controller)
                 sub_window.current_plot_controller.show()
@@ -503,12 +498,11 @@ class Main(
         console.save_macro()
 
     def onRunMacro(
-            self,
-            filename: pathlib.Path = None,
-            executor: str = 'console',
-            globals=None, locals=None
+        self, filename: pathlib.Path = None, executor: str = "console", globals=None, locals=None
     ):
-        misc_helpers.run_macro(filename=filename, executor=executor, globals=globals, locals=locals, main_window=self)
+        misc_helpers.run_macro(
+            filename=filename, executor=executor, globals=globals, locals=locals, main_window=self
+        )
 
     def onTileWindows(self):
         self.mdiarea.setViewMode(QtWidgets.QMdiArea.SubWindowView)
@@ -533,7 +527,7 @@ class Main(
         settings.remove("state")
         settings.remove("layout_version")
         self.apply_default_dock_layout()
-        self.dockWidget_console.setVisible(cs.core.settings.gui['show_console'])
+        self.dockWidget_console.setVisible(cs.core.settings.gui["show_console"])
         self._apply_read_data_dock_width()
         apply_dock_tab_colors(self)
         try:
@@ -556,13 +550,10 @@ class Main(
             # three-colour burst tables), and a model that cannot fit the
             # selection must not be offered for it.
             all_model_names = experiment.get_model_names(ds) if experiment is not None else []
-            disabled_models = cs.core.settings.cs_settings.get(
-                'plugins', {}
-            ).get('disabled_models', [])
-            model_names = [
-                name for name in all_model_names
-                if name not in disabled_models
-            ]
+            disabled_models = cs.core.settings.cs_settings.get("plugins", {}).get(
+                "disabled_models", []
+            )
+            model_names = [name for name in all_model_names if name not in disabled_models]
             self.comboBox_Model.addItems(model_names)
             if model_names:
                 self.comboBox_Model.setCurrentIndex(0)
@@ -612,12 +603,9 @@ class Main(
             model_name=self.current_model_name,
         )
 
-
     def onLoadFit(self, **kwargs):
         filename = _gw.get_filename(
-            file_type="*.fit.json",
-            description="Load fit (fit.json)",
-            **kwargs
+            file_type="*.fit.json", description="Load fit (fit.json)", **kwargs
         )
         if not filename:
             return
@@ -625,7 +613,6 @@ class Main(
             name="fit.load",
             payload={"filename": str(filename)},
         )
-
 
     def onCloseAllFits(self):
         cs.core.actions.dispatch(
@@ -643,12 +630,12 @@ class Main(
     def onAddDataset(self):
         filename = self.current_setup.controller.get_filename()
         if isinstance(filename, list):
-            l = [r"{}".format(pathlib.Path(f).as_posix()) for f in filename]
-            s = '|'.join(l)
+            l = [rf"{pathlib.Path(f).as_posix()}" for f in filename]
+            s = "|".join(l)
         elif isinstance(filename, pathlib.Path):
-            s = r"{}".format(filename.as_posix())
+            s = rf"{filename.as_posix()}"
         else:
-            s = r"{}".format(filename)
+            s = rf"{filename}"
         s = s.replace("\\", "/")
         cs.core.actions.dispatch(
             name="dataset.add",
@@ -669,21 +656,25 @@ class Main(
         # Prefer default directory from the current fit's data filename, if available
         try:
             default_dir = None
-            fit = getattr(self, 'current_fit', None)
-            data_obj = getattr(fit, 'data', None) if fit is not None else None
-            filename = getattr(data_obj, 'filename', None) if data_obj is not None else None
+            fit = getattr(self, "current_fit", None)
+            data_obj = getattr(fit, "data", None) if fit is not None else None
+            filename = getattr(data_obj, "filename", None) if data_obj is not None else None
             if isinstance(filename, str):
                 fn = filename.strip()
-                if fn and fn.lower() != 'none':
+                if fn and fn.lower() != "none":
                     p = pathlib.Path(fn)
                     # Use parent folder only for absolute paths
                     if p.is_absolute():
                         default_dir = p.parent
             # Only set the directory if the caller did not specify one
-            if ('directory' not in kwargs or kwargs.get('directory') is None) and default_dir is not None:
-                kwargs['directory'] = default_dir
+            if (
+                "directory" not in kwargs or kwargs.get("directory") is None
+            ) and default_dir is not None:
+                kwargs["directory"] = default_dir
         except Exception as e:
-            cs.logging.warning(f"onSaveFit: could not infer data folder from fit.data.filename: {e}")
+            cs.logging.warning(
+                f"onSaveFit: could not infer data folder from fit.data.filename: {e}"
+            )
 
         path, _ = _gw.get_directory(**kwargs)
         if not path:
@@ -712,9 +703,9 @@ class Main(
             When provided, the help browser's filter box is pre-filled so the
             relevant documentation entries are highlighted.
         """
-
         import importlib
         import pathlib
+
         try:
             try:
                 help_plugin = importlib.import_module("chisurf.plugins.core.help")
@@ -790,6 +781,7 @@ class Main(
         """Open the updater plugin."""
         # Import the updater plugin
         import importlib
+
         try:
             try:
                 updater_plugin = importlib.import_module("chisurf.plugins.core.updater")
@@ -800,11 +792,14 @@ class Main(
             window.show()
         except Exception as e:
             # Show error message if plugin can't be loaded
-            dialogs.information(None, "Updater Plugin Error", f"Error loading updater plugin: {str(e)}")
+            dialogs.information(
+                None, "Updater Plugin Error", f"Error loading updater plugin: {str(e)}"
+            )
 
     def onOpenAbout(self):
         """Open the about plugin."""
         import importlib
+
         try:
             try:
                 about_plugin = importlib.import_module("chisurf.plugins.core.about")
@@ -827,19 +822,23 @@ class Main(
     def onClearUserStyles(self):
         """Clear user style files (QSS) and show a confirmation popup."""
         # Get the path to the user styles folder
-        user_styles_path = cs.core.settings.get_path('settings') / 'styles'
+        user_styles_path = cs.core.settings.get_path("settings") / "styles"
 
         # Check if the folder exists
         if user_styles_path.exists() and user_styles_path.is_dir():
             # Delete all QSS files in the folder
-            for file in user_styles_path.glob('*.qss'):
+            for file in user_styles_path.glob("*.qss"):
                 try:
                     file.unlink()
                 except Exception as e:
                     cs.logging.warning(f"Could not delete style file {file}: {e}")
 
             # Show a confirmation popup
-            dialogs.information(None, "Styles Reset", "User style files have been cleared successfully. Restart the application to apply default styles.")
+            dialogs.information(
+                None,
+                "Styles Reset",
+                "User style files have been cleared successfully. Restart the application to apply default styles.",
+            )
         else:
             # Show a message if the folder doesn't exist
             dialogs.information(None, "Styles Reset", "No user style files found.")
@@ -850,7 +849,11 @@ class Main(
         cs.core.settings.clear_user_plugins_folder()
 
         # Show a confirmation popup
-        dialogs.information(None, "User Plugins Reset", "User plugins folder has been cleared successfully. Restart the application to apply changes.")
+        dialogs.information(
+            None,
+            "User Plugins Reset",
+            "User plugins folder has been cleared successfully. Restart the application to apply changes.",
+        )
 
     def onDockWidgetPlotVisibilityChanged(self, visible):
         """Update the Plot Controller when the dockWidgetPlot becomes visible.
@@ -862,29 +865,30 @@ class Main(
             # Get the current subwindow
             sub_window = self.mdiarea.currentSubWindow()
             # Update the current plot controller
-            if hasattr(sub_window, 'current_plot_controller') and hasattr(sub_window.current_plot_controller, 'update'):
+            if hasattr(sub_window, "current_plot_controller") and hasattr(
+                sub_window.current_plot_controller, "update"
+            ):
                 sub_window.current_plot_controller.update()
 
     def load_toolbar_plugins(self):
         """Load plugins into the toolbar based on toolbar_plugins setting."""
         import pathlib
-        import ast
 
         # Get the list of toolbar plugins from settings
-        toolbar_plugins = cs.core.settings.cs_settings.get('plugins', {}).get('toolbar_plugins', [])
+        toolbar_plugins = cs.core.settings.cs_settings.get("plugins", {}).get("toolbar_plugins", [])
 
         if not toolbar_plugins:
             return
 
         # Create a toolbar for plugins if it doesn't exist
-        if not hasattr(self, 'plugins_toolbar'):
+        if not hasattr(self, "plugins_toolbar"):
             self.plugins_toolbar = self.addToolBar("Plugins")
             self.plugins_toolbar.setObjectName("pluginsToolBar")
             # Set icon size to match standard toolbar (16x16)
             self.plugins_toolbar.setIconSize(QtCore.QSize(16, 16))
 
         # Determine built-in plugin directory
-        plugin_root = pathlib.Path(cs.plugins.__file__).absolute().parent
+        pathlib.Path(cs.plugins.__file__).absolute().parent
 
         # Helper function to read module docstring
         def read_module_docstring(package_path):
@@ -916,12 +920,12 @@ class Main(
                     cs.logging.warning(f"Could not find module for plugin: {plugin_name}")
                     continue
 
-                module_path = info.get('module_path')
-                module_name = info.get('module_name') or ''
-                package_dir = pathlib.Path(info.get('package_dir'))
+                module_path = info.get("module_path")
+                module_name = info.get("module_name") or ""
+                package_dir = pathlib.Path(info.get("package_dir"))
 
                 # Get the clean plugin name (without sorting prefix)
-                clean_name = plugin_name.split(':')[-1]
+                clean_name = plugin_name.split(":")[-1]
 
                 # Create an action for the plugin with empty text (icon only)
                 action = QtWidgets.QAction("", self)
@@ -929,7 +933,9 @@ class Main(
                 # Set icon using emoji/text fallback
                 try:
                     import importlib as _il
+
                     from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
+
                     icon = create_plugin_icon_with_fallback(
                         lambda: _il.import_module(module_path), package_dir, size=32
                     )
@@ -938,14 +944,14 @@ class Main(
                     else:
                         action.setText(clean_name)
                 except Exception:
-                    icon_path = package_dir / 'icon.png'
+                    icon_path = package_dir / "icon.png"
                     if icon_path.exists():
                         action.setIcon(QtGui.QIcon(str(icon_path)))
                     else:
                         action.setText(clean_name)
 
                 # Get plugin description from metadata or docstring
-                description = info.get('description')
+                description = info.get("description")
                 if not description:
                     description = read_module_docstring(package_dir) or "No description available."
 
@@ -953,7 +959,9 @@ class Main(
                 action.setToolTip(f"{clean_name}: {description}")
 
                 # Connect the action to a function that will load and show the plugin
-                action.triggered.connect(lambda checked=False, m=module_path: self.load_and_show_plugin(m))
+                action.triggered.connect(
+                    lambda checked=False, m=module_path: self.load_and_show_plugin(m)
+                )
 
                 # Add the action to the toolbar
                 self.plugins_toolbar.addAction(action)
@@ -974,18 +982,18 @@ class Main(
             # First try to resolve the plugin via cs.plugins.iter_plugins
             try:
                 for info in cs.plugins.iter_plugins():
-                    if info.get('module_path') == module_path:
-                        plugin_dir_to_use = pathlib.Path(info.get('package_dir'))
+                    if info.get("module_path") == module_path:
+                        plugin_dir_to_use = pathlib.Path(info.get("package_dir"))
                         break
             except Exception:
                 plugin_dir_to_use = None
 
             # Fallback to legacy behavior using flat module names
             if plugin_dir_to_use is None:
-                module_name = module_path.split('.')[-1]
+                module_name = module_path.split(".")[-1]
                 plugin_root = pathlib.Path(cs.plugins.__file__).absolute().parent
                 plugin_dir = plugin_root / module_name
-                user_plugin_root = pathlib.Path.home() / '.cs' / 'plugins'
+                user_plugin_root = pathlib.Path.home() / ".cs" / "plugins"
                 user_plugin_dir = user_plugin_root / module_name
 
                 if plugin_dir.exists():
@@ -993,7 +1001,9 @@ class Main(
                 elif user_plugin_dir.exists():
                     plugin_dir_to_use = user_plugin_dir
                 else:
-                    cs.logging.warning(f"Plugin directory not found in either built-in or user locations: {module_path}")
+                    cs.logging.warning(
+                        f"Plugin directory not found in either built-in or user locations: {module_path}"
+                    )
                     return
 
             misc_helpers.run_plugin_from_dir(self, plugin_dir_to_use)
@@ -1003,17 +1013,17 @@ class Main(
 
     def init_console(self):
         self.verticalLayout_4.addWidget(cs.console)
-        cs.console.pushVariables({'gui': self})
-        cs.console.pushVariables({'cs': cs})
+        cs.console.pushVariables({"gui": self})
+        cs.console.pushVariables({"cs": cs})
         try:
-            cs.console.pushVariables({'history': cs.history})
+            cs.console.pushVariables({"history": cs.history})
         except Exception:
             pass
-        cs.console.pushVariables({'np': np})
-        cs.console.pushVariables({'os': os})
-        cs.console.pushVariables({'QtCore': QtCore})
-        cs.console.pushVariables({'QtGui': QtGui})
-        cs.console.set_default_style('linux')
+        cs.console.pushVariables({"np": np})
+        cs.console.pushVariables({"os": os})
+        cs.console.pushVariables({"QtCore": QtCore})
+        cs.console.pushVariables({"QtGui": QtGui})
+        cs.console.set_default_style("linux")
 
         def _run_with_history(code: str = None):
             if code is None:
@@ -1039,14 +1049,11 @@ class Main(
             cs.log = cs.console.log_on_gui_thread
         except Exception:
             pass
-        cs.run(str(cs.core.settings.gui['console_init']))
-
+        cs.run(str(cs.core.settings.gui["console_init"]))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         uic.loadUi(pathlib.Path(__file__).parent / "gui.ui", self)
-        
-
 
         # Set window icon to ChiSurf logo
         try:
@@ -1101,7 +1108,7 @@ class Main(
             self.label_filedrop.setAcceptDrops(True)
             self.label_filedrop.installEventFilter(self)
             # Helpful tooltip
-            if hasattr(self.label_filedrop, 'setToolTip'):
+            if hasattr(self.label_filedrop, "setToolTip"):
                 self.label_filedrop.setToolTip("Drop files here to open with the current setup")
         except Exception:
             pass
@@ -1124,10 +1131,10 @@ class Main(
         self.experiment_names = list()
         self.dataset_selector = _gw.experiments.ExperimentalDataSelector(
             click_close=False,
-            curve_types='all',
+            curve_types="all",
             change_event=self.onCurrentDatasetChanged,
             drag_enabled=True,
-            experiment=None
+            experiment=None,
         )
 
         # widget listing the existing fits
@@ -1150,7 +1157,7 @@ class Main(
         self.progress_bar.setFixedWidth(150)  # Set a fixed width for the progress bar
         self.progress_bar.setAlignment(QtCore.Qt.AlignCenter)
         self.progress_bar.setFixedHeight(15)  # Adjust the height as needed
-        self.progress_bar.setVisible(False)   # Hidden until background loading starts
+        self.progress_bar.setVisible(False)  # Hidden until background loading starts
 
         # Create a label for the status message
         self.status_label = QtWidgets.QLabel("Ready")
@@ -1158,12 +1165,15 @@ class Main(
 
         # Add the progress bar and status message to the status layout
         status_layout.addWidget(self.status_label)
-        status_layout.addSpacerItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.MinimumExpanding))
+        status_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(
+                20, 20, QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.MinimumExpanding
+            )
+        )
         status_layout.addWidget(self.progress_bar)
 
         # Add the status widget to the status bar, aligning to the left
         self.status.addWidget(status_widget, 1)  # 1 gives the widget some stretch
-
 
         try:
             self._init_system_info_watermark()
@@ -1176,7 +1186,6 @@ class Main(
         self.fit_selector.update()
         self.dataset_selector.update()
         self.onCurrentDatasetChanged()
-
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:  # type: ignore[override]
         super().showEvent(event)
@@ -1195,7 +1204,7 @@ class Main(
     def eventFilter(self, obj, event):
         # Handle drag-and-drop onto the 'Drop files here' label
         try:
-            label = getattr(self, 'label_filedrop', None)
+            label = getattr(self, "label_filedrop", None)
         except Exception:
             label = None
         if obj is not None and label is not None and obj is label:
@@ -1355,11 +1364,14 @@ class Main(
         #      Push variables to console and add it to           #
         #      user interface                                    #
         ##########################################################
-        self.dockWidget_console.setVisible(cs.core.settings.gui['show_console'])
+        self.dockWidget_console.setVisible(cs.core.settings.gui["show_console"])
         # Set the height of the console dock widget
-        if 'console_height' in cs.core.settings.gui:
+        if "console_height" in cs.core.settings.gui:
             from qtpy.QtCore import Qt
-            self.resizeDocks([self.dockWidget_console], [cs.core.settings.gui['console_height']], Qt.Vertical)
+
+            self.resizeDocks(
+                [self.dockWidget_console], [cs.core.settings.gui["console_height"]], Qt.Vertical
+            )
         self.init_console()
 
         ##########################################################
@@ -1424,7 +1436,6 @@ class Main(
             previous = dock
         self.dockWidgetReadData.raise_()
 
-
     def filter_log_content(self):
         """
         Filter log content based on filter text and hide checkbox state.
@@ -1432,7 +1443,7 @@ class Main(
         are hidden as well.
         """
         misc_helpers.filter_log_content(self)
-            
+
     def update_log_filter(self):
         """
         Update the log filter when new log entries are added.
@@ -1449,7 +1460,7 @@ class Main(
         if log_widget is None or not hasattr(log_widget, "filter_log_content"):
             self.lineEdit_LogFilter.textChanged.connect(self.filter_log_content)
             self.checkBox_filter_hide.stateChanged.connect(self.filter_log_content)
-        
+
         self.actionTile_windows.triggered.connect(self.onTileWindows)
         self.actionTab_windows.triggered.connect(self.onTabWindows)
         self.actionCascade.triggered.connect(self.onCascadeWindows)
@@ -1576,7 +1587,6 @@ class Main(
             except Exception:
                 pass
             try:
-
                 dialogs.warning(
                     self,
                     "FRET RDA axis settings",
@@ -1645,13 +1655,17 @@ class Main(
         #      Settings                                          #
         ##########################################################
         # Configuration editor
-        self.actionSettings.triggered.connect(lambda: self.load_and_show_plugin("chisurf.plugins.core.setup"))
+        self.actionSettings.triggered.connect(
+            lambda: self.load_and_show_plugin("chisurf.plugins.core.setup")
+        )
         # Global FRET R_DA axis settings dialog
         self.actionFretRdaAxisSettings = QtWidgets.QAction("FRET RDA axis ...", self)
         self.actionFretRdaAxisSettings.triggered.connect(self.onOpenFretRdaAxisSettings)
         try:
             # Place just before the "Clear local settings" entry
-            self.menuSettings.insertAction(self.actionClear_local_settings, self.actionFretRdaAxisSettings)
+            self.menuSettings.insertAction(
+                self.actionClear_local_settings, self.actionFretRdaAxisSettings
+            )
         except Exception:
             # Fallback: append to the Settings menu
             self.menuSettings.addAction(self.actionFretRdaAxisSettings)
@@ -1659,7 +1673,9 @@ class Main(
         self.actionDataLoadingSettings = QtWidgets.QAction("Data loading ...", self)
         self.actionDataLoadingSettings.triggered.connect(self.onOpenDataLoadingSettings)
         try:
-            self.menuSettings.insertAction(self.actionClear_local_settings, self.actionDataLoadingSettings)
+            self.menuSettings.insertAction(
+                self.actionClear_local_settings, self.actionDataLoadingSettings
+            )
         except Exception:
             self.menuSettings.addAction(self.actionDataLoadingSettings)
         # Reset local settings, i.e., the settings file in the user folder
@@ -1679,15 +1695,15 @@ class Main(
         ##########################################################
         #      Initialize                                        #
         ##########################################################
-        
+
         # Initialize ribbon interface (optional - can be enabled via settings)
         self._ribbon_integration = None
-        
+
         # Restore ribbon interface state from settings
         try:
-            gui_settings = cs.core.settings.cs_settings.get('gui', {})
-            use_ribbon = gui_settings.get('use_ribbon_interface', True)
-            
+            gui_settings = cs.core.settings.cs_settings.get("gui", {})
+            use_ribbon = gui_settings.get("use_ribbon_interface", True)
+
             if use_ribbon:
                 # Enable ribbon if it was saved in settings
                 self.toggle_ribbon_interface(True)
@@ -1698,6 +1714,7 @@ class Main(
         # Retranslate the live interface whenever the UI language changes (via the
         # Settings selector, the ribbon flag dropdown, or anywhere else).
         from chisurf.gui.i18n import language_notifier
+
         language_notifier.language_changed.connect(self._on_language_changed)
 
         self.onExperimentChanged()
@@ -1782,6 +1799,7 @@ class Main(
                 self._refresh_dataset_selector()
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Error handling server event: %s", payload)
 
     def _refresh_active_parameter_display(self, payload: dict = None) -> None:
@@ -1842,6 +1860,7 @@ class Main(
         """
         try:
             from chisurf.gui.widgets.models.model_editor import model_editor_widget
+
             grouped = list(getattr(fit_group, "grouped_fits", []) or [])
             if not grouped:
                 return
@@ -1856,6 +1875,7 @@ class Main(
                 widget.setVisible(i == sel)
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Error toggling member editor visibility")
 
     def _refresh_selected_member_display(self, payload=None) -> None:
@@ -1909,6 +1929,7 @@ class Main(
                     pass
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Error refreshing selected member display")
 
     def _refresh_dataset_selector(self) -> None:
@@ -1921,8 +1942,10 @@ class Main(
             cb.clear()
             import chisurf as cs
             from chisurf.gui.widgets.tooltip_plot import (
-                TooltipStandardItem, dataset_tooltip_html,
+                TooltipStandardItem,
+                dataset_tooltip_html,
             )
+
             model = cb.model()
             for ds in getattr(cs, "imported_datasets", []):
                 text = str(getattr(ds, "name", repr(ds)))
@@ -1950,16 +1973,16 @@ class Main(
                 existing_uid = str(getattr(getattr(sub, "fit", None), "unique_identifier", ""))
                 if existing_uid == str(getattr(fit_obj, "unique_identifier", "")):
                     return
-            from chisurf.gui.widgets.fitting import FittingControllerWidget, FitSubWindow
-            fit_control_widget = FittingControllerWidget(
-                fit=fit_obj
-            )
+            from chisurf.gui.widgets.fitting import FitSubWindow, FittingControllerWidget
+
+            fit_control_widget = FittingControllerWidget(fit=fit_obj)
             header_layout = getattr(self, "analysisHeaderLayout", None)
             if header_layout is not None:
                 header_layout.addWidget(fit_control_widget)
             else:
                 self.modelLayout.addWidget(fit_control_widget)
             from chisurf.gui.widgets.models.model_editor import build_model_editor
+
             for fit in fit_obj:
                 self.modelLayout.addWidget(build_model_editor(fit.model))
             # Only the selected member's editor should be visible; otherwise
@@ -1973,6 +1996,7 @@ class Main(
             fit_window.setWindowTitle(fit_obj.name)
             fit_window = self.mdiarea.addSubWindow(fit_window)
             import chisurf.gui as _gui_mod
+
             _gui_mod.fit_windows.append(fit_window)
             self.current_fit = fit_obj
             try:
@@ -1983,6 +2007,7 @@ class Main(
             fit_window.refresh_current_plot()
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Failed to open fit subwindow")
 
     def _open_fit_subwindow_for_event(self, payload: dict) -> None:
@@ -1998,6 +2023,7 @@ class Main(
             if fit_uid is None:
                 return
             import chisurf as cs
+
             fit_obj = None
             for f in getattr(cs, "fits", []):
                 if str(getattr(f, "unique_identifier", "")) == str(fit_uid):
@@ -2007,6 +2033,7 @@ class Main(
                 self._open_fit_subwindow(fit_obj)
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Failed to open fit subwindow for event: %s", payload)
 
     def _close_fit_subwindow_for_event(self, payload: dict) -> None:
@@ -2052,8 +2079,9 @@ class Main(
             Unused; present for uniform event handler signature.
         """
         try:
-            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
             import chisurf as cs
+            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+
             fc = get_fitting_client()
             if fc is None:
                 return
@@ -2071,40 +2099,42 @@ class Main(
             self._refresh_dataset_selector()
         except Exception:
             import chisurf.logging
+
             chisurf.logging.exception("Failed to rebuild GUI from server state")
 
     def toggle_ribbon_interface(self, enabled=None):
         """
         Toggle or set the ribbon interface.
-        
+
         Parameters
         ----------
         enabled : bool, optional
-            If True, enable ribbon; if False, disable ribbon; 
+            If True, enable ribbon; if False, disable ribbon;
             if None, toggle current state.
         """
         try:
             from chisurf.gui.widgets.ribbon import setup_chisurf_ribbon
-            
+
             if enabled is None:
                 # Toggle current state
                 enabled = self._ribbon_integration is None
-            
+
             if enabled and self._ribbon_integration is None:
                 # Enable ribbon with style from settings
-                gui_settings = cs.core.settings.cs_settings.get('gui', {})
-                ribbon_style = gui_settings.get('ribbon_style', None)
-                
+                gui_settings = cs.core.settings.cs_settings.get("gui", {})
+                ribbon_style = gui_settings.get("ribbon_style", None)
+
                 # Hide plugin toolbar when switching to ribbon
-                if hasattr(self, 'plugins_toolbar'):
+                if hasattr(self, "plugins_toolbar"):
                     self.plugins_toolbar.hide()
                     cs.logging.info("Plugin toolbar hidden for ribbon mode")
-                
+
                 self._ribbon_integration = setup_chisurf_ribbon(self, ribbon_style=ribbon_style)
                 if self._ribbon_integration:
                     cs.logging.info("Ribbon interface enabled")
                     # Save to settings persistently
                     from chisurf.core.settings.settings_utils import set_use_ribbon_interface
+
                     set_use_ribbon_interface(True)
                 else:
                     cs.logging.warning("Failed to setup ribbon interface")
@@ -2113,15 +2143,16 @@ class Main(
                 self._ribbon_integration.restore_original_interface()
                 self._ribbon_integration = None
                 cs.logging.info("Ribbon interface disabled")
-                
+
                 # Show plugin toolbar when switching back to menu mode
-                if hasattr(self, 'plugins_toolbar'):
+                if hasattr(self, "plugins_toolbar"):
                     self.plugins_toolbar.show()
                     cs.logging.info("Plugin toolbar restored for menu mode")
-                
+
                 # Save to settings persistently
                 from chisurf.core.settings.settings_utils import set_use_ribbon_interface
+
                 set_use_ribbon_interface(False)
-            
+
         except Exception as e:
             cs.logging.error(f"Failed to toggle ribbon interface: {e}")

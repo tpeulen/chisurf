@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.core.datastore import write_csv_table
 import numpy as np
+
+from chisurf.core.datastore import write_csv_table
 
 
 def default_model():

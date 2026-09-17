@@ -128,9 +128,9 @@ def analysis(bursts, tmp_path_factory):
             ):
                 photons = micro[first:last][np.isin(routing[first:last], GREEN)]
                 decays[label] += np.bincount(photons, minlength=N_BINS)[:N_BINS]
-        estimate = extract_irf_background(
-            data, {"green": {"chs": GREEN, "micro_time_ranges": []}}
-        )["green"]
+        estimate = extract_irf_background(data, {"green": {"chs": GREEN, "micro_time_ranges": []}})[
+            "green"
+        ]
         irf += estimate.irf
         axis = estimate.time_ns
 
@@ -160,7 +160,9 @@ def analysis(bursts, tmp_path_factory):
         decay_tools.set_irf(context, fit=position, irf=irf_index)
         decay_tools.set_components(context, fit=position, n=2)
         outcome = fit_tools.run_fit(context, fit=position)["results"][0]
-        values = {p["name"]: p["value"] for p in fit_tools.get_fit(context, fit=position)["parameters"]}
+        values = {
+            p["name"]: p["value"] for p in fit_tools.get_fit(context, fit=position)["parameters"]
+        }
         x1, x2 = values.get("a0", 0.0), values.get("a1", 0.0)
         t1, t2 = values.get("t0", 0.0), values.get("t1", 0.0)
         results[label] = {
@@ -195,7 +197,9 @@ def test_the_lifetime_efficiency_agrees_with_the_proximity_ratio(analysis):
     them moves it out.
     """
     efficiency = 1.0 - analysis["fret"]["tau_x"] / analysis["donor_only"]["tau_x"]
-    assert 0.35 < efficiency < 0.8, f"lifetime efficiency {efficiency:.3f} is far from the PR window"
+    assert 0.35 < efficiency < 0.8, (
+        f"lifetime efficiency {efficiency:.3f} is far from the PR window"
+    )
 
     r0 = 52.0
     distance = r0 * (1.0 / efficiency - 1.0) ** (1.0 / 6.0)

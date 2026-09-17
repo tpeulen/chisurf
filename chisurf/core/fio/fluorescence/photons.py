@@ -18,10 +18,10 @@ support ``tttrlib`` already has.
 """
 
 from __future__ import annotations
-from chisurf import typing
 
 import numpy as np
 
+from chisurf import typing
 
 #: Names the per-photon arrays are known by inside a selection expression.
 #: Kept from the Photon-HDF5 column names, so an expression written against the
@@ -29,10 +29,7 @@ import numpy as np
 COLUMN_NAMES = ("MT", "TAC", "ROUT", "EVENT")
 
 
-def read_burst_ids(
-        filenames: typing.List[str],
-        stack_files: bool = True
-) -> np.array:
+def read_burst_ids(filenames: typing.List[str], stack_files: bool = True) -> np.array:
     """
     Reads Seidel-BID files and returns a list of numpy
     arrays. Each numpy array contains the indexes of
@@ -77,7 +74,7 @@ def read_burst_ids(
         return b
 
 
-class Photons(object):
+class Photons:
     """A photon stream read from one or more TTTR files.
 
     Parameters
@@ -105,12 +102,7 @@ class Photons(object):
     10
     """
 
-    def __init__(
-            self,
-            p_object=None,
-            reading_routine: str = None,
-            verbose: bool = None
-    ):
+    def __init__(self, p_object=None, reading_routine: str = None, verbose: bool = None):
         """Read the given files, wrap a TTTR object, or build an empty stream."""
         import tttrlib
 
@@ -342,7 +334,7 @@ class Photons(object):
     def __str__(self):
         """Return a string summary of the photon stream."""
         s = ""
-        s += "File-type: %s\n" % self.filetype
+        s += f"File-type: {self.filetype}\n"
         s += "Filename(s):\t"
         if len(self.filenames) > 0:
             s += "\n"
@@ -351,7 +343,7 @@ class Photons(object):
         else:
             s += "None\n"
         s += "nTAC:\t%d\n" % self.n_tac
-        s += "MTCLK [s]:\t%s\n" % self.mt_clk
+        s += f"MTCLK [s]:\t{self.mt_clk}\n"
         return s
 
     def __len__(self):

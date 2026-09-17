@@ -43,9 +43,7 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 PTU = DATA / "clsm" / "Leica_SP5.ptu"
 SPC = DATA / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
-pytestmark = pytest.mark.skipif(
-    not PTU.exists(), reason="no instrument test data"
-)
+pytestmark = pytest.mark.skipif(not PTU.exists(), reason="no instrument test data")
 
 
 def _rows(n: int, **extra) -> dict:
@@ -105,9 +103,15 @@ def test_a_photon_stream_source_reconstructs(tmp_path: Path):
     shutil.copy(PTU, raw)
     with Measurement.create(raw) as m:
         container = Path(m.path)
-        m.put_table("bursts", _rows(8), artifact_kind="burst_table",
-                    operation_type="burst_selection", row_grain="burst",
-                    parameters={"L": 20}, derived_from=m.instrument_uids)
+        m.put_table(
+            "bursts",
+            _rows(8),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
     assert _walk_every_artifact(container) == []
 
 
@@ -121,9 +125,15 @@ def test_a_source_that_carries_a_sidecar_reconstructs(tmp_path: Path):
 
     with Measurement.create(raw) as m:
         container = Path(m.path)
-        m.put_table("bursts", _rows(8), artifact_kind="burst_table",
-                    operation_type="burst_selection", row_grain="burst",
-                    parameters={"L": 20}, derived_from=m.instrument_uids)
+        m.put_table(
+            "bursts",
+            _rows(8),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
     assert _walk_every_artifact(container) == []
 
 
@@ -148,9 +158,15 @@ def test_a_source_that_is_not_photons_reconstructs(tmp_path: Path):
     # measurement never sees the uid that `create` returned.
     with Measurement.open(container, writable=True) as m:
         assert m.instrument_uid, "reopening lost the primary"
-        m.put_table("states", _rows(6), artifact_kind="analysis_result",
-                    operation_type="photon_hmm", row_grain="state",
-                    parameters={"n_states": 2}, derived_from=m.instrument_uids)
+        m.put_table(
+            "states",
+            _rows(6),
+            artifact_kind="analysis_result",
+            operation_type="photon_hmm",
+            row_grain="state",
+            parameters={"n_states": 2},
+            derived_from=m.instrument_uids,
+        )
     assert _walk_every_artifact(container) == []
 
 
@@ -165,9 +181,14 @@ def test_a_container_with_no_primary_is_reported_not_guessed(tmp_path: Path):
     """
     container = tmp_path / "empty.pto"
     with Measurement.create_empty(container) as m:
-        m.put_curve("model", np.arange(8.0), np.arange(8.0),
-                    artifact_kind="decay", operation_type="fitting",
-                    parameters={"tau": 4.0})
+        m.put_curve(
+            "model",
+            np.arange(8.0),
+            np.arange(8.0),
+            artifact_kind="decay",
+            operation_type="fitting",
+            parameters={"tau": 4.0},
+        )
 
     with Measurement.open(container, writable=False) as m:
         assert m.instrument_uids == [], "expected no primary"
@@ -188,23 +209,37 @@ def measurement(tmp_path: Path) -> Path:
 
 
 def test_a_four_deep_chain_reaches_the_photons_from_the_bottom(measurement: Path):
-    """photons -> bursts -> per-burst fit -> pooled states."""
+    """Photons -> bursts -> per-burst fit -> pooled states."""
     with Measurement.open(measurement, writable=True) as m:
         bursts = m.put_table(
-            "bursts", _rows(12), artifact_kind="burst_table",
-            operation_type="burst_selection", row_grain="burst",
-            parameters={"L": 20}, derived_from=m.instrument_uids)
+            "bursts",
+            _rows(12),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
         fits = m.put_table(
-            "mle", _rows(12, **{"Tau (green)": np.linspace(1.0, 4.0, 12)}),
-            artifact_kind="burst_table", operation_type="burst_lifetime_fitting",
-            row_grain="burst", parameters={"model": "fit23"},
-            derived_from=[bursts])
+            "mle",
+            _rows(12, **{"Tau (green)": np.linspace(1.0, 4.0, 12)}),
+            artifact_kind="burst_table",
+            operation_type="burst_lifetime_fitting",
+            row_grain="burst",
+            parameters={"model": "fit23"},
+            derived_from=[bursts],
+        )
         m.put_table(
-            "states", {"Tau (green)": np.array([1.2, 3.8])},
-            artifact_kind="analysis_result", operation_type="photon_hmm",
-            row_grain="state", parameters={"n_states": 2},
-            derived_from=[fits], source_row_column="Burst",
-            target_row_column="State")
+            "states",
+            {"Tau (green)": np.array([1.2, 3.8])},
+            artifact_kind="analysis_result",
+            operation_type="photon_hmm",
+            row_grain="state",
+            parameters={"n_states": 2},
+            derived_from=[fits],
+            source_row_column="Burst",
+            target_row_column="State",
+        )
     assert _walk_every_artifact(measurement) == []
 
     with Measurement.open(measurement, writable=False) as m:
@@ -215,23 +250,47 @@ def test_a_four_deep_chain_reaches_the_photons_from_the_bottom(measurement: Path
 
 def test_a_fan_in_keeps_every_parent(measurement: Path):
     """Burst fusion. The arity was unexpressible in the format this replaces,
-    so there is no legacy behaviour to fall back on — rule 4."""
+    so there is no legacy behaviour to fall back on — rule 4.
+    """
     with Measurement.open(measurement, writable=True) as m:
-        left = m.put_table("bursts-a", _rows(10), artifact_kind="burst_table",
-                           operation_type="burst_selection", row_grain="burst",
-                           parameters={"L": 20}, derived_from=m.instrument_uids)
-        right = m.put_table("bursts-b", _rows(10), artifact_kind="burst_table",
-                            operation_type="burst_selection", row_grain="burst",
-                            parameters={"L": 60}, derived_from=m.instrument_uids)
-        fused = m.put_table("fused", _rows(7), artifact_kind="burst_table",
-                            operation_type="burst_fusion", row_grain="burst",
-                            parameters={"gap_ms": 1.0},
-                            derived_from=[left, right])
+        left = m.put_table(
+            "bursts-a",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
+        right = m.put_table(
+            "bursts-b",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 60},
+            derived_from=m.instrument_uids,
+        )
+        fused = m.put_table(
+            "fused",
+            _rows(7),
+            artifact_kind="burst_table",
+            operation_type="burst_fusion",
+            row_grain="burst",
+            parameters={"gap_ms": 1.0},
+            derived_from=[left, right],
+        )
         # ...and something derived from *that*, which is where a fan-in stops
         # being a special case and becomes an ordinary parent.
-        m.put_table("fused-bva", _rows(7), artifact_kind="burst_table",
-                    operation_type="burst_variance_analysis", row_grain="burst",
-                    parameters={"slice": 5}, derived_from=[fused])
+        m.put_table(
+            "fused-bva",
+            _rows(7),
+            artifact_kind="burst_table",
+            operation_type="burst_variance_analysis",
+            row_grain="burst",
+            parameters={"slice": 5},
+            derived_from=[fused],
+        )
 
     assert _walk_every_artifact(measurement) == []
     with Measurement.open(measurement, writable=False) as m:
@@ -241,33 +300,65 @@ def test_a_fan_in_keeps_every_parent(measurement: Path):
 
 def test_siblings_on_one_parent_each_reach_the_photons(measurement: Path):
     with Measurement.open(measurement, writable=True) as m:
-        bursts = m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                             operation_type="burst_selection", row_grain="burst",
-                             parameters={"L": 20}, derived_from=m.instrument_uids)
-        for op in ("burst_variance_analysis", "burst_2cde",
-                   "burst_correlation", "burst_lifetime_fitting"):
-            m.put_table(op, _rows(10), artifact_kind="burst_table",
-                        operation_type=op, row_grain="burst",
-                        parameters={"op": op}, derived_from=[bursts])
+        bursts = m.put_table(
+            "bursts",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
+        for op in (
+            "burst_variance_analysis",
+            "burst_2cde",
+            "burst_correlation",
+            "burst_lifetime_fitting",
+        ):
+            m.put_table(
+                op,
+                _rows(10),
+                artifact_kind="burst_table",
+                operation_type=op,
+                row_grain="burst",
+                parameters={"op": op},
+                derived_from=[bursts],
+            )
     assert _walk_every_artifact(measurement) == []
 
 
 def test_a_calibration_is_a_second_relation_type(measurement: Path):
     """`calibrated_by`, not `derived_from` — the background an MLE was run
-    against is an input, and saying so is the whole point of a typed edge."""
+    against is an input, and saying so is the whole point of a typed edge.
+    """
     with Measurement.open(measurement, writable=True) as m:
         background = m.put_table(
-            "background", {"counts": np.arange(16.0)},
-            artifact_kind="decay", operation_type="background_correction",
-            row_grain="curve_point", parameters={"window_ms": 1.0},
-            derived_from=m.instrument_uids)
-        bursts = m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                             operation_type="burst_selection", row_grain="burst",
-                             parameters={"L": 20}, derived_from=m.instrument_uids)
-        m.put_table("mle", _rows(10), artifact_kind="burst_table",
-                    operation_type="burst_lifetime_fitting", row_grain="burst",
-                    parameters={"model": "fit23"},
-                    derived_from=[bursts, background])
+            "background",
+            {"counts": np.arange(16.0)},
+            artifact_kind="decay",
+            operation_type="background_correction",
+            row_grain="curve_point",
+            parameters={"window_ms": 1.0},
+            derived_from=m.instrument_uids,
+        )
+        bursts = m.put_table(
+            "bursts",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
+        m.put_table(
+            "mle",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_lifetime_fitting",
+            row_grain="burst",
+            parameters={"model": "fit23"},
+            derived_from=[bursts, background],
+        )
 
     assert _walk_every_artifact(measurement) == []
     with Measurement.open(measurement, writable=False) as m:
@@ -282,21 +373,39 @@ def test_a_chain_extended_after_a_reopen_still_reconstructs(measurement: Path):
     third analysis on the same measurement actually do.
     """
     with Measurement.open(measurement, writable=True) as m:
-        m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                    operation_type="burst_selection", row_grain="burst",
-                    parameters={"L": 20}, derived_from=m.instrument_uids)
+        m.put_table(
+            "bursts",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
 
     with Measurement.open(measurement, writable=True) as m:
         bursts = [o for o in m.artifacts() if o.name == "bursts"][0]
-        m.put_table("bva", _rows(10), artifact_kind="burst_table",
-                    operation_type="burst_variance_analysis", row_grain="burst",
-                    parameters={"slice": 5}, derived_from=[bursts.uid])
+        m.put_table(
+            "bva",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_variance_analysis",
+            row_grain="burst",
+            parameters={"slice": 5},
+            derived_from=[bursts.uid],
+        )
 
     with Measurement.open(measurement, writable=True) as m:
         bva = [o for o in m.artifacts() if o.name == "bva"][0]
-        m.put_table("bva-filtered", _rows(4), artifact_kind="burst_table",
-                    operation_type="burst_selection", row_grain="burst",
-                    parameters={"std_max": 0.2}, derived_from=[bva.uid])
+        m.put_table(
+            "bva-filtered",
+            _rows(4),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"std_max": 0.2},
+            derived_from=[bva.uid],
+        )
 
     assert _walk_every_artifact(measurement) == []
 
@@ -304,17 +413,35 @@ def test_a_chain_extended_after_a_reopen_still_reconstructs(measurement: Path):
 def test_a_rerun_does_not_orphan_what_was_derived_from_it(measurement: Path):
     """Rule 6. Replacing an artifact in place must leave its children on it."""
     with Measurement.open(measurement, writable=True) as m:
-        bursts = m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                             operation_type="burst_selection", row_grain="burst",
-                             parameters={"L": 20}, derived_from=m.instrument_uids)
-        m.put_table("bva", _rows(10), artifact_kind="burst_table",
-                    operation_type="burst_variance_analysis", row_grain="burst",
-                    parameters={"slice": 5}, derived_from=[bursts])
+        bursts = m.put_table(
+            "bursts",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
+        m.put_table(
+            "bva",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_variance_analysis",
+            row_grain="burst",
+            parameters={"slice": 5},
+            derived_from=[bursts],
+        )
 
     with Measurement.open(measurement, writable=True) as m:
-        again = m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                            operation_type="burst_selection", row_grain="burst",
-                            parameters={"L": 20}, derived_from=m.instrument_uids)
+        again = m.put_table(
+            "bursts",
+            _rows(10),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"L": 20},
+            derived_from=m.instrument_uids,
+        )
         assert again == bursts, "same settings must replace in place"
 
     assert _walk_every_artifact(measurement) == []
@@ -325,12 +452,19 @@ def test_a_rerun_does_not_orphan_what_was_derived_from_it(measurement: Path):
 
 def test_a_re_analysis_does_not_claim_its_source_twice(measurement: Path):
     """Tags are appended, so a container analysed three times once claimed the
-    same source four times. An edge recorded twice is not truer."""
+    same source four times. An edge recorded twice is not truer.
+    """
     for _ in range(3):
         with Measurement.open(measurement, writable=True) as m:
-            m.put_table("bursts", _rows(10), artifact_kind="burst_table",
-                        operation_type="burst_selection", row_grain="burst",
-                        parameters={"L": 20}, derived_from=m.instrument_uids)
+            m.put_table(
+                "bursts",
+                _rows(10),
+                artifact_kind="burst_table",
+                operation_type="burst_selection",
+                row_grain="burst",
+                parameters={"L": 20},
+                derived_from=m.instrument_uids,
+            )
 
     with Measurement.open(measurement, writable=False) as m:
         obj = [o for o in m.artifacts() if o.name == "bursts"][0]

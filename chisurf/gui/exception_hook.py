@@ -1,6 +1,7 @@
+import logging
 import sys
 import traceback
-import logging
+
 from chisurf.gui import QtCore
 
 # basic logger functionality
@@ -11,9 +12,11 @@ log.addHandler(handler)
 
 _qt_version = getattr(QtCore, "QT_VERSION", None)
 if _qt_version is not None and _qt_version >= 0x50501:
+
     def excepthook(type_, value, traceback_):
         traceback.print_exception(type_, value, traceback_)
-        QtCore.qFatal('')
+        QtCore.qFatal("")
+
     sys.excepthook = excepthook
 
 
@@ -31,15 +34,16 @@ def show_exception_box(log_msg):
     """
     from chisurf.gui import dialogs
 
-    dialogs.error(None, "Unexpected error", "Oops. An unexpected error occured.",
-                  detail=str(log_msg))
+    dialogs.error(
+        None, "Unexpected error", "Oops. An unexpected error occured.", detail=str(log_msg)
+    )
 
 
 class UncaughtHook(QtCore.QObject):
     _exception_caught = QtCore.Signal(object)
 
     def __init__(self, *args, **kwargs):
-        super(UncaughtHook, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # this registers the exception_hook() function as hook with the Python interpreter
         sys.excepthook = self.exception_hook
@@ -56,9 +60,10 @@ class UncaughtHook(QtCore.QObject):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
         else:
             exc_info = (exc_type, exc_value, exc_traceback)
-            log_msg = '\n'.join([''.join(traceback.format_tb(exc_traceback)),
-                                 '{0}: {1}'.format(exc_type.__name__, exc_value)])
-            log.critical("Uncaught exception:\n {0}".format(log_msg), exc_info=exc_info)
+            log_msg = "\n".join(
+                ["".join(traceback.format_tb(exc_traceback)), f"{exc_type.__name__}: {exc_value}"]
+            )
+            log.critical(f"Uncaught exception:\n {log_msg}", exc_info=exc_info)
 
             # trigger message box show
             self._exception_caught.emit(log_msg)

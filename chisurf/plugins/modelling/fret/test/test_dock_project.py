@@ -60,8 +60,12 @@ def test_save_round_trip_keeps_paths_relative(tmp_path):
         p.write_text("")
     dst = tmp_path / "proj.json"
     _project.save_docking_project(
-        str(dst), pdb_paths=[str(pdb)], fps_json=str(fps), output_dir=str(out),
-        operation="dock", params={"n_frames": 7},
+        str(dst),
+        pdb_paths=[str(pdb)],
+        fps_json=str(fps),
+        output_dir=str(out),
+        operation="dock",
+        params={"n_frames": 7},
     )
     text = dst.read_text()
     # paths under the project dir are stored relative (portable)
@@ -86,12 +90,20 @@ def test_save_load_poses_round_trip(tmp_path):
         p.write_text("")
     dst = tmp_path / "proj.json"
     _project.save_docking_project(
-        str(dst), pdb_paths=[str(pdb)], fps_json=str(fps), output_dir=str(tmp_path),
-        operation="dock", method="minimize", params={"n_frames": 4},
-        poses=_POSES, pose_score=42.5, pose_method="minimize",
+        str(dst),
+        pdb_paths=[str(pdb)],
+        fps_json=str(fps),
+        output_dir=str(tmp_path),
+        operation="dock",
+        method="minimize",
+        params={"n_frames": 4},
+        poses=_POSES,
+        pose_score=42.5,
+        pose_method="minimize",
     )
     # poses are stored as one compact self-describing blob, not raw coordinates
     import json as _json
+
     payload = _json.loads(dst.read_text())
     assert "codec" in payload["poses"] and payload["poses"]["score"] == 42.5
 
@@ -128,6 +140,7 @@ def test_ensure_fps_json_accepts_csharp_txt(tmp_path):
     out = imp_engine.ensure_fps_json(lps, pdbs)
     assert out.endswith(".json") and os.path.exists(out)
     import json
+
     payload = json.load(open(out))
     assert len(payload["Positions"]) == 11
     assert len(payload["Distances"]) == 20
@@ -166,12 +179,17 @@ def test_capture_reapply_reconstructs_pose(tmp_path):
 
     dst = tmp_path / "docked.json"
     _project.save_docking_project(
-        str(dst), pdb_paths=pdbs, fps_json=fps, output_dir=str(tmp_path / "out"),
-        method="minimize", poses=poses, pose_score=res.score)
+        str(dst),
+        pdb_paths=pdbs,
+        fps_json=fps,
+        output_dir=str(tmp_path / "out"),
+        method="minimize",
+        poses=poses,
+        pose_score=res.score,
+    )
 
     proj = _project.load_docking_project(str(dst))
-    asm = imp_engine.build_assembly(proj.pdb_paths, proj.fps_json,
-                                    mean_position_restraint=False)
+    asm = imp_engine.build_assembly(proj.pdb_paths, proj.fps_json, mean_position_restraint=False)
     imp_engine.apply_poses(asm, proj.poses)
     reapplied = {p["body_id"]: p for p in imp_engine.capture_poses(asm)}
     for saved in poses:
@@ -192,8 +210,14 @@ def test_continue_from_poses_does_not_restart(tmp_path):
 
     dst = tmp_path / "docked.json"
     _project.save_docking_project(
-        str(dst), pdb_paths=pdbs, fps_json=fps, output_dir=str(tmp_path / "b"),
-        method="minimize", poses=first.poses, pose_score=first.score)
+        str(dst),
+        pdb_paths=pdbs,
+        fps_json=fps,
+        output_dir=str(tmp_path / "b"),
+        method="minimize",
+        poses=first.poses,
+        pose_score=first.score,
+    )
 
     res = ops.dock_project(str(dst), {"output_dir": str(tmp_path / "b"), "n_frames": 20})
     assert res["status"] == "ok"

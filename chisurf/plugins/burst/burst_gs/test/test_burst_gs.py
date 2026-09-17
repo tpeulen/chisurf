@@ -47,7 +47,10 @@ def test_the_h2mm_cross_check_agrees():
     """
     bursts = core.simulate_two_state(3000.0, 1000.0, (0.25, 0.75), 50e3, 250, 200, seed=5)
     analysis = core.analyse(
-        bursts, n_states=2, initial_rates=[1e3, 1e3], initial_efficiencies=[0.3, 0.7],
+        bursts,
+        n_states=2,
+        initial_rates=[1e3, 1e3],
+        initial_efficiencies=[0.3, 0.7],
         cross_check_h2mm=True,
     )
     comparison = analysis.h2mm
@@ -60,9 +63,7 @@ def test_the_h2mm_cross_check_agrees():
 def test_the_transition_scan_is_skipped_for_more_than_two_states():
     """The transition-state construction is defined for a single barrier."""
     bursts = core.simulate_two_state(3000.0, 1000.0, (0.25, 0.75), 50e3, 20, 100, seed=6)
-    analysis = core.analyse(
-        bursts, n_states=3, max_iterations=40, scan_transition_time=True
-    )
+    analysis = core.analyse(bursts, n_states=3, max_iterations=40, scan_transition_time=True)
     assert analysis.transit_times.size == 0
     assert "transition_scan_skipped" in analysis.info
 
@@ -96,7 +97,7 @@ def test_a_fine_tick_is_coarsened_to_fit_the_memory_budget():
     assert "coarsened" in note
 
     slots = np.unique(np.round(gaps / tick)).size
-    committed = slots * 8 * (5 ** 2 + 5 ** 4)
+    committed = slots * 8 * (5**2 + 5**4)
     assert committed <= core.H2MM_MEMORY_BUDGET
 
 
@@ -145,9 +146,7 @@ def test_an_unknown_macro_time_resolution_is_refused(tmp_path, monkeypatch):
     """A missing tick must stop the run, not silently produce rescaled rates."""
     import pandas as pd
 
-    frame = pd.DataFrame(
-        {"First File": ["a"], "First Photon": [0], "Last Photon": [10]}
-    )
+    frame = pd.DataFrame({"First File": ["a"], "First Photon": [0], "Last Photon": [10]})
 
     class _Header:
         macro_time_resolution = 0.0
@@ -168,9 +167,7 @@ def test_loading_converts_ticks_to_seconds(tmp_path, monkeypatch):
     """Macro-time ticks become real seconds, which is what the rates are in."""
     import pandas as pd
 
-    frame = pd.DataFrame(
-        {"First File": ["a"], "First Photon": [0], "Last Photon": [20]}
-    )
+    frame = pd.DataFrame({"First File": ["a"], "First Photon": [0], "Last Photon": [20]})
     channels = np.tile([0, 1], 10)
 
     class _Tttr:
@@ -236,8 +233,13 @@ def test_the_rpc_fit_accepts_a_simulation_request():
     """``burst_gs.jobs.fit`` can generate its own photons."""
     reply = services.fit(
         {
-            "simulate": {"k_forward": 3000.0, "k_backward": 1000.0, "n_bursts": 20,
-                         "photons_per_burst": 80, "seed": 3},
+            "simulate": {
+                "k_forward": 3000.0,
+                "k_backward": 1000.0,
+                "n_bursts": 20,
+                "photons_per_burst": 80,
+                "seed": 3,
+            },
             "n_states": 2,
             "max_iterations": 60,
         }
@@ -294,9 +296,7 @@ def test_a_malformed_rpc_request_reports_an_error():
 
 def test_every_declared_rpc_method_is_registered():
     """The manifest and the dispatcher registration must not drift apart."""
-    manifest = json.loads(
-        (pathlib.Path(__file__).parent.parent / "manifest.json").read_text()
-    )
+    manifest = json.loads((pathlib.Path(__file__).parent.parent / "manifest.json").read_text())
     registered: list[str] = []
     services.register_services(
         type("D", (), {"register": lambda self, name, fn: registered.append(name)})()
@@ -316,8 +316,17 @@ def test_the_cli_can_simulate_and_report(tmp_path):
     out = tmp_path / "result.json"
     result = CliRunner().invoke(
         cli,
-        ["--simulate", "--sim-bursts", "25", "--sim-photons", "80",
-         "--max-iterations", "150", "--output", str(out)],
+        [
+            "--simulate",
+            "--sim-bursts",
+            "25",
+            "--sim-photons",
+            "80",
+            "--max-iterations",
+            "150",
+            "--output",
+            str(out),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert "Rates" in result.output

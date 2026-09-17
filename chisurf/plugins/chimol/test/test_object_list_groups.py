@@ -12,9 +12,8 @@ implementations, one of them behind -- and it showed the moment something
 seventeen mean positions into two, because they are wanted or not wanted as a
 set.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from chimol.hosts.base import sync_panel
 from chimol.ui.gui import InternalGui
@@ -40,13 +39,13 @@ def _rows(entries):
 
 
 def test_a_group_is_a_row_of_its_own():
-    rows = _rows([
-        {"id": "o1", "name": "structure", "visible": True},
-        {"id": "o2", "name": "av_a", "visible": True, "group": "clouds",
-         "group_open": True},
-        {"id": "o3", "name": "av_b", "visible": True, "group": "clouds",
-         "group_open": True},
-    ])
+    rows = _rows(
+        [
+            {"id": "o1", "name": "structure", "visible": True},
+            {"id": "o2", "name": "av_a", "visible": True, "group": "clouds", "group_open": True},
+            {"id": "o3", "name": "av_b", "visible": True, "group": "clouds", "group_open": True},
+        ]
+    )
     names = [row.name for row in rows]
     assert "clouds" in names
     group = next(row for row in rows if row.name == "clouds")
@@ -54,12 +53,12 @@ def test_a_group_is_a_row_of_its_own():
 
 
 def test_members_of_an_open_group_are_indented_under_it():
-    rows = _rows([
-        {"id": "o2", "name": "av_a", "visible": True, "group": "clouds",
-         "group_open": True},
-        {"id": "o3", "name": "av_b", "visible": True, "group": "clouds",
-         "group_open": True},
-    ])
+    rows = _rows(
+        [
+            {"id": "o2", "name": "av_a", "visible": True, "group": "clouds", "group_open": True},
+            {"id": "o3", "name": "av_b", "visible": True, "group": "clouds", "group_open": True},
+        ]
+    )
     members = [row for row in rows if row.name.startswith("av_")]
     assert len(members) == 2
     assert all(row.indent == 1 for row in members)
@@ -67,14 +66,21 @@ def test_members_of_an_open_group_are_indented_under_it():
 
 def test_a_closed_group_stands_for_its_members():
     """Which is the whole point: seventeen clouds are one row and one switch."""
-    rows = _rows([
-        {"id": "o1", "name": "structure", "visible": True},
-        *[
-            {"id": f"o{i}", "name": f"av_{i}", "visible": True,
-             "group": "clouds", "group_open": False}
-            for i in range(17)
-        ],
-    ])
+    rows = _rows(
+        [
+            {"id": "o1", "name": "structure", "visible": True},
+            *[
+                {
+                    "id": f"o{i}",
+                    "name": f"av_{i}",
+                    "visible": True,
+                    "group": "clouds",
+                    "group_open": False,
+                }
+                for i in range(17)
+            ],
+        ]
+    )
     names = [row.name for row in rows]
     assert "clouds" in names
     assert not [name for name in names if name.startswith("av_")]
@@ -131,10 +137,12 @@ def test_the_grouping_order_is_shared_too():
     """A group's members are contiguous -- a fact about lists, not toolkits."""
     from chimol.hosts.base import grouped_display_order
 
-    ordered = grouped_display_order([
-        {"name": "a"},
-        {"name": "b", "group": "G"},
-        {"name": "c"},
-        {"name": "d", "group": "G"},
-    ])
+    ordered = grouped_display_order(
+        [
+            {"name": "a"},
+            {"name": "b", "group": "G"},
+            {"name": "c"},
+            {"name": "d", "group": "G"},
+        ]
+    )
     assert [row["name"] for row in ordered] == ["a", "b", "d", "c"]

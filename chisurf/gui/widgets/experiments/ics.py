@@ -13,7 +13,6 @@ from chisurf.core.fio.staging import supported_container_types
 from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
-
 _HINT_TEXT = "Image correlation: drop TTTR (PTU/HT3) or a TIFF stack here."
 
 
@@ -44,6 +43,7 @@ class _IcsDetectorWidget(QtWidgets.QWidget):
         self.combo_routine = QtWidgets.QComboBox()
         try:
             import tttrlib
+
             supported = list(tttrlib.TTTR.get_supported_container_names())
             if not supported:
                 supported = list(supported_container_types())
@@ -172,7 +172,7 @@ class _IcsDetectorWidget(QtWidgets.QWidget):
 
     def sync_from_reader(self, setup) -> None:
         """Sync combo state from a reader/setup object (used by updateUI)."""
-        rr = getattr(setup, 'reading_routine', None)
+        rr = getattr(setup, "reading_routine", None)
         if isinstance(rr, str) and rr:
             idx = self.combo_routine.findText(rr)
             if idx >= 0:
@@ -180,9 +180,9 @@ class _IcsDetectorWidget(QtWidgets.QWidget):
                 self.combo_routine.setCurrentIndex(idx)
                 self.combo_routine.blockSignals(False)
 
-        chs = getattr(setup, 'channel_numbers', None)
+        chs = getattr(setup, "channel_numbers", None)
         if chs is None:
-            chs = [getattr(setup, 'channel', 0)]
+            chs = [getattr(setup, "channel", 0)]
         try:
             seq = list(chs)
         except TypeError:
@@ -241,14 +241,18 @@ class _IcsRoiWidget(QtWidgets.QWidget):
 
     def get_ranges(self) -> tuple[int, int, int, int]:
         return (
-            self.spin_x0.value(), self.spin_x1.value(),
-            self.spin_y0.value(), self.spin_y1.value(),
+            self.spin_x0.value(),
+            self.spin_x1.value(),
+            self.spin_y0.value(),
+            self.spin_y1.value(),
         )
 
     def set_ranges(self, x0: int, x1: int, y0: int, y1: int) -> None:
         for sb, v in (
-            (self.spin_x0, x0), (self.spin_x1, x1),
-            (self.spin_y0, y0), (self.spin_y1, y1),
+            (self.spin_x0, x0),
+            (self.spin_x1, x1),
+            (self.spin_y0, y0),
+            (self.spin_y1, y1),
         ):
             sb.blockSignals(True)
             try:
@@ -285,12 +289,12 @@ class _IcsRoiWidget(QtWidgets.QWidget):
 
 def _register_ics_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("ics_detector")(_IcsDetectorWidget)
     register_section("ics_roi")(_IcsRoiWidget)
 
 
 class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
-
     def get_filename(self) -> pathlib.Path:
         try:
             self.onParametersChanged()
@@ -301,8 +305,8 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return pathlib.Path(self._preview_filename)
 
         fn = cs.gui.widgets.open_files(
-            description='Image stack: TTTR or TIFF',
-            file_type='All files (*.*)',
+            description="Image stack: TTTR or TIFF",
+            file_type="All files (*.*)",
             working_path=None,
         )
         if isinstance(fn, (list, tuple)):
@@ -346,6 +350,7 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             layout.addWidget(self._settings_form)
 
@@ -451,17 +456,25 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         if self._roi_widget is not None:
             try:
-                x_range = getattr(setup, 'x_range', None)
-                y_range = getattr(setup, 'y_range', None)
+                x_range = getattr(setup, "x_range", None)
+                y_range = getattr(setup, "y_range", None)
                 if isinstance(x_range, (list, tuple)) and len(x_range) >= 2:
-                    y0 = int(y_range[0]) if isinstance(y_range, (list, tuple)) and len(y_range) >= 2 else 0
-                    y1 = int(y_range[1]) if isinstance(y_range, (list, tuple)) and len(y_range) >= 2 else -1
+                    y0 = (
+                        int(y_range[0])
+                        if isinstance(y_range, (list, tuple)) and len(y_range) >= 2
+                        else 0
+                    )
+                    y1 = (
+                        int(y_range[1])
+                        if isinstance(y_range, (list, tuple)) and len(y_range) >= 2
+                        else -1
+                    )
                     self._roi_widget.set_ranges(int(x_range[0]), int(x_range[1]), y0, y1)
             except Exception:
                 pass
 
         try:
-            mtr = getattr(setup, 'micro_time_ranges', None)
+            mtr = getattr(setup, "micro_time_ranges", None)
             if isinstance(mtr, (list, tuple)):
                 self._micro_time_ranges = mtr
                 if self._detector_widget is not None:
@@ -489,9 +502,9 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             self._micro_time_ranges = self._detector_widget._micro_time_ranges
         else:
             channels = [0]
-            routine = getattr(setup, 'reading_routine', 'PTU') or 'PTU'
-            setup_name = ''
-            detector_name = ''
+            routine = getattr(setup, "reading_routine", "PTU") or "PTU"
+            setup_name = ""
+            detector_name = ""
 
         channel_numbers_expr = ", ".join(str(int(c)) for c in channels)
         first_channel = int(channels[0])
@@ -504,11 +517,11 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         y1 = int(self.spin_y1.value())
 
         # AutoForm keeps these reader attrs live; read back for cs.run()
-        subtract_token = getattr(setup, 'subtract_average', '') or ''
-        max_frame_lag = int(getattr(setup, 'max_frame_lag', 0) or 0)
-        fftshift_flag = bool(getattr(setup, 'fftshift', True))
-        pixel_dur_val = float(getattr(setup, 'pixel_duration', None) or 0.0)
-        line_dur_val = float(getattr(setup, 'line_duration', None) or 0.0)
+        subtract_token = getattr(setup, "subtract_average", "") or ""
+        max_frame_lag = int(getattr(setup, "max_frame_lag", 0) or 0)
+        fftshift_flag = bool(getattr(setup, "fftshift", True))
+        pixel_dur_val = float(getattr(setup, "pixel_duration", None) or 0.0)
+        line_dur_val = float(getattr(setup, "line_duration", None) or 0.0)
 
         fftshift_str = "True" if fftshift_flag else "False"
         pixel_dur_expr = repr(pixel_dur_val) if pixel_dur_val > 0.0 else "None"
@@ -527,23 +540,25 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             cs.run(
-                "\n".join([
-                    f"cs.current_setup.reading_routine = '{routine}'",
-                    f"cs.current_setup.channel_numbers = np.array([{channel_numbers_expr}], dtype=np.int8)",
-                    f"cs.current_setup.channel = {first_channel}",
-                    f"cs.current_setup.detector_setup = '{setup_name_esc}'",
-                    f"cs.current_setup.detector_name = '{detector_name_esc}'",
-                    f"cs.current_setup.x_range = ({x0}, {x1})",
-                    f"cs.current_setup.y_range = ({y0}, {y1})",
-                    f"cs.current_setup.micro_time_ranges = {micro_time_ranges_expr}",
-                    f"cs.current_setup.subtract_average = '{subtract_token}'",
-                    f"cs.current_setup.max_frame_lag = {max_frame_lag}",
-                    f"cs.current_setup.fftshift = {fftshift_str}",
-                    f"cs.current_setup.pixel_duration = {pixel_dur_expr}",
-                    f"cs.current_setup.line_duration = {line_dur_expr}",
-                    "cs.current_setup._cache_images = None",
-                    "cs.current_setup._cache_filename = None",
-                ])
+                "\n".join(
+                    [
+                        f"cs.current_setup.reading_routine = '{routine}'",
+                        f"cs.current_setup.channel_numbers = np.array([{channel_numbers_expr}], dtype=np.int8)",
+                        f"cs.current_setup.channel = {first_channel}",
+                        f"cs.current_setup.detector_setup = '{setup_name_esc}'",
+                        f"cs.current_setup.detector_name = '{detector_name_esc}'",
+                        f"cs.current_setup.x_range = ({x0}, {x1})",
+                        f"cs.current_setup.y_range = ({y0}, {y1})",
+                        f"cs.current_setup.micro_time_ranges = {micro_time_ranges_expr}",
+                        f"cs.current_setup.subtract_average = '{subtract_token}'",
+                        f"cs.current_setup.max_frame_lag = {max_frame_lag}",
+                        f"cs.current_setup.fftshift = {fftshift_str}",
+                        f"cs.current_setup.pixel_duration = {pixel_dur_expr}",
+                        f"cs.current_setup.line_duration = {line_dur_expr}",
+                        "cs.current_setup._cache_images = None",
+                        "cs.current_setup._cache_filename = None",
+                    ]
+                )
             )
         except Exception:
             pass
@@ -610,8 +625,12 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             pass
 
-        for attr in ("_preview_intensity_stack", "_preview_intensity_mean",
-                     "_preview_corr_map", "_preview_corr_carpet"):
+        for attr in (
+            "_preview_intensity_stack",
+            "_preview_intensity_mean",
+            "_preview_corr_map",
+            "_preview_corr_carpet",
+        ):
             if hasattr(self, attr):
                 try:
                     setattr(self, attr, None)
@@ -726,13 +745,12 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         ics_meta : dict
             The ``ics`` sub-dictionary of the read dataset's metadata.
         """
-        pd = ics_meta.get('pixel_duration_us', None)
-        ld = ics_meta.get('line_duration_ms', None)
+        pd = ics_meta.get("pixel_duration_us", None)
+        ld = ics_meta.get("line_duration_ms", None)
         if not isinstance(pd, (int, float)) or not isinstance(ld, (int, float)):
             return
         self._hint_label.setText(
-            f"{_HINT_TEXT}  Timing in use: {float(pd):.4g} µs/pixel, "
-            f"{float(ld):.4g} ms/line."
+            f"{_HINT_TEXT}  Timing in use: {float(pd):.4g} µs/pixel, {float(ld):.4g} ms/line."
         )
 
     def _load_preview_from_file(self, path: pathlib.Path) -> None:
@@ -755,6 +773,7 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
         try:
             from chisurf.core.data import ExperimentDataCurveGroup
+
             if isinstance(group, ExperimentDataCurveGroup) and len(group) > 0:
                 data_obj = group[0]
             else:
@@ -762,13 +781,13 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         except Exception:
             data_obj = group
 
-        meta = getattr(data_obj, 'meta_data', {}) or {}
-        ics_meta = meta.get('ics', {}) or {}
+        meta = getattr(data_obj, "meta_data", {}) or {}
+        ics_meta = meta.get("ics", {}) or {}
 
-        self._preview_intensity_stack = ics_meta.get('intensity_stack', None)
-        self._preview_intensity_mean = ics_meta.get('intensity_mean', None)
-        self._preview_corr_map = ics_meta.get('ics_mean', None)
-        self._preview_corr_carpet = ics_meta.get('correlation', None)
+        self._preview_intensity_stack = ics_meta.get("intensity_stack", None)
+        self._preview_intensity_mean = ics_meta.get("intensity_mean", None)
+        self._preview_corr_map = ics_meta.get("ics_mean", None)
+        self._preview_corr_carpet = ics_meta.get("correlation", None)
 
         # The timing fields are the user's own setting, where 0 means
         # "auto-detect from the header": writing the detected value back would
@@ -803,8 +822,8 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             show_intensity = True
         arr = None
         if show_intensity:
-            stack = getattr(self, '_preview_intensity_stack', None)
-            mean_img = getattr(self, '_preview_intensity_mean', None)
+            stack = getattr(self, "_preview_intensity_stack", None)
+            mean_img = getattr(self, "_preview_intensity_mean", None)
             if stack is not None:
                 try:
                     s = np.asarray(stack, dtype=float)
@@ -823,7 +842,7 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             # The correlation is a carpet over frame lags. Show the whole
             # carpet when it has more than one lag so the preview can page
             # through Delta; otherwise show the single zero-lag (RICS) map.
-            carpet = getattr(self, '_preview_corr_carpet', None)
+            carpet = getattr(self, "_preview_corr_carpet", None)
             if carpet is not None:
                 try:
                     c = np.asarray(carpet, dtype=float)
@@ -834,7 +853,7 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
                 except Exception:
                     arr = None
             if arr is None:
-                corr_map = getattr(self, '_preview_corr_map', None)
+                corr_map = getattr(self, "_preview_corr_map", None)
                 if corr_map is not None:
                     try:
                         m = np.asarray(corr_map, dtype=float)
@@ -912,8 +931,11 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             return self._preview_roi
         try:
             roi = self.preview_view.add_roi(
-                kind="rect", pos=(0, 0), size=(10, 10),
-                pen=cp.to_pen("y", width=1), rotatable=False,
+                kind="rect",
+                pos=(0, 0),
+                size=(10, 10),
+                pen=cp.to_pen("y", width=1),
+                rotatable=False,
             )
             roi.z = 10
         except Exception:

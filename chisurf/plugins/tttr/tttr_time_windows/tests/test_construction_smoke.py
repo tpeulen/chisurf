@@ -18,7 +18,6 @@ except ImportError:
 from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
-
 _needs_qt = pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
 _needs_offscreen = pytest.mark.skipif(
     os.environ.get("QT_QPA_PLATFORM", "") != "offscreen",
@@ -31,7 +30,7 @@ _needs_offscreen = pytest.mark.skipif(
 def test_tool_constructs_and_reuses_base() -> None:
     from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = TTTRTimeWindowTool()
     try:
         assert isinstance(tool, ChisurfDockTool)
@@ -49,7 +48,7 @@ def test_unified_list_updates_paths_and_preview_combo(tmp_path) -> None:
 
     from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = TTTRTimeWindowTool()
     tool._load_preview = MagicMock()  # skip real TTTR decode of dummy files
     try:

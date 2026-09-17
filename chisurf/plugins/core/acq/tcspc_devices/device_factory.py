@@ -25,22 +25,26 @@ class TCSPCDevice(QObject):
         # Import the appropriate device wrapper
         if self.device_type == "BH_SPC":
             from .bh_spc import BHSPCDevice
+
             self.device = BHSPCDevice()
         elif self.device_type == "PICOQUANT":
             try:
                 from .picoquant import PicoQuantDevice as PQDevice
+
                 self.device = PQDevice()
             except ImportError:
                 raise RuntimeError("PicoQuant wrapper not available")
         elif self.device_type == "SIMULATION":
             try:
                 from .simulation import SimulationDevice
+
                 self.device = SimulationDevice()
             except ImportError:
                 raise RuntimeError("Simulation wrapper not available")
         elif self.device_type == "BRICKMIC":
             try:
                 from .brickmic import BrickMicDevice
+
                 self.device = BrickMicDevice()
             except ImportError:
                 raise RuntimeError("BrickMic wrapper not available")

@@ -130,9 +130,7 @@ class TetrisGame(chigame.Game):
     def restart(self) -> None:
         """Clear the well and start a fresh run."""
         # ``None`` is an empty cell; anything else is a settled shape index.
-        self.well: list[list[int | None]] = [
-            [None for _ in range(BOARD_W)] for _ in range(BOARD_H)
-        ]
+        self.well: list[list[int | None]] = [[None for _ in range(BOARD_W)] for _ in range(BOARD_H)]
         self.score = 0
         self.lines = 0
         self.level = 1
@@ -350,7 +348,8 @@ class TetrisGame(chigame.Game):
 
         # The well itself: a dark channel with a thin housing.
         scene.draw(
-            "ui", "well",
+            "ui",
+            "well",
             at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5),
             size=(width + 6.0, height + 6.0),
             color=(0.13, 0.145, 0.17, 1.0),
@@ -367,39 +366,61 @@ class TetrisGame(chigame.Game):
                 self._draw_cell(scene, self.x + dx, self.y + dy, self.shape, live=True)
 
         panel_x = self.ORIGIN_X + width + 70.0
-        scene.text("COUNTS", at=(panel_x, 60.0), height=13.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "COUNTS", at=(panel_x, 60.0), height=13.0, align="center", color=(0.44, 0.48, 0.55, 1.0)
+        )
         scene.text(f"{self.score}", at=(panel_x, 84.0), height=24.0, align="center")
-        scene.text("LINES", at=(panel_x, 124.0), height=13.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "LINES", at=(panel_x, 124.0), height=13.0, align="center", color=(0.44, 0.48, 0.55, 1.0)
+        )
         scene.text(f"{self.lines}", at=(panel_x, 146.0), height=20.0, align="center")
-        scene.text("GAIN", at=(panel_x, 184.0), height=13.0, align="center",
-                   color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            "GAIN", at=(panel_x, 184.0), height=13.0, align="center", color=(0.44, 0.48, 0.55, 1.0)
+        )
         scene.text(f"{self.level}", at=(panel_x, 206.0), height=20.0, align="center")
 
         if self.paused:
-            scene.text("HELD", at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5),
-                       height=36.0, align="center", color=(0.35, 0.85, 0.80, 1.0))
+            scene.text(
+                "HELD",
+                at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5),
+                height=36.0,
+                align="center",
+                color=(0.35, 0.85, 0.80, 1.0),
+            )
         if self.over:
-            scene.draw("ui", "panel",
-                       at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5),
-                       size=(width + 4.0, 96.0))
-            scene.text("Channel full", at=(self.ORIGIN_X + width * 0.5,
-                                           self.ORIGIN_Y + height * 0.5 - 12.0),
-                       height=24.0, align="center", color=(0.90, 0.32, 0.30, 1.0))
-            scene.text("Confirm to reset", at=(self.ORIGIN_X + width * 0.5,
-                                               self.ORIGIN_Y + height * 0.5 + 18.0),
-                       height=14.0, align="center")
+            scene.draw(
+                "ui",
+                "panel",
+                at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5),
+                size=(width + 4.0, 96.0),
+            )
+            scene.text(
+                "Channel full",
+                at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5 - 12.0),
+                height=24.0,
+                align="center",
+                color=(0.90, 0.32, 0.30, 1.0),
+            )
+            scene.text(
+                "Confirm to reset",
+                at=(self.ORIGIN_X + width * 0.5, self.ORIGIN_Y + height * 0.5 + 18.0),
+                height=14.0,
+                align="center",
+            )
 
         scene.text(
             "Move  Confirm rotate  Down soft  R drop",
             at=(self.ORIGIN_X + width * 0.5 + 30.0, self.ORIGIN_Y + height + 14.0),
-            height=11.0, align="center", color=(0.44, 0.48, 0.55, 1.0),
+            height=11.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
         )
         scene.text(
             "Menu hold  Cancel reset",
             at=(self.ORIGIN_X + width * 0.5 + 30.0, self.ORIGIN_Y + height + 30.0),
-            height=11.0, align="center", color=(0.44, 0.48, 0.55, 1.0),
+            height=11.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
         )
 
     def _draw_cell(self, scene, col: int, row: int, shape: int, live: bool = False) -> None:
@@ -421,10 +442,12 @@ class TetrisGame(chigame.Game):
         at = self._cell_center(col, row)
         nm = SHAPE_NM[shape]
         if live:
-            scene.draw("photon", "halo", at=at, size=(self.CELL * 0.5, self.CELL * 0.5),
-                       emission_nm=nm)
-        scene.draw("band", f"{nm:.0f}", at=at,
-                   size=(self.CELL - 3.0, self.CELL - 3.0), emission_nm=nm)
+            scene.draw(
+                "photon", "halo", at=at, size=(self.CELL * 0.5, self.CELL * 0.5), emission_nm=nm
+            )
+        scene.draw(
+            "band", f"{nm:.0f}", at=at, size=(self.CELL - 3.0, self.CELL - 3.0), emission_nm=nm
+        )
 
 
 @persist_plugin_state("tetris")

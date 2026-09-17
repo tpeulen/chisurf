@@ -8,11 +8,10 @@ is a :class:`ConsoleRole`, not a class hierarchy.
 
 from __future__ import annotations
 
-import os
-
 import contextlib
 import dataclasses
 import enum
+import os
 import pathlib
 import typing
 
@@ -126,15 +125,17 @@ class Chinsole(QtWidgets.QWidget):
     _logRequested = QtCore.Signal(str)
 
     def __init__(
-            self,
-            config: ConsoleConfig | None = None,
-            parent: QtWidgets.QWidget | None = None,
-            **legacy,
+        self,
+        config: ConsoleConfig | None = None,
+        parent: QtWidgets.QWidget | None = None,
+        **legacy,
     ) -> None:
         super().__init__(parent)
         self.config = config or ConsoleConfig()
         self._settings = console_settings.console_settings()
-        self.theme = resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
+        self.theme = (
+            resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
+        )
 
         self.setObjectName("chinsole")
         self.view = ConsoleView(self, self.theme)
@@ -208,9 +209,7 @@ class Chinsole(QtWidgets.QWidget):
             clear=self.view.clear_screen,
             edit_file=self._edit_file,
             history=HistoryManager(
-                self.config.history_path
-                if self.config.history_path is not None
-                else None,
+                self.config.history_path if self.config.history_path is not None else None,
                 max_entries=int(self._settings["history_length"]),
             ),
         )
@@ -258,7 +257,10 @@ class Chinsole(QtWidgets.QWidget):
         bar.addStretch()
         try:
             attach_help_and_guide(
-                self, bar, title="ChiSurf console", owner=self,
+                self,
+                bar,
+                title="ChiSurf console",
+                owner=self,
             )
         except Exception:
             self._help_bar.deleteLater()
@@ -358,11 +360,11 @@ class Chinsole(QtWidgets.QWidget):
         )
 
     def _on_display(
-            self,
-            data: dict,
-            metadata: dict,
-            kind: str,
-            execution_count: int | None,
+        self,
+        data: dict,
+        metadata: dict,
+        kind: str,
+        execution_count: int | None,
     ) -> None:
         """Render a MIME bundle in the richest form the view supports.
 
@@ -558,14 +560,12 @@ class Chinsole(QtWidgets.QWidget):
         if self._settings["completion"] == "none":
             return
         line, cursor = self._current_line_and_cursor()
-        result = self._dispatcher_completions(line, cursor) or self.shell.complete(
-            line, cursor
-        )
+        result = self._dispatcher_completions(line, cursor) or self.shell.complete(line, cursor)
         if not result:
             return
 
         if result.common_prefix:
-            typed = line[result.start:cursor]
+            typed = line[result.start : cursor]
             if len(result.common_prefix) > len(typed):
                 self._replace_span(result.start, cursor, result.common_prefix)
                 if len(result.matches) == 1:
@@ -692,9 +692,7 @@ class Chinsole(QtWidgets.QWidget):
         if tip is None:
             self.calltip.hide()
             return
-        self.calltip.show_tip(
-            tip, self._cursor_global_position(), self.view.font(), self.theme
-        )
+        self.calltip.show_tip(tip, self._cursor_global_position(), self.view.font(), self.theme)
 
     def walk_history(self, direction: int) -> None:
         """Move through the input history.
@@ -714,8 +712,7 @@ class Chinsole(QtWidgets.QWidget):
             self._history_index = len(entries)
 
         matches = [
-            index for index, entry in enumerate(entries)
-            if entry.startswith(self._history_prefix)
+            index for index, entry in enumerate(entries) if entry.startswith(self._history_prefix)
         ]
         if not matches:
             matches = list(range(len(entries)))
@@ -881,9 +878,7 @@ class Chinsole(QtWidgets.QWidget):
         ----------
         text : str
         """
-        self.append_output(
-            text if text.endswith("\n") else text + "\n", kind="stderr"
-        )
+        self.append_output(text if text.endswith("\n") else text + "\n", kind="stderr")
 
     def printText(self, text: str) -> None:  # noqa: N802 - legacy spelling
         """Write *text* to the console.
@@ -910,9 +905,7 @@ class Chinsole(QtWidgets.QWidget):
         font : QtGui.QFont
         """
         self.view.setFont(font)
-        self.view.setTabStopDistance(
-            4 * QtGui.QFontMetricsF(font).horizontalAdvance(" ")
-        )
+        self.view.setTabStopDistance(4 * QtGui.QFontMetricsF(font).horizontalAdvance(" "))
         if self.input_line is not None:
             self.input_line.setFont(font)
         pager = getattr(self, "pager", None)
@@ -1015,9 +1008,7 @@ class Chinsole(QtWidgets.QWidget):
         if path is None:
             import chisurf.gui.widgets
 
-            path = chisurf.gui.widgets.get_filename(
-                "Python macros", file_type="Python file (*.py)"
-            )
+            path = chisurf.gui.widgets.get_filename("Python macros", file_type="Python file (*.py)")
         if not path:
             return
         self.execute(f"%run -i {str(pathlib.Path(path).as_posix())!r}")

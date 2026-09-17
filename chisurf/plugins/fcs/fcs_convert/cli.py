@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import click
 
@@ -74,7 +74,6 @@ def convert_fcs(
     str
         The path to the written file (stringified).
     """
-
     reader = _normalize(input_type)
     writer = _normalize(output_type)
 
@@ -167,7 +166,6 @@ def cli(
     verbose: bool,
 ) -> None:
     """Convert FCS files between supported formats."""
-
     click.echo("Converting FCS data...")
     click.echo(f"  Input : {input_filename} ({input_type})")
     click.echo(f"  Output: {output_filename} ({output_type})")

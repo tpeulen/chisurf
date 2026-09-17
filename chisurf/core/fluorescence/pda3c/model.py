@@ -125,15 +125,15 @@ class BurstCounts:
 
 
 def _species_log_likelihood(
-        counts: BurstCounts,
-        species: ThreeColorSpecies,
-        setup: ThreeColorSetup,
-        background_blue,
-        background_green,
-        photon_number_pmf_blue,
-        photon_number_pmf_green,
-        n_nodes: int,
-        truncate: float,
+    counts: BurstCounts,
+    species: ThreeColorSpecies,
+    setup: ThreeColorSetup,
+    background_blue,
+    background_green,
+    photon_number_pmf_blue,
+    photon_number_pmf_green,
+    n_nodes: int,
+    truncate: float,
 ) -> np.ndarray:
     """Per-burst log likelihood under one species, averaged over its distances."""
     points, weights = species.quadrature(n_nodes=n_nodes, truncate=truncate)
@@ -142,9 +142,7 @@ def _species_log_likelihood(
     p_blue = blue_channel_probabilities(r_bg, r_br, r_gr, setup)
     p_green = green_channel_probabilities(r_gr, setup)
 
-    ll_blue = burst_log_likelihood(
-        counts.blue, p_blue, background_blue, photon_number_pmf_blue
-    )
+    ll_blue = burst_log_likelihood(counts.blue, p_blue, background_blue, photon_number_pmf_blue)
     ll_green = burst_log_likelihood(
         counts.green, p_green, background_green, photon_number_pmf_green
     )
@@ -156,15 +154,15 @@ def _species_log_likelihood(
 
 
 def total_log_likelihood(
-        counts: BurstCounts,
-        species,
-        setup: ThreeColorSetup,
-        background_blue=None,
-        background_green=None,
-        photon_number_pmf_blue=None,
-        photon_number_pmf_green=None,
-        n_nodes: int = 7,
-        truncate: float = 1e-6,
+    counts: BurstCounts,
+    species,
+    setup: ThreeColorSetup,
+    background_blue=None,
+    background_green=None,
+    photon_number_pmf_blue=None,
+    photon_number_pmf_green=None,
+    n_nodes: int = 7,
+    truncate: float = 1e-6,
 ) -> float:
     """Total log likelihood of a burst table under a three-colour PDA model.
 
@@ -226,14 +224,14 @@ def total_log_likelihood(
 
 
 def simulate_bursts(
-        n_bursts: int,
-        species,
-        setup: ThreeColorSetup,
-        photons_blue: float = 30.0,
-        photons_green: float = 25.0,
-        background_blue=None,
-        background_green=None,
-        seed: int = 0,
+    n_bursts: int,
+    species,
+    setup: ThreeColorSetup,
+    photons_blue: float = 30.0,
+    photons_green: float = 25.0,
+    background_blue=None,
+    background_green=None,
+    seed: int = 0,
 ) -> BurstCounts:
     """Draw a synthetic three-colour burst table from a model.
 
@@ -281,9 +279,7 @@ def simulate_bursts(
         )
     distances = np.clip(distances, 1e-6, None)
 
-    p_blue = blue_channel_probabilities(
-        distances[:, 1], distances[:, 2], distances[:, 0], setup
-    )
+    p_blue = blue_channel_probabilities(distances[:, 1], distances[:, 2], distances[:, 0], setup)
     p_green = green_channel_probabilities(distances[:, 0], setup)
 
     n_blue = rng.poisson(photons_blue, size=n_bursts)

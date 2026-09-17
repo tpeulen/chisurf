@@ -1,46 +1,35 @@
 from __future__ import annotations
+
+from qtpy import QtWidgets
+
 import chisurf as cs
-
-
 import chisurf.core.base
-import chisurf.core.support.decorators
 import chisurf.core.experiments
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
-from qtpy import QtWidgets
 
 
-class LoadStructureFolder(
-    reader.ExperimentReaderController,
-    QtWidgets.QWidget
-):
-
-    name = 'Trajectory'
+class LoadStructureFolder(reader.ExperimentReaderController, QtWidgets.QWidget):
+    name = "Trajectory"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.parent = kwargs.get('parent', None)
+        self.parent = kwargs.get("parent", None)
         layout = QtWidgets.QVBoxLayout(self)
         self.layout = layout
         self.pdbWidget = cs.gui.widgets.pdb.PDBFolderLoad(self)
         self.layout.addWidget(self.pdbWidget)
 
-    def read(
-            self,
-            name: str = None,
-            **kwargs
-    ):
+    def read(self, name: str = None, **kwargs):
         pass
 
     def __str__(self):
-        s = 'ProteinMC\n'
+        s = "ProteinMC\n"
         return s
 
-    def get_data(
-            self,
-            **kwargs
-    ) -> cs.core.data.ExperimentDataGroup:
+    def get_data(self, **kwargs) -> cs.core.data.ExperimentDataGroup:
         return [self.pdbWidget.trajectory]
 
     @staticmethod
@@ -48,26 +37,14 @@ class LoadStructureFolder(
         return None, None
 
 
-class StructureReaderController(
-    reader.ExperimentReaderController,
-    QtWidgets.QWidget
-):
-
+class StructureReaderController(reader.ExperimentReaderController, QtWidgets.QWidget):
     def get_filename(self) -> str:
         return cs.gui.widgets.get_filename(
-            description='Open PDB-Structure',
-            file_type='PDB-file (*.pdb)',
-            working_path=None
+            description="Open PDB-Structure", file_type="PDB-file (*.pdb)", working_path=None
         )
 
-    @cs.gui.decorators.init_with_ui(
-        ui_filename="proteinMCLoad.ui"
-    )
-    def __init__(
-            self,
-            *args,
-            **kwargs
-    ):
+    @cs.gui.decorators.init_with_ui(ui_filename="proteinMCLoad.ui")
+    def __init__(self, *args, **kwargs):
         self.actionParametersChanged.triggered.connect(self.onParametersChanged)
 
     # def load(self, filename=None):
@@ -78,9 +55,7 @@ class StructureReaderController(
         compute_internal_coordinates = bool(self.checkBox.isChecked())
         cs.run(
             "\n".join(
-                [
-                    "cs.current_setup.compute_internal_coordinates = %s" % compute_internal_coordinates
-                ]
+                [f"cs.current_setup.compute_internal_coordinates = {compute_internal_coordinates}"]
             )
         )
 
@@ -93,7 +68,7 @@ class StructureReaderController(
 
         # compute_internal_coordinates
         try:
-            cic = getattr(setup, 'compute_internal_coordinates', False)
+            cic = getattr(setup, "compute_internal_coordinates", False)
             self.checkBox.blockSignals(True)
             self.checkBox.setChecked(bool(cic))
             self.checkBox.blockSignals(False)

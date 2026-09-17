@@ -12,10 +12,9 @@ out of the distribution.
 from __future__ import annotations
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.plugins.burst.burst_h2mm.core import h2mm
 from chisurf.plugins.burst.burst_h2mm.core.analysis import analyze
 from chisurf.plugins.burst.burst_h2mm.core.h2mm import prepare_bursts
@@ -39,8 +38,7 @@ def _dataset(n_bursts=40, burst_len=60, seed=5):
 
 @pytest.fixture(scope="module")
 def analysis():
-    return analyze(_dataset(), state_counts=(2,), base_time_s=1e-6,
-                   n_restarts=1, max_iter=200)
+    return analyze(_dataset(), state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
 
 
 def test_every_burst_contributes_two_censored_dwells(analysis):
@@ -115,7 +113,7 @@ def test_the_exported_edge_flag_is_the_records_flag(analysis):
     burst_id = np.zeros(n, dtype=np.int64)
     offsets = np.asarray(data.burst_offsets)
     for b in range(len(offsets) - 1):
-        burst_id[offsets[b]:offsets[b + 1]] = b
+        burst_id[offsets[b] : offsets[b + 1]] = b
     meta = PhotonMeta(
         macro_time=np.arange(n, dtype=np.int64),
         micro_time=np.zeros(n, dtype=np.int64),
@@ -123,8 +121,9 @@ def test_the_exported_edge_flag_is_the_records_flag(analysis):
         burst_id=burst_id,
     )
     table = X.build_dwell_table(data, meta, analysis.dwells, analysis.base_time_s)
-    assert (numeric_column(table, "Is Edge") ==
-            np.array([int(d.is_edge) for d in analysis.dwells])).all()
+    assert (
+        numeric_column(table, "Is Edge") == np.array([int(d.is_edge) for d in analysis.dwells])
+    ).all()
 
 
 def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
@@ -147,8 +146,7 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
 
     rng = np.random.default_rng(4)
     times = [
-        np.concatenate([[0], np.cumsum(rng.poisson(4, 49) + 1)]).astype(np.int64)
-        for _ in range(30)
+        np.concatenate([[0], np.cumsum(rng.poisson(4, 49) + 1)]).astype(np.int64) for _ in range(30)
     ]
     gt = h2mm.H2mmModel(
         np.array([0.5, 0.5]),
@@ -169,12 +167,16 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
         base += int(t[-1]) + 1000
     hdr = types.SimpleNamespace(tag=lambda k: {"value": 1e-6}, macro_time_resolution=1e-6)
     tttr = types.SimpleNamespace(
-        macro_times=np.concatenate(macro), routing_channels=np.concatenate(chan),
-        micro_times=np.concatenate(micro), header=hdr,
+        macro_times=np.concatenate(macro),
+        routing_channels=np.concatenate(chan),
+        micro_times=np.concatenate(micro),
+        header=hdr,
     )
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
     data = bursts_from_dataframe(
-        df, {"f.spc": tttr}, [StreamDef("green", [0]), StreamDef("red", [1])],
+        df,
+        {"f.spc": tttr},
+        [StreamDef("green", [0]), StreamDef("red", [1])],
         min_photons=5,
     )
     ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=150)
@@ -203,7 +205,7 @@ def _meta_for(data):
     burst_id = np.zeros(n, dtype=np.int64)
     offsets = np.asarray(data.burst_offsets)
     for b in range(len(offsets) - 1):
-        burst_id[offsets[b]:offsets[b + 1]] = b
+        burst_id[offsets[b] : offsets[b + 1]] = b
     return PhotonMeta(
         macro_time=np.arange(n, dtype=np.int64),
         micro_time=np.zeros(n, dtype=np.int64),

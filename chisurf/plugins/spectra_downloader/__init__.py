@@ -47,6 +47,7 @@ def get_db() -> FluorophoreDatabase:
 
 if __name__ == "plugin":
     from .gui.tool import SpectraTool
+
     db = get_db()
     db.connect()
     window = SpectraTool(db)

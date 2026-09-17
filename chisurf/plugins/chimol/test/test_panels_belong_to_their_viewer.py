@@ -19,10 +19,10 @@ plugins, and collected with it. What this file pins is that property, in the
 terms the bug appeared in -- because a property is checkable and a symptom is
 only reproducible.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.commands.command import Cmd
 from chimol.plugins import load_plugins
 from chimol.testing.mock_viewer import MockViewer, MockWindow
@@ -104,14 +104,17 @@ def test_the_builtin_plugins_all_register_into_the_viewers_registry():
     assert cmd.plugins.missing() == {}
 
 
-@pytest.mark.parametrize("command,key", [
-    ("dbg", "dbg"),
-    ("density_panel", "density"),
-    ("hierarchy_panel", "hierarchy"),
-    ("history_panel", "history"),
-    ("scores", "scores"),
-    ("settings", "settings"),
-])
+@pytest.mark.parametrize(
+    "command,key",
+    [
+        ("dbg", "dbg"),
+        ("density_panel", "density"),
+        ("hierarchy_panel", "hierarchy"),
+        ("history_panel", "history"),
+        ("scores", "scores"),
+        ("settings", "settings"),
+    ],
+)
 def test_each_panel_command_finds_its_panel(command, key):
     """Not "no such panel": the command resolves to a registered key."""
     cmd = _cmd()

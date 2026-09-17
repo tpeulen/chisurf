@@ -28,8 +28,7 @@ NDX_TIME_AXIS = "Mean Macro Time (s)"
 
 def _text_columns(source):
     """The columns of an ndX DataSource that hold text rather than numbers."""
-    return [name for i, name in enumerate(source.parameter_names)
-            if source.is_text_column(i)]
+    return [name for i, name in enumerate(source.parameter_names) if source.is_text_column(i)]
 
 
 @pytest.fixture(scope="module")
@@ -75,7 +74,7 @@ def _photon_table(out):
     ["h2mm_bursts.csv", "h2mm_dwells.csv", "h2mm_state_decays.csv"],
 )
 def test_ndx_opens_every_written_csv(written, name):
-    """ndX's own CSV reader opens the table, with every column intact."""
+    """NdX's own CSV reader opens the table, with every column intact."""
     out, _ = written
     path = out / name
     assert path.is_file(), f"{name} was not written"
@@ -114,8 +113,9 @@ def test_the_decay_table_is_a_histogram_not_an_event_table(written):
     assert {"State", "Stream", "Channel", "Micro Time", "Counts"} <= set(source.parameter_names)
     assert (source.column_values("Counts") >= 0).all()
     # One row per (state, stream, channel, bin) — the key the merge is done on.
-    key = np.column_stack([source.column_values(c)
-                           for c in ("State", "Stream", "Channel", "Micro Time")])
+    key = np.column_stack(
+        [source.column_values(c) for c in ("State", "Stream", "Channel", "Micro Time")]
+    )
     assert len(np.unique(key, axis=0)) == source.size
 
 
@@ -188,9 +188,7 @@ def test_csv_only_writes_no_hdf5(tmp_path):
 def test_asking_for_neither_still_writes_one(tmp_path):
     """The state assignment must never end up nowhere: it is what step 7 reads."""
     _write_with(tmp_path, photon_hdf5=False, photon_csv=False)
-    assert (tmp_path / "h2mm_photons.h5").is_file() or (
-        tmp_path / "h2mm_photons.csv"
-    ).is_file()
+    assert (tmp_path / "h2mm_photons.h5").is_file() or (tmp_path / "h2mm_photons.csv").is_file()
 
 
 def test_the_burst_companions_line_up_with_the_bur_rows(tmp_path):
@@ -239,7 +237,7 @@ def test_the_burst_companions_line_up_with_the_bur_rows(tmp_path):
 
 
 def test_ndx_merges_the_companions_without_being_told_about_them(tmp_path):
-    """ndX discovers any sibling `*4` folder — the companion needs no ndX config."""
+    """NdX discovers any sibling `*4` folder — the companion needs no ndX config."""
     from ndxplorer.io.reader import _discover_burst_extra_endings
 
     from chisurf.plugins.burst.burst_h2mm.core.export import H2MM_COMPANION

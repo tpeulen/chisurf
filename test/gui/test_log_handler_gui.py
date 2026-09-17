@@ -9,6 +9,7 @@ GUI app whose data loads log from background threads:
 * the O(rows) log-console filter must be coalesced, not run once per record, so
   a burst of hundreds of records stays O(rows) instead of O(rows^2).
 """
+
 from __future__ import annotations
 
 import logging

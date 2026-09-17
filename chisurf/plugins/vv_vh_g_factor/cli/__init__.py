@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+
 import click
 import numpy as np
 
@@ -22,7 +24,9 @@ def cli() -> None:
 @click.argument("vv_vh_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--region-min", type=float, required=True, help="Tail match region min channel.")
 @click.option("--region-max", type=float, required=True, help="Tail match region max channel.")
-@click.option("--shift", type=float, default=0.0, show_default=True, help="Perpendicular decay shift.")
+@click.option(
+    "--shift", type=float, default=0.0, show_default=True, help="Perpendicular decay shift."
+)
 @click.option("--use-bg", is_flag=True, help="Enable background subtraction.")
 @click.option("--bg-min", type=float, default=None, help="Background region min channel.")
 @click.option("--bg-max", type=float, default=None, help="Background region max channel.")
@@ -57,7 +61,9 @@ def calculate(
     bg_bounds = None
     if use_bg:
         if bg_min is None or bg_max is None:
-            click.echo("Error: --bg-min and --bg-max must be provided if --use-bg is set.", err=True)
+            click.echo(
+                "Error: --bg-min and --bg-max must be provided if --use-bg is set.", err=True
+            )
             sys.exit(1)
         bg_bounds = [bg_min, bg_max]
 

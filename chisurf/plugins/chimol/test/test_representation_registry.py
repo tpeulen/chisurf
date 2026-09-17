@@ -7,14 +7,14 @@ Pinned here: geometry appears in the scene when shown, disappears when hidden,
 ``show rep, sele`` narrows it to the selection's atoms, ``hide everything``
 takes it down, and unloading the plugin removes the name.
 """
+
 from __future__ import annotations
 
 import pathlib
 
+import chimol
 import numpy as np
 import pytest
-
-import chimol
 from chimol.core.services.representations import (
     REPRESENTATIONS,
     BuildContext,
@@ -43,8 +43,15 @@ def _atom_stars(ctx: BuildContext):
         return []
     colors = ctx.atom_colors()
     pos = np.asarray(xyz[keep], dtype=np.float32)
-    rgba = np.asarray(colors[keep] if colors is not None else np.ones((pos.shape[0], 4)), dtype=np.float32)
-    geom = Geometry(kind="points", positions=pos, colors=rgba, radii=np.full(pos.shape[0], 0.3, dtype=np.float32))
+    rgba = np.asarray(
+        colors[keep] if colors is not None else np.ones((pos.shape[0], 4)), dtype=np.float32
+    )
+    geom = Geometry(
+        kind="points",
+        positions=pos,
+        colors=rgba,
+        radii=np.full(pos.shape[0], 0.3, dtype=np.float32),
+    )
     return [SceneObject(id="stars", geometry=geom, material=Material())]
 
 
@@ -52,8 +59,11 @@ class _StarsPlugin:
     name = "stars"
 
     def register(self, api):
-        api.add_representation(RepresentationSpec(name="stars", build=_atom_stars, aliases=("star",),
-                                                  doc="a point per atom"))
+        api.add_representation(
+            RepresentationSpec(
+                name="stars", build=_atom_stars, aliases=("star",), doc="a point per atom"
+            )
+        )
 
 
 class _WindowStub:
@@ -99,19 +109,19 @@ def test_a_registered_representation_shows_hides_and_scopes(qapp):
         assert _stars_in(viewer) == n_atoms
         assert viewer.rep_visible("stars")
 
-        cmd.do("hide star, resi 1-100")           # the alias, scoped
+        cmd.do("hide star, resi 1-100")  # the alias, scoped
         assert errors == [], errors
         shown = _stars_in(viewer)
         assert 0 < shown < n_atoms
 
         cmd.do("hide stars")
         assert _stars_in(viewer) == 0
-        cmd.do("show stars, resi 44")              # scoped show from off: only those atoms
+        cmd.do("show stars, resi 44")  # scoped show from off: only those atoms
         assert 0 < _stars_in(viewer) < 20
         cmd.do("show stars")
         assert _stars_in(viewer) == n_atoms
 
-        cmd.do("hide everything")                  # takes registered ones down too
+        cmd.do("hide everything")  # takes registered ones down too
         assert _stars_in(viewer) == 0
         cmd.do("as stars")
         assert _stars_in(viewer) == n_atoms

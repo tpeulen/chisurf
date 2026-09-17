@@ -15,6 +15,7 @@ The widget names stay importable because user copies of
 pin class paths, so a path that no longer resolves drops the entry from the model
 menu without saying so.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.pda2c.anisotropy import Pda2cAnisotropyModel

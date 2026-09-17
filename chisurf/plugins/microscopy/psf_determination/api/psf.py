@@ -236,7 +236,7 @@ def detect_beads(
         accepted: list[tuple[float, float]] = []
         for spot in spots:
             y, x = spot.centroid_weighted
-            if any((y - ay) ** 2 + (x - ax) ** 2 < min_distance ** 2 for ay, ax in accepted):
+            if any((y - ay) ** 2 + (x - ax) ** 2 < min_distance**2 for ay, ax in accepted):
                 continue
             accepted.append((y, x))
             row, col = int(round(y)), int(round(x))

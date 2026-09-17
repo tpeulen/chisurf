@@ -30,8 +30,13 @@ from chisurf.plugins.burst.burst_selection.api.selection import analyze_request
 
 DATA = (
     Path(__file__).resolve().parents[2]
-    / "chisurf" / "plugins" / "burst" / "burst_selection"
-    / "tests" / "data" / "bh_spc132_sm_dna"
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 SPC = DATA / "m000.spc"
 
@@ -47,9 +52,7 @@ def _settings() -> AnalysisSettings:
         used_filter="count_rate",
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
     )
-    s.burst_detection = BurstDetectionSettings(
-        min_photons=60, photon_window=10, time_window=1e-3
-    )
+    s.burst_detection = BurstDetectionSettings(min_photons=60, photon_window=10, time_window=1e-3)
     return s
 
 
@@ -62,9 +65,7 @@ def analysed(tmp_path: Path) -> tuple[Path, int]:
     source.write_bytes(SPC.read_bytes())
     container = pto_api.convert(source)
     result = analyze_request(
-        AnalysisRequest(
-            files=[str(container)], settings=_settings(), legacy_output=True
-        )
+        AnalysisRequest(files=[str(container)], settings=_settings(), legacy_output=True)
     )
     return container, int(result.metadata["n_bursts"])
 
@@ -108,10 +109,14 @@ def test_bva_computes_over_the_container(analysed):
 
     table, tttrs = read_burst_analysis(container, "SPC-130", pattern="bi4_bur")
     out = compute_bva(
-        table, tttrs,
-        donor_channels=[0, 8], donor_micro_time_ranges=[],
-        acceptor_channels=[1, 9], acceptor_micro_time_ranges=[],
-        minimum_window_length=0.5, number_of_photons_per_slice=5,
+        table,
+        tttrs,
+        donor_channels=[0, 8],
+        donor_micro_time_ranges=[],
+        acceptor_channels=[1, 9],
+        acceptor_micro_time_ranges=[],
+        minimum_window_length=0.5,
+        number_of_photons_per_slice=5,
     )
 
     assert row_count(out) == n_bursts

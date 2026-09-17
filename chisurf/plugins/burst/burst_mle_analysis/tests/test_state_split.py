@@ -29,13 +29,25 @@ def _cfg(state_min_photons=20, min_photons=10):
     g = np.exp(-0.5 * ((x - 8) / 1.5) ** 2)
     g /= g.sum()
     return dict(
-        sb=0, eb=N_BINS, half_len=N_BINS, dt=DT, period=PERIOD, g_factor=1.0,
-        l1=0.0, l2=0.0, p2s_twoIstar=True, BIFL_scatter=False,
-        min_photons=min_photons, state_min_photons=state_min_photons,
+        sb=0,
+        eb=N_BINS,
+        half_len=N_BINS,
+        dt=DT,
+        period=PERIOD,
+        g_factor=1.0,
+        l1=0.0,
+        l2=0.0,
+        p2s_twoIstar=True,
+        BIFL_scatter=False,
+        min_photons=min_photons,
+        state_min_photons=state_min_photons,
         x0=np.array([2.0, 0.0, 0.38, 1.22]),
         fixed=np.array([0, 1, 1, 1], dtype=np.int32),
-        irf=np.concatenate([g, g]), bg=np.zeros(2 * N_BINS),
-        class_lut=np.array([0, 1], dtype=np.int8), model="fit23", method="Fit23",
+        irf=np.concatenate([g, g]),
+        bg=np.zeros(2 * N_BINS),
+        class_lut=np.array([0, 1], dtype=np.int8),
+        model="fit23",
+        method="Fit23",
         param_names=["tau", "gamma", "r0", "rho"],
     )
 
@@ -84,10 +96,20 @@ def _run(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, cfg=None, **cfg_kw
     blocks = _in_shared_memory([rc, mt, st])
     try:
         rc_sh, mt_sh, st_sh = blocks
-        args = ("m000.spc", bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"],
-                {"green": cfg if cfg is not None else _cfg(**cfg_kw)}, 0,
-                (st_sh.name, st.shape, str(st.dtype), len(taus)))
+        args = (
+            "m000.spc",
+            bursts,
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": cfg if cfg is not None else _cfg(**cfg_kw)},
+            0,
+            (st_sh.name, st.shape, str(st.dtype), len(taus)),
+        )
         out, n = process_one_file_worker(args)
     finally:
         for sh in blocks:
@@ -148,9 +170,20 @@ def test_without_state_info_the_worker_behaves_exactly_as_before():
 
     try:
         rc_sh, mt_sh = put(rc), put(mt)
-        args = ("m000.spc", [(0, n - 1)], rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"],
-                {"green": _cfg()}, 0, None)
+        args = (
+            "m000.spc",
+            [(0, n - 1)],
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": _cfg()},
+            0,
+            None,
+        )
         out, _ = process_one_file_worker(args)
     finally:
         for sh in blocks:
@@ -170,10 +203,18 @@ def _pool(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0, **cfg_kw):
     blocks = _in_shared_memory([rc, mt, st])
     try:
         rc_sh, mt_sh, st_sh = blocks
-        args = (bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"],
-                {"green": _cfg(**cfg_kw)},
-                (st_sh.name, st.shape, str(st.dtype), len(taus)))
+        args = (
+            bursts,
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": _cfg(**cfg_kw)},
+            (st_sh.name, st.shape, str(st.dtype), len(taus)),
+        )
         return pool_states_worker(args)
     finally:
         for sh in blocks:
@@ -227,8 +268,7 @@ def test_a_states_burst_fits_start_from_that_states_pooled_lifetime():
     """
     cfg = _cfg()
     cfg["fixed"] = np.array([1, 1, 1, 1], dtype=np.int32)
-    cfg["state_x0"] = {0: np.array([7.0, 0.0, 0.38, 1.22]),
-                       1: np.array([0.5, 0.0, 0.38, 1.22])}
+    cfg["state_x0"] = {0: np.array([7.0, 0.0, 0.38, 1.22]), 1: np.array([0.5, 0.0, 0.38, 1.22])}
 
     df, _ = _run(n_bursts=3, per_state=200, seed=3, cfg=cfg)
     assert (df["Tau S0 (green)"] == 7.0).all(), df["Tau S0 (green)"].tolist()
@@ -261,12 +301,29 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
     try:
         rc_sh, mt_sh, st_sh = blocks
         cfg = _cfg()
-        jobs = [("m000.spc", bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                 mt_sh.name, mt.shape, str(mt.dtype), ["green"], {"green": cfg}, 0,
-                 (st_sh.name, st.shape, str(st.dtype), 2))]
+        jobs = [
+            (
+                "m000.spc",
+                bursts,
+                rc_sh.name,
+                rc.shape,
+                str(rc.dtype),
+                mt_sh.name,
+                mt.shape,
+                str(mt.dtype),
+                ["green"],
+                {"green": cfg},
+                0,
+                (st_sh.name, st.shape, str(st.dtype), 2),
+            )
+        ]
         w.burst_files_list.get_selected_files = lambda: [str(bur)]
         rows, written = w._apply_pooled_state_fits(
-            jobs, ["green"], mp.get_context("spawn"), 2, "fit23",
+            jobs,
+            ["green"],
+            mp.get_context("spawn"),
+            2,
+            "fit23",
             ["tau", "gamma", "r0", "rho"],
         )
     finally:
@@ -320,15 +377,29 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit(qapp, tmp_path):
         cfg = _cfg()
         # First: a file whose raw measurement could not be read (this is exactly
         # what ``process_bursts`` appends for it — no shm names, no config).
-        broken = ("missing.spc", bursts, None, None, None, None, None, None,
-                  ["green"], {}, 0, None)
-        real = ("m000.spc", bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"], {"green": cfg}, 0,
-                (st_sh.name, st.shape, str(st.dtype), 2))
+        broken = ("missing.spc", bursts, None, None, None, None, None, None, ["green"], {}, 0, None)
+        real = (
+            "m000.spc",
+            bursts,
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": cfg},
+            0,
+            (st_sh.name, st.shape, str(st.dtype), 2),
+        )
         jobs = [broken, real]
         w.burst_files_list.get_selected_files = lambda: [str(bur)]
         rows, written = w._apply_pooled_state_fits(
-            jobs, ["green"], mp.get_context("spawn"), 2, "fit23",
+            jobs,
+            ["green"],
+            mp.get_context("spawn"),
+            2,
+            "fit23",
             ["tau", "gamma", "r0", "rho"],
         )
     finally:
@@ -342,9 +413,7 @@ def test_a_file_without_raw_data_does_not_cost_the_pooled_fit(qapp, tmp_path):
     assert set(real[9]["green"]["state_x0"]) == {0, 1}, "and the real job is seeded"
 
 
-def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(
-    qapp, tmp_path
-):
+def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(qapp, tmp_path):
     """One row per *state* — a companion is one row per burst, merged by position.
 
     Written into a ``b?4`` folder this table would shift every burst after the
@@ -362,12 +431,28 @@ def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(
     w = MLELifetimeAnalysisWizard()
     try:
         w.burst_files_list.get_selected_files = lambda: [str(bur)]
-        rows = [{"Detector": "green", "Colour": "green", "State": 0,
-                 "Photons (parallel)": 10, "Photons (perpendicular)": 8,
-                 "Photons": 18, "Tau": 3.6, "2I*": 1.0},
-                {"Detector": "green", "Colour": "green", "State": 1,
-                 "Photons (parallel)": 5, "Photons (perpendicular)": 4,
-                 "Photons": 9, "Tau": 1.0, "2I*": 1.1}]
+        rows = [
+            {
+                "Detector": "green",
+                "Colour": "green",
+                "State": 0,
+                "Photons (parallel)": 10,
+                "Photons (perpendicular)": 8,
+                "Photons": 18,
+                "Tau": 3.6,
+                "2I*": 1.0,
+            },
+            {
+                "Detector": "green",
+                "Colour": "green",
+                "State": 1,
+                "Photons (parallel)": 5,
+                "Photons (perpendicular)": 4,
+                "Photons": 9,
+                "Tau": 1.0,
+                "2I*": 1.1,
+            },
+        ]
         written = w.write_state_lifetimes(rows)
     finally:
         w.close()

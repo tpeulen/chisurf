@@ -30,13 +30,14 @@ to ``~/.chisurf`` once and **never refreshed**, so every existing install keeps
 unset, or the fix would be inert for exactly the people who already have the
 problem.
 """
+
 import numpy as np
 import pytest
 
 import chisurf.core.settings
 from chisurf.core.fitting.fit import DEFAULT_EPSFCN, _leastsq_options
 
-from .test_tcspc_fit_convergence import _build, _chi2r, _taus, TRUE_TAUS
+from .test_tcspc_fit_convergence import TRUE_TAUS, _build, _chi2r, _taus
 
 
 def test_zero_is_treated_as_unset():
@@ -94,6 +95,7 @@ def test_lifetimes_move_away_from_a_poor_start():
 
     taus = _taus(m)
     assert taus != pytest.approx(sorted(t for _a, t in start)), (
-        "lifetimes never moved — the Jacobian step is below the model's noise floor")
+        "lifetimes never moved — the Jacobian step is below the model's noise floor"
+    )
     np.testing.assert_allclose(taus, sorted(TRUE_TAUS), rtol=0.1)
     assert _chi2r(fit) < 1.5

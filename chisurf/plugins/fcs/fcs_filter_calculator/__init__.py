@@ -31,9 +31,17 @@ Workflow
 """
 
 import sys
+from pathlib import Path as _Path
+
+from chisurf.core.fluorescence.decay import sample_decay_shot_noise
+from chisurf.core.plugin import load_manifest as _load_manifest
 
 # Export public API
 from .api import (
+    DetectionMode,
+    FilterResult,
+    FilterResultMFD,
+    UnmixResult,
     compute_filters,
     compute_filters_from_files,
     compute_filters_mfd,
@@ -43,19 +51,9 @@ from .api import (
     synthetic_component_decay,
     synthetic_decay,
     unmix_decay,
-    FilterResult,
-    FilterResultMFD,
-    UnmixResult,
-    DetectionMode,
 )
-
-from pathlib import Path as _Path
-
-from chisurf.core.plugin import load_manifest as _load_manifest
-
 from .gui.client import FilterCalcClient  # noqa: F401
 from .gui_parts.main_window import FcsFilterCalculatorWidget  # noqa: F401
-from chisurf.core.fluorescence.decay import sample_decay_shot_noise
 
 __all__ = [
     "compute_filters",
@@ -81,7 +79,8 @@ __all__ = [
 
 _manifest = _load_manifest(_Path(__file__).with_name("manifest.json"))
 name = (
-    _manifest.display_name if _manifest is not None
+    _manifest.display_name
+    if _manifest is not None
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Filter Calculator"
 )
 
@@ -93,15 +92,18 @@ menu_hidden = True
 # this code will be executed by the ChiSurf plugin system.
 if __name__ == "plugin":
     from .gui import FcsFilterCalculatorWidget
+
     window = FcsFilterCalculatorWidget()
     window.show()
 
 
 if __name__ == "__main__":
     import sys
+
     from qtpy import QtWidgets
+
     from .gui import FcsFilterCalculatorWidget
-    
+
     app = QtWidgets.QApplication(sys.argv)
     win = FcsFilterCalculatorWidget()
     win.show()

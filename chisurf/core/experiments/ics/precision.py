@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from typing import Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -129,7 +129,7 @@ class RicsPrecision:
         }
 
 
-def gamma_factors(two_d: bool = False) -> Tuple[float, float, float, float]:
+def gamma_factors(two_d: bool = False) -> tuple[float, float, float, float]:
     """Return the shape factors :math:`\\gamma_1..\\gamma_4` of the detection volume.
 
     They are the normalised moments of the detection profile and set how each
@@ -189,8 +189,8 @@ def correlation_grid(
         The correlation shape, unnormalised by amplitude.
     """
     tau = np.abs(pixel_time * xi + line_time * psi)
-    c1 = -((pixel_size * xi) ** 2 + (pixel_size * psi) ** 2) / w ** 2
-    c2 = 4.0 * tau / w ** 2
+    c1 = -((pixel_size * xi) ** 2 + (pixel_size * psi) ** 2) / w**2
+    c2 = 4.0 * tau / w**2
     c3 = 4.0 * tau / (alpha * w) ** 2
     denom = (1.0 + d * c2) * np.sqrt(1.0 + d * c3)
     return np.exp(c1 / (1.0 + d * c2)) / denom
@@ -257,29 +257,29 @@ def triple_correlation(
     t2 = abs(rho2[0] * pixel_time + rho2[1] * line_time)
     t3 = abs(rho3[0] * pixel_time + rho3[1] * line_time)
 
-    a1, a2, a3 = (1 + 4 * d * t / w ** 2 for t in (t1, t2, t3))
+    a1, a2, a3 = (1 + 4 * d * t / w**2 for t in (t1, t2, t3))
     b1, b2, b3 = (1 + 4 * d * t / (alpha * w) ** 2 for t in (t1, t2, t3))
 
-    term7 = 8 * a1 * a2 * a3 - 8 * d * (t1 + t3) / w ** 2 - 4
+    term7 = 8 * a1 * a2 * a3 - 8 * d * (t1 + t3) / w**2 - 4
     term8 = 8 * b1 * b2 * b3 - 8 * d * (t1 + t3) / (alpha * w) ** 2 - 4
 
-    t9 = w ** 2 / 4 + 2 * d * t1
-    t10 = w ** 2 / 4 + 2 * d * t2
-    t11 = w ** 2 / 4 + 2 * d * t3
-    t12 = w ** 2 / 2 + 2 * d * t3
+    t9 = w**2 / 4 + 2 * d * t1
+    t10 = w**2 / 4 + 2 * d * t2
+    t11 = w**2 / 4 + 2 * d * t3
+    t12 = w**2 / 2 + 2 * d * t3
 
     e1 = math.exp(-0.5 * float(np.dot(r2 - r3, r2 - r3)) / t12)
 
-    v13 = r1 * t12 - r3 * w ** 2 / 4 + r2 * t10
-    t14 = t12 * (t10 * t12 + w ** 2 / 4 * t11)
+    v13 = r1 * t12 - r3 * w**2 / 4 + r2 * t10
+    t14 = t12 * (t10 * t12 + w**2 / 4 * t11)
     e2 = math.exp(-0.5 * float(np.dot(v13, v13)) / t14)
 
-    v15 = r1 * (w ** 2 / 4 * t11 + 2 * d * t2 * t12) + r3 * w ** 4 / 16 + r2 * t11
-    t16 = t9 * (t10 * t12 + w ** 2 / 4 * t11)
-    t17 = t16 * w ** 6 / 64 * term7
+    v15 = r1 * (w**2 / 4 * t11 + 2 * d * t2 * t12) + r3 * w**4 / 16 + r2 * t11
+    t16 = t9 * (t10 * t12 + w**2 / 4 * t11)
+    t17 = t16 * w**6 / 64 * term7
     e3 = math.exp(-0.5 * float(np.dot(v15, v15)) / t17)
 
-    return 8.0 * e1 * e2 * e3 * term7 ** -1.0 * term8 ** -0.5
+    return 8.0 * e1 * e2 * e3 * term7**-1.0 * term8**-0.5
 
 
 def _pair_counts(n: int) -> np.ndarray:
@@ -325,7 +325,7 @@ def _atanh_over_argument(z_squared: float) -> float:
         The ratio — finite, real and continuous through zero.
     """
     if abs(z_squared) < 1e-8:
-        return 1.0 + z_squared / 3.0 + z_squared ** 2 / 5.0
+        return 1.0 + z_squared / 3.0 + z_squared**2 / 5.0
     if z_squared > 0.0:
         z = math.sqrt(z_squared)
         return math.atanh(z) / z
@@ -418,18 +418,18 @@ def correlation_covariance(
     span_x = np.arange(-(nx - 1) - n_lags, nx + n_lags, dtype=float)
     span_y = np.arange(-(ny - 1) - n_lags, ny + n_lags, dtype=float)
     gx, gy = np.meshgrid(span_x, span_y)
-    master = m * q ** 2 * g2 * correlation_grid(
-        gx, gy, d, w, alpha, pixel_time, line_time, pixel_size
+    master = (
+        m * q**2 * g2 * correlation_grid(gx, gy, d, w, alpha, pixel_time, line_time, pixel_size)
     )
     x0 = int(np.flatnonzero(span_x == 0)[0])
     y0 = int(np.flatnonzero(span_y == 0)[0])
-    shot = m * q * g1                      # the self-term added at zero separation
+    shot = m * q * g1  # the self-term added at zero separation
 
     def block(off_x: int, off_y: int, half_x: int, half_y: int, zero: bool) -> np.ndarray:
         """Return the correlation over a lag window, offset and shot-corrected."""
         sx = x0 + off_x - half_x
         sy = y0 + off_y - half_y
-        out = master[sy:sy + 2 * half_y + 1, sx:sx + 2 * half_x + 1].copy()
+        out = master[sy : sy + 2 * half_y + 1, sx : sx + 2 * half_x + 1].copy()
         if zero:
             # the self-correlation sits where the *separation* is zero
             iy, ix = half_y - off_y, half_x - off_x
@@ -443,8 +443,8 @@ def correlation_covariance(
             hx, hy = nx - xi - 1, ny - psi - 1
             counts = np.outer(_pair_counts(ny - psi), _pair_counts(nx - xi))
 
-            g_a = block(0, 0, hx, hy, zero=True)          # rho = (X, Y)
-            g_c = block(-xi, -psi, hx, hy, zero=True)     # rho = (X - xi, Y - psi)
+            g_a = block(0, 0, hx, hy, zero=True)  # rho = (X, Y)
+            g_c = block(-xi, -psi, hx, hy, zero=True)  # rho = (X - xi, Y - psi)
 
             for mu in range(size):
                 for nu in range(size):
@@ -456,10 +456,25 @@ def correlation_covariance(
 
                     term1 = 0.0
                     if nu == xi and mu == psi:
-                        term1 = 2 * (nx - 2 * xi) * (ny - 2 * psi) * (
-                            m * q ** 4 * g4 * triple_correlation(
-                                (xi, psi), (0, 0), (xi, psi),
-                                d, w, alpha, pixel_time, line_time, pixel_size,
+                        term1 = (
+                            2
+                            * (nx - 2 * xi)
+                            * (ny - 2 * psi)
+                            * (
+                                m
+                                * q**4
+                                * g4
+                                * triple_correlation(
+                                    (xi, psi),
+                                    (0, 0),
+                                    (xi, psi),
+                                    d,
+                                    w,
+                                    alpha,
+                                    pixel_time,
+                                    line_time,
+                                    pixel_size,
+                                )
                             )
                         )
 
@@ -469,7 +484,7 @@ def correlation_covariance(
                     term2 = float(np.sum(counts * g_a * g_b))
                     term3 = float(np.sum(counts * g_d * g_c))
 
-                    denom = (nx - xi) * (nx - nu) * (ny - psi) * (ny - mu) * f ** 4
+                    denom = (nx - xi) * (nx - nu) * (ny - psi) * (ny - mu) * f**4
                     cov[row, col] = (term1 + term2 + term3) / denom
 
     return cov + np.triu(cov, 1).T
@@ -602,14 +617,14 @@ def rics_precision(
 
     if two_d:
         volume = (nx * pixel_size + 2) * (ny * pixel_size + 2)
-        omega = math.pi * w_r ** 2
+        omega = math.pi * w_r**2
         q = brightness * pixel_time
         m = n_particles * omega / volume
     else:
         volume = (nx * pixel_size + 2) * (ny * pixel_size + 2) * ((nx + ny) / 2 * pixel_size)
-        omega = math.pi ** 1.5 * w_r ** 3 * alpha
-        beta = 1.0 / alpha ** 2
-        tau_c = w_r ** 2 / (4.0 * d)
+        omega = math.pi**1.5 * w_r**3 * alpha
+        beta = 1.0 / alpha**2
+        tau_c = w_r**2 / (4.0 * d)
         fact = math.sqrt(1.0 + beta * pixel_time / tau_c)
         # Photons per molecule per dwell, corrected for the motion that happens
         # during the dwell itself: a molecule does not sit still while it is
@@ -622,10 +637,14 @@ def rics_precision(
         rise = fact - 1.0
         norm = beta + rise
         z_squared = (1.0 - beta) * (rise / norm) ** 2
-        q = brightness * 4 * tau_c ** 2 * rise * (
-            beta * (1 + pixel_time / tau_c) * _atanh_over_argument(z_squared) / norm
-            - 1.0
-        ) / (pixel_time * beta)
+        q = (
+            brightness
+            * 4
+            * tau_c**2
+            * rise
+            * (beta * (1 + pixel_time / tau_c) * _atanh_over_argument(z_squared) / norm - 1.0)
+            / (pixel_time * beta)
+        )
         n_apparent = n_particles * brightness * pixel_time / q
         m = n_apparent * omega / volume
     f = (n_particles if two_d else n_apparent) * q * omega * gamma[0] / volume
@@ -659,13 +678,16 @@ def rics_precision(
         target = (realisation * weight).ravel()
 
         def residual(p):
-            model = p[1] * correlation_grid(
-                xi, psi, p[0], w_r, alpha, pixel_time, line_time, pixel_size
-            ) + p[2]
+            model = (
+                p[1]
+                * correlation_grid(xi, psi, p[0], w_r, alpha, pixel_time, line_time, pixel_size)
+                + p[2]
+            )
             return (model * weight).ravel() - target
 
         fit = least_squares(
-            residual, [d, 1.0 / m, 0.0],
+            residual,
+            [d, 1.0 / m, 0.0],
             bounds=([1e-12, 0.0, -np.inf], [np.inf, np.inf, np.inf]),
         )
         fitted[k] = fit.x[0]

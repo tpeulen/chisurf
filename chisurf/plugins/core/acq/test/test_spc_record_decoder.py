@@ -95,16 +95,14 @@ def test_chunking_the_buffer_changes_nothing(spc):
 
     macro, micro, routing = [], [], []
     for start in range(0, len(records), 4096):
-        m, u, r = decoder.decode(records[start:start + 4096])
+        m, u, r = decoder.decode(records[start : start + 4096])
         macro.append(m)
         micro.append(u)
         routing.append(r)
 
     np.testing.assert_array_equal(np.concatenate(macro), reference.macro_times)
     np.testing.assert_array_equal(np.concatenate(micro), reference.micro_times)
-    np.testing.assert_array_equal(
-        np.concatenate(routing), np.asarray(reference.routing_channel)
-    )
+    np.testing.assert_array_equal(np.concatenate(routing), np.asarray(reference.routing_channel))
     assert decoder.overflow_counter > 0
 
 

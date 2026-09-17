@@ -4,6 +4,7 @@ At magic angle a decay carries no anisotropy, so the rotations and r0 must not
 be fitted there: the polarised description ties its rotation count to the
 polarization (none at VM), which is what the classic model did by fixing them.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -18,8 +19,10 @@ from chisurf.core.models.description import for_family
 
 def _view(polarization):
     x = np.arange(128) * 0.05
-    fit = fitting.Fit(model_class=for_family("tcspc_polarized"),
-                      data=chisurf.core.data.DataCurve(x=x, y=np.full(128, 10.0), ey=np.ones(128)))
+    fit = fitting.Fit(
+        model_class=for_family("tcspc_polarized"),
+        data=chisurf.core.data.DataCurve(x=x, y=np.full(128, 10.0), ey=np.ones(128)),
+    )
     model = fit.model
     model.set_scalar("generated_response", 1.0)
     model.set_scalar("polarization", polarization)

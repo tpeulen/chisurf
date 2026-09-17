@@ -172,8 +172,14 @@ class FCSChannelViewModel:
         name = (name or "").strip() or (f"{a}×{b}" if a != b else f"{a}_ACF")
         n_bins, n_casc, fine = self._correlator_defaults()
         self._pairs.append(
-            {"name": name, "channel_a": a, "channel_b": b,
-             "n_bins": n_bins, "n_casc": n_casc, "make_fine": fine}
+            {
+                "name": name,
+                "channel_a": a,
+                "channel_b": b,
+                "n_bins": n_bins,
+                "n_casc": n_casc,
+                "make_fine": fine,
+            }
         )
         self.notify("pairs_changed")
 

@@ -57,9 +57,7 @@ def test_tttrlib_links_the_environment_hdf5():
     """The extension's HDF5 must live in this environment, not in /opt/homebrew."""
     import _tttrlib
 
-    otool = subprocess.run(
-        ["otool", "-L", _tttrlib.__file__], capture_output=True, text=True
-    )
+    otool = subprocess.run(["otool", "-L", _tttrlib.__file__], capture_output=True, text=True)
     if otool.returncode != 0:  # no developer tools: the runtime test still covers it
         pytest.skip("otool unavailable")
 

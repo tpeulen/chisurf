@@ -20,6 +20,7 @@ finishable, so they are found here instead.
 Neither assertion has an allow-list. If one is ever needed it should be a
 *shrinking* list with a dated reason, not a place to add a module to.
 """
+
 from __future__ import annotations
 
 import os
@@ -113,12 +114,14 @@ ENGINE_MODULES = (
 #:
 #: Never add to it. ``test_the_host_list_is_not_padded`` fails on an entry that
 #: no longer needs to be here, which is how it shrinks.
-HOSTS = frozenset({
-    "hosts/qt/controls_panel.py",
-    "hosts/qt/window.py",
-    "hosts/qt/overlay.py",
-    "hosts/qt/wgpu_view.py",
-})
+HOSTS = frozenset(
+    {
+        "hosts/qt/controls_panel.py",
+        "hosts/qt/window.py",
+        "hosts/qt/overlay.py",
+        "hosts/qt/wgpu_view.py",
+    }
+)
 
 #: ``import wgpu`` or ``from wgpu[.x] import ...``.
 #:
@@ -174,12 +177,15 @@ def test_the_engine_imports_without_a_gui_toolkit():
         """
     )
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]
-    ).rstrip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]).rstrip(
+        os.pathsep
+    )
     result = subprocess.run(
         [sys.executable, "-c", script],
-        capture_output=True, text=True, cwd=str(_ROOT), env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(_ROOT),
+        env=env,
     )
     assert result.returncode == 0, (
         "these engine modules need a GUI toolkit to import:\n"
@@ -231,9 +237,9 @@ def _run_without_qt(script: str) -> subprocess.CompletedProcess:
     subprocess.CompletedProcess
     """
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]
-    ).rstrip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]).rstrip(
+        os.pathsep
+    )
     # The offscreen canvas, forced: `rendercanvas.auto`'s last resort is to
     # `import PyQt5` and pick its Qt backend if that succeeds, so "automatic"
     # means Qt on any machine that has it. chimol never asks `auto` for exactly
@@ -242,7 +248,10 @@ def _run_without_qt(script: str) -> subprocess.CompletedProcess:
     env["CHIMOL_CANVAS"] = "offscreen"
     return subprocess.run(
         [sys.executable, "-c", _BLOCK_QT + textwrap.dedent(script)],
-        capture_output=True, text=True, cwd=str(_ROOT), env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(_ROOT),
+        env=env,
     )
 
 
@@ -304,8 +313,7 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
         """
     )
     assert result.returncode == 0, (
-        "the default entry path needs a GUI toolkit:\n"
-        + (result.stdout + result.stderr)[-4000:]
+        "the default entry path needs a GUI toolkit:\n" + (result.stdout + result.stderr)[-4000:]
     )
     if "SKIP" in result.stdout:
         pytest.skip(result.stdout.strip())
@@ -422,13 +430,12 @@ def test_the_host_list_is_not_padded():
         if not pattern.search((_CHIMOL / name).read_text(encoding="utf-8"))
     ]
     assert not stale, (
-        "these no longer import Qt at module scope -- strike them from HOSTS: "
-        + ", ".join(stale)
+        "these no longer import Qt at module scope -- strike them from HOSTS: " + ", ".join(stale)
     )
 
 
 def test_the_atom_dtype_matches_the_host():
-    """chimol's atom row is the host's -- because the host takes it from chimol.
+    """Chimol's atom row is the host's -- because the host takes it from chimol.
 
     The direction was inverted on 2026-08-14: ``chimol.io.atoms.ATOM_DTYPE``
     is the single definition, and ``chisurf.core.fio.structure.coordinates``

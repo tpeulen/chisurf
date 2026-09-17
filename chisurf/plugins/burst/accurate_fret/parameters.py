@@ -78,8 +78,7 @@ class AccurateFretParameters(FittingParameterGroup):
         existing = getattr(self, attribute, None)
         if isinstance(existing, FittingParameter):
             return existing
-        parameter = FittingParameter(
-            value=float(value), name=key, fixed=True, unit=unit)
+        parameter = FittingParameter(value=float(value), name=key, fixed=True, unit=unit)
         setattr(self, attribute, parameter)
         return parameter
 
@@ -114,8 +113,7 @@ class AccurateFretParameters(FittingParameterGroup):
             if np.isfinite(value):
                 parameter.value = value
 
-        populations = list(getattr(getattr(result, "calibration", None),
-                                   "populations", None) or [])
+        populations = list(getattr(getattr(result, "calibration", None), "populations", None) or [])
         seen: list[str] = []
         for population in populations:
             label = str(population.get("label", len(seen)))

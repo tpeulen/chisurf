@@ -9,6 +9,7 @@ The menu *contents* were already viewport-drawable: `ui/menus/objects.py` has fe
 the in-view A/S/H/L/C pop-ups through the same painter for a long time. What
 was missing was the bar itself.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -92,8 +93,14 @@ def test_the_bar_takes_a_band_off_the_top_of_the_scene(gui):
 
     gui.sequence_visible = True
     gui.sequences = [
-        SequenceRow(name="148l/E", codes="MNIFEML", object_id="o1", chain="E",
-                    numbers=list(range(1, 8)), residue_indices=list(range(7)))
+        SequenceRow(
+            name="148l/E",
+            codes="MNIFEML",
+            object_id="o1",
+            chain="E",
+            numbers=list(range(1, 8)),
+            residue_indices=list(range(7)),
+        )
     ]
     gui.layout(*SIZE)
     assert gui._seq_strip.y >= gui.menubar_height(), "the strip is under the bar"
@@ -134,11 +141,14 @@ def _click_row(gui, menu, label):
     raise AssertionError(f"no {label!r} row in {menu.title!r}")
 
 
-@pytest.mark.parametrize("label, filt", [
-    ("glTF for PowerPoint...", "glTF binary (*.glb)"),
-    ("STL...", "STL (*.stl)"),
-    ("WRL (VRML)...", "VRML (*.wrl)"),
-])
+@pytest.mark.parametrize(
+    "label, filt",
+    [
+        ("glTF for PowerPoint...", "glTF binary (*.glb)"),
+        ("STL...", "STL (*.stl)"),
+        ("WRL (VRML)...", "VRML (*.wrl)"),
+    ],
+)
 def test_file_export_reaches_the_host_dialog(gui, label, filt):
     """File -> Export -> <format> must open a real save dialog, every format.
 
@@ -178,12 +188,14 @@ def test_a_failed_file_dialog_is_reported_not_swallowed(gui):
     exactly what "the dialog does not open" reports as, and left nothing to
     debug from.
     """
+
     def _raises(line, mode, title, name_filter):
         raise RuntimeError("dialog boom")
 
     gui.on_file_prompt = _raises
     gui._emit(
-        "save {text}", "",
+        "save {text}",
+        "",
         file_prompt=("save", "Export glTF", "glTF binary (*.glb)"),
     )
 

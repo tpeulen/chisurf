@@ -7,6 +7,7 @@ but not yet updated reported *no parameters at all* to every reader outside the
 model — the RPC fit DTOs, and through them the parameter link menu, which showed
 an empty "All parameters" submenu with nothing to click and no error anywhere.
 """
+
 from __future__ import annotations
 
 import numpy as np

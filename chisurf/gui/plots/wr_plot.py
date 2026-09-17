@@ -25,7 +25,6 @@ def _member_fits(fit):
 
 
 class ResidualPlot(plotbase.Plot):
-
     name = "Residuals"
 
     def __init__(self, fit: chisurf.core.fitting.fit.FitGroup, *args, **kwargs):
@@ -33,18 +32,18 @@ class ResidualPlot(plotbase.Plot):
         self.data_x, self.data_y = None, None
 
         curves = list()
-        lw = chisurf.core.settings.gui['plot']['line_width']
+        lw = chisurf.core.settings.gui["plot"]["line_width"]
 
         p = cp.Plot()
         self.layout.addWidget(p)
 
         try:
-            p.set_labels(left='w.res.')
+            p.set_labels(left="w.res.")
         except Exception:
             pass
 
         for i, f in enumerate(_member_fits(fit)):
-            color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]['hex']
+            color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]["hex"]
             c = p.line([], [], pen=cp.to_pen(color, width=lw), name=f.data.name)
             curves.append(c)
         self.curves = curves

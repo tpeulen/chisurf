@@ -7,13 +7,17 @@ import utils
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-from chisurf.history import OperationHistory
 import chisurf as cs
-from chisurf.core.actions._infra import ActionSpec, ActionRegistry, ActionDispatcher, get_action_catalog
+from chisurf.core.actions._infra import (
+    ActionDispatcher,
+    ActionRegistry,
+    ActionSpec,
+    get_action_catalog,
+)
+from chisurf.history import OperationHistory
 
 
 class TestActionDispatcher(unittest.TestCase):
-
     def test_execute_records_history_event(self):
         reg = ActionRegistry()
         reg.register(ActionSpec("parameter_value", schema={"parameter_name": str}))
@@ -69,7 +73,9 @@ class TestActionDispatcher(unittest.TestCase):
 
     def test_payload_schema_validation(self):
         reg = ActionRegistry()
-        reg.register(ActionSpec("parameter_link", schema={"source_parameter": str, "target_parameter": str}))
+        reg.register(
+            ActionSpec("parameter_link", schema={"source_parameter": str, "target_parameter": str})
+        )
         history = OperationHistory()
         dispatcher = ActionDispatcher(registry=reg, history_provider=lambda: history)
 
@@ -154,8 +160,10 @@ class TestActionDispatcher(unittest.TestCase):
 
     def test_extra_payload_keys_ignored(self):
         reg = ActionRegistry()
+
         def dummy_handler(a: int):
             return {"a": a}
+
         reg.register(ActionSpec("dummy.action", schema={"a": int}, handler=dummy_handler))
         history = OperationHistory()
         dispatcher = ActionDispatcher(registry=reg, history_provider=lambda: history)

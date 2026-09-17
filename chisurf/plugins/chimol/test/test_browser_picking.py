@@ -19,15 +19,18 @@ projection, right or wrong: it proves the click reaches the picker and says
 nothing about whether the picker agrees with the picture. So the check here
 renders a frame, finds the molecule's *pixels*, and clicks those.
 """
+
 from __future__ import annotations
 
 import pathlib
 
-
-
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -201,7 +204,10 @@ def _run_in_page_configuration(tmp_path):
     env["CHIMOL_SETTINGS_DIR"] = str(tmp_path / "settings")
     return subprocess.run(
         [sys.executable, str(script), str(_PDB)],
-        capture_output=True, text=True, env=env, timeout=600,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=600,
     )
 
 
@@ -214,7 +220,9 @@ def test_the_browser_picks_where_it_draws(tmp_path):
     result = _run_in_page_configuration(tmp_path)
     assert result.returncode == 0, (
         "picking failed in the toolkit-free configuration:\n"
-        + result.stdout[-4000:] + "\n" + result.stderr[-4000:]
+        + result.stdout[-4000:]
+        + "\n"
+        + result.stderr[-4000:]
     )
     assert "OK" in result.stdout
 
@@ -238,9 +246,7 @@ def test_a_click_in_empty_space_clears_the_selection(tmp_path):
         result = _run_in_page_configuration(tmp_path)
     finally:
         os.environ.pop(env_key, None)
-    assert result.returncode == 0, (
-        result.stdout[-3000:] + "\n" + result.stderr[-3000:]
-    )
+    assert result.returncode == 0, result.stdout[-3000:] + "\n" + result.stderr[-3000:]
 
 
 def test_the_browser_delivers_the_same_gestures_as_the_desktop():

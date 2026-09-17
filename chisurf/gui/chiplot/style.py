@@ -130,7 +130,7 @@ def to_color(value) -> Color:
         # region band rendered olive. Parse it before Qt sees it.
         if len(value) == 9 and value.startswith("#"):
             try:
-                r, g, b, a = (int(value[i:i + 2], 16) for i in (1, 3, 5, 7))
+                r, g, b, a = (int(value[i : i + 2], 16) for i in (1, 3, 5, 7))
             except ValueError:
                 raise TypeError(f"unrecognised color hex: {value!r}") from None
             return Color(r, g, b, a)

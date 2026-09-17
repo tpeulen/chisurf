@@ -61,8 +61,13 @@ def test_h2mm_gui_live_scan_plot(qapp):
 
     w = H2mmTool(embedded=True)
     fits = [
-        StateFit(n_states=k, model=h2mm.factory_model(k, 2, seed=0),
-                 loglik=-1.0, bic=100.0 - k, icl=100.0 - k)
+        StateFit(
+            n_states=k,
+            model=h2mm.factory_model(k, 2, seed=0),
+            loglik=-1.0,
+            bic=100.0 - k,
+            icl=100.0 - k,
+        )
         for k in (1, 2, 3)
     ]
     w._plot_scan_live(fits)
@@ -115,7 +120,7 @@ def test_h2mm_gui_nonblocking_fit(qapp, tmp_path, monkeypatch):
 
     assert w._result is not None
     assert w._result.n_states in (1, 2)
-    assert w.btn_run.isEnabled()             # re-enabled on completion
+    assert w.btn_run.isEnabled()  # re-enabled on completion
     assert len(w._p_sel.listDataItems()) >= 2  # results plotted
     w.close()
 
@@ -234,7 +239,9 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     )
     df = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
     streams = [StreamDef("green", [0]), StreamDef("red", [1]), StreamDef("yellow", [2])]
-    data, meta = bursts_from_dataframe(df, {"f.spc": tttr}, streams, min_photons=8, return_meta=True)
+    data, meta = bursts_from_dataframe(
+        df, {"f.spc": tttr}, streams, min_photons=8, return_meta=True
+    )
     ana = analysis.analyze(data, state_counts=(1, 2), base_time_s=1e-6, n_restarts=2, max_iter=200)
 
     w = H2mmTool(embedded=True)
@@ -259,8 +266,7 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     from chisurf.plugins.burst.burst_h2mm.core.analysis import bootstrap_uncertainty
 
     w._uncertainty = bootstrap_uncertainty(
-        data, ana.best.n_states, n_boot=4, n_restarts=1, max_iter=120,
-        aex_streams=(2,), seed=0
+        data, ana.best.n_states, n_boot=4, n_restarts=1, max_iter=120, aex_streams=(2,), seed=0
     )
     w._plot_dwell_fret(ana)
     assert any(isinstance(it, pg.ErrorBarItem) for it in w._p_fret.items)
@@ -270,9 +276,13 @@ def test_h2mm_gui_alex_es_and_nanotime(qapp):
     from chisurf.plugins.burst.burst_h2mm.gui.tool import LikelihoodScanDialog
 
     scans = profile_likelihood(
-        data, ana.best.model,
-        donor_streams=ana.donor_streams, acceptor_streams=ana.acceptor_streams,
-        aex_streams=ana.aex_streams, n_points=11, half_width=0.15,
+        data,
+        ana.best.model,
+        donor_streams=ana.donor_streams,
+        acceptor_streams=ana.acceptor_streams,
+        aex_streams=ana.aex_streams,
+        n_points=11,
+        half_width=0.15,
     )
     assert {s.param for s in scans} == {"E", "S"}
     dlg = LikelihoodScanDialog(scans, w._uncertainty, w._state_color, w)  # must not raise

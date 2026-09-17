@@ -184,10 +184,9 @@ class PotentialEnergyViewModel:
         int
             The number of frames processed.
         """
-        from chisurf.core.structure import trajectory_data as mdtraj
-
         import chisurf.core.fio as io
         import chisurf.core.structure
+        from chisurf.core.structure import trajectory_data as mdtraj
 
         if not self.trajectory_file:
             self.append_log("No trajectory selected")
@@ -209,8 +208,9 @@ class PotentialEnergyViewModel:
         with open(energy_file, "a") as handle:
             # The stride was used to number the rows but never to read, so a
             # strided run labelled every frame as if it had been skipped.
-            for chunk in mdtraj.iterload(self.trajectory_file, stride=int(self.stride),
-                                         top=topology):
+            for chunk in mdtraj.iterload(
+                self.trajectory_file, stride=int(self.stride), top=topology
+            ):
                 for frame in chunk:
                     # A single-frame trajectory's xyz is (1, n_atoms, 3). Ångström
                     # already, like the structure's: the ×10 here was a nm → Å

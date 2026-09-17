@@ -70,9 +70,7 @@ def detect_request(
             progress(index, len(request.files), path.name)
 
         try:
-            image = load_intensity(
-                str(path), channels=request.channels, frame=request.frame
-            )
+            image = load_intensity(str(path), channels=request.channels, frame=request.frame)
             found = detect(image, dataclasses.replace(request.settings))
         except Exception as exc:  # noqa: BLE001 - reported per file, never fatal
             logger.debug("detection failed for %s", path, exc_info=True)
@@ -95,8 +93,12 @@ def detect_request(
                 )
             except Exception as exc:  # noqa: BLE001 - the detection still happened
                 result.rows.append(
-                    RunRow(str(path), "failed", found.n_regions,
-                           reason=f"container not written ({exc})")
+                    RunRow(
+                        str(path),
+                        "failed",
+                        found.n_regions,
+                        reason=f"container not written ({exc})",
+                    )
                 )
                 continue
 
@@ -124,10 +126,12 @@ def run_table(result: SpotFinderRunResult):
     from chisurf.core.datastore import store_from_arrays
 
     rows = result.rows
-    return store_from_arrays({
-        "input": np.asarray([r.input for r in rows], dtype=object),
-        "status": np.asarray([r.status for r in rows], dtype=object),
-        "n_regions": np.asarray([r.n_regions for r in rows], dtype=np.int64),
-        "container": np.asarray([r.container for r in rows], dtype=object),
-        "reason": np.asarray([r.reason for r in rows], dtype=object),
-    })
+    return store_from_arrays(
+        {
+            "input": np.asarray([r.input for r in rows], dtype=object),
+            "status": np.asarray([r.status for r in rows], dtype=object),
+            "n_regions": np.asarray([r.n_regions for r in rows], dtype=np.int64),
+            "container": np.asarray([r.container for r in rows], dtype=object),
+            "reason": np.asarray([r.reason for r in rows], dtype=object),
+        }
+    )

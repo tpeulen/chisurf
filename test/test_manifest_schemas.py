@@ -7,6 +7,7 @@ asserts the other half: that the *files* follow it, that the written
 ``schemas/manifest.schema.json`` still matches the generator, and that the
 scheme actually **rejects** something.
 """
+
 from __future__ import annotations
 
 import json
@@ -81,8 +82,8 @@ def test_the_written_schema_matches_the_generator():
     written = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
     assert written == build_manifest_schema(), (
         f"{MANIFEST_SCHEMA_PATH.name} is stale -- regenerate with "
-        "`python -c \"from chisurf.core.plugin.manifest import write_manifest_schema; "
-        "write_manifest_schema()\"`"
+        '`python -c "from chisurf.core.plugin.manifest import write_manifest_schema; '
+        'write_manifest_schema()"`'
     )
 
 
@@ -92,16 +93,17 @@ def test_the_written_schema_matches_the_generator():
 @pytest.mark.parametrize(
     "manifest, why",
     [
-        ({"id": "x", "version": "1", "nonsense": True},
-         "an unknown top-level key"),
-        ({"version": "1"},
-         "missing required field 'id'"),
-        ({"id": "x"},
-         "missing required field 'version'"),
-        ({"id": "x", "version": "1", "entrypoints": {"nonsense": True}},
-         "an unknown entrypoints key"),
-        ({"id": "x", "version": "1", "rpc_methods": [{"nme": "x"}]},
-         "a rpc_methods entry missing 'name'"),
+        ({"id": "x", "version": "1", "nonsense": True}, "an unknown top-level key"),
+        ({"version": "1"}, "missing required field 'id'"),
+        ({"id": "x"}, "missing required field 'version'"),
+        (
+            {"id": "x", "version": "1", "entrypoints": {"nonsense": True}},
+            "an unknown entrypoints key",
+        ),
+        (
+            {"id": "x", "version": "1", "rpc_methods": [{"nme": "x"}]},
+            "a rpc_methods entry missing 'name'",
+        ),
     ],
 )
 def test_the_scheme_rejects_what_the_loader_would_drop(manifest, why):
@@ -111,15 +113,20 @@ def test_the_scheme_rejects_what_the_loader_would_drop(manifest, why):
 
 def test_a_valid_manifest_is_accepted():
     """And the other direction, so the scheme is not merely strict."""
-    assert validate_manifest_schema({
-        "id": "test",
-        "version": "1.0.0",
-        "display_name": "Test",
-        "description": "A test plugin",
-        "categories": ["Tools"],
-        "experimental": False,
-        "entrypoints": {"gui": "test.gui:Tool"},
-        "rpc_methods": [{"name": "test.ping", "summary": "Ping"}],
-        "statefulness": {"enabled": True, "window": {"enabled": False}},
-        "dependencies": {"chisurf": ">=3.0"},
-    }) == []
+    assert (
+        validate_manifest_schema(
+            {
+                "id": "test",
+                "version": "1.0.0",
+                "display_name": "Test",
+                "description": "A test plugin",
+                "categories": ["Tools"],
+                "experimental": False,
+                "entrypoints": {"gui": "test.gui:Tool"},
+                "rpc_methods": [{"name": "test.ping", "summary": "Ping"}],
+                "statefulness": {"enabled": True, "window": {"enabled": False}},
+                "dependencies": {"chisurf": ">=3.0"},
+            }
+        )
+        == []
+    )

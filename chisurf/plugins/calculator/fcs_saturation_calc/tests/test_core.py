@@ -178,12 +178,17 @@ def test_ground_state_is_depleted_in_the_focal_centre():
     reads as swapped labels, so it is pinned against the hand-solved three-level
     steady state rather than against the implementation.
     """
-    dark, exc, q = triplet_scheme(lifetime_ns=4.0, isc_yield=0.01,
-                                  triplet_lifetime_us=2.0)
+    dark, exc, q = triplet_scheme(lifetime_ns=4.0, isc_yield=0.01, triplet_lifetime_us=2.0)
     profile = compute_volume_profile(
-        power_mW=30.8, extinction=8e4, dark_matrix=dark, exc_matrix=exc,
-        brightness=q, w_r_nm=200.0, w_z_nm=1000.0,
-        state_labels=["S0", "S1", "T1"], wavelength_nm=488.0,
+        power_mW=30.8,
+        extinction=8e4,
+        dark_matrix=dark,
+        exc_matrix=exc,
+        brightness=q,
+        w_r_nm=200.0,
+        w_z_nm=1000.0,
+        state_labels=["S0", "S1", "T1"],
+        wavelength_nm=488.0,
     )
     p_s0, p_s1, p_t1 = profile["P_states"][:, 0]
     k_exc = 3.684e10  # the peak rate the tool reports for these settings
@@ -204,8 +209,13 @@ def test_emission_shares_the_scale_of_the_populations():
     """
     dark, exc, q = triplet_scheme()
     profile = compute_volume_profile(
-        power_mW=30.8, extinction=8e4, dark_matrix=dark, exc_matrix=exc,
-        brightness=q, w_r_nm=200.0, w_z_nm=1000.0,
+        power_mW=30.8,
+        extinction=8e4,
+        dark_matrix=dark,
+        exc_matrix=exc,
+        brightness=q,
+        w_r_nm=200.0,
+        w_z_nm=1000.0,
     )
     np.testing.assert_allclose(profile["emission"], profile["P_states"][1], rtol=1e-12)
     assert profile["emission"].max() < 1.0

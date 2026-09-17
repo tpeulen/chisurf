@@ -1,16 +1,17 @@
 from __future__ import annotations
-from chisurf import typing
 
-import scipy.stats
 import numpy as np
 import scipy.special
+import scipy.stats
+
+from chisurf import typing
 
 
 def incremental_average(
-        next_sample,
-        previous_average=None,
-        number_of_samples: int = 1,
-        fractions: typing.Tupel[float, float] = None
+    next_sample,
+    previous_average=None,
+    number_of_samples: int = 1,
+    fractions: typing.Tupel[float, float] = None,
 ):
     """
     Compute the running (online) average when a new sample is added.
@@ -62,10 +63,7 @@ def incremental_average(
 
 
 def incremental_variance(
-        next_sample,
-        previous_average=None,
-        previous_variance=None,
-        number_of_samples: int = 1
+    next_sample, previous_average=None, previous_variance=None, number_of_samples: int = 1
 ):
     """
     Update the running (online) average and variance with a new sample using Welford's algorithm.
@@ -127,9 +125,9 @@ def incremental_variance(
 
 
 def random_point_in_sphere(
-        radius: float = 1.0,
-        center: np.ndarray = np.array([0.0, 0.0, 0.0], dtype=np.float64),
-        n_per_sphere: int = 1
+    radius: float = 1.0,
+    center: np.ndarray = np.array([0.0, 0.0, 0.0], dtype=np.float64),
+    n_per_sphere: int = 1,
 ) -> np.ndarray:
     """
     Generate random point(s) uniformly distributed within a sphere.
@@ -169,7 +167,7 @@ def random_point_in_sphere(
     r = radius
     ndim = center.size
     x = np.random.normal(size=(n_per_sphere, ndim))
-    ssq = np.sum(x ** 2, axis=1)
+    ssq = np.sum(x**2, axis=1)
     fr = r * scipy.special.gammainc(ndim / 2, ssq / 2) ** (1 / ndim) / np.sqrt(ssq)
     frtiled = np.tile(fr.reshape(n_per_sphere, 1), (1, ndim))
     p = center + np.multiply(x, frtiled)
@@ -178,12 +176,7 @@ def random_point_in_sphere(
     return p
 
 
-def bayesian_information_criterion(
-        k: int,
-        n: int,
-        value: float,
-        case='gaussian'
-):
+def bayesian_information_criterion(k: int, n: int, value: float, case="gaussian"):
     """
     Calculate the Bayesian Information Criterion (BIC) for a given model.
 
@@ -213,14 +206,12 @@ def bayesian_information_criterion(
     >>> bic
     263.8155105579643
     """
-    if case == 'gaussian':
+    if case == "gaussian":
         return float(n * value + k * np.log(n))
     return float(k * np.log(n) - 2.0 * np.log(value))
 
 
-def durbin_watson(
-        residuals: np.array
-) -> float:
+def durbin_watson(residuals: np.array) -> float:
     """
     Compute the Durbin-Watson statistic for a series of residuals.
 
@@ -264,10 +255,7 @@ def durbin_watson(
     return nom / denominator
 
 
-def kl(
-        p: np.ndarray,
-        q: np.ndarray
-):
+def kl(p: np.ndarray, q: np.ndarray):
     """
     Compute the Kullback-Leibler divergence D(P || Q) for discrete probability distributions.
 
@@ -299,17 +287,13 @@ def kl(
     # two sums cannot be folded into one masked expression.
     contributing = (pi > 0) & (qi > 0)
     divergence = np.sum(
-        pi[contributing] * np.log(pi[contributing] / qi[contributing])
-        - pi[contributing]
+        pi[contributing] * np.log(pi[contributing] / qi[contributing]) - pi[contributing]
     )
     return float(qi.sum() + divergence)
 
 
 def chi2_max(
-        chi2_value: float = 1.0,
-        number_of_parameters: int = 1,
-        nu: int = 1,
-        conf_level: float = 0.95
+    chi2_value: float = 1.0, number_of_parameters: int = 1, nu: int = 1, conf_level: float = 0.95
 ) -> float:
     """
     Calculate the maximum chi-squared value for a fit at a given confidence level.
@@ -339,18 +323,23 @@ def chi2_max(
     >>> chi2_threshold
     1.4647586818211171
     """
-    return float(chi2_value * (
-        1.0 + float(number_of_parameters) / nu *
-        scipy.stats.f.isf(1. - conf_level, number_of_parameters, nu)
-    ))
+    return float(
+        chi2_value
+        * (
+            1.0
+            + float(number_of_parameters)
+            / nu
+            * scipy.stats.f.isf(1.0 - conf_level, number_of_parameters, nu)
+        )
+    )
 
 
 def chi2_threshold(
-        chi2_min: float = 1.0,
-        n_extra_params: int = 1,
-        nu: int = 1,
-        p_value: float = 0.99,
-        objective: str = "least_squares",
+    chi2_min: float = 1.0,
+    n_extra_params: int = 1,
+    nu: int = 1,
+    p_value: float = 0.99,
+    objective: str = "least_squares",
 ) -> float:
     """Return the reduced-chi² threshold of a support-plane scan.
 
@@ -389,17 +378,14 @@ def chi2_threshold(
     if objective == "likelihood":
         delta = scipy.stats.chi2.isf(1.0 - p_value, n_extra_params)
         return float(chi2_min + delta / float(nu))
-    return float(chi2_min * (
-        1.0 + float(n_extra_params) / nu *
-        scipy.stats.f.isf(1. - p_value, n_extra_params, nu)
-    ))
+    return float(
+        chi2_min
+        * (1.0 + float(n_extra_params) / nu * scipy.stats.f.isf(1.0 - p_value, n_extra_params, nu))
+    )
 
 
 def f_test_confidence(
-        chi2r_1: float = 1.0,
-        chi2r_2: float = 1.0,
-        nu_1: int = 1,
-        nu_2: int = 1
+    chi2r_1: float = 1.0, chi2r_2: float = 1.0, nu_1: int = 1, nu_2: int = 1
 ) -> float:
     """Confidence that the second (more complex) model is justified.
 
@@ -446,10 +432,7 @@ def f_test_confidence(
 
 
 def f_test_chi2r(
-        chi2r_1: float = 1.0,
-        conf_level: float = 0.95,
-        nu_1: int = 1,
-        nu_2: int = 1
+    chi2r_1: float = 1.0, conf_level: float = 0.95, nu_1: int = 1, nu_2: int = 1
 ) -> float:
     """Reduced chi-squared the complex model must reach at ``conf_level``.
 

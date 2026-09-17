@@ -49,21 +49,31 @@ class Model:
 
     def view_spec(self):
         """The controls, including a nested panel and an action-bound button."""
-        return vs.ModelView(sections=(
-            vs.ValueSection(label="Name", kind="str", attr="name"),
-            vs.PanelSection(title="Search", sections=(
-                vs.ValueSection(label="Threshold", kind="int",
-                                target="settings", attr="threshold"),
-                vs.ValueSection(label="Window", kind="float",
-                                target="settings", attr="window"),
-                vs.ChoiceSection(label="Method", target="settings", attr="method",
-                                 options=("sliding", "cusum")),
-                vs.ToggleSection(label="Filter", target="settings",
-                                 attr="use_filter"),
-            )),
-            # A command, not a setting: replaying it on load would re-run it.
-            vs.ValueSection(label="Go", kind="str", set_action="run_analysis"),
-        ))
+        return vs.ModelView(
+            sections=(
+                vs.ValueSection(label="Name", kind="str", attr="name"),
+                vs.PanelSection(
+                    title="Search",
+                    sections=(
+                        vs.ValueSection(
+                            label="Threshold", kind="int", target="settings", attr="threshold"
+                        ),
+                        vs.ValueSection(
+                            label="Window", kind="float", target="settings", attr="window"
+                        ),
+                        vs.ChoiceSection(
+                            label="Method",
+                            target="settings",
+                            attr="method",
+                            options=("sliding", "cusum"),
+                        ),
+                        vs.ToggleSection(label="Filter", target="settings", attr="use_filter"),
+                    ),
+                ),
+                # A command, not a setting: replaying it on load would re-run it.
+                vs.ValueSection(label="Go", kind="str", set_action="run_analysis"),
+            )
+        )
 
 
 @pytest.fixture
@@ -141,10 +151,12 @@ def test_an_older_file_restores_what_it_still_shares(form):
     A file naming a field this version dropped must restore the rest rather than
     failing whole — and must say what it could not do.
     """
-    result = form.apply_state({
-        "settings.threshold": 11,
-        "settings.a_field_that_no_longer_exists": 3,
-    })
+    result = form.apply_state(
+        {
+            "settings.threshold": 11,
+            "settings.a_field_that_no_longer_exists": 3,
+        }
+    )
 
     assert form.model.settings.threshold == 11
     assert result.applied == ["settings.threshold"]
@@ -171,11 +183,13 @@ def test_a_rejected_value_does_not_abandon_the_rest(form):
     strict._method = "sliding"
     form.model.settings = strict
 
-    result = form.apply_state({
-        "settings.threshold": 3,
-        "settings.method": "nonsense",
-        "settings.window": 0.25,
-    })
+    result = form.apply_state(
+        {
+            "settings.threshold": 3,
+            "settings.method": "nonsense",
+            "settings.window": 0.25,
+        }
+    )
 
     assert form.model.settings.threshold == 3
     assert form.model.settings.window == 0.25
@@ -229,16 +243,12 @@ def test_it_works_on_shipped_view_specs(qt_app):
             spec = load_view_spec(path)
         except Exception:
             continue
-        keys = [
-            af_state._key(s)
-            for s in af_state.iter_bound_sections(spec.sections)
-        ]
+        keys = [af_state._key(s) for s in af_state.iter_bound_sections(spec.sections)]
         if keys:
             with_bindings += 1
             assert all(keys), f"{path.name} produced an empty key"
             assert len(keys) == len(set(keys)), (
-                f"{path.name} binds the same attribute twice; a restore would "
-                "be ambiguous"
+                f"{path.name} binds the same attribute twice; a restore would be ambiguous"
             )
 
     assert with_bindings >= 5, (

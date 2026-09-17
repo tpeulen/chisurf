@@ -4,11 +4,15 @@ Dialog for configuring PicoQuant device settings.
 """
 
 from qtpy.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel,
-    QSpinBox, QDoubleSpinBox, QPushButton, QGroupBox,
-    QMessageBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
 )
-from qtpy.QtCore import Qt
 
 
 class PicoQuantSetupDialog(QDialog):
@@ -24,9 +28,9 @@ class PicoQuantSetupDialog(QDialog):
 
         # Load current parameters (PicoQuant devices have minimal configuration)
         self.params = {
-            'measurement_mode': 1,  # T2 mode
-            'reference_source': 0,  # Internal
-            'max_photons': 100000,
+            "measurement_mode": 1,  # T2 mode
+            "reference_source": 0,  # Internal
+            "max_photons": 100000,
         }
 
         self.setup_ui()
@@ -64,14 +68,14 @@ class PicoQuantSetupDialog(QDialog):
         # Max photons
         self.max_photons_spin = QSpinBox()
         self.max_photons_spin.setRange(1000, 10000000)
-        self.max_photons_spin.setValue(self.params['max_photons'])
+        self.max_photons_spin.setValue(self.params["max_photons"])
         self.max_photons_spin.setSingleStep(10000)
         settings_layout.addRow("Max Photons:", self.max_photons_spin)
 
         layout.addWidget(settings_group)
 
         # Status info
-        if self.device and hasattr(self.device, 'api') and self.device.api:
+        if self.device and hasattr(self.device, "api") and self.device.api:
             status_group = QGroupBox("Device Status")
             status_layout = QVBoxLayout(status_group)
 
@@ -105,5 +109,5 @@ class PicoQuantSetupDialog(QDialog):
     def get_parameters(self):
         """Get the current parameter values."""
         params = self.params.copy()
-        params['max_photons'] = self.max_photons_spin.value()
+        params["max_photons"] = self.max_photons_spin.value()
         return params

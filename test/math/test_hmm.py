@@ -23,14 +23,14 @@ from chisurf.core.math.hmm import (
 
 def _reference_model(n_components=3, n_features=2):
     """Return a well-separated ground-truth model to sample from."""
-    transmat = np.array(
-        [[0.97, 0.02, 0.01], [0.03, 0.95, 0.02], [0.02, 0.03, 0.95]]
-    )[:n_components, :n_components]
+    transmat = np.array([[0.97, 0.02, 0.01], [0.03, 0.95, 0.02], [0.02, 0.03, 0.95]])[
+        :n_components, :n_components
+    ]
     transmat = transmat / transmat.sum(axis=1, keepdims=True)
     means = np.array([[10.0, 50.0], [30.0, 30.0], [55.0, 8.0]])[:n_components, :n_features]
-    covars = np.array(
-        [np.diag([9.0, 25.0]), np.diag([16.0, 16.0]), np.diag([25.0, 4.0])]
-    )[:n_components, :n_features, :n_features]
+    covars = np.array([np.diag([9.0, 25.0]), np.diag([16.0, 16.0]), np.diag([25.0, 4.0])])[
+        :n_components, :n_features, :n_features
+    ]
 
     model = GaussianHMM(n_components=n_components, covariance_type="full", random_state=0)
     model.n_features = n_features
@@ -204,16 +204,12 @@ def test_fit_recovers_the_generating_parameters(covariance_type):
     truth = _reference_model()
     X, states = truth.sample(6000, random_state=7)
 
-    model = GaussianHMM(
-        n_components=3, covariance_type=covariance_type, n_iter=200, random_state=0
-    )
+    model = GaussianHMM(n_components=3, covariance_type=covariance_type, n_iter=200, random_state=0)
     model.fit(X)
     order = _matching_order(model, truth)
 
     np.testing.assert_allclose(model.means_[order], truth.means_, atol=1.0)
-    np.testing.assert_allclose(
-        model.transmat_[np.ix_(order, order)], truth.transmat_, atol=0.03
-    )
+    np.testing.assert_allclose(model.transmat_[np.ix_(order, order)], truth.transmat_, atol=0.03)
     # Relabelled the same way, the decoded path must match the true one.
     relabel = np.argsort(order)
     assert np.mean(relabel[model.predict(X)] == states) > 0.95
@@ -329,9 +325,7 @@ def test_posteriors_sum_to_one_and_map_decoding_follows_them():
     log_prob, posteriors = model.score_samples(X)
     np.testing.assert_allclose(posteriors.sum(axis=1), 1.0, rtol=1e-10)
     assert log_prob == pytest.approx(model.score(X))
-    np.testing.assert_array_equal(
-        model.decode(X, algorithm="map")[1], posteriors.argmax(axis=1)
-    )
+    np.testing.assert_array_equal(model.decode(X, algorithm="map")[1], posteriors.argmax(axis=1))
 
 
 def test_multiple_sequences_are_not_joined_across_their_boundaries():
@@ -341,13 +335,11 @@ def test_multiple_sequences_are_not_joined_across_their_boundaries():
     X = np.concatenate([first, second])
     lengths = [len(first), len(second)]
 
-    model = GaussianHMM(
-        n_components=3, covariance_type="full", n_iter=100, random_state=0
-    ).fit(X, lengths)
-    # The likelihood of the split fit is the sum of the per-sequence ones.
-    assert model.score(X, lengths) == pytest.approx(
-        model.score(first) + model.score(second)
+    model = GaussianHMM(n_components=3, covariance_type="full", n_iter=100, random_state=0).fit(
+        X, lengths
     )
+    # The likelihood of the split fit is the sum of the per-sequence ones.
+    assert model.score(X, lengths) == pytest.approx(model.score(first) + model.score(second))
     with pytest.raises(ValueError, match="lengths sum to"):
         model.score(X, [10, 20])
 
@@ -365,18 +357,16 @@ def test_bic_selects_the_number_of_states_that_generated_the_data():
     truth = _reference_model(n_components=2, n_features=1)
     X, _ = truth.sample(4000, random_state=29)
     bics = [
-        GaussianHMM(
-            n_components=n, covariance_type="full", n_iter=200, random_state=0
-        ).fit(X).bic(X)
+        GaussianHMM(n_components=n, covariance_type="full", n_iter=200, random_state=0)
+        .fit(X)
+        .bic(X)
         for n in range(1, 5)
     ]
     assert int(np.argmin(bics)) + 1 == 2
     model = GaussianHMM(n_components=2, covariance_type="full", n_iter=200, random_state=0)
     model.fit(X)
     # AIC and BIC differ only in how they charge for the parameters.
-    assert model.bic(X) - model.aic(X) == pytest.approx(
-        model.n_parameters * (np.log(len(X)) - 2)
-    )
+    assert model.bic(X) - model.aic(X) == pytest.approx(model.n_parameters * (np.log(len(X)) - 2))
 
 
 def test_frozen_parameters_are_left_untouched():
@@ -461,7 +451,7 @@ def test_an_impossible_sequence_contributes_no_transition_counts():
     log_startprob = np.log(np.full(n_components, 1.0 / n_components))
     log_transmat = np.log(rng.dirichlet(np.ones(n_components) * 8, size=n_components))
     log_frameprob = np.log(rng.uniform(1e-6, 1.0, (n_samples, n_components)))
-    log_frameprob[17, :] = -np.inf          # no state can explain this frame
+    log_frameprob[17, :] = -np.inf  # no state can explain this frame
 
     fwd = np.empty((n_samples, n_components))
     log_prob = hmm._forward_log(log_startprob, log_transmat, log_frameprob, fwd)
@@ -469,9 +459,7 @@ def test_an_impossible_sequence_contributes_no_transition_counts():
 
     posteriors = np.empty((n_samples, n_components))
     xi_sum = np.zeros((n_components, n_components))
-    hmm._backward_posteriors_xi(
-        log_transmat, log_frameprob, fwd, log_prob, posteriors, xi_sum
-    )
+    hmm._backward_posteriors_xi(log_transmat, log_frameprob, fwd, log_prob, posteriors, xi_sum)
 
     assert not np.isnan(xi_sum).any(), "an impossible sequence poisoned xi_sum"
     assert not np.isnan(posteriors).any()

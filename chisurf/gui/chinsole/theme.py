@@ -78,20 +78,44 @@ class ConsoleTheme:
 #: in, the single most important line of a traceback; blue 4 (#2472c8, 3.43:1)
 #: and magenta 5 (#bc3fbc) are simply too dark. See ``test_theme_contrast``.
 _ANSI_DARK = (
-    "#000000", "#e85d5d", "#0dbc79", "#e5e510",
-    "#4a90d9", "#c667c6", "#11a8cd", "#e5e5e5",
-    "#666666", "#f14c4c", "#23d18b", "#f5f543",
-    "#3b8eea", "#d670d6", "#29b8db", "#ffffff",
+    "#000000",
+    "#e85d5d",
+    "#0dbc79",
+    "#e5e510",
+    "#4a90d9",
+    "#c667c6",
+    "#11a8cd",
+    "#e5e5e5",
+    "#666666",
+    "#f14c4c",
+    "#23d18b",
+    "#f5f543",
+    "#3b8eea",
+    "#d670d6",
+    "#29b8db",
+    "#ffffff",
 )
 
 #: The same sixteen slots re-picked for a light background. Bright yellow and
 #: bright cyan are unreadable on white, so the light theme darkens them rather
 #: than inheriting terminal convention.
 _ANSI_LIGHT = (
-    "#000000", "#cd3131", "#00825e", "#8a7500",
-    "#0451a5", "#a626a4", "#0b7f8f", "#555555",
-    "#666666", "#cd3131", "#00875f", "#7a6800",
-    "#0451a5", "#a626a4", "#0b7f8f", "#000000",
+    "#000000",
+    "#cd3131",
+    "#00825e",
+    "#8a7500",
+    "#0451a5",
+    "#a626a4",
+    "#0b7f8f",
+    "#555555",
+    "#666666",
+    "#cd3131",
+    "#00875f",
+    "#7a6800",
+    "#0451a5",
+    "#a626a4",
+    "#0b7f8f",
+    "#000000",
 )
 
 _SYNTAX_DARK = {
@@ -223,7 +247,9 @@ def resolve_theme(name: str | ConsoleTheme | None = None) -> ConsoleTheme:
 
         chisurf.logging.warning(
             "Unknown console theme %r; using %s. Known: %s",
-            name, _auto_theme_name(), ", ".join(sorted(THEMES)),
+            name,
+            _auto_theme_name(),
+            ", ".join(sorted(THEMES)),
         )
         return THEMES[_auto_theme_name()]
     return theme

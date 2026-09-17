@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .selection import compute_bids_from_tttr
 
+if TYPE_CHECKING:
+    import tttrlib
 
-def load_tttr(path: str | Path) -> "tttrlib.TTTR":
+
+def load_tttr(path: str | Path) -> tttrlib.TTTR:
     """Load a TTTR file using tttrlib.
 
     Parameters

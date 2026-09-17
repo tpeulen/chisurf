@@ -31,7 +31,8 @@ dataset, and the table framework's source adapters buy nothing here.
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from qtpy import QtCore, QtWidgets
@@ -134,7 +135,7 @@ class RegionEditor(QtWidgets.QWidget):
         allow_shapes: bool = True,
         paint_source: str = "",
         intensity_unit: str = "",
-        parent: Optional[QtWidgets.QWidget] = None,
+        parent: QtWidgets.QWidget | None = None,
     ) -> None:
         """Build the editor and bind it to the model's collection."""
         super().__init__(parent)
@@ -172,15 +173,17 @@ class RegionEditor(QtWidgets.QWidget):
             self.name_edit.returnPressed.connect(self.capture_painted)
             row.addWidget(self.name_edit)
             row.addWidget(
-                _tool_button("+", "Keep the current selection as a named region",
-                             self.capture_painted)
+                _tool_button(
+                    "+", "Keep the current selection as a named region", self.capture_painted
+                )
             )
             row.addSpacing(6)
         if allow_shapes:
             for kind, glyph, title in SHAPES:
                 row.addWidget(
                     _tool_button(
-                        glyph, f"Add a {title.lower()} region",
+                        glyph,
+                        f"Add a {title.lower()} region",
                         lambda _=False, k=kind: self.add_shape(k),
                     )
                 )
@@ -199,8 +202,7 @@ class RegionEditor(QtWidgets.QWidget):
         tree.setRootIsDecorated(False)
         tree.setAlternatingRowColors(True)
         tree.setEditTriggers(
-            QtWidgets.QAbstractItemView.DoubleClicked
-            | QtWidgets.QAbstractItemView.EditKeyPressed
+            QtWidgets.QAbstractItemView.DoubleClicked | QtWidgets.QAbstractItemView.EditKeyPressed
         )
         tree.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         header = tree.header()
@@ -247,7 +249,7 @@ class RegionEditor(QtWidgets.QWidget):
             setattr(self._model, self._target, current)
         return current
 
-    def _image(self) -> Optional[np.ndarray]:
+    def _image(self) -> np.ndarray | None:
         """Return the image regions are measured against, if the host has one."""
         if not self._image_attr:
             return None
@@ -375,7 +377,9 @@ class RegionEditor(QtWidgets.QWidget):
         if not len(self.collection):
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save regions", self._working_dir(),
+            self,
+            "Save regions",
+            self._working_dir(),
             "Regions (*.json);;Mask image (*.tif);;NumPy (*.npy)",
         )
         if not path:
@@ -392,9 +396,7 @@ class RegionEditor(QtWidgets.QWidget):
             return
         from chisurf.core.roi.io import save_label_image
 
-        save_label_image(
-            [e.roi for e in self.collection], image.shape[-2:], path, image=image
-        )
+        save_label_image([e.roi for e in self.collection], image.shape[-2:], path, image=image)
 
     def load(self) -> None:
         """Add the regions in a file to the list.
@@ -404,7 +406,9 @@ class RegionEditor(QtWidgets.QWidget):
         expensive kind of surprise.
         """
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load regions", self._working_dir(),
+            self,
+            "Load regions",
+            self._working_dir(),
             "Regions (*.json);;Segmentation (*_seg.npy);;Masks (*.tif *.tiff *.npy);;All files (*)",
         )
         if not path:
@@ -497,7 +501,9 @@ class RegionEditor(QtWidgets.QWidget):
                     ]
                 )
                 item.setData(_COL_NAME, _NAME_ROLE, entry.name)
-                item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsUserCheckable)
+                item.setFlags(
+                    item.flags() | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsUserCheckable
+                )
                 item.setCheckState(
                     _COL_NAME, QtCore.Qt.Checked if entry.enabled else QtCore.Qt.Unchecked
                 )

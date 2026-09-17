@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from chisurf.plugins.burst.burst_h2mm.core import analysis, h2mm
 from chisurf.core.fluorescence.burst.photons import StreamDef
+from chisurf.plugins.burst.burst_h2mm.core import analysis, h2mm
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
     bursts_from_dataframe,
 )
@@ -65,8 +65,12 @@ def test_bursts_from_dataframe_and_analyze():
     assert data.n_streams == 2
 
     ana = analysis.analyze(
-        data, state_counts=(1, 2, 3), criterion="bic",
-        base_time_s=1e-6, n_restarts=1, max_iter=200,
+        data,
+        state_counts=(1, 2, 3),
+        criterion="bic",
+        base_time_s=1e-6,
+        n_restarts=1,
+        max_iter=200,
     )
     assert ana.best.n_states == 2
     order = np.argsort(-ana.best.model.obs[:, 0])
@@ -81,7 +85,11 @@ def test_analyze_populates_dwells_path_and_measured_es():
     streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(
-        data, state_counts=(1, 2, 3), base_time_s=1e-6, n_restarts=1, max_iter=200,
+        data,
+        state_counts=(1, 2, 3),
+        base_time_s=1e-6,
+        n_restarts=1,
+        max_iter=200,
     )
     # Viterbi path covers every analysed photon.
     assert ana.path.shape[0] == data.n_photons
@@ -166,8 +174,9 @@ def test_nanotime_divisors_expand_streams_and_recover_fret():
     # Both nanotime bins of each base stream are populated (random micro times).
     assert set(np.unique(data.streams).tolist()) == {0, 1, 2, 3}
 
-    ana = analysis.analyze(data, state_counts=(2,), divisors=2, base_time_s=1e-6,
-                           n_restarts=2, max_iter=200)
+    ana = analysis.analyze(
+        data, state_counts=(2,), divisors=2, base_time_s=1e-6, n_restarts=2, max_iter=200
+    )
     assert ana.n_streams == 4 and ana.divisors == 2
     assert ana.donor_streams == (0, 1) and ana.acceptor_streams == (2, 3)
     # Apparent FRET, summed over the donor/acceptor blocks, still separates.
@@ -183,8 +192,14 @@ def test_profile_likelihood_peaks_at_mle_with_ordered_ci():
     streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=2, max_iter=200)
-    scans = profile_likelihood(data, ana.best.model, donor_streams=(0,), acceptor_streams=(1,),
-                               n_points=21, half_width=0.15)
+    scans = profile_likelihood(
+        data,
+        ana.best.model,
+        donor_streams=(0,),
+        acceptor_streams=(1,),
+        n_points=21,
+        half_width=0.15,
+    )
     assert len(scans) == 2  # two E profiles (no Aex → no S)
     assert all(s.param == "E" for s in scans)
     for s in scans:
@@ -204,8 +219,9 @@ def test_bootstrap_uncertainty_brackets_state_fret():
     streams = [StreamDef("green", [0], []), StreamDef("red", [1], [])]
     data = bursts_from_dataframe(df, tttrs, streams, min_photons=5)
     ana = analysis.analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=200)
-    unc = bootstrap_uncertainty(data, ana.best.n_states, n_boot=8, n_restarts=1,
-                                max_iter=150, seed=1)
+    unc = bootstrap_uncertainty(
+        data, ana.best.n_states, n_boot=8, n_restarts=1, max_iter=150, seed=1
+    )
     assert unc.n_boot == 8
     assert unc.fret_lo.shape == (2,)
     # Intervals are ordered and cover the E-sorted recovered efficiencies.

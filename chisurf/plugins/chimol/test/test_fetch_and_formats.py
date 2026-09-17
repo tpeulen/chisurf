@@ -10,13 +10,13 @@ that sends you looking in the wrong place:
 
 Neither looks like a bug in the thing that is actually wrong.
 """
+
 from __future__ import annotations
 
 import pathlib
 import re
 
 import pytest
-
 from chimol.commands.builtin.loader import LoaderCommands
 
 
@@ -114,17 +114,23 @@ def _write_bead_system(path: pathlib.Path, *, binary: bool) -> None:
         def get_spheres(self):
             for i in range(3):
                 yield ihm.model.Sphere(
-                    asym_unit=asym, seq_id_range=(i + 1, i + 1),
-                    x=float(i), y=float(2 * i), z=0.0, radius=5.0 + i,
+                    asym_unit=asym,
+                    seq_id_range=(i + 1, i + 1),
+                    x=float(i),
+                    y=float(2 * i),
+                    z=0.0,
+                    radius=5.0 + i,
                 )
 
     representation = ihm.representation.Representation(
-        [ihm.representation.FeatureSegment(
-            asym, rigid=False, primitive="sphere", count=3, starting_model=None)]
+        [
+            ihm.representation.FeatureSegment(
+                asym, rigid=False, primitive="sphere", count=3, starting_model=None
+            )
+        ]
     )
     system.orphan_representations.append(representation)
-    model = _Model(assembly=ihm.Assembly([asym]), protocol=None,
-                   representation=representation)
+    model = _Model(assembly=ihm.Assembly([asym]), protocol=None, representation=representation)
     system.state_groups.append(
         ihm.model.StateGroup([ihm.model.State([ihm.model.ModelGroup([model])])])
     )

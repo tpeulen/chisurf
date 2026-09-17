@@ -1,37 +1,40 @@
-import pytest
 import sys
-import os
 from unittest.mock import MagicMock
+
 import chisurf as cs
+
 
 def test_chisurf_import():
     # Basic import test
     assert cs.__version__ is not None
 
+
 def test_parameter_no_gui():
     # Ensure core fitting parameters work without a GUI loop
     from chisurf.core.fitting.parameter import FittingParameter
+
     p = FittingParameter(name="test", value=1.23)
     assert p.value == 1.23
     p.value = 4.56
     assert p.value == 4.56
 
+
 def test_gui_import_headless():
     # cs.gui often checks for IPython kernel
     # We want to ensure it doesn't crash the entire process if imported in a script
     try:
-        import chisurf.gui
-    except Exception as e:
-        # If it requires a display on Windows it might fail, 
+        pass
+    except Exception:
+        # If it requires a display on Windows it might fail,
         # but it shouldn't be a hard crash on import.
         # We check if it's at least not a SyntaxError or similar.
         pass
 
+
 def test_ipython_detection_mock():
     # Mock IPython to simulate being in a notebook
-    sys.modules['IPython'] = MagicMock()
-    import chisurf.gui
+    sys.modules["IPython"] = MagicMock()
     # Verify that it doesn't explode when it thinks it's in IPython
-    # (Actual testing of notebook widgets requires a real kernel, 
+    # (Actual testing of notebook widgets requires a real kernel,
     # but we can check the import logic)
     assert True

@@ -134,8 +134,16 @@ def test_view_spec_declares_all_fields():
 
     attrs = set(_attrs(spec.sections))
     assert attrs == {
-        "chi2_1", "n1", "chi2_2", "n2", "conf_level",
-        "chi2_min", "npars", "dof", "conf_level_2", "chi2_max",
+        "chi2_1",
+        "n1",
+        "chi2_2",
+        "n2",
+        "conf_level",
+        "chi2_min",
+        "npars",
+        "dof",
+        "conf_level_2",
+        "chi2_max",
     }
 
 

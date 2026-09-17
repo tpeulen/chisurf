@@ -4,6 +4,7 @@ None of this needs a display, which is the point of moving the node bodies out
 of ``QGraphicsProxyWidget``: what a node shows is now a function of its config,
 so it can be asserted rather than screenshotted.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -11,8 +12,8 @@ import pytest
 
 emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
 from chisurf.gui.widgets.node_editor.document import GraphDocument  # noqa: E402
+from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import (  # noqa: E402
     WAVELENGTHS,
 )
@@ -69,10 +70,12 @@ def test_an_uncategorised_probe_falls_back_to_what_it_carries():
     The database predates the category field, so a good part of it has none;
     dropping those would empty the chooser for a user with an older store.
     """
-    content = BeampathContent([
-        {"probe_id": "old", "name": "Legacy BP", "has_trans": True},
-        {"probe_id": "det", "name": "Legacy QE", "has_qe": True},
-    ])
+    content = BeampathContent(
+        [
+            {"probe_id": "old", "name": "Legacy BP", "has_trans": True},
+            {"probe_id": "det", "name": "Legacy QE", "has_qe": True},
+        ]
+    )
     assert [name for name, _ in content.choices("filter")] == ["None", "Legacy BP"]
     assert [name for name, _ in content.choices("detector")] == ["None", "Legacy QE"]
 
@@ -92,10 +95,12 @@ def test_probes_can_arrive_after_the_window_is_open():
 
 def test_spectra_are_summed_across_ports_and_sources():
     """Two upstream sources into one node add up, as light does."""
-    total = _summed({
-        "In": {"a": _gauss(500.0, 10.0), "b": _gauss(600.0, 10.0)},
-        "Other": {"c": _gauss(500.0, 10.0)},
-    })
+    total = _summed(
+        {
+            "In": {"a": _gauss(500.0, 10.0), "b": _gauss(600.0, 10.0)},
+            "Other": {"c": _gauss(500.0, 10.0)},
+        }
+    )
     assert total is not None
     assert abs(float(total.max()) - 2.0) < 1e-6
 
@@ -155,25 +160,59 @@ def _beam_path() -> dict:
     return {
         "version": 1,
         "nodes": [
-            {"id": "src", "type": "light_source", "title": "Light Source",
-             "inputs": [], "outputs": ["Light"], "pos": [0.0, 0.0],
-             "config": {"source_mode": "manual", "manual_lines": [488.0],
-                        "_output_spectra": {"Light": {"src": _gauss(488.0, 4.0)}}}},
-            {"id": "smp", "type": "sample", "title": "Sample / Fluorophore",
-             "inputs": ["In"], "outputs": ["Out", "Dye Data"], "pos": [300.0, 0.0],
-             "config": {"probe_id": "a488",
-                        "_input_spectra": {"In": {"src": _gauss(488.0, 4.0)}},
-                        "_output_spectra": {"Out": {"smp": _gauss(525.0, 25.0)}},
-                        "_node_char": (_gauss(495.0, 20.0), _gauss(525.0, 25.0))}},
-            {"id": "flt", "type": "filter", "title": "Filter",
-             "inputs": ["In"], "outputs": ["Out"], "pos": [600.0, 0.0],
-             "config": {"probe_id": "bp",
-                        "_input_spectra": {"In": {"smp": _gauss(525.0, 25.0)}},
-                        "_node_char": _gauss(525.0, 18.0)}},
-            {"id": "det", "type": "detector", "title": "Detector",
-             "inputs": ["In"], "outputs": [], "pos": [900.0, 0.0],
-             "config": {"detector_name": "Green APD", "probe_id": "apd",
-                        "_input_spectra": {"In": {"flt": _gauss(525.0, 15.0)}}}},
+            {
+                "id": "src",
+                "type": "light_source",
+                "title": "Light Source",
+                "inputs": [],
+                "outputs": ["Light"],
+                "pos": [0.0, 0.0],
+                "config": {
+                    "source_mode": "manual",
+                    "manual_lines": [488.0],
+                    "_output_spectra": {"Light": {"src": _gauss(488.0, 4.0)}},
+                },
+            },
+            {
+                "id": "smp",
+                "type": "sample",
+                "title": "Sample / Fluorophore",
+                "inputs": ["In"],
+                "outputs": ["Out", "Dye Data"],
+                "pos": [300.0, 0.0],
+                "config": {
+                    "probe_id": "a488",
+                    "_input_spectra": {"In": {"src": _gauss(488.0, 4.0)}},
+                    "_output_spectra": {"Out": {"smp": _gauss(525.0, 25.0)}},
+                    "_node_char": (_gauss(495.0, 20.0), _gauss(525.0, 25.0)),
+                },
+            },
+            {
+                "id": "flt",
+                "type": "filter",
+                "title": "Filter",
+                "inputs": ["In"],
+                "outputs": ["Out"],
+                "pos": [600.0, 0.0],
+                "config": {
+                    "probe_id": "bp",
+                    "_input_spectra": {"In": {"smp": _gauss(525.0, 25.0)}},
+                    "_node_char": _gauss(525.0, 18.0),
+                },
+            },
+            {
+                "id": "det",
+                "type": "detector",
+                "title": "Detector",
+                "inputs": ["In"],
+                "outputs": [],
+                "pos": [900.0, 0.0],
+                "config": {
+                    "detector_name": "Green APD",
+                    "probe_id": "apd",
+                    "_input_spectra": {"In": {"flt": _gauss(525.0, 15.0)}},
+                },
+            },
         ],
         "edges": [
             {"source": "src", "source_port": 0, "target": "smp", "target_port": 0},

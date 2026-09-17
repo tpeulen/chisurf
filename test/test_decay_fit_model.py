@@ -10,6 +10,7 @@ A mis-configured model can fail silently (a flat background instead of a decay),
 so the first test asserts the model is not flat before trusting any recovered
 parameter.
 """
+
 import numpy as np
 import pytest
 
@@ -26,8 +27,9 @@ N_BINS = 1024
 DT = 0.032
 
 
-def _simulate(taus=TRUE_TAUS, amps=TRUE_AMPS, n_photons=2e6, seed=0,
-              n_bins=N_BINS, dt=DT, background=10.0):
+def _simulate(
+    taus=TRUE_TAUS, amps=TRUE_AMPS, n_photons=2e6, seed=0, n_bins=N_BINS, dt=DT, background=10.0
+):
     """Build a Poisson-noised, IRF-convolved multi-exponential decay plus its IRF."""
     t = np.arange(n_bins, dtype=float) * dt
     irf = np.exp(-0.5 * ((t - 1.0) / 0.25) ** 2) * 1e4
@@ -45,8 +47,14 @@ def _simulate(taus=TRUE_TAUS, amps=TRUE_AMPS, n_photons=2e6, seed=0,
 def test_model_actually_computes_a_decay():
     """Guard the silent failure mode: a mis-wired model returns flat background."""
     y, irf = _simulate()
-    fit = build_lifetime_fit(y, bin_width=DT, irf=irf, n_components=2,
-                             initial_lifetimes=TRUE_TAUS, tau_bounds=(0.05, 20.0))
+    fit = build_lifetime_fit(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_components=2,
+        initial_lifetimes=TRUE_TAUS,
+        tau_bounds=(0.05, 20.0),
+    )
     fit.model.update()
     model_y = np.asarray(fit.model.y, dtype=float)
 
@@ -56,9 +64,15 @@ def test_model_actually_computes_a_decay():
 
 def test_recovers_known_lifetimes_from_a_poor_start():
     y, irf = _simulate()
-    result = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
-                                initial_lifetimes=(8.0, 0.4),
-                                tau_bounds=(0.05, 20.0), fit_background=True)
+    result = fit_lifetime_model(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_components=2,
+        initial_lifetimes=(8.0, 0.4),
+        tau_bounds=(0.05, 20.0),
+        fit_background=True,
+    )
 
     np.testing.assert_allclose(result["lifetimes"], sorted(TRUE_TAUS), rtol=0.05)
     assert result["chi2_reduced"] < 2.0, result["chi2_reduced"]
@@ -71,8 +85,9 @@ def test_an_unmodelled_background_biases_the_lifetimes_upward():
     the fit stretches both lifetimes to cover the raised tail.
     """
     y, irf = _simulate()
-    kw = dict(bin_width=DT, irf=irf, n_components=2,
-              initial_lifetimes=(8.0, 0.4), tau_bounds=(0.05, 20.0))
+    kw = dict(
+        bin_width=DT, irf=irf, n_components=2, initial_lifetimes=(8.0, 0.4), tau_bounds=(0.05, 20.0)
+    )
     denied = fit_lifetime_model(y, **kw)
     fitted = fit_lifetime_model(y, fit_background=True, **kw)
 
@@ -83,9 +98,15 @@ def test_an_unmodelled_background_biases_the_lifetimes_upward():
 
 def test_amplitudes_are_recovered_and_normalized():
     y, irf = _simulate()
-    result = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
-                                initial_lifetimes=(8.0, 0.4),
-                                tau_bounds=(0.05, 20.0), fit_background=True)
+    result = fit_lifetime_model(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_components=2,
+        initial_lifetimes=(8.0, 0.4),
+        tau_bounds=(0.05, 20.0),
+        fit_background=True,
+    )
 
     amps = result["amplitudes"]
     assert np.all(np.isfinite(amps))
@@ -100,20 +121,27 @@ def test_result_shape_matches_the_scipy_fitter():
 
     y, irf = _simulate(n_photons=2e5)
     scipy_result = decay_fit.fit_lifetime_components(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0))
+        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0)
+    )
     model_result = fit_lifetime_model(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0))
+        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0)
+    )
 
-    shared = {"lifetimes", "amplitudes", "lifetime_spectrum", "reconstruction",
-              "weighted_residuals", "chi2_reduced"}
+    shared = {
+        "lifetimes",
+        "amplitudes",
+        "lifetime_spectrum",
+        "reconstruction",
+        "weighted_residuals",
+        "chi2_reduced",
+    }
     assert shared <= set(scipy_result), "the scipy fitter's contract changed"
     assert shared <= set(model_result)
     for key in ("lifetimes", "amplitudes"):
         assert model_result[key].shape == scipy_result[key].shape
     assert model_result["lifetime_spectrum"].size == 2 * 2
     # Interleaved [a0, tau0, a1, tau1], amplitude first.
-    np.testing.assert_allclose(model_result["lifetime_spectrum"][1::2],
-                               model_result["lifetimes"])
+    np.testing.assert_allclose(model_result["lifetime_spectrum"][1::2], model_result["lifetimes"])
 
 
 def test_the_two_fitters_agree_on_the_lifetimes():
@@ -122,14 +150,19 @@ def test_the_two_fitters_agree_on_the_lifetimes():
 
     y, irf = _simulate()
     scipy_result = decay_fit.fit_lifetime_components(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0),
-        include_background=True, include_scatter=True)
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_components=2,
+        tau_bounds=(0.05, 20.0),
+        include_background=True,
+        include_scatter=True,
+    )
     model_result = fit_lifetime_model(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0),
-        fit_background=True)
+        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0), fit_background=True
+    )
 
-    np.testing.assert_allclose(model_result["lifetimes"],
-                               scipy_result["lifetimes"], rtol=0.05)
+    np.testing.assert_allclose(model_result["lifetimes"], scipy_result["lifetimes"], rtol=0.05)
     np.testing.assert_allclose(model_result["lifetimes"], sorted(TRUE_TAUS), rtol=0.05)
 
 
@@ -148,11 +181,17 @@ def test_the_two_fitters_report_amplitudes_in_different_conventions():
 
     y, irf = _simulate()
     scipy_result = decay_fit.fit_lifetime_components(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0),
-        include_background=True, include_scatter=True)
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_components=2,
+        tau_bounds=(0.05, 20.0),
+        include_background=True,
+        include_scatter=True,
+    )
     model_result = fit_lifetime_model(
-        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0),
-        fit_background=True)
+        y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0), fit_background=True
+    )
 
     pre_exp = model_result["amplitudes"]
     taus = model_result["lifetimes"]
@@ -173,11 +212,19 @@ def test_fits_the_generated_irf_when_none_is_measured():
     IRF curve is stored, so the model reaches the same joint width/skew/shift fit
     the standalone fitter does — but as ``FittingParameter``s.
     """
-    y, _ = _simulate()   # true prompt: Gaussian, sigma = 0.25 ns, centred at 1 ns
-    result = fit_lifetime_model(y, bin_width=DT, irf=None, n_components=2,
-                                initial_lifetimes=(8.0, 0.4),
-                                tau_bounds=(0.05, 20.0), fit_background=True,
-                                fit_irf=True, irf_width=0.2, irf_skew=0.0)
+    y, _ = _simulate()  # true prompt: Gaussian, sigma = 0.25 ns, centred at 1 ns
+    result = fit_lifetime_model(
+        y,
+        bin_width=DT,
+        irf=None,
+        n_components=2,
+        initial_lifetimes=(8.0, 0.4),
+        tau_bounds=(0.05, 20.0),
+        fit_background=True,
+        fit_irf=True,
+        irf_width=0.2,
+        irf_skew=0.0,
+    )
 
     np.testing.assert_allclose(result["lifetimes"], sorted(TRUE_TAUS), rtol=0.05)
     assert result["irf_width"] == pytest.approx(0.25, rel=0.15)
@@ -185,8 +232,9 @@ def test_fits_the_generated_irf_when_none_is_measured():
 
 
 def _parameters(fit):
-    return {p.canonical_id: p for p in fit.model.parameters_all
-            if not getattr(p, "is_output", False)}
+    return {
+        p.canonical_id: p for p in fit.model.parameters_all if not getattr(p, "is_output", False)
+    }
 
 
 def test_irf_shape_is_free_only_when_requested():
@@ -214,8 +262,7 @@ def test_the_irf_timeshift_stays_free():
 
 def test_parameters_are_fitting_parameters_with_bounds():
     y, irf = _simulate()
-    result = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
-                                tau_bounds=(0.05, 20.0))
+    result = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0))
     from chisurf.core.fitting.parameter import FittingParameter
 
     problem = result["model"].problem
@@ -237,10 +284,8 @@ def test_more_components_than_a_search_offers_by_default():
 def test_a_fitted_lifetime_can_be_linked_to_another_fit():
     """The whole reason for the migration: live cross-fit parameter linking."""
     y, irf = _simulate()
-    a = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
-                           tau_bounds=(0.05, 20.0))
-    b = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
-                           tau_bounds=(0.05, 20.0))
+    a = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0))
+    b = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2, tau_bounds=(0.05, 20.0))
 
     target = _parameters(a["fit"])["lifetime.tau.0"]
     follower = _parameters(b["fit"])["lifetime.tau.0"]
@@ -292,8 +337,16 @@ R0 = 52.0
 TAU_D0 = 4.0
 
 
-def _simulate_fret(distances=(40.0, 65.0), fractions=(0.6, 0.4), x_donor_only=0.0,
-                   n_photons=2e6, seed=1, n_bins=N_BINS, dt=DT, background=5.0):
+def _simulate_fret(
+    distances=(40.0, 65.0),
+    fractions=(0.6, 0.4),
+    x_donor_only=0.0,
+    n_photons=2e6,
+    seed=1,
+    n_bins=N_BINS,
+    dt=DT,
+    background=5.0,
+):
     """Build a donor decay quenched by FRET at known distances, plus its IRF.
 
     Each state decays with tau_i = tau_D0 * (1 - E_i), the single-distance
@@ -318,10 +371,17 @@ def _simulate_fret(distances=(40.0, 65.0), fractions=(0.6, 0.4), x_donor_only=0.
 
 def test_fret_fit_recovers_known_distances():
     y, irf = _simulate_fret()
-    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
-                            donor_lifetime=TAU_D0, forster_radius=R0,
-                            sigma=2.0, fit_donor_only=False,
-                            fit_background=True)
+    result = fit_fret_model(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_states=2,
+        donor_lifetime=TAU_D0,
+        forster_radius=R0,
+        sigma=2.0,
+        fit_donor_only=False,
+        fit_background=True,
+    )
 
     np.testing.assert_allclose(result["distances"], [40.0, 65.0], rtol=0.15)
     assert result["chi2_reduced"] < 3.0, result["chi2_reduced"]
@@ -329,10 +389,17 @@ def test_fret_fit_recovers_known_distances():
 
 def test_fret_efficiencies_follow_the_fitted_distances():
     y, irf = _simulate_fret()
-    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
-                            donor_lifetime=TAU_D0, forster_radius=R0,
-                            sigma=2.0, fit_donor_only=False,
-                            fit_background=True)
+    result = fit_fret_model(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_states=2,
+        donor_lifetime=TAU_D0,
+        forster_radius=R0,
+        sigma=2.0,
+        fit_donor_only=False,
+        fit_background=True,
+    )
 
     expected = 1.0 / (1.0 + (result["distances"] / R0) ** 6)
     np.testing.assert_allclose(result["efficiencies"], expected)
@@ -345,8 +412,9 @@ def test_fret_distances_are_fitting_parameters():
     from chisurf.core.fitting.parameter import FittingParameter
 
     y, irf = _simulate_fret()
-    fit = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
-                         donor_lifetime=TAU_D0, forster_radius=R0)
+    fit = build_fret_fit(
+        y, bin_width=DT, irf=irf, n_states=2, donor_lifetime=TAU_D0, forster_radius=R0
+    )
     assert fit.model.structure == "tcspc_fret_gaussian.components.2"
     parameters = _parameters(fit)
     problem = fit.model.problem
@@ -365,25 +433,44 @@ def test_fret_distances_are_fitting_parameters():
 def test_fret_calibration_is_held_fixed():
     """R0 and tau_D0 are calibration, not data: fitting them is ill-conditioned."""
     y, irf = _simulate_fret()
-    parameters = _parameters(build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
-                                            donor_lifetime=TAU_D0, forster_radius=R0))
+    parameters = _parameters(
+        build_fret_fit(
+            y, bin_width=DT, irf=irf, n_states=2, donor_lifetime=TAU_D0, forster_radius=R0
+        )
+    )
     assert parameters["fret.forster_radius"].fixed
     assert parameters["donor.tau.0"].fixed
     assert parameters["fret.forster_radius"].value == pytest.approx(R0)
     assert parameters["fret.tau0"].value == pytest.approx(TAU_D0)
 
-    freed = _parameters(build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
-                                       donor_lifetime=TAU_D0, forster_radius=R0,
-                                       fit_donor_lifetime=True))
+    freed = _parameters(
+        build_fret_fit(
+            y,
+            bin_width=DT,
+            irf=irf,
+            n_states=2,
+            donor_lifetime=TAU_D0,
+            forster_radius=R0,
+            fit_donor_lifetime=True,
+        )
+    )
     assert not freed["donor.tau.0"].fixed
 
 
 def test_fret_donor_only_fraction_is_recovered():
     y, irf = _simulate_fret(x_donor_only=0.25)
-    result = fit_fret_model(y, bin_width=DT, irf=irf, n_states=2,
-                            donor_lifetime=TAU_D0, forster_radius=R0,
-                            sigma=2.0, fit_donor_only=True, x_donor_only=0.1,
-                            fit_background=True)
+    result = fit_fret_model(
+        y,
+        bin_width=DT,
+        irf=irf,
+        n_states=2,
+        donor_lifetime=TAU_D0,
+        forster_radius=R0,
+        sigma=2.0,
+        fit_donor_only=True,
+        x_donor_only=0.1,
+        fit_background=True,
+    )
 
     assert result["donor_only_fraction"] == pytest.approx(0.25, abs=0.15)
 

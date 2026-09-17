@@ -27,7 +27,11 @@ _needs_offscreen = pytest.mark.skipif(
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 #: Keeps the QApplication alive for the duration of the module.
@@ -45,8 +49,12 @@ def test_missing_attachment_atom_is_reported() -> None:
     from chisurf.plugins.modelling.fps_json_editor.gui.av_worker import AVWorker
 
     worker = AVWorker(
-        chain="E", res_id=134, atom="CG",
-        linker_length=20.0, linker_width=1.0, radii=(3.5, 0.0, 0.0),
+        chain="E",
+        res_id=134,
+        atom="CG",
+        linker_length=20.0,
+        linker_width=1.0,
+        radii=(3.5, 0.0, 0.0),
         pdb_path=str(_PDB_148L),
     )
     messages: list[str] = []

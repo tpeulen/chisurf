@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Tests for chisurf.server.session.SessionState."""
 
-import pytest
 from chisurf.server.session import SessionState
 
 
@@ -49,10 +48,12 @@ class TestSessionState:
         assert state.datasets == ["a", "c"]
 
     def test_remove_dataset_by_uid(self):
-        state = SessionState(datasets=[
-            {"uid": "u1", "name": "A"},
-            {"uid": "u2", "name": "B"},
-        ])
+        state = SessionState(
+            datasets=[
+                {"uid": "u1", "name": "A"},
+                {"uid": "u2", "name": "B"},
+            ]
+        )
         state.remove_dataset(uid="u1")
         assert len(state.datasets) == 1
         assert state.datasets[0]["uid"] == "u2"
@@ -63,10 +64,12 @@ class TestSessionState:
         assert state.fits == ["a", "c"]
 
     def test_remove_fit_by_uid(self):
-        state = SessionState(fits=[
-            {"uid": "u1", "name": "A"},
-            {"uid": "u2", "name": "B"},
-        ])
+        state = SessionState(
+            fits=[
+                {"uid": "u1", "name": "A"},
+                {"uid": "u2", "name": "B"},
+            ]
+        )
         state.remove_fit(uid="u1")
         assert len(state.fits) == 1
         assert state.fits[0]["uid"] == "u2"

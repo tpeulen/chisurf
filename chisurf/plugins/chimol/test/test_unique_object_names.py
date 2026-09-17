@@ -29,12 +29,12 @@ What this pins
   the original bug wearing a different hat;
 * that renaming is the same rule, since it was the other way in.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from toolkit_free import probe
 
 _MAP = pathlib.Path.home() / ".chisurf/structures/chimol/chimol_emdb_EMD-3061.map.gz"
@@ -44,7 +44,7 @@ _MAP = pathlib.Path.home() / ".chisurf/structures/chimol/chimol_emdb_EMD-3061.ma
 def measured():
     if not _MAP.exists():
         pytest.skip("no cached map to load twice")
-    return probe(f'''
+    return probe(f"""
         app = open_app(size=(700, 500))
         viewer = app.viewer
         errors, messages = [], []
@@ -86,7 +86,7 @@ def measured():
         app.cmd.do("set auto_rename_duplicate_objects, off")
         app.cmd.do("fetch 148L")
         emit("with_setting_off", names())
-    ''')
+    """)
 
 
 def test_duplicates_get_pymols_suffix(measured):

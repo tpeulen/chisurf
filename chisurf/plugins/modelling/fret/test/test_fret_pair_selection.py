@@ -6,6 +6,7 @@ def test_fret_pair_selection_window_creation(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
     pytest.importorskip("mdtraj")
     from chisurf.plugins.modelling.fret.gui.pair_selection_wizard import FRETPairSelectionWindow
+
     widget = FRETPairSelectionWindow()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QMainWindow)

@@ -8,14 +8,14 @@ does. They are ``viewer.objects``, ``viewer.update_view()``, ``viewer.gui``,
 remaining private reaches to a **listed, shrinking** set: a name may leave the
 list when it gets a public door; a new one may not appear.
 """
+
 from __future__ import annotations
 
 import pathlib
 import re
 
-import pytest
-
 import chimol
+import pytest
 
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
 SCOPES = ("commands", "plugins", "ui/wizards")
@@ -27,7 +27,9 @@ SCOPES = ("commands", "plugins", "ui/wizards")
 ALLOWED: set[str] = set()
 
 _ATTR = re.compile(r"\b(?:viewer|self\.viewer|self\._viewer|ctx\.viewer)\.(_[a-zA-Z]\w*)")
-_GETATTR = re.compile(r"getattr\((?:viewer|self\.viewer|self\._viewer|ctx\.viewer), \"(_[a-zA-Z]\w*)\"")
+_GETATTR = re.compile(
+    r"getattr\((?:viewer|self\.viewer|self\._viewer|ctx\.viewer), \"(_[a-zA-Z]\w*)\""
+)
 
 
 def _reaches() -> dict[str, set[str]]:
@@ -66,8 +68,17 @@ def test_the_public_doors_exist(qapp):
 
     view = Viewer()
     try:
-        for name in ("objects", "update_view", "gui", "renderer", "playback", "measurements",
-                     "activate_object", "create_object", "end_scrub"):
+        for name in (
+            "objects",
+            "update_view",
+            "gui",
+            "renderer",
+            "playback",
+            "measurements",
+            "activate_object",
+            "create_object",
+            "end_scrub",
+        ):
             assert hasattr(view, name), name
     finally:
         view.deleteLater()

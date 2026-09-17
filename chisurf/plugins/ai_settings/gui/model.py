@@ -8,10 +8,10 @@ testable; the tool wires :attr:`AISettingsModel.on_change` to refresh the form.
 
 from __future__ import annotations
 
+import html
 import logging
 import pathlib
 import typing
-import html
 import webbrowser
 
 from chisurf.core.dataspec import load_view_spec

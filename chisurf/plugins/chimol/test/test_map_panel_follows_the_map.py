@@ -7,6 +7,7 @@ loaded and anything else active it kept editing the first. The levels and the
 histogram then described a map that was not the one being drawn, which is worse
 than showing nothing: both are pictures of a map and neither says which.
 """
+
 from __future__ import annotations
 
 import numpy as np

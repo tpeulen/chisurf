@@ -66,8 +66,7 @@ class SampleLookupDialog(QtWidgets.QDialog):
         layout.addWidget(self.details_edit, 1)
 
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok
-            | QtWidgets.QDialogButtonBox.Cancel,
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
             self,
         )
         self.skip_button = QtWidgets.QPushButton("Skip", self)

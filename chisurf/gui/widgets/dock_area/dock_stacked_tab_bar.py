@@ -88,9 +88,7 @@ class FlowLayout(QtWidgets.QLayout):
         )
         return size
 
-    def insertWidget(
-        self, index: int, widget: QtWidgets.QWidget
-    ) -> int:
+    def insertWidget(self, index: int, widget: QtWidgets.QWidget) -> int:
         """Insert ``widget`` at ``index``.
 
         Parameters
@@ -138,9 +136,7 @@ class FlowLayout(QtWidgets.QLayout):
                 next_x = x + item.sizeHint().width() + self._h_spacing
                 line_height = 0
             if not test_only:
-                item.setGeometry(
-                    QtCore.QRect(QtCore.QPoint(x, y), item.sizeHint())
-                )
+                item.setGeometry(QtCore.QRect(QtCore.QPoint(x, y), item.sizeHint()))
             x = next_x
             line_height = max(line_height, item.sizeHint().height())
         return y + line_height - rect.y() + bottom
@@ -478,9 +474,7 @@ class DockStackedTabBar(QtWidgets.QWidget):
         item.clicked.connect(lambda _checked=False, it=item: self._on_item_clicked(it))
         item.doubleClicked.connect(lambda it=item: self._on_item_double_clicked(it))
         item.closeRequested.connect(lambda it=item: self._on_item_close_requested(it))
-        item.contextMenuRequested.connect(
-            lambda pos, it=item: self._on_item_context_menu(it, pos)
-        )
+        item.contextMenuRequested.connect(lambda pos, it=item: self._on_item_context_menu(it, pos))
         item.dragStarted.connect(lambda pos, it=item: self._on_item_drag_started(it, pos))
 
     def _on_item_clicked(self, item: DockStackedTabItem) -> None:
@@ -507,9 +501,7 @@ class DockStackedTabBar(QtWidgets.QWidget):
             return
         self.tabCloseRequested.emit(index)
 
-    def _on_item_context_menu(
-        self, item: DockStackedTabItem, pos: QtCore.QPoint
-    ) -> None:
+    def _on_item_context_menu(self, item: DockStackedTabItem, pos: QtCore.QPoint) -> None:
         """Forward tab context menu requests."""
         try:
             index = self._items.index(item)
@@ -517,9 +509,7 @@ class DockStackedTabBar(QtWidgets.QWidget):
             return
         self.contextMenuRequested.emit(index, pos)
 
-    def _on_item_drag_started(
-        self, item: DockStackedTabItem, start_pos: QtCore.QPoint
-    ) -> None:
+    def _on_item_drag_started(self, item: DockStackedTabItem, start_pos: QtCore.QPoint) -> None:
         """Initiate a drag for splitting the dock area."""
         try:
             index = self._items.index(item)
@@ -530,8 +520,9 @@ class DockStackedTabBar(QtWidgets.QWidget):
         # self.parentWidget() returns _top_bar (not DockStackedTabWidget) because
         # top_layout.addWidget() re-parents self to _top_bar when the layout is
         # applied to _top_bar.  We must keep walking until we find the owner.
+        from chisurf.gui.widgets.dock_area.dock_area import DockTabWidget
         from chisurf.gui.widgets.dock_area.dock_stacked_tab_widget import DockStackedTabWidget
-        from chisurf.gui.widgets.dock_area.dock_area import DockArea, DockTabWidget
+
         source_tw = self.parentWidget()
         while source_tw is not None and not isinstance(source_tw, DockStackedTabWidget):
             source_tw = source_tw.parentWidget()

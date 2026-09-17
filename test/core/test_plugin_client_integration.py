@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from chisurf.core.plugin.client import InProcessClient
-from chisurf.core.plugin.manifest import PluginManifest, load_manifest
 
 
 class TestBurstSelectionClientConstruction:
@@ -91,9 +88,7 @@ class TestBurstSelectionClientConstruction:
         from chisurf.plugins.burst.burst_selection.gui.client import BurstSelectionClient
 
         mock_client = MagicMock()
-        mock_client.call.return_value = {
-            "result": {"path": "test.bur", "features": [], "gmm": {}}
-        }
+        mock_client.call.return_value = {"result": {"path": "test.bur", "features": [], "gmm": {}}}
         bc = BurstSelectionClient(client=mock_client)
         result = bc.fit_gmm(Path("test.bur"), {})
         assert "features" in result

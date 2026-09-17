@@ -70,7 +70,7 @@ def _document() -> dict:
     }
 
 
-_DRIVE = '''
+_DRIVE = """
     import json, pathlib
 
     app = open_app(size=(900, 600))
@@ -102,7 +102,7 @@ _DRIVE = '''
     emit("hook_positions", str(len((opened[0] or {{}}).get("Positions", {{}}))
                                 if opened else -1))
     emit("errors", "; ".join(errors[:3]) or "none")
-'''
+"""
 
 
 def test_load_fps_json_labels_and_offers_the_document():
@@ -117,7 +117,7 @@ def test_load_fps_json_labels_and_offers_the_document():
     assert m["errors"] == "none", m["errors"]
 
 
-_PLAIN_DRIVE = '''
+_PLAIN_DRIVE = """
     import json, pathlib
 
     app = open_app(size=(900, 600))
@@ -141,18 +141,19 @@ _PLAIN_DRIVE = '''
         1 for e in app.viewer.objects.values()
         if getattr(getattr(e, "state", None), "av", None) is not None
     )))
-'''
+"""
 
 
 def test_a_plain_json_is_not_treated_as_a_labelling_document():
     """Only the compound suffix routes to ``fps_load``; a bare `.json` is not
-    chimol's to interpret, and must not open the editor."""
+    chimol's to interpret, and must not open the editor.
+    """
     m = probe(_PLAIN_DRIVE.format(payload=_document()))
     assert m["hook_calls"] == "0", "a bare .json reached the fps editor hook"
     assert m["av_objects"] == "0", "a bare .json computed accessible volumes"
 
 
-_PORTABLE_DRIVE = '''
+_PORTABLE_DRIVE = """
     import json, pathlib
 
     # The example shape, assembled in a directory that is *not* the working
@@ -203,7 +204,7 @@ _PORTABLE_DRIVE = '''
     emit("doc_alone_av", m_av)
     emit("doc_alone_meas", len(app2.viewer.measurements))
     emit("errors", "; ".join(errors[:3]) or "none")
-'''
+"""
 
 
 def test_the_shipped_example_shape_is_portable():

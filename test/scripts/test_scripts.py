@@ -16,6 +16,7 @@ manual registration. Scripts are copied into a temporary directory before runnin
 so their output files land in the tmp dir instead of the source tree (each script
 writes next to its own ``__file__``).
 """
+
 from __future__ import annotations
 
 import os
@@ -56,7 +57,7 @@ def _endpoint(script: Path) -> str:
         return "process"
     marker = "# !chisurf:"
     if first.startswith(marker):
-        return first[len(marker):].strip().split()[0].lower()
+        return first[len(marker) :].strip().split()[0].lower()
     return "process"
 
 

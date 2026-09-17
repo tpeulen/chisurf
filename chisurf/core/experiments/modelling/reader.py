@@ -1,30 +1,21 @@
-"""
+""" """
 
-"""
 from __future__ import annotations
-from chisurf import typing
 
 import chisurf.core.base
-import chisurf.core.support.decorators
 import chisurf.core.fio
 import chisurf.core.structure
+import chisurf.core.support.decorators
+from chisurf import typing
 from chisurf.core.experiments.core.reader import ExperimentReader
 
 
-class StructureReader(
-    ExperimentReader
-):
-
+class StructureReader(ExperimentReader):
     operation_type = "import"
     artifact_kind_source = "external_file"
     artifact_kind_derived = "processed_data"
 
-    def __init__(
-            self,
-            compute_internal_coordinates: bool = False,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, compute_internal_coordinates: bool = False, *args, **kwargs):
         """Initialize a structure reader.
 
         Parameters
@@ -33,10 +24,7 @@ class StructureReader(
             Whether to compute internal coordinates (dihedral angles etc.)
             when loading a structure.
         """
-        super().__init__(
-            *args,
-            **kwargs
-        )
+        super().__init__(*args, **kwargs)
         self.compute_internal_coordinates = compute_internal_coordinates
 
     @staticmethod
@@ -55,12 +43,7 @@ class StructureReader(
         """
         return 0, 0
 
-    def read(
-            self,
-            filename: str = None,
-            *args,
-            **kwargs
-    ) -> chisurf.core.data.ExperimentDataGroup:
+    def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.data.ExperimentDataGroup:
         """Load a molecular structure from a file.
 
         Parameters
@@ -74,12 +57,8 @@ class StructureReader(
             Group containing the loaded :class:`Structure`.
         """
         structure = chisurf.core.structure.Structure(
-            p_object=filename,
-            make_coarse=self.compute_internal_coordinates
+            p_object=filename, make_coarse=self.compute_internal_coordinates
         )
-        data_group = chisurf.core.data.ExperimentDataGroup(
-            seq=[structure]
-        )
+        data_group = chisurf.core.data.ExperimentDataGroup(seq=[structure])
         data_group.data_reader = self
         return data_group
-

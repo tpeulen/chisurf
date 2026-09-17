@@ -6,6 +6,7 @@ the tree pass them — but there were no matching properties. So ``p.lb`` raised
 attribute while the bound was never applied. That bit a real fixture: lifetime
 bounds looked set and were not.
 """
+
 import numpy as np
 import pytest
 

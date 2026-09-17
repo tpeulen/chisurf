@@ -13,12 +13,12 @@ check meant to catch that existed but was never called from anywhere.
 These tests hold both ends: the two default sources must agree, and a stale user
 copy must pick up defaults it never deliberately changed.
 """
+
 from __future__ import annotations
 
 import json
 
 import pytest
-
 from chimol.core.settings import config as cfg_mod
 
 
@@ -70,9 +70,7 @@ def test_the_shipped_json_and_the_python_defaults_agree(shipped):
             if key not in shipped_block:
                 continue
             if shipped_block[key] != value:
-                mismatches.append(
-                    f"{section}.{key}: json={shipped_block[key]!r} python={value!r}"
-                )
+                mismatches.append(f"{section}.{key}: json={shipped_block[key]!r} python={value!r}")
     assert not mismatches, "defaults disagree:\n  " + "\n  ".join(mismatches)
 
 
@@ -201,9 +199,7 @@ def test_a_stale_user_copy_is_migrated_on_load(tmp_path, monkeypatch):
     -- and it is the one nothing checked, because the version comparison was
     never called from anywhere.
     """
-    shipped = json.loads(
-        cfg_mod.get_package_display_config_path().read_text(encoding="utf-8")
-    )
+    shipped = json.loads(cfg_mod.get_package_display_config_path().read_text(encoding="utf-8"))
     stale = json.loads(json.dumps(shipped))
     stale["_version"] = 3
     stale["metaball"]["shininess"] = 22.0
@@ -304,9 +300,7 @@ def test_a_moved_key_is_gone_from_where_it_was(shipped):
         for old_section, old_key, _new_section, _new_key, _old_default in moves:
             if old_key in (shipped.get(old_section) or {}):
                 left_behind.append(f"{old_section}.{old_key}")
-    assert not left_behind, "moved keys still shipped at the old path: " + ", ".join(
-        left_behind
-    )
+    assert not left_behind, "moved keys still shipped at the old path: " + ", ".join(left_behind)
 
 
 def test_a_value_the_user_chose_moves_with_the_key():

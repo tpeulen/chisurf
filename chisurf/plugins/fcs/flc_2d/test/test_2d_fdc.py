@@ -97,12 +97,14 @@ def test_the_scan_result_does_not_depend_on_the_chunk_count():
     micro = rng.integers(1, 40, size=4000).astype(np.int64)
     lags = np.array([100, 400], dtype=np.int64)
 
-    reference = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
-                               logt_imax=12, n_chunks=1)["matrices"]
+    reference = two_d_fdc_scan(
+        macro, micro, lags, ddT=60, tMin=1, tMax=40, logt_imax=12, n_chunks=1
+    )["matrices"]
     assert reference.sum() > 0, "no pairs counted; the case proves nothing"
     for n_chunks in (2, 3, 7, 64):
-        got = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
-                             logt_imax=12, n_chunks=n_chunks)["matrices"]
+        got = two_d_fdc_scan(
+            macro, micro, lags, ddT=60, tMin=1, tMax=40, logt_imax=12, n_chunks=n_chunks
+        )["matrices"]
         np.testing.assert_array_equal(got, reference, err_msg=f"n_chunks={n_chunks}")
 
 
@@ -115,10 +117,10 @@ def test_the_default_chunk_count_is_used_when_none_is_given():
     micro = rng.integers(1, 40, size=2000).astype(np.int64)
     lags = np.array([200], dtype=np.int64)
 
-    default = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
-                             logt_imax=12)["matrices"]
-    explicit = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
-                              logt_imax=12, n_chunks=1)["matrices"]
+    default = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40, logt_imax=12)["matrices"]
+    explicit = two_d_fdc_scan(
+        macro, micro, lags, ddT=60, tMin=1, tMax=40, logt_imax=12, n_chunks=1
+    )["matrices"]
     np.testing.assert_array_equal(default, explicit)
 
 

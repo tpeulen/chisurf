@@ -9,6 +9,7 @@ Page 1: Trace browser with folder selection, file list, star quality rating (0�
 Metadata (ratings and annotations) are stored in a JSON file in the same folder
 as the traces: .trace_browser_meta.json
 """
+
 import csv
 import json
 import os
@@ -48,20 +49,22 @@ from qtpy.QtWidgets import (
 # Logging
 from chisurf import logging
 from chisurf.core.plugin import load_manifest
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 # Reuse existing widgets/utilities
-from chisurf.plugins.tttr.intensity_trace.__init__ import IntensityPlotWidget, IntensityTrace
+from chisurf.plugins.tttr.intensity_trace import IntensityPlotWidget, IntensityTrace
 from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 # Import TTTR Time Window plugin
@@ -115,8 +118,9 @@ META_FILENAME = ".trace_browser_meta.json"
 # Determine supported extensions strictly via tttrlib.get_supported_filetypes()
 # as requested. No other probing or fallbacks.
 
-def get_tttr_supported_exts() -> List[str]:
-    exts: List[str] = []
+
+def get_tttr_supported_exts() -> list[str]:
+    exts: list[str] = []
     try:
         if tttrlib is not None and hasattr(tttrlib, "get_supported_filetypes"):
             exts = list(tttrlib.get_supported_filetypes())
@@ -124,13 +128,13 @@ def get_tttr_supported_exts() -> List[str]:
         exts = []
 
     # Normalize to dotted lowercase extensions
-    norm: List[str] = []
+    norm: list[str] = []
     for e in exts:
         s = str(e).strip().lower()
         if not s:
             continue
-        if not s.startswith('.'):
-            s = '.' + s
+        if not s.startswith("."):
+            s = "." + s
         if s not in norm:
             norm.append(s)
     return norm
@@ -140,7 +144,7 @@ def _meta_path(folder: pathlib.Path) -> pathlib.Path:
     return folder / META_FILENAME
 
 
-def _load_meta(folder: pathlib.Path) -> Dict[str, Dict]:
+def _load_meta(folder: pathlib.Path) -> dict[str, dict]:
     p = _meta_path(folder)
     if not p.exists():
         return {}
@@ -150,7 +154,7 @@ def _load_meta(folder: pathlib.Path) -> Dict[str, Dict]:
         return {}
 
 
-def _save_meta(folder: pathlib.Path, data: Dict[str, Dict]):
+def _save_meta(folder: pathlib.Path, data: dict[str, dict]):
     p = _meta_path(folder)
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -342,7 +346,9 @@ class StarRatingWidget(QWidget):
             font = painter.font()
             font.setPointSize(max(9, int(rect.height() * 0.6)))
             painter.setFont(font)
-            stars_str = (Glyphs.STAR_ON * int(self._rating)) + (Glyphs.STAR_OFF * int(self._stars - self._rating))
+            stars_str = (Glyphs.STAR_ON * int(self._rating)) + (
+                Glyphs.STAR_OFF * int(self._stars - self._rating)
+            )
             # Center text
             painter.setPen(QColor(240, 180, 0))
             painter.drawText(rect, Qt.AlignCenter, stars_str)
@@ -354,6 +360,7 @@ class NoHoverSelectTable(QTableWidget):
     """A table view that never changes selection on mere mouse hover.
     Selection only changes on clicks/keyboard. Mouse move without button is ignored.
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         try:
@@ -364,7 +371,7 @@ class NoHoverSelectTable(QTableWidget):
 
     def mouseMoveEvent(self, event):
         try:
-            if getattr(event, 'buttons', lambda: Qt.NoButton)() == Qt.NoButton:
+            if getattr(event, "buttons", lambda: Qt.NoButton)() == Qt.NoButton:
                 # Ignore pure hover moves to avoid hover-driven selection changes
                 event.ignore()
                 return
@@ -397,13 +404,13 @@ class TraceBrowser(QWidget):
             pass
 
         # State
-        self.current_folder: Optional[pathlib.Path] = None
-        self.meta: Dict[str, Dict] = {}
-        self.setup_settings: Optional[Dict] = None
-        self.selected_channels: Optional[List[int]] = None
+        self.current_folder: pathlib.Path | None = None
+        self.meta: dict[str, dict] = {}
+        self.setup_settings: dict | None = None
+        self.selected_channels: list[int] | None = None
         self._is_loading: bool = False
         # Debounced metadata saving to keep UI snappy on rating changes
-        self._meta_save_timer: Optional[QTimer] = None
+        self._meta_save_timer: QTimer | None = None
         self._client = TraceBrowserClient()
         try:
             self._meta_save_timer = QTimer(self)
@@ -425,15 +432,22 @@ class TraceBrowser(QWidget):
         self.page0 = QWidget(self)
         p0_layout = QVBoxLayout(self.page0)
         p0_layout.addWidget(QLabel("Setup definition (DetectorWizard)", self.page0))
-        self.detector_page = DetectorWizardPage(show_help=False, show_setups_file=True,
-                                                show_setup_selection=True, show_tttr_reading=True,
-                                                show_tables=True, show_add_inputs=True)
+        self.detector_page = DetectorWizardPage(
+            show_help=False,
+            show_setups_file=True,
+            show_setup_selection=True,
+            show_tttr_reading=True,
+            show_tables=True,
+            show_add_inputs=True,
+        )
         self.btn_continue = QPushButton("Continue", self.page0)
         self.btn_continue.setToolTip("Accept detector setup and open trace browser")
         self.btn_continue.clicked.connect(self._on_continue)
         try:
             self.btn_continue.setMaximumHeight(26)
-            self.btn_continue.setStyleSheet("QPushButton{padding:2px 8px; background-color:#2e7d32; color:white; font-weight:bold;} QPushButton:hover{background-color:#388e3c;}")
+            self.btn_continue.setStyleSheet(
+                "QPushButton{padding:2px 8px; background-color:#2e7d32; color:white; font-weight:bold;} QPushButton:hover{background-color:#388e3c;}"
+            )
         except Exception:
             pass
         p0_top = QWidget(self.page0)
@@ -465,17 +479,19 @@ class TraceBrowser(QWidget):
         except Exception:
             pass
         self.folder_label = QLabel("No folder selected", self.page1)
-        
+
         # Back to setup button
         self.btn_back = QPushButton("\u2190 Select setup", self.page1)
         self.btn_back.clicked.connect(self._on_back_to_setup)
         try:
             self.btn_back.setMaximumHeight(26)
-            self.btn_back.setStyleSheet("QPushButton{padding:2px 6px; background-color: #ffd166; color: #222;} QPushButton:hover{background-color:#ffca3a;}")
+            self.btn_back.setStyleSheet(
+                "QPushButton{padding:2px 6px; background-color: #ffd166; color: #222;} QPushButton:hover{background-color:#ffca3a;}"
+            )
         except Exception:
             pass
         ctrl_row.addWidget(self.btn_back)
-        
+
         # Include subfolder option (renamed from "Process subfolders")
         self.chk_subfolders = QCheckBox("Include subfolders", self.page1)
         self.chk_subfolders.setChecked(False)
@@ -485,15 +501,16 @@ class TraceBrowser(QWidget):
             pass
 
         self.filter_combo = QComboBox(self.page1)
-        self.filter_combo.addItems([
-            "All",
-            f"≥ 1{Glyphs.STAR_ON}",
-            f"≥ 2{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
-            f"≥ 3{Glyphs.STAR_ON}{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
-            f"Only 0{Glyphs.STAR_ON}"
-        ])
+        self.filter_combo.addItems(
+            [
+                "All",
+                f"≥ 1{Glyphs.STAR_ON}",
+                f"≥ 2{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
+                f"≥ 3{Glyphs.STAR_ON}{Glyphs.STAR_ON}{Glyphs.STAR_ON}",
+                f"Only 0{Glyphs.STAR_ON}",
+            ]
+        )
         self.filter_combo.currentIndexChanged.connect(self._apply_filter)
-
 
         # Clear button to clear the file list (compact tool button)
         self.btn_clear = QToolButton(self.page1)
@@ -520,7 +537,6 @@ class TraceBrowser(QWidget):
         ctrl_row.addWidget(self.folder_label)
         ctrl_row.addWidget(QLabel("Filter:"))
         ctrl_row.addWidget(self.filter_combo)
-
 
         self.window_ms_spin = QDoubleSpinBox(self.page1)
         self.window_ms_spin.setDecimals(3)
@@ -600,7 +616,9 @@ class TraceBrowser(QWidget):
 
         self.btn_export_csv = QToolButton(self.page1)
         self.btn_export_csv.setText("Export CSV…")
-        self.btn_export_csv.setToolTip("Export computed intensity traces as CSV files (per listed file)")
+        self.btn_export_csv.setToolTip(
+            "Export computed intensity traces as CSV files (per listed file)"
+        )
         self.btn_export_csv.clicked.connect(self._on_export_csv)
         try:
             self.btn_export_csv.setAutoRaise(True)
@@ -620,7 +638,9 @@ class TraceBrowser(QWidget):
 
         self.btn_transfer_to_analysis = QToolButton(self.page1)
         self.btn_transfer_to_analysis.setText("to HMM")
-        self.btn_transfer_to_analysis.setToolTip("Open selected trace in Single-Molecule Intensity Trace plugin for HMM analysis")
+        self.btn_transfer_to_analysis.setToolTip(
+            "Open selected trace in Single-Molecule Intensity Trace plugin for HMM analysis"
+        )
         self.btn_transfer_to_analysis.clicked.connect(self._on_transfer_to_analysis)
         try:
             self.btn_transfer_to_analysis.setAutoRaise(True)
@@ -630,7 +650,9 @@ class TraceBrowser(QWidget):
 
         self.btn_transfer_to_tw = QToolButton(self.page1)
         self.btn_transfer_to_tw.setText("to TW")
-        self.btn_transfer_to_tw.setToolTip("Open selected trace in TTTR Time Window plugin for BID generation")
+        self.btn_transfer_to_tw.setToolTip(
+            "Open selected trace in TTTR Time Window plugin for BID generation"
+        )
         self.btn_transfer_to_tw.clicked.connect(self._on_transfer_to_tw)
         try:
             self.btn_transfer_to_tw.setAutoRaise(True)
@@ -648,10 +670,10 @@ class TraceBrowser(QWidget):
             self.btn_ndx_oneclick.setToolButtonStyle(Qt.ToolButtonTextOnly)
         except Exception:
             pass
-        
+
         # Add the top control row (compact)
         ctrl_row.addStretch(1)
-        
+
         # New compact tools row below subfolder/filter
         tools_row = QHBoxLayout()
         try:
@@ -800,12 +822,14 @@ class TraceBrowser(QWidget):
         self.page1.show()
 
         # cache of last plotted file
-        self._current_file: Optional[pathlib.Path] = None
+        self._current_file: pathlib.Path | None = None
         self._annotation_changing: bool = False
         # In-memory cache: path -> (sig, (time_axis, padded, labels))
-        self._trace_mem_cache: Dict[Tuple[pathlib.Path, str], Tuple[np.ndarray, np.ndarray, List[str]]] = {}
+        self._trace_mem_cache: dict[
+            tuple[pathlib.Path, str], tuple[np.ndarray, np.ndarray, list[str]]
+        ] = {}
         # Cache for quick image-file detection (path -> bool)
-        self._is_image_cache: Dict[pathlib.Path, bool] = {}
+        self._is_image_cache: dict[pathlib.Path, bool] = {}
 
         # Accept drops on the whole widget and the file table
         self.setAcceptDrops(True)
@@ -815,7 +839,9 @@ class TraceBrowser(QWidget):
 
         # Initialize subfolder checkbox after UI is built
         try:
-            if hasattr(self, 'chk_subfolders') and callable(getattr(self.chk_subfolders, 'isChecked', None)):
+            if hasattr(self, "chk_subfolders") and callable(
+                getattr(self.chk_subfolders, "isChecked", None)
+            ):
                 # No-op; state already set
                 pass
         except Exception:
@@ -835,7 +861,7 @@ class TraceBrowser(QWidget):
         self.setup_settings = self.detector_page.get_settings()
         logging.info("TraceBrowser: Setup accepted from DetectorWizard")
         # Union of all detector channels
-        chs: List[int] = []
+        chs: list[int] = []
         for det in self.setup_settings.get("detectors", {}).values():
             for c in det.get("chs", []):
                 if c not in chs:
@@ -852,7 +878,7 @@ class TraceBrowser(QWidget):
             self.page0.show()
         except Exception:
             pass
-        
+
     def _on_pick_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Select folder with PTU/TTTR files")
         if not path:
@@ -886,7 +912,7 @@ class TraceBrowser(QWidget):
         except Exception:
             return str(path)
 
-    def _meta_get(self, path: pathlib.Path) -> Dict:
+    def _meta_get(self, path: pathlib.Path) -> dict:
         key = self._rel_key(path)
         rec = self.meta.get(key)
         if rec is not None:
@@ -897,7 +923,7 @@ class TraceBrowser(QWidget):
         except Exception:
             return {}
 
-    def _meta_set(self, path: pathlib.Path, rec: Dict):
+    def _meta_set(self, path: pathlib.Path, rec: dict):
         key = self._rel_key(path)
         self.meta[key] = rec
         # Optionally remove old name-only key to avoid duplicates
@@ -911,16 +937,18 @@ class TraceBrowser(QWidget):
         if not self.current_folder:
             return
         # Find files (optionally recursively)
-        files: List[pathlib.Path] = []
+        files: list[pathlib.Path] = []
         # Determine allowed extensions based on selected setup file type
         allowed_exts = self._allowed_exts_for_setup()
         recursive = False
         try:
-            recursive = bool(getattr(self, 'chk_subfolders', None) and self.chk_subfolders.isChecked())
+            recursive = bool(
+                getattr(self, "chk_subfolders", None) and self.chk_subfolders.isChecked()
+            )
         except Exception:
             recursive = False
         try:
-            it = self.current_folder.rglob('*') if recursive else self.current_folder.iterdir()
+            it = self.current_folder.rglob("*") if recursive else self.current_folder.iterdir()
         except Exception:
             it = self.current_folder.iterdir()
         for p in sorted(it):
@@ -959,14 +987,16 @@ class TraceBrowser(QWidget):
                         chs = sorted(tt.get_used_routing_channels())
                         if chs:
                             self.selected_channels = chs
-                            logging.info(f"TraceBrowser: Auto-selected channels from {_p.name}: {chs}")
+                            logging.info(
+                                f"TraceBrowser: Auto-selected channels from {_p.name}: {chs}"
+                            )
                             break
                     except Exception:
                         continue
         except Exception as _e:
             logging.debug(f"TraceBrowser: Auto channel initialization skipped: {_e}")
         # Build rows according to filter/sort
-        rows: List[Tuple[pathlib.Path, int]] = []
+        rows: list[tuple[pathlib.Path, int]] = []
         for p in files:
             rec = self._meta_get(p)
             rating = int(rec.get("rating", 0))
@@ -974,7 +1004,9 @@ class TraceBrowser(QWidget):
                 rows.append((p, rating))
         # Do not sort here; allow user to click header to sort
 
-        logging.debug(f"TraceBrowser: Found {len(files)} files ({'recursive' if recursive else 'flat'}), displaying {len(rows)} after filter")
+        logging.debug(
+            f"TraceBrowser: Found {len(files)} files ({'recursive' if recursive else 'flat'}), displaying {len(rows)} after filter"
+        )
         # Fill table
         self.table.setRowCount(len(rows))
         for r, (p, rating) in enumerate(rows):
@@ -1008,6 +1040,7 @@ class TraceBrowser(QWidget):
 
             stars = StarRatingWidget(self.table)
             stars.set_rating(rating)
+
             def _on_rating_changed(val, row=r, path=p, w=stars):
                 # Update meta
                 self._update_rating(path, int(val))
@@ -1034,6 +1067,7 @@ class TraceBrowser(QWidget):
                     self.table.sortItems(header.sortIndicatorSection(), header.sortIndicatorOrder())
                 except Exception:
                     pass
+
             stars.ratingChanged.connect(_on_rating_changed)
             self.table.setCellWidget(r, 1, stars)
 
@@ -1146,16 +1180,18 @@ class TraceBrowser(QWidget):
             # Filter rows by rating and by allowed extensions (in case setup filetype changed)
             idx = self.filter_combo.currentIndex()
             allowed_exts = self._allowed_exts_for_setup()
+
             def accept(rt: int, path: pathlib.Path) -> bool:
                 rating_ok = (
-                    idx == 0 or
-                    (idx == 1 and rt >= 1) or
-                    (idx == 2 and rt >= 2) or
-                    (idx == 3 and rt >= 3) or
-                    (idx == 4 and rt == 0)
+                    idx == 0
+                    or (idx == 1 and rt >= 1)
+                    or (idx == 2 and rt >= 2)
+                    or (idx == 3 and rt >= 3)
+                    or (idx == 4 and rt == 0)
                 )
                 ext_ok = (not allowed_exts) or (path.suffix.lower() in allowed_exts)
                 return rating_ok and ext_ok
+
             visible = [t[0] for t in rows if accept(t[2], t[1])]
             # Hide all, then show accepted
             for r in range(self.table.rowCount()):
@@ -1164,7 +1200,11 @@ class TraceBrowser(QWidget):
                 self.table.setRowHidden(r, False)
             # Keep a valid selection
             try:
-                sel = self.table.selectionModel().selectedRows() if self.table.selectionModel() else []
+                sel = (
+                    self.table.selectionModel().selectedRows()
+                    if self.table.selectionModel()
+                    else []
+                )
                 sel_rows = [s.row() for s in sel]
                 sel_rows = [r for r in sel_rows if r in visible]
                 if not sel_rows and visible:
@@ -1184,7 +1224,8 @@ class TraceBrowser(QWidget):
 
     def _allowed_exts_for_setup(self) -> set:
         """Return a set of allowed file extensions (lowercase, with dot) based on the selected setup's file type.
-        If Auto or unavailable, return all tttr-supported extensions. """
+        If Auto or unavailable, return all tttr-supported extensions.
+        """
         try:
             # Ask DetectorWizardPage for selected file type
             filetype = None
@@ -1194,32 +1235,38 @@ class TraceBrowser(QWidget):
                 filetype = None
             # Base set: all supported exts (normalized)
             all_exts = set(get_tttr_supported_exts())
-            if not filetype or str(filetype).strip().lower() == 'auto':
-                logging.debug(f"TraceBrowser: Using all supported extensions (Auto): {sorted(all_exts)}")
+            if not filetype or str(filetype).strip().lower() == "auto":
+                logging.debug(
+                    f"TraceBrowser: Using all supported extensions (Auto): {sorted(all_exts)}"
+                )
                 return all_exts
             # Map container/format names to typical extensions
             ft = str(filetype).strip().upper()
             mapping = {
-                'PTU': {'.ptu'},
-                'PT3': {'.pt3'},
-                'HT3': {'.ht3'},
-                'PT2': {'.pt2'},
-                'PT5': {'.pt5'},
-                'SPC-130': {'.spc'},
-                'SPC-600': {'.spc'},
-                'SPC-830': {'.spc'},
-                'PHU': {'.phu'},
-                'PHOTON_HDF5': {'.h5', '.hdf5', '.photon.hdf5'},
-                'HDF5': {'.h5', '.hdf5'},
+                "PTU": {".ptu"},
+                "PT3": {".pt3"},
+                "HT3": {".ht3"},
+                "PT2": {".pt2"},
+                "PT5": {".pt5"},
+                "SPC-130": {".spc"},
+                "SPC-600": {".spc"},
+                "SPC-830": {".spc"},
+                "PHU": {".phu"},
+                "PHOTON_HDF5": {".h5", ".hdf5", ".photon.hdf5"},
+                "HDF5": {".h5", ".hdf5"},
             }
             exts = mapping.get(ft)
             if exts:
                 # Intersect with actually supported to be safe
                 result = {e for e in exts if (not all_exts or e in all_exts)} or exts
-                logging.debug(f"TraceBrowser: Using extensions for filetype '{filetype}': {sorted(result)}")
+                logging.debug(
+                    f"TraceBrowser: Using extensions for filetype '{filetype}': {sorted(result)}"
+                )
                 return result
             # Fallback: if unknown filetype name, return all
-            logging.debug(f"TraceBrowser: Unknown filetype '{filetype}', falling back to all supported extensions")
+            logging.debug(
+                f"TraceBrowser: Unknown filetype '{filetype}', falling back to all supported extensions"
+            )
             return all_exts
         except Exception:
             return set(get_tttr_supported_exts())
@@ -1238,12 +1285,12 @@ class TraceBrowser(QWidget):
         try:
             # In-memory caches
             try:
-                if hasattr(self, '_trace_mem_cache'):
+                if hasattr(self, "_trace_mem_cache"):
                     self._trace_mem_cache.clear()
             except Exception:
                 pass
             try:
-                if hasattr(self, '_is_image_cache'):
+                if hasattr(self, "_is_image_cache"):
                     self._is_image_cache.clear()
             except Exception:
                 pass
@@ -1255,6 +1302,7 @@ class TraceBrowser(QWidget):
                 try:
                     if cache_dir.exists() and cache_dir.is_dir():
                         import shutil
+
                         shutil.rmtree(str(cache_dir), ignore_errors=True)
                         removed_dirs += 1
                 except Exception:
@@ -1316,7 +1364,11 @@ class TraceBrowser(QWidget):
             self._annotation_changing = False
 
     def _on_annotation_changed(self):
-        if getattr(self, '_is_loading', False) or self._annotation_changing or not self.current_folder:
+        if (
+            getattr(self, "_is_loading", False)
+            or self._annotation_changing
+            or not self.current_folder
+        ):
             return
         paths = self._selected_paths()
         if not paths:
@@ -1333,7 +1385,7 @@ class TraceBrowser(QWidget):
         try:
             if not self.current_folder:
                 return
-            p = getattr(self, '_current_file', None)
+            p = getattr(self, "_current_file", None)
             if p is None:
                 return
             rec = self._meta_get(p)
@@ -1351,23 +1403,23 @@ class TraceBrowser(QWidget):
 
     def _on_y_range_changed(self, *_):
         # Apply y-range to current plots whenever either spinbox changes
-        y_min = float(self.y_min_spin.value()) if hasattr(self, 'y_min_spin') else None
-        y_max = float(self.y_max_spin.value()) if hasattr(self, 'y_max_spin') else None
-        print(f'_on_y_range_changed {y_min}, {y_max}')
+        y_min = float(self.y_min_spin.value()) if hasattr(self, "y_min_spin") else None
+        y_max = float(self.y_max_spin.value()) if hasattr(self, "y_max_spin") else None
+        print(f"_on_y_range_changed {y_min}, {y_max}")
         if y_min is None or y_max is None:
             return
         if y_min > y_max:
             y_min, y_max = y_max, y_min
         try:
             # Preferred path: delegate to IntensityPlotWidget if available
-            if hasattr(self.plot, 'set_y_range'):
+            if hasattr(self.plot, "set_y_range"):
                 self.plot.set_y_range(y_min, y_max)
                 return
         except Exception:
             pass
         # Fallback: directly adjust Y range on underlying trace plots
         try:
-            plots = getattr(self.plot, 'plots', []) or []
+            plots = getattr(self.plot, "plots", []) or []
             for trace_plot, _ in list(plots):
                 try:
                     trace_plot.setYRange(float(y_min), float(y_max), padding=0)
@@ -1384,7 +1436,7 @@ class TraceBrowser(QWidget):
         try:
             # If tttrlib or CLSMImage is unavailable, this will raise and we return False
             clsm = tttrlib.CLSMImage(tttr_data=tttr_obj)
-            _ = getattr(clsm, 'intensity', None)
+            _ = getattr(clsm, "intensity", None)
             return _ is not None
         except Exception:
             return False
@@ -1428,35 +1480,44 @@ class TraceBrowser(QWidget):
     def _trace_signature(self, file_path: pathlib.Path, window_ms: float) -> str:
         try:
             st = file_path.stat()
-            size = int(getattr(st, 'st_size', 0))
-            mtime = int(getattr(st, 'st_mtime_ns', int(st.st_mtime * 1e9))) if hasattr(st, 'st_mtime_ns') else int(st.st_mtime * 1e9)
+            size = int(getattr(st, "st_size", 0))
+            mtime = (
+                int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9)))
+                if hasattr(st, "st_mtime_ns")
+                else int(st.st_mtime * 1e9)
+            )
         except Exception:
             size = 0
             mtime = 0
         # Build mode info (detectors vs selected channels)
         mode = {}
-        if isinstance(self.setup_settings, dict) and 'detectors' in self.setup_settings:
+        if isinstance(self.setup_settings, dict) and "detectors" in self.setup_settings:
             # Reduce detectors info to stable signature
-            dets = self.setup_settings.get('detectors') or {}
-            mode = {k: {
-                'chs': list(v.get('chs', [])),
-                'micro_time_ranges': list(v.get('micro_time_ranges', []))
-            } for k, v in dets.items()}
+            dets = self.setup_settings.get("detectors") or {}
+            mode = {
+                k: {
+                    "chs": list(v.get("chs", [])),
+                    "micro_time_ranges": list(v.get("micro_time_ranges", [])),
+                }
+                for k, v in dets.items()
+            }
         else:
-            mode = {'chs': list(self.selected_channels) if self.selected_channels else None}
+            mode = {"chs": list(self.selected_channels) if self.selected_channels else None}
         try:
             key = {
-                'v': 1,
-                'path': str(file_path.resolve()),
-                'size': size,
-                'mtime': mtime,
-                'win_ms': float(window_ms),
-                'mode': mode,
+                "v": 1,
+                "path": str(file_path.resolve()),
+                "size": size,
+                "mtime": mtime,
+                "win_ms": float(window_ms),
+                "mode": mode,
             }
             import json as _json
-            s = _json.dumps(key, sort_keys=True, separators=(',', ':'))
+
+            s = _json.dumps(key, sort_keys=True, separators=(",", ":"))
             import hashlib
-            return hashlib.sha256(s.encode('utf-8')).hexdigest()
+
+            return hashlib.sha256(s.encode("utf-8")).hexdigest()
         except Exception:
             return f"fallback_{file_path.name}_{window_ms}_{size}_{mtime}"
 
@@ -1469,18 +1530,22 @@ class TraceBrowser(QWidget):
             p = self._trace_cache_file(file_path, window_ms)
             if p.exists():
                 with np.load(str(p), allow_pickle=True) as z:
-                    time_axis = z['time_axis']
-                    padded = z['padded']
-                    labels = list(z['labels']) if 'labels' in z else []
+                    time_axis = z["time_axis"]
+                    padded = z["padded"]
+                    labels = list(z["labels"]) if "labels" in z else []
                     return time_axis, padded, labels
         except Exception:
             pass
         return None
 
-    def _save_trace_cache(self, file_path: pathlib.Path, window_ms: float, time_axis, padded, labels):
+    def _save_trace_cache(
+        self, file_path: pathlib.Path, window_ms: float, time_axis, padded, labels
+    ):
         try:
             p = self._trace_cache_file(file_path, window_ms)
-            np.savez_compressed(str(p), time_axis=time_axis, padded=padded, labels=np.array(labels, dtype=object))
+            np.savez_compressed(
+                str(p), time_axis=time_axis, padded=padded, labels=np.array(labels, dtype=object)
+            )
         except Exception:
             pass
 
@@ -1498,9 +1563,11 @@ class TraceBrowser(QWidget):
             return loaded
         # Compute
         time_window_s = float(window_ms) / 1000.0
-        if isinstance(self.setup_settings, dict) and 'detectors' in self.setup_settings:
-            dets = self.setup_settings.get('detectors') or {}
-            time_axis, padded, labels = IntensityTrace().process_ptu(file_path, time_window_s, selected_detectors=dets)
+        if isinstance(self.setup_settings, dict) and "detectors" in self.setup_settings:
+            dets = self.setup_settings.get("detectors") or {}
+            time_axis, padded, labels = IntensityTrace().process_ptu(
+                file_path, time_window_s, selected_detectors=dets
+            )
         else:
             sel_chs = self.selected_channels
             if sel_chs is None:
@@ -1520,7 +1587,7 @@ class TraceBrowser(QWidget):
         if self.current_folder is None or tttrlib is None:
             return
         # Collect paths from table
-        paths: List[pathlib.Path] = []
+        paths: list[pathlib.Path] = []
         for r in range(self.table.rowCount()):
             item = self.table.item(r, 0)
             if item is None:
@@ -1539,7 +1606,7 @@ class TraceBrowser(QWidget):
             return
         window_ms = self.window_ms_spin.value()
         # Determine which files actually need computation; warm memory cache for those already on disk
-        files_to_process: List[pathlib.Path] = []
+        files_to_process: list[pathlib.Path] = []
         for p in paths:
             try:
                 loaded = self._load_trace_cache(p, window_ms)
@@ -1568,7 +1635,7 @@ class TraceBrowser(QWidget):
                 if dlg is not None:
                     try:
                         dlg.setValue(i)
-                        dlg.setLabelText(f"Processing {p.name} ({i+1}/{len(files_to_process)})")
+                        dlg.setLabelText(f"Processing {p.name} ({i + 1}/{len(files_to_process)})")
                     except Exception:
                         pass
                 QApplication.processEvents()
@@ -1606,15 +1673,20 @@ class TraceBrowser(QWidget):
                 labels = [str(label) for label in trace.get("labels", [])]
             else:
                 time_axis, padded, labels = self._compute_trace_cached(path, window_ms)
-            self.plot.plot_trace_and_histogram(time_axis, padded, labels,
-                                                bin_count=100,
-                                                time_window_ms=window_ms,
-                                                hist_min=None, hist_max=None,
-                                                hmm_states=None)
+            self.plot.plot_trace_and_histogram(
+                time_axis,
+                padded,
+                labels,
+                bin_count=100,
+                time_window_ms=window_ms,
+                hist_min=None,
+                hist_max=None,
+                hmm_states=None,
+            )
             # Apply y-range from spinboxes if available
             try:
-                y_min = float(self.y_min_spin.value()) if hasattr(self, 'y_min_spin') else None
-                y_max = float(self.y_max_spin.value()) if hasattr(self, 'y_max_spin') else None
+                y_min = float(self.y_min_spin.value()) if hasattr(self, "y_min_spin") else None
+                y_max = float(self.y_max_spin.value()) if hasattr(self, "y_max_spin") else None
                 if y_min is not None and y_max is not None:
                     if y_min > y_max:
                         y_min, y_max = y_max, y_min
@@ -1631,7 +1703,7 @@ class TraceBrowser(QWidget):
         self.annotation.clear()
         self._current_file = None
 
-    def _selected_paths(self) -> List[pathlib.Path]:
+    def _selected_paths(self) -> list[pathlib.Path]:
         sel = []
         for idx in self.table.selectionModel().selectedRows():
             item = self.table.item(idx.row(), 0)
@@ -1640,26 +1712,30 @@ class TraceBrowser(QWidget):
                 sel.append(p)
         return sel
 
-    def _build_channel_labels(self, chs: List[int]) -> List[str]:
+    def _build_channel_labels(self, chs: list[int]) -> list[str]:
         # Build labels like "<detector_name>, start-end[;start2-end2]" for each routing channel
         try:
             settings = self.setup_settings or {}
             dets = settings.get("detectors", {}) if isinstance(settings, dict) else {}
             # Map routing channel -> list of label parts (in case multiple detectors include same channel)
-            label_map: dict[int, List[str]] = {}
+            label_map: dict[int, list[str]] = {}
             for det_name, dinfo in dets.items():
                 try:
                     det_chs = list(dinfo.get("chs", []))
                     mtrs = dinfo.get("micro_time_ranges", []) or []
                     # Build range text
-                    rng_txt = ";".join(f"{int(a)}-{int(b)}" for (a, b) in mtrs if isinstance(a, (int, float)) and isinstance(b, (int, float)))
+                    rng_txt = ";".join(
+                        f"{int(a)}-{int(b)}"
+                        for (a, b) in mtrs
+                        if isinstance(a, (int, float)) and isinstance(b, (int, float))
+                    )
                     base = det_name if det_name is not None else ""
                     lbl = f"{base}, {rng_txt}" if rng_txt else base
                     for ch in det_chs:
                         label_map.setdefault(int(ch), []).append(lbl)
                 except Exception:
                     continue
-            labels: List[str] = []
+            labels: list[str] = []
             for ch in chs:
                 parts = label_map.get(int(ch))
                 if parts:
@@ -1697,7 +1773,7 @@ class TraceBrowser(QWidget):
                 # Handle Delete key to move selected traces to .trash
                 if et == QEvent.KeyPress:
                     try:
-                        key = getattr(event, 'key', None)
+                        key = getattr(event, "key", None)
                         if key is not None and event.key() in (Qt.Key_Delete,):
                             self._on_delete_selected()
                             return True
@@ -1716,7 +1792,7 @@ class TraceBrowser(QWidget):
         except Exception:
             pass
 
-    def _first_dropped_directory(self, event) -> Optional[pathlib.Path]:
+    def _first_dropped_directory(self, event) -> pathlib.Path | None:
         try:
             md = event.mimeData()
             if md and md.hasUrls():
@@ -1752,7 +1828,7 @@ class TraceBrowser(QWidget):
         else:
             event.ignore()
 
-    def _trash_dir(self) -> Optional[pathlib.Path]:
+    def _trash_dir(self) -> pathlib.Path | None:
         base = self.current_folder
         if base is None:
             return None
@@ -1794,6 +1870,7 @@ class TraceBrowser(QWidget):
                     to_move_set.add(fp)
                 except Exception:
                     pass
+
             for p in selected_paths:
                 _maybe_add(p)
                 # Add all siblings with the same stem in the same directory
@@ -1813,6 +1890,7 @@ class TraceBrowser(QWidget):
         if trash is None:
             return
         import time
+
         moved = 0
         total = len(to_move_set)
         for p in sorted(to_move_set):
@@ -1900,7 +1978,7 @@ class TraceBrowser(QWidget):
 
     def _on_export(self):
         # Export all files currently listed (respecting active filter/sort)
-        paths: List[pathlib.Path] = []
+        paths: list[pathlib.Path] = []
         for r in range(self.table.rowCount()):
             item = self.table.item(r, 0)
             if item is not None:
@@ -1926,7 +2004,7 @@ class TraceBrowser(QWidget):
     def _on_export_csv(self):
         # Export computed intensity traces as CSV for all files currently listed (respecting filter/sort)
         # Collect all paths from the table
-        paths: List[pathlib.Path] = []
+        paths: list[pathlib.Path] = []
         for r in range(self.table.rowCount()):
             item = self.table.item(r, 0)
             if item is not None:
@@ -1940,7 +2018,7 @@ class TraceBrowser(QWidget):
             return
         out = pathlib.Path(out_dir)
         out.mkdir(parents=True, exist_ok=True)
-        window_ms = float(self.window_ms_spin.value()) if hasattr(self, 'window_ms_spin') else 10.0
+        window_ms = float(self.window_ms_spin.value()) if hasattr(self, "window_ms_spin") else 10.0
         try:
             exported_paths = self._client.export_csv(
                 [str(path) for path in paths],
@@ -1950,8 +2028,14 @@ class TraceBrowser(QWidget):
                 selected_channels=self.selected_channels,
             )
             if exported_paths:
-                logging.info(f"TraceBrowser: CSV exported through RPC for {len(exported_paths)}/{len(paths)} files to: {out}")
-                dialogs.information(self, "CSV Export", f"Exported {len(exported_paths)}/{len(paths)} CSV files to: {out}")
+                logging.info(
+                    f"TraceBrowser: CSV exported through RPC for {len(exported_paths)}/{len(paths)} files to: {out}"
+                )
+                dialogs.information(
+                    self,
+                    "CSV Export",
+                    f"Exported {len(exported_paths)}/{len(paths)} CSV files to: {out}",
+                )
                 return
         except Exception:
             logging.debug("TraceBrowser: RPC CSV export failed; falling back to local export")
@@ -1980,12 +2064,14 @@ class TraceBrowser(QWidget):
                     except Exception:
                         labels = []
                 # Sanitize labels to avoid commas/newlines in header
-                safe_labels = [str(l).replace('\n', ' ').replace('\r', ' ').replace(',', ';') for l in labels]
-                header = ['time_s'] + safe_labels
+                safe_labels = [
+                    str(l).replace("\n", " ").replace("\r", " ").replace(",", ";") for l in labels
+                ]
+                header = ["time_s"] + safe_labels
                 # Prepare rows
-                bin_tag = ("%g" % window_ms).replace('.', 'p')
+                bin_tag = (f"{window_ms:g}").replace(".", "p")
                 csv_path = out / f"{p.stem}_bin{bin_tag}ms.csv"
-                with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(header)
                     nb = int(padded.shape[0])
@@ -2001,16 +2087,19 @@ class TraceBrowser(QWidget):
                 exported += 1
             except Exception as e:
                 logging.warning(f"TraceBrowser: Failed to export CSV for {p}: {e}")
-        logging.info(f"TraceBrowser: CSV exported for {exported}/{len(paths)} files to {out}; skipped {skipped}")
+        logging.info(
+            f"TraceBrowser: CSV exported for {exported}/{len(paths)} files to {out}; skipped {skipped}"
+        )
         try:
-            dialogs.information(self, "CSV Export", f"Exported {exported}/{len(paths)} CSV files to: {out}")
+            dialogs.information(
+                self, "CSV Export", f"Exported {exported}/{len(paths)} CSV files to: {out}"
+            )
         except Exception:
             pass
 
-
     def _on_export_docx(self):
         # Collect all paths that are currently displayed in the table (respecting filter/sort)
-        paths: List[pathlib.Path] = []
+        paths: list[pathlib.Path] = []
         for r in range(self.table.rowCount()):
             item = self.table.item(r, 0)
             if item is not None:
@@ -2022,7 +2111,11 @@ class TraceBrowser(QWidget):
         # Check for python-docx availability
         if Document is None:
             try:
-                dialogs.warning(self, "DOCX Export", "python-docx is not installed. Please install 'python-docx' to enable DOCX export.")
+                dialogs.warning(
+                    self,
+                    "DOCX Export",
+                    "python-docx is not installed. Please install 'python-docx' to enable DOCX export.",
+                )
             except Exception:
                 pass
             return
@@ -2032,7 +2125,11 @@ class TraceBrowser(QWidget):
             folder = paths[0].parent
         if folder is None:
             try:
-                dialogs.error(self, "DOCX Export", "No folder context available to determine DOCX save location.")
+                dialogs.error(
+                    self,
+                    "DOCX Export",
+                    "No folder context available to determine DOCX save location.",
+                )
             except Exception:
                 pass
             return
@@ -2040,6 +2137,7 @@ class TraceBrowser(QWidget):
         save_path = folder / docx_name
         try:
             import tempfile
+
             tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="trace_export_"))
         except Exception:
             tmpdir = self.current_folder or pathlib.Path(".")
@@ -2114,6 +2212,7 @@ class TraceBrowser(QWidget):
         try:
             if tmpdir and tmpdir.exists() and tmpdir.name.startswith("trace_export_"):
                 import shutil as _sh
+
                 _sh.rmtree(str(tmpdir), ignore_errors=True)
         except Exception:
             pass
@@ -2131,35 +2230,41 @@ class TraceBrowser(QWidget):
         selected_paths = self._selected_paths()
         if not selected_paths:
             try:
-                dialogs.information(self, "Transfer to Analysis", "Please select a trace file first.")
+                dialogs.information(
+                    self, "Transfer to Analysis", "Please select a trace file first."
+                )
             except Exception:
                 pass
             return
-        
+
         # Use the first selected file
         selected_file = selected_paths[0]
-        
+
         try:
-            logging.info(f"TraceBrowser: Starting transfer of {selected_file.name} to Intensity Trace Analysis")
-            
+            logging.info(
+                f"TraceBrowser: Starting transfer of {selected_file.name} to Intensity Trace Analysis"
+            )
+
             # Create a new IntensityTrace window and store reference to prevent garbage collection
             intensity_trace_window = IntensityTrace()
-            
+
             # Store reference to keep window alive
             self.intensity_trace_windows.append(intensity_trace_window)
-            
+
             # Set window title to make it clear this is from trace browser
-            intensity_trace_window.setWindowTitle(f"Intensity Trace Analysis - {selected_file.name}")
-            
+            intensity_trace_window.setWindowTitle(
+                f"Intensity Trace Analysis - {selected_file.name}"
+            )
+
             # Set up the file path
             intensity_trace_window.file_label.setText(f"Selected file: {selected_file}")
-            
+
             # Get current settings from trace browser
             time_window_ms = float(self.window_ms_spin.value())
-            time_window_s = time_window_ms / 1000.0
-            
+            time_window_ms / 1000.0
+
             logging.info(f"TraceBrowser: Using time window {time_window_ms} ms")
-            
+
             # Determine channels to use
             selected_channels = self.selected_channels
             if selected_channels is None:
@@ -2169,10 +2274,12 @@ class TraceBrowser(QWidget):
                     logging.info(f"TraceBrowser: Auto-detected channels: {selected_channels}")
                 except Exception as e:
                     selected_channels = [0, 2]  # Default channels
-                    logging.warning(f"TraceBrowser: Failed to detect channels, using default {selected_channels}: {e}")
+                    logging.warning(
+                        f"TraceBrowser: Failed to detect channels, using default {selected_channels}: {e}"
+                    )
             else:
                 logging.info(f"TraceBrowser: Using configured channels: {selected_channels}")
-            
+
             # Set the parameters in the intensity trace window
             intensity_trace_window.window_spin.setValue(time_window_ms)
 
@@ -2185,23 +2292,25 @@ class TraceBrowser(QWidget):
             intensity_trace_window.load_file(file_path=str(selected_file))
 
             # Update the plot
-            logging.info(f"TraceBrowser: Updating plot...")
+            logging.info("TraceBrowser: Updating plot...")
             intensity_trace_window.update_plot()
-            
+
             # Show the window and bring it to front
             intensity_trace_window.show()
             intensity_trace_window.raise_()
             intensity_trace_window.activateWindow()
-            
+
             # Connect window close event to remove from our list
             def on_window_closed():
                 try:
                     if intensity_trace_window in self.intensity_trace_windows:
                         self.intensity_trace_windows.remove(intensity_trace_window)
-                    logging.info(f"TraceBrowser: Intensity trace window for {selected_file.name} closed")
+                    logging.info(
+                        f"TraceBrowser: Intensity trace window for {selected_file.name} closed"
+                    )
                 except Exception:
                     pass
-            
+
             # Connect the close event (this is a bit tricky with Qt, so we'll use a simple approach)
             original_close_event = intensity_trace_window.closeEvent
 
@@ -2211,14 +2320,21 @@ class TraceBrowser(QWidget):
                     original_close_event(event)
                 else:
                     event.accept()
+
             intensity_trace_window.closeEvent = close_event_wrapper
-            
-            logging.info(f"TraceBrowser: Successfully transferred {selected_file.name} to Intensity Trace Analysis")
-            
+
+            logging.info(
+                f"TraceBrowser: Successfully transferred {selected_file.name} to Intensity Trace Analysis"
+            )
+
         except Exception as e:
             logging.exception(f"TraceBrowser: Failed to transfer {selected_file} to analysis: {e}")
             try:
-                dialogs.error(self, "Transfer Failed", f"Failed to transfer trace to analysis:\n\n{str(e)}\n\nCheck the log for more details.")
+                dialogs.error(
+                    self,
+                    "Transfer Failed",
+                    f"Failed to transfer trace to analysis:\n\n{str(e)}\n\nCheck the log for more details.",
+                )
             except Exception:
                 pass
 
@@ -2270,19 +2386,24 @@ class TraceBrowser(QWidget):
                 original_close_event(event)
 
             time_window_wizard.closeEvent = close_event_wrapper
-            
+
             # Also connect to the finished signal if available
             try:
                 time_window_wizard.finished.connect(on_wizard_closed)
             except Exception:
                 pass
-            
-            logging.info(f"TraceBrowser: Successfully transferred {path.name} to TTTR Time Window plugin")
-            
+
+            logging.info(
+                f"TraceBrowser: Successfully transferred {path.name} to TTTR Time Window plugin"
+            )
+
         except Exception as e:
             logging.error(f"TraceBrowser: Failed to transfer {path} to time window plugin: {e}")
-            dialogs.error(self, "Transfer Failed", f"Could not open trace in time window plugin.\n\nError: {e}")
-
+            dialogs.error(
+                self,
+                "Transfer Failed",
+                f"Could not open trace in time window plugin.\n\nError: {e}",
+            )
 
     def _on_open_in_ndxplorer(self):
         """One-click pipeline: Use current TW → compute BIDs → write burst analysis → open NDXplorer.
@@ -2330,17 +2451,19 @@ class TraceBrowser(QWidget):
             else:
                 # Minimal fallback: bin macro times into fixed windows
                 mt = tttr.macro_times
-                res = float(getattr(tttr.header, 'macro_time_resolution', 0.0)) or float(getattr(tttr, 'macro_time_resolution', 0.0))
+                res = float(getattr(tttr.header, "macro_time_resolution", 0.0)) or float(
+                    getattr(tttr, "macro_time_resolution", 0.0)
+                )
                 if res <= 0:
                     raise RuntimeError("Macro time resolution unavailable from TTTR header")
                 clocks_per_bin = max(1, int(np.floor(tw_s / res)))
                 max_clock = int(mt.max()) if len(mt) else 0
                 edges = np.arange(0, max_clock + 1, clocks_per_bin, dtype=np.int64)
-                starts = np.searchsorted(mt, edges, side='left')
-                stops  = np.searchsorted(mt, edges + clocks_per_bin, side='left')
+                starts = np.searchsorted(mt, edges, side="left")
+                stops = np.searchsorted(mt, edges + clocks_per_bin, side="left")
                 bids = np.stack([starts, stops], axis=1)
 
-            if bids is None or getattr(bids, 'size', 0) == 0:
+            if bids is None or getattr(bids, "size", 0) == 0:
                 try:
                     dialogs.warning(self, "ndX", "No data to compute burst IDs.")
                 except Exception:
@@ -2350,6 +2473,7 @@ class TraceBrowser(QWidget):
             # Optionally save BIDs to a temp .bst file for inspection
             try:
                 import tempfile
+
                 tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="chisurf_bst_"))
                 bst_file = tmpdir / f"{src.stem}.bst"
                 np.savetxt(str(bst_file), bids.astype(np.int64), fmt="%d\t%d")
@@ -2359,8 +2483,8 @@ class TraceBrowser(QWidget):
 
             # Build analysis directory next to data; keep naming consistent with TW tool
             analysis_dir = src.parent / f"{src.stem}_TW_{tw_ms:.0f}ms"
-            bi4_bur_dir  = analysis_dir / "bi4_bur"
-            info_dir     = analysis_dir / "Info"
+            bi4_bur_dir = analysis_dir / "bi4_bur"
+            info_dir = analysis_dir / "Info"
             try:
                 bi4_bur_dir.mkdir(parents=True, exist_ok=True)
                 info_dir.mkdir(parents=True, exist_ok=True)
@@ -2376,8 +2500,12 @@ class TraceBrowser(QWidget):
             detectors = None
             windows = None
             try:
-                if isinstance(self.setup_settings, dict) and 'detectors' in self.setup_settings and self.setup_settings['detectors']:
-                    detectors = self.setup_settings['detectors']
+                if (
+                    isinstance(self.setup_settings, dict)
+                    and "detectors" in self.setup_settings
+                    and self.setup_settings["detectors"]
+                ):
+                    detectors = self.setup_settings["detectors"]
                     # Build windows as union of all micro_time_ranges if not explicitly given
                     # Here, keep a single window spanning full micro-time if necessary
                 else:
@@ -2388,20 +2516,22 @@ class TraceBrowser(QWidget):
                         chs = []
                     mt_max = int(np.max(tttr.micro_times)) + 1 if len(tttr) > 0 else 0
                     detectors = {
-                        'all': {
-                            'chs': chs,
-                            'micro_time_ranges': [(0, mt_max if mt_max > 0 else 4096)]
+                        "all": {
+                            "chs": chs,
+                            "micro_time_ranges": [(0, mt_max if mt_max > 0 else 4096)],
                         }
                     }
                 # Windows: single full micro-time window by default
                 if windows is None:
                     mt_max = int(np.max(tttr.micro_times)) + 1 if len(tttr) > 0 else 0
-                    windows = {'all': (0, mt_max if mt_max > 0 else 4096)}
+                    windows = {"all": (0, mt_max if mt_max > 0 else 4096)}
             except Exception as e:
                 logging.debug(f"TraceBrowser: Falling back to default detectors/windows: {e}")
                 mt_max = int(np.max(tttr.micro_times)) + 1 if len(tttr) > 0 else 0
-                detectors = {'all': {'chs': [], 'micro_time_ranges': [(0, mt_max if mt_max > 0 else 4096)]}}
-                windows   = {'all': (0, mt_max if mt_max > 0 else 4096)}
+                detectors = {
+                    "all": {"chs": [], "micro_time_ranges": [(0, mt_max if mt_max > 0 else 4096)]}
+                }
+                windows = {"all": (0, mt_max if mt_max > 0 else 4096)}
 
             # Convert BIDs to start/stop tuples
             try:
@@ -2414,7 +2544,9 @@ class TraceBrowser(QWidget):
             try:
                 if burstio is None:
                     raise ImportError("burst utilities unavailable")
-                df = burstio.generate_burst_dataframe(start_stop, str(src.name), tttr, windows, detectors)
+                df = burstio.generate_burst_dataframe(
+                    start_stop, str(src.name), tttr, windows, detectors
+                )
                 burstio.write_dataframe_to_bur(df, str(bur_path))
                 logging.info(f"TraceBrowser: Wrote BUR: {bur_path}")
             except Exception as e:
@@ -2430,12 +2562,16 @@ class TraceBrowser(QWidget):
                 if burstio is not None:
                     max_macro_time = 0.0
                     try:
-                        res = float(getattr(tttr.header, 'macro_time_resolution', 0.0)) or float(getattr(tttr, 'macro_time_resolution', 0.0))
+                        res = float(getattr(tttr.header, "macro_time_resolution", 0.0)) or float(
+                            getattr(tttr, "macro_time_resolution", 0.0)
+                        )
                         if len(tttr) > 0 and res > 0:
                             max_macro_time = float(tttr.macro_times.max()) * res
                     except Exception:
                         max_macro_time = 0.0
-                    burstio.write_mti_summary(src, analysis_dir, max_macro_time=max_macro_time, append=True)
+                    burstio.write_mti_summary(
+                        src, analysis_dir, max_macro_time=max_macro_time, append=True
+                    )
             except Exception as _e:
                 logging.debug(f"TraceBrowser: MTI write skipped: {_e}")
 
@@ -2460,14 +2596,19 @@ class TraceBrowser(QWidget):
                 # Ensure the analysis folder is actually loaded (not just path set)
                 try:
                     # Use NDXplorer's loader to read the burst analysis directory
-                    ndx.open_files(file_handles=str(analysis_dir), file_type="burst_dir", append=False)
+                    ndx.open_files(
+                        file_handles=str(analysis_dir), file_type="burst_dir", append=False
+                    )
                 except Exception as _e:
-                    logging.debug(f"TraceBrowser: ndX open_files failed, continuing with preloaded DataSource: {_e}")
+                    logging.debug(
+                        f"TraceBrowser: ndX open_files failed, continuing with preloaded DataSource: {_e}"
+                    )
 
                 self.ndxplorer_windows.append(ndx)
 
                 # Hook close to drop reference
-                original_close_event = getattr(ndx, 'closeEvent', None)
+                original_close_event = getattr(ndx, "closeEvent", None)
+
                 def _close_wrapper(event):
                     try:
                         if ndx in self.ndxplorer_windows:
@@ -2478,6 +2619,7 @@ class TraceBrowser(QWidget):
                         original_close_event(event)
                     else:
                         event.accept()
+
                 ndx.closeEvent = _close_wrapper
 
                 logging.info("TraceBrowser: ndX opened successfully")
@@ -2499,6 +2641,7 @@ class TraceBrowser(QWidget):
 if __name__ == "__main__":
     # Basic manual run to show the widget standalone
     import sys
+
     app = QApplication(sys.argv)
     w = TraceBrowser()
     w.show()
@@ -2508,6 +2651,7 @@ if __name__ == "__main__":
 # this code will be executed by the Plugin Manager
 if __name__ == "plugin":
     from chisurf.plugins.tttr.trace_browser.gui.tool import TraceBrowserTool
+
     window = TraceBrowserTool()
     window.show()
     window.raise_()

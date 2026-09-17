@@ -1,4 +1,5 @@
 """Time-resolved anisotropy r(t) from a parallel and a perpendicular decay."""
+
 from __future__ import annotations
 
 import numpy as np

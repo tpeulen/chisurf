@@ -25,16 +25,32 @@ class _Model:
     def view_spec(self):
         from chisurf.core.dataspec import load_view_spec
 
-        return load_view_spec({
-            "sections": [
-                {"type": "custom", "key": "rate_matrix", "target": "k",
-                 "options": {"size_attr": "n", "labels_attr": "labels",
-                             "minimum": 0.0, "decimals": 3, "unit": "1/ms"}},
-                {"type": "button_row", "menu": "🛠 Tools",
-                 "buttons": [{"label": "🧪 Go", "action": "go"},
-                             {"label": "💾 Save", "action": "save"}]},
-            ]
-        })
+        return load_view_spec(
+            {
+                "sections": [
+                    {
+                        "type": "custom",
+                        "key": "rate_matrix",
+                        "target": "k",
+                        "options": {
+                            "size_attr": "n",
+                            "labels_attr": "labels",
+                            "minimum": 0.0,
+                            "decimals": 3,
+                            "unit": "1/ms",
+                        },
+                    },
+                    {
+                        "type": "button_row",
+                        "menu": "🛠 Tools",
+                        "buttons": [
+                            {"label": "🧪 Go", "action": "go"},
+                            {"label": "💾 Save", "action": "save"},
+                        ],
+                    },
+                ]
+            }
+        )
 
     def go(self):
         self.went = True
@@ -115,13 +131,23 @@ def test_the_grid_agrees_with_the_shared_rate_convention(qapp):
         def view_spec(self):
             from chisurf.core.dataspec import load_view_spec
 
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "rate_matrix", "target": "rate_values",
-                     "options": {"size_attr": "n_states", "minimum": 0.0,
-                                 "decimals": 2, "diagonal": False}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "rate_matrix",
+                            "target": "rate_values",
+                            "options": {
+                                "size_attr": "n_states",
+                                "minimum": 0.0,
+                                "decimals": 2,
+                                "diagonal": False,
+                            },
+                        },
+                    ]
+                }
+            )
 
     host = _Host()
     form = AutoForm(host)
@@ -129,7 +155,7 @@ def test_the_grid_agrees_with_the_shared_rate_convention(qapp):
 
     # Row 1, column 2 of the grid is k_12: the rate from state 1 to state 2.
     grid._spins[(0, 1)].setValue(250.0)
-    grid._spins[(2, 1)].setValue(70.0)      # k_32
+    grid._spins[(2, 1)].setValue(70.0)  # k_32
 
     rates = host.kinetics.rates_by_name()
     assert rates["k1_2"].value == pytest.approx(250.0)
@@ -176,19 +202,30 @@ def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
             self.kinetics.rate_values = values
 
         def view_spec(self):
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "rate_matrix", "target": "rate_values",
-                     "options": {"size_attr": "n_states", "minimum": 0.0,
-                                 "maximum": 1e6, "decimals": 2, "diagonal": False}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "rate_matrix",
+                            "target": "rate_values",
+                            "options": {
+                                "size_attr": "n_states",
+                                "minimum": 0.0,
+                                "maximum": 1e6,
+                                "decimals": 2,
+                                "diagonal": False,
+                            },
+                        },
+                    ]
+                }
+            )
 
     host = _Host()
     rates = host.kinetics.rates_by_name()
-    rates["k1_2"].value = 5.0e6         # above the grid's maximum
+    rates["k1_2"].value = 5.0e6  # above the grid's maximum
     rates["k2_1"].value = 2.5e6
-    rates["k1_3"].value = 123.456       # finer than the grid's decimals
+    rates["k1_3"].value = 123.456  # finer than the grid's decimals
     before = list(host.rate_values)
 
     form = AutoForm(host)
@@ -202,7 +239,7 @@ def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
     assert "outside the range" not in grid._spins[(0, 2)].toolTip()
 
     # Editing one cell commits that cell only.
-    grid._spins[(2, 1)].setValue(70.0)      # k_32
+    grid._spins[(2, 1)].setValue(70.0)  # k_32
     after = host.kinetics.rates_by_name()
     assert after["k3_2"].value == pytest.approx(70.0)
     assert after["k1_2"].value == pytest.approx(5.0e6)
@@ -212,7 +249,7 @@ def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
     # A refresh reloads the display; the values behind it are still intact
     # after the next edit.
     grid.refresh()
-    grid._spins[(1, 2)].setValue(5.0)       # k_23
+    grid._spins[(1, 2)].setValue(5.0)  # k_23
     after = host.kinetics.rates_by_name()
     assert after["k2_3"].value == pytest.approx(5.0)
     assert after["k1_2"].value == pytest.approx(5.0e6)
@@ -239,13 +276,24 @@ def test_popup_mode_keeps_the_grid_behind_a_button(qapp):
             self.k = [0.0] * 9
 
         def view_spec(self):
-            return load_view_spec({
-                "sections": [
-                    {"type": "custom", "key": "rate_matrix", "target": "k",
-                     "options": {"size_attr": "n", "minimum": 0.0, "decimals": 2,
-                                 "popup": True, "title": "Rates"}},
-                ]
-            })
+            return load_view_spec(
+                {
+                    "sections": [
+                        {
+                            "type": "custom",
+                            "key": "rate_matrix",
+                            "target": "k",
+                            "options": {
+                                "size_attr": "n",
+                                "minimum": 0.0,
+                                "decimals": 2,
+                                "popup": True,
+                                "title": "Rates",
+                            },
+                        },
+                    ]
+                }
+            )
 
     model = _Popup()
     form = AutoForm(model)

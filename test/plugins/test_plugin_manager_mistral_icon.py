@@ -14,8 +14,6 @@ methods on the manager widget, which is why these tests bound unbound methods to
 a ``SimpleNamespace`` carrying fake Qt line edits -- that scaffolding is gone.
 """
 
-from types import SimpleNamespace
-
 import pytest
 
 from chisurf.core.support import http
@@ -59,9 +57,7 @@ class _Response:
 
 def _config(endpoint="https://api.mistral.ai/v1/beta", provider="mistral"):
     """The generation settings the helpers read."""
-    return icons.IconConfig(
-        provider=provider, endpoint=endpoint, model="mistral-medium-latest"
-    )
+    return icons.IconConfig(provider=provider, endpoint=endpoint, model="mistral-medium-latest")
 
 
 @pytest.fixture(autouse=True)

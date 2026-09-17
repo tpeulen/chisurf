@@ -4,6 +4,7 @@ The estimators are pinned against an AR(1) process, whose integrated
 autocorrelation time ``(1+phi)/(1-phi)`` is known in closed form -- validating
 against a reimplementation of the same formula would prove nothing.
 """
+
 import numpy as np
 import pytest
 
@@ -59,10 +60,9 @@ def test_autocovariance_matches_the_direct_sum():
     x = rng.normal(size=64)
     got = dg.autocovariance(x)
     centred = x - x.mean()
-    want = np.array([
-        float((centred[:len(x) - k] * centred[k:]).sum() / len(x))
-        for k in range(len(x))
-    ])
+    want = np.array(
+        [float((centred[: len(x) - k] * centred[k:]).sum() / len(x)) for k in range(len(x))]
+    )
     assert np.allclose(got, want, atol=1e-12)
 
 
@@ -144,24 +144,24 @@ def test_suggest_burn_in_scales_with_the_autocorrelation_time():
 def test_summarize_reports_the_ar1_moments_and_diagnostics():
     """The summary must recover a known mean/sd and carry the diagnostics."""
     chains = _ar1(0.5, n=8000, n_chains=4, seed=10) * 2.0 + 3.0
-    summary = dg.summarize(chains, names=['x'])
+    summary = dg.summarize(chains, names=["x"])
     assert len(summary) == 1
     e = summary[0]
-    assert e['name'] == 'x'
-    assert e['mean'] == pytest.approx(3.0, abs=0.1)
-    assert e['sd'] == pytest.approx(2.0, rel=0.1)
-    assert e['quantiles']['0.5'] == pytest.approx(3.0, abs=0.15)
-    assert e['ess'] > 1000
-    assert 0.99 < e['rhat'] < 1.01
-    assert e['burn_in'] >= 0
-    assert e['n_chains'] == 4
+    assert e["name"] == "x"
+    assert e["mean"] == pytest.approx(3.0, abs=0.1)
+    assert e["sd"] == pytest.approx(2.0, rel=0.1)
+    assert e["quantiles"]["0.5"] == pytest.approx(3.0, abs=0.15)
+    assert e["ess"] > 1000
+    assert 0.99 < e["rhat"] < 1.01
+    assert e["burn_in"] >= 0
+    assert e["n_chains"] == 4
 
 
 def test_summarize_names_extra_parameters_rather_than_dropping_them():
     """A short name list must not silently truncate the summary."""
     chains = np.random.default_rng(0).normal(size=(2, 500, 3))
-    summary = dg.summarize(chains, names=['a'])
-    assert [e['name'] for e in summary] == ['a', 'p1', 'p2']
+    summary = dg.summarize(chains, names=["a"])
+    assert [e["name"] for e in summary] == ["a", "p1", "p2"]
 
 
 def test_convergence_warnings_are_silent_on_a_good_chain():
@@ -175,13 +175,13 @@ def test_convergence_warnings_name_the_offending_parameter():
     chains = _ar1(0.5, n=1000, n_chains=4, seed=12)
     chains = chains.copy()
     chains[0] += 10.0
-    messages = dg.convergence_warnings(dg.summarize(chains, names=['tau1']))
+    messages = dg.convergence_warnings(dg.summarize(chains, names=["tau1"]))
     assert messages
-    assert any('tau1' in m for m in messages)
-    assert any('R-hat' in m for m in messages)
+    assert any("tau1" in m for m in messages)
+    assert any("R-hat" in m for m in messages)
 
 
-@pytest.mark.parametrize('bad', [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
 def test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal(bad):
     """One bad draw must not read as ``n`` perfectly independent samples.
 
@@ -195,13 +195,13 @@ def test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal(bad):
     assert np.isnan(dg.effective_sample_size(chains)[0])
     assert np.isnan(dg.autocorrelation_time(chains)[0])
     assert np.isnan(dg.mcse(chains)[0])
-    e = dg.summarize(chains, names=['x'], burn_in=0)[0]
-    assert np.isnan(e['ess']) and np.isnan(e['tau']) and np.isnan(e['mcse'])
+    e = dg.summarize(chains, names=["x"], burn_in=0)[0]
+    assert np.isnan(e["ess"]) and np.isnan(e["tau"]) and np.isnan(e["mcse"])
     # The clean chain is untouched: a finite ESS is still reported.
     assert dg.effective_sample_size(_ar1(0.5, n=1000, n_chains=4, seed=13))[0] > 0.0
 
 
-@pytest.mark.parametrize('value', [0.0, 1.0, 0.5, 2.5, 1.234, 0.001, 3.7])
+@pytest.mark.parametrize("value", [0.0, 1.0, 0.5, 2.5, 1.234, 0.001, 3.7])
 def test_a_frozen_parameter_gets_one_verdict_whatever_its_value(value):
     """A bit-identical chain must not be graded by floating-point luck.
 
@@ -216,21 +216,21 @@ def test_a_frozen_parameter_gets_one_verdict_whatever_its_value(value):
     assert np.isnan(dg.autocorrelation_time(chains)[0])
     assert np.isnan(dg.mcse(chains)[0])
 
-    e = dg.summarize(chains, names=['tau1'], burn_in=0)[0]
-    assert e['frozen'] is True
-    assert np.isnan(e['ess']) and np.isnan(e['tau']) and np.isnan(e['mcse'])
-    assert np.isnan(e['ess_bulk']) and np.isnan(e['ess_tail'])
+    e = dg.summarize(chains, names=["tau1"], burn_in=0)[0]
+    assert e["frozen"] is True
+    assert np.isnan(e["ess"]) and np.isnan(e["tau"]) and np.isnan(e["mcse"])
+    assert np.isnan(e["ess_bulk"]) and np.isnan(e["ess_tail"])
 
     # And it is said out loud: R-hat is 1.0 here, so nothing else would.
     messages = dg.convergence_warnings([e])
-    assert any('never moved' in m and 'tau1' in m for m in messages)
+    assert any("never moved" in m and "tau1" in m for m in messages)
 
 
 def test_a_moving_parameter_is_not_reported_as_frozen():
     """The frozen verdict must not leak onto an ordinary, well-mixed chain."""
-    e = dg.summarize(_ar1(0.5, n=2000, n_chains=4, seed=7), names=['x'])[0]
-    assert e['frozen'] is False
-    assert np.isfinite(e['ess']) and e['ess'] > 0.0
+    e = dg.summarize(_ar1(0.5, n=2000, n_chains=4, seed=7), names=["x"])[0]
+    assert e["frozen"] is False
+    assert np.isfinite(e["ess"]) and e["ess"] > 0.0
     assert dg.convergence_warnings([e]) == []
 
 
@@ -243,36 +243,35 @@ def test_an_undefined_rhat_says_which_failure_it_is():
     ("never moved or disagree completely") named the wrong diagnosis for two of
     the three, and nothing anywhere said that a chain was contaminated.
     """
-    disagreeing = np.concatenate(
-        [np.full((1, 5, 1), v) for v in (0.0, 1.0, 2.0, 3.0)], axis=0
-    )
+    disagreeing = np.concatenate([np.full((1, 5, 1), v) for v in (0.0, 1.0, 2.0, 3.0)], axis=0)
     contaminated = _ar1(0.5, n=1000, n_chains=4, seed=17).copy()
     contaminated[0, 10, 0] = np.nan
     too_short = np.arange(4, dtype=np.float64).reshape(4, 1, 1)
 
     def _message(chains, name):
         e = dg.summarize(chains, names=[name], burn_in=0)[0]
-        assert not np.isfinite(e['rhat'])
+        assert not np.isfinite(e["rhat"])
         hits = [
-            m for m in dg.convergence_warnings([e])
-            if name in m and 'effective sample size' not in m
+            m
+            for m in dg.convergence_warnings([e])
+            if name in m and "effective sample size" not in m
         ]
         assert len(hits) == 1, hits
         return hits[0]
 
-    stuck = _message(disagreeing, 'stuck')
-    assert 'disagree completely between chains' in stuck
-    assert 'R-hat is infinite' in stuck
+    stuck = _message(disagreeing, "stuck")
+    assert "disagree completely between chains" in stuck
+    assert "R-hat is infinite" in stuck
 
-    bad_draw = _message(contaminated, 'bad_draw')
-    assert 'non-finite draws' in bad_draw
-    assert '1 of 4000' in bad_draw
-    assert 'disagree' not in bad_draw
+    bad_draw = _message(contaminated, "bad_draw")
+    assert "non-finite draws" in bad_draw
+    assert "1 of 4000" in bad_draw
+    assert "disagree" not in bad_draw
 
-    short = _message(too_short, 'short')
-    assert 'too few draws for R-hat' in short
-    assert '4 chain(s) x 1 draw(s)' in short
-    assert 'disagree' not in short and 'non-finite' not in short
+    short = _message(too_short, "short")
+    assert "too few draws for R-hat" in short
+    assert "4 chain(s) x 1 draw(s)" in short
+    assert "disagree" not in short and "non-finite" not in short
 
 
 def test_summarize_counts_the_non_finite_draws_it_dropped():
@@ -280,9 +279,9 @@ def test_summarize_counts_the_non_finite_draws_it_dropped():
     chains = _ar1(0.5, n=500, n_chains=2, seed=19).copy()
     chains[1, 3, 0] = np.inf
     chains[1, 4, 0] = np.nan
-    e = dg.summarize(chains, names=['x'], burn_in=0)[0]
-    assert e['n_nonfinite'] == 2
-    assert dg.summarize(_ar1(0.5, n=500, n_chains=2, seed=19))[0]['n_nonfinite'] == 0
+    e = dg.summarize(chains, names=["x"], burn_in=0)[0]
+    assert e["n_nonfinite"] == 2
+    assert dg.summarize(_ar1(0.5, n=500, n_chains=2, seed=19))[0]["n_nonfinite"] == 0
 
 
 def test_short_chains_degrade_instead_of_raising():
@@ -290,15 +289,16 @@ def test_short_chains_degrade_instead_of_raising():
     tiny = np.zeros((1, 2, 2))
     assert np.all(np.isnan(dg.split_rhat(tiny)))
     assert dg.suggest_burn_in(tiny) == 0
-    assert len(dg.summarize(tiny, names=['a', 'b'])) == 2
+    assert len(dg.summarize(tiny, names=["a", "b"])) == 2
 
 
 # -- rank-normalised statistics (Vehtari et al. 2021, as Stan computes them) --
 
+
 def test_rank_normalisation_produces_normal_scores():
     """The transform must map any distribution onto standard normal scores."""
     rng = np.random.default_rng(0)
-    heavy = rng.standard_cauchy(size=(4, 2000))       # no finite variance
+    heavy = rng.standard_cauchy(size=(4, 2000))  # no finite variance
     z = dg.rank_normalize(heavy)
     assert z.shape == heavy.shape
     assert np.all(np.isfinite(z))
@@ -354,12 +354,12 @@ def test_tail_ess_is_reported_separately_from_bulk():
     assert bulk[0] > 1000 and tail[0] > 100
 
     # ``summarize`` discards a burn-in first, so compare on the same draws.
-    summary = dg.summarize(chains, names=['x'], burn_in=0)[0]
-    assert summary['ess_bulk'] == pytest.approx(bulk[0])
-    assert summary['ess_tail'] == pytest.approx(tail[0])
+    summary = dg.summarize(chains, names=["x"], burn_in=0)[0]
+    assert summary["ess_bulk"] == pytest.approx(bulk[0])
+    assert summary["ess_tail"] == pytest.approx(tail[0])
     # Both the robust and the plain R-hat are reported, so a disagreement is
     # visible rather than silently resolved.
-    assert 'rhat_plain' in summary
+    assert "rhat_plain" in summary
 
 
 def test_a_poor_tail_is_reported_even_when_the_bulk_is_fine():
@@ -370,25 +370,26 @@ def test_a_poor_tail_is_reported_even_when_the_bulk_is_fine():
     spikes = np.zeros_like(base)
     for c in range(4):
         start = rng.integers(0, 3500)
-        spikes[c, start:start + 400] = 8.0
+        spikes[c, start : start + 400] = 8.0
     chains = (base + spikes)[:, :, np.newaxis]
 
     bulk, tail = dg.bulk_tail_ess(chains)
     assert tail[0] < bulk[0]
-    messages = dg.convergence_warnings(dg.summarize(chains, names=['x']))
-    assert any('tail' in m for m in messages)
+    messages = dg.convergence_warnings(dg.summarize(chains, names=["x"]))
+    assert any("tail" in m for m in messages)
 
 
 def test_the_warnings_name_which_effective_sample_size_failed():
-    """"ESS is low" is not actionable; which one it is, is."""
+    """ "ESS is low" is not actionable; which one it is, is."""
     chains = _ar1(0.99, n=600, n_chains=2, seed=5)
-    messages = dg.convergence_warnings(dg.summarize(chains, names=['tau1']))
+    messages = dg.convergence_warnings(dg.summarize(chains, names=["tau1"]))
     assert messages
-    assert any('bulk' in m or 'tail' in m for m in messages)
-    assert any('tau1' in m for m in messages)
+    assert any("bulk" in m or "tail" in m for m in messages)
+    assert any("tau1" in m for m in messages)
 
 
 # -- rank plots and ESS growth (the display-side diagnostics) -------------
+
 
 def _ar1_chains(rho, n_chains=8, n_draws=1200, seed=0, shift=0.0):
     """Return AR(1) chains with a known autocorrelation time."""
@@ -485,9 +486,9 @@ def test_the_correction_does_not_hide_a_split_run():
 
     # And the pooled figure really would have hidden it.
     pooled_tau = chains.shape[1] / max(
-        float(dg.effective_sample_size(chains)[0]) / chains.shape[0], 1e-9)
-    hidden, _ = dg.rank_uniformity(
-        counts[0], chains.shape[1], 20, tau=pooled_tau)
+        float(dg.effective_sample_size(chains)[0]) / chains.shape[0], 1e-9
+    )
+    hidden, _ = dg.rank_uniformity(counts[0], chains.shape[1], 20, tau=pooled_tau)
     assert hidden < z
 
 

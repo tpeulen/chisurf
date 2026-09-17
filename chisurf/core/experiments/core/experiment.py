@@ -1,8 +1,9 @@
 from __future__ import annotations
-from chisurf import typing
+
+from typing import TYPE_CHECKING
 
 import chisurf.core.base
-from typing import TYPE_CHECKING
+from chisurf import typing
 
 if TYPE_CHECKING:
     import chisurf.core.models
@@ -76,12 +77,7 @@ class Experiment(chisurf.core.base.Base):
         if model not in self.model_classes:
             self._model_classes.append(model)
 
-    def add_model_classes(
-            self,
-            models: typing.List[
-                typing.Type[chisurf.core.models.Model]
-            ]
-    ):
+    def add_model_classes(self, models: typing.List[typing.Type[chisurf.core.models.Model]]):
         """Register multiple model classes at once.
 
         Parameters
@@ -92,11 +88,7 @@ class Experiment(chisurf.core.base.Base):
         for model in models:
             self.add_model_class(model)
 
-    def add_reader(
-            self,
-            reader: ExperimentReader,
-            controller: ExperimentReaderController = None
-    ):
+    def add_reader(self, reader: ExperimentReader, controller: ExperimentReaderController = None):
         """Register a single reader (optionally with a controller).
 
         Parameters
@@ -114,13 +106,7 @@ class Experiment(chisurf.core.base.Base):
             self._readers.append(reader)
 
     def add_readers(
-            self,
-            readers: typing.List[
-                typing.Tuple[
-                    ExperimentReader,
-                    ExperimentReaderController
-                ]
-            ]
+        self, readers: typing.List[typing.Tuple[ExperimentReader, ExperimentReaderController]]
     ):
         """Register multiple reader/controller pairs.
 
@@ -130,10 +116,7 @@ class Experiment(chisurf.core.base.Base):
             Each element is ``(reader, controller)``.
         """
         for reader, controller in readers:
-            self.add_reader(
-                reader,
-                controller
-            )
+            self.add_reader(reader, controller)
 
     def get_readers(self) -> typing.List[ExperimentReader]:
         """Return all :class:`ExperimentReader` instances for this experiment.
@@ -144,15 +127,9 @@ class Experiment(chisurf.core.base.Base):
         """
         readers = list()
         for v in self._readers:
-            if isinstance(
-                    v,
-                    ExperimentReader
-            ):
+            if isinstance(v, ExperimentReader):
                 readers.append(v)
-            elif isinstance(
-                    v,
-                    ExperimentReaderController
-            ):
+            elif isinstance(v, ExperimentReaderController):
                 readers.append(v.experiment_reader)
         return readers
 
@@ -222,23 +199,17 @@ class Experiment(chisurf.core.base.Base):
             Pickle-friendly state dictionary.
         """
         state = super().__getstate__()
-        state['_model_classes'] = self._model_classes
-        state['_readers'] = self._readers
-        state['name'] = self.__dict__['name']
-        state['hidden'] = self.hidden
+        state["_model_classes"] = self._model_classes
+        state["_readers"] = self._readers
+        state["name"] = self.__dict__["name"]
+        state["hidden"] = self.hidden
         return state
 
     def __str__(self):
         """Human-readable string representation."""
         return self.__class__.__name__ + "(" + self.name + ")"
 
-    def __init__(
-            self,
-            name: str = '',
-            hidden: bool = False,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, name: str = "", hidden: bool = False, *args, **kwargs):
         """Initialize an experiment registry entry.
 
         Parameters

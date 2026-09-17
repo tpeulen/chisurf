@@ -22,6 +22,7 @@ and default to the fast path.  The module contains no Qt: it is the single
 computational core shared by the `img_pixel_mle` GUI wizard, its RPC backend
 service, and its CLI, and it is directly testable headlessly from a FLIM file.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -31,8 +32,8 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
-from chisurf.core.datastore import store_from_arrays
 
+from chisurf.core.datastore import store_from_arrays
 from chisurf.core.fluorescence.mle import Fit2xModel, Fit2xSettings
 from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
 from chisurf.core.fluorescence.mle.parallel import fit_matrix_threaded
@@ -66,7 +67,9 @@ def result_column_schemas() -> dict:
     global _RESULT_SCHEMAS
     if _RESULT_SCHEMAS is None:
         import pathlib
+
         import yaml
+
         path = pathlib.Path(__file__).with_name("result_columns.yaml")
         with open(path, encoding="utf-8") as fh:
             _RESULT_SCHEMAS = yaml.safe_load(fh)
@@ -214,8 +217,7 @@ def _fit2x_settings_kwargs(s: PixelMleSettings, dt: float) -> dict:
         period=float(s.period),
         irf=np.ascontiguousarray(s.irf, dtype=np.float64),
         background=(
-            None if s.background is None
-            else np.ascontiguousarray(s.background, dtype=np.float64)
+            None if s.background is None else np.ascontiguousarray(s.background, dtype=np.float64)
         ),
         g_factor=s.g_factor,
         l1=s.l1,
@@ -261,12 +263,10 @@ def _extract_vv_vh_fast(clsm_p, clsm_s, tttr, binning, start, stop):
     is an ``(n_pixels, 2*window)`` int64 matrix in (frame, line, pixel) order.
     """
     dec_p = np.asarray(
-        clsm_p.get_fluorescence_decay(tttr, micro_time_coarsening=binning,
-                                      stack_frames=False)
+        clsm_p.get_fluorescence_decay(tttr, micro_time_coarsening=binning, stack_frames=False)
     )
     dec_s = np.asarray(
-        clsm_s.get_fluorescence_decay(tttr, micro_time_coarsening=binning,
-                                      stack_frames=False)
+        clsm_s.get_fluorescence_decay(tttr, micro_time_coarsening=binning, stack_frames=False)
     )
     # get_fluorescence_decay returns uint8 counts; detect saturation before cast.
     saturated = bool(dec_p.max() >= 255 or dec_s.max() >= 255)
@@ -310,7 +310,12 @@ def _fit_rows(vv_vh, rows, settings, dt, n_workers):
     x0, fixed = _initial_and_fixed(settings)
     fit_settings = Fit2xSettings(**_fit2x_settings_kwargs(settings, dt))
     return fit_matrix_threaded(
-        vv_vh, rows, fit_settings, x0, fixed, n_workers,
+        vv_vh,
+        rows,
+        fit_settings,
+        x0,
+        fixed,
+        n_workers,
         model=Fit2xModel(settings.fit_model),
     )
 
@@ -359,9 +364,7 @@ def fit_pixel_lifetimes(
 
     irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
     if irf.size != 2 * window:
-        raise ValueError(
-            f"irf length {irf.size} does not match 2*window (2*{window}={2 * window})"
-        )
+        raise ValueError(f"irf length {irf.size} does not match 2*window (2*{window}={2 * window})")
 
     dt = settings.dt
     if dt is None:
@@ -438,6 +441,7 @@ def fit_pixel_lifetimes(
         "Pixel Number": line_idx * n_pixel + pix_idx,
         "Number of Photons (fit window)": totals.astype(np.int64),
     }
+
     def _column(fill=np.nan, values=None, dtype=float):
         """A per-pixel column: *fill* everywhere, *values* on the fitted rows.
 
@@ -462,21 +466,17 @@ def fit_pixel_lifetimes(
             result_cols.append(name_)
             if source == "base":
                 if name_ not in base:
-                    raise ValueError(
-                        f"result_columns.yaml: no base column {name_!r}")
+                    raise ValueError(f"result_columns.yaml: no base column {name_!r}")
             elif source == "blank":
                 columns[name_] = _column()
             elif source.startswith("parameter:"):
                 j = int(source.split(":", 1)[1])
-                columns[name_] = _column(
-                    values=params[:, j] if len(fit_rows) else None)
+                columns[name_] = _column(values=params[:, j] if len(fit_rows) else None)
             elif source.startswith("flag:"):
                 flag = bool(getattr(settings, source.split(":", 1)[1]))
-                columns[name_] = _column(
-                    0, np.full(len(fit_rows), int(flag)), dtype=np.int64)
+                columns[name_] = _column(0, np.full(len(fit_rows), int(flag)), dtype=np.int64)
             else:
-                raise ValueError(
-                    f"result_columns.yaml: unknown source {source!r}")
+                raise ValueError(f"result_columns.yaml: unknown source {source!r}")
     else:
         # Generic schema: ``tau`` (primary lifetime) + one column per free
         # parameter named by the registry, then ``2I*``.
@@ -485,8 +485,13 @@ def fit_pixel_lifetimes(
             columns[nm] = _column(values=params[:, j] if len(fit_rows) else None)
         columns["2I*"] = _column(values=params[:, -1] if len(fit_rows) else None)
         result_cols = [
-            "Y pixel", "X pixel", "Pixel Number",
-            "Number of Photons (fit window)", "tau", *names, "2I*",
+            "Y pixel",
+            "X pixel",
+            "Pixel Number",
+            "Number of Photons (fit window)",
+            "tau",
+            *names,
+            "2I*",
         ]
     # Below-threshold pixels report zero photons in the fit window (matches the
     # historical schema, where intensity/count columns come from the Intensity

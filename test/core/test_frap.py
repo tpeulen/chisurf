@@ -6,6 +6,7 @@ not one averaged number per frame. These tests are built around what that buys:
 the diffusion coefficient, the bleach depth, the mobile fraction and the edge
 blur come out separately, where a single curve entangles them.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -21,7 +22,7 @@ from chisurf.core.fluorescence.imaging.frap import (
 from chisurf.core.roi.roi import RectangleROI
 
 PIXEL = 0.2
-RECT = (20.0, 20.0, 44.0, 44.0)          # (row0, col0, row1, col1), pixels
+RECT = (20.0, 20.0, 44.0, 44.0)  # (row0, col0, row1, col1), pixels
 TRUTH = dict(
     diffusion_coefficient=0.35,
     bleach_depth=0.6,
@@ -44,9 +45,7 @@ def _synthetic(times, **overrides):
     gx, gy = _grid()
     params = {**TRUTH, **overrides}
     side = (RECT[2] - RECT[0]) * PIXEL
-    return np.stack(
-        [rfrap_model(gx, gy, t, lx=side, ly=side, f0=1.0, **params) for t in times]
-    )
+    return np.stack([rfrap_model(gx, gy, t, lx=side, ly=side, f0=1.0, **params) for t in times])
 
 
 # --- the model -------------------------------------------------------------
@@ -108,9 +107,7 @@ def test_fit_survives_realistic_noise():
 
     result = fit_rfrap(noisy, times, RECT, pixel_size=PIXEL)
     assert result.success
-    assert result.diffusion_coefficient == pytest.approx(
-        TRUTH["diffusion_coefficient"], rel=0.05
-    )
+    assert result.diffusion_coefficient == pytest.approx(TRUTH["diffusion_coefficient"], rel=0.05)
     assert result.mobile_fraction == pytest.approx(TRUTH["mobile_fraction"], rel=0.05)
 
 
@@ -118,12 +115,15 @@ def test_fit_converges_from_a_poor_starting_guess():
     """A starting D an order of magnitude out still finds the optimum."""
     times = np.linspace(0.0, 4.0, 15)
     result = fit_rfrap(
-        _synthetic(times), times, RECT, pixel_size=PIXEL,
-        diffusion_coefficient=10.0, bleach_depth=0.1, edge_width=2.0,
+        _synthetic(times),
+        times,
+        RECT,
+        pixel_size=PIXEL,
+        diffusion_coefficient=10.0,
+        bleach_depth=0.1,
+        edge_width=2.0,
     )
-    assert result.diffusion_coefficient == pytest.approx(
-        TRUTH["diffusion_coefficient"], rel=1e-3
-    )
+    assert result.diffusion_coefficient == pytest.approx(TRUTH["diffusion_coefficient"], rel=1e-3)
 
 
 def test_fixing_the_mobile_fraction_holds_it_exactly():
@@ -131,13 +131,15 @@ def test_fixing_the_mobile_fraction_holds_it_exactly():
     times = np.linspace(0.0, 4.0, 12)
     stack = _synthetic(times, mobile_fraction=1.0)
     result = fit_rfrap(
-        stack, times, RECT, pixel_size=PIXEL,
-        mobile_fraction=1.0, fit_mobile_fraction=False,
+        stack,
+        times,
+        RECT,
+        pixel_size=PIXEL,
+        mobile_fraction=1.0,
+        fit_mobile_fraction=False,
     )
     assert result.mobile_fraction == 1.0
-    assert result.diffusion_coefficient == pytest.approx(
-        TRUTH["diffusion_coefficient"], rel=1e-3
-    )
+    assert result.diffusion_coefficient == pytest.approx(TRUTH["diffusion_coefficient"], rel=1e-3)
 
 
 def test_diffusion_is_reported_in_physical_units():
@@ -146,9 +148,7 @@ def test_diffusion_is_reported_in_physical_units():
     stack = _synthetic(times)
     fine = fit_rfrap(stack, times, RECT, pixel_size=PIXEL)
     coarse = fit_rfrap(stack, times, RECT, pixel_size=2 * PIXEL)
-    assert coarse.diffusion_coefficient == pytest.approx(
-        4.0 * fine.diffusion_coefficient, rel=1e-3
-    )
+    assert coarse.diffusion_coefficient == pytest.approx(4.0 * fine.diffusion_coefficient, rel=1e-3)
 
 
 def test_mismatched_times_and_frames_are_rejected():
@@ -184,7 +184,7 @@ def test_prebleach_normalisation_flattens_uneven_illumination():
     profile, and the fit would attribute the shading to the bleach.
     """
     yy, xx = np.mgrid[0:32, 0:32]
-    shading = 1.0 + 0.5 * (xx / 31.0)          # a 50 % gradient across the field
+    shading = 1.0 + 0.5 * (xx / 31.0)  # a 50 % gradient across the field
     stack = np.stack([shading] * 3 + [shading * 0.5] * 3)
 
     out = normalise_frap_stack(stack, n_prebleach=3, median_size=0)
@@ -202,8 +202,7 @@ def test_background_correction_removes_lamp_drift():
     stack = np.stack([base * d for d in drift])
     background = RectangleROI(0, 0, 4, 4)
 
-    out = normalise_frap_stack(stack, n_prebleach=2, background=background,
-                               median_size=0)
+    out = normalise_frap_stack(stack, n_prebleach=2, background=background, median_size=0)
     np.testing.assert_allclose(out, 1.0, atol=1e-12)
 
 
@@ -257,7 +256,7 @@ def test_half_time_needs_a_fit_to_be_meaningful():
     result = fit_rfrap(_synthetic(times), times, RECT, pixel_size=PIXEL)
     side = (RECT[2] - RECT[0]) * PIXEL
     assert result.half_time == pytest.approx(
-        side ** 2 / (16.0 * result.diffusion_coefficient), rel=1e-9
+        side**2 / (16.0 * result.diffusion_coefficient), rel=1e-9
     )
     # a result built by hand has no bleach geometry, so it declines to guess
     assert np.isnan(FrapResult(1.0, 0.5, 1.0, 0.4).half_time)

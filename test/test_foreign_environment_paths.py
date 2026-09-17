@@ -92,13 +92,20 @@ def test_importing_chisurf_survives_a_foreign_environment_on_pythonpath(tmp_path
     )
 
     proc = subprocess.run(
-        [sys.executable, "-c",
-         "import chisurf, sys;"
-         f"assert {str(foreign)!r} not in sys.path;"
-         "print('ok')"],
-        capture_output=True, text=True, cwd=_REPO,
-        env={"PYTHONPATH": str(foreign), "PATH": "/usr/bin:/bin",
-             "HOME": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+        [
+            sys.executable,
+            "-c",
+            f"import chisurf, sys;assert {str(foreign)!r} not in sys.path;print('ok')",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=_REPO,
+        env={
+            "PYTHONPATH": str(foreign),
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(tmp_path),
+            "QT_QPA_PLATFORM": "offscreen",
+        },
     )
     assert proc.returncode == 0, proc.stderr
     assert "ok" in proc.stdout

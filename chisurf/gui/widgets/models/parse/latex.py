@@ -172,7 +172,9 @@ def _convert_python_expression_to_latex_fallback(expression: str) -> str:
         "nan": r"\mathrm{NaN}",
     }
 
-    def convert(node: ast.AST, in_pow_base: bool = False, parent_op: type[ast.operator] | None = None) -> str:
+    def convert(
+        node: ast.AST, in_pow_base: bool = False, parent_op: type[ast.operator] | None = None
+    ) -> str:
         if isinstance(node, ast.Expression):
             return convert(node.body)
 
@@ -197,8 +199,7 @@ def _convert_python_expression_to_latex_fallback(expression: str) -> str:
                 result = rf"({left} \circ {right})"
 
             needs_wrap = in_pow_base or (
-                parent_op in (ast.Mult, ast.Div)
-                and isinstance(node.op, (ast.Add, ast.Sub))
+                parent_op in (ast.Mult, ast.Div) and isinstance(node.op, (ast.Add, ast.Sub))
             )
             return rf"\left({result}\right)" if needs_wrap else result
 
@@ -220,7 +221,9 @@ def _convert_python_expression_to_latex_fallback(expression: str) -> str:
 
             args = [convert(arg) for arg in node.args]
             if func_name == "sqrt" and args:
-                return rf"\sqrt{{{args[0]}}}" if len(args) == 1 else rf"\sqrt[{args[1]}]{{{args[0]}}}"
+                return (
+                    rf"\sqrt{{{args[0]}}}" if len(args) == 1 else rf"\sqrt[{args[1]}]{{{args[0]}}}"
+                )
             if func_name == "abs" and args:
                 return rf"\left|{args[0]}\right|"
             if func_name == "exp" and len(args) == 1:

@@ -58,9 +58,7 @@ def test_myst_headings_become_groups(tmp_path):
 
 def test_the_pages_own_title_is_not_a_group_inside_itself(tmp_path):
     _write(tmp_path, "one.rst", "One\n===\n")
-    index = _write(
-        tmp_path, "index.rst", "Reference\n=========\n\n.. toctree::\n\n   one\n"
-    )
+    index = _write(tmp_path, "index.rst", "Reference\n=========\n\n.. toctree::\n\n   one\n")
     nodes = toc_api.read_index(index)
     assert [node.title for node in nodes] == ["One"]
 
@@ -79,9 +77,7 @@ def test_a_toctree_caption_names_the_group(tmp_path):
 
 def test_an_explicit_entry_title_wins(tmp_path):
     _write(tmp_path, "one.rst", "Original\n========\n")
-    index = _write(
-        tmp_path, "index.rst", "S\n=\n\n.. toctree::\n\n   Better name <one>\n"
-    )
+    index = _write(tmp_path, "index.rst", "S\n=\n\n.. toctree::\n\n   Better name <one>\n")
     assert toc_api.read_index(index)[0].title == "Better name"
 
 
@@ -114,9 +110,7 @@ def test_the_real_documentation_builds_a_tree():
 
 
 def test_developer_documentation_is_opt_in():
-    assert not any(
-        "Developing" in section.title for section in toc_api.build_toc().children
-    )
+    assert not any("Developing" in section.title for section in toc_api.build_toc().children)
     assert any(
         "Developing" in section.title
         for section in toc_api.build_toc(include_development=True).children
@@ -133,9 +127,7 @@ def test_the_guides_are_grouped_not_one_flat_run():
 
 def test_the_manual_is_split_into_chapters():
     toc = toc_api.build_toc()
-    manual = next(
-        section for section in toc.children if "Fitting interface" in section.title
-    )
+    manual = next(section for section in toc.children if "Fitting interface" in section.title)
     groups = [child.title for child in manual.children if child.kind == "group"]
     assert "The fitting interface" in groups
     assert any("Worked example" in title for title in groups)
@@ -176,15 +168,10 @@ def test_the_sections_come_from_the_root_index():
     assert "concepts/index" in listed and "guides/index" in listed
 
     tree = toc_api.build_toc()
-    paths = {
-        node.path.parent.name
-        for node in tree.children
-        if node.path is not None
-    }
+    paths = {node.path.parent.name for node in tree.children if node.path is not None}
     for index in listed:
         directory = index.rsplit("/", 1)[0]
         if index in toc_api._NOT_USER_SECTIONS:
             assert directory not in paths, f"{directory} is not user documentation"
         elif (docs / directory).is_dir():
             assert directory in paths, f"{directory} is on the website but not in the tree"
-

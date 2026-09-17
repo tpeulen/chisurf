@@ -20,8 +20,10 @@ def _dispatcher() -> ServiceDispatcher:
 def test_no_gui_import_in_server():
     """SV-01 guard: chisurf.server must not import chisurf.gui (which brings Qt)."""
     import ast
-    import chisurf.server.services.detector_setups as svc
     import inspect
+
+    import chisurf.server.services.detector_setups as svc
+
     source = inspect.getsource(svc)
     tree = ast.parse(source)
     for node in ast.walk(tree):

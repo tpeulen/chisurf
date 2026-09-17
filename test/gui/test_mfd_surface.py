@@ -92,9 +92,7 @@ def test_every_other_experiment_still_lists_its_own(experiments):
     so an addition that went in the wrong place would empty someone else's readers
     rather than fail.
     """
-    for name, minimum_readers in (
-        ("TCSPC", 3), ("PDA", 3), ("FCS", 8), ("DEER", 1), ("PCH", 1)
-    ):
+    for name, minimum_readers in (("TCSPC", 3), ("PDA", 3), ("FCS", 8), ("DEER", 1), ("PCH", 1)):
         assert len(experiments[name].readers) >= minimum_readers, name
     assert experiments["PDA"].get_model_names()
     assert experiments["FCS"].get_model_names()
@@ -255,7 +253,7 @@ def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
     x = np.linspace(0.0, 5.0, 32)
     plain = Fit(
         model_class=chisurf.core.models.parse.ParseModel,
-        data=chisurf.core.data.DataCurve(x=x, y=x ** 2, ey=np.ones_like(x)),
+        data=chisurf.core.data.DataCurve(x=x, y=x**2, ey=np.ones_like(x)),
     )
     info = FitInfo(plain)
     info.update()
@@ -281,7 +279,10 @@ def test_seeding_only_touches_free_parameters(dataset):
     from chisurf.core.models.mfd import Mfd2DModel
 
     fit = Fit(
-        model_class=Mfd2DModel, data=dataset, xmin=0, xmax=int(dataset.y.size),
+        model_class=Mfd2DModel,
+        data=dataset,
+        xmin=0,
+        xmax=int(dataset.y.size),
         noise_model="poisson",
     )
     model = fit.model
@@ -312,8 +313,8 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     model = fit.model
     n = model.n_states
     rates = list(model.rate_values)
-    rates[0 * n + 1] = 1500.0   # R1 -> R2
-    rates[1 * n + 0] = 900.0    # R2 -> R1
+    rates[0 * n + 1] = 1500.0  # R1 -> R2
+    rates[1 * n + 0] = 900.0  # R2 -> R1
     model.rate_values = rates
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
@@ -378,8 +379,14 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
     anchor = QtCore.QPointF(260.0, 120.0)
     before = widget._scene_pos(anchor)
     event = QtGui.QWheelEvent(
-        anchor, anchor, QtCore.QPoint(0, 0), QtCore.QPoint(0, 480),
-        QtCore.Qt.NoButton, QtCore.Qt.NoModifier, QtCore.Qt.NoScrollPhase, False,
+        anchor,
+        anchor,
+        QtCore.QPoint(0, 0),
+        QtCore.QPoint(0, 480),
+        QtCore.Qt.NoButton,
+        QtCore.Qt.NoModifier,
+        QtCore.Qt.NoScrollPhase,
+        False,
     )
     widget._on_canvas_wheel(event)
     assert widget._view.zoom > 1.5
@@ -497,9 +504,7 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
     from chisurf.gui.plots.residual_image import _resolve_accessor
 
     assert callable(
-        _resolve_accessor(
-            "chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image"
-        )
+        _resolve_accessor("chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image")
     )
     for plot_class, options in resolve_plot_specs(fit.model.view_spec()):
         if plot_class.__name__ != "Residual2DPlot":
@@ -566,9 +571,7 @@ def test_every_shipped_reader_can_show_something(qapp):
     """
     import yaml
 
-    config = yaml.safe_load(
-        (REPO / "chisurf/core/settings/experiment_configs.yaml").read_text()
-    )
+    config = yaml.safe_load((REPO / "chisurf/core/settings/experiment_configs.yaml").read_text())
     mfd = config["mfd"]["readers"][0]
     assert mfd["controller_class"].endswith("mfd.MFDController")
 

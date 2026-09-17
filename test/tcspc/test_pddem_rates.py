@@ -8,6 +8,7 @@ be **bit-for-bit** the concatenation the loop produced, in the same order —
 an order test, not only a value test, because getting the rate-major
 interleaving wrong would reorder the spectrum without changing any value.
 """
+
 import numpy as np
 import pytest
 
@@ -49,8 +50,9 @@ def test_pddem_rates_matches_the_per_rate_loop(seed, n_a, n_b):
 def test_zero_amplitude_and_zero_lifetime_pairs_are_skipped_identically():
     """The keep semantics — a zero amplitude or lifetime drops the pair, both
     branches — must survive the vectorisation, including the ragged per-rate
-    lengths they produce."""
-    decayA = np.array([0.5, 2.0, 0.0, 1.0, 0.4, 0.0])   # one zero c, one zero tau
+    lengths they produce.
+    """
+    decayA = np.array([0.5, 2.0, 0.0, 1.0, 0.4, 0.0])  # one zero c, one zero tau
     decayB = np.array([0.8, 3.0, 0.2, 1.5])
     ks = np.array([[0.5, 0.15], [5.0, 1.5]])
     px = np.array([0.5, 0.5])

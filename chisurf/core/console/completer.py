@@ -274,7 +274,10 @@ class ChinsoleCompleter:
         if not names:
             return None
         return CompletionResult(
-            _rank(names, prefix), match.start("prefix"), cursor, kind="module",
+            _rank(names, prefix),
+            match.start("prefix"),
+            cursor,
+            kind="module",
         )
 
     def _complete_import(self, head: str, cursor: int) -> CompletionResult | None:
@@ -299,22 +302,29 @@ class ChinsoleCompleter:
             import sys
 
             names = sorted(
-                {info.name for info in pkgutil.iter_modules()}
-                | set(sys.builtin_module_names)
+                {info.name for info in pkgutil.iter_modules()} | set(sys.builtin_module_names)
             )
             names = [n for n in names if n.startswith(prefix) and not n.startswith("_")]
-            return CompletionResult(names, match.start("mod"), cursor, kind="module") if names else None
+            return (
+                CompletionResult(names, match.start("mod"), cursor, kind="module")
+                if names
+                else None
+            )
 
         module = self._imported(parent)
         if module is None:
             return None
         names = [n for n in self._submodules(module) if n.startswith(prefix)]
-        return CompletionResult(
-            [f"{parent}.{n}" for n in sorted(names)],
-            match.start("mod"),
-            cursor,
-            kind="module",
-        ) if names else None
+        return (
+            CompletionResult(
+                [f"{parent}.{n}" for n in sorted(names)],
+                match.start("mod"),
+                cursor,
+                kind="module",
+            )
+            if names
+            else None
+        )
 
     def _complete_path(self, head: str, cursor: int) -> CompletionResult | None:
         """Complete a filesystem path inside a string literal or after ``!``.
@@ -336,12 +346,12 @@ class ChinsoleCompleter:
         return None
 
     def _path_matches(
-            self,
-            head: str,
-            cursor: int,
-            fragment: str,
-            *,
-            start: int | None = None,
+        self,
+        head: str,
+        cursor: int,
+        fragment: str,
+        *,
+        start: int | None = None,
     ) -> CompletionResult | None:
         """Return filesystem completions for *fragment*.
 
@@ -365,14 +375,10 @@ class ChinsoleCompleter:
             return None
         if not hits:
             return None
-        matches = sorted(
-            hit + (os.sep if os.path.isdir(hit) else "") for hit in hits
-        )
+        matches = sorted(hit + (os.sep if os.path.isdir(hit) else "") for hit in hits)
         if cleaned.startswith("~"):
             home = os.path.expanduser("~")
-            matches = [
-                "~" + m[len(home):] if m.startswith(home) else m for m in matches
-            ]
+            matches = ["~" + m[len(home) :] if m.startswith(home) else m for m in matches]
         begin = start if start is not None else cursor - len(fragment)
         return CompletionResult(matches, begin, cursor, kind="path")
 
@@ -408,7 +414,10 @@ class ChinsoleCompleter:
         if not matches:
             return None
         return CompletionResult(
-            _rank(matches, prefix), cursor - len(word), cursor, kind="attr",
+            _rank(matches, prefix),
+            cursor - len(word),
+            cursor,
+            kind="attr",
         )
 
     def _complete_name(self, head: str, cursor: int) -> CompletionResult | None:
@@ -437,7 +446,10 @@ class ChinsoleCompleter:
         if not matches:
             return None
         return CompletionResult(
-            _rank(matches, word), cursor - len(word), cursor, kind="name",
+            _rank(matches, word),
+            cursor - len(word),
+            cursor,
+            kind="name",
         )
 
     # ------------------------------------------------------------------
@@ -535,7 +547,7 @@ def transform_shell_object() -> str:
 class _ignored:
     """Context manager swallowing any exception from a third-party object."""
 
-    def __enter__(self) -> "_ignored":
+    def __enter__(self) -> _ignored:
         """Enter the block.
 
         Returns

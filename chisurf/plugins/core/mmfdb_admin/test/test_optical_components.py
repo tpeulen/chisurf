@@ -1,11 +1,12 @@
 """Tests for the optical components dock and spectrum view."""
+
 from __future__ import annotations
 
 import pytest
 
 pytest.importorskip("qtpy")
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from chisurf.gui.autoform.sections.registry import get_section_factory
 

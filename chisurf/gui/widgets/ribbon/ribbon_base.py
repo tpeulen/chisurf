@@ -3,21 +3,17 @@
 Holds the core ``ChiSurfRibbonIntegration`` class and its basic setup.
 """
 
-import os
 import sys
-from pathlib import Path
-import json
-import functools
-from math import ceil
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 from qtpy.QtCore import QObject
 
 import chisurf as cs
 
-from .ribbonbar import RibbonBar
 from .constants import RibbonStyle
 from .logger import logging
+from .ribbonbar import RibbonBar
+
 
 # Monkey patch to disable problematic window dragging in ribbon title widget
 def _disable_title_widget_dragging():
@@ -47,6 +43,7 @@ def _disable_title_widget_dragging():
     except Exception as e:
         logging.warning(f"Unexpected error applying monkey patch: {e}")
 
+
 # Apply the monkey patch immediately when the module is imported
 _disable_title_widget_dragging()
 
@@ -75,12 +72,13 @@ class ChiSurfRibbonIntegration(QObject):
         self.original_toolbar = None
         # Create a hidden widget to preserve the menu bar
         from qtpy.QtWidgets import QWidget
+
         self.menu_preserve_widget = QWidget()
         self.menu_preserve_widget.hide()
         # Create a hidden widget to preserve the ribbon bar
         self.ribbon_preserve_widget = QWidget()
         self.ribbon_preserve_widget.hide()
-        self.logger = logging.getLogger('cs.gui.widgets.ribbon')
+        self.logger = logging.getLogger("cs.gui.widgets.ribbon")
 
         # Auto-fold functionality
         self.auto_fold_timer = QtCore.QTimer()
@@ -122,7 +120,10 @@ class ChiSurfRibbonIntegration(QObject):
             True if event was handled, False otherwise
         """
         # Handle auto-fold events for ribbon and tab bar
-        if (obj == self.ribbon_bar or (hasattr(self.ribbon_bar, 'tabBar') and obj == self.ribbon_bar.tabBar())) and self.auto_fold_enabled:
+        if (
+            obj == self.ribbon_bar
+            or (hasattr(self.ribbon_bar, "tabBar") and obj == self.ribbon_bar.tabBar())
+        ) and self.auto_fold_enabled:
             if event.type() == QtCore.QEvent.Enter:
                 # Mouse entered ribbon - stop auto-fold timer but DON'T auto-unfold
                 self.mouse_over_ribbon = True
@@ -140,7 +141,9 @@ class ChiSurfRibbonIntegration(QObject):
                 return False
             elif event.type() == QtCore.QEvent.MouseButtonPress:
                 # Mouse clicked on ribbon - unfold if folded
-                self.logger.debug(f"Mouse button press on {type(obj).__name__}: folded={self.is_folded}, pinned={self.is_pinned}")
+                self.logger.debug(
+                    f"Mouse button press on {type(obj).__name__}: folded={self.is_folded}, pinned={self.is_pinned}"
+                )
                 if self.is_folded and not self.is_pinned:
                     msg = "RIBBON CLICKED - unfolding ribbon"
                     self.logger.debug(msg)
@@ -156,8 +159,14 @@ class ChiSurfRibbonIntegration(QObject):
                 # Log other events for debugging
                 self.logger.debug(f"Other event on ribbon: {event.type()}")
                 # Additional debugging for mouse events
-                if event.type() in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseButtonRelease, QtCore.QEvent.MouseMove]:
-                    self.logger.debug(f"Mouse event on ribbon: {event.type()}, folded={self.is_folded}, pinned={self.is_pinned}")
+                if event.type() in [
+                    QtCore.QEvent.MouseButtonPress,
+                    QtCore.QEvent.MouseButtonRelease,
+                    QtCore.QEvent.MouseMove,
+                ]:
+                    self.logger.debug(
+                        f"Mouse event on ribbon: {event.type()}, folded={self.is_folded}, pinned={self.is_pinned}"
+                    )
 
         # Handle resize events for main window
         elif obj == self.main_window and event.type() == QtCore.QEvent.Resize:
@@ -190,7 +199,7 @@ class ChiSurfRibbonIntegration(QObject):
             else:
                 self.original_menubar = menubar_attr  # Use directly if it's a property
 
-            self.original_toolbar = getattr(self.main_window, 'toolBar', None)
+            self.original_toolbar = getattr(self.main_window, "toolBar", None)
 
             self.logger.info("Ribbon setup starting...")
 
@@ -205,7 +214,7 @@ class ChiSurfRibbonIntegration(QObject):
                 self.logger.info("Original toolbar hidden")
 
             # Hide plugin toolbar when switching to ribbon
-            if hasattr(self.main_window, 'plugins_toolbar'):
+            if hasattr(self.main_window, "plugins_toolbar"):
                 self.main_window.plugins_toolbar.hide()
                 self.logger.info("Plugin toolbar hidden for ribbon mode")
 
@@ -242,24 +251,26 @@ class ChiSurfRibbonIntegration(QObject):
             self._apply_title_widget_fix()
 
             # Read max_rows and ribbon_height from settings
-            gui_settings = cs.core.settings.cs_settings.get('gui', {})
-            ribbon_settings = gui_settings.get('ribbon', {})
-            max_rows = ribbon_settings.get('max_rows', 3)  # Default to 3 rows for reduced height
-            ribbon_height = ribbon_settings.get('ribbon_height', 110)  # Default to 110px for reduced height
+            gui_settings = cs.core.settings.cs_settings.get("gui", {})
+            ribbon_settings = gui_settings.get("ribbon", {})
+            max_rows = ribbon_settings.get("max_rows", 3)  # Default to 3 rows for reduced height
+            ribbon_height = ribbon_settings.get(
+                "ribbon_height", 110
+            )  # Default to 110px for reduced height
 
             # Apply ribbon height setting
-            if hasattr(self.ribbon_bar, 'setRibbonHeight'):
+            if hasattr(self.ribbon_bar, "setRibbonHeight"):
                 self.ribbon_bar.setRibbonHeight(ribbon_height)
                 self.logger.info(f"Set ribbon height to {ribbon_height}px")
 
-            if hasattr(self.ribbon_bar, '_maxRows'):
+            if hasattr(self.ribbon_bar, "_maxRows"):
                 self.ribbon_bar._maxRows = max_rows
                 self.logger.info(f"Set ribbon max rows to {max_rows}")
 
                 # Update all existing categories to use the new max rows
-                if hasattr(self.ribbon_bar, '_categories'):
+                if hasattr(self.ribbon_bar, "_categories"):
                     for category in self.ribbon_bar._categories.values():
-                        if hasattr(category, 'setMaximumRows'):
+                        if hasattr(category, "setMaximumRows"):
                             category.setMaximumRows(max_rows)
                     self.logger.info(f"Updated all categories to use {max_rows} max rows")
 
@@ -306,14 +317,15 @@ class ChiSurfRibbonIntegration(QObject):
             # Create ribbon categories
             self.categories = {}
             # Create File category first (as the first tab)
-            self.categories['File'] = self._create_file_category()
+            self.categories["File"] = self._create_file_category()
             # Create Main category with default actions
-            self.categories['Main'] = self._create_main_category()
+            self.categories["Main"] = self._create_main_category()
             # Plugin categories are created dynamically in _create_plugins_category
             self._create_plugins_category()
 
             # Apply global alignment fix to all panels after everything is created
             from qtpy import QtCore
+
             QtCore.QTimer.singleShot(200, self._fix_all_panel_alignments)
 
             # Set the ribbon to always start on the Main tab
@@ -324,6 +336,7 @@ class ChiSurfRibbonIntegration(QObject):
 
         except Exception as e:
             import traceback
+
             self.logger.error(f"Failed to setup ribbon interface: {e}")
             self.logger.error(f"DEBUG: Exception traceback: {traceback.format_exc()}")
             return False
@@ -332,7 +345,7 @@ class ChiSurfRibbonIntegration(QObject):
         """Apply background fix to prevent white area in MDI area and central widget"""
         try:
             # Fix the white area in MDI area by setting proper dark background
-            if hasattr(self.main_window, 'mdiarea'):
+            if hasattr(self.main_window, "mdiarea"):
                 # Set MDI area background to match dark theme
                 self.main_window.mdiarea.setStyleSheet("""
                     QMdiArea {
@@ -346,7 +359,7 @@ class ChiSurfRibbonIntegration(QObject):
                 self.logger.info("Applied immediate MDI area dark background fix")
 
             # Also fix central widget background if needed
-            if hasattr(self.main_window, 'centralwidget'):
+            if hasattr(self.main_window, "centralwidget"):
                 self.main_window.centralwidget.setStyleSheet("""
                     QWidget#centralwidget {
                         background-color: #353535;
@@ -361,7 +374,7 @@ class ChiSurfRibbonIntegration(QObject):
         """Apply additional fixes for title widget and empty space issues"""
         try:
             # Fix title widget background if it exists
-            if hasattr(self.ribbon_bar, 'titleWidget'):
+            if hasattr(self.ribbon_bar, "titleWidget"):
                 title_widget = self.ribbon_bar.titleWidget()
                 if title_widget:
                     title_widget.setStyleSheet("""
@@ -389,11 +402,11 @@ class ChiSurfRibbonIntegration(QObject):
                     self.logger.info("Applied title widget background fix")
 
             # Fix any potential empty space in the ribbon bar layout
-            if hasattr(self.ribbon_bar, '_titleWidget'):
+            if hasattr(self.ribbon_bar, "_titleWidget"):
                 title_widget = self.ribbon_bar._titleWidget
                 if title_widget:
                     # Ensure the title label has proper background
-                    if hasattr(title_widget, '_titleLabel'):
+                    if hasattr(title_widget, "_titleLabel"):
                         title_widget._titleLabel.setStyleSheet("""
                             QLabel {
                                 background-color: #353535;
@@ -404,13 +417,15 @@ class ChiSurfRibbonIntegration(QObject):
 
                     # Ensure all child widgets have proper background
                     for child in title_widget.findChildren(QtWidgets.QWidget):
-                        if child.objectName() == '' or 'title' in child.objectName().lower():
+                        if child.objectName() == "" or "title" in child.objectName().lower():
                             child.setStyleSheet("background-color: #353535; border: none;")
 
                     self.logger.info("Applied title widget child fixes")
 
             # Apply fix to the entire ribbon bar to catch any missed areas
-            self.ribbon_bar.setStyleSheet(self.ribbon_bar.styleSheet() + """
+            self.ribbon_bar.setStyleSheet(
+                self.ribbon_bar.styleSheet()
+                + """
                 RibbonBar QWidget {
                     background-color: #353535;
                     border: none;
@@ -443,7 +458,8 @@ class ChiSurfRibbonIntegration(QObject):
                     spacing: 1px;
                     margin: 1px;
                 }
-            """)
+            """
+            )
 
             self.logger.info("Applied comprehensive title widget and layout fixes")
 
@@ -462,8 +478,8 @@ class ChiSurfRibbonIntegration(QObject):
     def _apply_dark_palette(self):
         """Apply dark palette to the application like the demo"""
         try:
-            from qtpy.QtGui import QPalette, QColor
             from qtpy.QtCore import Qt
+            from qtpy.QtGui import QColor, QPalette
 
             app = QtWidgets.QApplication.instance()
             if app is None:
@@ -507,21 +523,21 @@ class ChiSurfRibbonIntegration(QObject):
                 return
 
             # Update the internal max rows value
-            if hasattr(self.ribbon_bar, '_maxRows'):
+            if hasattr(self.ribbon_bar, "_maxRows"):
                 self.ribbon_bar._maxRows = row_count
                 self.logger.info(f"Set ribbon max rows to {row_count}")
 
                 # Update all existing categories to use the new max rows
-                if hasattr(self.ribbon_bar, '_categories'):
+                if hasattr(self.ribbon_bar, "_categories"):
                     for category in self.ribbon_bar._categories.values():
-                        if hasattr(category, 'setMaximumRows'):
+                        if hasattr(category, "setMaximumRows"):
                             category.setMaximumRows(row_count)
                     self.logger.info(f"Updated all categories to use {row_count} max rows")
 
                     # Save to settings for persistence
-                    gui_settings = cs.core.settings.cs_settings.get('gui', {})
-                    ribbon_settings = gui_settings.get('ribbon', {})
-                    ribbon_settings['max_rows'] = row_count
+                    gui_settings = cs.core.settings.cs_settings.get("gui", {})
+                    ribbon_settings = gui_settings.get("ribbon", {})
+                    ribbon_settings["max_rows"] = row_count
                     self.logger.info(f"Saved max_rows={row_count} to settings")
                 else:
                     self.logger.warning("Ribbon bar has no _categories attribute")
@@ -534,11 +550,11 @@ class ChiSurfRibbonIntegration(QObject):
     def _set_main_tab_as_default(self):
         """Set the Main tab as the default ribbon tab"""
         try:
-            if self.ribbon_bar and hasattr(self.ribbon_bar, '_titleWidget'):
+            if self.ribbon_bar and hasattr(self.ribbon_bar, "_titleWidget"):
                 tab_bar = self.ribbon_bar._titleWidget.tabBar()
                 if tab_bar:
                     # Find the index of the Main tab
-                    main_tab_index = tab_bar.indexOf('Main')
+                    main_tab_index = tab_bar.indexOf("Main")
                     if main_tab_index >= 0:
                         tab_bar.setCurrentIndex(main_tab_index)
                         self.ribbon_bar.showCategoryByIndex(main_tab_index)
@@ -632,21 +648,24 @@ class ChiSurfRibbonIntegration(QObject):
         """Restore original styling when switching back to menu mode"""
         try:
             # Restore MDI area original styling
-            if hasattr(self.main_window, 'mdiarea'):
+            if hasattr(self.main_window, "mdiarea"):
                 # Clear the custom stylesheet to restore default appearance
                 self.main_window.mdiarea.setStyleSheet("")
                 self.logger.info("Restored MDI area original styling")
 
             # Restore central widget original styling
-            if hasattr(self.main_window, 'centralwidget'):
+            if hasattr(self.main_window, "centralwidget"):
                 # Clear the custom stylesheet to restore default appearance
                 self.main_window.centralwidget.setStyleSheet("")
                 self.logger.info("Restored central widget original styling")
 
             # Ensure dock widgets are visible and properly styled
             dock_widgets = [
-                'dockWidgetAnalysis', 'dockWidgetReadData', 'dockWidgetDatasets',
-                'dockWidgetPlot', 'dockWidget_console'
+                "dockWidgetAnalysis",
+                "dockWidgetReadData",
+                "dockWidgetDatasets",
+                "dockWidgetPlot",
+                "dockWidget_console",
             ]
 
             for dock_name in dock_widgets:
@@ -659,7 +678,7 @@ class ChiSurfRibbonIntegration(QObject):
                         self.logger.info(f"Restored {dock_name} styling")
 
             # Ensure status bar is visible
-            if hasattr(self.main_window, 'status') and self.main_window.statusBar():
+            if hasattr(self.main_window, "status") and self.main_window.statusBar():
                 self.main_window.statusBar().show()
                 self.logger.info("Ensured status bar is visible")
 
@@ -683,7 +702,7 @@ class ChiSurfRibbonIntegration(QObject):
                 # Move menu bar back to main window
                 self.original_menubar.setParent(self.main_window)
                 # Ensure it is native on macOS to restore system menu bar
-                if sys.platform == 'darwin':
+                if sys.platform == "darwin":
                     self.original_menubar.setNativeMenuBar(True)
                 # Set it as the menu bar
                 self.main_window.setMenuBar(self.original_menubar)
@@ -698,7 +717,7 @@ class ChiSurfRibbonIntegration(QObject):
                 self.logger.info("Original toolbar restored")
 
             # Show plugin toolbar when switching back to menu mode
-            if hasattr(self.main_window, 'plugins_toolbar'):
+            if hasattr(self.main_window, "plugins_toolbar"):
                 self.main_window.plugins_toolbar.show()
                 self.logger.info("Plugin toolbar restored for menu mode")
 

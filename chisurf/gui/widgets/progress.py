@@ -6,15 +6,16 @@ throughout the chisurf application for displaying progress information
 to the user during long-running operations.
 """
 
-import traceback
 import textwrap
-from chisurf.gui import QtWidgets, QtCore
+import traceback
+
+from chisurf.gui import QtCore, QtWidgets
 
 
 class WorkerSignals(QtCore.QObject):
     """
     Defines the signals available from a running worker thread.
-    
+
     Signals:
     --------
     finished: No data
@@ -26,6 +27,7 @@ class WorkerSignals(QtCore.QObject):
     progress: int
         Signal emitted to indicate task progress (0-100)
     """
+
     finished = QtCore.Signal()
     error = QtCore.Signal(object)
     result = QtCore.Signal(object)
@@ -35,10 +37,10 @@ class WorkerSignals(QtCore.QObject):
 class Worker(QtCore.QRunnable):
     """
     Worker thread for running background tasks.
-    
+
     Inherits from QRunnable to handle worker thread setup, signals and wrap-up.
-    
-    Parameters:
+
+    Parameters
     -----------
     fn : callable
         The function to run on this worker thread. Supplied args and kwargs will be passed
@@ -48,6 +50,7 @@ class Worker(QtCore.QRunnable):
     **kwargs : dict
         Keywords to pass to the function
     """
+
     def __init__(self, fn, *args, **kwargs):
         super().__init__()
         # Store constructor arguments (re-used for processing)
@@ -55,7 +58,7 @@ class Worker(QtCore.QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
-        
+
     def run(self):
         """
         Initialize the runner function with passed args, kwargs.
@@ -82,6 +85,7 @@ class MinimisedProgressWidget(QtWidgets.QWidget):
 
     Double-clicking it restores the parent dialog.
     """
+
     def __init__(self, dialog, parent=None):
         super().__init__(parent)
         self.dialog = dialog
@@ -136,7 +140,16 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
     An enhanced progress dialog that can update its label text without user interaction.
     This is used to replace message boxes with progress bar updates.
     """
-    def __init__(self, title, label_text, min_value, max_value, parent=None, window_modality=QtCore.Qt.WindowModal):
+
+    def __init__(
+        self,
+        title,
+        label_text,
+        min_value,
+        max_value,
+        parent=None,
+        window_modality=QtCore.Qt.WindowModal,
+    ):
         super().__init__(label_text, "Cancel", min_value, max_value, parent)
         self.setWindowTitle(title)
         self.setWindowModality(window_modality)
@@ -163,7 +176,7 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
         # Internal state to support deferred finalization
         self._pending_auto_close = True
         self._auto_timer = None
-        
+
         # Add a Hide button next to the Cancel button
         self._statusbar_widget = None
         self._hide_btn = QtWidgets.QPushButton("Hide", self)
@@ -178,13 +191,13 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
             The resize event parameters.
         """
         super().resizeEvent(event)
-        
+
         cancel_btn = None
         for btn in self.findChildren(QtWidgets.QPushButton):
             if btn.text() == "Cancel":
                 cancel_btn = btn
                 break
-        
+
         # Determine button size
         btn_w = 80
         btn_h = 30
@@ -194,14 +207,14 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
             y = cancel_btn.y()
         else:
             y = self.height() - btn_h - 12
-        
+
         # Left margin - symmetric with the right margin of cancel button if possible
         if cancel_btn is not None and self.width() > (cancel_btn.x() + cancel_btn.width()):
             margin_right = self.width() - (cancel_btn.x() + cancel_btn.width())
             x = max(12, margin_right)
         else:
             x = 12
-            
+
         self._hide_btn.setGeometry(x, y, btn_w, btn_h)
 
     def _find_main_window(self) -> QtWidgets.QMainWindow | None:
@@ -259,7 +272,7 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
     def closeEvent(self, event):
         self._remove_statusbar_widget()
         super().closeEvent(event)
-        
+
     def update_text(self, text):
         """Update the label text without closing the dialog"""
         try:
@@ -270,7 +283,7 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
         except Exception:
             pass
         QtWidgets.QApplication.processEvents()
-        
+
     def update_progress(self, value, text=None):
         """Update both progress value and optionally the text"""
         if text is not None:
@@ -297,6 +310,7 @@ class EnhancedProgressDialog(QtWidgets.QProgressDialog):
         """
         self._remove_statusbar_widget()
         import sys
+
         if "pytest" in sys.modules:
             close_delay_ms = 0
 
@@ -389,7 +403,6 @@ def wrap_text(text: str, width: int = 48, max_lines: int = 3) -> str:
     Intended for UI labels where long strings (e.g. fit names) would otherwise
     expand dialogs horizontally.
     """
-
     s = "" if text is None else str(text)
     if width <= 0:
         return s
@@ -420,55 +433,56 @@ def wrap_text(text: str, width: int = 48, max_lines: int = 3) -> str:
 class ProgressDialog:
     """
     A context manager for progress dialogs.
-    
+
     This class provides a convenient way to use progress dialogs in a with statement.
     It automatically creates and shows the dialog when entering the context,
     and closes it when exiting the context.
-    
+
     Example:
     --------
     with ProgressDialog("Processing", "Processing files...", 0, 100) as progress:
         for i in range(100):
             # Do some work
             progress.update_progress(i, f"Processing file {i}")
-            
+
     # Or with a worker thread:
     with ProgressDialog("Processing", "Processing files...") as progress:
         worker = Worker(my_function, arg1, arg2)
         progress.start_worker(worker)
     """
+
     def __init__(self, title, label_text, min_value=0, max_value=100, parent=None):
         self.dialog = EnhancedProgressDialog(title, label_text, min_value, max_value, parent)
         self.thread_pool = QtCore.QThreadPool()
-        
+
     def __enter__(self):
         self.dialog.show()
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.dialog.finish()
         return False  # Don't suppress exceptions
-        
+
     def update_progress(self, value, text=None):
         """Update the progress dialog"""
         self.dialog.update_progress(value, text)
-        
+
     def update_text(self, text):
         """Update the dialog text"""
         self.dialog.update_text(text)
-        
+
     def start_worker(self, worker):
         """
         Start a worker in a background thread.
-        
-        Parameters:
+
+        Parameters
         -----------
         worker : Worker
             The worker to start
         """
         # Connect worker signals to dialog updates
         worker.signals.progress.connect(self.dialog.setValue)
-        
+
         # Start the worker
         self.thread_pool.start(worker)
 
@@ -566,9 +580,7 @@ class StatusBarProgressHost(QtWidgets.QWidget):
         # Wide enough for the part that is worth reading -- a percentage, an ETA
         # and an objective -- before anything is elided.
         self._label.setMinimumWidth(240)
-        self._label.setSizePolicy(
-            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred
-        )
+        self._label.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
         self._full_text = ""
         layout.addWidget(self._label, 1)
 
@@ -609,9 +621,7 @@ class StatusBarProgressHost(QtWidgets.QWidget):
         self._label.setToolTip(self._full_text)
         metrics = self._label.fontMetrics()
         available = max(self._label.minimumWidth(), self._label.width())
-        self._label.setText(
-            metrics.elidedText(self._full_text, QtCore.Qt.ElideRight, available)
-        )
+        self._label.setText(metrics.elidedText(self._full_text, QtCore.Qt.ElideRight, available))
 
     def resizeEvent(self, event):  # noqa: N802 (Qt-style)
         """Re-elide when the window changes width."""

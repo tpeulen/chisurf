@@ -62,7 +62,7 @@ class SgrState:
     inverse: bool = False
     strike: bool = False
 
-    def reset(self) -> "SgrState":
+    def reset(self) -> SgrState:
         """Return a default state.
 
         Returns

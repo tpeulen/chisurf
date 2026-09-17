@@ -12,6 +12,7 @@ import math
 
 import numpy as np
 import pytest
+
 from chisurf.core import graph as cg
 
 # -- containers -----------------------------------------------------------
@@ -133,9 +134,7 @@ def test_connected_components_finds_the_independent_pieces():
     g.add_edge("a", "b")
     g.add_edge("c", "d")
     g.add_node("e")
-    components = sorted(
-        (sorted(c) for c in cg.connected_components(g)), key=len, reverse=True
-    )
+    components = sorted((sorted(c) for c in cg.connected_components(g)), key=len, reverse=True)
     assert components == [["a", "b"], ["c", "d"], ["e"]]
     assert cg.number_connected_components(g) == 3
 
@@ -169,9 +168,7 @@ def test_simple_cycles_reports_every_circuit_once():
     for u, v in [(1, 2), (2, 3), (3, 1), (3, 4), (4, 3)]:
         g.add_edge(u, v)
     cycles = [tuple(c) for c in cg.simple_cycles(g)]
-    canonical = {
-        tuple(c[c.index(min(c)):] + c[:c.index(min(c))]) for c in map(list, cycles)
-    }
+    canonical = {tuple(c[c.index(min(c)) :] + c[: c.index(min(c))]) for c in map(list, cycles)}
     assert canonical == {(1, 2, 3), (3, 4)}
 
 
@@ -303,9 +300,7 @@ def test_kamada_kawai_draws_a_chain_as_evenly_spaced_points():
     """The point of the layout: drawn distance tracks graph distance."""
     g = cg.path_graph(6)
     pos = cg.kamada_kawai_layout(g)
-    steps = [
-        float(np.linalg.norm(pos[i + 1] - pos[i])) for i in range(5)
-    ]
+    steps = [float(np.linalg.norm(pos[i + 1] - pos[i])) for i in range(5)]
     assert max(steps) - min(steps) < 0.02 * max(steps)
     # ... and a chain is drawn as a chain, not a ball: end to end is nearly the
     # whole path. (Nearly, not exactly -- the stress-optimal drawing of a path
@@ -398,9 +393,7 @@ def test_graphml_round_trip_keeps_structure_and_typed_attributes(tmp_path):
     assert sorted(back.nodes) == ["n0", "n1"]
     assert list(back.edges) == [("n0", "n1")]
     assert back.nodes["n0"]["label"] == "fit"
-    assert back.nodes["n0"]["index"] == 3 and isinstance(
-        back.nodes["n0"]["index"], int
-    )
+    assert back.nodes["n0"]["index"] == 3 and isinstance(back.nodes["n0"]["index"], int)
     assert back.nodes["n0"]["value"] == pytest.approx(1.25)
     assert back.nodes["n0"]["fixed"] is True
     assert back.nodes["n1"]["fixed"] is False

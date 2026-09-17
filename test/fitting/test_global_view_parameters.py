@@ -29,17 +29,31 @@ from chisurf.plugins.ndxplorer.parameters import (
 )
 
 NDX_CONSTANTS = {
-    "gG/gR": 0.6, "alpha": 0.015, "beta": 0.005, "r": 1.0,
-    "PhiA": 0.32, "PhiD": 0.8, "forster_radius": 52.0, "tauD0": 4.0,
-    "Bg": 1.2, "Br": 0.6, "By": 0.6,
+    "gG/gR": 0.6,
+    "alpha": 0.015,
+    "beta": 0.005,
+    "r": 1.0,
+    "PhiA": 0.32,
+    "PhiD": 0.8,
+    "forster_radius": 52.0,
+    "tauD0": 4.0,
+    "Bg": 1.2,
+    "Br": 0.6,
+    "By": 0.6,
     "label": "not a number",
 }
 
 MATRICES = {
-    "excitation": {"rows": ["green", "red"], "columns": ["AF488", "AF647"],
-                   "values": [[1.0, 0.055], [0.001, 1.0]]},
-    "emission": {"rows": ["AF488", "AF647"], "columns": ["green_det", "red_det"],
-                 "values": [[0.92, 0.075], [0.02, 0.90]]},
+    "excitation": {
+        "rows": ["green", "red"],
+        "columns": ["AF488", "AF647"],
+        "values": [[1.0, 0.055], [0.001, 1.0]],
+    },
+    "emission": {
+        "rows": ["AF488", "AF647"],
+        "columns": ["green_det", "red_det"],
+        "values": [[0.92, 0.075], [0.02, 0.90]],
+    },
 }
 
 
@@ -91,13 +105,13 @@ def test_constants_become_fitting_parameters(window):
     group = NdxConstants(window.constants)
     names = {p.name for p in group.parameters_all}
     assert {"gG/gR", "alpha", "beta", "r", "tauD0", "forster_radius"} <= names
-    assert "label" not in names                      # non-numeric entries are skipped
+    assert "label" not in names  # non-numeric entries are skipped
     assert len(group.constant_names) == len(NDX_CONSTANTS) - 1
 
     alpha = group.parameter("alpha")
     assert alpha.value == pytest.approx(0.015)
-    assert alpha.fixed is False                      # visible in the Global View by default
-    assert (alpha.lb, alpha.ub) == (0.0, 1.0)        # a leakage cannot leave 0…1
+    assert alpha.fixed is False  # visible in the Global View by default
+    assert (alpha.lb, alpha.ub) == (0.0, 1.0)  # a leakage cannot leave 0…1
     # a name that is not an identifier still works
     assert group.parameter("gG/gR").value == pytest.approx(0.6)
 
@@ -161,7 +175,7 @@ def test_pull_reads_the_window_back(window):
     created = group.pull(window)
 
     assert group.parameter("alpha").value == pytest.approx(0.11)
-    assert created == ["new_constant"]               # constants may appear later
+    assert created == ["new_constant"]  # constants may appear later
     assert group.parameter("new_constant").value == pytest.approx(3.0)
 
 
@@ -173,8 +187,8 @@ def test_calibration_view_of_the_same_numbers(window):
     """
     group = NdxConstants(window.constants)
     calibration = group.as_calibration()
-    assert calibration.delta == pytest.approx(0.005)                    # ndx "beta"
-    assert calibration.beta == pytest.approx(1.0)                       # 1 / ndx "r"
+    assert calibration.delta == pytest.approx(0.005)  # ndx "beta"
+    assert calibration.beta == pytest.approx(1.0)  # 1 / ndx "r"
     assert calibration.gamma == pytest.approx((0.32 / 0.8) / 0.6)
     assert calibration.r0 == pytest.approx(52.0)
 
@@ -187,12 +201,13 @@ def test_calibration_view_of_the_same_numbers(window):
 def test_optics_become_fitting_parameters():
     """Excitation/emission probabilities and quantum yields are parameters."""
     group = LightPathParameters(
-        MATRICES, quantum_yields={"AF488": 0.92, "AF647": 0.33},
+        MATRICES,
+        quantum_yields={"AF488": 0.92, "AF647": 0.33},
         detection_efficiencies={"green_det": 1.0, "red_det": 0.72},
     )
     names = {p.name for p in group.parameters_all}
-    assert "em[AF488→red_det]" in names               # the leakage path
-    assert "ex[green→AF647]" in names                 # the direct-excitation path
+    assert "em[AF488→red_det]" in names  # the leakage path
+    assert "ex[green→AF647]" in names  # the direct-excitation path
     assert {"QY[AF488]", "g[red_det]"} <= names
     assert {"gamma (optics)", "alpha (optics)", "delta (optics)"} <= names
     assert group.parameter("qy", "AF647").value == pytest.approx(0.33)
@@ -204,11 +219,12 @@ def test_optics_become_fitting_parameters():
 def test_optics_imply_the_correction_factors():
     """gamma, alpha and delta follow from the probabilities, and track them."""
     group = LightPathParameters(
-        MATRICES, quantum_yields={"AF488": 0.92, "AF647": 0.33},
+        MATRICES,
+        quantum_yields={"AF488": 0.92, "AF647": 0.33},
         detection_efficiencies={"green_det": 1.0, "red_det": 0.72},
     )
     factors = group.update_factors()
-    assert factors["delta"] == pytest.approx(0.055)                     # ex ratio
+    assert factors["delta"] == pytest.approx(0.055)  # ex ratio
     # Hellenkamp alpha = I_DA/I_DD = gR*cRD / (gG*cGD) — ratio to the green channel
     assert factors["alpha"] == pytest.approx(0.72 * 0.075 / 0.92)
     assert factors["gamma"] == pytest.approx((0.72 * 0.90 * 0.33) / (0.92 * 0.92))
@@ -227,7 +243,8 @@ def test_optics_feed_the_calibration_prior():
     )
 
     group = LightPathParameters(
-        MATRICES, quantum_yields={"AF488": 0.92, "AF647": 0.33},
+        MATRICES,
+        quantum_yields={"AF488": 0.92, "AF647": 0.33},
         detection_efficiencies={"green_det": 1.0, "red_det": 0.72},
     )
     calibration = CalibrationParameters()
@@ -235,7 +252,7 @@ def test_optics_feed_the_calibration_prior():
 
     assert factors["gamma"] == pytest.approx(group.gamma)
     assert factors["alpha"] == pytest.approx(group.alpha)
-    assert calibration._gamma.prior is not None       # it is a prior, not a value
+    assert calibration._gamma.prior is not None  # it is a prior, not a value
 
 
 def test_rerunning_the_simulation_updates_the_same_group():
@@ -243,12 +260,16 @@ def test_rerunning_the_simulation_updates_the_same_group():
     group = register_lightpath_parameters(MATRICES)
     assert [owner for owner, *_ in iter_registered_parameter_groups()] == ["lightpath"]
 
-    changed = {**MATRICES, "emission": {
-        "rows": ["AF488", "AF647"], "columns": ["green_det", "red_det"],
-        "values": [[0.92, 0.150], [0.02, 0.90]],      # twice the leakage
-    }}
+    changed = {
+        **MATRICES,
+        "emission": {
+            "rows": ["AF488", "AF647"],
+            "columns": ["green_det", "red_det"],
+            "values": [[0.92, 0.150], [0.02, 0.90]],  # twice the leakage
+        },
+    }
     again = register_lightpath_parameters(changed)
-    assert again is group                             # links into it survive
+    assert again is group  # links into it survive
     assert group.parameter("em", "AF488", "red_det").value == pytest.approx(0.150)
     assert [owner for owner, *_ in iter_registered_parameter_groups()] == ["lightpath"]
 
@@ -288,7 +309,7 @@ def test_a_fit_parameter_can_be_linked_to_an_ndx_constant(window):
 
     assert calibration.r0 == pytest.approx(52.0)
     group.parameter("forster_radius").value = 58.0
-    assert calibration.r0 == pytest.approx(58.0)      # the follower tracks the owner
+    assert calibration.r0 == pytest.approx(58.0)  # the follower tracks the owner
 
 
 def test_a_calibration_can_be_linked_to_the_optics(window):
@@ -296,7 +317,8 @@ def test_a_calibration_can_be_linked_to_the_optics(window):
     from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 
     optics = LightPathParameters(
-        MATRICES, quantum_yields={"AF488": 0.92, "AF647": 0.33},
+        MATRICES,
+        quantum_yields={"AF488": 0.92, "AF647": 0.33},
         detection_efficiencies={"green_det": 1.0, "red_det": 0.72},
     )
     calibration = CalibrationParameters()

@@ -116,9 +116,9 @@ def _warm_up():
     """Compile the numba kernels so that they are not timed."""
     trace = make_trace(200, 2, 2)
     for covariance_type in ("diag", "full"):
-        GaussianHMM(
-            n_components=2, covariance_type=covariance_type, n_iter=3, random_state=0
-        ).fit(trace)
+        GaussianHMM(n_components=2, covariance_type=covariance_type, n_iter=3, random_state=0).fit(
+            trace
+        )
 
 
 def run(cases=None, n_iter_fixed=20, verbose=True):
@@ -140,7 +140,10 @@ def run(cases=None, n_iter_fixed=20, verbose=True):
     """
     _warm_up()
     records = []
-    variants = {"chisurf (SQUAREM)": dict(accelerate=True), "chisurf (plain EM)": dict(accelerate=False)}
+    variants = {
+        "chisurf (SQUAREM)": dict(accelerate=True),
+        "chisurf (plain EM)": dict(accelerate=False),
+    }
 
     if verbose:
         print("| case | implementation | s / E-step | E-steps | fit [s] | log L |")
@@ -148,10 +151,7 @@ def run(cases=None, n_iter_fixed=20, verbose=True):
 
     for n_bins, n_states, n_channels, separation, covariance_type in cases or CASES:
         X = make_trace(n_bins, n_states, n_channels, separation)
-        label = (
-            f"T={n_bins:,} K={n_states} F={n_channels} "
-            f"sep={separation} {covariance_type}"
-        )
+        label = f"T={n_bins:,} K={n_states} F={n_channels} sep={separation} {covariance_type}"
         implementations = dict(variants)
         if _ReferenceHMM is not None:
             implementations["hmmlearn"] = None
@@ -164,18 +164,12 @@ def run(cases=None, n_iter_fixed=20, verbose=True):
                 tol=1e-2,
             )
             if options is None:
-                fixed = _timed(
-                    lambda: _ReferenceHMM(n_iter=n_iter_fixed, **common).fit(X)
-                )[0]
-                seconds, model = _timed(
-                    lambda: _ReferenceHMM(n_iter=1000, **common).fit(X)
-                )
+                fixed = _timed(lambda: _ReferenceHMM(n_iter=n_iter_fixed, **common).fit(X))[0]
+                seconds, model = _timed(lambda: _ReferenceHMM(n_iter=1000, **common).fit(X))
                 n_esteps = model.monitor_.iter
             else:
                 fixed = _timed(
-                    lambda: GaussianHMM(
-                        n_iter=n_iter_fixed, accelerate=False, **common
-                    ).fit(X)
+                    lambda: GaussianHMM(n_iter=n_iter_fixed, accelerate=False, **common).fit(X)
                 )[0]
                 with _EStepCounter() as counter:
                     seconds, model = _timed(
@@ -203,9 +197,7 @@ def run(cases=None, n_iter_fixed=20, verbose=True):
 def test_acceleration_does_not_cost_likelihood():
     """SQUAREM must reach at least the plain-EM optimum on a crawling problem."""
     X = make_trace(20_000, 4, 1, separation=0.1)
-    common = dict(
-        n_components=4, covariance_type="full", n_iter=1000, tol=1e-2, random_state=0
-    )
+    common = dict(n_components=4, covariance_type="full", n_iter=1000, tol=1e-2, random_state=0)
     plain = GaussianHMM(accelerate=False, **common).fit(X)
     fast = GaussianHMM(accelerate=True, **common).fit(X)
     assert fast.score(X) >= plain.score(X) - 1.0

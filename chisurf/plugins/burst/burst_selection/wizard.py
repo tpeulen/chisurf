@@ -8,12 +8,12 @@ if __name__ == "plugin":
         show_channel_selection=True,
         show_clear_button=False,
         show_decay_button=False,
-        show_filter_button=False
+        show_filter_button=False,
     )
     brick_mic_wiz.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     from qtpy import QtWidgets
@@ -25,8 +25,8 @@ if __name__ == '__main__':
         show_channel_selection=True,
         show_clear_button=False,
         show_decay_button=False,
-        show_filter_button=False
+        show_filter_button=False,
     )
-    brick_mic_wiz.setWindowTitle('BRICK-Mic')
+    brick_mic_wiz.setWindowTitle("BRICK-Mic")
     brick_mic_wiz.show()
     sys.exit(app.exec_())

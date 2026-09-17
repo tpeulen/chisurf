@@ -1,20 +1,18 @@
-"""3D viewer for visualizing accessible volumes and restraints.
-"""
+"""3D viewer for visualizing accessible volumes and restraints."""
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
 import numpy as np
-from qtpy import QtCore, QtWidgets
+from chimol.core.viewer import Viewer
+from qtpy import QtWidgets
 
 import chisurf.core.structure
-from chimol.core.viewer import Viewer
 
 
 class AVViewer3D(QtWidgets.QWidget):
     """A 3D widget for visualizing structures, accessible volumes, and FRET restraints."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """Initialize the viewer embedding Viewer."""
         super().__init__(parent)
         layout = QtWidgets.QVBoxLayout(self)
@@ -63,7 +61,13 @@ class AVViewer3D(QtWidgets.QWidget):
             alpha=color[3] if len(color) > 3 else 0.5,
         )
 
-    def show_mean_position(self, key: str, center: np.ndarray, color: tuple = (1.0, 0.8, 0.2, 0.9), label: Optional[str] = None) -> None:
+    def show_mean_position(
+        self,
+        key: str,
+        center: np.ndarray,
+        color: tuple = (1.0, 0.8, 0.2, 0.9),
+        label: str | None = None,
+    ) -> None:
         """Display the mean position as a 3D sphere.
 
         Parameters
@@ -79,7 +83,11 @@ class AVViewer3D(QtWidgets.QWidget):
         """
         self.mol_view.add_sphere(center, radius=1.5, color=color, label=label, key=key)
 
-    def show_restraints(self, restraints_coords: List[Tuple[np.ndarray, np.ndarray]], color: tuple = (1.0, 0.0, 0.0, 0.8)) -> None:
+    def show_restraints(
+        self,
+        restraints_coords: list[tuple[np.ndarray, np.ndarray]],
+        color: tuple = (1.0, 0.0, 0.0, 0.8),
+    ) -> None:
         """Draw lines representing distance restraints.
 
         Parameters
@@ -91,7 +99,7 @@ class AVViewer3D(QtWidgets.QWidget):
         """
         if self.mol_view._measurements is None:
             self.mol_view._measurements = {}
-            
+
         # Clear old restraints
         for k in list(self.mol_view._measurements.keys()):
             if k.startswith("restraint_"):
@@ -102,7 +110,7 @@ class AVViewer3D(QtWidgets.QWidget):
                 "kind": "distance",
                 "positions": np.array([start, end], dtype=float),
                 "color": color,
-                "label": ""
+                "label": "",
             }
         self.mol_view.update_view()
 

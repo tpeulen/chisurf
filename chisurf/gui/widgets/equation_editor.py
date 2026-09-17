@@ -41,7 +41,7 @@ from chisurf.core.support.expressions import (
 )
 from chisurf.gui import dialogs
 
-_OK = "✓"   # ✓
+_OK = "✓"  # ✓
 _BAD = "✗"  # ✗
 
 #: A validator maps ``(expression, known_names, output_names) -> (ok, message)``.
@@ -373,8 +373,7 @@ class EquationTableEditor(QtWidgets.QWidget):
             fig.patch.set_facecolor("white")
             fig.text(0.5, 0.5, f"${tex}$", ha="center", va="center", fontsize=13, color="black")
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0.05,
-                        facecolor="white")
+            fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0.05, facecolor="white")
             plt.close(fig)
             buf.seek(0)
             pix = QtGui.QPixmap()
@@ -397,7 +396,7 @@ class EquationTableEditor(QtWidgets.QWidget):
         """Populate the table from ``[{name: expr}, ...]``."""
         self._table.blockSignals(True)
         self._table.setRowCount(0)
-        for mapping in (equations or []):
+        for mapping in equations or []:
             for name, expr in mapping.items():
                 self._append_row(str(name), str(expr))
         self._table.blockSignals(False)

@@ -5,7 +5,6 @@ from __future__ import annotations
 import pathlib
 from collections.abc import Callable
 
-
 _VIEW = pathlib.Path(__file__).with_name("calculator_options.view.json")
 
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import importlib
 import typing
 
@@ -12,15 +13,25 @@ _DATA_PROVIDERS = [".general", ".mdi_custom_titlebar", ".collapsible_box"]
 
 # List of known sub-packages in chisurf.gui.widgets
 _SUB_PACKAGES = {
-    "experiments", "fio", "fitting", "fluorescence", "fortune",
-    "node_editor", "parameter_editor", "pdb", "ribbon", "structure", "wizard"
+    "experiments",
+    "fio",
+    "fitting",
+    "fluorescence",
+    "fortune",
+    "node_editor",
+    "parameter_editor",
+    "pdb",
+    "ribbon",
+    "structure",
+    "wizard",
 }
+
 
 def __getattr__(name: str) -> typing.Any:
     """Implement lazy loading for modules and attributes in chisurf.gui.widgets.
-    
+
     This allows accessing common utility functions (like hide_items_in_layout)
-    and sub-packages (like experiments) directly from the chisurf.gui.widgets 
+    and sub-packages (like experiments) directly from the chisurf.gui.widgets
     namespace without triggering heavy imports unless they are actually used.
     """
     # 1. Check if it's a known sub-package
@@ -45,11 +56,12 @@ def __getattr__(name: str) -> typing.Any:
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-def __dir__() -> typing.List[str]:
+
+def __dir__() -> list[str]:
     """Provide a complete list of attributes for autocompletion and inspection."""
     attrs = set(globals().keys())
     attrs.update(_SUB_PACKAGES)
-    
+
     # Add exports from data providers
     for module_name in _DATA_PROVIDERS:
         try:
@@ -57,13 +69,16 @@ def __dir__() -> typing.List[str]:
             attrs.update(dir(mod))
         except ImportError:
             continue
-            
+
     return sorted(list(attrs))
+
 
 # Legacy helper for explicit access if needed
 def get_mdi_components():
-    from .mdi_custom_titlebar import CustomTitleBar, CustomMdiSubWindow
+    from .mdi_custom_titlebar import CustomMdiSubWindow, CustomTitleBar
+
     return CustomTitleBar, CustomMdiSubWindow
+
 
 __all__ = [
     "CustomTitleBar",

@@ -27,6 +27,7 @@ Run
 
 The entry is downloaded once to ``~/.chisurf/structures/chimol`` and reused.
 """
+
 from __future__ import annotations
 
 import os
@@ -61,9 +62,12 @@ def entry_path() -> pathlib.Path:
     except Exception:  # pragma: no cover - certifi is a normal dependency
         context = None
     partial = path.with_suffix(".part")
-    with urllib.request.urlopen(
-        f"https://pdb-ihm.org/cif/{ENTRY}.cif", timeout=120, context=context
-    ) as response, partial.open("wb") as handle:
+    with (
+        urllib.request.urlopen(
+            f"https://pdb-ihm.org/cif/{ENTRY}.cif", timeout=120, context=context
+        ) as response,
+        partial.open("wb") as handle,
+    ):
         shutil.copyfileobj(response, handle)
     partial.replace(path)
     return path
@@ -90,8 +94,8 @@ def main() -> int:
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     from chimol.core.settings.config import _DISPLAY_CONFIG
-    from chimol.io.structure import load_structure_payload
     from chimol.core.viewer import MolView
+    from chimol.io.structure import load_structure_payload
 
     path = entry_path()
     started = time.perf_counter()
@@ -106,31 +110,39 @@ def main() -> int:
     coords = np.asarray(view._coords, dtype=float)
     n_points = coords.shape[0]
     colours = view._colors_per_ca
-    print(f"{path.name}: {len(payload.coords)} beads, read {read_s:.2f}s, "
-          f"load {load_s:.2f}s")
+    print(f"{path.name}: {len(payload.coords)} beads, read {read_s:.2f}s, load {load_s:.2f}s")
 
     def cfg(section: str) -> dict:
         return _DISPLAY_CONFIG.get(section, {})
 
     # Each entry: label, a flag to switch on first, and the builder call.
     cases = [
-        ("cartoon", None,
-         lambda: view._update_cartoon(coords, n_points, cfg("cartoon"), colours)),
+        ("cartoon", None, lambda: view._update_cartoon(coords, n_points, cfg("cartoon"), colours)),
         ("trace", None, lambda: view._update_trace(coords, colours)),
-        ("spheres (impostor)", "_show_atoms",
-         lambda: view._update_atoms(coords, n_points, cfg("balls"), colours)),
-        ("spheres (mesh)", "_show_atoms",
-         lambda: view._bead_scene_object(
-             {**cfg("balls"), "impostor_min_atoms": 10**9}, colours)),
-        ("sticks", "_show_sticks",
-         lambda: view._update_sticks(cfg("sticks"), colours)),
+        (
+            "spheres (impostor)",
+            "_show_atoms",
+            lambda: view._update_atoms(coords, n_points, cfg("balls"), colours),
+        ),
+        (
+            "spheres (mesh)",
+            "_show_atoms",
+            lambda: view._bead_scene_object({**cfg("balls"), "impostor_min_atoms": 10**9}, colours),
+        ),
+        ("sticks", "_show_sticks", lambda: view._update_sticks(cfg("sticks"), colours)),
         ("lines", "_show_lines", lambda: view._update_lines(colours)),
         ("nonbonded", "_show_nonbonded", lambda: view._update_nonbonded(colours)),
         ("dots", "_show_dots", lambda: view._update_dots(coords, colours)),
-        ("surface", "_surface_visible",
-         lambda: view._update_surface(coords, cfg("surface"), colours)),
-        ("metaballs", "_metaballs_visible",
-         lambda: view._update_metaballs(coords, cfg("metaball"), colours)),
+        (
+            "surface",
+            "_surface_visible",
+            lambda: view._update_surface(coords, cfg("surface"), colours),
+        ),
+        (
+            "metaballs",
+            "_metaballs_visible",
+            lambda: view._update_metaballs(coords, cfg("metaball"), colours),
+        ),
     ]
 
     print(f"\n{'representation':<22}{'build (s)':>11}{'vertices':>12}")
@@ -157,8 +169,7 @@ def main() -> int:
     # What a representation toggle costs today: the whole scene, every time.
     started = time.perf_counter()
     view._build_scene_for_current_object()
-    print(f"\nfull scene rebuild (what one toggle costs): "
-          f"{time.perf_counter() - started:.2f}s")
+    print(f"\nfull scene rebuild (what one toggle costs): {time.perf_counter() - started:.2f}s")
     del app
     return 0
 

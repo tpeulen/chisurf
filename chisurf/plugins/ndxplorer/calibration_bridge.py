@@ -160,10 +160,7 @@ def find_ndx_windows() -> list:
     return windows
 
 
-
-
-def fitted_background(i_dd, i_da, i_aa, split, *, durations=None,
-                      min_population: int = 20) -> dict:
+def fitted_background(i_dd, i_da, i_aa, split, *, durations=None, min_population: int = 20) -> dict:
     """Channel background **rates** estimated from the reference populations.
 
     Often nobody knows the background. But the measurement contains two
@@ -232,7 +229,8 @@ def fitted_background(i_dd, i_da, i_aa, split, *, durations=None,
 
     def rate(counts, mask):
         """Median of the per-burst rate — a median of ratios, not a ratio of
-        medians, so one long dim burst cannot stand in for the population."""
+        medians, so one long dim burst cannot stand in for the population.
+        """
         good = mask & np.isfinite(counts) & np.isfinite(dt) & (dt > 0)
         if int(good.sum()) < min_population:
             return None
@@ -253,15 +251,13 @@ def fitted_background(i_dd, i_da, i_aa, split, *, durations=None,
         # says every burst carries the same background whatever its length.
         x, y, t = dd[donor_only], da[donor_only], dt[donor_only]
         finite = np.isfinite(x) & np.isfinite(y) & np.isfinite(t) & (t > 0)
-        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0 \
-                and np.ptp(t[finite]) > 0:
+        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0 and np.ptp(t[finite]) > 0:
             design = np.column_stack([x[finite], t[finite]])
             solution, *_ = np.linalg.lstsq(design, y[finite], rcond=None)
             # solution[0] is a leakage slope; alpha is determined by the
             # calibration, not here, so only the rate is kept.
             out["bg_da"] = float(max(0.0, solution[1]))
     return out
-
 
 
 #: Detector name in a measurement's background artifact → the channel it is the
@@ -330,17 +326,22 @@ def saved_constants_from_container(source) -> dict:
                     continue
                 constants = payload.get("constants")
                 if isinstance(constants, dict) and constants:
-                    candidates.append((
-                        str(payload.get("saved_utc", "")), -index,
-                        {str(k): float(v) for k, v in constants.items()
-                         if isinstance(v, (int, float)) and np.isfinite(float(v))},
-                    ))
+                    candidates.append(
+                        (
+                            str(payload.get("saved_utc", "")),
+                            -index,
+                            {
+                                str(k): float(v)
+                                for k, v in constants.items()
+                                if isinstance(v, (int, float)) and np.isfinite(float(v))
+                            },
+                        )
+                    )
             if candidates:
                 candidates.sort(key=lambda entry: (entry[0], entry[1]))
                 return candidates[-1][2]
     except Exception:
-        logging.debug("could not read a saved calibration from %s", path,
-                      exc_info=True)
+        logging.debug("could not read a saved calibration from %s", path, exc_info=True)
     return {}
 
 
@@ -425,8 +426,7 @@ def background_from_container(source) -> dict:
                 if "Detector" not in names or "Rate" not in names:
                     continue
                 detectors = store.column(names.index("Detector"))
-                values = np.asarray(
-                    store.column(names.index("Rate")).numpy(), dtype=float)
+                values = np.asarray(store.column(names.index("Rate")).numpy(), dtype=float)
                 for row in range(store.n_rows()):
                     detector = str(detectors.string_at(row)).lower()
                     constant = _BACKGROUND_CONSTANTS.get(detector)
@@ -494,7 +494,8 @@ def calibration_from_container(source) -> dict:
                 # file the writer emits from, so the two cannot drift. It also
                 # understands what older containers were written with.
                 from chisurf.plugins.burst.accurate_fret.calibration_columns import (
-                    factor_for_column, is_derived,
+                    factor_for_column,
+                    is_derived,
                 )
 
                 for index, column in enumerate(names):
@@ -618,8 +619,8 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         if data_source is not None and hasattr(data_source, "compute_columns"):
             try:
                 data_source.compute_columns(
-                    constants=ndx.constants,
-                    equations=getattr(ndx, "equations", None))
+                    constants=ndx.constants, equations=getattr(ndx, "equations", None)
+                )
             except Exception:
                 pass
         for refresh in ("update_plots", "refresh_column_selectors"):
@@ -641,10 +642,15 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         ", ".join(
             [f"{k}={v:.4g}" for k, v in factors.items()]
             + [f"{k}={v:.4g} kHz" for k, v in rates.items()]
-            + ([f"saved calibration ({len(saved)} constants, "
-                f"gG/gR={saved['gG/gR']:.4g})"] if "gG/gR" in saved else
-               [f"saved calibration ({len(saved)} constants)"] if saved else [])
-        ) or "nothing",
+            + (
+                [f"saved calibration ({len(saved)} constants, gG/gR={saved['gG/gR']:.4g})"]
+                if "gG/gR" in saved
+                else [f"saved calibration ({len(saved)} constants)"]
+                if saved
+                else []
+            )
+        )
+        or "nothing",
     )
     return applied
 
@@ -867,8 +873,10 @@ def optimize_calibration_from_ndx(
         if mapping.get(role) not in table:
             return {
                 "ok": False,
-                "error": (f"could not identify the {role} column among "
-                          f"{', '.join(list(table)[:12])}…; pass it explicitly"),
+                "error": (
+                    f"could not identify the {role} column among "
+                    f"{', '.join(list(table)[:12])}…; pass it explicitly"
+                ),
             }
 
     def pick(role):
@@ -921,12 +929,23 @@ def optimize_calibration_from_ndx(
 
     def calibrate(bootstrap: int):
         return auto_calibrate(
-            counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib,
-            lightpath=lightpath, tau_f=tau_f, line=line,
-            donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
-            gamma_source=gamma_source, n_bootstrap=bootstrap, use_priors=use_priors,
-            progress=(None if progress is None else
-                      (lambda step, total, message: progress(step, total, prefix + message))),
+            counts("i_dd"),
+            counts("i_da"),
+            counts("i_aa"),
+            calibration=calib,
+            lightpath=lightpath,
+            tau_f=tau_f,
+            line=line,
+            donor_lifetime=float(tau_d0),
+            linker_sigma=float(linker_sigma),
+            gamma_source=gamma_source,
+            n_bootstrap=bootstrap,
+            use_priors=use_priors,
+            progress=(
+                None
+                if progress is None
+                else (lambda step, total, message: progress(step, total, prefix + message))
+            ),
         )
 
     fitted: dict = {}
@@ -941,7 +960,10 @@ def optimize_calibration_from_ndx(
         prefix = "pass 1 of 2 (backgrounds): "
         first = calibrate(0)
         fitted = fitted_background(
-            pick("i_dd"), pick("i_da"), pick("i_aa"), first.split,
+            pick("i_dd"),
+            pick("i_da"),
+            pick("i_aa"),
+            first.split,
             durations=burst_durations_ms(table, "green"),
             min_population=int(min_population),
         )
@@ -963,9 +985,11 @@ def optimize_calibration_from_ndx(
     # Restore whatever the caller did not ask to have calibrated, *before* the
     # accurate columns below are computed from ``calib`` — otherwise the columns
     # would be corrected with factors the window is not going to carry.
-    selected = _FACTOR_NAMES if factors is None else [
-        name for name in _FACTOR_NAMES if name in set(factors)
-    ]
+    selected = (
+        _FACTOR_NAMES
+        if factors is None
+        else [name for name in _FACTOR_NAMES if name in set(factors)]
+    )
     determined = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
     for name in _FACTOR_NAMES:
         if name not in selected:
@@ -979,20 +1003,30 @@ def optimize_calibration_from_ndx(
             labels = np.where(split.fret, split.fret_labels, -1)
             labels = np.where(split.acceptor_only, -2, labels)
         accurate = accurate_fret(
-            counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib, tau_f=tau_f,
-            line=line, uncertainties=result.uncertainties, labels=labels,
+            counts("i_dd"),
+            counts("i_da"),
+            counts("i_aa"),
+            calibration=calib,
+            tau_f=tau_f,
+            line=line,
+            uncertainties=result.uncertainties,
+            labels=labels,
         )
         data_source.set_column("FRET efficiency (accurate)", np.asarray(accurate["E"], dtype=float))
         injected.append("FRET efficiency (accurate)")
         if accurate["S"] is not None:
-            data_source.set_column("Stoichiometry (accurate)", np.asarray(accurate["S"], dtype=float))
+            data_source.set_column(
+                "Stoichiometry (accurate)", np.asarray(accurate["S"], dtype=float)
+            )
             injected.append("Stoichiometry (accurate)")
         data_source.set_column("R_DA (accurate)", np.asarray(accurate["distance"], dtype=float))
         injected.append("R_DA (accurate)")
         data_source.set_column("Population", labels.astype(float))
         injected.append("Population")
         if accurate["deviation"] is not None:
-            data_source.set_column("Off static FRET line", np.asarray(accurate["deviation"], dtype=float))
+            data_source.set_column(
+                "Off static FRET line", np.asarray(accurate["deviation"], dtype=float)
+            )
             injected.append("Off static FRET line")
         refresh_column_selectors(ndx)
 
@@ -1189,8 +1223,7 @@ def push_unmixed_columns_to_ndx(
             raw_count_tot = counts.sum(axis=0)
             raw_rate_tot = np.sum(rate_arrays, axis=0)
             with np.errstate(divide="ignore", invalid="ignore"):
-                per_photon_rate = np.where(raw_count_tot > 0,
-                                           raw_rate_tot / raw_count_tot, 0.0)
+                per_photon_rate = np.where(raw_count_tot > 0, raw_rate_tot / raw_count_tot, 0.0)
             for k, label in enumerate(source_labels):
                 rcol = f"{label} Count Rate {suffix} (KHz)"
                 data_source.set_column(rcol, src[k] * per_photon_rate)

@@ -51,12 +51,20 @@ def cli() -> None:
 @click.option("--l2", default=0.0, type=float, help="Polarisation mixing correction l2.")
 @click.option("--twoi-star/--no-twoi-star", default=True, help="Optimise P+2S (2I*).")
 @click.option("--bifl-scatter/--no-bifl-scatter", default=False, help="Soft BIFL scatter.")
-@click.option("--regions", "regions", default="", type=click.Path(),
-              help="Where the regions come from: a container the spot finder wrote, "
-                   "a label image, or a saved region file. Detection is not done here "
-                   "— run `spot-finder detect` first.")
-@click.option("--region-set", default="spots",
-              help="Which detection in the container, when it holds more than one.")
+@click.option(
+    "--regions",
+    "regions",
+    default="",
+    type=click.Path(),
+    help="Where the regions come from: a container the spot finder wrote, "
+    "a label image, or a saved region file. Detection is not done here "
+    "— run `spot-finder detect` first.",
+)
+@click.option(
+    "--region-set",
+    default="spots",
+    help="Which detection in the container, when it holds more than one.",
+)
 @click.option("--min-photons", default=1, type=int, help="Minimum photons per molecule to fit.")
 @click.option(
     "--roi",

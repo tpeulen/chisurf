@@ -196,9 +196,7 @@ class MfdReader(ExperimentReader):
                     "min_green_photons": self.min_green_photons,
                     "n_bursts": int(len(mfd.preparation)),
                     "n_used": int(mfd.observed.n_used),
-                    "excluded_fraction": float(
-                        mfd.observed.summary["excluded_fraction"]
-                    ),
+                    "excluded_fraction": float(mfd.observed.summary["excluded_fraction"]),
                     "background_rates": {
                         name: float(response.background_rate)
                         for name, response in mfd.responses.items()

@@ -44,16 +44,41 @@ _IMPORT_NAMES = {
 #: Packages that are in the environment for reasons other than a chisurf import
 #: (build tools, test tools) or that ship inside another declared distribution.
 _EXTRA_ALLOWED = {
-    "pytest", "mypy", "setuptools", "pkg_resources", "pip", "numpy", "matplotlib",
-    "mpl_toolkits", "contourpy", "sip", "shiboken6", "PyQt5", "PySide2", "PySide6",
-    "jupyter_client", "ipykernel", "traitlets",
+    "pytest",
+    "mypy",
+    "setuptools",
+    "pkg_resources",
+    "pip",
+    "numpy",
+    "matplotlib",
+    "mpl_toolkits",
+    "contourpy",
+    "sip",
+    "shiboken6",
+    "PyQt5",
+    "PySide2",
+    "PySide6",
+    "jupyter_client",
+    "ipykernel",
+    "traitlets",
 }
 
 #: Packages of the surrounding scientific stack: separate repositories or
 #: frameworks installed alongside chisurf rather than declared by it.
 _SIBLING_PROJECTS = {
-    "chisurf", "ndxplorer", "quest", "mmfdb", "tttrlib", "IMP", "imp",
-    "chimol", "RMF", "ihm", "pymol", "pymol2", "LabelLib",
+    "chisurf",
+    "ndxplorer",
+    "quest",
+    "mmfdb",
+    "tttrlib",
+    "IMP",
+    "imp",
+    "chimol",
+    "RMF",
+    "ihm",
+    "pymol",
+    "pymol2",
+    "LabelLib",
 }
 
 
@@ -104,8 +129,15 @@ def _allowed_modules() -> set[str]:
 
 #: Packages the dev env needs only to build the compiled modules.
 _BUILD_ONLY = {
-    "pip", "cmake", "ninja", "swig", "scikit-build-core", "pybind11",
-    "llvm-openmp", "cmake-build-extension", "python",
+    "pip",
+    "cmake",
+    "ninja",
+    "swig",
+    "scikit-build-core",
+    "pybind11",
+    "llvm-openmp",
+    "cmake-build-extension",
+    "python",
     # hdf5 is a build dependency of the photon library, whose CMake requires it
     # unconditionally. It is not part of the released runtime -- the shipped
     # package depends on that library, already linked -- so it belongs here
@@ -116,15 +148,15 @@ _BUILD_ONLY = {
 #: In the dev env but deliberately not in the released package, with the reason.
 _NOT_SHIPPED = {
     "latexify-py": "conda-forge has no Python 3.12 build; the parse-model LaTeX "
-                   "view falls back to its in-tree converter",
+    "view falls back to its in-tree converter",
 }
 
 #: In the released package but not the dev env, with the reason.
 _SHIPPED_ONLY = {
     "micromamba": "the updater drives it as an executable in an installed app; "
-                  "developers already have a solver",
+    "developers already have a solver",
     "emtk": "a sibling checkout installed editable in the dev environment, the "
-            "way tttrlib is; the shipped app gets the built package",
+    "way tttrlib is; the shipped app gets the built package",
 }
 
 #: Runtime packages a wheel cannot or need not declare, with the reason.

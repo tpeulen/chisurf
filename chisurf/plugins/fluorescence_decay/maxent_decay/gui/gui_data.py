@@ -4,22 +4,23 @@ import json
 
 import numpy as np
 
+from chisurf.gui import dialogs
 from chisurf.plugins.fluorescence_decay.maxent_decay.core.settings import (
     get_settings_file,
     load_maxent_settings,
     save_maxent_settings,
 )
+
 from .qt_stack import ensure_qt_stack
-from chisurf.gui import dialogs
 
 
 class _MaxentDataMixin:
     def _current_fit(self):
         try:
             from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+
             fc = get_fitting_client()
             if fc is not None:
-                from chisurf.core.fitting import find_fit_idx
                 fits = fc.get_fit_objects()
                 if fits:
                     return fits[0] if len(fits) == 1 else None
@@ -197,7 +198,6 @@ class _MaxentDataMixin:
         restarts the widget or re-opens it; the JSON mainly controls base
         defaults.
         """
-
         QtWidgets, _, _, _ = ensure_qt_stack()
 
         # Load the raw file contents, creating the file from defaults if

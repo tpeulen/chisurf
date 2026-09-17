@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 import chisurf
+from chisurf.server.services import OPERATION_FAILED, service_error
 
 from ..api.contract import (
     METHOD_DESCRIBE,
@@ -23,8 +24,7 @@ from ..api.helpers import (
     run_lifetime_mem_from_arrays,
 )
 from ..api.models import LCurveResult, MEMRequest, MEMSettings
-from ..api.serialization import request_from_dict, settings_from_dict, to_jsonable
-from chisurf.server.services import OPERATION_FAILED, service_error
+from ..api.serialization import request_from_dict, settings_from_dict
 
 
 def register_services(dispatcher: Any) -> None:
@@ -203,7 +203,9 @@ def run_lcurve_handler(
         settings_obj = _settings(settings)
         if nu_grid is None:
             center = float(settings_obj.nu)
-            nu_grid = np.geomspace(max(center * 1e-2, np.finfo(float).tiny), center * 1e2, 16).tolist()
+            nu_grid = np.geomspace(
+                max(center * 1e-2, np.finfo(float).tiny), center * 1e2, 16
+            ).tolist()
         chi2_vals: list[float] = []
         sol_vals: list[float] = []
         log10_vals: list[float] = []

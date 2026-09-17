@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.plugins.burst.burst_selection.api.features import (
-    extract_features, proximity_ratio,
-)
 from chisurf.core.datastore import store_from_arrays
+from chisurf.plugins.burst.burst_selection.api.features import (
+    extract_features,
+    proximity_ratio,
+)
 
 
 def _table(**columns):
@@ -26,10 +27,12 @@ def _table(**columns):
 
 
 def test_no_detector_columns_gives_nan_not_zero():
-    frame = _table(**{
-        "Number of Photons": [100.0, 200.0, 300.0],
-        "Duration (ms)": [1.0, 2.0, 3.0],
-    })
+    frame = _table(
+        **{
+            "Number of Photons": [100.0, 200.0, 300.0],
+            "Duration (ms)": [1.0, 2.0, 3.0],
+        }
+    )
     assert proximity_ratio(frame) is None
     fret = np.asarray(extract_features([frame])["fret"], dtype=float)
     assert np.all(np.isnan(fret)), "an uncomputable ratio was drawn as zero"
@@ -37,26 +40,29 @@ def test_no_detector_columns_gives_nan_not_zero():
 
 def test_all_zero_detector_counts_give_nan():
     """The unconverted-ALEX shape: the columns exist and hold nothing."""
-    frame = _table(**{
-        "Number of Photons": [100.0, 200.0],
-        "Duration (ms)": [1.0, 2.0],
-        "Number of Photons (green)": [0.0, 0.0],
-        "Number of Photons (red)": [0.0, 0.0],
-    })
+    frame = _table(
+        **{
+            "Number of Photons": [100.0, 200.0],
+            "Duration (ms)": [1.0, 2.0],
+            "Number of Photons (green)": [0.0, 0.0],
+            "Number of Photons (red)": [0.0, 0.0],
+        }
+    )
     assert np.all(np.isnan(np.asarray(proximity_ratio(frame), dtype=float)))
     fret = np.asarray(extract_features([frame])["fret"], dtype=float)
     assert np.all(np.isnan(fret))
 
 
 def test_a_real_ratio_is_still_computed():
-    frame = _table(**{
-        "Number of Photons": [100.0, 200.0],
-        "Duration (ms)": [1.0, 2.0],
-        "Number of Photons (green)": [75.0, 50.0],
-        "Number of Photons (red)": [25.0, 150.0],
-    })
-    np.testing.assert_allclose(
-        np.asarray(proximity_ratio(frame), dtype=float), [0.25, 0.75])
+    frame = _table(
+        **{
+            "Number of Photons": [100.0, 200.0],
+            "Duration (ms)": [1.0, 2.0],
+            "Number of Photons (green)": [75.0, 50.0],
+            "Number of Photons (red)": [25.0, 150.0],
+        }
+    )
+    np.testing.assert_allclose(np.asarray(proximity_ratio(frame), dtype=float), [0.25, 0.75])
 
 
 def test_the_gate_mismatch_is_named():
@@ -77,8 +83,7 @@ def test_the_gate_mismatch_is_named():
 
     assert BurstSelectionTool._gate_mismatch_warning(_Pie(), gated) is None
     # Nor is an ungated setup.
-    assert BurstSelectionTool._gate_mismatch_warning(
-        _Tttr(), {"green": {"chs": [1]}}) is None
+    assert BurstSelectionTool._gate_mismatch_warning(_Tttr(), {"green": {"chs": [1]}}) is None
 
 
 def test_an_uncomputable_feature_does_not_discard_every_burst():
@@ -93,11 +98,13 @@ def test_an_uncomputable_feature_does_not_discard_every_burst():
 
     rng = np.random.default_rng(0)
     n = 200
-    frame = _table(**{
-        "Number of Photons": rng.normal(300, 40, n),
-        "Duration (ms)": rng.normal(2.0, 0.3, n),
-        # no per-detector columns -> the proximity ratio is NaN for every burst
-    })
+    frame = _table(
+        **{
+            "Number of Photons": rng.normal(300, 40, n),
+            "Duration (ms)": rng.normal(2.0, 0.3, n),
+            # no per-detector columns -> the proximity ratio is NaN for every burst
+        }
+    )
     features = extract_features([frame])
     assert np.all(np.isnan(np.asarray(features["fret"], dtype=float)))
 

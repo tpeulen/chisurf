@@ -5,14 +5,15 @@ The mouse-mode block has always promised this — its `SnglClk` row reads
 list's A/S/H/L/C buttons. A promise printed on screen with nothing behind it is
 worse than no promise.
 """
+
 from __future__ import annotations
 
 import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.ui.menus.objects import OBJECT_MENUS  # noqa: E402
 from chimol.ui.gui import GuiRow, InternalGui  # noqa: E402
+from chimol.ui.menus.objects import OBJECT_MENUS  # noqa: E402
 
 SIZE = (900, 620)
 

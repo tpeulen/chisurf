@@ -78,8 +78,7 @@ def test_the_registers_do_not_win_searches(index):
     They are the pages a term-frequency search returns for everything, which
     is what the listing penalty exists to stop.
     """
-    registers = {"docs/reference/tables.md", "docs/reference/figures.md",
-                 "docs/reference/code.md"}
+    registers = {"docs/reference/tables.md", "docs/reference/figures.md", "docs/reference/code.md"}
     for query in ("chi2r", "burst search", "correlation curve"):
         top = index.search(query, limit=1, user_only=True)
         assert top, query
@@ -215,18 +214,14 @@ def test_the_scope_names_are_checked(context):
 
 
 def test_scope_code_reaches_the_repository_bundle(context):
-    result = doc_tools.search_documentation(
-        context, query="plugin manifest", scope="code", limit=3
-    )
+    result = doc_tools.search_documentation(context, query="plugin manifest", scope="code", limit=3)
     assert all(hit["document"].startswith("okf/") for hit in result["pages"])
 
 
 def test_reading_a_section_returns_only_that_section(context):
     whole = doc_tools.read_documentation(context, document="docs/concepts/fret.md")
     heading = whole["outline"][1].strip()
-    part = doc_tools.read_documentation(
-        context, document="docs/concepts/fret.md", section=heading
-    )
+    part = doc_tools.read_documentation(context, document="docs/concepts/fret.md", section=heading)
     assert len(part["content"]) < len(whole["content"])
     assert heading in part["content"]
 

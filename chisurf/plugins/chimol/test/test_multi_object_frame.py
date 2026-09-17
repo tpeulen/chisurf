@@ -10,6 +10,7 @@ PyMOL keeps every object in one frame and aims the camera at all of them. The
 **first** object defines the origin; later ones borrow it and land where their
 own coordinates put them.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -55,9 +56,7 @@ def test_the_first_object_still_defines_the_origin(qapp):
 
     centre = np.asarray(view._get_active_state().raw_center)
     assert np.allclose(centre, points.mean(0), atol=3.0), centre
-    assert np.allclose(
-        np.asarray(view._get_active_state().all_atom_coords).mean(0), 0.0, atol=1e-6
-    )
+    assert np.allclose(np.asarray(view._get_active_state().all_atom_coords).mean(0), 0.0, atol=1e-6)
 
 
 def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
@@ -77,9 +76,7 @@ def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
     scale = float(view._scale_factor)
     offset = np.asarray(states[second_id].all_atom_coords).mean(0)
     assert abs(offset[0] - 40.0 * scale) < 5.0 * scale, offset
-    assert np.allclose(
-        np.asarray(states[first_id].all_atom_coords).mean(0), 0.0, atol=1e-6
-    )
+    assert np.allclose(np.asarray(states[first_id].all_atom_coords).mean(0), 0.0, atol=1e-6)
 
 
 def test_the_second_objects_radius_is_measured_about_the_shared_centre(qapp):

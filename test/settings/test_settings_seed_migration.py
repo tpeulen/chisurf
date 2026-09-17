@@ -23,8 +23,8 @@ def _defaults() -> dict:
 
 def test_a_seeded_copy_follows_the_new_defaults_and_keeps_real_changes(tmp_path):
     seeded = _defaults()
-    seeded["gui"]["plot"]["backend"] = "pyqtgraph"   # the default of its day
-    seeded["gui"]["language"] = "fr"                 # something the user chose
+    seeded["gui"]["plot"]["backend"] = "pyqtgraph"  # the default of its day
+    seeded["gui"]["language"] = "fr"  # something the user chose
     user_file = tmp_path / "settings_chisurf.yaml"
     user_file.write_text(yaml.safe_dump(seeded), encoding="utf-8")
 

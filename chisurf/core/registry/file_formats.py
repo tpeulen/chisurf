@@ -15,14 +15,15 @@ from __future__ import annotations
 
 import json
 import pathlib
+
 from chisurf import typing
 
-_FILE = pathlib.Path(__file__).resolve().parent / 'file_formats.json'
+_FILE = pathlib.Path(__file__).resolve().parent / "file_formats.json"
 
 FILE_FORMATS: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
 try:
-    with open(_FILE, 'r') as fh:
+    with open(_FILE) as fh:
         raw = json.load(fh)
-    FILE_FORMATS = {k: v for k, v in raw.items() if not k.startswith('_')}
+    FILE_FORMATS = {k: v for k, v in raw.items() if not k.startswith("_")}
 except Exception:
     pass

@@ -69,7 +69,9 @@ class _PipelineComputeTask(QtCore.QRunnable):
                     self._signals.model_done.emit(role)
                     continue
                 model.compute(
-                    progress=lambda f, t, role=role: self._signals.progress.emit(role, float(f), str(t))
+                    progress=lambda f, t, role=role: self._signals.progress.emit(
+                        role, float(f), str(t)
+                    )
                 )
             except Exception:
                 logger.debug("background compute of %r failed", role, exc_info=True)
@@ -83,11 +85,13 @@ class _PipelineComputeTask(QtCore.QRunnable):
 # registers the created widget so the coordinator can feed it the shared setup.
 # ---------------------------------------------------------------------------
 
+
 def _setup(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     """Channel / detector setup — the single shared definition (RPC publisher)."""
     from chisurf.plugins.core.setup_channel_definition.gui.tool import (
         SetupChannelDefinitionWidget,
     )
+
     widget = SetupChannelDefinitionWidget(parent=parent)
     parent._register_setup_panel(widget)
     return widget
@@ -95,6 +99,7 @@ def _setup(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _browser(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.tttr.tttr_image_browser.gui.tool import TTTRImageBrowserTool
+
     widget = TTTRImageBrowserTool(parent=parent)
     parent._register_panel("browser", widget)
     return widget
@@ -102,6 +107,7 @@ def _browser(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _drift(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
+
     widget = ImgDriftTool(parent=parent, embedded=True)
     parent._register_panel("drift", widget)
     return widget
@@ -109,6 +115,7 @@ def _drift(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _frc(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_frc.gui.tool import ImgFrcTool
+
     widget = ImgFrcTool(parent=parent, embedded=True)
     parent._register_panel("frc", widget)
     return widget
@@ -116,6 +123,7 @@ def _frc(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _flow(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_flow.gui.tool import ImgFlowTool
+
     widget = ImgFlowTool(parent=parent, embedded=True)
     parent._register_panel("flow", widget)
     return widget
@@ -123,6 +131,7 @@ def _flow(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
+
     widget = ImgTrackingTool(parent=parent, embedded=True)
     parent._register_panel("tracking", widget)
     return widget
@@ -130,6 +139,7 @@ def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
+
     widget = ImgPixelMleTool(parent=parent, embedded=True)
     parent._register_panel("pixel_mle", widget)
     return widget
@@ -137,6 +147,7 @@ def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _spot_finder(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.spot_finder.gui.tool import SpotFinderTool
+
     widget = SpotFinderTool(parent=parent, embedded=True)
     parent._register_panel("spot_finder", widget)
     return widget
@@ -144,6 +155,7 @@ def _spot_finder(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _molecule_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
+
     widget = RegionMleTool(parent=parent, embedded=True)
     parent._register_panel("molecule_mle", widget)
     return widget
@@ -151,8 +163,11 @@ def _molecule_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _pixel_intensity(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_intensity.gui.tool import ImgPixelIntensityTool
+
     widget = ImgPixelIntensityTool(
-        parent=parent, embedded=True, view_model=parent.get_or_create_model("pixel_intensity"),
+        parent=parent,
+        embedded=True,
+        view_model=parent.get_or_create_model("pixel_intensity"),
     )
     parent._register_panel("pixel_intensity", widget)
     return widget
@@ -160,8 +175,11 @@ def _pixel_intensity(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _pixel_nb(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_nb.gui.tool import ImgPixelNBTool
+
     widget = ImgPixelNBTool(
-        parent=parent, embedded=True, view_model=parent.get_or_create_model("pixel_nb"),
+        parent=parent,
+        embedded=True,
+        view_model=parent.get_or_create_model("pixel_nb"),
     )
     parent._register_panel("pixel_nb", widget)
     return widget
@@ -169,8 +187,11 @@ def _pixel_nb(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _pixel_micro_time(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_micro_time.gui.tool import ImgPixelMicroTimeTool
+
     widget = ImgPixelMicroTimeTool(
-        parent=parent, embedded=True, view_model=parent.get_or_create_model("pixel_micro_time"),
+        parent=parent,
+        embedded=True,
+        view_model=parent.get_or_create_model("pixel_micro_time"),
     )
     parent._register_panel("pixel_micro_time", widget)
     return widget
@@ -178,8 +199,11 @@ def _pixel_micro_time(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _pixel_phasor(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_phasor.gui.tool import ImgPixelPhasorTool
+
     widget = ImgPixelPhasorTool(
-        parent=parent, embedded=True, view_model=parent.get_or_create_model("pixel_phasor"),
+        parent=parent,
+        embedded=True,
+        view_model=parent.get_or_create_model("pixel_phasor"),
     )
     parent._register_panel("pixel_phasor", widget)
     return widget
@@ -187,6 +211,7 @@ def _pixel_phasor(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _calibration(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_calibration.gui.tool import ImgCalibrationTool
+
     widget = ImgCalibrationTool(parent=parent, embedded=True)
     parent._register_panel("calibration", widget)
     return widget
@@ -194,6 +219,7 @@ def _calibration(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _clsm_draw(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
+
     widget = CLSMPixelSelect(parent=parent)
     parent._register_panel("clsm_draw", widget)
     return widget
@@ -201,6 +227,7 @@ def _clsm_draw(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 def _psf(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.psf_determination.gui.tool import PsfDeterminationTool
+
     widget = PsfDeterminationTool(parent=parent)
     parent._register_panel("psf", widget)
     return widget
@@ -251,7 +278,7 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "Flow",
-        "icon": "\U0001F30A",
+        "icon": "\U0001f30a",
         "description": (
             "Map the velocity field: one arrow per tile, over the image. Sits "
             "beside Tracking because both measure motion rather than building a "
@@ -266,7 +293,7 @@ IMAGING_PANELS: list[dict] = [
     },
     {
         "name": "Tracking",
-        "icon": "\U0001F41C",
+        "icon": "\U0001f41c",
         "description": (
             "Follow individual particles through the frames and fit their diffusion "
             "coefficient. Sits after Drift because a drifting sample looks exactly "
@@ -365,8 +392,16 @@ class ImagingToolsTool(NavigationPanelTool):
 
     #: Analysis steps in pipeline order for the "Next ▶" convenience.
     PIPELINE_ORDER = (
-        "browser", "drift", "frc", "tracking", "pixel_intensity", "pixel_nb",
-        "pixel_micro_time", "calibration", "pixel_phasor", "pixel_mle",
+        "browser",
+        "drift",
+        "frc",
+        "tracking",
+        "pixel_intensity",
+        "pixel_nb",
+        "pixel_micro_time",
+        "calibration",
+        "pixel_phasor",
+        "pixel_mle",
     )
     #: Roles whose (Qt-free) view-models the coordinator owns + pre-computes.
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
@@ -516,19 +551,23 @@ class ImagingToolsTool(NavigationPanelTool):
             from chisurf.plugins.microscopy.img_pixel_intensity.gui.view_model import (
                 IntensityViewModel,
             )
+
             return IntensityViewModel()
         if role == "pixel_nb":
             from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
+
             return NBViewModel()
         if role == "pixel_micro_time":
             from chisurf.plugins.microscopy.img_pixel_micro_time.gui.view_model import (
                 MicroTimeViewModel,
             )
+
             return MicroTimeViewModel()
         if role == "pixel_phasor":
             from chisurf.plugins.microscopy.img_pixel_phasor.gui.view_model import (
                 PhasorImgViewModel,
             )
+
             return PhasorImgViewModel()
         return None
 
@@ -539,9 +578,7 @@ class ImagingToolsTool(NavigationPanelTool):
         if source:
             self._pipeline["source"] = str(source)
             if new_source:
-                self._mmfdb_source_artifact_id = self._ensure_mmfdb_source(
-                    str(source)
-                )
+                self._mmfdb_source_artifact_id = self._ensure_mmfdb_source(str(source))
         if hdf5:
             self._pipeline["hdf5"] = str(hdf5)
         for widget in self._panels_by_role.values():

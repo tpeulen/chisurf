@@ -211,8 +211,10 @@ class SpectrumView(QtWidgets.QWidget):
     def _show_empty(self) -> None:
         """Show a placeholder when no spectra are available."""
         self.plot.text(
-            "No spectra data found.", (0.0, 0.0),
-            color=(150, 150, 150), anchor=(0.5, 0.5),
+            "No spectra data found.",
+            (0.0, 0.0),
+            color=(150, 150, 150),
+            anchor=(0.5, 0.5),
         )
 
     # ------------------------------------------------------------------
@@ -262,14 +264,16 @@ class SpectrumView(QtWidgets.QWidget):
                 if np.nanmax(iv) > 0:
                     iv = iv / np.nanmax(iv)
                 label = _SPECTRUM_LABELS.get(stype, stype.capitalize())
-                all_traces.append({
-                    "name": f"{name} [{label}]",
-                    "x": wl,
-                    "y": iv,
-                    "color": color,
-                    "style": ["solid", "dash", "dot", "dashdot"][s_idx % 4],
-                    "width": 2,
-                })
+                all_traces.append(
+                    {
+                        "name": f"{name} [{label}]",
+                        "x": wl,
+                        "y": iv,
+                        "color": color,
+                        "style": ["solid", "dash", "dot", "dashdot"][s_idx % 4],
+                        "width": 2,
+                    }
+                )
         if all_traces:
             self.plot_series(all_traces)
         else:
@@ -292,12 +296,14 @@ class SpectrumView(QtWidgets.QWidget):
                 iv = iv / np.nanmax(iv)
             color = _SPECTRUM_COLORS.get(stype, (100, 100, 100))
             label = _SPECTRUM_LABELS.get(stype, stype.capitalize())
-            traces.append({
-                "name": label,
-                "x": wl,
-                "y": iv,
-                "color": color,
-                "style": "solid",
-                "width": 2,
-            })
+            traces.append(
+                {
+                    "name": label,
+                    "x": wl,
+                    "y": iv,
+                    "color": color,
+                    "style": "solid",
+                    "width": 2,
+                }
+            )
         return traces

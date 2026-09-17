@@ -21,10 +21,12 @@ class ProjectBrowserClient(MMFDBClient):
                 self._auto_auth()
 
     def _make_inprocess_client(self) -> InProcessClient:
+        from chisurf.core.mmfdb_services import register_services as register_mmfdb_services
+        from chisurf.plugins.core.project_browser.backend.services import (
+            register_services as register_project_browser_services,
+        )
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
-        from chisurf.core.mmfdb_services import register_services as register_mmfdb_services
-        from chisurf.plugins.core.project_browser.backend.services import register_services as register_project_browser_services
 
         dispatcher = ServiceDispatcher(SessionState())
         register_mmfdb_services(dispatcher)
@@ -33,10 +35,11 @@ class ProjectBrowserClient(MMFDBClient):
 
     def _auto_auth(self) -> None:
         """Use the active MMFDB login token for in-process project-browser RPC calls."""
-        from mmfdb.store.database_resolver import resolve_database_path
         from mmfdb.repository import MFDatabase
-        from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
         from mmfdb.security.auth import _hash_token
+        from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
+        from mmfdb.store.database_resolver import resolve_database_path
+
         import chisurf.core.settings as cs_settings
 
         try:
@@ -99,10 +102,13 @@ class ProjectBrowserClient(MMFDBClient):
         show_public: bool = True,
         search: str | None = None,
     ) -> list[dict[str, Any]]:
-        return self._call("project_browser.list", {
-            "show_public": show_public,
-            "search": search,
-        }).get("projects", [])
+        return self._call(
+            "project_browser.list",
+            {
+                "show_public": show_public,
+                "search": search,
+            },
+        ).get("projects", [])
 
     def save_project(
         self,
@@ -115,41 +121,53 @@ class ProjectBrowserClient(MMFDBClient):
         fit_count: int = 0,
         dataset_count: int = 0,
     ) -> dict[str, Any]:
-        return self._call("project_browser.save", {
-            "project_name": project_name,
-            "project_payload": project_payload,
-            "project_id": project_id,
-            "parent_version_id": parent_version_id,
-            "notes": notes,
-            "visibility": visibility,
-            "fit_count": fit_count,
-            "dataset_count": dataset_count,
-        })
+        return self._call(
+            "project_browser.save",
+            {
+                "project_name": project_name,
+                "project_payload": project_payload,
+                "project_id": project_id,
+                "parent_version_id": parent_version_id,
+                "notes": notes,
+                "visibility": visibility,
+                "fit_count": fit_count,
+                "dataset_count": dataset_count,
+            },
+        )
 
     def restore_project(self, version_id: str) -> dict[str, Any]:
-        return self._call("project_browser.restore", {
-            "version_id": version_id,
-        })
+        return self._call(
+            "project_browser.restore",
+            {
+                "version_id": version_id,
+            },
+        )
 
     def export_csp(
         self,
         version_id: str,
         target_path: str | None = None,
     ) -> dict[str, Any]:
-        return self._call("project_browser.export_csp", {
-            "version_id": version_id,
-            "target_path": target_path,
-        })
+        return self._call(
+            "project_browser.export_csp",
+            {
+                "version_id": version_id,
+                "target_path": target_path,
+            },
+        )
 
     def import_preview(
         self,
         archive_base64: str | None = None,
         file_path: str | None = None,
     ) -> dict[str, Any]:
-        return self._call("project_browser.import_preview", {
-            "archive_base64": archive_base64,
-            "file_path": file_path,
-        })
+        return self._call(
+            "project_browser.import_preview",
+            {
+                "archive_base64": archive_base64,
+                "file_path": file_path,
+            },
+        )
 
     def import_csp(
         self,
@@ -157,16 +175,22 @@ class ProjectBrowserClient(MMFDBClient):
         file_path: str | None = None,
         resolve_collisions: bool = False,
     ) -> dict[str, Any]:
-        return self._call("project_browser.import_csp", {
-            "archive_base64": archive_base64,
-            "file_path": file_path,
-            "resolve_collisions": resolve_collisions,
-        })
+        return self._call(
+            "project_browser.import_csp",
+            {
+                "archive_base64": archive_base64,
+                "file_path": file_path,
+                "resolve_collisions": resolve_collisions,
+            },
+        )
 
     def delete_version(self, version_id: str) -> dict[str, Any]:
-        return self._call("project_browser.delete_version", {
-            "version_id": version_id,
-        })
+        return self._call(
+            "project_browser.delete_version",
+            {
+                "version_id": version_id,
+            },
+        )
 
     def create_branch(
         self,
@@ -174,28 +198,43 @@ class ProjectBrowserClient(MMFDBClient):
         from_version_id: str,
         branch_name: str,
     ) -> dict[str, Any]:
-        return self._call("project_browser.create_branch", {
-            "project_id": project_id,
-            "from_version_id": from_version_id,
-            "branch_name": branch_name,
-        })
+        return self._call(
+            "project_browser.create_branch",
+            {
+                "project_id": project_id,
+                "from_version_id": from_version_id,
+                "branch_name": branch_name,
+            },
+        )
 
     def list_branches(self, project_id: str) -> list[dict[str, Any]]:
-        return self._call("project_browser.list_branches", {
-            "project_id": project_id,
-        }).get("branches", [])
+        return self._call(
+            "project_browser.list_branches",
+            {
+                "project_id": project_id,
+            },
+        ).get("branches", [])
 
     def version_graph(self, project_id: str) -> dict[str, Any]:
-        return self._call("project_browser.version_graph", {
-            "project_id": project_id,
-        }).get("graph", {})
+        return self._call(
+            "project_browser.version_graph",
+            {
+                "project_id": project_id,
+            },
+        ).get("graph", {})
 
     def list_artifacts(self, version_id: str) -> list[dict[str, Any]]:
-        return self._call("project_browser.artifacts", {
-            "version_id": version_id,
-        }).get("artifacts", [])
+        return self._call(
+            "project_browser.artifacts",
+            {
+                "version_id": version_id,
+            },
+        ).get("artifacts", [])
 
     def list_parameters(self, version_id: str) -> list[dict[str, Any]]:
-        return self._call("project_browser.parameters", {
-            "version_id": version_id,
-        }).get("parameters", [])
+        return self._call(
+            "project_browser.parameters",
+            {
+                "version_id": version_id,
+            },
+        ).get("parameters", [])

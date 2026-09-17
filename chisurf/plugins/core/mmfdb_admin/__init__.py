@@ -1,6 +1,7 @@
 """mmfdb-admin: Multiparametric Fluorescence Database management."""
 
 from __future__ import annotations
+
 from chisurf.gui import dialogs
 
 try:
@@ -39,7 +40,6 @@ if __name__ == "plugin":
         try:
             window = MMFDBWidget()
         except PermissionError as exc:
-
             dialogs.error(
                 None,
                 "mmfdb-admin — Access denied",

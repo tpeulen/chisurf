@@ -25,6 +25,7 @@ the decisive :math:`\hat{R}` across genuinely independent *runs* instead, which
 is what :func:`chisurf.core.fitting.fit.sample_fit` does with its ``n_runs``
 chains.
 """
+
 from __future__ import annotations
 
 import math
@@ -124,9 +125,7 @@ def autocovariance(x: np.ndarray) -> np.ndarray:
     return acov / n
 
 
-def _pooled_variance(
-        chains: np.ndarray
-) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _pooled_variance(chains: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return ``(within, var_plus, acov)`` for one parameter across chains.
 
     ``within`` is the mean within-chain variance ``W``, ``var_plus`` the
@@ -288,7 +287,7 @@ def rank_normalize(samples: np.ndarray) -> np.ndarray:
             j += 1
         # Ranks are 1-based; ties share their average.
         average = 0.5 * ((i + 1) + (j + 1))
-        ranks[order[i:j + 1]] = average
+        ranks[order[i : j + 1]] = average
         i = j + 1
     return _normal_ppf((ranks - 0.375) / (n + 0.25)).reshape(a.shape)
 
@@ -300,28 +299,57 @@ def _normal_ppf(p: np.ndarray) -> np.ndarray:
     and avoids a SciPy import on a hot path.
     """
     p = np.asarray(p, dtype=np.float64)
-    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
-         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
-    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
-         6.680131188771972e+01, -1.328068155288572e+01]
-    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
-         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
-    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
-         3.754408661907416e+00]
+    a = [
+        -3.969683028665376e01,
+        2.209460984245205e02,
+        -2.759285104469687e02,
+        1.383577518672690e02,
+        -3.066479806614716e01,
+        2.506628277459239e00,
+    ]
+    b = [
+        -5.447609879822406e01,
+        1.615858368580409e02,
+        -1.556989798598866e02,
+        6.680131188771972e01,
+        -1.328068155288572e01,
+    ]
+    c = [
+        -7.784894002430293e-03,
+        -3.223964580411365e-01,
+        -2.400758277161838e00,
+        -2.549732539343734e00,
+        4.374664141464968e00,
+        2.938163982698783e00,
+    ]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
     out = np.empty_like(p)
     lo, hi = p < 0.02425, p > 1 - 0.02425
     mid = ~(lo | hi)
 
     q = np.sqrt(-2.0 * np.log(np.where(lo, p, 0.5)))
-    out = np.where(lo, (((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5])
-                   / ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1), out)
+    out = np.where(
+        lo,
+        (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+        / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1),
+        out,
+    )
     q = np.sqrt(-2.0 * np.log(np.where(hi, 1.0 - p, 0.5)))
-    out = np.where(hi, -(((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5])
-                   / ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1), out)
+    out = np.where(
+        hi,
+        -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+        / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1),
+        out,
+    )
     q = np.where(mid, p, 0.5) - 0.5
     r = q * q
-    out = np.where(mid, (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5]) * q
-                   / (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1), out)
+    out = np.where(
+        mid,
+        (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
+        * q
+        / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1),
+        out,
+    )
     return out
 
 
@@ -335,7 +363,7 @@ def _split(chains: np.ndarray) -> np.ndarray:
     half = n // 2
     if half < 2:
         return chains
-    return np.concatenate([chains[:, :half], chains[:, n - half:]], axis=0)
+    return np.concatenate([chains[:, :half], chains[:, n - half :]], axis=0)
 
 
 def _rhat_1d(chains: np.ndarray) -> float:
@@ -459,7 +487,7 @@ def split_rhat(samples: np.ndarray) -> np.ndarray:
     if half < 2:
         return np.full(n_par, np.nan, dtype=np.float64)
 
-    split = np.concatenate([chains[:, :half, :], chains[:, n - half:, :]], axis=0)
+    split = np.concatenate([chains[:, :half, :], chains[:, n - half :, :]], axis=0)
     m2, n2, _ = split.shape
 
     out = np.empty(n_par, dtype=np.float64)
@@ -541,10 +569,10 @@ def suggest_burn_in(samples: np.ndarray) -> int:
 
 
 def summarize(
-        samples: np.ndarray,
-        names: typing.Sequence[str] = None,
-        burn_in: int = None,
-        quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
+    samples: np.ndarray,
+    names: typing.Sequence[str] = None,
+    burn_in: int = None,
+    quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.List[typing.Dict[str, typing.Any]]:
     r"""Summarise a set of chains, one entry per parameter.
 
@@ -608,33 +636,36 @@ def summarize(
         finite = column[np.isfinite(column)]
         qs = (
             {str(q): float(np.quantile(finite, q)) for q in quantiles}
-            if finite.size else {str(q): float("nan") for q in quantiles}
+            if finite.size
+            else {str(q): float("nan") for q in quantiles}
         )
-        out.append({
-            "name": str(names[k]),
-            "mean": float(finite.mean()) if finite.size else float("nan"),
-            "sd": float(finite.std(ddof=1)) if finite.size > 1 else float("nan"),
-            "quantiles": qs,
-            "ess": float(ess[k]),
-            "ess_bulk": float(bulk[k]),
-            "ess_tail": float(tail[k]),
-            "rhat": float(rhat[k]),
-            "rhat_plain": float(plain_rhat[k]),
-            "tau": float(tau[k]),
-            "mcse": float(err[k]),
-            "frozen": bool(finite.size > 0 and np.ptp(finite) == 0.0),
-            "n_nonfinite": int(column.size - finite.size),
-            "n_chains": int(kept.shape[0]),
-            "n_draws": int(kept.shape[1]),
-            "burn_in": burn_in,
-        })
+        out.append(
+            {
+                "name": str(names[k]),
+                "mean": float(finite.mean()) if finite.size else float("nan"),
+                "sd": float(finite.std(ddof=1)) if finite.size > 1 else float("nan"),
+                "quantiles": qs,
+                "ess": float(ess[k]),
+                "ess_bulk": float(bulk[k]),
+                "ess_tail": float(tail[k]),
+                "rhat": float(rhat[k]),
+                "rhat_plain": float(plain_rhat[k]),
+                "tau": float(tau[k]),
+                "mcse": float(err[k]),
+                "frozen": bool(finite.size > 0 and np.ptp(finite) == 0.0),
+                "n_nonfinite": int(column.size - finite.size),
+                "n_chains": int(kept.shape[0]),
+                "n_draws": int(kept.shape[1]),
+                "burn_in": burn_in,
+            }
+        )
     return out
 
 
 def convergence_warnings(
-        summary: typing.Sequence[typing.Dict[str, typing.Any]],
-        rhat_threshold: float = RHAT_THRESHOLD,
-        ess_threshold: float = ESS_THRESHOLD,
+    summary: typing.Sequence[typing.Dict[str, typing.Any]],
+    rhat_threshold: float = RHAT_THRESHOLD,
+    ess_threshold: float = ESS_THRESHOLD,
 ) -> typing.List[str]:
     r"""Return the human-readable reasons not to trust a chain.
 
@@ -658,8 +689,7 @@ def convergence_warnings(
     """
     messages = []
     bad_rhat = [
-        e for e in summary
-        if np.isfinite(e.get("rhat", np.nan)) and e["rhat"] > rhat_threshold
+        e for e in summary if np.isfinite(e.get("rhat", np.nan)) and e["rhat"] > rhat_threshold
     ]
     if bad_rhat:
         worst = max(bad_rhat, key=lambda e: e["rhat"])
@@ -670,15 +700,15 @@ def convergence_warnings(
             "or improve the proposal."
         )
     for key, what in (("ess_bulk", "bulk"), ("ess_tail", "tail")):
-        low = [
-            e for e in summary
-            if np.isfinite(e.get(key, np.nan)) and e[key] < ess_threshold
-        ]
+        low = [e for e in summary if np.isfinite(e.get(key, np.nan)) and e[key] < ess_threshold]
         if not low:
             continue
         worst = min(low, key=lambda e: e[key])
-        governs = ("the posterior mean" if what == "bulk"
-                   else "the quantiles a credible interval is made of")
+        governs = (
+            "the posterior mean"
+            if what == "bulk"
+            else "the quantiles a credible interval is made of"
+        )
         messages.append(
             f"{len(low)} parameter(s) have a {what} effective sample size below "
             f"{ess_threshold:g} (worst: {worst['name']} at {worst[key]:.0f}) -- "
@@ -686,8 +716,7 @@ def convergence_warnings(
         )
     if not any("effective sample size" in m for m in messages):
         low_ess = [
-            e for e in summary
-            if np.isfinite(e.get("ess", np.nan)) and e["ess"] < ess_threshold
+            e for e in summary if np.isfinite(e.get("ess", np.nan)) and e["ess"] < ess_threshold
         ]
         if low_ess:
             worst = min(low_ess, key=lambda e: e["ess"])
@@ -743,8 +772,8 @@ def convergence_warnings(
 
 
 def rank_histogram(
-        samples: np.ndarray,
-        bins: int = 20,
+    samples: np.ndarray,
+    bins: int = 20,
 ) -> typing.Tuple[np.ndarray, np.ndarray, float]:
     r"""Return per-chain rank histograms — the plot that replaces the trace plot.
 
@@ -794,19 +823,17 @@ def rank_histogram(
             j = i
             while j + 1 < total and flat[order[j + 1]] == flat[order[i]]:
                 j += 1
-            ranks[order[i:j + 1]] = 0.5 * ((i + 1) + (j + 1))
+            ranks[order[i : j + 1]] = 0.5 * ((i + 1) + (j + 1))
             i = j + 1
         scaled = (ranks - 0.5) / total
         for c in range(n_chains):
-            counts[k, c], _ = np.histogram(
-                scaled[c * n_draws:(c + 1) * n_draws], bins=edges
-            )
+            counts[k, c], _ = np.histogram(scaled[c * n_draws : (c + 1) * n_draws], bins=edges)
     return counts, edges, float(n_draws) / bins
 
 
 def ess_evolution(
-        samples: np.ndarray,
-        points: int = 12,
+    samples: np.ndarray,
+    points: int = 12,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Return the effective sample size computed on growing prefixes of a chain.
 
@@ -837,17 +864,13 @@ def ess_evolution(
     # than reporting noise as the first point of the curve.
     if n_draws < 8:
         return np.zeros(0, dtype=int), np.zeros((0, chains.shape[2]))
-    lengths = np.unique(
-        np.linspace(max(8, n_draws // points), n_draws, points).astype(int)
-    )
+    lengths = np.unique(np.linspace(max(8, n_draws // points), n_draws, points).astype(int))
     # A prefix longer than the chain would silently be truncated by the slice
     # and reported under the wrong draw count.
     lengths = lengths[(lengths >= 8) & (lengths <= n_draws)]
     if lengths.size == 0:
         return np.zeros(0, dtype=int), np.zeros((0, chains.shape[2]))
-    out = np.array([
-        effective_sample_size(chains[:, :int(n), :]) for n in lengths
-    ])
+    out = np.array([effective_sample_size(chains[:, : int(n), :]) for n in lengths])
     return lengths, out
 
 
@@ -875,16 +898,16 @@ def within_chain_tau(samples: np.ndarray) -> np.ndarray:
     n_chains, n_draws, n_par = chains.shape
     per_chain = np.empty((n_chains, n_par), dtype=np.float64)
     for c in range(n_chains):
-        ess = effective_sample_size(chains[c:c + 1])
+        ess = effective_sample_size(chains[c : c + 1])
         per_chain[c] = n_draws / np.maximum(ess, 1e-9)
     return np.maximum(per_chain.mean(axis=0), 1.0)
 
 
 def rank_uniformity(
-        counts: np.ndarray,
-        n_draws: int,
-        bins: int,
-        tau: float = 1.0,
+    counts: np.ndarray,
+    n_draws: int,
+    bins: int,
+    tau: float = 1.0,
 ) -> typing.Tuple[float, float]:
     r"""Return ``(z_max, z_null)`` for one parameter's rank histogram.
 
@@ -928,9 +951,7 @@ def rank_uniformity(
     counts = np.atleast_2d(np.asarray(counts, dtype=np.float64))
     p = 1.0 / max(1, int(bins))
     expected = float(n_draws) * p
-    sd = math.sqrt(
-        max(float(n_draws) * p * (1.0 - p) * max(float(tau), 1.0), 1e-30)
-    )
+    sd = math.sqrt(max(float(n_draws) * p * (1.0 - p) * max(float(tau), 1.0), 1e-30))
     z_max = float(np.abs(counts - expected).max() / sd)
     n_cells = max(counts.size, 2)
     return z_max, math.sqrt(2.0 * math.log(n_cells))

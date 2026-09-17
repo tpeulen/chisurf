@@ -4,10 +4,9 @@ This script generates log messages to test line selection behavior.
 """
 
 import logging
-import time
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Generate test log messages
 logging.info("TEST-INFO: This is a test info message")

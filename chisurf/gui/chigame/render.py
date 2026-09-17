@@ -338,10 +338,22 @@ class SpriteBatch:
         self._instances.append(
             np.array(
                 [
-                    pos[0], pos[1], size[0], size[1],
-                    color[0], color[1], color[2], color[3],
-                    shape, param, rotation, softness,
-                    uv[0], uv[1], uv[2], uv[3],
+                    pos[0],
+                    pos[1],
+                    size[0],
+                    size[1],
+                    color[0],
+                    color[1],
+                    color[2],
+                    color[3],
+                    shape,
+                    param,
+                    rotation,
+                    softness,
+                    uv[0],
+                    uv[1],
+                    uv[2],
+                    uv[3],
                 ],
                 dtype=np.float32,
             )
@@ -369,9 +381,7 @@ class SpriteBatch:
         """
         array = np.ascontiguousarray(instances, dtype=np.float32)
         if array.ndim != 2 or array.shape[1] != FLOATS_PER_INSTANCE:
-            raise ValueError(
-                f"instances must be (n, {FLOATS_PER_INSTANCE}), got {array.shape}"
-            )
+            raise ValueError(f"instances must be (n, {FLOATS_PER_INSTANCE}), got {array.shape}")
         if array.size:
             self._instances.append(array.reshape(-1))
             self._count += array.shape[0]

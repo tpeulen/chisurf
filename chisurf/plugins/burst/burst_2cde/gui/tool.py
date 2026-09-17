@@ -12,17 +12,17 @@ import logging
 import pathlib
 
 import numpy as np
-from chisurf.core.datastore import numeric_column, row_count
-from chisurf.gui import chiplot as cp
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.datastore import numeric_column, row_count
+from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
+from chisurf.core.runtime import analysis_cache
+from chisurf.gui import chiplot as cp
+from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button, flag_attention
 from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.plugins.burst.burst_2cde.core import computation as core
-from chisurf.core.runtime import analysis_cache
-from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
-from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
@@ -240,7 +240,8 @@ class BurstTwoCdeTool(ChisurfDockTool):
     def analysis_fingerprint(self) -> str:
         """Fingerprint of the inputs, the settings, the read context and the code."""
         return analysis_cache.fingerprint(
-            self.input_files(), self.fingerprint_params(),
+            self.input_files(),
+            self.fingerprint_params(),
             extra=analysis_cache.algorithm_tag("2cde", ALGORITHM_VERSION, "tttrlib"),
         )
 
@@ -307,9 +308,7 @@ class BurstTwoCdeTool(ChisurfDockTool):
             and self._result_cache.matches(fingerprint)
             and analysis_cache.is_current(stamp, fingerprint)
         ):
-            self._set_status(
-                "Unchanged — kept the previous 2CDE result (🔁 Restart recomputes it)"
-            )
+            self._set_status("Unchanged — kept the previous 2CDE result (🔁 Restart recomputes it)")
             flag_attention(self._restart, True)
             return
         flag_attention(self._restart, False)
@@ -318,12 +317,21 @@ class BurstTwoCdeTool(ChisurfDockTool):
         self._stop.setEnabled(True)
         self._settings_box.setEnabled(False)
         self._task = ChiSurfProgress.run(
-            self, "Reading burst data …", self._analysis_worker,
+            self,
+            "Reading burst data …",
+            self._analysis_worker,
             # Inputs and params are resolved here, on the GUI thread: the worker
             # must not read widgets.
-            args=(folder, self.settings(), fingerprint,
-                  self.input_files(), self.fingerprint_params()),
-            maximum=0, title="2CDE", owner=self._run,
+            args=(
+                folder,
+                self.settings(),
+                fingerprint,
+                self.input_files(),
+                self.fingerprint_params(),
+            ),
+            maximum=0,
+            title="2CDE",
+            owner=self._run,
             on_result=self._analysis_done,
             on_error=self._analysis_failed,
             on_done=self._analysis_over,
@@ -370,11 +378,14 @@ class BurstTwoCdeTool(ChisurfDockTool):
         task.set_range(0, row_count(df))
         task.set_text("Computing 2CDE …")
         df = core.compute_2cde(
-            df, tttrs,
+            df,
+            tttrs,
             donor_channels=settings["donor_channels"],
             acceptor_channels=settings["acceptor_channels"],
-            donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-            tau=settings["tau_us"] * 1e-6, kernel=settings["kernel"],
+            donor_micro_time_ranges=[],
+            acceptor_micro_time_ranges=[],
+            tau=settings["tau_us"] * 1e-6,
+            kernel=settings["kernel"],
             variant=settings["variant"],
             progress_window=task.progress_window("Computing 2CDE …"),
         )
@@ -385,9 +396,12 @@ class BurstTwoCdeTool(ChisurfDockTool):
             core.write_2cde_analysis(df, folder, variant=settings["variant"])
             out = pathlib.Path(folder) / "2c4"
             analysis_cache.write_stamp(
-                pathlib.Path(folder) / "2c4" / "2cde.stamp.json", fingerprint,
-                params=params, inputs=inputs,
-                outputs=sorted(out.glob("*.2c4")), tool="2cde",
+                pathlib.Path(folder) / "2c4" / "2cde.stamp.json",
+                fingerprint,
+                params=params,
+                inputs=inputs,
+                outputs=sorted(out.glob("*.2c4")),
+                tool="2cde",
             )
         except Exception as exc:  # pragma: no cover - GUI error path
             logging.getLogger(__name__).warning("Could not write 2c4 companion: %s", exc)
@@ -425,12 +439,12 @@ class BurstTwoCdeTool(ChisurfDockTool):
         if e is not None:
             e = np.asarray(e, dtype=float)
             m = finite & np.isfinite(e)
-            self._plot.scatter(e[m], vals[m], size=3, brush=(31, 119, 180, 80),
-                               pen=None, symbol="o")
+            self._plot.scatter(
+                e[m], vals[m], size=3, brush=(31, 119, 180, 80), pen=None, symbol="o"
+            )
             self._plot.set_labels(bottom="FRET efficiency (proximity ratio)")
         else:
             y, x = np.histogram(vals[finite], bins=40)
             self._plot.line(0.5 * (x[:-1] + x[1:]), y)
             self._plot.set_labels(bottom=column)
-        self._set_status(
-            f"{column}: {int(finite.sum())} / {row_count(df)} bursts valid")
+        self._set_status(f"{column}: {int(finite.sum())} / {row_count(df)} bursts valid")

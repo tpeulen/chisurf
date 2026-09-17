@@ -2,11 +2,10 @@ from __future__ import annotations
 
 """SV-05 guard: every published event topic must be declared in server_methods.json."""
 
+import ast
 import json
 import pathlib
 from importlib import resources
-import ast
-import inspect
 
 
 def _published_topics() -> set[str]:
@@ -23,11 +22,7 @@ def _published_topics() -> set[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 func = node.func
-                if (
-                    isinstance(func, ast.Attribute)
-                    and func.attr == "publish"
-                    and node.args
-                ):
+                if isinstance(func, ast.Attribute) and func.attr == "publish" and node.args:
                     topic = ast.literal_eval(node.args[0])
                     if isinstance(topic, str):
                         topics.add(topic)

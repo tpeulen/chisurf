@@ -7,6 +7,7 @@ did. The widget names stay importable because user copies of
 ``experiment_configs.yaml`` *replace* the bundled model list and pickled projects
 pin class paths.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.global_model.globalfit import GlobalFitModel

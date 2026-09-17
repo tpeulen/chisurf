@@ -152,12 +152,8 @@ def test_lltf_kernel_is_the_same_kernel():
     start, stop = 64, N_CHANNELS - 32
 
     scale = rescale_w_bg_lltf(m, y, w, BACKGROUND, start, stop)
-    assert scale == pytest.approx(
-        rescale_w_bg(m, y, w, BACKGROUND, start, stop), rel=1e-12
-    )
+    assert scale == pytest.approx(rescale_w_bg(m, y, w, BACKGROUND, start, stop), rel=1e-12)
 
     # And the offset window is not a no-op: it must disagree with a call that
     # ignores it, or the test above would pass for the wrong reason.
-    assert scale != pytest.approx(
-        rescale_w_bg(m, y, w, BACKGROUND, 0, N_CHANNELS), rel=1e-9
-    )
+    assert scale != pytest.approx(rescale_w_bg(m, y, w, BACKGROUND, 0, N_CHANNELS), rel=1e-9)

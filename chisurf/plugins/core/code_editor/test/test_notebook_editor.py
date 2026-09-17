@@ -187,16 +187,14 @@ def test_insert_between_reorders_cells(app):
     assert [c for c in nb_ed.cells()] == [initial, inserted, first, last]
     QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
     inserts = [
-        b
-        for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
     ]
     assert len(inserts) == 3
     nb_ed.remove_cell(inserted)
     assert [c for c in nb_ed.cells()] == [initial, first, last]
     QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
     inserts = [
-        b
-        for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
     ]
     assert len(inserts) == 2
 

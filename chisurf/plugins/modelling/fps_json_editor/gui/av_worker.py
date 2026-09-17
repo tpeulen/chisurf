@@ -1,6 +1,7 @@
 """Worker thread for non-blocking Accessible Volume calculations."""
 
 from __future__ import annotations
+
 from qtpy import QtCore
 
 from chisurf.plugins.modelling.fret import av
@@ -83,7 +84,7 @@ class AVWorker(QtCore.QThread):
                 source_info=self.source_info,
             )
             n_points = accessible_volume.n_points
-            volume = n_points * (accessible_volume.grid_step ** 3)
+            volume = n_points * (accessible_volume.grid_step**3)
             mean_xyz = accessible_volume.mean_position
             coords = accessible_volume.points
             self.result_ready.emit(
@@ -97,5 +98,6 @@ class AVWorker(QtCore.QThread):
             )
         except Exception as e:
             import traceback
+
             tb = traceback.format_exc()
             self.error.emit(f"{str(e)}\n{tb}")

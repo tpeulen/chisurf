@@ -17,11 +17,13 @@ from chisurf.macros.core_fit import (
 
 class DummyLinearModel(ModelCurve):
     name = "DummyLinearModel"
+
     def __init__(self, fit: Fit, **kwargs):
         super().__init__(fit, **kwargs)
         self.p0 = FittingParameter(name="p0", value=0.5)
         self.p1 = FittingParameter(name="p1", value=1.5)
         self.find_parameters()
+
     def _update_model(self, **kwargs):
         x = self.fit.data.x
         if x is None:
@@ -91,6 +93,7 @@ def test_headless_project_save_load(tmp_path):
     assert archive_path.name.endswith(".cs.pto")
 
     from chisurf.core.project import ProjectArchive
+
     archive = ProjectArchive.open(archive_path)
     raw = json.loads(archive.read_text("project.json"))
     archive.close()

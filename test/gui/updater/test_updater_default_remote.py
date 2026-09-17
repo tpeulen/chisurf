@@ -3,6 +3,7 @@ from qtpy import QtWidgets
 
 def test_updater_default_remote(qapp, qtbot):
     from chisurf.plugins.core.updater import UpdaterWidget
+
     widget = UpdaterWidget()
     qtbot.addWidget(widget)
 

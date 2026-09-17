@@ -402,7 +402,9 @@ class DocIndex:
         # An expansion is worth less than the word the user typed: it widens
         # the net without letting a synonym outrank a direct hit.
         expansions = [
-            expansion for term in terms for expansion in _SYNONYMS.get(term, ())
+            expansion
+            for term in terms
+            for expansion in _SYNONYMS.get(term, ())
             if expansion not in terms
         ]
 
@@ -459,8 +461,16 @@ class DocIndex:
             if entry.listing:
                 score *= 0.3
 
-            hits.append((score, {**entry.summary(), "score": round(score, 2),
-                                 "excerpt": _excerpt(body, terms, context_lines)}))
+            hits.append(
+                (
+                    score,
+                    {
+                        **entry.summary(),
+                        "score": round(score, 2),
+                        "excerpt": _excerpt(body, terms, context_lines),
+                    },
+                )
+            )
 
         hits.sort(key=lambda item: -item[0])
         chosen = [payload for _, payload in hits[: max(1, int(limit))]]
@@ -653,12 +663,7 @@ def _edit_distance(first: str, second: str, ceiling: int = 2) -> int:
                 grid[i][j - 1] + 1,
                 grid[i - 1][j - 1] + cost,
             )
-            if (
-                i > 1
-                and j > 1
-                and first[i - 1] == second[j - 2]
-                and first[i - 2] == second[j - 1]
-            ):
+            if i > 1 and j > 1 and first[i - 1] == second[j - 2] and first[i - 2] == second[j - 1]:
                 value = min(value, grid[i - 2][j - 2] + 1)
             grid[i][j] = value
             best = min(best, value)

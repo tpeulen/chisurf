@@ -16,10 +16,10 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
 from chisurf.core.fluorescence.anisotropy.kappa2 import s2delta
-
-from .client import Kappa2DistClient
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+from .client import Kappa2DistClient
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -27,7 +27,9 @@ _GUI_DIR = pathlib.Path(__file__).parent
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 class _Kappa2DistModel:
@@ -67,8 +69,9 @@ class _Kappa2DistModel:
             return []
         x = np.asarray(self._k2scale[1:], dtype=float)
         y = np.asarray(self._k2hist, dtype=float)
-        return [{"x": x.tolist(), "y": y.tolist(), "name": "kappa2",
-                 "color": "#1f77b4", "width": 2}]
+        return [
+            {"x": x.tolist(), "y": y.tolist(), "name": "kappa2", "color": "#1f77b4", "width": 2}
+        ]
 
     @property
     def SD2(self) -> float:
@@ -136,10 +139,10 @@ class Kappa2Dist(QtWidgets.QWidget):
     name = "Kappa2Dist"
 
     def __init__(
-            self,
-            kappa2: float = 0.667,
-            *args: typing.Any,
-            **kwargs: typing.Any,
+        self,
+        kappa2: float = 0.667,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.kappa2 = kappa2
@@ -298,7 +301,7 @@ class Kappa2Dist(QtWidgets.QWidget):
 
         bins = k2scale[1:]
         header = [
-            f"# Kappa2 Distribution",
+            "# Kappa2 Distribution",
             f"# Model: {self._model.model_type}",
             f"# SD2: {self._model.SD2:.6f}",
             f"# SA2: {self._model.SA2:.6f}",
@@ -307,21 +310,17 @@ class Kappa2Dist(QtWidgets.QWidget):
             f"# Assumed kappa2: {self._model.kappa2_true:.6f}",
             f"# Mean Rapp: {self._model.Rapp_mean:.6f}",
             f"# SD Rapp: {self._model.RappSD:.6f}",
-            f"#",
-            f"# kappa2,probability",
+            "#",
+            "# kappa2,probability",
         ]
         try:
             with open(file_path, "w") as f:
                 f.write("\n".join(header) + "\n")
                 for x, y in zip(bins, k2hist):
                     f.write(f"{x:.6f},{y:.6f}\n")
-            dialogs.information(
-                self, "Save Successful", f"Saved to:\n{file_path}"
-            )
+            dialogs.information(self, "Save Successful", f"Saved to:\n{file_path}")
         except Exception as exc:
-            dialogs.error(
-                self, "Save Error", f"An error occurred:\n{exc}"
-            )
+            dialogs.error(self, "Save Error", f"An error occurred:\n{exc}")
 
 
 if __name__ == "__main__":

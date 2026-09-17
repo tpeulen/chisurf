@@ -1,12 +1,11 @@
-import pathlib
 import os
+import pathlib
 import re
 import subprocess
 from datetime import date
-from typing import List, Optional
 
 
-def _run_git(args: List[str], cwd: pathlib.Path) -> Optional[str]:
+def _run_git(args: list[str], cwd: pathlib.Path) -> str | None:
     try:
         out = subprocess.check_output(
             ["git", *args],
@@ -20,7 +19,7 @@ def _run_git(args: List[str], cwd: pathlib.Path) -> Optional[str]:
     return out or None
 
 
-def _normalize_tag_to_pep440(tag: str) -> Optional[str]:
+def _normalize_tag_to_pep440(tag: str) -> str | None:
     if not isinstance(tag, str):
         return None
     tag = tag.strip()
@@ -38,7 +37,7 @@ def _normalize_tag_to_pep440(tag: str) -> Optional[str]:
     m_pre = re.search(r"((?:a|b|rc)\d+)$", tag)
     if m_pre:
         pre_suffix = m_pre.group(1)
-        tag = tag[:m_pre.start()]
+        tag = tag[: m_pre.start()]
 
     # Clean up any trailing dots or dashes before suffix
     tag = tag.rstrip(".-")
@@ -46,18 +45,18 @@ def _normalize_tag_to_pep440(tag: str) -> Optional[str]:
     parts = tag.split(".")
     if not parts:
         return None
-    normalized: List[str] = []
+    normalized: list[str] = []
     for p in parts:
         if p.isdigit():
             normalized.append(str(int(p)))
-    
+
     if not normalized:
         return None
-        
+
     return ".".join(normalized) + pre_suffix
 
 
-def _find_git_root(start: pathlib.Path) -> Optional[pathlib.Path]:
+def _find_git_root(start: pathlib.Path) -> pathlib.Path | None:
     """Walk up from ``start`` looking for a ``.git`` entry (dir or file)."""
     for d in (start, *start.parents):
         if (d / ".git").exists():
@@ -65,9 +64,11 @@ def _find_git_root(start: pathlib.Path) -> Optional[pathlib.Path]:
     return None
 
 
-def _git_version(repo_root: pathlib.Path) -> Optional[str]:
+def _git_version(repo_root: pathlib.Path) -> str | None:
     """Derive a PEP 440 version from git history, or None if unavailable."""
-    desc = _run_git(["describe", "--tags", "--long", "--match", "v[0-9]*", "--dirty"], cwd=repo_root)
+    desc = _run_git(
+        ["describe", "--tags", "--long", "--match", "v[0-9]*", "--dirty"], cwd=repo_root
+    )
     if desc:
         dirty = desc.endswith("-dirty")
         clean_desc = desc[:-6] if dirty else desc
@@ -118,7 +119,6 @@ def _compute_version() -> str:
       ``import chisurf``.
     - As a last resort, fall back to '<YY>.dev0'.
     """
-
     env_version = os.environ.get("CHISURF_VERSION")
     if env_version:
         return env_version.strip()
@@ -137,6 +137,7 @@ def _compute_version() -> str:
     # installed apps: no git subprocess at import time.
     try:
         from chisurf.core._version import __version__ as _static_version
+
         if _static_version:
             return _static_version
     except Exception:
@@ -152,16 +153,16 @@ today = date.today()
 __name__ = "chisurf"
 __author__ = "Thomas-Otavio Peulen"
 __version__ = _compute_version()
-__copyright__ = "Copyright (C) " + str(today.strftime('%y')) + " Thomas-Otavio Peulen"
+__copyright__ = "Copyright (C) " + str(today.strftime("%y")) + " Thomas-Otavio Peulen"
 __credits__ = ["Thomas-Otavio Peulen"]
 __maintainer__ = "Thomas-Otavio Peulen"
 __email__ = "thomas@peulen.xyz"
 __url__ = "https://www.peulen.xyz/downloads/chisurf"
-__license__ = 'GPL2.0'
+__license__ = "GPL2.0"
 __status__ = "Dev" if ("dev" in __version__) else "Release"
 __description__ = """ChiSurf: an interactive global analysis platform for fluorescence data."""
 __app_id__ = "{{ F25DCFFA-1234-4643-BC4F-2C3A20495937 }}"
 LONG_DESCRIPTION = """ChiSurf: an interactive global analysis platform for fluorescence data."""
-help_url = 'https://github.com/Fluorescence-Tools/chisurf/wiki'
-update_url = 'https://github.com/Fluorescence-Tools/chisurf/releases'
+help_url = "https://github.com/Fluorescence-Tools/chisurf/wiki"
+update_url = "https://github.com/Fluorescence-Tools/chisurf/releases"
 setup_icon = "/gui/resources/icons/cs_logo.ico"

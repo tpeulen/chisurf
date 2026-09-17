@@ -6,6 +6,7 @@ Qt backend used to coerce each array at upload time, so the guarantee lived in
 one backend rather than in the scene, and a second backend had no way to know
 what it was being handed.
 """
+
 from __future__ import annotations
 
 import os
@@ -46,9 +47,9 @@ def qapp():
 def scenes(qapp):
     """One assembled Scene per representation, built without a display."""
     from chimol.commands.command import Cmd
+    from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
-    from chimol.core.viewer import Viewer
 
     viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
@@ -90,9 +91,7 @@ def test_packed_arrays_are_upload_ready(scenes, representation):
             )
             assert geom.indices.flags["C_CONTIGUOUS"]
             if geom.indices.size:
-                assert int(geom.indices.max()) < geom.vertex_count, (
-                    f"{obj.id}: index out of range"
-                )
+                assert int(geom.indices.max()) < geom.vertex_count, f"{obj.id}: index out of range"
 
 
 def test_packing_preserves_the_geometry(scenes):

@@ -3,19 +3,15 @@ import chisurf.core.fluorescence.anisotropy.integrals
 from chisurf.core.fluorescence.intensity import nusiance
 
 # Global constants (normally defined elsewhere)
-Bp = 10.0     # Background for parallel signal correction
-Bs = 5.0      # Background for vertical signal correction
-Gfactor = 1.2 # Gain factor to correct detection sensitivity
-l1 = 0.1      # Mixing factor for the parallel channel
-l2 = 0.2      # Mixing factor for the vertical channel
+Bp = 10.0  # Background for parallel signal correction
+Bs = 5.0  # Background for vertical signal correction
+Gfactor = 1.2  # Gain factor to correct detection sensitivity
+l1 = 0.1  # Mixing factor for the parallel channel
+l2 = 0.2  # Mixing factor for the vertical channel
 
 
 @nusiance
-def r_scatter(
-        signal_vertical,
-        signal_parallel,
-        **kwargs
-):
+def r_scatter(signal_vertical, signal_parallel, **kwargs):
     """
     Computes the scatter anisotropy ratio from vertical and parallel signals.
 
@@ -56,15 +52,11 @@ def r_scatter(
     """
     Fp = (signal_parallel - Bp) * Gfactor
     Fs = signal_vertical - Bs
-    return (Fp - Fs) / (Fp * (1. - 3. * l2) + Fs * (2. - 3. * l1))
+    return (Fp - Fs) / (Fp * (1.0 - 3.0 * l2) + Fs * (2.0 - 3.0 * l1))
 
 
 @nusiance
-def r_exp(
-        signal_parallel,
-        signal_vertical,
-        **kwargs
-) -> float:
+def r_exp(signal_parallel, signal_vertical, **kwargs) -> float:
     """
     Computes the experimental anisotropy from parallel and vertical signals.
 
@@ -98,6 +90,4 @@ def r_exp(
     0.3305...
     """
     Fp = signal_parallel * Gfactor
-    return (Fp - signal_vertical) / (Fp * (1. - 3. * l2) + signal_vertical * (2. - 3. * l1))
-
-
+    return (Fp - signal_vertical) / (Fp * (1.0 - 3.0 * l2) + signal_vertical * (2.0 - 3.0 * l1))

@@ -199,8 +199,11 @@ class LutComputeViewModel:
             return
         try:
             self.current_table = _lut.build_linearization_table(
-                counts, int(self.linear_start), int(self.linear_stop),
-                int(self.ntac_required), int(self.noffset),
+                counts,
+                int(self.linear_start),
+                int(self.linear_stop),
+                int(self.ntac_required),
+                int(self.noffset),
             )
         except Exception:
             self.current_table = None
@@ -221,8 +224,12 @@ class LutComputeViewModel:
                 linear_start, linear_stop = self._fallback_region(counts)
         try:
             return _lut.build_linearization_table(
-                counts, int(linear_start), int(linear_stop),
-                int(self.ntac_required), int(self.noffset))
+                counts,
+                int(linear_start),
+                int(linear_stop),
+                int(self.ntac_required),
+                int(self.noffset),
+            )
         except Exception:
             return None
 
@@ -248,8 +255,11 @@ class LutComputeViewModel:
         if self.current_table is None or self.micro is None:
             return None
         corrected = _lut.stochastic_rebin_ntac(
-            self.micro, self.current_table["NTAC_fract"], self.current_table["noffset"],
-            seed=int(self.seed), max_photons=int(self.preview_photons),
+            self.micro,
+            self.current_table["NTAC_fract"],
+            self.current_table["noffset"],
+            seed=int(self.seed),
+            max_photons=int(self.preview_photons),
             rounding="floor" if self.mitigate_wrap else "ceil",
             eps=float(self.eps) if self.mitigate_wrap else 0.0,
         )
@@ -263,9 +273,11 @@ class LutComputeViewModel:
         if not t:
             return "No LUT — load a uniform-illumination file and pick a channel + region."
         ch = f"ch {self.channel} | " if self.channel != "" else ""
-        return (f"{ch}Range [{t['linear_start']}, {t['linear_stop']}) | "
-                f"width={t['linear_stop'] - t['linear_start']} | "
-                f"f={t['f']:.6f} | n_mean={t['n_mean']:.2f}")
+        return (
+            f"{ch}Range [{t['linear_start']}, {t['linear_stop']}) | "
+            f"width={t['linear_stop'] - t['linear_start']} | "
+            f"f={t['f']:.6f} | n_mean={t['n_mean']:.2f}"
+        )
 
     # ── export ──────────────────────────────────────────────────────────
     def save_lut(self, path: str) -> str:
@@ -279,8 +291,11 @@ class LutComputeViewModel:
         if self.current_table is None or self.micro is None:
             raise ValueError("Compute a LUT first.")
         corrected = _lut.stochastic_rebin_ntac(
-            self.micro, self.current_table["NTAC_fract"], self.current_table["noffset"],
-            seed=int(self.seed), rounding="floor" if self.mitigate_wrap else "ceil",
+            self.micro,
+            self.current_table["NTAC_fract"],
+            self.current_table["noffset"],
+            seed=int(self.seed),
+            rounding="floor" if self.mitigate_wrap else "ceil",
             eps=float(self.eps) if self.mitigate_wrap else 0.0,
         )
         ext = os.path.splitext(path)[1].lower()

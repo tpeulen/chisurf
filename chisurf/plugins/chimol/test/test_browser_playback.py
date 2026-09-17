@@ -13,6 +13,7 @@ while ``Page.animating()`` is true. This drives the real page: run a
 trajectory demo, start the movie, wait a moment in *browser* time, and see the
 frame move -- then stop it and see it stay.
 """
+
 from __future__ import annotations
 
 import socket
@@ -37,7 +38,9 @@ def server():
     port = _free_port()
     process = subprocess.Popen(
         [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
-        cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=str(_ROOT),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     for _ in range(100):
         try:

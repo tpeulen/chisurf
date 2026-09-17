@@ -7,8 +7,10 @@ correction handling are pinned here rather than in any single consumer.
 (Split out of ``test_mle_fit2x.py``: that suite covers the deprecated fit2x
 harness, whereas the parser is shared by every MLE consumer.)
 """
-import utils
+
 import pathlib
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -108,6 +110,7 @@ class TestPolarisationSplit:
         assert list(setup.channels_parallel) == list(expected_p)
         assert list(setup.channels_perpendicular) == list(expected_s)
 
+
 class TestPolarizationResolvedFlag:
     """``polarization_resolved`` decides whether there is a VV/VH split at all."""
 
@@ -153,4 +156,3 @@ class TestPolarizationResolvedFlag:
         setup = parse_detector_setup(payload)
         assert setup.channels_parallel == setup.channels == [8, 0, 9, 1]
         assert setup.channels_perpendicular == []
-

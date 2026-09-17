@@ -24,13 +24,15 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-
 from chimol.ui.menus import objects as om
-from chimol.commands.command import Cmd
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "solvated_fragment.pdb"
 )
 
 #: PyMOL spells the atom representation ``spheres`` in its menus, so the internal
@@ -55,6 +57,7 @@ def _verbs(entries, verb):
         if command.startswith(f"{verb} ")
     }
 
+
 from chimol.core.services.representations import REPRESENTATIONS
 
 
@@ -70,15 +73,15 @@ def _scopable() -> list[str]:
     something you do to a selection, and listing it beside `sticks` would say
     otherwise.
     """
-    return [name for name in REPRESENTATIONS.names()
-            if REPRESENTATIONS.scoped(name) is not None]
+    return [name for name in REPRESENTATIONS.names() if REPRESENTATIONS.scoped(name) is not None]
 
 
 def test_every_representation_can_be_shown_from_the_menu():
     """Including the ones ChiMOL has and PyMOL does not."""
     shown = _verbs(om.SHOW_MENU, "show")
     missing = [
-        rep for rep in _scopable()
+        rep
+        for rep in _scopable()
         if rep not in shown and _SPELLED_DIFFERENTLY.get(rep) not in shown
     ]
     assert not missing, f"not reachable from the S menu: {missing}"
@@ -87,7 +90,8 @@ def test_every_representation_can_be_shown_from_the_menu():
 def test_every_representation_can_be_hidden_from_the_menu():
     hidden = _verbs(om.HIDE_MENU, "hide")
     missing = [
-        rep for rep in _scopable()
+        rep
+        for rep in _scopable()
         if rep not in hidden and _SPELLED_DIFFERENTLY.get(rep) not in hidden
     ]
     assert not missing, f"not reachable from the H menu: {missing}"
@@ -102,12 +106,14 @@ def test_the_chimol_only_representations_are_present():
 def test_the_extra_entries_explain_themselves():
     """A representation PyMOL does not have needs a note saying what it is."""
     notes = {}
+
     def walk(entries):
         for entry in entries:
             if getattr(entry, "is_submenu", False):
                 walk(entry.children)
             elif entry.command:
                 notes[entry.label] = entry.note or ""
+
     walk(om.SHOW_MENU)
     for label in ("trace", "nonbonded", "metaball"):
         assert notes.get(label), f"{label} has no explanation"
@@ -155,15 +161,15 @@ def session(qapp):
 def _vertices(viewer):
     scene = viewer.get_current_scene()
     return sum(
-        len(o.geometry.positions) if o.geometry.positions is not None else 0
-        for o in scene.objects
+        len(o.geometry.positions) if o.geometry.positions is not None else 0 for o in scene.objects
     )
 
 
 @pytest.mark.parametrize("representation", ["trace", "nonbonded", "metaball"])
 def test_a_newly_exposed_representation_actually_draws(session, representation):
     """Adding a menu entry for something that draws nothing would be worse than
-    leaving it out."""
+    leaving it out.
+    """
     win, do, errors = session
     do("hide everything")
     empty = _vertices(win.viewer)
@@ -177,7 +183,8 @@ def test_a_newly_exposed_representation_actually_draws(session, representation):
 # --------------------------------------------------------------------------- #
 def test_the_grid_spacing_follows_the_scene(session):
     """A fixed spacing gives four lines on a peptide and four hundred on a
-    ribosome; the second is a grey sheet that buries the molecule."""
+    ribosome; the second is a grey sheet that buries the molecule.
+    """
     win, _do, _errors = session
     renderer = win.viewer.renderer
 
@@ -196,14 +203,13 @@ def test_the_grid_line_count_is_bounded(session):
         assert draw is not None
         # Two vertices per line, two directions.
         lines = len(draw.positions) // 2
-        assert lines <= 8 * renderer.GRID_LINES_ACROSS, (
-            f"radius {radius} gives {lines} lines"
-        )
+        assert lines <= 8 * renderer.GRID_LINES_ACROSS, f"radius {radius} gives {lines} lines"
 
 
 def test_the_grid_is_translucent(session):
     """It is a reference, not a subject: at full strength it competes with the
-    molecule for attention."""
+    molecule for attention.
+    """
     win, _do, _errors = session
     draw = win.viewer.renderer._build_grid_draw_data(100.0)
     assert draw is not None
@@ -297,8 +303,7 @@ def test_the_disabled_entries_are_the_inventory():
     )
     closed = DISABLED_ENTRIES - found
     assert not closed, (
-        f"these entries now have commands: {sorted(closed)} -- strike them "
-        "from DISABLED_ENTRIES"
+        f"these entries now have commands: {sorted(closed)} -- strike them from DISABLED_ENTRIES"
     )
 
 

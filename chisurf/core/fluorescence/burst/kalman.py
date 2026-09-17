@@ -116,8 +116,15 @@ def kalman_filter(
     """
     n = len(tttr)
     start_stop = kalman_burst_search(
-        tttr, min_ph=min_ph, dt=dt, q=q, r_scale=r_scale, z_thresh=z_thresh,
-        min_len=min_len, merge_gap=merge_gap, per_channel=per_channel,
+        tttr,
+        min_ph=min_ph,
+        dt=dt,
+        q=q,
+        r_scale=r_scale,
+        z_thresh=z_thresh,
+        min_len=min_len,
+        merge_gap=merge_gap,
+        per_channel=per_channel,
     )
     if len(start_stop) == 0:
         return np.zeros(n, dtype=bool)

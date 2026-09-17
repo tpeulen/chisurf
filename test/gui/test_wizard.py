@@ -1,7 +1,6 @@
 import pytest
 
 
-
 def test_init_chisurf_onboarding_wizard_import():
     """
     Ensure the onboarding wizard plugin can be imported without errors.

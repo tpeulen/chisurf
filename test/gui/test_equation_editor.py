@@ -1,4 +1,5 @@
 """GUI tests for the general EquationTableEditor widget."""
+
 import os
 
 import pytest
@@ -29,11 +30,13 @@ def test_text_is_yaml(qapp):
 
 def test_valid_and_invalid_rows_flagged(qapp):
     ed = EquationTableEditor(names_provider=_names)
-    ed.set_equations([
-        {"good": "amplitude * exp(-x0**2 / tau)"},
-        {"unknown": "amplitude + nope"},
-        {"unsafe": "amplitude.__class__"},
-    ])
+    ed.set_equations(
+        [
+            {"good": "amplitude * exp(-x0**2 / tau)"},
+            {"unknown": "amplitude + nope"},
+            {"unsafe": "amplitude.__class__"},
+        ]
+    )
     assert ed._table.item(0, 2).text() == "✓"
     assert ed._table.item(1, 2).text() == "✗"
     assert "nope" in ed._table.item(1, 2).toolTip()

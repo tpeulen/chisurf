@@ -9,15 +9,9 @@ pytest.importorskip("qtpy")
 pytest.importorskip("pyqtgraph")
 
 _MODULE_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "chisurf"
-    / "plugins"
-    / "vv_vh_g_factor"
-    / "__init__.py"
+    Path(__file__).resolve().parents[3] / "chisurf" / "plugins" / "vv_vh_g_factor" / "__init__.py"
 )
-_SPEC = importlib.util.spec_from_file_location(
-    "chisurf_plugins_vv_vh_g_factor", _MODULE_PATH
-)
+_SPEC = importlib.util.spec_from_file_location("chisurf_plugins_vv_vh_g_factor", _MODULE_PATH)
 _MOD = importlib.util.module_from_spec(_SPEC)
 assert _SPEC is not None and _SPEC.loader is not None
 sys.modules[_SPEC.name] = _MOD
@@ -55,4 +49,3 @@ def test_estimate_lifetime_first_moment_returns_weighted_mean() -> None:
     tau = estimate_lifetime_first_moment(np.array(t), np.array(i))
 
     assert tau == pytest.approx(0.5, rel=1e-12, abs=1e-12)
-

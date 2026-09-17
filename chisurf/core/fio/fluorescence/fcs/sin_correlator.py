@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import csv
 import pathlib
-from typing import List, Tuple, Union
+from typing import Union
 
 import numpy as np
 
-import chisurf as cs
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
-
 ArrayLike = np.ndarray
-TraceSpec = Union[ArrayLike, List[ArrayLike], None]
+TraceSpec = Union[ArrayLike, list[ArrayLike], None]
 
 
 def _detect_mode_tokens(lines: typing.List[str]) -> typing.List[str]:
@@ -22,7 +20,6 @@ def _detect_mode_tokens(lines: typing.List[str]) -> typing.List[str]:
     ("Single Auto", "Quad", ...) or integer channel indices on this
     line. We only need the tokens to decide between the two layouts.
     """
-
     for raw in lines:
         line = raw.strip()
         if line.lower().startswith("mode") and "=" in line:
@@ -30,7 +27,9 @@ def _detect_mode_tokens(lines: typing.List[str]) -> typing.List[str]:
     raise ValueError("No 'Mode=' line found in SIN file")
 
 
-def _parse_integer_mode(lines: typing.List[str], mode_values: typing.List[int]) -> Tuple[List[ArrayLike], List[TraceSpec], List[str]]:
+def _parse_integer_mode(
+    lines: typing.List[str], mode_values: typing.List[int]
+) -> tuple[list[ArrayLike], list[TraceSpec], list[str]]:
     """Parse correlator.com SIN files in *integer mode* layout.
 
     The integer mode encodes channel indices directly in ``Mode=`` and
@@ -38,7 +37,6 @@ def _parse_integer_mode(lines: typing.List[str], mode_values: typing.List[int]) 
     ``[CorrelationFunction]``. Intensities are collected under
     ``[IntensityHistory]``.
     """
-
     corr_rows: typing.List[typing.List[str]] = []
     intensity_rows: typing.List[typing.List[str]] = []
     section = ""
@@ -76,9 +74,9 @@ def _parse_integer_mode(lines: typing.List[str], mode_values: typing.List[int]) 
     if corr_arr.shape[1] > 1:
         corr_arr[:, 1:] -= 1.0
 
-    correlations: List[ArrayLike] = []
-    traces: List[TraceSpec] = []
-    labels: List[str] = []
+    correlations: list[ArrayLike] = []
+    traces: list[TraceSpec] = []
+    labels: list[str] = []
 
     if len(mode_values) % 2 != 0:
         raise ValueError("SIN integer-mode 'Mode' line must contain an even number of entries")
@@ -123,14 +121,13 @@ def _parse_integer_mode(lines: typing.List[str], mode_values: typing.List[int]) 
     return correlations, traces, labels
 
 
-def _parse_old_mode(lines: typing.List[str]) -> Tuple[List[ArrayLike], List[TraceSpec], List[str]]:
+def _parse_old_mode(lines: typing.List[str]) -> tuple[list[ArrayLike], list[TraceSpec], list[str]]:
     """Parse the original text SIN layout used by correlator.com.
 
     Correlation data is provided in a ``[CorrelationFunction]`` block and
     intensity traces in ``[IntensityHistory]``. Depending on the
     acquisition mode, there can be one or two traces.
     """
-
     start_c = end_c = start_t = end_t = None
     mode_str = ""
 
@@ -149,7 +146,9 @@ def _parse_old_mode(lines: typing.List[str]) -> Tuple[List[ArrayLike], List[Trac
             end_t = idx - 2
 
     if start_c is None or end_c is None:
-        raise ValueError("SIN file missing [CorrelationFunction] or [RawCorrelationFunction] section")
+        raise ValueError(
+            "SIN file missing [CorrelationFunction] or [RawCorrelationFunction] section"
+        )
     if start_t is None or end_t is None:
         raise ValueError("SIN file missing [IntensityHistory] or [Histogram] section")
 
@@ -159,12 +158,12 @@ def _parse_old_mode(lines: typing.List[str]) -> Tuple[List[ArrayLike], List[Trac
     timefactor = 1000.0  # seconds -> ms
     timedivfac = 1000.0  # Hz -> kHz
 
-    readcorr = csv.reader(corr_lines, delimiter="\t")
-    readtrace = csv.reader(trace_lines, delimiter="\t")
+    csv.reader(corr_lines, delimiter="\t")
+    csv.reader(trace_lines, delimiter="\t")
 
-    correlations: List[ArrayLike] = []
-    traces: List[TraceSpec] = []
-    labels: List[str] = []
+    correlations: list[ArrayLike] = []
+    traces: list[TraceSpec] = []
+    labels: list[str] = []
 
     mode_str = mode_str.strip()
 
@@ -277,7 +276,6 @@ def _parse_old_mode(lines: typing.List[str]) -> Tuple[List[ArrayLike], List[Trac
 
 def _estimate_trace_stats(trace: TraceSpec) -> typing.Tuple[float, float, np.ndarray, np.ndarray]:
     """Return (acquisition_time_s, mean_count_rate_khz, t_ms, i_khz)."""
-
     if trace is None:
         return 1.0, 1.0, np.asarray([], dtype=float), np.asarray([], dtype=float)
 
@@ -313,10 +311,7 @@ def _estimate_trace_stats(trace: TraceSpec) -> typing.Tuple[float, float, np.nda
     return acq_s, mean_cr_khz, t_ms, i_khz
 
 
-def read_sin(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_sin(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read correlator.com ``.SIN`` FCS files into ChiSurf.
 
     This is a native implementation based on the documented correlator.com
@@ -330,7 +325,6 @@ def read_sin(
     or :func:`cs.core.fluorescence.fcs.compute_weights` can be applied
     consistently.
     """
-
     path = pathlib.Path(filename)
     if verbose:
         print("Reading correlator.com SIN file:", path)

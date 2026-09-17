@@ -1,5 +1,5 @@
-import sys
 import pathlib
+import sys
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
@@ -15,7 +15,9 @@ hardcoded_url = "https://www.peulen.xyz/downloads/chisurf/conda"
 if updater.update_url == hardcoded_url:
     print("SUCCESS: The updater is using the hardcoded URL as expected.")
 else:
-    print(f"ERROR: The updater is not using the hardcoded URL. Expected '{hardcoded_url}', got '{updater.update_url}'")
+    print(
+        f"ERROR: The updater is not using the hardcoded URL. Expected '{hardcoded_url}', got '{updater.update_url}'"
+    )
 
 # Test 2: Try to create an updater instance with a custom URL (should be ignored)
 custom_url = "https://example.com/custom"
@@ -25,7 +27,9 @@ print(f"\nTest 2: Update URL with custom parameter: {custom_updater.update_url}"
 if custom_updater.update_url == hardcoded_url:
     print("SUCCESS: The updater ignores custom URLs and uses the hardcoded URL.")
 else:
-    print(f"ERROR: The updater is using a custom URL. Expected '{hardcoded_url}', got '{custom_updater.update_url}'")
+    print(
+        f"ERROR: The updater is using a custom URL. Expected '{hardcoded_url}', got '{custom_updater.update_url}'"
+    )
 
 # Test 3: Check if the _get_update_info method uses the hardcoded URL
 print("\nTest 3: Checking if _get_update_info uses the hardcoded URL...")

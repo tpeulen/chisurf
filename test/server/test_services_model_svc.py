@@ -9,7 +9,6 @@ from chisurf.server.session import SessionState
 
 
 class TestModelComponentRemove:
-
     def test_remove_fit_not_found(self):
         state = SessionState()
         result = model_component_remove(state, component_index=0)

@@ -14,7 +14,6 @@ from chisurf.gui.widgets.node_editor.widgets.widget_palette import WidgetPalette
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.lightpath_simulator.api.client import LightPathClient
 from chisurf.plugins.core.lightpath_simulator.core.workflow import resolve_db_path
-from chisurf.plugins.core.lightpath_simulator.gui.emtk_view import BeampathContent
 from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
     OPTICAL_PRESETS_DIR,
     LightPathEasyDialog,
@@ -25,6 +24,7 @@ from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
     normalize_lightpath_graph,
     save_easy_preset,
 )
+from chisurf.plugins.core.lightpath_simulator.gui.emtk_view import BeampathContent
 from chisurf.plugins.core.lightpath_simulator.gui.node_types import (
     build_optical_registry,
     optical_registry,
@@ -55,6 +55,7 @@ class _ProbeInfoLoader(QtCore.QObject):
         finally:
             if client is not None:
                 client.close()
+
 
 def _deserialize_numpy(obj: Any) -> Any:
     """Recursively converts lists of numbers back into NumPy arrays for plotting."""
@@ -92,7 +93,7 @@ def _json_safe(obj: Any) -> Any:
 
 class LightPathSimulatorWidget(ChisurfDockTool):
     """Main window for defining and simulating an optical light path."""
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Light Path Simulator")
@@ -105,14 +106,14 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         self.probes = []
         self._probe_loader_thread = None
         self._probe_loader = None
-        
+
         # Initialize the RPC client used by interactive commands.  Probe metadata
         # is loaded asynchronously below so opening the plugin never blocks on ZMQ.
         self.client = self.make_mmfdb_client()
-        
+
         # Ensure our node registry is populated
         build_optical_registry()
-        
+
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         layout = QtWidgets.QVBoxLayout(central)
@@ -131,9 +132,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         graph_layout = QtWidgets.QVBoxLayout(self.graph_panel)
         graph_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.graph_widget = NodeGraphWidget(
-            self.graph_panel, content=BeampathContent(self.probes)
-        )
+        self.graph_widget = NodeGraphWidget(self.graph_panel, content=BeampathContent(self.probes))
         graph_layout.addWidget(self.graph_widget)
 
         self.components_panel = QtWidgets.QWidget(self.dock_area)
@@ -157,7 +156,9 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         output_layout.setContentsMargins(4, 4, 4, 4)
         output_layout.setSpacing(4)
 
-        self.btn_calculate = QtWidgets.QPushButton("Calculate Emission Intensity", self.output_panel)
+        self.btn_calculate = QtWidgets.QPushButton(
+            "Calculate Emission Intensity", self.output_panel
+        )
         self.btn_calculate.clicked.connect(self.calculate_crosstalk)
         output_layout.addWidget(self.btn_calculate)
 
@@ -291,7 +292,9 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         """Save the custom dock layout."""
         try:
             settings = self._settings()
-            settings.setValue("dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True))
+            settings.setValue(
+                "dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True)
+            )
             settings.sync()
         except Exception as exc:
             logger.error("Failed to save lightpath dock layout: %s", exc)
@@ -370,7 +373,8 @@ class LightPathSimulatorWidget(ChisurfDockTool):
     def _open_easy_mode_dialog(self):
         """Open the easy mode as a standalone dialog."""
         dlg = LightPathEasyDialog(
-            self.probes, self,
+            self.probes,
+            self,
             db_path=resolve_db_path(),
         )
         if dlg.exec_():
@@ -386,7 +390,9 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                             if n["type"] == "sample":
                                 n["config"]["dye_properties"] = dyes
                                 n["config"]["probe_ids"] = [_normalize_pid(p) for p in dyes]
-                                n["config"]["probe_id"] = _normalize_pid(next(iter(dyes))) if dyes else None
+                                n["config"]["probe_id"] = (
+                                    _normalize_pid(next(iter(dyes))) if dyes else None
+                                )
                             if n["type"] == "forster_radius":
                                 n["config"]["kappa2"] = cfg.get("kappa2", 0.6667)
                                 n["config"]["n"] = cfg.get("n", 1.33)
@@ -402,11 +408,11 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         easy_act.triggered.connect(self._open_easy_mode_dialog)
         file_menu.addAction(easy_act)
         file_menu.addSeparator()
-        
+
         export_act = QtWidgets.QAction("Export Instrument Setting (JSON)...", self)
         export_act.triggered.connect(self._on_export_json)
         file_menu.addAction(export_act)
-        
+
         file_menu.addSeparator()
 
         save_mmfdb_act = QtWidgets.QAction("Save Simulation to MMFDB...", self)
@@ -422,7 +428,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         save_act = QtWidgets.QAction("Save Graph...", self)
         save_act.triggered.connect(self._on_save_graph)
         file_menu.addAction(save_act)
-        
+
         load_act = QtWidgets.QAction("Load Graph...", self)
         load_act.triggered.connect(self._on_load_graph)
         file_menu.addAction(load_act)
@@ -435,7 +441,8 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
     def _on_export_json(self):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export Instrument Setting", "", "JSON (*.json)")
+            self, "Export Instrument Setting", "", "JSON (*.json)"
+        )
         if path:
             self.propagate_graph()
             if self._last_instrument_setting:
@@ -445,12 +452,15 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                 except Exception as e:
                     dialogs.error(self, "Export Failed", f"Could not save file:\n{e}")
             else:
-                dialogs.warning(self, "Export Warning", "No instrument setting has been simulated yet.")
+                dialogs.warning(
+                    self, "Export Warning", "No instrument setting has been simulated yet."
+                )
 
     def _on_save_optical_preset(self):
         """Save the current graph as a named preset for use in easy mode."""
         name, ok = QtWidgets.QInputDialog.getText(
-            self, "Save Optical Path Preset",
+            self,
+            "Save Optical Path Preset",
             "Preset name:",
         )
         if not ok or not name:
@@ -469,8 +479,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             self.easy_mode_widget._refresh_preset_list()
 
     def _on_save_graph(self):
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save Graph", "", "JSON (*.json)")
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Graph", "", "JSON (*.json)")
         if path:
             try:
                 state = _json_safe(self.graph_widget.graph_dict())
@@ -480,11 +489,10 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                 dialogs.error(self, "Save Failed", f"Could not save graph:\n{e}")
 
     def _on_load_graph(self):
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Open Graph", "", "JSON (*.json)")
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open Graph", "", "JSON (*.json)")
         if path:
             try:
-                with open(path, "r") as f:
+                with open(path) as f:
                     state = json.load(f)
                 self.graph_widget.load_graph_dict(normalize_lightpath_graph(state))
                 self.propagate_graph()
@@ -616,12 +624,12 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         group_item = QtWidgets.QTreeWidgetItem(["Optical Path"])
         group_item.setFlags(group_item.flags() & ~QtCore.Qt.ItemIsSelectable)
         self.palette.addTopLevelItem(group_item)
-        
+
         for n_id, n_type in optical_registry.all_types().items():
             child = QtWidgets.QTreeWidgetItem([n_type.title])
             child.setData(0, QtCore.Qt.UserRole, n_id)
             group_item.addChild(child)
-            
+
         group_item.setExpanded(True)
 
     def _on_palette_node_type_activated(self, node_type_id: str):
@@ -724,17 +732,22 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                 node_char = ns_dict.get("node_char")
                 if isinstance(node_char, list):
                     if len(node_char) == 2 and isinstance(node_char[0], list):
-                        node_char = (np.array(node_char[0], dtype=np.float64), np.array(node_char[1], dtype=np.float64))
+                        node_char = (
+                            np.array(node_char[0], dtype=np.float64),
+                            np.array(node_char[1], dtype=np.float64),
+                        )
                     else:
                         node_char = np.array(node_char, dtype=np.float64)
 
-                node.config.update({
-                    "_input_spectra": input_spectra,
-                    "_output_spectra": output_spectra,
-                    "_node_char": node_char,
-                    "_last_signals": ns_dict.get("config", {}).get("_last_signals", {}),
-                    "_last_results": ns_dict.get("config", {}).get("_last_results", [])
-                })
+                node.config.update(
+                    {
+                        "_input_spectra": input_spectra,
+                        "_output_spectra": output_spectra,
+                        "_node_char": node_char,
+                        "_last_signals": ns_dict.get("config", {}).get("_last_signals", {}),
+                        "_last_results": ns_dict.get("config", {}).get("_last_results", []),
+                    }
+                )
 
             self.graph_widget.host.update()
             self._sync_easy_mode_from_graph()
@@ -771,7 +784,9 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             )
 
             self._optical_parameters = register_lightpath_parameters(
-                matrices, owner_id="lightpath", label="Optical path",
+                matrices,
+                owner_id="lightpath",
+                label="Optical path",
             )
         except Exception:
             logger.debug("could not publish the optical path parameters", exc_info=True)
@@ -782,14 +797,16 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         self.results_table.setRowCount(len(row_data))
         self.results_table.setColumnCount(len(headers))
         self.results_table.setHorizontalHeaderLabels(headers)
-        self.results_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.results_table.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeToContents
+        )
         self.results_table.horizontalHeader().setStretchLastSection(True)
-        
+
         for r_idx, row in enumerate(row_data):
             self.results_table.setItem(r_idx, 0, QtWidgets.QTableWidgetItem(row["laser"]))
             self.results_table.setItem(r_idx, 1, QtWidgets.QTableWidgetItem(row["detector"]))
             self.results_table.setItem(r_idx, 2, QtWidgets.QTableWidgetItem(row["dye"]))
-            
+
             val_item = QtWidgets.QTableWidgetItem(f"{row['intensity']:.4e}")
             val_item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self.results_table.setItem(r_idx, 3, val_item)
@@ -934,9 +951,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         em_splitters = cfg.get("emission_splitters", [])
         for i, sp in enumerate(splitters[1:], start=1):
             if i - 1 < len(em_splitters):
-                sp.config["probe_id"] = _normalize_pid(
-                    em_splitters[i - 1].get("probe_id")
-                )
+                sp.config["probe_id"] = _normalize_pid(em_splitters[i - 1].get("probe_id"))
                 sp.config["splitter_type"] = em_splitters[i - 1].get("type", "Dichroic")
 
         # Detectors — sort by position
@@ -947,9 +962,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         easy_dets = cfg.get("detectors", [])
         for i, det in enumerate(detectors):
             if i < len(easy_dets):
-                det.config["detector_name"] = easy_dets[i].get(
-                    "name", f"Channel {i + 1}"
-                )
+                det.config["detector_name"] = easy_dets[i].get("name", f"Channel {i + 1}")
 
         # Filters — sort by position; update probe_id from detector config
         filters = sorted(
@@ -986,9 +999,19 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                 red_dye_id = i_id
             if "561lp" in name_lower and not dichroic_id and p.get("has_trans"):
                 dichroic_id = i_id
-            if "bp" in name_lower and "500" in name_lower and not green_filter_id and p.get("has_trans"):
+            if (
+                "bp" in name_lower
+                and "500" in name_lower
+                and not green_filter_id
+                and p.get("has_trans")
+            ):
                 green_filter_id = i_id
-            if "bp" in name_lower and "650" in name_lower and not red_filter_id and p.get("has_trans"):
+            if (
+                "bp" in name_lower
+                and "650" in name_lower
+                and not red_filter_id
+                and p.get("has_trans")
+            ):
                 red_filter_id = i_id
 
         # Positions are screen pixels here, not just grid units: the view is
@@ -1004,19 +1027,24 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         # 2. Sample
         sample = self._new_optical_node("sample", (300.0, 260.0))
         dyes = []
-        if green_dye_id: dyes.append(green_dye_id)
-        if red_dye_id: dyes.append(red_dye_id)
-        if dyes: sample.config["probe_ids"] = dyes
+        if green_dye_id:
+            dyes.append(green_dye_id)
+        if red_dye_id:
+            dyes.append(red_dye_id)
+        if dyes:
+            sample.config["probe_ids"] = dyes
         document.add_node(sample)
 
         # 3. Splitter
         dichroic = self._new_optical_node("splitter", (570.0, 260.0))
-        if dichroic_id: dichroic.config["probe_id"] = dichroic_id
+        if dichroic_id:
+            dichroic.config["probe_id"] = dichroic_id
         document.add_node(dichroic)
 
         # 4. Red Path (Transmitted if > 561nm)
         red_f = self._new_optical_node("filter", (840.0, 90.0), node_id="red_filter")
-        if red_filter_id: red_f.config["probe_id"] = red_filter_id
+        if red_filter_id:
+            red_f.config["probe_id"] = red_filter_id
         document.add_node(red_f)
 
         red_det = self._new_optical_node("detector", (1110.0, 90.0), node_id="red_detector")
@@ -1025,7 +1053,8 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
         # 5. Green Path (Reflected if < 561nm)
         green_f = self._new_optical_node("filter", (840.0, 430.0), node_id="green_filter")
-        if green_filter_id: green_f.config["probe_id"] = green_filter_id
+        if green_filter_id:
+            green_f.config["probe_id"] = green_filter_id
         document.add_node(green_f)
 
         green_det = self._new_optical_node("detector", (1110.0, 430.0), node_id="green_detector")
@@ -1044,14 +1073,14 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         # inputs-then-outputs list, which is why these are not the same numbers
         # the Qt version used.
         connect(ls, 0, sample, 0)
-        connect(sample, 0, dichroic, 0)       # Sample "Out" -> Splitter "In"
-        connect(sample, 1, forster, 0)        # Sample "Dye Data" -> Forster "Dye Data"
+        connect(sample, 0, dichroic, 0)  # Sample "Out" -> Splitter "In"
+        connect(sample, 1, forster, 0)  # Sample "Dye Data" -> Forster "Dye Data"
 
         # A 561LP dummy transmits red (long pass) and reflects green (short)
-        connect(dichroic, 0, red_f, 0)        # Splitter "Transmission" -> Red Filter
+        connect(dichroic, 0, red_f, 0)  # Splitter "Transmission" -> Red Filter
         connect(red_f, 0, red_det, 0)
 
-        connect(dichroic, 1, green_f, 0)      # Splitter "Reflection" -> Green Filter
+        connect(dichroic, 1, green_f, 0)  # Splitter "Reflection" -> Green Filter
         connect(green_f, 0, green_det, 0)
 
         # Not a fit yet: the fit needs one measured paint (a node has no size

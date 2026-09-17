@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from . import pose_codec
 
@@ -23,8 +22,13 @@ PROJECT_VERSION = 2
 
 #: Keys under ``params`` understood by the docking operation.
 _PARAM_KEYS = (
-    "n_frames", "mc_steps", "n_best", "fixed_body", "sigma_da",
-    "simulated_annealing", "score_set",
+    "n_frames",
+    "mc_steps",
+    "n_best",
+    "fixed_body",
+    "sigma_da",
+    "simulated_annealing",
+    "score_set",
 )
 
 
@@ -76,21 +80,21 @@ class DockingProject:
         Path the project was loaded from / last saved to (empty if unsaved).
     """
 
-    pdb_paths: List[str] = field(default_factory=list)
+    pdb_paths: list[str] = field(default_factory=list)
     fps_json: str = ""
     output_dir: str = ""
     operation: str = "dock"
     method: str = "minimize"
     score_set: str = ""
-    params: Dict = field(default_factory=dict)
-    poses: List[Dict] = field(default_factory=list)
-    pose_meta: Dict = field(default_factory=dict)
+    params: dict = field(default_factory=dict)
+    poses: list[dict] = field(default_factory=list)
+    pose_meta: dict = field(default_factory=dict)
     name: str = ""
     description: str = ""
     path: str = ""
 
     # -- requests ----------------------------------------------------------
-    def to_dock_request(self) -> Dict:
+    def to_dock_request(self) -> dict:
         """Return a dict accepted by :func:`...api.operations.dock`."""
         req = {
             "pdb_paths": list(self.pdb_paths),
@@ -122,7 +126,7 @@ def load_docking_project(path: str) -> DockingProject:
     DockingProject
     """
     path = os.path.abspath(path)
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     base = os.path.dirname(path)
 
@@ -132,8 +136,8 @@ def load_docking_project(path: str) -> DockingProject:
 
     params = dict(data.get("params") or {})
 
-    poses: List[Dict] = []
-    pose_meta: Dict = {}
+    poses: list[dict] = []
+    pose_meta: dict = {}
     blob = data.get("poses")
     if blob:
         decoded = pose_codec.decode_poses(blob)
@@ -159,15 +163,15 @@ def load_docking_project(path: str) -> DockingProject:
 def save_docking_project(
     path: str,
     *,
-    pdb_paths: List[str],
+    pdb_paths: list[str],
     fps_json: str,
     output_dir: str,
     operation: str = "dock",
     method: str = "minimize",
     score_set: str = "",
-    params: Dict | None = None,
-    poses: Optional[List[Dict]] = None,
-    pose_score: Optional[float] = None,
+    params: dict | None = None,
+    poses: list[dict] | None = None,
+    pose_score: float | None = None,
     pose_method: str = "",
     name: str = "",
     description: str = "",
@@ -207,7 +211,8 @@ def save_docking_project(
     }
     if poses:
         payload["poses"] = pose_codec.encode_poses(
-            list(poses), score=pose_score, method=pose_method or method)
+            list(poses), score=pose_score, method=pose_method or method
+        )
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
     return path

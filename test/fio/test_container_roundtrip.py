@@ -26,8 +26,13 @@ from chisurf.core.fio.pto import Measurement
 
 DATA = (
     Path(__file__).resolve().parents[2]
-    / "chisurf" / "plugins" / "burst" / "burst_selection"
-    / "tests" / "data" / "bh_spc132_sm_dna"
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 SPC = DATA / "m000.spc"
 
@@ -45,9 +50,7 @@ def _adversarial_table():
             "Last Photon": np.array([0, 2022, 16_777_219, 2**40 + 7], dtype=np.int64),
             # Durations and times: the values that actually went wrong, plus a
             # denormal and a very large one.
-            "Duration (ms)": np.array(
-                [0.0, 11986.712985600001, 5e-324, 1.7976931348623157e308]
-            ),
+            "Duration (ms)": np.array([0.0, 11986.712985600001, 5e-324, 1.7976931348623157e308]),
             "Mean Macro Time (ms)": np.array(
                 [7136629033695.356, 26747632640574.285, -0.0, 0.1 + 0.2]
             ),
@@ -103,8 +106,9 @@ def test_the_values_that_went_wrong_survive_the_round_trip(tmp_path: Path):
     source.write_bytes(SPC.read_bytes())
     container = pto_api.convert(source)
 
-    suspicious = np.array([7136629033695.356, 13013676910103.46,
-                           22770159362442.85, 26747632640574.285])
+    suspicious = np.array(
+        [7136629033695.356, 13013676910103.46, 22770159362442.85, 26747632640574.285]
+    )
     with Measurement.open(container, writable=True) as m:
         m.put_table(
             "probe",
@@ -131,12 +135,8 @@ def test_the_photon_stream_reads_back_the_same_from_a_container(tmp_path: Path):
     through = staging.open_tttr(str(container))
 
     assert len(through) == len(direct)
-    np.testing.assert_array_equal(
-        np.asarray(through.macro_times), np.asarray(direct.macro_times)
-    )
-    np.testing.assert_array_equal(
-        np.asarray(through.micro_times), np.asarray(direct.micro_times)
-    )
+    np.testing.assert_array_equal(np.asarray(through.macro_times), np.asarray(direct.macro_times))
+    np.testing.assert_array_equal(np.asarray(through.micro_times), np.asarray(direct.micro_times))
     np.testing.assert_array_equal(
         np.asarray(through.routing_channels), np.asarray(direct.routing_channels)
     )
@@ -169,7 +169,6 @@ def test_a_merged_container_reads_back_as_the_files_concatenated(tmp_path: Path)
     resolution = merged.header.macro_time_resolution
     span = (macro.max() - macro.min()) * resolution
     longest = max(
-        float(np.ptp(np.asarray(p.macro_times, dtype=np.int64))) * resolution
-        for p in parts
+        float(np.ptp(np.asarray(p.macro_times, dtype=np.int64))) * resolution for p in parts
     )
     assert span > longest, "the merged span is no longer than one file's"

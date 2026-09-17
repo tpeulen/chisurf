@@ -1,8 +1,8 @@
 """Tests for probe verification/approval workflow (PRD-06 Task 8)."""
+
 from __future__ import annotations
 
 import pytest
-
 from mmfdb.repository import MFDatabase
 
 
@@ -17,7 +17,9 @@ def test_approve_probe(db):
     db.conn.execute(
         "INSERT INTO probes (chromophore_name, verification_status, is_curated) VALUES ('TestProbe', 'unverified', 0)"
     )
-    row = db.conn.execute("SELECT probe_id FROM probes WHERE chromophore_name = 'TestProbe'").fetchone()
+    row = db.conn.execute(
+        "SELECT probe_id FROM probes WHERE chromophore_name = 'TestProbe'"
+    ).fetchone()
     probe_id = int(row["probe_id"])
 
     db.approve_probe(probe_id, verified_by="test_user")
@@ -34,7 +36,9 @@ def test_reject_probe(db):
     db.conn.execute(
         "INSERT INTO probes (chromophore_name, verification_status, is_curated) VALUES ('BadProbe', 'unverified', 0)"
     )
-    row = db.conn.execute("SELECT probe_id FROM probes WHERE chromophore_name = 'BadProbe'").fetchone()
+    row = db.conn.execute(
+        "SELECT probe_id FROM probes WHERE chromophore_name = 'BadProbe'"
+    ).fetchone()
     probe_id = int(row["probe_id"])
 
     db.reject_probe(probe_id, verified_by="test_user")
@@ -49,7 +53,9 @@ def test_set_probe_quality(db):
     db.conn.execute(
         "INSERT INTO probes (chromophore_name, verification_status) VALUES ('QProbe', 'unverified')"
     )
-    row = db.conn.execute("SELECT probe_id FROM probes WHERE chromophore_name = 'QProbe'").fetchone()
+    row = db.conn.execute(
+        "SELECT probe_id FROM probes WHERE chromophore_name = 'QProbe'"
+    ).fetchone()
     probe_id = int(row["probe_id"])
 
     db.set_probe_quality(probe_id, "high")

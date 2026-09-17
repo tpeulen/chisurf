@@ -11,6 +11,7 @@ walk the real add-fit path for each pure PDA model:
 
 A synthetic ``data.pda`` is built so no TTTR files or heavy I/O are needed.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -120,7 +121,10 @@ def test_pda_model_editor_renders_and_computes(qapp, model_path):
 
     # (b) editor is not a row of empty titled boxes
     from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-    table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
+
+    table_rows = sum(
+        t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget)
+    )
     assert len(editor.parameter_widgets) + table_rows > 3, "parameter groups rendered empty"
 
     # (c) every parameter-group section resolves to a group that has parameters
@@ -284,7 +288,8 @@ def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
         parameter.value = value
     fit_dyn.update()
     assert chi2r_fit <= chi2r_truth + 1e-9, (
-        f"the fit stopped above the truth (chi2r {chi2r_fit:.3f} > {chi2r_truth:.3f})")
+        f"the fit stopped above the truth (chi2r {chi2r_fit:.3f} > {chi2r_truth:.3f})"
+    )
 
     # (2) the static limit cannot follow, even re-optimising both distances:
     # it pulls them together to imitate dynamic averaging and still fails.
@@ -310,11 +315,13 @@ def test_three_state_mc_gillespie_equilibrium():
     )
 
     # K[target, source]; symmetric-ish 3-state scheme.
-    K = np.array([
-        [0.0, 200.0, 50.0],
-        [150.0, 0.0, 300.0],
-        [100.0, 250.0, 0.0],
-    ])
+    K = np.array(
+        [
+            [0.0, 200.0, 50.0],
+            [150.0, 0.0, 300.0],
+            [100.0, 250.0, 0.0],
+        ]
+    )
     p_eq = equilibrium_populations(K)
     assert abs(p_eq.sum() - 1.0) < 1e-9 and np.all(p_eq >= 0)
 
@@ -348,8 +355,17 @@ def test_pda_corrected_axes_e_and_r(qapp):
     fit = _make_pda_fit(model_class)
     fit.model.update()
     for axis, lo, hi in [("E", 0.0, 1.0), ("R", 20.0, 100.0)]:
-        curves = get_pda_distribution(fit, {"x_max": hi, "x_min": lo, "log_x": False,
-                                            "n_bins": 41, "n_min": 10, "histogram": axis})
+        curves = get_pda_distribution(
+            fit,
+            {
+                "x_max": hi,
+                "x_min": lo,
+                "log_x": False,
+                "n_bins": 41,
+                "n_min": 10,
+                "histogram": axis,
+            },
+        )
         assert curves, f"axis {axis} produced no curves"
         x = np.asarray(curves[0][1])
         assert x.size > 0 and np.all(np.isfinite(x))
@@ -472,7 +488,7 @@ def test_pda_gaussian_fit_recovers_distance(qapp):
         m.update()
         w = np.asarray(m.get_wres(fit), dtype=float)
         w = w[np.isfinite(w)]
-        return float(np.sum(w ** 2) / max(len(w), 1))
+        return float(np.sum(w**2) / max(len(w), 1))
 
     assert _chi2r() > 1.0, "perturbed start was not actually poor"
     fit.run()
@@ -557,9 +573,7 @@ def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
     assert chi2r_best < 3.0
 
     np.random.seed(0)
-    r = chisurf.core.fitting.sample.walk_mcmc(
-        fit=fit, steps=800, step_size=0.01, temp=1.0, thin=1
-    )
+    r = chisurf.core.fitting.sample.walk_mcmc(fit=fit, steps=800, step_size=0.01, temp=1.0, thin=1)
     assert list(r["parameter_names"]) == [mean_p.name]
     assert r["acceptance_rate"] > 0.05, "chain is stuck; proposal scale is degenerate"
 
@@ -568,7 +582,7 @@ def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
     assert np.median(chi2r) < 3.0 * chi2r_best
 
     samples = np.asarray(r["parameter_values"], dtype=float)[:, 0]
-    samples = samples[len(samples) // 5:]  # discard burn-in
+    samples = samples[len(samples) // 5 :]  # discard burn-in
     assert samples.mean() == pytest.approx(true_mean, abs=2.0)
 
     mcmc_low, mcmc_high = np.percentile(samples, [0.5, 99.5])
@@ -580,9 +594,9 @@ def test_pda_mcmc_posterior_brackets_truth_and_agrees_with_support_plane(qapp):
     mean_p.value = true_mean
     fit.run()
     result = fit.adaptive_chi2_scan(mean_p.name, p_value=0.99)
-    spa_low, spa_high = confidence_intervals_from_scan_result(
-        result, p_values=(0.99,)
-    )[0]["crossings"]
+    spa_low, spa_high = confidence_intervals_from_scan_result(result, p_values=(0.99,))[0][
+        "crossings"
+    ]
     assert (mcmc_high - mcmc_low) == pytest.approx(spa_high - spa_low, rel=0.5)
 
 
@@ -623,8 +637,7 @@ def test_dynamic_pda_recovers_exchange_at_unequal_populations(qapp):
     m.find_parameters()
     for p in m.parameters_all:
         p.fixed = True
-    for parameter, start in ((m.states._x1, 0.5),
-                             (m.states._kex, 0.7 / m.observation_time)):
+    for parameter, start in ((m.states._x1, 0.5), (m.states._kex, 0.7 / m.observation_time)):
         parameter.fixed = False
         parameter.value = start
     m.find_parameters()

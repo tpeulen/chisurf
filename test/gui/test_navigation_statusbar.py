@@ -1,9 +1,10 @@
 """Tests for the NavigationPanelTool shared status bar, stepper and log routing."""
+
 from __future__ import annotations
 
 import logging
-import time
 import os
+import time
 
 import pytest
 
@@ -122,8 +123,8 @@ def test_next_processes_current_step_then_advances(qapp):
     w = NavigationPanelTool(title="t", panels=panels)
     assert w.nav_list.currentRow() == 0
     w._on_next_clicked()  # process (click Run) + advance
-    assert fired == [1]                      # all-loaded processing was triggered
-    assert w.nav_list.currentRow() == 1      # and we advanced
+    assert fired == [1]  # all-loaded processing was triggered
+    assert w.nav_list.currentRow() == 1  # and we advanced
 
 
 def test_process_current_step_without_run_button_is_noop(qapp):
@@ -184,9 +185,7 @@ def test_status_updates_never_re_enter_the_event_loop(qapp, monkeypatch):
         finally:
             depth -= 1
 
-    monkeypatch.setattr(
-        QtCore.QCoreApplication, "processEvents", _fake_process_events
-    )
+    monkeypatch.setattr(QtCore.QCoreApplication, "processEvents", _fake_process_events)
     lg.info("first line")
 
     assert max_depth == 1, f"status updates nested {max_depth} deep"
@@ -206,17 +205,13 @@ def test_log_driven_status_pump_excludes_user_input(qapp, monkeypatch):
     name = "chisurf.test.navstatus_input"
     lg = logging.getLogger(name)
     seen = []
-    monkeypatch.setattr(
-        QtCore.QCoreApplication, "processEvents", lambda *a: seen.append(a)
-    )
+    monkeypatch.setattr(QtCore.QCoreApplication, "processEvents", lambda *a: seen.append(a))
 
     w = NavigationPanelTool(title="t", panels=_panels(), status_logger=name)
 
     lg.info("working")
     assert seen, "the status bar no longer repaints mid-operation"
-    assert all(
-        args and args[0] == QtCore.QEventLoop.ExcludeUserInputEvents for args in seen
-    ), seen
+    assert all(args and args[0] == QtCore.QEventLoop.ExcludeUserInputEvents for args in seen), seen
 
     seen.clear()
     w.report_progress(1, 10, "step")
@@ -252,8 +247,7 @@ def test_next_advances_only_when_the_step_has_finished(qapp):
                 order.append("work")
                 return "done"
 
-            run_in_background(self, "Working", work,
-                              on_result=lambda v: order.append("result"))
+            run_in_background(self, "Working", work, on_result=lambda v: order.append("result"))
 
     step = _Step()
     w = NavigationPanelTool(
@@ -317,7 +311,7 @@ def test_a_second_next_click_while_working_is_ignored(qapp):
     qapp.processEvents()
 
     w._on_next_clicked()
-    w._on_next_clicked()          # ignored: the first run is still going
+    w._on_next_clicked()  # ignored: the first run is still going
     assert runs == [1]
 
     deadline = time.monotonic() + 5.0
@@ -369,11 +363,11 @@ def test_next_clicked_while_already_working_still_advances(qapp):
     w.nav_list.setCurrentRow(0)
     qapp.processEvents()
 
-    step.start()                 # the panel starts its own recompute
+    step.start()  # the panel starts its own recompute
     qapp.processEvents()
     assert w._step_is_busy()
 
-    w._on_next_clicked()         # clicked while that run is in flight
+    w._on_next_clicked()  # clicked while that run is in flight
     assert runs == [1], "a second run must not be started on top of the first"
 
     deadline = time.monotonic() + 5.0
@@ -415,7 +409,7 @@ def test_the_step_selector_refuses_to_switch_while_working(qapp):
     step.start()
     qapp.processEvents()
 
-    w.nav_list.setCurrentRow(1)          # what a click (or a handoff) does
+    w.nav_list.setCurrentRow(1)  # what a click (or a handoff) does
     qapp.processEvents()
     assert w.nav_list.currentRow() == 0, "the shell switched step mid-run"
     assert w.goto_next_step() is False
@@ -443,9 +437,7 @@ def _shell_for_activation(qapp, monkeypatch, *, frontmost=True):
     return shell
 
 
-def test_activation_is_not_taken_while_the_user_is_in_another_application(
-    qapp, monkeypatch
-):
+def test_activation_is_not_taken_while_the_user_is_in_another_application(qapp, monkeypatch):
     """A run that finishes minutes later must not pull the user back.
 
     Steps start work on their own now, so "raise when done" would drag the user
@@ -470,17 +462,13 @@ def test_activation_is_not_taken_from_another_window_of_ours(qapp, monkeypatch):
     try:
         raised = []
         monkeypatch.setattr(shell, "raise_", lambda: raised.append(1))
-        monkeypatch.setattr(
-            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: other)
-        )
+        monkeypatch.setattr(QtWidgets.QApplication, "activeWindow", staticmethod(lambda: other))
         shell._restore_active_window()
         assert raised == [], "the main window has focus; a finished task must not steal it"
 
         # …but when this window is the active one, the restore still happens:
         # that is what it is for.
-        monkeypatch.setattr(
-            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: shell)
-        )
+        monkeypatch.setattr(QtWidgets.QApplication, "activeWindow", staticmethod(lambda: shell))
         shell._restore_active_window()
         assert raised == [1], "the user is here; restoring activation is right"
     finally:
@@ -502,9 +490,7 @@ def test_activation_is_restored_from_our_own_transient_child_window(qapp, monkey
         transient = QtWidgets.QMainWindow(shell)  # a child that is still a window
         raised = []
         monkeypatch.setattr(shell, "raise_", lambda: raised.append(1))
-        monkeypatch.setattr(
-            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: transient)
-        )
+        monkeypatch.setattr(QtWidgets.QApplication, "activeWindow", staticmethod(lambda: transient))
         shell._restore_active_window()
         assert raised == [1], "a tool window of ours holding focus is the bug, not the user"
     finally:

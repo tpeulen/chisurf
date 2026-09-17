@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from importlib import import_module
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import chisurf.server.protocol
 from chisurf.server.services import ServiceResult, service_error
@@ -26,7 +27,7 @@ class ServiceDispatcher:
 
     # Class-level monitoring callbacks — every dispatch across all
     # dispatcher instances is reported to every registered monitor.
-    _monitors: List[Callable[[str, dict, dict, float], None]] = []
+    _monitors: list[Callable[[str, dict, dict, float], None]] = []
 
     @classmethod
     def add_monitor(cls, callback: Callable[[str, dict, dict, float], None]) -> None:
@@ -55,7 +56,7 @@ class ServiceDispatcher:
     def __init__(
         self,
         state: SessionState,
-        event_bus: Optional[Any] = None,
+        event_bus: Any | None = None,
         log_rpc_calls: bool = False,
     ):
         """Initialise the dispatcher.
@@ -72,11 +73,11 @@ class ServiceDispatcher:
         """
         self._state = state
         self._lock = threading.RLock()
-        self._handlers: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
+        self._handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {}
         self._event_bus = event_bus
         self._log_rpc_calls = log_rpc_calls
 
-    def register(self, name: str, handler: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
+    def register(self, name: str, handler: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
         """Register a handler for an RPC method.
 
         Parameters
@@ -102,12 +103,12 @@ class ServiceDispatcher:
         with self._lock:
             return name in self._handlers
 
-    def list_methods(self) -> List[str]:
+    def list_methods(self) -> list[str]:
         """Return sorted list of all registered method names."""
         with self._lock:
             return sorted(self._handlers.keys())
 
-    def dispatch(self, method: str, params: Optional[Dict[str, Any]] = None) -> ServiceResult:
+    def dispatch(self, method: str, params: dict[str, Any] | None = None) -> ServiceResult:
         """Look up and invoke a registered RPC handler.
 
         Parameters
@@ -150,7 +151,11 @@ class ServiceDispatcher:
                 if n_params > 0:
                     logger.info(
                         "[RPC] %s -> %s (%.1fms, %d params: %s)",
-                        method, status, elapsed * 1000, n_params, param_keys,
+                        method,
+                        status,
+                        elapsed * 1000,
+                        n_params,
+                        param_keys,
                     )
                 else:
                     logger.info("[RPC] %s -> %s (%.1fms)", method, status, elapsed * 1000)
@@ -187,10 +192,10 @@ class ServiceDispatcher:
             self.register(spec["rpc"], self._handler_from_spec(spec))
 
     @classmethod
-    def _redact_params(cls, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _redact_params(cls, params: dict[str, Any]) -> dict[str, Any]:
         """Return a copy of *params* with sensitive fields redacted."""
         SENSITIVE_KEYS = {"auth", "password", "token", "new_password", "old_password"}
-        redacted: Dict[str, Any] = {}
+        redacted: dict[str, Any] = {}
         for k, v in params.items():
             if k in SENSITIVE_KEYS:
                 redacted[k] = "***REDACTED***"
@@ -204,8 +209,8 @@ class ServiceDispatcher:
     def _notify_monitors(
         cls,
         method: str,
-        params: Dict[str, Any],
-        result: Dict[str, Any],
+        params: dict[str, Any],
+        result: dict[str, Any],
         elapsed: float,
     ) -> None:
         """Call all registered monitor callbacks, swallowing exceptions.
@@ -220,7 +225,9 @@ class ServiceDispatcher:
             except Exception:
                 pass
 
-    def _handler_from_spec(self, spec: Dict[str, Any]) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+    def _handler_from_spec(
+        self, spec: dict[str, Any]
+    ) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """Build a handler callable from a declarative method spec.
 
         Parameters

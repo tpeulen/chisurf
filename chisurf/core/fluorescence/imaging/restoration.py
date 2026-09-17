@@ -39,7 +39,7 @@ Three routes, in decreasing order of how much they are to be trusted:
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -66,9 +66,9 @@ def psf_sigma_from_optics(
     wavelength_nm: float,
     numerical_aperture: float,
     pixel_size_nm: float,
-    z_step_nm: Optional[float] = None,
+    z_step_nm: float | None = None,
     refractive_index: float = 1.518,
-) -> Union[tuple[float, float], tuple[float, float, float]]:
+) -> tuple[float, float] | tuple[float, float, float]:
     """Return the Gaussian PSF width in **pixels**, from the optics.
 
     Parameters
@@ -110,13 +110,11 @@ def psf_sigma_from_optics(
         return (lateral, lateral)
     if z_step_nm <= 0:
         raise ValueError("z_step_nm must be positive")
-    axial_nm = (
-        _AXIAL_COEFFICIENT * wavelength_nm * refractive_index / numerical_aperture**2
-    )
+    axial_nm = _AXIAL_COEFFICIENT * wavelength_nm * refractive_index / numerical_aperture**2
     return (axial_nm / z_step_nm, lateral, lateral)
 
 
-def gaussian_psf(sigma: Union[float, Sequence[float]], shape=None, truncate: float = 4.0):
+def gaussian_psf(sigma: float | Sequence[float], shape=None, truncate: float = 4.0):
     """Build a normalised Gaussian point spread function.
 
     Parameters
@@ -235,17 +233,11 @@ def richardson_lucy(
     image = np.ascontiguousarray(image, dtype=np.float64)
     psf = np.ascontiguousarray(psf, dtype=np.float64)
     if psf.ndim != image.ndim:
-        raise ValueError(
-            f"the PSF is {psf.ndim}-D and the image {image.ndim}-D; they must match"
-        )
+        raise ValueError(f"the PSF is {psf.ndim}-D and the image {image.ndim}-D; they must match")
     if image.ndim == 2:
-        return engine.richardson_lucy_2d(
-            image, psf, n_iter, clip, filter_epsilon, acceleration
-        )
+        return engine.richardson_lucy_2d(image, psf, n_iter, clip, filter_epsilon, acceleration)
     if image.ndim == 3:
-        return engine.richardson_lucy_3d(
-            image, psf, n_iter, clip, filter_epsilon, acceleration
-        )
+        return engine.richardson_lucy_3d(image, psf, n_iter, clip, filter_epsilon, acceleration)
     raise ValueError(f"deconvolution is implemented for 2-D and 3-D, not {image.ndim}-D")
 
 
@@ -406,9 +398,7 @@ def effective_psf(
     quantisation_pixels = resolution_seconds / dwell_seconds
     extra = np.sqrt(jitter_pixels**2 + quantisation_pixels**2 / 12.0)
     if extra > 0.05:
-        widened = ndimage.gaussian_filter1d(
-            widened, extra, axis=axis, mode="constant"
-        )
+        widened = ndimage.gaussian_filter1d(widened, extra, axis=axis, mode="constant")
 
     widened = np.clip(widened, 0.0, None)
     return widened / widened.sum()
@@ -460,15 +450,11 @@ def oversample_psf(psf, factor: int):
         ],
         indexing="ij",
     )
-    fine = ndimage.map_coordinates(
-        psf, np.stack(grids), order=3, mode="constant", cval=0.0
-    )
+    fine = ndimage.map_coordinates(psf, np.stack(grids), order=3, mode="constant", cval=0.0)
     return np.ascontiguousarray(np.clip(fine, 0.0, None))
 
 
-def richardson_lucy_events(
-    coordinates, psf, shape, n_iter: int = 30, psf_oversampling: int = 8
-):
+def richardson_lucy_events(coordinates, psf, shape, n_iter: int = 30, psf_oversampling: int = 8):
     """Deconvolve from the photon list, without binning it into pixels first.
 
     A scanned photon-counting measurement is a list of detections; the pixel
@@ -526,9 +512,7 @@ def richardson_lucy_events(
         )
     coordinates = np.ascontiguousarray(coordinates, dtype=np.float64)
     if coordinates.ndim != 2 or coordinates.shape[1] != 2:
-        raise ValueError(
-            f"coordinates must be (n_photons, 2), got {coordinates.shape}"
-        )
+        raise ValueError(f"coordinates must be (n_photons, 2), got {coordinates.shape}")
     psf = np.ascontiguousarray(psf, dtype=np.float64)
     if psf.ndim != 2:
         raise ValueError("event-mode deconvolution is 2-D")

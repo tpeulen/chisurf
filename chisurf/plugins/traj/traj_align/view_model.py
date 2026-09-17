@@ -166,18 +166,17 @@ class AlignTrajectoryViewModel:
         # close, so nothing has to be reserved up front.
         writer = None
         try:
-            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride,
-                                     top=topology):
+            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride, top=topology):
                 chunk = chunk.superpose(frame_0, frame=0, atom_indices=atom_indices)
                 if writer is None:
                     # Open on the first chunk so the frame spacing can be taken
                     # from the source rather than assumed: a strided read must
                     # keep the real spacing, not count frames (RF-708). DCD
                     # stores that as the timestep between saved frames.
-                    spacing = (float(chunk.time[1] - chunk.time[0])
-                               if chunk.n_frames > 1 else 1.0)
-                    writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
-                                       delta=spacing or 1.0)
+                    spacing = float(chunk.time[1] - chunk.time[0]) if chunk.n_frames > 1 else 1.0
+                    writer = DCDWriter(
+                        target_filename, n_atoms=frame_0.n_atoms, delta=spacing or 1.0
+                    )
                 writer.write(chunk.xyz)
         finally:
             if writer is not None:

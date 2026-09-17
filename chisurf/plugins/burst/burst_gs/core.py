@@ -98,9 +98,7 @@ def load_photons(
     """
     if streams is None:
         streams = default_stream_dicts()
-    stream_defs = [
-        s if isinstance(s, StreamDef) else streams_from_dicts([s])[0] for s in streams
-    ]
+    stream_defs = [s if isinstance(s, StreamDef) else streams_from_dicts([s])[0] for s in streams]
 
     table = load_bur_dataframe([pathlib.Path(p) for p in bur_paths])
     tttrs = load_tttrs_for_dataframe(table, data_dir, file_type=file_type)
@@ -144,9 +142,7 @@ def load_photons(
         # The measurements themselves, not the `.bur` tables that point at
         # them: a result belongs beside the photons it was fitted to, and a
         # `.bur` lives one directory down in `bi4_bur/`.
-        "tttr_files": [
-            str(getattr(tttr, "filename", "")) for tttr in tttrs.values()
-        ],
+        "tttr_files": [str(getattr(tttr, "filename", "")) for tttr in tttrs.values()],
     }
     return bursts, info
 
@@ -201,9 +197,7 @@ def simulate_two_state(
             while nxt < arrival[i]:
                 clock = nxt
                 state = 1 - state
-                nxt = clock + rng.exponential(
-                    1.0 / (k_forward if state == 0 else k_backward)
-                )
+                nxt = clock + rng.exponential(1.0 / (k_forward if state == 0 else k_backward))
             states[i] = state
         colors.append((rng.random(n) < efficiencies[states]).astype(np.int32))
         times.append(arrival)
@@ -416,9 +410,13 @@ def analyse(
 H2MM_MEMORY_BUDGET = 256 * 1024 * 1024
 
 
-def choose_h2mm_tick(gaps, relaxation_times, n_states: int = 2,
-                     tick: float | None = None,
-                     memory_budget_bytes: int = H2MM_MEMORY_BUDGET):
+def choose_h2mm_tick(
+    gaps,
+    relaxation_times,
+    n_states: int = 2,
+    tick: float | None = None,
+    memory_budget_bytes: int = H2MM_MEMORY_BUDGET,
+):
     """Pick a discrete-time tick that resolves the kinetics without exhausting RAM.
 
     H2MM caches one propagator **and one rho tensor per distinct inter-photon
@@ -484,7 +482,7 @@ def choose_h2mm_tick(gaps, relaxation_times, n_states: int = 2,
         raise ValueError(f"the tick must be a positive duration in seconds, got {tick}")
 
     # Two float64 caches per distinct gap: the propagator (n^2) and rho (n^4).
-    per_slot = 8.0 * (n_states ** 2 + n_states ** 4)
+    per_slot = 8.0 * (n_states**2 + n_states**4)
     max_slots = max(int(memory_budget_bytes / per_slot), 16)
 
     requested = tick
@@ -509,9 +507,13 @@ def choose_h2mm_tick(gaps, relaxation_times, n_states: int = 2,
     return tick, ""
 
 
-def compare_with_h2mm(bursts: gs.PhotonBursts, fit: gs.GsFitResult,
-                      n_states: int = 2, tick: float | None = None,
-                      memory_budget_bytes: int = H2MM_MEMORY_BUDGET) -> dict:
+def compare_with_h2mm(
+    bursts: gs.PhotonBursts,
+    fit: gs.GsFitResult,
+    n_states: int = 2,
+    tick: float | None = None,
+    memory_budget_bytes: int = H2MM_MEMORY_BUDGET,
+) -> dict:
     """Fit the same photons with H2MM and compare the two answers.
 
     The two methods share no code and parameterise time differently — H2MM
@@ -576,9 +578,7 @@ def compare_with_h2mm(bursts: gs.PhotonBursts, fit: gs.GsFitResult,
             ticks = np.round(bursts.times[start:stop] / tick).astype(np.int64)
             # A tick cannot hold two photons in a discrete-time model.
             ticks = np.maximum.accumulate(ticks)
-            ticks[1:] = np.where(
-                ticks[1:] <= ticks[:-1], ticks[:-1] + 1, ticks[1:]
-            )
+            ticks[1:] = np.where(ticks[1:] <= ticks[:-1], ticks[:-1] + 1, ticks[1:])
             times.append(ticks)
             colors.append(bursts.colors[start:stop].astype(np.int32))
 
@@ -658,25 +658,27 @@ def write_container(
     # the state table rather than living in a header nothing can query.
     states = {
         "State": np.arange(n, dtype=np.int32),
-        "E": (
-            efficiencies if efficiencies.size == n
-            else np.full(n, float("nan"))
-        ),
+        "E": (efficiencies if efficiencies.size == n else np.full(n, float("nan"))),
         "log_likelihood": np.full(n, float(fit.log_likelihood)),
         "bic": np.full(n, float(fit.bic)),
         "aic": np.full(n, float(fit.aic)),
     }
     written = write_burst_artifact(
-        source, store_from_arrays(states),
+        source,
+        store_from_arrays(states),
         name="gs states",
         artifact_kind="fit_result",
         operation_type="model_fitting",
         row_grain="state",
         parameters=parameters,
         derived_from="bursts",
-        units={"State": "dimensionless", "E": "dimensionless",
-               "log_likelihood": "dimensionless", "bic": "dimensionless",
-               "aic": "dimensionless"},
+        units={
+            "State": "dimensionless",
+            "E": "dimensionless",
+            "log_likelihood": "dimensionless",
+            "bic": "dimensionless",
+            "aic": "dimensionless",
+        },
         out_dir=out_dir,
     )
 
@@ -686,13 +688,13 @@ def write_container(
     if pairs:
         write_burst_artifact(
             source,
-            store_from_arrays({
-                "From": np.array([s for s, _ in pairs], dtype=np.int32),
-                "To": np.array([t for _, t in pairs], dtype=np.int32),
-                "k": np.array(
-                    [float(fit.rate_matrix[t, s]) for s, t in pairs], dtype=float
-                ),
-            }),
+            store_from_arrays(
+                {
+                    "From": np.array([s for s, _ in pairs], dtype=np.int32),
+                    "To": np.array([t for _, t in pairs], dtype=np.int32),
+                    "k": np.array([float(fit.rate_matrix[t, s]) for s, t in pairs], dtype=float),
+                }
+            ),
             name="gs rates",
             artifact_kind="parameter_table",
             operation_type="model_fitting",

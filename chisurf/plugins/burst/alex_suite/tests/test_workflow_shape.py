@@ -16,11 +16,7 @@ from chisurf.plugins.burst.alex_suite.gui.tool import ALEX_PANELS  # noqa: E402
 
 def _numbered() -> list[str]:
     """Return the numbered steps, in order, without their numbers."""
-    return [
-        panel["name"].split(". ", 1)[1]
-        for panel in ALEX_PANELS
-        if panel["name"][:1].isdigit()
-    ]
+    return [panel["name"].split(". ", 1)[1] for panel in ALEX_PANELS if panel["name"][:1].isdigit()]
 
 
 def test_the_setup_is_the_first_step():
@@ -37,9 +33,7 @@ def test_the_setup_is_the_first_step():
 def test_the_numbered_steps_are_numbered_from_one_without_gaps():
     """A pipeline with a 3 and a 5 and no 4 is a renumbering someone missed."""
     numbers = [
-        int(panel["name"].split(".", 1)[0])
-        for panel in ALEX_PANELS
-        if panel["name"][:1].isdigit()
+        int(panel["name"].split(".", 1)[0]) for panel in ALEX_PANELS if panel["name"][:1].isdigit()
     ]
     assert numbers == list(range(1, len(numbers) + 1))
 

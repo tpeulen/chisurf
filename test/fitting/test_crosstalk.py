@@ -32,8 +32,8 @@ def test_matrix_from_payload_reorder_and_subset():
     m, rows, cols = matrix_from_payload(p, rows=["A", "D", "X"], columns=["red", "green"])
     assert rows == ["A", "D", "X"] and cols == ["red", "green"]
     assert np.allclose(m[0], [0.95, 0.05])  # A row, red/green
-    assert np.allclose(m[1], [0.1, 0.9])    # D row
-    assert np.allclose(m[2], [0.0, 0.0])    # missing X -> zeros
+    assert np.allclose(m[1], [0.1, 0.9])  # D row
+    assert np.allclose(m[2], [0.0, 0.0])  # missing X -> zeros
 
 
 def test_mixing_round_trip():

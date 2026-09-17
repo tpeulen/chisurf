@@ -12,20 +12,19 @@ nothing else; the in-tree plugins are ordinary plugins. What is pinned:
 * ``CHIMOL_PLUGINS=none`` loads nothing; a name list loads only those;
 * the browser zip ships every ``BUILTIN`` package and no ``hosts/qt``.
 """
+
 from __future__ import annotations
 
-import pathlib
 import zipfile
 
-import pytest
-
 import chimol
-from chimol.ui.menus import bar as menus
-from chimol.commands.command import Cmd, DEFAULT_GROUPS, compose
+import pytest
+from chimol.commands.command import DEFAULT_GROUPS, Cmd, compose
 from chimol.commands.registry import CommandGroup, command
 from chimol.plugins import BUILTIN, PluginAPI, load_plugins
 from chimol.plugins.api import holds
 from chimol.testing.mock_viewer import MockViewer, MockWindow
+from chimol.ui.menus import bar as menus
 
 ONE_COMMAND_PER_PLUGIN = {
     "labelling": "add_dye",
@@ -70,9 +69,7 @@ def test_a_fresh_cmd_carries_every_builtin_plugin():
         if kind == "representation":
             from chimol.core.services.representations import REPRESENTATIONS
 
-            assert REPRESENTATIONS.get(thing) is not None, (
-                f"{plugin}: {thing} did not register"
-            )
+            assert REPRESENTATIONS.get(thing) is not None, f"{plugin}: {thing} did not register"
         elif kind == "format":
             from chimol.io.registry import FORMATS
 
@@ -102,7 +99,8 @@ def test_a_bare_cmd_has_no_plugin_commands():
     assert cmd._registry.resolve("load") is not None
     for group in DEFAULT_GROUPS:
         registered = [
-            name for name in dir(group)
+            name
+            for name in dir(group)
             if getattr(getattr(group, name, None), "_command_info", None)
         ]
         assert registered, f"{group.__name__} registered no command"
@@ -114,7 +112,7 @@ class _Greeting(CommandGroup):
         """Say hello (a test command)."""
         self._emit_message(f"hello {who}")
 
-    @command("load")   # clashes with core: must lose
+    @command("load")  # clashes with core: must lose
     def load(self, *_a) -> None:
         raise AssertionError("a plugin must not shadow a core command")
 
@@ -183,7 +181,7 @@ def test_a_second_viewer_keeps_the_plugin_when_the_first_one_closes():
     assert sum(1 for e in tools if e.label == "Greet") == 1
     assert holds("plugin:fake") == 2
 
-    loaded_first.unload("fake")                       # the window that closed
+    loaded_first.unload("fake")  # the window that closed
     assert holds("plugin:fake") == 1
     assert "fake" in second.panels.keys(), "the surviving window lost its panel"
     assert "fake" not in first.panels.keys(), "the closed window kept its own"
@@ -191,7 +189,7 @@ def test_a_second_viewer_keeps_the_plugin_when_the_first_one_closes():
     assert second._registry.resolve("greet") is not None
     assert first._registry.resolve("greet") is None
 
-    loaded_second.unload("fake")                      # now the last one goes
+    loaded_second.unload("fake")  # now the last one goes
     assert holds("plugin:fake") == 0
     assert "fake" not in second.panels.keys()
     assert not any(e.label == "Greet" for e in dict(menus.menu_bar())["Tools"])
@@ -201,7 +199,7 @@ def test_reload_replaces_the_registrations_even_with_a_window_open():
     """`plugins reload` is for editing a plugin: the new code has to take effect."""
     from chimol.plugins import reload_plugins
 
-    other = _cmd()                                    # a second window
+    other = _cmd()  # a second window
     cmd = _cmd()
     before = cmd.panels.specs["density"]
 
@@ -286,7 +284,6 @@ def test_the_zip_knows_which_build_it_is(tmp_path):
     build ever served -- and "which build is this?" is the first question asked
     of a bug reported from a web page.
     """
-    import chimol
     from chimol.hosts.web import serve
 
     archive = zipfile.ZipFile(serve.pack(tmp_path / "chimol.zip"))
@@ -299,13 +296,15 @@ class _KeysAndSettingsPlugin:
     name = "ks"
 
     def register(self, api):
-        assert api.add_setting("stars_size", path="stars.size", kind="float", default=0.3, doc="star radius")
+        assert api.add_setting(
+            "stars_size", path="stars.size", kind="float", default=0.3, doc="star radius"
+        )
         assert api.add_keybinding("stars_toggle", "j", "toggle_rep stars", label="Toggle the stars")
 
 
 def test_a_plugin_adds_a_setting_and_a_keybinding():
-    from chimol.ui.input import keybindings
     from chimol.core.settings import registry as settings
+    from chimol.ui.input import keybindings
 
     cmd = _cmd(plugins=False)
     loaded = load_plugins(cmd, [_KeysAndSettingsPlugin()])
@@ -374,7 +373,9 @@ def test_a_plugin_adds_a_wizard_and_a_menu_generator():
 
         def register(self, api):
             assert api.add_wizard("hello", _Hello, aliases=("hi",))
-            assert api.add_menu_generator("greetings", lambda: (MenuEntry("Say hi", "wizard hello"),))
+            assert api.add_menu_generator(
+                "greetings", lambda: (MenuEntry("Say hi", "wizard hello"),)
+            )
             api.add_menu("Tools", [{"generate": "greetings"}])
 
     cmd = _cmd(plugins=False)
@@ -394,9 +395,19 @@ def test_every_host_is_a_host_services():
     """The three hosts and the base provide the HostServices contract a plugin may rely on."""
     from chimol.hosts.base import HostServices, ViewerHost
 
-    for name in ("load_structure_from_path", "refresh_objects", "set_object_visible", "select_object",
-                 "update_sequence_view", "run_script_text", "run_demo", "isFullScreen", "showFullScreen",
-                 "showNormal", "close"):
+    for name in (
+        "load_structure_from_path",
+        "refresh_objects",
+        "set_object_visible",
+        "select_object",
+        "update_sequence_view",
+        "run_script_text",
+        "run_demo",
+        "isFullScreen",
+        "showFullScreen",
+        "showNormal",
+        "close",
+    ):
         assert callable(getattr(ViewerHost, name, None)), name
     assert isinstance(ViewerHost(MockViewer()), HostServices)
     from chimol.hosts.native.app import ChimolApp  # noqa: F401 - imports without a window

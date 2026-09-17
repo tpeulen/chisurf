@@ -32,9 +32,7 @@ DT = PERIOD / N_CHANNELS
 def _response(centre: int = 300, width: float = 8.0, **kwargs) -> ChannelResponse:
     """Return a Gaussian instrument response for the tests."""
     channels = np.arange(N_CHANNELS)
-    return ChannelResponse(
-        irf=np.exp(-0.5 * ((channels - centre) / width) ** 2), dt=DT, **kwargs
-    )
+    return ChannelResponse(irf=np.exp(-0.5 * ((channels - centre) / width) ** 2), dt=DT, **kwargs)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -154,9 +152,7 @@ def test_red_probability_stays_a_probability():
 def test_donor_spectrum_spans_the_distance_distribution():
     """A distributed distance gives distributed lifetimes, not one average."""
     optics = Optics(r0=52.0, tau_d0=4.0, sigma=6.0)
-    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
-        FretState(distance=52.0), optics
-    )
+    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(FretState(distance=52.0), optics)
     # One component per distance sample and nothing else: the producer node also
     # emits a donor-only block scaled by ``x_donly``, which this module drops
     # because incomplete labelling is its own MFD *species* rather than a term
@@ -174,9 +170,7 @@ def test_acceptor_emission_arrives_after_the_donor():
     """The sensitized acceptor rises with the donor and falls with its own lifetime."""
     optics = Optics(r0=52.0, tau_d0=4.0, tau_a=3.0, sigma=6.0)
     response = _response()
-    donor_a, donor_t = donor_lifetime_spectrum_of_state(
-        FretState(distance=52.0), optics
-    )
+    donor_a, donor_t = donor_lifetime_spectrum_of_state(FretState(distance=52.0), optics)
     donor_mean, _ = response.signal_moments(donor_a, donor_t)
     acceptor_a, acceptor_t = acceptor_lifetime_spectrum(donor_a, donor_t, optics)
     acceptor_mean, _ = response.signal_moments(acceptor_a, acceptor_t)
@@ -186,9 +180,7 @@ def test_acceptor_emission_arrives_after_the_donor():
 def test_acceptor_spectrum_survives_a_degenerate_lifetime():
     """A donor component equal to the acceptor lifetime must not divide by zero."""
     optics = Optics(tau_d0=4.0, tau_a=2.0)
-    amplitudes, lifetimes = acceptor_lifetime_spectrum(
-        np.array([1.0]), np.array([2.0]), optics
-    )
+    amplitudes, lifetimes = acceptor_lifetime_spectrum(np.array([1.0]), np.array([2.0]), optics)
     assert np.all(np.isfinite(amplitudes))
     pattern = _response().pattern(amplitudes, lifetimes)
     assert np.all(np.isfinite(pattern)) and pattern.sum() == pytest.approx(1.0)
@@ -202,9 +194,7 @@ def test_components_are_photon_weighted_not_amplitude_weighted():
     would drag every distance distribution towards its high-FRET tail.
     """
     response = _response(centre=0, width=0.5)
-    mean, _ = pattern_moments(
-        response.decay(np.array([1.0, 1.0]), np.array([0.5, 4.0])), DT
-    )
+    mean, _ = pattern_moments(response.decay(np.array([1.0, 1.0]), np.array([0.5, 4.0])), DT)
     # Amplitude-weighted would sit near (0.5 + 4)/2; photon-weighted is far later.
     assert mean > 3.0
 
@@ -222,9 +212,7 @@ def test_a_later_response_shifts_the_mean_sub_linearly():
     calibration wrong near the end of the window, and it is exact.
     """
     optics = Optics()
-    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
-        FretState(distance=52.0), optics
-    )
+    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(FretState(distance=52.0), optics)
     shift = 700
     early = _response(centre=200)
     late = _response(centre=200 + shift)
@@ -237,9 +225,7 @@ def test_a_later_response_shifts_the_mean_sub_linearly():
     late_mean, _ = late.signal_moments(amplitudes, lifetimes)
     wrapped_mass = float(early_pattern[-shift:].sum())
 
-    assert late_mean - early_mean == pytest.approx(
-        shift * DT - PERIOD * wrapped_mass, rel=1e-6
-    )
+    assert late_mean - early_mean == pytest.approx(shift * DT - PERIOD * wrapped_mass, rel=1e-6)
     # And the effect is real rather than rounding: a measurable fraction wrapped.
     assert 0.0 < wrapped_mass < 0.05
     assert late_mean - early_mean < shift * DT
@@ -248,9 +234,7 @@ def test_a_later_response_shifts_the_mean_sub_linearly():
 def test_scatter_pulls_the_mean_towards_the_response():
     """Scattered excitation light has the response's own timing, i.e. the earliest."""
     optics = Optics()
-    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
-        FretState(distance=90.0), optics
-    )
+    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(FretState(distance=90.0), optics)
     clean = _response()
     scattered = _response(scatter_fraction=0.3)
     clean_mean, _ = clean.signal_moments(amplitudes, lifetimes)
@@ -284,9 +268,7 @@ def test_empty_or_impossible_inputs_are_refused():
 def _sharp_response(**kwargs):
     """Return a near-delta response, so a steady-state anisotropy is not smeared."""
     channels = np.arange(N_CHANNELS)
-    return ChannelResponse(
-        irf=np.exp(-0.5 * ((channels - 20) / 1.0) ** 2), dt=DT, **kwargs
-    )
+    return ChannelResponse(irf=np.exp(-0.5 * ((channels - 20) / 1.0) ** 2), dt=DT, **kwargs)
 
 
 def _anisotropy_from_split(p_parallel, g_factor=1.0, l1=0.0, l2=0.0):
@@ -313,13 +295,9 @@ def test_the_polarized_split_predicts_the_perrin_relation(tau, rho):
     )
 
     optics = Optics(r0_anisotropy=0.38)
-    _, _, p_parallel = polarized_patterns(
-        _sharp_response(), [1.0], [tau], rho, optics
-    )
+    _, _, p_parallel = polarized_patterns(_sharp_response(), [1.0], [tau], rho, optics)
     recovered = _anisotropy_from_split(p_parallel)
-    assert recovered == pytest.approx(
-        float(perrin_anisotropy(tau, rho, 0.38)), abs=0.01
-    )
+    assert recovered == pytest.approx(float(perrin_anisotropy(tau, rho, 0.38)), abs=0.01)
 
 
 def test_the_g_factor_divides_the_perpendicular_channel():
@@ -339,7 +317,10 @@ def test_the_g_factor_divides_the_perpendicular_channel():
     recovered = []
     for g_factor in (0.7, 1.0, 1.4):
         _, _, p_parallel = polarized_patterns(
-            _sharp_response(), [1.0], [2.0], 1.0,
+            _sharp_response(),
+            [1.0],
+            [2.0],
+            1.0,
             Optics(r0_anisotropy=0.38, g_factor=g_factor),
         )
         recovered.append(_anisotropy_from_split(p_parallel, g_factor))
@@ -358,12 +339,13 @@ def test_polarization_mixing_inverts_exactly():
     truth = float(perrin_anisotropy(2.0, 1.0, 0.38))
     for l1, l2 in ((0.0, 0.0), (0.05, 0.03), (0.08, 0.0)):
         _, _, p_parallel = polarized_patterns(
-            _sharp_response(), [1.0], [2.0], 1.0,
+            _sharp_response(),
+            [1.0],
+            [2.0],
+            1.0,
             Optics(r0_anisotropy=0.38, g_factor=1.2, l1=l1, l2=l2),
         )
-        assert _anisotropy_from_split(
-            p_parallel, 1.2, l1, l2
-        ) == pytest.approx(truth, abs=0.01)
+        assert _anisotropy_from_split(p_parallel, 1.2, l1, l2) == pytest.approx(truth, abs=0.01)
 
 
 def test_a_faster_rotor_depolarises_more():
@@ -427,9 +409,7 @@ def test_a_multiexponential_donor_adds_rates_rather_than_scaling_lifetimes():
     """
     optics = Optics(r0=52.0, tau_d0=4.0, sigma=0.0)
     donor = [(0.5, 2.0), (0.5, 6.0)]
-    _, lifetimes = donor_lifetime_spectrum_of_state(
-        FretState(distance=52.0), optics, donor=donor
-    )
+    _, lifetimes = donor_lifetime_spectrum_of_state(FretState(distance=52.0), optics, donor=donor)
     k_transfer = (1.0 / optics.tau_d0) * (optics.r0 / 52.0) ** 6
     assert lifetimes == pytest.approx(
         [1.0 / (1.0 / 2.0 + k_transfer), 1.0 / (1.0 / 6.0 + k_transfer)], rel=1e-12
@@ -458,13 +438,14 @@ def test_the_polarised_split_does_not_depend_on_the_g_factor(g_factor, l1, l2):
     )
 
     _, _, p_parallel = polarized_patterns(
-        _sharp_response(), [1.0], [2.0], 1.0,
+        _sharp_response(),
+        [1.0],
+        [2.0],
+        1.0,
         Optics(r0_anisotropy=0.38, g_factor=g_factor, l1=l1, l2=l2),
     )
     recovered = _anisotropy_from_split(p_parallel, g_factor, l1, l2)
-    assert recovered == pytest.approx(
-        float(perrin_anisotropy(2.0, 1.0, 0.38)), abs=0.002
-    )
+    assert recovered == pytest.approx(float(perrin_anisotropy(2.0, 1.0, 0.38)), abs=0.002)
 
 
 def test_the_anisotropy_multiplies_a_photons_own_age_not_its_micro_time():
@@ -483,17 +464,17 @@ def test_the_anisotropy_multiplies_a_photons_own_age_not_its_micro_time():
 
     optics = Optics(r0_anisotropy=0.38, g_factor=1.2, l1=0.05, l2=0.03)
     response = _response()
-    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
-        FretState(distance=52.0), Optics()
-    )
-    _, _, p_parallel = polarized_patterns(
-        response, amplitudes, lifetimes, 1.0, optics
-    )
+    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(FretState(distance=52.0), Optics())
+    _, _, p_parallel = polarized_patterns(response, amplitudes, lifetimes, 1.0, optics)
 
     decay = response.decay(amplitudes, lifetimes)
     vv, vh = vm_rt_to_vv_vh(
-        np.arange(decay.size) * DT, decay, np.array([0.38, 1.0]),
-        g_factor=1.2, l1=0.05, l2=0.03,
+        np.arange(decay.size) * DT,
+        decay,
+        np.array([0.38, 1.0]),
+        g_factor=1.2,
+        l1=0.05,
+        l2=0.03,
     )
     naive = float(vv.sum() / (vv.sum() + vh.sum()))
 

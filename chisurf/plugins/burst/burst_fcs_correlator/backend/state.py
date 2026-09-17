@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List
+from typing import Any
 
 from ..core.algorithms import BurstFcsSettings
 
@@ -12,17 +12,17 @@ from ..core.algorithms import BurstFcsSettings
 class BurstFcsState:
     """Last-used settings and selected channel pairs."""
 
-    settings: Dict[str, Any] = dataclasses.field(
+    settings: dict[str, Any] = dataclasses.field(
         default_factory=lambda: BurstFcsSettings().to_dict()
     )
-    selected_pairs: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    selected_pairs: list[dict[str, Any]] = dataclasses.field(default_factory=list)
     detector_setup: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BurstFcsState":
+    def from_dict(cls, d: dict[str, Any]) -> BurstFcsState:
         d = d or {}
         return cls(
             settings=dict(d.get("settings", {}) or BurstFcsSettings().to_dict()),

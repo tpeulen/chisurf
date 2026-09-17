@@ -26,7 +26,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -178,9 +182,7 @@ def test_a_colour_reaches_the_geometry_of_a_created_object(session):
     ]
     assert drawn, "the object drew nothing"
     reds = np.concatenate(drawn, axis=0)
-    assert np.allclose(reds, [1.0, 0.0, 0.0]), (
-        f"the geometry is not red: first colour {reds[0]}"
-    )
+    assert np.allclose(reds, [1.0, 0.0, 0.0]), f"the geometry is not red: first colour {reds[0]}"
 
 
 def test_a_created_ligand_can_be_coloured_at_all(session):
@@ -208,9 +210,7 @@ def test_zoom_on_a_group_frames_all_of_it(session):
     do("zoom ligands")
     both = viewer.get_view_state()[15]
     assert errors == []
-    assert abs(both) > abs(only_lig), (
-        "zooming a group framed no more than its first member"
-    )
+    assert abs(both) > abs(only_lig), "zooming a group framed no more than its first member"
 
 
 # --------------------------------------------------------------------------- #
@@ -221,10 +221,7 @@ def test_a_plain_expression_counts_every_object(session):
     shared = win.cmd
 
     total = shared.count_atoms("all")
-    per_object = sum(
-        shared.count_atoms(name)
-        for name in ("148l", "lig", "nag")
-    )
+    per_object = sum(shared.count_atoms(name) for name in ("148l", "lig", "nag"))
     assert total == per_object
     assert errors == []
 
@@ -236,7 +233,8 @@ def test_a_selection_spanning_objects_stores_all_of_them(session):
     do("select ligs, ligands")
     entry = shared._named_selections["ligs"]
     assert {p["object_id"] for p in entry["objects"]} == {
-        _ids(win.viewer)["lig"], _ids(win.viewer)["nag"]
+        _ids(win.viewer)["lig"],
+        _ids(win.viewer)["nag"],
     }
     # and the name recalls the same atoms it captured
     assert shared.count_atoms("ligs") == shared.count_atoms("ligands")

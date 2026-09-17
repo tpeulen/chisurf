@@ -5,15 +5,15 @@ import tttrlib
 
 
 def convolve_lifetime_spectrum_periodic(
-        decay: np.ndarray,
-        lifetime_spectrum: np.ndarray,
-        irf: np.ndarray,
-        start: int,
-        stop: int,
-        n_points: int,
-        period: float,
-        dt: float,
-        conv_stop: int
+    decay: np.ndarray,
+    lifetime_spectrum: np.ndarray,
+    irf: np.ndarray,
+    start: int,
+    stop: int,
+    n_points: int,
+    period: float,
+    dt: float,
+    conv_stop: int,
 ):
     """Convolve a lifetime spectrum with a periodic IRF using tttrlib.
 
@@ -59,22 +59,12 @@ def convolve_lifetime_spectrum_periodic(
     if last < 0:
         return
     tttrlib.fconv_per_cs(
-        decay,
-        irf,
-        lifetime_spectrum,
-        period,
-        min(conv_stop, last),
-        min(stop, last),
-        dt
+        decay, irf, lifetime_spectrum, period, min(conv_stop, last), min(stop, last), dt
     )
 
 
 def convolve_decay(
-        decay_curve: np.ndarray,
-        irf: np.ndarray,
-        start: int,
-        stop: int,
-        dt: float
+    decay_curve: np.ndarray, irf: np.ndarray, start: int, stop: int, dt: float
 ) -> np.ndarray:
     """Convolve a fluorescence decay with an instrument response function.
 
@@ -154,13 +144,13 @@ def periodic_shift(arr: np.ndarray, shift: float) -> np.ndarray:
 
 
 def convolve_lifetime_spectrum(
-        output_decay: np.array,
-        lifetime_spectrum: np.array,
-        instrument_response_function: np.array,
-        convolution_stop: int = -1,
-        time_axis: np.array = None,
-        amplitude_threshold: float = 0,
-        use_amplitude_threshold: bool = False
+    output_decay: np.array,
+    lifetime_spectrum: np.array,
+    instrument_response_function: np.array,
+    convolution_stop: int = -1,
+    time_axis: np.array = None,
+    amplitude_threshold: float = 0,
+    use_amplitude_threshold: bool = False,
 ) -> None:
     """Convolve a lifetime spectrum with an IRF using tttrlib.
 
@@ -181,12 +171,7 @@ def convolve_lifetime_spectrum(
     use_amplitude_threshold : bool, optional
         If True, filter components by amplitude threshold.
     """
-    dt = (time_axis[1] - time_axis[0])
+    dt = time_axis[1] - time_axis[0]
     tttrlib.fconv(
-        output_decay,
-        instrument_response_function,
-        lifetime_spectrum,
-        0,
-        convolution_stop,
-        dt
+        output_decay, instrument_response_function, lifetime_spectrum, 0, convolution_stop, dt
     )

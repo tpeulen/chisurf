@@ -9,10 +9,7 @@ _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 from . import distributions
 
 
-def gaussian_chain_ree(
-        segment_length: float,
-        number_of_segments: int
-) -> float:
+def gaussian_chain_ree(segment_length: float, number_of_segments: int) -> float:
     """Calculates the root mean square end-to-end distance of a Gaussian chain
 
     :param segment_length: float
@@ -22,14 +19,11 @@ def gaussian_chain_ree(
     :return:
     """
     from IMP.bff import gaussian_chain_ree as _f
+
     return float(_f(segment_length, int(number_of_segments)))
 
 
-def gaussian_chain(
-        r,
-        segment_length: float,
-        number_of_segments: int
-) -> float:
+def gaussian_chain(r, segment_length: float, number_of_segments: int) -> float:
     """Calculates the radial distribution function of a Gaussian chain in three dimensions
 
     :param number_of_segments: int
@@ -43,15 +37,15 @@ def gaussian_chain(
 
     """
     from IMP.bff import gaussian_chain as _f
-    return _f(np.asarray(r, dtype=float), segment_length,
-              int(number_of_segments))
+
+    return _f(np.asarray(r, dtype=float), segment_length, int(number_of_segments))
 
 
 def saw_nu(
-        r,
-        r_rms: float,
-        nu: float = 0.588,
-        gamma_exp: float = 1.1615,
+    r,
+    r_rms: float,
+    nu: float = 0.588,
+    gamma_exp: float = 1.1615,
 ):
     """Radial distribution of a self-avoiding walk with Flory exponent ``nu``.
 
@@ -76,17 +70,18 @@ def saw_nu(
     :return: the (analytically normalised) radial distribution ``P(r)``.
     """
     from IMP.bff import saw_nu as _f
+
     return _f(np.asarray(r, dtype=float), r_rms, nu, gamma_exp)
 
 
 def ising_chain(
-        r,
-        number_of_residues: int,
-        b_structured: float,
-        b_unstructured: float,
-        coupling: float = 1.5,
-        field: float = 0.0,
-        n_k: int = 2000,
+    r,
+    number_of_residues: int,
+    b_structured: float,
+    b_unstructured: float,
+    coupling: float = 1.5,
+    field: float = 0.0,
+    n_k: int = 2000,
 ):
     r"""Inter-dye distance distribution of an Ising two-state Gaussian chain.
 
@@ -134,26 +129,33 @@ def ising_chain(
     faster.
     """
     from IMP.bff import ising_chain as _f
-    return _f(np.asarray(r, dtype=float), int(number_of_residues),
-              b_structured, b_unstructured, coupling, field, n_k)
+
+    return _f(
+        np.asarray(r, dtype=float),
+        int(number_of_residues),
+        b_structured,
+        b_unstructured,
+        coupling,
+        field,
+        n_k,
+    )
 
 
 # TODO: needs docstring
-def Qd(
-        r,
-        kappa
-) -> float:
-    return pow((3.0 / (4.0 * 3.14159265359 * kappa)), (3.0 / 2.0)) * \
-           exp(-3.0 / 4.0 * r * r / kappa) * \
-           (1.0 - 5.0 / 4.0 * kappa + 2.0 * r * r - 33.0 / 80.0 * r * r * r * r / kappa)
+def Qd(r, kappa) -> float:
+    return (
+        pow((3.0 / (4.0 * 3.14159265359 * kappa)), (3.0 / 2.0))
+        * exp(-3.0 / 4.0 * r * r / kappa)
+        * (1.0 - 5.0 / 4.0 * kappa + 2.0 * r * r - 33.0 / 80.0 * r * r * r * r / kappa)
+    )
 
 
 def worm_like_chain(
-        distances: np.array,
-        kappa: float,
-        chain_length: float = 0.0,
-        normalize: bool = True,
-        distance=True
+    distances: np.array,
+    kappa: float,
+    chain_length: float = 0.0,
+    normalize: bool = True,
+    distance=True,
 ):
     """Calculates the radial distribution function of a worm-like-chain given the multiple piece-solution
     according to:
@@ -167,8 +169,8 @@ def worm_like_chain(
     kappa: a parameter describing the stiffness (details see publication)
     chain_length: the total length of the chain.
     normalize: If this is True the sum of the returned pdf vector is normalized to one.
-    distance: If this is False, the end-to-end vector distribution is calculated. If True the distribution 
-    the pdf is integrated over a sphere, i.e., the pdf of the end-to-end distribution function 
+    distance: If this is False, the end-to-end vector distribution is calculated. If True the distribution
+    the pdf is integrated over a sphere, i.e., the pdf of the end-to-end distribution function
     is multiplied with 4*pi*r**2.
 
     Returns
@@ -209,21 +211,18 @@ def worm_like_chain(
 
     """
     from IMP.bff import worm_like_chain as _f
+
     # `distance` is passed as False, always. This function has never
     # applied the r^2 factor its own signature advertises -- the flag was
     # accepted and dropped on the floor -- and every fit in the stack was
     # made against that behaviour. bff implements the flag properly, so
     # honouring it here would silently change results; preserving the
     # existing answer is this port's contract. See okf/log.md 2026-09-02.
-    return _f(np.asarray(distances, dtype=float), kappa, chain_length,
-              normalize, False)
+    return _f(np.asarray(distances, dtype=float), kappa, chain_length, normalize, False)
 
 
 def distance_between_gaussian(
-        distances: np.array,
-        separation_distance: float,
-        sigma: float,
-        normalize: bool = False
+    distances: np.array, separation_distance: float, sigma: float, normalize: bool = False
 ) -> np.array:
     """Calculates the distance distribution between two separated Gaussians a distance
 
@@ -242,18 +241,28 @@ def distance_between_gaussian(
         # wholesale, so this branch is kept for external callers rather than
         # for us -- see okf/log.md 2026-09-02.
         from IMP.bff import distance_between_gaussian as _f
-        return _f(np.asarray(distances, dtype=float),
-                  float(separation_distance), sigma, normalize)
+
+        return _f(np.asarray(distances, dtype=float), float(separation_distance), sigma, normalize)
     positive = separation_distance > 0.0
     safe_separation = np.where(positive, separation_distance, 1.0)
-    separated = distances / safe_separation * (
-        distributions.normal_distribution(
-            x=distances, loc=safe_separation, scale=sigma, norm=False)
-        - distributions.normal_distribution(
-            x=distances, loc=-safe_separation, scale=sigma, norm=False))
-    coincident = 2. * distances ** 2 / sigma ** 2 * \
-        distributions.normal_distribution(
-            x=distances, loc=0.0, scale=sigma, norm=False)
+    separated = (
+        distances
+        / safe_separation
+        * (
+            distributions.normal_distribution(
+                x=distances, loc=safe_separation, scale=sigma, norm=False
+            )
+            - distributions.normal_distribution(
+                x=distances, loc=-safe_separation, scale=sigma, norm=False
+            )
+        )
+    )
+    coincident = (
+        2.0
+        * distances**2
+        / sigma**2
+        * distributions.normal_distribution(x=distances, loc=0.0, scale=sigma, norm=False)
+    )
     pr = np.where(positive, separated, coincident)
     if normalize:
         pr = pr / pr.sum()
@@ -261,11 +270,11 @@ def distance_between_gaussian(
 
 
 def worm_like_chain_linker(
-        distances: np.array,
-        kappa: float,
-        chain_length: float = 0.0,
-        sigma: float = 6.0,
-        normalize: bool = True
+    distances: np.array,
+    kappa: float,
+    chain_length: float = 0.0,
+    sigma: float = 6.0,
+    normalize: bool = True,
 ) -> np.array:
     """
     Calculates the radial distribution function of a worm-like-chain given the multiple piece-solution
@@ -288,6 +297,5 @@ def worm_like_chain_linker(
 
     """
     from IMP.bff import worm_like_chain_linker as _f
-    return _f(np.asarray(distances, dtype=float), kappa, chain_length,
-              sigma, normalize)
 
+    return _f(np.asarray(distances, dtype=float), kappa, chain_length, sigma, normalize)

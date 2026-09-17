@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -10,7 +10,7 @@ class GraphNode:
     node_type: str  # "fit", "group" (out-of-fit owner) or "parameter"
     name: str
     fit_idx: int
-    value: Optional[float] = None
+    value: float | None = None
     fixed: bool = False
     is_linked: bool = False
     link_name: str = ""
@@ -40,11 +40,11 @@ class GraphEdge:
 
 @dataclass
 class GraphResult:
-    nodes: List[GraphNode] = field(default_factory=list)
-    edges: List[GraphEdge] = field(default_factory=list)
+    nodes: list[GraphNode] = field(default_factory=list)
+    edges: list[GraphEdge] = field(default_factory=list)
 
 
-def _safe_float(val: Any) -> Optional[float]:
+def _safe_float(val: Any) -> float | None:
     try:
         return float(val)
     except (TypeError, ValueError):
@@ -58,11 +58,11 @@ def _model_of(owner: Any) -> Any:
 
 
 def build_graph(
-    fit_list: List[Any],
+    fit_list: list[Any],
     include_fixed: bool = True,
     connect_owners: bool = False,
     skip_global_fit: bool = True,
-    group_list: Optional[List[Any]] = None,
+    group_list: list[Any] | None = None,
 ) -> GraphResult:
     """Build a graph representation from fits and out-of-fit groups.
 
@@ -100,16 +100,30 @@ def build_graph(
         return str(getattr(obj, "unique_identifier", "") or "")
 
     def _add_owner(
-        node_type: str, name: str, fit_idx: int, group: Any,
-        *, owner_uid: str = "", owner_id: str = "",
-        data_filename: str = "", model_full: str = "",
+        node_type: str,
+        name: str,
+        fit_idx: int,
+        group: Any,
+        *,
+        owner_uid: str = "",
+        owner_id: str = "",
+        data_filename: str = "",
+        model_full: str = "",
     ) -> None:
         node_id = counter["idx"]
-        result.nodes.append(GraphNode(
-            node_idx=node_id, node_type=node_type, name=name, fit_idx=fit_idx,
-            fit_name=name, data_filename=data_filename, model=model_full,
-            owner_uid=owner_uid, owner_id=owner_id,
-        ))
+        result.nodes.append(
+            GraphNode(
+                node_idx=node_id,
+                node_type=node_type,
+                name=name,
+                fit_idx=fit_idx,
+                fit_name=name,
+                data_filename=data_filename,
+                model=model_full,
+                owner_uid=owner_uid,
+                owner_id=owner_id,
+            )
+        )
         counter["idx"] += 1
         try:
             parameters = list(getattr(group, "parameters_all", []) or [])
@@ -134,13 +148,22 @@ def build_graph(
                 link_name = ""
                 link_uid = ""
             pid = counter["idx"]
-            result.nodes.append(GraphNode(
-                node_idx=pid, node_type="parameter",
-                name=str(getattr(param, "name", "param")), fit_idx=fit_idx,
-                value=_safe_float(getattr(param, "value", None)), fixed=fixed,
-                is_linked=is_linked, link_name=link_name, link_uid=link_uid,
-                param_uid=_uid(param), owner_uid=owner_uid, owner_id=owner_id,
-            ))
+            result.nodes.append(
+                GraphNode(
+                    node_idx=pid,
+                    node_type="parameter",
+                    name=str(getattr(param, "name", "param")),
+                    fit_idx=fit_idx,
+                    value=_safe_float(getattr(param, "value", None)),
+                    fixed=fixed,
+                    is_linked=is_linked,
+                    link_name=link_name,
+                    link_uid=link_uid,
+                    param_uid=_uid(param),
+                    owner_uid=owner_uid,
+                    owner_id=owner_id,
+                )
+            )
             result.edges.append(GraphEdge(source=pid, target=node_id))
             counter["idx"] += 1
 
@@ -160,26 +183,31 @@ def build_graph(
         except Exception:
             model_full = ""
         _add_owner(
-            "fit", fit_name, fi, _model_of(fit),
+            "fit",
+            fit_name,
+            fi,
+            _model_of(fit),
             owner_uid=_uid(_model_of(fit)),
-            data_filename=data_filename, model_full=model_full,
+            data_filename=data_filename,
+            model_full=model_full,
         )
 
     # Out-of-fit registered groups (plugin working models).
-    for owner_id, label, group in (group_list or []):
+    for owner_id, label, group in group_list or []:
         _add_owner(
-            "group", str(label), -1, _model_of(group),
-            owner_uid=_uid(_model_of(group)), owner_id=str(owner_id),
+            "group",
+            str(label),
+            -1,
+            _model_of(group),
+            owner_uid=_uid(_model_of(group)),
+            owner_id=str(owner_id),
         )
 
     # Connect each linked parameter to the *one* parameter it follows. Resolved
     # by UUID; the name is only consulted when the master carries no UUID, and
     # even then the first match wins rather than all of them.
-    by_uid = {
-        n.param_uid: n for n in result.nodes
-        if n.node_type == "parameter" and n.param_uid
-    }
-    by_name: Dict[str, GraphNode] = {}
+    by_uid = {n.param_uid: n for n in result.nodes if n.node_type == "parameter" and n.param_uid}
+    by_name: dict[str, GraphNode] = {}
     for n in result.nodes:
         if n.node_type == "parameter":
             by_name.setdefault(n.name, n)
@@ -197,7 +225,7 @@ def build_graph(
     if connect_owners:
         owners = [n for n in result.nodes if n.node_type in ("fit", "group")]
         for i, a in enumerate(owners):
-            for b in owners[i + 1:]:
+            for b in owners[i + 1 :]:
                 result.edges.append(GraphEdge(source=a.node_idx, target=b.node_idx))
 
     return result

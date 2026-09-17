@@ -28,12 +28,12 @@ The panel also *named the wrong thing*: the grid's name is the **file** it came
 from, so two maps loaded from one file showed one header between them, which is
 exactly what "only the first shows" looks like from the outside.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from toolkit_free import probe
 
 _MAP = pathlib.Path.home() / ".chisurf/structures/chimol/chimol_emdb_EMD-3061.map.gz"
@@ -43,7 +43,7 @@ _MAP = pathlib.Path.home() / ".chisurf/structures/chimol/chimol_emdb_EMD-3061.ma
 def measured():
     if not _MAP.exists():
         pytest.skip("no cached EMDB map to load twice")
-    return probe(f'''
+    return probe(f"""
         app = open_app(size=(900, 620))
         errors = []
         app.cmd.set_error_callback(errors.append)
@@ -83,7 +83,7 @@ def measured():
 
         app.cmd.do("delete simulated")
         emit("after_delete", ",".join(rows()))
-    ''')
+    """)
 
 
 def test_a_map_appears_in_the_object_list(measured):
@@ -101,7 +101,8 @@ def test_a_second_map_appears_too(measured):
 
 def test_the_structure_is_still_there(measured):
     """A refresh that dropped the structures would be a worse bug than the one
-    it fixed."""
+    it fixed.
+    """
     rows = measured["after_second_map"].split(",")
     assert rows[0] == "all" and rows[-1] == "sele", rows
     assert "148l" in rows

@@ -8,7 +8,7 @@ field/column lists allowed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
 from mmfdb.schema.pdbx_metadata import DictItem, MmcifDictionary
@@ -41,6 +41,7 @@ class FieldSpec:
     placeholder : str
         Placeholder hint text.
     """
+
     name: str
     label: str = ""
     widget: str = "str"
@@ -76,16 +77,27 @@ TYPE_CODE_WIDGET_MAP: dict[str, str] = {
 }
 
 # Attribute names that are always readonly (exact match)
-READONLY_ATTRIBUTES = frozenset({
-    "created_at", "updated_at",
-    "object_uuid", "content_md5", "checksum",
-    "storage_path", "size_bytes", "refcount", "mime_type",
-})
+READONLY_ATTRIBUTES = frozenset(
+    {
+        "created_at",
+        "updated_at",
+        "object_uuid",
+        "content_md5",
+        "checksum",
+        "storage_path",
+        "size_bytes",
+        "refcount",
+        "mime_type",
+    }
+)
 
 # Attribute suffixes that make a field readonly (e.g. "created_at" -> readonly)
-READONLY_SUFFIXES = frozenset({
-    "uuid", "_uuid",
-})
+READONLY_SUFFIXES = frozenset(
+    {
+        "uuid",
+        "_uuid",
+    }
+)
 
 
 def _prettify_label(attr: str) -> str:
@@ -214,7 +226,9 @@ def _field_spec_from_item(
     # Readonly: PK fields and timestamp/audit fields
     attr_lower = name.lower()
     readonly = False
-    if id_field and (attr_lower == id_field.lower() or attr_lower == id_field.lower().replace("_", "")):
+    if id_field and (
+        attr_lower == id_field.lower() or attr_lower == id_field.lower().replace("_", "")
+    ):
         readonly = True
     if attr_lower in READONLY_ATTRIBUTES:
         readonly = True

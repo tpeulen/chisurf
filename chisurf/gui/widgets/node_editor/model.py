@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class PortSpec:
     """Specification of a node port used for layout and logic."""
+
     name: str
     is_output: bool
     # Optional type information and constraints. ``port_type`` is a short
@@ -36,9 +38,9 @@ class NodeModel:
     """
 
     title: str
-    inputs: List[PortSpec]
-    outputs: List[PortSpec]
+    inputs: list[PortSpec]
+    outputs: list[PortSpec]
     node_type: str = "generic"
-    config: Dict[str, Any] = field(default_factory=dict)
-    content_factory: Optional[Callable] = None
+    config: dict[str, Any] = field(default_factory=dict)
+    content_factory: Callable | None = None
     id: str = field(default_factory=lambda: str(__import__("uuid").uuid4()))

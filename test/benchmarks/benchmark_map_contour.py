@@ -41,7 +41,6 @@ import time
 
 import numpy as np
 import pytest
-
 from chimol.geometry.marching_cubes import marching_cubes
 from chimol.volume import VolumeGrid
 
@@ -94,13 +93,18 @@ def run(sizes=SIZES) -> list[dict]:
             dict(
                 n=n,
                 verts=0 if surface is None else int(surface[0].shape[0]),
-                cold=cold, cached=cached, preview=preview,
-                hist_first=hist_first, hist_again=hist_again,
+                cold=cold,
+                cached=cached,
+                preview=preview,
+                hist_first=hist_first,
+                hist_again=hist_again,
             )
         )
 
-    print("| Grid | Vertices | cold contour | cached re-ask | preview (2 M) "
-          "| histogram, first | histogram, again |")
+    print(
+        "| Grid | Vertices | cold contour | cached re-ask | preview (2 M) "
+        "| histogram, first | histogram, again |"
+    )
     print("| --- | --- | --- | --- | --- | --- | --- |")
     for r in records:
         print(
@@ -122,9 +126,7 @@ def test_single_precision_contour_matches_a_float64_run():
     grid = _blob_map(96)
     level = float(np.quantile(grid.values, 0.99))
     v32, f32, n32 = marching_cubes(grid.values, level, (1.0, 1.0, 1.0))
-    v64, f64, n64 = marching_cubes(
-        grid.values.astype(np.float64), level, (1.0, 1.0, 1.0)
-    )
+    v64, f64, n64 = marching_cubes(grid.values.astype(np.float64), level, (1.0, 1.0, 1.0))
     assert v32.shape == v64.shape and np.array_equal(f32, f64)
     assert float(np.abs(v32 - v64).max()) < 1e-3
     assert float(np.abs(n32 - n64).max()) < 1e-3

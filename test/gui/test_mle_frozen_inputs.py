@@ -23,7 +23,6 @@ def wizard(qtbot):
 
 
 class TestFrozenInputs:
-
     def test_freezing_reaches_every_control_and_restores_it(self, wizard):
         """Not just the container: every editable control, and back again.
 
@@ -54,12 +53,13 @@ class TestFrozenInputs:
 
         seen = []
         monkeypatch.setattr(
-            utils, "optimize_hyperparameters",
+            utils,
+            "optimize_hyperparameters",
             lambda wiz, **kw: seen.append(wiz.centralWidget().isEnabled()),
         )
         wizard.optimize_hyperparameters(n_iter=1)
-        assert seen == [False]                       # frozen while it ran
-        assert wizard.centralWidget().isEnabled()    # and released after
+        assert seen == [False]  # frozen while it ran
+        assert wizard.centralWidget().isEnabled()  # and released after
 
     def test_a_failed_hpo_does_not_leave_the_wizard_disabled(self, wizard, monkeypatch):
         """The `finally` matters as much as the freeze."""
@@ -84,7 +84,6 @@ class TestFrozenInputs:
 
 
 class TestDeadCodeStaysGone:
-
     def test_the_irf_cache_builder_has_no_unreachable_tail(self):
         """220 lines of an orphaned burst-processing routine sat after its return."""
         import ast
@@ -93,8 +92,7 @@ class TestDeadCodeStaysGone:
 
         from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
 
-        source = textwrap.dedent(inspect.getsource(
-            MLELifetimeAnalysisWizard._build_irf_bg_cache))
+        source = textwrap.dedent(inspect.getsource(MLELifetimeAnalysisWizard._build_irf_bg_cache))
         body = ast.parse(source).body[0].body
         returns = [i for i, st in enumerate(body) if isinstance(st, ast.Return)]
         assert returns, "expected a return"
@@ -122,15 +120,12 @@ class TestHyperparameterSearchBudget:
         monkeypatch.setattr(utils, "evaluate_hpo_configuration", evaluate)
         return calls
 
-    def test_the_budget_the_caller_asks_for_is_the_budget_it_gets(
-            self, wizard, monkeypatch):
+    def test_the_budget_the_caller_asks_for_is_the_budget_it_gets(self, wizard, monkeypatch):
         """`max(8, …)` on the exploration stage silently inflated small budgets.
 
         Every extra evaluation is a full wizard refit, and the bar sits at 100 %
         while they run.
         """
-        from chisurf.plugins.burst.burst_mle_analysis import utils
-
         monkeypatch.setattr(
             "chisurf.plugins.burst.burst_mle_analysis.utils.dialogs.information",
             lambda *a, **k: None,

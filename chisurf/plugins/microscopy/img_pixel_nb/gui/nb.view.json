@@ -1,35 +1,158 @@
 {
-  "_comment": "Number & Brightness imaging tool. AutoForm over NBViewModel: a Controls dock (file; actions in the toolbar) and per-pixel Intensity / B / N / epsilon map docks (reusable `image` section). The detector-window selector lives in each map (channel combo); the Frames dock plays the raw per-frame intensity stack. N&B is computed for every detector window from step-0 Setup.",
+  "_comment": "Number & Brightness imaging tool. AutoForm over NBViewModel. Left: Settings in workflow order (file; stack corrections and detrending; detector — dead time and analog calibration; estimator — γ, moment smoothing, median; parameter plane and gates; cross N&B). Right: map tabs (intensity, B, N, ε, n, gated pixels, parameter plane with gate overlay, cross brightness / number, frames movie). Run / HDF5 / ndX / demo / analog calibration live in the toolbar; long help and the guided tour behind ? and Guide.",
   "sections": [
     {
       "type": "dock_area",
       "title": "Number & Brightness",
+      "split": "horizontal",
+      "persist": "img_pixel_nb",
       "sections": [
         {
           "type": "panel",
-          "title": "Controls",
+          "title": "Settings",
           "collapsed": false,
+          "n_col": 1,
           "sections": [
             {"type": "value", "attr": "filename", "label": "TTTR file", "kind": "file",
-             "description": "PTU/HT3 imaging file; CLSM markers are auto-detected from the header."},
-            {"type": "info", "source": "results_html", "height": 90}
+             "description": "Confocal photon-stream file (PTU/HT3/…) with line and frame markers; N&B needs many frames of the same field. The step-0 detector setup decides which windows are analysed."},
+            {"type": "info", "source": "results_html", "height": 90},
+            {
+              "type": "panel",
+              "title": "Stack corrections",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "choice", "attr": "subtract", "label": "Subtract", "options": ["none", "frame_mean", "pixel_mean", "moving_average"],
+                 "description": "Removed from every frame before the moments are taken: the frame mean (whole-frame intensity changes), the pixel mean over frames (immobile structure) or a sliding box average (slow drifts and immobile structure together). The box is set below."},
+                {"type": "choice", "attr": "add", "label": "Add back", "options": ["none", "total_mean", "frame_mean", "pixel_mean", "moving_average"],
+                 "description": "Added back after subtracting. B = σ²/⟨k⟩ divides by the mean, so a subtraction must be followed by adding a mean back — the total mean or the pixel mean — or B loses its meaning."},
+                {"type": "value", "attr": "box_pixels", "label": "Box (px)", "kind": "int", "minimum": 1, "maximum": 256,
+                 "description": "Lateral edge of the moving-average box (both axes). An even box is centred one pixel early, as the reference implementation does."},
+                {"type": "value", "attr": "box_frames", "label": "Box (frames)", "kind": "int", "minimum": 1, "maximum": 10000,
+                 "description": "Temporal length of the moving-average box. It must be long compared with the number fluctuations you want to keep, or the subtraction removes the signal N&B measures."},
+                {"type": "value", "attr": "background", "label": "Background", "kind": "float", "decimals": 4,
+                 "description": "Constant counts per pixel dwell subtracted at the end (dark counts, scattered light)."},
+                {"type": "value", "attr": "detrend_segments", "label": "Detrend segments", "kind": "int", "minimum": 0, "maximum": 1000,
+                 "description": "Bleaching correction: fit a straight line to every pixel within each of this many time segments, subtract it and add the pixel mean back. 0 switches it off. A bleaching decay inflates σ² and therefore B; several short lines follow the decay where one cannot."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Detector",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "value", "attr": "dead_time_ns", "label": "Dead time (ns)", "kind": "float", "minimum": 0.0, "maximum": 1000000.0, "decimals": 3,
+                 "description": "Detector dead time. Counts are corrected as k/(1 − k·τ/T) before the moments; it needs the pixel dwell T below. 0 switches the correction off."},
+                {"type": "value", "attr": "pixel_dwell_us", "label": "Pixel dwell (µs)", "kind": "float", "minimum": 0.0, "maximum": 1000000.0, "decimals": 4,
+                 "description": "Time the beam spends on one pixel; only used by the dead-time correction."},
+                {"type": "value", "attr": "gain", "label": "Gain S", "kind": "float", "minimum": 0.0, "decimals": 5,
+                 "description": "Analog detectors only: counts per photon, from a static-gradient calibration (toolbar: Calibrate analog). 1 for a photon-counting detector."},
+                {"type": "value", "attr": "offset", "label": "Offset", "kind": "float", "decimals": 4,
+                 "description": "Analog detectors only: the signal of zero photons, from the same calibration. 0 for a photon-counting detector."},
+                {"type": "value", "attr": "read_variance", "label": "Read variance σ₀²", "kind": "float", "minimum": 0.0, "decimals": 4,
+                 "description": "Analog detectors only: variance of the dark signal (measure it with the shutter closed). 0 for a photon-counting detector."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Estimator",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "value", "attr": "gamma", "label": "Shape factor γ", "kind": "float", "minimum": 0.01, "maximum": 10.0, "decimals": 4,
+                 "description": "Observation-volume shape factor. ε is divided and n multiplied by γ. 1 reports ε and n as Digman et al. define them; 0.3536 (1/√8, 3-D Gaussian) gives the γ-corrected values of the reference implementation."},
+                {"type": "choice", "attr": "smoothing", "label": "Moment smoothing", "options": ["none", "average", "disk", "gaussian"],
+                 "description": "Smooth the mean and standard-deviation maps before forming B and N: a box of Radius pixels, a disk of radius Radius−1, or a Gaussian of σ = Radius/2. Trades resolution for a less noisy brightness map."},
+                {"type": "value", "attr": "radius", "label": "Radius", "kind": "float", "minimum": 0.0, "maximum": 50.0, "decimals": 1,
+                 "description": "Size of the moment smoothing. 1 or less switches the smoothing off."},
+                {"type": "toggle", "attr": "median", "label": "Median filter (ε, n)",
+                 "description": "Pass the ε and n maps through a 3×3 median filter, which removes single hot pixels without blurring edges."}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Parameter plane / gates",
+              "collapsed": false,
+              "n_col": 1,
+              "sections": [
+                {"type": "choice", "attr": "plane_x", "label": "Plane x", "options_source": "plane_axis_names", "call": "refresh_display",
+                 "description": "Horizontal axis of the parameter plane. Intensity ⟨k⟩ against brightness is the classic N&B plot: at equal intensity, monomers and oligomers separate by brightness."},
+                {"type": "choice", "attr": "plane_y", "label": "Plane y", "options_source": "plane_axis_names", "call": "refresh_display",
+                 "description": "Vertical axis of the parameter plane (mean, B, N, epsilon or n)."},
+                {"type": "value", "attr": "plane_bins", "label": "Bins", "kind": "int", "minimum": 8, "maximum": 512,
+                 "description": "Bins per axis of the parameter-plane histogram."},
+                {"type": "toggle", "attr": "log_histogram", "label": "Log counts",
+                 "description": "Show the parameter-plane histogram on a logarithmic count scale, so a small population stays visible next to the dominant one."},
+                {"type": "custom", "key": "region_list", "target": "gates", "title": "Gate regions",
+                 "options": {"extent_attr": "plane_extent",
+                             "refresh_on": ["gate", "run"]},
+                 "description": "Regions drawn on the parameter plane. The pixels whose (x, y) fall inside are selected and shown in the Gated pixels map — a brightness population, back on the image. Tick to include, ~ for everything outside."},
+                {"type": "button_row", "buttons": [
+                  {"label": "🧹 Clear gates", "action": "clear_gates",
+                   "description": "Drop every gate region; all pixels are selected again."}
+                ]}
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Cross N&B",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {"type": "choice", "attr": "cross_window", "label": "Cross with", "options_source": "cross_window_names", "call": "refresh_display",
+                 "description": "Second detector window for cross N&B with the displayed one. B_cross = cov/√(⟨a⟩⟨b⟩) has no −1: shot noise is uncorrelated between detectors, so B_cross ≈ 0 means the two labels move independently and B_cross > 0 that they move together."}
+              ]
+            }
           ]
         },
-        {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
-         "options": {"colormap": true, "colormap_attr": "colormap",
-                     "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "b_map", "title": "Brightness (B)",
-         "options": {"colormap": true, "colormap_attr": "colormap",
-                     "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "n_map", "title": "Number (N)",
-         "options": {"colormap": true, "colormap_attr": "colormap",
-                     "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "epsilon_map", "title": "Brightness ε",
-         "options": {"colormap": true, "colormap_attr": "colormap",
-                     "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
-        {"type": "custom", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
-         "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
-                     "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
+        {
+          "type": "dock_area",
+          "title": "Maps",
+          "sections": [
+            {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
+            {"type": "custom", "key": "image", "target": "b_map", "title": "Brightness (B)",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "Apparent brightness σ²/⟨k⟩ (after the detector correction). 1 for an immobile or Poisson-only pixel."},
+            {"type": "custom", "key": "image", "target": "n_map", "title": "Number (N)",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "Apparent number ⟨k⟩²/σ²."},
+            {"type": "custom", "key": "image", "target": "epsilon_map", "title": "Brightness ε",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "Molecular brightness (B − 1)/γ in counts per pixel dwell per molecule."},
+            {"type": "custom", "key": "image", "target": "number_map", "title": "Number n",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "Molecule number γ⟨k⟩/(B − 1)."},
+            {"type": "custom", "key": "image", "target": "plane_histogram", "title": "Parameter plane",
+             "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false,
+                         "aspect_locked": false, "axes_visible": true,
+                         "x_label": "Plane x", "y_label": "Plane y",
+                         "extent_source": "plane_extent",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "2-D histogram of the displayed window on the chosen axes (default intensity horizontally, brightness vertically). Draw gate regions here to select a population."},
+            {"type": "custom", "key": "image", "target": "gated_intensity_map", "title": "Gated pixels",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "Intensity of the pixels the gate regions select, zero elsewhere."},
+            {"type": "custom", "key": "image", "target": "cross_brightness_map", "title": "Cross brightness",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "B_cross between the displayed window and the Cross with window (empty while cross N&B is off)."},
+            {"type": "custom", "key": "image", "target": "cross_number_map", "title": "Cross number",
+             "options": {"colormap": true, "colormap_attr": "colormap",
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"},
+             "description": "N_cross = ⟨a⟩⟨b⟩/cov between the two windows."},
+            {"type": "custom", "key": "image", "target": "frame_stack", "title": "Frames (movie)",
+             "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
+                         "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
+          ]
+        }
       ]
     }
   ]

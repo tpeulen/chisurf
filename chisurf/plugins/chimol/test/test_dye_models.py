@@ -8,17 +8,22 @@ distribution -- an AccessibleVolume like any other, so the object, the mean
 bead, distances and fps.json all follow. ``add_dye <sele>, rotamer <lib.pdb>``
 and the wizard's dye menu reach it.
 """
+
 from __future__ import annotations
 
 import pathlib
 
+import chimol
 import numpy as np
 import pytest
-
-import chimol
 from chimol.plugins.labelling.dyes import parse_dye_spec
 from chimol.plugins.labelling.models import (
-    DYE_MODELS, DyeModel, load_rotamer_library, register_model, rotamer_positions, unregister_models,
+    DYE_MODELS,
+    DyeModel,
+    load_rotamer_library,
+    register_model,
+    rotamer_positions,
+    unregister_models,
 )
 
 _PDB = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
@@ -35,8 +40,10 @@ def _write_library(path: pathlib.Path, n: int = 24, reach: float = 8.0) -> None:
         lines.append(f"MODEL     {i + 1}")
         lines.append(f"REMARK weight {1.0 + (i % 3)}")
         for j, (name, xyz) in enumerate((("SG", sg), ("CB", cb), ("CA", ca), ("F", f)), start=1):
-            lines.append("HETATM%5d %-4s DYE A   1    %8.3f%8.3f%8.3f  1.00  0.00           %s"
-                         % (j, name, xyz[0], xyz[1], xyz[2], "S" if name == "SG" else "C"))
+            lines.append(
+                "HETATM%5d %-4s DYE A   1    %8.3f%8.3f%8.3f  1.00  0.00           %s"
+                % (j, name, xyz[0], xyz[1], xyz[2], "S" if name == "SG" else "C")
+            )
         lines.append("ENDMDL")
     path.write_text("\n".join(lines) + "\n")
 
@@ -45,7 +52,9 @@ def test_the_grammar_knows_the_models():
     assert set(DYE_MODELS) >= {"AV1", "AV3", "ROTAMER"}
     p = parse_dye_spec("rotamer lib.pdb 3.2")
     assert p == {"simulation_type": "ROTAMER", "rotamer_library": "lib.pdb", "clash_distance": 3.2}
-    p = parse_dye_spec("rotamer_library=lib.pdb simulation_type=rotamer anchor_atoms=SG,CB,CA fluorophore_atom=F")
+    p = parse_dye_spec(
+        "rotamer_library=lib.pdb simulation_type=rotamer anchor_atoms=SG,CB,CA fluorophore_atom=F"
+    )
     assert p["anchor_atoms"] == "SG,CB,CA" and p["fluorophore_atom"] == "F"
     assert parse_dye_spec("Cy5")["simulation_type"] == "AV1"
 
@@ -65,7 +74,9 @@ def test_a_library_loads_and_conformers_are_placed_and_clash_filtered(tmp_path):
     xyz = np.vstack([res, wall])
     names = np.array(["SG", "CB", "CA"] + ["O"] * len(wall))
     mask = np.array([True, True, True] + [False] * len(wall))
-    pos, w, kept = rotamer_positions(xyz, names, mask, lib, ("SG", "CB", "CA"), fluorophore_atom="F", clash_distance=3.0)
+    pos, w, kept = rotamer_positions(
+        xyz, names, mask, lib, ("SG", "CB", "CA"), fluorophore_atom="F", clash_distance=3.0
+    )
     assert 0 < len(kept) < lib.n_conformers, "the wall must reject some conformers and not all"
     # a rigid superposition: each placed fluorophore keeps its distance to the SG
     d = np.linalg.norm(pos - res[0], axis=1)
@@ -99,7 +110,7 @@ def test_add_dye_with_a_rotamer_library_makes_an_av_object(qapp, tmp_path):
     cmd.set_error_callback(errors.append)
     cmd.set_message_callback(said.append)
     cmd.do(f'load "{_PDB}"')
-    cmd.do("mutate resi 119, CYS")                       # SG, CB, CA to anchor on
+    cmd.do("mutate resi 119, CYS")  # SG, CB, CA to anchor on
     n_before = len(viewer.objects)
     cmd.do(f"add_dye resi 119 and name SG, rotamer {lib_path} fluorophore_atom=F")
     assert errors == [], errors

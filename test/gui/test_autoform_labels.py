@@ -52,8 +52,9 @@ def _form(*sections):
 
 def test_a_plain_label_is_rendered_typeset(qapp):
     """``tau_D(0)`` in the spec, τ with a real subscript on screen."""
-    import chisurf.core.dataspec as ds
     from qtpy import QtCore, QtWidgets
+
+    import chisurf.core.dataspec as ds
 
     form = _form(
         ds.ValueSection(attr="tau", kind="float", label="tau_D(0) (ns)"),

@@ -189,7 +189,7 @@ def document_reference(
     """
     label, caption = body.strip(), ""
     if "<" in label and label.endswith(">"):
-        caption, label = label[: label.index("<")].strip(), label[label.index("<") + 1: -1]
+        caption, label = label[: label.index("<")].strip(), label[label.index("<") + 1 : -1]
     label = label.strip()
 
     if role in ("ref", "numref", "eq"):
@@ -241,7 +241,8 @@ def expand_roles(text: str, base: pathlib.Path | None = None) -> str:
         markup that failed.
 
     """
-    def _replace(match: "re.Match[str]") -> str:
+
+    def _replace(match: re.Match[str]) -> str:
         role, body = match.group(1), match.group(2)
         target, anchor, label = document_reference(role, body, base)
         if target is None:

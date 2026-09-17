@@ -153,9 +153,7 @@ def test_styles_are_offered_only_when_asked_for(widget):
     assert plain._style.isHidden()
     styled = widget(_Model(), styles=["surface", "mesh"])
     assert not styled._style.isHidden()
-    assert [styled._style.itemText(i) for i in range(styled._style.count())] == [
-        "surface", "mesh"
-    ]
+    assert [styled._style.itemText(i) for i in range(styled._style.count())] == ["surface", "mesh"]
 
 
 def test_changing_the_style_writes_it_onto_the_level(widget):

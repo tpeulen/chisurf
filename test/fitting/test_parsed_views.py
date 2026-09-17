@@ -25,7 +25,9 @@ from chisurf.core.models.ics.ics import ImageCorrelationModel
 from chisurf.core.models.pcf.parse import ParsePCFModel
 from chisurf.core.models.stopped_flow.parse import ParseStoppedFlowModel
 
-REFERENCE = json.loads((pathlib.Path(__file__).parent / "data" / "parsed_reference.json").read_text())
+REFERENCE = json.loads(
+    (pathlib.Path(__file__).parent / "data" / "parsed_reference.json").read_text()
+)
 CLASSES = {"fcs": ParseFCSModel, "pcf": ParsePCFModel, "stopped_flow": ParseStoppedFlowModel}
 
 
@@ -64,21 +66,30 @@ def _carpet_fit(record, y=None):
     meta = {k: (np.asarray(v) if isinstance(v, list) else v) for k, v in record["meta"].items()}
     y = np.asarray(record["y"]) if y is None else y
     frames = int(np.atleast_1d(meta.get("frame_lags", [0])).size)
-    data = chisurf.core.data.DataCurve(x=np.arange(y.size, dtype=float), y=y, ey=np.full(y.size, 1e-3))
+    data = chisurf.core.data.DataCurve(
+        x=np.arange(y.size, dtype=float), y=y, ey=np.full(y.size, 1e-3)
+    )
     data.meta_data["ics"] = meta
     data.meta_data["coordinates"] = carpet_coordinates(meta)
-    data.meta_data["grid"] = {"ndim": 3, "shape": (frames,) + np.asarray(meta["pixel_shift"]).shape, "order": "C"}
+    data.meta_data["grid"] = {
+        "ndim": 3,
+        "shape": (frames,) + np.asarray(meta["pixel_shift"]).shape,
+        "order": "C",
+    }
     data.meta_data["parameter_defaults"] = {"pxl_size": 40.0}
     fit = F.Fit(model_class=ImageCorrelationModel, data=data)
     fit.xmin, fit.xmax = 0, y.size
     return fit
 
 
-@pytest.mark.parametrize("record, entry", [
-    ("image_correlation_3d", "Image correlation (3D)"),
-    ("image_correlation_2d", "Image correlation (2D membrane)"),
-    ("gaussian_2d", "2D Gaussian (2 sigma + angle)"),
-])
+@pytest.mark.parametrize(
+    "record, entry",
+    [
+        ("image_correlation_3d", "Image correlation (3D)"),
+        ("image_correlation_2d", "Image correlation (2D membrane)"),
+        ("gaussian_2d", "2D Gaussian (2 sigma + angle)"),
+    ],
+)
 def test_the_carpet_equations_reproduce_the_classic_carpets(record, entry):
     reference = REFERENCE["ics"][record]
     fit = _carpet_fit(reference)
@@ -125,12 +136,15 @@ def test_search_over_a_catalogue_picks_the_equation_that_made_the_data():
     problem = model.problem
     keys = list(problem.get_structure_keys())
     model.structure = keys[0]
-    _set(problem, {k: v for k, v in REFERENCE["curves"]["fcs"]["entries"][keys[0]]["values"].items()})
+    _set(
+        problem, {k: v for k, v in REFERENCE["curves"]["fcs"]["entries"][keys[0]]["values"].items()}
+    )
     model.update()
     y = np.array(model.y)
 
     fit = _curve_fit(ParseFCSModel, x, y, ey=np.full(x.size, 1e-3))
     from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
+
     prepared = prepare_model_search(fit)
     assert prepared.supported, prepared.reasons
     root = prepared.problem.get_initial_state()

@@ -4,6 +4,7 @@ Drives the full MMFDBWidget against the real in-process RPC layer and an empty
 temp DB: it must be a NavigationPanelTool, expose the flattened nav panels, and
 build every panel (entity docks + the workflow views) without raising.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,8 +40,10 @@ def _make_widget(db):
 
     with patch_db(db):
         client = MMFDBClient(inprocess=True)
-        with mock.patch.object(MMFDBWidget, "_verify_admin_access", lambda s: None), \
-             mock.patch.object(MMFDBWidget, "_ensure_authenticated", lambda s: None):
+        with (
+            mock.patch.object(MMFDBWidget, "_verify_admin_access", lambda s: None),
+            mock.patch.object(MMFDBWidget, "_ensure_authenticated", lambda s: None),
+        ):
             w = MMFDBWidget(client=client)
     _WIDGETS.append(w)
     return w

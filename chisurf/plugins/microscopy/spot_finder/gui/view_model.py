@@ -109,7 +109,9 @@ class SpotFinderViewModel(MleObserverMixin):
 
     method = scalar("method", str, "Detector: watershed, threshold, log or dog.")
     sigma = scalar("sigma", float, "Gaussian smoothing applied before thresholding.")
-    threshold = scalar("threshold", float, "Intensity level (<0 = Otsu); for log/dog, the minimum response.")
+    threshold = scalar(
+        "threshold", float, "Intensity level (<0 = Otsu); for log/dog, the minimum response."
+    )
     peak_footprint_size = scalar("peak_footprint_size", int, "Watershed seed footprint side.")
     min_area = scalar("min_area", int, "Smallest region to keep (pixels).")
     max_area = scalar("max_area", int, "Largest region to keep; 0 disables.")
@@ -249,11 +251,13 @@ class SpotFinderViewModel(MleObserverMixin):
         for ri, result in enumerate(self.results):
             file_tag = f"F{ri + 1}·" if len(self.results) > 1 else ""
             for rec in rows_from_table(result.table):
-                entries.append({
-                    "id": idx,
-                    "label": f"{file_tag}Region {int(rec.get('label', idx))}",
-                    "badge": f"{int(rec.get('region.area', 0))} px",
-                })
+                entries.append(
+                    {
+                        "id": idx,
+                        "label": f"{file_tag}Region {int(rec.get('label', idx))}",
+                        "badge": f"{int(rec.get('region.area', 0))} px",
+                    }
+                )
                 idx += 1
         return entries
 
@@ -268,11 +272,13 @@ class SpotFinderViewModel(MleObserverMixin):
         if cur is None:
             return []
         rec = cur[1]
-        return [(0,
-                 float(rec.get("region.centroid_weighted_y",
-                               rec.get("region.centroid_y", 0.0))),
-                 float(rec.get("region.centroid_weighted_x",
-                               rec.get("region.centroid_x", 0.0))))]
+        return [
+            (
+                0,
+                float(rec.get("region.centroid_weighted_y", rec.get("region.centroid_y", 0.0))),
+                float(rec.get("region.centroid_weighted_x", rec.get("region.centroid_x", 0.0))),
+            )
+        ]
 
     def current_region_info(self) -> str:
         """HTML summary for the selected region (metadata panel)."""
@@ -295,8 +301,9 @@ class SpotFinderViewModel(MleObserverMixin):
             f"eccentricity = {g('region.eccentricity')}<br>"
         )
         if "region.intensity_mean" in rec:
-            out += (f"mean = {g('region.intensity_mean')} &nbsp; "
-                    f"max = {g('region.intensity_max')}<br>")
+            out += (
+                f"mean = {g('region.intensity_mean')} &nbsp; max = {g('region.intensity_max')}<br>"
+            )
         if "spot.sigma" in rec:
             out += f"σ = {g('spot.sigma')} px<br>"
         return out
@@ -386,8 +393,7 @@ class SpotFinderViewModel(MleObserverMixin):
             if row.status != "ok":
                 continue
             try:
-                image = load_intensity(row.input, channels=self.channels or None,
-                                       frame=self.frame)
+                image = load_intensity(row.input, channels=self.channels or None, frame=self.frame)
                 self.results.append(detect(image, dataclasses.replace(self.settings)))
             except Exception:  # noqa: BLE001 - the row already says what happened
                 logger.debug("could not re-derive %s for display", row.input, exc_info=True)
@@ -443,8 +449,7 @@ class SpotFinderViewModel(MleObserverMixin):
         truth = truth_table()
         taus = ", ".join(f"{tau:g}" for *_xy, tau in truth["blobs"])
         self.status_text = (
-            f"Demo loaded: {len(truth['blobs'])} objects with lifetimes "
-            f"{taus} ns. Press Detect."
+            f"Demo loaded: {len(truth['blobs'])} objects with lifetimes {taus} ns. Press Detect."
         )
         self.notify("results")
         return str(sample)
@@ -468,9 +473,7 @@ class SpotFinderViewModel(MleObserverMixin):
             return
         combined = concat_stores(tables)
         write_csv_table(path, combined)
-        self.status_text = (
-            f"Exported {row_count(combined)} region(s) to {pathlib.Path(path).name}"
-        )
+        self.status_text = f"Exported {row_count(combined)} region(s) to {pathlib.Path(path).name}"
         self.notify("done")
 
     def has_results(self) -> bool:

@@ -12,10 +12,10 @@ as *objects* before it is read as a selection, because a dye cloud has no atoms
 -- reading `hide av_*` as "hide everything in the atoms those objects cover"
 hides nothing at all, which is the more surprising of two defensible readings.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.commands.command import Cmd
 from chimol.testing.mock_viewer import MockViewer, MockWindow
 
@@ -33,7 +33,8 @@ NAMES = ["t4l", "av_119A_mp", "av_44D_mp", "av_86A_mp", "sele_helper"]
 
 def _visible(cmd) -> set:
     return {
-        entry.name for entry in cmd.window.viewer.objects.values()
+        entry.name
+        for entry in cmd.window.viewer.objects.values()
         if getattr(entry, "visible", True)
     }
 
@@ -63,7 +64,7 @@ def test_a_pattern_that_matches_nothing_is_not_silent():
     assert said, "a pattern that matched nothing said nothing"
 
 
-REAL = '''
+REAL = """
 app = open_app(size=(600, 400))
 cmd, viewer = app.cmd, app.viewer
 cmd.do("load 148l.pdb")
@@ -92,7 +93,7 @@ emit("count_glob", said[-1] if said else "nothing")
 said.clear()
 cmd.do("count_atoms 148l")
 emit("count_one", said[-1] if said else "nothing")
-'''
+"""
 
 
 @pytest.fixture(scope="module")

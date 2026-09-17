@@ -20,14 +20,16 @@ def _channel(value: str):
 
 @click.command()
 @click.argument("filename", type=click.Path(exists=True))
-@click.option("--channel", "-c", default="0", help="Channel to measure the drift on (index or name).")
+@click.option(
+    "--channel", "-c", default="0", help="Channel to measure the drift on (index or name)."
+)
 @click.option(
     "--reference",
     type=click.Choice(["first", "previous", "mean"]),
     default="first",
     show_default=True,
     help="Frame each frame is compared with. 'first' suits slow monotonic drift; "
-         "'previous' tracks wander but accumulates error.",
+    "'previous' tracks wander but accumulates error.",
 )
 @click.option(
     "--mode",
@@ -36,19 +38,49 @@ def _channel(value: str):
     show_default=True,
     help="'wrap' conserves every photon; 'constant' drops what leaves the frame.",
 )
-@click.option("--smooth", type=float, default=2.0, show_default=True,
-              help="Gaussian smoothing of the correlation before the peak search (px).")
+@click.option(
+    "--smooth",
+    type=float,
+    default=2.0,
+    show_default=True,
+    help="Gaussian smoothing of the correlation before the peak search (px).",
+)
 @click.option("--subpixel", is_flag=True, help="Refine each peak by parabolic interpolation.")
-@click.option("--roi", type=click.Path(exists=True), default=None,
-              help="JSON file holding a serialised ROI to restrict the estimate to.")
-@click.option("--channel-axis", default=None, help="Images: force the channel axis (index or label).")
-@click.option("--out-stack", type=click.Path(), default=None,
-              help="Write the corrected stack as a multi-page TIFF.")
-@click.option("--out-shifts", type=click.Path(), default=None,
-              help="Write the per-frame displacements as CSV.")
+@click.option(
+    "--roi",
+    type=click.Path(exists=True),
+    default=None,
+    help="JSON file holding a serialised ROI to restrict the estimate to.",
+)
+@click.option(
+    "--channel-axis", default=None, help="Images: force the channel axis (index or label)."
+)
+@click.option(
+    "--out-stack",
+    type=click.Path(),
+    default=None,
+    help="Write the corrected stack as a multi-page TIFF.",
+)
+@click.option(
+    "--out-shifts",
+    type=click.Path(),
+    default=None,
+    help="Write the per-frame displacements as CSV.",
+)
 @click.option("--json", "as_json", is_flag=True, help="Print the summary as JSON.")
-def cli(filename, channel, reference, mode, smooth, subpixel, roi, channel_axis,
-        out_stack, out_shifts, as_json):
+def cli(
+    filename,
+    channel,
+    reference,
+    mode,
+    smooth,
+    subpixel,
+    roi,
+    channel_axis,
+    out_stack,
+    out_shifts,
+    as_json,
+):
     """Measure and remove inter-frame drift in an image stack or photon stream.
 
     Reports the largest displacement found, which is the number worth acting on:
@@ -77,7 +109,10 @@ def cli(filename, channel, reference, mode, smooth, subpixel, roi, channel_axis,
         written["shifts"] = _core.write_shifts_csv(result.shifts, out_shifts)
     if out_stack:
         data, _ = _core.corrected_stack(
-            filename, _channel(channel), shifts=result.shifts, mode=mode,
+            filename,
+            _channel(channel),
+            shifts=result.shifts,
+            mode=mode,
             channel_axis=channel_axis,
         )
         written["stack"] = _core.write_stack_tiff(data, out_stack)

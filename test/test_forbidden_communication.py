@@ -15,9 +15,8 @@ Usage:
 
 from __future__ import annotations
 
-import re
 import pathlib
-from typing import Dict, List, Set, Tuple
+import re
 
 import pytest
 
@@ -39,7 +38,7 @@ SCAN_DIRECTORIES = [
 # "hide five old violations, add five new ones" problem of a global threshold.
 # Run ``python -m pytest test/test_forbidden_communication.py --update-expected``
 # to regenerate this dict from the current state.
-EXPECTED_VIOLATIONS: Dict[str, int] = {
+EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/autoform/auto_form.py": 1,
     "chisurf/gui/autoform/sections/builtin.py": 5,
     # global_parameter_table: in-process Global-View table needs live fit
@@ -88,7 +87,7 @@ EXPECTED_VIOLATIONS: Dict[str, int] = {
 }
 
 # Files that are entirely exempt from scanning
-ALLOWED_FILES: Set[str] = {
+ALLOWED_FILES: set[str] = {
     "test_forbidden_communication.py",
     "test_fitting_client.py",
     "fitting_client.py",  # contains deprecated get_fit_objects() bridge with getattr(cs, "fits", [])
@@ -96,7 +95,7 @@ ALLOWED_FILES: Set[str] = {
 
 # ── Forbidden patterns ────────────────────────────────────────────────
 
-FORBIDDEN_PATTERNS: List[Tuple[str, re.Pattern]] = [
+FORBIDDEN_PATTERNS: list[tuple[str, re.Pattern]] = [
     (
         "direct chisurf.fits or cs.fits access",
         re.compile(r'(?<!["\'\w])chisurf\.fits(?!["\'\w])|(?<!["\'\w])cs\.fits(?!["\'\w])'),
@@ -119,7 +118,7 @@ FORBIDDEN_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ),
     (
         "direct chisurf.cs.current_experiment access",
-        re.compile(r'chisurf\.cs\.current_experiment'),
+        re.compile(r"chisurf\.cs\.current_experiment"),
     ),
     (
         "getattr(cs, 'fits', ...) access",
@@ -132,19 +131,19 @@ FORBIDDEN_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 PARAM_MUTATION = re.compile(
-    r'\.link\s*=\s*'
-    r'|\.fixed\s*=\s*'
-    r'|\.bounds\s*=\s*'
-    r'|\.bounds_on\s*=\s*'
-    r'|(?<=[a-zA-Z_])(?:\.value)\s*=\s*'
+    r"\.link\s*=\s*"
+    r"|\.fixed\s*=\s*"
+    r"|\.bounds\s*=\s*"
+    r"|\.bounds_on\s*=\s*"
+    r"|(?<=[a-zA-Z_])(?:\.value)\s*=\s*"
 )
 
 FIT_METHOD_CALLS = re.compile(
-    r'(?<!self\.)fit\.run\s*\('
-    r'|(?!\.scan|\.adaptive_scan)fit\.update\s*\('
-    r'|fit\.fit_range\s*='
-    r'|fit\.data\s*='
-    r'|fit\.mask\s*='
+    r"(?<!self\.)fit\.run\s*\("
+    r"|(?!\.scan|\.adaptive_scan)fit\.update\s*\("
+    r"|fit\.fit_range\s*="
+    r"|fit\.data\s*="
+    r"|fit\.mask\s*="
 )
 
 
@@ -156,13 +155,13 @@ def _is_allowed_file(filepath: pathlib.Path) -> bool:
     return False
 
 
-def _scan_file(filepath: pathlib.Path) -> List[Tuple[str, int, str]]:
+def _scan_file(filepath: pathlib.Path) -> list[tuple[str, int, str]]:
     if _is_allowed_file(filepath):
         return []
 
-    violations: List[Tuple[str, int, str]] = []
+    violations: list[tuple[str, int, str]] = []
     try:
-        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        with open(filepath, encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
     except Exception:
         return []
@@ -212,8 +211,8 @@ def _scan_file(filepath: pathlib.Path) -> List[Tuple[str, int, str]]:
     return violations
 
 
-def _collect_files() -> List[pathlib.Path]:
-    files: List[pathlib.Path] = []
+def _collect_files() -> list[pathlib.Path]:
+    files: list[pathlib.Path] = []
     for rel_dir in SCAN_DIRECTORIES:
         scan_dir = ROOT / rel_dir
         if scan_dir.is_dir():
@@ -222,10 +221,10 @@ def _collect_files() -> List[pathlib.Path]:
     return files
 
 
-def _collect_violations() -> List[Tuple[str, str, int, str]]:
+def _collect_violations() -> list[tuple[str, str, int, str]]:
     """Scan all files and return sorted violation list."""
     files = _collect_files()
-    violations: List[Tuple[str, str, int, str]] = []
+    violations: list[tuple[str, str, int, str]] = []
     for filepath in files:
         for name, lineno, line in _scan_file(filepath):
             rel = filepath.relative_to(ROOT).as_posix()
@@ -238,10 +237,10 @@ def _build_expected_doc() -> str:
     """Return documentation on how to update EXPECTED_VIOLATIONS."""
     return (
         "EXPECTED_VIOLATIONS is a per-file dictionary. To update it:\n"
-        "  python -c \"from test_forbidden_communication import _collect_violations;"
+        '  python -c "from test_forbidden_communication import _collect_violations;'
         " from collections import Counter; v = _collect_violations();"
         " by_file = sorted(Counter(rel for rel,_,_,_ in v).items());"
-        " print(dict(by_file))\"\n"
+        ' print(dict(by_file))"\n'
         "Then copy the output into EXPECTED_VIOLATIONS in this file."
     )
 
@@ -255,32 +254,32 @@ def test_no_new_forbidden_communication():
     """
     violations = _collect_violations()
     from collections import Counter
-    by_file: Dict[str, int] = Counter(rel for rel, _, _, _ in violations)
 
-    failures: List[str] = []
+    by_file: dict[str, int] = Counter(rel for rel, _, _, _ in violations)
+
+    failures: list[str] = []
     for rel, actual in sorted(by_file.items()):
         expected = EXPECTED_VIOLATIONS.get(rel, 0)
         if actual > expected:
-            failures.append(
-                f"  {rel}: {actual} violations (expected ≤ {expected})"
-            )
+            failures.append(f"  {rel}: {actual} violations (expected ≤ {expected})")
 
     # Also flag files that disappeared from EXPECTED_VIOLATIONS but still
     # have violations (unlikely but possible after a rename)
     for rel, expected in EXPECTED_VIOLATIONS.items():
         actual = by_file.get(rel, 0)
         if actual > expected:
-            failures.append(
-                f"  {rel}: {actual} violations (expected ≤ {expected})"
-            )
+            failures.append(f"  {rel}: {actual} violations (expected ≤ {expected})")
 
     if failures:
         msg = (
             "\n" + "=" * 72 + "\n"
             "Files with MORE forbidden patterns than expected:\n"
-            + "=" * 72 + "\n"
+            + "=" * 72
+            + "\n"
             + "\n".join(failures)
-            + "\n\n" + "=" * 72 + "\n"
+            + "\n\n"
+            + "=" * 72
+            + "\n"
             "These patterns bypass the FittingClient adapter — migrate them.\n"
             + _build_expected_doc()
         )
@@ -291,13 +290,15 @@ def test_no_unknown_files_with_violations():
     """Fail if a file NOT in EXPECTED_VIOLATIONS has violations."""
     violations = _collect_violations()
     from collections import Counter
-    by_file: Dict[str, int] = Counter(rel for rel, _, _, _ in violations)
+
+    by_file: dict[str, int] = Counter(rel for rel, _, _, _ in violations)
     unknown = {rel: c for rel, c in by_file.items() if rel not in EXPECTED_VIOLATIONS}
     if unknown:
         msg = (
             "\n" + "=" * 72 + "\n"
             "Files with violations but NO entry in EXPECTED_VIOLATIONS:\n"
-            + "=" * 72 + "\n"
+            + "=" * 72
+            + "\n"
             + "\n".join(f"  {rel}: {c}" for rel, c in sorted(unknown.items()))
             + "\n\nAdd them to EXPECTED_VIOLATIONS.\n"
             + _build_expected_doc()
@@ -314,6 +315,7 @@ def test_violations_are_reported(capsys):
             print("Remove test_violations_are_reported from this file.")
             return
         from collections import Counter
+
         by_file = Counter(rel for rel, _, _, _ in violations)
         print(f"\n{'=' * 72}")
         print(f"ZMQ Migration — {len(violations)} violations in {len(by_file)} files")
@@ -333,24 +335,24 @@ def test_violations_are_reported(capsys):
 # ── Tests ─────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("code,expected_name", [
-    ("chisurf.fits", "direct chisurf.fits or cs.fits access"),
-    ("chisurf.cs.mdiarea", "direct chisurf.cs or cs.current_fit access"),
-    ('cs.run("cmd")', "direct cs.run or chisurf.run command strings"),
-    ("fp.link = other", "direct parameter mutation"),
-    ("fp.fixed = True", "direct parameter mutation"),
-    ("fp.value = 3.5", "direct parameter mutation"),
-    ("fp.bounds = (0, 10)", "direct parameter mutation"),
-    ("fit.run()", "direct fit method call"),
-    ("fit.update()", "direct fit method call"),
-    ("fit.fit_range = (0, 100)", "direct fit method call"),
-])
+@pytest.mark.parametrize(
+    "code,expected_name",
+    [
+        ("chisurf.fits", "direct chisurf.fits or cs.fits access"),
+        ("chisurf.cs.mdiarea", "direct chisurf.cs or cs.current_fit access"),
+        ('cs.run("cmd")', "direct cs.run or chisurf.run command strings"),
+        ("fp.link = other", "direct parameter mutation"),
+        ("fp.fixed = True", "direct parameter mutation"),
+        ("fp.value = 3.5", "direct parameter mutation"),
+        ("fp.bounds = (0, 10)", "direct parameter mutation"),
+        ("fit.run()", "direct fit method call"),
+        ("fit.update()", "direct fit method call"),
+        ("fit.fit_range = (0, 100)", "direct fit method call"),
+    ],
+)
 def test_forbidden_pattern_is_detected(code, expected_name):
     """Verify that the static guard detects specific known-bad patterns."""
-    found = any(
-        pattern.search(code)
-        for name, pattern in FORBIDDEN_PATTERNS
-    )
+    found = any(pattern.search(code) for name, pattern in FORBIDDEN_PATTERNS)
     if not found:
         found = bool(PARAM_MUTATION.search(code) or FIT_METHOD_CALLS.search(code))
     assert found, f"No pattern matched '{code}' (expected '{expected_name}')"
@@ -398,7 +400,7 @@ def test_violations_print(capsys):
         print("🎉 Migration complete! Update EXPECTED_VIOLATIONS = 0.")
     else:
         print("Violations by directory:")
-        by_dir: Dict[str, int] = {}
+        by_dir: dict[str, int] = {}
         for rel, _name, _lineno, _line in violations:
             parts = rel.split("/")
             key = "/".join(parts[:4]) if len(parts) > 4 else rel

@@ -14,12 +14,11 @@ Both halves are fixed here, and both are worth pinning:
 * `plugins reload` re-imports the shipped plugin packages, so it means what it
   says -- new code, not the same code registered twice.
 """
+
 from __future__ import annotations
 
 import pathlib
 import sys
-
-import pytest
 
 from chimol.commands.command import Cmd
 from chimol.testing.mock_viewer import MockViewer, MockWindow
@@ -79,7 +78,7 @@ def test_reload_re_imports_the_shipped_plugins(tmp_path):
         )
     finally:
         source.write_text(original)
-        cmd.do("plugins reload")            # put the module back as it was
+        cmd.do("plugins reload")  # put the module back as it was
 
 
 def test_reload_leaves_the_commands_and_panels_working():

@@ -10,13 +10,13 @@ from typing import Any
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.math.regularization import LCurveData
 from chisurf.gui import dialogs
-from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 from .client import FlcClient
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
@@ -208,7 +208,9 @@ class FlcTwoDTool(ChisurfDockTool):
         toolbar.addAction(self.act_run)
 
         spacer = QtWidgets.QWidget(self)
-        spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
+        spacer.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         toolbar.addWidget(spacer)
         # Adjacent stretches share the slack rather than adding to it, so the
         # helper must not add a second one and strand the pair mid-bar.
@@ -274,7 +276,9 @@ class FlcTwoDTool(ChisurfDockTool):
             return
         try:
             settings = self._settings()
-            settings.setValue("dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True))
+            settings.setValue(
+                "dock_layout", json.dumps(self.dock_area.get_layout_state(), sort_keys=True)
+            )
             settings.sync()
         except Exception as exc:  # noqa: BLE001
             self.statusBar().showMessage(f"Failed to save dock layout: {exc}")
@@ -332,7 +336,9 @@ class FlcTwoDTool(ChisurfDockTool):
         self._tttr_path = path
         data = self._tttr
         if data.micro_time_resolution_ns:
-            self._model.tmax_ns = round(data.n_microtime_channels * data.micro_time_resolution_ns, 3)
+            self._model.tmax_ns = round(
+                data.n_microtime_channels * data.micro_time_resolution_ns, 3
+            )
             self._settings_form.sync_fields()
         self.act_run.setEnabled(True)
         self.statusBar().showMessage(
@@ -365,7 +371,9 @@ class FlcTwoDTool(ChisurfDockTool):
         self._irf_path = path
         self._model.irf_mode = "file"
         self._settings_form.sync_fields()
-        self.statusBar().showMessage(f"Loaded IRF from {pathlib.Path(path).name} ({n_channels} channels)")
+        self.statusBar().showMessage(
+            f"Loaded IRF from {pathlib.Path(path).name} ({n_channels} channels)"
+        )
 
     def set_irf(self, irf: np.ndarray, irf_time_ns: np.ndarray) -> None:
         """Set the IRF directly for tests and scripts."""
@@ -383,13 +391,17 @@ class FlcTwoDTool(ChisurfDockTool):
             self._irf = self._irf_file
             self._irf_time_ns = self._irf_file_time_ns
         elif model.irf_mode == "synthetic":
-            self._irf = api.make_synthetic_irf(time_ns, model.irf_center_ns, model.irf_fwhm_ns, shape=model.irf_shape)
+            self._irf = api.make_synthetic_irf(
+                time_ns, model.irf_center_ns, model.irf_fwhm_ns, shape=model.irf_shape
+            )
             self._irf_time_ns = time_ns
         elif model.irf_mode == "detect":
             idx = np.asarray(micro_times).astype(np.int64)
             idx = idx[(idx >= 0) & (idx < n_channels)]
             decay = np.bincount(idx, minlength=n_channels)[:n_channels].astype(float)
-            self._irf = api.detect_irf(decay, time_ns, fwhm_ns=model.irf_fwhm_ns, shape=model.irf_shape)
+            self._irf = api.detect_irf(
+                decay, time_ns, fwhm_ns=model.irf_fwhm_ns, shape=model.irf_shape
+            )
             self._irf_time_ns = time_ns
         else:
             self._irf = None
@@ -405,7 +417,9 @@ class FlcTwoDTool(ChisurfDockTool):
         QtWidgets.QApplication.processEvents()
         t_step_ns, n_channels = 0.004, 3127
         sim_time = np.arange(n_channels) * t_step_ns
-        sim_irf = api.make_synthetic_irf(sim_time, model.irf_center_ns, model.irf_fwhm_ns, shape=model.irf_shape)
+        sim_irf = api.make_synthetic_irf(
+            sim_time, model.irf_center_ns, model.irf_fwhm_ns, shape=model.irf_shape
+        )
         try:
             stream = api.simulate_stream(
                 rate_matrix,
@@ -430,7 +444,9 @@ class FlcTwoDTool(ChisurfDockTool):
             n_microtime_channels=stream.n_microtime_channels,
         )
         self._tttr_path = None
-        self._model.tmax_ns = round(stream.n_microtime_channels * stream.micro_time_resolution_ns, 3)
+        self._model.tmax_ns = round(
+            stream.n_microtime_channels * stream.micro_time_resolution_ns, 3
+        )
         self._settings_form.sync_fields()
         self.act_run.setEnabled(True)
         self.statusBar().showMessage(
@@ -622,14 +638,25 @@ class FlcTwoDTool(ChisurfDockTool):
             )
             series = []
             for index, values in dyn.correlation.auto.items():
-                series.append({"x": dyn.correlation.lag_s, "y": values, "color": "c", "name": f"auto {index}"})
+                series.append(
+                    {"x": dyn.correlation.lag_s, "y": values, "color": "c", "name": f"auto {index}"}
+                )
             for (i, j), values in dyn.correlation.cross.items():
-                series.append({"x": dyn.correlation.lag_s, "y": values, "color": "m", "name": f"cross {i}-{j}"})
+                series.append(
+                    {
+                        "x": dyn.correlation.lag_s,
+                        "y": values,
+                        "color": "m",
+                        "name": f"cross {i}-{j}",
+                    }
+                )
             self._model._correlation = series
             message = "tau = " + ", ".join(f"{peak:.2f}" for peak in peaks) + " ns"
             populations = self._estimate_populations(spec, peaks[:2])
             try:
-                kinetics = api.rate_matrix_kinetics(dyn.correlation, n_states=2, populations=populations)
+                kinetics = api.rate_matrix_kinetics(
+                    dyn.correlation, n_states=2, populations=populations
+                )
                 self._kinetics = kinetics
                 rate_sum = float(kinetics.relaxation_rates[0])
                 message += f"; relaxation {kinetics.relaxation_times_s[0] * 1e3:.1f} ms"
@@ -686,7 +713,9 @@ class FlcTwoDTool(ChisurfDockTool):
                 )
                 tau_grid, amplitudes = mem.tau_grid, mem.amplitudes
             self._model._mem1d = {"tau": tau_grid, "amp": amplitudes}
-            gaussian = api.fit_gaussian_components(tau_grid, amplitudes, int(model.gaussian_components))
+            gaussian = api.fit_gaussian_components(
+                tau_grid, amplitudes, int(model.gaussian_components)
+            )
             self._model._mem1d["gauss"] = gaussian.model
         except Exception as exc:  # noqa: BLE001
             logger.warning("1D-MEM failed: %s", exc)

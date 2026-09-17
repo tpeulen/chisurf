@@ -12,9 +12,8 @@ so a view needs no data and models its IRF.
 :class:`DynamicFRETLine` conveniences use it. The closed-form lines are in
 :mod:`chisurf.core.fluorescence.fret.lines`.
 """
-from __future__ import annotations
 
-import typing
+from __future__ import annotations
 
 import numpy as np
 
@@ -23,8 +22,15 @@ import chisurf.core.fitting.fit
 import chisurf.core.fluorescence.general as general
 
 __all__ = [
-    "model_view", "lifetime_spectrum", "averaged_lifetimes", "donor_lifetime", "find_parameter",
-    "sweep", "FRETLineGenerator", "StaticFRETLine", "DynamicFRETLine",
+    "model_view",
+    "lifetime_spectrum",
+    "averaged_lifetimes",
+    "donor_lifetime",
+    "find_parameter",
+    "sweep",
+    "FRETLineGenerator",
+    "StaticFRETLine",
+    "DynamicFRETLine",
 ]
 
 #: The structure axis that counts a family's components (distances, lifetimes).
@@ -48,7 +54,10 @@ def model_view(family: str, n_components: int = 1, sources=()):
     if "generated_response" in view.scalar_names():
         view.set_scalar("generated_response", 1.0)
     wanted = max(1, int(n_components))
-    if "max_components" in view.scalar_names() and (view.get_scalar("max_components") or 0) < wanted:
+    if (
+        "max_components" in view.scalar_names()
+        and (view.get_scalar("max_components") or 0) < wanted
+    ):
         view.set_scalar("max_components", float(wanted))
     for i, source in enumerate(sources):
         view.append_model(source, name=f"C{i}")
@@ -68,7 +77,7 @@ def lifetime_spectrum(view) -> np.ndarray:
     return np.asarray(view.problem.get_output("lifetime_spectrum"), dtype=float)
 
 
-def averaged_lifetimes(view) -> typing.Tuple[float, float]:
+def averaged_lifetimes(view) -> tuple[float, float]:
     """The species- and fluorescence-averaged lifetimes, ``(<tau>_x, <tau>_F)``."""
     spectrum = lifetime_spectrum(view)
     tau_x = general.species_averaged_lifetime(spectrum.copy())
@@ -87,7 +96,7 @@ def find_parameter(view, name: str):
     raise KeyError(f"{view.name!r} has no parameter {name!r}")
 
 
-def donor_lifetime(views, fallback: typing.Optional[float] = None) -> typing.Optional[float]:
+def donor_lifetime(views, fallback: float | None = None) -> float | None:
     """The donor's species-averaged lifetime without FRET, from the first view that has a donor.
 
     The donor's own spectrum (``donor.amplitude.i`` / ``donor.tau.i``) where the
@@ -100,7 +109,10 @@ def donor_lifetime(views, fallback: typing.Optional[float] = None) -> typing.Opt
         i = 0
         while f"donor.tau.{i}" in by_id:
             if f"donor.tau.{i}" in used:
-                pairs += [abs(by_id[f"donor.amplitude.{i}"].value), abs(by_id[f"donor.tau.{i}"].value)]
+                pairs += [
+                    abs(by_id[f"donor.amplitude.{i}"].value),
+                    abs(by_id[f"donor.tau.{i}"].value),
+                ]
             i += 1
         if pairs:
             return general.species_averaged_lifetime(np.asarray(pairs, dtype=float))
@@ -118,7 +130,7 @@ def _mixture(views, fractions=None):
     return mix
 
 
-def sweep(views, target: dict, values, fractions=None, tau_d0: typing.Optional[float] = None) -> dict:
+def sweep(views, target: dict, values, fractions=None, tau_d0: float | None = None) -> dict:
     """Walk ``target`` through ``values`` and record the line.
 
     ``views`` are the components; more than one are mixed by ``fractions``
@@ -166,8 +178,12 @@ def sweep(views, target: dict, values, fractions=None, tau_d0: typing.Optional[f
         apply(value)
         tau_x[i], tau_f[i] = averaged_lifetimes(reader)
     e_fret = 1.0 - tau_x / tau_d0 if tau_d0 and tau_d0 > 0 else np.full(values.size, np.nan)
-    return {"parameter_values": values.tolist(), "tau_x": tau_x.tolist(), "tau_f": tau_f.tolist(),
-            "e_fret": e_fret.tolist()}
+    return {
+        "parameter_values": values.tolist(),
+        "tau_x": tau_x.tolist(),
+        "tau_f": tau_f.tolist(),
+        "e_fret": e_fret.tolist(),
+    }
 
 
 class FRETLineGenerator:
@@ -179,10 +195,17 @@ class FRETLineGenerator:
     >>> fl.species_averaged_lifetimes, fl.fret_efficiencies  # doctest: +SKIP
     """
 
-    def __init__(self, family: str = "tcspc_fret_gaussian", n_components: int = 1,
-                 polynomial_degree: int = 4, quantum_yield_donor: float = 0.8,
-                 quantum_yield_acceptor: float = 0.32, parameter_name: typing.Optional[str] = None,
-                 n_points: int = 100, parameter_range: typing.Tuple[float, float] = (0.1, 100.0)):
+    def __init__(
+        self,
+        family: str = "tcspc_fret_gaussian",
+        n_components: int = 1,
+        polynomial_degree: int = 4,
+        quantum_yield_donor: float = 0.8,
+        quantum_yield_acceptor: float = 0.32,
+        parameter_name: str | None = None,
+        n_points: int = 100,
+        parameter_range: tuple[float, float] = (0.1, 100.0),
+    ):
         self.model = model_view(family, n_components)
         self.polynomial_degree = polynomial_degree
         self.quantum_yield_donor = quantum_yield_donor
@@ -218,13 +241,16 @@ class FRETLineGenerator:
         return 1.0 - self.fret_species_averaged_lifetime / self.donor_species_averaged_lifetime
 
     @property
-    def conversion_function(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def conversion_function(self) -> tuple[np.ndarray, np.ndarray]:
         return self.fluorescence_averaged_lifetimes, self.species_averaged_lifetimes
 
     @property
     def polynom_coefficients(self) -> np.ndarray:
-        return np.polyfit(self.fluorescence_averaged_lifetimes, self.species_averaged_lifetimes,
-                          self.polynomial_degree)
+        return np.polyfit(
+            self.fluorescence_averaged_lifetimes,
+            self.species_averaged_lifetimes,
+            self.polynomial_degree,
+        )
 
     @property
     def conversion_function_string(self) -> str:
@@ -232,17 +258,20 @@ class FRETLineGenerator:
 
     @property
     def transfer_efficency_string(self) -> str:
-        return "1.0-(%s)/(%.6f)" % (self.conversion_function_string, self.donor_species_averaged_lifetime)
+        return (
+            f"1.0-({self.conversion_function_string})/({self.donor_species_averaged_lifetime:.6f})"
+        )
 
     @property
     def fdfa_string(self) -> str:
-        return "%s/%s / ((%s)/(%s) - 1)" % (self.quantum_yield_donor, self.quantum_yield_acceptor,
-                                            self.donor_species_averaged_lifetime,
-                                            self.conversion_function_string)
+        return f"{self.quantum_yield_donor}/{self.quantum_yield_acceptor} / (({self.donor_species_averaged_lifetime})/({self.conversion_function_string}) - 1)"
 
-    def update(self, parameter_name: typing.Optional[str] = None,
-               parameter_range: typing.Optional[typing.Tuple[float, float]] = None,
-               n_points: typing.Optional[int] = None) -> None:
+    def update(
+        self,
+        parameter_name: str | None = None,
+        parameter_range: tuple[float, float] | None = None,
+        n_points: int | None = None,
+    ) -> None:
         """Recompute the line."""
         if parameter_name is not None:
             self.parameter_name = parameter_name
@@ -250,8 +279,12 @@ class FRETLineGenerator:
             self.parameter_range = tuple(parameter_range)
         if n_points is not None:
             self.n_points = int(n_points)
-        result = sweep([self.model], {"kind": "param", "component": 0, "name": self.parameter_name},
-                       self.parameter_values, tau_d0=self.donor_species_averaged_lifetime)
+        result = sweep(
+            [self.model],
+            {"kind": "param", "component": 0, "name": self.parameter_name},
+            self.parameter_values,
+            tau_d0=self.donor_species_averaged_lifetime,
+        )
         self.species_averaged_lifetimes = np.asarray(result["tau_x"])
         self.fluorescence_averaged_lifetimes = np.asarray(result["tau_f"])
         self.fret_efficiencies = np.asarray(result["e_fret"])
@@ -279,19 +312,30 @@ class StaticFRETLine(FRETLineGenerator):
 class DynamicFRETLine(FRETLineGenerator):
     """The dynamic FRET line between two Gaussian states, swept over the second state's weight."""
 
-    def __init__(self, distance_1: float = 40.0, distance_2: float = 80.0, sigma_1: float = 6.0,
-                 sigma_2: float = 6.0, **kwargs):
+    def __init__(
+        self,
+        distance_1: float = 40.0,
+        distance_2: float = 80.0,
+        sigma_1: float = 6.0,
+        sigma_2: float = 6.0,
+        **kwargs,
+    ):
         kwargs.setdefault("parameter_name", "distance.amplitude.1")
         kwargs.setdefault("parameter_range", (0.0, 10.0))
         super().__init__("tcspc_fret_gaussian", 2, **kwargs)
         self.parameter("fret.x_donly").value = 0.0
-        for name, value in (("distance.mean.0", distance_1), ("distance.mean.1", distance_2),
-                            ("distance.sigma.0", sigma_1), ("distance.sigma.1", sigma_2),
-                            ("distance.amplitude.0", 1.0), ("distance.amplitude.1", 0.0)):
+        for name, value in (
+            ("distance.mean.0", distance_1),
+            ("distance.mean.1", distance_2),
+            ("distance.sigma.0", sigma_1),
+            ("distance.sigma.1", sigma_2),
+            ("distance.amplitude.0", 1.0),
+            ("distance.amplitude.1", 0.0),
+        ):
             self.parameter(name).value = float(value)
 
     @property
-    def sigma(self) -> typing.Tuple[float, float]:
+    def sigma(self) -> tuple[float, float]:
         return self.parameter("distance.sigma.0").value, self.parameter("distance.sigma.1").value
 
     @sigma.setter

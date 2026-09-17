@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 
-from typing import Any, Dict, List, Optional
-
 from chisurf.server.jobs import JobManager
 from chisurf.server.services import (
-    ServiceResult,
-    service_error,
-    NOT_FOUND,
     INVALID_INPUT,
     INVALID_STATE,
+    NOT_FOUND,
     OPERATION_FAILED,
+    ServiceResult,
     _resolve_fit,
+    service_error,
 )
 from chisurf.server.services._stats import (
     _collect_fit_params,
@@ -31,7 +30,7 @@ from chisurf.server.session import SessionState
 logger = logging.getLogger(__name__)
 
 
-def _fit_data_payload(fit: Any) -> Dict[str, Any]:
+def _fit_data_payload(fit: Any) -> dict[str, Any]:
     """Extract data-reference metadata from a fit.
 
     Parameters
@@ -47,7 +46,11 @@ def _fit_data_payload(fit: Any) -> Dict[str, Any]:
         "name": str(getattr(data, "name", "") or ""),
         "uid": str(getattr(data, "unique_identifier", "") or ""),
         "filename": str(getattr(data, "filename", "") or ""),
-        "experiment": str(getattr(data, "experiment", "") or getattr(getattr(data, "experiment", None), "name", "") or ""),
+        "experiment": str(
+            getattr(data, "experiment", "")
+            or getattr(getattr(data, "experiment", None), "name", "")
+            or ""
+        ),
     }
 
 
@@ -55,10 +58,10 @@ def _fit_model_payload(
     fit: Any,
     *,
     fit_uid: str,
-    n_points: Optional[int] = None,
-    n_free: Optional[int] = None,
-    chi2r: Optional[float] = None,
-) -> Dict[str, Any]:
+    n_points: int | None = None,
+    n_free: int | None = None,
+    chi2r: float | None = None,
+) -> dict[str, Any]:
     """Extract model metadata from a fit.
 
     Parameters
@@ -87,7 +90,7 @@ def _fit_model_payload(
     }
 
 
-def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> Dict[str, Any]:
+def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> dict[str, Any]:
     """Build a serialisable summary dict for a fit.
 
     Parameters
@@ -106,7 +109,11 @@ def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> Dict[str, Any]:
     n_points = _safe_n_points(fit)
     n_free = _safe_n_free(fit)
     parameters = _collect_fit_params(fit)
-    parameter_count = len(parameters) if detailed else len(getattr(getattr(fit, "model", None), "parameters_all_dict", {}) or {})
+    parameter_count = (
+        len(parameters)
+        if detailed
+        else len(getattr(getattr(fit, "model", None), "parameters_all_dict", {}) or {})
+    )
     members = _collect_member_list(fit) if detailed else []
     return {
         "members": members,
@@ -123,7 +130,9 @@ def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> Dict[str, Any]:
         "model_name": str(getattr(getattr(fit, "model", None), "name", "") or ""),
         "parameter_count": parameter_count,
         "data": _fit_data_payload(fit),
-        "model": _fit_model_payload(fit, fit_uid=fit_uid, n_points=n_points, n_free=n_free, chi2r=chi2r),
+        "model": _fit_model_payload(
+            fit, fit_uid=fit_uid, n_points=n_points, n_free=n_free, chi2r=chi2r
+        ),
         "parameters": parameters,
     }
 
@@ -146,8 +155,8 @@ def list_fits(state: SessionState) -> ServiceResult:
 
 def get_fit_info(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Return detailed info for a single fit.
 
@@ -172,8 +181,8 @@ def get_fit_info(
 
 def run_fit(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Execute a fit and return results.
@@ -213,10 +222,10 @@ def run_fit(
 
 def fit_set_dataset(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    dataset_index: Optional[int] = None,
-    dataset_uid: Optional[str] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    dataset_index: int | None = None,
+    dataset_uid: str | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Associate a dataset with a fit.
@@ -261,8 +270,8 @@ def fit_set_dataset(
 def fit_set_result_idx(
     state: SessionState,
     result_idx: int = 0,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Set the active result index on a fit.
@@ -292,7 +301,14 @@ def fit_set_result_idx(
     try:
         fit.set_result_idx(int(result_idx))
         if event_bus is not None:
-            event_bus.publish("fit.result_idx_changed", {"fit_index": actual_index, "fit_uid": str(getattr(fit, "unique_identifier", "") or ""), "result_idx": int(result_idx)})
+            event_bus.publish(
+                "fit.result_idx_changed",
+                {
+                    "fit_index": actual_index,
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                    "result_idx": int(result_idx),
+                },
+            )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
@@ -300,8 +316,8 @@ def fit_set_result_idx(
 
 def fit_set_fit_range(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     xmin: int = 0,
     xmax: int = 0,
 ) -> ServiceResult:
@@ -327,6 +343,7 @@ def ping(state: SessionState) -> ServiceResult:
     """
     import chisurf as cs
     from chisurf.server.protocol import PROTOCOL_VERSION
+
     return {
         "ok": True,
         "status": "alive",
@@ -339,8 +356,8 @@ def ping(state: SessionState) -> ServiceResult:
 
 def remove_fits(
     state: SessionState,
-    fit_indices: Optional[List[int]] = None,
-    fit_uids: Optional[List[str]] = None,
+    fit_indices: list[int] | None = None,
+    fit_uids: list[str] | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Remove fits by index or uid.
@@ -386,7 +403,9 @@ def remove_fits(
     kept = [f for i, f in enumerate(fits) if i not in to_remove]
     state.fits[:] = kept
     if event_bus is not None:
-        event_bus.publish("fit.removed", {"removed_count": len(to_remove), "remaining_count": len(kept)})
+        event_bus.publish(
+            "fit.removed", {"removed_count": len(to_remove), "remaining_count": len(kept)}
+        )
     return {"ok": True, "removed_count": len(to_remove), "remaining_count": len(kept)}
 
 
@@ -466,10 +485,10 @@ def _model_names() -> list:
 def fit_create(
     state: SessionState,
     dataset_index: int = 0,
-    dataset_indices: Optional[List[int]] = None,
-    model_name: Optional[str] = None,
-    fit_name: Optional[str] = None,
-    model_kw: Optional[Dict[str, Any]] = None,
+    dataset_indices: list[int] | None = None,
+    model_name: str | None = None,
+    fit_name: str | None = None,
+    model_kw: dict[str, Any] | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Create a new fit on the server and append to SessionState.
@@ -487,10 +506,12 @@ def fit_create(
             return service_error(f"dataset index {i} out of range", error_code=INVALID_INPUT)
     data_groups = [datasets[i] for i in indices]
     try:
-        from chisurf.core.models.model import Model
         from chisurf.core.fitting.fit import FitGroup
+        from chisurf.core.models.model import Model
     except ImportError as e:
-        return service_error(f"fit model/fit classes not importable: {e}", error_code=OPERATION_FAILED, exception=e)
+        return service_error(
+            f"fit model/fit classes not importable: {e}", error_code=OPERATION_FAILED, exception=e
+        )
     try:
         # A model is found by walking ``Model.__subclasses__()``, which only
         # sees classes that have been *imported*. The server imports none of
@@ -509,15 +530,17 @@ def fit_create(
 
         model_class = None
         if model_name:
+
             def _find_model(cls):
                 """Recursively search for a model subclass by ``name``."""
                 for sc in cls.__subclasses__():
-                    if getattr(sc, 'name', None) == model_name:
+                    if getattr(sc, "name", None) == model_name:
                         return sc
                     r = _find_model(sc)
                     if r is not None:
                         return r
                 return None
+
             model_class = _find_model(Model)
         if model_class is None:
             return service_error(
@@ -544,7 +567,13 @@ def fit_create(
         _initialise_fit_range(fit)
         state.add_fit(fit)
         if event_bus is not None:
-            event_bus.publish("fit.created", {"fit_index": len(state.fits) - 1, "fit_uid": str(getattr(fit, "unique_identifier", "") or "")})
+            event_bus.publish(
+                "fit.created",
+                {
+                    "fit_index": len(state.fits) - 1,
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                },
+            )
         return {
             "ok": True,
             "uid": str(getattr(fit, "unique_identifier", "") or ""),
@@ -557,8 +586,8 @@ def fit_create(
 
 def fit_update(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Update a fit (calls fit.update() on server-side object)."""
@@ -569,7 +598,13 @@ def fit_update(
         if hasattr(fit, "update"):
             fit.update()
             if event_bus is not None:
-                event_bus.publish("fit.updated", {"fit_index": fit_index, "fit_uid": fit_uid or str(getattr(fit, "unique_identifier", "") or "")})
+                event_bus.publish(
+                    "fit.updated",
+                    {
+                        "fit_index": fit_index,
+                        "fit_uid": fit_uid or str(getattr(fit, "unique_identifier", "") or ""),
+                    },
+                )
             return {"ok": True}
         return service_error("fit has no update method", error_code=OPERATION_FAILED)
     except Exception as e:
@@ -578,8 +613,8 @@ def fit_update(
 
 def fit_save(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     filename: str = "fit_export",
     file_type: str = "csv",
     save_curves: bool = False,
@@ -597,9 +632,9 @@ def fit_save(
 
 
 def _downsample(
-    values: Optional[List[float]],
+    values: list[float] | None,
     max_points: int,
-) -> Optional[List[Optional[float]]]:
+) -> list[float | None] | None:
     """Downsample *values* to at most *max_points*.
 
     Parameters
@@ -618,11 +653,12 @@ def _downsample(
     return values[::step]
 
 
-def _sanitize_metrics(value: Optional[float]) -> Optional[float]:
+def _sanitize_metrics(value: float | None) -> float | None:
     """Return ``None`` for NaN / inf / None."""
     if value is None:
         return None
     import numpy as np
+
     try:
         v = float(value)
         if np.isnan(v) or np.isinf(v):
@@ -634,8 +670,8 @@ def _sanitize_metrics(value: Optional[float]) -> Optional[float]:
 
 def fit_diagnostics(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     max_points: int = 500,
 ) -> ServiceResult:
     """Return comprehensive diagnostics for a fit.
@@ -657,25 +693,28 @@ def fit_diagnostics(
         return service_error("fit not found", error_code=NOT_FOUND)
     try:
         from chisurf.server.services.datasets import _sanitize_float_list
+
         fit_uid_val = str(getattr(fit, "unique_identifier", "") or "")
         chi2 = _safe_chi2(fit, compute=True)
         chi2r = _safe_chi2r(fit, compute=True)
         n_points = _safe_n_points(fit)
         n_free = _safe_n_free(fit)
         parameters = _collect_fit_params(fit)
-        params_list: List[Dict[str, Any]] = []
+        params_list: list[dict[str, Any]] = []
         for name, p in parameters.items():
-            params_list.append({
-                "name": name,
-                "value": p.get("value"),
-                "fixed": p.get("fixed", False),
-                "bounds": p.get("bounds"),
-                "bounds_on": p.get("bounds_on", False),
-                "linked_to": p.get("linked_to", ""),
-                "error_estimate": p.get("error_estimate"),
-            })
+            params_list.append(
+                {
+                    "name": name,
+                    "value": p.get("value"),
+                    "fixed": p.get("fixed", False),
+                    "bounds": p.get("bounds"),
+                    "bounds_on": p.get("bounds_on", False),
+                    "linked_to": p.get("linked_to", ""),
+                    "error_estimate": p.get("error_estimate"),
+                }
+            )
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "ok": True,
             "fit": {
                 "index": idx,
@@ -693,17 +732,17 @@ def fit_diagnostics(
 
         data = getattr(fit, "data", None)
         model = getattr(fit, "model", None)
-        x: Optional[List[Optional[float]]] = None
-        y: Optional[List[Optional[float]]] = None
+        x: list[float | None] | None = None
+        y: list[float | None] | None = None
         if data is not None:
             x = _sanitize_float_list(getattr(data, "x", None))
             y = _sanitize_float_list(getattr(data, "y", None))
 
-        fit_y: Optional[List[Optional[float]]] = None
+        fit_y: list[float | None] | None = None
         if model is not None:
             fit_y = _sanitize_float_list(getattr(model, "y", None))
 
-        residuals: Optional[List[Optional[float]]] = None
+        residuals: list[float | None] | None = None
         if model is not None:
             residuals = _sanitize_float_list(getattr(model, "residuals", None))
 
@@ -714,9 +753,10 @@ def fit_diagnostics(
             "residuals": _downsample(residuals, max_points),
         }
 
-        residual_stats: Optional[Dict[str, float]] = None
+        residual_stats: dict[str, float] | None = None
         if residuals and any(r is not None for r in residuals):
             import numpy as np
+
             arr = np.array([r for r in residuals if r is not None], dtype=float)
             if len(arr) > 0:
                 residual_stats = {
@@ -733,8 +773,8 @@ def fit_diagnostics(
 
 def fit_parameter_snapshot(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Capture a snapshot of all fit parameters for later restoration.
 
@@ -754,16 +794,18 @@ def fit_parameter_snapshot(
     try:
         fit_uid_val = str(getattr(fit, "unique_identifier", "") or "")
         parameters = _collect_fit_params(fit)
-        snapshot_params: List[Dict[str, Any]] = []
+        snapshot_params: list[dict[str, Any]] = []
         for name, p in parameters.items():
-            snapshot_params.append({
-                "name": name,
-                "value": p.get("value"),
-                "fixed": p.get("fixed", False),
-                "bounds": p.get("bounds"),
-                "bounds_on": p.get("bounds_on", False),
-                "linked_to": p.get("linked_to", ""),
-            })
+            snapshot_params.append(
+                {
+                    "name": name,
+                    "value": p.get("value"),
+                    "fixed": p.get("fixed", False),
+                    "bounds": p.get("bounds"),
+                    "bounds_on": p.get("bounds_on", False),
+                    "linked_to": p.get("linked_to", ""),
+                }
+            )
         return {
             "ok": True,
             "fit": {
@@ -781,9 +823,9 @@ def fit_parameter_snapshot(
 
 def fit_restore_parameters(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
-    snapshot: Optional[Dict[str, Any]] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    snapshot: dict[str, Any] | None = None,
 ) -> ServiceResult:
     """Restore fit parameters from a previously captured snapshot.
 
@@ -808,7 +850,7 @@ def fit_restore_parameters(
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
     try:
-        params_dict: Dict[str, Any] = {}
+        params_dict: dict[str, Any] = {}
         if hasattr(fit, "model") and fit.model is not None:
             params_dict = getattr(fit.model, "parameters_all_dict", {}) or {}
 
@@ -847,8 +889,8 @@ def fit_restore_parameters(
 
 def fit_curve_data(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Return the fit's calculated curve data for plotting."""
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
@@ -856,7 +898,8 @@ def fit_curve_data(
         return service_error("fit not found", error_code=NOT_FOUND)
     try:
         from chisurf.server.services.datasets import _sanitize_float_list
-        result: Dict[str, Any] = {"ok": True}
+
+        result: dict[str, Any] = {"ok": True}
         # Experimental data
         data = getattr(fit, "data", None)
         if data is not None:
@@ -883,7 +926,7 @@ def fit_curve_data(
 
 def fit_reorder(
     state: SessionState,
-    fit_order: List[str],
+    fit_order: list[str],
     event_bus: Any = None,
 ) -> ServiceResult:
     """Reorder fits by providing a list of UIDs in the desired order.
@@ -920,8 +963,8 @@ def fit_reorder(
 
 def fit_select(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     _action: str = "set",
     event_bus: Any = None,
 ) -> ServiceResult:
@@ -1009,11 +1052,14 @@ def fit_group_add_member(
         return service_error("member fit not found", error_code=NOT_FOUND)
     try:
         from chisurf.core.fitting.fit import FitGroup
+
         if not isinstance(group_fit, FitGroup):
             return service_error("group fit is not a FitGroup", error_code=INVALID_STATE)
         grouped = getattr(group_fit, "grouped_fits", None)
         if grouped is None:
-            return service_error("group fit has no grouped_fits attribute", error_code=INVALID_STATE)
+            return service_error(
+                "group fit has no grouped_fits attribute", error_code=INVALID_STATE
+            )
         grouped.append(member_fit)
         if event_bus is not None:
             event_bus.publish(
@@ -1110,8 +1156,8 @@ def fit_group_link_parameters_by_name(
 
 def fit_range_auto(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Compute auto fit range on the server.
 
@@ -1131,7 +1177,7 @@ def fit_range_auto(
         fit_range = reader.autofitrange(data)
         xmin, xmax = fit_range
         fit.fit_range = (int(xmin), int(xmax))
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "ok": True,
             "xmin": int(xmin),
             "xmax": int(xmax),
@@ -1151,9 +1197,9 @@ def fit_range_auto(
 
 def fit_mask_set(
     state: SessionState,
-    mask: List[float],
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    mask: list[float],
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Set a fit mask from plot-side region selection.
@@ -1172,6 +1218,7 @@ def fit_mask_set(
         return service_error("fit not found", error_code=NOT_FOUND)
     try:
         import numpy as np
+
         fit.mask = np.asarray(mask, dtype=float)
         if event_bus is not None:
             event_bus.publish(
@@ -1227,11 +1274,11 @@ def _job_or_error(job_id: str, action: str):
 
 def fit_sample_start(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     n_steps: int = 1000,
     n_runs: int = 1,
-    target_directory: Optional[str] = None,
+    target_directory: str | None = None,
     **kwargs: Any,
 ) -> ServiceResult:
     """Start a sampling job on the server side (async).
@@ -1252,21 +1299,27 @@ def fit_sample_start(
     fit, idx = _resolve_fit(state, fit_index, fit_uid)
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
-    job = _JOBS.create_job(SAMPLE_ACTION, {
-        "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-        "fit_index": idx,
-    })
+    job = _JOBS.create_job(
+        SAMPLE_ACTION,
+        {
+            "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+            "fit_index": idx,
+        },
+    )
     job_id = job.job_id
 
     import copy as _copy
-    kw = _copy.copy(dict(
-        n_runs=int(n_runs),
-        steps=int(n_steps),
-        **kwargs,
-    ))
+
+    kw = _copy.copy(
+        dict(
+            n_runs=int(n_runs),
+            steps=int(n_steps),
+            **kwargs,
+        )
+    )
     target_dir_val = target_directory or ""
 
-    def _run() -> Dict[str, Any]:
+    def _run() -> dict[str, Any]:
         def _progress_callback(done: int, total: int) -> None:
             _JOBS.set_progress(job_id, int(100.0 * done / total) if total > 0 else 0)
 
@@ -1274,12 +1327,14 @@ def fit_sample_start(
             return _JOBS.should_cancel(job_id)
 
         import chisurf.core.settings
-        settings_kw = chisurf.core.settings.cs_settings.get(
-            'optimization', {}
-        ).get('sampling', {}).copy()
+
+        settings_kw = (
+            chisurf.core.settings.cs_settings.get("optimization", {}).get("sampling", {}).copy()
+        )
         settings_kw.update(kw)
 
         from chisurf.core.fitting.fit import sample_fit
+
         report = sample_fit(
             fit,
             target_directory=target_dir_val,
@@ -1395,13 +1450,17 @@ def fit_posterior(
     payload["log_evidence"] = float(evidence) if np.isfinite(evidence) else None
     if joint:
         j = eng.joint([str(n) for n in joint])
-        payload["joint"] = None if j is None else {
-            "names": list(j.names),
-            "mean": [float(v) for v in np.asarray(j.mean).ravel()],
-            "covariance": [[float(v) for v in row] for row in np.asarray(j.covariance)],
-            "correlation": [[float(v) for v in row] for row in np.asarray(j.correlation)],
-            "method": j.method,
-        }
+        payload["joint"] = (
+            None
+            if j is None
+            else {
+                "names": list(j.names),
+                "mean": [float(v) for v in np.asarray(j.mean).ravel()],
+                "covariance": [[float(v) for v in row] for row in np.asarray(j.covariance)],
+                "correlation": [[float(v) for v in row] for row in np.asarray(j.correlation)],
+                "method": j.method,
+            }
+        )
     return payload
 
 
@@ -1559,16 +1618,20 @@ def fit_derived(
         "fit_index": idx,
         "p_value": float(p_value),
         "quantities": [
-            {**{k: v for k, v in row.items()
-                if k not in ("value", "median", "low", "high", "sd", "asymmetry",
-                             "skew")},
-             "value": _clean(row.get("value")),
-             "median": _clean(row.get("median")),
-             "low": _clean(row.get("low")),
-             "high": _clean(row.get("high")),
-             "sd": _clean(row.get("sd")),
-             "asymmetry": _clean(row.get("asymmetry")),
-             "skew": _clean(row.get("skew"))}
+            {
+                **{
+                    k: v
+                    for k, v in row.items()
+                    if k not in ("value", "median", "low", "high", "sd", "asymmetry", "skew")
+                },
+                "value": _clean(row.get("value")),
+                "median": _clean(row.get("median")),
+                "low": _clean(row.get("low")),
+                "high": _clean(row.get("high")),
+                "sd": _clean(row.get("sd")),
+                "asymmetry": _clean(row.get("asymmetry")),
+                "skew": _clean(row.get("skew")),
+            }
             for row in rows
         ],
     }
@@ -1627,8 +1690,8 @@ def fit_sample_status(
 def fit_parameter_scan_start(
     state: SessionState,
     parameter_name: str,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     n_steps: int = 50,
     range_factor: float = 2.0,
 ) -> ServiceResult:
@@ -1648,14 +1711,17 @@ def fit_parameter_scan_start(
     param = params.get(parameter_name)
     if param is None:
         return service_error(f"parameter '{parameter_name}' not found", error_code=NOT_FOUND)
-    job = _JOBS.create_job(PARAMETER_SCAN_ACTION, {
-        "parameter_name": parameter_name,
-        "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-        "fit_index": idx,
-    })
+    job = _JOBS.create_job(
+        PARAMETER_SCAN_ACTION,
+        {
+            "parameter_name": parameter_name,
+            "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+            "fit_index": idx,
+        },
+    )
     job_id = job.job_id
 
-    def _run() -> Optional[Dict[str, Any]]:
+    def _run() -> dict[str, Any] | None:
         value = getattr(param, "value", 0) or 0
         err = getattr(param, "error_estimate", None)
         half_range = (err * range_factor) if err else abs(value * 0.5)
@@ -1664,6 +1730,7 @@ def fit_parameter_scan_start(
         lo = value - half_range
         hi = value + half_range
         import numpy as np
+
         values = np.linspace(lo, hi, int(n_steps))
         chi2s = []
         chi2rs = []

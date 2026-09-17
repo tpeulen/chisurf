@@ -95,18 +95,14 @@ def test_declared_groups_are_preserved_and_must_cover_every_user_free_owner():
     assert declaration.groups == groups
     assert declaration.structures[0].free_groups == ("scale", "shape")
 
-    refused = build_fixed_structure_declaration(
-        fit, parameter_groups=(groups[0],)
-    )
+    refused = build_fixed_structure_declaration(fit, parameter_groups=(groups[0],))
     assert not refused.supported
     assert refused.reasons[0].code == "incomplete_parameter_groups"
 
 
 def test_general_fcs_mode_uses_the_same_fixed_structure_capability():
     tau = np.logspace(-4.0, 2.5, 192)
-    data = cs.core.data.DataCurve(
-        x=tau, y=np.ones_like(tau), ey=np.full(tau.size, 1e-3)
-    )
+    data = cs.core.data.DataCurve(x=tau, y=np.ones_like(tau), ey=np.full(tau.size, 1e-3))
     fit = fitting.Fit(model_class=GeneralFCSModel, data=data)
     fit.xmin, fit.xmax = 0, tau.size
     model = fit.model
@@ -129,9 +125,7 @@ def test_general_fcs_mode_uses_the_same_fixed_structure_capability():
     assert _parameter_state(fit) == before
     root = prepared.problem.get_initial_state()
     refine = next(
-        action
-        for action in prepared.problem.get_actions(root)
-        if action.get_key() == "refine"
+        action for action in prepared.problem.get_actions(root) if action.get_key() == "refine"
     )
     refined = prepared.problem.evaluate(root, refine)
     # Scored after its own fit, the root already sits at the optimum.
@@ -144,9 +138,7 @@ def test_general_fcs_mode_uses_the_same_fixed_structure_capability():
 @pytest.mark.parametrize("mode", ["gauss", "two_focus", "species", "mdf"])
 def test_every_native_general_fcs_mode_prepares_without_changing_live_state(mode):
     tau = np.logspace(-4.0, 2.0, 64)
-    data = cs.core.data.DataCurve(
-        x=tau, y=np.ones_like(tau), ey=np.ones(tau.size)
-    )
+    data = cs.core.data.DataCurve(x=tau, y=np.ones_like(tau), ey=np.ones(tau.size))
     fit = fitting.Fit(model_class=GeneralFCSModel, data=data)
     fit.xmin, fit.xmax = 0, tau.size
     fit.model.diffusion_mode = mode

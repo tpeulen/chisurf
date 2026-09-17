@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ def _existing_editor():
     return None
 
 
-def open_source(target: str, base: Optional[pathlib.Path] = None) -> bool:
+def open_source(target: str, base: pathlib.Path | None = None) -> bool:
     """Open *target* in the code editor.
 
     Parameters

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from chimol.commands.argparse2 import (
     CommandError,
     bind_and_call,
@@ -80,8 +79,8 @@ class _Demo:
 def test_registry_resolves_name_alias_and_prefix():
     reg = collect_commands(_Demo())
     assert reg.resolve("zoom").name == "zoom"
-    assert reg.resolve("zo").name == "zoom"       # alias
-    assert reg.resolve("cou").name == "count"     # unique prefix
+    assert reg.resolve("zo").name == "zoom"  # alias
+    assert reg.resolve("cou").name == "count"  # unique prefix
     assert reg.resolve("nope") is None
 
 
@@ -99,7 +98,7 @@ def test_binder_missing_required_and_unknown_keyword():
     reg = collect_commands(_Demo())
     c = reg.resolve("count").func
     with pytest.raises(CommandError):
-        bind_and_call(c, tokenize(""))            # missing n
+        bind_and_call(c, tokenize(""))  # missing n
     with pytest.raises(CommandError):
         bind_and_call(c, tokenize("3, bogus=1"))  # unknown keyword
 
@@ -195,7 +194,5 @@ def test_do_leaves_a_raw_command_its_own_semicolons():
     """``iterate``/``alter``/``mdo`` are handed a statement list of their own."""
     cmd = _RecordingCmd()
     cmd.do("iterate name CA, stored.a.append(b); stored.c.append(q)")
-    assert cmd.calls == [
-        ("iterate", "name CA", "stored.a.append(b); stored.c.append(q)")
-    ]
+    assert cmd.calls == [("iterate", "name CA", "stored.a.append(b); stored.c.append(q)")]
     assert cmd.errors == []

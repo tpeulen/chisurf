@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.io.export import (
     format_for_path,
     unscale_coordinates,
@@ -25,8 +24,11 @@ from chimol.io.export import (
 
 def _atoms(n: int = 3) -> np.ndarray:
     dtype = [
-        ("atom_name", "U4"), ("res_name", "U4"), ("chain", "U2"),
-        ("res_id", np.int64), ("element", "U2"),
+        ("atom_name", "U4"),
+        ("res_name", "U4"),
+        ("chain", "U2"),
+        ("res_id", np.int64),
+        ("element", "U2"),
     ]
     rows = [
         ("N", "ALA", "A", 1, "N"),
@@ -36,23 +38,15 @@ def _atoms(n: int = 3) -> np.ndarray:
     return np.array(rows, dtype=dtype)
 
 
-
 def _atom_records(path) -> list[str]:
     """Return the ``ATOM``/``HETATM`` lines of a written file."""
-    return [
-        line
-        for line in path.read_text().splitlines()
-        if line.startswith(("ATOM", "HETATM"))
-    ]
+    return [line for line in path.read_text().splitlines() if line.startswith(("ATOM", "HETATM"))]
 
 
 def _written_coords(path) -> np.ndarray:
     """Coordinates parsed back out of a written PDB, from its fixed columns."""
     return np.array(
-        [
-            [float(rec[30:38]), float(rec[38:46]), float(rec[46:54])]
-            for rec in _atom_records(path)
-        ]
+        [[float(rec[30:38]), float(rec[38:46]), float(rec[46:54])] for rec in _atom_records(path)]
     )
 
 
@@ -65,9 +59,13 @@ _XYZ = np.array([[1.234, 2.345, 3.456], [4.5, 5.5, 6.5], [7.0, 8.0, 9.0]])
 @pytest.mark.parametrize(
     "name, expected",
     [
-        ("x.pdb", "pdb"), ("x.ent", "pdb"), ("x.pqr", "pdb"),
-        ("x.cif", "mmcif"), ("x.mmcif", "mmcif"),
-        ("X.PDB", "pdb"), ("x.CIF", "mmcif"),
+        ("x.pdb", "pdb"),
+        ("x.ent", "pdb"),
+        ("x.pqr", "pdb"),
+        ("x.cif", "mmcif"),
+        ("x.mmcif", "mmcif"),
+        ("X.PDB", "pdb"),
+        ("x.CIF", "mmcif"),
     ],
 )
 def test_the_extension_picks_the_format(name, expected):
@@ -105,15 +103,15 @@ def test_pdb_round_trips_coordinates_exactly(tmp_path):
     path = tmp_path / "x.pdb"
     assert write_pdb(path, _atoms(), _XYZ) == 3
     back = _written_coords(path)
-    assert np.allclose(back, _XYZ, atol=5e-4)   # PDB carries three decimals
+    assert np.allclose(back, _XYZ, atol=5e-4)  # PDB carries three decimals
 
 
 def test_solvent_is_written_as_hetatm(tmp_path):
     path = tmp_path / "x.pdb"
     write_pdb(path, _atoms(), _XYZ)
     lines = _atom_records(path)
-    assert lines[0].startswith("ATOM")     # ALA
-    assert lines[2].startswith("HETATM")   # HOH
+    assert lines[0].startswith("ATOM")  # ALA
+    assert lines[2].startswith("HETATM")  # HOH
 
 
 def test_columns_are_where_a_reader_expects_them(tmp_path):
@@ -179,9 +177,7 @@ def test_a_mismatched_mask_is_refused(tmp_path):
 
 def test_missing_fields_fall_back_rather_than_failing(tmp_path):
     """A raw-coordinate object has no residue names; it must still export."""
-    bare = np.array(
-        [(1.0,)] * 3, dtype=[("unused", float)]
-    )
+    bare = np.array([(1.0,)] * 3, dtype=[("unused", float)])
     path = tmp_path / "x.pdb"
     assert write_pdb(path, bare, _XYZ) == 3
 
@@ -243,16 +239,21 @@ def loaded(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     view = Viewer()
     view.add_structure(
-        _read_full_model(cs_struct.Structure, pdb), name="148l",
+        _read_full_model(cs_struct.Structure, pdb),
+        name="148l",
         source_path=str(pdb),
     )
 

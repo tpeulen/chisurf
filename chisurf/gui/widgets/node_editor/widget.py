@@ -10,18 +10,17 @@ browser host draws and what a headless test drives, so there is one editor
 rather than one per surface -- which is exactly what the ``QGraphicsScene``
 version could not offer, since every one of its nodes *was* a Qt object.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import typing
-
-from qtpy import QtCore, QtWidgets
 
 from emtk.qt_host import ControlHost
+from qtpy import QtCore, QtWidgets
 
-from .emtk_control import GraphControl, NodeContentRenderer
 from .document import GraphDocument
+from .emtk_control import GraphControl, NodeContentRenderer
 
 __all__ = ["NodeGraphWidget"]
 
@@ -75,10 +74,10 @@ class NodeGraphWidget(QtWidgets.QWidget):
 
     def __init__(
         self,
-        parent: typing.Optional[QtWidgets.QWidget] = None,
+        parent: QtWidgets.QWidget | None = None,
         *,
         read_only: bool = False,
-        content: typing.Optional[NodeContentRenderer] = None,
+        content: NodeContentRenderer | None = None,
         show_minimap: bool = True,
     ) -> None:
         super().__init__(parent)
@@ -152,7 +151,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         path : str or pathlib.Path
             The file to read.
         """
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             self.load_graph_from_json(handle.read())
 
     def graph_dict(self) -> dict:

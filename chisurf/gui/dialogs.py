@@ -80,6 +80,7 @@ class Answer(typing.NamedTuple):
         """Truthy exactly when an option was chosen."""
         return self.key is not None
 
+
 #: Qt platform plugins that draw to nothing a user can click.
 _HEADLESS_PLATFORMS = frozenset({"offscreen", "minimal", "vnc", ""})
 
@@ -325,9 +326,12 @@ class ChiSurfMessageBox:
         object
             ``shown_result`` or ``headless_result``.
         """
-        logger.log(level, "%s: %s", title, "\n".join(
-            str(part) for part in (message, informative, detail) if part
-        ))
+        logger.log(
+            level,
+            "%s: %s",
+            title,
+            "\n".join(str(part) for part in (message, informative, detail) if part),
+        )
         if kind in _AUTO_ANSWERS:
             return _AUTO_ANSWERS[kind]
         if not is_interactive():
@@ -343,8 +347,16 @@ class ChiSurfMessageBox:
 
     # ── public API ──────────────────────────────────────────────────────────
     @classmethod
-    def critical(cls, parent, title: str, message: str, *, informative: str | None = None,
-                 detail: str | None = None, text_format: str = "plain") -> bool:
+    def critical(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        *,
+        informative: str | None = None,
+        detail: str | None = None,
+        text_format: str = "plain",
+    ) -> bool:
         """Report an error; log it always, show it when a user is present.
 
         Parameters
@@ -366,51 +378,104 @@ class ChiSurfMessageBox:
             Whether the dialog was actually shown.
         """
         return cls._show(
-            "critical", parent, title, message, logging.ERROR,
-            informative=informative, detail=detail, text_format=text_format,
-            shown_result=True, headless_result=False,
+            "critical",
+            parent,
+            title,
+            message,
+            logging.ERROR,
+            informative=informative,
+            detail=detail,
+            text_format=text_format,
+            shown_result=True,
+            headless_result=False,
         )
 
     #: ``error`` reads better at a call site than Qt's ``critical``.
     error = critical
 
     @classmethod
-    def warning(cls, parent, title: str, message: str, *, informative: str | None = None,
-                detail: str | None = None, text_format: str = "plain") -> bool:
+    def warning(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        *,
+        informative: str | None = None,
+        detail: str | None = None,
+        text_format: str = "plain",
+    ) -> bool:
         """Report a warning; log it always, show it when a user is present."""
         return cls._show(
-            "warning", parent, title, message, logging.WARNING,
-            informative=informative, detail=detail, text_format=text_format,
-            shown_result=True, headless_result=False,
+            "warning",
+            parent,
+            title,
+            message,
+            logging.WARNING,
+            informative=informative,
+            detail=detail,
+            text_format=text_format,
+            shown_result=True,
+            headless_result=False,
         )
 
     @classmethod
-    def information(cls, parent, title: str, message: str, *, informative: str | None = None,
-                    detail: str | None = None, text_format: str = "plain",
-                    fortune: bool = False) -> bool:
+    def information(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        *,
+        informative: str | None = None,
+        detail: str | None = None,
+        text_format: str = "plain",
+        fortune: bool = False,
+    ) -> bool:
         """Report a notice; log it always, show it when a user is present.
 
         Set *fortune* on the app's own notification popups to append the
         session's fortune cookie (when ``settings.fortune`` is enabled).
         """
         return cls._show(
-            "information", parent, title, message, logging.INFO,
-            informative=informative, detail=detail, text_format=text_format,
-            fortune=fortune, shown_result=True, headless_result=False,
+            "information",
+            parent,
+            title,
+            message,
+            logging.INFO,
+            informative=informative,
+            detail=detail,
+            text_format=text_format,
+            fortune=fortune,
+            shown_result=True,
+            headless_result=False,
         )
 
     @classmethod
     def about(cls, parent, title: str, message: str, *, text_format: str = "plain") -> bool:
         """Show an "about" box; log it always, show it when a user is present."""
         return cls._show(
-            "about", parent, title, message, logging.INFO,
-            text_format=text_format, shown_result=True, headless_result=False,
+            "about",
+            parent,
+            title,
+            message,
+            logging.INFO,
+            text_format=text_format,
+            shown_result=True,
+            headless_result=False,
         )
 
     @classmethod
-    def question(cls, parent, title: str, message: str, buttons=None, default=None, *,
-                 informative: str | None = None, detail: str | None = None,
-                 text_format: str = "plain"):
+    def question(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        buttons=None,
+        default=None,
+        *,
+        informative: str | None = None,
+        detail: str | None = None,
+        text_format: str = "plain",
+    ):
         """Ask a question and return the button the user pressed.
 
         Unlike the ``QMessageBox`` static this never blocks a run with nobody at
@@ -460,9 +525,9 @@ class ChiSurfMessageBox:
                 title,
             )
             buttons = int(buttons) | int(default)
-        logger.info("%s: %s", title, "\n".join(
-            str(part) for part in (message, informative, detail) if part
-        ))
+        logger.info(
+            "%s: %s", title, "\n".join(str(part) for part in (message, informative, detail) if part)
+        )
 
         if "question" in _AUTO_ANSWERS:
             return cls._standard_button(_AUTO_ANSWERS["question"])
@@ -478,8 +543,16 @@ class ChiSurfMessageBox:
         return box.exec_()
 
     @classmethod
-    def confirm(cls, parent, title: str, message: str, *, default: bool = False,
-                informative: str | None = None, detail: str | None = None) -> bool:
+    def confirm(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        *,
+        default: bool = False,
+        informative: str | None = None,
+        detail: str | None = None,
+    ) -> bool:
         """Ask a yes/no question and return the answer as a plain ``bool``.
 
         The boolean form for the common "are you sure?" guard. *default* is the
@@ -505,7 +578,9 @@ class ChiSurfMessageBox:
             ``True`` when the user chose Yes.
         """
         answer = cls.question(
-            parent, title, message,
+            parent,
+            title,
+            message,
             buttons=cls.Yes | cls.No,
             default=cls.Yes if default else cls.No,
             informative=informative,
@@ -514,10 +589,20 @@ class ChiSurfMessageBox:
         return int(answer) == int(cls.Yes)
 
     @classmethod
-    def choice(cls, parent, title: str, message: str, options, *, default: str | None = None,
-               kind: str = "question", informative: str | None = None,
-               detail: str | None = None, checkbox: str | None = None,
-               checkbox_default: bool = False) -> Answer:
+    def choice(
+        cls,
+        parent,
+        title: str,
+        message: str,
+        options,
+        *,
+        default: str | None = None,
+        kind: str = "question",
+        informative: str | None = None,
+        detail: str | None = None,
+        checkbox: str | None = None,
+        checkbox_default: bool = False,
+    ) -> Answer:
         """Offer custom-labelled buttons and report which one was pressed.
 
         The general form behind every hand-built ``QMessageBox`` — "Overwrite /
@@ -567,9 +652,12 @@ class ChiSurfMessageBox:
         ...     ...
         """
         items = list(options.items()) if hasattr(options, "items") else [tuple(o) for o in options]
-        logger.info("%s: %s [%s]", title, "\n".join(
-            str(part) for part in (message, informative, detail) if part
-        ), ", ".join(str(label) for _, label in items))
+        logger.info(
+            "%s: %s [%s]",
+            title,
+            "\n".join(str(part) for part in (message, informative, detail) if part),
+            ", ".join(str(label) for _, label in items),
+        )
 
         if "choice" in _AUTO_ANSWERS:
             scripted = _AUTO_ANSWERS["choice"]
@@ -598,7 +686,9 @@ class ChiSurfMessageBox:
         return Answer(chosen, bool(tick.isChecked()) if tick is not None else False)
 
     @classmethod
-    def exception(cls, parent, title: str, exc: BaseException, *, message: str | None = None) -> bool:
+    def exception(
+        cls, parent, title: str, exc: BaseException, *, message: str | None = None
+    ) -> bool:
         """Report a caught exception with its traceback behind "Show Details".
 
         Parameters

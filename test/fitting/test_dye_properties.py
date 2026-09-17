@@ -43,8 +43,10 @@ class _StubDatabase:
 
     def get_probes(self):
         """Return every probe row."""
-        return [{"probe_id": pid, "chromophore_name": name, "category": category}
-                for pid, (name, category, _) in self.PROBES.items()]
+        return [
+            {"probe_id": pid, "chromophore_name": name, "category": category}
+            for pid, (name, category, _) in self.PROBES.items()
+        ]
 
     def get_probe(self, probe_id):
         """Return one probe row."""
@@ -88,8 +90,8 @@ def test_dye_properties_are_read(database):
 
     bare = dye_properties("StubNoProperties", db=database)
     assert bare.quantum_yield is None
-    assert not bare.usable_as_donor          # no quantum yield
-    assert not bare.usable_as_acceptor       # no absorption spectrum
+    assert not bare.usable_as_donor  # no quantum yield
+    assert not bare.usable_as_acceptor  # no absorption spectrum
 
 
 def test_only_usable_dyes_are_listed(database):
@@ -152,9 +154,9 @@ def test_a_gap_never_overwrites_a_set_value(database):
     pair = fret_pair("StubDonor", "StubNoProperties", db=database)
     calibration, applied = apply_to_calibration(pair, calibration)
 
-    assert calibration.r0 == pytest.approx(55.0)      # kept
-    assert calibration.phi_a == pytest.approx(0.35)   # kept
-    assert applied == {"PhiD": "mmfdb:property"}      # only what was known
+    assert calibration.r0 == pytest.approx(55.0)  # kept
+    assert calibration.phi_a == pytest.approx(0.35)  # kept
+    assert applied == {"PhiD": "mmfdb:property"}  # only what was known
 
 
 def test_absorption_falls_back_to_the_excitation_curve():
@@ -187,8 +189,7 @@ def test_real_database_pair_reproduces_the_literature():
     the properties, the spectra and the overlap integral fit together.
     """
     pytest.importorskip("mmfdb")
-    expectations = {("EGFP", "mCherry"): (48.0, 57.0),
-                    ("ATTO 550", "ATTO 643"): (60.0, 70.0)}
+    expectations = {("EGFP", "mCherry"): (48.0, 57.0), ("ATTO 550", "ATTO 643"): (60.0, 70.0)}
     checked = 0
     for (donor, acceptor), (low, high) in expectations.items():
         pair = fret_pair(donor, acceptor)
@@ -222,10 +223,8 @@ def test_real_repository_round_trip(tmp_path):
         database.add_optical_property(1, "lifetime", 3.6)
         database.add_optical_property(2, "qy", 0.62)
         database.add_optical_property(2, "ext_coeff", 150000.0)
-        database.add_spectrum(1, "emission", grid,
-                              np.exp(-0.5 * ((grid - 570.0) / 20.0) ** 2))
-        database.add_spectrum(2, "absorption", grid,
-                              np.exp(-0.5 * ((grid - 645.0) / 20.0) ** 2))
+        database.add_spectrum(1, "emission", grid, np.exp(-0.5 * ((grid - 570.0) / 20.0) ** 2))
+        database.add_spectrum(2, "absorption", grid, np.exp(-0.5 * ((grid - 645.0) / 20.0) ** 2))
 
         donor = dye_properties("RepoDonor", db=database)
         assert donor is not None and donor.quantum_yield == pytest.approx(0.8)

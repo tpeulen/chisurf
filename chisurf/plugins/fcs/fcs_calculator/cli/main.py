@@ -5,18 +5,26 @@ from __future__ import annotations
 import argparse
 import json
 
-from ..core.algorithms import compute_confocal, get_dye, reference_dyes, scale_D_from_25C
-from ..core.algorithms import mPa_s_to_Pa_s, water_viscosity_Pa_s
+from ..core.algorithms import (
+    compute_confocal,
+    get_dye,
+    mPa_s_to_Pa_s,
+    reference_dyes,
+    scale_D_from_25C,
+    water_viscosity_Pa_s,
+)
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="FCS confocal diffusion/volume calculator.")
     p.add_argument(
-        "--list-dyes", action="store_true",
+        "--list-dyes",
+        action="store_true",
         help="List the MMFDB reference species with a diffusion coefficient and exit",
     )
     p.add_argument(
-        "--dye", default=None,
+        "--dye",
+        default=None,
         help="Take D from an MMFDB reference species (scaled to --temp-C and the viscosity)",
     )
     p.add_argument("--tau-us", type=float, default=70.0)
@@ -45,10 +53,19 @@ def main(argv=None) -> int:
         D_um2_s = scale_D_from_25C(float(entry["d25_um2_s"]), T_K, eta)
 
     result = compute_confocal(
-        tau_us=args.tau_us, S=args.S, temp_C=args.temp_C, eta_mPa_s=args.eta_mPa_s,
-        use_water_eta=args.water_eta, constraint=args.constraint,
-        D_um2_s=D_um2_s, rh_nm=args.rh_nm, veff_fL=args.veff_fL,
-        conc_nM=args.conc_nM, num_mols=0.0, invN=0.0, last_edited="conc",
+        tau_us=args.tau_us,
+        S=args.S,
+        temp_C=args.temp_C,
+        eta_mPa_s=args.eta_mPa_s,
+        use_water_eta=args.water_eta,
+        constraint=args.constraint,
+        D_um2_s=D_um2_s,
+        rh_nm=args.rh_nm,
+        veff_fL=args.veff_fL,
+        conc_nM=args.conc_nM,
+        num_mols=0.0,
+        invN=0.0,
+        last_edited="conc",
     )
     print(json.dumps(result, indent=2))
     return 0

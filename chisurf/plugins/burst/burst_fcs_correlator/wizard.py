@@ -21,30 +21,28 @@ changes the *Finish* step:
 import json
 import pathlib
 import shutil
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
-import tttrlib
 
 import chisurf
-from chisurf.gui import QtWidgets, QtCore
-from chisurf.gui import chiplot as cp
 from chisurf.core.models.fcs.maxent import fcs_maxent
-from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 from chisurf.core.settings.path_utils import get_path as _get_settings_path
-from chisurf.core import settings as _cs_settings
+from chisurf.gui import QtCore, QtWidgets, dialogs
+from chisurf.gui import chiplot as cp
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
+from chisurf.gui.widgets.wizard.tttr_correlator import WizardTTTRCorrelator
+
 from .file_list import make_burst_file_list
 from .helpers import (
-    parse_bst_file,
-    parse_bur_file,
-    open_tttr,
-    parse_channel_list,
     correlate_single_burst,
     fit_simple_diffusion,
+    open_tttr,
+    parse_bst_file,
+    parse_bur_file,
+    parse_channel_list,
 )
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 
 def _coerce_float(value) -> float:
@@ -76,9 +74,9 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             self.resize(800, 600)
         except Exception:
             pass
-        self._detector_setups: Dict[str, Any] = {}
-        self._pair_configs: List[Dict[str, Any]] = []
-        self._cached_curves: List[Dict[str, Any]] = []
+        self._detector_setups: dict[str, Any] = {}
+        self._pair_configs: list[dict[str, Any]] = []
+        self._cached_curves: list[dict[str, Any]] = []
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -284,16 +282,18 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         self.plot_corr_view = cp.Plot(plots_splitter)
         self.plot_corr_view.set_log(x=True, y=False)
         self.plot_corr_view.set_labels(
-            bottom="Correlation time, t_c (ms)", left="Correlation amplitude, G")
-        self.curve_corr_data_view = self.plot_corr_view.line([], [], pen="w", symbol="o", symbol_size=4)
+            bottom="Correlation time, t_c (ms)", left="Correlation amplitude, G"
+        )
+        self.curve_corr_data_view = self.plot_corr_view.line(
+            [], [], pen="w", symbol="o", symbol_size=4
+        )
         self.curve_corr_fit_view = self.plot_corr_view.line([], [], pen="r")
         # Inset text for diffusion times (mean / fitted) in the correlation plot
         self.text_td_inset = self.plot_corr_view.text("", (0.0, 0.0), color="y", anchor=(1, 1))
 
         self.plot_dist_view = cp.Plot(plots_splitter)
         self.plot_dist_view.set_log(x=True, y=False)
-        self.plot_dist_view.set_labels(
-            bottom="Diffusion time, tau_D (ms)", left="P(tau_D)")
+        self.plot_dist_view.set_labels(bottom="Diffusion time, tau_D (ms)", left="P(tau_D)")
         self.curve_dist_view = self.plot_dist_view.line([], [], pen="y")
         # Start with the diffusion-time distribution plot hidden; it is only
         # shown for entries that were fitted with MaxEnt.
@@ -359,13 +359,12 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_settings_json_paths() -> Tuple[pathlib.Path, pathlib.Path]:
+    def _get_settings_json_paths() -> tuple[pathlib.Path, pathlib.Path]:
         """Return (package_default_path, user_settings_path) for burst-FCS JSON.
 
         The default JSON lives next to other chisurf settings files and is copied
         into the user settings folder ("~/.chisurf") on first use.
         """
-
         # Package default: chisurf/settings/burst_fcs.settings.json
         pkg_root = pathlib.Path(__file__).resolve().parent.parent
         pkg_settings = pkg_root / "settings" / "burst_fcs.settings.json"
@@ -382,25 +381,28 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         - When *Simple diffusion* is selected, they are hidden/disabled.
         The generic t_min/t_max window remains visible in both modes.
         """
-
         try:
             use_maxent = bool(self.radio_fit_maxent.isChecked())
         except Exception:
             use_maxent = False
 
-        for w in (self.lbl_maxent_reg, self.spin_log10_reg,
-                  self.lbl_td_min, self.spin_td_min,
-                  self.lbl_td_max, self.spin_td_max):
+        for w in (
+            self.lbl_maxent_reg,
+            self.spin_log10_reg,
+            self.lbl_td_min,
+            self.spin_td_min,
+            self.lbl_td_max,
+            self.spin_td_max,
+        ):
             try:
                 w.setVisible(use_maxent)
                 w.setEnabled(use_maxent)
             except Exception:
                 continue
 
-    def _export_settings_dict(self) -> Dict[str, Any]:
+    def _export_settings_dict(self) -> dict[str, Any]:
         """Collect current UI state into a JSON-serializable dict."""
-
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
 
         # Correlator / burst padding
         try:
@@ -445,7 +447,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             data["td_max_ms"] = 20.0
 
         # Channel pairs: store logical names and checked state
-        pairs: List[Dict[str, Any]] = []
+        pairs: list[dict[str, Any]] = []
         try:
             count = self.list_pairs.count()
         except Exception:
@@ -457,7 +459,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 item = None
             if item is None:
                 continue
-            pair_entry: Dict[str, Any] = {
+            pair_entry: dict[str, Any] = {
                 "label": str(item.text()),
                 "checked": bool(item.checkState() == QtCore.Qt.Checked),
                 "preset_index": int(item.data(QtCore.Qt.UserRole) or 0),
@@ -467,12 +469,11 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         return data
 
-    def _apply_settings_dict(self, cfg: Dict[str, Any]) -> None:
+    def _apply_settings_dict(self, cfg: dict[str, Any]) -> None:
         """Apply a previously stored settings dict to the current UI.
 
         Missing keys are ignored; invalid values are clamped by the widgets.
         """
-
         if not isinstance(cfg, dict):
             return
 
@@ -531,7 +532,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         try:
             pairs_cfg = cfg.get("pairs", [])
             if isinstance(pairs_cfg, list) and pairs_cfg:
-                by_index: Dict[int, bool] = {}
+                by_index: dict[int, bool] = {}
                 for entry in pairs_cfg:
                     if not isinstance(entry, dict):
                         continue
@@ -550,13 +551,14 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     except Exception:
                         continue
                     if p_idx in by_index:
-                        item.setCheckState(QtCore.Qt.Checked if by_index[p_idx] else QtCore.Qt.Unchecked)
+                        item.setCheckState(
+                            QtCore.Qt.Checked if by_index[p_idx] else QtCore.Qt.Unchecked
+                        )
         except Exception:
             pass
 
     def _on_save_settings_clicked(self) -> None:
         """Save current burst-wise FCS settings to JSON in the user folder."""
-
         pkg_settings, user_json = self._get_settings_json_paths()
         try:
             user_json.parent.mkdir(parents=True, exist_ok=True)
@@ -587,7 +589,6 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         If the user file does not exist yet but a package default is present,
         the default file is copied to the user folder first.
         """
-
         pkg_settings, user_json = self._get_settings_json_paths()
 
         # Ensure there is a user JSON, copying from package default if available
@@ -637,7 +638,9 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         text = str(self.line_burst_filter.text() or "").strip().lower()
         for idx, entry in enumerate(self._cached_curves):
             try:
-                index_file = entry.get("Index File") or entry.get("BST File") or entry.get("First File")
+                index_file = (
+                    entry.get("Index File") or entry.get("BST File") or entry.get("First File")
+                )
                 burst_idx = entry.get("Burst Index")
                 pair_name = entry.get("pair_name", "")
                 path_obj = pathlib.Path(str(index_file)) if index_file else None
@@ -719,7 +722,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 self.curve_corr_fit_view.set_data([], [])
 
             # Update diffusion-time distribution plot only for MaxEnt-fitted entries
-            use_maxent_entry = (fit_mode_entry == "maxent")
+            use_maxent_entry = fit_mode_entry == "maxent"
             if use_maxent_entry and td_grid.size and p.size:
                 self.curve_dist_view.set_data(td_grid, p)
                 try:
@@ -909,7 +912,6 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         embedded WizardTTTRCorrelator on the Correlator page. Typically
         these fields are populated from an FCS preset.
         """
-
         pad_ms = 0.0
         spin = getattr(self, "spin_padding_ms", None)
         if spin is not None:
@@ -961,7 +963,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             sb_reg = getattr(self, "spin_log10_reg", None)
             if sb_reg is not None:
                 log10_reg = float(sb_reg.value())
-                maxent_reg = float(10.0 ** log10_reg)
+                maxent_reg = float(10.0**log10_reg)
         except Exception:
             maxent_reg = None
         if maxent_reg is None or not np.isfinite(maxent_reg) or maxent_reg <= 0.0:
@@ -985,7 +987,11 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     maxent_td_max = v
         except Exception:
             maxent_td_max = None
-        if maxent_td_min is not None and maxent_td_max is not None and maxent_td_max <= maxent_td_min:
+        if (
+            maxent_td_min is not None
+            and maxent_td_max is not None
+            and maxent_td_max <= maxent_td_min
+        ):
             maxent_td_max = None
 
         # Optional analysis / fitting time-window in correlation time (ms)
@@ -1016,8 +1022,8 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         except Exception:
             all_files = []
 
-        bur_sources: List[Tuple[pathlib.Path, pathlib.Path]] = []  # (bur_path, analysis_folder)
-        bst_sources: List[Tuple[pathlib.Path, pathlib.Path]] = []  # (bst_path, analysis_folder)
+        bur_sources: list[tuple[pathlib.Path, pathlib.Path]] = []  # (bur_path, analysis_folder)
+        bst_sources: list[tuple[pathlib.Path, pathlib.Path]] = []  # (bst_path, analysis_folder)
 
         for entry in all_files:
             try:
@@ -1083,7 +1089,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             )
             return None
 
-        selected_cfgs: List[Dict[str, Any]] = []
+        selected_cfgs: list[dict[str, Any]] = []
         cb_preset = getattr(corr, "comboBox_fcs_preset", None)
 
         for row in range(getattr(self, "list_pairs", QtWidgets.QListWidget()).count()):
@@ -1114,7 +1120,9 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 pair_name = ""
             if not pair_name:
                 if cha_name and chb_name:
-                    pair_name = f"{cha_name}×{chb_name}" if cha_name != chb_name else f"{cha_name}_ACF"
+                    pair_name = (
+                        f"{cha_name}×{chb_name}" if cha_name != chb_name else f"{cha_name}_ACF"
+                    )
                 else:
                     pair_name = f"Pair {p_idx + 1}"
 
@@ -1126,8 +1134,16 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             except Exception:
                 pass
 
-            ch_a_text = str(getattr(corr, 'lineEdit', None).text()) if getattr(corr, 'lineEdit', None) is not None else ""
-            ch_b_text = str(getattr(corr, 'lineEdit_2', None).text()) if getattr(corr, 'lineEdit_2', None) is not None else ""
+            ch_a_text = (
+                str(getattr(corr, "lineEdit", None).text())
+                if getattr(corr, "lineEdit", None) is not None
+                else ""
+            )
+            ch_b_text = (
+                str(getattr(corr, "lineEdit_2", None).text())
+                if getattr(corr, "lineEdit_2", None) is not None
+                else ""
+            )
             chs_a = parse_channel_list(ch_a_text)
             chs_b = parse_channel_list(ch_b_text)
             if not chs_a or not chs_b:
@@ -1146,9 +1162,10 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 make_fine = bool(corr.correlation_is_fine)
             except Exception:
                 from chisurf.core import settings as _cs_settings
-                n_bins = int(_cs_settings.cs_settings['correlator']['B'])
-                n_casc = int(_cs_settings.cs_settings['correlator']['number_of_cascades'])
-                make_fine = bool(_cs_settings.cs_settings['correlator']['fine'])
+
+                n_bins = int(_cs_settings.cs_settings["correlator"]["B"])
+                n_casc = int(_cs_settings.cs_settings["correlator"]["number_of_cascades"])
+                make_fine = bool(_cs_settings.cs_settings["correlator"]["fine"])
 
             if override_n_bins is not None:
                 try:
@@ -1167,19 +1184,21 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 except Exception:
                     pass
 
-            selected_cfgs.append({
-                "preset_index": p_idx,
-                "pair_name": pair_name,
-                "channel_a_logical": cha_name,
-                "channel_b_logical": chb_name,
-                "chs_a": chs_a,
-                "chs_b": chs_b,
-                "micro_a": micro_a,
-                "micro_b": micro_b,
-                "n_bins": n_bins,
-                "n_casc": n_casc,
-                "make_fine": make_fine,
-            })
+            selected_cfgs.append(
+                {
+                    "preset_index": p_idx,
+                    "pair_name": pair_name,
+                    "channel_a_logical": cha_name,
+                    "channel_b_logical": chb_name,
+                    "chs_a": chs_a,
+                    "chs_b": chs_b,
+                    "micro_a": micro_a,
+                    "micro_b": micro_b,
+                    "n_bins": n_bins,
+                    "n_casc": n_casc,
+                    "make_fine": make_fine,
+                }
+            )
 
         if not selected_cfgs:
             dialogs.warning(
@@ -1195,11 +1214,13 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         # 3) Iterate over all bursts in all discovered BUR/BST files
         #    and compute per-burst FCS + diffusion times for each pair
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
 
         # Estimate total number of bursts for progress dialog
         total_bursts = 0
-        burst_info: List[Tuple[pathlib.Path, pathlib.Path, pathlib.Path, List[Tuple[int, int]]]] = []
+        burst_info: list[
+            tuple[pathlib.Path, pathlib.Path, pathlib.Path, list[tuple[int, int]]]
+        ] = []
 
         for p_bur, analysis_root in bur_sources:
             tttr_path, ranges = parse_bur_file(p_bur, analysis_root)
@@ -1216,7 +1237,9 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             total_bursts += len(ranges)
 
         if total_bursts == 0:
-            dialogs.information(self, "Burst-wise FCS", "No bursts found in the selected burst files.")
+            dialogs.information(
+                self, "Burst-wise FCS", "No bursts found in the selected burst files."
+            )
             return None
 
         progress = ChiSurfProgress(self, "Computing burst-wise FCS...", total_bursts)
@@ -1230,7 +1253,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         # what lets the td4 writer emit one row per burst (see
         # ``_save_td4_results``): a burst dropped further down by a photon-count
         # or fit failure must still get a sentinel row, not a missing one.
-        burst_counts: Dict[Tuple[str, str], int] = {}
+        burst_counts: dict[tuple[str, str], int] = {}
 
         current = 0
         for index_path, analysis_root, tttr_path, ranges in burst_info:
@@ -1312,7 +1335,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
                 try:
                     # Inclusive range: [s, e]
-                    tttr_burst = tttr[s:e + 1]
+                    tttr_burst = tttr[s : e + 1]
                 except Exception:
                     continue
 
@@ -1330,8 +1353,8 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     if tau is None or g is None:
                         continue
 
-                    td_mean = float('nan')
-                    td_peak = float('nan')
+                    td_mean = float("nan")
+                    td_peak = float("nan")
                     fit_result = None
                     tau_arr = np.asarray(tau, dtype=float)
                     g_arr = np.asarray(g, dtype=float)
@@ -1390,8 +1413,8 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                                     else:
                                         td_peak = float(td_grid[np.argmax(p_clip)])
                                 except Exception:
-                                    td_mean = float('nan')
-                                    td_peak = float('nan')
+                                    td_mean = float("nan")
+                                    td_peak = float("nan")
                     else:
                         td_est, tau_used, g_used, g_fit_arr = fit_simple_diffusion(tau_arr, g_arr)
                         if np.isfinite(td_est):
@@ -1407,7 +1430,12 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
                         # Use the same (tau, g) grid as was used for the fit so that
                         # the data and fitted curve have matching lengths.
-                        if tau_used is not None and np.size(tau_used) and g_used is not None and np.size(g_used):
+                        if (
+                            tau_used is not None
+                            and np.size(tau_used)
+                            and g_used is not None
+                            and np.size(g_used)
+                        ):
                             try:
                                 tau_fit = np.asarray(tau_used, dtype=float)
                                 g_data = np.asarray(g_used, dtype=float)
@@ -1421,48 +1449,54 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                             except Exception:
                                 g_fit = np.asarray([], dtype=float)
 
-                    rows.append({
-                        "First File": tttr_path.as_posix(),
-                        "BST File": index_path.as_posix(),
-                        "Burst Folder": analysis_root.as_posix(),
-                        "Burst Index": local_idx,
-                        "Burst Start": int(start),
-                        "Burst End": int(stop),
-                        "pair_name": cfg["pair_name"],
-                        "pair_channel_a": cfg["channel_a_logical"],
-                        "pair_channel_b": cfg["channel_b_logical"],
-                        "td_mean_ms": float(td_mean),
-                        "td_peak_ms": float(td_peak),
-                        "n_bins": int(cfg["n_bins"]),
-                        "n_casc": int(cfg["n_casc"]),
-                        "make_fine": bool(cfg["make_fine"]),
-                    })
-
-                    try:
-                        self._cached_curves.append({
+                    rows.append(
+                        {
                             "First File": tttr_path.as_posix(),
+                            "BST File": index_path.as_posix(),
                             "Burst Folder": analysis_root.as_posix(),
-                            "Index File": index_path.as_posix(),
                             "Burst Index": local_idx,
+                            "Burst Start": int(start),
+                            "Burst End": int(stop),
                             "pair_name": cfg["pair_name"],
                             "pair_channel_a": cfg["channel_a_logical"],
                             "pair_channel_b": cfg["channel_b_logical"],
                             "td_mean_ms": float(td_mean),
                             "td_peak_ms": float(td_peak),
-                            "fit_mode": str(fit_mode),
-                            "tau": np.asarray(tau_fit, dtype=float),
-                            "g": np.asarray(g_data, dtype=float),
-                            "g_fit": np.asarray(g_fit, dtype=float),
-                            "td_grid": np.asarray(td_grid, dtype=float),
-                            "p": np.asarray(p, dtype=float),
-                        })
+                            "n_bins": int(cfg["n_bins"]),
+                            "n_casc": int(cfg["n_casc"]),
+                            "make_fine": bool(cfg["make_fine"]),
+                        }
+                    )
+
+                    try:
+                        self._cached_curves.append(
+                            {
+                                "First File": tttr_path.as_posix(),
+                                "Burst Folder": analysis_root.as_posix(),
+                                "Index File": index_path.as_posix(),
+                                "Burst Index": local_idx,
+                                "pair_name": cfg["pair_name"],
+                                "pair_channel_a": cfg["channel_a_logical"],
+                                "pair_channel_b": cfg["channel_b_logical"],
+                                "td_mean_ms": float(td_mean),
+                                "td_peak_ms": float(td_peak),
+                                "fit_mode": str(fit_mode),
+                                "tau": np.asarray(tau_fit, dtype=float),
+                                "g": np.asarray(g_data, dtype=float),
+                                "g_fit": np.asarray(g_fit, dtype=float),
+                                "td_grid": np.asarray(td_grid, dtype=float),
+                                "p": np.asarray(p, dtype=float),
+                            }
+                        )
                     except Exception:
                         pass
 
         progress.close()
 
         if not rows:
-            dialogs.information(self, "Burst-wise FCS", "No valid burst correlations could be computed.")
+            dialogs.information(
+                self, "Burst-wise FCS", "No valid burst correlations could be computed."
+            )
             return None
 
         return rows, burst_counts
@@ -1488,20 +1522,17 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         if not group:
             return
-        source = str(group[0].get('First File', ''))
+        source = str(group[0].get("First File", ""))
         if not source:
             return
         try:
             # The same mapping the settings file records, so a re-run with the
             # same settings replaces its result instead of adding beside it.
-            write_fcs_container(source, table,
-                                parameters=self._export_settings_dict())
+            write_fcs_container(source, table, parameters=self._export_settings_dict())
         except Exception as exc:
-            chisurf.logging.warning(
-                f"Could not write the container for {source}: {exc}"
-            )
+            chisurf.logging.warning(f"Could not write the container for {source}: {exc}")
 
-    def _save_td4_results(self, rows: list, burst_counts: Dict[Tuple[str, str], int]) -> None:
+    def _save_td4_results(self, rows: list, burst_counts: dict[tuple[str, str], int]) -> None:
         """Write diffusion times to td4-style files in the burst analysis folder.
 
         Layout (per burst analysis folder and underlying TTTR file), via
@@ -1547,14 +1578,14 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             return
 
         for row in rows:
-            row.setdefault('Burst Folder', str(pathlib.Path(row['First File']).parent))
-            row['First Stem'] = pathlib.Path(row['First File']).stem
+            row.setdefault("Burst Folder", str(pathlib.Path(row["First File"]).parent))
+            row["First Stem"] = pathlib.Path(row["First File"]).stem
 
         # Group by burst analysis folder and TTTR stem so that results from
         # different burstwise folders are written to separate td4 files.
-        groups: Dict[Tuple[str, str], List[dict]] = {}
+        groups: dict[tuple[str, str], list[dict]] = {}
         for row in rows:
-            groups.setdefault((row['Burst Folder'], row['First Stem']), []).append(row)
+            groups.setdefault((row["Burst Folder"], row["First Stem"]), []).append(row)
         total_groups = len(groups)
 
         progress = ChiSurfProgress(self, "Saving td4 results...", total_groups)
@@ -1579,7 +1610,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 burst_root = pathlib.Path(burst_folder)
             except Exception:
                 try:
-                    burst_root = pathlib.Path(str(group_rows[0]['First File'])).parent
+                    burst_root = pathlib.Path(str(group_rows[0]["First File"])).parent
                 except Exception:
                     continue
 
@@ -1590,32 +1621,38 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             # keyed by the burst's true position in the .bur/.bst grid. Separate
             # FCS pairs get separate columns (td_mean__<pair>); a single-pair
             # run (no 'pair_name' at all) keeps the historical bare names.
-            has_pairs = any('pair_name' in row for row in group_rows)
-            col_data: Dict[str, Dict[int, Any]] = {}
-            value_cols: List[str] = []
+            has_pairs = any("pair_name" in row for row in group_rows)
+            col_data: dict[str, dict[int, Any]] = {}
+            value_cols: list[str] = []
             if has_pairs:
-                pair_names = list(dict.fromkeys(
-                    str(row['pair_name']) for row in group_rows if row.get('pair_name') is not None
-                ))
+                pair_names = list(
+                    dict.fromkeys(
+                        str(row["pair_name"])
+                        for row in group_rows
+                        if row.get("pair_name") is not None
+                    )
+                )
                 for pname in pair_names:
-                    sub = [row for row in group_rows if str(row.get('pair_name')) == pname]
-                    for src_key, prefix in (('td_mean_ms', 'td_mean'), ('td_peak_ms', 'td_peak')):
+                    sub = [row for row in group_rows if str(row.get("pair_name")) == pname]
+                    for src_key, prefix in (("td_mean_ms", "td_mean"), ("td_peak_ms", "td_peak")):
                         if any(src_key in row for row in sub):
                             col = f"{prefix}__{pname}"
                             value_cols.append(col)
-                            col_data[col] = {int(row['Burst Index']): row.get(src_key) for row in sub}
+                            col_data[col] = {
+                                int(row["Burst Index"]): row.get(src_key) for row in sub
+                            }
             else:
-                for src_key, col_name in (('td_mean_ms', 'td_mean'), ('td_peak_ms', 'td_peak')):
+                for src_key, col_name in (("td_mean_ms", "td_mean"), ("td_peak_ms", "td_peak")):
                     if any(src_key in row for row in group_rows):
                         value_cols.append(col_name)
                         col_data[col_name] = {
-                            int(row['Burst Index']): row.get(src_key) for row in group_rows
+                            int(row["Burst Index"]): row.get(src_key) for row in group_rows
                         }
 
             if not value_cols:
                 continue
 
-            burst_ids_sorted = sorted(dict.fromkeys(int(row['Burst Index']) for row in group_rows))
+            burst_ids_sorted = sorted(dict.fromkeys(int(row["Burst Index"]) for row in group_rows))
 
             # Sparse table (results only) -- feeds the container, which carries
             # its own declared "Burst Index" join key and tolerates absent rows.
@@ -1660,22 +1697,24 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             # Write a small JSON sidecar once per td4 folder with meta info
             if out_dir not in wrote_settings_for:
                 try:
-                    meta: Dict[str, Any] = {}
+                    meta: dict[str, Any] = {}
                     if has_pairs:
-                        pairs_meta: List[Dict[str, Any]] = []
+                        pairs_meta: list[dict[str, Any]] = []
                         for pname in pair_names:
-                            sub = [row for row in group_rows if str(row.get('pair_name')) == pname]
+                            sub = [row for row in group_rows if str(row.get("pair_name")) == pname]
                             if not sub:
                                 continue
                             row0 = sub[0]
-                            pairs_meta.append({
-                                "name": str(pname),
-                                "channel_a": str(row0.get("pair_channel_a", "")),
-                                "channel_b": str(row0.get("pair_channel_b", "")),
-                                "n_bins": int(row0.get("n_bins", 0)),
-                                "n_casc": int(row0.get("n_casc", 0)),
-                                "make_fine": bool(row0.get("make_fine", False)),
-                            })
+                            pairs_meta.append(
+                                {
+                                    "name": str(pname),
+                                    "channel_a": str(row0.get("pair_channel_a", "")),
+                                    "channel_b": str(row0.get("pair_channel_b", "")),
+                                    "n_bins": int(row0.get("n_bins", 0)),
+                                    "n_casc": int(row0.get("n_casc", 0)),
+                                    "make_fine": bool(row0.get("make_fine", False)),
+                                }
+                            )
                         meta["pairs"] = pairs_meta
                     else:
                         row0 = group_rows[0]
@@ -1687,8 +1726,8 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                             "make_fine": bool(row0.get("make_fine", False)),
                         }
 
-                    settings_file = out_dir / 'td4_settings.json'
-                    with settings_file.open('w', encoding='utf-8') as sf:
+                    settings_file = out_dir / "td4_settings.json"
+                    with settings_file.open("w", encoding="utf-8") as sf:
                         json.dump(meta, sf, indent=4, sort_keys=False)
                     wrote_settings_for.add(out_dir)
                 except Exception:
@@ -1702,7 +1741,6 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
     def onFinish(self):  # type: ignore[override]
         """Override the base wizard's Finish behavior for burst-wise FCS."""
-
         try:
             result = self._run_burstwise_fcs()
         except Exception as e:  # pragma: no cover - defensive UI layer
@@ -1746,6 +1784,7 @@ if __name__ == "__main__":  # pragma: no cover
     app = QtWidgets.QApplication.instance()
     if app is None:
         from qtpy import QtWidgets as _QtWidgets  # fallback if run outside ChiSurf
+
         app = _QtWidgets.QApplication([])
     dlg = BurstWiseFCSWizard()
     dlg.show()
@@ -1754,4 +1793,3 @@ if __name__ == "__main__":  # pragma: no cover
         app.exec()
     except Exception:
         pass
-

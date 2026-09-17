@@ -1,24 +1,22 @@
-import os
-import pathlib
-import typing
 import json
+import pathlib
 import re
+
 import numpy as np
 
 import chisurf as cs
-import chisurf.core.fio as io
 import chisurf.core.data
+import chisurf.core.fio as io
 import chisurf.core.fluorescence.fcs
 import chisurf.gui.decorators
-from chisurf.gui import QtGui, QtWidgets, QtCore, uic
-from .fcs_merger_ui import setup_ui as _setup_ui
-from chisurf.gui import dialogs
+from chisurf.gui import QtCore, QtWidgets, dialogs
 
-colors = cs.core.settings.gui['plot']['colors']
+from .fcs_merger_ui import setup_ui as _setup_ui
+
+colors = cs.core.settings.gui["plot"]["colors"]
 
 
 class WizardFcsMerger(QtWidgets.QWizardPage):
-
     @property
     def correlation_folder(self):
         return pathlib.Path(self.lineEdit.text())
@@ -30,11 +28,12 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
         return idx
 
     @staticmethod
-    def compute_average_correlations(correlations: typing.List[dict]) -> dict:
+    def compute_average_correlations(correlations: list[dict]) -> dict:
         # Single source of truth: the Qt-free core merge primitive.
         from chisurf.core.fluorescence.fcs.merge import (
             compute_average_correlations as _avg,
         )
+
         return _avg(correlations)
 
     @property
@@ -53,10 +52,10 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
 
     @property
     def merge_folder(self):
-        return pathlib.Path('..')
+        return pathlib.Path("..")
 
     def update_plots(self, *args, **kwargs):
-        cs.logging.info('WizardTTTRCorrelator::Updating plots')
+        cs.logging.info("WizardTTTRCorrelator::Updating plots")
         self.pw_fcs.clear()
         idx = self.current_curve_idx
         for i, cor in enumerate(self.correlations):
@@ -64,20 +63,20 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
             checkbox_item = self.tableWidget.item(i, 0)
             if checkbox_item is not None and checkbox_item.checkState() == QtCore.Qt.Unchecked:
                 # Draw not-used curves with a dashed grey pen
-                color, width, style = 'grey', 1.0, 'dash'
+                color, width, style = "grey", 1.0, "dash"
             else:
                 width = 3.0 if i == idx else 1.0
-                color = cs.core.settings.colors[i % len(cs.core.settings.colors)]['hex']
-                style = 'solid'
-            self.plot_item_fcs.line(cor['x'], cor['y'], pen=color, width=width, style=style)
+                color = cs.core.settings.colors[i % len(cs.core.settings.colors)]["hex"]
+                style = "solid"
+            self.plot_item_fcs.line(cor["x"], cor["y"], pen=color, width=width, style=style)
 
         self.pw_fcs_mean.clear()
         corr_mean = self.mean_correlation
-        self.plot_item_fcs_mean.line(corr_mean['x'], corr_mean['y'])
+        self.plot_item_fcs_mean.line(corr_mean["x"], corr_mean["y"])
 
     def onClearFiles(self):
         cs.logging.info("WizardTTTRCorrelator::onClearFiles")
-        self.settings['tttr_filenames'].clear()
+        self.settings["tttr_filenames"].clear()
         self.comboBox.setEnabled(True)
         self.lineEdit.clear()
 
@@ -96,19 +95,27 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
         table = self.tableWidget
         rc = table.rowCount()
         table.insertRow(rc)
-        duration = float(correlation_dict.get('duration', 0.0))
+        duration = float(correlation_dict.get("duration", 0.0))
         # Compute count rates in kHz
         try:
-            cr_a = float(correlation_dict['channel_a']['counts']) / duration / 1000.0 if duration > 0 else 0.0
-            cr_b = float(correlation_dict['channel_b']['counts']) / duration / 1000.0 if duration > 0 else 0.0
+            cr_a = (
+                float(correlation_dict["channel_a"]["counts"]) / duration / 1000.0
+                if duration > 0
+                else 0.0
+            )
+            cr_b = (
+                float(correlation_dict["channel_b"]["counts"]) / duration / 1000.0
+                if duration > 0
+                else 0.0
+            )
         except Exception:
             # Fallback: if only total count_rate present (already in kHz)
-            total_cr = float(correlation_dict.get('count_rate', 0.0))
+            total_cr = float(correlation_dict.get("count_rate", 0.0))
             cr_a = total_cr / 2.0
             cr_b = total_cr / 2.0
 
         fnw = QtWidgets.QTableWidgetItem(f"{filename.stem}")
-        fnw.setToolTip(f'{filename.as_posix()}')
+        fnw.setToolTip(f"{filename.as_posix()}")
         table.setItem(rc, 1, fnw)
         table.setItem(rc, 2, QtWidgets.QTableWidgetItem(f"{cr_a: 0.2f}"))
         table.setItem(rc, 3, QtWidgets.QTableWidgetItem(f"{cr_b: 0.2f}"))
@@ -119,16 +126,16 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
         checkbox_item.setCheckState(QtCore.Qt.Checked)
         table.setItem(rc, 0, checkbox_item)
         # Update the correlation dictionary accordingly
-        correlation_dict['use_curve'] = True
+        correlation_dict["use_curve"] = True
 
     def open_correlation_folder(self, folder: pathlib.Path = None):
-        cs.logging.info( "WizardFcsMerger::open_correlation_folder")
+        cs.logging.info("WizardFcsMerger::open_correlation_folder")
         self.tableWidget.setRowCount(0)
         if folder is None:
             folder = self.correlation_folder
         # Support both legacy JSON chunks and new .cor files
-        json_files = sorted(list(folder.glob('*.json.gz')))
-        cor_files = sorted(list(folder.glob('*.cor')))
+        json_files = sorted(list(folder.glob("*.json.gz")))
+        cor_files = sorted(list(folder.glob("*.cor")))
         self.correlations.clear()
         # Load JSON chunks if present
         for file in json_files:
@@ -140,9 +147,10 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
                 continue
         # Load .cor chunk files
         import numpy as _np
+
         for file in cor_files:
             try:
-                arr = _np.loadtxt(str(file), delimiter='\t')
+                arr = _np.loadtxt(str(file), delimiter="\t")
                 if arr.ndim == 1 and arr.size >= 2:
                     arr = arr.reshape(-1, arr.size)
                 x = arr[:, 0]
@@ -155,22 +163,22 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
                 total_counts = count_rate * duration
                 half_counts = 0.5 * total_counts
                 d = {
-                    'x': x.tolist(),
-                    'y': y.tolist(),
-                    'ey': ey.tolist(),
-                    'duration': duration,
-                    'count_rate': count_rate,
-                    'channel_a': {'channels': [], 'microtime_range': None, 'counts': half_counts},
-                    'channel_b': {'channels': [], 'microtime_range': None, 'counts': half_counts}
+                    "x": x.tolist(),
+                    "y": y.tolist(),
+                    "ey": ey.tolist(),
+                    "duration": duration,
+                    "count_rate": count_rate,
+                    "channel_a": {"channels": [], "microtime_range": None, "counts": half_counts},
+                    "channel_b": {"channels": [], "microtime_range": None, "counts": half_counts},
                 }
                 self.append_correlation(file, d)
             except Exception:
                 continue
-        cs.logging.info('Opening analysis folder...')
+        cs.logging.info("Opening analysis folder...")
         self.lineEdit_2.setText(self.target_filepath.as_posix())
         self.update_plots()
 
-    def set_correlations(self, correlations: typing.List[dict], source_folder: pathlib.Path = None):
+    def set_correlations(self, correlations: list[dict], source_folder: pathlib.Path = None):
         """
         Populate the table and plots from already computed correlations (in-memory),
         without requiring chnk-*.json.gz files on disk.
@@ -184,7 +192,11 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
             except Exception:
                 pass
         for i, cor in enumerate(correlations):
-            fake_file = (source_folder / f'chnk-{i:04}.json.gz') if source_folder is not None else pathlib.Path(f'chnk-{i:04}.json.gz')
+            fake_file = (
+                (source_folder / f"chnk-{i:04}.json.gz")
+                if source_folder is not None
+                else pathlib.Path(f"chnk-{i:04}.json.gz")
+            )
             self.append_correlation(fake_file, cor)
         try:
             self.lineEdit_2.setText(self.target_filepath.as_posix())
@@ -196,10 +208,10 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
     def target_filepath(self) -> pathlib.Path:
         stem = self.correlation_folder.stem
         # Sanitize filename: allow letters, numbers, dot, dash, underscore
-        safe_stem = re.sub(r'[^A-Za-z0-9._-]+', '_', stem)
-        if not safe_stem or safe_stem in {'.', '..', '_'}:
-            safe_stem = 'correlation'
-        correlation_filename = safe_stem + '.cor'
+        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem)
+        if not safe_stem or safe_stem in {".", "..", "_"}:
+            safe_stem = "correlation"
+        correlation_filename = safe_stem + ".cor"
         filename = self.correlation_folder.parent / correlation_filename
         return filename
 
@@ -214,20 +226,20 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
         except Exception:
             pass
         cs.logging.info(f"Saving: {filename}")
-        suren_column = np.zeros_like(correlation['x'])
-        suren_column[0] = correlation['duration']
-        suren_column[1] = correlation['count_rate']
-        
+        suren_column = np.zeros_like(correlation["x"])
+        suren_column[0] = correlation["duration"]
+        suren_column[1] = correlation["count_rate"]
+
         # Only include error column if it contains non-zero values (multiple curves merged)
-        if np.any(correlation['ey'] != 0):
-            c = np.vstack([correlation['x'], correlation['y'], suren_column, correlation['ey']])
+        if np.any(correlation["ey"] != 0):
+            c = np.vstack([correlation["x"], correlation["y"], suren_column, correlation["ey"]])
         else:
             # For single curve, save only 3 columns (x, y, suren)
-            c = np.vstack([correlation['x'], correlation['y'], suren_column])
-        
+            c = np.vstack([correlation["x"], correlation["y"], suren_column])
+
         # Use native path string to avoid UNC/as_posix issues on Windows
         # Format with 5 significant digits, suppress scientific notation for small numbers
-        np.savetxt(str(filename), c.T, delimiter='\t', fmt='%.5g')
+        np.savetxt(str(filename), c.T, delimiter="\t", fmt="%.5g")
 
     def onRemoveRow(self):
         table = self.tableWidget
@@ -246,10 +258,12 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
         checkbox_item = self.tableWidget.item(row, 0)
         if checkbox_item is not None:
             current_state = checkbox_item.checkState()
-            new_state = QtCore.Qt.Unchecked if current_state == QtCore.Qt.Checked else QtCore.Qt.Checked
+            new_state = (
+                QtCore.Qt.Unchecked if current_state == QtCore.Qt.Checked else QtCore.Qt.Checked
+            )
             checkbox_item.setCheckState(new_state)
             # Update the correlation dictionary if needed
-            self.correlations[row]['use_curve'] = (new_state == QtCore.Qt.Checked)
+            self.correlations[row]["use_curve"] = new_state == QtCore.Qt.Checked
             self.update_plots()
 
     def add_to_chisurf(self):

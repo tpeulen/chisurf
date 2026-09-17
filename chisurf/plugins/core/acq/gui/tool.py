@@ -1,17 +1,17 @@
 # Main acquisition classes for SM Acquisition plugin
 
-import json
 import copy
+import json
+import logging
+import queue
+import threading
+import time
 from pathlib import Path
 
-import logging
-import time
 import numpy as np
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_memory_mb
-
+import tttrlib
+from qtpy.QtCore import Qt, QThread, QTimer, Signal
 from qtpy.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -24,29 +24,20 @@ from qtpy.QtWidgets import (
     QLabel,
     QLCDNumber,
     QLineEdit,
-    QMainWindow,
     QMessageBox,
     QProgressBar,
+    QSizePolicy,
     QSpinBox,
-    QTextBrowser,
     QToolButton,
-    QVBoxLayout,
-    QWidget,
-    QSizePolicy
 )
-from qtpy.QtCore import QThread, Qt, QTimer, Signal
-
-import queue
-import threading
 
 from chisurf import settings
-from chisurf.gui import chiplot
-import tttrlib
+from chisurf.gui import chiplot, dialogs
+from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_memory_mb
 
-from .windows import DecayWindow, CorrelationWindow, CountRateWindow, MCSWindow, MacrotimeWindow
-from ..tcspc_devices import TCSPCDevice, BHSPCCardSetupDialog
 from ..pipeline import AcquisitionPipeline, PipelineConfig, record_type_for_device
-
+from ..tcspc_devices import BHSPCCardSetupDialog, TCSPCDevice
+from .windows import CorrelationWindow, CountRateWindow, DecayWindow, MacrotimeWindow, MCSWindow
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +95,9 @@ class AcquisitionThread(QThread):
             while self.running:
                 elapsed = time.monotonic() - start_time
                 if elapsed >= self.duration:
-                    logger.info(f"Time limit reached ({elapsed:.1f} s / {self.duration:.1f} s), stopping measurement")
+                    logger.info(
+                        f"Time limit reached ({elapsed:.1f} s / {self.duration:.1f} s), stopping measurement"
+                    )
                     self.device.stop_measurement()
                     break
 
@@ -143,7 +136,7 @@ class AcquisitionThread(QThread):
             self.error.emit(f"Error during acquisition: {e}")
             try:
                 self.device.stop_measurement()
-            except:
+            except Exception:
                 pass
 
         self.running = False
@@ -152,7 +145,7 @@ class AcquisitionThread(QThread):
         """Stop the acquisition thread."""
         try:
             # First stop the device measurement to interrupt any blocking read operations
-            if hasattr(self, 'device') and self.device is not None:
+            if hasattr(self, "device") and self.device is not None:
                 try:
                     self.device.stop_measurement()
                 except Exception as e:
@@ -225,7 +218,7 @@ class DataProcessingThread(QThread):
     def configure(self, **kwargs):
         """Set processing parameters (call before :meth:`reset`)."""
         for k, v in kwargs.items():
-            attr = f'_{k}'
+            attr = f"_{k}"
             if hasattr(self, attr):
                 setattr(self, attr, v)
 
@@ -365,8 +358,9 @@ class AcquisitionDockWidget(QDockWidget):
         self.photon_limit_spinbox.setSingleStep(5.0)
         self.photon_limit_spinbox.setValue(20.0)  # Default 20 kPh
         self.photon_limit_spinbox.setSuffix(" k photons")
-        self.photon_limit_spinbox.setToolTip("Photon stop limit in kilo-photons (kPh). 0 disables photon-based stopping.")
-
+        self.photon_limit_spinbox.setToolTip(
+            "Photon stop limit in kilo-photons (kPh). 0 disables photon-based stopping."
+        )
 
         self.start_button = QToolButton()
         self.start_button.setText("Start")
@@ -448,12 +442,24 @@ class AcquisitionDockWidget(QDockWidget):
         self.save_json_button = QToolButton()
         self.save_json_button.setText("Save Settings")
         self.save_json_button.setToolTip("Save acquisition settings to JSON file")
-        self.save_json_button.clicked.connect(lambda: self.parent().save_settings_json() if hasattr(self.parent(), 'save_settings_json') else None)
+        self.save_json_button.clicked.connect(
+            lambda: (
+                self.parent().save_settings_json()
+                if hasattr(self.parent(), "save_settings_json")
+                else None
+            )
+        )
 
         self.load_json_button = QToolButton()
         self.load_json_button.setText("Load Settings")
         self.load_json_button.setToolTip("Load acquisition settings from JSON file")
-        self.load_json_button.clicked.connect(lambda: self.parent().load_settings_json() if hasattr(self.parent(), 'load_settings_json') else None)
+        self.load_json_button.clicked.connect(
+            lambda: (
+                self.parent().load_settings_json()
+                if hasattr(self.parent(), "load_settings_json")
+                else None
+            )
+        )
 
         json_layout.addWidget(self.save_json_button)
         json_layout.addWidget(self.load_json_button)
@@ -601,17 +607,18 @@ class AcquisitionDockWidget(QDockWidget):
         try:
             manager = None
             parent = self.parent()
-            if parent is not None and hasattr(parent, '_acquisition_manager'):
-                manager = getattr(parent, '_acquisition_manager', None)
+            if parent is not None and hasattr(parent, "_acquisition_manager"):
+                manager = getattr(parent, "_acquisition_manager", None)
             else:
                 try:
                     import chisurf
-                    if hasattr(chisurf.cs, '_acquisition_manager'):
+
+                    if hasattr(chisurf.cs, "_acquisition_manager"):
                         manager = chisurf.cs._acquisition_manager
                 except Exception:
                     manager = None
 
-            if manager is not None and hasattr(manager, 'close_acquisition_mode'):
+            if manager is not None and hasattr(manager, "close_acquisition_mode"):
                 manager.close_acquisition_mode()
         except Exception as e:
             logger.warning(f"Error closing acquisition mode from dock closeEvent: {e}")
@@ -636,7 +643,8 @@ class SMAcquisitionManager:
         # opened without one (headless, a test, or before the window is up).
         try:
             import chisurf
-            host = getattr(chisurf, 'cs', None)
+
+            host = getattr(chisurf, "cs", None)
         except ImportError:
             host = None
         self.chisurf_available = host is not None
@@ -644,32 +652,37 @@ class SMAcquisitionManager:
             host = standalone_main_window
         self.main_window = host
         logger.info(
-            "Running in chisurf mode" if self.chisurf_available
-            else "Running in standalone mode" if host is not None
+            "Running in chisurf mode"
+            if self.chisurf_available
+            else "Running in standalone mode"
+            if host is not None
             else "Running without a host window; the acquisition views stay free-floating"
         )
 
         # Check if acquisition manager already exists
-        if self.main_window is not None and hasattr(self.main_window, '_acquisition_manager'):
+        if self.main_window is not None and hasattr(self.main_window, "_acquisition_manager"):
             logger.warning("SM Acquisition manager already exists, not creating another instance")
             # Maybe bring the existing windows to front or show a message
-            if hasattr(self.main_window, '_acquisition_manager') and self.main_window._acquisition_manager:
+            if (
+                hasattr(self.main_window, "_acquisition_manager")
+                and self.main_window._acquisition_manager
+            ):
                 existing_manager = self.main_window._acquisition_manager
                 # Bring existing windows to front
                 try:
                     existing_manager.decay_window.raise_()
                     existing_manager.decay_window.activateWindow()
-                except:
+                except Exception:
                     pass
                 try:
                     existing_manager.correlation_window.raise_()
                     existing_manager.correlation_window.activateWindow()
-                except:
+                except Exception:
                     pass
                 try:
                     existing_manager.count_rate_window.raise_()
                     existing_manager.count_rate_window.activateWindow()
-                except:
+                except Exception:
                     pass
             return
 
@@ -754,14 +767,14 @@ class SMAcquisitionManager:
             self.main_window.addDockWidget(Qt.LeftDockWidgetArea, self.acquisition_dock)
         elif self.main_window is not None:
             # Standalone mode - use MDI area from standalone window
-            if hasattr(self.main_window, 'mdiarea'):
+            if hasattr(self.main_window, "mdiarea"):
                 self.main_window.mdiarea.addSubWindow(self.decay_window)
                 self.main_window.mdiarea.addSubWindow(self.correlation_window)
                 self.main_window.mdiarea.addSubWindow(self.count_rate_window)
                 self.main_window.mdiarea.addSubWindow(self.macrotime_window)
                 self.main_window.mdiarea.addSubWindow(self.mcs_window)
                 # For standalone, add dock as regular widget
-                if hasattr(self.main_window, 'addDockWidget'):
+                if hasattr(self.main_window, "addDockWidget"):
                     self.main_window.addDockWidget(Qt.LeftDockWidgetArea, self.acquisition_dock)
                 else:
                     # Fallback: add to central widget
@@ -784,7 +797,12 @@ class SMAcquisitionManager:
 
     def raise_(self):
         """Raise all acquisition windows."""
-        for w in [self.decay_window, self.correlation_window, self.count_rate_window, self.acquisition_dock]:
+        for w in [
+            self.decay_window,
+            self.correlation_window,
+            self.count_rate_window,
+            self.acquisition_dock,
+        ]:
             try:
                 w.raise_()
             except Exception:
@@ -806,29 +824,42 @@ class SMAcquisitionManager:
                 # For now, we'll try to read MACRO_TIME_CLK parameter
                 try:
                     from ..tcspc_devices.bh_spc.wrapper import ParID
-                    if hasattr(self.device.device, 'get_parameter') and self.device.active_cards:
+
+                    if hasattr(self.device.device, "get_parameter") and self.device.active_cards:
                         mod_no = self.device.active_cards[0]  # Use first active card
-                        macrotime_clock_param = self.device.device.get_parameter(mod_no, ParID.MACRO_TIME_CLK)
+                        macrotime_clock_param = self.device.device.get_parameter(
+                            mod_no, ParID.MACRO_TIME_CLK
+                        )
                         if macrotime_clock_param > 0:
                             # Convert from parameter value to actual time in seconds
                             # BH SPC macrotime clock parameter is typically in units of 50 ps (0.05 ns)
-                            self.macrotime_clock = macrotime_clock_param * 50e-12  # Convert to seconds
-                            logger.info(f"Read macrotime clock from BH SPC: {self.macrotime_clock*1e9:.1f} ns")
+                            self.macrotime_clock = (
+                                macrotime_clock_param * 50e-12
+                            )  # Convert to seconds
+                            logger.info(
+                                f"Read macrotime clock from BH SPC: {self.macrotime_clock * 1e9:.1f} ns"
+                            )
                         else:
                             logger.warning("Invalid macrotime clock parameter, using default")
                     else:
-                        logger.info("Cannot read macrotime clock from BH SPC device, using default: 50 ns")
+                        logger.info(
+                            "Cannot read macrotime clock from BH SPC device, using default: 50 ns"
+                        )
                 except Exception as e:
                     logger.error(f"Error reading macrotime clock from BH SPC device: {e}")
                     logger.info("Using default macrotime clock: 50 ns")
-                logger.info(f"PicoQuant macrotime clock: {self.macrotime_clock*1e12:.0f} ps ({1/(self.macrotime_clock*1e-6):.0f} MHz)")
+                logger.info(
+                    f"PicoQuant macrotime clock: {self.macrotime_clock * 1e12:.0f} ps ({1 / (self.macrotime_clock * 1e-6):.0f} MHz)"
+                )
             elif self.device.device_type == "SIMULATION":
                 # For simulation, use the same timing as BH_SPC devices since the DLL
                 # produces BH_SPC compatible data with realistic timing
                 self.macrotime_clock = 50e-9  # 50 ns (same as BH_SPC default)
-                logger.info(f"Simulation macrotime clock: {self.macrotime_clock*1e9:.1f} ns")
+                logger.info(f"Simulation macrotime clock: {self.macrotime_clock * 1e9:.1f} ns")
             else:
-                logger.info(f"Unknown device type {self.device.device_type}, using default macrotime clock: {self.macrotime_clock*1e9:.1f} ns")
+                logger.info(
+                    f"Unknown device type {self.device.device_type}, using default macrotime clock: {self.macrotime_clock * 1e9:.1f} ns"
+                )
 
             # Micro-time (TAC) resolution, which sets the decay window's axis.
             # Only the simulator states it today; a card that cannot say keeps
@@ -839,7 +870,8 @@ class SMAcquisitionManager:
                 self.microtime_resolution_ns = float(sim_params["tac_dt"])
             try:
                 self.decay_window.decay_plot_widget.set_labels(
-                    bottom="Time (ns)" if self.microtime_resolution_ns
+                    bottom="Time (ns)"
+                    if self.microtime_resolution_ns
                     else "Micro time (TAC channel)"
                 )
             except (AttributeError, RuntimeError):
@@ -847,14 +879,13 @@ class SMAcquisitionManager:
 
             # Update GUI display if available
             if self.macrotime_clock < 1e-9:  # Less than 1 ns
-                display_text = f"{self.macrotime_clock*1e12:.1f} ps"
+                display_text = f"{self.macrotime_clock * 1e12:.1f} ps"
             else:  # 1 ns or more
-                display_text = f"{self.macrotime_clock*1e9:.1f} ns"
+                display_text = f"{self.macrotime_clock * 1e9:.1f} ns"
 
             self.acquisition_dock.macrotime_clock_label.setText(f"Macrotime Clock: {display_text}")
         except Exception as e:
             logger.debug(f"Could not update macrotime clock display: {e}")
-
 
     def setup_connections(self):
         """Set up signal-slot connections."""
@@ -862,8 +893,12 @@ class SMAcquisitionManager:
         self.acquisition_dock.stop_button.clicked.connect(self.stop_acquisition)
         self.acquisition_dock.sim_setup_button.clicked.connect(self.open_card_setup)
         self.acquisition_dock.show_decay_checkbox.toggled.connect(self.toggle_decay_window)
-        self.acquisition_dock.show_correlation_checkbox.toggled.connect(self.toggle_correlation_window)
-        self.acquisition_dock.show_count_rate_checkbox.toggled.connect(self.toggle_count_rate_window)
+        self.acquisition_dock.show_correlation_checkbox.toggled.connect(
+            self.toggle_correlation_window
+        )
+        self.acquisition_dock.show_count_rate_checkbox.toggled.connect(
+            self.toggle_count_rate_window
+        )
         self.acquisition_dock.show_macrotime_checkbox.toggled.connect(self.toggle_macrotime_window)
         self.acquisition_dock.show_mcs_checkbox.toggled.connect(self.toggle_mcs_window)
 
@@ -884,7 +919,7 @@ class SMAcquisitionManager:
     def update_ui_for_device_type(self):
         """Update UI elements based on selected device type."""
         self.device_type = self.device.device_type
-        
+
         # Show/hide Simulation Setup button
         if self.device_type == "Simulation":
             self.acquisition_dock.sim_setup_button.setVisible(True)
@@ -953,6 +988,7 @@ class SMAcquisitionManager:
         """Start data acquisition."""
         # Read settings from central config
         from chisurf.settings import gui as gui_settings
+
         acq_config = gui_settings.get("acquisition", {})
         device_type = acq_config.get("device_type", "Simulation")
 
@@ -963,6 +999,7 @@ class SMAcquisitionManager:
                 self.device.close()
 
             from chisurf.plugins.core.acq.tcspc_devices.device_factory import TCSPCDevice
+
             if device_type == "Becker-Hickl":
                 self.device = TCSPCDevice("BH_SPC")
             elif device_type == "PicoQuant":
@@ -976,14 +1013,16 @@ class SMAcquisitionManager:
 
             self.device.message_logged.connect(self._device_log_handler)
             if not self.device.initialize(simulation=self.simulation_mode):
-                dialogs.error(self.main_window, "Error", f"Failed to initialize {device_type} device.")
+                dialogs.error(
+                    self.main_window, "Error", f"Failed to initialize {device_type} device."
+                )
                 return
 
             self._read_device_timing_parameters()
             self.update_ui_for_device_type()
 
         # Check if acquisition is already running
-        if getattr(self, '_acquisition_in_progress', False):
+        if getattr(self, "_acquisition_in_progress", False):
             dialogs.information(self.main_window, "Information", "Acquisition is already running")
             return
 
@@ -993,7 +1032,11 @@ class SMAcquisitionManager:
 
         # Require at least one active stop condition
         if time_limit <= 0.0 and photon_limit <= 0.0:
-            dialogs.warning(self.main_window, "Warning", "Set a time and/or photon stop condition before starting acquisition")
+            dialogs.warning(
+                self.main_window,
+                "Warning",
+                "Set a time and/or photon stop condition before starting acquisition",
+            )
             return
 
         # Persist limits for progress and photon-based stopping
@@ -1008,11 +1051,11 @@ class SMAcquisitionManager:
 
         # Read settings from central config
         from chisurf.settings import gui as gui_settings
+
         acq_config = gui_settings.get("acquisition", {})
-        
+
         chunk_size_photons = acq_config.get("chunk_size", 16384)
         chunk_size_words = chunk_size_photons * 2  # Convert photons to 16-bit words
-
 
         self.data = None
         self.decay_data = [np.zeros(4096) for _ in range(4)]
@@ -1069,7 +1112,11 @@ class SMAcquisitionManager:
             # For simulation device, store as SPC output path in simulation parameters
             if device_type == "Simulation" and hasattr(self.device, "simulation_params"):
                 self.device.simulation_params["spc_output_path"] = output_path
-            elif device_type == "BrickMic" and hasattr(self.device, "device") and hasattr(self.device.device, "spc_output_path"):
+            elif (
+                device_type == "BrickMic"
+                and hasattr(self.device, "device")
+                and hasattr(self.device.device, "spc_output_path")
+            ):
                 self.device.device.spc_output_path = output_path
 
         # For Simulation device, use chunk size (photons) as the per-file photon target
@@ -1078,16 +1125,21 @@ class SMAcquisitionManager:
             saved_sim_params = acq_config.get("simulation_params")
             if saved_sim_params:
                 import copy
+
                 self.device.simulation_params.update(copy.deepcopy(saved_sim_params))
                 logger.info("Applied saved simulation parameters from settings panel")
-            
+
             target_photons = max(1, chunk_size_photons)
             self.device.simulation_params["N_ph_per_file"] = target_photons
-            
+
             # Pass real_time_sim flag to simulation params
             self.device.simulation_params["real_time_sim"] = acq_config.get("real_time_sim", False)
-                
-        elif device_type == "BrickMic" and hasattr(self.device, "device") and hasattr(self.device.device, "N_ph_per_file"):
+
+        elif (
+            device_type == "BrickMic"
+            and hasattr(self.device, "device")
+            and hasattr(self.device.device, "N_ph_per_file")
+        ):
             target_photons = max(1, chunk_size_photons)
             self.device.device.N_ph_per_file = target_photons
 
@@ -1105,9 +1157,12 @@ class SMAcquisitionManager:
         # Discover enabled correlation pairs from the plot controller
         try:
             pairs = []
-            if (hasattr(self.correlation_window, 'plot_controller')
-                    and hasattr(self.correlation_window.plot_controller, 'correlation_widgets')):
-                for i, (sa, sb, cb) in enumerate(self.correlation_window.plot_controller.correlation_widgets):
+            if hasattr(self.correlation_window, "plot_controller") and hasattr(
+                self.correlation_window.plot_controller, "correlation_widgets"
+            ):
+                for i, (sa, sb, cb) in enumerate(
+                    self.correlation_window.plot_controller.correlation_widgets
+                ):
                     if cb.isChecked():
                         pairs.append((i, sa.value(), sb.value()))
             if not pairs:
@@ -1120,8 +1175,9 @@ class SMAcquisitionManager:
         # there is no longer an expensive recomputation to skip.
         self.correlation_redraw_interval = 1
         try:
-            if (hasattr(self.correlation_window, 'plot_controller')
-                    and hasattr(self.correlation_window.plot_controller, 'update_frequency_spinbox')):
+            if hasattr(self.correlation_window, "plot_controller") and hasattr(
+                self.correlation_window.plot_controller, "update_frequency_spinbox"
+            ):
                 self.correlation_redraw_interval = max(
                     1, self.correlation_window.plot_controller.update_frequency_spinbox.value()
                 )
@@ -1132,7 +1188,9 @@ class SMAcquisitionManager:
         self._processing_thread.stop_requested.connect(self._on_processing_stop)
         self._processing_thread.start()
 
-        self.acquisition_thread = AcquisitionThread(self.device, thread_duration, self.main_window, chunk_size_words)
+        self.acquisition_thread = AcquisitionThread(
+            self.device, thread_duration, self.main_window, chunk_size_words
+        )
         self.acquisition_thread.data_ready.connect(self._on_data_ready)
         self.acquisition_thread.acquisition_complete.connect(self.acquisition_completed)
         self.acquisition_thread.error.connect(self.acquisition_error)
@@ -1156,46 +1214,46 @@ class SMAcquisitionManager:
 
     def _on_data_ready(self, data):
         """Slot for incoming raw data – forward to the processing thread."""
-        if hasattr(self, '_processing_thread') and self._processing_thread is not None:
+        if hasattr(self, "_processing_thread") and self._processing_thread is not None:
             self._processing_thread.submit(data)
 
     def _apply_results(self):
         """Poll results from the processing thread and update plots."""
-        proc = getattr(self, '_processing_thread', None)
+        proc = getattr(self, "_processing_thread", None)
         if proc is not None:
             results = proc.get_results()
         else:
-            results = getattr(self, '_last_results', None)
+            results = getattr(self, "_last_results", None)
         if results is None:
             return
         self._last_results = results
 
         try:
-            self.decay_data = results['decay_data']
-            self.total_photons = results['total_photons']
+            self.decay_data = results["decay_data"]
+            self.total_photons = results["total_photons"]
 
             # Correlation. The results are in *pair* order and each pair names
             # the curve it belongs to, which is not the same thing: correlating
             # only curve 2 gives one result, and reading it positionally draws
             # it as curve 0.
-            corr_results = results.get('correlation_results', [])
-            corr_pairs = results.get('correlation_pairs', [])
+            corr_results = results.get("correlation_results", [])
+            corr_pairs = results.get("correlation_pairs", [])
             for (curve_idx, _a, _b), c in zip(corr_pairs, corr_results):
                 if c is not None and 0 <= curve_idx < len(self.correlation_times):
                     self.correlation_times[curve_idx] = c[0]
                     self.correlation_amplitudes[curve_idx] = c[1]
 
             # Count rates
-            self.count_rate_times = results.get('count_rate_times', [])
-            self.count_rate_data = results.get('count_rate_data', [[] for _ in range(5)])
-            self.mean_countrate = results.get('mean_count_rate_khz', 0.0)
+            self.count_rate_times = results.get("count_rate_times", [])
+            self.count_rate_data = results.get("count_rate_data", [[] for _ in range(5)])
+            self.mean_countrate = results.get("mean_count_rate_khz", 0.0)
 
             # MCS
-            self.mcs_trace = results.get('mcs_trace', None)
+            self.mcs_trace = results.get("mcs_trace", None)
 
             # Macrotime
-            self.macrotime_data = results.get('macrotime_data', [])
-            self.macrotime_times = results.get('macrotime_times', [])
+            self.macrotime_data = results.get("macrotime_data", [])
+            self.macrotime_times = results.get("macrotime_times", [])
 
             # Update count rate LCD
             try:
@@ -1205,10 +1263,12 @@ class SMAcquisitionManager:
 
             # Live quality numbers, from the same photon pass as the decay.
             try:
-                bursts = results.get('burst_count')
-                phasor = results.get('phasor')
-                text = "Bursts: —" if bursts is None else (
-                    f"Bursts: {bursts:,} ({results.get('burst_rate_hz', 0.0):.1f}/s)"
+                bursts = results.get("burst_count")
+                phasor = results.get("phasor")
+                text = (
+                    "Bursts: —"
+                    if bursts is None
+                    else (f"Bursts: {bursts:,} ({results.get('burst_rate_hz', 0.0):.1f}/s)")
                 )
                 if phasor is not None and phasor[2] > 0:
                     text += f" · Phasor: g={phasor[0]:.3f} s={phasor[1]:.3f}"
@@ -1265,7 +1325,7 @@ class SMAcquisitionManager:
         """Stop data acquisition."""
         try:
             # Stop the background processing thread first (drains queue)
-            proc = getattr(self, '_processing_thread', None)
+            proc = getattr(self, "_processing_thread", None)
             if proc is not None:
                 # Cache last results for any pending _apply_results callbacks
                 self._last_results = proc.get_results()
@@ -1273,12 +1333,15 @@ class SMAcquisitionManager:
                 proc.wait(3000)
                 self._processing_thread = None
 
-            if hasattr(self, 'acquisition_thread') and self.acquisition_thread is not None:
-                logger.debug(f"Stopping acquisition thread (running: {self.acquisition_thread.isRunning()})")
+            if hasattr(self, "acquisition_thread") and self.acquisition_thread is not None:
+                logger.debug(
+                    f"Stopping acquisition thread (running: {self.acquisition_thread.isRunning()})"
+                )
                 if self.acquisition_thread.isRunning():
                     self.acquisition_thread.stop()
                     # Give the thread a moment to stop
                     import time
+
                     timeout = 0
                     while self.acquisition_thread.isRunning() and timeout < 50:  # 5 second timeout
                         time.sleep(0.1)
@@ -1308,18 +1371,18 @@ class SMAcquisitionManager:
                 self._safe_set_button_enabled("stop_button", False)
                 # Clear acquisition flag even on error
                 self._acquisition_in_progress = False
-            except:
+            except Exception:
                 pass
 
         # Stop timers safely
         try:
-            if hasattr(self, 'progress_timer') and self.progress_timer is not None:
+            if hasattr(self, "progress_timer") and self.progress_timer is not None:
                 self.progress_timer.stop()
         except Exception as e:
             logger.error(f"Error stopping progress timer: {e}")
 
         try:
-            if hasattr(self, 'fifo_timer') and self.fifo_timer is not None:
+            if hasattr(self, "fifo_timer") and self.fifo_timer is not None:
                 self.fifo_timer.stop()
         except Exception as e:
             logger.error(f"Error stopping FIFO timer: {e}")
@@ -1367,19 +1430,21 @@ class SMAcquisitionManager:
     def update_fifo_usage(self):
         """Log the FIFO usage."""
         # Only update FIFO usage if measurement is running
-        if not hasattr(self, 'device') or not self.device.initialized:
+        if not hasattr(self, "device") or not self.device.initialized:
             return
 
         # Check if measurement is running (for simulation and other devices)
         try:
-            if hasattr(self.device, 'measurement_running'):
+            if hasattr(self.device, "measurement_running"):
                 if not self.device.measurement_running:
                     return
-            elif hasattr(self.device, 'device') and hasattr(self.device.device, 'measurement_running'):
+            elif hasattr(self.device, "device") and hasattr(
+                self.device.device, "measurement_running"
+            ):
                 # For factory devices
                 if not self.device.device.measurement_running:
                     return
-        except:
+        except Exception:
             pass
 
         usage_dict = self.device.get_fifo_usage()
@@ -1409,7 +1474,9 @@ class SMAcquisitionManager:
             if valid_usages:
                 avg_usage = sum(valid_usages) / len(valid_usages)
                 if device_type == "PicoQuant":
-                    logger.debug(f"Avg Buffer Usage ({len(valid_usages)} devices): {avg_usage:.1f}%")
+                    logger.debug(
+                        f"Avg Buffer Usage ({len(valid_usages)} devices): {avg_usage:.1f}%"
+                    )
                 else:
                     logger.debug(f"Avg FIFO Usage ({len(valid_usages)} cards): {avg_usage:.1f}%")
 
@@ -1451,37 +1518,42 @@ class SMAcquisitionManager:
             try:
                 logger.info("Attempting to import EnhancedSimulationSetupDialog")
                 from ..tcspc_devices.simulation.setup_dialog import EnhancedSimulationSetupDialog
+
                 logger.info("Successfully imported EnhancedSimulationSetupDialog")
                 dialog = EnhancedSimulationSetupDialog(self.device, self.main_window)
                 logger.info("Successfully created EnhancedSimulationSetupDialog instance")
             except Exception as e:
                 logger.error(f"Failed to create enhanced setup dialog: {e}")
-                dialogs.warning(self.main_window, "Setup Error", 
-                                  f"Could not create simulation setup dialog: {e}")
+                dialogs.warning(
+                    self.main_window,
+                    "Setup Error",
+                    f"Could not create simulation setup dialog: {e}",
+                )
                 return
         elif device_type == "PicoQuant":
             from ..tcspc_devices import PicoQuantSetupDialog
+
             dialog = PicoQuantSetupDialog(self.device, self.main_window)
         else:
             dialog = BHSPCCardSetupDialog(self.device.device, self.main_window)
             # Set the current simulation mode in the dialog (only for BH cards)
             dialog.set_simulation_mode(self.simulation_mode)
-        
+
         result = dialog.exec_()
         logger.info(f"Dialog exec_() returned: {result}")
-        if hasattr(dialog, 'windowTitle'):
+        if hasattr(dialog, "windowTitle"):
             logger.info(f"Dialog title: {dialog.windowTitle()}")
         else:
             logger.info("Dialog has no windowTitle method")
 
         # If the dialog was accepted, update the simulation mode and active cards
         if result == QDialog.Accepted:
-            if hasattr(dialog, 'get_simulation_mode'):
+            if hasattr(dialog, "get_simulation_mode"):
                 self.simulation_mode = dialog.get_simulation_mode()
-            elif hasattr(dialog, 'get_parameters'):
+            elif hasattr(dialog, "get_parameters"):
                 # Simulation or PicoQuant dialog returns parameters
                 new_params = dialog.get_parameters()
-                if hasattr(self.device, 'simulation_params'):
+                if hasattr(self.device, "simulation_params"):
                     self.device.simulation_params.update(new_params)
                     logger.info("Updated simulation parameters")
                 # For PicoQuant, we could store parameters if needed
@@ -1536,8 +1608,11 @@ class SMAcquisitionManager:
     def show_help(self):
         """Show the help documentation window."""
         try:
-            if not hasattr(self, 'help_window') or self.help_window is None:
-                self.help_window = HelpViewerWindow(self.main_window)
+            if not hasattr(self, "help_window") or self.help_window is None:
+                # HelpViewerWindow does not exist yet (pre-existing dead code
+                # path); the except Exception below turns this into a
+                # friendly "could not open help" dialog rather than a crash.
+                self.help_window = HelpViewerWindow(self.main_window)  # noqa: F821
                 if self.chisurf_available:
                     self.main_window.mdiarea.addSubWindow(self.help_window)
                 else:
@@ -1549,25 +1624,30 @@ class SMAcquisitionManager:
             self.help_window.activateWindow()
         except Exception as e:
             logger.error(f"Error opening help window: {e}")
-            dialogs.warning(self.main_window, "Help Error", f"Could not open help documentation:\n{e}")
+            dialogs.warning(
+                self.main_window, "Help Error", f"Could not open help documentation:\n{e}"
+            )
 
     def close_acquisition_mode(self):
         """Close the acquisition mode and clean up all components."""
-
         # Ask for confirmation
         reply = dialogs.question(
             self.main_window,
             "Close Acquisition Mode",
             "Are you sure you want to close the acquisition mode?\n\nThis will stop any ongoing acquisition and close all acquisition windows.",
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
 
         if reply != QMessageBox.Yes:
             return
 
         # Stop any ongoing acquisition
-        if hasattr(self, 'acquisition_thread') and self.acquisition_thread and self.acquisition_thread.isRunning():
+        if (
+            hasattr(self, "acquisition_thread")
+            and self.acquisition_thread
+            and self.acquisition_thread.isRunning()
+        ):
             self.acquisition_thread.stop()
 
         # Close device
@@ -1575,17 +1655,22 @@ class SMAcquisitionManager:
             self.device.close()
 
         # Stop timers
-        if hasattr(self, 'progress_timer'):
+        if hasattr(self, "progress_timer"):
             self.progress_timer.stop()
-        if hasattr(self, 'fifo_timer'):
+        if hasattr(self, "fifo_timer"):
             self.fifo_timer.stop()
 
         # Remove plot controllers from chisurf's plot options layout
-        if hasattr(self.main_window, 'plotOptionsLayout'):
+        if hasattr(self.main_window, "plotOptionsLayout"):
             # Remove decay plot controller
-            if hasattr(self.decay_window, 'plot_controller') and self.decay_window.plot_controller is not None:
+            if (
+                hasattr(self.decay_window, "plot_controller")
+                and self.decay_window.plot_controller is not None
+            ):
                 try:
-                    self.main_window.plotOptionsLayout.removeWidget(self.decay_window.plot_controller)
+                    self.main_window.plotOptionsLayout.removeWidget(
+                        self.decay_window.plot_controller
+                    )
                     self.decay_window.plot_controller.hide()
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
@@ -1594,9 +1679,14 @@ class SMAcquisitionManager:
                         raise
 
             # Remove correlation plot controller
-            if hasattr(self.correlation_window, 'plot_controller') and self.correlation_window.plot_controller is not None:
+            if (
+                hasattr(self.correlation_window, "plot_controller")
+                and self.correlation_window.plot_controller is not None
+            ):
                 try:
-                    self.main_window.plotOptionsLayout.removeWidget(self.correlation_window.plot_controller)
+                    self.main_window.plotOptionsLayout.removeWidget(
+                        self.correlation_window.plot_controller
+                    )
                     self.correlation_window.plot_controller.hide()
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
@@ -1605,9 +1695,14 @@ class SMAcquisitionManager:
                         raise
 
             # Remove count rate plot controller
-            if hasattr(self.count_rate_window, 'plot_controller') and self.count_rate_window.plot_controller is not None:
+            if (
+                hasattr(self.count_rate_window, "plot_controller")
+                and self.count_rate_window.plot_controller is not None
+            ):
                 try:
-                    self.main_window.plotOptionsLayout.removeWidget(self.count_rate_window.plot_controller)
+                    self.main_window.plotOptionsLayout.removeWidget(
+                        self.count_rate_window.plot_controller
+                    )
                     self.count_rate_window.plot_controller.hide()
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
@@ -1638,24 +1733,24 @@ class SMAcquisitionManager:
 
         # Clean up widget references
         try:
-            if hasattr(self, 'acquisition_dock'):
+            if hasattr(self, "acquisition_dock"):
                 self.acquisition_dock = None
-            if hasattr(self, 'decay_window'):
+            if hasattr(self, "decay_window"):
                 self.decay_window = None
-            if hasattr(self, 'correlation_window'):
+            if hasattr(self, "correlation_window"):
                 self.correlation_window = None
-            if hasattr(self, 'count_rate_window'):
+            if hasattr(self, "count_rate_window"):
                 self.count_rate_window = None
-            if hasattr(self, 'macrotime_window'):
+            if hasattr(self, "macrotime_window"):
                 self.macrotime_window = None
-            if hasattr(self, 'mcs_window'):
+            if hasattr(self, "mcs_window"):
                 self.mcs_window = None
         except Exception as e:
             logger.error(f"Error cleaning up widget references: {e}")
 
         # Remove reference from main window
-        if hasattr(self.main_window, '_acquisition_manager'):
-            delattr(self.main_window, '_acquisition_manager')
+        if hasattr(self.main_window, "_acquisition_manager"):
+            delattr(self.main_window, "_acquisition_manager")
 
         # Log the closure
         logger.info("Single-Molecule Acquisition mode closed.")
@@ -1695,33 +1790,46 @@ class SMAcquisitionManager:
             return
 
         # Early return if window or plot controller is not available (e.g., during cleanup)
-        if not hasattr(self, 'decay_window') or self.decay_window is None:
+        if not hasattr(self, "decay_window") or self.decay_window is None:
             return
-        if not hasattr(self.decay_window, 'plot_controller') or self.decay_window.plot_controller is None:
+        if (
+            not hasattr(self.decay_window, "plot_controller")
+            or self.decay_window.plot_controller is None
+        ):
             return
 
         # Check update frequency
-        if hasattr(self.decay_window, 'plot_controller') and hasattr(self.decay_window.plot_controller, 'update_frequency_spinbox'):
+        if hasattr(self.decay_window, "plot_controller") and hasattr(
+            self.decay_window.plot_controller, "update_frequency_spinbox"
+        ):
             try:
-                update_frequency = self.decay_window.plot_controller.update_frequency_spinbox.value()
+                update_frequency = (
+                    self.decay_window.plot_controller.update_frequency_spinbox.value()
+                )
                 self.decay_update_counter += 1
                 if self.decay_update_counter < update_frequency:
                     return  # Skip update this time
                 self.decay_update_counter = 0  # Reset counter
             except RuntimeError as e:
                 if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                    logger.warning("Decay plot controller update_frequency_spinbox was deleted, skipping frequency check")
+                    logger.warning(
+                        "Decay plot controller update_frequency_spinbox was deleted, skipping frequency check"
+                    )
                 else:
                     raise
 
         # Get log Y setting from controller
         use_log_y = False  # Default to linear scale for decays to show zeros
         try:
-            if hasattr(self.decay_window, 'plot_controller') and hasattr(self.decay_window.plot_controller, 'log_y_checkbox'):
+            if hasattr(self.decay_window, "plot_controller") and hasattr(
+                self.decay_window.plot_controller, "log_y_checkbox"
+            ):
                 use_log_y = self.decay_window.plot_controller.log_y_checkbox.isChecked()
         except RuntimeError as e:
             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                logger.warning("Decay plot controller log_y_checkbox was deleted, using default log_y=False")
+                logger.warning(
+                    "Decay plot controller log_y_checkbox was deleted, using default log_y=False"
+                )
                 use_log_y = False
             else:
                 raise
@@ -1739,9 +1847,11 @@ class SMAcquisitionManager:
         # Get visible channels from plot controller
         visible_channels = []
         try:
-            if hasattr(self.decay_window, 'plot_controller'):
-                if hasattr(self.decay_window.plot_controller, 'channel_widgets'):
-                    for i, (spinbox, checkbox) in enumerate(self.decay_window.plot_controller.channel_widgets):
+            if hasattr(self.decay_window, "plot_controller"):
+                if hasattr(self.decay_window.plot_controller, "channel_widgets"):
+                    for i, (spinbox, checkbox) in enumerate(
+                        self.decay_window.plot_controller.channel_widgets
+                    ):
                         try:
                             if checkbox.isChecked():
                                 channel = spinbox.value()
@@ -1781,12 +1891,16 @@ class SMAcquisitionManager:
                     self.decay_window.decay_curves[curve_idx].set_data(x, combined)
                     self.decay_window.decay_curves[curve_idx].show()
                 elif data_idx < len(self.decay_data) and len(self.decay_data[data_idx]) > 0:
-                    logger.debug(f"Setting decay data for curve {curve_idx} (channel data {data_idx}), length {len(self.decay_data[data_idx])}, total counts {np.sum(self.decay_data[data_idx])}")
+                    logger.debug(
+                        f"Setting decay data for curve {curve_idx} (channel data {data_idx}), length {len(self.decay_data[data_idx])}, total counts {np.sum(self.decay_data[data_idx])}"
+                    )
                     x = self._microtime_axis_ns(len(self.decay_data[data_idx]))
                     self.decay_window.decay_curves[curve_idx].set_data(x, self.decay_data[data_idx])
                     self.decay_window.decay_curves[curve_idx].show()
                 else:
-                    logger.debug(f"Hiding decay curve {curve_idx}, no data for channel data {data_idx}")
+                    logger.debug(
+                        f"Hiding decay curve {curve_idx}, no data for channel data {data_idx}"
+                    )
                     self.decay_window.decay_curves[curve_idx].hide()
             # Hide unused curves
             for i in range(4):
@@ -1802,14 +1916,20 @@ class SMAcquisitionManager:
         """Reset plot controllers to their default states."""
         try:
             # Clear decay plot controller
-            if hasattr(self, 'decay_window') and self.decay_window is not None and hasattr(self.decay_window, 'plot_controller'):
+            if (
+                hasattr(self, "decay_window")
+                and self.decay_window is not None
+                and hasattr(self.decay_window, "plot_controller")
+            ):
                 try:
                     # Reset channel spinboxes and checkboxes
-                    for i, (spinbox, checkbox) in enumerate(self.decay_window.plot_controller.channel_widgets):
+                    for i, (spinbox, checkbox) in enumerate(
+                        self.decay_window.plot_controller.channel_widgets
+                    ):
                         spinbox.setValue([8, 9, 10, -1][i])
                         checkbox.setChecked(i < 3)
                     # Reset log Y checkbox to unchecked (linear scale for decays)
-                    if hasattr(self.decay_window.plot_controller, 'log_y_checkbox'):
+                    if hasattr(self.decay_window.plot_controller, "log_y_checkbox"):
                         self.decay_window.plot_controller.log_y_checkbox.setChecked(False)
                     # Reset update frequency to default
                     self.decay_window.plot_controller.update_frequency_spinbox.setValue(1)
@@ -1820,10 +1940,16 @@ class SMAcquisitionManager:
                         raise
 
             # Clear correlation plot controller
-            if hasattr(self, 'correlation_window') and self.correlation_window is not None and hasattr(self.correlation_window, 'plot_controller'):
+            if (
+                hasattr(self, "correlation_window")
+                and self.correlation_window is not None
+                and hasattr(self.correlation_window, "plot_controller")
+            ):
                 try:
                     # Reset correlation spinboxes and checkboxes
-                    for i, (spinbox_a, spinbox_b, checkbox) in enumerate(self.correlation_window.plot_controller.correlation_widgets):
+                    for i, (spinbox_a, spinbox_b, checkbox) in enumerate(
+                        self.correlation_window.plot_controller.correlation_widgets
+                    ):
                         spinbox_a.setValue(-1)
                         spinbox_b.setValue(-1)
                         checkbox.setChecked(i == 0)  # Enable first by default
@@ -1831,15 +1957,22 @@ class SMAcquisitionManager:
                     self.correlation_window.plot_controller.update_frequency_spinbox.setValue(5)
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Correlation plot controller widgets were deleted during cleanup")
+                        logger.debug(
+                            "Correlation plot controller widgets were deleted during cleanup"
+                        )
                     else:
                         raise
 
             # Clear count rate plot controller
-            if hasattr(self.count_rate_window, 'plot_controller') and self.count_rate_window.plot_controller is not None:
+            if (
+                hasattr(self.count_rate_window, "plot_controller")
+                and self.count_rate_window.plot_controller is not None
+            ):
                 try:
                     # Reset channel spinboxes, checkboxes and "All"
-                    for i, widget in enumerate(self.count_rate_window.plot_controller.channel_widgets):
+                    for i, widget in enumerate(
+                        self.count_rate_window.plot_controller.channel_widgets
+                    ):
                         if i < 4:
                             spinbox, checkbox, _ = widget
                             # Default: first curve plots sum (-1), others keep routing defaults and are disabled
@@ -1848,14 +1981,16 @@ class SMAcquisitionManager:
                             checkbox.setChecked(i == 0)
                         # "All" curve is always shown, no checkbox to set
                     # Reset log Y checkbox to unchecked (linear scale)
-                    if hasattr(self.count_rate_window.plot_controller, 'log_y_checkbox'):
+                    if hasattr(self.count_rate_window.plot_controller, "log_y_checkbox"):
                         self.count_rate_window.plot_controller.log_y_checkbox.setChecked(False)
                     # Reset rolling window settings
-                    if hasattr(self.count_rate_window.plot_controller, 'rolling_window_checkbox'):
-                        self.count_rate_window.plot_controller.rolling_window_checkbox.setChecked(True)  # Default enabled
-                    if hasattr(self.count_rate_window.plot_controller, 'window_size_spinbox'):
+                    if hasattr(self.count_rate_window.plot_controller, "rolling_window_checkbox"):
+                        self.count_rate_window.plot_controller.rolling_window_checkbox.setChecked(
+                            True
+                        )  # Default enabled
+                    if hasattr(self.count_rate_window.plot_controller, "window_size_spinbox"):
                         self.count_rate_window.plot_controller.window_size_spinbox.setValue(500)
-                    if hasattr(self.count_rate_window.plot_controller, 'binning_spinbox'):
+                    if hasattr(self.count_rate_window.plot_controller, "binning_spinbox"):
                         self.count_rate_window.plot_controller.binning_spinbox.setValue(1)
                     # Reset update frequency to default (every chunk)
                     self.count_rate_window.plot_controller.update_frequency_spinbox.setValue(1)
@@ -1866,37 +2001,51 @@ class SMAcquisitionManager:
                     self.count_rate_window.mean_lines.clear()
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Count rate plot controller widgets were deleted during cleanup")
+                        logger.debug(
+                            "Count rate plot controller widgets were deleted during cleanup"
+                        )
                     else:
                         raise
 
             # Clear macrotime plot controller
-            if hasattr(self, 'macrotime_window') and self.macrotime_window is not None and hasattr(self.macrotime_window, 'plot_controller'):
+            if (
+                hasattr(self, "macrotime_window")
+                and self.macrotime_window is not None
+                and hasattr(self.macrotime_window, "plot_controller")
+            ):
                 try:
                     # Reset checkbox to checked
-                    if hasattr(self.macrotime_window.plot_controller, 'show_macrotimes_checkbox'):
-                        self.macrotime_window.plot_controller.show_macrotimes_checkbox.setChecked(True)
+                    if hasattr(self.macrotime_window.plot_controller, "show_macrotimes_checkbox"):
+                        self.macrotime_window.plot_controller.show_macrotimes_checkbox.setChecked(
+                            True
+                        )
                     # Reset update frequency to default
                     self.macrotime_window.plot_controller.update_frequency_spinbox.setValue(1)
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                        logger.debug("Macrotime plot controller widgets were deleted during cleanup")
+                        logger.debug(
+                            "Macrotime plot controller widgets were deleted during cleanup"
+                        )
                     else:
                         raise
 
             # Clear MCS plot controller
-            if hasattr(self, 'mcs_window') and self.mcs_window is not None and hasattr(self.mcs_window, 'plot_controller'):
+            if (
+                hasattr(self, "mcs_window")
+                and self.mcs_window is not None
+                and hasattr(self.mcs_window, "plot_controller")
+            ):
                 try:
                     # Reset MCS controls to defaults
-                    if hasattr(self.mcs_window.plot_controller, 'bin_width_spinbox'):
+                    if hasattr(self.mcs_window.plot_controller, "bin_width_spinbox"):
                         self.mcs_window.plot_controller.bin_width_spinbox.setValue(1.0)
-                    if hasattr(self.mcs_window.plot_controller, 'rollaround_spinbox'):
+                    if hasattr(self.mcs_window.plot_controller, "rollaround_spinbox"):
                         self.mcs_window.plot_controller.rollaround_spinbox.setValue(1.0)
-                    if hasattr(self.mcs_window.plot_controller, 'manual_y_range_checkbox'):
+                    if hasattr(self.mcs_window.plot_controller, "manual_y_range_checkbox"):
                         self.mcs_window.plot_controller.manual_y_range_checkbox.setChecked(False)
-                    if hasattr(self.mcs_window.plot_controller, 'y_min_spinbox'):
+                    if hasattr(self.mcs_window.plot_controller, "y_min_spinbox"):
                         self.mcs_window.plot_controller.y_min_spinbox.setValue(0.0)
-                    if hasattr(self.mcs_window.plot_controller, 'y_max_spinbox'):
+                    if hasattr(self.mcs_window.plot_controller, "y_max_spinbox"):
                         self.mcs_window.plot_controller.y_max_spinbox.setValue(1000.0)
                     # Reset update frequency to default
                     self.mcs_window.plot_controller.update_frequency_spinbox.setValue(5)
@@ -1920,9 +2069,11 @@ class SMAcquisitionManager:
             try:
                 settings = self._get_current_settings()
                 json_str = json.dumps(settings, indent=2)
-                with open(filename, 'w') as f:
+                with open(filename, "w") as f:
                     f.write(json_str)
-                dialogs.information(self.main_window, "Save Successful", "Settings saved to JSON file.")
+                dialogs.information(
+                    self.main_window, "Save Successful", "Settings saved to JSON file."
+                )
             except Exception as e:
                 dialogs.warning(self.main_window, "Save Error", f"Failed to save JSON file: {e}")
 
@@ -1933,173 +2084,261 @@ class SMAcquisitionManager:
         )
         if filename:
             try:
-                with open(filename, 'r') as f:
+                with open(filename) as f:
                     settings = json.load(f)
                 self._apply_settings(settings)
-                dialogs.information(self.main_window, "Load Successful", "Settings loaded from JSON file.")
+                dialogs.information(
+                    self.main_window, "Load Successful", "Settings loaded from JSON file."
+                )
             except Exception as e:
                 dialogs.warning(self.main_window, "Load Error", f"Failed to load JSON file: {e}")
 
     def _get_current_settings(self):
         """Get current acquisition settings as dictionary."""
         settings = {
-            'device_type': self.acquisition_dock.device_type_combo.currentText(),
-            'simulation_mode': getattr(self, 'simulation_mode', True),
-            'duration': self.acquisition_dock.duration,
-            'photon_limit': self.acquisition_dock.photon_limit,
-            'chunk_size': self.acquisition_dock.chunk_size,
-            'output_path': self.acquisition_dock.output_path,
-            'channel_spinboxes': [spin.value() for spin in self.acquisition_dock.channel_spinboxes],
-            'show_windows': {
-                'decay': self.acquisition_dock.show_decay,
-                'correlation': self.acquisition_dock.show_correlation,
-                'count_rate': self.acquisition_dock.show_count_rate,
-                'macrotime': self.acquisition_dock.show_macrotime,
-                'mcs': self.acquisition_dock.show_mcs,
-            }
+            "device_type": self.acquisition_dock.device_type_combo.currentText(),
+            "simulation_mode": getattr(self, "simulation_mode", True),
+            "duration": self.acquisition_dock.duration,
+            "photon_limit": self.acquisition_dock.photon_limit,
+            "chunk_size": self.acquisition_dock.chunk_size,
+            "output_path": self.acquisition_dock.output_path,
+            "channel_spinboxes": [spin.value() for spin in self.acquisition_dock.channel_spinboxes],
+            "show_windows": {
+                "decay": self.acquisition_dock.show_decay,
+                "correlation": self.acquisition_dock.show_correlation,
+                "count_rate": self.acquisition_dock.show_count_rate,
+                "macrotime": self.acquisition_dock.show_macrotime,
+                "mcs": self.acquisition_dock.show_mcs,
+            },
         }
 
         # Add device-specific settings
         try:
-            if hasattr(self.device, 'simulation_params') and self.device.simulation_params:
-                settings['simulation_params'] = copy.deepcopy(self.device.simulation_params)
+            if hasattr(self.device, "simulation_params") and self.device.simulation_params:
+                settings["simulation_params"] = copy.deepcopy(self.device.simulation_params)
         except AttributeError:
             pass
 
         # Add plot controller settings
         plot_controllers = {}
-        if hasattr(self, 'decay_window') and self.decay_window and hasattr(self.decay_window, 'plot_controller'):
-            plot_controllers['decay'] = {
-                'channels': [w[0].value() for w in self.decay_window.plot_controller.channel_widgets],
-                'enabled': [w[1].isChecked() for w in self.decay_window.plot_controller.channel_widgets],
-                'log_y': self.decay_window.plot_controller.log_y_checkbox.isChecked(),
-                'update_frequency': self.decay_window.plot_controller.update_frequency_spinbox.value(),
+        if (
+            hasattr(self, "decay_window")
+            and self.decay_window
+            and hasattr(self.decay_window, "plot_controller")
+        ):
+            plot_controllers["decay"] = {
+                "channels": [
+                    w[0].value() for w in self.decay_window.plot_controller.channel_widgets
+                ],
+                "enabled": [
+                    w[1].isChecked() for w in self.decay_window.plot_controller.channel_widgets
+                ],
+                "log_y": self.decay_window.plot_controller.log_y_checkbox.isChecked(),
+                "update_frequency": self.decay_window.plot_controller.update_frequency_spinbox.value(),
             }
-        if hasattr(self, 'count_rate_window') and self.count_rate_window and hasattr(self.count_rate_window, 'plot_controller'):
-            plot_controllers['count_rate'] = {
-                'channels': [w[0].value() if w[0] else None for w in self.count_rate_window.plot_controller.channel_widgets[:4]],
-                'enabled': [w[1].isChecked() if w[1] else None for w in self.count_rate_window.plot_controller.channel_widgets[:4]],
-                'log_y': self.count_rate_window.plot_controller.log_y_checkbox.isChecked(),
-                'rolling_window': self.count_rate_window.plot_controller.rolling_window_checkbox.isChecked(),
-                'window_size': self.count_rate_window.plot_controller.window_size_spinbox.value(),
-                'binning': self.count_rate_window.plot_controller.binning_spinbox.value(),
-                'update_frequency': self.count_rate_window.plot_controller.update_frequency_spinbox.value(),
+        if (
+            hasattr(self, "count_rate_window")
+            and self.count_rate_window
+            and hasattr(self.count_rate_window, "plot_controller")
+        ):
+            plot_controllers["count_rate"] = {
+                "channels": [
+                    w[0].value() if w[0] else None
+                    for w in self.count_rate_window.plot_controller.channel_widgets[:4]
+                ],
+                "enabled": [
+                    w[1].isChecked() if w[1] else None
+                    for w in self.count_rate_window.plot_controller.channel_widgets[:4]
+                ],
+                "log_y": self.count_rate_window.plot_controller.log_y_checkbox.isChecked(),
+                "rolling_window": self.count_rate_window.plot_controller.rolling_window_checkbox.isChecked(),
+                "window_size": self.count_rate_window.plot_controller.window_size_spinbox.value(),
+                "binning": self.count_rate_window.plot_controller.binning_spinbox.value(),
+                "update_frequency": self.count_rate_window.plot_controller.update_frequency_spinbox.value(),
             }
-        if hasattr(self, 'correlation_window') and self.correlation_window and hasattr(self.correlation_window, 'plot_controller'):
-            plot_controllers['correlation'] = {
-                'curves': [{'ch_a': w[0].value(), 'ch_b': w[1].value(), 'enabled': w[2].isChecked()} for w in self.correlation_window.plot_controller.correlation_widgets],
-                'update_frequency': self.correlation_window.plot_controller.update_frequency_spinbox.value(),
+        if (
+            hasattr(self, "correlation_window")
+            and self.correlation_window
+            and hasattr(self.correlation_window, "plot_controller")
+        ):
+            plot_controllers["correlation"] = {
+                "curves": [
+                    {"ch_a": w[0].value(), "ch_b": w[1].value(), "enabled": w[2].isChecked()}
+                    for w in self.correlation_window.plot_controller.correlation_widgets
+                ],
+                "update_frequency": self.correlation_window.plot_controller.update_frequency_spinbox.value(),
             }
-        if hasattr(self, 'mcs_window') and self.mcs_window and hasattr(self.mcs_window, 'plot_controller'):
-            plot_controllers['mcs'] = {
-                'bin_width': self.mcs_window.plot_controller.bin_width_spinbox.value(),
-                'rollaround': self.mcs_window.plot_controller.rollaround_spinbox.value(),
-                'manual_y_range': self.mcs_window.plot_controller.manual_y_range_checkbox.isChecked(),
-                'y_min': self.mcs_window.plot_controller.y_min_spinbox.value(),
-                'y_max': self.mcs_window.plot_controller.y_max_spinbox.value(),
-                'update_frequency': self.mcs_window.plot_controller.update_frequency_spinbox.value(),
+        if (
+            hasattr(self, "mcs_window")
+            and self.mcs_window
+            and hasattr(self.mcs_window, "plot_controller")
+        ):
+            plot_controllers["mcs"] = {
+                "bin_width": self.mcs_window.plot_controller.bin_width_spinbox.value(),
+                "rollaround": self.mcs_window.plot_controller.rollaround_spinbox.value(),
+                "manual_y_range": self.mcs_window.plot_controller.manual_y_range_checkbox.isChecked(),
+                "y_min": self.mcs_window.plot_controller.y_min_spinbox.value(),
+                "y_max": self.mcs_window.plot_controller.y_max_spinbox.value(),
+                "update_frequency": self.mcs_window.plot_controller.update_frequency_spinbox.value(),
             }
-        if hasattr(self, 'macrotime_window') and self.macrotime_window and hasattr(self.macrotime_window, 'plot_controller'):
-            plot_controllers['macrotime'] = {
-                'show_macrotimes': self.macrotime_window.plot_controller.show_macrotimes_checkbox.isChecked(),
-                'plot_type': self.macrotime_window.plot_controller.plot_type_combo.currentText(),
-                'update_frequency': self.macrotime_window.plot_controller.update_frequency_spinbox.value(),
+        if (
+            hasattr(self, "macrotime_window")
+            and self.macrotime_window
+            and hasattr(self.macrotime_window, "plot_controller")
+        ):
+            plot_controllers["macrotime"] = {
+                "show_macrotimes": self.macrotime_window.plot_controller.show_macrotimes_checkbox.isChecked(),
+                "plot_type": self.macrotime_window.plot_controller.plot_type_combo.currentText(),
+                "update_frequency": self.macrotime_window.plot_controller.update_frequency_spinbox.value(),
             }
-        settings['plot_controllers'] = plot_controllers
+        settings["plot_controllers"] = plot_controllers
 
         return settings
 
     def _apply_settings(self, settings):
         """Apply loaded settings to the UI and device."""
         # Update device type
-        device_type = settings.get('device_type', 'Simulation')
+        device_type = settings.get("device_type", "Simulation")
         device_index = self.acquisition_dock.device_type_combo.findText(device_type)
         if device_index >= 0:
             self.acquisition_dock.device_type_combo.setCurrentIndex(device_index)
             self.on_device_type_changed(device_type)
 
         # Update simulation mode
-        if 'simulation_mode' in settings:
-            self.simulation_mode = settings['simulation_mode']
+        if "simulation_mode" in settings:
+            self.simulation_mode = settings["simulation_mode"]
 
         # Update acquisition parameters
-        if 'duration' in settings:
-            self.acquisition_dock.duration = settings['duration']
-        if 'photon_limit' in settings:
-            self.acquisition_dock.photon_limit = settings['photon_limit']
-        if 'chunk_size' in settings:
-            self.acquisition_dock.chunk_size = settings['chunk_size']
-        if 'output_path' in settings:
-            self.acquisition_dock.output_path = settings['output_path']
+        if "duration" in settings:
+            self.acquisition_dock.duration = settings["duration"]
+        if "photon_limit" in settings:
+            self.acquisition_dock.photon_limit = settings["photon_limit"]
+        if "chunk_size" in settings:
+            self.acquisition_dock.chunk_size = settings["chunk_size"]
+        if "output_path" in settings:
+            self.acquisition_dock.output_path = settings["output_path"]
 
         # Update channel spinboxes
-        if 'channel_spinboxes' in settings:
-            for i, value in enumerate(settings['channel_spinboxes']):
+        if "channel_spinboxes" in settings:
+            for i, value in enumerate(settings["channel_spinboxes"]):
                 if i < len(self.acquisition_dock.channel_spinboxes):
                     self.acquisition_dock.channel_spinboxes[i].setValue(value)
 
         # Update window visibility checkboxes
-        if 'show_windows' in settings:
-            show_windows = settings['show_windows']
-            self.acquisition_dock.show_decay = show_windows.get('decay', True)
-            self.acquisition_dock.show_correlation = show_windows.get('correlation', True)
-            self.acquisition_dock.show_count_rate = show_windows.get('count_rate', True)
-            self.acquisition_dock.show_macrotime = show_windows.get('macrotime', False)
-            self.acquisition_dock.show_mcs = show_windows.get('mcs', False)
+        if "show_windows" in settings:
+            show_windows = settings["show_windows"]
+            self.acquisition_dock.show_decay = show_windows.get("decay", True)
+            self.acquisition_dock.show_correlation = show_windows.get("correlation", True)
+            self.acquisition_dock.show_count_rate = show_windows.get("count_rate", True)
+            self.acquisition_dock.show_macrotime = show_windows.get("macrotime", False)
+            self.acquisition_dock.show_mcs = show_windows.get("mcs", False)
 
         # Apply simulation parameters
-        if 'simulation_params' in settings:
+        if "simulation_params" in settings:
             try:
-                if hasattr(self.device, 'simulation_params'):
-                    self.device.simulation_params = copy.deepcopy(settings['simulation_params'])
+                if hasattr(self.device, "simulation_params"):
+                    self.device.simulation_params = copy.deepcopy(settings["simulation_params"])
             except AttributeError:
                 pass
 
         # Apply plot controller settings
-        if 'plot_controllers' in settings:
-            pc = settings['plot_controllers']
-            if 'decay' in pc and hasattr(self, 'decay_window') and self.decay_window and hasattr(self.decay_window, 'plot_controller'):
-                d = pc['decay']
+        if "plot_controllers" in settings:
+            pc = settings["plot_controllers"]
+            if (
+                "decay" in pc
+                and hasattr(self, "decay_window")
+                and self.decay_window
+                and hasattr(self.decay_window, "plot_controller")
+            ):
+                d = pc["decay"]
                 for i, w in enumerate(self.decay_window.plot_controller.channel_widgets):
-                    if i < len(d['channels']):
-                        w[0].setValue(d['channels'][i])
-                    if i < len(d['enabled']):
-                        w[1].setChecked(d['enabled'][i])
-                self.decay_window.plot_controller.log_y_checkbox.setChecked(d.get('log_y', False))
-                self.decay_window.plot_controller.update_frequency_spinbox.setValue(d.get('update_frequency', 1))
-            if 'count_rate' in pc and hasattr(self, 'count_rate_window') and self.count_rate_window and hasattr(self.count_rate_window, 'plot_controller'):
-                cr = pc['count_rate']
+                    if i < len(d["channels"]):
+                        w[0].setValue(d["channels"][i])
+                    if i < len(d["enabled"]):
+                        w[1].setChecked(d["enabled"][i])
+                self.decay_window.plot_controller.log_y_checkbox.setChecked(d.get("log_y", False))
+                self.decay_window.plot_controller.update_frequency_spinbox.setValue(
+                    d.get("update_frequency", 1)
+                )
+            if (
+                "count_rate" in pc
+                and hasattr(self, "count_rate_window")
+                and self.count_rate_window
+                and hasattr(self.count_rate_window, "plot_controller")
+            ):
+                cr = pc["count_rate"]
                 for i, w in enumerate(self.count_rate_window.plot_controller.channel_widgets[:4]):
-                    if w[0] and i < len(cr['channels']) and cr['channels'][i] is not None:
-                        w[0].setValue(cr['channels'][i])
-                    if w[1] and i < len(cr['enabled']) and cr['enabled'][i] is not None:
-                        w[1].setChecked(cr['enabled'][i])
-                self.count_rate_window.plot_controller.log_y_checkbox.setChecked(cr.get('log_y', False))
-                self.count_rate_window.plot_controller.rolling_window_checkbox.setChecked(cr.get('rolling_window', True))
-                self.count_rate_window.plot_controller.window_size_spinbox.setValue(cr.get('window_size', 500))
-                self.count_rate_window.plot_controller.binning_spinbox.setValue(cr.get('binning', 1))
-                self.count_rate_window.plot_controller.update_frequency_spinbox.setValue(cr.get('update_frequency', 1))
-            if 'correlation' in pc and hasattr(self, 'correlation_window') and self.correlation_window and hasattr(self.correlation_window, 'plot_controller'):
-                corr = pc['correlation']
+                    if w[0] and i < len(cr["channels"]) and cr["channels"][i] is not None:
+                        w[0].setValue(cr["channels"][i])
+                    if w[1] and i < len(cr["enabled"]) and cr["enabled"][i] is not None:
+                        w[1].setChecked(cr["enabled"][i])
+                self.count_rate_window.plot_controller.log_y_checkbox.setChecked(
+                    cr.get("log_y", False)
+                )
+                self.count_rate_window.plot_controller.rolling_window_checkbox.setChecked(
+                    cr.get("rolling_window", True)
+                )
+                self.count_rate_window.plot_controller.window_size_spinbox.setValue(
+                    cr.get("window_size", 500)
+                )
+                self.count_rate_window.plot_controller.binning_spinbox.setValue(
+                    cr.get("binning", 1)
+                )
+                self.count_rate_window.plot_controller.update_frequency_spinbox.setValue(
+                    cr.get("update_frequency", 1)
+                )
+            if (
+                "correlation" in pc
+                and hasattr(self, "correlation_window")
+                and self.correlation_window
+                and hasattr(self.correlation_window, "plot_controller")
+            ):
+                corr = pc["correlation"]
                 for i, w in enumerate(self.correlation_window.plot_controller.correlation_widgets):
-                    if i < len(corr['curves']):
-                        w[0].setValue(corr['curves'][i]['ch_a'])
-                        w[1].setValue(corr['curves'][i]['ch_b'])
-                        w[2].setChecked(corr['curves'][i]['enabled'])
-                self.correlation_window.plot_controller.update_frequency_spinbox.setValue(corr.get('update_frequency', 5))
-            if 'mcs' in pc and hasattr(self, 'mcs_window') and self.mcs_window and hasattr(self.mcs_window, 'plot_controller'):
-                mcs = pc['mcs']
-                self.mcs_window.plot_controller.bin_width_spinbox.setValue(mcs.get('bin_width', 1.0))
-                self.mcs_window.plot_controller.rollaround_spinbox.setValue(mcs.get('rollaround', 1.0))
-                self.mcs_window.plot_controller.manual_y_range_checkbox.setChecked(mcs.get('manual_y_range', False))
-                self.mcs_window.plot_controller.y_min_spinbox.setValue(mcs.get('y_min', 0.0))
-                self.mcs_window.plot_controller.y_max_spinbox.setValue(mcs.get('y_max', 1000.0))
-                self.mcs_window.plot_controller.update_frequency_spinbox.setValue(mcs.get('update_frequency', 5))
-            if 'macrotime' in pc and hasattr(self, 'macrotime_window') and self.macrotime_window and hasattr(self.macrotime_window, 'plot_controller'):
-                mt = pc['macrotime']
-                self.macrotime_window.plot_controller.show_macrotimes_checkbox.setChecked(mt.get('show_macrotimes', True))
-                self.macrotime_window.plot_controller.plot_type_combo.setCurrentText(mt.get('plot_type', 'Time Differences (dt)'))
-                self.macrotime_window.plot_controller.update_frequency_spinbox.setValue(mt.get('update_frequency', 1))
+                    if i < len(corr["curves"]):
+                        w[0].setValue(corr["curves"][i]["ch_a"])
+                        w[1].setValue(corr["curves"][i]["ch_b"])
+                        w[2].setChecked(corr["curves"][i]["enabled"])
+                self.correlation_window.plot_controller.update_frequency_spinbox.setValue(
+                    corr.get("update_frequency", 5)
+                )
+            if (
+                "mcs" in pc
+                and hasattr(self, "mcs_window")
+                and self.mcs_window
+                and hasattr(self.mcs_window, "plot_controller")
+            ):
+                mcs = pc["mcs"]
+                self.mcs_window.plot_controller.bin_width_spinbox.setValue(
+                    mcs.get("bin_width", 1.0)
+                )
+                self.mcs_window.plot_controller.rollaround_spinbox.setValue(
+                    mcs.get("rollaround", 1.0)
+                )
+                self.mcs_window.plot_controller.manual_y_range_checkbox.setChecked(
+                    mcs.get("manual_y_range", False)
+                )
+                self.mcs_window.plot_controller.y_min_spinbox.setValue(mcs.get("y_min", 0.0))
+                self.mcs_window.plot_controller.y_max_spinbox.setValue(mcs.get("y_max", 1000.0))
+                self.mcs_window.plot_controller.update_frequency_spinbox.setValue(
+                    mcs.get("update_frequency", 5)
+                )
+            if (
+                "macrotime" in pc
+                and hasattr(self, "macrotime_window")
+                and self.macrotime_window
+                and hasattr(self.macrotime_window, "plot_controller")
+            ):
+                mt = pc["macrotime"]
+                self.macrotime_window.plot_controller.show_macrotimes_checkbox.setChecked(
+                    mt.get("show_macrotimes", True)
+                )
+                self.macrotime_window.plot_controller.plot_type_combo.setCurrentText(
+                    mt.get("plot_type", "Time Differences (dt)")
+                )
+                self.macrotime_window.plot_controller.update_frequency_spinbox.setValue(
+                    mt.get("update_frequency", 1)
+                )
 
         # Update UI for device type
         self.update_ui_for_device_type()
@@ -2107,9 +2346,12 @@ class SMAcquisitionManager:
     def update_correlation_plot(self):
         """Update the correlation plot based on current plot controller settings."""
         # Early return if window or plot controller is not available (e.g., during cleanup)
-        if not hasattr(self, 'correlation_window') or self.correlation_window is None:
+        if not hasattr(self, "correlation_window") or self.correlation_window is None:
             return
-        if not hasattr(self.correlation_window, 'plot_controller') or self.correlation_window.plot_controller is None:
+        if (
+            not hasattr(self.correlation_window, "plot_controller")
+            or self.correlation_window.plot_controller is None
+        ):
             return
 
         # The correlation is computed per chunk; this only redraws it, so the
@@ -2123,8 +2365,13 @@ class SMAcquisitionManager:
 
         try:
             for i in range(4):
-                if self.correlation_times[i] is not None and self.correlation_amplitudes[i] is not None:
-                    self.correlation_window.correlation_curves[i].set_data(self.correlation_times[i], self.correlation_amplitudes[i])
+                if (
+                    self.correlation_times[i] is not None
+                    and self.correlation_amplitudes[i] is not None
+                ):
+                    self.correlation_window.correlation_curves[i].set_data(
+                        self.correlation_times[i], self.correlation_amplitudes[i]
+                    )
                     self.correlation_window.correlation_curves[i].show()
                 else:
                     self.correlation_window.correlation_curves[i].hide()
@@ -2140,16 +2387,18 @@ class SMAcquisitionManager:
             return
 
         # Early return if window or plot controller is not available (e.g., during cleanup)
-        if not hasattr(self, 'count_rate_window') or self.count_rate_window is None:
+        if not hasattr(self, "count_rate_window") or self.count_rate_window is None:
             return
-        if not hasattr(self.count_rate_window, 'plot_controller') or self.count_rate_window.plot_controller is None:
+        if (
+            not hasattr(self.count_rate_window, "plot_controller")
+            or self.count_rate_window.plot_controller is None
+        ):
             return
 
         # Get visible channels from plot controller
         visible_channels = []
-        show_all = False
         try:
-            if hasattr(self.count_rate_window, 'plot_controller'):
+            if hasattr(self.count_rate_window, "plot_controller"):
                 for i, widget in enumerate(self.count_rate_window.plot_controller.channel_widgets):
                     try:
                         if i < 4:
@@ -2185,11 +2434,15 @@ class SMAcquisitionManager:
         # Get log Y setting from controller
         use_log_y = False  # Default to linear scale
         try:
-            if hasattr(self.count_rate_window, 'plot_controller') and hasattr(self.count_rate_window.plot_controller, 'log_y_checkbox'):
+            if hasattr(self.count_rate_window, "plot_controller") and hasattr(
+                self.count_rate_window.plot_controller, "log_y_checkbox"
+            ):
                 use_log_y = self.count_rate_window.plot_controller.log_y_checkbox.isChecked()
         except RuntimeError as e:
             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
-                logger.warning("Count rate plot controller log_y_checkbox was deleted, using default log_y=False")
+                logger.warning(
+                    "Count rate plot controller log_y_checkbox was deleted, using default log_y=False"
+                )
                 use_log_y = False
             else:
                 raise
@@ -2209,9 +2462,13 @@ class SMAcquisitionManager:
             for curve_idx, data_idx in visible_channels:
                 if data_idx < len(self.count_rate_data) and len(self.count_rate_data[data_idx]) > 0:
                     # Pad time array to match data length
-                    time_array = np.array(self.count_rate_times[:len(self.count_rate_data[data_idx])])
+                    time_array = np.array(
+                        self.count_rate_times[: len(self.count_rate_data[data_idx])]
+                    )
                     data_array = np.array(self.count_rate_data[data_idx])
-                    self.count_rate_window.count_rate_curves[curve_idx].set_data(time_array, data_array)
+                    self.count_rate_window.count_rate_curves[curve_idx].set_data(
+                        time_array, data_array
+                    )
                     self.count_rate_window.count_rate_curves[curve_idx].show()
                 else:
                     self.count_rate_window.count_rate_curves[curve_idx].hide()
@@ -2220,7 +2477,7 @@ class SMAcquisitionManager:
             for i in range(5):
                 if i not in [c for c, d in visible_channels]:
                     self.count_rate_window.count_rate_curves[i].hide()
-            
+
             # Force plot refresh and auto-range
             try:
                 self.count_rate_window.count_rate_plot_widget.autoscale()
@@ -2228,7 +2485,7 @@ class SMAcquisitionManager:
             except Exception:
                 # Swallow plot refresh errors to avoid spurious console output
                 pass
-                
+
         except RuntimeError as e:
             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
                 logger.warning("Count rate plot curves were deleted, skipping plot update")
@@ -2277,7 +2534,9 @@ class SMAcquisitionManager:
         if output_path:
             logger.info(
                 "Acquisition finished: %s photons; raw device words were written "
-                "to %s if the device supports the raw drip.", f"{photons:,}", output_path
+                "to %s if the device supports the raw drip.",
+                f"{photons:,}",
+                output_path,
             )
             self._safe_set_status_text(
                 f"Status: Finished — {photons:,} photons (raw words in {output_path})"
@@ -2285,7 +2544,8 @@ class SMAcquisitionManager:
         else:
             logger.warning(
                 "Acquisition finished: %s photons were NOT saved — no output "
-                "folder was set and there is no photon sink yet.", f"{photons:,}"
+                "folder was set and there is no photon sink yet.",
+                f"{photons:,}",
             )
             self._safe_set_status_text(
                 f"Status: Finished — {photons:,} photons, NOT saved (no output folder)"
@@ -2293,13 +2553,17 @@ class SMAcquisitionManager:
 
     def update_macrotime_plot(self):
         """Update the macrotime plot."""
-        if not hasattr(self, 'macrotime_window') or self.macrotime_window is None:
+        if not hasattr(self, "macrotime_window") or self.macrotime_window is None:
             return
 
         # Check update frequency
-        if hasattr(self.macrotime_window, 'plot_controller') and hasattr(self.macrotime_window.plot_controller, 'update_frequency_spinbox'):
+        if hasattr(self.macrotime_window, "plot_controller") and hasattr(
+            self.macrotime_window.plot_controller, "update_frequency_spinbox"
+        ):
             try:
-                update_frequency = self.macrotime_window.plot_controller.update_frequency_spinbox.value()
+                update_frequency = (
+                    self.macrotime_window.plot_controller.update_frequency_spinbox.value()
+                )
                 self.macrotime_update_counter += 1
                 if self.macrotime_update_counter < update_frequency:
                     return
@@ -2315,19 +2579,24 @@ class SMAcquisitionManager:
         # Check if macrotime plot should be shown
         show_macrotimes = True
         try:
-            if hasattr(self.macrotime_window, 'plot_controller') and hasattr(self.macrotime_window.plot_controller, 'show_macrotimes_checkbox'):
-                show_macrotimes = self.macrotime_window.plot_controller.show_macrotimes_checkbox.isChecked()
+            if hasattr(self.macrotime_window, "plot_controller") and hasattr(
+                self.macrotime_window.plot_controller, "show_macrotimes_checkbox"
+            ):
+                show_macrotimes = (
+                    self.macrotime_window.plot_controller.show_macrotimes_checkbox.isChecked()
+                )
         except RuntimeError:
             pass
 
         try:
             if show_macrotimes and len(self.macrotime_data) > 0:
                 # Plot macrotime differences vs time (dt already in seconds)
-                times = np.array(self.macrotime_times[-len(self.macrotime_data):])
+                times = np.array(self.macrotime_times[-len(self.macrotime_data) :])
                 dts = np.array(self.macrotime_data)
                 self.macrotime_window.macrotime_curve.set_data(times, dts)
                 self.macrotime_window.macrotime_plot_widget.set_labels(
-                    left='Macrotime Difference (s)', bottom='Time (s)')
+                    left="Macrotime Difference (s)", bottom="Time (s)"
+                )
 
             self.macrotime_window.macrotime_curve.show()
         except RuntimeError as e:
@@ -2342,7 +2611,7 @@ class SMAcquisitionManager:
             return
 
         # Early return if window is not available (e.g., during cleanup)
-        if not hasattr(self, 'mcs_window') or self.mcs_window is None:
+        if not hasattr(self, "mcs_window") or self.mcs_window is None:
             return
 
         # Update MCS trace display if available
@@ -2353,7 +2622,9 @@ class SMAcquisitionManager:
                 self.mcs_window.mcs_curve.show()
 
                 # Apply Y range if manual range is enabled
-                if hasattr(self.mcs_window, 'plot_controller') and hasattr(self.mcs_window.plot_controller, 'manual_y_range_checkbox'):
+                if hasattr(self.mcs_window, "plot_controller") and hasattr(
+                    self.mcs_window.plot_controller, "manual_y_range_checkbox"
+                ):
                     if self.mcs_window.plot_controller.manual_y_range_checkbox.isChecked():
                         y_min = self.mcs_window.plot_controller.y_min_spinbox.value()
                         y_max = self.mcs_window.plot_controller.y_max_spinbox.value()
@@ -2370,7 +2641,7 @@ class SMAcquisitionManager:
 
     def add_count_rate_mean_line(self, curve_index, mean_value):
         """Add a horizontal mean line to the count rate plot."""
-        if not hasattr(self, 'count_rate_window') or self.count_rate_window is None:
+        if not hasattr(self, "count_rate_window") or self.count_rate_window is None:
             return
 
         try:

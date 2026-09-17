@@ -10,12 +10,9 @@ class GlobalFitPlot(Plot):
     name = "Global-Fits"
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.FitGroup,
-            logy: bool = False,
-            logx: bool = False
+        self, fit: chisurf.core.fitting.fit.FitGroup, logy: bool = False, logx: bool = False
     ):
-        super(GlobalFitPlot, self).__init__(fit)
+        super().__init__(fit)
         self.layout = QtWidgets.QVBoxLayout(self)
         self.plot_controller = QtWidgets.QWidget()
         self.fit = fit

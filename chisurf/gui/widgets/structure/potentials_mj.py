@@ -11,19 +11,18 @@ from chisurf.gui.widgets.warning_once import show_warning_once
 
 
 class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
-
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            filename: str = None,
-            ca_cutoff: float = 6.5,
-            parent=None
+        self,
+        structure: chisurf.core.structure.Structure,
+        filename: str = None,
+        ca_cutoff: float = 6.5,
+        parent=None,
     ):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
         # Set default filename path if not provided
         if filename is None:
-            filename = str(get_path('chisurf') / 'core/structure/potential/database/mj.npy')
+            filename = str(get_path("chisurf") / "core/structure/potential/database/mj.npy")
 
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -53,10 +52,7 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
         self.ca_cutoff = ca_cutoff
 
     def onOpenFile(self):
-        filename = chisurf.gui.widgets.get_filename(
-            'Open MJ-Potential',
-            'CSV data files (*.npy)'
-        )
+        filename = chisurf.gui.widgets.get_filename("Open MJ-Potential", "CSV data files (*.npy)")
         self.potential = filename
 
     @property
@@ -64,10 +60,7 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
         return self.mjPot
 
     @potential.setter
-    def potential(
-            self,
-            v: str
-    ):
+    def potential(self, v: str):
         try:
             self.mjPot = np.load(v)
             self.lineEdit.setText(v)
@@ -79,7 +72,7 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
                 f"The Miyazawa-Jernigan potential file should be located at:\n"
                 f"{v}\n\n"
                 f"Please check if the file exists or use the '...' button\n"
-                f"to select a different potential file."
+                f"to select a different potential file.",
             )
             self.mjPot = np.zeros((20, 20))
             self.lineEdit.setText(v)
@@ -87,7 +80,7 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
             show_warning_once(
                 "mj_potential_file_error",
                 "MJ Potential File Error",
-                f"Error loading MJ potential file {v}:\n{str(e)}"
+                f"Error loading MJ potential file {v}:\n{str(e)}",
             )
             self.mjPot = np.zeros((20, 20))
             self.lineEdit.setText(v)
@@ -97,8 +90,5 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
         return float(self.lineEdit_2.text())
 
     @ca_cutoff.setter
-    def ca_cutoff(
-            self,
-            v: float
-    ):
+    def ca_cutoff(self, v: float):
         self.lineEdit_2.setText(str(v))

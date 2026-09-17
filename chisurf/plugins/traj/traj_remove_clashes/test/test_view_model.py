@@ -6,10 +6,8 @@ import pytest
 
 def _read(path):
     """Read a written trajectory back, without needing a topology."""
-    from chisurf.core.fio.trajectory import read_dcd
+    from chisurf.core.fio.trajectory import read_dcd, read_times
     from chisurf.core.structure import trajectory_data as md
-
-    from chisurf.core.fio.trajectory import read_times
 
     xyz, _, _ = read_dcd(path)
     return md.Trajectory(xyz, time=read_times(path))
@@ -39,13 +37,14 @@ def _clash_trajectory(path: str, spacing: float = 1.0) -> str:
 
     xyz = np.zeros((4, 3, 3), dtype=np.float32)
     xyz[0] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]
-    xyz[1] = [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [20.0, 0.0, 0.0]]   # 0-1 clash
+    xyz[1] = [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [20.0, 0.0, 0.0]]  # 0-1 clash
     xyz[2] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]
     xyz[3] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.1, 0.0, 0.0]]  # 1-2 clash
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
+
     write_dcd(path, xyz, delta=spacing)
-    pdb = str(path).replace('.dcd', '.pdb')
+    pdb = str(path).replace(".dcd", ".pdb")
     trajectory[0].save_pdb(pdb)
     return pdb
 
@@ -76,8 +75,9 @@ def test_the_threshold_is_the_frames_own_unit():
     """Ångström, like the coordinates: a /10 here survived the move off nanometres."""
     from chisurf.plugins.traj.traj_remove_clashes.view_model import below_min_distance
 
-    xyz = np.array([[[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
-                    [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]]], dtype=np.float32)
+    xyz = np.array(
+        [[[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]]], dtype=np.float32
+    )
     assert list(below_min_distance(xyz, min_distance=3.0)) == [1, 0]
 
 

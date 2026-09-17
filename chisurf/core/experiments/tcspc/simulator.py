@@ -6,17 +6,12 @@ import chisurf.core.data
 import chisurf.core.fluorescence
 import chisurf.core.fluorescence.decay
 import chisurf.core.fluorescence.tcspc
-
 from chisurf import typing
 
 from .reader import TCSPCReader
 
 
-def gaussian_irf(
-        time_axis: np.ndarray,
-        mean: float = 5.0,
-        sigma: float = 0.2
-) -> np.ndarray:
+def gaussian_irf(time_axis: np.ndarray, mean: float = 5.0, sigma: float = 0.2) -> np.ndarray:
     """Return a peak-normalised Gaussian instrument response.
 
     Parameters
@@ -44,10 +39,7 @@ def gaussian_irf(
 
 
 def resolve_irf(
-        time_axis: np.ndarray,
-        irf: typing.Any = None,
-        mean: float = 5.0,
-        sigma: float = 0.2
+    time_axis: np.ndarray, irf: typing.Any = None, mean: float = 5.0, sigma: float = 0.2
 ) -> np.ndarray:
     """Return an instrument response sampled on *time_axis*.
 
@@ -74,8 +66,8 @@ def resolve_irf(
     """
     t = np.asarray(time_axis, dtype=np.float64)
     if irf is not None:
-        x_irf = np.asarray(getattr(irf, 'x', []), dtype=np.float64).ravel()
-        y_irf = np.asarray(getattr(irf, 'y', irf), dtype=np.float64).ravel()
+        x_irf = np.asarray(getattr(irf, "x", []), dtype=np.float64).ravel()
+        y_irf = np.asarray(getattr(irf, "y", irf), dtype=np.float64).ravel()
         if x_irf.size > 1 and y_irf.size == x_irf.size:
             order = np.argsort(x_irf)
             response = np.interp(t, x_irf[order], y_irf[order], left=0.0, right=0.0)
@@ -90,15 +82,15 @@ def resolve_irf(
 
 
 def simulate_decay(
-        lifetime_spectrum: typing.Any,
-        n_tac: int = 4096,
-        dt: float = 0.0141,
-        p0: float = 10000.0,
-        irf: typing.Any = None,
-        irf_mean: float = 5.0,
-        irf_sigma: float = 0.2,
-        add_noise: bool = True,
-        seed: int = None
+    lifetime_spectrum: typing.Any,
+    n_tac: int = 4096,
+    dt: float = 0.0141,
+    p0: float = 10000.0,
+    irf: typing.Any = None,
+    irf_mean: float = 5.0,
+    irf_sigma: float = 0.2,
+    add_noise: bool = True,
+    seed: int = None,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Simulate a TCSPC decay histogram.
 
@@ -171,20 +163,20 @@ def simulate_decay(
 
 
 def simulate_decay_channels(
-        lifetime_spectrum: typing.Any,
-        anisotropy_spectrum: typing.Any = None,
-        *,
-        n_tac: int = 4096,
-        dt: float = 0.0141,
-        p0: float = 10000.0,
-        g_factor: float = 1.0,
-        l1: float = 0.0,
-        l2: float = 0.0,
-        irf: typing.Any = None,
-        irf_mean: float = 5.0,
-        irf_sigma: float = 0.2,
-        add_noise: bool = True,
-        seed: int = None,
+    lifetime_spectrum: typing.Any,
+    anisotropy_spectrum: typing.Any = None,
+    *,
+    n_tac: int = 4096,
+    dt: float = 0.0141,
+    p0: float = 10000.0,
+    g_factor: float = 1.0,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    irf: typing.Any = None,
+    irf_mean: float = 5.0,
+    irf_sigma: float = 0.2,
+    add_noise: bool = True,
+    seed: int = None,
 ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Simulate the polarized VV/VH pair of a decay with anisotropy.
 
@@ -265,12 +257,8 @@ def simulate_decay_channels(
     vm_ref = vm
     if response.size:
         vm_ref = np.asarray(convolve_decay(vm, response, 0, n, float(dt)), dtype=float)
-        vv = np.maximum(
-            np.asarray(convolve_decay(vv, response, 0, n, float(dt)), dtype=float), 0.0
-        )
-        vh = np.maximum(
-            np.asarray(convolve_decay(vh, response, 0, n, float(dt)), dtype=float), 0.0
-        )
+        vv = np.maximum(np.asarray(convolve_decay(vv, response, 0, n, float(dt)), dtype=float), 0.0)
+        vh = np.maximum(np.asarray(convolve_decay(vh, response, 0, n, float(dt)), dtype=float), 0.0)
 
     # Scale the magic-angle reference's peak to p0 and apply the same factor
     # to both channels, so their ratio — the anisotropy — survives, and an
@@ -289,26 +277,25 @@ def simulate_decay_channels(
 
 
 class TCSPCSimulatorSetup(TCSPCReader):
-
     name = "TCSPC-Simulator"
 
     def __init__(
-            self,
-            *args,
-            n_tac: int = 4096,
-            dt: float = 0.0141,
-            p0: float = 10000.0,
-            rep_rate: float = 10.0,
-            lifetime_spectrum: typing.List[float] = None,
-            instrument_response_function: chisurf.core.data.DataCurve = None,
-            irf_mean: float = 5.0,
-            irf_sigma: float = 0.2,
-            add_noise: bool = True,
-            seed: int = None,
-            sample_name: str = 'TCSPC-Dummy',
-            polarization: str = 'vm',
-            rotation_spectrum: typing.List[float] = None,
-            **kwargs
+        self,
+        *args,
+        n_tac: int = 4096,
+        dt: float = 0.0141,
+        p0: float = 10000.0,
+        rep_rate: float = 10.0,
+        lifetime_spectrum: typing.List[float] = None,
+        instrument_response_function: chisurf.core.data.DataCurve = None,
+        irf_mean: float = 5.0,
+        irf_sigma: float = 0.2,
+        add_noise: bool = True,
+        seed: int = None,
+        sample_name: str = "TCSPC-Dummy",
+        polarization: str = "vm",
+        rotation_spectrum: typing.List[float] = None,
+        **kwargs,
     ):
         """Initialize a TCSPC simulator.
 
@@ -338,13 +325,13 @@ class TCSPCSimulatorSetup(TCSPCReader):
             Name for the simulated dataset.
         """
         super().__init__(*args, **kwargs)
-        self.experiment = kwargs.get('experiment', None)
+        self.experiment = kwargs.get("experiment", None)
         if lifetime_spectrum:
             # Mirror the spectrum into the controller's line edit when a GUI
             # controller is attached. Headless/API use has no controller.
-            line_edit = getattr(self.controller, 'lineEdit_2', None)
+            line_edit = getattr(self.controller, "lineEdit_2", None)
             if line_edit is not None:
-                line_edit.setText(','.join([str(x) for x in lifetime_spectrum]))
+                line_edit.setText(",".join([str(x) for x in lifetime_spectrum]))
         self.instrument_response_function = instrument_response_function
         self.sample_name = sample_name
         if lifetime_spectrum is None:
@@ -373,7 +360,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         # ``polarization`` is the TCSPCReader's own attribute; the reader's
         # ``is_vv_vh`` flag mirrors it so anything that inspects the setup
         # (e.g. context help) sees a consistent pair.
-        self.is_vv_vh = self.polarization != 'vm'
+        self.is_vv_vh = self.polarization != "vm"
 
     def simulate(self) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Simulate a magic-angle decay from the setup's current parameters.
@@ -396,7 +383,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         )
 
     def simulate_channels(
-            self,
+        self,
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Simulate the polarized VV/VH pair for the current parameters.
 
@@ -426,7 +413,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         )
 
     def simulate_aniso(
-            self,
+        self,
     ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Return the ideal anisotropy decay r(t) of the rotation spectrum.
 
@@ -457,9 +444,9 @@ class TCSPCSimulatorSetup(TCSPCReader):
         """
         if filename is None:
             filename = self.sample_name
-        name = kwargs.get('name', filename)
+        name = kwargs.get("name", filename)
 
-        if self.polarization != 'vm':
+        if self.polarization != "vm":
             # Polarized simulation: two stacked curves (VV, VH) in one group —
             # the same structure the VV/VH CSV reader produces, so a fit over
             # it becomes a fit group with vv/vh polarizations by position, and
@@ -475,13 +462,11 @@ class TCSPCSimulatorSetup(TCSPCReader):
                         setup=self,
                         data_reader=self,
                         name=f"{name} {suffix}",
-                        experiment=self.experiment
+                        experiment=self.experiment,
                     )
                 )
             return chisurf.core.data.DataCurveGroup(
-                curves,
-                experiment=self.experiment,
-                data_reader=self
+                curves, experiment=self.experiment, data_reader=self
             )
 
         x, y = self.simulate()
@@ -495,10 +480,8 @@ class TCSPCSimulatorSetup(TCSPCReader):
             setup=self,
             data_reader=self,
             name=name,
-            experiment=self.experiment
+            experiment=self.experiment,
         )
         return chisurf.core.data.DataCurveGroup(
-            [data_set],
-            experiment=self.experiment,
-            data_reader=self
+            [data_set], experiment=self.experiment, data_reader=self
         )

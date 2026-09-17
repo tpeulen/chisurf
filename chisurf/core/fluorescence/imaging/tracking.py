@@ -85,7 +85,6 @@ References
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -193,7 +192,7 @@ class Tracks:
         """Return the number of detections in each track, ordered by :meth:`ids`."""
         return np.array([np.count_nonzero(self.track_id == i) for i in self.ids()], dtype=int)
 
-    def filter_by_length(self, min_length: int) -> "Tracks":
+    def filter_by_length(self, min_length: int) -> Tracks:
         """Return a copy keeping only tracks with at least *min_length* points.
 
         Short tracks are not merely uninformative — they are **biased**. A
@@ -271,7 +270,7 @@ def _atrous_spot_map(frame: np.ndarray, scale: int = 2) -> np.ndarray:
     for level in range(max(int(scale), 1)):
         # "à trous" = with holes: the kernel is dilated instead of the image
         # being decimated, so every plane keeps the full resolution.
-        step = 2 ** level
+        step = 2**level
         dilated = np.zeros(len(kernel) + (len(kernel) - 1) * (step - 1))
         dilated[::step] = kernel
         smoothed = ndi.convolve1d(previous, dilated, axis=0, mode="reflect")
@@ -534,7 +533,7 @@ def link_detections(
         dy = detections.y[previous][:, None] - detections.y[current][None, :]
         dx = detections.x[previous][:, None] - detections.x[current][None, :]
         cost = dy * dy + dx * dx
-        forbidden = cost > max_distance ** 2
+        forbidden = cost > max_distance**2
         # A large finite cost rather than infinity: the solver needs a complete
         # matrix, and forbidden pairs are rejected after the assignment.
         cost = np.where(forbidden, 1e12, cost)
@@ -587,7 +586,7 @@ def _close_gaps(tracks: Tracks, max_distance: float, max_frame_gap: int) -> Trac
             if gap < 1 or gap > max_frame_gap:
                 continue
             distance = (y_start - y_end) ** 2 + (x_start - x_end) ** 2
-            if distance > (max_distance ** 2) * gap:
+            if distance > (max_distance**2) * gap:
                 continue
             cost[i, j] = distance
 
@@ -675,7 +674,7 @@ def mean_squared_displacement(positions, frames=None, max_lag: int | None = None
         if matches.size == 0:
             continue
         delta = positions[matches[:, 1]] - positions[matches[:, 0]]
-        squared = (delta ** 2).sum(axis=1)
+        squared = (delta**2).sum(axis=1)
         msd[k] = float(squared.mean())
         counts[k] = int(squared.size)
     return lags, msd, counts
@@ -912,7 +911,11 @@ def fit_msd(
         """Fit the model to one MSD curve, returning the free-parameter vector."""
         popt, _ = curve_fit(
             lambda tt, *params: model(tt, *build(params)),
-            t, y, p0=p0, bounds=(lower, upper), maxfev=20000,
+            t,
+            y,
+            p0=p0,
+            bounds=(lower, upper),
+            maxfev=20000,
         )
         return popt
 
@@ -984,7 +987,7 @@ def simulate_particle_movie(
     poisson: bool = True,
     seed: int = 1,
     render: bool = True,
-    memory_budget_bytes: int = 2 * 1024 ** 3,
+    memory_budget_bytes: int = 2 * 1024**3,
 ):
     """Simulate a movie of Brownian particles, with the true trajectories.
 
@@ -1054,8 +1057,8 @@ def simulate_particle_movie(
     if render and required > int(memory_budget_bytes):
         raise ValueError(
             f"a {n_frames} x {ny} x {nx} stack needs "
-            f"{required / 1024 ** 3:.1f} GB, over the "
-            f"{int(memory_budget_bytes) / 1024 ** 3:.1f} GB budget; use "
+            f"{required / 1024**3:.1f} GB, over the "
+            f"{int(memory_budget_bytes) / 1024**3:.1f} GB budget; use "
             "render=False if you only need the trajectories, or a smaller field"
         )
 
@@ -1074,7 +1077,7 @@ def simulate_particle_movie(
         for p in range(n_particles):
             if render:
                 image += amplitude * np.exp(
-                    -((grid_y - y[p]) ** 2 + (grid_x - x[p]) ** 2) / (2.0 * sigma_psf ** 2)
+                    -((grid_y - y[p]) ** 2 + (grid_x - x[p]) ** 2) / (2.0 * sigma_psf**2)
                 )
             frame_out.append(f)
             y_out.append(float(y[p]))

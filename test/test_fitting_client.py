@@ -9,19 +9,16 @@ error handling for invalid inputs.
 from __future__ import annotations
 
 import json
-import threading
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, patch
+from typing import Any
 
 import pytest
 
 from chisurf.gui.widgets.fitting.fitting_client import (
     FittingClient,
-    install_fitting_client,
     get_fitting_client,
     has_fitting_client,
+    install_fitting_client,
 )
-from chisurf.core.api._client import ChisurfClient, RemoteError
 
 #: A model the server can actually build. "TCSPC" is the name of the
 #: *experiment*, never of a model, so every fit created with it failed with
@@ -32,9 +29,9 @@ TCSPC_MODEL = "Lifetime"
 class MockZmqClient:
     """A mock ZmqClient that simulates server responses."""
 
-    def __init__(self, responses: Optional[Dict[str, Any]] = None):
+    def __init__(self, responses: dict[str, Any] | None = None):
         self.responses = responses or {}
-        self.calls: list[tuple[str, Optional[Dict]]] = []
+        self.calls: list[tuple[str, dict | None]] = []
         self._sub_socket = None
         self._sub_thread = None
 
@@ -44,7 +41,7 @@ class MockZmqClient:
     def close(self):
         pass
 
-    def call(self, method: str, params: Optional[Dict] = None) -> Dict:
+    def call(self, method: str, params: dict | None = None) -> dict:
         self.calls.append((method, params))
         if method in self.responses:
             return self.responses[method]
@@ -62,12 +59,12 @@ class MockChisurfClient:
 
     def __init__(self):
         self._client = MockZmqClient()
-        self._responses: Dict[str, Any] = {}
+        self._responses: dict[str, Any] = {}
 
-    def set_response(self, method: str, response: Dict[str, Any]) -> None:
+    def set_response(self, method: str, response: dict[str, Any]) -> None:
         self._responses[method] = response
 
-    def call(self, method: str, params: Optional[Dict] = None) -> Dict:
+    def call(self, method: str, params: dict | None = None) -> dict:
         # Always record the call for param-verification tests
         recorded = self._client.call(method, params)
         # Return overridden response if registered
@@ -103,6 +100,7 @@ def fc(mock_client):
 
 # ── Fit CRUD ─────────────────────────────────────────────────────────
 
+
 class TestListFits:
     def test_returns_empty_list(self, fc, mock_client):
         mock_client.set_response("fit.list", {"ok": True, "fits": []})
@@ -110,13 +108,16 @@ class TestListFits:
         assert result == []
 
     def test_returns_fit_list(self, fc, mock_client):
-        mock_client.set_response("fit.list", {
-            "ok": True,
-            "fits": [
-                {"uid": "abc", "index": 0, "name": "fit1"},
-                {"uid": "def", "index": 1, "name": "fit2"},
-            ],
-        })
+        mock_client.set_response(
+            "fit.list",
+            {
+                "ok": True,
+                "fits": [
+                    {"uid": "abc", "index": 0, "name": "fit1"},
+                    {"uid": "def", "index": 1, "name": "fit2"},
+                ],
+            },
+        )
         result = fc.list_fits()
         assert len(result) == 2
         assert result[0]["name"] == "fit1"
@@ -130,19 +131,25 @@ class TestListFits:
 
 class TestGetFit:
     def test_by_uid(self, fc, mock_client):
-        mock_client.set_response("fit.get", {
-            "ok": True,
-            "fit": {"uid": "abc", "name": "test_fit"},
-        })
+        mock_client.set_response(
+            "fit.get",
+            {
+                "ok": True,
+                "fit": {"uid": "abc", "name": "test_fit"},
+            },
+        )
         result = fc.get_fit(fit_uid="abc")
         assert result["uid"] == "abc"
         assert result["name"] == "test_fit"
 
     def test_by_index(self, fc, mock_client):
-        mock_client.set_response("fit.get", {
-            "ok": True,
-            "fit": {"index": 2, "name": "fit_by_index"},
-        })
+        mock_client.set_response(
+            "fit.get",
+            {
+                "ok": True,
+                "fit": {"index": 2, "name": "fit_by_index"},
+            },
+        )
         result = fc.get_fit(fit_index=2)
         assert result["index"] == 2
 
@@ -154,12 +161,15 @@ class TestGetFit:
 
 class TestCreateFit:
     def test_creates_fit(self, fc, mock_client):
-        mock_client.set_response("fit.create", {
-            "ok": True,
-            "uid": "new_uid",
-            "fit_index": 0,
-            "name": "new_fit",
-        })
+        mock_client.set_response(
+            "fit.create",
+            {
+                "ok": True,
+                "uid": "new_uid",
+                "fit_index": 0,
+                "name": "new_fit",
+            },
+        )
         result = fc.create_fit(dataset_indices=[0], model_name=TCSPC_MODEL)
         assert result["uid"] == "new_uid"
         assert result["fit_index"] == 0
@@ -167,43 +177,56 @@ class TestCreateFit:
 
 class TestRemoveFits:
     def test_remove_by_uid(self, fc, mock_client):
-        mock_client.set_response("fit.remove", {
-            "ok": True,
-            "removed_count": 1,
-            "remaining_count": 2,
-        })
+        mock_client.set_response(
+            "fit.remove",
+            {
+                "ok": True,
+                "removed_count": 1,
+                "remaining_count": 2,
+            },
+        )
         result = fc.remove_fits(fit_uids=["abc"])
         assert result["removed_count"] == 1
 
     def test_remove_nonexistent(self, fc, mock_client):
-        mock_client.set_response("fit.remove", {
-            "ok": False,
-            "error": "no fits specified for removal",
-        })
+        mock_client.set_response(
+            "fit.remove",
+            {
+                "ok": False,
+                "error": "no fits specified for removal",
+            },
+        )
         result = fc.remove_fits()
         assert result.get("ok") is False
 
 
 class TestReorderFits:
     def test_reorder(self, fc, mock_client):
-        mock_client.set_response("fit.reorder", {
-            "ok": True,
-            "count": 3,
-        })
+        mock_client.set_response(
+            "fit.reorder",
+            {
+                "ok": True,
+                "count": 3,
+            },
+        )
         result = fc.reorder_fits(["a", "b", "c"])
         assert result["count"] == 3
 
 
 # ── Fit actions ──────────────────────────────────────────────────────
 
+
 class TestRunFit:
     def test_calls_run(self, fc, mock_client):
-        mock_client.set_response("fit.run", {
-            "ok": True,
-            "fit_index": 0,
-            "chi2_before": 100.0,
-            "chi2_after": 1.5,
-        })
+        mock_client.set_response(
+            "fit.run",
+            {
+                "ok": True,
+                "fit_index": 0,
+                "chi2_before": 100.0,
+                "chi2_after": 1.5,
+            },
+        )
         result = fc.run_fit(fit_index=0)
         assert result["chi2_after"] == 1.5
 
@@ -217,15 +240,19 @@ class TestUpdateFit:
 
 class TestSaveFit:
     def test_calls_save(self, fc, mock_client):
-        mock_client.set_response("fit.save", {
-            "ok": True,
-            "saved_to": "/tmp/test.csv",
-        })
+        mock_client.set_response(
+            "fit.save",
+            {
+                "ok": True,
+                "saved_to": "/tmp/test.csv",
+            },
+        )
         result = fc.save_fit(filename="/tmp/test.csv", fit_uid="abc")
         assert result["saved_to"] == "/tmp/test.csv"
 
 
 # ── Fit range ────────────────────────────────────────────────────────
+
 
 class TestSetFitRange:
     def test_sets_range(self, fc, mock_client):
@@ -236,11 +263,14 @@ class TestSetFitRange:
 
 class TestAutoFitRange:
     def test_returns_range(self, fc, mock_client):
-        mock_client.set_response("fit.range.auto", {
-            "ok": True,
-            "xmin": 0,
-            "xmax": 1024,
-        })
+        mock_client.set_response(
+            "fit.range.auto",
+            {
+                "ok": True,
+                "xmin": 0,
+                "xmax": 1024,
+            },
+        )
         result = fc.auto_fit_range(fit_uid="abc")
         assert result["xmin"] == 0
         assert result["xmax"] == 1024
@@ -255,19 +285,23 @@ class TestSetFitMask:
 
 # ── Parameter operations ─────────────────────────────────────────────
 
+
 class TestGetParameter:
     def test_returns_parameter(self, fc, mock_client):
-        mock_client.set_response("parameter.get", {
-            "ok": True,
-            "parameter": {
-                "name": "tau1",
-                "value": 3.5,
-                "fixed": False,
-                "bounds": [0.1, 10.0],
-                "bounds_on": True,
-                "error_estimate": 0.1,
+        mock_client.set_response(
+            "parameter.get",
+            {
+                "ok": True,
+                "parameter": {
+                    "name": "tau1",
+                    "value": 3.5,
+                    "fixed": False,
+                    "bounds": [0.1, 10.0],
+                    "bounds_on": True,
+                    "error_estimate": 0.1,
+                },
             },
-        })
+        )
         result = fc.get_parameter(parameter_name="tau1", fit_index=0)
         assert result["name"] == "tau1"
         assert result["value"] == 3.5
@@ -354,6 +388,7 @@ class TestLinkUnlink:
 
 # ── Model operations ─────────────────────────────────────────────────
 
+
 class TestModelComponent:
     def test_add_component(self, fc, mock_client):
         mock_client.set_response("model.component.add", {"ok": True})
@@ -368,10 +403,13 @@ class TestModelComponent:
 
 class TestModelState:
     def test_get_state(self, fc, mock_client):
-        mock_client.set_response("model.state.get", {
-            "ok": True,
-            "state": {"convolve": True, "n_components": 3},
-        })
+        mock_client.set_response(
+            "model.state.get",
+            {
+                "ok": True,
+                "state": {"convolve": True, "n_components": 3},
+            },
+        )
         result = fc.model_get_state(fit_uid="abc")
         assert result["convolve"] is True
         assert result["n_components"] == 3
@@ -383,6 +421,7 @@ class TestModelState:
 
 
 # ── Fit selection & group ────────────────────────────────────────────
+
 
 class TestFitSelect:
     def test_select_by_uid(self, fc, mock_client):
@@ -420,22 +459,29 @@ class TestFitGroup:
 
 # ── Sampling ─────────────────────────────────────────────────────────
 
+
 class TestSampling:
     def test_start(self, fc, mock_client):
-        mock_client.set_response("fit.sample.start", {
-            "ok": True,
-            "job_id": "job_123",
-        })
+        mock_client.set_response(
+            "fit.sample.start",
+            {
+                "ok": True,
+                "job_id": "job_123",
+            },
+        )
         result = fc.start_sampling(fit_uid="abc", n_steps=1000, n_runs=2)
         assert result["job_id"] == "job_123"
 
     def test_status(self, fc, mock_client):
-        mock_client.set_response("fit.sample.status", {
-            "ok": True,
-            "job_id": "job_123",
-            "status": "running",
-            "progress": 50,
-        })
+        mock_client.set_response(
+            "fit.sample.status",
+            {
+                "ok": True,
+                "job_id": "job_123",
+                "status": "running",
+                "progress": 50,
+            },
+        )
         result = fc.sampling_status("job_123")
         assert result["status"] == "running"
         assert result["progress"] == 50
@@ -448,21 +494,28 @@ class TestSampling:
 
 # ── Parameter scan ───────────────────────────────────────────────────
 
+
 class TestParameterScan:
     def test_start(self, fc, mock_client):
-        mock_client.set_response("fit.parameter_scan.start", {
-            "ok": True,
-            "job_id": "scan_123",
-        })
+        mock_client.set_response(
+            "fit.parameter_scan.start",
+            {
+                "ok": True,
+                "job_id": "scan_123",
+            },
+        )
         result = fc.start_parameter_scan("tau1", fit_uid="abc")
         assert result["job_id"] == "scan_123"
 
     def test_result(self, fc, mock_client):
-        mock_client.set_response("fit.parameter_scan.result", {
-            "ok": True,
-            "values": [1.0, 2.0, 3.0],
-            "chi2": [100.0, 10.0, 100.0],
-        })
+        mock_client.set_response(
+            "fit.parameter_scan.result",
+            {
+                "ok": True,
+                "values": [1.0, 2.0, 3.0],
+                "chi2": [100.0, 10.0, 100.0],
+            },
+        )
         result = fc.parameter_scan_result("scan_123")
         assert len(result["values"]) == 3
 
@@ -474,21 +527,26 @@ class TestParameterScan:
 
 # ── Plot data ────────────────────────────────────────────────────────
 
+
 class TestPlotData:
     def test_get_plot_data(self, fc, mock_client):
-        mock_client.set_response("plot.fit_data", {
-            "ok": True,
-            "plot": {
-                "type": "fit_data",
-                "curves": [{"label": "data", "x": [1, 2], "y": [3, 4]}],
+        mock_client.set_response(
+            "plot.fit_data",
+            {
+                "ok": True,
+                "plot": {
+                    "type": "fit_data",
+                    "curves": [{"label": "data", "x": [1, 2], "y": [3, 4]}],
+                },
             },
-        })
+        )
         result = fc.get_plot_data(plot_type="fit_data", fit_uid="abc")
         assert result["type"] == "fit_data"
         assert len(result["curves"]) == 1
 
 
 # ── Global adapter ───────────────────────────────────────────────────
+
 
 class TestGlobalAdapter:
     def test_install_and_get(self):
@@ -499,20 +557,19 @@ class TestGlobalAdapter:
         assert get_fitting_client() is client
 
     def test_get_before_install(self):
-        from chisurf.gui.widgets.fitting.fitting_client import (
-            _FITTING_CLIENT,
-        )
-        _FITTING_CLIENT = None
-        # Re-import won't help; just test get_fitting_client returns None
-        # Actually we need to reset the module state
+        # A plain re-import won't reset the module-level global; reloading
+        # the module does.
         import importlib
+
         import chisurf.gui.widgets.fitting.fitting_client as fcm
+
         importlib.reload(fcm)
         # After reload, should be None
         from chisurf.gui.widgets.fitting.fitting_client import (
             get_fitting_client,
             has_fitting_client,
         )
+
         # Note: after reload the module-level global is reset
         assert get_fitting_client() is None
         assert has_fitting_client() is False
@@ -520,28 +577,38 @@ class TestGlobalAdapter:
 
 # ── Fit count convenience ────────────────────────────────────────────
 
+
 class TestFitCount:
     def test_fit_count(self, fc, mock_client):
-        mock_client.set_response("fit.list", {
-            "ok": True,
-            "fits": [{"uid": "a"}, {"uid": "b"}, {"uid": "c"}],
-        })
+        mock_client.set_response(
+            "fit.list",
+            {
+                "ok": True,
+                "fits": [{"uid": "a"}, {"uid": "b"}, {"uid": "c"}],
+            },
+        )
         assert fc.fit_count() == 3
 
     def test_parameter_dict(self, fc, mock_client):
-        mock_client.set_response("fit.get", {
-            "ok": True,
-            "fit": {"parameters": {
-                "tau1": {"value": 3.5},
-                "tau2": {"value": 1.0},
-            }},
-        })
+        mock_client.set_response(
+            "fit.get",
+            {
+                "ok": True,
+                "fit": {
+                    "parameters": {
+                        "tau1": {"value": 3.5},
+                        "tau2": {"value": 1.0},
+                    }
+                },
+            },
+        )
         params = fc.parameter_dict(fit_uid="abc")
         assert "tau1" in params
         assert params["tau1"]["value"] == 3.5
 
 
 # ── Param verification ─────────────────────────────────────────────────
+
 
 def _last_call(mock_client):
     """Return (method, params) of the last RPC call made to the mock."""

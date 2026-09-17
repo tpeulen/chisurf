@@ -20,8 +20,12 @@ import pathlib
 
 import numpy as np
 
-REFERENCE = (pathlib.Path(__file__).resolve().parents[1]
-             / "data" / "pda3c" / "pam_eval_prob_3c_bg_lib_reference.npz")
+REFERENCE = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "data"
+    / "pda3c"
+    / "pam_eval_prob_3c_bg_lib_reference.npz"
+)
 
 
 def test_chisurf_matches_the_compiled_reference_kernel():

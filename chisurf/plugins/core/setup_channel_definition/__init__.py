@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
@@ -12,9 +13,7 @@ if _manifest is not None:
 else:
     name = "Setup:Channel Definition"
 
-description = (
-    "This tool defines and configures detector channels and time windows."
-)
+description = "This tool defines and configures detector channels and time windows."
 icon = "🔢"
 
 

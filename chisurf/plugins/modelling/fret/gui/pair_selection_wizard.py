@@ -2,22 +2,24 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
-from chisurf.core.structure import trajectory_data as md
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
-from chisurf.gui import chiplot as cp
 import chisurf.gui.widgets
+from chisurf.core.structure import trajectory_data as md
+from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 from ..core.olga_greedy import select_informative_pairs
 from ..core.trajectory import (
@@ -306,7 +308,9 @@ class FRETPairSelectionWindow(ChisurfDockTool):
         if self._last_selected is None or self._last_decay is None:
             return
 
-        out = cs.gui.widgets.save_file(description="Export pair selection", file_type="Text files (*.txt);;All files (*)")
+        out = cs.gui.widgets.save_file(
+            description="Export pair selection", file_type="Text files (*.txt);;All files (*)"
+        )
         if not out:
             return
 
@@ -315,7 +319,7 @@ class FRETPairSelectionWindow(ChisurfDockTool):
         for i in range(int(self._last_selected.shape[0])):
             idx = int(self._last_selected[i])
             pair = self._last_pair_names[idx]
-            lines.append(f"{i+1}\t{pair}\t{float(self._last_decay[i]):.2f}\n")
+            lines.append(f"{i + 1}\t{pair}\t{float(self._last_decay[i]):.2f}\n")
 
         path.write_text("".join(lines), encoding="utf-8")
 

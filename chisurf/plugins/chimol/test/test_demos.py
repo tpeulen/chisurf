@@ -17,10 +17,9 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.hosts.qt.demos import (
-    DEMOS,
     DEMO_DIR,
+    DEMOS,
     demo_path,
     read_demo,
     resolve_structure,
@@ -28,7 +27,10 @@ from chimol.hosts.qt.demos import (
 
 _TRAJ_DIR = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "trajectory"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "trajectory"
 )
 #: A trajectory is two files. DCD stores coordinates and nothing else, so the
 #: atom names come from the PDB and the frames are laid onto it -- which is what
@@ -90,11 +92,13 @@ def test_the_structures_the_demos_name_can_be_found():
             # `stream` names a container the same way `load` names a structure,
             # and its material is generated too -- so it resolves through the
             # same path and is checked by the same rule.
-            verb = "load " if stripped.startswith("load ") else (
-                "stream " if stripped.startswith("stream ") else ""
+            verb = (
+                "load "
+                if stripped.startswith("load ")
+                else ("stream " if stripped.startswith("stream ") else "")
             )
             if verb and "," not in stripped:
-                name = stripped[len(verb):].strip().split()[0]
+                name = stripped[len(verb) :].strip().split()[0]
                 try:
                     resolved = resolve_structure(name)
                 except DemoDataUnavailable as exc:
@@ -138,16 +142,15 @@ def window(qapp):
 def _vertices(viewer):
     scene = viewer.get_current_scene()
     return sum(
-        len(o.geometry.positions) if o.geometry.positions is not None else 0
-        for o in scene.objects
+        len(o.geometry.positions) if o.geometry.positions is not None else 0 for o in scene.objects
     )
 
 
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""
-    from chimol.plugins.demos.material import DemoDataUnavailable, GENERATED_DEMO_DATA
     from chimol.hosts.qt.demos import resolve_structure
+    from chimol.plugins.demos.material import GENERATED_DEMO_DATA, DemoDataUnavailable
 
     script = read_demo(key)
     for name in GENERATED_DEMO_DATA:
@@ -166,9 +169,14 @@ def test_a_demo_runs_and_draws_something(window, key):
     # the scene at all -- its atoms live on disk and the frame streams the ones
     # it needs (see `chimol/core/viewer/container.py`) -- so counting scene
     # vertices would call a working gigastructure demo empty.
+    # A volume demo is the same arrangement: its `.tomo.pto` object carries a
+    # VolView whose bricks stay on disk, so it too has no vertices to count.
     streamed = getattr(win.viewer, "container", None)
+    volume = getattr(win.viewer, "volume", None)
     if streamed is not None:
         assert int(streamed.index.meta["n_atoms"]) > 0, f"{key} streamed nothing"
+    elif volume is not None:
+        assert np.prod(volume.shape) > 0, f"{key} opened an empty volume"
     else:
         assert _vertices(win.viewer) > 0, f"{key} drew nothing"
 
@@ -244,9 +252,7 @@ def test_the_demo_menu_comes_from_the_menu_bar_and_appears_once(window):
     win, _shared, _errors, qapp = window
     from chimol.hosts.qt import demos
 
-    assert not hasattr(demos, "build_demo_menu"), (
-        "the bolted-on demo menu builder is back"
-    )
+    assert not hasattr(demos, "build_demo_menu"), "the bolted-on demo menu builder is back"
 
     win._install_menu_bar()
     for _ in range(5):
@@ -258,9 +264,7 @@ def test_the_demo_menu_comes_from_the_menu_bar_and_appears_once(window):
 def test_script_text_runs_line_by_line(window):
     """The editor, the Demo menu and `@file` all go through this one path."""
     win, _shared, errors, qapp = window
-    win.run_script_text(
-        "# a comment\n\nload " + resolve_structure("148l.pdb") + "\nshow cartoon\n"
-    )
+    win.run_script_text("# a comment\n\nload " + resolve_structure("148l.pdb") + "\nshow cartoon\n")
     for _ in range(25):
         qapp.processEvents()
     assert errors == []
@@ -373,9 +377,7 @@ def test_intra_fit_is_rigid(trajectory):
     for _ in range(20):
         qapp.processEvents()
     after = _frames(win.viewer)[10]
-    assert np.allclose(
-        np.linalg.norm(after[1:200] - after[0], axis=1), reference, atol=1e-6
-    )
+    assert np.allclose(np.linalg.norm(after[1:200] - after[0], axis=1), reference, atol=1e-6)
 
 
 def test_intra_rms_measures_without_moving_anything(trajectory):
@@ -389,7 +391,8 @@ def test_intra_rms_measures_without_moving_anything(trajectory):
 
 def test_fitting_does_not_change_the_rms(trajectory):
     """Because the RMS is already the best-fit one: `intra_rms` fits internally
-    to measure. If fitting changed it, one of the two would be wrong."""
+    to measure. If fitting changed it, one of the two would be wrong.
+    """
     win, shared, _errors, qapp = trajectory
     before = shared.intra_rms("all", "1")
     shared.do("intra_fit all, 1")

@@ -26,15 +26,16 @@ import functools
 import typing
 
 #: chisurf's own registrations: category -> {key: entry}, in registration order.
-_LOCAL: typing.Dict[str, typing.Dict[str, dict]] = {}
+_LOCAL: dict[str, dict[str, dict]] = {}
 
 
-@functools.lru_cache(maxsize=None)
-def _compiled() -> typing.Tuple[typing.Tuple[str, typing.Dict[str, typing.Dict[str, dict]]], ...]:
+@functools.cache
+def _compiled() -> tuple[tuple[str, dict[str, dict[str, dict]]], ...]:
     """The compiled libraries' registries, read once per process."""
     out = []
     try:
         import tttrlib
+
         getter = getattr(tttrlib, "registry", None)
         if getter is not None:
             out.append(("tttrlib", getter()))
@@ -47,6 +48,7 @@ def _compiled() -> typing.Tuple[typing.Tuple[str, typing.Dict[str, typing.Dict[s
         pass
     try:
         import IMP.bff as bff
+
         getter = getattr(bff, "registry", None)
         if getter is not None:
             out.append(("imp.bff", getter()))
@@ -85,9 +87,9 @@ def register(category: str, key: str, entry: typing.Mapping[str, typing.Any]) ->
     return e
 
 
-def _merged() -> typing.Dict[str, typing.Dict[str, dict]]:
-    root: typing.Dict[str, typing.Dict[str, dict]] = {}
-    implemented: typing.Dict[str, typing.Set[str]] = {}
+def _merged() -> dict[str, dict[str, dict]]:
+    root: dict[str, dict[str, dict]] = {}
+    implemented: dict[str, set[str]] = {}
     for category, local in _LOCAL.items():
         implemented[category] = {e["kernel"] for e in local.values() if e.get("kernel")}
     for _, reg in _compiled():
@@ -128,7 +130,7 @@ def _merged() -> typing.Dict[str, typing.Dict[str, dict]]:
     return root
 
 
-def registry(category: typing.Optional[str] = None):
+def registry(category: str | None = None):
     """The merged registry, ``{category: {name: entry}}``, or one category.
 
     An unknown category is an empty dict, so a caller can test availability

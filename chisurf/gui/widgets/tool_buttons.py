@@ -258,9 +258,9 @@ class ToolAction:
 #: The shared action vocabulary. ``order`` fixes left-to-right toolbar position so
 #: every plugin lays the same actions out in the same place.
 TOOL_ACTIONS: dict[str, ToolAction] = {
-    "add":      ToolAction("add", Glyphs.OPEN, "Add", "Add files", "folder", 10),
-    "folder":   ToolAction("folder", Glyphs.FOLDER, "Folder", "Select data folder", "folder", 12),
-    "batch":    ToolAction("batch", "🗂️", "Batch", "Batch-process a folder", "folder", 20),
+    "add": ToolAction("add", Glyphs.OPEN, "Add", "Add files", "folder", 10),
+    "folder": ToolAction("folder", Glyphs.FOLDER, "Folder", "Select data folder", "folder", 12),
+    "batch": ToolAction("batch", "🗂️", "Batch", "Batch-process a folder", "folder", 20),
     # ── transport controls ───────────────────────────────────────────────────
     # The four that drive a long job read as the media controls everyone already
     # knows: play, pause, stop, restart. Their shapes are the standard ones and
@@ -269,19 +269,23 @@ TOOL_ACTIONS: dict[str, ToolAction] = {
     # font — verified by rendering them. Restart is the exception: 🔁 *is* a
     # colour glyph, and the difference is worth having, since restart is the one
     # control that repeats work rather than starting or ending it.
-    "run":      ToolAction("run", Glyphs.RUN, "Run", "Run — process all loaded data", "run", 30),
-    "restart":  ToolAction(
-        "restart", Glyphs.RESTART, "Restart",
-        "Run again from scratch, even if nothing changed", "restart", 32,
+    "run": ToolAction("run", Glyphs.RUN, "Run", "Run — process all loaded data", "run", 30),
+    "restart": ToolAction(
+        "restart",
+        Glyphs.RESTART,
+        "Restart",
+        "Run again from scratch, even if nothing changed",
+        "restart",
+        32,
     ),
-    "auto":     ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
-    "pause":    ToolAction("pause", Glyphs.PAUSE, "Pause", "Pause the running job", "pause", 36),
-    "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "stop", 38),
-    "clear":    ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
-    "refresh":  ToolAction("refresh", Glyphs.REFRESH, "Refresh", "Refresh plots", "settings", 60),
-    "save":     ToolAction("save", Glyphs.SAVE, "Save", "Save results", "save", 70),
+    "auto": ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
+    "pause": ToolAction("pause", Glyphs.PAUSE, "Pause", "Pause the running job", "pause", 36),
+    "stop": ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "stop", 38),
+    "clear": ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
+    "refresh": ToolAction("refresh", Glyphs.REFRESH, "Refresh", "Refresh plots", "settings", 60),
+    "save": ToolAction("save", Glyphs.SAVE, "Save", "Save results", "save", 70),
     "settings": ToolAction("settings", Glyphs.SETTINGS, "Settings", "Settings", "settings", 90),
-    "help":     ToolAction("help", Glyphs.INFO, "Help", "Show help", "help", 95),
+    "help": ToolAction("help", Glyphs.INFO, "Help", "Show help", "help", 95),
 }
 
 #: Object-name prefix so tests / stylesheets can target canonical action buttons.
@@ -311,8 +315,11 @@ def action_button(
     """
     action = TOOL_ACTIONS[key]
     btn = styled_tool_button(
-        action.icon, kind=action.kind, tooltip=_action_caption(action, tooltip),
-        checkable=checkable, parent=parent,
+        action.icon,
+        kind=action.kind,
+        tooltip=_action_caption(action, tooltip),
+        checkable=checkable,
+        parent=parent,
     )
     btn.setObjectName(f"{TOOL_ACTION_OBJECT_PREFIX}{key}")
     if on_click is not None:
@@ -326,7 +333,7 @@ def action_qaction(
     *,
     on_click=None,
     tooltip: str | None = None,
-) -> "QtWidgets.QAction":
+) -> QtWidgets.QAction:
     """Return the canonical :class:`QAction` for action *key* (QMainWindow toolbars).
 
     Same icon/label/tooltip vocabulary as :func:`action_button`, for tools whose

@@ -357,14 +357,16 @@ _CACHE_LOCK = threading.Lock()
 
 
 def _policy_key(policy: ExpressionPolicy) -> int:
-    return hash((
-        frozenset(policy.functions),
-        frozenset(policy.constants),
-        policy.quoted_names,
-        policy.bare_names,
-        policy.allow_comparisons,
-        policy.allow_bitops,
-    ))
+    return hash(
+        (
+            frozenset(policy.functions),
+            frozenset(policy.constants),
+            policy.quoted_names,
+            policy.bare_names,
+            policy.allow_comparisons,
+            policy.allow_bitops,
+        )
+    )
 
 
 def compile_expression(

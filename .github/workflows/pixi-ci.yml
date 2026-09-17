@@ -37,6 +37,17 @@ jobs:
 
     steps:
 
+      # Without this, Git for Windows checks out repo symlinks (modules/mmfdb,
+      # modules/tttrlib, modules/quest, modules/chimol) as plain text files
+      # containing the link target, not real directory links -- so every
+      # build-* task that does `pip install -e modules/<name>` fails with
+      # "not a valid editable requirement" on Windows. Must be set before the
+      # checkout that follows; the runner is already elevated, so this is
+      # enough (no Developer Mode toggle needed).
+      - name: Enable symlinks (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.symlinks true
+
       - name: Checkout (with tags & submodules)
         uses: actions/checkout@v4
         with:

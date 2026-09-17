@@ -4,33 +4,46 @@ Package Manager dialog for ChiSurf.
 Provides a simple UI to manage packages, environments, and channels
 using PackageManager.
 """
+
 from __future__ import annotations
 
-import json
+import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Set
-import logging
+
 from chisurf.gui import dialogs
 
 # Logger for the package manager dialog
 logger = logging.getLogger("chisurf.packagemanager")
 
-from qtpy.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
-    QTabWidget, QWidget, QListWidget, QListWidgetItem, QTextEdit, QFileDialog,
-    QMessageBox, QInputDialog, QTableWidget, QTableWidgetItem, QToolButton,
-    QSpacerItem, QSizePolicy
-)
-from qtpy.QtCore import Qt, QThread, Signal
+from qtpy.QtCore import QThread, Signal
 from qtpy.QtGui import QTextCursor
+from qtpy.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from .updater import PackageManager
+
 
 class PackageWorker(QThread):
     """
     Worker thread for running package manager commands asynchronously.
     """
+
     finished = Signal(bool, object, str)  # success, data, error_msg
 
     def __init__(self, func, *args, **kwargs):
@@ -56,7 +69,7 @@ class PackageWorker(QThread):
             # Most PackageManager methods return (success, data/output, error_msg)
             # but some might return just (success, output)
             result = self.func(*self.args, **self.kwargs)
-            
+
             if isinstance(result, tuple):
                 if len(result) == 3:
                     self.finished.emit(result[0], result[1], result[2])
@@ -70,6 +83,7 @@ class PackageWorker(QThread):
             logger.error(f"Error in PackageWorker: {e}")
             self.finished.emit(False, None, str(e))
 
+
 class PackageManagerWidget(QWidget):
     """
     An embeddable widget for managing packages, environments, and channels.
@@ -78,6 +92,7 @@ class PackageManagerWidget(QWidget):
     unified Settings dialog. :class:`PackageManagerDialog` wraps it as a modal
     dialog for backwards compatibility.
     """
+
     def __init__(self, parent=None):
         """Initialize the widget, create the ``PackageManager`` and load initial data.
 
@@ -261,22 +276,22 @@ class PackageManagerWidget(QWidget):
     def setup_channels_tab(self):
         """Construct the 'Channels' tab widgets."""
         layout = QVBoxLayout(self.channels_tab)
-        
+
         # List of channels
         self.channels_list = QListWidget()
         layout.addWidget(self.channels_list)
-        
+
         # Channel actions
         btn_layout = QHBoxLayout()
-        
+
         self.add_channel_btn = QPushButton("Add Channel")
         self.add_channel_btn.clicked.connect(self.add_channel)
         btn_layout.addWidget(self.add_channel_btn)
-        
+
         self.remove_channel_btn = QPushButton("Remove Selected")
         self.remove_channel_btn.clicked.connect(self.remove_channel)
         btn_layout.addWidget(self.remove_channel_btn)
-        
+
         layout.addLayout(btn_layout)
 
     # --- Operation Handlers ---
@@ -342,9 +357,9 @@ class PackageManagerWidget(QWidget):
         for pkg in data:
             row = self.installed_table.rowCount()
             self.installed_table.insertRow(row)
-            self.installed_table.setItem(row, 0, QTableWidgetItem(pkg.get('name', '')))
-            self.installed_table.setItem(row, 1, QTableWidgetItem(pkg.get('version', '')))
-            self.installed_table.setItem(row, 2, QTableWidgetItem(pkg.get('channel', '')))
+            self.installed_table.setItem(row, 0, QTableWidgetItem(pkg.get("name", "")))
+            self.installed_table.setItem(row, 1, QTableWidgetItem(pkg.get("version", "")))
+            self.installed_table.setItem(row, 2, QTableWidgetItem(pkg.get("channel", "")))
 
     def filter_installed(self, text):
         """Show only the installed packages whose name contains ``text`` (case-insensitive).
@@ -354,10 +369,14 @@ class PackageManagerWidget(QWidget):
         text : str
             Substring filter applied to package names.
         """
-        if not hasattr(self, 'installed_packages_data'):
+        if not hasattr(self, "installed_packages_data"):
             return
 
-        filtered = [pkg for pkg in self.installed_packages_data if text.lower() in pkg.get('name', '').lower()]
+        filtered = [
+            pkg
+            for pkg in self.installed_packages_data
+            if text.lower() in pkg.get("name", "").lower()
+        ]
         self._populate_installed_table(filtered)
 
     def search_packages(self):
@@ -365,7 +384,7 @@ class PackageManagerWidget(QWidget):
         query = self.search_input.text().strip()
         if not query:
             return
-        
+
         self.log(f"Searching for '{query}'...")
         self.search_btn.setEnabled(False)
         worker = PackageWorker(self.manager.search, query)
@@ -397,9 +416,9 @@ class PackageManagerWidget(QWidget):
             for pkg in data:
                 row = self.search_results.rowCount()
                 self.search_results.insertRow(row)
-                self.search_results.setItem(row, 0, QTableWidgetItem(pkg.get('name', '')))
-                self.search_results.setItem(row, 1, QTableWidgetItem(pkg.get('version', '')))
-                self.search_results.setItem(row, 2, QTableWidgetItem(pkg.get('channel', '')))
+                self.search_results.setItem(row, 0, QTableWidgetItem(pkg.get("name", "")))
+                self.search_results.setItem(row, 1, QTableWidgetItem(pkg.get("version", "")))
+                self.search_results.setItem(row, 2, QTableWidgetItem(pkg.get("channel", "")))
                 count += 1
 
         self.log(f"Found {count} results.")
@@ -409,14 +428,17 @@ class PackageManagerWidget(QWidget):
         selected = self.search_results.selectedItems()
         if not selected:
             return
-        
+
         # Get names from column 0
         pkgs = list(set([self.search_results.item(item.row(), 0).text() for item in selected]))
-        
-        confirm = dialogs.question(self, "Confirm Installation", 
-                                     f"Are you sure you want to install:\n{', '.join(pkgs)}?",
-                                     QMessageBox.Yes | QMessageBox.No)
-        
+
+        confirm = dialogs.question(
+            self,
+            "Confirm Installation",
+            f"Are you sure you want to install:\n{', '.join(pkgs)}?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+
         if confirm == QMessageBox.Yes:
             self.log(f"Installing {', '.join(pkgs)}...")
             worker = PackageWorker(self.manager.install, pkgs)
@@ -429,7 +451,7 @@ class PackageManagerWidget(QWidget):
         selected = self.installed_table.selectedItems()
         if not selected:
             return
-        
+
         pkgs = list(set([self.installed_table.item(item.row(), 0).text() for item in selected]))
         self.log(f"Updating {', '.join(pkgs)}...")
         worker = PackageWorker(self.manager.update, pkgs)
@@ -439,9 +461,12 @@ class PackageManagerWidget(QWidget):
 
     def update_all(self):
         """Ask for confirmation, then update every package in the current environment."""
-        confirm = dialogs.question(self, "Update All", 
-                                     "Update all packages in the current environment?",
-                                     QMessageBox.Yes | QMessageBox.No)
+        confirm = dialogs.question(
+            self,
+            "Update All",
+            "Update all packages in the current environment?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
         if confirm == QMessageBox.Yes:
             self.log("Updating all packages...")
             worker = PackageWorker(self.manager.update)
@@ -454,12 +479,15 @@ class PackageManagerWidget(QWidget):
         selected = self.installed_table.selectedItems()
         if not selected:
             return
-        
+
         pkgs = list(set([self.installed_table.item(item.row(), 0).text() for item in selected]))
-        confirm = dialogs.question(self, "Confirm Removal", 
-                                     f"Are you sure you want to remove:\n{', '.join(pkgs)}?",
-                                     QMessageBox.Yes | QMessageBox.No)
-        
+        confirm = dialogs.question(
+            self,
+            "Confirm Removal",
+            f"Are you sure you want to remove:\n{', '.join(pkgs)}?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+
         if confirm == QMessageBox.Yes:
             self.log(f"Removing {', '.join(pkgs)}...")
             worker = PackageWorker(self.manager.remove, pkgs)
@@ -536,7 +564,9 @@ class PackageManagerWidget(QWidget):
         if not selected:
             return
         src = selected.text()
-        dst, ok = QInputDialog.getText(self, "Clone Environment", f"Enter new name for clone of '{src}':")
+        dst, ok = QInputDialog.getText(
+            self, "Clone Environment", f"Enter new name for clone of '{src}':"
+        )
         if ok and dst:
             self.log(f"Cloning environment '{src}' to '{dst}'...")
             # Detect if path or name
@@ -554,8 +584,12 @@ class PackageManagerWidget(QWidget):
         if not selected:
             return
         env = selected.text()
-        confirm = dialogs.question(self, "Confirm removal", f"Remove environment '{env}'?", 
-                                     QMessageBox.Yes | QMessageBox.No)
+        confirm = dialogs.question(
+            self,
+            "Confirm removal",
+            f"Remove environment '{env}'?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
         if confirm == QMessageBox.Yes:
             self.log(f"Removing environment '{env}'...")
             if os.sep in env:
@@ -575,13 +609,16 @@ class PackageManagerWidget(QWidget):
             prefix = selected.text()
             if os.sep not in prefix:
                 # Need to find prefix for name
-                prefix = None # PackageManager export_env handles default
-        
-        path, _ = QFileDialog.getSaveFileName(self, "Export Environment", "", "YAML files (*.yaml *.yml)")
+                prefix = None  # PackageManager export_env handles default
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Environment", "", "YAML files (*.yaml *.yml)"
+        )
         if path:
             self.log(f"Exporting environment to {path}...")
             # This returns YAML text in data
             worker = PackageWorker(self.manager.export_env, prefix=prefix)
+
             def _on_exported(s, d, e):
                 """Write the exported YAML to disk or log the failure.
 
@@ -596,23 +633,28 @@ class PackageManagerWidget(QWidget):
                 """
                 if s:
                     try:
-                        with open(path, 'w') as f:
+                        with open(path, "w") as f:
                             f.write(d)
                         self.log(f"Exported successfully to {path}")
                     except Exception as ex:
                         self.log(f"Failed to write file: {ex}")
                 else:
                     self.log(f"Export failed: {e}")
+
             worker.finished.connect(_on_exported)
             self._op_worker = worker
             worker.start()
 
     def import_env(self):
         """Import an environment from a YAML file, optionally with a new name."""
-        path, _ = QFileDialog.getOpenFileName(self, "Import Environment", "", "YAML files (*.yaml *.yml)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Environment", "", "YAML files (*.yaml *.yml)"
+        )
         if not path:
             return
-        name, ok = QInputDialog.getText(self, "Import Environment", "Enter name for new environment (optional):")
+        name, ok = QInputDialog.getText(
+            self, "Import Environment", "Enter name for new environment (optional):"
+        )
         self.log(f"Importing environment from {path}...")
         worker = PackageWorker(self.manager.import_env, path, name if ok and name else None)
         worker.finished.connect(self._on_operation_finished)

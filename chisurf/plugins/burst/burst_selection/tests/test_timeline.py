@@ -90,8 +90,8 @@ def test_an_empty_selection_has_no_timeline():
 
 def test_a_file_with_no_photons_does_not_shift_the_indices():
     diagnostics = _diagnostics(2)
-    diagnostics.insert(1, {"path": "/tmp/empty.ptu",
-                           "tttr": _Tttr([], 1e-6),
-                           "selected": np.zeros(0, dtype=bool)})
+    diagnostics.insert(
+        1, {"path": "/tmp/empty.ptu", "tttr": _Tttr([], 1e-6), "selected": np.zeros(0, dtype=bool)}
+    )
     segments = timeline.build_timeline(diagnostics, [0.0, 10.0, 10.0])
     assert [s.first_photon for s in segments] == [0, 1000]

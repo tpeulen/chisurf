@@ -105,9 +105,7 @@ class ImageBrowserWidget(QtWidgets.QWidget):
 
     def __init__(self, model, target: str | None = None, **options):
         super().__init__()
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._model = model
         self._target = target or options.get("target")
         self._entries_source = options.get("entries_source")

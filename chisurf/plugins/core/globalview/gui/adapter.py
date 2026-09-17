@@ -1,26 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from chisurf.core import graph as cg
-
-from chisurf.plugins.core.globalview.api.graph import build_graph, GraphResult
-
+from chisurf.plugins.core.globalview.api.graph import GraphResult
 
 NODE_COLORS = {
-    0: [0, 0, 128, 255],    # fit
-    1: [0, 128, 0, 128],    # parameter fixed
-    2: [0, 128, 0, 255],    # parameter linked
+    0: [0, 0, 128, 255],  # fit
+    1: [0, 128, 0, 128],  # parameter fixed
+    2: [0, 128, 0, 255],  # parameter linked
     3: [128, 0, 128, 255],  # parameter free
-    4: [180, 95, 6, 255],   # out-of-fit group owner (plugin working model)
+    4: [180, 95, 6, 255],  # out-of-fit group owner (plugin working model)
 }
 
 
 def compute_node_types(
     result: GraphResult,
     include_fixed: bool = True,
-) -> List[int]:
+) -> list[int]:
     """Map each node to its type code for color-coding.
 
     Returns
@@ -48,24 +45,27 @@ def graph_result_to_graph(result: GraphResult) -> cg.Graph:
     """Convert a GraphResult to a :class:`chisurf.core.graph.Graph` for layout."""
     G = cg.Graph()
     for n in result.nodes:
-        G.add_node(n.node_idx, **{
-            "node.idx": n.node_idx,
-            "node.type": n.node_type,
-            "node.name": n.name,
-            "fit.idx": n.fit_idx,
-            "value": n.value,
-            "fixed": n.fixed,
-            "name": n.name,
-            "param.uid": n.param_uid,
-            "owner.uid": n.owner_uid,
-            "owner.id": n.owner_id,
-        })
+        G.add_node(
+            n.node_idx,
+            **{
+                "node.idx": n.node_idx,
+                "node.type": n.node_type,
+                "node.name": n.name,
+                "fit.idx": n.fit_idx,
+                "value": n.value,
+                "fixed": n.fixed,
+                "name": n.name,
+                "param.uid": n.param_uid,
+                "owner.uid": n.owner_uid,
+                "owner.id": n.owner_id,
+            },
+        )
     for e in result.edges:
         G.add_edge(e.source, e.target)
     return G
 
 
-def compute_layout(G: cg.Graph, layout: str = "kamada_kawai", scale: float = 1.0) -> Dict[int, Any]:
+def compute_layout(G: cg.Graph, layout: str = "kamada_kawai", scale: float = 1.0) -> dict[int, Any]:
     """Compute node positions using the given layout algorithm.
 
     Parameters

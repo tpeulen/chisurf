@@ -41,8 +41,9 @@ def test_bid_folder_without_index_files_is_empty(tmp_path) -> None:
     assert MicrotimeHistogram._expand_bid_folder(tmp_path) == []
 
 
-_SPC = (Path(__file__).resolve().parents[5]
-        / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
+_SPC = (
+    Path(__file__).resolve().parents[5] / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+)
 
 
 @pytest.mark.skipif(not _SPC.is_file(), reason="sample SPC not available")
@@ -54,8 +55,11 @@ def test_apply_setup_lut_linearizes_histogram() -> None:
     from chisurf.plugins.tttr.microtime_histogram.wizard import MicrotimeHistogram
     from chisurf.plugins.tttr.tttr_lut_tools.api import compute
 
-    ntac = np.asarray(compute.compute_lut_from_files(
-        [str(_SPC)], channel=0, linear_start=1500, linear_stop=3000)["NTAC_fract"])
+    ntac = np.asarray(
+        compute.compute_lut_from_files([str(_SPC)], channel=0, linear_start=1500, linear_stop=3000)[
+            "NTAC_fract"
+        ]
+    )
 
     class _Page:
         _channel_luts = {0: ntac}
@@ -65,8 +69,9 @@ def test_apply_setup_lut_linearizes_histogram() -> None:
     class _Self:
         detector_wizard_page = _Page()
 
-    raw = np.asarray(tttrlib.TTTR(str(_SPC)).get_tttr_by_channel([0])
-                     .get_microtime_histogram(1)[0], dtype=float)
+    raw = np.asarray(
+        tttrlib.TTTR(str(_SPC)).get_tttr_by_channel([0]).get_microtime_histogram(1)[0], dtype=float
+    )
     d = tttrlib.TTTR(str(_SPC))
     MicrotimeHistogram._apply_setup_lut(_Self(), d)
     corrected = np.asarray(d.get_tttr_by_channel([0]).get_microtime_histogram(1)[0], dtype=float)
@@ -97,8 +102,7 @@ def test_polarization_resolved_gates_parallel_perp() -> None:
             return [8, 0, 3, 9, 1, 2]
 
     s = _Self()
-    s._is_polarization_resolved = types.MethodType(
-        MicrotimeHistogram._is_polarization_resolved, s)
+    s._is_polarization_resolved = types.MethodType(MicrotimeHistogram._is_polarization_resolved, s)
     assert MicrotimeHistogram.parallel_channels.fget(s) == [8, 3, 1]
     assert MicrotimeHistogram.perpendicular_channels.fget(s) == [0, 9, 2]
 

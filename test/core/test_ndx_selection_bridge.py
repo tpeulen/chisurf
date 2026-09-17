@@ -51,17 +51,13 @@ def test_a_1d_interval_excludes_the_same_points(cloud):
 
 
 def test_an_inverted_interval_excludes_the_same_points(cloud):
-    selection = ndx.RectangularDataSelection(
-        parameter_idx=1, lower=6.0, upper=10.0, invert=True
-    )
+    selection = ndx.RectangularDataSelection(parameter_idx=1, lower=6.0, upper=10.0, invert=True)
     theirs, ours = _agrees([selection], cloud)
     np.testing.assert_array_equal(ours, theirs)
 
 
 def test_a_disabled_selection_excludes_nothing_on_either_side(cloud):
-    selection = ndx.RectangularDataSelection(
-        parameter_idx=0, lower=8.0, upper=12.0, enabled=False
-    )
+    selection = ndx.RectangularDataSelection(parameter_idx=0, lower=8.0, upper=12.0, enabled=False)
     theirs, ours = _agrees([selection], cloud)
     np.testing.assert_array_equal(ours, theirs)
     assert not ours.any()
@@ -87,8 +83,12 @@ def test_a_mahalanobis_ellipse_excludes_the_same_points(cloud):
 def test_an_inverted_ellipse_excludes_the_same_points(cloud):
     xy = cloud[:2]
     selection = ndx.Gaussian2DSelection(
-        parameter_idx1=0, parameter_idx2=1, mu=xy.mean(axis=1), cov=np.cov(xy),
-        sigma=1.0, invert=True,
+        parameter_idx1=0,
+        parameter_idx2=1,
+        mu=xy.mean(axis=1),
+        cov=np.cov(xy),
+        sigma=1.0,
+        invert=True,
     )
     theirs, ours = _agrees([selection], cloud)
     assert int((ours != theirs).sum() / cloud.shape[0]) <= 3
@@ -114,14 +114,12 @@ def test_a_selection_on_a_parameter_off_this_plane_is_skipped_not_guessed(cloud)
 
 
 def test_a_painted_histogram_mask_becomes_a_region():
-    """ndX's brush paints bins; the region gates the values they stand for."""
+    """NdX's brush paints bins; the region gates the values they stand for."""
     mask = np.zeros((16, 16), dtype=bool)
     mask[4:8, 2:6] = True
     edges1 = np.linspace(0.0, 16.0, 17)
     edges2 = np.linspace(0.0, 8.0, 17)
-    selection = ndx.MaskDataSelection(
-        idx1=0, idx2=1, mask=mask, edges1=edges1, edges2=edges2
-    )
+    selection = ndx.MaskDataSelection(idx1=0, idx2=1, mask=mask, edges1=edges1, edges2=edges2)
     roi = roi_from_selection(selection, axes=(0, 1))
     assert roi is not None
     # A point in a painted bin is inside; one in an unpainted bin is not.
@@ -139,9 +137,7 @@ def test_a_painted_mask_excludes_the_same_points_as_ndxplorer(cloud):
     edges2 = np.linspace(y.min(), y.max(), 25)
     mask = np.zeros((24, 24), dtype=bool)
     mask[6:16, 6:16] = True
-    selection = ndx.MaskDataSelection(
-        idx1=0, idx2=1, mask=mask, edges1=edges1, edges2=edges2
-    )
+    selection = ndx.MaskDataSelection(idx1=0, idx2=1, mask=mask, edges1=edges1, edges2=edges2)
     theirs, ours = _agrees([selection], cloud)
     disagree = int((ours != theirs).sum() / cloud.shape[0])
     assert disagree <= 3, f"{disagree} points disagree"
@@ -150,7 +146,7 @@ def test_a_painted_mask_excludes_the_same_points_as_ndxplorer(cloud):
 
 # --- what the round trip buys ------------------------------------------------
 def test_every_shape_survives_a_save_and_reload(tmp_path, cloud):
-    """ndX's own loader rebuilds only rectangles; a collection keeps all.
+    """NdX's own loader rebuilds only rectangles; a collection keeps all.
 
     That is the concrete gain from sharing the type: a saved ellipse or painted
     population currently disappears on reload, silently, and the analysis
@@ -162,8 +158,13 @@ def test_every_shape_survives_a_save_and_reload(tmp_path, cloud):
     selections = [
         ndx.RectangularDataSelection(parameter_idx=0, lower=8.0, upper=12.0, name="x band"),
         ndx.Gaussian2DSelection(
-            parameter_idx1=0, parameter_idx2=1, mu=xy.mean(axis=1), cov=np.cov(xy),
-            sigma=1.0, name="cluster", invert=True,
+            parameter_idx1=0,
+            parameter_idx2=1,
+            mu=xy.mean(axis=1),
+            cov=np.cov(xy),
+            sigma=1.0,
+            name="cluster",
+            invert=True,
         ),
     ]
     collection = collection_from_selections(selections, axes=(0, 1))
@@ -189,6 +190,6 @@ def test_the_ellipse_axes_come_from_the_covariance():
 
     elongated = ellipse_from_covariance([1.0, 2.0], [[9.0, 0.0], [0.0, 1.0]], sigma=2.0)
     assert (elongated.cx, elongated.cy) == (1.0, 2.0)
-    assert elongated.rx == pytest.approx(6.0)     # 2 * sqrt(9)
-    assert elongated.ry == pytest.approx(2.0)     # 2 * sqrt(1)
+    assert elongated.rx == pytest.approx(6.0)  # 2 * sqrt(9)
+    assert elongated.ry == pytest.approx(2.0)  # 2 * sqrt(1)
     assert elongated.angle == pytest.approx(0.0, abs=1e-9)

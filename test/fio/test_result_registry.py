@@ -1,4 +1,5 @@
 """Tests for the MMFDB result registry."""
+
 from __future__ import annotations
 
 import os
@@ -6,12 +7,7 @@ import tempfile
 
 import numpy as np
 import pytest
-
-from mmfdb.security.base import MMFDBClientBase
 from mmfdb.models import SampleDefinition
-from mmfdb.store.payload_codec import PayloadSchemaError, encode_payload
-from mmfdb.store.payload_models import BurstSelection, FcsCorrelation
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import (
     LinkValidationError,
     database_context,
@@ -24,7 +20,11 @@ from mmfdb.provenance.result_registry import (
     register_result,
     set_global_db,
 )
+from mmfdb.repository import MFDatabase
 from mmfdb.samples.sample_manager import create_sample, get_artifacts_for_sample
+from mmfdb.security.base import MMFDBClientBase
+from mmfdb.store.payload_codec import PayloadSchemaError, encode_payload
+from mmfdb.store.payload_models import BurstSelection, FcsCorrelation
 
 
 @pytest.fixture
@@ -257,7 +257,9 @@ def test_register_result_accepts_burst_selection_payload_kind(db):
     """Burst selections are first-class artifact and payload kinds."""
     payload = BurstSelection(burst_ids=np.array([1, 2], dtype=np.int64))
 
-    art_id = register_result(kind="burst_selection", data=payload, operation_type="burst_selection", db=db)
+    art_id = register_result(
+        kind="burst_selection", data=payload, operation_type="burst_selection", db=db
+    )
 
     assert art_id
     row = db.conn.execute(
@@ -274,7 +276,9 @@ def test_register_result_burst_selection_dataframe_parses_string_mask_values(db)
     pd = pytest.importorskip("pandas")
     df = pd.DataFrame({"mask": ["False", "True", "0", "1", "no", "yes"]})
 
-    art_id = register_result(kind="burst_selection", data=df, operation_type="burst_selection", db=db)
+    art_id = register_result(
+        kind="burst_selection", data=df, operation_type="burst_selection", db=db
+    )
 
     assert art_id
     payload = read_result(db, art_id)
@@ -302,7 +306,9 @@ def test_register_result_fcs_dataframe_preserves_payload_kind(db):
     pd = pytest.importorskip("pandas")
     df = pd.DataFrame({"lag": [1e-6, 2e-6], "correlation": [1.0, 0.9]})
 
-    art_id = register_result(kind="fcs_correlation", data=df, operation_type="fcs_correlation", db=db)
+    art_id = register_result(
+        kind="fcs_correlation", data=df, operation_type="fcs_correlation", db=db
+    )
 
     assert art_id
     artifact = db.get_artifact(art_id)
@@ -385,10 +391,13 @@ def test_register_result_rejects_unsupported_known_kind_dataframe(db):
 
 def test_read_result_rejects_known_artifact_payload_kind_mismatch(db):
     """Existing bad rows with known artifact/payload mismatches fail loudly."""
-    blob, data_format = encode_payload("fcs_correlation", {
-        "lag": np.array([1e-6, 2e-6], dtype=np.float64),
-        "correlation": np.array([1.0, 0.9], dtype=np.float64),
-    })
+    blob, data_format = encode_payload(
+        "fcs_correlation",
+        {
+            "lag": np.array([1e-6, 2e-6], dtype=np.float64),
+            "correlation": np.array([1.0, 0.9], dtype=np.float64),
+        },
+    )
     ref = db.put_object(data=blob, filename="bad.msgpack", mime_type="application/msgpack")
     artifact_id = "bad-mismatch"
     db.register_artifact(

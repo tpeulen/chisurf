@@ -67,7 +67,7 @@ def vv_vh_window(stack, vv=(0, None), vh=(0, None)):
     vv_stop = n if vv[1] is None else min(n, int(vv[1]))
     vh_start = max(0, int(vh[0]))
     vh_stop = n if vh[1] is None else min(n, int(vh[1]))
-    return np.hstack([values[0:n][vv_start:vv_stop], values[n:2 * n][vh_start:vh_stop]])
+    return np.hstack([values[0:n][vv_start:vv_stop], values[n : 2 * n][vh_start:vh_stop]])
 
 
 def overlay_scaled(curve, data):
@@ -222,9 +222,18 @@ class DecayCurves:
     diverged: bool = False
 
 
-def decay_curves(data, model, *, irf=None, background=None,
-                 vv=(0, None), vh=(0, None), deconvolved: bool = True,
-                 clip_factor: float = 10.0, diverged: bool | None = None) -> DecayCurves:
+def decay_curves(
+    data,
+    model,
+    *,
+    irf=None,
+    background=None,
+    vv=(0, None),
+    vh=(0, None),
+    deconvolved: bool = True,
+    clip_factor: float = 10.0,
+    diverged: bool | None = None,
+) -> DecayCurves:
     """Assemble everything a VV/VH decay panel draws.
 
     Parameters

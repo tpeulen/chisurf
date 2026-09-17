@@ -8,7 +8,7 @@ for which kernels are compiled.
 """
 
 from .cluster import HDBSCAN, KMeans
-from .decomposition import IncrementalPCA, PCA
+from .decomposition import PCA, IncrementalPCA
 from .mixture import GaussianMixture
 from .neural_network import MLPRegressor
 from .preprocessing import StandardScaler

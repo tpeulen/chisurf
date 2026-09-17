@@ -108,9 +108,7 @@ def run_case(n_samples, n_features):
     rows = []
 
     seconds, fitted = _time(
-        lambda x: HDBSCAN(
-            min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
-        ).fit(x),
+        lambda x: HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES).fit(x),
         data,
         repeat=2,
     )
@@ -173,9 +171,9 @@ def test_the_compiled_kernel_keeps_up_with_scikit_learn():
         data,
     )
     theirs, reference = _time(
-        lambda x: _ReferenceSklearn(
-            min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
-        ).fit(x),
+        lambda x: _ReferenceSklearn(min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES).fit(
+            x
+        ),
         data,
     )
 

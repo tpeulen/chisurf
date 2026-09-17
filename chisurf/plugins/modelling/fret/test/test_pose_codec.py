@@ -30,7 +30,8 @@ def _assert_round_trips(blob, expect_codec):
         # quaternion recovered up to numerical precision
         dot = sum(a * b for a, b in zip(got["q"], exp["q"]))
         assert abs(dot) == pytest.approx(1.0, abs=1e-3) or math.isclose(
-            sum((a - b) ** 2 for a, b in zip(got["q"], exp["q"])), 0.0, abs_tol=1e-6)
+            sum((a - b) ** 2 for a, b in zip(got["q"], exp["q"])), 0.0, abs_tol=1e-6
+        )
 
 
 def test_round_trip_default_codec():

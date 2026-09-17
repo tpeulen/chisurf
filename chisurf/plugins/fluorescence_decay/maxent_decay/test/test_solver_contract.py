@@ -68,7 +68,9 @@ def test_the_fitted_curve_can_be_rebuilt_from_the_result():
     """
     decay, lamp, dt, _ = _problem()
     result = solve_lifetime_mem(
-        decay, lamp, dt,
+        decay,
+        lamp,
+        dt,
         tau=np.linspace(0.4, 7.0, 60),
         fitrange=(30, decay.size - 1),
         optimize_nuisance=False,
@@ -100,7 +102,9 @@ def test_the_reported_background_is_the_one_that_was_used():
     decay, lamp, dt, _ = _problem()
     background = 7.5
     result = solve_lifetime_mem(
-        decay, lamp, dt,
+        decay,
+        lamp,
+        dt,
         tau=np.linspace(0.4, 7.0, 40),
         fitrange=(30, decay.size - 1),
         background=background,

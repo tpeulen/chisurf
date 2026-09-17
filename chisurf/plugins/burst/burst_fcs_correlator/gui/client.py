@@ -6,7 +6,7 @@ same calls work in-process or against a remote server.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
 
@@ -18,34 +18,34 @@ class BurstFcsClient:
         self._client = client if client is not None else self._make_local_client()
 
     # -- RPC wrappers ---------------------------------------------------
-    def parse_bst(self, path: str) -> Dict[str, Any]:
+    def parse_bst(self, path: str) -> dict[str, Any]:
         return self._client.call("burst_fcs.parse_bst", {"path": str(path)})
 
-    def parse_bur(self, path: str, analysis_root: str = None) -> Dict[str, Any]:
+    def parse_bur(self, path: str, analysis_root: str = None) -> dict[str, Any]:
         return self._client.call(
             "burst_fcs.parse_bur", {"path": str(path), "analysis_root": analysis_root}
         )
 
-    def fit_curve(self, tau, g, settings: Dict[str, Any] = None) -> Dict[str, Any]:
+    def fit_curve(self, tau, g, settings: dict[str, Any] = None) -> dict[str, Any]:
         return self._client.call(
             "burst_fcs.fit_curve",
             {"tau": list(tau), "g": list(g), "settings": settings or {}},
         )
 
-    def fit_simple(self, tau, g) -> Dict[str, Any]:
+    def fit_simple(self, tau, g) -> dict[str, Any]:
         return self._client.call("burst_fcs.fit_simple", {"tau": list(tau), "g": list(g)})
 
-    def fit_diffusion(self, tau, g) -> Dict[str, Any]:
+    def fit_diffusion(self, tau, g) -> dict[str, Any]:
         return self._client.call("burst_fcs.fit_diffusion", {"tau": list(tau), "g": list(g)})
 
     def correlate_file(
         self,
         tttr_path: str,
-        ranges: List,
-        pairs: List[Dict[str, Any]],
-        settings: Dict[str, Any] = None,
+        ranges: list,
+        pairs: list[dict[str, Any]],
+        settings: dict[str, Any] = None,
         filetype=None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return self._client.call(
             "burst_fcs.correlate_file",
             {

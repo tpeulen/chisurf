@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mmfdb.repository import MFDatabase
+
 from chisurf.plugins.burst.burst_selection.api.contract import (
     METHOD_ANALYZE_FILES,
     METHOD_DESCRIBE_CONTRACT,
@@ -12,21 +13,24 @@ from chisurf.plugins.burst.burst_selection.api.contract import (
     METHOD_INSPECT_BUR,
     METHOD_LOAD_DIAGNOSTICS,
 )
-from chisurf.plugins.burst.burst_selection.backend import services as backend_services
 from chisurf.plugins.burst.burst_selection.api.models import AnalysisResult
+from chisurf.plugins.burst.burst_selection.backend import services as backend_services
+from chisurf.plugins.burst.burst_selection.backend.services import (
+    contract_handler,
+)
+from chisurf.plugins.burst.burst_selection.backend.services import (
+    list_methods as list_backend_methods,
+)
 from chisurf.plugins.burst.burst_selection.server.services import (
     list_methods,
     register_burst_selection_services,
 )
-from chisurf.plugins.burst.burst_selection.backend.services import (
-    contract_handler,
-    list_methods as list_backend_methods,
-)
 
 
 def _authenticated_session(db: MFDatabase):
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.security.auth import create_session
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     db.ensure_user("burst-test-user")
     token = create_session(db.conn, "burst-test-user")["token"]
@@ -80,13 +84,17 @@ def test_backend_contract_handler_returns_service_result() -> None:
 def test_backend_method_catalogue_includes_contract_method() -> None:
     """The backend catalogue should publish the contract method."""
     methods = list_backend_methods()
-    assert methods["burst_selection.contract.describe"] == "Return the Burst Selection workflow contract."
+    assert (
+        methods["burst_selection.contract.describe"]
+        == "Return the Burst Selection workflow contract."
+    )
 
 
 def test_service_registration_does_not_resolve_db_for_non_archival_requests(
     monkeypatch,
 ) -> None:
     """The injected provider is lazy and scoped to explicitly enabled requests."""
+
     class Dispatcher:
         def __init__(self):
             self.handlers = {}

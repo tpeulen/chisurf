@@ -77,7 +77,10 @@ class BurstGsTool(ChisurfDockTool):
             return
         self.Error.clear()
         ChiSurfProgress.run(
-            self, "Fitting…", self._fit, maximum=100,
+            self,
+            "Fitting…",
+            self._fit,
+            maximum=100,
             on_result=self._fitted,
             on_error=self.Error.failed,
             on_done=self._refresh,
@@ -86,6 +89,7 @@ class BurstGsTool(ChisurfDockTool):
 
     def _fit(self, task) -> bool:
         """Worker: run the Qt-free fit, reporting through *task*. No GUI here."""
+
         def report(fraction: float, message: str) -> None:
             task.raise_if_cancelled()
             task.set_fraction(float(fraction), str(message))

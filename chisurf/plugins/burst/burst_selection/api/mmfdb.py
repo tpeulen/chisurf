@@ -9,13 +9,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-
-from chisurf.core.datastore import write_csv_table
 from mmfdb.provenance.result_registry import (
     LinkValidationError,
     register_raw_measurement,
     register_result,
 )
+
+from chisurf.core.datastore import write_csv_table
 
 from .contract import CONTRACT_VERSION
 from .models import AnalysisRequest, AnalysisResult
@@ -57,7 +57,7 @@ class BurstMMFDBPipeline:
     def __init__(
         self,
         db: MMFDBClientBase | None = None,
-        session: "SessionContext | None" = None,
+        session: SessionContext | None = None,
     ):
         """Create a burst-selection registration pipeline.
 
@@ -199,7 +199,9 @@ class BurstMMFDBPipeline:
         source_artifact_ids = _normalize_source_artifact_ids(request.mmfdb.source_artifact_ids)
         for input_file in request.files:
             input_path = _normalize_path(input_file)
-            input_artifact_id = self._input_artifact_id(input_path, request, source_artifact_ids, registration)
+            input_artifact_id = self._input_artifact_id(
+                input_path, request, source_artifact_ids, registration
+            )
             if not input_artifact_id:
                 continue
             registration.input_artifacts[input_path] = input_artifact_id
@@ -320,7 +322,9 @@ class BurstMMFDBPipeline:
             operation_type="burst_selection",
             parameters=extract_burst_parameters(request),
             metadata=build_burst_metadata(
-                request, result, input_path,
+                request,
+                result,
+                input_path,
                 calibrated_at=calibrated_at,
             ),
             data_format=data_format,
@@ -479,8 +483,7 @@ def extract_burst_parameters(request: AnalysisRequest) -> dict[str, Any]:
     # the reproducible compute spec because it selects which photons are analysed.
     if photon_filter.channels:
         params["channels"] = [
-            {"value": int(ch), "role": str(i)}
-            for i, ch in enumerate(photon_filter.channels)
+            {"value": int(ch), "role": str(i)} for i, ch in enumerate(photon_filter.channels)
         ]
     return params
 
@@ -685,7 +688,7 @@ def file_md5(path: Path) -> str:
     return digest.hexdigest()
 
 
-def sample_id_for_raw_path(db: "MMFDBClientBase", path: Path) -> str | None:
+def sample_id_for_raw_path(db: MMFDBClientBase, path: Path) -> str | None:
     """Return the sample already associated with a raw file's content, or ``None``."""
     try:
         return db.lookup_sample_by_md5(file_md5(path))
@@ -693,7 +696,7 @@ def sample_id_for_raw_path(db: "MMFDBClientBase", path: Path) -> str | None:
         return None
 
 
-def raw_artifact_id_for_path(db: "MMFDBClientBase", path: Path) -> str:
+def raw_artifact_id_for_path(db: MMFDBClientBase, path: Path) -> str:
     """Return an existing raw-measurement artifact for a file, or an empty string."""
     try:
         return db.find_raw_artifact_by_md5(file_md5(path))
@@ -709,13 +712,13 @@ def raw_file_data_format(path: Path) -> str:
 
 def register_raw_input_for_sample(
     *,
-    db: "MMFDBClientBase",
+    db: MMFDBClientBase,
     path: Path,
     sample_id: str,
     filetype: str | None,
     selected_setup: str | None,
     setup_id: str = "",
-    session: "SessionContext | None" = None,
+    session: SessionContext | None = None,
 ) -> str:
     """Register a raw input artifact and bind its object content to a sample.
 
@@ -750,15 +753,15 @@ def register_raw_input_for_sample(
     return artifact_id
 
 
-def acquire_mmfdb_connection() -> "MMFDBClientBase | None":
+def acquire_mmfdb_connection() -> MMFDBClientBase | None:
     """Open the configured MMFDB for a GUI composition root.
 
     The returned connection must be passed into the service/pipeline explicitly;
     this helper never consults the result registry's process global.
     """
     try:
-        from mmfdb.store.database_resolver import resolve_database_path
         from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import resolve_database_path
 
         return MFDatabase(resolve_database_path())
     except Exception as exc:  # pragma: no cover - environment-dependent

@@ -29,7 +29,9 @@ def list_cmd(folder: Path, recursive: bool):
 
 @cli.command("load")
 @click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--max-side", default=512, show_default=True, type=int, help="Max dimensions of the mosaic.")
+@click.option(
+    "--max-side", default=512, show_default=True, type=int, help="Max dimensions of the mosaic."
+)
 def load_cmd(path: Path, max_side: int):
     """Load and print image mosaic metadata."""
     data = load_image(str(path), max_side=max_side)
@@ -54,7 +56,9 @@ def load_cmd(path: Path, max_side: int):
 
 @cli.command("export-tiff")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--output-dir", "output_dir", required=True, type=click.Path(file_okay=False, path_type=Path))
+@click.option(
+    "--output-dir", "output_dir", required=True, type=click.Path(file_okay=False, path_type=Path)
+)
 def export_tiff_cmd(paths: tuple[Path, ...], output_dir: Path):
     """Export TTTR image stacks to TIFF files."""
     result = save_tiff_stacks([str(path) for path in paths], str(output_dir))

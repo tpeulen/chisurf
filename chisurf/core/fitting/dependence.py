@@ -41,6 +41,7 @@ variable -- destroying the dependence while preserving both marginals -- and
 subtracting what the estimator still reports. Nothing is called dependent until
 it exceeds that null by a margin the null's own spread sets.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -72,8 +73,8 @@ N_PERMUTATIONS = 64
 
 
 def _thin_to_independent(
-        x: np.ndarray,
-        y: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
 ) -> typing.Tuple[np.ndarray, np.ndarray, float]:
     """Thin a pair of MCMC columns down to roughly independent draws.
 
@@ -95,6 +96,7 @@ def _thin_to_independent(
         The thinned columns and the stride used.
     """
     from chisurf.core.fitting import diagnostics as _dg
+
     try:
         # One chain each, so this is the within-chain autocorrelation time.
         tau_x = float(_dg.within_chain_tau(x.reshape(1, -1, 1))[0])
@@ -117,7 +119,7 @@ def _bin_count(n: int) -> int:
     *square* of the bin count while its resolution goes only as the first power:
     a fine grid on a short chain measures its own noise.
     """
-    return int(max(4, min(24, round(n ** 0.35))))
+    return int(max(4, min(24, round(n**0.35))))
 
 
 def _resolvable(x: np.ndarray, y: np.ndarray, bins: int) -> bool:
@@ -172,9 +174,9 @@ def _plug_in_mi(bx: np.ndarray, by: np.ndarray, bins: int) -> float:
 
 
 def mutual_information(
-        x: np.ndarray,
-        y: np.ndarray,
-        bins: typing.Optional[int] = None,
+    x: np.ndarray,
+    y: np.ndarray,
+    bins: typing.Optional[int] = None,
 ) -> float:
     """Return the mutual information of two samples, in nats.
 
@@ -236,12 +238,12 @@ def informational_correlation(mi: float) -> float:
 
 
 def dependence(
-        x: np.ndarray,
-        y: np.ndarray,
-        bins: typing.Optional[int] = None,
-        n_permutations: int = N_PERMUTATIONS,
-        seed: int = 0,
-        thin: bool = True,
+    x: np.ndarray,
+    y: np.ndarray,
+    bins: typing.Optional[int] = None,
+    n_permutations: int = N_PERMUTATIONS,
+    seed: int = 0,
+    thin: bool = True,
 ) -> typing.Dict[str, typing.Any]:
     """Measure how strongly two parameters constrain each other, linearly or not.
 
@@ -292,10 +294,16 @@ def dependence(
     x, y = x[keep], y[keep]
 
     out = {
-        "mi": float("nan"), "mi_raw": float("nan"),
-        "null_mean": float("nan"), "null_sd": float("nan"),
-        "dependence": float("nan"), "pearson": float("nan"),
-        "dependent": False, "nonlinear": False, "n": int(x.size), "note": "",
+        "mi": float("nan"),
+        "mi_raw": float("nan"),
+        "null_mean": float("nan"),
+        "null_sd": float("nan"),
+        "dependence": float("nan"),
+        "pearson": float("nan"),
+        "dependent": False,
+        "nonlinear": False,
+        "n": int(x.size),
+        "note": "",
     }
     if x.size < 32:
         out["note"] = "too few draws to measure dependence"
@@ -314,8 +322,9 @@ def dependence(
 
     b = int(bins) if bins else _bin_count(x.size)
     if not _resolvable(x, y, b):
-        out["note"] = ("a parameter barely moved, so the chain cannot say "
-                       "whether these two are related")
+        out["note"] = (
+            "a parameter barely moved, so the chain cannot say whether these two are related"
+        )
         return out
     bx, by = _equiprobable(x, b), _equiprobable(y, b)
     raw = _plug_in_mi(bx, by, b)
@@ -346,9 +355,7 @@ def dependence(
 
     linear = abs(out["pearson"]) if np.isfinite(out["pearson"]) else 0.0
     excess = out["dependence"] - linear
-    out["nonlinear"] = bool(
-        out["dependent"] and np.isfinite(excess) and excess > NONLINEAR_MARGIN
-    )
+    out["nonlinear"] = bool(out["dependent"] and np.isfinite(excess) and excess > NONLINEAR_MARGIN)
     if out["nonlinear"]:
         out["note"] = (
             f"dependent but not linearly (r={out['pearson']:.2f}, "
@@ -359,10 +366,10 @@ def dependence(
 
 
 def dependence_matrix(
-        draws: np.ndarray,
-        bins: typing.Optional[int] = None,
-        n_permutations: int = N_PERMUTATIONS,
-        seed: int = 0,
+    draws: np.ndarray,
+    bins: typing.Optional[int] = None,
+    n_permutations: int = N_PERMUTATIONS,
+    seed: int = 0,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Return ``(dependence, nonlinear)`` matrices over every pair of columns.
 
@@ -399,8 +406,13 @@ def dependence_matrix(
     flags = np.zeros((k, k), dtype=bool)
     for i in range(k):
         for j in range(i + 1, k):
-            d = dependence(draws[:, i], draws[:, j], bins=bins,
-                           n_permutations=n_permutations, seed=seed + i * k + j)
+            d = dependence(
+                draws[:, i],
+                draws[:, j],
+                bins=bins,
+                n_permutations=n_permutations,
+                seed=seed + i * k + j,
+            )
             out[i, j] = out[j, i] = d["dependence"]
             flags[i, j] = flags[j, i] = d["nonlinear"]
     return out, flags

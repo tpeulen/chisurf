@@ -21,7 +21,9 @@ METHOD_PREPARE_WORKFLOW = "burst_2cde.workflow.prepare"
 def register_services(dispatcher: Any) -> None:
     """Register 2CDE RPC handlers with a ServiceDispatcher."""
     dispatcher.register(METHOD_COMPUTE_2CDE, lambda params: compute_2cde_handler(**(params or {})))
-    dispatcher.register(METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {})))
+    dispatcher.register(
+        METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {}))
+    )
     dispatcher.register(METHOD_DESCRIBE_CONTRACT, lambda params: contract_handler(**(params or {})))
 
 
@@ -43,7 +45,9 @@ def prepare_workflow_handler(
     """Resolve 2CDE inputs from explicit params plus a workflow context."""
     try:
         resolved_folder = _resolve_analysis_folder(
-            analysis_folder=analysis_folder, files=files, workflow_context=workflow_context,
+            analysis_folder=analysis_folder,
+            files=files,
+            workflow_context=workflow_context,
         )
         two_cde_settings = _settings_from_workflow(settings, workflow_context)
         return service_success(
@@ -67,16 +71,19 @@ def compute_2cde_handler(
 ) -> dict[str, Any]:
     """Compute the 2CDE feature from explicit parameters or a workflow handoff."""
     try:
+        import numpy as np
+
         from ..core.computation import (
             column_for_variant,
             compute_2cde,
             read_burst_analysis,
             write_2cde_analysis,
         )
-        import numpy as np
 
         resolved_folder = _resolve_analysis_folder(
-            analysis_folder=analysis_folder, files=files, workflow_context=workflow_context,
+            analysis_folder=analysis_folder,
+            files=files,
+            workflow_context=workflow_context,
         )
         if resolved_folder is None:
             raise ValueError("No 2CDE analysis folder provided or found in workflow_context.")
@@ -84,14 +91,17 @@ def compute_2cde_handler(
         cfg = _settings_from_workflow(settings, workflow_context)
         df, tttrs = read_burst_analysis(resolved_folder, cfg.file_type, pattern=pattern)
         df_v = compute_2cde(
-            df, tttrs,
+            df,
+            tttrs,
             donor_channels=cfg.donor_channels,
             donor_micro_time_ranges=cfg.donor_micro_time_ranges,
             acceptor_channels=cfg.acceptor_channels,
             acceptor_micro_time_ranges=cfg.acceptor_micro_time_ranges,
             acceptor_excitation_channels=cfg.acceptor_excitation_channels or None,
             acceptor_excitation_micro_time_ranges=cfg.acceptor_excitation_micro_time_ranges or None,
-            tau=cfg.tau, kernel=cfg.kernel, variant=cfg.variant,
+            tau=cfg.tau,
+            kernel=cfg.kernel,
+            variant=cfg.variant,
         )
 
         column = column_for_variant(cfg.variant)
@@ -128,7 +138,9 @@ def contract_handler() -> dict[str, Any]:
 
 
 def _resolve_analysis_folder(
-    *, analysis_folder: str | None, files: list[str] | None,
+    *,
+    analysis_folder: str | None,
+    files: list[str] | None,
     workflow_context: dict[str, Any] | None,
 ) -> Path | None:
     """Resolve the burst analysis folder from supported inputs."""
@@ -149,7 +161,8 @@ def _resolve_analysis_folder(
 
 
 def _settings_from_workflow(
-    settings: dict[str, Any] | None, workflow_context: dict[str, Any] | None,
+    settings: dict[str, Any] | None,
+    workflow_context: dict[str, Any] | None,
 ) -> TwoCdeSettings:
     """Build 2CDE settings, deriving detector channels from workflow context."""
     if settings:
@@ -170,7 +183,9 @@ def _settings_from_workflow(
     if len(detector_values) > 1:
         acceptor = detector_values[1]
         kwargs["acceptor_channels"] = list(acceptor.get("chs", [1, 9]))
-        kwargs["acceptor_micro_time_ranges"] = _ranges(acceptor.get("micro_time_ranges", [(0, 32768)]))
+        kwargs["acceptor_micro_time_ranges"] = _ranges(
+            acceptor.get("micro_time_ranges", [(0, 32768)])
+        )
     if tttr_reading.get("file_type"):
         kwargs["file_type"] = str(tttr_reading["file_type"])
     return TwoCdeSettings(**kwargs)

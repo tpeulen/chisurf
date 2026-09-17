@@ -1,6 +1,7 @@
 """Headless graph data model — no Qt dependency."""
+
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclass
@@ -27,10 +28,7 @@ class PortDef:
     def to_entry(self) -> Any:
         if not self.port_type:
             return self.name
-        return {
-            "name": self.name,
-            "type": self.port_type
-        }
+        return {"name": self.name, "type": self.port_type}
 
 
 @dataclass
@@ -38,10 +36,10 @@ class NodeDef:
     id: str
     node_type: str
     title: str
-    inputs: List[PortDef] = field(default_factory=list)
-    outputs: List[PortDef] = field(default_factory=list)
-    config: Dict[str, Any] = field(default_factory=dict)
-    pos: List[float] = field(default_factory=lambda: [0.0, 0.0])
+    inputs: list[PortDef] = field(default_factory=list)
+    outputs: list[PortDef] = field(default_factory=list)
+    config: dict[str, Any] = field(default_factory=dict)
+    pos: list[float] = field(default_factory=lambda: [0.0, 0.0])
     collapsed: bool = False
     z: float = 1.0
 
@@ -62,8 +60,14 @@ class NodeDef:
             id=str(d["id"]),
             node_type=d.get("type", "generic"),
             title=d.get("title", ""),
-            inputs=[PortDef.from_dict(p) if isinstance(p, dict) else PortDef(p, False) for p in d.get("inputs", [])],
-            outputs=[PortDef.from_dict(p) if isinstance(p, dict) else PortDef(p, True) for p in d.get("outputs", [])],
+            inputs=[
+                PortDef.from_dict(p) if isinstance(p, dict) else PortDef(p, False)
+                for p in d.get("inputs", [])
+            ],
+            outputs=[
+                PortDef.from_dict(p) if isinstance(p, dict) else PortDef(p, True)
+                for p in d.get("outputs", [])
+            ],
             config=d.get("config", {}).copy(),
             pos=pos,
             collapsed=d.get("collapsed", False),
@@ -86,11 +90,11 @@ class NodeDef:
 
 @dataclass
 class EdgeDef:
-    source: str       # node id
+    source: str  # node id
     source_port: int
     target: str
     target_port: int
-    config: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
     def from_dict(d: dict) -> "EdgeDef":
@@ -116,9 +120,9 @@ class EdgeDef:
 
 @dataclass
 class GraphDef:
-    nodes: List[NodeDef] = field(default_factory=list)
-    edges: List[EdgeDef] = field(default_factory=list)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    nodes: list[NodeDef] = field(default_factory=list)
+    edges: list[EdgeDef] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
     version: int = 1
 
     @staticmethod
@@ -147,10 +151,10 @@ class GraphDef:
             "meta": self.meta.copy(),
         }
 
-    def incoming_edges(self, node_id: str) -> List[EdgeDef]:
+    def incoming_edges(self, node_id: str) -> list[EdgeDef]:
         return [e for e in self.edges if e.target == node_id]
 
-    def outgoing_edges(self, node_id: str) -> List[EdgeDef]:
+    def outgoing_edges(self, node_id: str) -> list[EdgeDef]:
         return [e for e in self.edges if e.source == node_id]
 
     def validate_acyclic(self) -> bool:
@@ -160,7 +164,7 @@ class GraphDef:
         except ValueError:
             return False
 
-    def topological_node_ids(self) -> List[str]:
+    def topological_node_ids(self) -> list[str]:
         # Simple topological sort using Kahn's algorithm
         adj = {n.id: [] for n in self.nodes}
         in_degree = {n.id: 0 for n in self.nodes}

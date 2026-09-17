@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
-
 import pathlib
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
 try:  # tttrlib is expected to be available in the chisurf dev environment
     import tttrlib  # type: ignore
-except Exception as exc:  # pragma: no cover - import guard
+except Exception:  # pragma: no cover - import guard
     tttrlib = None  # type: ignore[var-annotated]
 
 
-def _guess_tttr_type(path: pathlib.Path) -> Optional[str]:
+def _guess_tttr_type(path: pathlib.Path) -> str | None:
     """Guess TTTR container type from file extension.
 
     Returns values understood by :class:`tttrlib.TTTR`, e.g. "PTU" or "HT3".
     """
-
     # Only where the extension genuinely names a container tttrlib accepts.
     # ``.t3r``/``.t2r`` used to map to "SPC", which is not a tttrlib container
     # type at all (and would not be the right one even if it were). An unknown
@@ -34,13 +33,13 @@ def _guess_tttr_type(path: pathlib.Path) -> Optional[str]:
 
 def load_clsm_from_tttr(
     filename: str | pathlib.Path,
-    tttr_type: Optional[str] = None,
+    tttr_type: str | None = None,
     channels: Sequence[int] | None = None,
     reading_routine: str = "default",
     fill: bool = True,
     split_by_channel: bool = False,
     **kwargs: Any,
-) -> Tuple["tttrlib.CLSMImage", np.ndarray, Dict[str, Any]]:
+) -> tuple[tttrlib.CLSMImage, np.ndarray, dict[str, Any]]:
     """Load a CLSMImage and intensity stack from a TTTR file using tttrlib.
 
     This is a thin convenience wrapper around :class:`tttrlib.TTTR` and
@@ -80,7 +79,6 @@ def load_clsm_from_tttr(
         Dictionary with basic image metadata where available
         (see :pyfunc:`tttrlib.CLSMImage.get_image_info`).
     """
-
     if tttrlib is None:
         raise RuntimeError("tttrlib is not available; cannot load CLSM data")
 
@@ -117,7 +115,7 @@ def load_clsm_from_tttr(
 
     intensity = np.asarray(clsm.intensity, dtype=float)
 
-    meta: Dict[str, Any] = {}
+    meta: dict[str, Any] = {}
     try:
         if hasattr(clsm, "get_image_info"):
             info = clsm.get_image_info()  # type: ignore[assignment]

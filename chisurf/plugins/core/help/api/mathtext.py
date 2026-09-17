@@ -29,7 +29,6 @@ import base64
 import io
 import logging
 import re
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +40,54 @@ __all__ = [
 
 #: Cheap unicode stand-ins used when a formula cannot be rasterised at all.
 _FALLBACK_SYMBOLS = {
-    r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
-    r"\epsilon": "ε", r"\zeta": "ζ", r"\eta": "η", r"\theta": "θ",
-    r"\kappa": "κ", r"\lambda": "λ", r"\mu": "µ", r"\nu": "ν",
-    r"\pi": "π", r"\rho": "ρ", r"\sigma": "σ", r"\tau": "τ",
-    r"\phi": "φ", r"\chi": "χ", r"\psi": "ψ", r"\omega": "ω",
-    r"\Delta": "Δ", r"\Gamma": "Γ", r"\Sigma": "Σ", r"\Omega": "Ω",
-    r"\Phi": "Φ", r"\Psi": "Ψ", r"\Lambda": "Λ", r"\Theta": "Θ",
-    r"\times": "×", r"\cdot": "·", r"\approx": "≈", r"\propto": "∝",
-    r"\leq": "≤", r"\geq": "≥", r"\neq": "≠", r"\pm": "±",
-    r"\to": "→", r"\rightarrow": "→", r"\langle": "⟨", r"\rangle": "⟩",
-    r"\infty": "∞", r"\partial": "∂", r"\sum": "Σ", r"\int": "∫",
-    r"\sqrt": "√", r"\ll": "≪", r"\gg": "≫", r"\equiv": "≡",
+    r"\alpha": "α",
+    r"\beta": "β",
+    r"\gamma": "γ",
+    r"\delta": "δ",
+    r"\epsilon": "ε",
+    r"\zeta": "ζ",
+    r"\eta": "η",
+    r"\theta": "θ",
+    r"\kappa": "κ",
+    r"\lambda": "λ",
+    r"\mu": "µ",
+    r"\nu": "ν",
+    r"\pi": "π",
+    r"\rho": "ρ",
+    r"\sigma": "σ",
+    r"\tau": "τ",
+    r"\phi": "φ",
+    r"\chi": "χ",
+    r"\psi": "ψ",
+    r"\omega": "ω",
+    r"\Delta": "Δ",
+    r"\Gamma": "Γ",
+    r"\Sigma": "Σ",
+    r"\Omega": "Ω",
+    r"\Phi": "Φ",
+    r"\Psi": "Ψ",
+    r"\Lambda": "Λ",
+    r"\Theta": "Θ",
+    r"\times": "×",
+    r"\cdot": "·",
+    r"\approx": "≈",
+    r"\propto": "∝",
+    r"\leq": "≤",
+    r"\geq": "≥",
+    r"\neq": "≠",
+    r"\pm": "±",
+    r"\to": "→",
+    r"\rightarrow": "→",
+    r"\langle": "⟨",
+    r"\rangle": "⟩",
+    r"\infty": "∞",
+    r"\partial": "∂",
+    r"\sum": "Σ",
+    r"\int": "∫",
+    r"\sqrt": "√",
+    r"\ll": "≪",
+    r"\gg": "≫",
+    r"\equiv": "≡",
 }
 
 #: Environments that mathtext cannot parse; their rows are joined instead.
@@ -82,7 +117,7 @@ def normalise_latex(latex: str) -> str:
     text = latex.strip()
 
     # Multi-line environments: keep the mathematics, drop the alignment.
-    def _flatten(match: "re.Match[str]") -> str:
+    def _flatten(match: re.Match[str]) -> str:
         body = match.group(1)
         body = body.replace(r"\\", " ").replace("&", "")
         return body
@@ -135,11 +170,18 @@ def normalise_latex(latex: str) -> str:
     )
     # Abbreviated relations and fraction spellings.
     for short, long in (
-        (r"\le", r"\leq"), (r"\ge", r"\geq"), (r"\ne", r"\neq"),
-        (r"\tfrac", r"\frac"), (r"\dfrac", r"\frac"), (r"\cfrac", r"\frac"),
-        (r"\lVert", r"\|"), (r"\rVert", r"\|"),
-        (r"\lvert", r"|"), (r"\rvert", r"|"),
-        (r"\coloneqq", ":="), (r"\eqqcolon", "=:"),
+        (r"\le", r"\leq"),
+        (r"\ge", r"\geq"),
+        (r"\ne", r"\neq"),
+        (r"\tfrac", r"\frac"),
+        (r"\dfrac", r"\frac"),
+        (r"\cfrac", r"\frac"),
+        (r"\lVert", r"\|"),
+        (r"\rVert", r"\|"),
+        (r"\lvert", r"|"),
+        (r"\rvert", r"|"),
+        (r"\coloneqq", ":="),
+        (r"\eqqcolon", "=:"),
     ):
         text = re.sub(re.escape(short) + r"(?![A-Za-z])", long.replace("\\", "\\\\"), text)
     # ``\frac12`` -- TeX takes the next two tokens; mathtext demands groups.
@@ -172,14 +214,17 @@ def normalise_latex(latex: str) -> str:
     return text.strip()
 
 
-
 #: Matrix environments and the delimiters they are set in.
 _MATRIX_DELIMITERS = {
     # ``matrix`` and ``smallmatrix`` carry no delimiters of their own: the
     # source supplies them, usually as ``\left[ … \right]``.
-    "matrix": ("", ""), "smallmatrix": ("", ""),
-    "pmatrix": ("(", ")"), "bmatrix": ("[", "]"),
-    "Bmatrix": (r"\{", r"\}"), "vmatrix": ("|", "|"), "Vmatrix": (r"\|", r"\|"),
+    "matrix": ("", ""),
+    "smallmatrix": ("", ""),
+    "pmatrix": ("(", ")"),
+    "bmatrix": ("[", "]"),
+    "Bmatrix": (r"\{", r"\}"),
+    "vmatrix": ("|", "|"),
+    "Vmatrix": (r"\|", r"\|"),
 }
 
 _MATRIX_BLOCK = re.compile(
@@ -196,13 +241,13 @@ def _flatten_matrices(text: str) -> str:
     the generic rewrite below does — turns a 2x2 into one run-on string; keeping
     them as ``,`` and ``;`` keeps the shape readable.
     """
-    def _one(match: "re.Match[str]") -> str:
+
+    def _one(match: re.Match[str]) -> str:
         left, right = _MATRIX_DELIMITERS[match.group(1)]
         rows = [row.strip() for row in re.split(r"\\\\", match.group(2))]
         rows = [row for row in rows if row.strip(" &\n\t")]
         body = r";\; ".join(
-            r",\, ".join(cell.strip() for cell in row.split("&") if cell.strip())
-            for row in rows
+            r",\, ".join(cell.strip() for cell in row.split("&") if cell.strip()) for row in rows
         )
         return f"{left}{body}{right}"
 
@@ -230,7 +275,7 @@ def _matched_group(text: str, start: int) -> tuple[str, int]:
         elif text[index] == "}":
             depth -= 1
             if depth == 0:
-                return text[start + 1: index], index + 1
+                return text[start + 1 : index], index + 1
         index += 1
     return "", start
 
@@ -257,7 +302,7 @@ def _rewrite_brace(text: str, command: str, marker: str, replacement: str) -> st
         while cursor < len(text) and text[cursor] == " ":
             cursor += 1
         if not body or cursor >= len(text) or text[cursor] != marker:
-            out.append(text[index:after_body or after])
+            out.append(text[index : after_body or after])
             index = after_body if after_body > found else found + len(token)
             continue
         cursor += 1
@@ -281,14 +326,14 @@ def _space_text_groups(text: str) -> str:
         if match is None:
             out.append(text[index:])
             return "".join(out)
-        start = index + match.start()
+        index + match.start()
         brace = index + match.end() - 1
         body, after = _matched_group(text, brace)
         if not after or after == brace:
-            out.append(text[index:brace + 1])
+            out.append(text[index : brace + 1])
             index = brace + 1
             continue
-        out.append(text[index:brace + 1])
+        out.append(text[index : brace + 1])
         out.append(re.sub(r" +", r"\\ ", body))
         out.append("}")
         index = after
@@ -359,7 +404,7 @@ def _side_by_side(latex: str) -> list[str]:
             if character == "\\" and latex.startswith(separator, index):
                 after = index + len(separator)
                 # ``\quad`` must not match the start of ``\quadrant``.
-                if depth == 0 and not latex[after: after + 1].isalpha():
+                if depth == 0 and not latex[after : after + 1].isalpha():
                     piece = latex[start:index].strip()
                     if piece:
                         parts.append(piece)
@@ -406,84 +451,264 @@ def _unicode_fallback(latex: str) -> str:
 
 #: Symbols that have a faithful character equivalent, for inline mathematics.
 _HTML_SYMBOLS = {
-    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
-    "varepsilon": "ε", "zeta": "ζ", "eta": "η", "theta": "θ", "vartheta": "ϑ",
-    "iota": "ι", "kappa": "κ", "lambda": "λ", "mu": "µ", "nu": "ν", "xi": "ξ",
-    "pi": "π", "rho": "ρ", "varrho": "ϱ", "sigma": "σ", "varsigma": "ς",
-    "tau": "τ", "upsilon": "υ", "phi": "φ", "varphi": "φ", "chi": "χ",
-    "psi": "ψ", "omega": "ω",
-    "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ", "Lambda": "Λ", "Xi": "Ξ",
-    "Pi": "Π", "Sigma": "Σ", "Upsilon": "Υ", "Phi": "Φ", "Psi": "Ψ",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "delta": "δ",
+    "epsilon": "ε",
+    "varepsilon": "ε",
+    "zeta": "ζ",
+    "eta": "η",
+    "theta": "θ",
+    "vartheta": "ϑ",
+    "iota": "ι",
+    "kappa": "κ",
+    "lambda": "λ",
+    "mu": "µ",
+    "nu": "ν",
+    "xi": "ξ",
+    "pi": "π",
+    "rho": "ρ",
+    "varrho": "ϱ",
+    "sigma": "σ",
+    "varsigma": "ς",
+    "tau": "τ",
+    "upsilon": "υ",
+    "phi": "φ",
+    "varphi": "φ",
+    "chi": "χ",
+    "psi": "ψ",
+    "omega": "ω",
+    "Gamma": "Γ",
+    "Delta": "Δ",
+    "Theta": "Θ",
+    "Lambda": "Λ",
+    "Xi": "Ξ",
+    "Pi": "Π",
+    "Sigma": "Σ",
+    "Upsilon": "Υ",
+    "Phi": "Φ",
+    "Psi": "Ψ",
     "Omega": "Ω",
-    "times": "×", "cdot": "·", "cdots": "⋯", "ldots": "…", "dots": "…",
-    "approx": "≈", "propto": "∝", "sim": "∼", "simeq": "≃", "equiv": "≡",
-    "leq": "≤", "le": "≤", "geq": "≥", "ge": "≥", "neq": "≠", "ne": "≠",
-    "ll": "≪", "gg": "≫", "pm": "±", "mp": "∓", "ast": "∗", "star": "⋆",
-    "to": "→", "rightarrow": "→", "leftarrow": "←", "Rightarrow": "⇒",
-    "leftrightarrow": "↔", "mapsto": "↦",
-    "langle": "⟨", "rangle": "⟩", "lvert": "|", "rvert": "|",
-    "lVert": "‖", "rVert": "‖", "vert": "|", "Vert": "‖",
-    "infty": "∞", "partial": "∂", "nabla": "∇", "propto ": "∝",
-    "perp": "⊥", "parallel": "∥", "angle": "∠", "circ": "∘",
-    "in": "∈", "notin": "∉", "subset": "⊂", "cup": "∪", "cap": "∩",
-    "forall": "∀", "exists": "∃", "emptyset": "∅", "ell": "ℓ",
-    "prime": "′", "degree": "°", "percent": "%", "mid": "|",
-    "backslash": "\\", "colon": ":", "bullet": "•", "dagger": "†",
-    "top": "⊤", "bot": "⊥", "hbar": "ℏ", "Re": "ℜ", "Im": "ℑ",
-    "AA": "Å", "micro": "µ", "lesssim": "≲", "gtrsim": "≳",
-    "leftrightarrows": "⇄", "rightleftharpoons": "⇌", "propto2": "∝",
+    "times": "×",
+    "cdot": "·",
+    "cdots": "⋯",
+    "ldots": "…",
+    "dots": "…",
+    "approx": "≈",
+    "propto": "∝",
+    "sim": "∼",
+    "simeq": "≃",
+    "equiv": "≡",
+    "leq": "≤",
+    "le": "≤",
+    "geq": "≥",
+    "ge": "≥",
+    "neq": "≠",
+    "ne": "≠",
+    "ll": "≪",
+    "gg": "≫",
+    "pm": "±",
+    "mp": "∓",
+    "ast": "∗",
+    "star": "⋆",
+    "to": "→",
+    "rightarrow": "→",
+    "leftarrow": "←",
+    "Rightarrow": "⇒",
+    "leftrightarrow": "↔",
+    "mapsto": "↦",
+    "langle": "⟨",
+    "rangle": "⟩",
+    "lvert": "|",
+    "rvert": "|",
+    "lVert": "‖",
+    "rVert": "‖",
+    "vert": "|",
+    "Vert": "‖",
+    "infty": "∞",
+    "partial": "∂",
+    "nabla": "∇",
+    "propto ": "∝",
+    "perp": "⊥",
+    "parallel": "∥",
+    "angle": "∠",
+    "circ": "∘",
+    "in": "∈",
+    "notin": "∉",
+    "subset": "⊂",
+    "cup": "∪",
+    "cap": "∩",
+    "forall": "∀",
+    "exists": "∃",
+    "emptyset": "∅",
+    "ell": "ℓ",
+    "prime": "′",
+    "degree": "°",
+    "percent": "%",
+    "mid": "|",
+    "backslash": "\\",
+    "colon": ":",
+    "bullet": "•",
+    "dagger": "†",
+    "top": "⊤",
+    "bot": "⊥",
+    "hbar": "ℏ",
+    "Re": "ℜ",
+    "Im": "ℑ",
+    "AA": "Å",
+    "micro": "µ",
+    "lesssim": "≲",
+    "gtrsim": "≳",
+    "leftrightarrows": "⇄",
+    "rightleftharpoons": "⇌",
+    "propto2": "∝",
 }
 
 #: Big operators. Their limits become ordinary sub-/superscripts, which is what
 #: an *inline* formula wants anyway — a sum with stacked limits inside a
 #: sentence is a tall image that pushes the line apart.
 _HTML_OPERATORS = {
-    "sum": "Σ", "prod": "∏", "coprod": "∐", "int": "∫", "iint": "∬",
-    "oint": "∮", "bigcup": "⋃", "bigcap": "⋂", "bigoplus": "⨁",
+    "sum": "Σ",
+    "prod": "∏",
+    "coprod": "∐",
+    "int": "∫",
+    "iint": "∬",
+    "oint": "∮",
+    "bigcup": "⋃",
+    "bigcap": "⋂",
+    "bigoplus": "⨁",
 }
 
 #: Upright function names, as TeX sets them.
 _HTML_FUNCTIONS = (
-    "exp", "ln", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh", "arg",
-    "max", "min", "det", "dim", "lim", "sup", "inf", "erf", "erfc", "Tr",
-    "arcsin", "arccos", "arctan", "Pr", "deg", "gcd", "mod", "Var", "Cov",
+    "exp",
+    "ln",
+    "log",
+    "sin",
+    "cos",
+    "tan",
+    "sinh",
+    "cosh",
+    "tanh",
+    "arg",
+    "max",
+    "min",
+    "det",
+    "dim",
+    "lim",
+    "sup",
+    "inf",
+    "erf",
+    "erfc",
+    "Tr",
+    "arcsin",
+    "arccos",
+    "arctan",
+    "Pr",
+    "deg",
+    "gcd",
+    "mod",
+    "Var",
+    "Cov",
 )
 
 #: Script and blackboard letters that have a character of their own.
 _HTML_SCRIPT = {
-    "L": "ℒ", "N": "ℕ", "R": "ℝ", "Z": "ℤ", "Q": "ℚ", "C": "ℂ", "P": "𝒫",
-    "H": "ℋ", "F": "ℱ", "E": "ℰ", "D": "𝒟", "O": "𝒪", "I": "ℐ", "B": "ℬ",
+    "L": "ℒ",
+    "N": "ℕ",
+    "R": "ℝ",
+    "Z": "ℤ",
+    "Q": "ℚ",
+    "C": "ℂ",
+    "P": "𝒫",
+    "H": "ℋ",
+    "F": "ℱ",
+    "E": "ℰ",
+    "D": "𝒟",
+    "O": "𝒪",
+    "I": "ℐ",
+    "B": "ℬ",
 }
 
 #: Accents, as combining marks placed after the letter they sit on.
 _HTML_ACCENTS = {
-    "hat": "\u0302", "widehat": "\u0302", "bar": "\u0304",
-    "overline": "\u0304", "tilde": "\u0303", "widetilde": "\u0303",
-    "vec": "\u20d7", "dot": "\u0307", "ddot": "\u0308",
-    "check": "\u030c", "breve": "\u0306", "acute": "\u0301",
-    "grave": "\u0300", "mathring": "\u030a",
+    "hat": "\u0302",
+    "widehat": "\u0302",
+    "bar": "\u0304",
+    "overline": "\u0304",
+    "tilde": "\u0303",
+    "widetilde": "\u0303",
+    "vec": "\u20d7",
+    "dot": "\u0307",
+    "ddot": "\u0308",
+    "check": "\u030c",
+    "breve": "\u0306",
+    "acute": "\u0301",
+    "grave": "\u0300",
+    "mathring": "\u030a",
 }
 
 #: Spacing commands and their HTML equivalents.
 _HTML_SPACES = {
-    ",": "&#8201;", ";": "&#8201;", ":": "&#8201;", "!": "", " ": " ",
-    "quad": "&nbsp;&nbsp;", "qquad": "&nbsp;&nbsp;&nbsp;&nbsp;",
-    "thinspace": "&#8201;", "medspace": "&#8201;", "thickspace": "&nbsp;",
+    ",": "&#8201;",
+    ";": "&#8201;",
+    ":": "&#8201;",
+    "!": "",
+    " ": " ",
+    "quad": "&nbsp;&nbsp;",
+    "qquad": "&nbsp;&nbsp;&nbsp;&nbsp;",
+    "thinspace": "&#8201;",
+    "medspace": "&#8201;",
+    "thickspace": "&nbsp;",
 }
 
 #: Font commands that map onto an HTML element rather than a raster image.
 _HTML_FONTS = {
-    "mathrm": ("", ""), "text": ("", ""), "textrm": ("", ""),
-    "mathbf": ("<b>", "</b>"), "textbf": ("<b>", "</b>"),
-    "mathit": ("<i>", "</i>"), "textit": ("<i>", "</i>"), "emph": ("<i>", "</i>"),
-    "mathsf": ("", ""), "mathtt": ("<code>", "</code>"), "operatorname": ("", ""),
+    "mathrm": ("", ""),
+    "text": ("", ""),
+    "textrm": ("", ""),
+    "mathbf": ("<b>", "</b>"),
+    "textbf": ("<b>", "</b>"),
+    "mathit": ("<i>", "</i>"),
+    "textit": ("<i>", "</i>"),
+    "emph": ("<i>", "</i>"),
+    "mathsf": ("", ""),
+    "mathtt": ("<code>", "</code>"),
+    "operatorname": ("", ""),
 }
 
 
 #: Relations and binary operators, which read as cramped without air round them.
 _SPACED_SYMBOLS = {
-    "×", "·", "≈", "∝", "∼", "≃", "≡", "≤", "≥", "≠", "≪", "≫", "±", "∓",
-    "→", "←", "⇒", "↔", "↦", "∈", "∉", "⊂", "∪", "∩", "≲", "≳", "⇄", "⇌",
+    "×",
+    "·",
+    "≈",
+    "∝",
+    "∼",
+    "≃",
+    "≡",
+    "≤",
+    "≥",
+    "≠",
+    "≪",
+    "≫",
+    "±",
+    "∓",
+    "→",
+    "←",
+    "⇒",
+    "↔",
+    "↦",
+    "∈",
+    "∉",
+    "⊂",
+    "∪",
+    "∩",
+    "≲",
+    "≳",
+    "⇄",
+    "⇌",
 }
 
 
@@ -491,7 +716,7 @@ class _UnsupportedInline(Exception):
     """Raised when a formula needs real typesetting rather than HTML."""
 
 
-def html_math(latex: str) -> Optional[str]:
+def html_math(latex: str) -> str | None:
     """Render *latex* as HTML text, or return *None* if it needs typesetting.
 
     Inline mathematics is mostly symbols with sub- and superscripts —
@@ -577,7 +802,7 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
     """Convert one ``\\command`` starting at the backslash."""
     match = re.match(r"\\([A-Za-z]+)", text[index:])
     if match is None:
-        symbol = text[index + 1: index + 2]
+        symbol = text[index + 1 : index + 2]
         if symbol in _HTML_SPACES:
             return _HTML_SPACES[symbol], index + 2
         if symbol in "{}%$&#_":
@@ -622,7 +847,7 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
             close = text.find("]", index)
             if close < 0:
                 raise _UnsupportedInline("unterminated root index")
-            degree, _ = _inline_group(text[index + 1: close], 0, False)
+            degree, _ = _inline_group(text[index + 1 : close], 0, False)
             degree = f"<sup>{degree}</sup>"
             index = close + 1
         radicand, index = _inline_atom(text, index)
@@ -753,8 +978,8 @@ class MathRenderer:
         self.colour = colour
         self.font_size = float(font_size)
         self.max_width = int(max_width)
-        self._cache: dict[tuple[str, bool], Optional[str]] = {}
-        self._available: Optional[bool] = None
+        self._cache: dict[tuple[str, bool], str | None] = {}
+        self._available: bool | None = None
 
     # ── public API ──────────────────────────────────────────────────
 
@@ -824,7 +1049,7 @@ class MathRenderer:
 
     # ── internals ───────────────────────────────────────────────────
 
-    def _image_tag(self, latex: str, display: bool) -> Optional[str]:
+    def _image_tag(self, latex: str, display: bool) -> str | None:
         key = (latex, display)
         if key in self._cache:
             return self._cache[key]
@@ -832,7 +1057,7 @@ class MathRenderer:
         self._cache[key] = tag
         return tag
 
-    def _render(self, latex: str, display: bool) -> Optional[str]:
+    def _render(self, latex: str, display: bool) -> str | None:
         if self._available is False:
             return None
         try:
@@ -945,6 +1170,6 @@ def split_math(text: str):
             return
         match, display = best
         if match.start() > position:
-            yield "text", text[position:match.start()]
+            yield "text", text[position : match.start()]
         yield ("display" if display else "inline"), match.group(1)
         position = match.end()

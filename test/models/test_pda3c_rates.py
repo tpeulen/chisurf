@@ -22,8 +22,7 @@ def _model(n_extra_species: int = 1, n_bursts: int = 200, seed: int = 3):
     data = Pda3cSimulatorReader(n_bursts=n_bursts, seed=seed).read()[0]
     model = fit_mod.Fit(model_class=Pda3cModel, data=data).model
     for index in range(n_extra_species):
-        model.species.append(r_gr=62.0 + 8 * index, r_bg=56.0 + 8 * index,
-                             r_br=74.0 + 8 * index)
+        model.species.append(r_gr=62.0 + 8 * index, r_bg=56.0 + 8 * index, r_br=74.0 + 8 * index)
     model.setup._window.value = WINDOW
     model.find_parameters()
     return model
@@ -31,8 +30,7 @@ def _model(n_extra_species: int = 1, n_bursts: int = 200, seed: int = 3):
 
 def _rate_names(model):
     """Return the discovered rate-parameter names, sorted."""
-    return sorted(p.name for p in model.parameters_all
-                  if p.name.startswith("k") and "_" in p.name)
+    return sorted(p.name for p in model.parameters_all if p.name.startswith("k") and "_" in p.name)
 
 
 # -- discovery: the whole point ---------------------------------------------
@@ -44,9 +42,9 @@ def test_every_rate_is_discovered(n_species, n_rates):
     model = _model(n_extra_species=n_species - 1)
     names = _rate_names(model)
     assert len(names) == n_rates
-    assert names == sorted(f"k{i}_{j}"
-                           for i in range(1, n_species + 1)
-                           for j in range(1, n_species + 1) if i != j)
+    assert names == sorted(
+        f"k{i}_{j}" for i in range(1, n_species + 1) for j in range(1, n_species + 1) if i != j
+    )
 
 
 def test_a_freed_rate_becomes_a_free_parameter():
@@ -98,8 +96,8 @@ def test_a_linear_chain_is_a_scheme_with_zeros():
     for name in ("k1_2", "k2_1", "k2_3", "k3_2"):
         rates[name].value = 100.0
     K = model.rate_matrix
-    assert K[2, 0] == 0.0 and K[0, 2] == 0.0        # no direct 1 <-> 3
-    assert K[1, 0] > 0.0 and K[2, 1] > 0.0          # 1 -> 2 -> 3 intact
+    assert K[2, 0] == 0.0 and K[0, 2] == 0.0  # no direct 1 <-> 3
+    assert K[1, 0] > 0.0 and K[2, 1] > 0.0  # 1 -> 2 -> 3 intact
 
 
 def test_the_grid_round_trips_through_the_parameters():
@@ -145,7 +143,7 @@ def test_no_rates_entered_reads_as_no_scheme():
     model = _model(n_extra_species=1)
     assert model.rate_matrix is None
     model.dynamic = True
-    assert np.isfinite(model.total_log_likelihood())   # the K_ex two-state route
+    assert np.isfinite(model.total_log_likelihood())  # the K_ex two-state route
 
 
 def test_clearing_the_scheme_restores_the_static_route():
@@ -155,7 +153,7 @@ def test_clearing_the_scheme_restores_the_static_route():
     assert model.rate_matrix is not None
     model.rate_matrix = None
     assert model.rate_matrix is None
-    assert len(_rate_names(model)) == 2                # parameters still there
+    assert len(_rate_names(model)) == 2  # parameters still there
 
 
 # -- transitions per window --------------------------------------------------
@@ -204,9 +202,7 @@ def test_the_node_ceiling_coarsens_and_says_so(caplog):
     """
     model = _model(n_extra_species=2, n_bursts=150)
     model.dynamic = True
-    model.rate_matrix = np.array([[0.0, 300.0, 100.0],
-                                  [200.0, 0.0, 250.0],
-                                  [150.0, 220.0, 0.0]])
+    model.rate_matrix = np.array([[0.0, 300.0, 100.0], [200.0, 0.0, 250.0], [150.0, 220.0, 0.0]])
     model.dynamic_samples, model.dynamic_resolution = 2000, 128
     model.dynamic_max_nodes = 40
 
@@ -241,6 +237,7 @@ def test_the_burst_likelihood_scales_without_a_points_x_bursts_x_k_block():
     a knob that no longer exists.
     """
     import tracemalloc
+
     from chisurf.core.fluorescence.pda3c import likelihood as lk
 
     rng = np.random.default_rng(0)
@@ -256,8 +253,7 @@ def test_the_burst_likelihood_scales_without_a_points_x_bursts_x_k_block():
     assert full.shape == (37, 400)
     result_bytes = 37 * 400 * 8
     assert peak < 4 * result_bytes, (
-        f"peak {peak} B for a {result_bytes} B result -- a (points x bursts x K) "
-        "temporary is back"
+        f"peak {peak} B for a {result_bytes} B result -- a (points x bursts x K) temporary is back"
     )
 
 
@@ -282,7 +278,7 @@ def test_a_rate_is_recovered_from_a_wrong_start():
         green_channel_probabilities,
     )
 
-    truth = np.array([[0.0, 300.0], [200.0, 0.0]])       # k1_2 = 200, k2_1 = 300
+    truth = np.array([[0.0, 300.0], [200.0, 0.0]])  # k1_2 = 200, k2_1 = 300
     model = _model(n_extra_species=1)
     for parameter, value in zip(model.species._means[:3], (45.0, 42.0, 58.0)):
         parameter.value = value
@@ -299,10 +295,12 @@ def test_a_rate_is_recovered_from_a_wrong_start():
     p_blue = np.zeros((n, 3))
     p_green = np.zeros((n, 2))
     for index, component in enumerate(model.species.as_species()):
-        d = np.clip(rng.multivariate_normal(component.means, component.covariance,
-                                            size=n), 1e-6, None)
+        d = np.clip(
+            rng.multivariate_normal(component.means, component.covariance, size=n), 1e-6, None
+        )
         p_blue += fractions[:, index, None] * blue_channel_probabilities(
-            d[:, 1], d[:, 2], d[:, 0], setup)
+            d[:, 1], d[:, 2], d[:, 0], setup
+        )
         p_green += fractions[:, index, None] * green_channel_probabilities(d[:, 0], setup)
     n_blue = rng.poisson(60.0, n)
     n_green = rng.poisson(50.0, n)
@@ -313,7 +311,7 @@ def test_a_rate_is_recovered_from_a_wrong_start():
     model._counts_cache = counts.collapsed()
     model._pmf_cache = None
 
-    model.rate_matrix = np.array([[0.0, 900.0], [1400.0, 0.0]])   # 4x too fast
+    model.rate_matrix = np.array([[0.0, 900.0], [1400.0, 0.0]])  # 4x too fast
     model.find_parameters()
     for parameter in model.parameters_all:
         parameter.fixed = parameter.name not in ("k1_2", "k2_1")
@@ -328,8 +326,8 @@ def test_a_rate_is_recovered_from_a_wrong_start():
 
 @pytest.mark.xfail(
     reason="the multistate route does not nest the static model: pure "
-           "trajectories are evaluated at their mean probability instead of "
-           "integrated over their distance distribution. See known-issues.",
+    "trajectories are evaluated at their mean probability instead of "
+    "integrated over their distance distribution. See known-issues.",
     strict=True,
 )
 def test_the_multistate_route_nests_the_static_model():
@@ -365,6 +363,6 @@ def test_the_multistate_route_nests_the_static_model():
     static = model.total_log_likelihood()
 
     model.dynamic = True
-    frozen = 1e-3                                   # one switch per ~17 minutes
+    frozen = 1e-3  # one switch per ~17 minutes
     model.rate_matrix = np.array([[0.0, frozen], [frozen, 0.0]])
     assert model.total_log_likelihood() == pytest.approx(static, rel=1e-6)

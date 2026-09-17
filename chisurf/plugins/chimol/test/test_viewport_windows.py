@@ -11,6 +11,7 @@ outside the corner so a resize is catchable, and collapse on a double-click of
 the title bar. The *look* only: chimol's chrome is retained, so the
 immediate-mode core was deliberately not adopted.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -25,10 +26,12 @@ SIZE = (780, 460)
 @pytest.fixture
 def gui():
     panel = InternalGui()
-    panel.add_window(GuiWindow(key="map", title="Density", x=40, y=80,
-                               w=300, h=170, lines=["Contour levels"]))
-    panel.add_window(GuiWindow(key="hier", title="Hierarchy", x=380, y=150,
-                               w=260, h=140, lines=["148l"]))
+    panel.add_window(
+        GuiWindow(key="map", title="Density", x=40, y=80, w=300, h=170, lines=["Contour levels"])
+    )
+    panel.add_window(
+        GuiWindow(key="hier", title="Hierarchy", x=380, y=150, w=260, h=140, lines=["148l"])
+    )
     panel.layout(*SIZE)
     return panel
 
@@ -96,9 +99,19 @@ def test_a_window_declares_its_own_floor(gui):
     panel that knows the height its controls need (the density stack) sets
     it once, and no host can squeeze it past that.
     """
-    gui.add_window(GuiWindow(key="tall", title="Tall", x=40, y=300,
-                             w=200, h=200, min_h=140.0, min_w=150.0,
-                             lines=["needs room"]))
+    gui.add_window(
+        GuiWindow(
+            key="tall",
+            title="Tall",
+            x=40,
+            y=300,
+            w=200,
+            h=200,
+            min_h=140.0,
+            min_w=150.0,
+            lines=["needs room"],
+        )
+    )
     gui.layout(*SIZE)
     x, y = _zones(gui, "tall")["resize"]
     gui.mouse_press(x, y)
@@ -113,8 +126,9 @@ def test_a_window_declares_its_own_floor(gui):
     gui.layout(*SIZE)
     assert win.h == pytest.approx(140.0), "the layout restored a size below the floor"
     # And a floor below the framework's is the framework's.
-    gui.add_window(GuiWindow(key="tiny", title="Tiny", x=40, y=500,
-                             w=200, h=100, min_h=10.0, lines=["x"]))
+    gui.add_window(
+        GuiWindow(key="tiny", title="Tiny", x=40, y=500, w=200, h=100, min_h=10.0, lines=["x"])
+    )
     gui.layout(*SIZE)
     x, y = _zones(gui, "tiny")["resize"]
     gui.mouse_press(x, y)
@@ -241,8 +255,8 @@ def test_the_mouse_window_is_wide_enough_for_its_own_title_row(gui):
     was present at *every* viewport size -- so no amount of resizing revealed
     it either.
     """
-    from chimol.ui.input.mouse_modes import MODE_NAMES
     from chimol.ui.gui import char_width
+    from chimol.ui.input.mouse_modes import MODE_NAMES
 
     gui.layout(900, 640)
 
@@ -279,7 +293,7 @@ def test_a_window_opened_before_the_first_frame_keeps_its_size(gui):
     panel = GuiWindow(key="probe", title="Probe", x=24.0, y=90.0, w=420.0, h=300.0)
     gui.add_window(panel)
 
-    gui.layout_windows(0, 0)            # the pre-first-frame viewport
+    gui.layout_windows(0, 0)  # the pre-first-frame viewport
     assert (panel.x, panel.y, panel.w, panel.h) == (24.0, 90.0, 420.0, 300.0)
 
     gui.layout_windows(900, 600)

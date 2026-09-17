@@ -8,7 +8,6 @@ import scipy.io
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
-
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
@@ -20,14 +19,11 @@ def _load_nested_mat(path: pathlib.Path) -> dict:
     SciPy exposes this as ``mat_struct`` instances; here we turn them into
     plain Python dictionaries so that field access is straightforward.
     """
-
     # Suppress architecture-related scipy.io warnings; this mirrors what
     # the original SFCS tools do while keeping the behavior explicit.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        data = scipy.io.loadmat(
-            str(path), struct_as_record=False, squeeze_me=True
-        )
+        data = scipy.io.loadmat(str(path), struct_as_record=False, squeeze_me=True)
 
     try:
         # Import here to avoid hard dependence at module import time if
@@ -62,7 +58,9 @@ def _load_nested_mat(path: pathlib.Path) -> dict:
     return _convert(data)
 
 
-def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.ndarray], list[np.ndarray | None], list[str]]:
+def _build_correlation_entries(
+    g_struct: dict, filename: str
+) -> tuple[list[np.ndarray], list[np.ndarray | None], list[str]]:
     """Return (correlations, traces, labels) from a Ries-style ``g`` dict.
 
     This follows the structure used by the SFCS.m tools:
@@ -76,7 +74,6 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
     ``g['trace']``; we convert those into minimal two-point traces so that
     downstream tools can still estimate mean countrate and acquisition time.
     """
-
     correlations: list[np.ndarray] = []
     traces: list[np.ndarray | None] = []
     labels: list[str] = []
@@ -88,7 +85,6 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
         arrays. For 1D correlations we create a single entry. For 2D
         correlations we create one entry per column.
         """
-
         tau = np.asarray(time_block, dtype=float).ravel()
         corr_arr = np.asarray(corr_block, dtype=float)
 
@@ -142,18 +138,24 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
 
         # Work around the "single AC" layout where ac is a single long
         # vector instead of a list/array of vectors.
-        if not isinstance(ac, (list, tuple, np.ndarray)) or (hasattr(ac, "ndim") and np.ndim(ac) == 1 and len(ac) > 4):
+        if not isinstance(ac, (list, tuple, np.ndarray)) or (
+            hasattr(ac, "ndim") and np.ndim(ac) == 1 and len(ac) > 4
+        ):
             ac_list = [np.asarray(ac)]
             act_list = [np.asarray(act)]
             trace_list = [tr] if tr is not None else [None]
         else:
             ac_list = list(ac)
-            act_list = list(act) if isinstance(act, (list, tuple, np.ndarray)) else [act] * len(ac_list)
+            act_list = (
+                list(act) if isinstance(act, (list, tuple, np.ndarray)) else [act] * len(ac_list)
+            )
             if tr is None:
                 trace_list = [None] * len(ac_list)
             else:
                 # g['trace'] may be a list/array of averages per AC curve
-                trace_list = list(tr) if isinstance(tr, (list, tuple, np.ndarray)) else [tr] * len(ac_list)
+                trace_list = (
+                    list(tr) if isinstance(tr, (list, tuple, np.ndarray)) else [tr] * len(ac_list)
+                )
 
         for idx, (c_block, t_block, tr_block) in enumerate(zip(ac_list, act_list, trace_list)):
             _add_block(f"AC{idx + 1}", c_block, t_block, tr_block)
@@ -173,7 +175,9 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
         twof = g_struct["twof"]
         twoft = g_struct["twoft"]
         tf_list = list(twof) if isinstance(twof, (list, tuple, np.ndarray)) else [twof]
-        tft_list = list(twoft) if isinstance(twoft, (list, tuple, np.ndarray)) else [twoft] * len(tf_list)
+        tft_list = (
+            list(twoft) if isinstance(twoft, (list, tuple, np.ndarray)) else [twoft] * len(tf_list)
+        )
 
         for idx, (c_block, t_block) in enumerate(zip(tf_list, tft_list)):
             _add_block(f"CC two foci {idx + 1}", c_block, t_block, None)
@@ -183,7 +187,9 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
         dc2f = g_struct["dc2f"]
         dc2ft = g_struct["dc2ft"]
         dcf_list = list(dc2f) if isinstance(dc2f, (list, tuple, np.ndarray)) else [dc2f]
-        dcft_list = list(dc2ft) if isinstance(dc2ft, (list, tuple, np.ndarray)) else [dc2ft] * len(dcf_list)
+        dcft_list = (
+            list(dc2ft) if isinstance(dc2ft, (list, tuple, np.ndarray)) else [dc2ft] * len(dcf_list)
+        )
 
         for idx, (c_block, t_block) in enumerate(zip(dcf_list, dcft_list)):
             _add_block(f"CC dual color two foci {idx + 1}", c_block, t_block, None)
@@ -191,10 +197,7 @@ def _build_correlation_entries(g_struct: dict, filename: str) -> tuple[list[np.n
     return correlations, traces, labels
 
 
-def read_ries_mat(
-        filename: str,
-        verbose: bool = False
-) -> typing.List[FCSDataset]:
+def read_ries_mat(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read Jonas Ries-style SFCS correlation .mat files.
 
     This reader re-implements the logic of the Ries SFCS tools in a
@@ -205,7 +208,6 @@ def read_ries_mat(
     - computes photon-noise weights using :func:`cs.core.fluorescence.fcs.noise`;
     - returns a list of :class:`FCSDataset` dictionaries.
     """
-
     path = pathlib.Path(filename)
     if verbose:
         print("Reading Ries .mat FCS file:", path)
@@ -264,8 +266,12 @@ def read_ries_mat(
             "correlation_times": tau.tolist(),
             "correlation_amplitudes": amp.tolist(),
             "correlation_amplitude_weights": w.tolist(),
-            "intensity_trace_times": trace[:, 0].tolist() if trace is not None else np.asarray([], dtype=float).tolist(),
-            "intensity_trace": trace[:, 1].tolist() if trace is not None else np.asarray([], dtype=float).tolist(),
+            "intensity_trace_times": trace[:, 0].tolist()
+            if trace is not None
+            else np.asarray([], dtype=float).tolist(),
+            "intensity_trace": trace[:, 1].tolist()
+            if trace is not None
+            else np.asarray([], dtype=float).tolist(),
             "intensity_trace_name": label,
             "meta_data": {"ries_type": label},
         }

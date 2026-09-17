@@ -86,7 +86,7 @@ class Background(FittingParameterGroup):
         """Set background count rate in channel 1."""
         self._bg1.value = v
 
-    def __init__(self, name: str = 'Background', **kwargs):
+    def __init__(self, name: str = "Background", **kwargs):
         """Initialize the Background parameter group.
 
         Parameters
@@ -99,19 +99,19 @@ class Background(FittingParameterGroup):
         super().__init__(name=name, **kwargs)
         self._bg0 = FittingParameter(
             value=0.0,
-            name='bg0',
+            name="bg0",
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description='Background photon count rate in channel 0 (green/donor channel).',
+            description="Background photon count rate in channel 0 (green/donor channel).",
         )
         self._bg1 = FittingParameter(
             value=0.0,
-            name='bg1',
+            name="bg1",
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description='Background photon count rate in channel 1 (red/acceptor channel).',
+            description="Background photon count rate in channel 1 (red/acceptor channel).",
         )
 
 
@@ -442,7 +442,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
 
         self.update_correction_factors()
 
-    def __init__(self, name: str = 'PDA-FRET-nuisance', **kwargs):
+    def __init__(self, name: str = "PDA-FRET-nuisance", **kwargs):
         """Initialize the PDA FRET nuisance parameter group.
 
         Parameters
@@ -455,44 +455,44 @@ class Pda2cFretNuisance(FittingParameterGroup):
         super().__init__(name=name, **kwargs)
         self._bgG = FittingParameter(
             value=0.0,
-            name='BG',
+            name="BG",
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description='Background photon count rate in the green/donor channel.',
+            description="Background photon count rate in the green/donor channel.",
         )
         self._bgR = FittingParameter(
             value=0.0,
-            name='BR',
+            name="BR",
             lb=0.0,
             ub=100.0,
             bounds_on=True,
-            description='Background photon count rate in the red/acceptor channel.',
+            description="Background photon count rate in the red/acceptor channel.",
         )
         self._QYD = FittingParameter(
             value=0.8,
-            name='QYD',
+            name="QYD",
             fixed=True,
-            description='Donor fluorescence quantum yield.',
+            description="Donor fluorescence quantum yield.",
         )
         self._QYA = FittingParameter(
             value=0.3,
-            name='QYA',
+            name="QYA",
             fixed=True,
-            description='Acceptor fluorescence quantum yield.',
+            description="Acceptor fluorescence quantum yield.",
         )
         # Per-channel detector efficiencies (green/red).
         self._gG = FittingParameter(
             value=1.0,
-            name='gG',
+            name="gG",
             fixed=True,
-            description='Green-channel detection efficiency.',
+            description="Green-channel detection efficiency.",
         )
         self._gR = FittingParameter(
             value=1.0,
-            name='gR',
+            name="gR",
             fixed=True,
-            description='Red-channel detection efficiency.',
+            description="Red-channel detection efficiency.",
         )
         # Absolute excitation probabilities (e.g. extinction coefficients at
         # the donor excitation wavelength). By default they are zero so that
@@ -500,79 +500,79 @@ class Pda2cFretNuisance(FittingParameterGroup):
         # configured by the user.
         self._ExDG = FittingParameter(
             value=1.0,
-            name='ExDG',
+            name="ExDG",
             fixed=True,
-            description='Excitation probability of the donor at the donor excitation wavelength.',
+            description="Excitation probability of the donor at the donor excitation wavelength.",
         )
         self._ExAG = FittingParameter(
             value=0.0,
-            name='ExAG',
+            name="ExAG",
             fixed=True,
-            description='Direct excitation probability of the acceptor at the donor excitation wavelength.',
+            description="Direct excitation probability of the acceptor at the donor excitation wavelength.",
         )
         # Full emission / detection crosstalk matrix elements. These default
         # to zero so that existing projects using alpha/gamma are unaffected
         # unless the user explicitly supplies matrix entries.
         self._cGD = FittingParameter(
             value=1.0,
-            name='cGD',
+            name="cGD",
             fixed=True,
-            description='Emission crosstalk: fraction of donor emission detected in the green channel.',
+            description="Emission crosstalk: fraction of donor emission detected in the green channel.",
         )
         self._cGA = FittingParameter(
             value=0.0,
-            name='cGA',
+            name="cGA",
             fixed=True,
-            description='Emission crosstalk: fraction of donor emission leaking into the red channel.',
+            description="Emission crosstalk: fraction of donor emission leaking into the red channel.",
         )
         self._cRD = FittingParameter(
             value=0.02,
-            name='cRD',
+            name="cRD",
             fixed=True,
-            description='Emission crosstalk: fraction of acceptor emission leaking into the green channel.',
+            description="Emission crosstalk: fraction of acceptor emission leaking into the green channel.",
         )
         self._cRA = FittingParameter(
             value=1.0,
-            name='cRA',
+            name="cRA",
             fixed=True,
-            description='Emission crosstalk: fraction of acceptor emission detected in the red channel.',
+            description="Emission crosstalk: fraction of acceptor emission detected in the red channel.",
         )
         # Derived legacy-style crosstalk parameters. These are populated by
         # PDA models that use this nuisance group and are shown as fixed,
         # read-only parameters (analogous to CPM in FCS widgets).
         self._alpha = FittingParameter(
             value=float("nan"),
-            name='alpha',
-            label_text='&alpha;<sub>D</sub>',
+            name="alpha",
+            label_text="&alpha;<sub>D</sub>",
             fixed=True,
             is_output=True,
-            description='Output: donor excitation fraction (derived from ExDG/ExAG).',
+            description="Output: donor excitation fraction (derived from ExDG/ExAG).",
         )
         self._alpha_A = FittingParameter(
             value=float("nan"),
-            name='alpha_A',
-            label_text='&alpha;<sub>A</sub>',
+            name="alpha_A",
+            label_text="&alpha;<sub>A</sub>",
             fixed=True,
             is_output=True,
-            description='Output: acceptor direct-excitation fraction (derived from ExAG/ExDG).',
+            description="Output: acceptor direct-excitation fraction (derived from ExAG/ExDG).",
         )
         # Derived MFD correction factors (read-only outputs, like alpha):
         # gamma (acceptor/donor detection ratio) and delta (direct excitation).
         self._gamma = FittingParameter(
             value=float("nan"),
-            name='gamma',
-            label_text='&gamma;',
+            name="gamma",
+            label_text="&gamma;",
             fixed=True,
             is_output=True,
-            description='Output: gamma correction factor (acceptor/donor detection efficiency ratio).',
+            description="Output: gamma correction factor (acceptor/donor detection efficiency ratio).",
         )
         self._delta = FittingParameter(
             value=float("nan"),
-            name='delta',
-            label_text='&delta;',
+            name="delta",
+            label_text="&delta;",
             fixed=True,
             is_output=True,
-            description='Output: delta correction factor (direct acceptor excitation fraction).',
+            description="Output: delta correction factor (direct acceptor excitation fraction).",
         )
         # Photon-number range for PDA scoring (nPh_min, nPh_max).
         # Defaults are taken from the attached dataset's PDA metadata if
@@ -580,28 +580,28 @@ class Pda2cFretNuisance(FittingParameterGroup):
         default_nmin = 30.0
         default_nmax = 0.0
         try:
-            fit = getattr(self, 'fit', None)
-            data = getattr(fit, 'data', None) if fit is not None else None
-            pda_meta = getattr(data, 'pda', None)
+            fit = getattr(self, "fit", None)
+            data = getattr(fit, "data", None) if fit is not None else None
+            pda_meta = getattr(data, "pda", None)
             if isinstance(pda_meta, dict):
-                default_nmin = float(pda_meta.get('minimum_number_of_photons', default_nmin))
-                default_nmax = float(pda_meta.get('maximum_number_of_photons', default_nmax))
+                default_nmin = float(pda_meta.get("minimum_number_of_photons", default_nmin))
+                default_nmax = float(pda_meta.get("maximum_number_of_photons", default_nmax))
         except Exception:
             default_nmin = 30.0
             default_nmax = 0.0
         self._nPh_min = FittingParameter(
             value=default_nmin,
-            name='nPh_min',
-            label_text='N<sub>Ph,min</sub>',
+            name="nPh_min",
+            label_text="N<sub>Ph,min</sub>",
             fixed=True,
-            description='Minimum photon number for PDA burst selection.',
+            description="Minimum photon number for PDA burst selection.",
         )
         self._nPh_max = FittingParameter(
             value=default_nmax,
-            name='nPh_max',
-            label_text='N<sub>Ph,max</sub>',
+            name="nPh_max",
+            label_text="N<sub>Ph,max</sub>",
             fixed=True,
-            description='Maximum photon number for PDA burst selection.',
+            description="Maximum photon number for PDA burst selection.",
         )
 
 
@@ -628,7 +628,7 @@ class Pda2cPhotonRange(FittingParameterGroup):
         """Set maximum photon number for PDA gating."""
         self._nPh_max.value = v
 
-    def __init__(self, name: str = 'PDA-photon-range', **kwargs):
+    def __init__(self, name: str = "PDA-photon-range", **kwargs):
         """Initialize the photon-number range parameter group.
 
         Parameters
@@ -642,26 +642,26 @@ class Pda2cPhotonRange(FittingParameterGroup):
         default_nmin = 30.0
         default_nmax = 0.0
         try:
-            fit = getattr(self, 'fit', None)
-            data = getattr(fit, 'data', None) if fit is not None else None
-            pda_meta = getattr(data, 'pda', None)
+            fit = getattr(self, "fit", None)
+            data = getattr(fit, "data", None) if fit is not None else None
+            pda_meta = getattr(data, "pda", None)
             if isinstance(pda_meta, dict):
-                default_nmin = float(pda_meta.get('minimum_number_of_photons', default_nmin))
-                default_nmax = float(pda_meta.get('maximum_number_of_photons', default_nmax))
+                default_nmin = float(pda_meta.get("minimum_number_of_photons", default_nmin))
+                default_nmax = float(pda_meta.get("maximum_number_of_photons", default_nmax))
         except Exception:
             default_nmin = 30.0
             default_nmax = 0.0
         self._nPh_min = FittingParameter(
             value=default_nmin,
-            name='nPh_min',
-            label_text='N<sub>Ph,min</sub>',
+            name="nPh_min",
+            label_text="N<sub>Ph,min</sub>",
             fixed=True,
-            description='Minimum photon number for PDA burst selection.',
+            description="Minimum photon number for PDA burst selection.",
         )
         self._nPh_max = FittingParameter(
             value=default_nmax,
-            name='nPh_max',
-            label_text='N<sub>Ph,max</sub>',
+            name="nPh_max",
+            label_text="N<sub>Ph,max</sub>",
             fixed=True,
-            description='Maximum photon number for PDA burst selection.',
+            description="Maximum photon number for PDA burst selection.",
         )

@@ -31,7 +31,8 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -90,8 +91,9 @@ def demo_path(directory: str | pathlib.Path | None = None) -> pathlib.Path:
     return directory / "flow_demo_poiseuille.ptu"
 
 
-def expected_profile(y_um: np.ndarray, *, v_max: float | None = None,
-                     field_um: float | None = None) -> np.ndarray:
+def expected_profile(
+    y_um: np.ndarray, *, v_max: float | None = None, field_um: float | None = None
+) -> np.ndarray:
     """Return the true flow speed at *y_um*, measured from the top of the image.
 
     The simulated field is laminar flow along ``+x`` through a channel whose
@@ -155,9 +157,7 @@ def create_demo(
     import tttrlib
 
     if not hasattr(tttrlib, "SimEngine"):
-        raise RuntimeError(
-            "this tttrlib build has no photon simulator, so the demo cannot be made"
-        )
+        raise RuntimeError("this tttrlib build has no photon simulator, so the demo cannot be made")
 
     cfg = {**DEMO, **{k: v for k, v in overrides.items() if k in DEMO}}
     target = pathlib.Path(path) if path is not None else demo_path()
@@ -199,7 +199,7 @@ def create_demo(
     integrator = tttrlib.SimIntegrator()
     integrator.dt = dwell
     integrator.n_channels = 1
-    integrator.n_ph_max = 10 ** 12
+    integrator.n_ph_max = 10**12
     integrator.n_microtime_channels = 256
     integrator.microtime_resolution = 0.032
     integrator.laser_period = 256 * 0.032
@@ -218,8 +218,15 @@ def create_demo(
     # marker per pixel would be four fifths of the file.
     markers.emit_pixel_markers = False
     scanner = tttrlib.SimScanner.uniform(
-        n_pixel, n_pixel, dwell, pixel, pixel,
-        -0.5 * field, -0.5 * field, markers, False,
+        n_pixel,
+        n_pixel,
+        dwell,
+        pixel,
+        pixel,
+        -0.5 * field,
+        -0.5 * field,
+        markers,
+        False,
     )
     for frame in range(n_frames):
         engine.run_scan(scanner)

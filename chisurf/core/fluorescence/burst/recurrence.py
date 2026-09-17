@@ -24,10 +24,7 @@ photon-level access is needed.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
-
 import tttrlib as _ttl
 
 
@@ -35,7 +32,7 @@ def pair_statistics(
     burst_times_s: np.ndarray,
     edges: np.ndarray,
     edge_correction: bool = True,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     r"""Counted and expected burst pairs per lag bin, for one measurement.
 
     The estimator behind :func:`same_molecule_probability`, split out because a
@@ -83,8 +80,7 @@ def pair_statistics(
         a, b = edges[k], edges[k + 1]
         # Ordered pairs (i, j>i) with separation t_j - t_i in [a, b).
         counts[k] = float(
-            (np.searchsorted(t, t + b, side="left")
-             - np.searchsorted(t, t + a, side="left")).sum()
+            (np.searchsorted(t, t + b, side="left") - np.searchsorted(t, t + a, side="left")).sum()
         )
         d_tau = b - a
         span = total_time - 0.5 * (a + b) if edge_correction else total_time
@@ -98,7 +94,7 @@ def same_molecule_probability(
     tau_max_s: float = 1.0,
     n_bins: int = 50,
     edge_correction: bool = True,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     r"""Same-molecule probability ``P_same(tau) = 1 - 1/G(tau)``.
 
     ``G(tau)`` is the normalised autocorrelation of the burst arrival times: for
@@ -129,22 +125,27 @@ def same_molecule_probability(
     edges = np.logspace(np.log10(tau_min_s), np.log10(tau_max_s), n_bins + 1)
     tau = np.sqrt(edges[:-1] * edges[1:])
 
-    res = np.asarray(_ttl.same_molecule_probability(
-        np.asarray(burst_times_s, dtype=float).tolist(),
-        tau_min_s, tau_max_s, n_bins, edge_correction
-    ))
+    res = np.asarray(
+        _ttl.same_molecule_probability(
+            np.asarray(burst_times_s, dtype=float).tolist(),
+            tau_min_s,
+            tau_max_s,
+            n_bins,
+            edge_correction,
+        )
+    )
     nb = len(res) // 3
-    g = res[2 * nb:]
+    g = res[2 * nb :]
     with np.errstate(divide="ignore", invalid="ignore"):
-        p_same = np.clip(res[nb:2 * nb], 0.0, 1.0)
+        p_same = np.clip(res[nb : 2 * nb], 0.0, 1.0)
     return tau, p_same, g
 
 
 def recurrence_efficiencies(
     burst_times_s: np.ndarray,
     efficiency: np.ndarray,
-    e_range: Tuple[float, float],
-    dt_range_s: Tuple[float, float],
+    e_range: tuple[float, float],
+    dt_range_s: tuple[float, float],
 ) -> np.ndarray:
     """FRET efficiencies of bursts recurring after an initial sub-population.
 
@@ -191,11 +192,11 @@ def recurrence_efficiencies(
 def recurrence_histogram(
     burst_times_s: np.ndarray,
     efficiency: np.ndarray,
-    e_range: Tuple[float, float],
-    dt_range_s: Tuple[float, float],
+    e_range: tuple[float, float],
+    dt_range_s: tuple[float, float],
     bins: int = 50,
-    e_limits: Tuple[float, float] = (-0.1, 1.1),
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    e_limits: tuple[float, float] = (-0.1, 1.1),
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Recurrence FRET histogram alongside the overall histogram.
 
     Returns

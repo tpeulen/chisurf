@@ -11,7 +11,6 @@ from typing import Any
 
 from chisurf.core.plugin.client import InProcessClient
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -72,10 +71,12 @@ class BvaClient:
     def _make_local_client() -> InProcessClient:
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
+
         state = SessionState()
         dispatcher = ServiceDispatcher(state)
         dispatcher._build_default_registry()
 
         from chisurf.plugins.burst.burst_bva.backend.services import register_services
+
         register_services(dispatcher)
         return InProcessClient(dispatcher)

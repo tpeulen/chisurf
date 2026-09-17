@@ -24,9 +24,11 @@ from chisurf.gui.chigame.input import Action
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:  # pragma: no cover - stand-alone use
+
     def persist_plugin_state(name):
         """Return an identity decorator when the host is unavailable."""
         return lambda cls: cls
+
 
 #: The two sides are a FRET pair: the left optic emits as a donor, the right
 #: absorbs and re-emits as an acceptor. A photon crossing the field therefore
@@ -362,46 +364,93 @@ class PongGame(chigame.Game):
             scene.draw("ui", "axis", at=(FIELD_W * 0.5, y), size=(2.0, 16.0), color=axis)
 
         # Two optics, each tinted by the wavelength it works at.
-        scene.draw("optic", "donor",
-                   at=(20.0 + PADDLE_W * 0.5, self.paddle_y),
-                   size=(PADDLE_W, PADDLE_H), emission_nm=DONOR_NM)
-        scene.draw("optic", "acceptor",
-                   at=(FIELD_W - 20.0 - PADDLE_W * 0.5, self.cpu_y),
-                   size=(PADDLE_W, PADDLE_H), emission_nm=ACCEPTOR_NM)
+        scene.draw(
+            "optic",
+            "donor",
+            at=(20.0 + PADDLE_W * 0.5, self.paddle_y),
+            size=(PADDLE_W, PADDLE_H),
+            emission_nm=DONOR_NM,
+        )
+        scene.draw(
+            "optic",
+            "acceptor",
+            at=(FIELD_W - 20.0 - PADDLE_W * 0.5, self.cpu_y),
+            size=(PADDLE_W, PADDLE_H),
+            emission_nm=ACCEPTOR_NM,
+        )
 
         for particle in self.particles:
             fade = max(particle.life / particle.max_life, 0.0)
-            scene.draw("ui", "spark", at=(particle.x, particle.y),
-                       size=(2.5 + 3.0 * fade, 2.5 + 3.0 * fade),
-                       color=(*particle.color, fade))
+            scene.draw(
+                "ui",
+                "spark",
+                at=(particle.x, particle.y),
+                size=(2.5 + 3.0 * fade, 2.5 + 3.0 * fade),
+                color=(*particle.color, fade),
+            )
 
         if self.winner is None:
-            scene.draw("photon", "quantum", at=(self.ball_x, self.ball_y),
-                       size=(BALL_SIZE, BALL_SIZE), emission_nm=self.ball_nm)
+            scene.draw(
+                "photon",
+                "quantum",
+                at=(self.ball_x, self.ball_y),
+                size=(BALL_SIZE, BALL_SIZE),
+                emission_nm=self.ball_nm,
+            )
 
-        scene.text(f"Donor: {self.player_score}", at=(FIELD_W * 0.30, 26.0),
-                   height=20.0, align="center",
-                   color=(*wavelength_to_srgb(DONOR_NM), 1.0))
+        scene.text(
+            f"Donor: {self.player_score}",
+            at=(FIELD_W * 0.30, 26.0),
+            height=20.0,
+            align="center",
+            color=(*wavelength_to_srgb(DONOR_NM), 1.0),
+        )
         scene.text(
             f"{'Acceptor' if self.vs_computer else 'Optic 2'}: {self.cpu_score}",
-            at=(FIELD_W * 0.70, 26.0), height=20.0, align="center",
+            at=(FIELD_W * 0.70, 26.0),
+            height=20.0,
+            align="center",
             color=(*wavelength_to_srgb(ACCEPTOR_NM), 1.0),
         )
-        scene.text(f"Transfers: {self.rally}", at=(FIELD_W * 0.5, 54.0), height=13.0,
-                   align="center", color=(0.44, 0.48, 0.55, 1.0))
+        scene.text(
+            f"Transfers: {self.rally}",
+            at=(FIELD_W * 0.5, 54.0),
+            height=13.0,
+            align="center",
+            color=(0.44, 0.48, 0.55, 1.0),
+        )
 
         if self.serve_timer > 0.0 and self.winner is None:
-            scene.text(f"{math.ceil(self.serve_timer)}", at=(FIELD_W * 0.5, FIELD_H * 0.5),
-                       height=60.0, align="center", color=(0.62, 0.68, 0.78, 1.0))
+            scene.text(
+                f"{math.ceil(self.serve_timer)}",
+                at=(FIELD_W * 0.5, FIELD_H * 0.5),
+                height=60.0,
+                align="center",
+                color=(0.62, 0.68, 0.78, 1.0),
+            )
         if self.paused:
-            scene.text("HELD", at=(FIELD_W * 0.5, FIELD_H * 0.5), height=44.0,
-                       align="center", color=(0.35, 0.85, 0.80, 1.0))
+            scene.text(
+                "HELD",
+                at=(FIELD_W * 0.5, FIELD_H * 0.5),
+                height=44.0,
+                align="center",
+                color=(0.35, 0.85, 0.80, 1.0),
+            )
         if self.winner is not None:
             scene.draw("ui", "panel", at=(FIELD_W * 0.5, FIELD_H * 0.5), size=(440.0, 120.0))
-            scene.text(f"{self.winner} wins", at=(FIELD_W * 0.5, FIELD_H * 0.5 - 16.0),
-                       height=34.0, align="center", color=(0.35, 0.85, 0.80, 1.0))
-            scene.text("Confirm to run again", at=(FIELD_W * 0.5, FIELD_H * 0.5 + 26.0),
-                       height=16.0, align="center")
+            scene.text(
+                f"{self.winner} wins",
+                at=(FIELD_W * 0.5, FIELD_H * 0.5 - 16.0),
+                height=34.0,
+                align="center",
+                color=(0.35, 0.85, 0.80, 1.0),
+            )
+            scene.text(
+                "Confirm to run again",
+                at=(FIELD_W * 0.5, FIELD_H * 0.5 + 26.0),
+                height=16.0,
+                align="center",
+            )
 
         scene.text(
             "Up/Down optic   Menu hold   Cancel reset   L mode   R sound"

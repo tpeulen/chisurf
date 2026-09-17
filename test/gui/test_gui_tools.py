@@ -1,12 +1,12 @@
-import os
-import sys
 import glob
+import pathlib
+
 import pytest
 from qtpy.QtCore import Qt
 
-import pathlib
 TOPDIR = pathlib.Path(__file__).parent.parent
 import utils
+
 utils.set_search_paths(TOPDIR)
 
 from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
@@ -28,6 +28,7 @@ def histogram_form(qtbot):
 
 
 # --- Kappa2Dist Tests ---
+
 
 def test_kappa2_defaults(kappa2_form):
     assert kappa2_form._model.r_0 == 0.380
@@ -68,6 +69,7 @@ def test_kappa2_calculation_2(kappa2_form, qtbot):
 
 # --- HistogramTTTR Tests ---
 
+
 def test_histogram_load_data(histogram_form, qtbot):
     make_decay_button = histogram_form.tcspc_setup_widget.pushButton
 
@@ -77,11 +79,7 @@ def test_histogram_load_data(histogram_form, qtbot):
     filenames = glob.glob("./test/data/tttr/BH/132/*.spc")
     file_type = "bh132"
 
-    spcFileWidget.onLoadSample(
-        event=None,
-        filenames=filenames,
-        file_type=file_type
-    )
+    spcFileWidget.onLoadSample(event=None, filenames=filenames, file_type=file_type)
 
     qtbot.mouseClick(make_decay_button, Qt.LeftButton)
 

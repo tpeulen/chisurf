@@ -38,11 +38,23 @@ def _reference_kappasq(delta, sD2, sA2, beta1, beta2):
     s2delta = (3.0 * np.cos(delta) * np.cos(delta) - 1.0) / 2.0
     s2beta1 = (3.0 * np.cos(beta1) * np.cos(beta1) - 1.0) / 2.0
     s2beta2 = (3.0 * np.cos(beta2) * np.cos(beta2) - 1.0) / 2.0
-    return 2.0 / 3.0 * (
-        1.0 + sD2 * s2beta1 + sA2 * s2beta2 + sD2 * sA2 * (
-            s2delta + 6 * s2beta1 * s2beta2 + 1
-            + 2 * s2beta1 + 2 * s2beta2
-            - 9 * np.cos(beta1) * np.cos(beta2) * np.cos(delta)
+    return (
+        2.0
+        / 3.0
+        * (
+            1.0
+            + sD2 * s2beta1
+            + sA2 * s2beta2
+            + sD2
+            * sA2
+            * (
+                s2delta
+                + 6 * s2beta1 * s2beta2
+                + 1
+                + 2 * s2beta1
+                + 2 * s2beta2
+                - 9 * np.cos(beta1) * np.cos(beta2) * np.cos(delta)
+            )
         )
     )
 
@@ -88,10 +100,12 @@ def _reference_kappasq_dwt(sD2, sA2, fret_efficiency, n_samples, seed):
         k2_tt = _reference_kappasq(delta, 1, 1, beta1, beta2)
         k2_tf = _reference_kappasq(delta, 1, 0, beta1, beta2)
         k2_ft = _reference_kappasq(delta, 0, 1, beta1, beta2)
-        Ek2 = ((1 - sD2) * (1 - sA2) / (1 + x)
-               + sD2 * sA2 / (1 + 2 / 3.0 / k2_tt * x)
-               + sD2 * (1 - sA2) / (1 + 2 / 3.0 / k2_tf * x)
-               + (1 - sD2) * sA2 / (1 + 2 / 3.0 / k2_ft * x))
+        Ek2 = (
+            (1 - sD2) * (1 - sA2) / (1 + x)
+            + sD2 * sA2 / (1 + 2 / 3.0 / k2_tt * x)
+            + sD2 * (1 - sA2) / (1 + 2 / 3.0 / k2_tf * x)
+            + (1 - sD2) * sA2 / (1 + 2 / 3.0 / k2_ft * x)
+        )
         k2s[i] = 2 / 3.0 * x / (1 / Ek2 - 1)
     return k2s
 
@@ -119,8 +133,12 @@ def test_kappasq_dwt_matches_the_pre_port_python_in_distribution():
 
     reference = _reference_kappasq_dwt(sD2, sA2, fret_efficiency, n_samples, seed=42)
     _, _, engine = kappasq_dwt(
-        sD2=sD2, sA2=sA2, fret_efficiency=fret_efficiency,
-        n_samples=n_samples, n_bins=31, seed=99,
+        sD2=sD2,
+        sA2=sA2,
+        fret_efficiency=fret_efficiency,
+        n_samples=n_samples,
+        n_bins=31,
+        seed=99,
     )
 
     assert engine.mean() == pytest.approx(reference.mean(), abs=0.05)

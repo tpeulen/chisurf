@@ -7,12 +7,11 @@ from qtpy import QtCore, QtGui
 
 import chisurf as cs
 from chisurf.core.experiments.core import reader
-from chisurf.core.fio.staging import supported_container_types
+from chisurf.core.fio.staging import TTTR_FILE_FILTER, supported_container_types
 from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
 
 class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
@@ -45,7 +44,10 @@ class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
         self.combo_routine = QtWidgets.QComboBox()
         try:
             import tttrlib  # type: ignore[import]
-            supported = list(tttrlib.TTTR.get_supported_container_names()) or list(supported_container_types())
+
+            supported = list(tttrlib.TTTR.get_supported_container_names()) or list(
+                supported_container_types()
+            )
             self.combo_routine.addItems([str(s) for s in supported])
         except Exception:
             self.combo_routine.addItems(list(supported_container_types()))
@@ -155,13 +157,11 @@ class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
         try:
             luts = sd.get("channel_luts") if isinstance(sd, dict) else None
             shifts = sd.get("channel_shifts") if isinstance(sd, dict) else None
-            self._model.channel_luts = {
-                int(k): v for k, v in (luts or {}).items()
-            }
-            self._model.channel_shifts = {
-                int(k): int(v) for k, v in (shifts or {}).items()
-            }
-            self._model.apply_lut = bool(sd.get("apply_lut", False)) if isinstance(sd, dict) else False
+            self._model.channel_luts = {int(k): v for k, v in (luts or {}).items()}
+            self._model.channel_shifts = {int(k): int(v) for k, v in (shifts or {}).items()}
+            self._model.apply_lut = (
+                bool(sd.get("apply_lut", False)) if isinstance(sd, dict) else False
+            )
         except Exception:
             pass
         if emit:
@@ -219,6 +219,7 @@ class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
 
 def _register_tcspc_tttr_sections() -> None:
     from chisurf.gui.autoform.sections.registry import register_section
+
     register_section("tcspc_tttr_detector")(_TcspcTttrDetectorWidget)
 
 
@@ -244,6 +245,7 @@ class TCSPCTTTRReaderControlWidget(
         self._detector_widget: _TcspcTttrDetectorWidget | None = None
         if reader_obj is not None and hasattr(reader_obj, "view_spec"):
             from chisurf.gui.autoform import AutoForm
+
             self._settings_form = AutoForm(reader_obj, parent=self)
             layout.addWidget(self._settings_form)
             self._bind_detector_widget()
@@ -339,7 +341,7 @@ class TCSPCTTTRReaderControlWidget(
         if fn_prev:
             return pathlib.Path(fn_prev)
         fn = cs.gui.widgets.open_files(
-            description='TCSPC TTTR file',
+            description="TCSPC TTTR file",
             file_type=TTTR_FILE_FILTER,
             working_path=None,
         )
@@ -546,13 +548,14 @@ class TCSPCTTTRReaderControlWidget(
                 from chisurf.core.fio.staging import open_tttr
 
                 return open_tttr(
-                    local_path, routine or None,
-                    channel_luts=_luts, channel_shifts=_shifts, apply_lut=_apply_lut,
+                    local_path,
+                    routine or None,
+                    channel_luts=_luts,
+                    channel_shifts=_shifts,
+                    apply_lut=_apply_lut,
                 )
 
-            tttr_all = load_with_progress(
-                self, _load, path.as_posix(), title="Loading preview"
-            )
+            tttr_all = load_with_progress(self, _load, path.as_posix(), title="Loading preview")
             if tttr_all is None:  # user cancelled
                 return
 
@@ -593,6 +596,7 @@ class TCSPCTTTRReaderControlWidget(
             return
         try:
             from chisurf.core.data import ExperimentDataCurveGroup as _Group
+
             if isinstance(group, _Group) and len(group) > 0:
                 data_obj = group[0]
             else:

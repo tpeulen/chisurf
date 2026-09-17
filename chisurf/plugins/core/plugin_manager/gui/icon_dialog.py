@@ -60,9 +60,17 @@ class IconDialog(QtWidgets.QDialog):
         for label, tooltip, slot in (
             (f"{Glyphs.FOLDER} Choose…", "Pick an image file from disk.", self._choose),
             (f"{Glyphs.SUCCESS} Use", "Write the chosen image as this plugin's icon.", self._use),
-            (f"{Glyphs.SPARKLE} Generate…", "Ask the configured AI provider for an icon.", self._generate),
+            (
+                f"{Glyphs.SPARKLE} Generate…",
+                "Ask the configured AI provider for an icon.",
+                self._generate,
+            ),
             (f"{Glyphs.EDIT} Edit", "Open the icon in the system image editor.", self._edit),
-            (f"{Glyphs.DELETE} Clear", "Remove the icon and fall back to a generated label.", self._clear),
+            (
+                f"{Glyphs.DELETE} Clear",
+                "Remove the icon and fall back to a generated label.",
+                self._clear,
+            ),
         ):
             button = QtWidgets.QToolButton()
             button.setText(label)
@@ -142,8 +150,10 @@ class IconDialog(QtWidgets.QDialog):
             if not pixmap.isNull():
                 self.preview.setPixmap(
                     pixmap.scaled(
-                        PREVIEW_SIZE, PREVIEW_SIZE,
-                        QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation,
+                        PREVIEW_SIZE,
+                        PREVIEW_SIZE,
+                        QtCore.Qt.KeepAspectRatio,
+                        QtCore.Qt.SmoothTransformation,
                     )
                 )
                 self.path_edit.setText(str(self.icon_path))
@@ -193,7 +203,9 @@ class IconDialog(QtWidgets.QDialog):
 
     def _choose(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Choose an icon image", "",
+            self,
+            "Choose an icon image",
+            "",
             "Images (*.png *.svg *.jpg *.jpeg *.ico);;All files (*)",
         )
         if path:
@@ -225,7 +237,8 @@ class IconDialog(QtWidgets.QDialog):
         config = self._config()
         if not config.base_url or not config.model:
             dialogs.warning(
-                self, "Not configured",
+                self,
+                "Not configured",
                 "Set an endpoint and an image model before generating.",
             )
             return
@@ -238,7 +251,9 @@ class IconDialog(QtWidgets.QDialog):
             return icon_api.request_icon_bytes(config, info)
 
         self._task = run_in_background(
-            self, "Generating icon…", work,
+            self,
+            "Generating icon…",
+            work,
             owner="plugin_manager_icon",
             on_result=self._generated,
             on_error=self._generate_failed,

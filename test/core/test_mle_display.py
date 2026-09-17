@@ -47,7 +47,7 @@ def test_an_overlay_is_area_matched_not_peak_matched():
     """One hot bin must not decide the scaling of the whole curve."""
     data = np.full(100, 10.0)
     curve = np.full(100, 1.0)
-    curve[50] = 1000.0                    # the hot bin
+    curve[50] = 1000.0  # the hot bin
 
     scaled = overlay_scaled(curve, data)
 
@@ -119,7 +119,7 @@ def test_a_good_fit_is_not_magnified_until_its_noise_looks_like_structure():
 
     _lo, hi = residual_ylim(residuals)
 
-    assert hi == 5.0        # the floor, not the data's own tiny spread
+    assert hi == 5.0  # the floor, not the data's own tiny spread
 
 
 def test_a_diverged_model_is_clipped_and_says_so():
@@ -164,7 +164,7 @@ def test_residuals_are_computed_before_the_window_not_after():
     n = 20
     data = _stack(np.arange(1.0, n + 1), np.arange(1.0, n + 1))
     model = _stack(np.arange(1.0, n + 1), np.arange(1.0, n + 1))
-    model[5] = 0.0                       # one bad channel inside the VV window
+    model[5] = 0.0  # one bad channel inside the VV window
 
     curves = decay_curves(data, model, vv=(4, 8), vh=(0, 2))
 
@@ -185,7 +185,7 @@ def test_the_curves_carry_ready_made_ranges():
 def test_the_fit_can_report_divergence_the_amplitude_does_not_show():
     """A parameter pinned at its bound is a fact; a big amplitude is a symptom."""
     data = _stack(np.full(20, 100.0), np.full(20, 100.0))
-    model = data * 0.98                     # looks perfectly healthy
+    model = data * 0.98  # looks perfectly healthy
 
     inferred = decay_curves(data, model)
     told = decay_curves(data, model, diverged=True)

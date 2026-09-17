@@ -16,7 +16,9 @@ def _is(action_type: str, *names: str) -> bool:
     return action_type in {_canon(n) for n in names}
 
 
-def reconstruct_navigation_state(events: typing.List[typing.Dict[str, typing.Any]]) -> typing.Dict[str, typing.Any]:
+def reconstruct_navigation_state(
+    events: typing.List[typing.Dict[str, typing.Any]],
+) -> typing.Dict[str, typing.Any]:
     datasets: typing.List[str] = []
     dataset_uids: typing.List[str] = []
     fits: typing.List[str] = []
@@ -160,16 +162,17 @@ def reconstruct_navigation_state(events: typing.List[typing.Dict[str, typing.Any
 
 
 def reconstruct_parameter_state(
-        events: typing.List[typing.Dict[str, typing.Any]],
+    events: typing.List[typing.Dict[str, typing.Any]],
 ) -> typing.Dict[typing.Tuple[str, str, str], typing.Dict[str, typing.Any]]:
     """Build parameter state map up to cursor from history events.
 
     Key is (fit_group_name, local_fit_name, parameter_name).
     """
-
     state: typing.Dict[typing.Tuple[str, str, str], typing.Dict[str, typing.Any]] = {}
 
-    def get_key(payload: typing.Dict[str, typing.Any]) -> typing.Optional[typing.Tuple[str, str, str]]:
+    def get_key(
+        payload: typing.Dict[str, typing.Any],
+    ) -> typing.Optional[typing.Tuple[str, str, str]]:
         fit_group = str(payload.get("fit_group") or payload.get("source_fit_group") or "")
         local_fit = str(payload.get("local_fit") or payload.get("source_local_fit") or "")
         param_name = str(payload.get("parameter_name") or payload.get("source_parameter") or "")
@@ -221,8 +224,12 @@ def reconstruct_parameter_state(
         entry = state.setdefault(key, {})
 
         src_fit_uid = str(payload.get("fit_uid") or payload.get("source_fit_uid") or "")
-        src_local_uid = str(payload.get("local_fit_uid") or payload.get("source_local_fit_uid") or "")
-        src_param_uid = str(payload.get("parameter_uid") or payload.get("source_parameter_uid") or "")
+        src_local_uid = str(
+            payload.get("local_fit_uid") or payload.get("source_local_fit_uid") or ""
+        )
+        src_param_uid = str(
+            payload.get("parameter_uid") or payload.get("source_parameter_uid") or ""
+        )
         if src_fit_uid:
             entry["source_fit_uid"] = src_fit_uid
         if src_local_uid:
@@ -270,10 +277,9 @@ def reconstruct_parameter_state(
 
 
 def reconstruct_fit_range_state(
-        events: typing.List[typing.Dict[str, typing.Any]],
+    events: typing.List[typing.Dict[str, typing.Any]],
 ) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
     """Build fit-range state per fit-group name up to cursor."""
-
     state: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
 
     def apply_range_rows(rows: typing.Any) -> None:
@@ -325,8 +331,8 @@ def reconstruct_fit_range_state(
 
 
 def touched_parameter_keys(
-        events: typing.List[typing.Dict[str, typing.Any]],
-        include_actions: typing.Optional[typing.Set[str]] = None,
+    events: typing.List[typing.Dict[str, typing.Any]],
+    include_actions: typing.Optional[typing.Set[str]] = None,
 ) -> typing.Set[typing.Tuple[str, str, str]]:
     keys: typing.Set[typing.Tuple[str, str, str]] = set()
     default_actions = {
@@ -353,7 +359,7 @@ def touched_parameter_keys(
 
 
 def reconstruct_setup_state(
-        events: typing.List[typing.Dict[str, typing.Any]],
+    events: typing.List[typing.Dict[str, typing.Any]],
 ) -> typing.Dict[str, typing.Any]:
     experiment_name: typing.Optional[str] = None
     setup_name: typing.Optional[str] = None
@@ -391,10 +397,10 @@ def reconstruct_setup_state(
 
 
 def reconstruct_model_state(
-        events: typing.List[typing.Dict[str, typing.Any]],
+    events: typing.List[typing.Dict[str, typing.Any]],
 ) -> typing.Dict[str, typing.Any]:
     """Build model state map up to cursor from history events.
-    
+
     Returns a dict with model configuration and component state.
     """
     state: typing.Dict[str, typing.Any] = {}
@@ -410,16 +416,13 @@ def reconstruct_model_state(
         if not fit_group_uid:
             # Try to get from payload
             fit_group_uid = str(payload.get("fit_group_uid") or payload.get("fit_uid") or "")
-        
+
         if not fit_group_uid:
             continue
 
         # Initialize fit group entry if not exists
         if fit_group_uid not in state:
-            state[fit_group_uid] = {
-                "fit_group_uid": fit_group_uid,
-                "local_fits": {}
-            }
+            state[fit_group_uid] = {"fit_group_uid": fit_group_uid, "local_fits": {}}
 
         # Determine which local fit this applies to (default to first local fit)
         local_fit_uid = str(payload.get("local_fit_uid") or "")
@@ -434,7 +437,7 @@ def reconstruct_model_state(
             fg_state["local_fits"][local_fit_uid] = {
                 "local_fit_uid": local_fit_uid,
                 "components": [],
-                "config": {}
+                "config": {},
             }
 
         local_state = fg_state["local_fits"][local_fit_uid]
@@ -443,10 +446,7 @@ def reconstruct_model_state(
             component_name = str(payload.get("component_name", ""))
             if component_name:
                 if component_name not in [c.get("name", "") for c in local_state["components"]]:
-                    local_state["components"].append({
-                        "name": component_name,
-                        "action": "add"
-                    })
+                    local_state["components"].append({"name": component_name, "action": "add"})
 
         elif _is(action_type, "model.remove_component"):
             component_name = str(payload.get("component_name", ""))
@@ -458,10 +458,7 @@ def reconstruct_model_state(
                         break
                 else:
                     # Component not found, add removal marker
-                    local_state["components"].append({
-                        "name": component_name,
-                        "action": "remove"
-                    })
+                    local_state["components"].append({"name": component_name, "action": "remove"})
 
         elif _is(action_type, "model.normalize_amplitudes"):
             component_name = str(payload.get("component_name", ""))
@@ -565,7 +562,9 @@ def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
         current_ds = getattr(cs, "current_data", None)
         if current_ds is not None:
             snapshot["navigation"]["selected_dataset"] = str(getattr(current_ds, "name", ""))
-            snapshot["navigation"]["selected_dataset_uid"] = str(getattr(current_ds, "unique_identifier", ""))
+            snapshot["navigation"]["selected_dataset_uid"] = str(
+                getattr(current_ds, "unique_identifier", "")
+            )
     except Exception:
         pass
 
@@ -589,7 +588,9 @@ def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
         current_fit = getattr(cs, "current_fit", None)
         if current_fit is not None:
             snapshot["navigation"]["selected_fit"] = str(getattr(current_fit, "name", ""))
-            snapshot["navigation"]["selected_fit_uid"] = str(getattr(current_fit, "unique_identifier", ""))
+            snapshot["navigation"]["selected_fit_uid"] = str(
+                getattr(current_fit, "unique_identifier", "")
+            )
     except Exception:
         pass
 
@@ -684,7 +685,7 @@ def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
             fg_model_state: typing.Dict[str, typing.Any] = {
                 "fit_group": fg_name,
                 "fit_group_uid": fg_uid,
-                "local_fits": {}
+                "local_fits": {},
             }
 
             local_fits = list(getattr(fg, "local_fits", []))
@@ -704,7 +705,7 @@ def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
                     "local_fit_uid": local_uid,
                     "model_class": str(getattr(model, "__class__.__name__", "")),
                     "components": [],
-                    "config": {}
+                    "config": {},
                 }
 
                 # Capture model-specific state if available
@@ -776,7 +777,7 @@ def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
 
 
 def snapshot_to_replay_state(
-        snapshot: typing.Dict[str, typing.Any],
+    snapshot: typing.Dict[str, typing.Any],
 ) -> typing.Dict[str, typing.Any]:
     """Convert a domain snapshot to the replay state format.
 
@@ -856,8 +857,8 @@ def snapshot_to_replay_state(
 
 
 def sync_domain_entities(
-        target_nav_state: typing.Dict[str, typing.Any],
-        all_events: typing.List[typing.Dict[str, typing.Any]],
+    target_nav_state: typing.Dict[str, typing.Any],
+    all_events: typing.List[typing.Dict[str, typing.Any]],
 ) -> None:
     """Synchronize live domain entities (datasets, fits) with the target state.
 
@@ -878,13 +879,9 @@ def sync_domain_entities(
     target_fit_uids = set(target_nav_state.get("fit_uids", []))
 
     current_ds_uids = {
-        str(getattr(ds, "unique_identifier", ""))
-        for ds in getattr(cs, "imported_datasets", [])
+        str(getattr(ds, "unique_identifier", "")) for ds in getattr(cs, "imported_datasets", [])
     }
-    current_fit_uids = {
-        str(getattr(f, "unique_identifier", ""))
-        for f in getattr(cs, "fits", [])
-    }
+    current_fit_uids = {str(getattr(f, "unique_identifier", "")) for f in getattr(cs, "fits", [])}
 
     # Identify missing UIDs
     missing_ds = target_ds_uids - current_ds_uids
@@ -892,12 +889,14 @@ def sync_domain_entities(
 
     # Identify extra UIDs
     extra_ds_indices = [
-        i for i, ds in enumerate(getattr(cs, "imported_datasets", []))
+        i
+        for i, ds in enumerate(getattr(cs, "imported_datasets", []))
         if str(getattr(ds, "unique_identifier", "")) not in target_ds_uids
         and str(getattr(ds, "name", "")) != "Global Dataset"
     ]
     extra_fit_indices = [
-        i for i, f in enumerate(getattr(cs, "fits", []))
+        i
+        for i, f in enumerate(getattr(cs, "fits", []))
         if str(getattr(f, "unique_identifier", "")) not in target_fit_uids
     ]
 
@@ -905,8 +904,7 @@ def sync_domain_entities(
         cs.logging.info(
             "HISTNAV: sync_domain_entities missing_ds=%d missing_fits=%d "
             "extra_ds=%d extra_fits=%d"
-            % (len(missing_ds), len(missing_fits),
-               len(extra_ds_indices), len(extra_fit_indices))
+            % (len(missing_ds), len(missing_fits), len(extra_ds_indices), len(extra_fit_indices))
         )
     except Exception:
         pass
@@ -975,7 +973,7 @@ def sync_domain_entities(
 
             # Replay missing datasets
             processed_events: typing.Set[str] = set()
-            for uid in sorted(missing_ds): # Deterministic order
+            for uid in sorted(missing_ds):  # Deterministic order
                 event = creation_map.get(uid)
                 if event and event["event_id"] not in processed_events:
                     atype = _canon(str(event.get("action_type", "")))
@@ -990,7 +988,7 @@ def sync_domain_entities(
                         new_indices = resolve_indices(payload.get("dataset_indices", []), event)
                         actions.dispatch("dataset.group", {"dataset_indices": new_indices})
                     processed_events.add(event["event_id"])
-                    
+
                     # Update uid_to_idx after adding
                     uid_to_idx = {
                         str(getattr(ds, "unique_identifier", "")): i
@@ -1004,11 +1002,14 @@ def sync_domain_entities(
                     payload = event.get("payload", {})
                     new_indices = resolve_indices(payload.get("dataset_indices", []), event)
                     fits_before = {id(f) for f in getattr(cs, "fits", [])}
-                    actions.dispatch("fit.add", {
-                        "dataset_indices": new_indices,
-                        "model_name": payload.get("model_name"),
-                        "model_kw": payload.get("model_kw"),
-                    })
+                    actions.dispatch(
+                        "fit.add",
+                        {
+                            "dataset_indices": new_indices,
+                            "model_name": payload.get("model_name"),
+                            "model_kw": payload.get("model_kw"),
+                        },
+                    )
                     # Map the recorded fit-group UID -> the re-created fit's UID so
                     # model_state keyed by the old UID can resolve after redo.
                     new_fits = [f for f in getattr(cs, "fits", []) if id(f) not in fits_before]

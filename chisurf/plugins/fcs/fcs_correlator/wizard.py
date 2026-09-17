@@ -1,11 +1,11 @@
 import pathlib
-from typing import List, Optional
 
-from chisurf.gui import QtWidgets
+import tttrlib
 
 import chisurf as cs
 import chisurf.gui
 import chisurf.gui.widgets.wizard
+from chisurf.gui import QtWidgets
 
 
 class _FileListModel:
@@ -29,6 +29,7 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
     """
     Page 1: file list + step selection (Photon filter, FCS merger).
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setTitle("Files and Steps")
@@ -60,7 +61,7 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
         checks.addWidget(self.cb_photon_filter)
         checks.addWidget(self.cb_fcs_merger)
         form.addRow("Steps:", QtWidgets.QWidget())
-        form.itemAt(form.rowCount()-1, QtWidgets.QFormLayout.FieldRole).widget().setLayout(checks)
+        form.itemAt(form.rowCount() - 1, QtWidgets.QFormLayout.FieldRole).widget().setLayout(checks)
 
         layout.addLayout(form, 1)
         # Initialize step availability based on current file list
@@ -80,7 +81,7 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
 
     def nextId(self) -> int:
         wiz = self.wizard()
-        if getattr(wiz, 'filter_page_id', None) is None:
+        if getattr(wiz, "filter_page_id", None) is None:
             return -1
         return wiz.filter_page_id if self.cb_photon_filter.isChecked() else wiz.correlator_page_id
 
@@ -106,7 +107,7 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
         has_bst = False
         for f in files:
             try:
-                if pathlib.Path(f).suffix.lower() == '.bst':
+                if pathlib.Path(f).suffix.lower() == ".bst":
                     has_bst = True
                     break
             except Exception:
@@ -119,7 +120,9 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
                 pass
             try:
                 self.cb_photon_filter.setEnabled(False)
-                self.cb_photon_filter.setToolTip("Disabled when Burst-ID (.bst) files are selected.")
+                self.cb_photon_filter.setToolTip(
+                    "Disabled when Burst-ID (.bst) files are selected."
+                )
             except Exception:
                 pass
         else:
@@ -130,16 +133,16 @@ class FileAndStepsPage(QtWidgets.QWizardPage):
                 pass
 
     @property
-    def files(self) -> List[str]:
+    def files(self) -> list[str]:
         return self.file_list.paths()
 
     @property
-    def selected_files(self) -> List[str]:
+    def selected_files(self) -> list[str]:
         # Backward-compat alias; prefer checked_files
         return self.file_list.checked_paths()
 
     @property
-    def checked_files(self) -> List[str]:
+    def checked_files(self) -> list[str]:
         return self.file_list.checked_paths()
 
 
@@ -149,6 +152,7 @@ class CorrelatorPage(QtWidgets.QWizardPage):
     This avoids plugin subclassing issues with UI decorators while preserving
     the same external API used by the wizard flow.
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setTitle("Correlator")
@@ -166,7 +170,7 @@ class CorrelatorPage(QtWidgets.QWizardPage):
 
     def nextId(self) -> int:
         wiz = self.wizard()
-        if getattr(wiz, 'fcs_merger_page_id', None) is None:
+        if getattr(wiz, "fcs_merger_page_id", None) is None:
             return -1
         return wiz.fcs_merger_page_id if wiz.file_page.cb_fcs_merger.isChecked() else -1
 
@@ -189,20 +193,21 @@ class CorrelatorPage(QtWidgets.QWizardPage):
     def open_analysis_folder(self, folder: pathlib.Path = None):
         return self.inner.open_analysis_folder(folder)
 
-    def load_tttr_files(self, filenames: List[str], filetype: Optional[str] = None):
+    def load_tttr_files(self, filenames: list[str], filetype: str | None = None):
         # Delegate to the inner correlator’s robust loader to ensure filenames are tracked
         # and the analysis folder is set appropriately.
         try:
             self.inner.load_tttr_files(filenames, filetype)
         except Exception:
             # Fallback: open each file with extension-aware type resolution
-            self.inner.settings.setdefault('tttr_filenames', [])
-            self.inner.settings['tttr_filenames'] = list(filenames)
+            self.inner.settings.setdefault("tttr_filenames", [])
+            self.inner.settings["tttr_filenames"] = list(filenames)
+
             def _open_tttr_for_ui(p: pathlib.Path, global_type):
                 p_str = p.as_posix()
                 ext = p.suffix.lower()
                 try:
-                    if ext == '.spc':
+                    if ext == ".spc":
                         try:
                             ft_int = tttrlib.inferTTTRFileType(p_str)
                             if ft_int is not None and ft_int >= 0:
@@ -224,6 +229,7 @@ class CorrelatorPage(QtWidgets.QWizardPage):
                     return tttrlib.TTTR(p_str)
                 except Exception:
                     return None
+
             tttr_obj = None
             for fn in filenames:
                 p = pathlib.Path(fn)
@@ -246,13 +252,16 @@ class CorrelatorPage(QtWidgets.QWizardPage):
 
 if __name__ == "plugin":
     from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
+
     tool = FcsCorrelatorTool()
     tool.show()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     from chisurf.plugins.fcs.fcs_correlator.tool import FcsCorrelatorTool
+
     tool = FcsCorrelatorTool()
     tool.show()
     sys.exit(app.exec_())

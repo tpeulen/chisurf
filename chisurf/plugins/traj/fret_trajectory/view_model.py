@@ -206,12 +206,10 @@ class FretTrajectoryViewModel:
 
     def _load_topology(self, trajectory_file: str) -> None:
         """Extract the first frame of *trajectory_file* into :attr:`pdb`."""
+        from chisurf.core.fio.structure import coordinates
         from chisurf.core.structure import trajectory_data as md
 
-        from chisurf.core.fio.structure import coordinates
-
-        frame0 = md.load_frame(trajectory_file, 0,
-                               top=self.topology_filename or None)
+        frame0 = md.load_frame(trajectory_file, 0, top=self.topology_filename or None)
         # `mkstemp` hands back an *open* descriptor; the old code dropped it on
         # the floor and wrote to the path separately, leaking one fd per load.
         handle, tmp = tempfile.mkstemp(suffix=".pdb")

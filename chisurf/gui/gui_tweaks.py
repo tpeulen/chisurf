@@ -1,10 +1,11 @@
 from __future__ import annotations
-import chisurf as cs
 
 import os
 import pathlib
 import sys
 import tempfile
+
+import chisurf as cs
 
 
 def _sanitize_qt_plugin_path() -> None:
@@ -133,7 +134,8 @@ def isolate_qsettings_for_qa() -> str | None:
 
     configured = os.environ.get("CHISURF_SETTINGS_DIR", "").strip()
     root = (
-        pathlib.Path(configured) if configured
+        pathlib.Path(configured)
+        if configured
         else pathlib.Path(tempfile.gettempdir()) / "chisurf-qa-settings"
     )
     try:
@@ -164,7 +166,10 @@ def isolate_qsettings_for_qa() -> str | None:
             else:
                 organization, application = _organization_and_application(args, base)
                 super().__init__(
-                    base.IniFormat, base.UserScope, organization, application,
+                    base.IniFormat,
+                    base.UserScope,
+                    organization,
+                    application,
                 )
             if parent is not None:
                 self.setParent(parent)
@@ -182,9 +187,7 @@ def _names_a_file(args: tuple) -> bool:
     format enum there, an application name in the organization form.
     """
     return (
-        len(args) >= 2
-        and isinstance(args[0], (str, os.PathLike))
-        and not isinstance(args[1], str)
+        len(args) >= 2 and isinstance(args[0], (str, os.PathLike)) and not isinstance(args[1], str)
     )
 
 
@@ -265,7 +268,7 @@ def apply_platform_window_tweaks(window) -> None:
 
 def apply_dock_tab_colors(window) -> None:
     try:
-        from qtpy import QtWidgets, QtGui
+        from qtpy import QtGui, QtWidgets
     except Exception:
         return
     try:

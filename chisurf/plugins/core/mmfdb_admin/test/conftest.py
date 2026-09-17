@@ -1,4 +1,5 @@
 """Test fixtures for mmfdb-admin handler tests."""
+
 from __future__ import annotations
 
 import os
@@ -7,15 +8,13 @@ from contextlib import ExitStack, contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from mmfdb.repository import MFDatabase
 from mmfdb.models import (
-    DEFAULT_FLUOROPHORE_SPECTRA,
-    SampleDefinition,
     EntityDefinition,
-    ProbeDefinition,
     FretPairDefinition,
+    ProbeDefinition,
+    SampleDefinition,
 )
+from mmfdb.repository import MFDatabase
 from mmfdb.samples.sample_manager import create_sample
 
 
@@ -58,9 +57,7 @@ def patch_db(db):
     mock_principal.is_admin = True
 
     with ExitStack() as stack:
-        mock = stack.enter_context(
-            patch("mmfdb.admin.backend.services.resolve_database_path")
-        )
+        mock = stack.enter_context(patch("mmfdb.admin.backend.services.resolve_database_path"))
         mock.return_value = db.db_path
         # A server registered earlier in the process pins its database path,
         # and the handlers prefer the pin to resolve_database_path.

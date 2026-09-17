@@ -1,6 +1,7 @@
 import json
 
-from qtpy.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+from qtpy.QtWidgets import QDialog, QPushButton, QTextEdit, QVBoxLayout
+
 from chisurf.gui import dialogs
 
 

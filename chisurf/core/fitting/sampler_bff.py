@@ -42,6 +42,7 @@ Two semantic notes, both deliberate:
   and a test asserting that would fail by construction. Moments and
   acceptance are the contract.
 """
+
 from __future__ import annotations
 
 import typing
@@ -53,6 +54,7 @@ import chisurf.core.fitting.minimizer
 
 try:
     import IMP.bff as _bff
+
     if not hasattr(_bff, "MCMCSampler"):
         _bff = None
 except Exception:
@@ -82,7 +84,9 @@ def _kernel_entry(algorithm: str) -> dict:
 def _default_n_adapt(algorithm: str, steps: int) -> int:
     rule = _kernel_entry(algorithm).get("default_warmup") or {}
     if rule.get("rule") == "clip":
-        return min(int(rule["max"]), max(int(rule["min"]), int(steps) // int(rule.get("divisor", 1))))
+        return min(
+            int(rule["max"]), max(int(rule["min"]), int(steps) // int(rule.get("divisor", 1)))
+        )
     return int(rule.get("value", 0))
 
 
@@ -90,49 +94,50 @@ def _seed_int(seed) -> int:
     """A C++-consumable seed that keeps every existing reproducibility
     contract: an int is used as given, a Generator contributes one draw,
     and no seed draws from numpy's global stream so ``np.random.seed``
-    still governs the run."""
+    still governs the run.
+    """
     if isinstance(seed, (int, np.integer)):
         return int(seed) & 0xFFFFFFFF
     if isinstance(seed, np.random.Generator):
-        return int(seed.integers(2 ** 32))
-    return int(np.random.randint(2 ** 32))
+        return int(seed.integers(2**32))
+    return int(np.random.randint(2**32))
 
 
 def _substeps(substeps) -> int:
     if substeps is not None:
         return max(1, int(substeps))
     try:
-        return max(1, int(
-            cs.core.settings.cs_settings['optimization']['sampling']
-            .get('substeps', 100)))
+        return max(
+            1, int(cs.core.settings.cs_settings["optimization"]["sampling"].get("substeps", 100))
+        )
     except (KeyError, TypeError):
         return 100
 
 
 def sample_via_graph(
-        fit,
-        model,
-        algorithm: str,
-        steps: int,
-        thin: int = 1,
-        chi2max: float = np.inf,
-        temp: float = 1.0,
-        seed=None,
-        callback: typing.Callable = None,
-        check_cancel: typing.Callable = None,
-        n_adapt: int = None,
-        substeps: int = None,
-        # per-algorithm tunables; None keeps the C++ (== chisurf) default
-        step_size: float = None,
-        nwalkers: int = None,
-        stretch_scale: float = None,
-        walker_start_std: float = None,
-        n_chains: int = None,
-        jitter: float = None,
-        snooker: float = None,
-        blocks: typing.List[typing.List[int]] = None,
-        use_curvature: bool = True,
-) -> typing.Optional[dict]:
+    fit,
+    model,
+    algorithm: str,
+    steps: int,
+    thin: int = 1,
+    chi2max: float = np.inf,
+    temp: float = 1.0,
+    seed=None,
+    callback: typing.Callable = None,
+    check_cancel: typing.Callable = None,
+    n_adapt: int = None,
+    substeps: int = None,
+    # per-algorithm tunables; None keeps the C++ (== chisurf) default
+    step_size: float = None,
+    nwalkers: int = None,
+    stretch_scale: float = None,
+    walker_start_std: float = None,
+    n_chains: int = None,
+    jitter: float = None,
+    snooker: float = None,
+    blocks: list[list[int]] = None,
+    use_curvature: bool = True,
+) -> dict | None:
     """Sample *fit* through the C++ graph, or return ``None`` to refuse.
 
     Returns the same dict the Python samplers return -- ``chi2r``,
@@ -169,14 +174,13 @@ def sample_via_graph(
     if _bff is None or model is None or steps <= 0:
         return None
 
-    built = cs.core.fitting.minimizer.graph_objective(
-        fit, model, allow_priors=True)
+    built = cs.core.fitting.minimizer.graph_objective(fit, model, allow_priors=True)
     if built is None:
         return None
     m, free = built
     surface = getattr(m, "_sampler_surface", None)
     if surface is None:
-        return None            # the director fallback: not a graph
+        return None  # the director fallback: not a graph
     node, ports, out_name = surface
 
     # Priors: copy each free parameter's serialisable spec onto its
@@ -188,7 +192,7 @@ def sample_via_graph(
         if spec is not None:
             port.prior = spec
         elif getattr(p, "_prior", None) is not None:
-            return None        # runtime-only (callback/product) prior
+            return None  # runtime-only (callback/product) prior
 
     lower = np.empty(len(free))
     upper = np.empty(len(free))
@@ -203,8 +207,7 @@ def sample_via_graph(
     s.set_temp(float(temp))
     if np.isfinite(chi2max):
         s.set_chi2max(float(chi2max))
-    s.set_n_adapt(int(n_adapt) if n_adapt is not None
-                  else _default_n_adapt(algorithm, int(steps)))
+    s.set_n_adapt(int(n_adapt) if n_adapt is not None else _default_n_adapt(algorithm, int(steps)))
     if step_size is not None:
         s.set_step_size(float(step_size))
     if nwalkers is not None:
@@ -223,8 +226,11 @@ def sample_via_graph(
         flat = [int(i) for block in blocks for i in block]
         sizes = [len(block) for block in blocks]
         s.set_blocks(flat, sizes)
-    if _kernel_entry(algorithm).get("uses_covariance_seed") and use_curvature \
-            and not _kernel_entry(algorithm).get("requires_gradient"):
+    if (
+        _kernel_entry(algorithm).get("uses_covariance_seed")
+        and use_curvature
+        and not _kernel_entry(algorithm).get("requires_gradient")
+    ):
         # The curvature at the optimum is very nearly the ideal
         # preconditioner (chisurf's _seed_block_covariances), and without it
         # a strongly correlated posterior mixes so badly that 4000 steps
@@ -258,8 +264,7 @@ def sample_via_graph(
             if callback is not None:
                 recorded = int(s.iteration)
                 try:
-                    callback(recorded, n_target,
-                             result=_result(s, model, algorithm))
+                    callback(recorded, n_target, result=_result(s, model, algorithm))
                 except TypeError:
                     callback(recorded, n_target)
             if check_cancel is not None and check_cancel():
@@ -275,7 +280,7 @@ def sample_via_graph(
     return _result(s, model, algorithm)
 
 
-def _curvature_covariance(fit, model, n: int) -> typing.Optional[np.ndarray]:
+def _curvature_covariance(fit, model, n: int) -> np.ndarray | None:
     """The fit's covariance scattered into full free-vector coordinates.
 
     Mirrors the `full` half of ``sample._seed_block_covariances``:
@@ -322,25 +327,27 @@ def _result(sampler, model, algorithm: str) -> dict:
     chi2 = np.asarray(sampler.chi2, dtype=float)
 
     result = {
-        'chi2r': chi2 / dof,
-        'lnprior': np.asarray(sampler.lnprior, dtype=float),
-        'parameter_values': chain,
-        'parameter_names': list(model.parameter_names),
-        'acceptance_rate': float(sampler.acceptance_rate),
+        "chi2r": chi2 / dof,
+        "lnprior": np.asarray(sampler.lnprior, dtype=float),
+        "parameter_values": chain,
+        "parameter_names": list(model.parameter_names),
+        "acceptance_rate": float(sampler.acceptance_rate),
         # The C++ flat order is walker-major within a step (chisurf's
         # flat=True reshape), so per-walker chains for the split R-hat
         # are one reshape + transpose away.
-        'chains': (chain.reshape(n_rec, n_walkers, ndim).transpose(1, 0, 2)
-                   if n_rec * n_walkers == chain.shape[0] and chain.size
-                   else chain[np.newaxis, :, :]),
-        'n_evaluations': int(sampler.n_evaluations),
+        "chains": (
+            chain.reshape(n_rec, n_walkers, ndim).transpose(1, 0, 2)
+            if n_rec * n_walkers == chain.shape[0] and chain.size
+            else chain[np.newaxis, :, :]
+        ),
+        "n_evaluations": int(sampler.n_evaluations),
     }
     entry = _kernel_entry(algorithm)
     if entry.get("population") == "chains":
-        result['n_chains'] = n_walkers
+        result["n_chains"] = n_walkers
     if entry.get("uses_blocks"):
         rates = np.asarray(sampler.block_acceptance_rates, dtype=float)
         if rates.size:
-            result['block_acceptance'] = rates
-            result['block_sizes'] = list(sampler.get_block_sizes())
+            result["block_acceptance"] = rates
+            result["block_sizes"] = list(sampler.get_block_sizes())
     return result

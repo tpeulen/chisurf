@@ -8,16 +8,15 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from chimol.core.viewer import Viewer
 from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
-from chisurf.gui.progress import ChiSurfProgress
 
 import chisurf.core.structure
 import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.glyphs import Glyphs
-from chimol.core.viewer import Viewer
+from chisurf.gui.progress import ChiSurfProgress
 
 from ..core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
 from ..core.naming import default_label_name, unique_label_name
@@ -27,16 +26,16 @@ logger = logging.getLogger("chisurf.plugins.modelling.fret")
 
 # Updated default alpha to 0.35 for beautiful default transparency
 DISTINGUISHABLE_COLORS = [
-    (0.89, 0.10, 0.11, 0.35), # Red
-    (0.12, 0.47, 0.71, 0.35), # Blue
-    (0.20, 0.63, 0.17, 0.35), # Green
-    (1.00, 0.50, 0.00, 0.35), # Orange
-    (0.42, 0.24, 0.60, 0.35), # Purple
-    (0.69, 0.35, 0.16, 0.35), # Brown
-    (0.97, 0.51, 0.75, 0.35), # Pink
-    (0.00, 0.75, 0.75, 0.35), # Cyan
-    (0.87, 0.87, 0.00, 0.35), # Yellow
-    (0.50, 0.50, 0.50, 0.35), # Gray
+    (0.89, 0.10, 0.11, 0.35),  # Red
+    (0.12, 0.47, 0.71, 0.35),  # Blue
+    (0.20, 0.63, 0.17, 0.35),  # Green
+    (1.00, 0.50, 0.00, 0.35),  # Orange
+    (0.42, 0.24, 0.60, 0.35),  # Purple
+    (0.69, 0.35, 0.16, 0.35),  # Brown
+    (0.97, 0.51, 0.75, 0.35),  # Pink
+    (0.00, 0.75, 0.75, 0.35),  # Cyan
+    (0.87, 0.87, 0.00, 0.35),  # Yellow
+    (0.50, 0.50, 0.50, 0.35),  # Gray
 ]
 
 
@@ -75,8 +74,7 @@ class PdbSelectWidget(QtWidgets.QWidget):
 
     def on_browse(self) -> None:
         filename = chisurf.gui.widgets.get_filename(
-            'Open PDB-File',
-            'PDB-Files (*.pdb);;PDB-GZ (*.pdb.gz)'
+            "Open PDB-File", "PDB-Files (*.pdb);;PDB-GZ (*.pdb.gz)"
         )
         if filename:
             self.line_edit.setText(filename)
@@ -89,7 +87,9 @@ class PdbSelectWidget(QtWidgets.QWidget):
 class DetailSettingsDialog(QtWidgets.QDialog):
     """Modal dialog for editing detailed AV/Dye parameters."""
 
-    def __init__(self, params: dict, dye_model: str = "AV1", parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self, params: dict, dye_model: str = "AV1", parent: QtWidgets.QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Labeling Site Details")
         self.resize(400, 520)
@@ -126,7 +126,7 @@ class DetailSettingsDialog(QtWidgets.QDialog):
         dim_layout.addRow("Radius 3 (R3):", self.r3_spin)
 
         # Disable R2/R3 if not AV3
-        is_av3 = (dye_model == "AV3")
+        is_av3 = dye_model == "AV3"
         self.r2_spin.setEnabled(is_av3)
         self.r3_spin.setEnabled(is_av3)
 
@@ -269,8 +269,6 @@ class PositionPanel(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(6)
 
-
-
         # Toolbar for panel actions
         self.toolbar = QtWidgets.QToolBar()
         self.toolbar.setObjectName("fpsJsonEditorMainToolbar")
@@ -316,7 +314,7 @@ class PositionPanel(QtWidgets.QWidget):
             f"{Glyphs.RUN} Compute AVs": "toolbarComputeAV",
             f"{Glyphs.SAVE} Save AV MRC": "toolbarSaveMRC",
         }
-        
+
         self.add_row_action = self.toolbar.addAction(f"{Glyphs.ADD} Add Row")
         self.add_row_action.triggered.connect(self.onAddRowTriggered)
 
@@ -326,7 +324,7 @@ class PositionPanel(QtWidgets.QWidget):
         self.save_av_mrc_action = self.toolbar.addAction(f"{Glyphs.SAVE} Save AV MRC")
         self.save_av_mrc_action.setToolTip("Save selected computed AV(s) as MRC density map(s)")
         self.save_av_mrc_action.triggered.connect(self.onSaveSelectedAVsAsMRC)
-        
+
         for widget in self.toolbar.children():
             if isinstance(widget, QtWidgets.QToolButton):
                 action = widget.defaultAction()
@@ -342,15 +340,27 @@ class PositionPanel(QtWidgets.QWidget):
         # Table Widget
         self.table = QtWidgets.QTableWidget()
         self.table.setColumnCount(11)
-        self.table.setHorizontalHeaderLabels([
-            "Show", "Name", "PDB (File/ID)", "Chain", "Res", "Atom", "Dye Preset", "Dye Model", "Settings", "Color", ""
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Show",
+                "Name",
+                "PDB (File/ID)",
+                "Chain",
+                "Res",
+                "Atom",
+                "Dye Preset",
+                "Dye Model",
+                "Settings",
+                "Color",
+                "",
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(10, QtWidgets.QHeaderView.Fixed)
         self.table.setColumnWidth(10, 40)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        
+
         self.table.cellChanged.connect(self.onCellChanged)
         self.table.verticalHeader().sectionDoubleClicked.connect(self.onRowHeaderDoubleClicked)
         self.table.doubleClicked.connect(self.onTableDoubleClicked)
@@ -374,14 +384,13 @@ class PositionPanel(QtWidgets.QWidget):
         main_layout.addWidget(self.av_progress_bar)
         self._av_task = None
 
-        self.mol_view_3d.atomSelectionChanged.connect(
-            self.on_chimol_atom_selection_changed
-        )
+        self.mol_view_3d.atomSelectionChanged.connect(self.on_chimol_atom_selection_changed)
 
     @staticmethod
     def _make_default_client():
         """Create a default FpsJsonEditorClient with local in-process services."""
         from ..api.client import FpsJsonEditorClient
+
         return FpsJsonEditorClient()
 
     def _setup_row_widgets(self, row: int) -> None:
@@ -491,10 +500,10 @@ class PositionPanel(QtWidgets.QWidget):
                 f"Contact Vol Trapped Frac: {params.get('contact_volume_trapped_fraction', -1.0)}",
                 f"Min Sphere Vol Frac: {params.get('min_sphere_volume_fraction', 0.0)}",
             ]
-            anchor = params.get('anchor_atoms', '')
+            anchor = params.get("anchor_atoms", "")
             if anchor:
                 tooltip_lines.append(f"Anchor Atoms: {anchor}")
-            mask = params.get('strip_mask', '')
+            mask = params.get("strip_mask", "")
             if mask:
                 tooltip_lines.append(f"Strip Mask: {mask}")
 
@@ -507,15 +516,19 @@ class PositionPanel(QtWidgets.QWidget):
                         tooltip_lines.append("<hr><b>AV Computation Results:</b>")
                         tooltip_lines.append(f"Volume: {params['av_volume']:.1f} Å³")
                         tooltip_lines.append(f"Number of Points: {params.get('av_points', 0)}")
-                        mean_xyz = params.get('av_mean', [0.0, 0.0, 0.0])
-                        tooltip_lines.append(f"Mean Position (XYZ): ({mean_xyz[0]:.2f}, {mean_xyz[1]:.2f}, {mean_xyz[2]:.2f})")
+                        mean_xyz = params.get("av_mean", [0.0, 0.0, 0.0])
+                        tooltip_lines.append(
+                            f"Mean Position (XYZ): ({mean_xyz[0]:.2f}, {mean_xyz[1]:.2f}, {mean_xyz[2]:.2f})"
+                        )
                     elif name in self._av_cache:
                         coords, mean_xyz, grid_step, color = self._av_cache[name]
-                        volume = len(coords) * (grid_step ** 3)
+                        volume = len(coords) * (grid_step**3)
                         tooltip_lines.append("<hr><b>AV Computation Results:</b>")
                         tooltip_lines.append(f"Volume: {volume:.1f} Å³")
                         tooltip_lines.append(f"Number of Points: {len(coords)}")
-                        tooltip_lines.append(f"Mean Position (XYZ): ({mean_xyz[0]:.2f}, {mean_xyz[1]:.2f}, {mean_xyz[2]:.2f})")
+                        tooltip_lines.append(
+                            f"Mean Position (XYZ): ({mean_xyz[0]:.2f}, {mean_xyz[1]:.2f}, {mean_xyz[2]:.2f})"
+                        )
 
             btn.setToolTip("<br>".join(tooltip_lines))
 
@@ -582,8 +595,8 @@ class PositionPanel(QtWidgets.QWidget):
         if isinstance(color_btn, QtWidgets.QPushButton):
             color_btn.setStyleSheet(
                 "background-color: "
-                f"rgba({int(color[0]*255)}, {int(color[1]*255)}, "
-                f"{int(color[2]*255)}, {int(color[3]*255)});"
+                f"rgba({int(color[0] * 255)}, {int(color[1] * 255)}, "
+                f"{int(color[2] * 255)}, {int(color[3] * 255)});"
             )
 
         self._update_row_colors(row, self._row_visibility.get(name, True))
@@ -640,11 +653,11 @@ class PositionPanel(QtWidgets.QWidget):
         row = self._find_widget_row(sender, 3)
         if row < 0 or self._block_selector_sync:
             return
-            
+
         struct = self._get_row_structure(row)
         if struct:
             self._update_row_residues(row, struct, chain)
-            
+
         self._maybe_auto_fill_name(row)
         self._trigger_row_av(row)
         self._trigger_row_change(row)
@@ -656,14 +669,14 @@ class PositionPanel(QtWidgets.QWidget):
         row = self._find_widget_row(sender, 4)
         if row < 0 or self._block_selector_sync:
             return
-            
+
         struct = self._get_row_structure(row)
         chain_cb = self.table.cellWidget(row, 3)
         chain = chain_cb.currentText() if isinstance(chain_cb, QtWidgets.QComboBox) else ""
-        
+
         if struct and chain and res_text.isdigit():
             self._update_row_atoms(row, struct, chain, int(res_text))
-            
+
         self._maybe_auto_fill_name(row)
         self._trigger_row_av(row)
         self._trigger_row_change(row)
@@ -675,7 +688,7 @@ class PositionPanel(QtWidgets.QWidget):
         row = self._find_widget_row(sender, 5)
         if row < 0 or self._block_selector_sync:
             return
-            
+
         self._maybe_auto_fill_name(row)
         self._trigger_row_av(row)
         self._trigger_row_change(row)
@@ -684,53 +697,59 @@ class PositionPanel(QtWidgets.QWidget):
         chain_cb = self.table.cellWidget(row, 3)
         if not isinstance(chain_cb, QtWidgets.QComboBox):
             return
-            
+
         curr_text = chain_cb.currentText()
         chain_cb.blockSignals(True)
         chain_cb.clear()
         if struct and struct.atoms is not None:
-            chains = sorted(list(set(struct.atoms['chain'])))
+            chains = sorted(list(set(struct.atoms["chain"])))
             chain_cb.addItems([str(c) for c in chains])
         chain_cb.blockSignals(False)
-        
+
         if curr_text:
             chain_cb.setCurrentText(curr_text)
         else:
             chain_cb.setCurrentIndex(0)
 
-    def _update_row_residues(self, row: int, struct: chisurf.core.structure.Structure, chain: str) -> None:
+    def _update_row_residues(
+        self, row: int, struct: chisurf.core.structure.Structure, chain: str
+    ) -> None:
         res_cb = self.table.cellWidget(row, 4)
         if not isinstance(res_cb, QtWidgets.QComboBox):
             return
-            
+
         curr_text = res_cb.currentText()
         res_cb.blockSignals(True)
         res_cb.clear()
         if struct and struct.atoms is not None and chain:
-            atom_ids = np.where(struct.atoms['chain'] == chain)[0]
-            res_ids = sorted(list(set(struct.atoms['res_id'][atom_ids])))
+            atom_ids = np.where(struct.atoms["chain"] == chain)[0]
+            res_ids = sorted(list(set(struct.atoms["res_id"][atom_ids])))
             res_cb.addItems([str(r) for r in res_ids])
         res_cb.blockSignals(False)
-        
+
         if curr_text:
             res_cb.setCurrentText(curr_text)
         else:
             res_cb.setCurrentIndex(0)
 
-    def _update_row_atoms(self, row: int, struct: chisurf.core.structure.Structure, chain: str, res: int) -> None:
+    def _update_row_atoms(
+        self, row: int, struct: chisurf.core.structure.Structure, chain: str, res: int
+    ) -> None:
         atom_cb = self.table.cellWidget(row, 5)
         if not isinstance(atom_cb, QtWidgets.QComboBox):
             return
-            
+
         curr_text = atom_cb.currentText()
         atom_cb.blockSignals(True)
         atom_cb.clear()
         if struct and struct.atoms is not None and chain and res:
-            atom_ids = np.where((struct.atoms['res_id'] == res) & (struct.atoms['chain'] == chain))[0]
-            atom_names = sorted(list(set(struct.atoms['atom_name'][atom_ids])))
+            atom_ids = np.where((struct.atoms["res_id"] == res) & (struct.atoms["chain"] == chain))[
+                0
+            ]
+            atom_names = sorted(list(set(struct.atoms["atom_name"][atom_ids])))
             atom_cb.addItems([str(a) for a in atom_names])
         atom_cb.blockSignals(False)
-        
+
         if curr_text:
             atom_cb.setCurrentText(curr_text)
         else:
@@ -767,11 +786,11 @@ class PositionPanel(QtWidgets.QWidget):
 
         if hasattr(self.mol_view_3d, "clear_point_overlays"):
             self.mol_view_3d.clear_point_overlays()
-            
+
         if hasattr(self.mol_view_3d, "list_objects") and hasattr(self.mol_view_3d, "remove_object"):
             for obj in self.mol_view_3d.list_objects():
                 self.mol_view_3d.remove_object(obj["id"])
-                
+
         self._av_cache.clear()
         self._av_signatures.clear()
         self._loaded_structures.clear()
@@ -808,13 +827,21 @@ class PositionPanel(QtWidgets.QWidget):
                         "radius3": float(params.get("radius3", 0.0)),
                         "body_id": int(params.get("body_id", 0)),
                         "allowed_sphere_radius": float(params.get("allowed_sphere_radius", 1.5)),
-                        "simulation_grid_resolution": float(params.get("simulation_grid_resolution", 1.5)),
+                        "simulation_grid_resolution": float(
+                            params.get("simulation_grid_resolution", 1.5)
+                        ),
                         "anchor_atoms": str(params.get("anchor_atoms", "")),
                         "strip_mask": str(params.get("strip_mask", "")),
                         "chain_weighting": bool(params.get("chain_weighting", False)),
-                        "contact_volume_thickness": float(params.get("contact_volume_thickness", 0.0)),
-                        "contact_volume_trapped_fraction": float(params.get("contact_volume_trapped_fraction", -1.0)),
-                        "min_sphere_volume_fraction": float(params.get("min_sphere_volume_fraction", 0.0)),
+                        "contact_volume_thickness": float(
+                            params.get("contact_volume_thickness", 0.0)
+                        ),
+                        "contact_volume_trapped_fraction": float(
+                            params.get("contact_volume_trapped_fraction", -1.0)
+                        ),
+                        "min_sphere_volume_fraction": float(
+                            params.get("min_sphere_volume_fraction", 0.0)
+                        ),
                     }
                     name_item.setData(QtCore.Qt.UserRole + 1, full_params)
                     self._update_settings_tooltip(row, full_params)
@@ -844,11 +871,11 @@ class PositionPanel(QtWidgets.QWidget):
                     self._update_row_chains(row, struct)
                     if isinstance(chain_cb, QtWidgets.QComboBox):
                         chain_cb.setCurrentText(chain)
-                        
+
                     self._update_row_residues(row, struct, chain)
                     if isinstance(res_cb, QtWidgets.QComboBox):
                         res_cb.setCurrentText(res)
-                        
+
                     self._update_row_atoms(row, struct, chain, int(res) if res.isdigit() else 0)
                     if isinstance(atom_cb, QtWidgets.QComboBox):
                         atom_cb.setCurrentText(atom)
@@ -893,7 +920,9 @@ class PositionPanel(QtWidgets.QWidget):
                 # Color button (col 9)
                 color_btn = self.table.cellWidget(row, 9)
                 if isinstance(color_btn, QtWidgets.QPushButton):
-                    color_btn.setStyleSheet(f"background-color: rgba({int(color_rgba[0]*255)}, {int(color_rgba[1]*255)}, {int(color_rgba[2]*255)}, {int(color_rgba[3]*255)});")
+                    color_btn.setStyleSheet(
+                        f"background-color: rgba({int(color_rgba[0] * 255)}, {int(color_rgba[1] * 255)}, {int(color_rgba[2] * 255)}, {int(color_rgba[3] * 255)});"
+                    )
 
                 self._update_row_colors(row, visible)
 
@@ -922,17 +951,23 @@ class PositionPanel(QtWidgets.QWidget):
             pdb_val = self._get_row_pdb_val(row)
 
             chain_cb = self.table.cellWidget(row, 3)
-            chain = chain_cb.currentText().strip() if isinstance(chain_cb, QtWidgets.QComboBox) else ""
+            chain = (
+                chain_cb.currentText().strip() if isinstance(chain_cb, QtWidgets.QComboBox) else ""
+            )
 
             res_cb = self.table.cellWidget(row, 4)
-            res_text = res_cb.currentText().strip() if isinstance(res_cb, QtWidgets.QComboBox) else ""
+            res_text = (
+                res_cb.currentText().strip() if isinstance(res_cb, QtWidgets.QComboBox) else ""
+            )
             res = int(res_text) if res_text.isdigit() else 0
 
             atom_cb = self.table.cellWidget(row, 5)
             atom = atom_cb.currentText().strip() if isinstance(atom_cb, QtWidgets.QComboBox) else ""
 
             preset_cb = self.table.cellWidget(row, 6)
-            preset = preset_cb.currentText() if isinstance(preset_cb, QtWidgets.QComboBox) else "Custom"
+            preset = (
+                preset_cb.currentText() if isinstance(preset_cb, QtWidgets.QComboBox) else "Custom"
+            )
 
             model_cb = self.table.cellWidget(row, 7)
             model = model_cb.currentText() if isinstance(model_cb, QtWidgets.QComboBox) else "AV1"
@@ -961,7 +996,9 @@ class PositionPanel(QtWidgets.QWidget):
             "anchor_atoms": str(params.get("anchor_atoms", "")),
             "chain_weighting": bool(params.get("chain_weighting", False)),
             "contact_volume_thickness": float(params.get("contact_volume_thickness", 0.0)),
-            "contact_volume_trapped_fraction": float(params.get("contact_volume_trapped_fraction", -1.0)),
+            "contact_volume_trapped_fraction": float(
+                params.get("contact_volume_trapped_fraction", -1.0)
+            ),
             "min_sphere_volume_fraction": float(params.get("min_sphere_volume_fraction", 0.0)),
             "simulation_grid_resolution": float(params.get("simulation_grid_resolution", 1.5)),
             "strip_mask": str(params.get("strip_mask", "")),
@@ -1074,7 +1111,7 @@ class PositionPanel(QtWidgets.QWidget):
             self.av_preview_label.setText(msg)
             self._show_status(msg, "error")
             return
-            
+
         pdb_path = struct.filename
 
         # Cancel any existing debounce timer
@@ -1086,25 +1123,47 @@ class PositionPanel(QtWidgets.QWidget):
         timer = QtCore.QTimer()
         timer.setSingleShot(True)
         timer.setInterval(400)
-        
+
         # Capture variables for lambda
         source_info = {
             "chain_identifier": chain,
             "residue_seq_number": res_id,
             "atom_name": atom,
         }
-        
-        timer.timeout.connect(lambda: self._do_trigger_row_av(
-            name, row, pdb_path, chain, res_id, atom, l, w, (r1, r2, r3), resolution, source_info
-        ))
-        
+
+        timer.timeout.connect(
+            lambda: self._do_trigger_row_av(
+                name,
+                row,
+                pdb_path,
+                chain,
+                res_id,
+                atom,
+                l,
+                w,
+                (r1, r2, r3),
+                resolution,
+                source_info,
+            )
+        )
+
         self._av_timers[name] = timer
         timer.start()
         self._av_signatures[name] = signature
 
     def _do_trigger_row_av(
-        self, name: str, row: int, pdb_path: str, chain: str, res_id: int, atom: str,
-        l: float, w: float, radii: tuple[float, float, float], resolution: float, source_info: dict
+        self,
+        name: str,
+        row: int,
+        pdb_path: str,
+        chain: str,
+        res_id: int,
+        atom: str,
+        l: float,
+        w: float,
+        radii: tuple[float, float, float],
+        resolution: float,
+        source_info: dict,
     ) -> None:
         try:
             # Clear running worker for this position if any
@@ -1134,8 +1193,14 @@ class PositionPanel(QtWidgets.QWidget):
             worker.position_name = name
             worker.row_index = row
 
-            worker.result_ready.connect(lambda n, v, x, y, z, c, grid_step, w=worker: self.onAVComputationFinished(w.position_name, n, v, x, y, z, c, grid_step))
-            worker.error.connect(lambda msg, w=worker: self.onAVComputationError(w.position_name, msg))
+            worker.result_ready.connect(
+                lambda n, v, x, y, z, c, grid_step, w=worker: self.onAVComputationFinished(
+                    w.position_name, n, v, x, y, z, c, grid_step
+                )
+            )
+            worker.error.connect(
+                lambda msg, w=worker: self.onAVComputationError(w.position_name, msg)
+            )
             self._active_workers[name] = worker
             worker.start()
 
@@ -1158,9 +1223,11 @@ class PositionPanel(QtWidgets.QWidget):
     ) -> None:
         if name not in self._row_colors:
             return  # Row was deleted or renamed in the meantime
-            
+
         self._close_av_task()
-        self.av_preview_label.setText(f"AV: Calculated {name} (Vol: {volume:.1f} Å³, Points: {n_points})")
+        self.av_preview_label.setText(
+            f"AV: Calculated {name} (Vol: {volume:.1f} Å³, Points: {n_points})"
+        )
 
         color = self._row_colors.get(name, DEFAULT_AV_COLOR)
 
@@ -1237,11 +1304,7 @@ class PositionPanel(QtWidgets.QWidget):
                 # Sphere overlay at mean position
                 marker_color = (color[0], color[1], color[2], max(color[3], 0.9))
                 self.mol_view_3d.add_sphere(
-                    mean_xyz,
-                    radius=1.5,
-                    color=marker_color,
-                    label=name,
-                    key=f"mean_{name}"
+                    mean_xyz, radius=1.5, color=marker_color, label=name, key=f"mean_{name}"
                 )
 
     def _load_pdb_for_val(self, pdb_val: str) -> chisurf.core.structure.Structure | None:
@@ -1264,19 +1327,27 @@ class PositionPanel(QtWidgets.QWidget):
                 self.mol_view_3d.set_structure(struct)
                 self.mol_view_3d.show()
                 self._show_status(f"Downloaded and loaded PDB ID '{pdb_val}'.", "info")
-                
+
                 # Dynamic update of chains
                 for r in range(self.table.rowCount() - 1):
                     if self._get_row_pdb_val(r) == pdb_val:
                         self._update_row_chains(r, struct)
                         chain_cb = self.table.cellWidget(r, 3)
-                        chain = chain_cb.currentText() if isinstance(chain_cb, QtWidgets.QComboBox) else ""
+                        chain = (
+                            chain_cb.currentText()
+                            if isinstance(chain_cb, QtWidgets.QComboBox)
+                            else ""
+                        )
                         self._update_row_residues(r, struct, chain)
                         res_cb = self.table.cellWidget(r, 4)
-                        res_text = res_cb.currentText() if isinstance(res_cb, QtWidgets.QComboBox) else ""
-                        self._update_row_atoms(r, struct, chain, int(res_text) if res_text.isdigit() else 0)
+                        res_text = (
+                            res_cb.currentText() if isinstance(res_cb, QtWidgets.QComboBox) else ""
+                        )
+                        self._update_row_atoms(
+                            r, struct, chain, int(res_text) if res_text.isdigit() else 0
+                        )
                         self._maybe_auto_fill_name(r)
-                        
+
                 return struct
             except Exception as e:
                 self._show_status(f"Failed to fetch/load PDB ID '{pdb_val}': {e}", "error")
@@ -1291,14 +1362,16 @@ class PositionPanel(QtWidgets.QWidget):
                     self.mol_view_3d.set_structure(struct)
                     self.mol_view_3d.show()
                     self._show_status(f"Loaded structure from path: {pdb_val}", "info")
-                    
+
                     for r in range(self.table.rowCount() - 1):
                         if self._get_row_pdb_val(r) == pdb_val:
                             self._update_row_chains(r, struct)
-                            
+
                     return struct
                 except Exception as e:
-                    self._show_status(f"Failed to load structure from path '{pdb_val}': {e}", "error")
+                    self._show_status(
+                        f"Failed to load structure from path '{pdb_val}': {e}", "error"
+                    )
                     return None
         return None
 
@@ -1338,7 +1411,7 @@ class PositionPanel(QtWidgets.QWidget):
                     widget.setStyleSheet("color: gray; font-style: italic;")
                 else:
                     r, g, b, _ = color
-                    qr, qg, qb = int(r*255), int(g*255), int(b*255)
+                    qr, qg, qb = int(r * 255), int(g * 255), int(b * 255)
                     widget.setStyleSheet(f"color: rgb({qr}, {qg}, {qb}); font-style: normal;")
             elif isinstance(widget, QtWidgets.QPushButton):
                 if not visible:
@@ -1438,7 +1511,9 @@ class PositionPanel(QtWidgets.QWidget):
         self._row_colors[name] = new_color
 
         if isinstance(button, QtWidgets.QPushButton):
-            button.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {color.alpha()});")
+            button.setStyleSheet(
+                f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {color.alpha()});"
+            )
 
         visible = self._row_visibility.get(name, True)
         self._update_row_colors(row, visible)
@@ -1699,7 +1774,7 @@ class PositionPanel(QtWidgets.QWidget):
             if name_item:
                 new_name = name_item.text().strip()
                 old_name = name_item.data(QtCore.Qt.UserRole)
-                
+
                 if old_name and old_name != new_name:
                     self._block_table_signals += 1
                     try:
@@ -1749,7 +1824,7 @@ class PositionPanel(QtWidgets.QWidget):
         if not selected_atom_indices or self._block_selector_sync:
             return
         atom_index = selected_atom_indices[0]
-        
+
         row = self.table.currentRow()
         if row < 0 or row >= self.table.rowCount():
             return
@@ -1762,9 +1837,9 @@ class PositionPanel(QtWidgets.QWidget):
             return
 
         atom = struct.atoms[atom_index]
-        chain = str(atom['chain'])
-        res_id = str(atom['res_id'])
-        atom_name = str(atom['atom_name'])
+        chain = str(atom["chain"])
+        res_id = str(atom["res_id"])
+        atom_name = str(atom["atom_name"])
 
         chain_cb = self.table.cellWidget(row, 3)
         res_cb = self.table.cellWidget(row, 4)
@@ -1792,8 +1867,11 @@ class PositionPanel(QtWidgets.QWidget):
             self._pdb_path = path
 
             import chisurf as cs
+
             if hasattr(cs.core.settings, "structure_data"):
-                cs.core.settings.structure_data.setdefault("IMP", {})["filter_non_standard_residues"] = False
+                cs.core.settings.structure_data.setdefault("IMP", {})[
+                    "filter_non_standard_residues"
+                ] = False
 
             paths = [p.strip() for p in path.split(",") if p.strip()]
             if len(paths) == 1:
@@ -1806,7 +1884,7 @@ class PositionPanel(QtWidgets.QWidget):
                         atoms_list.append(s.atoms)
                 if atoms_list:
                     combined_atoms = np.concatenate(atoms_list)
-                    combined_atoms['atom_id'] = np.arange(1, len(combined_atoms) + 1)
+                    combined_atoms["atom_id"] = np.arange(1, len(combined_atoms) + 1)
 
                     structure = chisurf.core.structure.Structure()
                     structure.atoms = combined_atoms
@@ -1821,7 +1899,10 @@ class PositionPanel(QtWidgets.QWidget):
             row = self.table.currentRow()
             if row >= 0 and row < self.table.rowCount() - 1:
                 pdb_widget = self.table.cellWidget(row, 2)
-                if isinstance(pdb_widget, PdbSelectWidget) and not pdb_widget.line_edit.text().strip():
+                if (
+                    isinstance(pdb_widget, PdbSelectWidget)
+                    and not pdb_widget.line_edit.text().strip()
+                ):
                     pdb_widget.line_edit.setText(path)
                     self._update_row_chains(row, structure)
         except Exception as e:
@@ -1858,10 +1939,10 @@ class PositionPanel(QtWidgets.QWidget):
             row = self.table.currentRow()
             if row >= 0 and row < self.table.rowCount() - 1:
                 rows_to_delete = [row]
-        
+
         if not rows_to_delete:
             return
-            
+
         self._block_table_signals += 1
         try:
             for row in reversed(rows_to_delete):
@@ -1883,7 +1964,7 @@ class PositionPanel(QtWidgets.QWidget):
                 self.table.removeRow(row)
         finally:
             self._block_table_signals -= 1
-            
+
         self._update_3d_overlays()
 
     def onDeleteSelectedAVs(self) -> None:
@@ -1892,10 +1973,10 @@ class PositionPanel(QtWidgets.QWidget):
             row = self.table.currentRow()
             if row >= 0 and row < self.table.rowCount() - 1:
                 rows = [row]
-                
+
         if not rows:
             return
-            
+
         for row in rows:
             name_item = self.table.item(row, 1)
             if name_item:
@@ -1917,7 +1998,7 @@ class PositionPanel(QtWidgets.QWidget):
                         name_item.setData(QtCore.Qt.UserRole + 1, params)
                         self._update_settings_tooltip(row, params)
                         self._trigger_row_change(row)
-                        
+
         self.av_preview_label.setText("AV: Not computed")
         self._update_3d_overlays()
 

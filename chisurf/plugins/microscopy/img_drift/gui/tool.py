@@ -96,9 +96,7 @@ class ImgDriftTool(ChisurfDockTool):
 
     def _on_finished(self, ok: bool) -> None:
         """Refresh the form once the background run finished."""
-        self.statusBar().showMessage(
-            self.model.status if ok else "Drift measurement failed", 8000
-        )
+        self.statusBar().showMessage(self.model.status if ok else "Drift measurement failed", 8000)
         self._refresh()
 
     def _default_path(self, suffix: str) -> str:
@@ -112,7 +110,9 @@ class ImgDriftTool(ChisurfDockTool):
         if self.model.result is None:
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export corrected stack", self._default_path(".corrected.tif"),
+            self,
+            "Export corrected stack",
+            self._default_path(".corrected.tif"),
             "TIFF (*.tif *.tiff)",
         )
         if path:

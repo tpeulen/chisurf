@@ -86,8 +86,7 @@ def test_fit_states_recovers_the_simulated_states(data):
     assert len(set(np.unique(path))) == 2, "the fit collapsed onto one state"
 
     fractions = sorted(
-        float(np.mean(data.streams[path == state] == 1))
-        for state in np.unique(path)
+        float(np.mean(data.streams[path == state] == 1)) for state in np.unique(path)
     )
     assert fractions[0] == pytest.approx(0.25, abs=0.12), fractions
     assert fractions[1] == pytest.approx(0.75, abs=0.12), fractions
@@ -103,8 +102,7 @@ def test_no_module_imports_compute_entry_points_from_the_types_module():
     """
     import pathlib
 
-    compute = ("optimize", "fit_states", "viterbi", "posterior", "sample_states",
-               "sample_paths")
+    compute = ("optimize", "fit_states", "viterbi", "posterior", "sample_states", "sample_paths")
     # parents[5], not [4]: this file is chisurf/plugins/burst/burst_h2mm/tests/,
     # so [4] is the `chisurf` package and `root / "chisurf"` would be a path
     # that does not exist -- rglob yields nothing and the test passes vacuously.

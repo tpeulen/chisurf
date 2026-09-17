@@ -429,9 +429,7 @@ class SkillLibrary:
             for name in skill.uses:
                 dependency = self.skills.get(str(name).strip())
                 if dependency is None:
-                    logger.warning(
-                        "skill %r uses unknown skill %r", skill.name, name
-                    )
+                    logger.warning("skill %r uses unknown skill %r", skill.name, name)
                     continue
                 visit(dependency)
 

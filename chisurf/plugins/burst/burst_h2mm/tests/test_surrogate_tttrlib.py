@@ -6,6 +6,7 @@ when executed by the C++ engine. That only holds if the feature extractor, the
 scalers, the net, and the decoder all agree, so the tests check each link as
 well as the end-to-end result.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,8 @@ if not hasattr(tttrlib, "HmmSurrogate"):
 from chisurf.plugins.burst.burst_h2mm.core import surrogate_tttrlib  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
-    not surrogate.surrogate_available(), reason="scikit-learn is required")
+    not surrogate.surrogate_available(), reason="scikit-learn is required"
+)
 
 
 def _dataset(n_bursts=40, burst_len=60, n_streams=2, seed=0):
@@ -44,8 +46,15 @@ def _dataset(n_bursts=40, burst_len=60, n_streams=2, seed=0):
 def trained():
     """A small scikit-learn surrogate; slow enough to be worth sharing."""
     return surrogate.train_surrogate(
-        n_states=2, n_streams=2, n_samples=60, hidden_layer_sizes=(32, 32),
-        max_iter=80, n_bursts=20, burst_len=40, seed=3)
+        n_states=2,
+        n_streams=2,
+        n_samples=60,
+        hidden_layer_sizes=(32, 32),
+        max_iter=80,
+        n_bursts=20,
+        burst_len=40,
+        seed=3,
+    )
 
 
 def test_feature_extractors_agree(trained):
@@ -54,7 +63,8 @@ def test_feature_extractors_agree(trained):
     np.testing.assert_allclose(
         surrogate_tttrlib.extract_features(data),
         surrogate.extract_features(data),
-        rtol=0, atol=1e-12,
+        rtol=0,
+        atol=1e-12,
     )
 
 
@@ -71,7 +81,10 @@ def test_export_json_schema(trained):
     assert layer0["n_out"] == coef0.shape[1]
     np.testing.assert_allclose(
         np.asarray(layer0["weight"]).reshape(layer0["n_out"], layer0["n_in"]),
-        np.asarray(coef0).T, rtol=0, atol=1e-15)
+        np.asarray(coef0).T,
+        rtol=0,
+        atol=1e-15,
+    )
 
 
 def test_cpp_and_sklearn_estimates_agree(trained):
@@ -126,7 +139,7 @@ def test_state_count_mismatch_is_rejected(trained):
 
 
 def test_stale_features_version_is_rejected(trained):
-    data = _dataset(seed=23)
+    _dataset(seed=23)
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "surrogate.json")
         doc = trained.to_json()

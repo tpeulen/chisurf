@@ -12,6 +12,7 @@ the baseline-subtracted correlation *decay* matches PAM's within tolerance.
 The correlation function is the quantity PAM stores (a fitted D is derived from
 it), so agreement here means both packages recover the same diffusion.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -47,8 +48,8 @@ def _decay_profiles(corr: np.ndarray, k: int = 15):
     border = np.concatenate([corr[0, :], corr[-1, :], corr[:, 0], corr[:, -1]])
     g = corr - np.median(border)
     peak = g[pk]
-    fast = g[pk[0], pk[1]: pk[1] + k + 1] / peak
-    slow = g[pk[0]: pk[0] + k + 1, pk[1]] / peak
+    fast = g[pk[0], pk[1] : pk[1] + k + 1] / peak
+    slow = g[pk[0] : pk[0] + k + 1, pk[1]] / peak
     return fast[1:], slow[1:]  # drop lag 0
 
 
@@ -67,9 +68,8 @@ def test_ics_reader_reads_lzw_stack():
 
 def test_ics_correlation_matches_pam():
     """ChiSurf's RICS correlation decay matches PAM's on the same 200x200 ROI."""
-    from chisurf.core.fio.image import imread, imwrite
-
     from chisurf.core.experiments.ics.ics_core import compute_ics_carpet
+    from chisurf.core.fio.image import imread
 
     stack = np.asarray(imread(str(_TIF)), dtype=float)
     cs = np.asarray(

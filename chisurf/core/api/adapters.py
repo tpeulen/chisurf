@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class FitListAdapter:
@@ -25,14 +25,14 @@ class FitListAdapter:
     def __init__(self, api: Any):
         self._api = api
 
-    def refresh(self) -> List[Dict[str, Any]]:
+    def refresh(self) -> list[dict[str, Any]]:
         """Re-fetch the fit list from the API."""
         return self._api.list_fits()
 
     def __len__(self) -> int:
         return len(self._api.list_fits())
 
-    def __getitem__(self, index: int) -> Dict[str, Any]:
+    def __getitem__(self, index: int) -> dict[str, Any]:
         fits = self._api.list_fits()
         if isinstance(index, slice):
             return fits[index]
@@ -46,7 +46,7 @@ class FitListAdapter:
     def __contains__(self, uid: str) -> bool:
         return any(f.get("uid") == uid for f in self._api.list_fits())
 
-    def get_by_uid(self, uid: str) -> Optional[Dict[str, Any]]:
+    def get_by_uid(self, uid: str) -> dict[str, Any] | None:
         for f in self._api.list_fits():
             if f.get("uid") == uid:
                 return f
@@ -62,13 +62,13 @@ class DatasetListAdapter:
     def __init__(self, api: Any):
         self._api = api
 
-    def refresh(self) -> List[Dict[str, Any]]:
+    def refresh(self) -> list[dict[str, Any]]:
         return self._api.list_datasets()
 
     def __len__(self) -> int:
         return len(self._api.list_datasets())
 
-    def __getitem__(self, index: int) -> Dict[str, Any]:
+    def __getitem__(self, index: int) -> dict[str, Any]:
         datasets = self._api.list_datasets()
         if isinstance(index, slice):
             return datasets[index]
@@ -82,7 +82,7 @@ class DatasetListAdapter:
     def __contains__(self, uid: str) -> bool:
         return any(d.get("uid") == uid for d in self._api.list_datasets())
 
-    def get_by_uid(self, uid: str) -> Optional[Dict[str, Any]]:
+    def get_by_uid(self, uid: str) -> dict[str, Any] | None:
         for d in self._api.list_datasets():
             if d.get("uid") == uid:
                 return d

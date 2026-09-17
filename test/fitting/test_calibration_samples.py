@@ -73,9 +73,17 @@ def test_calibrate_from_samples_full_recovery():
     assert out["gamma"] == pytest.approx(GAMMA, abs=0.06)
 
     dd, da, aa, lab = _fret()
-    e_rec = [corrected_es(dd[lab == i], da[lab == i], aa[lab == i],
-                          gamma=calib.gamma, alpha=calib.alpha, delta=calib.delta)["E"].mean()
-             for i in range(3)]
+    e_rec = [
+        corrected_es(
+            dd[lab == i],
+            da[lab == i],
+            aa[lab == i],
+            gamma=calib.gamma,
+            alpha=calib.alpha,
+            delta=calib.delta,
+        )["E"].mean()
+        for i in range(3)
+    ]
     assert np.allclose(e_rec, [0.25, 0.55, 0.8], atol=0.03)
 
 

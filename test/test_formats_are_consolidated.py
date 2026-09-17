@@ -34,7 +34,6 @@ import re
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1] / "chisurf"
 
@@ -71,7 +70,8 @@ def test_a_curve_round_trips_through_the_container(tmp_path: Path):
 
 def test_an_absent_uncertainty_is_not_written_as_zeros(tmp_path: Path):
     """A zero uncertainty is a claim, and a curve that never had one should not
-    make it."""
+    make it.
+    """
     from chisurf.core.data import DataCurve
     from chisurf.core.fio.pto import Measurement
 
@@ -115,7 +115,8 @@ def test_a_curve_says_what_its_axes_are_in(tmp_path: Path):
 
 def test_the_readers_say_what_they_read():
     """A reader that knows the axis must record it — that is where the
-    knowledge is, and the only place it exists."""
+    knowledge is, and the only place it exists.
+    """
     fcs = (ROOT / "core" / "fio" / "fluorescence" / "fcs" / "__init__.py").read_text()
     assert 'curve.X_UNITS = "milliseconds"' in fcs
 
@@ -129,12 +130,12 @@ def test_the_readers_say_what_they_read():
 #: either a legacy format kept because another program reads it, or an export
 #: the user asks for by name — not a way for ChiSurf to save its own work.
 CURVE_EXPORT_ALLOWLIST = {
-    "core/fio/ascii.py",                          # generic x/y export
-    "core/fio/vv_vh.py",                          # the historic stacked decay
-    "core/fio/fluorescence/fcs/kristine.py",      # read by other groups' tools
-    "core/fio/fluorescence/fcs/fcs_yaml.py",      # multi-curve export
-    "core/fio/fluorescence/fcs/china.py",         # MATLAB export
-    "core/fio/fluorescence/fcs/__init__.py",      # dispatches the above
+    "core/fio/ascii.py",  # generic x/y export
+    "core/fio/vv_vh.py",  # the historic stacked decay
+    "core/fio/fluorescence/fcs/kristine.py",  # read by other groups' tools
+    "core/fio/fluorescence/fcs/fcs_yaml.py",  # multi-curve export
+    "core/fio/fluorescence/fcs/china.py",  # MATLAB export
+    "core/fio/fluorescence/fcs/__init__.py",  # dispatches the above
 }
 
 
@@ -179,8 +180,5 @@ def test_reading_many_formats_is_not_the_problem():
     all, which is exactly the right shape for an import path.
     """
     fcs_dir = ROOT / "core" / "fio" / "fluorescence" / "fcs"
-    readers = [
-        p for p in fcs_dir.glob("*.py")
-        if re.search(r"^def read", p.read_text(), re.M)
-    ]
+    readers = [p for p in fcs_dir.glob("*.py") if re.search(r"^def read", p.read_text(), re.M)]
     assert len(readers) >= 8, "the FCS import paths should not be shrinking"

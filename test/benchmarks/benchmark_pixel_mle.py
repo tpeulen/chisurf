@@ -15,6 +15,7 @@ or as a (slow) regression test asserting equivalence + a speedup::
 
     pytest test/benchmarks/benchmark_pixel_mle.py -q -m slow
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -25,9 +26,7 @@ import pytest
 
 from chisurf.core.datastore import numeric_column
 
-_FLIM_PTU = pathlib.Path(
-    "/Users/tpeulen/dev/tttr-data/imaging/pq/Microtime200_HH400/beads.ptu"
-)
+_FLIM_PTU = pathlib.Path("/Users/tpeulen/dev/tttr-data/imaging/pq/Microtime200_HH400/beads.ptu")
 _BINNING = 8
 
 
@@ -39,9 +38,16 @@ def _settings(**overrides):
     irf1 /= irf1.sum()
     irf = np.concatenate([irf1, irf1])
     kw = dict(
-        channels_parallel=[0], channels_perpendicular=[1], irf=irf,
-        period=1000.0 / 26.0, binning_factor=_BINNING, min_photons=20,
-        tau=2.0, fix_gamma=True, fix_r0=True, fix_rho=True,
+        channels_parallel=[0],
+        channels_perpendicular=[1],
+        irf=irf,
+        period=1000.0 / 26.0,
+        binning_factor=_BINNING,
+        min_photons=20,
+        tau=2.0,
+        fix_gamma=True,
+        fix_r0=True,
+        fix_rho=True,
     )
     kw.update(overrides)
     return PixelMleSettings(**kw)
@@ -83,9 +89,7 @@ def run_benchmark(ptu_path=_FLIM_PTU, workers=None):
             res_holder = {}
 
             def _run(cfg=cfg, res_holder=res_holder):
-                res_holder["r"] = fit_pixel_lifetimes_from_file(
-                    str(ptu_path), _settings(**cfg)
-                )
+                res_holder["r"] = fit_pixel_lifetimes_from_file(str(ptu_path), _settings(**cfg))
 
             timings[label] = _time(_run)
             r = res_holder["r"]
@@ -117,8 +121,9 @@ def _main():
     timings, taus, n_fit = run_benchmark()
     labels = list(timings)
     base_t = timings[labels[0]]
-    print(f"\nPixel-wise FLIM MLE A/B benchmark  ({_FLIM_PTU.name}, "
-          f"{n_fit[labels[0]]} pixels fit)\n")
+    print(
+        f"\nPixel-wise FLIM MLE A/B benchmark  ({_FLIM_PTU.name}, {n_fit[labels[0]]} pixels fit)\n"
+    )
     print(f"{'configuration':<28}{'time [s]':>10}{'speedup':>10}")
     print("-" * 48)
     for label in labels:

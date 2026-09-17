@@ -7,8 +7,15 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-_SPC = (pathlib.Path(__file__).resolve().parents[5]
-        / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
+_SPC = (
+    pathlib.Path(__file__).resolve().parents[5]
+    / "test"
+    / "data"
+    / "tttr"
+    / "BH"
+    / "132"
+    / "BH_SPC132.spc"
+)
 
 
 @pytest.fixture(scope="module")
@@ -61,8 +68,15 @@ def test_compute_viewmodel_load_and_region():
 
     from chisurf.plugins.tttr.tttr_lut_tools.gui.view_model import LutComputeViewModel
 
-    spc = (pathlib.Path(__file__).resolve().parents[5]
-           / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc")
+    spc = (
+        pathlib.Path(__file__).resolve().parents[5]
+        / "test"
+        / "data"
+        / "tttr"
+        / "BH"
+        / "132"
+        / "BH_SPC132.spc"
+    )
     if not spc.is_file():
         import pytest
 

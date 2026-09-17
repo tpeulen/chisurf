@@ -98,8 +98,9 @@ def donor_lifetime_spectrum(donor) -> tuple[np.ndarray, np.ndarray]:
     return x / total, tau
 
 
-def gaussian_distance_distribution(mean, sigma: float, *, n_points: int = 81,
-                                   n_sigma: float = 3.5, r_min: float = 1.0):
+def gaussian_distance_distribution(
+    mean, sigma: float, *, n_points: int = 81, n_sigma: float = 3.5, r_min: float = 1.0
+):
     """Discretized Gaussian donor–acceptor distance distribution.
 
     Represents the fast linker/dye distribution around a mean distance. A width
@@ -175,8 +176,14 @@ def _state_spectrum(distance_weights, distances, donor_x, donor_tau, r0: float):
     return amp.reshape(shape), tau.reshape(shape)
 
 
-def fret_lifetime_spectrum(mean_distance: float, *, donor=4.0, r0: float = 52.0,
-                           sigma: float = 6.0, n_distance_samples: int = 81):
+def fret_lifetime_spectrum(
+    mean_distance: float,
+    *,
+    donor=4.0,
+    r0: float = 52.0,
+    sigma: float = 6.0,
+    n_distance_samples: int = 81,
+):
     """Donor lifetime spectrum of one FRET state (linker distribution × donor decay).
 
     The multi-exponential decay a donor actually shows when its acceptor sits at
@@ -211,10 +218,15 @@ def fret_lifetime_spectrum(mean_distance: float, *, donor=4.0, r0: float = 52.0,
     return (amp / total if total else amp), tau
 
 
-def distance_for_efficiency(efficiency, *, donor=4.0, r0: float = 52.0,
-                            sigma: float = 6.0,
-                            distance_range: tuple[float, float] = (10.0, 200.0),
-                            n_points: int = 600):
+def distance_for_efficiency(
+    efficiency,
+    *,
+    donor=4.0,
+    r0: float = 52.0,
+    sigma: float = 6.0,
+    distance_range: tuple[float, float] = (10.0, 200.0),
+    n_points: int = 600,
+):
     """Mean donor–acceptor distance that yields a given FRET efficiency.
 
     The inverse of the static line's ``E(R_mean)``. It is *not*
@@ -406,10 +418,16 @@ class FretLine:
 # ---------------------------------------------------------------------------
 
 
-def static_fret_line(donor=4.0, *, r0: float = 52.0, sigma: float = 6.0,
-                     distance_range: tuple[float, float] = (10.0, 150.0),
-                     n_points: int = 200, n_distance_samples: int = 81,
-                     name: str = "static FRET line") -> FretLine:
+def static_fret_line(
+    donor=4.0,
+    *,
+    r0: float = 52.0,
+    sigma: float = 6.0,
+    distance_range: tuple[float, float] = (10.0, 150.0),
+    n_points: int = 200,
+    n_distance_samples: int = 81,
+    name: str = "static FRET line",
+) -> FretLine:
     """Build the static FRET line for a Gaussian-broadened donor–acceptor distance.
 
     Sweeps the *mean* distance and, at each point, averages the donor decay over
@@ -455,8 +473,13 @@ def static_fret_line(donor=4.0, *, r0: float = 52.0, sigma: float = 6.0,
     amp, tau = _state_spectrum(w, r, donor_x, donor_tau, float(r0))
     tau_x, tau_f = lifetime_averages(amp, tau)
     return FretLine(
-        tau_f=tau_f, tau_x=tau_x, efficiency=1.0 - tau_x / tau_d0, tau_d0=tau_d0,
-        parameter=r_mean, name=name, kind="static",
+        tau_f=tau_f,
+        tau_x=tau_x,
+        efficiency=1.0 - tau_x / tau_d0,
+        tau_d0=tau_d0,
+        parameter=r_mean,
+        name=name,
+        kind="static",
         meta={"r0": float(r0), "sigma": float(sigma), "donor": donor},
     )
 
@@ -486,14 +509,25 @@ def no_linker_line(donor=4.0, *, n_points: int = 200, name: str = "no-linker lin
         The line.
     """
     return static_fret_line(
-        donor, sigma=0.0, n_points=n_points, n_distance_samples=1, name=name,
+        donor,
+        sigma=0.0,
+        n_points=n_points,
+        n_distance_samples=1,
+        name=name,
     )
 
 
-def dynamic_fret_line(donor=4.0, *, r0: float = 52.0, sigma: float = 6.0,
-                      distance_1: float = 40.0, distance_2: float = 70.0,
-                      n_points: int = 200, n_distance_samples: int = 81,
-                      name: str = "dynamic FRET line") -> FretLine:
+def dynamic_fret_line(
+    donor=4.0,
+    *,
+    r0: float = 52.0,
+    sigma: float = 6.0,
+    distance_1: float = 40.0,
+    distance_2: float = 70.0,
+    n_points: int = 200,
+    n_distance_samples: int = 81,
+    name: str = "dynamic FRET line",
+) -> FretLine:
     """Dynamic FRET line for fast exchange between two limiting distances.
 
     Sweeps the fraction of state 1 from 0 to 1. Because the two states mix as
@@ -527,7 +561,8 @@ def dynamic_fret_line(donor=4.0, *, r0: float = 52.0, sigma: float = 6.0,
     donor_x, donor_tau = donor_lifetime_spectrum(donor)
     tau_d0 = float(np.sum(donor_x * donor_tau))
     w, r = gaussian_distance_distribution(
-        np.array([float(distance_1), float(distance_2)]), float(sigma),
+        np.array([float(distance_1), float(distance_2)]),
+        float(sigma),
         n_points=n_distance_samples,
     )
     amp, tau = _state_spectrum(w, r, donor_x, donor_tau, float(r0))
@@ -541,8 +576,18 @@ def dynamic_fret_line(donor=4.0, *, r0: float = 52.0, sigma: float = 6.0,
     )
     tau_x, tau_f = lifetime_averages(mixed_amp, mixed_tau)
     return FretLine(
-        tau_f=tau_f, tau_x=tau_x, efficiency=1.0 - tau_x / tau_d0, tau_d0=tau_d0,
-        parameter=fractions, name=name, kind="dynamic",
-        meta={"r0": float(r0), "sigma": float(sigma), "donor": donor,
-              "distance_1": float(distance_1), "distance_2": float(distance_2)},
+        tau_f=tau_f,
+        tau_x=tau_x,
+        efficiency=1.0 - tau_x / tau_d0,
+        tau_d0=tau_d0,
+        parameter=fractions,
+        name=name,
+        kind="dynamic",
+        meta={
+            "r0": float(r0),
+            "sigma": float(sigma),
+            "donor": donor,
+            "distance_1": float(distance_1),
+            "distance_2": float(distance_2),
+        },
     )

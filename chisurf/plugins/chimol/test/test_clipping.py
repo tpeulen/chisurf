@@ -11,6 +11,7 @@ The gesture is one stray shift-scroll away (ctrl-scroll too, and on a trackpad
 that is easy to hit by accident). So: say what happened, and make framing the
 way back.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -114,10 +115,14 @@ def test_the_message_reports_when_clipping_is_off_again(viewer):
     for direction in (120, -120):
         renderer.wheelEvent(
             QtGui.QWheelEvent(
-                QtCore.QPointF(10, 10), QtCore.QPointF(10, 10),
-                QtCore.QPoint(0, 0), QtCore.QPoint(0, direction),
-                QtCore.Qt.NoButton, QtCore.Qt.ShiftModifier,
-                QtCore.Qt.NoScrollPhase, False,
+                QtCore.QPointF(10, 10),
+                QtCore.QPointF(10, 10),
+                QtCore.QPoint(0, 0),
+                QtCore.QPoint(0, direction),
+                QtCore.Qt.NoButton,
+                QtCore.Qt.ShiftModifier,
+                QtCore.Qt.NoScrollPhase,
+                False,
             )
         )
 

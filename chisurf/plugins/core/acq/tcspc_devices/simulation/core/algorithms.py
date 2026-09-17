@@ -5,10 +5,11 @@ Maps the acquisition plugin's flat ``simulation_params`` dict onto tttrlib
 array — the same word format the streaming ``SimulationDevice`` feeds through
 ``read_fifo``. Replaces the ctypes/Burbulator-DLL path; no Qt, headless-testable.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -22,7 +23,6 @@ def tttrlib_available() -> bool:
     from chisurf.core.fluorescence.simulation import have_simulator
 
     return have_simulator()
-
 
 
 def _vd(values):
@@ -91,7 +91,7 @@ def _sized(values: Any, size: int, default: float = 0.0) -> list[float]:
     return flat[:size]
 
 
-def _gaussian_irf_pattern(n_bins: int, dt: float, fwhm_ns: float, center_ns: float) -> "np.ndarray":
+def _gaussian_irf_pattern(n_bins: int, dt: float, fwhm_ns: float, center_ns: float) -> np.ndarray:
     """Return an area-normalized Gaussian IRF on the micro-time axis."""
     from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
@@ -117,7 +117,7 @@ def _species_decay(tttrlib, spectrum, n_bins: int, dt: float, irf=None, t0: floa
     from chisurf.core.fluorescence.decay import synthetic_decay
 
     amps, taus = [], []
-    for entry in (spectrum or []):
+    for entry in spectrum or []:
         if isinstance(entry, (list, tuple)) and len(entry) >= 2:
             amp, tau = float(entry[0]), float(entry[1])
         else:
@@ -133,7 +133,7 @@ def _species_decay(tttrlib, spectrum, n_bins: int, dt: float, irf=None, t0: floa
     return tttrlib.SimDecay.from_pattern(pattern.tolist(), float(dt), float(t0))
 
 
-def build_engine(params: Dict[str, Any]):
+def build_engine(params: dict[str, Any]):
     """Build a configured ``tttrlib.SimEngine`` from plugin parameters.
 
     Parameters
@@ -160,7 +160,9 @@ def build_engine(params: Dict[str, Any]):
     irf_fwhm = params.get("irf_fwhm_ns")
     if irf_fwhm:
         irf_pattern = _gaussian_irf_pattern(
-            n_tac, tac_dt, float(irf_fwhm),
+            n_tac,
+            tac_dt,
+            float(irf_fwhm),
             float(params.get("irf_center_ns", 2.0 * float(irf_fwhm))),
         )
 
@@ -172,12 +174,14 @@ def build_engine(params: Dict[str, Any]):
         if not path:
             return None
         import pathlib
+
         p = pathlib.Path(str(path))
         if not p.is_file():
             return None
         arr = np.load(p) if p.suffix.lower() == ".npy" else np.loadtxt(p)
         arr = np.asarray(arr, dtype=float).ravel()
         return arr if arr.size and np.any(arr > 0) else None
+
     q = _sized(params.get("q", [50.0] * (ns * nc)), ns * nc, 0.0)
     D = _sized(params.get("D", [3.0] * ns), ns, 0.0)
     M = _sized(params.get("M", [50.0] * ns), ns, 0.0)
@@ -192,7 +196,7 @@ def build_engine(params: Dict[str, Any]):
     for i in range(ns):
         sp = tttrlib.SimSpecies()
         sp.D = float(D[i])
-        sp.q = _vd(q[i * nc:(i + 1) * nc])
+        sp.q = _vd(q[i * nc : (i + 1) * nc])
         sp.r0 = float(params.get("r0", 0.0))
         sp.l1 = float(params.get("l1", 0.0))
         sp.l2 = float(params.get("l2", 0.0))
@@ -254,7 +258,9 @@ def build_engine(params: Dict[str, Any]):
             str(params["psf_file"]),
             r_step=float(params.get("psf_r_step", spacing)),
             z_step=float(params.get("psf_z_step", spacing)),
-            extent_xy=ext_xy, extent_z=ext_z, spacing=spacing,
+            extent_xy=ext_xy,
+            extent_z=ext_z,
+            spacing=spacing,
         )
     elif psf_type == "analytic_gaussian3d":
         excitation = tttrlib.SimGrid.analytic_gaussian3d(w0, z0, 1.0)
@@ -295,7 +301,7 @@ def build_engine(params: Dict[str, Any]):
     return tttrlib.SimEngine(sample, excitation, tttrlib.VectorSimGrid([]), settings)
 
 
-def generate_spc132_uint32(params: Dict[str, Any]) -> np.ndarray:
+def generate_spc132_uint32(params: dict[str, Any]) -> np.ndarray:
     """Run tttrlib and return encoded SPC records as ``uint32`` words.
 
     Parameters
@@ -313,7 +319,7 @@ def generate_spc132_uint32(params: Dict[str, Any]) -> np.ndarray:
     return encode_records(engine, params)
 
 
-def encode_records(engine, params: Dict[str, Any]) -> np.ndarray:
+def encode_records(engine, params: dict[str, Any]) -> np.ndarray:
     """Encode an already-run ``SimEngine`` as SPC-132 ``uint32`` words.
 
     Split out from :func:`generate_spc132_uint32` so callers that already ran the
@@ -326,9 +332,9 @@ def encode_records(engine, params: Dict[str, Any]) -> np.ndarray:
     enc.pulsed_exc = int(params.get("pulsed_exc", 0))
     enc.n_channels = int(params.get("N_channels", 2))
     enc.tw = float(params.get("dt", 0.01))
-    enc.ch_conversion = tttrlib.VectorUint16([
-        int(v) for v in params.get("ch_conversion", [8, 0, 9, 1, 10, 2])
-    ])
+    enc.ch_conversion = tttrlib.VectorUint16(
+        [int(v) for v in params.get("ch_conversion", [8, 0, 9, 1, 10, 2])]
+    )
     enc.n_microtime_channels = int(params.get("N_tac_channels", 4096))
     enc.microtime_resolution = float(params.get("tac_dt", 0.004069))
     enc.laser_period = float(params.get("laser_period", 13.596))

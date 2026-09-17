@@ -1,32 +1,23 @@
 from __future__ import annotations
 
-import os
 import typing
-import pathlib
-import textwrap
 
-import numpy as np
-from qtpy import QtWidgets, uic, QtCore, QtGui
-import matplotlib.colors as mcolors
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.data
 import chisurf.core.fitting
+import chisurf.core.settings
 import chisurf.core.support.decorators
 import chisurf.gui.decorators
-import chisurf.core.settings
-
 import chisurf.gui.tooltip
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.core.math.optimization import OptimizationCancelled
-from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, fit_tooltip_html
-
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, fit_tooltip_html
 
 
 @chisurf.core.support.decorators.register
 class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
-
     @property
     def _fc(self):
         """Try to get the global fitting client; may be None."""
@@ -54,7 +45,7 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
         return {}
 
     @property
-    def selected_fits(self) -> typing.List:
+    def selected_fits(self) -> list:
         fc = self._fc
         if fc is not None:
             fits = fc.list_fits()
@@ -62,10 +53,10 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
         return []
 
     @property
-    def selected_fit_idx(self) -> typing.List[int]:
+    def selected_fit_idx(self) -> list[int]:
         return [r.row() for r in self.selectedIndexes()]
 
-    def selectedIndexes(self) -> typing.List[QtCore.QModelIndex]:
+    def selectedIndexes(self) -> list[QtCore.QModelIndex]:
         idx = super().selectedIndexes()[::3]
         return idx
 
@@ -77,22 +68,27 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
     def onCurveChanged(self):
         fc = self._fc
         if fc is not None:
-            fits = fc.list_fits()
+            fc.list_fits()
             sel = self.selected_fit
-            sel_uid = sel.get("uid") if isinstance(sel, dict) else getattr(sel, "unique_identifier", None)
+            sel_uid = (
+                sel.get("uid") if isinstance(sel, dict) else getattr(sel, "unique_identifier", None)
+            )
             _mdiarea = getattr(chisurf, "cs", None)
             _mdiarea = getattr(_mdiarea, "mdiarea", None) if _mdiarea is not None else None
             if _mdiarea is not None:
                 for fit_window in _mdiarea.subWindowList():
-                    fit = getattr(fit_window, 'fit', None)
+                    fit = getattr(fit_window, "fit", None)
                     if fit is not None:
-                        win_uid = (fit.get("uid") if isinstance(fit, dict)
-                                   else str(getattr(fit, "unique_identifier", "")))
+                        win_uid = (
+                            fit.get("uid")
+                            if isinstance(fit, dict)
+                            else str(getattr(fit, "unique_identifier", ""))
+                        )
                         if win_uid and win_uid == sel_uid:
                             _mdiarea.setActiveSubWindow(fit_window)
                             break
-                    elif isinstance(sel, dict) and hasattr(fit_window, 'fit_uid'):
-                        if getattr(fit_window, 'fit_uid', None) == sel_uid:
+                    elif isinstance(sel, dict) and hasattr(fit_window, "fit_uid"):
+                        if getattr(fit_window, "fit_uid", None) == sel_uid:
                             _mdiarea.setActiveSubWindow(fit_window)
                             break
         self.change_event()
@@ -172,8 +168,10 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
                     # Hovering shows the fit name and, when the fit lives in this
                     # process, a preview of its data and model curves.
                     item = TooltipTreeItem(
-                        self, [str(nbr), widget_name, model_name],
-                        key=fit_dto, render_fn=self._fit_tooltip
+                        self,
+                        [str(nbr), widget_name, model_name],
+                        key=fit_dto,
+                        render_fn=self._fit_tooltip,
                     )
                     item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         finally:
@@ -188,7 +186,11 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
                 idx_new = int(self.currentItem().text(0))
                 fits = fc.list_fits()
                 uids = [f.get("uid") for f in fits if f.get("uid")]
-                ds_uid = ds.get("uid") if isinstance(ds, dict) else getattr(ds, "unique_identifier", None)
+                ds_uid = (
+                    ds.get("uid")
+                    if isinstance(ds, dict)
+                    else getattr(ds, "unique_identifier", None)
+                )
                 if ds_uid in uids:
                     uids.remove(ds_uid)
                     uids.insert(idx_new, ds_uid)
@@ -203,24 +205,25 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
         QtWidgets.QTreeWidget.show(self)
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.Fit = None,
-            experiment=None,
-            drag_enabled: bool = False,
-            click_close: bool = False,
-            change_event: typing.Callable = None,
-            curve_types: str = 'experiment',
-            get_data_sets: typing.Callable = None,
-            parent: QtWidgets.QWidget = None,
-            icon: QtGui.QIcon = None,
-            context_menu_enabled: bool = True
+        self,
+        fit: chisurf.core.fitting.fit.Fit = None,
+        experiment=None,
+        drag_enabled: bool = False,
+        click_close: bool = False,
+        change_event: typing.Callable = None,
+        curve_types: str = "experiment",
+        get_data_sets: typing.Callable = None,
+        parent: QtWidgets.QWidget = None,
+        icon: QtGui.QIcon = None,
+        context_menu_enabled: bool = True,
     ):
         if get_data_sets is None:
+
             def get_data_sets(**kwargs):
                 return chisurf.core.data.get_data(
-                    data_set=getattr(chisurf, "imported_datasets", []),
-                    **kwargs
+                    data_set=getattr(chisurf, "imported_datasets", []), **kwargs
                 )
+
             self.get_data_sets = get_data_sets
         else:
             self.get_data_sets = get_data_sets
@@ -256,7 +259,7 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
 
         self.setHeaderHidden(False)
         self.setColumnCount(3)
-        self.setHeaderLabels(('#', 'Data name', 'Model type'))
+        self.setHeaderLabels(("#", "Data name", "Model type"))
         header = self.header()
 
         # Set resize mode for the first and third columns
@@ -265,5 +268,3 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
 
         header.setSectionsClickable(True)
-
-

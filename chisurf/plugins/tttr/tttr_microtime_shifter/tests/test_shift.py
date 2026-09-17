@@ -5,17 +5,13 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
-from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pytest
 import tttrlib
 
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.shift import (
-    _apply_shifts,
     _compute_effective_shifts,
-    _load_tttr,
     load_file_metadata,
     safe_tttr_path,
     shift_file,
@@ -77,7 +73,9 @@ def test_shift_file_roundtrip() -> None:
                     shifted_orig,
                 ), f"Channel {ch} shift mismatch"
 
-        assert applied == {int(k): (global_shift + channel_shifts.get(int(k), 0)) % n_mt for k in used}
+        assert applied == {
+            int(k): (global_shift + channel_shifts.get(int(k), 0)) % n_mt for k in used
+        }
 
 
 def test_compute_effective_shifts() -> None:

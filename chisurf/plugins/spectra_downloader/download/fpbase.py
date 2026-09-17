@@ -4,11 +4,6 @@ import urllib.request
 
 import numpy as np
 
-from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
-    DEFAULT_DATABASE_PATH,
-    FluorophoreDatabase,
-)
-
 logger = logging.getLogger(__name__)
 
 FPBASE_API_URL = "https://www.fpbase.org/api/proteins/"
@@ -20,8 +15,8 @@ FPBASE_GRAPHQL_URL = "https://www.fpbase.org/graphql/"
 # instrument categories (cameras/detectors, light sources, filters) are pulled
 # from GraphQL here.
 FPBASE_OPTICS_MAP: dict[tuple[str, str], tuple[str, str]] = {
-    ("C", "QE"): ("detector", "quantum_efficiency"),   # cameras, SPADs, hybrid PMTs
-    ("L", "PD"): ("light_source", "emission"),         # light-source power distribution
+    ("C", "QE"): ("detector", "quantum_efficiency"),  # cameras, SPADs, hybrid PMTs
+    ("L", "PD"): ("light_source", "emission"),  # light-source power distribution
     ("F", "BP"): ("filter", "transmission"),
     ("F", "LP"): ("filter", "transmission"),
     ("F", "SP"): ("filter", "transmission"),
@@ -74,7 +69,7 @@ def download_fpbase_optics_to_db(db, categories=("C",)) -> int:
             if not name:
                 continue
             try:
-                one = _fpbase_graphql(f'{{ spectrum(id: {int(s["id"])}) {{ data }} }}')
+                one = _fpbase_graphql(f"{{ spectrum(id: {int(s['id'])}) {{ data }} }}")
                 data = (one.get("spectrum") or {}).get("data") or []
                 arr = np.array(data, dtype=float)
                 if arr.ndim != 2 or arr.shape[1] < 2 or arr.shape[0] < 3:
@@ -95,6 +90,7 @@ def download_fpbase_optics_to_db(db, categories=("C",)) -> int:
     print(f"  FPbase instruments imported: {count}")
     return count
 
+
 def fetch_fpbase_proteins(url=FPBASE_API_URL):
     """Fetch a page of proteins/summary from FPbase and any subsequent pages.
 
@@ -102,15 +98,16 @@ def fetch_fpbase_proteins(url=FPBASE_API_URL):
         tuple: (list_of_proteins, next_page_url)
     """
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (ChiSurf)'})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ChiSurf)"})
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read())
-            results = data.get('results', data) if isinstance(data, dict) else data
-            next_url = data.get('next') if isinstance(data, dict) else None
+            results = data.get("results", data) if isinstance(data, dict) else data
+            next_url = data.get("next") if isinstance(data, dict) else None
             return results, next_url
     except Exception as e:
         logger.error(f"Failed to fetch FPbase summary from {url}: {e}")
         return [], None
+
 
 def fetch_fpbase_spectra(slug):
     """Fetch the full spectra (ex, em, ec) for a given protein slug.
@@ -121,29 +118,29 @@ def fetch_fpbase_spectra(slug):
     try:
         # We query the spectra endpoint. Some items might be under proteins, others under generic spectra.
         url = f"https://www.fpbase.org/api/proteins/spectra/?format=json&protein__slug={slug}"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (ChiSurf)'})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ChiSurf)"})
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read())
 
             spectra_dict = {}
             for item in data:
                 # The item list usually contains states.
-                for spec in item.get('spectra', []):
+                for spec in item.get("spectra", []):
                     # the item represents one spectrum record
-                    state = spec.get('state', '')
+                    state = spec.get("state", "")
                     # Map FPbase internal names to our standard types
                     q = state.lower()
 
-                    if 'ex' in q or 'abs' in q:
-                        stype = 'absorption'
-                    elif 'em' in q:
-                        stype = 'emission'
-                    elif 'ec' in q or 'ext' in q:
-                        stype = 'extinction'
+                    if "ex" in q or "abs" in q:
+                        stype = "absorption"
+                    elif "em" in q:
+                        stype = "emission"
+                    elif "ec" in q or "ext" in q:
+                        stype = "extinction"
                     else:
                         stype = q
 
-                    d = spec.get('data', [])
+                    d = spec.get("data", [])
                     if d:
                         arr = np.array(d)
                         if arr.ndim == 2 and arr.shape[1] == 2:
@@ -156,6 +153,7 @@ def fetch_fpbase_spectra(slug):
         logger.error(f"Failed to fetch FPbase spectra for {slug}: {e}")
         return {}
 
+
 def download_fpbase_to_db(db):
     """Download FPbase summaries and spectra for records with spectra.
 
@@ -165,7 +163,7 @@ def download_fpbase_to_db(db):
     try:
         # This endpoint returns a list of objects with 'slug', 'name', and 'spectra'
         spectra_url = "https://www.fpbase.org/api/proteins/spectra/?format=json"
-        req = urllib.request.Request(spectra_url, headers={'User-Agent': 'Mozilla/5.0 (ChiSurf)'})
+        req = urllib.request.Request(spectra_url, headers={"User-Agent": "Mozilla/5.0 (ChiSurf)"})
         with urllib.request.urlopen(req) as response:
             spectra_list = json.loads(response.read())
     except Exception as e:
@@ -176,7 +174,7 @@ def download_fpbase_to_db(db):
         print("No spectra found in FPbase spectra API.")
         return 0
 
-    slugs_with_spectra = {item['slug']: item for item in spectra_list}
+    slugs_with_spectra = {item["slug"]: item for item in spectra_list}
     print(f"Found {len(slugs_with_spectra)} items with digital spectra data.")
 
     print("Fetching protein metadata...")
@@ -186,7 +184,7 @@ def download_fpbase_to_db(db):
         proteins, url = fetch_fpbase_proteins(url)
         if proteins:
             for p in proteins:
-                all_metadata[p.get('slug')] = p
+                all_metadata[p.get("slug")] = p
         else:
             break
 
@@ -197,21 +195,27 @@ def download_fpbase_to_db(db):
 
         for slug, spec_item in slugs_with_spectra.items():
             meta = all_metadata.get(slug, {})
-            name = spec_item.get('name') or meta.get('name')
+            name = spec_item.get("name") or meta.get("name")
             if not name:
                 continue
 
-            is_fp = meta.get('seq') is not None
-            desc = meta.get('description', '') or ''
+            is_fp = meta.get("seq") is not None
+            desc = meta.get("description", "") or ""
 
             # Collect spectra, keyed by canonical spectrum type.
             spectra: dict[str, tuple] = {}
-            for spec in spec_item.get('spectra', []):
-                state_name = spec.get('state', '').lower()
-                stype = 'absorption' if ('ex' in state_name or 'abs' in state_name) else \
-                        'emission' if 'em' in state_name else \
-                        'transmission' if 'trans' in state_name else state_name
-                data = spec.get('data', [])
+            for spec in spec_item.get("spectra", []):
+                state_name = spec.get("state", "").lower()
+                stype = (
+                    "absorption"
+                    if ("ex" in state_name or "abs" in state_name)
+                    else "emission"
+                    if "em" in state_name
+                    else "transmission"
+                    if "trans" in state_name
+                    else state_name
+                )
+                data = spec.get("data", [])
                 if data:
                     arr = np.array(data)
                     if arr.ndim == 2 and arr.shape[1] == 2:
@@ -219,7 +223,7 @@ def download_fpbase_to_db(db):
 
             # A transmission spectrum marks an optical filter; otherwise it is a
             # fluorescent protein (has a sequence) or an organic dye.
-            if 'transmission' in spectra:
+            if "transmission" in spectra:
                 kind = "filter"
             elif is_fp:
                 kind = "fluorescent_protein"
@@ -228,12 +232,16 @@ def download_fpbase_to_db(db):
 
             # Optical properties (register_component canonicalizes the keys).
             properties: dict[str, str] = {"fpbase_slug": slug}
-            state = meta.get('default_state')
-            if not state and meta.get('states'):
-                state = meta.get('states')[0]
+            state = meta.get("default_state")
+            if not state and meta.get("states"):
+                state = meta.get("states")[0]
             if state:
-                for k, db_k in [('qy', 'Quantum Yield'), ('ext_coeff', 'Extinction Coefficient'),
-                                ('ex_max', 'Excitation Max'), ('em_max', 'Emission Max')]:
+                for k, db_k in [
+                    ("qy", "Quantum Yield"),
+                    ("ext_coeff", "Extinction Coefficient"),
+                    ("ex_max", "Excitation Max"),
+                    ("em_max", "Emission Max"),
+                ]:
                     val = state.get(k)
                     if val is not None:
                         properties[db_k] = str(val)
@@ -264,9 +272,10 @@ def main():
 
     def _add(parser):
         parser.add_argument(
-            "--optics", default="C",
+            "--optics",
+            default="C",
             help="FPbase instrument categories to also import: C=detectors, "
-                 "L=light sources, F=filters (comma-separated; empty to skip).",
+            "L=light sources, F=filters (comma-separated; empty to skip).",
         )
 
     def _run(db, args):
@@ -277,7 +286,8 @@ def main():
 
     scraper_main(
         "Download FPbase spectra (proteins/dyes + instruments) into the staging DB",
-        _run, _add,
+        _run,
+        _add,
     )
 
 

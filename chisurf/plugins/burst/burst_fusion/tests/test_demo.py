@@ -13,10 +13,9 @@ import json
 import pathlib
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, row_count
 import pytest
 
+from chisurf.core.datastore import column_names, row_count
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
 from chisurf.plugins.burst.burst_fusion.core.fusion import analyze, read_measurements
 from chisurf.plugins.burst.burst_fusion.demo import (
@@ -78,9 +77,7 @@ def test_a_higher_threshold_under_fuses_and_a_lower_one_overshoots(demo):
     assert conservative["n_bursts_after"] > truth
     assert permissive["n_bursts_after"] < truth < conservative["n_bursts_after"]
     assert (
-        permissive["n_bursts_after"]
-        <= balanced["n_bursts_after"]
-        <= conservative["n_bursts_after"]
+        permissive["n_bursts_after"] <= balanced["n_bursts_after"] <= conservative["n_bursts_after"]
     )
 
 

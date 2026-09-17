@@ -26,7 +26,9 @@ def manifests():
     """Return ``(id, path, manifest)`` for every plugin manifest."""
     found = []
     for path in sorted(PLUGINS.rglob("manifest.json")):
-        if any(part in ("test", "tests") for part in path.relative_to(PLUGINS).parts):  # test data, e.g. render baselines
+        if any(
+            part in ("test", "tests") for part in path.relative_to(PLUGINS).parts
+        ):  # test data, e.g. render baselines
             continue
         try:
             manifest = json.loads(path.read_text(encoding="utf-8"))
@@ -45,7 +47,9 @@ def test_there_are_plugins_to_check():
 
 
 def test_every_manifest_is_valid_json():
-    broken = [f"{path}: {manifest['__error__']}" for _, path, manifest in ALL if "__error__" in manifest]
+    broken = [
+        f"{path}: {manifest['__error__']}" for _, path, manifest in ALL if "__error__" in manifest
+    ]
     assert not broken, "; ".join(broken)
 
 
@@ -54,8 +58,7 @@ def test_every_manifest_declares_an_id_and_a_description():
     incomplete = [
         str(path.parent.relative_to(PLUGINS))
         for _, path, manifest in ALL
-        if "__error__" not in manifest
-        and not (manifest.get("id") and manifest.get("description"))
+        if "__error__" not in manifest and not (manifest.get("id") and manifest.get("description"))
     ]
     assert not incomplete, f"manifests without an id or description: {incomplete}"
 
@@ -188,9 +191,13 @@ def test_every_declared_rpc_method_is_actually_registered():
         if not declared:
             continue
 
-        module_name, attribute = entrypoint_parts((manifest.get("entrypoints") or {}).get("services"))
+        module_name, attribute = entrypoint_parts(
+            (manifest.get("entrypoints") or {}).get("services")
+        )
         if not module_name:
-            problems.append(f"{name}: declares {len(declared)} rpc_methods but no services entry point")
+            problems.append(
+                f"{name}: declares {len(declared)} rpc_methods but no services entry point"
+            )
             continue
         try:
             module = importlib.import_module(module_name)
@@ -199,7 +206,11 @@ def test_every_declared_rpc_method_is_actually_registered():
             continue
 
         register = getattr(module, attribute, None) if attribute else None
-        register = register or getattr(module, "register_services", None) or getattr(module, "register", None)
+        register = (
+            register
+            or getattr(module, "register_services", None)
+            or getattr(module, "register", None)
+        )
         if register is None:
             problems.append(f"{name}: {module_name} has no registration function")
             continue

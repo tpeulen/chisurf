@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import Dict, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
 
 def build_idx_map(
-    intervals_by_file: Dict[str, Sequence[Tuple[int, int]]],
+    intervals_by_file: dict[str, Sequence[tuple[int, int]]],
     *,
-    inclusive_stop: bool = True,     # True -> [start, stop]; False -> [start, stop)
-    dtype=np.int64                   # use np.int32 if you want to save RAM
-) -> Dict[str, np.ndarray]:
+    inclusive_stop: bool = True,  # True -> [start, stop]; False -> [start, stop)
+    dtype=np.int64,  # use np.int32 if you want to save RAM
+) -> dict[str, np.ndarray]:
     """Build per-file index arrays from non-overlapping intervals.
 
     Parameters
@@ -56,7 +56,7 @@ def build_idx_map(
     file_names = list(intervals_by_file.keys())
 
     # Pre-create output with empty arrays for files that may have no intervals
-    out: Dict[str, np.ndarray] = {fn: np.empty(0, dtype=dtype) for fn in file_names}
+    out: dict[str, np.ndarray] = {fn: np.empty(0, dtype=dtype) for fn in file_names}
 
     # Flatten all intervals into global arrays
     starts_list = []
@@ -95,16 +95,16 @@ def build_idx_map(
         return out
 
     # Vectorized expansion across all intervals
-    rep_starts = np.repeat(starts, lens)                  # length == total
+    rep_starts = np.repeat(starts, lens)  # length == total
     seg_offsets = (np.cumsum(lens) - lens).astype(np.int64)
     within = np.arange(total, dtype=dtype) - np.repeat(seg_offsets, lens)
-    expanded_indices = rep_starts + within                # global expanded indices
+    expanded_indices = rep_starts + within  # global expanded indices
 
     # For each expanded index, the owning file id
     file_ids_expanded = np.repeat(file_ids_per_interval, lens)
 
     # Group expanded indices by file without Python loops over files
-    order = np.argsort(file_ids_expanded, kind='stable')
+    order = np.argsort(file_ids_expanded, kind="stable")
     sorted_ids = file_ids_expanded[order]
     sorted_idx = expanded_indices[order]
 

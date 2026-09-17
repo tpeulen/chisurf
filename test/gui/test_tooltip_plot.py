@@ -7,6 +7,7 @@ paint hundreds of thumbnails while populating) and it must degrade to the plain
 file name when the preview is switched off in the settings or the row carries no
 curve.
 """
+
 import numpy as np
 import pytest
 from qtpy import QtCore, QtWidgets
@@ -78,7 +79,8 @@ def test_curve_tooltip_falls_back_to_plain_name(qapp, monkeypatch):
     from chisurf.gui.widgets import tooltip_plot
 
     monkeypatch.setattr(
-        tooltip, "curve_preview_config",
+        tooltip,
+        "curve_preview_config",
         lambda: {"enabled": False, "width": 300, "height": 140},
     )
     html = tooltip_plot.curve_tooltip_html("/data/decay_1.dat", *_decay())
@@ -197,8 +199,14 @@ def test_fit_tooltip_shows_data_and_model(qapp, monkeypatch):
             self.x, self.y = x, y
 
     fit = type(
-        "_Fit", (), {"name": "fit of decay_1", "data": _Curve(x, y),
-                     "model": _Curve(x, y * 0.98), "unique_identifier": "uid-1"}
+        "_Fit",
+        (),
+        {
+            "name": "fit of decay_1",
+            "data": _Curve(x, y),
+            "model": _Curve(x, y * 0.98),
+            "unique_identifier": "uid-1",
+        },
     )()
     html = fit_tooltip_html(fit)
     assert html.startswith("<b>fit of decay_1</b>")

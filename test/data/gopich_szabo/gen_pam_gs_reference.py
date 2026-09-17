@@ -49,10 +49,15 @@ fclose(fid);
 def main() -> None:
     """Run ``GP_logL`` on every stored case and write or check the results."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--pam", type=pathlib.Path, default=pathlib.Path("junk/PAM"),
-                        help="PAM checkout (default: junk/PAM)")
-    parser.add_argument("--check", action="store_true",
-                        help="compare against the stored values instead of writing")
+    parser.add_argument(
+        "--pam",
+        type=pathlib.Path,
+        default=pathlib.Path("junk/PAM"),
+        help="PAM checkout (default: junk/PAM)",
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="compare against the stored values instead of writing"
+    )
     args = parser.parse_args()
     gs_dir = (args.pam / "functions" / "BurstBrowser" / "GS_likelihood").resolve()
     if not (gs_dir / "GP_logL.m").exists():
@@ -71,8 +76,13 @@ def main() -> None:
             np.savetxt(work / f"{case}_E.txt", data[f"{case}_efficiencies"], fmt=fmt)
         names = ",".join(f"'{c}'" for c in CASES)
         (work / "driver.m").write_text(f"addpath('{gs_dir}');\n" + DRIVER % names)
-        subprocess.run(["octave", "--no-gui", "--quiet", "driver.m"], cwd=str(work),
-                       check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["octave", "--no-gui", "--quiet", "driver.m"],
+            cwd=str(work),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         results = dict(line.split() for line in (work / "octave.txt").read_text().splitlines())
 
     for case in CASES:

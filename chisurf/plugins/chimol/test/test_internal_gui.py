@@ -5,13 +5,13 @@ arithmetic over rectangles, and every click is turned into a *command string*
 rather than a direct call -- so what the panel does can be asserted exactly, and
 nothing can be done by clicking that could not be scripted.
 """
+
 from __future__ import annotations
 
 import pytest
-from qtpy import QtCore
-
-from chimol.ui.menus.objects import OBJECT_MENUS
 from chimol.ui.gui import GuiRow, InternalGui, char_width
+from chimol.ui.menus.objects import OBJECT_MENUS
+from qtpy import QtCore
 
 WIDTH, HEIGHT = 900, 600
 
@@ -21,12 +21,14 @@ def gui():
     """Return a panel over three rows, laid out for a 900x600 viewport."""
     commands: list[str] = []
     panel = InternalGui(run_command=commands.append)
-    panel.commands = commands            # for the tests to read
-    panel.set_rows([
-        GuiRow(name="all", is_header=True),
-        GuiRow(name="148l", enabled=True),
-        GuiRow(name="lig", enabled=False),
-    ])
+    panel.commands = commands  # for the tests to read
+    panel.set_rows(
+        [
+            GuiRow(name="all", is_header=True),
+            GuiRow(name="148l", enabled=True),
+            GuiRow(name="lig", enabled=False),
+        ]
+    )
     panel.layout(WIDTH, HEIGHT)
     return panel
 
@@ -119,15 +121,15 @@ def test_the_panel_takes_clicks_that_land_on_it(gui):
 # --------------------------------------------------------------------------- #
 def test_the_eye_toggles_and_the_name_activates(gui):
     """Visibility moved onto the eye: clicking a name used to disable the
-    object the user was trying to make active."""
+    object the user was trying to make active.
+    """
     gui.mouse_press(*_centre(gui._eye_rects[1]))
     assert gui.commands == ["disable 148l"]
 
     gui.mouse_press(*_centre(gui._eye_rects[2]))
     assert gui.commands[-1] == "enable lig"
 
-    gui.mouse_press(gui._row_rects[1].x + gui.BUTTON_W + gui.PAD + 4,
-                    gui._row_rects[1].y + 4)
+    gui.mouse_press(gui._row_rects[1].x + gui.BUTTON_W + gui.PAD + 4, gui._row_rects[1].y + 4)
     assert gui.commands[-1] == "activate 148l"
 
 
@@ -146,10 +148,8 @@ def test_right_clicking_a_name_opens_the_action_menu(gui):
 
 def test_choosing_an_entry_runs_it_against_that_object(gui):
     """`{sele}` binds to the row the menu was opened on, not to a selection."""
-    gui.mouse_press(*_centre(gui._button_rects[2]["A"]))     # the "lig" row
-    entry_rect, entry = next(
-        (r, e) for r, e in gui._menus[-1].item_rects if e.command
-    )
+    gui.mouse_press(*_centre(gui._button_rects[2]["A"]))  # the "lig" row
+    entry_rect, entry = next((r, e) for r, e in gui._menus[-1].item_rects if e.command)
     gui.mouse_press(*_centre(entry_rect))
 
     assert gui.commands, "nothing ran"
@@ -162,8 +162,7 @@ def test_an_unimplemented_entry_does_nothing_and_stays_open(gui):
     """Shown, disabled, and honest about it -- clicking it must not guess."""
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     disabled = next(
-        (r, e) for r, e in gui._menus[-1].item_rects
-        if e.command is None and not e.is_submenu
+        (r, e) for r, e in gui._menus[-1].item_rects if e.command is None and not e.is_submenu
     )
     gui.mouse_press(*_centre(disabled[0]))
     assert gui.commands == []
@@ -210,10 +209,7 @@ def test_a_submenu_opens_beside_its_parent(gui):
 # --------------------------------------------------------------------------- #
 def _overlap(a, b) -> bool:
     """Whether two rectangles share any area."""
-    return (
-        a.x < b.x + b.w and b.x < a.x + a.w
-        and a.y < b.y + b.h and b.y < a.y + a.h
-    )
+    return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
 
 
 def _first_submenu(menu):
@@ -266,9 +262,7 @@ def test_a_grandchild_keeps_the_side_its_parent_flipped_to(gui):
     came from as soon as it happens to fit there.
     """
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
-    rect, entry = next(
-        (r, e) for r, e in gui._menus[-1].item_rects if e.label == "find"
-    )
+    rect, entry = next((r, e) for r, e in gui._menus[-1].item_rects if e.label == "find")
     gui.mouse_move(*_centre(rect))
     child = gui._menus[-1]
     assert child.affinity == -1
@@ -293,10 +287,7 @@ def test_moving_to_another_row_collapses_the_submenu(gui):
     gui.mouse_move(*_centre(rect))
     assert len(gui._menus) == 2
 
-    plain = next(
-        r for r, e in parent.item_rects
-        if not e.is_submenu and not e.is_separator
-    )
+    plain = next(r for r, e in parent.item_rects if not e.is_submenu and not e.is_separator)
     gui.mouse_move(*_centre(plain))
 
     assert len(gui._menus) == 1
@@ -362,9 +353,7 @@ def test_two_submenus_sharing_a_label_are_told_apart(gui):
     """
     gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
     parent = gui._menus[-1]
-    rect, entry = next(
-        (r, e) for r, e in parent.item_rects if e.label == "by element"
-    )
+    rect, entry = next((r, e) for r, e in parent.item_rects if e.label == "by element")
     gui.mouse_move(*_centre(rect))
 
     child = gui._menus[-1]
@@ -402,9 +391,7 @@ def test_a_long_menu_keeps_one_column(gui):
     assert len(xs) == 1, "the menu grew a second column"
     ordered = [rect.y for rect, _e in menu.item_rects]
     assert ordered == sorted(ordered), "the entries are no longer in order"
-    gaps = {
-        round(b - a, 3) for a, b in zip(ordered, ordered[1:])
-    }
+    gaps = {round(b - a, 3) for a, b in zip(ordered, ordered[1:])}
     assert gaps - {float(gui.MENU_ITEM_H)}, (
         "no gap anywhere: the separators stopped costing height, and the "
         "groups they mark are what the order is saying"
@@ -429,8 +416,7 @@ def test_every_entry_of_a_long_menu_can_be_reached_by_scrolling(gui):
         if not gui.scroll_menu(inside[0], inside[1], -1):
             break
     assert {e.label for e in clickable} <= reached, (
-        "entries below the fold could not be reached: "
-        f"{ {e.label for e in clickable} - reached }"
+        f"entries below the fold could not be reached: { {e.label for e in clickable} - reached }"
     )
 
 
@@ -610,10 +596,7 @@ def test_the_floor_is_what_the_control_actually_needs(gui):
     """
     floor = gui.minimum_column_width()
 
-    rows_need = (
-        gui.PAD + gui._name_width + gui.PAD
-        + gui.BUTTON_W * len(OBJECT_MENUS) + gui.PAD
-    )
+    rows_need = gui.PAD + gui._name_width + gui.PAD + gui.BUTTON_W * len(OBJECT_MENUS) + gui.PAD
     transport_need = 2 * gui.PAD + gui.MIN_BUTTON_W * 9
 
     assert floor >= rows_need
@@ -659,11 +642,12 @@ def sequences(gui):
     from chimol.ui.gui import SequenceRow
 
     gui.sequence_visible = True
-    gui.set_sequences([
-        SequenceRow(name="148l", codes="MNIFEMLRIDEGLRLKIYKD",
-                    numbers=list(range(1, 21))),
-        SequenceRow(name="pep", codes="ACDEFGHIK", numbers=list(range(1, 10))),
-    ])
+    gui.set_sequences(
+        [
+            SequenceRow(name="148l", codes="MNIFEMLRIDEGLRLKIYKD", numbers=list(range(1, 21))),
+            SequenceRow(name="pep", codes="ACDEFGHIK", numbers=list(range(1, 10))),
+        ]
+    )
     gui.layout(WIDTH, HEIGHT)
     return gui
 
@@ -752,7 +736,7 @@ def test_the_strip_takes_its_own_clicks(sequences):
 def test_clicking_past_the_end_of_a_sequence_selects_nothing(sequences):
     picked: list = []
     sequences.on_select = lambda *a: picked.append(a)
-    row = sequences._seq_rows[1]          # the nine-residue one
+    row = sequences._seq_rows[1]  # the nine-residue one
     char_w = char_width(sequences.FONT_PT)
 
     sequences.mouse_press(sequences._seq_origin + char_w * 40, row.y + 4)
@@ -783,9 +767,8 @@ def test_shift_click_extends_the_previous_gesture(sequences):
     char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
-    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)              # anchor at 2
-    sequences.mouse_press(origin + char_w * 7.5, row.y + 4,
-                          modifiers=QtCore.Qt.ShiftModifier)
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # anchor at 2
+    sequences.mouse_press(origin + char_w * 7.5, row.y + 4, modifiers=QtCore.Qt.ShiftModifier)
 
     assert sequences.sequences[0].selected == set(range(2, 8))
     assert picked[-1] == [2, 3, 4, 5, 6, 7]
@@ -799,9 +782,10 @@ def test_ctrl_click_toggles_and_keeps_the_rest(sequences):
     char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
-    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
-    sequences.mouse_press(origin + char_w * 5.5, row.y + 4,
-                          modifiers=QtCore.Qt.ControlModifier)                  # +{5}
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
+    sequences.mouse_press(
+        origin + char_w * 5.5, row.y + 4, modifiers=QtCore.Qt.ControlModifier
+    )  # +{5}
 
     assert sequences.sequences[0].selected == {2, 5}
     assert picked[-1] == [2, 5]
@@ -815,9 +799,10 @@ def test_ctrl_drag_merges_into_the_selection(sequences):
     char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
-    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
-    sequences.mouse_press(origin + char_w * 4.5, row.y + 4,
-                          modifiers=QtCore.Qt.ControlModifier)                  # {2,4}
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
+    sequences.mouse_press(
+        origin + char_w * 4.5, row.y + 4, modifiers=QtCore.Qt.ControlModifier
+    )  # {2,4}
     sequences.drag(origin + char_w * 8.5, row.y + 4)
 
     assert sequences.sequences[0].selected == {2, 4, 5, 6, 7, 8}
@@ -828,7 +813,7 @@ def test_double_click_on_blank_sequence_area_clears(sequences):
     """PyMOL's Seeker: a double-click on empty sequence space deselects all."""
     sequences.sequences[0].selected = {1, 2, 3}
     x = sequences._seq_strip.x + 4
-    y = sequences._seq_strip.y + 2        # the number line, not a residue
+    y = sequences._seq_strip.y + 2  # the number line, not a residue
 
     sequences.mouse_press(x, y, double=True)
 
@@ -843,11 +828,13 @@ def _panel_with_sele(commands):
 
     panel = InternalGui(run_command=commands.append)
     panel.commands = commands
-    panel.set_rows([
-        GuiRow(name="all", is_header=True),
-        GuiRow(name="148l", enabled=True),
-        GuiRow(name="sele", enabled=True, is_selection=True),
-    ])
+    panel.set_rows(
+        [
+            GuiRow(name="all", is_header=True),
+            GuiRow(name="148l", enabled=True),
+            GuiRow(name="sele", enabled=True, is_selection=True),
+        ]
+    )
     panel.layout(WIDTH, HEIGHT)
     return panel
 
@@ -866,8 +853,7 @@ def test_the_sele_row_has_no_on_off_state():
     panel = _panel_with_sele(commands)
     sele_row = len(panel.rows) - 1
 
-    panel.mouse_press(panel._row_rects[sele_row].x + 4,
-                      panel._row_rects[sele_row].y + 4)
+    panel.mouse_press(panel._row_rects[sele_row].x + 4, panel._row_rects[sele_row].y + 4)
 
     assert commands == []
 
@@ -880,8 +866,7 @@ def test_the_sele_row_buttons_address_the_selection():
 
     panel.mouse_press(*_centre(panel._button_rects[sele_row]["A"]))
     entry_rect, entry = next(
-        (r, e) for r, e in panel._menus[-1].item_rects
-        if e.command and "{sele}" in e.command
+        (r, e) for r, e in panel._menus[-1].item_rects if e.command and "{sele}" in e.command
     )
     panel.mouse_press(*_centre(entry_rect))
 
@@ -899,10 +884,9 @@ def long_sequence(gui):
     from chimol.ui.gui import SequenceRow
 
     gui.sequence_visible = True
-    gui.set_sequences([
-        SequenceRow(name="148l", codes="ACDEFGHIKLMNPQRSTVWY" * 20,
-                    numbers=list(range(1, 401)))
-    ])
+    gui.set_sequences(
+        [SequenceRow(name="148l", codes="ACDEFGHIKLMNPQRSTVWY" * 20, numbers=list(range(1, 401)))]
+    )
     gui.layout(WIDTH, HEIGHT)
     return gui
 
@@ -1064,8 +1048,10 @@ def test_the_timeline_thumb_follows_the_state(gui):
     gui.state = (10, 10)
     gui.layout(WIDTH, HEIGHT)
     assert gui._timeline_thumb.x > at_start
-    assert (gui._timeline_thumb.x + gui._timeline_thumb.w
-            <= gui._timeline_track.x + gui._timeline_track.w + 1e-6)
+    assert (
+        gui._timeline_thumb.x + gui._timeline_thumb.w
+        <= gui._timeline_track.x + gui._timeline_track.w + 1e-6
+    )
 
 
 def test_dragging_the_timeline_seeks(gui):
@@ -1098,7 +1084,7 @@ def test_a_single_frame_movie_does_not_divide_by_zero(gui):
     and the assertion is that nothing is laid out rather than that something is.
     """
     gui.state = (1, 1)
-    gui.layout(WIDTH, HEIGHT)          # must not raise
+    gui.layout(WIDTH, HEIGHT)  # must not raise
     assert gui._timeline_thumb.w == 0
     assert gui._movie_rects == []
 
@@ -1114,7 +1100,7 @@ def test_the_timeline_tracks_a_frame_change_it_did_not_make(gui):
     gui.layout(WIDTH, HEIGHT)
     start = gui._timeline_thumb.x
 
-    gui.state = (40, 50)          # as playback would leave it
+    gui.state = (40, 50)  # as playback would leave it
     gui.layout(WIDTH, HEIGHT)
 
     assert gui._timeline_thumb.x > start
@@ -1141,10 +1127,14 @@ def test_the_table_and_the_mouse_read_the_same_bindings():
     assert action_of(mode, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier) == "rota"
     assert cells["& Keys"][0] == "Rota"
 
-    assert action_of(
-        mode, QtCore.Qt.LeftButton,
-        QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
-    ) == "sele"
+    assert (
+        action_of(
+            mode,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
+        )
+        == "sele"
+    )
     assert cells["CtSh"][0] == "Sele"
 
     assert action_of(mode, QtCore.Qt.RightButton, QtCore.Qt.ControlModifier) == "pk1"
@@ -1223,7 +1213,7 @@ def test_closing_the_object_window_removes_its_hit_targets(gui):
 def test_a_dragged_window_snaps_to_the_edge_and_anchors_in_corners(gui):
     win = gui.window("objects")
     frame = gui.window_frame(win)
-    grab = (frame.x + frame.w / 2, frame.y + 6)   # the title bar
+    grab = (frame.x + frame.w / 2, frame.y + 6)  # the title bar
     gui.mouse_press(*grab)
 
     # Near the left edge: the x snaps flush and the window anchors to the
@@ -1272,7 +1262,7 @@ def test_a_bare_panel_never_touches_the_saved_states(tmp_path, monkeypatch):
     path = tmp_path / "chimol_windows.json"
     monkeypatch.setattr(window_state, "state_path", lambda: path)
 
-    gui = InternalGui()          # persistence never enabled
+    gui = InternalGui()  # persistence never enabled
     gui.layout(WIDTH, HEIGHT)
     gui.persist_windows()
     assert not path.exists(), "a bare panel wrote preferences"
@@ -1288,7 +1278,7 @@ def test_an_edge_hit_by_overshooting_still_sticks(gui):
     win = gui.window("objects")
     frame = gui.window_frame(win)
     gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
-    gui.drag(WIDTH + 200, HEIGHT / 2)         # far past the right edge
+    gui.drag(WIDTH + 200, HEIGHT / 2)  # far past the right edge
     assert win.x == pytest.approx(WIDTH - frame.w)
     assert win.anchor == "right"
     gui.release()
@@ -1298,7 +1288,7 @@ def test_a_side_anchored_window_follows_the_edge_through_a_resize(gui):
     win = gui.window("mouse")
     frame = gui.window_frame(win)
     gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
-    gui.drag(WIDTH + 100, HEIGHT / 2)         # park it on the right side
+    gui.drag(WIDTH + 100, HEIGHT / 2)  # park it on the right side
     gui.release()
     assert win.anchor == "right"
     kept_y = win.y
@@ -1319,13 +1309,13 @@ def test_the_snap_hint_lights_while_glued_and_clears_on_release(gui):
     frame = gui.window_frame(win)
     gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
 
-    gui.drag(WIDTH / 2, HEIGHT / 2)          # the open: no hint
+    gui.drag(WIDTH / 2, HEIGHT / 2)  # the open: no hint
     assert gui._snap_hint == ()
 
-    gui.drag(WIDTH + 100, HEIGHT / 2)        # glued to the right side
+    gui.drag(WIDTH + 100, HEIGHT / 2)  # glued to the right side
     assert gui._snap_hint == ("right",)
 
-    gui.drag(WIDTH + 100, HEIGHT + 100)      # into the corner: both edges lit
+    gui.drag(WIDTH + 100, HEIGHT + 100)  # into the corner: both edges lit
     assert set(gui._snap_hint) == {"bottom", "right"}
 
     gui.release()
@@ -1338,7 +1328,7 @@ def test_snapping_can_be_turned_off(gui):
     win = gui.window("objects")
     frame = gui.window_frame(win)
     gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
-    gui.drag(WIDTH - frame.w / 2 - 4, HEIGHT / 2)   # 4px from the right edge
+    gui.drag(WIDTH - frame.w / 2 - 4, HEIGHT / 2)  # 4px from the right edge
     assert win.x == pytest.approx(WIDTH - frame.w - 4), (
         "with snapping off the window must not jump to the edge"
     )
@@ -1414,7 +1404,7 @@ def test_stuck_windows_move_together_and_shift_detaches(gui):
 
     a = gui.add_window(GuiWindow(key="a", title="A", x=100, y=200, w=120, h=90))
     b = gui.add_window(GuiWindow(key="b", title="B", x=220, y=200, w=120, h=90))
-    gui.layout(WIDTH, HEIGHT)   # flush: b.x == a.x + a.w
+    gui.layout(WIDTH, HEIGHT)  # flush: b.x == a.x + a.w
 
     # Dragging A moves B with it, offsets intact.
     gui.mouse_press(*_title_grab(gui, a))

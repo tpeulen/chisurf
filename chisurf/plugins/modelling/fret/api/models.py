@@ -8,14 +8,13 @@ FastAPI router all speak in these plain dicts/dataclasses, while
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
 class DockRequest:
     """Parameters for a docking run (see :class:`...core.imp_engine.DockingParameters`)."""
 
-    pdb_paths: List[str]
+    pdb_paths: list[str]
     fps_json: str
     output_dir: str
     n_frames: int = 500
@@ -45,14 +44,14 @@ class DockRequest:
     #: FPS-style docked state to continue from (one ``{"body_id","t","q"}`` per
     #: rigid body). When set, the initial random shuffle is skipped and sampling
     #: resumes from these poses. ``None`` = start fresh.
-    initial_poses: Optional[List[Dict]] = None
+    initial_poses: list[dict] | None = None
 
 
 @dataclass
 class RefineRequest:
     """Parameters for conjugate-gradient refinement."""
 
-    pdb_paths: List[str]
+    pdb_paths: list[str]
     fps_json: str
     output_dir: str
     steps: int = 500
@@ -64,10 +63,10 @@ class RefineRequest:
 class ScoreRequest:
     """Parameters for scoring a single structure."""
 
-    pdb_paths: List[str]
+    pdb_paths: list[str]
     fps_json: str
     score_set: str = ""
-    output_csv: Optional[str] = None
+    output_csv: str | None = None
     mean_position_restraint: bool = False
     sigma_da: float = 6.0
 
@@ -76,17 +75,17 @@ class ScoreRequest:
 class ScreenRequest:
     """Parameters for screening a structure library."""
 
-    pdb_inputs: List[str]
+    pdb_inputs: list[str]
     fps_json: str
     score_set: str = ""
-    output_csv: Optional[str] = None
+    output_csv: str | None = None
 
 
 @dataclass
 class ErrorRequest:
     """Parameters for repeated-trial error estimation (repeated docking)."""
 
-    pdb_paths: List[str]
+    pdb_paths: list[str]
     fps_json: str
     output_dir: str
     n_trials: int = 10
@@ -104,7 +103,7 @@ class ErrorRequest:
     av_backend: str = "auto"
     save_trajectory: bool = False
     #: Parallel worker processes for the trials (None -> CPU count, 1 -> serial).
-    n_workers: Optional[int] = None
+    n_workers: int | None = None
 
 
 @dataclass
@@ -113,8 +112,8 @@ class OperationResult:
 
     status: str
     operation: str
-    data: Dict = field(default_factory=dict)
+    data: dict = field(default_factory=dict)
     message: str = ""
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return asdict(self)

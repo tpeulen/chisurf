@@ -26,10 +26,10 @@ from chisurf.gui.autoform import register_section
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
 
-def _parse_int_list(s: str) -> typing.List[int]:
+def _parse_int_list(s: str) -> list[int]:
     if not s:
         return []
-    out: typing.List[int] = []
+    out: list[int] = []
     for tok in str(s).replace(",", " ").split():
         try:
             out.append(int(tok))
@@ -38,10 +38,10 @@ def _parse_int_list(s: str) -> typing.List[int]:
     return out
 
 
-def _parse_ranges(s: str) -> typing.List[typing.Tuple[int, int]]:
+def _parse_ranges(s: str) -> list[tuple[int, int]]:
     if not s:
         return []
-    ranges: typing.List[typing.Tuple[int, int]] = []
+    ranges: list[tuple[int, int]] = []
     for seg in str(s).replace(",", ";").split(";"):
         seg = seg.strip()
         if not seg:
@@ -73,9 +73,9 @@ class FilterSettingsModel:
         self.filter_enabled = True
         self.invert = False
         self.min_ph = 10
-        self.cr_tw = 5             # photon window (burst count-rate estimate)
+        self.cr_tw = 5  # photon window (burst count-rate estimate)
         # Advanced mode parameters (defaults mirror the standalone widget)
-        self.trace_bin_width = 0.25   # ms — binning for bocpd/kalman
+        self.trace_bin_width = 0.25  # ms — binning for bocpd/kalman
         self.use_gap_fill = False
         self.max_gap = 3
         # BOCPD
@@ -94,9 +94,9 @@ class FilterSettingsModel:
         self.cusum_alpha = 0.45
         self.cusum_beta = 20.0
         # Plot settings
-        self.mcs_bin_width = 1.0   # ms
+        self.mcs_bin_width = 1.0  # ms
         self.range_lo = 0
-        self.range_hi = 0          # 0 => full length
+        self.range_hi = 0  # 0 => full length
 
         self._tttr = None
         self._tttr_objects: dict = {}
@@ -113,17 +113,30 @@ class FilterSettingsModel:
         "burst": {"cr_tw"},
         "count_rate": set(),
         "bocpd": {
-            "trace_bin_width", "use_gap_fill", "max_gap",
-            "bocpd_prior_count", "bocpd_prior_duration", "bocpd_changepoint_prob",
+            "trace_bin_width",
+            "use_gap_fill",
+            "max_gap",
+            "bocpd_prior_count",
+            "bocpd_prior_duration",
+            "bocpd_changepoint_prob",
         },
         "kalman": {
-            "trace_bin_width", "use_gap_fill", "max_gap",
-            "kalman_q", "kalman_r_scale", "kalman_z_thresh",
-            "kalman_min_len", "kalman_merge_gap",
+            "trace_bin_width",
+            "use_gap_fill",
+            "max_gap",
+            "kalman_q",
+            "kalman_r_scale",
+            "kalman_z_thresh",
+            "kalman_min_len",
+            "kalman_merge_gap",
         },
         "cusum": {
-            "use_gap_fill", "max_gap",
-            "cusum_bg_rate", "cusum_sb_ratio", "cusum_alpha", "cusum_beta",
+            "use_gap_fill",
+            "max_gap",
+            "cusum_bg_rate",
+            "cusum_sb_ratio",
+            "cusum_alpha",
+            "cusum_beta",
         },
     }
 
@@ -170,6 +183,7 @@ class FilterSettingsModel:
             form = self._form
             if form is not None:
                 from qtpy import QtCore
+
                 QtCore.QTimer.singleShot(0, form.rebuild)
             return
         self._schedule_refresh()
@@ -217,6 +231,7 @@ class FilterSettingsModel:
     def compute_selection(self, tttr) -> np.ndarray:
         """Boolean keep-mask for *tttr* under the current parameters."""
         import tttrlib
+
         from chisurf.core.fluorescence import burst as burstmod
 
         n = len(tttr)
@@ -267,6 +282,7 @@ class FilterSettingsModel:
                 s &= self._changepoint_selection(tttr, mode)
             elif mode == "cusum":
                 import chisurf.core.fluorescence.burst.cusum as cusum_mod
+
                 sel = np.asarray(
                     cusum_mod.cusum_filter(
                         tttr=tttr,
@@ -285,6 +301,7 @@ class FilterSettingsModel:
 
         if self.use_gap_fill and int(self.max_gap) > 0:
             from chisurf.core.math.signal import fill_small_gaps_in_array
+
             s = fill_small_gaps_in_array(s, max_gap=int(self.max_gap))
         return s
 
@@ -365,7 +382,7 @@ class FilterSettingsModel:
 
         mask = np.zeros(n, dtype=bool)
         for s, e in find_bursts(sub_mask.astype(np.int8)):
-            mask[index[s]:index[e] + 1] = True
+            mask[index[s] : index[e] + 1] = True
         return mask
 
     def selected(self) -> np.ndarray | None:
@@ -482,8 +499,13 @@ class _FilterPlot(QtWidgets.QWidget):
             y = np.asarray(s.get("y", []))
             if scatter:
                 self.plot.scatter(
-                    x, y, size=2, brush=s.get("color", "w"), pen=None,
-                    symbol="o", name=s.get("name", ""),
+                    x,
+                    y,
+                    size=2,
+                    brush=s.get("color", "w"),
+                    pen=None,
+                    symbol="o",
+                    name=s.get("name", ""),
                 )
             else:
                 self.plot.line(x, y, pen=s.get("color", "w"), width=1, name=s.get("name", ""))
@@ -497,8 +519,12 @@ class _FilterDtPlot(_FilterPlot):
 
     def __init__(self, model, target: str = "", **options):
         super().__init__(
-            model, "dt_scatter_series", "Delta macro-time",
-            log_y=True, x_label="Photon index", y_label="dT (ms)",
+            model,
+            "dt_scatter_series",
+            "Delta macro-time",
+            log_y=True,
+            x_label="Photon index",
+            y_label="dT (ms)",
         )
 
     def refresh(self):
@@ -506,8 +532,10 @@ class _FilterDtPlot(_FilterPlot):
 
         if self._region is None:
             self._region = self.plot.region(
-                (0.0, 1.0), orientation="horizontal",
-                brush=(80, 180, 255, 40), movable=True,
+                (0.0, 1.0),
+                orientation="horizontal",
+                brush=(80, 180, 255, 40),
+                movable=True,
             )
             self._region.on_change(self._on_region, final=True)
         else:
@@ -520,7 +548,7 @@ class _FilterDtPlot(_FilterPlot):
         self._region.set_bounds(np.log10(lo), np.log10(hi))
 
     def _on_region(self, lo, hi):
-        a, b = 10.0 ** lo, 10.0 ** hi
+        a, b = 10.0**lo, 10.0**hi
         self._model.min_dmt = float(min(a, b))
         self._model.max_dmt = float(max(a, b))
         self._model.use_min = True
@@ -538,8 +566,11 @@ class _FilterDtPlot(_FilterPlot):
 class _FilterCrPlot(_FilterPlot):
     def __init__(self, model, target: str = "", **options):
         super().__init__(
-            model, "count_rate_series", "Count rate",
-            x_label="Time (s)", y_label="Intensity (kHz)",
+            model,
+            "count_rate_series",
+            "Count rate",
+            x_label="Time (s)",
+            y_label="Intensity (kHz)",
         )
 
 

@@ -21,8 +21,7 @@ returns to the analytical Gaussian shape with G(0) = b + 1/N.
 
 from __future__ import annotations
 
-import math
-
+import IMP.bff as _bff
 import numpy as np
 
 import chisurf as cs
@@ -38,8 +37,6 @@ from chisurf.core.fluorescence.fcs.saturation import (
     saturated_curve_shape,
 )
 from chisurf.core.models.fcs.mdf import compute_brightness, set_output_parameter
-
-import IMP.bff as _bff
 from chisurf.core.models.model import ModelCurve
 
 
@@ -365,7 +362,7 @@ class KineticSaturationTerms(FittingParameterGroup):
         self.dark.rates_by_name()["k3_1"].value = 0.5
 
     power = property(lambda s: float(s._power.value) * 1e-3)  # mW to W
-    pwr = property(lambda s: float(s._power.value) * 1e-3)    # mW to W alias
+    pwr = property(lambda s: float(s._power.value) * 1e-3)  # mW to W alias
     extinction = property(lambda s: float(s._extinction.value))
     wavelength_nm = property(lambda s: float(s._wavelength.value))
     wavelength_m = property(lambda s: float(s._wavelength.value) * 1e-9)
@@ -393,12 +390,16 @@ class KineticSaturationTerms(FittingParameterGroup):
         for i in range(1, max(1, n_states)):
             name = f"tau_R{i}"
             parameter = FittingParameter(
-                value=float("nan"), name=name, fixed=True, is_output=True,
+                value=float("nan"),
+                name=name,
+                fixed=True,
+                is_output=True,
                 label_text=f"&tau;<sub>R{i}</sub>[µs]",
                 registry_id=f"fcs.saturation.{name}",
             )
             setattr(
-                parameter, "description",
+                parameter,
+                "description",
                 f"Relaxation time {i} of the scheme (µs): an eigenvalue of "
                 f"K_dark + k_exc·K_exc at the peak excitation rate, slowest first. "
                 f"This is the timescale a bunching term fitted to the data reports, "
@@ -415,9 +416,12 @@ class KineticSaturationTerms(FittingParameterGroup):
         Returns the ``(time_s, amplitude)`` modes so a caller can report them.
         """
         modes = relaxation_spectrum(
-            excitation_rate_peak(self.power, self.extinction, self.w_r_nm * 1e-9,
-                                 self.wavelength_m),
-            self.dark_matrix_hz, self.exc.rate_matrix(), self.brightness.array,
+            excitation_rate_peak(
+                self.power, self.extinction, self.w_r_nm * 1e-9, self.wavelength_m
+            ),
+            self.dark_matrix_hz,
+            self.exc.rate_matrix(),
+            self.brightness.array,
         )
         for i, parameter in enumerate(self._relaxation_outputs):
             value = modes[i][0] * 1e6 if i < len(modes) else float("nan")
@@ -531,8 +535,9 @@ class KineticSaturationTerms(FittingParameterGroup):
                 "Gaussian and the amplitude is exactly 1/N. Set the excitation power "
                 "to engage the photokinetic scheme.</p>"
             )
-        k0 = excitation_rate_peak(self.power, self.extinction, self.w_r_nm * 1e-9,
-                                  self.wavelength_m)
+        k0 = excitation_rate_peak(
+            self.power, self.extinction, self.w_r_nm * 1e-9, self.wavelength_m
+        )
         return (
             f"<p><b>Peak excitation rate k<sub>exc</sub>(0,0) = {k0 / 1e6:.3g} µs⁻¹</b> "
             f"at {self._power.value:.4g} mW, λ = {self.wavelength_nm:.0f} nm, "
@@ -709,10 +714,10 @@ class FCSKineticsModel(ModelCurve):
         sat = self.saturation
         cr = self._count_rate_constant
         if cr is not None and sat.bg > 0:
-            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+            amplitude = f"max(0.0, ({cr!r} - bg)/{cr!r})**2/N"
         else:
             amplitude = "1.0/N"
-        return "b + %s*%s" % (amplitude, self.FCS_SAT_VARIABLE)
+        return f"b + {amplitude}*{self.FCS_SAT_VARIABLE}"
 
     @property
     def _expression(self):
@@ -721,9 +726,11 @@ class FCSKineticsModel(ModelCurve):
         Only "full" mode with active saturation takes the graph route; the
         analytical Gaussian and "fast" bunching stay eval-only.
         """
-        if (self.saturation_mode == "full"
-                and self.saturation.active
-                and hasattr(_bff, 'FCSSaturationCurve')):
+        if (
+            self.saturation_mode == "full"
+            and self.saturation.active
+            and hasattr(_bff, "FCSSaturationCurve")
+        ):
             return self.func
         return None
 

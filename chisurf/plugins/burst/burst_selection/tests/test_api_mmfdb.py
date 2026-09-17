@@ -13,8 +13,8 @@ import os
 from pathlib import Path
 
 import pytest
-
 from mmfdb.repository import MFDatabase
+
 from chisurf.plugins.burst.burst_selection.api.mmfdb import (
     file_md5,
     raw_artifact_id_for_path,
@@ -33,8 +33,9 @@ def db(tmp_path) -> MFDatabase:
 
 @pytest.fixture
 def session(db):
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.security.auth import create_session
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     db.ensure_user("raw-test-user")
     token = create_session(db.conn, "raw-test-user")["token"]

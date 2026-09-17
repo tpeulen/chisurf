@@ -33,26 +33,24 @@ After the update completes, the user will need to restart ChiSurf manually.
 
 from __future__ import annotations
 
-import os
-import sys
 import json
-import platform
-import subprocess
+import logging
+import os
 import pathlib
+import platform
+import re
+import subprocess
+import sys
 import tempfile
-import time
-import urllib.request
 import urllib.error
 import urllib.parse
-import re
-import shutil
-import logging
-from typing import Optional, Dict, Any, Tuple, List, Callable
+import urllib.request
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from chisurf.core.settings.file_utils import safe_open_file
-from chisurf.core.settings.path_utils import get_path
 from chisurf.core import info
+from chisurf.core.settings.path_utils import get_path
+
 
 class ChiSurfUpdater:
     """
@@ -63,13 +61,13 @@ class ChiSurfUpdater:
     2. Download and install updates using the package manager
     3. Handle platform-specific update logic (Windows, macOS, Linux)
     4. Restart the application after updating
-    
+
     Note: For broader package management (listing/searching/installing arbitrary
     packages, managing environments and channels), see the `PackageManager` class defined
     in this module. The updater will instantiate and share configuration with it.
     """
 
-    def __init__(self, update_url: Optional[str] = None, channel: str = "main"):
+    def __init__(self, update_url: str | None = None, channel: str = "main"):
         """
         Initialize the updater.
 
@@ -88,7 +86,7 @@ class ChiSurfUpdater:
         is_local_folder = False
         if url:
             # Check if it's a URL (starts with http://, https://, ftp://, etc.)
-            if re.match(r'^(https?|ftp)://', url):
+            if re.match(r"^(https?|ftp)://", url):
                 is_local_folder = False
             else:
                 # Try to convert to a Path object and check if it exists
@@ -101,36 +99,38 @@ class ChiSurfUpdater:
                         # If it doesn't exist yet, check if it looks like a local path
                         if self.system == "windows":
                             # Windows path patterns: drive letter, UNC path, or absolute path
-                            is_local_folder = bool(re.match(r'^[a-zA-Z]:\\', url) or  # Drive letter
-                                                 re.match(r'^\\\\', url) or         # UNC path
-                                                 os.path.isabs(url))                # Absolute path
+                            is_local_folder = bool(
+                                re.match(r"^[a-zA-Z]:\\", url)  # Drive letter
+                                or re.match(r"^\\\\", url)  # UNC path
+                                or os.path.isabs(url)
+                            )  # Absolute path
                         else:
                             # Unix path pattern: starts with / or ~
-                            is_local_folder = url.startswith('/') or url.startswith('~')
-                except:
+                            is_local_folder = url.startswith("/") or url.startswith("~")
+                except Exception:
                     # If there's an error, assume it's not a local folder
                     is_local_folder = False
 
         # If it's not a local folder and doesn't already end with '/conda', append '/conda'
-        if not is_local_folder and not url.endswith('/conda'):
+        if not is_local_folder and not url.endswith("/conda"):
             # Remove trailing slash if present
-            if url.endswith('/'):
+            if url.endswith("/"):
                 url = url[:-1]
             # Append '/conda' (kept for server directory structure compatibility)
-            url += '/conda'
+            url += "/conda"
 
         logging.info(f"Update URL: {url}")
         self.update_url = url
         self.channel = channel
         self.current_version = info.__version__
-        self.settings_path = get_path('settings')
+        self.settings_path = get_path("settings")
         # Expose a shared PackageManager for general package management
         try:
             self.pkg_manager = PackageManager(self)
         except Exception:
             self.pkg_manager = None
 
-    def check_for_updates(self) -> Tuple[bool, Optional[str], Optional[str]]:
+    def check_for_updates(self) -> tuple[bool, str | None, str | None]:
         """
         Check if updates are available.
 
@@ -142,20 +142,20 @@ class ChiSurfUpdater:
         """
         logging.info(f"Checking for updates (current version: {self.current_version})")
 
-        def _parse_version(v: str) -> Tuple:
+        def _parse_version(v: str) -> tuple:
             """Parse version string into a tuple for robust comparison.
             Supports semantic versions like '1.10.2', date-like '25.08.14', and dev versions like '26.dev123'.
             Falls back to extracting integers; non-numeric parts are ignored.
             """
             try:
                 # Handle dev versions like '26.dev123' - treat as lower than any release
-                dev_match = re.match(r'^(\d+)\.dev(\d+)$', v)
+                dev_match = re.match(r"^(\d+)\.dev(\d+)$", v)
                 if dev_match:
                     year = int(dev_match.group(1))
                     dev_num = int(dev_match.group(2))
                     # Return as (year, 0, dev_num, 0) so it sorts below releases
                     return (year, 0, dev_num, 0)
-                
+
                 # Normalize separators to dots and split for regular versions
                 parts = re.split(r"[^0-9]+", v)
                 nums = [int(p) for p in parts if p != ""]
@@ -189,7 +189,9 @@ class ChiSurfUpdater:
             logging.error(error_msg)
             return False, None, error_msg
 
-    def update_to_version(self, file_path: str, callback=None, auto_restart=True) -> Tuple[bool, Optional[str]]:
+    def update_to_version(
+        self, file_path: str, callback=None, auto_restart=True
+    ) -> tuple[bool, str | None]:
         """
         Update ChiSurf to a specific version using the provided file.
 
@@ -216,7 +218,7 @@ class ChiSurfUpdater:
                 callback(message)
 
             # Check if it's a remote URL
-            is_remote_url = bool(re.match(r'^(https?|ftp)://', file_path))
+            is_remote_url = bool(re.match(r"^(https?|ftp)://", file_path))
             local_file_path = file_path
 
             # If it's a remote URL, download it to a temporary file first
@@ -258,9 +260,7 @@ class ChiSurfUpdater:
                     # Download the file
                     logging.debug(f"Starting download from {file_path} to {local_file_path}")
                     urllib.request.urlretrieve(
-                        file_path, 
-                        local_file_path,
-                        reporthook=download_progress_hook
+                        file_path, local_file_path, reporthook=download_progress_hook
                     )
 
                     message = f"Download complete. Saved to: {local_file_path}"
@@ -286,15 +286,15 @@ class ChiSurfUpdater:
             file_ext = os.path.splitext(local_file_path)[1].lower()
             logging.debug(f"File extension: {file_ext}")
 
-            if file_ext == '.exe':
+            if file_ext == ".exe":
                 # For Windows installers
-                cmd = [local_file_path, '/S']  # Silent install
+                cmd = [local_file_path, "/S"]  # Silent install
                 logging.info("Using Windows installer (.exe)")
-            elif file_ext in ['.msi', '.msix']:
+            elif file_ext in [".msi", ".msix"]:
                 # For Windows MSI packages
-                cmd = ['msiexec', '/i', local_file_path, '/quiet', '/norestart']
+                cmd = ["msiexec", "/i", local_file_path, "/quiet", "/norestart"]
                 logging.info("Using Windows MSI package")
-            elif file_ext in ['.tar.bz2', '.tar.gz', '.bz2', '.gz', '.conda']:
+            elif file_ext in [".tar.bz2", ".tar.gz", ".bz2", ".gz", ".conda"]:
                 # For environment packages
                 pkg_exe = self._get_pkg_executable()
                 logging.info(f"Using update package with executable: {pkg_exe}")
@@ -304,7 +304,16 @@ class ChiSurfUpdater:
                 logging.debug(f"Environment path: {env_path}")
 
                 # Use install command with --update-deps to handle dependencies automatically
-                cmd = [pkg_exe, 'install', '--yes', '--update-deps', '--force-reinstall', '--prefix', env_path, local_file_path]
+                cmd = [
+                    pkg_exe,
+                    "install",
+                    "--yes",
+                    "--update-deps",
+                    "--force-reinstall",
+                    "--prefix",
+                    env_path,
+                    local_file_path,
+                ]
                 logging.info("Using package manager install with --update-deps")
             else:
                 # Unknown file type
@@ -336,7 +345,7 @@ class ChiSurfUpdater:
             logging.error(error_msg)
             return False, error_msg
 
-    def update(self, callback=None, auto_restart=True) -> Tuple[bool, Optional[str]]:
+    def update(self, callback=None, auto_restart=True) -> tuple[bool, str | None]:
         """
         Update ChiSurf to the latest version.
 
@@ -384,9 +393,15 @@ class ChiSurfUpdater:
 
             # If the update URL is a local folder and we have available versions,
             # use the first (latest) version
-            if self._is_local_folder() and "available_versions" in update_info and update_info["available_versions"]:
+            if (
+                self._is_local_folder()
+                and "available_versions" in update_info
+                and update_info["available_versions"]
+            ):
                 latest_version_info = update_info["available_versions"][0]
-                logging.info(f"Using local version: {latest_version_info['version']} from {latest_version_info['file_path']}")
+                logging.info(
+                    f"Using local version: {latest_version_info['version']} from {latest_version_info['file_path']}"
+                )
                 return self.update_to_version(latest_version_info["file_path"], callback)
 
             # Otherwise, use the standard update mechanism
@@ -429,7 +444,7 @@ class ChiSurfUpdater:
             Boolean indicating if the update URL is a local folder
         """
         # Check if it's a URL (starts with http://, https://, ftp://, etc.)
-        if re.match(r'^(https?|ftp)://', self.update_url):
+        if re.match(r"^(https?|ftp)://", self.update_url):
             return False
 
         # Try to convert to a Path object and check if it exists
@@ -442,17 +457,19 @@ class ChiSurfUpdater:
                 # If it doesn't exist yet, check if it looks like a local path
                 if self.system == "windows":
                     # Windows path patterns: drive letter, UNC path, or absolute path
-                    return bool(re.match(r'^[a-zA-Z]:\\', self.update_url) or  # Drive letter
-                               re.match(r'^\\\\', self.update_url) or         # UNC path
-                               os.path.isabs(self.update_url))                # Absolute path
+                    return bool(
+                        re.match(r"^[a-zA-Z]:\\", self.update_url)  # Drive letter
+                        or re.match(r"^\\\\", self.update_url)  # UNC path
+                        or os.path.isabs(self.update_url)
+                    )  # Absolute path
                 else:
                     # Unix path pattern: starts with / or ~
-                    return self.update_url.startswith('/') or self.update_url.startswith('~')
-        except:
+                    return self.update_url.startswith("/") or self.update_url.startswith("~")
+        except Exception:
             # If there's an error, assume it's not a local folder
             return False
 
-    def _process_update_file(self, file: pathlib.Path) -> List[Dict[str, Any]]:
+    def _process_update_file(self, file: pathlib.Path) -> list[dict[str, Any]]:
         """
         Process an update file to extract version information.
 
@@ -464,24 +481,26 @@ class ChiSurfUpdater:
         """
         file_name = file.name.lower()
 
-        version_match = re.search(r'(\d+\.\d+\.\d+)', file_name)
+        version_match = re.search(r"(\d+\.\d+\.\d+)", file_name)
         if not version_match:
-            version_match = re.search(r'(\d{2}\.\d{2}\.\d{2})', file_name)
+            version_match = re.search(r"(\d{2}\.\d{2}\.\d{2})", file_name)
         if not version_match:
-            version_match = re.search(r'(\d+\.dev\d+)', file_name)
+            version_match = re.search(r"(\d+\.dev\d+)", file_name)
         if not version_match:
-            version_match = re.search(r'(\d+)', file_name)
+            version_match = re.search(r"(\d+)", file_name)
         if not version_match:
             return []
 
         version = version_match.group(1)
-        return [{
-            "version": version,
-            "file_path": str(file),
-            "file_name": file.name,
-        }]
+        return [
+            {
+                "version": version,
+                "file_path": str(file),
+                "file_name": file.name,
+            }
+        ]
 
-    def _list_available_versions(self) -> List[Dict[str, Any]]:
+    def _list_available_versions(self) -> list[dict[str, Any]]:
         """
         List available versions from the update folder.
 
@@ -491,9 +510,9 @@ class ChiSurfUpdater:
         if not self._is_local_folder():
             return []
 
-        def _parse_version(v: str) -> Tuple:
+        def _parse_version(v: str) -> tuple:
             try:
-                dev_match = re.match(r'^(\d+)\.dev(\d+)$', v)
+                dev_match = re.match(r"^(\d+)\.dev(\d+)$", v)
                 if dev_match:
                     return (int(dev_match.group(1)), 0, int(dev_match.group(2)), 0)
                 parts = re.split(r"[^0-9]+", v)
@@ -550,7 +569,7 @@ class ChiSurfUpdater:
             logging.error(f"Error listing available versions: {str(e)}")
             return []
 
-    def _list_remote_versions(self) -> List[Dict[str, Any]]:
+    def _list_remote_versions(self) -> list[dict[str, Any]]:
         """
         List available versions from a remote HTTP source.
 
@@ -560,9 +579,9 @@ class ChiSurfUpdater:
         if self._is_local_folder():
             return []
 
-        def _parse_version(v: str) -> Tuple:
+        def _parse_version(v: str) -> tuple:
             try:
-                dev_match = re.match(r'^(\d+)\.dev(\d+)$', v)
+                dev_match = re.match(r"^(\d+)\.dev(\d+)$", v)
                 if dev_match:
                     return (int(dev_match.group(1)), 0, int(dev_match.group(2)), 0)
                 parts = re.split(r"[^0-9]+", v)
@@ -583,26 +602,28 @@ class ChiSurfUpdater:
             os_specific_names = os_names.get(current_os, [current_os])
 
             url = self.update_url
-            if not url.endswith('/'):
-                url += '/'
+            if not url.endswith("/"):
+                url += "/"
 
             def extract_version(filename):
-                version_match = re.search(r'(\d+\.\d+\.\d+)', filename)
+                version_match = re.search(r"(\d+\.\d+\.\d+)", filename)
                 if not version_match:
-                    version_match = re.search(r'(\d{2}\.\d{2}\.\d{2})', filename)
+                    version_match = re.search(r"(\d{2}\.\d{2}\.\d{2})", filename)
                 if not version_match:
-                    version_match = re.search(r'(\d+\.dev\d+)', filename)
+                    version_match = re.search(r"(\d+\.dev\d+)", filename)
                 if not version_match:
-                    version_match = re.search(r'(\d+)', filename)
+                    version_match = re.search(r"(\d+)", filename)
                 if not version_match:
                     return None
                 return version_match.group(1)
 
             def process_file_link(link, base_url, skip_os_check=False):
-                if link.endswith('/'):
+                if link.endswith("/"):
                     return None
                 link_lower = link.lower()
-                if not skip_os_check and not any(os_name in link_lower for os_name in os_specific_names):
+                if not skip_os_check and not any(
+                    os_name in link_lower for os_name in os_specific_names
+                ):
                     return None
                 if "chisurf" not in link_lower:
                     return None
@@ -618,8 +639,8 @@ class ChiSurfUpdater:
             def fetch_and_parse_html(fetch_url):
                 try:
                     with urllib.request.urlopen(fetch_url) as response:
-                        html = response.read().decode('utf-8')
-                    return re.findall(r'href=[\'\"]?([^\'\" >]+)', html)
+                        html = response.read().decode("utf-8")
+                    return re.findall(r"href=[\'\"]?([^\'\" >]+)", html)
                 except urllib.error.URLError as e:
                     logging.error(f"Error fetching directory listing from {fetch_url}: {e}")
                     return []
@@ -629,7 +650,7 @@ class ChiSurfUpdater:
 
             os_subdirs = []
             for link in main_links:
-                if link.endswith('/') and not link.startswith('..'):
+                if link.endswith("/") and not link.startswith(".."):
                     link_lower = link.lower()
                     if any(os_name in link_lower for os_name in os_specific_names):
                         os_subdirs.append(link)
@@ -653,14 +674,13 @@ class ChiSurfUpdater:
             logging.error(f"Error listing remote versions: {str(e)}")
             return []
 
-    def _get_update_info(self) -> Optional[Dict[str, Any]]:
+    def _get_update_info(self) -> dict[str, Any] | None:
         """
         Get update information from the remote server.
 
         Returns:
             Dictionary containing update information, or None if not available
         """
-
         # Check if the update URL is a local folder
         if self._is_local_folder():
             # Get available versions from the folder
@@ -679,7 +699,7 @@ class ChiSurfUpdater:
                 "release_notes": f"Version {latest_version['version']} from local folder",
                 "channels": ["conda-forge", "defaults"],
                 "available_versions": versions,
-                "changelog": self._build_changelog(self.current_version, latest_version["version"])
+                "changelog": self._build_changelog(self.current_version, latest_version["version"]),
             }
 
             return update_info
@@ -698,7 +718,9 @@ class ChiSurfUpdater:
                     "release_notes": f"Version {latest_version['version']} from remote server",
                     "channels": ["conda-forge", "defaults"],
                     "available_versions": versions,
-                    "changelog": self._build_changelog(self.current_version, latest_version["version"])
+                    "changelog": self._build_changelog(
+                        self.current_version, latest_version["version"]
+                    ),
                 }
 
                 return update_info
@@ -707,8 +729,7 @@ class ChiSurfUpdater:
             logging.warning("No versions found at the update URL")
             return None
 
-
-    def _parse_version_date(self, v: str) -> Optional[datetime]:
+    def _parse_version_date(self, v: str) -> datetime | None:
         """Parse version strings like 'yy.mm.dd' or 'yyyy.mm.dd' to a UTC datetime at start of day."""
         try:
             parts = re.split(r"[^0-9]+", v)
@@ -722,9 +743,13 @@ class ChiSurfUpdater:
             pass
         return None
 
-    def _extract_repo_slug(self) -> Optional[Tuple[str, str]]:
+    def _extract_repo_slug(self) -> tuple[str, str] | None:
         """Extract (owner, repo) from info.update_url or help_url if possible."""
-        url = getattr(info, 'update_url', '') or getattr(info, '__url__', '') or getattr(info, 'help_url', '')
+        url = (
+            getattr(info, "update_url", "")
+            or getattr(info, "__url__", "")
+            or getattr(info, "help_url", "")
+        )
         if not url:
             return None
         try:
@@ -733,9 +758,9 @@ class ChiSurfUpdater:
                 owner = m.group(1)
                 repo = m.group(2)
                 # Strip trailing anchors like 'releases' from repo if present
-                repo = repo.replace('.git', '')
-                if repo.endswith('?'):
-                    repo = repo.split('?')[0]
+                repo = repo.replace(".git", "")
+                if repo.endswith("?"):
+                    repo = repo.split("?")[0]
                 return owner, repo
         except Exception:
             return None
@@ -770,17 +795,17 @@ class ChiSurfUpdater:
             until_plus = until_dt + timedelta(days=1)
 
             # Determine branch to query (default to development)
-            branch = getattr(self, 'channel', None)
+            branch = getattr(self, "channel", None)
             if isinstance(branch, str) and branch:
                 bl = branch.lower()
-                if bl.startswith('dev'):
-                    branch = 'development'
-                elif bl in ('main', 'master'):
+                if bl.startswith("dev"):
+                    branch = "development"
+                elif bl in ("main", "master"):
                     branch = bl
                 else:
                     branch = branch
             else:
-                branch = 'development'
+                branch = "development"
 
             branch_q = urllib.parse.quote(str(branch))
 
@@ -789,14 +814,11 @@ class ChiSurfUpdater:
                 f"since={since_dt.isoformat()}&until={until_plus.isoformat()}&per_page=100&sha={branch_q}"
             )
 
-            headers = {
-                'User-Agent': 'ChiSurf-Updater',
-                'Accept': 'application/vnd.github+json'
-            }
+            headers = {"User-Agent": "ChiSurf-Updater", "Accept": "application/vnd.github+json"}
 
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, timeout=10) as resp:
-                data = resp.read().decode('utf-8')
+                data = resp.read().decode("utf-8")
             commits = json.loads(data)
             if not isinstance(commits, list):
                 commits = []
@@ -804,14 +826,18 @@ class ChiSurfUpdater:
             lines = []
             for c in commits[:limit]:
                 try:
-                    commit = c.get('commit', {})
-                    msg = commit.get('message', '').split('\n')[0].strip()
-                    if msg.lower().startswith('merge'):
+                    commit = c.get("commit", {})
+                    msg = commit.get("message", "").split("\n")[0].strip()
+                    if msg.lower().startswith("merge"):
                         continue
-                    author = commit.get('author', {}).get('name') or c.get('author', {}).get('login') or 'unknown'
-                    date_str = commit.get('author', {}).get('date', '')
+                    author = (
+                        commit.get("author", {}).get("name")
+                        or c.get("author", {}).get("login")
+                        or "unknown"
+                    )
+                    date_str = commit.get("author", {}).get("date", "")
                     # Normalize date short
-                    date_short = date_str[:10] if date_str else ''
+                    date_short = date_str[:10] if date_str else ""
                     if msg:
                         lines.append(f"- {date_short} {msg} (by {author})")
                 except Exception:
@@ -848,18 +874,19 @@ class ChiSurfUpdater:
         """
         if self.system == "windows":
             # Check if the installation directory is in Program Files
-            chisurf_path = get_path('chisurf')
-            program_files = os.environ.get('ProgramFiles', 'C:\\Program Files')
-            program_files_x86 = os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)')
+            chisurf_path = get_path("chisurf")
+            program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+            program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
 
-            return (str(chisurf_path).startswith(program_files) or 
-                    str(chisurf_path).startswith(program_files_x86))
+            return str(chisurf_path).startswith(program_files) or str(chisurf_path).startswith(
+                program_files_x86
+            )
 
         # On Unix-like systems, check if the environment is in a system directory
-        pkg_prefix = os.environ.get('CONDA_PREFIX', '')
-        return pkg_prefix.startswith('/usr') and not pkg_prefix.startswith('/usr/local')
+        pkg_prefix = os.environ.get("CONDA_PREFIX", "")
+        return pkg_prefix.startswith("/usr") and not pkg_prefix.startswith("/usr/local")
 
-    def _check_missing_dependencies(self) -> List[str]:
+    def _check_missing_dependencies(self) -> list[str]:
         """
         This method is kept for backward compatibility but now returns an empty list.
         Dependency resolution is handled automatically when installing or updating packages.
@@ -870,7 +897,7 @@ class ChiSurfUpdater:
         logging.info("Dependency checking is handled by the package manager automatically")
         return []
 
-    def _prepare_update_command(self, update_info: Dict[str, Any]) -> Tuple[List[str], str]:
+    def _prepare_update_command(self, update_info: dict[str, Any]) -> tuple[list[str], str]:
         """
         Prepare the command to update ChiSurf.
 
@@ -896,8 +923,14 @@ class ChiSurfUpdater:
 
         # Use install command with --update-deps to ensure all dependencies are installed/updated
         cmd = [
-            pkg_exe, "install", "-y", "--update-deps", "--prefix", env_path, "chisurf",
-            *channel_args
+            pkg_exe,
+            "install",
+            "-y",
+            "--update-deps",
+            "--prefix",
+            env_path,
+            "chisurf",
+            *channel_args,
         ]
         logging.info("Using package manager install with --update-deps")
 
@@ -916,10 +949,10 @@ class ChiSurfUpdater:
         # Try to get from package manager class
         if self.pkg_manager:
             return self.pkg_manager.pkg_exe()
-        
+
         return "micromamba"
 
-    def _run_command(self, cmd: List[str]) -> Tuple[bool, Optional[str]]:
+    def _run_command(self, cmd: list[str]) -> tuple[bool, str | None]:
         """
         Run a command and return the result.
 
@@ -939,11 +972,11 @@ class ChiSurfUpdater:
             use_shell = False
 
             # On Windows, calling a .bat/.cmd directly without shell may fail.
-            if self.system == 'windows':
-                exe = (cmd[0] if cmd else '').lower()
-                if exe.endswith('.bat') or exe.endswith('.cmd'):
+            if self.system == "windows":
+                exe = (cmd[0] if cmd else "").lower()
+                if exe.endswith(".bat") or exe.endswith(".cmd"):
                     # Wrap with cmd.exe /C
-                    popen_cmd = ['cmd.exe', '/C', *cmd]
+                    popen_cmd = ["cmd.exe", "/C", *cmd]
                     logging.debug("Wrapping batch file execution with cmd.exe /C for Windows")
 
             process = subprocess.Popen(
@@ -951,7 +984,7 @@ class ChiSurfUpdater:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                shell=use_shell
+                shell=use_shell,
             )
             stdout, stderr = process.communicate()
 
@@ -972,7 +1005,7 @@ class ChiSurfUpdater:
             logging.error(error_msg)
             return False, error_msg
 
-    def _run_with_elevation(self, cmd: List[str]) -> Tuple[bool, Optional[str]]:
+    def _run_with_elevation(self, cmd: list[str]) -> tuple[bool, str | None]:
         """
         Run a command with elevated privileges on Windows.
 
@@ -993,40 +1026,48 @@ class ChiSurfUpdater:
             log_file = os.path.join(temp_dir, "elevated_command.log")
 
             # Properly quote arguments that contain spaces
-            quoted_cmd = [f'"{arg}"' if ' ' in str(arg) and not str(arg).startswith('"') else str(arg) for arg in cmd]
+            quoted_cmd = [
+                f'"{arg}"' if " " in str(arg) and not str(arg).startswith('"') else str(arg)
+                for arg in cmd
+            ]
             win_cmd_str = " ".join(quoted_cmd)
 
             batch_file = os.path.join(temp_dir, "run_elevated.bat")
-            with open(batch_file, 'w') as f:
-                f.write('@echo off\n')
+            with open(batch_file, "w") as f:
+                f.write("@echo off\n")
                 f.write(f'echo Running elevated command at %DATE% %TIME% > "{log_file}"\n')
                 f.write(f'echo Command: {win_cmd_str} >> "{log_file}"\n')
                 # Execute the command and capture all output to the log
                 f.write(f'{win_cmd_str} >> "{log_file}" 2>&1\n')
-                f.write('set EXITCODE=%ERRORLEVEL%\n')
+                f.write("set EXITCODE=%ERRORLEVEL%\n")
                 f.write('echo. >> "' + log_file + '"\n')
                 f.write('echo Exit code: %EXITCODE% >> "' + log_file + '"\n')
-                f.write('if %EXITCODE% NEQ 0 (\n')
-                f.write('  echo Elevated command failed with error code %EXITCODE% >> "' + log_file + '"\n')
-                f.write('  exit /b %EXITCODE%\n')
-                f.write(')\n')
+                f.write("if %EXITCODE% NEQ 0 (\n")
+                f.write(
+                    '  echo Elevated command failed with error code %EXITCODE% >> "'
+                    + log_file
+                    + '"\n'
+                )
+                f.write("  exit /b %EXITCODE%\n")
+                f.write(")\n")
                 f.write('echo Elevated command completed successfully >> "' + log_file + '"\n')
-                f.write('exit /b 0\n')
+                f.write("exit /b 0\n")
 
             # Run the batch file with elevated privileges using PowerShell and wait for completion
             powershell_cmd = [
-                'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-                f"$p = Start-Process -FilePath '{batch_file}' -Verb RunAs -Wait -PassThru; exit $p.ExitCode"
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                f"$p = Start-Process -FilePath '{batch_file}' -Verb RunAs -Wait -PassThru; exit $p.ExitCode",
             ]
 
             logging.debug(f"Running elevated batch: {batch_file}")
             logging.debug(f"Elevated log will be written to: {log_file}")
 
             process = subprocess.Popen(
-                powershell_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                powershell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
             stdout, stderr = process.communicate()
 
@@ -1039,7 +1080,7 @@ class ChiSurfUpdater:
             tail_hint = ""
             try:
                 if os.path.exists(log_file):
-                    with open(log_file, 'r', errors='ignore') as lf:
+                    with open(log_file, errors="ignore") as lf:
                         lines = lf.readlines()
                         tail = "".join(lines[-25:]) if lines else ""
                         tail_hint = tail.strip()
@@ -1047,7 +1088,9 @@ class ChiSurfUpdater:
                 pass
 
             if process.returncode != 0:
-                err_msg = f"Elevation failed with exit code {process.returncode}. See log: {log_file}"
+                err_msg = (
+                    f"Elevation failed with exit code {process.returncode}. See log: {log_file}"
+                )
                 if tail_hint:
                     err_msg += f"\n--- Log tail ---\n{tail_hint}"
                 return False, err_msg
@@ -1061,7 +1104,9 @@ class ChiSurfUpdater:
         except Exception as e:
             return False, str(e)
 
-    def _run_update_in_separate_process(self, cmd: List[str], callback=None) -> Tuple[bool, Optional[str]]:
+    def _run_update_in_separate_process(
+        self, cmd: list[str], callback=None
+    ) -> tuple[bool, str | None]:
         """
         Run the update in a separate process after closing ChiSurf.
 
@@ -1105,7 +1150,7 @@ class ChiSurfUpdater:
                 logging.info("Creating Windows update scripts")
                 # Create a properly quoted command string for Windows batch file execution
                 # This ensures paths with spaces are handled correctly
-                win_cmd_str = " ".join([f'"{arg}"' if ' ' in arg else arg for arg in cmd])
+                win_cmd_str = " ".join([f'"{arg}"' if " " in arg else arg for arg in cmd])
                 logging.debug(f"Windows command string: {win_cmd_str}")
 
                 # On Windows, use a batch file
@@ -1116,17 +1161,17 @@ class ChiSurfUpdater:
                 log_file = os.path.join(temp_dir, "update_log.txt")
                 logging.debug(f"Log file path: {log_file}")
 
-                with open(update_script_path, 'w') as f:
-                    f.write('@echo off\n')
-                    f.write('title ChiSurf Update\n')
+                with open(update_script_path, "w") as f:
+                    f.write("@echo off\n")
+                    f.write("title ChiSurf Update\n")
                     f.write('echo ChiSurf Update Process > "' + log_file + '"\n')
                     f.write('echo ===================== >> "' + log_file + '"\n')
                     f.write('echo. >> "' + log_file + '"\n')
                     f.write('echo Starting update process... >> "' + log_file + '"\n')
-                    f.write('echo Script: ' + update_script_path + ' >> "' + log_file + '"\n')
-                    f.write('echo Command: ' + cmd_str + ' >> "' + log_file + '"\n')
+                    f.write("echo Script: " + update_script_path + ' >> "' + log_file + '"\n')
+                    f.write("echo Command: " + cmd_str + ' >> "' + log_file + '"\n')
                     f.write('echo. >> "' + log_file + '"\n')
-                    f.write('echo Update in progress. Please wait...\n')
+                    f.write("echo Update in progress. Please wait...\n")
                     f.write('echo Update in progress. Please wait... >> "' + log_file + '"\n')
                     f.write('echo. >> "' + log_file + '"\n')
 
@@ -1135,45 +1180,57 @@ class ChiSurfUpdater:
 
                     # Dependencies are handled automatically by the package manager
 
-                    f.write('if %ERRORLEVEL% NEQ 0 (\n')
+                    f.write("if %ERRORLEVEL% NEQ 0 (\n")
                     f.write('  echo. >> "' + log_file + '"\n')
-                    f.write('  echo Update failed with error code %ERRORLEVEL% >> "' + log_file + '"\n')
-                    f.write('  echo.\n')
-                    f.write('  echo Update failed with error code %ERRORLEVEL%\n')
-                    f.write('  echo See log file for details: ' + log_file + '\n')
-                    f.write('  echo.\n')
-                    f.write('  echo Press any key to close this window...\n')
-                    f.write('  pause > nul\n')
-                    f.write('  exit /b %ERRORLEVEL%\n')
-                    f.write(')\n')
+                    f.write(
+                        '  echo Update failed with error code %ERRORLEVEL% >> "' + log_file + '"\n'
+                    )
+                    f.write("  echo.\n")
+                    f.write("  echo Update failed with error code %ERRORLEVEL%\n")
+                    f.write("  echo See log file for details: " + log_file + "\n")
+                    f.write("  echo.\n")
+                    f.write("  echo Press any key to close this window...\n")
+                    f.write("  pause > nul\n")
+                    f.write("  exit /b %ERRORLEVEL%\n")
+                    f.write(")\n")
                     f.write('echo. >> "' + log_file + '"\n')
                     f.write('echo Update successful! >> "' + log_file + '"\n')
-                    f.write('echo.\n')
-                    f.write('echo Update successful!\n')
-                    f.write('echo.\n')
-                    f.write('echo Please restart ChiSurf manually to complete the update.\n')
-                    f.write('echo Please restart ChiSurf manually to complete the update. >> "' + log_file + '"\n')
-                    f.write('echo.\n')
-                    f.write('echo Log file: ' + log_file + '\n')
-                    f.write('echo.\n')
-                    f.write('echo Press any key to close this window...\n')
-                    f.write('pause > nul\n')
+                    f.write("echo.\n")
+                    f.write("echo Update successful!\n")
+                    f.write("echo.\n")
+                    f.write("echo Please restart ChiSurf manually to complete the update.\n")
+                    f.write(
+                        'echo Please restart ChiSurf manually to complete the update. >> "'
+                        + log_file
+                        + '"\n'
+                    )
+                    f.write("echo.\n")
+                    f.write("echo Log file: " + log_file + "\n")
+                    f.write("echo.\n")
+                    f.write("echo Press any key to close this window...\n")
+                    f.write("pause > nul\n")
 
                 # Create a launcher script that will be executed to start the update process
                 launcher_script_path = os.path.join(temp_dir, "start_update.bat")
                 logging.debug(f"Launcher script path: {launcher_script_path}")
 
-                with open(launcher_script_path, 'w') as f:
-                    f.write('@echo off\n')
-                    f.write('timeout /t 1 /nobreak >nul\n')  # Wait a bit for the current process to exit
+                with open(launcher_script_path, "w") as f:
+                    f.write("@echo off\n")
+                    f.write(
+                        "timeout /t 1 /nobreak >nul\n"
+                    )  # Wait a bit for the current process to exit
 
                     # If we need elevated privileges, use PowerShell to run the script as administrator
                     if needs_elevation:
-                        f.write('echo Administrator privileges are required for this update.\n')
-                        f.write('echo The User Account Control (UAC) dialog may appear.\n')
+                        f.write("echo Administrator privileges are required for this update.\n")
+                        f.write("echo The User Account Control (UAC) dialog may appear.\n")
                         f.write('echo Please click "Yes" to allow the update to proceed.\n')
-                        f.write('echo.\n')
-                        f.write('powershell.exe -Command "Start-Process -FilePath \\"' + update_script_path + '\\" -Verb RunAs"\n')
+                        f.write("echo.\n")
+                        f.write(
+                            'powershell.exe -Command "Start-Process -FilePath \\"'
+                            + update_script_path
+                            + '\\" -Verb RunAs"\n'
+                        )
                     else:
                         f.write(f'start "" "{update_script_path}"\n')
 
@@ -1184,7 +1241,7 @@ class ChiSurfUpdater:
 
                 # Run the launcher script
                 logging.info("Starting launcher script")
-                subprocess.Popen(['cmd', '/c', launcher_script_path], shell=True)
+                subprocess.Popen(["cmd", "/c", launcher_script_path], shell=True)
             else:
                 logging.info("Creating Unix update scripts")
                 # On Unix-like systems, use a shell script
@@ -1193,15 +1250,15 @@ class ChiSurfUpdater:
 
                 # Create a properly quoted command string for shell script execution
                 # This ensures paths with spaces are handled correctly
-                shell_cmd_str = " ".join([f"'{arg}'" if ' ' in arg else arg for arg in cmd])
+                shell_cmd_str = " ".join([f"'{arg}'" if " " in arg else arg for arg in cmd])
                 logging.debug(f"Shell command string: {shell_cmd_str}")
 
                 # Create the update script with logging redirected to a file
                 log_file = os.path.join(temp_dir, "update_log.txt")
                 logging.debug(f"Log file path: {log_file}")
 
-                with open(update_script_path, 'w') as f:
-                    f.write('#!/bin/sh\n')
+                with open(update_script_path, "w") as f:
+                    f.write("#!/bin/sh\n")
                     f.write('echo "ChiSurf Update Process" > "' + log_file + '"\n')
                     f.write('echo "=====================" >> "' + log_file + '"\n')
                     f.write('echo >> "' + log_file + '"\n')
@@ -1217,57 +1274,63 @@ class ChiSurfUpdater:
                     f.write(shell_cmd_str + ' >> "' + log_file + '" 2>&1\n')
 
                     # Store the exit code
-                    f.write('UPDATE_EXIT_CODE=$?\n')
+                    f.write("UPDATE_EXIT_CODE=$?\n")
 
                     # Dependencies are handled automatically by the package manager
 
-                    f.write('if [ $UPDATE_EXIT_CODE -ne 0 ]; then\n')
+                    f.write("if [ $UPDATE_EXIT_CODE -ne 0 ]; then\n")
                     f.write('  echo >> "' + log_file + '"\n')
                     f.write('  echo "Update failed with error code $?" >> "' + log_file + '"\n')
-                    f.write('  echo\n')
+                    f.write("  echo\n")
                     f.write('  echo "Update failed with error code $?"\n')
                     f.write('  echo "See log file for details: ' + log_file + '"\n')
-                    f.write('  echo\n')
+                    f.write("  echo\n")
                     f.write('  echo "Press Enter to close this window..."\n')
-                    f.write('  read\n')
-                    f.write('  exit $?\n')
-                    f.write('fi\n')
+                    f.write("  read\n")
+                    f.write("  exit $?\n")
+                    f.write("fi\n")
                     f.write('echo >> "' + log_file + '"\n')
                     f.write('echo "Update successful!" >> "' + log_file + '"\n')
-                    f.write('echo\n')
+                    f.write("echo\n")
                     f.write('echo "Update successful!"\n')
-                    f.write('echo\n')
+                    f.write("echo\n")
                     f.write('echo "Please restart ChiSurf manually to complete the update."\n')
-                    f.write('echo "Please restart ChiSurf manually to complete the update." >> "' + log_file + '"\n')
-                    f.write('echo\n')
+                    f.write(
+                        'echo "Please restart ChiSurf manually to complete the update." >> "'
+                        + log_file
+                        + '"\n'
+                    )
+                    f.write("echo\n")
                     f.write('echo "Log file: ' + log_file + '"\n')
-                    f.write('echo\n')
+                    f.write("echo\n")
                     f.write('echo "Press Enter to close this window..."\n')
-                    f.write('read\n')
+                    f.write("read\n")
 
                 # Create a launcher script that will be executed to start the update process
                 launcher_script_path = os.path.join(temp_dir, "start_update.sh")
                 logging.debug(f"Launcher script path: {launcher_script_path}")
 
-                with open(launcher_script_path, 'w') as f:
-                    f.write('#!/bin/sh\n')
-                    f.write('sleep 1\n')  # Wait a bit for the current process to exit
+                with open(launcher_script_path, "w") as f:
+                    f.write("#!/bin/sh\n")
+                    f.write("sleep 1\n")  # Wait a bit for the current process to exit
 
                     # If we need elevated privileges, use sudo or pkexec to run the script as administrator
                     if needs_elevation:
                         f.write('echo "Administrator privileges are required for this update."\n')
                         f.write('echo "You may be prompted for your password."\n')
-                        f.write('echo\n')
+                        f.write("echo\n")
 
                         # Try pkexec first (for desktop environments), then sudo
-                        f.write('if command -v pkexec >/dev/null 2>&1; then\n')
+                        f.write("if command -v pkexec >/dev/null 2>&1; then\n")
                         f.write(f'  xterm -e "pkexec {update_script_path}" &\n')
-                        f.write('elif command -v sudo >/dev/null 2>&1; then\n')
+                        f.write("elif command -v sudo >/dev/null 2>&1; then\n")
                         f.write(f'  xterm -e "sudo {update_script_path}" &\n')
-                        f.write('else\n')
-                        f.write('  echo "Error: Neither pkexec nor sudo is available. Cannot elevate privileges."\n')
+                        f.write("else\n")
+                        f.write(
+                            '  echo "Error: Neither pkexec nor sudo is available. Cannot elevate privileges."\n'
+                        )
                         f.write('  xterm -e "{update_script_path}" &\n')
-                        f.write('fi\n')
+                        f.write("fi\n")
                     else:
                         f.write(f'xterm -e "{update_script_path}" &\n')
 
@@ -1278,7 +1341,7 @@ class ChiSurfUpdater:
 
                 # Run the launcher script
                 logging.info("Starting launcher script")
-                subprocess.Popen(['/bin/sh', launcher_script_path])
+                subprocess.Popen(["/bin/sh", launcher_script_path])
 
             # Report progress
             message = "Update process started in a separate window."
@@ -1315,19 +1378,21 @@ class ChiSurfUpdater:
         # Prepare the restart command
         if self.system == "windows":
             # On Windows, use a batch file to restart
-            with tempfile.NamedTemporaryFile(suffix='.bat', delete=False, mode='w') as f:
-                f.write('@echo off\n')
-                f.write('timeout /t 1 /nobreak >nul\n')  # Wait a bit for the current process to exit
+            with tempfile.NamedTemporaryFile(suffix=".bat", delete=False, mode="w") as f:
+                f.write("@echo off\n")
+                f.write(
+                    "timeout /t 1 /nobreak >nul\n"
+                )  # Wait a bit for the current process to exit
                 f.write(f'start "" "{executable}" "{script}" {" ".join(args)}\n')
                 restart_script = f.name
 
             # Run the restart script
-            subprocess.Popen(['cmd', '/c', restart_script], shell=True)
+            subprocess.Popen(["cmd", "/c", restart_script], shell=True)
         else:
             # On Unix-like systems, use a shell script
-            with tempfile.NamedTemporaryFile(suffix='.sh', delete=False, mode='w') as f:
-                f.write('#!/bin/sh\n')
-                f.write('sleep 1\n')  # Wait a bit for the current process to exit
+            with tempfile.NamedTemporaryFile(suffix=".sh", delete=False, mode="w") as f:
+                f.write("#!/bin/sh\n")
+                f.write("sleep 1\n")  # Wait a bit for the current process to exit
                 f.write(f'"{executable}" "{script}" {" ".join(args)} &\n')
                 restart_script = f.name
 
@@ -1335,12 +1400,13 @@ class ChiSurfUpdater:
             os.chmod(restart_script, 0o755)
 
             # Run the restart script
-            subprocess.Popen(['/bin/sh', restart_script])
+            subprocess.Popen(["/bin/sh", restart_script])
 
         # Exit the current process
         sys.exit(0)
 
-def check_for_updates() -> Tuple[bool, Optional[str], Optional[str]]:
+
+def check_for_updates() -> tuple[bool, str | None, str | None]:
     """
     Check if updates are available for ChiSurf.
 
@@ -1353,7 +1419,8 @@ def check_for_updates() -> Tuple[bool, Optional[str], Optional[str]]:
     updater = ChiSurfUpdater()
     return updater.check_for_updates()
 
-def update_chisurf(callback=None, auto_restart=True) -> Tuple[bool, Optional[str]]:
+
+def update_chisurf(callback=None, auto_restart=True) -> tuple[bool, str | None]:
     """
     Update ChiSurf to the latest version.
 
@@ -1381,11 +1448,12 @@ class PackageManager:
     It prefers an existing micromamba/mamba in the current environment, and falls back to
     system PATH. Most commands support JSON output for structured results.
     """
-    def __init__(self, updater: Optional[ChiSurfUpdater] = None):
+
+    def __init__(self, updater: ChiSurfUpdater | None = None):
         self.updater = updater
-        self.system = (updater.system if updater else platform.system().lower())
-        self._pkg_exe_cache: Optional[str] = None
-        self._preferred: List[str] = []  # execution preference order
+        self.system = updater.system if updater else platform.system().lower()
+        self._pkg_exe_cache: str | None = None
+        self._preferred: list[str] = []  # execution preference order
         # Prefer micromamba/mamba when found
         # We'll detect lazily.
 
@@ -1393,51 +1461,51 @@ class PackageManager:
     def pkg_exe(self) -> str:
         if self._pkg_exe_cache:
             return self._pkg_exe_cache
-        candidates: List[str] = []
+        candidates: list[str] = []
         sys_prefix = sys.prefix
-        pkg_prefix = os.environ.get('CONDA_PREFIX', '')
+        pkg_prefix = os.environ.get("CONDA_PREFIX", "")
         app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-        if self.system == 'windows':
+        if self.system == "windows":
             # micromamba/mamba common locations
             candidates += [
-                os.path.join(app_dir, 'Scripts', 'micromamba.exe'),
-                os.path.join(sys_prefix, 'Scripts', 'micromamba.exe'),
-                os.path.join(pkg_prefix, 'Scripts', 'micromamba.exe'),
-                os.path.join(app_dir, 'Scripts', 'mamba.exe'),
-                os.path.join(sys_prefix, 'Scripts', 'mamba.exe'),
-                os.path.join(pkg_prefix, 'Scripts', 'mamba.exe'),
-                os.path.join(app_dir, 'Scripts', 'conda.exe'),
-                os.path.join(sys_prefix, 'Scripts', 'conda.exe'),
-                os.path.join(pkg_prefix, 'Scripts', 'conda.exe'),
+                os.path.join(app_dir, "Scripts", "micromamba.exe"),
+                os.path.join(sys_prefix, "Scripts", "micromamba.exe"),
+                os.path.join(pkg_prefix, "Scripts", "micromamba.exe"),
+                os.path.join(app_dir, "Scripts", "mamba.exe"),
+                os.path.join(sys_prefix, "Scripts", "mamba.exe"),
+                os.path.join(pkg_prefix, "Scripts", "mamba.exe"),
+                os.path.join(app_dir, "Scripts", "conda.exe"),
+                os.path.join(sys_prefix, "Scripts", "conda.exe"),
+                os.path.join(pkg_prefix, "Scripts", "conda.exe"),
             ]
         else:
             candidates += [
-                os.path.join(app_dir, 'bin', 'micromamba'),
-                os.path.join(sys_prefix, 'bin', 'micromamba'),
-                os.path.join(pkg_prefix, 'bin', 'micromamba'),
-                os.path.join(app_dir, 'bin', 'mamba'),
-                os.path.join(sys_prefix, 'bin', 'mamba'),
-                os.path.join(pkg_prefix, 'bin', 'mamba'),
-                os.path.join(app_dir, 'bin', 'conda'),
-                os.path.join(sys_prefix, 'bin', 'conda'),
-                os.path.join(pkg_prefix, 'bin', 'conda'),
+                os.path.join(app_dir, "bin", "micromamba"),
+                os.path.join(sys_prefix, "bin", "micromamba"),
+                os.path.join(pkg_prefix, "bin", "micromamba"),
+                os.path.join(app_dir, "bin", "mamba"),
+                os.path.join(sys_prefix, "bin", "mamba"),
+                os.path.join(pkg_prefix, "bin", "mamba"),
+                os.path.join(app_dir, "bin", "conda"),
+                os.path.join(sys_prefix, "bin", "conda"),
+                os.path.join(pkg_prefix, "bin", "conda"),
             ]
         # Finally, rely on PATH
-        candidates += ['micromamba', 'mamba', 'conda']
+        candidates += ["micromamba", "mamba", "conda"]
         for c in candidates:
-            if os.path.exists(c) or c in ['micromamba', 'mamba', 'conda']:
+            if os.path.exists(c) or c in ["micromamba", "mamba", "conda"]:
                 self._pkg_exe_cache = c
                 # Remember preference order by tool name
                 name = os.path.basename(c).lower()
-                if 'micro' in name:
-                    self._preferred = ['micromamba', 'mamba', 'conda']
-                elif 'mamba' in name:
-                    self._preferred = ['mamba', 'conda']
+                if "micro" in name:
+                    self._preferred = ["micromamba", "mamba", "conda"]
+                elif "mamba" in name:
+                    self._preferred = ["mamba", "conda"]
                 else:
-                    self._preferred = ['conda']
+                    self._preferred = ["conda"]
                 break
-        return self._pkg_exe_cache or 'micromamba'
+        return self._pkg_exe_cache or "micromamba"
 
     def preferred_solver(self) -> str:
         """Return the name of the preferred solver (micromamba, mamba, or conda)."""
@@ -1447,24 +1515,26 @@ class PackageManager:
             # Fallback: determine from cached executable
             if self._pkg_exe_cache:
                 name = os.path.basename(self._pkg_exe_cache).lower()
-                if 'micro' in name:
-                    return 'micromamba'
-                elif 'mamba' in name:
-                    return 'mamba'
-            return 'micromamba'
+                if "micro" in name:
+                    return "micromamba"
+                elif "mamba" in name:
+                    return "mamba"
+            return "micromamba"
         except Exception:
-            return 'micromamba'
+            return "micromamba"
 
     # ---------- Running helpers ----------
-    def _popen(self, cmd: List[str]) -> Tuple[bool, str, str, int]:
+    def _popen(self, cmd: list[str]) -> tuple[bool, str, str, int]:
         try:
             popen_cmd = cmd
-            if self.system == 'windows':
-                exe = (cmd[0] if cmd else '').lower()
-                if exe.endswith('.bat') or exe.endswith('.cmd'):
-                    popen_cmd = ['cmd.exe', '/C', *cmd]
+            if self.system == "windows":
+                exe = (cmd[0] if cmd else "").lower()
+                if exe.endswith(".bat") or exe.endswith(".cmd"):
+                    popen_cmd = ["cmd.exe", "/C", *cmd]
             logging.debug(f"PackageManager executing: {' '.join(popen_cmd)}")
-            p = subprocess.Popen(popen_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            p = subprocess.Popen(
+                popen_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
             out, err = p.communicate()
             if out:
                 logging.debug(f"stdout:\n{out}")
@@ -1472,23 +1542,23 @@ class PackageManager:
                 logging.debug(f"stderr:\n{err}")
             return (p.returncode == 0), out, err, p.returncode
         except Exception as e:
-            return False, '', str(e), -1
+            return False, "", str(e), -1
 
-    def _with_prefix(self, args: List[str], prefix: Optional[str]) -> List[str]:
+    def _with_prefix(self, args: list[str], prefix: str | None) -> list[str]:
         if not prefix:
             prefix = sys.prefix
-        return args + ['-p', prefix]
+        return args + ["-p", prefix]
 
-    def _channels_args(self, channels: Optional[List[str]]) -> List[str]:
-        ch: List[str] = []
+    def _channels_args(self, channels: list[str] | None) -> list[str]:
+        ch: list[str] = []
         if channels:
             for c in channels:
-                ch += ['-c', c]
+                ch += ["-c", c]
         return ch
 
     # ---------- Public operations ----------
-    def info(self) -> Tuple[bool, Any, str]:
-        cmd = [self.pkg_exe(), 'info', '--json']
+    def info(self) -> tuple[bool, Any, str]:
+        cmd = [self.pkg_exe(), "info", "--json"]
         ok, out, err, _ = self._popen(cmd)
         data = None
         if ok:
@@ -1496,11 +1566,11 @@ class PackageManager:
                 data = json.loads(out)
             except Exception:
                 ok = False
-                err = err or 'Failed to parse info JSON'
+                err = err or "Failed to parse info JSON"
         return ok, data, err
 
-    def list_installed(self, prefix: Optional[str] = None) -> Tuple[bool, Any, str]:
-        cmd = self._with_prefix([self.pkg_exe(), 'list', '--json'], prefix)
+    def list_installed(self, prefix: str | None = None) -> tuple[bool, Any, str]:
+        cmd = self._with_prefix([self.pkg_exe(), "list", "--json"], prefix)
         ok, out, err, _ = self._popen(cmd)
         data = None
         if ok:
@@ -1508,11 +1578,11 @@ class PackageManager:
                 data = json.loads(out)
             except Exception:
                 ok = False
-                err = err or 'Failed to parse list JSON'
+                err = err or "Failed to parse list JSON"
         return ok, data, err
 
-    def search(self, query: str, channels: Optional[List[str]] = None) -> Tuple[bool, Any, str]:
-        cmd = [self.pkg_exe(), 'search', query, '--json'] + self._channels_args(channels)
+    def search(self, query: str, channels: list[str] | None = None) -> tuple[bool, Any, str]:
+        cmd = [self.pkg_exe(), "search", query, "--json"] + self._channels_args(channels)
         ok, out, err, _ = self._popen(cmd)
         data = None
         if ok:
@@ -1520,33 +1590,41 @@ class PackageManager:
                 data = json.loads(out)
             except Exception:
                 ok = False
-                err = err or 'Failed to parse search JSON'
+                err = err or "Failed to parse search JSON"
         return ok, data, err
 
-    def install(self, packages: List[str], prefix: Optional[str] = None, channels: Optional[List[str]] = None, update_deps: bool = True) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'install', '-y']
+    def install(
+        self,
+        packages: list[str],
+        prefix: str | None = None,
+        channels: list[str] | None = None,
+        update_deps: bool = True,
+    ) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "install", "-y"]
         if update_deps:
-            args += ['--update-deps']
+            args += ["--update-deps"]
         args = self._with_prefix(args, prefix) + packages + self._channels_args(channels)
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def remove(self, packages: List[str], prefix: Optional[str] = None) -> Tuple[bool, str]:
-        args = self._with_prefix([self.pkg_exe(), 'remove', '-y'], prefix) + packages
+    def remove(self, packages: list[str], prefix: str | None = None) -> tuple[bool, str]:
+        args = self._with_prefix([self.pkg_exe(), "remove", "-y"], prefix) + packages
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def update(self, packages: Optional[List[str]] = None, prefix: Optional[str] = None) -> Tuple[bool, str]:
-        args = self._with_prefix([self.pkg_exe(), 'update', '-y'], prefix)
+    def update(
+        self, packages: list[str] | None = None, prefix: str | None = None
+    ) -> tuple[bool, str]:
+        args = self._with_prefix([self.pkg_exe(), "update", "-y"], prefix)
         if packages and len(packages) > 0:
             args += packages
         else:
-            args += ['--all']
+            args += ["--all"]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def dry_run_update_all(self, prefix: Optional[str] = None) -> Tuple[bool, Any, str]:
-        args = self._with_prefix([self.pkg_exe(), 'update', '--dry-run', '--json', '--all'], prefix)
+    def dry_run_update_all(self, prefix: str | None = None) -> tuple[bool, Any, str]:
+        args = self._with_prefix([self.pkg_exe(), "update", "--dry-run", "--json", "--all"], prefix)
         ok, out, err, _ = self._popen(args)
         data = None
         if ok:
@@ -1554,122 +1632,134 @@ class PackageManager:
                 data = json.loads(out)
             except Exception:
                 ok = False
-                err = err or 'Failed to parse dry-run update JSON'
+                err = err or "Failed to parse dry-run update JSON"
         return ok, data, err
 
-    def clean_all(self) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'clean', '-y', '--all']
+    def clean_all(self) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "clean", "-y", "--all"]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
     # ----- Environments -----
-    def list_envs(self) -> Tuple[bool, List[str], str]:
-        args = [self.pkg_exe(), 'env', 'list', '--json']
+    def list_envs(self) -> tuple[bool, list[str], str]:
+        args = [self.pkg_exe(), "env", "list", "--json"]
         ok, out, err, _ = self._popen(args)
-        envs: List[str] = []
+        envs: list[str] = []
         if ok:
             try:
                 data = json.loads(out)
-                envs = data.get('envs', [])
+                envs = data.get("envs", [])
             except Exception:
                 ok = False
-                err = err or 'Failed to parse env list JSON'
+                err = err or "Failed to parse env list JSON"
         return ok, envs, err
 
     def current_prefix(self) -> str:
         return sys.prefix
 
-    def create_env(self, name: Optional[str] = None, prefix: Optional[str] = None, python: Optional[str] = None, packages: Optional[List[str]] = None) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'create', '-y']
+    def create_env(
+        self,
+        name: str | None = None,
+        prefix: str | None = None,
+        python: str | None = None,
+        packages: list[str] | None = None,
+    ) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "create", "-y"]
         if prefix and not name:
-            args += ['-p', prefix]
+            args += ["-p", prefix]
         elif name and not prefix:
-            args += ['-n', name]
+            args += ["-n", name]
         else:
             if not name:
-                name = 'chisurf-env'
-            args += ['-n', name]
+                name = "chisurf-env"
+            args += ["-n", name]
         if python:
-            args += [f'python={python}']
+            args += [f"python={python}"]
         if packages:
             args += packages
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def remove_env(self, name: Optional[str] = None, prefix: Optional[str] = None) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'env', 'remove', '-y']
+    def remove_env(self, name: str | None = None, prefix: str | None = None) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "env", "remove", "-y"]
         if prefix and not name:
-            args += ['-p', prefix]
+            args += ["-p", prefix]
         elif name and not prefix:
-            args += ['-n', name]
+            args += ["-n", name]
         else:
-            return False, 'Specify either name or prefix'
+            return False, "Specify either name or prefix"
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def clone_env(self, name_src: Optional[str] = None, prefix_src: Optional[str] = None, name_dst: Optional[str] = None, prefix_dst: Optional[str] = None) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'create', '-y']
+    def clone_env(
+        self,
+        name_src: str | None = None,
+        prefix_src: str | None = None,
+        name_dst: str | None = None,
+        prefix_dst: str | None = None,
+    ) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "create", "-y"]
         if name_dst and not prefix_dst:
-            args += ['-n', name_dst]
+            args += ["-n", name_dst]
         elif prefix_dst and not name_dst:
-            args += ['-p', prefix_dst]
+            args += ["-p", prefix_dst]
         else:
-            return False, 'Specify destination name or prefix'
+            return False, "Specify destination name or prefix"
         if name_src and not prefix_src:
-            args += ['--clone', name_src]
+            args += ["--clone", name_src]
         elif prefix_src and not name_src:
-            args += ['--clone', prefix_src]
+            args += ["--clone", prefix_src]
         else:
-            return False, 'Specify source name or prefix'
+            return False, "Specify source name or prefix"
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def export_env(self, prefix: Optional[str] = None) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'env', 'export']
+    def export_env(self, prefix: str | None = None) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "env", "export"]
         if prefix:
-            args += ['-p', prefix]
+            args += ["-p", prefix]
         else:
-            args += ['-p', sys.prefix]
+            args += ["-p", sys.prefix]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def import_env(self, file_path: str, name: Optional[str] = None) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'env', 'create', '-f', file_path]
+    def import_env(self, file_path: str, name: str | None = None) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "env", "create", "-f", file_path]
         if name:
-            args += ['-n', name]
+            args += ["-n", name]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
     # ----- Channels -----
-    def get_channels(self) -> Tuple[bool, List[str], str]:
-        args = [self.pkg_exe(), 'config', '--show', '--json']
+    def get_channels(self) -> tuple[bool, list[str], str]:
+        args = [self.pkg_exe(), "config", "--show", "--json"]
         ok, out, err, _ = self._popen(args)
-        channels: List[str] = []
+        channels: list[str] = []
         if ok:
             try:
                 data = json.loads(out)
-                channels = data.get('channels', []) or data.get('channel_aliases', [])
+                channels = data.get("channels", []) or data.get("channel_aliases", [])
             except Exception:
                 ok = False
-                err = err or 'Failed to parse config JSON'
+                err = err or "Failed to parse config JSON"
         return ok, channels, err
 
-    def add_channel(self, channel: str) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'config', '--add', 'channels', channel]
+    def add_channel(self, channel: str) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "config", "--add", "channels", channel]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def remove_channel(self, channel: str) -> Tuple[bool, str]:
-        args = [self.pkg_exe(), 'config', '--remove', 'channels', channel]
+    def remove_channel(self, channel: str) -> tuple[bool, str]:
+        args = [self.pkg_exe(), "config", "--remove", "channels", channel]
         ok, out, err, _ = self._popen(args)
         return ok, (out if ok else err)
 
-    def set_channels(self, channels: List[str]) -> Tuple[bool, str]:
-        ok, out = self._popen([self.pkg_exe(), 'config', '--remove-key', 'channels'])[:2]
-        last_msg = ''
+    def set_channels(self, channels: list[str]) -> tuple[bool, str]:
+        ok, out = self._popen([self.pkg_exe(), "config", "--remove-key", "channels"])[:2]
+        last_msg = ""
         for ch in channels:
             ok2, msg = self.add_channel(ch)
             last_msg = msg
             if not ok2:
                 return False, msg
-        return True, (last_msg or 'Channels updated')
+        return True, (last_msg or "Channels updated")

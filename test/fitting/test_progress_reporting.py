@@ -11,6 +11,7 @@ rather than threaded through the call, and cancellation comes back the same way:
 raising through the service turns into a generic error result, so the fit
 records it and the caller reads :attr:`Fit.last_run_cancelled`.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -28,14 +29,16 @@ def _fit(seed: int = 0):
     rng = np.random.default_rng(seed)
     x = np.linspace(0.0, 5.0, 48)
     curve = chisurf.core.data.DataCurve(
-        x=x, y=3.0 + 1.2 * x ** 2 + rng.normal(0, 0.05, x.size),
+        x=x,
+        y=3.0 + 1.2 * x**2 + rng.normal(0, 0.05, x.size),
         ey=np.full_like(x, 0.05),
     )
     fit = chisurf.core.fitting.fit.Fit(
-        data=curve, model_class=chisurf.core.models.parse.ParseModel,
+        data=curve,
+        model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     return fit
 
@@ -46,8 +49,10 @@ def _group(n_datasets: int = 2, seed: int = 0):
     x = np.linspace(0.0, 5.0, 48)
     curves = [
         chisurf.core.data.DataCurve(
-            x=x, y=(3.0 + 0.3 * k) + 1.2 * x ** 2 + rng.normal(0, 0.05, x.size),
-            ey=np.full_like(x, 0.05))
+            x=x,
+            y=(3.0 + 0.3 * k) + 1.2 * x**2 + rng.normal(0, 0.05, x.size),
+            ey=np.full_like(x, 0.05),
+        )
         for k in range(n_datasets)
     ]
     fit = chisurf.core.fitting.fit.FitGroup(
@@ -56,7 +61,7 @@ def _group(n_datasets: int = 2, seed: int = 0):
     )
     for f in fit:
         f.fit_range = 0, len(f.model.y)
-        f.model.func = 'c+a*x**2'
+        f.model.func = "c+a*x**2"
         f.model.find_parameters()
     fit._model.find_parameters()
     return fit
@@ -86,13 +91,21 @@ def test_a_two_argument_callback_is_honoured():
     from chisurf.core.fitting.minimizer import minimize
 
     x = np.linspace(0.0, 5.0, 48)
-    residual = lambda p: (3.0 + 1.2 * x ** 2) - (p[0] + p[1] * x ** 2)  # noqa: E731
+    residual = lambda p: (3.0 + 1.2 * x**2) - (p[0] + p[1] * x**2)  # noqa: E731
 
     two_arg, four_arg = [], []
-    minimize(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
-             progress_callback=lambda d, t: two_arg.append(d))
-    minimize(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
-             progress_callback=lambda d, t, **kw: four_arg.append(d))
+    minimize(
+        residual,
+        [1.0, 1.0],
+        bounds=[(0.0, 10.0)] * 2,
+        progress_callback=lambda d, t: two_arg.append(d),
+    )
+    minimize(
+        residual,
+        [1.0, 1.0],
+        bounds=[(0.0, 10.0)] * 2,
+        progress_callback=lambda d, t, **kw: four_arg.append(d),
+    )
     assert two_arg, "a callback with the documented signature was never called"
     assert len(two_arg) == len(four_arg)
 
@@ -176,9 +189,9 @@ def test_staged_progress_never_retreats():
     """A stage restarting at zero must stall the bar, not rewind it."""
     seen = []
     staged = _StagedProgress(lambda d, t: seen.append(d / t), 2)
-    staged.stage(0)(10, 10)          # first stage finished -> 0.5
-    staged.stage(1)(0, 10)           # second stage starts   -> would be 0.5
-    staged.stage(1)(1, 10)           # -> 0.55
+    staged.stage(0)(10, 10)  # first stage finished -> 0.5
+    staged.stage(1)(0, 10)  # second stage starts   -> would be 0.5
+    staged.stage(1)(1, 10)  # -> 0.55
     assert seen == sorted(seen)
     assert seen[-1] == pytest.approx(0.55)
 

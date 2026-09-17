@@ -2,24 +2,23 @@ from __future__ import annotations
 
 import glob
 import os
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from . import av as _av
 from . import distance as _dist
-from . import io as _io
 from .results import ScreeningResult
 
 
 def compute_screening_transfer_functions(
     pdb_path: str,
-    positions: Dict,
-    distances: Dict,
-    disc_step: Optional[float] = None,
+    positions: dict,
+    distances: dict,
+    disc_step: float | None = None,
     tf_type: str = "Polynomial",
-) -> Tuple[Dict[str, np.ndarray], Dict[str, float]]:
+) -> tuple[dict[str, np.ndarray], dict[str, float]]:
     """Compute transfer function coefficients and sigmas on a reference structure.
 
     Parameters
@@ -70,13 +69,13 @@ def compute_screening_transfer_functions(
 
 def score_single_structure(
     pdb_path: str,
-    positions: Dict,
-    distances: Dict,
-    disc_step: Optional[float] = None,
+    positions: dict,
+    distances: dict,
+    disc_step: float | None = None,
     n_samples: int = 50000,
-    score_set: Optional[List[str]] = None,
-    convfuns: Optional[Dict[str, np.ndarray]] = None,
-    sigmas: Optional[Dict[str, float]] = None,
+    score_set: list[str] | None = None,
+    convfuns: dict[str, np.ndarray] | None = None,
+    sigmas: dict[str, float] | None = None,
     tf_type: str = "Polynomial",
 ) -> ScreeningResult:
     """Score one structure against FRET distance restraints.
@@ -108,7 +107,7 @@ def score_single_structure(
     """
     try:
         atoms_xyzr = _av.load_structure_with_vdw(pdb_path)
-    except Exception as e:
+    except Exception:
         sr = ScreeningResult(filename=os.path.basename(pdb_path))
         sr.n_nan = len(distances)
         return sr
@@ -205,15 +204,15 @@ def score_single_structure(
 
 def screen_structure_library(
     pdb_dir: str,
-    positions: Dict,
-    distances: Dict,
+    positions: dict,
+    distances: dict,
     pattern: str = "*.pdb",
     n_threads: int = 1,
-    disc_step: Optional[float] = None,
+    disc_step: float | None = None,
     n_samples: int = 50000,
-    score_set: Optional[List[str]] = None,
-    progress_callback: Optional[Callable[[int, int], None]] = None,
-) -> List[ScreeningResult]:
+    score_set: list[str] | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> list[ScreeningResult]:
     """Screen a directory of PDB structures against FRET restraints.
 
     Results are sorted by chi-squared (ascending).
@@ -223,6 +222,7 @@ def screen_structure_library(
         raise FileNotFoundError(f"No PDB files matching '{pattern}' in {pdb_dir}")
 
     import chisurf
+
     fret_settings = getattr(chisurf.core.settings, "fret", {})
     tf_type = fret_settings.get("transfer_function", "Polynomial")
 
@@ -233,12 +233,19 @@ def screen_structure_library(
             pdb_files[0], positions, distances, disc_step=disc_step, tf_type=tf_type
         )
 
-    results: List[ScreeningResult] = []
+    results: list[ScreeningResult] = []
     if n_threads <= 1:
         for i, f in enumerate(pdb_files):
             sr = score_single_structure(
-                f, positions, distances, disc_step, n_samples, score_set,
-                convfuns=convfuns, sigmas=sigmas, tf_type=tf_type
+                f,
+                positions,
+                distances,
+                disc_step,
+                n_samples,
+                score_set,
+                convfuns=convfuns,
+                sigmas=sigmas,
+                tf_type=tf_type,
             )
             results.append(sr)
             if progress_callback:
@@ -256,7 +263,7 @@ def screen_structure_library(
                     score_set,
                     convfuns,
                     sigmas,
-                    tf_type
+                    tf_type,
                 ): f
                 for f in pdb_files
             }

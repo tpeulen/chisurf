@@ -22,18 +22,24 @@ from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import (
     tttrlib_available,
 )
 
-pytestmark = pytest.mark.skipif(
-    not tttrlib_available(), reason="tttrlib SimEngine not available"
-)
+pytestmark = pytest.mark.skipif(not tttrlib_available(), reason="tttrlib SimEngine not available")
 
 
 def _params(**overrides):
     """A small, fast, single-species simulation; ``overrides`` go on top."""
     params = {
-        "N_species": 1, "N_channels": 1, "q": [80.0], "D": [3.0], "M": [30.0],
-        "N_tac_channels": 256, "tac_dt": 0.032, "laser_period": 16.0,
-        "N_ph_max": 60000, "decay_lifetimes": [[1.0, 1.0]],
-        "rmt1seed": 4242, "rmt2seed": 2424,
+        "N_species": 1,
+        "N_channels": 1,
+        "q": [80.0],
+        "D": [3.0],
+        "M": [30.0],
+        "N_tac_channels": 256,
+        "tac_dt": 0.032,
+        "laser_period": 16.0,
+        "N_ph_max": 60000,
+        "decay_lifetimes": [[1.0, 1.0]],
+        "rmt1seed": 4242,
+        "rmt2seed": 2424,
     }
     params.update(overrides)
     return params
@@ -56,9 +62,9 @@ def test_the_focus_shape_changes_the_photon_stream():
     gaussian = _arrival_times("gaussian3d")
     gauss_lorentz = _arrival_times("gaussian_lorentzian")
     assert gaussian.size > 100 and gauss_lorentz.size > 100
-    assert gaussian.size != gauss_lorentz.size or not np.array_equal(
-        gaussian, gauss_lorentz
-    ), "psf_type did not change the simulation"
+    assert gaussian.size != gauss_lorentz.size or not np.array_equal(gaussian, gauss_lorentz), (
+        "psf_type did not change the simulation"
+    )
 
 
 def test_an_unknown_psf_type_is_rejected():

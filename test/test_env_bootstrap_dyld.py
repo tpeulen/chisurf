@@ -31,16 +31,12 @@ def test_import_does_not_set_dyld_library_path():
     )
     env = dict(os.environ)
     env.pop("DYLD_LIBRARY_PATH", None)
-    env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
-    )
+    env["PYTHONPATH"] = os.pathsep.join(["modules/mmfdb/src", "modules/imp-tricks/src", "."])
     result = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=300, env=env
     )
     assert result.returncode == 0, result.stderr[-2000:]
-    line = next(
-        (line for line in result.stdout.splitlines() if line.startswith("{")), ""
-    )
+    line = next((line for line in result.stdout.splitlines() if line.startswith("{")), "")
     assert line, f"probe printed nothing usable:\n{result.stdout[-500:]}"
     import json
 
@@ -77,14 +73,10 @@ def test_icon_rendering_survives_a_prepended_dyld_library_path():
     env = dict(os.environ)
     env["DYLD_LIBRARY_PATH"] = lib
     env["QT_QPA_PLATFORM"] = "offscreen"
-    env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
-    )
+    env["PYTHONPATH"] = os.pathsep.join(["modules/mmfdb/src", "modules/imp-tricks/src", "."])
     result = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=300, env=env
     )
     if result.returncode == 0 and "ICON True" in result.stdout:
-        pytest.skip(
-            "a prepended DYLD_LIBRARY_PATH no longer breaks Qt font rendering here"
-        )
+        pytest.skip("a prepended DYLD_LIBRARY_PATH no longer breaks Qt font rendering here")
     assert result.returncode != 0, result.stdout

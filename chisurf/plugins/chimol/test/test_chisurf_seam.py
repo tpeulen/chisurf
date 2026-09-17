@@ -23,6 +23,7 @@ docstring explaining that it no longer imports Qt**. A comment about a
 dependency is not a dependency. Several modules touched by this refactor now
 carry exactly such a comment, so the graph is what is read.
 """
+
 from __future__ import annotations
 
 import ast
@@ -67,9 +68,8 @@ def _runtime_body(tree: ast.AST) -> list[ast.AST]:
     for node in ast.walk(tree):
         if isinstance(node, ast.If):
             test = node.test
-            named = (
-                (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING")
-                or (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING")
+            named = (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+                isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
             )
             if named:
                 for child in node.body:
@@ -98,17 +98,17 @@ def _imports_chisurf(path: pathlib.Path) -> bool:
         elif isinstance(node, ast.ImportFrom):
             # `level > 0` is a relative import -- chimol's own package, never
             # ChiSurf. `module` is None for a bare `from . import x`.
-            if node.level == 0 and node.module and (
-                node.module == "chisurf" or node.module.startswith("chisurf.")
+            if (
+                node.level == 0
+                and node.module
+                and (node.module == "chisurf" or node.module.startswith("chisurf."))
             ):
                 return True
     return False
 
 
 def _offenders() -> set[str]:
-    return {
-        str(p.relative_to(PACKAGE)) for p in _modules() if _imports_chisurf(p)
-    }
+    return {str(p.relative_to(PACKAGE)) for p in _modules() if _imports_chisurf(p)}
 
 
 def test_no_new_module_imports_chisurf():
@@ -187,7 +187,8 @@ def test_the_engine_does_not_import_chisurf():
     """
     engine = {name for name in _offenders() if not name.startswith("hosts/qt/")}
     assert engine == SOFT | HARD, (
-        "the engine's ChiSurf dependencies changed: " + repr(sorted(engine))
+        "the engine's ChiSurf dependencies changed: "
+        + repr(sorted(engine))
         + "\n\nIf you severed one, take it out of HARD (and the allow-list). "
         "If you added one, take it through a seam instead -- the engine is the "
         "part that moves to a repository with no ChiSurf in it."
@@ -206,18 +207,26 @@ def test_soft_dependencies_are_guarded(name):
     tree = ast.parse((PACKAGE / name).read_text(encoding="utf-8"))
     guarded = {
         id(inner)
-        for node in ast.walk(tree) if isinstance(node, ast.Try)
-        for child in node.body for inner in ast.walk(child)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Try)
+        for child in node.body
+        for inner in ast.walk(child)
     }
     unguarded = [
-        node for node in _runtime_body(tree)
+        node
+        for node in _runtime_body(tree)
         if isinstance(node, (ast.Import, ast.ImportFrom))
         and id(node) not in guarded
         and (
-            (isinstance(node, ast.Import)
-             and any(a.name.split(".")[0] == "chisurf" for a in node.names))
-            or (isinstance(node, ast.ImportFrom) and node.level == 0
-                and (node.module or "").split(".")[0] == "chisurf")
+            (
+                isinstance(node, ast.Import)
+                and any(a.name.split(".")[0] == "chisurf" for a in node.names)
+            )
+            or (
+                isinstance(node, ast.ImportFrom)
+                and node.level == 0
+                and (node.module or "").split(".")[0] == "chisurf"
+            )
         )
     ]
     assert not unguarded, (

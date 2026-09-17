@@ -28,7 +28,8 @@ chisurf.core.base.Base.find_by_uuid : Global UUID lookup used to resolve paramet
 from __future__ import annotations
 
 import weakref
-from typing import Any, Callable, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from chisurf import logging
 
@@ -45,10 +46,10 @@ __all__ = [
 
 #: owner_id -> (weakref to group, label). Kept module-global so both the GUI (in
 #: process) and the in-process server dispatch can enumerate the same registry.
-_REGISTRY: "dict[str, Tuple[weakref.ReferenceType, str]]" = {}
+_REGISTRY: dict[str, tuple[weakref.ReferenceType, str]] = {}
 
 #: Change-notification callbacks invoked (with no arguments) after any mutation.
-_SUBSCRIBERS: "List[Callable[[], None]]" = []
+_SUBSCRIBERS: list[Callable[[], None]] = []
 
 
 def _notify() -> None:
@@ -143,7 +144,7 @@ def unregister_parameter_group(owner_id: str) -> None:
     _notify()
 
 
-def get_registered_parameter_group(owner_id: str) -> Optional[Any]:
+def get_registered_parameter_group(owner_id: str) -> Any | None:
     """Return the live group registered under ``owner_id``, or ``None``.
 
     Parameters
@@ -166,7 +167,7 @@ def get_registered_parameter_group(owner_id: str) -> Optional[Any]:
     return group
 
 
-def iter_registered_parameter_groups() -> List[Tuple[str, str, Any]]:
+def iter_registered_parameter_groups() -> list[tuple[str, str, Any]]:
     """Return the live registered groups as ``(owner_id, label, group)`` tuples.
 
     Entries whose group has been garbage-collected are pruned in passing, so the
@@ -177,8 +178,8 @@ def iter_registered_parameter_groups() -> List[Tuple[str, str, Any]]:
     list of (str, str, FittingParameterGroup)
         One tuple per live registered group, in insertion order.
     """
-    result: List[Tuple[str, str, Any]] = []
-    dead: List[str] = []
+    result: list[tuple[str, str, Any]] = []
+    dead: list[str] = []
     for owner_id, (ref, label) in _REGISTRY.items():
         group = ref()
         if group is None:
@@ -190,7 +191,7 @@ def iter_registered_parameter_groups() -> List[Tuple[str, str, Any]]:
     return result
 
 
-def _deref(owner_id: str) -> Optional[Any]:
+def _deref(owner_id: str) -> Any | None:
     """Return the live group for ``owner_id`` without pruning or notifying."""
     entry = _REGISTRY.get(owner_id)
     return entry[0]() if entry is not None else None
@@ -246,7 +247,7 @@ def break_links(parameters: Any, exclude_group: Any = None) -> None:
 
     def _all_followers():
         for fit in list(getattr(_cs, "fits", []) or []):
-            for local in ([fit] + list(getattr(fit, "grouped_fits", []) or [])):
+            for local in [fit] + list(getattr(fit, "grouped_fits", []) or []):
                 model = getattr(local, "model", None)
                 for p in getattr(model, "parameters_all", []) or []:
                     yield p

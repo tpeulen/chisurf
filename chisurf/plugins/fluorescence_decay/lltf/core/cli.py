@@ -23,43 +23,85 @@ def cli():
 
 
 @cli.command()
-@click.argument('decay_file', type=click.Path(exists=True))
-@click.argument('irf_file', type=click.Path(exists=True))
-@click.option('--output', '-o', type=click.Path(), help='Output JSON file')
-@click.option('--plot', '-p', type=click.Path(), help='Output plot file')
-@click.option('--save-path', '-sp', type=click.Path(), help='Path to save all output files (creates a subfolder named "lltf_output" in data location if not specified)')
-@click.option('--config', '-c', type=click.Path(exists=True), help='Configuration YAML file')
-@click.option('--n-lifetimes', '-n', type=int, default=1, help='Number of lifetimes to fit (ignored if --find-optimal is used)')
-@click.option('--find-optimal', '-f', is_flag=True, help='Find optimal number of lifetimes automatically')
-@click.option('--max-lifetimes', '-m', type=int, default=6, help='Maximum number of lifetimes to try when finding optimal')
-@click.option('--prob-threshold', '-pt', type=float, default=0.68, help='Probability threshold for selecting the best number of lifetimes')
-@click.option('--selection-mode', '-sm', type=click.Choice(['lower', 'upper']), default='lower', help='Mode for selecting the best number of lifetimes (lower: fewer components, upper: more components)')
-@click.option('--skiprows', '-s', type=int, default=0, help='Number of rows to skip in data files')
-@click.option('--delimiter', '-d', type=str, default=None, help='Delimiter used in data files')
-@click.option('--time-column', '-t', type=int, default=0, help='Column index for time data')
-@click.option('--counts-column', '-y', type=int, default=1, help='Column index for counts data')
-@click.option('--verbose', '-v', is_flag=True, help='Print verbose output')
-@click.option('--save-intermediate', '-si', is_flag=True, default=False, help='Save intermediate results when finding optimal number of lifetimes (default: disabled)')
-@click.option('--intermediate-base', '-ib', type=click.Path(), help='Base filename for intermediate results (defaults to output filename without extension)')
+@click.argument("decay_file", type=click.Path(exists=True))
+@click.argument("irf_file", type=click.Path(exists=True))
+@click.option("--output", "-o", type=click.Path(), help="Output JSON file")
+@click.option("--plot", "-p", type=click.Path(), help="Output plot file")
+@click.option(
+    "--save-path",
+    "-sp",
+    type=click.Path(),
+    help='Path to save all output files (creates a subfolder named "lltf_output" in data location if not specified)',
+)
+@click.option("--config", "-c", type=click.Path(exists=True), help="Configuration YAML file")
+@click.option(
+    "--n-lifetimes",
+    "-n",
+    type=int,
+    default=1,
+    help="Number of lifetimes to fit (ignored if --find-optimal is used)",
+)
+@click.option(
+    "--find-optimal", "-f", is_flag=True, help="Find optimal number of lifetimes automatically"
+)
+@click.option(
+    "--max-lifetimes",
+    "-m",
+    type=int,
+    default=6,
+    help="Maximum number of lifetimes to try when finding optimal",
+)
+@click.option(
+    "--prob-threshold",
+    "-pt",
+    type=float,
+    default=0.68,
+    help="Probability threshold for selecting the best number of lifetimes",
+)
+@click.option(
+    "--selection-mode",
+    "-sm",
+    type=click.Choice(["lower", "upper"]),
+    default="lower",
+    help="Mode for selecting the best number of lifetimes (lower: fewer components, upper: more components)",
+)
+@click.option("--skiprows", "-s", type=int, default=0, help="Number of rows to skip in data files")
+@click.option("--delimiter", "-d", type=str, default=None, help="Delimiter used in data files")
+@click.option("--time-column", "-t", type=int, default=0, help="Column index for time data")
+@click.option("--counts-column", "-y", type=int, default=1, help="Column index for counts data")
+@click.option("--verbose", "-v", is_flag=True, help="Print verbose output")
+@click.option(
+    "--save-intermediate",
+    "-si",
+    is_flag=True,
+    default=False,
+    help="Save intermediate results when finding optimal number of lifetimes (default: disabled)",
+)
+@click.option(
+    "--intermediate-base",
+    "-ib",
+    type=click.Path(),
+    help="Base filename for intermediate results (defaults to output filename without extension)",
+)
 def fit(
-        decay_file,
-        irf_file,
-        output,
-        plot,
-        save_path,
-        config,
-        n_lifetimes,
-        find_optimal,
-        max_lifetimes,
-        prob_threshold,
-        selection_mode,
-        skiprows,
-        delimiter,
-        time_column,
-        counts_column,
-        verbose,
-        save_intermediate,
-        intermediate_base
+    decay_file,
+    irf_file,
+    output,
+    plot,
+    save_path,
+    config,
+    n_lifetimes,
+    find_optimal,
+    max_lifetimes,
+    prob_threshold,
+    selection_mode,
+    skiprows,
+    delimiter,
+    time_column,
+    counts_column,
+    verbose,
+    save_intermediate,
+    intermediate_base,
 ):
     """Fit a lifetime to decay data.
 
@@ -70,7 +112,7 @@ def fit(
     config_dict = {}
     if config:
         try:
-            with open(config, 'r') as f:
+            with open(config) as f:
                 config_dict = yaml.safe_load(f)
         except Exception as e:
             click.echo(f"Error loading configuration file: {e}", err=True)
@@ -113,12 +155,12 @@ def fit(
     # Fit lifetime
     # If find_optimal is specified, add it to the config
     if find_optimal:
-        if 'lifetime_fit_parameter' not in config_dict:
-            config_dict['lifetime_fit_parameter'] = {}
-        config_dict['lifetime_fit_parameter']['find_optimal'] = find_optimal
-        config_dict['lifetime_fit_parameter']['maximum_number_of_lifetimes'] = max_lifetimes
-        config_dict['lifetime_fit_parameter']['prob_threshold'] = prob_threshold
-        config_dict['lifetime_fit_parameter']['selection_mode'] = selection_mode
+        if "lifetime_fit_parameter" not in config_dict:
+            config_dict["lifetime_fit_parameter"] = {}
+        config_dict["lifetime_fit_parameter"]["find_optimal"] = find_optimal
+        config_dict["lifetime_fit_parameter"]["maximum_number_of_lifetimes"] = max_lifetimes
+        config_dict["lifetime_fit_parameter"]["prob_threshold"] = prob_threshold
+        config_dict["lifetime_fit_parameter"]["selection_mode"] = selection_mode
 
     # Set default intermediate_base if not specified but save_intermediate is enabled
     if save_intermediate and not intermediate_base:
@@ -145,11 +187,13 @@ def fit(
     if should_save_intermediates:
         click.echo(f"Intermediate results will be saved with base filename: {intermediate_base}")
     elif save_intermediate and not find_optimal:
-        click.echo("Note: Intermediate results will not be saved because --find-optimal is not enabled")
+        click.echo(
+            "Note: Intermediate results will not be saved because --find-optimal is not enabled"
+        )
 
     # Always disable plotting to screen
-    if 'plot_resulting_fit' in config_dict:
-        config_dict['plot_resulting_fit'] = False
+    if "plot_resulting_fit" in config_dict:
+        config_dict["plot_resulting_fit"] = False
 
     result = fit_lifetime(
         decay_file=decay_file,
@@ -164,19 +208,19 @@ def fit(
         verbose=verbose,
         config=config_dict,
         save_intermediate_results=should_save_intermediates,
-        intermediate_results_base_filename=intermediate_base
+        intermediate_results_base_filename=intermediate_base,
     )
 
-    click.echo(f"Fit completed successfully.")
+    click.echo("Fit completed successfully.")
     click.echo(f"Results saved to {output}")
     click.echo(f"Plot saved to {plot}")
 
     # Print summary of results
     click.echo("\nFit results summary:")
-    for i in range(result['n_lifetimes']):
-        lifetime = result['lifetime_spectrum'][2*i+1]
-        amplitude = result['lifetime_spectrum'][2*i]
-        click.echo(f"Lifetime {i+1}: {lifetime:.3f} ns, Amplitude: {amplitude:.3f}")
+    for i in range(result["n_lifetimes"]):
+        lifetime = result["lifetime_spectrum"][2 * i + 1]
+        amplitude = result["lifetime_spectrum"][2 * i]
+        click.echo(f"Lifetime {i + 1}: {lifetime:.3f} ns, Amplitude: {amplitude:.3f}")
 
     click.echo(f"IRF shift: {result['irf_shift']:.3f} ns")
     click.echo(f"Decay background: {result['decay_background']:.2f}")
@@ -188,5 +232,5 @@ def main():
     cli()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

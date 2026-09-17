@@ -81,8 +81,9 @@ class Scene:
         alpha = hints.get("alpha")
         if alpha is not None:
             look = dataclasses.replace(
-                look, color=(look.color[0], look.color[1], look.color[2],
-                             look.color[3] * float(alpha)))
+                look,
+                color=(look.color[0], look.color[1], look.color[2], look.color[3] * float(alpha)),
+            )
         self.batch.add(
             pos=at,
             size=(size[0] * look.scale, size[1] * look.scale),
@@ -140,8 +141,11 @@ class Scene:
         bands = (
             (width, height, self.FRAME[0]),
             (width - edge * 2.0, height - edge * 2.0, self.FRAME[1]),
-            (width - (edge + rule) * 2.0, height - (edge + rule) * 2.0,
-             fill if fill is not None else self.FRAME[2]),
+            (
+                width - (edge + rule) * 2.0,
+                height - (edge + rule) * 2.0,
+                fill if fill is not None else self.FRAME[2],
+            ),
         )
         for band_w, band_h, colour in bands:
             if band_w <= 0.0 or band_h <= 0.0:
@@ -181,5 +185,4 @@ class Scene:
         """
         if self.font is None:
             return 0.0
-        return draw_text(self.batch, self.font, content, at, height, color, align,
-                         shadow=shadow)
+        return draw_text(self.batch, self.font, content, at, height, color, align, shadow=shadow)

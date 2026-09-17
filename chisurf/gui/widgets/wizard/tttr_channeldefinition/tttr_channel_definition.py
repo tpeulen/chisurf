@@ -14,8 +14,8 @@ import sys
 
 import numpy as np
 
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 try:  # pyqtgraph is optional; the preview plot degrades gracefully without it
     import pyqtgraph as pg
@@ -49,6 +49,7 @@ from qtpy.QtWidgets import (
 
 def qtpy_loadUi(path, baseinstance=None):
     return _uic.loadUi(path, baseinstance)
+
 
 import tttrlib
 
@@ -100,15 +101,18 @@ the intended part of the decay before saving the setup.
 """
 
 # Initial PIE-Windows and Detectors
-_initial_windows = {
-    "prompt": (0, 2048),
-    "delayed": (2048, 4095)
-}
+_initial_windows = {"prompt": (0, 2048), "delayed": (2048, 4095)}
 
 _initial_detectors = {
-    "green":  {"chs": [8, 0, 3], "micro_time_ranges": [(0, 4095)], "g_factor": 1, "l1": 0, "l2": 0},
-    "red":    {"chs": [9, 1, 2], "micro_time_ranges": [(0, 2048)], "g_factor": 1, "l1": 0, "l2": 0},
-    "yellow": {"chs": [9, 1, 2], "micro_time_ranges": [(2048, 4095)], "g_factor": 1, "l1": 0, "l2": 0},
+    "green": {"chs": [8, 0, 3], "micro_time_ranges": [(0, 4095)], "g_factor": 1, "l1": 0, "l2": 0},
+    "red": {"chs": [9, 1, 2], "micro_time_ranges": [(0, 2048)], "g_factor": 1, "l1": 0, "l2": 0},
+    "yellow": {
+        "chs": [9, 1, 2],
+        "micro_time_ranges": [(2048, 4095)],
+        "g_factor": 1,
+        "l1": 0,
+        "l2": 0,
+    },
 }
 
 # Initial TTTR reading routine settings
@@ -120,7 +124,7 @@ _initial_tttr_reading = {
     "excitation_period": 13.6,  # in nanoseconds
     "g_factor": 1.08316,
     "l1": 0.03080,
-    "l2": 0.03680
+    "l2": 0.03680,
 }
 
 
@@ -136,13 +140,23 @@ class DetectorWizardPage(QWizardPage):
             return QWidget.event(self, event)
         return super().event(event)
 
-
-    def __init__(self, json_file=None, *args, show_edit_json=False, show_save=False,
-                 show_setups_file=True, show_setup_selection=True, show_help=True,
-                 show_tttr_reading=True, show_tables=True, show_add_inputs=True,
-                 allow_finish=True, **kwargs):
+    def __init__(
+        self,
+        json_file=None,
+        *args,
+        show_edit_json=False,
+        show_save=False,
+        show_setups_file=True,
+        show_setup_selection=True,
+        show_help=True,
+        show_tttr_reading=True,
+        show_tables=True,
+        show_add_inputs=True,
+        allow_finish=True,
+        **kwargs,
+    ):
         """Initialize the DetectorWizardPage.
-        
+
         This class uses a UI file (detector_wizard_page.ui) for its layout and widgets.
         The UI file is loaded in the __init__ method and all signals are connected to their
         respective slots.
@@ -189,15 +203,15 @@ class DetectorWizardPage(QWizardPage):
         # Protection flags/state for G-Factor edits
         # Only direct user edits or internal calculator/data loading may change g-factor fields
         self._allow_g_update = False  # internal whitelist for programmatic updates
-        self._g_user_editing = {}     # row -> bool, True while the user is actively editing
-        self._g_last_valid = {}       # row -> last accepted string value
+        self._g_user_editing = {}  # row -> bool, True while the user is actively editing
+        self._g_last_valid = {}  # row -> last accepted string value
 
         # Load the UI file
         ui_file_path = pathlib.Path(__file__).parent / "detector_wizard_page.ui"
         qtpy_loadUi(str(ui_file_path), self)
 
         # Set initial values
-        
+
         # Connect signals
         self.setup_combo.currentIndexChanged.connect(self._on_setup_changed)
         self.save_setup_button.clicked.connect(self._on_save_setup)
@@ -219,14 +233,12 @@ class DetectorWizardPage(QWizardPage):
         # Calibration date snapshot combobox
         self.calibration_label = QLabel("Calibration:")
         self.calibration_label.setToolTip(
-            "Select a calibration date snapshot. "
-            "'Latest' uses the most recent calibration values."
+            "Select a calibration date snapshot. 'Latest' uses the most recent calibration values."
         )
         self.calibration_label.setVisible(self.show_setup_selection)
         self.calibration_combo = QComboBox()
         self.calibration_combo.setToolTip(
-            "Select a calibration date snapshot. "
-            "'Latest' uses the most recent calibration values."
+            "Select a calibration date snapshot. 'Latest' uses the most recent calibration values."
         )
         self.calibration_combo.setVisible(self.show_setup_selection)
         self.calibration_combo.addItem("Latest")
@@ -244,11 +256,11 @@ class DetectorWizardPage(QWizardPage):
             self.toolButton_calc_g_factor.setVisible(False)
         except Exception:
             pass
-        
+
         # Set help text
         self.help_text.setText(help_text)
         self.help_text.setVisible(False)
-        
+
         # Set visibility based on parameters
         # Use the helper method to hide/show widgets in layouts
         self._hide_layout_widgets(self.setup_layout, self.show_setup_selection)
@@ -256,7 +268,7 @@ class DetectorWizardPage(QWizardPage):
         self._hide_layout_widgets(self.gridLayout_3, self.show_tables)
         self._hide_layout_widgets(self.gridLayout_2, self.show_tables)
         self._hide_layout_widgets(self.controls, self.show_add_inputs)
-        
+
         # For widgets that are directly accessible, we can use setVisible directly
         if not self.show_help:
             self.help_text.setVisible(False)
@@ -277,10 +289,10 @@ class DetectorWizardPage(QWizardPage):
         # Initialize file type combo
         self.file_type_combo.addItem("Auto")
         self.file_type_combo.addItems(list(tttrlib.TTTR.get_supported_container_names()))
-        
+
         # Initialize micro binning combo
         self.micro_binning_combo.addItems(["1", "2", "4", "8", "16", "32", "64", "128"])
-        
+
         # Set initial values for TTTR reading
         self.macro_time_le.setText(str(_initial_tttr_reading["macro_time_resolution"]))
         self.micro_time_le.setText(str(_initial_tttr_reading["micro_time_resolution"]))
@@ -293,7 +305,7 @@ class DetectorWizardPage(QWizardPage):
         self.plot_toggle_button.setToolTip("Show/hide micro-time decay preview plot")
         self.plot_toggle_button.toggled.connect(self._toggle_plot_visibility)
         self.tttr_layout.addWidget(self.plot_toggle_button, 4, 0, 1, 4)
-        
+
         # Set table headers
         self.windows_form.setColumnCount(4)
         self.windows_form.setHorizontalHeaderLabels(["Window Name", "Start", "End", ""])
@@ -301,11 +313,24 @@ class DetectorWizardPage(QWizardPage):
             self.detectors_form.setColumnCount(9)
         except Exception:
             pass
-        self.detectors_form.setHorizontalHeaderLabels(["Detector Name", "Channels", "Micro Time Ranges", "G-Factor", "l1", "l2", "G-Factor Channels", "", ""])
+        self.detectors_form.setHorizontalHeaderLabels(
+            [
+                "Detector Name",
+                "Channels",
+                "Micro Time Ranges",
+                "G-Factor",
+                "l1",
+                "l2",
+                "G-Factor Channels",
+                "",
+                "",
+            ]
+        )
 
         # Improve table space usage: adaptive column widths and stretch
         try:
             from qtpy.QtWidgets import QHeaderView, QSizePolicy
+
             # Windows table: fixed vertical size, horizontal expanding
             self.windows_form.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             self.windows_form.setWordWrap(False)
@@ -382,7 +407,7 @@ class DetectorWizardPage(QWizardPage):
 
         # Load initial or file
         if json_file:
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 data = json.load(f)
             # A setups *file* holds several setups under "setups" plus a
             # "last_used" pointer, while _load_data reads a single setup's
@@ -414,12 +439,12 @@ class DetectorWizardPage(QWizardPage):
                 data = setups["setups"][self.current_setup_name]
             else:
                 data = {
-                    "windows": _initial_windows, 
+                    "windows": _initial_windows,
                     "detectors": _initial_detectors,
-                    "tttr_reading": _initial_tttr_reading
+                    "tttr_reading": _initial_tttr_reading,
                 }
             self._load_data(data)
-            
+
         # Initialize the effective micro time resolution
         self._update_effective_resolution()
 
@@ -442,8 +467,13 @@ class DetectorWizardPage(QWizardPage):
         "blue": (60, 120, 230),
     }
     _DETECTOR_CYCLE = [
-        (0, 200, 0), (220, 40, 40), (220, 200, 0), (60, 120, 230),
-        (200, 120, 0), (160, 60, 200), (0, 180, 180),
+        (0, 200, 0),
+        (220, 40, 40),
+        (220, 200, 0),
+        (60, 120, 230),
+        (200, 120, 0),
+        (160, 60, 200),
+        (0, 180, 180),
     ]
 
     def _setup_microtime_preview(self):
@@ -468,9 +498,7 @@ class DetectorWizardPage(QWizardPage):
         vbox.addWidget(self._microtime_plot)
 
         # Sync the toggle button when the window is closed by the user.
-        self._microtime_plot_window.finished.connect(
-            lambda: self._sync_plot_btn()
-        )
+        self._microtime_plot_window.finished.connect(lambda: self._sync_plot_btn())
 
         # Refresh overlays whenever the detector table changes.
         try:
@@ -525,8 +553,7 @@ class DetectorWizardPage(QWizardPage):
         """
         if per_channel_counts:
             self._microtime_per_channel_counts = {
-                k: np.asarray(v, dtype=float).ravel()
-                for k, v in per_channel_counts.items()
+                k: np.asarray(v, dtype=float).ravel() for k, v in per_channel_counts.items()
             }
         else:
             self._microtime_per_channel_counts = {}
@@ -560,8 +587,12 @@ class DetectorWizardPage(QWizardPage):
             x = np.arange(counts.size + 1, dtype=float)
             y = np.clip(counts, 0, None)
             plot_item.plot(
-                x, y, stepMode=True, fillLevel=0,
-                brush=(120, 120, 120, 80), pen=pg.mkPen((180, 180, 180), width=1),
+                x,
+                y,
+                stepMode=True,
+                fillLevel=0,
+                brush=(120, 120, 120, 80),
+                pen=pg.mkPen((180, 180, 180), width=1),
                 name="data",
             )
             x_max = float(counts.size)
@@ -574,7 +605,7 @@ class DetectorWizardPage(QWizardPage):
                 settings = {"windows": {}, "detectors": {}}
 
             per_ch = getattr(self, "_microtime_per_channel_counts", {})
-            detectors = (settings.get("detectors", {}) or {})
+            detectors = settings.get("detectors", {}) or {}
             if detectors and per_ch:
                 for idx, (name, info) in enumerate(detectors.items()):
                     chs = (info or {}).get("chs", [])
@@ -589,24 +620,35 @@ class DetectorWizardPage(QWizardPage):
                                 combined += ch_counts
                     if combined is not None:
                         plot_item.plot(
-                            x, np.clip(combined, 0, None),
-                            stepMode=True, fillLevel=0,
-                            brush=(*color, 50), pen=pg.mkPen(color, width=1.5),
+                            x,
+                            np.clip(combined, 0, None),
+                            stepMode=True,
+                            fillLevel=0,
+                            brush=(*color, 50),
+                            pen=pg.mkPen(color, width=1.5),
                             name=name,
                         )
             elif per_ch:
                 ch_colors = [
-                    (200, 50, 50), (50, 150, 50), (50, 80, 200),
-                    (200, 150, 50), (150, 50, 150), (50, 180, 180),
-                    (200, 100, 50), (100, 100, 100),
+                    (200, 50, 50),
+                    (50, 150, 50),
+                    (50, 80, 200),
+                    (200, 150, 50),
+                    (150, 50, 150),
+                    (50, 180, 180),
+                    (200, 100, 50),
+                    (100, 100, 100),
                 ]
                 for idx, (ch, ch_counts) in enumerate(sorted(per_ch.items())):
                     if ch_counts is not None and ch_counts.size:
                         color = ch_colors[idx % len(ch_colors)]
                         plot_item.plot(
-                            x, np.clip(ch_counts, 0, None),
-                            stepMode=True, fillLevel=0,
-                            brush=(*color, 40), pen=pg.mkPen(color, width=1),
+                            x,
+                            np.clip(ch_counts, 0, None),
+                            stepMode=True,
+                            fillLevel=0,
+                            brush=(*color, 40),
+                            pen=pg.mkPen(color, width=1),
                             name=f"ch {ch}",
                         )
         else:
@@ -615,6 +657,7 @@ class DetectorWizardPage(QWizardPage):
 
         # PIE windows: movable bands that update the table on drag.
         for name, (start, end) in (settings.get("windows", {}) or {}).items():
+
             def _make_window_cb(wname=name):
                 def _cb():
                     region = self.sender()
@@ -625,10 +668,16 @@ class DetectorWizardPage(QWizardPage):
                             self.windows_form.cellWidget(r, 1).setText(str(s))
                             self.windows_form.cellWidget(r, 2).setText(str(e))
                             break
+
                 return _cb
+
             self._add_preview_region(
-                start, end, (150, 150, 150), f"PIE: {name}",
-                alpha=40, on_changed=_make_window_cb(),
+                start,
+                end,
+                (150, 150, 150),
+                f"PIE: {name}",
+                alpha=40,
+                on_changed=_make_window_cb(),
             )
 
         # Detector micro-time ranges: movable, color-coded per detector.
@@ -638,6 +687,7 @@ class DetectorWizardPage(QWizardPage):
             ranges = (info or {}).get("micro_time_ranges", []) or []
             det_items[name] = det_regions = []
             for ri, (start, end) in enumerate(ranges):
+
                 def _make_det_cb(dname=name):
                     def _cb():
                         for row in range(self.detectors_form.rowCount()):
@@ -648,10 +698,16 @@ class DetectorWizardPage(QWizardPage):
                                     parts.append(f"{int(round(rr0))}:{int(round(rr1))}")
                                 self.detectors_form.cellWidget(row, 2).setText(", ".join(parts))
                                 break
+
                     return _cb
+
                 region = self._add_preview_region(
-                    start, end, color, str(name),
-                    alpha=70, on_changed=_make_det_cb(),
+                    start,
+                    end,
+                    color,
+                    str(name),
+                    alpha=70,
+                    on_changed=_make_det_cb(),
                 )
                 if region is not None:
                     det_regions.append((region, ri))
@@ -672,7 +728,9 @@ class DetectorWizardPage(QWizardPage):
         brush = pg.mkBrush(color[0], color[1], color[2], alpha)
         movable = on_changed is not None
         region = pg.LinearRegionItem(
-            values=(r0, r1), movable=movable, brush=brush,
+            values=(r0, r1),
+            movable=movable,
+            brush=brush,
             pen=pg.mkPen(color[0], color[1], color[2], width=1),
         )
         if on_changed is not None:
@@ -696,15 +754,15 @@ class DetectorWizardPage(QWizardPage):
         w = QWidget()
         w.setLayout(v)
         return w
-        
+
     def _hide_layout_widgets(self, layout, visible):
         """Helper method to hide/show all widgets in a layout.
-        
+
         This method is used instead of trying to access widget containers directly,
         which can cause AttributeError if the widget names don't match between the
         code and the UI file. It iterates through all widgets in the given layout
         and sets their visibility based on the provided flag.
-        
+
         Args:
             layout: The layout containing widgets to hide/show
             visible: Boolean indicating whether widgets should be visible
@@ -716,6 +774,7 @@ class DetectorWizardPage(QWizardPage):
 
     def _toggle_help(self):
         from qtpy.QtWidgets import QDialog, QPushButton, QTextEdit, QVBoxLayout
+
         dlg = QDialog(self)
         dlg.setWindowTitle("Help — Detector Setup")
         dlg.resize(600, 400)
@@ -732,10 +791,7 @@ class DetectorWizardPage(QWizardPage):
     def _on_load_setups_file(self):
         """Open a file dialog to select a different detector setups file."""
         path, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Open Detector Setups File", 
-            "", 
-            "JSON Files (*.json)"
+            self, "Open Detector Setups File", "", "JSON Files (*.json)"
         )
         if not path:
             return
@@ -774,19 +830,10 @@ class DetectorWizardPage(QWizardPage):
 
             self.setup_combo.blockSignals(False)
 
-            dialogs.information(
-                self, 
-                "Success", 
-                f"Loaded detector setups from {path}"
-            )
+            dialogs.information(self, "Success", f"Loaded detector setups from {path}")
 
         except Exception as e:
-            dialogs.error(
-                self, 
-                "Error", 
-                f"Failed to load detector setups file: {e}"
-            )
-
+            dialogs.error(self, "Error", f"Failed to load detector setups file: {e}")
 
     def _update_effective_resolution(self):
         """
@@ -842,7 +889,17 @@ class DetectorWizardPage(QWizardPage):
                     gf_channels_text = ""
                 g_factor_decay_uuid = props.get("g_factor_decay_uuid", "")
                 g_factor_calibration_id = props.get("g_factor_calibration_id", "")
-                self._add_detector_row(name, chs, mtr, g_factor, l1, l2, gf_channels_text, g_factor_decay_uuid, g_factor_calibration_id)
+                self._add_detector_row(
+                    name,
+                    chs,
+                    mtr,
+                    g_factor,
+                    l1,
+                    l2,
+                    gf_channels_text,
+                    g_factor_decay_uuid,
+                    g_factor_calibration_id,
+                )
         finally:
             self._allow_g_update = prev_allow
 
@@ -963,7 +1020,18 @@ class DetectorWizardPage(QWizardPage):
                 self.detectorsChanged.emit()
                 break
 
-    def _add_detector_row(self, name, ch_text, mtr_text, g_factor="1.00", l1="0.00", l2="0.00", gf_channels_text: str = "", g_factor_decay_uuid: str = "", g_factor_calibration_id: str = ""):
+    def _add_detector_row(
+        self,
+        name,
+        ch_text,
+        mtr_text,
+        g_factor="1.00",
+        l1="0.00",
+        l2="0.00",
+        gf_channels_text: str = "",
+        g_factor_decay_uuid: str = "",
+        g_factor_calibration_id: str = "",
+    ):
         row = self.detectors_form.rowCount()
         self.detectors_form.insertRow(row)
         item = QTableWidgetItem(name)
@@ -1023,7 +1091,9 @@ class DetectorWizardPage(QWizardPage):
         base_name = "New Window"
         name = base_name
         counter = 1
-        while any(self.windows_form.item(r,0).text() == name for r in range(self.windows_form.rowCount())):
+        while any(
+            self.windows_form.item(r, 0).text() == name for r in range(self.windows_form.rowCount())
+        ):
             name = f"{base_name} {counter}"
             counter += 1
         self._add_window_row(name, "0", "2048")
@@ -1033,7 +1103,10 @@ class DetectorWizardPage(QWizardPage):
         base_name = "New Detector"
         name = base_name
         counter = 1
-        while any(self.detectors_form.item(r,0).text() == name for r in range(self.detectors_form.rowCount())):
+        while any(
+            self.detectors_form.item(r, 0).text() == name
+            for r in range(self.detectors_form.rowCount())
+        ):
             name = f"{base_name} {counter}"
             counter += 1
         self._add_detector_row(name, "0, 1", "0:2048", gf_channels_text="")
@@ -1309,7 +1382,7 @@ class DetectorWizardPage(QWizardPage):
             # Open RAW (apply_lut=False, bypassing the active-setup context);
             # _update_microtime_preview applies THIS page's LUT, so opening
             # LUT-aware here would double-apply.
-                        # cache=False: this page applies the setup's LUT to the object
+            # cache=False: this page applies the setup's LUT to the object
             # it holds (``_apply_setup_lut_to_tttr``), and a shared handle
             # mutated in place would hand the corrected decay to every other
             # reader of the same file -- including the one asking for raw.
@@ -1409,7 +1482,8 @@ class DetectorWizardPage(QWizardPage):
         path = getattr(self, "_microtime_decay_file_path", None)
         if not path or not pathlib.Path(str(path)).is_file():
             dialogs.information(
-                self, "Adjust shifts",
+                self,
+                "Adjust shifts",
                 "Read a calibration TTTR file first ('Read from file…' in TTTR "
                 "Reading routine) so the per-channel decays can be shown.",
             )
@@ -1422,9 +1496,12 @@ class DetectorWizardPage(QWizardPage):
         routine = self.file_type_combo.currentText().strip()
         routine = None if routine in ("", "Auto") else routine
         dlg = MicrotimeShiftDialog(
-            str(path), routine=routine,
-            channel_luts=self._channel_luts, channel_shifts=self._channel_shifts,
-            apply_lut=bool(self._apply_lut), parent=self,
+            str(path),
+            routine=routine,
+            channel_luts=self._channel_luts,
+            channel_shifts=self._channel_shifts,
+            apply_lut=bool(self._apply_lut),
+            parent=self,
         )
         if dlg.exec_() == QDialog.Accepted:
             self._channel_shifts = dict(dlg.shifts())
@@ -1497,17 +1574,17 @@ class DetectorWizardPage(QWizardPage):
         # windows
         wins = {}
         for r in range(self.windows_form.rowCount()):
-            name = self.windows_form.item(r,0).text().strip()
-            start = int(self.windows_form.cellWidget(r,1).text())
-            end   = int(self.windows_form.cellWidget(r,2).text())
+            name = self.windows_form.item(r, 0).text().strip()
+            start = int(self.windows_form.cellWidget(r, 1).text())
+            end = int(self.windows_form.cellWidget(r, 2).text())
             wins[name] = (start, end)
 
         # detectors
         dets = {}
         for r in range(self.detectors_form.rowCount()):
-            name = self.detectors_form.item(r,0).text().strip()
-            ch_text = self.detectors_form.cellWidget(r,1).text()
-            mtr_text = self.detectors_form.cellWidget(r,2).text()
+            name = self.detectors_form.item(r, 0).text().strip()
+            ch_text = self.detectors_form.cellWidget(r, 1).text()
+            mtr_text = self.detectors_form.cellWidget(r, 2).text()
             chs = []
             try:
                 parts = [p for p in str(ch_text).replace(";", ",").split(",")]
@@ -1518,28 +1595,28 @@ class DetectorWizardPage(QWizardPage):
             except Exception:
                 chs = []
             mtr = self._parse_microtime_ranges_text(mtr_text)
-            
+
             # Get the G-factor cell widget and its text
-            g_factor_widget = self.detectors_form.cellWidget(r,3)
+            g_factor_widget = self.detectors_form.cellWidget(r, 3)
             g_factor_text = g_factor_widget.text() if g_factor_widget else "1.00"
-            
+
             # Convert to float with fallback to default value
             try:
                 g_factor = float(g_factor_text)
             except ValueError:
                 g_factor = 1.00
-                
-            l1 = float(self.detectors_form.cellWidget(r,4).text())
-            l2 = float(self.detectors_form.cellWidget(r,5).text())
+
+            l1 = float(self.detectors_form.cellWidget(r, 4).text())
+            l2 = float(self.detectors_form.cellWidget(r, 5).text())
 
             # Optional: G-Factor Channels from column 6 as "start-end"
             gf_channels = None
             try:
-                gf_widget = self.detectors_form.cellWidget(r,6)
+                gf_widget = self.detectors_form.cellWidget(r, 6)
                 if gf_widget:
                     txt = gf_widget.text().strip()
                     if txt:
-                        parts = txt.replace(' ', '').split('-')
+                        parts = txt.replace(" ", "").split("-")
                         if len(parts) == 2:
                             gf_start = int(parts[0])
                             gf_end = int(parts[1])
@@ -1552,11 +1629,11 @@ class DetectorWizardPage(QWizardPage):
             g_factor_calibration_id = item.data(Qt.UserRole + 2) if item else None
 
             det_entry = {
-                "chs": chs, 
+                "chs": chs,
                 "micro_time_ranges": mtr,
                 "g_factor": g_factor,
                 "l1": l1,
-                "l2": l2
+                "l2": l2,
             }
             if gf_channels is not None:
                 det_entry["g_factor_channels"] = gf_channels
@@ -1573,7 +1650,7 @@ class DetectorWizardPage(QWizardPage):
             "micro_time_resolution": float(self.micro_time_le.text()),
             "micro_time_binning": int(self.micro_binning_combo.currentText()),
             "effective_micro_time_resolution": self.effective_micro_time_resolution,
-            "excitation_period": self.excitation_period
+            "excitation_period": self.excitation_period,
         }
 
         # Precompute the channels map (windows × detectors cross-product) so
@@ -1657,21 +1734,23 @@ class DetectorWizardPage(QWizardPage):
             if self.current_setup_name:
                 setups = load_detector_setups(self.current_setups_file)
                 setups.setdefault("setups", {})
-                
+
                 # If the setup already exists, preserve any additional fields
                 if self.current_setup_name in setups["setups"]:
                     existing_data = setups["setups"][self.current_setup_name]
                     # Update fields while preserving unknown nested data (e.g., per-detector mle_settings)
                     for key in data:
-                        if key == 'detectors':
-                            existing_data.setdefault('detectors', {})
+                        if key == "detectors":
+                            existing_data.setdefault("detectors", {})
                             # Merge per-detector entries
-                            for det_name, det_info in data['detectors'].items():
-                                if det_name in existing_data['detectors'] and isinstance(existing_data['detectors'][det_name], dict):
+                            for det_name, det_info in data["detectors"].items():
+                                if det_name in existing_data["detectors"] and isinstance(
+                                    existing_data["detectors"][det_name], dict
+                                ):
                                     # Update known fields only, preserve anything else
-                                    existing_data['detectors'][det_name].update(det_info)
+                                    existing_data["detectors"][det_name].update(det_info)
                                 else:
-                                    existing_data['detectors'][det_name] = det_info
+                                    existing_data["detectors"][det_name] = det_info
                             # Keep detectors present in existing_data but not in new data as-is
                         else:
                             existing_data[key] = data[key]
@@ -1680,7 +1759,7 @@ class DetectorWizardPage(QWizardPage):
                 else:
                     # New setup, just use the data as is
                     setups["setups"][self.current_setup_name] = data
-                    
+
                 save_detector_setups(setups, self.current_setups_file)
 
             dialogs.information(self, "Success", f"Settings saved to {path}")
@@ -1694,29 +1773,28 @@ class DetectorWizardPage(QWizardPage):
         except Exception as e:
             dialogs.error(self, "Error", f"Save failed: {e}")
 
-
     @property
     def detectors(self):
         """
         Legacy accessor for external code:
         returns the same dict you’re saving as JSON.
         """
-        return self.get_settings()['detectors']
-        
+        return self.get_settings()["detectors"]
+
     @detectors.setter
     def detectors(self, new_detectors):
         """
         Setter for detectors property. Updates the detectors in the UI.
-        
+
         Args:
             new_detectors (dict): Dictionary of detector configurations
         """
         # Get current settings
         current_settings = self.get_settings()
-        
+
         # Update detectors in settings
-        current_settings['detectors'] = new_detectors
-        
+        current_settings["detectors"] = new_detectors
+
         # Load updated settings into UI
         self._load_data(current_settings)
 
@@ -1726,22 +1804,22 @@ class DetectorWizardPage(QWizardPage):
         Legacy accessor for external code: returns the same dict
         you're saving as JSON under "windows".
         """
-        return self.get_settings()['windows']
-        
+        return self.get_settings()["windows"]
+
     @windows.setter
     def windows(self, new_windows):
         """
         Setter for windows property. Updates the windows in the UI.
-        
+
         Args:
             new_windows (dict): Dictionary of window name -> (start, end) tuples
         """
         # Get current settings
         current_settings = self.get_settings()
-        
+
         # Update windows in settings
-        current_settings['windows'] = new_windows
-        
+        current_settings["windows"] = new_windows
+
         # Load updated settings into UI
         self._load_data(current_settings)
 
@@ -1756,7 +1834,7 @@ class DetectorWizardPage(QWizardPage):
                         to infer the type from.
         """
         txt = self.file_type_combo.currentText()
-        if txt == 'Auto':
+        if txt == "Auto":
             # In this context, we don't have a specific file to infer from
             # External code should handle this by using tttrlib's auto-detection
             return None
@@ -1786,34 +1864,34 @@ class DetectorWizardPage(QWizardPage):
         as a dict with file_type, macro_time_resolution, micro_time_resolution,
         and micro_time_binning.
         """
-        return self.get_settings()['tttr_reading']
-        
+        return self.get_settings()["tttr_reading"]
+
     @property
     def excitation_period(self):
         """
         Returns the excitation period in nanoseconds.
-        
+
         Returns:
             float: The excitation period in nanoseconds.
         """
-        return float(self.macro_time_le.text()) #self.excitation_period_spin.value()
-        
+        return float(self.macro_time_le.text())  # self.excitation_period_spin.value()
+
     @property
     def selected_detector(self):
         """
         Get the currently selected detector information.
-        
+
         Returns:
             dict: A dictionary containing information about the selected detector,
                   or None if no detector is selected.
         """
         return self._selected_detector_info
-        
+
     @selected_detector.setter
     def selected_detector(self, info):
         """
         Set the currently selected detector information.
-        
+
         Args:
             info (dict): A dictionary containing information about the selected detector.
         """
@@ -1884,9 +1962,7 @@ class DetectorWizardPage(QWizardPage):
                     "Only the owner can change visibility for this setup."
                 )
             else:
-                self.public_checkbox.setToolTip(
-                    "When checked, this setup is visible to all users."
-                )
+                self.public_checkbox.setToolTip("When checked, this setup is visible to all users.")
 
             # Update last used setup
             setups["last_used"] = setup_name
@@ -1945,9 +2021,7 @@ class DetectorWizardPage(QWizardPage):
 
             setup_id = setup_id_for_name(self.current_setup_name, _resolve_active_user_id())
             with MFDatabase(resolve_database_path()) as db:
-                snapshots = db.get_setup_calibration(
-                    setup_id, calibrated_at=selected
-                )
+                snapshots = db.get_setup_calibration(setup_id, calibrated_at=selected)
 
             cal_by_channel: dict[str, dict] = {}
             for snap in snapshots:
@@ -1992,8 +2066,7 @@ class DetectorWizardPage(QWizardPage):
 
         # Ask for a setup name
         setup_name, ok = QInputDialog.getText(
-            self, "Save Setup", "Enter a name for this setup:",
-            text=self.current_setup_name or ""
+            self, "Save Setup", "Enter a name for this setup:", text=self.current_setup_name or ""
         )
 
         if not ok or not setup_name:
@@ -2005,21 +2078,23 @@ class DetectorWizardPage(QWizardPage):
         # Save to the current setups file
         setups = load_detector_setups(self.current_setups_file)
         setups.setdefault("setups", {})
-        
+
         # If the setup already exists, preserve any additional fields that aren't in the current settings
         if setup_name in setups["setups"]:
             existing_data = setups["setups"][setup_name]
             # Update fields while preserving unknown nested data (e.g., per-detector mle_settings)
             for key in data:
-                if key == 'detectors':
-                    existing_data.setdefault('detectors', {})
+                if key == "detectors":
+                    existing_data.setdefault("detectors", {})
                     # Merge per-detector entries
-                    for det_name, det_info in data['detectors'].items():
-                        if det_name in existing_data['detectors'] and isinstance(existing_data['detectors'][det_name], dict):
+                    for det_name, det_info in data["detectors"].items():
+                        if det_name in existing_data["detectors"] and isinstance(
+                            existing_data["detectors"][det_name], dict
+                        ):
                             # Update known fields only, preserve anything else
-                            existing_data['detectors'][det_name].update(det_info)
+                            existing_data["detectors"][det_name].update(det_info)
                         else:
-                            existing_data['detectors'][det_name] = det_info
+                            existing_data["detectors"][det_name] = det_info
                     # Keep detectors present in existing_data but not in new data as-is
                 else:
                     existing_data[key] = data[key]
@@ -2028,7 +2103,7 @@ class DetectorWizardPage(QWizardPage):
         else:
             # New setup, just use the data as is
             setups["setups"][setup_name] = data
-            
+
         setups["last_used"] = setup_name
 
         if save_detector_setups(setups, self.current_setups_file):
@@ -2050,10 +2125,7 @@ class DetectorWizardPage(QWizardPage):
             probes_result = get_probes_info(resolve_db_path())
             probes = probes_result.get("probes", [])
         except Exception as exc:
-            dialogs.error(
-                self, "MMFDB Error",
-                f"Could not load probe catalogue:\n{exc}"
-            )
+            dialogs.error(self, "MMFDB Error", f"Could not load probe catalogue:\n{exc}")
             return
 
         # Get detector names from the current wizard table
@@ -2084,9 +2156,11 @@ class DetectorWizardPage(QWizardPage):
 
         # Confirm deletion
         reply = dialogs.question(
-            self, "Confirm Deletion", 
+            self,
+            "Confirm Deletion",
             f"Are you sure you want to delete the setup '{setup_name}'?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
 
         if reply != QMessageBox.Yes:
@@ -2117,8 +2191,7 @@ class DetectorWizardPage(QWizardPage):
 
         # Ask for a new setup name
         new_name, ok = QInputDialog.getText(
-            self, "Rename Setup", "Enter a new name for this setup:",
-            text=old_name
+            self, "Rename Setup", "Enter a new name for this setup:", text=old_name
         )
 
         if not ok or not new_name or new_name == old_name:
@@ -2128,9 +2201,11 @@ class DetectorWizardPage(QWizardPage):
         setups = load_detector_setups(self.current_setups_file)
         if new_name in setups.get("setups", {}):
             reply = dialogs.question(
-                self, "Setup Exists", 
+                self,
+                "Setup Exists",
                 f"A setup with the name '{new_name}' already exists. Do you want to overwrite it?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
             )
 
             if reply != QMessageBox.Yes:
@@ -2151,7 +2226,11 @@ class DetectorWizardPage(QWizardPage):
 
             if save_detector_setups(setups, self.current_setups_file, replace=True):
                 self.current_setup_name = new_name
-                dialogs.information(self, "Success", f"Setup renamed from '{old_name}' to '{new_name}' successfully.")
+                dialogs.information(
+                    self,
+                    "Success",
+                    f"Setup renamed from '{old_name}' to '{new_name}' successfully.",
+                )
 
                 # Refresh the combobox and select the renamed setup
                 self._load_available_setups()
@@ -2159,7 +2238,9 @@ class DetectorWizardPage(QWizardPage):
                 if index >= 0:
                     self.setup_combo.setCurrentIndex(index)
             else:
-                dialogs.error(self, "Error", f"Failed to rename setup from '{old_name}' to '{new_name}'.")
+                dialogs.error(
+                    self, "Error", f"Failed to rename setup from '{old_name}' to '{new_name}'."
+                )
 
     def _read_from_tttr_file(self):
         _read_from_tttr_file(self)
@@ -2169,14 +2250,13 @@ class DetectorWizardPage(QWizardPage):
 
     def _on_calc_g_factor_for_row(self, row: int):
         _on_calc_g_factor(self, row)
-    
+
     def load_data_into_tables(self, data):
         """
         Legacy alias for external callers.
         """
         # reuse our internal loader
         self._load_data(data)
-
 
     # --- G-Factor protection helpers ---
     def _wire_g_factor_cell(self, row, line_edit: QLineEdit):
@@ -2242,7 +2322,15 @@ class DetectorWizardPage(QWizardPage):
         line_edit.editingFinished.connect(on_editing_finished)
         line_edit.textChanged.connect(on_text_changed)
 
-    def _set_g_factor_programmatically(self, row: int, value_text: str, g_factor_decay_uuid: str = None, g_factor_calibration_id: str = None, l1: str = None, l2: str = None):
+    def _set_g_factor_programmatically(
+        self,
+        row: int,
+        value_text: str,
+        g_factor_decay_uuid: str = None,
+        g_factor_calibration_id: str = None,
+        l1: str = None,
+        l2: str = None,
+    ):
         """Safely set a row's G-Factor, l1, and l2 from internal code (calculator/data load)."""
         le = self.detectors_form.cellWidget(row, 3)
         if not isinstance(le, QLineEdit):
@@ -2271,10 +2359,21 @@ class DetectorWizardPage(QWizardPage):
         finally:
             self._allow_g_update = prev
 
+
 class DetectorWizard(QWizard):
-    def __init__(self, json_file=None, show_edit_json=True, show_save=True, 
-                 show_setups_file=True, show_setup_selection=True, show_help=True,
-                 show_tttr_reading=True, show_tables=True, show_add_inputs=True, **kwargs):
+    def __init__(
+        self,
+        json_file=None,
+        show_edit_json=True,
+        show_save=True,
+        show_setups_file=True,
+        show_setup_selection=True,
+        show_help=True,
+        show_tttr_reading=True,
+        show_tables=True,
+        show_add_inputs=True,
+        **kwargs,
+    ):
         """Initialize the DetectorWizard.
 
         Args:
@@ -2290,18 +2389,20 @@ class DetectorWizard(QWizard):
             **kwargs: Additional keyword arguments to pass to the DetectorWizardPage.
         """
         super().__init__()
-        self.addPage(DetectorWizardPage(
-            json_file=json_file,
-            show_edit_json=show_edit_json,
-            show_save=show_save,
-            show_setups_file=show_setups_file,
-            show_setup_selection=show_setup_selection,
-            show_help=show_help,
-            show_tttr_reading=show_tttr_reading,
-            show_tables=show_tables,
-            show_add_inputs=show_add_inputs,
-            **kwargs
-        ))
+        self.addPage(
+            DetectorWizardPage(
+                json_file=json_file,
+                show_edit_json=show_edit_json,
+                show_save=show_save,
+                show_setups_file=show_setups_file,
+                show_setup_selection=show_setup_selection,
+                show_help=show_help,
+                show_tttr_reading=show_tttr_reading,
+                show_tables=show_tables,
+                show_add_inputs=show_add_inputs,
+                **kwargs,
+            )
+        )
         self.setWindowTitle("Detector Configuration Wizard")
 
 

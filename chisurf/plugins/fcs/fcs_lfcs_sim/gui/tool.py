@@ -80,8 +80,13 @@ class LifetimeFcsSimModel:
         filters, _, _ = calc_ffcs_filters(sim.total_decay, sim.reference_decays)
         labels = [f"τ={self.tau1_ns:g} ns", f"τ={self.tau2_ns:g} ns"]
         self.datasets = filtered_correlation_datasets(
-            sim.macro_times, sim.micro_times, filters, sim.macro_time_resolution_s,
-            n_bins=8, n_casc=25, labels=labels,
+            sim.macro_times,
+            sim.micro_times,
+            filters,
+            sim.macro_time_resolution_s,
+            n_bins=8,
+            n_casc=25,
+            labels=labels,
         )
         return self.datasets
 
@@ -166,8 +171,11 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
             y = np.asarray(d["y"], dtype=float)
             good = x > 0
             self._plot.line(
-                x[good], y[good], name=d["name"],
-                pen=color, width=width,
+                x[good],
+                y[good],
+                name=d["name"],
+                pen=color,
+                width=width,
             )
 
 
@@ -217,5 +225,6 @@ class _LfcsSimControls(QtWidgets.QWidget):
         cond = self._model.condition_number
         self._status.setText(
             f"{n} species correlation(s); filter condition number {cond:.1f}."
-            if n else "Simulation produced no curves."
+            if n
+            else "Simulation produced no curves."
         )

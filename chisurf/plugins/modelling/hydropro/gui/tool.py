@@ -10,24 +10,25 @@ from __future__ import annotations
 import csv
 import pathlib
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from qtpy import QtCore, QtWidgets
 from qtpy.QtCore import QSettings, Qt, QUrl
 from qtpy.QtGui import QDesktopServices
 
 from chisurf.core.dataspec import load_view_spec
+from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from ..core import HydroProSettings, HydroResult, run_hydro
 from .dialogs import DownloadInfoDialog, OutputDialog
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except Exception:  # pragma: no cover - fallback when helper unavailable
+
     def persist_plugin_state(name):  # type: ignore
         return lambda c: c
+
 
 _GUI_DIR = pathlib.Path(__file__).parent
 _DOWNLOAD_URL = "https://leonardo.inf.um.es/macromol/programs/hydro%2B%2B/hydro%2B%2B.htm"
@@ -71,19 +72,27 @@ class _HydroModel:
         return load_view_spec(_GUI_DIR / "hydropro.view.json")
 
     # -- conversions -------------------------------------------------------
-    def struct_list(self) -> List[Path]:
+    def struct_list(self) -> list[Path]:
         return [Path(p.strip()) for p in self.struct_files.split(",") if p.strip()]
 
     def to_settings(self) -> HydroProSettings:
         return HydroProSettings(
             indmode=int(float(self.indmode)),
-            aer=float(self.aer), nsig=int(self.nsig),
-            sigmin=float(self.sigmin), sigmax=float(self.sigmax),
-            t=float(self.t), eta=float(self.eta), rm=float(self.rm),
-            vbar=float(self.vbar), rho=float(self.rho),
-            nq=int(self.nq), qmax=float(self.qmax),
-            ns=int(self.ns), rmax=float(self.rmax),
-            ntrials=int(self.ntrials), idif=1 if self.idif else 0,
+            aer=float(self.aer),
+            nsig=int(self.nsig),
+            sigmin=float(self.sigmin),
+            sigmax=float(self.sigmax),
+            t=float(self.t),
+            eta=float(self.eta),
+            rm=float(self.rm),
+            vbar=float(self.vbar),
+            rho=float(self.rho),
+            nq=int(self.nq),
+            qmax=float(self.qmax),
+            ns=int(self.ns),
+            rmax=float(self.rmax),
+            ntrials=int(self.ntrials),
+            idif=1 if self.idif else 0,
         )
 
     def load_settings(self, s: HydroProSettings) -> None:
@@ -119,7 +128,9 @@ class _RunWorker(QtCore.QObject):
     def run(self) -> None:
         try:
             results = run_hydro(
-                self._struct_files, self._settings, self._exe_path,
+                self._struct_files,
+                self._settings,
+                self._exe_path,
                 on_log=self.log.emit,
                 on_progress=self.progress.emit,
                 should_cancel=lambda: self._cancel,
@@ -133,17 +144,17 @@ class _RunWorker(QtCore.QObject):
 class HydroProTool(ChisurfDockTool):
     """HYDROPRO / HYDRO++ diffusion-coefficient calculator (AutoForm UI)."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("HYDRO++ / HYDROPRO Diffusion Coefficient Calculator")
         self.resize(640, 720)
 
         self._model = _HydroModel()
         self._qsettings = QSettings("ChiSurf", "HydroPRO")
-        self._results: List[HydroResult] = []
-        self._thread: Optional[QtCore.QThread] = None
-        self._worker: Optional[_RunWorker] = None
-        self._out_dlg: Optional[OutputDialog] = None
+        self._results: list[HydroResult] = []
+        self._thread: QtCore.QThread | None = None
+        self._worker: _RunWorker | None = None
+        self._out_dlg: OutputDialog | None = None
 
         self._load_persisted()
         self._build_ui()
@@ -173,8 +184,14 @@ class HydroProTool(ChisurfDockTool):
         self._clear_btn.clicked.connect(self._clear)
         self._dl_btn = QtWidgets.QPushButton("Download page")
         self._dl_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(_DOWNLOAD_URL)))
-        for b in (self._select_btn, self._exe_btn, self._run_btn,
-                  self._save_btn, self._clear_btn, self._dl_btn):
+        for b in (
+            self._select_btn,
+            self._exe_btn,
+            self._run_btn,
+            self._save_btn,
+            self._clear_btn,
+            self._dl_btn,
+        ):
             btn_row.addWidget(b)
         layout.addLayout(btn_row)
 
@@ -208,7 +225,9 @@ class HydroProTool(ChisurfDockTool):
     # -- file pickers ------------------------------------------------------
     def _select_files(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Select structural files", str(Path.home()),
+            self,
+            "Select structural files",
+            str(Path.home()),
             "Structural files (*.pdb *.txt *.bea *.*)",
         )
         if paths:
@@ -218,7 +237,9 @@ class HydroProTool(ChisurfDockTool):
 
     def _select_exe(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select HYDRO executable", str(Path.home()),
+            self,
+            "Select HYDRO executable",
+            str(Path.home()),
             "Executables (*.exe);;All files (*.*)",
         )
         if path:
@@ -226,7 +247,7 @@ class HydroProTool(ChisurfDockTool):
             self._form.rebuild()
 
     # -- run ---------------------------------------------------------------
-    def _ensure_exe(self) -> Optional[Path]:
+    def _ensure_exe(self) -> Path | None:
         exe = Path(self._model.exe_path) if self._model.exe_path else None
         if exe and exe.exists():
             return exe
@@ -252,7 +273,8 @@ class HydroProTool(ChisurfDockTool):
         exe = self._ensure_exe()
         if not exe:
             dialogs.information(
-                self, "Executable required", "Configure the HYDRO executable before running.")
+                self, "Executable required", "Configure the HYDRO executable before running."
+            )
             return
         self._save_persisted()
 
@@ -317,8 +339,7 @@ class HydroProTool(ChisurfDockTool):
             name = self.table.item(row, 0).text()
             if name in by_file:
                 value = by_file[name]
-                item = QtWidgets.QTableWidgetItem(
-                    f"{value:.3e}" if value is not None else "N/A")
+                item = QtWidgets.QTableWidgetItem(f"{value:.3e}" if value is not None else "N/A")
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.table.setItem(row, 1, item)
 
@@ -327,7 +348,8 @@ class HydroProTool(ChisurfDockTool):
             dialogs.warning(self, "No results", "There are no results to save.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save CSV", str(Path.home() / "hydro_results.csv"), "CSV files (*.csv)")
+            self, "Save CSV", str(Path.home() / "hydro_results.csv"), "CSV files (*.csv)"
+        )
         if not path:
             return
         try:
@@ -336,8 +358,13 @@ class HydroProTool(ChisurfDockTool):
                 writer.writerow(["File", "DiffusionCoefficient(cm^2/s)"])
                 for r in self._results:
                     writer.writerow(
-                        [r.struct_file,
-                         f"{r.diffusion_coefficient:.3e}" if r.diffusion_coefficient is not None else ""])
+                        [
+                            r.struct_file,
+                            f"{r.diffusion_coefficient:.3e}"
+                            if r.diffusion_coefficient is not None
+                            else "",
+                        ]
+                    )
             dialogs.information(self, "Saved", f"Results saved to {path}")
         except OSError as exc:
             dialogs.error(self, "Error", f"Failed to save CSV: {exc}")

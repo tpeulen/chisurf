@@ -288,9 +288,7 @@ def test_a_bonded_ligand_keeps_its_van_der_waals_radius(lysozyme):
     # Waals radii: at the old quarter-size it fell far short of that envelope.
     centres = np.asarray(viewer._all_atom_coords, dtype=float)[ligand]
     radii = np.asarray(viewer._all_atom_radii, dtype=float)[ligand]
-    expected = (centres + radii[:, None]).max(axis=0) - (
-        centres - radii[:, None]
-    ).min(axis=0)
+    expected = (centres + radii[:, None]).max(axis=0) - (centres - radii[:, None]).min(axis=0)
 
     # Only the spheres: the cartoon spans the whole protein and would swamp any
     # measurement of the ligand.

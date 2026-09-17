@@ -12,6 +12,7 @@ node as an ``Alternatives`` representation. That is what makes a resolution
 chooser necessary, and it is exactly the structure a synthetic payload dict
 cannot exercise.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -109,9 +110,7 @@ def write_multiresolution_rmf(
             own_radius = radius * (0.6 + 0.8 * (i / max(1, count - 1)))
             particle.set_radius(own_radius)
             particle.set_mass(own_radius**3)
-            particle.set_coordinates(
-                RMF.Vector3(*rng.normal(scale=20.0, size=3).tolist())
-            )
+            particle.set_coordinates(RMF.Vector3(*rng.normal(scale=20.0, size=3).tolist()))
             nodes.append(node)
         return nodes
 
@@ -161,19 +160,13 @@ def write_multiresolution_rmf(
             altf.get(chain).add_alternative(coarse, RMF.PARTICLE)
 
     # Extra frames, so playback and the frame/atom sync are testable.
-    particles = [
-        node
-        for node in _walk(fh.get_root_node())
-        if particlef.get_is(node)
-    ]
+    particles = [node for node in _walk(fh.get_root_node()) if particlef.get_is(node)]
     for frame in range(1, n_frames):
         fh.add_frame(f"f{frame}", RMF.FRAME)
         for node in particles:
             particle = particlef.get(node)
             xyz = np.asarray(particle.get_coordinates(), dtype=float)
-            particle.set_coordinates(
-                RMF.Vector3(*(xyz + rng.normal(scale=1.0, size=3)).tolist())
-            )
+            particle.set_coordinates(RMF.Vector3(*(xyz + rng.normal(scale=1.0, size=3)).tolist()))
 
     del fh
     return {

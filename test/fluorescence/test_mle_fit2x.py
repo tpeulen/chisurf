@@ -2,8 +2,10 @@
 
 See :mod:`chisurf.core.fluorescence.mle.fit2x`.
 """
-import utils
+
 import pathlib
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -46,6 +48,7 @@ def test_settings_validates_irf_and_defaults_background():
 
 # The detector-setup parser is shared by every MLE consumer, not just the
 # deprecated fit2x harness; its tests live in test_mle_setup.py.
+
 
 def test_settings_area_normalises_the_background():
     # gamma is the background *fraction*, so the model needs a unit-area
@@ -211,9 +214,7 @@ def test_batch_is_row_identical_to_the_per_row_loop_including_failures():
     names = list(cases)
     matrix = np.vstack([np.asarray(cases[k], dtype=float) for k in names])
 
-    per_row = [
-        fitter.fit(matrix[i], initial_values=x0, fixed=fixed) for i in range(len(names))
-    ]
+    per_row = [fitter.fit(matrix[i], initial_values=x0, fixed=fixed) for i in range(len(names))]
     batch = fitter.fit_many(matrix, initial_values=x0, fixed=fixed)
 
     assert len(batch) == len(names), "the batch lost or invented rows"
@@ -222,9 +223,7 @@ def test_batch_is_row_identical_to_the_per_row_loop_including_failures():
         np.testing.assert_array_equal(
             many.x, one.x, err_msg=f"{name}: parameters differ between the paths"
         )
-        np.testing.assert_array_equal(
-            many.results, one.results, err_msg=f"{name}: results differ"
-        )
+        np.testing.assert_array_equal(many.results, one.results, err_msg=f"{name}: results differ")
         assert (many.twoIstar == one.twoIstar) or (
             np.isnan(many.twoIstar) and np.isnan(one.twoIstar)
         ), f"{name}: 2I* differs ({many.twoIstar} vs {one.twoIstar})"

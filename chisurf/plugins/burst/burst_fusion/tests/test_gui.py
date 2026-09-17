@@ -19,7 +19,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 DATA = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 ANALYSIS = "burstwise_All 0.1000#15"
 DETECTORS = {
@@ -141,9 +144,7 @@ def test_writing_switches_the_plots_to_what_was_written(tool):
     # The emitted bursts also contain the photons between the fragments, so they
     # are brighter than the preview's fragment sums.
     rows = {row["quantity"]: row for row in tool.model.summary_rows()}
-    assert float(rows["Photons (mean)"]["after"]) > float(
-        rows["Photons (mean)"]["before"]
-    )
+    assert float(rows["Photons (mean)"]["after"]) > float(rows["Photons (mean)"]["before"])
 
 
 def test_the_written_folder_is_announced_to_the_workflow(tool):
@@ -174,8 +175,8 @@ def test_setting_the_folder_through_the_form_drops_the_old_analysis(tool, tmp_pa
 
     other = tmp_path / "elsewhere"
     other.mkdir()
-    tool.model.folder = str(other)      # what the bound field does
-    tool.model.set_folder(str(other))   # ...and then the ``call``
+    tool.model.folder = str(other)  # what the bound field does
+    tool.model.set_folder(str(other))  # ...and then the ``call``
     assert not tool.model.has_analysis()
     assert tool.model.summary_rows() == []
 

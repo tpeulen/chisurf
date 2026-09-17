@@ -15,7 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
 from qtpy.QtWidgets import QApplication
@@ -30,6 +30,7 @@ class Tests(unittest.TestCase):
 
     def setUp(self):
         from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
+
         self.tool = Kappa2Dist()
         self.model = self.tool._model
 
@@ -86,6 +87,7 @@ class Tests(unittest.TestCase):
         self.assertAlmostEqual(self.model.k2_sd, 0.2200, places=3)
         self.assertAlmostEqual(self.model.Rapp_mean, 0.9929, places=3)
         self.assertAlmostEqual(self.model.RappSD, 0.0521, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

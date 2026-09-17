@@ -50,7 +50,11 @@ def window(qapp, tmp_path):
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
@@ -186,15 +190,14 @@ def test_sele_drives_subset_reps_like_pymol(cmd):
     viewer.set_selected_residues([0, 1, 2])
     _run(cmd, "as cartoon")
     _run(cmd, "show sticks, sele")
-    assert _stick_count(cmd.window) == _atom_count_for_residue_indices(
-        viewer, [0, 1, 2]
-    )
+    assert _stick_count(cmd.window) == _atom_count_for_residue_indices(viewer, [0, 1, 2])
 
 
 def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
     """PyMOL: "left-clicking away from any atom should deactivate the
     selection." With nothing picked, `+/-` (toggle) has nothing to toggle, so
-    it clears -- it must not leave a stale selection behind."""
+    it clears -- it must not leave a stale selection behind.
+    """
     from chimol.core.viewer import picking as view_mod
     from qtpy import QtCore
 
@@ -215,7 +218,8 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
 
 def test_an_empty_space_pick_leaves_the_selection_alone(window, monkeypatch):
     """`pkat` is an editing pick: it highlights but never owns the selection,
-    so an empty pick must not wipe what is selected."""
+    so an empty pick must not wipe what is selected.
+    """
     from chimol.core.viewer import picking as view_mod
     from qtpy import QtCore
 
@@ -250,12 +254,16 @@ def test_a_stored_sele_wins_over_the_viewer_highlight(cmd):
 @pytest.fixture
 def viewport(qapp):
     """A laid-out viewer with a structure in it, and its GL widget."""
-    from chimol.io.structure import load_structure_payload
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import load_structure_payload
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     if not src.is_file():
         pytest.skip(f"missing fixture {src}")
@@ -315,8 +323,12 @@ def _click(widget, qapp, point, modifiers=None, button=None):
     button = QtCore.Qt.LeftButton if button is None else button
     _send(widget, QtCore.QEvent.MouseButtonPress, point, button, button, modifiers)
     _send(
-        widget, QtCore.QEvent.MouseButtonRelease, point, button,
-        QtCore.Qt.NoButton, modifiers,
+        widget,
+        QtCore.QEvent.MouseButtonRelease,
+        point,
+        button,
+        QtCore.Qt.NoButton,
+        modifiers,
     )
     _pump(qapp)
 
@@ -326,7 +338,12 @@ def _drag(widget, qapp, start, end, modifiers, button=None):
 
     button = QtCore.Qt.LeftButton if button is None else button
     _send(
-        widget, QtCore.QEvent.MouseButtonPress, start, button, button, modifiers,
+        widget,
+        QtCore.QEvent.MouseButtonPress,
+        start,
+        button,
+        button,
+        modifiers,
     )
     for fraction in (0.34, 0.67, 1.0):
         step = QtCore.QPoint(
@@ -334,12 +351,20 @@ def _drag(widget, qapp, start, end, modifiers, button=None):
             int(start.y() + (end.y() - start.y()) * fraction),
         )
         _send(
-            widget, QtCore.QEvent.MouseMove, step,
-            QtCore.Qt.NoButton, button, modifiers,
+            widget,
+            QtCore.QEvent.MouseMove,
+            step,
+            QtCore.Qt.NoButton,
+            button,
+            modifiers,
         )
     _send(
-        widget, QtCore.QEvent.MouseButtonRelease, end,
-        button, QtCore.Qt.NoButton, modifiers,
+        widget,
+        QtCore.QEvent.MouseButtonRelease,
+        end,
+        button,
+        QtCore.Qt.NoButton,
+        modifiers,
     )
     _pump(qapp)
 
@@ -354,8 +379,7 @@ def _box_around(view, widget, half=60):
     start = QtCore.QPoint(int(cx - half), int(cy - half))
     end = QtCore.QPoint(int(cx + half), int(cy + half))
     inside = sorted(
-        int(i) for i in on
-        if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
+        int(i) for i in on if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
     )
     return start, end, inside
 
@@ -422,9 +446,7 @@ def test_ctrl_shift_click_sets_the_selection(viewport):
 
     view, widget, qapp = viewport
     _index, point = _atom_point(view, widget)
-    _click(
-        widget, qapp, point, QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
-    )
+    _click(widget, qapp, point, QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier)
     assert len(_selection(view)) == 1
 
 
@@ -439,8 +461,7 @@ def test_shift_drag_selects_every_residue_in_the_box(viewport):
     start = QtCore.QPoint(int(cx - 60), int(cy - 60))
     end = QtCore.QPoint(int(cx + 60), int(cy + 60))
     expected = sorted(
-        int(i) for i in on
-        if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
+        int(i) for i in on if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
     )
     assert len(expected) > 3, "the box caught too little to be a test"
     _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
@@ -459,20 +480,32 @@ def test_the_box_is_drawn_while_it_is_dragged(viewport):
     view, widget, qapp = viewport
     start, end, _inside = _box_around(view, widget)
     _send(
-        widget, QtCore.QEvent.MouseButtonPress, start,
-        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier,
+        widget,
+        QtCore.QEvent.MouseButtonPress,
+        start,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.ShiftModifier,
     )
     _send(
-        widget, QtCore.QEvent.MouseMove, end,
-        QtCore.Qt.NoButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier,
+        widget,
+        QtCore.QEvent.MouseMove,
+        end,
+        QtCore.Qt.NoButton,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.ShiftModifier,
     )
     _pump(qapp, 2)
     assert widget._select_rect is not None
     assert widget._select_rect.width() > 100
 
     _send(
-        widget, QtCore.QEvent.MouseButtonRelease, end,
-        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, QtCore.Qt.ShiftModifier,
+        widget,
+        QtCore.QEvent.MouseButtonRelease,
+        end,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoButton,
+        QtCore.Qt.ShiftModifier,
     )
     _pump(qapp, 2)
     assert widget._select_rect is None, "the box outlived the drag"
@@ -497,7 +530,11 @@ def test_the_middle_button_box_subtracts_and_finishes(viewport):
     assert _selection(view) == inside
 
     _drag(
-        widget, qapp, start, end, QtCore.Qt.ShiftModifier,
+        widget,
+        qapp,
+        start,
+        end,
+        QtCore.Qt.ShiftModifier,
         button=QtCore.Qt.MiddleButton,
     )
     assert _selection(view) == [], "`-Box` subtracted nothing"
@@ -565,9 +602,7 @@ def test_a_selection_set_from_outside_is_announced(viewport):
     """
     view, _widget, qapp = viewport
     seen = []
-    view.objectResidueSelectionChanged.connect(
-        lambda oid, idx: seen.append((oid, list(idx)))
-    )
+    view.objectResidueSelectionChanged.connect(lambda oid, idx: seen.append((oid, list(idx))))
 
     view.set_selected_residues([3, 4, 5])
     _pump(qapp)
@@ -600,8 +635,7 @@ def test_a_middle_drag_moves_the_molecule_with_the_cursor(viewport):
 
     delta = QtCore.QPoint(120, 60)
     end = point + delta
-    _drag(widget, qapp, point, end, QtCore.Qt.NoModifier,
-          button=QtCore.Qt.MiddleButton)
+    _drag(widget, qapp, point, end, QtCore.Qt.NoModifier, button=QtCore.Qt.MiddleButton)
 
     after = widget.project_to_screen(pivot)
     moved_x = float(after[0][0] - before[0][0])
@@ -625,14 +659,22 @@ def test_the_middle_button_stops_panning_when_released(viewport):
     view, widget, qapp = viewport
     _index, point = _atom_point(view, widget)
     _send(
-        widget, QtCore.QEvent.MouseButtonPress, point,
-        QtCore.Qt.MiddleButton, QtCore.Qt.MiddleButton, QtCore.Qt.NoModifier,
+        widget,
+        QtCore.QEvent.MouseButtonPress,
+        point,
+        QtCore.Qt.MiddleButton,
+        QtCore.Qt.MiddleButton,
+        QtCore.Qt.NoModifier,
     )
     _pump(qapp, 2)
     assert widget._panning, "plain middle is `Move`, which pans"
     _send(
-        widget, QtCore.QEvent.MouseButtonRelease, point,
-        QtCore.Qt.MiddleButton, QtCore.Qt.NoButton, QtCore.Qt.NoModifier,
+        widget,
+        QtCore.QEvent.MouseButtonRelease,
+        point,
+        QtCore.Qt.MiddleButton,
+        QtCore.Qt.NoButton,
+        QtCore.Qt.NoModifier,
     )
     _pump(qapp, 2)
     assert not widget._panning
@@ -649,14 +691,22 @@ def test_ctrl_left_pans_rather_than_rotating(viewport):
     view, widget, qapp = viewport
     _index, point = _atom_point(view, widget)
     _send(
-        widget, QtCore.QEvent.MouseButtonPress, point,
-        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ControlModifier,
+        widget,
+        QtCore.QEvent.MouseButtonPress,
+        point,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.ControlModifier,
     )
     _pump(qapp, 2)
     assert widget._panning
     _send(
-        widget, QtCore.QEvent.MouseButtonRelease, point,
-        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, QtCore.Qt.ControlModifier,
+        widget,
+        QtCore.QEvent.MouseButtonRelease,
+        point,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoButton,
+        QtCore.Qt.ControlModifier,
     )
     _pump(qapp, 2)
     assert not widget._panning
@@ -673,7 +723,9 @@ def test_ctrl_shift_middle_moves_the_pivot(viewport):
     # that reaches for the one cannot check the other.
     before = np.asarray(widget.get_origin(), dtype=float).copy()
     _click(
-        widget, qapp, point,
+        widget,
+        qapp,
+        point,
         QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
         button=QtCore.Qt.MiddleButton,
     )
@@ -688,15 +740,19 @@ def test_every_cell_the_block_shows_starts_the_gesture_it_names(viewport):
     The middle button had three cells that drew a name and did nothing -- it was
     turned into a pan before the table was ever consulted.
     """
-    from qtpy import QtCore
-
     from chimol.ui.input.mouse_modes import action_of
+    from qtpy import QtCore
 
     view, widget, qapp = viewport
     mode = widget._internal_gui.mouse_mode
     gestures = {
-        "move": "pan", "+box": "band", "-box": "band", "sele": "band",
-        "rota": "click", "pkat": "click", "orig": "click",
+        "move": "pan",
+        "+box": "band",
+        "-box": "band",
+        "sele": "band",
+        "rota": "click",
+        "pkat": "click",
+        "orig": "click",
     }
     for modifiers in (
         QtCore.Qt.NoModifier,
@@ -714,19 +770,30 @@ def test_every_cell_the_block_shows_starts_the_gesture_it_names(viewport):
             widget._press_pos = None
             _index, point = _atom_point(view, widget)
             _send(
-                widget, QtCore.QEvent.MouseButtonPress, point,
-                button, button, modifiers,
+                widget,
+                QtCore.QEvent.MouseButtonPress,
+                point,
+                button,
+                button,
+                modifiers,
             )
             _pump(qapp, 2)
             started = (
-                "pan" if widget._panning
-                else "band" if widget._drag_selecting
-                else "click" if widget._press_pos is not None
+                "pan"
+                if widget._panning
+                else "band"
+                if widget._drag_selecting
+                else "click"
+                if widget._press_pos is not None
                 else "none"
             )
             _send(
-                widget, QtCore.QEvent.MouseButtonRelease, point,
-                button, QtCore.Qt.NoButton, modifiers,
+                widget,
+                QtCore.QEvent.MouseButtonRelease,
+                point,
+                button,
+                QtCore.Qt.NoButton,
+                modifiers,
             )
             _pump(qapp, 2)
             assert started == wanted, (

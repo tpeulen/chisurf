@@ -1,8 +1,9 @@
 import numpy as np
+
 from chisurf.plugins.vv_vh_g_factor.core.calculations import (
     calculate_g_factor_core,
     perrin_steady_state_anisotropy,
-    solve_linked_l_from_steady_state
+    solve_linked_l_from_steady_state,
 )
 
 

@@ -87,29 +87,65 @@ class Pda2cDynamicStates(FittingParameterGroup):
     def __init__(self, name: str = "pda_dynamic_states", **kwargs):
         """Initialize the two-state parameter group."""
         super().__init__(name=name, **kwargs)
-        self._R1 = FittingParameter(value=40.0, name="R1", lb=1.0, ub=200.0, bounds_on=True,
-                                    label_text="R<sub>1</sub>",
-                                    description='Mean donor-acceptor distance of state 1 (Angstrom).')
-        self._s1 = FittingParameter(value=6.0, name="s1", lb=0.5, ub=50.0, bounds_on=True,
-                                    label_text="s<sub>1</sub>",
-                                    description='Width of the distance distribution of state 1 (Angstrom).')
-        self._R2 = FittingParameter(value=60.0, name="R2", lb=1.0, ub=200.0, bounds_on=True,
-                                    label_text="R<sub>2</sub>",
-                                    description='Mean donor-acceptor distance of state 2 (Angstrom).')
-        self._s2 = FittingParameter(value=6.0, name="s2", lb=0.5, ub=50.0, bounds_on=True,
-                                    label_text="s<sub>2</sub>",
-                                    description='Width of the distance distribution of state 2 (Angstrom).')
-        self._x1 = FittingParameter(value=0.5, name="x1", lb=0.0, ub=1.0, bounds_on=True,
-                                    label_text="x<sub>1</sub>",
-                                    description='Equilibrium fraction of state 1 (0..1).')
+        self._R1 = FittingParameter(
+            value=40.0,
+            name="R1",
+            lb=1.0,
+            ub=200.0,
+            bounds_on=True,
+            label_text="R<sub>1</sub>",
+            description="Mean donor-acceptor distance of state 1 (Angstrom).",
+        )
+        self._s1 = FittingParameter(
+            value=6.0,
+            name="s1",
+            lb=0.5,
+            ub=50.0,
+            bounds_on=True,
+            label_text="s<sub>1</sub>",
+            description="Width of the distance distribution of state 1 (Angstrom).",
+        )
+        self._R2 = FittingParameter(
+            value=60.0,
+            name="R2",
+            lb=1.0,
+            ub=200.0,
+            bounds_on=True,
+            label_text="R<sub>2</sub>",
+            description="Mean donor-acceptor distance of state 2 (Angstrom).",
+        )
+        self._s2 = FittingParameter(
+            value=6.0,
+            name="s2",
+            lb=0.5,
+            ub=50.0,
+            bounds_on=True,
+            label_text="s<sub>2</sub>",
+            description="Width of the distance distribution of state 2 (Angstrom).",
+        )
+        self._x1 = FittingParameter(
+            value=0.5,
+            name="x1",
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            label_text="x<sub>1</sub>",
+            description="Equilibrium fraction of state 1 (0..1).",
+        )
         # Total exchange rate k1 + k2, in Hz. The model converts it to the
         # dimensionless K = (k1+k2)*T with the dataset's observation time, so a
         # global fit over several time-bin widths shares one absolute rate --
         # which is the only way the rate is identifiable at all. A single
         # dataset determines only the product.
-        self._kex = FittingParameter(value=500.0, name="k_ex", lb=0.0, ub=1e9,
-                                     bounds_on=True, label_text="k<sub>ex</sub>[Hz]",
-                                     description='Total exchange rate k1+k2 (Hz). Converted to dimensionless K=(k1+k2)*T.')
+        self._kex = FittingParameter(
+            value=500.0,
+            name="k_ex",
+            lb=0.0,
+            ub=1e9,
+            bounds_on=True,
+            label_text="k<sub>ex</sub>[Hz]",
+            description="Total exchange rate k1+k2 (Hz). Converted to dimensionless K=(k1+k2)*T.",
+        )
 
     R1 = property(lambda s: s._R1.value)
     s1 = property(lambda s: s._s1.value)
@@ -167,10 +203,10 @@ def two_state_occupation_quadrature(p1: float, k_ex: float, n_nodes: int = 1024)
     p1 = float(np.clip(p1, 0.0, 1.0))
     p2 = 1.0 - p1
     k_ex = max(float(k_ex), 0.0)
-    a, b = k_ex * p2, k_ex * p1          # 1->2 and 2->1 rates times the window
+    a, b = k_ex * p2, k_ex * p1  # 1->2 and 2->1 rates times the window
 
-    mass_1 = p1 * np.exp(-a)             # never left state 1  -> f = 1
-    mass_0 = p2 * np.exp(-b)             # never left state 2  -> f = 0
+    mass_1 = p1 * np.exp(-a)  # never left state 1  -> f = 1
+    mass_0 = p2 * np.exp(-b)  # never left state 2  -> f = 0
 
     m = int(n_nodes)
     omega = 2.0 * np.pi * np.fft.fftfreq(m, d=1.0 / m)

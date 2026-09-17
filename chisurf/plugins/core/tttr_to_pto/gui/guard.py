@@ -78,8 +78,8 @@ def _convert_batch(parent, paths: list[str], *, keep_original: bool) -> list[str
     progress = None
     try:
         progress = ChiSurfProgress(
-            parent, text=f"Embedding {names}{size} into a .pto container…",
-            maximum=0)
+            parent, text=f"Embedding {names}{size} into a .pto container…", maximum=0
+        )
     except Exception:
         progress = None
     try:

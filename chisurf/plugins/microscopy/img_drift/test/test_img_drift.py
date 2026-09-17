@@ -5,6 +5,7 @@ shifting intensities, a photon stream by moving photons between pixels. The
 latter is what keeps the corrected confocal image usable for lifetime and
 correlation analysis, so it gets its own round-trip test on real data.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -14,19 +15,19 @@ import pytest
 
 from chisurf.plugins.microscopy.img_drift import core
 
-_CLSM = pathlib.Path(__file__).resolve().parents[5] / "test" / "data" / "clsm" / "PQ_Olympus_MFIS.ht3"
+_CLSM = (
+    pathlib.Path(__file__).resolve().parents[5] / "test" / "data" / "clsm" / "PQ_Olympus_MFIS.ht3"
+)
 
 
 @pytest.fixture
 def drifting_tiff(tmp_path):
     """Write a TIFF stack with a known linear drift and return its path."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     rng = np.random.default_rng(0)
     base = rng.random((40, 40)) * 100.0
-    stack = np.stack(
-        [np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(5)]
-    ).astype(np.float32)
+    stack = np.stack([np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(5)]).astype(np.float32)
     path = tmp_path / "drift.tif"
     imwrite(path, stack)
     return path
@@ -38,9 +39,7 @@ def test_measure_recovers_the_injected_drift(drifting_tiff):
     result = core.measure_drift(str(drifting_tiff))
     assert result.kind == "image"
     assert result.n_frames == 5
-    np.testing.assert_allclose(
-        result.shifts, [[0, 0], [2, -1], [4, -2], [6, -3], [8, -4]]
-    )
+    np.testing.assert_allclose(result.shifts, [[0, 0], [2, -1], [4, -2], [6, -3], [8, -4]])
     assert result.total_drift == pytest.approx(np.hypot(8, 4))
 
 
@@ -58,7 +57,7 @@ def test_correction_sharpens_the_projection(drifting_tiff):
 def test_corrected_stack_covers_every_channel(drifting_tiff):
     """The correction measured on one channel is applied to the whole stack."""
     data, shifts = core.corrected_stack(str(drifting_tiff))
-    assert data.ndim == 4                      # (frame, channel, y, x)
+    assert data.ndim == 4  # (frame, channel, y, x)
     assert data.shape[0] == len(shifts) == 5
     # every frame of the corrected stack matches the first
     for k in range(1, data.shape[0]):
@@ -67,13 +66,13 @@ def test_corrected_stack_covers_every_channel(drifting_tiff):
 
 def test_exports_are_written(drifting_tiff, tmp_path):
     """Both export paths produce readable files."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imread
 
     result = core.measure_drift(str(drifting_tiff))
     csv = core.write_shifts_csv(result.shifts, str(tmp_path / "s.csv"))
     rows = pathlib.Path(csv).read_text().strip().splitlines()
     assert rows[0] == "frame,dx_px,dy_px,magnitude_px"
-    assert len(rows) == 6                      # header + 5 frames
+    assert len(rows) == 6  # header + 5 frames
 
     data, _ = core.corrected_stack(str(drifting_tiff), shifts=result.shifts)
     tif = core.write_stack_tiff(data, str(tmp_path / "c.tif"))
@@ -82,7 +81,7 @@ def test_exports_are_written(drifting_tiff, tmp_path):
 
 def test_a_single_frame_is_rejected(tmp_path):
     """One frame gives nothing to align, and says so rather than returning zeros."""
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
 
     path = tmp_path / "one.tif"
     imwrite(path, np.zeros((8, 8), dtype=np.float32))
@@ -164,13 +163,11 @@ def test_view_model_drives_the_whole_flow(drifting_tiff, tmp_path):
     assert vm.compute() is True
 
     assert len(vm.shift_rows()) == 5
-    assert len(vm.drift_series()) == 3          # dx, dy, |d|
+    assert len(vm.drift_series()) == 3  # dx, dy, |d|
     assert vm.before_image() is not None and vm.after_image() is not None
     assert "px" in vm.status
 
-    written = vm.export(
-        stack_path=str(tmp_path / "c.tif"), shifts_path=str(tmp_path / "s.csv")
-    )
+    written = vm.export(stack_path=str(tmp_path / "c.tif"), shifts_path=str(tmp_path / "s.csv"))
     assert set(written) == {"stack", "shifts"}
     assert pathlib.Path(written["stack"]).is_file()
 
@@ -193,8 +190,14 @@ def test_view_spec_loads_and_names_real_sources():
     vm = DriftViewModel()
     spec = vm.view_spec()
     assert spec is not None
-    for attr in ("drift_series", "shift_rows", "before_image", "after_image",
-                 "channel_names", "set_filename"):
+    for attr in (
+        "drift_series",
+        "shift_rows",
+        "before_image",
+        "after_image",
+        "channel_names",
+        "set_filename",
+    ):
         assert hasattr(vm, attr), f"view spec references missing {attr!r}"
 
 

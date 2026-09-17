@@ -72,7 +72,9 @@ def test_fit_gmm_command(tmp_path: Path) -> None:
 def test_entrypoint_is_discoverable() -> None:
     """Plugin CLI metadata should be discoverable by the core CLI scanner."""
     metadata = list(_discover_plugin_metadata())
-    burst_selection = [item for item in metadata if item["module_path"].endswith("burst_selection")][0]
+    burst_selection = [
+        item for item in metadata if item["module_path"].endswith("burst_selection")
+    ][0]
     assert burst_selection["cli_entrypoint"] == cli_entrypoint
 
 
@@ -126,11 +128,12 @@ def test_analyze_command_uses_shared_api(tmp_path: Path) -> None:
 def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
     """``analyze --mmfdb`` registers raw+sample, burst tables, and a single
     output-folder group whose artifact resolves to the on-disk burst folder —
-    the handoff Burst Selection -> ndX relies on."""
+    the handoff Burst Selection -> ndX relies on.
+    """
     import shutil
 
-    from mmfdb.repository import MFDatabase
     from mmfdb.provenance.result_registry import set_global_db
+    from mmfdb.repository import MFDatabase
 
     # Copy the fixture so the co-located burst output folder lands in tmp.
     spc = tmp_path / "m000.spc"
@@ -139,23 +142,33 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
     det_json.write_text(
         json.dumps(
             {
-                "green": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]], "g_factor": 1, "l1": 0, "l2": 0},
-                "red": {"chs": [1, 9], "micro_time_ranges": [[0, 4095]], "g_factor": 1, "l1": 0, "l2": 0},
+                "green": {
+                    "chs": [0, 8],
+                    "micro_time_ranges": [[0, 4095]],
+                    "g_factor": 1,
+                    "l1": 0,
+                    "l2": 0,
+                },
+                "red": {
+                    "chs": [1, 9],
+                    "micro_time_ranges": [[0, 4095]],
+                    "g_factor": 1,
+                    "l1": 0,
+                    "l2": 0,
+                },
             }
         )
     )
     db_path = tmp_path / "mmfdb.sqlite"
     auth_db = MFDatabase(db_path)
     try:
-        from mmfdb.security.auth import create_session
         from mmfdb.models import SampleDefinition
         from mmfdb.samples.sample_manager import create_sample
+        from mmfdb.security.auth import create_session
 
         auth_db.ensure_user("cli-user")
         token = create_session(auth_db.conn, "cli-user")["token"]
-        sample_id = create_sample(
-            auth_db, SampleDefinition(name="DNA burst sample")
-        )
+        sample_id = create_sample(auth_db, SampleDefinition(name="DNA burst sample"))
         auth_db.conn.commit()
     finally:
         auth_db.close()
@@ -166,18 +179,28 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
             [
                 "analyze",
                 str(spc),
-                "--filetype", "SPC-130",
-                "--detectors-json", str(det_json),
-                "--min-photons", "20",
+                "--filetype",
+                "SPC-130",
+                "--detectors-json",
+                str(det_json),
+                "--min-photons",
+                "20",
                 # The default is the container alone; this test is about the
                 # MMFDB registration of the *legacy folder group*, so it has to
                 # ask for the folder.
-                "--format", "pto", "--format", "bur",
+                "--format",
+                "pto",
+                "--format",
+                "bur",
                 "--mmfdb",
-                "--db", str(db_path),
-                "--token", token,
-                "--sample-id", sample_id,
-                "--selected-setup", "BS",
+                "--db",
+                str(db_path),
+                "--token",
+                token,
+                "--sample-id",
+                sample_id,
+                "--selected-setup",
+                "BS",
             ],
         )
         assert result.exit_code == 0, result.output

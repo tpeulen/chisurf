@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Integration tests for chisurf ndxplorer plugin CLI."""
 
 import json
 import pathlib
 import subprocess
 import sys
+
 import pytest
 from click.testing import CliRunner
-
 from mmfdb.repository import MFDatabase
+
 from chisurf.plugins.ndxplorer.cli import (
     filter_cmd,
     resolve_source_artifact,
@@ -21,12 +21,12 @@ from chisurf.plugins.ndxplorer.cli import (
 def temp_mmfdb(tmp_path):
     """Setup a temporary MFDatabase with a dummy raw and burst selection product."""
     db_path = tmp_path / "test_ndx_cli.db"
-    
+
     # Create source burst directory
     bur_dir = tmp_path / "bur_source"
     bur_subdir = bur_dir / "bi4_bur"
     bur_subdir.mkdir(parents=True, exist_ok=True)
-    
+
     dummy_bur = bur_subdir / "measurement_1.bur"
     dummy_bur.write_text(
         "First Photon\tLast Photon\tFirst File\tLast File\tproximity_ratio\tn_photons\tMean Macro Time (ms)\n"
@@ -36,12 +36,12 @@ def temp_mmfdb(tmp_path):
         "700\t800\tfile1.ptu\tfile1.ptu\t0.4\t60\t4000\n",
         encoding="utf-8",
     )
-    
+
     with MFDatabase(db_path) as db:
         db.ensure_user("ndx-user")
         db.add_sample("sample_1")
         db.add_experiment("exp_1", sample_id="sample_1", status="complete")
-        
+
         # Add raw reference
         raw_id = db.add_raw_data_reference(
             experiment_id="exp_1",
@@ -50,7 +50,7 @@ def temp_mmfdb(tmp_path):
             file_path=str(tmp_path / "dummy.ptu"),
             checksum="0" * 64,
         )
-        
+
         # Add processing run
         run_id = db.add_processing_run(
             experiment_id="exp_1",
@@ -58,9 +58,9 @@ def temp_mmfdb(tmp_path):
             settings={"burst_detection": {"min_photons": 10}},
             status="succeeded",
         )
-        
+
         # Register the burst folder
-        prod_id = db.add_processed_data_product(
+        db.add_processed_data_product(
             processing_id=run_id,
             product_type="derived_product",
             storage_mode="folder",
@@ -69,7 +69,7 @@ def temp_mmfdb(tmp_path):
             row_count=4,
             validation_status="valid",
         )
-        
+
         # Add registration to the artifacts table
         db.register_artifact(
             artifact_id="art_burst_src",
@@ -99,28 +99,38 @@ def test_csc_ndxplorer_filter(temp_mmfdb, tmp_path):
     """Test csc ndxplorer filter command registers filtered bursts in MMFDB."""
     db_path, art_id, sample_id, token = temp_mmfdb
     runner = CliRunner()
-    
+
     out_dir = tmp_path / "filtered_output"
-    
-    result = runner.invoke(filter_cmd, [
-        "--from-mmfdb", art_id,
-        "--select", "proximity_ratio:0.3-0.6",
-        "--out", str(out_dir),
-        "--to-mmfdb",
-        "--sample-id", sample_id,
-        "--db", str(db_path),
-        "--token", token,
-        "--skip-nth-row", "1",
-    ])
-    
+
+    result = runner.invoke(
+        filter_cmd,
+        [
+            "--from-mmfdb",
+            art_id,
+            "--select",
+            "proximity_ratio:0.3-0.6",
+            "--out",
+            str(out_dir),
+            "--to-mmfdb",
+            "--sample-id",
+            sample_id,
+            "--db",
+            str(db_path),
+            "--token",
+            token,
+            "--skip-nth-row",
+            "1",
+        ],
+    )
+
     assert result.exit_code == 0, result.output or repr(result.exception)
     res_data = json.loads(result.output)
     assert res_data["ok"] is True
     assert res_data["n_out"] == 2
-    
+
     new_artifact_id = res_data["artifact_id"]
     assert new_artifact_id is not None
-    
+
     # Check that artifact is registered in the database
     with MFDatabase(db_path) as db:
         artifact = db.get_artifact(new_artifact_id)
@@ -187,9 +197,7 @@ def test_image_workflow_uses_explicit_db_and_registers_outputs_atomically(
         )
 
     with MFDatabase(db_path) as db:
-        vocab_before = db.conn.execute(
-            "SELECT COUNT(*) FROM mmfdb_vocabulary"
-        ).fetchone()[0]
+        vocab_before = db.conn.execute("SELECT COUNT(*) FROM mmfdb_vocabulary").fetchone()[0]
         result = run_image_workflow(
             db=db,
             source_artifact_id=artifact_id,
@@ -208,9 +216,9 @@ def test_image_workflow_uses_explicit_db_and_registers_outputs_atomically(
 
         assert result["artifact_id"]
         assert result["selection_artifact_id"]
-        assert db.conn.execute(
-            "SELECT COUNT(*) FROM mmfdb_vocabulary"
-        ).fetchone()[0] == vocab_before
+        assert (
+            db.conn.execute("SELECT COUNT(*) FROM mmfdb_vocabulary").fetchone()[0] == vocab_before
+        )
 
         image = db.get_artifact(result["artifact_id"])
         roi = db.get_artifact(result["selection_artifact_id"])
@@ -256,7 +264,6 @@ def test_image_output_registration_rolls_back_both_outputs_on_second_failure(
 ):
     """A failed ROI registration must not leave the image artifact committed."""
     import mmfdb.provenance.result_registry as registry
-
     from mmfdb.security.auth import AuthenticatedPrincipal
 
     db_path, artifact_id, sample_id, _token = temp_mmfdb
@@ -280,9 +287,7 @@ def test_image_output_registration_rolls_back_both_outputs_on_second_failure(
         return subprocess.CompletedProcess(
             args,
             0,
-            stdout=json.dumps(
-                {"shape": [1, 1], "n_selected_px": 1, "out": str(output)}
-            ),
+            stdout=json.dumps({"shape": [1, 1], "n_selected_px": 1, "out": str(output)}),
             stderr="",
         )
 

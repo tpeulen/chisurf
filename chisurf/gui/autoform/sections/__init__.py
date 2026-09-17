@@ -7,8 +7,8 @@ resolve a model's :class:`~chisurf.core.models.view_spec.ModelView`.
 
 from __future__ import annotations
 
-from . import anisotropy_diagnostics_section  # noqa: F401
 from . import (
+    anisotropy_diagnostics_section,  # noqa: F401
     background_run_section,  # noqa: F401  (registers the "background_run" section)
     builtin,  # noqa: F401  (side effect: populate the registry)
     chimol_section,  # noqa: F401  (registers the "chimol" section)
@@ -22,14 +22,14 @@ from . import (
     global_parameter_table,  # noqa: F401  (registers the "global_parameter_table" section)
     help_section,  # noqa: F401  (registers the "help" section)
     image_browser_section,  # noqa: F401  (registers the "image_browser" section)
+    level_histogram_section,  # noqa: F401  (registers "level_histogram")
+    memory_editor_section,  # noqa: F401  (registers the "memory_editor" section)
+    node_graph_section,  # noqa: F401  (registers the "node_graph" section)
     path_list_section,  # noqa: F401  (registers the "path_list" section)
     phasor_section,  # noqa: F401  (registers the "phasor" section)
     progress_section,  # noqa: F401  (registers the "progress" section)
     quiver_section,  # noqa: F401  (registers the "quiver" section)
     rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
-    level_histogram_section,  # noqa: F401  (registers "level_histogram")
-    memory_editor_section,  # noqa: F401  (registers the "memory_editor" section)
-    node_graph_section,  # noqa: F401  (registers the "node_graph" section)
     region_list_section,  # noqa: F401  (registers the "region_list" section)
     scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)
     setup_selector_section,  # noqa: F401  (registers the "setup_selector" section)

@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import zipfile
-from collections.abc import Sequence
 from pathlib import Path
+
 import tttrlib
 
-from chisurf.core.fio.fluorescence.burst_container import (
-    deinterleave_bursts,
-    write_burst_artifact,
-)
 from chisurf.core.fio.fluorescence.burst import (
     read_bur_file,
     write_dataframe_to_bur,
+)
+from chisurf.core.fio.fluorescence.burst_container import (
+    write_burst_artifact,
 )
 
 

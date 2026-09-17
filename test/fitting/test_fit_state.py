@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 
+import chisurf.core.models.pda2c.simple as pda_simple_mod
 from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
-
-import chisurf.core.models.pda2c.simple as pda_simple_mod
-import chisurf.core.experiments
-import chisurf.core.fitting
-
 from chisurf.core.project.fit_state import (
-    fit_to_state,
     apply_state_to_fit,
+    fit_to_state,
 )
 
 
@@ -114,7 +110,6 @@ def test_fit_state_roundtrip_with_links():
 
 def test_model_get_set_state_roundtrip():
     """Model.get_state/set_state should mirror fit_state helpers."""
-
     fit1 = _make_dummy_fit()
     m1 = fit1.model
     params1 = m1.parameters_all_dict
@@ -143,7 +138,6 @@ def test_model_get_set_state_roundtrip():
 
 def test_fit_get_set_state_roundtrip_and_update_called():
     """Fit.get_state/set_state must round-trip state and trigger update()."""
-
     fit1 = _make_dummy_fit()
     params1 = fit1.model.parameters_all_dict
     params1["p0"].value = 1.23
@@ -211,7 +205,6 @@ class _DummyModelForFinalize(ModelCurve):
 
 def test_fit_set_state_calls_model_set_state_and_finalize():
     """Fit.set_state must delegate to model.set_state and then finalize()."""
-
     x = np.arange(3, dtype=float)
     y = np.ones_like(x)
     data = DataCurve(x=x, y=y)
@@ -232,13 +225,16 @@ def test_fit_set_state_calls_model_set_state_and_finalize():
 def test_a_described_models_state_keeps_its_structure_and_values():
     """The component count of a lifetime or FRET fit is its structure, and the state keeps it."""
     import pytest
+
     pytest.importorskip("IMP.bff")
     from chisurf.core.models.description import for_family
 
     x = np.arange(64, dtype=float) * 0.1
     data = DataCurve(x=x, y=np.exp(-x / 4.0) * 100 + 1)
-    for family, key, canonical in (("tcspc_lifetime", "lifetime.components.3", "lifetime.tau.2"),
-                                   ("tcspc_fret_gaussian", "tcspc_fret_gaussian.components.2", "distance.mean.1")):
+    for family, key, canonical in (
+        ("tcspc_lifetime", "lifetime.components.3", "lifetime.tau.2"),
+        ("tcspc_fret_gaussian", "tcspc_fret_gaussian.components.2", "distance.mean.1"),
+    ):
         first = Fit(model_class=for_family(family), data=data).model
         first.structure = key
         next(p for p in first.parameters_all if p.canonical_id == canonical).value = 7.25
@@ -246,7 +242,9 @@ def test_a_described_models_state_keeps_its_structure_and_values():
         assert second.structure != key
         second.set_state(first.get_state())
         assert second.structure == key
-        assert next(p for p in second.parameters_all if p.canonical_id == canonical).value == pytest.approx(7.25)
+        assert next(
+            p for p in second.parameters_all if p.canonical_id == canonical
+        ).value == pytest.approx(7.25)
 
 
 def test_pda_probch0_length_preserved_via_model_state():

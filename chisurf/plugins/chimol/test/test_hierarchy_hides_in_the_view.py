@@ -14,13 +14,13 @@ the picture, the subtree goes with its parent, switching back restores exactly
 what was there, and the panel opened from the registry (rather than
 hand-constructed) is wired the same way.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
-SCRIPT = '''
+SCRIPT = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("load 148l.pdb")
@@ -60,7 +60,7 @@ if leaf is not None:
     panel._toggle(leaf)
     emit("leaf_rows", len(leaf.atom_indices))
     emit("hidden_for_leaf", hidden())
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -96,7 +96,7 @@ def test_a_leaf_hides_only_itself(ran):
     assert int(ran["hidden_for_leaf"]) == int(ran["leaf_rows"])
 
 
-BIOFILM = '''
+BIOFILM = """
 app = open_app(size=(900, 600))
 cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
 cmd.do("demo biofilm")
@@ -121,7 +121,7 @@ emit("drawn_all_off", drawn())
 panel._toggle(root)                 # everything back on
 app.renderer._draw()
 emit("drawn_back_on", drawn())
-'''
+"""
 
 
 @pytest.fixture(scope="module")

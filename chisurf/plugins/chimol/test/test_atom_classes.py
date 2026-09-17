@@ -12,7 +12,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.atom_classes import (
     BACKBONE_NAMES,
     classify_atoms,
@@ -22,21 +21,26 @@ from chimol.analysis.atom_classes import (
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 _DTYPE = [
-    ("atom_name", "U5"), ("res_name", "U4"), ("chain", "U2"),
-    ("res_id", np.int64), ("element", "U2"),
+    ("atom_name", "U5"),
+    ("res_name", "U4"),
+    ("chain", "U2"),
+    ("res_id", np.int64),
+    ("element", "U2"),
 ]
 
 
 def _residue(names, resn="ALA", chain="A", res_id=1, elements=None):
     """One residue's worth of atoms."""
     elements = elements or [n[:1] for n in names]
-    return [
-        (n, resn, chain, res_id, e) for n, e in zip(names, elements)
-    ]
+    return [(n, resn, chain, res_id, e) for n, e in zip(names, elements)]
 
 
 def _atoms(*residues) -> np.ndarray:
@@ -62,7 +66,7 @@ def test_a_missing_backbone_atom_is_not_protein():
     """
     classes = classify_atoms(_atoms(_residue(["N", "C", "O", "CB"])))
     assert not classes.protein.any()
-    assert classes.organic.all()   # it still has carbon
+    assert classes.organic.all()  # it still has carbon
 
 
 def test_a_nucleotide_is_nucleic():
@@ -81,9 +85,7 @@ def test_a_star_primed_nucleotide_is_nucleic_too():
 
 
 def test_a_carbon_bearing_residue_is_organic():
-    classes = classify_atoms(
-        _atoms(_residue(["C1", "C2", "O1"], resn="LIG"))
-    )
+    classes = classify_atoms(_atoms(_residue(["C1", "C2", "O1"], resn="LIG")))
     assert classes.organic.all()
 
 
@@ -101,18 +103,14 @@ def test_a_backbone_oxygen_is_not_solvent():
 
 
 def test_a_lone_metal_is_inorganic():
-    classes = classify_atoms(
-        _atoms(_residue(["ZN"], resn="ZN", elements=["ZN"]))
-    )
+    classes = classify_atoms(_atoms(_residue(["ZN"], resn="ZN", elements=["ZN"])))
     assert classes.inorganic.all()
     assert classes.metal.all()
 
 
 def test_a_hydrogen_only_residue_is_nothing():
     """PyMOL excludes them explicitly, or unsorted hydrogens read as inorganic."""
-    classes = classify_atoms(
-        _atoms(_residue(["H1", "H2"], resn="UNK", elements=["H", "H"]))
-    )
+    classes = classify_atoms(_atoms(_residue(["H1", "H2"], resn="UNK", elements=["H", "H"])))
     assert not classes.inorganic.any()
     assert not classes.organic.any()
     assert classes.hydrogen.all()

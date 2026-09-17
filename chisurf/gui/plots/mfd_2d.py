@@ -112,9 +112,7 @@ class MfdMarginalPlot(plotbase.Plot):
         model = getattr(self.fit, "model", None)
         flat = getattr(model, "y", None) if model is not None else None
         if flat is not None and np.asarray(flat).size == observed.size:
-            predicted = np.asarray(flat, dtype=float).reshape(
-                observed.shape, order="C"
-            )
+            predicted = np.asarray(flat, dtype=float).reshape(observed.shape, order="C")
         else:
             predicted = np.zeros_like(observed)
 

@@ -1,5 +1,5 @@
-import sys
 import pathlib
+import sys
 
 import pytest
 
@@ -7,6 +7,7 @@ import pytest
 @pytest.fixture(scope="session")
 def qapp():
     from qtpy.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
@@ -14,10 +15,7 @@ def qapp():
 
 
 def _ensure_ndxplorer_path():
-    ndxplorer_path = (
-        pathlib.Path(__file__).resolve().parents[3]
-        / "modules" / "ndxplorer"
-    )
+    ndxplorer_path = pathlib.Path(__file__).resolve().parents[3] / "modules" / "ndxplorer"
     if str(ndxplorer_path) not in sys.path:
         sys.path.insert(0, str(ndxplorer_path))
 
@@ -27,6 +25,7 @@ class TestUIComponents:
         _ensure_ndxplorer_path()
         try:
             from ndxplorer.ui.histogram_controls import HistogramControls
+
             widget = HistogramControls()
             assert widget is not None
         except ImportError as e:
@@ -36,6 +35,7 @@ class TestUIComponents:
         _ensure_ndxplorer_path()
         try:
             from ndxplorer.ui.selection_panel import SelectionPanel
+
             widget = SelectionPanel()
             assert widget is not None
         except ImportError as e:
@@ -45,6 +45,7 @@ class TestUIComponents:
         _ensure_ndxplorer_path()
         try:
             from ndxplorer.ui.parameter_editor import ParameterEditor
+
             widget = ParameterEditor()
             assert widget is not None
         except ImportError as e:

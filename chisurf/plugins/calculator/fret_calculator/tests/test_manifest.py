@@ -102,9 +102,7 @@ class TestCoreAlgorithms:
         )
 
         fwd = compute_homo_fret(t_RM=1.0, rho=2.0, tau0=4.0, R0=52.0)
-        bwd = compute_homo_fret_backmap(
-            R_DA=fwd["R_DA"], R0=52.0, tau0=4.0, rho=2.0
-        )
+        bwd = compute_homo_fret_backmap(R_DA=fwd["R_DA"], R0=52.0, tau0=4.0, rho=2.0)
         assert abs(bwd["t_RM"] - 1.0) < 1e-6
         assert abs(bwd["k_homo"] - fwd["k_homo"]) < 1e-6
 

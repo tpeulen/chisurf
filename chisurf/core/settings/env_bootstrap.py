@@ -128,14 +128,14 @@ def _init_paths() -> None:
     # Common candidate folders (environment layouts)
     cand_bin = [
         APPROOT / "bin",
-        APPROOT / "Scripts",               # Windows
-        APPROOT / "Library" / "bin",      # Windows
+        APPROOT / "Scripts",  # Windows
+        APPROOT / "Library" / "bin",  # Windows
         APPROOT / "Library" / "usr" / "bin",
     ]
     cand_lib = [
         APPROOT / "lib",
-        APPROOT / "Library" / "lib",     # Windows
-        APPROOT / "DLLs",                  # Windows
+        APPROOT / "Library" / "lib",  # Windows
+        APPROOT / "DLLs",  # Windows
     ]
 
     for p in cand_bin:
@@ -168,10 +168,12 @@ def _init_qt_plugins() -> None:
             pass
         for s in sp:
             base = pathlib.Path(s)
-            candidates.extend([
-                base / "PyQt6" / "Qt6" / "plugins",
-                base / "PyQt5" / "Qt5" / "plugins",
-            ])
+            candidates.extend(
+                [
+                    base / "PyQt6" / "Qt6" / "plugins",
+                    base / "PyQt5" / "Qt5" / "plugins",
+                ]
+            )
     except Exception:
         pass
 
@@ -208,10 +210,12 @@ def _preload_freetype() -> None:
         ]
         patterns = []
         for d in cand_dirs:
-            patterns.extend([
-                str(d / "libfreetype.so"),
-                str(d / "libfreetype.so.*"),
-            ])
+            patterns.extend(
+                [
+                    str(d / "libfreetype.so"),
+                    str(d / "libfreetype.so.*"),
+                ]
+            )
     else:  # macOS
         cand_dirs = [
             APPROOT / "lib",
@@ -219,10 +223,12 @@ def _preload_freetype() -> None:
         ]
         patterns = []
         for d in cand_dirs:
-            patterns.extend([
-                str(d / "libfreetype.dylib"),
-                str(d / "libfreetype*.dylib"),
-            ])
+            patterns.extend(
+                [
+                    str(d / "libfreetype.dylib"),
+                    str(d / "libfreetype*.dylib"),
+                ]
+            )
 
     ft = _glob_one(patterns)
     if not ft:
@@ -257,22 +263,23 @@ def _apply_thread_env_from_settings() -> None:
         from .path_utils import get_path
         from .settings_utils import get_chisurf_settings
 
-        settings_dir = get_path('settings')
+        settings_dir = get_path("settings")
         # YAML source (existing behavior)
-        settings_file = settings_dir / 'settings_chisurf.yaml'
+        settings_file = settings_dir / "settings_chisurf.yaml"
         cs_settings = get_chisurf_settings(settings_file, use_source_folder=False)
-        yaml_threads = cs_settings.get('threads', {}) if isinstance(cs_settings, dict) else {}
+        yaml_threads = cs_settings.get("threads", {}) if isinstance(cs_settings, dict) else {}
 
         # Optional JSON source: ~/.chisurf/settings.json with a top-level "threads" object
         json_threads = {}
         try:
             import json as _json
-            json_file = settings_dir / 'settings.json'
+
+            json_file = settings_dir / "settings.json"
             if json_file.is_file():
-                with open(json_file, encoding='utf-8') as fh:
+                with open(json_file, encoding="utf-8") as fh:
                     data = _json.load(fh)
                     if isinstance(data, dict):
-                        jt = data.get('threads', {})
+                        jt = data.get("threads", {})
                         if isinstance(jt, dict):
                             json_threads = jt
         except Exception:
@@ -293,19 +300,19 @@ def _apply_thread_env_from_settings() -> None:
         _ncpu = _os.cpu_count() or 2
         _numba_multi = str(max(1, _ncpu - 1))
         defaults = {
-            'numba_num_threads': _numba_multi,
-            'numba_threading_layer': "workqueue",
-            'mkl_num_threads': "1",
-            'omp_num_threads': "1",
-            'mkl_threading_layer': "SEQUENTIAL",
+            "numba_num_threads": _numba_multi,
+            "numba_threading_layer": "workqueue",
+            "mkl_num_threads": "1",
+            "omp_num_threads": "1",
+            "mkl_threading_layer": "SEQUENTIAL",
         }
-        override = bool(threads.get('override_existing_env', False))
+        override = bool(threads.get("override_existing_env", False))
 
         # Resolve the "auto"/"0"/empty sentinel for numba threads to (cores - 1).
-        _nn = str(threads.get('numba_num_threads', _numba_multi)).strip().lower()
+        _nn = str(threads.get("numba_num_threads", _numba_multi)).strip().lower()
         if _nn in ("", "auto", "0"):
             threads = dict(threads)
-            threads['numba_num_threads'] = _numba_multi
+            threads["numba_num_threads"] = _numba_multi
 
         def _set_env(var_name: str, value: str):
             if override or var_name not in _os.environ or _os.environ.get(var_name, "") == "":
@@ -316,11 +323,19 @@ def _apply_thread_env_from_settings() -> None:
             # Changing env vars may not take effect if modules already imported
             log.debug("Thread env applied after heavy modules import; might not take full effect.")
 
-        _set_env("NUMBA_NUM_THREADS", threads.get('numba_num_threads', defaults['numba_num_threads']))
-        _set_env("NUMBA_THREADING_LAYER", threads.get('numba_threading_layer', defaults['numba_threading_layer']))
-        _set_env("MKL_NUM_THREADS", threads.get('mkl_num_threads', defaults['mkl_num_threads']))
-        _set_env("OMP_NUM_THREADS", threads.get('omp_num_threads', defaults['omp_num_threads']))
-        _set_env("MKL_THREADING_LAYER", threads.get('mkl_threading_layer', defaults['mkl_threading_layer']))
+        _set_env(
+            "NUMBA_NUM_THREADS", threads.get("numba_num_threads", defaults["numba_num_threads"])
+        )
+        _set_env(
+            "NUMBA_THREADING_LAYER",
+            threads.get("numba_threading_layer", defaults["numba_threading_layer"]),
+        )
+        _set_env("MKL_NUM_THREADS", threads.get("mkl_num_threads", defaults["mkl_num_threads"]))
+        _set_env("OMP_NUM_THREADS", threads.get("omp_num_threads", defaults["omp_num_threads"]))
+        _set_env(
+            "MKL_THREADING_LAYER",
+            threads.get("mkl_threading_layer", defaults["mkl_threading_layer"]),
+        )
     except Exception as e:
         # Fail silently; settings application is best-effort and should not break startup
         log.debug("Could not apply thread env from settings: %s", e)
@@ -340,19 +355,19 @@ def _apply_custom_env_from_settings() -> None:
         from .path_utils import get_path
         from .settings_utils import get_chisurf_settings
 
-        settings_dir = get_path('settings')
-        settings_file = settings_dir / 'settings_chisurf.yaml'
+        settings_dir = get_path("settings")
+        settings_file = settings_dir / "settings_chisurf.yaml"
         cs_settings = get_chisurf_settings(settings_file, use_source_folder=False)
-        yaml_env_cfg = cs_settings.get('env', {}) if isinstance(cs_settings, dict) else {}
+        yaml_env_cfg = cs_settings.get("env", {}) if isinstance(cs_settings, dict) else {}
 
         json_env_cfg = {}
         try:
-            json_file = settings_dir / 'settings.json'
+            json_file = settings_dir / "settings.json"
             if json_file.is_file():
-                with open(json_file, encoding='utf-8') as fh:
+                with open(json_file, encoding="utf-8") as fh:
                     data = _json.load(fh)
                     if isinstance(data, dict):
-                        je = data.get('env', {})
+                        je = data.get("env", {})
                         if isinstance(je, dict):
                             json_env_cfg = je
         except Exception:
@@ -367,7 +382,11 @@ def _apply_custom_env_from_settings() -> None:
         if not isinstance(env_cfg, dict) or not env_cfg:
             return
 
-        override = bool(cs_settings.get('env_override_existing', True)) if isinstance(cs_settings, dict) else True
+        override = (
+            bool(cs_settings.get("env_override_existing", True))
+            if isinstance(cs_settings, dict)
+            else True
+        )
 
         for key, val in env_cfg.items():
             if key is None or val is None:

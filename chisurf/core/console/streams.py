@@ -44,11 +44,11 @@ class OutputStream(io.TextIOBase):
     """
 
     def __init__(
-            self,
-            name: str,
-            sink: typing.Callable[[str, str], None],
-            *,
-            encoding: str = "utf-8",
+        self,
+        name: str,
+        sink: typing.Callable[[str, str], None],
+        *,
+        encoding: str = "utf-8",
     ) -> None:
         super().__init__()
         self.name = name
@@ -134,9 +134,9 @@ class CapturingStream(OutputStream):
     """
 
     def __init__(
-            self,
-            name: str,
-            sink: typing.Callable[[str, str], None] | None = None,
+        self,
+        name: str,
+        sink: typing.Callable[[str, str], None] | None = None,
     ) -> None:
         super().__init__(name, sink or (lambda _n, _t: None))
         self._buffer: list[str] = []

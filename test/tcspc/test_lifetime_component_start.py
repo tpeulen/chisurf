@@ -24,15 +24,21 @@ DT, PERIOD = 0.05, 12.5
 
 def _lifetimes(n: int):
     x = np.arange(256) * DT
-    fit = fitting.Fit(model_class=for_family("tcspc_lifetime"),
-                      data=chisurf.core.data.DataCurve(x=x, y=np.round(1000.0 * np.exp(-x / 3.0)) + 5.0))
+    fit = fitting.Fit(
+        model_class=for_family("tcspc_lifetime"),
+        data=chisurf.core.data.DataCurve(x=x, y=np.round(1000.0 * np.exp(-x / 3.0)) + 5.0),
+    )
     model = fit.model
     model.set_scalar("generated_response", 1.0)
     model.set_scalar("period", PERIOD)
     model.set_scalar("max_components", float(n))
     model.structure = f"lifetime.components.{n}"
     used = set(model.structure_parameter_ids())
-    return [p for p in model.parameters_all if p.canonical_id.startswith("lifetime.tau.") and p.canonical_id in used]
+    return [
+        p
+        for p in model.parameters_all
+        if p.canonical_id.startswith("lifetime.tau.") and p.canonical_id in used
+    ]
 
 
 def test_components_do_not_start_on_top_of_each_other():

@@ -15,9 +15,9 @@ import logging
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +83,15 @@ class _RunSection(QtWidgets.QWidget):
         bar.setContentsMargins(2, 2, 2, 2)
         bar.addStretch(1)
         bar.addWidget(
-            _tool_button(f"{Glyphs.CHART_UP} Calculate", "Compute count rates for all files.", self._calculate)
+            _tool_button(
+                f"{Glyphs.CHART_UP} Calculate",
+                "Compute count rates for all files.",
+                self._calculate,
+            )
         )
-        bar.addWidget(_tool_button(f"{Glyphs.SAVE} Save", "Save the results table as text.", self._save))
+        bar.addWidget(
+            _tool_button(f"{Glyphs.SAVE} Save", "Save the results table as text.", self._save)
+        )
 
     def _calculate(self) -> None:
         reason = self._model.can_compute()

@@ -9,9 +9,8 @@ change must land where the renderer reads it.
 from __future__ import annotations
 
 import pytest
-
-from chimol.core.settings import registry as settings
 from chimol.commands.command import Cmd
+from chimol.core.settings import registry as settings
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.testing.mock_viewer import MockViewer, MockWindow
 
@@ -259,7 +258,8 @@ def test_bg_rgb_reaches_the_viewer(cmd_and_viewer):
 def test_max_fps_reaches_the_viewer(cmd_and_viewer):
     """The frame-rate ceiling is renderer state, held by rendercanvas: a
     changed value must re-throttle the already-open window, not just sit in
-    the config until the next restart."""
+    the config until the next restart.
+    """
     cmd, viewer, _, errors = cmd_and_viewer
     cmd.do("set max_fps, 30")
     assert errors == []
@@ -268,7 +268,8 @@ def test_max_fps_reaches_the_viewer(cmd_and_viewer):
 
 def test_nerd_tick_writes_through_to_the_config(cmd_and_viewer):
     """Unlike `max_fps`, the nerd tick is read live from the config -- it has
-    no renderer state to push, so `set` only needs to land in the config."""
+    no renderer state to push, so `set` only needs to land in the config.
+    """
     from chimol.core.settings.config import _DISPLAY_CONFIG
 
     cmd, _viewer, _, errors = cmd_and_viewer

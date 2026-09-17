@@ -172,7 +172,10 @@ class BindingFit:
         """Return the fitted fraction at the given concentration(s)."""
         return _binding_curve(
             np.asarray(concentration, dtype=float),
-            self.kd, self.hill, self.f_min, self.f_max,
+            self.kd,
+            self.hill,
+            self.f_min,
+            self.f_max,
         )
 
 
@@ -353,9 +356,9 @@ def fit_shared_gaussians(
 
     def unpack(theta):
         i = 0
-        mu = theta[i:i + n_components] if free_mu else centres
+        mu = theta[i : i + n_components] if free_mu else centres
         i += n_components if free_mu else 0
-        sigma = theta[i:i + n_components] if free_sigma else widths
+        sigma = theta[i : i + n_components] if free_sigma else widths
         return np.asarray(mu, dtype=float), np.asarray(sigma, dtype=float)
 
     def residual(theta):
@@ -413,7 +416,7 @@ def fit_shared_gaussians(
         fractions=fractions,
         curves=curves,
         components=components,
-        chi2r=float(np.sum(residuals ** 2) / dof),
+        chi2r=float(np.sum(residuals**2) / dof),
     )
 
 
@@ -512,8 +515,7 @@ def fit_binding(
 
     finite = c[c > 0]
     if finite.size:
-        curve_x = np.logspace(
-            np.log10(finite.min() / 10.0), np.log10(finite.max() * 10.0), 200)
+        curve_x = np.logspace(np.log10(finite.min() / 10.0), np.log10(finite.max() * 10.0), 200)
     else:
         curve_x = np.linspace(0.0, 1.0, 200)
     dof = max(result.fun.size - len(theta0), 1)
@@ -525,7 +527,7 @@ def fit_binding(
         f_max=f_max,
         curve_x=curve_x,
         curve_y=_binding_curve(curve_x, kd, hill, f_min, f_max),
-        chi2r=float(np.sum(result.fun ** 2) / dof),
+        chi2r=float(np.sum(result.fun**2) / dof),
     )
 
 
@@ -588,11 +590,14 @@ def run_titration(
         ``binding`` is ``None`` when there were too few conditions to fit one.
     """
     stack = build_stack(
-        conditions, corrections=corrections, thresholds=thresholds,
-        bins=bins, e_limits=e_limits, hints=hints,
+        conditions,
+        corrections=corrections,
+        thresholds=thresholds,
+        bins=bins,
+        e_limits=e_limits,
+        hints=hints,
     )
-    fit = fit_shared_gaussians(
-        stack, n_components, fix_centres=fix_centres, fix_widths=fix_widths)
+    fit = fit_shared_gaussians(stack, n_components, fix_centres=fix_centres, fix_widths=fix_widths)
 
     index = component
     if index < 0:
@@ -600,6 +605,5 @@ def run_titration(
 
     binding = None
     if len(stack) >= 3:
-        binding = fit_binding(
-            stack.concentrations, fit.fractions[:, index], model=binding_model)
+        binding = fit_binding(stack.concentrations, fit.fractions[:, index], model=binding_model)
     return TitrationResult(stack=stack, fit=fit, binding=binding, component=index)

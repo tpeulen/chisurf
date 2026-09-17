@@ -113,9 +113,7 @@ def write_burst_folder(
         n_channels = int(np.asarray(tttr.micro_times).max()) + 1
         windows = {"prompt": (0, n_channels)}
 
-    write_bur_file(
-        bur_dir / f"{stem}.bur", start_stop, source.name, tttr, windows, detectors
-    )
+    write_bur_file(bur_dir / f"{stem}.bur", start_stop, source.name, tttr, windows, detectors)
     manifest_settings: dict[str, Any] = {"detectors": detectors, "simulated": True}
     manifest_settings.update(settings or {})
     write_analysis_manifest(

@@ -35,6 +35,7 @@ Run
 ---
     PYTHONPATH=. python test/benchmarks/benchmark_chimol_frames.py
 """
+
 from __future__ import annotations
 
 import os
@@ -50,7 +51,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 REPRESENTATIONS = ("cartoon", "sticks", "spheres", "lines", "surface")
@@ -75,7 +80,8 @@ def scene_vertices(scene) -> tuple[int, int]:
         n_vertices += int(np.asarray(positions).reshape(-1, 3).shape[0])
         if geom.kind == "mesh":
             n_triangles += (
-                geom.indices.shape[0] if geom.indices is not None
+                geom.indices.shape[0]
+                if geom.indices is not None
                 else np.asarray(positions).shape[0] // 3
             )
     return n_vertices, n_triangles
@@ -87,10 +93,9 @@ def main() -> int:
 
     app = ensure_app()
 
-    from qtpy import QtCore
-
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.commands.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtCore
 
     window = MolViewPluginWindow()
     # Realised but never mapped: it gets a real GL context and draws exactly as
@@ -127,20 +132,21 @@ def main() -> int:
     def settle(rep: str) -> None:
         cmd.do(f"as {rep}")
         for _ in range(10):
-            app.processEvents()
+            app.processEvents()  # noqa: F821 -- closes over main()'s `app`; ruff is conservative because of the later `del app`
         frame_ms()  # absorb the upload the change just queued
 
     width, height = BENCH_SIZE
     print(f"{PDB.name}: one paintGL at {width}x{height}\n")
-    print(f"{'representation':<16}{'vertices':>10}{'triangles':>11}{'frame (ms)':>12}"
-          f"{'fps':>8}")
+    print(f"{'representation':<16}{'vertices':>10}{'triangles':>11}{'frame (ms)':>12}{'fps':>8}")
     print("-" * 57)
     for rep in REPRESENTATIONS:
         settle(rep)
         n_vertices, n_triangles = scene_vertices(viewer.get_current_scene())
         elapsed = frame_ms()
-        print(f"{rep:<16}{n_vertices:>10,}{n_triangles:>11,}{elapsed:>12.2f}"
-              f"{1000.0 / max(elapsed, 1e-9):>8.0f}")
+        print(
+            f"{rep:<16}{n_vertices:>10,}{n_triangles:>11,}{elapsed:>12.2f}"
+            f"{1000.0 / max(elapsed, 1e-9):>8.0f}"
+        )
 
     print("\nsame scene, more pixels -- flat means the frame is CPU-bound\n")
     print(f"{'representation':<16}" + "".join(f"{w}x{h}".rjust(12) for w, h in SCALES))
@@ -156,9 +162,11 @@ def main() -> int:
         window.resize(*BENCH_SIZE)
         print(f"{rep:<16}" + "".join(f"{ms:11.2f}ms" for ms in row))
 
-    print(f"\n{'':16}" + "".join(
-        f"{w * h / (SCALES[0][0] * SCALES[0][1]):11.0f}x" for w, h in SCALES
-    ) + "   <- pixels")
+    print(
+        f"\n{'':16}"
+        + "".join(f"{w * h / (SCALES[0][0] * SCALES[0][1]):11.0f}x" for w, h in SCALES)
+        + "   <- pixels"
+    )
 
     del app
     return 0

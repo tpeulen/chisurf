@@ -32,10 +32,10 @@ if TYPE_CHECKING:
 def register_services(
     dispatcher: Any,
     *,
-    mmfdb_db: "MMFDBClientBase | None" = None,
-    mmfdb_db_provider: "Callable[[], MMFDBClientBase | None] | None" = None,
-    mmfdb_session: "SessionContext | None" = None,
-    mmfdb_session_provider: "Callable[[], SessionContext | None] | None" = None,
+    mmfdb_db: MMFDBClientBase | None = None,
+    mmfdb_db_provider: Callable[[], MMFDBClientBase | None] | None = None,
+    mmfdb_session: SessionContext | None = None,
+    mmfdb_session_provider: Callable[[], SessionContext | None] | None = None,
 ) -> None:
     """Register Micro-time Shifter RPC handlers with a ServiceDispatcher.
 
@@ -100,8 +100,8 @@ def apply_handler(
     filetype: str | None = None,
     output_dir: str | None = None,
     mmfdb: dict[str, Any] | None = None,
-    mmfdb_db: "MMFDBClientBase | None" = None,
-    mmfdb_session: "SessionContext | None" = None,
+    mmfdb_db: MMFDBClientBase | None = None,
+    mmfdb_session: SessionContext | None = None,
 ) -> dict[str, Any]:
     """Apply micro-time shifts to TTTR files.
 
@@ -128,17 +128,19 @@ def apply_handler(
     """
     try:
         import os
-        import tempfile
         import shutil
+        import tempfile
 
-        request = shift_request_from_payload({
-            "files": files,
-            "global_shift": global_shift,
-            "channel_shifts": channel_shifts or {},
-            "filetype": filetype,
-            "output_dir": output_dir,
-            "mmfdb": mmfdb or {},
-        })
+        request = shift_request_from_payload(
+            {
+                "files": files,
+                "global_shift": global_shift,
+                "channel_shifts": channel_shifts or {},
+                "filetype": filetype,
+                "output_dir": output_dir,
+                "mmfdb": mmfdb or {},
+            }
+        )
         result = ShiftResult()
         norm_ch = {int(k): int(v) for k, v in (channel_shifts or {}).items()}
 
@@ -189,6 +191,7 @@ def apply_handler(
         return service_success(result)
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
+
         return service_error(str(exc), error_code=OPERATION_FAILED)
 
 
@@ -213,12 +216,13 @@ def load_metadata_handler(
         return service_success(metadata)
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
+
         return service_error(str(exc), error_code=OPERATION_FAILED)
 
 
 def identify_handler(
     path: str,
-    mmfdb_db: "MMFDBClientBase | None" = None,
+    mmfdb_db: MMFDBClientBase | None = None,
 ) -> dict[str, Any]:
     """Look up a file in the MMFDB object store.
 
@@ -239,29 +243,32 @@ def identify_handler(
         pipeline = MicrotimeShiftMMFDBPipeline(db=mmfdb_db)
         md5 = _file_md5(path)
         artifact_id = pipeline._find_raw_artifact_by_md5(md5)
-        return service_success({
-            "path": path,
-            "found": bool(artifact_id),
-            "artifact_id": artifact_id or "",
-            "md5": md5,
-        })
+        return service_success(
+            {
+                "path": path,
+                "found": bool(artifact_id),
+                "artifact_id": artifact_id or "",
+                "md5": md5,
+            }
+        )
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
+
         return service_error(str(exc), error_code=OPERATION_FAILED)
 
 
 def _provided_db(
-    db: "MMFDBClientBase | None",
-    provider: "Callable[[], MMFDBClientBase | None] | None",
-) -> "MMFDBClientBase | None":
+    db: MMFDBClientBase | None,
+    provider: Callable[[], MMFDBClientBase | None] | None,
+) -> MMFDBClientBase | None:
     """Resolve a request-scoped database supplied by the composition root."""
     return provider() if provider is not None else db
 
 
 def _provided_session(
-    session: "SessionContext | None",
-    provider: "Callable[[], SessionContext | None] | None",
-) -> "SessionContext | None":
+    session: SessionContext | None,
+    provider: Callable[[], SessionContext | None] | None,
+) -> SessionContext | None:
     """Resolve a request-scoped authenticated session."""
     return provider() if provider is not None else session
 
@@ -302,6 +309,7 @@ def histogram_handler(
         return service_success(histogram)
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
+
         return service_error(str(exc), error_code=OPERATION_FAILED)
 
 

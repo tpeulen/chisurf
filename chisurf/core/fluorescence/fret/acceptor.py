@@ -1,17 +1,17 @@
-"""
+""" """
 
-"""
 from __future__ import annotations
 
 import numpy as np
+
 import chisurf.core.fluorescence.tcspc.convolve
 
 
 def da_a0_to_ad(
-        times: np.array,
-        decay_da: np.array,
-        acceptor_lifetime_spectrum: np.array,
-        transfer_efficiency: float = 0.5
+    times: np.array,
+    decay_da: np.array,
+    acceptor_lifetime_spectrum: np.array,
+    transfer_efficiency: float = 0.5,
 ) -> np.array:
     """Convolves the donor decay in presence of FRET with the acceptor decay in the absence of FRET to yield the
      FRET-sensitized decay of the acceptor
@@ -45,24 +45,14 @@ def da_a0_to_ad(
 
     dt = times[1] - times[0]
     decay_ad = chisurf.core.fluorescence.tcspc.convolve.convolve_decay(
-        decay_curve=a0,
-        irf=decay_da,
-        start=0,
-        stop=decay_da.shape[0],
-        dt=dt
+        decay_curve=a0, irf=decay_da, start=0, stop=decay_da.shape[0], dt=dt
     )
-    ad = scale_acceptor(
-        donor=decay_da,
-        acceptor=decay_ad,
-        transfer_efficiency=transfer_efficiency
-    )
+    ad = scale_acceptor(donor=decay_da, acceptor=decay_ad, transfer_efficiency=transfer_efficiency)
     return ad
 
 
 def scale_acceptor(
-        donor: np.ndarray,
-        acceptor: np.ndarray,
-        transfer_efficiency: float
+    donor: np.ndarray, acceptor: np.ndarray, transfer_efficiency: float
 ) -> np.ndarray:
     """Computes a scaled the fluorescence decay of the acceptor that corresponds to the provided fluorescence decay of
     the donor and the transfer efficiency
@@ -88,5 +78,5 @@ def scale_acceptor(
     """
     s_d = np.sum(donor)
     s_a = np.sum(acceptor)
-    scaling_factor = s_d / s_a * (1.0 / transfer_efficiency - 1.0)**(-1.0)
+    scaling_factor = s_d / s_a * (1.0 / transfer_efficiency - 1.0) ** (-1.0)
     return acceptor * scaling_factor

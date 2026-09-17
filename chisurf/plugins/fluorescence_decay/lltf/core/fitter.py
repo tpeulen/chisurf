@@ -5,22 +5,22 @@ This module provides classes and functions for fitting fluorescence lifetime dat
 """
 
 from __future__ import annotations
-import typing
+
 import json
-import pathlib
 import random
+import typing
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
-from .convolve import convolve_lifetime_spectrum, add_pile_up_to_model
 from chisurf.core.fitting.minimizer import minimize
+
+from .convolve import add_pile_up_to_model, convolve_lifetime_spectrum
 from .scaling import scale_model_to_data
-from .settings import get_default_settings
 
 
-#@njit(nopython=True, nogil=True)
+# @njit(nopython=True, nogil=True)
 def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
     """
     Shift the IRF by a given number of channels.
@@ -63,10 +63,10 @@ def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
 
 
 def select_number_of_lifetimes(
-        scores: typing.Sequence[float],
-        probabilities: typing.Sequence[float],
-        prob_threshold: float = 0.95,
-        selection_mode: str = 'lower'
+    scores: typing.Sequence[float],
+    probabilities: typing.Sequence[float],
+    prob_threshold: float = 0.95,
+    selection_mode: str = "lower",
 ) -> int:
     """
     Select the model of a lifetime-count scan that the F-test supports.
@@ -100,7 +100,7 @@ def select_number_of_lifetimes(
     """
     n_models = min(len(scores), len(probabilities))
 
-    if selection_mode == 'upper':
+    if selection_mode == "upper":
         # Search from the highest number of lifetimes downwards
         for i in reversed(range(1, n_models)):
             if (probabilities[i] > prob_threshold) and (scores[i] < scores[i - 1]):
@@ -134,10 +134,10 @@ class Decay:
     """
 
     def __init__(
-            self,
-            decay: np.ndarray = None,
-            irf: np.ndarray = None,
-            time_axis: np.ndarray = None,
+        self,
+        decay: np.ndarray = None,
+        irf: np.ndarray = None,
+        time_axis: np.ndarray = None,
     ):
         self.decay = decay
         self._original_irf = irf
@@ -165,7 +165,6 @@ class Decay:
         self.rep_rate = 80.0  # MHz
         self.dead_time = 85.0  # ns
         self.measurement_time = 60.0  # seconds
-
 
     @property
     def channel_width(self) -> float:
@@ -201,7 +200,6 @@ class Decay:
 
         return _shift_irf_numba(self._original_irf, shift_ch)
 
-
     def set_analysis_range(self, start: int, stop: int):
         """
         Set the analysis range.
@@ -217,15 +215,15 @@ class Decay:
         self.stop = stop
 
     def get_analysis_range(
-            self,
-            count_threshold: float = 10.0,
-            area: float = 0.999,
-            start_at_peak: bool = True,
-            start_fraction: float = 0.1,
-            skip_first_channels: int = 0,
-            skip_last_channels: int = 0,
-            verbose: bool = True
-    ) -> typing.Tuple[int, int]:
+        self,
+        count_threshold: float = 10.0,
+        area: float = 0.999,
+        start_at_peak: bool = True,
+        start_fraction: float = 0.1,
+        skip_first_channels: int = 0,
+        skip_last_channels: int = 0,
+        verbose: bool = True,
+    ) -> tuple[int, int]:
         """
         Get the analysis range based on the decay data.
 
@@ -306,15 +304,14 @@ class Decay:
 
         if verbose:
             print(f"Analysis range: {self.start} to {self.stop}")
-            print(f"Time range: {self.time_axis[self.start]:.2f} to {self.time_axis[self.stop-1]:.2f}")
+            print(
+                f"Time range: {self.time_axis[self.start]:.2f} to {self.time_axis[self.stop - 1]:.2f}"
+            )
 
         return (self.start, self.stop)
 
     def estimate_background(
-            self,
-            irf_fwhm_range: typing.Tuple[int, int] = None,
-            average_window: int = 10,
-            verbose: bool = True
+        self, irf_fwhm_range: tuple[int, int] = None, average_window: int = 10, verbose: bool = True
     ) -> float:
         """
         Estimate the background level in the decay.
@@ -352,11 +349,11 @@ class Decay:
         return bg
 
     def estimate_irf_shift(
-            self,
-            irf_fwhm_range: typing.Tuple[int, int] = None,
-            irf_time_shift_scan_range: typing.Tuple[float, float] = (-8.0, 8.0),
-            irf_time_shift_scan_n_steps: int = 20,
-            verbose: bool = True
+        self,
+        irf_fwhm_range: tuple[int, int] = None,
+        irf_time_shift_scan_range: tuple[float, float] = (-8.0, 8.0),
+        irf_time_shift_scan_n_steps: int = 20,
+        verbose: bool = True,
     ) -> float:
         """
         Estimate the IRF shift by scanning a range of shifts and finding the one
@@ -383,9 +380,7 @@ class Decay:
 
         # Create a range of shifts to scan
         shifts = np.linspace(
-            irf_time_shift_scan_range[0],
-            irf_time_shift_scan_range[1],
-            irf_time_shift_scan_n_steps
+            irf_time_shift_scan_range[0], irf_time_shift_scan_range[1], irf_time_shift_scan_n_steps
         )
 
         # Initialize scores array
@@ -400,8 +395,10 @@ class Decay:
             self.calculate_model_decay()
 
             # Calculate chi-square
-            residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+            residuals = (
+                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+            )
+            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
 
             # Store score
@@ -437,17 +434,17 @@ class Decay:
             self.lifetime_spectrum,
             irf_with_background,
             convolution_stop=self.stop,
-            time_axis=self.time_axis
+            time_axis=self.time_axis,
         )
 
         # 2. Scaling - Scale model to data
-        scale = scale_model_to_data(
+        scale_model_to_data(
             model_decay=model,
             experimental_decay=self.decay,
             start=self.start,
             stop=self.stop,
             experimental_background=self.decay_background,
-            use_weights=True  # Use weights for better scaling
+            use_weights=True,  # Use weights for better scaling
         )
 
         # 3. Pile-up correction if enabled
@@ -458,7 +455,7 @@ class Decay:
                 rep_rate=self.rep_rate,
                 dead_time=self.dead_time,
                 measurement_time=self.measurement_time,
-                modify_inplace=True
+                modify_inplace=True,
             )
 
         # 4. Background - Add background
@@ -469,11 +466,7 @@ class Decay:
 
         self.model_decay = model
 
-    def objective_function(
-            self,
-            params: np.ndarray,
-            fixed: typing.List[bool] = None
-    ) -> np.ndarray:
+    def objective_function(self, params: np.ndarray, fixed: list[bool] = None) -> np.ndarray:
         """
         Objective function for fitting.
 
@@ -509,7 +502,7 @@ class Decay:
         # Normalize amplitudes to sum to 1
         amplitude_sum = np.sum(self.lifetime_spectrum[::2])
         if amplitude_sum != 0:
-           self.lifetime_spectrum[::2] /= amplitude_sum
+            self.lifetime_spectrum[::2] /= amplitude_sum
 
         # IRF shift
         if not fixed[param_idx]:
@@ -530,24 +523,24 @@ class Decay:
         self.calculate_model_decay()
 
         # Calculate weighted residuals
-        residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
         weighted_residuals = residuals * weights
 
         return weighted_residuals
 
     def find_optimal_lifetime_spectrum(
-            self,
-            maximum_number_of_lifetimes: int = 6,
-            prob_threshold: float = 0.95,
-            verbose: bool = False,
-            plot_probabilities: bool = True,
-            plot_weighted_residuals: bool = True,
-            min_lifetime: float = 0.5,
-            max_lifetime: float = 5.0,
-            selection_mode: str = 'lower',
-            save_intermediate_results: bool = True,
-            intermediate_results_base_filename: str = None
+        self,
+        maximum_number_of_lifetimes: int = 6,
+        prob_threshold: float = 0.95,
+        verbose: bool = False,
+        plot_probabilities: bool = True,
+        plot_weighted_residuals: bool = True,
+        min_lifetime: float = 0.5,
+        max_lifetime: float = 5.0,
+        selection_mode: str = "lower",
+        save_intermediate_results: bool = True,
+        intermediate_results_base_filename: str = None,
     ) -> dict:
         """
         Find the optimal number of fluorescence lifetimes.
@@ -585,10 +578,7 @@ class Decay:
             return {}
 
         # Store original parameters
-        original_lifetime_spectrum = self.lifetime_spectrum.copy()
-        original_irf_shift = self.irf_shift
-        original_irf_background = self.irf_background
-        original_decay_background = self.decay_background
+        self.lifetime_spectrum.copy()
 
         # Initialize arrays to store results
         n_lifetimes_tried = list(range(1, maximum_number_of_lifetimes + 1))
@@ -606,52 +596,56 @@ class Decay:
                 verbose=verbose,
                 randomize_initial_values=True,
                 min_lifetime=min_lifetime,
-                max_lifetime=max_lifetime
+                max_lifetime=max_lifetime,
             )
 
             # Store results
-            scores.append(self.fit_result['reduced_chi_square'])
-            best_params.append({
-                'lifetime_spectrum': self.lifetime_spectrum.copy(),
-                'irf_shift': self.irf_shift,
-                'irf_background': self.irf_background,
-                'decay_background': self.decay_background
-            })
+            scores.append(self.fit_result["reduced_chi_square"])
+            best_params.append(
+                {
+                    "lifetime_spectrum": self.lifetime_spectrum.copy(),
+                    "irf_shift": self.irf_shift,
+                    "irf_background": self.irf_background,
+                    "decay_background": self.decay_background,
+                }
+            )
 
             # Save intermediate results if requested
             if save_intermediate_results and intermediate_results_base_filename is not None:
                 # Create a temporary fit_result with the current parameters
                 temp_fit_result = {
-                    'n_lifetimes': n,
-                    'lifetime_spectrum': self.lifetime_spectrum.tolist(),
-                    'irf_shift': float(self.irf_shift),
-                    'irf_background': float(self.irf_background),
-                    'decay_background': float(self.decay_background),
-                    'chi_square': float(self.fit_result['chi_square']),
-                    'reduced_chi_square': float(self.fit_result['reduced_chi_square']),
-                    'dof': int(self.fit_result['dof']),
-                    'time_range': {
-                        'start': float(self.time_axis[self.start]),
-                        'stop': float(self.time_axis[self.stop-1]),
-                        'start_idx': int(self.start),
-                        'stop_idx': int(self.stop)
-                    }
+                    "n_lifetimes": n,
+                    "lifetime_spectrum": self.lifetime_spectrum.tolist(),
+                    "irf_shift": float(self.irf_shift),
+                    "irf_background": float(self.irf_background),
+                    "decay_background": float(self.decay_background),
+                    "chi_square": float(self.fit_result["chi_square"]),
+                    "reduced_chi_square": float(self.fit_result["reduced_chi_square"]),
+                    "dof": int(self.fit_result["dof"]),
+                    "time_range": {
+                        "start": float(self.time_axis[self.start]),
+                        "stop": float(self.time_axis[self.stop - 1]),
+                        "start_idx": int(self.start),
+                        "stop_idx": int(self.stop),
+                    },
                 }
 
                 # Extract lifetimes and amplitudes for easier access
                 lifetimes = []
                 for i in range(n):
-                    lifetimes.append({
-                        'amplitude': float(self.lifetime_spectrum[2*i]),
-                        'lifetime': float(self.lifetime_spectrum[2*i+1])
-                    })
-                temp_fit_result['lifetimes'] = lifetimes
+                    lifetimes.append(
+                        {
+                            "amplitude": float(self.lifetime_spectrum[2 * i]),
+                            "lifetime": float(self.lifetime_spectrum[2 * i + 1]),
+                        }
+                    )
+                temp_fit_result["lifetimes"] = lifetimes
 
                 # Create filename for this intermediate result
                 intermediate_filename = f"{intermediate_results_base_filename}_n{n}.json"
 
                 # Save to file
-                with open(intermediate_filename, 'w') as f:
+                with open(intermediate_filename, "w") as f:
                     f.write(json.dumps(temp_fit_result, indent=2))
 
                 if verbose:
@@ -671,9 +665,9 @@ class Decay:
             # df2 = number of data points - number of parameters in the more complex model
             # For a model with i lifetimes, we have 2*i + 3 parameters
             # (2 per lifetime + 3 additional: irf_shift, irf_background, decay_background)
-            df2 = (self.stop - self.start) - (2*n_lifetimes_tried[i] + 3)
+            df2 = (self.stop - self.start) - (2 * n_lifetimes_tried[i] + 3)
 
-            f_value = scores[i-1] / scores[i]
+            f_value = scores[i - 1] / scores[i]
             p = scipy.stats.f.cdf(f_value, df1, df2)
             probs.append(p)
 
@@ -684,10 +678,10 @@ class Decay:
 
         # Set the best parameters
         best_n_lifetimes = n_lifetimes_tried[best_idx]
-        self.lifetime_spectrum = best_params[best_idx]['lifetime_spectrum']
-        self.irf_shift = best_params[best_idx]['irf_shift']
-        self.irf_background = best_params[best_idx]['irf_background']
-        self.decay_background = best_params[best_idx]['decay_background']
+        self.lifetime_spectrum = best_params[best_idx]["lifetime_spectrum"]
+        self.irf_shift = best_params[best_idx]["irf_shift"]
+        self.irf_background = best_params[best_idx]["irf_background"]
+        self.decay_background = best_params[best_idx]["decay_background"]
 
         # Calculate model decay with the best parameters
         self.calculate_model_decay()
@@ -695,16 +689,25 @@ class Decay:
         if verbose:
             print(f"Best number of lifetimes: {best_n_lifetimes}")
             for i in range(best_n_lifetimes):
-                print(f"Lifetime {i+1}: {self.lifetime_spectrum[2*i+1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2*i]:.3f}")
+                print(
+                    f"Lifetime {i + 1}: {self.lifetime_spectrum[2 * i + 1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2 * i]:.3f}"
+                )
 
         # Plot probabilities if requested
         if plot_probabilities:
             plt.figure(figsize=(10, 6))
             plt.bar(n_lifetimes_tried, probs, alpha=0.7)
-            plt.axhline(y=prob_threshold, color='r', linestyle='--', label=f'Threshold ({prob_threshold})')
-            plt.axvline(x=best_n_lifetimes, color='g', linestyle='--', label=f'Selected ({best_n_lifetimes})')
-            plt.xlabel('Number of Lifetimes')
-            plt.ylabel('Probability')
+            plt.axhline(
+                y=prob_threshold, color="r", linestyle="--", label=f"Threshold ({prob_threshold})"
+            )
+            plt.axvline(
+                x=best_n_lifetimes,
+                color="g",
+                linestyle="--",
+                label=f"Selected ({best_n_lifetimes})",
+            )
+            plt.xlabel("Number of Lifetimes")
+            plt.ylabel("Probability")
             plt.grid(True)
             plt.legend()
             plt.tight_layout()
@@ -715,28 +718,30 @@ class Decay:
             plt.figure(figsize=(12, 8))
             for i, n in enumerate(n_lifetimes_tried):
                 # Set parameters
-                self.lifetime_spectrum = best_params[i]['lifetime_spectrum']
-                self.irf_shift = best_params[i]['irf_shift']
-                self.irf_background = best_params[i]['irf_background']
-                self.decay_background = best_params[i]['decay_background']
+                self.lifetime_spectrum = best_params[i]["lifetime_spectrum"]
+                self.irf_shift = best_params[i]["irf_shift"]
+                self.irf_background = best_params[i]["irf_background"]
+                self.decay_background = best_params[i]["decay_background"]
 
                 # Calculate model decay
                 self.calculate_model_decay()
 
                 # Calculate weighted residuals
-                residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-                weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+                residuals = (
+                    self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+                )
+                weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
                 weighted_residuals = residuals * weights
 
                 # Plot
                 plt.subplot(len(n_lifetimes_tried), 1, i + 1)
-                plt.plot(self.time_axis[self.start:self.stop], weighted_residuals)
-                plt.ylabel(f'n={n}')
+                plt.plot(self.time_axis[self.start : self.stop], weighted_residuals)
+                plt.ylabel(f"n={n}")
                 plt.grid(True)
                 if i == 0:
-                    plt.title('Weighted Residuals')
+                    plt.title("Weighted Residuals")
                 if i == len(n_lifetimes_tried) - 1:
-                    plt.xlabel('Time (ns)')
+                    plt.xlabel("Time (ns)")
 
             plt.tight_layout()
             plt.show()
@@ -745,37 +750,37 @@ class Decay:
         self.plot_decay_curve(best_n_lifetimes)
 
         # Restore the best parameters
-        self.lifetime_spectrum = best_params[best_idx]['lifetime_spectrum']
-        self.irf_shift = best_params[best_idx]['irf_shift']
-        self.irf_background = best_params[best_idx]['irf_background']
-        self.decay_background = best_params[best_idx]['decay_background']
+        self.lifetime_spectrum = best_params[best_idx]["lifetime_spectrum"]
+        self.irf_shift = best_params[best_idx]["irf_shift"]
+        self.irf_background = best_params[best_idx]["irf_background"]
+        self.decay_background = best_params[best_idx]["decay_background"]
         self.calculate_model_decay()
 
         return {
-            'best_number_of_lifetimes': best_n_lifetimes,
-            'n_lifetimes': n_lifetimes_tried,
-            'scores': scores,
-            'probabilities': probs,
-            'best_idx': best_idx
+            "best_number_of_lifetimes": best_n_lifetimes,
+            "n_lifetimes": n_lifetimes_tried,
+            "scores": scores,
+            "probabilities": probs,
+            "best_idx": best_idx,
         }
 
     def fit(
-            self,
-            n_lifetimes: int = 1,
-            fixed: typing.List[bool] = None,
-            verbose: bool = False,
-            randomize_initial_values: bool = False,
-            min_lifetime: float = 0.5,
-            max_lifetime: float = 5.0,
-            amplitude_variation: float = 0.5,
-            find_optimal: bool = False,
-            maximum_number_of_lifetimes: int = 6,
-            prob_threshold: float = 0.95,
-            plot_probabilities: bool = True,
-            plot_weighted_residuals: bool = True,
-            selection_mode: str = 'lower',
-            save_intermediate_results: bool = True,
-            intermediate_results_base_filename: str = None
+        self,
+        n_lifetimes: int = 1,
+        fixed: list[bool] = None,
+        verbose: bool = False,
+        randomize_initial_values: bool = False,
+        min_lifetime: float = 0.5,
+        max_lifetime: float = 5.0,
+        amplitude_variation: float = 0.5,
+        find_optimal: bool = False,
+        maximum_number_of_lifetimes: int = 6,
+        prob_threshold: float = 0.95,
+        plot_probabilities: bool = True,
+        plot_weighted_residuals: bool = True,
+        selection_mode: str = "lower",
+        save_intermediate_results: bool = True,
+        intermediate_results_base_filename: str = None,
     ) -> dict:
         """
         Fit the decay data.
@@ -838,43 +843,47 @@ class Decay:
                 max_lifetime=max_lifetime,
                 selection_mode=selection_mode,
                 save_intermediate_results=save_intermediate_results,
-                intermediate_results_base_filename=intermediate_results_base_filename
+                intermediate_results_base_filename=intermediate_results_base_filename,
             )
 
             # Update n_lifetimes with the best number found
-            n_lifetimes = optimal_result['best_number_of_lifetimes']
+            n_lifetimes = optimal_result["best_number_of_lifetimes"]
 
             if verbose:
                 print(f"Optimal number of lifetimes found: {n_lifetimes}")
 
             # Calculate chi-square and other metrics for the final result
-            residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+            residuals = (
+                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+            )
+            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
             dof = len(residuals) - (2 * n_lifetimes + 3) + sum(fixed) if fixed else 0
             reduced_chi_square = chi_square / max(1, dof)
 
             # Store fit results
             self.fit_result = {
-                'n_lifetimes': n_lifetimes,
-                'lifetime_spectrum': self.lifetime_spectrum.tolist(),
-                'irf_shift': float(self.irf_shift),
-                'irf_background': float(self.irf_background),
-                'decay_background': float(self.decay_background),
-                'chi_square': float(chi_square),
-                'reduced_chi_square': float(reduced_chi_square),
-                'dof': int(dof),
-                'optimal_fitting': {
-                    'scores': optimal_result['scores'],
-                    'probabilities': optimal_result['probabilities'],
-                    'n_lifetimes_tried': optimal_result['n_lifetimes']
-                }
+                "n_lifetimes": n_lifetimes,
+                "lifetime_spectrum": self.lifetime_spectrum.tolist(),
+                "irf_shift": float(self.irf_shift),
+                "irf_background": float(self.irf_background),
+                "decay_background": float(self.decay_background),
+                "chi_square": float(chi_square),
+                "reduced_chi_square": float(reduced_chi_square),
+                "dof": int(dof),
+                "optimal_fitting": {
+                    "scores": optimal_result["scores"],
+                    "probabilities": optimal_result["probabilities"],
+                    "n_lifetimes_tried": optimal_result["n_lifetimes"],
+                },
             }
 
             if verbose:
                 print("Fit results:")
                 for i in range(n_lifetimes):
-                    print(f"Lifetime {i+1}: {self.lifetime_spectrum[2*i+1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2*i]:.3f}")
+                    print(
+                        f"Lifetime {i + 1}: {self.lifetime_spectrum[2 * i + 1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2 * i]:.3f}"
+                    )
                 print(f"IRF shift: {self.irf_shift:.3f} ns")
                 print(f"IRF background: {self.irf_background:.2f}")
                 print(f"Decay background: {self.decay_background:.2f}")
@@ -916,7 +925,9 @@ class Decay:
             if verbose:
                 print("Randomized initial values:")
                 for i in range(n_lifetimes):
-                    print(f"  Lifetime {i+1}: {self.lifetime_spectrum[2*i+1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2*i]:.3f}")
+                    print(
+                        f"  Lifetime {i + 1}: {self.lifetime_spectrum[2 * i + 1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2 * i]:.3f}"
+                    )
         else:
             # Use deterministic initialization
             for i in range(n_lifetimes):
@@ -979,7 +990,7 @@ class Decay:
             maxfev=0,
             epsfcn=0.0,
             factor=1000,
-            diag=None
+            diag=None,
         )
 
         # Extract parameters
@@ -1022,28 +1033,30 @@ class Decay:
         self.calculate_model_decay()
 
         # Calculate chi-square
-        residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
         chi_square = np.sum((residuals * weights) ** 2)
         dof = len(residuals) - len(params) + sum(fixed)
         reduced_chi_square = chi_square / dof
 
         # Store fit results
         self.fit_result = {
-            'n_lifetimes': n_lifetimes,
-            'lifetime_spectrum': self.lifetime_spectrum.tolist(),
-            'irf_shift': float(self.irf_shift),
-            'irf_background': float(self.irf_background),
-            'decay_background': float(self.decay_background),
-            'chi_square': float(chi_square),
-            'reduced_chi_square': float(reduced_chi_square),
-            'dof': int(dof)
+            "n_lifetimes": n_lifetimes,
+            "lifetime_spectrum": self.lifetime_spectrum.tolist(),
+            "irf_shift": float(self.irf_shift),
+            "irf_background": float(self.irf_background),
+            "decay_background": float(self.decay_background),
+            "chi_square": float(chi_square),
+            "reduced_chi_square": float(reduced_chi_square),
+            "dof": int(dof),
         }
 
         if verbose:
             print("Fit results:")
             for i in range(n_lifetimes):
-                print(f"Lifetime {i+1}: {self.lifetime_spectrum[2*i+1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2*i]:.3f}")
+                print(
+                    f"Lifetime {i + 1}: {self.lifetime_spectrum[2 * i + 1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2 * i]:.3f}"
+                )
             print(f"IRF shift: {self.irf_shift:.3f} ns")
             print(f"IRF background: {self.irf_background:.2f}")
             print(f"Decay background: {self.decay_background:.2f}")
@@ -1070,25 +1083,29 @@ class Decay:
         # Plot decay and model
         plt.subplot(211)
         # Plot full data for context
-        plt.semilogy(self.time_axis, self.decay, 'b-', label='Data')
+        plt.semilogy(self.time_axis, self.decay, "b-", label="Data")
 
         if self.model_decay is not None:
             # Plot model only for fit range
-            plt.semilogy(self.time_axis[self.start:self.stop], self.model_decay[self.start:self.stop], 
-                         'r-', label='Fit')
+            plt.semilogy(
+                self.time_axis[self.start : self.stop],
+                self.model_decay[self.start : self.stop],
+                "r-",
+                label="Fit",
+            )
 
         if self.irf is not None:
             # Scale IRF to the maximum of the decay data in the fit range
-            max_decay_in_range = np.max(self.decay[self.start:self.stop])
+            max_decay_in_range = np.max(self.decay[self.start : self.stop])
             max_irf = np.max(self.irf)
-            plt.semilogy(self.time_axis, self.irf * max_decay_in_range / max_irf, 'g-', label='IRF')
+            plt.semilogy(self.time_axis, self.irf * max_decay_in_range / max_irf, "g-", label="IRF")
 
         # Add vertical lines for analysis range
-        plt.axvline(x=self.time_axis[self.start], color='k', linestyle='--', alpha=0.5)
-        plt.axvline(x=self.time_axis[self.stop-1], color='k', linestyle='--', alpha=0.5)
+        plt.axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
+        plt.axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
 
-        plt.xlabel('Time (ns)')
-        plt.ylabel('Counts')
+        plt.xlabel("Time (ns)")
+        plt.ylabel("Counts")
         plt.legend()
         plt.grid(True)
 
@@ -1096,26 +1113,28 @@ class Decay:
         if self.model_decay is not None:
             plt.subplot(212)
             # Calculate residuals only for fit range
-            residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+            residuals = (
+                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+            )
+            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             weighted_residuals = residuals * weights
 
             # Plot residuals only for fit range
-            plt.plot(self.time_axis[self.start:self.stop], weighted_residuals, 'b-')
-            plt.axhline(y=0, color='k', linestyle='-', alpha=0.5)
+            plt.plot(self.time_axis[self.start : self.stop], weighted_residuals, "b-")
+            plt.axhline(y=0, color="k", linestyle="-", alpha=0.5)
 
             # Add vertical lines for analysis range
-            plt.axvline(x=self.time_axis[self.start], color='k', linestyle='--', alpha=0.5)
-            plt.axvline(x=self.time_axis[self.stop-1], color='k', linestyle='--', alpha=0.5)
+            plt.axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
+            plt.axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
 
-            plt.xlabel('Time (ns)')
-            plt.ylabel('Weighted Residuals')
+            plt.xlabel("Time (ns)")
+            plt.ylabel("Weighted Residuals")
             plt.grid(True)
 
         plt.tight_layout()
 
         # Save to file
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.savefig(filename, dpi=300, bbox_inches="tight")
         plt.close()
 
     def plot_decay_curve(self, n_lifetimes: int = None):
@@ -1131,19 +1150,19 @@ class Decay:
             return
 
         if n_lifetimes is None and self.fit_result is not None:
-            n_lifetimes = self.fit_result.get('n_lifetimes', 1)
+            n_lifetimes = self.fit_result.get("n_lifetimes", 1)
 
         # Create figure with two subplots
         fig, ax = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
         # Plot weighted residuals in the top subplot
-        residuals = self.decay[self.start:self.stop] - self.model_decay[self.start:self.stop]
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start:self.stop], 1.0))
+        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
         weighted_residuals = residuals * weights
 
-        ax[0].plot(self.time_axis[self.start:self.stop], weighted_residuals, 'b-')
-        ax[0].axhline(y=0, color='k', linestyle='-', alpha=0.5)
-        ax[0].set_ylabel('Weighted Residuals')
+        ax[0].plot(self.time_axis[self.start : self.stop], weighted_residuals, "b-")
+        ax[0].axhline(y=0, color="k", linestyle="-", alpha=0.5)
+        ax[0].set_ylabel("Weighted Residuals")
         ax[0].grid(True)
 
         # Calculate chi-square
@@ -1154,30 +1173,43 @@ class Decay:
         # Add chi-square information to the plot
         info_text = f"Chi² = {reduced_chi_square:.3f}\n"
         for i in range(n_lifetimes):
-            info_text += f"τ{i+1} = {self.lifetime_spectrum[2*i+1]:.3f} ns, A{i+1} = {self.lifetime_spectrum[2*i]:.3f}\n"
+            info_text += f"τ{i + 1} = {self.lifetime_spectrum[2 * i + 1]:.3f} ns, A{i + 1} = {self.lifetime_spectrum[2 * i]:.3f}\n"
 
         # Add text box with fit information
-        props = dict(boxstyle='round', facecolor='white', alpha=0.7)
-        ax[0].text(0.02, 0.98, info_text, transform=ax[0].transAxes, 
-                 verticalalignment='top', bbox=props, fontsize=9)
+        props = dict(boxstyle="round", facecolor="white", alpha=0.7)
+        ax[0].text(
+            0.02,
+            0.98,
+            info_text,
+            transform=ax[0].transAxes,
+            verticalalignment="top",
+            bbox=props,
+            fontsize=9,
+        )
 
         # Plot decay data, model, and IRF in the bottom subplot (log scale)
-        ax[1].semilogy(self.time_axis, self.decay, 'b-', label='Data')
-        ax[1].semilogy(self.time_axis[self.start:self.stop], self.model_decay[self.start:self.stop], 
-                     'r-', label='Fit')
+        ax[1].semilogy(self.time_axis, self.decay, "b-", label="Data")
+        ax[1].semilogy(
+            self.time_axis[self.start : self.stop],
+            self.model_decay[self.start : self.stop],
+            "r-",
+            label="Fit",
+        )
 
         # Scale IRF to the maximum of the decay data in the fit range
         if self.irf is not None:
-            max_decay_in_range = np.max(self.decay[self.start:self.stop])
+            max_decay_in_range = np.max(self.decay[self.start : self.stop])
             max_irf = np.max(self.irf)
-            ax[1].semilogy(self.time_axis, self.irf * max_decay_in_range / max_irf, 'g-', label='IRF')
+            ax[1].semilogy(
+                self.time_axis, self.irf * max_decay_in_range / max_irf, "g-", label="IRF"
+            )
 
         # Add vertical lines for analysis range
-        ax[1].axvline(x=self.time_axis[self.start], color='k', linestyle='--', alpha=0.5)
-        ax[1].axvline(x=self.time_axis[self.stop-1], color='k', linestyle='--', alpha=0.5)
+        ax[1].axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
+        ax[1].axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
 
-        ax[1].set_xlabel('Time (ns)')
-        ax[1].set_ylabel('Counts')
+        ax[1].set_xlabel("Time (ns)")
+        ax[1].set_ylabel("Counts")
         ax[1].legend()
         ax[1].grid(True)
 
@@ -1205,29 +1237,31 @@ class Decay:
         result = self.fit_result.copy()
 
         # Add additional information
-        result['time_range'] = {
-            'start': float(self.time_axis[self.start]),
-            'stop': float(self.time_axis[self.stop-1]),
-            'start_idx': int(self.start),
-            'stop_idx': int(self.stop)
+        result["time_range"] = {
+            "start": float(self.time_axis[self.start]),
+            "stop": float(self.time_axis[self.stop - 1]),
+            "start_idx": int(self.start),
+            "stop_idx": int(self.stop),
         }
 
         # Extract lifetimes and amplitudes for easier access
-        n_lifetimes = result['n_lifetimes']
+        n_lifetimes = result["n_lifetimes"]
         lifetimes = []
         for i in range(n_lifetimes):
-            lifetimes.append({
-                'amplitude': float(self.lifetime_spectrum[2*i]),
-                'lifetime': float(self.lifetime_spectrum[2*i+1])
-            })
-        result['lifetimes'] = lifetimes
+            lifetimes.append(
+                {
+                    "amplitude": float(self.lifetime_spectrum[2 * i]),
+                    "lifetime": float(self.lifetime_spectrum[2 * i + 1]),
+                }
+            )
+        result["lifetimes"] = lifetimes
 
         # Add model decay between start and stop
-        if hasattr(self, 'model_decay') and self.model_decay is not None:
+        if hasattr(self, "model_decay") and self.model_decay is not None:
             # Include time axis and model decay between start and stop
-            result['model'] = {
-                'time': [float(t) for t in self.time_axis[self.start:self.stop]],
-                'decay': [float(d) for d in self.model_decay[self.start:self.stop]]
+            result["model"] = {
+                "time": [float(t) for t in self.time_axis[self.start : self.stop]],
+                "decay": [float(d) for d in self.model_decay[self.start : self.stop]],
             }
 
         # Convert to JSON
@@ -1235,26 +1269,26 @@ class Decay:
 
         # Save to file
         if filename is not None:
-            with open(filename, 'w') as f:
+            with open(filename, "w") as f:
                 f.write(json_str)
 
         return json_str
 
 
 def fit_lifetime(
-        decay_file: str,
-        irf_file: str,
-        n_lifetimes: int = 1,
-        skiprows: int = 0,
-        delimiter: str = None,
-        time_column: int = 0,
-        counts_column: int = 1,
-        output_file: str = None,
-        plot_file: str = None,
-        verbose: bool = False,
-        config: dict = None,
-        save_intermediate_results: bool = True,
-        intermediate_results_base_filename: str = None
+    decay_file: str,
+    irf_file: str,
+    n_lifetimes: int = 1,
+    skiprows: int = 0,
+    delimiter: str = None,
+    time_column: int = 0,
+    counts_column: int = 1,
+    output_file: str = None,
+    plot_file: str = None,
+    verbose: bool = False,
+    config: dict = None,
+    save_intermediate_results: bool = True,
+    intermediate_results_base_filename: str = None,
 ) -> dict:
     """
     Fit a lifetime to decay data.
@@ -1307,95 +1341,96 @@ def fit_lifetime(
         if config is None:
             # Default configuration
             config = {
-                'verbose': verbose,
-                'estimate_background_parameter': {
-                    'enabled': True,
-                    'initial_irf_background': 0.0,
-                    'fit_irf_background': True,
-                    'average_window': 10
+                "verbose": verbose,
+                "estimate_background_parameter": {
+                    "enabled": True,
+                    "initial_irf_background": 0.0,
+                    "fit_irf_background": True,
+                    "average_window": 10,
                 },
-                'analysis_range_parameter': {
-                    'count_threshold': 10.0,
-                    'area': 0.999,
-                    'start_at_peak': False,
-                    'start_fraction': 0.1,
-                    'skip_first_channels': 0,
-                    'skip_last_channels': 0
+                "analysis_range_parameter": {
+                    "count_threshold": 10.0,
+                    "area": 0.999,
+                    "start_at_peak": False,
+                    "start_fraction": 0.1,
+                    "skip_first_channels": 0,
+                    "skip_last_channels": 0,
                 },
-                'estimate_irf_shift_parameters': {
-                    'enabled': True,
-                    'apply_shift': True,
-                    'irf_time_shift_scan_range': (-8.0, 8.0),
-                    'irf_time_shift_scan_n_steps': 20
+                "estimate_irf_shift_parameters": {
+                    "enabled": True,
+                    "apply_shift": True,
+                    "irf_time_shift_scan_range": (-8.0, 8.0),
+                    "irf_time_shift_scan_n_steps": 20,
                 },
-                'lifetime_fit_parameter': {
-                    'find_optimal': False,
-                    'maximum_number_of_lifetimes': 6,
-                    'prob_threshold': 0.68,
-                    'selection_mode': 'lower',
-                    'plot_probabilities': True,
-                    'plot_weighted_residuals': True,
-                    'randomize_initial_values': {
-                        'enabled': False,
-                        'min_lifetime': 0.5,
-                        'max_lifetime': 5.0,
-                        'amplitude_variation': 0.5
-                    }
+                "lifetime_fit_parameter": {
+                    "find_optimal": False,
+                    "maximum_number_of_lifetimes": 6,
+                    "prob_threshold": 0.68,
+                    "selection_mode": "lower",
+                    "plot_probabilities": True,
+                    "plot_weighted_residuals": True,
+                    "randomize_initial_values": {
+                        "enabled": False,
+                        "min_lifetime": 0.5,
+                        "max_lifetime": 5.0,
+                        "amplitude_variation": 0.5,
+                    },
                 },
-                'pile_up_correction': {
-                    'enabled': False,
-                    'rep_rate': 80.0,
-                    'dead_time': 85.0,
-                    'measurement_time': 60.0
+                "pile_up_correction": {
+                    "enabled": False,
+                    "rep_rate": 80.0,
+                    "dead_time": 85.0,
+                    "measurement_time": 60.0,
                 },
-                'plot_resulting_fit': True
+                "plot_resulting_fit": True,
             }
         else:
             # Merge provided configuration with default settings
             default_config = {
-                'verbose': verbose,
-                'estimate_background_parameter': {
-                    'enabled': True,
-                    'initial_irf_background': 0.0,
-                    'fit_irf_background': True,
-                    'average_window': 10
+                "verbose": verbose,
+                "estimate_background_parameter": {
+                    "enabled": True,
+                    "initial_irf_background": 0.0,
+                    "fit_irf_background": True,
+                    "average_window": 10,
                 },
-                'analysis_range_parameter': {
-                    'count_threshold': 10.0,
-                    'area': 0.999,
-                    'start_at_peak': False,
-                    'start_fraction': 0.1,
-                    'skip_first_channels': 0,
-                    'skip_last_channels': 0
+                "analysis_range_parameter": {
+                    "count_threshold": 10.0,
+                    "area": 0.999,
+                    "start_at_peak": False,
+                    "start_fraction": 0.1,
+                    "skip_first_channels": 0,
+                    "skip_last_channels": 0,
                 },
-                'estimate_irf_shift_parameters': {
-                    'enabled': True,
-                    'apply_shift': True,
-                    'irf_time_shift_scan_range': (-8.0, 8.0),
-                    'irf_time_shift_scan_n_steps': 20
+                "estimate_irf_shift_parameters": {
+                    "enabled": True,
+                    "apply_shift": True,
+                    "irf_time_shift_scan_range": (-8.0, 8.0),
+                    "irf_time_shift_scan_n_steps": 20,
                 },
-                'lifetime_fit_parameter': {
-                    'find_optimal': False,
-                    'maximum_number_of_lifetimes': 6,
-                    'prob_threshold': 0.68,
-                    'selection_mode': 'lower',
-                    'plot_probabilities': True,
-                    'plot_weighted_residuals': True,
-                    'randomize_initial_values': {
-                        'enabled': False,
-                        'min_lifetime': 0.5,
-                        'max_lifetime': 5.0,
-                        'amplitude_variation': 0.5
-                    }
+                "lifetime_fit_parameter": {
+                    "find_optimal": False,
+                    "maximum_number_of_lifetimes": 6,
+                    "prob_threshold": 0.68,
+                    "selection_mode": "lower",
+                    "plot_probabilities": True,
+                    "plot_weighted_residuals": True,
+                    "randomize_initial_values": {
+                        "enabled": False,
+                        "min_lifetime": 0.5,
+                        "max_lifetime": 5.0,
+                        "amplitude_variation": 0.5,
+                    },
                 },
-                'pile_up_correction': {
-                    'enabled': False,
-                    'rep_rate': 80.0,
-                    'dead_time': 85.0,
-                    'measurement_time': 60.0
+                "pile_up_correction": {
+                    "enabled": False,
+                    "rep_rate": 80.0,
+                    "dead_time": 85.0,
+                    "measurement_time": 60.0,
                 },
-                'plot_resulting_fit': True
+                "plot_resulting_fit": True,
             }
+
             # Update default config with provided config (provided config takes precedence)
             def update_dict(d, u):
                 for k, v in u.items():
@@ -1403,12 +1438,13 @@ def fit_lifetime(
                         update_dict(d[k], v)
                     else:
                         d[k] = v
+
             update_dict(default_config, config)
             config = default_config
 
         # Override verbose with the value from the configuration if provided
-        if 'verbose' in config:
-            verbose = config['verbose']
+        if "verbose" in config:
+            verbose = config["verbose"]
 
         # Load decay data
         if verbose:
@@ -1419,7 +1455,7 @@ def fit_lifetime(
                 decay_file,
                 delimiter=delimiter,
                 skip_header=skiprows,
-                usecols=[time_column, counts_column]
+                usecols=[time_column, counts_column],
             )
         except FileNotFoundError:
             raise FileNotFoundError(f"Decay file not found: {decay_file}")
@@ -1441,7 +1477,7 @@ def fit_lifetime(
                 irf_file,
                 delimiter=delimiter,
                 skip_header=skiprows,
-                usecols=[time_column, counts_column]
+                usecols=[time_column, counts_column],
             )
         except FileNotFoundError:
             raise FileNotFoundError(f"IRF file not found: {irf_file}")
@@ -1457,68 +1493,71 @@ def fit_lifetime(
         decay_obj = Decay(decay=decay, irf=irf, time_axis=time_axis)
 
         # Set pile-up correction parameters
-        pile_up_params = config.get('pile_up_correction', {})
-        decay_obj.correct_pile_up = pile_up_params.get('enabled', False)
-        decay_obj.rep_rate = pile_up_params.get('rep_rate', 80.0)
-        decay_obj.dead_time = pile_up_params.get('dead_time', 85.0)
-        decay_obj.measurement_time = pile_up_params.get('measurement_time', 60.0)
+        pile_up_params = config.get("pile_up_correction", {})
+        decay_obj.correct_pile_up = pile_up_params.get("enabled", False)
+        decay_obj.rep_rate = pile_up_params.get("rep_rate", 80.0)
+        decay_obj.dead_time = pile_up_params.get("dead_time", 85.0)
+        decay_obj.measurement_time = pile_up_params.get("measurement_time", 60.0)
 
         # Set initial IRF background from configuration
-        bg_params = config.get('estimate_background_parameter', {})
-        decay_obj.irf_background = bg_params.get('initial_irf_background', 0.0)
+        bg_params = config.get("estimate_background_parameter", {})
+        decay_obj.irf_background = bg_params.get("initial_irf_background", 0.0)
 
         # Set analysis range
-        analysis_range_params = config.get('analysis_range_parameter', {})
+        analysis_range_params = config.get("analysis_range_parameter", {})
         decay_obj.get_analysis_range(
-            count_threshold=analysis_range_params.get('count_threshold', 10.0),
-            area=analysis_range_params.get('area', 0.999),
-            start_at_peak=analysis_range_params.get('start_at_peak', False),
-            start_fraction=analysis_range_params.get('start_fraction', 0.1),
-            skip_first_channels=analysis_range_params.get('skip_first_channels', 0),
-            skip_last_channels=analysis_range_params.get('skip_last_channels', 0),
-            verbose=verbose
+            count_threshold=analysis_range_params.get("count_threshold", 10.0),
+            area=analysis_range_params.get("area", 0.999),
+            start_at_peak=analysis_range_params.get("start_at_peak", False),
+            start_fraction=analysis_range_params.get("start_fraction", 0.1),
+            skip_first_channels=analysis_range_params.get("skip_first_channels", 0),
+            skip_last_channels=analysis_range_params.get("skip_last_channels", 0),
+            verbose=verbose,
         )
 
         # Estimate background
-        if bg_params.get('enabled', True):
+        if bg_params.get("enabled", True):
             decay_obj.estimate_background(
-                average_window=bg_params.get('average_window', 10),
-                verbose=verbose
+                average_window=bg_params.get("average_window", 10), verbose=verbose
             )
         elif verbose:
             print("Background estimation disabled")
 
         # Get IRF shift parameters
-        irf_shift_params = config.get('estimate_irf_shift_parameters', {})
+        irf_shift_params = config.get("estimate_irf_shift_parameters", {})
 
         # Set whether to apply IRF shift
-        decay_obj.apply_irf_shift = irf_shift_params.get('apply_shift', True)
+        decay_obj.apply_irf_shift = irf_shift_params.get("apply_shift", True)
         if not decay_obj.apply_irf_shift and verbose:
             print("IRF shift application disabled, using original IRF")
 
         # Estimate IRF shift if enabled
-        if irf_shift_params.get('enabled', True):
+        if irf_shift_params.get("enabled", True):
             decay_obj.estimate_irf_shift(
-                irf_time_shift_scan_range=irf_shift_params.get('irf_time_shift_scan_range', (-8.0, 8.0)),
-                irf_time_shift_scan_n_steps=irf_shift_params.get('irf_time_shift_scan_n_steps', 20),
-                verbose=verbose
+                irf_time_shift_scan_range=irf_shift_params.get(
+                    "irf_time_shift_scan_range", (-8.0, 8.0)
+                ),
+                irf_time_shift_scan_n_steps=irf_shift_params.get("irf_time_shift_scan_n_steps", 20),
+                verbose=verbose,
             )
         elif verbose:
             print("IRF shift estimation disabled")
 
         # Get fitting parameters
-        fit_params = config.get('lifetime_fit_parameter', {})
+        fit_params = config.get("lifetime_fit_parameter", {})
 
         # Check if we should find the optimal number of lifetimes
-        find_optimal = fit_params.get('find_optimal', False)
+        find_optimal = fit_params.get("find_optimal", False)
         if find_optimal and verbose:
-            print(f"Finding optimal number of lifetimes (max={fit_params.get('maximum_number_of_lifetimes', 6)})")
+            print(
+                f"Finding optimal number of lifetimes (max={fit_params.get('maximum_number_of_lifetimes', 6)})"
+            )
         elif verbose:
             # CLI parameter should always override the default lifetime settings
             print(f"Using n_lifetimes={n_lifetimes} from CLI parameter")
 
         # Get randomization parameters
-        randomize_params = fit_params.get('randomize_initial_values', {})
+        randomize_params = fit_params.get("randomize_initial_values", {})
 
         # Create fixed parameters list
         # For n_lifetimes, we have 2*n_lifetimes parameters for the lifetime spectrum
@@ -1526,7 +1565,7 @@ def fit_lifetime(
         fixed = [False] * (2 * n_lifetimes + 3)
 
         # Set IRF background to fixed if not fitting
-        if not bg_params.get('fit_irf_background', True):
+        if not bg_params.get("fit_irf_background", True):
             # IRF background is the second-to-last parameter
             fixed[-2] = True
             if verbose:
@@ -1537,18 +1576,18 @@ def fit_lifetime(
             n_lifetimes=n_lifetimes,
             fixed=fixed,
             verbose=verbose,
-            randomize_initial_values=randomize_params.get('enabled', False),
-            min_lifetime=randomize_params.get('min_lifetime', 0.5),
-            max_lifetime=randomize_params.get('max_lifetime', 5.0),
-            amplitude_variation=randomize_params.get('amplitude_variation', 0.5),
+            randomize_initial_values=randomize_params.get("enabled", False),
+            min_lifetime=randomize_params.get("min_lifetime", 0.5),
+            max_lifetime=randomize_params.get("max_lifetime", 5.0),
+            amplitude_variation=randomize_params.get("amplitude_variation", 0.5),
             find_optimal=find_optimal,
-            maximum_number_of_lifetimes=fit_params.get('maximum_number_of_lifetimes', 6),
-            prob_threshold=fit_params.get('prob_threshold', 0.68),
-            plot_probabilities=fit_params.get('plot_probabilities', True),
-            plot_weighted_residuals=fit_params.get('plot_weighted_residuals', True),
-            selection_mode=fit_params.get('selection_mode', 'lower'),
+            maximum_number_of_lifetimes=fit_params.get("maximum_number_of_lifetimes", 6),
+            prob_threshold=fit_params.get("prob_threshold", 0.68),
+            plot_probabilities=fit_params.get("plot_probabilities", True),
+            plot_weighted_residuals=fit_params.get("plot_weighted_residuals", True),
+            selection_mode=fit_params.get("selection_mode", "lower"),
             save_intermediate_results=save_intermediate_results,
-            intermediate_results_base_filename=intermediate_results_base_filename
+            intermediate_results_base_filename=intermediate_results_base_filename,
         )
 
         # Plot
@@ -1569,6 +1608,6 @@ def fit_lifetime(
                     print(f"Warning: Error saving results to file: {str(e)}")
 
         return fit_result
-    except Exception as e:
+    except Exception:
         # Re-raise the exception to be caught by the caller
         raise

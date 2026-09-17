@@ -18,8 +18,9 @@ hook, called lazily on demand — never in `__init__`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -155,7 +156,7 @@ class ChisurfDockTool(HelpGuideMixin, MessagesMixin, QtWidgets.QMainWindow):
             def compute(self):
                 if self.path is None:
                     self.Error.no_file()
-                    return
+    Return:
                 self.Error.no_file.clear()
 
     The messages appear in the tool's own status bar, which is created on first

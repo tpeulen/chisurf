@@ -31,17 +31,17 @@ to press them, which is what someone opens the command list for.
 Nothing was dropped in either move, and that is what the tests check. A menu is
 a way to *find* a command, never the only way to reach one.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 
 @pytest.fixture(scope="module")
 def measured():
     """Every spelling of the field of view, driven through the command layer."""
-    return probe('''
+    return probe("""
         app = open_app(size=(420, 340))
         errors = []
         app.cmd.set_error_callback(errors.append)
@@ -80,7 +80,7 @@ def measured():
         app.cmd.do("fov 90")
         wide = shot()
         emit("picture_changed", f"{float(np.abs(wide - narrow).mean()):.3f}")
-    ''')
+    """)
 
 
 @pytest.mark.parametrize(
@@ -118,8 +118,7 @@ def test_a_lens_that_shows_nothing_is_refused(measured):
 def test_changing_the_angle_changes_the_picture(measured):
     """The property underneath: a stored number nothing reads is not a lens."""
     assert float(measured["picture_changed"]) > 1.0, (
-        "15 and 90 degrees rendered the same image; the projection is not "
-        "reading the field of view"
+        "15 and 90 degrees rendered the same image; the projection is not reading the field of view"
     )
 
 
@@ -137,9 +136,7 @@ def test_the_bar_is_seven_menus():
     titles = [title for title, _entries in MENU_BAR]
     for gone in ("Build", "Wizard", "Preset"):
         assert gone not in titles, f"{gone} is back on the bar"
-    assert titles == [
-        "File", "Edit", "Display", "Setting", "Demo", "Tools", "Help"
-    ], titles
+    assert titles == ["File", "Edit", "Display", "Setting", "Demo", "Tools", "Help"], titles
 
 
 def test_the_presets_are_the_first_thing_under_display():
@@ -148,7 +145,7 @@ def test_the_presets_are_the_first_thing_under_display():
     from chimol.plugins.presets.commands import load_reference_presets
     from chimol.ui.menus import bar
 
-    Cmd(None)                     # the Preset section is the presets plugin's
+    Cmd(None)  # the Preset section is the presets plugin's
     first = bar.DISPLAY_MENU[0]
     assert str(getattr(first, "label", "")) == "Preset"
     children = {

@@ -32,10 +32,10 @@ from __future__ import annotations
 
 import typing
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
-from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.core.fluorescence.burst import tttrlib_search
+from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.gui.autoform import AutoForm
 
 
@@ -63,19 +63,19 @@ class BurstSearchForm(QtWidgets.QWidget):
 
     def __init__(
         self,
-        algorithm: typing.Optional[str] = None,
-        values: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-        parent: typing.Optional[QtWidgets.QWidget] = None,
-        combo: typing.Optional[QtWidgets.QComboBox] = None,
+        algorithm: str | None = None,
+        values: typing.Mapping[str, typing.Any] | None = None,
+        parent: QtWidgets.QWidget | None = None,
+        combo: QtWidgets.QComboBox | None = None,
     ):
         super().__init__(parent)
         self._algorithms = tttrlib_search.algorithms()
         self._view = None
-        self._form: typing.Optional[AutoForm] = None
+        self._form: AutoForm | None = None
         self._initial_values = dict(values or {})
         # The selector value the current form was built for, so a composite
         # search whose inner algorithm changed can rebuild only its nested panel.
-        self._selector: typing.Optional[str] = None
+        self._selector: str | None = None
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -89,9 +89,7 @@ class BurstSearchForm(QtWidgets.QWidget):
             # without breaking stored settings.
             self.combo_algorithm.addItem(spec.get("label", name), name)
             index = self.combo_algorithm.count() - 1
-            self.combo_algorithm.setItemData(
-                index, spec.get("summary", ""), QtCore.Qt.ToolTipRole
-            )
+            self.combo_algorithm.setItemData(index, spec.get("summary", ""), QtCore.Qt.ToolTipRole)
         if combo is None:
             chooser = QtWidgets.QHBoxLayout()
             chooser.addWidget(QtWidgets.QLabel("Algorithm"))
@@ -115,9 +113,7 @@ class BurstSearchForm(QtWidgets.QWidget):
             )
         else:
             if algorithm in self._algorithms:
-                self.combo_algorithm.setCurrentIndex(
-                    self.combo_algorithm.findData(algorithm)
-                )
+                self.combo_algorithm.setCurrentIndex(self.combo_algorithm.findData(algorithm))
             self._rebuild()
 
         self.combo_algorithm.currentIndexChanged.connect(self._on_algorithm_changed)
@@ -129,7 +125,7 @@ class BurstSearchForm(QtWidgets.QWidget):
         return self.combo_algorithm.currentData() or ""
 
     @property
-    def parameters(self) -> typing.Dict[str, typing.Any]:
+    def parameters(self) -> dict[str, typing.Any]:
         """Current parameter values for the selected algorithm."""
         if self._view is None:
             return {}
@@ -138,14 +134,13 @@ class BurstSearchForm(QtWidgets.QWidget):
     def set_state(
         self,
         algorithm: str,
-        parameters: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+        parameters: typing.Mapping[str, typing.Any] | None = None,
     ) -> None:
         """Select ``algorithm`` and load ``parameters`` into the form."""
         index = self.combo_algorithm.findData(algorithm)
         if index < 0:
             raise ValueError(
-                f"unknown burst search {algorithm!r}; "
-                f"available: {sorted(self._algorithms)}"
+                f"unknown burst search {algorithm!r}; available: {sorted(self._algorithms)}"
             )
         self._initial_values = dict(parameters or {})
         blocked = self.combo_algorithm.blockSignals(True)

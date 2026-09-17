@@ -138,10 +138,13 @@ def simulate_lifetime_fcs(
 
     cfg = {
         "settings": {
-            "dt": float(macro_time_step_ms), "n_ph_max": int(n_photons), "n_channels": 1,
+            "dt": float(macro_time_step_ms),
+            "n_ph_max": int(n_photons),
+            "n_channels": 1,
             "n_microtime_channels": int(n_microtime_channels),
             "microtime_resolution": float(micro_time_resolution_ns),
-            "laser_period": float(laser_ns), "fast_grid_bbox": True,
+            "laser_period": float(laser_ns),
+            "fast_grid_bbox": True,
             "active_margin": 1.0,
             # The engine draws molecules and photons from two independent
             # streams, so it takes two seeds. This block used to say "seed",
@@ -151,16 +154,19 @@ def simulate_lifetime_fcs(
         },
         "box": {"xy": float(box_xy_um), "z": float(box_z_um)},
         "species": [
-            {"D": diff[i], "q": [q[i]], "decay": {"lifetimes": [tau[i]]}}
-            for i in range(n_species)
+            {"D": diff[i], "q": [q[i]], "decay": {"lifetimes": [tau[i]]}} for i in range(n_species)
         ],
         "k_rad": [0.0] * (n_species * n_species),
         "k_nrad": k_nrad,
         "background": [float(background_cps) / 1000.0],
         "population": pop,
         "excitation": {
-            "type": "gaussian3d", "w0": float(beam_waist_um), "z0": 2.0,
-            "extent_xy": float(box_xy_um), "extent_z": float(box_z_um), "spacing": 0.1,
+            "type": "gaussian3d",
+            "w0": float(beam_waist_um),
+            "z0": 2.0,
+            "extent_xy": float(box_xy_um),
+            "extent_z": float(box_z_um),
+            "spacing": 0.1,
         },
     }
 
@@ -170,8 +176,9 @@ def simulate_lifetime_fcs(
     species = np.asarray(engine.emitting_species()).astype(np.int64)
     micro = np.asarray(engine.micro_time()).astype(np.int64)
     # Absolute macro time = window index * step + within-window arrival offset (ms).
-    t_ms = (np.asarray(engine.macro_window()).astype(np.float64) * macro_time_step_ms
-            + np.asarray(engine.arrival_time()))
+    t_ms = np.asarray(engine.macro_window()).astype(np.float64) * macro_time_step_ms + np.asarray(
+        engine.arrival_time()
+    )
     ticks = np.round(t_ms * 1e-3 / macro_time_resolution_s).astype(np.uint64)
     ticks = np.maximum.accumulate(ticks)  # correlation requires ascending macro-times
 
@@ -179,8 +186,7 @@ def simulate_lifetime_fcs(
     # background photons with an extra index, which we drop from the references).
     nb = int(n_microtime_channels)
     decays = [
-        np.bincount(micro[species == s], minlength=nb)[:nb].astype(float)
-        for s in range(n_species)
+        np.bincount(micro[species == s], minlength=nb)[:nb].astype(float) for s in range(n_species)
     ]
     total = np.sum(decays, axis=0)
 

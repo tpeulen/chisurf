@@ -14,6 +14,7 @@ pytest.importorskip("IMP.bff")
 @pytest.fixture(scope="module")
 def qapp():
     from qtpy import QtWidgets
+
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
@@ -27,7 +28,9 @@ def _model():
     data = chisurf.core.data.DataCurve(x=x, y=np.full(128, 10.0), ey=np.full(128, 3.0))
     fit = fitting.Fit(model_class=for_family("tcspc_lifetime"), data=data)
     model = fit.model
-    model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.08) ** 2)))
+    model.set_dataset(
+        "response", chisurf.core.curve.Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.08) ** 2))
+    )
     model.set_scalar("period", 12.5)
     return model
 

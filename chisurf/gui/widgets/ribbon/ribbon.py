@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ChiSurf Ribbon Integration
 
@@ -6,24 +5,15 @@ This module provides ribbon interface integration for ChiSurf main window.
 It uses the ribbon implementation to create a modern ribbon interface.
 """
 
-import os
-import sys
-from pathlib import Path
-import json
-import functools
-from math import ceil
-
-from qtpy import QtCore, QtGui, QtWidgets
-
-import chisurf as cs
 from chisurf import logging
+
+from .ribbon_auto_fold import AutoFoldMethodsMixin
 
 # Import mixins from split modules
 from .ribbon_base import ChiSurfRibbonIntegration as BaseIntegration
-from .ribbon_plugins import PluginMethodsMixin
-from .ribbon_auto_fold import AutoFoldMethodsMixin
 from .ribbon_categories import CategoryMethodsMixin
 from .ribbon_file import FileCategoryMixin
+from .ribbon_plugins import PluginMethodsMixin
 from .ribbon_utils import UtilityMethodsMixin
 
 
@@ -33,7 +23,7 @@ class ChiSurfRibbonIntegration(
     AutoFoldMethodsMixin,
     CategoryMethodsMixin,
     FileCategoryMixin,
-    UtilityMethodsMixin
+    UtilityMethodsMixin,
 ):
     """
     Integration class for adding ribbon interface to ChiSurf main window.
@@ -58,7 +48,7 @@ class ChiSurfRibbonIntegration(
 def setup_chisurf_ribbon(main_window, ribbon_style=None):
     """
     Convenience function to setup ribbon interface for ChiSurf.
-    
+
     Parameters
     ----------
     main_window : cs.gui.main.Main
@@ -66,7 +56,7 @@ def setup_chisurf_ribbon(main_window, ribbon_style=None):
     ribbon_style : int, optional
         Ribbon style to use (ribbon uses RibbonStyle constants)
         If None, uses default style
-        
+
     Returns
     -------
     ChiSurfRibbonIntegration or None
@@ -86,5 +76,6 @@ def setup_chisurf_ribbon(main_window, ribbon_style=None):
     except Exception as e:
         logging.error(f"Failed to setup ChiSurf ribbon: {e}")
         import traceback
+
         logging.error(f"DEBUG: Exception traceback: {traceback.format_exc()}")
         return None

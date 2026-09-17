@@ -13,6 +13,7 @@ The ``plot_classes`` attribute this used to fall back on is gone (see the
 a model naming GUI plot classes was the last hard dependency from the compute
 side onto the GUI, and nothing declares one any more.
 """
+
 from __future__ import annotations
 
 from qtpy import QtWidgets
@@ -65,6 +66,7 @@ def build_model_editor(model) -> QtWidgets.QWidget:
     if _is_alive(existing):
         return existing
     from chisurf.gui.autoform import AutoForm
+
     widget = AutoForm(model)
     try:
         setattr(model, _EDITOR_ATTR, widget)
@@ -124,6 +126,7 @@ def model_plot_specs(model):
                 resolve_distribution_options,
             )
             from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+
             specs = resolve_plot_specs(view)
             if specs:
                 resolved = []
@@ -141,16 +144,13 @@ def model_plot_specs(model):
                         opts["sources"] = {
                             key: (
                                 {**spec, "accessor": _resolve_accessor(spec["accessor"])}
-                                if isinstance(spec, dict)
-                                and isinstance(spec.get("accessor"), str)
+                                if isinstance(spec, dict) and isinstance(spec.get("accessor"), str)
                                 else spec
                             )
                             for key, spec in opts["sources"].items()
                         }
                     if isinstance(opts.get("max_frames_accessor"), str):
-                        opts["max_frames_accessor"] = _resolve_accessor(
-                            opts["max_frames_accessor"]
-                        )
+                        opts["max_frames_accessor"] = _resolve_accessor(opts["max_frames_accessor"])
                     resolved.append((cls, opts))
                 return resolved
         except Exception as exc:  # pragma: no cover - defensive

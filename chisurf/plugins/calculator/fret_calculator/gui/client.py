@@ -126,5 +126,6 @@ class FretCalculatorClient:
         from chisurf.plugins.calculator.fret_calculator.backend.services import (
             register_services,
         )
+
         register_services(dispatcher)
         return InProcessClient(dispatcher)

@@ -15,6 +15,7 @@ The names stay importable because user copies of ``experiment_configs.yaml``
 *replace* the bundled model list and pickled projects pin class paths, so a path
 that no longer resolves drops the entry from the model menu without saying so.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.stopped_flow.parse import ParseStoppedFlowModel

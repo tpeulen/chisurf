@@ -4,7 +4,7 @@ import numpy as np
 
 from chisurf.core.fluorescence.tcspc import IRFEstimator as _IRFEstimator
 
-from ..api.models import IRFEstimationSettings, IRFEstimationResult
+from ..api.models import IRFEstimationResult, IRFEstimationSettings
 
 
 def estimate_irf(

@@ -24,11 +24,11 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.pdb import PDBSelector
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 

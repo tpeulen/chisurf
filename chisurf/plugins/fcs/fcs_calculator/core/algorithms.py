@@ -15,13 +15,13 @@ moved to :mod:`chisurf.core.fluorescence.dyes` for the same reason.
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List
+from typing import Any
 
 from chisurf.core.fluorescence import diffusion as _diffusion
 
 # ========= Constants & conversions =========
 KB = 1.380649e-23  # J/K
-NA = 6.02214076e23 # 1/mol
+NA = 6.02214076e23  # 1/mol
 N_PER_nM_fL = NA * 1e-9 * 1e-15  # ≈ 0.602214076
 
 
@@ -40,6 +40,7 @@ def mPa_s_to_Pa_s(eta_mPa_s: float) -> float:
     """
     return eta_mPa_s * 1e-3
 
+
 def Pa_s_to_mPa_s(eta_Pa_s: float) -> float:
     """Convert viscosity from Pa·s to mPa·s.
 
@@ -54,6 +55,7 @@ def Pa_s_to_mPa_s(eta_Pa_s: float) -> float:
         Viscosity in mPa·s.
     """
     return eta_Pa_s * 1e3
+
 
 def nm_to_m(x_nm: float) -> float:
     """Convert a length from nanometers to meters.
@@ -70,6 +72,7 @@ def nm_to_m(x_nm: float) -> float:
     """
     return x_nm * 1e-9
 
+
 def m_to_nm(x_m: float) -> float:
     """Convert a length from meters to nanometers.
 
@@ -84,6 +87,7 @@ def m_to_nm(x_m: float) -> float:
         Length in nm.
     """
     return x_m * 1e9
+
 
 def um2s_to_m2s(D_um2_s: float) -> float:
     """Convert a diffusion coefficient from µm²/s to m²/s.
@@ -100,6 +104,7 @@ def um2s_to_m2s(D_um2_s: float) -> float:
     """
     return D_um2_s * 1e-12
 
+
 def m2s_to_um2s(D_m2_s: float) -> float:
     """Convert a diffusion coefficient from m²/s to µm²/s.
 
@@ -114,6 +119,7 @@ def m2s_to_um2s(D_m2_s: float) -> float:
         Diffusion coefficient in µm²/s.
     """
     return D_m2_s * 1e12
+
 
 def us_to_s(t_us: float) -> float:
     """Convert a time from microseconds to seconds.
@@ -130,6 +136,7 @@ def us_to_s(t_us: float) -> float:
     """
     return t_us * 1e-6
 
+
 def s_to_us(t_s: float) -> float:
     """Convert a time from seconds to microseconds.
 
@@ -145,6 +152,7 @@ def s_to_us(t_s: float) -> float:
     """
     return t_s * 1e6
 
+
 def m3_to_fL(v_m3: float) -> float:
     """Convert a volume from m³ to femtoliters.
 
@@ -159,6 +167,7 @@ def m3_to_fL(v_m3: float) -> float:
         Volume in fL.
     """
     return v_m3 / 1e-18
+
 
 def fL_to_m3(v_fL: float) -> float:
     """Convert a volume from femtoliters to m³.
@@ -203,9 +212,7 @@ def D_from_tau_Veff_S(tau_s: float, Veff_m3: float, S: float) -> float:
 
 def scale_D_from_25C(D25_um2_s: float, T_K: float, eta_Pa_s: float) -> float:
     """Scale a 25 °C water diffusion coefficient to arbitrary (T, eta)."""
-    return _diffusion.diffusion_at_temperature(
-        D25_um2_s, T_K - 273.15, viscosity=eta_Pa_s
-    )
+    return _diffusion.diffusion_at_temperature(D25_um2_s, T_K - 273.15, viscosity=eta_Pa_s)
 
 
 def perrin_friction_ellipsoid(p: float) -> float:
@@ -215,10 +222,12 @@ def perrin_friction_ellipsoid(p: float) -> float:
     """
     if p < 1:  # oblate
         q = 1.0 / p
-        return math.sqrt(q*q - 1.0) / (pow(q, 2.0/3.0) * math.atan(math.sqrt(q*q - 1.0)))
+        return math.sqrt(q * q - 1.0) / (pow(q, 2.0 / 3.0) * math.atan(math.sqrt(q * q - 1.0)))
     elif p > 1:  # prolate
         q = 1.0 / p
-        return math.sqrt(1.0 - q*q) / (pow(q, 2.0/3.0) * math.log((1.0 + math.sqrt(1.0 - q*q)) / q))
+        return math.sqrt(1.0 - q * q) / (
+            pow(q, 2.0 / 3.0) * math.log((1.0 + math.sqrt(1.0 - q * q)) / q)
+        )
     else:  # sphere
         return 1.0
 
@@ -230,7 +239,14 @@ def perrin_friction_cylinder(p: float) -> float:
     :math:`p = L/d` (length/diameter).
     """
     lnp = math.log(p)
-    return 1.0304 + 0.0193 * pow(lnp, 1) + 0.06229 * pow(lnp, 2) + 0.00476 * pow(lnp, 3) + 0.00166 * pow(lnp, 4) + 2.66e-6 * pow(lnp, 7)
+    return (
+        1.0304
+        + 0.0193 * pow(lnp, 1)
+        + 0.06229 * pow(lnp, 2)
+        + 0.00476 * pow(lnp, 3)
+        + 0.00166 * pow(lnp, 4)
+        + 2.66e-6 * pow(lnp, 7)
+    )
 
 
 def diffusion_ellipsoid(T_K: float, eta_Pa_s: float, a_m: float, b_m: float) -> float:
@@ -242,7 +258,7 @@ def diffusion_ellipsoid(T_K: float, eta_Pa_s: float, a_m: float, b_m: float) -> 
     """
     p = a_m / b_m
     Ft = perrin_friction_ellipsoid(p)
-    Re = pow(a_m * a_m * b_m, 1.0/3.0)  # equivalent radius
+    Re = pow(a_m * a_m * b_m, 1.0 / 3.0)  # equivalent radius
     D = KB * T_K / (6.0 * math.pi * eta_Pa_s * Re * Ft)
     return m2s_to_um2s(D)
 
@@ -255,7 +271,7 @@ def diffusion_cylinder(T_K: float, eta_Pa_s: float, L_m: float, d_m: float) -> f
     """
     p = L_m / d_m
     Ft = perrin_friction_cylinder(p)
-    Re = pow(3.0 / (2.0 * p * p), 1.0/3.0) * L_m / 2.0
+    Re = pow(3.0 / (2.0 * p * p), 1.0 / 3.0) * L_m / 2.0
     D = KB * T_K / (6.0 * math.pi * eta_Pa_s * Re * Ft)
     return m2s_to_um2s(D)
 
@@ -263,7 +279,7 @@ def diffusion_cylinder(T_K: float, eta_Pa_s: float, L_m: float, d_m: float) -> f
 # ========= Reference dyes (looked up in MMFDB) =========
 # Diffusion is a dye property: D(25 °C, water) lives on the MMFDB probe next to
 # quantum yield and extinction coefficient. ChiSurf keeps no private table.
-def reference_dyes(refresh: bool = False) -> Dict[str, Dict]:
+def reference_dyes(refresh: bool = False) -> dict[str, dict]:
     """Return the MMFDB reference species that carry a diffusion coefficient.
 
     Parameters
@@ -282,7 +298,7 @@ def reference_dyes(refresh: bool = False) -> Dict[str, Dict]:
     return _reference_dyes(refresh=refresh)
 
 
-def dye_names(refresh: bool = False) -> List[str]:
+def dye_names(refresh: bool = False) -> list[str]:
     """Return the sorted names of the MMFDB reference species."""
     from chisurf.core.fluorescence.dyes import dye_names as _dye_names
 
@@ -296,7 +312,7 @@ def dye_diffusion_25C(name: str) -> float:
     return diffusion_coefficient_25C(name)
 
 
-def get_dye(name: str) -> Dict | None:
+def get_dye(name: str) -> dict | None:
     """Return the MMFDB entry for a species name or alias (``None`` if unknown)."""
     from chisurf.core.fluorescence.dyes import get_dye as _get_dye
 
@@ -318,7 +334,7 @@ def compute_confocal(
     num_mols: float,
     invN: float,
     last_edited: str = "conc",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Solve the linked confocal-FCS quantities for one constraint.
 
     ``constraint`` is ``"D"`` (fix D → compute Veff, r_h), ``"rh"`` (fix r_h →

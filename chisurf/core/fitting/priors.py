@@ -315,11 +315,11 @@ class TruncatedNormalPrior(NormalPrior):
     kind = "truncated_normal"
 
     def __init__(
-            self,
-            mu: float = 0.0,
-            sigma: float = 1.0,
-            lb: float = float("-inf"),
-            ub: float = float("inf"),
+        self,
+        mu: float = 0.0,
+        sigma: float = 1.0,
+        lb: float = float("-inf"),
+        ub: float = float("inf"),
     ):
         """Initialise a truncated Gaussian prior.
 
@@ -447,12 +447,7 @@ class LogNormalPrior(Prior):
             return float("-inf")
         lx = math.log(x)
         z = (lx - self.mu) / self.sigma
-        return (
-            -0.5 * z * z
-            - lx
-            - math.log(self.sigma)
-            - 0.5 * math.log(2.0 * math.pi)
-        )
+        return -0.5 * z * z - lx - math.log(self.sigma) - 0.5 * math.log(2.0 * math.pi)
 
     def mode(self) -> float:
         """Return the mode ``exp(mu - sigma**2)`` of the log-normal density."""
@@ -603,7 +598,9 @@ class BetaPrior(Prior):
         """Return the beta log density (``-inf`` outside the open unit interval)."""
         if x <= 0.0 or x >= 1.0:
             return float("-inf")
-        log_b = math.lgamma(self.alpha) + math.lgamma(self.beta) - math.lgamma(self.alpha + self.beta)
+        log_b = (
+            math.lgamma(self.alpha) + math.lgamma(self.beta) - math.lgamma(self.alpha + self.beta)
+        )
         return (self.alpha - 1.0) * math.log(x) + (self.beta - 1.0) * math.log1p(-x) - log_b
 
     def mode(self) -> float:
@@ -638,12 +635,12 @@ class CallablePrior(Prior):
     kind = "callable"
 
     def __init__(
-            self,
-            logpdf: typing.Callable[[float], float],
-            mode: float = 0.0,
-            support: typing.Tuple[float, float] = (float("-inf"), float("inf")),
-            residual: typing.Optional[typing.Callable[[float], float]] = None,
-            label: str = "",
+        self,
+        logpdf: typing.Callable[[float], float],
+        mode: float = 0.0,
+        support: typing.Tuple[float, float] = (float("-inf"), float("inf")),
+        residual: typing.Optional[typing.Callable[[float], float]] = None,
+        label: str = "",
     ):
         """Wrap a callable as a prior.
 
@@ -841,7 +838,7 @@ def _combine_priors(a: PriorLike, b: PriorLike) -> Prior:
 
 
 def prior_from_state(
-        state: typing.Optional[typing.Dict[str, typing.Any]]
+    state: typing.Optional[typing.Dict[str, typing.Any]],
 ) -> typing.Optional[Prior]:
     """Rebuild a :class:`Prior` from a :meth:`Prior.get_state` dictionary.
 

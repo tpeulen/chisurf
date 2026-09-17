@@ -97,7 +97,9 @@ class ClsmGeneratorTool(QtWidgets.QWidget):
             self._refresh()
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save photon stream", "clsm_sim.npz",
+            self,
+            "Save photon stream",
+            "clsm_sim.npz",
             "Photon stream (*.pto *.npz *.ptu *.spc *.ht3)",
         )
         if path:

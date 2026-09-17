@@ -40,19 +40,23 @@ bond graph, so a fragment spanning more than half the cell -- a polymer threaded
 through the whole box -- is not unwrapped correctly. Such a fragment has no
 unambiguous unwrapping anyway.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import numpy as np
 import pytest
-
-from chimol.io.structure import load_trajectory_cell
 from chimol.core.services.trajectory import _minimum_image, _smooth_frame
+from chimol.io.structure import load_trajectory_cell
 
 DCD = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "trajectory" / "dcd"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "trajectory"
+    / "dcd"
 )
 WITH_CELL = DCD / "triclinic_cell.dcd"
 WITHOUT_CELL = DCD / "hgbp1_transition.dcd"
@@ -94,9 +98,7 @@ def test_averaging_across_a_wall_lands_in_the_box_centre_without_a_box():
     """
     frames, _ = _wobble_across_the_wall()
     naive = _smooth_frame(frames, 2, frames[2], 5, None)
-    assert 10.0 < float(naive[0, 0]) < 20.0, (
-        "expected the naive mean to land near the box centre"
-    )
+    assert 10.0 < float(naive[0, 0]) < 20.0, "expected the naive mean to land near the box centre"
 
 
 def test_averaging_across_a_wall_stays_with_the_atom_when_imaged():
@@ -138,9 +140,7 @@ def test_a_triclinic_cell_images_along_its_own_vectors():
     for axis in range(3):
         frames[axis + 1, 0] = base + matrix[axis]
 
-    imaged = _minimum_image(
-        frames, 0, (np.tile(lengths, (4, 1)), np.tile(angles, (4, 1)))
-    )
+    imaged = _minimum_image(frames, 0, (np.tile(lengths, (4, 1)), np.tile(angles, (4, 1))))
     assert np.allclose(imaged[:, 0, :], base), (
         f"cell-vector displacements did not image back: {imaged[:, 0, :]}"
     )
@@ -203,9 +203,7 @@ def test_an_unusable_box_is_ignored_rather_than_raising(cell):
 # --------------------------------------------------------------------------- #
 def _split_chain():
     """A four-atom chain straddling the x wall of a 30 A box, 0.8 A bonds."""
-    coords = np.array(
-        [[29.0, 5.0, 5.0], [29.8, 5.0, 5.0], [0.6, 5.0, 5.0], [1.4, 5.0, 5.0]]
-    )
+    coords = np.array([[29.0, 5.0, 5.0], [29.8, 5.0, 5.0], [0.6, 5.0, 5.0], [1.4, 5.0, 5.0]])
     bonds = np.array([[0, 1], [1, 2], [2, 3]])
     return coords, bonds
 
@@ -219,7 +217,9 @@ def test_a_molecule_on_a_wall_arrives_split():
 
 def test_unwrap_makes_the_molecule_whole():
     from chimol.analysis.periodic import (
-        cell_matrix, fragments, unwrap_coordinates,
+        cell_matrix,
+        fragments,
+        unwrap_coordinates,
     )
 
     coords, bonds = _split_chain()
@@ -240,7 +240,10 @@ def test_wrap_moves_a_molecule_as_a_unit():
     files arrive in.
     """
     from chimol.analysis.periodic import (
-        cell_matrix, fragments, unwrap_coordinates, wrap_coordinates,
+        cell_matrix,
+        fragments,
+        unwrap_coordinates,
+        wrap_coordinates,
     )
 
     coords, bonds = _split_chain()
@@ -259,7 +262,8 @@ def test_wrap_moves_a_molecule_as_a_unit():
 def test_unwrap_works_in_a_sheared_cell():
     """Two atoms one cell vector apart come back together, triclinic or not."""
     from chimol.analysis.periodic import (
-        cell_matrix, unwrap_coordinates,
+        cell_matrix,
+        unwrap_coordinates,
     )
 
     matrix = cell_matrix([30.0, 40.0, 50.0], [70.0, 80.0, 110.0])

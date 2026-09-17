@@ -27,8 +27,9 @@ def default_distance_axis(t_max: float, n: int = 150) -> np.ndarray:
     return np.linspace(15.0, r_max, int(n))
 
 
-def gaussian_signal(t, r, means, sigmas, amplitudes, mod_depth,
-                    bg_model, bg_k, bg_d, scale, kernel=None):
+def gaussian_signal(
+    t, r, means, sigmas, amplitudes, mod_depth, bg_model, bg_k, bg_d, scale, kernel=None
+):
     """Time-domain signal for a (multi-)Gaussian distance distribution."""
     p = dd_gauss_multi(r, means, sigmas, amplitudes)
     return deer_signal(t, r, p, mod_depth, bg_model, bg_k, bg_d, scale, kernel), p
@@ -46,8 +47,9 @@ def _form_factor(v_data, b, lam, scale):
     return (np.asarray(v_data, dtype=float) / (s * np.clip(b, 1e-9, None)) - (1.0 - lam)) / lam
 
 
-def tikhonov_signal(t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale,
-                    alpha=None, method="gcv", kernel=None):
+def tikhonov_signal(
+    t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale, alpha=None, method="gcv", kernel=None
+):
     """Model-free signal: invert P(r) by Tikhonov regularisation, rebuild ``V(t)``.
 
     The background ``B(t)`` and modulation depth ``lambda`` come from the outer
@@ -64,13 +66,15 @@ def tikhonov_signal(t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale,
     s = float(scale) if scale else 1.0
     form_factor = _form_factor(v_data, b, lam, s)
     p, alpha_used = tikhonov_distance_distribution(
-        k_mat, r, form_factor, alpha=alpha, method=method)
+        k_mat, r, form_factor, alpha=alpha, method=method
+    )
     v_model = deer_signal(t, r, p, lam, bg_model, bg_k, bg_d, s, kernel=k_mat)
     return v_model, p, alpha_used
 
 
-def maxent_signal(t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale,
-                  sigma=1.0, alpha=None, kernel=None):
+def maxent_signal(
+    t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale, sigma=1.0, alpha=None, kernel=None
+):
     """Model-free signal via maximum-entropy inversion of ``P(r)``.
 
     Like :func:`tikhonov_signal` but uses the MaxEnt inversion in
@@ -89,6 +93,7 @@ def maxent_signal(t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale,
     # Noise on the form factor is amplified from the V-space noise by 1/lambda.
     sigma_form = float(sigma) / lam
     p, alpha_used = maxent_distance_distribution(
-        k_mat, r, form_factor, sigma=sigma_form, alpha=alpha)
+        k_mat, r, form_factor, sigma=sigma_form, alpha=alpha
+    )
     v_model = deer_signal(t, r, p, lam, bg_model, bg_k, bg_d, s, kernel=k_mat)
     return v_model, p, alpha_used

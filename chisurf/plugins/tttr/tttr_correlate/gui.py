@@ -1,39 +1,39 @@
 from __future__ import annotations
-from chisurf import typing
-import chisurf as cs
 
 import sys
 
-from chisurf.gui import QtCore, QtWidgets
-from chisurf.gui import chiplot as cp
-from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 # Now using qtpy compatibility layer through cs.gui import
-
 import numpy as np
 import tttrlib
 
+import chisurf as cs
 import chisurf.core.curve
-import chisurf.core.support.decorators
-#import cs.gui.tools
+import chisurf.core.data
+
+# import cs.gui.tools
 import chisurf.core.fio
 import chisurf.core.fluorescence
-import chisurf.core.data
-import chisurf.gui.decorators
-import chisurf.core.settings
 import chisurf.core.fluorescence.fcs
+import chisurf.core.settings
+import chisurf.core.support.decorators
+import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments
 import chisurf.gui.widgets.fio
+from chisurf import typing
+from chisurf.gui import QtCore, QtWidgets
+from chisurf.gui import chiplot as cp
+from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
 
+    def persist_plugin_state(n):
+        return lambda c: c
 
 
 class Correlator(QtCore.QThread):
-
     procDone = QtCore.Signal(bool)
     partDone = QtCore.Signal(int)
 
@@ -50,16 +50,9 @@ class Correlator(QtCore.QThread):
         if isinstance(self._data_curve, cs.core.data.DataCurve):
             return self._data_curve
         else:
-            return cs.core.data.DataCurve(
-                setup=self
-            )
+            return cs.core.data.DataCurve(setup=self)
 
-    def __init__(
-            self,
-            photon_source,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, photon_source, *args, **kwargs):
         """Initialize the correlator thread.
 
         Parameters
@@ -93,9 +86,9 @@ class Correlator(QtCore.QThread):
         rates differed.
         """
         cs.logging.info("Correlation running...")
-        cs.logging.info("Correlation method: %s" % self.p.method)
-        cs.logging.info("Fine-correlation: %s" % self.p.fine)
-        cs.logging.info("Data stream split into %s correlations." % self.p.split)
+        cs.logging.info(f"Correlation method: {self.p.method}")
+        cs.logging.info(f"Fine-correlation: {self.p.fine}")
+        cs.logging.info(f"Data stream split into {self.p.split} correlations.")
 
         photons = self.p.photon_source.photons
         stream_1 = photons.by_channel(self.p.ch1)
@@ -103,9 +96,7 @@ class Correlator(QtCore.QThread):
         macro_1 = stream_1.macro_times
         macro_2 = stream_2.macro_times
         if macro_1.size == 0 or macro_2.size == 0:
-            cs.logging.warning(
-                "no photons in channels %s / %s" % (self.p.ch1, self.p.ch2)
-            )
+            cs.logging.warning(f"no photons in channels {self.p.ch1} / {self.p.ch2}")
             self.procDone.emit(False)
             return
 
@@ -129,7 +120,7 @@ class Correlator(QtCore.QThread):
             try:
                 correlator.method = str(self.p.method)
             except Exception:
-                cs.logging.warning("unknown correlation method %s" % self.p.method)
+                cs.logging.warning(f"unknown correlation method {self.p.method}")
             correlator.set_macrotimes(
                 np.ascontiguousarray(t1, dtype=np.uint64),
                 np.ascontiguousarray(t2, dtype=np.uint64),
@@ -187,9 +178,7 @@ class Correlator(QtCore.QThread):
         w = np.array(weights)
 
         data_curve = cs.core.data.DataCurve(
-            x=np.array(taus).mean(axis=0),
-            y=cor.mean(axis=0),
-            ey=1. / w.mean(axis=0)
+            x=np.array(taus).mean(axis=0), y=cor.mean(axis=0), ey=1.0 / w.mean(axis=0)
         )
         cs.logging.info("Correlation finished!")
 
@@ -197,13 +186,7 @@ class Correlator(QtCore.QThread):
         self.procDone.emit(True)
         self.exiting = True
 
-    def weight(
-            self,
-            tau,
-            cor,
-            acquisition_time,
-            count_rate
-    ):
+    def weight(self, tau, cor, acquisition_time, count_rate):
         """Weight a per-group correlation by its expected noise.
 
         Parameters
@@ -225,43 +208,43 @@ class Correlator(QtCore.QThread):
         """
         if self.p.weighting == 1:
             return cs.core.fluorescence.fcs.noise(
-                tau, cor, acquisition_time, count_rate, weight_type='uniform'
+                tau, cor, acquisition_time, count_rate, weight_type="uniform"
             )
         elif self.p.weighting == 0:
             return cs.core.fluorescence.fcs.noise(
-                tau, cor, acquisition_time, count_rate, weight_type='suren'
+                tau, cor, acquisition_time, count_rate, weight_type="suren"
             )
 
 
 class CorrelatorWidget(QtWidgets.QWidget):
-
     @cs.gui.decorators.init_with_ui(ui_filename="correlatorWidget.ui")
     def __init__(
-            self,
-            photon_source,
-            ch1: int = '0',
-            ch2: int = '8',
-            number_of_cascades: int = None,
-            B: int = None,
-            split: int = None,
-            weighting: str = None,
-            fine: bool = None
+        self,
+        photon_source,
+        ch1: int = "0",
+        ch2: int = "8",
+        number_of_cascades: int = None,
+        B: int = None,
+        split: int = None,
+        weighting: str = None,
+        fine: bool = None,
     ):
         # Import settings here to make them dynamic
         from chisurf.core.settings import cs_settings
-        correlator_settings = cs_settings['correlator']
+
+        correlator_settings = cs_settings["correlator"]
 
         # Use default settings if parameters are None
         if number_of_cascades is None:
-            number_of_cascades = correlator_settings['number_of_cascades']
+            number_of_cascades = correlator_settings["number_of_cascades"]
         if B is None:
-            B = correlator_settings['B']
+            B = correlator_settings["B"]
         if split is None:
-            split = correlator_settings['split']
+            split = correlator_settings["split"]
         if weighting is None:
-            weighting = correlator_settings['weighting']
+            weighting = correlator_settings["weighting"]
         if fine is None:
-            fine = correlator_settings['fine']
+            fine = correlator_settings["fine"]
         self.number_of_cascades = number_of_cascades
         self.B = B
         self.split = split
@@ -272,19 +255,15 @@ class CorrelatorWidget(QtWidgets.QWidget):
         self.ch2 = ch2
 
         self.photon_source = photon_source
-        self.correlator_thread = Correlator(
-            photon_source=self
-        )
+        self.correlator_thread = Correlator(photon_source=self)
 
         # fill widgets
         self.comboBox_3.addItems(cs.core.fluorescence.fcs.weightCalculations)
         self.comboBox_2.addItems(cs.core.fluorescence.fcs.correlationMethods)
         self.checkBox.setChecked(False)
-        self.comboBox_micro_binning.addItems(['1', '2', '4', '8', '16'])
+        self.comboBox_micro_binning.addItems(["1", "2", "4", "8", "16"])
         self.comboBox_micro_binning.setEnabled(False)
-        self.checkBox.toggled.connect(
-            self.comboBox_micro_binning.setEnabled
-        )
+        self.checkBox.toggled.connect(self.comboBox_micro_binning.setEnabled)
         # The bar comes from the .ui file; swap in the shared one so a
         # correlation looks like every other long run in ChiSurf.
         adopt_progress_bar(self)
@@ -328,10 +307,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return self.comboBox_3.currentIndex()
 
     @weighting.setter
-    def weighting(
-            self,
-            v: int
-    ):
+    def weighting(self, v: int):
         self.comboBox_3.setCurrentIndex(int(v))
 
     @property
@@ -339,10 +315,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return [int(x) for x in str(self.lineEdit_4.text()).split()]
 
     @ch1.setter
-    def ch1(
-            self,
-            v: str
-    ):
+    def ch1(self, v: str):
         self.lineEdit_4.setText(str(v))
 
     @property
@@ -350,10 +323,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return [int(x) for x in str(self.lineEdit_5.text()).split()]
 
     @ch2.setter
-    def ch2(
-            self,
-            v: str
-    ):
+    def ch2(self, v: str):
         self.lineEdit_5.setText(str(v))
 
     @property
@@ -361,10 +331,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return int(self.checkBox.isChecked())
 
     @fine.setter
-    def fine(
-            self,
-            v: bool
-    ):
+    def fine(self, v: bool):
         self.checkBox.setCheckState(v)
 
     @property
@@ -372,10 +339,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return int(self.spinBox_3.value())
 
     @B.setter
-    def B(
-            self,
-            v: int
-    ):
+    def B(self, v: int):
         return self.spinBox_3.setValue(v)
 
     @property
@@ -383,10 +347,7 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return int(self.spinBox_2.value())
 
     @number_of_cascades.setter
-    def number_of_cascades(
-            self,
-            v: int
-    ):
+    def number_of_cascades(self, v: int):
         self.spinBox_2.setValue(v)
 
     @property
@@ -398,18 +359,12 @@ class CorrelatorWidget(QtWidgets.QWidget):
         return int(self.spinBox.value())
 
     @split.setter
-    def split(
-            self,
-            v: float
-    ):
+    def split(self, v: float):
         self.spinBox.setValue(v)
 
 
 @persist_plugin_state("tttr_correlate")
-class CorrelateTTTR(
-    QtWidgets.QWidget
-):
-
+class CorrelateTTTR(QtWidgets.QWidget):
     name = "tttr-correlate"
 
     @property
@@ -421,9 +376,7 @@ class CorrelateTTTR(
             return s
 
     def onRemoveDataset(self):
-        selected_index = [
-            i.row() for i in self.cs.selectedIndexes()
-        ]
+        selected_index = [i.row() for i in self.cs.selectedIndexes()]
         l = list()
         for i, c in enumerate(self._curves):
             if i not in selected_index:
@@ -436,11 +389,7 @@ class CorrelateTTTR(
         self._curves = list()
         self.plot.clear()
 
-    def get_data_curves(
-            self,
-            *args,
-            **kwargs
-    ) -> typing.List[cs.core.curve.Curve]:
+    def get_data_curves(self, *args, **kwargs) -> typing.List[cs.core.curve.Curve]:
         return self._curves
 
     def plot_curves(self):
@@ -451,18 +400,16 @@ class CorrelateTTTR(
         self.plot.grid(x=True, y=True, alpha=1.0)
 
         # Import settings here to make them dynamic
-        from chisurf.core.settings import cs_settings, colors
-        plot_settings = cs_settings['gui']['plot']
+        from chisurf.core.settings import colors, cs_settings
+
+        plot_settings = cs_settings["gui"]["plot"]
 
         current_curve = self.cs.selected_curve_index
-        lw = plot_settings['line_width']
+        lw = plot_settings["line_width"]
         for i, curve in enumerate(self._curves):
             w = lw * 0.5 if i != current_curve else 1.5 * lw
             self.plot.line(
-                curve.x, curve.y,
-                pen=colors[i % len(colors)]['hex'],
-                width=w,
-                name=curve.name
+                curve.x, curve.y, pen=colors[i % len(colors)]["hex"], width=w, name=curve.name
             )
 
     def closeEvent(self, event):
@@ -488,19 +435,19 @@ class CorrelateTTTR(
 
         # Import settings here to make them dynamic
         from chisurf.core.settings import cs_settings
-        correlator_settings = cs_settings['correlator']
+
+        correlator_settings = cs_settings["correlator"]
 
         self.correlator = CorrelatorWidget(
             photon_source=self.fileWidget,
-            number_of_cascades=correlator_settings['number_of_cascades'],
-            B=correlator_settings['B'],
-            split=correlator_settings['split']
+            number_of_cascades=correlator_settings["number_of_cascades"],
+            B=correlator_settings["B"],
+            split=correlator_settings["split"],
         )
         self.verticalLayout.addWidget(self.correlator)
 
         self.cs = cs.gui.widgets.experiments.widgets.ExperimentalDataSelector(
-            get_data_sets=self.get_data_curves,
-            click_close=False
+            get_data_sets=self.get_data_curves, click_close=False
         )
         self.verticalLayout_6.addWidget(self.cs)
 

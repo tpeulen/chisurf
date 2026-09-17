@@ -131,6 +131,7 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
 
     def _skew_gauss(xx, amp, mu, sig, alpha):
         from scipy.special import erf
+
         z = (xx - mu) / sig
         return amp * np.exp(-0.5 * z * z) * (1.0 + erf(alpha * z / np.sqrt(2.0)))
 
@@ -140,16 +141,24 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
 
         if shape != 0.0:
             popt, _ = curve_fit(
-                _skew_gauss, xw, yw,
+                _skew_gauss,
+                xw,
+                yw,
                 p0=[peak_val, float(pk), sigma0, shape],
-                sigma=weights, absolute_sigma=False, maxfev=5000,
+                sigma=weights,
+                absolute_sigma=False,
+                maxfev=5000,
             )
             g = _skew_gauss(x, 1.0, popt[1], abs(popt[2]), popt[3])
         else:
             popt, _ = curve_fit(
-                _gauss, xw, yw,
+                _gauss,
+                xw,
+                yw,
                 p0=[peak_val, float(pk), sigma0],
-                sigma=weights, absolute_sigma=False, maxfev=5000,
+                sigma=weights,
+                absolute_sigma=False,
+                maxfev=5000,
             )
             g = _gauss(x, 1.0, popt[1], abs(popt[2]))
     except Exception:
@@ -324,9 +333,7 @@ def extract_irf_background(
     else:
         keep = np.asarray(mask, dtype=bool)
         if keep.shape[0] != rout.shape[0]:
-            raise ValueError(
-                f"mask length {keep.shape[0]} != photon count {rout.shape[0]}"
-            )
+            raise ValueError(f"mask length {keep.shape[0]} != photon count {rout.shape[0]}")
 
     header = tttr.header
     dt_scale_ms = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0

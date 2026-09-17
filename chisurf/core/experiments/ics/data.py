@@ -28,8 +28,9 @@ is what localizes a barrier, needs its own kernel in
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -112,7 +113,7 @@ def lag_time(
 
 def _gauss_peak(
     values: np.ndarray, cols: np.ndarray, rows: np.ndarray
-) -> Optional[Tuple[float, float]]:
+) -> tuple[float, float] | None:
     r"""Locate a Gaussian peak to sub-pixel precision, in closed form.
 
     A correlation peak is Gaussian to a very good approximation, and the
@@ -155,7 +156,7 @@ def _gauss_peak(
     z = np.log(np.clip(values - baseline, 0.01 * span, None))
     xi, psi = np.meshgrid(np.asarray(cols, float), np.asarray(rows, float))
     design = np.stack(
-        [np.ones(xi.size), xi.ravel(), psi.ravel(), (xi ** 2 + psi ** 2).ravel()],
+        [np.ones(xi.size), xi.ravel(), psi.ravel(), (xi**2 + psi**2).ravel()],
         axis=1,
     )
     try:
@@ -168,7 +169,7 @@ def _gauss_peak(
     return float(-c1 / (2.0 * c3)), float(-c2 / (2.0 * c3))
 
 
-def _fit_drift(lags: np.ndarray, shifts: np.ndarray) -> Tuple[float, float, float]:
+def _fit_drift(lags: np.ndarray, shifts: np.ndarray) -> tuple[float, float, float]:
     """Fit a straight line to peak displacement versus frame lag, both axes.
 
     Parameters
@@ -231,7 +232,7 @@ class IcsTiming:
     frame_duration_ms: float = 0.0
     pixel_size_nm: float = 40.0
 
-    def resolved(self, n_lines: int = 0) -> "IcsTiming":
+    def resolved(self, n_lines: int = 0) -> IcsTiming:
         """Return a copy with a usable frame time.
 
         An unset frame time is estimated as ``n_lines * line_duration_ms``,
@@ -289,7 +290,7 @@ class IcsTiming:
             frame_duration_ms=self.frame_duration_ms,
         )
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Return the timing as a plain dictionary for metadata storage."""
         return {
             "pixel_duration_us": float(self.pixel_duration_us),
@@ -299,7 +300,7 @@ class IcsTiming:
         }
 
     @classmethod
-    def from_meta(cls, meta: Dict[str, Any]) -> "IcsTiming":
+    def from_meta(cls, meta: dict[str, Any]) -> IcsTiming:
         """Build a timing object from an ICS metadata dictionary.
 
         Parameters
@@ -314,8 +315,7 @@ class IcsTiming:
             The reconstructed timing.
         """
         out = cls()
-        for key in ("pixel_duration_us", "line_duration_ms",
-                    "frame_duration_ms", "pixel_size_nm"):
+        for key in ("pixel_duration_us", "line_duration_ms", "frame_duration_ms", "pixel_size_nm"):
             value = meta.get(key)
             if isinstance(value, (int, float)) and float(value) > 0.0:
                 setattr(out, key, float(value))
@@ -342,13 +342,13 @@ class IcsSettings:
         Free-form additional settings.
     """
 
-    x_range: Optional[Tuple[int, int]] = None
-    y_range: Optional[Tuple[int, int]] = None
+    x_range: tuple[int, int] | None = None
+    y_range: tuple[int, int] | None = None
     frame_lags: Sequence[int] = (0,)
     subtract_average: str = "frame"
     timing: IcsTiming = field(default_factory=IcsTiming)
 
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -420,10 +420,10 @@ class IcsCarpet:
     line_shift: np.ndarray
     frame_lags: np.ndarray
     timing: IcsTiming = field(default_factory=IcsTiming)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def shape(self) -> Tuple[int, int, int]:
+    def shape(self) -> tuple[int, int, int]:
         """Shape of the carpet ``(n_lags, ny, nx)``."""
         return tuple(np.asarray(self.correlation).shape)  # type: ignore[return-value]
 
@@ -441,9 +441,7 @@ class IcsCarpet:
             Lag time in seconds for each :math:`(\\Delta, \\psi, \\xi)`.
         """
         d = np.asarray(self.frame_lags, dtype=float)[:, None, None]
-        return self.timing.lag_time(
-            self.pixel_shift[None, ...], self.line_shift[None, ...], d
-        )
+        return self.timing.lag_time(self.pixel_shift[None, ...], self.line_shift[None, ...], d)
 
     # --- the four named readings of one carpet ----------------------------
     def rics_map(self) -> np.ndarray:
@@ -471,7 +469,7 @@ class IcsCarpet:
         """
         return np.asarray(self.correlation)[self.lag_index(frame_lag)]
 
-    def tics_curve(self) -> Tuple[np.ndarray, np.ndarray]:
+    def tics_curve(self) -> tuple[np.ndarray, np.ndarray]:
         """Return the TICS decay: the zero-spatial-lag column vs lag time.
 
         Returns
@@ -486,9 +484,7 @@ class IcsCarpet:
         tau = self.timing.lag_time(0.0, 0.0, np.asarray(self.frame_lags, dtype=float))
         return np.asarray(tau, dtype=float), np.asarray(g, dtype=float)
 
-    def pcf_curve(
-        self, distance: int, axis: str = "pixel"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def pcf_curve(self, distance: int, axis: str = "pixel") -> tuple[np.ndarray, np.ndarray]:
         """Return the pair-correlation decay at a fixed spatial lag.
 
         This is the fifth reading of the same carpet: instead of the zero-lag
@@ -559,7 +555,7 @@ class IcsCarpet:
             )
         return np.asarray(tau, dtype=float), np.asarray(g, dtype=float)
 
-    def pcf_map(self, axis: str = "pixel") -> Tuple[np.ndarray, np.ndarray]:
+    def pcf_map(self, axis: str = "pixel") -> tuple[np.ndarray, np.ndarray]:
         """Return every pair-correlation decay along one axis at once.
 
         Parameters
@@ -592,9 +588,9 @@ class IcsCarpet:
         self,
         frame_lag: int,
         window: int = 3,
-        search: Optional[int] = None,
+        search: int | None = None,
         method: str = "gauss",
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Return the sub-pixel position of the correlation peak at a frame lag.
 
         Directed transport moves the correlation peak away from zero lag by the
@@ -649,9 +645,7 @@ class IcsCarpet:
         if method not in ("gauss", "centroid"):
             raise ValueError(f"method must be 'gauss' or 'centroid', not {method!r}")
         if not self.meta.get("fftshifted", True):
-            raise ValueError(
-                "peak_shift needs a centred carpet; recompute with use_fftshift=True"
-            )
+            raise ValueError("peak_shift needs a centred carpet; recompute with use_fftshift=True")
         m = np.asarray(self.correlation, dtype=float)[self.lag_index(frame_lag)]
         ny, nx = m.shape
         cy, cx = ny // 2, nx // 2
@@ -694,7 +688,7 @@ class IcsCarpet:
         )
 
     def velocity(
-        self, window: int = 3, search: Optional[int] = None, method: str = "gauss"
+        self, window: int = 3, search: int | None = None, method: str = "gauss"
     ) -> FlowVector:
         """Return the flow velocity from the drift of the correlation peak.
 
@@ -742,10 +736,7 @@ class IcsCarpet:
                 "IcsTiming (frame_duration_ms, pixel_size_nm)"
             )
         shifts = np.asarray(
-            [
-                self.peak_shift(int(d), window=window, search=search, method=method)
-                for d in lags
-            ],
+            [self.peak_shift(int(d), window=window, search=search, method=method) for d in lags],
             dtype=float,
         )
         slope_x, slope_y, r2 = _fit_drift(lags, shifts)
@@ -757,7 +748,7 @@ class IcsCarpet:
             shifts=shifts,
         )
 
-    def zero_lag_index(self) -> Tuple[int, int]:
+    def zero_lag_index(self) -> tuple[int, int]:
         """Return the ``(row, column)`` index of the zero spatial lag.
 
         Returns
@@ -792,7 +783,7 @@ class IcsCarpet:
         """Return the carpet flattened to the 1D vector the fit machinery uses."""
         return np.asarray(self.correlation, dtype=float).ravel()
 
-    def to_meta(self) -> Dict[str, Any]:
+    def to_meta(self) -> dict[str, Any]:
         """Return the carpet as a metadata dictionary for a ``DataCurve``.
 
         Returns
@@ -802,7 +793,7 @@ class IcsCarpet:
             and the plot accessors. ``ics_mean`` is the zero-frame-lag slice,
             i.e. the classic RICS map.
         """
-        meta: Dict[str, Any] = {
+        meta: dict[str, Any] = {
             "correlation": self.correlation,
             "error": self.error,
             "pixel_shift": self.pixel_shift,
@@ -815,7 +806,7 @@ class IcsCarpet:
         return meta
 
 
-def carpet_coordinates(meta: Dict[str, Any]) -> Optional[Dict[str, np.ndarray]]:
+def carpet_coordinates(meta: dict[str, Any]) -> dict[str, np.ndarray] | None:
     """Return the coordinates of every carpet point, flattened in C order.
 
     A correlation carpet ``(n_lags, ny, nx)`` is fitted as one flat vector,

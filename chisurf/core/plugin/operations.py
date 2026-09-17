@@ -33,7 +33,7 @@ __all__ = ["clear_cache", "operation_index", "tools_for_operation"]
 _INDEX: dict[str, list] | None = None
 
 
-def _discover() -> list["PluginManifest"]:
+def _discover() -> list[PluginManifest]:
     """Return every discoverable plugin manifest, or an empty list."""
     from chisurf.core.plugin.registry import PluginRegistry
 
@@ -68,7 +68,7 @@ def operation_index(*, refresh: bool = False) -> dict[str, list]:
         for op in getattr(manifest, "operation_types", ()) or ():
             index.setdefault(str(op), []).append(manifest)
     for manifests in index.values():
-        manifests.sort(key=lambda m: (m.display_name or m.id))
+        manifests.sort(key=lambda m: m.display_name or m.id)
     _INDEX = index
     return index
 

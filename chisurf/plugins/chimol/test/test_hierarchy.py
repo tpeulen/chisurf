@@ -10,11 +10,11 @@ why it survived: `parent()` returned row 0 for every parent and called the root'
 children top-level, while row 0 of the top level was the root itself. The view
 drew the root twice and dropped the entire molecule level.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.core.model.hierarchy import HierarchyNode
 
 
@@ -162,13 +162,9 @@ def qapp_hier():
 def _three_level_tree():
     root = HierarchyNode(name="entry", node_type="ROOT")
     for m in range(3):
-        molecule = root.add_child(
-            HierarchyNode(name=f"mol{m}", node_type="MOLECULE")
-        )
+        molecule = root.add_child(HierarchyNode(name=f"mol{m}", node_type="MOLECULE"))
         for c in range(4):
-            molecule.add_child(
-                HierarchyNode(name=f"chain{m}{c}", node_type="CHAIN")
-            )
+            molecule.add_child(HierarchyNode(name=f"chain{m}{c}", node_type="CHAIN"))
     return root
 
 
@@ -191,8 +187,12 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
     xyz = rng.normal(scale=20.0, size=(n, 3))
     dtype = np.dtype(
         [
-            ("atom_name", "U4"), ("res_name", "U4"), ("chain", "U4"),
-            ("res_id", "i4"), ("element", "U2"), ("xyz", "f8", 3),
+            ("atom_name", "U4"),
+            ("res_name", "U4"),
+            ("chain", "U4"),
+            ("res_id", "i4"),
+            ("element", "U2"),
+            ("xyz", "f8", 3),
         ]
     )
     atoms = np.zeros(n, dtype=dtype)
@@ -204,8 +204,12 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
 
     view = Viewer()
     view.set_coordinates(
-        xyz, trace_coords=xyz, res_ids=atoms["res_id"],
-        res_names=atoms["res_name"], chain_ids=atoms["chain"], atoms=atoms,
+        xyz,
+        trace_coords=xyz,
+        res_ids=atoms["res_id"],
+        res_names=atoms["res_name"],
+        chain_ids=atoms["chain"],
+        atoms=atoms,
         atom_radii=np.full(n, 5.0),
     )
     cfg = {"impostor_min_atoms": 1}
@@ -225,8 +229,12 @@ def test_hiding_everything_draws_nothing(qapp_hier):
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
     dtype = np.dtype(
         [
-            ("atom_name", "U4"), ("res_name", "U4"), ("chain", "U4"),
-            ("res_id", "i4"), ("element", "U2"), ("xyz", "f8", 3),
+            ("atom_name", "U4"),
+            ("res_name", "U4"),
+            ("chain", "U4"),
+            ("res_id", "i4"),
+            ("element", "U2"),
+            ("xyz", "f8", 3),
         ]
     )
     atoms = np.zeros(n, dtype=dtype)
@@ -238,8 +246,12 @@ def test_hiding_everything_draws_nothing(qapp_hier):
 
     view = Viewer()
     view.set_coordinates(
-        xyz, trace_coords=xyz, res_ids=atoms["res_id"],
-        res_names=atoms["res_name"], chain_ids=atoms["chain"], atoms=atoms,
+        xyz,
+        trace_coords=xyz,
+        res_ids=atoms["res_id"],
+        res_names=atoms["res_name"],
+        chain_ids=atoms["chain"],
+        atoms=atoms,
     )
     view.set_rows_hidden(range(n), True)
     assert view._bead_scene_object({"impostor_min_atoms": 1}, None) is None

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Any, Callable, Dict, List, Union, overload
+from collections.abc import Callable
+from typing import Any, overload
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -18,10 +19,10 @@ from .constants import (
 from .gallery import RibbonGallery
 from .separator import RibbonSeparator
 from .toolbutton import (
-    RibbonToolButton,
-    RibbonMenuButton,
     RibbonDelayedMenuButton,
-    RibbonSplitButton
+    RibbonMenuButton,
+    RibbonSplitButton,
+    RibbonToolButton,
 )
 
 #: MIME type used to identify a ribbon button dragged for in-panel reordering.
@@ -34,7 +35,7 @@ class RibbonPanelTitle(QtWidgets.QLabel):
     pass
 
 
-class RibbonGridLayoutManager(object):
+class RibbonGridLayoutManager:
     """Grid Layout Manager."""
 
     def __init__(self, rows: int):
@@ -45,7 +46,9 @@ class RibbonGridLayoutManager(object):
         self.rows = rows
         self.cells = np.ones((rows, 1), dtype=bool)
 
-    def request_cells(self, rowSpan: int = 1, colSpan: int = 1, mode: RibbonSpaceFindMode = ColumnWise):
+    def request_cells(
+        self, rowSpan: int = 1, colSpan: int = 1, mode: RibbonSpaceFindMode = ColumnWise
+    ):
         """Request a number of available cells from the grid.
 
         :param rowSpan: The number of rows the cell should span.
@@ -66,7 +69,9 @@ class RibbonGridLayoutManager(object):
                 if self.cells[0, col:].all():
                     if self.cells.shape[1] - col < colSpan:
                         self.cells = np.append(
-                            self.cells, np.ones((self.rows, colSpan - (self.cells.shape[1] - col)), dtype=bool), axis=1
+                            self.cells,
+                            np.ones((self.rows, colSpan - (self.cells.shape[1] - col)), dtype=bool),
+                            axis=1,
                         )
                     self.cells[0, col:] = False
                     return 0, col
@@ -126,7 +131,7 @@ class RibbonPanel(QtWidgets.QFrame):
     _showPanelOptionButton: bool
 
     #: widgets that are added to the panel
-    _widgets: List[QtWidgets.QWidget] = []
+    _widgets: list[QtWidgets.QWidget] = []
 
     # height of the title widget
     _titleHeight: int = 15
@@ -150,10 +155,14 @@ class RibbonPanel(QtWidgets.QFrame):
         :param showPanelOptionButton: Whether to show the panel option button.
         :param parent: The parent widget.
         """
-        if (args and not isinstance(args[0], QtWidgets.QWidget)) or ("title" in kwargs or "maxRows" in kwargs):
+        if (args and not isinstance(args[0], QtWidgets.QWidget)) or (
+            "title" in kwargs or "maxRows" in kwargs
+        ):
             title = args[0] if len(args) > 0 else kwargs.get("title", "")
             maxRows = args[1] if len(args) > 1 else kwargs.get("maxRows", 6)
-            showPanelOptionButton = args[2] if len(args) > 2 else kwargs.get("showPanelOptionButton", True)
+            showPanelOptionButton = (
+                args[2] if len(args) > 2 else kwargs.get("showPanelOptionButton", True)
+            )
             parent = args[3] if len(args) > 3 else kwargs.get("parent", None)
         else:
             title = ""
@@ -274,7 +283,7 @@ class RibbonPanel(QtWidgets.QFrame):
         assert 0 < rows <= self._maxRows, "Invalid number of rows"
         self._smallRows = rows
 
-    def defaultRowSpan(self, rowSpan: Union[int, RibbonButtonStyle]) -> int:
+    def defaultRowSpan(self, rowSpan: int | RibbonButtonStyle) -> int:
         """Return the number of span rows for the given widget type.
 
         :param rowSpan: row span or type.
@@ -351,7 +360,7 @@ class RibbonPanel(QtWidgets.QFrame):
         """
         return self._titleHeight
 
-    def addWidgetsBy(self, data: Dict[str, Dict]) -> Dict[str, QtWidgets.QWidget]:
+    def addWidgetsBy(self, data: dict[str, dict]) -> dict[str, QtWidgets.QWidget]:
         """Add widgets to the panel.
 
         :param data: The data to add. The dict is of the form:
@@ -390,11 +399,11 @@ class RibbonPanel(QtWidgets.QFrame):
         self,
         widget: QtWidgets.QWidget,
         *,
-        rowSpan: Union[int, RibbonButtonStyle] = Small,
+        rowSpan: int | RibbonButtonStyle = Small,
         colSpan: int = 1,
         mode: RibbonSpaceFindMode = ColumnWise,
         alignment: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignCenter,
-        fixedHeight: Union[bool, float] = False,
+        fixedHeight: bool | float = False,
     ) -> QtWidgets.QWidget | Any:
         """Add a widget to the panel.
 
@@ -423,27 +432,33 @@ class RibbonPanel(QtWidgets.QFrame):
         widget._ribbon_mode = mode
         widget._ribbon_alignment = alignment
         widget._ribbon_fixedHeight = fixedHeight
-        
+
         row, col = self._gridLayoutManager.request_cells(rowSpan, colSpan, mode)
-        maximumHeight = self.rowHeight() * rowSpan + self._actionsLayout.verticalSpacing() * (rowSpan - 2)
+        maximumHeight = self.rowHeight() * rowSpan + self._actionsLayout.verticalSpacing() * (
+            rowSpan - 2
+        )
         widget.setMaximumHeight(maximumHeight)
         if fixedHeight is True or fixedHeight > 0:
             fixedHeight = (
                 int(fixedHeight * maximumHeight)
                 if 0 < fixedHeight <= 1
-                else fixedHeight if 1 < fixedHeight < maximumHeight else maximumHeight
+                else fixedHeight
+                if 1 < fixedHeight < maximumHeight
+                else maximumHeight
             )
-            fixedHeight = max(fixedHeight, 0.4 * maximumHeight)  # minimum height is 40% of the maximum height
+            fixedHeight = max(
+                fixedHeight, 0.4 * maximumHeight
+            )  # minimum height is 40% of the maximum height
             widget.setFixedHeight(fixedHeight)
         item = RibbonPanelItemWidget(self)
         item.addWidget(widget)
         self._actionsLayout.addWidget(item, row, col, rowSpan, colSpan, alignment)  # type: ignore
-        
+
         # Register for hiding/QAT tracking with the RibbonBar
         ribbon = self
-        while ribbon is not None and ribbon.__class__.__name__ != 'RibbonBar':
+        while ribbon is not None and ribbon.__class__.__name__ != "RibbonBar":
             ribbon = ribbon.parent()
-        if ribbon is not None and hasattr(ribbon, 'registerTargetButton'):
+        if ribbon is not None and hasattr(ribbon, "registerTargetButton"):
             ribbon.registerTargetButton(widget)
 
         # Apply any persisted custom order once all widgets of this panel have
@@ -461,7 +476,7 @@ class RibbonPanel(QtWidgets.QFrame):
     def reflow(self):
         """Reflow the remaining visible widgets to fill any gaps left by hidden widgets."""
         # Clean current layout but preserve widgets
-        
+
         # We must pull the source widgets out of the RibbonPanelItemWidget containers
         for i in reversed(range(self._actionsLayout.count())):
             item = self._actionsLayout.takeAt(i)
@@ -472,34 +487,34 @@ class RibbonPanel(QtWidgets.QFrame):
                 if button_item:
                     button = button_item.widget()
                     if button:
-                        button.setParent(self) # Keep alive
+                        button.setParent(self)  # Keep alive
                 container.deleteLater()
-                
+
         # Reset grid layout manager
         self._gridLayoutManager = RibbonGridLayoutManager(self._maxRows)
-        
+
         ribbon = self
-        while ribbon is not None and ribbon.__class__.__name__ != 'RibbonBar':
+        while ribbon is not None and ribbon.__class__.__name__ != "RibbonBar":
             ribbon = ribbon.parent()
-            
-        hidden_ids = getattr(ribbon, '_hidden_button_ids', []) if ribbon else []
-            
+
+        hidden_ids = getattr(ribbon, "_hidden_button_ids", []) if ribbon else []
+
         # Re-add all widgets sequentially
         for widget in self._widgets:
-            btn_id = getattr(widget, '_ribbon_btn_id', None)
+            btn_id = getattr(widget, "_ribbon_btn_id", None)
             if btn_id in hidden_ids:
                 # Explicitly hide
                 widget.hide()
                 continue
-                
+
             # If visible, request new cells and re-add
-            rowSpan = getattr(widget, '_ribbon_rowSpan', self.defaultRowSpan(Small))
-            colSpan = getattr(widget, '_ribbon_colSpan', 1)
-            mode = getattr(widget, '_ribbon_mode', ColumnWise)
-            alignment = getattr(widget, '_ribbon_alignment', QtCore.Qt.AlignmentFlag.AlignCenter)
-            
+            rowSpan = getattr(widget, "_ribbon_rowSpan", self.defaultRowSpan(Small))
+            colSpan = getattr(widget, "_ribbon_colSpan", 1)
+            mode = getattr(widget, "_ribbon_mode", ColumnWise)
+            alignment = getattr(widget, "_ribbon_alignment", QtCore.Qt.AlignmentFlag.AlignCenter)
+
             row, col = self._gridLayoutManager.request_cells(rowSpan, colSpan, mode)
-            
+
             # Wrap to item again
             item = RibbonPanelItemWidget(self)
             item.addWidget(widget)
@@ -519,7 +534,7 @@ class RibbonPanel(QtWidgets.QFrame):
         """
         return self._widgets[index]
 
-    def widgets(self) -> List[QtWidgets.QWidget]:
+    def widgets(self) -> list[QtWidgets.QWidget]:
         """Get all the widgets in the panel.
 
         :return: A list of all the widgets in the panel.
@@ -664,17 +679,19 @@ class RibbonPanel(QtWidgets.QFrame):
     def _panelStorageKey(self) -> str:
         """Return the QSettings key that stores this panel's button order."""
         category = self
-        while category is not None and 'Category' not in category.__class__.__name__:
+        while category is not None and "Category" not in category.__class__.__name__:
             category = category.parent()
         category_title = (
-            category.title() if category is not None and hasattr(category, 'title') else "UnknownCategory"
+            category.title()
+            if category is not None and hasattr(category, "title")
+            else "UnknownCategory"
         )
         return f"order/{category_title}::{self.title()}"
 
     def _saveButtonOrder(self):
         """Persist the current widget order to QSettings."""
         settings = QtCore.QSettings("ChiSurf", "RibbonState")
-        order = [str(getattr(w, '_ribbon_seq', i)) for i, w in enumerate(self._widgets)]
+        order = [str(getattr(w, "_ribbon_seq", i)) for i, w in enumerate(self._widgets)]
         settings.setValue(self._panelStorageKey(), order)
 
     def _restoreButtonOrder(self):
@@ -687,7 +704,7 @@ class RibbonPanel(QtWidgets.QFrame):
         rank = {seq: idx for idx, seq in enumerate(order)}
         default = len(order)
         # Stable sort keeps widgets not present in the saved order in place.
-        self._widgets.sort(key=lambda w: rank.get(str(getattr(w, '_ribbon_seq', -1)), default))
+        self._widgets.sort(key=lambda w: rank.get(str(getattr(w, "_ribbon_seq", -1)), default))
         self.reflow()
 
     def addButton(
@@ -697,7 +714,12 @@ class RibbonPanel(QtWidgets.QFrame):
         showText: bool = True,
         slot: Callable = None,
         shortcut: (
-            QtCore.Qt.Key | QtGui.QKeySequence | QtCore.QKeyCombination | QtGui.QKeySequence.StandardKey | str | int
+            QtCore.Qt.Key
+            | QtGui.QKeySequence
+            | QtCore.QKeyCombination
+            | QtGui.QKeySequence.StandardKey
+            | str
+            | int
         ) = None,
         tooltip: str = None,
         statusTip: str = None,
@@ -721,7 +743,9 @@ class RibbonPanel(QtWidgets.QFrame):
 
         :return: The button that was added.
         """
-        assert isinstance(rowSpan, RibbonButtonStyle), "rowSpan must be an instance of RibbonButtonStyle"
+        assert isinstance(rowSpan, RibbonButtonStyle), (
+            "rowSpan must be an instance of RibbonButtonStyle"
+        )
         style = rowSpan
         button = RibbonToolButton(self)
         button.setButtonStyle(style)
@@ -731,7 +755,7 @@ class RibbonPanel(QtWidgets.QFrame):
         button.setShortcut(shortcut) if shortcut else None
         button.setToolTip(tooltip) if tooltip else None
         button.setStatusTip(statusTip) if statusTip else None
-        
+
         button._ribbon_text = text
         button._ribbon_icon = icon
         button._ribbon_slot = slot
@@ -739,7 +763,7 @@ class RibbonPanel(QtWidgets.QFrame):
         button._ribbon_tooltip = tooltip
         button._ribbon_statusTip = statusTip
         button._ribbon_checkable = checkable
-        
+
         maximumHeight = (
             self.height()
             - self._titleLabel.sizeHint().height()
@@ -759,7 +783,9 @@ class RibbonPanel(QtWidgets.QFrame):
         kwargs["rowSpan"] = (
             self.defaultRowSpan(Small)
             if style == Small
-            else self.defaultRowSpan(Medium) if style == Medium else self.defaultRowSpan(Large)
+            else self.defaultRowSpan(Medium)
+            if style == Medium
+            else self.defaultRowSpan(Large)
         )
         self.addWidget(button, **kwargs)  # noqa
         return button
@@ -771,7 +797,7 @@ class RibbonPanel(QtWidgets.QFrame):
     addSmallToggleButton = functools.partialmethod(addToggleButton, rowSpan=Small)
     addMediumToggleButton = functools.partialmethod(addToggleButton, rowSpan=Medium)
     addLargeToggleButton = functools.partialmethod(addToggleButton, rowSpan=Large)
-    
+
     def addMenuButton(
         self,
         text: str = None,
@@ -779,7 +805,12 @@ class RibbonPanel(QtWidgets.QFrame):
         showText: bool = True,
         slot: Callable = None,
         shortcut: (
-            QtCore.Qt.Key | QtGui.QKeySequence | QtCore.QKeyCombination | QtGui.QKeySequence.StandardKey | str | int
+            QtCore.Qt.Key
+            | QtGui.QKeySequence
+            | QtCore.QKeyCombination
+            | QtGui.QKeySequence.StandardKey
+            | str
+            | int
         ) = None,
         tooltip: str = None,
         statusTip: str = None,
@@ -788,7 +819,7 @@ class RibbonPanel(QtWidgets.QFrame):
         **kwargs,
     ) -> RibbonMenuButton:
         """Add a menu button to the panel.
-        
+
         :param text: The text of the button.
         :param icon: The icon of the button.
         :param showText: Whether to show the text of the button.
@@ -798,10 +829,12 @@ class RibbonPanel(QtWidgets.QFrame):
         :param statusTip: The status tip of the button.
         :param rowSpan: The type of the button corresponding to the number of rows it should span.
         :param kwargs: keyword arguments to control the properties of the widget on the ribbon bar.
-        
+
         :return: The menu button that was added.
         """
-        assert isinstance(rowSpan, RibbonButtonStyle), "rowSpan must be an instance of RibbonButtonStyle"
+        assert isinstance(rowSpan, RibbonButtonStyle), (
+            "rowSpan must be an instance of RibbonButtonStyle"
+        )
         style = rowSpan
         button = RibbonMenuButton(self)
         button.setButtonStyle(style)
@@ -811,14 +844,14 @@ class RibbonPanel(QtWidgets.QFrame):
         button.setShortcut(shortcut) if shortcut else None
         button.setToolTip(tooltip) if tooltip else None
         button.setStatusTip(statusTip) if statusTip else None
-        
+
         button._ribbon_text = text
         button._ribbon_icon = icon
         button._ribbon_slot = slot
         button._ribbon_shortcut = shortcut
         button._ribbon_tooltip = tooltip
         button._ribbon_statusTip = statusTip
-        
+
         maximumHeight = (
             self.height()
             - self._titleLabel.sizeHint().height()
@@ -834,15 +867,17 @@ class RibbonPanel(QtWidgets.QFrame):
             button.setMaximumIconSize(int(maximumIconSize))
         if not showText:
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
-            
+
         kwargs["rowSpan"] = (
             self.defaultRowSpan(Small)
             if style == Small
-            else self.defaultRowSpan(Medium) if style == Medium else self.defaultRowSpan(Large)
+            else self.defaultRowSpan(Medium)
+            if style == Medium
+            else self.defaultRowSpan(Large)
         )
         self.addWidget(button, **kwargs)  # noqa
         return button
-        
+
     def addDelayedMenuButton(
         self,
         text: str = None,
@@ -850,7 +885,12 @@ class RibbonPanel(QtWidgets.QFrame):
         showText: bool = True,
         slot: Callable = None,
         shortcut: (
-            QtCore.Qt.Key | QtGui.QKeySequence | QtCore.QKeyCombination | QtGui.QKeySequence.StandardKey | str | int
+            QtCore.Qt.Key
+            | QtGui.QKeySequence
+            | QtCore.QKeyCombination
+            | QtGui.QKeySequence.StandardKey
+            | str
+            | int
         ) = None,
         tooltip: str = None,
         statusTip: str = None,
@@ -859,7 +899,7 @@ class RibbonPanel(QtWidgets.QFrame):
         **kwargs,
     ) -> RibbonDelayedMenuButton:
         """Add a delayed menu button to the panel.
-        
+
         :param text: The text of the button.
         :param icon: The icon of the button.
         :param showText: Whether to show the text of the button.
@@ -869,10 +909,12 @@ class RibbonPanel(QtWidgets.QFrame):
         :param statusTip: The status tip of the button.
         :param rowSpan: The type of the button corresponding to the number of rows it should span.
         :param kwargs: keyword arguments to control the properties of the widget on the ribbon bar.
-        
+
         :return: The delayed menu button that was added.
         """
-        assert isinstance(rowSpan, RibbonButtonStyle), "rowSpan must be an instance of RibbonButtonStyle"
+        assert isinstance(rowSpan, RibbonButtonStyle), (
+            "rowSpan must be an instance of RibbonButtonStyle"
+        )
         style = rowSpan
         button = RibbonDelayedMenuButton(self)
         button.setButtonStyle(style)
@@ -882,14 +924,14 @@ class RibbonPanel(QtWidgets.QFrame):
         button.setShortcut(shortcut) if shortcut else None
         button.setToolTip(tooltip) if tooltip else None
         button.setStatusTip(statusTip) if statusTip else None
-        
+
         button._ribbon_text = text
         button._ribbon_icon = icon
         button._ribbon_slot = slot
         button._ribbon_shortcut = shortcut
         button._ribbon_tooltip = tooltip
         button._ribbon_statusTip = statusTip
-        
+
         maximumHeight = (
             self.height()
             - self._titleLabel.sizeHint().height()
@@ -905,15 +947,17 @@ class RibbonPanel(QtWidgets.QFrame):
             button.setMaximumIconSize(int(maximumIconSize))
         if not showText:
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
-            
+
         kwargs["rowSpan"] = (
             self.defaultRowSpan(Small)
             if style == Small
-            else self.defaultRowSpan(Medium) if style == Medium else self.defaultRowSpan(Large)
+            else self.defaultRowSpan(Medium)
+            if style == Medium
+            else self.defaultRowSpan(Large)
         )
         self.addWidget(button, **kwargs)  # noqa
         return button
-        
+
     def addSplitButton(
         self,
         text: str = None,
@@ -921,7 +965,12 @@ class RibbonPanel(QtWidgets.QFrame):
         showText: bool = True,
         slot: Callable = None,
         shortcut: (
-            QtCore.Qt.Key | QtGui.QKeySequence | QtCore.QKeyCombination | QtGui.QKeySequence.StandardKey | str | int
+            QtCore.Qt.Key
+            | QtGui.QKeySequence
+            | QtCore.QKeyCombination
+            | QtGui.QKeySequence.StandardKey
+            | str
+            | int
         ) = None,
         tooltip: str = None,
         statusTip: str = None,
@@ -930,7 +979,7 @@ class RibbonPanel(QtWidgets.QFrame):
         **kwargs,
     ) -> RibbonSplitButton:
         """Add a split button to the panel.
-        
+
         :param text: The text of the button.
         :param icon: The icon of the button.
         :param showText: Whether to show the text of the button.
@@ -940,10 +989,12 @@ class RibbonPanel(QtWidgets.QFrame):
         :param statusTip: The status tip of the button.
         :param rowSpan: The type of the button corresponding to the number of rows it should span.
         :param kwargs: keyword arguments to control the properties of the widget on the ribbon bar.
-        
+
         :return: The split button that was added.
         """
-        assert isinstance(rowSpan, RibbonButtonStyle), "rowSpan must be an instance of RibbonButtonStyle"
+        assert isinstance(rowSpan, RibbonButtonStyle), (
+            "rowSpan must be an instance of RibbonButtonStyle"
+        )
         style = rowSpan
         button = RibbonSplitButton(self)
         button.setText(text) if text else None
@@ -951,14 +1002,14 @@ class RibbonPanel(QtWidgets.QFrame):
         button.actionClicked.connect(slot) if slot else None  # type: ignore
         button.setToolTip(tooltip) if tooltip else None
         button.setStatusTip(statusTip) if statusTip else None
-        
+
         button._ribbon_text = text
         button._ribbon_icon = icon
         button._ribbon_slot = slot
         button._ribbon_shortcut = shortcut
         button._ribbon_tooltip = tooltip
         button._ribbon_statusTip = statusTip
-        
+
         # Configure action button
         action_button = button.actionButton()
         action_button.setMaximumHeight(
@@ -969,21 +1020,25 @@ class RibbonPanel(QtWidgets.QFrame):
             - self._mainLayout.contentsMargins().bottom()
         )
         if style == Large:
-            fontSize = max(action_button.font().pointSize() * 4 / 3, action_button.font().pixelSize())
+            fontSize = max(
+                action_button.font().pointSize() * 4 / 3, action_button.font().pixelSize()
+            )
             arrowSize = fontSize
             maximumIconSize = max(action_button.maximumHeight() - fontSize * 2 - arrowSize, 48)
             action_button.setMaximumIconSize(int(maximumIconSize))
         if not showText:
             action_button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
-            
+
         kwargs["rowSpan"] = (
             self.defaultRowSpan(Small)
             if style == Small
-            else self.defaultRowSpan(Medium) if style == Medium else self.defaultRowSpan(Large)
+            else self.defaultRowSpan(Medium)
+            if style == Medium
+            else self.defaultRowSpan(Large)
         )
         self.addWidget(button, **kwargs)  # noqa
         return button
-        
+
     # Convenience methods for different sizes
     addSmallMenuButton = functools.partialmethod(addMenuButton, rowSpan=Small)
     addMediumMenuButton = functools.partialmethod(addMenuButton, rowSpan=Medium)
@@ -1000,11 +1055,11 @@ class RibbonPanel(QtWidgets.QFrame):
         *args,
         cls,
         initializer: Callable = None,
-        rowSpan: Union[int, RibbonButtonStyle] = Small,
+        rowSpan: int | RibbonButtonStyle = Small,
         colSpan: int = 1,
         mode: RibbonSpaceFindMode = ColumnWise,
         alignment: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignCenter,
-        fixedHeight: Union[bool, float] = False,
+        fixedHeight: bool | float = False,
         **kwargs,
     ) -> QtWidgets.QWidget:
         """Add any widget to the panel.
@@ -1029,7 +1084,12 @@ class RibbonPanel(QtWidgets.QFrame):
         elif args or kwargs:
             raise ValueError("Arguments are provided but the initializer is not set")
         return self.addWidget(
-            widget, rowSpan=rowSpan, colSpan=colSpan, mode=mode, alignment=alignment, fixedHeight=fixedHeight
+            widget,
+            rowSpan=rowSpan,
+            colSpan=colSpan,
+            mode=mode,
+            alignment=alignment,
+            fixedHeight=fixedHeight,
         )
 
     def __getattr__(self, method: str) -> Callable:
@@ -1064,7 +1124,9 @@ class RibbonPanel(QtWidgets.QFrame):
     addLineEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QLineEdit)
     addTextEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QTextEdit)
     addPlainTextEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QPlainTextEdit)
-    addLabel = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QLabel, initializer=QtWidgets.QLabel.setText)
+    addLabel = functools.partialmethod(
+        _addAnyWidget, cls=QtWidgets.QLabel, initializer=QtWidgets.QLabel.setText
+    )
     addProgressBar = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QProgressBar)
     addSlider = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QSlider)
     addSpinBox = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QSpinBox)
@@ -1072,12 +1134,18 @@ class RibbonPanel(QtWidgets.QFrame):
     addDateEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QDateEdit)
     addTimeEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QTimeEdit)
     addDateTimeEdit = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QDateTimeEdit)
-    addTableWidget = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QTableWidget, rowSpan=Large)
+    addTableWidget = functools.partialmethod(
+        _addAnyWidget, cls=QtWidgets.QTableWidget, rowSpan=Large
+    )
     addTreeWidget = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QTreeWidget, rowSpan=Large)
     addListWidget = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QListWidget, rowSpan=Large)
-    addCalendarWidget = functools.partialmethod(_addAnyWidget, cls=QtWidgets.QCalendarWidget, rowSpan=Large)
+    addCalendarWidget = functools.partialmethod(
+        _addAnyWidget, cls=QtWidgets.QCalendarWidget, rowSpan=Large
+    )
 
-    def addSeparator(self, orientation=QtCore.Qt.Orientation.Vertical, width=6, **kwargs) -> RibbonSeparator:
+    def addSeparator(
+        self, orientation=QtCore.Qt.Orientation.Vertical, width=6, **kwargs
+    ) -> RibbonSeparator:
         """Add a separator to the panel.
 
         :param orientation: The orientation of the separator.
@@ -1089,8 +1157,12 @@ class RibbonPanel(QtWidgets.QFrame):
         kwargs["rowSpan"] = Large if "rowSpan" not in kwargs else kwargs["rowSpan"]
         return self.addWidget(RibbonSeparator(orientation, width), **kwargs)
 
-    addHorizontalSeparator = functools.partialmethod(addSeparator, orientation=QtCore.Qt.Orientation.Horizontal)
-    addVerticalSeparator = functools.partialmethod(addSeparator, orientation=QtCore.Qt.Orientation.Vertical)
+    addHorizontalSeparator = functools.partialmethod(
+        addSeparator, orientation=QtCore.Qt.Orientation.Horizontal
+    )
+    addVerticalSeparator = functools.partialmethod(
+        addSeparator, orientation=QtCore.Qt.Orientation.Vertical
+    )
 
     def addGallery(self, minimumWidth=800, popupHideOnClick=False, **kwargs) -> RibbonGallery:
         """Add a gallery to the panel.
@@ -1104,6 +1176,8 @@ class RibbonPanel(QtWidgets.QFrame):
         kwargs["rowSpan"] = Large if "rowSpan" not in kwargs else kwargs["rowSpan"]
         rowSpan = self.defaultRowSpan(kwargs["rowSpan"])
         gallery = RibbonGallery(minimumWidth, popupHideOnClick, self)
-        maximumHeight = self.rowHeight() * rowSpan + self._actionsLayout.verticalSpacing() * (rowSpan - 2)
+        maximumHeight = self.rowHeight() * rowSpan + self._actionsLayout.verticalSpacing() * (
+            rowSpan - 2
+        )
         gallery.setFixedHeight(maximumHeight)
         return self.addWidget(gallery, **kwargs)

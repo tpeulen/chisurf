@@ -7,11 +7,11 @@ kind. Pinned: the built-ins route as before; a plugin kind registered *after*
 the backend exists is built on first use and its pixels land; unloading
 removes it.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.plugins import load_plugins
 from chimol.render.pipelines import PIPELINES, DrawRule, PipelineSpec
 from chimol.render.scene import Geometry, Material, Scene, SceneObject
@@ -30,7 +30,7 @@ def test_the_builtin_routing_is_unchanged():
 
     pf = WgpuMeshRenderer.pipeline_for
     assert pf(_geom("mesh", indices=np.zeros(3, dtype=np.uint32))) == "mesh"
-    assert pf(_geom("mesh")) is None                       # a mesh needs indices
+    assert pf(_geom("mesh")) is None  # a mesh needs indices
     assert pf(_geom("points")) == "impostor"
     assert pf(_geom("points", meta={"glyph": "selection"})) == "marker"
     assert pf(_geom("points", n=0)) is None
@@ -70,7 +70,11 @@ def _interleave_flat(geometry):
     n = geometry.vertex_count
     out = np.zeros((n, 7), dtype=np.float32)
     out[:, 0:3] = geometry.positions
-    cols = np.asarray(geometry.colors, dtype=np.float32) if geometry.colors is not None else np.ones((n, 4), np.float32)
+    cols = (
+        np.asarray(geometry.colors, dtype=np.float32)
+        if geometry.colors is not None
+        else np.ones((n, 4), np.float32)
+    )
     out[:, 3:7] = cols[:, :4]
     return np.ascontiguousarray(out)
 
@@ -82,11 +86,18 @@ class _FlatPlugin:
     name = "flat"
 
     def register(self, api):
-        api.add_pipeline(PipelineSpec(
-            kind="flat", geometry_kind="flat_tris", shader=str(self.shader_path),
-            attributes=(("float32x3", 3), ("float32x4", 4)), topology="triangle-list", step_mode="vertex",
-            interleave=_interleave_flat, draw=DrawRule("vertex_list"),
-        ))
+        api.add_pipeline(
+            PipelineSpec(
+                kind="flat",
+                geometry_kind="flat_tris",
+                shader=str(self.shader_path),
+                attributes=(("float32x3", 3), ("float32x4", 4)),
+                topology="triangle-list",
+                step_mode="vertex",
+                interleave=_interleave_flat,
+                draw=DrawRule("vertex_list"),
+            )
+        )
 
 
 @pytest.mark.slow
@@ -97,7 +108,7 @@ def test_a_plugin_pipeline_registered_after_the_backend_draws(tmp_path):
 
     shader = tmp_path / "flat.wgsl"
     shader.write_text(_FLAT_WGSL)
-    renderer = WgpuMeshRenderer(64, 64)          # built before the plugin exists
+    renderer = WgpuMeshRenderer(64, 64)  # built before the plugin exists
     cmd = Cmd(None, plugins=False)
     loaded = load_plugins(cmd, [_FlatPlugin(shader)])
     try:
@@ -106,8 +117,11 @@ def test_a_plugin_pipeline_registered_after_the_backend_draws(tmp_path):
         col = np.tile(np.array([[1, 0, 1, 1]], dtype=np.float32), (3, 1))
         geom = Geometry(kind="flat_tris", positions=pos, colors=col)
         assert WgpuMeshRenderer.pipeline_for(geom) == "flat"
-        scene = Scene(objects=[SceneObject(id="t", geometry=geom, material=Material())],
-                      center=np.zeros(3), radius=5.0)
+        scene = Scene(
+            objects=[SceneObject(id="t", geometry=geom, material=Material())],
+            center=np.zeros(3),
+            radius=5.0,
+        )
         view = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -20, 0, 0, 0, 1, 40, 45]
         img = renderer.render(pack_scene(scene), view, background=(0, 0, 0))
         assert img.shape == (64, 64, 3)

@@ -56,7 +56,9 @@ def _compile_check_content(content: str, filename: str) -> list[dict[str, Any]]:
     return []
 
 
-def _diagnostic_from_py_compile_error(exc: py_compile.PyCompileError, filename: str) -> dict[str, Any]:
+def _diagnostic_from_py_compile_error(
+    exc: py_compile.PyCompileError, filename: str
+) -> dict[str, Any]:
     """Convert a PyCompileError into a normalized diagnostic."""
     exc_value = getattr(exc, "exc_value", None)
     line = getattr(exc_value, "lineno", None) or getattr(exc_value, "args", [None])[0]

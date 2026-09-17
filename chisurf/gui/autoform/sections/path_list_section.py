@@ -36,10 +36,10 @@ import pathlib
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import PathDropListWidget
 
 from .registry import register_section
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -174,14 +174,17 @@ class PathListWidget(QtWidgets.QWidget):
             bar.addWidget(
                 _tool_button(
                     "🗄️ Database",
-                    "Select a dataset from the MMFDB database "
-                    "(including S3-backed object stores).",
+                    "Select a dataset from the MMFDB database (including S3-backed object stores).",
                     self._add_from_mmfdb,
                 )
             )
         if self._checkable:
-            bar.addWidget(_tool_button("☑️ All", "Check all entries.", lambda: self._set_all_checked(True)))
-            bar.addWidget(_tool_button("☐ None", "Uncheck all entries.", lambda: self._set_all_checked(False)))
+            bar.addWidget(
+                _tool_button("☑️ All", "Check all entries.", lambda: self._set_all_checked(True))
+            )
+            bar.addWidget(
+                _tool_button("☐ None", "Uncheck all entries.", lambda: self._set_all_checked(False))
+            )
         bar.addWidget(_tool_button("➖ Remove", "Remove selected entries.", self._remove_selected))
         bar.addWidget(_tool_button("🗑️ Clear", "Clear the list.", self._clear))
         bar.addStretch(1)
@@ -215,7 +218,9 @@ class PathListWidget(QtWidgets.QWidget):
                     out.extend(str(x) for x in self._folder_expander(p))
                 else:
                     out.extend(
-                        str(f) for f in sorted(p.rglob("*")) if f.is_file() and self._accepts(str(f))
+                        str(f)
+                        for f in sorted(p.rglob("*"))
+                        if f.is_file() and self._accepts(str(f))
                     )
         return out
 

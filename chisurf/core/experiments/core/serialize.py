@@ -71,10 +71,14 @@ def decode_array(obj: dict[str, Any]) -> np.ndarray:
     np.ndarray
         The decoded array.
     """
-    return np.frombuffer(
-        base64.b64decode(obj["data"]),
-        dtype=obj["dtype"],
-    ).reshape(obj["shape"]).copy()
+    return (
+        np.frombuffer(
+            base64.b64decode(obj["data"]),
+            dtype=obj["dtype"],
+        )
+        .reshape(obj["shape"])
+        .copy()
+    )
 
 
 def _curve_to_dict(curve: chisurf.core.data.DataCurve) -> dict[str, Any]:

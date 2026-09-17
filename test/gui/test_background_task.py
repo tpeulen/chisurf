@@ -28,11 +28,9 @@ def _adder(a, b, task):
 
 
 class TestResults:
-
     def test_the_return_value_reaches_on_result(self, owner):
         got = []
-        run_in_background(owner, "Adding", _adder, args=(2, 3),
-                          on_result=got.append).wait()
+        run_in_background(owner, "Adding", _adder, args=(2, 3), on_result=got.append).wait()
         assert got == [5]
 
     def test_keyword_arguments_pass_through(self, owner):
@@ -40,15 +38,21 @@ class TestResults:
             return a * b
 
         got = []
-        run_in_background(owner, "Multiplying", work, args=(3,), kwargs={"b": 4},
-                          on_result=got.append).wait()
+        run_in_background(
+            owner, "Multiplying", work, args=(3,), kwargs={"b": 4}, on_result=got.append
+        ).wait()
         assert got == [12]
 
     def test_on_done_runs_after_success(self, owner):
         calls = []
-        run_in_background(owner, "Adding", _adder, args=(1, 1),
-                          on_result=lambda r: calls.append("result"),
-                          on_done=lambda: calls.append("done")).wait()
+        run_in_background(
+            owner,
+            "Adding",
+            _adder,
+            args=(1, 1),
+            on_result=lambda r: calls.append("result"),
+            on_done=lambda: calls.append("done"),
+        ).wait()
         assert calls == ["result", "done"]
 
     def test_the_task_records_the_outcome(self, owner):
@@ -59,14 +63,14 @@ class TestResults:
 
 
 class TestFailures:
-
     def test_an_exception_reaches_on_error_not_on_result(self, owner):
         def boom(task):
             raise ValueError("no good")
 
         errors, results = [], []
-        run_in_background(owner, "Failing", boom,
-                          on_result=results.append, on_error=errors.append).wait()
+        run_in_background(
+            owner, "Failing", boom, on_result=results.append, on_error=errors.append
+        ).wait()
         assert results == []
         assert isinstance(errors[0], ValueError)
         assert str(errors[0]) == "no good"
@@ -76,8 +80,9 @@ class TestFailures:
             raise ValueError
 
         calls = []
-        run_in_background(owner, "Failing", boom, on_error=lambda e: None,
-                          on_done=lambda: calls.append("done")).wait()
+        run_in_background(
+            owner, "Failing", boom, on_error=lambda e: None, on_done=lambda: calls.append("done")
+        ).wait()
         assert calls == ["done"]
 
     def test_a_failure_without_a_handler_is_logged_not_raised(self, owner, caplog):
@@ -90,7 +95,6 @@ class TestFailures:
 
 
 class TestPartialResults:
-
     def test_partials_arrive_in_order_before_the_result(self, owner):
         def streaming(task):
             for i in range(4):
@@ -98,9 +102,13 @@ class TestPartialResults:
             return "done"
 
         seen = []
-        run_in_background(owner, "Streaming", streaming,
-                          on_partial=seen.append,
-                          on_result=lambda r: seen.append(r)).wait()
+        run_in_background(
+            owner,
+            "Streaming",
+            streaming,
+            on_partial=seen.append,
+            on_result=lambda r: seen.append(r),
+        ).wait()
         assert seen == [0, 1, 2, 3, "done"]
 
     def test_a_raising_partial_handler_does_not_kill_the_task(self, owner):
@@ -117,7 +125,6 @@ class TestPartialResults:
 
 
 class TestProgress:
-
     def test_progress_drives_the_display(self, owner):
         def counting(task):
             for i in range(1, 4):
@@ -149,7 +156,6 @@ class TestProgress:
 
 
 class TestCancellation:
-
     def test_cancel_is_visible_to_the_worker(self, owner):
         started, may_finish = threading.Event(), threading.Event()
 
@@ -185,12 +191,18 @@ class TestCancellation:
         """
         blocker = threading.Event()
         hog = QtWidgets.QWidget()
-        first = run_in_background(hog, "Blocking", lambda task: blocker.wait(5.0),
-                                  synchronous=False)
+        first = run_in_background(
+            hog, "Blocking", lambda task: blocker.wait(5.0), synchronous=False
+        )
         calls = []
-        queued = run_in_background(owner, "Queued", _adder, args=(1, 1),
-                                   synchronous=False,
-                                   on_done=lambda: calls.append("done"))
+        queued = run_in_background(
+            owner,
+            "Queued",
+            _adder,
+            args=(1, 1),
+            synchronous=False,
+            on_done=lambda: calls.append("done"),
+        )
         queued.cancel()
         queued.wait(timeout=5.0)
         blocker.set()
@@ -208,7 +220,6 @@ class TestCancellation:
 
 
 class TestOneRunPerOwner:
-
     def test_a_new_run_supersedes_the_previous_one(self, owner):
         """A superseded run's result must not land in the GUI after a newer one."""
         first_started, first_may_finish = threading.Event(), threading.Event()
@@ -219,11 +230,11 @@ class TestOneRunPerOwner:
             return "stale"
 
         results = []
-        stale = run_in_background(owner, "First", slow, synchronous=False,
-                                  on_result=results.append)
+        stale = run_in_background(owner, "First", slow, synchronous=False, on_result=results.append)
         assert first_started.wait(5.0)
-        fresh = run_in_background(owner, "Second", _adder, args=(1, 1),
-                                  synchronous=False, on_result=results.append)
+        fresh = run_in_background(
+            owner, "Second", _adder, args=(1, 1), synchronous=False, on_result=results.append
+        )
         first_may_finish.set()
         fresh.wait()
         stale.wait()
@@ -245,17 +256,21 @@ class TestOneRunPerOwner:
             may_finish.wait(5.0)
             return "stale"
 
-        stale = run_in_background(owner, "First", slow, synchronous=False,
-                                  on_result=lambda r: calls.append(r),
-                                  on_done=lambda: calls.append("done"))
+        stale = run_in_background(
+            owner,
+            "First",
+            slow,
+            synchronous=False,
+            on_result=lambda r: calls.append(r),
+            on_done=lambda: calls.append("done"),
+        )
         assert started.wait(5.0)
-        fresh = run_in_background(owner, "Second", _adder, args=(1, 1),
-                                  synchronous=False)
+        fresh = run_in_background(owner, "Second", _adder, args=(1, 1), synchronous=False)
         may_finish.set()
         fresh.wait(timeout=5.0)
         stale.wait(timeout=5.0)
         assert not stale.is_running
-        assert calls == ["done"]        # on_done ran; the stale result did not
+        assert calls == ["done"]  # on_done ran; the stale result did not
 
     def test_distinct_owners_do_not_cancel_each_other(self, qtbot):
         a, b = QtWidgets.QWidget(), QtWidgets.QWidget()
@@ -278,8 +293,7 @@ class TestOneRunPerOwner:
             except RuntimeError as exc:
                 raised.append(exc)
 
-        run_in_background(owner, "First", _adder, args=(1, 1),
-                          on_result=restart).wait()
+        run_in_background(owner, "First", _adder, args=(1, 1), on_result=restart).wait()
         assert raised and "completion callback" in str(raised[0])
 
 
@@ -296,8 +310,7 @@ class TestStatusBarDisplay:
         window = QtWidgets.QMainWindow()
         qtbot.addWidget(window)
         blocker = threading.Event()
-        task = run_in_background(window, "Working…", lambda t: blocker.wait(5.0),
-                                 synchronous=False)
+        task = run_in_background(window, "Working…", lambda t: blocker.wait(5.0), synchronous=False)
         host = window._chisurf_status_progress
         assert isinstance(host, StatusBarProgressHost)
         assert task.progress.backend.__class__.__name__ == "_StatusBarTask"
@@ -337,8 +350,7 @@ class TestStatusBarDisplay:
         qtbot.addWidget(window)
         window.show()
         blocker = threading.Event()
-        task = run_in_background(window, "Working…", lambda t: blocker.wait(5.0),
-                                 synchronous=False)
+        task = run_in_background(window, "Working…", lambda t: blocker.wait(5.0), synchronous=False)
         for _ in range(200):
             QtWidgets.QApplication.instance().processEvents()
             if window._chisurf_status_progress.isVisible():
@@ -367,7 +379,6 @@ class TestStatusBarDisplay:
 
 
 class TestExecutionMode:
-
     def test_synchronous_runs_inline_and_in_order(self, owner):
         order = []
 
@@ -376,15 +387,19 @@ class TestExecutionMode:
             task.set_partial("partial")
             return "result"
 
-        run_in_background(owner, "Inline", work, synchronous=True,
-                          on_partial=lambda v: order.append(v),
-                          on_result=lambda v: order.append(v))
+        run_in_background(
+            owner,
+            "Inline",
+            work,
+            synchronous=True,
+            on_partial=lambda v: order.append(v),
+            on_result=lambda v: order.append(v),
+        )
         assert order == ["work", "partial", "result"]
 
     def test_the_alias_on_the_progress_class_is_the_same_function(self, owner):
         got = []
-        ChiSurfProgress.run(owner, "Adding", _adder, args=(4, 4),
-                            on_result=got.append).wait()
+        ChiSurfProgress.run(owner, "Adding", _adder, args=(4, 4), on_result=got.append).wait()
         assert got == [8]
 
 
@@ -418,8 +433,7 @@ class TestLifetime:
             # the C++ frames beneath it) have unwound.
             QtCore.QTimer.singleShot(0, lambda: events.append("dispatch-end"))
 
-        task = run_in_background(owner, "Adding", _adder, args=(1, 2),
-                                 on_result=_on_result)
+        task = run_in_background(owner, "Adding", _adder, args=(1, 2), on_result=_on_result)
         task._bridge.destroyed.connect(lambda *_: events.append("destroyed"))
         del task  # exactly what ChiSurfProgress.run(...) as a statement does
 

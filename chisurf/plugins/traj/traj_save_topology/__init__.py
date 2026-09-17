@@ -18,6 +18,7 @@ to interpret coordinate data correctly.
 icon = "💾"
 
 import sys
+
 from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
 
 # Define the plugin name - this will appear in the Plugins menu

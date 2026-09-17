@@ -58,8 +58,7 @@ class _RunSection(QtWidgets.QWidget):
         self.export_button = QtWidgets.QToolButton(self)
         self.export_button.setText("💾 Export CSV")
         self.export_button.setToolTip(
-            "Write the stack, the fitted curves, the populations and the "
-            "isotherm as one CSV."
+            "Write the stack, the fitted curves, the populations and the isotherm as one CSV."
         )
         self.export_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.export_button.clicked.connect(self._export)
@@ -69,7 +68,8 @@ class _RunSection(QtWidgets.QWidget):
     def _export(self) -> None:
         """Ask for a path and write the result there."""
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export titration", "titration.csv", "CSV (*.csv)")
+            self, "Export titration", "titration.csv", "CSV (*.csv)"
+        )
         if not path:
             return
         try:
@@ -121,8 +121,7 @@ class TitrationPanel(QtWidgets.QWidget):
             return
         self.model.add_files([str(p) for p in files])
 
-    def set_corrections(self, *, gamma: float | None = None,
-                        beta: float | None = None) -> None:
+    def set_corrections(self, *, gamma: float | None = None, beta: float | None = None) -> None:
         """Adopt γ/β from the Accurate FRET step."""
         if gamma is not None:
             self.model.gamma = float(gamma)
@@ -135,7 +134,8 @@ class TitrationPanel(QtWidgets.QWidget):
     def _choose_files(self) -> list[str]:
         """Open the burst-file chooser and return the selection."""
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Add burst files (one per concentration)", "", BURST_FILTER)
+            self, "Add burst files (one per concentration)", "", BURST_FILTER
+        )
         return list(paths)
 
     def _on_model_event(self, event: str) -> None:

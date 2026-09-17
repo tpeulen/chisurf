@@ -40,10 +40,7 @@ def channels_signature(channels_map: dict[str, list[dict]]) -> list[dict]:
         if not isinstance(channels_map, dict):
             return sig
         for det_name, entries in sorted(channels_map.items(), key=lambda kv: str(kv[0])):
-            part = {
-                "name": str(det_name),
-                "entries": []
-            }
+            part = {"name": str(det_name), "entries": []}
             for e in entries or []:
                 chs = e.get("detector_chs") or []
                 try:
@@ -59,14 +56,18 @@ def channels_signature(channels_map: dict[str, list[dict]]) -> list[dict]:
                 else:
                     mtr = None
                 part["entries"].append({"chs": chs, "mtr": mtr})
-            part["entries"].sort(key=lambda d: (tuple(d.get("chs") or []), tuple(d.get("mtr") or [])))
+            part["entries"].sort(
+                key=lambda d: (tuple(d.get("chs") or []), tuple(d.get("mtr") or []))
+            )
             sig.append(part)
     except Exception:
         return sig
     return sig
 
 
-def mosaic_hash(file_path: pathlib.Path, channels_map: dict[str, list[dict]], reading_routine: str | None) -> str:
+def mosaic_hash(
+    file_path: pathlib.Path, channels_map: dict[str, list[dict]], reading_routine: str | None
+) -> str:
     """Return a stable cache signature for a mosaic image load."""
     try:
         st = file_path.stat()
@@ -80,11 +81,15 @@ def mosaic_hash(file_path: pathlib.Path, channels_map: dict[str, list[dict]], re
         s = json.dumps(payload, sort_keys=True)
         return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
     except Exception:
-        fallback_str = f"{file_path}_{reading_routine}_{json.dumps(channels_signature(channels_map))}"
+        fallback_str = (
+            f"{file_path}_{reading_routine}_{json.dumps(channels_signature(channels_map))}"
+        )
         return hashlib.sha1(fallback_str.encode("utf-8")).hexdigest()[:16]
 
 
-def mosaic_cache_file(file_path: pathlib.Path, channels_map: dict[str, list[dict]], reading_routine: str | None) -> pathlib.Path:
+def mosaic_cache_file(
+    file_path: pathlib.Path, channels_map: dict[str, list[dict]], reading_routine: str | None
+) -> pathlib.Path:
     """Return the on-disk cache file path for a mosaic."""
     key = mosaic_hash(file_path, channels_map, reading_routine)
     return cache_dir_for(file_path) / f"{file_path.stem}_mosaic_{key}.npz"
@@ -99,7 +104,7 @@ def save_mosaic_cache(
     cols: int,
     rows: int,
     tile_w: int,
-    tile_h: int
+    tile_h: int,
 ) -> None:
     """Save a computed mosaic to disk cache."""
     try:
@@ -112,16 +117,14 @@ def save_mosaic_cache(
             cols=int(cols),
             rows=int(rows),
             tile_w=int(tile_w),
-            tile_h=int(tile_h)
+            tile_h=int(tile_h),
         )
     except Exception:
         pass
 
 
 def load_mosaic_cache(
-    file_path: pathlib.Path,
-    channels_map: dict[str, list[dict]],
-    reading_routine: str | None
+    file_path: pathlib.Path, channels_map: dict[str, list[dict]], reading_routine: str | None
 ) -> tuple[np.ndarray, list[str], int, int, int, int] | None:
     """Load a cached mosaic if present."""
     try:
@@ -140,7 +143,12 @@ def load_mosaic_cache(
         return None
 
 
-def entry_hash(file_path: pathlib.Path, det_chs: list[int] | None, mtr: list[int] | None, reading_routine: str | None) -> str:
+def entry_hash(
+    file_path: pathlib.Path,
+    det_chs: list[int] | None,
+    mtr: list[int] | None,
+    reading_routine: str | None,
+) -> str:
     """Return a signature for a single detector entry cache."""
     try:
         st = file_path.stat()
@@ -150,7 +158,9 @@ def entry_hash(file_path: pathlib.Path, det_chs: list[int] | None, mtr: list[int
             "mtime_ns": getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9)),
             "reading": str(reading_routine) if reading_routine is not None else "Auto",
             "chs": list(map(int, det_chs)) if det_chs else [],
-            "mtr": [int(mtr[0]), int(mtr[1])] if (isinstance(mtr, (list, tuple)) and len(mtr) == 2) else None,
+            "mtr": [int(mtr[0]), int(mtr[1])]
+            if (isinstance(mtr, (list, tuple)) and len(mtr) == 2)
+            else None,
         }
         s = json.dumps(payload, sort_keys=True)
         return hashlib.sha1(s.encode("utf-8")).hexdigest()[:16]
@@ -159,7 +169,12 @@ def entry_hash(file_path: pathlib.Path, det_chs: list[int] | None, mtr: list[int
         return hashlib.sha1(fallback_str.encode("utf-8")).hexdigest()[:16]
 
 
-def entry_cache_file(file_path: pathlib.Path, det_chs: list[int] | None, mtr: list[int] | None, reading_routine: str | None) -> pathlib.Path:
+def entry_cache_file(
+    file_path: pathlib.Path,
+    det_chs: list[int] | None,
+    mtr: list[int] | None,
+    reading_routine: str | None,
+) -> pathlib.Path:
     """Return the entry npz cache file path."""
     key = entry_hash(file_path, det_chs, mtr, reading_routine)
     return cache_dir_for(file_path) / f"{file_path.stem}_{key}.npz"
@@ -170,7 +185,7 @@ def compute_entry_stack_cached(
     file_path: pathlib.Path,
     det_chs: list[int] | None,
     mtr: list[int] | None,
-    reading_routine: str | None
+    reading_routine: str | None,
 ) -> np.ndarray:
     """Compute and cache a 3D stack (frames, x, y) for an entry."""
     cache_path = entry_cache_file(file_path, det_chs, mtr, reading_routine)
@@ -233,10 +248,7 @@ def sum_stacks_with_padding(stacks: list[np.ndarray]) -> np.ndarray | None:
 
 
 def get_combo_stack(
-    tttr_obj: Any,
-    file_path: pathlib.Path,
-    entries: list[dict],
-    reading_routine: str | None
+    tttr_obj: Any, file_path: pathlib.Path, entries: list[dict], reading_routine: str | None
 ) -> np.ndarray | None:
     """Sum stacks across multiple detector wizard entries for a combo."""
     stacks = []
@@ -265,6 +277,7 @@ def get_magma_lut(n: int = 256) -> np.ndarray | None:
     """Load the Magma colormap lookup table."""
     try:
         import matplotlib.cm as cm
+
         m = cm.get_cmap("magma")
         arr = (m(np.linspace(0, 1, max(2, int(n))))[:, :3] * 255).astype(np.uint8)
         return arr
@@ -348,7 +361,7 @@ def render_mosaic_array(
     path: pathlib.Path,
     channels_map: dict[str, list[dict]],
     reading_routine: str | None,
-    max_side: int = 512
+    max_side: int = 512,
 ) -> tuple[np.ndarray, list[str], int, int, int, int] | None:
     """Render the mosaic array without Qt dependencies."""
     if tttrlib is None:
@@ -385,7 +398,12 @@ def render_mosaic_array(
             mtr_list = []
             for e in entries:
                 mtr = e.get("micro_time_range") or None
-                if isinstance(mtr, (list, tuple)) and len(mtr) == 2 and mtr[0] is not None and mtr[1] is not None:
+                if (
+                    isinstance(mtr, (list, tuple))
+                    and len(mtr) == 2
+                    and mtr[0] is not None
+                    and mtr[1] is not None
+                ):
                     try:
                         mtr_list.append((int(mtr[0]), int(mtr[1])))
                     except Exception:
@@ -452,7 +470,7 @@ def load_image(
     path: str,
     setup_settings: dict[str, Any] | None = None,
     max_side: int = 512,
-    cache_folder: str | None = None
+    cache_folder: str | None = None,
 ) -> dict[str, Any] | None:
     """Load or compute a TTTR image mosaic."""
     file_path = pathlib.Path(path)
@@ -466,10 +484,22 @@ def load_image(
     try:
         channels_map = channels_map_from_setup(setup_settings)
         if not channels_map:
-            channels_map = {"Image": [{"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}]}
+            channels_map = {
+                "Image": [
+                    {
+                        "window_range": (None, None),
+                        "detector_chs": [],
+                        "micro_time_range": (None, None),
+                    }
+                ]
+            }
         channels_map = group_channels_by_detector(channels_map)
     except Exception:
-        channels_map = {"Image": [{"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}]}
+        channels_map = {
+            "Image": [
+                {"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}
+            ]
+        }
 
     # Try cache first
     cached = load_mosaic_cache(file_path, channels_map, reading_routine)
@@ -481,7 +511,9 @@ def load_image(
         if rendered is None:
             return None
         mosaic, labels, cols, rows, tile_w, tile_h = rendered
-        save_mosaic_cache(file_path, channels_map, reading_routine, mosaic, labels, cols, rows, tile_w, tile_h)
+        save_mosaic_cache(
+            file_path, channels_map, reading_routine, mosaic, labels, cols, rows, tile_w, tile_h
+        )
 
     return {
         "path": str(file_path),
@@ -493,9 +525,7 @@ def load_image(
 
 
 def save_tiff_stacks(
-    paths: list[str],
-    output_dir: str,
-    setup_settings: dict[str, Any] | None = None
+    paths: list[str], output_dir: str, setup_settings: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """Export intensity images (per combo) as TIFF stacks."""
     out = pathlib.Path(output_dir)
@@ -511,10 +541,22 @@ def save_tiff_stacks(
         # Resolve channels map (precomputed, or rebuilt from windows × detectors).
         channels_map = channels_map_from_setup(setup_settings)
         if not channels_map:
-            channels_map = {"Image": [{"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}]}
+            channels_map = {
+                "Image": [
+                    {
+                        "window_range": (None, None),
+                        "detector_chs": [],
+                        "micro_time_range": (None, None),
+                    }
+                ]
+            }
         channels_map = group_channels_by_detector(channels_map)
     except Exception:
-        channels_map = {"Image": [{"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}]}
+        channels_map = {
+            "Image": [
+                {"window_range": (None, None), "detector_chs": [], "micro_time_range": (None, None)}
+            ]
+        }
 
     for path_str in paths:
         p = pathlib.Path(path_str)
@@ -524,7 +566,9 @@ def save_tiff_stacks(
                 stack = get_combo_stack(tttr_obj, p, entries, reading_routine)
                 if stack is None:
                     continue
-                safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(combo_name))
+                safe_name = "".join(
+                    ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(combo_name)
+                )
                 dest = out / f"{p.stem}_{safe_name}.tiff"
                 try:
                     from chisurf.core.fio.image import imwrite

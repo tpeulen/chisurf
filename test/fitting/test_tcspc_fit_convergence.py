@@ -5,6 +5,7 @@ ChiSurf's fit object on the described lifetime model (BFF's
 ``tcspc_lifetime``). From a poor start the fit must find the truth, from the
 truth it must not walk away, and the amplitudes must stay finite on the way.
 """
+
 import numpy as np
 import pytest
 
@@ -31,9 +32,12 @@ def _build(start, n_photons=2e6, seed=0):
     conv = conv / conv.sum() * n_photons + BACKGROUND
     y = np.random.default_rng(seed).poisson(conv).astype(float)
 
-    fit = Fit(model_class=for_family("tcspc_lifetime"),
-              data=chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0))),
-              xmin=0, xmax=N_CHANNELS - 1)
+    fit = Fit(
+        model_class=for_family("tcspc_lifetime"),
+        data=chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0))),
+        xmin=0,
+        xmax=N_CHANNELS - 1,
+    )
     m = fit.model
     m.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
     m.set_scalar("period", PERIOD)
@@ -59,7 +63,9 @@ def _chi2r(fit):
 
 
 def _taus(m):
-    return sorted(p.value for p in m.parameters_all if p.canonical_id in ("lifetime.tau.0", "lifetime.tau.1"))
+    return sorted(
+        p.value for p in m.parameters_all if p.canonical_id in ("lifetime.tau.0", "lifetime.tau.1")
+    )
 
 
 def test_fixture_is_self_consistent():
@@ -74,7 +80,9 @@ def test_fit_recovers_known_lifetimes():
     fit, m = _build(start=[(1.0, 8.0), (1.0, 0.4)])
     assert _chi2r(fit) > 100, "starting guess was not actually poor"
     fit.run()
-    amplitudes = [p.value for p in m.parameters_all if p.canonical_id.startswith("lifetime.amplitude.")]
+    amplitudes = [
+        p.value for p in m.parameters_all if p.canonical_id.startswith("lifetime.amplitude.")
+    ]
     assert np.all(np.isfinite(amplitudes)) and np.abs(amplitudes).sum() > 0
     np.testing.assert_allclose(_taus(m), sorted(TRUE_TAUS), rtol=0.05)
     assert _chi2r(fit) < 2.0

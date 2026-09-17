@@ -1,5 +1,4 @@
 from __future__ import annotations
-from chisurf import typing
 
 import abc
 import inspect
@@ -10,6 +9,7 @@ import numpy as np
 
 import chisurf.core.base
 import chisurf.core.support.decorators
+from chisurf import typing
 
 # The parameter runtime is IMP.bff's Port (phase 3 of removing chinet from
 # chisurf: bff absorbed chinet's Port/Node/Session and reads/writes chinet's
@@ -25,6 +25,7 @@ import chisurf.core.support.decorators
 # optional session persistence).
 try:
     import IMP.bff as _bff
+
     # A partial IMP install (data-only directories, a namespace-package stub)
     # imports but has no runtime in it; that is "absent" for this module's
     # purposes, not a working IMP.bff that will fail one attribute later.
@@ -37,7 +38,7 @@ except ImportError as _exc:  # pragma: no cover - env without IMP
     _bff_import_error = _exc
 
 
-T = typing.TypeVar('T', bound='Parameter')
+T = typing.TypeVar("T", bound="Parameter")
 
 
 def _bump_fit_structure_version() -> None:
@@ -147,6 +148,7 @@ class Parameter(chisurf.core.base.Base):
     def fit_idx(self):
         """Find the fitting index of this parameter, or -1 if it is not used in a fit."""
         import chisurf.core.fitting
+
         idxs = chisurf.core.fitting.find_fit_idx_of_parameter(self)
         if len(idxs) == 0:
             return -1
@@ -179,8 +181,7 @@ class Parameter(chisurf.core.base.Base):
         if not self._port.bounded:
             return (None, None)
         lb, ub = self._port.bounds
-        return (None if lb != lb else float(lb),
-                None if ub != ub else float(ub))
+        return (None if lb != lb else float(lb), None if ub != ub else float(ub))
 
     @bounds.setter
     def bounds(self, b: typing.Tuple[float, float]):
@@ -192,8 +193,7 @@ class Parameter(chisurf.core.base.Base):
         # bff's port stores lb/ub whether or not enforcement is on and
         # reports them through get_lower_bound()/get_upper_bound(). A NaN
         # is bff's "not a bound" marker, so treat it as unset.
-        stored = float(self._port.get_lower_bound() if i == 0
-                       else self._port.get_upper_bound())
+        stored = float(self._port.get_lower_bound() if i == 0 else self._port.get_upper_bound())
         return default if stored != stored else stored
 
     @property
@@ -376,14 +376,15 @@ class Parameter(chisurf.core.base.Base):
                 self._port.value = float(value)
             except (TypeError, ValueError):
                 import chisurf.logging
+
                 chisurf.logging.error(
-                    f"Cannot set parameter '{self.name}' value to "
-                    f"{type(value)}: {value}")
+                    f"Cannot set parameter '{self.name}' value to {type(value)}: {value}"
+                )
             return
 
         if self._callable:
             return
-        
+
         # Ensure value is a float before passing to the low-level port.
         # This prevents access violations if a Python object (e.g. another
         # Parameter) is accidentally assigned to this property.
@@ -391,7 +392,10 @@ class Parameter(chisurf.core.base.Base):
             val_float = float(value)
         except (TypeError, ValueError):
             import chisurf.logging
-            chisurf.logging.error(f"Cannot set parameter '{self.name}' value to {type(value)}: {value}")
+
+            chisurf.logging.error(
+                f"Cannot set parameter '{self.name}' value to {type(value)}: {value}"
+            )
             return
 
         f = self._port.fixed
@@ -405,7 +409,7 @@ class Parameter(chisurf.core.base.Base):
         return self._link
 
     @link.setter
-    def link(self, link: Parameter|None):
+    def link(self, link: Parameter | None):
         """Link this parameter to another, or break the link by passing None.
 
         Parameters
@@ -465,7 +469,8 @@ class Parameter(chisurf.core.base.Base):
         chisurf.core.fitting.priors.Prior or None
             The effective prior, or ``None``.
         """
-        from chisurf.core.fitting.priors import prior_from_state, UniformPrior
+        from chisurf.core.fitting.priors import UniformPrior, prior_from_state
+
         # A live prior object (e.g. a callback prior that cannot be serialised)
         # takes precedence; otherwise rebuild from the port's persisted spec.
         # ``getattr`` guards the pickle path, where ``__setstate__`` bypasses
@@ -486,6 +491,7 @@ class Parameter(chisurf.core.base.Base):
     def prior(self, value):
         """Attach, replace or clear this parameter's prior (see :attr:`prior`)."""
         from chisurf.core.fitting.priors import Prior, UniformPrior, as_prior
+
         # Accept a Prior, a state dict, or a bare callable (the most general
         # prior form) -- callables are wrapped as a CallablePrior by as_prior.
         if value is not None and not isinstance(value, Prior):
@@ -515,6 +521,7 @@ class Parameter(chisurf.core.base.Base):
         # A callback (or a product containing one) is runtime-only: its spec
         # cannot be reconstructed, so it is not written to the port.
         from chisurf.core.fitting.priors import prior_from_state
+
         self._port.prior = spec if prior_from_state(spec) is not None else None
         lb, ub = value.support()
         if math.isfinite(lb) or math.isfinite(ub):
@@ -522,7 +529,6 @@ class Parameter(chisurf.core.base.Base):
             self.bounds_on = True
         else:
             self.bounds_on = False
-
 
     @property
     def fixed(self):
@@ -554,64 +560,48 @@ class Parameter(chisurf.core.base.Base):
         """Return a new parameter whose value is ``self + other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a + b)
-        )
+        return self.__class__(value=(a + b))
 
     def __mul__(self, other: T) -> T:
         """Return a new parameter whose value is ``self * other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a * b)
-        )
+        return self.__class__(value=(a * b))
 
     def __truediv__(self, other: T) -> T:
         """Return a new parameter whose value is ``self / other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a / b)
-        )
+        return self.__class__(value=(a / b))
 
     def __floordiv__(self, other: T) -> T:
         """Return a new parameter whose value is ``self // other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a // b)
-        )
+        return self.__class__(value=(a // b))
 
     def __sub__(self, other: T) -> T:
         """Return a new parameter whose value is ``self - other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a - b)
-        )
+        return self.__class__(value=(a - b))
 
     def __mod__(self, other: T) -> T:
         """Return a new parameter whose value is ``self % other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a % b)
-        )
+        return self.__class__(value=(a % b))
 
     def __pow__(self, other: T) -> T:
         """Return a new parameter whose value is ``self ** other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
-        return self.__class__(
-            value=(a ** b)
-        )
+        return self.__class__(value=(a**b))
 
     def __invert__(self) -> T:
         """Return a new parameter whose value is ``1.0 / self``."""
         a = self.value
-        return self.__class__(
-            value=(1./a)
-        )
+        return self.__class__(value=(1.0 / a))
 
     def __float__(self):
         """Convert the parameter value to a Python float."""
@@ -623,7 +613,6 @@ class Parameter(chisurf.core.base.Base):
         For integer-like values we avoid a trailing ``.0`` so that tests
         expecting ``"22"`` rather than ``"22.0"`` continue to pass.
         """
-
         v = float(self.value)
         if v.is_integer():
             return str(int(v))
@@ -631,31 +620,25 @@ class Parameter(chisurf.core.base.Base):
 
     def __abs__(self):
         """Return a new parameter whose value is ``abs(self)``."""
-        return self.__class__(
-            value=self.value.__abs__()
-        )
+        return self.__class__(value=self.value.__abs__())
 
     def __getstate__(self):
         """Return the underlying port state for pickling."""
         d = json.loads(self._port.get_json())
-        return {
-            'port': d
-        }
+        return {"port": d}
 
     def __setstate__(self, state):
         """Restore parameter state from :meth:`__getstate__` output."""
-        s = json.dumps(state['port'])
+        s = json.dumps(state["port"])
         self._port.read_json(s)
         fixed = self._port.fixed
         self._port.fixed = False
-        self._port.value = state['port']['value']
+        self._port.value = state["port"]["value"]
         self._port.fixed = fixed
 
     def __round__(self, n=None):
         """Return a new parameter whose value is ``round(self)``."""
-        return self.__class__(
-            value=self.value.__round__()
-        )
+        return self.__class__(value=self.value.__round__())
 
     @abc.abstractmethod
     def update(self):
@@ -667,9 +650,16 @@ class Parameter(chisurf.core.base.Base):
         """
         pass
 
-    def __init__(self, value: float = 1.0, link: 'Parameter' = None,
-                 lb: float = float("-inf"), ub: float = float("inf"),
-                 bounds_on: bool = False, *args, **kwargs):
+    def __init__(
+        self,
+        value: float = 1.0,
+        link: Parameter = None,
+        lb: float = float("-inf"),
+        ub: float = float("inf"),
+        bounds_on: bool = False,
+        *args,
+        **kwargs,
+    ):
         """Initialize a :class:`Parameter` instance.
 
         Parameters
@@ -686,17 +676,17 @@ class Parameter(chisurf.core.base.Base):
             If *True*, the bounds are enforced on the port.
         """
         super().__init__(*args, **kwargs)
-        self._name = kwargs.pop('name', '')
-        self.is_output = bool(kwargs.pop('is_output', False))
+        self._name = kwargs.pop("name", "")
+        self.is_output = bool(kwargs.pop("is_output", False))
         # Hint for GUIs: parameters that serve as link targets for other
         # parameters within a fit group are marked as "link masters".
         # This is purely a visual/UI role and does not affect the core
         # numerical behaviour of links handled by the underlying port.
-        self.is_link_master = bool(kwargs.pop('is_link_master', False))
+        self.is_link_master = bool(kwargs.pop("is_link_master", False))
         # Optional free-form description used by fitting GUIs to show
         # human-readable details for a parameter.
-        desc = kwargs.pop('description', "")
-        registry_id = kwargs.pop('registry_id', None)
+        desc = kwargs.pop("description", "")
+        registry_id = kwargs.pop("registry_id", None)
         if not desc:
             # Enrich from the shared parameter registry so the same description
             # surfaces here and in AutoForm fields. The owning class scopes the
@@ -704,15 +694,18 @@ class Parameter(chisurf.core.base.Base):
             # Forster-radius "R0" vs. an unrelated model's own "R0") never
             # cross-contaminate.
             try:
-                desc = chisurf.core.settings.describe_parameter(
-                    self._name,
-                    owner=_owning_class_name(),
-                    registry_id=registry_id,
-                ) or desc
+                desc = (
+                    chisurf.core.settings.describe_parameter(
+                        self._name,
+                        owner=_owning_class_name(),
+                        registry_id=registry_id,
+                    )
+                    or desc
+                )
             except Exception:
                 pass
         self.description = desc
-        port = kwargs.pop('port', None)
+        port = kwargs.pop("port", None)
         if port is not None:
             self._port = port
             self._callable = None
@@ -728,13 +721,19 @@ class Parameter(chisurf.core.base.Base):
                 self._callable = value
                 self._port = _bff.GraphPort(
                     value=np.atleast_1d(0.0).astype(np.float64),
-                    name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
+                    name=self._name,
+                    lb=lb,
+                    ub=ub,
+                    is_bounded=bounds_on,
                 )
             else:
                 self._callable = None
                 self._port = _bff.GraphPort(
                     value=np.atleast_1d(value).astype(np.float64),
-                    name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
+                    name=self._name,
+                    lb=lb,
+                    ub=ub,
+                    is_bounded=bounds_on,
                 )
         # chinet registered every constructed port with its global database,
         # which is what made project saves pick parameters up. bff's Session
@@ -752,7 +751,7 @@ class Parameter(chisurf.core.base.Base):
         # bounds are surfaced as a UniformPrior by the :attr:`prior` property,
         # so both this slot and the port spec stay empty for pure bounds.
         self._prior = None
-        prior = kwargs.pop('prior', None)
+        prior = kwargs.pop("prior", None)
         if prior is not None:
             self.prior = prior
 
@@ -763,7 +762,6 @@ class Parameter(chisurf.core.base.Base):
         high-level attributes expected to round-trip in tests and project
         save/load: ``value``, ``bounds_on``, ``bounds`` and ``fixed``.
         """
-
         try:
             lb, ub = self.bounds
         except Exception:
@@ -797,7 +795,6 @@ class Parameter(chisurf.core.base.Base):
         After restoring the core scalar attributes, :meth:`update` is called
         so any attached GUI controller can refresh itself.
         """
-
         if not isinstance(state, dict):
             return
 
@@ -863,12 +860,7 @@ class ParameterGroup(chisurf.core.base.Base):
     3.0
     """
 
-    def __init__(
-            self,
-            parameters: typing.List[Parameter] = None,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, parameters: typing.List[Parameter] = None, *args, **kwargs):
         """Initialize a ParameterGroup with an optional list of parameters."""
         super().__init__(*args, **kwargs)
         if parameters is None:
@@ -881,7 +873,6 @@ class ParameterGroup(chisurf.core.base.Base):
         The structure mirrors :meth:`to_dict` but is intended specifically for
         lightweight state transfer and testing.
         """
-
         try:
             return self.to_dict()
         except Exception:
@@ -894,7 +885,6 @@ class ParameterGroup(chisurf.core.base.Base):
         parameter to :meth:`update`, allowing any associated UI controllers to
         refresh.
         """
-
         if not isinstance(state, dict):
             return
         try:
@@ -909,11 +899,7 @@ class ParameterGroup(chisurf.core.base.Base):
         except Exception:
             pass
 
-    def __setattr__(
-            self,
-            k: str,
-            v: object
-    ):
+    def __setattr__(self, k: str, v: object):
         """Route attribute writes to contained Parameter objects when possible.
 
         If *k* names an existing :class:`Parameter` in the group, the
@@ -964,10 +950,7 @@ class ParameterGroup(chisurf.core.base.Base):
             return v.value
         return v
 
-    def append(self,
-            parameter: Parameter,
-            **kwargs
-    ):
+    def append(self, parameter: Parameter, **kwargs):
         """Append a :class:`Parameter` to the group."""
         self._parameter.append(parameter)
 

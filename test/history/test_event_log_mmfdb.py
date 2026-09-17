@@ -22,10 +22,11 @@ import utils
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
-import chisurf.history as history
 from mmfdb.lifecycle import event_log
-from mmfdb.repository import MFDatabase
 from mmfdb.provenance.result_registry import set_global_db
+from mmfdb.repository import MFDatabase
+
+import chisurf.history as history
 
 
 class _DBTestCase(unittest.TestCase):

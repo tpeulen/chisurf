@@ -45,15 +45,11 @@ def _parse_command_result(command: str, result: subprocess.CompletedProcess[str]
         start = output.find("{")
         end = output.rfind("}")
         if start < 0 or end <= start:
-            raise RuntimeError(
-                f"ndX {command} returned no JSON object: {output!r}"
-            ) from None
+            raise RuntimeError(f"ndX {command} returned no JSON object: {output!r}") from None
         try:
             payload = json.loads(output[start : end + 1])
         except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                f"ndX {command} returned invalid JSON: {output!r}"
-            ) from exc
+            raise RuntimeError(f"ndX {command} returned invalid JSON: {output!r}") from exc
     if not isinstance(payload, dict):
         raise RuntimeError(f"ndX {command} returned a non-object JSON payload")
     return payload
@@ -187,9 +183,7 @@ def run_filter_workflow(
         is_admin=principal.is_admin,
     )
     target = (
-        Path(output_path)
-        if output_path
-        else source_path.parent / f"{source_path.name}_filtered"
+        Path(output_path) if output_path else source_path.parent / f"{source_path.name}_filtered"
     )
     arguments = [
         "--folder",
@@ -352,9 +346,7 @@ def run_image_workflow(
         if not target.is_file():
             raise FileNotFoundError(f"ndX image output was not created: {target}")
         if selection_target is not None and not selection_target.is_dir():
-            raise FileNotFoundError(
-                f"ndX ROI selection output was not created: {selection_target}"
-            )
+            raise FileNotFoundError(f"ndX ROI selection output was not created: {selection_target}")
         metadata = {
             **_common_metadata(
                 source_artifact_id=source_artifact_id,
@@ -390,7 +382,7 @@ def run_image_workflow(
 
 @click.group()
 def cli() -> None:
-    """ndX headless CLI with explicit MMFDB integration."""
+    """NdX headless CLI with explicit MMFDB integration."""
 
 
 @cli.command("filter")

@@ -249,7 +249,7 @@ def run_macro(
             "os": os,
             "QtCore": QtCore,
             "QtGui": QtGui,
-            "cs": main_window,
+            "window": main_window,
         }
     globals.update({"__file__": filename})
 

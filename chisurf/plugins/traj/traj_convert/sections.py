@@ -23,8 +23,8 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui import dialogs
+from chisurf.gui.autoform.sections.registry import register_section
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +134,7 @@ class _IoSection(QtWidgets.QWidget):
         if self._model.use_folder:
             path = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Open PDB-Files", "."))
         else:
-            path = chisurf.gui.widgets.get_filename(
-                "Open trajectory", "Trajectory (*.dcd)"
-            )
+            path = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectory (*.dcd)")
         if path:
             self._model.set_trajectory(path)
             self._refresh_host_form()

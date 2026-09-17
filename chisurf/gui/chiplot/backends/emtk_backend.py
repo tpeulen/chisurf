@@ -29,7 +29,8 @@ It is the default backend; ``CHISURF_PLOT_BACKEND=pyqtgraph`` or
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Sequence
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -132,7 +133,7 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
     scaled = np.clip((values - low) / span, 0.0, 1.0)
     scaled[~np.isfinite(values)] = 0.0
     indices = (scaled * (table.shape[0] - 1)).astype(np.intp)
-    rgba = table[indices]                      # (rows, columns, 4)
+    rgba = table[indices]  # (rows, columns, 4)
     rows, columns = rgba.shape[0], rgba.shape[1]
     return Texture(columns, rows, rgba.tobytes()), rows, columns
 
@@ -140,7 +141,7 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
 class _Entry:
     """One item in a canvas's display list, and the handle the caller holds."""
 
-    def __init__(self, canvas: "EmtkCanvas", kind: str, **state: Any) -> None:
+    def __init__(self, canvas: EmtkCanvas, kind: str, **state: Any) -> None:
         self._canvas = canvas
         self.kind = kind
         self.state = state
@@ -319,7 +320,7 @@ class _Entry:
     @property
     def pen_color(self) -> str:
         """The outline colour as ``"#rrggbb"``."""
-        return "#%02x%02x%02x" % tuple(self.state.get("color", (200, 200, 200)))
+        return "#{:02x}{:02x}{:02x}".format(*tuple(self.state.get("color", (200, 200, 200))))
 
     @property
     def points(self) -> list[tuple[float, float]]:
@@ -471,7 +472,10 @@ class EmtkCanvas(base.Canvas):
         from emtk.widgets.plot import Plot as EmtkPlot
 
         plot = EmtkPlot(
-            x, y, w, h,
+            x,
+            y,
+            w,
+            h,
             x_range=self._range["x"],
             y_range=self._range["y"],
             show_ticks=True,
@@ -492,8 +496,9 @@ class EmtkCanvas(base.Canvas):
             right = plot._x_axis.to_pixels(x0 + width)
             top = plot._y_axis.to_pixels(y0 + height)
             bottom = plot._y_axis.to_pixels(y0)
-            painter.image(min(left, right), min(top, bottom),
-                          abs(right - left), abs(bottom - top), texture)
+            painter.image(
+                min(left, right), min(top, bottom), abs(right - left), abs(bottom - top), texture
+            )
 
     def _draw_entry(self, plot, entry: _Entry) -> None:
         """Add one display-list entry to *plot*."""
@@ -502,24 +507,35 @@ class EmtkCanvas(base.Canvas):
         if entry.kind == "curve":
             xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
             if xs.size:
-                plot.line(label, xs, ys, colour=state.get("color"),
-                          width=state.get("width", 1.5))
+                plot.line(label, xs, ys, colour=state.get("color"), width=state.get("width", 1.5))
             if state.get("symbol") is not None and xs.size:
                 marked = np.isfinite(xs) & np.isfinite(ys)
-                plot.scatter(label, xs[marked], ys[marked],
-                             colour=state.get("symbol_color", state.get("color")),
-                             radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0))
+                plot.scatter(
+                    label,
+                    xs[marked],
+                    ys[marked],
+                    colour=state.get("symbol_color", state.get("color")),
+                    radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0),
+                )
         elif entry.kind == "scatter":
             xs, ys = self._scaled(state["x"], state["y"])
             if xs.size:
-                plot.scatter(label, xs, ys, colour=state.get("color"),
-                             radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0))
+                plot.scatter(
+                    label,
+                    xs,
+                    ys,
+                    colour=state.get("color"),
+                    radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0),
+                )
         elif entry.kind == "image":
             self._draw_image(plot, entry)
         elif entry.kind == "marker":
             if state.get("orientation") == "horizontal":
-                plot.hline(float(state.get("value", 0.0)),
-                           state.get("color", (200, 200, 200)), label or None)
+                plot.hline(
+                    float(state.get("value", 0.0)),
+                    state.get("color", (200, 200, 200)),
+                    label or None,
+                )
             else:
                 # A vertical guide: emtk's Plot draws horizontal ones, so this
                 # is a one-pixel band drawn with the regions below.
@@ -547,13 +563,17 @@ class EmtkCanvas(base.Canvas):
                 low, high = entry.bounds
                 left = plot._x_axis.to_pixels(low)
                 right = plot._x_axis.to_pixels(high)
-                painter.fill_rect(min(left, right), top, abs(right - left), height,
-                                  entry.state.get("brush", (70, 110, 160, 60)))
+                painter.fill_rect(
+                    min(left, right),
+                    top,
+                    abs(right - left),
+                    height,
+                    entry.state.get("brush", (70, 110, 160, 60)),
+                )
                 entry.state["_pixels"] = (min(left, right), max(left, right))
             elif entry.kind == "marker" and entry.state.get("orientation") != "horizontal":
                 at = plot._x_axis.to_pixels(entry.value)
-                painter.fill_rect(at, top, 1.0, height,
-                                  entry.state.get("color", (200, 200, 200)))
+                painter.fill_rect(at, top, 1.0, height, entry.state.get("color", (200, 200, 200)))
                 entry.state["_pixels"] = (at - 4.0, at + 4.0)
             elif entry.kind == "roi":
                 self._draw_roi(painter, plot, entry)
@@ -567,9 +587,15 @@ class EmtkCanvas(base.Canvas):
                 self._draw_errorbars(painter, plot, entry)
             elif entry.kind == "text":
                 x, y = entry.state["pos"]
-                painter.text(plot._x_axis.to_pixels(x), plot._y_axis.to_pixels(y),
-                             120.0, plot.p_line_height if hasattr(plot, "p_line_height") else 14.0,
-                             0, entry.text, entry.state.get("color", (220, 220, 220)))
+                painter.text(
+                    plot._x_axis.to_pixels(x),
+                    plot._y_axis.to_pixels(y),
+                    120.0,
+                    plot.p_line_height if hasattr(plot, "p_line_height") else 14.0,
+                    0,
+                    entry.text,
+                    entry.state.get("color", (220, 220, 220)),
+                )
         self._axis = plot._x_axis
         self._y_axis_cache = plot._y_axis
 
@@ -582,8 +608,9 @@ class EmtkCanvas(base.Canvas):
             ys = [plot._y_axis.to_pixels(y) for _, y in entry.points]
             for index in range(len(xs) - (0 if kind == "polygon" else 1)):
                 nxt = (index + 1) % len(xs)
-                painter.fill_triangle((xs[index], ys[index]), (xs[nxt], ys[nxt]),
-                                      (xs[index], ys[nxt]), (*colour, 60))
+                painter.fill_triangle(
+                    (xs[index], ys[index]), (xs[nxt], ys[nxt]), (xs[index], ys[nxt]), (*colour, 60)
+                )
             entry.state["_box"] = (min(xs), min(ys), max(xs), max(ys))
             return
 
@@ -625,8 +652,10 @@ class EmtkCanvas(base.Canvas):
         tip = (plot._x_axis.to_pixels(x), plot._y_axis.to_pixels(y))
         (x_lo, x_hi), (y_lo, y_hi) = plot._x_axis.range, plot._y_axis.range
         step = 1e-3 * max(abs(x_hi - x_lo), abs(y_hi - y_lo), 1e-12)
-        ahead = (plot._x_axis.to_pixels(x + step * math.cos(theta)),
-                 plot._y_axis.to_pixels(y + step * math.sin(theta)))
+        ahead = (
+            plot._x_axis.to_pixels(x + step * math.cos(theta)),
+            plot._y_axis.to_pixels(y + step * math.sin(theta)),
+        )
         ux, uy = ahead[0] - tip[0], ahead[1] - tip[1]
         norm = math.hypot(ux, uy)
         if not math.isfinite(norm) or norm == 0.0:
@@ -634,12 +663,19 @@ class EmtkCanvas(base.Canvas):
         ux, uy = ux / norm, uy / norm
         nx, ny = -uy, ux
         size = state["size"]
-        half = (state["head_width"] / 2.0 if state["head_width"] is not None
-                else size * math.tan(math.radians(state["tip_angle"]) / 2.0))
+        half = (
+            state["head_width"] / 2.0
+            if state["head_width"] is not None
+            else size * math.tan(math.radians(state["tip_angle"]) / 2.0)
+        )
         base = (tip[0] - ux * size, tip[1] - uy * size)
         colour = (*state.get("color", (220, 220, 220)), 255)
-        painter.fill_triangle(tip, (base[0] + nx * half, base[1] + ny * half),
-                              (base[0] - nx * half, base[1] - ny * half), colour)
+        painter.fill_triangle(
+            tip,
+            (base[0] + nx * half, base[1] + ny * half),
+            (base[0] - nx * half, base[1] - ny * half),
+            colour,
+        )
         if state["tail_length"]:
             w = state["tail_width"] / 2.0
             end = (base[0] - ux * state["tail_length"], base[1] - uy * state["tail_length"])
@@ -661,18 +697,33 @@ class EmtkCanvas(base.Canvas):
         cos, sin = math.cos(theta), math.sin(theta)
         if kind == "ellipse":
             steps = 36
-            local = [(width / 2.0 * math.cos(2.0 * math.pi * k / steps),
-                      height / 2.0 * math.sin(2.0 * math.pi * k / steps)) for k in range(steps)]
+            local = [
+                (
+                    width / 2.0 * math.cos(2.0 * math.pi * k / steps),
+                    height / 2.0 * math.sin(2.0 * math.pi * k / steps),
+                )
+                for k in range(steps)
+            ]
         else:
-            local = [(-width / 2.0, -height / 2.0), (width / 2.0, -height / 2.0),
-                     (width / 2.0, height / 2.0), (-width / 2.0, height / 2.0)]
-        outline = [(plot._x_axis.to_pixels(cx + u * cos - v * sin),
-                    plot._y_axis.to_pixels(cy + u * sin + v * cos)) for u, v in local]
+            local = [
+                (-width / 2.0, -height / 2.0),
+                (width / 2.0, -height / 2.0),
+                (width / 2.0, height / 2.0),
+                (-width / 2.0, height / 2.0),
+            ]
+        outline = [
+            (
+                plot._x_axis.to_pixels(cx + u * cos - v * sin),
+                plot._y_axis.to_pixels(cy + u * sin + v * cos),
+            )
+            for u, v in local
+        ]
         centre = (plot._x_axis.to_pixels(cx), plot._y_axis.to_pixels(cy))
         alpha = 60 if kind == "ellipse" else 40
         for index, point in enumerate(outline):
-            painter.fill_triangle(centre, point, outline[(index + 1) % len(outline)],
-                                  (*colour, alpha))
+            painter.fill_triangle(
+                centre, point, outline[(index + 1) % len(outline)], (*colour, alpha)
+            )
         xs, ys = [p[0] for p in outline], [p[1] for p in outline]
         entry.state["_box"] = (min(xs), min(ys), max(xs), max(ys))
 
@@ -689,8 +740,13 @@ class EmtkCanvas(base.Canvas):
             left = plot._x_axis.to_pixels(centre - width / 2.0)
             right = plot._x_axis.to_pixels(centre + width / 2.0)
             top = plot._y_axis.to_pixels(height)
-            painter.fill_rect(min(left, right), min(top, floor), abs(right - left),
-                              abs(floor - top), entry.state.get("brush", (120, 150, 200)))
+            painter.fill_rect(
+                min(left, right),
+                min(top, floor),
+                abs(right - left),
+                abs(floor - top),
+                entry.state.get("brush", (120, 150, 200)),
+            )
 
     def _draw_band(self, painter, plot, entry: _Entry) -> None:
         """The area between two curves, as one column per sample."""
@@ -704,8 +760,13 @@ class EmtkCanvas(base.Canvas):
             right = plot._x_axis.to_pixels(xs[index + 1])
             top = plot._y_axis.to_pixels(max(lower[index], upper[index]))
             bottom = plot._y_axis.to_pixels(min(lower[index], upper[index]))
-            painter.fill_rect(min(left, right), min(top, bottom),
-                              max(abs(right - left), 1.0), abs(bottom - top), colour)
+            painter.fill_rect(
+                min(left, right),
+                min(top, bottom),
+                max(abs(right - left), 1.0),
+                abs(bottom - top),
+                colour,
+            )
 
     def _draw_errorbars(self, painter, plot, entry: _Entry) -> None:
         """A whisker per sample, with a beam at each end."""
@@ -839,7 +900,8 @@ class EmtkCanvas(base.Canvas):
             if state.get("col_major"):
                 data = data.T
             state["texture"], rows, columns = _texture(
-                data[::-1] if upright else data, state.get("colormap"), state.get("levels"))
+                data[::-1] if upright else data, state.get("colormap"), state.get("levels")
+            )
             state["_upright"] = upright
             state.setdefault("rect", (0.0, 0.0, float(columns), float(rows)))
         # The axes have to know the image is there, or a panel holding nothing
@@ -883,9 +945,21 @@ class EmtkCanvas(base.Canvas):
         self.refresh()
         return entry
 
-    def add_curve(self, x, y, *, pen, name=None, fill=None, step=False, symbol=None,
-                  symbol_size=7.0, symbol_brush=None, symbol_pen=None,
-                  skip_missing=True) -> H.Curve:
+    def add_curve(
+        self,
+        x,
+        y,
+        *,
+        pen,
+        name=None,
+        fill=None,
+        step=False,
+        symbol=None,
+        symbol_size=7.0,
+        symbol_brush=None,
+        symbol_pen=None,
+        skip_missing=True,
+    ) -> H.Curve:
         """Draw a line curve (optionally with markers) and return its handle."""
         if fill is not None:
             raise NotImplementedError(
@@ -895,25 +969,46 @@ class EmtkCanvas(base.Canvas):
         gaps = bool(skip_missing)
         xs, ys = _finite_pairs(x, y, gaps=gaps)
         return self._add(
-            "curve", x=xs, y=ys, gaps=gaps, name=name, color=_rgb(pen),
-            width=float(getattr(pen, "width", 1.0) or 1.0), symbol=symbol,
+            "curve",
+            x=xs,
+            y=ys,
+            gaps=gaps,
+            name=name,
+            color=_rgb(pen),
+            width=float(getattr(pen, "width", 1.0) or 1.0),
+            symbol=symbol,
             symbol_size=symbol_size,
             symbol_color=_rgb(symbol_brush, _rgb(pen)) if symbol is not None else None,
             step=step,
         )
 
-    def add_scatter(self, x, y, *, size=7.0, pen=None, brush=None, symbol=None,
-                    name=None) -> H.Scatter:
+    def add_scatter(
+        self, x, y, *, size=7.0, pen=None, brush=None, symbol=None, name=None
+    ) -> H.Scatter:
         """Draw a scatter cloud and return its handle."""
         xs, ys = _finite_pairs(x, y)
-        return self._add("scatter", x=xs, y=ys, name=name,
-                         color=_rgb(brush, _rgb(pen)), symbol_size=size, symbol=symbol)
+        return self._add(
+            "scatter",
+            x=xs,
+            y=ys,
+            name=name,
+            color=_rgb(brush, _rgb(pen)),
+            symbol_size=size,
+            symbol=symbol,
+        )
 
-    def add_marker(self, pos, *, orientation="vertical", movable=False, pen=None,
-                   label=None) -> H.Marker:
+    def add_marker(
+        self, pos, *, orientation="vertical", movable=False, pen=None, label=None
+    ) -> H.Marker:
         """Draw a cursor line and return its handle."""
-        return self._add("marker", value=float(pos), orientation=_orientation(orientation),
-                         color=_rgb(pen), name=label, movable=bool(movable))
+        return self._add(
+            "marker",
+            value=float(pos),
+            orientation=_orientation(orientation),
+            color=_rgb(pen),
+            name=label,
+            movable=bool(movable),
+        )
 
     def add_legend(self, *, offset=(30, 30)) -> None:
         """Show a legend collecting the named series."""
@@ -944,8 +1039,7 @@ class EmtkCanvas(base.Canvas):
     # -- axes and view -------------------------------------------------
     def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> None:
         """Set axis labels; axes not named are left alone."""
-        for side, text in (("left", left), ("bottom", bottom),
-                           ("right", right), ("top", top)):
+        for side, text in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
             if text is not None:
                 self._labels[side] = str(text)
         self.refresh()
@@ -974,8 +1068,7 @@ class EmtkCanvas(base.Canvas):
 
     def get_range(self) -> tuple[tuple[float, float], tuple[float, float]]:
         """Return the visible ``((x0, x1), (y0, y1))`` range."""
-        return (self._range["x"] or self._data_range(0),
-                self._range["y"] or self._data_range(1))
+        return (self._range["x"] or self._data_range(0), self._range["y"] or self._data_range(1))
 
     def _data_range(self, axis: int) -> tuple[float, float]:
         """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty.
@@ -1047,7 +1140,8 @@ class EmtkCanvas(base.Canvas):
 
     def set_si_prefix(self, *, x=None, y=None) -> None:
         """Not offered: emtk never prefixes tick values, which is the default
-        chiplot asks both backends for."""
+        chiplot asks both backends for.
+        """
 
     def invert_y(self, invert: bool = True) -> None:
         """Run the y-axis downwards, as image rows do."""
@@ -1097,9 +1191,13 @@ class EmtkCanvas(base.Canvas):
     def add_bars(self, x, height, *, width=None, pen=None, brush=None) -> H.Bars:
         """Draw a bar graph and return its handle."""
         xs, heights = _finite_pairs(x, height)
-        return self._add("bars", x=xs, height=heights,
-                         width=None if width is None else float(width),
-                         brush=_rgb(brush, (120, 150, 200)))
+        return self._add(
+            "bars",
+            x=xs,
+            height=heights,
+            width=None if width is None else float(width),
+            brush=_rgb(brush, (120, 150, 200)),
+        )
 
     def add_fill_between(self, lower, upper, *, brush=None) -> H.Handle:
         """Fill the area between two curve handles and return its handle."""
@@ -1107,11 +1205,13 @@ class EmtkCanvas(base.Canvas):
         _, high_y = upper.get_data()
         size = min(len(low_x), len(low_y), len(high_y))
         fill = _rgb(brush, (120, 150, 200))
-        return self._add("band", x=low_x[:size], lower=low_y[:size],
-                         upper=high_y[:size], brush=(*fill, 70))
+        return self._add(
+            "band", x=low_x[:size], lower=low_y[:size], upper=high_y[:size], brush=(*fill, 70)
+        )
 
-    def add_errorbars(self, x, y, *, height=None, top=None, bottom=None, pen=None,
-                      beam=None) -> H.ErrorBars:
+    def add_errorbars(
+        self, x, y, *, height=None, top=None, bottom=None, pen=None, beam=None
+    ) -> H.ErrorBars:
         """Draw error bars and return their handle."""
         xs, ys = _finite_pairs(x, y)
         if top is None and bottom is None and height is None:
@@ -1124,11 +1224,17 @@ class EmtkCanvas(base.Canvas):
             bottoms = np.asarray(bottom if bottom is not None else 0.0, dtype=float).ravel()
         tops = np.resize(tops, xs.shape) if tops.size else np.zeros_like(xs)
         bottoms = np.resize(bottoms, xs.shape) if bottoms.size else np.zeros_like(xs)
-        return self._add("errorbars", x=xs, y=ys, top=tops, bottom=bottoms,
-                         color=_rgb(pen), beam=float(beam or 3.0))
+        return self._add(
+            "errorbars",
+            x=xs,
+            y=ys,
+            top=tops,
+            bottom=bottoms,
+            color=_rgb(pen),
+            beam=float(beam or 3.0),
+        )
 
-    def add_image(self, data, *, colormap=None, levels=None, rect=None,
-                  axis_order=None) -> H.Image:
+    def add_image(self, data, *, colormap=None, levels=None, rect=None, axis_order=None) -> H.Image:
         """Draw an image or heatmap and return its handle."""
         values = np.asarray(data, dtype=float)
         if values.ndim != 2:
@@ -1138,15 +1244,20 @@ class EmtkCanvas(base.Canvas):
         col_major = str(axis_order) == "col-major"
         rows, columns = values.shape[::-1] if col_major else values.shape
         return self._add(
-            "image", data=values, col_major=col_major, colormap=colormap,
+            "image",
+            data=values,
+            col_major=col_major,
+            colormap=colormap,
             levels=None if levels is None else (float(levels[0]), float(levels[1])),
-            rect=tuple(float(v) for v in rect) if rect is not None
+            rect=tuple(float(v) for v in rect)
+            if rect is not None
             else (0.0, 0.0, float(columns), float(rows)),
             texture=None,
         )
 
-    def add_region(self, bounds, *, orientation="vertical", movable=True, brush=None,
-                   pen=None) -> H.Region:
+    def add_region(
+        self, bounds, *, orientation="vertical", movable=True, brush=None, pen=None
+    ) -> H.Region:
         """Draw a draggable interval selector and return its handle."""
         if _orientation(orientation) != "vertical":
             raise NotImplementedError(
@@ -1155,12 +1266,26 @@ class EmtkCanvas(base.Canvas):
             )
         low, high = (float(bounds[0]), float(bounds[1]))
         fill = _rgb(brush, (70, 110, 160))
-        return self._add("region", bounds=(min(low, high), max(low, high)),
-                         movable=bool(movable), brush=(*fill, 60),
-                         orientation=_orientation(orientation))
+        return self._add(
+            "region",
+            bounds=(min(low, high), max(low, high)),
+            movable=bool(movable),
+            brush=(*fill, 60),
+            orientation=_orientation(orientation),
+        )
 
-    def add_roi(self, *, kind="rect", pos=None, size=None, pen=None, movable=True,
-                rotatable=False, points=None, angle=0.0) -> H.Roi:
+    def add_roi(
+        self,
+        *,
+        kind="rect",
+        pos=None,
+        size=None,
+        pen=None,
+        movable=True,
+        rotatable=False,
+        points=None,
+        angle=0.0,
+    ) -> H.Roi:
         """Draw a region of interest and return its handle.
 
         Rectangles, ellipses, polygons and polylines are drawn and can be
@@ -1176,19 +1301,40 @@ class EmtkCanvas(base.Canvas):
             )
         shape = {"rectangle": "rect", "circle": "ellipse"}.get(shape, shape)
         vertices = [(float(x), float(y)) for x, y in (points or [])]
-        origin = (float(pos[0]), float(pos[1])) if pos is not None else (
-            (vertices[0] if vertices else (0.0, 0.0)))
-        return self._add("roi", roi_kind=shape, pos=origin, angle=float(angle),
-                         size=(float(size[0]), float(size[1])) if size is not None
-                         else (1.0, 1.0),
-                         points=vertices, movable=bool(movable),
-                         color=_rgb(pen, (240, 200, 90)))
+        origin = (
+            (float(pos[0]), float(pos[1]))
+            if pos is not None
+            else (vertices[0] if vertices else (0.0, 0.0))
+        )
+        return self._add(
+            "roi",
+            roi_kind=shape,
+            pos=origin,
+            angle=float(angle),
+            size=(float(size[0]), float(size[1])) if size is not None else (1.0, 1.0),
+            points=vertices,
+            movable=bool(movable),
+            color=_rgb(pen, (240, 200, 90)),
+        )
 
-    def add_arrow(self, pos, *, angle=0.0, size=None, tip_angle=None, head_width=None,
-                  tail_length=None, tail_width=None, pen=None, brush=None) -> H.Arrow:
+    def add_arrow(
+        self,
+        pos,
+        *,
+        angle=0.0,
+        size=None,
+        tip_angle=None,
+        head_width=None,
+        tail_length=None,
+        tail_width=None,
+        pen=None,
+        brush=None,
+    ) -> H.Arrow:
         """Draw an arrow head (and optional tail) at a data coordinate."""
         return self._add(
-            "arrow", pos=(float(pos[0]), float(pos[1])), angle=float(angle),
+            "arrow",
+            pos=(float(pos[0]), float(pos[1])),
+            angle=float(angle),
             size=float(20.0 if size is None else size),
             tip_angle=float(25.0 if tip_angle is None else tip_angle),
             head_width=None if head_width is None else float(head_width),
@@ -1197,12 +1343,25 @@ class EmtkCanvas(base.Canvas):
             color=_rgb(brush if brush is not None else pen, (220, 220, 220)),
         )
 
-    def add_text(self, text, pos, *, color=None, anchor=None, draggable=False,
-                 fill=None, border=None, anchored=False) -> H.Text:
+    def add_text(
+        self,
+        text,
+        pos,
+        *,
+        color=None,
+        anchor=None,
+        draggable=False,
+        fill=None,
+        border=None,
+        anchored=False,
+    ) -> H.Text:
         """Draw a text label at a data coordinate and return its handle."""
-        return self._add("text", text=str(text),
-                         pos=(float(pos[0]), float(pos[1])),
-                         color=_rgb(color, (220, 220, 220)))
+        return self._add(
+            "text",
+            text=str(text),
+            pos=(float(pos[0]), float(pos[1])),
+            color=_rgb(color, (220, 220, 220)),
+        )
 
 
 class EmtkImageView(base.ImageViewCanvas):
@@ -1274,18 +1433,36 @@ class EmtkImageView(base.ImageViewCanvas):
 
     def add_overlay(self, data, *, colormap=None) -> H.Image:
         """Overlay a second image on the view and return its handle."""
-        overlay = self._canvas.add_image(np.asarray(data, dtype=float),
-                                         colormap=colormap or self._colormap)
+        overlay = self._canvas.add_image(
+            np.asarray(data, dtype=float), colormap=colormap or self._colormap
+        )
         overlay.z = 1.0 + len(self._overlays)
         self._overlays.append(overlay)
         return overlay
 
-    def add_roi(self, *, kind="rect", pos=None, size=None, pen=None, movable=True,
-                rotatable=False, points=None, angle=0.0) -> H.Roi:
+    def add_roi(
+        self,
+        *,
+        kind="rect",
+        pos=None,
+        size=None,
+        pen=None,
+        movable=True,
+        rotatable=False,
+        points=None,
+        angle=0.0,
+    ) -> H.Roi:
         """Add a region of interest to the view and return its handle."""
-        return self._canvas.add_roi(kind=kind, pos=pos, size=size, pen=pen,
-                                    movable=movable, rotatable=rotatable,
-                                    points=points, angle=angle)
+        return self._canvas.add_roi(
+            kind=kind,
+            pos=pos,
+            size=size,
+            pen=pen,
+            movable=movable,
+            rotatable=rotatable,
+            points=points,
+            angle=angle,
+        )
 
     def on_click(self, callback) -> None:
         """Register ``callback(x, y)`` for clicks in image coordinates."""
@@ -1333,8 +1510,13 @@ class _ColorBar:
         table = _lut(self._image.state.get("colormap"), size=64)
         step = height / len(table)
         for index, colour in enumerate(table[::-1]):
-            painter.fill_rect(x + 4.0, top + index * step, max(w - 8.0, 1.0), step + 0.5,
-                              tuple(int(c) for c in colour))
+            painter.fill_rect(
+                x + 4.0,
+                top + index * step,
+                max(w - 8.0, 1.0),
+                step + 0.5,
+                tuple(int(c) for c in colour),
+            )
         low, high = self.get_levels()
         painter.text(x, y, w, self.LABEL_H, 0, f"{high:.3g}", (220, 220, 220))
         painter.text(x, y + h - self.LABEL_H, w, self.LABEL_H, 0, f"{low:.3g}", (220, 220, 220))
@@ -1456,22 +1638,21 @@ class EmtkGrid(base.GridCanvas):
         """Return the embeddable Qt widget for the whole grid."""
         return self._widget
 
-    def add_panel(self, *, row=None, col=None, rowspan=1, colspan=1,
-                  title=None) -> base.Canvas:
+    def add_panel(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> base.Canvas:
         """Add and return a panel at the given cell, or at the cursor."""
         if row is None:
             row = self._row
         if col is None:
             col = self._column
         panel = EmtkCanvas(title=title, **self._opts)
-        self._layout.addWidget(panel.widget(), int(row), int(col),
-                               int(rowspan), int(colspan))
+        self._layout.addWidget(panel.widget(), int(row), int(col), int(rowspan), int(colspan))
         self._panels.append(panel)
         self._column = int(col) + int(colspan)
         return panel
 
-    def add_colorbar(self, image, *, colormap=None, row=None, col=None, rowspan=1,
-                     colspan=1) -> H.ColorBar:
+    def add_colorbar(
+        self, image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
+    ) -> H.ColorBar:
         """Add a colour ramp bound to ``image`` at the given cell, or at the cursor."""
         if row is None:
             row = self._row

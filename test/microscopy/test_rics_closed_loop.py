@@ -61,7 +61,7 @@ def fit_rics(scan, n_lags: int = 10, region: str = "line"):
     xi, psi = np.meshgrid(
         np.arange(-n_lags, n_lags + 1), np.arange(-n_lags, n_lags + 1), indexing="xy"
     )
-    block = correlation[cy - n_lags:cy + n_lags + 1, cx - n_lags:cx + n_lags + 1]
+    block = correlation[cy - n_lags : cy + n_lags + 1, cx - n_lags : cx + n_lags + 1]
     if region == "line":
         keep = (xi == 0) & (np.abs(psi) >= 1)
     elif region == "square":
@@ -71,17 +71,27 @@ def fit_rics(scan, n_lags: int = 10, region: str = "line"):
 
     def model(_, n, d, offset):
         return image_correlation(
-            xi[keep].ravel(), psi[keep].ravel(), 0.0, n=n,
-            diffusion_coefficient=d, offset=offset,
-            pixel_duration=scan.pixel_time * 1e6,     # us
-            line_duration=scan.line_time * 1e3,       # ms
-            pixel_size=scan.pixel_size * 1e3,         # nm
-            w_r=scan.w_r, w_z=scan.w_z, two_d=False,
+            xi[keep].ravel(),
+            psi[keep].ravel(),
+            0.0,
+            n=n,
+            diffusion_coefficient=d,
+            offset=offset,
+            pixel_duration=scan.pixel_time * 1e6,  # us
+            line_duration=scan.line_time * 1e3,  # ms
+            pixel_size=scan.pixel_size * 1e3,  # nm
+            w_r=scan.w_r,
+            w_z=scan.w_z,
+            two_d=False,
         )
 
     popt, _ = curve_fit(
-        model, None, block[keep].ravel(), p0=[5.0, 1.0, 0.0],
-        bounds=([0.01, 1e-3, -1.0], [1e5, 1e3, 1.0]), maxfev=40000,
+        model,
+        None,
+        block[keep].ravel(),
+        p0=[5.0, 1.0, 0.0],
+        bounds=([0.01, 1e-3, -1.0], [1e5, 1e3, 1.0]),
+        maxfev=40000,
     )
     return {"n": float(popt[0]), "diffusion_coefficient": float(popt[1])}
 
@@ -139,8 +149,9 @@ def test_the_timing_is_in_real_seconds():
     per integrator window, so a dwell that does not mean seconds makes ``D``
     meaningless. The line and frame times must follow from the dwell exactly.
     """
-    scan = simulate_clsm_diffusion(1.0, n_pixel=32, n_frames=4, pixel_time=5e-6,
-                                   n_molecules=100, seed=5)
+    scan = simulate_clsm_diffusion(
+        1.0, n_pixel=32, n_frames=4, pixel_time=5e-6, n_molecules=100, seed=5
+    )
     assert scan.pixel_time == pytest.approx(5e-6)
     assert scan.line_time == pytest.approx(32 * 5e-6)
     assert scan.frame_time == pytest.approx(32 * 32 * 5e-6)
@@ -200,8 +211,7 @@ def test_coasting_must_stay_off_for_a_scan():
 
     from chisurf.core.fluorescence.imaging.simulate import simulate_clsm_diffusion
 
-    honest = simulate_clsm_diffusion(2.0, n_pixel=32, n_frames=8,
-                                     n_molecules=300, seed=7)
+    honest = simulate_clsm_diffusion(2.0, n_pixel=32, n_frames=8, n_molecules=300, seed=7)
 
     # Build the same scan by hand, with coasting switched on.
     w_r, w_z, pixel_time, pixel_size = 0.25, 1.0, 2e-5, 0.05
@@ -219,17 +229,26 @@ def test_coasting_must_stay_off_for_a_scan():
     settings = tttrlib.SimIntegrator()
     settings.dt = pixel_time
     settings.n_channels = 1
-    settings.n_ph_max = 10 ** 12
+    settings.n_ph_max = 10**12
     settings.seed_diffusion = 7
     settings.seed_emission = 8
     settings.per_molecule_skip = True
     engine = tttrlib.SimEngine(
-        sample, tttrlib.SimGrid.gaussian3d(w_r, w_z, 4.0 * w_r, 4.0, 0.05, 1.0),
-        tttrlib.VectorSimGrid([]), settings,
+        sample,
+        tttrlib.SimGrid.gaussian3d(w_r, w_z, 4.0 * w_r, 4.0, 0.05, 1.0),
+        tttrlib.VectorSimGrid([]),
+        settings,
     )
     scanner = tttrlib.SimScanner.uniform(
-        32, 32, pixel_time, pixel_size, pixel_size,
-        -0.5 * scanned, -0.5 * scanned, tttrlib.SimMarkerConfig(), False,
+        32,
+        32,
+        pixel_time,
+        pixel_size,
+        pixel_size,
+        -0.5 * scanned,
+        -0.5 * scanned,
+        tttrlib.SimMarkerConfig(),
+        False,
     )
     for _ in range(8):
         engine.run_scan(scanner)
@@ -261,9 +280,7 @@ def test_rics_recovers_the_simulated_diffusion_coefficient():
     sd 0.13 over twelve simulations spanning D = 1 to 5 um^2/s. The tolerance
     here covers that scatter with margin rather than papering over a systematic.
     """
-    scan = simulate_clsm_diffusion(
-        2.0, n_pixel=64, n_frames=60, n_molecules=400, seed=1
-    )
+    scan = simulate_clsm_diffusion(2.0, n_pixel=64, n_frames=60, n_molecules=400, seed=1)
     fit = fit_rics(scan)
     assert fit["diffusion_coefficient"] == pytest.approx(2.0, rel=0.35)
 
@@ -279,8 +296,7 @@ def test_the_fit_region_is_what_decided_the_old_bias():
     1.41x at D = 2) in a way that looks like a systematic bias when measured at
     a single D. This pins the difference so the region cannot quietly revert.
     """
-    scan = simulate_clsm_diffusion(1.0, n_pixel=64, n_frames=60,
-                                   n_molecules=400, seed=2)
+    scan = simulate_clsm_diffusion(1.0, n_pixel=64, n_frames=60, n_molecules=400, seed=2)
     line = fit_rics(scan, region="line")["diffusion_coefficient"]
     square = fit_rics(scan, region="square")["diffusion_coefficient"]
     assert abs(line - 1.0) < abs(square - 1.0)
@@ -294,10 +310,8 @@ def test_a_faster_sample_reads_back_as_faster():
     produce a larger fitted D. If this fails the scan is not carrying transport
     information at all, and the absolute test above is passing by luck.
     """
-    slow = fit_rics(simulate_clsm_diffusion(1.0, n_pixel=64, n_frames=60,
-                                            n_molecules=400, seed=1))
-    fast = fit_rics(simulate_clsm_diffusion(4.0, n_pixel=64, n_frames=60,
-                                            n_molecules=400, seed=1))
+    slow = fit_rics(simulate_clsm_diffusion(1.0, n_pixel=64, n_frames=60, n_molecules=400, seed=1))
+    fast = fit_rics(simulate_clsm_diffusion(4.0, n_pixel=64, n_frames=60, n_molecules=400, seed=1))
     assert fast["diffusion_coefficient"] > slow["diffusion_coefficient"]
 
 
@@ -318,12 +332,10 @@ def test_a_sample_too_slow_for_the_scan_is_not_resolvable():
     before the measurement, not after.
     """
     truth = 0.05
-    scan = simulate_clsm_diffusion(truth, n_pixel=64, n_frames=40,
-                                   n_molecules=400, seed=1)
+    scan = simulate_clsm_diffusion(truth, n_pixel=64, n_frames=40, n_molecules=400, seed=1)
     recovered = fit_rics(scan)["diffusion_coefficient"]
     # Wrong by more than a factor of two, while a resolvable D lands within ~15 %.
     assert recovered > 2.0 * truth
 
-    resolvable = simulate_clsm_diffusion(5.0, n_pixel=64, n_frames=40,
-                                         n_molecules=400, seed=1)
+    resolvable = simulate_clsm_diffusion(5.0, n_pixel=64, n_frames=40, n_molecules=400, seed=1)
     assert fit_rics(resolvable)["diffusion_coefficient"] == pytest.approx(5.0, rel=0.35)

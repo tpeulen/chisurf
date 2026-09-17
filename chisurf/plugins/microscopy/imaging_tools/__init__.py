@@ -22,6 +22,7 @@ def __getattr__(attr_name: str):
     """Lazy Qt import gate."""
     if attr_name == "ImagingToolsTool":
         from .gui.tool import ImagingToolsTool as _cls
+
         globals()["ImagingToolsTool"] = _cls
         return _cls
     raise AttributeError(f"module {__name__!r} has no attribute {attr_name!r}")
@@ -29,6 +30,7 @@ def __getattr__(attr_name: str):
 
 if __name__ == "plugin":
     from .gui.tool import ImagingToolsTool
+
     window = ImagingToolsTool()
     window.show()
 

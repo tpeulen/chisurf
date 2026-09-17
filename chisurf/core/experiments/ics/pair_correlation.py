@@ -71,8 +71,9 @@ implementation.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -130,9 +131,7 @@ def kymograph(images: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported image array shape for a kymograph: {arr.shape}")
 
 
-def correct_bleaching(
-    intensity: np.ndarray, window: int = 0, axis: int = 0
-) -> np.ndarray:
+def correct_bleaching(intensity: np.ndarray, window: int = 0, axis: int = 0) -> np.ndarray:
     r"""Remove a slow intensity trend without changing the fluctuation statistics.
 
     Photobleaching and focus drift add a slow decay to every trace. Subtracting
@@ -189,9 +188,7 @@ def correct_bleaching(
     # reflection keeps the trend estimate honest at both ends.
     pad = w // 2
     padded = np.pad(moved, [(pad, pad)] + [(0, 0)] * (moved.ndim - 1), mode="edge")
-    trend = np.apply_along_axis(
-        lambda v: np.convolve(v, kernel, mode="valid"), 0, padded
-    )
+    trend = np.apply_along_axis(lambda v: np.convolve(v, kernel, mode="valid"), 0, padded)
     mean = moved.mean(axis=0, keepdims=True)
     safe = np.where(trend > 0.0, trend, np.nan)
     scale = np.sqrt(np.divide(mean, safe, out=np.ones_like(safe), where=np.isfinite(safe)))
@@ -200,9 +197,7 @@ def correct_bleaching(
     return np.ascontiguousarray(np.moveaxis(out, 0, axis))
 
 
-def log_lag_bins(
-    max_lag: int, n_linear: int = 16, per_octave: int = 8
-) -> list[Tuple[int, int]]:
+def log_lag_bins(max_lag: int, n_linear: int = 16, per_octave: int = 8) -> list[tuple[int, int]]:
     r"""Return quasi-logarithmic lag bins as half-open integer ranges.
 
     A pCF peak can sit anywhere from one line period to thousands, so a linear
@@ -235,7 +230,7 @@ def log_lag_bins(
     max_lag = int(max_lag)
     if max_lag < 1:
         return []
-    bins: list[Tuple[int, int]] = []
+    bins: list[tuple[int, int]] = []
     lag = 1
     while lag <= max_lag and lag <= int(n_linear):
         bins.append((lag, lag + 1))
@@ -305,10 +300,10 @@ class PcfCarpet:
     delta: np.ndarray
     positions: np.ndarray
     timing: IcsTiming = field(default_factory=IcsTiming)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def shape(self) -> Tuple[int, int, int]:
+    def shape(self) -> tuple[int, int, int]:
         """Shape of the carpet ``(n_delta, n_positions, n_tau)``."""
         return tuple(np.asarray(self.correlation).shape)  # type: ignore[return-value]
 
@@ -340,8 +335,8 @@ class PcfCarpet:
         return index
 
     def curve(
-        self, distance: int, position: Optional[int] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, distance: int, position: int | None = None
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         r"""Return one pair-correlation decay.
 
         Parameters
@@ -488,9 +483,9 @@ class PcfCarpet:
             out = np.where(pick_forward, step / forward, -step / backward)
         return np.asarray(out, dtype=float)
 
-    def to_meta(self) -> Dict[str, Any]:
+    def to_meta(self) -> dict[str, Any]:
         """Return the carpet as a metadata dictionary for a ``DataCurve``."""
-        meta: Dict[str, Any] = {
+        meta: dict[str, Any] = {
             "pcf_correlation": self.correlation,
             "pcf_error": self.error,
             "pcf_tau": self.tau,
@@ -502,9 +497,7 @@ class PcfCarpet:
         return meta
 
 
-def _correlate_segment(
-    block: np.ndarray, deltas: Sequence[int], max_lag: int
-) -> np.ndarray:
+def _correlate_segment(block: np.ndarray, deltas: Sequence[int], max_lag: int) -> np.ndarray:
     """Correlate one time segment at every position and distance.
 
     Parameters
@@ -556,7 +549,7 @@ def _correlate_segment(
 def pcf_from_kymograph(
     intensity: np.ndarray,
     deltas: Sequence[int] = (0, 1, -1),
-    timing: Optional[IcsTiming] = None,
+    timing: IcsTiming | None = None,
     *,
     time_unit: str = "line",
     max_lag: int = 0,
@@ -609,13 +602,9 @@ def pcf_from_kymograph(
     """
     arr = np.asarray(intensity, dtype=float)
     if arr.ndim != 2:
-        raise ValueError(
-            f"a kymograph must be (n_time, n_positions); got shape {arr.shape}"
-        )
+        raise ValueError(f"a kymograph must be (n_time, n_positions); got shape {arr.shape}")
     if time_unit not in ("line", "frame", "pixel"):
-        raise ValueError(
-            f"time_unit must be 'line', 'frame' or 'pixel', not {time_unit!r}"
-        )
+        raise ValueError(f"time_unit must be 'line', 'frame' or 'pixel', not {time_unit!r}")
     timing = timing if timing is not None else IcsTiming()
     dt = {
         "line": float(timing.line_duration_ms) * 1.0e-3,
@@ -644,7 +633,7 @@ def pcf_from_kymograph(
 
     raw = np.asarray(
         [
-            _correlate_segment(work[s * seg_len:(s + 1) * seg_len], deltas, lag_cap)
+            _correlate_segment(work[s * seg_len : (s + 1) * seg_len], deltas, lag_cap)
             for s in range(n_seg)
         ]
     )
@@ -693,7 +682,7 @@ def pcf_from_kymograph(
 def pcf_from_stack(
     images: np.ndarray,
     deltas: Sequence[int] = (0, 1, -1),
-    timing: Optional[IcsTiming] = None,
+    timing: IcsTiming | None = None,
     **kwargs: Any,
 ) -> PcfCarpet:
     """Compute the pair correlation of a raster stack along the fast axis.
@@ -728,6 +717,4 @@ def pcf_from_stack(
     timing = timing if timing is not None else IcsTiming()
     stack = np.asarray(images, dtype=float)
     n_lines = int(stack.shape[1]) if stack.ndim >= 3 else 1
-    return pcf_from_kymograph(
-        kymograph(stack), deltas, timing.resolved(n_lines=n_lines), **kwargs
-    )
+    return pcf_from_kymograph(kymograph(stack), deltas, timing.resolved(n_lines=n_lines), **kwargs)

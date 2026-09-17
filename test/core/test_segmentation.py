@@ -34,9 +34,7 @@ from chisurf.core.roi.segmentation import (
 def two_circles(shape=(80, 80)):
     """The canonical watershed fixture: two overlapping discs."""
     y, x = np.indices(shape)
-    return ((x - 28) ** 2 + (y - 28) ** 2 < 16**2) | (
-        (x - 44) ** 2 + (y - 52) ** 2 < 20**2
-    )
+    return ((x - 28) ** 2 + (y - 28) ** 2 < 16**2) | ((x - 44) ** 2 + (y - 52) ** 2 < 20**2)
 
 
 def blobs(seed=0, shape=(128, 128), n_range=(8, 25)):
@@ -47,9 +45,7 @@ def blobs(seed=0, shape=(128, 128), n_range=(8, 25)):
     for _ in range(rng.integers(*n_range)):
         centre_y, centre_x = rng.uniform(8, shape[0] - 8, 2)
         radius = rng.uniform(3, 9)
-        image += np.exp(
-            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * radius * radius)
-        )
+        image += np.exp(-((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * radius * radius))
     return image + rng.normal(0, 0.02, shape)
 
 
@@ -90,9 +86,7 @@ def test_the_whole_pipeline_matches_skimage(seed):
     assert threshold == sk_filters.threshold_otsu(smoothed)
 
     binary = clear_border(smoothed > threshold)
-    np.testing.assert_array_equal(
-        binary, sk_segmentation.clear_border(smoothed > threshold)
-    )
+    np.testing.assert_array_equal(binary, sk_segmentation.clear_border(smoothed > threshold))
     if not binary.any():
         pytest.skip("this seed thresholds to nothing")
 
@@ -117,9 +111,7 @@ def test_the_whole_pipeline_matches_skimage(seed):
     for connectivity in (1, 2):
         np.testing.assert_array_equal(
             watershed(-distance, markers, mask=binary, connectivity=connectivity),
-            sk_segmentation.watershed(
-                -distance, markers, mask=binary, connectivity=connectivity
-            ),
+            sk_segmentation.watershed(-distance, markers, mask=binary, connectivity=connectivity),
             err_msg=f"watershed(connectivity={connectivity})",
         )
 
@@ -327,9 +319,7 @@ def test_label_utilities_match_skimage(seed):
         for connectivity in (1, 2):
             np.testing.assert_array_equal(
                 find_boundaries(labels, connectivity=connectivity, mode=mode),
-                sk_segmentation.find_boundaries(
-                    labels, connectivity=connectivity, mode=mode
-                ),
+                sk_segmentation.find_boundaries(labels, connectivity=connectivity, mode=mode),
                 err_msg=f"mode={mode} connectivity={connectivity}",
             )
 
@@ -435,9 +425,7 @@ def test_find_contours_traces_a_closed_loop_around_a_disc():
     np.testing.assert_allclose(contour[0], contour[-1], atol=1e-9)
     # Shoelace area of the traced polygon against the pixel count.
     rows, columns = contour[:, 0], contour[:, 1]
-    area = 0.5 * abs(
-        np.dot(rows[:-1], columns[1:]) - np.dot(columns[:-1], rows[1:])
-    )
+    area = 0.5 * abs(np.dot(rows[:-1], columns[1:]) - np.dot(columns[:-1], rows[1:]))
     assert abs(area - disc.sum()) / disc.sum() < 0.05
 
 
@@ -451,9 +439,7 @@ def test_blob_detectors_match_skimage(detector):
     y, x = np.indices((80, 80))
     image = np.zeros((80, 80))
     for centre_y, centre_x, sigma in [(20, 20, 2.0), (50, 30, 4.0), (30, 60, 3.0)]:
-        image += np.exp(
-            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma)
-        )
+        image += np.exp(-((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma))
     keywords = (
         {"min_sigma": 1, "max_sigma": 8, "threshold": 0.02}
         if detector == "blob_dog"
@@ -473,16 +459,13 @@ def test_blob_detectors_recover_the_width_they_were_given():
     truth = [(30, 30, 2.0), (30, 90, 4.0), (90, 60, 6.0)]
     image = np.zeros((120, 120))
     for centre_y, centre_x, sigma in truth:
-        image += np.exp(
-            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma)
-        )
+        image += np.exp(-((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma))
     blobs = blob_log(image, min_sigma=1, max_sigma=9, num_sigma=17, threshold=0.05)
     assert len(blobs) == 3
     found = {(round(r), round(c)): s for r, c, s in blobs}
     for centre_y, centre_x, sigma in truth:
         matches = [
-            s for (r, c), s in found.items()
-            if abs(r - centre_y) <= 1 and abs(c - centre_x) <= 1
+            s for (r, c), s in found.items() if abs(r - centre_y) <= 1 and abs(c - centre_x) <= 1
         ]
         assert matches, f"no blob near ({centre_y}, {centre_x})"
         assert abs(matches[0] - sigma) <= 1.0, f"width {matches[0]} vs {sigma}"

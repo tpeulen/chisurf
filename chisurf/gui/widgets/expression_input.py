@@ -31,7 +31,7 @@ from chisurf.core.support.expressions import (
     validate_expression,
 )
 
-_OK = "✓"   # ✓
+_OK = "✓"  # ✓
 _BAD = "✗"  # ✗
 
 
@@ -187,9 +187,7 @@ class ExpressionInput(QtWidgets.QWidget):
             self._badge.setStyleSheet("color: #2e7d32;")
             self._badge.setToolTip("")
             self._error.setVisible(False)
-            self._set_parameters(
-                discover_parameters(text, self._known(), self._policy)
-            )
+            self._set_parameters(discover_parameters(text, self._known(), self._policy))
             if self._show_preview:
                 self._update_preview(text)
         else:
@@ -216,9 +214,12 @@ class ExpressionInput(QtWidgets.QWidget):
         dlg.setWindowTitle("Names & functions")
         dlg.setMinimumSize(340, 420)
         lay = QtWidgets.QVBoxLayout(dlg)
-        lay.addWidget(QtWidgets.QLabel(
-            "Double-click to insert. Any name that is not a function, a constant,\n"
-            "or the independent variable becomes a fitting parameter."))
+        lay.addWidget(
+            QtWidgets.QLabel(
+                "Double-click to insert. Any name that is not a function, a constant,\n"
+                "or the independent variable becomes a fitting parameter."
+            )
+        )
         lst = QtWidgets.QListWidget()
 
         def _header(text: str) -> None:

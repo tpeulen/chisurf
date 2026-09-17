@@ -8,7 +8,6 @@ import queue
 import subprocess
 import sys
 import tempfile
-import threading
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -16,12 +15,13 @@ import chisurf as cs
 import chisurf.core.fio as io
 import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
 from chisurf.plugins.core.code_editor.lsp_client import PythonLspClient
-from chisurf.plugins.core.code_editor.notebook_editor import NotebookEditor, shipped_notebooks
+from chisurf.plugins.core.code_editor.notebook_editor import NotebookEditor
 from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import CodeSymbol, find_project_root
@@ -34,14 +34,11 @@ from chisurf.plugins.core.code_editor.text_editor import (
     save_editor_settings,
 )
 from chisurf.plugins.icon_utils import create_emoji_icon
-from chisurf.gui import dialogs
 
 
 def _async_raise(tid: int, exc_type: type) -> None:
     """Raise an exception in a thread by its thread id."""
-    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-        ctypes.c_long(tid), ctypes.py_object(exc_type)
-    )
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc_type))
     if res == 0:
         raise ValueError("Invalid thread ID")
     elif res > 1:
@@ -68,8 +65,8 @@ class CodeEditor(QtWidgets.QWidget):
     symbolsChanged = QtCore.Signal(list)
     lspStatusChanged = QtCore.Signal(str)
     runStateChanged = QtCore.Signal(bool)
-    outputAppended = QtCore.Signal(str)   # emitted from any thread
-    endpointHint = QtCore.Signal(str)     # shebang-suggested endpoint for the active file
+    outputAppended = QtCore.Signal(str)  # emitted from any thread
+    endpointHint = QtCore.Signal(str)  # shebang-suggested endpoint for the active file
 
     def __init__(
         self,
@@ -105,7 +102,9 @@ class CodeEditor(QtWidgets.QWidget):
         self._run_process: QtCore.QProcess | None = None
         if project_root is None and filename is None:
             default_scripts = self._default_scripts_dir()
-            self.project_root = default_scripts if default_scripts else find_project_root(pathlib.Path.cwd())
+            self.project_root = (
+                default_scripts if default_scripts else find_project_root(pathlib.Path.cwd())
+            )
         else:
             self.project_root = find_project_root(project_root or filename or pathlib.Path.cwd())
         editor_settings = get_editor_settings()
@@ -251,24 +250,34 @@ class CodeEditor(QtWidgets.QWidget):
         """Create shared editor actions for menus and toolbars."""
         parent = parent or self
         actions = {
-            "new":              QtWidgets.QAction(create_emoji_icon(Glyphs.FILE, size=20), "New", parent),
-            "open":             QtWidgets.QAction(create_emoji_icon(Glyphs.OPEN, size=20), "Open", parent),
-            "open_folder":      QtWidgets.QAction(create_emoji_icon("🗂", size=20), "Folder", parent),
-            "save":             QtWidgets.QAction(create_emoji_icon(Glyphs.SAVE, size=20), "Save", parent),
-            "save_as":          QtWidgets.QAction(create_emoji_icon(Glyphs.SAVE, size=20), "Save As", parent),
-            "reload":           QtWidgets.QAction(create_emoji_icon(Glyphs.REFRESH, size=20), "Reload", parent),
-            "run":              QtWidgets.QAction(create_emoji_icon("▶", size=20), "Run", parent),
-            "ruff":             QtWidgets.QAction(create_emoji_icon(Glyphs.CLEAR, size=20), "Lint", parent),
-            "back":             QtWidgets.QAction(create_emoji_icon("◀", size=20), "Back", parent),
-            "forward":          QtWidgets.QAction(create_emoji_icon("▶", size=20), "Fwd", parent),
-            "definition":       QtWidgets.QAction(create_emoji_icon(Glyphs.SEARCH, size=20), "Def", parent),
-            "completion":       QtWidgets.QAction(create_emoji_icon(Glyphs.SPARKLE, size=20), "Hint", parent),
-            "settings":         QtWidgets.QAction(create_emoji_icon(Glyphs.SETTINGS, size=20), "Settings", parent),
-            "agent":            QtWidgets.QAction(create_emoji_icon(Glyphs.ROBOT, size=20), "Agent", parent),
-            "find":                QtWidgets.QAction(create_emoji_icon(Glyphs.SEARCH, size=20), "Find", parent),
+            "new": QtWidgets.QAction(create_emoji_icon(Glyphs.FILE, size=20), "New", parent),
+            "open": QtWidgets.QAction(create_emoji_icon(Glyphs.OPEN, size=20), "Open", parent),
+            "open_folder": QtWidgets.QAction(create_emoji_icon("🗂", size=20), "Folder", parent),
+            "save": QtWidgets.QAction(create_emoji_icon(Glyphs.SAVE, size=20), "Save", parent),
+            "save_as": QtWidgets.QAction(
+                create_emoji_icon(Glyphs.SAVE, size=20), "Save As", parent
+            ),
+            "reload": QtWidgets.QAction(
+                create_emoji_icon(Glyphs.REFRESH, size=20), "Reload", parent
+            ),
+            "run": QtWidgets.QAction(create_emoji_icon("▶", size=20), "Run", parent),
+            "ruff": QtWidgets.QAction(create_emoji_icon(Glyphs.CLEAR, size=20), "Lint", parent),
+            "back": QtWidgets.QAction(create_emoji_icon("◀", size=20), "Back", parent),
+            "forward": QtWidgets.QAction(create_emoji_icon("▶", size=20), "Fwd", parent),
+            "definition": QtWidgets.QAction(
+                create_emoji_icon(Glyphs.SEARCH, size=20), "Def", parent
+            ),
+            "completion": QtWidgets.QAction(
+                create_emoji_icon(Glyphs.SPARKLE, size=20), "Hint", parent
+            ),
+            "settings": QtWidgets.QAction(
+                create_emoji_icon(Glyphs.SETTINGS, size=20), "Settings", parent
+            ),
+            "agent": QtWidgets.QAction(create_emoji_icon(Glyphs.ROBOT, size=20), "Agent", parent),
+            "find": QtWidgets.QAction(create_emoji_icon(Glyphs.SEARCH, size=20), "Find", parent),
             "toggle_line_numbers": QtWidgets.QAction("Show Line Numbers", parent),
-            "toggle_lsp":          QtWidgets.QAction("Enable Python LSP", parent),
-            "toggle_whitespace":   QtWidgets.QAction(create_emoji_icon("¶", size=20), "", parent),
+            "toggle_lsp": QtWidgets.QAction("Enable Python LSP", parent),
+            "toggle_whitespace": QtWidgets.QAction(create_emoji_icon("¶", size=20), "", parent),
         }
         actions["new"].setToolTip("New file (Ctrl+N)")
         actions["open"].setToolTip("Open file (Ctrl+O)")
@@ -287,7 +296,9 @@ class CodeEditor(QtWidgets.QWidget):
         actions["find"].setToolTip("Find text (Ctrl+F)")
         actions["toggle_line_numbers"].setToolTip("Show or hide line numbers in the editor")
         actions["toggle_lsp"].setToolTip("Enable or disable the Python language server (LSP)")
-        actions["toggle_whitespace"].setToolTip("Show or hide whitespace characters (spaces ·, tabs →, line endings ¶)")
+        actions["toggle_whitespace"].setToolTip(
+            "Show or hide whitespace characters (spaces ·, tabs →, line endings ¶)"
+        )
         actions["toggle_line_numbers"].setCheckable(True)
         actions["toggle_line_numbers"].setObjectName("toggle_line_numbers")
         actions["toggle_lsp"].setCheckable(True)
@@ -306,7 +317,9 @@ class CodeEditor(QtWidgets.QWidget):
 
         actions["new"].triggered.connect(self._add_new_editor_tab)
         actions["open"].triggered.connect(lambda _checked=False: self.load_file())
-        actions["open_folder"].triggered.connect(lambda _checked=False: self._open_project_folder_dialog())
+        actions["open_folder"].triggered.connect(
+            lambda _checked=False: self._open_project_folder_dialog()
+        )
         actions["save"].triggered.connect(self.save_text)
         actions["save_as"].triggered.connect(self.save_current_as)
         actions["reload"].triggered.connect(self.reload_current)
@@ -686,6 +699,7 @@ class CodeEditor(QtWidgets.QWidget):
     def _default_scripts_dir() -> pathlib.Path | None:
         """Return the project scripts/ dir, falling back to ~/.chisurf/scripts/."""
         import chisurf as _cs_pkg
+
         repo_scripts = pathlib.Path(_cs_pkg.__file__).parent.parent / "scripts"
         if repo_scripts.is_dir():
             return repo_scripts
@@ -704,42 +718,50 @@ class CodeEditor(QtWidgets.QWidget):
 
         if path is not None and path.is_file():
             menu.addAction(
-                create_emoji_icon(Glyphs.FILE, size=16), "Open in Editor",
-                lambda p=path: self.open_file(str(p))
+                create_emoji_icon(Glyphs.FILE, size=16),
+                "Open in Editor",
+                lambda p=path: self.open_file(str(p)),
             )
             if path.suffix == ".py":
                 menu.addAction(
-                    create_emoji_icon("▶", size=16), "Run Script",
-                    lambda p=path: self._run_file(str(p))
+                    create_emoji_icon("▶", size=16),
+                    "Run Script",
+                    lambda p=path: self._run_file(str(p)),
                 )
             menu.addSeparator()
             menu.addAction("Copy Path", lambda p=path: self._copy_to_clipboard(str(p)))
             menu.addAction("Copy File Name", lambda p=path: self._copy_to_clipboard(p.name))
         elif path is not None and path.is_dir():
             menu.addAction(
-                create_emoji_icon(Glyphs.OPEN, size=16), "Set as Project Root",
-                lambda p=path: self.set_project_root(p)
+                create_emoji_icon(Glyphs.OPEN, size=16),
+                "Set as Project Root",
+                lambda p=path: self.set_project_root(p),
             )
             menu.addSeparator()
 
         # Reveal in system file manager
         reveal_target = path if path else self.project_root
-        reveal_label = "Reveal in Finder" if platform.system() == "Darwin" else "Open Containing Folder"
+        reveal_label = (
+            "Reveal in Finder" if platform.system() == "Darwin" else "Open Containing Folder"
+        )
         menu.addAction(
-            create_emoji_icon(Glyphs.SEARCH, size=16), reveal_label,
-            lambda t=reveal_target: self._reveal_in_file_manager(t)
+            create_emoji_icon(Glyphs.SEARCH, size=16),
+            reveal_label,
+            lambda t=reveal_target: self._reveal_in_file_manager(t),
         )
 
         menu.addSeparator()
 
         # New file in the current directory
         dir_for_new = (
-            path.parent if (path and path.is_file())
+            path.parent
+            if (path and path.is_file())
             else (path if (path and path.is_dir()) else self.project_root)
         )
         menu.addAction(
-            create_emoji_icon(Glyphs.FILE, size=16), "New Python File…",
-            lambda d=dir_for_new: self._new_file_in_dir(d, suffix=".py")
+            create_emoji_icon(Glyphs.FILE, size=16),
+            "New Python File…",
+            lambda d=dir_for_new: self._new_file_in_dir(d, suffix=".py"),
         )
 
         if not menu.isEmpty():
@@ -767,9 +789,7 @@ class CodeEditor(QtWidgets.QWidget):
     def _new_file_in_dir(self, directory: pathlib.Path, suffix: str = ".py") -> None:
         """Prompt for a file name, create it in *directory*, and open it."""
         default_name = f"script{suffix}"
-        name, ok = QtWidgets.QInputDialog.getText(
-            self, "New File", "File name:", text=default_name
-        )
+        name, ok = QtWidgets.QInputDialog.getText(self, "New File", "File name:", text=default_name)
         if not ok or not name.strip():
             return
         new_path = directory / name.strip()
@@ -1150,7 +1170,6 @@ class CodeEditor(QtWidgets.QWidget):
     def _save_tab_as(self, editor, tab_text: str, index: int) -> bool:
         """Open a save-as dialog and save the tab content."""
         if isinstance(editor, NotebookEditor):
-            default_name = "Untitled.ipynb"
             new_filename = cs.gui.widgets.save_file(file_type="Jupyter notebook (*.ipynb)")
             if not new_filename:
                 return False
@@ -1542,7 +1561,7 @@ class CodeEditor(QtWidgets.QWidget):
         for line in content.splitlines()[:5]:
             stripped = line.strip()
             if stripped.startswith("# !chisurf:"):
-                endpoint = stripped[len("# !chisurf:"):].strip().lower()
+                endpoint = stripped[len("# !chisurf:") :].strip().lower()
                 if endpoint == "ipython":
                     # Historic spelling for the in-process endpoint, back when
                     # the console was a Jupyter kernel. Still in users' files
@@ -1655,7 +1674,10 @@ class CodeEditor(QtWidgets.QWidget):
 
     def stop_macro(self):
         """Stop a currently running script."""
-        if self._run_process is not None and self._run_process.state() != QtCore.QProcess.NotRunning:
+        if (
+            self._run_process is not None
+            and self._run_process.state() != QtCore.QProcess.NotRunning
+        ):
             self._run_process.kill()
             self._run_process.waitForFinished(3000)
             self._run_process = None
@@ -1688,7 +1710,11 @@ class CodeEditor(QtWidgets.QWidget):
             return
 
         if isinstance(editor, NotebookEditor):
-            if self._save_tab(editor, self._get_current_filename() or "Untitled.ipynb", self.tab_widget.currentIndex()):
+            if self._save_tab(
+                editor,
+                self._get_current_filename() or "Untitled.ipynb",
+                self.tab_widget.currentIndex(),
+            ):
                 return
             return
 

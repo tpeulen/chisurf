@@ -45,7 +45,6 @@ def tool(qtbot) -> Tool:
 
 
 class TestRaisingAndRetracting:
-
     def test_nothing_is_shown_initially(self, tool):
         """A freshly built tool has no complaints."""
         assert tool.active_messages == ()
@@ -101,7 +100,6 @@ class TestRaisingAndRetracting:
 
 
 class TestDeclaration:
-
     def test_messages_are_per_instance(self, qtbot):
         """Two tools of the same class must not share their state."""
         a, b = Tool(), Tool()
@@ -124,7 +122,6 @@ class TestDeclaration:
 
 
 class TestRendering:
-
     def test_bar_hidden_until_something_is_wrong(self, tool):
         """A tool with nothing to say looks exactly as it did before."""
         assert not tool._message_bar.isVisible()
@@ -156,7 +153,6 @@ class TestRendering:
 
 
 class TestTranslation:
-
     def test_text_is_translated_at_render_time(self, tool):
         """Declarations run at import; a language change must still take."""
         i18n.set_translation_backend(
@@ -180,7 +176,6 @@ class TestTranslation:
 
 
 class TestDockToolBase:
-
     def test_the_base_provides_messages(self, qtbot):
         """Every dockable tool gets the facility without opting in."""
         w = ChisurfDockTool()

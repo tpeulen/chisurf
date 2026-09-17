@@ -66,9 +66,7 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
         self.help_toolbar = QtWidgets.QToolBar("Help", self)
         self.help_toolbar.setMovable(False)
         self.help_toolbar.setFloatable(False)
-        self.help_toolbar.setStyleSheet(
-            "QToolBar { border: none; padding: 0px; spacing: 2px; }"
-        )
+        self.help_toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
         attach_help_and_guide(
             self,
             self.help_toolbar,

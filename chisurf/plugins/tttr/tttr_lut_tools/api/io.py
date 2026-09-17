@@ -187,21 +187,20 @@ def save_lut(path: str, table: dict) -> str:
         # CMC (src/common/tac_linearization.hpp) as well as by load_lut_file.
         payload = {}
         for key, value in table.items():
-            payload[key] = (value.tolist() if isinstance(value, np.ndarray)
-                            else value)
+            payload[key] = value.tolist() if isinstance(value, np.ndarray) else value
         with open(abs_path, "w") as fh:
             json.dump(payload, fh, indent=2)
         return abs_path
     if ext == ".txt":
         np.savetxt(abs_path, ntac_fract.reshape(-1, 1), fmt="%.9f", header="NTAC_fract")
     elif ext == ".csv":
-        np.savetxt(abs_path, ntac_fract.reshape(-1, 1), delimiter=",", fmt="%.9f",
-                   header="NTAC_fract")
+        np.savetxt(
+            abs_path, ntac_fract.reshape(-1, 1), delimiter=",", fmt="%.9f", header="NTAC_fract"
+        )
     elif ext == ".npy":
         np.save(abs_path, ntac_fract)
     elif ext == ".npz":
         np.savez_compressed(abs_path, **table)
     else:
-        raise ValueError(
-            "Unknown output extension. Use .json / .txt / .csv / .npy / .npz.")
+        raise ValueError("Unknown output extension. Use .json / .txt / .csv / .npy / .npz.")
     return abs_path

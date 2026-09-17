@@ -21,7 +21,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.surface_area import (
     DOT_COUNTS,
     atom_surface_areas,
@@ -30,7 +29,11 @@ from chimol.analysis.surface_area import (
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -87,8 +90,10 @@ def test_the_probe_inflates_the_sphere():
     """`dot_solvent` on measures the accessible surface, at ``r + probe``."""
     radius, probe = 1.7, 1.4
     area = atom_surface_areas(
-        np.zeros((1, 3)), np.array([radius]),
-        dot_solvent=True, solvent_radius=probe,
+        np.zeros((1, 3)),
+        np.array([radius]),
+        dot_solvent=True,
+        solvent_radius=probe,
     )
     assert area[0] == pytest.approx(4.0 * np.pi * (radius + probe) ** 2, rel=1e-12)
 
@@ -96,15 +101,11 @@ def test_the_probe_inflates_the_sphere():
 def test_the_probe_is_ignored_when_dot_solvent_is_off():
     """PyMOL's default measures the van der Waals surface."""
     radius = 1.7
-    area = atom_surface_areas(
-        np.zeros((1, 3)), np.array([radius]), solvent_radius=5.0
-    )
+    area = atom_surface_areas(np.zeros((1, 3)), np.array([radius]), solvent_radius=5.0)
     assert area[0] == pytest.approx(4.0 * np.pi * radius**2, rel=1e-12)
 
 
-@pytest.mark.parametrize(
-    "density, tolerance", [(0, 0.08), (2, 0.02), (4, 0.003)]
-)
+@pytest.mark.parametrize("density, tolerance", [(0, 0.08), (2, 0.02), (4, 0.003)])
 def test_two_overlapping_spheres_lose_their_caps(density, tolerance):
     """Each sphere loses a spherical cap of height ``r - d/2``, exactly."""
     radius, separation = 1.7, 3.0
@@ -140,9 +141,7 @@ def test_accuracy_improves_with_density():
 
 def test_a_fully_buried_atom_has_no_area():
     """A small atom inside a large one contributes nothing."""
-    areas = atom_surface_areas(
-        np.array([[0.0, 0, 0], [0.0, 0, 0]]), np.array([5.0, 1.0])
-    )
+    areas = atom_surface_areas(np.array([[0.0, 0, 0], [0.0, 0, 0]]), np.array([5.0, 1.0]))
     assert areas[1] == pytest.approx(0.0)
 
 
@@ -187,9 +186,7 @@ def cluster():
 def test_a_cluster_matches_an_independent_shrake_rupley(cluster, dot_solvent, probe):
     xyz, radii = cluster
     reference = _reference_areas(xyz, radii, probe).sum()
-    ours = atom_surface_areas(
-        xyz, radii, dot_solvent=dot_solvent, dot_density=4
-    ).sum()
+    ours = atom_surface_areas(xyz, radii, dot_solvent=dot_solvent, dot_density=4).sum()
     assert ours == pytest.approx(reference, rel=0.01)
 
 
@@ -234,8 +231,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -259,7 +256,7 @@ def session(qapp):
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
     yield cmd, view, messages, errors
-    cmd.do("set dot_solvent, off")   # a global setting, restored for other tests
+    cmd.do("set dot_solvent, off")  # a global setting, restored for other tests
 
 
 def test_get_area_reports_a_plausible_protein_area(session):
@@ -308,9 +305,7 @@ def test_load_b_writes_per_atom_areas(session):
     cmd.do("get_area all, 1, 1")
     assert errors == []
     total = float(messages[-1].split()[1])
-    assert float(np.asarray(view._atoms["bfactor"]).sum()) == pytest.approx(
-        total, rel=1e-6
-    )
+    assert float(np.asarray(view._atoms["bfactor"]).sum()) == pytest.approx(total, rel=1e-6)
 
 
 def test_the_core_is_buried_and_the_surface_is_not(session):
@@ -360,8 +355,7 @@ def test_get_extent_is_the_raw_bounding_box(session):
     assert errors == []
     xyz = np.asarray(view._atoms["xyz"], dtype=float)
     numbers = [
-        float(t) for t in messages[-1].replace("[", " ").replace("]", " ")
-        .replace(",", " ").split()
+        float(t) for t in messages[-1].replace("[", " ").replace("]", " ").replace(",", " ").split()
     ]
     assert numbers[:3] == pytest.approx(xyz.min(axis=0), abs=5e-4)
     assert numbers[3:] == pytest.approx(xyz.max(axis=0), abs=5e-4)
@@ -371,8 +365,7 @@ def test_get_extent_honours_a_selection(session):
     cmd, view, messages, _ = session
     cmd.do("get_extent resn NAG")
     numbers = [
-        float(t) for t in messages[-1].replace("[", " ").replace("]", " ")
-        .replace(",", " ").split()
+        float(t) for t in messages[-1].replace("[", " ").replace("]", " ").replace(",", " ").split()
     ]
     names = np.char.strip(view._atoms["res_name"].astype(str))
     ligand = np.asarray(view._atoms["xyz"], dtype=float)[names == "NAG"]
@@ -427,9 +420,9 @@ def test_the_mask_beats_the_flag(session):
     cmd, view, _, _ = session
     cmd.do("hide everything")
     cmd.do("show spheres, resn NAG")
-    assert bool(view._show_atoms)              # something is drawn...
+    assert bool(view._show_atoms)  # something is drawn...
     shown = int(view.sphere_visible_mask().sum())
-    assert shown == 14                         # ...and the mask says which
+    assert shown == 14  # ...and the mask says which
     assert shown < len(view._atoms), "the flag alone would take every atom"
 
 

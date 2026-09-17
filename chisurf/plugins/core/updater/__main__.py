@@ -1,4 +1,5 @@
 import sys
+
 from qtpy.QtWidgets import QApplication
 
 

@@ -10,6 +10,7 @@ Covers PRD-58 rigid-body-docking (RBD) pieces that were implemented but untested
 
 Pure numpy — no IMP, AV backend, or external data.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +33,24 @@ def _body(name, coords, com=(0.0, 0.0, 0.0), rotation=None):
     com = np.asarray(com, dtype=np.float64)
     rotation = np.eye(3) if rotation is None else rotation
     return RigidBody(
-        name=name, atoms_local=atoms_local, com=com.copy(),
-        rotation=rotation, translation=com.copy(),
+        name=name,
+        atoms_local=atoms_local,
+        com=com.copy(),
+        rotation=rotation,
+        translation=com.copy(),
     )
 
 
 def _restraint(**kw):
     base = dict(
-        name="AB", body_a=0, offset_a=np.array([1.0, 0.0, 0.0]),
-        body_b=1, offset_b=np.zeros(3),
-        distance_exp=6.0, error_neg=3.0, error_pos=3.0,
+        name="AB",
+        body_a=0,
+        offset_a=np.array([1.0, 0.0, 0.0]),
+        body_b=1,
+        offset_b=np.zeros(3),
+        distance_exp=6.0,
+        error_neg=3.0,
+        error_pos=3.0,
         transfer_function_type="None",
     )
     base.update(kw)
@@ -65,8 +74,7 @@ def test_rigid_body_global_coords():
 # DistanceRestraint
 # --------------------------------------------------------------------------------------
 def test_distance_restraint_global_positions_and_effective_distance():
-    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]),
-              _body("B", [[0, 0, 0]], com=[10, 0, 0])]
+    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]), _body("B", [[0, 0, 0]], com=[10, 0, 0])]
     r = _restraint()
     np.testing.assert_allclose(r.global_position_a(bodies), [1.0, 0.0, 0.0])
     np.testing.assert_allclose(r.global_position_b(bodies), [10.0, 0.0, 0.0])
@@ -77,8 +85,7 @@ def test_distance_restraint_global_positions_and_effective_distance():
 # score_bodies — IMP-free pose scorer
 # --------------------------------------------------------------------------------------
 def test_score_bodies_chi2():
-    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]),
-              _body("B", [[0, 0, 0]], com=[10, 0, 0])]
+    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]), _body("B", [[0, 0, 0]], com=[10, 0, 0])]
     # rmp = |[1,0,0] - [10,0,0]| = 9; chi2 = (9-6)^2 / 3^2 = 1
     total, per = score_bodies(bodies, [_restraint()])
     assert total == pytest.approx(1.0)
@@ -115,8 +122,7 @@ def test_euler_angle_evaluator_z_rotation():
 
 
 def test_min_distance_evaluator():
-    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]),
-              _body("B", [[0, 0, 0]], com=[5, 0, 0])]
+    bodies = [_body("A", [[0, 0, 0]], com=[0, 0, 0]), _body("B", [[0, 0, 0]], com=[5, 0, 0])]
     assert MinDistanceEvaluator("m", 0, 1).evaluate({}, bodies).value == pytest.approx(5.0)
 
 

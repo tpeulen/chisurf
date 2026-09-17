@@ -4,6 +4,7 @@ These exercise the reordering/persistence logic (``_moveWidget``,
 ``_saveButtonOrder``, ``_restoreButtonOrder``) without simulating an actual
 mouse drag, which is impractical under the offscreen platform.
 """
+
 import pytest
 from qtpy import QtCore
 

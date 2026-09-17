@@ -3,20 +3,20 @@ from __future__ import annotations
 import concurrent.futures
 
 from chisurf.server.protocol import (
-    PROTOCOL_VERSION,
     METHOD_CATALOGUE,
     METHOD_PARAM_SCHEMAS,
     METHOD_SCHEMAS,
     NAMESPACE_DESCRIPTIONS,
-    load_method_specs,
-    encode_request,
+    PROTOCOL_VERSION,
+    _next_id,
     decode_request,
-    encode_response,
     decode_response,
     encode_error,
+    encode_request,
+    encode_response,
     is_valid_request,
     is_valid_response,
-    _next_id,
+    load_method_specs,
 )
 
 
@@ -92,7 +92,9 @@ class TestProtocol:
         assert msg["id"] == 1
 
     def test_encode_error_with_data(self):
-        msg = encode_error(code=-32603, message="Internal error", data={"detail": "x"}, request_id=5)
+        msg = encode_error(
+            code=-32603, message="Internal error", data={"detail": "x"}, request_id=5
+        )
         assert msg["error"]["data"] == {"detail": "x"}
 
     def test_is_valid_request_good(self):
@@ -130,7 +132,6 @@ class TestProtocol:
 
 
 class TestProtocolConstants:
-
     def test_protocol_version_is_string(self):
         assert isinstance(PROTOCOL_VERSION, str)
         assert len(PROTOCOL_VERSION) > 0
@@ -143,10 +144,24 @@ class TestProtocolConstants:
 
     def test_method_catalogue_has_all_namespaces(self):
         expected = {
-            "meta", "dataset", "fit", "parameter", "project", "session", "model",
-            "graph", "log", "editor", "detector_setups", "flr", "plot", "pda",
+            "meta",
+            "dataset",
+            "fit",
+            "parameter",
+            "project",
+            "session",
+            "model",
+            "graph",
+            "log",
+            "editor",
+            "detector_setups",
+            "flr",
+            "plot",
+            "pda",
             # A gated burst population, handed to another analysis.
-            "tcspc", "pch", "bursts",
+            "tcspc",
+            "pch",
+            "bursts",
         }
         assert set(METHOD_CATALOGUE.keys()) == expected
 
@@ -189,7 +204,6 @@ class TestProtocolConstants:
 
 
 class TestNextId:
-
     def test_next_id_increments(self):
         a = _next_id()
         b = _next_id()
@@ -198,8 +212,10 @@ class TestNextId:
 
     def test_next_id_thread_safe(self):
         results = set()
+
         def collect():
             results.add(_next_id())
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
             futures = [ex.submit(collect) for _ in range(50)]
             concurrent.futures.wait(futures)

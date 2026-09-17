@@ -7,7 +7,6 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
-    QMainWindow,
     QPlainTextEdit,
     QSizePolicy,
     QToolBar,
@@ -24,10 +23,13 @@ from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
+
     def _persist_plugin_state(_name: str):
         def decorator(cls):
             return cls
+
         return decorator
+
     persist_plugin_state = _persist_plugin_state
 
 
@@ -67,13 +69,21 @@ class TraceBrowserTool(ChisurfDockTool):
         toolbar = QToolBar(f"{Glyphs.TOOLBOX} Trace Browser", self)
         toolbar.setObjectName("traceBrowserMainToolbar")
         actions = [
-            (f"{Glyphs.OPEN} Open", self._workspace._on_pick_folder, "Pick a folder with TTTR traces"),
+            (
+                f"{Glyphs.OPEN} Open",
+                self._workspace._on_pick_folder,
+                "Pick a folder with TTTR traces",
+            ),
             (f"{Glyphs.CLEAR} Clear", self._workspace._on_clear, "Clear the file list"),
             (f"{Glyphs.RESET} Caches", self._workspace._on_clear_caches, "Clear trace caches"),
             (f"{Glyphs.EXPORT} Export", self._workspace._on_export, "Export selected traces"),
             ("CSV", self._workspace._on_export_csv, "Export traces as CSV"),
             ("DOCX", self._workspace._on_export_docx, "Export selected traces as DOCX"),
-            (f"{Glyphs.BRAIN} HMM", self._workspace._on_transfer_to_analysis, "Open in Intensity Trace Analysis"),
+            (
+                f"{Glyphs.BRAIN} HMM",
+                self._workspace._on_transfer_to_analysis,
+                "Open in Intensity Trace Analysis",
+            ),
             (f"{Glyphs.TIMER} TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
             (f"{Glyphs.CHART} NDX", self._workspace._on_open_in_ndxplorer, "Open in ndX"),
         ]
@@ -92,7 +102,9 @@ class TraceBrowserTool(ChisurfDockTool):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
         help_action = QAction("❔ Help", self)
-        help_action.setToolTip("Show what Trace Browser does, how the toolbar works, and how to use the CLI")
+        help_action.setToolTip(
+            "Show what Trace Browser does, how the toolbar works, and how to use the CLI"
+        )
         help_action.triggered.connect(self._show_help)
         toolbar.addAction(help_action)
         self.addToolBar(toolbar)

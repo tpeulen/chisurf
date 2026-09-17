@@ -41,7 +41,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=1e6,
             bounds_on=True,
-            description='Background count rate in the parallel (VV) detection channel.',
+            description="Background count rate in the parallel (VV) detection channel.",
         )
         self.B_perp = FittingParameter(
             value=1.0,
@@ -49,7 +49,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=1e6,
             bounds_on=True,
-            description='Background count rate in the perpendicular (VH) detection channel.',
+            description="Background count rate in the perpendicular (VH) detection channel.",
         )
         # Detection ratio and mixing factors (fixed or very tightly bounded)
         self.G = FittingParameter(
@@ -59,7 +59,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             ub=10.0,
             bounds_on=True,
             label_text="g<sub>perp</sub>/g<sub>par</sub>",
-            description='G-factor: perpendicular-to-parallel detection sensitivity ratio.',
+            description="G-factor: perpendicular-to-parallel detection sensitivity ratio.",
         )
         self.l1 = FittingParameter(
             value=0.0,
@@ -67,7 +67,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=0.33,
             bounds_on=True,
-            description='Background correction factor for the parallel (VV) channel.',
+            description="Background correction factor for the parallel (VV) channel.",
         )
         self.l2 = FittingParameter(
             value=0.0,
@@ -75,7 +75,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=0.33,
             bounds_on=True,
-            description='Background correction factor for the perpendicular (VH) channel.',
+            description="Background correction factor for the perpendicular (VH) channel.",
         )
 
         try:
@@ -96,7 +96,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             return np.zeros(0, dtype=np.float64)
         # Optional absolute and normalization semantics mirroring ProbCh0
         if getattr(self, "_abs_amplitudes", True):
-            vs = np.sqrt(vs ** 2)
+            vs = np.sqrt(vs**2)
         if getattr(self, "_normalize_amplitudes", True):
             s = float(np.sum(vs))
             if s != 0.0:
@@ -145,7 +145,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
         """
         raw = np.array([p.value for p in self._amplitudes], dtype=float)
         if getattr(self, "_abs_amplitudes", True):
-            raw = np.sqrt(raw ** 2)
+            raw = np.sqrt(raw**2)
         if getattr(self, "_normalize_amplitudes", True):
             s = float(np.sum(raw))
             if s > 0:
@@ -161,8 +161,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             for i, p in enumerate(self._amplitudes):
                 p.value = normalized[i]
                 ee = p.error_estimate
-                if (isinstance(ee, float) and np.isfinite(ee)
-                        and abs(scale - 1.0) > 1e-12):
+                if isinstance(ee, float) and np.isfinite(ee) and abs(scale - 1.0) > 1e-12:
                     p.error_estimate = ee * scale
         except Exception:
             pass
@@ -190,7 +189,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             label_text=f"x<sub>A,{i}</sub>",
             fixed=fixed,
             bounds_on=bounds_on,
-            description='Amplitude (population fraction) of this anisotropy species.',
+            description="Amplitude (population fraction) of this anisotropy species.",
         )
         r_param = FittingParameter(
             lb=lower_bound_r,
@@ -200,7 +199,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             label_text=f"r<sub>A,{i}</sub>",
             fixed=fixed,
             bounds_on=bounds_on,
-            description='Anisotropy value of this species (0..r0).',
+            description="Anisotropy value of this species (0..r0).",
         )
         self._amplitudes.append(amp_param)
         self._anisotropies.append(r_param)

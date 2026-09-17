@@ -20,6 +20,7 @@ from typing import Any
 
 from mmfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
 from mmfdb.provenance.result_registry import register_result
+
 from chisurf.core.transform import TransformInputs
 from chisurf.plugins.tttr.tttr_microtime_shifter.api.transformer import (
     MICROTIME_SHIFTER,
@@ -46,18 +47,13 @@ def microtime_shift_replay_executor(spec: ComputeSpec, db: Any) -> str:
     )
 
     work_dir = tempfile.mkdtemp(prefix="mmfdb_replay_shift_")
-    paths = [
-        db.materialize_artifact_file(aid, into=work_dir)
-        for aid in spec.source_artifact_ids
-    ]
+    paths = [db.materialize_artifact_file(aid, into=work_dir) for aid in spec.source_artifact_ids]
     out_dir = os.path.join(work_dir, "out")
     os.makedirs(out_dir, exist_ok=True)
     transform_params = dict(spec.parameters)
     transform_params["output_dir"] = out_dir
 
-    result = MICROTIME_SHIFTER.transform(
-        TransformInputs(files=tuple(paths)), transform_params
-    )
+    result = MICROTIME_SHIFTER.transform(TransformInputs(files=tuple(paths)), transform_params)
     shifted = result.outputs.get("shifted", {})
 
     new_ids: list[str] = []

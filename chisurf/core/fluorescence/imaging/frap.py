@@ -32,7 +32,8 @@ returns; that is the mobile fraction :math:`k`, applied as
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -94,7 +95,7 @@ class FrapResult:
         d = self.diffusion_coefficient
         if not np.isfinite(length) or d <= 0:
             return float("nan")
-        return float(length ** 2 / (16.0 * d))
+        return float(length**2 / (16.0 * d))
 
     def to_dict(self) -> dict:
         """Return the fit as a JSON-friendly dictionary."""
@@ -265,8 +266,8 @@ def normalise_frap_stack(
 
 
 def recovery_curve(
-    images: np.ndarray, roi: Any, times: Optional[np.ndarray] = None
-) -> Tuple[np.ndarray, np.ndarray]:
+    images: np.ndarray, roi: Any, times: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the classic mean-intensity recovery curve inside a region.
 
     Kept because it is the standard way to *look* at a FRAP experiment, and
@@ -356,9 +357,7 @@ def fit_rfrap(
     if stack.ndim != 3:
         raise ValueError(f"expected a (n_frames, ny, nx) stack; got {stack.shape}")
     if t.shape[0] != stack.shape[0]:
-        raise ValueError(
-            f"{t.shape[0]} times for {stack.shape[0]} frames"
-        )
+        raise ValueError(f"{t.shape[0]} times for {stack.shape[0]} frames")
 
     r0, c0, r1, c1 = (float(v) for v in bleach_rect)
     lx = (c1 - c0) * pixel_size
@@ -402,10 +401,14 @@ def fit_rfrap(
         model = rfrap_model(x3, y3, t3, lx=lx, ly=ly, f0=f0, **unpack(p))
         return (model - stack).ravel()
 
-    lower = [1e-12, 0.0] + ([0.0] if fit_mobile_fraction else []) + \
-            ([1e-6] if fit_edge_width else [])
-    upper = [np.inf, 1.0] + ([1.0] if fit_mobile_fraction else []) + \
-            ([np.inf] if fit_edge_width else [])
+    lower = (
+        [1e-12, 0.0] + ([0.0] if fit_mobile_fraction else []) + ([1e-6] if fit_edge_width else [])
+    )
+    upper = (
+        [np.inf, 1.0]
+        + ([1.0] if fit_mobile_fraction else [])
+        + ([np.inf] if fit_edge_width else [])
+    )
 
     fit = least_squares(residual, start, bounds=(lower, upper))
     params = unpack(fit.x)
@@ -416,7 +419,7 @@ def fit_rfrap(
         mobile_fraction=float(params["mobile_fraction"]),
         edge_width=float(params["edge_width"]),
         success=bool(fit.success),
-        chi2=float(np.sum(fit.fun ** 2)),
+        chi2=float(np.sum(fit.fun**2)),
         n_points=int(stack.size),
         message=str(fit.message),
     )

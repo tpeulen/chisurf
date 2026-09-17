@@ -1,30 +1,27 @@
 from __future__ import annotations
 
-import os
-import pathlib
 import textwrap
 import typing
 
 import matplotlib.colors as mcolors
 import numpy as np
-from qtpy import QtCore, QtGui, QtWidgets, uic
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 import chisurf.core.data
-import chisurf.core.support.decorators
 import chisurf.core.fitting
 import chisurf.core.settings
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.core.actions import record_action
-from chisurf.core.math.optimization import OptimizationCancelled
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.general import Controller
 from chisurf.macros.core_fit import link_fit_group
-from chisurf.gui import dialogs
 
 parameter_settings = chisurf.core.settings.parameter
 
@@ -36,8 +33,16 @@ parameter_settings = chisurf.core.settings.parameter
 #: inline bound spinboxes, not here.
 _PRIOR_FAMILY_SPECS = [
     ("Gaussian", "normal", [("mu", "Mean μ", 0.0), ("sigma", "Std σ", 1.0)]),
-    ("Truncated Gaussian", "truncated_normal",
-     [("mu", "Mean μ", 0.0), ("sigma", "Std σ", 1.0), ("lb", "Lower", 0.0), ("ub", "Upper", 1.0)]),
+    (
+        "Truncated Gaussian",
+        "truncated_normal",
+        [
+            ("mu", "Mean μ", 0.0),
+            ("sigma", "Std σ", 1.0),
+            ("lb", "Lower", 0.0),
+            ("ub", "Upper", 1.0),
+        ],
+    ),
     ("Log-normal", "lognormal", [("mu", "Mean of ln x", 0.0), ("sigma", "Std of ln x", 0.5)]),
     ("Half-normal", "half_normal", [("sigma", "Std σ", 1.0), ("loc", "Edge", 0.0)]),
     ("Exponential", "exponential", [("scale", "Mean scale", 1.0), ("loc", "Edge", 0.0)]),
@@ -70,13 +75,12 @@ def _controller_decimals(controller, editor_name: str, default: int = 6) -> int:
 
 
 class FittingParameterDetailPopup(QtWidgets.QDialog):
-
-    def __init__(self, controller: 'FittingParameterWidget'):
+    def __init__(self, controller: FittingParameterWidget):
         super().__init__(controller)
         # Use Popup flag so clicks outside cause deactivation; we then hide on focus loss
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Popup)
         self.controller = controller
-        self.setObjectName('FittingParameterDetailPopup')
+        self.setObjectName("FittingParameterDetailPopup")
         # Ensure we hide if the window deactivates (extra safety beyond Qt.Popup)
         self.installEventFilter(self)
         # Ensure the popup can take focus and is activated when shown
@@ -130,7 +134,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         val_row.addWidget(QtWidgets.QLabel("Value:"))
         self.sb_value = ScientificDoubleSpinBox(
             dec=True,
-            decimals=_controller_decimals(controller, 'widget_value'),
+            decimals=_controller_decimals(controller, "widget_value"),
             finite=False,
         )
         self.sb_value.setMaximumWidth(140)
@@ -168,11 +172,11 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.cb_bounds_on = QtWidgets.QCheckBox("Bounds")
         b_layout.addWidget(self.cb_bounds_on)
         self.sb_lb = ScientificDoubleSpinBox(
-            dec=True, decimals=_controller_decimals(controller, 'widget_lower_bound')
+            dec=True, decimals=_controller_decimals(controller, "widget_lower_bound")
         )
         self.sb_lb.setToolTip("Lower bound")
         self.sb_ub = ScientificDoubleSpinBox(
-            dec=True, decimals=_controller_decimals(controller, 'widget_upper_bound')
+            dec=True, decimals=_controller_decimals(controller, "widget_upper_bound")
         )
         self.sb_ub.setToolTip("Upper bound")
         for lbl, sb in (("Low:", self.sb_lb), ("High:", self.sb_ub)):
@@ -198,7 +202,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
 
         #: One spin box per parameter of the selected family, keyed as in
         #: :data:`_PRIOR_FAMILY_SPECS`.
-        self._prior_spins: typing.Dict[str, ScientificDoubleSpinBox] = {}
+        self._prior_spins: dict[str, ScientificDoubleSpinBox] = {}
 
         #: Shown instead of the form for families this editor cannot express
         #: (callback and product priors), which stay read-only.
@@ -268,7 +272,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
 
     def _may_auto_hide(self) -> bool:
         """Common precondition of both dismissal paths."""
-        if getattr(self, '_suspend_auto_hide', 0) > 0 or not self.isVisible():
+        if getattr(self, "_suspend_auto_hide", 0) > 0 or not self.isVisible():
             return False
         return not self._child_window_is_open()
 
@@ -364,7 +368,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         if checked:
             bounds_valid = False
             try:
-                b = getattr(fp, 'bounds', None)
+                b = getattr(fp, "bounds", None)
                 bounds_valid = isinstance(b, (tuple, list)) and len(b) == 2
             except Exception:
                 bounds_valid = False
@@ -447,6 +451,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         barely constrain the second.
         """
         import math
+
         try:
             seed = float(self.controller.fitting_parameter.value)
         except Exception:
@@ -494,21 +499,19 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         fp = self.controller.fitting_parameter
         # Description text (may be empty)
         try:
-            desc = getattr(fp, 'description', "")
+            desc = getattr(fp, "description", "")
         except Exception:
             desc = ""
         self.lbl_description.setVisible(bool(desc))
         if desc:
             self.lbl_description.setText(str(desc))
         # Update link label
-        if getattr(fp, 'link', None) is not None:
+        if getattr(fp, "link", None) is not None:
             target_group, target_local = self.controller._locate_parameter(fp.link)
             # Keep the header row narrow: the short form goes on the label, the
             # full origin of the link into its tooltip.
             self.lbl_link.setText(f"→ {fp.link.name}")
-            self.lbl_link.setToolTip(
-                f"Linked to: {fp.link.name} ({target_group} / {target_local})"
-            )
+            self.lbl_link.setToolTip(f"Linked to: {fp.link.name} ({target_group} / {target_local})")
             self.btn_unlink.setEnabled(True)
         else:
             self.lbl_link.setText("Not linked")
@@ -533,8 +536,13 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         self.sb_lb.setEnabled(bool(fp.bounds_on))
         self.sb_ub.setEnabled(bool(fp.bounds_on))
         try:
-            b = getattr(fp, 'bounds', None)
-            if isinstance(b, (tuple, list)) and len(b) == 2 and b[0] is not None and b[1] is not None:
+            b = getattr(fp, "bounds", None)
+            if (
+                isinstance(b, (tuple, list))
+                and len(b) == 2
+                and b[0] is not None
+                and b[1] is not None
+            ):
                 lb, ub = b
                 if np.isfinite(float(lb)):
                     self.sb_lb.setValue(float(lb))
@@ -557,6 +565,7 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
         selects the read-only "other" entry and shows a summary instead.
         """
         from chisurf.core.fitting.priors import UniformPrior
+
         try:
             prior = getattr(fp, "prior", None)
         except Exception:
@@ -620,8 +629,6 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
             self.cb_prior_family.setCurrentIndex(idx)
 
 
-
-
 class ParameterActionsMixin:
     """Parameter-centric actions shared by every parameter editor.
 
@@ -671,7 +678,7 @@ class ParameterActionsMixin:
             return True
         return super().event(e)
 
-    def _locate_parameter(self, parameter) -> typing.Tuple[str, str]:
+    def _locate_parameter(self, parameter) -> tuple[str, str]:
         fit_group_label = "?"
         local_fit_label = "?"
         try:
@@ -696,7 +703,7 @@ class ParameterActionsMixin:
         except Exception:
             return fit_group_label, local_fit_label
 
-    def _locate_parameter_uids(self, parameter) -> typing.Tuple[str, str, str]:
+    def _locate_parameter_uids(self, parameter) -> tuple[str, str, str]:
         fit_uid = ""
         local_fit_uid = ""
         parameter_uid = str(getattr(parameter, "unique_identifier", ""))
@@ -722,7 +729,7 @@ class ParameterActionsMixin:
         except Exception:
             return fit_uid, local_fit_uid, parameter_uid
 
-    def _parameter_indices(self, parameter) -> typing.Tuple[int, int]:
+    def _parameter_indices(self, parameter) -> tuple[int, int]:
         """Return (fit_group_idx, local_idx) for the given parameter."""
         fit_objects = get_fitting_client().get_fit_objects()
         for fit_group_idx, fit_group in enumerate(fit_objects):
@@ -748,7 +755,7 @@ class ParameterActionsMixin:
                         pass
         return -1, -1
 
-    def _parameter_context(self, parameter) -> typing.Dict[str, str]:
+    def _parameter_context(self, parameter) -> dict[str, str]:
         group_name, local_name = self._locate_parameter(parameter)
         group_uid, local_uid, param_uid = self._locate_parameter_uids(parameter)
         return {
@@ -781,7 +788,7 @@ class ParameterActionsMixin:
             chisurf.logging.exception("could not resolve the group owning a parameter")
         return ""
 
-    def _rpc_address(self, parameter, source: typing.Dict[str, str] = None) -> typing.Dict[str, typing.Any]:
+    def _rpc_address(self, parameter, source: dict[str, str] = None) -> dict[str, typing.Any]:
         """Return the keyword arguments that address ``parameter`` on the backend.
 
         Every parameter RPC takes the same address, and it has to carry the
@@ -806,7 +813,9 @@ class ParameterActionsMixin:
         }
         return {k: v for k, v in address.items() if v is not None}
 
-    def _trace_operation(self, action_type: str, summary: str, payload: typing.Dict[str, typing.Any] = None) -> None:
+    def _trace_operation(
+        self, action_type: str, summary: str, payload: dict[str, typing.Any] = None
+    ) -> None:
         payload_data = payload or {}
         try:
             source_uid = str(getattr(self.fitting_parameter, "unique_identifier", ""))
@@ -847,7 +856,7 @@ class ParameterActionsMixin:
         rpc: typing.Callable[..., None],
         action_type: str,
         summary: str,
-        payload: typing.Dict[str, typing.Any],
+        payload: dict[str, typing.Any],
     ) -> None:
         """Local echo, backend RPC and provenance trace for one parameter edit."""
         source = self._parameter_context(parameter)
@@ -1024,12 +1033,12 @@ class ParameterActionsMixin:
     def _build_details_tooltip_text(self) -> str:
         fp = self.fitting_parameter
         source_group, source_local = self._locate_parameter(fp)
-        lines = [str(getattr(fp, 'name', ''))+":"]
+        lines = [str(getattr(fp, "name", "")) + ":"]
         lines.append(f"Fit: {source_group}")
         lines.append(f"Local fit: {source_local}")
 
         try:
-            desc = getattr(fp, 'description', "")
+            desc = getattr(fp, "description", "")
         except Exception:
             desc = ""
         if desc:
@@ -1043,30 +1052,32 @@ class ParameterActionsMixin:
             lines.append("\n".join(desc_lines).strip())
 
         # Link info
-        link_param = getattr(fp, 'link', None)
-        if bool(getattr(fp, 'is_linked', False)) and link_param is not None:
-            target_param_name = getattr(link_param, 'name', "?")
+        link_param = getattr(fp, "link", None)
+        if bool(getattr(fp, "is_linked", False)) and link_param is not None:
+            target_param_name = getattr(link_param, "name", "?")
             target_group, target_local = self._locate_parameter(link_param)
             lines.append("")
-            lines.append(textwrap.fill(
-                f"Linked to fit '{target_group}', local fit '{target_local}', parameter '{target_param_name}'",
-                width=60
-            ))
+            lines.append(
+                textwrap.fill(
+                    f"Linked to fit '{target_group}', local fit '{target_local}', parameter '{target_param_name}'",
+                    width=60,
+                )
+            )
         else:
             lines.append("")
             lines.append("Not linked")
 
         # Value / fixed
         try:
-            v = float(getattr(fp, 'value', float('nan')))
+            v = float(getattr(fp, "value", float("nan")))
         except Exception:
-            v = float('nan')
+            v = float("nan")
         lines.append(f"Value: {v}")
         lines.append(f"Fixed: {bool(getattr(fp, 'fixed', False))}")
 
         # Bounds
-        if bool(getattr(fp, 'bounds_on', False)):
-            b = getattr(fp, 'bounds', None)
+        if bool(getattr(fp, "bounds_on", False)):
+            b = getattr(fp, "bounds", None)
             if isinstance(b, (tuple, list)) and len(b) == 2:
                 lines.append(f"Bounds: ({b[0]}, {b[1]})")
             else:
@@ -1092,14 +1103,18 @@ class ParameterActionsMixin:
                     dialogs.warning(
                         self,  # Parent widget
                         "Linking Error",
-                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency."
+                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency.",
                     )
                 else:
                     tooltip = " linked to " + str(getattr(param_other, "name", "?"))
                     source_group, source_local = self._locate_parameter(param_self)
                     target_group, target_local = self._locate_parameter(param_other)
-                    source_group_uid, source_local_uid, source_param_uid = self._locate_parameter_uids(param_self)
-                    target_group_uid, target_local_uid, target_param_uid = self._locate_parameter_uids(param_other)
+                    source_group_uid, source_local_uid, source_param_uid = (
+                        self._locate_parameter_uids(param_self)
+                    )
+                    target_group_uid, target_local_uid, target_param_uid = (
+                        self._locate_parameter_uids(param_other)
+                    )
                     source_fit_idx, source_local_idx = self._parameter_indices(param_self)
                     target_fit_idx, target_local_idx = self._parameter_indices(param_other)
                     get_fitting_client().link_parameters(
@@ -1161,9 +1176,7 @@ class ParameterActionsMixin:
         generic, lifetimes, …) and once flat under "All parameters".
         """
         menu = QtWidgets.QMenu(self)
-        menu.setTitle(
-            "Link " + self.fitting_parameter.name + " to:"
-        )
+        menu.setTitle("Link " + self.fitting_parameter.name + " to:")
 
         fc = get_fitting_client()
         if fc is None:
@@ -1205,10 +1218,10 @@ class ParameterActionsMixin:
     def _fill_link_targets(
         self,
         menu: QtWidgets.QMenu,
-        parameters: typing.List[dict],
+        parameters: list[dict],
         fit_dto: dict,
         source_uid: str,
-        local_idx: typing.Optional[int],
+        local_idx: int | None,
     ) -> None:
         """Populate one fit's (or member fit's) submenu with link targets."""
         targets = [p for p in parameters if str(p.get("uid", "") or "") != source_uid]
@@ -1218,12 +1231,12 @@ class ParameterActionsMixin:
             empty.setEnabled(False)
             return
 
-        def add(into: QtWidgets.QMenu, entries: typing.List[dict]) -> None:
+        def add(into: QtWidgets.QMenu, entries: list[dict]) -> None:
             for p in sorted(entries, key=lambda e: str(e.get("name", "")).lower()):
                 action = into.addAction(str(p.get("name", "")))
                 action.triggered.connect(self.make_linkcall_by_target(p, fit_dto, local_idx))
 
-        groups: typing.Dict[str, typing.List[dict]] = {}
+        groups: dict[str, list[dict]] = {}
         for p in targets:
             groups.setdefault(str(p.get("group", "") or ""), []).append(p)
         for group_name in sorted((name for name in groups if name), key=str.lower):
@@ -1246,7 +1259,7 @@ class ParameterActionsMixin:
         self,
         target: dict,
         target_fit_dto: dict,
-        target_local_idx: typing.Optional[int] = None,
+        target_local_idx: int | None = None,
     ):
         """Create a closure that links this parameter to a target DTO entry.
 
@@ -1291,7 +1304,8 @@ class ParameterActionsMixin:
                 if fc is not None:
                     # Update via RPC - fit.model.finalize will handle linked params
                     fit_uid = getattr(master_param, "fit_uid", None) or (
-                        self._parameter_context(master_param).get("fit_uid"))
+                        self._parameter_context(master_param).get("fit_uid")
+                    )
                     if fit_uid:
                         fc.model_finalize(fit_uid=fit_uid)
         except Exception:
@@ -1366,8 +1380,8 @@ class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
     def __init__(
         self,
         fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
-        parent: typing.Optional[QtWidgets.QWidget] = None,
-        on_change: typing.Optional[typing.Callable[[], None]] = None,
+        parent: QtWidgets.QWidget | None = None,
+        on_change: typing.Callable[[], None] | None = None,
     ):
         super().__init__(parent)
         self.setVisible(False)
@@ -1404,7 +1418,6 @@ class FittingParameterProxyController(ParameterActionsMixin, QtWidgets.QWidget):
 
 
 class FittingParameterWidget(ParameterActionsMixin, Controller):
-
     def contextMenuEvent(self, event: QtGui.QCloseEvent):
 
         menu = self.build_link_menu()
@@ -1446,7 +1459,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
 
         self.widget_bounds_on = QtWidgets.QCheckBox()
         self.widget_bounds_on.setToolTip("enable bounds")
-        self.widget_bounds_on.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.widget_bounds_on.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         self.widget_bounds_on.setStyleSheet(compact_cb_style)
         main_row.addWidget(self.widget_bounds_on)
 
@@ -1474,20 +1489,20 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self.widget_bounds_on.toggled.connect(self.widget.setVisible)
 
     def __init__(
-            self,
-            fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
-            layout: QtWidgets.QLayout = None,
-            decimals: int = None,
-            hide_label: bool = None,
-            hide_error: bool = None,
-            fixable: bool = None,
-            hide_bounds: bool = None,
-            name: str = None,
-            label_text: str = None,
-            hide_link: bool = None,
-            suffix: str = "",
-            label_width: int = None,
-            callback: typing.Callable = None
+        self,
+        fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
+        layout: QtWidgets.QLayout = None,
+        decimals: int = None,
+        hide_label: bool = None,
+        hide_error: bool = None,
+        fixable: bool = None,
+        hide_bounds: bool = None,
+        name: str = None,
+        label_text: str = None,
+        hide_link: bool = None,
+        suffix: str = "",
+        label_width: int = None,
+        callback: typing.Callable = None,
     ):
         super().__init__()
         try:
@@ -1496,9 +1511,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             pass
         self._build_layout()
         if hide_link is None:
-            hide_link = parameter_settings.get('hide_link', False)
+            hide_link = parameter_settings.get("hide_link", False)
         if hide_bounds is None:
-            hide_bounds = parameter_settings.get('hide_bounds', False)
+            hide_bounds = parameter_settings.get("hide_bounds", False)
         if name is None:
             name = self.__class__.__name__
         if label_text is None:
@@ -1506,18 +1521,18 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         if fixable is None:
             fixable = True
         if hide_error is None:
-            hide_error = parameter_settings.get('hide_error', False)
+            hide_error = parameter_settings.get("hide_error", False)
         if hide_label is None:
-            hide_label = parameter_settings.get('hide_label', False)
+            hide_label = parameter_settings.get("hide_label", False)
         if decimals is None:
-            decimals = parameter_settings.get('decimals', 3)
+            decimals = parameter_settings.get("decimals", 3)
 
         self.callback = callback
         self.name = fitting_parameter.name
         self.fitting_parameter = fitting_parameter
         self._details_popup = None  # created lazily on first label click
         self._is_output_param = bool(getattr(fitting_parameter, "is_output", False))
-        
+
         # Capture absolute fit index at creation time to avoid dynamic lookup issues
         try:
             self._absolute_fit_idx = fitting_parameter.fit_idx
@@ -1545,16 +1560,22 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             finite=False,
             compactHeight=True,
         )
-        self.widget_value.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.widget_value.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
         self.horizontalLayout.addWidget(self.widget_value)
 
         self.widget_lower_bound = ScientificDoubleSpinBox(
-            dec=True, decimals=decimals, compactHeight=True,
+            dec=True,
+            decimals=decimals,
+            compactHeight=True,
         )
         self.horizontalLayout_2.addWidget(self.widget_lower_bound)
 
         self.widget_upper_bound = ScientificDoubleSpinBox(
-            dec=True, decimals=decimals, compactHeight=True,
+            dec=True,
+            decimals=decimals,
+            compactHeight=True,
         )
         self.horizontalLayout_2.addWidget(self.widget_upper_bound)
 
@@ -1579,7 +1600,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             except Exception:
                 pass
             try:
-                self.lineEdit.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+                self.lineEdit.setSizePolicy(
+                    QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
+                )
                 self.lineEdit.setMinimumSize(0, 0)
                 self.lineEdit.setMaximumSize(0, 0)
             except Exception:
@@ -1626,10 +1649,14 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         try:
             self.label.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
             try:
-                self.label.setToolTip(self._build_details_tooltip_text() + "\n\nClick to view and edit details")
+                self.label.setToolTip(
+                    self._build_details_tooltip_text() + "\n\nClick to view and edit details"
+                )
             except Exception:
                 try:
-                    self.label.setToolTip(f"{getattr(self.fitting_parameter, 'name', '')}\n\nClick to view and edit details")
+                    self.label.setToolTip(
+                        f"{getattr(self.fitting_parameter, 'name', '')}\n\nClick to view and edit details"
+                    )
                 except Exception:
                     self.label.setToolTip("Click to view and edit details")
             # install a mousePress handler
@@ -1647,7 +1674,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         try:
             _init_v = float(fitting_parameter.value)
         except Exception:
-            _init_v = self.widget_value.value() if hasattr(self, 'widget_value') else 0.0
+            _init_v = self.widget_value.value() if hasattr(self, "widget_value") else 0.0
         self.widget_value.setValue(_init_v)
         # Do not left-pad HTML labels with spaces; this breaks rich text.
         # For plain-text labels we keep the original padding.
@@ -1709,14 +1736,18 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         """Install a code badge for dev mode source jumping."""
         try:
             import chisurf.core.settings
+
             if not chisurf.core.settings.is_dev_mode():
                 return
-            if hasattr(self, '_chisurf_code_badge_installed'):
+            if hasattr(self, "_chisurf_code_badge_installed"):
                 return
             from chisurf.gui.devtools.source_jump import resolve_parameter_group_source
             from chisurf.gui.widgets.code_badge import install_code_badge
-            resolver = lambda: resolve_parameter_group_source(self)
-            install_code_badge(self, resolver, corner='top-right', margin=4)
+
+            def resolver():
+                return resolve_parameter_group_source(self)
+
+            install_code_badge(self, resolver, corner="top-right", margin=4)
             self._chisurf_code_badge_installed = True
         except Exception:
             pass
@@ -1844,7 +1875,6 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         if errors:
             parameter.error_estimate = float(max(errors))
 
-
     def _on_label_mouse_press(self, event: QtGui.QMouseEvent):
         try:
             if event.button() == QtCore.Qt.LeftButton:
@@ -1859,7 +1889,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         if getattr(self, "_is_output_param", False):
             return
         # Lazy-create popup
-        if self._details_popup is None or not isinstance(self._details_popup, FittingParameterDetailPopup):
+        if self._details_popup is None or not isinstance(
+            self._details_popup, FittingParameterDetailPopup
+        ):
             self._details_popup = FittingParameterDetailPopup(self)
         # Position popup under the label
         try:
@@ -1926,11 +1958,11 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             p = getattr(self, "fitting_parameter", None)
             if p is not None and hasattr(self, "widget_fix"):
                 if getattr(p, "is_linked", False):
-                    accent_color = "#2a88ff"   # Blue
+                    accent_color = "#2a88ff"  # Blue
                 elif getattr(p, "fixed", True):
-                    accent_color = "#ff2a2a"   # Red
+                    accent_color = "#ff2a2a"  # Red
                 else:
-                    accent_color = "#2acc44"   # Green
+                    accent_color = "#2acc44"  # Green
 
                 self.widget_fix.setStyleSheet(
                     f"QCheckBox {{ spacing: 0px; background: transparent; }} "
@@ -2092,14 +2124,12 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         if checked:
             bounds_valid = False
             try:
-                b = getattr(fp, 'bounds', None)
+                b = getattr(fp, "bounds", None)
                 bounds_valid = isinstance(b, (tuple, list)) and len(b) == 2
             except Exception:
                 bounds_valid = False
             if not bounds_valid:
-                self.apply_bounds(
-                    self.widget_lower_bound.value(), self.widget_upper_bound.value()
-                )
+                self.apply_bounds(self.widget_lower_bound.value(), self.widget_upper_bound.value())
         self.finalize()
 
     def _resolve_fit_idx(self, default: int = 0):
@@ -2135,7 +2165,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         # thread is posted there instead (see _defer_finalize_to_owning_thread).
         if self._defer_finalize_to_owning_thread():
             return
-        #super().update(*args)
+        # super().update(*args)
         self.blockSignals(True)
 
         # Sync link UI state first
@@ -2146,7 +2176,11 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
 
         # Update value of widget - for linked parameters, show master's value
         try:
-            if self.fitting_parameter.is_linked and hasattr(self.fitting_parameter, 'link') and self.fitting_parameter.link is not None:
+            if (
+                self.fitting_parameter.is_linked
+                and hasattr(self.fitting_parameter, "link")
+                and self.fitting_parameter.link is not None
+            ):
                 # This is a linked parameter - show the master's value
                 _v = float(self.fitting_parameter.link.value)
             else:
@@ -2155,22 +2189,26 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         except Exception:
             _v = self.widget_value.value()
         self.widget_value.setValue(_v)
-        self.widget_fix.setCheckState(QtCore.Qt.Checked if self.fitting_parameter.fixed else QtCore.Qt.Unchecked)
+        self.widget_fix.setCheckState(
+            QtCore.Qt.Checked if self.fitting_parameter.fixed else QtCore.Qt.Unchecked
+        )
 
         # Sync bounds UI safely (no unpack unless valid)
         try:
             self.widget_bounds_on.blockSignals(True)
             self.widget_lower_bound.blockSignals(True)
             self.widget_upper_bound.blockSignals(True)
-            bounds_on = bool(getattr(self.fitting_parameter, 'bounds_on', False))
-            self.widget_bounds_on.setCheckState(QtCore.Qt.Checked if bounds_on else QtCore.Qt.Unchecked)
+            bounds_on = bool(getattr(self.fitting_parameter, "bounds_on", False))
+            self.widget_bounds_on.setCheckState(
+                QtCore.Qt.Checked if bounds_on else QtCore.Qt.Unchecked
+            )
             # Do not force the bounds-editing row open here: its visibility is
             # driven by the user toggling the checkbox (compact by default).
 
             # Default to current UI values; replace with model values only if valid
             lb_val = self.widget_lower_bound.value()
             ub_val = self.widget_upper_bound.value()
-            b = getattr(self.fitting_parameter, 'bounds', None)
+            b = getattr(self.fitting_parameter, "bounds", None)
             if isinstance(b, (tuple, list)) and len(b) == 2:
                 try:
                     lb_val = float(b[0])
@@ -2190,8 +2228,8 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 pass
 
         # Tooltip (guard against invalid bounds)
-        if getattr(self.fitting_parameter, 'bounds_on', False):
-            b = getattr(self.fitting_parameter, 'bounds', None)
+        if getattr(self.fitting_parameter, "bounds_on", False):
+            b = getattr(self.fitting_parameter, "bounds", None)
             if isinstance(b, (tuple, list)) and len(b) == 2:
                 lower, upper = b
                 tooltip_text = f"bound: ({lower}, {upper})\n"
@@ -2200,9 +2238,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         else:
             tooltip_text = "bounds: off\n"
 
-        link_param = getattr(self.fitting_parameter, 'link', None)
+        link_param = getattr(self.fitting_parameter, "link", None)
         if self.fitting_parameter.is_linked and link_param is not None:
-            target_param_name = getattr(link_param, 'name', "?")
+            target_param_name = getattr(link_param, "name", "?")
             source_group, source_local = self._locate_parameter(self.fitting_parameter)
             target_group, target_local = self._locate_parameter(link_param)
             tooltip_text += (
@@ -2211,9 +2249,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             )
         else:
             source_group, source_local = self._locate_parameter(self.fitting_parameter)
-            tooltip_text += (
-                f"source: fit '{source_group}', local '{source_local}', parameter '{self.fitting_parameter.name}'"
-            )
+            tooltip_text += f"source: fit '{source_group}', local '{source_local}', parameter '{self.fitting_parameter.name}'"
         self.widget_value.setToolTip(tooltip_text)
 
         try:
@@ -2225,15 +2261,17 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 self.label.setToolTip(details + "\n\nClick to view and edit details")
             else:
                 try:
-                    self.label.setToolTip(f"{getattr(self.fitting_parameter, 'name', '')}\n\nClick to view and edit details")
+                    self.label.setToolTip(
+                        f"{getattr(self.fitting_parameter, 'name', '')}\n\nClick to view and edit details"
+                    )
                 except Exception:
                     self.label.setToolTip("Click to view and edit details")
         except Exception:
             pass
 
         # Error-estimate
-        error_estimate = float('nan')
-        rel_error = float('nan')
+        error_estimate = float("nan")
+        rel_error = float("nan")
         try:
             value = float(self.fitting_parameter.value)
             error_estimate = self.fitting_parameter.error_estimate
@@ -2242,7 +2280,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         except Exception:
             pass
 
-        scan_result = getattr(self.fitting_parameter, 'scan_result', None)
+        scan_result = getattr(self.fitting_parameter, "scan_result", None)
 
         if self.fitting_parameter.fixed or not np.isfinite(error_estimate):
             self.lineEdit.setText("NA")
@@ -2254,14 +2292,13 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             if not np.isnan(rel_error):
                 # Create a colormap from error_color_small to error_color_large
                 # Use default values if settings are not found
-                error_color_small = parameter_settings.get('error_color_small', 'green')
-                error_color_large = parameter_settings.get('error_color_large', 'magenta')
-                error_threshold_small = parameter_settings.get('error_threshold_small', 20)
-                error_threshold_large = parameter_settings.get('error_threshold_large', 100)
+                error_color_small = parameter_settings.get("error_color_small", "green")
+                error_color_large = parameter_settings.get("error_color_large", "magenta")
+                error_threshold_small = parameter_settings.get("error_threshold_small", 20)
+                error_threshold_large = parameter_settings.get("error_threshold_large", 100)
 
                 cmap = mcolors.LinearSegmentedColormap.from_list(
-                    'error_color_gradient',
-                    [(0, error_color_small), (1, error_color_large)]
+                    "error_color_gradient", [(0, error_color_small), (1, error_color_large)]
                 )
 
                 # Normalize error value: error_threshold_small -> error_color_small, error_threshold_large -> error_color_large
@@ -2280,7 +2317,9 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                     self.lineEdit.setStyleSheet(f"background-color: #d0d0d0; color: {text_color};")
 
         try:
-            source_text = "support-plane error" if scan_result is not None else "covariance/error estimate"
+            source_text = (
+                "support-plane error" if scan_result is not None else "covariance/error estimate"
+            )
             self.lineEdit.setToolTip(
                 f"{source_text}\n"
                 f"Click to run support-plane analysis for '{self.fitting_parameter.name}'."
@@ -2290,7 +2329,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
 
         # Link
         if link_param is not None:
-            target_param_name = getattr(link_param, 'name', "?")
+            target_param_name = getattr(link_param, "name", "?")
             target_group, target_local = self._locate_parameter(link_param)
             tooltip = (
                 f"source parameter '{self.fitting_parameter.name}'\n"
@@ -2306,14 +2345,20 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
 
         # If the details popup is open, refresh its contents to reflect latest model state
         try:
-            if getattr(self, '_details_popup', None) is not None and self._details_popup.isVisible():
+            if (
+                getattr(self, "_details_popup", None) is not None
+                and self._details_popup.isVisible()
+            ):
                 self._details_popup.refresh_from_model()
         except Exception:
             pass
 
         # If the details popup is open, refresh its contents to reflect latest model state
         try:
-            if getattr(self, '_details_popup', None) is not None and self._details_popup.isVisible():
+            if (
+                getattr(self, "_details_popup", None) is not None
+                and self._details_popup.isVisible()
+            ):
                 self._details_popup.refresh_from_model()
         except Exception:
             pass
@@ -2327,19 +2372,18 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
 
 
 class FittingParameterGroupWidget(QtWidgets.QGroupBox):
-
     def __init__(
-            self,
-            parameter_group: chisurf.core.fitting.parameter.FittingParameterGroup,
-            n_col: int = None,
-            layout: QtWidgets.QVBoxLayout = None,
-            *args,
-            **kwargs
+        self,
+        parameter_group: chisurf.core.fitting.parameter.FittingParameterGroup,
+        n_col: int = None,
+        layout: QtWidgets.QVBoxLayout = None,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
         if n_col is None:
-            n_col = chisurf.core.settings.gui['fit_models']['n_columns']
+            n_col = chisurf.core.settings.gui["fit_models"]["n_columns"]
 
         self.parameter_group = parameter_group
         self.n_col = n_col
@@ -2354,34 +2398,31 @@ class FittingParameterGroupWidget(QtWidgets.QGroupBox):
 
         self.setLayout(layout)
         for i, p in enumerate(parameter_group.parameters_all):
-            label_text = p.__dict__.get('label_text', p.name)
-            pw = make_fitting_parameter_widget(
-                fitting_parameter=p,
-                label_text=label_text
-            )
+            label_text = p.__dict__.get("label_text", p.name)
+            pw = make_fitting_parameter_widget(fitting_parameter=p, label_text=label_text)
             col = i % self.n_col
             row = i // self.n_col
             layout.addWidget(pw, row, col)
 
 
 def make_fitting_parameter_widget(
-        fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
-        label_text: str = None,
-        layout: QtWidgets.QLayout = None,
-        decimals: int = None,
-        hide_label: bool = None,
-        hide_error: bool = None,
-        fixable: bool = None,
-        hide_bounds: bool = None,
-        name: str = None,
-        hide_link: bool = None,
-        suffix: str = "",
-        label_width: int = None,
-        callback: typing.Callable = None
+    fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
+    label_text: str = None,
+    layout: QtWidgets.QLayout = None,
+    decimals: int = None,
+    hide_label: bool = None,
+    hide_error: bool = None,
+    fixable: bool = None,
+    hide_bounds: bool = None,
+    name: str = None,
+    hide_link: bool = None,
+    suffix: str = "",
+    label_width: int = None,
+    callback: typing.Callable = None,
 ) -> FittingParameterWidget:
     if label_text is None:
         # Safely get label_text from parameter's __dict__ or use name as fallback
-        label_text = fitting_parameter.__dict__.get('label_text', fitting_parameter.name)
+        label_text = fitting_parameter.__dict__.get("label_text", fitting_parameter.name)
     # If no explicit suffix was provided, infer simple unit suffixes from the
     # parameter name (e.g. *_nm -> " nm", *_um -> " µm"). This keeps
     # backwards compatibility while improving readability for standard unit
@@ -2415,19 +2456,13 @@ def make_fitting_parameter_widget(
         label_text=label_text,
         suffix=auto_suffix,
         label_width=label_width,
-        callback=callback
+        callback=callback,
     )
     fitting_parameter.controller = widget
     return widget
 
 
 def make_fitting_parameter_group_widget(
-        fitting_parameter_group: chisurf.core.fitting.parameter.FittingParameterGroup,
-        *args,
-        **kwargs
+    fitting_parameter_group: chisurf.core.fitting.parameter.FittingParameterGroup, *args, **kwargs
 ):
-    return FittingParameterGroupWidget(
-        fitting_parameter_group,
-        *args,
-        **kwargs
-    )
+    return FittingParameterGroupWidget(fitting_parameter_group, *args, **kwargs)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Dict, Tuple
 
 import numpy as np
 from qtpy.QtCore import QSettings, QSize, Qt, QTimer
@@ -26,23 +25,18 @@ from qtpy.QtWidgets import (
 
 from chisurf import logging
 from chisurf.core.datastore import numeric_column, row_count
+from chisurf.core.fio.fluorescence.burst_manifest import source_inputs  # noqa: E402
+from chisurf.core.runtime import analysis_cache  # noqa: E402
 from chisurf.gui import chiplot as cp
+from chisurf.gui import dialogs
+from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.misc_helpers import (
     get_plugin_settings_path,
     persist_plugin_state,
 )
-from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.widgets.wizard import DetectorWizardPage
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-    load_detector_setups,
-)
-from chisurf.plugins.burst.burst_bva.core import computation as core
-from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.event_pump import pump_ui
+from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.messages import Msg
-from chisurf.gui.widgets.tools import ChisurfDockTool
-
 
 # The tool used to carry its own ``HelpDialog`` — a hard-coded HTML summary plus
 # the CLI ``--help`` output. It is gone: the shared ``?`` modal renders
@@ -50,8 +44,6 @@ from chisurf.gui.widgets.tools import ChisurfDockTool
 # literal in a widget, its links are live, and it sits beside the ``guide.json``
 # that answers the other question. See
 # :mod:`chisurf.gui.widgets.tools.help_guide`.
-
-
 # Shared, app-wide tool-button language (this colour scheme is its canonical
 # source). BVA keeps its exact look while every other tool can adopt the same.
 from chisurf.gui.widgets.tool_buttons import (  # noqa: E402
@@ -61,9 +53,12 @@ from chisurf.gui.widgets.tool_buttons import (
     action_button,
     flag_attention,
 )
-
-from chisurf.core.runtime import analysis_cache  # noqa: E402
-from chisurf.core.fio.fluorescence.burst_manifest import source_inputs  # noqa: E402
+from chisurf.gui.widgets.tools import ChisurfDockTool
+from chisurf.gui.widgets.wizard import DetectorWizardPage
+from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+    load_detector_setups,
+)
+from chisurf.plugins.burst.burst_bva.core import computation as core
 
 #: Bump in the same change that alters what this tool computes, so results
 #: written by the previous version stop reading as current.
@@ -236,7 +231,9 @@ class BVATool(ChisurfDockTool):
         self.btn_stop.clicked.connect(self.stop)
         self.btn_clear = action_button("clear", tooltip="Clear loaded data")
         self.btn_save = action_button("save", tooltip="Save BVA results")
-        self.btn_save_settings = action_button("settings", tooltip="Save current settings as default")
+        self.btn_save_settings = action_button(
+            "settings", tooltip="Save current settings as default"
+        )
 
         self.cb_toggle_static = QCheckBox("Show static line")
         self.cb_toggle_static.setChecked(True)
@@ -416,19 +413,26 @@ class BVATool(ChisurfDockTool):
         plot.set_range(x=(-0.05, 1.05), y=(-0.01, 0.44))
         plot.grid(x=True, y=True, alpha=0.3)
 
-        self._image_item = plot.image(np.zeros((1, 1)), axis_order='col-major')
+        self._image_item = plot.image(np.zeros((1, 1)), axis_order="col-major")
 
         self._static_line_item = plot.line([], [], pen=cp.to_pen("#ff6b6b", width=2))
 
         self._profile_mean_item = plot.line(
-            [], [], pen=cp.to_pen("cyan", width=2),
-            symbol='o', symbol_size=4, symbol_brush=(0, 255, 255, 150),
+            [],
+            [],
+            pen=cp.to_pen("cyan", width=2),
+            symbol="o",
+            symbol_size=4,
+            symbol_brush=(0, 255, 255, 150),
         )
         # Asymmetric extents from the start: the profile is updated with
         # top/bottom, and a handle created with `height` would keep that mode.
         self._profile_error_item = plot.errorbars(
-            np.array([]), np.array([]),
-            top=np.array([]), bottom=np.array([]), beam=0.01,
+            np.array([]),
+            np.array([]),
+            top=np.array([]),
+            bottom=np.array([]),
+            beam=0.01,
         )
 
         self._hist_lut = self.plot_widget.add_colorbar(self._image_item, colormap="CET-L4")
@@ -436,10 +440,10 @@ class BVATool(ChisurfDockTool):
 
     @staticmethod
     def _average_histogram(
-            counts: np.ndarray,
-            x_edges: np.ndarray,
-            y_edges: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        counts: np.ndarray,
+        x_edges: np.ndarray,
+        y_edges: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
         y = y_edges[:-1] + np.diff(y_edges) / 2
         y2 = y * y
         mean = np.full(counts.shape[0], np.nan)
@@ -456,12 +460,21 @@ class BVATool(ChisurfDockTool):
         return mean, sd
 
     def _plot_2d_histogram(
-        self, x, y,
-        range_x=(-0.05, 1.05), range_y=(-0.01, 0.44),
-        bins_x=51, bins_y=51, vmin=0.1, vmax=None,
+        self,
+        x,
+        y,
+        range_x=(-0.05, 1.05),
+        range_y=(-0.01, 0.44),
+        bins_x=51,
+        bins_y=51,
+        vmin=0.1,
+        vmax=None,
     ):
         hist, x_edges, y_edges = np.histogram2d(
-            x, y, bins=(bins_x, bins_y), range=[range_x, range_y],
+            x,
+            y,
+            bins=(bins_x, bins_y),
+            range=[range_x, range_y],
         )
         if vmax is None:
             vmax = hist.max()
@@ -470,26 +483,32 @@ class BVATool(ChisurfDockTool):
         clipped = np.clip(hist, vmin, vmax)
         self._image_item.set_image(clipped)
         self._image_item.set_rect(
-            range_x[0], range_y[0],
-            range_x[1] - range_x[0], range_y[1] - range_y[0],
+            range_x[0],
+            range_y[0],
+            range_x[1] - range_x[0],
+            range_y[1] - range_y[0],
         )
         mean, sd = self._average_histogram(hist, x_edges, y_edges)
         x_centers = (x_edges[:-1] + x_edges[1:]) / 2
         self._profile_mean_item.set_data(x_centers, mean)
         self._profile_error_item.set_data(
-            x_centers, mean, top=sd, bottom=sd,
+            x_centers,
+            mean,
+            top=sd,
+            bottom=sd,
         )
 
     def _plot_static_line(self, n_photons: int = 10):
         x_axis = np.linspace(0, 1, 131)
         mean_sim, std_sim = core.compute_static_bva_line(
-            x_axis, number_of_photons_per_slice=n_photons,
+            x_axis,
+            number_of_photons_per_slice=n_photons,
         )
         self._static_line_item.set_data(mean_sim, std_sim)
 
     # ── Settings helper ──────────────────────────────────────────────
 
-    def _get_bva_settings(self) -> Dict:
+    def _get_bva_settings(self) -> dict:
         settings = self.detector_page.get_settings()
         detectors = settings.get("detectors", {})
         donor_name = self.cb_donor.currentText()
@@ -621,7 +640,8 @@ class BVATool(ChisurfDockTool):
     def analysis_fingerprint(self, settings: dict) -> str:
         """Fingerprint of the inputs, *settings*, the read context and the code."""
         return analysis_cache.fingerprint(
-            self.input_files(), self.fingerprint_params(settings),
+            self.input_files(),
+            self.fingerprint_params(settings),
             extra=analysis_cache.algorithm_tag("bva", ALGORITHM_VERSION, "tttrlib"),
         )
 
@@ -662,9 +682,7 @@ class BVATool(ChisurfDockTool):
             and self._result_cache.matches(fingerprint)
             and (not write_output or outputs_current)
         ):
-            self._status(
-                "Unchanged — kept the previous BVA result (🔁 Restart recomputes it)"
-            )
+            self._status("Unchanged — kept the previous BVA result (🔁 Restart recomputes it)")
             flag_attention(self.btn_restart, True)
             return
 
@@ -672,11 +690,20 @@ class BVATool(ChisurfDockTool):
         self._running_fingerprint = fingerprint
         self.btn_stop.setEnabled(True)
         self._task = ChiSurfProgress.run(
-            self, "Reading burst data...", self._analysis_worker,
+            self,
+            "Reading burst data...",
+            self._analysis_worker,
             # Resolved here, on the GUI thread: the worker must not read widgets.
-            args=(dict(self.bva_settings), bool(write_output), fingerprint,
-                  self.input_files(), self.fingerprint_params(self.bva_settings)),
-            maximum=0, title="BVA Analysis", owner=self,
+            args=(
+                dict(self.bva_settings),
+                bool(write_output),
+                fingerprint,
+                self.input_files(),
+                self.fingerprint_params(self.bva_settings),
+            ),
+            maximum=0,
+            title="BVA Analysis",
+            owner=self,
             on_result=self._analysis_done,
             on_error=self._analysis_failed,
             on_done=self._analysis_over,
@@ -718,16 +745,19 @@ class BVATool(ChisurfDockTool):
         """
         burst_df, tttrs = self._burst_df, self._tttrs
         if burst_df is None or tttrs is None:
-            task.set_range(0, 0)          # reading has no incremental hook
+            task.set_range(0, 0)  # reading has no incremental hook
             task.set_text("Reading burst data...")
             burst_df, tttrs = core.read_burst_analysis(
-                self.analysis_folder, self.file_type, pattern="bi4_bur",
+                self.analysis_folder,
+                self.file_type,
+                pattern="bi4_bur",
             )
 
         task.set_range(0, row_count(burst_df))
         task.set_text("Computing BVA...")
         df_v = core.compute_bva(
-            burst_df, tttrs,
+            burst_df,
+            tttrs,
             progress_window=task.progress_window("Computing BVA..."),
             **settings,
         )
@@ -737,7 +767,8 @@ class BVATool(ChisurfDockTool):
             task.set_text("Writing BV4 files...")
             try:
                 core.write_bv4_analysis(
-                    df_v, str(self.analysis_folder),
+                    df_v,
+                    str(self.analysis_folder),
                     progress_window=task.progress_window("Writing BV4 files..."),
                 )
             except Exception as e:
@@ -749,9 +780,12 @@ class BVATool(ChisurfDockTool):
             # Record what these BV4 files are the result of, so a later run with
             # the same burst files and settings can leave them alone.
             analysis_cache.write_stamp(
-                bv4_folder / "bva.stamp.json", fingerprint,
-                params=params, inputs=inputs,
-                outputs=sorted(bv4_folder.glob("*.bv4")), tool="bva",
+                bv4_folder / "bva.stamp.json",
+                fingerprint,
+                params=params,
+                inputs=inputs,
+                outputs=sorted(bv4_folder.glob("*.bv4")),
+                tool="bva",
             )
         return burst_df, tttrs, df_v
 
@@ -767,13 +801,14 @@ class BVATool(ChisurfDockTool):
         if n_photons < 0:
             n_photons = 100
         self._plot_2d_histogram(
-            x, y, bins_x=self.sb_bins_x.value(), bins_y=self.sb_bins_y.value(),
+            x,
+            y,
+            bins_x=self.sb_bins_x.value(),
+            bins_y=self.sb_bins_y.value(),
         )
         self._plot_static_line(n_photons)
         self._tb_info.setText(f"{x.size} / {row_count(df_v)} bursts")
-        self._status(
-            f"Done \u2013 {x.size} bursts with Std > 0 on {row_count(df_v)} total"
-        )
+        self._status(f"Done \u2013 {x.size} bursts with Std > 0 on {row_count(df_v)} total")
 
     @staticmethod
     def _valid_bursts(table):
@@ -813,7 +848,8 @@ class BVATool(ChisurfDockTool):
         if self._df is not None:
             x, y = self._valid_bursts(self._df)
             self._plot_2d_histogram(
-                x, y,
+                x,
+                y,
                 bins_x=self.sb_bins_x.value(),
                 bins_y=self.sb_bins_y.value(),
             )
@@ -854,7 +890,10 @@ class BVATool(ChisurfDockTool):
 
     def _save_plot(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Plot", "bva_plot.png", "PNG (*.png);;PDF (*.pdf);;SVG (*.svg)",
+            self,
+            "Save Plot",
+            "bva_plot.png",
+            "PNG (*.png);;PDF (*.pdf);;SVG (*.svg)",
         )
         if path:
             self.plot_widget.grab().save(path)
@@ -918,6 +957,7 @@ class BVATool(ChisurfDockTool):
         space (it otherwise inherited a stale 50/50 saved split and looked
         cramped). Users can still drag/re-tab; their arrangement is saved.
         """
+
         def _tab(*names):
             return {
                 "type": "tab",
@@ -948,7 +988,7 @@ class BVATool(ChisurfDockTool):
                 settings.setValue("window_geometry", self.saveGeometry())
                 settings.setValue("window_state", self.saveState())
             settings.sync()
-        except Exception as exc:
+        except Exception:
             pass
 
     def _restore_dock_layout(self):
@@ -971,5 +1011,5 @@ class BVATool(ChisurfDockTool):
                 if state is not None:
                     self.restoreState(state)
             self.dock_area.set_layout_state(layout_state, emit_change=False)
-        except Exception as exc:
+        except Exception:
             pass

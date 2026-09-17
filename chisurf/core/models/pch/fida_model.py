@@ -14,12 +14,11 @@ analysis and its application in biomolecular detection technology. *PNAS*
 
 from __future__ import annotations
 
-from chisurf import typing
-
 import numpy as np
 
 import chisurf.core.fitting
 import chisurf.logging
+from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pch import fida
@@ -36,7 +35,7 @@ class FidaModel(ModelCurve):
     #: has always offered; a species is switched off by leaving ``q`` or ``N`` at 0.
     N_SPECIES = 3
 
-    def __init__(self, fit: "chisurf.core.fitting.fit.Fit", *args, **kwargs) -> None:
+    def __init__(self, fit: chisurf.core.fitting.fit.Fit, *args, **kwargs) -> None:
         """Create the FIDA model.
 
         Parameters
@@ -48,8 +47,14 @@ class FidaModel(ModelCurve):
 
         def _p(name, value, label, fixed=False, lb=0.0, ub=1.0e6):
             return FittingParameter(
-                name=name, label_text=label, value=value, lb=lb, ub=ub,
-                bounds_on=False, fixed=fixed, registry_id=f"fida.{name}",
+                name=name,
+                label_text=label,
+                value=value,
+                lb=lb,
+                ub=ub,
+                bounds_on=False,
+                fixed=fixed,
+                registry_id=f"fida.{name}",
             )
 
         self._q = [
@@ -63,8 +68,11 @@ class FidaModel(ModelCurve):
         self._bg = _p("bg", 0.0, "bg")
         #: Total mean count per bin; computed, so it is an output.
         self._mean = FittingParameter(
-            name="mean", label_text="mean", value=float("nan"),
-            fixed=True, is_output=True,
+            name="mean",
+            label_text="mean",
+            value=float("nan"),
+            fixed=True,
+            is_output=True,
         )
         self.find_parameters()
 

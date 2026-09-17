@@ -150,8 +150,7 @@ class AddToMmfdbPanel(QtWidgets.QWidget):
         ok, note = self._authorized()
         if ok:
             self._session_label.setText(
-                f"✅ Session user <b>{user}</b> is an administrator ({note}) — "
-                f"no login needed."
+                f"✅ Session user <b>{user}</b> is an administrator ({note}) — no login needed."
             )
             self._add_btn.setEnabled(True)
         else:
@@ -173,13 +172,17 @@ class AddToMmfdbPanel(QtWidgets.QWidget):
                 if not client_is_admin(client, user):
                     self._echo(f"User '{user}' is not an MMFDB administrator — cannot add.")
                     return
-                self._echo(f"Adding to server {m.host}:{m.cmd_port} as '{user}' "
-                           f"(replace={m.replace}) …")
-                res = client._call("fluorophores.import_reference_set", {
-                    "source_path": staging,
-                    "replace": bool(m.replace),
-                    "mark_verified": bool(m.mark_verified),
-                })
+                self._echo(
+                    f"Adding to server {m.host}:{m.cmd_port} as '{user}' (replace={m.replace}) …"
+                )
+                res = client._call(
+                    "fluorophores.import_reference_set",
+                    {
+                        "source_path": staging,
+                        "replace": bool(m.replace),
+                        "mark_verified": bool(m.mark_verified),
+                    },
+                )
                 self._echo(f"Done: {res}")
             else:
                 from mmfdb.repository import MFDatabase
@@ -187,13 +190,11 @@ class AddToMmfdbPanel(QtWidgets.QWidget):
                 target = m.db_path or self._resolved()
                 is_admin, _any = local_admin_status(target, user)
                 if not is_admin:
-                    self._echo(f"User '{user}' is not an administrator of "
-                               f"{target} — cannot add.")
+                    self._echo(f"User '{user}' is not an administrator of {target} — cannot add.")
                     return
                 if m.replace:
                     self._backup(target)
-                self._echo(f"Adding to local MMFDB {target} as '{user}' "
-                           f"(replace={m.replace}) …")
+                self._echo(f"Adding to local MMFDB {target} as '{user}' (replace={m.replace}) …")
                 with MFDatabase(target) as db:
                     counts = db.import_reference_set(
                         source_path=staging,

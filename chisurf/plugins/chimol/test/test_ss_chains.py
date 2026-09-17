@@ -28,13 +28,13 @@ several chains. The first version of this fix ran DSSP per chain and lost 40 of
 So the split is: **helices per segment, bridges across the whole structure**,
 with only the three-residue windows that straddle a break masked out.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
 import pytest
-
 from chimol.analysis import ss as S
 
 #: Two helices of 148L, by residue number, used as the two chains. Real backbone
@@ -121,9 +121,7 @@ def _length(atoms):
     return S._backbone_record(atoms).coords.shape[0]
 
 
-def test_a_chain_change_breaks_the_backbone_into_segments(
-    two_chains, one_chain, other_chain
-):
+def test_a_chain_change_breaks_the_backbone_into_segments(two_chains, one_chain, other_chain):
     """The premise. Without two segments nothing below can hold."""
     record = S._backbone_record(two_chains)
     assert record is not None
@@ -148,9 +146,7 @@ def test_the_helix_is_recognised_at_all(one_chain):
     assert codes.count("H") >= 6, "".join(codes)
 
 
-def test_the_junction_between_two_chains_is_not_read_as_helix(
-    two_chains, one_chain, other_chain
-):
+def test_the_junction_between_two_chains_is_not_read_as_helix(two_chains, one_chain, other_chain):
     """No residue may be helical *because of* its neighbour in another chain.
 
     Checked against the chain's own answer rather than against a fixed count:
@@ -169,8 +165,7 @@ def test_the_junction_between_two_chains_is_not_read_as_helix(
     # The half that used to be wrong: chain-blind, B's first residue turns from
     # coil into helix, read as a turn continuing out of A.
     assert together[n_a:] == alone_b, (
-        f"chain B differs from itself alone: {''.join(together[n_a:])} vs "
-        f"{''.join(alone_b)}"
+        f"chain B differs from itself alone: {''.join(together[n_a:])} vs {''.join(alone_b)}"
     )
 
 
@@ -252,6 +247,4 @@ def test_inter_chain_sheets_survive():
 
     assert len(record.segments) > 1, "1dg3 should break into several segments"
     strands = codes.count("E")
-    assert strands >= 55, (
-        f"only {strands} strand residues; inter-chain bridges are being lost"
-    )
+    assert strands >= 55, f"only {strands} strand residues; inter-chain bridges are being lost"

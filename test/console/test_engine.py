@@ -11,7 +11,6 @@ from __future__ import annotations
 import ast
 import pathlib
 import sys
-import tempfile
 
 import pytest
 
@@ -63,7 +62,7 @@ class Recorder:
 
     @property
     def results(self) -> list[str]:
-        """list of str: The ``text/plain`` of each displayed result."""
+        """List of str: The ``text/plain`` of each displayed result."""
         return [d.get("text/plain") for d, _k in self.displays]
 
     def clear(self) -> None:
@@ -110,6 +109,7 @@ def run(shell, source: str):
 # the guard that makes this suite meaningful
 # ----------------------------------------------------------------------
 
+
 def test_engine_imports_no_qt():
     """No engine module may import Qt.
 
@@ -146,6 +146,7 @@ def test_suite_runs_without_a_qapplication():
 # ----------------------------------------------------------------------
 # completeness
 # ----------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     ("source", "expected"),
@@ -199,6 +200,7 @@ def test_indent_hint(source, indent):
 # transformation
 # ----------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     ("typed", "fragment"),
     [
@@ -240,6 +242,7 @@ def test_strip_prompts_removes_doctest_prompts():
 # ----------------------------------------------------------------------
 # execution
 # ----------------------------------------------------------------------
+
 
 def test_trailing_expression_is_echoed(shell):
     """A trailing expression prints its value, like a real REPL."""
@@ -360,6 +363,7 @@ def test_reentrant_execution_is_refused(shell):
     really can be requested; without this guard the two would share one
     namespace mutation and one ``execution_count``.
     """
+
     def reenter():
         return shell.run_cell("1")
 
@@ -371,6 +375,7 @@ def test_reentrant_execution_is_refused(shell):
 # ----------------------------------------------------------------------
 # magics
 # ----------------------------------------------------------------------
+
 
 def test_run_dash_i_shares_the_namespace(shell, tmp_path):
     """``%run -i`` runs in the interactive namespace.
@@ -437,18 +442,14 @@ def test_shell_escape_captures_output(shell):
 # completion
 # ----------------------------------------------------------------------
 
+
 def test_completion_never_calls_user_code(shell):
     """Tab must not execute anything.
 
     A completer that evaluates whatever is left of the cursor turns a keystroke
     into arbitrary execution.
     """
-    shell.run_cell(
-        "fired = []\n"
-        "def launch():\n"
-        "    fired.append(1)\n"
-        "    return 1\n"
-    )
+    shell.run_cell("fired = []\ndef launch():\n    fired.append(1)\n    return 1\n")
     for line in ("launch().", "launch().re", "launch()[0]."):
         shell.complete(line, len(line))
     assert shell.user_ns["fired"] == []
@@ -486,6 +487,7 @@ def test_completion_hides_private_names_unless_asked(shell):
 # history
 # ----------------------------------------------------------------------
 
+
 def test_history_collapses_consecutive_duplicates():
     """Running the same command twice leaves one entry."""
     history = HistoryManager(path=False)
@@ -516,6 +518,7 @@ def test_history_prefix_search_is_most_recent_first():
 # ----------------------------------------------------------------------
 # output formatting
 # ----------------------------------------------------------------------
+
 
 def test_huge_container_repr_is_bounded(shell):
     """A gigantic container cannot wedge the console.
@@ -548,10 +551,6 @@ def test_huge_scalar_repr_is_truncated(shell):
 
 def test_broken_repr_does_not_break_the_console(shell):
     """An object whose ``__repr__`` raises still produces output."""
-    shell.run_cell(
-        "class Bad:\n"
-        "    def __repr__(self):\n"
-        "        raise RuntimeError('nope')\n"
-    )
+    shell.run_cell("class Bad:\n    def __repr__(self):\n        raise RuntimeError('nope')\n")
     run(shell, "Bad()")
     assert "unprintable" in (shell.recorder.results[0] or "")

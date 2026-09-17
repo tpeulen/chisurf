@@ -3,6 +3,7 @@
 The simulator normalizes IRF to peak=1, the fitting model to sum=1.
 This test verifies the convolution is scale-invariant (shape unaffected).
 """
+
 import numpy as np
 import pytest
 
@@ -36,12 +37,18 @@ def test_convolution_scale_invariant_tttrlib(setup):
     decay_peak = np.zeros(s["n_points"])
     decay_area = np.zeros(s["n_points"])
     convolve_mod.convolve_lifetime_spectrum(
-        decay_peak, s["lifetime_spectrum"], s["irf_peak_norm"],
-        s["n_points"], s["time_axis"],
+        decay_peak,
+        s["lifetime_spectrum"],
+        s["irf_peak_norm"],
+        s["n_points"],
+        s["time_axis"],
     )
     convolve_mod.convolve_lifetime_spectrum(
-        decay_area, s["lifetime_spectrum"], s["irf_area_norm"],
-        s["n_points"], s["time_axis"],
+        decay_area,
+        s["lifetime_spectrum"],
+        s["irf_area_norm"],
+        s["n_points"],
+        s["time_axis"],
     )
     decay_peak /= np.max(decay_peak)
     decay_area /= np.max(decay_area)
@@ -69,8 +76,11 @@ def test_lifetime_accuracy(setup):
 
     decay = np.zeros(s["n_points"])
     convolve_mod.convolve_lifetime_spectrum(
-        decay, s["lifetime_spectrum"], s["irf_peak_norm"],
-        s["n_points"], s["time_axis"],
+        decay,
+        s["lifetime_spectrum"],
+        s["irf_peak_norm"],
+        s["n_points"],
+        s["time_axis"],
     )
     tau_eff = extract_lifetime(decay, s["time_axis"])
     assert tau_eff is not None, "Could not extract lifetime"

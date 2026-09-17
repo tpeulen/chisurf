@@ -21,6 +21,7 @@ Node coordinates are always in *scene* space (unscaled pixels): a zoom must neve
 disturb a layout the user arranged by hand, so the zoom is applied at paint time
 and inverted on the way back in.
 """
+
 from __future__ import annotations
 
 import math
@@ -32,12 +33,12 @@ from qtpy import QtCore, QtGui, QtWidgets
 #: the palette used to run out after four entries and everything past the third
 #: came out the same orange.
 NODE_PALETTE: tuple[tuple[str, str], ...] = (
-    ("#42a5f5", "#1565c0"),   # blue
-    ("#66bb6a", "#2e7d32"),   # green
-    ("#ab47bc", "#6a1b9a"),   # purple
-    ("#ffa726", "#e65100"),   # orange
-    ("#26c6da", "#00838f"),   # cyan
-    ("#ec407a", "#ad1457"),   # pink
+    ("#42a5f5", "#1565c0"),  # blue
+    ("#66bb6a", "#2e7d32"),  # green
+    ("#ab47bc", "#6a1b9a"),  # purple
+    ("#ffa726", "#e65100"),  # orange
+    ("#26c6da", "#00838f"),  # cyan
+    ("#ec407a", "#ad1457"),  # pink
 )
 
 #: Panel fill. Dark, because a graph is mostly ink and a light panel makes every
@@ -169,7 +170,7 @@ def wheel_anchor(event: QtGui.QWheelEvent) -> QtCore.QPointF:
     """Return a wheel event's position, across the Qt5/Qt6 spellings."""
     try:
         return QtCore.QPointF(event.position())
-    except AttributeError:      # Qt5 spelling
+    except AttributeError:  # Qt5 spelling
         return QtCore.QPointF(event.pos())
 
 
@@ -177,7 +178,7 @@ def event_pos(event) -> QtCore.QPointF:
     """Return a mouse event's widget position, across the Qt5/Qt6 spellings."""
     try:
         return QtCore.QPointF(event.position())
-    except AttributeError:      # Qt5 spelling
+    except AttributeError:  # Qt5 spelling
         return QtCore.QPointF(event.pos())
 
 
@@ -249,12 +250,8 @@ def edge_path(
         (p0.y() + p3.y()) / 2.0 + py * h,
     )
 
-    p1 = QtCore.QPointF(
-        p0.x() + (pmid.x() - p0.x()) * 0.6, p0.y() + (pmid.y() - p0.y()) * 0.6
-    )
-    p2 = QtCore.QPointF(
-        p3.x() + (pmid.x() - p3.x()) * 0.6, p3.y() + (pmid.y() - p3.y()) * 0.6
-    )
+    p1 = QtCore.QPointF(p0.x() + (pmid.x() - p0.x()) * 0.6, p0.y() + (pmid.y() - p0.y()) * 0.6)
+    p2 = QtCore.QPointF(p3.x() + (pmid.x() - p3.x()) * 0.6, p3.y() + (pmid.y() - p3.y()) * 0.6)
 
     path = QtGui.QPainterPath()
     path.moveTo(p0)
@@ -276,17 +273,19 @@ def draw_arrow_head(
     """
     angle = math.atan2(tip.y() - towards.y(), tip.x() - towards.x())
     size = 10.0 + pen_width * 0.5
-    head = QtGui.QPolygonF([
-        tip,
-        QtCore.QPointF(
-            tip.x() - size * math.cos(angle - math.pi / 6),
-            tip.y() - size * math.sin(angle - math.pi / 6),
-        ),
-        QtCore.QPointF(
-            tip.x() - size * math.cos(angle + math.pi / 6),
-            tip.y() - size * math.sin(angle + math.pi / 6),
-        ),
-    ])
+    head = QtGui.QPolygonF(
+        [
+            tip,
+            QtCore.QPointF(
+                tip.x() - size * math.cos(angle - math.pi / 6),
+                tip.y() - size * math.sin(angle - math.pi / 6),
+            ),
+            QtCore.QPointF(
+                tip.x() - size * math.cos(angle + math.pi / 6),
+                tip.y() - size * math.sin(angle + math.pi / 6),
+            ),
+        ]
+    )
     painter.setBrush(QtGui.QBrush(colour))
     painter.setPen(QtCore.Qt.NoPen)
     painter.drawPolygon(head)
@@ -314,9 +313,7 @@ def draw_badge(
     painter.setFont(font)
 
     width = max(min_width, painter.fontMetrics().horizontalAdvance(text) + 12)
-    rect = QtCore.QRectF(
-        centre.x() - width / 2.0, centre.y() - height / 2.0, width, height
-    )
+    rect = QtCore.QRectF(centre.x() - width / 2.0, centre.y() - height / 2.0, width, height)
 
     painter.setBrush(QtGui.QBrush(fill if fill is not None else QtGui.QColor(20, 20, 20, 225)))
     painter.setPen(QtGui.QPen(outline, 1.2))
@@ -374,12 +371,8 @@ def draw_node(
         Labels longer than this are elided with an ellipsis, so one long
         parameter name cannot blanket its neighbours.
     """
-    rect = QtCore.QRectF(
-        centre.x() - radius, centre.y() - radius, 2 * radius, 2 * radius
-    )
-    grad = QtGui.QRadialGradient(
-        centre.x() - radius * 0.3, centre.y() - radius * 0.3, radius * 1.5
-    )
+    rect = QtCore.QRectF(centre.x() - radius, centre.y() - radius, 2 * radius, 2 * radius)
+    grad = QtGui.QRadialGradient(centre.x() - radius * 0.3, centre.y() - radius * 0.3, radius * 1.5)
     light, dark = colours
     grad.setColorAt(0, QtGui.QColor(light))
     grad.setColorAt(1, QtGui.QColor(dark))
@@ -405,9 +398,7 @@ def draw_node(
     text = metrics.elidedText(label, QtCore.Qt.ElideRight, int(label_max_width))
     width = metrics.horizontalAdvance(text) + 6
     height = metrics.height() + 2
-    below = QtCore.QRectF(
-        centre.x() - width / 2.0, centre.y() + radius + 2.0, width, height
-    )
+    below = QtCore.QRectF(centre.x() - width / 2.0, centre.y() + radius + 2.0, width, height)
     if label_plate:
         painter.setBrush(QtGui.QBrush(QtGui.QColor(12, 12, 12, 200)))
         painter.setPen(QtCore.Qt.NoPen)
@@ -507,9 +498,7 @@ class DiagramCanvas(QtWidgets.QWidget):
         self._panning = False
         self._pan_anchor = QtCore.QPointF(0.0, 0.0)
         self.setMinimumSize(360, 240)
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
     # -- painting -------------------------------------------------------------
@@ -520,7 +509,7 @@ class DiagramCanvas(QtWidgets.QWidget):
     def paint_overlay(self, painter: QtGui.QPainter) -> None:
         """Paint on top in canvas coordinates (legends, hints). Optional."""
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:      # noqa: N802 (Qt)
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 (Qt)
         """Draw the backdrop, then the scene under the current zoom."""
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -543,7 +532,7 @@ class DiagramCanvas(QtWidgets.QWidget):
         self.view.reset()
         self.update()
 
-    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:      # noqa: N802 (Qt)
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:  # noqa: N802 (Qt)
         """Zoom about the pointer."""
         if self.view.zoom_by(event.angleDelta().y(), wheel_anchor(event)):
             self.on_view_changed()

@@ -1,27 +1,26 @@
 from __future__ import annotations
 
-import os
 import datetime
 import json
+import os
 import pathlib
 import sys
 
 # Initialize environment (PATH, Qt plugins, vispy, FreeType) as early as possible
 from . import env_bootstrap  # noqa: F401
+from .cleanup import clear_logging_files, clear_settings_folder, clear_user_plugins_folder
 
 # Import utility functions
 from .file_utils import safe_open_file
 from .path_utils import get_path
 from .settings_utils import (
-    get_chisurf_settings,
     copy_settings_to_user_folder,
-    copy_styles_to_user_folder
+    copy_styles_to_user_folder,
+    get_chisurf_settings,
 )
-from .cleanup import clear_settings_folder, clear_logging_files, clear_user_plugins_folder
-from .path_utils import get_path  # Needed early
 
 # Define Chisurf cache path inside user settings folder
-_chisurf_user_cache_dir = get_path('settings') / "cache"
+_chisurf_user_cache_dir = get_path("settings") / "cache"
 
 # Set environment variables for Numba and Python bytecode cache
 os.environ["NUMBA_CACHE_DIR"] = str(_chisurf_user_cache_dir)
@@ -31,8 +30,8 @@ os.environ["PYTHONPYCACHEPREFIX"] = str(_chisurf_user_cache_dir)
 _chisurf_user_cache_dir.mkdir(parents=True, exist_ok=True)
 
 # Path constants
-chisurf_settings_path = get_path('settings')
-chisurf_root = get_path('chisurf')
+chisurf_settings_path = get_path("settings")
+chisurf_root = get_path("chisurf")
 macro_path = chisurf_root / "macros"
 plugin_path = chisurf_root / "plugins"
 
@@ -40,10 +39,11 @@ plugin_path = chisurf_root / "plugins"
 copy_settings_to_user_folder()
 
 import chisurf.core.info
+
 __version__ = chisurf.core.info.__version__
 
 # Open chisurf settings file
-chisurf_settings_file = chisurf_settings_path / 'settings_chisurf.yaml'
+chisurf_settings_file = chisurf_settings_path / "settings_chisurf.yaml"
 # To use the settings in the home folder set to false
 # if set to true uses settings in source folder.
 cs_settings = get_chisurf_settings(chisurf_settings_file, use_source_folder=False)
@@ -74,10 +74,10 @@ if _object_store_root:
 
 anisotropy = dict()
 anisotropy_data = safe_open_file(
-    file_path=get_path('chisurf') / "settings" / "anisotropy_corrections.json",
+    file_path=get_path("chisurf") / "settings" / "anisotropy_corrections.json",
     processor=json.load,
     default_value={},
-    error_message="Error opening anisotropy corrections file"
+    error_message="Error opening anisotropy corrections file",
 )
 anisotropy.update(anisotropy_data)
 
@@ -91,7 +91,7 @@ fps = dict()
 locals().update(cs_settings)
 
 # ZMQ server is always auto-started — no setting required.
-gui.update(cs_settings.setdefault('gui', {}))
+gui.update(cs_settings.setdefault("gui", {}))
 
 
 def is_dev_mode() -> bool:
@@ -100,41 +100,42 @@ def is_dev_mode() -> bool:
     Dev mode enables developer features like code badge buttons
     for jumping to source locations in the embedded editor.
     """
-    return bool(cs_settings.get('enable_experimental', False))
+    return bool(cs_settings.get("enable_experimental", False))
 
 
 def dev_mode_settings() -> dict:
     """Return dev_mode settings dict from gui.dev_mode."""
-    gui_settings = cs_settings.get('gui', {})
-    return gui_settings.get('dev_mode', {})
+    gui_settings = cs_settings.get("gui", {})
+    return gui_settings.get("dev_mode", {})
+
 
 # Load help mappings from the program's settings folder only. These are not
 # intended to be user-editable, so we always read them from the source folder
 # and do not look at (or copy into) the user settings directory.
-help_settings_file = chisurf_settings_path / 'help_mappings.yaml'
+help_settings_file = chisurf_settings_path / "help_mappings.yaml"
 _help_settings = get_chisurf_settings(help_settings_file, use_source_folder=True)
 if isinstance(_help_settings, dict):
-    help = _help_settings.get('help', _help_settings)
+    help = _help_settings.get("help", _help_settings)
 else:
     help = {}
 
 # Open color settings file
-color_settings_file = chisurf_settings_path / 'settings_colors.yaml'
+color_settings_file = chisurf_settings_path / "settings_colors.yaml"
 colors = get_chisurf_settings(color_settings_file)
 
 package_directory = pathlib.Path(__file__).parent
 chisurf_root = package_directory.parent.parent
-style_sheet_file = chisurf_root / 'gui' / 'styles' / gui['style_sheet']
+style_sheet_file = chisurf_root / "gui" / "styles" / gui["style_sheet"]
 style_sheet = safe_open_file(
     file_path=style_sheet_file,
     default_value="",
-    error_message=f"Error opening style sheet file {style_sheet_file}"
+    error_message=f"Error opening style sheet file {style_sheet_file}",
 )
 structure_data = safe_open_file(
-    file_path=package_directory / 'constants' / 'structure.json',
+    file_path=package_directory / "constants" / "structure.json",
     processor=json.load,
     default_value={},
-    error_message="Error opening structure.json file"
+    error_message="Error opening structure.json file",
 )
 
 # Optional registry of parameter metadata used to enrich parameter
@@ -142,10 +143,10 @@ structure_data = safe_open_file(
 # ``python -m build_tools.dev_utils.export_fitting_parameters`` and can be
 # edited by the user.
 parameter_registry = safe_open_file(
-    file_path=package_directory / 'constants' / 'parameter_registry.json',
+    file_path=package_directory / "constants" / "parameter_registry.json",
     processor=json.load,
     default_value={},
-    error_message="Error opening parameter_registry.json file"
+    error_message="Error opening parameter_registry.json file",
 )
 
 
@@ -211,9 +212,9 @@ def describe_parameter(name, owner=None, registry_id=None):
 
 
 eps = sys.float_info.epsilon
-working_path = ''
+working_path = ""
 
-session_str = datetime.datetime.now().strftime('session_%H_%M_%d_%m_%Y')
+session_str = datetime.datetime.now().strftime("session_%H_%M_%d_%m_%Y")
 # Create logs subfolder
 logs_folder = chisurf_settings_path / "logs"
 logs_folder.mkdir(exist_ok=True)
@@ -222,6 +223,7 @@ session_log = logs_folder / str(session_str + ".log")
 
 try:
     import chisurf as _chisurf
+
     _chisurf._apply_logging_settings(sys.modules[__name__])
 except Exception:
     pass

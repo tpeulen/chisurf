@@ -1,6 +1,5 @@
-import chisurf.gui.widgets.general
-from chisurf import logging
 import chisurf as cs
+import chisurf.gui.widgets.general
 from chisurf.gui import dialogs
 
 
@@ -8,11 +7,11 @@ class MenuSwitchWidget:
     """
     A simple widget that provides a one-click switch between menu and ribbon interfaces.
     """
-    
+
     def __init__(self, main_window=None):
         """
         Initialize the menu switch widget.
-        
+
         Parameters
         ----------
         main_window : QtWidgets.QMainWindow, optional
@@ -22,30 +21,32 @@ class MenuSwitchWidget:
         if self.main_window is None:
             # Try to get the current main window using multiple methods
             self.main_window = self._find_main_window()
-        
+
         if self.main_window is None:
             raise ValueError("Cannot find main window instance")
-    
+
     def _find_main_window(self):
         """
         Find the main window instance using multiple fallback methods.
         """
         from chisurf.gui import QtWidgets
-        
+
         # Method 1: Try cs.cs (the standard way)
-        main_window = getattr(cs, 'cs', None)
+        main_window = getattr(cs, "cs", None)
         if main_window is not None:
             return main_window
-        
+
         # Method 2: Try to find the main window by title
         try:
             for w in QtWidgets.QApplication.topLevelWidgets():
-                title = w.windowTitle() if hasattr(w, 'windowTitle') else ''
-                if w.isVisible() and ("Chi" in title or "Fit" in title or "PCH" in title or "FIDA" in title):
+                title = w.windowTitle() if hasattr(w, "windowTitle") else ""
+                if w.isVisible() and (
+                    "Chi" in title or "Fit" in title or "PCH" in title or "FIDA" in title
+                ):
                     return w
         except Exception:
             pass
-        
+
         # Method 3: Try the active window
         try:
             aw = QtWidgets.QApplication.activeWindow()
@@ -53,7 +54,7 @@ class MenuSwitchWidget:
                 return aw
         except Exception:
             pass
-        
+
         # Method 4: Try to find any QMainWindow
         try:
             for w in QtWidgets.QApplication.topLevelWidgets():
@@ -61,9 +62,9 @@ class MenuSwitchWidget:
                     return w
         except Exception:
             pass
-        
+
         return None
-    
+
     def switch_menu_mode(self):
         """
         Switch between menu and ribbon interfaces.
@@ -71,8 +72,8 @@ class MenuSwitchWidget:
         """
         try:
             # Check current state by looking for ribbon integration
-            has_ribbon = getattr(self.main_window, '_ribbon_integration', None) is not None
-            
+            has_ribbon = getattr(self.main_window, "_ribbon_integration", None) is not None
+
             if has_ribbon:
                 # Currently using ribbon, switch to normal menu
                 self.main_window.toggle_ribbon_interface(False)
@@ -81,17 +82,17 @@ class MenuSwitchWidget:
                 # Currently using normal menu, switch to ribbon
                 self.main_window.toggle_ribbon_interface(True)
                 cs.logging.info("Switched to ribbon interface")
-                
+
         except Exception as e:
             cs.logging.error(f"Failed to switch menu mode: {e}")
-    
+
     def _show_message(self, message):
         """Show an info message to the user."""
         try:
             dialogs.information(None, "Menu Switch", message)
         except Exception:
             pass
-    
+
     def _show_error(self, error_message):
         """Show an error message to the user."""
         try:
@@ -112,13 +113,17 @@ def run():
         # Handle the case where main window is not found
         error_msg = str(e)
         if "Cannot find main window instance" in error_msg:
-            detailed_msg = ("Cannot find main window instance. This may happen if the plugin is "
-                          "loaded before the GUI is fully initialized. Try running the menu switch "
-                          "again after ChiSurf has finished loading, or use the menu option "
-                          "instead of the plugin auto-execution.")
+            detailed_msg = (
+                "Cannot find main window instance. This may happen if the plugin is "
+                "loaded before the GUI is fully initialized. Try running the menu switch "
+                "again after ChiSurf has finished loading, or use the menu option "
+                "instead of the plugin auto-execution."
+            )
             cs.logging.error(f"Menu Switch plugin failed: {detailed_msg}")
             try:
-                dialogs.information(None, "Menu Switch Error", f"Failed to run menu switch: {detailed_msg}")
+                dialogs.information(
+                    None, "Menu Switch Error", f"Failed to run menu switch: {detailed_msg}"
+                )
             except Exception:
                 pass
         else:

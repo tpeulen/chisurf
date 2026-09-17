@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 import struct
-from typing import Dict, Any, List
+from typing import Any
 
 import numpy as np
 
@@ -45,25 +44,25 @@ class PQResReader:
 
     def _read_header(self):
         """Read and parse the PQRES file header (tags)."""
-        with open(self.filepath, 'rb') as f:
+        with open(self.filepath, "rb") as f:
             magic = f.read(8)
-            if magic[:7] != b'PQRESLT':
+            if magic[:7] != b"PQRESLT":
                 raise ValueError("Invalid magic. Not a PQRES file.")
-            version = f.read(8).rstrip(b'\x00').decode('ascii', errors='ignore')
-            self.tags['Version'] = version
+            version = f.read(8).rstrip(b"\x00").decode("ascii", errors="ignore")
+            self.tags["Version"] = version
 
             while True:
                 tag_data = f.read(48)
                 if len(tag_data) < 48:
                     break
-                ident_raw, idx, typ, value = struct.unpack('<32s i I Q', tag_data)
-                ident = ident_raw.split(b'\x00')[0].decode('ascii', errors='ignore')
+                ident_raw, idx, typ, value = struct.unpack("<32s i I Q", tag_data)
+                ident = ident_raw.split(b"\x00")[0].decode("ascii", errors="ignore")
                 if ident == "Header_End":
                     break
                 self.tags[ident] = self._interpret_tag(f, typ, value)
 
             self.data_offset = f.tell()
-            self.tags['_data_offset'] = self.data_offset
+            self.tags["_data_offset"] = self.data_offset
 
     def _interpret_tag(self, f, typ, value):
         """Interpret a single tag value from the binary header.
@@ -89,20 +88,20 @@ class PQResReader:
         elif typ in (self.tyInt8, self.tyBitSet64, self.tyColor8):
             return int(value)
         elif typ == self.tyFloat8:
-            return struct.unpack('<d', struct.pack('<Q', value))[0]
+            return struct.unpack("<d", struct.pack("<Q", value))[0]
         elif typ == self.tyTDateTime:
-            dt = struct.unpack('<d', struct.pack('<Q', value))[0]
+            dt = struct.unpack("<d", struct.pack("<Q", value))[0]
             return (dt - 25569) * 86400
         elif typ == self.tyFloat8Array:
             count = value // 8
             data = f.read(count * 8)
-            return np.frombuffer(data, dtype='<f8', count=count)
+            return np.frombuffer(data, dtype="<f8", count=count)
         elif typ == self.tyAnsiString:
             data = f.read(value)
-            return data.rstrip(b'\x00').decode('ascii', errors='ignore')
+            return data.rstrip(b"\x00").decode("ascii", errors="ignore")
         elif typ == self.tyWideString:
             data = f.read(value)
-            return data.decode('utf-16le', errors='ignore').rstrip('\x00')
+            return data.decode("utf-16le", errors="ignore").rstrip("\x00")
         elif typ == self.tyBinaryBlob:
             f.seek(value, 1)
             return f"<{value} bytes blob>"
@@ -128,7 +127,7 @@ class PQResReader:
 
     def list_tags(self):
         """Return non-internal tag names."""
-        return [k for k in self.tags if not k.startswith('_')]
+        return [k for k in self.tags if not k.startswith("_")]
 
     def read_raw_data(self):
         """Read raw binary data starting at the data offset.
@@ -138,11 +137,11 @@ class PQResReader:
         bytes
             Raw data after the header.
         """
-        with open(self.filepath, 'rb') as f:
+        with open(self.filepath, "rb") as f:
             f.seek(self.data_offset)
             return f.read()
 
-    def get_curves(self) -> Dict[str, Dict[str, Any]]:
+    def get_curves(self) -> dict[str, dict[str, Any]]:
         """Extract named X/Y curve data from the tag dictionary.
 
         Returns
@@ -156,7 +155,11 @@ class PQResReader:
                 base = k[:-1]
                 x = self.tags.get(f"{base}X")
                 y = self.tags.get(f"{base}Y")
-                if isinstance(x, (np.ndarray, list, tuple)) and isinstance(y, (np.ndarray, list, tuple)) and len(x) == len(y):
+                if (
+                    isinstance(x, (np.ndarray, list, tuple))
+                    and isinstance(y, (np.ndarray, list, tuple))
+                    and len(x) == len(y)
+                ):
                     curves[base] = {
                         "label": base,
                         "X": np.array(x),
@@ -168,10 +171,12 @@ class PQResReader:
 
     def __repr__(self):
         """Return a string representation of the PQResReader."""
-        lines = [f"<PQResReader: {self.filepath}>",
-                 f"Version: {self.tags.get('Version')}",
-                 f"Data offset: {self.data_offset}",
-                 f"Tags ({len(self.list_tags())}):"]
+        lines = [
+            f"<PQResReader: {self.filepath}>",
+            f"Version: {self.tags.get('Version')}",
+            f"Data offset: {self.data_offset}",
+            f"Tags ({len(self.list_tags())}):",
+        ]
         for k in self.list_tags():
             v = self.tags[k]
             v_str = repr(v)
@@ -262,20 +267,27 @@ def read_pqres_fcs(filename: str, verbose: bool = False, **kwargs) -> list:
             np.divide(1.0, std, out=weights, where=std > 0)
         else:
             weights = np.ones_like(y)
-        out.append({
-            "filename": filename,
-            "measurement_id": str(name),
-            "correlation_times": x,
-            "correlation_amplitudes": y,
-            "correlation_amplitude_weights": weights,
-            "acquisition_time": reader.get_tag("MeasDesc_AcquisitionTime", 0.0),
-        })
+        out.append(
+            {
+                "filename": filename,
+                "measurement_id": str(name),
+                "correlation_times": x,
+                "correlation_amplitudes": y,
+                "correlation_amplitude_weights": weights,
+                "acquisition_time": reader.get_tag("MeasDesc_AcquisitionTime", 0.0),
+            }
+        )
     return out
 
 
-def read_pqres_tcspc(filename: str, data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None, 
-                    experiment: chisurf.core.experiments.core.experiment.Experiment = None, 
-                    dt: float = 1.0, rebin: typing.Tuple[int, int] = (1, 1), **kwargs) -> chisurf.core.data.DataCurveGroup:
+def read_pqres_tcspc(
+    filename: str,
+    data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None,
+    experiment: chisurf.core.experiments.core.experiment.Experiment = None,
+    dt: float = 1.0,
+    rebin: tuple[int, int] = (1, 1),
+    **kwargs,
+) -> chisurf.core.data.DataCurveGroup:
     """
     Read a PicoQuant SymPhoTime .pqres TCSPC result file and return a DataCurveGroup.
     For TCSPC data, the x values are multiplied by 1e9 to convert from seconds to nanoseconds.
@@ -303,7 +315,6 @@ def read_pqres_tcspc(filename: str, data_reader: chisurf.core.experiments.core.r
     """
     # Import here to avoid circular imports
     import chisurf.core.data
-    from chisurf import typing
 
     # Load data
     rebin_x, rebin_y = rebin
@@ -325,9 +336,9 @@ def read_pqres_tcspc(filename: str, data_reader: chisurf.core.experiments.core.r
             # Calculate new length after rebinning
             new_length = len(y) // rebin_y
             # Reshape and sum along the rebinning axis
-            y = y[:new_length * rebin_y].reshape(-1, rebin_y).sum(axis=1)
+            y = y[: new_length * rebin_y].reshape(-1, rebin_y).sum(axis=1)
             # Adjust time axis
-            x = x[:new_length * rebin_y:rebin_y]
+            x = x[: new_length * rebin_y : rebin_y]
 
         # Use zeros for x error
         ex = np.zeros_like(x)
@@ -336,16 +347,16 @@ def read_pqres_tcspc(filename: str, data_reader: chisurf.core.experiments.core.r
 
         # Create a DataCurve for this curve
         data_curve = chisurf.core.data.DataCurve(
-            x=x, 
-            y=y, 
-            ex=ex, 
+            x=x,
+            y=y,
+            ex=ex,
             ey=ey,
             filename=filename,
             data_reader=data_reader,
             experiment=experiment,
             name=name,
             load_filename_on_init=False,
-            **kwargs
+            **kwargs,
         )
 
         # Add the curve to the group

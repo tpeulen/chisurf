@@ -99,7 +99,11 @@ def window(qapp, tmp_path, monkeypatch):
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
@@ -196,7 +200,8 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     gui = window.viewer.gui
     gui.on_prompt_command = window._prefill_command_line
     gui._emit(
-        "group {text}, {sele}", "lig",
+        "group {text}, {sele}",
+        "lig",
         prompt=MenuEntry("x", prompt=("Move to group", "Group name:")).prompt,
     )
     for _ in range(5):
@@ -224,27 +229,22 @@ def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window, qapp):
         qapp.processEvents()
 
     gui = window.viewer.gui
-    assert gui.on_file_prompt is not None, (
-        "the app did not wire the file-dialog hook"
-    )
+    assert gui.on_file_prompt is not None, "the app did not wire the file-dialog hook"
 
     asked: list[tuple[str, str, str, str]] = []
-    gui.on_file_prompt = lambda line, mode, title, filt: asked.append(
-        (line, mode, title, filt)
-    )
+    gui.on_file_prompt = lambda line, mode, title, filt: asked.append((line, mode, title, filt))
     ran: list[str] = []
     gui.set_run_command(ran.append)
     gui._emit(
-        "save {text}", "",
+        "save {text}",
+        "",
         file_prompt=("save", "Save molecule", "Structures (*.pdb)"),
     )
-    assert asked == [("save {text}", "save", "Save molecule",
-                      "Structures (*.pdb)")]
+    assert asked == [("save {text}", "save", "Save molecule", "Structures (*.pdb)")]
     assert ran == [], "the template must not run before the dialog fills it"
 
 
-def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(
-        window, qapp):
+def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(window, qapp):
     """In the browser there is no dialog; the CLI placeholder is the fallback."""
     window.resize(1200, 800)
     window.show()
@@ -255,7 +255,8 @@ def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(
     gui.on_file_prompt = None
     gui.on_prompt_command = window._prefill_command_line
     gui._emit(
-        "save {text}", "",
+        "save {text}",
+        "",
         prompt=("Save", "File name:"),
         file_prompt=("save", "Save molecule", "Structures (*.pdb)"),
     )

@@ -16,6 +16,7 @@ ourselves, and it did three bad things at once:
 A real MFD fit takes about two minutes, so it lost that race every time, and what
 the user saw was a frozen window with no progress bar.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -56,7 +57,8 @@ def test_an_embedded_server_is_called_in_process(client, monkeypatch):
     server = _Server()
     monkeypatch.setattr(chisurf, "__chisurf_rpc_server__", server, raising=False)
     monkeypatch.setattr(
-        client, "_try_rpc",
+        client,
+        "_try_rpc",
         lambda *a, **k: pytest.fail("a fit went over the wire to this process"),
     )
     result = client.run_fit(fit_uid="abc")
@@ -98,12 +100,8 @@ def test_the_in_process_fit_reports_progress_on_the_calling_thread():
     from chisurf.server.session import SessionState
 
     x = np.linspace(0.0, 5.0, 48)
-    curve = chisurf.core.data.DataCurve(
-        x=x, y=3.0 + 1.2 * x ** 2, ey=np.full_like(x, 0.05)
-    )
-    fit = chisurf.core.fitting.fit.Fit(
-        data=curve, model_class=chisurf.core.models.parse.ParseModel
-    )
+    curve = chisurf.core.data.DataCurve(x=x, y=3.0 + 1.2 * x**2, ey=np.full_like(x, 0.05))
+    fit = chisurf.core.fitting.fit.Fit(data=curve, model_class=chisurf.core.models.parse.ParseModel)
     fit.fit_range = 0, len(fit.model.y)
     fit.model.func = "c+a*x**2"
     fit.model.find_parameters()

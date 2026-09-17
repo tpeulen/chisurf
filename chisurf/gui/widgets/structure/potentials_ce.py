@@ -11,19 +11,18 @@ from chisurf.gui.widgets.warning_once import show_warning_once
 
 
 class CEPotentialWidget(CEPotential, QtWidgets.QWidget):
-
     def __init__(
-            self,
-            structure: chisurf.core.structure.Structure,
-            potential: str = None,
-            ca_cutoff: float = 25.0,
-            parent=None
+        self,
+        structure: chisurf.core.structure.Structure,
+        potential: str = None,
+        ca_cutoff: float = 25.0,
+        parent=None,
     ):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
         # Set default potential path if not provided
         if potential is None:
-            potential = str(get_path('chisurf') / 'core/structure/potential/database/unres.npy')
+            potential = str(get_path("chisurf") / "core/structure/potential/database/unres.npy")
 
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -53,11 +52,7 @@ class CEPotentialWidget(CEPotential, QtWidgets.QWidget):
         self.actionOpen_potential_file.triggered.connect(self.onOpenPotentialFile)
         self.toolButton.clicked.connect(self.actionOpen_potential_file.trigger)
 
-        super().__init__(
-            structure,
-            potential=potential,
-            ca_cutoff=ca_cutoff
-        )
+        super().__init__(structure, potential=potential, ca_cutoff=ca_cutoff)
         self.ca_cutoff = ca_cutoff
 
     @property
@@ -77,14 +72,14 @@ class CEPotentialWidget(CEPotential, QtWidgets.QWidget):
                 f"The UNRES potential file should be located at:\n"
                 f"{v}\n\n"
                 f"Please check if the file exists or use the '...' button\n"
-                f"to select a different potential file."
+                f"to select a different potential file.",
             )
             self._potential = np.zeros((20, 20))
         except Exception as e:
             show_warning_once(
                 "ce_potential_file_error",
                 "Potential File Error",
-                f"Error loading potential file {v}:\n{str(e)}"
+                f"Error loading potential file {v}:\n{str(e)}",
             )
             self._potential = np.zeros((20, 20))
 
@@ -97,5 +92,5 @@ class CEPotentialWidget(CEPotential, QtWidgets.QWidget):
         self.doubleSpinBox.setValue(float(v))
 
     def onOpenPotentialFile(self):
-        filename = chisurf.gui.widgets.get_filename('Open CE-Potential', 'Numpy file (*.npy)')
+        filename = chisurf.gui.widgets.get_filename("Open CE-Potential", "Numpy file (*.npy)")
         self.potential = filename

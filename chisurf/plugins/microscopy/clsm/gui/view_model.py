@@ -163,9 +163,7 @@ class ClsmViewModel:
 
             source = read_imaging_source(p)
             if not source:
-                raise RuntimeError(
-                    f"Imaging HDF5 has no source-TTTR back-reference: {p}"
-                )
+                raise RuntimeError(f"Imaging HDF5 has no source-TTTR back-reference: {p}")
             self.load_tttr(source)
         else:
             self.load_tttr(p)
@@ -253,9 +251,7 @@ class ClsmViewModel:
         if image is None:
             return
         self.current_representation_name = name
-        current = imaging.reduce_frames(
-            image, self.decay.frame_mode, int(self.decay.frame_idx)
-        )
+        current = imaging.reduce_frames(image, self.decay.frame_mode, int(self.decay.frame_idx))
         self.current_image = current
         self.selection_mask = np.zeros_like(current)
         self.notify("image")
@@ -465,4 +461,3 @@ class ClsmViewModel:
                 }
             )
         return series
-

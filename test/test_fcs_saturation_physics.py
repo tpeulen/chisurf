@@ -26,10 +26,9 @@ from chisurf.core.fluorescence.fcs.saturation import (
     excitation_rate_peak,
     fcs_numerical_g_diff,
     fit_single_component,
-    fit_two_components,
-    relaxation_spectrum,
     gaussian_g_diff,
     photon_flux,
+    relaxation_spectrum,
     saturated_curve_shape,
     steady_state_full_populations,
 )
@@ -231,7 +230,7 @@ def test_bunching_factor_matches_the_analytical_triplet_expression():
     """X(tau) must reproduce 1 + T/(1-T) exp(-tau/tau_T) beyond the singlet lag."""
     k_exc = 1e7
     x = None
-    k_f = DARK_R6G[0, 1]
+    DARK_R6G[0, 1]
     k_isc = DARK_R6G[2, 1]
     k_t = DARK_R6G[0, 2]
     p_eq = steady_state_full_populations(np.array([k_exc]), DARK_R6G, EXC_R6G)[:, 0]
@@ -313,12 +312,8 @@ def test_brightness_changes_the_saturated_curve():
     """The state brightness must reach the curve (the historical invisible-Q bug)."""
     tau = np.logspace(-7, -3, 30)
     args = (2e-3, 1e5, DARK_R6G, EXC_R6G)
-    g_dark_triplet = saturated_curve_shape(
-        tau, *args, np.array([0.0, 1.0, 0.0]), W0, Z0, D_R6G
-    )
-    g_bright_triplet = saturated_curve_shape(
-        tau, *args, np.array([0.0, 1.0, 0.5]), W0, Z0, D_R6G
-    )
+    g_dark_triplet = saturated_curve_shape(tau, *args, np.array([0.0, 1.0, 0.0]), W0, Z0, D_R6G)
+    g_bright_triplet = saturated_curve_shape(tau, *args, np.array([0.0, 1.0, 0.5]), W0, Z0, D_R6G)
     assert not np.allclose(g_dark_triplet, g_bright_triplet)
 
 
@@ -329,7 +324,7 @@ def test_mismatched_brightness_length_is_an_error():
 
 
 def test_no_absorption_at_the_excitation_wavelength_is_the_unsaturated_limit():
-    """eps = 0 is 'the dye does not absorb here', not 'the curve is zero'.
+    """Eps = 0 is 'the dye does not absorb here', not 'the curve is zero'.
 
     Reading eps off a real spectrum makes this reachable: excite a dye far from
     its maximum and eps goes to zero, at which point the scheme cannot be
@@ -343,7 +338,7 @@ def test_no_absorption_at_the_excitation_wavelength_is_the_unsaturated_limit():
 
 
 def test_the_axial_half_spectrum_is_the_whole_one():
-    """rfft + mirror weights must equal the full complex transform, exactly.
+    """Rfft + mirror weights must equal the full complex transform, exactly.
 
     The speed of this module rests on two identities -- a real profile needs
     only half its axial spectrum, and exp(-D(kr^2+kz^2)tau) factorises -- so
@@ -368,10 +363,11 @@ def test_the_axial_half_spectrum_is_the_whole_one():
     psd = (np.abs(f_k) ** 2) * kr[:, None]
     k2 = kr[:, None] ** 2 + kz[None, :] ** 2
     direct = np.array([np.sum(psd * np.exp(-D_R6G * k2 * t)) for t in tau])
-    direct *= (V_0 * float(np.trapezoid(np.trapezoid(profile**2 * 2 * np.pi * r[:, None],
-                                                     r, axis=0), z))
-               / float(np.trapezoid(np.trapezoid(profile * 2 * np.pi * r[:, None],
-                                                 r, axis=0), z)) ** 2) / psd.sum()
+    direct *= (
+        V_0
+        * float(np.trapezoid(np.trapezoid(profile**2 * 2 * np.pi * r[:, None], r, axis=0), z))
+        / float(np.trapezoid(np.trapezoid(profile * 2 * np.pi * r[:, None], r, axis=0), z)) ** 2
+    ) / psd.sum()
     np.testing.assert_allclose(fast, direct, rtol=1e-10)
 
 
@@ -432,7 +428,15 @@ def test_a_second_component_actually_fits_what_one_cannot():
 
     tau = np.logspace(-7, -1, 300)
     g = saturated_curve_shape(
-        tau, 3.08e-2, 1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G,
+        tau,
+        3.08e-2,
+        1e5,
+        DARK_R6G,
+        EXC_R6G,
+        Q_R6G,
+        W0,
+        Z0,
+        D_R6G,
         include_bunching=False,
     )
     y = g / g[0]
@@ -445,9 +449,9 @@ def test_a_second_component_actually_fits_what_one_cannot():
         return frac * one(t, tau_1, s) + (1.0 - frac) * one(t, tau_2, s)
 
     guess = [0.2, W0**2 / (4.0 * D_R6G), 4.0 * W0**2 / (4.0 * D_R6G), 5.0]
-    params, _ = curve_fit(two, tau, y, p0=guess,
-                          bounds=([0, 1e-9, 1e-9, 0.5], [1, 1e-1, 1e-1, 50]),
-                          maxfev=200000)
+    params, _ = curve_fit(
+        two, tau, y, p0=guess, bounds=([0, 1e-9, 1e-9, 0.5], [1, 1e-1, 1e-1, 50]), maxfev=200000
+    )
     rms_two = float(np.sqrt(np.mean((two(tau, *params) - y) ** 2)))
     assert rms_two < 0.5 * rms_one, "a second component must earn its place"
     fast, slow = sorted(params[1:3])
@@ -487,8 +491,12 @@ def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
         return out / out[0]
 
     params, _ = curve_fit(
-        model, tau_ms, y, p0=[0.1, 900.0, 100.0, 0.5, 2e-6],
-        bounds=([0, 1, 1, 0.01, 1e-8], [1, 1e5, 1e5, 0.95, 1e-3]), maxfev=200000,
+        model,
+        tau_ms,
+        y,
+        p0=[0.1, 900.0, 100.0, 0.5, 2e-6],
+        bounds=([0, 1, 1, 0.01, 1e-8], [1, 1e5, 1e5, 0.95, 1e-3]),
+        maxfev=200000,
     )
     rms_two = float(np.sqrt(np.mean((model(tau_ms, *params) - y) ** 2)))
 
@@ -497,8 +505,12 @@ def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
         return model(t_ms, 1.0, d, d, triplet, tau_t)
 
     params_one, _ = curve_fit(
-        model_one, tau_ms, y, p0=[300.0, 0.5, 2e-6],
-        bounds=([1, 0.01, 1e-8], [1e5, 0.95, 1e-3]), maxfev=200000,
+        model_one,
+        tau_ms,
+        y,
+        p0=[300.0, 0.5, 2e-6],
+        bounds=([1, 0.01, 1e-8], [1e5, 0.95, 1e-3]),
+        maxfev=200000,
     )
     rms_one = float(np.sqrt(np.mean((model_one(tau_ms, *params_one) - y) ** 2)))
 
@@ -509,7 +521,7 @@ def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
     # Widengren's triplet is a *global* parameter across a power series rather
     # than fitted per curve.
     assert rms_two < 0.4 * rms_one, "two diffusion times must clearly beat one"
-    fast, slow = sorted(params[1:3], reverse=True)   # D, so fast D = short tau_D
+    fast, slow = sorted(params[1:3], reverse=True)  # D, so fast D = short tau_D
     assert fast > 3.0 * slow, "the two transit times must be genuinely distinct"
 
     # What the bunching term measures is an *eigenvalue* of
@@ -553,10 +565,7 @@ def test_relaxation_times_are_the_eigenvalues_of_the_generator():
 
 def test_the_relaxation_time_moves_with_the_excitation_rate():
     """It is an eigenvalue of K_dark + k_exc K_exc, so it depends on the power."""
-    times = [
-        relaxation_spectrum(k, DARK_R6G, EXC_R6G, Q_R6G)[0][0]
-        for k in (1e5, 1e7, 1e9, 1e11)
-    ]
+    times = [relaxation_spectrum(k, DARK_R6G, EXC_R6G, Q_R6G)[0][0] for k in (1e5, 1e7, 1e9, 1e11)]
     assert all(a > b for a, b in zip(times, times[1:])), "more light, faster relaxation"
     # At vanishing excitation it must approach the dark-state lifetime 1/k_T.
     assert times[0] == pytest.approx(1.0 / DARK_R6G[0, 2], rel=0.02)
@@ -575,9 +584,12 @@ def test_the_scheme_reports_its_relaxation_times_as_outputs():
 
     modes = terms.update_relaxation_outputs()
     expected = relaxation_spectrum(
-        excitation_rate_peak(terms.power, terms.extinction, terms.w_r_nm * 1e-9,
-                             terms.wavelength_m),
-        terms.dark_matrix_hz, terms.exc.rate_matrix(), terms.brightness.array,
+        excitation_rate_peak(
+            terms.power, terms.extinction, terms.w_r_nm * 1e-9, terms.wavelength_m
+        ),
+        terms.dark_matrix_hz,
+        terms.exc.rate_matrix(),
+        terms.brightness.array,
     )
     assert [t for t, _ in modes] == [t for t, _ in expected]
     for parameter, (time_s, _) in zip(terms._relaxation_outputs, expected):
@@ -585,9 +597,7 @@ def test_the_scheme_reports_its_relaxation_times_as_outputs():
 
     # They must follow the scheme size, not stay at three states' worth.
     terms.n_states = 5
-    assert [p.name for p in terms._relaxation_outputs] == [
-        "tau_R1", "tau_R2", "tau_R3", "tau_R4"
-    ]
+    assert [p.name for p in terms._relaxation_outputs] == ["tau_R1", "tau_R2", "tau_R3", "tau_R4"]
 
 
 def test_the_reported_relaxation_time_falls_as_the_power_rises():

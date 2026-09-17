@@ -20,9 +20,7 @@ from chisurf.core.roi import EllipseROI, MaskROI, PolygonROI, RectangleROI
 
 def _field(cy=20.0, cx=24.0, sigma=1.8, shape=(48, 56)):
     rows, cols = np.indices(shape)
-    return 5.0 + 300.0 * np.exp(
-        -0.5 * (((rows - cy) / sigma) ** 2 + ((cols - cx) / sigma) ** 2)
-    )
+    return 5.0 + 300.0 * np.exp(-0.5 * (((rows - cy) / sigma) ** 2 + ((cols - cx) / sigma) ** 2))
 
 
 #: Views are kept for the life of the module rather than let go between tests.

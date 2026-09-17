@@ -18,7 +18,6 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-
 from chimol.ui.menus.objects import (
     ACTION_MENU,
     COLOR_MENU,
@@ -30,51 +29,117 @@ from chimol.ui.menus.objects import (
 
 # Top-level labels, in order, with "" for a separator. From PyMOL 3.x.
 _PYMOL_ACTION = [
-    "zoom", "orient", "center", "origin", "",
-    "drag matrix", "reset matrix", "",
-    "drag coordinates", "clean", "",
-    "preset", "find", "align", "generate", "",
-    "assign sec. struc.", "",
-    "rename object", "copy to object", "group", "delete object", "",
-    "hydrogens", "remove waters", "",
-    "state", "masking", "sequence", "movement", "compute",
+    "zoom",
+    "orient",
+    "center",
+    "origin",
+    "",
+    "drag matrix",
+    "reset matrix",
+    "",
+    "drag coordinates",
+    "clean",
+    "",
+    "preset",
+    "find",
+    "align",
+    "generate",
+    "",
+    "assign sec. struc.",
+    "",
+    "rename object",
+    "copy to object",
+    "group",
+    "delete object",
+    "",
+    "hydrogens",
+    "remove waters",
+    "",
+    "state",
+    "masking",
+    "sequence",
+    "movement",
+    "compute",
 ]
 
 _PYMOL_REP_ACTION = [
-    "wire", "  lines", "  nonbonded", "",
-    "licorice", "  sticks", "  nb_spheres", "",
-    "ribbon", "cartoon", "",
-    "label", "cell", "",
-    "dots", "spheres", "",
-    "mesh", "surface", "flag ignore",
+    "wire",
+    "  lines",
+    "  nonbonded",
+    "",
+    "licorice",
+    "  sticks",
+    "  nb_spheres",
+    "",
+    "ribbon",
+    "cartoon",
+    "",
+    "label",
+    "cell",
+    "",
+    "dots",
+    "spheres",
+    "",
+    "mesh",
+    "surface",
+    "flag ignore",
 ]
 
 _PYMOL_SHOW = (
-    ["as", ""] + _PYMOL_REP_ACTION
+    ["as", ""]
+    + _PYMOL_REP_ACTION
     + ["", "organic", "main chain", "side chain", "disulfides", "", "valence"]
 )
 
 _PYMOL_HIDE = (
-    ["everything", ""] + _PYMOL_REP_ACTION
-    + ["", "main chain", "side chain", "waters", "", "hydrogens", "",
-       "unselected", "", "valence"]
+    ["everything", ""]
+    + _PYMOL_REP_ACTION
+    + ["", "main chain", "side chain", "waters", "", "hydrogens", "", "unselected", "", "valence"]
 )
 
 _PYMOL_LABEL = [
-    "clear", "",
-    "residues", "residues (oneletter)", "chains", "segments", "",
-    "atom name", "element symbol", "residue name", "one letter code",
-    "residue identifier", "chain identifier", "segment identifier", "",
-    "b-factor", "occupancy", "vdw radius", "",
-    "other properties", "",
+    "clear",
+    "",
+    "residues",
+    "residues (oneletter)",
+    "chains",
+    "segments",
+    "",
+    "atom name",
+    "element symbol",
+    "residue name",
+    "one letter code",
+    "residue identifier",
+    "chain identifier",
+    "segment identifier",
+    "",
+    "b-factor",
+    "occupancy",
+    "vdw radius",
+    "",
+    "other properties",
+    "",
     "atom identifiers",
 ]
 
 _PYMOL_COLOR = [
-    "by element", "by chain", "by ss  ", "by rep", "spectrum", "",
-    "auto", "",
-    "reds", "greens", "blues", "yellows", "magentas", "cyans", "oranges",
-    "tints", "grays",
+    "by element",
+    "by chain",
+    "by ss  ",
+    "by rep",
+    "spectrum",
+    "",
+    "auto",
+    "",
+    "reds",
+    "greens",
+    "blues",
+    "yellows",
+    "magentas",
+    "cyans",
+    "oranges",
+    "tints",
+    "grays",
 ]
 
 _REFERENCE = {
@@ -85,8 +150,7 @@ _REFERENCE = {
     "C": _PYMOL_COLOR,
 }
 
-_MENUS = {"A": ACTION_MENU, "S": SHOW_MENU, "H": HIDE_MENU,
-          "L": LABEL_MENU, "C": COLOR_MENU}
+_MENUS = {"A": ACTION_MENU, "S": SHOW_MENU, "H": HIDE_MENU, "L": LABEL_MENU, "C": COLOR_MENU}
 
 
 def _labels(entries) -> list[str]:
@@ -110,16 +174,15 @@ def test_labels_and_order_match_pymol(key):
     """
     labels = _labels(_MENUS[key])
     reference = _REFERENCE[key]
-    assert labels[:len(reference)] == reference, (
+    assert labels[: len(reference)] == reference, (
         "PyMOL's entries must come first, in PyMOL's order"
     )
-    extra = [label for label in labels[len(reference):] if label]
+    extra = [label for label in labels[len(reference) :] if label]
     if extra:
         # Additions are allowed, but they must be genuinely new rather than a
         # PyMOL entry accidentally duplicated further down.
         assert not (set(extra) & set(reference)), (
-            f"{key} menu repeats PyMOL entries after the end: "
-            f"{sorted(set(extra) & set(reference))}"
+            f"{key} menu repeats PyMOL entries after the end: {sorted(set(extra) & set(reference))}"
         )
 
 
@@ -155,8 +218,13 @@ def _pymol_top_level(builder_name: str) -> list[str]:
 
 @pytest.mark.parametrize(
     "key, builder",
-    [("A", "mol_action"), ("S", "mol_show"), ("H", "mol_hide"),
-     ("L", "mol_labels"), ("C", "mol_color")],
+    [
+        ("A", "mol_action"),
+        ("S", "mol_show"),
+        ("H", "mol_hide"),
+        ("L", "mol_labels"),
+        ("C", "mol_color"),
+    ],
 )
 def test_the_transcription_still_matches_a_live_pymol(key, builder):
     """Guards the reference lists above from drifting away from PyMOL itself."""
@@ -177,6 +245,7 @@ def test_the_transcription_still_matches_a_live_pymol(key, builder):
 # --------------------------------------------------------------------------- #
 def test_supported_entries_carry_a_command_and_a_target():
     """Every enabled entry must name its target, or it acts on the wrong thing."""
+
     def walk(entries):
         for entry in entries:
             if entry.is_separator:
@@ -200,6 +269,7 @@ def test_supported_entries_carry_a_command_and_a_target():
 
 def test_unsupported_entries_explain_themselves():
     """A greyed-out entry with no reason is just a broken menu."""
+
     def walk(entries):
         for entry in entries:
             if entry.is_separator:
@@ -279,7 +349,11 @@ def window(qapp, tmp_path):
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     # Named like a PDB entry on purpose: the digit-led name is the bug.
     pdb = tmp_path / "1abc.pdb"
@@ -327,9 +401,7 @@ def test_a_menu_entry_reaches_the_viewer(window):
     gui = window.viewer.gui
     row = next(r for r in gui.rows if r.name == "1abc")
 
-    entry = next(
-        e for e in HIDE_MENU if e.label == "spheres" and e.command
-    )
+    entry = next(e for e in HIDE_MENU if e.label == "spheres" and e.command)
     before = int(np.count_nonzero(window.viewer._ball_mask))
     assert before > 0
     # What a click does: the panel binds `{sele}` to the row and runs it.
@@ -365,9 +437,9 @@ def test_a_rows_menu_targets_that_row(window, monkeypatch):
 
     gui = window.viewer.gui
     molecules = [
-        r for r in gui.rows
-        if not r.is_header and not r.is_selection and not r.is_measurement
-        and not r.is_group
+        r
+        for r in gui.rows
+        if not r.is_header and not r.is_selection and not r.is_measurement and not r.is_group
     ]
     assert {r.name for r in molecules} >= {"1abc", "2xyz"}
 

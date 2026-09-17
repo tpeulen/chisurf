@@ -67,8 +67,13 @@ class MicroTimeViewModel(ImagingMapViewModel):
             return None
         chs = list(win.get("chs", [0]) or [0])
         mtr = list(win.get("micro_time_ranges") or [])
-        sig = (self.filename, self.display_window, tuple(chs),
-               tuple(tuple(r) for r in mtr), int(self.n_ph_min))
+        sig = (
+            self.filename,
+            self.display_window,
+            tuple(chs),
+            tuple(tuple(r) for r in mtr),
+            int(self.n_ph_min),
+        )
 
         def build():
             from chisurf.core.fluorescence.imaging import cached_clsm, get_tttr
@@ -77,9 +82,12 @@ class MicroTimeViewModel(ImagingMapViewModel):
             clsm = cached_clsm(self.filename, chs, mtr)
             micro_res = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
             res_ns = micro_res * 1e9 if micro_res > 0.0 else -1.0
-            return np.nan_to_num(np.asarray(
-                clsm.get_mean_micro_time(tttr, res_ns, int(self.n_ph_min), False), dtype=float,
-            ))
+            return np.nan_to_num(
+                np.asarray(
+                    clsm.get_mean_micro_time(tttr, res_ns, int(self.n_ph_min), False),
+                    dtype=float,
+                )
+            )
 
         return self._cached_stack("mean_micro_time_frames", sig, build)
 

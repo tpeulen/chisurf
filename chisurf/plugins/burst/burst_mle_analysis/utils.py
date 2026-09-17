@@ -1,12 +1,12 @@
 import collections.abc
 import json
-import typing
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Dict, Callable, Iterator
 
 import numpy as np
 import tttrlib
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtWidgets
+
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
 
@@ -16,11 +16,8 @@ class LazyTTTRDict(collections.abc.MutableMapping):
     A dict-like that maps a key (file‐stem) → TTTR object,
     but only calls tttrlib.TTTR(path, file_type) on first access.
     """
-    def __init__(
-        self,
-        path_map: Dict[str, Path],
-        file_type_getter: Callable[[], str]
-    ):
+
+    def __init__(self, path_map: dict[str, Path], file_type_getter: Callable[[], str]):
         """
         Parameters
         ----------
@@ -30,7 +27,7 @@ class LazyTTTRDict(collections.abc.MutableMapping):
             A zero‐argument callable returning current TTTR file‐type (e.g. self.tttr_file_type).
         """
         self._paths = path_map
-        self._cache: Dict[str, tttrlib.TTTR] = {}
+        self._cache: dict[str, tttrlib.TTTR] = {}
         self._file_type_getter = file_type_getter
         self._warning_shown = False
 
@@ -47,10 +44,12 @@ class LazyTTTRDict(collections.abc.MutableMapping):
                         dialogs.warning(
                             None,
                             "Warning",
-                            "The file type getter is None. This may cause issues with TTTR file loading."
+                            "The file type getter is None. This may cause issues with TTTR file loading.",
                         )
                     else:
-                        print("Warning: The file type getter is None. This may cause issues with TTTR file loading.")
+                        print(
+                            "Warning: The file type getter is None. This may cause issues with TTTR file loading."
+                        )
                     self._warning_shown = True
                 # Use a default file type or try to infer it
                 file_type = tttrlib.inferTTTRFileType(str(path))
@@ -103,7 +102,7 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def expand_mle_folder(folder: Path) -> typing.List[str]:
+def expand_mle_folder(folder: Path) -> list[str]:
     """Expand a dropped folder to its analysable files (burstwise-aware).
 
     A folder that contains burst (``*.bur``) index files resolves to those;
@@ -124,7 +123,7 @@ def expand_mle_folder(folder: Path) -> typing.List[str]:
     bursts = sorted(folder.glob("**/*.bur"))
     if bursts:
         return [str(f) for f in bursts]
-    out: typing.List[str] = []
+    out: list[str] = []
     for ext in tttrlib.get_supported_filetypes():
         out.extend(str(f) for f in folder.glob(f"**/*{ext}"))
     return sorted(out)
@@ -142,7 +141,7 @@ class _MleFileListModel:
     """
 
     def __init__(self):
-        self.files: typing.List[str] = []
+        self.files: list[str] = []
 
     def update(self) -> None:
         # No-op: the widget owns display; nothing else observes the model.
@@ -180,7 +179,8 @@ def FileListWidget(parent=None, file_added_callback=None, process_on_drop=False)
 
     model = _MleFileListModel()
     widget = PathListWidget(
-        model, "files",
+        model,
+        "files",
         checkable=True,
         add_folders=True,
         folder_expander=expand_mle_folder,
@@ -189,9 +189,7 @@ def FileListWidget(parent=None, file_added_callback=None, process_on_drop=False)
     widget._mle_model = model
     if parent is not None:
         widget.setParent(parent)
-    widget.setSizePolicy(
-        QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
-    )
+    widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
     # Drop-only callback: the inner list commits the drop first (its pathsDropped
     # slot is connected in PathListWidget.__init__), then this fires — so the
     # callback sees the freshly-committed file set. Programmatic add_file/clear
@@ -216,6 +214,7 @@ def FileListWidget(parent=None, file_added_callback=None, process_on_drop=False)
 
 # --- Hyperparameter optimization utilities ---
 
+
 def _relative_error(target: float, value: float, eps: float = 1e-12) -> float:
     try:
         t = float(target)
@@ -223,10 +222,12 @@ def _relative_error(target: float, value: float, eps: float = 1e-12) -> float:
         scale = max(abs(t), eps)
         return abs(v - t) / scale
     except Exception:
-        return float('inf')
+        return float("inf")
 
 
-def evaluate_hpo_configuration(wizard, cfg: dict, weights: dict | None = None) -> tuple[float, dict]:
+def evaluate_hpo_configuration(
+    wizard, cfg: dict, weights: dict | None = None
+) -> tuple[float, dict]:
     """
     Apply a hyperparameter configuration to the wizard, run a fit, and compute a loss.
 
@@ -248,11 +249,7 @@ def evaluate_hpo_configuration(wizard, cfg: dict, weights: dict | None = None) -
         info : dict with recovered results and the twoIstar used.
     """
     # Default weights: only tau and rho are targets; gamma/r0 are not targeted
-    w = {
-        'tau': 1.0,
-        'rho': 1.0,
-        'twoIstar': 0.01
-    }
+    w = {"tau": 1.0, "rho": 1.0, "twoIstar": 0.01}
     if isinstance(weights, dict):
         # Accept custom weights but ignore unknown keys in loss computation
         w.update(weights)
@@ -262,48 +259,48 @@ def evaluate_hpo_configuration(wizard, cfg: dict, weights: dict | None = None) -
         widgets = []
         try:
             widgets = [
-                getattr(wizard, 'doubleSpinBox_irf_threshold_vv', None),
-                getattr(wizard, 'doubleSpinBox_irf_threshold_vh', None),
-                getattr(wizard, 'doubleSpinBox_shift', None),
-                getattr(wizard, 'doubleSpinBox_shift_sp', None),
-                getattr(wizard, 'doubleSpinBox_shift_ss', None),
-                getattr(wizard, 'spinBox_irf_start', None),
-                getattr(wizard, 'spinBox_irf_stop', None),
-                getattr(wizard, 'spinBox_micro_time_start', None),
-                getattr(wizard, 'spinBox_micro_time_stop', None),
+                getattr(wizard, "doubleSpinBox_irf_threshold_vv", None),
+                getattr(wizard, "doubleSpinBox_irf_threshold_vh", None),
+                getattr(wizard, "doubleSpinBox_shift", None),
+                getattr(wizard, "doubleSpinBox_shift_sp", None),
+                getattr(wizard, "doubleSpinBox_shift_ss", None),
+                getattr(wizard, "spinBox_irf_start", None),
+                getattr(wizard, "spinBox_irf_stop", None),
+                getattr(wizard, "spinBox_micro_time_start", None),
+                getattr(wizard, "spinBox_micro_time_stop", None),
             ]
             widgets = [w for w in widgets if w is not None]
-            if hasattr(wizard, 'block_widget_signals'):
+            if hasattr(wizard, "block_widget_signals"):
                 wizard.block_widget_signals(widgets)
 
             # Apply micro-time range first if present
-            mt_start = cfg.get('micro_time_start', None)
-            mt_stop = cfg.get('micro_time_stop', None)
+            mt_start = cfg.get("micro_time_start", None)
+            mt_stop = cfg.get("micro_time_stop", None)
             if mt_start is not None and mt_stop is not None and int(mt_stop) > int(mt_start):
                 wizard.micro_time_range = (int(mt_start), int(mt_stop))
 
             # Apply IRF parameters
-            if 'irf_threshold_vv' in cfg:
-                wizard.irf_threshold_vv = float(cfg['irf_threshold_vv'])
-            if 'irf_threshold_vh' in cfg:
-                wizard.irf_threshold_vh = float(cfg['irf_threshold_vh'])
-            if 'shift' in cfg:
-                wizard.shift = int(round(cfg['shift']))
-            if 'shift_sp' in cfg:
-                wizard.shift_sp = float(cfg['shift_sp'])
-            if 'shift_ss' in cfg:
-                wizard.shift_ss = float(cfg['shift_ss'])
-            if 'irf_start' in cfg:
-                wizard.irf_start = int(cfg['irf_start'])
-            if 'irf_stop' in cfg:
-                wizard.irf_stop = int(cfg['irf_stop'])
+            if "irf_threshold_vv" in cfg:
+                wizard.irf_threshold_vv = float(cfg["irf_threshold_vv"])
+            if "irf_threshold_vh" in cfg:
+                wizard.irf_threshold_vh = float(cfg["irf_threshold_vh"])
+            if "shift" in cfg:
+                wizard.shift = int(round(cfg["shift"]))
+            if "shift_sp" in cfg:
+                wizard.shift_sp = float(cfg["shift_sp"])
+            if "shift_ss" in cfg:
+                wizard.shift_ss = float(cfg["shift_ss"])
+            if "irf_start" in cfg:
+                wizard.irf_start = int(cfg["irf_start"])
+            if "irf_stop" in cfg:
+                wizard.irf_stop = int(cfg["irf_stop"])
         finally:
-            if hasattr(wizard, 'unblock_widget_signals') and widgets:
+            if hasattr(wizard, "unblock_widget_signals") and widgets:
                 wizard.unblock_widget_signals(widgets)
 
         # Refresh decay if window changed
-        mt_start = cfg.get('micro_time_start', None)
-        mt_stop = cfg.get('micro_time_stop', None)
+        mt_start = cfg.get("micro_time_start", None)
+        mt_stop = cfg.get("micro_time_stop", None)
         if mt_start is not None and mt_stop is not None and int(mt_stop) > int(mt_start):
             wizard.update_decay_of_detector()
 
@@ -321,35 +318,31 @@ def evaluate_hpo_configuration(wizard, cfg: dict, weights: dict | None = None) -
         gamma_res = float(wizard.gamma_result)
         r0_res = float(wizard.r0_result)
         rho_res = float(wizard.rho_result)
-        twoistar = float(getattr(wizard, 'twoIstar_result', 0.0))
+        twoistar = float(getattr(wizard, "twoIstar_result", 0.0))
 
         # Construct loss (twoIstar assumed lower is better). Only tau and rho are targeted.
         loss = (
-            w['tau'] * _relative_error(target_tau, tau_res) +
-            w['rho'] * _relative_error(target_rho, rho_res) +
-            w['twoIstar'] * max(twoistar, 0.0)
+            w["tau"] * _relative_error(target_tau, tau_res)
+            + w["rho"] * _relative_error(target_rho, rho_res)
+            + w["twoIstar"] * max(twoistar, 0.0)
         )
         if not np.isfinite(loss):
-            loss = float('inf')
+            loss = float("inf")
 
         info = {
-            'tau_res': tau_res,
-            'gamma_res': gamma_res,
-            'r0_res': r0_res,
-            'rho_res': rho_res,
-            'twoIstar': twoistar
+            "tau_res": tau_res,
+            "gamma_res": gamma_res,
+            "r0_res": r0_res,
+            "rho_res": rho_res,
+            "twoIstar": twoistar,
         }
         return loss, info
     except Exception:
-        return float('inf'), {'error': True}
+        return float("inf"), {"error": True}
 
 
 def random_search_hpo(
-    wizard,
-    bounds: dict,
-    n_iter: int = 30,
-    seed: int | None = None,
-    weights: dict | None = None
+    wizard, bounds: dict, n_iter: int = 30, seed: int | None = None, weights: dict | None = None
 ) -> tuple[dict, float, dict]:
     """
     Basic random search over provided bounds to find hyperparameters minimizing the loss.
@@ -378,7 +371,7 @@ def random_search_hpo(
     def sample_one() -> dict:
         cfg = {}
         for k, (lo, hi, typ) in bounds.items():
-            if typ == 'int':
+            if typ == "int":
                 lo_i = int(np.ceil(lo))
                 hi_i = int(np.floor(hi))
                 if hi_i <= lo_i:
@@ -389,16 +382,16 @@ def random_search_hpo(
                 val = float(rng.uniform(float(lo), float(hi)))
             cfg[k] = val
         # enforce start < stop if both present
-        if 'micro_time_start' in cfg and 'micro_time_stop' in cfg:
-            if int(cfg['micro_time_stop']) <= int(cfg['micro_time_start']):
-                cfg['micro_time_stop'] = int(cfg['micro_time_start']) + 1
-        if 'irf_start' in cfg and 'irf_stop' in cfg:
-            if int(cfg['irf_stop']) <= int(cfg['irf_start']):
-                cfg['irf_stop'] = int(cfg['irf_start']) + 1
+        if "micro_time_start" in cfg and "micro_time_stop" in cfg:
+            if int(cfg["micro_time_stop"]) <= int(cfg["micro_time_start"]):
+                cfg["micro_time_stop"] = int(cfg["micro_time_start"]) + 1
+        if "irf_start" in cfg and "irf_stop" in cfg:
+            if int(cfg["irf_stop"]) <= int(cfg["irf_start"]):
+                cfg["irf_stop"] = int(cfg["irf_start"]) + 1
         return cfg
 
     best_cfg: dict | None = None
-    best_loss: float = float('inf')
+    best_loss: float = float("inf")
     best_info: dict = {}
 
     for _ in range(max(1, int(n_iter))):
@@ -411,27 +404,25 @@ def random_search_hpo(
 
     if best_cfg is None:
         best_cfg = {}
-        best_loss = float('inf')
-        best_info = {'error': True}
+        best_loss = float("inf")
+        best_info = {"error": True}
     return best_cfg, best_loss, best_info
 
 
-
 def optimize_hyperparameters(
-        wizard,
-        n_iter: int = 40,
-        bounds: dict | None = None,
-        seed: int | None = None,
-        weights: dict | None = None
+    wizard,
+    n_iter: int = 40,
+    bounds: dict | None = None,
+    seed: int | None = None,
+    weights: dict | None = None,
 ):
     """
     Externalized HPO routine formerly implemented inside the wizard.
     Keeps identical behavior (progress dialog, cancel handling, best config applied).
     """
-
     # Ensure we have data to fit
     wizard.update_decay_of_detector()
-    if getattr(wizard, 'decay_of_current_file', None) is None:
+    if getattr(wizard, "decay_of_current_file", None) is None:
         dialogs.warning(wizard, "HPO", "No data/decay available. Load bursts and try again.")
         return
 
@@ -443,15 +434,15 @@ def optimize_hyperparameters(
     shift_cur = int(wizard.shift)
 
     default_bounds = {
-        'irf_threshold_vv': (0.0, 0.5, 'float'),
-        'irf_threshold_vh': (0.0, 0.5, 'float'),
-        'shift': (shift_cur - 5, shift_cur + 5, 'int'),
-        'shift_sp': (-0.9, 0.9, 'float'),
-        'shift_ss': (-0.9, 0.9, 'float'),
-        'irf_start': (max(0, irf_start_cur - 10), min(n_bins - 2, irf_start_cur + 10), 'int'),
-        'irf_stop': (max(1, irf_stop_cur - 10), min(n_bins - 1, irf_stop_cur + 10), 'int'),
-        'micro_time_start': (max(0, mt_start - 10), max(0, min(n_bins - 2, mt_start + 10)), 'int'),
-        'micro_time_stop': (max(1, mt_stop - 10), min(n_bins - 1, mt_stop + 10), 'int'),
+        "irf_threshold_vv": (0.0, 0.5, "float"),
+        "irf_threshold_vh": (0.0, 0.5, "float"),
+        "shift": (shift_cur - 5, shift_cur + 5, "int"),
+        "shift_sp": (-0.9, 0.9, "float"),
+        "shift_ss": (-0.9, 0.9, "float"),
+        "irf_start": (max(0, irf_start_cur - 10), min(n_bins - 2, irf_start_cur + 10), "int"),
+        "irf_stop": (max(1, irf_stop_cur - 10), min(n_bins - 1, irf_stop_cur + 10), "int"),
+        "micro_time_start": (max(0, mt_start - 10), max(0, min(n_bins - 2, mt_start + 10)), "int"),
+        "micro_time_stop": (max(1, mt_stop - 10), min(n_bins - 1, mt_stop + 10), "int"),
     }
     use_bounds = {**default_bounds, **(bounds or {})}
 
@@ -461,7 +452,7 @@ def optimize_hyperparameters(
         hi = float(hi)
         if hi < lo:
             lo, hi = hi, lo
-        if typ == 'int':
+        if typ == "int":
             lo = int(np.floor(lo))
             hi = int(np.ceil(hi))
             if hi < lo:
@@ -490,8 +481,14 @@ def optimize_hyperparameters(
     # the user's original settings nor the best found -- so snapshot first and
     # put it back unless a winner is applied.
     _TUNABLES = (
-        "micro_time_range", "irf_threshold_vv", "irf_threshold_vh",
-        "shift", "shift_sp", "shift_ss", "irf_start", "irf_stop",
+        "micro_time_range",
+        "irf_threshold_vv",
+        "irf_threshold_vh",
+        "shift",
+        "shift_sp",
+        "shift_ss",
+        "irf_start",
+        "irf_stop",
     )
     entry_state = {}
     for _name in _TUNABLES:
@@ -527,23 +524,23 @@ def optimize_hyperparameters(
         c = dict(cfg)
         # ints
         for k, (lo, hi, typ) in use_bounds.items():
-            if typ == 'int':
+            if typ == "int":
                 c[k] = int(round(c[k]))
             else:
                 c[k] = float(c[k])
             # clamp
             c[k] = max(lo, min(hi, c[k]))
         # order constraints
-        if 'micro_time_start' in c and 'micro_time_stop' in c:
-            if int(c['micro_time_stop']) <= int(c['micro_time_start']):
-                c['micro_time_stop'] = int(c['micro_time_start']) + 1
-                lo, hi, _ = use_bounds['micro_time_stop']
-                c['micro_time_stop'] = int(max(lo, min(hi, c['micro_time_stop'])))
-        if 'irf_start' in c and 'irf_stop' in c:
-            if int(c['irf_stop']) <= int(c['irf_start']):
-                c['irf_stop'] = int(c['irf_start']) + 1
-                lo, hi, _ = use_bounds['irf_stop']
-                c['irf_stop'] = int(max(lo, min(hi, c['irf_stop'])))
+        if "micro_time_start" in c and "micro_time_stop" in c:
+            if int(c["micro_time_stop"]) <= int(c["micro_time_start"]):
+                c["micro_time_stop"] = int(c["micro_time_start"]) + 1
+                lo, hi, _ = use_bounds["micro_time_stop"]
+                c["micro_time_stop"] = int(max(lo, min(hi, c["micro_time_stop"])))
+        if "irf_start" in c and "irf_stop" in c:
+            if int(c["irf_stop"]) <= int(c["irf_start"]):
+                c["irf_stop"] = int(c["irf_start"]) + 1
+                lo, hi, _ = use_bounds["irf_stop"]
+                c["irf_stop"] = int(max(lo, min(hi, c["irf_stop"])))
         return c
 
     def cfg_to_key(c: dict) -> tuple:
@@ -551,7 +548,7 @@ def optimize_hyperparameters(
         out = []
         for k in keys:
             v = c[k]
-            if use_bounds[k][2] == 'int':
+            if use_bounds[k][2] == "int":
                 out.append(int(v))
             else:
                 # round floats to avoid tiny duplicates from refinement
@@ -580,7 +577,7 @@ def optimize_hyperparameters(
         cfg = {}
         for j, k in enumerate(keys):
             lo, hi, typ = use_bounds[k]
-            if typ == 'int':
+            if typ == "int":
                 # inclusive integer mapping
                 lo_i, hi_i = int(lo), int(hi)
                 if hi_i <= lo_i:
@@ -595,7 +592,7 @@ def optimize_hyperparameters(
 
     # ---- Evaluation with cache + progress ----
     eval_cache: dict[tuple, tuple[float, dict]] = {}
-    best_cfg, best_loss, best_info = None, float('inf'), {}
+    best_cfg, best_loss, best_info = None, float("inf"), {}
 
     eval_count = 0
 
@@ -629,7 +626,7 @@ def optimize_hyperparameters(
         # Initial step sizes: 1/4 of range for floats, 1 for ints
         step = {}
         for k, (lo, hi, typ) in use_bounds.items():
-            if typ == 'int':
+            if typ == "int":
                 step[k] = 1
             else:
                 step[k] = 0.25 * (hi - lo)
@@ -645,7 +642,7 @@ def optimize_hyperparameters(
                     break
                 lo, hi, typ = use_bounds[k]
                 s = step[k]
-                if typ == 'int':
+                if typ == "int":
                     candidates = [best_cfg[k] - s, best_cfg[k] + s]
                 else:
                     candidates = [best_cfg[k] - s, best_cfg[k] + s]
@@ -676,7 +673,7 @@ def optimize_hyperparameters(
                         # `evaluate` has already recorded it as the new best
                 # shrink step if we didn't move on this dim
                 if not improved:
-                    if typ == 'int':
+                    if typ == "int":
                         step[k] = max(1, step[k] // 2) if isinstance(step[k], int) else 1
                         # If already 1, keep it; ints are coarse
                     else:
@@ -688,8 +685,12 @@ def optimize_hyperparameters(
                 no_improve_rounds += 1
                 # global shrink
                 for k in keys:
-                    if use_bounds[k][2] == 'int':
-                        step[k] = max(1, int(step[k] // 2)) if isinstance(step[k], (int, np.integer)) else 1
+                    if use_bounds[k][2] == "int":
+                        step[k] = (
+                            max(1, int(step[k] // 2))
+                            if isinstance(step[k], (int, np.integer))
+                            else 1
+                        )
                     else:
                         step[k] *= 0.5
             if no_improve_rounds >= max_no_improve_rounds:
@@ -710,23 +711,26 @@ def optimize_hyperparameters(
 
     # ---- Apply best configuration to UI and refit once ----
     try:
-        if 'micro_time_start' in best_cfg and 'micro_time_stop' in best_cfg:
-            wizard.micro_time_range = (int(best_cfg['micro_time_start']), int(best_cfg['micro_time_stop']))
+        if "micro_time_start" in best_cfg and "micro_time_stop" in best_cfg:
+            wizard.micro_time_range = (
+                int(best_cfg["micro_time_start"]),
+                int(best_cfg["micro_time_stop"]),
+            )
             wizard.update_decay_of_detector()
-        if 'irf_threshold_vv' in best_cfg:
-            wizard.irf_threshold_vv = float(best_cfg['irf_threshold_vv'])
-        if 'irf_threshold_vh' in best_cfg:
-            wizard.irf_threshold_vh = float(best_cfg['irf_threshold_vh'])
-        if 'shift' in best_cfg:
-            wizard.shift = int(round(best_cfg['shift']))
-        if 'shift_sp' in best_cfg:
-            wizard.shift_sp = float(best_cfg['shift_sp'])
-        if 'shift_ss' in best_cfg:
-            wizard.shift_ss = float(best_cfg['shift_ss'])
-        if 'irf_start' in best_cfg:
-            wizard.irf_start = int(best_cfg['irf_start'])
-        if 'irf_stop' in best_cfg:
-            wizard.irf_stop = int(best_cfg['irf_stop'])
+        if "irf_threshold_vv" in best_cfg:
+            wizard.irf_threshold_vv = float(best_cfg["irf_threshold_vv"])
+        if "irf_threshold_vh" in best_cfg:
+            wizard.irf_threshold_vh = float(best_cfg["irf_threshold_vh"])
+        if "shift" in best_cfg:
+            wizard.shift = int(round(best_cfg["shift"]))
+        if "shift_sp" in best_cfg:
+            wizard.shift_sp = float(best_cfg["shift_sp"])
+        if "shift_ss" in best_cfg:
+            wizard.shift_ss = float(best_cfg["shift_ss"])
+        if "irf_start" in best_cfg:
+            wizard.irf_start = int(best_cfg["irf_start"])
+        if "irf_stop" in best_cfg:
+            wizard.irf_stop = int(best_cfg["irf_stop"])
     finally:
         wizard._fit = None
         wizard.update_fit()

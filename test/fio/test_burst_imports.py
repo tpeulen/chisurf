@@ -18,8 +18,14 @@ import chisurf.core.fluorescence.burst as burstmod
 
 _SPC_FIXTURE = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "chisurf" / "plugins" / "burst" / "burst_selection" / "tests"
-    / "data" / "bh_spc132_sm_dna" / "m000.spc"
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "m000.spc"
 )
 
 

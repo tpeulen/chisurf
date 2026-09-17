@@ -1,29 +1,27 @@
 from __future__ import annotations
 
-from pathlib import Path
-import pytest
-import numpy as np
-import os
-import sqlite3
 import json
+import sqlite3
 
-from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
-from chisurf.plugins.vv_vh_g_factor.backend.services import archive_g_factor_handler
+import numpy as np
 from mmfdb.repository import MFDatabase
 from mmfdb.schema import schema
+
+from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
+
 
 def test_archive_g_factor_provenance(tmp_path, monkeypatch):
     """Verify archive_g_factor registers the reference decay and parented calibration."""
     db_path = tmp_path / "test_mmfdb.sqlite"
     object_root = tmp_path / "objects"
     object_root.mkdir()
-    
+
     # Create and migrate empty test DB
     conn = sqlite3.connect(str(db_path))
     schema.migrate_schema(conn)
     conn.commit()
     conn.close()
-    
+
     # Monkeypatch the database resolver
     monkeypatch.setattr(
         "mmfdb.store.database_resolver.resolve_database_path",
@@ -33,14 +31,14 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         "mmfdb.store.database_resolver.object_store_root",
         lambda: object_root,
     )
-    
+
     # Create dummy VV/VH file (parallel and perpendicular decays)
     vv_vh_file = tmp_path / "dummy_vv_vh.txt"
     vv = np.exp(-np.linspace(0, 10, 1000) / 2.0)
     vh = vv / 1.5
     merged = np.concatenate([vv, vh])
     np.savetxt(vv_vh_file, merged)
-    
+
     # Run service archival via client
     params = {
         "g_factor": 1.5,
@@ -53,20 +51,20 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         "l2": 0.0308,
         "micro_time_resolution": 0.032,
     }
-    
+
     client = VvVhGFactorClient()
     res = client.archive_g_factor(
         file_path=str(vv_vh_file),
         parameters=params,
         active_user="test_user",
     )
-    
+
     assert res.get("ok") is True
     calib_id = res.get("calibration_id")
     ref_decay_id = res.get("reference_decay_id")
     assert calib_id != ""
     assert ref_decay_id != ""
-    
+
     # Verify DB records
     with MFDatabase(str(db_path)) as db:
         # Check raw measurement
@@ -76,16 +74,17 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         meta = json.loads(artifact["metadata_json"])
         assert meta["filename"] == "dummy_vv_vh.txt"
         assert meta["micro_time_resolution"] == 0.032
-        
+
         # Check calibration
         calib = db.get_artifact(calib_id)
         assert calib is not None
         assert calib["artifact_kind"] == "calibration_data"
         calib_meta = json.loads(calib["metadata_json"])
         assert calib_meta["calibration_type"] == "g_factor"
-        
+
         # Check calibration payload
         from mmfdb.provenance.result_registry import read_result
+
         payload = read_result(db, calib_id)
         assert payload is not None
         assert np.allclose(payload.data["g_factor"], 1.5)
@@ -94,7 +93,11 @@ def test_archive_g_factor_provenance(tmp_path, monkeypatch):
         # r_inf is automatically computed
         assert "r_inf" in payload.data
         r_inf_val = payload.data["r_inf"][0]
-        assert np.isnan(r_inf_val) or isinstance(r_inf_val, float) or isinstance(r_inf_val, np.floating)
+        assert (
+            np.isnan(r_inf_val)
+            or isinstance(r_inf_val, float)
+            or isinstance(r_inf_val, np.floating)
+        )
 
         # The whole point: the calibration must be parented to the reference
         # decay via a derived_from provenance edge.
@@ -132,17 +135,17 @@ def test_archive_g_factor_graceful_failure(tmp_path, monkeypatch):
         "mmfdb.store.database_resolver.resolve_database_path",
         lambda: tmp_path / "nonexistent_dir" / "db.sqlite",
     )
-    
+
     vv_vh_file = tmp_path / "dummy_vv_vh.txt"
     np.savetxt(vv_vh_file, np.ones(100))
-    
+
     client = VvVhGFactorClient()
     res = client.archive_g_factor(
         file_path=str(vv_vh_file),
         parameters={"g_factor": 1.5, "region_min": 10, "region_max": 20},
         active_user="test_user",
     )
-    
+
     assert res.get("ok") is False
     assert res.get("calibration_id") == ""
     assert "unavailable" in res.get("error", "").lower()

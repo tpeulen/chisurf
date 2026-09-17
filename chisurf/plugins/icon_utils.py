@@ -1,4 +1,5 @@
 """Enhanced icon utilities for ChiSurf plugins supporting image, emoji, and text icons."""
+
 import pathlib
 import platform
 import types
@@ -17,7 +18,7 @@ def create_text_icon(
     text_color: str = "#000000",
     font_size: int | None = None,
     font_family: str = "Arial",
-    shape: str = "square"  # "square", "circle", "rounded"
+    shape: str = "square",  # "square", "circle", "rounded"
 ) -> QIcon:
     """
     Create an icon from text or emoji.
@@ -130,7 +131,7 @@ def create_emoji_icon(emoji: str, size: int = 64, bg_color: str | None = None) -
         text_color="#000000",  # Emojis are typically colored already
         font_size=int(size * 0.65),
         font_family=_emoji_font_family(),
-        shape="square"
+        shape="square",
     )
 
 
@@ -184,6 +185,7 @@ def resolve_plugin_icon(
             if 0x1F000 <= cp <= 0x1FFFF:
                 return True
             return False
+
         if any(_is_emoji_codepoint(char) for char in icon_value):
             return create_emoji_icon(icon_value, size=size)
 
@@ -250,6 +252,7 @@ def create_plugin_icon_with_fallback(
                     _resolved.append(None)
             return _resolved[0]
     else:
+
         def _get_module():
             return module
 
@@ -271,14 +274,14 @@ def create_plugin_icon_with_fallback(
 
     # 3. Check for module-level icon attribute
     module = _get_module()
-    if hasattr(module, 'icon'):
+    if hasattr(module, "icon"):
         try:
             return resolve_plugin_icon(module.icon, size=size, base_dir=package_dir)
         except Exception:
             pass
 
     # 4. Create fallback from plugin name
-    plugin_name = getattr(module, 'name', None)
+    plugin_name = getattr(module, "name", None)
     if plugin_name:
         return create_text_icon(_plugin_icon_label(plugin_name), size=size, bg_color="#e0e0e0")
 
@@ -328,31 +331,19 @@ def _plugin_icon_label(plugin_name: str) -> str:
 def create_analysis_icon(text: str, size: int = 64) -> QIcon:
     """Create an analysis-themed icon with blue background."""
     return create_text_icon(
-        text=text,
-        size=size,
-        bg_color="#2196F3",
-        text_color="white",
-        shape="rounded"
+        text=text, size=size, bg_color="#2196F3", text_color="white", shape="rounded"
     )
 
 
 def create_tool_icon(text: str, size: int = 64) -> QIcon:
     """Create a tool-themed icon with green background."""
     return create_text_icon(
-        text=text,
-        size=size,
-        bg_color="#4CAF50",
-        text_color="white",
-        shape="square"
+        text=text, size=size, bg_color="#4CAF50", text_color="white", shape="square"
     )
 
 
 def create_dev_icon(text: str, size: int = 64) -> QIcon:
     """Create a development-themed icon with orange background."""
     return create_text_icon(
-        text=text,
-        size=size,
-        bg_color="#FF9800",
-        text_color="white",
-        shape="rounded"
+        text=text, size=size, bg_color="#FF9800", text_color="white", shape="rounded"
     )

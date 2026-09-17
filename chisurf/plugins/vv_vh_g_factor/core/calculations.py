@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,9 @@ def shift_interp_on_axis(t: np.ndarray, y: np.ndarray, shift: float) -> np.ndarr
     return out
 
 
-def compute_rt(par: np.ndarray, perp: np.ndarray, g_factor: float, l1: float = 0.0, l2: float = 0.0) -> np.ndarray:
+def compute_rt(
+    par: np.ndarray, perp: np.ndarray, g_factor: float, l1: float = 0.0, l2: float = 0.0
+) -> np.ndarray:
     """Compute the anisotropy r(t) for given parallel/perpendicular traces.
 
     Parameters
@@ -63,8 +66,10 @@ def compute_rt(par: np.ndarray, perp: np.ndarray, g_factor: float, l1: float = 0
     s = np.asarray(perp, dtype=float)
     num = g * p - s
     den = (1.0 - 3.0 * float(l2)) * g * p + (2.0 - 3.0 * float(l1)) * s
-    with np.errstate(divide='ignore', invalid='ignore'):
-        return np.divide(num, den, out=np.full_like(num, np.nan), where=(np.isfinite(den) & (den != 0.0)))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.divide(
+            num, den, out=np.full_like(num, np.nan), where=(np.isfinite(den) & (den != 0.0))
+        )
 
 
 def compute_background_levels(
@@ -141,7 +146,11 @@ def calculate_g_factor_core(
     """
     logger.debug(
         "calculate_g_factor_core: region_bounds=%s, decay_shift=%f, use_bg=%s, bg_region_bounds=%s, flip=%s",
-        region_bounds, decay_shift, use_bg, bg_region_bounds, flip
+        region_bounds,
+        decay_shift,
+        use_bg,
+        bg_region_bounds,
+        flip,
     )
     if flip:
         parallel_data, perpendicular_data = perpendicular_data, parallel_data
@@ -193,14 +202,18 @@ def calculate_g_factor_core(
             perpendicular_region = np.resize(perpendicular_region, len(parallel_region))
 
     # Calculate uncorrected g-factor
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         g_factors_uncorrected = np.divide(
             parallel_region,
             perpendicular_region,
             out=np.full_like(parallel_region, np.nan, dtype=float),
-            where=(np.isfinite(perpendicular_region) & (perpendicular_region != 0))
+            where=(np.isfinite(perpendicular_region) & (perpendicular_region != 0)),
         )
-    valid_indices_uncorrected = ~np.isnan(g_factors_uncorrected) & ~np.isinf(g_factors_uncorrected) & (g_factors_uncorrected > 0)
+    valid_indices_uncorrected = (
+        ~np.isnan(g_factors_uncorrected)
+        & ~np.isinf(g_factors_uncorrected)
+        & (g_factors_uncorrected > 0)
+    )
     valid_g_factors_uncorrected = g_factors_uncorrected[valid_indices_uncorrected]
 
     if len(valid_g_factors_uncorrected) > 0:
@@ -212,7 +225,10 @@ def calculate_g_factor_core(
 
     logger.debug(
         "calculate_g_factor_core: uncorrected G-factor=%s (stddev=%s, valid points=%d/%d)",
-        g_factor_uncorrected, g_factor_stddev_uncorrected, len(valid_g_factors_uncorrected), len(parallel_region)
+        g_factor_uncorrected,
+        g_factor_stddev_uncorrected,
+        len(valid_g_factors_uncorrected),
+        len(parallel_region),
     )
 
     bg_parallel_avg = 0.0
@@ -243,17 +259,26 @@ def calculate_g_factor_core(
         bg_perpendicular_avg = float(np.mean(bg_perpendicular)) if bg_perpendicular.size else 0.0
 
         parallel_region_corrected = np.maximum(parallel_region - bg_parallel_avg, 0.0)
-        perpendicular_region_corrected = np.maximum(perpendicular_region - bg_perpendicular_avg, 0.0)
+        perpendicular_region_corrected = np.maximum(
+            perpendicular_region - bg_perpendicular_avg, 0.0
+        )
 
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             g_factors_corrected = np.divide(
                 parallel_region_corrected,
                 perpendicular_region_corrected,
                 out=np.full_like(parallel_region_corrected, np.nan, dtype=float),
-                where=(np.isfinite(perpendicular_region_corrected) & (perpendicular_region_corrected != 0))
+                where=(
+                    np.isfinite(perpendicular_region_corrected)
+                    & (perpendicular_region_corrected != 0)
+                ),
             )
 
-        valid_indices_corrected = ~np.isnan(g_factors_corrected) & ~np.isinf(g_factors_corrected) & (g_factors_corrected > 0)
+        valid_indices_corrected = (
+            ~np.isnan(g_factors_corrected)
+            & ~np.isinf(g_factors_corrected)
+            & (g_factors_corrected > 0)
+        )
         valid_g_factors_corrected = g_factors_corrected[valid_indices_corrected]
 
         if len(valid_g_factors_corrected) > 0:
@@ -262,11 +287,15 @@ def calculate_g_factor_core(
 
         logger.debug(
             "calculate_g_factor_core: bg_parallel_avg=%f, bg_perpendicular_avg=%f",
-            bg_parallel_avg, bg_perpendicular_avg
+            bg_parallel_avg,
+            bg_perpendicular_avg,
         )
         logger.debug(
             "calculate_g_factor_core: corrected G-factor=%s (stddev=%s, valid points=%d/%d)",
-            g_factor_corrected, g_factor_stddev_corrected, len(valid_g_factors_corrected), len(parallel_region)
+            g_factor_corrected,
+            g_factor_stddev_corrected,
+            len(valid_g_factors_corrected),
+            len(parallel_region),
         )
 
     # Determine final g-factor
@@ -341,7 +370,9 @@ def estimate_lifetime_first_moment(time_axis: np.ndarray, intensity: np.ndarray)
     return float(np.sum((tv - t0) * iv) / w)
 
 
-def solve_linked_l_from_steady_state(sp: float, ss: float, g_factor: float, r_target: float) -> float:
+def solve_linked_l_from_steady_state(
+    sp: float, ss: float, g_factor: float, r_target: float
+) -> float:
     """Solve for the linked l1=l2 mixing parameter from a target steady-state r.
 
     Parameters

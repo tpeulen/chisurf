@@ -29,7 +29,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
 from chimol.analysis.smoothing import (
     END_MODES,
     smooth_frames,
@@ -37,7 +36,11 @@ from chimol.analysis.smoothing import (
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "solvated_fragment.pdb"
 )
 
 
@@ -69,9 +72,9 @@ def test_a_linear_ramp_survives_away_from_the_ends():
     This is what catches an off-by-one in the window, which noise would hide.
     """
     n = 21
-    frames = (
-        np.linspace(0.0, 10.0, n)[:, None, None] * np.array([1.0, 0.0, 0.0])
-    ).repeat(2, axis=1)
+    frames = (np.linspace(0.0, 10.0, n)[:, None, None] * np.array([1.0, 0.0, 0.0])).repeat(
+        2, axis=1
+    )
     out = smooth_frames(frames, window=5, ends=2)
     interior = slice(5, n - 5)
     assert np.allclose(out[interior], frames[interior], atol=1e-9)
@@ -191,7 +194,7 @@ def test_the_cutoff_stops_the_window_at_a_jump():
     n = 11
     frames = np.zeros((n, 1, 3))
     frames[:, 0, 0] = np.arange(n) * 0.01
-    frames[6:, 0, 0] += 50.0          # a jump
+    frames[6:, 0, 0] += 50.0  # a jump
 
     without = smooth_frames(frames, window=5, ends=1, cutoff=-1)
     with_cutoff = smooth_frames(frames, window=5, ends=1, cutoff=1.0)
@@ -384,7 +387,7 @@ def test_smooth_through_the_command_reduces_roughness(session):
 
 def test_smooth_reports_a_bad_window_through_the_command(session):
     viewer, do, errors = session
-    n_atoms = len(viewer._atoms)
+    len(viewer._atoms)
     base = np.asarray(viewer._atoms["xyz"], dtype=float)
     viewer.set_frames(np.repeat(base[None, :, :], 8, axis=0))
     do("smooth all, 1, 99")

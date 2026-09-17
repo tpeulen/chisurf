@@ -73,8 +73,13 @@ def test_inprocess_client_exposes_bridge_methods():
     reply = client.call("list_methods", {})
     result = reply.get("result", reply) if isinstance(reply, dict) else reply
     methods = set(result.get("methods", result) if isinstance(result, dict) else result)
-    for m in ("pda.from_bursts", "burst_fcs.correlate_file", "burst_mle.workflow.prepare",
-              "fit.create", "dataset.load"):
+    for m in (
+        "pda.from_bursts",
+        "burst_fcs.correlate_file",
+        "burst_mle.workflow.prepare",
+        "fit.create",
+        "dataset.load",
+    ):
         assert m in methods, f"{m} not exposed to ndX"
 
 

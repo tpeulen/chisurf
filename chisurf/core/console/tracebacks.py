@@ -75,11 +75,11 @@ def _trim(frames: list[traceback.FrameSummary]) -> list[traceback.FrameSummary]:
 
 
 def _format_frame(
-        frame: traceback.FrameSummary,
-        *,
-        mode: str,
-        colour: bool,
-        last: bool,
+    frame: traceback.FrameSummary,
+    *,
+    mode: str,
+    colour: bool,
+    last: bool,
 ) -> list[str]:
     """Render one traceback frame.
 
@@ -99,6 +99,7 @@ def _format_frame(
     list of str
         Lines, without trailing newlines.
     """
+
     def paint(text: str, code: str) -> str:
         return f"{code}{text}{_RESET}" if colour else text
 
@@ -108,7 +109,7 @@ def _format_frame(
     lines = [f"{marker} {where} in {name}"]
 
     if mode == "plain":
-        lines = [f"  File \"{frame.filename}\", line {frame.lineno}, in {frame.name}"]
+        lines = [f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}']
 
     source = frame.line
     if source:
@@ -131,12 +132,12 @@ def _format_frame(
 
 
 def format_exception(
-        exc: BaseException,
-        *,
-        mode: str = "context",
-        colour: bool = True,
-        chain: bool = True,
-        limit: int | None = None,
+    exc: BaseException,
+    *,
+    mode: str = "context",
+    colour: bool = True,
+    chain: bool = True,
+    limit: int | None = None,
 ) -> str:
     """Return a formatted traceback for *exc*.
 
@@ -163,7 +164,10 @@ def format_exception(
     capture_locals = mode == "verbose"
     try:
         summary = traceback.TracebackException.from_exception(
-            exc, limit=limit, capture_locals=capture_locals, lookup_lines=True,
+            exc,
+            limit=limit,
+            capture_locals=capture_locals,
+            lookup_lines=True,
         )
     except Exception:
         # capture_locals runs repr() on every local, and a broken __repr__ must
@@ -174,12 +178,12 @@ def format_exception(
 
 
 def _render(
-        summary: traceback.TracebackException,
-        *,
-        mode: str,
-        colour: bool,
-        chain: bool,
-        seen: set[int] | None = None,
+    summary: traceback.TracebackException,
+    *,
+    mode: str,
+    colour: bool,
+    chain: bool,
+    seen: set[int] | None = None,
 ) -> typing.Iterator[str]:
     """Yield the lines for *summary*, recursing through the exception chain.
 
@@ -205,7 +209,9 @@ def _render(
             yield from _render(summary.__cause__, mode=mode, colour=colour, chain=chain, seen=seen)
             yield "\nThe above exception was the direct cause of the following exception:\n\n"
         elif summary.__context__ is not None and not summary.__suppress_context__:
-            yield from _render(summary.__context__, mode=mode, colour=colour, chain=chain, seen=seen)
+            yield from _render(
+                summary.__context__, mode=mode, colour=colour, chain=chain, seen=seen
+            )
             yield "\nDuring handling of the above exception, another exception occurred:\n\n"
 
     frames = _trim(list(summary.stack))
@@ -214,7 +220,10 @@ def _render(
         yield (f"{_FAINT}{header}{_RESET}\n" if colour else f"{header}\n")
         for index, frame in enumerate(frames):
             lines = _format_frame(
-                frame, mode=mode, colour=colour, last=index == len(frames) - 1,
+                frame,
+                mode=mode,
+                colour=colour,
+                last=index == len(frames) - 1,
             )
             yield "\n".join(lines) + "\n"
 
@@ -235,6 +244,7 @@ def format_syntax_error(exc: SyntaxError, *, colour: bool = True) -> str:
     str
         Ends with a newline.
     """
+
     def paint(text: str, code: str) -> str:
         return f"{code}{text}{_RESET}" if colour else text
 

@@ -8,6 +8,7 @@ only ever be deleted, and only by knowing the name it was given.
 They are listed under `sele` — below the molecules, because they are derived
 from them, which is where PyMOL keeps its non-molecule rows too.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -18,15 +19,18 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
 @pytest.fixture(scope="module")
 def session():
-    from qtpy import QtWidgets
-
     from chimol.hosts.qt.window import MolViewPluginWindow
+    from qtpy import QtWidgets
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")

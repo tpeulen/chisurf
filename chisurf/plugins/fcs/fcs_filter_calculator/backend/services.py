@@ -7,22 +7,22 @@ under the ``fcs_filter.*`` namespace.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
 from .. import api
 
 
-def _ok(result: Any) -> Dict[str, Any]:
+def _ok(result: Any) -> dict[str, Any]:
     return {"ok": True, "result": result}
 
 
-def _err(exc: Exception) -> Dict[str, Any]:
+def _err(exc: Exception) -> dict[str, Any]:
     return {"ok": False, "error": str(exc)}
 
 
-def compute_handler(total_decay, species_decays, metadata=None) -> Dict[str, Any]:
+def compute_handler(total_decay, species_decays, metadata=None) -> dict[str, Any]:
     try:
         total = np.asarray(total_decay, dtype=float)
         species = [np.asarray(s, dtype=float) for s in species_decays]
@@ -32,7 +32,7 @@ def compute_handler(total_decay, species_decays, metadata=None) -> Dict[str, Any
         return _err(exc)
 
 
-def compute_from_files_handler(total_path: str, species_paths: List[str]) -> Dict[str, Any]:
+def compute_from_files_handler(total_path: str, species_paths: list[str]) -> dict[str, Any]:
     try:
         res = api.compute_filters_from_files(total_path, species_paths)
         return _ok(res.to_dict())
@@ -41,9 +41,12 @@ def compute_from_files_handler(total_path: str, species_paths: List[str]) -> Dic
 
 
 def compute_mfd_handler(
-    total_decay_par, total_decay_perp, species_decays_par, species_decays_perp,
+    total_decay_par,
+    total_decay_perp,
+    species_decays_par,
+    species_decays_perp,
     metadata=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         res = api.compute_filters_mfd(
             np.asarray(total_decay_par, dtype=float),
@@ -58,12 +61,17 @@ def compute_mfd_handler(
 
 
 def compute_mfd_from_files_handler(
-    total_par_path: str, total_perp_path: str,
-    species_par_paths: List[str], species_perp_paths: List[str],
-) -> Dict[str, Any]:
+    total_par_path: str,
+    total_perp_path: str,
+    species_par_paths: list[str],
+    species_perp_paths: list[str],
+) -> dict[str, Any]:
     try:
         res = api.compute_filters_mfd_from_files(
-            total_par_path, total_perp_path, species_par_paths, species_perp_paths,
+            total_par_path,
+            total_perp_path,
+            species_par_paths,
+            species_perp_paths,
         )
         return _ok(res.to_dict())
     except Exception as exc:

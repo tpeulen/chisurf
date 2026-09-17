@@ -110,9 +110,7 @@ def optimize_synthetic_scatter_pattern(
 
     def objective(parameters: np.ndarray) -> float:
         design = np.column_stack(fixed + [candidate(parameters)])
-        fitted = lsq_linear(
-            design / scale[:, None], total / scale, bounds=(0.0, np.inf)
-        )
+        fitted = lsq_linear(design / scale[:, None], total / scale, bounds=(0.0, np.inf))
         residual = (total - design @ fitted.x) / scale
         return float(residual @ residual)
 
@@ -264,8 +262,15 @@ def synthetic_decay(
             # here comes from the IRF position, not ``start_bin``.
             convolved = np.zeros(n, dtype=float)
             convolve_lifetime_spectrum_periodic(
-                convolved, spectrum, response, 0, n, n,
-                float(period), float(bin_width), n,
+                convolved,
+                spectrum,
+                response,
+                0,
+                n,
+                n,
+                float(period),
+                float(bin_width),
+                n,
             )
             decay = convolved
         else:
@@ -611,8 +616,7 @@ def synthetic_component_decay(
         period=(float(period) if period else None),
         time_shift=float(component.get("time_shift_ns", 0.0)),
         photon_count=(
-            float(component["photon_count"])
-            if component.get("shot_noise", False) else None
+            float(component["photon_count"]) if component.get("shot_noise", False) else None
         ),
         seed=(int(component.get("noise_seed", 0)) if component.get("shot_noise", False) else None),
     )

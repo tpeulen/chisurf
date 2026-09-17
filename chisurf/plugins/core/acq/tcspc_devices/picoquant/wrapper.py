@@ -6,18 +6,15 @@ It includes classes and functions for initializing and controlling
 PicoQuant devices, as well as for acquiring data from them.
 """
 
+import ctypes as ct
+import json
 import os
 import sys
-import json
-import ctypes as ct
+
 import numpy as np
-from qtpy.QtCore import QObject
-import time
-import typing
-import traceback
-from abc import ABC, abstractmethod
 
 from ..abc import TCSPCDeviceABC
+
 
 # Copy constants from snAPI
 class MeasMode:
@@ -25,9 +22,11 @@ class MeasMode:
     T3 = 1
     Histogram = 2
 
+
 class RefSource:
     Internal = 0
     External = 1
+
 
 class LogLevel:
     Api = 0
@@ -36,13 +35,16 @@ class LogLevel:
     DataFile = 3
     Manipulators = 4
 
+
 class TrigMode:
     Edge = 0
     CFD = 1
 
+
 class Color:
     Red = "\033[91m"
     End = "\033[0m"
+
 
 # Duplicate snAPI DLL wrapper
 class DuplicatedSnAPI:
@@ -53,7 +55,7 @@ class DuplicatedSnAPI:
 
     # Load the DLL - look for it in the same directory as this wrapper
     dll = None
-    dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'snAPI64.dll'))
+    dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "snAPI64.dll"))
     if is_win and os.path.exists(dll_path):
         try:
             dll = ct.WinDLL(dll_path)
@@ -74,16 +76,30 @@ class DuplicatedSnAPI:
             dll.getDeviceConfig.restype = ct.c_int
             dll.stopMeasure.argtypes = []
             dll.stopMeasure.restype = None
-            dll.rawMeasure.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.POINTER(ct.c_uint32), ct.POINTER(ct.c_uint64), ct.c_uint64, ct.POINTER(ct.c_bool)]
+            dll.rawMeasure.argtypes = [
+                ct.c_int,
+                ct.c_int,
+                ct.c_int,
+                ct.POINTER(ct.c_uint32),
+                ct.POINTER(ct.c_uint64),
+                ct.c_uint64,
+                ct.POINTER(ct.c_bool),
+            ]
             dll.rawMeasure.restype = ct.c_int
-            dll.rawStartBlock.argtypes = [ct.c_int, ct.c_int, ct.POINTER(ct.c_uint32), ct.c_uint64, ct.POINTER(ct.c_bool)]
+            dll.rawStartBlock.argtypes = [
+                ct.c_int,
+                ct.c_int,
+                ct.POINTER(ct.c_uint32),
+                ct.c_uint64,
+                ct.POINTER(ct.c_bool),
+            ]
             dll.rawStartBlock.restype = ct.c_int
             dll.rawGetBlock.argtypes = [ct.POINTER(ct.c_uint32), ct.POINTER(ct.c_uint64)]
             dll.rawGetBlock.restype = ct.c_int
-        except:
+        except Exception:
             dll = None
     elif is_linux:
-        dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libsnAPI4Linux.so'))
+        dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "libsnAPI4Linux.so"))
         if os.path.exists(dll_path):
             try:
                 ct.cdll.LoadLibrary(dll_path)
@@ -105,28 +121,42 @@ class DuplicatedSnAPI:
                 dll.getDeviceConfig.restype = ct.c_int
                 dll.stopMeasure.argtypes = []
                 dll.stopMeasure.restype = None
-                dll.rawMeasure.argtypes = [ct.c_int, ct.c_int, ct.c_int, ct.POINTER(ct.c_uint32), ct.POINTER(ct.c_uint64), ct.c_uint64, ct.POINTER(ct.c_bool)]
+                dll.rawMeasure.argtypes = [
+                    ct.c_int,
+                    ct.c_int,
+                    ct.c_int,
+                    ct.POINTER(ct.c_uint32),
+                    ct.POINTER(ct.c_uint64),
+                    ct.c_uint64,
+                    ct.POINTER(ct.c_bool),
+                ]
                 dll.rawMeasure.restype = ct.c_int
-                dll.rawStartBlock.argtypes = [ct.c_int, ct.c_int, ct.POINTER(ct.c_uint32), ct.c_uint64, ct.POINTER(ct.c_bool)]
+                dll.rawStartBlock.argtypes = [
+                    ct.c_int,
+                    ct.c_int,
+                    ct.POINTER(ct.c_uint32),
+                    ct.c_uint64,
+                    ct.POINTER(ct.c_bool),
+                ]
                 dll.rawStartBlock.restype = ct.c_int
                 dll.rawGetBlock.argtypes = [ct.POINTER(ct.c_uint32), ct.POINTER(ct.c_uint64)]
                 dll.rawGetBlock.restype = ct.c_int
-            except:
+            except Exception:
                 dll = None
 
     deviceIDs = []
     deviceConfig = ()
     measDescription = ()
 
-    def __init__(self, systemIni: typing.Union[str, None] = None):
+    def __init__(self, systemIni: str | None = None):
         if not self.dll:
             raise RuntimeError("snAPI DLL not found")
 
         if systemIni is None:
             if self.is_win:
-                systemIni = "\\".join(__file__.split("\\")[:-1])+'\\system.ini'
+                systemIni = "\\".join(__file__.split("\\")[:-1]) + "\\system.ini"
             if self.is_linux:
-                systemIni = "/".join(__file__.split("/")[:-1])+'/system_linux.ini'
+                systemIni = "/".join(__file__.split("/")[:-1]) + "/system_linux.ini"
 
         self.raw = DuplicatedRaw(self)
         self.initAPI(systemIni)
@@ -134,22 +164,22 @@ class DuplicatedSnAPI:
     def __del__(self):
         self.exitAPI()
 
-    def logPrint(self,*args, **kwargs):
+    def logPrint(self, *args, **kwargs):
         """Log print function."""
         summarized_args = " ".join(map(str, args))
         summarized_kwargs = " ".join([f"{key}={value}" for key, value in kwargs.items()])
-        if hasattr(self.dll, 'logExternal'):
+        if hasattr(self.dll, "logExternal"):
             self.dll.logExternal.argtypes = [ct.c_char_p]
             if summarized_args and summarized_kwargs:
-                self.dll.logExternal(f"{summarized_args} {summarized_kwargs}".encode('utf-8'))
+                self.dll.logExternal(f"{summarized_args} {summarized_kwargs}".encode())
             elif summarized_args:
-                self.dll.logExternal(f"{summarized_args}".encode('utf-8'))
+                self.dll.logExternal(f"{summarized_args}".encode())
             elif summarized_kwargs:
-                self.dll.logExternal(f"{summarized_kwargs}".encode('utf-8'))
+                self.dll.logExternal(f"{summarized_kwargs}".encode())
 
-    def initAPI(self, systemIni: typing.Optional[str] = "system.ini"):
+    def initAPI(self, systemIni: str | None = "system.ini"):
         """Initialize the API."""
-        SBuf = systemIni.encode('utf-8')
+        SBuf = systemIni.encode("utf-8")
         ok = self.dll.initAPI(SBuf)
         self.getDeviceConfig()
         return ok
@@ -163,7 +193,7 @@ class DuplicatedSnAPI:
         """Get device IDs."""
         devIDs = (ct.c_char * 8192)()
         found = self.dll.getDeviceIDs(devIDs)
-        devIDs = str(devIDs, "utf-8").replace('\x00','')
+        devIDs = str(devIDs, "utf-8").replace("\x00", "")
         if found:
             self.deviceIDs = json.loads(devIDs)
             return True
@@ -173,37 +203,39 @@ class DuplicatedSnAPI:
 
     def getDevice(self, *dev):
         """Get a device."""
-        if not dev: # no device parameter
+        if not dev:  # no device parameter
             name = ""
-            SBuf = name.ljust(8, '\0').encode('utf-8')
+            SBuf = name.ljust(8, "\0").encode("utf-8")
             if self.dll.getDevice(SBuf):
                 return self.getDeviceConfig()
             else:
                 self.logPrint(f"{Color.Red}Device not found!")
 
-        elif (len(dev) == 1 and isinstance(dev[0], str)): # name of device
+        elif len(dev) == 1 and isinstance(dev[0], str):  # name of device
             name = dev[0]
-            SBuf = name.ljust(8, '\0').encode('utf-8')
+            SBuf = name.ljust(8, "\0").encode("utf-8")
             if len(self.deviceIDs) == 0:
                 self.getDeviceIDs()
 
             if self.dll.getDevice(SBuf):
                 return self.getDeviceConfig()
             else:
-                self.logPrint(Color.Red + "Device \"" +name+ "\" not found!")
+                self.logPrint(Color.Red + 'Device "' + name + '" not found!')
 
-        elif len(dev) == 1 and isinstance(dev[0], int): # index of device
+        elif len(dev) == 1 and isinstance(dev[0], int):  # index of device
             if len(self.deviceIDs) == 0:
                 self.getDeviceIDs()
 
-            if(dev[0] >= 0 and dev[0] < len(self.deviceIDs)) :
+            if dev[0] >= 0 and dev[0] < len(self.deviceIDs):
                 name = self.deviceIDs[dev[0]]
-                if(self.deviceIDs[dev[0]] != ""):
-                    SBuf = self.deviceIDs[dev[0]].encode('utf-8')
+                if self.deviceIDs[dev[0]] != "":
+                    SBuf = self.deviceIDs[dev[0]].encode("utf-8")
                     if self.dll.getDevice(SBuf):
                         return self.getDeviceConfig()
                     else:
-                        self.logPrint(f"{Color.Red}Error getting Device @ index: {dev[0]} \"{name}\"!")
+                        self.logPrint(
+                            f'{Color.Red}Error getting Device @ index: {dev[0]} "{name}"!'
+                        )
                 else:
                     self.logPrint(f"{Color.Red}No device at index: {dev[0]}")
             else:
@@ -213,15 +245,16 @@ class DuplicatedSnAPI:
 
         return False
 
-    def initDevice(self, measMode: typing.Optional[MeasMode] = MeasMode.T2,
-                   refSrc: typing.Optional[RefSource] = RefSource.Internal):
+    def initDevice(
+        self, measMode: MeasMode | None = MeasMode.T2, refSrc: RefSource | None = RefSource.Internal
+    ):
         """Initialize device."""
         if self.dll.initDevice(measMode.value, refSrc.value):
             ok = self.getDeviceConfig()
             return ok
         return False
 
-    def closeDevice(self, allDevices: typing.Optional[bool] = True):
+    def closeDevice(self, allDevices: bool | None = True):
         """Close device."""
         self.dll.closeDevice(allDevices)
 
@@ -229,7 +262,7 @@ class DuplicatedSnAPI:
         """Get device config."""
         conf = (ct.c_char * 65535)()
         ok = self.dll.getDeviceConfig(conf)
-        conf = str(conf, "utf-8").replace('\x00','')
+        conf = str(conf, "utf-8").replace("\x00", "")
         if ok:
             self.deviceConfig = json.loads(conf)
             return True
@@ -242,11 +275,6 @@ class DuplicatedSnAPI:
         self.dll.stopMeasure()
 
 
-class PicoQuantAPIError(Exception):
-    """Exception for PicoQuant API errors."""
-    pass
-
-
 class DuplicatedRaw:
     """Duplicated Raw class from snAPI."""
 
@@ -256,51 +284,77 @@ class DuplicatedRaw:
         self.finished = ct.pointer(ct.c_bool(False))
         self.idx = ct.pointer(ct.c_uint64(0))
 
-    def measure(self, acqTime: typing.Optional[int] = 1000, size: typing.Optional[int] = 134217728,
-                waitFinished: typing.Optional[bool] = True, savePTU: typing.Optional[bool] = False):
+    def measure(
+        self,
+        acqTime: int | None = 1000,
+        size: int | None = 134217728,
+        waitFinished: bool | None = True,
+        savePTU: bool | None = False,
+    ):
         """Measure raw data."""
         self.data = ct.ARRAY(ct.c_uint32, size)()
-        if(self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value):
+        if self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value:
             name = "Histogram"
-            self.parent.logPrint(Color.Red + "measurement is not supported for Raw class in MeasMode:", name)
+            self.parent.logPrint(
+                Color.Red + "measurement is not supported for Raw class in MeasMode:", name
+            )
             return False
         self.parent.dll.rawMeasure.restype = ct.c_bool
-        return self.parent.dll.rawMeasure(acqTime, waitFinished, savePTU, ct.byref(self.data), self.idx, ct.c_uint64(size), self.finished)
+        return self.parent.dll.rawMeasure(
+            acqTime,
+            waitFinished,
+            savePTU,
+            ct.byref(self.data),
+            self.idx,
+            ct.c_uint64(size),
+            self.finished,
+        )
 
-    def startBlock(self, acqTime: int = 1000, size: int = 134217728, savePTU: typing.Optional[bool] = False):
+    def startBlock(self, acqTime: int = 1000, size: int = 134217728, savePTU: bool | None = False):
         """Start block measurement."""
         self.storeData = ct.ARRAY(ct.c_uint32, size)()
         self.data = ct.ARRAY(ct.c_uint32, size)()
-        if(self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value):
+        if self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value:
             name = "Histogram"
-            self.parent.logPrint(Color.Red + "startBlock is not supported for Raw class in MeasMode:", name)
+            self.parent.logPrint(
+                Color.Red + "startBlock is not supported for Raw class in MeasMode:", name
+            )
             return False
         self.parent.dll.rawStartBlock.restype = ct.c_bool
-        return self.parent.dll.rawStartBlock(acqTime, savePTU, ct.byref(self.storeData), ct.c_uint64(size), self.finished)
+        return self.parent.dll.rawStartBlock(
+            acqTime, savePTU, ct.byref(self.storeData), ct.c_uint64(size), self.finished
+        )
 
     def getBlock(self):
         """Get block data."""
         size = ct.pointer(ct.c_uint64(0))
-        if(self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value):
+        if self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value:
             name = "Histogram"
-            self.parent.logPrint(Color.Red + "getBlock is not supported for Raw class in MeasMode:", name)
+            self.parent.logPrint(
+                Color.Red + "getBlock is not supported for Raw class in MeasMode:", name
+            )
             self.idx.contents.value = 0
         else:
             self.parent.dll.rawGetBlock(ct.byref(self.data), size)
             self.idx.contents.value = size.contents.value
         return self.getData()
 
-    def getData(self, numRead: typing.Optional[int] = None):
+    def getData(self, numRead: int | None = None):
         """Get data."""
         if not numRead:
             numRead = self.numRead()
 
-        if(self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value):
+        if self.parent.deviceConfig["MeasMode"] == MeasMode.Histogram.value:
             name = "Histogram"
-            self.parent.logPrint(Color.Red + "getData is not supported for Raw class in MeasMode:", name)
+            self.parent.logPrint(
+                Color.Red + "getData is not supported for Raw class in MeasMode:", name
+            )
             return []
-        return np.lib.stride_tricks.as_strided(self.data, shape=(1, numRead),
-            strides=(ct.sizeof(self.data._type_) * numRead, ct.sizeof(self.data._type_)))[0]
+        return np.lib.stride_tricks.as_strided(
+            self.data,
+            shape=(1, numRead),
+            strides=(ct.sizeof(self.data._type_) * numRead, ct.sizeof(self.data._type_)),
+        )[0]
 
     def numRead(self):
         """Get number of records read."""
@@ -316,7 +370,7 @@ class DuplicatedRaw:
 
     def isSpecial(self, data: int):
         """Check if data record is special."""
-        return ((0x80000000 & data) != 0)
+        return (0x80000000 & data) != 0
 
     def channel(self, data: int):
         """Get channel from data record."""
@@ -325,6 +379,7 @@ class DuplicatedRaw:
 
 class PicoQuantAPIError(Exception):
     """Exception for PicoQuant API errors."""
+
     pass
 
 
@@ -390,31 +445,35 @@ class PicoQuantAPI:
             for i, device_id in enumerate(device_ids):
                 if device_id:  # Non-empty device ID
                     device_info = {
-                        'module_number': i,
-                        'device_id': device_id,
-                        'status': 'available',
-                        'active': i == 0  # Default to first device as active
+                        "module_number": i,
+                        "device_id": device_id,
+                        "status": "available",
+                        "active": i == 0,  # Default to first device as active
                     }
                     devices.append(device_info)
 
             # If no devices found, create a simulated device for testing
             if not devices:
-                devices = [{
-                    'module_number': 0,
-                    'device_id': 'SIMULATED',
-                    'status': 'simulated',
-                    'active': True
-                }]
+                devices = [
+                    {
+                        "module_number": 0,
+                        "device_id": "SIMULATED",
+                        "status": "simulated",
+                        "active": True,
+                    }
+                ]
 
         except Exception as e:
             print(f"Error detecting PicoQuant devices: {e}")
             # Return simulated device for development
-            devices = [{
-                'module_number': 0,
-                'device_id': 'SIMULATED',
-                'status': 'simulated',
-                'active': True
-            }]
+            devices = [
+                {
+                    "module_number": 0,
+                    "device_id": "SIMULATED",
+                    "status": "simulated",
+                    "active": True,
+                }
+            ]
 
         return devices
 
@@ -434,7 +493,7 @@ class PicoQuantAPI:
         Returns:
             list: List of active device indices.
         """
-        return getattr(self, 'active_devices', [0])
+        return getattr(self, "active_devices", [0])
 
     def initialize_device(self, device_index=0, simulation=False):
         """Initialize a specific device.
@@ -457,8 +516,8 @@ class PicoQuantAPI:
                 # Try to get the device
                 devices = self.detect_devices()
                 if device_index < len(devices):
-                    device_id = devices[device_index]['device_id']
-                    if device_id != 'SIMULATED':
+                    device_id = devices[device_index]["device_id"]
+                    if device_id != "SIMULATED":
                         self.sn.getDevice(device_id)
                         self.sn.initDevice(MeasMode.T3)  # Use T3 mode for time-resolved data
                         return True

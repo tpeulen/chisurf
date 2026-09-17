@@ -1,8 +1,10 @@
 from __future__ import annotations
-import chisurf as cs
 
 import threading
-from typing import Any, Callable, Dict, List, Optional, Set
+from collections.abc import Callable
+from typing import Any
+
+import chisurf as cs
 
 
 class Registry:
@@ -14,11 +16,11 @@ class Registry:
 
     def __init__(self):
         self._lock = threading.RLock()
-        self._datasets: Dict[str, Any] = {}
-        self._fits: Dict[str, Any] = {}
-        self._parameters: Dict[str, Any] = {}
-        self._windows: Dict[str, Any] = {}
-        self._hooks: Dict[str, List[Callable[..., None]]] = {
+        self._datasets: dict[str, Any] = {}
+        self._fits: dict[str, Any] = {}
+        self._parameters: dict[str, Any] = {}
+        self._windows: dict[str, Any] = {}
+        self._hooks: dict[str, list[Callable[..., None]]] = {
             "on_dataset_created": [],
             "on_dataset_removed": [],
             "on_fit_created": [],
@@ -45,11 +47,11 @@ class Registry:
                 except Exception:
                     pass
 
-    def get_dataset(self, uid: str) -> Optional[Any]:
+    def get_dataset(self, uid: str) -> Any | None:
         with self._lock:
             return self._datasets.get(uid)
 
-    def list_datasets(self) -> List[str]:
+    def list_datasets(self) -> list[str]:
         with self._lock:
             return list(self._datasets.keys())
 
@@ -71,11 +73,11 @@ class Registry:
                 except Exception:
                     pass
 
-    def get_fit(self, uid: str) -> Optional[Any]:
+    def get_fit(self, uid: str) -> Any | None:
         with self._lock:
             return self._fits.get(uid)
 
-    def list_fits(self) -> List[str]:
+    def list_fits(self) -> list[str]:
         with self._lock:
             return list(self._fits.keys())
 
@@ -97,11 +99,11 @@ class Registry:
                 except Exception:
                     pass
 
-    def get_parameter(self, uid: str) -> Optional[Any]:
+    def get_parameter(self, uid: str) -> Any | None:
         with self._lock:
             return self._parameters.get(uid)
 
-    def list_parameters(self) -> List[str]:
+    def list_parameters(self) -> list[str]:
         with self._lock:
             return list(self._parameters.keys())
 
@@ -113,11 +115,11 @@ class Registry:
         with self._lock:
             self._windows.pop(uid, None)
 
-    def get_window(self, uid: str) -> Optional[Any]:
+    def get_window(self, uid: str) -> Any | None:
         with self._lock:
             return self._windows.get(uid)
 
-    def list_windows(self) -> List[str]:
+    def list_windows(self) -> list[str]:
         with self._lock:
             return list(self._windows.keys())
 
@@ -141,7 +143,7 @@ class Registry:
             self._parameters.clear()
             self._windows.clear()
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         with self._lock:
             return {
                 "datasets": len(self._datasets),
@@ -151,7 +153,7 @@ class Registry:
             }
 
 
-_global_registry: Optional[Registry] = None
+_global_registry: Registry | None = None
 _registry_lock = threading.Lock()
 
 
@@ -204,17 +206,17 @@ def unregister_parameter(uid: str) -> None:
     get_registry().unregister_parameter(uid)
 
 
-def get_dataset(uid: str) -> Optional[Any]:
+def get_dataset(uid: str) -> Any | None:
     """Get a dataset by UID."""
     return get_registry().get_dataset(uid)
 
 
-def get_fit(uid: str) -> Optional[Any]:
+def get_fit(uid: str) -> Any | None:
     """Get a fit by UID."""
     return get_registry().get_fit(uid)
 
 
-def get_parameter(uid: str) -> Optional[Any]:
+def get_parameter(uid: str) -> Any | None:
     """Get a parameter by UID."""
     return get_registry().get_parameter(uid)
 

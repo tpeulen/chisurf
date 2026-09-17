@@ -1,16 +1,13 @@
 from __future__ import annotations
-from chisurf import typing
 
 import numpy as np
-
 import scipy.optimize
 
 import chisurf.core.math.datatools
+from chisurf import typing
 
-def rate_constant_to_lifetime(
-        rate_constant: float,
-        lifetime: float
-):
+
+def rate_constant_to_lifetime(rate_constant: float, lifetime: float):
     """
 
     Parameters
@@ -22,12 +19,10 @@ def rate_constant_to_lifetime(
     -------
 
     """
-    return 1. / (1. / lifetime + rate_constant)
+    return 1.0 / (1.0 / lifetime + rate_constant)
 
 
-
-
-def fretrate_to_distance(fretrate, forster_radius, tau0, kappa2=2. / 3.):
+def fretrate_to_distance(fretrate, forster_radius, tau0, kappa2=2.0 / 3.0):
     """Calculates the distance given a FRET-rate
 
     :param fretrate: FRET-rate
@@ -36,14 +31,14 @@ def fretrate_to_distance(fretrate, forster_radius, tau0, kappa2=2. / 3.):
     :param kappa2: orientation factor
     :return:
     """
-    return forster_radius * (fretrate * tau0/kappa2 * 2./3.)**(-1./6)
+    return forster_radius * (fretrate * tau0 / kappa2 * 2.0 / 3.0) ** (-1.0 / 6)
 
 
 def combine_interleaved_spectra(
-        lifetime_spectra: typing.List[np.ndarray],
-        fractions: typing.List[float] = None,
-        normalize_fractions: bool = True,
-        normalize_spectra: bool = False
+    lifetime_spectra: typing.List[np.ndarray],
+    fractions: typing.List[float] = None,
+    normalize_fractions: bool = True,
+    normalize_spectra: bool = False,
 ) -> np.ndarray:
     """Combines a list of lifetime spectra in a joint spectrum
 
@@ -90,10 +85,7 @@ def combine_interleaved_spectra(
     return np.hstack(re)
 
 
-def fret_induced_donor_decay(
-        fd0: np.ndarray,
-        fda: np.ndarray
-) -> np.ndarray:
+def fret_induced_donor_decay(fd0: np.ndarray, fda: np.ndarray) -> np.ndarray:
     """Calculates the FRET induced donor decay
 
     :param fd0: the fluorescence decay of the donor in the absence of FRET
@@ -104,9 +96,7 @@ def fret_induced_donor_decay(
 
 
 def species_averaged_lifetime(
-        fluorescence,
-        normalize: bool = True,
-        is_lifetime_spectrum: bool = True
+    fluorescence, normalize: bool = True, is_lifetime_spectrum: bool = True
 ) -> float:
     """
     Calculates the species averaged lifetime given a lifetime spectrum
@@ -131,13 +121,12 @@ def species_averaged_lifetime(
         time_axis = fluorescence[0]
         intensity = fluorescence[1]
 
-        dt = (time_axis[1] - time_axis[0])
+        dt = time_axis[1] - time_axis[0]
         imax = np.max(intensity)
         if imax == 0:
             return float("NAN")
         i2 = intensity / imax
         return np.sum(i2) * dt
-
 
 
 def fret_efficiency_from_spectra(fret_lifetime_spectrum, donor_lifetime_spectrum) -> float:
@@ -153,10 +142,7 @@ def fret_efficiency_from_spectra(fret_lifetime_spectrum, donor_lifetime_spectrum
 
 
 def fluorescence_averaged_lifetime(
-        fluorescence,
-        taux: float = None,
-        normalize: bool = True,
-        is_lifetime_spectrum: bool = True
+    fluorescence, taux: float = None, normalize: bool = True, is_lifetime_spectrum: bool = True
 ) -> float:
     """
 
@@ -188,12 +174,8 @@ def fluorescence_averaged_lifetime(
         return np.sum(intensity * time_axis) / isum
 
 
-
 def distance_to_fret_rate_constant(
-        r: np.ndarray,
-        forster_radius: float,
-        tau0: float,
-        kappa2: float = 2./3.
+    r: np.ndarray, forster_radius: float, tau0: float, kappa2: float = 2.0 / 3.0
 ) -> np.ndarray:
     """Compute FRET rate constant for distances
 
@@ -215,14 +197,10 @@ def distance_to_fret_rate_constant(
     FRET rate constants
 
     """
-    return 3. / 2. * kappa2 * 1. / tau0 * (forster_radius / r) ** 6.0
+    return 3.0 / 2.0 * kappa2 * 1.0 / tau0 * (forster_radius / r) ** 6.0
 
 
-def kappa2_to_distance_ratio(
-        k2_amp: np.ndarray,
-        k2_val: np.ndarray,
-        n_bins: int = 32
-) -> tuple:
+def kappa2_to_distance_ratio(k2_amp: np.ndarray, k2_val: np.ndarray, n_bins: int = 32) -> tuple:
     """Transform a κ² distribution to an R_app/R_DA distance-ratio distribution.
 
     Moved to IMP.bff. See chisurf/okf/references/imp-ecosystem.md.
@@ -271,7 +249,7 @@ def kappa2_to_distance_ratio(
     k2_val = np.asarray(k2_val, dtype=np.float64)
     buf = np.asarray(_f(k2_amp, k2_val, n_bins), dtype=np.float64)
     r_ratio = buf[:n_bins]
-    weights = buf[n_bins:2 * n_bins]
+    weights = buf[n_bins : 2 * n_bins]
     k2_mean = float(buf[2 * n_bins])
     return r_ratio, weights, k2_mean
 
@@ -318,15 +296,8 @@ def _fast_convolve_loop(r_da, amp_r_da, r_ratio, weights_ratio, r_edges):
     amplitude = amp_r_da[:, None] * weights_ratio[None, contributing]
 
     index = np.searchsorted(r_edges, shifted) - 1
-    inside = (
-        (shifted >= r_edges[0])
-        & (shifted <= r_edges[-1])
-        & (index >= 0)
-        & (index < n_bins)
-    )
-    return np.bincount(
-        index[inside], weights=amplitude[inside], minlength=n_bins
-    ).astype(float)
+    inside = (shifted >= r_edges[0]) & (shifted <= r_edges[-1]) & (index >= 0) & (index < n_bins)
+    return np.bincount(index[inside], weights=amplitude[inside], minlength=n_bins).astype(float)
 
 
 def convolve_distance_with_k2_ratio(
@@ -335,7 +306,7 @@ def convolve_distance_with_k2_ratio(
     r_ratio: np.ndarray,
     weights_ratio: np.ndarray,
     n_bins: int = 256,
-    use_fast: bool = True
+    use_fast: bool = True,
 ) -> tuple:
     """Convolve a distance distribution with a κ² ratio distribution.
 
@@ -412,10 +383,7 @@ def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float
     return 1.0 / (1.0 + (distance / forster_radius) ** 6)
 
 
-def lifetime_to_fret_efficiency(
-        tau: float,
-        tau0: float
-) -> float:
+def lifetime_to_fret_efficiency(tau: float, tau0: float) -> float:
     """
 
     .. math::
@@ -429,10 +397,7 @@ def lifetime_to_fret_efficiency(
     return 1 - tau / tau0
 
 
-def fret_efficiency_to_distance(
-        fret_efficiency: float,
-        forster_radius: float
-) -> float:
+def fret_efficiency_to_distance(fret_efficiency: float, forster_radius: float) -> float:
     """
     Converts the transfer-efficiency to a distance
 
@@ -447,10 +412,7 @@ def fret_efficiency_to_distance(
     return (1 / fret_efficiency - 1) ** (1.0 / 6.0) * forster_radius
 
 
-def fret_efficiency_to_lifetime(
-        fret_efficiency: float,
-        tau0: float
-) -> float:
+def fret_efficiency_to_lifetime(fret_efficiency: float, tau0: float) -> float:
     """
 
     .. math::
@@ -465,10 +427,10 @@ def fret_efficiency_to_lifetime(
 
 
 def transfer_space(
-        transfer_efficiency_min: float,
-        transfer_efficiency_max: float,
-        n_steps: int,
-        forster_radius: float = 52.0
+    transfer_efficiency_min: float,
+    transfer_efficiency_max: float,
+    n_steps: int,
+    forster_radius: float = 52.0,
 ):
     """
     Generates distances with equally spaced transfer efficiencies
@@ -489,13 +451,13 @@ def transfer_space(
 
 
 def calc_transfer_matrix(
-        times: np.array,
-        rDA_min: float = 1.0,
-        rDA_max: float = 200.0,
-        n_steps: int =200,
-        kappa2: float = 0.667,
-        space: str = 'lin',
-        **kwargs
+    times: np.array,
+    rDA_min: float = 1.0,
+    rDA_max: float = 200.0,
+    n_steps: int = 200,
+    kappa2: float = 0.667,
+    space: str = "lin",
+    **kwargs,
 ):
     """
     Calculates a matrix converting a distance distribution to an E(t)-model_decay
@@ -522,26 +484,24 @@ def calc_transfer_matrix(
     .. plot:: plots/e_transfer_matrix.py
 
     """
-    R0 = kwargs.get('R0', 52.0)
-    tau0 = kwargs.get('tau0', 4.0)
-    r_DA = kwargs.get('r_DA', None)
-    n_donor_bins = kwargs.get('n_donor_bins', 10)
+    R0 = kwargs.get("R0", 52.0)
+    tau0 = kwargs.get("tau0", 4.0)
+    r_DA = kwargs.get("r_DA", None)
+    n_donor_bins = kwargs.get("n_donor_bins", 10)
 
     if r_DA is None:
-        if space == 'lin':
+        if space == "lin":
             r_DA = np.linspace(rDA_min, rDA_max, n_steps)
-        elif space == 'log':
+        elif space == "log":
             lmin = np.log10(rDA_min)
             lmax = np.log10(rDA_max)
             r_DA = np.logspace(lmin, lmax, n_steps)
-        elif space == 'trans':
+        elif space == "trans":
             e_min = distance_to_fret_efficiency(rDA_min, R0)
             e_max = distance_to_fret_efficiency(rDA_max, R0)
             r_DA = transfer_space(e_min, e_max, n_steps, R0)
 
-    rates = distance_to_fret_rate_constant(
-        r_DA, R0, tau0, kappa2
-    )
+    rates = distance_to_fret_rate_constant(r_DA, R0, tau0, kappa2)
     # Use the last bins for D-Only
     rates[-1:-n_donor_bins] = 0.0
     m = np.outer(rates, times)
@@ -550,11 +510,11 @@ def calc_transfer_matrix(
 
 
 def calc_decay_matrix(
-        times: np.array,
-        tau_min: float = 0.01,
-        tau_max: float = 200.0,
-        n_steps: int = 200,
-        space: str = 'lin'
+    times: np.array,
+    tau_min: float = 0.01,
+    tau_max: float = 200.0,
+    n_steps: int = 200,
+    space: str = "lin",
 ):
     """
     Calculates a fluorescence model_decay matrix converting probabilities of lifetimes to a time-resolved
@@ -578,25 +538,19 @@ def calc_decay_matrix(
     >>> p.imshow(m)  # doctest: +SKIP
     >>> p.show()  # doctest: +SKIP
     """
-    if space == 'lin':
+    if space == "lin":
         taus = np.linspace(tau_min, tau_max, n_steps)
-    else:  #elif space == 'log':
+    else:  # elif space == 'log':
         lmin = np.log10(tau_min)
         lmax = np.log10(tau_max)
         taus = np.logspace(lmin, lmax, n_steps)
-    rates = 1. / taus
+    rates = 1.0 / taus
     m = np.outer(rates, times)
     M = np.nan_to_num(np.exp(-m))
     return M, taus
 
 
-def et2pRDA(
-        ts,
-        et,
-        t_matrix=None,
-        r_DA=None,
-        **kwargs
-):
+def et2pRDA(ts, et, t_matrix=None, r_DA=None, **kwargs):
     """Calculates the distance distribution given an E(t) model_decay
     Here the amplitudes of E(t) are passed as well as the time-axis. If no transfer-matrix is provided it will
     be calculated in a range from 5 Ang to 200 Ang assuming a lifetime of 4 ns with a Forster-radius of 52 Ang.
@@ -654,21 +608,21 @@ stack_lifetime_spectra = combine_interleaved_spectra
 
 
 def distribution2rates(
-        distribution,
-        tau0: float,
-        kappa2: float = 0.66667,
-        forster_radius: float = 50.0,
-        remove_negative: bool = False,
-        use_fast: bool = True,
-        k2_transform_cache: tuple = None
+    distribution,
+    tau0: float,
+    kappa2: float = 0.66667,
+    forster_radius: float = 50.0,
+    remove_negative: bool = False,
+    use_fast: bool = True,
+    k2_transform_cache: tuple = None,
 ):
     """
-    gets distribution in form: (1,2,3)
+    Gets distribution in form: (1,2,3)
     0: number of distribution
     1: amplitude
     2: distance
 
-    returns:
+    Returns:
     0: number of dist
     1: amplitude
     2: rate
@@ -679,7 +633,6 @@ def distribution2rates(
     :param forster_radius:
     :param use_fast: Use fast loop-based convolution for static kappa2 distributions (faster for large distributions)
     """
-
     n_dist, n_ampl, n_points = distribution.shape
     rate_dist = np.copy(distribution)
     if remove_negative:
@@ -704,20 +657,22 @@ def distribution2rates(
             if k2_transform_cache is not None:
                 r_ratio, k2_weights, k2_mean = k2_transform_cache
             else:
-                r_ratio, k2_weights, k2_mean = kappa2_to_distance_ratio(k2_amp, k2_val, n_bins=n_k2_bins)
-            
+                r_ratio, k2_weights, k2_mean = kappa2_to_distance_ratio(
+                    k2_amp, k2_val, n_bins=n_k2_bins
+                )
+
             # Use shared convolution function
             r_app, amplitudes = convolve_distance_with_k2_ratio(
                 dist, amp_r, r_ratio, k2_weights, n_bins=512, use_fast=True
             )
-            
+
             # Normalize amplitudes
             if np.sum(amplitudes) > 0:
                 amplitudes = amplitudes / np.sum(amplitudes)
-            
+
             # Convert apparent distances to FRET rates using mean kappa2
             rates = distance_to_fret_rate_constant(r_app, forster_radius, tau0, k2_mean)
-            
+
         else:
             # Original outer product method for small distributions
             rates_2d = k2_val[:, None] * distance_to_fret_rate_constant(
@@ -756,15 +711,15 @@ def distribution2rates(
 
 
 def gaussian2rates(
-        means: typing.List[float],
-        sigmas: typing.List[float],
-        amplitudes: typing.List[float],
-        tau0: float = 4.0,
-        kappa2: float = 0.667,
-        R0: float = 52.0,
-        n_points: int = 64,
-        m_sigma: float = 1.5,
-        interleaved: bool = True
+    means: typing.List[float],
+    sigmas: typing.List[float],
+    amplitudes: typing.List[float],
+    tau0: float = 4.0,
+    kappa2: float = 0.667,
+    R0: float = 52.0,
+    n_points: int = 64,
+    m_sigma: float = 1.5,
+    interleaved: bool = True,
 ):
     """
     Calculate distribution of FRET-rates given a list of normal/Gaussian distributed
@@ -820,15 +775,10 @@ def gaussian2rates(
         g_min = max(1e-9, means[i] - m_sigma * sigmas[i])
         g_max = means[i] + m_sigma * sigmas[i]
         bins = np.linspace(g_min, g_max, n_points)
-        p[i] = np.exp(-(bins - means[i]) ** 2 / (2 * sigmas[i] ** 2))
+        p[i] = np.exp(-((bins - means[i]) ** 2) / (2 * sigmas[i] ** 2))
         p[i] /= np.sum(p[i])
         p[i] *= amplitudes[i]
-        rates[i] = distance_to_fret_rate_constant(
-            bins,
-            R0,
-            tau0,
-            0.66667
-        )
+        rates[i] = distance_to_fret_rate_constant(bins, R0, tau0, 0.66667)
     ls = rates.ravel()
     ps = p.ravel()
 
@@ -838,11 +788,7 @@ def gaussian2rates(
         return np.dstack((ps, ls))[0]
 
 
-def rates2lifetimes_old(
-        rates,
-        donors,
-        x_donly: float = 0.0
-):
+def rates2lifetimes_old(rates, donors, x_donly: float = 0.0):
     """
     Converts an interleaved rate spectrum to an interleaved lifetime spectrum
     given an interleaved donor spectrum and the fraction of donor-only
@@ -852,8 +798,8 @@ def rates2lifetimes_old(
     :param x_donly: float
 
     """
-    n_donors = donors.shape[0]/2
-    n_rates = rates.shape[0]/2
+    n_donors = donors.shape[0] / 2
+    n_rates = rates.shape[0] / 2
 
     pd, ld = donors.reshape((n_donors, 2)).T
     pr, r = rates.reshape((n_rates, 2)).T
@@ -862,7 +808,7 @@ def rates2lifetimes_old(
     ls = np.empty((n_donors, n_rates), dtype=np.float64)
     ps = np.empty_like(ls)
 
-    x_fret = (1.0 - x_donly)
+    x_fret = 1.0 - x_donly
     ## Quench donor ##
     for i in range(n_donors):
         ps[i] = pd[i] * pr * x_fret
@@ -879,9 +825,7 @@ def rates2lifetimes_old(
 
 
 def rates2lifetimes_new(
-        fret_rate_spectrum: np.array,
-        donor_rate_spectrum: np.array,
-        x_donly: float = 0.0
+    fret_rate_spectrum: np.array, donor_rate_spectrum: np.array, x_donly: float = 0.0
 ):
     """Converts an interleaved rate spectrum to an interleaved lifetime spectrum
     given an interleaved donor spectrum and the fraction of donor-only
@@ -891,22 +835,10 @@ def rates2lifetimes_new(
     :param x_donly: float
 
     """
-    rate_spectrum = chisurf.core.math.datatools.ere2(
-        fret_rate_spectrum,
-        donor_rate_spectrum
-    )
-    scaled_fret = chisurf.core.math.datatools.e1tn(
-        rate_spectrum,
-        1. - x_donly
-    )
-    scaled_donor = chisurf.core.math.datatools.e1tn(
-        np.copy(donor_rate_spectrum),
-        x_donly
-    )
-    rs = np.append(
-        scaled_fret,
-        scaled_donor
-    )
+    rate_spectrum = chisurf.core.math.datatools.ere2(fret_rate_spectrum, donor_rate_spectrum)
+    scaled_fret = chisurf.core.math.datatools.e1tn(rate_spectrum, 1.0 - x_donly)
+    scaled_donor = chisurf.core.math.datatools.e1tn(np.copy(donor_rate_spectrum), x_donly)
+    rs = np.append(scaled_fret, scaled_donor)
     return chisurf.core.math.datatools.invert_interleaved(rs)
 
 
@@ -914,9 +846,7 @@ rates2lifetimes = rates2lifetimes_new
 
 
 def calculate_fluorescence_decay(
-        lifetime_spectrum: np.ndarray,
-        time_axis: np.ndarray,
-        normalize: bool = True
+    lifetime_spectrum: np.ndarray, time_axis: np.ndarray, normalize: bool = True
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Converts a interleaved lifetime spectrum into a intensity model_decay
 
@@ -958,12 +888,12 @@ def calculate_fluorescence_decay(
 
 
 def compute_mean_fret(
-        lifetime_spectrum: np.ndarray,
-        lifetime_spectrum_donor_only: np.ndarray,
-        forster_radius: float,
-        fluorescence_lifetime_donor: float,
-        use_longest_donor_lifetime: bool = True,
-        verbose: bool = False
+    lifetime_spectrum: np.ndarray,
+    lifetime_spectrum_donor_only: np.ndarray,
+    forster_radius: float,
+    fluorescence_lifetime_donor: float,
+    use_longest_donor_lifetime: bool = True,
+    verbose: bool = False,
 ) -> typing.Tuple[float, float]:
     """Compute mean FRET efficiency and standard deviation from lifetime spectra
 
@@ -1018,7 +948,7 @@ def compute_mean_fret(
     std_distance = np.sqrt(np.sum(da_amplitudes * (distances - mean_distance) ** 2))
 
     if verbose:
-        print("-- Mean distance: {:.1f}".format(mean_distance))
-        print("-- Std distance: {:.1f}".format(std_distance))
+        print(f"-- Mean distance: {mean_distance:.1f}")
+        print(f"-- Std distance: {std_distance:.1f}")
 
     return mean_distance, std_distance

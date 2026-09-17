@@ -34,6 +34,7 @@ branches that then have to be kept identical by hand.
 This module imports no Qt and no GUI, so a headless REPL can use the same rule
 the widget does.
 """
+
 from __future__ import annotations
 
 import ast

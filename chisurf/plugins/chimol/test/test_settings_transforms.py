@@ -14,7 +14,6 @@ ships -- which here is chimol's translucent surface, not PyMOL's opaque one.
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.core.settings.registry import (
     get_setting,
@@ -33,8 +32,16 @@ def restore_surface():
     every other test file sees.
     """
     section = _DISPLAY_CONFIG.setdefault("surface", {})
-    keys = ("alpha", "two_sided", "grid_spacing", "probe_radius",
-            "best", "normal", "poor", "miserable")
+    keys = (
+        "alpha",
+        "two_sided",
+        "grid_spacing",
+        "probe_radius",
+        "best",
+        "normal",
+        "poor",
+        "miserable",
+    )
     before = {k: section.get(k) for k in keys}
     yield section
     for key, value in before.items():
@@ -145,9 +152,9 @@ def test_every_transforming_spec_round_trips():
             continue
         assert spec.stored is not None and spec.shown is not None, name
         for probe in probes.get(spec.kind, (0.0, 1.0)):
-            assert spec.from_config(spec.to_config(probe)) == pytest.approx(
-                probe
-            ), f"{name} does not round-trip at {probe}"
+            assert spec.from_config(spec.to_config(probe)) == pytest.approx(probe), (
+                f"{name} does not round-trip at {probe}"
+            )
         checked += 1
     assert checked >= 2, "the transforming specs went missing"
 
@@ -158,14 +165,14 @@ def test_every_transforming_spec_round_trips():
 @pytest.mark.parametrize(
     "level, spacing",
     [
-        (4, 0.0625),   # "totally impractical"
+        (4, 0.0625),  # "totally impractical"
         (3, 0.25 / 3.0),
-        (2, 0.125),    # "nearly perfect"
-        (1, 0.25),     # "good"
-        (0, 0.5),      # normal -- PyMOL's default
+        (2, 0.125),  # "nearly perfect"
+        (1, 0.25),  # "good"
+        (0, 0.5),  # normal -- PyMOL's default
         (-1, 0.85),
         (-2, 0.85 * 1.5),
-        (-3, 2.0),     # "miserable"
+        (-3, 2.0),  # "miserable"
     ],
 )
 def test_the_quality_levels_are_pymols(restore_surface, level, spacing):

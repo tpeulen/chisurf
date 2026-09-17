@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Dict
+from typing import Any
 
 from chisurf.core.settings.path_utils import get_path
+
 # Path to the user-level FCS channel-pair configuration
 FCS_CHANNEL_SETUPS_FILE: pathlib.Path = get_path("settings") / "fcs_channel_setups.json"
 FCS_SETUP_TYPE = "fcs_channel_setup"
@@ -22,10 +23,12 @@ FCS_SETUP_PREFS_ID = "fcs_channel_setup_preferences"
 
 _FCS_CONFIG_CACHE = None
 
+
 def _fcs_config():
     global _FCS_CONFIG_CACHE
     if _FCS_CONFIG_CACHE is None:
         from chisurf.core.fio.setup_store import SetupTypeConfig
+
         _FCS_CONFIG_CACHE = SetupTypeConfig(
             setup_type=FCS_SETUP_TYPE,
             id_prefix="fcs_channel_setup",
@@ -40,8 +43,10 @@ def _fcs_config():
 # MMFDB-backed persistence (mirrors the detector setup pattern)
 # ---------------------------------------------------------------------------
 
+
 def _use_mmfdb(file_path: str | None = None) -> bool:
     from chisurf.core.fio.setup_store import use_mmfdb as _use
+
     return _use(file_path, FCS_CHANNEL_SETUPS_FILE)
 
 
@@ -56,6 +61,7 @@ def _save_setup_row(
         save_setup_row as _save_row,
     )
     from chisurf.core.settings import cs_settings as _cs
+
     correlator = data.get("correlator") or {}
     pairs = data.get("pairs") or []
     pair_dict: dict[str, dict] = {}
@@ -68,10 +74,18 @@ def _save_setup_row(
     # carries a top-level "correlator" key (per-pair values are authoritative).
     _n_bins = correlator.get("n_bins") or _cs.get("correlator", {}).get("B")
     _n_casc = correlator.get("n_casc") or _cs.get("correlator", {}).get("number_of_cascades")
-    _make_fine = correlator.get("make_fine") if correlator.get("make_fine") is not None else _cs.get("correlator", {}).get("fine")
+    _make_fine = (
+        correlator.get("make_fine")
+        if correlator.get("make_fine") is not None
+        else _cs.get("correlator", {}).get("fine")
+    )
     _save_row(
-        db, _fcs_config(), setup_name, data,
-        user_id=user_id, is_public=is_public,
+        db,
+        _fcs_config(),
+        setup_name,
+        data,
+        user_id=user_id,
+        is_public=is_public,
         fcs_pairs=pair_dict,
         n_bins=_n_bins,
         n_casc=_n_casc,
@@ -81,7 +95,8 @@ def _save_setup_row(
 
 def _fcs_row_to_data(row: dict, db) -> dict:
     """Extract FCS channel setup payload from an MMFDB row, including
-    child-table data (``fcs_pairs``) and typed correlator columns."""
+    child-table data (``fcs_pairs``) and typed correlator columns.
+    """
     from chisurf.core.fio.setup_store import json_loads
 
     configuration = json_loads(row.get("configuration_json"))
@@ -137,10 +152,12 @@ def _fcs_row_to_data(row: dict, db) -> dict:
     return data
 
 
-def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
-                            db_path: str | None = None,
-                            skip_migration: bool = False,
-                            user_id: str | None = None) -> Dict[str, Any]:
+def load_fcs_channel_setups(
+    file_path: str | pathlib.Path | None = None,
+    db_path: str | None = None,
+    skip_migration: bool = False,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     """Load FCS channel-pair setups from MMFDB (preferred) or JSON fallback.
 
     When using the canonical path and MMFDB is available, data is loaded
@@ -165,8 +182,12 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
 
     if _use_mmfdb(str(path) if file_path else None):
         from chisurf.core.fio.setup_store import (
-            close_owned_db, get_db, load_mmfdb_setups, resolve_active_user_id,
+            close_owned_db,
+            get_db,
+            load_mmfdb_setups,
+            resolve_active_user_id,
         )
+
         db = get_db(db_path)
         if db is not None:
             try:
@@ -181,9 +202,7 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
                                 path.unlink()
                         except Exception:
                             pass
-                result = load_mmfdb_setups(
-                    db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data
-                )
+                result = load_mmfdb_setups(db, _fcs_config(), user_id, row_to_data=_fcs_row_to_data)
                 return {
                     "version": 1,
                     "setups": result.get("setups", {}),
@@ -196,7 +215,7 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
     if not path.exists():
         return {"version": 1, "setups": {}, "last_used_setup": None}
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
         return {"version": 1, "setups": {}, "last_used_setup": None}
@@ -210,8 +229,11 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
     return data
 
 
-def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathlib.Path | None = None,
-                            is_public: bool | int | None = None) -> bool:
+def save_fcs_channel_setups(
+    setups_data: dict[str, Any],
+    file_path: str | pathlib.Path | None = None,
+    is_public: bool | int | None = None,
+) -> bool:
     """Save FCS channel-pair setups to MMFDB (preferred) or JSON file.
 
     Returns True on success.
@@ -222,6 +244,7 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
         from chisurf.core.fio.setup_store import (
             save_setups as _save_setups,
         )
+
         # Convert the setups_data to the format expected by save_setups
         # (which uses "setups" dict and "last_used" key)
         mmfdb_payload = {
@@ -229,7 +252,8 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
             "last_used": setups_data.get("last_used_setup"),
         }
         return _save_setups(
-            mmfdb_payload, _fcs_config(),
+            mmfdb_payload,
+            _fcs_config(),
             file_path=None if file_path is None else str(path),
             replace=False,
             is_public=is_public,
@@ -256,6 +280,7 @@ def _migrate_json_to_mmfdb(db, path: pathlib.Path, user_id: str | None = None) -
     from chisurf.core.fio.setup_store import (
         migrate_json_to_mmfdb as _migrate,
     )
+
     return _migrate(db, _fcs_config(), path, user_id=user_id, save_row_fn=_save_setup_row)
 
 
@@ -263,8 +288,10 @@ def _migrate_json_to_mmfdb(db, path: pathlib.Path, user_id: str | None = None) -
 # Legacy channel builder (no MMFDB changes needed)
 # ---------------------------------------------------------------------------
 
-def build_channels_from_setup(windows: Dict[str, tuple[int, int]],
-                              detectors: Dict[str, Dict[str, Any]]) -> Dict[str, list[Dict[str, Any]]]:
+
+def build_channels_from_setup(
+    windows: dict[str, tuple[int, int]], detectors: dict[str, dict[str, Any]]
+) -> dict[str, list[dict[str, Any]]]:
     """Recreate the channel mapping used by DetectorWizardPage.channels().
 
     Parameters
@@ -284,8 +311,7 @@ def build_channels_from_setup(windows: Dict[str, tuple[int, int]],
         setup) to a list of segment dictionaries with the keys
         ``"window_range"``, ``"detector_chs"`` and ``"micro_time_range"``.
     """
-
-    channels: Dict[str, list[Dict[str, Any]]] = {}
+    channels: dict[str, list[dict[str, Any]]] = {}
     if not isinstance(detectors, dict):
         return channels
 
@@ -300,7 +326,7 @@ def build_channels_from_setup(windows: Dict[str, tuple[int, int]],
         except Exception:
             continue
 
-        segments: list[Dict[str, Any]] = []
+        segments: list[dict[str, Any]] = []
 
         if win_dict:
             # Combine each detector micro-time range with all defined windows
@@ -314,11 +340,13 @@ def build_channels_from_setup(windows: Dict[str, tuple[int, int]],
                         mt0, mt1 = int(mtr[0]), int(mtr[1])
                     except Exception:
                         continue
-                    segments.append({
-                        "window_range": (w_start, w_stop),
-                        "detector_chs": chs,
-                        "micro_time_range": (mt0, mt1),
-                    })
+                    segments.append(
+                        {
+                            "window_range": (w_start, w_stop),
+                            "detector_chs": chs,
+                            "micro_time_range": (mt0, mt1),
+                        }
+                    )
         else:
             # No windows defined: fall back to detector + micro-time ranges only
             for mtr in mtr_list:
@@ -326,11 +354,13 @@ def build_channels_from_setup(windows: Dict[str, tuple[int, int]],
                     mt0, mt1 = int(mtr[0]), int(mtr[1])
                 except Exception:
                     continue
-                segments.append({
-                    "window_range": None,
-                    "detector_chs": chs,
-                    "micro_time_range": (mt0, mt1),
-                })
+                segments.append(
+                    {
+                        "window_range": None,
+                        "detector_chs": chs,
+                        "micro_time_range": (mt0, mt1),
+                    }
+                )
 
         if segments:
             channels[dname] = segments

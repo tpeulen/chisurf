@@ -48,13 +48,13 @@ class OutputPump(QtCore.QObject):
     _wake = QtCore.Signal()
 
     def __init__(
-            self,
-            sink: typing.Callable[[str, str], None],
-            *,
-            interval_ms: int = 30,
-            max_chunk: int = 16_384,
-            max_per_cell: int = 500_000,
-            parent: QtCore.QObject | None = None,
+        self,
+        sink: typing.Callable[[str, str], None],
+        *,
+        interval_ms: int = 30,
+        max_chunk: int = 16_384,
+        max_per_cell: int = 500_000,
+        parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._sink = sink

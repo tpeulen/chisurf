@@ -13,14 +13,14 @@ shape:
   says nothing about the structure, while colouring by *molecule* gives every
   copy of a nucleoporin one colour and makes an assembly's symmetry visible.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chimol.io.atoms import make_bead_rows
 from chimol.core.model.hierarchy import HierarchyNode
 from chimol.core.viewer import Viewer
+from chimol.io.atoms import make_bead_rows
 
 
 @pytest.fixture(scope="module")
@@ -77,9 +77,7 @@ def test_occlusion_can_be_switched_off(_qt_app):
     view = _viewer(xyz)
 
     flat = np.asarray(
-        view._bead_scene_object(
-            {"impostor_min_atoms": 1, "ao_strength": 0.0}, None
-        ).geometry.colors
+        view._bead_scene_object({"impostor_min_atoms": 1, "ao_strength": 0.0}, None).geometry.colors
     )[:, :3]
 
     assert np.allclose(flat.min(axis=0), flat.max(axis=0)), (
@@ -121,9 +119,7 @@ def _two_molecules(n_each: int = 5):
     for mol in ("Nup84", "Nsp1"):
         node = root.add_child(HierarchyNode(name=mol, node_type="MOLECULE"))
         for copy in range(2):
-            chain = node.add_child(
-                HierarchyNode(name=f"{mol}.{copy}", node_type="CHAIN")
-            )
+            chain = node.add_child(HierarchyNode(name=f"{mol}.{copy}", node_type="CHAIN"))
             chain.atom_indices = list(range(row, row + n_each))
             node.atom_indices.extend(chain.atom_indices)
             row += n_each
@@ -140,7 +136,7 @@ def test_rows_can_be_labelled_by_molecule(_qt_app):
     assert len(labels) == len(xyz)
     # Both copies of Nup84 first, then both of Nsp1.
     assert set(labels[: 2 * n_each]) == {"Nup84"}
-    assert set(labels[2 * n_each:]) == {"Nsp1"}
+    assert set(labels[2 * n_each :]) == {"Nsp1"}
 
 
 def test_labelling_by_chain_separates_the_copies(_qt_app):

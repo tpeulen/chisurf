@@ -113,9 +113,7 @@ def test_running_the_step_hands_the_fused_folder_to_the_later_steps(shell, qapp,
     assert shell.workflow_context.burst_folder == pathlib.Path(written)
     assert shell.workflow_context.burst_folder != original
     assert shell.workflow_context.bur_files, "the fused .bur files must be published"
-    assert all(
-        pathlib.Path(written) in path.parents for path in shell.workflow_context.bur_files
-    )
+    assert all(pathlib.Path(written) in path.parents for path in shell.workflow_context.bur_files)
 
     # And it survives the context refresh a step change performs — burst
     # selection re-publishes its own output folder on every refresh.

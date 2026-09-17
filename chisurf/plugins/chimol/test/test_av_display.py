@@ -29,7 +29,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -72,12 +76,10 @@ def _euler(verts: np.ndarray, faces: np.ndarray) -> int:
 
 def _av_entry(viewer):
     av_ids = [
-        oid for oid, entry in viewer.objects.items()
-        if getattr(entry.state, "av", None) is not None
+        oid for oid, entry in viewer.objects.items() if getattr(entry.state, "av", None) is not None
     ]
     assert av_ids, "no AV object in the viewer"
     return av_ids[0], viewer.objects[av_ids[0]]
-
 
 
 def _fresh_av(session):
@@ -102,14 +104,10 @@ def test_the_av_is_a_density_object_with_a_surface_level(session):
     oid, entry = _av_entry(viewer)
     state = entry.state
     assert state.volume is not None, "the AV's grid is not on the volume path"
-    assert state.volume.shape == tuple(
-        int(n) for n in np.asarray(state.av.density).shape
-    )
+    assert state.volume.shape == tuple(int(n) for n in np.asarray(state.av.density).shape)
     levels = state.volume_levels
     assert levels and levels[0]["style"] == "surface"
-    assert abs(float(levels[0]["level"]) - 0.5) < 1e-9, (
-        "a binary grid contours at its 0.5 envelope"
-    )
+    assert abs(float(levels[0]["level"]) - 0.5) < 1e-9, "a binary grid contours at its 0.5 envelope"
 
 
 def test_the_density_panel_edits_the_av(session):
@@ -140,7 +138,8 @@ def test_the_contour_is_closed_and_centered_on_the_cloud(session):
     viewer = win.viewer
     oid, entry = _av_entry(viewer)
     meshes = [
-        o for o in viewer._scene.objects
+        o
+        for o in viewer._scene.objects
         if o.id.startswith(f"{oid}:volume_") and o.geometry.kind == "mesh"
     ]
     assert meshes, "no contour in the composed scene"
@@ -163,10 +162,9 @@ def test_the_contour_is_closed_and_centered_on_the_cloud(session):
     # ... and reaches the attachment atom: the residue is stripped, so the
     # dye can hug its own site.
     records = avmod._cached_pdb_records(str(PDB))
-    cb_world = np.array([
-        r[3:6] for r in records
-        if r[0] == "E" and r[1] == 119 and r[2] == "CB"
-    ][0])
+    cb_world = np.array(
+        [r[3:6] for r in records if r[0] == "E" and r[1] == 119 and r[2] == "CB"][0]
+    )
     with viewer.activate_object(oid):
         cb_scene = viewer._transform_world_coords_to_scene(cb_world)
     nearest = float(np.linalg.norm(verts - cb_scene, axis=1).min()) / 10.0
@@ -240,15 +238,13 @@ def test_the_numpy_backend_also_becomes_a_density(session, monkeypatch):
     shared.do("add_dye resi 44 and name CB, Cy5")
     assert errors == [], errors[:2]
     viewer = win.viewer
-    oid = [
-        o for o, e in viewer.objects.items()
-        if getattr(e.state, "av", None) is not None
-    ][-1]
+    oid = [o for o, e in viewer.objects.items() if getattr(e.state, "av", None) is not None][-1]
     state = viewer.objects[oid].state
     assert state.volume is not None
     assert min(state.volume.shape) >= 2
     meshes = [
-        o for o in viewer._scene.objects
+        o
+        for o in viewer._scene.objects
         if o.id.startswith(f"{oid}:volume_") and o.geometry.kind == "mesh"
     ]
     assert meshes, "the numpy-backend AV drew no contour"

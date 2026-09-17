@@ -17,6 +17,7 @@ lifetime analysis.
 # Plugin brand icon (unified emoji set)
 icon = "📉"
 import sys
+
 from chisurf.plugins.tttr.tttr_histogram.gui import HistogramTTTR
 
 # Define the plugin name - this will appear in the Plugins menu

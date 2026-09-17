@@ -52,8 +52,7 @@ import time
 import numpy as np
 import pytest
 
-from chisurf.core.fluorescence.decay_fit_model import build_fret_fit
-from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
+from chisurf.core.fluorescence.decay_fit_model import build_fret_fit, build_lifetime_fit
 
 #: Micro-time bin width in nanoseconds — a 1024-channel window over ~14.4 ns,
 #: which is the shape a 70 MHz repetition rate gives.
@@ -125,7 +124,10 @@ def _evaluations(profile):
 def run_case(n_channels):
     """Return one row per model family for one axis length."""
     rows = []
-    for label, build in (("tcspc_lifetime (BFF)", build_lifetime_fit), ("GaussianModel", build_fret_fit)):
+    for label, build in (
+        ("tcspc_lifetime (BFF)", build_lifetime_fit),
+        ("GaussianModel", build_fret_fit),
+    ):
         seconds, evaluations = _time_fit(build, n_channels)
         per_evaluation = seconds / evaluations if evaluations else float("nan")
         rows.append((label, seconds, evaluations, per_evaluation * 1e6))
@@ -138,9 +140,7 @@ def main():
     print("| --- | --- | ---: | ---: | ---: |")
     for n_channels in CHANNELS:
         for label, seconds, evaluations, micros in run_case(n_channels):
-            print(
-                f"| {n_channels} | {label} | {seconds:.3f} | {evaluations} | {micros:.1f} |"
-            )
+            print(f"| {n_channels} | {label} | {seconds:.3f} | {evaluations} | {micros:.1f} |")
 
 
 @pytest.mark.slow
@@ -162,15 +162,9 @@ def test_a_lifetime_fit_calls_no_numba_kernel():
     profile.disable()
 
     offenders = sorted(
-        {
-            f"{path}:{name}"
-            for (path, _, name) in pstats.Stats(profile).stats
-            if "numba" in path
-        }
+        {f"{path}:{name}" for (path, _, name) in pstats.Stats(profile).stats if "numba" in path}
     )
-    assert not offenders, (
-        "a lifetime fit now goes through numba:\n  " + "\n  ".join(offenders)
-    )
+    assert not offenders, "a lifetime fit now goes through numba:\n  " + "\n  ".join(offenders)
 
 
 if __name__ == "__main__":

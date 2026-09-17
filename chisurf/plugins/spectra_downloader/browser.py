@@ -19,11 +19,11 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.plugins.core.mmfdb_admin.gui.optical_components as _optical_components
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.spectrum_view import SpectrumView
 from chisurf.plugins.core.mmfdb_admin.gui.optical_components.component_detail_form import (
     ComponentDetailForm,
 )
-from chisurf.gui import dialogs
 
 _VIEW_DIR = Path(_optical_components.__file__).parent
 _DEFAULT_VIEW = _VIEW_DIR / "fluorophore.view.json"
@@ -40,8 +40,9 @@ _COLUMNS = [
 class SpectraBrowserWidget(QtWidgets.QWidget):
     """Left filter+table / right detail+properties+spectrum browser."""
 
-    def __init__(self, db, parent: QtWidgets.QWidget | None = None,
-                 initial_source: str | None = None) -> None:
+    def __init__(
+        self, db, parent: QtWidgets.QWidget | None = None, initial_source: str | None = None
+    ) -> None:
         super().__init__(parent)
         self._db = db  # an open FluorophoreDatabase on the staging spectra.db
         self._rows: list[dict] = []
@@ -115,7 +116,9 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         self._push_sel_btn.clicked.connect(self._push_selected)
         push_bar.addWidget(self._push_sel_btn)
         self._push_all_btn = QtWidgets.QPushButton("⬆ Push all")
-        self._push_all_btn.setToolTip("Push every component in this staging DB into the connected MMFDB.")
+        self._push_all_btn.setToolTip(
+            "Push every component in this staging DB into the connected MMFDB."
+        )
         self._push_all_btn.clicked.connect(self._push_all)
         push_bar.addWidget(self._push_all_btn)
         rlayout.addLayout(push_bar)
@@ -219,9 +222,7 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
         # JSON metadata blob (probe fields + properties + spectrum summary)
         meta = {
             "probe": data["probe"],
-            "optical_properties": {
-                p["property_name"]: p["property_value"] for p in props
-            },
+            "optical_properties": {p["property_name"]: p["property_value"] for p in props},
             "spectra": [
                 {"type": s["spectrum_type"], "points": len(s["wavelengths"])}
                 for s in data["spectra"]
@@ -253,11 +254,16 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
     def _push(self, probe_ids, label: str) -> None:
         from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mmfdb
 
-        if dialogs.question(
-            self, "Push to MMFDB",
-            f"Push {label} from this staging database into the connected MMFDB?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No,
-        ) != QtWidgets.QMessageBox.Yes:
+        if (
+            dialogs.question(
+                self,
+                "Push to MMFDB",
+                f"Push {label} from this staging database into the connected MMFDB?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            != QtWidgets.QMessageBox.Yes
+        ):
             return
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
@@ -268,7 +274,8 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
             return
         QtWidgets.QApplication.restoreOverrideCursor()
         dialogs.information(
-            self, "Push complete",
+            self,
+            "Push complete",
             f"Pushed {summary.get('merged', 0)} component(s) into the MMFDB.\n"
             f"Consolidated: {summary.get('consolidated')}",
         )
@@ -302,8 +309,9 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
 class SpectraBrowserDialog(QtWidgets.QDialog):
     """Standalone dialog wrapper around :class:`SpectraBrowserWidget`."""
 
-    def __init__(self, db, parent: QtWidgets.QWidget | None = None,
-                 initial_source: str | None = None) -> None:
+    def __init__(
+        self, db, parent: QtWidgets.QWidget | None = None, initial_source: str | None = None
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Spectra Browser — staging database")
         self.resize(960, 600)

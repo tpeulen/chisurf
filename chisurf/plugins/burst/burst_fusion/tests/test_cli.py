@@ -17,7 +17,10 @@ from chisurf.plugins.burst.burst_fusion.cli.main import cli
 
 DATA = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 ANALYSIS = "burstwise_All 0.1000#15"
 
@@ -73,8 +76,18 @@ def test_fuse_writes_a_folder(folder, tmp_path):
     out = tmp_path / "fused"
     result = CliRunner().invoke(
         cli,
-        ["fuse", str(folder), "--threshold", "0.5", "--max-gap", "2",
-         "--detectors", str(definition), "--output", str(out)],
+        [
+            "fuse",
+            str(folder),
+            "--threshold",
+            "0.5",
+            "--max-gap",
+            "2",
+            "--detectors",
+            str(definition),
+            "--output",
+            str(out),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert "gaps <= 2.000 ms" in result.output

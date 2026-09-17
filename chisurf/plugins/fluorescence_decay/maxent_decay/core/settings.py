@@ -8,10 +8,9 @@ the GUI, while keeping the scientific code in the core/API modules.
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
 import json
 import pathlib
+from typing import Any
 
 try:
     # Preferred location: ChiSurf user settings directory
@@ -23,7 +22,7 @@ except Exception:  # pragma: no cover - fallback when chisurf.core.settings is u
 # Default settings used when the JSON file does not yet exist or cannot be
 # parsed. These are intentionally conservative and mirror the hard-coded
 # defaults in the GUI.
-_DEFAULT_SETTINGS: Dict[str, Any] = {
+_DEFAULT_SETTINGS: dict[str, Any] = {
     "tau_grid": {
         "min": 0.01,
         "max": 6.0,
@@ -62,7 +61,6 @@ def get_settings_path() -> pathlib.Path:
     with a dedicated ``maxent_decay`` subdirectory. As a fallback, use a
     ``.chisurf/maxent_decay`` folder in the user's home directory.
     """
-
     # Prefer the central ChiSurf settings location if available.
     if _get_path is not None:
         try:
@@ -81,18 +79,16 @@ def get_settings_path() -> pathlib.Path:
 
 def get_settings_file() -> pathlib.Path:
     """Return the full path to the JSON settings file."""
-
     return get_settings_path() / "settings.json"
 
 
-def load_maxent_settings() -> Dict[str, Any]:
+def load_maxent_settings() -> dict[str, Any]:
     """Load MaxEnt settings from JSON, creating a default file if needed.
 
     The returned dictionary always contains at least the keys from
     ``_DEFAULT_SETTINGS``; user values override these defaults when
     present and valid.
     """
-
     path = get_settings_file()
 
     # If the file does not exist yet, create it with the defaults.
@@ -112,7 +108,7 @@ def load_maxent_settings() -> Dict[str, Any]:
             data = json.load(fh)
         if not isinstance(data, dict):
             raise TypeError("settings JSON must contain an object at the top level")
-        merged: Dict[str, Any] = dict(_DEFAULT_SETTINGS)
+        merged: dict[str, Any] = dict(_DEFAULT_SETTINGS)
         # Copy nested dicts so we can merge user overrides without mutating
         # the module-level defaults.
         for key, value in list(merged.items()):
@@ -129,7 +125,7 @@ def load_maxent_settings() -> Dict[str, Any]:
         return dict(_DEFAULT_SETTINGS)
 
 
-def save_maxent_settings(settings: Dict[str, Any]) -> bool:
+def save_maxent_settings(settings: dict[str, Any]) -> bool:
     """Persist MaxEnt settings to JSON.
 
     Parameters
@@ -139,7 +135,6 @@ def save_maxent_settings(settings: Dict[str, Any]) -> bool:
         compatible with ``_DEFAULT_SETTINGS`` but additional keys are
         allowed and will be preserved.
     """
-
     path = get_settings_file()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

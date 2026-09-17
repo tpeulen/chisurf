@@ -4,6 +4,7 @@ The ATTO pages report properties with German decimal commas, an εmax exponent
 notation ("9,0×104") and the quantum yield as a percent — these must normalise
 to canonical numbers. No network.
 """
+
 from __future__ import annotations
 
 from chisurf.plugins.spectra_downloader.download.atto import _clean_property

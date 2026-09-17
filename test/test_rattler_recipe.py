@@ -43,10 +43,23 @@ _IMPORT_ROOTS = (
 #: Toolchain packages that must not reappear in the recipe. ChiSurf compiles
 #: nothing (see ``test_recipe_needs_no_toolchain``); what does compile --
 #: tttrlib, labellib, the local modules -- is built by build_tools/, not here.
-_TOOLCHAIN = frozenset({
-    "cmake", "ninja", "make", "cython", "pythran", "swig", "pybind11", "eigen",
-    "boost-cpp", "doxygen", "hdf5", "pkg-config", "vs2022_win-64",
-})
+_TOOLCHAIN = frozenset(
+    {
+        "cmake",
+        "ninja",
+        "make",
+        "cython",
+        "pythran",
+        "swig",
+        "pybind11",
+        "eigen",
+        "boost-cpp",
+        "doxygen",
+        "hdf5",
+        "pkg-config",
+        "vs2022_win-64",
+    }
+)
 
 
 def _recipe_text() -> str:
@@ -146,12 +159,14 @@ def _bound_names(path: pathlib.Path) -> set[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Dict):
                 names.update(
-                    key.value for key in node.keys
+                    key.value
+                    for key in node.keys
                     if isinstance(key, ast.Constant) and isinstance(key.value, str)
                 )
             elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
                 names.update(
-                    element.value for element in node.elts
+                    element.value
+                    for element in node.elts
                     if isinstance(element, ast.Constant) and isinstance(element.value, str)
                 )
     return names
@@ -200,19 +215,17 @@ def test_recipe_needs_no_toolchain():
     modules that justified the toolchain are retired. If that changes, this test
     is the place to say so -- and the declaration comes back with it.
     """
-    sources = [
-        p for p in (REPO_ROOT / "chisurf").rglob("*")
-        if p.suffix in (".pyx", ".pxd", ".i")
-    ]
+    sources = [p for p in (REPO_ROOT / "chisurf").rglob("*") if p.suffix in (".pyx", ".pxd", ".i")]
     assert not sources, f"the tree compiles again: {sources} -- restore the recipe toolchain"
 
     text = _recipe_text()
-    assert "\n  build:\n" not in text, "recipe declares a build: section for a build that compiles nothing"
+    assert "\n  build:\n" not in text, (
+        "recipe declares a build: section for a build that compiles nothing"
+    )
 
     for section in ("host", "run"):
         declared = {
-            item.split()[0].lower() for item in _section(section)
-            if not item.startswith("${{")
+            item.split()[0].lower() for item in _section(section) if not item.startswith("${{")
         }
         assert not declared & _TOOLCHAIN, (
             f"toolchain packages in {section}: {sorted(declared & _TOOLCHAIN)} -- nothing in "
@@ -245,12 +258,11 @@ def test_recipe_tests_terminate():
     block = text.split("\ntests:", 1)[1].split("\nabout:", 1)[0]
     # Only the commands of `script:` tests can hang; a `python: imports:` list
     # names modules, and one of them is legitimately called `chisurf`.
-    commands = "\n".join(
-        re.findall(r"- script:\n((?:\s+-\s+.*\n)+)", block)
-    )
+    commands = "\n".join(re.findall(r"- script:\n((?:\s+-\s+.*\n)+)", block))
     gui_names = [
         line.split("=", 1)[0].strip()
-        for line in (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        for line in (REPO_ROOT / "pyproject.toml")
+        .read_text(encoding="utf-8")
         .split("[project.gui-scripts]", 1)[-1]
         .split("[", 1)[0]
         .splitlines()

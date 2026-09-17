@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from mmfdb.repository import MFDatabase
 
 import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.experiments.deer.reader import DeerReader
 from chisurf.core.experiments.globalfit.reader import GlobalFitSetup
-from chisurf.core.experiments.modelling.reader import StructureReader
 from chisurf.core.experiments.ics import ICSReader
-from mmfdb.repository import MFDatabase
+from chisurf.core.experiments.modelling.reader import StructureReader
 
 
 class _Reader(ExperimentReader):
@@ -65,6 +65,7 @@ def test_provenance_failure_rolls_back_the_whole_registration(
     source.write_bytes(b"raw")
     db = MFDatabase(tmp_path / "reader.db")
     try:
+
         def fail_operation(**kwargs):
             raise RuntimeError("operation rejected")
 

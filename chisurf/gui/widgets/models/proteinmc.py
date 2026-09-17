@@ -16,6 +16,7 @@ The widget name stays importable because user copies of
 pin class paths, so a path that no longer resolves drops the entry from the model
 menu without saying so.
 """
+
 from __future__ import annotations
 
 from chisurf.core.models.structure.proteinmc_model import POTENTIAL_SPECS, ProteinMCModel

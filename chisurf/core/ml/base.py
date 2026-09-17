@@ -10,7 +10,6 @@ routing, no ``set_output``, no ``n_jobs``.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
@@ -60,11 +59,10 @@ class BaseEstimator(ABC):
         """
         names = getattr(self, "_constructor_params", {})
         return {
-            name: deepcopy(getattr(self, name)) if deep else getattr(self, name)
-            for name in names
+            name: deepcopy(getattr(self, name)) if deep else getattr(self, name) for name in names
         }
 
-    def set_params(self, **params: Any) -> "BaseEstimator":
+    def set_params(self, **params: Any) -> BaseEstimator:
         """Set constructor parameters, validating that they exist.
 
         Parameters
@@ -90,12 +88,12 @@ class BaseEstimator(ABC):
     def __repr__(self) -> str:
         """Return a compact, parameterised summary like scikit-learn's."""
         params = self.get_params(deep=False)
-        body = ", ".join(
-            f"{name}={_safe_repr(value)}" for name, value in sorted(params.items())
-        )
+        body = ", ".join(f"{name}={_safe_repr(value)}" for name, value in sorted(params.items()))
         return f"{type(self).__name__}({body})"
 
-    def _validate_params(self, *, n_features: int, n_components: int, **bounds: dict[str, Any]) -> None:
+    def _validate_params(
+        self, *, n_features: int, n_components: int, **bounds: dict[str, Any]
+    ) -> None:
         """Validate a component-style estimator against its bounds.
 
         Parameters

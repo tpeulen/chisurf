@@ -1,1 +1,1 @@
-from . parameter_editor import *
+from .parameter_editor import *

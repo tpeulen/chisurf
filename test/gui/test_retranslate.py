@@ -37,7 +37,8 @@ def _french_pair() -> tuple[str, str, str, str, str]:
             if m.find("translation") is not None
             and m.find("translation").get("type") is None
             and (m.findtext("translation") or "") not in ("", m.findtext("source"))
-            and "&" not in (m.findtext("source") or "") and "<" not in (m.findtext("source") or "")
+            and "&" not in (m.findtext("source") or "")
+            and "<" not in (m.findtext("source") or "")
         ]
         if len(pairs) >= 2:
             (a, a_fr), (b, b_fr) = pairs[:2]

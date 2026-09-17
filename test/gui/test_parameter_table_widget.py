@@ -37,6 +37,7 @@ def _make_params():
 
 # ── model tests (no widget) ────────────────────────────────────────────
 
+
 def test_model_counts():
     from chisurf.gui.autoform.sections.parameter_table import (
         COLUMN_META,
@@ -189,6 +190,7 @@ def test_bounds_columns_editable_only_when_bounds_on():
 
 # ── widget tests (need QApp) ───────────────────────────────────────────
 
+
 def test_widget_column_visibility(qapp):
     from chisurf.core.dataspec import ParameterGroupTableSection
     from chisurf.gui.autoform.sections.parameter_table import (
@@ -220,10 +222,7 @@ def test_widget_all_columns_when_empty(qapp):
     params = _make_params()
     section = ParameterGroupTableSection(target="test", columns=())
     widget = ParameterGroupTableWidget(params=params, section=section)
-    visible = sum(
-        1 for i in range(len(COLUMN_META))
-        if not widget.table_view.isColumnHidden(i)
-    )
+    visible = sum(1 for i in range(len(COLUMN_META)) if not widget.table_view.isColumnHidden(i))
     assert visible == len(COLUMN_META)
 
 
@@ -261,6 +260,7 @@ def test_widget_on_change_called(qapp):
 
 # ── AutoForm integration tests ─────────────────────────────────────────
 
+
 def test_autoform_dispatch_exists():
     """The AutoForm._build_section dispatch must recognise the new type."""
     from chisurf.core.dataspec import _SECTION_TYPES
@@ -270,7 +270,8 @@ def test_autoform_dispatch_exists():
 
 def test_autoform_renders_table_from_view_json(qapp, monkeypatch):
     """AutoForm renders a ParameterGroupTableWidget for a section declared
-    in a view spec (synthetic model with a resolvable target)."""
+    in a view spec (synthetic model with a resolvable target).
+    """
     from chisurf.core import dataspec as ds
     from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.gui.autoform import AutoForm
@@ -286,6 +287,7 @@ def test_autoform_renders_table_from_view_json(qapp, monkeypatch):
 
     class _Model:
         """Minimal model with a view_spec that contains a parameter_group_table."""
+
         test_group = group
 
         def view_spec(self):
@@ -311,7 +313,8 @@ def test_autoform_renders_table_from_view_json(qapp, monkeypatch):
 
 def test_autoform_table_collapsible_when_set(qapp):
     """When collapsible=True (default), AutoForm wraps the table in a
-    CollapsibleBox with the group's name as title."""
+    CollapsibleBox with the group's name as title.
+    """
     from chisurf.core import dataspec as ds
     from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
     from chisurf.gui.autoform import AutoForm
@@ -327,9 +330,7 @@ def test_autoform_table_collapsible_when_set(qapp):
 
         def view_spec(self):
             return ds.ModelView(
-                sections=(
-                    ds.ParameterGroupTableSection(target="test_group"),
-                ),
+                sections=(ds.ParameterGroupTableSection(target="test_group"),),
             )
 
     w = AutoForm(_Model())
@@ -441,7 +442,7 @@ def test_value_column_uses_scientific_spinbox_not_qt_default(qapp):
     assert isinstance(editor, ScientificDoubleSpinBox)
     delegate.setEditorData(editor, widget.table_model.index(0, COL_VALUE))
     assert editor.value() == pytest.approx(0.001)
-    assert "0.00" != editor.lineEdit().text().strip()   # not truncated to 2 decimals
+    assert "0.00" != editor.lineEdit().text().strip()  # not truncated to 2 decimals
 
     large = FittingParameter(name="w_z", value=2020.1)
     paired = PairedParameterTableWidget(params=[tiny, large], width=2)
@@ -455,7 +456,6 @@ def _type_into_cell(qapp, view, index, text, commit_key=None):
     ``commit_key`` is the key that ends the entry (Return / Tab); ``None`` commits
     by moving the edit focus to another cell.
     """
-    from qtpy import QtCore
     from qtpy.QtTest import QTest
 
     from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox

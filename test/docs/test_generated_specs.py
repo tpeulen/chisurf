@@ -45,7 +45,8 @@ def test_the_generated_copy_says_it_is_generated(_src_rel: str, dst_rel: str) ->
 
 def test_check_mode_exits_non_zero_when_stale(tmp_path: Path) -> None:
     """The mode CI runs. Proved by making a copy stale on purpose rather than
-    by trusting that the flag is wired up."""
+    by trusting that the flag is wired up.
+    """
     _src_rel, dst_rel = SPECS[0]
     target = REPO_ROOT / dst_rel
     original = target.read_text(encoding="utf-8")
@@ -65,7 +66,8 @@ def test_check_mode_exits_non_zero_when_stale(tmp_path: Path) -> None:
 def test_an_unhandled_construct_raises_rather_than_guessing(tmp_path: Path) -> None:
     """A permissive converter renders what it does not understand as something
     plausible, and a silently mangled normative table is worse than a build
-    failure."""
+    failure.
+    """
     bad = tmp_path / "bad.md"
     bad.write_text("---\ntitle: T\n---\n\n| a | b |\n| 1 | 2 |\n", encoding="utf-8")
     with pytest.raises(UnsupportedMarkdown):

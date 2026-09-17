@@ -4,8 +4,6 @@ import json
 
 import pytest
 
-import chisurf  # noqa: F401 -- puts the bundled packages on sys.path
-
 # chinet is gone from the tree; the adapter runs on the bff-backed
 # compatibility runtime, which this file also exercises end to end.
 from mmfdb.adapters import _bff_compat as cn
@@ -15,6 +13,8 @@ from mmfdb.adapters.chinet import (
     store_chinet_session,
 )
 from mmfdb.repository import MFDatabase
+
+import chisurf  # noqa: F401 -- puts the bundled packages on sys.path
 
 
 def _json(value: str | None):
@@ -70,14 +70,10 @@ def test_store_chinet_session_writes_session_node_parameter_and_dependency_rows(
             ("op_chinet",),
         ).fetchall()
         assert any(
-            row["direction"] == "output" and row["role"] == "chinet_session"
-            for row in op_links
+            row["direction"] == "output" and row["role"] == "chinet_session" for row in op_links
         )
         assert (
-            sum(
-                row["direction"] == "output" and row["role"] == "chinet_node"
-                for row in op_links
-            )
+            sum(row["direction"] == "output" and row["role"] == "chinet_node" for row in op_links)
             == 2
         )
 
@@ -176,6 +172,7 @@ def test_store_chinet_session_rolls_back_on_artifact_failure(tmp_path, monkeypat
     session = _connected_session()
 
     with MFDatabase(db_path) as db:
+
         def fail_register_artifact(*args, **kwargs):
             raise RuntimeError("artifact failure")
 
@@ -193,6 +190,7 @@ def test_store_chinet_session_rolls_back_on_link_failure(tmp_path, monkeypatch) 
     session = _connected_session()
 
     with MFDatabase(db_path) as db:
+
         def fail_record_operation_link(*args, **kwargs):
             raise RuntimeError("link failure")
 
@@ -210,6 +208,7 @@ def test_store_chinet_session_rolls_back_on_parameter_failure(tmp_path, monkeypa
     session = _connected_session()
 
     with MFDatabase(db_path) as db:
+
         def fail_record_parameter(*args, **kwargs):
             raise RuntimeError("parameter failure")
 

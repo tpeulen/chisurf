@@ -5,17 +5,12 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')
-)
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
-from qtpy.QtWidgets import QApplication
-from qtpy.QtTest import QTest
 from qtpy.QtCore import Qt
-
-import chisurf.core.fio
-
+from qtpy.QtTest import QTest
+from qtpy.QtWidgets import QApplication
 
 app = QApplication(sys.argv)
 
@@ -30,38 +25,25 @@ class Tests(unittest.TestCase):
         Create the GUI
         """
         from chisurf.plugins.tttr.tttr_histogram.gui import HistogramTTTR
+
         self.form = HistogramTTTR()
 
     def test_load_data(self):
         import glob
+
         make_decay_button = self.form.tcspc_setup_widget.pushButton
 
-        self.assertEqual(
-            len(
-                self.form.curve_selector.get_data_sets()
-            ),
-            0
-        )
+        self.assertEqual(len(self.form.curve_selector.get_data_sets()), 0)
 
         spcFileWidget = self.form.tcspc_setup_widget.spcFileWidget
         filenames = glob.glob("./test/data/tttr/BH/132/*.spc")
         file_type = "bh132"
-        spcFileWidget.onLoadSample(
-            event=None,
-            filenames=filenames,
-            file_type=file_type
-        )
+        spcFileWidget.onLoadSample(event=None, filenames=filenames, file_type=file_type)
         QTest.mouseClick(make_decay_button, Qt.LeftButton)
 
-        self.assertEqual(
-            len(
-                self.form.curve_selector.get_data_sets()
-            ),
-            1
-        )
-        print(
-            self.form.curve_selector.get_data_sets()
-        )
+        self.assertEqual(len(self.form.curve_selector.get_data_sets()), 1)
+        print(self.form.curve_selector.get_data_sets())
+
 
 if __name__ == "__main__":
     unittest.main()

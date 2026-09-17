@@ -22,21 +22,21 @@ The transforms are C++ internals now (`Minimizer::to_internal` and
 on the functions: a run capped at one evaluation cannot move the answer, so
 whatever comes back is exactly ``to_external(to_internal(start))``.
 """
+
 import numpy as np
 import pytest
 
 import chisurf.core.fitting.minimizer as M
 
-pytestmark = pytest.mark.skipif(not M.have_minimizer(),
-                                reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(not M.have_minimizer(), reason="IMP.bff carries no Minimizer")
 
 SPELLINGS = [
-    (-np.inf, np.inf),      # fully free, as parameter_bounds reports it
-    (None, None),           # fully free, spelled with None
-    (0.0, np.inf),          # lower bound only, inf spelling
-    (0.0, None),            # lower bound only, None spelling
-    (-np.inf, 10.0),        # upper bound only, inf spelling
-    (None, 10.0),           # upper bound only, None spelling
+    (-np.inf, np.inf),  # fully free, as parameter_bounds reports it
+    (None, None),  # fully free, spelled with None
+    (0.0, np.inf),  # lower bound only, inf spelling
+    (0.0, None),  # lower bound only, None spelling
+    (-np.inf, 10.0),  # upper bound only, inf spelling
+    (None, 10.0),  # upper bound only, None spelling
 ]
 
 
@@ -67,7 +67,7 @@ def test_the_bounds_transform_round_trips(bound):
     m.bounds = [bound, bound]
     m.run()
     got = np.asarray(m.x, dtype=float)
-    assert np.all(np.isfinite(got)), "%s produced %s" % (bound, got)
+    assert np.all(np.isfinite(got)), f"{bound} produced {got}"
     np.testing.assert_allclose(got, start, rtol=0, atol=1e-12)
     assert node is not None
 
@@ -80,8 +80,8 @@ def test_infinite_bounds_do_not_poison_a_fit():
     """
     residual, truth = line()
     fitted, ier = M.minimize(
-        residual, np.array([0.1, 0.1]),
-        bounds=[(-np.inf, np.inf), (-np.inf, np.inf)])
+        residual, np.array([0.1, 0.1]), bounds=[(-np.inf, np.inf), (-np.inf, np.inf)]
+    )
     fitted = np.asarray(fitted, dtype=float)
     assert np.all(np.isfinite(fitted))
     np.testing.assert_allclose(fitted, truth, rtol=1e-6, atol=1e-6)
@@ -91,8 +91,8 @@ def test_mixed_finite_and_infinite_bounds():
     """The common real case: some parameters bounded, others free."""
     residual, truth = line()
     fitted, ier = M.minimize(
-        residual, np.array([0.1, 0.1]),
-        bounds=[(0.0, 100.0), (-np.inf, np.inf)])   # slope bounded, offset free
+        residual, np.array([0.1, 0.1]), bounds=[(0.0, 100.0), (-np.inf, np.inf)]
+    )  # slope bounded, offset free
     fitted = np.asarray(fitted, dtype=float)
     assert np.all(np.isfinite(fitted))
     np.testing.assert_allclose(fitted, truth, rtol=1e-6, atol=1e-6)

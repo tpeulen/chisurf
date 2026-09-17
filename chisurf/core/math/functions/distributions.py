@@ -1,7 +1,8 @@
 from __future__ import annotations
-from chisurf import typing
 
 import numpy as np
+
+from chisurf import typing
 
 
 def poisson_0toN(lam: float, N: int):
@@ -38,6 +39,7 @@ def poisson_0toN(lam: float, N: int):
     than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
     from IMP.bff import poisson_0toN as _f
+
     return _f(lam, int(N))
 
 
@@ -80,11 +82,13 @@ def normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0, nor
     than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
     from IMP.bff import normal_distribution as _f
+
     return _f(np.asarray(x, dtype=float), loc, scale, norm)
 
 
-def generalized_normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0,
-                                      shape: float = 0.0, norm: bool = True):
+def generalized_normal_distribution(
+    x: np.ndarray, loc: float = 0.0, scale: float = 1.0, shape: float = 0.0, norm: bool = True
+):
     """
     Compute the probability density function (PDF) of a generalized normal distribution
     with an added skew parameter.
@@ -128,6 +132,7 @@ def generalized_normal_distribution(x: np.ndarray, loc: float = 0.0, scale: floa
     than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
     from IMP.bff import generalized_normal_distribution as _f
+
     return _f(np.asarray(x, dtype=float), loc, scale, shape, norm)
 
 
@@ -194,8 +199,14 @@ def linear_dist(x: np.ndarray, px: np.ndarray, py: np.ndarray, normalize: bool =
     return y
 
 
-def combine_distributions(x_axis, dist_function, dist_args, weights: typing.List[float] = None,
-                          accumulate: bool = True, normalize: bool = False):
+def combine_distributions(
+    x_axis,
+    dist_function,
+    dist_args,
+    weights: typing.List[float] = None,
+    accumulate: bool = True,
+    normalize: bool = False,
+):
     """
     Combine multiple distribution functions by summing them.
 
@@ -237,7 +248,7 @@ def combine_distributions(x_axis, dist_function, dist_args, weights: typing.List
     True
     """
     if weights is None:
-        weights = [1.] * len(dist_args)
+        weights = [1.0] * len(dist_args)
     if accumulate:
         y_values = np.zeros_like(x_axis)
         for i, arg in enumerate(dist_args):
@@ -251,8 +262,9 @@ def combine_distributions(x_axis, dist_function, dist_args, weights: typing.List
     return y_values
 
 
-def distance_between_gaussian(distances: np.array, separation_distance: float, sigma: float,
-                              normalize: bool = False) -> np.array:
+def distance_between_gaussian(
+    distances: np.array, separation_distance: float, sigma: float, normalize: bool = False
+) -> np.array:
     """
     Calculate the distance distribution between two Gaussian distributions.
 
@@ -295,5 +307,5 @@ def distance_between_gaussian(distances: np.array, separation_distance: float, s
     than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
     from IMP.bff import distance_between_gaussian as _f
-    return _f(np.asarray(distances, dtype=float),
-              float(separation_distance), sigma, normalize)
+
+    return _f(np.asarray(distances, dtype=float), float(separation_distance), sigma, normalize)

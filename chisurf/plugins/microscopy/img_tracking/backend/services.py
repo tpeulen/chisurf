@@ -18,9 +18,17 @@ from .. import core as _core
 #: would hand back a result computed with settings the caller did not ask for.
 _ANALYSIS_KEYS = frozenset(
     {
-        "pixel_size", "frame_interval", "method", "threshold", "min_area",
-        "min_separation", "max_distance", "max_frame_gap", "min_track_length",
-        "fix_alpha", "n_bootstrap",
+        "pixel_size",
+        "frame_interval",
+        "method",
+        "threshold",
+        "min_area",
+        "min_separation",
+        "max_distance",
+        "max_frame_gap",
+        "min_track_length",
+        "fix_alpha",
+        "n_bootstrap",
     }
 )
 

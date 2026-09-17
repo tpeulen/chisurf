@@ -33,9 +33,9 @@ def test_parameter_collection(qtbot):
 
     assert params["photon_threshold"] == 100
     assert params["count_rate_window_ms"] == 2.0
-    assert params["invert_filter"] == True
-    assert params["filter_active"] == True
-    assert params["use_gap_fill"] == True
+    assert params["invert_filter"]
+    assert params["filter_active"]
+    assert params["use_gap_fill"]
     assert params["max_gap"] == 5
     assert params["trace_bin_width"] == 1.5
     assert params["number_of_burst_bins"] == 50

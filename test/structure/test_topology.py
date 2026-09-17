@@ -15,8 +15,10 @@ import pytest
 
 from chisurf.core.structure.topology import Topology
 
-PDB = (pathlib.Path(__file__).resolve().parents[1]
-       / "data/atomic_coordinates/trajectory/hgbp1/topol.pdb")
+PDB = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "data/atomic_coordinates/trajectory/hgbp1/topol.pdb"
+)
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +71,7 @@ def test_elements_survive(topology):
 
 
 def test_select_goes_through_the_topology(topology):
-    assert len(topology.select("name CA")) == 570          # one per residue
+    assert len(topology.select("name CA")) == 570  # one per residue
     assert len(topology.select("all")) == topology.n_atoms
     np.testing.assert_array_equal(
         topology.select("name CA"), np.flatnonzero(topology.select_mask("name CA"))

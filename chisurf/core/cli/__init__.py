@@ -8,7 +8,8 @@ import json
 import logging
 import pathlib
 import sys
-from typing import Dict, Iterable, Optional, Tuple
+from collections.abc import Iterable
+from typing import Dict, Optional, Tuple
 
 import click
 
@@ -43,7 +44,6 @@ def cli() -> None:
       csc burst-background --help
       csc count-rate analyze --help
     """
-
     # Ensure plugin-provided CLIs are registered the first time the
     # top-level CLI group is invoked, without doing any plugin discovery
     # at import time.
@@ -55,7 +55,9 @@ _LOG = logging.getLogger(__name__)
 _PLUGINS_REGISTERED = False
 
 
-def _parse_cli_entrypoint(entrypoint: str, default_alias: str | None = None) -> tuple[str, str, str]:
+def _parse_cli_entrypoint(
+    entrypoint: str, default_alias: str | None = None
+) -> tuple[str, str, str]:
     """Parse strings of the form ``alias=module:attr``.
 
     A few manifests omit the ``alias=`` part and give only ``module:attr``; with a
@@ -87,8 +89,8 @@ def _forward_plugin_cli(
     *,
     module_path: str,
     attr_name: str,
-    friendly_name: Optional[str] = None,
-    command_name: Optional[str] = None,
+    friendly_name: str | None = None,
+    command_name: str | None = None,
 ) -> None:
     """Import the plugin CLI object and forward the current args."""
     try:
@@ -131,12 +133,10 @@ def _forward_plugin_cli(
             sys.argv = old_argv
         return
 
-    raise click.ClickException(
-        f"Plugin CLI target '{module_path}:{attr_name}' is not callable"
-    )
+    raise click.ClickException(f"Plugin CLI target '{module_path}:{attr_name}' is not callable")
 
 
-def _read_plugin_metadata(init_py: pathlib.Path) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def _read_plugin_metadata(init_py: pathlib.Path) -> tuple[str | None, str | None, str | None]:
     if not init_py.exists():
         return None, None, None
     # Parse the raw bytes so the PEP 263 coding cookie decides the encoding, the
@@ -201,7 +201,7 @@ def _read_manifest_cli(plugin_dir: pathlib.Path) -> tuple[str | None, str | None
     )
 
 
-def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
+def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
     """Yield metadata for built-in and user plugins **without importing packages**.
 
     This function performs a pure filesystem + AST scan over the built-in
@@ -210,7 +210,6 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
     individual plugin modules, so CLI startup does not trigger any GUI
     initialization or heavy dependencies.
     """
-
     built_in_root = pathlib.Path(__file__).resolve().parents[2] / "plugins"
     user_root = pathlib.Path.home() / ".chisurf" / "plugins"
 
@@ -361,9 +360,13 @@ def _register_plugin_clis() -> None:
             metadata.get("plugin_name") or metadata.get("module_name") or command_name
         )
 
-        def _callback(ctx: click.Context, _command_name: str = command_name,
-                      _module_path: str = module_path, _attr_name: str = attr_name,
-                      _plugin_label: Optional[str] = metadata.get("plugin_name")) -> None:
+        def _callback(
+            ctx: click.Context,
+            _command_name: str = command_name,
+            _module_path: str = module_path,
+            _attr_name: str = attr_name,
+            _plugin_label: str | None = metadata.get("plugin_name"),
+        ) -> None:
             _forward_plugin_cli(
                 ctx,
                 module_path=_module_path,
@@ -397,9 +400,7 @@ def _register_plugin_clis() -> None:
 def _log_preloaded_plugin_modules() -> None:
     """Report any plugin modules that were already imported during CLI startup."""
     preloaded = sorted(
-        name
-        for name in sys.modules
-        if name.startswith("chisurf.plugins.") and name.count(".") >= 2
+        name for name in sys.modules if name.startswith("chisurf.plugins.") and name.count(".") >= 2
     )
     if preloaded:
         _LOG.info(
@@ -408,12 +409,11 @@ def _log_preloaded_plugin_modules() -> None:
         )
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Entry-point compatible wrapper.
 
     This allows calling chisurf.core.cli:main as well as chisurf.core.cli:cli.
     """
-
     if argv is None:
         argv = sys.argv[1:]
 

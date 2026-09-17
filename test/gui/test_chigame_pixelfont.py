@@ -25,16 +25,29 @@ def test_the_table_covers_every_printable_character():
 
 def test_nothing_but_space_is_blank():
     """An all-dots typo is an invisible letter, and invisible letters are
-    words with holes in them."""
-    blank = [char for char in pixelfont.CHARSET
-             if char != " " and not pixelfont.bitmap(char).any()]
+    words with holes in them.
+    """
+    blank = [char for char in pixelfont.CHARSET if char != " " and not pixelfont.bitmap(char).any()]
     assert blank == []
 
 
-@pytest.mark.parametrize("pair", [
-    ("0", "O"), ("1", "l"), ("1", "I"), ("l", "I"), ("5", "S"), ("2", "Z"),
-    ("8", "B"), ("6", "G"), ("c", "e"), ("u", "v"), ("m", "n"), ("h", "b"),
-])
+@pytest.mark.parametrize(
+    "pair",
+    [
+        ("0", "O"),
+        ("1", "l"),
+        ("1", "I"),
+        ("l", "I"),
+        ("5", "S"),
+        ("2", "Z"),
+        ("8", "B"),
+        ("6", "G"),
+        ("c", "e"),
+        ("u", "v"),
+        ("m", "n"),
+        ("h", "b"),
+    ],
+)
 def test_the_characters_people_confuse_are_distinct(pair):
     """Five columns is a tight grid, and this is where it gets tight.
 
@@ -70,15 +83,18 @@ def test_the_letters_that_descend_do_descend():
     A 5x7 body had nowhere to put them and they ended up tucked onto the
     baseline, which is one of the things that made the old face read as four-bit.
     """
-    descenders = [char for char in "abcdefghijklmnopqrstuvwxyz"
-                  if pixelfont.bitmap(char)[BASELINE + 1:].any()]
+    descenders = [
+        char
+        for char in "abcdefghijklmnopqrstuvwxyz"
+        if pixelfont.bitmap(char)[BASELINE + 1 :].any()
+    ]
     assert set(descenders) == set("gjpqy")
 
 
 def test_capitals_stay_out_of_the_descender_rows():
     """Otherwise a line of capitals sits lower than a line of text."""
     for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789":
-        assert not pixelfont.bitmap(char)[BASELINE + 1:].any(), char
+        assert not pixelfont.bitmap(char)[BASELINE + 1 :].any(), char
 
 
 def test_the_face_is_proportional():

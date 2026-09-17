@@ -199,8 +199,10 @@ class StateTableWidget(QtWidgets.QWidget):
     def _spin(self, column: dict, value: float, row: int = 0) -> QtWidgets.QDoubleSpinBox:
         """Return a spin box configured for one cell."""
         spin = QtWidgets.QDoubleSpinBox()
-        spin.setRange(self._bound(column, "minimum", row, self._minimum),
-                      self._bound(column, "maximum", row, self._maximum))
+        spin.setRange(
+            self._bound(column, "minimum", row, self._minimum),
+            self._bound(column, "maximum", row, self._maximum),
+        )
         spin.setDecimals(int(column.get("decimals", self._decimals)))
         spin.setKeyboardTracking(False)
         spin.setMaximumWidth(96)
@@ -307,13 +309,9 @@ class StateTableWidget(QtWidgets.QWidget):
                 widget = self._cell(column, value, row)
                 box = getattr(widget, "checkbox", None)
                 if box is not None:
-                    box.toggled.connect(
-                        lambda v, c=column, r=row: self._write(c, r, float(v))
-                    )
+                    box.toggled.connect(lambda v, c=column, r=row: self._write(c, r, float(v)))
                 elif not (column.get("kind") == "readonly" or column.get("readonly")):
-                    widget.valueChanged.connect(
-                        lambda v, c=column, r=row: self._write(c, r, v)
-                    )
+                    widget.valueChanged.connect(lambda v, c=column, r=row: self._write(c, r, v))
                 self._cells[(row, index)] = widget
                 self.table.setCellWidget(row, index, widget)
 
@@ -336,9 +334,7 @@ class StateTableWidget(QtWidgets.QWidget):
                 if box is not None:
                     box.toggled.connect(lambda v, a=attr: setattr(self._model, a, bool(v)))
                 elif not (merged.get("kind") == "readonly" or merged.get("readonly")):
-                    widget.valueChanged.connect(
-                        lambda v, a=attr: setattr(self._model, a, float(v))
-                    )
+                    widget.valueChanged.connect(lambda v, a=attr: setattr(self._model, a, float(v)))
                 self._cells[(row, index)] = widget
                 self.table.setCellWidget(row, index, widget)
 
@@ -366,8 +362,9 @@ class StateTableWidget(QtWidgets.QWidget):
         """Re-read the model, rebuilding only when the grid's shape changed."""
         rows, columns = self._rows(), self._columns()
         trailing = self._trailing()
-        if (self.table.rowCount() != rows + len(trailing)
-                or self.table.columnCount() != len(columns)):
+        if self.table.rowCount() != rows + len(trailing) or self.table.columnCount() != len(
+            columns
+        ):
             self._build()
             return
         for row in range(rows):

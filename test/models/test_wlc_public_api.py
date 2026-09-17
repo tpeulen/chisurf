@@ -6,6 +6,7 @@ Covers the properties the ``protein_unfolding_*`` scripts drive directly:
 way the scripts build them — ``Fit(model_class=..., data=DataCurve(...))`` — so
 no GUI or experiment registry is required.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,7 +14,8 @@ import pytest
 
 import chisurf.core.fitting.fit as fit_mod
 from chisurf.core.data import DataCurve
-from chisurf.core.models.description import tcspc_fret_gaussian as GaussianModel, tcspc_fret_worm_like_chain as WormLikeChainModel
+from chisurf.core.models.description import tcspc_fret_gaussian as GaussianModel
+from chisurf.core.models.description import tcspc_fret_worm_like_chain as WormLikeChainModel
 from chisurf.core.models.description import tcspc_mixture as LifetimeMixtureModel
 
 

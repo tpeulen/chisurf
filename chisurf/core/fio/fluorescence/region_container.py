@@ -198,9 +198,7 @@ def region_table(
         # The unweighted centroid is the shape's centre and the weighted one is
         # where the molecule is. Both are written because a consumer that picks
         # the wrong one is wrong by a sub-pixel amount that nothing catches.
-        weighted = np.asarray(
-            [p.centroid_weighted for p in props], dtype=float
-        ).reshape(n, 2)
+        weighted = np.asarray([p.centroid_weighted for p in props], dtype=float).reshape(n, 2)
         columns["region.centroid_weighted_y"] = weighted[:, 0]
         columns["region.centroid_weighted_x"] = weighted[:, 1]
 
@@ -212,9 +210,7 @@ def region_table(
     if intensity is not None:
         wanted += list(_INTENSITY_COLUMNS)
     for column, attribute in wanted:
-        columns[column] = np.asarray(
-            [float(getattr(p, attribute)) for p in props], dtype=float
-        )
+        columns[column] = np.asarray([float(getattr(p, attribute)) for p in props], dtype=float)
 
     for name, values in (extra or {}).items():
         values = np.asarray(values)
@@ -374,8 +370,7 @@ def read_regions(source: str | Path, *, name: str = "spots") -> RegionSet:
             available = list_region_sets(container) or ["(none)"]
             raise FileNotFoundError(
                 f"{Path(container).name} holds no detection named {name!r} "
-                f"(missing {', '.join(missing)}); it holds: "
-                + ", ".join(available)
+                f"(missing {', '.join(missing)}); it holds: " + ", ".join(available)
             )
         table = measurement.get_store(table_name)
 

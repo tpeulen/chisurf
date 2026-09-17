@@ -9,6 +9,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 # Part 1: test_tttr_channel_definition
 #
 
+
 def test_tttr_channel_definition(qapp):
     wizard = QWizard()
     page = DetectorWizardPage()
@@ -32,6 +33,7 @@ def test_tttr_channel_definition_set_file():
 #
 # Part 2: test_tttr_channel_definition_selective
 #
+
 
 def test_tttr_channel_definition_selective_widget(qapp):
     wizard = QWizard()
@@ -58,6 +60,7 @@ def test_tttr_channel_definition_selective_instructions(qapp):
 #
 # Part 3: unicode TTTR filename
 #
+
 
 def test_unicode_tttr_filename():
     with tempfile.TemporaryDirectory() as tmpdir:

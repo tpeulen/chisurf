@@ -26,7 +26,11 @@ import pytest
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -42,8 +46,8 @@ def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.io.structure import _read_full_model
     from chimol.core.viewer import Viewer
+    from chimol.io.structure import _read_full_model
 
     view = Viewer()
     view.add_structure(
@@ -335,9 +339,7 @@ def test_a_constant_property_takes_the_first_colour():
 def test_palette_names_come_from_pymols_table():
     from chimol.analysis.spectrum import palette_colors
 
-    assert palette_colors("rainbow") == [
-        "blue", "cyan", "green", "yellow", "orange", "red"
-    ]
+    assert palette_colors("rainbow") == ["blue", "cyan", "green", "yellow", "orange", "red"]
     assert palette_colors("gcbmry")[0] == "green"
 
 
@@ -356,9 +358,7 @@ def test_pseudoatom_creates_a_usable_object(session):
     cmd, view, _, errors = session
     cmd.do("pseudoatom pt, pos=[1,2,3]")
     assert errors == []
-    entry = next(
-        view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
-    )
+    entry = next(view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt")
     assert np.allclose(entry.state.atoms["xyz"][0], [1.0, 2.0, 3.0])
 
 
@@ -366,9 +366,7 @@ def test_a_pseudoatom_matches_the_reader_dtype(session):
     """Otherwise nothing downstream -- selections, export, colouring -- can read it."""
     cmd, view, _, _ = session
     cmd.do("pseudoatom pt, pos=[1,2,3]")
-    entry = next(
-        view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
-    )
+    entry = next(view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt")
     assert {"chain", "res_id", "res_name", "atom_name", "bfactor", "xyz"} <= set(
         entry.state.atoms.dtype.names
     )

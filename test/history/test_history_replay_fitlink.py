@@ -31,7 +31,9 @@ def _make_state_handlers(state):
 
     def on_parameter_link(event):
         payload = event.get("payload", {})
-        src_fit_uid = str(payload.get("source_fit_uid") or payload.get("fit_uid") or event.get("source_uid") or "")
+        src_fit_uid = str(
+            payload.get("source_fit_uid") or payload.get("fit_uid") or event.get("source_uid") or ""
+        )
         src_param = str(payload.get("source_parameter") or payload.get("parameter_name") or "")
         tgt_fit_uid = str(payload.get("target_fit_uid") or "")
         tgt_param = str(payload.get("target_parameter") or "")
@@ -67,7 +69,6 @@ def _make_state_handlers(state):
 
 
 class TestHistoryReplayFitLink(unittest.TestCase):
-
     def test_replay_equivalence_for_fit_and_link_actions(self):
         events = [
             {
@@ -126,7 +127,11 @@ class TestHistoryReplayFitLink(unittest.TestCase):
     def test_replay_reports_handler_errors(self):
         events = [
             {"action_type": "fit_add", "source_uid": "fit-A", "payload": {"fit_uid": "fit-A"}},
-            {"action_type": "parameter_value", "source_uid": "fit-A", "payload": {"fit_uid": "fit-A", "parameter_name": "tau", "new_value": 1.0}},
+            {
+                "action_type": "parameter_value",
+                "source_uid": "fit-A",
+                "payload": {"fit_uid": "fit-A", "parameter_name": "tau", "new_value": 1.0},
+            },
         ]
 
         state = {"fits": {}, "links": {}}
@@ -173,10 +178,12 @@ class TestHistoryReplayFitLink(unittest.TestCase):
 
             def on_group(event):
                 payload = event.get("payload", {})
-                state["groups"].append({
-                    "name": str(payload.get("group_name", "Data-Group")),
-                    "size": int(payload.get("group_size", 0)),
-                })
+                state["groups"].append(
+                    {
+                        "name": str(payload.get("group_name", "Data-Group")),
+                        "size": int(payload.get("group_size", 0)),
+                    }
+                )
 
             def on_remove(event):
                 names = set(str(n) for n in event.get("payload", {}).get("removed_names", []))
@@ -212,7 +219,12 @@ class TestHistoryReplayFitLink(unittest.TestCase):
             {
                 "action_type": "fit_run_finish",
                 "source_uid": "fit-A",
-                "payload": {"fit_name": "Fit A", "success": True, "elapsed_ms": 1234, "result_count": 3},
+                "payload": {
+                    "fit_name": "Fit A",
+                    "success": True,
+                    "elapsed_ms": 1234,
+                    "result_count": 3,
+                },
             },
         ]
 

@@ -331,8 +331,9 @@ class AutoForm(QtWidgets.QWidget):
         # plot or table that a dock area reparented/floated (out of findChildren's
         # reach) still refreshes when the model changes.
         candidates = list(self.findChildren(PlotWidget))
-        candidates += [w for w in self.findChildren(QtWidgets.QWidget)
-                       if getattr(w, "AUTOFORM_REFRESH", False)]
+        candidates += [
+            w for w in self.findChildren(QtWidgets.QWidget) if getattr(w, "AUTOFORM_REFRESH", False)
+        ]
         candidates += list(getattr(self, "_refresh_targets", []))
         seen = set()
         for w in candidates:
@@ -400,7 +401,9 @@ class AutoForm(QtWidgets.QWidget):
                 # A field marked ``_autoform_expanding`` (e.g. a text preview) also
                 # grows vertically and its grid row carries the stretch.
                 expanding = bool(getattr(field, "_autoform_expanding", False))
-                vpolicy = QtWidgets.QSizePolicy.Expanding if expanding else QtWidgets.QSizePolicy.Fixed
+                vpolicy = (
+                    QtWidgets.QSizePolicy.Expanding if expanding else QtWidgets.QSizePolicy.Fixed
+                )
                 field.setSizePolicy(QtWidgets.QSizePolicy.Expanding, vpolicy)
                 _make_field_shrinkable(field)
                 grid.addWidget(label, r, col)
@@ -780,8 +783,7 @@ class AutoForm(QtWidgets.QWidget):
         for child in box.findChildren(QtWidgets.QWidget):
             if getattr(child, "_autoform_expanding", False):
                 box._autoform_expanding = True
-                box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                  QtWidgets.QSizePolicy.Expanding)
+                box.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
                 break
         # Record the spec, as every leaf section widget does. A panel is the
         # natural thing for a guided tour to point at — "Channels", "Background"
@@ -830,7 +832,9 @@ class AutoForm(QtWidgets.QWidget):
             display_title = str(display_title).replace("_", " ").strip()
 
             key_name = (
-                getattr(child, "key", None) or getattr(child, "attr", None) or str(display_title).lower().replace(" ", "_")
+                getattr(child, "key", None)
+                or getattr(child, "attr", None)
+                or str(display_title).lower().replace(" ", "_")
             )
             try:
                 if isinstance(child, vs.PanelSection):
@@ -990,11 +994,14 @@ class AutoForm(QtWidgets.QWidget):
         for i in range(len(weights) - 1):
             if not isinstance(splitter, QtWidgets.QSplitter):
                 break
-            rest = sum(weights[i + 1:])
+            rest = sum(weights[i + 1 :])
             total = weights[i] + rest
             try:
-                span = splitter.width() if splitter.orientation() == QtCore.Qt.Horizontal \
+                span = (
+                    splitter.width()
+                    if splitter.orientation() == QtCore.Qt.Horizontal
                     else splitter.height()
+                )
                 span = max(int(span), total)
                 first = max(1, round(span * weights[i] / total))
                 splitter.setSizes([first, max(1, span - first)])
@@ -1106,9 +1113,7 @@ class AutoForm(QtWidgets.QWidget):
         # A label grows into spare vertical space like any other widget, and it
         # centres its text while doing so: next to a height-capped widget the
         # caption drifts into the middle of the panel, far from what it names.
-        caption_label.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
-        )
+        caption_label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         if section.description:
             caption_label.setToolTip(section.description)
         layout.addWidget(caption_label)
@@ -1120,9 +1125,7 @@ class AutoForm(QtWidgets.QWidget):
         if getattr(widget, "_autoform_expanding", False):
             holder._autoform_expanding = True
             layout.setStretch(1, 1)
-            holder.setSizePolicy(
-                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
-            )
+            holder.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         # ``section_widget`` must hand back the widget the factory built, not the
         # caption wrapper: a caller asking for a section by name wants the thing
         # with the API on it.
@@ -1160,9 +1163,7 @@ class AutoForm(QtWidgets.QWidget):
         del_btn.setToolTip("Remove the selected component, or the last one")
         del_btn.setStyleSheet(REMOVE_BUTTON_STYLE)
         for btn in (add_btn, del_btn):
-            btn.setSizePolicy(
-                QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
-            )
+            btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         header.addWidget(add_btn)
         header.addWidget(del_btn)
         for key in section.header_keys:
@@ -1355,7 +1356,9 @@ class AutoForm(QtWidgets.QWidget):
             cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(idx)})
         except Exception:  # pragma: no cover - dispatcher optional in tests
             pass
-        callback = getattr(self.model, "_on_changed", None) or getattr(self.model, "on_changed", None)
+        callback = getattr(self.model, "_on_changed", None) or getattr(
+            self.model, "on_changed", None
+        )
         if callable(callback):
             try:
                 callback()

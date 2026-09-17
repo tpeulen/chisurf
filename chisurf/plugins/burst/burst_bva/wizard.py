@@ -7,6 +7,7 @@ from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
 
 class MainWindow(BVATool):
     """Legacy-compatible alias."""
+
     pass
 
 

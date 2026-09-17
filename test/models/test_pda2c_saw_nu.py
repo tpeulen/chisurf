@@ -13,12 +13,12 @@ def test_saw_nu_distances_distribution():
 
     g = Pda2cSawNuDistances(fit=None)
     d = g.distribution
-    assert d.shape == (2, 96)                 # (r, p) on the rda_axis grid
+    assert d.shape == (2, 96)  # (r, p) on the rda_axis grid
     assert abs(float(d[1].sum()) - 1.0) < 1e-6
     assert len(g) == 1
     # nu controls the shape: an expanded chain peaks further out.
     g._nu.value = 0.7
-    peak_exp = d[0][np.argmax(Pda2cSawNuDistances(fit=None).distribution[1])]
+    d[0][np.argmax(Pda2cSawNuDistances(fit=None).distribution[1])]
     assert np.all(g.distribution[1] >= 0)
 
 
@@ -63,5 +63,6 @@ def test_saw_nu_view_spec_is_valid_and_targets_distances():
     dist_panels = [s for s in v["sections"] if s.get("title") == "Distance distribution"]
     assert dist_panels, "no distance-distribution panel"
     inner = dist_panels[0]["sections"]
-    assert any(s.get("type") == "parameter_group_table" and s.get("target") == "distances"
-               for s in inner)
+    assert any(
+        s.get("type") == "parameter_group_table" and s.get("target") == "distances" for s in inner
+    )

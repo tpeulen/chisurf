@@ -40,14 +40,14 @@ def _quadratic_fit(seed: int = 1):
     """Return a converged ``c + a*x**2`` fit to noisy data with known sigma."""
     rng = np.random.default_rng(seed)
     x = np.linspace(0.0, 5.0, 64)
-    y = 3.1 + 1.2 * x ** 2 + rng.normal(0.0, SIGMA, x.size)
+    y = 3.1 + 1.2 * x**2 + rng.normal(0.0, SIGMA, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([data]),
         model_class=chisurf.core.models.parse.ParseModel,
     )
     fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
+    fit.model.func = "c+a*x**2"
     fit.model.find_parameters()
     fit.run()
     return fit
@@ -94,15 +94,13 @@ def _twice(seed: int, run):
     for _ in range(2):
         fit = _quadratic_fit()
         np.random.seed(seed)
-        chains.append(np.asarray(run(fit)['chains']))
+        chains.append(np.asarray(run(fit)["chains"]))
     return chains
 
 
 def test_the_ensemble_chain_is_reproducible_under_a_global_seed():
     """The whole point: same seed, same chain."""
-    first, second = _twice(
-        3, lambda fit: sample.sample_ensemble(fit, steps=40, nwalkers=8, thin=1)
-    )
+    first, second = _twice(3, lambda fit: sample.sample_ensemble(fit, steps=40, nwalkers=8, thin=1))
 
     np.testing.assert_allclose(first, second)
 

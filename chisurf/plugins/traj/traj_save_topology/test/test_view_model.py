@@ -3,7 +3,6 @@
 import pathlib
 
 import numpy as np
-import pytest
 
 
 def _tiny_trajectory(path: str) -> str:
@@ -23,7 +22,7 @@ def _tiny_trajectory(path: str) -> str:
     xyz[1, 0, 0] = 1.0
     traj = md.Trajectory(xyz=xyz, topology=topology)
     traj.save_dcd(path)
-    pdb = str(path).replace('.dcd', '.pdb')
+    pdb = str(path).replace(".dcd", ".pdb")
     traj[0].save_pdb(pdb)
     return pdb
 

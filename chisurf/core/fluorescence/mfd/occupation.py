@@ -121,9 +121,7 @@ class OccupationGrid:
         edges = np.linspace(0.0, 1.0, int(n_nodes) + 1)
         index = np.clip(np.digitize(self.fractions[:, 0], edges[1:-1]), 0, n_nodes - 1)
         weights = np.bincount(index, weights=self.weights, minlength=n_nodes)
-        centres = np.bincount(
-            index, weights=self.weights * self.fractions[:, 0], minlength=n_nodes
-        )
+        centres = np.bincount(index, weights=self.weights * self.fractions[:, 0], minlength=n_nodes)
         occupied = weights > 0
         first = centres[occupied] / weights[occupied]
         fractions = np.column_stack([first, 1.0 - first])
@@ -194,11 +192,7 @@ def recommended_steps(rate_matrix, window: float, n_states: int | None = None) -
     fastest = float(np.max(off_diagonal)) if off_diagonal.size else 0.0
     transitions = fastest * float(max(window, 0.0))
     ceiling = _MAX_STEPS if states <= 2 else 64
-    return int(
-        np.clip(
-            np.ceil(_STEPS_PER_TRANSITION * transitions), _MIN_STEPS, ceiling
-        )
-    )
+    return int(np.clip(np.ceil(_STEPS_PER_TRANSITION * transitions), _MIN_STEPS, ceiling))
 
 
 def occupation_time_distribution(
@@ -311,14 +305,10 @@ def occupation_time_distribution(
     fractions = np.empty((counts.shape[0], n_states))
     fractions[:, : n_states - 1] = counts / n_steps
     fractions[:, n_states - 1] = 1.0 - counts.sum(axis=1) / n_steps
-    return OccupationGrid(
-        fractions=fractions, weights=weights, window=window, n_steps=n_steps
-    )
+    return OccupationGrid(fractions=fractions, weights=weights, window=window, n_steps=n_steps)
 
 
-def two_state_occupation_variance(
-    rate_matrix, window: float
-) -> tuple[float, float]:
+def two_state_occupation_variance(rate_matrix, window: float) -> tuple[float, float]:
     """Return the exact mean and variance of the occupancy of state 0, for two states.
 
     The correctness test of the propagator, in closed form. The indicator of state 0

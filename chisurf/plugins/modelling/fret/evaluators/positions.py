@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import Evaluator, EvaluatorResult
 
@@ -16,8 +16,8 @@ class PositionEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av = av_cache.get(self.position_name)
         val = av.n_points if av is not None else 0
@@ -33,12 +33,12 @@ class AVVolumeEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av = av_cache.get(self.position_name)
         if av is None or not av.has_volume:
             val = 0.0
         else:
-            val = av.n_points * (av.grid_step ** 3)
+            val = av.n_points * (av.grid_step**3)
         return EvaluatorResult(self.name, float(val), "Å³")

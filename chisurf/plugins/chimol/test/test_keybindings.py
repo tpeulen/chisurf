@@ -6,10 +6,10 @@ actually performs an action -- without being written down three times. These
 tests hold that: a rebind has to change what the key *does*, not just what the
 overlay claims, and vice versa.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.ui.input import keybindings as kb
 
 
@@ -45,12 +45,20 @@ def test_every_action_ships_with_a_key_and_a_label():
 def test_the_defaults_are_the_shortcuts_that_always_shipped():
     """Muscle memory: these six were hard-coded comparisons before the table,
     and moving them into configuration must not have moved the keys. The
-    volume keys (PRD-126) came later and are pinned alongside."""
+    volume keys (PRD-126) came later and are pinned alongside.
+    """
     assert kb.default_keys() == {
-        "cartoon": "r", "ca_trace": "c", "atoms": "b",
-        "dots": "d", "sidechains": "s", "close": "q",
-        "slice_down": "[", "slice_up": "]",
-        "volume_slices": "1", "volume_mip": "2", "volume_composite": "3",
+        "cartoon": "r",
+        "ca_trace": "c",
+        "atoms": "b",
+        "dots": "d",
+        "sidechains": "s",
+        "close": "q",
+        "slice_down": "[",
+        "slice_up": "]",
+        "volume_slices": "1",
+        "volume_mip": "2",
+        "volume_composite": "3",
     }
 
 
@@ -67,13 +75,14 @@ def test_the_table_and_the_shipped_config_agree():
     """
     from chimol.core.settings.config import _load_display_config
 
-    shipped = (_load_display_config().get("keys") or {})
+    shipped = _load_display_config().get("keys") or {}
     assert shipped == kb.default_keys()
 
 
 def test_labels_are_ascii_so_the_atlas_can_draw_them():
     """The overlay draws through the chrome's glyph atlas, and a character it
-    has not baked paints as nothing at all rather than raising."""
+    has not baked paints as nothing at all rather than raising.
+    """
     for action, (_key, label) in kb.ACTIONS.items():
         assert label.isascii(), f"{action}'s label has a non-ASCII character"
 
@@ -100,7 +109,8 @@ def test_a_rebind_moves_what_the_key_does():
 
 def test_an_empty_binding_switches_the_shortcut_off():
     """Clearing the field is a legitimate way to disable a shortcut, and must
-    not turn into "fires on every keystroke that produced no text"."""
+    not turn into "fires on every keystroke that produced no text".
+    """
     _set("cartoon", "")
     assert kb.action_for_key("") is None
     assert kb.action_for_key("r") is None
@@ -134,14 +144,16 @@ def test_bindings_report_the_live_key_not_the_default():
 # -- conflicts -------------------------------------------------------------
 def test_no_conflicts_in_the_shipped_bindings():
     """Six keys, six actions -- if that stops being true, say so here rather
-    than in a bug report about a shortcut doing the wrong thing."""
+    than in a bug report about a shortcut doing the wrong thing.
+    """
     assert kb.conflicts() == {}
 
 
 def test_two_actions_on_one_key_are_reported():
     """The settings panel can be typed into, so this state is reachable; the
-    honest thing is to name it rather than silently last-one-wins."""
-    _set("cartoon", "c")          # ca_trace already holds "c"
+    honest thing is to name it rather than silently last-one-wins.
+    """
+    _set("cartoon", "c")  # ca_trace already holds "c"
     clash = kb.conflicts()
     assert clash == {"c": ["cartoon", "ca_trace"]}
     # Deterministic while it lasts: table order decides.
@@ -150,9 +162,10 @@ def test_two_actions_on_one_key_are_reported():
 
 # -- the wiring ------------------------------------------------------------
 def test_the_settings_panel_offers_every_binding_as_an_editable_field():
-    """"Adjust the keyboard bindings" is this: the panel walks the display
+    """ "Adjust the keyboard bindings" is this: the panel walks the display
     config, so the rows exist without a hand-written control -- but they have
-    to come out editable rather than as a read-only label."""
+    to come out editable rather than as a read-only label.
+    """
     from chimol.ui.panels.settings import build_model
 
     model = build_model(lambda *_a: None)
@@ -164,7 +177,8 @@ def test_the_settings_panel_offers_every_binding_as_an_editable_field():
 
 def test_the_keys_command_is_registered():
     """Help -> Keyboard bindings issues this; a menu row pointing at a command
-    that does not exist looks fine and does nothing."""
+    that does not exist looks fine and does nothing.
+    """
     from chimol.commands import Cmd
 
     cmd = Cmd()

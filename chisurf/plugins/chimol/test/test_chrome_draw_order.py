@@ -18,11 +18,11 @@ back together that way. What is pinned here is the property -- submission order
 survives to the buffer, for every primitive the painter offers, including the
 one that writes glyph quads straight into the array and has to say so.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from emtk.quad_painter import QuadPainter
 
 RED = (255, 0, 0, 255)
@@ -65,16 +65,21 @@ def test_the_streams_interleave_as_often_as_they_are_swapped():
     p.fill_triangle((0, 0), (5, 0), (0, 5), GREEN)
     p.fill_rect(0, 0, 10, 10, BLUE)
     colours = _colours(p)
-    assert (_first_at(colours, (1, 0, 0))
-            < _first_at(colours, (0, 1, 0))
-            < _first_at(colours, (0, 0, 1)))
+    assert (
+        _first_at(colours, (1, 0, 0))
+        < _first_at(colours, (0, 1, 0))
+        < _first_at(colours, (0, 0, 1))
+    )
 
 
-@pytest.mark.parametrize("draw", [
-    lambda p: p.polyline([(0, 0), (10, 10), (20, 0)], 2.0, GREEN),
-    lambda p: p.fill_convex([(0, 0), (10, 0), (10, 10), (0, 10)], GREEN),
-    lambda p: p.fill_triangle((0, 0), (5, 0), (0, 5), GREEN),
-])
+@pytest.mark.parametrize(
+    "draw",
+    [
+        lambda p: p.polyline([(0, 0), (10, 10), (20, 0)], 2.0, GREEN),
+        lambda p: p.fill_convex([(0, 0), (10, 0), (10, 10), (0, 10)], GREEN),
+        lambda p: p.fill_triangle((0, 0), (5, 0), (0, 5), GREEN),
+    ],
+)
 def test_every_triangle_primitive_keeps_its_place(draw):
     """A plot trace, a filled polygon and a bare triangle are the same case."""
     p = QuadPainter()

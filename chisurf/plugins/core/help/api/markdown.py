@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import html as _html
 import re
-from typing import Optional
 
 from chisurf.plugins.core.help.api import theme as _theme
 from chisurf.plugins.core.help.api.mathtext import MathRenderer, split_math
@@ -54,7 +53,9 @@ ADMONITIONS = {
 #: Directives whose content is navigation or build metadata, not prose.
 _DROPPED_DIRECTIVES = {"toctree", "contents", "index", "meta", "raw", "only"}
 
-_FENCE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,}|:{3,})\{(?P<name>[\w.-]+)\}\s*(?P<arg>.*)$")
+_FENCE = re.compile(
+    r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,}|:{3,})\{(?P<name>[\w.-]+)\}\s*(?P<arg>.*)$"
+)
 _OPTION = re.compile(r"^[ \t]*:([\w-]+):\s*(.*)$")
 _TARGET = re.compile(r"^\((?P<name>[^)]+)\)=\s*$")
 
@@ -62,10 +63,10 @@ _TARGET = re.compile(r"^\((?P<name>[^)]+)\)=\s*$")
 def render_markdown(
     text: str,
     *,
-    theme: Optional[_theme.Theme] = None,
-    math: Optional[MathRenderer] = None,
+    theme: _theme.Theme | None = None,
+    math: MathRenderer | None = None,
     font_size: float = 10.5,
-) -> Optional[str]:
+) -> str | None:
     """Render Markdown *text* to a complete, themed HTML document.
 
     Parameters
@@ -94,7 +95,7 @@ def render_markdown(
     return f"<html><head>{css}</head><body>{body}</body></html>"
 
 
-def render_body(text: str, *, math: Optional[MathRenderer] = None) -> str:
+def render_body(text: str, *, math: MathRenderer | None = None) -> str:
     """Render Markdown *text* to an HTML fragment, without the page wrapper.
 
     Parameters
@@ -135,10 +136,10 @@ def strip_front_matter(text: str) -> str:
     if not text.startswith("---"):
         return text
     match = re.match(r"^---\s*\n.*?\n---\s*\n", text, re.DOTALL)
-    return text[match.end():] if match else text
+    return text[match.end() :] if match else text
 
 
-def extract_title(text: str) -> Optional[str]:
+def extract_title(text: str) -> str | None:
     """Return the first Markdown heading from *text*, or *None*."""
     for line in strip_front_matter(text).splitlines():
         stripped = line.strip()
@@ -241,9 +242,7 @@ def _admonition(kind: str, title: str, inner_html: str) -> str:
     admonition has to look like.
     """
     klass = "admonition" if kind == "admonition" else f"admonition {kind}"
-    heading = (
-        f'<p class="admonition-title">{_html.escape(title)}</p>' if title else ""
-    )
+    heading = f'<p class="admonition-title">{_html.escape(title)}</p>' if title else ""
     return (
         f'<table class="{klass}" width="100%" cellpadding="9" cellspacing="0" border="0">'
         f'<tr><td class="{klass}">{heading}{inner_html}</td></tr></table>'
@@ -281,9 +280,7 @@ def _convert_targets(text: str, keeper: _Placeholders) -> str:
 _ANY_FENCE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,}|:{3,})(?P<info>.*)$")
 
 
-def _convert_blocks(
-    text: str, keeper: _Placeholders, math: Optional[MathRenderer]
-) -> str:
+def _convert_blocks(text: str, keeper: _Placeholders, math: MathRenderer | None) -> str:
     """Convert every fenced block — code and MyST directive — to HTML.
 
     Both use the same fence syntax and differ only in the info string, so they
@@ -368,7 +365,7 @@ def _render_directive(
     argument: str,
     options: dict,
     content: str,
-    math: Optional[MathRenderer],
+    math: MathRenderer | None,
 ) -> str:
     """Render one MyST directive to HTML."""
     anchor = ""
@@ -466,7 +463,7 @@ def _prepare_markdown_with_heading_ids(text: str) -> str:
     return "\n".join(out_lines)
 
 
-def _render_with_markdown_lib(text: str) -> Optional[str]:
+def _render_with_markdown_lib(text: str) -> str | None:
     """Render with the ``markdown`` package if available."""
     try:
         import markdown as _md
@@ -562,7 +559,7 @@ def _basic_markdown_to_html(text: str) -> str:
             m_id = re.search(r"\{\s*#([-\w]+)\s*\}\s*$", raw_content)
             if m_id:
                 anchor = m_id.group(1)
-                raw_content = raw_content[:m_id.start()].rstrip()
+                raw_content = raw_content[: m_id.start()].rstrip()
             else:
                 anchor = slugify_heading(raw_content)
             content = _process_inline_with_images(raw_content)

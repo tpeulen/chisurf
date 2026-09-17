@@ -61,16 +61,14 @@ def _has_plugin_launch_block(path: pathlib.Path) -> bool:
     return False
 
 
-@pytest.mark.parametrize(
-    "plugin_dir", _menu_plugins(), ids=lambda p: p.name)
+@pytest.mark.parametrize("plugin_dir", _menu_plugins(), ids=lambda p: p.name)
 def test_a_menu_plugin_can_be_opened(plugin_dir: pathlib.Path):
     """Either a manifest GUI entry point, or a ``__name__ == "plugin"`` block."""
     manifest = json.loads((plugin_dir / "manifest.json").read_text(encoding="utf-8"))
     if (manifest.get("entrypoints") or {}).get("gui"):
         return
     launchable = any(
-        _has_plugin_launch_block(plugin_dir / name)
-        for name in ("wizard.py", "__init__.py")
+        _has_plugin_launch_block(plugin_dir / name) for name in ("wizard.py", "__init__.py")
     )
     assert launchable, (
         f"{plugin_dir.relative_to(REPO_ROOT)} is offered in the plugins menu but "

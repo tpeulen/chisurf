@@ -11,6 +11,7 @@ Mirror ``test_pda2c_model_editor.py`` for the native DEER family:
 
 Synthetic DEER data is built from the native kernel so no files are needed.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,8 +27,13 @@ def qapp():
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def _make_deer_data(r_mean: float = 40.0, sigma: float = 3.0, lam: float = 0.35,
-                    bg_k: float = 0.05, noise: float = 0.0):
+def _make_deer_data(
+    r_mean: float = 40.0,
+    sigma: float = 3.0,
+    lam: float = 0.35,
+    bg_k: float = 0.05,
+    noise: float = 0.0,
+):
     """Return a DataCurve carrying a synthetic DEER trace + ``meta_data['deer']`` (Å)."""
     from chisurf.core.data import DataCurve
 
@@ -38,11 +44,23 @@ def _make_deer_data(r_mean: float = 40.0, sigma: float = 3.0, lam: float = 0.35,
     if noise:
         rng = np.random.default_rng(1)
         v = v + rng.normal(0.0, noise, size=v.shape)
-    deer = {"t": t, "V": v, "V_imag": np.zeros_like(t), "phase": 0.0,
-            "t0": 0.0, "exp_type": "4pDEER", "scale": 1.0}
-    return DataCurve(name="synthetic-deer", load_filename_on_init=False,
-                     x=t, y=v, ey=np.full_like(v, max(noise, 1e-3)),
-                     meta_data={"deer": deer})
+    deer = {
+        "t": t,
+        "V": v,
+        "V_imag": np.zeros_like(t),
+        "phase": 0.0,
+        "t0": 0.0,
+        "exp_type": "4pDEER",
+        "scale": 1.0,
+    }
+    return DataCurve(
+        name="synthetic-deer",
+        load_filename_on_init=False,
+        x=t,
+        y=v,
+        ey=np.full_like(v, max(noise, 1e-3)),
+        meta_data={"deer": deer},
+    )
 
 
 def _make_deer_fit(model_class, **kw):
@@ -91,7 +109,10 @@ def test_deer_model_editor_renders_and_computes(qapp, model_path):
     # (b) editor is not a row of empty titled boxes — parameters render as
     # per-parameter widgets and/or compact parameter-group tables.
     from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-    table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
+
+    table_rows = sum(
+        t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget)
+    )
     assert len(editor.parameter_widgets) + table_rows > 1, "parameter groups rendered empty"
 
     # (c) every parameter-group section resolves to a group that has parameters
@@ -127,10 +148,13 @@ def test_deer_distance_accessor_returns_distribution(qapp):
     assert r[0] > 10.0 and r[-1] < 200.0
 
 
-@pytest.mark.parametrize("model_path", [
-    "chisurf.core.models.deer.deer.DeerTikhonovModel",
-    "chisurf.core.models.deer.deer.DeerMaxEntModel",
-])
+@pytest.mark.parametrize(
+    "model_path",
+    [
+        "chisurf.core.models.deer.deer.DeerTikhonovModel",
+        "chisurf.core.models.deer.deer.DeerMaxEntModel",
+    ],
+)
 def test_deer_lcurve_plot_and_compute(qapp, model_path):
     """The model-free models expose an L-curve plot that renders finite points."""
     from chisurf.gui.plots.lcurve import LCurvePlot

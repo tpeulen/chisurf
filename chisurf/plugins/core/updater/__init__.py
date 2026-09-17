@@ -25,25 +25,29 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.settings as _cs_settings_mod
 from chisurf.core import info
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.progress import ChiSurfProgress
 
 from .package_widget import PackageManagerDialog
 from .updater import ChiSurfUpdater, check_for_updates, update_chisurf
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
 
 # Plugin metadata (display name, icon, menu visibility) is defined in
 # manifest.json. This plugin is menu_hidden and surfaced as panels inside the
 # unified Settings dialog (Setup:Settings -> Updates / Packages).
 
+
 class UpdaterWorker(QtCore.QThread):
     finished = QtCore.Signal(bool, object, str)
     progress = QtCore.Signal(str)
+
 
 @persist_plugin_state("updater")
 class UpdaterWidget(QtWidgets.QWidget):
@@ -69,6 +73,7 @@ class UpdaterWidget(QtWidgets.QWidget):
 
         # Import settings
         from chisurf.core.settings import cs_settings
+
         self.cs_settings = cs_settings
 
         # Load startup-related settings for the updater plugin
@@ -81,7 +86,7 @@ class UpdaterWidget(QtWidgets.QWidget):
 
         # Get update URL from settings or fall back to the one from info.py
         hardcoded_url = "https://www.peulen.xyz/downloads/chisurf/"
-        update_url = cs_settings.get('update_url', hardcoded_url)
+        update_url = cs_settings.get("update_url", hardcoded_url)
 
         # Initialize updater with the update URL
         self.updater = ChiSurfUpdater(update_url=update_url)
@@ -90,7 +95,7 @@ class UpdaterWidget(QtWidgets.QWidget):
 
         # Ensure we use development channel when applicable (always checked and disabled for now)
         try:
-            if getattr(self, 'dev_checkbox', None) is not None and self.dev_checkbox.isChecked():
+            if getattr(self, "dev_checkbox", None) is not None and self.dev_checkbox.isChecked():
                 self.updater.channel = "development"
             else:
                 self.updater.channel = "master"
@@ -116,6 +121,7 @@ class UpdaterWidget(QtWidgets.QWidget):
         # Automatically check for updates shortly after the widget starts
         try:
             from qtpy import QtCore
+
             QtCore.QTimer.singleShot(150, self._auto_check_on_start)
         except Exception:
             # Fallback: direct call if QTimer not available
@@ -136,7 +142,9 @@ class UpdaterWidget(QtWidgets.QWidget):
         layout.addLayout(version_layout)
 
         # Status label
-        self.status_label = QtWidgets.QLabel("Click 'Check for Updates' to check for available updates.")
+        self.status_label = QtWidgets.QLabel(
+            "Click 'Check for Updates' to check for available updates."
+        )
         self._update_status_tooltip()
         layout.addWidget(self.status_label)
 
@@ -146,7 +154,9 @@ class UpdaterWidget(QtWidgets.QWidget):
         try:
             self.dev_checkbox.setChecked(True)
             self.dev_checkbox.setEnabled(False)  # user cannot uncheck for now
-            self.dev_checkbox.setToolTip("ChiSurf currently has no stable release; updates check the development branch.")
+            self.dev_checkbox.setToolTip(
+                "ChiSurf currently has no stable release; updates check the development branch."
+            )
             # Even if disabled for now, wire stateChanged for future-proofing
             try:
                 self.dev_checkbox.stateChanged.connect(self._on_branch_checkbox_changed)
@@ -172,18 +182,26 @@ class UpdaterWidget(QtWidgets.QWidget):
         # Check on startup
         self.cb_check_on_start = QtWidgets.QCheckBox("Check for updates on startup")
         try:
-            self.cb_check_on_start.setToolTip("When enabled, ChiSurf will check for updates during startup.")
-            self.cb_check_on_start.setChecked(bool(getattr(self, '_check_on_startup', True)))
-            self.cb_check_on_start.stateChanged.connect(lambda s: self._on_toggle_check_on_startup(s == QtCore.Qt.CheckState.Checked))
+            self.cb_check_on_start.setToolTip(
+                "When enabled, ChiSurf will check for updates during startup."
+            )
+            self.cb_check_on_start.setChecked(bool(getattr(self, "_check_on_startup", True)))
+            self.cb_check_on_start.stateChanged.connect(
+                lambda s: self._on_toggle_check_on_startup(s == QtCore.Qt.CheckState.Checked)
+            )
         except Exception:
             pass
         sg_layout.addWidget(self.cb_check_on_start)
         # Ignore updates (suppress startup prompts)
         self.cb_ignore_updates = QtWidgets.QCheckBox("Ignore updates (do not prompt on startup)")
         try:
-            self.cb_ignore_updates.setToolTip("If enabled, ChiSurf will not prompt about updates during startup.")
-            self.cb_ignore_updates.setChecked(bool(getattr(self, '_ignore_updates', False)))
-            self.cb_ignore_updates.stateChanged.connect(lambda s: self._on_toggle_ignore_updates(s == QtCore.Qt.CheckState.Checked))
+            self.cb_ignore_updates.setToolTip(
+                "If enabled, ChiSurf will not prompt about updates during startup."
+            )
+            self.cb_ignore_updates.setChecked(bool(getattr(self, "_ignore_updates", False)))
+            self.cb_ignore_updates.stateChanged.connect(
+                lambda s: self._on_toggle_ignore_updates(s == QtCore.Qt.CheckState.Checked)
+            )
         except Exception:
             pass
         sg_layout.addWidget(self.cb_ignore_updates)
@@ -212,7 +230,9 @@ class UpdaterWidget(QtWidgets.QWidget):
         # Open Package Manager button
         self.pkg_manager_button = QtWidgets.QPushButton(" 🗂️  Package Manager")
         try:
-            self.pkg_manager_button.setToolTip("Open the package manager to manage packages in your environment.")
+            self.pkg_manager_button.setToolTip(
+                "Open the package manager to manage packages in your environment."
+            )
             self.pkg_manager_button.clicked.connect(self.open_pkg_manager)
         except Exception:
             pass
@@ -232,7 +252,9 @@ class UpdaterWidget(QtWidgets.QWidget):
             self.changelog_text.setFont(font)
         except Exception:
             pass
-        self.changelog_text.setPlaceholderText("Changelog will appear here after checking for updates...")
+        self.changelog_text.setPlaceholderText(
+            "Changelog will appear here after checking for updates..."
+        )
         layout.addWidget(self.changelog_text)
 
         self.setLayout(layout)
@@ -267,7 +289,9 @@ class UpdaterWidget(QtWidgets.QWidget):
                 if s.startswith("- "):
                     # Keep the date/message nicely separated; escape HTML
                     items.append(html.escape(s[2:].strip()))
-                elif s.lower().startswith("more details:") or s.lower().startswith("see commit history:"):
+                elif s.lower().startswith("more details:") or s.lower().startswith(
+                    "see commit history:"
+                ):
                     footer.append(s)
                 elif s:
                     others.append(s)
@@ -297,7 +321,9 @@ class UpdaterWidget(QtWidgets.QWidget):
                         break
                 if url:
                     label = html.escape(ft.replace(url, "").strip(" :")) or "More details"
-                    html_parts.append(f"<p>{label}: <a href=\"{html.escape(url)}\">{html.escape(url)}</a></p>")
+                    html_parts.append(
+                        f'<p>{label}: <a href="{html.escape(url)}">{html.escape(url)}</a></p>'
+                    )
                 else:
                     html_parts.append(f"<p>{html.escape(ft)}</p>")
 
@@ -320,34 +346,36 @@ class UpdaterWidget(QtWidgets.QWidget):
     def _load_startup_settings(self) -> None:
         """Load updater startup settings from user chisurf settings.
         Defaults: ignore_updates_on_startup=False, check_on_startup=True.
-        Stored under cs_settings['plugins']['updater']."""
+        Stored under cs_settings['plugins']['updater'].
+        """
         try:
             # Get plugin settings dict safely
-            plugins = self.cs_settings.get('plugins') or {}
-            updater_settings = plugins.get('updater') or {}
-            self._ignore_updates = bool(updater_settings.get('ignore_updates_on_startup', False))
-            self._check_on_startup = bool(updater_settings.get('check_on_startup', True))
+            plugins = self.cs_settings.get("plugins") or {}
+            updater_settings = plugins.get("updater") or {}
+            self._ignore_updates = bool(updater_settings.get("ignore_updates_on_startup", False))
+            self._check_on_startup = bool(updater_settings.get("check_on_startup", True))
         except Exception:
             self._ignore_updates = False
             self._check_on_startup = True
 
     def _save_startup_settings(self) -> bool:
         """Persist updater startup settings into settings_chisurf.yaml.
-        Returns True on success, False otherwise."""
+        Returns True on success, False otherwise.
+        """
         try:
             values = {
-                'ignore_updates_on_startup': bool(self._ignore_updates),
-                'check_on_startup': bool(self._check_on_startup),
+                "ignore_updates_on_startup": bool(self._ignore_updates),
+                "check_on_startup": bool(self._check_on_startup),
             }
             all_settings = _cs_settings_mod.cs_settings
-            plugins = all_settings.setdefault('plugins', {})
-            plugins.setdefault('updater', {}).update(values)
+            plugins = all_settings.setdefault("plugins", {})
+            plugins.setdefault("updater", {}).update(values)
             # Only this section, merged into the user's file: dumping the live
             # settings wrote every merged default into it, pinning them all.
-            updater = dict(plugins['updater'])
+            updater = dict(plugins["updater"])
             from chisurf.core.settings.settings_utils import update_settings_section
 
-            return update_settings_section('plugins', {'updater': updater})
+            return update_settings_section("plugins", {"updater": updater})
         except Exception:
             return False
 
@@ -370,11 +398,13 @@ class UpdaterWidget(QtWidgets.QWidget):
     def _auto_check_on_start(self):
         """Perform an automatic update check on startup respecting user settings.
         If updates are ignored or startup checks are disabled, skip notifying on startup.
-        Also populate the version selection combobox on startup when allowed. """
+        Also populate the version selection combobox on startup when allowed.
+        """
         # Respect user settings ONLY during application startup, not when user opens this widget
         try:
-            if getattr(self, '_suppress_initial_notification', False) and (
-                getattr(self, '_ignore_updates', False) or not getattr(self, '_check_on_startup', True)
+            if getattr(self, "_suppress_initial_notification", False) and (
+                getattr(self, "_ignore_updates", False)
+                or not getattr(self, "_check_on_startup", True)
             ):
                 # Do not auto-check or prompt on startup
                 self.status_label.setText("Startup update check is disabled by user settings.")
@@ -406,12 +436,14 @@ class UpdaterWidget(QtWidgets.QWidget):
                     self.available_versions = self.updater._list_available_versions()
                 if self.available_versions:
                     for version_info in self.available_versions:
-                        version = version_info.get('version')
+                        version = version_info.get("version")
                         if version:
                             self.version_dropdown.addItem(f"Version {version}", version_info)
                     self.version_dropdown.setEnabled(True)
                     self.update_button.setEnabled(True)
-                    self.status_label.setText(f"Found {len(self.available_versions)} available versions.")
+                    self.status_label.setText(
+                        f"Found {len(self.available_versions)} available versions."
+                    )
                     self._update_status_tooltip()
                     populated_versions = True
                     # Populate changelog for latest version if provided
@@ -452,14 +484,17 @@ class UpdaterWidget(QtWidgets.QWidget):
                         dialogs.information(
                             self,
                             "Update Available",
-                            f"A new version of ChiSurf ({latest_version}) is available."
+                            f"A new version of ChiSurf ({latest_version}) is available.",
                         )
                     except Exception:
                         pass
             else:
                 from chisurf.core import info as _info
+
                 if not populated_versions:
-                    self.status_label.setText(f"ChiSurf is up to date (version {_info.__version__}).")
+                    self.status_label.setText(
+                        f"ChiSurf is up to date (version {_info.__version__})."
+                    )
                     self._update_status_tooltip()
         except Exception:
             pass
@@ -468,7 +503,6 @@ class UpdaterWidget(QtWidgets.QWidget):
                 self.check_button.setEnabled(True)
             except Exception:
                 pass
-
 
     def check_for_updates(self):
         """Check for available updates."""
@@ -502,20 +536,21 @@ class UpdaterWidget(QtWidgets.QWidget):
         if not self.available_versions and self.updater._is_local_folder():
             # If the update URL is a local folder but no versions were found,
             # try to get them directly
-            logging.debug("No versions found in update info but using local folder, trying direct listing")
+            logging.debug(
+                "No versions found in update info but using local folder, trying direct listing"
+            )
             self.available_versions = self.updater._list_available_versions()
-            logging.debug(f"Found {len(self.available_versions)} available versions from direct listing")
+            logging.debug(
+                f"Found {len(self.available_versions)} available versions from direct listing"
+            )
 
         # If we have available versions, populate the dropdown first
         if self.available_versions:
             logging.info(f"Found {len(self.available_versions)} available versions")
             for version_info in self.available_versions:
-                version = version_info['version']
+                version = version_info["version"]
                 logging.debug(f"Adding version {version} to dropdown")
-                self.version_dropdown.addItem(
-                    f"Version {version}",
-                    version_info
-                )
+                self.version_dropdown.addItem(f"Version {version}", version_info)
 
             self.version_dropdown.setEnabled(True)
             self.update_button.setEnabled(True)
@@ -600,7 +635,7 @@ class UpdaterWidget(QtWidgets.QWidget):
             data = self.version_dropdown.itemData(idx)
             if not isinstance(data, dict):
                 return
-            target_version = data.get('version')
+            target_version = data.get("version")
             if not target_version:
                 return
             from chisurf.core import info as _info
@@ -611,10 +646,14 @@ class UpdaterWidget(QtWidgets.QWidget):
             # If a non-latest version is selected and a previous version exists in the list,
             # show the changes between the previous version and the selected version.
             try:
-                if isinstance(self.available_versions, list) and idx >= 0 and (idx + 1) < len(self.available_versions):
+                if (
+                    isinstance(self.available_versions, list)
+                    and idx >= 0
+                    and (idx + 1) < len(self.available_versions)
+                ):
                     prev_info = self.available_versions[idx + 1]
                     if isinstance(prev_info, dict):
-                        prev_ver = prev_info.get('version')
+                        prev_ver = prev_info.get("version")
                         if isinstance(prev_ver, str) and prev_ver:
                             from_version = prev_ver
             except Exception:
@@ -625,7 +664,9 @@ class UpdaterWidget(QtWidgets.QWidget):
             self.changelog_text.setHtml(self._format_changelog_html(changelog))
         except Exception as e:
             try:
-                self.changelog_text.setHtml(self._format_changelog_html(f"Could not load changelog: {e}"))
+                self.changelog_text.setHtml(
+                    self._format_changelog_html(f"Could not load changelog: {e}")
+                )
             except Exception:
                 pass
 
@@ -646,16 +687,16 @@ class UpdaterWidget(QtWidgets.QWidget):
         try:
             solver_path = self.updater.pkg_manager.pkg_exe()
             solver_name = os.path.basename(solver_path).lower()
-            if 'micro' in solver_name:
-                solver_type = 'micromamba'
-            elif 'mamba' in solver_name:
-                solver_type = 'mamba'
+            if "micro" in solver_name:
+                solver_type = "micromamba"
+            elif "mamba" in solver_name:
+                solver_type = "mamba"
             else:
-                solver_type = 'conda'
+                solver_type = "conda"
 
             tooltip_text = f"Solver: {solver_type}\nLocation: {solver_path}"
             self.status_label.setToolTip(tooltip_text)
-        except Exception as e:
+        except Exception:
             try:
                 self.status_label.setToolTip("Solver information unavailable")
             except Exception:
@@ -693,7 +734,7 @@ class UpdaterWidget(QtWidgets.QWidget):
             "Update Warning",
             "The update process will close all ChiSurf windows and continue in a separate window.\n\n"
             "All unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\n"
-            "Do you want to continue?"
+            "Do you want to continue?",
         )
 
         if not proceed:
@@ -710,8 +751,8 @@ class UpdaterWidget(QtWidgets.QWidget):
             logging.debug(f"Selected version data: {selected_version}")
 
             if selected_version:
-                version = selected_version['version']
-                file_path = selected_version['file_path']
+                version = selected_version["version"]
+                file_path = selected_version["file_path"]
 
                 # Update the status
                 status_message = f"Updating to version {version}..."
@@ -726,9 +767,7 @@ class UpdaterWidget(QtWidgets.QWidget):
                 # Note: auto_restart is ignored as the application will be closed
                 logging.info(f"Starting update to version {version}")
                 self.updater.update_to_version(
-                    file_path, 
-                    callback=update_callback,
-                    auto_restart=False
+                    file_path, callback=update_callback, auto_restart=False
                 )
 
                 # The application will exit during the update process, so this code won't be reached
@@ -742,6 +781,7 @@ class UpdaterWidget(QtWidgets.QWidget):
         # The application will exit during the update process, so this code won't be reached
         logging.debug("This code should not be reached as the application will exit during update")
 
+
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
@@ -751,7 +791,9 @@ if __name__ == "plugin":
     window.show()
 
 
-def build_installed_vs_latest_changelog(latest_version: str, max_chars: int = 1500, limit: int = 50):
+def build_installed_vs_latest_changelog(
+    latest_version: str, max_chars: int = 1500, limit: int = 50
+):
     """
     Build changelog text comparing the installed version vs the provided latest version.
 
@@ -769,6 +811,7 @@ def build_installed_vs_latest_changelog(latest_version: str, max_chars: int = 15
     """
     try:
         from chisurf.core import info as _info
+
         installed = getattr(_info, "__version__", "")
     except Exception:
         installed = ""

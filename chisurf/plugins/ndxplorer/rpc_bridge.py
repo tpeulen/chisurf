@@ -135,7 +135,8 @@ def _measurement_aware(base):
             try:
                 if getattr(self, "parameter_control", None) is None and _attempt < 50:
                     QtCore.QTimer.singleShot(
-                        20, lambda: self._restore_stored_calibration(_attempt + 1))
+                        20, lambda: self._restore_stored_calibration(_attempt + 1)
+                    )
                     return
                 from chisurf.plugins.ndxplorer.calibration_bridge import (
                     restore_calibration_from_container,
@@ -143,8 +144,7 @@ def _measurement_aware(base):
 
                 restore_calibration_from_container(self)
             except Exception:
-                logging.debug("could not restore a stored calibration",
-                              exc_info=True)
+                logging.debug("could not restore a stored calibration", exc_info=True)
 
     _measurement_aware._cache = MeasurementAwareNDXplorer
     return MeasurementAwareNDXplorer

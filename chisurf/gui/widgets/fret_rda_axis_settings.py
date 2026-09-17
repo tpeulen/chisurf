@@ -5,6 +5,7 @@ this is a *settings* widget rather than part of any model's editor -- which is
 where it used to live, in ``gui/widgets/models/pda2c/widgets.py``, alongside nine
 model widgets that data-described models had already replaced.
 """
+
 from __future__ import annotations
 
 from qtpy import QtWidgets

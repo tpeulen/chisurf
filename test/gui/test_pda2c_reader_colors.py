@@ -18,9 +18,7 @@ import pytest
 TTTR_FILE = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
 ROUTINE = "SPC-130"
 
-pytestmark = pytest.mark.skipif(
-    not TTTR_FILE.is_file(), reason=f"{TTTR_FILE} not available"
-)
+pytestmark = pytest.mark.skipif(not TTTR_FILE.is_file(), reason=f"{TTTR_FILE} not available")
 
 
 @pytest.fixture(scope="module")
@@ -89,7 +87,7 @@ def test_counts_are_consistent_with_the_photon_stream(photons):
     # Spot-check a handful of bursts against a direct count.
     for row in (0, 5, 50, table.shape[0] - 1):
         start, stop = ranges[row]
-        window = routing[start: stop + 1]  # inclusive, see burst_count_table
+        window = routing[start : stop + 1]  # inclusive, see burst_count_table
         assert table[row, 0] == np.isin(window, [0, 8]).sum()
         assert table[row, 1] == np.isin(window, [1, 9]).sum()
 
@@ -124,8 +122,9 @@ def test_micro_time_gating_splits_the_excitation_periods(photons):
     table = reader.burst_count_table(photons, 20, 2e-3)
     assert table.shape[1] == 5
 
-    full = _reader(channels=([0], [1], [8]), micro_time_ranges=[(0, 4095)],
-                   n_colors=3).burst_count_table(photons, 20, 2e-3)
+    full = _reader(
+        channels=([0], [1], [8]), micro_time_ranges=[(0, 4095)], n_colors=3
+    ).burst_count_table(photons, 20, 2e-3)
     # Green detector: blue-period + green-period counts must equal the ungated
     # total for that detector.
     assert np.allclose(table[:, 1] + table[:, 3], full[:, 1])

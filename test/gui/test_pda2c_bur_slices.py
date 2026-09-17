@@ -48,13 +48,13 @@ def test_the_reader_matches_the_frame_pipeline_it_replaced(path):
 
 def test_last_photon_is_inclusive_in_the_format_and_exclusive_in_the_slice(tmp_path):
     """The off-by-one the format invites: a .bur names the last photon, a slice
-    names the one after it."""
+    names the one after it.
+    """
     from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
 
     path = tmp_path / "t.bur"
     path.write_text(
-        "First Photon\tLast Photon\tFirst File\tLast File\n"
-        "10\t19\tm000.spc\tm000.spc\n"
+        "First Photon\tLast Photon\tFirst File\tLast File\n10\t19\tm000.spc\tm000.spc\n"
     )
     _, starts, stops = read_bur_bursts(path)
     assert (int(starts[0]), int(stops[0])) == (10, 20)
@@ -62,7 +62,8 @@ def test_last_photon_is_inclusive_in_the_format_and_exclusive_in_the_slice(tmp_p
 
 def test_a_burst_spanning_two_measurements_is_dropped(tmp_path):
     """It has no single photon stream to slice, so there is no right answer --
-    and taking First File would silently attribute the other file's photons."""
+    and taking First File would silently attribute the other file's photons.
+    """
     from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
 
     path = tmp_path / "t.bur"
@@ -80,10 +81,7 @@ def test_the_header_capitalisation_is_not_fixed(tmp_path):
     from chisurf.gui.widgets.experiments.pda2c.controller import read_bur_bursts
 
     path = tmp_path / "t.bur"
-    path.write_text(
-        "FIRST PHOTON\tlast photon\tFirst File\tLAST FILE\n"
-        "3\t7\ta.spc\ta.spc\n"
-    )
+    path.write_text("FIRST PHOTON\tlast photon\tFirst File\tLAST FILE\n3\t7\ta.spc\ta.spc\n")
     names, starts, stops = read_bur_bursts(path)
     assert (list(names), int(starts[0]), int(stops[0])) == (["a.spc"], 3, 8)
 
@@ -130,7 +128,8 @@ def test_one_bur_naming_one_file_resolves_by_stem(tmp_path):
 def test_a_bur_naming_two_files_groups_each_ones_bursts(tmp_path):
     """The path the frame pipeline used ``groupby`` for. A .bur that references
     more than one measurement has to send each burst to the right stream — the
-    one thing this resolver exists to get right."""
+    one thing this resolver exists to get right.
+    """
     bur = _analysis_folder(
         tmp_path,
         "mixed.bur",
@@ -143,7 +142,8 @@ def test_a_bur_naming_two_files_groups_each_ones_bursts(tmp_path):
 
 def test_a_bur_whose_files_are_absent_resolves_to_nothing(tmp_path):
     """Declining is right, and it must not raise: a folder can legitimately hold
-    burst tables whose measurements live elsewhere."""
+    burst tables whose measurements live elsewhere.
+    """
     bur_dir = tmp_path / "bi4_bur"
     bur_dir.mkdir(parents=True)
     (bur_dir / "x.bur").write_text(

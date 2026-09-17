@@ -202,10 +202,7 @@ def log_background_series(count: int, rate: float, p: float):
 
     # falling_factorial(count, b) = count!/(count-b)!
     log_u = (
-        poisson.logpmf(b, rate)
-        + gammaln(count + 1.0)
-        - gammaln(count - b + 1.0)
-        - b * np.log(p)
+        poisson.logpmf(b, rate) + gammaln(count + 1.0) - gammaln(count - b + 1.0) - b * np.log(p)
     )
     # Normalise out u(0) = Pois(0; rate) so the series starts at 1 and the
     # discarded constant reappears in `log_background_correction`.
@@ -276,10 +273,10 @@ def _log_convolve(log_a, log_b):
 
 
 def log_background_correction(
-        counts,
-        background,
-        p,
-        photon_number_pmf=None,
+    counts,
+    background,
+    p,
+    photon_number_pmf=None,
 ) -> float:
     r"""Log of the factor by which background multiplies the zero-background term.
 
@@ -347,7 +344,6 @@ def log_background_correction(
     return float(log_offset + peak + np.log(np.exp(terms[kept] - peak).sum()))
 
 
-
 #: tttrlib's PdaBurstLikelihood, keyed on the burst-side inputs. The constructor
 #: precomputes everything that does not depend on the model point -- the falling
 #: factorials, the Poisson series, the multinomial constant -- and a fit calls
@@ -361,12 +357,12 @@ def _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance):
     """Return a cached tttrlib evaluator for these bursts."""
     try:
         import tttrlib
-    except ImportError as exc:                            # pragma: no cover
+    except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "PDA3c requires tttrlib. The NumPy implementation it used to fall "
             "back to was removed once tttrlib carried the same factorisation."
         ) from exc
-    if not hasattr(tttrlib, "PdaBurstLikelihood"):        # pragma: no cover
+    if not hasattr(tttrlib, "PdaBurstLikelihood"):  # pragma: no cover
         raise ImportError(
             "PDA3c requires a tttrlib with PdaBurstLikelihood; the installed "
             f"tttrlib {getattr(tttrlib, '__version__', '?')} predates it."
@@ -381,7 +377,8 @@ def _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance):
     pn = None if photon_number_pmf is None else np.asarray(photon_number_pmf, dtype=float)
 
     key = (
-        ci.shape, ci.tobytes(),
+        ci.shape,
+        ci.tobytes(),
         None if bg is None else bg.tobytes(),
         None if pn is None else pn.tobytes(),
         float(tolerance),
@@ -401,11 +398,11 @@ def _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance):
 
 
 def burst_log_likelihood(
-        counts,
-        p,
-        background=None,
-        photon_number_pmf=None,
-        tolerance: float = DEFAULT_TOLERANCE,
+    counts,
+    p,
+    background=None,
+    photon_number_pmf=None,
+    tolerance: float = DEFAULT_TOLERANCE,
 ) -> np.ndarray:
     r"""Log likelihood of every burst under every set of channel probabilities.
 

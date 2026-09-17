@@ -10,15 +10,14 @@ Deliberately a *surface*, not a subclass. The canvas is a ``QWidget`` that
 paints itself; this is a host around a toolkit-free control, and the only
 thing the two have in common is what the tool asks of them.
 """
+
 from __future__ import annotations
 
 import logging
-import typing
-
-from qtpy import QtCore, QtWidgets
 
 from emtk import im, nodes
 from emtk.qt_host import ControlHost
+from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.widgets.node_editor.emtk_control import GraphControl
 from chisurf.plugins.core.globalview.gui.emtk_view import (
@@ -106,7 +105,7 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
     linkRequested = QtCore.Signal(int, int)
     linkRemovalRequested = QtCore.Signal(int)
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._content = GlobalViewContent()
         self.control = GraphControl(
@@ -120,8 +119,9 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         # are still made and broken, which is the whole point of the panel.
         self.control.read_only = False
 
-        self.host = ControlHost(self._Painter(self), font_pt=9.0,
-                                background=(24, 26, 31, 255), parent=self)
+        self.host = ControlHost(
+            self._Painter(self), font_pt=9.0, background=(24, 26, 31, 255), parent=self
+        )
         self.host.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.host.setMouseTracking(True)
         layout = QtWidgets.QVBoxLayout(self)
@@ -147,7 +147,7 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         caught by a box selection.
         """
 
-        def __init__(self, owner: "ParameterNetworkWidget") -> None:
+        def __init__(self, owner: ParameterNetworkWidget) -> None:
             self._owner = owner
 
         def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
@@ -185,8 +185,9 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         """The selected nodes, as indices into the arrays the tool passed."""
         return list(self._selected)
 
-    def set_graph(self, positions, edges, names, kinds, *, spread: float = 1.0,
-                  keep_view: bool = True) -> None:
+    def set_graph(
+        self, positions, edges, names, kinds, *, spread: float = 1.0, keep_view: bool = True
+    ) -> None:
         """Replace the graph.
 
         Parameters
@@ -202,8 +203,7 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         """
         del keep_view
         placed = _to_pixels(positions, spread)
-        self.control.set_document(document_from_arrays(placed, edges, names, kinds),
-                                  fit=True)
+        self.control.set_document(document_from_arrays(placed, edges, names, kinds), fit=True)
         self._selected = []
         self.host.update()
 

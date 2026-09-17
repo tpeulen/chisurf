@@ -1,16 +1,15 @@
 from __future__ import annotations
-from chisurf import typing
 
-import numpy as np
-import types
 import inspect
+import types
 from typing import TYPE_CHECKING
 
-import chisurf.core.support.decorators
-import chisurf.core.parameter
-import chisurf.core.models
+import numpy as np
 
-from chisurf.core.curve import Curve
+import chisurf.core.models
+import chisurf.core.parameter
+import chisurf.core.support.decorators
+from chisurf import typing
 from chisurf.core.models import model
 from chisurf.core.models.catalogue import EquationCatalogueMixin
 
@@ -39,7 +38,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         """Evaluate the model and finalize all parameter controllers."""
         self._update_model()
         for i, p in enumerate(self.parameters_all):
-            if hasattr(p, 'controller') and p.controller is not None:
+            if hasattr(p, "controller") and p.controller is not None:
                 p.controller.finalize()
 
     def _update_model(self, **kwargs):
@@ -58,6 +57,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         except Exception as e:
             # Log the error but continue
             import logging
+
             logging.warning(f"Error during model node evaluation: {str(e)}")
             # Don't re-raise the exception to allow the UI to continue functioning
 
@@ -96,7 +96,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         """
         # Validate the function string before using it
         # Try to compile the function to check for syntax errors
-        code_obj = compile(fun, '<string>', 'exec')
+        code_obj = compile(fun, "<string>", "exec")
         function_obj = None
 
         # Extract the function object from the compiled code
@@ -116,23 +116,23 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         for param_name, param in sig.parameters.items():
             if param.default is not inspect.Parameter.empty:
                 default_args[param_name] = param.default
-            elif param.annotation == 'int':
+            elif param.annotation == "int":
                 default_args[param_name] = 1
-            elif param.annotation == 'float':
+            elif param.annotation == "float":
                 default_args[param_name] = 1.0
             else:
                 default_args[param_name] = 0.0
 
         # Call the function with default arguments, but catch any errors
         try:
-            result = function_obj(**default_args)
+            function_obj(**default_args)
         except Exception as e:
             # Log the error but continue with model creation
             import logging
+
             logging.warning(f"Error evaluating function with default parameters: {str(e)}")
             # Create a dummy result with expected output keys
             # This allows the model to be created even if evaluation fails
-            result = {}
 
         self._function = fun
         m = chisurf.core.models.function_to_model_decorator(name=self.name)
@@ -155,13 +155,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         """No-op setter to satisfy the read-only property protocol."""
         pass
 
-    def __init__(
-            self,
-            fit: Fit,
-            function: typing.Callable = None,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, fit: Fit, function: typing.Callable = None, *args, **kwargs):
         """Initialize the parameter transform model.
 
         Parameters
@@ -176,7 +170,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
             # Open on a real transform: the catalogue's first entry, as the
             # hand-written editor's combo box did. The identity function is only the
             # fallback when no catalogue ships.
-            self.function = 'def f(x): return x'
+            self.function = "def f(x): return x"
             super().__init__(fit, *args, **kwargs)
             self.select_first_catalogue_entry()
             return

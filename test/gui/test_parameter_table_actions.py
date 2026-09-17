@@ -173,9 +173,7 @@ def test_cell_edit_still_dispatches_on_change(table):
     """A real user edit must still trigger the fit update."""
     calls = []
     table._on_change = lambda: calls.append(1)
-    table.table_model.setData(
-        table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole
-    )
+    table.table_model.setData(table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole)
     assert calls, "a cell edit should dispatch on_change"
 
 
@@ -214,9 +212,7 @@ def test_cell_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch)
         ),
     )
 
-    table.table_model.setData(
-        table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole
-    )
+    table.table_model.setData(table.table_model.index(0, COL_VALUE), "4.25", QtCore.Qt.EditRole)
 
     assert params[0].value == 4.25, "the local echo must still happen"
     # The parameter is addressed by UUID: a name plus a fit only resolves for
@@ -245,9 +241,7 @@ def test_checkbox_edit_reaches_the_backend_and_the_trace(table, params, monkeypa
         lambda self, action_type, summary, payload=None: traced.append(action_type),
     )
 
-    table.table_model.setData(
-        table.table_model.index(0, COL_FIXED), "True", QtCore.Qt.EditRole
-    )
+    table.table_model.setData(table.table_model.index(0, COL_FIXED), "True", QtCore.Qt.EditRole)
 
     assert params[0].fixed is True
     assert [name for name, _ in client.calls] == ["set_parameter_fixed"]
@@ -331,9 +325,7 @@ def test_finalize_from_another_thread_repaints_on_the_gui_thread(table, qapp):
     import threading
 
     seen = []
-    table.table_model.dataChanged.connect(
-        lambda *_: seen.append(threading.current_thread().name)
-    )
+    table.table_model.dataChanged.connect(lambda *_: seen.append(threading.current_thread().name))
 
     _finalize_from_a_worker_thread(table._controller(0), qapp)
 
@@ -387,11 +379,13 @@ def test_proxy_satisfies_the_popup_controller_contract(params, qapp):
 
     tree = ast.parse(inspect.getsource(pw))
     popup = next(
-        c for c in tree.body
+        c
+        for c in tree.body
         if isinstance(c, ast.ClassDef) and c.name == "FittingParameterDetailPopup"
     )
     used = {
-        n.attr for n in ast.walk(popup)
+        n.attr
+        for n in ast.walk(popup)
         if isinstance(n, ast.Attribute)
         and isinstance(n.value, ast.Attribute)
         and n.value.attr == "controller"

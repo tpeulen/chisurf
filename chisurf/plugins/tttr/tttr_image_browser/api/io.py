@@ -101,7 +101,9 @@ def human_size(size_bytes: int) -> str:
         return "? MB"
 
 
-def iter_image_files(folder: pathlib.Path, recursive: bool = False, extensions: Iterable[str] | None = None) -> list[pathlib.Path]:
+def iter_image_files(
+    folder: pathlib.Path, recursive: bool = False, extensions: Iterable[str] | None = None
+) -> list[pathlib.Path]:
     """Return matching image files under folder.
 
     Parameters
@@ -118,7 +120,10 @@ def iter_image_files(folder: pathlib.Path, recursive: bool = False, extensions: 
     list of pathlib.Path
         Sorted list of matching file paths.
     """
-    exts = {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in (extensions or get_tttr_supported_exts())}
+    exts = {
+        ext.lower() if ext.startswith(".") else f".{ext.lower()}"
+        for ext in (extensions or get_tttr_supported_exts())
+    }
     iterator = folder.rglob("*") if recursive else folder.glob("*")
     files: list[pathlib.Path] = []
     for path in iterator:
@@ -139,7 +144,9 @@ def iter_image_files(folder: pathlib.Path, recursive: bool = False, extensions: 
     return sorted(files, key=lambda item: item.name.lower())
 
 
-def list_files(folder: str, recursive: bool = False, setup_settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def list_files(
+    folder: str, recursive: bool = False, setup_settings: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     """List TTTR files in folder with metadata summaries.
 
     Parameters

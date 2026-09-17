@@ -32,9 +32,7 @@ class ModelManagerViewModel:
         # A private copy. The old manager held the *same list object* as the
         # live settings and mutated it in place, so ticking a checkbox took
         # effect immediately and closing without saving did not undo it.
-        self._disabled: list[str] = [
-            str(x) for x in (settings_block.get(DISABLED_KEY) or [])
-        ]
+        self._disabled: list[str] = [str(x) for x in (settings_block.get(DISABLED_KEY) or [])]
         self._saved = list(self._disabled)
 
         self._rows: list[ModelRow] = []
@@ -92,8 +90,7 @@ class ModelManagerViewModel:
         if isinstance(record, dict):
             wanted = (record.get("module"), record.get("name"))
             self._selected_key = next(
-                (r.key for r in self.visible_rows()
-                 if (r.module, r.name) == wanted),
+                (r.key for r in self.visible_rows() if (r.module, r.name) == wanted),
                 "",
             )
         elif isinstance(record, int) and 0 <= record < len(self.visible_rows()):

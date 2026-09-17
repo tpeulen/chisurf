@@ -10,8 +10,8 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf.core.fio
 import chisurf.gui.widgets
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
 
 logger = logging.getLogger("chisurf.plugins.modelling.fret")
 
@@ -32,10 +32,7 @@ class DistanceDetailSettingsDialog(QtWidgets.QDialog):
     """Modal dialog for editing detailed FRET distance restraint parameters."""
 
     def __init__(
-        self,
-        params: dict,
-        distance_type: str = "dRDA",
-        parent: QtWidgets.QWidget | None = None
+        self, params: dict, distance_type: str = "dRDA", parent: QtWidgets.QWidget | None = None
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Distance Restraint Details")
@@ -54,7 +51,7 @@ class DistanceDetailSettingsDialog(QtWidgets.QDialog):
         self.r0_spin.setDecimals(1)
         form_layout.addRow("Forster Radius (R₀) (Å):", self.r0_spin)
 
-        is_prda = (distance_type == "pRDA")
+        is_prda = distance_type == "pRDA"
 
         if not is_prda:
             self.d_spin = QtWidgets.QDoubleSpinBox()
@@ -99,22 +96,19 @@ class DistanceDetailSettingsDialog(QtWidgets.QDialog):
 
     def onLoadDistribution(self) -> None:
         fn = chisurf.gui.widgets.get_filename(
-            "DA-Distance distribution (1st column RDA, 2nd pRDA)",
-            "CSV/Text Files (*.csv *.txt)"
+            "DA-Distance distribution (1st column RDA, 2nd pRDA)", "CSV/Text Files (*.csv *.txt)"
         )
         if fn:
             try:
                 csv = chisurf.core.fio.ascii.Csv(filename=fn, skiprows=1)
-                self.params['rda'] = list(csv.data[0])
-                self.params['prda'] = list(csv.data[1])
+                self.params["rda"] = list(csv.data[0])
+                self.params["prda"] = list(csv.data[1])
                 self.status_label.setText(f"Loaded: {len(self.params['rda'])} points")
             except Exception as e:
                 dialogs.error(self, "Error", f"Failed to load distribution: {str(e)}")
 
     def get_settings(self) -> dict:
-        res = {
-            "Forster_radius": self.r0_spin.value()
-        }
+        res = {"Forster_radius": self.r0_spin.value()}
         if self.distance_type != "pRDA":
             res["distance"] = self.d_spin.value()
             res["error_neg"] = self.err_neg_spin.value()
@@ -168,7 +162,7 @@ class DistancePanel(QtWidgets.QWidget):
         self,
         position_panel: QtWidgets.QWidget | None = None,
         mol_view_3d: Any | None = None,
-        parent: QtWidgets.QWidget | None = None
+        parent: QtWidgets.QWidget | None = None,
     ) -> None:
         """Initialize the DistancePanel layout and widgets."""
         super().__init__(parent)
@@ -264,9 +258,9 @@ class DistancePanel(QtWidgets.QWidget):
 
         # Distances table
         self.distances_table = QtWidgets.QTableWidget(0, 8)
-        self.distances_table.setHorizontalHeaderLabels([
-            "Show", "Name", "Label 1", "Label 2", "Type", "Details", "Score set", ""
-        ])
+        self.distances_table.setHorizontalHeaderLabels(
+            ["Show", "Name", "Label 1", "Label 2", "Type", "Details", "Score set", ""]
+        )
         self.distances_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.distances_table.horizontalHeader().setSectionResizeMode(7, QtWidgets.QHeaderView.Fixed)
         self.distances_table.setColumnWidth(7, 40)
@@ -293,7 +287,7 @@ class DistancePanel(QtWidgets.QWidget):
                 "distance": 50.0,
                 "error_neg": 5.0,
                 "error_pos": 5.0,
-                "distance_type": "RDAMean"
+                "distance_type": "RDAMean",
             }
             name_item.setData(QtCore.Qt.UserRole + 1, default_params)
             name_item.setFlags(name_item.flags() & ~QtCore.Qt.ItemIsEditable)
@@ -348,11 +342,13 @@ class DistancePanel(QtWidgets.QWidget):
                 f"Forster radius (R₀): {params.get('Forster_radius', 52.0)} Å",
             ]
             if distance_type != "pRDA":
-                tooltip_lines.extend([
-                    f"Distance (d): {params.get('distance', 50.0)} Å",
-                    f"Error Neg (err⁻): {params.get('error_neg', 5.0)} Å",
-                    f"Error Pos (err⁺): {params.get('error_pos', 5.0)} Å",
-                ])
+                tooltip_lines.extend(
+                    [
+                        f"Distance (d): {params.get('distance', 50.0)} Å",
+                        f"Error Neg (err⁻): {params.get('error_neg', 5.0)} Å",
+                        f"Error Pos (err⁺): {params.get('error_pos', 5.0)} Å",
+                    ]
+                )
             else:
                 if "rda" in params:
                     tooltip_lines.append(f"Distribution: {len(params['rda'])} points")
@@ -366,9 +362,7 @@ class DistancePanel(QtWidgets.QWidget):
 
     def onAddScoreSet(self) -> None:
         """Prompt user to add a new score set group."""
-        name, ok = QtWidgets.QInputDialog.getText(
-            self, "New Scoring Group", "Scoring group name:"
-        )
+        name, ok = QtWidgets.QInputDialog.getText(self, "New Scoring Group", "Scoring group name:")
         if ok and name.strip():
             self.score_set_added.emit(name.strip())
 
@@ -378,10 +372,11 @@ class DistancePanel(QtWidgets.QWidget):
         if not name or name == "All distances":
             return
         reply = dialogs.question(
-            self, "Remove Scoring Group?",
+            self,
+            "Remove Scoring Group?",
             f"Are you sure you want to remove scoring group '{name}'?",
             buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            default=QtWidgets.QMessageBox.No
+            default=QtWidgets.QMessageBox.No,
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.score_set_removed.emit(name)
@@ -470,8 +465,12 @@ class DistancePanel(QtWidgets.QWidget):
 
         l1 = l1_cb.currentText().strip() if isinstance(l1_cb, QtWidgets.QComboBox) else ""
         l2 = l2_cb.currentText().strip() if isinstance(l2_cb, QtWidgets.QComboBox) else ""
-        dtype = type_cb.currentText().strip() if isinstance(type_cb, QtWidgets.QComboBox) else "dRDA"
-        score_group = set_cb.currentText().strip() if isinstance(set_cb, QtWidgets.QComboBox) else ""
+        dtype = (
+            type_cb.currentText().strip() if isinstance(type_cb, QtWidgets.QComboBox) else "dRDA"
+        )
+        score_group = (
+            set_cb.currentText().strip() if isinstance(set_cb, QtWidgets.QComboBox) else ""
+        )
 
         if not l1 or not l2:
             return
@@ -580,10 +579,11 @@ class DistancePanel(QtWidgets.QWidget):
                 return
 
             reply = dialogs.question(
-                self, "Remove Restraints?",
+                self,
+                "Remove Restraints?",
                 f"Are you sure you want to remove the {len(rows_to_delete)} selected restraint(s)?",
                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                default=QtWidgets.QMessageBox.No
+                default=QtWidgets.QMessageBox.No,
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 self.distances_table.blockSignals(True)
@@ -614,12 +614,13 @@ class DistancePanel(QtWidgets.QWidget):
                 break
         if row < 0 or row >= self.distances_table.rowCount() - 1:
             return
-            
+
         reply = dialogs.question(
-            self, "Remove Restraint?",
+            self,
+            "Remove Restraint?",
             "Are you sure you want to remove this restraint?",
             buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            default=QtWidgets.QMessageBox.No
+            default=QtWidgets.QMessageBox.No,
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.distances_table.blockSignals(True)
@@ -683,9 +684,7 @@ class DistancePanel(QtWidgets.QWidget):
                 set_cb.blockSignals(False)
 
     def update_distances_table(
-        self,
-        distances: dict[str, dict[str, Any]],
-        score_sets: dict[str, dict[str, Any]]
+        self, distances: dict[str, dict[str, Any]], score_sets: dict[str, dict[str, Any]]
     ) -> None:
         """Repopulate the table with filtered restraints based on active score set.
 
@@ -791,12 +790,17 @@ class DistancePanel(QtWidgets.QWidget):
 
         for row in range(self.distances_table.rowCount() - 1):
             show_widget = self.distances_table.cellWidget(row, 0)
-            if not isinstance(show_widget, CenteredCheckBox) or not show_widget.checkbox.isChecked():
+            if (
+                not isinstance(show_widget, CenteredCheckBox)
+                or not show_widget.checkbox.isChecked()
+            ):
                 continue
 
             l1_cb = self.distances_table.cellWidget(row, 2)
             l2_cb = self.distances_table.cellWidget(row, 3)
-            if not isinstance(l1_cb, QtWidgets.QComboBox) or not isinstance(l2_cb, QtWidgets.QComboBox):
+            if not isinstance(l1_cb, QtWidgets.QComboBox) or not isinstance(
+                l2_cb, QtWidgets.QComboBox
+            ):
                 continue
 
             l1 = l1_cb.currentText().strip()
@@ -823,7 +827,7 @@ class DistancePanel(QtWidgets.QWidget):
                     "kind": "distance",
                     "positions": np.array([xyz1, xyz2]),
                     "color": line_color,
-                    "label": f"{val:.1f} Å"
+                    "label": f"{val:.1f} Å",
                 }
 
         self._mol_view_3d._measurements = new_measurements

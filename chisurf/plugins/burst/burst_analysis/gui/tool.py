@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 import chisurf
+
+logger = logging.getLogger(__name__)
+from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
-from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
     DetectorSetupClient,
 )
@@ -64,7 +67,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         QWidget — so ``update`` does not shadow ``QWidget.update``.
         """
 
-        def __init__(self, owner: "BurstDataSelectionWidget") -> None:
+        def __init__(self, owner: BurstDataSelectionWidget) -> None:
             self._owner = owner
             self.paths: list[str] = []
 
@@ -168,32 +171,38 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             # The RPC object store cannot read the client's filesystem, so send
             # the file's bytes as base64 rather than a server-side path.
             encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-            object_result = client.call(
-                "mmfdb.objects.put",
-                {
-                    "data": encoded,
-                    "filename": path.name,
-                    "metadata": {"source": "burst_analysis.data_selection"},
-                },
-            ) or {}
+            object_result = (
+                client.call(
+                    "mmfdb.objects.put",
+                    {
+                        "data": encoded,
+                        "filename": path.name,
+                        "metadata": {"source": "burst_analysis.data_selection"},
+                    },
+                )
+                or {}
+            )
             payload: dict[str, Any] = {"object_result": object_result}
             try:
-                raw_result = client.call(
-                    "raw_data.register",
-                    {
-                        "raw_data": {
-                            "file_path": str(path),
-                            "data_type": "TTTR",
-                            # One of MMFDB's storage_mode vocabulary terms; "file"
-                            # is not one, and every registration was rejected.
-                            "storage_mode": "local_file",
-                            "header_metadata": {
-                                "mmfdb_object": object_result.get("object", {}),
-                                "source": "burst_analysis.data_selection",
-                            },
-                        }
-                    },
-                ) or {}
+                raw_result = (
+                    client.call(
+                        "raw_data.register",
+                        {
+                            "raw_data": {
+                                "file_path": str(path),
+                                "data_type": "TTTR",
+                                # One of MMFDB's storage_mode vocabulary terms; "file"
+                                # is not one, and every registration was rejected.
+                                "storage_mode": "local_file",
+                                "header_metadata": {
+                                    "mmfdb_object": object_result.get("object", {}),
+                                    "source": "burst_analysis.data_selection",
+                                },
+                            }
+                        },
+                    )
+                    or {}
+                )
                 payload["raw_data_result"] = raw_result
             except Exception as raw_exc:
                 payload["raw_data_error"] = str(raw_exc)
@@ -254,9 +263,7 @@ def _burst_2cde(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
-def _mle_panel(
-    parent: QtWidgets.QWidget, *, role: str, split_by_state: bool
-) -> QtWidgets.QWidget:
+def _mle_panel(parent: QtWidgets.QWidget, *, role: str, split_by_state: bool) -> QtWidgets.QWidget:
     """Create an embedded burst-MLE panel, at burst or at segment level.
 
     Both pipeline MLE steps are the *same* wizard: the burst-level step fits one
@@ -540,8 +547,7 @@ BURST_PANELS = [
         "name": "Accurate FRET",
         "icon": Glyphs.TARGET,
         "description": (
-            "Correction factors (alpha/beta/gamma/delta) for the bursts this "
-            "workflow produced."
+            "Correction factors (alpha/beta/gamma/delta) for the bursts this workflow produced."
         ),
         "factory": _burst_accurate_fret,
         "role": "accurate_fret",
@@ -556,9 +562,7 @@ BURST_PANELS = [
     {
         "name": "Kinetics (GS)",
         "icon": Glyphs.SHUFFLE,
-        "description": (
-            "Photon-by-photon kinetics (Gopich-Szabo) on the selected bursts."
-        ),
+        "description": ("Photon-by-photon kinetics (Gopich-Szabo) on the selected bursts."),
         "factory": _burst_gs,
         "role": "burst_gs",
     },
@@ -645,7 +649,8 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def goto_workflow_role(self, role: str) -> bool:
         """Select the workflow step with the given ``role`` (e.g. from a panel's
-        'go to IRF & Background' button)."""
+        'go to IRF & Background' button).
+        """
         for i, panel in enumerate(self.panels):
             if panel.get("role") == role:
                 self.nav_list.setCurrentRow(i)
@@ -770,7 +775,11 @@ class BurstAnalysisTool(NavigationPanelTool):
         if raw_files:
             self.workflow_context.raw_files = raw_files
 
-        result = getattr(widget, "_last_service_result", None) or getattr(widget, "_last_result", None) or {}
+        result = (
+            getattr(widget, "_last_service_result", None)
+            or getattr(widget, "_last_result", None)
+            or {}
+        )
         if isinstance(result, dict):
             artifacts = result.get("mmfdb_artifacts") or {}
             if artifacts:
@@ -830,7 +839,9 @@ class BurstAnalysisTool(NavigationPanelTool):
         frames_by_file = getattr(widget, "_last_frames_by_file", None)
         if not frames_by_file:
             return None
-        raw_files = self.workflow_context.raw_files or [Path(path) for path in frames_by_file.keys()]
+        raw_files = self.workflow_context.raw_files or [
+            Path(path) for path in frames_by_file.keys()
+        ]
         if not raw_files:
             return None
 
@@ -865,13 +876,12 @@ class BurstAnalysisTool(NavigationPanelTool):
             # copy of the `bi4_bur` layout.
             try:
                 write_container(
-                    raw_path, frame,
+                    raw_path,
+                    frame,
                     parameters=self.workflow_context.to_payload(),
                 )
             except Exception as exc:
-                chisurf.logging.warning(
-                    f"Could not write the container for {raw_path}: {exc}"
-                )
+                chisurf.logging.warning(f"Could not write the container for {raw_path}: {exc}")
 
         payload = self.workflow_context.to_payload()
         payload["raw_files"] = [str(path) for path in raw_files]
@@ -1149,9 +1159,7 @@ class BurstAnalysisTool(NavigationPanelTool):
                 pass
         # Apply any IRF/background patterns captured from the IRF & Background step.
         if self.workflow_context.irf_background_patterns:
-            self._apply_irf_bg_to_mle_widget(
-                widget, self.workflow_context.irf_background_patterns
-            )
+            self._apply_irf_bg_to_mle_widget(widget, self.workflow_context.irf_background_patterns)
 
     def _apply_context_to_irf_bg(self, widget: QtWidgets.QWidget) -> None:
         """Use selected raw files and channel setup in the IRF & Background tool."""

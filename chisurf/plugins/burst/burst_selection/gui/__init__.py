@@ -3,8 +3,8 @@
 from .adapter import (
     UI_COLUMNS,
     analyze_file_for_wizard,
-    burst_rows_for_display,
     bur_file_path,
+    burst_rows_for_display,
     combine_ui_dataframes,
     gmm_settings_from_wizard,
     load_burst_dataframe,

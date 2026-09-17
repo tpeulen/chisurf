@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import time
 import threading
+import time
+
 from chisurf.server.jobs import JobManager, JobStatus
 
 
@@ -207,7 +208,6 @@ class TestJobManager:
     def test_run_threaded(self):
         """run_threaded should run fn in a background thread."""
         mgr = JobManager()
-        result_holder = []
 
         def my_task():
             time.sleep(0.01)

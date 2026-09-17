@@ -36,10 +36,10 @@ that the viewer as a whole comes back, measured in **pixels** against a viewer
 that has just started. A per-key assertion only covers the keys somebody
 thought of, which is precisely how "some parts reinit but not all" happens.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: What a session does before deciding it wants the tool back.
@@ -56,7 +56,7 @@ MUTATIONS = (
 
 @pytest.fixture(scope="module")
 def measured():
-    return probe(f'''
+    return probe(f"""
         from chimol.core.settings import registry as s
         app = open_app(size=(700, 500))
         r = app.renderer
@@ -100,7 +100,7 @@ def measured():
         emit("objects", len(app.viewer.list_objects()))
         emit("differing_pixels", int((fresh != after).any(axis=2).sum()))
         emit("total_pixels", int(fresh.shape[0] * fresh.shape[1]))
-    ''')
+    """)
 
 
 def test_the_background_goes_back_to_black(measured):
@@ -176,19 +176,15 @@ def test_the_shipped_defaults_are_compared_at_every_depth():
     """
     from chimol.core.settings import config as cfg
 
-    shipped = {"background": "k", "camera": {"field_of_view": 20.0},
-               "deep": {"a": {"b": 1.0}}}
-    mine = {"background": "red", "camera": {"field_of_view": 45.0},
-            "deep": {"a": {"b": 2.0}}}
+    shipped = {"background": "k", "camera": {"field_of_view": 20.0}, "deep": {"a": {"b": 1.0}}}
+    mine = {"background": "red", "camera": {"field_of_view": 45.0}, "deep": {"a": {"b": 2.0}}}
 
     # The public function reads the package half from disk, so the walk itself
     # is what is exercised here -- with a shipped config shaped like the real
     # one: a top-level scalar, a section, and something nested deeper.
     out: dict = {}
     cfg._collect_differences(mine, shipped, (), out)
-    assert "background" in out, (
-        "a top-level scalar is still invisible to the comparison"
-    )
+    assert "background" in out, "a top-level scalar is still invisible to the comparison"
     assert "camera.field_of_view" in out
     assert "deep.a.b" in out, "nested keys deeper than two levels are skipped"
 
@@ -205,7 +201,7 @@ def test_the_shipped_defaults_are_compared_at_every_depth():
 @pytest.fixture(scope="module")
 def running():
     """Open everything a session opens, then reinitialise and look."""
-    return probe('''
+    return probe("""
         app = open_app(size=(900, 600))
         cmd, gui = app.cmd, app.viewer.gui
 
@@ -237,7 +233,7 @@ def running():
         emit("after_title", repr(gui._info_title))
         emit("after_frame", app.viewer.get_frame_position())
         emit("after_step", app.viewer.movie_step)
-    ''')
+    """)
 
 
 def test_the_panels_a_command_opened_are_closed(running):
@@ -261,7 +257,8 @@ def test_a_running_wizard_is_ended(running):
 
 def test_the_info_panel_forgets_what_it_was_showing(running):
     """It closed but still *held* the last `help` listing, so the next thing
-    that opened it showed a command list from before the reset."""
+    that opened it showed a command list from before the reset.
+    """
     assert running["before_info"].startswith("Commands")
     assert running["after_info"] in ("(no system loaded)", "")
     assert running["after_title"] == "''"

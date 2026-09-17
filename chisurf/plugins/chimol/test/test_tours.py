@@ -29,12 +29,12 @@ The structures are chosen so the tours have right answers to check against:
 EMD-3061 with PDB 5A63 is one experiment (human gamma-secretase at 3.4 A), and
 1DG3/1F5N are one protein in two states.
 """
+
 from __future__ import annotations
 
 import json
 
 import pytest
-
 from chimol.ui.tours import TOUR_DIR, available_tours, load_tour
 
 TOURS = [name for name, _title in available_tours()]
@@ -100,13 +100,22 @@ def test_the_step_count_in_the_text_is_right(name):
     forgets to count itself, which is exactly what happened the first time.
     """
     words = {
-        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-        "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
     }
     tour = load_tour(name)
     claimed = [
-        value for word, value in words.items()
-        if f"{word} steps" in tour.steps[0].text.lower()
+        value for word, value in words.items() if f"{word} steps" in tour.steps[0].text.lower()
     ]
     assert claimed, f"the opening step of {name} does not say how many steps"
     assert claimed[0] == len(tour.steps), (
@@ -132,25 +141,21 @@ def test_every_awaited_command_exists(name):
     """A typo in ``expect`` stops the tour dead with nothing raised anywhere."""
     from toolkit_free import probe
 
-    heads = sorted({
-        step.expect.split()[0].lower()
-        for step in load_tour(name).steps if step.waits
-    })
-    measured = probe(f'''
+    heads = sorted({step.expect.split()[0].lower() for step in load_tour(name).steps if step.waits})
+    measured = probe(f"""
         app = open_app(size=(400, 300))
         for head in {heads!r}:
             emit(head, "yes" if app.cmd._registry.resolve(head) else "no")
-    ''')
+    """)
     for head in heads:
-        assert measured[head] == "yes", (
-            f"{name} waits for '{head}', which is not a command"
-        )
+        assert measured[head] == "yes", f"{name} waits for '{head}', which is not a command"
 
 
 @pytest.mark.parametrize("name", TOURS)
 def test_no_step_carries_unrendered_markup(name):
     """The tours are written in the widget tours' dialect; this chrome paints
-    one font, so the tags are stripped rather than shown."""
+    one font, so the tags are stripped rather than shown.
+    """
     tour = load_tour(name)
     for step in tour.steps:
         assert "<" not in step.text and ">" not in step.text
@@ -199,8 +204,8 @@ def test_the_tour_walks_to_the_end_through_real_commands(name):
     from toolkit_free import probe
 
     steps = WALKTHROUGH[name]
-    lines = "\n".join(f'        run({command!r})' for command in steps)
-    measured = probe(f'''
+    lines = "\n".join(f"        run({command!r})" for command in steps)
+    measured = probe(f"""
         app = open_app(size=(1000, 700))
         errors = []
         app.cmd.set_error_callback(errors.append)
@@ -232,7 +237,7 @@ def test_the_tour_walks_to_the_end_through_real_commands(name):
         # one left behind swallows clicks on the chrome underneath.
         emit("rects_cleared",
              "yes" if gui._tour_rect.w == 0 and gui._tour_close_rect.w == 0 else "no")
-    ''')
+    """)
 
     assert measured["started"] == "yes"
     for command in steps:
@@ -240,9 +245,7 @@ def test_the_tour_walks_to_the_end_through_real_commands(name):
             f"{name}: '{command}' errored: {measured[f'errors:{command}']}"
         )
     moved = [measured[command] for command in steps]
-    assert measured["finished"] == "yes", (
-        f"{name} did not reach the end; steps went {moved}"
-    )
+    assert measured["finished"] == "yes", f"{name} did not reach the end; steps went {moved}"
     assert measured["rects_cleared"] == "yes"
 
 
@@ -268,7 +271,7 @@ def test_the_tour_walks_by_pressing_run(name):
     """
     from toolkit_free import probe
 
-    measured = probe(f'''
+    measured = probe(f"""
         app = open_app(size=(1100, 700))
         gui = app.renderer._internal_gui
         errors = []
@@ -303,16 +306,12 @@ def test_the_tour_walks_by_pressing_run(name):
         emit("finished", "yes" if gui.tour is None else "no")
         emit("errors", " | ".join(problems) or "none")
         emit("missing", " | ".join(missing) or "none")
-    ''')
+    """)
 
     assert measured["started"] == "yes"
     assert measured["errors"] == "none", measured["errors"]
-    assert measured["missing"] == "none", (
-        f"these steps point at nothing: {measured['missing']}"
-    )
-    assert measured["finished"] == "yes", (
-        f"the tour stopped after {measured['walked']} steps"
-    )
+    assert measured["missing"] == "none", f"these steps point at nothing: {measured['missing']}"
+    assert measured["finished"] == "yes", f"the tour stopped after {measured['walked']} steps"
     assert int(measured["walked"]) == len(load_tour(name).steps)
 
 
@@ -329,17 +328,19 @@ def test_what_run_issues_is_a_command(name):
     """
     from toolkit_free import probe
 
-    verbs = sorted({
-        step.command.split()[0].lower()
-        for step in load_tour(name).steps
-        if step.waits and step.command.strip()
-    })
+    verbs = sorted(
+        {
+            step.command.split()[0].lower()
+            for step in load_tour(name).steps
+            if step.waits and step.command.strip()
+        }
+    )
     assert verbs, f"{name} has no runnable step"
-    measured = probe(f'''
+    measured = probe(f"""
         app = open_app(size=(400, 300))
         for verb in {verbs!r}:
             emit(verb, "yes" if app.cmd._registry.resolve(verb) else "no")
-    ''')
+    """)
     for verb in verbs:
         assert measured[verb] == "yes", f"{name} would run {verb!r}, which is not a command"
 
@@ -382,9 +383,7 @@ def test_the_tours_are_on_the_help_menu():
     for name in TOURS:
         assert f"tour {name}" in under_help, f"{name} is not under Help"
         assert f"tour {name}" not in top_level, f"{name} is a loose Help row"
-        assert f"tour {name}" not in commands_of(DEMO_MENU), (
-            f"{name} is still on the Demo menu"
-        )
+        assert f"tour {name}" not in commands_of(DEMO_MENU), f"{name} is still on the Demo menu"
 
 
 @pytest.mark.parametrize("name", TOURS)

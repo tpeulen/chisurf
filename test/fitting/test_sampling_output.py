@@ -1,25 +1,26 @@
-
-import os
-import shutil
 import json
+import os
 import pathlib
-import time
-import pytest
+
 import numpy as np
+import pytest
+
 import chisurf.core.fitting.fit as fit_module
 from chisurf.core.fitting.parameter import FittingParameter
+
 
 def test_sampling_directory_structure(tmp_path):
     """
     Test that sample_fit creates the expected timestamped directory structure
     and metadata files.
     """
+
     # 1. Setup a minimal Fit object
     class MockModel:
         def __init__(self):
             self.parameters = [
                 FittingParameter(name="p1", value=1.0),
-                FittingParameter(name="p2", value=2.0)
+                FittingParameter(name="p2", value=2.0),
             ]
             self.parameter_values = [1.0, 2.0]
             self.parameter_names = ["p1", "p2"]
@@ -28,47 +29,52 @@ def test_sampling_directory_structure(tmp_path):
             self.__class__.__name__ = "MockModel"
             self.meta_data = {}
             self._y = np.zeros(self.n_points)
+
         def update(self):
             pass
+
         def __getitem__(self, key):
             # ``sample_fit`` only accepts curve-based models.
             return self._y[key]
-            
+
     class MockFit:
         def __init__(self):
             self.model = MockModel()
             self.name = "TestFit"
             self.n_free = 2
             self.meta_data = {}
-            
+
     fit = MockFit()
-    
+
     # 2. Mock chisurf.macros.core_fit.save_project to avoid actual saving
     import chisurf.macros.core_fit
+
     original_save = chisurf.macros.core_fit.save_project
+
     def mock_save_project(target_path, project_name="project", **kwargs):
         """Stand in for the real project save, which writes ``<target>/<name>``."""
         os.makedirs(os.path.join(target_path, project_name), exist_ok=True)
 
     chisurf.macros.core_fit.save_project = mock_save_project
-    
+
     # 3. Mock the sampling backends to do nothing but return dummy results
     import chisurf.core.fitting.sample
+
     def mock_sample_ensemble(fit, **kwargs):
         return {
-            'chi2r': np.array([1.0, 1.1]),
-            'parameter_values': np.array([[1.0, 2.0], [1.1, 2.1]]),
-            'parameter_names': ["p1", "p2"]
+            "chi2r": np.array([1.0, 1.1]),
+            "parameter_values": np.array([[1.0, 2.0], [1.1, 2.1]]),
+            "parameter_names": ["p1", "p2"],
         }
-    
+
     original_ensemble = chisurf.core.fitting.sample.sample_ensemble
     chisurf.core.fitting.sample.sample_ensemble = mock_sample_ensemble
-    
+
     try:
         output_base = str(tmp_path / "test_sample")
         # Run sample_fit with n_runs=1
-        fit_module.sample_fit(fit, output_base, method='ensemble', n_runs=1, steps=10)
-        
+        fit_module.sample_fit(fit, output_base, method="ensemble", n_runs=1, steps=10)
+
         # 4. Verify directory structure. ``sample_fit`` creates a timestamped
         # sub-directory *inside* the target directory.
         dirs = [d for d in os.listdir(output_base) if os.path.isdir(os.path.join(output_base, d))]
@@ -78,22 +84,23 @@ def test_sampling_directory_structure(tmp_path):
         assert (sampling_dir / "project").is_dir()
         assert (sampling_dir / "parameters.json").is_file()
         assert (sampling_dir / "chains").is_dir()
-        
+
         # Check parameters.json content
-        with open(sampling_dir / "parameters.json", "r") as f:
+        with open(sampling_dir / "parameters.json") as f:
             meta = json.load(f)
             assert meta["fit_name"] == "TestFit"
             assert len(meta["parameters"]) == 2
             assert meta["parameters"][0]["name"] == "p1"
-            
+
         # Check chains folder
         chain_files = os.listdir(sampling_dir / "chains")
         assert any(f.endswith(".er4") for f in chain_files)
-        
+
     finally:
         # Restore mocks
         chisurf.macros.core_fit.save_project = original_save
         chisurf.core.fitting.sample.sample_ensemble = original_ensemble
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

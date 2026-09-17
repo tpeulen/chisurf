@@ -419,7 +419,11 @@ def _solve_reg_L(Wd: np.ndarray, wy: np.ndarray, L: np.ndarray, reg: float, meth
     """
     if method == "nnls":
         return tikhonov_nnls(
-            Wd, wy, reg, convention=SmoothnessWeight.POWER, L=L,
+            Wd,
+            wy,
+            reg,
+            convention=SmoothnessWeight.POWER,
+            L=L,
             max_iter=40 * Wd.shape[1],
         )
     # closed-form generalized Tikhonov
@@ -530,8 +534,12 @@ def _ilt_2d_nnls(M: np.ndarray, E: np.ndarray, W: np.ndarray, reg: float | None)
         s = np.linalg.svd(E, compute_uv=False)
         reg = float((s.max() ** 2) ** 2 * 1e-3)
     p = tikhonov_nnls(
-        D, b, reg, convention=SmoothnessWeight.POWER,
-        L=np.eye(n_comp * n_comp), max_iter=10 * n_comp * n_comp,
+        D,
+        b,
+        reg,
+        convention=SmoothnessWeight.POWER,
+        L=np.eye(n_comp * n_comp),
+        max_iter=10 * n_comp * n_comp,
     )
     return p.reshape(n_comp, n_comp)
 

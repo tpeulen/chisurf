@@ -4,17 +4,17 @@ The marks — dark grid, gradient discs, curved arrows with rate badges — are 
 shared node-link vocabulary in :mod:`chisurf.gui.widgets.graph_canvas`, so this
 diagram and the Global View parameter graph look like one tool.
 """
+
 from __future__ import annotations
 
 import math
+
 import numpy as np
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.widgets import graph_canvas as gc
 
 from .registry import register_section
-from .rate_matrix_section import _resolve
-
 
 #: Node fills, by state index. Cycled rather than exhausted: the palette used to
 #: run out after four states and every state past the third came out the same
@@ -131,14 +131,18 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
         # 1. Top Header Bar: Scheme label, Presets ComboBox, 📂 Load, and 💾 Save (Single Row)
         top_bar = QtWidgets.QWidget(self)
-        top_bar.setStyleSheet("QWidget { background: palette(button); border-bottom: 1px solid palette(mid); }")
+        top_bar.setStyleSheet(
+            "QWidget { background: palette(button); border-bottom: 1px solid palette(mid); }"
+        )
         toolbar = QtWidgets.QHBoxLayout(top_bar)
         toolbar.setContentsMargins(4, 2, 4, 2)
         toolbar.setSpacing(4)
 
         self.combo_preset = QtWidgets.QComboBox(top_bar)
         self.combo_preset.setToolTip("Select photophysical kinetics scheme template")
-        self.combo_preset.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.combo_preset.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
         self.combo_preset.setMaximumWidth(200)
 
         # The scheme list belongs to the model, not to this widget: a private copy
@@ -203,7 +207,9 @@ class StateSchemeWidget(QtWidgets.QWidget):
         self._spin.setRange(0.0, 1e9)
         self._spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self._spin.setAlignment(QtCore.Qt.AlignCenter)
-        self._spin.setStyleSheet("QDoubleSpinBox { background: #1a1a1a; color: #ffffff; border: 2px solid #ff3333; selection-background-color: #ff3333; selection-color: #ffffff; font-size: 11px; font-weight: bold; } QLineEdit { selection-background-color: #ff3333; selection-color: #ffffff; }")
+        self._spin.setStyleSheet(
+            "QDoubleSpinBox { background: #1a1a1a; color: #ffffff; border: 2px solid #ff3333; selection-background-color: #ff3333; selection-color: #ffffff; font-size: 11px; font-weight: bold; } QLineEdit { selection-background-color: #ff3333; selection-color: #ffffff; }"
+        )
         self._spin.hide()
         self._spin.editingFinished.connect(self._on_edit_finished)
         self._editing_pair = None
@@ -411,7 +417,9 @@ class StateSchemeWidget(QtWidgets.QWidget):
             dy = float(pos.y() - self._drag_start_pos.y())
             self._drag_start_pos = pos
             for i in self._node_coords:
-                self._node_coords[i] = QtCore.QPointF(self._node_coords[i].x() + dx, self._node_coords[i].y() + dy)
+                self._node_coords[i] = QtCore.QPointF(
+                    self._node_coords[i].x() + dx, self._node_coords[i].y() + dy
+                )
             self.canvas.update()
 
     def _on_canvas_mouse_release(self, event: QtGui.QMouseEvent):
@@ -479,16 +487,26 @@ class StateSchemeWidget(QtWidgets.QWidget):
             curr = curr.parentWidget()
         return None
 
-    def _compute_edge_routing(self, p_i: QtCore.QPointF, p_j: QtCore.QPointF, is_two_way: bool, pair_key: tuple[int, int] = (0, 0)):
+    def _compute_edge_routing(
+        self,
+        p_i: QtCore.QPointF,
+        p_j: QtCore.QPointF,
+        is_two_way: bool,
+        pair_key: tuple[int, int] = (0, 0),
+    ):
         """Route one transition arrow, honouring a curvature the user dragged."""
         return gc.edge_path(
-            p_i, p_j,
-            r_from=26.0, r_to=26.0,
+            p_i,
+            p_j,
+            r_from=26.0,
+            r_to=26.0,
             two_way=is_two_way,
             bow=self._arrow_offsets.get(pair_key),
         )
 
-    def _get_active_midpoints(self, n: int, dark_m: np.ndarray) -> dict[tuple[int, int], QtCore.QPointF]:
+    def _get_active_midpoints(
+        self, n: int, dark_m: np.ndarray
+    ) -> dict[tuple[int, int], QtCore.QPointF]:
         midpoints = {}
         excitation = self._excitation()
         for i in range(n):
@@ -502,13 +520,13 @@ class StateSchemeWidget(QtWidgets.QWidget):
                 if rate_ij > 0.0 or is_excitation:
                     idx_ji = i * n + j
                     rate_ji = float(dark_m[idx_ji]) if idx_ji < len(dark_m) else 0.0
-                    is_two_way = rate_ji > 0.0 or (
-                        excitation is not None and (j, i) == excitation
-                    )
+                    is_two_way = rate_ji > 0.0 or (excitation is not None and (j, i) == excitation)
 
                     p_i = self._node_coords[i]
                     p_j = self._node_coords[j]
-                    path, p0, p3, p2, pmid = self._compute_edge_routing(p_i, p_j, is_two_way, pair_key=(i, j))
+                    path, p0, p3, p2, pmid = self._compute_edge_routing(
+                        p_i, p_j, is_two_way, pair_key=(i, j)
+                    )
                     if pmid is not None:
                         midpoints[(i, j)] = pmid
         return midpoints
@@ -552,13 +570,13 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
                 idx_ji = i * n + j
                 rate_ji = float(dark_m[idx_ji]) if idx_ji < len(dark_m) else 0.0
-                is_two_way = rate_ji > 0.0 or (
-                    excitation is not None and (j, i) == excitation
-                )
+                is_two_way = rate_ji > 0.0 or (excitation is not None and (j, i) == excitation)
 
                 p_i = self._node_coords[i]
                 p_j = self._node_coords[j]
-                path, p0, p3, p2, pmid = self._compute_edge_routing(p_i, p_j, is_two_way, pair_key=(i, j))
+                path, p0, p3, p2, pmid = self._compute_edge_routing(
+                    p_i, p_j, is_two_way, pair_key=(i, j)
+                )
                 if path is None:
                     continue
 
@@ -580,21 +598,30 @@ class StateSchemeWidget(QtWidgets.QWidget):
                     badge_bg = QtGui.QColor(20, 20, 20, 225)
                     rate_str = f"{rate:.2f}"
 
-                painter.setPen(QtGui.QPen(
-                    arrow_color, pen_w, QtCore.Qt.SolidLine,
-                    QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin,
-                ))
+                painter.setPen(
+                    QtGui.QPen(
+                        arrow_color,
+                        pen_w,
+                        QtCore.Qt.SolidLine,
+                        QtCore.Qt.RoundCap,
+                        QtCore.Qt.RoundJoin,
+                    )
+                )
                 painter.setBrush(QtCore.Qt.NoBrush)
                 painter.drawPath(path)
 
                 gc.draw_arrow_head(painter, p3, p2, arrow_color, pen_w)
                 gc.draw_badge(
-                    painter, pmid, rate_str, outline=arrow_color, fill=badge_bg,
+                    painter,
+                    pmid,
+                    rate_str,
+                    outline=arrow_color,
+                    fill=badge_bg,
                 )
 
         # Draw nodes (Photophysical State Badges)
         for i in range(n):
-            is_dragged = (self._dragged_node == i)
+            is_dragged = self._dragged_node == i
             gc.draw_node(
                 painter,
                 self._node_coords[i],
@@ -613,8 +640,14 @@ class StateSchemePlot(QtWidgets.QWidget):
 
     name = "State Scheme"
 
-    def __init__(self, fit=None, target: str = "saturation", unit_attr: str = "dark_unit",
-                 labels_attr: str = "state_names", **options):
+    def __init__(
+        self,
+        fit=None,
+        target: str = "saturation",
+        unit_attr: str = "dark_unit",
+        labels_attr: str = "state_names",
+        **options,
+    ):
         super().__init__()
         self.fit = fit
         self.plot_controller = QtWidgets.QWidget()
@@ -622,8 +655,11 @@ class StateSchemePlot(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.scheme_widget = StateSchemeWidget(
-            model, target=target, unit_attr=unit_attr,
-            labels_attr=labels_attr, options=options,
+            model,
+            target=target,
+            unit_attr=unit_attr,
+            labels_attr=labels_attr,
+            options=options,
         )
         layout.addWidget(self.scheme_widget)
 
@@ -639,4 +675,5 @@ class StateSchemePlot(QtWidgets.QWidget):
 
 
 from .registry import register_plot
+
 register_plot("state_scheme", lambda: StateSchemePlot)

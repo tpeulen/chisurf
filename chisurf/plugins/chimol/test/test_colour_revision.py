@@ -27,10 +27,10 @@ strip actually holds, not on the counter alone.
 
 Runs in a child process; see :mod:`.toolkit_free`.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 #: Commands that must move the counter. ``ss`` was in this list at first and
@@ -50,10 +50,9 @@ COLOUR_COMMANDS = [
 @pytest.fixture(scope="module")
 def measured():
     """Drive the colour commands and report what moved."""
-    commands = "\n".join(
-        f'        run({command!r})' for command in COLOUR_COMMANDS
-    )
-    return probe('''
+    commands = "\n".join(f"        run({command!r})" for command in COLOUR_COMMANDS)
+    return probe(
+        """
         from chimol.ui.gui_state import refresh_gui_state
 
         app = open_app(size=(900, 600))
@@ -68,7 +67,9 @@ def measured():
             after = viewer.field_revision("colors_per_ca", oid)
             emit(command, "moved" if after > before else "missed")
 
-''' + commands + '''
+"""
+        + commands
+        + """
 
         # What the strip *holds* is the thing that matters: a counter that
         # failed to move would leave the previous scheme on screen.
@@ -107,7 +108,8 @@ def measured():
         emit("idle_derivations", len(calls))
         emit("idle_assignments",
              viewer.field_revision("colors_per_ca", oid) - settled)
-    ''')
+    """
+    )
 
 
 @pytest.mark.parametrize("command", COLOUR_COMMANDS)

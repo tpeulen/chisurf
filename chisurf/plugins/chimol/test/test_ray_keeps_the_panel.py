@@ -15,6 +15,7 @@ the window. These tests paint the widget's screen-space pass onto a plain
 ``QImage`` -- the same code the widget runs, with a painter that can be read
 back, since an offscreen GL framebuffer cannot be.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -23,7 +24,11 @@ import pytest
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 #: A colour nothing else in the viewport uses, so a pixel test cannot pass on
@@ -63,9 +68,7 @@ def viewport(qapp):
 
     widget = window.viewer.renderer.widget()
     if widget.height() < 200 or widget.scene_width() < 200:
-        pytest.skip(
-            f"viewport is {widget.scene_width()}x{widget.height()}; never laid out"
-        )
+        pytest.skip(f"viewport is {widget.scene_width()}x{widget.height()}; never laid out")
     yield window, widget, qapp
     window.close()
 
@@ -105,9 +108,7 @@ def test_the_traced_image_is_shown_in_the_scene_column(viewport):
     canvas = _compose(widget)
 
     scene = _rgb(canvas, widget.scene_width() // 2, widget.height() // 2)
-    assert scene == RAY_RGB, (
-        f"the traced image is not in the scene column (found {scene})"
-    )
+    assert scene == RAY_RGB, f"the traced image is not in the scene column (found {scene})"
     widget.clear_ray_image()
 
 
@@ -136,7 +137,7 @@ def test_the_image_stays_out_of_the_chrome(viewport):
 
 
 def test_the_panel_still_takes_a_click_while_the_image_shows(viewport):
-    """"Still on screen" is not enough; it has to still work.
+    """ "Still on screen" is not enough; it has to still work.
 
     The old overlay swallowed the press that dismissed it, so the first click
     after `ray` never reached the button under the cursor. What is asserted is

@@ -73,12 +73,11 @@ logger = logging.getLogger(__name__)
 
 #: One worker: these tasks are user-facing operations, not a compute pool. Work
 #: that wants many cores parallelises inside its own function.
-_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
-    max_workers=1, thread_name_prefix="chisurf-task"
-)
+_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="chisurf-task")
 
 #: owner widget -> its running task, so a new run supersedes the old one.
-_RUNNING: "weakref.WeakKeyDictionary[object, Task]" = weakref.WeakKeyDictionary()
+_RUNNING: weakref.WeakKeyDictionary[object, Task] = weakref.WeakKeyDictionary()
+
 
 class _TaskEvents(QtCore.QObject):
     """Process-wide "a task started / finished" notifications.
@@ -92,7 +91,7 @@ class _TaskEvents(QtCore.QObject):
     finished = QtCore.Signal(object)
 
 
-_TASK_EVENTS: "_TaskEvents | None" = None
+_TASK_EVENTS: _TaskEvents | None = None
 
 
 def task_events() -> _TaskEvents:
@@ -116,6 +115,7 @@ def task_events() -> _TaskEvents:
     _TASK_EVENTS = events
     return events
 
+
 #: Every live task, held **strongly**.
 #:
 #: Most callers discard the returned :class:`Task` (``ChiSurfProgress.run(...)``
@@ -127,7 +127,7 @@ def task_events() -> _TaskEvents:
 #: ``QCoreApplication::postEvent`` on freed memory (SIGSEGV at a tiny address,
 #: reported from a burst run). Entries are released one event-loop turn after
 #: the callbacks finish — see ``_release_after_return``.
-_ALIVE: "set[Task]" = set()
+_ALIVE: set[Task] = set()
 
 
 class _Bridge(QtCore.QObject):
@@ -216,7 +216,7 @@ class TaskHandle:
         """Hand an intermediate result to ``on_partial`` on the GUI thread."""
         self._bridge.partial.emit(value)
 
-    def progress_window(self, label: str = "") -> "_ProgressWindowAdapter":
+    def progress_window(self, label: str = "") -> _ProgressWindowAdapter:
         """Return an object with the ``progress_window`` surface some cores take.
 
         Several Qt-free computation cores accept a "progress window" and call
@@ -262,8 +262,9 @@ class Task:
     :meth:`cancel` and, in tests, :meth:`wait`.
     """
 
-    def __init__(self, progress: ChiSurfProgress, bridge: _Bridge,
-                 cancelled: threading.Event, owner: object):
+    def __init__(
+        self, progress: ChiSurfProgress, bridge: _Bridge, cancelled: threading.Event, owner: object
+    ):
         self.progress = progress
         self._bridge = bridge
         self._cancelled = cancelled
@@ -298,7 +299,7 @@ class Task:
             # here instead.
             self._bridge.completed.emit(None, concurrent.futures.CancelledError())
 
-    def wait(self, timeout: float = 30.0) -> "Task":
+    def wait(self, timeout: float = 30.0) -> Task:
         """Block until the task has finished *and* its callbacks have run.
 
         For tests and for CLI paths. Qt events are processed while waiting, so
@@ -338,15 +339,19 @@ def _disconnect(bridge: _Bridge, *signals) -> None:
     With no *signals* every connection goes.
     """
     for signal in signals or (
-            bridge.progressed, bridge.ranged, bridge.texted, bridge.partial,
-            bridge.completed):
+        bridge.progressed,
+        bridge.ranged,
+        bridge.texted,
+        bridge.partial,
+        bridge.completed,
+    ):
         try:
             signal.disconnect()
         except (TypeError, RuntimeError):
             pass
 
 
-def running_tasks_under(widget) -> "list[Task]":
+def running_tasks_under(widget) -> list[Task]:
     """Every running task owned by *widget* or by a widget inside it.
 
     The shell needs this to know whether a step it just started is still busy:
@@ -370,14 +375,10 @@ def running_tasks_under(widget) -> "list[Task]":
         owners.update(widget.findChildren(QtCore.QObject))
     except (AttributeError, RuntimeError):
         pass
-    return [
-        task
-        for owner, task in list(_RUNNING.items())
-        if owner in owners and task.is_running
-    ]
+    return [task for owner, task in list(_RUNNING.items()) if owner in owners and task.is_running]
 
 
-def _release_after_return(task: "Task") -> None:
+def _release_after_return(task: Task) -> None:
     """Tear the task's Qt plumbing down once control is back in the event loop.
 
     Everything here — dropping the connections, deleting the ``_Bridge``,
@@ -426,21 +427,21 @@ def _disconnect_updates(bridge: _Bridge) -> None:
 
 
 def run_in_background(
-        parent,
-        text: str,
-        func: typing.Callable[..., typing.Any],
-        *,
-        args: tuple = (),
-        kwargs: dict | None = None,
-        maximum: int = 0,
-        on_partial: typing.Callable[[typing.Any], None] | None = None,
-        on_result: typing.Callable[[typing.Any], None] | None = None,
-        on_error: typing.Callable[[BaseException], None] | None = None,
-        on_done: typing.Callable[[], None] | None = None,
-        title: str = "Progress",
-        cancellable: bool = True,
-        owner: object = None,
-        synchronous: bool | None = None,
+    parent,
+    text: str,
+    func: typing.Callable[..., typing.Any],
+    *,
+    args: tuple = (),
+    kwargs: dict | None = None,
+    maximum: int = 0,
+    on_partial: typing.Callable[[typing.Any], None] | None = None,
+    on_result: typing.Callable[[typing.Any], None] | None = None,
+    on_error: typing.Callable[[BaseException], None] | None = None,
+    on_done: typing.Callable[[], None] | None = None,
+    title: str = "Progress",
+    cancellable: bool = True,
+    owner: object = None,
+    synchronous: bool | None = None,
 ) -> Task:
     """Run *func* off the GUI thread, reporting through the progress seam.
 
@@ -515,8 +516,12 @@ def run_in_background(
 
     cancelled = threading.Event()
     progress = ChiSurfProgress(
-        parent, text, maximum,
-        title=title, cancellable=cancellable, cancel=cancelled.set,
+        parent,
+        text,
+        maximum,
+        title=title,
+        cancellable=cancellable,
+        cancel=cancelled.set,
     )
     bridge = _Bridge()
     task = Task(progress, bridge, cancelled, owner)

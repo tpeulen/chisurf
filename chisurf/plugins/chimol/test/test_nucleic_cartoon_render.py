@@ -25,6 +25,7 @@ It:
 Run just this file:  ``pytest chisurf/plugins/chimol/test/test_nucleic_cartoon_render.py -q``
 Produce the PNGs:     ``python chisurf/plugins/chimol/test/test_nucleic_cartoon_render.py``
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -35,14 +36,7 @@ import pytest
 # --- Paths -----------------------------------------------------------------
 _HERE = pathlib.Path(__file__).resolve().parent
 _GEOM = _HERE.parent / "chimol" / "geometry"
-_DNA_PDB = (
-    _HERE.parent.parent
-    / "modelling"
-    / "fret"
-    / "examples"
-    / "fps_hiv_rt"
-    / "dna.pdb"
-)
+_DNA_PDB = _HERE.parent.parent / "modelling" / "fret" / "examples" / "fps_hiv_rt" / "dna.pdb"
 _RENDERS = _HERE / "renders"
 
 
@@ -114,18 +108,23 @@ def _tri_area_sum(verts: np.ndarray, faces: np.ndarray) -> float:
 
 def _render_png(cartoon, cfg, inputs, png_path: pathlib.Path, title: str):
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
     atoms, coords_all, res_ids, chain_ids, colors, scale = inputs
     v, n, f, c = cartoon._generate_nucleic_cartoon_arrays(
-        atoms, coords_all, res_ids, chain_ids, colors,
+        atoms,
+        coords_all,
+        res_ids,
+        chain_ids,
+        colors,
         config={**cfg, "coordinate_scale": scale},
     )
     tris = v[f]
     fn = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
-    fn /= (np.linalg.norm(fn, axis=1, keepdims=True) + 1e-9)
+    fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-9
     lam = np.clip(fn @ np.array([0.3, 0.4, 0.85]), 0.0, 1.0)
     base = c[f[:, 0]][:, :3] if c is not None else np.full((len(f), 3), 0.7)
     facecol = np.clip(base * (0.25 + 0.75 * lam)[:, None], 0.0, 1.0)
@@ -178,9 +177,12 @@ def test_nucleic_cartoon_before_after_and_asserts():
     areas = []
     for r in (0.1, 0.4, 0.8):
         vv, _, ff, _ = cartoon._generate_nucleic_cartoon_arrays(
-            atoms, coords_all, res_ids, chain_ids, colors,
-            config={"coordinate_scale": scale, "backbone_radius": r,
-                    "nucleic_ao_strength": 0.0},
+            atoms,
+            coords_all,
+            res_ids,
+            chain_ids,
+            colors,
+            config={"coordinate_scale": scale, "backbone_radius": r, "nucleic_ao_strength": 0.0},
         )
         areas.append(_tri_area_sum(vv, ff))
     assert areas[0] < areas[1] < areas[2], f"tube area not monotone in radius: {areas}"
@@ -191,8 +193,7 @@ def test_nucleic_cartoon_before_after_and_asserts():
     rid_all = np.asarray(atoms["res_id"])
     ch_all = np.asarray(atoms["chain"]).astype(str)
     names = np.char.upper(np.char.strip(np.asarray(atoms["atom_name"]).astype(str)))
-    prio = ["C4'", "C4*", "C3'", "C3*", "C5'", "C5*", "O5'", "O5*",
-            "P", "O3'", "O3*", "C1'", "C1*"]
+    prio = ["C4'", "C4*", "C3'", "C3*", "C5'", "C5*", "O5'", "O5*", "P", "O3'", "O3*", "C1'", "C1*"]
     for i, rid in enumerate(res_ids):
         m = (rid_all == rid) & (np.char.strip(ch_all) == str(chain_ids[i]).strip())
         if not np.any(m):
@@ -207,7 +208,7 @@ def test_nucleic_cartoon_before_after_and_asserts():
 
     def _turning(p):
         d = np.diff(p, axis=0)
-        d /= (np.linalg.norm(d, axis=1, keepdims=True) + 1e-9)
+        d /= np.linalg.norm(d, axis=1, keepdims=True) + 1e-9
         cosang = np.clip((d[:-1] * d[1:]).sum(axis=1), -1.0, 1.0)
         return float(np.arccos(cosang).sum())
 
@@ -223,8 +224,8 @@ def test_nucleic_cartoon_before_after_and_asserts():
 if __name__ == "__main__":
     _cartoon = _load_cartoon_module()
     _inputs = _build_inputs()
-    _render_png(_cartoon, _BEFORE_CFG, _inputs, _RENDERS / "nucleic_before.png",
-                "DNA cartoon — before")
-    _render_png(_cartoon, {}, _inputs, _RENDERS / "nucleic_after.png",
-                "DNA cartoon — after")
+    _render_png(
+        _cartoon, _BEFORE_CFG, _inputs, _RENDERS / "nucleic_before.png", "DNA cartoon — before"
+    )
+    _render_png(_cartoon, {}, _inputs, _RENDERS / "nucleic_after.png", "DNA cartoon — after")
     print("wrote:", _RENDERS / "nucleic_before.png", _RENDERS / "nucleic_after.png")

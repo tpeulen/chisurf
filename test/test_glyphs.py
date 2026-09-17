@@ -4,14 +4,13 @@ The registry is a Qt-free source of truth for the pictographic "emoticon"
 icons used across ChiSurf widgets, so it can be tested headlessly without a
 display or the Qt stack.
 """
+
 import importlib.util
 import pathlib
 
 import pytest
 
-_MODULE_PATH = (
-    pathlib.Path(__file__).resolve().parents[1] / "chisurf" / "gui" / "glyphs.py"
-)
+_MODULE_PATH = pathlib.Path(__file__).resolve().parents[1] / "chisurf" / "gui" / "glyphs.py"
 
 
 def _load_glyphs():
@@ -30,8 +29,8 @@ normalize = glyphs.normalize
 @pytest.mark.parametrize(
     "src, expected",
     [
-        ("🔎 Details", "🔍 Details"),          # zoom synonym -> search
-        ("✎ Edit", Glyphs.EDIT + " Edit"),      # light pencil -> edit
+        ("🔎 Details", "🔍 Details"),  # zoom synonym -> search
+        ("✎ Edit", Glyphs.EDIT + " Edit"),  # light pencil -> edit
         ("✖ Unload", Glyphs.CLOSE + " Unload"),  # heavy multiply -> close
         ("🗑 Delete", Glyphs.DELETE + " Delete"),  # missing VS16 completed
         ("⚙ Settings", Glyphs.SETTINGS + " Settings"),

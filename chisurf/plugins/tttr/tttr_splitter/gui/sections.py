@@ -15,10 +15,10 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
 
 logger = logging.getLogger(__name__)

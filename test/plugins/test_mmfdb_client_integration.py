@@ -18,10 +18,11 @@ from mmfdb.provenance.result_registry import register_raw_measurement
 
 def _register_one_raw(tmp_path: Path) -> tuple[str, str]:
     """Register one raw measurement into the resolved (temp) user database."""
-    from chisurf.core.transform.mmfdb import session_from_auth
     from mmfdb.repository import MFDatabase
     from mmfdb.security.auth import create_session
     from mmfdb.store.database_resolver import resolve_database_path
+
+    from chisurf.core.transform.mmfdb import session_from_auth
 
     f = tmp_path / "measurement.ptu"
     f.write_bytes(b"\x00\x01\x02\x03")

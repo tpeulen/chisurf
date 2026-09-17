@@ -25,9 +25,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
+import tttrlib
 
 from chisurf.core.datastore import concat_stores, numeric_column, row_count
-import tttrlib
 
 __all__ = [
     "PhotonMeta",

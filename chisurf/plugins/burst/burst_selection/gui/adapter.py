@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import io
 import zipfile
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -22,15 +21,15 @@ from chisurf.core.datastore import (
 
 from ..api.models import (
     AnalysisSettings,
+    BocpdFilterSettings,
     BurstDetectionSettings,
     BurstFilterMode,
     CountRateFilterSettings,
+    CusumFilterSettings,
     DeltaMacroTimeFilterSettings,
     GMMSettings,
-    PhotonFilterSettings,
-    BocpdFilterSettings,
     KalmanFilterSettings,
-    CusumFilterSettings,
+    PhotonFilterSettings,
     TttrlibSearchSettings,
 )
 from ..api.selection import analyze_file
@@ -60,10 +59,12 @@ def _numeric_series(frame, column: str):
 def _ratio_series(numerator, denominator):
     """Return ``numerator / denominator``, ``NaN`` where the denominator is
     not positive — a burst with no signal has no ratio, and 0/0 must not
-    become 0."""
+    become 0.
+    """
     with np.errstate(divide="ignore", invalid="ignore"):
         out = np.divide(
-            numerator, denominator,
+            numerator,
+            denominator,
             out=np.full(len(numerator), np.nan, dtype=float),
             where=denominator > 0,
         )
@@ -87,6 +88,7 @@ def proximity_ratio_from_frame(frame):
 
 def analysis_settings_from_wizard(wizard: Any) -> AnalysisSettings:
     """Create API analysis settings from a BurstSelectionTool instance."""
+
     # Always the container; the legacy folder is an extra beside it. The two
     # extras are read defensively because they are *extras*: a caller that has
     # no output-format checkboxes at all (the settings round-trip, a headless
@@ -209,8 +211,6 @@ _FILTER_STATE_MAP = {
 }
 
 
-
-
 #: The form binds its controls through this target, so state keys carry it.
 _FILTER_TARGET = "settings"
 
@@ -266,12 +266,13 @@ def _apply_unported_filter_settings(finder: Any, photon: dict, skipped: list) ->
             skipped.append(f"photon_filter.{group or ''}{'.' if group else ''}{key}: {exc}")
 
 
-def _filter_mode_from_settings(photon: dict) -> Optional[str]:
+def _filter_mode_from_settings(photon: dict) -> str | None:
     """The filter mode to select before restoring mode-specific parameters."""
     used = photon.get("used_filter")
     if used is None:
         return None
     return str(getattr(used, "value", used))
+
 
 def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     """Repopulate the wizard from stored analysis settings — the inverse of
@@ -348,8 +349,7 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     detection = data.get("burst_detection") or {}
     if finder is not None and detection:
         _set(finder, "min_ph", detection.get("min_photons"), "burst_detection.min_photons")
-        _set(finder, "ph_window", detection.get("photon_window"),
-             "burst_detection.photon_window")
+        _set(finder, "ph_window", detection.get("photon_window"), "burst_detection.photon_window")
 
     # The photon-filter page is already declarative: its controls are generated
     # from a view spec over a FilterSettings dataclass, and the page attributes
@@ -374,8 +374,7 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
             result = apply_state(model, _filter_state_from_settings(photon))
             skipped.extend(f"photon_filter.{k}: {v}" for k, v in result.failed.items())
             skipped.extend(
-                f"photon_filter.{k}: the filter form has no such control"
-                for k in result.unknown
+                f"photon_filter.{k}: the filter form has no such control" for k in result.unknown
             )
             _apply_unported_filter_settings(finder, photon, skipped)
 
@@ -383,8 +382,15 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     if gmm:
         stored = getattr(wizard, "gmm_settings", None)
         if isinstance(stored, dict):
-            for key in ("covariance_type", "random_state", "max_iter", "n_init",
-                        "tol", "max_components", "reg_covar"):
+            for key in (
+                "covariance_type",
+                "random_state",
+                "max_iter",
+                "n_init",
+                "tol",
+                "max_components",
+                "reg_covar",
+            ):
                 if gmm.get(key) is not None:
                     stored[key] = gmm[key]
         _check("checkBox_auto_components", gmm.get("auto_components"))
@@ -415,7 +421,6 @@ def apply_analysis_folder(wizard: Any, folder: Any) -> list[str]:
     if not stored:
         return ["this analysis folder records no settings"]
     return apply_analysis_settings_to_wizard(wizard, stored)
-
 
 
 def save_current_selection(
@@ -463,6 +468,7 @@ def _read_bur_member(handle):
         return read_csv_table(name, delimiter="\t")
     finally:
         Path(name).unlink(missing_ok=True)
+
 
 def load_burst_dataframe(file_path: str | Path, target_path: str):
     """Load a saved ``.bur`` file, including zip fallback paths used by the GUI."""
@@ -521,9 +527,7 @@ def make_ui_dataframe(df):
     # the GUI's feature list is built from what is here.
     proximity_ratio = proximity_ratio_from_frame(columns)
     if proximity_ratio is not None:
-        columns[PROXIMITY_RATIO_COLUMN] = np.round(
-            np.nan_to_num(proximity_ratio, nan=0.0), 6
-        )
+        columns[PROXIMITY_RATIO_COLUMN] = np.round(np.nan_to_num(proximity_ratio, nan=0.0), 6)
     return store_from_arrays(columns)
 
 

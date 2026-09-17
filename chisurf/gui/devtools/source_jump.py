@@ -4,19 +4,18 @@ Source Jump Utilities for Dev Mode.
 Provides functions to resolve source locations from widgets/objects
 and open them in the embedded code editor.
 """
+
 from __future__ import annotations
 
 import inspect
 import pathlib
-import typing
-from typing import Optional, Tuple, Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from chisurf.gui import QtWidgets
 
-import chisurf.core.settings
 
-
-def resolve_widget_source(widget: QtWidgets.QWidget) -> Optional[Tuple[str, int]]:
+def resolve_widget_source(widget: QtWidgets.QWidget) -> tuple[str, int] | None:
     """Resolve the source file and line for a widget.
 
     Priority:
@@ -37,7 +36,7 @@ def resolve_widget_source(widget: QtWidgets.QWidget) -> Optional[Tuple[str, int]
     try:
         widget_class = widget.__class__
         file_path = inspect.getsourcefile(widget_class)
-        if file_path and not file_path.endswith('.pyc'):
+        if file_path and not file_path.endswith(".pyc"):
             try:
                 _, start_line = inspect.getsourcelines(widget_class)
                 return (file_path, start_line)
@@ -56,7 +55,7 @@ def resolve_widget_source(widget: QtWidgets.QWidget) -> Optional[Tuple[str, int]
     return None
 
 
-def resolve_object_source(obj: Any) -> Optional[Tuple[str, int]]:
+def resolve_object_source(obj: Any) -> tuple[str, int] | None:
     """Resolve the source file and line for any Python object.
 
     Args:
@@ -83,7 +82,7 @@ def resolve_object_source(obj: Any) -> Optional[Tuple[str, int]]:
     return None
 
 
-def resolve_focused_widget_source() -> Optional[Tuple[str, int]]:
+def resolve_focused_widget_source() -> tuple[str, int] | None:
     """Resolve source for the currently focused widget.
 
     Returns:
@@ -100,7 +99,7 @@ def resolve_focused_widget_source() -> Optional[Tuple[str, int]]:
     return resolve_widget_source(focused)
 
 
-def resolve_fit_window_source(fit_window: QtWidgets.QWidget) -> Optional[Tuple[str, int]]:
+def resolve_fit_window_source(fit_window: QtWidgets.QWidget) -> tuple[str, int] | None:
     """Resolve source for a fit window (MDI subwindow).
 
     Priority:
@@ -132,7 +131,7 @@ def resolve_fit_window_source(fit_window: QtWidgets.QWidget) -> Optional[Tuple[s
     return resolve_widget_source(fit_window)
 
 
-def resolve_compute_model_class(model: Any) -> Optional[type]:
+def resolve_compute_model_class(model: Any) -> type | None:
     """Return the underlying *computational* model class for ``model``.
 
     Legacy model editors are widgets that multiply-inherit the compute model and
@@ -161,7 +160,7 @@ def resolve_compute_model_class(model: Any) -> Optional[type]:
     return type(model)
 
 
-def resolve_model_view_spec_path(model: Any) -> Optional[Tuple[str, int]]:
+def resolve_model_view_spec_path(model: Any) -> tuple[str, int] | None:
     """Resolve the user-editable ``.view.json`` file for a model, if any.
 
     A pure model declares its editor layout via the ``view_spec_file`` class
@@ -205,7 +204,7 @@ def resolve_model_view_spec_path(model: Any) -> Optional[Tuple[str, int]]:
 
 def resolve_parameter_group_source(
     param_widget: QtWidgets.QWidget,
-) -> Optional[Tuple[str, int]]:
+) -> tuple[str, int] | None:
     """Resolve source for a parameter group widget.
 
     Priority:
@@ -244,7 +243,7 @@ def resolve_parameter_group_source(
 
 def resolve_experiment_panel_source(
     experiment_widget: QtWidgets.QWidget,
-) -> Optional[Tuple[str, int]]:
+) -> tuple[str, int] | None:
     """Resolve source for an experiment panel widget.
 
     Args:
@@ -278,7 +277,7 @@ def resolve_experiment_panel_source(
 def open_in_editor(
     main_window: QtWidgets.QMainWindow,
     path: str,
-    line: Optional[int] = None,
+    line: int | None = None,
 ) -> bool:
     """Open a file in the standalone CodeEditorWindow plugin.
 
@@ -292,6 +291,7 @@ def open_in_editor(
     """
     if main_window is None:
         import logging
+
         logging.error("open_in_editor: main_window is None")
         return False
 
@@ -310,10 +310,12 @@ def open_in_editor(
             editor_window = CodeEditorWindow()
             # Apply statefulness from manifest if possible
             try:
-                from chisurf.core.plugin.registry import apply_manifest_statefulness
-                from chisurf.core.plugin.manifest import load_manifest
                 import pathlib
+
                 import chisurf.plugins.core.code_editor as ce
+                from chisurf.core.plugin.manifest import load_manifest
+                from chisurf.core.plugin.registry import apply_manifest_statefulness
+
                 manifest_path = pathlib.Path(ce.__file__).parent / "manifest.json"
                 if manifest_path.exists():
                     manifest = load_manifest(manifest_path)
@@ -321,13 +323,16 @@ def open_in_editor(
                         apply_manifest_statefulness(editor_window, manifest)
             except Exception as e:
                 import logging
+
                 logging.warning(f"Could not apply code editor statefulness: {e}")
 
             # Store reference in main_window._plugin_contexts to prevent garbage collection
             if not hasattr(main_window, "_plugin_contexts"):
                 main_window._plugin_contexts = {}
-            import chisurf.plugins.core.code_editor as ce
             import pathlib
+
+            import chisurf.plugins.core.code_editor as ce
+
             plugin_key = str(pathlib.Path(ce.__file__).parent)
             if plugin_key not in main_window._plugin_contexts:
                 main_window._plugin_contexts[plugin_key] = {"__name__": "plugin"}
@@ -343,18 +348,20 @@ def open_in_editor(
             return True
         else:
             import logging
+
             logging.error("open_in_editor: CodeEditorWindow has no editor widget")
             return False
 
     except Exception as e:
         import logging
+
         logging.error(f"open_in_editor failed: {e}")
         return False
 
 
 def make_resolver(
     *targets: Any,
-) -> Callable[[], Optional[Tuple[str, int]]]:
+) -> Callable[[], tuple[str, int] | None]:
     """Create a resolver that tries multiple targets in order.
 
     Args:
@@ -363,7 +370,8 @@ def make_resolver(
     Returns:
         A callable that returns (path, line) or None
     """
-    def resolver() -> Optional[Tuple[str, int]]:
+
+    def resolver() -> tuple[str, int] | None:
         for target in targets:
             if isinstance(target, QtWidgets.QWidget):
                 result = resolve_widget_source(target)
@@ -379,7 +387,7 @@ def make_resolver(
 def make_widget_resolver(
     widget: QtWidgets.QWidget,
     include_ui: bool = True,
-) -> Callable[[], Optional[Tuple[str, int]]]:
+) -> Callable[[], tuple[str, int] | None]:
     """Create a resolver for a widget.
 
     Args:
@@ -389,7 +397,8 @@ def make_widget_resolver(
     Returns:
         A callable that returns (path, line) or None
     """
-    def resolver() -> Optional[Tuple[str, int]]:
+
+    def resolver() -> tuple[str, int] | None:
         if include_ui:
             ui_path = getattr(widget, "_chisurf_ui_path", None)
             if ui_path:

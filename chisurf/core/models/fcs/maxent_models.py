@@ -11,6 +11,7 @@ shared :class:`chisurf.core.math.regularization.LCurveData` the reusable
 The numerics live in :mod:`chisurf.core.models.fcs.maxent`; these classes only
 adapt the model parameters and the fit window to it.
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,12 +52,22 @@ class _MaxEntFCSBase(ModelCurve):
         """
         self.prior_kind = "uniform"
         self._prior_center = FittingParameter(
-            name="prior_c", label_text=center_label, value=center_value,
-            lb=0.0, ub=float("inf"), bounds_on=True, fixed=True,
+            name="prior_c",
+            label_text=center_label,
+            value=center_value,
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=True,
+            fixed=True,
         )
         self._prior_width = FittingParameter(
-            name="prior_w", label_text="w<sub>prior</sub>[dec]", value=0.5,
-            lb=0.01, ub=5.0, bounds_on=True, fixed=True,
+            name="prior_w",
+            label_text="w<sub>prior</sub>[dec]",
+            value=0.5,
+            lb=0.01,
+            ub=5.0,
+            bounds_on=True,
+            fixed=True,
         )
 
     def prior_choices(self) -> list:
@@ -103,7 +114,7 @@ class _MaxEntFCSBase(ModelCurve):
     def l_curve_reg(self) -> np.ndarray:
         """The sweep's regularization weights on a linear scale."""
         vals = self.l_curve_log10_reg
-        return vals if vals.size == 0 else 10.0 ** vals
+        return vals if vals.size == 0 else 10.0**vals
 
     @property
     def l_curve_chi2(self) -> np.ndarray:
@@ -293,28 +304,58 @@ class MaxEntFCSModel(_MaxEntFCSBase):
         # The entropy weight is carried as log10 for stability: it spans decades
         # and the L-curve is swept on that scale.
         self._reg = FittingParameter(
-            name="reg", label_text="reg", value=-3.0, lb=-6.0, ub=3.0,
-            bounds_on=True, fixed=True,
+            name="reg",
+            label_text="reg",
+            value=-3.0,
+            lb=-6.0,
+            ub=3.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._td_min = FittingParameter(
-            name="td_min", label_text="t<sub>d,min</sub>[ms]", value=1.0e-4,
-            lb=0.0, ub=float("inf"), bounds_on=True, fixed=True,
+            name="td_min",
+            label_text="t<sub>d,min</sub>[ms]",
+            value=1.0e-4,
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=True,
+            fixed=True,
         )
         self._td_max = FittingParameter(
-            name="td_max", label_text="t<sub>d,max</sub>[ms]", value=20.0,
-            lb=0.0, ub=float("inf"), bounds_on=True, fixed=True,
+            name="td_max",
+            label_text="t<sub>d,max</sub>[ms]",
+            value=20.0,
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=True,
+            fixed=True,
         )
         self._n_td = FittingParameter(
-            name="n_td", label_text="n<sub>td</sub>", value=64.0, lb=10.0, ub=400.0,
-            bounds_on=True, fixed=True,
+            name="n_td",
+            label_text="n<sub>td</sub>",
+            value=64.0,
+            lb=10.0,
+            ub=400.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._s = FittingParameter(
-            name="s", label_text="s", value=3.5, lb=0.1, ub=20.0,
-            bounds_on=True, fixed=True,
+            name="s",
+            label_text="s",
+            value=3.5,
+            lb=0.1,
+            ub=20.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._b = FittingParameter(
-            name="b", label_text="b", value=1.0, lb=-10.0, ub=10.0,
-            bounds_on=True, fixed=True,
+            name="b",
+            label_text="b",
+            value=1.0,
+            lb=-10.0,
+            ub=10.0,
+            bounds_on=True,
+            fixed=True,
         )
 
         self._init_prior_parameters("t<sub>d,0</sub>[ms]", 1.0)
@@ -323,8 +364,14 @@ class MaxEntFCSModel(_MaxEntFCSBase):
 
     def _maxent_parameter_rows(self) -> list:
         """Return the entropy weight and the diffusion-time grid, in order."""
-        return ([self._reg, self._td_min, self._td_max, self._n_td, self._s,
-                 self._b] + self._prior_parameter_rows())
+        return [
+            self._reg,
+            self._td_min,
+            self._td_max,
+            self._n_td,
+            self._s,
+            self._b,
+        ] + self._prior_parameter_rows()
 
     @property
     def maxent_tauD_distribution(self):
@@ -382,6 +429,7 @@ class MaxEntFCSModel(_MaxEntFCSBase):
     def _lcurve_prior(self):
         """The entropy prior on the sweep's own grid (it builds the same one)."""
         from chisurf.core.models.fcs.maxent import _maxent_td_grid
+
         data = self.fit.data
         tau = np.asarray(data.x, dtype=float).ravel()
         if tau.size == 0:
@@ -416,6 +464,7 @@ class MaxEntFCSModel(_MaxEntFCSBase):
         # The grid is built here (the same way fcs_maxent would build it)
         # so the entropy prior can be evaluated on it.
         from chisurf.core.models.fcs.maxent import _maxent_td_grid
+
         td_grid = _maxent_td_grid(tau, td_min, td_max, n_td)
         self._result = fcs_maxent(
             tau=tau,
@@ -456,37 +505,77 @@ class MaxEntRHModel(_MaxEntFCSBase):
         super().__init__(fit, **kwargs)
 
         self._reg = FittingParameter(
-            name="reg", label_text="reg", value=-4.0, lb=-6.0, ub=3.0,
-            bounds_on=True, fixed=True,
+            name="reg",
+            label_text="reg",
+            value=-4.0,
+            lb=-6.0,
+            ub=3.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._rh_min = FittingParameter(
-            name="rh_min", label_text="r<sub>h,min</sub>[nm]", value=0.01,
-            lb=0.001, ub=1000.0, bounds_on=True, fixed=True,
+            name="rh_min",
+            label_text="r<sub>h,min</sub>[nm]",
+            value=0.01,
+            lb=0.001,
+            ub=1000.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._rh_max = FittingParameter(
-            name="rh_max", label_text="r<sub>h,max</sub>[nm]", value=500.0,
-            lb=0.01, ub=1000.0, bounds_on=True, fixed=True,
+            name="rh_max",
+            label_text="r<sub>h,max</sub>[nm]",
+            value=500.0,
+            lb=0.01,
+            ub=1000.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._n_rh = FittingParameter(
-            name="n_rh", label_text="n<sub>rh</sub>", value=128.0, lb=10.0, ub=400.0,
-            bounds_on=True, fixed=True,
+            name="n_rh",
+            label_text="n<sub>rh</sub>",
+            value=128.0,
+            lb=10.0,
+            ub=400.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._s = FittingParameter(
-            name="s", label_text="s", value=3.5, lb=0.1, ub=20.0,
-            bounds_on=True, fixed=True,
+            name="s",
+            label_text="s",
+            value=3.5,
+            lb=0.1,
+            ub=20.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._b = FittingParameter(
-            name="b", label_text="b", value=1.0, lb=-10.0, ub=10.0,
-            bounds_on=True, fixed=True,
+            name="b",
+            label_text="b",
+            value=1.0,
+            lb=-10.0,
+            ub=10.0,
+            bounds_on=True,
+            fixed=True,
         )
         # Beam waist in nanometres for the UI; the solver takes micrometres.
         self._w0 = FittingParameter(
-            name="w0", label_text="w<sub>0</sub>[nm]", value=350.0, lb=10.0, ub=5000.0,
-            bounds_on=True, fixed=True,
+            name="w0",
+            label_text="w<sub>0</sub>[nm]",
+            value=350.0,
+            lb=10.0,
+            ub=5000.0,
+            bounds_on=True,
+            fixed=True,
         )
         self._temp = FittingParameter(
-            name="temp", label_text="temp[°C]", value=20.0, lb=-50.0, ub=200.0,
-            bounds_on=True, fixed=True,
+            name="temp",
+            label_text="temp[°C]",
+            value=20.0,
+            lb=-50.0,
+            ub=200.0,
+            bounds_on=True,
+            fixed=True,
         )
 
         self._init_prior_parameters("r<sub>H,0</sub>[nm]", 2.0)
@@ -495,7 +584,14 @@ class MaxEntRHModel(_MaxEntFCSBase):
 
     def _maxent_parameter_rows(self) -> list:
         """Return the entropy weight and the radius grid, in order."""
-        return ([self._reg, self._rh_min, self._rh_max, self._n_rh, self._s, self._b] + self._prior_parameter_rows())
+        return [
+            self._reg,
+            self._rh_min,
+            self._rh_max,
+            self._n_rh,
+            self._s,
+            self._b,
+        ] + self._prior_parameter_rows()
 
     def _optics_parameter_rows(self) -> list:
         """Return the quantities that turn a diffusion time into a radius."""
@@ -589,8 +685,7 @@ class MaxEntRHModel(_MaxEntFCSBase):
             reg=10.0 ** float(self._reg.value),
             temperature=float(self._temp.value) + 273.15,
             weights=self._data_weights(),
-            prior=self._entropy_prior(
-                np.logspace(np.log10(rh_min), np.log10(rh_max), n_rh)),
+            prior=self._entropy_prior(np.logspace(np.log10(rh_min), np.log10(rh_max), n_rh)),
         )
         self.x = self._result["tau"]
         self.y = self._result["g_fit"]

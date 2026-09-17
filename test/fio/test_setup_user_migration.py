@@ -11,24 +11,17 @@ Ensures:
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 
-import pytest
-
-from mmfdb.store.database_resolver import resolve_database_path
 from mmfdb.repository import MFDatabase
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     _load_mmfdb_detector_setups,
     _migrate_json_setups_to_mmfdb,
-    _resolve_active_user_id,
     _save_setup_row,
-    load_detector_setups,
     save_detector_setups,
     setup_id_for_name,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -147,14 +140,10 @@ def test_different_user_gets_separate_migration(tmp_path: Path) -> None:
         _write_legacy_json(legacy, {"Shared": {"detectors": {}, "windows": {}}})
 
         _migrate_json_setups_to_mmfdb(db, legacy, user_id=alice)
-        alice_count = len(
-            [s for s in db.list_setups() if s.get("created_by_user_id") == alice]
-        )
+        alice_count = len([s for s in db.list_setups() if s.get("created_by_user_id") == alice])
 
         _migrate_json_setups_to_mmfdb(db, legacy, user_id=bob)
-        bob_count = len(
-            [s for s in db.list_setups() if s.get("created_by_user_id") == bob]
-        )
+        bob_count = len([s for s in db.list_setups() if s.get("created_by_user_id") == bob])
         total = len(db.list_setups())
 
         assert alice_count >= 1, "Alice should have imported setups"
@@ -183,8 +172,12 @@ def test_load_excludes_other_users_private_setups(tmp_path: Path) -> None:
             )
 
         # Private (non-public) setups — only visible to the owning user
-        _save_setup_row(db, "AliceOnly", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False)
-        _save_setup_row(db, "BobOnly", {"detectors": {}, "windows": {}}, user_id=bob, is_public=False)
+        _save_setup_row(
+            db, "AliceOnly", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False
+        )
+        _save_setup_row(
+            db, "BobOnly", {"detectors": {}, "windows": {}}, user_id=bob, is_public=False
+        )
 
         alice_setups = _load_mmfdb_detector_setups(db, user_id=alice)["setups"]
         bob_setups = _load_mmfdb_detector_setups(db, user_id=bob)["setups"]
@@ -213,9 +206,13 @@ def test_load_includes_shared_and_public_setups(tmp_path: Path) -> None:
         # Shared setup (no owner) — save with empty user_id so created_by_user_id is NULL
         _save_setup_row(db, "Shared", {"detectors": {}, "windows": {}}, user_id="")
         # Alice's public setup
-        _save_setup_row(db, "AlicePublic", {"detectors": {}, "windows": {}}, user_id=alice, is_public=True)
+        _save_setup_row(
+            db, "AlicePublic", {"detectors": {}, "windows": {}}, user_id=alice, is_public=True
+        )
         # Alice's private setup
-        _save_setup_row(db, "AlicePrivate", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False)
+        _save_setup_row(
+            db, "AlicePrivate", {"detectors": {}, "windows": {}}, user_id=alice, is_public=False
+        )
 
         alice_setups = _load_mmfdb_detector_setups(db, user_id=alice)["setups"]
         bob_setups = _load_mmfdb_detector_setups(db, user_id=bob)["setups"]
@@ -240,8 +237,8 @@ def test_save_records_owner(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
     try:
         user_id = "user_default"
-        import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups as dsu
         import chisurf.core.fio.setup_store as utils
+        import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups as dsu
 
         original_resolve = dsu._resolve_active_user_id
         dsu._resolve_active_user_id = lambda: user_id

@@ -5,6 +5,7 @@ from qtpy import QtWidgets
 def test_irf_estimator_tool_creation(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.fluorescence_decay.irf_estimator import IRFEstimatorTool
+
     widget = IRFEstimatorTool()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QMainWindow)

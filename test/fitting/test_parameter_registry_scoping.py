@@ -9,8 +9,8 @@ must never cross-contaminate descriptions. See ``chisurf/core/parameter.py``
 
 from __future__ import annotations
 
-import chisurf.core.settings
 import chisurf.core.fitting.parameter as fp
+import chisurf.core.settings
 
 
 def _install_fake_registry():

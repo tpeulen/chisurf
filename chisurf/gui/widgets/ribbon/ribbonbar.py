@@ -38,7 +38,7 @@ class RibbonBar(QtWidgets.QWidget):
     _autoHideRibbon = False
 
     #: The categories of the ribbon.
-    _categories: typing.Dict[str, RibbonCategory] = {}
+    _categories: dict[str, RibbonCategory] = {}
     _contextCategoryCount = 0
 
     #: Maximum rows
@@ -68,7 +68,9 @@ class RibbonBar(QtWidgets.QWidget):
         :param maxRows: The maximum number of rows.
         :param parent: The parent widget of the ribbon.
         """
-        if (args and not isinstance(args[0], QtWidgets.QWidget)) or ("title" in kwargs or "maxRows" in kwargs):
+        if (args and not isinstance(args[0], QtWidgets.QWidget)) or (
+            "title" in kwargs or "maxRows" in kwargs
+        ):
             title = args[0] if len(args) > 0 else kwargs.get("title", "Ribbon Bar Title")
             maxRows = args[1] if len(args) > 1 else kwargs.get("maxRows", 6)
             parent = args[2] if len(args) > 2 else kwargs.get("parent", None)
@@ -108,7 +110,9 @@ class RibbonBar(QtWidgets.QWidget):
         container_layout.setContentsMargins(4, 0, 4, 0)
         container_layout.setSpacing(0)
         container_layout.addWidget(self._searchField)
-        self._searchField.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self._searchField.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         self._searchField.setStyleSheet("""
             #ribbonSearchField {
                 background-color: transparent;
@@ -128,25 +132,27 @@ class RibbonBar(QtWidgets.QWidget):
                 border-radius: 3px;
             }
         """)
-        self._titleWidget.rightToolBar().insertWidget(self._titleWidget._collapseRibbonButtonAction, self._searchContainer)
-        
+        self._titleWidget.rightToolBar().insertWidget(
+            self._titleWidget._collapseRibbonButtonAction, self._searchContainer
+        )
+
         # Connect signals
         self._titleWidget.helpButtonClicked.connect(self.helpButtonClicked)
         self._titleWidget.collapseRibbonButtonClicked.connect(self._collapseButtonClicked)
         self._titleWidget.tabBar().currentChanged.connect(self.showCategoryByIndex)  # type: ignore
         self._titleWidget.tabBar().doubleClicked.connect(self._onTabBarDoubleClicked)  # type: ignore
-        
+
         # Ribbon state
         self._qat_button_ids = []
         self._hidden_button_ids = []
         self._qat_buttons = {}  # btn_id -> QToolButton
-        
+
         self._loadRibbonState()
-        
+
         # Add context menu to ribbon bar itself to unhide items
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showRibbonContextMenu)
-        
+
         self.setRibbonStyle(RibbonStyle.Default)
 
     def _loadRibbonState(self):
@@ -156,7 +162,7 @@ class RibbonBar(QtWidgets.QWidget):
         self._qat_button_ids = val if isinstance(val, list) else [val] if val else []
         val2 = settings.value("hidden_buttons", [])
         self._hidden_button_ids = val2 if isinstance(val2, list) else [val2] if val2 else []
-            
+
     def _saveRibbonState(self):
         """Save QAT and Hidden state to QSettings."""
         settings = QtCore.QSettings("ChiSurf", "RibbonState")
@@ -165,45 +171,51 @@ class RibbonBar(QtWidgets.QWidget):
 
     def registerTargetButton(self, button: QtWidgets.QWidget):
         """Called when a panel adds a button. Process hiding and QAT."""
-        btn_id = getattr(button, '_ribbon_btn_id', None)
+        btn_id = getattr(button, "_ribbon_btn_id", None)
         if btn_id is None:
             # Calculate it dynamically
             panel = button
-            while panel is not None and panel.__class__.__name__ != 'RibbonPanel':
+            while panel is not None and panel.__class__.__name__ != "RibbonPanel":
                 panel = panel.parent()
-                
+
             category = button
-            while category is not None and 'Category' not in category.__class__.__name__:
+            while category is not None and "Category" not in category.__class__.__name__:
                 category = category.parent()
-                
-            panel_title = getattr(panel, 'title', lambda: "UnknownPanel")() if panel else "UnknownPanel"
-            category_title = getattr(category, 'title', lambda: "UnknownCategory")() if category else "UnknownCategory"
-            
-            if hasattr(button, 'text'):
+
+            panel_title = (
+                getattr(panel, "title", lambda: "UnknownPanel")() if panel else "UnknownPanel"
+            )
+            category_title = (
+                getattr(category, "title", lambda: "UnknownCategory")()
+                if category
+                else "UnknownCategory"
+            )
+
+            if hasattr(button, "text"):
                 text = button.text()
-            elif hasattr(button, '_actionButton'):
+            elif hasattr(button, "_actionButton"):
                 text = button._actionButton.text()
             else:
                 text = ""
-            text = text.replace('\n', ' ').strip()
-            
+            text = text.replace("\n", " ").strip()
+
             btn_id = f"{category_title}::{panel_title}::{text}"
             button._ribbon_btn_id = btn_id
-            
+
         if btn_id in self._hidden_button_ids:
             # Hide the RibbonPanelItemWidget parent
             parent = button.parent()
-            if parent and parent.__class__.__name__ == 'RibbonPanelItemWidget':
+            if parent and parent.__class__.__name__ == "RibbonPanelItemWidget":
                 parent.hide()
             else:
                 button.hide()
-                
+
             panel = button
-            while panel is not None and panel.__class__.__name__ != 'RibbonPanel':
+            while panel is not None and panel.__class__.__name__ != "RibbonPanel":
                 panel = panel.parent()
-            if panel and hasattr(panel, 'reflow'):
+            if panel and hasattr(panel, "reflow"):
                 panel.reflow()
-            
+
         if btn_id in self._qat_button_ids:
             if btn_id not in self._qat_buttons:
                 self.addButtonToQuickAccess(btn_id, button, save=False)
@@ -212,46 +224,52 @@ class RibbonBar(QtWidgets.QWidget):
         """Replicate a button and add it to the quick access toolbar."""
         if btn_id in self._qat_buttons:
             return
-            
+
         qat_button = QtWidgets.QToolButton()
-        
+
         # Pull properties
-        icon = getattr(source_button, '_ribbon_icon', None) or (source_button.icon() if hasattr(source_button, 'icon') else None)
-        text = getattr(source_button, '_ribbon_text', None) or (source_button.text() if hasattr(source_button, 'text') else "")
-        tooltip = getattr(source_button, '_ribbon_tooltip', None) or (source_button.toolTip() if hasattr(source_button, 'toolTip') else "")
-        slot = getattr(source_button, '_ribbon_slot', None)
-        
+        icon = getattr(source_button, "_ribbon_icon", None) or (
+            source_button.icon() if hasattr(source_button, "icon") else None
+        )
+        text = getattr(source_button, "_ribbon_text", None) or (
+            source_button.text() if hasattr(source_button, "text") else ""
+        )
+        tooltip = getattr(source_button, "_ribbon_tooltip", None) or (
+            source_button.toolTip() if hasattr(source_button, "toolTip") else ""
+        )
+        slot = getattr(source_button, "_ribbon_slot", None)
+
         if icon:
             qat_button.setIcon(icon)
         else:
             qat_button.setText(text)
-            
+
         if tooltip:
             qat_button.setToolTip(tooltip)
         else:
             qat_button.setToolTip(text)
-            
+
         if slot:
             qat_button.clicked.connect(slot)
-            
+
         qat_button.setAutoRaise(True)
         qat_button.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        
+
         def qat_context_menu(pos):
             menu = QtWidgets.QMenu(qat_button)
             remove_action = menu.addAction("Remove from Quick Access Toolbar")
             action = menu.exec_(qat_button.mapToGlobal(pos))
             if action == remove_action:
                 self.removeButtonFromQuickAccess(btn_id)
-                
+
         qat_button.customContextMenuRequested.connect(qat_context_menu)
-        
+
         self.addQuickAccessButton(qat_button)
         self._qat_buttons[btn_id] = qat_button
-        
+
         if btn_id not in self._qat_button_ids:
             self._qat_button_ids.append(btn_id)
-            
+
         if save:
             self._saveRibbonState()
 
@@ -260,17 +278,17 @@ class RibbonBar(QtWidgets.QWidget):
         if btn_id in self._qat_button_ids:
             self._qat_button_ids.remove(btn_id)
             self._saveRibbonState()
-            
+
         if btn_id in self._qat_buttons:
             qat_button = self._qat_buttons.pop(btn_id)
             # Remove action from toolbar
             self._titleWidget.quickAccessToolBar().removeAction(qat_button.defaultAction())
-            action = getattr(qat_button, 'defaultAction', lambda: None)()
+            action = getattr(qat_button, "defaultAction", lambda: None)()
             if action:
                 self._titleWidget.quickAccessToolBar().removeAction(action)
             else:
-                 # Workaround: find the layout and remove it, or use setParent(None)
-                 qat_button.setParent(None)
+                # Workaround: find the layout and remove it, or use setParent(None)
+                qat_button.setParent(None)
             qat_button.deleteLater()
 
     def hideButton(self, btn_id: str, button: QtWidgets.QWidget):
@@ -278,52 +296,52 @@ class RibbonBar(QtWidgets.QWidget):
         if btn_id not in self._hidden_button_ids:
             self._hidden_button_ids.append(btn_id)
             self._saveRibbonState()
-            
+
         parent = button.parent()
-        if parent and parent.__class__.__name__ == 'RibbonPanelItemWidget':
+        if parent and parent.__class__.__name__ == "RibbonPanelItemWidget":
             parent.hide()
         else:
             button.hide()
-            
+
         panel = button
-        while panel is not None and panel.__class__.__name__ != 'RibbonPanel':
+        while panel is not None and panel.__class__.__name__ != "RibbonPanel":
             panel = panel.parent()
-        if panel and hasattr(panel, 'reflow'):
+        if panel and hasattr(panel, "reflow"):
             panel.reflow()
 
     def _showRibbonContextMenu(self, pos: QtCore.QPoint):
         """Context menu for the ribbon bar background."""
         if not self._hidden_button_ids:
             return
-            
+
         menu = QtWidgets.QMenu(self)
         reset_action = menu.addAction("Show All Hidden Items")
-        
+
         action = menu.exec_(self.mapToGlobal(pos))
         if action == reset_action:
             self._hidden_button_ids.clear()
             self._saveRibbonState()
-            
+
             for category in self._categories.values():
                 for panel in category.panels().values():
                     for widget in panel.widgets():
                         parent = widget.parent()
-                        if parent and parent.__class__.__name__ == 'RibbonPanelItemWidget':
+                        if parent and parent.__class__.__name__ == "RibbonPanelItemWidget":
                             parent.show()
                         widget.show()
-                        
-                        btn_id = getattr(widget, '_ribbon_btn_id', None)
+
+                        btn_id = getattr(widget, "_ribbon_btn_id", None)
                         if btn_id in self._hidden_button_ids:
                             self._hidden_button_ids.remove(btn_id)
-                            
-                    if hasattr(panel, 'reflow'):
+
+                    if hasattr(panel, "reflow"):
                         panel.reflow()
-                        
+
     def _onSearchChanged(self, text: str):
         """Handle search field text changes."""
         text = text.lower().strip()
         first_match_category = None
-        
+
         for category_name, category in self._categories.items():
             category_has_match = False
             for panel_name, panel in category.panels().items():
@@ -332,25 +350,25 @@ class RibbonBar(QtWidgets.QWidget):
                     if text:
                         # Check text and tooltip
                         widget_text = ""
-                        if hasattr(widget, 'text'):
+                        if hasattr(widget, "text"):
                             widget_text = widget.text().lower()
-                        elif hasattr(widget, 'title'):
+                        elif hasattr(widget, "title"):
                             widget_text = widget.title().lower()
-                        
+
                         tooltip = widget.toolTip().lower()
-                        
+
                         if text in widget_text or text in tooltip:
                             matches = True
                             category_has_match = True
                             if first_match_category is None:
                                 first_match_category = category
-                    
+
                     # Apply highlighting
                     if matches:
                         widget.setStyleSheet("border: 2px solid orange; border-radius: 3px;")
                     else:
                         widget.setStyleSheet("")
-            
+
             # Highlight category tab if it has matches
             tab_bar = self._titleWidget.tabBar()
             index = tab_bar.indexOf(category_name)
@@ -389,7 +407,9 @@ class RibbonBar(QtWidgets.QWidget):
         raise NotImplementedError("RibbonBar.actionAt() is not implemented in the ribbon bar.")
 
     def actionGeometry(self, QAction):
-        raise NotImplementedError("RibbonBar.actionGeometry() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.actionGeometry() is not implemented in the ribbon bar."
+        )
 
     def activeAction(self):
         raise NotImplementedError("RibbonBar.activeAction() is not implemented in the ribbon bar.")
@@ -413,25 +433,35 @@ class RibbonBar(QtWidgets.QWidget):
         raise NotImplementedError("RibbonBar.insertMenu() is not implemented in the ribbon bar.")
 
     def insertSeparator(self, QAction):
-        raise NotImplementedError("RibbonBar.insertSeparator() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.insertSeparator() is not implemented in the ribbon bar."
+        )
 
     def isDefaultUp(self):
         raise NotImplementedError("RibbonBar.isDefaultUp() is not implemented in the ribbon bar.")
 
     def isNativeMenuBar(self):
-        raise NotImplementedError("RibbonBar.isNativeMenuBar() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.isNativeMenuBar() is not implemented in the ribbon bar."
+        )
 
     def setActiveAction(self, QAction):
-        raise NotImplementedError("RibbonBar.setActiveAction() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.setActiveAction() is not implemented in the ribbon bar."
+        )
 
     def setCornerWidget(self, QWidget, corner=None, *args, **kwargs):
-        raise NotImplementedError("RibbonBar.setCornerWidget() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.setCornerWidget() is not implemented in the ribbon bar."
+        )
 
     def setDefaultUp(self, up):
         raise NotImplementedError("RibbonBar.setDefaultUp() is not implemented in the ribbon bar.")
 
     def setNativeMenuBar(self, bar):
-        raise NotImplementedError("RibbonBar.setNativeMenuBar() is not implemented in the ribbon bar.")
+        raise NotImplementedError(
+            "RibbonBar.setNativeMenuBar() is not implemented in the ribbon bar."
+        )
 
     def setRibbonStyle(self, style: RibbonStyle):
         """Set the style of the ribbon.
@@ -610,7 +640,7 @@ class RibbonBar(QtWidgets.QWidget):
         """
         return self._categories[name]
 
-    def categories(self) -> typing.Dict[str, RibbonCategory]:
+    def categories(self) -> dict[str, RibbonCategory]:
         """Return a list of categories of the ribbon.
 
         :return: A dict of categories of the ribbon.
@@ -619,11 +649,11 @@ class RibbonBar(QtWidgets.QWidget):
 
     def addCategoriesBy(
         self,
-        data: typing.Dict[
+        data: dict[
             str,  # title of the category
-            typing.Dict,  # data of the category
+            dict,  # data of the category
         ],
-    ) -> typing.Dict[str, RibbonCategory]:
+    ) -> dict[str, RibbonCategory]:
         """Add categories from a dict.
 
         :param data: The dict of categories. The dict is of the form:
@@ -666,7 +696,7 @@ class RibbonBar(QtWidgets.QWidget):
         title: str,
         style=RibbonCategoryStyle.Normal,
         color: QtGui.QColor = None,
-    ) -> typing.Union[RibbonNormalCategory, RibbonContextCategory]:
+    ) -> RibbonNormalCategory | RibbonContextCategory:
         """Add a new category to the ribbon.
 
         :param title: The title of the category.
@@ -716,7 +746,7 @@ class RibbonBar(QtWidgets.QWidget):
     def addContextCategory(
         self,
         title: str,
-        color: typing.Union[QtGui.QColor, QtCore.Qt.GlobalColor] = QtCore.Qt.GlobalColor.blue,
+        color: QtGui.QColor | QtCore.Qt.GlobalColor = QtCore.Qt.GlobalColor.blue,
     ) -> RibbonContextCategory:
         """Add a new context category to the ribbon.
 
@@ -729,8 +759,8 @@ class RibbonBar(QtWidgets.QWidget):
     def addContextCategories(
         self,
         name: str,
-        titles: typing.List[str],
-        color: typing.Union[QtGui.QColor, QtCore.Qt.GlobalColor] = QtCore.Qt.GlobalColor.blue,
+        titles: list[str],
+        color: QtGui.QColor | QtCore.Qt.GlobalColor = QtCore.Qt.GlobalColor.blue,
     ) -> RibbonContextCategories:
         """Add a group of context categories with the same tab color to the ribbon.
 
@@ -760,7 +790,7 @@ class RibbonBar(QtWidgets.QWidget):
         if title in self._categories:
             self._stackedWidget.setCurrentWidget(self._categories[title])
 
-    def showContextCategory(self, category: typing.Union[RibbonContextCategory, RibbonContextCategories]):
+    def showContextCategory(self, category: RibbonContextCategory | RibbonContextCategories):
         """Show the given category or categories, if it is not a context category, nothing happens.
 
         :param category: The category to show.
@@ -772,11 +802,15 @@ class RibbonBar(QtWidgets.QWidget):
         elif isinstance(category, RibbonContextCategories):
             categories = category
             titles = list(categories.keys())
-            self._titleWidget.tabBar().addAssociatedTabs(categories.name(), titles, categories.color())
-            self._titleWidget.tabBar().setCurrentIndex(self._titleWidget.tabBar().count() - len(titles))
+            self._titleWidget.tabBar().addAssociatedTabs(
+                categories.name(), titles, categories.color()
+            )
+            self._titleWidget.tabBar().setCurrentIndex(
+                self._titleWidget.tabBar().count() - len(titles)
+            )
             self._stackedWidget.setCurrentWidget(categories[titles[0]])
 
-    def hideContextCategory(self, category: typing.Union[RibbonContextCategory, RibbonContextCategories]):
+    def hideContextCategory(self, category: RibbonContextCategory | RibbonContextCategories):
         """Hide the given category or categories, if it is not a context category, nothing happens.
 
         :param category: The category to hide.
@@ -820,7 +854,9 @@ class RibbonBar(QtWidgets.QWidget):
         """
         self._stackedWidget.setCurrentWidget(category)
         if category.title() in self._titleWidget.tabBar().tabTitles():
-            self._titleWidget.tabBar().setCurrentIndex(self._titleWidget.tabBar().indexOf(category.title()))
+            self._titleWidget.tabBar().setCurrentIndex(
+                self._titleWidget.tabBar().indexOf(category.title())
+            )
         else:
             raise ValueError(
                 f"Category {category.title()} is not in the ribbon, "
@@ -832,7 +868,9 @@ class RibbonBar(QtWidgets.QWidget):
 
         :return: The current category.
         """
-        return self._categories[self._titleWidget.tabBar().tabText(self._titleWidget.tabBar().currentIndex())]
+        return self._categories[
+            self._titleWidget.tabBar().tabText(self._titleWidget.tabBar().currentIndex())
+        ]
 
     def minimumSizeHint(self) -> QtCore.QSize:
         """Return the minimum size hint of the widget.
@@ -847,7 +885,7 @@ class RibbonBar(QtWidgets.QWidget):
             self.hideRibbon()
         else:
             self.showRibbon()
-            
+
     def _collapseButtonClicked(self):
         self.tabBar().currentChanged.connect(self.showRibbon)  # type: ignore
         self.hideRibbon() if self._stackedWidget.isVisible() else self.showRibbon()

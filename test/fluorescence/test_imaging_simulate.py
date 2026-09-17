@@ -39,7 +39,7 @@ def test_molecules_land_at_their_pixels():
     img = sim.intensity
     # The two brightest disconnected regions sit near the requested pixels.
     for m in sim.molecules:
-        window = img[max(0, m.iy - 2):m.iy + 3, max(0, m.ix - 2):m.ix + 3]
+        window = img[max(0, m.iy - 2) : m.iy + 3, max(0, m.ix - 2) : m.ix + 3]
         assert window.sum() > 0  # photons landed in the molecule's neighbourhood
 
 
@@ -114,7 +114,7 @@ def test_simulate_from_maps_preserves_dim_to_bright_ratio():
     n = 32
     dim_level = 0.02
     intensity = np.full((n, n), dim_level)
-    intensity[:, n // 2:] = 1.0
+    intensity[:, n // 2 :] = 1.0
     sim = simulate_clsm_from_maps(
         intensity, np.full((n, n), 2.0), n_intensity_levels=8, n_lifetime_levels=4
     )

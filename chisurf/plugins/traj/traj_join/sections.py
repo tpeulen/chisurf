@@ -16,9 +16,9 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +120,7 @@ class _IoSection(QtWidgets.QWidget):
 
         if event == "loaded" and self._top_edit.text() != self._model.topology_filename:
             self._top_edit.setText(self._model.topology_filename)
+
     def _refresh_host_form(self) -> None:
         """Walk up to the hosting AutoForm and refresh its widgets (log panel)."""
         widget = self.parentWidget()
@@ -137,18 +138,14 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory_1(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory_1(filename)
 
     def _browse_trajectory_2(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd)"
-        )
+        filename = chisurf.gui.widgets.get_filename("Open trajectory", "Trajectories (*.dcd)")
         if filename:
             self._load_trajectory_2(filename)
 
@@ -166,9 +163,7 @@ class _IoSection(QtWidgets.QWidget):
 
     def _save_joined(self) -> None:
         if not self._model.trajectory_filename_1 or not self._model.trajectory_filename_2:
-            dialogs.information(
-                self, "Two trajectories", "Open two trajectories first."
-            )
+            dialogs.information(self, "Two trajectories", "Open two trajectories first.")
             return
         target, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save trajectory", "", "DCD trajectory (*.dcd)"

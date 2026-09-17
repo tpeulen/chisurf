@@ -13,6 +13,7 @@ that was configured, drawn or loaded and then read by nothing.
 * a measurement's first pick drew nothing at all, so a mis-aim and a mis-click
   looked the same.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -24,7 +25,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "1rtd.pdb"
 )
 
 
@@ -115,9 +120,7 @@ def test_a_click_on_a_residue_column_selects_that_residue(session):
     columns = [i for i, index in enumerate(row.residue_indices) if index >= 0][:3]
 
     gui._emit_select(row, columns, False)
-    assert sorted(win.viewer._selected_residues) == [
-        row.residue_indices[c] for c in columns
-    ]
+    assert sorted(win.viewer._selected_residues) == [row.residue_indices[c] for c in columns]
 
 
 def test_an_object_without_chains_has_no_markers():
@@ -150,9 +153,8 @@ def test_the_label_size_setting_is_read(session):
 
 def test_paint_labels_honours_the_size_it_is_given(qapp):
     """The painter, not just the setting: the two were disconnected before."""
-    from qtpy import QtGui
-
     from chimol.hosts.qt.overlay import DEFAULT_LABEL_SIZE, paint_labels
+    from qtpy import QtGui
 
     class _Label:
         pos = (0.0, 0.0, 0.0)
@@ -217,9 +219,7 @@ def test_a_measurement_pick_is_marked_and_then_released(session):
 
         viewer.pick_hook(ca[0])
         after = viewer._selection_atom_positions(coords)
-        assert after is not None and len(after) == n_before + 1, (
-            "the first pick drew no marker"
-        )
+        assert after is not None and len(after) == n_before + 1, "the first pick drew no marker"
         assert viewer._pick_markers == [ca[0]]
 
         viewer.pick_hook(ca[1])
@@ -240,8 +240,10 @@ def test_a_measurement_with_no_dashes_draws_no_label(session):
     point = np.zeros((2, 3), dtype=float)
     viewer.measurements = {
         "degenerate": {
-            "kind": "distance", "positions": point,
-            "label": "0.00", "color": [1.0, 1.0, 0.0, 1.0],
+            "kind": "distance",
+            "positions": point,
+            "label": "0.00",
+            "color": [1.0, 1.0, 0.0, 1.0],
         }
     }
     try:
@@ -277,11 +279,9 @@ def test_the_info_panel_is_laid_out_between_the_strip_and_the_prompt():
     assert rect.w > 0 and rect.h > 0, "the panel was not laid out"
     assert rect.x <= gui.MARGIN + 1, f"expected the left edge, got x={rect.x}"
 
-    top_of_prompt = min(gui._cmd_log_rect.y or gui.command_rect().y,
-                        gui.command_rect().y)
+    top_of_prompt = min(gui._cmd_log_rect.y or gui.command_rect().y, gui.command_rect().y)
     assert rect.y + rect.h <= top_of_prompt, (
-        f"the panel reaches {rect.y + rect.h} and the prompt starts at "
-        f"{top_of_prompt}"
+        f"the panel reaches {rect.y + rect.h} and the prompt starts at {top_of_prompt}"
     )
     assert rect.y >= gui.sequence_height(), "the panel runs under the strip"
 

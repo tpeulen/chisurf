@@ -28,7 +28,9 @@ class TTTRImageBrowserClient:
         """
         self._client = client or self._make_local_client()
 
-    def list_files(self, folder: str, recursive: bool = False, setup_settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def list_files(
+        self, folder: str, recursive: bool = False, setup_settings: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """List image files through RPC.
 
         Parameters
@@ -94,7 +96,7 @@ class TTTRImageBrowserClient:
         path: str,
         setup_settings: dict[str, Any] | None = None,
         max_side: int = 512,
-        cache_folder: str | None = None
+        cache_folder: str | None = None,
     ) -> dict[str, Any] | None:
         """Load or precompute image mosaic through RPC.
 
@@ -126,10 +128,7 @@ class TTTRImageBrowserClient:
         return result.get("image") if result else None
 
     def export_tiff(
-        self,
-        paths: list[str],
-        output_dir: str,
-        setup_settings: dict[str, Any] | None = None
+        self, paths: list[str], output_dir: str, setup_settings: dict[str, Any] | None = None
     ) -> list[str]:
         """Export image stacks to TIFF stacks through RPC.
 

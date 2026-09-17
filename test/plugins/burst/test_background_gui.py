@@ -19,6 +19,7 @@ pytest.importorskip("qtpy")
 @pytest.fixture(scope="module")
 def qapp():
     from qtpy import QtWidgets
+
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
@@ -29,15 +30,19 @@ def _diagnostics():
     rng = np.random.default_rng(0)
 
     def dt(rate):
-        return np.concatenate([
-            rng.exponential(1 / rate, 20000),
-            rng.exponential(1 / 200.0, 5000),
-        ])
+        return np.concatenate(
+            [
+                rng.exponential(1 / rate, 20000),
+                rng.exponential(1 / 200.0, 5000),
+            ]
+        )
 
-    return {"m.ptu": {
-        "green": interphoton_time_diagnostics(dt(2.0), tail_fraction=0.2),
-        "red": interphoton_time_diagnostics(dt(3.5), tail_fraction=0.2),
-    }}
+    return {
+        "m.ptu": {
+            "green": interphoton_time_diagnostics(dt(2.0), tail_fraction=0.2),
+            "red": interphoton_time_diagnostics(dt(3.5), tail_fraction=0.2),
+        }
+    }
 
 
 def test_the_view_model_turns_diagnostics_into_plottable_series():

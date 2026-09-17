@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from . tcspc import *
-
-from chisurf import typing
 import chisurf.core.fluorescence.tcspc.convolve
 import chisurf.core.fluorescence.tcspc.corrections
+from chisurf import typing
 
+from .tcspc import *
 from .tcspc import rescale_w_bg
 
 #: `irf_estimation` is served lazily: it imports ``scipy.signal``, which drags
@@ -19,6 +18,7 @@ _LAZY_SUBMODULES = ("irf_estimation",)
 def __getattr__(name):
     """Import the IRF-estimation submodule on first attribute access."""
     import importlib
+
     if name in _LAZY_SUBMODULES:
         module = importlib.import_module(f"{__name__}.{name}")
         globals()[name] = module
@@ -37,9 +37,7 @@ def __dir__():
 
 
 def counting_noise(
-        decay: np.ndarray,
-        treat_zeros: bool = True,
-        zero_value: float = 1.0
+    decay: np.ndarray, treat_zeros: bool = True, zero_value: float = 1.0
 ) -> np.array:
     """Calculated Poisson noise (sqrt of counts) for TCSPC fluorescence decays
 
@@ -68,13 +66,13 @@ def counting_noise(
 
 
 def combined_counting_noise_parallel_perpendicular(
-        parallel: np.ndarray,
-        perpendicular: np.ndarray,
-        g_factor: float,
-        treat_zeros: bool = True,
-        zero_value: float = 1.0
+    parallel: np.ndarray,
+    perpendicular: np.ndarray,
+    g_factor: float,
+    treat_zeros: bool = True,
+    zero_value: float = 1.0,
 ) -> np.ndarray:
-    """Computes the combined counting weights (1/noise) for two counting
+    r"""Computes the combined counting weights (1/noise) for two counting
     channels that are added with a scale parameter.
 
     The weight is calculated a combined decay total that was computed using two
@@ -111,33 +109,26 @@ def combined_counting_noise_parallel_perpendicular(
 
     """
     scale_perpendicular = 2.0 * g_factor
-    vp = counting_noise(
-        decay=parallel,
-        treat_zeros=treat_zeros,
-        zero_value=zero_value
-    )
-    vs = counting_noise(
-        decay=perpendicular,
-        treat_zeros=treat_zeros,
-        zero_value=zero_value
-    )
-    vt = np.sqrt(vp ** 2 + scale_perpendicular ** 2 * vs ** 2)
+    vp = counting_noise(decay=parallel, treat_zeros=treat_zeros, zero_value=zero_value)
+    vs = counting_noise(decay=perpendicular, treat_zeros=treat_zeros, zero_value=zero_value)
+    vt = np.sqrt(vp**2 + scale_perpendicular**2 * vs**2)
     if treat_zeros:
         vt = np.maximum(vt, zero_value)
     return vt
+
 
 counting_noise_combined_parallel_perpendicular = combined_counting_noise_parallel_perpendicular
 
 
 def get_analysis_range(
-        fluorescence_decay: np.ndarray,
-        count_threshold: float = 10.0,
-        area: float = 0.95,
-        start_at_peak: bool = True,
-        start_fraction: float = 0.8,
-        skip_first_channels: int = 0,
-        skip_last_channels: int = 0,
-        verbose: bool = False
+    fluorescence_decay: np.ndarray,
+    count_threshold: float = 10.0,
+    area: float = 0.95,
+    start_at_peak: bool = True,
+    start_fraction: float = 0.8,
+    skip_first_channels: int = 0,
+    skip_last_channels: int = 0,
+    verbose: bool = False,
 ) -> typing.Tuple[int, int]:
     """Determines a fitting range based on the total number of photons to be
     fitted (fitting area).
@@ -200,6 +191,7 @@ def get_analysis_range(
         print("-- start_fraction:", start_fraction)
         print("-- analysis range: ", a_min, a_max)
     return a_min, a_max
+
 
 initial_fit_range = get_analysis_range
 

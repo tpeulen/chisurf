@@ -110,6 +110,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    imaging_flim_phasor
    region_properties
    colocalization
+   number_and_brightness
    drift_correction
    particle_tracking
    frc_resolution

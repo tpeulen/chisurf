@@ -7,16 +7,15 @@ directly.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from chisurf.server.services import (
-    ServiceResult,
-    service_error,
-    NOT_FOUND,
-    INVALID_INPUT,
     INVALID_STATE,
+    NOT_FOUND,
     OPERATION_FAILED,
+    ServiceResult,
     _resolve_fit,
+    service_error,
 )
 from chisurf.server.session import SessionState
 
@@ -24,8 +23,8 @@ from chisurf.server.session import SessionState
 def model_component_add(
     state: SessionState,
     component_type: str,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
     **kwargs: Any,
 ) -> ServiceResult:
@@ -90,10 +89,13 @@ def model_component_add(
         if callable(getattr(model, "find_parameters", None)):
             model.find_parameters()
         if event_bus is not None:
-            event_bus.publish("model.component.added", {
-                "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-                "component_type": component_type,
-            })
+            event_bus.publish(
+                "model.component.added",
+                {
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                    "component_type": component_type,
+                },
+            )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
@@ -102,8 +104,8 @@ def model_component_add(
 def model_component_remove(
     state: SessionState,
     component_index: int,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Remove a component from a fit's model by index.
@@ -134,8 +136,7 @@ def model_component_remove(
             removed = True
         if not removed:
             # Try sub-component pop — the action handler removes the last component
-            for candidate in ("lifetimes", "species", "rotations",
-                              "distances", "gaussians"):
+            for candidate in ("lifetimes", "species", "rotations", "distances", "gaussians"):
                 target = getattr(model, candidate, None)
                 if target is None:
                     continue
@@ -157,10 +158,13 @@ def model_component_remove(
         if callable(getattr(model, "find_parameters", None)):
             model.find_parameters()
         if event_bus is not None:
-            event_bus.publish("model.component.removed", {
-                "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-                "component_index": component_index,
-            })
+            event_bus.publish(
+                "model.component.removed",
+                {
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                    "component_index": component_index,
+                },
+            )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
@@ -168,8 +172,8 @@ def model_component_remove(
 
 def model_state_get(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> ServiceResult:
     """Get JSON-safe model-specific state.
 
@@ -189,14 +193,29 @@ def model_state_get(
     if model is None:
         return service_error("fit has no model", error_code=INVALID_STATE)
     try:
-        state_dict: Dict[str, Any] = {}
+        state_dict: dict[str, Any] = {}
         # Collect common state attributes
-        for attr in ("convolve", "irf_range", "background", "scatter",
-                     "shift", "pulsed_excitation", "parse_function",
-                     "name", "n_components", "n_lifetimes", "n_rotations",
-                     "n_species", "n_distances", "n_gaussians",
-                     "use_convolve", "use_irf", "use_background",
-                     "use_scatter", "use_shift"):
+        for attr in (
+            "convolve",
+            "irf_range",
+            "background",
+            "scatter",
+            "shift",
+            "pulsed_excitation",
+            "parse_function",
+            "name",
+            "n_components",
+            "n_lifetimes",
+            "n_rotations",
+            "n_species",
+            "n_distances",
+            "n_gaussians",
+            "use_convolve",
+            "use_irf",
+            "use_background",
+            "use_scatter",
+            "use_shift",
+        ):
             val = getattr(model, attr, None)
             if val is not None:
                 try:
@@ -214,28 +233,30 @@ def model_state_get(
 # Allowlist of model attributes that can be set via RPC.
 # Prevents arbitrary setattr from clients and guards against
 # unserializable values.
-_MODEL_STATE_SET_ALLOWLIST = frozenset({
-    "background",
-    "convolve",
-    "irf_range",
-    "name",
-    "parse_function",
-    "pulsed_excitation",
-    "scatter",
-    "shift",
-    "use_background",
-    "use_convolve",
-    "use_irf",
-    "use_scatter",
-    "use_shift",
-})
+_MODEL_STATE_SET_ALLOWLIST = frozenset(
+    {
+        "background",
+        "convolve",
+        "irf_range",
+        "name",
+        "parse_function",
+        "pulsed_excitation",
+        "scatter",
+        "shift",
+        "use_background",
+        "use_convolve",
+        "use_irf",
+        "use_scatter",
+        "use_shift",
+    }
+)
 
 
 def model_state_set(
     state: SessionState,
-    state_data: Dict[str, Any],
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    state_data: dict[str, Any],
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Set JSON-safe model-specific state.
@@ -264,10 +285,13 @@ def model_state_set(
                 continue
             setattr(model, key, value)
         if event_bus is not None:
-            event_bus.publish("model.state.changed", {
-                "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
-                "keys": [k for k in state_data if k in _MODEL_STATE_SET_ALLOWLIST],
-            })
+            event_bus.publish(
+                "model.state.changed",
+                {
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                    "keys": [k for k in state_data if k in _MODEL_STATE_SET_ALLOWLIST],
+                },
+            )
         return {"ok": True}
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)

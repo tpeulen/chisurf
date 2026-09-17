@@ -18,8 +18,6 @@ import pathlib
 
 import numpy as np
 import pytest
-
-from chisurf.plugins.burst.burst_gs.core import simulate_two_state
 from scipy.linalg import expm
 
 from chisurf.core.fluorescence.burst import gopich_szabo as gs
@@ -27,6 +25,7 @@ from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,
     generator_from_rate_matrix,
 )
+from chisurf.plugins.burst.burst_gs.core import simulate_two_state
 
 REFERENCE = pathlib.Path(__file__).parent.parent / "data" / "gopich_szabo" / "pam_gs_reference.npz"
 
@@ -73,8 +72,8 @@ def test_the_flat_rate_order_round_trips():
 def test_the_first_two_state_rate_is_one_to_two():
     """``[k12, k21]`` means what it reads as: element ``[target, source]``."""
     matrix = gs.rate_matrix_from_rates([7.0, 11.0], 2)
-    assert matrix[1, 0] == 7.0     # 1 -> 2
-    assert matrix[0, 1] == 11.0    # 2 -> 1
+    assert matrix[1, 0] == 7.0  # 1 -> 2
+    assert matrix[0, 1] == 11.0  # 2 -> 1
 
 
 def test_a_wrong_number_of_rates_is_rejected():
@@ -95,8 +94,9 @@ def test_an_emission_matrix_that_does_not_sum_to_one_is_rejected():
         [np.array([0.0, 1e-5, 2e-5])], [np.array([0, 1, 0], dtype=np.int32)], 2
     )
     with pytest.raises(ValueError, match="sum to one"):
-        gs.log_likelihood(bursts, gs.rate_matrix_from_rates([1e3, 1e3], 2),
-                          np.array([[0.5, 0.9], [0.5, 0.1]]))
+        gs.log_likelihood(
+            bursts, gs.rate_matrix_from_rates([1e3, 1e3], 2), np.array([[0.5, 0.9], [0.5, 0.1]])
+        )
 
 
 def test_single_photon_bursts_are_dropped():
@@ -137,9 +137,7 @@ def test_the_spectral_kernel_matches_a_matrix_exponential(rates, efficiencies):
     colors = rng.integers(0, 2, 200).astype(np.int32)
 
     ours = gs.log_likelihood(gs.PhotonBursts.from_lists([times], [colors], 2), matrix, emission)
-    theirs = brute_force_log_likelihood(
-        times, colors, generator_from_rate_matrix(matrix), emission
-    )
+    theirs = brute_force_log_likelihood(times, colors, generator_from_rate_matrix(matrix), emission)
     assert ours == pytest.approx(theirs, abs=1e-9)
 
 
@@ -162,9 +160,7 @@ def test_a_non_reversible_cycle_matches_a_matrix_exponential():
     times = np.sort(rng.uniform(0.0, 1e-3, 200))
     colors = rng.integers(0, 2, 200).astype(np.int32)
     ours = gs.log_likelihood(gs.PhotonBursts.from_lists([times], [colors], 2), matrix, emission)
-    theirs = brute_force_log_likelihood(
-        times, colors, generator_from_rate_matrix(matrix), emission
-    )
+    theirs = brute_force_log_likelihood(times, colors, generator_from_rate_matrix(matrix), emission)
     assert ours == pytest.approx(theirs, abs=1e-9)
 
 
@@ -176,9 +172,7 @@ def test_three_colours_match_a_matrix_exponential():
     times = np.sort(rng.uniform(0.0, 1e-3, 250))
     colors = rng.integers(0, 3, 250).astype(np.int32)
     ours = gs.log_likelihood(gs.PhotonBursts.from_lists([times], [colors], 3), matrix, emission)
-    theirs = brute_force_log_likelihood(
-        times, colors, generator_from_rate_matrix(matrix), emission
-    )
+    theirs = brute_force_log_likelihood(times, colors, generator_from_rate_matrix(matrix), emission)
     assert ours == pytest.approx(theirs, abs=1e-9)
 
 
@@ -242,8 +236,7 @@ def test_the_reference_disagrees_only_on_a_complex_spectrum(reference):
     times = reference[f"{case}_times"]
     colors = reference[f"{case}_colors"].astype(np.int32)
 
-    ours = gs.log_likelihood(gs.PhotonBursts.from_lists([times], [colors], 2),
-                             generator, emission)
+    ours = gs.log_likelihood(gs.PhotonBursts.from_lists([times], [colors], 2), generator, emission)
     arbiter = brute_force_log_likelihood(times, colors, generator, emission)
     pam = float(reference[f"{case}_octave_logl"])
 
@@ -258,8 +251,7 @@ def test_the_reference_disagrees_only_on_a_complex_spectrum(reference):
 def test_a_fit_recovers_simulated_rates_and_efficiencies():
     """The whole point: known kinetics in, the same kinetics out."""
     bursts = simulate_two_state(3000.0, 1000.0, [0.25, 0.75], 50e3, 300, 200, seed=7)
-    result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3],
-                    initial_efficiencies=[0.3, 0.7])
+    result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3], initial_efficiencies=[0.3, 0.7])
     assert result.success
     assert result.rate_matrix[1, 0] == pytest.approx(3000.0, rel=0.15)
     assert result.rate_matrix[0, 1] == pytest.approx(1000.0, rel=0.15)
@@ -271,8 +263,13 @@ def test_a_fit_recovers_simulated_rates_and_efficiencies():
 def test_fixing_the_efficiencies_still_recovers_the_rates():
     """With E known from a static measurement only the rates are free."""
     bursts = simulate_two_state(3000.0, 1000.0, [0.25, 0.75], 50e3, 200, 200, seed=11)
-    result = gs.fit(bursts, n_states=2, initial_rates=[5e2, 5e2],
-                    initial_efficiencies=[0.25, 0.75], fix_efficiencies=True)
+    result = gs.fit(
+        bursts,
+        n_states=2,
+        initial_rates=[5e2, 5e2],
+        initial_efficiencies=[0.25, 0.75],
+        fix_efficiencies=True,
+    )
     assert result.n_parameters == 2
     assert result.rate_matrix[1, 0] == pytest.approx(3000.0, rel=0.2)
     assert result.rate_matrix[0, 1] == pytest.approx(1000.0, rel=0.2)
@@ -283,11 +280,13 @@ def test_the_true_parameters_beat_wrong_ones():
     """A cheap sanity check that the surface points the right way."""
     bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 40, 150, seed=3)
     truth = gs.log_likelihood(
-        bursts, gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
+        bursts,
+        gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
         gs.emission_from_efficiencies([0.2, 0.8]),
     )
     wrong = gs.log_likelihood(
-        bursts, gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
+        bursts,
+        gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
         gs.emission_from_efficiencies([0.5, 0.55]),
     )
     assert truth > wrong
@@ -302,14 +301,16 @@ def test_viterbi_finds_a_clean_switch():
     n = 400
     times = np.arange(n) * 1e-5
     colors = np.concatenate(
-        [(rng.random(n // 2) < 0.02).astype(np.int32),
-         (rng.random(n // 2) < 0.98).astype(np.int32)]
+        [(rng.random(n // 2) < 0.02).astype(np.int32), (rng.random(n // 2) < 0.98).astype(np.int32)]
     )
     bursts = gs.PhotonBursts.from_lists([times], [colors], 2)
-    path = gs.viterbi(bursts, gs.rate_matrix_from_rates([200.0, 200.0], 2),
-                      gs.emission_from_efficiencies([0.02, 0.98]))
+    path = gs.viterbi(
+        bursts,
+        gs.rate_matrix_from_rates([200.0, 200.0], 2),
+        gs.emission_from_efficiencies([0.02, 0.98]),
+    )
     assert path[: n // 2].mean() < 0.02
-    assert path[n // 2:].mean() > 0.98
+    assert path[n // 2 :].mean() > 0.98
 
 
 def test_viterbi_returns_one_state_per_photon():
@@ -318,8 +319,9 @@ def test_viterbi_returns_one_state_per_photon():
     times = [np.sort(rng.uniform(0.0, 1e-3, 50)) for _ in range(3)]
     colors = [rng.integers(0, 2, 50).astype(np.int32) for _ in range(3)]
     bursts = gs.PhotonBursts.from_lists(times, colors, 2)
-    path = gs.viterbi(bursts, gs.rate_matrix_from_rates([1e3, 1e3], 2),
-                      gs.emission_from_efficiencies([0.2, 0.8]))
+    path = gs.viterbi(
+        bursts, gs.rate_matrix_from_rates([1e3, 1e3], 2), gs.emission_from_efficiencies([0.2, 0.8])
+    )
     assert path.shape == (bursts.n_photons,)
     assert set(np.unique(path)) <= {0, 1}
 
@@ -488,9 +490,7 @@ def test_the_no_exchange_limit_is_a_likelihood_not_a_wall():
 # ──────────────────────────────────────────────────────────────────────────────
 # Against the deleted numba kernels
 # ──────────────────────────────────────────────────────────────────────────────
-_NUMBA_PARITY = (
-    pathlib.Path(__file__).parent.parent / "data" / "numba_parity" / "gopich_szabo.npz"
-)
+_NUMBA_PARITY = pathlib.Path(__file__).parent.parent / "data" / "numba_parity" / "gopich_szabo.npz"
 
 
 def test_the_delegation_returns_what_the_numba_kernels_returned():
@@ -615,16 +615,15 @@ def test_persisting_the_engine_gives_identical_likelihoods_to_rebuilding():
     """
     bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 30, 150, seed=43)
     rate_sets = [
-        (gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
-         gs.emission_from_efficiencies([0.2, 0.8])),
-        (gs.rate_matrix_from_rates([500.0, 8000.0], 2),
-         gs.emission_from_efficiencies([0.35, 0.9])),
-        (gs.rate_matrix_from_rates([50.0, 50.0], 2),
-         gs.emission_from_efficiencies([0.1, 0.6])),
+        (gs.rate_matrix_from_rates([3000.0, 1000.0], 2), gs.emission_from_efficiencies([0.2, 0.8])),
+        (gs.rate_matrix_from_rates([500.0, 8000.0], 2), gs.emission_from_efficiencies([0.35, 0.9])),
+        (gs.rate_matrix_from_rates([50.0, 50.0], 2), gs.emission_from_efficiencies([0.1, 0.6])),
         # Revisit the first structure with new values -- the point of
         # persistence -- to check reuse, not just first-touch construction.
-        (gs.rate_matrix_from_rates([1200.0, 2400.0], 2),
-         gs.emission_from_efficiencies([0.15, 0.95])),
+        (
+            gs.rate_matrix_from_rates([1200.0, 2400.0], 2),
+            gs.emission_from_efficiencies([0.15, 0.95]),
+        ),
     ]
 
     rebuilt_every_call = [gs.log_likelihood(bursts, m, e) for m, e in rate_sets]
@@ -663,8 +662,13 @@ def test_the_fit_builds_the_engine_once_across_the_scipy_loop():
     tttrlib.GopichSzabo = _Counting
     try:
         bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 20, 150, seed=41)
-        result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3],
-                        initial_efficiencies=[0.3, 0.7], max_iterations=80)
+        result = gs.fit(
+            bursts,
+            n_states=2,
+            initial_rates=[1e3, 1e3],
+            initial_efficiencies=[0.3, 0.7],
+            max_iterations=80,
+        )
     finally:
         tttrlib.GopichSzabo = original
 
@@ -708,8 +712,7 @@ def test_the_persisted_fit_recovers_the_same_answer_as_before_persistence():
     definition of done, run against the now-default persisted path.
     """
     bursts = simulate_two_state(3000.0, 1000.0, [0.25, 0.75], 50e3, 300, 200, seed=7)
-    result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3],
-                    initial_efficiencies=[0.3, 0.7])
+    result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3], initial_efficiencies=[0.3, 0.7])
     assert result.success
     assert result.n_engine_builds == 1
     assert result.rate_matrix[1, 0] == pytest.approx(3000.0, rel=0.15)
@@ -734,8 +737,10 @@ def test_persisting_the_engine_does_not_cost_wall_time():
     bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 40, 150, seed=61)
     rng = np.random.default_rng(0)
     rate_sets = [
-        (gs.rate_matrix_from_rates(rng.uniform(200.0, 8000.0, 2), 2),
-         gs.emission_from_efficiencies(np.sort(rng.uniform(0.1, 0.9, 2))))
+        (
+            gs.rate_matrix_from_rates(rng.uniform(200.0, 8000.0, 2), 2),
+            gs.emission_from_efficiencies(np.sort(rng.uniform(0.1, 0.9, 2))),
+        )
         for _ in range(200)
     ]
 

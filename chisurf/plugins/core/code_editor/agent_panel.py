@@ -6,15 +6,15 @@ import logging as std_logging
 import pathlib
 import re
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.widgets.general import EnterAwarePlainTextEdit
@@ -58,6 +58,7 @@ class AgentMode(enum.Enum):
         """Return the highest tool-safety tier this mode allows."""
         return SAFETY_DANGEROUS if self is AgentMode.FULL_CONTROL else SAFETY_WRITE
 
+
 _PROVIDER_NAMES: dict[str, str] = {
     "openai": "OpenAI (ChatGPT)",
     "mistral": "Mistral",
@@ -68,8 +69,8 @@ _PROVIDER_NAMES: dict[str, str] = {
 
 def _get_history_path() -> pathlib.Path:
     """Return path to agent history JSON file."""
-    settings_dir = get_path('settings')
-    return settings_dir / 'agent_history.json'
+    settings_dir = get_path("settings")
+    return settings_dir / "agent_history.json"
 
 
 def _load_history() -> list[dict[str, str]]:
@@ -77,7 +78,7 @@ def _load_history() -> list[dict[str, str]]:
     history_path = _get_history_path()
     if history_path.is_file():
         try:
-            with open(history_path, encoding='utf-8') as f:
+            with open(history_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data[-50:]
@@ -91,7 +92,7 @@ def _save_history(history: list[dict[str, str]]) -> None:
     history_path = _get_history_path()
     try:
         history_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(history_path, 'w', encoding='utf-8') as f:
+        with open(history_path, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
     except Exception as e:
         std_logging.warning(f"Could not save agent history: {e}")
@@ -99,7 +100,7 @@ def _save_history(history: list[dict[str, str]]) -> None:
 
 def _get_input_history_path() -> pathlib.Path:
     """Return path to agent input history JSON file."""
-    return get_path('settings') / 'agent_input_history.json'
+    return get_path("settings") / "agent_input_history.json"
 
 
 def _load_input_history() -> list[str]:
@@ -107,7 +108,7 @@ def _load_input_history() -> list[str]:
     history_path = _get_input_history_path()
     if history_path.is_file():
         try:
-            with open(history_path, encoding='utf-8') as f:
+            with open(history_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data[-100:]
@@ -121,7 +122,7 @@ def _save_input_history(history: list[str]) -> None:
     history_path = _get_input_history_path()
     try:
         history_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(history_path, 'w', encoding='utf-8') as f:
+        with open(history_path, "w", encoding="utf-8") as f:
             json.dump(history[-100:], f, indent=2)
     except Exception as e:
         std_logging.warning(f"Could not save agent input history: {e}")
@@ -130,7 +131,12 @@ def _save_input_history(history: list[str]) -> None:
 class WikiDialog(QtWidgets.QDialog):
     """Dialog for viewing and querying the LLM Wiki."""
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None, populate_callback: callable | None = None, progress_callback: callable | None = None):
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        populate_callback: callable | None = None,
+        progress_callback: callable | None = None,
+    ):
         super().__init__(parent)
         self._populate_callback = populate_callback
         self._progress_callback = progress_callback
@@ -207,7 +213,7 @@ class WikiDialog(QtWidgets.QDialog):
 
         index_path = wiki_dir / "index.md"
         if index_path.exists():
-            with open(index_path, encoding='utf-8') as f:
+            with open(index_path, encoding="utf-8") as f:
                 content = f.read()
             self.page_browser.setPlainText(content)
             self._populate_page_list(wiki_dir)
@@ -230,7 +236,7 @@ class WikiDialog(QtWidgets.QDialog):
 
     def _extract_title(self, page_path: pathlib.Path) -> str:
         """Extract title from a wiki page."""
-        with open(page_path, encoding='utf-8') as f:
+        with open(page_path, encoding="utf-8") as f:
             content = f.read()
 
         lines = content.split("\n")
@@ -454,9 +460,9 @@ class AgentPanelWidget(QtWidgets.QWidget):
 
         layout.addLayout(button_layout)
 
-        self._runtime: Optional[AgentSession] = None
-        self._runtime_thread: Optional[threading.Thread] = None
-        self._agent_session: Optional[AgentSession] = None
+        self._runtime: AgentSession | None = None
+        self._runtime_thread: threading.Thread | None = None
+        self._agent_session: AgentSession | None = None
 
         self.responseReceived.connect(self._on_response_received)
         self.errorReceived.connect(self._on_error_received)
@@ -587,12 +593,16 @@ class AgentPanelWidget(QtWidgets.QWidget):
             ready = False
             settings = None
         if ready:
-            self.rpc_status_label.setStyleSheet("color: #98c379; font-size: 10pt; margin-right: 4px;")
+            self.rpc_status_label.setStyleSheet(
+                "color: #98c379; font-size: 10pt; margin-right: 4px;"
+            )
             self.rpc_status_label.setToolTip(
                 f"AI provider ready: {settings.model} at {settings.base_url}"
             )
         else:
-            self.rpc_status_label.setStyleSheet("color: #e06c75; font-size: 10pt; margin-right: 4px;")
+            self.rpc_status_label.setStyleSheet(
+                "color: #e06c75; font-size: 10pt; margin-right: 4px;"
+            )
             self.rpc_status_label.setToolTip(
                 "AI provider is not configured — set a base URL, model and API key."
             )
@@ -680,7 +690,9 @@ class AgentPanelWidget(QtWidgets.QWidget):
                     content = py_file.read_text(encoding="utf-8")
                 except Exception:
                     continue
-                content_parts.append(f"\n\n## File: `{rel_path.as_posix()}`\n\n```python\n{content[:4000]}\n```")
+                content_parts.append(
+                    f"\n\n## File: `{rel_path.as_posix()}`\n\n```python\n{content[:4000]}\n```"
+                )
 
             combined_content = "\n".join(content_parts)
             source_path = sources_dir / f"{title}.md"
@@ -737,24 +749,24 @@ Source file: `{path}`
     def _create_concept_page(self, title: str, item: dict[str, str]) -> str:
         """Create a wiki concept page for a class or function."""
         return f"""---
-title: {title}__{item['name']}
+title: {title}__{item["name"]}
 type: concept
-sources: [{item['path']}]
+sources: [{item["path"]}]
 related: [[{title}]]
 created: 2026-06-09
 updated: 2026-06-09
 ---
 
-# {item['name']}
+# {item["name"]}
 
-Type: {item['type']}
+Type: {item["type"]}
 
-Source: `{item['path']}`
+Source: `{item["path"]}`
 
 ## Definition
 
 ```python
-{item['definition']}
+{item["definition"]}
 ```
 """
 
@@ -870,7 +882,9 @@ updated: 2026-06-09
 
     def _append_sys(self, text: str) -> None:
         """Append a system message to the transcript."""
-        self.transcript.append(f'<div style="color: #aaa; font-style: italic; margin: 4px 0 12px 0;">{text}</div>')
+        self.transcript.append(
+            f'<div style="color: #aaa; font-style: italic; margin: 4px 0 12px 0;">{text}</div>'
+        )
 
     def _append_user(self, text: str) -> None:
         """Append a user message to the transcript."""
@@ -882,7 +896,9 @@ updated: 2026-06-09
         """Append an assistant message to the transcript."""
         self.transcript.append('<span style="color: #9ece6a; font-weight: bold;">AI:</span>')
         formatted = self._format_message(text)
-        self.transcript.append(f'<div style="margin-left: 12px; margin-bottom: 4px;">{formatted}</div>')
+        self.transcript.append(
+            f'<div style="margin-left: 12px; margin-bottom: 4px;">{formatted}</div>'
+        )
 
     def _format_message(self, text: str) -> str:
         """Format assistant message with markdown, code blocks, and equations."""
@@ -901,11 +917,11 @@ updated: 2026-06-09
             escaped = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             return (
                 f'<div style="background: #1e1e1e; border: 1px solid #444; '
-                f'border-radius: 4px; padding: 8px; margin: 6px 0; '
+                f"border-radius: 4px; padding: 8px; margin: 6px 0; "
                 f'font-family: monospace; font-size: 9pt; white-space: pre-wrap;">'
                 f'<div style="color: #777; margin-bottom: 4px;">{language}</div>'
-                f'{escaped}'
-                f'</div>'
+                f"{escaped}"
+                f"</div>"
             )
 
         def format_display_equation(match: re.Match[str]) -> str:
@@ -915,7 +931,7 @@ updated: 2026-06-09
                     mathml = latex_to_mathml(equation)
                     return (
                         f'<div style="background: #252526; border: 1px solid #555; '
-                        f'border-radius: 4px; padding: 8px; margin: 6px 0; '
+                        f"border-radius: 4px; padding: 8px; margin: 6px 0; "
                         f'text-align: center; color: #d4d4d4;">{mathml}</div>'
                     )
                 except Exception:
@@ -936,7 +952,10 @@ updated: 2026-06-09
             stripped = line.strip()
             if not stripped:
                 return line
-            if "\\" in stripped and any(cmd in stripped for cmd in ["\\frac", "\\left", "\\right", "\\sqrt", "\\sum", "\\int"]):
+            if "\\" in stripped and any(
+                cmd in stripped
+                for cmd in ["\\frac", "\\left", "\\right", "\\sqrt", "\\sum", "\\int"]
+            ):
                 equation = stripped
                 # Handle equations like "E = \frac{...}"
                 if "=" in equation:
@@ -945,11 +964,15 @@ updated: 2026-06-09
                     try:
                         latex_to_mathml(equation)
                         # Extract text representation from MathML for Qt rendering
-                        text_eq = equation.replace("\\frac", "frac").replace("\\left", "").replace("\\right", "")
+                        text_eq = (
+                            equation.replace("\\frac", "frac")
+                            .replace("\\left", "")
+                            .replace("\\right", "")
+                        )
                         text_eq = text_eq.replace("\\_", "_").replace("\\,", " ")
                         return (
                             f'<div style="background: #252526; border: 1px solid #555; '
-                            f'border-radius: 4px; padding: 6px 8px; margin: 4px 0; '
+                            f"border-radius: 4px; padding: 6px 8px; margin: 4px 0; "
                             f'text-align: center; color: #d4d4d4; font-family: "Times New Roman", serif; '
                             f'font-size: 11pt;">{text_eq}</div>'
                         )
@@ -1115,9 +1138,7 @@ updated: 2026-06-09
         -------
         AgentContext
         """
-        working_directory = str(
-            getattr(self.editor, "project_root", None) or pathlib.Path.cwd()
-        )
+        working_directory = str(getattr(self.editor, "project_root", None) or pathlib.Path.cwd())
         return AgentContext(
             working_directory=working_directory,
             allow_code_execution=mode is AgentMode.FULL_CONTROL,
@@ -1125,7 +1146,7 @@ updated: 2026-06-09
             event_callback=lambda event, payload: self.runtimeEventReceived.emit(event, payload),
         )
 
-    def _confirm_tool(self, tool: str, arguments: Dict[str, Any]) -> bool:
+    def _confirm_tool(self, tool: str, arguments: dict[str, Any]) -> bool:
         """Ask the user, on the GUI thread, to approve a dangerous tool call.
 
         Parameters
@@ -1140,7 +1161,7 @@ updated: 2026-06-09
         bool
             Whether the call may proceed.
         """
-        decision: Dict[str, bool] = {}
+        decision: dict[str, bool] = {}
         answered = threading.Event()
 
         def ask() -> None:
@@ -1150,8 +1171,7 @@ updated: 2026-06-09
                 reply = dialogs.question(
                     self,
                     "Allow agent action?",
-                    f"The assistant wants to run <b>{tool}</b>:<br>"
-                    f"<pre>{detail}</pre>",
+                    f"The assistant wants to run <b>{tool}</b>:<br><pre>{detail}</pre>",
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                     QtWidgets.QMessageBox.No,
                 )
@@ -1250,7 +1270,7 @@ updated: 2026-06-09
         self._runtime_thread = None
         _save_history(self._chat_history)
 
-    def _on_runtime_event(self, event: str, data: Dict[str, Any]) -> None:
+    def _on_runtime_event(self, event: str, data: dict[str, Any]) -> None:
         """Render an agent runtime event in the transcript (GUI thread)."""
         if event == "agent.started":
             self.status_label.setText(f"{Glyphs.ROBOT} Thinking...")
@@ -1290,7 +1310,7 @@ updated: 2026-06-09
                 )
 
     @staticmethod
-    def _tool_highlight(data: Dict[str, Any]) -> str:
+    def _tool_highlight(data: dict[str, Any]) -> str:
         """Return a short summary of a tool result for the transcript.
 
         Only the few numbers a user actually watches for are surfaced, so a
@@ -1382,7 +1402,9 @@ updated: 2026-06-09
             self._append_sys(f"📝 Applying auto-fix round {iteration + 1} to the editor...")
             self._start_validation(writes, iteration + 1, f"Fix round {iteration + 1}")
         else:
-            self._append_sys(f"{Glyphs.WARNING} Fix response did not contain WRITE_FILE code; leaving current diagnostics visible.")
+            self._append_sys(
+                f"{Glyphs.WARNING} Fix response did not contain WRITE_FILE code; leaving current diagnostics visible."
+            )
             self.send_btn.setEnabled(True)
             self.input.setEnabled(True)
             self.progress_bar.setVisible(False)
@@ -1404,7 +1426,9 @@ updated: 2026-06-09
         t = threading.Thread(target=_run, daemon=True)
         t.start()
 
-    def _on_validation_received(self, iteration: int, issues: list[tuple[str, list[dict]]], label: str) -> None:
+    def _on_validation_received(
+        self, iteration: int, issues: list[tuple[str, list[dict]]], label: str
+    ) -> None:
         """Handle validation results on the main thread."""
         if issues:
             total = sum(len(d) for _, d in issues)
@@ -1423,7 +1447,11 @@ updated: 2026-06-09
     @staticmethod
     def _issue_kind(issues: list[tuple[str, list[dict]]]) -> str:
         """Return the dominant validation issue kind."""
-        if any(diagnostic.get("code") == "E999" for _, diagnostics in issues for diagnostic in diagnostics):
+        if any(
+            diagnostic.get("code") == "E999"
+            for _, diagnostics in issues
+            for diagnostic in diagnostics
+        ):
             return "compile"
         return "ruff"
 
@@ -1438,14 +1466,18 @@ updated: 2026-06-09
         writes = []
 
         # 1. Match XML-like tags: <write_file filename="xyz">content</write_file>
-        xml_pattern = re.compile(r"<write_file\s+filename=\"([^\"]+)\"\s*>(.*?)</write_file>", re.DOTALL)
+        xml_pattern = re.compile(
+            r"<write_file\s+filename=\"([^\"]+)\"\s*>(.*?)</write_file>", re.DOTALL
+        )
         for filename, content in xml_pattern.findall(response):
             writes.append((filename.strip(), content.strip()))
 
         # 2. Match markdown code blocks containing a # WRITE_FILE header
         block_pattern = re.compile(r"```[a-zA-Z0-9_-]*\s*\n(.*?)\n```", re.DOTALL)
         for block in block_pattern.findall(response):
-            match = re.match(r"^\s*(?:#|//)\s*WRITE_FILE:?\s*([^\r\n]+)\r?\n(.*)$", block, re.DOTALL)
+            match = re.match(
+                r"^\s*(?:#|//)\s*WRITE_FILE:?\s*([^\r\n]+)\r?\n(.*)$", block, re.DOTALL
+            )
             if match:
                 writes.append((match.group(1).strip(), match.group(2)))
 
@@ -1506,7 +1538,10 @@ updated: 2026-06-09
                     if widget is not self.editor.agent_panel and widget is not None:
                         tab_text = self.editor.tab_widget.tabText(index)
                         clean = tab_text[:-2] if tab_text.endswith(" *") else tab_text
-                        if clean == filename or pathlib.Path(clean).name == pathlib.Path(filename).name:
+                        if (
+                            clean == filename
+                            or pathlib.Path(clean).name == pathlib.Path(filename).name
+                        ):
                             target_editor = widget
                             break
 
@@ -1644,7 +1679,9 @@ updated: 2026-06-09
         self._chat_history = []
         _save_history([])
         self.transcript.clear()
-        self._append_sys(f"{Glyphs.DELETE} History cleared. Current file context will be included with your next question.")
+        self._append_sys(
+            f"{Glyphs.DELETE} History cleared. Current file context will be included with your next question."
+        )
 
     def _update_provider_label(self, provider_key: str | None = None) -> None:
         """Update the provider status label."""

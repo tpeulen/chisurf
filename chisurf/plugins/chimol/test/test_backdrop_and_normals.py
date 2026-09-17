@@ -12,15 +12,15 @@ The mesher negated its normals under a comment saying it was making them point
 outward, and nothing caught it for as long as the only consumer replaced them
 with density-gradient normals anyway.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chimol.core.settings.config import _DISPLAY_CONFIG
+from chimol.core.viewer import Viewer
 from chimol.io.atoms import make_bead_rows
 from chimol.render import backdrop
-from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -39,9 +39,7 @@ def blob(_qt_app):
     rng = np.random.default_rng(0)
     xyz = rng.normal(scale=7.0, size=(300, 3))
     view = Viewer()
-    view.set_coordinates(
-        xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 3.0)
-    )
+    view.set_coordinates(xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 3.0))
     view.set_metaballs_visible(True)
     view._draft_quality = False
     return view

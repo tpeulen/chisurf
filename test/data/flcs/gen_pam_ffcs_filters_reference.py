@@ -104,8 +104,8 @@ def check_against_checkout(root: pathlib.Path) -> None:
     for rel, label, first, last in BLOCKS:
         src = (root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
         start = drv.index(f"% --- {label} {first}-{last} (verbatim) ---") + 1
-        copy = drv[start:start + (last - first + 1)]
-        if copy != src[first - 1:last]:
+        copy = drv[start : start + (last - first + 1)]
+        if copy != src[first - 1 : last]:
             sys.exit(f"driver block {label} {first}-{last} differs from {root / rel}")
     print(f"verbatim blocks match {root}")
 
@@ -116,8 +116,13 @@ def run_octave(decay, patterns):
     with tempfile.TemporaryDirectory() as d:
         savemat(f"{d}/ab_input.mat", {"decay": decay, "patterns": patterns})
         shutil.copy(DRIVER, f"{d}/ab_driver.m")
-        subprocess.run([octave, "--no-gui", "--quiet", "ab_driver.m"], cwd=d, check=True,
-                       capture_output=True, text=True)
+        subprocess.run(
+            [octave, "--no-gui", "--quiet", "ab_driver.m"],
+            cwd=d,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         out = loadmat(f"{d}/ab_output.mat")
     return {
         "filters": out["filters"].T,

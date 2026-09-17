@@ -105,7 +105,7 @@ class CollisionDialog(QtWidgets.QDialog):
                 for cid in ids[:20]:
                     lines.append(f"  - {cid}")
                 if len(ids) > 20:
-                    lines.append(f"  ... and {len(ids)-20} more")
+                    lines.append(f"  ... and {len(ids) - 20} more")
                 lines.append("")
         text.setHtml("<br>".join(lines) or "<i>No collisions found</i>")
         layout.addWidget(text)
@@ -233,10 +233,19 @@ class ProjectBrowserTool(ChisurfDockTool):
 
         # -- Tree --
         self._tree = QtWidgets.QTreeWidget()
-        self._tree.setHeaderLabels([
-            "Project / Version", "ID", "Owner", "Status", "Visibility",
-            "Datasets", "Fits", "Created", "Notes",
-        ])
+        self._tree.setHeaderLabels(
+            [
+                "Project / Version",
+                "ID",
+                "Owner",
+                "Status",
+                "Visibility",
+                "Datasets",
+                "Fits",
+                "Created",
+                "Notes",
+            ]
+        )
         self._tree.setAlternatingRowColors(True)
         self._tree.setRootIsDecorated(True)
         self._tree.setAnimated(True)
@@ -309,14 +318,17 @@ class ProjectBrowserTool(ChisurfDockTool):
                 child.setText(7, (ver.get("created_at", "") or "")[:19].replace("T", " "))
                 child.setText(8, (ver.get("notes", "") or "")[:60])
                 child.setData(0, QtCore.Qt.UserRole, ver)
-                child.setToolTip(0, (
-                    f"Version: {ver.get('version_id', '')}\n"
-                    f"Project: {ver.get('project_id', '')}\n"
-                    f"Owner: {ver.get('owner_user_id', '')}\n"
-                    f"Number: v{vn}\n"
-                    f"Created: {ver.get('created_at', '')}\n"
-                    f"Datasets: {ver.get('dataset_count', 0)}  Fits: {ver.get('fit_count', 0)}"
-                ))
+                child.setToolTip(
+                    0,
+                    (
+                        f"Version: {ver.get('version_id', '')}\n"
+                        f"Project: {ver.get('project_id', '')}\n"
+                        f"Owner: {ver.get('owner_user_id', '')}\n"
+                        f"Number: v{vn}\n"
+                        f"Created: {ver.get('created_at', '')}\n"
+                        f"Datasets: {ver.get('dataset_count', 0)}  Fits: {ver.get('fit_count', 0)}"
+                    ),
+                )
 
             parent.setExpanded(False)
 
@@ -352,7 +364,9 @@ class ProjectBrowserTool(ChisurfDockTool):
     def _on_open(self) -> None:
         ver = self._selected_restore_version()
         if not ver:
-            dialogs.information(self, "Select Project", "Please select a project or project version to restore.")
+            dialogs.information(
+                self, "Select Project", "Please select a project or project version to restore."
+            )
             return
         version_id = ver.get("version_id", "")
         try:
@@ -363,10 +377,13 @@ class ProjectBrowserTool(ChisurfDockTool):
                 return
             import chisurf as cs
             from chisurf.core.project import Project as CSProject
+
             proj = CSProject.from_dict(payload)
             from chisurf.macros.core_fit import load_project_payload
+
             load_project_payload(proj, project_path=None)
             from qtpy import QtCore
+
             QtCore.QTimer.singleShot(0, lambda: self._restore_gui_from_fits(proj))
             if hasattr(cs, "cs") and cs.cs is not None:
                 cs.cs._current_project_id = result.get("project_id")
@@ -382,9 +399,11 @@ class ProjectBrowserTool(ChisurfDockTool):
     def _restore_gui_from_fits(proj: Any) -> None:
         try:
             from chisurf.macros.core_fit import restore_gui_from_fits
+
             fit_uids = [f.get("uid", f.get("uuid", "")) for f in (proj.fits or [])]
             if fit_uids:
                 from qtpy import QtCore
+
                 QtCore.QTimer.singleShot(0, lambda: restore_gui_from_fits(fit_uids))
         except Exception as exc:
             logging.error("Failed to restore fits: %s", exc)
@@ -392,6 +411,7 @@ class ProjectBrowserTool(ChisurfDockTool):
     def _on_save(self) -> None:
         """Save the current project, prompting only for metadata when needed."""
         import chisurf as cs
+
         if not hasattr(cs, "cs") or cs.cs is None:
             dialogs.warning(self, "No Project", "No project is currently open.")
             return
@@ -420,6 +440,7 @@ class ProjectBrowserTool(ChisurfDockTool):
             return
 
         from chisurf.macros.core_fit import get_project_payload
+
         try:
             payload = get_project_payload(project_name)
             payload_data = payload.to_dict() if hasattr(payload, "to_dict") else payload
@@ -444,11 +465,14 @@ class ProjectBrowserTool(ChisurfDockTool):
             cs.cs._current_project_visibility = result.get("visibility", visibility)
             logging.info(
                 "Project saved: %s v%s (id=%s, ver=%s)",
-                project_name, result.get("version_number"),
-                result.get("project_id"), result.get("version_id"),
+                project_name,
+                result.get("version_number"),
+                result.get("project_id"),
+                result.get("version_id"),
             )
             dialogs.information(
-                self, "Saved",
+                self,
+                "Saved",
                 f"Project '{project_name}' saved as version {result.get('version_number')}.",
             )
             self.refresh()
@@ -459,12 +483,19 @@ class ProjectBrowserTool(ChisurfDockTool):
     def _on_export(self) -> None:
         ver = self._selected_version()
         if not ver:
-            dialogs.information(self, "Select Version", "Please select a project version to export.")
+            dialogs.information(
+                self, "Select Version", "Please select a project version to export."
+            )
             return
         version_id = ver.get("version_id", "")
-        default_name = f"{ver.get('project_name', 'project')}_v{ver.get('version_number', 1)}.cs.pto"
+        default_name = (
+            f"{ver.get('project_name', 'project')}_v{ver.get('version_number', 1)}.cs.pto"
+        )
         target_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export Project as .cs.pto", default_name, "Chisurf Project (*.cs.pto)",
+            self,
+            "Export Project as .cs.pto",
+            default_name,
+            "Chisurf Project (*.cs.pto)",
         )
         if not target_path:
             return
@@ -472,7 +503,8 @@ class ProjectBrowserTool(ChisurfDockTool):
             result = self.client.export_csp(version_id=version_id, target_path=target_path)
             if result.get("ok"):
                 dialogs.information(
-                    self, "Exported",
+                    self,
+                    "Exported",
                     f"Project exported to:\n{target_path}",
                 )
             else:
@@ -483,7 +515,10 @@ class ProjectBrowserTool(ChisurfDockTool):
 
     def _on_import(self) -> None:
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Import Project", "", "Chisurf Project (*.cs.pto)",
+            self,
+            "Import Project",
+            "",
+            "Chisurf Project (*.cs.pto)",
         )
         if not file_path:
             return
@@ -491,7 +526,8 @@ class ProjectBrowserTool(ChisurfDockTool):
             preview = self.client.import_preview(file_path=file_path)
             if not preview.get("ok", True):
                 dialogs.warning(
-                    self, "Preview Failed",
+                    self,
+                    "Preview Failed",
                     preview.get("error", "Unknown error"),
                 )
                 return
@@ -503,7 +539,8 @@ class ProjectBrowserTool(ChisurfDockTool):
                     return
             else:
                 ok = dialogs.question(
-                    self, "Confirm Import",
+                    self,
+                    "Confirm Import",
                     f"No collisions detected.\n"
                     f"Original project: {preview.get('origin', {}).get('project_id', '?')}\n"
                     f"Contains: {preview.get('entity_counts', {}).get('operations', 0)} operations, "
@@ -521,7 +558,8 @@ class ProjectBrowserTool(ChisurfDockTool):
             )
             if result.get("ok"):
                 dialogs.information(
-                    self, "Imported",
+                    self,
+                    "Imported",
                     f"Project imported.\n"
                     f"New project ID: {result.get('project_id', '?')}\n"
                     f"Version: v{result.get('version_number', '?')}",
@@ -536,11 +574,14 @@ class ProjectBrowserTool(ChisurfDockTool):
     def _on_delete(self) -> None:
         ver = self._selected_version()
         if not ver:
-            dialogs.information(self, "Select Version", "Please select a project version to delete.")
+            dialogs.information(
+                self, "Select Version", "Please select a project version to delete."
+            )
             return
         version_id = ver.get("version_id", "")
         reply = dialogs.question(
-            self, "Confirm Delete",
+            self,
+            "Confirm Delete",
             f"Delete version {ver.get('version_number', '?')} of project '{ver.get('project_name', '')}'?\n"
             f"ID: {version_id}\n\nThis action soft-deletes the version.",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,

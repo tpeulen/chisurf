@@ -19,6 +19,7 @@ file existed, for two reasons the script could not surface:
 So the URL is set on the instance, and the platform-specific cases say which
 platform they mean.
 """
+
 import platform
 
 import pytest
@@ -44,9 +45,9 @@ REMOTE_URLS = [
 ]
 
 WINDOWS_PATHS = [
-    "Q:\\chisurf\\conda",              # drive letter
-    "C:\\Users\\user\\Documents",      # drive letter
-    "\\\\server\\share\\folder",       # UNC share
+    "Q:\\chisurf\\conda",  # drive letter
+    "C:\\Users\\user\\Documents",  # drive letter
+    "\\\\server\\share\\folder",  # UNC share
 ]
 
 
@@ -60,9 +61,7 @@ def test_an_existing_directory_is_a_local_folder(tmp_path):
     assert _updater_for(str(tmp_path))._is_local_folder() is True
 
 
-@pytest.mark.skipif(
-    platform.system().lower() != "windows", reason="Windows path shapes"
-)
+@pytest.mark.skipif(platform.system().lower() != "windows", reason="Windows path shapes")
 @pytest.mark.parametrize("path", WINDOWS_PATHS)
 def test_windows_path_shapes_are_local_folders(path):
     """Drive letters and UNC shares count even when they do not exist yet.
@@ -73,18 +72,14 @@ def test_windows_path_shapes_are_local_folders(path):
     assert _updater_for(path)._is_local_folder() is True
 
 
-@pytest.mark.skipif(
-    platform.system().lower() == "windows", reason="POSIX path shapes"
-)
+@pytest.mark.skipif(platform.system().lower() == "windows", reason="POSIX path shapes")
 def test_windows_path_shapes_are_not_local_folders_off_windows():
     """And they must *not* count elsewhere — there is no drive Q: here."""
     for path in WINDOWS_PATHS:
         assert _updater_for(path)._is_local_folder() is False
 
 
-@pytest.mark.skipif(
-    platform.system().lower() == "windows", reason="POSIX path shapes"
-)
+@pytest.mark.skipif(platform.system().lower() == "windows", reason="POSIX path shapes")
 def test_a_posix_absolute_path_is_a_local_folder_even_if_absent():
     assert _updater_for("/nonexistent/update/folder")._is_local_folder() is True
 

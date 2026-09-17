@@ -30,7 +30,11 @@ import pytest
 #: business being bonded.
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "solvated_fragment.pdb"
 )
 
 
@@ -238,9 +242,7 @@ def test_unbond_refuses_to_span_two_objects(session):
     do("create other, resn HOH")
     errors.clear()
     do("unbond index 1, other and index 1")
-    assert errors and (
-        "different objects" in errors[-1] or "inside one object" in errors[-1]
-    )
+    assert errors and ("different objects" in errors[-1] or "inside one object" in errors[-1])
 
 
 def test_unbond_needs_two_arguments(session):

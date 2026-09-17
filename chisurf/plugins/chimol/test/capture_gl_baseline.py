@@ -40,6 +40,7 @@ Nothing to run. To compare the WGSL renderer against these images::
     QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.compare_wgsl \
         cartoon sticks surface transparency
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -95,28 +96,50 @@ SCENES: list[tuple[str, str, list[str]]] = [
     # by its dotted config path -- `set impostor_min_atoms` answers "Unknown
     # setting", which is the difference between a setting being *registered* and
     # being *reachable*.
-    ("spheres_mesh", "148l.pdb",
-     ["hide everything", "set balls.impostor_min_atoms, 100000", "show spheres", "orient"]),
-    ("spheres_impostor", "148l.pdb",
-     ["hide everything", "set balls.impostor_min_atoms, 10", "show spheres", "orient"]),
+    (
+        "spheres_mesh",
+        "148l.pdb",
+        ["hide everything", "set balls.impostor_min_atoms, 100000", "show spheres", "orient"],
+    ),
+    (
+        "spheres_impostor",
+        "148l.pdb",
+        ["hide everything", "set balls.impostor_min_atoms, 10", "show spheres", "orient"],
+    ),
     ("surface", "148l.pdb", ["hide everything", "show surface", "orient"]),
     ("mesh", "148l.pdb", ["hide everything", "show mesh", "orient"]),
     # --- shading / materials ------------------------------------------------
-    ("transparency", "148l.pdb",
-     ["hide everything", "show surface", "set transparency, 0.5", "orient"]),
-    ("two_sided_on", "148l.pdb",
-     ["hide everything", "show surface", "set transparency, 0.5",
-      "set two_sided_lighting, on", "orient"]),
-    ("depth_cue_fog", "148l.pdb",
-     ["hide everything", "show spheres", "set depth_cue, on", "set fog, 1.0", "orient"]),
+    (
+        "transparency",
+        "148l.pdb",
+        ["hide everything", "show surface", "set transparency, 0.5", "orient"],
+    ),
+    (
+        "two_sided_on",
+        "148l.pdb",
+        [
+            "hide everything",
+            "show surface",
+            "set transparency, 0.5",
+            "set two_sided_lighting, on",
+            "orient",
+        ],
+    ),
+    (
+        "depth_cue_fog",
+        "148l.pdb",
+        ["hide everything", "show spheres", "set depth_cue, on", "set fog, 1.0", "orient"],
+    ),
     # A settings scene is only readable next to a control that differs by the
     # setting alone. Diffing `silhouette` against `cartoon` compares colour --
     # `cartoon` carries `spectrum count` -- and reports 11.5% of pixels changed,
     # which reads as a working silhouette and is not one.
-    ("silhouette_off", "148l.pdb",
-     ["hide everything", "show cartoon", "set silhouette, off", "orient"]),
-    ("silhouette", "148l.pdb",
-     ["hide everything", "show cartoon", "set silhouette, on", "orient"]),
+    (
+        "silhouette_off",
+        "148l.pdb",
+        ["hide everything", "show cartoon", "set silhouette, off", "orient"],
+    ),
+    ("silhouette", "148l.pdb", ["hide everything", "show cartoon", "set silhouette, on", "orient"]),
     # `sticks.ambient_occlusion` had a scene here, to document that it was
     # registered and reachable and gated nothing. The setting is gone (schema
     # version 11 deletes it from existing configs too), so the scene went with
@@ -126,18 +149,34 @@ SCENES: list[tuple[str, str, list[str]]] = [
     # cartoon. Captured as a matched pair because the sense of that gate is
     # inverted in the current renderer (see known-issues): AO appears when
     # occlusion is switched OFF.
-    ("occlusion_enabled_on", "148l.pdb",
-     ["hide everything", "show cartoon", "set occlusion.enabled, on", "orient"]),
-    ("occlusion_enabled_off", "148l.pdb",
-     ["hide everything", "show cartoon", "set occlusion.enabled, off", "orient"]),
+    (
+        "occlusion_enabled_on",
+        "148l.pdb",
+        ["hide everything", "show cartoon", "set occlusion.enabled, on", "orient"],
+    ),
+    (
+        "occlusion_enabled_off",
+        "148l.pdb",
+        ["hide everything", "show cartoon", "set occlusion.enabled, off", "orient"],
+    ),
     # --- colour / background ------------------------------------------------
     ("bg_white", "148l.pdb", ["hide everything", "show cartoon", "bg_color white", "orient"]),
-    ("bg_grey_spectrum", "148l.pdb",
-     ["hide everything", "show cartoon", "bg_color grey20", "spectrum b", "orient"]),
+    (
+        "bg_grey_spectrum",
+        "148l.pdb",
+        ["hide everything", "show cartoon", "bg_color grey20", "spectrum b", "orient"],
+    ),
     # --- text ---------------------------------------------------------------
-    ("labels", "148l.pdb",
-     ["hide everything", "show sticks, resi 1-8", "label resi 1-8 and name CA, resi",
-      "orient resi 1-8"]),
+    (
+        "labels",
+        "148l.pdb",
+        [
+            "hide everything",
+            "show sticks, resi 1-8",
+            "label resi 1-8 and name CA, resi",
+            "orient resi 1-8",
+        ],
+    ),
     # --- nucleic + a larger system -----------------------------------------
     ("nucleic_cartoon", "1rtd.pdb", ["hide everything", "show cartoon", "orient"]),
     ("large_spheres", "1rtd.pdb", ["hide everything", "show spheres", "orient"]),

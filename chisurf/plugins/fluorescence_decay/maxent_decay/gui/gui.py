@@ -6,11 +6,8 @@ following the burst selection plugin pattern.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.plugins.fluorescence_decay.maxent_decay.core.settings import (
     get_settings_file,
@@ -44,7 +41,10 @@ except Exception:
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+
+    def persist_plugin_state(n):
+        return lambda c: c
+
 
 SETTINGS_ORG = "chisurf"
 SETTINGS_APP = "MaxentDecayWidget"
@@ -73,21 +73,17 @@ class MaxentDecayWidget(
         self.resize(1200, 800)
 
         self._irf_dataset = None
-        self._prior_vec: Optional[np.ndarray] = None
-        self._donly_vec: Optional[np.ndarray] = None
-        self._dist_prior_vec: Optional[np.ndarray] = None
+        self._prior_vec: np.ndarray | None = None
+        self._donly_vec: np.ndarray | None = None
+        self._dist_prior_vec: np.ndarray | None = None
         self._last_result = None
         self._sample_stats = None
         self._t_axis = None
         self._fit_range = None
         self._mode_fret = False
 
-        self._donor_style_missing = (
-            "QToolButton { color: #ff6b6b; font-weight: bold; }"
-        )
-        self._donor_label_style_missing = (
-            "QLabel { color: #ff6b6b; font-weight: bold; }"
-        )
+        self._donor_style_missing = "QToolButton { color: #ff6b6b; font-weight: bold; }"
+        self._donor_label_style_missing = "QLabel { color: #ff6b6b; font-weight: bold; }"
         self._donor_btn_style_normal = None
         self._donor_btn_fit_style_normal = None
         self._donor_label_style_normal = None
@@ -219,9 +215,7 @@ class MaxentDecayWidget(
         self.spin_lcurve_dec_left.setSingleStep(0.5)
         lc_left = 2.0
         try:
-            lc_left = float(
-                ((self._settings.get("lcurve_span_decades", {}) or {}).get("left", 2.0))
-            )
+            lc_left = float((self._settings.get("lcurve_span_decades", {}) or {}).get("left", 2.0))
         except Exception:
             pass
         self.spin_lcurve_dec_left.setValue(lc_left)
@@ -236,7 +230,7 @@ class MaxentDecayWidget(
         lc_right = 2.0
         try:
             lc_right = float(
-                ((self._settings.get("lcurve_span_decades", {}) or {}).get("right", 2.0))
+                (self._settings.get("lcurve_span_decades", {}) or {}).get("right", 2.0)
             )
         except Exception:
             pass
@@ -257,9 +251,7 @@ class MaxentDecayWidget(
         self.spin_tau_min.setRange(1e-3, 1e3)
         tau_min = 0.01
         try:
-            tau_min = float(
-                ((self._settings.get("tau_grid", {}) or {}).get("min", 0.01))
-            )
+            tau_min = float((self._settings.get("tau_grid", {}) or {}).get("min", 0.01))
         except Exception:
             pass
         self.spin_tau_min.setValue(tau_min)
@@ -269,9 +261,7 @@ class MaxentDecayWidget(
         self.spin_tau_max.setRange(1e-3, 1e3)
         tau_max = 6.0
         try:
-            tau_max = float(
-                ((self._settings.get("tau_grid", {}) or {}).get("max", 6.0))
-            )
+            tau_max = float((self._settings.get("tau_grid", {}) or {}).get("max", 6.0))
         except Exception:
             pass
         self.spin_tau_max.setValue(tau_max)
@@ -323,7 +313,7 @@ class MaxentDecayWidget(
         fret_cfg = {}
         use_periodic = False
         try:
-            fret_cfg = (self._settings.get("fret", {}) or {})
+            fret_cfg = self._settings.get("fret", {}) or {}
             if "tau0" in fret_cfg:
                 self.spin_tau0.setValue(float(fret_cfg["tau0"]))
             if "R0" in fret_cfg:
@@ -336,6 +326,7 @@ class MaxentDecayWidget(
 
         try:
             import chisurf
+
             cfg = getattr(chisurf.core.settings, "fret", {}) or {}
             if "tau0" not in fret_cfg:
                 self.spin_tau0.setValue(float(cfg.get("tau0", self.spin_tau0.value())))
@@ -547,6 +538,7 @@ class MaxentDecayWidget(
         sampling_layout.addRow("CPUs (0=auto)", self.spin_sample_nprocs)
 
         import sys as _sys
+
         self.chk_sample_vectorized = QtWidgets.QCheckBox()
         is_win = _sys.platform.startswith("win")
         self.chk_sample_vectorized.setChecked(is_win)
@@ -667,7 +659,9 @@ class MaxentDecayWidget(
         self.btn_lcurve.setText("\U0001f4c8 L-curve")
         self.btn_lcurve.setObjectName("maxentBtnLcurve")
         self.btn_lcurve.setAutoRaise(True)
-        self.btn_lcurve.setToolTip("Scan regularization parameter and detect optimal nu via L-curve corner")
+        self.btn_lcurve.setToolTip(
+            "Scan regularization parameter and detect optimal nu via L-curve corner"
+        )
         self.btn_lcurve.clicked.connect(self._on_lcurve_clicked)
         toolbar.addWidget(self.btn_lcurve)
 
@@ -716,7 +710,9 @@ class MaxentDecayWidget(
         self.btn_load_prior.setText("\U0001f4e4 Prior")
         self.btn_load_prior.setObjectName("maxentBtnPrior")
         self.btn_load_prior.setAutoRaise(True)
-        self.btn_load_prior.setToolTip("Load prior distribution (lifetime or distance depending on mode)")
+        self.btn_load_prior.setToolTip(
+            "Load prior distribution (lifetime or distance depending on mode)"
+        )
         self.btn_load_prior.clicked.connect(self._on_load_prior_any_clicked)
         toolbar.addWidget(self.btn_load_prior)
 
@@ -724,7 +720,9 @@ class MaxentDecayWidget(
         self.btn_load_donor.setText("\U0001f48e Donor")
         self.btn_load_donor.setObjectName("maxentBtnDonor")
         self.btn_load_donor.setAutoRaise(True)
-        self.btn_load_donor.setToolTip("Load donor emission spectrum (amp/tau pairs) for FRET analysis")
+        self.btn_load_donor.setToolTip(
+            "Load donor emission spectrum (amp/tau pairs) for FRET analysis"
+        )
         self.btn_load_donor.clicked.connect(self._on_load_donor_clicked)
         self.btn_load_donor_fit = QtWidgets.QToolButton()
         self.btn_load_donor_fit.setText("\U0001f3e0 Fit")

@@ -40,8 +40,8 @@ class _Model:
         if self._step_delay:
             time.sleep(self._step_delay)
         residual = self.parameters_all_dict["a"].value - 2.0
-        self._fit.chi2 = residual ** 2
-        self._fit.chi2r = residual ** 2 / 2.0
+        self._fit.chi2 = residual**2
+        self._fit.chi2r = residual**2 / 2.0
 
 
 class _Fit:
@@ -78,7 +78,10 @@ def test_a_parameter_scan_is_a_job_in_the_shared_manager():
     """The scan must be registered, complete, and hand back its curve."""
     fit = _Fit()
     started = fit_service.fit_parameter_scan_start(
-        _State([fit]), parameter_name="a", fit_index=0, n_steps=11,
+        _State([fit]),
+        parameter_name="a",
+        fit_index=0,
+        n_steps=11,
     )
     assert started["ok"]
     job_id = started["job_id"]
@@ -101,7 +104,10 @@ def test_cancelling_a_scan_stops_it_and_restores_the_parameter():
     """Cancellation is cooperative: the worker must notice and put things back."""
     fit = _Fit(step_delay=0.01)
     started = fit_service.fit_parameter_scan_start(
-        _State([fit]), parameter_name="a", fit_index=0, n_steps=500,
+        _State([fit]),
+        parameter_name="a",
+        fit_index=0,
+        n_steps=500,
     )
     job_id = started["job_id"]
 
@@ -125,7 +131,10 @@ def test_a_failing_scan_is_reported_as_failed():
 
     fit.model.update = _boom
     started = fit_service.fit_parameter_scan_start(
-        _State([fit]), parameter_name="a", fit_index=0, n_steps=5,
+        _State([fit]),
+        parameter_name="a",
+        fit_index=0,
+        n_steps=5,
     )
     result = _wait_for(started["job_id"])
     assert result["status"] == "failed"
@@ -155,7 +164,10 @@ def test_a_failing_scan_still_restores_the_parameter():
 
     fit.model.update = _boom_on_the_fourth_step
     started = fit_service.fit_parameter_scan_start(
-        _State([fit]), parameter_name="a", fit_index=0, n_steps=11,
+        _State([fit]),
+        parameter_name="a",
+        fit_index=0,
+        n_steps=11,
     )
     result = _wait_for(started["job_id"])
     assert result["status"] == "failed"
@@ -167,7 +179,10 @@ def test_the_two_job_families_do_not_share_an_id_space():
     """A scan id must not be pollable through the sampling endpoints."""
     fit = _Fit()
     started = fit_service.fit_parameter_scan_start(
-        _State([fit]), parameter_name="a", fit_index=0, n_steps=5,
+        _State([fit]),
+        parameter_name="a",
+        fit_index=0,
+        n_steps=5,
     )
     job_id = started["job_id"]
     _wait_for(job_id)

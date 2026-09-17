@@ -28,11 +28,15 @@ EXPECTED = np.load(DATA / "selection/topol_expected.npz")
 @pytest.fixture(scope="module")
 def atoms():
     from chisurf.core.structure import Structure
+
     return Structure(str(PDB)).atoms
 
 
-@pytest.mark.parametrize("index, expression", list(enumerate(EXPRESSIONS)),
-                         ids=[e.replace(" ", "_") for e in EXPRESSIONS])
+@pytest.mark.parametrize(
+    "index, expression",
+    list(enumerate(EXPRESSIONS)),
+    ids=[e.replace(" ", "_") for e in EXPRESSIONS],
+)
 def test_matches_the_language_it_replaces(atoms, index, expression):
     np.testing.assert_array_equal(
         np.asarray(select(atoms, expression), dtype=np.int32), EXPECTED[f"s{index}"]
@@ -65,10 +69,21 @@ def test_masks_and_indices_agree(atoms):
     np.testing.assert_array_equal(np.flatnonzero(mask), select(atoms, "name CA"))
 
 
-@pytest.mark.parametrize("expression", [
-    "", "   ", "name", "nosuchfield CA", "name CA and", "(name CA",
-    "name CA)", "resSeq > ", "resSeq > CA", "name CA $ CB",
-])
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "",
+        "   ",
+        "name",
+        "nosuchfield CA",
+        "name CA and",
+        "(name CA",
+        "name CA)",
+        "resSeq > ",
+        "resSeq > CA",
+        "name CA $ CB",
+    ],
+)
 def test_a_bad_expression_raises_rather_than_selecting_nothing(atoms, expression):
     # Returning an empty selection for a typo is the dangerous failure: an
     # analysis then runs on no atoms and reports a result.

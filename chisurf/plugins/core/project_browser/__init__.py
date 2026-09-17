@@ -15,5 +15,6 @@ else:
 
 if __name__ == "plugin":
     from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
+
     window = ProjectBrowserTool()
     window.show()

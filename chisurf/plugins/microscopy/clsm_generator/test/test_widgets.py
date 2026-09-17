@@ -52,7 +52,9 @@ def test_view_spec_loads():
 
 
 @pytest.mark.skipif(
-    not __import__("chisurf.core.fluorescence.imaging.simulate", fromlist=["have_simulator"]).have_simulator(),
+    not __import__(
+        "chisurf.core.fluorescence.imaging.simulate", fromlist=["have_simulator"]
+    ).have_simulator(),
     reason="tttrlib photon simulator unavailable",
 )
 def test_generate_and_save_roundtrip(tmp_path):

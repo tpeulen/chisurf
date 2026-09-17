@@ -28,10 +28,10 @@ They run in a **child process**: the toolkit-free host needs ``Viewer`` bound
 without Qt, and that is decided once per process at import. See
 :mod:`.toolkit_free` for the two approaches that failed before this one.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import DATA, probe
 
 #: 570 residues, 5,235 atoms, 464 frames.

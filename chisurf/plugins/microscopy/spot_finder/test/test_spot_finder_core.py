@@ -32,9 +32,7 @@ def _field(shape=(64, 72), sigma=1.6, amplitude=200.0, background=2.0):
     rows, cols = np.indices(shape)
     image = np.full(shape, background, dtype=float)
     for cy, cx in CENTRES:
-        image += amplitude * np.exp(
-            -(((rows - cy) ** 2 + (cols - cx) ** 2) / (2.0 * sigma**2))
-        )
+        image += amplitude * np.exp(-(((rows - cy) ** 2 + (cols - cx) ** 2) / (2.0 * sigma**2)))
     return image
 
 
@@ -42,8 +40,12 @@ def _settings(method: str) -> SpotFinderSettings:
     """Return settings tuned for the planted field, per detector."""
     if method in ("log", "dog"):
         return SpotFinderSettings(
-            method=method, min_sigma=1.0, max_sigma=3.0, threshold=0.05,
-            min_area=2, clear_border=False,
+            method=method,
+            min_sigma=1.0,
+            max_sigma=3.0,
+            threshold=0.05,
+            min_area=2,
+            clear_border=False,
         )
     return SpotFinderSettings(method=method, sigma=1.0, min_area=2, clear_border=False)
 
@@ -75,7 +77,7 @@ def test_every_detector_finds_the_planted_spots_where_they_were_planted(method):
 def test_labels_are_contiguous_from_one_after_filtering(method):
     """A dropped region leaves a gap, and a gap is a row that owns no pixel."""
     settings = _settings(method)
-    settings.min_area = 6      # enough to drop nothing here...
+    settings.min_area = 6  # enough to drop nothing here...
     labels, _extra = detect_labels(_field(), settings)
     present = np.unique(labels)
 
@@ -96,17 +98,25 @@ def test_a_field_with_nothing_in_it_finds_nothing_rather_than_failing(method):
 def test_min_area_rejects_the_hot_pixel_a_threshold_admits():
     """A spot covers several pixels; a camera defect covers exactly one."""
     image = np.full((32, 32), 2.0)
-    image[10, 10] = 900.0                      # one hot pixel
+    image[10, 10] = 900.0  # one hot pixel
     rows, cols = np.indices(image.shape)
     image += 200.0 * np.exp(-(((rows - 20) ** 2 + (cols - 22) ** 2) / (2 * 1.6**2)))
 
     # A fixed level, not Otsu: with a 900-valued outlier in the frame, Otsu
     # puts the level *above* the real spot and finds only the defect — true,
     # and a different claim from this one.
-    admits = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, threshold=50.0, min_area=1, clear_border=False))
-    rejects = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, threshold=50.0, min_area=2, clear_border=False))
+    admits = detect(
+        image,
+        SpotFinderSettings(
+            method="threshold", sigma=0.0, threshold=50.0, min_area=1, clear_border=False
+        ),
+    )
+    rejects = detect(
+        image,
+        SpotFinderSettings(
+            method="threshold", sigma=0.0, threshold=50.0, min_area=2, clear_border=False
+        ),
+    )
 
     assert admits.n_regions == 2
     assert rejects.n_regions == 1
@@ -114,13 +124,18 @@ def test_min_area_rejects_the_hot_pixel_a_threshold_admits():
 
 def test_max_area_rejects_the_aggregate_that_dominates_a_histogram():
     image = np.full((48, 48), 2.0)
-    image[4:8, 4:8] = 300.0        # 16 px, a molecule
-    image[20:40, 20:40] = 300.0    # 400 px, an aggregate
+    image[4:8, 4:8] = 300.0  # 16 px, a molecule
+    image[20:40, 20:40] = 300.0  # 400 px, an aggregate
 
-    both = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, clear_border=False))
-    small = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, max_area=100, clear_border=False))
+    both = detect(
+        image, SpotFinderSettings(method="threshold", sigma=0.0, min_area=2, clear_border=False)
+    )
+    small = detect(
+        image,
+        SpotFinderSettings(
+            method="threshold", sigma=0.0, min_area=2, max_area=100, clear_border=False
+        ),
+    )
 
     assert both.n_regions == 2
     assert small.n_regions == 1
@@ -128,13 +143,15 @@ def test_max_area_rejects_the_aggregate_that_dominates_a_histogram():
 
 def test_clear_border_drops_the_partly_imaged_object():
     image = np.full((32, 32), 2.0)
-    image[0:4, 10:14] = 300.0      # touching the top edge
+    image[0:4, 10:14] = 300.0  # touching the top edge
     image[15:19, 15:19] = 300.0
 
-    kept = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, clear_border=False))
-    cleared = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, clear_border=True))
+    kept = detect(
+        image, SpotFinderSettings(method="threshold", sigma=0.0, min_area=2, clear_border=False)
+    )
+    cleared = detect(
+        image, SpotFinderSettings(method="threshold", sigma=0.0, min_area=2, clear_border=True)
+    )
 
     assert kept.n_regions == 2
     assert cleared.n_regions == 1
@@ -147,9 +164,18 @@ def test_the_blob_detectors_report_the_width_they_measured():
     image += 200.0 * np.exp(-(((rows - 16) ** 2 + (cols - 16) ** 2) / (2 * 1.2**2)))
     image += 200.0 * np.exp(-(((rows - 44) ** 2 + (cols - 44) ** 2) / (2 * 3.0**2)))
 
-    result = detect(image, SpotFinderSettings(
-        method="log", min_sigma=1.0, max_sigma=4.0, num_sigma=12,
-        threshold=0.05, min_area=2, clear_border=False))
+    result = detect(
+        image,
+        SpotFinderSettings(
+            method="log",
+            min_sigma=1.0,
+            max_sigma=4.0,
+            num_sigma=12,
+            threshold=0.05,
+            min_area=2,
+            clear_border=False,
+        ),
+    )
 
     names = column_names(result.table)
     assert "spot.sigma" in names
@@ -164,12 +190,22 @@ def test_overlapping_discs_stay_disjoint_regions():
     """A contested pixel belongs to the nearer centre, not to both."""
     rows, cols = np.indices((48, 48))
     image = np.full((48, 48), 2.0)
-    for cx in (20, 26):        # 6 px apart, discs of radius ~2.8 overlap
+    for cx in (20, 26):  # 6 px apart, discs of radius ~2.8 overlap
         image += 200.0 * np.exp(-(((rows - 24) ** 2 + (cols - cx) ** 2) / (2 * 2.0**2)))
 
-    labels, _extra = detect_labels(image, SpotFinderSettings(
-        method="log", min_sigma=1.0, max_sigma=3.0, num_sigma=10,
-        threshold=0.05, min_area=2, clear_border=False, overlap=1.0))
+    labels, _extra = detect_labels(
+        image,
+        SpotFinderSettings(
+            method="log",
+            min_sigma=1.0,
+            max_sigma=3.0,
+            num_sigma=10,
+            threshold=0.05,
+            min_area=2,
+            clear_border=False,
+            overlap=1.0,
+        ),
+    )
 
     assert labels.max() == 2
     # Disjoint by construction: a label image cannot hold two labels per pixel,
@@ -190,15 +226,18 @@ def test_a_region_sets_its_own_threshold():
     from chisurf.core.roi import RectangleROI
 
     image = np.full((64, 64), 1.0)
-    image[8:12, 8:12] = 3.0         # dim objects, inside the region
+    image[8:12, 8:12] = 3.0  # dim objects, inside the region
     image[8:12, 16:20] = 3.0
-    image[36:60, 36:60] = 100.0     # a large bright patch, outside it
+    image[36:60, 36:60] = 100.0  # a large bright patch, outside it
 
     roi = RectangleROI(0, 0, 32, 32)
-    confined = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, clear_border=False, roi=roi))
-    whole = detect(image, SpotFinderSettings(
-        method="threshold", sigma=0.0, min_area=2, clear_border=False))
+    confined = detect(
+        image,
+        SpotFinderSettings(method="threshold", sigma=0.0, min_area=2, clear_border=False, roi=roi),
+    )
+    whole = detect(
+        image, SpotFinderSettings(method="threshold", sigma=0.0, min_area=2, clear_border=False)
+    )
 
     assert confined.n_regions == 2
     # Globally, Otsu separates the bright patch from everything else and the

@@ -49,9 +49,7 @@ class PluginSettings:
     def __init__(self, block: dict[str, Any] | None = None) -> None:
         source = block or {}
         self._data: dict[str, Any] = {
-            key: copy.deepcopy(source.get(key))
-            for key in OWNED_KEYS
-            if key in source
+            key: copy.deepcopy(source.get(key)) for key in OWNED_KEYS if key in source
         }
         self._data.setdefault("disabled_plugins", [])
         self._data.setdefault("toolbar_plugins", [])

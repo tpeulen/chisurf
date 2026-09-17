@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 
 import numpy as np
-import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -40,7 +39,7 @@ def test_a_2d_array_is_drawn_the_way_numpy_holds_it(qtbot):
             self.img[4:8, 40:50] = 1.0
 
         def markers(self):
-            return [(0, 6, 45)]          # (z, row, col)
+            return [(0, 6, 45)]  # (z, row, col)
 
     widget = _image_widget(qtbot, Host(), markers_source="markers")
 
@@ -49,7 +48,7 @@ def test_a_2d_array_is_drawn_the_way_numpy_holds_it(qtbot):
 
     (marker,) = widget._marker_items
     xs, ys = marker.getData()
-    assert (xs[0], ys[0]) == (45.0, 6.0)     # on the bright block, not beside it
+    assert (xs[0], ys[0]) == (45.0, 6.0)  # on the bright block, not beside it
 
 
 def test_a_three_dimensional_stack_keeps_the_same_orientation(qtbot):

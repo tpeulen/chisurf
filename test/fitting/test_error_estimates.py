@@ -64,12 +64,10 @@ class KnownSigmaTests(unittest.TestCase):
         x, y = sample()
         ey = np.full(N, SIGMA)
         _, model = chisurf_fit(x, y, ey)
-        _, pcov = curve_fit(model_f, x, y, p0=START, sigma=ey,
-                            absolute_sigma=True)
+        _, pcov = curve_fit(model_f, x, y, p0=START, sigma=ey, absolute_sigma=True)
         # 2%: chisurf's Jacobian is a finite difference, scipy's is too but
         # with a different step. This is not a tolerance on the statistics.
-        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)),
-                                   rtol=0.02)
+        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)), rtol=0.02)
 
     def test_supplying_real_errors_is_not_rescaled(self):
         """The fix must not touch a dataset that carries its own sigma.
@@ -80,11 +78,9 @@ class KnownSigmaTests(unittest.TestCase):
         """
         x, y = sample()
         _, model = chisurf_fit(x, y, np.full(N, SIGMA))
-        _, pcov = curve_fit(model_f, x, y, p0=START, sigma=np.full(N, SIGMA),
-                            absolute_sigma=True)
+        _, pcov = curve_fit(model_f, x, y, p0=START, sigma=np.full(N, SIGMA), absolute_sigma=True)
         got, want = errors_of(model), np.sqrt(np.diag(pcov))
-        self.assertTrue(np.all(np.abs(got / want - 1.0) < 0.02),
-                        f"errors moved: {got} vs {want}")
+        self.assertTrue(np.all(np.abs(got / want - 1.0) < 0.02), f"errors moved: {got} vs {want}")
 
 
 class UnknownSigmaTests(unittest.TestCase):
@@ -94,16 +90,14 @@ class UnknownSigmaTests(unittest.TestCase):
         x, y = sample()
         _, model = chisurf_fit(x, y, None)
         _, pcov = curve_fit(model_f, x, y, p0=START, absolute_sigma=False)
-        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)),
-                                   rtol=0.02)
+        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)), rtol=0.02)
 
     def test_unit_ey_is_treated_as_no_uncertainty(self):
         """An explicit array of ones is the same statement as supplying none."""
         x, y = sample()
         _, model = chisurf_fit(x, y, np.ones(N))
         _, pcov = curve_fit(model_f, x, y, p0=START, absolute_sigma=False)
-        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)),
-                                   rtol=0.02)
+        np.testing.assert_allclose(errors_of(model), np.sqrt(np.diag(pcov)), rtol=0.02)
 
     def test_the_unscaled_errors_would_have_been_far_too_large(self):
         """Guards the size of the defect, not just its direction.
@@ -119,8 +113,9 @@ class UnknownSigmaTests(unittest.TestCase):
         unscaled = errors_of(model) / np.sqrt(chi2r)
         _, pcov = curve_fit(model_f, x, y, p0=START, absolute_sigma=False)
         ratio = unscaled / np.sqrt(np.diag(pcov))
-        self.assertGreater(float(ratio.min()), 5.0,
-                           "the defect this guards is no longer reproduced")
+        self.assertGreater(
+            float(ratio.min()), 5.0, "the defect this guards is no longer reproduced"
+        )
 
 
 class ErrorsAreReportedPerParameterTests(unittest.TestCase):
@@ -144,12 +139,13 @@ class ErrorsAreReportedPerParameterTests(unittest.TestCase):
 
         def held(x, a1, t1):
             return TRUE[0] + a1 * np.exp(-x / t1)
-        _, pcov = curve_fit(held, x, y, p0=START[1:], sigma=np.full(N, SIGMA),
-                            absolute_sigma=True)
+
+        _, pcov = curve_fit(held, x, y, p0=START[1:], sigma=np.full(N, SIGMA), absolute_sigma=True)
         np.testing.assert_allclose(
-            [float(by_name["a1"].error_estimate),
-             float(by_name["t1"].error_estimate)],
-            np.sqrt(np.diag(pcov)), rtol=0.02)
+            [float(by_name["a1"].error_estimate), float(by_name["t1"].error_estimate)],
+            np.sqrt(np.diag(pcov)),
+            rtol=0.02,
+        )
 
     def test_a_parameter_that_cannot_move_the_curve_reports_no_error(self):
         """It carries no covariance column, so it must not show a number."""
@@ -182,57 +178,54 @@ class ResidualKernelTests(unittest.TestCase):
     def numpy_reference(data, model, xmin, xmax, noise_model):
         """The implementation that was there before, verbatim in shape."""
         import chisurf.core.fitting as CF
+
         _, model_y = model[xmin:xmax]
         sliced = data[xmin:xmax]
         data_y, data_ey = sliced[1], sliced[3]
         ml = min(len(model_y), len(data_y))
         if CF.normalize_noise_model(noise_model) == "poisson":
             return CF.deviance_residuals(data_y[:ml], model_y[:ml])
-        return np.array((data_y[:ml] - model_y[:ml]) / data_ey[:ml],
-                        dtype=np.float64)
+        return np.array((data_y[:ml] - model_y[:ml]) / data_ey[:ml], dtype=np.float64)
 
     def test_it_matches_numpy_across_windows_lengths_and_noise_models(self):
         import chisurf.core.fitting as CF
         from chisurf.core.curve import Curve
+
         rng = np.random.default_rng(3)
         shapes = [(500, 500), (500, 400), (400, 500), (37, 37)]
         # Degenerate and hostile windows: empty, inverted, past the end, and
         # the negative `xmin` that means "from the end" to a Python slice and
         # would mean "clamp to zero" to a C++ window.
-        windows = [(0, 500), (10, 200), (0, 10 ** 6), (5, 5), (100, 50),
-                   (0, 1), (0, 0), (-5, 100)]
+        windows = [(0, 500), (10, 200), (0, 10**6), (5, 5), (100, 50), (0, 1), (0, 0), (-5, 100)]
         checked = 0
         for n_data, n_model in shapes:
             for xmin, xmax in windows:
                 for noise in ("default", "poisson"):
                     y = rng.uniform(1, 500, n_data)
-                    data = DataCurve(x=np.arange(n_data, dtype=float), y=y,
-                                     ey=np.sqrt(y))
-                    model = Curve(x=np.arange(n_model, dtype=float),
-                                  y=rng.uniform(1, 500, n_model))
+                    data = DataCurve(x=np.arange(n_data, dtype=float), y=y, ey=np.sqrt(y))
+                    model = Curve(x=np.arange(n_model, dtype=float), y=rng.uniform(1, 500, n_model))
                     want = self.numpy_reference(data, model, xmin, xmax, noise)
-                    got = CF.calculate_weighted_residuals(
-                        data, model, xmin, xmax, noise)
-                    with self.subTest(shape=(n_data, n_model),
-                                      window=(xmin, xmax), noise=noise):
+                    got = CF.calculate_weighted_residuals(data, model, xmin, xmax, noise)
+                    with self.subTest(shape=(n_data, n_model), window=(xmin, xmax), noise=noise):
                         self.assertEqual(len(got), len(want))
-                        np.testing.assert_array_equal(np.asarray(got),
-                                                      np.asarray(want))
+                        np.testing.assert_array_equal(np.asarray(got), np.asarray(want))
                     checked += 1
         self.assertGreater(checked, 50)
 
     def test_the_cpp_kernel_is_actually_being_used(self):
         """Otherwise the comparison above passes by testing numpy twice."""
         import chisurf.core.fitting as CF
+
         self.assertIsNotNone(
             CF._bff_weighted_residuals,
-            "bff's residual kernel did not resolve; every fit is on the "
-            "numpy fallback")
+            "bff's residual kernel did not resolve; every fit is on the numpy fallback",
+        )
 
     def test_the_numpy_fallback_still_works(self):
         """It is the definition of the behaviour, and must stay reachable."""
         import chisurf.core.fitting as CF
         from chisurf.core.curve import Curve
+
         rng = np.random.default_rng(5)
         y = rng.uniform(1, 500, 128)
         data = DataCurve(x=np.arange(128, dtype=float), y=y, ey=np.sqrt(y))

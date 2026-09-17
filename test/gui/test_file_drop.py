@@ -4,23 +4,22 @@ Module-level ``get_app()`` is expensive (~8 s), so we keep tests cheap
 and fast.  Slow reader invocations (PDB, TTTR) are skipped with a clear
 reason.
 """
+
 from __future__ import annotations
 
 import os
-import pathlib
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
 import pytest
-
-from qtpy.QtCore import QMimeData, QUrl, Qt
-from qtpy.QtWidgets import QApplication
 from qtpy import QtGui
+from qtpy.QtCore import QMimeData, Qt, QUrl
+from qtpy.QtWidgets import QApplication
 
 import chisurf as cs
 import chisurf.gui
@@ -33,7 +32,7 @@ if hasattr(cs, "api") and cs.core.api is not None:
 
 
 def _count():
-    return len(getattr(cs, 'imported_datasets', []) or [])
+    return len(getattr(cs, "imported_datasets", []) or [])
 
 
 def _clear():
@@ -69,12 +68,21 @@ def _add_ds(filename):
 #  Action-dispatch tests
 ##############################################################################
 
+
 def test_tcspc_txt():
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
     before = _count()
     _add_ds("./test/data/tcspc/ibh_sample/Decay_577D.txt")
     assert _count() == before + 1
@@ -90,10 +98,18 @@ def test_fcs_kristine():
 
 def test_fcs_kristine_drop_auto_reader_independent_of_current_setup():
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
     before = _count()
     _add_ds("./test/data/fcs/kristine/Kristine_with_error.cor")
     assert _count() == before + 1
@@ -106,8 +122,7 @@ def test_fcs_kristine_drop_auto_reader_independent_of_current_setup():
 
 def test_tcspc_thd():
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=0, reading_routine='thd')
+    _set_exp("TCSPC", "TXT/CSV", skiprows=0, reading_routine="thd")
     before = _count()
     _add_ds("./test/data/tcspc/PQ_THD/Untitled.thd")
     assert _count() == before + 1
@@ -116,10 +131,18 @@ def test_tcspc_thd():
 def test_multiple_files():
     """Drop two files sequentially -> both loaded."""
     _clear()
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
     before = _count()
     _add_ds("./test/data/tcspc/ibh_sample/Decay_577D.txt")
     _add_ds("./test/data/tcspc/ibh_sample/Prompt.txt")
@@ -140,18 +163,25 @@ def test_structure_pdb():
 #  Qt drop-event simulation
 ##############################################################################
 
+
 def _sim_drop_via_send(widget, paths):
     """Send Qt drag-drop events to *widget* using sendEvent."""
     mime = QMimeData()
     mime.setUrls([QUrl.fromLocalFile(os.path.abspath(p)) for p in paths])
     enter = QtGui.QDragEnterEvent(
         widget.rect().center(),
-        Qt.CopyAction | Qt.MoveAction, mime, Qt.LeftButton, Qt.NoModifier,
+        Qt.CopyAction | Qt.MoveAction,
+        mime,
+        Qt.LeftButton,
+        Qt.NoModifier,
     )
     QApplication.sendEvent(widget, enter)
     drop = QtGui.QDropEvent(
         widget.rect().center(),
-        Qt.CopyAction | Qt.MoveAction, mime, Qt.LeftButton, Qt.NoModifier,
+        Qt.CopyAction | Qt.MoveAction,
+        mime,
+        Qt.LeftButton,
+        Qt.NoModifier,
     )
     QApplication.sendEvent(widget, drop)
 
@@ -162,7 +192,10 @@ def _sim_drop_direct(widget, paths):
     mime.setUrls([QUrl.fromLocalFile(os.path.abspath(p)) for p in paths])
     drop = QtGui.QDropEvent(
         widget.rect().center(),
-        Qt.CopyAction, mime, Qt.LeftButton, Qt.NoModifier,
+        Qt.CopyAction,
+        mime,
+        Qt.LeftButton,
+        Qt.NoModifier,
     )
     widget.dropEvent(drop)
 
@@ -170,11 +203,19 @@ def _sim_drop_direct(widget, paths):
 def test_drop_on_label():
     _clear()
     gui = cs.cs
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
-    label = getattr(gui, 'label_filedrop', None)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
+    label = getattr(gui, "label_filedrop", None)
     if label is None:
         pytest.skip("No label_filedrop widget")
     before = _count()
@@ -187,10 +228,18 @@ def test_drop_on_label():
 def test_drop_on_selector():
     _clear()
     gui = cs.cs
-    _set_exp("TCSPC", "TXT/CSV",
-             skiprows=11, reading_routine='csv', is_vv_vh=False,
-             use_header=True, matrix_columns=[], polarization='vm',
-             rep_rate=10.0, dt=0.0141)
+    _set_exp(
+        "TCSPC",
+        "TXT/CSV",
+        skiprows=11,
+        reading_routine="csv",
+        is_vv_vh=False,
+        use_header=True,
+        matrix_columns=[],
+        polarization="vm",
+        rep_rate=10.0,
+        dt=0.0141,
+    )
     before = _count()
     # Call dropEvent directly (sendEvent gets intercepted by QTreeWidget's
     # viewport event handling, which doesn't reach our override).

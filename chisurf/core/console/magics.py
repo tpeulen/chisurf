@@ -149,11 +149,11 @@ class MagicRegistry:
         return self._cell if kind == "cell" else self._line
 
     def register(
-            self,
-            name: str,
-            func: typing.Callable,
-            kind: str = "line",
-            group: str = "core",
+        self,
+        name: str,
+        func: typing.Callable,
+        kind: str = "line",
+        group: str = "core",
     ) -> None:
         """Add a magic.
 
@@ -179,6 +179,7 @@ class MagicRegistry:
         -------
         callable
         """
+
         def decorate(func: typing.Callable) -> typing.Callable:
             self.register(name or func.__name__, func, "line", group)
             return func
@@ -197,6 +198,7 @@ class MagicRegistry:
         -------
         callable
         """
+
         def decorate(func: typing.Callable) -> typing.Callable:
             self.register(name or func.__name__, func, "cell", group)
             return func
@@ -249,11 +251,11 @@ class MagicRegistry:
         return [self._table(kind)[name] for name in sorted(self._table(kind))]
 
     def call(
-            self,
-            shell: typing.Any,
-            name: str,
-            line: str,
-            cell: str | None = None,
+        self,
+        shell: typing.Any,
+        name: str,
+        line: str,
+        cell: str | None = None,
     ) -> typing.Any:
         """Invoke a magic.
 
@@ -281,15 +283,13 @@ class MagicRegistry:
             # magic applied to a body; say so precisely rather than "unknown".
             other = self.get(name, "line" if kind == "cell" else "cell")
             if other is not None:
-                raise MagicError(
-                    f"%{name} is a {other.kind} magic, not a {kind} magic"
-                )
+                raise MagicError(f"%{name} is a {other.kind} magic, not a {kind} magic")
             raise MagicError(f"unknown magic: %{name}  (try %lsmagic)")
         if kind == "cell":
             return spec.func(shell, line, cell)
         return spec.func(shell, line)
 
-    def copy(self) -> "MagicRegistry":
+    def copy(self) -> MagicRegistry:
         """Return an independent copy.
 
         Each shell gets its own, so registering a magic in one console does not
@@ -310,11 +310,11 @@ BUILTIN = MagicRegistry()
 
 
 def register_magic(
-        name: str,
-        func: typing.Callable | None = None,
-        *,
-        kind: str = "line",
-        group: str = "plugin",
+    name: str,
+    func: typing.Callable | None = None,
+    *,
+    kind: str = "line",
+    group: str = "plugin",
 ):
     """Register a magic on the built-in registry.
 

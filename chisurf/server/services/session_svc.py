@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from chisurf.server.services import ServiceResult
 from chisurf.server.services._stats import _safe_chi2
@@ -56,7 +56,7 @@ def session_snapshot(state: SessionState) -> ServiceResult:
 
 def session_restore(
     state: SessionState,
-    project_path: Optional[str] = None,
+    project_path: str | None = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Restore session state.
@@ -67,6 +67,7 @@ def session_restore(
     """
     if project_path:
         from chisurf.server.services.projects import load_project
+
         result = load_project(state, project_path)
         if event_bus is not None:
             event_bus.publish("session.restored", {"project_path": project_path})

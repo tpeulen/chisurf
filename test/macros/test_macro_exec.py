@@ -18,6 +18,7 @@ So the macro under test is now a temporary file this test writes itself, which
 records that it ran. That is what the original was trying to establish, and it
 can be asserted instead of printed.
 """
+
 import pathlib
 
 import pytest
@@ -27,14 +28,13 @@ from qtpy import QtWidgets
 # Qt does not raise, it aborts the whole process and takes the test session
 # with it. The non-GUI suite has no application, so skip at import time.
 if QtWidgets.QApplication.instance() is None:
-    pytest.skip(
-        "the ChiSurf main window needs a QApplication", allow_module_level=True
-    )
+    pytest.skip("the ChiSurf main window needs a QApplication", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
 def main_window():
     from chisurf.gui.main import Main
+
     return Main()
 
 
@@ -42,10 +42,7 @@ def test_exec_executor_runs_the_file(main_window, tmp_path):
     """The macro body executes, and side effects reach the filesystem."""
     marker = tmp_path / "macro-ran.txt"
     macro = tmp_path / "macro_under_test.py"
-    macro.write_text(
-        "import pathlib\n"
-        f"pathlib.Path(r'{marker}').write_text('ran')\n"
-    )
+    macro.write_text(f"import pathlib\npathlib.Path(r'{marker}').write_text('ran')\n")
 
     main_window.onRunMacro(filename=macro, executor="exec")
 
@@ -68,9 +65,7 @@ def test_a_macro_that_raises_propagates(main_window, tmp_path):
 
 def test_a_missing_macro_raises(main_window, tmp_path):
     with pytest.raises(FileNotFoundError):
-        main_window.onRunMacro(
-            filename=tmp_path / "does_not_exist.py", executor="exec"
-        )
+        main_window.onRunMacro(filename=tmp_path / "does_not_exist.py", executor="exec")
 
 
 def test_running_a_plugin_as_a_macro_does_not_block(main_window):
@@ -86,6 +81,11 @@ def test_running_a_plugin_as_a_macro_does_not_block(main_window):
     """
     plugin = (
         pathlib.Path(__file__).resolve().parents[2]
-        / "chisurf" / "plugins" / "misc" / "games" / "pong" / "__init__.py"
+        / "chisurf"
+        / "plugins"
+        / "misc"
+        / "games"
+        / "pong"
+        / "__init__.py"
     )
     main_window.onRunMacro(filename=plugin, executor="exec")

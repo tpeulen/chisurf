@@ -53,9 +53,7 @@ def data():
     """Return the measurement, loaded once."""
     return load_mfd_data(
         ANALYSIS,
-        axes=HistogramAxes.default(
-            n_ratio=50, n_micro_time=50, micro_time_range=(2.0, 8.0)
-        ),
+        axes=HistogramAxes.default(n_ratio=50, n_micro_time=50, micro_time_range=(2.0, 8.0)),
         n_signal_bins=12,
         n_span_bins=4,
     )
@@ -74,9 +72,7 @@ def _ratio_moments(histogram, axes):
 
 def test_slow_exchange_reproduces_the_static_mixture(data):
     """A rate far below one transition per burst *is* two static populations."""
-    static = MfdModel(
-        optics=OPTICS, states=STATES, populations=[0.5, 0.5], donor_only=0.2
-    )
+    static = MfdModel(optics=OPTICS, states=STATES, populations=[0.5, 0.5], donor_only=0.2)
     slow = MfdKineticModel(
         optics=OPTICS,
         states=STATES,
@@ -138,6 +134,7 @@ def test_fast_exchange_collapses_onto_one_averaged_population(data):
     # … sitting between the two states' own acceptor probabilities.
     low, high = 0.173, 0.788
     assert low + 0.05 < fast_mean < high - 0.05
+
     # The static mixture is bimodal where the fast one is not: the static histogram
     # puts real weight at both states and little between, and vice versa.
     def weight_between(weights, lo, hi):
@@ -184,9 +181,7 @@ def test_intermediate_exchange_is_broader_than_either_limit(data):
 
 def test_the_rate_matrix_must_match_the_states(data):
     """A three-state matrix on a two-state model is an error, not a broadcast."""
-    model = MfdKineticModel(
-        optics=OPTICS, states=STATES, rate_matrix=np.zeros((3, 3))
-    )
+    model = MfdKineticModel(optics=OPTICS, states=STATES, rate_matrix=np.zeros((3, 3)))
     with pytest.raises(ValueError, match="rate matrix"):
         model.histogram(data)
 

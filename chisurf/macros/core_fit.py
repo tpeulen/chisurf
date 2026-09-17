@@ -23,7 +23,8 @@ from chisurf.core.actions import get_action_catalog, record_action
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.experiments.core.serialize import decode_array, encode_array
 from chisurf.core.project import Project as CSProject
-from chisurf.core.project import ProjectArchive, fit_state as project_fit_state
+from chisurf.core.project import ProjectArchive
+from chisurf.core.project import fit_state as project_fit_state
 from chisurf.core.project import load_project as project_load_json
 from chisurf.core.project.archive import DATA_DIR, PROJECT_ARCHIVE_SUFFIX, PROJECT_JSON
 
@@ -435,7 +436,9 @@ def _archive_name_for_file(source_path: pathlib.Path, used_names: set[str]) -> s
         used_names.add(base_name)
         return base_name
 
-    digest = hashlib.md5(str(source_path.resolve()).encode("utf-8", errors="ignore")).hexdigest()[:8]
+    digest = hashlib.md5(str(source_path.resolve()).encode("utf-8", errors="ignore")).hexdigest()[
+        :8
+    ]
     stem = source_path.stem or "file"
     suffix = source_path.suffix
     name = f"{DATA_DIR}/{stem}-{digest}{suffix}"
@@ -555,7 +558,6 @@ def _embed_external_file_refs(
     if missing:
         proj.extra["missing_external_files"] = sorted(set(missing))
         log.warning(f"save_project: could not embed external files: {missing}")
-
 
 
 def export_action_catalog(
@@ -748,16 +750,22 @@ def _decode_curve_payload(
     return x, y, ex, ey
 
 
-_BULK_PDA_KEYS = frozenset({
-    's1s2', 'ps', 'row_indices', 'col_indices', 'tttr_indices',
-})
+_BULK_PDA_KEYS = frozenset(
+    {
+        "s1s2",
+        "ps",
+        "row_indices",
+        "col_indices",
+        "tttr_indices",
+    }
+)
 
 
 def _flatten_metadata(
-        src: dict,
-        *,
-        skip_keys: typing.Collection[str] = (),
-        prefix: str = '',
+    src: dict,
+    *,
+    skip_keys: typing.Collection[str] = (),
+    prefix: str = "",
 ) -> typing.Dict[str, str]:
     """Flatten a nested metadata dict into ``{key: str(value)}`` pairs.
 
@@ -774,17 +782,17 @@ def _flatten_metadata(
     for k, v in src.items():
         if k in skip_keys:
             continue
-        if v is None or v == '':
+        if v is None or v == "":
             continue
-        pkey = f'{prefix}{k}'
+        pkey = f"{prefix}{k}"
         if isinstance(v, dict):
-            result.update(_flatten_metadata(v, prefix=f'{pkey}.'))
+            result.update(_flatten_metadata(v, prefix=f"{pkey}."))
         elif isinstance(v, (list, tuple)):
             # Flatten short lists inline; skip large arrays
             if len(v) <= 12:
                 result[pkey] = str(v)
         elif isinstance(v, float):
-            result[pkey] = f'{v:.6e}'
+            result[pkey] = f"{v:.6e}"
         else:
             result[pkey] = str(v)
     return result
@@ -798,8 +806,8 @@ def _attach_tttr_header(fit_group, data_group):
     unified view of reader-provided metadata without re-opening files.
     """
     try:
-        d = data_group[0] if hasattr(data_group, '__getitem__') else data_group
-        meta = getattr(d, 'meta_data', None) or {}
+        d = data_group[0] if hasattr(data_group, "__getitem__") else data_group
+        meta = getattr(d, "meta_data", None) or {}
     except Exception:
         return
 
@@ -809,38 +817,34 @@ def _attach_tttr_header(fit_group, data_group):
     entries: typing.Dict[str, str] = {}
 
     # 1) Parse TTTR header JSON tags
-    hdr = meta.get('tttr_header_json')
+    hdr = meta.get("tttr_header_json")
     if hdr:
         try:
             raw = json.loads(hdr) if isinstance(hdr, str) else hdr
         except Exception:
             raw = None
         if raw:
-            tags = raw.get('tags', [])
+            tags = raw.get("tags", [])
             for tag in tags:
-                name = tag.get('name', '')
-                value = tag.get('value', '')
-                idx = tag.get('idx', 0)
-                if value is None or value == '':
+                name = tag.get("name", "")
+                value = tag.get("value", "")
+                idx = tag.get("idx", 0)
+                if value is None or value == "":
                     continue
                 if isinstance(value, float):
-                    value = f'{value:.6e}'
+                    value = f"{value:.6e}"
                 key = name
                 if idx and idx > 0:
-                    key = f'{name}[{idx}]'
+                    key = f"{name}[{idx}]"
                 if key not in entries:
                     entries[str(key)] = str(value)
 
     # 2) Surface non-bulk keys from meta_data
-    entries.update(
-        _flatten_metadata(meta, skip_keys={'tttr_header_json'})
-    )
+    entries.update(_flatten_metadata(meta, skip_keys={"tttr_header_json"}))
 
     # 3) Surface non-bulk keys from the pda dict
-    pda = getattr(d, 'pda', None) or {}
-    entries.update(
-        _flatten_metadata(pda, skip_keys=_BULK_PDA_KEYS, prefix='pda.')
-    )
+    pda = getattr(d, "pda", None) or {}
+    entries.update(_flatten_metadata(pda, skip_keys=_BULK_PDA_KEYS, prefix="pda."))
 
     # Add entries to flr_metadata (user metadata takes precedence)
     for k, v in entries.items():
@@ -850,14 +854,14 @@ def _attach_tttr_header(fit_group, data_group):
     # 4) Populate photon streams only for TTTR-originating data (indicated by a
     #    non-empty tttr_header_json in meta_data). Non-TTTR files (e.g. TCSPC CSV)
     #    set data.filename but should not appear in the photon-streams panel.
-    if meta.get('tttr_header_json'):
-        raw_filenames = meta.get('filenames')
+    if meta.get("tttr_header_json"):
+        raw_filenames = meta.get("filenames")
         if not raw_filenames:
             try:
                 raw_filenames = [
-                    str(getattr(d, 'filename', ''))
-                    for d in (data_group if hasattr(data_group, '__getitem__') else [data_group])
-                    if getattr(d, 'filename', None)
+                    str(getattr(d, "filename", ""))
+                    for d in (data_group if hasattr(data_group, "__getitem__") else [data_group])
+                    if getattr(d, "filename", None)
                 ]
             except Exception:
                 raw_filenames = []
@@ -865,17 +869,21 @@ def _attach_tttr_header(fit_group, data_group):
             streams = []
             for i, entry in enumerate(raw_filenames, 1):
                 if isinstance(entry, dict):
-                    streams.append({
-                        "stream_id": f"stream_{i}",
-                        "file_path": entry.get('path', ''),
-                        "file_format": entry.get('format', ''),
-                    })
+                    streams.append(
+                        {
+                            "stream_id": f"stream_{i}",
+                            "file_path": entry.get("path", ""),
+                            "file_format": entry.get("format", ""),
+                        }
+                    )
                 else:
-                    streams.append({
-                        "stream_id": f"stream_{i}",
-                        "file_path": str(entry),
-                        "file_format": "",
-                    })
+                    streams.append(
+                        {
+                            "stream_id": f"stream_{i}",
+                            "file_path": str(entry),
+                            "file_format": "",
+                        }
+                    )
             fit_group.flr_photon_streams = streams
 
 
@@ -938,7 +946,7 @@ def add_fit(
 
         return ""
 
-    gui = getattr(cs, "cs", None)
+    gui = getattr(cs, "cs", None)  # noqa: F823 -- ruff false-positive: a sibling function's local `import chisurf.x` submodule import confuses its cross-scope binding tracking for the module-level `cs` alias
     # Process inputs of macro and replace None
     # with more sensible values that are read
     # from the GUI or fallback defaults
@@ -1066,6 +1074,7 @@ def add_fit(
     if model_module and model_class_name:
         try:
             import importlib
+
             from chisurf.core.models.model import Model
 
             candidate = getattr(importlib.import_module(str(model_module)), str(model_class_name))
@@ -1074,7 +1083,9 @@ def add_fit(
         except Exception as exc:
             cs.logging.warning(
                 "add_fit: could not import saved model %s.%s: %s",
-                model_module, model_class_name, exc,
+                model_module,
+                model_class_name,
+                exc,
             )
 
     # Try to find the model by name in the experiment type. Compared stripped:
@@ -1229,13 +1240,17 @@ def add_fit(
                 # Publish event so the GUI can create the MDI subwindow reactively
                 try:
                     from chisurf.server.startup import get_shared_event_bus
+
                     _bus = get_shared_event_bus()
                     if _bus is not None:
-                        _bus.publish("fit.added", {
-                            "fit_uid": str(getattr(fit_group, "unique_identifier", "")),
-                            "fit_index": len(cs.fits) - 1,
-                            "fit_name": str(getattr(fit_group, "name", "")),
-                        })
+                        _bus.publish(
+                            "fit.added",
+                            {
+                                "fit_uid": str(getattr(fit_group, "unique_identifier", "")),
+                                "fit_index": len(cs.fits) - 1,
+                                "fit_name": str(getattr(fit_group, "name", "")),
+                            },
+                        )
                 except Exception:
                     cs.logging.exception("add_fit: failed to publish fit.added event")
 
@@ -1252,12 +1267,11 @@ def add_fit(
                         gui.mdiarea.setUpdatesEnabled(False)
 
                     from chisurf.gui.widgets.fitting import (
-                        FittingControllerWidget,
                         FitSubWindow,
+                        FittingControllerWidget,
                     )
-                    fit_control_widget = FittingControllerWidget(
-                        fit=fit_group
-                    )
+
+                    fit_control_widget = FittingControllerWidget(fit=fit_group)
                     header_layout = getattr(gui, "analysisHeaderLayout", None)
                     if header_layout is not None:
                         header_layout.addWidget(fit_control_widget)
@@ -1266,6 +1280,7 @@ def add_fit(
                     from chisurf.gui.widgets.models.model_editor import (
                         build_model_editor,
                     )
+
                     for fit in fit_group:
                         # A pure model is not a widget; build_model_editor returns
                         # the legacy model-widget unchanged or an AutoModelWidget
@@ -1281,6 +1296,7 @@ def add_fit(
                     fit_window.setWindowTitle(fit.name)
                     fit_window = gui.mdiarea.addSubWindow(fit_window)
                     import chisurf.gui as _gui_mod
+
                     _gui_mod.fit_windows.append(fit_window)
                     gui.current_fit = fit_group
                     # Run auto-fit range synchronously so that each fit completes
@@ -1433,6 +1449,7 @@ def save_fit(target_path: str = None, use_complex_name: bool = False, fit_window
             document.add_paragraph(f"Fit #{i + 1}", style="ListNumber")
 
             from chisurf.gui.widgets.models.model_editor import model_editor_widget
+
             for suffix, source in (
                 ("_screenshot_fit.png", fit_window),
                 ("_screenshot_model.png", model_editor_widget(f.model)),
@@ -1912,6 +1929,7 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
     # widgets refresh accordingly.
     try:
         from chisurf.gui.widgets.models.model_editor import hide_model_editor
+
         hide_model_editor(gui.current_fit.model)
     except Exception:
         pass
@@ -1941,6 +1959,7 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
 
     try:
         from chisurf.gui.widgets.models.model_editor import show_model_editor
+
         show_model_editor(gui.current_fit.model)
     except Exception:
         pass
@@ -2267,6 +2286,7 @@ def _write_fit_docx(
         pass
 
     from chisurf.gui.widgets.models.model_editor import model_editor_widget
+
     for suffix, source in (
         ("_screenshot_fit.png", fit_window),
         ("_screenshot_model.png", model_editor_widget(local_fit.model)),
@@ -2377,18 +2397,11 @@ def _build_fitgroup_payload(
             fit_state = {}
 
         if model_module is None:
-            model_module = str(
-                fit_state.get("model_module")
-                or type(local_fit.model).__module__
-            )
-            model_class_name = str(
-                fit_state.get("model_class")
-                or type(local_fit.model).__name__
-            )
+            model_module = str(fit_state.get("model_module") or type(local_fit.model).__module__)
+            model_class_name = str(fit_state.get("model_class") or type(local_fit.model).__name__)
             if model_name is None:
                 model_name = str(
-                    getattr(type(local_fit.model), "name", "")
-                    or model_class_name
+                    getattr(type(local_fit.model), "name", "") or model_class_name
                 ).strip()
 
         try:
@@ -2429,9 +2442,7 @@ def _build_fitgroup_payload_from_window(
 ) -> typing.Tuple[str, typing.Dict]:
     """Legacy wrapper: extract FitGroup from a GUI window, then delegate."""
     fit_group = getattr(fit_window, "fit", None)
-    return _build_fitgroup_payload(
-        fit_group, register_datacurve, log, group_index
-    )
+    return _build_fitgroup_payload(fit_group, register_datacurve, log, group_index)
 
 
 def _project_path(project_root: pathlib.Path, value: typing.Any) -> pathlib.Path | None:
@@ -2549,7 +2560,9 @@ def _fitgroup_plot_state(fit_group: typing.Any) -> typing.Dict[str, typing.Any]:
     return {}
 
 
-def _apply_pending_plot_state(fit_group: typing.Any, fit_record: typing.Dict[str, typing.Any]) -> None:
+def _apply_pending_plot_state(
+    fit_group: typing.Any, fit_record: typing.Dict[str, typing.Any]
+) -> None:
     """Attach serialized plot state to a fit group for later GUI restoration."""
     if not isinstance(fit_record, dict):
         return
@@ -2856,7 +2869,9 @@ def load_fit_project(project_path: str):
         for lf_rec, new_fit in zip(local_fits, grouped_new):
             state = lf_rec.get("fit_state") or {}
             project_root = getattr(proj, "_archive_temp_dir", history_base_dir)
-            state = _resolve_project_local_model_state(state, pathlib.Path(project_root) if project_root else None)
+            state = _resolve_project_local_model_state(
+                state, pathlib.Path(project_root) if project_root else None
+            )
             if isinstance(state, dict):
                 try:
                     set_state = getattr(new_fit, "set_state", None)
@@ -2869,12 +2884,15 @@ def load_fit_project(project_path: str):
                         if version_id and hasattr(proj, "dependency_edges"):
                             pattern = f"fit_{version_id}:{fit_record_id}:"
                             dependency_edges = [
-                                edge for edge in proj.dependency_edges
+                                edge
+                                for edge in proj.dependency_edges
                                 if edge.get("operation_id", "").startswith(pattern)
                             ]
                         else:
                             dependency_edges = []
-                        project_fit_state.apply_state_to_fit(new_fit, state, dependency_edges, fit_record_id)
+                        project_fit_state.apply_state_to_fit(
+                            new_fit, state, dependency_edges, fit_record_id
+                        )
                 except Exception as exc:
                     log.warning(
                         f"load_fit_project: could not restore state for local fit in {key}: {exc}"
@@ -3009,9 +3027,8 @@ def load_project_payload(
             # Prefer the experiment name saved in the project so that ProteinMC /
             # Chimol projects select the correct experiment by name or key
             # rather than relying on a hard-coded comboBox index.
-            current_exp_token = (
-                ui_state.get("current_experiment_name")
-                or ui_state.get("current_experiment_key")
+            current_exp_token = ui_state.get("current_experiment_name") or ui_state.get(
+                "current_experiment_key"
             )
             exp_combo = getattr(gui, "comboBox_experimentSelect", None)
             matched_idx = None
@@ -3028,7 +3045,10 @@ def load_project_payload(
                             break
                     if matched_idx is None:
                         for reg_key, reg_exp in getattr(cs, "experiment", {}).items():
-                            if str(getattr(reg_exp, "name", "")) == current_exp_token or reg_key == current_exp_token:
+                            if (
+                                str(getattr(reg_exp, "name", "")) == current_exp_token
+                                or reg_key == current_exp_token
+                            ):
                                 idx = exp_combo.findText(str(getattr(reg_exp, "name", reg_key)))
                                 if idx >= 0:
                                     matched_idx = idx
@@ -3185,6 +3205,7 @@ def load_project_payload(
     cs.imported_datasets[:] = restored_datasets
 
     from chisurf.macros.core_data import restore_global_fit_dataset
+
     try:
         restore_global_fit_dataset(_from_controller=True, update_ui=False)
     except Exception:
@@ -3279,12 +3300,15 @@ def load_project_payload(
                         if version_id and hasattr(proj, "dependency_edges"):
                             pattern = f"fit_{version_id}:{fit_record_id}:"
                             dependency_edges = [
-                                edge for edge in proj.dependency_edges
+                                edge
+                                for edge in proj.dependency_edges
                                 if edge.get("operation_id", "").startswith(pattern)
                             ]
                         else:
                             dependency_edges = []
-                        project_fit_state.apply_state_to_fit(new_fit, state, dependency_edges, fit_record_id)
+                        project_fit_state.apply_state_to_fit(
+                            new_fit, state, dependency_edges, fit_record_id
+                        )
                 except Exception as exc:
                     log.warning(
                         f"load_project: could not restore state for local fit in {key}: {exc}"
@@ -3315,6 +3339,7 @@ def load_project_payload(
 
         try:
             from chisurf.core.project.ui_state import set_ui_state
+
             set_ui_state(gui, ui_state)
         except Exception as exc:
             log.warning(f"load_project: could not restore UI state from dict: {exc}")
@@ -3327,7 +3352,9 @@ def load_project_payload(
     _refresh_history_browser()
     _record_history(
         action_type="project_load",
-        summary=f"load project from '{project_path}'" if project_path is not None else "load project from database",
+        summary=f"load project from '{project_path}'"
+        if project_path is not None
+        else "load project from database",
         payload={
             "project_path": str(project_path) if project_path is not None else "",
             "history_loaded": bool(history_loaded),
@@ -3339,6 +3366,7 @@ def load_project_payload(
         try:
             if gui is not None:
                 from chisurf.gui.project_helpers import add_recent_project
+
                 add_recent_project(gui, project_path)
         except Exception:
             pass
@@ -3398,6 +3426,7 @@ def restore_gui_from_fits(fit_uids: list) -> None:
         UIDs returned by :func:`load_project_data`.
     """
     import chisurf as _cs
+
     main_window = getattr(_cs, "cs", None)
     if main_window is None:
         _cs.logging.warning(

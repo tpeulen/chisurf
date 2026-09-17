@@ -5,15 +5,9 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from chisurf.core.datastore import (
-    column_names,
-    numeric_column,
-    read_results_table,
-    read_table,
-    store_from_arrays,
     store_from_rows,
 )
 from chisurf.plugins.burst.burst_selection.api.io import (
@@ -30,12 +24,7 @@ from chisurf.plugins.burst.burst_selection.api.models import (
 )
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_file
 
-BH_SPC_FILE = (
-    Path(__file__).resolve().parent
-    / "data"
-    / "bh_spc132_sm_dna"
-    / "m000.spc"
-)
+BH_SPC_FILE = Path(__file__).resolve().parent / "data" / "bh_spc132_sm_dna" / "m000.spc"
 
 DEFAULT_SETTINGS = AnalysisSettings(
     photon_filter=PhotonFilterSettings(
@@ -82,6 +71,7 @@ def burst_table():
 # get_unique_folder_path
 # ---------------------------------------------------------------------------
 
+
 def test_get_unique_folder_path_returns_base_when_free(tmp_path: Path) -> None:
     """Return the base path when neither folder nor .zip exists."""
     base = tmp_path / "output"
@@ -119,6 +109,7 @@ def test_get_unique_folder_path_avoids_both_conflicts(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # zip_output_folder
 # ---------------------------------------------------------------------------
+
 
 def test_zip_output_folder_roundtrip(tmp_path: Path) -> None:
     """Zip a folder and verify extracted contents match originals."""

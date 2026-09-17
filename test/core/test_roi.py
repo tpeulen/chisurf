@@ -8,18 +8,19 @@ single replacement has to get right for all of them: the same geometry must
 answer both "is this point inside" (gating) and "which pixels are inside"
 (imaging), on whatever axes the caller supplies.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
 from chisurf.core.roi import (
+    ROI,
     CompositeROI,
     EllipseROI,
     MaskROI,
     PolygonROI,
     RectangleROI,
-    ROI,
     ThresholdROI,
     labels_to_rois,
     roi_from_dict,
@@ -57,7 +58,7 @@ def test_same_roi_serves_pixel_and_value_axes():
 
     # as an image mask over a 10x10 frame spanning 0..1 on both axes
     mask = roi.to_mask((10, 10), extent=(0.0, 1.0, 0.0, 1.0))
-    assert mask.sum() == 36            # the 6x6 block of centres in [0.2, 0.8)
+    assert mask.sum() == 36  # the 6x6 block of centres in [0.2, 0.8)
     assert mask[5, 5] and not mask[0, 0]
 
 
@@ -129,8 +130,8 @@ def test_polygon_handles_concave_outlines():
     """A concave (freehand-like) outline excludes its notch."""
     poly = PolygonROI([(0, 0), (4, 0), (4, 4), (2, 1), (0, 4)])
     mask = poly.to_mask((5, 5))
-    assert mask[0, 2]           # near the top edge, inside
-    assert not mask[3, 2]       # inside the notch
+    assert mask[0, 2]  # near the top edge, inside
+    assert not mask[3, 2]  # inside the notch
 
 
 def test_polygon_needs_three_vertices():
@@ -152,7 +153,7 @@ def test_mask_roi_clips_at_the_frame_edge():
     """A mask hanging off the edge is clipped, not wrapped or an error."""
     roi = MaskROI(np.ones((3, 3), dtype=bool), offset=(-1, 3))
     mask = roi.to_mask((4, 4))
-    assert mask.sum() == 2          # rows 0..1 x col 3
+    assert mask.sum() == 2  # rows 0..1 x col 3
     assert mask[0, 3] and mask[1, 3]
 
 
@@ -176,9 +177,7 @@ def test_threshold_percentiles_track_the_data():
     assert mask.sum() == 10
     # A stack is averaged over frames before thresholding.
     stack = np.stack([img, img])
-    np.testing.assert_array_equal(
-        ThresholdROI(low=50).to_mask((10, 10), image=stack), img >= 50
-    )
+    np.testing.assert_array_equal(ThresholdROI(low=50).to_mask((10, 10), image=stack), img >= 50)
 
 
 # --- composition -----------------------------------------------------------
@@ -202,7 +201,7 @@ def test_composite_mixes_geometry_with_intensity():
     shape = RectangleROI(-0.5, -0.5, 2.5, 2.5)
     bright = ThresholdROI(low=5.0)
     mask = (shape & bright).to_mask((5, 5), image=img)
-    assert mask.sum() == 4          # the 2x2 overlap of the shape and the bright block
+    assert mask.sum() == 4  # the 2x2 overlap of the shape and the bright block
     assert mask[1, 1] and not mask[0, 0] and not mask[3, 3]
 
 
@@ -225,13 +224,16 @@ def test_composite_gates_points_too():
 
 
 # --- persistence -----------------------------------------------------------
-@pytest.mark.parametrize("roi", [
-    RectangleROI(1, 2, 3, 4, name="rect"),
-    EllipseROI(2, 2, 1, 3, angle=0.4, name="ell"),
-    PolygonROI([(0, 0), (3, 0), (3, 3)], name="tri"),
-    MaskROI(np.eye(4, dtype=bool), offset=(1, 1), name="diag"),
-    ThresholdROI(low=1.0, high=8.0, name="band"),
-])
+@pytest.mark.parametrize(
+    "roi",
+    [
+        RectangleROI(1, 2, 3, 4, name="rect"),
+        EllipseROI(2, 2, 1, 3, angle=0.4, name="ell"),
+        PolygonROI([(0, 0), (3, 0), (3, 3)], name="tri"),
+        MaskROI(np.eye(4, dtype=bool), offset=(1, 1), name="diag"),
+        ThresholdROI(low=1.0, high=8.0, name="band"),
+    ],
+)
 def test_every_roi_round_trips_through_a_dict(roi):
     """A stored region reloads to something that masks identically."""
     import json
@@ -311,9 +313,7 @@ def test_as_roi_accepts_a_region_its_serialised_form_or_nothing():
     rect = RectangleROI(0, 0, 2, 2)
     assert as_roi(None) is None
     assert as_roi(rect) is rect
-    np.testing.assert_array_equal(
-        as_roi(rect.to_dict()).to_mask((4, 4)), rect.to_mask((4, 4))
-    )
+    np.testing.assert_array_equal(as_roi(rect.to_dict()).to_mask((4, 4)), rect.to_mask((4, 4)))
     with pytest.raises(ValueError):
         as_roi("a rectangle, please")
 
@@ -329,7 +329,7 @@ def test_as_mask_treats_an_erased_pixel_as_outside():
 
     painted = np.zeros((3, 3))
     painted[0, 0] = 1.0
-    painted[1, 1] = -1.0          # erased
+    painted[1, 1] = -1.0  # erased
     np.testing.assert_array_equal(
         as_mask(painted, (3, 3)),
         [[True, False, False], [False, False, False], [False, False, False]],
@@ -368,7 +368,7 @@ def test_a_mask_painted_on_a_histogram_gates_the_data_behind_it():
     which is why every painted gate before this lived outside the ROI system.
     """
     counts = np.zeros((4, 4), dtype=bool)
-    counts[2:, 2:] = True                       # the upper-right quadrant
+    counts[2:, 2:] = True  # the upper-right quadrant
     edges = np.linspace(0.0, 1.0, 5)
     gate = MaskROI.from_histogram(counts, edges, edges, name="cluster")
 
@@ -405,18 +405,17 @@ def test_a_pixel_mask_still_means_pixels():
     """The default is unchanged: no extent, no axes, plain pixel indices."""
     m = MaskROI(np.array([[False, True], [False, True]]), offset=(3, 5))
     assert m.extent is None
-    np.testing.assert_array_equal(m.contains(np.array([[6.0, 3.0], [5.0, 3.0]])),
-                                  [True, False])
-    np.testing.assert_array_equal(m.to_mask((6, 8))[3:5, 5:7],
-                                  [[False, True], [False, True]])
+    np.testing.assert_array_equal(m.contains(np.array([[6.0, 3.0], [5.0, 3.0]])), [True, False])
+    np.testing.assert_array_equal(m.to_mask((6, 8))[3:5, 5:7], [[False, True], [False, True]])
     assert roi_from_dict(m.to_dict()).offset == (3, 5)
 
 
 def test_histogram_edges_must_match_the_mask():
     """A silent off-by-one here would shift every gate by a bin."""
     with pytest.raises(ValueError, match="edges do not match"):
-        MaskROI.from_histogram(np.zeros((4, 4), dtype=bool),
-                               np.linspace(0, 1, 4), np.linspace(0, 1, 5))
+        MaskROI.from_histogram(
+            np.zeros((4, 4), dtype=bool), np.linspace(0, 1, 4), np.linspace(0, 1, 5)
+        )
 
 
 def test_analytic_regions_bound_themselves_without_a_grid():
@@ -448,7 +447,11 @@ def test_regions_that_need_a_grid_say_so():
 
 def test_roi_is_the_abstract_base():
     """Every shape is a ROI, so consumers can accept the base type."""
-    for roi in (RectangleROI(0, 0, 1, 1), EllipseROI(0, 0, 1),
-                PolygonROI([(0, 0), (1, 0), (1, 1)]),
-                MaskROI(np.ones((2, 2), dtype=bool)), ThresholdROI(low=0.0)):
+    for roi in (
+        RectangleROI(0, 0, 1, 1),
+        EllipseROI(0, 0, 1),
+        PolygonROI([(0, 0), (1, 0), (1, 1)]),
+        MaskROI(np.ones((2, 2), dtype=bool)),
+        ThresholdROI(low=0.0),
+    ):
         assert isinstance(roi, ROI)

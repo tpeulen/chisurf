@@ -29,7 +29,9 @@ def list(folder: Path, recursive: bool):
 
 @cli.command("load")
 @click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--window-ms", default=10.0, show_default=True, type=float, help="Trace bin width in ms.")
+@click.option(
+    "--window-ms", default=10.0, show_default=True, type=float, help="Trace bin width in ms."
+)
 def load(path: Path, window_ms: float):
     """Load and print binned trace metadata."""
     data = load_trace(str(path), time_window_ms=window_ms)
@@ -40,7 +42,9 @@ def load(path: Path, window_ms: float):
 
 @cli.command("export-csv")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--output-dir", "output_dir", required=True, type=click.Path(file_okay=False, path_type=Path))
+@click.option(
+    "--output-dir", "output_dir", required=True, type=click.Path(file_okay=False, path_type=Path)
+)
 @click.option("--window-ms", default=10.0, show_default=True, type=float)
 def export(paths, output_dir: Path, window_ms: float):
     """Export traces to CSV files."""

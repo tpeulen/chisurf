@@ -99,7 +99,9 @@ def maxent_inversion(
     m = m / m.sum()
 
     return maxent(
-        K, b, max(float(alpha), 1e-12),
+        K,
+        b,
+        max(float(alpha), 1e-12),
         convention=EntropyWeight.HALF_CHI2,
         weights=weights,
         prior=m,

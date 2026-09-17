@@ -1,4 +1,5 @@
 """GUI workflow tests: group/ungroup datasets, switch experiments, clear."""
+
 from __future__ import annotations
 
 import os
@@ -7,12 +8,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import utils
 
-TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
 from unittest.mock import patch
-
-import pytest
 
 import chisurf as cs
 import chisurf.gui
@@ -45,11 +44,11 @@ def _setup_two_ds():
     gui.comboBox_setupSelect.setCurrentIndex(setup_idx)
     gui._refresh_setup_ui()
     gui.current_setup.skiprows = 11
-    gui.current_setup.reading_routine = 'csv'
+    gui.current_setup.reading_routine = "csv"
     gui.current_setup.is_vv_vh = False
     gui.current_setup.use_header = True
     gui.current_setup.matrix_columns = []
-    gui.current_setup.polarization = 'vm'
+    gui.current_setup.polarization = "vm"
     gui.current_setup.rep_rate = 10.0
     gui.current_setup.dt = 0.0141
     cs.core.actions.dispatch(
@@ -104,21 +103,19 @@ def test_clear_datasets():
 
 def test_switch_experiment():
     gui = cs.cs
-    names = [gui.comboBox_experimentSelect.itemText(i)
-             for i in range(gui.comboBox_experimentSelect.count())]
+    names = [
+        gui.comboBox_experimentSelect.itemText(i)
+        for i in range(gui.comboBox_experimentSelect.count())
+    ]
     assert "TCSPC" in names
     assert "FCS" in names
     assert "Modelling" in names
 
-    gui.comboBox_experimentSelect.setCurrentIndex(
-        gui.comboBox_experimentSelect.findText("FCS")
-    )
+    gui.comboBox_experimentSelect.setCurrentIndex(gui.comboBox_experimentSelect.findText("FCS"))
     gui._refresh_experiment_ui()
     assert gui.current_experiment.name == "FCS"
     assert gui.comboBox_setupSelect.count() > 0
 
-    gui.comboBox_experimentSelect.setCurrentIndex(
-        gui.comboBox_experimentSelect.findText("TCSPC")
-    )
+    gui.comboBox_experimentSelect.setCurrentIndex(gui.comboBox_experimentSelect.findText("TCSPC"))
     gui._refresh_experiment_ui()
     assert gui.current_experiment.name == "TCSPC"

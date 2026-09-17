@@ -1,4 +1,4 @@
-#leastsqbound = skf.math.optimize.leastsqbound.leastsqbound
+# leastsqbound = skf.math.optimize.leastsqbound.leastsqbound
 from chisurf.core.math.optimization.leastsqbound import (
     OptimizationCancelled,
     leastsqbound,

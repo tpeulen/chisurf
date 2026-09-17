@@ -75,8 +75,19 @@ def apparent_es(i_dd, i_da, i_aa=None) -> dict:
     return {"E": e, "S": s}
 
 
-def corrected_es(i_dd, i_da, i_aa=None, *, gamma=1.0, alpha=0.0, beta=1.0, delta=0.0,
-                 bg_dd=0.0, bg_da=0.0, bg_aa=0.0) -> dict:
+def corrected_es(
+    i_dd,
+    i_da,
+    i_aa=None,
+    *,
+    gamma=1.0,
+    alpha=0.0,
+    beta=1.0,
+    delta=0.0,
+    bg_dd=0.0,
+    bg_da=0.0,
+    bg_aa=0.0,
+) -> dict:
     """Fully corrected per-burst FRET efficiency ``E`` and stoichiometry ``S``.
 
     Hellenkamp 2018 correction: ``alpha`` (leakage), ``delta`` (direct
@@ -131,8 +142,7 @@ def corrected_es(i_dd, i_da, i_aa=None, *, gamma=1.0, alpha=0.0, beta=1.0, delta
     return {"E": e, "S": s, "fc": fc}
 
 
-def corrected_es_matrix(intensity, gamma, alpha, delta=None, background=None,
-                        pairs=None) -> dict:
+def corrected_es_matrix(intensity, gamma, alpha, delta=None, background=None, pairs=None) -> dict:
     """Corrected pairwise FRET efficiencies for an N-chromophore system.
 
     Generalises the two-colour three-cube correction to an N×N intensity matrix
@@ -194,9 +204,11 @@ def corrected_es_matrix(intensity, gamma, alpha, delta=None, background=None,
         f_ii = inten[i, i] - background[i, i]
         fc = {}
         for j in acceptors:
-            fc[j] = ((inten[i, j] - background[i, j])
-                     - float(alpha[i, j]) * f_ii
-                     - float(delta[i, j]) * (inten[j, j] - background[j, j]))
+            fc[j] = (
+                (inten[i, j] - background[i, j])
+                - float(alpha[i, j]) * f_ii
+                - float(delta[i, j]) * (inten[j, j] - background[j, j])
+            )
         budget = f_ii + sum(fc[j] / float(gamma[i, j]) for j in acceptors)
         for j in acceptors:
             with np.errstate(divide="ignore", invalid="ignore"):
@@ -205,8 +217,9 @@ def corrected_es_matrix(intensity, gamma, alpha, delta=None, background=None,
     return out
 
 
-def corrected_es_general(intensity, excitation, emission, *, background=None,
-                         pairs=None, unmix="naive", ridge=0.0) -> dict:
+def corrected_es_general(
+    intensity, excitation, emission, *, background=None, pairs=None, unmix="naive", ridge=0.0
+) -> dict:
     """Corrected pairwise FRET efficiencies from the light-path crosstalk matrices.
 
     The general form of the correction: instead of the scalar Hellenkamp factors
@@ -305,13 +318,12 @@ def corrected_es_general(intensity, excitation, emission, *, background=None,
     elif method in ("stable", "nnls", "nonneg"):
         from chisurf.core.fluorescence.crosstalk import invert_mixing
 
-        rows = [invert_mixing(emis, inten[i], nonneg=True, ridge=float(ridge))
-                for i in range(n_laser)]
+        rows = [
+            invert_mixing(emis, inten[i], nonneg=True, ridge=float(ridge)) for i in range(n_laser)
+        ]
         e_emit = np.stack(rows, axis=0)  # (L, N_chrom, ...)
     else:
-        raise ValueError(
-            f"unmix must be 'naive' or 'stable' (got {unmix!r})"
-        )
+        raise ValueError(f"unmix must be 'naive' or 'stable' (got {unmix!r})")
 
     if pairs is None:
         pairs = [(i, j) for i in range(n_laser) for j in range(i + 1, n_chrom)]

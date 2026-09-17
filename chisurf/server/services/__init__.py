@@ -4,8 +4,7 @@ from typing import Any, Dict, Optional
 
 from chisurf.server.session import SessionState
 
-
-ServiceResult = Dict[str, Any]
+ServiceResult = dict[str, Any]
 """Standard shape returned by every service function: ``{"ok": bool, ...}``."""
 
 
@@ -17,10 +16,10 @@ INVALID_STATE = "INVALID_STATE"
 
 # Maps service error codes to JSON-RPC error codes
 _SERVICE_TO_JSONRPC = {
-    NOT_FOUND: -32601,       # METHOD_NOT_FOUND semantics: resource not found
-    INVALID_INPUT: -32602,   # INVALID_PARAMS semantics: bad input
-    OPERATION_FAILED: -32603, # INTERNAL_ERROR semantics: operation failed
-    INVALID_STATE: -32603,   # INTERNAL_ERROR semantics: invalid state
+    NOT_FOUND: -32601,  # METHOD_NOT_FOUND semantics: resource not found
+    INVALID_INPUT: -32602,  # INVALID_PARAMS semantics: bad input
+    OPERATION_FAILED: -32603,  # INTERNAL_ERROR semantics: operation failed
+    INVALID_STATE: -32603,  # INTERNAL_ERROR semantics: invalid state
 }
 
 
@@ -28,8 +27,8 @@ def service_error(
     message: str,
     *,
     error_code: str,
-    jsonrpc_code: Optional[int] = None,
-    exception: Optional[BaseException] = None,
+    jsonrpc_code: int | None = None,
+    exception: BaseException | None = None,
 ) -> ServiceResult:
     """Build a structured service error result.
 
@@ -52,8 +51,8 @@ def service_error(
 
 def _resolve_fit(
     state: SessionState,
-    fit_index: Optional[int] = None,
-    fit_uid: Optional[str] = None,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
 ) -> tuple[Any, int]:
     """Look up a fit by index or uid. Returns ``(fit, index)`` or ``(None, -1)``.
 

@@ -9,6 +9,7 @@ than only the parameter list.
 The fitting client is backed by the service functions directly, which exercises
 the same DTO path as ZMQ without needing a server.
 """
+
 from __future__ import annotations
 
 import numpy as np

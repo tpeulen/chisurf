@@ -3,6 +3,7 @@
 The optics live in tttrlib (``CLSMSuperRes.psf_volume``); this module holds the
 parameters, caches results and reports what was computed.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -47,9 +48,19 @@ class PSFModel:
 
     # -- the parameters that change the physics, as a cache key --------------
     def _compute_key(self):
-        return (self.na, self.n_immersion, self.wavelength_nm, self.model,
-                self.polarization, self.angle_deg, self.nxy, self.nz,
-                self.pixel_size_nm, self.z_step_nm, self.quality)
+        return (
+            self.na,
+            self.n_immersion,
+            self.wavelength_nm,
+            self.model,
+            self.polarization,
+            self.angle_deg,
+            self.nxy,
+            self.nz,
+            self.pixel_size_nm,
+            self.z_step_nm,
+            self.quality,
+        )
 
     @property
     def is_stale(self) -> bool:
@@ -99,7 +110,7 @@ class PSFModel:
         nz, ny, nx = self._volume.shape
         r = radius_frac * min(nx, ny)
         cx, cy = nx / 2.0, ny / 2.0
-        z = nz * 0.92                      # a plane above the focus
+        z = nz * 0.92  # a plane above the focus
         half = 0.10 * min(nx, ny)
 
         phi = np.linspace(0.0, 2.0 * np.pi, n_ring, endpoint=False)
@@ -107,8 +118,7 @@ class PSFModel:
 
         pol = self.polarization
         if pol in ("x", "y", "linear"):
-            angle = {"x": 0.0, "y": np.pi / 2.0}.get(
-                pol, np.deg2rad(self.angle_deg))
+            angle = {"x": 0.0, "y": np.pi / 2.0}.get(pol, np.deg2rad(self.angle_deg))
             ux, uy = np.full_like(phi, np.cos(angle)), np.full_like(phi, np.sin(angle))
         elif pol == "radial":
             ux, uy = np.cos(phi), np.sin(phi)
@@ -180,8 +190,7 @@ class PSFModel:
         """A filename that records the optics, so exports do not collide."""
         pol = str(self.polarization).lower().replace(" ", "-")
         return (
-            f"psf_{self.model}_NA{self.na:g}_n{self.n_immersion:g}"
-            f"_{self.wavelength_nm:g}nm_{pol}"
+            f"psf_{self.model}_NA{self.na:g}_n{self.n_immersion:g}_{self.wavelength_nm:g}nm_{pol}"
         )
 
     # -- reporting -----------------------------------------------------------
@@ -224,7 +233,7 @@ class PSFModel:
         def _crossing(inside: int, outside: int) -> float:
             """Fractional index where the segment inside->outside crosses half."""
             if outside < 0 or outside >= profile.size:
-                return float(inside)           # profile leaves the frame
+                return float(inside)  # profile leaves the frame
             span = profile[inside] - profile[outside]
             if span <= 0:
                 return float(inside)

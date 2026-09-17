@@ -8,7 +8,6 @@ exercised on an analytic sphere where the answer is known.
 from __future__ import annotations
 
 import numpy as np
-
 from chimol.geometry.marching_cubes import (
     _EDGE_TABLE,
     _TRI_TABLE,
@@ -31,8 +30,7 @@ def test_tri_table_consistent_with_edge_table():
 def test_all_nontrivial_cases_produce_a_surface():
     """Cases 1..254 cross the isolevel and must emit at least one triangle."""
     corners = np.array(
-        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
-         [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]
     )
     for case in range(256):
         g = np.ones((2, 2, 2), dtype=float)

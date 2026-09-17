@@ -92,9 +92,7 @@ def test_decay_shot_noise_is_poisson_and_reproducible():
     ideal = synthetic_decay(128, 3.0, bin_width=0.05)
     counts_a = sample_decay_shot_noise(ideal, photon_count=50_000, seed=17)
     counts_b = sample_decay_shot_noise(ideal, photon_count=50_000, seed=17)
-    noisy_pattern = synthetic_decay(
-        128, 3.0, bin_width=0.05, photon_count=50_000, seed=17
-    )
+    noisy_pattern = synthetic_decay(128, 3.0, bin_width=0.05, photon_count=50_000, seed=17)
 
     assert np.array_equal(counts_a, counts_b)
     assert np.all(counts_a == np.floor(counts_a))
@@ -352,9 +350,9 @@ def test_fret_distance_component_matches_single_distance_relation():
 
 def test_distributed_components_can_be_unmixed_and_filtered():
     from chisurf.plugins.fcs.fcs_filter_calculator.api import (
+        compute_filters,
         synthetic_component_decay,
         unmix_decay,
-        compute_filters,
     )
 
     lifetime_component = synthetic_component_decay(
@@ -406,10 +404,12 @@ def test_central_decay_adapter_uses_all_fit_group_detector_models():
 
     green_model = DetectorModel(1.0)
     red_model = DetectorModel(0.4)
-    grouped_fit = SimpleNamespace(grouped_fits=[
-        SimpleNamespace(model=green_model, data=SimpleNamespace(name="green data")),
-        SimpleNamespace(model=red_model, data=SimpleNamespace(name="red data")),
-    ])
+    grouped_fit = SimpleNamespace(
+        grouped_fits=[
+            SimpleNamespace(model=green_model, data=SimpleNamespace(name="green data")),
+            SimpleNamespace(model=red_model, data=SimpleNamespace(name="red data")),
+        ]
+    )
 
     patterns = compute_detector_patterns_from_fit(
         grouped_fit,

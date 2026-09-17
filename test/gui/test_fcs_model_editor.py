@@ -23,7 +23,7 @@ def _make_fcs_data():
     """Return a DataCurve with a synthetic log-spaced FCS lag grid (ms)."""
     from chisurf.core.data import DataCurve
 
-    x = np.logspace(-3, 3, 60)   # 1 us .. 1 s, in ms
+    x = np.logspace(-3, 3, 60)  # 1 us .. 1 s, in ms
     y = np.zeros_like(x)
     return DataCurve(name="synthetic-fcs", load_filename_on_init=False, y=y, x=x)
 
@@ -137,7 +137,7 @@ def test_general_model_gauss_two_focus_suppresses_g0():
     model.update()
     g0_single = float(np.asarray(model.y)[0])
 
-    model.gauss._diam.value = 400.0   # nm
+    model.gauss._diam.value = 400.0  # nm
     model.update()
     g0_two_focus = float(np.asarray(model.y)[0])
 
@@ -177,6 +177,7 @@ def test_fcs_kinetics_model_editor_renders_and_computes(qapp):
 
     from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
+
     specs = model_plot_specs(model)
     plot_classes = [s[0] for s in specs]
     assert StateSchemePlot in plot_classes, "StateSchemePlot missing from Fit Window plot specs."
@@ -200,16 +201,14 @@ def test_general_model_saturation_panel_powers_the_numerical_path(qapp):
     editor = build_model_editor(model)
 
     # The Kinetic saturation scheme panel exists but starts collapsed (power = 0).
-    boxes = [
-        b for b in editor.findChildren(CollapsibleBox) if "state scheme" in b.title().lower()
-    ]
+    boxes = [b for b in editor.findChildren(CollapsibleBox) if "state scheme" in b.title().lower()]
     assert len(boxes) == 1
 
     model.update()
     baseline = np.asarray(model.y).copy()
 
     model.saturation_mode = "full"
-    model.saturation._power.value = 2.0   # 2 mW enables the numerical path
+    model.saturation._power.value = 2.0  # 2 mW enables the numerical path
     model.update()
     saturated = np.asarray(model.y)
     assert np.all(np.isfinite(saturated))
@@ -256,7 +255,7 @@ def test_general_model_anticorr_dips_below_bunched_curve():
     model.update()
     baseline = np.asarray(model.y).copy()
 
-    model.anticorr.add_anticorr(aca=0.8, act=500.0)   # 500 ns
+    model.anticorr.add_anticorr(aca=0.8, act=500.0)  # 500 ns
     model.find_parameters()
     model.update()
     dipped = np.asarray(model.y)
@@ -311,7 +310,7 @@ def test_general_model_gauss_reports_shape_and_brightness_outputs():
     model.gauss._w_z.value = 1000.0
     model.update()
 
-    assert model.gauss._s.value == pytest.approx(4.0)   # w_z / w_r
+    assert model.gauss._s.value == pytest.approx(4.0)  # w_z / w_r
     # No mean_count_rate metadata on the synthetic data -> brightness stays NaN.
     assert np.isnan(model.gauss._brightness.value)
 
@@ -328,7 +327,7 @@ def test_general_model_diffusion_panels_hide_on_mode_change(qapp):
 
     fit = _make_fcs_fit(GeneralFCSModel)
     model = fit.model
-    editor = build_model_editor(model)   # AutoForm itself (AutoModelWidget is an alias)
+    editor = build_model_editor(model)  # AutoForm itself (AutoModelWidget is an alias)
     assert model.diffusion_mode == "gauss"
 
     def _visible(title):
@@ -367,7 +366,7 @@ def test_general_model_equation_html_reflects_mode_and_terms():
     assert "MDF" in mdf_eq and "w<sub>r</sub>" not in mdf_eq
 
     model.diffusion_mode = "two_focus"
-    assert "d<sub>foci</sub>" in model.equation_html()   # non-zero preset diam
+    assert "d<sub>foci</sub>" in model.equation_html()  # non-zero preset diam
 
     model.diffusion_mode = "gauss"
     baseline_eq = model.equation_html()
@@ -407,7 +406,7 @@ def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
 
     infos = _equation_infos()
     assert len(infos) == 1
-    assert "MDF" not in infos[0].toPlainText()   # default mode is gauss
+    assert "MDF" not in infos[0].toPlainText()  # default mode is gauss
 
     model.diffusion_mode = "mdf"
     editor.rebuild()
@@ -449,15 +448,14 @@ def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
     # one finds nothing and this test raised ``StopIteration`` rather than
     # failing on what it is about.
     add_btn = next(
-        btn for btn in bunching_box.findChildren(QtWidgets.QToolButton)
-        if btn.text() == "add"
+        btn for btn in bunching_box.findChildren(QtWidgets.QToolButton) if btn.text() == "add"
     )
     add_btn.click()
 
     assert len(model.bunching) == 1
     after_text = info.toPlainText()
     assert after_text != before_text
-    assert "b1" in after_text   # the new term's a_b1/tau_b1 subscript
+    assert "b1" in after_text  # the new term's a_b1/tau_b1 subscript
 
 
 # ---------------------------------------------------------------------------
@@ -489,7 +487,6 @@ def test_dye_shape_outputs_are_written_by_update(qapp):
     also what makes them assertable without a display.
     """
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.models.fcs.dye_shape import DyeShapeFCSModel
 
     data = _make_correlation_data(mean_count_rate=25.0)
@@ -507,18 +504,13 @@ def test_dye_shape_outputs_are_written_by_update(qapp):
 def test_dye_shape_dye_choice_changes_the_curve(qapp):
     """Picking a different reference dye changes D and therefore the curve."""
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C
     from chisurf.core.models.fcs.dye_shape import DyeShapeFCSModel
 
-    model = fit_mod.Fit(
-        model_class=DyeShapeFCSModel, data=_make_correlation_data()
-    ).model
+    model = fit_mod.Fit(model_class=DyeShapeFCSModel, data=_make_correlation_data()).model
     names = model.dye_names()
     d_current = diffusion_coefficient_25C(model.dye_name)
-    other = next(
-        (n for n in names if abs(diffusion_coefficient_25C(n) - d_current) > 1e-9), None
-    )
+    other = next((n for n in names if abs(diffusion_coefficient_25C(n) - d_current) > 1e-9), None)
     if other is None:
         pytest.skip("MMFDB supplies no second reference dye with a different D")
 
@@ -532,9 +524,7 @@ def test_dye_shape_dye_choice_changes_the_curve(qapp):
     assert not np.allclose(first, np.asarray(model.y))
 
 
-@pytest.mark.parametrize(
-    "class_name", ["MaxEntFCSModel", "MaxEntRHModel"]
-)
+@pytest.mark.parametrize("class_name", ["MaxEntFCSModel", "MaxEntRHModel"])
 def test_maxent_l_curve_is_finite_with_an_unset_fit_range(qapp, class_name):
     """The L-curve is usable on a fit whose range has not been set.
 
@@ -545,7 +535,6 @@ def test_maxent_l_curve_is_finite_with_an_unset_fit_range(qapp, class_name):
     as the whole curve.
     """
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.models.fcs import maxent_models
 
     model_class = getattr(maxent_models, class_name)
@@ -577,7 +566,6 @@ def test_maxent_lcurve_section_renders_with_its_sweep_controls(qapp):
     from qtpy import QtWidgets
 
     import chisurf.core.fitting.fit as fit_mod
-
     from chisurf.core.models.fcs.maxent_models import MaxEntFCSModel
     from chisurf.gui.autoform.sections.builtin import LCurveWidget
     from chisurf.gui.widgets.models.model_editor import build_model_editor

@@ -154,8 +154,7 @@ def prepare_embedded_mmfdb(
         deployment = load_deployment_config(str(config_file))
         if deployment.mode != "embedded" or deployment.client.mode != "embedded":
             raise ValueError(
-                "ChiSurf embedded initialization requires mode: embedded and "
-                "client.mode: embedded"
+                "ChiSurf embedded initialization requires mode: embedded and client.mode: embedded"
             )
         apply_deployment_config(deployment)
         if deployment.admin.user is not None:

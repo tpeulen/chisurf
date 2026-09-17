@@ -12,7 +12,7 @@ actions, with no synthetic key events and no window.
 from __future__ import annotations
 
 import enum
-from typing import Callable
+from collections.abc import Callable
 
 
 class Action(enum.Enum):

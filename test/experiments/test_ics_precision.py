@@ -9,6 +9,7 @@ time that moves with the diffusion coefficient.
 Parameters are kept small so the suite stays fast; the covariance is O(n_lags^4)
 with an inner sum over the image.
 """
+
 from __future__ import annotations
 
 import math
@@ -19,6 +20,7 @@ import pytest
 from chisurf.core.experiments.ics.precision import (
     RicsPrecision,
     UnrealisableScan,
+    _pair_counts,
     correlation_covariance,
     correlation_grid,
     gamma_factors,
@@ -26,12 +28,17 @@ from chisurf.core.experiments.ics.precision import (
     rics_precision,
     triple_correlation,
 )
-from chisurf.core.experiments.ics.precision import _pair_counts
 
 #: A small but not degenerate acquisition, used by most tests.
 FAST = dict(
-    pixel_size=0.05, nx=32, ny=32, n_lags=3, n_repeats=25,
-    n_particles=50.0, brightness=1e5, seed=1,
+    pixel_size=0.05,
+    nx=32,
+    ny=32,
+    n_lags=3,
+    n_repeats=25,
+    n_particles=50.0,
+    brightness=1e5,
+    seed=1,
 )
 
 
@@ -48,10 +55,10 @@ def test_gamma_factors_of_the_two_geometries():
 
 
 def test_pair_counts_is_the_triangular_weighting():
-    """n pixels give n - |d| pairs at separation d."""
+    """N pixels give n - |d| pairs at separation d."""
     counts = _pair_counts(4)
     np.testing.assert_allclose(counts, [1, 2, 3, 4, 3, 2, 1])
-    assert counts.sum() == 4 ** 2
+    assert counts.sum() == 4**2
 
 
 def test_correlation_grid_peaks_at_zero_lag_and_decays():
@@ -72,12 +79,12 @@ def test_triple_correlation_is_finite_and_positive():
 
 def test_nearest_spd_makes_a_matrix_usable_for_sampling():
     """A symmetric matrix with a negative eigenvalue becomes positive definite."""
-    a = np.array([[1.0, 2.0], [2.0, 1.0]])          # eigenvalues 3 and -1
+    a = np.array([[1.0, 2.0], [2.0, 1.0]])  # eigenvalues 3 and -1
     assert min(np.linalg.eigvalsh(a)) < 0
     spd = nearest_spd(a)
     np.testing.assert_allclose(spd, spd.T)
     assert min(np.linalg.eigvalsh(spd)) > 0
-    np.linalg.cholesky(spd)                          # must not raise
+    np.linalg.cholesky(spd)  # must not raise
 
 
 def test_covariance_is_symmetric_and_correlates_lags():
@@ -104,8 +111,12 @@ def test_precision_improves_as_one_over_root_frames():
 
 def test_more_photons_measure_better():
     """A brighter sample gives a more precise diffusion coefficient."""
-    common = dict(pixel_time=8e-6, line_time=1e-3, n_images=50,
-                  **{k: v for k, v in FAST.items() if k != "brightness"})
+    common = dict(
+        pixel_time=8e-6,
+        line_time=1e-3,
+        n_images=50,
+        **{k: v for k, v in FAST.items() if k != "brightness"},
+    )
     dim = rics_precision(10.0, brightness=3e4, **common)
     bright = rics_precision(10.0, brightness=3e5, **common)
     assert bright.relative_error < dim.relative_error
@@ -114,7 +125,10 @@ def test_more_photons_measure_better():
 def test_a_hopeless_acquisition_is_reported_as_hopeless():
     """One dim frame cannot measure D, and the estimate says so rather than lying."""
     poor = rics_precision(
-        10.0, pixel_time=8e-6, line_time=1e-3, n_images=1,
+        10.0,
+        pixel_time=8e-6,
+        line_time=1e-3,
+        n_images=1,
         **{**FAST, "brightness": 1e4, "n_particles": 5.0},
     )
     assert poor.relative_error > 0.5
@@ -160,7 +174,10 @@ def test_a_slow_sample_gains_far_more_from_a_long_dwell():
             line = max(dwell * FAST["nx"] * 1.2, 1e-3)
             errors.append(
                 rics_precision(
-                    d, pixel_time=dwell, line_time=line, n_images=100,
+                    d,
+                    pixel_time=dwell,
+                    line_time=line,
+                    n_images=100,
                     **{**FAST, "n_repeats": 60},
                 ).relative_error
             )
@@ -195,23 +212,51 @@ def test_a_lag_the_image_cannot_hold_is_rejected():
     acquisitions must be told rather than skip every point in silence.
     """
     with pytest.raises(ValueError, match="too large for a 8x8 image") as raised:
-        rics_precision(10.0, pixel_time=4e-6, line_time=2e-3, pixel_size=0.05,
-                       nx=8, ny=8, n_lags=8, n_repeats=5)
+        rics_precision(
+            10.0,
+            pixel_time=4e-6,
+            line_time=2e-3,
+            pixel_size=0.05,
+            nx=8,
+            ny=8,
+            n_lags=8,
+            n_repeats=5,
+        )
     assert not issubclass(raised.type, UnrealisableScan)
 
     # The same guard on the covariance itself, which is public and divides by
     # the pair counts directly.
     with pytest.raises(ValueError, match=r"at most n_lags=2"):
         correlation_covariance(
-            6, 6, 6, 10.0, 0.05, 0.25, 5.0, 4e-6, 2e-3, 0.05, 1.0, 0.1,
+            6,
+            6,
+            6,
+            10.0,
+            0.05,
+            0.25,
+            5.0,
+            4e-6,
+            2e-3,
+            0.05,
+            1.0,
+            0.1,
             gamma_factors(),
         )
 
     # The largest lag the guard allows still predicts.
-    assert rics_precision(
-        10.0, pixel_time=4e-6, line_time=2e-3, pixel_size=0.05,
-        nx=8, ny=8, n_lags=3, n_repeats=5,
-    ).relative_error > 0.0
+    assert (
+        rics_precision(
+            10.0,
+            pixel_time=4e-6,
+            line_time=2e-3,
+            pixel_size=0.05,
+            nx=8,
+            ny=8,
+            n_lags=3,
+            n_repeats=5,
+        ).relative_error
+        > 0.0
+    )
 
 
 def test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition():
@@ -225,10 +270,7 @@ def test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition():
     """
     common = dict(pixel_time=8e-6, line_time=1e-3, n_images=50, w_r=0.25, **FAST)
 
-    errors = [
-        rics_precision(10.0, w_z=w_z, **common).relative_error
-        for w_z in (0.2, 0.25, 0.3)
-    ]
+    errors = [rics_precision(10.0, w_z=w_z, **common).relative_error for w_z in (0.2, 0.25, 0.3)]
     assert all(np.isfinite(e) and e > 0 for e in errors)
 
     # continuity through the spherical case: approaching it from the elongated
@@ -239,9 +281,7 @@ def test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition():
 
 def test_two_d_geometry_runs():
     """The membrane geometry uses different shape factors and still predicts."""
-    r = rics_precision(
-        1.0, pixel_time=8e-6, line_time=1e-3, n_images=100, two_d=True, **FAST
-    )
+    r = rics_precision(1.0, pixel_time=8e-6, line_time=1e-3, n_images=100, two_d=True, **FAST)
     assert np.isfinite(r.relative_error) and r.relative_error > 0
 
 

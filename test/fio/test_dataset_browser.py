@@ -6,16 +6,11 @@ construction.  Uses DI via in-process RPC client with a temp database path.
 
 from __future__ import annotations
 
-import json
-import uuid
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
-from mmfdb.security.auth import _hash_token
 from mmfdb.repository import MFDatabase
-
+from mmfdb.security.auth import _hash_token
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -196,7 +191,7 @@ def test_browse_kinds_filter(
     temp_db: Path,
     user_alice_token: str,
 ) -> None:
-    """kinds filter narrows results to matching artifact_kind."""
+    """Kinds filter narrows results to matching artifact_kind."""
     from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
@@ -216,7 +211,7 @@ def test_browse_formats_filter(
     temp_db: Path,
     user_alice_token: str,
 ) -> None:
-    """formats filter narrows results to matching data_format."""
+    """Formats filter narrows results to matching data_format."""
     from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
@@ -236,7 +231,7 @@ def test_browse_query_filter(
     temp_db: Path,
     user_alice_token: str,
 ) -> None:
-    """query filters by artifact_id substring."""
+    """Query filters by artifact_id substring."""
     from mmfdb.admin.backend.services import (
         datasets_browse_handler,
     )
@@ -489,6 +484,7 @@ def test_shifter_round_trip(
     src_file.write_bytes(content)
 
     from mmfdb.provenance.result_registry import register_raw_measurement
+
     art_id = register_raw_measurement(
         file_path=str(src_file),
         db=db,
@@ -682,8 +678,9 @@ def test_processed_dataset_with_unseeded_user_registers_and_browses(tmp_path, mo
       * Bug B: a configured default_user_id with no flr_sample_users row must not
         fail the created_by_user_id foreign key (ensure_user bootstraps it).
     """
-    import chisurf.core.settings
     from mmfdb.provenance import result_registry as rr
+
+    import chisurf.core.settings
 
     # Active user that is NOT pre-seeded in flr_sample_users (config injection).
     monkeypatch.setitem(
@@ -692,7 +689,7 @@ def test_processed_dataset_with_unseeded_user_registers_and_browses(tmp_path, mo
 
     db = MFDatabase(str(tmp_path / "reg.db"))
     src = tmp_path / "in.ptu"  # a valid raw data_format; the bug under test is the
-    src.write_text("hello")     # unseeded user + plugin operation_type, not the format
+    src.write_text("hello")  # unseeded user + plugin operation_type, not the format
 
     raw = rr.register_raw_measurement(file_path=str(src), db=db)
     assert raw, "raw must register even when the active user is not pre-seeded"
@@ -718,7 +715,8 @@ def test_browse_datasets_format_filter_normalizes_dot(tmp_path):
     """Regression: browse_datasets must match the dot-less stored data_format
     whether the caller passes 'ptu', '.ptu', or '.PTU'. The shifter's MMFDB
     picker passed dotted formats, so it always returned zero datasets and the
-    load-from-MMFDB roundtrip was broken."""
+    load-from-MMFDB roundtrip was broken.
+    """
     from mmfdb.provenance import result_registry as rr
 
     db = MFDatabase(str(tmp_path / "fmt.db"))
@@ -741,14 +739,14 @@ def test_browse_datasets_format_filter_normalizes_dot(tmp_path):
 def test_browse_handler_own_scope_uses_default_user_when_anonymous(tmp_path, monkeypatch):
     """Regression: with no auth session (in-process GUI client), the 'own' scope
     must fall back to the configured default_user_id so it matches the owner that
-    registration stamps. Otherwise 'Mine' shows nothing despite registered data."""
-    import chisurf.core.settings
-    from mmfdb.provenance import result_registry as rr
+    registration stamps. Otherwise 'Mine' shows nothing despite registered data.
+    """
     from mmfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
 
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
-    )
+    import chisurf.core.settings
+
+    monkeypatch.setitem(chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"})
     dbp = str(tmp_path / "own.db")
     db = MFDatabase(dbp)
     f = tmp_path / "a.spc"
@@ -771,15 +769,14 @@ def test_real_mmfdbclient_call_browses_datasets(tmp_path, monkeypatch):
     picker showed 0 — even though the backend handler worked. This exercises the
     real client end to end.
     """
-    import chisurf.core.settings
-    from mmfdb.provenance import result_registry as rr
     import mmfdb.store.database_resolver as dr
     from mmfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
+
+    import chisurf.core.settings
     from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
-    )
+    monkeypatch.setitem(chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"})
     from mmfdb.security.auth import create_session
 
     dbp = str(tmp_path / "client.db")
@@ -814,14 +811,13 @@ def test_datasets_open_rejects_anonymous(tmp_path, monkeypatch):
     default-deny and independent of database contents, so opening a dataset
     requires a real session token (see ``test_datasets_open_with_session_token``).
     """
-    import chisurf.core.settings
-    from mmfdb.provenance import result_registry as rr
     from mmfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
     from mmfdb.security.auth import AuthError
 
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
-    )
+    import chisurf.core.settings
+
+    monkeypatch.setitem(chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"})
     dbp = str(tmp_path / "open.db")
     db = MFDatabase(dbp)
     f = tmp_path / "m.ptu"
@@ -836,14 +832,13 @@ def test_datasets_open_rejects_anonymous(tmp_path, monkeypatch):
 
 def test_datasets_open_with_session_token(tmp_path, monkeypatch):
     """The owner, authenticated with a real session token, can open the dataset."""
-    import chisurf.core.settings
-    from mmfdb.provenance import result_registry as rr
     from mmfdb.admin.backend import services as svc
+    from mmfdb.provenance import result_registry as rr
     from mmfdb.security.auth import create_session
 
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"}
-    )
+    import chisurf.core.settings
+
+    monkeypatch.setitem(chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "tpeulen"})
     dbp = str(tmp_path / "open_authed.db")
     db = MFDatabase(dbp)
     f = tmp_path / "m.ptu"
@@ -927,12 +922,12 @@ def test_browse_datasets_joins_sample_name_and_refcount(
     assert other_ds.get("object_refcount") is None
 
 
-
 def test_name_only_sample_appears_in_flr_sample_and_list(tmp_path):
     """Regression: a sample created with only a name (no description) must carry
     that name into flr_sample.description (the flrCIF/pdbx-canonical table), so it
     is not nameless in list_samples / search / browse. Previously the name lived
-    only in mmfdb_sample.display_name and flr_sample.description was empty."""
+    only in mmfdb_sample.display_name and flr_sample.description was empty.
+    """
     from mmfdb.samples.sample_manager import create_sample
     from mmfdb.samples.sample_requests import SampleDefinition
 
@@ -1012,28 +1007,27 @@ def test_browse_datasets_excludes_grouped_members(
     assert "art_member_02" not in ids
 
 
-
 def test_multi_owner_browse_and_dict_mapping(tmp_path, monkeypatch):
     """A dataset can be co-owned: each owner sees it under 'own'; non-owners do
-    not. The mmfdb_artifact_owner items map to live columns (dict-driven)."""
-    import chisurf.core.settings
+    not. The mmfdb_artifact_owner items map to live columns (dict-driven).
+    """
     from mmfdb.provenance import result_registry as rr
     from mmfdb.schema.dictionary_schema_map import build_dictionary_schema_map
 
-    monkeypatch.setitem(
-        chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "alice"}
-    )
+    import chisurf.core.settings
+
+    monkeypatch.setitem(chisurf.core.settings.cs_settings, "mmfdb", {"default_user_id": "alice"})
     dbp = str(tmp_path / "mo.db")
     db = MFDatabase(dbp)
     f = tmp_path / "x.ptu"
     f.write_bytes(b"shared")
     art = rr.register_raw_measurement(file_path=str(f), db=db)
 
-    assert db.list_artifact_owners(art) == ["alice"]            # creator owns
+    assert db.list_artifact_owners(art) == ["alice"]  # creator owns
     assert db.browse_datasets(scope="own", owner_id="alice")["total"] == 1
     assert db.browse_datasets(scope="own", owner_id="bob")["total"] == 0
 
-    db.add_artifact_owner(art, "bob")                            # co-own
+    db.add_artifact_owner(art, "bob")  # co-own
     assert set(db.list_artifact_owners(art)) == {"alice", "bob"}
     assert db.browse_datasets(scope="own", owner_id="bob")["total"] == 1
     assert db.browse_datasets(scope="own", owner_id="carol")["total"] == 0
@@ -1043,8 +1037,11 @@ def test_multi_owner_browse_and_dict_mapping(tmp_path, monkeypatch):
     assert db.list_artifact_owners(art).count("bob") == 1
 
     mapper = build_dictionary_schema_map(dbp)
-    unmapped = [u.dictionary_name for u in mapper.get_unmapped_flr_items()
-                if u.category == "mmfdb_artifact_owner"]
+    unmapped = [
+        u.dictionary_name
+        for u in mapper.get_unmapped_flr_items()
+        if u.category == "mmfdb_artifact_owner"
+    ]
     assert unmapped == []
 
 

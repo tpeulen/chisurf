@@ -12,11 +12,10 @@ from chisurf.gui.chigame.input import Action  # noqa: E402
 from chisurf.plugins.misc.games.breakout.breakout import (  # noqa: E402
     BRICK_COLS,
     BRICK_ROWS,
-    H,
     LIVES,
     PADDLE_W,
-    W,
     BreakoutGame,
+    H,
 )
 
 

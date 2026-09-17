@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 __all__ = [
     "Unit",
@@ -42,20 +42,34 @@ class Unit(NamedTuple):
 #: Legacy spellings seen in file headers and column names, mapped to the code.
 #: Reading these is supported; writing them is not — a writer uses the code.
 _LEGACY = {
-    "s": "seconds", "sec": "seconds",
+    "s": "seconds",
+    "sec": "seconds",
     "ms": "milliseconds",
-    "us": "microseconds", "µs": "microseconds", "μs": "microseconds",
+    "us": "microseconds",
+    "µs": "microseconds",
+    "μs": "microseconds",
     "ns": "nanoseconds",
     "ps": "picoseconds",
     "fs": "femtoseconds",
-    "hz": "hertz", "khz": "kilohertz", "mhz": "megahertz",
+    "hz": "hertz",
+    "khz": "kilohertz",
+    "mhz": "megahertz",
     "cps": "counts_per_second",
-    "nm": "nanometres", "um": "micrometres", "µm": "micrometres",
-    "a": "angstroms", "å": "angstroms",
-    "px": "pixels", "deg": "degrees", "rad": "radians",
-    "k": "kelvins", "c": "celsius",
-    "m": "molar", "mm": "millimolar", "um_conc": "micromolar",
-    "nm_conc": "nanomolar", "pm": "picomolar",
+    "nm": "nanometres",
+    "um": "micrometres",
+    "µm": "micrometres",
+    "a": "angstroms",
+    "å": "angstroms",
+    "px": "pixels",
+    "deg": "degrees",
+    "rad": "radians",
+    "k": "kelvins",
+    "c": "celsius",
+    "m": "molar",
+    "mm": "millimolar",
+    "um_conc": "micromolar",
+    "nm_conc": "nanomolar",
+    "pm": "picomolar",
 }
 
 

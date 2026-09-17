@@ -17,10 +17,10 @@ built and the setting appeared to be ignored -- occlusion could be switched off
 and the shading stayed. Counting now happens in the configuration itself, which
 is where the data is; the same fix as the object state one layer down.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.core.settings.registry import set_setting, settings_revision
 
@@ -63,8 +63,10 @@ def test_a_section_created_on_the_fly_is_watched_too():
 
 def test_setting_a_new_path_still_lands_in_the_configuration():
     """The configuration wraps what goes into it, so a writer that keeps the
-    dict it just inserted would write into an orphan."""
-    from chimol.core.settings.config import _DISPLAY_CONFIG as cfg, _plant
+    dict it just inserted would write into an orphan.
+    """
+    from chimol.core.settings.config import _DISPLAY_CONFIG as cfg
+    from chimol.core.settings.config import _plant
 
     try:
         assert _plant(cfg, ("_planted", "deep", "leaf"), 7)

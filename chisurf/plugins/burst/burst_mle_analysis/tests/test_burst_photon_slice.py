@@ -39,13 +39,25 @@ def _cfg(min_photons=1):
     g = np.exp(-0.5 * ((x - 8) / 1.5) ** 2)
     g /= g.sum()
     return dict(
-        sb=0, eb=N_BINS, half_len=N_BINS, dt=DT, period=PERIOD, g_factor=1.0,
-        l1=0.0, l2=0.0, p2s_twoIstar=True, BIFL_scatter=False,
-        min_photons=min_photons, state_min_photons=min_photons,
+        sb=0,
+        eb=N_BINS,
+        half_len=N_BINS,
+        dt=DT,
+        period=PERIOD,
+        g_factor=1.0,
+        l1=0.0,
+        l2=0.0,
+        p2s_twoIstar=True,
+        BIFL_scatter=False,
+        min_photons=min_photons,
+        state_min_photons=min_photons,
         x0=np.array([2.0, 0.0, 0.38, 1.22]),
         fixed=np.array([0, 1, 1, 1], dtype=np.int32),
-        irf=np.concatenate([g, g]), bg=np.zeros(2 * N_BINS),
-        class_lut=np.array([0, 1], dtype=np.int8), model="fit23", method="Fit23",
+        irf=np.concatenate([g, g]),
+        bg=np.zeros(2 * N_BINS),
+        class_lut=np.array([0, 1], dtype=np.int8),
+        model="fit23",
+        method="Fit23",
         param_names=["tau", "gamma", "r0", "rho"],
     )
 
@@ -76,10 +88,18 @@ def _pool(bursts, mt, rc, st, **cfg_kw):
     blocks = _in_shared_memory([rc, mt, st])
     try:
         rc_sh, mt_sh, st_sh = blocks
-        args = (bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"],
-                {"green": _cfg(**cfg_kw)},
-                (st_sh.name, st.shape, str(st.dtype), 1))
+        args = (
+            bursts,
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": _cfg(**cfg_kw)},
+            (st_sh.name, st.shape, str(st.dtype), 1),
+        )
         return pool_states_worker(args)
     finally:
         for sh in blocks:
@@ -92,9 +112,20 @@ def _fit(bursts, mt, rc, **cfg_kw):
     blocks = _in_shared_memory([rc, mt])
     try:
         rc_sh, mt_sh = blocks
-        args = ("m000.spc", bursts, rc_sh.name, rc.shape, str(rc.dtype),
-                mt_sh.name, mt.shape, str(mt.dtype), ["green"],
-                {"green": _cfg(**cfg_kw)}, 0, None)
+        args = (
+            "m000.spc",
+            bursts,
+            rc_sh.name,
+            rc.shape,
+            str(rc.dtype),
+            mt_sh.name,
+            mt.shape,
+            str(mt.dtype),
+            ["green"],
+            {"green": _cfg(**cfg_kw)},
+            0,
+            None,
+        )
         out, _ = process_one_file_worker(args)
         return out
     finally:

@@ -25,10 +25,16 @@ def _lightpath(gamma_via_cgd=0.85, alpha=0.066, delta=0.03):
     return {
         # two excitation rows: delta = I_DA/I_AA = ex[532, A]/ex[640, A] is
         # referenced to the acceptor-excitation laser, not to ex[532, donor]
-        "excitation": {"rows": ["532", "640"], "columns": ["donor", "acceptor"],
-                       "values": [[1.0, delta], [0.0, 1.0]]},
-        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
-                     "values": [[c_gd, c_rd], [0.02, 1.0]]},
+        "excitation": {
+            "rows": ["532", "640"],
+            "columns": ["donor", "acceptor"],
+            "values": [[1.0, delta], [0.0, 1.0]],
+        },
+        "emission": {
+            "rows": ["donor", "acceptor"],
+            "columns": ["gdet", "rdet"],
+            "values": [[c_gd, c_rd], [0.02, 1.0]],
+        },
     }
 
 
@@ -53,15 +59,27 @@ def test_calibration_parameters_defaults():
     """The group builds with the expected free factors and defaults."""
     c = CalibrationParameters()
     d = c.as_dict()
-    assert set(d) == {"gamma", "alpha", "beta", "delta", "Bg_DD", "Bg_DA", "Bg_AA",
-                      "R0", "PhiA", "PhiD"}
+    assert set(d) == {
+        "gamma",
+        "alpha",
+        "beta",
+        "delta",
+        "Bg_DD",
+        "Bg_DA",
+        "Bg_AA",
+        "R0",
+        "PhiA",
+        "PhiD",
+    }
     assert d["gamma"] == 1.0 and d["alpha"] == 0.0 and d["beta"] == 1.0 and d["R0"] == 52.0
 
 
 def test_lightpath_correction_factors():
     """gamma/alpha/delta are computed from the light-path matrices."""
-    f = lightpath_correction_factors(_lightpath(0.8, 0.05, 0.04), "donor", "acceptor", "gdet", "rdet")
-    assert f["gamma"] == pytest.approx(1.0 / 0.8, rel=1e-6)   # cRA=1, cGD=0.8
+    f = lightpath_correction_factors(
+        _lightpath(0.8, 0.05, 0.04), "donor", "acceptor", "gdet", "rdet"
+    )
+    assert f["gamma"] == pytest.approx(1.0 / 0.8, rel=1e-6)  # cRA=1, cGD=0.8
     assert f["alpha"] == pytest.approx(0.05, rel=1e-6)
     assert f["delta"] == pytest.approx(0.04, rel=1e-6)
 
@@ -77,13 +95,16 @@ def test_lightpath_alpha_matches_the_donor_only_data_estimator():
     """
     c_gd, c_rd, gG, gR, qy_d = 0.85, 0.06, 1.3, 0.7, 0.4
     matrices = {
-        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
-                       "values": [[0.9, 0.03]]},
-        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
-                     "values": [[c_gd, c_rd], [0.02, 1.0]]},
+        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"], "values": [[0.9, 0.03]]},
+        "emission": {
+            "rows": ["donor", "acceptor"],
+            "columns": ["gdet", "rdet"],
+            "values": [[c_gd, c_rd], [0.02, 1.0]],
+        },
     }
-    f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
-                                     gG=gG, gR=gR, qy_d=qy_d, qy_a=0.6)
+    f = lightpath_correction_factors(
+        matrices, "donor", "acceptor", "gdet", "rdet", gG=gG, gR=gR, qy_d=qy_d, qy_a=0.6
+    )
 
     # donor-only counts produced by those same matrices
     excited = 2.0e5 * 0.9 * qy_d
@@ -107,13 +128,20 @@ def test_lightpath_delta_matches_the_acceptor_only_data_estimator():
     ex_ag, ex_ar, ex_dg = 0.03, 0.8, 0.9
     c_ra, gR, qy_a = 0.9, 0.7, 0.6
     matrices = {
-        "excitation": {"rows": ["532", "640"], "columns": ["donor", "acceptor"],
-                       "values": [[ex_dg, ex_ag], [0.0, ex_ar]]},
-        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
-                     "values": [[0.85, 0.06], [0.02, c_ra]]},
+        "excitation": {
+            "rows": ["532", "640"],
+            "columns": ["donor", "acceptor"],
+            "values": [[ex_dg, ex_ag], [0.0, ex_ar]],
+        },
+        "emission": {
+            "rows": ["donor", "acceptor"],
+            "columns": ["gdet", "rdet"],
+            "values": [[0.85, 0.06], [0.02, c_ra]],
+        },
     }
-    f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
-                                     gG=1.3, gR=gR, qy_d=0.4, qy_a=qy_a)
+    f = lightpath_correction_factors(
+        matrices, "donor", "acceptor", "gdet", "rdet", gG=1.3, gR=gR, qy_d=0.4, qy_a=qy_a
+    )
 
     # acceptor-only counts produced by those same matrices: the acceptor emission,
     # its quantum yield and gR cancel, leaving the excitation ratio
@@ -126,8 +154,9 @@ def test_lightpath_delta_matches_the_acceptor_only_data_estimator():
 
     # naming the acceptor-excitation laser explicitly gives the same answer, and
     # the donor's excitation cannot influence delta
-    named = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
-                                         green_laser="532", red_laser="640")
+    named = lightpath_correction_factors(
+        matrices, "donor", "acceptor", "gdet", "rdet", green_laser="532", red_laser="640"
+    )
     assert named["delta"] == pytest.approx(f["delta"], rel=1e-12)
     matrices["excitation"]["values"][0][0] = 0.1
     moved = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet")
@@ -137,10 +166,12 @@ def test_lightpath_delta_matches_the_acceptor_only_data_estimator():
 def test_lightpath_delta_is_zero_without_an_acceptor_excitation_laser():
     """Single-laser optics have no ``I_AA``, so there is nothing for delta to scale."""
     matrices = {
-        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
-                       "values": [[0.9, 0.03]]},
-        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
-                     "values": [[0.85, 0.06], [0.02, 1.0]]},
+        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"], "values": [[0.9, 0.03]]},
+        "emission": {
+            "rows": ["donor", "acceptor"],
+            "columns": ["gdet", "rdet"],
+            "values": [[0.85, 0.06], [0.02, 1.0]],
+        },
     }
     f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet")
     assert f["delta"] == 0.0
@@ -149,8 +180,9 @@ def test_lightpath_delta_is_zero_without_an_acceptor_excitation_laser():
 def test_set_priors_from_lightpath_attaches_priors():
     """The light-path value becomes each factor's Gaussian prior mean."""
     c = CalibrationParameters()
-    f = set_priors_from_lightpath(c, _lightpath(0.8, 0.05, 0.04), "donor", "acceptor",
-                                  "gdet", "rdet", r0=55.0)
+    f = set_priors_from_lightpath(
+        c, _lightpath(0.8, 0.05, 0.04), "donor", "acceptor", "gdet", "rdet", r0=55.0
+    )
     assert isinstance(c._gamma.prior, NormalPrior)
     assert c._gamma.prior.mu == pytest.approx(f["gamma"])
     assert isinstance(c._alpha.prior, TruncatedNormalPrior)
@@ -195,12 +227,18 @@ def test_refine_strong_data_matches_truth():
     gamma, alpha, delta = 1.4, 0.08, 0.05
     g, r, y, lab = _simulate(gamma, alpha, delta, [0.25, 0.55, 0.8], 500, seed=4)
     c = CalibrationParameters()
-    set_priors_from_lightpath(c, _lightpath(0.74, alpha, delta), "donor", "acceptor", "gdet", "rdet")
+    set_priors_from_lightpath(
+        c, _lightpath(0.74, alpha, delta), "donor", "acceptor", "gdet", "rdet"
+    )
     c.alpha, c.delta = alpha, delta
     out = refine_calibration(c, g, r, y, lab)
     assert out["gamma"] == pytest.approx(gamma, abs=0.05)
-    e_rec = [corrected_es(g[lab == i], r[lab == i], y[lab == i],
-                          gamma=out["gamma"], alpha=alpha, delta=delta)["E"].mean() for i in range(3)]
+    e_rec = [
+        corrected_es(
+            g[lab == i], r[lab == i], y[lab == i], gamma=out["gamma"], alpha=alpha, delta=delta
+        )["E"].mean()
+        for i in range(3)
+    ]
     assert np.allclose(e_rec, [0.25, 0.55, 0.8], atol=0.03)
 
 
@@ -209,12 +247,16 @@ def test_refine_weak_data_leans_on_prior():
     gamma, alpha, delta = 1.4, 0.08, 0.05
     g, r, y, lab = _simulate(gamma, alpha, delta, [0.25, 0.8], 8, seed=5)
     c = CalibrationParameters()
-    set_priors_from_lightpath(c, _lightpath(0.74, alpha, delta), "donor", "acceptor", "gdet", "rdet")
+    set_priors_from_lightpath(
+        c, _lightpath(0.74, alpha, delta), "donor", "acceptor", "gdet", "rdet"
+    )
     c.alpha, c.delta = alpha, delta
     out = refine_calibration(c, g, r, y, lab)
     # posterior sits between the (noisy) data estimate and the prior mean, and the
     # large bootstrap sigma keeps it close to the prior.
-    assert abs(out["gamma"] - out["gamma_prior"]) <= abs(out["gamma_data"] - out["gamma_prior"]) + 1e-9
+    assert (
+        abs(out["gamma"] - out["gamma_prior"]) <= abs(out["gamma_data"] - out["gamma_prior"]) + 1e-9
+    )
     assert out["data_sigma"] > 0.05
     assert out["gamma_updated"] is True
 
@@ -231,11 +273,14 @@ def test_refine_keeps_gamma_when_the_data_estimate_is_not_finite():
     y = np.concatenate([y, np.zeros(n_zero)])
     lab = np.concatenate([lab, np.full(n_zero, 2)])
     with np.errstate(divide="ignore", invalid="ignore"):
-        assert not np.isfinite(global_es_correction(g, r, y, lab, alpha=alpha, delta=delta)["gamma"])
+        assert not np.isfinite(
+            global_es_correction(g, r, y, lab, alpha=alpha, delta=delta)["gamma"]
+        )
 
         c = CalibrationParameters()
-        set_priors_from_lightpath(c, _lightpath(0.74, alpha, delta), "donor", "acceptor",
-                                  "gdet", "rdet")
+        set_priors_from_lightpath(
+            c, _lightpath(0.74, alpha, delta), "donor", "acceptor", "gdet", "rdet"
+        )
         c.alpha, c.delta = alpha, delta
         gamma_before = c.gamma
         out = refine_calibration(c, g, r, y, lab)

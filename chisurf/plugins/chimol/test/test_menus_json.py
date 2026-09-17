@@ -19,11 +19,9 @@ that those guardrails ride on:
 from __future__ import annotations
 
 import json
-import pathlib
-
-import pytest
 
 import chimol.ui.menus.bar as menus
+import pytest
 from chimol.ui.menus.objects import MenuEntry
 
 MENUS_JSON = menus.MENUS_JSON
@@ -146,7 +144,7 @@ def test_every_section_the_shipped_menus_ask_for_has_a_provider():
     from chimol.commands import Cmd
 
     menus._MISSING_GENERATORS.clear()
-    Cmd(None)                      # boots: core groups, then every plugin
+    Cmd(None)  # boots: core groups, then every plugin
     menus.menu_bar()
     assert menus._MISSING_GENERATORS == set(), (
         "the shipped menus ask for sections no built-in plugin provides"
@@ -160,14 +158,15 @@ def test_the_dye_labelling_wizard_is_reachable_from_the_tools_menu():
     dye = [e for e in wizard if e.label == "Dye Labelling"]
     assert dye and dye[0].command == "wizard labelling"
     measure = tools["Measure"].children
-    assert any(
-        e.command == "wizard labelling" for e in measure
-    ), "Measure also offers the dye wizard"
+    assert any(e.command == "wizard labelling" for e in measure), (
+        "Measure also offers the dye wizard"
+    )
 
 
 def test_every_config_row_shape_is_understood():
     """Walk the whole config: any row the loader cannot read is an error now,
-    not a silent skip."""
+    not a silent skip.
+    """
     config = _config()
     for name, rows in config["menus"].items():
         menus._menu(name, config["menus"])  # raises on anything unknown

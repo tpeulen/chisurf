@@ -19,7 +19,8 @@ from .gui.client import FcsMergerClient  # noqa: F401
 
 _manifest = _load_manifest(_Path(__file__).with_name("manifest.json"))
 name = (
-    _manifest.display_name if _manifest is not None
+    _manifest.display_name
+    if _manifest is not None
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS-Merger"
 )
 

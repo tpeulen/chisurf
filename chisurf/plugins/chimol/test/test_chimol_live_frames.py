@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from qtpy import QtWidgets
-
 from chimol.core.model.object_state import _MolViewObjectState
 from chimol.core.viewer import Viewer
 from chimol.testing.mock_viewer import MockViewer
+from qtpy import QtWidgets
 
 
 def test_mock_viewer_append_frame_tracks_raw_frames() -> None:

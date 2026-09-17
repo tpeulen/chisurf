@@ -10,8 +10,8 @@ one **cell for cell**, sentinels, blank column, interleaved zeros and all.
 The pre-declaration builder is transcribed below whole as the frozen
 reference.
 """
+
 import numpy as np
-import pytest
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import (
@@ -52,25 +52,35 @@ WINDOWS = {"prompt": (0, 2000), "delay": (2000, 4096)}
 def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
     """The pre-declaration builder, transcribed whole (columns + rows), plus the
     one addition made since: each PIE window x detector stream's photon count
-    beside its rate (0 for an empty stream)."""
+    beside its rate (0 for an empty stream).
+    """
     import pathlib
+
     file_name_only = pathlib.Path(filename).name
-    macro, micro, rout = (tttr.macro_times, tttr.micro_times,
-                          tttr.routing_channel)
+    macro, micro, rout = (tttr.macro_times, tttr.micro_times, tttr.routing_channel)
     res = tttr.header.macro_time_resolution
     n_ph = len(tttr)
 
     static_cols = [
-        "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
-        "Number of Photons", "Count Rate (KHz)", "Confidence (sigma)",
-        "First File", "Last File",
+        "First Photon",
+        "Last Photon",
+        "Duration (ms)",
+        "Mean Macro Time (ms)",
+        "Number of Photons",
+        "Count Rate (KHz)",
+        "Confidence (sigma)",
+        "First File",
+        "Last File",
     ]
     det_cols = []
     for d in detectors:
         det_cols += [
-            f"First Photon ({d})", f"Last Photon ({d})",
-            f"Duration ({d}) (ms)", f"Mean Macrotime ({d}) (ms)",
-            f"Number of Photons ({d})", f"{d.capitalize()} Count Rate (KHz)",
+            f"First Photon ({d})",
+            f"Last Photon ({d})",
+            f"Duration ({d}) (ms)",
+            f"Mean Macrotime ({d}) (ms)",
+            f"Number of Photons ({d})",
+            f"{d.capitalize()} Count Rate (KHz)",
         ]
     win_cols = []
     for w, (r0, r1) in windows.items():
@@ -83,12 +93,10 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
 
     idx = {c: i for i, c in enumerate(cols)}
     det_global = {
-        d: np.isin(rout, info["chs"])
-        & _micro_time_mask(micro, info["micro_time_ranges"])
+        d: np.isin(rout, info["chs"]) & _micro_time_mask(micro, info["micro_time_ranges"])
         for d, info in detectors.items()
     }
-    win_global = {w: (micro >= r0) & (micro < r1)
-                  for w, (r0, r1) in windows.items()}
+    win_global = {w: (micro >= r0) & (micro < r1) for w, (r0, r1) in windows.items()}
     zero_row = [0] * len(cols)
     zero_row[-1] = ""
     out = [zero_row.copy()] if len(start_stop) else []
@@ -110,8 +118,7 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
         micro_sl = micro[sl]
         for d in detectors:
             idxs = np.nonzero(det_global[d][sl])[0]
-            row[idx[f"Mean Microtime ({d}) (ns)"]] = mean_micro_time_ns(
-                micro_sl, idxs, micro_ns)
+            row[idx[f"Mean Microtime ({d}) (ns)"]] = mean_micro_time_ns(micro_sl, idxs, micro_ns)
             if idxs.size == 0:
                 row[idx[f"First Photon ({d})"]] = -1
                 row[idx[f"Last Photon ({d})"]] = -1
@@ -125,13 +132,16 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
                 row[idx[f"First Photon ({d})"]] = abs0
                 row[idx[f"Last Photon ({d})"]] = abs1
                 row[idx[f"Duration ({d}) (ms)"]] = d_ms
-                row[idx[f"Mean Macrotime ({d}) (ms)"]] = ((macro[abs1] + macro[abs0]) / 2) * res * 1e3
+                row[idx[f"Mean Macrotime ({d}) (ms)"]] = (
+                    ((macro[abs1] + macro[abs0]) / 2) * res * 1e3
+                )
                 row[idx[f"Number of Photons ({d})"]] = idxs.size
                 row[idx[f"{d.capitalize()} Count Rate (KHz)"]] = (
-                    (idxs.size / d_ms) if d_ms > 0 else np.nan)
+                    (idxs.size / d_ms) if d_ms > 0 else np.nan
+                )
         for w in windows:
             for d in detectors:
-                idxs = np.nonzero((det_global[d][sl] & win_global[w][sl]))[0]
+                idxs = np.nonzero(det_global[d][sl] & win_global[w][sl])[0]
                 key = f"S {w} {d} (kHz) | {windows[w][0]}-{windows[w][1]}"
                 row[idx[f"S {w} {d} (photons) | {windows[w][0]}-{windows[w][1]}"]] = idxs.size
                 if idxs.size == 0:
@@ -148,53 +158,60 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
 def _bursts(tttr):
     # A mix: ordinary bursts, a one-sided detector burst, an all-red span,
     # and out-of-range pairs the filler must skip.
-    return [(10, 60), (100, 101), (200, 350), (500, 4001), (-2, 5), (700, 700),
-            (800, 950)]
+    return [(10, 60), (100, 101), (200, 350), (500, 4001), (-2, 5), (700, 700), (800, 950)]
 
 
 def test_declared_schema_equals_the_hardcoded_one_cell_for_cell():
     tttr = _Tttr()
-    got = generate_burst_dataframe(
-        _bursts(tttr), "m000.spc", tttr, WINDOWS, DETECTORS)
+    got = generate_burst_dataframe(_bursts(tttr), "m000.spc", tttr, WINDOWS, DETECTORS)
     want_cols, want_rows = _reference_dataframe_cells(
-        _bursts(tttr), "m000.spc", tttr, WINDOWS, DETECTORS)
+        _bursts(tttr), "m000.spc", tttr, WINDOWS, DETECTORS
+    )
 
     assert list(column_names(got)) == want_cols
     assert row_count(got) == len(want_rows)
     want = list(zip(*want_rows))  # to columns
     for j, name in enumerate(want_cols):
         if name in ("First File", "Last File", ""):
-            continue           # string columns: compared via the header set
+            continue  # string columns: compared via the header set
         col = numeric_column(got, name if name else j)
         np.testing.assert_allclose(
             np.asarray(col, dtype=float),
             np.asarray(want[j], dtype=float),
-            rtol=0, atol=0,
-            err_msg=f"column {name!r} moved under the declaration")
+            rtol=0,
+            atol=0,
+            err_msg=f"column {name!r} moved under the declaration",
+        )
 
 
 def test_a_dropped_column_actually_drops(monkeypatch, tmp_path):
     """The point of the declaration: schema drift without a code change."""
     import chisurf.core.fio.fluorescence.burst as B
+
     decl = {
         "groups": [
-            {"scope": "static", "columns": [
-                {"column": "First Photon", "source": "first_photon"},
-                {"column": "Photons", "source": "n_photons"},
-            ]},
-            {"scope": "detector", "columns": [
-                {"column": "N ({detector})", "source": "n_photons"},
-            ]},
+            {
+                "scope": "static",
+                "columns": [
+                    {"column": "First Photon", "source": "first_photon"},
+                    {"column": "Photons", "source": "n_photons"},
+                ],
+            },
+            {
+                "scope": "detector",
+                "columns": [
+                    {"column": "N ({detector})", "source": "n_photons"},
+                ],
+            },
         ],
         "trailing_blank": False,
     }
     monkeypatch.setattr(B, "_BURST_FEATURES_DECLARATION", decl)
     tttr = _Tttr()
     got = generate_burst_dataframe(
-        [(10, 60)], "m.spc", tttr, WINDOWS, DETECTORS,
-        include_interleaved_zeros=False)
-    assert list(column_names(got)) == [
-        "First Photon", "Photons", "N (green)", "N (red)"]
+        [(10, 60)], "m.spc", tttr, WINDOWS, DETECTORS, include_interleaved_zeros=False
+    )
+    assert list(column_names(got)) == ["First Photon", "Photons", "N (green)", "N (red)"]
     assert int(numeric_column(got, "Photons")[0]) == 51
 
 

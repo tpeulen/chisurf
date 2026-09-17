@@ -29,16 +29,16 @@ What this pins
   viewer knew;
 * that a word which is neither an object nor a selection still says so.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from toolkit_free import probe
 
 
 @pytest.fixture(scope="module")
 def measured():
-    return probe('''
+    return probe("""
         app = open_app(size=(760, 520))
         errors, messages = [], []
         app.cmd.set_error_callback(errors.append)
@@ -84,7 +84,7 @@ def measured():
         errors.clear()
         app.cmd.do("disable notathing")
         emit("nonsense", "; ".join(errors) or "none")
-    ''')
+    """)
 
 
 def test_clicking_the_eye_hides_the_selection(measured):

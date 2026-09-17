@@ -30,7 +30,7 @@ def safe_tttr_path(path: str) -> str:
         A path that tttrlib can open.
 
     """
-    if sys.platform != 'win32' or all(ord(c) < 128 for c in path):
+    if sys.platform != "win32" or all(ord(c) < 128 for c in path):
         return path
     path = os.path.abspath(path)
     folder = os.path.dirname(path)
@@ -92,7 +92,6 @@ def _load_tttr(path: str, filetype: str | None = None) -> tttrlib.TTTR:
 # Re-exported here under the historic private names for backward compatibility.
 from chisurf.core.fio.tttr_shift import (  # noqa: E402
     apply_shifts as _apply_shifts,
-    compute_effective_shifts as _compute_effective_shifts,
 )
 
 
@@ -198,11 +197,11 @@ def load_histogram(
     """
     paths = [path] if isinstance(path, str) else list(path)
     channel_shifts = channel_shifts or {}
-    
+
     total_histograms: dict[str, np.ndarray] = {}
     n_mt = 0
     all_used = set()
-    
+
     for p in paths:
         try:
             tt = _load_tttr(p, filetype=filetype)
@@ -211,12 +210,12 @@ def load_histogram(
                 n_mt = file_n_mt
             elif n_mt != file_n_mt:
                 continue
-                
+
             routing = tt.routing_channels
             micro_times = tt.micro_times
             used = set(int(c) for c in routing)
             all_used.update(used)
-            
+
             for ch in used:
                 mask = routing == ch
                 if not np.any(mask):
@@ -224,7 +223,7 @@ def load_histogram(
                 effective = (global_shift + int(channel_shifts.get(ch, 0))) % n_mt
                 shifted = (micro_times[mask] + effective) % n_mt
                 hist = np.bincount(shifted, minlength=n_mt)
-                
+
                 ch_str = str(ch)
                 if ch_str in total_histograms:
                     total_histograms[ch_str] += hist
@@ -233,10 +232,7 @@ def load_histogram(
         except Exception:
             continue
 
-    histograms_serialized = {
-        k: [int(v) for v in arr]
-        for k, arr in total_histograms.items()
-    }
+    histograms_serialized = {k: [int(v) for v in arr] for k, arr in total_histograms.items()}
 
     return {
         "n_mt": n_mt,

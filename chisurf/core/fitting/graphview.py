@@ -33,6 +33,7 @@ lays out with Kamada-Kawai on :math:`1 - |r|` distances, so strongly correlated
 parameters are placed close together and the geometry itself carries the
 message.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -40,9 +41,8 @@ import math
 
 import numpy as np
 
-from chisurf.core import graph as cg
-
 from chisurf import typing
+from chisurf.core import graph as cg
 
 __all__ = [
     "GraphNode",
@@ -159,7 +159,7 @@ class GraphView:
 
 
 def short_labels(
-        names: typing.Sequence[str],
+    names: typing.Sequence[str],
 ) -> typing.Dict[str, str]:
     """Return a display label per name, short but never ambiguous.
 
@@ -285,8 +285,8 @@ def _rescale(pos: typing.Dict) -> typing.Dict[str, np.ndarray]:
 
 
 def posterior_correlation(
-        fit,
-        model=None,
+    fit,
+    model=None,
 ) -> typing.Tuple[typing.List[str], typing.Optional[np.ndarray]]:
     r"""Return ``(names, correlation)`` for a fit's free parameters.
 
@@ -341,9 +341,9 @@ def posterior_correlation(
 
 
 def posterior_dependence(
-        fit,
-        model=None,
-        n_permutations: int = 32,
+    fit,
+    model=None,
+    n_permutations: int = 32,
 ) -> typing.Tuple[typing.List[str], typing.Optional[np.ndarray], typing.Optional[np.ndarray]]:
     r"""Return ``(names, dependence, nonlinear)`` from a fit's stored draws.
 
@@ -394,8 +394,7 @@ def posterior_dependence(
     if draws.shape[0] < 64 or len(names) != draws.shape[1]:
         return names, None, None
 
-    values, flags = dep.dependence_matrix(
-        draws, n_permutations=n_permutations)
+    values, flags = dep.dependence_matrix(draws, n_permutations=n_permutations)
     return names, values, flags
 
 
@@ -481,11 +480,15 @@ def structure_view(fit, model=None) -> GraphView:
 
     for key, var in graph.variables.items():
         short = str(var.name).split(":")[-1]
-        nodes.append(GraphNode(
-            key=key, label=labels.get(str(var.name), short), kind="parameter",
-            value=shade.get(str(var.name), shade.get(short)),
-            detail=f"{var.name}",
-        ))
+        nodes.append(
+            GraphNode(
+                key=key,
+                label=labels.get(str(var.name), short),
+                kind="parameter",
+                value=shade.get(str(var.name), shade.get(short)),
+                detail=f"{var.name}",
+            )
+        )
         bipartite.add_node(key, bipartite=0)
 
     members = list(fit) if hasattr(fit, "__iter__") else []
@@ -506,13 +509,17 @@ def structure_view(fit, model=None) -> GraphView:
         if label is None:
             label = f"data {1 if index is None else index + 1}"
         points = int(getattr(factor, "size", 0) or 0)
-        nodes.append(GraphNode(
-            key=key, label=label, kind="dataset",
-            # A dataset that contributes more points constrains more, and the
-            # picture may as well say so.
-            size=1.3 + (0.4 if points >= 512 else 0.0),
-            detail=f"{label} — {points} points" if points else str(label),
-        ))
+        nodes.append(
+            GraphNode(
+                key=key,
+                label=label,
+                kind="dataset",
+                # A dataset that contributes more points constrains more, and the
+                # picture may as well say so.
+                size=1.3 + (0.4 if points >= 512 else 0.0),
+                detail=f"{label} — {points} points" if points else str(label),
+            )
+        )
         bipartite.add_node(key, bipartite=1)
         for var_key in graph.variables_of(key):
             if var_key in graph.variables:
@@ -538,8 +545,7 @@ def structure_view(fit, model=None) -> GraphView:
     for n in dataset_nodes:
         factor = graph.factors.get(n.key)
         order[n.key] = getattr(factor, "fit_index", None)
-    dataset_nodes.sort(key=lambda n: (order.get(n.key) is None,
-                                      order.get(n.key) or 0, n.label))
+    dataset_nodes.sort(key=lambda n: (order.get(n.key) is None, order.get(n.key) or 0, n.label))
     rows = {n.key: i for i, n in enumerate(dataset_nodes)}
 
     def _row_y(row: int, total: int) -> float:
@@ -558,8 +564,7 @@ def structure_view(fit, model=None) -> GraphView:
     for n in nodes:
         if n.kind != "parameter":
             continue
-        touching = [f for f in graph.factors_of(n.key)
-                    if f in {d.key for d in dataset_nodes}]
+        touching = [f for f in graph.factors_of(n.key) if f in {d.key for d in dataset_nodes}]
         if len(touching) == 1:
             private.setdefault(rows[touching[0]], []).append(n)
         else:
@@ -569,9 +574,7 @@ def structure_view(fit, model=None) -> GraphView:
         base = _row_y(row, n_rows)
         span = 0.9 / max(1, n_rows)
         for k, n in enumerate(sorted(members, key=lambda m: m.label)):
-            offset = 0.0 if len(members) == 1 else (
-                span * (k - 0.5 * (len(members) - 1))
-            )
+            offset = 0.0 if len(members) == 1 else (span * (k - 0.5 * (len(members) - 1)))
             n.x, n.y = -1.0, base + offset
     # Half a row down, so a shared parameter sits in the *gap* between two
     # dataset rows. On a row it lines up with that row's private parameter and
@@ -579,8 +582,7 @@ def structure_view(fit, model=None) -> GraphView:
     # (a -> c(2) -> data 2) instead of two independent constraints.
     for k, n in enumerate(sorted(shared, key=lambda m: m.label)):
         n.x = 1.0
-        n.y = (_row_y(k + 0.5, n_rows) if n_rows > 1
-               else _row_y(k, max(1, len(shared))))
+        n.y = _row_y(k + 0.5, n_rows) if n_rows > 1 else _row_y(k, max(1, len(shared)))
 
     notes = []
     # A parameter with no usable error estimate is one the data says nothing
@@ -592,8 +594,7 @@ def structure_view(fit, model=None) -> GraphView:
     without_estimate = sorted(
         labels.get(str(v.name), str(v.name).split(":")[-1])
         for v in graph.variables.values()
-        if str(v.name) not in uncertainty
-        and str(v.name).split(":")[-1] not in uncertainty
+        if str(v.name) not in uncertainty and str(v.name).split(":")[-1] not in uncertainty
     )
     if without_estimate:
         notes.append(
@@ -602,14 +603,16 @@ def structure_view(fit, model=None) -> GraphView:
         )
     unexplained = graph.unexplained_variables()
     if unexplained:
-        pretty = ", ".join(sorted(
-            labels.get(str(graph.variables[k].name),
-                       str(graph.variables[k].name).split(":")[-1])
-            for k in unexplained if k in graph.variables
-        ))
-        notes.append(
-            f"not constrained by any dataset: {pretty} — free to take any value"
+        pretty = ", ".join(
+            sorted(
+                labels.get(
+                    str(graph.variables[k].name), str(graph.variables[k].name).split(":")[-1]
+                )
+                for k in unexplained
+                if k in graph.variables
+            )
         )
+        notes.append(f"not constrained by any dataset: {pretty} — free to take any value")
     components = graph.connected_components()
     if len(components) > 1:
         notes.append(
@@ -617,7 +620,8 @@ def structure_view(fit, model=None) -> GraphView:
             f"{len(components)} separate fits, and sampling them jointly is waste"
         )
     return GraphView(
-        nodes=nodes, edges=edges,
+        nodes=nodes,
+        edges=edges,
         title="Posterior structure",
         legend="parameter shade = relative uncertainty (pale = well determined)",
         notes=notes,
@@ -625,9 +629,9 @@ def structure_view(fit, model=None) -> GraphView:
 
 
 def correlation_view(
-        fit,
-        model=None,
-        threshold: float = 0.3,
+    fit,
+    model=None,
+    threshold: float = 0.3,
 ) -> GraphView:
     r"""Return the parameter-only view, edges weighted by dependence.
 
@@ -694,11 +698,15 @@ def correlation_view(
     nodes = []
     for name in names:
         short = str(name).split(":")[-1]
-        nodes.append(GraphNode(
-            key=str(name), label=labels.get(str(name), short), kind="parameter",
-            value=shade.get(str(name), shade.get(short)),
-            detail=str(name),
-        ))
+        nodes.append(
+            GraphNode(
+                key=str(name),
+                label=labels.get(str(name), short),
+                kind="parameter",
+                value=shade.get(str(name), shade.get(short)),
+                detail=str(name),
+            )
+        )
 
     edges = []
     notes = []
@@ -715,9 +723,7 @@ def correlation_view(
                 d = float(dep[i, j]) if dep is not None else float("nan")
                 # nan means the pair could not be measured, which is not a
                 # licence to treat it as unbent.
-                bent = bool(
-                    nonlinear is not None and np.isfinite(d) and nonlinear[i, j]
-                )
+                bent = bool(nonlinear is not None and np.isfinite(d) and nonlinear[i, j])
                 # The strength of the edge is whichever measure found more. An
                 # |r| below the threshold is not a reason to hide a pair the
                 # draws show to be tightly coupled -- that omission is the exact
@@ -727,12 +733,15 @@ def correlation_view(
                     strength = max(strength, d)
                 if strength < threshold:
                     continue
-                edges.append(GraphEdge(
-                    source=str(names[i]), target=str(names[j]),
-                    weight=float(min(1.0, strength)),
-                    kind="dependence" if bent else "correlation",
-                    label=(f"r={r:+.2f}  I={d:.2f}" if bent else f"{r:+.2f}"),
-                ))
+                edges.append(
+                    GraphEdge(
+                        source=str(names[i]),
+                        target=str(names[j]),
+                        weight=float(min(1.0, strength)),
+                        kind="dependence" if bent else "correlation",
+                        label=(f"r={r:+.2f}  I={d:.2f}" if bent else f"{r:+.2f}"),
+                    )
+                )
                 if bent:
                     curved.append((names[i], names[j], r, d))
                 # Distance shrinks with |r|, so the layout places a strongly
@@ -742,13 +751,12 @@ def correlation_view(
                 # decimal, which leaves Kamada-Kawai ill-conditioned and
                 # collapses the whole graph onto a line -- true in spirit,
                 # unreadable in practice.
-                graph.add_edge(str(names[i]), str(names[j]),
-                               weight=max(1e-3, 1.0 - strength))
+                graph.add_edge(str(names[i]), str(names[j]), weight=max(1e-3, 1.0 - strength))
                 if strength >= STRONG_CORRELATION:
                     strong.append((names[i], names[j], r, bent))
         for a, b, r, bent in strong:
             if bent:
-                continue    # said better by the note below
+                continue  # said better by the note below
             notes.append(
                 f"{labels.get(str(a), a)} and {labels.get(str(b), b)} are "
                 f"correlated at {r:+.3f} — one measurement, not two"
@@ -761,9 +769,7 @@ def correlation_view(
                 f"and every error bar derived from one understate it"
             )
     else:
-        notes.append(
-            "no posterior correlation available — run a fit or a sampling job"
-        )
+        notes.append("no posterior correlation available — run a fit or a sampling job")
 
     # Spread the distances over a well-conditioned range before laying out. The
     # *ordering* is what carries meaning -- the most correlated pair stays the
@@ -777,8 +783,7 @@ def correlation_view(
         pos = _layout(graph, weight="weight")
     else:
         pos = _layout(
-            cg.complete_graph(list(graph.nodes))
-            if graph.number_of_nodes() > 1 else graph
+            cg.complete_graph(list(graph.nodes)) if graph.number_of_nodes() > 1 else graph
         )
 
     # Too many edges to label without the numbers landing on top of each other.
@@ -792,14 +797,14 @@ def correlation_view(
         if n.key in pos:
             n.x, n.y = float(pos[n.key][0]), float(pos[n.key][1])
 
-    legend = (f"edge = dependence above {threshold:g}; "
-              f"close together = tightly coupled")
+    legend = f"edge = dependence above {threshold:g}; close together = tightly coupled"
     if curved:
         legend += " — warm edges are coupled along a curve, where |r| understates"
     if crowded:
         legend += " — values omitted, too many edges to label"
     return GraphView(
-        nodes=nodes, edges=edges,
+        nodes=nodes,
+        edges=edges,
         title="Posterior dependence",
         legend=legend,
         notes=notes,
@@ -838,28 +843,40 @@ def junction_tree_view(fit, model=None) -> GraphView:
 
     def _pretty(keys) -> str:
         """Return a short comma-separated label for a set of variable keys."""
-        return ", ".join(sorted(
-            labels.get(str(graph.variables[k].name),
-                       str(graph.variables[k].name).split(":")[-1])
-            for k in keys if k in graph.variables
-        ))
+        return ", ".join(
+            sorted(
+                labels.get(
+                    str(graph.variables[k].name), str(graph.variables[k].name).split(":")[-1]
+                )
+                for k in keys
+                if k in graph.variables
+            )
+        )
 
     nodes, edges = [], []
     for node in tree.nodes:
         key = "|".join(sorted(node))
         label = _pretty(node)
-        nodes.append(GraphNode(
-            key=key, label=label or "(empty)", kind="clique",
-            size=1.0 + 0.25 * max(0, len(node) - 1),
-            detail=f"{len(node)} parameters: {label}",
-        ))
+        nodes.append(
+            GraphNode(
+                key=key,
+                label=label or "(empty)",
+                kind="clique",
+                size=1.0 + 0.25 * max(0, len(node) - 1),
+                detail=f"{len(node)} parameters: {label}",
+            )
+        )
     for a, b in tree.edges:
         shared = set(a) & set(b)
-        edges.append(GraphEdge(
-            source="|".join(sorted(a)), target="|".join(sorted(b)),
-            kind="separator", label=_pretty(shared),
-            weight=float(min(1.0, 0.3 + 0.2 * len(shared))),
-        ))
+        edges.append(
+            GraphEdge(
+                source="|".join(sorted(a)),
+                target="|".join(sorted(b)),
+                kind="separator",
+                label=_pretty(shared),
+                weight=float(min(1.0, 0.3 + 0.2 * len(shared))),
+            )
+        )
 
     relabelled = cg.Graph()
     relabelled.add_nodes_from(n.key for n in nodes)
@@ -869,12 +886,15 @@ def junction_tree_view(fit, model=None) -> GraphView:
         if n.key in pos:
             n.x, n.y = float(pos[n.key][0]), float(pos[n.key][1])
 
-    notes = [f"treewidth {graph.treewidth} — the largest clique has "
-             f"{graph.treewidth + 1} parameters in it"]
+    notes = [
+        f"treewidth {graph.treewidth} — the largest clique has "
+        f"{graph.treewidth + 1} parameters in it"
+    ]
     return GraphView(
-        nodes=nodes, edges=edges,
+        nodes=nodes,
+        edges=edges,
         title="Junction tree",
         legend="node = parameters that must be reasoned about together; "
-               "edge label = what they share",
+        "edge label = what they share",
         notes=notes,
     )

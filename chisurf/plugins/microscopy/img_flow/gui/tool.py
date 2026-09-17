@@ -33,11 +33,7 @@ class _Task(QtCore.QRunnable):
     def run(self) -> None:  # noqa: N802 (Qt override)
         ok = False
         try:
-            ok = bool(
-                self._fn(
-                    progress=lambda f, t: self.signals.progress.emit(float(f), str(t))
-                )
-            )
+            ok = bool(self._fn(progress=lambda f, t: self.signals.progress.emit(float(f), str(t))))
         except Exception:
             logger.debug("background flow job failed", exc_info=True)
         self.signals.finished.emit(ok)

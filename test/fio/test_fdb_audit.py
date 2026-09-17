@@ -1,12 +1,13 @@
 import pathlib
 from unittest.mock import patch
 
-from mmfdb.repository import MFDatabase
 from mmfdb.admin.backend.measurement_services import (
     archive_project_handler,
     database_backup_handler,
     restore_project_handler,
 )
+from mmfdb.repository import MFDatabase
+
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 
@@ -193,7 +194,6 @@ def test_client_list_audit_logs(tmp_path: pathlib.Path) -> None:
         return_value=db_path,
     )
     patcher.start()
-
 
     try:
         # Create some logs

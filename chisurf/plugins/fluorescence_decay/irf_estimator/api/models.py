@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
 @dataclass
 class IRFEstimationSettings:
     """Settings for IRF estimation."""
+
     window_length: int = 11
     polyorder: int = 3
     rl_iterations: int = 500
@@ -19,6 +20,7 @@ class IRFEstimationSettings:
 @dataclass
 class IRFEstimationResult:
     """Result of an IRF estimation run."""
+
     irf: list[float]
     params: dict[str, Any]
     time_axis: list[float]
@@ -32,6 +34,7 @@ class IRFEstimationResult:
 @dataclass
 class DecayData:
     """Decay data loaded from a file or dataset."""
+
     time_axis: list[float]
     intensity: list[float]
     intensity_original: list[float]

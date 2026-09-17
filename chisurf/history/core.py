@@ -1,12 +1,12 @@
 from __future__ import annotations
-import chisurf as cs
 
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import threading
 import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
+import chisurf as cs
 from chisurf import typing
 from chisurf.core.actions._infra import canonical as _canon
 
@@ -70,9 +70,7 @@ def json_safe_payload(payload: typing.Any, _depth: int = 0) -> typing.Any:
     if payload is None or isinstance(payload, (str, int, float, bool)):
         return payload
     if isinstance(payload, dict):
-        return {
-            str(key): json_safe_payload(value, _depth + 1) for key, value in payload.items()
-        }
+        return {str(key): json_safe_payload(value, _depth + 1) for key, value in payload.items()}
     if isinstance(payload, (list, tuple, set)):
         return [json_safe_payload(item, _depth + 1) for item in payload]
     try:
@@ -88,14 +86,14 @@ class OperationHistory:
     # Version management
     HISTORY_VERSION = "1.0"  # Current history format version
     SUPPORTED_VERSIONS = ["1.0"]  # Versions we can read
-    
+
     DEFAULT_CHECKPOINT_INTERVAL = 50
     DEFAULT_MAX_CHECKPOINTS = 20  # cap in-memory snapshots; 0 disables eviction
 
     def __init__(
-            self,
-            checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
-            max_checkpoints: int = DEFAULT_MAX_CHECKPOINTS,
+        self,
+        checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
+        max_checkpoints: int = DEFAULT_MAX_CHECKPOINTS,
     ):
         self._events: typing.List[typing.Dict[str, typing.Any]] = []
         self._lock = threading.RLock()
@@ -107,20 +105,22 @@ class OperationHistory:
         # the durable event log can rebuild any evicted snapshot by replay, the
         # checkpoint dict is a pure cache and safe to evict.
         self._max_checkpoints = max(0, int(max_checkpoints))
-        self._checkpoint_capture_fn: typing.Optional[typing.Callable[[], typing.Dict[str, typing.Any]]] = None
+        self._checkpoint_capture_fn: typing.Optional[
+            typing.Callable[[], typing.Dict[str, typing.Any]]
+        ] = None
         self._recording_suppressed = False
         # Memory management settings
         self._max_events = 10000  # Maximum number of events to keep in memory
         self._auto_compact_threshold = 5000  # Compact when exceeding this number of events
 
     def record(
-            self,
-            action_type: str,
-            summary: str,
-            payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
-            source_uid: typing.Optional[str] = None,
-            target_uid: typing.Optional[str] = None,
-            persist: bool = True,
+        self,
+        action_type: str,
+        summary: str,
+        payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        source_uid: typing.Optional[str] = None,
+        target_uid: typing.Optional[str] = None,
+        persist: bool = True,
     ) -> typing.Dict[str, typing.Any]:
         with self._lock:
             if self._recording_suppressed:
@@ -157,11 +157,13 @@ class OperationHistory:
         """Best-effort durable append of ``event`` to the MMFDB event log."""
         try:
             from mmfdb.lifecycle import event_log
+
             event_log.append_event(event, history_version=self.HISTORY_VERSION)
         except Exception:
             pass
 
     from contextlib import contextmanager
+
     @contextmanager
     def suppress_recording(self):
         """Context manager to temporarily disable operation recording."""
@@ -177,7 +179,9 @@ class OperationHistory:
             self._events.clear()
             self._checkpoints.clear()
 
-    def load_events(self, events: typing.List[typing.Dict[str, typing.Any]], replace: bool = True) -> None:
+    def load_events(
+        self, events: typing.List[typing.Dict[str, typing.Any]], replace: bool = True
+    ) -> None:
         """Load a list of history events directly."""
         with self._lock:
             if replace:
@@ -204,6 +208,7 @@ class OperationHistory:
         """
         if source == "mmfdb":
             from mmfdb.lifecycle import event_log
+
             return event_log.read_events()
         with self._lock:
             return list(self._events)
@@ -218,10 +223,10 @@ class OperationHistory:
         """Save history to JSONL file with optional metadata header."""
         path = Path(filename).resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with self._lock:
             rows = list(self._events)
-            
+
             # Add metadata header with version information
             with path.open("w", encoding="utf-8") as fp:
                 if include_metadata:
@@ -229,10 +234,12 @@ class OperationHistory:
                         "history_version": self.HISTORY_VERSION,
                         "event_count": len(rows),
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "checkpoint_count": len(self._checkpoints)
+                        "checkpoint_count": len(self._checkpoints),
                     }
-                    fp.write("# CHISURF HISTORY METADATA: " + json.dumps(metadata, sort_keys=True) + "\n")
-                
+                    fp.write(
+                        "# CHISURF HISTORY METADATA: " + json.dumps(metadata, sort_keys=True) + "\n"
+                    )
+
                 # Write events. An action payload can carry a live object —
                 # ``dataset.add`` records the reader it was given — and a
                 # single one of those used to raise, which took the whole
@@ -244,42 +251,46 @@ class OperationHistory:
 
         return path
 
-    def load_jsonl(self, filename: typing.Union[str, Path], replace: bool = True) -> typing.Dict[str, typing.Any]:
+    def load_jsonl(
+        self, filename: typing.Union[str, Path], replace: bool = True
+    ) -> typing.Dict[str, typing.Any]:
         """Load history from JSONL file with version validation and integrity checking."""
         path = Path(filename).resolve()
         if not path.exists():
             raise FileNotFoundError(f"History file not found: {path}")
-        
+
         result = {
             "success": False,
             "loaded_events": 0,
             "file_version": None,
             "compatibility": "unknown",
-            "errors": []
+            "errors": [],
         }
-        
+
         rows: typing.List[typing.Dict[str, typing.Any]] = []
         file_version = None
-        
+
         try:
             with path.open("r", encoding="utf-8") as fp:
                 for line in fp:
                     text = line.strip()
                     if not text:
                         continue
-                    
+
                     # Check for metadata header
                     if text.startswith("# CHISURF HISTORY METADATA: "):
                         try:
-                            metadata_json = text[len("# CHISURF HISTORY METADATA: "):]
+                            metadata_json = text[len("# CHISURF HISTORY METADATA: ") :]
                             metadata = json.loads(metadata_json)
                             file_version = metadata.get("history_version", "unknown")
                             result["file_version"] = file_version
-                            
+
                             # Check version compatibility
                             if file_version not in self.SUPPORTED_VERSIONS:
                                 result["compatibility"] = "incompatible"
-                                result["errors"].append(f"Unsupported history version: {file_version}")
+                                result["errors"].append(
+                                    f"Unsupported history version: {file_version}"
+                                )
                             else:
                                 result["compatibility"] = "compatible"
                         except json.JSONDecodeError:
@@ -292,12 +303,14 @@ class OperationHistory:
                             rows.append(event)
                         except json.JSONDecodeError as e:
                             result["errors"].append(f"Invalid JSON at line: {str(e)}")
-            
+
             # Validate the parsed file before it can replace or extend the
             # live history.  The previous code validated ``self._events``
             # here, so a malformed project log was accepted while an unrelated
             # current-session event could be removed as the supposed repair.
-            invalid_rows = [index for index, event in enumerate(rows) if not self.validate_event(event)]
+            invalid_rows = [
+                index for index, event in enumerate(rows) if not self.validate_event(event)
+            ]
             if invalid_rows:
                 result["errors"].append(
                     f"History corruption detected: {len(invalid_rows)} invalid events"
@@ -306,7 +319,7 @@ class OperationHistory:
                 result["errors"].append(
                     f"Automatically repaired: removed {len(invalid_rows)} invalid events"
                 )
-            
+
             # Load events into history
             with self._lock:
                 if replace:
@@ -314,10 +327,10 @@ class OperationHistory:
                     self._checkpoints.clear()
                 else:
                     self._events.extend(rows)
-            
+
             result["success"] = True
             result["loaded_events"] = len(rows)
-            
+
         except Exception as e:
             result["errors"].append(f"Load failed: {str(e)}")
             # Don't leave history in partially loaded state
@@ -325,44 +338,44 @@ class OperationHistory:
                 with self._lock:
                     self._events = []
                     self._checkpoints.clear()
-        
+
         return result
 
-    def create_backup(self, backup_dir: typing.Optional[typing.Union[str, Path]] = None) -> typing.Dict[str, typing.Any]:
+    def create_backup(
+        self, backup_dir: typing.Optional[typing.Union[str, Path]] = None
+    ) -> typing.Dict[str, typing.Any]:
         """Create a backup of the current history."""
-        result = {
-            "success": False,
-            "backup_path": None,
-            "error": None
-        }
-        
+        result = {"success": False, "backup_path": None, "error": None}
+
         try:
             if backup_dir is None:
                 backup_dir = Path("history_backups")
             else:
                 backup_dir = Path(backup_dir) if isinstance(backup_dir, str) else backup_dir
-            
+
             backup_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Create timestamped backup filename
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             backup_filename = f"history_backup_{timestamp}_{len(self._events)}_events.jsonl"
             backup_path = backup_dir / backup_filename
-            
+
             # Save with full metadata
             self.save_jsonl(backup_path, include_metadata=True)
-            
+
             result["success"] = True
             result["backup_path"] = str(backup_path)
             result["event_count"] = len(self._events)
             result["timestamp"] = timestamp
-            
+
         except Exception as e:
             result["error"] = str(e)
-        
+
         return result
 
-    def restore_from_backup(self, backup_path: typing.Union[str, Path]) -> typing.Dict[str, typing.Any]:
+    def restore_from_backup(
+        self, backup_path: typing.Union[str, Path]
+    ) -> typing.Dict[str, typing.Any]:
         """Restore history from a backup file."""
         return self.load_jsonl(backup_path, replace=True)
 
@@ -374,10 +387,14 @@ class OperationHistory:
                 "checkpoint_count": len(self._checkpoints),
                 "oldest_event": self._events[0]["timestamp"] if self._events else None,
                 "newest_event": self._events[-1]["timestamp"] if self._events else None,
-                "action_types": list(set(event["action_type"] for event in self._events)) if self._events else []
+                "action_types": list(set(event["action_type"] for event in self._events))
+                if self._events
+                else [],
             }
 
-    def set_memory_limits(self, max_events: int = 10000, auto_compact_threshold: int = 5000) -> None:
+    def set_memory_limits(
+        self, max_events: int = 10000, auto_compact_threshold: int = 5000
+    ) -> None:
         """Set memory management limits for history."""
         with self._lock:
             self._max_events = max(100, int(max_events))  # Minimum 100 events
@@ -389,7 +406,7 @@ class OperationHistory:
             return {
                 "max_events": self._max_events,
                 "auto_compact_threshold": self._auto_compact_threshold,
-                "current_event_count": len(self._events)
+                "current_event_count": len(self._events),
             }
 
     def compact_history(self, keep_recent: int = 500) -> typing.Dict[str, typing.Any]:
@@ -398,35 +415,38 @@ class OperationHistory:
             "events_before": 0,
             "events_after": 0,
             "events_removed": 0,
-            "compaction_successful": False
+            "compaction_successful": False,
         }
-        
+
         with self._lock:
             report["events_before"] = len(self._events)
-            
+
             if len(self._events) <= keep_recent:
                 report["events_after"] = len(self._events)
                 report["compaction_successful"] = False
                 return report
-            
+
             # Keep the most recent events
-            keep_recent = max(10, min(keep_recent, len(self._events) - 1))  # Ensure we keep at least 10 events
+            keep_recent = max(
+                10, min(keep_recent, len(self._events) - 1)
+            )  # Ensure we keep at least 10 events
             compacted_events = self._events[-keep_recent:]
-            
+
             report["events_removed"] = len(self._events) - len(compacted_events)
             self._events = compacted_events
-            
+
             # Also clean up checkpoints that are no longer relevant
             relevant_checkpoints = {
-                idx: cp for idx, cp in self._checkpoints.items()
+                idx: cp
+                for idx, cp in self._checkpoints.items()
                 if idx >= len(self._events) - keep_recent
             }
             report["checkpoints_removed"] = len(self._checkpoints) - len(relevant_checkpoints)
             self._checkpoints = relevant_checkpoints
-            
+
             report["events_after"] = len(self._events)
             report["compaction_successful"] = True
-        
+
         return report
 
     def auto_compact_if_needed(self) -> typing.Dict[str, typing.Any]:
@@ -436,9 +456,9 @@ class OperationHistory:
                 return {
                     "compaction_performed": False,
                     "current_event_count": len(self._events),
-                    "threshold": self._auto_compact_threshold
+                    "threshold": self._auto_compact_threshold,
                 }
-            
+
             # Perform compaction (keep half of auto_compact_threshold)
             keep_recent = self._auto_compact_threshold // 2
             return self.compact_history(keep_recent)
@@ -446,7 +466,7 @@ class OperationHistory:
     def get_estimated_memory_usage(self) -> typing.Dict[str, typing.Any]:
         """Estimate memory usage of the history."""
         import sys
-        
+
         with self._lock:
             # Estimate event sizes
             if self._events:
@@ -456,7 +476,7 @@ class OperationHistory:
             else:
                 approx_event_size = 0
                 estimated_events_size = 0
-            
+
             # Estimate checkpoint sizes
             if self._checkpoints:
                 sample_checkpoint = next(iter(self._checkpoints.values()))
@@ -465,7 +485,7 @@ class OperationHistory:
             else:
                 approx_checkpoint_size = 0
                 estimated_checkpoints_size = 0
-            
+
             return {
                 "event_count": len(self._events),
                 "approx_event_size_bytes": approx_event_size,
@@ -473,7 +493,7 @@ class OperationHistory:
                 "checkpoint_count": len(self._checkpoints),
                 "approx_checkpoint_size_bytes": approx_checkpoint_size,
                 "estimated_checkpoints_memory_bytes": estimated_checkpoints_size,
-                "total_estimated_memory_bytes": estimated_events_size + estimated_checkpoints_size
+                "total_estimated_memory_bytes": estimated_events_size + estimated_checkpoints_size,
             }
 
     @staticmethod
@@ -489,8 +509,8 @@ class OperationHistory:
             pass
 
     def set_checkpoint_capture(
-            self,
-            capture_fn: typing.Optional[typing.Callable[[], typing.Dict[str, typing.Any]]],
+        self,
+        capture_fn: typing.Optional[typing.Callable[[], typing.Dict[str, typing.Any]]],
     ) -> None:
         """Set the function used to capture domain state for checkpoints.
 
@@ -535,13 +555,15 @@ class OperationHistory:
         if cap <= 0 or len(self._checkpoints) <= cap:
             return
         indices = sorted(self._checkpoints)
-        recent = set(indices[-(cap - 1):]) if cap > 1 else set()
+        recent = set(indices[-(cap - 1) :]) if cap > 1 else set()
         keep = {indices[0]} | recent
         for idx in indices:
             if idx not in keep:
                 del self._checkpoints[idx]
 
-    def get_checkpoint_before(self, event_index: int) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    def get_checkpoint_before(
+        self, event_index: int
+    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         """Get the nearest checkpoint at or before the given event index.
 
         Returns None if no checkpoint exists before the index.
@@ -568,11 +590,11 @@ class OperationHistory:
     def validate_event(self, event: typing.Dict[str, typing.Any]) -> bool:
         """Validate that an event has the required structure and fields."""
         required_fields = {"event_id", "timestamp", "action_type", "summary", "payload"}
-        
+
         # Check all required fields are present
         if not required_fields.issubset(event.keys()):
             return False
-        
+
         # Validate field types
         try:
             str(event["event_id"])
@@ -592,19 +614,19 @@ class OperationHistory:
             "valid_events": 0,
             "invalid_events": [],
             "corruption_detected": False,
-            "missing_event_ids": []
+            "missing_event_ids": [],
         }
-        
+
         with self._lock:
             report["total_events"] = len(self._events)
-            
+
             for idx, event in enumerate(self._events):
                 if not self.validate_event(event):
                     report["invalid_events"].append(idx)
                     report["corruption_detected"] = True
                 else:
                     report["valid_events"] += 1
-            
+
             # Check for duplicate event IDs (only for valid events)
             event_ids = []
             for idx, event in enumerate(self._events):
@@ -619,7 +641,7 @@ class OperationHistory:
                     except Exception:
                         report["corruption_detected"] = True
                         report["invalid_events"].append(idx)
-        
+
         return report
 
     def repair_history(self) -> typing.Dict[str, typing.Any]:
@@ -628,22 +650,22 @@ class OperationHistory:
             "events_before": 0,
             "events_after": 0,
             "events_removed": 0,
-            "repair_successful": False
+            "repair_successful": False,
         }
-        
+
         with self._lock:
             report["events_before"] = len(self._events)
-            
+
             # Filter out invalid events
             valid_events = []
             removed_indices = []
-            
+
             for idx, event in enumerate(self._events):
                 if self.validate_event(event):
                     valid_events.append(event)
                 else:
                     removed_indices.append(idx)
-            
+
             if len(removed_indices) > 0:
                 self._events = valid_events
                 report["events_after"] = len(self._events)
@@ -653,7 +675,7 @@ class OperationHistory:
             else:
                 report["events_after"] = report["events_before"]
                 report["repair_successful"] = False
-        
+
         return report
 
     def _maybe_create_checkpoint(self, event_index: int) -> None:
@@ -666,9 +688,11 @@ class OperationHistory:
             self.create_checkpoint(event_index)
 
     def get_events_from_checkpoint(
-            self,
-            target_event_index: int,
-    ) -> typing.Tuple[typing.Optional[typing.Dict[str, typing.Any]], typing.List[typing.Dict[str, typing.Any]]]:
+        self,
+        target_event_index: int,
+    ) -> typing.Tuple[
+        typing.Optional[typing.Dict[str, typing.Any]], typing.List[typing.Dict[str, typing.Any]]
+    ]:
         """Get snapshot and events needed to reach target_event_index.
 
         Returns a tuple of (checkpoint_snapshot, events_to_replay).
@@ -678,17 +702,17 @@ class OperationHistory:
         with self._lock:
             checkpoint = self.get_checkpoint_before(target_event_index)
             if checkpoint is None:
-                events = list(self._events[:target_event_index + 1])
+                events = list(self._events[: target_event_index + 1])
                 return None, events
             start_index = checkpoint["event_index"] + 1
-            events = list(self._events[start_index:target_event_index + 1])
+            events = list(self._events[start_index : target_event_index + 1])
             return checkpoint["snapshot"], events
 
     def replay(
-            self,
-            handlers: typing.Dict[str, typing.Callable[[typing.Dict[str, typing.Any]], None]],
-            stop_on_error: bool = False,
-            events: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
+        self,
+        handlers: typing.Dict[str, typing.Callable[[typing.Dict[str, typing.Any]], None]],
+        stop_on_error: bool = False,
+        events: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> typing.Dict[str, typing.Any]:
         """Replay history events using provided handlers.
 

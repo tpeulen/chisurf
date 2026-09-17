@@ -20,10 +20,11 @@ import pytest
 
 import chisurf.core.fitting.minimizer as _minimizer
 
-pytestmark = pytest.mark.skipif(not _minimizer.have_minimizer(),
-                                reason="IMP.bff carries no Minimizer")
+pytestmark = pytest.mark.skipif(
+    not _minimizer.have_minimizer(), reason="IMP.bff carries no Minimizer"
+)
 
-import IMP.bff as _bff                                        # noqa: E402
+import IMP.bff as _bff  # noqa: E402
 
 #: `MAX_RUNNING_RATIO` in `Minimizer.cpp` -- a full bar is reserved for the
 #: completion report. Spelled out here because it is a file-local constant in
@@ -94,12 +95,9 @@ def test_a_fit_that_runs_ten_times_the_estimate_still_moves():
     expected = _expected_evaluations(6, 0)
     assert expected == 42
 
-    stuck_near_the_top = sum(
-        1 for nfev in range(1, 451) if _fraction(nfev, expected) >= 0.97
-    )
+    stuck_near_the_top = sum(1 for nfev in range(1, 451) if _fraction(nfev, expected) >= 0.97)
     assert stuck_near_the_top < 45, (
-        f"{stuck_near_the_top} of 450 evaluations spent above 97%; "
-        "the linear bar spent 410"
+        f"{stuck_near_the_top} of 450 evaluations spent above 97%; the linear bar spent 410"
     )
     # And it is still visibly climbing over the second half of the fit.
     assert _fraction(450, expected) - _fraction(225, expected) > 0.05

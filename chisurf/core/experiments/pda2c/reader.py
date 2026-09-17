@@ -17,9 +17,8 @@ heavy I/O and :mod:`tttrlib` calls are only shown in skipped doctests.
 
 from __future__ import annotations
 
-import json
 import pathlib
-from typing import Dict, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 import tttrlib
@@ -81,18 +80,18 @@ class Pda2cReader(ExperimentReader):
     """
 
     def __init__(
-            self,
-            channels: typing.Tuple[typing.List[int], typing.List[int]],
-            micro_time_ranges: typing.List[typing.Tuple[int, int]],
-            reading_routine: str = 'PTU',
-            maximum_number_of_photons: int = 500,
-            minimum_number_of_photons: int = 5,
-            minimum_time_window_length: float = 2e-3,
-            tw_configs=None,
-            n_colors: int = None,
-            segmentation: str = "burst",
-            *args,
-            **kwargs
+        self,
+        channels: typing.Tuple[typing.List[int], typing.List[int]],
+        micro_time_ranges: typing.List[typing.Tuple[int, int]],
+        reading_routine: str = "PTU",
+        maximum_number_of_photons: int = 500,
+        minimum_number_of_photons: int = 5,
+        minimum_time_window_length: float = 2e-3,
+        tw_configs=None,
+        n_colors: int = None,
+        segmentation: str = "burst",
+        *args,
+        **kwargs,
     ):
         """Initialize a PDA reader.
 
@@ -229,13 +228,13 @@ class Pda2cReader(ExperimentReader):
             Two ``[start, stop]`` windows.
         """
         flat = []
-        for window in (self.micro_time_ranges or []):
+        for window in self.micro_time_ranges or []:
             if len(window) and isinstance(window[0], (list, tuple)):
                 flat.extend(window)
             elif len(window) >= 2:
                 flat.append(window)
         start = min(int(w[0]) for w in flat) if flat else 0
-        stop = max(int(w[1]) for w in flat) if flat else 2 ** 15
+        stop = max(int(w[1]) for w in flat) if flat else 2**15
         if n_colors >= 3:
             middle = start + (stop - start) // 2
             return [[start, middle], [middle, stop]]
@@ -251,7 +250,7 @@ class Pda2cReader(ExperimentReader):
         and silently keeping the nested list would build a window that unpacks
         into nothing rather than one that is merely wrong.
         """
-        ranges = list(self.micro_time_ranges or [(0, 2 ** 31)])
+        ranges = list(self.micro_time_ranges or [(0, 2**31)])
         window = ranges[min(index, len(ranges) - 1)]
         if len(window) and isinstance(window[0], (list, tuple)):
             window = window[0]
@@ -292,9 +291,17 @@ class Pda2cReader(ExperimentReader):
             for index, channels in enumerate(self.channels[:2])
         ]
 
-    def _three_color_curve(self, blue, green, name, filename,
-                           minimum_number_of_photons, minimum_time_window_length,
-                           tttr_header_json=None, source_filenames=None):
+    def _three_color_curve(
+        self,
+        blue,
+        green,
+        name,
+        filename,
+        minimum_number_of_photons,
+        minimum_time_window_length,
+        tttr_header_json=None,
+        source_filenames=None,
+    ):
         """Wrap a three-colour burst table into a DataCurve the PDA3c model reads.
 
         The curve's ``y`` is the measured proximity-ratio histograms, so the
@@ -332,14 +339,16 @@ class Pda2cReader(ExperimentReader):
             load_filename_on_init=False,
             data_reader=self,
             meta_data=meta_all,
-            y=y, x=x,
+            y=y,
+            x=x,
             ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
         )
         data.pda3c = payload
         return data
 
-    def burst_count_table(self, tttr_data, minimum_number_of_photons: int,
-                          minimum_time_window_length: float):
+    def burst_count_table(
+        self, tttr_data, minimum_number_of_photons: int, minimum_time_window_length: float
+    ):
         """Return per-burst photon counts for the three-colour model.
 
         Bursts are the time windows ``get_ranges_by_time_window`` finds, using
@@ -406,10 +415,15 @@ class Pda2cReader(ExperimentReader):
             counts[:, index] = cumulative[stops + 1] - cumulative[starts]
         return counts
 
-    def time_binned_histograms(self, tttr_data, channels_1, channels_2,
-                               window_length: float,
-                               minimum_number_of_photons: int,
-                               maximum_number_of_photons: int):
+    def time_binned_histograms(
+        self,
+        tttr_data,
+        channels_1,
+        channels_2,
+        window_length: float,
+        minimum_number_of_photons: int,
+        maximum_number_of_photons: int,
+    ):
         """Return the S1S2 histogram of consecutive fixed-width time bins.
 
         The segmentation classic PDA is defined on: the whole photon stream is
@@ -452,10 +466,13 @@ class Pda2cReader(ExperimentReader):
         macro = np.asarray(tttr_data.macro_times, dtype=np.float64)
         if macro.size == 0:
             n_max = int(maximum_number_of_photons)
-            return (np.zeros((n_max + 1, n_max + 1)), np.zeros(n_max + 1),
-                    np.zeros(0, dtype=np.int64))
+            return (
+                np.zeros((n_max + 1, n_max + 1)),
+                np.zeros(n_max + 1),
+                np.zeros(0, dtype=np.int64),
+            )
         resolution = float(tttr_data.header.macro_time_resolution)
-        bin_width = float(window_length) / resolution          # in macro-time ticks
+        bin_width = float(window_length) / resolution  # in macro-time ticks
         routing = np.asarray(tttr_data.routing_channels)
 
         # Bin index of every photon. Consecutive and abutting by construction,
@@ -485,6 +502,7 @@ class Pda2cReader(ExperimentReader):
     def view_spec(self):
         """Return the declarative editor spec for PDA reader settings."""
         from chisurf.core.dataspec import load_view_spec
+
         return load_view_spec(_VIEW_JSON)
 
     def autofitrange(self, data, **kwargs) -> typing.Tuple[int, int]:
@@ -503,7 +521,9 @@ class Pda2cReader(ExperimentReader):
         logging.warning("PDA autofitrange not yet implemented")
         return 0, len(data.y.flatten())
 
-    def read(self, filename: typing.List[str] = None, *args, **kwargs) -> chisurf.core.data.ExperimentDataGroup:
+    def read(
+        self, filename: typing.List[str] = None, *args, **kwargs
+    ) -> chisurf.core.data.ExperimentDataGroup:
         """Read PDA TTTR data and return S1S2 histograms.
 
         Parameters
@@ -542,34 +562,43 @@ class Pda2cReader(ExperimentReader):
 
         filename.sort()
         from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
+
         source_filenames = [
             {
-                'path': str(p),
-                'format': _FILE_FORMATS.get(p.suffix.lower(), {}).get('name', ''),
+                "path": str(p),
+                "format": _FILE_FORMATS.get(p.suffix.lower(), {}).get("name", ""),
             }
             for p in (pathlib.Path(f) for f in filename)
             if p.is_file()
         ]
-        fn = pathlib.Path(source_filenames[0]['path']) if source_filenames else pathlib.Path(filename[0])
+        fn = (
+            pathlib.Path(source_filenames[0]["path"])
+            if source_filenames
+            else pathlib.Path(filename[0])
+        )
         data_group = chisurf.core.data.ExperimentDataGroup([])
 
         # Optional burst slicing: dict[str, List[Tuple[int,int]]]
-        burst_slices = kwargs.get('burst_slices', None)
+        burst_slices = kwargs.get("burst_slices", None)
         if isinstance(burst_slices, dict) and len(burst_slices) == 0:
             burst_slices = None
 
-        logging.debug({
-            'reader': 'Pda2cReader',
-            'reading_routine': self.reading_routine,
-            'n_input_files': len(filename),
-            'first_file': str(fn)
-        })
+        logging.debug(
+            {
+                "reader": "Pda2cReader",
+                "reading_routine": self.reading_routine,
+                "n_input_files": len(filename),
+                "first_file": str(fn),
+            }
+        )
 
         t = None
         if fn.is_file():
             if burst_slices:
                 # Build a TTTR consisting only of specified intervals using vectorized indices
-                logging.info(f"PDA.read: Applying burst_slices to TTTR data for {len(filename)} file(s) using index maps.")
+                logging.info(
+                    f"PDA.read: Applying burst_slices to TTTR data for {len(filename)} file(s) using index maps."
+                )
                 try:
                     logging.info(
                         "PDA TRACE: burst_slices mode enabled with %d key(s)",
@@ -578,7 +607,8 @@ class Pda2cReader(ExperimentReader):
                 except Exception:
                     pass
                 # Prepare intervals per actually provided filenames (match keys by full path, name, or stem)
-                intervals_by_file: Dict[str, Sequence[Tuple[int, int]]] = {}
+                intervals_by_file: dict[str, Sequence[tuple[int, int]]] = {}
+
                 # Normalize keys in a helper for quick access
                 def _get_intervals_for_path(p: pathlib.Path):
                     """Return burst-slice intervals for a file path.
@@ -600,6 +630,7 @@ class Pda2cReader(ExperimentReader):
                         or burst_slices.get(p.name, [])
                         or burst_slices.get(p.stem, [])
                     )
+
                 for f in filename:
                     pf = pathlib.Path(f)
                     if not pf.is_file():
@@ -699,7 +730,7 @@ class Pda2cReader(ExperimentReader):
             # configurations to run. If no explicit list was provided, fall back to the
             # single reader-level thresholds for backward compatibility.
             configs = []
-            tw_cfgs = getattr(self, 'tw_configs', None)
+            tw_cfgs = getattr(self, "tw_configs", None)
             if tw_cfgs:
                 for cfg in tw_cfgs:
                     try:
@@ -735,38 +766,43 @@ class Pda2cReader(ExperimentReader):
                     if multi:
                         name = f"{base_name}_TW{float(tw_len_cfg) * 1e3:g}ms"
                     data = self._three_color_curve(
-                        blue, green, name=name,
-                        filename=(source_filenames[0]['path'] if source_filenames else str(fn)),
+                        blue,
+                        green,
+                        name=name,
+                        filename=(source_filenames[0]["path"] if source_filenames else str(fn)),
                         minimum_number_of_photons=n_ph_cfg,
                         minimum_time_window_length=tw_len_cfg,
                         tttr_header_json=tttr_header_json,
                         source_filenames=source_filenames,
                     )
                     data_group.append(data)
-                    logging.info(
-                        "PDA3c: %s -> %d bursts", name, int(blue.shape[0])
-                    )
+                    logging.info("PDA3c: %s -> %d bursts", name, int(blue.shape[0]))
                 return data_group
 
             for n_ph_cfg, tw_len_cfg in configs:
-                logging.debug({
-                    'channels_1': channels_1,
-                    'channels_2': channels_2,
-                    'max_photons': self.maximum_number_of_photons,
-                    'min_photons': n_ph_cfg,
-                    'min_tw_len_s': tw_len_cfg,
-                })
+                logging.debug(
+                    {
+                        "channels_1": channels_1,
+                        "channels_2": channels_2,
+                        "max_photons": self.maximum_number_of_photons,
+                        "min_photons": n_ph_cfg,
+                        "min_tw_len_s": tw_len_cfg,
+                    }
+                )
                 try:
                     logging.info(
                         "PDA TRACE: calling tttrlib.Pda.compute_experimental_histograms (min_photons=%d, min_tw_len_s=%g)",
-                        int(n_ph_cfg), float(tw_len_cfg),
+                        int(n_ph_cfg),
+                        float(tw_len_cfg),
                     )
                 except Exception:
                     pass
                 time_binned = str(getattr(self, "segmentation", "burst")) == "time-bins"
                 if time_binned:
                     s1s2_e, ps, tttr_indices = self.time_binned_histograms(
-                        t, channels_1, channels_2,
+                        t,
+                        channels_1,
+                        channels_2,
                         window_length=tw_len_cfg,
                         minimum_number_of_photons=n_ph_cfg,
                         maximum_number_of_photons=self.maximum_number_of_photons,
@@ -778,7 +814,7 @@ class Pda2cReader(ExperimentReader):
                         channels_2=channels_2,
                         maximum_number_of_photons=self.maximum_number_of_photons,
                         minimum_number_of_photons=n_ph_cfg,
-                        minimum_time_window_length=tw_len_cfg
+                        minimum_time_window_length=tw_len_cfg,
                     )
 
                 # Align experimental S1S2 orientation with the theoretical model.
@@ -795,6 +831,7 @@ class Pda2cReader(ExperimentReader):
                 # the model orientation, so it must not be transposed again.
                 try:
                     import numpy as _np
+
                     s1s2_e = _np.asarray(s1s2_e)
                     if s1s2_e.ndim == 2 and not time_binned:
                         s1s2_e = s1s2_e.T
@@ -806,7 +843,7 @@ class Pda2cReader(ExperimentReader):
                 # row-major flattening of the full 2D support so that the
                 # resulting 1D vector can be treated in the same way as other
                 # grid-based datasets (e.g. RICS).
-                s1s2_shape = tuple(getattr(s1s2_e, 'shape', (0, 0)))
+                s1s2_shape = tuple(getattr(s1s2_e, "shape", (0, 0)))
                 ny, nx = s1s2_shape if len(s1s2_shape) == 2 else (0, 0)
 
                 # Precompute row/column indices consistent with row-major
@@ -820,29 +857,29 @@ class Pda2cReader(ExperimentReader):
                     row_indices, col_indices = [], []
 
                 d = {
-                    'maximum_number_of_photons': self.maximum_number_of_photons,
-                    'minimum_number_of_photons': n_ph_cfg,
-                    'minimum_time_window_length': tw_len_cfg,
+                    "maximum_number_of_photons": self.maximum_number_of_photons,
+                    "minimum_number_of_photons": n_ph_cfg,
+                    "minimum_time_window_length": tw_len_cfg,
                     # How long each observation lasted, which is what a dynamic
                     # model converts an exchange rate into transitions-per-window
                     # with. Exact under fixed-width binning; under a burst search
                     # the durations vary and this is only their lower bound, so
                     # the segmentation is recorded alongside it.
-                    'segmentation': 'time-bins' if time_binned else 'burst',
-                    'observation_time': float(tw_len_cfg),
-                    'channels': self.channels,
-                    's1s2': s1s2_e,
-                    'ps': ps,
-                    'row_indices': row_indices,
-                    'col_indices': col_indices,
+                    "segmentation": "time-bins" if time_binned else "burst",
+                    "observation_time": float(tw_len_cfg),
+                    "channels": self.channels,
+                    "s1s2": s1s2_e,
+                    "ps": ps,
+                    "row_indices": row_indices,
+                    "col_indices": col_indices,
                     # Dimensionality/meta for 2D handling (kept here for PDA-
                     # specific consumers, but GUI should prefer the generic
                     # meta_data['grid'] entry added below).
-                    'ndim': 2,
-                    'shape': s1s2_shape,
+                    "ndim": 2,
+                    "shape": s1s2_shape,
                     # Total number of 1D points in the PDA-specific flattening
-                    'size': int(len(row_indices)),
-                    'tttr_indices': tttr_indices,
+                    "size": int(len(row_indices)),
+                    "tttr_indices": tttr_indices,
                 }
 
                 # Generic grid metadata describing the 2D S1S2 support and the
@@ -850,27 +887,27 @@ class Pda2cReader(ExperimentReader):
                 # This is consumed by GUI components in a model-agnostic manner
                 # and uses a standard NumPy-style row-major order ('C').
                 grid_meta = {
-                    'ndim': 2,
-                    'shape': s1s2_shape,
+                    "ndim": 2,
+                    "shape": s1s2_shape,
                     # NumPy-style order string: 'C' -> row-major, 'F' -> column-major
-                    'order': 'C',
+                    "order": "C",
                     # Total number of 1D points in the flattened representation
-                    'size': int(np.prod(s1s2_shape)) if len(s1s2_shape) == 2 else 0,
+                    "size": int(np.prod(s1s2_shape)) if len(s1s2_shape) == 2 else 0,
                 }
 
                 meta_all = {
-                    'grid': grid_meta,
-                    'tttr_header_json': tttr_header_json,
-                    'tw_configs': getattr(self, 'tw_configs', None),
-                    'filenames': source_filenames,
-                    'reading_routine': self.reading_routine,
-                    'micro_time_ranges': self.micro_time_ranges,
+                    "grid": grid_meta,
+                    "tttr_header_json": tttr_header_json,
+                    "tw_configs": getattr(self, "tw_configs", None),
+                    "filenames": source_filenames,
+                    "reading_routine": self.reading_routine,
+                    "micro_time_ranges": self.micro_time_ranges,
                 }
 
                 # Use the full S1S2 matrix as data, flattened in row-major
                 # order. Elements outside the physically populated triangular
                 # support (if any) will naturally carry zero counts.
-                y = np.asarray(s1s2_e, dtype=float).ravel(order='C')
+                y = np.asarray(s1s2_e, dtype=float).ravel(order="C")
                 x = np.arange(y.size)
 
                 name = base_name
@@ -885,23 +922,28 @@ class Pda2cReader(ExperimentReader):
                     logging.info(
                         "PDA TRACE: constructing DataCurve (name=%s, y_len=%d)",
                         name,
-                        int(y.size) if hasattr(y, 'size') else -1,
+                        int(y.size) if hasattr(y, "size") else -1,
                     )
                 except Exception:
                     pass
                 data = chisurf.core.data.DataCurve(
                     name=name,
-                    filename=source_filenames[0]['path'] if source_filenames else str(fn),
+                    filename=source_filenames[0]["path"] if source_filenames else str(fn),
                     load_filename_on_init=False,
                     data_reader=self,
                     pda=d,
                     meta_data=meta_all,
-                    y=y, x=x,
-                    ey=chisurf.core.fluorescence.tcspc.counting_noise(y)
+                    y=y,
+                    x=x,
+                    ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
                 )
                 data_group.append(data)
-                logging.debug({'s1s2_shape': s1s2_e.shape if hasattr(s1s2_e, 'shape') else None,
-                               'y_len': len(y)})
+                logging.debug(
+                    {
+                        "s1s2_shape": s1s2_e.shape if hasattr(s1s2_e, "shape") else None,
+                        "y_len": len(y),
+                    }
+                )
         else:
             logging.warning("PDA.read: No TTTR data could be constructed from the provided files.")
 

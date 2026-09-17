@@ -1,22 +1,20 @@
 from __future__ import annotations
-from chisurf import typing
 
 import abc
-import contextlib
 import logging
 
 import numpy as np
 
+import chisurf.core.base
 import chisurf.core.fio
 import chisurf.core.fio.ascii
-import chisurf.core.base
-import chisurf.core.support.decorators
 import chisurf.core.math
-
+import chisurf.core.support.decorators
+from chisurf import typing
 
 logger = logging.getLogger(__name__)
 
-T = typing.TypeVar('T', bound='Curve')
+T = typing.TypeVar("T", bound="Curve")
 
 
 class NCurve(chisurf.core.base.Base):
@@ -71,13 +69,7 @@ class NCurve(chisurf.core.base.Base):
     #: readable before ``__init__`` has assigned anything.
     _unlock_depth: int = 0
 
-    def __init__(
-            self,
-            d: np.ndarray = None,
-            copy_array: bool = True,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, d: np.ndarray = None, copy_array: bool = True, *args, **kwargs):
         """Initialize an NCurve with an optional 1D numpy array.
 
         Parameters
@@ -338,10 +330,7 @@ class Curve(NCurve):
         The calculation is delegated to
         :func:`chisurf.core.math.signal.calculate_fwhm`.
         """
-        v, _, _ = chisurf.core.math.signal.calculate_fwhm(
-            x_values=self.x,
-            y_values=self.y
-        )
+        v, _, _ = chisurf.core.math.signal.calculate_fwhm(x_values=self.x, y_values=self.y)
         return v
 
     @property
@@ -359,10 +348,7 @@ class Curve(NCurve):
         >>> float(c.cdf.y[-1])
         6.0
         """
-        return self.__class__(
-            x=self.x,
-            y=np.cumsum(self.y)
-        )
+        return self.__class__(x=self.x, y=np.cumsum(self.y))
 
     @property
     def x(self) -> np.ndarray:
@@ -409,7 +395,7 @@ class Curve(NCurve):
         if storage.ndim == 2 and storage.shape[0] == 2 and storage.shape[1] == values.size:
             # Replacing a whole axis through its setter is the sanctioned way to
             # write a curve, so the lock is lifted for the assignment itself.
-            with self.unlocked('d'):
+            with self.unlocked("d"):
                 self.d[index] = values
             return
         other = np.zeros(values.size, dtype=np.float64)
@@ -441,55 +427,34 @@ class Curve(NCurve):
         return np.diff(self.x)
 
     def save(
-            self,
-            filename: str,
-            file_type: str = 'yaml',
-            verbose: bool = False,
-            x_min: int = None,
-            x_max: int = None
+        self,
+        filename: str,
+        file_type: str = "yaml",
+        verbose: bool = False,
+        x_min: int = None,
+        x_max: int = None,
     ) -> None:
         """Save the curve to disk via :mod:`chisurf.core.fio`.
 
         When ``file_type == 'csv'`` the data are written as two rows
         ``[x, y]`` using :class:`chisurf.core.fio.ascii.Csv`.
         """
-        super().save(
-            filename=filename,
-            file_type=file_type,
-            verbose=verbose
-        )
+        super().save(filename=filename, file_type=file_type, verbose=verbose)
         if file_type == "csv":
             csv = chisurf.core.fio.ascii.Csv()
             x, y = self[x_min:x_max]
-            csv.save(
-                data=np.vstack([x, y]),
-                filename=filename
-            )
+            csv.save(data=np.vstack([x, y]), filename=filename)
 
-    def load(
-            self,
-            filename: str,
-            file_type: str = 'csv',
-            skiprows: int = 0,
-            **kwargs
-    ) -> None:
+    def load(self, filename: str, file_type: str = "csv", skiprows: int = 0, **kwargs) -> None:
         """Load curve data from disk.
 
         For ``file_type == 'csv'`` the first two rows are interpreted
         as ``x`` and ``y``.
         """
-        super().load(
-            filename=filename,
-            file_type=file_type
-        )
-        if file_type == 'csv':
+        super().load(filename=filename, file_type=file_type)
+        if file_type == "csv":
             csv = chisurf.core.fio.ascii.Csv()
-            csv.load(
-                filename=filename,
-                skiprows=skiprows,
-                file_type=file_type,
-                **kwargs
-            )
+            csv.load(filename=filename, skiprows=skiprows, file_type=file_type, **kwargs)
             try:
                 self.x = csv.data[0]
                 self.y = csv.data[1]
@@ -498,11 +463,11 @@ class Curve(NCurve):
                 self.y = csv.data[1]
 
     def to_dict(
-            self,
-            remove_protected: bool = True,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-            skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = True,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> typing.Dict:
         """Serialize the curve to a dictionary.
 
@@ -516,35 +481,29 @@ class Curve(NCurve):
             remove_protected=remove_protected,
             copy_values=copy_values,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
         if convert_values_to_elementary:
-            d['x'] = self.x.tolist()
-            d['y'] = self.y.tolist()
+            d["x"] = self.x.tolist()
+            d["y"] = self.y.tolist()
         else:
             if copy_values:
-                d['x'] = np.copy(self.x)
-                d['y'] = np.copy(self.y)
+                d["x"] = np.copy(self.x)
+                d["y"] = np.copy(self.y)
             else:
-                d['x'] = self.x
-                d['y'] = self.y
+                d["x"] = self.x
+                d["y"] = self.y
         return d
 
     def from_dict(self, v: dict):
         """Restore a curve from :meth:`to_dict` output."""
         super().from_dict(v)
-        y = np.array(v['y'], dtype=np.float64)
-        x = np.array(v['x'], dtype=np.float64)
+        y = np.array(v["y"], dtype=np.float64)
+        x = np.array(v["x"], dtype=np.float64)
         d = np.vstack([x, y])
         self.d = d
 
-    def __init__(
-            self,
-            x: np.ndarray = None,
-            y: np.ndarray = None,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, x: np.ndarray = None, y: np.ndarray = None, *args, **kwargs):
         """Create a curve from x/y arrays.
 
         Parameters
@@ -569,10 +528,16 @@ class Curve(NCurve):
         to a curve therefore never writes through to the arrays it was built
         from.
         """
-        x = np.array([], dtype=np.float64) if x is None else np.atleast_1d(
-            np.asarray(x, dtype=np.float64))
-        y = np.array([], dtype=np.float64) if y is None else np.atleast_1d(
-            np.asarray(y, dtype=np.float64))
+        x = (
+            np.array([], dtype=np.float64)
+            if x is None
+            else np.atleast_1d(np.asarray(x, dtype=np.float64))
+        )
+        y = (
+            np.array([], dtype=np.float64)
+            if y is None
+            else np.atleast_1d(np.asarray(y, dtype=np.float64))
+        )
         if x.size != y.size:
             if x.size == 0:
                 x = np.zeros_like(y)
@@ -582,10 +547,7 @@ class Curve(NCurve):
         super().__init__(*args, d=d, **kwargs)
 
     def normalize(
-            self,
-            mode: str = "max",
-            curve: chisurf.core.curve.Curve = None,
-            inplace: bool = True
+        self, mode: str = "max", curve: chisurf.core.curve.Curve = None, inplace: bool = True
     ) -> float:
         """Calculates a scaling parameter for the Curve object and (optionally)
         scales the Curve object.
@@ -622,8 +584,7 @@ class Curve(NCurve):
                     factor = float(np.max(self.y) * np.max(curve.y))
         if factor == 0.0 or not np.isfinite(factor):
             logger.warning(
-                "Cannot normalize a curve whose %s is %s; leaving it unscaled.",
-                mode, factor
+                "Cannot normalize a curve whose %s is %s; leaving it unscaled.", mode, factor
             )
             return 1.0
         if inplace:
@@ -638,10 +599,7 @@ class Curve(NCurve):
             if not np.array_equal(self.x, c.x):
                 raise ValueError("The x-axis differ")
             c = c.y
-        return self.__class__(
-            x=self.x,
-            y=self.y.__add__(c)
-        )
+        return self.__class__(x=self.x, y=self.y.__add__(c))
 
     def __sub__(self, c: T) -> Curve:
         """Return the pointwise difference between two curves or curve and array."""
@@ -649,10 +607,7 @@ class Curve(NCurve):
             if not np.array_equal(self.x, c.x):
                 raise ValueError("The x-axis differ")
             c = c.y
-        return self.__class__(
-            x=self.x,
-            y=self.y.__sub__(c)
-        )
+        return self.__class__(x=self.x, y=self.y.__sub__(c))
 
     def __mul__(self, c: T) -> Curve:
         """Return the pointwise product of two curves or curve and array."""
@@ -660,10 +615,7 @@ class Curve(NCurve):
             if not np.array_equal(self.x, c.x):
                 raise ValueError("The x-axis differ")
             c = c.y
-        return self.__class__(
-            x=self.x,
-            y=self.y.__mul__(c)
-        )
+        return self.__class__(x=self.x, y=self.y.__mul__(c))
 
     def __truediv__(self, c: T) -> Curve:
         """Return the pointwise ratio of two curves or curve and array."""
@@ -671,28 +623,26 @@ class Curve(NCurve):
             if not np.array_equal(self.x, c.x):
                 raise ValueError("The x-axis differ")
             c = c.y
-        return self.__class__(
-            x=self.x,
-            y=self.y.__truediv__(c)
-        )
+        return self.__class__(x=self.x, y=self.y.__truediv__(c))
 
     def __lshift__(self, shift: float) -> Curve:
         """Return a copy with ``y`` shifted by ``shift`` samples."""
         return self.__class__(
-            x=self.x,
-            y=chisurf.core.math.signal.shift_array(self.y, shift),
-            copy_array=False
+            x=self.x, y=chisurf.core.math.signal.shift_array(self.y, shift), copy_array=False
         )
+
     def __len__(self) -> int:
         """Number of points in the curve (length of ``y``)."""
         return len(self.y)
 
-    def __getitem__(self, key: typing.Union[slice, int, np.ndarray, str]) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def __getitem__(
+        self, key: typing.Union[slice, int, np.ndarray, str]
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Return a slice of curve as (x, y)."""
         return self.x[key], self.y[key]
 
 
-class CurveGroup(object):
+class CurveGroup:
     """Light-weight container for a sequence of :class:`Curve` objects.
 
     The default implementation simply stores a list of curves and provides
@@ -709,10 +659,7 @@ class CurveGroup(object):
 
     _curves: typing.List[chisurf.core.curve.Curve]
 
-    def __init__(
-            self,
-            seq: typing.List[chisurf.core.curve.Curve] = None
-    ):
+    def __init__(self, seq: typing.List[chisurf.core.curve.Curve] = None):
         """Initialize a CurveGroup with an optional list of curves.
 
         Parameters
@@ -728,19 +675,12 @@ class CurveGroup(object):
         """Remove all curves from the group."""
         self._curves.clear()
 
-    def get_data_curves(
-            self,
-            *args,
-            **kwargs
-    ) -> typing.List[chisurf.core.curve.Curve]:
+    def get_data_curves(self, *args, **kwargs) -> typing.List[chisurf.core.curve.Curve]:
         """Return the list of curves stored in the group."""
         return self._curves
 
     @abc.abstractmethod
-    def remove_curve(
-            self,
-            selected_index: typing.List[int] = None
-    ):
+    def remove_curve(self, selected_index: typing.List[int] = None):
         """Remove curves whose indices are listed in ``selected_index``."""
         if selected_index is None:
             selected_index = list()
@@ -751,12 +691,7 @@ class CurveGroup(object):
         self._curves = curve_list
 
     @abc.abstractmethod
-    def add_curve(
-            self,
-            v: chisurf.core.curve.Curve = None,
-            *args,
-            **kwargs
-    ):
+    def add_curve(self, v: chisurf.core.curve.Curve = None, *args, **kwargs):
         """Append ``v`` to the group, positionally or by keyword.
 
         ``v`` used to be keyword-only behind ``*args``, so ``add_curve(curve)``
@@ -766,4 +701,3 @@ class CurveGroup(object):
         """
         if v is not None:
             self._curves.append(v)
-

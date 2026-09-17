@@ -55,11 +55,13 @@ def _signature_of(obj: typing.Any) -> str:
     doc = inspect.getdoc(obj) or ""
     first = doc.splitlines()[0] if doc else ""
     if "(" in first and first.endswith(")"):
-        return first[first.index("("):]
+        return first[first.index("(") :]
     return ""
 
 
-def calltip(line: str, cursor_pos: int, namespace: typing.Mapping[str, typing.Any]) -> CallTip | None:
+def calltip(
+    line: str, cursor_pos: int, namespace: typing.Mapping[str, typing.Any]
+) -> CallTip | None:
     """Return the calltip for the call the cursor sits inside.
 
     Parameters
@@ -259,7 +261,7 @@ class _quiet:
     field is best-effort and its absence is the correct outcome.
     """
 
-    def __enter__(self) -> "_quiet":
+    def __enter__(self) -> _quiet:
         """Enter the block.
 
         Returns

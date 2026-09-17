@@ -82,16 +82,18 @@ def test_component_fraction(dispatcher):
     f = 0.4
     g = f * c1[0] + (1 - f) * c2[0]
     s = f * c1[1] + (1 - f) * c2[1]
-    res = dispatcher.dispatch(
-        "phasor.component_fraction", {"g": [g], "s": [s], "c1": c1, "c2": c2}
-    )
+    res = dispatcher.dispatch("phasor.component_fraction", {"g": [g], "s": [s], "c1": c1, "c2": c2})
     assert res["ok"]
     assert res["result"]["fraction"][0] == pytest.approx(f, abs=1e-6)
 
 
 def test_unmix(dispatcher):
     freq = 80.0
-    comps = [_semicircle_point(0.5, freq), _semicircle_point(2.0, freq), _semicircle_point(6.0, freq)]
+    comps = [
+        _semicircle_point(0.5, freq),
+        _semicircle_point(2.0, freq),
+        _semicircle_point(6.0, freq),
+    ]
     w = [0.2, 0.5, 0.3]
     g = [sum(wi * c[0] for wi, c in zip(w, comps))]
     s = [sum(wi * c[1] for wi, c in zip(w, comps))]

@@ -27,8 +27,16 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "tracking.view.json"
 
 #: Colours cycled over tracks in the overlay and the trajectory plot.
 _TRACK_COLOURS = [
-    "#4c9be8", "#e8734c", "#4ce88a", "#c04ce8", "#e8d24c",
-    "#4ce8e0", "#e84c9b", "#9be84c", "#e8a04c", "#7c4ce8",
+    "#4c9be8",
+    "#e8734c",
+    "#4ce88a",
+    "#c04ce8",
+    "#e8d24c",
+    "#4ce8e0",
+    "#e84c9b",
+    "#9be84c",
+    "#e8a04c",
+    "#7c4ce8",
 ]
 
 
@@ -160,7 +168,8 @@ class ImgTrackingViewModel:
                 }
             else:
                 self._frames, info = _core.load_frames(
-                    self.filename, channel=int(self.channel),
+                    self.filename,
+                    channel=int(self.channel),
                     max_frames=int(self.max_frames),
                 )
         except Exception as exc:
@@ -222,10 +231,7 @@ class ImgTrackingViewModel:
         if self._result is None:
             return []
         found = self._result.detections
-        return [
-            (int(f), float(y), float(x))
-            for f, y, x in zip(found.frame, found.y, found.x)
-        ]
+        return [(int(f), float(y), float(x)) for f, y, x in zip(found.frame, found.y, found.x)]
 
     def track_series(self) -> list[dict]:
         """Plot series drawing each trajectory in image coordinates."""
@@ -257,7 +263,7 @@ class ImgTrackingViewModel:
         if lags.size == 0:
             return []
         model = 4.0 * fit.diffusion_coefficient * np.power(lags, fit.alpha)
-        model = model + 4.0 * fit.localisation_error ** 2
+        model = model + 4.0 * fit.localisation_error**2
         return [
             {
                 "x": lags.tolist(),

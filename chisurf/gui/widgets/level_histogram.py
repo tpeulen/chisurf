@@ -25,7 +25,6 @@ line at zero on a linear axis, which defeats the point of drawing it.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -48,22 +47,26 @@ class LevelHistogramView(QtWidgets.QWidget):
     levelRemoved = QtCore.Signal(int)
     levelSelected = QtCore.Signal(int)
 
-    def __init__(self, parent=None, *, log_counts: bool = True,
-                 allow_add: bool = True, allow_remove: bool = True) -> None:
+    def __init__(
+        self,
+        parent=None,
+        *,
+        log_counts: bool = True,
+        allow_add: bool = True,
+        allow_remove: bool = True,
+    ) -> None:
         super().__init__(parent)
         self.setMinimumHeight(90)
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         self.setMouseTracking(True)
         self._log_counts = bool(log_counts)
         self._allow_add = bool(allow_add)
         self._allow_remove = bool(allow_remove)
-        self._counts: Optional[np.ndarray] = None
-        self._edges: Optional[np.ndarray] = None
+        self._counts: np.ndarray | None = None
+        self._edges: np.ndarray | None = None
         self._levels: list[dict] = []
-        self._dragging: Optional[int] = None
-        self._selected: Optional[int] = None
+        self._dragging: int | None = None
+        self._selected: int | None = None
         self._placeholder = "no data"
 
     # ------------------------------------------------------------------ #
@@ -85,11 +88,11 @@ class LevelHistogramView(QtWidgets.QWidget):
         self._placeholder = text
         self.update()
 
-    def selected_index(self) -> Optional[int]:
+    def selected_index(self) -> int | None:
         """Which marker the surrounding controls act on."""
         return self._selected
 
-    def select(self, index: Optional[int]) -> None:
+    def select(self, index: int | None) -> None:
         """Pick a marker without the mouse."""
         self._selected = index
         self.update()
@@ -123,7 +126,7 @@ class LevelHistogramView(QtWidgets.QWidget):
         fraction = min(max(x / max(self.width() - 1, 1), 0.0), 1.0)
         return low + fraction * (high - low)
 
-    def _marker_at(self, x: float) -> Optional[int]:
+    def _marker_at(self, x: float) -> int | None:
         best, best_distance = None, float(GRAB_PIXELS)
         for index, entry in enumerate(self._levels):
             try:
@@ -157,8 +160,10 @@ class LevelHistogramView(QtWidgets.QWidget):
                 left = columns[index]
                 painter.drawRect(
                     QtCore.QRectF(
-                        left, height - bar,
-                        max(columns[index + 1] - left, 1.0), bar,
+                        left,
+                        height - bar,
+                        max(columns[index + 1] - left, 1.0),
+                        bar,
                     )
                 )
 
@@ -213,9 +218,7 @@ class LevelHistogramView(QtWidgets.QWidget):
         x = self._event_x(event)
         if self._dragging is None:
             near = self._edges is not None and self._marker_at(x) is not None
-            self.setCursor(
-                QtCore.Qt.SizeHorCursor if near else QtCore.Qt.ArrowCursor
-            )
+            self.setCursor(QtCore.Qt.SizeHorCursor if near else QtCore.Qt.ArrowCursor)
             return
         self.levelMoved.emit(self._dragging, self.x_to_value(x))
 
@@ -258,11 +261,21 @@ class LevelHistogramWidget(QtWidgets.QWidget):
     #: plot does, or a map loaded after the panel was built shows nothing.
     AUTOFORM_REFRESH = True
 
-    def __init__(self, model, target: str, *, source: str = "",
-                 range_source: str = "", on_change: str = "",
-                 styles=None, log_counts: bool = True, allow_add: bool = True,
-                 allow_remove: bool = True, placeholder: str = "no data",
-                 **_ignored) -> None:
+    def __init__(
+        self,
+        model,
+        target: str,
+        *,
+        source: str = "",
+        range_source: str = "",
+        on_change: str = "",
+        styles=None,
+        log_counts: bool = True,
+        allow_add: bool = True,
+        allow_remove: bool = True,
+        placeholder: str = "no data",
+        **_ignored,
+    ) -> None:
         super().__init__()
         self._model = model
         self._target = target
@@ -280,8 +293,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         self._value = QtWidgets.QLineEdit(self)
         self._value.setMaximumWidth(100)
         self._value.setToolTip(
-            "Exact value for the selected level. Dragging its marker does the "
-            "same thing by eye."
+            "Exact value for the selected level. Dragging its marker does the same thing by eye."
         )
         self._value.returnPressed.connect(self._value_typed)
         controls.addWidget(self._value)
@@ -314,7 +326,9 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         layout.addLayout(controls)
 
         self.view = LevelHistogramView(
-            self, log_counts=log_counts, allow_add=allow_add,
+            self,
+            log_counts=log_counts,
+            allow_add=allow_add,
             allow_remove=allow_remove,
         )
         self.view.set_placeholder(placeholder)
@@ -325,8 +339,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         layout.addWidget(self.view, 1)
 
         hint = QtWidgets.QLabel(
-            "drag a marker to move a level · click to add one · "
-            "right-click a marker to remove it",
+            "drag a marker to move a level · click to add one · right-click a marker to remove it",
             self,
         )
         hint.setWordWrap(True)
@@ -350,7 +363,8 @@ class LevelHistogramWidget(QtWidgets.QWidget):
                 logger.warning(
                     "level_histogram: %r is not callable on %s; a source must be "
                     "a method, not a property",
-                    name, type(self._model).__name__,
+                    name,
+                    type(self._model).__name__,
                 )
             return None
         try:
@@ -413,9 +427,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         self.view.set_histogram(counts, edges)
         self.view.set_levels(self._levels())
         bounds = self._bounds()
-        self._range.setText(
-            "" if bounds is None else f"{bounds[0]:.4g} … {bounds[1]:.4g}"
-        )
+        self._range.setText("" if bounds is None else f"{bounds[0]:.4g} … {bounds[1]:.4g}")
         self._sync_controls()
 
     # ------------------------------------------------------------------ #
@@ -427,7 +439,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         self.view.set_levels(self._levels())
         self._sync_controls()
 
-    def _clamped(self, value: float) -> Optional[float]:
+    def _clamped(self, value: float) -> float | None:
         bounds = self._bounds()
         if bounds is None or not np.isfinite(value):
             return None
@@ -437,7 +449,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         margin = (high - low) * 1e-4
         return float(min(max(value, low + margin), high - margin))
 
-    def _index(self) -> Optional[int]:
+    def _index(self) -> int | None:
         index = self.view.selected_index()
         levels = self._levels()
         if index is None or index >= len(levels):
@@ -461,10 +473,7 @@ class LevelHistogramWidget(QtWidgets.QWidget):
         try:
             self._colour.setStyleSheet(
                 "QToolButton { background-color: rgb(%d,%d,%d); }"
-                % tuple(
-                    int(min(max(float(c), 0.0), 1.0) * 255)
-                    for c in list(colour)[:3]
-                )
+                % tuple(int(min(max(float(c), 0.0), 1.0) * 255) for c in list(colour)[:3])
             )
         except Exception:
             pass

@@ -14,7 +14,6 @@ poking the config dict, so a registered setting's stored/shown transform runs:
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.settings import registry as settings_api
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.ui.panels import settings as settings_window
@@ -102,7 +101,8 @@ def test_numbers_get_a_usable_track():
 
 def test_max_fps_gets_a_sensible_track_not_a_guessed_one():
     """Without a RANGES entry this would guess 0..120 from 2x the default --
-    a bad track for a frame-rate ceiling, which wants headroom above 60."""
+    a bad track for a frame-rate ceiling, which wants headroom above 60.
+    """
     model = settings_window.build_model()
     by_key = {one.key: one for one in model.settings}
     row = by_key["max_fps"]
@@ -111,7 +111,8 @@ def test_max_fps_gets_a_sensible_track_not_a_guessed_one():
 
 def test_nerd_tick_gets_a_sensible_track_not_a_guessed_one():
     """A guessed range for a 0.1 s default would be 0..0.2 -- no room to set
-    it coarser, which is the direction a slow machine actually wants to move."""
+    it coarser, which is the direction a slow machine actually wants to move.
+    """
     model = settings_window.build_model()
     by_key = {one.key: one for one in model.settings}
     row = by_key["nerd_tick"]
@@ -133,14 +134,18 @@ def test_writing_goes_through_the_settings_api():
 
 def test_adjusting_moves_a_value_and_reports_it():
     """Stepping a float moves it inside its track and stores the result."""
-    rows = [settings_editor.Setting("demo.value", settings_editor.FLOAT,
-                                    v_min=0.0, v_max=1.0, step=0.25)]
+    rows = [
+        settings_editor.Setting(
+            "demo.value", settings_editor.FLOAT, v_min=0.0, v_max=1.0, step=0.25
+        )
+    ]
     store = {"demo.value": 0.5}
     model = settings_editor.SettingsModel(
-        rows, store.__getitem__, lambda k, v: store.__setitem__(k, v))
+        rows, store.__getitem__, lambda k, v: store.__setitem__(k, v)
+    )
     assert model.adjust(rows[0], 1) == pytest.approx(0.75)
     assert model.adjust(rows[0], 1) == pytest.approx(1.0)
-    assert model.adjust(rows[0], 1) == pytest.approx(1.0)   # clamped, not wrapped
+    assert model.adjust(rows[0], 1) == pytest.approx(1.0)  # clamped, not wrapped
     assert store["demo.value"] == pytest.approx(1.0)
 
 
@@ -155,8 +160,11 @@ def test_the_panel_draws_and_a_press_changes_a_setting():
     assert painter.strings and painter.rects > 10
     assert panel.editor._boxes, "no rows were laid out"
 
-    setting, box = next((s, b) for s, b in panel.editor._boxes
-                        if s.kind in (settings_editor.BOOL, settings_editor.FLOAT))
+    setting, box = next(
+        (s, b)
+        for s, b in panel.editor._boxes
+        if s.kind in (settings_editor.BOOL, settings_editor.FLOAT)
+    )
     before = panel.model.get(setting.key)
     panel.press(box[0] + box[2] * 0.9, box[1] + box[3] * 0.5, Rect(0, 0, 420, 300))
     try:
@@ -178,8 +186,7 @@ def test_filtering_and_grouping_narrow_the_list():
     # `transparency` is stored as `surface.alpha`, so searching the config
     # spelling has to find it -- the name it is edited under is not the name
     # somebody reading the JSON knows it by.
-    assert all("alpha" in (one.key + one.label + one.source).lower()
-               for one in narrowed)
+    assert all("alpha" in (one.key + one.label + one.source).lower() for one in narrowed)
     assert any(one.key == "transparency" for one in narrowed)
 
 

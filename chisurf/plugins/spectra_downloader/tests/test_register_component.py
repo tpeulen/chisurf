@@ -15,6 +15,7 @@ database *the same way*:
 
 No network access — all data is synthetic.
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -66,11 +67,19 @@ def _props(db, probe_id):
 
 # -- taxonomy ---------------------------------------------------------------
 
+
 def test_taxonomy_categories_are_canonical():
     """Every kind resolves to one of the GUI radio categories."""
     allowed = {
-        "protein", "organic_dye", "quantum_dot", "nanoparticle",
-        "filter", "dichroic", "detector", "light_source", "other",
+        "protein",
+        "organic_dye",
+        "quantum_dot",
+        "nanoparticle",
+        "filter",
+        "dichroic",
+        "detector",
+        "light_source",
+        "other",
     }
     for kind, (category, spectrum, label) in COMPONENT_KINDS.items():
         assert category in allowed, f"{kind} -> bad category {category}"
@@ -83,6 +92,7 @@ def test_resolve_unknown_kind_falls_back_to_other():
 
 
 # -- per-class ingestion ----------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "kind, expected_category, expected_spectrum",
@@ -192,8 +202,11 @@ def test_register_component_skips_empty_properties_and_spectra(db):
 def test_reregister_keeps_provenance_and_refreshes_spectra(db):
     """A second pass without provenance must not wipe the stored source."""
     db.register_component(
-        name="dup", source="chroma", kind="emission_filter",
-        source_ref="EM-1", spectra=_spec(),
+        name="dup",
+        source="chroma",
+        kind="emission_filter",
+        source_ref="EM-1",
+        spectra=_spec(),
     )
     pid1 = _probe_row(db, "dup")["probe_id"]
     # re-run via plain add_probe (no provenance args) — source must persist
@@ -206,10 +219,16 @@ def test_reregister_keeps_provenance_and_refreshes_spectra(db):
 
 def test_cas_is_canonicalized_and_looked_up(db):
     """Foundation for PRD-45: CAS aliases collapse to `cas` and are queryable."""
-    db.register_component(name="Benzene", source="photochemcad", kind="organic_dye",
-                          properties={"CAS": "71-43-2"}, spectra=_spec())
-    db.register_component(name="Fluorescein", source="atto", kind="organic_dye",
-                          cas="2321-07-5", spectra=_spec())
+    db.register_component(
+        name="Benzene",
+        source="photochemcad",
+        kind="organic_dye",
+        properties={"CAS": "71-43-2"},
+        spectra=_spec(),
+    )
+    db.register_component(
+        name="Fluorescein", source="atto", kind="organic_dye", cas="2321-07-5", spectra=_spec()
+    )
     db.conn.commit()
     # the non-canonical "CAS" key collapsed to "cas"
     pid = _probe_row(db, "Benzene")["probe_id"]
@@ -225,7 +244,11 @@ def test_categories_match_gui_registry(db):
 
     registry_path = (
         Path(__file__).resolve().parents[3]
-        / "core" / "mmfdb_admin" / "gui" / "optical_components" / "components.json"
+        / "core"
+        / "mmfdb_admin"
+        / "gui"
+        / "optical_components"
+        / "components.json"
     )
     if not registry_path.exists():
         pytest.skip("optical-components GUI registry not present")

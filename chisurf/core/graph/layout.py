@@ -47,8 +47,8 @@ DISCONNECTED_FACTOR = 1.5
 
 
 def _empty_or_single(
-        graph: Graph,
-        center: np.ndarray,
+    graph: Graph,
+    center: np.ndarray,
 ) -> dict[typing.Any, np.ndarray] | None:
     """Return the layout of a graph too small to lay out, or ``None``."""
     if graph.number_of_nodes() == 0:
@@ -69,9 +69,9 @@ def _center(center, dim: int = 2) -> np.ndarray:
 
 
 def _rescale(
-        pos: np.ndarray,
-        scale: float,
-        center: np.ndarray,
+    pos: np.ndarray,
+    scale: float,
+    center: np.ndarray,
 ) -> np.ndarray:
     """Centre ``pos`` on the origin, scale it to ``scale``, then shift to ``center``."""
     out = np.asarray(pos, dtype=float) - np.asarray(pos, dtype=float).mean(axis=0)
@@ -82,8 +82,8 @@ def _rescale(
 
 
 def _as_dict(
-        graph: Graph,
-        pos: np.ndarray,
+    graph: Graph,
+    pos: np.ndarray,
 ) -> dict[typing.Any, np.ndarray]:
     """Return ``{node: coordinates}`` for the rows of ``pos``."""
     return {node: np.asarray(row, dtype=float) for node, row in zip(graph.nodes, pos)}
@@ -104,9 +104,9 @@ def _adjacency_matrix(graph: Graph, weight: str = "weight") -> np.ndarray:
 
 
 def circular_layout(
-        graph: Graph,
-        scale: float = 1.0,
-        center=None,
+    graph: Graph,
+    scale: float = 1.0,
+    center=None,
 ) -> dict[typing.Any, np.ndarray]:
     """Return positions on a single circle, in node order.
 
@@ -135,11 +135,11 @@ def circular_layout(
 
 
 def shell_layout(
-        graph: Graph,
-        nlist: typing.Sequence[typing.Sequence] = None,
-        scale: float = 1.0,
-        center=None,
-        rotate: float = None,
+    graph: Graph,
+    nlist: typing.Sequence[typing.Sequence] = None,
+    scale: float = 1.0,
+    center=None,
+    rotate: float = None,
 ) -> dict[typing.Any, np.ndarray]:
     r"""Return positions on concentric circles, one circle per shell.
 
@@ -188,10 +188,10 @@ def shell_layout(
 
 
 def spectral_layout(
-        graph: Graph,
-        weight: str = "weight",
-        scale: float = 1.0,
-        center=None,
+    graph: Graph,
+    weight: str = "weight",
+    scale: float = 1.0,
+    center=None,
 ) -> dict[typing.Any, np.ndarray]:
     r"""Return positions from the eigenvectors of the graph Laplacian.
 
@@ -234,15 +234,15 @@ def spectral_layout(
 
 
 def spring_layout(
-        graph: Graph,
-        k: float = None,
-        pos: dict = None,
-        iterations: int = 50,
-        threshold: float = 1e-4,
-        weight: str = "weight",
-        scale: float = 1.0,
-        center=None,
-        seed: int = 0,
+    graph: Graph,
+    k: float = None,
+    pos: dict = None,
+    iterations: int = 50,
+    threshold: float = 1e-4,
+    weight: str = "weight",
+    scale: float = 1.0,
+    center=None,
+    seed: int = 0,
 ) -> dict[typing.Any, np.ndarray]:
     r"""Return a Fruchterman-Reingold force-directed layout.
 
@@ -288,9 +288,7 @@ def spring_layout(
         rng = np.random.default_rng(seed)
         points = rng.random((n, 2))
     else:
-        points = np.array(
-            [np.asarray(pos.get(node, (0.0, 0.0)), dtype=float) for node in nodes]
-        )
+        points = np.array([np.asarray(pos.get(node, (0.0, 0.0)), dtype=float) for node in nodes])
     if k is None:
         k = 1.0 / np.sqrt(n)
 
@@ -340,14 +338,14 @@ def _distance_matrix(graph: Graph, weight: str) -> np.ndarray:
 
 
 def kamada_kawai_layout(
-        graph: Graph,
-        dist: np.ndarray = None,
-        pos: dict = None,
-        weight: str = "weight",
-        scale: float = 1.0,
-        center=None,
-        max_iter: int = 300,
-        tol: float = 1e-7,
+    graph: Graph,
+    dist: np.ndarray = None,
+    pos: dict = None,
+    weight: str = "weight",
+    scale: float = 1.0,
+    center=None,
+    max_iter: int = 300,
+    tol: float = 1e-7,
 ) -> dict[typing.Any, np.ndarray]:
     r"""Return a layout whose drawn distances match the graph distances.
 
@@ -392,28 +390,24 @@ def kamada_kawai_layout(
         return trivial
 
     nodes = list(graph.nodes)
-    d = np.asarray(dist, dtype=float) if dist is not None else _distance_matrix(
-        graph, weight
-    )
+    d = np.asarray(dist, dtype=float) if dist is not None else _distance_matrix(graph, weight)
     if d.shape != (len(nodes), len(nodes)):
         raise ValueError("dist must be a square matrix in node order")
 
     if pos is None:
         start = np.array([circular_layout(graph)[n] for n in nodes], dtype=float)
     else:
-        start = np.array(
-            [np.asarray(pos[n], dtype=float) for n in nodes], dtype=float
-        )
+        start = np.array([np.asarray(pos[n], dtype=float) for n in nodes], dtype=float)
 
     points = _smacof(d, start, max_iter=max_iter, tol=tol)
     return _as_dict(graph, _rescale(points, scale, centre))
 
 
 def _smacof(
-        d: np.ndarray,
-        start: np.ndarray,
-        max_iter: int = 300,
-        tol: float = 1e-7,
+    d: np.ndarray,
+    start: np.ndarray,
+    max_iter: int = 300,
+    tol: float = 1e-7,
 ) -> np.ndarray:
     """Minimise weighted stress by majorization, starting from ``start``.
 
@@ -462,15 +456,15 @@ def _smacof(
 
 
 def arf_layout(
-        graph: Graph,
-        pos: dict = None,
-        scaling: float = 1.0,
-        a: float = 1.1,
-        etol: float = 1e-6,
-        dt: float = 1e-3,
-        max_iter: int = 1000,
-        scale: float = 1.0,
-        center=None,
+    graph: Graph,
+    pos: dict = None,
+    scaling: float = 1.0,
+    a: float = 1.1,
+    etol: float = 1e-6,
+    dt: float = 1e-3,
+    max_iter: int = 1000,
+    scale: float = 1.0,
+    center=None,
 ) -> dict[typing.Any, np.ndarray]:
     """Return an attractive/repulsive force layout.
 
@@ -527,9 +521,7 @@ def arf_layout(
     if pos is None:
         points = np.array([circular_layout(graph)[node] for node in nodes])
     else:
-        points = np.array(
-            [np.asarray(pos[node], dtype=float) for node in nodes], dtype=float
-        )
+        points = np.array([np.asarray(pos[node], dtype=float) for node in nodes], dtype=float)
 
     for _ in range(max_iter):
         delta = points[None, :, :] - points[:, None, :]

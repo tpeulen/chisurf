@@ -60,9 +60,7 @@ class DetectorSetupClient:
 
     def save_setup(self, name: str, settings: dict[str, Any]) -> None:
         """Persist ``settings`` under ``name`` in the canonical store."""
-        self._client.call(
-            "detector_setups.save", {"name": name, "settings": settings}
-        )
+        self._client.call("detector_setups.save", {"name": name, "settings": settings})
 
 
 __all__ = ["DetectorSetupClient"]

@@ -7,7 +7,7 @@ DetectorWizardPage JSON format.
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import click
 import numpy as np
@@ -21,15 +21,14 @@ try:  # pragma: no cover - convenience import
     from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 except Exception:  # pragma: no cover - standalone / minimal environment
 
-    def load_detector_setups(file_path: str) -> Dict[str, Any]:
+    def load_detector_setups(file_path: str) -> dict[str, Any]:
         """Load detector setups from a JSON file.
 
         This is a minimal fallback used when the full ChiSurf GUI
         components are not importable.
         """
-
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as exc:  # pragma: no cover - IO error path
             click.echo(f"Error loading detector setups: {exc}", err=True)
@@ -37,20 +36,19 @@ except Exception:  # pragma: no cover - standalone / minimal environment
 
 
 def estimate_background_for_files(
-    tttr_files: List[str],
-    detectors: Dict[str, Dict[str, Any]],
+    tttr_files: list[str],
+    detectors: dict[str, dict[str, Any]],
     *,
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.2,
     min_counts: int = 1,
     verbose: bool = False,
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """Estimate background rates for all files and detectors.
 
     Returns a mapping ``{file_path: {detector_name: background_kHz}}``.
     """
-
-    results: Dict[str, Dict[str, float]] = {}
+    results: dict[str, dict[str, float]] = {}
 
     if not tttr_files:
         click.echo("No TTTR files provided", err=True)
@@ -62,9 +60,7 @@ def estimate_background_for_files(
 
     for idx, path in enumerate(tttr_files):
         if verbose:
-            click.echo(
-                f"Processing file {idx + 1}/{len(tttr_files)}: {os.path.basename(path)}"
-            )
+            click.echo(f"Processing file {idx + 1}/{len(tttr_files)}: {os.path.basename(path)}")
 
         try:
             tttr = tttrlib.TTTR(path)
@@ -85,11 +81,10 @@ def estimate_background_for_files(
 
 
 def save_results_as_txt(
-    backgrounds: Dict[str, Dict[str, float]],
+    backgrounds: dict[str, dict[str, float]],
     output_file: str,
 ) -> None:
     """Save per-file, per-detector background estimates to a text file."""
-
     if not backgrounds:
         click.echo("No data to save", err=True)
         return
@@ -124,7 +119,6 @@ def cli(ctx: click.Context, version: bool) -> None:
     Estimate background count rates (kHz) from TTTR files using
     detector setups defined for the DetectorWizard.
     """
-
     if version:
         click.echo("Burst Background Estimation CLI v1.0.0")
         return
@@ -165,8 +159,7 @@ def cli(ctx: click.Context, version: bool) -> None:
     default=0.2,
     show_default=True,
     help=(
-        "Fraction of the histogram range used for the tail fit. "
-        "0.2 corresponds to dt > max(dt)/5."
+        "Fraction of the histogram range used for the tail fit. 0.2 corresponds to dt > max(dt)/5."
     ),
 )
 @click.option(
@@ -178,7 +171,7 @@ def cli(ctx: click.Context, version: bool) -> None:
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.")
 def analyze(
-    files: List[str],
+    files: list[str],
     setup_file: str,
     setup_name: str,
     output: str,
@@ -191,17 +184,12 @@ def analyze(
 
     FILES: One or more TTTR files to analyze.
     """
-
     if not files:
-        click.echo(
-            "No files specified. Use --help for usage information.", err=True
-        )
+        click.echo("No files specified. Use --help for usage information.", err=True)
         return
 
     if not setup_file:
-        click.echo(
-            "No setup file specified. Use --help for usage information.", err=True
-        )
+        click.echo("No setup file specified. Use --help for usage information.", err=True)
         return
 
     setups = load_detector_setups(setup_file)
@@ -218,7 +206,9 @@ def analyze(
             click.echo(f"  {i}. {name}")
 
         idx = click.prompt(
-            "Select a setup (number)", type=int, default=1  # type: ignore[arg-type]
+            "Select a setup (number)",
+            type=int,
+            default=1,  # type: ignore[arg-type]
         )
         if idx < 1 or idx > len(available_setups):
             click.echo(
@@ -267,7 +257,7 @@ def analyze(
     click.echo(f"Detectors: {len(det_names)}")
 
     for det in sorted(det_names):
-        vals: List[float] = []
+        vals: list[float] = []
         for det_bg in backgrounds.values():
             if det in det_bg:
                 vals.append(det_bg[det])
@@ -286,7 +276,6 @@ def analyze(
 @click.argument("setup_file", type=click.Path(exists=True))
 def list_setups_cmd(setup_file: str) -> None:
     """List available detector setups in SETUP_FILE."""
-
     setups = load_detector_setups(setup_file)
     available_setups = list(setups.get("setups", {}).keys())
     if not available_setups:

@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from chisurf.core.fio.pto import Measurement, is_measurement
 
@@ -211,7 +212,7 @@ class PtoInspection:
                 logger.debug("closing %s failed", self.path, exc_info=True)
             self._m = None
 
-    def __enter__(self) -> "PtoInspection":
+    def __enter__(self) -> PtoInspection:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:

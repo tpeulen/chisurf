@@ -106,7 +106,9 @@ class ProtocolsView(QtWidgets.QWidget):
         for row, s in enumerate(schema):
             for col, key in enumerate(("name", "value_type", "required", "units")):
                 self.schema_table.setItem(
-                    row, col, QtWidgets.QTableWidgetItem(str(s.get(key) if s.get(key) is not None else ""))
+                    row,
+                    col,
+                    QtWidgets.QTableWidgetItem(str(s.get(key) if s.get(key) is not None else "")),
                 )
 
     def create_protocol(self) -> None:
@@ -122,8 +124,6 @@ class ProtocolsView(QtWidgets.QWidget):
         if result.get("error"):
             self.message_label.setText(f"Rejected: {result['error']}")
         else:
-            self.message_label.setText(
-                f"Created {name} v{result.get('version')}."
-            )
+            self.message_label.setText(f"Created {name} v{result.get('version')}.")
             self.new_name_edit.clear()
         self.refresh()

@@ -30,7 +30,8 @@ from .gui.client import ConfocalCalcClient  # noqa: F401
 
 _manifest = _load_manifest(_Path(__file__).with_name("manifest.json"))
 name = (
-    _manifest.display_name if _manifest is not None
+    _manifest.display_name
+    if _manifest is not None
     else "Spectroscopy:Fluorescence Correlation Spectroscopy:Diffusion/Volume Calculator"
 )
 
@@ -38,4 +39,3 @@ name = (
 menu_hidden = True
 
 __all__ = ["ConfocalCalcClient", "compute_confocal", "menu_hidden", "name"]
-

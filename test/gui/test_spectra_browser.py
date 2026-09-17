@@ -1,4 +1,5 @@
 """Headless test for the spectra-downloader staging data browser."""
+
 from __future__ import annotations
 
 import os
@@ -26,12 +27,19 @@ def _staging_db():
     db.connect()
     wl = np.linspace(400, 700, 8)
     with db:
-        db.register_component(name="EGFP", source="fpbase", kind="fluorescent_protein",
-                              spectra={"absorption": (wl, np.ones_like(wl)),
-                                       "emission": (wl, np.ones_like(wl))})
-        db.register_component(name="Thorlabs SPCMxxA", source="fpbase", kind="detector",
-                              source_ref="9342",
-                              spectra={"quantum_efficiency": (wl, np.linspace(0, 1, 8))})
+        db.register_component(
+            name="EGFP",
+            source="fpbase",
+            kind="fluorescent_protein",
+            spectra={"absorption": (wl, np.ones_like(wl)), "emission": (wl, np.ones_like(wl))},
+        )
+        db.register_component(
+            name="Thorlabs SPCMxxA",
+            source="fpbase",
+            kind="detector",
+            source_ref="9342",
+            spectra={"quantum_efficiency": (wl, np.linspace(0, 1, 8))},
+        )
         db.conn.commit()
     return db
 
@@ -71,6 +79,7 @@ def test_browser_lists_and_shows_detail_on_selection(qapp):
     w._table.selectRow(0)
     qapp.processEvents()
     import json
+
     meta = json.loads(w._metadata.toPlainText())
     assert meta["probe"]["chromophore_name"] == "Thorlabs SPCMxxA"
     assert any(s["type"] == "quantum_efficiency" for s in meta["spectra"])
@@ -146,9 +155,12 @@ def test_add_to_mmfdb_session_admin_gate(qapp):
     panel._model.user = "user_default"
     panel._add_all()
     qapp.processEvents()
-    assert sqlite3.connect(mmfdb).execute(
-        "SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL"
-    ).fetchone()[0] >= 2
+    assert (
+        sqlite3.connect(mmfdb)
+        .execute("SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL")
+        .fetchone()[0]
+        >= 2
+    )
 
     # non-admin → refused
     panel._model.user = "guest"
@@ -169,7 +181,9 @@ def test_autoform_password_kind_is_masked(qapp):
         secret = "hunter2"
 
         def view_spec(self):
-            return ModelView(sections=[ValueSection(attr="secret", label="Secret", kind="password")])
+            return ModelView(
+                sections=[ValueSection(attr="secret", label="Secret", kind="password")]
+            )
 
     form = AutoForm(_M())
     edits = form.findChildren(QtWidgets.QLineEdit)
@@ -182,6 +196,7 @@ def test_overview_panel_counts(qapp):
     db = _staging_db()  # EGFP (protein) + SPCMxxA (detector)
     panel = OverviewPanel(db)
     import json
+
     blob = json.loads(panel._json.toPlainText())
     assert blob["by_category"].get("protein") == 1
     assert blob["by_category"].get("detector") == 1
@@ -199,8 +214,12 @@ def test_source_filter_and_push(qapp):
     # add a second source
     wl = np.linspace(400, 700, 8)
     with db:
-        db.register_component(name="FB340-10", source="thorlabs", kind="bandpass",
-                              spectra={"transmission": (wl, np.ones_like(wl))})
+        db.register_component(
+            name="FB340-10",
+            source="thorlabs",
+            kind="bandpass",
+            spectra={"transmission": (wl, np.ones_like(wl))},
+        )
         db.conn.commit()
 
     w = SpectraBrowserWidget(db, initial_source="thorlabs")
@@ -212,19 +231,26 @@ def test_source_filter_and_push(qapp):
     w._table.selectRow(0)
     qapp.processEvents()
     mmfdb = tempfile.mktemp(suffix=".mmfdb")
-    summary = push_staging_to_mmfdb(str(db.db_path), probe_ids=w._selected_probe_ids(), mmfdb_path=mmfdb)
+    summary = push_staging_to_mmfdb(
+        str(db.db_path), probe_ids=w._selected_probe_ids(), mmfdb_path=mmfdb
+    )
     assert summary["merged"] == 1
 
     import sqlite3
-    rows = sqlite3.connect(mmfdb).execute(
-        "SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL"
-    ).fetchall()
+
+    rows = (
+        sqlite3.connect(mmfdb)
+        .execute("SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL")
+        .fetchall()
+    )
     assert rows == [("FB340-10", "filter", "thorlabs")]
 
     # push all → the other two components arrive too
     push_staging_to_mmfdb(str(db.db_path), mmfdb_path=mmfdb)
-    total = sqlite3.connect(mmfdb).execute(
-        "SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL"
-    ).fetchone()[0]
+    total = (
+        sqlite3.connect(mmfdb)
+        .execute("SELECT COUNT(*) FROM probes WHERE deleted_at IS NULL")
+        .fetchone()[0]
+    )
     assert total == 3
     db.close()

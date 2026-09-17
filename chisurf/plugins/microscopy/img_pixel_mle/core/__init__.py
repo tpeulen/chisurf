@@ -2,6 +2,7 @@
 
 See :mod:`chisurf.plugins.microscopy.img_pixel_mle.core.pixel_mle`.
 """
+
 from __future__ import annotations
 
 from .pixel_mle import (

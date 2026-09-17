@@ -6,10 +6,10 @@ or measure it. Each tool is tested on its own; these tests pin the *hand-off*,
 which is where a coordinate convention or a file-format assumption silently
 diverges and nothing fails until a user's numbers are quietly wrong.
 """
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 
 def _clsm_view_model_with_a_painted_region():
@@ -56,7 +56,7 @@ def test_a_segmentation_arrives_as_objects_not_as_one_blob(tmp_path):
     because a label image is also a valid mask — and the per-object numbers
     downstream would then describe the whole field.
     """
-    from chisurf.core.fio.image import imread, imwrite
+    from chisurf.core.fio.image import imwrite
     from chisurf.core.roi import RegionCollection, regionprops
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
 
@@ -86,8 +86,8 @@ def test_a_region_measured_in_one_tool_gates_another():
     A molecule found by the segmentation in one tool becomes a gate in the
     next, without anyone converting anything.
     """
-    from chisurf.core.roi import regionprops
     from chisurf.core.fluorescence.imaging.colocalization import pixelwise
+    from chisurf.core.roi import regionprops
 
     labels = np.zeros((16, 16), dtype=np.int32)
     labels[4:8, 4:8] = 1

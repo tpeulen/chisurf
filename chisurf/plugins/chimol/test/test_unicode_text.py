@@ -33,11 +33,11 @@ What is pinned here
   feed exactly one, which is how the window drew Japanese while the offscreen
   grab drew blanks.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from emtk.font import MISSING_GLYPH, load_atlas
 
 #: What was reported, and what the baked set now has to cover on its own.
@@ -72,7 +72,7 @@ def test_a_baked_glyph_has_ink(atlas):
     image = np.asarray(Image.open(atlas.image_path).convert("RGBA"))
     for char in REPORTED:
         x, y, w, h = atlas.cell_of(char)
-        assert image[y:y + h, x:x + w, 3].max() > 0, f"{char!r} baked blank"
+        assert image[y : y + h, x : x + w, 3].max() > 0, f"{char!r} baked blank"
 
 
 @pytest.mark.parametrize("script", sorted(RUNTIME))
@@ -85,7 +85,7 @@ def test_runtime_scripts_rasterise(atlas, script):
         rect = cache.cell_of(char)
         assert rect is not None, f"{char!r} ({script}) did not rasterise"
         x, y, w, h = rect
-        assert cache.image[y:y + h, x:x + w, 3].max() > 0, (
+        assert cache.image[y : y + h, x : x + w, 3].max() > 0, (
             f"{char!r} ({script}) rasterised blank"
         )
 
@@ -135,7 +135,7 @@ def test_the_cache_can_feed_more_than_one_texture(atlas):
         pytest.skip("no rasteriser on this machine")
 
     before = cache.version
-    cache.cell_of("Ƕ")     # something not asked for above
+    cache.cell_of("Ƕ")  # something not asked for above
     assert cache.version > before, "storing a glyph did not move the version"
 
     # Two consumers, each tracking its own high-water mark, both see the glyph.
@@ -157,7 +157,7 @@ def test_typing_unicode_reaches_the_screen():
     """
     from toolkit_free import probe
 
-    measured = probe('''
+    measured = probe("""
         app = open_app(size=(900, 300))
         gui = app.renderer._internal_gui
         gui.command_line.focused = True
@@ -173,7 +173,7 @@ def test_typing_unicode_reaches_the_screen():
             app.renderer.on_key_press(0, ch, 0)
         emit("typed", ink())
         emit("text", gui.command_line.text)
-    ''')
+    """)
 
     assert "Fläche" in measured["text"], measured["text"]
     assert int(measured["typed"]) > int(measured["empty"]) + 200, (

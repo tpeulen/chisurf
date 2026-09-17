@@ -85,6 +85,7 @@ Sample a two-dimensional Gaussian with either sampler and recover its mean:
 True
 True
 """
+
 from __future__ import annotations
 
 import typing
@@ -159,7 +160,7 @@ def walkers_independent(coords: np.ndarray) -> bool:
     if np.any(col_max == 0):
         return False
     c = c / col_max
-    col_norm = np.sqrt(np.sum(c ** 2, axis=0))
+    col_norm = np.sqrt(np.sum(c**2, axis=0))
     if np.any(col_norm == 0):
         return False
     c = c / col_norm
@@ -234,15 +235,15 @@ class _EnsembleSamplerBase:
     """
 
     def __init__(
-            self,
-            nwalkers: int,
-            ndim: int,
-            log_prob_fn: typing.Callable,
-            args: typing.Sequence = None,
-            kwargs: dict = None,
-            pool=None,
-            vectorize: bool = False,
-            seed=None,
+        self,
+        nwalkers: int,
+        ndim: int,
+        log_prob_fn: typing.Callable,
+        args: typing.Sequence = None,
+        kwargs: dict = None,
+        pool=None,
+        vectorize: bool = False,
+        seed=None,
     ):
         self.nwalkers = int(nwalkers)
         self.ndim = int(ndim)
@@ -360,7 +361,7 @@ class _EnsembleSamplerBase:
         v = store[name]
         if v is None:
             return None
-        v = v[discard + thin - 1:self.iteration:thin]
+        v = v[discard + thin - 1 : self.iteration : thin]
         if flat:
             s = list(v.shape[1:])
             s[0] = int(np.prod(v.shape[:2]))
@@ -506,12 +507,12 @@ class _EnsembleSamplerBase:
         raise NotImplementedError
 
     def sample(
-            self,
-            initial_state,
-            iterations: int = 1,
-            thin_by: int = 1,
-            store: bool = True,
-            skip_initial_state_check: bool = False,
+        self,
+        initial_state,
+        iterations: int = 1,
+        thin_by: int = 1,
+        store: bool = True,
+        skip_initial_state_check: bool = False,
     ) -> typing.Iterator[EnsembleState]:
         """Advance the ensemble, yielding the state every ``thin_by`` steps.
 
@@ -628,13 +629,13 @@ class EnsembleSampler(_EnsembleSamplerBase):
     """
 
     def __init__(
-            self,
-            nwalkers: int,
-            ndim: int,
-            log_prob_fn: typing.Callable,
-            stretch_scale: float = 2.0,
-            live_dangerously: bool = False,
-            **kwargs,
+        self,
+        nwalkers: int,
+        ndim: int,
+        log_prob_fn: typing.Callable,
+        stretch_scale: float = 2.0,
+        live_dangerously: bool = False,
+        **kwargs,
     ):
         self.stretch_scale = float(stretch_scale)
         self.live_dangerously = bool(live_dangerously)
@@ -910,17 +911,17 @@ class EnsembleSliceSampler(_EnsembleSamplerBase):
     """
 
     def __init__(
-            self,
-            nwalkers: int,
-            ndim: int,
-            log_prob_fn: typing.Callable,
-            moves=None,
-            tune: bool = True,
-            max_steps: int = 50,
-            max_iter: int = 1000,
-            tolerance: float = 0.1,
-            patience: int = 5,
-            **kwargs,
+        self,
+        nwalkers: int,
+        ndim: int,
+        log_prob_fn: typing.Callable,
+        moves=None,
+        tune: bool = True,
+        max_steps: int = 50,
+        max_iter: int = 1000,
+        tolerance: float = 0.1,
+        patience: int = 5,
+        **kwargs,
     ):
         self._moves, self._weights = _parse_moves(moves)
         self.tuning = bool(tune)
@@ -1023,10 +1024,12 @@ class EnsembleSliceSampler(_EnsembleSamplerBase):
             # instead would leave the interval one step short of covering the
             # slice, truncating its tails and reporting a posterior that is
             # systematically too narrow.
-            probe = np.concatenate((
-                x0[grow_left] + directions[grow_left] * left[grow_left][:, None],
-                x0[grow_right] + directions[grow_right] * right[grow_right][:, None],
-            ))
+            probe = np.concatenate(
+                (
+                    x0[grow_left] + directions[grow_left] * left[grow_left][:, None],
+                    x0[grow_right] + directions[grow_right] * right[grow_right][:, None],
+                )
+            )
             log_prob, _ = self.compute_log_prob(probe)
             n_left = int(np.count_nonzero(grow_left))
             lp_left, lp_right = log_prob[:n_left], log_prob[n_left:]

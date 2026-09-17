@@ -86,6 +86,7 @@ def open_burst_selection_from_mmfdb(
     nothing was selected / it could not be opened.
     """
     from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
+
     sel = MmfdbDatasetPickerDialog.pick_dataset(
         parent=parent,
         kinds=BURST_KINDS,

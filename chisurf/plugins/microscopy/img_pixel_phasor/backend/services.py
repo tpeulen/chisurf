@@ -162,11 +162,13 @@ def _cursor_mask_handler(
         else:
             raise ValueError("a cursor needs either 'center' or a serialised 'roi'")
         mask = analysis.mask_from_cursor(g_arr, s_arr, region)
-        return _ok({
-            "mask": mask.tolist(),
-            "n_selected": int(mask.sum()),
-            "roi": region.to_dict(),
-        })
+        return _ok(
+            {
+                "mask": mask.tolist(),
+                "n_selected": int(mask.sum()),
+                "roi": region.to_dict(),
+            }
+        )
     except Exception as exc:
         return _fail(exc, "cursor_mask")
 
@@ -206,10 +208,20 @@ def _overlays_handler(
     """Return the requested reference-geometry polylines as ``{name, kind, x, y, style}``."""
     try:
         overlays = analysis.build_overlays(
-            frequency_mhz=float(frequency_mhz), harmonic=int(harmonic), sets=sets,
-            taus=taus, c1=c1, c2=c2, tau_d0=float(tau_d0), e_range=e_range,
-            n_points=int(n_points), components=components, fractions=fractions,
-            cursors=cursors, polar_radii=polar_radii, polar_angles=polar_angles,
+            frequency_mhz=float(frequency_mhz),
+            harmonic=int(harmonic),
+            sets=sets,
+            taus=taus,
+            c1=c1,
+            c2=c2,
+            tau_d0=float(tau_d0),
+            e_range=e_range,
+            n_points=int(n_points),
+            components=components,
+            fractions=fractions,
+            cursors=cursors,
+            polar_radii=polar_radii,
+            polar_angles=polar_angles,
         )
         return _ok({"frequency_mhz": float(frequency_mhz) * int(harmonic), "overlays": overlays})
     except Exception as exc:

@@ -29,6 +29,4 @@ __all__ = [
 
 def contract_descriptor() -> dict[str, Any]:
     """Return a dict describing the plugin RPC contract."""
-    return build_contract_descriptor(
-        PLUGIN_ID, CONTRACT_VERSION, [METHOD_ANALYZE, METHOD_CONTRACT]
-    )
+    return build_contract_descriptor(PLUGIN_ID, CONTRACT_VERSION, [METHOD_ANALYZE, METHOD_CONTRACT])

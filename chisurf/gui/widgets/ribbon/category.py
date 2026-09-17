@@ -54,8 +54,12 @@ class RibbonCategoryLayoutWidget(QtWidgets.QFrame):
 
         # Category scroll area
         self._categoryScrollArea = RibbonCategoryScrollArea()  # type: ignore
-        self._categoryScrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._categoryScrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._categoryScrollArea.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._categoryScrollArea.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self._categoryScrollArea.setWidget(self._categoryScrollAreaContents)
 
         # Previous/Next buttons
@@ -150,9 +154,9 @@ class RibbonCategory(RibbonCategoryLayoutWidget):
     #: The button style of the category.
     _style: RibbonCategoryStyle
     #: Panels
-    _panels: typing.Dict[str, RibbonPanel]
+    _panels: dict[str, RibbonPanel]
     #: color of the context category
-    _color: typing.Optional[QtGui.QColor]
+    _color: QtGui.QColor | None
     #: Maximum rows
     _maxRows: int = 6
 
@@ -225,11 +229,11 @@ class RibbonCategory(RibbonCategoryLayoutWidget):
 
     def addPanelsBy(
         self,
-        data: typing.Dict[
+        data: dict[
             str,  # title of the panel
-            typing.Dict,  # data of the panel
+            dict,  # data of the panel
         ],
-    ) -> typing.Dict[str, RibbonPanel]:
+    ) -> dict[str, RibbonPanel]:
         """Add panels from a dictionary.
 
         :param data: The dictionary. The keys are the titles of the panels. The value is a dictionary of
@@ -270,7 +274,9 @@ class RibbonCategory(RibbonCategoryLayoutWidget):
         :param showPanelOptionButton: Whether to show the panel option button.
         :return: The newly created panel.
         """
-        panel = RibbonPanel(title, maxRows=self._maxRows, showPanelOptionButton=showPanelOptionButton, parent=self)
+        panel = RibbonPanel(
+            title, maxRows=self._maxRows, showPanelOptionButton=showPanelOptionButton, parent=self
+        )
         panel.setFixedHeight(
             self.height()
             - self._mainLayout.spacing()
@@ -309,7 +315,7 @@ class RibbonCategory(RibbonCategoryLayoutWidget):
         """
         return self._panels[title]
 
-    def panels(self) -> typing.Dict[str, RibbonPanel]:
+    def panels(self) -> dict[str, RibbonPanel]:
         """Return all panels in the category.
 
         :return: The panels.
@@ -396,14 +402,14 @@ class RibbonContextCategory(RibbonCategory):
             self.hideContextCategory()
 
 
-class RibbonContextCategories(typing.Dict[str, RibbonContextCategory]):
+class RibbonContextCategories(dict[str, RibbonContextCategory]):
     """A list of context categories."""
 
     def __init__(
         self,
         name: str,
         color: QtGui.QColor,
-        categories: typing.Dict[str, RibbonContextCategory],
+        categories: dict[str, RibbonContextCategory],
         ribbon,
     ):
         self._name = name

@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.core.datastore import column_names, numeric_column
+from chisurf.core.datastore import numeric_column
 
 tttrlib = pytest.importorskip("tttrlib")
 pytest.importorskip("mmfdb")
@@ -35,8 +35,11 @@ def analyzed(tmp_path_factory):
     """Simulate two gamma-distorted FRET populations; return sim + per-burst PR."""
     wf = BurstWorkflow.demo(workdir=tmp_path_factory.mktemp("calib_sim"))
     sim = wf.simulate(
-        fret=GROUND_TRUTH, exchange_rate=0.0, gamma=GAMMA,
-        n_photons=400_000, seed=2024,
+        fret=GROUND_TRUTH,
+        exchange_rate=0.0,
+        gamma=GAMMA,
+        n_photons=400_000,
+        seed=2024,
     )
     bursts = wf.select_bursts(sim.handle, setup=sim.setup, min_photons=40)
     bva = bursts.bva("green", "red")

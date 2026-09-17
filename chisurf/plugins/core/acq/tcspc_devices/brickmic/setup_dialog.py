@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from qtpy.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QLabel,
-    QSpinBox,
     QDoubleSpinBox,
-    QPushButton,
+    QFormLayout,
     QGroupBox,
+    QHBoxLayout,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
 )
 
 

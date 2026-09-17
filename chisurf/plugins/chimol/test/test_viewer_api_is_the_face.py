@@ -5,6 +5,7 @@ author cannot see (add it to the Protocol, deliberately); a name declared
 but no longer used is a stale promise (delete it). And every declared name
 exists on the real Viewer.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -12,7 +13,6 @@ import re
 
 import chimol
 from chimol.core.api import ViewerAPI
-
 from toolkit_free import probe
 
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
@@ -30,7 +30,9 @@ ROOT = pathlib.Path(chimol.__file__).resolve().parent
 #: absent is the point of `test_an_exemption_has_to_earn_its_place` below.
 SPECULATIVE = {"device"}
 _ATTR = re.compile(r"\b(?:viewer|ctx\.viewer|self\.viewer|self\._viewer)\.([a-zA-Z]\w*)")
-_GETATTR = re.compile(r'getattr\((?:viewer|ctx\.viewer|self\.viewer|self\._viewer), "([a-zA-Z]\w*)"')
+_GETATTR = re.compile(
+    r'getattr\((?:viewer|ctx\.viewer|self\.viewer|self\._viewer), "([a-zA-Z]\w*)"'
+)
 
 
 def _used() -> set[str]:
@@ -46,7 +48,9 @@ def _used() -> set[str]:
 
 def _declared() -> set[str]:
     names = set(getattr(ViewerAPI, "__annotations__", {}))
-    names |= {n for n in vars(ViewerAPI) if not n.startswith("_") and n not in ("__protocol_attrs__",)}
+    names |= {
+        n for n in vars(ViewerAPI) if not n.startswith("_") and n not in ("__protocol_attrs__",)
+    }
     return names
 
 
@@ -60,7 +64,9 @@ def test_every_declared_name_is_used():
     assert not stale, f"declared in ViewerAPI but no caller: {stale}"
 
 
-_HASATTR = re.compile(r'hasattr\(\s*(?:viewer|ctx\.viewer|self\.viewer|self\._viewer)\s*,\s*"([a-zA-Z]\w*)"')
+_HASATTR = re.compile(
+    r'hasattr\(\s*(?:viewer|ctx\.viewer|self\.viewer|self\._viewer)\s*,\s*"([a-zA-Z]\w*)"'
+)
 
 
 def test_nobody_asks_whether_a_declared_name_exists():
@@ -98,7 +104,7 @@ def test_an_exemption_has_to_earn_its_place():
     """
     from chimol.core.viewer import Viewer
 
-    used = _used() | SPECULATIVE          # `_used` subtracts them; add them back
+    used = _used() | SPECULATIVE  # `_used` subtracts them; add them back
     for name in SPECULATIVE:
         assert not hasattr(Viewer, name), (
             f"{name} is a real attribute of the viewer: declare it in ViewerAPI "
@@ -141,8 +147,8 @@ def test_every_declared_data_attribute_exists_on_a_real_viewer():
     declared = sorted(getattr(ViewerAPI, "__annotations__", {}))
     written = probe(
         "app = open_app(size=(320, 240))\n"
-        "missing = [n for n in %r if not hasattr(app.viewer, n)]\n"
-        "emit('missing', ','.join(missing))\n" % (declared,)
+        f"missing = [n for n in {declared!r} if not hasattr(app.viewer, n)]\n"
+        "emit('missing', ','.join(missing))\n"
     )
     assert written["missing"] == "", (
         f"declared in ViewerAPI but absent from a built viewer: {written['missing']}"

@@ -5,8 +5,7 @@ from __future__ import annotations
 from chisurf.plugins.modelling.fret.core import stat
 
 _HEADER = (
-    "{'STAT2HEADER': 'STAT2HEADER', 0: 'AV_Score', 1: 'Total_Score', "
-    "4: 'MonteCarlo_Nframe'}\n"
+    "{'STAT2HEADER': 'STAT2HEADER', 0: 'AV_Score', 1: 'Total_Score', 4: 'MonteCarlo_Nframe'}\n"
 )
 
 

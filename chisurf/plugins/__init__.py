@@ -8,8 +8,9 @@ from chisurf.core.plugin.manifest import load_manifest
 
 # Helper to set hidden attribute on Windows
 
+
 def _set_hidden_on_windows(path: pathlib.Path) -> None:
-    if os.name != 'nt':
+    if os.name != "nt":
         return
     try:
         FILE_ATTRIBUTE_HIDDEN = 0x2
@@ -26,8 +27,9 @@ def _set_hidden_on_windows(path: pathlib.Path) -> None:
     except Exception:
         pass
 
+
 # Define the user plugins directory
-user_plugins_dir = pathlib.Path.home() / '.chisurf' / 'plugins'
+user_plugins_dir = pathlib.Path.home() / ".chisurf" / "plugins"
 chisurf_user_dir = user_plugins_dir.parent
 
 # Ensure the base ~/.chisurf exists and is hidden if newly created
@@ -45,12 +47,12 @@ if str(user_plugins_dir) not in __path__:
 
 
 # --- Auto-rasterize plugin SVG icons to PNG (optional) ---
-_def_done_flag = '_chisurf_plugins_svg_rasterized'
-if (
-    os.environ.get("CHISURF_ENABLE_PLUGIN_ICON_RASTERIZE", "").lower()
-    in {"1", "true", "yes"}
-    and not getattr(sys.modules.get(__name__), _def_done_flag, False)
-):
+_def_done_flag = "_chisurf_plugins_svg_rasterized"
+if os.environ.get("CHISURF_ENABLE_PLUGIN_ICON_RASTERIZE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+} and not getattr(sys.modules.get(__name__), _def_done_flag, False):
     setattr(sys.modules.get(__name__), _def_done_flag, True)
     try:
         # Import QtSvg lazily to avoid hard dependency if GUI isn't used
@@ -410,7 +412,10 @@ def _iter_plugins_uncached():
 
                 # Automatically hide the built-in cookiecutter template from the GUI menu
                 # while still allowing it to be managed as a plugin if needed.
-                if "cookiecutter-chisurf-plugin" in parts and "{{cookiecutter.plugin_name}}" in parts:
+                if (
+                    "cookiecutter-chisurf-plugin" in parts
+                    and "{{cookiecutter.plugin_name}}" in parts
+                ):
                     menu_hidden = True
 
                 # One gate for every menu: the ribbon, the plugin menu and the
@@ -443,12 +448,13 @@ def _iter_plugins_uncached():
 
 class OptionalModuleProxy:
     """A proxy object that behaves as a falsy module and returns itself for any attribute access."""
+
     def __init__(self, name):
         self.__name__ = name
         self.__path__ = []
 
     def __getattr__(self, name):
-        if name.startswith('__'):
+        if name.startswith("__"):
             raise AttributeError(name)
         return OptionalModuleProxy(f"{self.__name__}.{name}")
 
@@ -461,6 +467,7 @@ class OptionalModuleProxy:
 
 class DevPluginFinder:
     """A MetaPathFinder that provides virtual modules for missing chisurf.plugins._dev subpackages."""
+
     def find_spec(self, fullname, path, target=None):
         if fullname.startswith("chisurf.plugins._dev"):
             try:
@@ -473,6 +480,7 @@ class DevPluginFinder:
                 pass
 
             from importlib.machinery import ModuleSpec
+
             return ModuleSpec(fullname, self)
         return None
 
@@ -481,6 +489,7 @@ class DevPluginFinder:
 
     def exec_module(self, module):
         pass
+
 
 # Register the virtual plugin finder
 sys.meta_path.append(DevPluginFinder())

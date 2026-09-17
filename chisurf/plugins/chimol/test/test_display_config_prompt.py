@@ -10,12 +10,12 @@ Comparing against the shipped file does not depend on the stamp being right, so
 it catches that. But the file is the user's, so the answer is theirs: offer the
 new values, list what differs, and take "don't ask again" for an answer.
 """
+
 from __future__ import annotations
 
 import json
 
 import pytest
-
 from chimol.core.settings import config as cfg_mod
 
 
@@ -70,9 +70,7 @@ def settings(tmp_path, monkeypatch):
 @pytest.fixture
 def shipped() -> dict:
     """Return the config the package ships."""
-    return json.loads(
-        cfg_mod.get_package_display_config_path().read_text(encoding="utf-8")
-    )
+    return json.loads(cfg_mod.get_package_display_config_path().read_text(encoding="utf-8"))
 
 
 def _write(settings, cfg: dict):
@@ -259,7 +257,7 @@ def test_keeping_yours_changes_nothing(window):
 
 
 def test_the_tick_box_stops_the_asking_whichever_button_was_pressed(window):
-    """"Don't ask again" is about the asking, not about the answer.
+    """ "Don't ask again" is about the asking, not about the answer.
 
     Someone who keeps their settings *and* ticks the box has said two separate
     things, and both have to be honoured -- otherwise the only way to stop being
@@ -281,20 +279,25 @@ def test_nothing_is_asked_once_opted_out(window, monkeypatch):
     cfg_mod.set_update_prompt_enabled(False)
 
     asked = []
-    monkeypatch.setattr(dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False))
+    monkeypatch.setattr(
+        dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False)
+    )
     window._offer_package_display_defaults()
     assert asked == []
 
 
 def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt_app, monkeypatch):
-    from chisurf.gui import dialogs
     from chimol.hosts.qt.window import MolViewPluginWindow
+
+    from chisurf.gui import dialogs
 
     _write(settings, shipped)
     win = MolViewPluginWindow()
 
     asked = []
-    monkeypatch.setattr(dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False))
+    monkeypatch.setattr(
+        dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False)
+    )
     win._offer_package_display_defaults()
     assert asked == []
 
@@ -334,8 +337,7 @@ def test_the_panel_can_turn_it_back_on(settings, shipped):
     path = _write(settings, mine)
 
     model = settings_window.build_model()
-    row = next(one for one in model.settings
-               if one.key == settings_window.PROMPT_KEY)
+    row = next(one for one in model.settings if one.key == settings_window.PROMPT_KEY)
     model.adjust(row, 0)
 
     assert model.get(settings_window.PROMPT_KEY) is True

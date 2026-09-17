@@ -3,6 +3,7 @@
 The N&B moment math and HDF5 round-trip run with no data. The phasor and
 view-model "run" paths are data-gated on a real TTTR imaging file.
 """
+
 from __future__ import annotations
 
 import glob
@@ -10,9 +11,9 @@ import os
 import tempfile
 
 import numpy as np
+import pytest
 
 from chisurf.core.datastore import column_names, numeric_column, row_count
-import pytest
 
 _HT3 = next(
     iter(glob.glob("/Users/tpeulen/dev/tttr-data/imaging/pq/ht3/pq_ht3_clsm.ht3")),
@@ -42,7 +43,9 @@ def test_nb_maps_bright_species_has_excess_brightness():
     rng = np.random.default_rng(1)
     # Each frame: a few bright molecules of brightness eps -> variance = eps*mean extra.
     eps = 5.0
-    counts = rng.poisson(lam=4.0, size=(500, 4, 4)) * eps  # scaled counts -> var = eps²·λ, mean = eps·λ
+    counts = (
+        rng.poisson(lam=4.0, size=(500, 4, 4)) * eps
+    )  # scaled counts -> var = eps²·λ, mean = eps·λ
     m = nb_maps(counts.astype(float))
     assert float(np.mean(m["B"])) > 1.5  # clearly super-Poissonian
     assert float(np.mean(m["epsilon"])) > 0.0
@@ -209,12 +212,20 @@ def test_image_widget_channel_selector_and_movie(qtbot):
 
     m = _M()
     w = ImageMapWidget(
-        m, "the_map", colormap=True, colormap_attr="colormap", movie=True,
-        channel_source="window_names", channel_attr="display_window",
+        m,
+        "the_map",
+        colormap=True,
+        colormap_attr="colormap",
+        movie=True,
+        channel_source="window_names",
+        channel_attr="display_window",
         channel_call="refresh_display",
     )
     qtbot.addWidget(w)
-    assert [w._channel_combo.itemText(i) for i in range(w._channel_combo.count())] == ["green", "red"]
+    assert [w._channel_combo.itemText(i) for i in range(w._channel_combo.count())] == [
+        "green",
+        "red",
+    ]
 
     m.img = np.random.rand(8, 8)  # 2-D → movie disabled
     w.refresh()
@@ -361,10 +372,14 @@ def test_nb_per_window_uses_setup_and_mfd_names():
     from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
 
     vm = NBViewModel()
-    vm.apply_setup_settings({"detectors": {
-        "green": {"chs": [0, 3], "micro_time_ranges": [(0, 2048)]},
-        "red": {"chs": [1, 2], "micro_time_ranges": [(2048, 4095)]},
-    }})
+    vm.apply_setup_settings(
+        {
+            "detectors": {
+                "green": {"chs": [0, 3], "micro_time_ranges": [(0, 2048)]},
+                "red": {"chs": [1, 2], "micro_time_ranges": [(2048, 4095)]},
+            }
+        }
+    )
     assert vm.window_names() == ["green", "red"]
     vm.filename = _HT3
     vm.run()
@@ -383,9 +398,13 @@ def test_intensity_reproduces_columns_removed_from_mle():
     )
 
     vm = IntensityViewModel()
-    vm.apply_setup_settings({"detectors": {
-        "green": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []},
-    }})
+    vm.apply_setup_settings(
+        {
+            "detectors": {
+                "green": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": []},
+            }
+        }
+    )
     vm.filename = _HT3
     vm.run()
     cols = set(vm._columns)

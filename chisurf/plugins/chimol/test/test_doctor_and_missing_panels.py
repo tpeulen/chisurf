@@ -19,10 +19,10 @@ So two things are pinned here:
   many viewers hold each), the registries, the open windows, the objects and
   the movie clock.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from chimol.commands.command import Cmd
 from chimol.plugins import load_plugins
 from chimol.testing.mock_viewer import MockViewer, MockWindow
@@ -42,7 +42,7 @@ def _lines(cmd) -> list[str]:
 def test_an_unknown_panel_says_what_is_registered():
     cmd = _cmd()
     said = _lines(cmd)
-    cmd.do("nonesuch_panel")          # not a command at all
+    cmd.do("nonesuch_panel")  # not a command at all
     said.clear()
     cmd.panels.toggle(cmd, "nonesuch")
     message = " ".join(said)
@@ -82,8 +82,16 @@ def test_doctor_prints_what_a_report_needs():
     said = _lines(cmd)
     cmd.do("doctor")
     block = "\n".join(said)
-    for expected in ("chimol", "host:", "chrome:", "settings:", "plugins:",
-                     "panels:", "commands:", "menus:"):
+    for expected in (
+        "chimol",
+        "host:",
+        "chrome:",
+        "settings:",
+        "plugins:",
+        "panels:",
+        "commands:",
+        "menus:",
+    ):
         assert expected in block, f"doctor said nothing about {expected!r}:\n{block}"
     # The plugins line carries how many viewers hold each one -- the number
     # that made "a window closing took another window's panels" visible.

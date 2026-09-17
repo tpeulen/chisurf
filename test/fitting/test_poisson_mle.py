@@ -4,8 +4,10 @@ Covers the ``deviance_residuals`` helper, the ``noise_model`` selector plumbed
 through :class:`~chisurf.core.fitting.fit.Fit`, and an end-to-end fit that
 minimises the ``2I*`` deviance via the existing least-squares engine.
 """
-import utils
+
 import pathlib
+
+import utils
 
 TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
@@ -14,10 +16,10 @@ import numpy as np
 
 import chisurf.core.curve
 import chisurf.core.data
-import chisurf.core.models
-import chisurf.core.models.parse
 import chisurf.core.fitting
 import chisurf.core.fitting.fit
+import chisurf.core.models
+import chisurf.core.models.parse
 
 
 def _two_i_star(y, mu):
@@ -46,7 +48,7 @@ def test_deviance_residuals_sum_equals_two_i_star():
     r = chisurf.core.fitting.deviance_residuals(y, mu)
     assert np.all(np.isfinite(r))
     # sum of squared deviance residuals == 2I*  (Laurence & Chromy identity)
-    assert np.isclose(np.sum(r ** 2), _two_i_star(y, mu))
+    assert np.isclose(np.sum(r**2), _two_i_star(y, mu))
     # Residual sign follows (data - model): positive where the observation
     # sits above the fit. That is the standard deviance-residual convention
     # and what makes one comparable with a Pearson residual. It followed
@@ -75,9 +77,7 @@ def test_deviance_residuals_zero_and_perfect_bins():
 
 def _make_fit(noise_model, y_data):
     x_data = np.linspace(1.0, 32.0, y_data.size)
-    data = chisurf.core.data.DataCurve(
-        x=x_data, y=y_data, ey=np.sqrt(np.clip(y_data, 1.0, None))
-    )
+    data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=np.sqrt(np.clip(y_data, 1.0, None)))
     fit = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([data]),
         model_class=chisurf.core.models.parse.ParseModel,
@@ -92,7 +92,7 @@ def _make_fit(noise_model, y_data):
 
 def test_calculate_weighted_residuals_poisson_matches_helper():
     x = np.linspace(1.0, 10.0, 12)
-    y = 3.0 + 1.2 * x ** 2
+    y = 3.0 + 1.2 * x**2
     model = chisurf.core.curve.Curve(x=x, y=y * 0.9)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y))
     wr_default = chisurf.core.fitting.calculate_weighted_residuals(
@@ -121,7 +121,7 @@ def test_poisson_fit_uses_deviance_residuals_and_recovers_parameters():
     rng = np.random.default_rng(3)
     x = np.linspace(1.0, 32.0, 48)
     true_c, true_a = 20.0, 1.5
-    mu = true_c + true_a * x ** 2
+    mu = true_c + true_a * x**2
     y = rng.poisson(mu).astype(float)
 
     fit = _make_fit("poisson", y)

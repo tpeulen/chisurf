@@ -9,6 +9,7 @@ The behaviour worth pinning is the one the tri-state check boxes expressed:
 switching a node off takes its **subtree** with it, and what reaches the viewer
 is the set of coordinate rows those nodes cover.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -54,17 +55,33 @@ def _node(name, kind, children=(), atoms=()):
 
 @pytest.fixture
 def panel():
-    tree = _node("NPC", "assembly", [
-        _node("Nup84", "molecule", [
-            _node("A", "chain", [
-                _node("1", "residue", atoms=[0, 1]),
-                _node("2", "residue", atoms=[2, 3]),
-            ]),
-        ]),
-        _node("Nup85", "molecule", [
-            _node("B", "chain", [_node("1", "residue", atoms=[4, 5])]),
-        ]),
-    ])
+    tree = _node(
+        "NPC",
+        "assembly",
+        [
+            _node(
+                "Nup84",
+                "molecule",
+                [
+                    _node(
+                        "A",
+                        "chain",
+                        [
+                            _node("1", "residue", atoms=[0, 1]),
+                            _node("2", "residue", atoms=[2, 3]),
+                        ],
+                    ),
+                ],
+            ),
+            _node(
+                "Nup85",
+                "molecule",
+                [
+                    _node("B", "chain", [_node("1", "residue", atoms=[4, 5])]),
+                ],
+            ),
+        ],
+    )
 
     class _State:
         rmf_hierarchy = tree
@@ -112,7 +129,9 @@ def test_only_the_top_levels_are_open_to_begin_with(panel):
     """
     window, _gui, _applied = panel
     assert [(n.name, d) for n, d, _r, _i in window._rows] == [
-        ("NPC", 0), ("Nup84", 1), ("Nup85", 1),
+        ("NPC", 0),
+        ("Nup84", 1),
+        ("Nup85", 1),
     ]
 
 
@@ -399,9 +418,14 @@ def test_a_plain_structure_gets_a_chain_tree():
     """
     import numpy as np
 
-    atoms = np.zeros(4, dtype=[
-        ("chain", "U2"), ("res_id", "i8"), ("res_name", "U4"),
-    ])
+    atoms = np.zeros(
+        4,
+        dtype=[
+            ("chain", "U2"),
+            ("res_id", "i8"),
+            ("res_name", "U4"),
+        ],
+    )
     atoms["chain"] = ["A", "A", "B", "B"]
     atoms["res_id"] = [1, 2, 1, 1]
     atoms["res_name"] = ["MET", "ALA", "GLY", "GLY"]

@@ -191,13 +191,15 @@ class SurrogateModel:
         layers = []
         n_hidden = len(self.net.coefs_) - 1
         for i, (w, b) in enumerate(zip(self.net.coefs_, self.net.intercepts_)):
-            layers.append({
-                "n_in": int(w.shape[0]),
-                "n_out": int(w.shape[1]),
-                "activation": self.net.activation if i < n_hidden else self.net.out_activation_,
-                "weight": np.ascontiguousarray(np.asarray(w).T).ravel().tolist(),
-                "bias": np.asarray(b, dtype=float).tolist(),
-            })
+            layers.append(
+                {
+                    "n_in": int(w.shape[0]),
+                    "n_out": int(w.shape[1]),
+                    "activation": self.net.activation if i < n_hidden else self.net.out_activation_,
+                    "weight": np.ascontiguousarray(np.asarray(w).T).ravel().tolist(),
+                    "bias": np.asarray(b, dtype=float).tolist(),
+                }
+            )
         return {
             "format": "tttrlib.hmm_surrogate",
             "version": 1,
@@ -208,10 +210,14 @@ class SurrogateModel:
             "net": {
                 "format": "tttrlib.neural_net",
                 "version": 1,
-                "x_scaler": {"mean": np.asarray(self.x_scaler.mean_, dtype=float).tolist(),
-                             "scale": np.asarray(self.x_scaler.scale_, dtype=float).tolist()},
-                "y_scaler": {"mean": np.asarray(self.y_scaler.mean_, dtype=float).tolist(),
-                             "scale": np.asarray(self.y_scaler.scale_, dtype=float).tolist()},
+                "x_scaler": {
+                    "mean": np.asarray(self.x_scaler.mean_, dtype=float).tolist(),
+                    "scale": np.asarray(self.x_scaler.scale_, dtype=float).tolist(),
+                },
+                "y_scaler": {
+                    "mean": np.asarray(self.y_scaler.mean_, dtype=float).tolist(),
+                    "scale": np.asarray(self.y_scaler.scale_, dtype=float).tolist(),
+                },
                 "layers": layers,
             },
         }
@@ -276,7 +282,9 @@ def generate_training_set(
     for i in range(n_samples):
         model = _random_model(n_states, n_streams, rng)
         times = [
-            np.concatenate([[0], np.cumsum(rng.poisson(mean_dt, burst_len - 1) + 1)]).astype(np.int64)
+            np.concatenate([[0], np.cumsum(rng.poisson(mean_dt, burst_len - 1) + 1)]).astype(
+                np.int64
+            )
             for _ in range(n_bursts)
         ]
         # The compiled sampler, through the shared entry point. This used to be
@@ -313,8 +321,13 @@ def train_surrogate(
     if not _HAVE_SKLEARN:
         raise RuntimeError("scikit-learn is required to train a surrogate")
     X, Y = generate_training_set(
-        n_samples, n_states, n_streams,
-        n_bursts=n_bursts, burst_len=burst_len, mean_dt=mean_dt, seed=seed,
+        n_samples,
+        n_states,
+        n_streams,
+        n_bursts=n_bursts,
+        burst_len=burst_len,
+        mean_dt=mean_dt,
+        seed=seed,
     )
     x_scaler = StandardScaler().fit(X)
     y_scaler = StandardScaler().fit(Y)
@@ -327,10 +340,18 @@ def train_surrogate(
     )
     net.fit(x_scaler.transform(X), y_scaler.transform(Y))
     return SurrogateModel(
-        net=net, x_scaler=x_scaler, y_scaler=y_scaler,
-        n_states=n_states, n_streams=n_streams, features_version=FEATURES_VERSION,
-        meta={"n_samples": n_samples, "n_bursts": n_bursts,
-              "burst_len": burst_len, "mean_dt": mean_dt},
+        net=net,
+        x_scaler=x_scaler,
+        y_scaler=y_scaler,
+        n_states=n_states,
+        n_streams=n_streams,
+        features_version=FEATURES_VERSION,
+        meta={
+            "n_samples": n_samples,
+            "n_bursts": n_bursts,
+            "burst_len": burst_len,
+            "mean_dt": mean_dt,
+        },
     )
 
 
@@ -371,9 +392,7 @@ def estimate_model(
     if isinstance(surrogate, (str, Path)):
         surrogate = SurrogateModel.load(surrogate)
     if surrogate.n_states != n_states:
-        raise ValueError(
-            f"surrogate trained for n_states={surrogate.n_states}, got {n_states}"
-        )
+        raise ValueError(f"surrogate trained for n_states={surrogate.n_states}, got {n_states}")
     model = surrogate.predict(data)
     if refine_iters > 0:
         # Imported here, not at module scope: `.engines` pulls in

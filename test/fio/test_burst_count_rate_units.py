@@ -12,11 +12,9 @@ never be below the rate of any single detector inside it.
 from __future__ import annotations
 
 import numpy as np
-
-from chisurf.core.datastore import rows_from_table
-import pandas as pd
 import pytest
 
+from chisurf.core.datastore import rows_from_table
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
 )

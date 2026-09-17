@@ -8,7 +8,7 @@ never permit something the server would reject.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 #: Roles the combo offers. It is editable, so a value stored by another tool is
@@ -89,8 +89,9 @@ class UserRow:
         }
 
 
-def validate_user(row: UserRow, *, existing: list[UserRow] | None = None,
-                  creating: bool = False) -> list[str]:
+def validate_user(
+    row: UserRow, *, existing: list[UserRow] | None = None, creating: bool = False
+) -> list[str]:
     """Problems that would make a save fail, in the order they should be shown.
 
     Parameters
@@ -137,8 +138,13 @@ def validate_user(row: UserRow, *, existing: list[UserRow] | None = None,
     return problems
 
 
-def to_payload(row: UserRow, *, old_user_id: str | None = None,
-               password: str | None = None, requester_id: str = "") -> dict[str, Any]:
+def to_payload(
+    row: UserRow,
+    *,
+    old_user_id: str | None = None,
+    password: str | None = None,
+    requester_id: str = "",
+) -> dict[str, Any]:
     """The ``mmfdb.users.save`` payload for *row*."""
     payload: dict[str, Any] = {
         "user_uuid": row.user_uuid or None,

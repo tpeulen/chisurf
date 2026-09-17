@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import numpy as np
 
 
@@ -30,10 +28,12 @@ def test_compute_decay_irf_shifts_prompt():
 def test_compute_decay_shot_noise_reproducible():
     from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import compute_decay
 
-    a = compute_decay(n_bins=128, lifetimes=[2.0], bin_width=0.05,
-                      normalize=False, photon_count=50000, seed=7)
-    b = compute_decay(n_bins=128, lifetimes=[2.0], bin_width=0.05,
-                      normalize=False, photon_count=50000, seed=7)
+    a = compute_decay(
+        n_bins=128, lifetimes=[2.0], bin_width=0.05, normalize=False, photon_count=50000, seed=7
+    )
+    b = compute_decay(
+        n_bins=128, lifetimes=[2.0], bin_width=0.05, normalize=False, photon_count=50000, seed=7
+    )
     assert a["y"] == b["y"]
     assert abs(sum(a["y"]) - 50000) / 50000 < 0.05  # ~photon budget
 
@@ -43,8 +43,14 @@ def test_compute_component_decay_fret():
         compute_component_decay,
     )
 
-    comp = {"model": "gaussian_distance", "donor_lifetime": 4.0, "forster_radius": 52.0,
-            "mean_distance": 50.0, "sigma_distance": 6.0, "bin_width": 0.05}
+    comp = {
+        "model": "gaussian_distance",
+        "donor_lifetime": 4.0,
+        "forster_radius": 52.0,
+        "mean_distance": 50.0,
+        "sigma_distance": 6.0,
+        "bin_width": 0.05,
+    }
     res = compute_component_decay(n_bins=256, component=comp)
     assert len(res["y"]) == 256
     assert np.all(np.isfinite(res["y"]))
@@ -67,7 +73,9 @@ def test_compute_aniso_decay_pair_shapes_and_r():
     )
 
     res = compute_aniso_decay(
-        n_bins=128, lifetimes=[2.0], rotation_rows=[{"b": 0.3, "rho": 2.0}],
+        n_bins=128,
+        lifetimes=[2.0],
+        rotation_rows=[{"b": 0.3, "rho": 2.0}],
         bin_width=0.05,
     )
     assert set(res) >= {"x", "vv", "vh", "r", "n_bins", "bin_width"}
@@ -87,8 +95,13 @@ def test_compute_aniso_decay_roundtrip_through_schaffer_correction():
 
     g, l1, l2 = 1.7, 0.05, 0.08
     res = compute_aniso_decay(
-        n_bins=64, lifetimes=[4.0], rotation_rows=[{"b": 0.3, "rho": 2.0}],
-        g_factor=g, l1=l1, l2=l2, bin_width=0.2,
+        n_bins=64,
+        lifetimes=[4.0],
+        rotation_rows=[{"b": 0.3, "rho": 2.0}],
+        g_factor=g,
+        l1=l1,
+        l2=l2,
+        bin_width=0.2,
     )
     vv = np.asarray(res["vv"])
     vh = np.asarray(res["vh"])
@@ -104,8 +117,11 @@ def test_compute_aniso_decay_g_factor_scales_vh():
     )
 
     kwargs = dict(
-        n_bins=64, lifetimes=[2.0], rotation_rows=[{"b": 0.2, "rho": 1.0}],
-        bin_width=0.05, normalize=False,
+        n_bins=64,
+        lifetimes=[2.0],
+        rotation_rows=[{"b": 0.2, "rho": 1.0}],
+        bin_width=0.05,
+        normalize=False,
     )
     a = compute_aniso_decay(**kwargs)
     b = compute_aniso_decay(**kwargs, g_factor=2.0)
@@ -143,6 +159,7 @@ def test_compute_rt_matches_aniso_r():
     solo = compute_rt(n_bins=32, bin_width=0.1, rotation_rows=rows)
     assert pair["r"] == solo["r"]
 
+
 def test_cli_generate(tmp_path):
     from click.testing import CliRunner
 
@@ -150,8 +167,20 @@ def test_cli_generate(tmp_path):
 
     out = tmp_path / "d.csv"
     r = CliRunner().invoke(
-        cli, ["generate", "--lifetimes", "1.2,4.0", "--amplitudes", "0.7,0.3",
-              "--n-bins", "64", "--bin-width", "0.05", "-o", str(out)]
+        cli,
+        [
+            "generate",
+            "--lifetimes",
+            "1.2,4.0",
+            "--amplitudes",
+            "0.7,0.3",
+            "--n-bins",
+            "64",
+            "--bin-width",
+            "0.05",
+            "-o",
+            str(out),
+        ],
     )
     assert r.exit_code == 0, r.output
     assert out.is_file()
@@ -172,7 +201,9 @@ def test_rpc_services_register_and_run():
 
     register_services(_Dispatcher())
     assert "synthetic_decay.compute" in handlers
-    resp = handlers["synthetic_decay.compute"]({"n_bins": 32, "lifetimes": [2.0], "bin_width": 0.05})
+    resp = handlers["synthetic_decay.compute"](
+        {"n_bins": 32, "lifetimes": [2.0], "bin_width": 0.05}
+    )
     assert resp["ok"] is True
     assert len(resp["result"]["y"]) == 32
     # error path is reported, not raised
@@ -198,8 +229,15 @@ def test_synthetic_decay_allow_rise_terms_matches_low_level_builder():
     spectrum = np.array([-0.3, 0.4, 0.2, 0.0, 1.0, 2.5])  # rise term + zero-lifetime
     amps, taus = spectrum[0::2].copy(), spectrum[1::2].copy()
 
-    y_new = synthetic_decay(n_bins=n, lifetimes=taus, amplitudes=amps, bin_width=dt,
-                            start_bin=0, normalize=False, allow_rise_terms=True)
+    y_new = synthetic_decay(
+        n_bins=n,
+        lifetimes=taus,
+        amplitudes=amps,
+        bin_width=dt,
+        start_bin=0,
+        normalize=False,
+        allow_rise_terms=True,
+    )
     y_new = y_new / amps.sum()
     _, y_old = calculate_fluorescence_decay(spectrum.copy(), np.arange(n) * dt)
     assert np.max(np.abs(y_new - y_old)) < 1e-12

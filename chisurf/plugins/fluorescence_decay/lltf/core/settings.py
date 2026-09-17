@@ -27,6 +27,7 @@ def get_default_settings():
 
     return settings
 
+
 def load_settings(filename):
     """
     Load settings from a file.
@@ -46,6 +47,7 @@ def load_settings(filename):
         settings = yaml.safe_load(f)
 
     return settings
+
 
 def save_settings(settings, filename):
     """

@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import collections
-import os
-import sys
-import platform
 import datetime
 import logging
-from typing import Deque
+import os
+import platform
+import sys
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
+
+
 def _compute_ram_string() -> str:
     """Return total RAM as a human-readable string.
 
@@ -21,7 +22,7 @@ def _compute_ram_string() -> str:
         import psutil  # type: ignore
 
         mem = psutil.virtual_memory()
-        ram_gb = mem.total / (1024.0 ** 3)
+        ram_gb = mem.total / (1024.0**3)
         ram_str = f"{ram_gb:.1f} GB"
     except Exception:
         if os.name == "nt":  # Best-effort Windows fallback
@@ -44,7 +45,7 @@ def _compute_ram_string() -> str:
                 stat = MEMORYSTATUSEX()
                 stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
                 if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
-                    ram_gb = stat.ullTotalPhys / (1024.0 ** 3)
+                    ram_gb = stat.ullTotalPhys / (1024.0**3)
                     ram_str = f"{ram_gb:.1f} GB"
             except Exception:
                 pass
@@ -63,8 +64,8 @@ def build_system_info_text() -> str:
         os_name = platform.system()
         os_release = platform.release()
         os_version = platform.version()
-        platform_info = platform.platform()
-        
+        platform.platform()
+
         # Fix Windows 11 detection and provide detailed info
         if os_name == "Windows":
             if os_release == "11":
@@ -264,6 +265,7 @@ def memory_usage_mb() -> float | None:
     """
     try:
         import psutil
+
         process = psutil.Process()
         mem = process.memory_info().rss
         # Include child processes
@@ -282,11 +284,12 @@ def memory_usage_mb() -> float | None:
 
 def _get_cpu_usage_percent() -> float | None:
     """Return CPU usage percentage for ChiSurf process and children.
-    
+
     Returns combined CPU percent across all cores (0-100 * num_cores).
     """
     try:
         import psutil
+
         process = psutil.Process()
         # Get CPU percent for main process (non-blocking with interval=None uses cached value)
         cpu = process.cpu_percent(interval=None)
@@ -315,6 +318,7 @@ def total_memory_mb() -> float | None:
     """
     try:
         import psutil
+
         mem = psutil.virtual_memory()
         return mem.total / (1024.0 * 1024.0)
     except Exception:
@@ -353,7 +357,7 @@ class _Sparkline(QtWidgets.QWidget):
         self._max_samples = max_samples
         self._width = width
         self._height = height
-        self._values: Deque[float] = collections.deque(maxlen=max_samples)
+        self._values: collections.deque[float] = collections.deque(maxlen=max_samples)
         self._color = color or QtGui.QColor(100, 200, 100)
         self._fixed_max = fixed_max  # If set, use fixed max for scaling
 
@@ -381,7 +385,7 @@ class _Sparkline(QtWidgets.QWidget):
         # Dynamic range based on actual values with 10% padding
         min_val = min(self._values)
         max_val = max(self._values)
-        
+
         if self._fixed_max is not None:
             # Use fixed max (e.g., 100% for CPU)
             plot_min = 0
@@ -393,7 +397,7 @@ class _Sparkline(QtWidgets.QWidget):
             padding = val_range * 0.1
             plot_min = max(0, min_val - padding)
             plot_max = max_val + padding
-        
+
         plot_range = plot_max - plot_min
 
         usable_height = self._height - 4
@@ -424,7 +428,6 @@ class _Sparkline(QtWidgets.QWidget):
 
 
 class _WatermarkLabel(QtWidgets.QLabel):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._full_text = ""
@@ -537,16 +540,15 @@ class _WatermarkWidget(QtWidgets.QWidget):
         layout.addWidget(self._info_label)
 
         # Widget styling
-        self.setStyleSheet(
-            "background-color: rgba(0,0,0,96); border-radius: 3px;"
-        )
+        self.setStyleSheet("background-color: rgba(0,0,0,96); border-radius: 3px;")
 
         # Total memory for percentage calculation
         self._total_mem_mb = _get_total_memory_mb() or 16000.0
-        
+
         # Get CPU count for percentage normalization
         try:
             import psutil
+
             self._cpu_count = psutil.cpu_count() or 1
         except Exception:
             self._cpu_count = 1
@@ -572,7 +574,7 @@ class _WatermarkWidget(QtWidgets.QWidget):
             # Normalize to per-core percentage for display
             cpu_per_core = cpu_pct / self._cpu_count if self._cpu_count > 0 else cpu_pct
             self._cpu_sparkline.add_value(cpu_per_core)
-            
+
             # Color based on usage
             if cpu_per_core < 50:
                 color = QtGui.QColor(100, 180, 220)  # Blue
@@ -581,7 +583,7 @@ class _WatermarkWidget(QtWidgets.QWidget):
             else:
                 color = QtGui.QColor(220, 80, 80)  # Red
             self._cpu_sparkline.set_color(color)
-            
+
             self._cpu_label.setText(f"CPU: {cpu_per_core:.0f}%")
         else:
             self._cpu_label.setText("CPU: N/A")
@@ -612,7 +614,7 @@ class _WatermarkWidget(QtWidgets.QWidget):
 
 
 def ensure_watermark(
-    mdiarea: "QtWidgets.QMdiArea | None", existing_widget: QtWidgets.QWidget | None = None
+    mdiarea: QtWidgets.QMdiArea | None, existing_widget: QtWidgets.QWidget | None = None
 ) -> QtWidgets.QWidget | None:
     """Create or update the watermark widget for the given QMdiArea.
 
@@ -690,7 +692,10 @@ def update_geometry(widget: QtWidgets.QWidget | None) -> None:
                         positions = [
                             (rect.right() - size.width() - margin, rect.top() + margin),
                             (rect.left() + margin, rect.top() + margin),
-                            (rect.right() - size.width() - margin, rect.bottom() - size.height() - margin),
+                            (
+                                rect.right() - size.width() - margin,
+                                rect.bottom() - size.height() - margin,
+                            ),
                             (rect.left() + margin, rect.bottom() - size.height() - margin),
                         ]
 

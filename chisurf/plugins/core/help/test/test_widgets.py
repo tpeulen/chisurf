@@ -14,6 +14,7 @@ from qtpy.QtCore import Qt
 
 def test_help_widget_creation(qapp, qtbot):
     from chisurf.plugins.core.help.gui.tool import HelpWidget
+
     widget = HelpWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -28,6 +29,7 @@ def test_help_widget_creation(qapp, qtbot):
 def test_help_widget_toolbar(qapp, qtbot):
     """The reader's toolbar navigates; the authoring one is a second row."""
     from chisurf.plugins.core.help.gui.tool import HelpWidget
+
     widget = HelpWidget()
     qtbot.addWidget(widget)
     toolbars = {bar.windowTitle(): bar for bar in widget.findChildren(QtWidgets.QToolBar)}
@@ -50,8 +52,7 @@ def test_tree_follows_the_documentation_structure(qapp, qtbot):
     qtbot.addWidget(widget)
 
     titles = [
-        widget.tree.topLevelItem(index).text(0)
-        for index in range(widget.tree.topLevelItemCount())
+        widget.tree.topLevelItem(index).text(0) for index in range(widget.tree.topLevelItemCount())
     ]
     for expected in ("Getting started", "Concepts", "Guides", "Reference", "Plugins"):
         assert any(expected in title for title in titles), titles
@@ -156,8 +157,8 @@ def test_search_ranks_pages_and_filters_the_tree(qapp, qtbot):
 
 def test_pages_carry_previous_and_next(qapp, qtbot):
     """A manual is read in order; the page has to offer the next one."""
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api.toc import repository_root
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
@@ -173,8 +174,8 @@ def test_pages_carry_previous_and_next(qapp, qtbot):
 
 def test_history_and_breadcrumb(qapp, qtbot):
     """Back returns to where the reader was, and the trail says where that is."""
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api.toc import repository_root
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
@@ -208,18 +209,14 @@ def test_review_controls_live_behind_authoring(qapp, qtbot):
 
 def test_review_filter_hides_non_matching_pages(qapp, qtbot):
     """Filtering by a status hides review-tracked pages without it."""
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api import review
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
     widget.authoring_btn.setChecked(True)
 
-    tracked = {
-        key: item
-        for key, item in widget._items.items()
-        if item.data(0, Qt.UserRole + 1)
-    }
+    tracked = {key: item for key, item in widget._items.items() if item.data(0, Qt.UserRole + 1)}
     if not tracked:
         import pytest
 
@@ -242,16 +239,14 @@ def test_developer_documentation_is_off_by_default(qapp, qtbot):
     widget = HelpWidget()
     qtbot.addWidget(widget)
     titles = [
-        widget.tree.topLevelItem(index).text(0)
-        for index in range(widget.tree.topLevelItemCount())
+        widget.tree.topLevelItem(index).text(0) for index in range(widget.tree.topLevelItemCount())
     ]
     assert not any("Developing" in title for title in titles)
 
     widget.authoring_btn.setChecked(True)
     widget.developer_btn.setChecked(True)
     titles = [
-        widget.tree.topLevelItem(index).text(0)
-        for index in range(widget.tree.topLevelItemCount())
+        widget.tree.topLevelItem(index).text(0) for index in range(widget.tree.topLevelItemCount())
     ]
     assert any("Developing" in title for title in titles)
 
@@ -290,8 +285,8 @@ def test_text_column_follows_the_window_when_it_narrows(qapp, qtbot):
     size: the text column collapsed to a fraction of the window and the
     document, still as wide as before, grew a horizontal scrollbar.
     """
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api.toc import repository_root
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     page = repository_root() / "docs" / "concepts" / "fret.md"
     if not page.is_file():
@@ -322,8 +317,8 @@ def test_zoom_changes_the_rendered_size(qapp, qtbot):
     move the body and leave the headings, tables and formulas behind: the page
     is re-rendered at the new size instead.
     """
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api.toc import repository_root
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
@@ -393,15 +388,13 @@ def test_review_state_is_colour_not_a_badge(qapp, qtbot):
     """
     from qtpy.QtCore import Qt
 
-    from chisurf.plugins.core.help.gui.tool import HelpWidget, REVIEW_BADGES
+    from chisurf.plugins.core.help.gui.tool import REVIEW_BADGES, HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
     widget.authoring_btn.setChecked(True)
 
-    tracked = [
-        item for item in widget._items.values() if item.data(0, Qt.UserRole + 1)
-    ]
+    tracked = [item for item in widget._items.values() if item.data(0, Qt.UserRole + 1)]
     if not tracked:
         import pytest
 
@@ -415,8 +408,8 @@ def test_review_state_is_colour_not_a_badge(qapp, qtbot):
 
 def test_both_sign_off_levels_are_offered(qapp, qtbot):
     """A maintainer can record either a human or an agent review."""
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
     from chisurf.plugins.core.help.api import review
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
@@ -446,8 +439,14 @@ def test_shift_and_ctrl_wheel_both_zoom(qapp, qtbot):
     def wheel(modifier, dy=120, dx=0):
         where = QPointF(viewport.rect().center())
         event = QWheelEvent(
-            where, viewport.mapToGlobal(where.toPoint()), QPoint(dx, dy),
-            QPoint(dx, dy), Qt.NoButton, modifier, Qt.NoScrollPhase, False,
+            where,
+            viewport.mapToGlobal(where.toPoint()),
+            QPoint(dx, dy),
+            QPoint(dx, dy),
+            Qt.NoButton,
+            modifier,
+            Qt.NoScrollPhase,
+            False,
         )
         qapp.sendEvent(viewport, event)
 
@@ -465,4 +464,3 @@ def test_shift_and_ctrl_wheel_both_zoom(qapp, qtbot):
     widget.set_font_size(start)
     wheel(Qt.NoModifier, dy=-120)
     assert widget.font_size == start
-

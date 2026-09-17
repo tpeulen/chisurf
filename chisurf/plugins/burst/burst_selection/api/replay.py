@@ -20,6 +20,7 @@ import tempfile
 from typing import Any
 
 from mmfdb.provenance.compute_spec import ComputeSpec, register_replay_executor
+
 from chisurf.plugins.burst.burst_selection.api.mmfdb import BurstMMFDBPipeline
 from chisurf.plugins.burst.burst_selection.api.models import AnalysisRequest, MMFDBContext
 from chisurf.plugins.burst.burst_selection.api.selection import analyze_request

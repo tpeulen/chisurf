@@ -1,9 +1,9 @@
-import pytest
 from qtpy import QtWidgets
 
 
 def test_confocal_calc_widget(qapp, qtbot):
     from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
+
     widget = ConfocalCalcWidget()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
@@ -20,6 +20,7 @@ def _looks_computed(sb):
 
 def test_a_computed_field_does_not_look_like_an_input(qapp, qtbot):
     from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
+
     widget = ConfocalCalcWidget()
     qtbot.addWidget(widget)
 
@@ -45,6 +46,7 @@ def test_a_computed_field_does_not_look_like_an_input(qapp, qtbot):
 
 def test_the_aspect_box_is_disabled_for_the_default_sphere(qapp, qtbot):
     from chisurf.plugins.fcs.fcs_calculator.wizard import ConfocalCalcWidget
+
     widget = ConfocalCalcWidget()
     qtbot.addWidget(widget)
 

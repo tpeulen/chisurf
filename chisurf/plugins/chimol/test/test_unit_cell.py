@@ -12,6 +12,7 @@ object is otherwise centred on its own centroid. `symexp`'s entire purpose is
 seeing how molecules pack, so superimposing them removed the feature while
 leaving every command reporting success.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -23,7 +24,11 @@ pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 #: A real hexagonal cell, so the box is not a cuboid and a wrong `frac_to_real`
 #: would show. 148L carries no CRYST1, which is why it is set explicitly.
@@ -39,8 +44,8 @@ def qapp():
 
 @pytest.fixture
 def window(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.core.settings.registry import set_setting
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -107,9 +112,10 @@ def test_the_box_has_the_shape_the_cell_parameters_give_it(window):
     positions = np.asarray(obj.geometry.positions, dtype=float).reshape(-1, 2, 3)
     lengths = np.linalg.norm(positions[:, 1] - positions[:, 0], axis=1) / scale
     unique = np.unique(np.round(lengths, 1))
-    assert sorted(unique) == pytest.approx([61.2, 96.8], abs=0.15) or set(
-        np.round(unique, 1)
-    ) == {61.2, 96.8}, unique
+    assert sorted(unique) == pytest.approx([61.2, 96.8], abs=0.15) or set(np.round(unique, 1)) == {
+        61.2,
+        96.8,
+    }, unique
 
 
 def test_an_object_with_no_cell_says_so(window):

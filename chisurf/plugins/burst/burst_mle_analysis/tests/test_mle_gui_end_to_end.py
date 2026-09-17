@@ -31,10 +31,20 @@ pytestmark = pytest.mark.skipif(
 # the detector definition the channel-definition page would.)
 CHANNEL_SETTINGS = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": [],
-                  "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
-        "red": {"chs": [8, 9], "micro_time_ranges": [],
-                "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
+        "green": {
+            "chs": [0, 1],
+            "micro_time_ranges": [],
+            "g_factor": 1.0,
+            "l1": 0.0308,
+            "l2": 0.0368,
+        },
+        "red": {
+            "chs": [8, 9],
+            "micro_time_ranges": [],
+            "g_factor": 1.0,
+            "l1": 0.0308,
+            "l2": 0.0368,
+        },
     },
     "windows": {},
     "file_type": "SPC-130",
@@ -49,9 +59,9 @@ def fitted_wizard(qapp):
     which is the foolproof workflow: it auto-selects the micro-time binning and
     fit window and estimates the IRF/background from the non-burst photons.
     """
+    import tttrlib  # noqa: F401  (ensures the extension is importable)
     from qtpy import QtWidgets
 
-    import tttrlib  # noqa: F401  (ensures the extension is importable)
     from chisurf.plugins.burst.burst_mle_analysis.wizard import (
         MLELifetimeAnalysisWizard,
     )
@@ -76,8 +86,7 @@ def fitted_wizard(qapp):
 
 def test_detector_state_has_no_empty_detector(fitted_wizard):
     # A spurious "" detector must never appear (it shadowed the real one).
-    for store in (fitted_wizard.irf_np, fitted_wizard.bg_np,
-                  fitted_wizard.channel_settings):
+    for store in (fitted_wizard.irf_np, fitted_wizard.bg_np, fitted_wizard.channel_settings):
         assert "" not in store
         assert None not in store
 
@@ -177,8 +186,7 @@ def test_auto_extract_lifetime_matches_model_free_estimate(fitted_wizard):
         ref = _mean_arrival_lifetime(w, det, chs)
         assert ref > 0
         assert abs(tau - ref) / ref < 0.35, (
-            f"{det}: fitted tau={tau:.3f} ns far from model-free {ref:.3f} ns "
-            f"(IRF-tail bias?)"
+            f"{det}: fitted tau={tau:.3f} ns far from model-free {ref:.3f} ns (IRF-tail bias?)"
         )
 
 
@@ -218,9 +226,7 @@ def test_tail_fit_recovers_a_plausible_lifetime(fitted_wizard):
 
     # the model curve was drawn (no blank Intensity panel)
     items = w.combined_plot.listDataItems()
-    assert any(
-        (it.getData()[1] is not None and len(it.getData()[1]) > 0) for it in items
-    )
+    assert any((it.getData()[1] is not None and len(it.getData()[1]) > 0) for it in items)
 
 
 def test_burst_result_columns_are_model_specific():
@@ -252,8 +258,7 @@ def test_burst_result_columns_are_model_specific():
     assert "r Experimental (green)" not in c25
 
 
-def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64,
-                          tau_true=2.0, dt=0.05):
+def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64, tau_true=2.0, dt=0.05):
     """Build a one-burst shared-memory job for ``process_one_file_worker``.
 
     Emits a mono-exponential parallel/perpendicular decay as a photon list
@@ -278,33 +283,64 @@ def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64,
 
     class_lut = np.array([0, 1], dtype=np.int8)  # rc 0->P, 1->S
     irf = np.zeros(2 * n, dtype=np.float64)
-    irf[0] = 1.0            # delta prompt in VV
-    irf[n] = 1.0            # delta prompt in VH
+    irf[0] = 1.0  # delta prompt in VV
+    irf[n] = 1.0  # delta prompt in VH
     bg = np.zeros(2 * n, dtype=np.float64)
     cfg = {
-        'sb': 0, 'eb': n, 'half_len': n,
-        'dt': dt, 'period': n * dt,
-        'g_factor': 1.0, 'l1': 0.0, 'l2': 0.0,
-        'p2s_twoIstar': False, 'BIFL_scatter': False, 'min_photons': 1,
-        'x0': np.asarray(x0, dtype=np.float64),
-        'fixed': np.asarray(fixed, dtype=np.int32),
-        'irf': irf, 'bg': bg, 'class_lut': class_lut,
-        'model': model, 'method': method, 'param_names': list(param_names),
+        "sb": 0,
+        "eb": n,
+        "half_len": n,
+        "dt": dt,
+        "period": n * dt,
+        "g_factor": 1.0,
+        "l1": 0.0,
+        "l2": 0.0,
+        "p2s_twoIstar": False,
+        "BIFL_scatter": False,
+        "min_photons": 1,
+        "x0": np.asarray(x0, dtype=np.float64),
+        "fixed": np.asarray(fixed, dtype=np.int32),
+        "irf": irf,
+        "bg": bg,
+        "class_lut": class_lut,
+        "model": model,
+        "method": method,
+        "param_names": list(param_names),
     }
-    args = ("synthetic.spc", [(0, int(rc.size))],
-            rc_shm.name, rc.shape, str(rc.dtype),
-            mt_shm.name, mt.shape, str(mt.dtype),
-            ["green"], {"green": cfg}, 0, None)
+    args = (
+        "synthetic.spc",
+        [(0, int(rc.size))],
+        rc_shm.name,
+        rc.shape,
+        str(rc.dtype),
+        mt_shm.name,
+        mt.shape,
+        str(mt.dtype),
+        ["green"],
+        {"green": cfg},
+        0,
+        None,
+    )
     return args, [rc_shm, mt_shm]
 
 
 @pytest.mark.parametrize(
     "model, method, names, x0, fixed",
     [
-        ("fit24", "Fit24", ["tau1", "gamma", "tau2", "A2", "offset"],
-         [2.0, 0.0, 2.0, 0.0, 0.0], [0, 1, 1, 1, 1]),
-        ("fit25", "Fit25", ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"],
-         [0.5, 1.0, 2.0, 4.0, 0.0, 0.38], [1, 1, 1, 1, 1, 1]),
+        (
+            "fit24",
+            "Fit24",
+            ["tau1", "gamma", "tau2", "A2", "offset"],
+            [2.0, 0.0, 2.0, 0.0, 0.0],
+            [0, 1, 1, 1, 1],
+        ),
+        (
+            "fit25",
+            "Fit25",
+            ["tau1", "tau2", "tau3", "tau4", "gamma", "r0"],
+            [0.5, 1.0, 2.0, 4.0, 0.0, 0.38],
+            [1, 1, 1, 1, 1, 1],
+        ),
     ],
 )
 def test_batch_worker_fits_non_fit23_models(model, method, names, x0, fixed):
@@ -379,7 +415,7 @@ def test_fit_dt_and_period_come_from_the_file_header():
     _Stub._header_time_ns = MLELifetimeAnalysisWizard._header_time_ns
 
     h = tttr.header
-    expect_dt = h.micro_time_resolution * 1e9          # ns per channel, binning 1
+    expect_dt = h.micro_time_resolution * 1e9  # ns per channel, binning 1
     expect_period = h.number_of_micro_time_channels * h.micro_time_resolution * 1e9
 
     for binning in (1, 2, 4):
@@ -398,9 +434,7 @@ def test_intensity_plot_has_data(fitted_wizard):
     # The Intensity panel must show the decay (and model), not be empty.
     items = fitted_wizard.combined_plot.listDataItems()
     assert items, "Intensity plot is empty after a fit"
-    assert any(
-        it.getData()[1] is not None and len(it.getData()[1]) > 0 for it in items
-    )
+    assert any(it.getData()[1] is not None and len(it.getData()[1]) > 0 for it in items)
 
 
 def test_decay_plot_has_a_labelled_legend(fitted_wizard):
@@ -434,8 +468,9 @@ def test_irf_is_not_corrupted_by_detector_switching(fitted_wizard):
     for _ in range(3):
         for det in dets:
             w.comboBox_window.setCurrentText(det)
-    assert np.array_equal(np.asarray(w.irf_np["green"]), green0), \
+    assert np.array_equal(np.asarray(w.irf_np["green"]), green0), (
         "IRF was mutated by detector switching"
+    )
 
 
 def test_irf_survives_ui_refresh_with_empty_file_widget(fitted_wizard):
@@ -510,12 +545,23 @@ def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
 
     channels = {
         "detectors": {
-            "green": {"chs": [0, 1], "micro_time_ranges": [],
-                      "g_factor": 1.15, "l1": 0.0308, "l2": 0.0368},
-            "red": {"chs": [8, 9], "micro_time_ranges": [],
-                    "g_factor": 0.92, "l1": 0.05, "l2": 0.06},
+            "green": {
+                "chs": [0, 1],
+                "micro_time_ranges": [],
+                "g_factor": 1.15,
+                "l1": 0.0308,
+                "l2": 0.0368,
+            },
+            "red": {
+                "chs": [8, 9],
+                "micro_time_ranges": [],
+                "g_factor": 0.92,
+                "l1": 0.05,
+                "l2": 0.06,
+            },
         },
-        "windows": {}, "file_type": "SPC-130",
+        "windows": {},
+        "file_type": "SPC-130",
     }
 
     w = MLELifetimeAnalysisWizard()
@@ -530,9 +576,11 @@ def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
         assert sb.isReadOnly()
 
     def displayed():
-        return (round(w.doubleSpinBox_g_factor.value(), 4),
-                round(w.doubleSpinBox_l1.value(), 4),
-                round(w.doubleSpinBox_l2.value(), 4))
+        return (
+            round(w.doubleSpinBox_g_factor.value(), 4),
+            round(w.doubleSpinBox_l1.value(), 4),
+            round(w.doubleSpinBox_l2.value(), 4),
+        )
 
     # Repeated switches must keep the display correct and the definition intact.
     for _ in range(3):
@@ -546,4 +594,3 @@ def test_fit_page_displays_per_detector_g_factor_l1_l2(qapp):
     dets = w.channel_definer.detectors
     assert (dets["green"]["l1"], dets["green"]["l2"]) == (0.0308, 0.0368)
     assert (dets["red"]["l1"], dets["red"]["l2"]) == (0.05, 0.06)
-

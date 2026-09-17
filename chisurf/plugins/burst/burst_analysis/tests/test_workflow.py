@@ -365,8 +365,13 @@ def test_data_selection_imports_local_files_to_mmfdb(tmp_path: Path) -> None:
     assert widget.paths() == [spc.resolve()]
     assert [call[0] for call in calls] == ["mmfdb.objects.put", "raw_data.register"]
     payload = widget.mmfdb_payload()
-    assert payload["imports"][str(spc.resolve())]["object_result"]["object"]["object_uuid"] == "obj-1"
-    assert payload["imports"][str(spc.resolve())]["raw_data_result"]["raw_data"]["raw_data_id"] == "raw-1"
+    assert (
+        payload["imports"][str(spc.resolve())]["object_result"]["object"]["object_uuid"] == "obj-1"
+    )
+    assert (
+        payload["imports"][str(spc.resolve())]["raw_data_result"]["raw_data"]["raw_data_id"]
+        == "raw-1"
+    )
     widget.close()
     app.processEvents()
 
@@ -520,7 +525,7 @@ def test_every_loaded_panel_gets_upstream_changes() -> None:
     tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
     tool.workflow_context = BurstWorkflowContext()
     tool._workflow_panels = {
-        "data": object(),          # the source; must not be re-applied to
+        "data": object(),  # the source; must not be re-applied to
         "h2mm": object(),
         "a_role_no_tuple_ever_held": object(),
     }
@@ -775,9 +780,7 @@ def test_accurate_fret_receives_the_detector_setup(tmp_path: Path) -> None:
     )
 
     table = tmp_path / "m000.bur"
-    table.write_text(
-        "det0_green\tdet1_red\n" + "".join(f"{10 + i}\t{5 + i}\n" for i in range(8))
-    )
+    table.write_text("det0_green\tdet1_red\n" + "".join(f"{10 + i}\t{5 + i}\n" for i in range(8)))
 
     class FakePanel:
         model = AccurateFretViewModel()

@@ -131,7 +131,7 @@ def bibliography(refresh: bool = False) -> dict[str, Entry]:
             raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except Exception:
             raw = {}
-        for key, value in (raw.items() if isinstance(raw, dict) else []):
+        for key, value in raw.items() if isinstance(raw, dict) else []:
             if not isinstance(value, dict):
                 continue
             topics = value.get("topics") or []

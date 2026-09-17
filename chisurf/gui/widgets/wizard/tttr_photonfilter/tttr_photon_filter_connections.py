@@ -3,11 +3,6 @@ def setup_connections(page):
     Set up all signal-slot connections for UI elements.
     This centralizes all connections in one place for better maintainability.
     """
-    import tttrlib
-    import chisurf as cs
-    import chisurf.gui.decorators
-    from chisurf.gui import QtCore, QtWidgets
-
     # Action connections
     page.actionUpdate_Values.triggered.connect(page.update_parameter)
     page.actionUpdateUI.triggered.connect(page.updateUI)

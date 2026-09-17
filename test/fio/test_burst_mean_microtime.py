@@ -23,6 +23,8 @@ pins:
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+import pytest
 
 from chisurf.core.datastore import (
     column_names,
@@ -30,9 +32,6 @@ from chisurf.core.datastore import (
     rows_from_table,
     write_csv_table,
 )
-import pandas as pd
-import pytest
-
 from chisurf.core.fio.fluorescence.burst import (
     DETECTOR_SENTINEL,
     generate_burst_dataframe,
@@ -58,7 +57,9 @@ class _Header:
 
 
 class _FakeTTTR:
-    def __init__(self, macro_times, micro_times, routing_channel, micro_resolution=MICRO_TIME_RESOLUTION):
+    def __init__(
+        self, macro_times, micro_times, routing_channel, micro_resolution=MICRO_TIME_RESOLUTION
+    ):
         self.macro_times = np.asarray(macro_times, dtype=np.int64)
         self.micro_times = np.asarray(micro_times, dtype=np.int64)
         self.routing_channel = np.asarray(routing_channel, dtype=np.int64)
@@ -77,7 +78,14 @@ RED_MICRO = [1000, 2000]
 @pytest.fixture()
 def two_colour_burst() -> _FakeTTTR:
     macro = [0, 1, 2, 3, 4, 5]
-    micro = [GREEN_MICRO[0], RED_MICRO[0], GREEN_MICRO[1], GREEN_MICRO[2], RED_MICRO[1], GREEN_MICRO[3]]
+    micro = [
+        GREEN_MICRO[0],
+        RED_MICRO[0],
+        GREEN_MICRO[1],
+        GREEN_MICRO[2],
+        RED_MICRO[1],
+        GREEN_MICRO[3],
+    ]
     rout = [0, 1, 0, 0, 1, 0]
     return _FakeTTTR(macro, micro, rout)
 
@@ -99,8 +107,7 @@ def _data_rows(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _write_bur(out, tttr):
     """Write a real .bur through the one live path (builder + TSV writer)."""
-    frame = generate_burst_dataframe(
-        [(0, 5)], "m000.ptu", tttr, WINDOWS, DETECTORS)
+    frame = generate_burst_dataframe([(0, 5)], "m000.ptu", tttr, WINDOWS, DETECTORS)
     write_csv_table(str(out), frame)
 
 
@@ -120,13 +127,19 @@ def test_helper_returns_sentinel_without_a_resolution():
 
 def test_helper_returns_sentinel_for_an_empty_selection():
     ns = MICRO_TIME_RESOLUTION * 1e9
-    assert mean_micro_time_ns(np.array([100, 200]), np.array([], dtype=int), ns) == DETECTOR_SENTINEL
+    assert (
+        mean_micro_time_ns(np.array([100, 200]), np.array([], dtype=int), ns) == DETECTOR_SENTINEL
+    )
 
 
 @pytest.mark.parametrize("detector,micro_channels", [("green", GREEN_MICRO), ("red", RED_MICRO)])
 def test_fast_writer_reports_the_mean_micro_time(two_colour_burst, detector, micro_channels):
     frame = generate_burst_dataframe(
-        [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
+        [(0, 5)],
+        "m000.ptu",
+        two_colour_burst,
+        WINDOWS,
+        DETECTORS,
         include_interleaved_zeros=False,
     )
     value = numeric_column(frame, f"Mean Microtime ({detector}) (ns)")[0]
@@ -135,7 +148,11 @@ def test_fast_writer_reports_the_mean_micro_time(two_colour_burst, detector, mic
 
 def test_detector_without_photons_gets_the_shared_sentinel(green_only_burst):
     frame = generate_burst_dataframe(
-        [(0, 2)], "m000.ptu", green_only_burst, WINDOWS, DETECTORS,
+        [(0, 2)],
+        "m000.ptu",
+        green_only_burst,
+        WINDOWS,
+        DETECTORS,
         include_interleaved_zeros=False,
     )
     row = rows_from_table(frame)[0]
@@ -149,7 +166,11 @@ def test_header_without_a_resolution_writes_the_sentinel_not_raw_channels(two_co
     """Never write a number whose unit the header cannot justify."""
     two_colour_burst.header = _Header(MACRO_TIME_RESOLUTION, micro_time_resolution=None)
     frame = generate_burst_dataframe(
-        [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
+        [(0, 5)],
+        "m000.ptu",
+        two_colour_burst,
+        WINDOWS,
+        DETECTORS,
         include_interleaved_zeros=False,
     )
     for detector in DETECTORS:
@@ -164,21 +185,34 @@ def test_the_addition_is_positionally_non_breaking(two_colour_burst):
     it.
     """
     frame = generate_burst_dataframe(
-        [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
+        [(0, 5)],
+        "m000.ptu",
+        two_colour_burst,
+        WINDOWS,
+        DETECTORS,
         include_interleaved_zeros=False,
     )
     columns = column_names(frame)
 
     legacy = [
-        "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
-        "Number of Photons", "Count Rate (KHz)", "Confidence (sigma)",
-        "First File", "Last File",
+        "First Photon",
+        "Last Photon",
+        "Duration (ms)",
+        "Mean Macro Time (ms)",
+        "Number of Photons",
+        "Count Rate (KHz)",
+        "Confidence (sigma)",
+        "First File",
+        "Last File",
     ]
     for d in DETECTORS:
         legacy += [
-            f"First Photon ({d})", f"Last Photon ({d})",
-            f"Duration ({d}) (ms)", f"Mean Macrotime ({d}) (ms)",
-            f"Number of Photons ({d})", f"{d.capitalize()} Count Rate (KHz)",
+            f"First Photon ({d})",
+            f"Last Photon ({d})",
+            f"Duration ({d}) (ms)",
+            f"Mean Macrotime ({d}) (ms)",
+            f"Number of Photons ({d})",
+            f"{d.capitalize()} Count Rate (KHz)",
         ]
     for w, (r0, r1) in WINDOWS.items():
         for d in DETECTORS:

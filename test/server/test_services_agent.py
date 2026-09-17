@@ -7,7 +7,6 @@ from chisurf.server.session import SessionState
 
 
 class TestAgentCodeRun:
-
     def test_execute_simple_python(self):
         state = SessionState()
         result = agent_code_run(state, code="print('hello')", timeout_ms=5000)

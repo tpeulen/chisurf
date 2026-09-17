@@ -16,11 +16,11 @@ finer or coarser than the bursts is ordinary rather than impossible. See
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
 
 import numpy as np
-
-from pathlib import Path
-from typing import Any, Mapping, Sequence
 
 __all__ = [
     "BURST_COLUMN_UNITS",
@@ -89,9 +89,7 @@ def as_table(table):
         return table
     from chisurf.core.datastore import store_from_arrays
 
-    return store_from_arrays(
-        {str(name): table[name].to_numpy() for name in table.columns}
-    )
+    return store_from_arrays({str(name): table[name].to_numpy() for name in table.columns})
 
 
 #: ``Number of Photons (green)`` -> ``Number of Photons``. Only a *trailing*

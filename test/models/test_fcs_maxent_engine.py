@@ -12,16 +12,17 @@ pin is on the objective, not the iterates: the engine's solution must score
 **at least as well** as the loop's on the loop's own objective, and on
 well-conditioned problems the reconstructions must agree.
 """
+
 import numpy as np
 import pytest
 
-from chisurf.core.models.fcs.maxent import (
-    build_diffusion_kernel, fcs_maxent, _maxent_engine_solve)
+from chisurf.core.models.fcs.maxent import _maxent_engine_solve, build_diffusion_kernel, fcs_maxent
 
 
 def _quickfit_reference(A, ydata, stdev, m_prior, alpha, num_iter):
     """The deleted `_quickfit_mem_iteration`, transcribed whole (with the
-    SVD front-end it consumed) as this A/B's frozen reference."""
+    SVD front-end it consumed) as this A/B's frozen reference.
+    """
     U_np, svals, VT = np.linalg.svd(A, full_matrices=False)
     thresh = svals[0] / 100000.0
     mask = svals >= thresh
@@ -31,7 +32,7 @@ def _quickfit_reference(A, ydata, stdev, m_prior, alpha, num_iter):
     svals = svals[:s_count]
     Vred = U_np[:, :s_count]
     Ured = VT[:s_count, :].T
-    inv_sigma2 = 1.0 / (stdev ** 2)
+    inv_sigma2 = 1.0 / (stdev**2)
     VW = Vred * inv_sigma2[:, None]
     M = (svals[:, None] * (Vred.T @ VW)) * svals[None, :]
 
@@ -88,7 +89,7 @@ def test_the_engine_solves_the_loops_objective_at_least_as_well(alpha):
     tau, td, A, ydata, sigma, m = _fixture()
     p_ref, _ = _quickfit_reference(A, ydata, sigma, m, alpha, 200)
     p_eng, _ = _maxent_engine_solve(A, ydata, sigma, m, alpha, 500)
-    inv_sigma2 = 1.0 / sigma ** 2
+    inv_sigma2 = 1.0 / sigma**2
     q_ref = _objective(A, p_ref, ydata, inv_sigma2, m, alpha)
     q_eng = _objective(A, p_eng, ydata, inv_sigma2, m, alpha)
     # Performance only improves: the converged engine must not score worse
@@ -117,8 +118,7 @@ def test_fcs_maxent_end_to_end_recovers_the_curve():
     sigma-units residual bound would test the convention, not the route.
     """
     tau, td, A, ydata, sigma, m = _fixture(seed=7)
-    result = fcs_maxent(tau, ydata + 1.0, reg=0.05,
-                        weights=1.0 / sigma, td_grid=td)
+    result = fcs_maxent(tau, ydata + 1.0, reg=0.05, weights=1.0 / sigma, td_grid=td)
     assert result["p"].shape == td.shape
     assert np.all(result["p"] >= 0.0)
     g0 = ydata + 1.0
@@ -131,7 +131,8 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
     """The entropy prior option (owner, 2026-09-02): 'uniform' keeps the
     historical behaviour bit-for-bit (prior=None reaches the solver);
     'lognormal' centres the prior on the grid, and where the data do not
-    constrain the distribution the inversion must follow it."""
+    constrain the distribution the inversion must follow it.
+    """
     import chisurf.core.data
     import chisurf.core.fitting.fit as F
     from chisurf.core.models.fcs.maxent_models import MaxEntFCSModel
@@ -139,7 +140,7 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
     tau = np.logspace(-3.0, 1.0, 96)
     rng = np.random.default_rng(11)
     td_true = 0.2
-    g = 1.0 + 0.02 / (1.0 + tau / td_true) / np.sqrt(1.0 + (tau / td_true) / 3.5 ** 2)
+    g = 1.0 + 0.02 / (1.0 + tau / td_true) / np.sqrt(1.0 + (tau / td_true) / 3.5**2)
     g = g + rng.normal(0.0, 2e-4, tau.size)
     data = chisurf.core.data.DataCurve(x=tau, y=g, ey=np.full(tau.size, 2e-4))
     fit = F.Fit(model_class=MaxEntFCSModel, data=data)
@@ -164,8 +165,10 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
     m.update()
     p_prior, td2 = m.maxent_tauD_distribution
     assert p_prior.shape == td2.shape and np.all(p_prior >= 0.0)
+
     # The prior moved the answer: mean log-td shifts toward the center.
     def mean_logtd(p, grid):
         w = p / max(p.sum(), 1e-30)
         return float(np.sum(w * np.log10(grid)))
+
     assert mean_logtd(p_prior, td2) > mean_logtd(p_uniform, td)

@@ -11,7 +11,9 @@ METHOD_DESCRIBE_CONTRACT = "burst_mle.contract.describe"
 
 def register_services(dispatcher: Any) -> None:
     """Register Burst MLE workflow RPC handlers."""
-    dispatcher.register(METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {})))
+    dispatcher.register(
+        METHOD_PREPARE_WORKFLOW, lambda params: prepare_workflow_handler(**(params or {}))
+    )
     dispatcher.register(METHOD_DESCRIBE_CONTRACT, lambda params: contract_handler(**(params or {})))
 
 

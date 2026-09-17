@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-import abc
-
-from chisurf import typing
-
 import numpy as np
 
-import chisurf.core.settings
 import chisurf.core.fitting
-from chisurf.core import base
-from chisurf.core import parameter
+import chisurf.core.settings
 import chisurf.core.support.decorators
+from chisurf import typing
+from chisurf.core import base, parameter
 
-#parameter_settings = chisurf.core.settings.parameter
+# parameter_settings = chisurf.core.settings.parameter
 
 
 class FittingParameter(chisurf.core.parameter.Parameter):
@@ -36,15 +32,15 @@ class FittingParameter(chisurf.core.parameter.Parameter):
     """
 
     def __init__(
-            self,
-            value: float = 1.0,
-            link: chisurf.core.parameter.Parameter = None,
-            lb: float = float("-inf"),
-            ub: float = float("inf"),
-            bounds_on: bool = False,
-            fixed: bool = False,
-            *args,
-            **kwargs
+        self,
+        value: float = 1.0,
+        link: chisurf.core.parameter.Parameter = None,
+        lb: float = float("-inf"),
+        ub: float = float("inf"),
+        bounds_on: bool = False,
+        fixed: bool = False,
+        *args,
+        **kwargs,
     ):
         """Initialize a fitting parameter.
 
@@ -63,15 +59,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         fixed : bool, optional
             Whether the parameter is fixed during optimization.
         """
-        super().__init__(
-            *args,
-            value=value,
-            link=link,
-            ub=ub,
-            lb=lb,
-            bounds_on=bounds_on,
-            **kwargs
-        )
+        super().__init__(*args, value=value, link=link, ub=ub, lb=lb, bounds_on=bounds_on, **kwargs)
         self.fixed = fixed
         # Stored under its public name so the serialised form is unchanged: a
         # property is a data descriptor and wins over the instance dict, so the
@@ -107,6 +95,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         self.__dict__["redundant"] = bool(v)
         if was != bool(v):
             from chisurf.core.fitting import factorgraph
+
             factorgraph.bump_structure_version()
 
     @property
@@ -136,7 +125,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             if isinstance(self._error_estimate, float):
                 return self._error_estimate
             else:
-                return float('nan')
+                return float("nan")
 
     @error_estimate.setter
     def error_estimate(self, v: float):
@@ -153,29 +142,20 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         """Store the full result dict from a smart scan."""
         self._scan_result = v
 
-    def scan(
-            self,
-            fit: chisurf.core.fitting.fit.Fit,
-            rel_range: float = None,
-            **kwargs
-    ) -> None:
+    def scan(self, fit: chisurf.core.fitting.fit.Fit, rel_range: float = None, **kwargs) -> None:
         """Trigger a chi² scan for this parameter on the given fit.
 
         This is a thin wrapper around :meth:`chisurf.core.fitting.fit.Fit.chi2_scan`
         which stores the resulting scan on the :class:`Fit` instance.
         """
-        fit.chi2_scan(
-            parameter_name=self.name,
-            rel_range=rel_range,
-            **kwargs
-        )
+        fit.chi2_scan(parameter_name=self.name, rel_range=rel_range, **kwargs)
 
     def adaptive_scan(
-            self,
-            fit: chisurf.core.fitting.fit.Fit,
-            scan_range: typing.Tuple[float, float] = (None, None),
-            p_value: float = 0.99,
-            **kwargs
+        self,
+        fit: chisurf.core.fitting.fit.Fit,
+        scan_range: typing.Tuple[float, float] = (None, None),
+        p_value: float = 0.99,
+        **kwargs,
     ) -> typing.Dict:
         """Trigger an adaptive F-test-driven chi² scan.
 
@@ -183,10 +163,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         :meth:`chisurf.core.fitting.fit.Fit.adaptive_chi2_scan`.
         """
         return fit.adaptive_chi2_scan(
-            parameter_name=self.name,
-            scan_range=scan_range,
-            p_value=p_value,
-            **kwargs
+            parameter_name=self.name, scan_range=scan_range, p_value=p_value, **kwargs
         )
 
     def update(self) -> None:
@@ -197,6 +174,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
                 controller.finalize()
             except Exception as e:
                 import chisurf.logging
+
                 chisurf.logging.error(f"Failed to finalize parameter controller: {e}")
 
     def __getstate__(self):
@@ -216,14 +194,18 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         try:
             ee = self.error_estimate
             if isinstance(ee, float) and not self.fixed:
-                rel = abs(ee / (self.value + 1e-12) * 100.0) if np.isfinite(self.value) else float('nan')
+                rel = (
+                    abs(ee / (self.value + 1e-12) * 100.0)
+                    if np.isfinite(self.value)
+                    else float("nan")
+                )
                 src = "support plane" if self.scan_result is not None else "covariance"
                 s += f"error: {ee:.4g} ({rel:.0f}%) [{src}]\n"
         except Exception:
             pass
         s += f"fixed: {self.fixed}\n"
         if self.bounds_on:
-            bounds = getattr(self, 'bounds', None)
+            bounds = getattr(self, "bounds", None)
             if isinstance(bounds, (tuple, list)) and len(bounds) == 2:
                 s += f"bounds: [{bounds[0]:.4g}, {bounds[1]:.4g}]\n"
         if self.is_linked:
@@ -240,9 +222,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     """
 
     @property
-    def parameter_bounds(self) -> typing.List[
-        typing.Tuple[float, float]
-    ]:
+    def parameter_bounds(self) -> typing.List[typing.Tuple[float, float]]:
         """List of ``(lb, ub)`` bounds of all parameters (including fixed)."""
         frozen = self.__dict__.get("_frozen_structure")
         if frozen is not None:
@@ -253,9 +233,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         ]
 
     @property
-    def parameters_all(self) -> typing.List[
-        chisurf.core.fitting.parameter.FittingParameter
-    ]:
+    def parameters_all(self) -> typing.List[chisurf.core.fitting.parameter.FittingParameter]:
         """List of all fitting parameters, including fixed and linked.
 
         Discovery is lazy. ``_parameters`` is ``None`` until :meth:`find_parameters`
@@ -286,9 +264,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         return parameters
 
     @property
-    def parameters(self) -> typing.List[
-        chisurf.core.fitting.parameter.FittingParameter
-    ]:
+    def parameters(self) -> typing.List[chisurf.core.fitting.parameter.FittingParameter]:
         """List of *free* fitting parameters (not fixed, linked or redundant).
 
         Cached against the structure version. Deciding freedom costs three
@@ -311,20 +287,24 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             # (see factorgraph.frozen_structure), so there is nothing to check.
             return frozen["parameters"]
         from chisurf.core.fitting import factorgraph
+
         all_parameters = self.parameters_all
         version = factorgraph.structure_version()
         cache = self.__dict__.get("_free_parameter_cache")
         if cache is not None and cache[0] == version and cache[1] is all_parameters:
             return list(cache[2])
         free = tuple(
-            p for p in all_parameters
+            p
+            for p in all_parameters
             if not (p.fixed or p.is_linked or getattr(p, "redundant", False))
         )
         self.__dict__["_free_parameter_cache"] = (version, all_parameters, free)
         return list(free)
 
     @property
-    def parameters_all_dict(self) -> typing.Dict[str, chisurf.core.fitting.parameter.FittingParameter]:
+    def parameters_all_dict(
+        self,
+    ) -> typing.Dict[str, chisurf.core.fitting.parameter.FittingParameter]:
         """Dictionary mapping parameter names to all parameters."""
         return dict([(p.name, p) for p in self.parameters_all])
 
@@ -369,10 +349,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         return [p.value for p in self.parameters]
 
     @parameter_values.setter
-    def parameter_values(
-            self,
-            vs: typing.List[float]
-    ):
+    def parameter_values(self, vs: typing.List[float]):
         """Set values of all free parameters.
 
         Parameters
@@ -385,48 +362,42 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             ps[i].value = v
 
     def to_dict(
-            self,
-            remove_protected: bool = False,
-            copy_values: bool = True,
-            convert_values_to_elementary: bool = False,
-        skip_qt_widgets: bool = False
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
     ) -> typing.Dict:
         """Serialize the group and its parameters to a plain dictionary."""
         s = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
             convert_values_to_elementary=convert_values_to_elementary,
-            skip_qt_widgets=skip_qt_widgets
+            skip_qt_widgets=skip_qt_widgets,
         )
         parameters = dict()
-        s['parameter'] = parameters
-        for parameter in self.parameters_all:
-            parameters[parameter.name] = parameter.to_dict(
+        s["parameter"] = parameters
+        for p in self.parameters_all:
+            parameters[p.name] = p.to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
-                convert_values_to_elementary=convert_values_to_elementary
+                convert_values_to_elementary=convert_values_to_elementary,
             )
         return s
 
-    def from_dict(
-            self,
-            v: dict
-    ):
+    def from_dict(self, v: dict):
         """Restore parameter values from a dictionary created by :meth:`to_dict`."""
         self.find_parameters()
         parameter_target = self.parameters_all_dict
-        parameter = v['parameter']
+        parameter = v["parameter"]
         for parameter_name in parameter:
             pn = str(parameter_name)
             try:
                 parameter_target[pn].from_dict(parameter[pn])
             except KeyError:
-                chisurf.logging.warning("Key %s not found skipping" % pn)
+                chisurf.logging.warning(f"Key {pn} not found skipping")
 
-    def find_parameters(
-            self,
-            parameter_type=FittingParameter
-    ) -> None:
+    def find_parameters(self, parameter_type=FittingParameter) -> None:
         """Discover parameters and nested groups attached to this instance.
 
         This scans the attributes of the group, finds instances of
@@ -438,14 +409,12 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         self.__dict__["_finding_parameters"] = True
         try:
             d = [v for v in self.__dict__.values() if v is not self]
-            ag = base.find_objects(
-                search_iterable=d,
-                searched_object_type=FittingParameterGroup
-            )
+            ag = base.find_objects(search_iterable=d, searched_object_type=FittingParameterGroup)
             self._aggregated_parameters = ag
 
             ap = list()
             from chisurf.core.models.model import Model
+
             for o in ag:
                 if not isinstance(o, Model):
                     o.find_parameters()
@@ -457,24 +426,20 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             # Search using the base Parameter class for robustness.
             # FittingParameter is renamed by @register so isinstance against FittingParameter
             # can be unreliable; searching by base class always works.
-            mp = base.find_objects(
-                search_iterable=d,
-                searched_object_type=parameter.Parameter
-            )
+            mp = base.find_objects(search_iterable=d, searched_object_type=parameter.Parameter)
             # Constructor-supplied parameters come first: they are the group's
             # own, and clearing ``_parameters`` above has just hidden them from
             # the ``__dict__`` walk.
             explicit = list(self.__dict__.get("_explicit_parameters") or ())
             seen = set()
-            self._parameters = [
-                x for x in (explicit + mp + ap) if not (x in seen or seen.add(x))
-            ]
+            self._parameters = [x for x in (explicit + mp + ap) if not (x in seen or seen.add(x))]
         finally:
             self.__dict__.pop("_finding_parameters", None)
 
         # Rediscovery can change the parameter vector (order, membership), which
         # is exactly what a cached factor graph is indexed by.
         from chisurf.core.fitting import factorgraph
+
         factorgraph.bump_structure_version()
 
     def append_parameter(self, p: parameter.Parameter):
@@ -501,9 +466,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             try:
                 controller.finalize()
             except Exception as e:
-                chisurf.logging.warning(
-                    f"Failed to finalize controller of parameter '{name}': {e}"
-                )
+                chisurf.logging.warning(f"Failed to finalize controller of parameter '{name}': {e}")
 
     # def __getattribute__(
     #         self,
@@ -550,7 +513,6 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         where each ``parameter_state`` is produced by
         :meth:`chisurf.core.parameter.Parameter.get_state`.
         """
-
         try:
             params_state: typing.Dict[str, typing.Dict] = {}
             for name, p in self.parameters_all_dict.items():
@@ -573,7 +535,6 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         via their :meth:`set_state` methods and then asks them to
         :meth:`update` so any GUI controllers refresh.
         """
-
         if not isinstance(state, dict):
             return
 
@@ -606,6 +567,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
                 else:
                     # Minimal fallback for non-conforming parameters
                     from chisurf.core.parameter import Parameter as _P
+
                     if isinstance(p, _P):
                         if "bounds" in p_state:
                             b = p_state["bounds"]
@@ -630,14 +592,13 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             pass
 
     def __init__(
-            self,
-            fit: chisurf.core.fitting.fit.Fit = None,
-            model: chisurf.core.models.Model = None,
-            short: str = '',
-            parameters: typing.List[
-                chisurf.core.fitting.parameter.FittingParameter
-            ] = None,
-            *args, **kwargs
+        self,
+        fit: chisurf.core.fitting.fit.Fit = None,
+        model: chisurf.core.models.Model = None,
+        short: str = "",
+        parameters: typing.List[chisurf.core.fitting.parameter.FittingParameter] = None,
+        *args,
+        **kwargs,
     ):
         """Initialize a fitting parameter group.
 
@@ -653,9 +614,9 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             Initial list of parameters.
         """
         super().__init__(*args, **kwargs)
-        if chisurf.core.settings.cs_settings['verbose']:
+        if chisurf.core.settings.cs_settings["verbose"]:
             print("---------------")
-            print("Class: %s" % self.__class__.name)
+            print(f"Class: {self.__class__.name}")
             print(kwargs)
             print("---------------")
 

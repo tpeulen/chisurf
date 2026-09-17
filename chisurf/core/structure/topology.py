@@ -132,14 +132,22 @@ class _ElementNamespace:
     """``element.carbon``, ``element.hydrogen`` and friends, by name or symbol."""
 
     _BY_NAME = {
-        "hydrogen": ("H", 1, 1.008), "carbon": ("C", 6, 12.011),
-        "nitrogen": ("N", 7, 14.007), "oxygen": ("O", 8, 15.999),
-        "fluorine": ("F", 9, 18.998), "phosphorus": ("P", 15, 30.974),
-        "sulfur": ("S", 16, 32.06), "chlorine": ("CL", 17, 35.45),
-        "sodium": ("NA", 11, 22.990), "magnesium": ("MG", 12, 24.305),
-        "potassium": ("K", 19, 39.098), "calcium": ("CA", 20, 40.078),
-        "iron": ("FE", 26, 55.845), "zinc": ("ZN", 30, 65.38),
-        "selenium": ("SE", 34, 78.971), "virtual": ("", 0, 0.0),
+        "hydrogen": ("H", 1, 1.008),
+        "carbon": ("C", 6, 12.011),
+        "nitrogen": ("N", 7, 14.007),
+        "oxygen": ("O", 8, 15.999),
+        "fluorine": ("F", 9, 18.998),
+        "phosphorus": ("P", 15, 30.974),
+        "sulfur": ("S", 16, 32.06),
+        "chlorine": ("CL", 17, 35.45),
+        "sodium": ("NA", 11, 22.990),
+        "magnesium": ("MG", 12, 24.305),
+        "potassium": ("K", 19, 39.098),
+        "calcium": ("CA", 20, 40.078),
+        "iron": ("FE", 26, 55.845),
+        "zinc": ("ZN", 30, 65.38),
+        "selenium": ("SE", 34, 78.971),
+        "virtual": ("", 0, 0.0),
     }
 
     def __getattr__(self, name: str) -> Element:
@@ -178,8 +186,7 @@ class Topology:
     def __init__(self, atoms: np.ndarray = None):
         from chisurf.core.fio.structure.coordinates import atom_dtype
 
-        self._atoms = (np.zeros(0, dtype=atom_dtype) if atoms is None
-                       else np.asarray(atoms))
+        self._atoms = np.zeros(0, dtype=atom_dtype) if atoms is None else np.asarray(atoms)
         self._residue_index = None
         self._chain_index = None
         # Only used while building; a topology read from a file never touches
@@ -282,6 +289,7 @@ class Topology:
         Topology
         """
         from chisurf.core.structure import Structure
+
         return cls(Structure(str(filename)).atoms)
 
     # -- geometry-free facts -------------------------------------------------
@@ -309,6 +317,7 @@ class Topology:
         """Return the per-atom residue index, computed once."""
         if self._residue_index is None:
             from .selection import _residue_index
+
             self._residue_index = _residue_index(self._atoms)
         return self._residue_index
 
@@ -316,6 +325,7 @@ class Topology:
         """Return the per-atom chain index, computed once."""
         if self._chain_index is None:
             from .selection import _chain_index
+
             self._chain_index = _chain_index(self._atoms)
         return self._chain_index
 
@@ -333,15 +343,23 @@ class Topology:
         if not rows.size:
             raise IndexError(f"no residue {index}")
         row = rows[0]
-        return Residue(int(index), str(self._atoms["res_name"][row]),
-                       int(self._atoms["res_id"][row]),
-                       self.chain(int(self._chains()[row])))
+        return Residue(
+            int(index),
+            str(self._atoms["res_name"][row]),
+            int(self._atoms["res_id"][row]),
+            self.chain(int(self._chains()[row])),
+        )
 
     def atom(self, index: int) -> Atom:
         """Return the atom at *index*."""
         row = self._atoms[index]
-        return Atom(int(index), str(row["atom_name"]), str(row["element"]),
-                    int(row["atom_id"]), self.residue(int(self._residues()[index])))
+        return Atom(
+            int(index),
+            str(row["atom_name"]),
+            str(row["element"]),
+            int(row["atom_id"]),
+            self.residue(int(self._residues()[index])),
+        )
 
     @property
     def atoms(self):
@@ -403,16 +421,18 @@ class Topology:
         """
         from chisurf.core.datastore import store_from_arrays
 
-        return store_from_arrays({
-            "serial": self._atoms["atom_id"],
-            "name": self._atoms["atom_name"],
-            "element": self._atoms["element"],
-            "resSeq": self._atoms["res_id"],
-            "resName": self._atoms["res_name"],
-            "chainID": self._atoms["chain"],
-            "resid": self._residues(),
-            "chainid": self._chains(),
-        })
+        return store_from_arrays(
+            {
+                "serial": self._atoms["atom_id"],
+                "name": self._atoms["atom_name"],
+                "element": self._atoms["element"],
+                "resSeq": self._atoms["res_id"],
+                "resName": self._atoms["res_name"],
+                "chainID": self._atoms["chain"],
+                "resid": self._residues(),
+                "chainid": self._chains(),
+            }
+        )
 
     # -- dunders -------------------------------------------------------------
     def __len__(self) -> int:
@@ -432,5 +452,6 @@ class Topology:
 
     def __repr__(self) -> str:
         """Return the atom, residue and chain counts."""
-        return (f"<Topology: {self.n_atoms} atoms, {self.n_residues} residues, "
-                f"{self.n_chains} chains>")
+        return (
+            f"<Topology: {self.n_atoms} atoms, {self.n_residues} residues, {self.n_chains} chains>"
+        )

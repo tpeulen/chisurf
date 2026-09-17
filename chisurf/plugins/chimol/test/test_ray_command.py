@@ -34,7 +34,11 @@ def window(qapp, tmp_path):
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
-        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+        / "test"
+        / "data"
+        / "atomic_coordinates"
+        / "pdb_files"
+        / "148l.pdb"
     )
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
@@ -46,8 +50,8 @@ def window(qapp, tmp_path):
 
 @pytest.fixture
 def cmd(window):
-    from chimol.core.settings import config as chimol_config
     from chimol.commands.command import Cmd
+    from chimol.core.settings import config as chimol_config
 
     # One sample per pixel. `_DISPLAY_CONFIG` is process-wide, so it is restored
     # in place rather than replaced -- a dict swapped here changes other files.
@@ -113,9 +117,7 @@ def _drawn_pixels(path: pathlib.Path) -> int:
 # --------------------------------------------------------------------------- #
 # What gets traced
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize(
-    "representation", ["cartoon", "sticks", "lines", "spheres"]
-)
+@pytest.mark.parametrize("representation", ["cartoon", "sticks", "lines", "spheres"])
 def test_every_representation_reaches_the_image(cmd, tmp_path, representation):
     """`ray` traces the scene, so whatever the viewport draws comes out."""
     cmd.do(f"as {representation}")
@@ -231,8 +233,14 @@ def _shell_over_ball(shell_alpha: float):
         Sphere(np.array([0.0, 0.0, -1.0]), 1.0, np.array([1.0, 0.1, 0.1]), 1.0),
     ]
     img = trace(
-        spheres, camera, np.array([[0.3, 0.6, 0.7]]),
-        width=160, height=120, ssaa=1, shadow=False, background=(0, 0, 0),
+        spheres,
+        camera,
+        np.array([[0.3, 0.6, 0.7]]),
+        width=160,
+        height=120,
+        ssaa=1,
+        shadow=False,
+        background=(0, 0, 0),
     )
     return img[60, 80].astype(int)
 
@@ -340,7 +348,8 @@ def test_the_default_size_is_the_scene_column_not_the_widget(window):
 def test_one_size_preserves_the_current_aspect(cmd, tmp_path, window):
     """PyMOL: "the missing value is scaled so as to preserve the current
     aspect ratio". A fixed 4:3 traces a different field from the one on
-    screen for every window that is not 4:3, which is most of them."""
+    screen for every window that is not 4:3, which is most of them.
+    """
     from PIL import Image
 
     view = window.viewer.view

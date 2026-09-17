@@ -21,6 +21,7 @@ what it did catch:
 None of the three is visible from Python. All three are ordinary once the page
 runs.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -60,9 +61,10 @@ def server():
     port = _free_port()
     root = pathlib.Path(__file__).resolve().parents[4]
     process = subprocess.Popen(
-        [sys.executable, "-m", "chimol.hosts.web.serve",
-         "--port", str(port)],
-        cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port)],
+        cwd=str(root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     url = f"http://127.0.0.1:{port}/"
     for _ in range(100):
@@ -121,9 +123,7 @@ def rendered(server, tmp_path_factory):
 
         if not page.evaluate("() => !!navigator.gpu"):
             browser.close()
-            pytest.skip(
-                "this Chromium has no WebGPU even with --enable-unsafe-webgpu"
-            )
+            pytest.skip("this Chromium has no WebGPU even with --enable-unsafe-webgpu")
 
         try:
             page.wait_for_function(
@@ -134,9 +134,7 @@ def rendered(server, tmp_path_factory):
             )
         except Exception:  # noqa: BLE001 - reported through `status` below
             pass
-        status = page.evaluate(
-            "() => document.getElementById('status')?.textContent || ''"
-        )
+        status = page.evaluate("() => document.getElementById('status')?.textContent || ''")
         failure = page.evaluate("() => globalThis.chimolError || ''")
         page.screenshot(path=str(out))
 
@@ -146,29 +144,23 @@ def rendered(server, tmp_path_factory):
         # as one.
         prompt = ""
         if "drawn" in status:
-            page.keyboard.press("Enter")          # focuses the prompt
+            page.keyboard.press("Enter")  # focuses the prompt
             page.keyboard.type(TYPED_COMMAND, delay=5)
-            page.keyboard.press("Enter")          # runs it
+            page.keyboard.press("Enter")  # runs it
             page.wait_for_timeout(500)
-            prompt = page.evaluate(
-                "() => globalThis.chimolViewer.prompt_state()"
-            )
+            prompt = page.evaluate("() => globalThis.chimolViewer.prompt_state()")
             page.screenshot(path=str(typed_out))
 
             page.keyboard.type(SELECT_COMMAND, delay=5)
             page.keyboard.press("Enter")
             page.wait_for_timeout(500)
-            prompt += "\n" + page.evaluate(
-                "() => globalThis.chimolViewer.prompt_state()"
-            )
+            prompt += "\n" + page.evaluate("() => globalThis.chimolViewer.prompt_state()")
             page.screenshot(path=str(selected_out))
 
             page.keyboard.type(SHOW_COMMAND, delay=5)
             page.keyboard.press("Enter")
             page.wait_for_timeout(1500)
-            prompt += "\n" + page.evaluate(
-                "() => globalThis.chimolViewer.prompt_state()"
-            )
+            prompt += "\n" + page.evaluate("() => globalThis.chimolViewer.prompt_state()")
             page.screenshot(path=str(cartoon_out))
 
         browser.close()
@@ -199,7 +191,7 @@ def test_the_molecule_is_on_the_canvas(rendered):
 
     frame = np.asarray(Image.open(path).convert("RGB")).astype(float)
     height, width = frame.shape[:2]
-    scene = frame[int(height * 0.1): int(height * 0.85), : int(width * 0.75)]
+    scene = frame[int(height * 0.1) : int(height * 0.85), : int(width * 0.75)]
 
     saturation = scene.max(axis=2) - scene.min(axis=2)
     lit = saturation > 60
@@ -237,8 +229,8 @@ def test_the_panel_is_actually_on_the_canvas(rendered):
     # the column is empty background by design -- an earlier version of this
     # measured a flat black band below the object rows and reported the panel
     # missing while it was plainly on screen.
-    rows = frame[: int(height * 0.08), int(width * 0.79):]
-    block = frame[int(height * 0.74):, int(width * 0.79):]
+    rows = frame[: int(height * 0.08), int(width * 0.79) :]
+    block = frame[int(height * 0.74) :, int(width * 0.79) :]
 
     assert rows.std() > 10.0, "the object rows are flat; nothing drew there"
     assert block.std() > 10.0, "the mouse-mode block is flat; nothing drew there"
@@ -265,9 +257,7 @@ def test_a_command_can_be_typed_at_the_page(rendered):
     )
     assert "error:" not in prompt, f"the command was refused:\n{prompt}"
     assert "line=" in prompt.splitlines()[1], "the editor did not clear"
-    assert prompt.splitlines()[1] == "line=", (
-        "a submitted line must leave the editor empty"
-    )
+    assert prompt.splitlines()[1] == "line=", "a submitted line must leave the editor empty"
 
 
 def test_the_typed_command_changed_the_frame(rendered):
@@ -287,13 +277,14 @@ def test_the_typed_command_changed_the_frame(rendered):
         """Mean brightness of a scene corner the molecule does not reach."""
         frame = np.asarray(Image.open(image_path).convert("RGB")).astype(float)
         height, width = frame.shape[:2]
-        return float(frame[int(height * 0.15): int(height * 0.3),
-                           int(width * 0.02): int(width * 0.12)].mean())
+        return float(
+            frame[
+                int(height * 0.15) : int(height * 0.3), int(width * 0.02) : int(width * 0.12)
+            ].mean()
+        )
 
     before, after = _corner(path), _corner(typed)
-    assert after > before + 80.0, (
-        f"the background did not turn white: {before:.0f} -> {after:.0f}"
-    )
+    assert after > before + 80.0, f"the background did not turn white: {before:.0f} -> {after:.0f}"
 
 
 def test_a_selection_made_in_the_page_is_visible_in_3d(rendered):
@@ -310,9 +301,7 @@ def test_a_selection_made_in_the_page_is_visible_in_3d(rendered):
     if not selected.exists():
         pytest.skip("the page never drew, so nothing was selected in it")
 
-    assert "defined with 162 atoms" in prompt, (
-        f"the select command did not run:\n{prompt}"
-    )
+    assert "defined with 162 atoms" in prompt, f"the select command did not run:\n{prompt}"
 
     def _pink(image_path) -> int:
         """Selection-coloured pixels **in the scene**, not in the chrome.
@@ -324,14 +313,12 @@ def test_a_selection_made_in_the_page_is_visible_in_3d(rendered):
         """
         frame = np.asarray(Image.open(image_path).convert("RGB")).astype(int)
         height, width = frame.shape[:2]
-        scene = frame[int(height * 0.08): int(height * 0.9), : int(width * 0.8)]
+        scene = frame[int(height * 0.08) : int(height * 0.9), : int(width * 0.8)]
         red, green, blue = scene[..., 0], scene[..., 1], scene[..., 2]
         return int(((red > 150) & (blue > 70) & (green + 60 < red)).sum())
 
     before, after = _pink(typed), _pink(selected)
-    assert after > before + 200, (
-        f"no selection markers appeared: {before} -> {after} pink pixels"
-    )
+    assert after > before + 200, f"no selection markers appeared: {before} -> {after} pink pixels"
 
 
 def test_a_representation_change_redraws_the_molecule(rendered):
@@ -347,14 +334,12 @@ def test_a_representation_change_redraws_the_molecule(rendered):
     if not cartoon.exists():
         pytest.skip("the page never drew, so nothing was shown in it")
 
-    assert f"ChiMOL> {SHOW_COMMAND}" in prompt, (
-        f"the representation command did not run:\n{prompt}"
-    )
+    assert f"ChiMOL> {SHOW_COMMAND}" in prompt, f"the representation command did not run:\n{prompt}"
 
     def _covered(image_path) -> int:
         frame = np.asarray(Image.open(image_path).convert("RGB")).astype(int)
         height, width = frame.shape[:2]
-        scene = frame[int(height * 0.08): int(height * 0.9), : int(width * 0.8)]
+        scene = frame[int(height * 0.08) : int(height * 0.9), : int(width * 0.8)]
         # Anything that is not the white background this run set.
         return int((scene.min(axis=2) < 220).sum())
 

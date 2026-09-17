@@ -65,6 +65,7 @@ def test_the_cross_correlation_weights_match_the_shot_noise_of_the_same_photons(
     autocorrelations built from the same photons. With the count rate 25x too
     low it was ~20x too large instead.
     """
+
     def short_lag_error(record):
         lag = np.asarray(record["correlation_times"])
         weights = np.asarray(record["correlation_amplitude_weights"])

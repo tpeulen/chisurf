@@ -61,6 +61,7 @@ def _stringify(arr: np.ndarray) -> np.ndarray:
         flat = [str(value) for value in arr.ravel().tolist()]
         return np.array(flat, dtype=str).reshape(arr.shape)
 
+
 #: Human-readable labels for the filter popup.
 OP_LABELS = {
     "contains": "contains",

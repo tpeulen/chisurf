@@ -6,10 +6,7 @@ import chisurf.core.math
 from chisurf import typing
 
 
-def anisotropy_rt(
-        times: np.ndarray,
-        anisotropy_spectrum: np.ndarray
-) -> np.ndarray:
+def anisotropy_rt(times: np.ndarray, anisotropy_spectrum: np.ndarray) -> np.ndarray:
     """Rotational anisotropy decay r(t) from an interleaved rotation spectrum.
 
     Computes
@@ -60,12 +57,12 @@ def anisotropy_rt(
 
 
 def vm_rt_to_vv_vh(
-        times: np.array,
-        vm: np.array,
-        anisotropy_spectrum: np.ndarray,
-        g_factor: float = 1.0,
-        l1: float = 0.0,
-        l2: float = 0.0
+    times: np.array,
+    vm: np.array,
+    anisotropy_spectrum: np.ndarray,
+    g_factor: float = 1.0,
+    l1: float = 0.0,
+    l2: float = 0.0,
 ) -> typing.Tuple[np.array, np.array]:
     """
     Compute the VV and VH decays from a VM decay given an anisotropy spectrum.
@@ -166,9 +163,10 @@ def vm_rt_to_vv_vh(
     correlation_times = np.asarray(anisotropy_spectrum[1::2], dtype=np.float64)
     n_anisotropies = min(amplitudes.size, correlation_times.size)
     if n_anisotropies:
-        rt = np.exp(
-            -np.outer(times, 1.0 / correlation_times[:n_anisotropies])
-        ) @ amplitudes[:n_anisotropies]
+        rt = (
+            np.exp(-np.outer(times, 1.0 / correlation_times[:n_anisotropies]))
+            @ amplitudes[:n_anisotropies]
+        )
     else:
         rt = np.zeros_like(vm)
     # Schaffer/Eggeling, the same forward model tttrlib fits (DecayFit23:
@@ -202,12 +200,12 @@ def vm_rt_to_vv_vh(
 
 
 def calculcate_spectrum(
-        lifetime_spectrum: np.ndarray,
-        anisotropy_spectrum: np.ndarray,
-        polarization_type: str,
-        g_factor: float = 1.0,
-        l1: float = 0.0,
-        l2: float = 0.0
+    lifetime_spectrum: np.ndarray,
+    anisotropy_spectrum: np.ndarray,
+    polarization_type: str,
+    g_factor: float = 1.0,
+    l1: float = 0.0,
+    l2: float = 0.0,
 ) -> np.ndarray:
     """
     Generate a joint spectrum from a lifetime and an anisotropy spectrum for a specified polarization.
@@ -331,14 +329,14 @@ def calculcate_spectrum(
         # original code reused the same arrays, which collapsed the VH decay to
         # near-zero (only the scatter peak remained).
         d = chisurf.core.math.datatools.elte2(a, f)
-        vv = np.hstack([f, e1tn(d.copy(), 2.0)])          # f_VV = f * (1 + 2 r)
+        vv = np.hstack([f, e1tn(d.copy(), 2.0)])  # f_VV = f * (1 + 2 r)
         # G is the parallel/perpendicular sensitivity ratio, so the
         # perpendicular channel records 1/G of what an equally sensitive one
         # would -- the placement `vm_rt_to_vv_vh` and the Schaffer correction
         # applied downstream both use. Multiplying here instead put the two
         # forward models a factor g**2 apart in VH.
         vh = e1tn(
-            np.hstack([f, e1tn(d.copy(), -1.0)]),         # f_VH = f * (1 - r) / G
+            np.hstack([f, e1tn(d.copy(), -1.0)]),  # f_VH = f * (1 - r) / G
             1.0 / g_factor,
         )
 
@@ -348,11 +346,11 @@ def calculcate_spectrum(
         vv_mixed = np.hstack([e1tn(vv.copy(), 1.0 - l1), e1tn(vh.copy(), l1)])
         vh_mixed = np.hstack([e1tn(vv.copy(), l2), e1tn(vh.copy(), 1.0 - l2)])
 
-        if polarization_type == 'VH':
+        if polarization_type == "VH":
             return vh_mixed
-        elif polarization_type == 'VV':
+        elif polarization_type == "VV":
             return vv_mixed
-        elif polarization_type == 'VV/VH':
+        elif polarization_type == "VV/VH":
             # Return stacked VV and VH spectra for joint fitting
             return np.hstack([vv_mixed, vh_mixed])
     else:

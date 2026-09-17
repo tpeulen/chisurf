@@ -1,17 +1,12 @@
-# -*- coding: utf-8 -*-
 """
 ChiSurf Ribbon Integration - Auto-Fold Module
 
 This module contains auto-fold functionality and pin button methods for the ribbon interface.
 """
 
-from qtpy.QtCore import QTimer, QSize
-from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QToolButton
-from qtpy import QtWidgets
+from qtpy.QtCore import QTimer
 
 import chisurf as cs
-from chisurf import logging
 
 
 class AutoFoldMethodsMixin:
@@ -20,16 +15,22 @@ class AutoFoldMethodsMixin:
     def _setup_auto_fold(self):
         """Setup auto-fold functionality based on settings"""
         try:
-            gui_settings = cs.core.settings.cs_settings.get('gui', {})
-            ribbon_settings = gui_settings.get('ribbon', {})
+            gui_settings = cs.core.settings.cs_settings.get("gui", {})
+            ribbon_settings = gui_settings.get("ribbon", {})
 
-            self.auto_fold_enabled = ribbon_settings.get('auto_fold', True)  # Default to True
-            self.auto_fold_delay_ms = ribbon_settings.get('auto_fold_delay_ms', 1000)  # Default to 1 second
-            self.auto_fold_speed_ms = ribbon_settings.get('auto_fold_speed_ms', 500)  # Default to 500ms
+            self.auto_fold_enabled = ribbon_settings.get("auto_fold", True)  # Default to True
+            self.auto_fold_delay_ms = ribbon_settings.get(
+                "auto_fold_delay_ms", 1000
+            )  # Default to 1 second
+            self.auto_fold_speed_ms = ribbon_settings.get(
+                "auto_fold_speed_ms", 500
+            )  # Default to 500ms
 
             self.mouse_over_ribbon = False  # Track if mouse is over ribbon
 
-            self.logger.debug(f"Auto-fold setup: enabled={self.auto_fold_enabled}, delay={self.auto_fold_delay_ms}ms, speed={self.auto_fold_speed_ms}ms")
+            self.logger.debug(
+                f"Auto-fold setup: enabled={self.auto_fold_enabled}, delay={self.auto_fold_delay_ms}ms, speed={self.auto_fold_speed_ms}ms"
+            )
 
             if self.auto_fold_enabled and self.ribbon_bar:
                 # Install event filter to track mouse enter/leave on ribbon
@@ -47,7 +48,9 @@ class AutoFoldMethodsMixin:
                 # Start/restart the timer with the correct delay
                 self._restart_auto_fold_timer()
 
-                self.logger.debug(f"Auto-fold enabled: {self.auto_fold_delay_ms}ms delay, {self.auto_fold_speed_ms}ms speed")
+                self.logger.debug(
+                    f"Auto-fold enabled: {self.auto_fold_delay_ms}ms delay, {self.auto_fold_speed_ms}ms speed"
+                )
                 self.logger.debug("Auto-fold will trigger when mouse leaves ribbon area")
             else:
                 self.logger.debug("Auto-fold disabled")
@@ -65,16 +68,16 @@ class AutoFoldMethodsMixin:
         try:
             if self.ribbon_bar:
                 # Load settings
-                gui_settings = cs.core.settings.cs_settings.get('gui', {})
-                ribbon_settings = gui_settings.get('ribbon', {})
+                gui_settings = cs.core.settings.cs_settings.get("gui", {})
+                ribbon_settings = gui_settings.get("ribbon", {})
 
                 # Load pin state from settings, default to pinned
-                self.is_pinned = ribbon_settings.get('pinned', True)
+                self.is_pinned = ribbon_settings.get("pinned", True)
 
                 # Create pin button
-                from qtpy.QtWidgets import QToolButton
-                from qtpy.QtGui import QIcon
                 from qtpy.QtCore import QSize
+                from qtpy.QtGui import QIcon
+                from qtpy.QtWidgets import QToolButton
 
                 self.pin_button = QToolButton()
                 self.pin_button.setIconSize(QSize(20, 20))
@@ -103,7 +106,7 @@ class AutoFoldMethodsMixin:
                 help_button.setAutoRaise(True)
                 # Set question mark icon - try multiple standard icons
                 icon_set = False
-                help_icons = ['help-contents', 'help-about', 'question-mark', 'dialog-question']
+                help_icons = ["help-contents", "help-about", "question-mark", "dialog-question"]
                 for icon_name in help_icons:
                     try:
                         icon = QIcon.fromTheme(icon_name)
@@ -115,12 +118,12 @@ class AutoFoldMethodsMixin:
                             break
                     except Exception:
                         continue
-                
+
                 # If no theme icon works, create a simple text-based question mark
                 if not icon_set:
                     help_button.setText("?")
                     help_button.setStyleSheet("font-weight: bold; font-size: 14px; color: red;")
-                
+
                 help_button.setToolTip("Open Help Plugin")
                 help_button.clicked.connect(self.main_window.onOpenHelp)
                 self.ribbon_bar.addRightToolButton(help_button)
@@ -139,9 +142,6 @@ class AutoFoldMethodsMixin:
             return
 
         try:
-            from qtpy.QtGui import QIcon
-            from qtpy.QtCore import QSize
-
             if self.is_pinned:
                 # Pinned state - use a "pinned" icon or create one
                 # For now, we'll use a simple approach with text
@@ -165,14 +165,14 @@ class AutoFoldMethodsMixin:
         # Save pin state to settings and persist to file
         try:
             import yaml
-            from pathlib import Path
-            gui_settings = cs.core.settings.cs_settings.get('gui', {})
-            ribbon_settings = gui_settings.get('ribbon', {})
-            ribbon_settings['pinned'] = self.is_pinned
+
+            gui_settings = cs.core.settings.cs_settings.get("gui", {})
+            ribbon_settings = gui_settings.get("ribbon", {})
+            ribbon_settings["pinned"] = self.is_pinned
 
             # Persist to user settings file
-            settings_file = cs.core.settings.chisurf_settings_path / 'settings_chisurf.yaml'
-            with open(settings_file, 'w', encoding='utf-8') as fh:
+            settings_file = cs.core.settings.chisurf_settings_path / "settings_chisurf.yaml"
+            with open(settings_file, "w", encoding="utf-8") as fh:
                 yaml.safe_dump(cs.core.settings.cs_settings, fh, default_flow_style=False)
             self.logger.debug(f"Saved pin state ({self.is_pinned}) to user settings file")
         except Exception as e:
@@ -203,7 +203,7 @@ class AutoFoldMethodsMixin:
     def _auto_fold_ribbon(self):
         """Automatically hide the ribbon (like collapse button)"""
         try:
-            msg = f"Auto-fold timer expired - checking conditions"
+            msg = "Auto-fold timer expired - checking conditions"
             self.logger.debug(msg)
 
             # Don't auto-fold if ribbon is pinned
@@ -316,7 +316,9 @@ class AutoFoldMethodsMixin:
         if self.auto_fold_enabled:
             self._restart_auto_fold_timer()
 
-        self.logger.debug(f"Auto-fold settings updated: delay={self.auto_fold_delay_ms}ms, speed={self.auto_fold_speed_ms}ms")
+        self.logger.debug(
+            f"Auto-fold settings updated: delay={self.auto_fold_delay_ms}ms, speed={self.auto_fold_speed_ms}ms"
+        )
 
     def _on_tab_changed(self, index):
         """Handle tab bar changes - show ribbon when user switches tabs (like collapse button)"""
@@ -327,11 +329,13 @@ class AutoFoldMethodsMixin:
     def get_auto_fold_status(self):
         """Get current auto-fold status and settings"""
         return {
-            'enabled': self.auto_fold_enabled,
-            'is_folded': self.is_folded,
-            'mouse_over_ribbon': self.mouse_over_ribbon,
-            'is_pinned': self.is_pinned,
-            'delay_ms': self.auto_fold_delay_ms,
-            'speed_ms': self.auto_fold_speed_ms,
-            'ribbon_visible': self.ribbon_bar._stackedWidget.isVisible() if self.ribbon_bar else None
+            "enabled": self.auto_fold_enabled,
+            "is_folded": self.is_folded,
+            "mouse_over_ribbon": self.mouse_over_ribbon,
+            "is_pinned": self.is_pinned,
+            "delay_ms": self.auto_fold_delay_ms,
+            "speed_ms": self.auto_fold_speed_ms,
+            "ribbon_visible": self.ribbon_bar._stackedWidget.isVisible()
+            if self.ribbon_bar
+            else None,
         }

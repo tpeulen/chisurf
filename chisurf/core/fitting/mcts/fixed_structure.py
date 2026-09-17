@@ -136,9 +136,7 @@ def build_fixed_structure_declaration(
         ),
         actions=(
             NativeAction("initialized", "refine", "refined", prior=0.8),
-            NativeAction(
-                "initialized", "terminate", "initialized", prior=0.2, terminal=True
-            ),
+            NativeAction("initialized", "terminate", "initialized", prior=0.2, terminal=True),
             NativeAction("refined", "terminate", "refined", terminal=True),
         ),
         initial_structure="initialized",
@@ -154,9 +152,7 @@ def prepare_fixed_structure_search(
     parameter_groups: Sequence[NativeParameterGroup] | None = None,
 ) -> NativeSearchPreparation:
     """Prepare strict BFF-native refinement for any graph-backed fit."""
-    declaration = build_fixed_structure_declaration(
-        fit, parameter_groups=parameter_groups
-    )
+    declaration = build_fixed_structure_declaration(fit, parameter_groups=parameter_groups)
     if isinstance(declaration, NativeSearchPreparation):
         return declaration
     return prepare_native_model_search(declaration)

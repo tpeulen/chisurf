@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from .base import Evaluator, EvaluatorResult, EvaluationStorage
-from .positions import PositionEvaluator, AVVolumeEvaluator
-from .distance import DistanceEvaluator, DistanceDistributionEvaluator
-from .fret_efficiency import FretEfficiencyEvaluator
-from .chi2 import Chi2Evaluator, ReducedChi2Evaluator, Chi2ContributionEvaluator
-from .residuals import WeightedResidualEvaluator
-from .geometry import EulerAngleEvaluator, TranslationEvaluator, MinDistanceEvaluator
 from .av_metrics import AVSizeEvaluator, AVSphereOverlapEvaluator
+from .base import EvaluationStorage, Evaluator, EvaluatorResult
+from .chi2 import Chi2ContributionEvaluator, Chi2Evaluator, ReducedChi2Evaluator
+from .distance import DistanceDistributionEvaluator, DistanceEvaluator
+from .fret_efficiency import FretEfficiencyEvaluator
+from .geometry import EulerAngleEvaluator, MinDistanceEvaluator, TranslationEvaluator
+from .positions import AVVolumeEvaluator, PositionEvaluator
+from .residuals import WeightedResidualEvaluator
 
 EVALUATOR_CLASSES = {
     "PositionEvaluator": PositionEvaluator,
@@ -31,7 +31,7 @@ EVALUATOR_CLASSES = {
 }
 
 
-def from_dict(d: Dict[str, Any]) -> Evaluator:
+def from_dict(d: dict[str, Any]) -> Evaluator:
     """Instantiate an Evaluator from its serialized dictionary format.
 
     Parameters

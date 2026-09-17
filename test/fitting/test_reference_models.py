@@ -25,7 +25,7 @@ def test_lifetime_model_convergence():
     fit = Fit(model_class=for_family("tcspc_lifetime"), data=data)
     fit.xmin, fit.xmax = 0, n - 1
     model = fit.model
-    model.set_scalar("convolve", 0.0)          # the data were not convolved
+    model.set_scalar("convolve", 0.0)  # the data were not convolved
     model.set_scalar("periodic_excitation", 0.0)
     model.set_scalar("generated_response", 1.0)
     assert model.problem is not None, model.missing

@@ -23,6 +23,7 @@ What each claim below is worth:
 
 The rendering tests need a GPU and skip without one.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -46,9 +47,7 @@ def atoms():
     rng = np.random.default_rng(19)
     #: Three blobs, so a camera can look at one and cull the others.
     centres = np.array([[0.0, 0.0, 0.0], [90.0, 0.0, 0.0], [0.0, 90.0, 0.0]])
-    xyz = np.concatenate([
-        rng.normal(c, 12.0, (ATOMS // 3, 3)) for c in centres
-    ])
+    xyz = np.concatenate([rng.normal(c, 12.0, (ATOMS // 3, 3)) for c in centres])
     radii = np.full(xyz.shape[0], RADIUS)
     rgba = np.zeros((xyz.shape[0], 4))
     rgba[:, 0], rgba[:, 1], rgba[:, 2], rgba[:, 3] = 0.9, 0.45, 0.2, 1.0
@@ -58,9 +57,15 @@ def atoms():
 @pytest.fixture(scope="module")
 def container(atoms, tmp_path_factory):
     xyz, radii, rgba = atoms
-    return build_chm(xyz, radii, rgba, None,
-                     tmp_path_factory.mktemp("chm") / "blobs",
-                     levels=6, chunk_atoms=CHUNK)
+    return build_chm(
+        xyz,
+        radii,
+        rgba,
+        None,
+        tmp_path_factory.mktemp("chm") / "blobs",
+        levels=6,
+        chunk_atoms=CHUNK,
+    )
 
 
 @pytest.fixture()
@@ -85,7 +90,8 @@ def _camera(view, distance, *, target=None, rotation=None):
         rotation=np.eye(3) if rotation is None else rotation,
         distance=float(distance),
         target=tuple(view.center if target is None else target),
-        near=0.1, far=float(view.radius * 40.0),
+        near=0.1,
+        far=float(view.radius * 40.0),
     )
 
 
@@ -95,15 +101,13 @@ def _matrices(view, state, renderer):
 
     s = unpack_view_state(state)
     anchor = np.asarray(view.center, dtype=np.float64)
-    v = view_matrix(s.rotation, np.asarray(s.target, np.float64) - anchor,
-                    s.distance, s.shift)
+    v = view_matrix(s.rotation, np.asarray(s.target, np.float64) - anchor, s.distance, s.shift)
     p = perspective(s.fov, renderer.width / renderer.height, max(s.near, 1e-3), s.far)
     return p @ v, v, renderer.point_scale(s.fov), anchor
 
 
 def _empty(view):
-    return pack.pack_scene(scene.Scene(objects=[], center=tuple(view.center),
-                                       radius=view.radius))
+    return pack.pack_scene(scene.Scene(objects=[], center=tuple(view.center), radius=view.radius))
 
 
 def _silhouette(frame: np.ndarray) -> np.ndarray:
@@ -193,14 +197,20 @@ def test_a_container_draws_the_molecule_it_holds(view, renderer, atoms):
     streamed = renderer.render(_empty(view), state, container=view)
 
     geometry = scene.Geometry(
-        kind="points", positions=xyz.astype(np.float32),
+        kind="points",
+        positions=xyz.astype(np.float32),
         radii=radii.astype(np.float32).reshape(-1, 1),
-        colors=rgba.astype(np.float32), meta={"world_radius": True},
+        colors=rgba.astype(np.float32),
+        meta={"world_radius": True},
     )
     reference = renderer.render(
-        pack.pack_scene(scene.Scene(
-            objects=[scene.SceneObject(id="ref", geometry=geometry)],
-            center=tuple(view.center), radius=view.radius)),
+        pack.pack_scene(
+            scene.Scene(
+                objects=[scene.SceneObject(id="ref", geometry=geometry)],
+                center=tuple(view.center),
+                radius=view.radius,
+            )
+        ),
         state,
     )
     # At this distance the atoms are pixels, so the leaves are what should be
@@ -220,14 +230,20 @@ def test_a_coarse_frame_still_covers_the_structure(view, renderer, atoms):
     coarse = renderer.render(_empty(view), state, container=view)
     assert min(view.stats["levels"]) > 0
     geometry = scene.Geometry(
-        kind="points", positions=xyz.astype(np.float32),
+        kind="points",
+        positions=xyz.astype(np.float32),
         radii=radii.astype(np.float32).reshape(-1, 1),
-        colors=rgba.astype(np.float32), meta={"world_radius": True},
+        colors=rgba.astype(np.float32),
+        meta={"world_radius": True},
     )
     reference = renderer.render(
-        pack.pack_scene(scene.Scene(
-            objects=[scene.SceneObject(id="ref", geometry=geometry)],
-            center=tuple(view.center), radius=view.radius)),
+        pack.pack_scene(
+            scene.Scene(
+                objects=[scene.SceneObject(id="ref", geometry=geometry)],
+                center=tuple(view.center),
+                radius=view.radius,
+            )
+        ),
         state,
     )
     # "Covers" is the claim, so it is recall that is asserted: the coarse cut
@@ -264,15 +280,20 @@ def test_a_container_and_ordinary_objects_share_one_depth_buffer(view, renderer)
     state = _camera(view, view.radius * 1.6)
     blocker = scene.Geometry(
         kind="points",
-        positions=np.array([view.center + np.array([0.0, 0.0, view.radius * 0.5])],
-                           dtype=np.float32),
+        positions=np.array(
+            [view.center + np.array([0.0, 0.0, view.radius * 0.5])], dtype=np.float32
+        ),
         radii=np.array([[view.radius * 0.35]], dtype=np.float32),
         colors=np.array([[0.1, 0.9, 0.1, 1.0]], dtype=np.float32),
         meta={"world_radius": True},
     )
-    packed = pack.pack_scene(scene.Scene(
-        objects=[scene.SceneObject(id="blocker", geometry=blocker)],
-        center=tuple(view.center), radius=view.radius))
+    packed = pack.pack_scene(
+        scene.Scene(
+            objects=[scene.SceneObject(id="blocker", geometry=blocker)],
+            center=tuple(view.center),
+            radius=view.radius,
+        )
+    )
     frame = renderer.render(packed, state, container=view)
     green = (frame[:, :, 1] > 120) & (frame[:, :, 0] < 90)
     assert green.sum() > 500, "the blocker was drawn over by the container"
@@ -293,8 +314,7 @@ def test_the_demo_names_a_container_the_generated_material_can_build():
     from chimol.plugins.demos.material import GENERATED_DEMO_DATA
 
     script = read_demo("gigastream")
-    named = [line.split()[1] for line in script.splitlines()
-             if line.strip().startswith("stream ")]
+    named = [line.split()[1] for line in script.splitlines() if line.strip().startswith("stream ")]
     assert named, "the streaming demo does not stream anything"
     for name in named:
         assert name in GENERATED_DEMO_DATA, f"{name} is neither shipped nor generated"
@@ -309,7 +329,7 @@ def test_streaming_works_in_a_viewer_with_no_toolkit_at_all(container):
     it for the browser too, which builds its frame from the same dictionary.
     """
     probe = pytest.importorskip("toolkit_free").probe
-    results = probe(f'''
+    results = probe(f"""
         import numpy as np
         app = open_app(size=(320, 240))
         app.cmd.do("stream {container}")
@@ -321,7 +341,7 @@ def test_streaming_works_in_a_viewer_with_no_toolkit_at_all(container):
         emit("cut", view.stats["atoms"])
         app.cmd.do("delete all")
         emit("closed", app.viewer.container is None)
-    ''')
+    """)
     assert results["opened"] == "True"
     assert int(results["atoms"]) == ATOMS
     assert int(results["lit"]) > 500, "the container drew nothing"
@@ -348,8 +368,9 @@ def test_a_level_change_is_not_a_pop(view, renderer, atoms):
     switch, steady = [], []
     for i in range(steps):
         distance = far * (near / far) ** (i / (steps - 1))
-        frame = renderer.render(_empty(view), _camera(view, distance),
-                                container=view).astype(np.int16)
+        frame = renderer.render(_empty(view), _camera(view, distance), container=view).astype(
+            np.int16
+        )
         cut = (tuple(sorted(view.stats["levels"].items())), view.stats["atoms"])
         if previous_image is not None:
             change = float(np.abs(frame - previous_image).mean())
@@ -385,12 +406,12 @@ def test_the_detail_level_steers_itself_towards_the_frame_time(container):
         view.detail_px = float(view.detail_range[0]) * 2.0
         start = view.detail_px
         for _ in range(20):
-            view.note_frame(0.200)          # 200 ms frames: too slow
+            view.note_frame(0.200)  # 200 ms frames: too slow
         slow = view.detail_px
         assert slow > start, "slow frames did not coarsen the picture"
         assert slow <= view.detail_range[1]
         for _ in range(60):
-            view.note_frame(0.004)          # 4 ms frames: room to spare
+            view.note_frame(0.004)  # 4 ms frames: room to spare
         assert view.detail_px < slow, "fast frames did not sharpen the picture"
         assert view.detail_px >= view.detail_range[0]
         # A frame time that cannot be real (a debugger, a suspended tab) is not
@@ -429,8 +450,7 @@ def test_a_parent_level_is_gaussians_and_the_leaves_are_atoms(container):
         for level in range(1, index.n_levels):
             ids = index.level(level)
             assert set(table["kind"][ids].tolist()) == {ROW_GAUSS}, level
-            assert (table["nbytes"][ids]
-                    == table["count"][ids] * CHUNK_GAUSS_ROW.itemsize).all()
+            assert (table["nbytes"][ids] == table["count"][ids] * CHUNK_GAUSS_ROW.itemsize).all()
     finally:
         index.close()
 
@@ -476,28 +496,34 @@ def test_the_coarse_levels_still_look_like_the_molecule(view, renderer, atoms):
     """
     xyz, radii, rgba = atoms
     geometry = scene.Geometry(
-        kind="points", positions=xyz.astype(np.float32),
+        kind="points",
+        positions=xyz.astype(np.float32),
         radii=radii.astype(np.float32).reshape(-1, 1),
-        colors=rgba.astype(np.float32), meta={"world_radius": True},
+        colors=rgba.astype(np.float32),
+        meta={"world_radius": True},
     )
     reference = renderer.render(
-        pack.pack_scene(scene.Scene(
-            objects=[scene.SceneObject(id="ref", geometry=geometry)],
-            center=tuple(view.center), radius=view.radius)),
-        _camera(view, view.radius * 2.2))
+        pack.pack_scene(
+            scene.Scene(
+                objects=[scene.SceneObject(id="ref", geometry=geometry)],
+                center=tuple(view.center),
+                radius=view.radius,
+            )
+        ),
+        _camera(view, view.radius * 2.2),
+    )
 
     for level in range(1, view.index.n_levels):
         ids = view.index.level(level)
         if not len(ids):
             continue
-        view.select = lambda *a, **k: ids                      # noqa: B023
-        frame = renderer.render(_empty(view), _camera(view, view.radius * 2.2),
-                                container=view)
+        view.select = lambda *a, **k: ids  # noqa: B023
+        frame = renderer.render(_empty(view), _camera(view, view.radius * 2.2), container=view)
         lit, ref = _silhouette(frame), _silhouette(reference)
         assert lit.sum() > 0, f"level {level} drew nothing"
         # It may not shrink the molecule, and it may not swell into a blob.
         assert (lit & ref).sum() / max(ref.sum(), 1) > 0.75, f"level {level} lost the shape"
-        assert lit.sum() < 2.0 * ref.sum(), f"level {level} swelled to {lit.sum()/ref.sum():.1f}x"
+        assert lit.sum() < 2.0 * ref.sum(), f"level {level} swelled to {lit.sum() / ref.sum():.1f}x"
 
 
 def test_a_coarse_level_is_drawn_like_an_atom_not_like_fog(container, renderer, atoms):

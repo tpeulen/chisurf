@@ -32,13 +32,11 @@ the two cannot disagree.
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Optional, Sequence
 
 import numpy as np
 
 from chisurf.core.fluorescence.diffusion import (
     combined_waist,
-    diffusion_at_temperature,
     reference_diffusion,
     temperature_sensitivity,
 )
@@ -131,9 +129,9 @@ def calibrate_waist(
     carpet,
     *,
     dye: str = "",
-    diffusion_coefficient: Optional[float] = None,
+    diffusion_coefficient: float | None = None,
     temperature_c: float = 25.0,
-    viscosity: Optional[float] = None,
+    viscosity: float | None = None,
     w_r: float = 0.25,
     w_z: float = 1.2,
     n_particles: float = 1.0,
@@ -187,14 +185,12 @@ def calibrate_waist(
     if diffusion_coefficient is None:
         if not dye:
             raise ValueError(
-                "a calibration needs either a reference dye or an explicit "
-                "diffusion_coefficient"
+                "a calibration needs either a reference dye or an explicit diffusion_coefficient"
             )
         d_ref = reference_diffusion(dye, temperature_c, viscosity)
         if not np.isfinite(d_ref):
             raise ValueError(
-                f"no diffusion coefficient known for {dye!r}; pass "
-                "diffusion_coefficient explicitly"
+                f"no diffusion coefficient known for {dye!r}; pass diffusion_coefficient explicitly"
             )
     else:
         d_ref = float(diffusion_coefficient)
@@ -228,10 +224,15 @@ def calibrate_waist(
     def residual(p: np.ndarray) -> np.ndarray:
         v = unpack(p)
         model = image_correlation(
-            xi3, psi3, delta3,
+            xi3,
+            psi3,
+            delta3,
             # D is fixed: that is what makes the waists identifiable.
             diffusion_coefficient=d_ref,
-            n=v["n"], offset=v["offset"], w_r=v["w_r"], w_z=v["w_z"],
+            n=v["n"],
+            offset=v["offset"],
+            w_r=v["w_r"],
+            w_z=v["w_z"],
             pixel_duration=timing.pixel_duration_us,
             line_duration=timing.line_duration_ms,
             frame_duration=timing.frame_duration_ms,
@@ -255,13 +256,11 @@ def calibrate_waist(
         n_particles=float(values["n"]),
         offset=float(values["offset"]),
         success=bool(fit.success),
-        chi2=float(np.sum(fit.fun ** 2)),
+        chi2=float(np.sum(fit.fun**2)),
     )
 
 
-def cross_channel_calibration(
-    a: WaistCalibration, b: WaistCalibration
-) -> WaistCalibration:
+def cross_channel_calibration(a: WaistCalibration, b: WaistCalibration) -> WaistCalibration:
     """Combine two per-channel calibrations into the cross-correlation one.
 
     Two detection channels focus to different waists — chromatic aberration

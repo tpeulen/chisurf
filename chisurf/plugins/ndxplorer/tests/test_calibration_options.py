@@ -41,9 +41,18 @@ def _window(**constants):
         def __init__(self):
             self.data_source = DataSource.from_columns(columns)
             self.constants = {
-                "gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
-                "Bg": 0.0, "Br": 0.0, "By": 0.0, "PhiA": 1.0, "PhiD": 1.0,
-                "forster_radius": 52.0, "tauD0": 4.0, **constants,
+                "gG/gR": 1.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "r": 1.0,
+                "Bg": 0.0,
+                "Br": 0.0,
+                "By": 0.0,
+                "PhiA": 1.0,
+                "PhiD": 1.0,
+                "forster_radius": 52.0,
+                "tauD0": 4.0,
+                **constants,
             }
 
     return _Ndx()
@@ -51,7 +60,8 @@ def _window(**constants):
 
 def _run(ndx, **kwargs):
     return optimize_calibration_from_ndx(
-        ndx, n_bootstrap=0, inject_columns=False, recompute=False, **kwargs)
+        ndx, n_bootstrap=0, inject_columns=False, recompute=False, **kwargs
+    )
 
 
 def test_by_default_every_factor_is_written():
@@ -108,6 +118,7 @@ def test_the_options_map_onto_the_bridge():
 
 # ── backgrounds: an input, not a factor ──────────────────────────────────────
 
+
 def test_a_missing_stored_background_falls_back_to_the_constants():
     """Asking for the measured background must not throw the typed one away.
 
@@ -131,7 +142,7 @@ def test_none_really_means_zero():
 
 
 def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch):
-    """kHz x ms = counts, and the scaling is per burst.
+    """KHz x ms = counts, and the scaling is per burst.
 
     A 4 ms burst carries four times the background of a 1 ms one; subtracting
     one number from both is wrong in opposite directions.
@@ -189,8 +200,7 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
 
     import chisurf.core.fio.pto as pto
 
-    monkeypatch.setattr(pto.Measurement, "open",
-                        staticmethod(lambda *_a, **_k: _Measurement()))
+    monkeypatch.setattr(pto.Measurement, "open", staticmethod(lambda *_a, **_k: _Measurement()))
 
     class _DS:
         provenance = {"container_path": str(tmp_path / "m.pto")}
@@ -199,12 +209,13 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
         data_source = _DS()
 
     out = bridge.measured_background(_Ndx(), table)
-    np.testing.assert_allclose(out["i_dd"], 0.5 * durations)   # green
-    np.testing.assert_allclose(out["i_da"], 1.0 * durations)   # red
-    np.testing.assert_allclose(out["i_aa"], 2.0 * durations)   # yellow
+    np.testing.assert_allclose(out["i_dd"], 0.5 * durations)  # green
+    np.testing.assert_allclose(out["i_da"], 1.0 * durations)  # red
+    np.testing.assert_allclose(out["i_aa"], 2.0 * durations)  # yellow
 
 
 # ── fitting the background, for when nobody knows it ─────────────────────────
+
 
 def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1):
     """Bursts where the reference populations really lack a fluorophore.
@@ -225,14 +236,14 @@ def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1
     rng = np.random.default_rng(seed)
     kind = rng.choice([0, 1, 2], n, p=[0.30, 0.20, 0.50])
     size = rng.gamma(4.0, 60.0, n)
-    duration = rng.gamma(3.0, 0.8, n) + 0.4      # ms, mean ~2.8
+    duration = rng.gamma(3.0, 0.8, n) + 0.4  # ms, mean ~2.8
     E = np.where(kind == 2, rng.normal(0.55, 0.08, n), 0.0)
     dd, da, aa = np.zeros(n), np.zeros(n), np.zeros(n)
-    m = kind == 0                      # donor-only: donor emits, acceptor leaks
+    m = kind == 0  # donor-only: donor emits, acceptor leaks
     dd[m], da[m], aa[m] = size[m], alpha * size[m], 0.0
-    m = kind == 1                      # acceptor-only: no donor at all
+    m = kind == 1  # acceptor-only: no donor at all
     dd[m], da[m], aa[m] = 0.0, 0.0, size[m]
-    m = kind == 2                      # FRET
+    m = kind == 2  # FRET
     dd[m] = size[m] * (1 - E[m])
     da[m] = size[m] * E[m] + alpha * size[m] * (1 - E[m])
     aa[m] = size[m] * 0.8
@@ -240,17 +251,29 @@ def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1
     da += rng.poisson(bg_da * duration)
     aa += rng.poisson(bg_aa * duration)
 
-    columns = {"Number of Photons (green)": dd,
-               "Number of Photons (red)": da,
-               "Number of Photons (yellow)": aa,
-               "Duration (ms)": duration}
+    columns = {
+        "Number of Photons (green)": dd,
+        "Number of Photons (red)": da,
+        "Number of Photons (yellow)": aa,
+        "Duration (ms)": duration,
+    }
 
     class _Ndx:
         def __init__(self):
             self.data_source = DataSource.from_columns(columns)
-            self.constants = {"gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
-                              "Bg": 0.0, "Br": 0.0, "By": 0.0, "PhiA": 1.0,
-                              "PhiD": 1.0, "forster_radius": 52.0, "tauD0": 4.0}
+            self.constants = {
+                "gG/gR": 1.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "r": 1.0,
+                "Bg": 0.0,
+                "Br": 0.0,
+                "By": 0.0,
+                "PhiA": 1.0,
+                "PhiD": 1.0,
+                "forster_radius": 52.0,
+                "tauD0": 4.0,
+            }
 
     return _Ndx()
 
@@ -300,14 +323,18 @@ def test_a_window_without_durations_gets_no_fitted_background():
         acceptor_only = np.ones(50, dtype=bool)
 
     fitted = bridge.fitted_background(
-        np.full(50, 9.0), np.full(50, 4.0), np.full(50, 7.0), _Split(),
-        durations=None, min_population=10,
+        np.full(50, 9.0),
+        np.full(50, 4.0),
+        np.full(50, 7.0),
+        _Split(),
+        durations=None,
+        min_population=10,
     )
     assert fitted == {}
 
 
 def test_leakage_survives_the_background_fit():
-    """alpha must come out of the slope, not be inflated by the intercept."""
+    """Alpha must come out of the slope, not be inflated by the intercept."""
     result = _run(_physical_window(alpha=0.06), background="fit")
     assert result["determined"]["alpha"] == pytest.approx(0.06, abs=0.02)
 
@@ -319,6 +346,7 @@ def test_too_few_reference_bursts_are_not_guessed_from():
 
 
 # ── a calibration belongs to its measurement ─────────────────────────────────
+
 
 def _container_with_calibration(container, **factors):
     """A container carrying the artifact the Accurate FRET step writes."""
@@ -334,14 +362,18 @@ def _container_with_calibration(container, **factors):
     for name, value in factors.items():
         rows[name] = np.full(n, float(value))
     write_burst_artifact(
-        target, store_from_arrays(rows), name=CALIBRATION_ARTIFACT,
-        artifact_kind="parameter_table", operation_type="calibration",
-        row_grain="species", derived_from="bursts")
+        target,
+        store_from_arrays(rows),
+        name=CALIBRATION_ARTIFACT,
+        artifact_kind="parameter_table",
+        operation_type="calibration",
+        row_grain="species",
+        derived_from="bursts",
+    )
     return target
 
 
-PLANTED = {"alpha": 0.0731, "beta": 1.234, "gamma": 0.8642,
-           "delta": 0.0519, "r0": 54.3}
+PLANTED = {"alpha": 0.0731, "beta": 1.234, "gamma": 0.8642, "delta": 0.0519, "r0": 54.3}
 
 
 def test_a_stored_calibration_is_read_back(container):
@@ -389,7 +421,7 @@ def test_restoring_keeps_what_the_measurement_does_not_carry(container):
     ndx = _window(Bg=2.5, Br=3.5, By=4.5, PhiA=0.8, PhiD=0.4)
     restore_calibration_from_container(ndx, target)
     assert ndx.constants["alpha"] == pytest.approx(PLANTED["alpha"])
-    assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])   # ndX's name for delta
+    assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])  # ndX's name for delta
     assert ndx.constants["forster_radius"] == pytest.approx(PLANTED["r0"])
     for kept, value in (("PhiA", 0.8), ("PhiD", 0.4)):
         assert ndx.constants[kept] == pytest.approx(value), kept
@@ -429,7 +461,9 @@ def test_a_container_written_before_the_schema_still_restores(container):
 def test_the_writer_and_the_reader_share_one_declaration():
     """Two directions, one file — that is what stops them drifting."""
     from chisurf.plugins.burst.accurate_fret.calibration_columns import (
-        calibration_columns, column_for_factor, factor_for_column,
+        calibration_columns,
+        column_for_factor,
+        factor_for_column,
     )
 
     for spec in calibration_columns():
@@ -439,8 +473,9 @@ def test_the_writer_and_the_reader_share_one_declaration():
 
 # ── the background is a stored parameter too ─────────────────────────────────
 
+
 def test_the_stored_background_rates_are_read(tmp_path):
-    """ndX's Bg/Br/By are rates, so a stored rate goes in as it stands.
+    """NdX's Bg/Br/By are rates, so a stored rate goes in as it stands.
 
     ``Fg(PIE) = Sg(PIE) - Bg`` and ``Sg(PIE)`` is ``S prompt green (kHz)``, so
     the constant is in kHz — the same unit the background step writes. No
@@ -449,7 +484,8 @@ def test_the_stored_background_rates_are_read(tmp_path):
     from chisurf.plugins.ndxplorer.calibration_bridge import background_from_container
 
     source = pathlib.Path.home() / (
-        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto"
+    )
     if not source.exists():
         pytest.skip("the ALEX calibration container is not on this machine")
     rates = background_from_container(source)
@@ -470,24 +506,31 @@ def test_a_measurement_with_only_a_background_still_restores(tmp_path):
     from chisurf.core.datastore import store_from_arrays
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
     from chisurf.plugins.ndxplorer.calibration_bridge import (
-        calibration_from_container, restore_calibration_from_container,
+        calibration_from_container,
+        restore_calibration_from_container,
     )
 
     source = pathlib.Path.home() / (
-        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto"
+    )
     if not source.exists():
         pytest.skip("the ALEX calibration container is not on this machine")
     target = tmp_path / source.name
     shutil.copy2(source, target)
     write_burst_artifact(
         target,
-        store_from_arrays({
-            "Detector": np.array(["green", "red", "yellow"], dtype=object),
-            "Rate": np.array([1.25, 2.5, 3.75]),
-        }),
-        name="background", artifact_kind="background_data",
-        operation_type="background_correction", row_grain="channel",
-        derived_from="bursts")
+        store_from_arrays(
+            {
+                "Detector": np.array(["green", "red", "yellow"], dtype=object),
+                "Rate": np.array([1.25, 2.5, 3.75]),
+            }
+        ),
+        name="background",
+        artifact_kind="background_data",
+        operation_type="background_correction",
+        row_grain="channel",
+        derived_from="bursts",
+    )
 
     assert calibration_from_container(target) == {}, "no factors in this fixture"
     ndx = _window(Bg=99.0, Br=99.0, By=99.0)
@@ -500,6 +543,7 @@ def test_a_measurement_with_only_a_background_still_restores(tmp_path):
 
 # ── and it repopulates when the measurement changes ──────────────────────────
 
+
 def _window_on(container):
     class _DataSource:
         provenance = {"container_path": str(container)}
@@ -508,9 +552,17 @@ def _window_on(container):
         def __init__(self):
             self.data_source = _DataSource()
             self.constants = {
-                "gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
-                "Bg": 9.0, "Br": 9.0, "By": 9.0, "PhiA": 1.0, "PhiD": 1.0,
-                "forster_radius": 52.0, "tauD0": 4.0,
+                "gG/gR": 1.0,
+                "alpha": 0.0,
+                "beta": 0.0,
+                "r": 1.0,
+                "Bg": 9.0,
+                "Br": 9.0,
+                "By": 9.0,
+                "PhiA": 1.0,
+                "PhiD": 1.0,
+                "forster_radius": 52.0,
+                "tauD0": 4.0,
             }
 
     return _Ndx()
@@ -529,7 +581,8 @@ def _write_saved_calibration(container, constants):
             artifact_kind="analysis_result",
             data_format="json",
             operation_type="calibration",
-            mime_type="application/json")
+            mime_type="application/json",
+        )
 
 
 def _write_background(container, green, red, yellow):
@@ -538,13 +591,18 @@ def _write_background(container, green, red, yellow):
 
     write_burst_artifact(
         container,
-        store_from_arrays({
-            "Detector": np.array(["green", "red", "yellow"], dtype=object),
-            "Rate": np.array([green, red, yellow], dtype=float),
-        }),
-        name="background", artifact_kind="background_data",
-        operation_type="background_correction", row_grain="channel",
-        derived_from="bursts")
+        store_from_arrays(
+            {
+                "Detector": np.array(["green", "red", "yellow"], dtype=object),
+                "Rate": np.array([green, red, yellow], dtype=float),
+            }
+        ),
+        name="background",
+        artifact_kind="background_data",
+        operation_type="background_correction",
+        row_grain="channel",
+        derived_from="bursts",
+    )
 
 
 @pytest.fixture(scope="module")
@@ -557,7 +615,9 @@ def master_container(tmp_path_factory):
     """
     source = min(
         (pathlib.Path.home() / "dev/tttr-data/sm/cal1").glob("*.sm"),
-        key=lambda p: p.stat().st_size, default=None)
+        key=lambda p: p.stat().st_size,
+        default=None,
+    )
     if source is None:
         pytest.skip("no measurement to build a container from")
     from chisurf.plugins.core.tttr_to_pto.api import convert
@@ -613,8 +673,15 @@ def test_re_running_the_background_step_repopulates(container):
 
 # ── the quantum yields, and what is derived from them ────────────────────────
 
-FULL = {"alpha": 0.07, "beta": 1.2, "gamma": 0.86, "delta": 0.05,
-        "forster_radius": 54.3, "phi_acceptor": 0.32, "phi_donor": 0.45}
+FULL = {
+    "alpha": 0.07,
+    "beta": 1.2,
+    "gamma": 0.86,
+    "delta": 0.05,
+    "forster_radius": 54.3,
+    "phi_acceptor": 0.32,
+    "phi_donor": 0.45,
+}
 
 
 def _write_full_calibration(container):
@@ -625,16 +692,20 @@ def _write_full_calibration(container):
     rows = {"label": np.arange(3, dtype=float)}
     for name, value in FULL.items():
         rows[name] = np.full(3, float(value))
-    rows["gG_gR_ratio"] = np.full(
-        3, (FULL["phi_acceptor"] / FULL["phi_donor"]) / FULL["gamma"])
+    rows["gG_gR_ratio"] = np.full(3, (FULL["phi_acceptor"] / FULL["phi_donor"]) / FULL["gamma"])
     write_burst_artifact(
-        container, store_from_arrays(rows), name=CALIBRATION_ARTIFACT,
-        artifact_kind="parameter_table", operation_type="calibration",
-        row_grain="species", derived_from="bursts")
+        container,
+        store_from_arrays(rows),
+        name=CALIBRATION_ARTIFACT,
+        artifact_kind="parameter_table",
+        operation_type="calibration",
+        row_grain="species",
+        derived_from="bursts",
+    )
 
 
 def test_the_quantum_yields_are_restored(container):
-    """gamma without the yields it was measured against cannot be reapplied.
+    """Gamma without the yields it was measured against cannot be reapplied.
 
     They are inputs the calibration was determined *with*, not outputs of it, so
     ``result.factors`` never held them — which is why they were neither written
@@ -683,8 +754,7 @@ def test_the_donor_yield_has_a_dictionary_term():
     """
     mmfdb = pytest.importorskip("mmfdb.schema.pdbx_metadata")
     dictionary = mmfdb.MmcifDictionary.load_bundled()
-    assert dictionary.get_item(
-        "_flr_fret_calibration_parameters.phi_donor") is not None
+    assert dictionary.get_item("_flr_fret_calibration_parameters.phi_donor") is not None
 
 
 def test_gamma_is_the_detection_ratio_and_the_yields_together():
@@ -706,6 +776,7 @@ def test_gamma_is_the_detection_ratio_and_the_yields_together():
 
 # ── the saved calibration, and the artifact that hid it ──────────────────────
 
+
 def test_gg_gr_restores_from_a_saved_calibration(container):
     """Only the saved calibration carries the detection-efficiency ratio.
 
@@ -715,7 +786,8 @@ def test_gg_gr_restores_from_a_saved_calibration(container):
     it expects back.
     """
     from chisurf.plugins.ndxplorer.calibration_bridge import (
-        restore_calibration_from_container, saved_constants_from_container,
+        restore_calibration_from_container,
+        saved_constants_from_container,
     )
 
     _write_saved_calibration(container, {"gG/gR": 0.498, "alpha": 0.153, "r": 1.035})

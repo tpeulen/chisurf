@@ -44,8 +44,14 @@ __all__ = [
 
 #: Overlay-set names understood by :func:`build_overlays`.
 OVERLAY_SETS = (
-    "semicircle", "lifetime_grid", "lifetime_ticks", "fret", "component_line",
-    "polar_grid", "components", "cursor",
+    "semicircle",
+    "lifetime_grid",
+    "lifetime_ticks",
+    "fret",
+    "component_line",
+    "polar_grid",
+    "components",
+    "cursor",
 )
 
 #: Default reference lifetimes (ns) for lifetime ticks / grid overlays.
@@ -403,9 +409,7 @@ def mask_from_elliptic_cursor(
     angle: float = 0.0,
 ) -> np.ndarray:
     """Boolean mask of pixels within an elliptic cursor (``angle`` in radians)."""
-    return mask_from_cursor(
-        g, s, cursor_roi(center, "elliptic", radii=radii, angle=angle)
-    )
+    return mask_from_cursor(g, s, cursor_roi(center, "elliptic", radii=radii, angle=angle))
 
 
 def pseudo_color(
@@ -681,14 +685,23 @@ def component_mixing(
         ring = _sort_by_angle(pts)
         ring = np.vstack([ring, ring[:1]])  # close the polygon
         out.append(
-            {"name": "mixing region", "kind": "curve",
-             "x": ring[:, 0].tolist(), "y": ring[:, 1].tolist(),
-             "style": {"color": "#888888", "width": 1, "dash": True}}
+            {
+                "name": "mixing region",
+                "kind": "curve",
+                "x": ring[:, 0].tolist(),
+                "y": ring[:, 1].tolist(),
+                "style": {"color": "#888888", "width": 1, "dash": True},
+            }
         )
         out.append(
-            {"name": "components", "kind": "scatter",
-             "x": pts[:, 0].tolist(), "y": pts[:, 1].tolist(),
-             "labels": labels, "style": {"color": "#50c0ff", "symbol": "o"}}
+            {
+                "name": "components",
+                "kind": "scatter",
+                "x": pts[:, 0].tolist(),
+                "y": pts[:, 1].tolist(),
+                "labels": labels,
+                "style": {"color": "#50c0ff", "symbol": "o"},
+            }
         )
         return out
     w = np.asarray(fractions, dtype=float)
@@ -700,19 +713,33 @@ def component_mixing(
     mix = np.average(pts, axis=0, weights=w)
     for i, (g, s) in enumerate(pts):
         out.append(
-            {"name": f"mix line {i + 1}", "kind": "curve",
-             "x": [float(g), float(mix[0])], "y": [float(s), float(mix[1])],
-             "style": {"color": "#888888", "width": 1}}
+            {
+                "name": f"mix line {i + 1}",
+                "kind": "curve",
+                "x": [float(g), float(mix[0])],
+                "y": [float(s), float(mix[1])],
+                "style": {"color": "#888888", "width": 1},
+            }
         )
     out.append(
-        {"name": "components", "kind": "scatter",
-         "x": pts[:, 0].tolist(), "y": pts[:, 1].tolist(),
-         "labels": labels, "style": {"color": "#50c0ff", "symbol": "o"}}
+        {
+            "name": "components",
+            "kind": "scatter",
+            "x": pts[:, 0].tolist(),
+            "y": pts[:, 1].tolist(),
+            "labels": labels,
+            "style": {"color": "#50c0ff", "symbol": "o"},
+        }
     )
     out.append(
-        {"name": "mixture", "kind": "scatter",
-         "x": [float(mix[0])], "y": [float(mix[1])],
-         "labels": ["mix"], "style": {"color": "#ff5050", "symbol": "x"}}
+        {
+            "name": "mixture",
+            "kind": "scatter",
+            "x": [float(mix[0])],
+            "y": [float(mix[1])],
+            "labels": ["mix"],
+            "style": {"color": "#ff5050", "symbol": "x"},
+        }
     )
     return out
 
@@ -791,9 +818,14 @@ def density_contours(
             if seg.shape[0] < 2:
                 continue
             out.append(
-                {"name": f"contour {lv:g}", "kind": "curve",
-                 "x": seg[:, 0].tolist(), "y": seg[:, 1].tolist(),
-                 "level": float(lv), "style": {"color": "#39ff14", "width": 1}}
+                {
+                    "name": f"contour {lv:g}",
+                    "kind": "curve",
+                    "x": seg[:, 0].tolist(),
+                    "y": seg[:, 1].tolist(),
+                    "level": float(lv),
+                    "style": {"color": "#39ff14", "width": 1},
+                }
             )
     return out
 
@@ -829,8 +861,13 @@ def build_overlays(
     if "semicircle" in wanted:
         x, y = universal_semicircle_polyline(n_points=int(n_points))
         overlays.append(
-            {"name": "universal semicircle", "kind": "curve", "x": x.tolist(), "y": y.tolist(),
-             "style": {"color": "w", "width": 1}}
+            {
+                "name": "universal semicircle",
+                "kind": "curve",
+                "x": x.tolist(),
+                "y": y.tolist(),
+                "style": {"color": "w", "width": 1},
+            }
         )
     if "lifetime_grid" in wanted:
         overlays.extend(
@@ -840,39 +877,59 @@ def build_overlays(
     if "lifetime_ticks" in wanted:
         gx, sy = lifetime_tick_markers(freq, taus=tau_list)
         overlays.append(
-            {"name": "lifetime ticks", "kind": "scatter", "x": gx.tolist(), "y": sy.tolist(),
-             "labels": [f"{t:g} ns" for t in tau_list], "style": {"color": "y", "symbol": "o"}}
+            {
+                "name": "lifetime ticks",
+                "kind": "scatter",
+                "x": gx.tolist(),
+                "y": sy.tolist(),
+                "labels": [f"{t:g} ns" for t in tau_list],
+                "style": {"color": "y", "symbol": "o"},
+            }
         )
     if "fret" in wanted:
         fx, fy = fret_trajectory(freq, tau_d0=float(tau_d0), e_range=e_range)
         overlays.append(
-            {"name": "FRET trajectory", "kind": "curve", "x": fx.tolist(), "y": fy.tolist(),
-             "style": {"color": "#ff5050", "width": 2}}
+            {
+                "name": "FRET trajectory",
+                "kind": "curve",
+                "x": fx.tolist(),
+                "y": fy.tolist(),
+                "style": {"color": "#ff5050", "width": 2},
+            }
         )
     if "component_line" in wanted and c1 is not None and c2 is not None:
         overlays.append(
-            {"name": "component line", "kind": "curve",
-             "x": [float(c1[0]), float(c2[0])], "y": [float(c1[1]), float(c2[1])],
-             "style": {"color": "#50c0ff", "width": 2}}
+            {
+                "name": "component line",
+                "kind": "curve",
+                "x": [float(c1[0]), float(c2[0])],
+                "y": [float(c1[1]), float(c2[1])],
+                "style": {"color": "#50c0ff", "width": 2},
+            }
         )
     if "polar_grid" in wanted:
         for g in polar_grid_polylines(radii=polar_radii, angles=polar_angles):
             major = g.pop("major", False)
-            g["style"] = {"color": "#666666", "width": 1.5 if major else 1,
-                          "dash": not major}
+            g["style"] = {"color": "#666666", "width": 1.5 if major else 1, "dash": not major}
             overlays.append(g)
     if "components" in wanted and components is not None:
         overlays.extend(component_mixing(components, fractions=fractions))
     if "cursor" in wanted and cursors:
         for cur in cursors:
             cx, cy = cursor_polyline(
-                cur["center"], kind=cur.get("kind", "circular"),
-                radius=float(cur.get("radius", 0.05)), radii=cur.get("radii"),
+                cur["center"],
+                kind=cur.get("kind", "circular"),
+                radius=float(cur.get("radius", 0.05)),
+                radii=cur.get("radii"),
                 angle=float(cur.get("angle", 0.0)),
             )
             overlays.append(
-                {"name": cur.get("name", "cursor"), "kind": "curve",
-                 "x": cx.tolist(), "y": cy.tolist(),
-                 "style": {"color": cur.get("color", "#ffb000"), "width": 2}}
+                {
+                    "name": cur.get("name", "cursor"),
+                    "kind": "curve",
+                    "x": cx.tolist(),
+                    "y": cy.tolist(),
+                    "style": {"color": cur.get("color", "#ffb000"), "width": 2},
+                }
             )
     return overlays

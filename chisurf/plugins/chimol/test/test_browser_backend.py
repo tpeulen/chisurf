@@ -13,13 +13,13 @@ level down passes the outer validation and drops the inner value.
 What still needs a browser is whether the frame *looks* right, and that is a
 different question asked with a screenshot.
 """
+
 from __future__ import annotations
 
 import sys
 import types
 
 import pytest
-
 from chimol.render.gpu import browser
 
 
@@ -62,8 +62,7 @@ def fake_js(monkeypatch):
         # items. The default there is a Map, which is exactly the trap the
         # backend passes `Object.fromEntries` to avoid.
         if isinstance(value, dict):
-            items = [(k, _to_js(v, dict_converter=dict_converter))
-                     for k, v in value.items()]
+            items = [(k, _to_js(v, dict_converter=dict_converter)) for k, v in value.items()]
             return dict_converter(items) if dict_converter else dict(items)
         if isinstance(value, (list, tuple)):
             return [_to_js(v, dict_converter=dict_converter) for v in value]
@@ -125,9 +124,7 @@ def test_nested_descriptor_keys_are_camel_cased_too(fake_js):
                 {
                     "array_stride": 48,
                     "step_mode": "vertex",
-                    "attributes": [
-                        {"format": "float32x2", "offset": 0, "shader_location": 0}
-                    ],
+                    "attributes": [{"format": "float32x2", "offset": 0, "shader_location": 0}],
                 }
             ],
         }
@@ -242,20 +239,20 @@ def test_the_real_engine_survives_the_translation(fake_js):
             for item in value:
                 yield from keys_of(item)
 
-    snake = sorted({
-        key
-        for _name, args, _kwargs in log
-        for arg in args
-        for key in keys_of(arg)
-        if isinstance(key, str) and "_" in key
-    })
+    snake = sorted(
+        {
+            key
+            for _name, args, _kwargs in log
+            for arg in args
+            for key in keys_of(arg)
+            if isinstance(key, str) and "_" in key
+        }
+    )
     assert not snake, f"these descriptor keys were never camel-cased: {snake}"
 
     # The shader text itself must arrive -- the same WGSL the desktop compiles.
     shaders = [
-        args[0]["code"]
-        for name, args, _kwargs in log
-        if name.endswith("createShaderModule")
+        args[0]["code"] for name, args, _kwargs in log if name.endswith("createShaderModule")
     ]
     assert shaders, "no shader module was created"
     assert all("fn shade(" in code for code in shaders), (

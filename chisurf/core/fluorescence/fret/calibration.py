@@ -107,9 +107,7 @@ class CalibrationParameters(FittingParameterGroup):
             a parameter table shows γ and Φ<sub>A</sub> rather than ``gamma``
             and ``PhiA``.
             """
-            return FittingParameter(
-                name=name, label_text=to_rich(label), bounds_on=True, **kwargs
-            )
+            return FittingParameter(name=name, label_text=to_rich(label), bounds_on=True, **kwargs)
 
         self._gamma = factor("gamma", "gamma", value=1.0, lb=0.05, ub=20.0)
         self._alpha = factor("alpha", "alpha", value=0.0, lb=0.0, ub=1.0)
@@ -217,9 +215,16 @@ class CalibrationParameters(FittingParameterGroup):
     def as_dict(self) -> dict:
         """Return the current factor values as a plain dict."""
         return {
-            "gamma": self.gamma, "alpha": self.alpha, "beta": self.beta, "delta": self.delta,
-            "Bg_DD": self.bg_dd, "Bg_DA": self.bg_da, "Bg_AA": self.bg_aa,
-            "R0": self.r0, "PhiA": self.phi_a, "PhiD": self.phi_d,
+            "gamma": self.gamma,
+            "alpha": self.alpha,
+            "beta": self.beta,
+            "delta": self.delta,
+            "Bg_DD": self.bg_dd,
+            "Bg_DA": self.bg_da,
+            "Bg_AA": self.bg_aa,
+            "R0": self.r0,
+            "PhiA": self.phi_a,
+            "PhiD": self.phi_d,
         }
 
 
@@ -422,12 +427,21 @@ def general_correction_from_lightpath(
     from chisurf.core.fluorescence.burst.es import corrected_es_general
 
     excitation, emission = crosstalk_matrices_from_lightpath(
-        matrices, chromophores, lasers, detectors,
-        quantum_yields=quantum_yields, detection_efficiencies=detection_efficiencies,
+        matrices,
+        chromophores,
+        lasers,
+        detectors,
+        quantum_yields=quantum_yields,
+        detection_efficiencies=detection_efficiencies,
     )
     return corrected_es_general(
-        intensity, excitation, emission, background=background, pairs=pairs,
-        unmix=unmix, ridge=ridge,
+        intensity,
+        excitation,
+        emission,
+        background=background,
+        pairs=pairs,
+        unmix=unmix,
+        ridge=ridge,
     )
 
 
@@ -483,12 +497,25 @@ def set_priors_from_lightpath(
         The computed ``{"gamma", "alpha", "delta"}`` light-path factors.
     """
     factors = lightpath_correction_factors(
-        matrices, donor, acceptor, green_detector, red_detector,
-        green_laser=green_laser, red_laser=red_laser, gG=gG, gR=gR, qy_d=qy_d, qy_a=qy_a,
+        matrices,
+        donor,
+        acceptor,
+        green_detector,
+        red_detector,
+        green_laser=green_laser,
+        red_laser=red_laser,
+        gG=gG,
+        gR=gR,
+        qy_d=qy_d,
+        qy_a=qy_a,
     )
     calib._gamma.prior = NormalPrior(mu=factors["gamma"], sigma=gamma_sigma)
-    calib._alpha.prior = TruncatedNormalPrior(mu=factors["alpha"], sigma=alpha_sigma, lb=0.0, ub=1.0)
-    calib._delta.prior = TruncatedNormalPrior(mu=factors["delta"], sigma=delta_sigma, lb=0.0, ub=1.0)
+    calib._alpha.prior = TruncatedNormalPrior(
+        mu=factors["alpha"], sigma=alpha_sigma, lb=0.0, ub=1.0
+    )
+    calib._delta.prior = TruncatedNormalPrior(
+        mu=factors["delta"], sigma=delta_sigma, lb=0.0, ub=1.0
+    )
     if r0 is not None:
         calib._r0.prior = NormalPrior(mu=float(r0), sigma=r0_sigma)
     if seed_values:
@@ -551,13 +578,25 @@ def global_es_correction(i_dd, i_da, i_aa, labels, *, alpha=0.0, delta=0.0) -> d
     denom = omega + sigma - 1.0
     gamma = (omega - 1.0) / denom if abs(denom) > 1e-12 else float("nan")
     beta = denom
-    return {"gamma": float(gamma), "beta": float(beta),
-            "Omega": float(omega), "Sigma": float(sigma)}
+    return {
+        "gamma": float(gamma),
+        "beta": float(beta),
+        "Omega": float(omega),
+        "Sigma": float(sigma),
+    }
 
 
-def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
-                       *, data_sigma: float | None = None, n_bootstrap: int = 60,
-                       seed: int = 0) -> dict:
+def refine_calibration(
+    calib: CalibrationParameters,
+    i_dd,
+    i_da,
+    i_aa,
+    labels,
+    *,
+    data_sigma: float | None = None,
+    n_bootstrap: int = 60,
+    seed: int = 0,
+) -> dict:
     """Prior-regularized (Bayesian) refinement of ``gamma`` against E-S data.
 
     The data estimate of ``gamma`` comes from :func:`global_es_correction` (the
@@ -641,7 +680,7 @@ def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
         data_sigma = max(float(data_sigma), 1e-6)
 
         if prior is not None and hasattr(prior, "sigma"):
-            w_d = 1.0 / data_sigma ** 2
+            w_d = 1.0 / data_sigma**2
             w_p = 1.0 / float(prior.sigma) ** 2
             gamma_post = (gamma_data * w_d + gamma_prior * w_p) / (w_d + w_p)
         else:
@@ -651,8 +690,14 @@ def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
     if gamma_updated:
         calib.gamma = float(np.clip(gamma_post, 0.05, 20.0))
     out = calib.as_dict()
-    out.update({"gamma_data": gamma_data, "gamma_prior": gamma_prior,
-                "data_sigma": data_sigma, "gamma_updated": gamma_updated})
+    out.update(
+        {
+            "gamma_data": gamma_data,
+            "gamma_prior": gamma_prior,
+            "data_sigma": data_sigma,
+            "gamma_updated": gamma_updated,
+        }
+    )
     return out
 
 
@@ -712,7 +757,11 @@ def register_calibration(calibration, name: str = "Calibration") -> CalibrationF
     """
     import chisurf as cs
 
-    fit = calibration if isinstance(calibration, CalibrationFit) else CalibrationFit(calibration, name)
+    fit = (
+        calibration
+        if isinstance(calibration, CalibrationFit)
+        else CalibrationFit(calibration, name)
+    )
     if fit not in cs.fits:
         cs.fits.append(fit)
     try:
@@ -813,9 +862,16 @@ def calibration_to_ndx_constants(calibration) -> dict:
 #: pickled parameter group: it is written to the setups file and read by tools
 #: that have no reason to import the fitting stack.
 SETUP_CALIBRATION_KEYS = (
-    "gamma", "alpha", "beta", "delta",
-    "bg_dd", "bg_da", "bg_aa",
-    "r0", "phi_a", "phi_d",
+    "gamma",
+    "alpha",
+    "beta",
+    "delta",
+    "bg_dd",
+    "bg_da",
+    "bg_aa",
+    "r0",
+    "phi_a",
+    "phi_d",
 )
 
 #: Key under which the calibration payload lives inside a detector-setup dict.
@@ -992,16 +1048,22 @@ def calibration_from_ndx_constants(constants: dict, calib=None):
     calib = calib if calib is not None else CalibrationParameters()
     get = lambda key: constants.get(key) if isinstance(constants, dict) else None  # noqa: E731
 
-    for key, setter in (("PhiA", "phi_a"), ("PhiD", "phi_d"), ("alpha", "alpha"),
-                        ("Bg", "bg_dd"), ("Br", "bg_da"), ("By", "bg_aa"),
-                        ("forster_radius", "r0")):
+    for key, setter in (
+        ("PhiA", "phi_a"),
+        ("PhiD", "phi_d"),
+        ("alpha", "alpha"),
+        ("Bg", "bg_dd"),
+        ("Br", "bg_da"),
+        ("By", "bg_aa"),
+        ("forster_radius", "r0"),
+    ):
         value = get(key)
         if value is not None and np.isfinite(float(value)):
             setattr(calib, setter, float(value))
-    delta = get("beta")           # ndx "beta" == direct excitation
+    delta = get("beta")  # ndx "beta" == direct excitation
     if delta is not None and np.isfinite(float(delta)):
         calib.delta = float(np.clip(float(delta), 0.0, 1.0))
-    r = get("r")                  # ndx "r" == 1 / beta_Hellenkamp
+    r = get("r")  # ndx "r" == 1 / beta_Hellenkamp
     if r is not None and float(r) > 0:
         calib.beta = float(1.0 / float(r))
     gg_gr = get("gG/gR")
@@ -1039,8 +1101,9 @@ def leakage_from_donor_only(i_dd, i_da, *, bg_dd=0.0, bg_da=0.0) -> float:
     return float(np.mean(f_da) / denom) if denom != 0 else 0.0
 
 
-def direct_excitation_from_acceptor_only(i_da, i_aa, i_dd=None, *, alpha=0.0,
-                                         bg_dd=0.0, bg_da=0.0, bg_aa=0.0) -> float:
+def direct_excitation_from_acceptor_only(
+    i_da, i_aa, i_dd=None, *, alpha=0.0, bg_dd=0.0, bg_da=0.0, bg_aa=0.0
+) -> float:
     """Estimate direct excitation ``delta`` from an acceptor-only reference sample.
 
     For an acceptor-only sample the acceptor (``i_da``) channel under donor
@@ -1075,8 +1138,9 @@ def direct_excitation_from_acceptor_only(i_da, i_aa, i_dd=None, *, alpha=0.0,
     return float(np.mean(f_da) / denom) if denom != 0 else 0.0
 
 
-def calibrate_from_samples(calib: CalibrationParameters, fret, *, donor_only=None,
-                           acceptor_only=None, refine: bool = True) -> dict:
+def calibrate_from_samples(
+    calib: CalibrationParameters, fret, *, donor_only=None, acceptor_only=None, refine: bool = True
+) -> dict:
     """Full data-driven calibration from FRET + reference samples (Hellenkamp).
 
     The complete layered procedure:
@@ -1112,16 +1176,19 @@ def calibrate_from_samples(calib: CalibrationParameters, fret, *, donor_only=Non
         The calibration values plus refinement diagnostics.
     """
     if donor_only is not None:
-        calib.alpha = leakage_from_donor_only(
-            *donor_only[:2], bg_dd=calib.bg_dd, bg_da=calib.bg_da
-        )
+        calib.alpha = leakage_from_donor_only(*donor_only[:2], bg_dd=calib.bg_dd, bg_da=calib.bg_da)
     if acceptor_only is not None:
         i_da_ao = acceptor_only[0]
         i_aa_ao = acceptor_only[1]
         i_dd_ao = acceptor_only[2] if len(acceptor_only) > 2 else None
         calib.delta = direct_excitation_from_acceptor_only(
-            i_da_ao, i_aa_ao, i_dd_ao, alpha=calib.alpha,
-            bg_dd=calib.bg_dd, bg_da=calib.bg_da, bg_aa=calib.bg_aa,
+            i_da_ao,
+            i_aa_ao,
+            i_dd_ao,
+            alpha=calib.alpha,
+            bg_dd=calib.bg_dd,
+            bg_da=calib.bg_da,
+            bg_aa=calib.bg_aa,
         )
 
     i_dd, i_da, i_aa, labels = fret
@@ -1200,13 +1267,15 @@ def rcm_from_dye_solutions(
         order = [a_idx[0], d_idx[0]]
         pa = pd = 0.0
     else:
+
         def _find(sp, pl):
             return [i for i, d in enumerate(detector_assignment) if d == (sp, pl)]
-        polarized = all(len(_find(sp, pl)) == 1
-                        for sp, pl in [("A", "P"), ("D", "P"), ("A", "S"), ("D", "S")])
+
+        polarized = all(
+            len(_find(sp, pl)) == 1 for sp, pl in [("A", "P"), ("D", "P"), ("A", "S"), ("D", "S")]
+        )
         if polarized:
-            order = [_find("A", "P")[0], _find("D", "P")[0],
-                     _find("A", "S")[0], _find("D", "S")[0]]
+            order = [_find("A", "P")[0], _find("D", "P")[0], _find("A", "S")[0], _find("D", "S")[0]]
             pa = (3.0 * ra) / (2.0 + ra)
             pd = (3.0 * rd) / (2.0 + rd)
         else:  # 50/50 beam splitter, polarisation not resolved
@@ -1217,15 +1286,17 @@ def rcm_from_dye_solutions(
     na = acceptor_sample_rates[order]
 
     if nch == 2:
-        amat = np.array([[na[0], alpha * nd[0]],
-                         [na[1], alpha * nd[1]]], dtype=float)
+        amat = np.array([[na[0], alpha * nd[0]], [na[1], alpha * nd[1]]], dtype=float)
     else:
-        amat = np.array([
-            [na[0] / (1 + pa), alpha * nd[0] / (1 + pd), 0.0, 0.0],
-            [na[1] / (1 + pa), alpha * nd[1] / (1 + pd), 0.0, 0.0],
-            [0.0, 0.0, na[2] / (1 - pa), alpha * nd[2] / (1 - pd)],
-            [0.0, 0.0, na[3] / (1 - pa), alpha * nd[3] / (1 - pd)],
-        ], dtype=float)
+        amat = np.array(
+            [
+                [na[0] / (1 + pa), alpha * nd[0] / (1 + pd), 0.0, 0.0],
+                [na[1] / (1 + pa), alpha * nd[1] / (1 + pd), 0.0, 0.0],
+                [0.0, 0.0, na[2] / (1 - pa), alpha * nd[2] / (1 - pd)],
+                [0.0, 0.0, na[3] / (1 - pa), alpha * nd[3] / (1 - pd)],
+            ],
+            dtype=float,
+        )
 
     rcm_sub = np.linalg.inv(amat)
     rcm_sub /= rcm_sub[0, 0]

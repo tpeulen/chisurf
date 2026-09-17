@@ -10,7 +10,6 @@ here pin the vocabulary and the arities so that cannot recur.
 from __future__ import annotations
 
 import pytest
-
 from chimol.core.selection.keywords import (
     CANONICAL,
     KEYWORDS,
@@ -35,17 +34,30 @@ def test_the_keyword_that_started_this_is_present():
     "alias, canonical",
     [
         # PyMOL's own spellings, from Keyword[] in layer3/Selector.cpp.
-        ("resname", "resn"), ("r.", "resn"), ("r;", "resn"),
-        ("residue", "resi"), ("resid", "resi"), ("i.", "resi"),
-        ("symbol", "elem"), ("element", "elem"), ("e.", "elem"),
+        ("resname", "resn"),
+        ("r.", "resn"),
+        ("r;", "resn"),
+        ("residue", "resi"),
+        ("resid", "resi"),
+        ("i.", "resi"),
+        ("symbol", "elem"),
+        ("element", "elem"),
+        ("e.", "elem"),
         ("n.", "name"),
         ("c.", "chain"),
-        ("segment", "segi"), ("segid", "segi"), ("s.", "segi"),
-        ("model", "object"), ("o.", "object"), ("m.", "object"),
+        ("segment", "segi"),
+        ("segid", "segi"),
+        ("s.", "segi"),
+        ("model", "object"),
+        ("o.", "object"),
+        ("m.", "object"),
         ("het", "hetatm"),
-        ("hydrogens", "hydro"), ("h.", "hydro"),
-        ("byresidue", "byres"), ("br.", "byres"),
-        ("bymol", "bymolecule"), ("bm.", "bymolecule"),
+        ("hydrogens", "hydro"),
+        ("h.", "hydro"),
+        ("byresidue", "byres"),
+        ("br.", "byres"),
+        ("bymol", "bymolecule"),
+        ("bm.", "bymolecule"),
         ("bc.", "bychain"),
         ("byobj", "byobject"),
         ("w.", "within"),
@@ -86,23 +98,36 @@ def test_a_name_that_is_not_a_keyword_returns_none():
     "keyword, arity",
     [
         # 's' -- one value list
-        ("name", Arity.STRING), ("resn", Arity.STRING), ("ss", Arity.STRING),
+        ("name", Arity.STRING),
+        ("resn", Arity.STRING),
+        ("ss", Arity.STRING),
         # 'z' -- no argument
-        ("hetatm", Arity.FLAG), ("solvent", Arity.FLAG),
-        ("backbone", Arity.FLAG), ("metals", Arity.FLAG),
+        ("hetatm", Arity.FLAG),
+        ("solvent", Arity.FLAG),
+        ("backbone", Arity.FLAG),
+        ("metals", Arity.FLAG),
         # 'x' -- compared against a number
-        ("b", Arity.NUMERIC), ("q", Arity.NUMERIC), ("x", Arity.NUMERIC),
+        ("b", Arity.NUMERIC),
+        ("q", Arity.NUMERIC),
+        ("x", Arity.NUMERIC),
         ("partial_charge", Arity.NUMERIC),
         # '1' -- one selection
-        ("byres", Arity.UNARY), ("bychain", Arity.UNARY),
-        ("first", Arity.UNARY), ("last", Arity.UNARY),
+        ("byres", Arity.UNARY),
+        ("bychain", Arity.UNARY),
+        ("first", Arity.UNARY),
+        ("last", Arity.UNARY),
         # '2' -- infix
-        ("and", Arity.BINARY), ("or", Arity.BINARY), ("in", Arity.BINARY),
+        ("and", Arity.BINARY),
+        ("or", Arity.BINARY),
+        ("in", Arity.BINARY),
         # STYP_PRP1 -- postfix with a value
-        ("around", Arity.DIST), ("expand", Arity.DIST), ("gap", Arity.DIST),
+        ("around", Arity.DIST),
+        ("expand", Arity.DIST),
+        ("gap", Arity.DIST),
         ("extend", Arity.DIST),
         # STYP_OP22 -- infix with a distance and 'of'
-        ("within", Arity.DIST_OF), ("near_to", Arity.DIST_OF),
+        ("within", Arity.DIST_OF),
+        ("near_to", Arity.DIST_OF),
         ("beyond", Arity.DIST_OF),
     ],
 )
@@ -173,9 +198,7 @@ def test_no_alias_means_two_things():
     seen: dict[str, str] = {}
     for canonical, (_, aliases) in CANONICAL.items():
         for alias in aliases:
-            assert alias not in seen, (
-                f"{alias!r} maps to both {seen[alias]!r} and {canonical!r}"
-            )
+            assert alias not in seen, f"{alias!r} maps to both {seen[alias]!r} and {canonical!r}"
             seen[alias] = canonical
 
 

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -30,8 +31,8 @@ class AVSizeEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av = av_cache.get(self.position_name)
         if av is None or not av.has_volume:
@@ -53,7 +54,7 @@ class AVSphereOverlapEvaluator(Evaluator):
         self,
         name: str,
         position_name: str,
-        center: Union[np.ndarray, Sequence[float]],
+        center: np.ndarray | Sequence[float],
         radius: float,
     ) -> None:
         super().__init__(name)
@@ -63,8 +64,8 @@ class AVSphereOverlapEvaluator(Evaluator):
 
     def evaluate(
         self,
-        av_cache: Dict[str, Any],
-        bodies: Optional[List[Any]] = None,
+        av_cache: dict[str, Any],
+        bodies: list[Any] | None = None,
     ) -> EvaluatorResult:
         av = av_cache.get(self.position_name)
         if av is None or not av.has_volume:

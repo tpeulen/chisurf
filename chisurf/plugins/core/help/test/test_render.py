@@ -22,7 +22,6 @@ from chisurf.plugins.core.help.api.mathtext import (
 )
 from chisurf.plugins.core.help.api.rst import render_rst
 
-
 # ── MyST constructs ─────────────────────────────────────────────────
 
 
@@ -174,7 +173,7 @@ def test_every_formula_in_the_documentation_typesets():
         for kind, payload in split_math(text):
             if kind == "text":
                 continue
-            for row in (math_rows(payload) if kind == "display" else [payload]):
+            for row in math_rows(payload) if kind == "display" else [payload]:
                 if kind == "inline" and html_math(row) is not None:
                     continue
                 if renderer._image_tag(row, kind == "display") is None:
@@ -252,7 +251,7 @@ def test_a_label_under_a_term_stays_under_it():
 
 
 def test_a_matrix_keeps_its_shape_when_it_is_flattened():
-    """mathtext has no matrix, so one becomes "[a, b; c, d]" — not "[abcd]"."""
+    """Mathtext has no matrix, so one becomes "[a, b; c, d]" — not "[abcd]"."""
     out = normalise_latex(r"\begin{bmatrix}a & b\\ c & d\end{bmatrix}")
     assert "," in out and ";" in out and "bmatrix" not in out
     assert out.startswith("[") and out.endswith("]")
@@ -276,9 +275,7 @@ def test_rst_seealso_is_rendered_not_dropped():
 
 
 def test_rst_reference_role_becomes_a_link():
-    html = render_rst(
-        "Title\n=====\n\nTheory: :ref:`concept-fcs-correlation`.\n"
-    )
+    html = render_rst("Title\n=====\n\nTheory: :ref:`concept-fcs-correlation`.\n")
     assert "<a" in html and "fcs_correlation.md" in html
     # And it reads as the page, not as the label.
     assert "concept-fcs-correlation<" not in html
@@ -329,9 +326,20 @@ def _as_the_browser_renders(page: pathlib.Path, math: "MathRenderer") -> str:
 
 #: Markup that means the renderer gave up and the reader is looking at source.
 _LEAKED_MARKUP = (
-    ":::{", "```{", "$$",
-    "{ref}", "{doc}", "{numref}", "{cite}", "{src}", "{term}",
-    ":ref:`", ":doc:`", ":numref:`", ":cite:`", ":src:`",
+    ":::{",
+    "```{",
+    "$$",
+    "{ref}",
+    "{doc}",
+    "{numref}",
+    "{cite}",
+    "{src}",
+    "{term}",
+    ":ref:`",
+    ":doc:`",
+    ":numref:`",
+    ":cite:`",
+    ":src:`",
 )
 
 _CODE_BLOCK = re.compile(r"<pre.*?</pre>|<code.*?</code>", re.DOTALL)
@@ -433,7 +441,7 @@ def test_every_source_link_in_the_documentation_resolves():
         for match in list(src.SRC_ROLE.finditer(text)) + list(rst_role.finditer(text)):
             body = match.group(1).strip()
             if "<" in body and body.endswith(">"):
-                body = body[body.index("<") + 1: -1]
+                body = body[body.index("<") + 1 : -1]
             resolved = src.resolve(body)
             if resolved is None:
                 broken.append((page.name, body, "no such file"))
@@ -559,10 +567,7 @@ def test_the_help_modal_renders_like_the_browser(qapp=None):
     from chisurf.gui.widgets.tools.help_render import render_help
     from chisurf.plugins.core.help.api.toc import repository_root
 
-    page = (
-        repository_root()
-        / "chisurf/plugins/calculator/fcs_saturation_calc/gui/help.md"
-    )
+    page = repository_root() / "chisurf/plugins/calculator/fcs_saturation_calc/gui/help.md"
     if not page.is_file():
         pytest.skip("plugin not present in this checkout")
     html = render_help(page.read_text(encoding="utf-8"), page)

@@ -56,7 +56,8 @@ def two_population_table(n, frac_high, *, low=0.25, high=0.65, seed=0):
 def test_histogram_finds_the_planted_efficiency():
     """The E histogram peaks at the efficiency the bursts were drawn with."""
     result = es_histograms(
-        burst_table(5000, 0.4), thresholds=Thresholds(total_min=0), bins=(101, 101))
+        burst_table(5000, 0.4), thresholds=Thresholds(total_min=0), bins=(101, 101)
+    )
     peak = result.e_centres[int(np.argmax(result.e_hist))]
     assert abs(peak - 0.4) < 0.02
     assert result.hist_2d.shape == (101, 101)
@@ -82,7 +83,8 @@ def test_gamma_moves_the_efficiency_the_way_the_correction_says():
     table = burst_table(20000, 0.5, seed=7)
     plain = es_histograms(table, thresholds=Thresholds(total_min=0))
     corrected = es_histograms(
-        table, corrections=Corrections(gamma=2.0), thresholds=Thresholds(total_min=0))
+        table, corrections=Corrections(gamma=2.0), thresholds=Thresholds(total_min=0)
+    )
     expected = 0.5 / (0.5 + 2.0 * 0.5)
     assert abs(corrected.e_centres[int(np.argmax(corrected.e_hist))] - expected) < 0.03
     assert corrected.e.mean() < plain.e.mean()
@@ -101,19 +103,20 @@ def _series(kd=50.0, hill=1.0, concentrations=(0.0, 5.0, 15.0, 50.0, 150.0, 500.
     """Conditions whose bound fraction follows a known isotherm."""
     conditions = []
     for i, c in enumerate(concentrations):
-        frac = c ** hill / (kd ** hill + c ** hill) if c > 0 else 0.0
-        conditions.append(Condition(
-            concentration=c,
-            source=two_population_table(4000, frac, seed=i * 17),
-            label=f"{c:g} nM",
-        ))
+        frac = c**hill / (kd**hill + c**hill) if c > 0 else 0.0
+        conditions.append(
+            Condition(
+                concentration=c,
+                source=two_population_table(4000, frac, seed=i * 17),
+                label=f"{c:g} nM",
+            )
+        )
     return conditions
 
 
 def test_titration_recovers_the_planted_kd():
     """The whole pipeline gets the centres, the fractions and K_d back."""
-    result = run_titration(_series(), n_components=2,
-                           thresholds=Thresholds(total_min=0))
+    result = run_titration(_series(), n_components=2, thresholds=Thresholds(total_min=0))
     centres = np.sort(result.fit.centres)
     assert abs(centres[0] - 0.25) < 0.03
     assert abs(centres[1] - 0.65) < 0.03
@@ -129,8 +132,7 @@ def test_the_isotherm_is_read_from_the_population_that_grows():
     half of that toss plots the free species and labels a falling curve with a
     K_d. Arithmetically fine; unreadable as a binding isotherm.
     """
-    result = run_titration(_series(), n_components=2,
-                           thresholds=Thresholds(total_min=0))
+    result = run_titration(_series(), n_components=2, thresholds=Thresholds(total_min=0))
     reported = result.fit.fractions[:, result.component]
     assert reported[-1] > reported[0]
     # And it is the high-FRET population, which is the one the ligand produces.
@@ -163,8 +165,8 @@ def test_fixed_shape_holds_the_starting_values():
     start_centres = np.array([0.2, 0.7])
     start_widths = np.array([0.05, 0.05])
     fit = fit_shared_gaussians(
-        stack, 2, centres=start_centres, widths=start_widths,
-        fix_centres=True, fix_widths=True)
+        stack, 2, centres=start_centres, widths=start_widths, fix_centres=True, fix_widths=True
+    )
     assert np.allclose(fit.centres, start_centres)
     assert np.allclose(fit.widths, start_widths)
 
@@ -208,13 +210,21 @@ def test_legacy_export_writes_the_five_files_with_their_section_headers(tmp_path
     )
     names = [p.name for p in written]
     assert names == [
-        "run_meta.csv", "run_hist_E.csv", "run_hist_S.csv",
-        "run_hist_2D.csv", "run_original_bursts.csv",
+        "run_meta.csv",
+        "run_hist_E.csv",
+        "run_hist_S.csv",
+        "run_hist_2D.csv",
+        "run_original_bursts.csv",
     ]
 
     meta = (tmp_path / "run_meta.csv").read_text()
-    for section in ("BURST SEARCH PARAMETERS", "THRESHOLDS", "EXPERIMENTAL",
-                    "ACCURATE FRET", "PLOT OPTIONS"):
+    for section in (
+        "BURST SEARCH PARAMETERS",
+        "THRESHOLDS",
+        "EXPERIMENTAL",
+        "ACCURATE FRET",
+        "PLOT OPTIONS",
+    ):
         assert f'"{section}"' in meta
     assert '"sample_name","dsDNA"' in meta
 
@@ -232,9 +242,11 @@ def test_legacy_export_writes_the_five_files_with_their_section_headers(tmp_path
 def test_legacy_export_pads_a_fit_computed_on_another_grid(tmp_path):
     """A short fit column pads rather than truncating the histogram beside it."""
     histograms = es_histograms(
-        burst_table(500, 0.5), thresholds=Thresholds(total_min=0), bins=(31, 31))
+        burst_table(500, 0.5), thresholds=Thresholds(total_min=0), bins=(31, 31)
+    )
     write_legacy_export(
-        tmp_path / "run", histograms,
+        tmp_path / "run",
+        histograms,
         parts=LegacyExport(metadata=False, s_histogram=False, histogram_2d=False),
         e_fit=np.ones(5),
     )
@@ -249,8 +261,13 @@ def test_legacy_export_refuses_to_invent_a_burst_table(tmp_path):
     histograms = es_histograms(burst_table(100, 0.5), thresholds=Thresholds(total_min=0))
     with pytest.raises(ValueError, match="original_bursts"):
         write_legacy_export(
-            tmp_path / "run", histograms,
-            parts=LegacyExport(metadata=False, e_histogram=False,
-                               s_histogram=False, histogram_2d=False,
-                               original_bursts=True),
+            tmp_path / "run",
+            histograms,
+            parts=LegacyExport(
+                metadata=False,
+                e_histogram=False,
+                s_histogram=False,
+                histogram_2d=False,
+                original_bursts=True,
+            ),
         )

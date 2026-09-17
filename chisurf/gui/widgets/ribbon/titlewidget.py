@@ -76,12 +76,16 @@ class RibbonTitleWidget(QtWidgets.QFrame):
         self._applicationButton = RibbonApplicationButton()  # type: ignore
         # Set professional ChiSurf logo icon instead of crash-triggering emoji
         self._applicationButton.setIcon(QtGui.QIcon(":/icons/icons/cs_logo.png"))
-        self._applicationButton.setIconSize(QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight))
+        self._applicationButton.setIconSize(
+            QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight)
+        )
         self._applicationButton.setText("ChiSurf")
         self._applicationButton.setToolTip("ChiSurf Ribbon")
 
         self._quickAccessToolBar = QtWidgets.QToolBar()
-        self._quickAccessToolBar.setIconSize(QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight))
+        self._quickAccessToolBar.setIconSize(
+            QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight)
+        )
         self._quickAccessToolBar.setOrientation(QtCore.Qt.Orientation.Horizontal)
         self._quickAccessToolBar.setMovable(False)
         self._quickAccessToolBar.addWidget(self._applicationButton)
@@ -89,7 +93,9 @@ class RibbonTitleWidget(QtWidgets.QFrame):
         self._quickAccessToolBarLayout = QtWidgets.QHBoxLayout(self._quickAccessToolBarWidget)
         self._quickAccessToolBarLayout.setContentsMargins(0, 0, 0, 0)
         self._quickAccessToolBarLayout.setSpacing(0)
-        self._quickAccessToolBarLayout.addWidget(self._quickAccessToolBar, 0, QtCore.Qt.AlignmentFlag.AlignBottom)
+        self._quickAccessToolBarLayout.addWidget(
+            self._quickAccessToolBar, 0, QtCore.Qt.AlignmentFlag.AlignBottom
+        )
 
         # right toolbar
         self._rightToolBar = QtWidgets.QToolBar()
@@ -97,9 +103,13 @@ class RibbonTitleWidget(QtWidgets.QFrame):
         if self._rightToolBar.layout():
             self._rightToolBar.layout().setSpacing(5)
         self._rightToolBar.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self._rightToolBar.setIconSize(QtCore.QSize(self._rightButtonHeight, self._rightButtonHeight))
+        self._rightToolBar.setIconSize(
+            QtCore.QSize(self._rightButtonHeight, self._rightButtonHeight)
+        )
         self._collapseRibbonButton = QtWidgets.QToolButton(self)
-        self._collapseRibbonButton.setIconSize(QtCore.QSize(self._rightButtonHeight, self._rightButtonHeight))
+        self._collapseRibbonButton.setIconSize(
+            QtCore.QSize(self._rightButtonHeight, self._rightButtonHeight)
+        )
         # Use Unicode icon instead of PNG
         self._collapseRibbonButton.setText("^")
         self._collapseRibbonButton.setAutoRaise(True)
@@ -117,11 +127,15 @@ class RibbonTitleWidget(QtWidgets.QFrame):
 
         # Title label
         self._titleLabel = RibbonTitleLabel(self)
-        self._titleLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)  # type: ignore
+        self._titleLabel.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )  # type: ignore
         self._titleLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignBottom)  # type: ignore
         self._titleLabel.setText(title)
 
-        self._tabBarLayout.addWidget(self._quickAccessToolBarWidget, 0, QtCore.Qt.AlignmentFlag.AlignVCenter)
+        self._tabBarLayout.addWidget(
+            self._quickAccessToolBarWidget, 0, QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         self._tabBarLayout.addWidget(self._tabBar, 0, QtCore.Qt.AlignmentFlag.AlignVCenter)
         self._tabBarLayout.addWidget(self._titleLabel, 1, QtCore.Qt.AlignmentFlag.AlignVCenter)
         self._tabBarLayout.addWidget(self._rightToolBar, 0, QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -173,7 +187,7 @@ class RibbonTitleWidget(QtWidgets.QFrame):
         """
         return self._quickAccessToolBar
 
-    def quickAccessButtons(self) -> typing.List[QtWidgets.QToolButton]:
+    def quickAccessButtons(self) -> list[QtWidgets.QToolButton]:
         """Return the quick access buttons of the ribbon.
 
         :return: The quick access buttons of the ribbon.
@@ -185,7 +199,9 @@ class RibbonTitleWidget(QtWidgets.QFrame):
 
         :param button: The button to add.
         """
-        button.setIconSize(QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight))
+        button.setIconSize(
+            QtCore.QSize(self._quickAccessButtonHeight, self._quickAccessButtonHeight)
+        )
         self._quickAccessButtons.append(button)
         return self._quickAccessToolBar.addWidget(button)
 
@@ -312,7 +328,9 @@ class RibbonTitleWidget(QtWidgets.QFrame):
 
     def mouseMoveEvent(self, e: QtGui.QMouseEvent):
         relpos = e.pos() - self._start_point if self._start_point else None
-        self.topLevelWidget().move(self._window_point + relpos) if self._window_point and relpos else None
+        self.topLevelWidget().move(
+            self._window_point + relpos
+        ) if self._window_point and relpos else None
         self.topLevelWidget().windowHandle().startSystemMove()
 
     def mouseDoubleClickEvent(self, e: QtGui.QMouseEvent):

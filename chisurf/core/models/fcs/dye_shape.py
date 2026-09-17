@@ -11,6 +11,7 @@ Because ``D`` is fixed by the dye rather than fitted, the diffusion time is an
 ``D``, ``tauD`` and the two counts-per-molecule values are ``is_output``
 parameters written by :meth:`DyeShapeFCSModel.update_model`.
 """
+
 from __future__ import annotations
 
 import math
@@ -69,7 +70,6 @@ def dye_diffusion_m2_s(dye_name: str, temperature_K: float) -> float:
 
 
 class DyeShapeFCSModel(ModelCurve):
-
     """FCS model with fixed dye diffusion, fitting the confocal volume shape.
 
     The user selects a reference dye from the MMFDB dye repository. Its
@@ -104,71 +104,126 @@ class DyeShapeFCSModel(ModelCurve):
         super().__init__(fit, **kwargs)
 
         self._N = FittingParameter(
-            name="N", label_text="N", value=1.0, lb=1.0e-6, ub=1.0e9,
-            bounds_on=False, fixed=False,
-            description='Average number of fluorescent particles in the observation volume.'
+            name="N",
+            label_text="N",
+            value=1.0,
+            lb=1.0e-6,
+            ub=1.0e9,
+            bounds_on=False,
+            fixed=False,
+            description="Average number of fluorescent particles in the observation volume.",
         )
         self._s = FittingParameter(
-            name="s", label_text="s", value=3.5, lb=0.1, ub=20.0,
-            bounds_on=False, fixed=False,
-            description='Structure parameter s = z0/w0 (axial-to-radial extent of the detection volume).'
+            name="s",
+            label_text="s",
+            value=3.5,
+            lb=0.1,
+            ub=20.0,
+            bounds_on=False,
+            fixed=False,
+            description="Structure parameter s = z0/w0 (axial-to-radial extent of the detection volume).",
         )
         # Confocal waist w0 specified in nanometers for the UI.
         self._w0 = FittingParameter(
-            name="w0", label_text="w<sub>0</sub>[nm]", value=350.0, lb=10.0, ub=5000.0,
-            bounds_on=False, fixed=False,
-            description='Confocal radial waist (1/e²) of the detection volume (nm).'
+            name="w0",
+            label_text="w<sub>0</sub>[nm]",
+            value=350.0,
+            lb=10.0,
+            ub=5000.0,
+            bounds_on=False,
+            fixed=False,
+            description="Confocal radial waist (1/e²) of the detection volume (nm).",
         )
         self._b = FittingParameter(
-            name="b", label_text="b", value=1.0, lb=-10.0, ub=10.0,
-            bounds_on=False, fixed=False,
-            description='Additive baseline/offset of the correlation function.'
+            name="b",
+            label_text="b",
+            value=1.0,
+            lb=-10.0,
+            ub=10.0,
+            bounds_on=False,
+            fixed=False,
+            description="Additive baseline/offset of the correlation function.",
         )
         # Experimental temperature (user-entered, in °C); viscosity is derived
         # from this internally using a kelvin conversion.
         self._temp = FittingParameter(
-            name="temp", label_text="temp[°C]", value=20.0, lb=0.0, ub=100.0,
-            bounds_on=False, fixed=True,
-            description='Experimental temperature (°C). Viscosity is derived from this.'
+            name="temp",
+            label_text="temp[°C]",
+            value=20.0,
+            lb=0.0,
+            ub=100.0,
+            bounds_on=False,
+            fixed=True,
+            description="Experimental temperature (°C). Viscosity is derived from this.",
         )
         # Single global bunching term ba, bt (time in ms).
         self._ba = FittingParameter(
-            name="ba", label_text="b<sub>a</sub>", value=0.1, lb=0.0, ub=1.0,
-            bounds_on=True, fixed=False,
-            description='Bunching amplitude (fraction of molecules in the dark/bunching state).'
+            name="ba",
+            label_text="b<sub>a</sub>",
+            value=0.1,
+            lb=0.0,
+            ub=1.0,
+            bounds_on=True,
+            fixed=False,
+            description="Bunching amplitude (fraction of molecules in the dark/bunching state).",
         )
         self._bt = FittingParameter(
-            name="bt", label_text="b<sub>t</sub>[ms]", value=0.002, lb=1.0e-6,
-            ub=float("inf"), bounds_on=False, fixed=False,
-            description='Bunching (triplet/blink) correlation time (ms).'
+            name="bt",
+            label_text="b<sub>t</sub>[ms]",
+            value=0.002,
+            lb=1.0e-6,
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=False,
+            description="Bunching (triplet/blink) correlation time (ms).",
         )
         # Derived diffusion coefficient D (µm²/s).
         self._D = FittingParameter(
-            name="D", label_text="D[µm²/s]", value=float("nan"),
-            lb=float("-inf"), ub=float("inf"),
-            bounds_on=False, fixed=True, is_output=True,
-            description='Output: translational diffusion coefficient D (µm²/s), derived from tauD and w0.'
+            name="D",
+            label_text="D[µm²/s]",
+            value=float("nan"),
+            lb=float("-inf"),
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=True,
+            is_output=True,
+            description="Output: translational diffusion coefficient D (µm²/s), derived from tauD and w0.",
         )
         # Derived diffusion time tauD (ms).
         self._tauD = FittingParameter(
-            name="tauD", label_text="&tau;<sub>D</sub>[ms]", value=float("nan"),
-            lb=0.0, ub=float("inf"),
-            bounds_on=False, fixed=True, is_output=True,
-            description='Output: diffusion time tauD (ms).'
+            name="tauD",
+            label_text="&tau;<sub>D</sub>[ms]",
+            value=float("nan"),
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=True,
+            is_output=True,
+            description="Output: diffusion time tauD (ms).",
         )
         # Derived counts per molecule: cpm over the bright molecules and
         # cpm_all over all molecules, including the dark/bunching states.
         self._cpm = FittingParameter(
-            name="cpm", label_text="cpm", value=float("nan"),
-            lb=float("-inf"), ub=float("inf"),
-            bounds_on=False, fixed=True, is_output=True,
-            description='Output: counts per molecule per second (bright fraction only).'
+            name="cpm",
+            label_text="cpm",
+            value=float("nan"),
+            lb=float("-inf"),
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=True,
+            is_output=True,
+            description="Output: counts per molecule per second (bright fraction only).",
         )
         self._cpm_all = FittingParameter(
-            name="cpm_all", label_text="cpm<sub>all</sub>", value=float("nan"),
-            lb=float("-inf"), ub=float("inf"),
-            bounds_on=False, fixed=True, is_output=True,
-            description='Output: counts per molecule per second (all molecules including dark states).'
+            name="cpm_all",
+            label_text="cpm<sub>all</sub>",
+            value=float("nan"),
+            lb=float("-inf"),
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=True,
+            is_output=True,
+            description="Output: counts per molecule per second (all molecules including dark states).",
         )
 
         self.find_parameters()

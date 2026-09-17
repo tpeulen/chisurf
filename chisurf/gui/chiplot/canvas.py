@@ -58,9 +58,7 @@ class Plot(QtWidgets.QWidget):
     clicked = QtCore.Signal(float, float)
     mouse_moved = QtCore.Signal(float, float)
 
-    def __init__(
-        self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts
-    ):
+    def __init__(self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts):
         super().__init__(parent)
         self._canvas = get_backend().create_canvas(**backend_opts)
         # (name, handle) of exportable x/y series, for the CSV context action.
@@ -1160,13 +1158,11 @@ class VolumeView(QtWidgets.QWidget):
         # scroll area or a dock collapses it to zero height and renders
         # nothing at all -- with no error, and the data still arriving.
         self.setMinimumSize(240, 240)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                           QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
     def set_volume(self, data, *, colormap="magma", threshold=0.0, gamma=1.0):
         """Show a ``(nz, ny, nx)`` scalar volume."""
-        self._vv.set_volume(data, colormap=colormap, threshold=threshold,
-                            gamma=gamma)
+        self._vv.set_volume(data, colormap=colormap, threshold=threshold, gamma=gamma)
 
     def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
         """Per-axis voxel scaling, for anisotropically sampled volumes."""
@@ -1178,8 +1174,7 @@ class VolumeView(QtWidgets.QWidget):
 
     def set_camera(self, distance=None, elevation=None, azimuth=None):
         """Position the orbit camera."""
-        self._vv.set_camera(distance=distance, elevation=elevation,
-                            azimuth=azimuth)
+        self._vv.set_camera(distance=distance, elevation=elevation, azimuth=azimuth)
 
     def clear(self):
         """Remove the volume."""
@@ -1381,8 +1376,9 @@ class ImageView(QtWidgets.QWidget):
 
         if isinstance(region, RectangleROI):
             x0, y0, x1, y1 = region.bounds()
-            return self.add_roi(kind="rect", pos=(x0, y0), size=(x1 - x0, y1 - y0),
-                                pen=pen, movable=movable)
+            return self.add_roi(
+                kind="rect", pos=(x0, y0), size=(x1 - x0, y1 - y0), pen=pen, movable=movable
+            )
         if isinstance(region, EllipseROI):
             # pos/size are the bounding box, so the radii double. Getting this
             # wrong draws an ellipse half the size of the region it describes,
@@ -1391,18 +1387,20 @@ class ImageView(QtWidgets.QWidget):
                 kind="ellipse",
                 pos=(region.cx - region.rx, region.cy - region.ry),
                 size=(2.0 * region.rx, 2.0 * region.ry),
-                pen=pen, movable=movable, angle=region.angle,
+                pen=pen,
+                movable=movable,
+                angle=region.angle,
             )
         if isinstance(region, PolygonROI):
-            return self.add_roi(kind="polygon", points=[tuple(v) for v in region.vertices],
-                                pen=pen, movable=movable)
+            return self.add_roi(
+                kind="polygon", points=[tuple(v) for v in region.vertices], pen=pen, movable=movable
+            )
         raise TypeError(
             f"{type(region).__name__} has no analytic outline to draw; "
             "show it with add_overlay(region.to_mask(shape)) instead"
         )
 
-    def enable_picking(self, image_source=None, *, fit: str = "gaussian",
-                       window: int = 9) -> None:
+    def enable_picking(self, image_source=None, *, fit: str = "gaussian", window: int = 9) -> None:
         """Turn clicks into picked regions.
 
         The third way a region gets made — beside a batch detector and a drawn
@@ -1452,9 +1450,7 @@ class ImageView(QtWidgets.QWidget):
         if self._pick_fit == "none":
             self.picked.emit(PickedSpot(y=float(y), x=float(x), success=True))
             return
-        self.picked.emit(
-            fit_gaussian_spot(np.asarray(image), y, x, window=self._pick_window)
-        )
+        self.picked.emit(fit_gaussian_spot(np.asarray(image), y, x, window=self._pick_window))
 
     @property
     def native(self):

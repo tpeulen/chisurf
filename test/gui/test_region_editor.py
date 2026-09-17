@@ -57,8 +57,11 @@ def editor(qapp, host):
     from chisurf.gui.widgets.roi import RegionEditor
 
     return RegionEditor(
-        host, "regions", image_attr="current_image",
-        paint_source="selection_roi", intensity_unit="ph",
+        host,
+        "regions",
+        image_attr="current_image",
+        paint_source="selection_roi",
+        intensity_unit="ph",
     )
 
 
@@ -235,7 +238,7 @@ def test_dragging_writes_the_geometry_back_and_keeps_the_region_type(canvas, hos
     overlay._write_back(handle, "spot")
 
     roi = host.regions.roi("spot")
-    assert isinstance(roi, EllipseROI)          # not silently turned into a rect
+    assert isinstance(roi, EllipseROI)  # not silently turned into a rect
     assert (roi.cx, roi.cy) == (20.0, 17.0)
     assert (roi.rx, roi.ry) == (10.0, 5.0)
     assert roi.name == "spot"
@@ -243,7 +246,7 @@ def test_dragging_writes_the_geometry_back_and_keeps_the_region_type(canvas, hos
 
 
 def test_a_geometry_that_did_not_move_is_not_reported_as_a_drag(canvas, host):
-    """pyqtgraph fires its change signal for programmatic moves too."""
+    """Pyqtgraph fires its change signal for programmatic moves too."""
     from chisurf.gui.widgets.roi import RegionOverlay
 
     seen = []

@@ -13,10 +13,9 @@ import pathlib
 import shutil
 
 import numpy as np
-
-from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.fluorescence.burst import read_bur_file, read_bur_with_companions
 from chisurf.core.fio.fluorescence.burst_companion import is_companion_dir
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
@@ -32,7 +31,10 @@ from chisurf.plugins.burst.burst_fusion.core.fusion import (
 
 DATA = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
 )
 ANALYSIS = "burstwise_All 0.1000#15"
 
@@ -173,13 +175,9 @@ def test_companions_follow_the_contract_and_merge(folder):
 
 
 def test_the_source_bursts_are_left_alone(folder):
-    before = {
-        path.name: path.read_bytes() for path in sorted((folder / "bi4_bur").glob("*.bur"))
-    }
+    before = {path.name: path.read_bytes() for path in sorted((folder / "bi4_bur").glob("*.bur"))}
     fuse_folder(folder, FusionSettings(threshold=0.4), detectors=DETECTORS, windows=WINDOWS)
-    after = {
-        path.name: path.read_bytes() for path in sorted((folder / "bi4_bur").glob("*.bur"))
-    }
+    after = {path.name: path.read_bytes() for path in sorted((folder / "bi4_bur").glob("*.bur"))}
     assert before == after
 
 
@@ -203,7 +201,9 @@ def test_run_is_recorded_for_reproduction(folder):
 
 def test_a_second_run_does_not_overwrite_the_first(folder):
     first = fuse_folder(folder, FusionSettings(threshold=0.5), detectors=DETECTORS, windows=WINDOWS)
-    second = fuse_folder(folder, FusionSettings(threshold=0.5), detectors=DETECTORS, windows=WINDOWS)
+    second = fuse_folder(
+        folder, FusionSettings(threshold=0.5), detectors=DETECTORS, windows=WINDOWS
+    )
     assert first["output_folder"] != second["output_folder"]
     assert pathlib.Path(first["output_folder"]).is_dir()
 
@@ -224,8 +224,10 @@ def test_folder_without_bursts_is_reported(tmp_path):
 def test_fused_folder_can_itself_be_fused(folder):
     """The output is an ordinary burst folder — including for this step."""
     out = fuse_folder(
-        folder, FusionSettings(threshold=0.5, max_gap_ms=1.0),
-        detectors=DETECTORS, windows=WINDOWS,
+        folder,
+        FusionSettings(threshold=0.5, max_gap_ms=1.0),
+        detectors=DETECTORS,
+        windows=WINDOWS,
     )
     again = analyze(pathlib.Path(out["output_folder"]), FusionSettings(threshold=0.5))
     assert again.statistics["n_bursts_before"] == out["statistics"]["n_bursts_after"]

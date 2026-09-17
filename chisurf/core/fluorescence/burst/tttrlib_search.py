@@ -42,7 +42,7 @@ IMPLAUSIBLE_COVERAGE = 0.7
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 
 
-def algorithms() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
+def algorithms() -> dict[str, dict[str, typing.Any]]:
     """The burst searches tttrlib advertises, keyed by algorithm name.
 
     A thin view onto the ``burst_search`` category of
@@ -64,12 +64,12 @@ def is_available() -> bool:
     return tttrlib_registry.is_available(tttrlib_registry.BURST_SEARCH)
 
 
-def defaults(algorithm: str) -> typing.Dict[str, typing.Any]:
+def defaults(algorithm: str) -> dict[str, typing.Any]:
     """Default parameters of ``algorithm`` as a ``{name: value}`` dict."""
     return tttrlib_registry.defaults(tttrlib_registry.BURST_SEARCH, algorithm)
 
 
-def describe(algorithm: str) -> typing.Dict[str, typing.Any]:
+def describe(algorithm: str) -> dict[str, typing.Any]:
     """Registry entry for ``algorithm``.
 
     Raises
@@ -83,7 +83,7 @@ def describe(algorithm: str) -> typing.Dict[str, typing.Any]:
 def search(
     tttr: tttrlib.TTTR,
     algorithm: str,
-    parameters: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+    parameters: typing.Mapping[str, typing.Any] | None = None,
 ) -> np.ndarray:
     """Run a burst search by name and return its burst boundaries.
 
@@ -109,7 +109,7 @@ def search(
 def tttrlib_burst_filter(
     tttr: tttrlib.TTTR,
     algorithm: str,
-    parameters: typing.Optional[typing.Mapping[str, typing.Any]] = None,
+    parameters: typing.Mapping[str, typing.Any] | None = None,
 ) -> np.ndarray:
     """Boolean photon mask from a registry-selected burst search.
 
@@ -158,5 +158,7 @@ def _warn_if_degenerate(algorithm: str, start_stop: np.ndarray, n_photons: int) 
         "ran, set min_contrast and min_significance to 0 (they are measured "
         "against a background estimate that is not valid here), or run the "
         "search on the unfiltered stream.",
-        algorithm, fraction * 100.0, len(start_stop),
+        algorithm,
+        fraction * 100.0,
+        len(start_stop),
     )

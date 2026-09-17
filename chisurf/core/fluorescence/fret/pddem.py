@@ -4,6 +4,7 @@ The kinetics runs in IMP.bff (``tcspc_pddem``); what is here is not in a fit's
 hot loop and is evaluated by the view on demand, as the description's
 ``reports`` name it.
 """
+
 from __future__ import annotations
 
 import math

@@ -24,14 +24,13 @@ import chisurf.core.math.datatools
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
-from chisurf.core.models.pda2c.nusiance import Background, Pda2cPhotonRange
-
 from chisurf.core.models.pda2c.common import (
     Pda2cModelMixin,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
     resolve_fit_settings,
 )
+from chisurf.core.models.pda2c.nusiance import Background, Pda2cPhotonRange
 
 
 class ProbCh0(FittingParameterGroup):
@@ -102,7 +101,7 @@ class ProbCh0(FittingParameterGroup):
     @property
     def pch0(self) -> np.array:
         """Return per-species channel-0 probabilities (always positive)."""
-        vs = np.array([math.sqrt(x.value ** 2) for x in self._pch0])
+        vs = np.array([math.sqrt(x.value**2) for x in self._pch0])
         for i, v in enumerate(vs):
             self._pch0[i].value = v
         return vs
@@ -117,10 +116,7 @@ class ProbCh0(FittingParameterGroup):
     def pch0_spectrum(self) -> np.array:
         """Return interleaved (amplitude, pch0) spectrum for tttrlib.Pda."""
         if self._link is None:
-            return cs.core.math.datatools.two_column_to_interleaved(
-                self.amplitudes,
-                self.pch0
-            )
+            return cs.core.math.datatools.two_column_to_interleaved(self.amplitudes, self.pch0)
         else:
             return self._link.pch0
 
@@ -185,8 +181,7 @@ class ProbCh0(FittingParameterGroup):
         for i, a in enumerate(self._amplitudes):
             a.value = normalized[i]
             ee = a.error_estimate
-            if (isinstance(ee, float) and np.isfinite(ee)
-                    and abs(scale - 1.0) > 1e-12):
+            if isinstance(ee, float) and np.isfinite(ee) and abs(scale - 1.0) > 1e-12:
                 a.error_estimate = ee * scale
 
     def finalize(self):
@@ -194,16 +189,16 @@ class ProbCh0(FittingParameterGroup):
         self.update()
 
     def append(
-            self,
-            amplitude: float = 1.0,
-            pch0: float = 0.1,
-            lower_bound_amplitude: float = 0.0,
-            upper_bound_amplitude: float = 1.0,
-            fixed: bool = False,
-            bound_on: bool = True,
-            lower_bound_pch0: float = 0.000001,
-            upper_bound_pch0: float = 0.999999,
-            **kwargs
+        self,
+        amplitude: float = 1.0,
+        pch0: float = 0.1,
+        lower_bound_amplitude: float = 0.0,
+        upper_bound_amplitude: float = 1.0,
+        fixed: bool = False,
+        bound_on: bool = True,
+        lower_bound_pch0: float = 0.000001,
+        upper_bound_pch0: float = 0.999999,
+        **kwargs,
     ):
         """Append a new species with the given amplitude and channel-0 probability.
 
@@ -234,28 +229,29 @@ class ProbCh0(FittingParameterGroup):
             lb=lower_bound_amplitude,
             ub=upper_bound_amplitude,
             value=amplitude,
-            name=f'x{self.short}{i}',
-            label_text=f'x<sub>{self.short},{i}</sub>',
+            name=f"x{self.short}{i}",
+            label_text=f"x<sub>{self.short},{i}</sub>",
             fixed=fixed,
             bounds_on=bound_on,
-            description='Amplitude (population fraction) of this PDA species.'
+            description="Amplitude (population fraction) of this PDA species.",
         )
         pch0 = FittingParameter(
             lb=lower_bound_pch0,
             ub=upper_bound_pch0,
             value=pch0,
-            name=f'p{self.short}{i}',
-            label_text=f'p<sub>{self.short},{i}</sub>',
+            name=f"p{self.short}{i}",
+            label_text=f"p<sub>{self.short},{i}</sub>",
             fixed=fixed,
             bounds_on=bound_on,
-            description='Mean photon count (brightness) of this species.'
+            description="Mean photon count (brightness) of this species.",
         )
         self._amplitudes.append(amplitude)
         self._pch0.append(pch0)
 
-    def pop(self) -> typing.Tuple[
-        cs.core.fitting.parameter.FittingParameter,
-        cs.core.fitting.parameter.FittingParameter
+    def pop(
+        self,
+    ) -> typing.Tuple[
+        cs.core.fitting.parameter.FittingParameter, cs.core.fitting.parameter.FittingParameter
     ]:
         """Remove and return the last species (amplitude, pch0)."""
         amplitude = self._amplitudes.pop()
@@ -263,15 +259,15 @@ class ProbCh0(FittingParameterGroup):
         return amplitude, lifetime
 
     def __init__(
-            self,
-            short: str = '0',
-            absolute_amplitudes: bool = True,
-            normalize_amplitudes: bool = True,
-            amplitudes: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
-            pch0: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
-            name: str = 'pch0',
-            link: FittingParameter = None,
-            **kwargs
+        self,
+        short: str = "0",
+        absolute_amplitudes: bool = True,
+        normalize_amplitudes: bool = True,
+        amplitudes: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
+        pch0: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
+        name: str = "pch0",
+        link: FittingParameter = None,
+        **kwargs,
     ):
         """Initialize the ProbCh0 parameter group.
 
@@ -346,13 +342,13 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         return s
 
     def __init__(
-            self,
-            fit: cs.core.fitting.fit.Fit,
-            background: Background = None,
-            pch0: ProbCh0 = None,
-            nuisance: Pda2cPhotonRange = None,
-            kw_hist: dict = None,
-            **kwargs
+        self,
+        fit: cs.core.fitting.fit.Fit,
+        background: Background = None,
+        pch0: ProbCh0 = None,
+        nuisance: Pda2cPhotonRange = None,
+        kw_hist: dict = None,
+        **kwargs,
     ):
         """Initialize the discrete-species PDA model.
 
@@ -374,11 +370,11 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         super().__init__(fit, **kwargs)
 
         if background is None:
-            background = Background(name='background', fit=fit, **kwargs)
+            background = Background(name="background", fit=fit, **kwargs)
         if pch0 is None:
-            pch0 = ProbCh0(name='pCh0', fit=fit, **kwargs)
+            pch0 = ProbCh0(name="pCh0", fit=fit, **kwargs)
         if nuisance is None:
-            nuisance = Pda2cPhotonRange(name='pda_photon_range', fit=fit, **kwargs)
+            nuisance = Pda2cPhotonRange(name="pda_photon_range", fit=fit, **kwargs)
         self.background = background
         self.pch0 = pch0
         self.nuisance = nuisance
@@ -393,19 +389,14 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         self.fit_settings = resolve_fit_settings(None, kw_hist)
 
         kw_pda = {
-            "hist2d_nmax": fit.data.pda['maximum_number_of_photons'],
-            "hist2d_nmin": fit.data.pda['minimum_number_of_photons'],
-            "pF": fit.data.pda['ps']
+            "hist2d_nmax": fit.data.pda["maximum_number_of_photons"],
+            "hist2d_nmin": fit.data.pda["minimum_number_of_photons"],
+            "pF": fit.data.pda["ps"],
         }
         self.pda = tttrlib.Pda(**kw_pda)
         self.residual_mode = "1D"
 
-    def _update_model(
-            self,
-            pch0: np.array = None,
-            verbose: bool = None,
-            **kwargs
-    ):
+    def _update_model(self, pch0: np.array = None, verbose: bool = None, **kwargs):
         """Update the model curve from current background and species parameters.
 
         Parameters
@@ -418,7 +409,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
             Forwarded to the parent method.
         """
         if verbose is None:
-            verbose = cs.core.settings.cs_settings['verbose']
+            verbose = cs.core.settings.cs_settings["verbose"]
         self.pda.background_ch1 = self.background.bg0
         self.pda.background_ch2 = self.background.bg1
         p = self.pch0.pch0_spectrum
@@ -426,27 +417,27 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         try:
             cs.logging.debug(
                 {
-                    'model': 'Pda2cSimpleModel',
-                    'len_prob_spectrum': int(len(p)),
-                    'first_entries': [float(x) for x in p[:8]],
-                    'BG': float(self.background.bg0),
-                    'BR': float(self.background.bg1),
+                    "model": "Pda2cSimpleModel",
+                    "len_prob_spectrum": int(len(p)),
+                    "first_entries": [float(x) for x in p[:8]],
+                    "BG": float(self.background.bg0),
+                    "BR": float(self.background.bg1),
                 }
             )
         except Exception:
             pass
         self.pda.set_probability_spectrum_ch1(p)
         # Use upper left triangle for fitting
-        row_indices = self.fit.data.pda['row_indices']
-        col_indices = self.fit.data.pda['col_indices']
+        row_indices = self.fit.data.pda["row_indices"]
+        col_indices = self.fit.data.pda["col_indices"]
         y = self.pda.s1s2[row_indices, col_indices]
         y *= np.sum(self.fit.data.y) / y.sum()
         x = np.arange(len(y))
         self.d = np.vstack((x, y))
 
     def _get_1d_residuals(
-            self,
-            fit: cs.core.fitting.fit.Fit,
+        self,
+        fit: cs.core.fitting.fit.Fit,
     ) -> np.ndarray:
         """Compute 1D weighted residuals from the S1S2 histogram.
 
@@ -473,10 +464,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         return wres
 
     def get_wres(
-            self,
-            fit: cs.core.fitting.fit.Fit,
-            xmin: int = None,
-            xmax: int = None
+        self, fit: cs.core.fitting.fit.Fit, xmin: int = None, xmax: int = None
     ) -> np.ndarray:
         """Compute weighted residuals for the discrete PDA model.
 
@@ -570,5 +558,6 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         except Exception:
             pass
         super().set_state(state)
+
 
 # Backwards-compatible re-exports of Gaussian-distance PDA models.

@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import copy
-import json
 import uuid
 
 import numpy as np
-import pytest
-
 from mmfdb.project.project_archiver import (
     archive_project_to_mmfdb,
     restore_project_from_artifacts,
@@ -204,7 +201,9 @@ def test_roundtrip_preserves_parameters_and_edges(tmp_path) -> None:
     for op_id, params in restored["parameters"].items():
         for param in params:
             if param.get("uid") == "p1":
-                assert param.get("value") == 5.0, f"p1 value should be 5.0, got {param.get('value')}"
+                assert param.get("value") == 5.0, (
+                    f"p1 value should be 5.0, got {param.get('value')}"
+                )
     db.close()
 
 
@@ -276,19 +275,23 @@ def test_roundtrip_multi_version_isolation(tmp_path) -> None:
     payload1["fits"] = [payload1["fits"][0]]  # only fit_001
 
     payload2 = _make_test_payload()
-    payload2["fits"] = [{
-        "id": "fit_999",
-        "name": "Version2Fit",
-        "model_name": "SomeModel",
-        "local_fits": [{
-            "dataset_id": "ds_001",
-            "fit_state": {
-                "model_module": "m",
-                "model_class": "C",
-                "parameters": {},
-            },
-        }],
-    }]
+    payload2["fits"] = [
+        {
+            "id": "fit_999",
+            "name": "Version2Fit",
+            "model_name": "SomeModel",
+            "local_fits": [
+                {
+                    "dataset_id": "ds_001",
+                    "fit_state": {
+                        "model_module": "m",
+                        "model_class": "C",
+                        "parameters": {},
+                    },
+                }
+            ],
+        }
+    ]
 
     archive_project_to_mmfdb(db, payload1, vid1, pid, 1)
     archive_project_to_mmfdb(db, payload2, vid2, pid, 2)
@@ -315,8 +318,12 @@ def test_roundtrip_dependency_edge_content(tmp_path) -> None:
     assert len(edges) >= 1, "Should have at least 1 dependency edge (p1 -> p2)"
 
     edge = edges[0]
-    assert edge["source_node_id"] == "p2", f"Edge source should be p2 (link target), got {edge['source_node_id']}"
-    assert edge["target_node_id"] == "p1", f"Edge target should be p1 (the linker), got {edge['target_node_id']}"
+    assert edge["source_node_id"] == "p2", (
+        f"Edge source should be p2 (link target), got {edge['source_node_id']}"
+    )
+    assert edge["target_node_id"] == "p1", (
+        f"Edge target should be p1 (the linker), got {edge['target_node_id']}"
+    )
     assert edge["relationship_type"] == "parameter_depends_on"
     db.close()
 
@@ -388,8 +395,7 @@ def test_roundtrip_global_fit_is_not_shattered(tmp_path) -> None:
     assert restored is not None
 
     assert len(restored["fits"]) == len(payload["fits"]), (
-        f"group count changed: {len(payload['fits'])} archived, "
-        f"{len(restored['fits'])} restored"
+        f"group count changed: {len(payload['fits'])} archived, {len(restored['fits'])} restored"
     )
     assert [len(f["local_fits"]) for f in restored["fits"]] == [3, 1]
 
@@ -412,9 +418,7 @@ def test_roundtrip_global_fit_preserves_local_fit_order(tmp_path) -> None:
         return local_fit["fit_state"]["parameters"]["p1"]["value"]
 
     assert [_p1(lf) for lf in restored_locals] == [_p1(lf) for lf in original]
-    assert [lf["dataset_id"] for lf in restored_locals] == [
-        lf["dataset_id"] for lf in original
-    ]
+    assert [lf["dataset_id"] for lf in restored_locals] == [lf["dataset_id"] for lf in original]
     db.close()
 
 
@@ -450,9 +454,7 @@ def test_regroup_falls_back_to_encounter_order_without_indices(tmp_path) -> None
     records = _regroup_fit_artifacts(entries)
 
     assert len(records) == 1
-    assert [lf["dataset_id"] for lf in records[0]["local_fits"]] == [
-        "zebra", "alpha", "middle"
-    ]
+    assert [lf["dataset_id"] for lf in records[0]["local_fits"]] == ["zebra", "alpha", "middle"]
 
 
 def test_regroup_ignores_a_duplicated_artifact(tmp_path) -> None:

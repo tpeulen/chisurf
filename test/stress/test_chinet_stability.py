@@ -1,5 +1,5 @@
-import unittest
 import gc
+import unittest
 
 import numpy as np
 
@@ -38,7 +38,6 @@ class TestPortNodeStability(unittest.TestCase):
         print("Building complex graph...")
         root_port = cn.Port(1.0)
         nodes_ = []
-        current_node = None
 
         # Create a chain of 1000 nodes
         prev_port = root_port

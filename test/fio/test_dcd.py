@@ -35,13 +35,14 @@ def _sample(n_frames=6, n_atoms=17, seed=0):
 
 # ---- parity with an independent implementation -----------------------------
 
+
 def test_reads_a_dcd_written_by_another_implementation():
     """The coordinates must equal what the writing tool itself read back."""
     expected = np.load(DATA / "hgbp1_transition_expected.npz")["xyz_angstrom"]
     xyz, lengths, angles = read_dcd(REAL)
     assert xyz.shape == expected.shape
     np.testing.assert_allclose(xyz, expected, rtol=0, atol=1e-4)
-    assert lengths is None and angles is None      # this trajectory has no cell
+    assert lengths is None and angles is None  # this trajectory has no cell
 
 
 def test_our_writer_reproduces_the_foreign_file_byte_for_byte():
@@ -60,7 +61,7 @@ def test_our_writer_reproduces_the_foreign_file_byte_for_byte():
         while pos < len(raw):
             n = int(np.frombuffer(raw, dtype="<i4", count=1, offset=pos)[0])
             if n == 4 * n_atoms:
-                out.append(raw[pos + 4: pos + 4 + n])
+                out.append(raw[pos + 4 : pos + 4 + n])
             pos += 4 + n + 4
         return out
 
@@ -70,7 +71,7 @@ def test_our_writer_reproduces_the_foreign_file_byte_for_byte():
         write_dcd(mine, xyz)
         theirs = coordinate_records(REAL.read_bytes(), 5235)
         ours = coordinate_records(mine.read_bytes(), 5235)
-    assert len(ours) == len(theirs) == 3 * 3          # 3 frames x X/Y/Z
+    assert len(ours) == len(theirs) == 3 * 3  # 3 frames x X/Y/Z
     assert ours == theirs
     # ...and the values are the ones the other implementation itself reported.
     np.testing.assert_allclose(xyz, expected, rtol=0, atol=1e-4)
@@ -95,6 +96,7 @@ def test_reads_a_triclinic_unit_cell_written_by_another_implementation():
 
 
 # ---- round trip ------------------------------------------------------------
+
 
 def test_round_trip_is_bit_exact(tmp_path):
     # float32 in, float32 out, no scaling anywhere: exact, not allclose.
@@ -122,8 +124,12 @@ def test_an_orthogonal_cell_comes_back_as_exactly_ninety(tmp_path):
     # The cosine encoding exists so that a right angle survives the round trip
     # as 90.0 rather than 89.99997; asserting it loosely would defeat the point.
     path = tmp_path / "ortho.dcd"
-    write_dcd(path, _sample(n_frames=2), cell_lengths=np.tile([30.0, 30.0, 30.0], (2, 1)),
-              cell_angles=np.tile([90.0, 90.0, 90.0], (2, 1)))
+    write_dcd(
+        path,
+        _sample(n_frames=2),
+        cell_lengths=np.tile([30.0, 30.0, 30.0], (2, 1)),
+        cell_angles=np.tile([90.0, 90.0, 90.0], (2, 1)),
+    )
     _, _, angles = read_dcd(path)
     assert np.all(angles == 90.0)
 
@@ -138,18 +144,21 @@ def test_a_cell_stored_in_degrees_is_read_as_degrees(tmp_path):
     """
     xyz = _sample(n_frames=2, n_atoms=5)
     path = tmp_path / "degrees.dcd"
-    write_dcd(path, xyz, cell_lengths=np.tile([30.0, 40.0, 50.0], (2, 1)),
-              cell_angles=np.tile([70.0, 80.0, 110.0], (2, 1)))
+    write_dcd(
+        path,
+        xyz,
+        cell_lengths=np.tile([30.0, 40.0, 50.0], (2, 1)),
+        cell_angles=np.tile([70.0, 80.0, 110.0], (2, 1)),
+    )
 
     # Rewrite each 48-byte cell record with plain degrees, as NAMD 2.5 would.
     raw, out, pos = path.read_bytes(), bytearray(), 0
     while pos < len(raw):
         n = int(np.frombuffer(raw, dtype="<i4", count=1, offset=pos)[0])
-        payload = raw[pos + 4: pos + 4 + n]
+        payload = raw[pos + 4 : pos + 4 + n]
         if n == 48:
-            payload = np.array([30.0, 110.0, 40.0, 80.0, 70.0, 50.0],
-                               dtype="<f8").tobytes()
-        out += raw[pos:pos + 4] + payload + raw[pos + 4 + n: pos + 8 + n]
+            payload = np.array([30.0, 110.0, 40.0, 80.0, 70.0, 50.0], dtype="<f8").tobytes()
+        out += raw[pos : pos + 4] + payload + raw[pos + 4 + n : pos + 8 + n]
         pos += 4 + n + 4
     path.write_bytes(bytes(out))
 
@@ -160,13 +169,14 @@ def test_a_cell_stored_in_degrees_is_read_as_degrees(tmp_path):
 
 # ---- byte order and record width -------------------------------------------
 
+
 def _byteswapped(path_in, path_out, marker_bytes=4):
     """Rewrite a little-endian DCD as big-endian, record by record."""
     raw = pathlib.Path(path_in).read_bytes()
     out, pos = bytearray(), 0
     while pos < len(raw):
         n = int(np.frombuffer(raw, dtype="<i4", count=1, offset=pos)[0])
-        payload = raw[pos + 4: pos + 4 + n]
+        payload = raw[pos + 4 : pos + 4 + n]
         marker = np.array(n, dtype=">i4").tobytes()
         if len(out) == 0:
             # Header record: 'CORD' then int32s; the magic must not be swapped.
@@ -200,6 +210,7 @@ def test_reads_a_big_endian_file(tmp_path):
 
 # ---- selection -------------------------------------------------------------
 
+
 def test_stride_and_atom_indices(tmp_path):
     xyz = _sample(n_frames=10, n_atoms=8)
     path = tmp_path / "s.dcd"
@@ -213,6 +224,7 @@ def test_stride_and_atom_indices(tmp_path):
 
 # ---- refusals --------------------------------------------------------------
 
+
 def test_a_frame_count_the_header_lies_about_is_taken_from_the_file(tmp_path):
     # Writers that stream frames leave the header count at its initial value,
     # so the file's size is the honest answer.
@@ -220,7 +232,7 @@ def test_a_frame_count_the_header_lies_about_is_taken_from_the_file(tmp_path):
     path = tmp_path / "lying.dcd"
     write_dcd(path, xyz)
     raw = bytearray(path.read_bytes())
-    raw[8:12] = np.array(0, dtype="<i4").tobytes()      # claim zero frames
+    raw[8:12] = np.array(0, dtype="<i4").tobytes()  # claim zero frames
     path.write_bytes(bytes(raw))
     assert dcd_info(path).n_frames == 5
     assert read_dcd(path)[0].shape[0] == 5
@@ -259,6 +271,7 @@ def test_a_bad_shape_is_refused(tmp_path):
 
 # ---- streaming ---------------------------------------------------------------
 
+
 def test_streaming_writer_matches_writing_all_at_once(tmp_path):
     """Frames appended in chunks must give the same file as one call.
 
@@ -272,7 +285,7 @@ def test_streaming_writer_matches_writing_all_at_once(tmp_path):
     write_dcd(whole, xyz)
     with DCDWriter(streamed, n_atoms=11) as writer:
         writer.write(xyz[:3])
-        writer.write(xyz[3])            # a single frame, not a block
+        writer.write(xyz[3])  # a single frame, not a block
         writer.write(xyz[4:])
     assert streamed.read_bytes() == whole.read_bytes()
     np.testing.assert_array_equal(read_dcd(streamed)[0], xyz)

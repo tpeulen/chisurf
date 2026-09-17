@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from chisurf.startup.services import (
     AppStartupServiceManager,
     AppStartupServiceSpec,
@@ -67,11 +65,14 @@ def test_splash_services_have_progress_labels():
     splash_specs = [s for s in specs if s.surface == "gui" and s.phase == "splash"]
     for spec in splash_specs:
         assert spec.label, f"Service '{spec.id}' has no label"
-        assert 0 <= spec.progress <= 100, f"Service '{spec.id}' has invalid progress {spec.progress}"
+        assert 0 <= spec.progress <= 100, (
+            f"Service '{spec.id}' has invalid progress {spec.progress}"
+        )
 
 
 def test_startup_interface_service_produces_main_window():
     """The startup_interface service sets the main window result."""
+
     def fake_startup_interface(context):
         context.mark_ready()
         return {"type": "main_window"}
@@ -98,7 +99,9 @@ def test_post_show_services_filtered_separately_from_splash():
     """Post-show services can be filtered separately from splash services."""
     specs = [
         AppStartupServiceSpec(id="splash_a", entrypoint="pkg:a", surface="gui", phase="splash"),
-        AppStartupServiceSpec(id="post_b", entrypoint="pkg:b", surface="gui", phase="post_gui_show"),
+        AppStartupServiceSpec(
+            id="post_b", entrypoint="pkg:b", surface="gui", phase="post_gui_show"
+        ),
     ]
     manager = AppStartupServiceManager.from_specs(specs)
 
@@ -109,4 +112,3 @@ def test_post_show_services_filtered_separately_from_splash():
     assert splash_ordered[0].id == "splash_a"
     assert len(post_ordered) == 1
     assert post_ordered[0].id == "post_b"
-

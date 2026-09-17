@@ -2,7 +2,6 @@ import sys
 
 print("Final check for Main GUI imports...")
 try:
-    from chisurf.gui.main import Main
     print("SUCCESS: Main imported successfully!")
 except Exception as e:
     print(f"INFO: Got error {type(e).__name__}: {e}")

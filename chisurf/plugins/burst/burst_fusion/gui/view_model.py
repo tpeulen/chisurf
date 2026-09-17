@@ -361,8 +361,12 @@ class FusionViewModel:
         lines = [
             f"<b>P(same molecule) &ge; {window.threshold:.2f}</b> holds out to "
             f"<b>{window.tau_max_s * 1e3:.3f} ms</b>"
-            + ("" if window.resolved else " <span style='color:#d62728'>(never crossed — "
-               "the curve stays above the threshold over the whole lag range)</span>"),
+            + (
+                ""
+                if window.resolved
+                else " <span style='color:#d62728'>(never crossed — "
+                "the curve stays above the threshold over the whole lag range)</span>"
+            ),
         ]
         if stats["gap_capped"]:
             lines.append(
@@ -495,13 +499,17 @@ class FusionViewModel:
         """How many fused bursts contain 1, 2, 3 … original bursts."""
         if self._analysis is None:
             return []
-        sizes = np.concatenate(
-            [
-                np.bincount(np.asarray(m.labels, dtype=int))
-                for m in self._analysis.measurements
-                if len(m.labels)
-            ]
-        ) if self._analysis.measurements else np.zeros(0)
+        sizes = (
+            np.concatenate(
+                [
+                    np.bincount(np.asarray(m.labels, dtype=int))
+                    for m in self._analysis.measurements
+                    if len(m.labels)
+                ]
+            )
+            if self._analysis.measurements
+            else np.zeros(0)
+        )
         if sizes.size == 0:
             return []
         top = int(sizes.max())

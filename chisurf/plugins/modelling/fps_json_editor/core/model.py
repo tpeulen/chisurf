@@ -55,13 +55,11 @@ class FpsJsonModel:
         self.positions = dict(payload.get("Positions", {}) or {})
         self.distances = dict(payload.get("Distances", {}) or {})
         self.score_sets = dict(payload.get("χ²", {}) or {})
-        self.extra_sections = {
-            k: v for k, v in payload.items() if k not in _RESERVED
-        }
+        self.extra_sections = {k: v for k, v in payload.items() if k not in _RESERVED}
 
     def load_file(self, path: str) -> None:
         """Read an fps.json file into the model."""
-        with io.zipped.open_maybe_zipped(filename=path, mode='r') as fp:
+        with io.zipped.open_maybe_zipped(filename=path, mode="r") as fp:
             payload = json.load(fp)
         self.fps_json_payload = payload
 
@@ -69,7 +67,7 @@ class FpsJsonModel:
         """Write the model to an fps.json file."""
         payload = self.fps_json_payload
         with open(path, "w") as fp:
-            json.dump(payload, fp, sort_keys=True, indent=4, separators=(',', ': '))
+            json.dump(payload, fp, sort_keys=True, indent=4, separators=(",", ": "))
 
     def add_position(self, name: str, params: dict[str, Any]) -> None:
         """Add or update a labeling position in the model."""
@@ -114,15 +112,13 @@ class FpsJsonModel:
     def distances_referencing(self, position_name: str) -> list[str]:
         """Return distance keys whose position1_name or position2_name matches."""
         return [
-            dn for dn, d in self.distances.items()
-            if d.get("position1_name") == position_name
-            or d.get("position2_name") == position_name
+            dn
+            for dn, d in self.distances.items()
+            if d.get("position1_name") == position_name or d.get("position2_name") == position_name
         ]
 
     def _cleanup_score_sets(self, distance_name: str) -> None:
         """Remove distance_name from every score group's distance list."""
         for group in self.score_sets.values():
             if isinstance(group, dict) and "distances" in group:
-                group["distances"] = [
-                    d for d in group["distances"] if d != distance_name
-                ]
+                group["distances"] = [d for d in group["distances"] if d != distance_name]

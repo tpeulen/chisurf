@@ -4,16 +4,15 @@ Loaded from its source directory -- the way `pip install -e` would make it
 importable -- and through a fake entry point, the way an installed one is
 found. If this breaks, the example a plugin author copies is broken.
 """
+
 from __future__ import annotations
 
 import importlib
 import pathlib
 import sys
 
-import numpy as np
-import pytest
-
 import chimol
+import pytest
 from chimol.plugins import discover_entry_points, load_plugins
 
 _EXAMPLE = pathlib.Path(chimol.__file__).resolve().parents[1] / "examples" / "chimol_stars_plugin"
@@ -34,14 +33,14 @@ def qapp():
 
 
 def test_the_example_plugin_does_everything_it_says(stars_module, qapp, tmp_path):
-    from chimol.ui.input import keybindings
-    from chimol.ui.menus import bar as menus
     from chimol.commands.command import Cmd
     from chimol.core.services.representations import REPRESENTATIONS
     from chimol.core.settings.registry import get_setting
     from chimol.core.viewer import Viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.registry import FORMATS
+    from chimol.ui.input import keybindings
+    from chimol.ui.menus import bar as menus
     from chimol.viewport.headless import SceneSink
 
     viewer = Viewer(renderer_factory=SceneSink)
@@ -116,7 +115,9 @@ def test_a_folder_dropped_into_the_user_plugin_dir_loads_without_installing(tmp_
     dropin = tmp_path / "plugins"
     dropin.mkdir()
     shutil.copytree(_EXAMPLE / "chimol_stars", dropin / "stars_dropin")
-    (dropin / "stars_dropin" / "manifest.json").write_text('{"name": "stars", "description": "dropped in"}')
+    (dropin / "stars_dropin" / "manifest.json").write_text(
+        '{"name": "stars", "description": "dropped in"}'
+    )
     # a single-file plugin with a bare register(api) counts too
     (dropin / "hello.py").write_text(
         "from chimol.commands.registry import command, CommandGroup\n"
@@ -129,7 +130,9 @@ def test_a_folder_dropped_into_the_user_plugin_dir_loads_without_installing(tmp_
     )
     # and a disabled one is left alone
     (dropin / "off").mkdir()
-    (dropin / "off" / "__init__.py").write_text("plugin = None\nraise RuntimeError('must not import')\n")
+    (dropin / "off" / "__init__.py").write_text(
+        "plugin = None\nraise RuntimeError('must not import')\n"
+    )
     (dropin / "off" / "manifest.json").write_text('{"disabled": true}')
 
     monkeypatch.setenv("CHIMOL_PLUGIN_DIRS", str(dropin))
@@ -137,7 +140,7 @@ def test_a_folder_dropped_into_the_user_plugin_dir_loads_without_installing(tmp_
     found = {getattr(p, "name", "?") for _path, p in discover_dropins()}
     assert {"stars", "hello"} <= found and "off" not in found
 
-    cmd = Cmd(None)                        # the default load: built-ins + drop-ins
+    cmd = Cmd(None)  # the default load: built-ins + drop-ins
     try:
         assert "stars" in cmd.plugins and "hello" in cmd.plugins
         assert cmd.plugins.loaded["stars"].source == "drop-in"

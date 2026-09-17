@@ -60,8 +60,9 @@ class CLSMPixelSelect(QtWidgets.QWidget):
             log.debug("CLSM: no region editor/image to connect")
             return None
 
-        overlay = RegionOverlay(image, lambda: self.model.regions,
-                                on_change=self._on_region_dragged)
+        overlay = RegionOverlay(
+            image, lambda: self.model.regions, on_change=self._on_region_dragged
+        )
         editor.changed.connect(overlay.refresh)
         editor.changed.connect(self.model.apply_regions)
         editor.selectionChanged.connect(overlay.select)

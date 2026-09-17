@@ -48,7 +48,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -63,12 +64,12 @@ INTERIOR_BIAS_NOTE = (
 )
 
 
-def _as_intervals(ranges: Sequence[Sequence[int]]) -> List[Tuple[int, int]]:
+def _as_intervals(ranges: Sequence[Sequence[int]]) -> list[tuple[int, int]]:
     """JSON ``[[a, b], ...]`` → ``[(a, b), ...]`` of ints."""
     return [(int(a), int(b)) for a, b in ranges]
 
 
-def _open(path: str, reading_routine: Optional[str] = None):
+def _open(path: str, reading_routine: str | None = None):
     """Reopen a source measurement the way the burst analysis originally read it.
 
     A burst table is a set of pointers back into a photon stream, so these
@@ -100,14 +101,13 @@ def _open(path: str, reading_routine: Optional[str] = None):
     if recorded.get("container_type"):
         logging.debug(
             "reading %s as %s, as recorded by the burst analysis",
-            path, recorded["container_type"],
+            path,
+            recorded["container_type"],
         )
     return open_tttr(path, container)
 
 
-def _selected_indices(
-    n_photons: int, intervals: Sequence[Tuple[int, int]]
-) -> np.ndarray:
+def _selected_indices(n_photons: int, intervals: Sequence[tuple[int, int]]) -> np.ndarray:
     """Photon indices covered by *intervals*, clipped to the file and deduplicated.
 
     Parameters
@@ -162,7 +162,7 @@ def _micro_time_bins(tttr: Any, micro: np.ndarray) -> int:
     return max(adc, occupied, 1)
 
 
-def _channel_filter(channels: np.ndarray, wanted: Optional[Sequence[int]]) -> np.ndarray:
+def _channel_filter(channels: np.ndarray, wanted: Sequence[int] | None) -> np.ndarray:
     """Boolean mask selecting *wanted* routing channels (all when ``None``)."""
     if wanted is None:
         return np.ones(channels.shape, dtype=bool)
@@ -171,11 +171,11 @@ def _channel_filter(channels: np.ndarray, wanted: Optional[Sequence[int]]) -> np
 
 def from_bursts_decay(
     state: SessionState,
-    burst_slices: Optional[Dict[str, Sequence[Sequence[int]]]] = None,
+    burst_slices: dict[str, Sequence[Sequence[int]]] | None = None,
     channels: Any = None,
-    reading_routine: Optional[str] = None,
+    reading_routine: str | None = None,
     coarsening: int = 1,
-    stream_names: Optional[Sequence[str]] = None,
+    stream_names: Sequence[str] | None = None,
 ) -> ServiceResult:
     """Build micro-time decays from gated burst intervals.
 
@@ -218,22 +218,14 @@ def from_bursts_decay(
         )
     try:
         slices = {str(p): _as_intervals(r) for p, r in burst_slices.items()}
-        groups = (
-            [[int(c) for c in g] for g in channels]
-            if channels is not None
-            else None
-        )
+        groups = [[int(c) for c in g] for g in channels] if channels is not None else None
     except (TypeError, ValueError) as exc:
-        return service_error(
-            f"malformed burst_slices/channels: {exc}", error_code=INVALID_INPUT
-        )
+        return service_error(f"malformed burst_slices/channels: {exc}", error_code=INVALID_INPUT)
 
     try:
         n_groups = len(groups) if groups is not None else 1
-        names = list(stream_names) if stream_names else [
-            f"ch{i}" for i in range(n_groups)
-        ]
-        accum: List[Optional[np.ndarray]] = [None] * n_groups
+        names = list(stream_names) if stream_names else [f"ch{i}" for i in range(n_groups)]
+        accum: list[np.ndarray | None] = [None] * n_groups
         dt_ns = None
         used = 0
         step_size = max(1, int(coarsening))
@@ -313,13 +305,13 @@ def from_bursts_decay(
 
 def from_bursts_pch(
     state: SessionState,
-    burst_slices: Optional[Dict[str, Sequence[Sequence[int]]]] = None,
-    channels: Optional[Sequence[int]] = None,
-    reading_routine: Optional[str] = None,
+    burst_slices: dict[str, Sequence[Sequence[int]]] | None = None,
+    channels: Sequence[int] | None = None,
+    reading_routine: str | None = None,
     bin_time_us: float = 50.0,
     mode: str = "span",
-    micro_time_min: Optional[int] = None,
-    micro_time_max: Optional[int] = None,
+    micro_time_min: int | None = None,
+    micro_time_max: int | None = None,
 ) -> ServiceResult:
     """Build a photon-counting histogram from gated burst intervals.
 
@@ -367,12 +359,10 @@ def from_bursts_pch(
     try:
         slices = {str(p): _as_intervals(r) for p, r in burst_slices.items()}
     except (TypeError, ValueError) as exc:
-        return service_error(
-            f"malformed burst_slices: {exc}", error_code=INVALID_INPUT
-        )
+        return service_error(f"malformed burst_slices: {exc}", error_code=INVALID_INPUT)
 
     try:
-        counts_per_bin: List[np.ndarray] = []
+        counts_per_bin: list[np.ndarray] = []
         total_photons = 0
         burst_seconds = 0.0
         span_seconds = 0.0
@@ -446,9 +436,7 @@ def from_bursts_pch(
             counts_per_bin.append(per_bin)
             total_photons += int(per_bin.sum())
     except Exception as exc:  # pragma: no cover - depends on tttrlib/files
-        return service_error(
-            f"PCH read failed: {exc}", error_code=OPERATION_FAILED, exception=exc
-        )
+        return service_error(f"PCH read failed: {exc}", error_code=OPERATION_FAILED, exception=exc)
 
     if not counts_per_bin:
         return service_error(
@@ -461,7 +449,7 @@ def from_bursts_pch(
     histogram = np.bincount(all_counts, minlength=k_max + 1).astype(float)
     p_exp = histogram / histogram.sum() if histogram.sum() else histogram
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "k_vals": list(range(k_max + 1)),
         "counts": histogram.tolist(),
         "p_exp": p_exp.tolist(),
@@ -499,8 +487,8 @@ def consumers(state: SessionState = None) -> ServiceResult:
     dict
         ``{"ok": True, "result": {"consumers": [...]}}`` in menu order.
     """
-    entries: Dict[str, Dict[str, Any]] = {}
-    order: List[str] = []
+    entries: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
 
     for entry in _core_consumers() + _plugin_consumers():
         key = entry.get("key")
@@ -514,21 +502,23 @@ def consumers(state: SessionState = None) -> ServiceResult:
     return {"ok": True, "result": {"consumers": [entries[k] for k in order]}}
 
 
-def _core_consumers() -> List[Dict[str, Any]]:
+def _core_consumers() -> list[dict[str, Any]]:
     """Read the consumers that ship with ChiSurf."""
     from importlib import resources
 
     try:
-        with resources.files("chisurf.server").joinpath(
-            "burst_consumers.json"
-        ).open(encoding="utf-8") as fp:
+        with (
+            resources.files("chisurf.server")
+            .joinpath("burst_consumers.json")
+            .open(encoding="utf-8") as fp
+        ):
             return list(json.load(fp).get("consumers", []))
     except Exception as exc:  # pragma: no cover - packaging accident
         logging.error("could not read burst_consumers.json: %s", exc)
         return []
 
 
-def _plugin_consumers() -> List[Dict[str, Any]]:
+def _plugin_consumers() -> list[dict[str, Any]]:
     """Collect ``burst_consumers`` declared by plugin manifests.
 
     A burst analysis that lives in a plugin should be able to advertise itself
@@ -537,15 +527,13 @@ def _plugin_consumers() -> List[Dict[str, Any]]:
     """
     import pathlib
 
-    found: List[Dict[str, Any]] = []
+    found: list[dict[str, Any]] = []
     root = pathlib.Path(__file__).resolve().parents[2] / "plugins"
     if not root.is_dir():
         return found
     for manifest in root.rglob("manifest.json"):
         try:
-            declared = json.loads(manifest.read_text(encoding="utf-8")).get(
-                "burst_consumers"
-            )
+            declared = json.loads(manifest.read_text(encoding="utf-8")).get("burst_consumers")
         except Exception as exc:
             logging.debug("skipping unreadable manifest %s: %s", manifest, exc)
             continue

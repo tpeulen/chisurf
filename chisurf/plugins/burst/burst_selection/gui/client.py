@@ -9,9 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-
 from chisurf.core.plugin.client import InProcessClient
-
 
 logger = logging.getLogger(__name__)
 
@@ -137,14 +135,10 @@ class BurstSelectionClient:
             params["mmfdb"] = mmfdb
         if progress_callback is not None:
             params["progress_callback"] = progress_callback
-        svc_result = self._client.call(
-            "burst_selection.jobs.analyze_files", params
-        )
+        svc_result = self._client.call("burst_selection.jobs.analyze_files", params)
         if not svc_result.get("ok", True):
             err_msg = svc_result.get("error", "unknown error")
-            raise RuntimeError(
-                f"burst_selection.jobs.analyze_files failed: {err_msg}"
-            )
+            raise RuntimeError(f"burst_selection.jobs.analyze_files failed: {err_msg}")
         return svc_result.get("result", {})
 
     def save_bur(self, dataframe, path: Path) -> None:
@@ -159,6 +153,7 @@ class BurstSelectionClient:
 
         """
         from ..api.io import write_bur
+
         write_bur(dataframe, path)
 
     def inspect_bur(self, path: Path) -> dict[str, Any]:
@@ -294,7 +289,7 @@ class BurstSelectionClient:
                     burst_detection=analysis_settings.burst_detection,
                 )
                 selected = _np.zeros(len(_np.asarray(tttr.macro_times)), dtype=bool)
-                selected[first:first + len(sliced)] = _np.asarray(sliced, dtype=bool)
+                selected[first : first + len(sliced)] = _np.asarray(sliced, dtype=bool)
             # The bounds `analyze_file` applies, applied here too. This function
             # feeds the diagnostic plots *of the run beside it*, so a different
             # gap (this took `find_bursts`'s own default of 4 regardless of the
@@ -369,6 +364,7 @@ class BurstSelectionClient:
         from chisurf.plugins.burst.burst_selection.backend.services import (
             register_services,
         )
+
         register_services(
             dispatcher,
             mmfdb_db_provider=mmfdb_db_provider,

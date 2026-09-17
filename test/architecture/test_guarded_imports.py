@@ -12,6 +12,7 @@ This walks the tree, collects every absolute import that a ``try`` body depends
 on, and checks it still resolves. Genuinely optional things are listed in
 :data:`OPTIONAL` with the reason; anything else that fails is a defect.
 """
+
 from __future__ import annotations
 
 import ast

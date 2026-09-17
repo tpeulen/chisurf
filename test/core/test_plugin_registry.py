@@ -40,14 +40,18 @@ class TestPluginRegistryDiscovery:
     def test_discover_single_plugin(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
-            _make_plugin_dir(base, "burst", {
-                "id": "burst_selection",
-                "version": "2.0.0",
-                "display_name": "Burst Selection",
-                "entrypoints": {
-                    "services": "chisurf.plugins.burst.burst_selection.server.services:register_burst_selection_services",
+            _make_plugin_dir(
+                base,
+                "burst",
+                {
+                    "id": "burst_selection",
+                    "version": "2.0.0",
+                    "display_name": "Burst Selection",
+                    "entrypoints": {
+                        "services": "chisurf.plugins.burst.burst_selection.server.services:register_burst_selection_services",
+                    },
                 },
-            })
+            )
             reg = PluginRegistry()
             manifests = reg.discover(search_paths=[base])
             assert len(manifests) == 1
@@ -102,13 +106,17 @@ class TestPluginRegistryServices:
     def test_register_services_called(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
-            _make_plugin_dir(base, "burst", {
-                "id": "burst_selection",
-                "version": "1.0.0",
-                "entrypoints": {
-                    "services": "test_register_fn",
+            _make_plugin_dir(
+                base,
+                "burst",
+                {
+                    "id": "burst_selection",
+                    "version": "1.0.0",
+                    "entrypoints": {
+                        "services": "test_register_fn",
+                    },
                 },
-            })
+            )
             dispatcher = MagicMock()
             register_fn = MagicMock()
 
@@ -123,20 +131,28 @@ class TestPluginRegistryServices:
     def test_register_services_excludes_startup_entrypoints(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
-            _make_plugin_dir(base, "mmfdb", {
-                "id": "mmfdb_admin",
-                "version": "1.0.0",
-                "entrypoints": {
-                    "services": "mmfdb_register_fn",
+            _make_plugin_dir(
+                base,
+                "mmfdb",
+                {
+                    "id": "mmfdb_admin",
+                    "version": "1.0.0",
+                    "entrypoints": {
+                        "services": "mmfdb_register_fn",
+                    },
                 },
-            })
-            _make_plugin_dir(base, "other", {
-                "id": "other_plugin",
-                "version": "1.0.0",
-                "entrypoints": {
-                    "services": "other_register_fn",
+            )
+            _make_plugin_dir(
+                base,
+                "other",
+                {
+                    "id": "other_plugin",
+                    "version": "1.0.0",
+                    "entrypoints": {
+                        "services": "other_register_fn",
+                    },
                 },
-            })
+            )
             dispatcher = MagicMock()
 
             reg = PluginRegistry()
@@ -172,13 +188,17 @@ class TestPluginRegistryCLI:
     def test_register_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
-            _make_plugin_dir(base, "burst", {
-                "id": "burst_selection",
-                "version": "1.0.0",
-                "entrypoints": {
-                    "cli": "burst-selection=pkg:cli",
+            _make_plugin_dir(
+                base,
+                "burst",
+                {
+                    "id": "burst_selection",
+                    "version": "1.0.0",
+                    "entrypoints": {
+                        "cli": "burst-selection=pkg:cli",
+                    },
                 },
-            })
+            )
             group = MagicMock()
             cli_obj = MagicMock()
             cli_obj.name = "burst-selection"
@@ -268,14 +288,20 @@ class TestPluginRegistryStatefulness:
             version="1.0.0",
             statefulness=PluginStatefulness(enabled=False),
         )
-        assert resolve_plugin_statefulness(
-            manifest,
-            {"statefulness": {"mode": "enabled"}},
-        ) is True
-        assert resolve_plugin_statefulness(
-            manifest,
-            {"statefulness": {"mode": "disabled"}},
-        ) is False
+        assert (
+            resolve_plugin_statefulness(
+                manifest,
+                {"statefulness": {"mode": "enabled"}},
+            )
+            is True
+        )
+        assert (
+            resolve_plugin_statefulness(
+                manifest,
+                {"statefulness": {"mode": "disabled"}},
+            )
+            is False
+        )
 
     def test_resolve_plugin_statefulness_per_plugin_override(self):
         manifest = PluginManifest(
@@ -361,8 +387,9 @@ class TestPluginRegistryState:
         """DATA-01 guard: every built-in manifest.json must pass validate_manifest."""
         import json
         import pathlib
-        from chisurf.core.plugin.manifest import validate_manifest
+
         import chisurf.plugins
+        from chisurf.core.plugin.manifest import validate_manifest
 
         plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
         bad: list[str] = []
@@ -483,7 +510,7 @@ class TestLegacyMetadata:
             init_py.write_text(
                 'name = "Category:Legacy Plugin"\n'
                 'cli_entrypoint = "legacy=pkg:cli"\n'
-                'menu_hidden = True\n'
+                "menu_hidden = True\n"
             )
             meta = _read_legacy_metadata(plugin_dir)
             assert meta is not None

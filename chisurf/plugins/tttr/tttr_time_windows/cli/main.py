@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from ..api.contract import request_from_payload, result_to_payload, contract_descriptor
+from ..api.contract import contract_descriptor, result_to_payload
 from ..api.io import compute_and_save
 from ..api.models import TimeWindowResult
 

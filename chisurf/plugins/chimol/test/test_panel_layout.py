@@ -23,7 +23,11 @@ import pytest
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
 )
 
 
@@ -137,13 +141,12 @@ def test_the_info_panel_is_chrome_not_a_stacked_widget(window):
     win.button_info.setChecked(True)
     _settle(win.viewer._view_container, 900, 600, qapp)
 
-    assert not hasattr(win.viewer, "_info_overlay"), (
-        "the info panel is a stacked Qt widget again"
-    )
+    assert not hasattr(win.viewer, "_info_overlay"), "the info panel is a stacked Qt widget again"
     container = win.viewer._view_container
     renderer = win.viewer.renderer.widget()
     stacked = [
-        child for child in container.children()
+        child
+        for child in container.children()
         if isinstance(child, QtWidgets.QWidget) and child is not renderer
     ]
     assert not stacked, f"widgets stacked over the scene: {stacked}"
@@ -173,10 +176,8 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
     assert rect.x <= gui.MARGIN + 1, f"expected the left edge, got x={rect.x}"
 
     bottom_of_panel = rect.y + rect.h
-    top_of_prompt = min(gui._cmd_log_rect.y or gui.command_rect().y,
-                        gui.command_rect().y)
+    top_of_prompt = min(gui._cmd_log_rect.y or gui.command_rect().y, gui.command_rect().y)
     assert bottom_of_panel <= top_of_prompt, (
-        f"the panel reaches {bottom_of_panel} and the prompt starts at "
-        f"{top_of_prompt}"
+        f"the panel reaches {bottom_of_panel} and the prompt starts at {top_of_prompt}"
     )
     assert rect.y > gui.sequence_height(), "the panel is under the strip"

@@ -40,6 +40,8 @@ import numpy as np
 
 from chisurf.core.datastore import (
     column_names as _column_names,
+)
+from chisurf.core.datastore import (
     concat_stores,
     numeric_column,
     row_count,
@@ -47,7 +49,6 @@ from chisurf.core.datastore import (
     take_where,
     write_csv_table,
 )
-
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
     read_bur_file,
@@ -91,6 +92,7 @@ class FusionError(RuntimeError):
 
 
 # ── reading a burst folder ──────────────────────────────────────────────────
+
 
 def bur_files(analysis_folder) -> list[pathlib.Path]:
     """Return the ``.bur`` tables of an analysis folder, sorted by name.
@@ -166,6 +168,7 @@ def proximity_ratios(frame) -> np.ndarray | None:
 
 
 # ── the analysis ────────────────────────────────────────────────────────────
+
 
 def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAnalysis:
     """Decide which bursts of a folder fuse, without writing anything.
@@ -292,6 +295,7 @@ def _ratio_statistics(before, after) -> dict[str, Any]:
 
 
 # ── writing the fused folder ────────────────────────────────────────────────
+
 
 def default_output_folder(analysis: FusionAnalysis) -> pathlib.Path:
     """Sibling folder name a fused analysis lands in by default.
@@ -551,7 +555,7 @@ def write_fusion_container(
     )
 
     labels = np.asarray(measurement.labels, dtype=int)
-    rows = deinterleave_bursts(frame)
+    deinterleave_bursts(frame)
     mapping = store_from_arrays(
         {
             "source_row": np.arange(labels.size, dtype=np.int64),
@@ -602,9 +606,7 @@ def _write_source_companion(folder, measurement: MeasurementFusion, frame) -> No
     times = burst_times_s(frame)
     lag = np.zeros(labels.size)
     lag[1:] = np.diff(times) * 1e3
-    rows = np.column_stack(
-        [labels.astype(float), sizes[labels].astype(float), lag]
-    )
+    rows = np.column_stack([labels.astype(float), sizes[labels].astype(float), lag])
     write_companion(
         analysis_root(folder),
         SOURCE_COMPANION,

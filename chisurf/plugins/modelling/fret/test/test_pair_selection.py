@@ -1,8 +1,8 @@
 """Unit tests for Phase 4: OLGA pair selection."""
 
 import os
-import tempfile
 import pathlib
+import tempfile
 
 import numpy as np
 import pytest
@@ -16,18 +16,21 @@ from ..core.pair_selection import (
 
 def test_preprocess_drops_column_with_60pct_nan():
     """Verify columns with more than max_nan_fraction NaNs are discarded."""
-    effs = np.array([
-        [1.0, np.nan],
-        [1.0, np.nan],
-        [1.0, np.nan],
-        [1.0, np.nan],
-        [1.0, np.nan],
-        [1.0, np.nan],
-        [1.0, 0.5],
-        [1.0, 0.5],
-        [1.0, 0.5],
-        [1.0, 0.5],
-    ], dtype=np.float32)  # Col 1 has 6/10 NaNs (60%)
+    effs = np.array(
+        [
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, 0.5],
+            [1.0, 0.5],
+            [1.0, 0.5],
+            [1.0, 0.5],
+        ],
+        dtype=np.float32,
+    )  # Col 1 has 6/10 NaNs (60%)
     rmsds = np.zeros((10, 10), dtype=np.float32)
     effs_clean, _, valid_indices = preprocess_efficiency_matrix(effs, rmsds, max_nan_fraction=0.2)
     assert list(valid_indices) == [0]
@@ -36,16 +39,8 @@ def test_preprocess_drops_column_with_60pct_nan():
 
 def test_preprocess_fills_nan_from_nearest_rmsd():
     """Verify NaN cells are populated using efficiency values from the nearest frame (by RMSD)."""
-    effs = np.array([
-        [np.nan],
-        [0.5],
-        [0.8]
-    ], dtype=np.float32)
-    rmsds = np.array([
-        [0.0, 1.0, 5.0],
-        [1.0, 0.0, 4.0],
-        [5.0, 4.0, 0.0]
-    ], dtype=np.float32)
+    effs = np.array([[np.nan], [0.5], [0.8]], dtype=np.float32)
+    rmsds = np.array([[0.0, 1.0, 5.0], [1.0, 0.0, 4.0], [5.0, 4.0, 0.0]], dtype=np.float32)
     effs_clean, _, _ = preprocess_efficiency_matrix(effs, rmsds, max_nan_fraction=0.5)
     # Row 0 is closer to Row 1 (RMSD=1.0) than Row 2 (RMSD=5.0). Thus, it should take 0.5.
     assert abs(effs_clean[0, 0] - 0.5) < 1e-7
@@ -62,16 +57,15 @@ def test_preprocess_zero_nan_returns_all_columns():
 
 def test_greedy_selection_order_deterministic():
     """Verify greedy selection returns a reproducible selection order on a toy matrix."""
-    effs = np.array([
-        [0.1, 0.9],
-        [0.2, 0.8],
-        [0.9, 0.1],
-    ], dtype=np.float32)
-    rmsds = np.array([
-        [0.0, 5.0, 10.0],
-        [5.0, 0.0, 5.0],
-        [10.0, 5.0, 0.0]
-    ], dtype=np.float32)
+    effs = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.9, 0.1],
+        ],
+        dtype=np.float32,
+    )
+    rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
     selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=2)
     assert len(selected) == 2
     assert len(decay) == 2
@@ -79,16 +73,15 @@ def test_greedy_selection_order_deterministic():
 
 def test_precision_decay_length_equals_n_selected():
     """Verify length of precision decay output array matches the number of selected pairs."""
-    effs = np.array([
-        [0.1, 0.9],
-        [0.2, 0.8],
-        [0.9, 0.1],
-    ], dtype=np.float32)
-    rmsds = np.array([
-        [0.0, 5.0, 10.0],
-        [5.0, 0.0, 5.0],
-        [10.0, 5.0, 0.0]
-    ], dtype=np.float32)
+    effs = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.9, 0.1],
+        ],
+        dtype=np.float32,
+    )
+    rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
     selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=2)
     assert len(decay) == len(selected)
 
@@ -162,16 +155,28 @@ def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):
     effs, rmsds = _toy_matrices()
     monkeypatch.setattr(av, "select_backend", lambda *a, **k: None)
     monkeypatch.setattr(io, "read_fps_json", lambda p: ({}, {}, None, None))
-    monkeypatch.setattr(ps, "compute_rmsd_matrix_from_pdb_dir",
-                        lambda *a, **k: (rmsds, ["f0", "f1", "f2"]))
-    monkeypatch.setattr(ps, "compute_efficiency_matrix_from_evaluators",
-                        lambda *a, **k: (effs, ["P1", "P2", "P3"]))
+    monkeypatch.setattr(
+        ps, "compute_rmsd_matrix_from_pdb_dir", lambda *a, **k: (rmsds, ["f0", "f1", "f2"])
+    )
+    monkeypatch.setattr(
+        ps, "compute_efficiency_matrix_from_evaluators", lambda *a, **k: (effs, ["P1", "P2", "P3"])
+    )
 
     out = tmp_path / "report.txt"
-    res = CliRunner().invoke(main, [
-        "select-pairs", "--fps", "x.fps.json", "--pdb-dir", str(tmp_path),
-        "--output", str(out), "--max-pairs", "2",
-    ])
+    res = CliRunner().invoke(
+        main,
+        [
+            "select-pairs",
+            "--fps",
+            "x.fps.json",
+            "--pdb-dir",
+            str(tmp_path),
+            "--output",
+            str(out),
+            "--max-pairs",
+            "2",
+        ],
+    )
     assert res.exit_code == 0, res.output
     lines = out.read_text().splitlines()
     assert lines[0].startswith("#\tPair_added")
@@ -179,16 +184,22 @@ def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):
 
 
 def test_trajectory_pair_selection():
-    from chisurf.core.structure import trajectory_data as md
     import tempfile
-    
+
+    from chisurf.core.structure import trajectory_data as md
+
     # Create a simple molecule trajectory with 3 frames
-    xyz = np.array([
-        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        [[0.0, 0.0, 0.0], [1.1, 0.0, 0.0], [0.0, 1.1, 0.0]],
-        [[0.0, 0.0, 0.0], [1.2, 0.0, 0.0], [0.0, 1.2, 0.0]]
-    ]) * 0.1 # trajectories are in nanometres
-    
+    xyz = (
+        np.array(
+            [
+                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                [[0.0, 0.0, 0.0], [1.1, 0.0, 0.0], [0.0, 1.1, 0.0]],
+                [[0.0, 0.0, 0.0], [1.2, 0.0, 0.0], [0.0, 1.2, 0.0]],
+            ]
+        )
+        * 0.1
+    )  # trajectories are in nanometres
+
     # Create a basic topology
     from chisurf.core.structure.topology import Topology
 
@@ -198,29 +209,29 @@ def test_trajectory_pair_selection():
     t.add_atom("CA", md.element.carbon, r)
     t.add_atom("HA", md.element.hydrogen, r)
     t.add_atom("N", md.element.nitrogen, r)
-    
+
     # Save topology and trajectory
     with tempfile.NamedTemporaryFile(suffix=".pdb", delete=False) as f_top:
         top_path = f_top.name
     with tempfile.NamedTemporaryFile(suffix=".dcd", delete=False) as f_traj:
         traj_path = f_traj.name
-        
+
     try:
         traj = md.Trajectory(xyz, t)
         traj[0].save_pdb(top_path)
         traj.save_dcd(traj_path)
-        
+
         # Test compute_rmsd_matrix_from_trajectory
         from ..core.pair_selection import (
+            compute_efficiency_matrix_from_evaluators_trajectory,
             compute_rmsd_matrix_from_trajectory,
-            compute_efficiency_matrix_from_evaluators_trajectory
         )
-        
+
         rmsds, filenames = compute_rmsd_matrix_from_trajectory(top_path, traj_path, selection="all")
         assert rmsds.shape == (3, 3)
         assert len(filenames) == 3
         assert filenames[0] == "frame_0"
-        
+
         # Test compute_efficiency_matrix_from_evaluators_trajectory
         positions = {
             "pos1": {
@@ -231,7 +242,7 @@ def test_trajectory_pair_selection():
                 "linker_width": 1.0,
                 "radius1": 3.0,
                 "simulation_grid_resolution": 2.0,
-                "simulation_type": "AV1"
+                "simulation_type": "AV1",
             },
             "pos2": {
                 "atom_name": "N",
@@ -241,28 +252,31 @@ def test_trajectory_pair_selection():
                 "linker_width": 1.0,
                 "radius1": 3.0,
                 "simulation_grid_resolution": 2.0,
-                "simulation_type": "AV1"
-            }
+                "simulation_type": "AV1",
+            },
         }
         distances = {
             "pos1_pos2": {
                 "position1_name": "pos1",
                 "position2_name": "pos2",
-                "Forster_radius": 52.0
+                "Forster_radius": 52.0,
             }
         }
-        
+
         # Select backend auto or grid
         from ..core import av
+
         av.select_backend("auto")
-        
+
         # An accessible volume needs a structure to be accessible *around*.
         # Three atoms filter to an empty obstacle set, which is not a
         # meaningful AV -- and used to take the process down with it, because
         # LabelLib segfaults on an empty array rather than returning. Use a
         # real protein for this part.
-        real_pdb = (pathlib.Path(__file__).resolve().parents[5]
-                    / "test/data/atomic_coordinates/pdb_files/148l.pdb")
+        real_pdb = (
+            pathlib.Path(__file__).resolve().parents[5]
+            / "test/data/atomic_coordinates/pdb_files/148l.pdb"
+        )
         if not real_pdb.is_file():
             pytest.skip(f"reference structure not found: {real_pdb}")
         real_traj = md.load(str(real_pdb))
@@ -274,11 +288,10 @@ def test_trajectory_pair_selection():
         )
         assert effs.shape == (3, 1)
         assert pair_names == ["pos1_pos2"]
-        
+
     finally:
         os.unlink(top_path)
         os.unlink(traj_path)
-
 
 
 def test_the_chi_squared_tail_weight_is_right_for_odd_degrees_of_freedom():
@@ -303,8 +316,7 @@ def test_the_chi_squared_tail_weight_is_right_for_odd_degrees_of_freedom():
     for ndof in list(range(1, 40)) + [101, 201, 401]:
         got = np.asarray(_chisq_rt_cdf(chisq, ndof), dtype=float)
         expected = gammaincc(0.5 * ndof, 0.5 * chisq)
-        np.testing.assert_allclose(got, expected, rtol=1e-10, atol=1e-12,
-                                   err_msg=f"ndof={ndof}")
+        np.testing.assert_allclose(got, expected, rtol=1e-10, atol=1e-12, err_msg=f"ndof={ndof}")
 
     # The specific value the defect was found on: the broken expansion returned
     # 0.3903934 here, which is not a rounding error but very nearly half.

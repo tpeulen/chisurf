@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 ChiSurf Ribbon Integration - Utilities Module
 
 This module contains utility functions and convenience methods for the ribbon interface.
 """
 
-from qtpy.QtCore import QTimer
-from qtpy.QtGui import QFont
+from qtpy import QtWidgets
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QFont, QIcon
+from qtpy.QtWidgets import QAction
 
 import chisurf as cs
-from chisurf import logging
 from chisurf.gui import dialogs
 
 
@@ -22,7 +22,14 @@ class UtilityMethodsMixin:
             self.menu_actions_backup = {}
 
             # Backup actions from all menus
-            menu_names = ['menuFile', 'menuEdit', 'menuView', 'menuAnalysis', 'menuTools', 'menuHelp']
+            menu_names = [
+                "menuFile",
+                "menuEdit",
+                "menuView",
+                "menuAnalysis",
+                "menuTools",
+                "menuHelp",
+            ]
 
             for menu_name in menu_names:
                 if hasattr(self.main_window, menu_name):
@@ -46,10 +53,10 @@ class UtilityMethodsMixin:
         """Check for ChiSurf updates"""
         dialogs.information(
             self.main_window,
-            'Check Updates',
-            'Update check functionality would be implemented here.\n\n'
-            'This would check for new versions of ChiSurf\n'
-            'and available plugin updates.'
+            "Check Updates",
+            "Update check functionality would be implemented here.\n\n"
+            "This would check for new versions of ChiSurf\n"
+            "and available plugin updates.",
         )
 
     def _fix_ribbon_fonts(self):
@@ -87,7 +94,7 @@ class UtilityMethodsMixin:
                     self._apply_font_recursively(child, font)
         except Exception:
             # Skip widgets that don't support font setting
-                pass
+            pass
 
     def _add_ribbon_style_actions(self, panel):
         """Add ribbon style selection actions"""
@@ -101,8 +108,8 @@ class UtilityMethodsMixin:
             self.ribbon_bar.setRibbonStyle(style)
 
             # Save to settings
-            gui_settings = cs.core.settings.cs_settings.get('gui', {})
-            gui_settings['ribbon_style'] = style
+            gui_settings = cs.core.settings.cs_settings.get("gui", {})
+            gui_settings["ribbon_style"] = style
 
             self.logger.info(f"Ribbon style changed to {style}")
 
@@ -110,10 +117,10 @@ class UtilityMethodsMixin:
         """Switch application theme"""
         dialogs.information(
             self.main_window,
-            'Theme Switch',
-            f'Theme switching to {theme_name} would be implemented here.\n\n'
-            'This would change the application color scheme\n'
-            'and update all UI components accordingly.'
+            "Theme Switch",
+            f"Theme switching to {theme_name} would be implemented here.\n\n"
+            "This would change the application color scheme\n"
+            "and update all UI components accordingly.",
         )
 
     def switch_to_menu(self):
@@ -129,12 +136,12 @@ class UtilityMethodsMixin:
                 self.main_window._ribbon_integration = None
 
                 # Update the toggle action state if it exists
-                if hasattr(self.main_window, 'actionToggle_Ribbon'):
+                if hasattr(self.main_window, "actionToggle_Ribbon"):
                     self.main_window.actionToggle_Ribbon.setChecked(False)
 
                 # Update settings
-                gui_settings = cs.core.settings.cs_settings.get('gui', {})
-                gui_settings['use_ribbon_interface'] = False
+                gui_settings = cs.core.settings.cs_settings.get("gui", {})
+                gui_settings["use_ribbon_interface"] = False
 
                 self.logger.info("Switched back to traditional menu bar")
 
@@ -144,9 +151,7 @@ class UtilityMethodsMixin:
         except Exception as e:
             self.logger.error(f"Failed to switch to menu: {e}")
             dialogs.warning(
-                self.main_window,
-                "Error",
-                f"Failed to switch back to menu bar: {str(e)}"
+                self.main_window, "Error", f"Failed to switch back to menu bar: {str(e)}"
             )
 
     def _cleanup_ribbon_actions(self):
@@ -173,7 +178,7 @@ class UtilityMethodsMixin:
             for action in actions:
                 try:
                     # Try to disconnect the action safely
-                    if hasattr(action, 'disconnect'):
+                    if hasattr(action, "disconnect"):
                         action.disconnect()
                 except Exception:
                     # Ignore disconnect errors - this is expected due to the SARibbon bug
@@ -186,59 +191,80 @@ class UtilityMethodsMixin:
         """Show plugin manager dialog"""
         dialogs.information(
             self.main_window,
-            'Plugin Manager',
-            'Plugin manager functionality would be implemented here.\n\n'
-            'This would allow users to enable/disable plugins,\n'
-            'configure plugin settings, and install new plugins.'
+            "Plugin Manager",
+            "Plugin manager functionality would be implemented here.\n\n"
+            "This would allow users to enable/disable plugins,\n"
+            "configure plugin settings, and install new plugins.",
         )
 
     def _open_code_editor(self):
         """Open code editor"""
         try:
-            import chisurf as cs
             import pathlib
+
+            import chisurf as cs
+
             plugin_root = pathlib.Path(cs.plugins.__file__).absolute().parent
             code_editor_dir = plugin_root / "core" / "code_editor"
             from chisurf.gui.misc_helpers import run_plugin_from_dir
+
             run_plugin_from_dir(self.main_window, code_editor_dir)
         except Exception as e:
-            dialogs.warning(
-                self.main_window,
-                'Code Editor',
-                f'Failed to open code editor: {e}'
-            )
+            dialogs.warning(self.main_window, "Code Editor", f"Failed to open code editor: {e}")
 
     def _add_theme_actions(self, panel):
         """Add theme-related actions to a panel"""
         # Light theme
-        action_light = QAction('Light Theme', self.main_window)
-        action_light.setStatusTip('Switch to light theme')
-        action_light.triggered.connect(lambda: self._switch_theme('light'))
-        panel.addSmallButton(action_light.text(), icon=action_light.icon() if action_light.icon() else None, showText=True, slot=action_light.trigger, alignment=Qt.AlignLeft | Qt.AlignTop)
+        action_light = QAction("Light Theme", self.main_window)
+        action_light.setStatusTip("Switch to light theme")
+        action_light.triggered.connect(lambda: self._switch_theme("light"))
+        panel.addSmallButton(
+            action_light.text(),
+            icon=action_light.icon() if action_light.icon() else None,
+            showText=True,
+            slot=action_light.trigger,
+            alignment=Qt.AlignLeft | Qt.AlignTop,
+        )
 
         # Dark theme
-        action_dark = QAction('Dark Theme', self.main_window)
-        action_dark.setStatusTip('Switch to dark theme')
-        action_dark.triggered.connect(lambda: self._switch_theme('dark'))
-        panel.addSmallButton(action_dark.text(), icon=action_dark.icon() if action_dark.icon() else None, showText=True, slot=action_dark.trigger, alignment=Qt.AlignLeft | Qt.AlignTop)
+        action_dark = QAction("Dark Theme", self.main_window)
+        action_dark.setStatusTip("Switch to dark theme")
+        action_dark.triggered.connect(lambda: self._switch_theme("dark"))
+        panel.addSmallButton(
+            action_dark.text(),
+            icon=action_dark.icon() if action_dark.icon() else None,
+            showText=True,
+            slot=action_dark.trigger,
+            alignment=Qt.AlignLeft | Qt.AlignTop,
+        )
 
     def _add_standard_help_actions(self, category):
         """Add standard help actions to Help category"""
         # Documentation panel
-        panel = category.addPanel('Documentation', showPanelOptionButton=False)
+        panel = category.addPanel("Documentation", showPanelOptionButton=False)
 
         # About action
-        if hasattr(self.main_window, 'actionAbout'):
+        if hasattr(self.main_window, "actionAbout"):
             action = self.main_window.actionAbout
             # Add info icon
             try:
                 # Use generic icon since ribbon doesn't have built-in icons
-                action.setIcon(QIcon.fromTheme('help-about'))
+                action.setIcon(QIcon.fromTheme("help-about"))
             except Exception:
                 pass
-            panel.addLargeButton(action.text(), icon=action.icon() if action.icon() else None, slot=action.trigger, alignment=Qt.AlignLeft | Qt.AlignTop)
+            panel.addLargeButton(
+                action.text(),
+                icon=action.icon() if action.icon() else None,
+                slot=action.trigger,
+                alignment=Qt.AlignLeft | Qt.AlignTop,
+            )
 
         # Help action
-        if hasattr(self.main_window, 'actionHelp'):
+        if hasattr(self.main_window, "actionHelp"):
             action = self.main_window.actionHelp
-            panel.addLargeButton(action.text(), icon=action.icon() if action.icon() else None, slot=action.trigger, alignment=Qt.AlignLeft | Qt.AlignTop)
+            panel.addLargeButton(
+                action.text(),
+                icon=action.icon() if action.icon() else None,
+                slot=action.trigger,
+                alignment=Qt.AlignLeft | Qt.AlignTop,
+            )

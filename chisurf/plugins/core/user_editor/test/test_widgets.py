@@ -43,8 +43,12 @@ class _FakeClient:
 
 def _record(**over):
     base = {
-        "user_id": "bob", "user_uuid": "u-1", "display_name": "Bob",
-        "email": "bob@example.org", "role": "Postdoc", "is_admin": 0,
+        "user_id": "bob",
+        "user_uuid": "u-1",
+        "display_name": "Bob",
+        "email": "bob@example.org",
+        "role": "Postdoc",
+        "is_admin": 0,
         "allow_passwordless_login": 0,
     }
     base.update(over)
@@ -74,8 +78,7 @@ def test_validation_catches_what_the_backend_would_refuse(row, expect):
 
 
 def test_a_valid_account_has_no_problems():
-    row = UserRow(user_id="bob", display_name="Bob", email="b@x.io",
-                  website="https://x.io")
+    row = UserRow(user_id="bob", display_name="Bob", email="b@x.io", website="https://x.io")
     assert validate_user(row) == []
 
 

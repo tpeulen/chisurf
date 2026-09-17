@@ -89,8 +89,7 @@ def non_burst_masks(preparation: BurstPreparation) -> dict[str, np.ndarray]:
     """
     tttrs = preparation.summary.get("_tttrs") or {}
     masks = {
-        key: np.ones(np.asarray(tttr.macro_times).size, dtype=bool)
-        for key, tttr in tttrs.items()
+        key: np.ones(np.asarray(tttr.macro_times).size, dtype=bool) for key, tttr in tttrs.items()
     }
     first = np.asarray(preparation.first_photon, dtype=np.int64)
     last = np.asarray(preparation.last_photon, dtype=np.int64)
@@ -98,7 +97,7 @@ def non_burst_masks(preparation: BurstPreparation) -> dict[str, np.ndarray]:
         mask = masks.get(key)
         if mask is None:
             continue
-        mask[first[row]:last[row] + 1] = False
+        mask[first[row] : last[row] + 1] = False
     return masks
 
 
@@ -148,8 +147,7 @@ def estimate_responses(
     tttrs = preparation.summary.get("_tttrs")
     if not tttrs:
         raise ValueError(
-            "responses come from the photon streams; prepare the folder with "
-            "with_photons=True"
+            "responses come from the photon streams; prepare the folder with with_photons=True"
         )
     preparation.require_verified(channels)
 
@@ -217,7 +215,9 @@ def estimate_responses(
         # molecules below the burst threshold, which decays like a decay, and
         # calling them dark counts placed their mean delay at half the laser period.
         responses[name] = ChannelResponse(
-            irf=irf, dt=dt_ns, background_rate=rate_khz * 1e3,
+            irf=irf,
+            dt=dt_ns,
+            background_rate=rate_khz * 1e3,
             background_pattern=raw,
         )
     return responses
@@ -281,9 +281,7 @@ class MfdData:
 
         times = []
         for key, tttr in tttrs.items():
-            resolution = float(
-                getattr(tttr.header, "macro_time_resolution", 1.0) or 1.0
-            )
+            resolution = float(getattr(tttr.header, "macro_time_resolution", 1.0) or 1.0)
             macro = np.asarray(tttr.macro_times, dtype=np.float64) * resolution
             rows = np.flatnonzero(np.asarray(self.preparation.file_key) == key)
             for row in rows:
@@ -383,7 +381,10 @@ def load_mfd_data(
         nuisance=measure,
         binned=measure.binned(n_signal_bins=n_signal_bins, n_span_bins=n_span_bins),
         observed=observed_histogram(
-            preparation, axes, green=green, red=red,
+            preparation,
+            axes,
+            green=green,
+            red=red,
             min_green_photons=min_green_photons,
         ),
         responses=responses
@@ -466,9 +467,7 @@ class MfdModel:
         variance = np.zeros(len(species))
         for i, (has_acceptor, state) in enumerate(species):
             if has_acceptor:
-                efficiency = state_efficiency(
-                    state, self.optics, n_points=self.n_distance_samples
-                )
+                efficiency = state_efficiency(state, self.optics, n_points=self.n_distance_samples)
                 amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
                     state, self.optics, n_points=self.n_distance_samples
                 )
@@ -477,18 +476,14 @@ class MfdModel:
                 # No acceptor: no transfer and no direct excitation, so the only way
                 # into the acceptor channel is leakage. Applying δ here would make
                 # the donor-only population report an acceptor that is not there.
-                donor_only_optics = Optics(
-                    **{**self.optics.__dict__, "delta": 0.0}
-                )
+                donor_only_optics = Optics(**{**self.optics.__dict__, "delta": 0.0})
                 p_red[i] = float(red_probability(0.0, donor_only_optics))
                 amplitudes = np.array([1.0])
                 lifetimes = np.array([self.optics.tau_d0])
             mean[i], variance[i] = response.signal_moments(amplitudes, lifetimes)
         return weights, p_red, mean, variance
 
-    def components(
-        self, data: MfdData
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def components(self, data: MfdData) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Return the per-cell components the histogram model consumes.
 
         A static model has one component per species, the same in every nuisance
@@ -589,9 +584,7 @@ class MfdModel:
         """
         axes = axes or data.axes
         response = data.responses[parallel]
-        weights, p_perp, mean, variance = self.polarization_properties(
-            data, parallel=parallel
-        )
+        weights, p_perp, mean, variance = self.polarization_properties(data, parallel=parallel)
         n_cells = data.binned[0].size
 
         def tile(values):
@@ -772,9 +765,7 @@ class MfdKineticModel(MfdModel):
     n_steps: int | None = None
     n_occupation_nodes: int = 16
 
-    def components(
-        self, data: MfdData
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def components(self, data: MfdData) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Return the occupation-time grid as histogram components, per nuisance cell.
 
         Parameters
@@ -815,9 +806,7 @@ class MfdKineticModel(MfdModel):
         # models — see ``occupation.effective_window_scale``.
         arrivals = data.arrivals()
         if arrivals is not None:
-            durations = durations * effective_window_scale(
-                *arrivals, relaxation_rate(matrix)
-            )
+            durations = durations * effective_window_scale(*arrivals, relaxation_rate(matrix))
         n_cells = durations.size
 
         # One grid per distinct duration. The nuisance measure is binned, so there
@@ -926,8 +915,7 @@ def burstwise_log_probabilities(
     tttrs = preparation.summary.get("_tttrs")
     if not tttrs:
         raise ValueError(
-            "the burst-wise source needs the photons; prepare the folder with "
-            "with_photons=True"
+            "the burst-wise source needs the photons; prepare the folder with with_photons=True"
         )
     green_name, red_name = data.channels
     green_response = data.responses[green_name]
@@ -967,7 +955,8 @@ def burstwise_log_probabilities(
         edges = np.unique(edges)
         duration_bin = np.clip(np.digitize(duration, edges[1:-1]), 0, edges.size - 2)
         representative = [
-            float(np.median(duration[duration_bin == b])) if np.any(duration_bin == b)
+            float(np.median(duration[duration_bin == b]))
+            if np.any(duration_bin == b)
             else float(np.median(positive))
             for b in range(max(duration_bin.max() + 1, 1))
         ]
@@ -977,7 +966,8 @@ def burstwise_log_probabilities(
 
         grids = [
             occupation_time_distribution(
-                np.asarray(rate_matrix, dtype=float), window,
+                np.asarray(rate_matrix, dtype=float),
+                window,
                 n_steps=getattr(model, "n_steps", None),
             ).coarsen(getattr(model, "n_occupation_nodes", 16))
             for window in representative
@@ -994,26 +984,25 @@ def burstwise_log_probabilities(
             node_weights = np.asarray(model.species_properties(data)[0][1:])
             total = node_weights.sum()
             node_weights = (
-                node_weights / total if total > 0
+                node_weights / total
+                if total > 0
                 else np.full(fractions.shape[0], 1.0 / fractions.shape[0])
             )
         else:
             fractions, node_weights = grid.fractions, grid.weights
-        component_weights = np.concatenate(
-            [[donor_only], (1.0 - donor_only) * node_weights]
-        )
-        component_p_red = np.concatenate(
-            [[species_p_red[0]], fractions @ state_p_red]
-        )
+        component_weights = np.concatenate([[donor_only], (1.0 - donor_only) * node_weights])
+        component_p_red = np.concatenate([[species_p_red[0]], fractions @ state_p_red])
         # The patterns are donor-channel densities, so they mix over the donor
         # photons a state contributes, not over the time it occupies — the same
         # distinction the histogram source makes, through the same function. If
         # this source spelled it out separately the two would agree with each other
         # while sharing the error.
-        component_patterns = np.vstack([
-            donor_only_pattern[None, :],
-            donor_weights(fractions, state_p_red) @ state_patterns,
-        ])
+        component_patterns = np.vstack(
+            [
+                donor_only_pattern[None, :],
+                donor_weights(fractions, state_p_red) @ state_patterns,
+            ]
+        )
         per_bin.append((component_weights, component_p_red, component_patterns))
 
     # A flat background floor, so a photon in a channel the fluorescence never
@@ -1021,16 +1010,15 @@ def burstwise_log_probabilities(
     # annihilates a burst's entire likelihood.
     floor = 1.0 / green_response.n_channels
     background_weight = np.clip(
-        green_response.background_rate * preparation.spans[:, green_index]
+        green_response.background_rate
+        * preparation.spans[:, green_index]
         / np.maximum(preparation.counts[:, green_index], 1),
         0.0,
         1.0,
     )
 
     rows = np.arange(len(preparation))
-    usable = (
-        (preparation.counts[:, green_index] + preparation.counts[:, red_index]) > 0
-    )
+    usable = (preparation.counts[:, green_index] + preparation.counts[:, red_index]) > 0
     rows = rows[usable]
     if max_bursts is not None and rows.size > max_bursts:
         rows = np.sort(
@@ -1039,8 +1027,7 @@ def burstwise_log_probabilities(
 
     streams = list(preparation.streams)
     cache = {
-        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
-        for key, t in tttrs.items()
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times)) for key, t in tttrs.items()
     }
 
     out = np.full(rows.size, -np.inf)
@@ -1055,16 +1042,13 @@ def burstwise_log_probabilities(
         green_photons = micro[lo:hi][index == green_index]
 
         weights, component_p_red, component_patterns = per_bin[duration_bin[row]]
-        signal = int(
-            preparation.counts[row, green_index] + preparation.counts[row, red_index]
-        )
+        signal = int(preparation.counts[row, green_index] + preparation.counts[row, red_index])
         n_red = int(preparation.counts[row, red_index])
         counts = acceptor_count_distributions(
             signal,
             component_p_red,
             green_response.background_rate * preparation.spans[row, green_index],
-            data.responses[red_name].background_rate
-            * preparation.spans[row, red_index],
+            data.responses[red_name].background_rate * preparation.spans[row, red_index],
         )[:, min(n_red, signal)]
 
         share = float(background_weight[row])
@@ -1125,9 +1109,7 @@ def bootstrap_uncertainties(
             duration=measure.duration[draw],
             rows=measure.rows[draw],
         )
-        replica = dataclasses.replace(
-            data, nuisance=resampled, binned=resampled.binned()
-        )
+        replica = dataclasses.replace(data, nuisance=resampled, binned=resampled.binned())
         replicates.append(refit(replica))
 
     keys = replicates[0].keys() if replicates else []
@@ -1223,9 +1205,7 @@ def pooled_decay_score(
             window,
             n_steps=model.n_steps,
         ).coarsen(model.n_occupation_nodes)
-        patterns = np.vstack(
-            [donor_only_pattern[None, :], grid.fractions @ state_patterns]
-        )
+        patterns = np.vstack([donor_only_pattern[None, :], grid.fractions @ state_patterns])
         if patterns.shape[0] != weights.shape[1]:
             # The grid width varies with the burst duration; pad with the
             # equilibrium pattern rather than silently truncating the components.

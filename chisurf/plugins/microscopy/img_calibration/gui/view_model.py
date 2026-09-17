@@ -19,11 +19,19 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "calibration.view.json"
 
 def _blank() -> dict:
     return {
-        "irf": [], "bg_vv": 0.0, "bg_vh": 0.0, "shift_vv": 0.0, "shift_vh": 0.0,
+        "irf": [],
+        "bg_vv": 0.0,
+        "bg_vh": 0.0,
+        "shift_vv": 0.0,
+        "shift_vh": 0.0,
         # Convolution/fit window, the (separate) IRF window, and the region the
         # background is estimated from.
-        "conv_start": 0, "conv_stop": 0, "irf_start": 0, "irf_stop": 0,
-        "bg_start": 0, "bg_stop": 0,
+        "conv_start": 0,
+        "conv_stop": 0,
+        "irf_start": 0,
+        "irf_stop": 0,
+        "bg_start": 0,
+        "bg_stop": 0,
     }
 
 
@@ -292,21 +300,27 @@ class CalibrationViewModel:
                 bg_vv = float(cur.get("bg_vv", 0.0) or 0.0)
                 bg_vh = float(cur.get("bg_vh", 0.0) or 0.0)
                 prepared = prepare_irf_hist(
-                    hist["irf_vv_raw"], hist["irf_vh_raw"],
+                    hist["irf_vv_raw"],
+                    hist["irf_vh_raw"],
                     shift_vv=float(cur.get("shift_vv", 0.0) or 0.0),
                     shift_vh=float(cur.get("shift_vh", 0.0) or 0.0),
-                    background_vv=(bg_vv or None), background_vh=(bg_vh or None),
+                    background_vv=(bg_vv or None),
+                    background_vh=(bg_vh or None),
                 )
                 irf_vv = prepared["vv"] if prepared["vv"].any() else None
                 irf_vh = prepared["vh"] if prepared["vh"].any() else None
             except Exception:
                 logger.debug("IRF prepare failed", exc_info=True)
         return {
-            "data": data, "irf_vv": irf_vv, "irf_vh": irf_vh, "n": n,
+            "data": data,
+            "irf_vv": irf_vv,
+            "irf_vh": irf_vh,
+            "n": n,
             "conv": (int(cur.get("conv_start", 0)), int(cur.get("conv_stop", n))),
             "irf_range": (int(cur.get("irf_start", 0)), int(cur.get("irf_stop", n))),
             "bg_range": (int(cur.get("bg_start", 0)), int(cur.get("bg_stop", 0))),
-            "bg_vv": float(cur.get("bg_vv", 0.0)), "bg_vh": float(cur.get("bg_vh", 0.0)),
+            "bg_vv": float(cur.get("bg_vv", 0.0)),
+            "bg_vh": float(cur.get("bg_vh", 0.0)),
         }
 
     def info_html(self) -> str:
@@ -326,7 +340,8 @@ class CalibrationViewModel:
             try:
                 self.publish(dict(self.calibration))
                 n = sum(
-                    1 for v in self.calibration.values()
+                    1
+                    for v in self.calibration.values()
                     if v.get("irf") or v.get("bg_vv") or v.get("bg_vh")
                 )
                 self.status_text = f"Applied calibration ({n} detector(s) set)."

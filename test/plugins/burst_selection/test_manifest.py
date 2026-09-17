@@ -6,7 +6,14 @@ import pathlib
 
 from chisurf.core.plugin.manifest import load_manifest, validate_manifest
 
-_MANIFEST_PATH = pathlib.Path(__file__).resolve().parents[3] / "chisurf" / "plugins" / "burst" / "burst_selection" / "manifest.json"
+_MANIFEST_PATH = (
+    pathlib.Path(__file__).resolve().parents[3]
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "manifest.json"
+)
 
 
 class TestBurstSelectionManifest:
@@ -68,6 +75,7 @@ class TestBurstSelectionManifest:
 
     def test_manifest_validates(self):
         import json
+
         data = json.loads(_MANIFEST_PATH.read_text())
         errors = validate_manifest(data)
         assert errors == []

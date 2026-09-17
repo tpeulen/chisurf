@@ -8,8 +8,6 @@ IMP work to :mod:`...core.imp_engine`.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Union
-
 from ..core import imp_engine
 from .models import (
     DockRequest,
@@ -22,7 +20,7 @@ from .models import (
 from .project import load_docking_project
 
 
-def backend_info() -> Dict:
+def backend_info() -> dict:
     """Return availability of the IMP/IMP.bff backend."""
     return OperationResult(
         status="ok",
@@ -31,14 +29,14 @@ def backend_info() -> Dict:
     ).to_dict()
 
 
-def _as(req_cls, req: Union[dict, object]):
+def _as(req_cls, req: dict | object):
     """Coerce a dict into the given request dataclass (pass dataclasses through)."""
     if isinstance(req, dict):
         return req_cls(**req)
     return req
 
 
-def dock(req: Union[DockRequest, dict], stop_check=None) -> Dict:
+def dock(req: DockRequest | dict, stop_check=None) -> dict:
     """Run FRET-restrained rigid-body docking (minimisation or Monte-Carlo).
 
     ``stop_check`` is an optional zero-arg callable polled during minimisation;
@@ -69,16 +67,21 @@ def dock(req: Union[DockRequest, dict], stop_check=None) -> Dict:
         # random starts belong to repeated docking (estimate_errors).
         params.shuffle_max_translation = 0.0
         res = imp_engine.dock_minimize(
-            r.pdb_paths, r.fps_json, r.output_dir, params, stop_check=stop_check,
-            initial_poses=r.initial_poses)
+            r.pdb_paths,
+            r.fps_json,
+            r.output_dir,
+            params,
+            stop_check=stop_check,
+            initial_poses=r.initial_poses,
+        )
     else:
         res = imp_engine.dock(
-            r.pdb_paths, r.fps_json, r.output_dir, params,
-            initial_poses=r.initial_poses)
+            r.pdb_paths, r.fps_json, r.output_dir, params, initial_poses=r.initial_poses
+        )
     return OperationResult(status="ok", operation="dock", data=res.to_dict()).to_dict()
 
 
-def dock_project(project_path: str, overrides: Optional[dict] = None) -> Dict:
+def dock_project(project_path: str, overrides: dict | None = None) -> dict:
     """Load a docking project file and run its ``dock`` operation.
 
     Parameters
@@ -107,60 +110,86 @@ def dock_project(project_path: str, overrides: Optional[dict] = None) -> Dict:
     return dock(req)
 
 
-def refine(req: Union[RefineRequest, dict]) -> Dict:
+def refine(req: RefineRequest | dict) -> dict:
     """Locally refine a pose with conjugate gradients."""
     r = _as(RefineRequest, req)
     res = imp_engine.refine(
-        r.pdb_paths, r.fps_json, r.output_dir,
-        score_set=r.score_set, steps=r.steps, ev_weight=r.ev_weight,
+        r.pdb_paths,
+        r.fps_json,
+        r.output_dir,
+        score_set=r.score_set,
+        steps=r.steps,
+        ev_weight=r.ev_weight,
     )
     return OperationResult(status="ok", operation="refine", data=res.to_dict()).to_dict()
 
 
-def score(req: Union[ScoreRequest, dict]) -> Dict:
+def score(req: ScoreRequest | dict) -> dict:
     """Score a single structure against the FRET restraints."""
     r = _as(ScoreRequest, req)
     res = imp_engine.score(
-        r.pdb_paths, r.fps_json,
-        score_set=r.score_set, output_csv=r.output_csv,
+        r.pdb_paths,
+        r.fps_json,
+        score_set=r.score_set,
+        output_csv=r.output_csv,
         mean_position_restraint=r.mean_position_restraint,
         sigma_da=r.sigma_da,
     )
     return OperationResult(status="ok", operation="score", data=res.to_dict()).to_dict()
 
 
-def screen(req: Union[ScreenRequest, dict]) -> Dict:
+def screen(req: ScreenRequest | dict) -> dict:
     """Score and rank a structure library."""
     r = _as(ScreenRequest, req)
     ranked = imp_engine.screen(
-        r.pdb_inputs, r.fps_json, score_set=r.score_set, output_csv=r.output_csv,
+        r.pdb_inputs,
+        r.fps_json,
+        score_set=r.score_set,
+        output_csv=r.output_csv,
     )
     return OperationResult(
-        status="ok", operation="screen",
-        data={"ranked": [{"pdb": p, "score": s} for p, s in ranked],
-              "output_csv": r.output_csv},
+        status="ok",
+        operation="screen",
+        data={"ranked": [{"pdb": p, "score": s} for p, s in ranked], "output_csv": r.output_csv},
     ).to_dict()
 
 
-def estimate_errors(req: Union[ErrorRequest, dict], stop_check=None) -> Dict:
+def estimate_errors(req: ErrorRequest | dict, stop_check=None) -> dict:
     """Repeat docking from random starts and report the score spread."""
     r = _as(ErrorRequest, req)
     params = imp_engine.DockingParameters(
-        n_frames=r.n_frames, mc_steps=r.mc_steps, n_best=r.n_best,
-        fixed_body=r.fixed_body, sigma_da=r.sigma_da,
-        simulated_annealing=r.simulated_annealing, score_set=r.score_set,
-        refine_av_cycles=r.refine_av_cycles, ev_weight=r.ev_weight,
-        save_distributions=r.save_distributions, av_backend=r.av_backend,
+        n_frames=r.n_frames,
+        mc_steps=r.mc_steps,
+        n_best=r.n_best,
+        fixed_body=r.fixed_body,
+        sigma_da=r.sigma_da,
+        simulated_annealing=r.simulated_annealing,
+        score_set=r.score_set,
+        refine_av_cycles=r.refine_av_cycles,
+        ev_weight=r.ev_weight,
+        save_distributions=r.save_distributions,
+        av_backend=r.av_backend,
         save_trajectory=r.save_trajectory,
     )
     data = imp_engine.estimate_errors(
-        r.pdb_paths, r.fps_json, r.output_dir, n_trials=r.n_trials, params=params,
-        method=r.method, n_workers=r.n_workers, stop_check=stop_check,
+        r.pdb_paths,
+        r.fps_json,
+        r.output_dir,
+        n_trials=r.n_trials,
+        params=params,
+        method=r.method,
+        n_workers=r.n_workers,
+        stop_check=stop_check,
     )
     return OperationResult(status="ok", operation="estimate_errors", data=data).to_dict()
 
 
 __all__ = [
-    "backend_info", "dock", "dock_project", "refine", "score", "screen",
+    "backend_info",
+    "dock",
+    "dock_project",
+    "refine",
+    "score",
+    "screen",
     "estimate_errors",
 ]

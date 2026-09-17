@@ -5,7 +5,6 @@ import numpy as np
 import chisurf.core.curve
 import chisurf.logging
 
-
 #: Selectable noise models for the fit objective.  ``"default"`` keeps the
 #: historical behaviour (Gaussian/weighted-least-squares residuals divided by
 #: the data error column, i.e. Neyman chi-square for ``sqrt(counts)`` errors).
@@ -58,6 +57,7 @@ def default_noise_model(data=None, model_class=None) -> str:
     as well.
     """
     import chisurf.core.settings as _settings
+
     counting = False
 
     experiment = getattr(data, "experiment", None)
@@ -104,8 +104,8 @@ def objective_type(fit, model=None) -> str:
 
 
 def deviance_residuals(
-        data_y: np.ndarray,
-        model_y: np.ndarray,
+    data_y: np.ndarray,
+    model_y: np.ndarray,
 ) -> np.ndarray:
     r"""Signed Poisson deviance residuals for a maximum-likelihood fit.
 
@@ -174,16 +174,16 @@ def deviance_residuals(
 #: bff a hard dependency of it, so the numpy path below stays as the fallback.
 try:
     from IMP.bff import fit_weighted_residuals as _bff_weighted_residuals
-except Exception:   # pragma: no cover - depends on the build
+except Exception:  # pragma: no cover - depends on the build
     _bff_weighted_residuals = None
 
 
 def calculate_weighted_residuals(
-        data: chisurf.core.data.DataCurve,
-        model: chisurf.core.curve.Curve,
-        xmin: int,
-        xmax: int,
-        noise_model: str = "default",
+    data: chisurf.core.data.DataCurve,
+    model: chisurf.core.curve.Curve,
+    xmin: int,
+    xmax: int,
+    noise_model: str = "default",
 ) -> np.ndarray:
     """Calculate weighted residuals for a data curve and a model curve.
 
@@ -225,12 +225,14 @@ def calculate_weighted_residuals(
                 np.ascontiguousarray(data.y, dtype=np.float64),
                 np.ascontiguousarray(data.ey, dtype=np.float64),
                 np.ascontiguousarray(model.y, dtype=np.float64),
-                int(xmin), int(xmax),
-                normalize_noise_model(noise_model))
+                int(xmin),
+                int(xmax),
+                normalize_noise_model(noise_model),
+            )
         except Exception as e:
             chisurf.logging.warning(
-                f"calculate_weighted_residuals: C++ path failed ({e}); "
-                f"using numpy")
+                f"calculate_weighted_residuals: C++ path failed ({e}); using numpy"
+            )
 
     model_x, model_y = model[xmin:xmax]
     data_sliced = data[xmin:xmax]
@@ -238,16 +240,12 @@ def calculate_weighted_residuals(
     ml = min([len(model_y), len(data_y)])
     if normalize_noise_model(noise_model) == "poisson":
         return deviance_residuals(data_y[:ml], model_y[:ml])
-    wr = np.array(
-        (data_y[:ml] - model_y[:ml]) / data_y_error[:ml],
-        dtype=np.float64
-    )
+    wr = np.array((data_y[:ml] - model_y[:ml]) / data_y_error[:ml], dtype=np.float64)
     return wr
 
 
 def find_fit_idx(
-        fit: 'chisurf.core.fitting.fit.Fit',
-        fits: list['chisurf.core.fitting.fit.Fit'] = None
+    fit: chisurf.core.fitting.fit.Fit, fits: list[chisurf.core.fitting.fit.Fit] = None
 ) -> int | None:
     """Find the position of a fit in the global fit list.
 
@@ -286,8 +284,8 @@ def find_fit_idx(
 
 
 def find_fit_idx_of_parameter(
-        parameter: 'chisurf.core.fitting.parameter.FittingParameter',
-        fit_list: list['chisurf.core.fitting.fit.Fit'] = None
+    parameter: chisurf.core.fitting.parameter.FittingParameter,
+    fit_list: list[chisurf.core.fitting.fit.Fit] = None,
 ) -> list[int]:
     """Find indices of fits that contain a specific parameter.
 
@@ -350,8 +348,7 @@ def find_fit_idx_of_parameter(
 
 
 def find_fit_idx_of_model(
-        model: 'chisurf.core.models.Model',
-        fits: list['chisurf.core.fitting.fit.Fit'] = None
+    model: chisurf.core.models.Model, fits: list[chisurf.core.fitting.fit.Fit] = None
 ) -> int:
     """Returns index of the fit of a model in chisurf.fits array
 

@@ -3,31 +3,25 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import textwrap
-import typing
 
-import matplotlib.colors as mcolors
-import numpy as np
-from qtpy import QtCore, QtGui, QtWidgets, uic
+from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.data
-import chisurf.core.support.decorators
 import chisurf.core.fitting
 import chisurf.core.settings
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.core.math.optimization import OptimizationCancelled
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
-from chisurf.gui import dialogs
 
 
 class FitSubWindow(CustomMdiSubWindow):
-
     def update(self, *args):
         super().update(*args)
         self.plot_tab_widget.update(*args)
@@ -57,16 +51,16 @@ class FitSubWindow(CustomMdiSubWindow):
             pass
 
     def __init__(
-            self,
-            fit: cs.core.fitting.fit.FitGroup,
-            control_layout: QtWidgets.QLayout,
-            fit_widget: object = None,
-            *args,
-            **kwargs
+        self,
+        fit: cs.core.fitting.fit.FitGroup,
+        control_layout: QtWidgets.QLayout,
+        fit_widget: object = None,
+        *args,
+        **kwargs,
     ):
         # Initialize with fit name as title
-        title = getattr(fit, 'name', 'Fit Window')
-        super().__init__(title=title, *args,  **kwargs)
+        title = getattr(fit, "name", "Fit Window")
+        super().__init__(title=title, *args, **kwargs)
 
         self.fit = fit
         self.fit_widget = fit_widget
@@ -101,15 +95,17 @@ class FitSubWindow(CustomMdiSubWindow):
         self.flip_to_code_btn.clicked.connect(self.toggle_code_view)
         self.flip_to_code_btn.setAutoRaise(True)
         self.flip_to_code_btn.setCheckable(True)
-        self.flip_to_code_btn.setStyleSheet('background: transparent; color: palette(text); font-weight: bold;')
-        
+        self.flip_to_code_btn.setStyleSheet(
+            "background: transparent; color: palette(text); font-weight: bold;"
+        )
+
         # Add Code button directly to CustomTitleBar to save maximum vertical space
-        if hasattr(self, 'title_bar') and self.title_bar.layout():
+        if hasattr(self, "title_bar") and self.title_bar.layout():
             layout = self.title_bar.layout()
             # Insert before minimize, maximize, close
             idx = layout.indexOf(self.title_bar.minimize_btn)
             layout.insertWidget(idx, self.flip_to_code_btn)
-        
+
         self.front_layout.addWidget(self.plot_tab_widget)
         self.stack.addWidget(self.front_widget)
 
@@ -152,10 +148,11 @@ class FitSubWindow(CustomMdiSubWindow):
         self.back_toolbar.addWidget(self.func_combo, 1)
         self.back_toolbar.addStretch()
         self.back_toolbar.addWidget(self.save_code_btn)
-        
+
         self.back_layout.addLayout(self.back_toolbar)
 
         from chisurf.plugins.core.code_editor import CodeEditor
+
         self.code_editor = CodeEditor(self, language="python", can_load=False)
         # Wire the fit window's own toolbar nav buttons to the current editor
         self.code_editor._on_editor_created = self._on_code_editor_created
@@ -178,19 +175,20 @@ class FitSubWindow(CustomMdiSubWindow):
         # Lazy plot instantiation: create lightweight tab containers now, build plots on demand
         self._control_layout = control_layout
         from chisurf.gui.widgets.models.model_editor import model_plot_specs
+
         self._plot_specs = model_plot_specs(fit.model)
         self._plot_containers = []
-        self._plots_all = [None] * len(self._plot_specs)      # positional storage
-        self._created_plots = []                               # actual created plots (shared)
+        self._plots_all = [None] * len(self._plot_specs)  # positional storage
+        self._created_plots = []  # actual created plots (shared)
         # Create empty containers per tab
         for idx, (plot_class, kwargs) in enumerate(self._plot_specs):
             container = QtWidgets.QWidget()
             container.setLayout(QtWidgets.QVBoxLayout())
             container.layout().setContentsMargins(0, 0, 0, 0)
             container.layout().setSpacing(0)
-            tab_name = getattr(plot_class, 'name', None)
+            tab_name = getattr(plot_class, "name", None)
             if not isinstance(tab_name, str):
-                tab_name = getattr(plot_class, '__name__', str(plot_class))
+                tab_name = getattr(plot_class, "__name__", str(plot_class))
             container.setProperty("fit_plot_index", idx)
             container.setProperty("fit_plot_name", tab_name)
             self._plot_containers.append(container)
@@ -208,6 +206,7 @@ class FitSubWindow(CustomMdiSubWindow):
             self.ensure_plot_created(idx)
             self._restore_pending_project_plot_state()
             self.on_change_plot()
+
         self._defer(_ensure_initial_plot)
 
         self.plot_tab_widget.currentChanged.connect(self.on_change_plot)
@@ -215,11 +214,10 @@ class FitSubWindow(CustomMdiSubWindow):
         # Use RubberBandResize / RubberBandMove
         self.setOption(
             cs.gui.QtWidgets.QMdiSubWindow.RubberBandResize,
-            cs.core.settings.gui['RubberBandResize']
+            cs.core.settings.gui["RubberBandResize"],
         )
         self.setOption(
-            cs.gui.QtWidgets.QMdiSubWindow.RubberBandMove,
-            cs.core.settings.gui['RubberBandMove']
+            cs.gui.QtWidgets.QMdiSubWindow.RubberBandMove, cs.core.settings.gui["RubberBandMove"]
         )
 
         # Set windows icon
@@ -236,7 +234,7 @@ class FitSubWindow(CustomMdiSubWindow):
         self.setAttribute(cs.gui.QtCore.Qt.WA_DeleteOnClose, True)
 
         # Resize window
-        xs, ys = cs.core.settings.gui['fit_windows_size']
+        xs, ys = cs.core.settings.gui["fit_windows_size"]
         self.resize(xs, ys)
 
         self.plot_tab_widget.layoutChanged.connect(self.save_fit_dock_layout_state)
@@ -523,7 +521,9 @@ class FitSubWindow(CustomMdiSubWindow):
             plot = plot_class(self.fit, **kwargs)
         except Exception as e:
             # Provide a fallback widget to avoid breaking the tab UI
-            fallback = QtWidgets.QLabel(f"Failed to create plot: {getattr(plot_class, 'name', plot_class.__name__)}\n{e}")
+            fallback = QtWidgets.QLabel(
+                f"Failed to create plot: {getattr(plot_class, 'name', plot_class.__name__)}\n{e}"
+            )
             self._plot_containers[idx].layout().addWidget(fallback)
             self._plots_all[idx] = fallback
             return fallback
@@ -534,11 +534,16 @@ class FitSubWindow(CustomMdiSubWindow):
         # Track in storage lists
         self._plots_all[idx] = plot
         self._created_plots.append(plot)
-        
+
         # Connect LinePlot region changes to the Fit widget's range selector
         try:
-            region_changed = getattr(plot, 'regionChanged', None)
-            if region_changed is not None and hasattr(region_changed, 'connect') and self.fit_widget is not None:
+            region_changed = getattr(plot, "regionChanged", None)
+            if (
+                region_changed is not None
+                and hasattr(region_changed, "connect")
+                and self.fit_widget is not None
+            ):
+
                 def _sync_fit_widget_range(xmin: int, xmax: int, fw=self.fit_widget):
                     # Update only the UI of the fit widget to reflect the plot's region
                     # The underlying fit_range is already updated inside the plot via cs.run
@@ -548,10 +553,11 @@ class FitSubWindow(CustomMdiSubWindow):
                         fw.xmax = xmax
                     finally:
                         fw.blockSignals(False)
+
                 region_changed.connect(_sync_fit_widget_range)
         except Exception:
             pass
-        
+
         return plot
 
     def _defer(self, callback) -> None:
@@ -577,7 +583,7 @@ class FitSubWindow(CustomMdiSubWindow):
             self.current_plot_controller.hide()
         except Exception:
             pass
-        if plot is None or not hasattr(plot, 'plot_controller'):
+        if plot is None or not hasattr(plot, "plot_controller"):
             return
         self.current_plot_controller = plot.plot_controller
         self.current_plot_controller.show()
@@ -585,10 +591,10 @@ class FitSubWindow(CustomMdiSubWindow):
         # heavy update to the next event-loop turn to avoid deep re-entrancy
         # during fit creation.
         try:
-            update_all = getattr(plot, 'update_all', None)
+            update_all = getattr(plot, "update_all", None)
             if callable(update_all):
                 self._defer(update_all)
-            elif hasattr(plot, 'update'):
+            elif hasattr(plot, "update"):
                 self._defer(plot.update)
         except Exception:
             try:
@@ -603,13 +609,13 @@ class FitSubWindow(CustomMdiSubWindow):
         self.save_fit_dock_layout_state()
         # Honour a per-window opt-out flag (used by macros/app shutdown) as
         # well as the global confirm_close_fit setting.
-        if getattr(self, 'close_confirm', True) and cs.core.settings.gui['confirm_close_fit']:
+        if getattr(self, "close_confirm", True) and cs.core.settings.gui["confirm_close_fit"]:
             reply = dialogs.question(
                 self,
-                'Message',
-                "Are you sure to close this fit?:\n%s" % self.fit.name,
+                "Message",
+                f"Are you sure to close this fit?:\n{self.fit.name}",
                 buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                default=QtWidgets.QMessageBox.No
+                default=QtWidgets.QMessageBox.No,
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 try:
@@ -626,8 +632,6 @@ class FitSubWindow(CustomMdiSubWindow):
                 event.ignore()
         else:
             event.accept()
-
-
 
     def toggle_code_view(self):
         if self.stack.currentIndex() == 0:
@@ -648,6 +652,7 @@ class FitSubWindow(CustomMdiSubWindow):
         """
         try:
             from chisurf.gui.devtools.source_jump import resolve_model_view_spec_path
+
             target = resolve_model_view_spec_path(self.fit.model)
             return target[0] if target else None
         except Exception:
@@ -655,9 +660,9 @@ class FitSubWindow(CustomMdiSubWindow):
 
     def show_code_view(self):
         import inspect
-        import pathlib
 
         from chisurf.gui.devtools.source_jump import resolve_compute_model_class
+
         # Resolve the underlying *compute* model class so "Code" opens the pure
         # model source (e.g. core/models/tcspc/lifetime.py) and its co-located
         # view.json — not the GUI widget wrapper that multiply-inherits it
@@ -667,7 +672,7 @@ class FitSubWindow(CustomMdiSubWindow):
             source_file = inspect.getsourcefile(model_class)
             if not source_file:
                 return
-            
+
             models_dir = pathlib.Path(source_file).parent
             self.file_combo.blockSignals(True)
             self.file_combo.clear()
@@ -759,7 +764,8 @@ class FitSubWindow(CustomMdiSubWindow):
             editor.push_nav_history(file_path, 0)
 
     def on_code_file_selected(self, idx):
-        if idx < 0: return
+        if idx < 0:
+            return
         file_path = self.file_combo.itemData(idx)
         self.load_code_file(file_path)
 
@@ -784,40 +790,42 @@ class FitSubWindow(CustomMdiSubWindow):
         if editor is None:
             return
         code = editor.text()
-        if not hasattr(self, 'original_source_file'):
+        if not hasattr(self, "original_source_file"):
             return
 
         source_file = self.original_source_file
         import inspect
-        import os
 
         from chisurf.core.settings.path_utils import get_path
-        
+
         target_file = source_file
         if not os.access(source_file, os.W_OK):
             import datetime
             import pathlib
-            models_dir = get_path('settings') / 'models'
+
+            models_dir = get_path("settings") / "models"
             models_dir.mkdir(parents=True, exist_ok=True)
             basename = pathlib.Path(source_file).name
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             target_file = str(models_dir / f"{basename}_{timestamp}.py")
-            
+
         try:
             with open(target_file, "w") as f:
                 f.write(code)
             self.updateStatusBar(f"Saved to {target_file}")
-            
+
             # Check if this is the model file. Resolve against the *compute*
             # model class so an edit to the pure model source (what "Code" now
             # opens, PRD-38) is recognised even when the live instance is a
             # legacy widget that multiply-inherits it.
             from chisurf.gui.devtools.source_jump import resolve_compute_model_class
+
             instance_class = self.fit.model.__class__
             model_class = resolve_compute_model_class(self.fit.model) or instance_class
             if source_file == inspect.getsourcefile(model_class) or target_file != source_file:
                 # dynamically apply the code
                 import sys
+
                 module = sys.modules.get(model_class.__module__)
                 if module:
                     exec(code, module.__dict__)

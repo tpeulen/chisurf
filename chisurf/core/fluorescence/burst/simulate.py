@@ -93,8 +93,14 @@ from chisurf.core.fluorescence.fret.lines import (
     lifetime_averages,
 )
 
-__all__ = ["SmfretParameters", "SimulatedSmfret", "simulate_smfret",
-           "MFD_STREAMS", "REGIMES", "rate_matrix_for"]
+__all__ = [
+    "SmfretParameters",
+    "SimulatedSmfret",
+    "simulate_smfret",
+    "MFD_STREAMS",
+    "REGIMES",
+    "rate_matrix_for",
+]
 
 #: Routing channel per (laser, detector) pair — the four ALEX photon streams.
 STREAMS = {"i_dd": 0, "i_da": 1, "i_ad": 2, "i_aa": 3}
@@ -104,10 +110,15 @@ STREAMS = {"i_dd": 0, "i_da": 1, "i_ad": 2, "i_aa": 3}
 MFD_STREAMS = {"g_par": 0, "g_perp": 8, "r_par": 1, "r_perp": 9}
 
 #: Engine detection channel per (colour, polarization), before the remap above.
-_ENGINE_TO_MFD = np.array([
-    MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"],
-    MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"],
-], dtype=np.int8)
+_ENGINE_TO_MFD = np.array(
+    [
+        MFD_STREAMS["g_par"],
+        MFD_STREAMS["g_perp"],
+        MFD_STREAMS["r_par"],
+        MFD_STREAMS["r_perp"],
+    ],
+    dtype=np.int8,
+)
 
 #: Mode switches per emitted photon. Photoselection is redrawn for every emission,
 #: so the two modes must interconvert much faster than the molecule emits; the
@@ -284,9 +295,7 @@ class SmfretParameters:
         and :func:`dataclasses.replace` keeps working.
         """
         if self.polarized and self.alex:
-            raise ValueError(
-                "polarized mode is the single-laser MFD measurement; set alex=False"
-            )
+            raise ValueError("polarized mode is the single-laser MFD measurement; set alex=False")
         if self.rate_matrix is None:
             return
         matrix = np.asarray(self.rate_matrix, dtype=float)
@@ -321,19 +330,35 @@ class SmfretParameters:
         for efficiency in self.efficiencies:
             e = float(efficiency)
             i_dd = (1.0 - e) * b
-            out.append({
-                "name": f"FRET E={e:g}",
-                "efficiency": e,
-                "i_dd": i_dd,
-                "i_da": self.gamma * e * b + self.alpha * i_dd + self.delta * i_aa,
-                "i_aa": i_aa,
-            })
+            out.append(
+                {
+                    "name": f"FRET E={e:g}",
+                    "efficiency": e,
+                    "i_dd": i_dd,
+                    "i_da": self.gamma * e * b + self.alpha * i_dd + self.delta * i_aa,
+                    "i_aa": i_aa,
+                }
+            )
         if self.donor_only > 0:
-            out.append({"name": "donor-only", "efficiency": None,
-                        "i_dd": b, "i_da": self.alpha * b, "i_aa": 0.0})
+            out.append(
+                {
+                    "name": "donor-only",
+                    "efficiency": None,
+                    "i_dd": b,
+                    "i_da": self.alpha * b,
+                    "i_aa": 0.0,
+                }
+            )
         if self.acceptor_only > 0:
-            out.append({"name": "acceptor-only", "efficiency": None,
-                        "i_dd": 0.0, "i_da": self.delta * i_aa, "i_aa": i_aa})
+            out.append(
+                {
+                    "name": "acceptor-only",
+                    "efficiency": None,
+                    "i_dd": 0.0,
+                    "i_da": self.delta * i_aa,
+                    "i_aa": i_aa,
+                }
+            )
         return out
 
     def base_population_sizes(self) -> list[float]:
@@ -414,12 +439,16 @@ class SmfretParameters:
         """
         decays = []
         for efficiency in self.efficiencies:
-            distance = float(distance_for_efficiency(
-                float(efficiency), donor=self.tau_d0, r0=self.r0, sigma=self.linker_sigma
-            ))
-            decays.append(fret_lifetime_spectrum(
-                distance, donor=self.tau_d0, r0=self.r0, sigma=self.linker_sigma
-            ))
+            distance = float(
+                distance_for_efficiency(
+                    float(efficiency), donor=self.tau_d0, r0=self.r0, sigma=self.linker_sigma
+                )
+            )
+            decays.append(
+                fret_lifetime_spectrum(
+                    distance, donor=self.tau_d0, r0=self.r0, sigma=self.linker_sigma
+                )
+            )
         if self.donor_only > 0:
             decays.append((np.array([1.0]), np.array([float(self.tau_d0)])))
         if self.acceptor_only > 0:
@@ -482,11 +511,11 @@ class SmfretParameters:
         mixed = 1.0 / (1.0 / t + 1.0 / rho)
         r0 = float(self.r0_fundamental)
 
-        vv = (np.concatenate([a, a * (2.0 - 3.0 * self.l1) * r0]),
-              np.concatenate([t, mixed]))
-        vh = (np.concatenate([a, -a * (1.0 - 3.0 * self.l2) * r0])
-              / max(float(self.g_factor), 1e-12),
-              np.concatenate([t, mixed]))
+        vv = (np.concatenate([a, a * (2.0 - 3.0 * self.l1) * r0]), np.concatenate([t, mixed]))
+        vh = (
+            np.concatenate([a, -a * (1.0 - 3.0 * self.l2) * r0]) / max(float(self.g_factor), 1e-12),
+            np.concatenate([t, mixed]),
+        )
         return vv, vh
 
     def irf_pattern(self) -> list[float] | None:
@@ -525,7 +554,7 @@ class SmfretParameters:
         full = np.zeros((n_total, n_total))
         n = matrix.shape[0]
         if not self.polarized:
-            full[:n, :n] = matrix * 1e-3                 # Hz -> 1/ms
+            full[:n, :n] = matrix * 1e-3  # Hz -> 1/ms
         else:
             # Polarization doubled the species list, so a conformational rate
             # connects each emission mode to the *same* mode of the target state:
@@ -533,10 +562,8 @@ class SmfretParameters:
             for source in range(n):
                 for target in range(n):
                     for mode in range(2):
-                        full[2 * target + mode, 2 * source + mode] = (
-                            matrix[target, source] * 1e-3
-                        )
-        return [float(v) for v in full.T.ravel()]        # K[target, source] -> source -> target
+                        full[2 * target + mode, 2 * source + mode] = matrix[target, source] * 1e-3
+        return [float(v) for v in full.T.ravel()]  # K[target, source] -> source -> target
 
     def active_margin(self) -> float:
         """Return the open-volume margin (µm), sized for the *slowest* exchange rate.
@@ -554,7 +581,7 @@ class SmfretParameters:
         np.fill_diagonal(matrix, 0.0)
         slowest = float(np.min(matrix.sum(axis=0)[matrix.sum(axis=0) > 0.0], initial=np.inf))
         if not np.isfinite(slowest) or slowest <= 0.0:
-            return 0.0                                   # nothing exchanges: no requirement
+            return 0.0  # nothing exchanges: no requirement
         needed = float(np.sqrt(2.0 * float(self.diffusion) / (slowest * 1e-3)))
         return 0.0 if needed > float(self.box) else max(1.0, needed)
 
@@ -575,8 +602,7 @@ class SmfretParameters:
             return block
 
         species = []
-        for entry, (amplitudes, lifetimes) in zip(self.stream_brightness(),
-                                                  self.donor_decays()):
+        for entry, (amplitudes, lifetimes) in zip(self.stream_brightness(), self.donor_decays()):
             if self.polarized:
                 # Polarization is a *state*, not a parameter: each emission mode
                 # carries its own polarized spectrum and emits only into its own
@@ -585,16 +611,20 @@ class SmfretParameters:
                 # routes parallel/perpendicular into channels 0/1 *instead of* by
                 # colour. See okf/references/simengine-species-encoding.md.
                 vv, vh = self.polarized_spectra(amplitudes, lifetimes)
-                species.append({
-                    "D": float(self.diffusion),
-                    "q": [entry["i_dd"], 0.0, entry["i_da"], 0.0],
-                    "decay": decay_of(*vv),
-                })
-                species.append({
-                    "D": float(self.diffusion),
-                    "q": [0.0, entry["i_dd"], 0.0, entry["i_da"]],
-                    "decay": decay_of(*vh),
-                })
+                species.append(
+                    {
+                        "D": float(self.diffusion),
+                        "q": [entry["i_dd"], 0.0, entry["i_da"], 0.0],
+                        "decay": decay_of(*vv),
+                    }
+                )
+                species.append(
+                    {
+                        "D": float(self.diffusion),
+                        "q": [0.0, entry["i_dd"], 0.0, entry["i_da"]],
+                        "decay": decay_of(*vh),
+                    }
+                )
                 continue
             # q is the single-laser brightness; q_alex adds one row per excitation
             # grid and must match their number exactly, so it is only for ALEX.
@@ -604,14 +634,18 @@ class SmfretParameters:
                 "decay": decay_of(amplitudes, lifetimes),
             }
             if self.alex:
-                entry_species["q_alex"] = [
-                    [entry["i_dd"], entry["i_da"]], [0.0, entry["i_aa"]]
-                ]
+                entry_species["q_alex"] = [[entry["i_dd"], entry["i_da"]], [0.0, entry["i_aa"]]]
             species.append(entry_species)
         n_species = len(species)
-        focus = {"type": "gaussian3d", "w0": float(self.w0), "z0": float(self.z0),
-                 "extent_xy": float(self.box), "extent_z": 2.0 * float(self.box),
-                 "spacing": 0.1, "amplitude": 1.0}
+        focus = {
+            "type": "gaussian3d",
+            "w0": float(self.w0),
+            "z0": float(self.z0),
+            "extent_xy": float(self.box),
+            "extent_z": 2.0 * float(self.box),
+            "spacing": 0.1,
+            "amplitude": 1.0,
+        }
         n_channels = 4 if self.polarized else 2
         settings = {
             "dt": float(self.dt),
@@ -686,11 +720,17 @@ class SimulatedSmfret:
 
     def photon_counts(self) -> dict:
         """Total photons per stream, keyed ``i_dd``/``i_da``/``i_ad``/``i_aa``."""
-        return {name: int(np.count_nonzero(self.stream == index))
-                for name, index in STREAMS.items()}
+        return {
+            name: int(np.count_nonzero(self.stream == index)) for name, index in STREAMS.items()
+        }
 
-    def burst_table(self, *, algorithm: str = "sliding_window",
-                    parameters: dict | None = None, min_photons: int = 40) -> dict:
+    def burst_table(
+        self,
+        *,
+        algorithm: str = "sliding_window",
+        parameters: dict | None = None,
+        min_photons: int = 40,
+    ) -> dict:
         """Search bursts and reduce each to the quantities a calibration needs.
 
         Parameters
@@ -716,17 +756,27 @@ class SimulatedSmfret:
 
         search_parameters = {"L": 20, "m": 10, "T": 0.0005}
         search_parameters.update(parameters or {})
-        bounds = np.atleast_2d(
-            tttrlib_search.search(self.tttr, algorithm, search_parameters)
-        )
+        bounds = np.atleast_2d(tttrlib_search.search(self.tttr, algorithm, search_parameters))
         macro = np.asarray(self.tttr.macro_times, dtype=float)
         micro = np.asarray(self.tttr.micro_times, dtype=float)
         macro_resolution = float(self.tttr.header.macro_time_resolution) * 1e3  # ms
-        micro_resolution = float(self.parameters.microtime_resolution)          # ns
+        micro_resolution = float(self.parameters.microtime_resolution)  # ns
 
-        rows: dict[str, list] = {k: [] for k in
-                                 ("i_dd", "i_da", "i_ad", "i_aa", "tau_f", "n_photons",
-                                  "duration", "start", "stop", "species")}
+        rows: dict[str, list] = {
+            k: []
+            for k in (
+                "i_dd",
+                "i_da",
+                "i_ad",
+                "i_aa",
+                "tau_f",
+                "n_photons",
+                "duration",
+                "start",
+                "stop",
+                "species",
+            )
+        }
         for start, stop in bounds:
             start, stop = int(start), int(stop)
             if stop < start:
@@ -744,7 +794,8 @@ class SimulatedSmfret:
             # The mean arrival time of an IRF-free decay is its fluorescence-averaged
             # lifetime, which is exactly the FRET line's x-axis.
             rows["tau_f"].append(
-                float(np.mean(micro[sl][donor]) * micro_resolution) if np.any(donor)
+                float(np.mean(micro[sl][donor]) * micro_resolution)
+                if np.any(donor)
                 else float("nan")
             )
             rows["n_photons"].append(n)
@@ -761,8 +812,7 @@ class SimulatedSmfret:
         return replace(self.parameters, **changes)
 
     # ── burst definition ──
-    def true_bursts(self, *, min_photons: int = 20,
-                    gap_ms: float = 0.5) -> np.ndarray:
+    def true_bursts(self, *, min_photons: int = 20, gap_ms: float = 0.5) -> np.ndarray:
         """Return ``(first, last)`` photon indices of each single-molecule transit.
 
         The burst search a measurement cannot have: photons are grouped by the
@@ -795,7 +845,7 @@ class SimulatedSmfret:
                 "emitting_molecule()"
             )
         macro = np.asarray(self.tttr.macro_times, dtype=float)
-        macro = macro * float(self.tttr.header.macro_time_resolution) * 1e3   # ms
+        macro = macro * float(self.tttr.header.macro_time_resolution) * 1e3  # ms
         signal = np.flatnonzero(np.asarray(self.species) >= 0)
 
         spans = []
@@ -818,9 +868,13 @@ class SimulatedSmfret:
                 last_stop = stop
         return np.asarray(kept, dtype=np.int64).reshape(-1, 2)
 
-    def searched_bursts(self, *, algorithm: str = "sliding_window",
-                        parameters: dict | None = None,
-                        min_photons: int = 20) -> np.ndarray:
+    def searched_bursts(
+        self,
+        *,
+        algorithm: str = "sliding_window",
+        parameters: dict | None = None,
+        min_photons: int = 20,
+    ) -> np.ndarray:
         """Return ``(first, last)`` photon indices from a real burst search.
 
         The route a measurement actually takes, for comparison against
@@ -863,10 +917,11 @@ class SimulatedSmfret:
                 "red": {"chs": [STREAMS["i_da"]], "micro_time_ranges": []},
             }
         return {
-            "green": {"chs": [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]],
-                      "micro_time_ranges": []},
-            "red": {"chs": [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]],
-                    "micro_time_ranges": []},
+            "green": {
+                "chs": [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]],
+                "micro_time_ranges": [],
+            },
+            "red": {"chs": [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]], "micro_time_ranges": []},
             "green_par": {"chs": [MFD_STREAMS["g_par"]], "micro_time_ranges": []},
             "green_perp": {"chs": [MFD_STREAMS["g_perp"]], "micro_time_ranges": []},
         }
@@ -912,15 +967,21 @@ class SimulatedSmfret:
         per_channel = float(params.background) * 1e3
         return {
             name: ChannelResponse(
-                irf=irf.copy(), dt=dt,
+                irf=irf.copy(),
+                dt=dt,
                 background_rate=per_channel * len(definition["chs"]),
             )
             for name, definition in self.detectors().items()
         }
 
-    def write_folder(self, directory: pathlib.Path | str, *, stem: str = "sim",
-                     bursts: str | np.ndarray = "truth",
-                     **burst_kwargs) -> pathlib.Path:
+    def write_folder(
+        self,
+        directory: pathlib.Path | str,
+        *,
+        stem: str = "sim",
+        bursts: str | np.ndarray = "truth",
+        **burst_kwargs,
+    ) -> pathlib.Path:
         """Write a real burst-analysis folder, readable by the ordinary path.
 
         Produces the photon file, the ``bi4_bur`` tables and the analysis manifest,
@@ -958,16 +1019,17 @@ class SimulatedSmfret:
             raise RuntimeError(f"the {bursts!r} burst definition found no bursts")
 
         return write_burst_folder(
-            self.tttr, start_stop, self.detectors(), directory, stem=stem,
+            self.tttr,
+            start_stop,
+            self.detectors(),
+            directory,
+            stem=stem,
             windows={"prompt": (0, int(self.parameters.n_microtime_channels))},
-            settings={
-                "burst_definition": bursts if isinstance(bursts, str) else "explicit"
-            },
+            settings={"burst_definition": bursts if isinstance(bursts, str) else "explicit"},
         )
 
 
-def simulate_smfret(parameters: SmfretParameters | None = None,
-                    **overrides) -> SimulatedSmfret:
+def simulate_smfret(parameters: SmfretParameters | None = None, **overrides) -> SimulatedSmfret:
     """Simulate an ALEX smFRET measurement with declared parameters.
 
     Parameters
@@ -1029,8 +1091,10 @@ def simulate_smfret(parameters: SmfretParameters | None = None,
         stream = channel.astype(np.int8)
 
     tttr = engine.to_tttr(dt=params.dt, n_channels=2, laser_period=params.laser_period)
-    if not (np.array_equal(np.asarray(tttr.routing_channels, dtype=int), channel)
-            and np.array_equal(np.asarray(tttr.micro_times, dtype=int), micro)):
+    if not (
+        np.array_equal(np.asarray(tttr.routing_channels, dtype=int), channel)
+        and np.array_equal(np.asarray(tttr.micro_times, dtype=int), micro)
+    ):
         raise RuntimeError(
             "tttrlib reordered the photons on export; the per-photon laser can no "
             "longer be matched to the exported stream"
@@ -1064,11 +1128,16 @@ def simulate_smfret(parameters: SmfretParameters | None = None,
         species = np.where(species < 0, -1, species // 2)
     streams = dict(MFD_STREAMS) if params.polarized else dict(STREAMS)
     return SimulatedSmfret(
-        tttr=out, parameters=params, stream=stream, species=species,
+        tttr=out,
+        parameters=params,
+        stream=stream,
+        species=species,
         molecule=np.asarray(engine.emitting_molecule(), dtype=np.int64),
-        meta={"n_photons": int(stream.size),
-              "expected_lifetimes": params.expected_lifetimes(),
-              "streams": streams,
-              "rate_matrix": params.rate_matrix,
-              "active_margin": params.active_margin()},
+        meta={
+            "n_photons": int(stream.size),
+            "expected_lifetimes": params.expected_lifetimes(),
+            "streams": streams,
+            "rate_matrix": params.rate_matrix,
+            "active_margin": params.active_margin(),
+        },
     )

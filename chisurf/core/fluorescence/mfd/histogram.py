@@ -102,7 +102,8 @@ class HistogramAxes:
         return cls(
             ratio_edges=np.linspace(0.0, 1.0, int(n_ratio) + 1),
             micro_time_edges=np.linspace(
-                float(micro_time_range[0]), float(micro_time_range[1]),
+                float(micro_time_range[0]),
+                float(micro_time_range[1]),
                 int(n_micro_time) + 1,
             ),
         )
@@ -263,9 +264,7 @@ def _binomial_pmf(n: int, p: float) -> np.ndarray:
         out[-1] = 1.0
         return out
     k = np.arange(n + 1, dtype=float)
-    log_pmf = (
-        _log_binomial_coefficients(n) + k * np.log(p) + (n - k) * np.log1p(-p)
-    )
+    log_pmf = _log_binomial_coefficients(n) + k * np.log(p) + (n - k) * np.log1p(-p)
     return np.exp(log_pmf)
 
 
@@ -325,9 +324,7 @@ def acceptor_count_distributions(
     n_max_background = min(s, green_pmf.size + red_pmf.size - 2)
 
     # One binomial table per distinct background total, vectorised over p.
-    binomials = [
-        _binomial_pmf_grid(s - m, probabilities) for m in range(n_max_background + 1)
-    ]
+    binomials = [_binomial_pmf_grid(s - m, probabilities) for m in range(n_max_background + 1)]
 
     for b_g, w_g in enumerate(green_pmf):
         if w_g <= 0.0 or b_g > s:
@@ -376,14 +373,10 @@ def acceptor_count_distribution(
     s = int(signal)
     if s < 0:
         raise ValueError("the signal must not be negative")
-    return acceptor_count_distributions(
-        signal, [p_red], background_green, background_red
-    )[0]
+    return acceptor_count_distributions(signal, [p_red], background_green, background_red)[0]
 
 
-def _gaussian_bin_weights(
-    mean: np.ndarray, sigma: np.ndarray, edges: np.ndarray
-) -> np.ndarray:
+def _gaussian_bin_weights(mean: np.ndarray, sigma: np.ndarray, edges: np.ndarray) -> np.ndarray:
     """Spread unit weight over bins according to a Gaussian, via its CDF.
 
     Parameters
@@ -478,9 +471,7 @@ def model_histogram(
             continue
 
         ratio = n_red / float(s)
-        ratio_bin = np.clip(
-            np.digitize(ratio, axes.ratio_edges) - 1, 0, n_ratio - 1
-        )
+        ratio_bin = np.clip(np.digitize(ratio, axes.ratio_edges) - 1, 0, n_ratio - 1)
 
         # The background's share of the green channel. Known only in expectation
         # here — the nested sum below knows the actual split, but carrying it
@@ -499,14 +490,10 @@ def model_histogram(
         if active.size == 0:
             continue
         shares = component_weights[cell, active]
-        counts = acceptor_count_distributions(
-            s, p_red[cell, active], b_green, b_red
-        )
+        counts = acceptor_count_distributions(s, p_red[cell, active], b_green, b_red)
         counts = counts * (weights[cell] * shares)[:, None]
 
-        mixture_weights = np.stack(
-            [1.0 - background_fraction, background_fraction], axis=-1
-        )
+        mixture_weights = np.stack([1.0 - background_fraction, background_fraction], axis=-1)
         for index, component in enumerate(active):
             mean, variance = mixture_moments(
                 mixture_weights,
@@ -520,9 +507,7 @@ def model_histogram(
                 ),
             )
             sigma = np.sqrt(variance / np.maximum(n_green, 1))
-            rows = _gaussian_bin_weights(
-                mean[keep], sigma[keep], axes.micro_time_edges
-            )
+            rows = _gaussian_bin_weights(mean[keep], sigma[keep], axes.micro_time_edges)
             np.add.at(
                 out,
                 ratio_bin[keep],
@@ -558,9 +543,7 @@ def rebin_pattern(pattern: np.ndarray, n_bins: int) -> np.ndarray:
         return values
     factor = n_channels // int(n_bins)
     usable = factor * int(n_bins)
-    return values[..., :usable].reshape(values.shape[:-1] + (int(n_bins), factor)).sum(
-        axis=-1
-    )
+    return values[..., :usable].reshape(values.shape[:-1] + (int(n_bins), factor)).sum(axis=-1)
 
 
 def observed_pooled_decays(
@@ -623,9 +606,7 @@ def observed_pooled_decays(
     n_ratio = axes.shape[0]
     n_channels = None
     for tttr in tttrs.values():
-        n_channels = int(
-            getattr(tttr.header, "number_of_micro_time_channels", 0) or 0
-        )
+        n_channels = int(getattr(tttr.header, "number_of_micro_time_channels", 0) or 0)
         break
     n_channels = n_channels or (int(n_decay_channels))
     out = np.zeros((n_ratio, int(n_decay_channels)))
@@ -640,8 +621,7 @@ def observed_pooled_decays(
 
     streams = list(preparation.streams)
     cache = {
-        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
-        for key, t in tttrs.items()
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times)) for key, t in tttrs.items()
     }
     factor = max(1, n_channels // int(n_decay_channels))
     for row in np.nonzero(usable)[0]:
@@ -654,9 +634,9 @@ def observed_pooled_decays(
         index = stream_index_arrays(channels[lo:hi], micro[lo:hi], streams)
         photons = micro[lo:hi][index == green_index]
         coarse = np.clip(photons // factor, 0, int(n_decay_channels) - 1)
-        out[ratio_bin[row]] += np.bincount(
-            coarse, minlength=int(n_decay_channels)
-        )[: int(n_decay_channels)]
+        out[ratio_bin[row]] += np.bincount(coarse, minlength=int(n_decay_channels))[
+            : int(n_decay_channels)
+        ]
     return out
 
 
@@ -723,16 +703,15 @@ def model_pooled_decays(
         keep = n_green >= int(min_green_photons)
         if not keep.any():
             continue
-        ratio_bin = np.clip(
-            np.digitize(n_red / float(s), axes.ratio_edges) - 1, 0, n_ratio - 1
-        )
+        ratio_bin = np.clip(np.digitize(n_red / float(s), axes.ratio_edges) - 1, 0, n_ratio - 1)
 
         active = np.nonzero(component_weights[cell] > 0.0)[0]
         if active.size == 0:
             continue
-        counts = acceptor_count_distributions(
-            s, p_red[cell, active], b_green, b_red
-        ) * (weights[cell] * component_weights[cell, active])[:, None]
+        counts = (
+            acceptor_count_distributions(s, p_red[cell, active], b_green, b_red)
+            * (weights[cell] * component_weights[cell, active])[:, None]
+        )
 
         # How many donor photons each outcome contributes, and how many of those
         # are background rather than fluorescence.

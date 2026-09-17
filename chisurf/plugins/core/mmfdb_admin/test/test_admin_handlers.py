@@ -1,36 +1,36 @@
 """Tests for mmfdb-admin RPC handlers defined in PRD-02b."""
+
 from __future__ import annotations
 
 import pytest
-
-from mmfdb.models import DEFAULT_FLUOROPHORE_SPECTRA
-
 from mmfdb.admin.backend.services import (
     create_structured_sample_handler,
     delete_entity_handler,
     delete_fret_pair_handler,
-    list_processed_data_handler,
-    list_processing_handler,
     get_sample_full_description_handler,
     list_entities_handler,
     list_fret_pairs_handler,
     list_probe_positions_handler,
+    list_processed_data_handler,
+    list_processing_handler,
     save_entity_handler,
     save_fret_pair_handler,
     save_probe_handler,
     save_probe_optical_properties_handler,
+    save_sample_handler,
     suggest_pdbx_keys_handler,
     validate_pdbx_value_handler,
     validate_sample_export_handler,
-    save_sample_handler,
 )
+from mmfdb.models import DEFAULT_FLUOROPHORE_SPECTRA
 
 from .conftest import patch_db
 
 
 def test_full_description_handler(db, sample_with_entities):
     """mmfdb.samples.full_description returns nested dict with entities,
-    probes, fret_pairs, condition, key_values."""
+    probes, fret_pairs, condition, key_values.
+    """
     _, sample_id = sample_with_entities
     with patch_db(db):
         result = get_sample_full_description_handler(sample_id=sample_id, auth=None)
@@ -123,7 +123,8 @@ def test_provenance_graph_export_canonicalizes_seed_node_types(db):
 
 def test_validate_export_handler_complete(db, sample_with_entities):
     """mmfdb.samples.validate_export returns empty warnings for populated
-    sample."""
+    sample.
+    """
     _, sample_id = sample_with_entities
     with patch_db(db):
         result = validate_sample_export_handler(sample_id=sample_id, auth=None)
@@ -138,19 +139,25 @@ def test_create_structured_handler(db):
         "sample_id": "test_create_id",
         "description": "Test structured creation",
         "entities": [
-            {"entity_id": "ent1", "type": "polymer", "sequence": "AAAAA",
-             "common_name": "Test entity"},
+            {
+                "entity_id": "ent1",
+                "type": "polymer",
+                "sequence": "AAAAA",
+                "common_name": "Test entity",
+            },
         ],
         "probes": [
-            {"name": "Cy3B", "entity_index": 0,
-             "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
-            {"name": "ATTO647N", "entity_index": 0,
-             "seq_id": 5, "comp_id": "DT", "asym_id": "A"},
+            {"name": "Cy3B", "entity_index": 0, "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
+            {"name": "ATTO647N", "entity_index": 0, "seq_id": 5, "comp_id": "DT", "asym_id": "A"},
         ],
         "fret_pairs": [
-            {"probe_1_index": 0, "probe_2_index": 1,
-             "forster_radius_nm": 6.0, "kappa_squared": 0.6666667,
-             "refractive_index": 1.4},
+            {
+                "probe_1_index": 0,
+                "probe_2_index": 1,
+                "forster_radius_nm": 6.0,
+                "kappa_squared": 0.6666667,
+                "refractive_index": 1.4,
+            },
         ],
     }
     with patch_db(db):
@@ -163,21 +170,19 @@ def test_create_structured_handler(db):
 
 def test_create_structured_auto_fills_spectra(db):
     """create_structured_sample_handler auto-populates optical properties
-    from DEFAULT_FLUOROPHORE_SPECTRA for known probe names."""
+    from DEFAULT_FLUOROPHORE_SPECTRA for known probe names.
+    """
     known_name = (
-        list(DEFAULT_FLUOROPHORE_SPECTRA.keys())[0]
-        if DEFAULT_FLUOROPHORE_SPECTRA else "Cy3B"
+        list(DEFAULT_FLUOROPHORE_SPECTRA.keys())[0] if DEFAULT_FLUOROPHORE_SPECTRA else "Cy3B"
     )
     sample_data = {
         "name": "auto_spectra",
         "sample_id": "auto_spectra_id",
         "entities": [
-            {"entity_id": "ent1", "type": "polymer", "sequence": "AAAAA",
-             "common_name": "Entity"},
+            {"entity_id": "ent1", "type": "polymer", "sequence": "AAAAA", "common_name": "Entity"},
         ],
         "probes": [
-            {"name": known_name, "entity_index": 0,
-             "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
+            {"name": known_name, "entity_index": 0, "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
         ],
     }
     with patch_db(db):
@@ -187,15 +192,14 @@ def test_create_structured_auto_fills_spectra(db):
     assert len(probes) > 0
     probe = probes[0]
     properties = probe.get("properties", {})
-    has_abs = bool(
-        properties.get("absorption_wavelength")
-    )
+    has_abs = bool(properties.get("absorption_wavelength"))
     assert has_abs
 
 
 def test_entity_list_handler(db, sample_with_entities):
     """mmfdb.entities.list returns entities scoped to sample_id when
-    provided, all non-deleted when sample_id is None."""
+    provided, all non-deleted when sample_id is None.
+    """
     _, sample_id = sample_with_entities
     with patch_db(db):
         scoped = list_entities_handler(sample_id=sample_id, auth=None)
@@ -265,18 +269,16 @@ def test_probe_optical_properties_save_handler(db):
     assert probe_id is not None
 
     properties = [
-        {"property_name": "absorption_maximum_nm",
-         "property_value": 550, "unit": "nm"},
-        {"property_name": "emission_maximum_nm",
-         "property_value": 570, "unit": "nm"},
-        {"property_name": "quantum_yield",
-         "property_value": 0.85},
-        {"property_name": "extinction_coefficient",
-         "property_value": 130000, "unit": "M-1 cm-1"},
+        {"property_name": "absorption_maximum_nm", "property_value": 550, "unit": "nm"},
+        {"property_name": "emission_maximum_nm", "property_value": 570, "unit": "nm"},
+        {"property_name": "quantum_yield", "property_value": 0.85},
+        {"property_name": "extinction_coefficient", "property_value": 130000, "unit": "M-1 cm-1"},
     ]
     with patch_db(db):
         result = save_probe_optical_properties_handler(
-            probe_id, properties, auth=None,
+            probe_id,
+            properties,
+            auth=None,
         )
     props = result.get("optical_properties", [])
     assert len(props) >= 4
@@ -286,7 +288,8 @@ def test_probe_optical_properties_save_handler(db):
 
 def test_probe_positions_list_handler(db, sample_with_entities):
     """mmfdb.probes.positions.list returns positions with atom_id,
-    mutation_flag, modification_flag, auth_name."""
+    mutation_flag, modification_flag, auth_name.
+    """
     _, sample_id = sample_with_entities
     with patch_db(db):
         result = list_probe_positions_handler(sample_id=sample_id, auth=None)
@@ -346,7 +349,9 @@ def test_pdbx_suggest_handler():
 def test_pdbx_validate_handler():
     """mmfdb.pdbx.validate_value returns valid flag + message."""
     result = validate_pdbx_value_handler(
-        "_flr_sample.sample_id", "test_sample", auth=None,
+        "_flr_sample.sample_id",
+        "test_sample",
+        auth=None,
     )
     assert "valid" in result
     assert "message" in result
@@ -367,18 +372,22 @@ def test_save_sample_handler_legacy_compat(db):
 
 def test_save_sample_handler_structured(db):
     """save_sample_handler with structured dict delegates to
-    create_sample() and persists all fields."""
+    create_sample() and persists all fields.
+    """
     sample = {
         "sample_id": "structured_save_test",
         "name": "structured_save_test",
         "description": "Structured save via save_sample_handler",
         "entities": [
-            {"entity_id": "ent_struct", "type": "polymer",
-             "sequence": "GGGG", "name": "Structured entity"},
+            {
+                "entity_id": "ent_struct",
+                "type": "polymer",
+                "sequence": "GGGG",
+                "name": "Structured entity",
+            },
         ],
         "probes": [
-            {"name": "Cy3B", "entity_index": 0,
-             "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
+            {"name": "Cy3B", "entity_index": 0, "seq_id": 1, "comp_id": "DA", "asym_id": "A"},
         ],
     }
     with patch_db(db):

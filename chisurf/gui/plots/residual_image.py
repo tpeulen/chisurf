@@ -1,18 +1,17 @@
 from __future__ import annotations
-import chisurf as cs
 
 import numpy as np
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
+import chisurf as cs
 import chisurf.core.fitting
+from chisurf.core.roi import RectangleROI
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
-from chisurf.core.actions import record_action
-from chisurf.core.roi import RectangleROI
 
 
 class Residual2DPlotControl(QtWidgets.QWidget):
-    def __init__(self, parent: "Residual2DPlot" | None = None) -> None:
+    def __init__(self, parent: Residual2DPlot | None = None) -> None:
         super().__init__(parent)
         self._plot = parent
 
@@ -161,7 +160,6 @@ class Residual2DPlotControl(QtWidgets.QWidget):
         When *names* is empty the selector is hidden and the plot behaves like
         a single-source residual view (backwards compatible behaviour).
         """
-
         try:
             self.cb_source.blockSignals(True)
             self.cb_source.clear()
@@ -183,7 +181,6 @@ class Residual2DPlotControl(QtWidgets.QWidget):
 
         If ``n_frames <= 1`` the slider is hidden and effectively disabled.
         """
-
         try:
             self.sb_frame.blockSignals(True)
             has_frames = not (n_frames is None or n_frames <= 1)
@@ -432,7 +429,11 @@ class Residual2DPlot(plotbase.Plot):
             self._accessor_kwargs = dict(kw or {})
 
         # Inject current frame index for frame-aware sources when requested.
-        if self._frame_kw and isinstance(self._accessor_kwargs, dict) and self._frame_kw in self._accessor_kwargs:
+        if (
+            self._frame_kw
+            and isinstance(self._accessor_kwargs, dict)
+            and self._frame_kw in self._accessor_kwargs
+        ):
             try:
                 frame_idx = int(self.plot_controller.frame_index())
                 self._accessor_kwargs[self._frame_kw] = frame_idx
@@ -462,11 +463,8 @@ class Residual2DPlot(plotbase.Plot):
             # accessor that cannot be called is a mistake worth seeing.
             if not getattr(self, "_accessor_failed", False):
                 self._accessor_failed = True
-                cs.logging.warning(
-                    "the 2D residual accessor %r failed: %s", self._accessor, exc
-                )
+                cs.logging.warning("the 2D residual accessor %r failed: %s", self._accessor, exc)
             return
-
 
         if img is None:
             return
@@ -492,7 +490,12 @@ class Residual2DPlot(plotbase.Plot):
         # of a view showing 0..1, and the panel came out blank. Every model that
         # supplies axis vectors was affected, not just one.
         try:
-            if self._x is not None and self._x.size > 1 and self._y is not None and self._y.size > 1:
+            if (
+                self._x is not None
+                and self._x.size > 1
+                and self._y is not None
+                and self._y.size > 1
+            ):
                 x0, x1 = float(self._x.min()), float(self._x.max())
                 y0, y1 = float(self._y.min()), float(self._y.max())
                 # The vectors are bin *centres*, so the image spans half a bin more
@@ -500,15 +503,16 @@ class Residual2DPlot(plotbase.Plot):
                 dx = (x1 - x0) / max(self._x.size - 1, 1)
                 dy = (y1 - y0) / max(self._y.size - 1, 1)
                 self._image_item.set_rect(
-                    x0 - 0.5 * dx, y0 - 0.5 * dy,
-                    (x1 - x0) + dx, (y1 - y0) + dy,
+                    x0 - 0.5 * dx,
+                    y0 - 0.5 * dy,
+                    (x1 - x0) + dx,
+                    (y1 - y0) + dy,
                 )
         except Exception:
             pass
 
         # The levels the image is drawn with are settled below, once the
         # controller has been given this frame's data-driven defaults.
-
 
         # Initialize ROI once to cover the full image in axis coordinates.
         if not getattr(self, "_roi_initialized", False):
@@ -517,9 +521,17 @@ class Residual2DPlot(plotbase.Plot):
                 try:
                     self._roi_sync_in_progress = True
                     xmin = float(self._x.min()) if self._x is not None and self._x.size > 0 else 0.0
-                    xmax = float(self._x.max()) if self._x is not None and self._x.size > 0 else float(self._image.shape[1] - 1)
+                    xmax = (
+                        float(self._x.max())
+                        if self._x is not None and self._x.size > 0
+                        else float(self._image.shape[1] - 1)
+                    )
                     ymin = float(self._y.min()) if self._y is not None and self._y.size > 0 else 0.0
-                    ymax = float(self._y.max()) if self._y is not None and self._y.size > 0 else float(self._image.shape[0] - 1)
+                    ymax = (
+                        float(self._y.max())
+                        if self._y is not None and self._y.size > 0
+                        else float(self._image.shape[0] - 1)
+                    )
                     roi.set_pos(xmin, ymin)
                     roi.set_size(xmax - xmin, ymax - ymin)
                 finally:
@@ -585,7 +597,6 @@ class Residual2DPlot(plotbase.Plot):
 
     def on_source_changed(self) -> None:
         """Switch to a different image source and recompute the plot."""
-
         if self._sources is None:
             return
         try:
@@ -599,7 +610,6 @@ class Residual2DPlot(plotbase.Plot):
 
     def on_frame_changed(self) -> None:
         """Recompute the image for the newly selected frame index."""
-
         if self._frame_kw is None:
             return
         self.update()
@@ -612,7 +622,6 @@ class Residual2DPlot(plotbase.Plot):
         ``|image|``. For non-negative images the full [min, max] range is
         used. Spin boxes in the controller are updated accordingly.
         """
-
         if self._image is None:
             return
 
@@ -699,7 +708,6 @@ class Residual2DPlot(plotbase.Plot):
 
     def _ensure_roi(self):
         """Create the rectangular ROI on first use and attach callbacks."""
-
         if self._roi is not None:
             return self._roi
         try:
@@ -731,7 +739,6 @@ class Residual2DPlot(plotbase.Plot):
         integer (y, x) bounds to a contiguous [xmin, xmax] index interval
         covering the selected rectangle and propagate it to cs.current_fit.
         """
-
         if getattr(self, "_roi_sync_in_progress", False):
             return
         if self._image is None:

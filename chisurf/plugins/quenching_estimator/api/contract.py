@@ -30,7 +30,6 @@ __all__ = [
 
 def __getattr__(name: str) -> Any:
     """Resolve the re-exported names on first access, not at import."""
-
     if name == "CONTRACT_VERSION":
         from quest.rpc.contract import CONTRACT_VERSION
 
@@ -48,14 +47,11 @@ def __getattr__(name: str) -> Any:
 
 def contract_descriptor() -> dict[str, Any]:
     """QuEst's descriptor, with the host-side identity added."""
-
     from quest.rpc.contract import contract_descriptor as _descriptor
 
     descriptor = _descriptor()
     descriptor["host_plugin_id"] = PLUGIN_ID
-    descriptor["transport"]["gui"] = (
-        "chisurf.plugins.quenching_estimator.gui.tool:QuEstTool"
-    )
+    descriptor["transport"]["gui"] = "chisurf.plugins.quenching_estimator.gui.tool:QuEstTool"
     return descriptor
 
 

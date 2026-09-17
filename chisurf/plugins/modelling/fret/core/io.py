@@ -12,28 +12,27 @@ application behaviour that does not belong in a format library:
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
 
 import numpy as np
-
-# The readers and writers are IMP.bff's, in C++: an fps.json is a format, and
-# reading a format is not this application's business. Named imports rather
-# than a star, so a name that disappears upstream is an error here and not a
-# mystery at the call site.
-from IMP.bff import (  # noqa: F401  (names used by plugin/tests)
-    write_fps_json,
-    read_old_lps_txt,
-    read_old_distances_txt,
-    load_structure,
-    write_pdb,
-)
-from IMP.bff import read_evaluators_json as _read_evaluators_json
 
 #: `compute_rmsd` upstream; the interface pass renamed the free functions to
 #: `get_`/`create_` and this is the survivor. Aliased rather than renamed at
 #: the call sites, because "rmsd between two coordinate sets" is what the
 #: plugin means and `get_rmsd` reads like an accessor.
 from IMP.bff import get_rmsd as compute_rmsd  # noqa: F401
+
+# The readers and writers are IMP.bff's, in C++: an fps.json is a format, and
+# reading a format is not this application's business. Named imports rather
+# than a star, so a name that disappears upstream is an error here and not a
+# mystery at the call site.
+from IMP.bff import (  # noqa: F401  (names used by plugin/tests)
+    load_structure,
+    read_old_distances_txt,
+    read_old_lps_txt,
+    write_fps_json,
+    write_pdb,
+)
+from IMP.bff import read_evaluators_json as _read_evaluators_json
 
 
 def read_fps_json(path, pdb_paths=(), validate=False):
@@ -65,15 +64,14 @@ def read_fps_json(path, pdb_paths=(), validate=False):
 
     import IMP.bff as bff
 
-    doc = bff.read_fps_json(str(path), [str(p) for p in pdb_paths],
-                            bool(validate))
+    doc = bff.read_fps_json(str(path), [str(p) for p in pdb_paths], bool(validate))
     # The sections come back as JSON text. Parsed here so that a caller walks
     # a dict, which is what every one of them does with it.
     return tuple(
-        _json.loads(section) if isinstance(section, str) and section else
-        (section if section else {})
-        for section in (doc.positions, doc.distances, doc.score_sets,
-                        doc.extra)
+        _json.loads(section)
+        if isinstance(section, str) and section
+        else (section if section else {})
+        for section in (doc.positions, doc.distances, doc.score_sets, doc.extra)
     )
 
 
@@ -94,9 +92,7 @@ def write_evaluators_json(path, evaluators) -> None:
     import IMP.bff as bff
 
     if not isinstance(evaluators, str):
-        evaluators = _json.dumps(
-            [e.to_dict() if hasattr(e, "to_dict") else e for e in evaluators]
-        )
+        evaluators = _json.dumps([e.to_dict() if hasattr(e, "to_dict") else e for e in evaluators])
     bff.write_evaluators_json(str(path), evaluators)
 
 
@@ -133,7 +129,7 @@ def load_structure_with_particles(path):
     return bff.load_structure_with_particles(str(path))
 
 
-def read_evaluators_json(path: str | os.PathLike) -> List:
+def read_evaluators_json(path: str | os.PathLike) -> list:
     """Read an ``Evaluators`` section and instantiate this plugin's classes.
 
     Parameters
@@ -172,8 +168,8 @@ def write_rmf(
     atoms: np.ndarray,
     path: str | os.PathLike,
     model_name: str = "structure",
-    transform: Optional[np.ndarray] = None,
-    metadata: Optional[Dict] = None,
+    transform: np.ndarray | None = None,
+    metadata: dict | None = None,
 ) -> None:
     """Write ``(N, 3)`` coordinates to a PMI-compatible RMF file.
 

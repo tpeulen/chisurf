@@ -1,4 +1,5 @@
 """Headless MMFDB Admin EntityDock interaction tests with real sample data."""
+
 from __future__ import annotations
 
 import os
@@ -11,11 +12,10 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("qtpy")
 
+from chisurf.gui import dialogs
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 from .conftest import patch_db
-from chisurf.gui import dialogs
-
 
 _WIDGETS: list = []
 _GUI_ADMIN_USER = "gui_admin"
@@ -239,8 +239,10 @@ def _widget_for_db(db):
         client = MMFDBClient(inprocess=True)
         login = client.login(_GUI_ADMIN_USER, _GUI_ADMIN_PASSWORD)
         assert login.get("ok") is True
-        with mock.patch.object(MMFDBWidget, "_verify_admin_access", lambda s: None), \
-             mock.patch.object(MMFDBWidget, "_ensure_authenticated", lambda s: None):
+        with (
+            mock.patch.object(MMFDBWidget, "_verify_admin_access", lambda s: None),
+            mock.patch.object(MMFDBWidget, "_ensure_authenticated", lambda s: None),
+        ):
             widget = MMFDBWidget(client=client)
         _WIDGETS.append(widget)
         yield widget
@@ -347,9 +349,7 @@ def test_sample_metadata_dock_loads_edits_and_saves_metadata(seeded_admin_db, qa
         dock._save_metadata()
         qapp.processEvents()
 
-    values = {
-        row["key"]: row for row in seeded_admin_db.get_sample_key_values("sample_gui")
-    }
+    values = {row["key"]: row for row in seeded_admin_db.get_sample_key_values("sample_gui")}
     assert values["buffer"]["value"] == "HEPES"
     assert values["buffer"]["details"] == "edited buffer"
 
@@ -436,10 +436,13 @@ def test_condition_and_device_docks_create_update_and_delete_records(
         ):
             condition_dock._on_delete()
         qapp.processEvents()
-        assert seeded_admin_db.conn.execute(
-            "SELECT 1 FROM flr_sample_condition WHERE condition_id = ? AND deleted_at IS NULL",
-            (condition_id,),
-        ).fetchone() is None
+        assert (
+            seeded_admin_db.conn.execute(
+                "SELECT 1 FROM flr_sample_condition WHERE condition_id = ? AND deleted_at IS NULL",
+                (condition_id,),
+            ).fetchone()
+            is None
+        )
 
         device_dock = _entity_dock(widget, qapp, "device")
         device_count = device_dock.table.rowCount()
@@ -465,10 +468,13 @@ def test_condition_and_device_docks_create_update_and_delete_records(
         ):
             device_dock._on_delete()
         qapp.processEvents()
-        assert seeded_admin_db.conn.execute(
-            "SELECT 1 FROM flr_sample_devices WHERE device_id = ? AND deleted_at IS NULL",
-            (device_id,),
-        ).fetchone() is None
+        assert (
+            seeded_admin_db.conn.execute(
+                "SELECT 1 FROM flr_sample_devices WHERE device_id = ? AND deleted_at IS NULL",
+                (device_id,),
+            ).fetchone()
+            is None
+        )
 
 
 def test_experiment_type_dock_creates_updates_and_deletes_type(
@@ -512,10 +518,13 @@ def test_experiment_type_dock_creates_updates_and_deletes_type(
             dock._on_delete()
         qapp.processEvents()
 
-    assert seeded_admin_db.conn.execute(
-        "SELECT 1 FROM flr_experiment_type WHERE type_id = ? AND deleted_at IS NULL",
-        (int(type_id),),
-    ).fetchone() is None
+    assert (
+        seeded_admin_db.conn.execute(
+            "SELECT 1 FROM flr_experiment_type WHERE type_id = ? AND deleted_at IS NULL",
+            (int(type_id),),
+        ).fetchone()
+        is None
+    )
 
 
 def test_setup_child_docks_browse_seeded_detector_pie_and_fcs_rows(seeded_admin_db, qapp):
@@ -610,11 +619,14 @@ def test_user_entity_dock_prevents_builtin_user_delete(seeded_admin_db, qapp):
         checkbox = dock.table.item(dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
 
-        with mock.patch.object(
-            dialogs.ChiSurfMessageBox,
-            "question",
-            return_value=dialogs.ChiSurfMessageBox.Yes,
-        ), mock.patch.object(dialogs.ChiSurfMessageBox, "warning") as warning:
+        with (
+            mock.patch.object(
+                dialogs.ChiSurfMessageBox,
+                "question",
+                return_value=dialogs.ChiSurfMessageBox.Yes,
+            ),
+            mock.patch.object(dialogs.ChiSurfMessageBox, "warning") as warning,
+        ):
             dock._on_delete()
         qapp.processEvents()
 
@@ -704,8 +716,7 @@ def test_branch_entity_dock_creates_updates_and_deletes_branch(seeded_admin_db, 
         dock.form._model.description = "created and updated from GUI"
         qapp.processEvents()
         assert (
-            seeded_admin_db.get_branch(created_id)["description"]
-            == "created and updated from GUI"
+            seeded_admin_db.get_branch(created_id)["description"] == "created and updated from GUI"
         )
 
         checkbox = dock.table.item(dock.table.currentRow(), 0)
@@ -777,7 +788,9 @@ def test_data_product_and_analysis_entity_dock_actions_use_seeded_data(
         assert widget.prov_seed_id_edit.text() == "raw_gui"
 
         product_dock = _entity_dock(widget, qapp, "processed_product")
-        product_buttons = {button.text() for button in product_dock.findChildren(QtWidgets.QToolButton)}
+        product_buttons = {
+            button.text() for button in product_dock.findChildren(QtWidgets.QToolButton)
+        }
         assert {"📋 Copy ID", "📂 Reveal", "🌱 Use as provenance seed"}.issubset(product_buttons)
         product_data = _select_row(product_dock, qapp, "prod_gui")
         assert product_data["location"].endswith("prod_gui.json")
@@ -802,7 +815,9 @@ def test_data_product_and_analysis_entity_dock_actions_use_seeded_data(
         assert widget.prov_seed_id_edit.text() == "prod_gui"
 
         analysis_dock = _entity_dock(widget, qapp, "analysis")
-        analysis_buttons = {button.text() for button in analysis_dock.findChildren(QtWidgets.QToolButton)}
+        analysis_buttons = {
+            button.text() for button in analysis_dock.findChildren(QtWidgets.QToolButton)
+        }
         assert {"📋 Copy ID", "🔍 Details", "🌱 Use as provenance seed"}.issubset(analysis_buttons)
         _select_row(analysis_dock, qapp, "analysis_gui")
 
@@ -869,7 +884,9 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
         assert raw_link["deleted_at"] is not None
 
         product_dock = _entity_dock(widget, qapp, "processed_product")
-        product_buttons = {button.text() for button in product_dock.findChildren(QtWidgets.QToolButton)}
+        product_buttons = {
+            button.text() for button in product_dock.findChildren(QtWidgets.QToolButton)
+        }
         assert {"✓ Validate", "🗑️ Delete"}.issubset(product_buttons)
         _select_row(product_dock, qapp, "prod_gui")
 
@@ -894,8 +911,7 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
 
         assert seeded_admin_db.get_artifact("prod_gui")["deleted_at"] is not None
         visible_product_ids = {
-            product_dock.table.item(row, 1).text()
-            for row in range(product_dock.table.rowCount())
+            product_dock.table.item(row, 1).text() for row in range(product_dock.table.rowCount())
         }
         assert "prod_gui" not in visible_product_ids
         assert "fit_result_gui" in visible_product_ids
@@ -1008,14 +1024,17 @@ def test_import_export_panel_validates_previews_and_exports_seeded_sample(
 
         sample_path = tmp_path / "sample_gui.cif"
         table_path = tmp_path / "samples.csv"
-        with mock.patch.object(
-            QtWidgets.QFileDialog,
-            "getSaveFileName",
-            return_value=(str(sample_path), "CIF files (*.cif *.mmcif)"),
-        ), mock.patch.object(
-            dialogs.ChiSurfMessageBox,
-            "question",
-            return_value=dialogs.ChiSurfMessageBox.Yes,
+        with (
+            mock.patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(sample_path), "CIF files (*.cif *.mmcif)"),
+            ),
+            mock.patch.object(
+                dialogs.ChiSurfMessageBox,
+                "question",
+                return_value=dialogs.ChiSurfMessageBox.Yes,
+            ),
         ):
             widget.export_selected_sample()
         qapp.processEvents()

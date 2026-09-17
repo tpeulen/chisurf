@@ -1,4 +1,5 @@
 """Stopped-flow models: a user-supplied kinetic equation, or an explicit scheme."""
+
 from __future__ import annotations
 
 from chisurf.core.math.reaction.continuous import ReactionSystem

@@ -10,8 +10,13 @@ with log-spaced lifetime grids suitable for fluorescence lifetime analysis.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+if TYPE_CHECKING:
+    from chisurf.plugins.tttr.audifier.core import TTTRData
 
 
 def lifetime_spectrum_ilt(
@@ -221,7 +226,7 @@ def compute_lifetime_waterfall(
     macro_edges = t0 + np.arange(n_macro + 1, dtype=np.int64) * ticks_per_bin
 
     # Convert macro edges to seconds
-    macro_t_s = (macro_edges - macro_edges[0]) * data.macro_time_unit_s
+    (macro_edges - macro_edges[0]) * data.macro_time_unit_s
     macro_centers = 0.5 * (macro_edges[:-1] + macro_edges[1:])
 
     # Initialize output array
@@ -406,7 +411,6 @@ def plot_lifetime_waterfall_multichannel(
 
     # Process each channel
     all_tau = None
-    all_macro_t_s = None
     vmax = 0.0
 
     # First pass: compute all data to determine shared color scale
@@ -428,7 +432,6 @@ def plot_lifetime_waterfall_multichannel(
             # Store reference axes for sharing
             if all_tau is None:
                 all_tau = tau
-                all_macro_t_s = macro_t_s
 
             # Track maximum amplitude for color scaling
             vmax = max(vmax, np.max(np.log1p(A)))
