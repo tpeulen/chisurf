@@ -208,7 +208,7 @@ class FitSubWindow(CustomMdiSubWindow):
             self.ensure_plot_created(idx)
             self._restore_pending_project_plot_state()
             self.on_change_plot()
-        QtCore.QTimer.singleShot(0, _ensure_initial_plot)
+        self._defer(_ensure_initial_plot)
 
         self.plot_tab_widget.currentChanged.connect(self.on_change_plot)
 
@@ -554,6 +554,20 @@ class FitSubWindow(CustomMdiSubWindow):
         
         return plot
 
+    def _defer(self, callback) -> None:
+        """Run ``callback`` on the next event-loop turn, unless this window is gone.
+
+        ``QTimer.singleShot(0, callback)`` fires even after the window closed:
+        a project reload closes the fit windows and the queued plot updates then
+        read controller widgets Qt had already deleted. A timer owned by the
+        window is deleted with it, and its call with it.
+        """
+        timer = QtCore.QTimer(self)
+        timer.setSingleShot(True)
+        timer.timeout.connect(callback)
+        timer.timeout.connect(timer.deleteLater)
+        timer.start(0)
+
     def on_change_plot(self):
         idx = self.plot_tab_widget.currentIndex()
         # Ensure the selected tab's plot exists
@@ -573,9 +587,9 @@ class FitSubWindow(CustomMdiSubWindow):
         try:
             update_all = getattr(plot, 'update_all', None)
             if callable(update_all):
-                QtCore.QTimer.singleShot(0, update_all)
+                self._defer(update_all)
             elif hasattr(plot, 'update'):
-                QtCore.QTimer.singleShot(0, plot.update)
+                self._defer(plot.update)
         except Exception:
             try:
                 plot.update()
