@@ -246,6 +246,14 @@ ninja = "*"
 # noarch packages actually use; still unverified on a real Windows runner.
 [target.win-64.activation.env]
 CMAKE_PREFIX_PATH = "%CONDA_PREFIX%;%CONDA_PREFIX%\\Library"
+# CMAKE_PREFIX_PATH alone wasn't enough for tttrlib's `find_package(HDF5
+# REQUIRED COMPONENTS C)` (traditional, non-config-mode finder) on Windows --
+# confirmed failing on real CI ("Could NOT find HDF5 (missing: HDF5_LIBRARIES
+# HDF5_INCLUDE_DIRS C)") even with hdf5 installed and CMAKE_PREFIX_PATH set.
+# HDF5_ROOT is the variable CMake's traditional FindHDF5 module actually
+# searches first; same fix already known needed for tttrlib's own arm64
+# build (see this session's local dev notes).
+HDF5_ROOT = "%CONDA_PREFIX%\\Library"
 
 # tttrlib is NOT a conda dependency. The published package (bioconda/PyPI, both
 # capped at 0.26.2) lags the source by enough to be wrong rather than merely old:
