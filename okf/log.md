@@ -2,6 +2,17 @@
 
 ## 2026-09-17
 
+* **emtk3d: ImPlot3D ported onto emtk (PRD-104 Phase 3).** `junk/implot3d`
+  read whole and annotated (all six files); the port lives in the emtk repo:
+  `implot3d.py` / `implot3d_items.py` / `implot3d_meshes.py` (extracted, not
+  retyped) / `implot3d_demo.py` (all 29 demo sections), a headless gallery
+  (`tools/implot3d_gallery.py`) whose PNGs were read, and 67 tests. The
+  painter gained optional `gradient_triangle` and `image_triangle` on every
+  painter; `PixelPainter.text_rotated`, `im_widgets._rotated_text` and a
+  always-zero `io.mouse_delta` were fixed on the way. Pure Python: a 50×50
+  surface projects and sorts in ~45 ms. emtk `6c92827`, `07c5efd` (local).
+  Record and open items: [PRD-104](prds/prd-104.md).
+
 * **ndX's ranking moves to the View menu.** *Find informative projections…* and
   *… (z axis)…* are `QAction`s below *UMAP* in `plot_main.ui` (disabled without
   data by the same `update_ui_enabled_state` rule); the buttons under the y
