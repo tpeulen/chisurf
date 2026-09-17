@@ -4527,7 +4527,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # workflow, and the shell asks for it on every Next. Its product is the
         # b{g,r,y}4 files, so results that are already on disk for exactly these
         # burst files and settings are the answer -- do not fit them again.
-            from chisurf.core.runtime import analysis_cache
+        from chisurf.core.runtime import analysis_cache
 
         fingerprint = self.batch_fingerprint()
         stamp_path = self.batch_stamp_path()
