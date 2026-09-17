@@ -50,6 +50,8 @@ from chisurf.core.fitting.inversion import (
 )
 from chisurf.core.math.regularization import LCurveData
 
+from .reproduct import decay_model, fdc_model
+
 __all__ = [
     "build_exp_basis",
     "ilt_1d",
@@ -253,7 +255,7 @@ def ilt_1d(
     amps = coef[:n_comp]
     offset = float(coef[n_comp]) if fit_offset else 0.0
 
-    model = E @ amps + offset
+    model = decay_model(E, amps, offset)
     residuals = (model - decay) * w
     chi2 = float(np.sum(residuals**2) / max(n_data - 1, 1))
     return ILTResult1D(
@@ -320,7 +322,7 @@ def ilt_2d(
     else:
         P, used_reg = _ilt_2d_tikhonov(Mc, E, reg, nonneg=nonneg)
 
-    model = E @ P @ E.T + offset
+    model = fdc_model(E, P, offset)
     resid = (model - M) * np.sqrt(W)
     chi2 = float(np.sum(resid**2) / max(n_data * n_data - n_comp, 1))
     return ILTResult2D(

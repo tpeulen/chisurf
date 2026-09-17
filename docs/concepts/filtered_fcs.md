@@ -184,6 +184,45 @@ above: for a two-state exchange the two species auto-correlations decay and the
 cross-correlation is anti-correlated, both with the relaxation rate
 $k = k_{12} + k_{21}$.
 
+### Single molecules, background, and error bars
+
+In the single-molecule application ({cite}`kondo2019`) the data set is many short
+streams, one per molecule, and the matrix is built **per molecule and summed** so
+that no pair spans two molecules. The matrix at the longest lag $\tau_\text{max}$
+stands in for the uncorrelated part and is subtracted,
+
+$$
+M_\text{cor}(t_1, t_2; \tau) = \tfrac12\big[C + C^{\mathsf T}\big],\qquad
+C = \sum_\text{molecules} \big[M(t_1,t_2;\tau) - M(t_1,t_2;\tau_\text{max})\big],
+$$
+
+with every lag of a molecule drawn from the same reference photons (the window ends
+$\tau_\text{max}$ before the molecule does) and the symmetrization assuming
+equilibrium. The statistical error of $M_\text{cor}$ is estimated by a **molecule
+bootstrap**: draw molecules, each at most $g$ times, until the photon count of the
+data set is reached, sum, and repeat; the spread of an element over the replicates is
+its error. On simulated two-state molecules the bootstrap standard deviation came
+within ~12% of the spread over independent data sets.
+
+### Checking an inversion by reproducing it
+
+The 2D-FLC model factorizes the map into lifetime distributions of the kinetic states
+and their correlation at the lag, $P = A\,G\,A^{\mathsf T}$, so the matrix it
+predicts is
+
+$$
+M_\text{model} = E\,A\,G\,A^{\mathsf T}E^{\mathsf T} + y_0\,\Delta t\,\Delta t^{\mathsf T},
+$$
+
+with $E$ the IRF-convolved exponential basis and $\Delta t$ the bin widths (so the
+background is not constant on a logarithmic axis). The maximum-entropy fit minimizes
+$Q = \chi^2 - 2S/\eta$ with
+$\chi^2 = \langle (M_\text{cor} - M_\text{model})^2 / (M + \bar M) \rangle$ and the
+Skilling–Gull entropy $S$ of $A$ against the prior $m$. Rebuilding $M_\text{model}$
+from fitted $A$, $G$, $y_0$ on a *different* binning than the fit used — the linear
+fit reproduced on the logarithmic axis — and comparing it with the data there is the
+check the original implementation ends every fit with.
+
 ## See also
 
 - Guide: {doc}`/guides/17_filtered_fcs`; foundational FCS concept:
@@ -198,7 +237,9 @@ $k = k_{12} + k_{21}$.
   {src}`chisurf/core/fluorescence/fcs/filtered.py#species_filtered_correlation`
   the weighted correlator. Interactive filter design in the
   `chisurf/plugins/fcs/fcs_filter_calculator/` plugin; 2D-FLCS maps and MEM/Tikhonov
-  inversion in the `chisurf/plugins/fcs/flc_2d/` plugin.
+  inversion in the `chisurf/plugins/fcs/flc_2d/` plugin, with
+  {src}`chisurf/plugins/fcs/flc_2d/bootstrap.py` (per-molecule matrices, molecule
+  bootstrap) and {src}`chisurf/plugins/fcs/flc_2d/fit/reproduct.py` (reproduction).
 - Literature: {cite}`boehmer2002` introduces lifetime-weighted correlation;
   {cite}`kapusta2007` the filter formulation; {cite}`felekyan2012` the species
   auto- and cross-correlations this page derives; {cite}`ishii2013,ishii2013b`

@@ -33,6 +33,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .reproduct import decay_model
+
 __all__ = ["mi_prior", "solve_mem_1d", "OneDMEMResult"]
 
 
@@ -119,7 +121,7 @@ def _q_and_grad(a, E, y, w, mi, reg, fit_offset):
     n_comp = mi.size
     A = np.exp(a[:n_comp])
     y0 = a[n_comp] if fit_offset else 0.0
-    model = E @ A + y0
+    model = decay_model(E, A, y0)
     diff = model - y
     n = y.size
     chi2 = float(np.sum(w * diff * diff)) / n
@@ -231,12 +233,12 @@ def solve_mem_1d(
         Q = float(res.fun)
         ratio = A / mi
         entropy = float(np.sum(A - mi - A * np.log(ratio)))
-        model = E @ A + y0
+        model = decay_model(E, A, y0)
         chi2 = float(np.sum(w * (model - ys) ** 2)) / n_data
         lam *= reg_factor
 
     # Rescale back to data units.
     A *= y_scale
     y0 *= y_scale
-    model = E @ A + y0
+    model = decay_model(E, A, y0)
     return OneDMEMResult(A, tau, y0, model, chi2, entropy, Q, lam / reg_factor)

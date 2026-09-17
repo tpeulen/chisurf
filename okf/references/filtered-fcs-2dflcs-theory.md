@@ -3,10 +3,40 @@ type: Reference
 title: "Filtered FCS (fFCS/FLCS) and 2D-FLCS: theory mapped to ChiSurf"
 description: The micro-time statistical-filter theory behind fFCS/FLCS and 2D-FLCS, and how each piece maps onto ChiSurf's filtered.py, fcs_filter_calculator, and flc_2d code.
 tags: [reference, fcs, flcs, 2d-flcs, lifetime, filters, theory]
-timestamp: '2026-07-24T00:00:00Z'
+timestamp: '2026-09-17T00:00:00Z'
 ---
 
 # Filtered FCS (fFCS/FLCS) and 2D-FLCS — theory ↔ ChiSurf
+
+## Where to pick this up (2D-FLCS, 2026-09-17)
+
+The original MATLAB (T. Kondo; github.com/PremashisManna/2D-FLC-code @082b59c,
+with P. Manna's technical note) is fully accounted for in tttrlib
+`okf/prds/PRD-036-2d-flc-photon-kernels.md` (table + "The harvest finished"), and
+its checkout is deleted. Open, in priority order:
+
+1. **Not ported, found by the audit spot-check:** `TK_CreateExpCurve` (basis
+   *integrated* over each linear/log bin, with the IRF rise point) — chisurf's
+   `build_exp_basis` samples at bin positions, which on the log axis is not the
+   reference's model, so a 2D-MEM fit on `mat_log` is not the reference's fit;
+   `TK_MyMain_Search_RiseIRF_2DMEM` and `TK_MyMain_Run_Ave2DMEM` (IRF-rise scan and
+   averaging for the 2D/global MEM; only the 1D scan exists); `TK_DisIntLife2Dmap`
+   (display). To re-derive the MATLAB, re-clone with `junk/clone.sh`.
+2. **The bootstrap and reproduction are API/CLI only.** No backend RPC or GUI
+   panel: bootstrap needs one file per molecule, which the single-stream tool
+   does not model. A multi-file "molecule set" input is what blocks both. Any
+   panel for them (options, a reproduced-vs-data view, an error map) is a new
+   surface, so it is an AutoForm `view.json` rendered by emtk (plots/maps in
+   hand-written emtk), hosted in the tool — not Qt widgets.
+3. **L-curve corner is fragile on this data.** `lifetime_spectrum(reg=None)`
+   resolved 0.76/2.91 ns on the recorded MATLAB stream but merged the peaks on
+   simulated streams whose histograms agree with it to 1-2% (corner 5e-4 vs
+   2e-2). `test_lifetime_spectrum_reference` now fixes `reg=1e-3`. Not fixed.
+4. **Library semantics at windows that start at the reference photon.**
+   `fdc_scan_*` counts self-pairs and earlier same-tick photons at
+   `dT <= ddT/2` / zero lag; chisurf corrects (`core.earlier_same_time_pairs`).
+   Moving that into tttrlib needs a C++ build (skipped: disk). Measured +1459
+   pairs at `dT = ddT/2` on a stream with 427 repeated ticks.
 
 This note is the **theory reference** for the micro-time statistical-filter family
 of correlation methods and the exact map onto ChiSurf's implementation. For the
@@ -96,7 +126,18 @@ incl. MFD polarisation-resolved).
 2D-FLCS — `chisurf/plugins/fcs/flc_2d/`:
 
 - `core.py` — 2D-FDC (fluorescence-decay-correlation) matrix builder
-  ($M(t_1,t_2;\tau)$), numba/log-binned (port of `TK_Create2DFDC_04.m`).
+  ($M(t_1,t_2;\tau)$), delegating the photon pass to tttrlib `fdc_scan_*` (port
+  of `TK_Create2DFDC_04.m`). The linear matrix is `[1:lint_imax]` of the
+  library's (index 0 is always empty; sliced one bin off until 2026-09-17).
+- `bootstrap.py` — port of `TK_MyMain_Create2DFDC_cor_SeparateData_BootStrap_v02`:
+  per-molecule lag / background / short-lag / 1D matrices, `cor` = lag −
+  longest lag, symmetrized, summed; `bootstrap_order` is the MATLAB draw
+  (`randperm(N·g)` mod N until `photon_factor` × photons), `bootstrap_2d_fdc` the
+  replicate loop with per-element mean/std (the MATLAB leaves repetition to the
+  user). Octave A/B bit-identical.
+- `fit/reproduct.py` — port of the four `Reproduct` functions: forward models
+  `decay_model`/`fdc_model` (shared with the fits), MATLAB chi2/entropy/Q,
+  estimates-vector unpacking with fix flags. Octave A/B 2e-16.
 - `fit/ilt.py`, `fit/mem_1d.py`, `fit/mem_2d.py`, `fit/global_mem.py` — MEM /
   inverse-Laplace inversion to $P(\tau_1,\tau_2)$. `mem_2d.solve_mem_2d` uses the
   Skilling–Gull entropy with an analytic-gradient L-BFGS-B (replacing the old
@@ -112,7 +153,10 @@ incl. MFD polarisation-resolved).
 - Port status / gaps: [/references/fcs-pam-port.md](/references/fcs-pam-port.md).
 - Tests: `test/fitting/test_fcs_filters.py`, `test/fitting/test_flcs_correlation.py`,
   and the `flc_2d/test/` suite (`test_mem`, `test_dynamics`, `test_kinetics`,
-  `test_2d_fdc`, `test_lifetime_recovery`).
+  `test_2d_fdc`, `test_lifetime_recovery`, `test_reproduct`, `test_bootstrap`).
+  The data-driven tests simulate the MATLAB reference data set in `conftest.py`
+  (was: read the 69 MB `simulated_data.mat`, silently skipped when absent);
+  fixtures `test/data/flc_2d/{reference_irf,matlab_reproduct,matlab_bootstrap}.npz`.
 
 ## Cited
 
@@ -125,5 +169,18 @@ incl. MFD polarisation-resolved).
   ChemPhysChem **13**, 1036–1053 (2012).
 - Ishii & Tahara, *Two-dimensional fluorescence lifetime correlation spectroscopy*
   (parts 1 & 2), J. Phys. Chem. B **117**, 11414–11422 & 11423–11432 (2013).
+- Kondo, Gordon, Pinnola, Dall'Osto, Bassi & Schlau-Cohen, PNAS **116**,
+  11247–11252 (2019), doi:10.1073/pnas.1821207116 — the application the MATLAB
+  was written for.
+- P. Manna, *2D-Fluorescence Lifetime Correlation Code: Mathematical Basis,
+  Tutorial and Technical Notes* (2020, PDF in github.com/PremashisManna/2D-FLC-code).
+  Workflow it prescribes: 1D search (1D-MEM over IRF shifts, average the 4–5 lowest
+  χ²) → 2D search (one ΔT, regulator trials ~100, IRF shifts) → average 2D (5 best
+  IRF positions, global MEM over all ΔT, ~300 regulator trials; 300→400 changed
+  nothing and cost 7000→12000 s) → rate-matrix fit of the species correlations
+  (`TK_MyMain_Analyze_03_NotRatio`, fix flags 0/1/2 and n>2 = linked). Notes:
+  flat prior on a log-τ grid; peak widths track photon number, not heterogeneity;
+  the long lifetime broadens from truncation at the 12.5 ns window. Its
+  `DivideNum` parameter is not in the v02 driver.
 - Enderlein & Gregor, *Using fluorescence lifetime for discriminating detector
   afterpulsing in FCS*, Rev. Sci. Instrum. **76**, 033102 (2005).

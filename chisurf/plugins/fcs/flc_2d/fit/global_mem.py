@@ -32,6 +32,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .ilt import ilt_2d
+from .reproduct import fdc_model
 
 logger = logging.getLogger(__name__)
 
@@ -180,8 +181,7 @@ def solve_global_mem_2d(
 
     chi2 = 0.0
     for k in range(n_lags):
-        B = E @ A
-        diff = (B @ G[k] @ B.T) - mats[k]
+        diff = fdc_model(E, A @ G[k] @ A.T) - mats[k]
         chi2 += float(np.sum(W[k] * diff * diff))
     chi2 /= max(n_lags * n_data * n_data - n_a, 1)
     logger.info("[global-MEM] %d lags, %d states, Q=%.4g", n_lags, n_states, res.fun)

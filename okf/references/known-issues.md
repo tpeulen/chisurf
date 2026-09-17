@@ -264,6 +264,34 @@ triggered the withdrawal was a *different command* (it included two other test
 files), so it was never evidence about this one. Match the arms before comparing
 them.
 
+## ✅ FIXED 2026-09-17 — 2D-FLC's linear matrix *did* lose its highest bin: it sat one bin off its axis
+
+The withdrawal below was right that the reference trims one bin and wrong about
+which. `TK_Create2DFDC_04.m` returns bins `1..lint_Imax-1` of a matrix sized from
+the span **padded** by one linear bin, so the bin it drops lies past the gate.
+tttrlib's `fdc_scan_two_axes` stores linear bin `ceil(tau/f)` *at that index*, so
+index 0 is always empty, and `core.create_2d_fdc_numba_int` sliced
+`[:lint_imax - 1]` — the reference's size at the wrong offset — keeping the empty
+row and dropping the last real bin. Found by running the reference driver
+(`TK_MyMain_Create2DFDC_cor_SeparateData_BootStrap_v02.m`) in Octave against the
+port: every log matrix identical, every linear one shifted by exactly one bin.
+Now `[1:lint_imax]`: all 6443 brute-force pairs kept at factors 2, 3, 5 (were
+6443/5789/5469), and `test_one_d_fdc_matches_microtime_histogram` correlation
+0.98 → 0.99997 (the "fix" of 2026-08-11 that dropped it to 0.9695 changed the size,
+not the offset). The call-site parity fixture's linear matrices were re-recorded;
+the reference anchor is `flc_2d/test/test_bootstrap.py` (Octave fixture). tttrlib's
+own MATLAB test was right all along — it slices `[1:n+1]`. Two consequences worth
+announcing: the linearly-binned decay (`one_d_fdc`, `create_1d_fdc`) and `mat_lin`
+moved by one bin (4 ps × factor) and regained their last bin; and a photon at
+exactly `tMax` is now counted at factor 1, as in the reference.
+
+Found in the same A/B and fixed with it: `create_1d_fdc` counted every pair of
+photons sharing a macro tick and a bin twice (the reference pairs forward only;
++41 on the diagonal of a stream with 427 repeated ticks), and
+`TwoDFDCreator._pick_n_chunks` called numba's `get_num_threads` after numba had
+left the module, so every build since ran as one chunk behind a swallowed
+`NameError`.
+
 ## WITHDRAWN — 2D-FLC's linear matrix does not "silently drop" its highest bin
 
 **Filed and withdrawn 2026-08-11, same day.** I reported that

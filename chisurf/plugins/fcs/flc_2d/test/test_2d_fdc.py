@@ -17,7 +17,9 @@ from chisurf.plugins.fcs.flc_2d.api import two_d_fdc
 def _brute_force_pair_count(macro, micro, dT, ddT, tMin, tMax):
     """Replicate the kernel's pair-selection semantics in plain numpy."""
     half = ddT // 2
-    valid = (micro > tMin) & (micro < tMax)
+    # tau = micro - tMin in (0, t_Imax) with t_Imax = span + 1 at factor 1, so a photon
+    # at exactly tMax is counted (TK_Create2DFDC_04.m:38, 66)
+    valid = (micro > tMin) & (micro <= tMax)
     total = 0
     last = macro[-1]
     for i in range(macro.size):
@@ -118,3 +120,21 @@ def test_the_default_chunk_count_is_used_when_none_is_given():
     explicit = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
                               logt_imax=12, n_chunks=1)["matrices"]
     np.testing.assert_array_equal(default, explicit)
+
+
+def test_the_builder_parallelises_when_no_chunk_count_is_given():
+    """``_pick_n_chunks`` called numba's ``get_num_threads`` after numba left the module.
+
+    The ``NameError`` sat inside ``try/except Exception`` and every 2D-FDC build ran
+    as a single chunk without saying so.
+    """
+    from chisurf.plugins.fcs.flc_2d.core import TwoDFDCreator, default_chunk_count
+
+    params = {
+        "tMax_over_tStep": 64,
+        "tMin_over_tStep": 0,
+        "lint_bin_factor": 1,
+        "build_lin": True,
+        "logt_imax": 16,
+    }
+    assert TwoDFDCreator()._pick_n_chunks(params, None) == default_chunk_count()

@@ -32,9 +32,9 @@
 # ── numpy: EMPTY. Route 1 is done; every remaining entry needs real work.
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
-# flc_2d/core.py is here as a CANDIDATE, not a shipping delegation: the 2D-FDC
-# photon pass is specified for the library by tttrlib PRD-036, written against
-# the original MATLAB in junk/2D-FLC-code. Do not port it in-tree.
+# flc_2d/core.py left this list on 2026-08-12: its 2D-FDC photon pass delegates to
+# tttrlib fdc_scan_* (tttrlib PRD-036, proven against the original MATLAB; that
+# checkout was harvested into recorded fixtures and deleted 2026-09-17).
 
 # ── imp (re-express against IMP; NOT a leftover to delete) ───────────────────
 # Checked 2026-08-11 against the installed IMP.bff / IMP.cgmol / IMP.bff.cgdye

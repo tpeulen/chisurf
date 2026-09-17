@@ -61,7 +61,7 @@ def create_1d_fdc(
     lint_bin_factor, logt_imax, n_chunks
         As in :func:`chisurf.plugins.fcs.flc_2d.core.create_2d_fdc_numba_int`.
     """
-    from ..core import create_2d_fdc_numba_int
+    from ..core import create_2d_fdc_numba_int, earlier_same_time_pairs, fdc_bin_index
 
     macro = np.ascontiguousarray(macro_times, dtype=np.int64)
     micro = np.ascontiguousarray(micro_times, dtype=np.int64)
@@ -79,7 +79,27 @@ def create_1d_fdc(
         build_lin=True,
         n_chunks=int(n_chunks),
     )
-    return lin_t, np.diag(mat_lin).copy(), log_t, np.diag(mat_log).copy()
+    lin, log = np.diag(mat_lin).copy(), np.diag(mat_log).copy()
+    # The reference pairs each photon with itself and the photons *after* it at the same
+    # macro tick; the library's zero-width window also finds the ones before it, which
+    # double-counts every same-tick pair that shares a bin. Take those back.
+    q, p = earlier_same_time_pairs(macro)
+    if q.size:
+        import tttrlib
+
+        span = int(tMax_ticks) - int(tMin_ticks)
+        f = int(lint_bin_factor)
+        t_imax = int(tttrlib.fdc_t_imax(span, f))
+        ticks_log = np.zeros(int(logt_imax) + 1, dtype=np.int64)
+        tttrlib.fdc_log_ticks(t_imax, ticks_log)
+        ticks_lin = np.concatenate([[-1], np.arange(0, t_imax + f, f)]).astype(np.int64)
+        tau = micro - int(tMin_ticks)
+        gate = (tau > 0) & (tau < t_imax)
+        for ticks, diag, offset in ((ticks_lin, lin, 1), (ticks_log, log, 0)):
+            b = np.where(gate, fdc_bin_index(tau, ticks), -1)
+            same = (b[q] >= 0) & (b[q] == b[p]) & (b[q] - offset < diag.size)
+            np.subtract.at(diag, b[q][same] - offset, 1)
+    return lin_t, lin, log_t, log
 
 
 @dataclass

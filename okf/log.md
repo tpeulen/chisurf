@@ -9,6 +9,31 @@
   missing widgets are added to emtk. Turns the [GUI/AutoForm](subsystems/gui-autoform.md)
   long-term direction into the rule for new work.
 
+* **2D-FLCS: the MATLAB harvest is finished and `junk/2D-FLC-code` can go.** The last
+  two unported pieces of the original code (T. Kondo; audit table in tttrlib
+  PRD-036) are ported and A/B'd in Octave with recorded fixtures: the four
+  `Reproduct` functions as `flc_2d/fit/reproduct.py` (`api.reproduce_1d_fdc`,
+  `reproduce_2d_fdc`, `reproduce_fit`, CLI `flc-2d reproduce`; max rel. diff 2e-16;
+  the fits now evaluate its `decay_model`/`fdc_model`), and the per-molecule
+  split-data bootstrap driver as `flc_2d/bootstrap.py` (`api.separate_data_2d_fdc`,
+  `bootstrap_2d_fdc`, CLI `flc-2d bootstrap`; bit-identical over three draws). The
+  MATLAB draws one replicate per run; the port adds the replicate loop and
+  per-element std, calibrated on simulation (4930 vs 5570 spread over 16 data
+  sets). The A/B exposed a one-bin offset of the linear 2D-FDC matrix and
+  double-counted same-tick pairs in the 1D-FDC (both fixed; see
+  [known issues](references/known-issues.md)), plus a swallowed `NameError` that
+  kept every 2D-FDC build single-chunk. The six data-driven `flc_2d` tests had been
+  **silently skipping** (they looked for `thirdparty/2D-FLC-code/simulated_data.mat`);
+  they now simulate that data set from a seed, with the reference IRF as a 14 KB
+  fixture, and pass on seeds 1/2/3/7 — after matching two MATLAB simulator details
+  that otherwise flip the species cross-correlation. Docs: `filtered_fcs` concept
+  and guide 17, plugin README and help. Open items (four MATLAB pieces the table
+  over-claimed or omitted; L-curve fragility; library same-tick semantics) in
+  [filtered-fcs-2dflcs-theory](references/filtered-fcs-2dflcs-theory.md) "Where to
+  pick this up". `test/repro/compare_matlab_implementation.py` (dead: imports a
+  module that no longer exists, reads a path that never did) is left for deletion
+  until the tree-wide format sweep that touches it lands.
+
 * **chimol reads PyMOL command lines; PyMOL source harvested into chimol OKF.**
   chimol `db07093`: PyMOL's keyword table + signatures generated from
   `junk/pymol-open-source` (`tools/gen/make_pymol_keywords.py`); arguments bind by

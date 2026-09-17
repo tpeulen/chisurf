@@ -109,6 +109,22 @@ on data whose answer you do not.
   *anti*-correlated, both with the same relaxation rate k = k₁₂ + k₂₁. If they do
   not, the map's peaks are not two exchanging states.
 
+## Many molecules, error bars, and checking a fit (API and CLI)
+
+Two steps of the original workflow are not panels here yet; they run headless.
+
+- **Per-molecule data with bootstrap errors.** With one file per molecule,
+  `flc-2d bootstrap mol_*.ptu --dt … --ddt … --tmin … --tmax … -o out.npz` (or
+  `api.separate_data_2d_fdc` + `api.bootstrap_2d_fdc`) sums the molecules without
+  ever pairing photons across two of them, subtracts the longest lag as the
+  uncorrelated background, and redraws the molecules to give every matrix element
+  a standard deviation. A cross-peak pattern smaller than a few of those is not a
+  finding.
+- **Reproduce a fit.** `flc-2d reproduce params.json` (or `api.reproduce_2d_fdc`,
+  `api.reproduce_fit`) rebuilds the 2D-FLC map `A G Aᵀ` and the 2D-FDC it predicts
+  from fitted parameters, on any axis — fit on the linear matrix, reproduce the
+  log one and compare, as the original code does.
+
 ## Further reading
 
 - [Filtered FCS and 2D-FLCS](docs/concepts/filtered_fcs.md) — the derivation, in full.

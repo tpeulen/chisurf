@@ -72,11 +72,12 @@ def test_one_d_fdc_matches_microtime_histogram(sim_stream):
     # the zero-lag diagonal is dominated by self-coincidence == the micro-time histogram
     hist, _ = np.histogram(s.micro_times, bins=np.arange(0, 8 * fdc.size + 1, 8))
     n = min(fdc.size, hist.size)
-    # high correlation confirms the 1D-FDC is the fluorescence decay; it is not exactly
-    # equal because the kernel bins micro-times with ceil() vs histogram's floor() (a
-    # half-bin shift) and adds the rare same-tick cross-coincidences.
-    corr = np.corrcoef(fdc[1:n], hist[1:n])[0, 1]  # skip empty leading bin
-    assert corr > 0.98
+    # The zero-lag diagonal is self-coincidence plus the rare same-tick pairs, i.e.
+    # the micro-time histogram. This read 0.98 while the linear matrix was sliced one
+    # bin off its axis (index 0 always empty, the last reference bin dropped); aligned
+    # it is 0.99997, and the old one-bin-shifted comparison is what now reads 0.984.
+    corr = np.corrcoef(fdc[1:n], hist[1:n])[0, 1]
+    assert corr > 0.9995
 
 
 def test_one_d_fdc_nnls_recovers_lifetimes(sim_stream):
@@ -84,9 +85,11 @@ def test_one_d_fdc_nnls_recovers_lifetimes(sim_stream):
     out = api.one_d_fdc(s.macro_times, s.micro_times, tMin=0, tMax=3127, max_bins=400)
     decay = out["lin"].astype(float)
     t_ns = out["lin_t"].astype(float) * 0.004
-    # drop empty leading bin (the MATLAB FitStartI)
+    # drop empty leading bins (the MATLAB FitStartI) and the last bin, where the
+    # simulator clips every photon later than its window (a ~9k-count spike here; it
+    # hid while the old slice dropped the last bin)
     start = int(np.flatnonzero(decay > 0)[0])
-    decay, t_ns = decay[start:], t_ns[start:]
+    decay, t_ns = decay[start:-1], t_ns[start:-1]
     tau = lifetime_grid(0.3, 8.0, 40)
     basis = build_exp_basis(t_ns, tau)
     res = ilt_1d(decay, basis, tau, method="nnls")

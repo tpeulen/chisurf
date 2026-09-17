@@ -47,6 +47,41 @@ def default_chunk_count() -> int:
     return os.cpu_count() or 1
 
 
+def fdc_bin_index(tau: np.ndarray, ticks: np.ndarray) -> np.ndarray:
+    """The photon library's bin lookup; ``-1`` where it does not place a photon.
+
+    ``searchsorted(ticks, tau, "left") - 1``, valid in ``1 .. len(ticks) - 2``: the
+    index a pair lands at in the library's ``(len(ticks) - 1)^2`` matrix, before any
+    trim. Used to take back pairs the library counts and the reference does not.
+    """
+    b = np.searchsorted(ticks, tau, side="left") - 1
+    return np.where((b > 0) & (b < ticks.size - 1), b, -1)
+
+
+def earlier_same_time_pairs(macro: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Index pairs ``(q, p)``, ``p < q``, of photons sharing a macro time.
+
+    The reference walks partners strictly after the reference photon in stream order;
+    the library's window search also finds *earlier* photons at the same macro tick
+    whenever a window starts at the reference's own time (zero lag, or ``dT = ddT/2``).
+    """
+    q_all, p_all = [], []
+    dup = np.flatnonzero(np.diff(macro) == 0)
+    if dup.size == 0:
+        return np.zeros(0, int), np.zeros(0, int)
+    # runs of equal macro time: start at a dup whose predecessor is not a dup
+    starts = dup[np.concatenate([[True], np.diff(dup) > 1])]
+    for s0 in starts:
+        e = s0 + 1
+        while e + 1 < macro.size and macro[e + 1] == macro[s0]:
+            e += 1
+        for q in range(s0 + 1, e + 1):
+            for p in range(s0, q):
+                q_all.append(q)
+                p_all.append(p)
+    return np.asarray(q_all, int), np.asarray(p_all, int)
+
+
 def create_2d_fdc_numba_int(
     macro_times: np.ndarray,
     micro_times: np.ndarray,
@@ -108,9 +143,12 @@ def create_2d_fdc_numba_int(
 
     mat_log = out_log.reshape(int(logt_imax_in), int(logt_imax_in))
     logt_ticks = log_ticks[: int(logt_imax_in)]
-    mat_lin = out_lin.reshape(len(lin_ticks) - 1, len(lin_ticks) - 1)[
-        : lint_imax - 1, : lint_imax - 1
-    ]
+    # The library stores linear bin ``ceil(tau / f)`` at index ``ceil(tau / f)``, so
+    # index 0 is always empty; the reference's bins 1..lint_Imax-1 are 1:lint_imax.
+    # Slicing :lint_imax-1 kept the empty row and dropped the last reference bin,
+    # shifting the matrix one bin against its axis (found by running the MATLAB
+    # driver in Octave; pinned in test_bootstrap.py).
+    mat_lin = out_lin.reshape(len(lin_ticks) - 1, len(lin_ticks) - 1)[1:lint_imax, 1:lint_imax]
     mat_lint = (factor * np.arange(lint_imax, dtype=np.int64))[: lint_imax - 1]
     return mat_lin, mat_lint, mat_log, logt_ticks
 
@@ -290,10 +328,9 @@ class TwoDFDCreator:
         """Choose a parallel chunk count, capping accumulator memory to ~512 MB."""
         if n_chunks is not None:
             return max(1, int(n_chunks))
-        try:
-            threads = int(get_num_threads())
-        except Exception:  # pragma: no cover - numba threading layer unavailable
-            threads = 1
+        # This called numba's get_num_threads() after numba had left the module; the
+        # NameError was swallowed and every build ran single-chunk.
+        threads = default_chunk_count()
         span = max(1, params["tMax_over_tStep"] - params["tMin_over_tStep"])
         llin = (span // params["lint_bin_factor"] + 2) if params["build_lin"] else 1
         llog = params["logt_imax"] + 1

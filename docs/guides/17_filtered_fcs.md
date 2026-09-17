@@ -52,6 +52,38 @@ The `fcs_filter_calculator` and `flc_2d` plugins provide the interactive
 filter-design and 2D-FLCS workflow, and the lifetime-FCS simulator closes the
 loop for validation.
 
+### 2D-FLCS on many molecules, with error bars
+
+Single-molecule 2D-FLCS data are one photon stream per molecule. Build the matrices
+per molecule (they are summed, never mixed), then redraw the molecules for an error
+on every element:
+
+```python
+from chisurf.plugins.fcs.flc_2d import api
+
+molecules = [(d.macro_times, d.micro_times) for d in map(api.load_tttr, files)]
+sep = api.separate_data_2d_fdc(
+    molecules, dT_ticks=[100, 1000, 100_000], ddT_ticks=10,  # longest lag = background
+    tMin=125, tMax=3050, lint_bin_factor=4, logt_imax=100,
+)
+matrices = sep.total()                    # lin/log, cor_lin/cor_log, short_*, fdc_1d_*
+boot = api.bootstrap_2d_fdc(sep, 200, group_factor=2, seed=1)
+signal, error = matrices["cor_log"], boot.std["cor_log"]
+```
+
+or headless, one TTTR file per molecule:
+
+```bash
+flc-2d bootstrap mol_*.ptu --dt 100 --dt 1000 --dt 100000 --ddt 10 \
+    --tmin 125 --tmax 3050 --replicates 200 -o fdc_bootstrap.npz
+```
+
+To check a fitted map, rebuild the matrix it predicts on another binning and compare
+it with the data there: `api.reproduce_2d_fdc(A, G, time_axis_ns, tau_grid=tau)`
+for parameters, `api.reproduce_fit(result, time_axis_ns)` for a fit result, or
+`flc-2d reproduce params.json`. See "Checking an inversion by reproducing it" in
+{ref}`concept-filtered-fcs`.
+
 ### Instrument parameters
 
 When a species is a coupled smFRET decay rather than a plain lifetime spectrum,

@@ -61,6 +61,9 @@ The manifest exposes:
 flc-2d --help
 flc-2d metadata measurement.ptu
 flc-2d lifetime measurement.ptu --method nnls --components 40
+flc-2d reproduce fitted_params.json -o model.json
+flc-2d bootstrap mol_*.ptu --dt 100 --dt 1000 --dt 100000 --ddt 10 \
+    --tmin 125 --tmax 3050 --replicates 200 -o fdc_bootstrap.npz
 ```
 
 The CLI uses the same Qt-free API as the backend.
@@ -93,8 +96,43 @@ result = api.two_d_spectrum(
 )
 ```
 
+## Single-molecule data sets and error bars
+
+A single-molecule measurement is one photon stream per molecule, and a photon
+pair must never span two of them. `api.separate_data_2d_fdc` builds the matrices
+of the original data-preparation driver per molecule — each lag, the longest lag
+as the uncorrelated background (`cor_*` = lag − background), the shortest lag
+`ddT/2` (`short_*`) and the zero-lag decay (`fdc_1d_*`), linear and log axes,
+symmetrized — and `.total()` sums them. `api.bootstrap_2d_fdc` redraws which
+molecules are summed (each at most `group_factor` times, until
+`photon_factor` × the photons are reached) and returns every element's mean and
+standard deviation over the replicates:
+
+```python
+molecules = [(d.macro_times, d.micro_times) for d in map(api.load_tttr, files)]
+sep = api.separate_data_2d_fdc(molecules, [100, 1000, 100_000], 10, tMin=125, tMax=3050)
+boot = api.bootstrap_2d_fdc(sep, 200, seed=1)
+cor, err = sep.total()["cor_log"], boot.std["cor_log"]
+```
+
+## Checking a fit
+
+`api.reproduce_2d_fdc(A, G, time_axis_ns, tau_grid=...)` rebuilds the 2D-FLC map
+`A G Aᵀ` and the 2D-FDC it predicts (a `G` stack is the global multi-lag form);
+`api.reproduce_1d_fdc` does the decay. With the measured matrix, the entropy prior
+and the regulator they also return the original code's chi-square, entropy and
+MEM estimator `Q`. `api.reproduce_fit(result, time_axis_ns)` rebuilds any of this
+plugin's fit results on another axis — the check the original minimizers finish
+with (fit on the linear axis, reproduce on the log one).
+
 ## Validation
 
-The `test/` package validates the numerical core on synthetic and reference
-data where available. Slow reference-data checks are marked with
-`@pytest.mark.slow`.
+The `test/` package validates the numerical core on simulated streams whose
+answer is known: the data-driven checks (`@pytest.mark.slow`) simulate the
+reference data set of the original MATLAB code (τ = 1 / 3 ns, rates
+`[[0, 30], [10, 0]]` s⁻¹, its IRF) from a fixed seed. The reproduction and the
+per-molecule/bootstrap driver are pinned against the original MATLAB run in
+Octave (`test/data/flc_2d/matlab_reproduct.npz`, `matlab_bootstrap.npz`).
+The code and its technical note (P. Manna, *2D-Fluorescence Lifetime Correlation
+Code: Mathematical Basis, Tutorial and Technical Notes*) are at
+https://github.com/PremashisManna/2D-FLC-code.

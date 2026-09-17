@@ -59,6 +59,7 @@ from .fit.ilt import (
 )
 from .fit.kinetics import RateMatrixResult, fit_rate_matrix
 from .fit.mem_1d import OneDMEMResult, solve_mem_1d
+from .fit.reproduct import Reproduction, reproduce_1d, reproduce_2d, reproduce_global_2d
 
 __all__ = [
     "TttrData",
@@ -83,6 +84,11 @@ __all__ = [
     "make_synthetic_irf",
     "detect_irf",
     "lifetime_lcurve",
+    "reproduce_1d_fdc",
+    "reproduce_2d_fdc",
+    "reproduce_fit",
+    "separate_data_2d_fdc",
+    "bootstrap_2d_fdc",
 ]
 
 
@@ -603,6 +609,142 @@ def rate_matrix_kinetics(
     return fit_rate_matrix(
         correlation.lag_s, curves, n_states=n_states, populations=pops, t_min=t_min, t_max=t_max
     )
+
+
+# ---------------------------------------------------------------------- reproduction
+
+
+def _basis(time_axis_ns, tau_grid, irf, irf_time_ns, basis):
+    if basis is not None:
+        return np.asarray(basis, dtype=float)
+    return build_exp_basis(
+        np.asarray(time_axis_ns, dtype=float),
+        np.asarray(tau_grid, dtype=float),
+        irf=irf,
+        irf_time_ns=irf_time_ns,
+    )
+
+
+def reproduce_1d_fdc(
+    amplitudes: np.ndarray,
+    time_axis_ns: np.ndarray,
+    *,
+    tau_grid: np.ndarray,
+    y0: float = 0.0,
+    irf: np.ndarray | None = None,
+    irf_time_ns: np.ndarray | None = None,
+    basis: np.ndarray | None = None,
+    decay: np.ndarray | None = None,
+    decay_cor: np.ndarray | None = None,
+    mi: np.ndarray | None = None,
+    regulator: float | None = None,
+    area_weighted: bool = False,
+) -> Reproduction:
+    """Rebuild a 1D-FDC (decay) from a lifetime distribution, to check a fit against data.
+
+    Port of ``TK_FitF_Reproduct1DFDC`` / ``_02``: model ``E A + y0 * bin_width`` on the
+    exponential basis of ``tau_grid`` over ``time_axis_ns`` (IRF-convolved when ``irf``
+    is given; pass ``basis`` to use your own), with the reference's chi-square, entropy
+    and estimator ``Q = chi2 - 2 S / regulator`` when ``decay`` (and ``mi``,
+    ``regulator``) are given. See :mod:`~chisurf.plugins.fcs.flc_2d.fit.reproduct` for
+    the exact conventions.
+    """
+    E = _basis(time_axis_ns, tau_grid, irf, irf_time_ns, basis)
+    return reproduce_1d(
+        amplitudes,
+        E,
+        time_axis_ns,
+        y0=y0,
+        data=decay,
+        data_cor=decay_cor,
+        mi=mi,
+        regulator=regulator,
+        area_weighted=area_weighted,
+    )
+
+
+def reproduce_2d_fdc(
+    amplitudes: np.ndarray,
+    correlation: np.ndarray,
+    time_axis_ns: np.ndarray,
+    *,
+    tau_grid: np.ndarray,
+    y0: float | Sequence[float] = 0.0,
+    irf: np.ndarray | None = None,
+    irf_time_ns: np.ndarray | None = None,
+    basis: np.ndarray | None = None,
+    matrix: np.ndarray | None = None,
+    matrix_cor: np.ndarray | None = None,
+    mi: np.ndarray | None = None,
+    regulator: float | None = None,
+    floor_zeros: bool = True,
+) -> Reproduction:
+    """Rebuild the 2D-FLC map ``A G A^T`` and the 2D-FDC it predicts.
+
+    Port of ``TK_FitF_Reproduct2DFDCand2DFLC_03`` (``correlation`` ``s x s``) and of its
+    global form ``TK_GFitF_Reproduct2DFDCand2DFLC_03`` (``correlation``
+    ``n_lags x s x s``, ``y0`` and ``matrix`` per lag). ``amplitudes`` is
+    ``n_comp x n_states`` on ``tau_grid``. The MATLAB minimizers call this on the other
+    binning after a fit -- reproduce on the log axis what was fitted on the linear one,
+    and compare. ``floor_zeros`` keeps the reference's lift of exact zeros in ``A``.
+    """
+    E = _basis(time_axis_ns, tau_grid, irf, irf_time_ns, basis)
+    G = np.asarray(correlation, dtype=float)
+    kw = dict(data=matrix, data_cor=matrix_cor, mi=mi, regulator=regulator, floor_zeros=floor_zeros)
+    if G.ndim == 3:
+        return reproduce_global_2d(amplitudes, G, E, time_axis_ns, y0=np.asarray(y0), **kw)
+    return reproduce_2d(amplitudes, G, E, time_axis_ns, y0=float(y0), **kw)
+
+
+def reproduce_fit(
+    result,
+    time_axis_ns: np.ndarray,
+    *,
+    irf: np.ndarray | None = None,
+    irf_time_ns: np.ndarray | None = None,
+    basis: np.ndarray | None = None,
+    data: np.ndarray | None = None,
+) -> Reproduction:
+    """Rebuild the model of a fit result on a time axis, e.g. another binning.
+
+    Accepts what :func:`lifetime_spectrum`, :func:`lifetime_spectrum_mem`,
+    :func:`two_d_spectrum`/:func:`fit_mem_2d` and :func:`global_lifetime_mem` return.
+    On the axis (and IRF) the fit used it returns exactly the fitted model; ``data``
+    adds the reference chi-square.
+    """
+    from .fit.reproduct import reproduce_result
+
+    E = _basis(time_axis_ns, result.tau_grid, irf, irf_time_ns, basis)
+    return reproduce_result(result, E, data=data)
+
+
+# ------------------------------------------------------------------ separate data
+
+
+def separate_data_2d_fdc(molecules, dT_ticks, ddT_ticks, **kwargs):
+    """Per-molecule 2D-FDC set of the reference driver (molecules summed, never mixed).
+
+    Port of the data preparation in
+    ``TK_MyMain_Create2DFDC_cor_SeparateData_BootStrap_v02``; see
+    :func:`chisurf.plugins.fcs.flc_2d.bootstrap.separate_data_2d_fdc` for the
+    parameters. ``result.total()`` gives the summed ``lin``/``log``/``cor_*``/
+    ``short_*``/``fdc_1d_*`` matrices.
+    """
+    from .bootstrap import separate_data_2d_fdc as _separate
+
+    return _separate(molecules, dT_ticks, ddT_ticks, **kwargs)
+
+
+def bootstrap_2d_fdc(separate, n_replicates: int = 100, **kwargs):
+    """Molecule-bootstrap error estimate of every summed 2D-FDC element.
+
+    Draws molecules as the reference driver does (``group_factor``, ``photon_factor``)
+    ``n_replicates`` times and returns the replicates with their per-element mean and
+    standard deviation. See :func:`chisurf.plugins.fcs.flc_2d.bootstrap.bootstrap_2d_fdc`.
+    """
+    from .bootstrap import bootstrap_2d_fdc as _bootstrap
+
+    return _bootstrap(separate, n_replicates, **kwargs)
 
 
 # ------------------------------------------------------------------- 1D-FDC + 1D-MEM

@@ -31,6 +31,7 @@ import logging
 import numpy as np
 
 from .ilt import ILTResult2D, ilt_2d
+from .reproduct import fdc_model
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ def solve_mem_2d(
 
         def objective(zv: np.ndarray) -> tuple[float, np.ndarray]:
             P = np.exp(zv).reshape(n_comp, n_comp)
-            model = E @ P @ E.T
+            model = fdc_model(E, P)
             diff = model - Mc
             chi2 = 0.5 * float(np.sum(W * diff * diff))
             # entropy S = sum(P - m - P log(P/m)); maximize S => minimize -S/lam
@@ -143,7 +144,7 @@ def solve_mem_2d(
         lam *= regulator_factor
 
     P = np.exp(z).reshape(n_comp, n_comp)
-    model = E @ P @ E.T + offset
+    model = fdc_model(E, P, offset)
     resid = (model - M) * np.sqrt(W)
     chi2 = float(np.sum(resid**2) / max(n_data * n_data - n_comp, 1))
     return ILTResult2D(P, np.asarray(tau_grid, float), float(offset), model, chi2, float(lam))

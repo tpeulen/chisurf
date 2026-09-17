@@ -5,7 +5,10 @@ they are now the photon library's (`fdc_scan_log`, `fdc_log`).
 The reference is a recorded fixture, not a live comparison — a live comparison
 becomes a skip the day the old code leaves, and a skip reads like a pass.
 
-The fixture's outputs were re-recorded once (2026-08-16) when the log-axis tick
+The fixture's outputs were re-recorded twice. On 2026-09-17 the linear matrices
+only, when the slice that trims them was found one bin off its axis (see
+``test_the_linear_matrix_trims_its_last_bin_as_the_reference_does``). Before
+that, on 2026-08-16, when the log-axis tick
 quantization was aligned to the reference implementation: the numba original
 quantized the real-valued edges `t_Imax^(j/L) - 1` to *nearest*, while
 `TK_Create2DFDC_04.m` compares the integer tick against the real-valued edge,
@@ -135,19 +138,19 @@ def test_a_gate_that_admits_nothing_returns_zeros_rather_than_raising(recorded):
 
 
 def test_the_linear_matrix_trims_its_last_bin_as_the_reference_does(recorded):
-    """The trim is the published method's, not a defect — do not "fix" it.
+    """One bin fewer than ``lint_Imax``, and it is the padding bin that goes.
 
-    `create_2d_fdc_numba_int` slices one bin off the linear matrix on return,
-    which drops the pairs in the highest linear bin: 654 at `lint_bin_factor` 3
-    and 974 at 5, against a brute-force count of 6443. That looks exactly like a
-    data-loss bug, and it is not — `TK_Create2DFDC_04.m:170-172` does the same
-    (`Var = size(Mat_2DFDC_lin) - 1`), and MATLAB is 1-based over bins
-    `1..lint_Imax`, so it is the same trim.
-
-    This test exists because the shortfall was filed as a defect and a fix was
-    written before the reference was read to the end. It pins the behaviour *and*
-    the reason, so the next person measuring the shortfall finds the answer
-    rather than repeating the fix.
+    `TK_Create2DFDC_04.m:170-172` returns bins ``1..lint_Imax-1`` of a matrix
+    sized from the span *padded* by one linear bin, so the bin it drops lies
+    past the gate. The library stores bin ``ceil(tau/f)`` at that index, which
+    leaves index 0 empty: the reference's bins are ``[1:lint_imax]``. Until
+    2026-09-17 ChiSurf sliced ``[:lint_imax-1]`` -- the right *size*, one bin
+    off its axis -- which kept the empty row and dropped the last real bin: the
+    654 (factor 3) and 974 (factor 5) pairs short of the brute-force 6443 that
+    were once filed as a defect and then withdrawn as "the reference's trim".
+    Aligned, every factor keeps all 6443, and the Octave run of the reference
+    driver agrees bin for bin (``test_bootstrap.py``). The fixture's linear
+    matrices were re-recorded through the aligned slice then.
     """
     from chisurf.plugins.fcs.flc_2d.core import create_2d_fdc_numba_int
 
@@ -162,6 +165,8 @@ def test_the_linear_matrix_trims_its_last_bin_as_the_reference_does(recorded):
         lint_imax = -(-(span + int(lint)) // int(lint))
         assert lin.shape == (lint_imax - 1, lint_imax - 1), f"factor {int(lint)}"
         assert len(axis) == lint_imax - 1
+        if int(lint) in (2, 3, 5):  # the brute-force cases: nothing inside the gate is lost
+            assert lin.sum() == 6443, f"factor {int(lint)}"
 
 
 def test_both_kernels_put_the_log_matrix_on_the_same_axis(recorded):
