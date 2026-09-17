@@ -308,10 +308,36 @@ def test_a_region_of_interest_refuses_a_shape_it_cannot_draw(plot):
         plot.add_roi(kind="ring")
 
 
+def test_an_arrow_is_drawn_where_it_points(plot):
+    """The head lands on its tip, is sized in pixels, and turns with its angle."""
+    from qtpy import QtGui
+
+    plot.set_xlim(0.0, 10.0, padding=0.0)
+    plot.set_ylim(0.0, 10.0, padding=0.0)
+    head = plot.arrow(5.0, 5.0, angle=0.0, size=30.0, brush=(255, 0, 0))
+    assert head.position == (5.0, 5.0) and head.angle == 0.0
+    head.set_angle(90.0)
+    assert head.angle == 90.0
+
+    plot.resize(300, 300)
+    pixmap = QtGui.QPixmap(300, 300)
+    pixmap.fill()
+    plot.render(pixmap)
+    image = pixmap.toImage()
+    red = [(i, j) for i in range(300) for j in range(300)
+           if QtGui.QColor(image.pixel(i, j)).red() > 200
+           and QtGui.QColor(image.pixel(i, j)).green() < 60]
+    assert red, "the head was not drawn"
+    # Pointing up (+y), the head sits below its tip on screen.
+    ys = [j for _, j in red]
+    xs = [i for i, _ in red]
+    assert max(ys) - min(ys) > max(xs) - min(xs), "the head is not along +y"
+
+
 @pytest.mark.parametrize(
     "call, wanted",
     [
-        (lambda p: p.arrow(0.0, 0.0), "arrow"),
+        (lambda p: p.line([0.0, 1.0], [0.0, 1.0], fill=(1.0, 0.0, 0.0)), "filled curve"),
     ],
 )
 def test_what_is_not_drawn_yet_says_so(plot, call, wanted):

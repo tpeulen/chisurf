@@ -17,7 +17,7 @@ heatmaps, draggable regions (the fit range is one), markers in both
 orientations, the legend, axis labels and title, ranges (explicit, queried and
 auto), log scaling, grid and background, bar graphs, filled bands, error bars
 and text labels, rectangle/ellipse/polygon ROIs, an inverted y-axis, the colour
-bar, the multi-panel grid and the image view. What is left -- arrows, filled
+bar, arrows, the multi-panel grid and the image view. What is left -- filled
 curves, horizontal regions -- raises :class:`NotImplementedError` naming what is
 missing, because a plot that silently omits half of what it was asked to draw
 is worse than one that says so. Those are the rest of PRD-104.
@@ -308,7 +308,7 @@ class _Entry:
 
     @property
     def angle(self) -> float:
-        """Degrees counter-clockwise the shape is turned about its centre."""
+        """Degrees counter-clockwise: an arrow's direction, or a shape's turn."""
         return float(self.state.get("angle", 0.0))
 
     @property
@@ -361,8 +361,19 @@ class _Entry:
         self.state["text"] = str(value)
         self._canvas.refresh()
 
+    @property
+    def position(self) -> tuple[float, float]:
+        """Where the label or arrow tip is, in data coordinates."""
+        x, y = self.state.get("pos", (0.0, 0.0))
+        return (float(x), float(y))
+
+    def set_angle(self, angle: float) -> None:
+        """Turn the arrow (degrees counter-clockwise from ``+x``) or the shape."""
+        self.state["angle"] = float(angle)
+        self._canvas.refresh()
+
     def set_position(self, x, y=None) -> None:
-        """Move the label, as ``(x, y)`` or as one pair."""
+        """Move the label or arrow tip, as ``(x, y)`` or as one pair."""
         if y is None:
             x, y = x
         self.state["pos"] = (float(x), float(y))
@@ -516,6 +527,10 @@ class EmtkCanvas(base.Canvas):
         elif entry.kind == "region":
             low, high = entry.bounds
             plot._x_axis.fit((low, high))
+        elif entry.kind == "arrow":
+            x, y = entry.position
+            plot._x_axis.fit((x,))
+            plot._y_axis.fit((y,))
 
     def _draw_bands(self, painter, plot) -> None:
         """Draw the regions and vertical markers, and record where they are.
@@ -542,6 +557,8 @@ class EmtkCanvas(base.Canvas):
                 entry.state["_pixels"] = (at - 4.0, at + 4.0)
             elif entry.kind == "roi":
                 self._draw_roi(painter, plot, entry)
+            elif entry.kind == "arrow":
+                self._draw_arrow(painter, plot, entry)
             elif entry.kind == "bars":
                 self._draw_bars(painter, plot, entry)
             elif entry.kind == "band":
@@ -595,6 +612,41 @@ class EmtkCanvas(base.Canvas):
         else:
             painter.stroke_rect(*box, colour, (*colour, 40))
         entry.state["_box"] = (box[0], box[1], box[0] + box[2], box[1] + box[3])
+
+    def _draw_arrow(self, painter, plot, entry: _Entry) -> None:
+        """A filled head with its tip at ``pos``, sized in pixels.
+
+        The direction is a data-space angle, so it is mapped through both axes:
+        an inverted or anisotropic panel still points the arrow along the data.
+        """
+        state = entry.state
+        x, y = state["pos"]
+        theta = math.radians(state["angle"])
+        tip = (plot._x_axis.to_pixels(x), plot._y_axis.to_pixels(y))
+        (x_lo, x_hi), (y_lo, y_hi) = plot._x_axis.range, plot._y_axis.range
+        step = 1e-3 * max(abs(x_hi - x_lo), abs(y_hi - y_lo), 1e-12)
+        ahead = (plot._x_axis.to_pixels(x + step * math.cos(theta)),
+                 plot._y_axis.to_pixels(y + step * math.sin(theta)))
+        ux, uy = ahead[0] - tip[0], ahead[1] - tip[1]
+        norm = math.hypot(ux, uy)
+        if not math.isfinite(norm) or norm == 0.0:
+            return
+        ux, uy = ux / norm, uy / norm
+        nx, ny = -uy, ux
+        size = state["size"]
+        half = (state["head_width"] / 2.0 if state["head_width"] is not None
+                else size * math.tan(math.radians(state["tip_angle"]) / 2.0))
+        base = (tip[0] - ux * size, tip[1] - uy * size)
+        colour = (*state.get("color", (220, 220, 220)), 255)
+        painter.fill_triangle(tip, (base[0] + nx * half, base[1] + ny * half),
+                              (base[0] - nx * half, base[1] - ny * half), colour)
+        if state["tail_length"]:
+            w = state["tail_width"] / 2.0
+            end = (base[0] - ux * state["tail_length"], base[1] - uy * state["tail_length"])
+            a, b = (base[0] + nx * w, base[1] + ny * w), (base[0] - nx * w, base[1] - ny * w)
+            c, d = (end[0] - nx * w, end[1] - ny * w), (end[0] + nx * w, end[1] + ny * w)
+            painter.fill_triangle(a, b, c, colour)
+            painter.fill_triangle(a, c, d, colour)
 
     def _draw_rotated_roi(self, painter, plot, entry: _Entry, kind: str, colour) -> None:
         """A rectangle or ellipse turned about its centre, as pyqtgraph turns one.
@@ -1134,8 +1186,16 @@ class EmtkCanvas(base.Canvas):
 
     def add_arrow(self, pos, *, angle=0.0, size=None, tip_angle=None, head_width=None,
                   tail_length=None, tail_width=None, pen=None, brush=None) -> H.Arrow:
-        """Not drawn yet."""
-        self._unsupported("an arrow")
+        """Draw an arrow head (and optional tail) at a data coordinate."""
+        return self._add(
+            "arrow", pos=(float(pos[0]), float(pos[1])), angle=float(angle),
+            size=float(20.0 if size is None else size),
+            tip_angle=float(25.0 if tip_angle is None else tip_angle),
+            head_width=None if head_width is None else float(head_width),
+            tail_length=None if tail_length is None else float(tail_length),
+            tail_width=float(3.0 if tail_width is None else tail_width),
+            color=_rgb(brush if brush is not None else pen, (220, 220, 220)),
+        )
 
     def add_text(self, text, pos, *, color=None, anchor=None, draggable=False,
                  fill=None, border=None, anchored=False) -> H.Text:
