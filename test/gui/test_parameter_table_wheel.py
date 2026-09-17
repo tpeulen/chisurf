@@ -76,10 +76,10 @@ def table_long(qtbot):
     params = [FittingParameter(name=f"p{i}", value=1.0) for i in range(40)]
     widget = ParameterGroupTableWidget(params)
     qtbot.addWidget(widget)
+    # A table sizes itself to its rows unless its host bounds it; a bounded
+    # one scrolls what does not fit, which is the case under test.
+    widget.set_scrollable(3)
     widget.resize(520, 120)
-    widget.table_view.setFixedHeight(120)
-    widget.table_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-    widget.table_view.updateGeometry()
     widget.show()
     return widget, params
 

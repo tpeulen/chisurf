@@ -1157,7 +1157,7 @@ class AutoForm(QtWidgets.QWidget):
         add_btn.setStyleSheet(ADD_BUTTON_STYLE)
         del_btn = QtWidgets.QToolButton()
         del_btn.setText(section.remove_label)
-        del_btn.setToolTip("Remove the last component")
+        del_btn.setToolTip("Remove the selected component, or the last one")
         del_btn.setStyleSheet(REMOVE_BUTTON_STYLE)
         for btn in (add_btn, del_btn):
             btn.setSizePolicy(

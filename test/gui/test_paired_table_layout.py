@@ -154,8 +154,8 @@ def test_the_list_style_stacks_a_wide_component(qtbot):
     # The section's add/del still drive the group, and del takes the selected
     # component — which a stacked row names by division.
     table.table_view.selectRow(0)
-    for button in form.findChildren(QtWidgets.QPushButton):
-        if button.text() == "del":
-            button.click()
-            break
+    remove = [b for b in form.findChildren(QtWidgets.QToolButton)
+              if b.toolTip() == "Remove the selected component, or the last one"]
+    assert len(remove) == 1, "the section must offer one remove button"
+    remove[0].click()
     assert table.table_model.rowCount() == WIDTH

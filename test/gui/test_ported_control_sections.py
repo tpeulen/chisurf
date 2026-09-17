@@ -37,11 +37,11 @@ def test_the_code_editor_section_shows_the_bound_attribute(qapp, qtbot):
     from chisurf.gui.autoform.sections.code_editor_section import CodeEditorWidget
 
     model = _Model()
-    widget = CodeEditorWidget(model, "script", language="chimol")
+    widget = CodeEditorWidget(model, "script", language="lua")
     qtbot.addWidget(widget)
     assert widget.text == model.script
     assert widget.editor is not None
-    assert widget.editor.language_name == "chimol"
+    assert widget.editor.language_name == "Lua"
 
 
 def test_typing_into_the_hosted_editor_writes_back_to_the_model(qapp, qtbot):

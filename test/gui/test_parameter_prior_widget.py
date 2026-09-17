@@ -282,8 +282,13 @@ def test_focus_moving_to_a_child_keeps_the_popup_open(qtbot, param):
     popup = _popup(qtbot, param)
     popup.show()
     qtbot.waitExposed(popup)
+    # Only the active window has a focus widget; under pytest-qt nothing
+    # activates the popup, and without this the check saw no focus at all.
+    popup.activateWindow()
+    qtbot.waitUntil(popup.isActiveWindow, timeout=1000)
 
     popup.sb_value.setFocus(QtCore.Qt.MouseFocusReason)
+    assert QtWidgets.QApplication.focusWidget() is popup.sb_value
     popup._hide_if_focus_left()
 
     assert popup.isVisible()
