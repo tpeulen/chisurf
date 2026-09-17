@@ -148,7 +148,8 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
         for p in t._model._params
     }
     shown |= {
-        getattr(getattr(w, "parameter", None), "canonical_id", None) for w in editor.parameter_widgets
+        getattr(getattr(w, "parameter", None), "canonical_id", None)
+        for w in editor.parameter_widgets
     }
     missing = set(model.structure_parameter_ids()) - shown
     assert not {m for m in missing if not m.startswith("output.")}, f"not on screen: {missing}"
@@ -192,7 +193,9 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
         if isinstance(s, vs.ToggleRowSection)
         for item in s.items
     }
-    assert {"do_convolution", "corrections.correct_pile_up", "corrections.reverse"} <= toggles, toggles
+    assert {"do_convolution", "corrections.correct_pile_up", "corrections.reverse"} <= toggles, (
+        toggles
+    )
     model.corrections.reverse = True
     assert model.get_scalar("reverse_linearization") == 1.0
 

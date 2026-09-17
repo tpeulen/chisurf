@@ -267,7 +267,9 @@ def test_laplace_conditions_in_closed_form_when_the_model_is_linear():
         closed = E.LaplaceEngine(fit).condition(held, value).add_target(target).run()
         closed_calls = calls[0]
         calls[0] = 0
-        refit = E.LaplaceEngine(fit).condition(held, value).add_target(target).run(closed_form=False)
+        refit = (
+            E.LaplaceEngine(fit).condition(held, value).add_target(target).run(closed_form=False)
+        )
         refit_calls = calls[0]
     finally:
         model._update_model = original

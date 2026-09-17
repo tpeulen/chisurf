@@ -842,7 +842,10 @@ class LaplaceEngine(PosteriorEngine):
                 # Free but outside the curvature: the model does not respond to it.
                 value = float(self._parameter(name).value)
                 self._marginals[name] = Marginal(
-                    name=name, value=value, method=self.method, p_value=p_value,
+                    name=name,
+                    value=value,
+                    method=self.method,
+                    p_value=p_value,
                     diagnostics=dict(certificate),
                 )
         self._joints = {}
@@ -853,7 +856,9 @@ class LaplaceEngine(PosteriorEngine):
             self._joints[key] = Joint(
                 names=key,
                 mean=np.asarray(block.get_mean(), dtype=np.float64),
-                covariance=np.asarray(block.get_covariance(), dtype=np.float64).reshape(len(key), len(key)),
+                covariance=np.asarray(block.get_covariance(), dtype=np.float64).reshape(
+                    len(key), len(key)
+                ),
                 method=self.method,
             )
         chi2 = float(residuals @ residuals)
@@ -1098,7 +1103,9 @@ class GaussianEngine(PosteriorEngine):
             return None
         scope = list(form.get_names())
         index = scope.index(name)
-        covariance = np.asarray(form.get_covariance(), dtype=np.float64).reshape(len(scope), len(scope))
+        covariance = np.asarray(form.get_covariance(), dtype=np.float64).reshape(
+            len(scope), len(scope)
+        )
         mean = np.asarray(form.get_mean(), dtype=np.float64)
         centre = float(mean[index])
         sd = float(math.sqrt(max(covariance[index, index], 0.0)))

@@ -92,7 +92,14 @@ def test_curve_input_section_loads_from_json():
 
 def test_lifetime_view_has_irf_curve_input():
     spec = _make_view("tcspc_lifetime").view_spec()
-    irf = next((s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection) and s.label == "IRF"), None)
+    irf = next(
+        (
+            s
+            for s in spec.flat_sections()
+            if isinstance(s, vs.CurveInputSection) and s.label == "IRF"
+        ),
+        None,
+    )
     assert irf is not None and irf.select_action == "model.change_irf"
 
 

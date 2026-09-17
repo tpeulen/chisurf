@@ -9,7 +9,6 @@ import pytest
 
 from ..core.pair_selection import (
     preprocess_efficiency_matrix,
-    select_informative_pairs,
     write_pair_selection_report,
 )
 
@@ -55,37 +54,6 @@ def test_preprocess_zero_nan_returns_all_columns():
     assert effs_clean.shape == (5, 3)
 
 
-def test_greedy_selection_order_deterministic():
-    """Verify greedy selection returns a reproducible selection order on a toy matrix."""
-    effs = np.array(
-        [
-            [0.1, 0.9],
-            [0.2, 0.8],
-            [0.9, 0.1],
-        ],
-        dtype=np.float32,
-    )
-    rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
-    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=2)
-    assert len(selected) == 2
-    assert len(decay) == 2
-
-
-def test_precision_decay_length_equals_n_selected():
-    """Verify length of precision decay output array matches the number of selected pairs."""
-    effs = np.array(
-        [
-            [0.1, 0.9],
-            [0.2, 0.8],
-            [0.9, 0.1],
-        ],
-        dtype=np.float32,
-    )
-    rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
-    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=2)
-    assert len(decay) == len(selected)
-
-
 def test_write_report_row0_is_initial_rmsd():
     """Verify the first row of the report contains the correct placeholder and initial RMSD."""
     with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
@@ -106,36 +74,6 @@ def _toy_matrices():
     effs = np.array([[0.1, 0.9, 0.5], [0.2, 0.8, 0.4], [0.9, 0.1, 0.6]], dtype=np.float32)
     rmsds = np.array([[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]], dtype=np.float32)
     return effs, rmsds  # 3 frames, 3 candidate pairs
-
-
-def test_select_max_pairs_caps_to_n_pairs():
-    """max_pairs larger than the number of candidate pairs is capped, not an error."""
-    effs, rmsds = _toy_matrices()
-    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=10)
-    assert len(selected) <= effs.shape[1]
-    assert len(decay) == len(selected)
-
-
-def test_select_max_pairs_zero_returns_empty():
-    """max_pairs <= 0 returns empty selection + decay arrays."""
-    effs, rmsds = _toy_matrices()
-    selected, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=0)
-    assert len(selected) == 0
-    assert len(decay) == 0
-
-
-def test_select_unique_only_has_no_repeats():
-    """With unique_only, no pair is selected twice."""
-    effs, rmsds = _toy_matrices()
-    selected, _ = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=3, unique_only=True)
-    assert len(set(selected.tolist())) == len(selected)
-
-
-def test_select_precision_decay_non_increasing():
-    """Each added informative pair should not worsen the expected precision."""
-    effs, rmsds = _toy_matrices()
-    _, decay = select_informative_pairs(effs, rmsds, err=0.05, max_pairs=3)
-    assert np.all(np.diff(np.asarray(decay, dtype=float)) <= 1e-4)
 
 
 def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):

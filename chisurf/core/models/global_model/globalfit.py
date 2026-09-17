@@ -401,9 +401,7 @@ class GlobalFitModel(model.Model, Curve):
             if after is None or reference is None or reference[i] != after:
                 changed.append(i)
 
-        self._pending_dirty_fits = (
-            self._dirty_fits_for(changed) if reference is not None else None
-        )
+        self._pending_dirty_fits = self._dirty_fits_for(changed) if reference is not None else None
 
     def _dirty_fits_for(self, changed_indices) -> typing.Optional[typing.List[int]]:
         """Map changed parameter positions onto the local fits to recompute.

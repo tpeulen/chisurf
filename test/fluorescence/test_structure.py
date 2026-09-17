@@ -15,7 +15,6 @@ import chisurf.core.structure
 
 class Tests(unittest.TestCase):
     pdb_filename = "./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb"
-    s1 = chisurf.core.structure.ProteinCentroid(pdb_filename, verbose=True)
 
     s1_ref_xyz = np.array(
         [
@@ -27,7 +26,20 @@ class Tests(unittest.TestCase):
         ]
     )
 
-    s2 = chisurf.core.structure.Structure(pdb_filename, verbose=True)
+    @classmethod
+    def setUpClass(cls):
+        # The default radii mode ("charmm") reads coordinates through
+        # IMP.bff.read_structure_table, which only an IMP-linked build
+        # provides; an IMP-free ("core") build raises ImportError, and the
+        # message says so explicitly. These fixtures used to be built at
+        # class-body scope, which runs at collection time regardless of any
+        # skip decorator -- moved here so a "core" build skips the class
+        # instead of crashing collection.
+        try:
+            cls.s1 = chisurf.core.structure.ProteinCentroid(cls.pdb_filename, verbose=True)
+            cls.s2 = chisurf.core.structure.Structure(cls.pdb_filename, verbose=True)
+        except ImportError as e:
+            raise unittest.SkipTest(str(e)) from e
 
     def test_structure_Structure(self):
         s1 = chisurf.core.structure.Structure(pdb_id="148L")
