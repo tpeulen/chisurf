@@ -30,8 +30,9 @@ def test_every_manifest_method_is_registered():
             registered[name] = handler
 
     services.register_services(Dispatcher())
-    manifest = json.loads((pathlib.Path(services.__file__).parents[1] / "manifest.json")
-                          .read_text())
+    manifest = json.loads(
+        (pathlib.Path(services.__file__).parents[1] / "manifest.json").read_text()
+    )
     declared = {m["name"] for m in manifest["rpc_methods"]}
     assert declared == set(registered)
 

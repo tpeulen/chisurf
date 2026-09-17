@@ -32,8 +32,18 @@ def _problem(seed=0, n=14, n_comp=6, n_lags=2):
 def test_the_objective_is_the_reproduction_and_its_gradient_is_exact(fix_A, fix_G, fix_y0):
     axis, E, A, G, data = _problem()
     mi = MQ.mi_model(A + 0.1, np.linspace(0.5, 3, 6), 3.0, 0.5, 0)
-    obj = MQ._Objective(data, data, axis, E, A, G, np.array([0.3, 0.4]),
-                        np.full(2, fix_A), np.full((2, 2, 2), fix_G), np.full(2, fix_y0))
+    obj = MQ._Objective(
+        data,
+        data,
+        axis,
+        E,
+        A,
+        G,
+        np.array([0.3, 0.4]),
+        np.full(2, fix_A),
+        np.full((2, 2, 2), fix_G),
+        np.full(2, fix_y0),
+    )
     x = obj.start() * 1.1 + 0.05
     q, grad, (chi2, S) = obj(x, mi, 0.7)
     A_x, G_x, y_x = obj.unpack(x)
@@ -41,8 +51,12 @@ def test_the_objective_is_the_reproduction_and_its_gradient_is_exact(fix_A, fix_
     assert q == pytest.approx(rep.estimator_q, rel=1e-12)
     assert chi2 == pytest.approx(rep.chi2, rel=1e-12)
     h = 1e-6
-    numeric = np.array([(obj(x + h * e, mi, 0.7)[0] - obj(x - h * e, mi, 0.7)[0]) / (2 * h)
-                        for e in np.eye(x.size)])
+    numeric = np.array(
+        [
+            (obj(x + h * e, mi, 0.7)[0] - obj(x - h * e, mi, 0.7)[0]) / (2 * h)
+            for e in np.eye(x.size)
+        ]
+    )
     np.testing.assert_allclose(grad, numeric, rtol=2e-4, atol=1e-6)
 
 
@@ -50,13 +64,15 @@ def test_the_schedule_ramps_the_regulator_and_honours_the_break():
     axis, E, A, G, data = _problem(n_lags=1)
     tau = np.linspace(0.5, 3, 6)
     kw = dict(fit_start=1, t_min_ns=0.5, t_max_ns=3.0, initial_y0=0.2)
-    r = MQ.minimize_q(data, axis, E, tau, A + 0.1, n_regulator_trials=6, regulator=0.5,
-                      regulator_factor=2.0, **kw)
+    r = MQ.minimize_q(
+        data, axis, E, tau, A + 0.1, n_regulator_trials=6, regulator=0.5, regulator_factor=2.0, **kw
+    )
     np.testing.assert_allclose(r.q_table[:, 0], 0.5 * 2.0 ** np.arange(6))
     # the entropy weight falls along the ramp, so the misfit may only shrink
     assert r.q_table[-1, 2] <= r.q_table[0, 2] * (1 + 1e-9)
-    stopped = MQ.minimize_q(data, axis, E, tau, A + 0.1, n_regulator_trials=6,
-                            break_factor=-50, **kw)
+    stopped = MQ.minimize_q(
+        data, axis, E, tau, A + 0.1, n_regulator_trials=6, break_factor=-50, **kw
+    )
     assert stopped.q_table.shape[0] == 1
 
 
@@ -69,17 +85,34 @@ def _simulated_matrices():
     irf, x = reference_irf()
     molecules = []
     for j in range(2):
-        s = simulate_photon_stream(np.array([[0, 30.0], [10, 0]]), (1.0, 3.0), (1e4, 1e4),
-                                   total_time_s=30, irf=matlab_sampled_irf(irf), irf_time_ns=x,
-                                   seed=70 + j)
+        s = simulate_photon_stream(
+            np.array([[0, 30.0], [10, 0]]),
+            (1.0, 3.0),
+            (1e4, 1e4),
+            total_time_s=30,
+            irf=matlab_sampled_irf(irf),
+            irf_time_ns=x,
+            seed=70 + j,
+        )
         molecules.append((s.macro_times, s.micro_times))
     # the reference's 2D search: one lag of 100 us, window 10 us, gate 0.5-12.2 ns
-    sep = separate_data_2d_fdc(molecules, [100], 10, tMin=125, tMax=3050, lint_bin_factor=4,
-                               logt_imax=100, n_chunks=4)
-    kw = dict(irf=irf, xdata_ns=x, estimates=[0, 1, 1, 0.3, 1, 3, 0.3], t_min_ns=0.5,
-              t_max_ns=12.2, t_step_ns=0.004, lint_bin_factor=4, logt_imax=100,
-              tau_ns=np.arange(0.2, 5.01, 0.2), n_short_trials=60, n_lag_trials=5,
-              n_global_trials=60)
+    sep = separate_data_2d_fdc(
+        molecules, [100], 10, tMin=125, tMax=3050, lint_bin_factor=4, logt_imax=100, n_chunks=4
+    )
+    kw = dict(
+        irf=irf,
+        xdata_ns=x,
+        estimates=[0, 1, 1, 0.3, 1, 3, 0.3],
+        t_min_ns=0.5,
+        t_max_ns=12.2,
+        t_step_ns=0.004,
+        lint_bin_factor=4,
+        logt_imax=100,
+        tau_ns=np.arange(0.2, 5.01, 0.2),
+        n_short_trials=60,
+        n_lag_trials=5,
+        n_global_trials=60,
+    )
     return sep.total(), kw
 
 
@@ -100,8 +133,9 @@ def test_the_rise_scan_finds_the_simulated_irf_placement():
 
     avg = average_2d_mem(mats, center=res.best, n_points=3, keep_runs=True, **kw)
     np.testing.assert_array_equal(avg.rise_points_irf, res.best - 1 + np.arange(3))
-    np.testing.assert_allclose(avg.correlations,
-                               np.mean([r.correlations for r in avg.runs], axis=0))
+    np.testing.assert_allclose(
+        avg.correlations, np.mean([r.correlations for r in avg.runs], axis=0)
+    )
     np.testing.assert_allclose(avg.model_log, np.mean([r.model_log for r in avg.runs], axis=0))
     # the averaging driver fixes the amplitudes at the scaled start distribution
     for run in avg.runs:
@@ -119,26 +153,56 @@ def test_the_cli_runs_the_scan_and_the_average(tmp_path, monkeypatch):
     from .conftest import reference_irf
 
     irf, x = reference_irf()
-    s = simulate_photon_stream(np.array([[0, 30.0], [10, 0]]), (1.0, 3.0), (1e4, 1e4),
-                               total_time_s=2, irf=np.clip(irf, 0, None), irf_time_ns=x, seed=5)
+    s = simulate_photon_stream(
+        np.array([[0, 30.0], [10, 0]]),
+        (1.0, 3.0),
+        (1e4, 1e4),
+        total_time_s=2,
+        irf=np.clip(irf, 0, None),
+        irf_time_ns=x,
+        seed=5,
+    )
     f = tmp_path / "m0.ptu"
     f.write_bytes(b"")
-    monkeypatch.setattr(api, "load_tttr", lambda path, routing_channels=None: api.TttrData(
-        s.macro_times, s.micro_times, np.zeros(1), 1e-6, 0.004, 3127))
+    monkeypatch.setattr(
+        api,
+        "load_tttr",
+        lambda path, routing_channels=None: api.TttrData(
+            s.macro_times, s.micro_times, np.zeros(1), 1e-6, 0.004, 3127
+        ),
+    )
     irf_file = tmp_path / "irf.npz"
     np.savez(irf_file, irf=irf, irf_time_ns=x)
-    common = [str(f), "--irf", str(irf_file), "--dt", "100", "--ddt", "10", "--tmax-ns", "10",
-              "--log-bins", "40", "--short-trials", "2", "--lag-trials", "1",
-              "--global-trials", "2"]
+    common = [
+        str(f),
+        "--irf",
+        str(irf_file),
+        "--dt",
+        "100",
+        "--ddt",
+        "10",
+        "--tmax-ns",
+        "10",
+        "--log-bins",
+        "40",
+        "--short-trials",
+        "2",
+        "--lag-trials",
+        "1",
+        "--global-trials",
+        "2",
+    ]
     out = tmp_path / "scan.npz"
-    r = CliRunner().invoke(cli, ["rise-search-2d", *common, "--center", "300", "--points", "2",
-                                 "-o", str(out)])
+    r = CliRunner().invoke(
+        cli, ["rise-search-2d", *common, "--center", "300", "--points", "2", "-o", str(out)]
+    )
     assert r.exit_code == 0, r.output
     with np.load(out) as z:
         assert z["q_chi2_s"].shape == (2, 3) and int(z["best"]) in (299, 300)
     out = tmp_path / "avg.npz"
-    r = CliRunner().invoke(cli, ["average-2d", *common, "--center", "300", "--points", "2",
-                                 "-o", str(out)])
+    r = CliRunner().invoke(
+        cli, ["average-2d", *common, "--center", "300", "--points", "2", "-o", str(out)]
+    )
     assert r.exit_code == 0, r.output
     with np.load(out) as z:
         assert z["model_log"].shape == (1, 40, 40)

@@ -50,8 +50,12 @@ class Ranking:
 
 
 OPTIONS = {
-    "source": "ranked_rows", "columns_source": "ranked_columns", "selected_call": "apply_row",
-    "sort": {"key": "score", "descending": True}, "tooltip_key": "note", "row_key": "key",
+    "source": "ranked_rows",
+    "columns_source": "ranked_columns",
+    "selected_call": "apply_row",
+    "sort": {"key": "score", "descending": True},
+    "tooltip_key": "note",
+    "row_key": "key",
 }
 
 
@@ -65,7 +69,9 @@ def shown(widget, column=1):
     from qtpy import QtCore
 
     model = widget.table._chi_model
-    return [model.data(model.index(r, column), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
+    return [
+        model.data(model.index(r, column), QtCore.Qt.DisplayRole) for r in range(model.rowCount())
+    ]
 
 
 def test_a_bar_column_gets_the_bar_delegate_and_its_range(qapp):

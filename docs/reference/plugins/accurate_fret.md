@@ -39,17 +39,17 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. |
-| I_DA (FRET) | `column_i_da` | choice |  | choices: `column_names` | Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do. |
-| I_AA (acceptor) | `column_i_aa` | choice |  | choices: `column_names` | Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. |
-| Donor lifetime | `column_tau_f` | choice |  | choices: `column_names` | Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test. |
+| I_DD (donor) | `column_i_dd` | choice |  | choices: `column_names` | Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list. |
+| I_DA (FRET) | `column_i_da` | choice |  | choices: `column_names` | Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do. Type to filter the list. |
+| I_AA (acceptor) | `column_i_aa` | choice |  | choices: `column_names` | Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list. |
+| Donor lifetime | `column_tau_f` | choice |  | choices: `column_names` | Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test. Type to filter the list. |
 
 ### Dyes (database)
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Donor | `donor_dye` | choice |  | choices: `dye_names` | Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which. |
-| Acceptor | `acceptor_dye` | choice |  | choices: `dye_names` | Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0. |
+| Donor | `donor_dye` | choice |  | choices: `dye_names` | Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which. Type to filter the list. |
+| Acceptor | `acceptor_dye` | choice |  | choices: `dye_names` | Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0. Type to filter the list. |
 | kappa^2 | `kappa2` | float |  | 0.0 … 4.0 (step 0.01) | Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %. |
 | Refractive index | `refractive_index` | float |  | 1.0 … 2.0 (step 0.01) | Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3). |
 
@@ -75,7 +75,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Use the optics prior | `use_priors` | bool |  |  | Combine each data estimate with what the light path predicts. gamma, alpha and delta follow from computed excitation and emission probabilities; that prediction is the prior, the data moves it, and a factor the data cannot identify keeps the optical value together with the optical uncertainty. |
-| Light path | `lightpath_name` | choice |  | choices: `lightpath_names` | A light path saved by the light-path simulator. Its excitation matrix (which laser excites which dye) and emission matrix (which fraction of each dye's emission reaches each detector) are turned into Gaussian priors for gamma, alpha and delta. Leave empty to calibrate from the data alone. |
+| Light path | `lightpath_name` | choice |  | choices: `lightpath_names` | A light path saved by the light-path simulator. Its excitation matrix (which laser excites which dye) and emission matrix (which fraction of each dye's emission reaches each detector) are turned into Gaussian priors for gamma, alpha and delta. Leave empty to calibrate from the data alone. Type to filter the list. |
 | Phi_D | `quantum_yield_donor` | float |  | 0.0 … 1.0 (step 0.01) | Donor fluorescence quantum yield. Enters the predicted gamma = (g_R·Phi_A)/(g_G·Phi_D). |
 | Phi_A | `quantum_yield_acceptor` | float |  | 0.0 … 1.0 (step 0.01) | Acceptor fluorescence quantum yield. |
 | g_G | `detection_green` | float |  | 0.0 … 10.0 (step 0.01) | Detection efficiency of the donor (green) channel, beyond what the light path already models. |

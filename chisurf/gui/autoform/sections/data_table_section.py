@@ -220,8 +220,11 @@ class DataTableSectionWidget(QtWidgets.QWidget):
                 if not tooltip_key or not (0 <= row < len(self.rows)):
                     return None
                 record = self.rows[row]
-                value = record.get(tooltip_key) if isinstance(record, dict) else \
-                    getattr(record, tooltip_key, None)
+                value = (
+                    record.get(tooltip_key)
+                    if isinstance(record, dict)
+                    else getattr(record, tooltip_key, None)
+                )
                 return str(value) if value else None
 
         return _Source(records, specs)
@@ -239,8 +242,12 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             return None
         if self._row_key:
             record = self._records[row]
-            return ("key", record.get(self._row_key) if isinstance(record, dict) else
-                    getattr(record, self._row_key, None))
+            return (
+                "key",
+                record.get(self._row_key)
+                if isinstance(record, dict)
+                else getattr(record, self._row_key, None),
+            )
         return ("row", row)
 
     def _restore_selection(self, identity) -> None:
@@ -248,10 +255,23 @@ class DataTableSectionWidget(QtWidgets.QWidget):
         if identity is None or model is None:
             return
         kind, value = identity
-        row = value if kind == "row" else next(
-            (i for i, r in enumerate(self._records)
-             if (r.get(self._row_key) if isinstance(r, dict) else getattr(r, self._row_key, None))
-             == value), -1)
+        row = (
+            value
+            if kind == "row"
+            else next(
+                (
+                    i
+                    for i, r in enumerate(self._records)
+                    if (
+                        r.get(self._row_key)
+                        if isinstance(r, dict)
+                        else getattr(r, self._row_key, None)
+                    )
+                    == value
+                ),
+                -1,
+            )
+        )
         view_row = model.view_row(row) if row >= 0 else -1
         if view_row < 0:
             return
@@ -271,7 +291,9 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             return
         from qtpy import QtCore
 
-        order = QtCore.Qt.DescendingOrder if self._sort.get("descending") else QtCore.Qt.AscendingOrder
+        order = (
+            QtCore.Qt.DescendingOrder if self._sort.get("descending") else QtCore.Qt.AscendingOrder
+        )
         model.sort(keys.index(key), order)
         header = self.table._view.horizontalHeader()
         header.setSortIndicatorShown(True)
@@ -302,9 +324,12 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             model = self.table._chi_model
             source = getattr(model, "_source", None) if model is not None else None
             grown = (
-                isinstance(previous, tuple) and len(previous) == 4
-                and previous[0] == token[0] and previous[3] == token[3]
-                and source is not None and hasattr(source, "set_rows")
+                isinstance(previous, tuple)
+                and len(previous) == 4
+                and previous[0] == token[0]
+                and previous[3] == token[3]
+                and source is not None
+                and hasattr(source, "set_rows")
             )
             if grown:
                 # Same list, same columns, more rows: re-read in place so the

@@ -32,8 +32,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | All photons | `show_all_photons` | bool |  |  | Show the diagnostic layers computed from every photon in the range. |
 | Selected photons | `show_selected_photons` | bool |  |  | Show the diagnostic layers computed from the photons the burst search kept. |
-| First photon | `photon_first` | int |  | 0 … 99999999 | First photon index to process. 0 is the start of the file. |
-| Last photon | `photon_last` | int |  | 0 … 99999999 | Last photon index to process. The default is the end of the file. |
+| First photon | `photon_first` | int |  | 0 … 99999999 | First photon index to process. 0 is the start of the file. Set by the visible-window slider above; type here for an exact range. |
+| Last photon | `photon_last` | int |  | 0 … 99999999 | Last photon index to process. The default is the end of the file. Set by the visible-window slider above; type here for an exact range. |
 
 ## JSON-RPC methods
 

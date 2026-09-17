@@ -45,12 +45,28 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Photons | `photon_count` | float |  | 1.0 … 1000000000.0 | Total photon count for the Poisson observation. |
 | Seed | `seed` | int |  | 0 … 2147483647 | Random seed for the shot-noise realization (reproducible). |
 
+### Anisotropy
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Mode | `polarization` | choice |  | choices: vm, vv/vh | Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on. |
+
+### VV/VH detection corrections
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| g | `g_factor` | float |  | 0.001 … 100.0 | Parallel/perpendicular detection sensitivity ratio G. The perpendicular channel records 1/G of what an equally sensitive one would. |
+| l1 | `l1` | float |  | -10.0 … 10.0 | Polarization mixing factor of the parallel (VV) channel. |
+| l2 | `l2` | float |  | -10.0 … 10.0 | Polarization mixing factor of the perpendicular (VH) channel. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
 | `synthetic_decay.compute` | no | Generate a decay from lifetimes/amplitudes (+ optional IRF, shot noise). |
 | `synthetic_decay.compute_component` | no | Generate a decay from a component definition (lifetime / spectrum / gaussian-lifetime / gaussian-distance). |
+| `synthetic_decay.compute_aniso` | no | Generate a polarized VV/VH channel pair plus the anisotropy decay r(t) (g-factor, l1, l2 corrections; per-channel shot noise). |
+| `synthetic_decay.compute_rt` | no | Ideal anisotropy r(t) from rotation rows on the decay time axis. |
 
 ## Theory and workflow
 

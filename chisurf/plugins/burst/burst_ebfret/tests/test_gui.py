@@ -111,7 +111,9 @@ def test_menu_load_opens_the_file_dialog_with_ebfrets_filters(window):
     window.frame()
     chooser = window.gui.dialogs[-1].chooser
     assert [label for label, _ in chooser.filters][:2] == [
-        "ebFRET saved session (.mat)", "Raw donor-acceptor time series (.dat)"]
+        "ebFRET saved session (.mat)",
+        "Raw donor-acceptor time series (.dat)",
+    ]
     assert chooser.multiselect and load.label == "Load"
 
 
@@ -135,18 +137,22 @@ def test_run_button_runs_on_the_backend_and_the_window_follows(window, tmp_path)
         time.sleep(0.1)
     window.frame(2)
     assert window.gui.view["analysis"]["analysed"] == demo.DEMO["n_series"]
-    viterbi_markers = [line for line in window.gui.view["plots"]["signal"]["lines"]
-                       if line.get("marker")]
+    viterbi_markers = [
+        line for line in window.gui.view["plots"]["signal"]["lines"] if line.get("marker")
+    ]
     assert viterbi_markers, "the Viterbi overlay must be drawn after a run"
 
 
 def test_every_dialog_draws_and_cancels(window, tmp_path):
     window.load_demo(tmp_path)
-    openers = [window.gui.remove_bleaching, window.gui.clip_outliers, window.gui.init_priors,
-               lambda: window.gui.show(dlg.select_channels_dialog(lambda c: None)),
-               lambda: window.gui.show(dlg.assign_smd_channels_dialog(["a", "b"], lambda c: None)),
-               lambda: window.gui.show(dlg.select_analysis_dialog([2, 3], ["group 1"],
-                                                                  lambda k, g: None))]
+    openers = [
+        window.gui.remove_bleaching,
+        window.gui.clip_outliers,
+        window.gui.init_priors,
+        lambda: window.gui.show(dlg.select_channels_dialog(lambda c: None)),
+        lambda: window.gui.show(dlg.assign_smd_channels_dialog(["a", "b"], lambda c: None)),
+        lambda: window.gui.show(dlg.select_analysis_dialog([2, 3], ["group 1"], lambda k, g: None)),
+    ]
     for open_dialog in openers:
         open_dialog()
         window.frame()

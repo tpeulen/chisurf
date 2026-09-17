@@ -44,19 +44,29 @@ def ref():
 def _curves(ref, c):
     t_min, t_max, f, L, rfl, rirf, rmin, rmax = ref[f"p{c}"]
     return create_exp_curve(
-        ref["Tau"], ref["xdata"], ref["IRF"], t_min_ns=t_min, t_max_ns=t_max, t_step_ns=0.004,
-        lint_bin_factor=int(f), log_axis_ns=ref[f"logt{c}"], rise_point_fl=int(rfl),
-        rise_point_irf=int(rirf), irf_range=(int(rmin), int(rmax)),
+        ref["Tau"],
+        ref["xdata"],
+        ref["IRF"],
+        t_min_ns=t_min,
+        t_max_ns=t_max,
+        t_step_ns=0.004,
+        lint_bin_factor=int(f),
+        log_axis_ns=ref[f"logt{c}"],
+        rise_point_fl=int(rfl),
+        rise_point_irf=int(rirf),
+        irf_range=(int(rmin), int(rmax)),
     ), (t_min, t_max, int(f), int(L))
 
 
 @pytest.mark.parametrize("case", [1, 2, 3, 4])
 def test_the_binned_basis_matches_the_matlab(ref, case):
     curves, (t_min, t_max, f, L) = _curves(ref, case)
-    np.testing.assert_allclose(matlab_log_axis_ns(t_min, t_max, 0.004, f, L), ref[f"logt{case}"],
-                               rtol=1e-14)
-    np.testing.assert_allclose(matlab_lin_axis_ns(t_min, t_max, 0.004, f), ref[f"lint{case}"],
-                               atol=1e-15)
+    np.testing.assert_allclose(
+        matlab_log_axis_ns(t_min, t_max, 0.004, f, L), ref[f"logt{case}"], rtol=1e-14
+    )
+    np.testing.assert_allclose(
+        matlab_lin_axis_ns(t_min, t_max, 0.004, f), ref[f"lint{case}"], atol=1e-15
+    )
     np.testing.assert_allclose(curves.binned_lin, ref[f"Elin{case}"], rtol=1e-12, atol=1e-14)
     np.testing.assert_allclose(curves.binned_log, ref[f"Elog{case}"], rtol=1e-12, atol=1e-14)
     if case == 3:
@@ -73,8 +83,9 @@ def test_a_one_channel_bin_is_summed_across_lifetimes_as_matlab_does(ref):
 
 @pytest.mark.parametrize("mi_type", [0, 1, 2, 3])
 def test_the_entropy_prior_matches_the_matlab(ref, mi_type):
-    np.testing.assert_allclose(mi_model(ref["A"], ref["TauM"], 3.3, 0.5, mi_type),
-                               ref[f"mi{mi_type}"], rtol=1e-13)
+    np.testing.assert_allclose(
+        mi_model(ref["A"], ref["TauM"], 3.3, 0.5, mi_type), ref[f"mi{mi_type}"], rtol=1e-13
+    )
 
 
 def test_the_rise_point_sequences_match_the_matlab(ref):
@@ -87,25 +98,54 @@ def test_the_driver_start_values_match_the_matlab(ref):
     irf = np.load(_DATA / "reference_irf.npz")
     tau = np.arange(0.05, 5.05 + 1e-9, 0.05)
     np.testing.assert_allclose(tau, ref["prep_Tau"], atol=1e-15)
-    curves = api.exp_curves(ref["prep_Tau"], irf["irf_time_ns"], irf["irf"], t_min_ns=0.5,
-                            t_max_ns=3.3, t_step_ns=0.004, lint_bin_factor=4, logt_imax=20,
-                            rise_point_irf=297)
+    curves = api.exp_curves(
+        ref["prep_Tau"],
+        irf["irf_time_ns"],
+        irf["irf"],
+        t_min_ns=0.5,
+        t_max_ns=3.3,
+        t_step_ns=0.004,
+        lint_bin_factor=4,
+        logt_imax=20,
+        rise_point_irf=297,
+    )
     np.testing.assert_allclose(curves.binned_log, ref["prep_ExpCurve_Binned_log"], rtol=1e-12)
     np.testing.assert_allclose(curves.binned_lin, ref["prep_ExpCurve_Binned_lin"], rtol=1e-12)
     A0 = scale_initial_distribution(
         gaussian_initial_distribution(ref["prep_Tau"], [0, 1, 1, 0.3, 1, 3, 0.3]),
-        curves.binned_log, float(ref["prep_data_max"]))
+        curves.binned_log,
+        float(ref["prep_data_max"]),
+    )
     np.testing.assert_allclose(A0, ref["prep_Tau_Initial_distribution"], rtol=1e-12, atol=1e-300)
     width = curves.lin_axis_ns[1] - curves.lin_axis_ns[0]
     assert 5000.0 / width == pytest.approx(float(ref["prep_Var_y0"]), rel=1e-14)
-    settings = {k: float(ref[f"prep_{k}"]) for k in (
-        "RangePoint_IRF_min", "RisePoint_FL", "y0", "FitStartI", "RegulatorConst",
-        "RegulatorFactor", "TrialNumFor_RegulatorConst", "Linear0orLog1", "UseCor1orNot0",
-        "mi_TypeSelect")}
-    assert settings == {"RangePoint_IRF_min": 50, "RisePoint_FL": 300, "y0": 5000,
-                        "FitStartI": 30, "RegulatorConst": 0.1, "RegulatorFactor": 1.4,
-                        "TrialNumFor_RegulatorConst": 100, "Linear0orLog1": 1,
-                        "UseCor1orNot0": 0, "mi_TypeSelect": 0}
+    settings = {
+        k: float(ref[f"prep_{k}"])
+        for k in (
+            "RangePoint_IRF_min",
+            "RisePoint_FL",
+            "y0",
+            "FitStartI",
+            "RegulatorConst",
+            "RegulatorFactor",
+            "TrialNumFor_RegulatorConst",
+            "Linear0orLog1",
+            "UseCor1orNot0",
+            "mi_TypeSelect",
+        )
+    }
+    assert settings == {
+        "RangePoint_IRF_min": 50,
+        "RisePoint_FL": 300,
+        "y0": 5000,
+        "FitStartI": 30,
+        "RegulatorConst": 0.1,
+        "RegulatorFactor": 1.4,
+        "TrialNumFor_RegulatorConst": 100,
+        "Linear0orLog1": 1,
+        "UseCor1orNot0": 0,
+        "mi_TypeSelect": 0,
+    }
     assert float(ref["prep_RangePoint_IRF_max"]) == irf["irf"].size - 90
 
 
@@ -117,8 +157,17 @@ def test_a_sampled_basis_is_close_on_the_linear_axis_and_wrong_on_the_log_axis()
     """
     z = np.load(_DATA / "reference_irf.npz")
     tau = np.arange(0.05, 5.05 + 1e-9, 0.05)
-    c = api.exp_curves(tau, z["irf_time_ns"], z["irf"], t_min_ns=0.5, t_max_ns=12.2,
-                       t_step_ns=0.004, lint_bin_factor=4, logt_imax=100, rise_point_irf=300)
+    c = api.exp_curves(
+        tau,
+        z["irf_time_ns"],
+        z["irf"],
+        t_min_ns=0.5,
+        t_max_ns=12.2,
+        t_step_ns=0.004,
+        lint_bin_factor=4,
+        logt_imax=100,
+        rise_point_irf=300,
+    )
 
     def misfit(ref_cols, other):
         a, b = ref_cols, other
@@ -146,3 +195,21 @@ def test_a_log_axis_is_refused_without_a_binned_basis():
     E = build_exp_basis(np.linspace(0, 12, 30), np.array([1.0, 3.0]))
     res = api.two_d_spectrum(E @ np.eye(2) @ E.T, time_ns, basis=E, tau_grid=[1.0, 3.0])
     assert res.spectrum.shape == (2, 2)
+
+
+def test_the_basis_spectral_width_matches_the_matlab():
+    """``TK_MyMain_Exp_FFT_FWHM`` run unchanged in Octave (501 lifetimes, 50000 channels)."""
+    from chisurf.plugins.fcs.flc_2d.fit.exp_curve import basis_fft_hwhm
+
+    ref = np.load(_DATA / "matlab_fft_hwhm.npz")
+    irf = np.load(_DATA / "reference_irf.npz")["irf"]
+    take = slice(0, None, 25)  # every 25th lifetime keeps the test fast
+    ghz, ns = basis_fft_hwhm(
+        ref["Tau"][take],
+        irf,
+        rise_point_fl=int(ref["rise_point_fl"]),
+        rise_point_irf=int(ref["rise_point_irf"]),
+        irf_range=(50, irf.size - 90),
+    )
+    np.testing.assert_allclose(ghz, ref["HWHM_GHz"][take], rtol=1e-10)
+    np.testing.assert_allclose(ns, ref["HWHM_ns"][take], rtol=1e-10)

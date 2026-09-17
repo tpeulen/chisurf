@@ -27,9 +27,8 @@ from typing import Any
 
 import emtk
 from emtk import im, implot, keys
-from emtk.widgets.menus import Menu, MenuBar, MenuItem, Popup
-
 from emtk.view_form import FormState, draw_sections, find_section
+from emtk.widgets.menus import Menu, MenuBar, MenuItem, Popup
 from emtk.widgets.view_spec import load_view_spec
 
 from ..core.session import FILE_TYPES, SESSION, SMD_JSON, SMD_JSON_GZ, SMD_MAT
@@ -215,8 +214,13 @@ class EbfretGui:
         """Draw a control panel from ``main.view.json`` by its MATLAB title."""
         section = find_section(self.spec, title)
         if section is not None:
-            draw_sections(section.get("sections") or [], self.controls_model, self.form_state,
-                          int(section.get("n_col") or 1), titles=False)
+            draw_sections(
+                section.get("sections") or [],
+                self.controls_model,
+                self.form_state,
+                int(section.get("n_col") or 1),
+                titles=False,
+            )
 
     def _plot(
         self,
@@ -585,8 +589,15 @@ class App:
             ),
             "View": Menu(
                 "View",
-                [it["show_viterbi"], it["show_prior"], it["show_posterior"], it["scale_plots"],
-                 None, it["table_series"], it["table_states"]],
+                [
+                    it["show_viterbi"],
+                    it["show_prior"],
+                    it["show_posterior"],
+                    it["scale_plots"],
+                    None,
+                    it["table_series"],
+                    it["table_states"],
+                ],
             ),
         }
         self.menubar = MenuBar(list(self.menus.values()))
@@ -684,8 +695,11 @@ class App:
             painter.fill_rect(box[0], box[1], box[2], box[3], WINDOW_BG)
             self.table_boxes.append(box)
             with emtk.frame(painter, (x, y, w, h), io=self.table_io, storage=self.table_storage):
-                im.begin(f"##table-{title}", (box[0] + 6.0, box[1] + 4.0, box[2] - 12.0,
-                                              box[3] - 8.0), im.WindowFlags.NO_TITLE_BAR)
+                im.begin(
+                    f"##table-{title}",
+                    (box[0] + 6.0, box[1] + 4.0, box[2] - 12.0, box[3] - 8.0),
+                    im.WindowFlags.NO_TITLE_BAR,
+                )
                 im.begin_disabled(modal)
                 g.draw_table_panel(title)
                 im.end_disabled()
@@ -736,8 +750,9 @@ class App:
             if request is None:
                 continue
             key, (rx, ry, rw, rh), labels, current = request
-            items = [MenuItem(text, checked=(index == current))
-                     for index, text in enumerate(labels)]
+            items = [
+                MenuItem(text, checked=(index == current)) for index, text in enumerate(labels)
+            ]
             popup = Popup(items)
             popup.open_at(rx, ry + rh)
             self.popup = (popup, items, key, state)
@@ -748,8 +763,9 @@ class App:
         a table overlay's over one, the panels' otherwise."""
         if self.modal():
             return self.dialog_io
-        if px is not None and any(bx <= px < bx + bw and by <= py < by + bh
-                                  for bx, by, bw, bh in self.table_boxes):
+        if px is not None and any(
+            bx <= px < bx + bw and by <= py < by + bh for bx, by, bw, bh in self.table_boxes
+        ):
             return self.table_io
         return self.io
 

@@ -224,8 +224,8 @@ class SpecDialog(Dialog):
 
     def __init__(self, spec: str, form: Any) -> None:
         super().__init__()
-        from emtk.widgets.view_spec import load_view_spec
         from emtk.view_form import FormState
+        from emtk.widgets.view_spec import load_view_spec
 
         self.spec = load_view_spec(SPECS / spec)
         self.form = form
@@ -298,14 +298,16 @@ class RemoveBleachingForm(_Form):
         if name in self.KEYS:
             return manual
         if name.endswith("_value"):
-            return manual and bool(getattr(self, name[:-len("_value")], False))
+            return manual and bool(getattr(self, name[: -len("_value")], False))
         return True
 
     def ok(self) -> None:
         """*Ok*."""
         self._close()
-        params = {key: (float(getattr(self, f"{key}_value")) if getattr(self, key) else None)
-                  for key in self.KEYS}
+        params = {
+            key: (float(getattr(self, f"{key}_value")) if getattr(self, key) else None)
+            for key in self.KEYS
+        }
         self.on_ok(1 if self.method == "Manual" else 2, params)
 
 
@@ -328,8 +330,7 @@ class SetPriorsForm(_Form):
     def ok(self) -> None:
         """*Ok*."""
         self._close()
-        theta = {"mu_min": self.mu_min, "mu_max": self.mu_max, "sigma": self.sigma,
-                 "tau": self.tau}
+        theta = {"mu_min": self.mu_min, "mu_max": self.mu_max, "sigma": self.sigma, "tau": self.tau}
         counts = {"mu": self.count_mu, "sigma": self.count_sigma, "tau": self.count_tau}
         self.on_ok(theta, counts, 1 if self.scope == "All" else 2)
 
@@ -370,8 +371,9 @@ class AssignSmdChannelsForm(_Form):
         Called on *Cancel*.
     """
 
-    def __init__(self, labels: Sequence[str], on_ok: Callable,
-                 on_cancel: Callable | None = None) -> None:
+    def __init__(
+        self, labels: Sequence[str], on_ok: Callable, on_cancel: Callable | None = None
+    ) -> None:
         self.labels = [str(label) for label in labels] or ["(none)"]
         self.on_ok, self.on_cancel = on_ok, on_cancel
         self.signal_type = "Donor-Acceptor"
@@ -394,8 +396,13 @@ class AssignSmdChannelsForm(_Form):
         self._close()
         column = self.labels.index
         if self.signal_type == "Donor-Acceptor":
-            self.on_ok({"donor": column(self.donor) + 1, "acceptor": column(self.acceptor) + 1,
-                        "fret": None})
+            self.on_ok(
+                {
+                    "donor": column(self.donor) + 1,
+                    "acceptor": column(self.acceptor) + 1,
+                    "fret": None,
+                }
+            )
         else:
             self.on_ok({"donor": None, "acceptor": None, "fret": column(self.fret) + 1})
 
@@ -468,17 +475,20 @@ def select_channels_dialog(on_ok: Callable) -> SpecDialog:
     return dialog
 
 
-def assign_smd_channels_dialog(labels: Sequence[str], on_ok: Callable,
-                               on_cancel: Callable | None = None) -> SpecDialog:
+def assign_smd_channels_dialog(
+    labels: Sequence[str], on_ok: Callable, on_cancel: Callable | None = None
+) -> SpecDialog:
     """The *Assign Channels* dialog of an SMD load."""
-    dialog = SpecDialog("assign_smd_channels.view.json",
-                        AssignSmdChannelsForm(labels, on_ok, on_cancel))
+    dialog = SpecDialog(
+        "assign_smd_channels.view.json", AssignSmdChannelsForm(labels, on_ok, on_cancel)
+    )
     dialog.title, dialog.size = "Assign Channels", (340.0, 150.0)
     return dialog
 
 
-def select_analysis_dialog(states: Sequence[int], groups: Sequence[str],
-                           on_ok: Callable) -> SpecDialog:
+def select_analysis_dialog(
+    states: Sequence[int], groups: Sequence[str], on_ok: Callable
+) -> SpecDialog:
     """The *Select* dialog of the Traces and SMD exports."""
     dialog = SpecDialog("select_analysis.view.json", SelectAnalysisForm(states, groups, on_ok))
     dialog.title, dialog.size = "Select", (240.0, 150.0)

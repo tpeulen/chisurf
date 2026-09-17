@@ -433,8 +433,9 @@ def _rebin_square(matrix: np.ndarray, target: int) -> tuple[np.ndarray, int]:
     return matrix[:m, :m].reshape(m // k, k, m // k, k).sum(axis=(1, 3)), k
 
 
-def _matrix_and_basis(matrix, time_axis_ns, *, tau_range, n_components, irf, irf_time_ns,
-                      max_bins, basis, tau_grid):
+def _matrix_and_basis(
+    matrix, time_axis_ns, *, tau_range, n_components, irf, irf_time_ns, max_bins, basis, tau_grid
+):
     """Rebinned matrix and sampled basis, or the matrix as given with a supplied basis.
 
     A sampled basis is only a model of a *uniformly* binned matrix: on a log axis a
@@ -488,10 +489,17 @@ def two_d_spectrum(
     log-binned matrix pass ``basis`` (e.g. :func:`exp_curves` ``.binned_log``) and its
     ``tau_grid``; the matrix is then used as given.
     """
-    M2, E, tau = _matrix_and_basis(matrix, time_axis_ns, tau_range=tau_range,
-                                   n_components=n_components, irf=irf,
-                                   irf_time_ns=irf_time_ns, max_bins=max_bins, basis=basis,
-                                   tau_grid=tau_grid)
+    M2, E, tau = _matrix_and_basis(
+        matrix,
+        time_axis_ns,
+        tau_range=tau_range,
+        n_components=n_components,
+        irf=irf,
+        irf_time_ns=irf_time_ns,
+        max_bins=max_bins,
+        basis=basis,
+        tau_grid=tau_grid,
+    )
     return ilt_2d(M2, E, tau, method=method, reg=reg)
 
 
@@ -511,10 +519,15 @@ def fit_mem_2d(matrix, time_axis_ns, **kw) -> ILTResult2D:
     from .fit.mem_2d import solve_mem_2d
 
     M2, E, tau = _matrix_and_basis(
-        matrix, time_axis_ns, tau_range=kw.pop("tau_range", (0.3, 8.0)),
-        n_components=kw.pop("n_components", 24), irf=kw.pop("irf", None),
-        irf_time_ns=kw.pop("irf_time_ns", None), max_bins=kw.pop("max_bins", 80),
-        basis=kw.pop("basis", None), tau_grid=kw.pop("tau_grid", None),
+        matrix,
+        time_axis_ns,
+        tau_range=kw.pop("tau_range", (0.3, 8.0)),
+        n_components=kw.pop("n_components", 24),
+        irf=kw.pop("irf", None),
+        irf_time_ns=kw.pop("irf_time_ns", None),
+        max_bins=kw.pop("max_bins", 80),
+        basis=kw.pop("basis", None),
+        tau_grid=kw.pop("tau_grid", None),
     )
     return solve_mem_2d(M2, E, tau, **kw)
 
@@ -611,12 +624,21 @@ def global_lifetime_mem(
     ``tau_grid`` (see :func:`two_d_spectrum`).
     """
     mats = [np.asarray(M, dtype=float) for M in matrices]
-    _, E, tau = _matrix_and_basis(mats[0], time_axis_ns, tau_range=tau_range,
-                                  n_components=n_components, irf=irf, irf_time_ns=irf_time_ns,
-                                  max_bins=mats[0].shape[0], basis=basis, tau_grid=tau_grid)
+    _, E, tau = _matrix_and_basis(
+        mats[0],
+        time_axis_ns,
+        tau_range=tau_range,
+        n_components=n_components,
+        irf=irf,
+        irf_time_ns=irf_time_ns,
+        max_bins=mats[0].shape[0],
+        basis=basis,
+        tau_grid=tau_grid,
+    )
     n = E.shape[0]
-    return solve_global_mem_2d([M[:n, :n] for M in mats], E, tau, n_states=n_states,
-                               regulator=regulator)
+    return solve_global_mem_2d(
+        [M[:n, :n] for M in mats], E, tau, n_states=n_states, regulator=regulator
+    )
 
 
 def rate_matrix_kinetics(
@@ -752,8 +774,20 @@ def reproduce_fit(
 # ------------------------------------------------------- the reference's 2D-MEM workflow
 
 
-def exp_curves(tau_ns, xdata_ns, irf, *, t_min_ns, t_max_ns, t_step_ns, lint_bin_factor,
-               logt_imax, rise_point_irf, rise_point_fl=300, irf_range=None):
+def exp_curves(
+    tau_ns,
+    xdata_ns,
+    irf,
+    *,
+    t_min_ns,
+    t_max_ns,
+    t_step_ns,
+    lint_bin_factor,
+    logt_imax,
+    rise_point_irf,
+    rise_point_fl=300,
+    irf_range=None,
+):
     """The reference's exponential basis, integrated over the linear and log 2D-FDC bins.
 
     Port of ``TK_CreateExpCurve``/``TK_ExpMultiDeco_For2DFLC``; the axes are built the
@@ -766,8 +800,15 @@ def exp_curves(tau_ns, xdata_ns, irf, *, t_min_ns, t_max_ns, t_step_ns, lint_bin
     x = np.asarray(xdata_ns, dtype=float)
     log_axis = matlab_log_axis_ns(t_min_ns, t_max_ns, t_step_ns, lint_bin_factor, logt_imax)
     curves = create_exp_curve(
-        tau_ns, x, irf, t_min_ns=t_min_ns, t_max_ns=t_max_ns, t_step_ns=t_step_ns,
-        lint_bin_factor=lint_bin_factor, log_axis_ns=log_axis, rise_point_fl=rise_point_fl,
+        tau_ns,
+        x,
+        irf,
+        t_min_ns=t_min_ns,
+        t_max_ns=t_max_ns,
+        t_step_ns=t_step_ns,
+        lint_bin_factor=lint_bin_factor,
+        log_axis_ns=log_axis,
+        rise_point_fl=rise_point_fl,
         rise_point_irf=rise_point_irf,
         irf_range=(50, x.size - 90) if irf_range is None else irf_range,
     )

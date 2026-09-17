@@ -363,8 +363,11 @@ class BarDelegate(QtWidgets.QStyledItemDelegate):
 
         if self.lo < 0.0 < self.hi:
             zero, point = at(0.0), at(number)
-            return (min(zero, point), max(zero, point),
-                    self.POSITIVE if number >= 0 else self.NEGATIVE)
+            return (
+                min(zero, point),
+                max(zero, point),
+                self.POSITIVE if number >= 0 else self.NEGATIVE,
+            )
         return (0.0, at(number), self.COLOUR)
 
     def paint(self, painter, option, index):  # noqa: D102 (Qt override)
@@ -380,9 +383,14 @@ class BarDelegate(QtWidgets.QStyledItemDelegate):
         painter.save()
         painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(colour)
-        painter.drawRect(QtCore.QRectF(rect.left() + start * width,
-                                       rect.bottom() - self.BAR_HEIGHT + 1,
-                                       max((end - start) * width, 1.0), self.BAR_HEIGHT))
+        painter.drawRect(
+            QtCore.QRectF(
+                rect.left() + start * width,
+                rect.bottom() - self.BAR_HEIGHT + 1,
+                max((end - start) * width, 1.0),
+                self.BAR_HEIGHT,
+            )
+        )
         painter.restore()
 
     def sizeHint(self, option, index):  # noqa: N802, D102 (Qt override)
@@ -390,8 +398,9 @@ class BarDelegate(QtWidgets.QStyledItemDelegate):
         return QtCore.QSize(size.width(), size.height() + self.BAR_HEIGHT + 2)
 
 
-def delegate_for(kind: str, choices: Sequence[str] = (), parent=None,
-                 value_range: Sequence[float] = ()):
+def delegate_for(
+    kind: str, choices: Sequence[str] = (), parent=None, value_range: Sequence[float] = ()
+):
     """Return a delegate instance for a :attr:`ColumnSpec.delegate` hint.
 
     Parameters

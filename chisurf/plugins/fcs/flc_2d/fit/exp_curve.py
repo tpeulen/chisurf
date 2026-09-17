@@ -44,6 +44,7 @@ __all__ = [
     "create_exp_curve",
     "matlab_lin_axis_ns",
     "matlab_log_axis_ns",
+    "basis_fft_hwhm",
 ]
 
 
@@ -56,8 +57,9 @@ class ExpCurves:
     binned_log: np.ndarray  # (n_log_bins, n_tau)
 
 
-def matlab_lin_axis_ns(t_min_ns: float, t_max_ns: float, t_step_ns: float,
-                       lint_bin_factor: int) -> np.ndarray:
+def matlab_lin_axis_ns(
+    t_min_ns: float, t_max_ns: float, t_step_ns: float, lint_bin_factor: int
+) -> np.ndarray:
     """``Mat_2DFDC_lint`` of ``TK_Create2DFDC_04`` after its trim (ns)."""
     f = int(lint_bin_factor)
     t_imax = int(np.ceil((t_max_ns - t_min_ns) / t_step_ns)) + f
@@ -65,8 +67,9 @@ def matlab_lin_axis_ns(t_min_ns: float, t_max_ns: float, t_step_ns: float,
     return (f * t_step_ns) * np.arange(lint_imax - 1, dtype=float)
 
 
-def matlab_log_axis_ns(t_min_ns: float, t_max_ns: float, t_step_ns: float,
-                       lint_bin_factor: int, logt_imax: int) -> np.ndarray:
+def matlab_log_axis_ns(
+    t_min_ns: float, t_max_ns: float, t_step_ns: float, lint_bin_factor: int, logt_imax: int
+) -> np.ndarray:
     """``Mat_2DFDC_logt`` of ``TK_Create2DFDC_04`` after its trim (ns, real-valued)."""
     f = int(lint_bin_factor)
     t_imax = int(np.ceil((t_max_ns - t_min_ns) / t_step_ns)) + f
@@ -110,13 +113,15 @@ def exp_multi_deco(
     shifts = np.arange(lo, hi + 1) - idev  # 1-based data channel of each IRF sample
     if shifts.min() < 1:
         raise ValueError("the shifted IRF range starts before the first data channel")
-    kernel = np.zeros(n)
     keep = shifts <= n
-    np.add.at(kernel, shifts[keep] - 1, irf[np.arange(lo, hi + 1)[keep] - 1])
-    out = np.empty((n, np.size(tau_ns)))
+    start = int(shifts[keep].min()) - 1
+    kernel = np.zeros(int(shifts[keep].max()) - start)
+    np.add.at(kernel, shifts[keep] - 1 - start, irf[np.arange(lo, hi + 1)[keep] - 1])
+    out = np.zeros((n, np.size(tau_ns)))
     for j, tau in enumerate(np.atleast_1d(tau_ns)):
         decay = np.exp(-1.0 / float(tau) * (x - x[0]))
-        out[:, j] = np.convolve(kernel, decay)[:n]
+        # only the IRF's support is convolved; the zeros around it cost O(n^2) otherwise
+        out[start:, j] = np.convolve(kernel, decay[: n - start])[: n - start]
     return out / out.max()
 
 
@@ -147,13 +152,19 @@ def create_exp_curve(
     ``(log_axis_ns[k], log_axis_ns[k + 1]]``; everything past the last edge goes into
     the last bin. ``log_axis_ns`` is :func:`matlab_log_axis_ns`.
     """
-    full = exp_multi_deco(tau_ns, xdata_ns, irf, rise_point_fl=rise_point_fl,
-                          rise_point_irf=rise_point_irf, irf_range=irf_range)
+    full = exp_multi_deco(
+        tau_ns,
+        xdata_ns,
+        irf,
+        rise_point_fl=rise_point_fl,
+        rise_point_irf=rise_point_irf,
+        irf_range=irf_range,
+    )
     x = np.asarray(xdata_ns, dtype=float)
     v1 = int(np.round(t_min_ns / t_step_ns))  # 1-based rows, inclusive
     v2 = int(np.round(t_max_ns / t_step_ns))
-    curve = full[v1 - 1:v2]
-    xs = x[v1 - 1:v2] - x[v1 - 1]
+    curve = full[v1 - 1 : v2]
+    xs = x[v1 - 1 : v2] - x[v1 - 1]
 
     def msum(rows):
         # MATLAB's sum() of a single row sums *along* the row: a scalar, added to every
@@ -168,9 +179,9 @@ def create_exp_curve(
     for i in range(1, n_lin + 1):
         a, b = 1 + f * (i - 1), f * i
         if b <= imax:
-            lin[i - 1] = msum(curve[a - 1:b])
+            lin[i - 1] = msum(curve[a - 1 : b])
         else:
-            lin[i - 1] = msum(curve[a - 1:imax]) + msum(curve[imax - (b - imax):imax])
+            lin[i - 1] = msum(curve[a - 1 : imax]) + msum(curve[imax - (b - imax) : imax])
 
     edges = np.asarray(log_axis_ns, dtype=float)
     k_max = edges.size
@@ -181,3 +192,46 @@ def create_exp_curve(
             k += 1
         log[k - 2] += curve[i]
     return ExpCurves(full=curve, binned_lin=lin, binned_log=log)
+
+
+def basis_fft_hwhm(
+    tau_ns: np.ndarray,
+    irf: np.ndarray,
+    *,
+    rise_point_fl: int,
+    rise_point_irf: int,
+    irf_range: tuple[int, int],
+    t_step_ns: float = 0.004,
+    n_channels: int = 50_000,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Spectral width of each basis column (``TK_MyMain_Exp_FFT_FWHM``).
+
+    The IRF-convolved decays on a long grid (``n_channels`` at ``t_step_ns``) are
+    Fourier transformed (``n = 2^nextpow2``), and the half width at half maximum of
+    each power spectrum ``|Y|^2/n`` is found by linear interpolation after counting the
+    frequencies above half maximum -- which assumes the spectrum falls monotonically,
+    as a Lorentzian does. Returns ``(hwhm_GHz, hwhm_ns)`` with
+    ``hwhm_ns = 1/(2 pi hwhm_GHz)``: the time scale a lifetime is resolved on once the
+    IRF is folded in (for a bare exponential it is ``tau``).
+    """
+    x = np.arange(int(n_channels)) * float(t_step_ns)
+    curves = exp_multi_deco(
+        tau_ns,
+        x,
+        irf,
+        rise_point_fl=rise_point_fl,
+        rise_point_irf=rise_point_irf,
+        irf_range=irf_range,
+    )
+    k = curves.shape[0]
+    n = 1 << int(np.ceil(np.log2(k)))
+    freq = (1.0 / t_step_ns) * np.arange(n // 2 + 1) / n
+    power = np.abs(np.fft.fft(curves, n=n, axis=0)) ** 2 / n
+    power = power[: n // 2 + 1]
+    hwhm = np.empty(curves.shape[1])
+    for j in range(curves.shape[1]):
+        half = power[:, j].max() / 2.0
+        m = int(np.sum(power[:, j] > half))  # 1-based index of the last point above
+        frac = (power[m - 1, j] - half) / (power[m - 1, j] - power[m, j])
+        hwhm[j] = freq[m - 1] + frac * (freq[m] - freq[m - 1])
+    return hwhm, 1.0 / (2 * np.pi * hwhm)

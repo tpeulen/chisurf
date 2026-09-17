@@ -243,47 +243,111 @@ def bootstrap(
 def _workflow_options(f):
     """Options shared by the 2D-MEM workflow commands (the reference's defaults)."""
     opts = [
-        click.argument("tttr_files", nargs=-1, required=True,
-                       type=click.Path(exists=True, dir_okay=False)),
-        click.option("--irf", "irf_file", required=True, type=click.Path(exists=True),
-                     help="NPZ with irf and irf_time_ns, or a two-column text file (ns, irf)."),
-        click.option("--dt", "dt_ticks", type=int, multiple=True, required=True,
-                     help="Lag in macro ticks. Repeatable."),
-        click.option("--ddt", "ddt_ticks", type=int, required=True,
-                     help="Lag window in macro ticks (even)."),
-        click.option("--tmin-ns", default=0.5, show_default=True, type=float,
-                     help="Micro-time gate start (ns)."),
-        click.option("--tmax-ns", default=12.2, show_default=True, type=float,
-                     help="Micro-time gate end (ns)."),
-        click.option("--estimates", default="0,1,1,0.3,1,3,0.3", show_default=True,
-                     help="Start estimates: 0, then amplitude,lifetime,width per state."),
-        click.option("--lin-factor", default=4, show_default=True, type=int,
-                     help="Linear bin factor."),
-        click.option("--log-bins", default=100, show_default=True, type=int,
-                     help="Number of log bins."),
-        click.option("--rise-fl", default=300, show_default=True, type=int,
-                     help="Fluorescence rise channel (1-based)."),
+        click.argument(
+            "tttr_files", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False)
+        ),
+        click.option(
+            "--irf",
+            "irf_file",
+            required=True,
+            type=click.Path(exists=True),
+            help="NPZ with irf and irf_time_ns, or a two-column text file (ns, irf).",
+        ),
+        click.option(
+            "--dt",
+            "dt_ticks",
+            type=int,
+            multiple=True,
+            required=True,
+            help="Lag in macro ticks. Repeatable.",
+        ),
+        click.option(
+            "--ddt", "ddt_ticks", type=int, required=True, help="Lag window in macro ticks (even)."
+        ),
+        click.option(
+            "--tmin-ns",
+            default=0.5,
+            show_default=True,
+            type=float,
+            help="Micro-time gate start (ns).",
+        ),
+        click.option(
+            "--tmax-ns",
+            default=12.2,
+            show_default=True,
+            type=float,
+            help="Micro-time gate end (ns).",
+        ),
+        click.option(
+            "--estimates",
+            default="0,1,1,0.3,1,3,0.3",
+            show_default=True,
+            help="Start estimates: 0, then amplitude,lifetime,width per state.",
+        ),
+        click.option(
+            "--lin-factor", default=4, show_default=True, type=int, help="Linear bin factor."
+        ),
+        click.option(
+            "--log-bins", default=100, show_default=True, type=int, help="Number of log bins."
+        ),
+        click.option(
+            "--rise-fl",
+            default=300,
+            show_default=True,
+            type=int,
+            help="Fluorescence rise channel (1-based).",
+        ),
         click.option("--center", type=int, default=None, help="Centre IRF rise channel."),
         click.option("--points", type=int, default=None, help="Number of rise points."),
-        click.option("--short-trials", default=100, show_default=True, type=int,
-                     help="Regulator trials, shortest-lag fit."),
-        click.option("--lag-trials", default=10, show_default=True, type=int,
-                     help="Regulator trials, per-lag fits."),
-        click.option("--global-trials", default=100, show_default=True, type=int,
-                     help="Regulator trials, global fit."),
-        click.option("--routing", type=int, multiple=True,
-                     help="Routing channel to keep. Repeatable."),
-        click.option("--output", "-o", type=click.Path(dir_okay=False), required=True,
-                     help="NPZ output."),
+        click.option(
+            "--short-trials",
+            default=100,
+            show_default=True,
+            type=int,
+            help="Regulator trials, shortest-lag fit.",
+        ),
+        click.option(
+            "--lag-trials",
+            default=10,
+            show_default=True,
+            type=int,
+            help="Regulator trials, per-lag fits.",
+        ),
+        click.option(
+            "--global-trials",
+            default=100,
+            show_default=True,
+            type=int,
+            help="Regulator trials, global fit.",
+        ),
+        click.option(
+            "--routing", type=int, multiple=True, help="Routing channel to keep. Repeatable."
+        ),
+        click.option(
+            "--output", "-o", type=click.Path(dir_okay=False), required=True, help="NPZ output."
+        ),
     ]
     for opt in reversed(opts):
         f = opt(f)
     return f
 
 
-def _prepare_workflow(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns, tmax_ns, estimates,
-                      lin_factor, log_bins, rise_fl, short_trials, lag_trials, global_trials,
-                      routing):
+def _prepare_workflow(
+    tttr_files,
+    irf_file,
+    dt_ticks,
+    ddt_ticks,
+    tmin_ns,
+    tmax_ns,
+    estimates,
+    lin_factor,
+    log_bins,
+    rise_fl,
+    short_trials,
+    lag_trials,
+    global_trials,
+    routing,
+):
     """Per-molecule matrices and workflow keywords from command-line options."""
     molecules, step = [], None
     for f in tttr_files:
@@ -297,31 +361,85 @@ def _prepare_workflow(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns, tmax_n
         table = np.loadtxt(irf_file)
         irf_t, irf = table[:, 0], table[:, 1]
     t_min, t_max = int(round(tmin_ns / step)), int(round(tmax_ns / step))
-    sep = api.separate_data_2d_fdc(molecules, list(dt_ticks), ddt_ticks, tMin=t_min,
-                                   tMax=t_max, lint_bin_factor=lin_factor, logt_imax=log_bins)
-    kw = dict(irf=irf, xdata_ns=irf_t, t_min_ns=tmin_ns, t_max_ns=tmax_ns, t_step_ns=step,
-              lint_bin_factor=lin_factor, logt_imax=log_bins, rise_point_fl=rise_fl,
-              estimates=[float(v) for v in estimates.split(",")],
-              n_short_trials=short_trials, n_lag_trials=lag_trials,
-              n_global_trials=global_trials)
+    sep = api.separate_data_2d_fdc(
+        molecules,
+        list(dt_ticks),
+        ddt_ticks,
+        tMin=t_min,
+        tMax=t_max,
+        lint_bin_factor=lin_factor,
+        logt_imax=log_bins,
+    )
+    kw = dict(
+        irf=irf,
+        xdata_ns=irf_t,
+        t_min_ns=tmin_ns,
+        t_max_ns=tmax_ns,
+        t_step_ns=step,
+        lint_bin_factor=lin_factor,
+        logt_imax=log_bins,
+        rise_point_fl=rise_fl,
+        estimates=[float(v) for v in estimates.split(",")],
+        n_short_trials=short_trials,
+        n_lag_trials=lag_trials,
+        n_global_trials=global_trials,
+    )
     return sep.total(), kw
 
 
 @cli.command("rise-search-2d")
 @_workflow_options
-def rise_search_2d(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns, tmax_ns, estimates,
-                   lin_factor, log_bins, rise_fl, center, points, short_trials, lag_trials,
-                   global_trials, routing, output) -> None:
+def rise_search_2d(
+    tttr_files,
+    irf_file,
+    dt_ticks,
+    ddt_ticks,
+    tmin_ns,
+    tmax_ns,
+    estimates,
+    lin_factor,
+    log_bins,
+    rise_fl,
+    center,
+    points,
+    short_trials,
+    lag_trials,
+    global_trials,
+    routing,
+    output,
+) -> None:
     """Scan the IRF rise point over the 2D-MEM workflow (one TTTR file per molecule)."""
     try:
-        mats, kw = _prepare_workflow(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns,
-                                     tmax_ns, estimates, lin_factor, log_bins, rise_fl,
-                                     short_trials, lag_trials, global_trials, routing)
-        res = api.search_irf_rise_2d(mats, center=310 if center is None else center,
-                                     n_points=20 if points is None else points, **kw)
-        np.savez_compressed(output, rise_points_irf=res.rise_points_irf, q_chi2_s=res.q,
-                            amplitudes=res.amplitudes, model_lin_first_lag=res.model_lin_first_lag,
-                            best=res.best)
+        mats, kw = _prepare_workflow(
+            tttr_files,
+            irf_file,
+            dt_ticks,
+            ddt_ticks,
+            tmin_ns,
+            tmax_ns,
+            estimates,
+            lin_factor,
+            log_bins,
+            rise_fl,
+            short_trials,
+            lag_trials,
+            global_trials,
+            routing,
+        )
+        res = api.search_irf_rise_2d(
+            mats,
+            center=310 if center is None else center,
+            n_points=20 if points is None else points,
+            **kw,
+        )
+        np.savez_compressed(
+            output,
+            rise_points_irf=res.rise_points_irf,
+            q_chi2_s=res.q,
+            amplitudes=res.amplitudes,
+            model_lin_first_lag=res.model_lin_first_lag,
+            best=res.best,
+        )
         click.echo(f"Wrote {output} (lowest chi2 at rise point {res.best})")
     except Exception as exc:  # noqa: BLE001
         click.echo(f"Error: {exc}", err=True)
@@ -330,23 +448,60 @@ def rise_search_2d(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns, tmax_ns, 
 
 @cli.command("average-2d")
 @_workflow_options
-def average_2d(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns, tmax_ns, estimates,
-               lin_factor, log_bins, rise_fl, center, points, short_trials, lag_trials,
-               global_trials, routing, output) -> None:
+def average_2d(
+    tttr_files,
+    irf_file,
+    dt_ticks,
+    ddt_ticks,
+    tmin_ns,
+    tmax_ns,
+    estimates,
+    lin_factor,
+    log_bins,
+    rise_fl,
+    center,
+    points,
+    short_trials,
+    lag_trials,
+    global_trials,
+    routing,
+    output,
+) -> None:
     """Average the 2D-MEM workflow over rise points around --center."""
     try:
         if center is None:
             raise click.UsageError("--center is required (take it from rise-search-2d)")
-        mats, kw = _prepare_workflow(tttr_files, irf_file, dt_ticks, ddt_ticks, tmin_ns,
-                                     tmax_ns, estimates, lin_factor, log_bins, rise_fl,
-                                     short_trials, lag_trials, global_trials, routing)
-        res = api.average_2d_mem(mats, center=center, n_points=5 if points is None else points,
-                                 **kw)
-        np.savez_compressed(output, rise_points_irf=res.rise_points_irf,
-                            amplitudes=res.amplitudes, correlations=res.correlations,
-                            flc_maps=res.flc_maps, model_lin=res.model_lin,
-                            model_log=res.model_log, q_table=res.q_table,
-                            lin_axis_ns=res.lin_axis_ns, log_axis_ns=res.log_axis_ns)
+        mats, kw = _prepare_workflow(
+            tttr_files,
+            irf_file,
+            dt_ticks,
+            ddt_ticks,
+            tmin_ns,
+            tmax_ns,
+            estimates,
+            lin_factor,
+            log_bins,
+            rise_fl,
+            short_trials,
+            lag_trials,
+            global_trials,
+            routing,
+        )
+        res = api.average_2d_mem(
+            mats, center=center, n_points=5 if points is None else points, **kw
+        )
+        np.savez_compressed(
+            output,
+            rise_points_irf=res.rise_points_irf,
+            amplitudes=res.amplitudes,
+            correlations=res.correlations,
+            flc_maps=res.flc_maps,
+            model_lin=res.model_lin,
+            model_log=res.model_log,
+            q_table=res.q_table,
+            lin_axis_ns=res.lin_axis_ns,
+            log_axis_ns=res.log_axis_ns,
+        )
         click.echo(f"Wrote {output} ({len(res.rise_points_irf)} rise points averaged)")
     except Exception as exc:  # noqa: BLE001
         click.echo(f"Error: {exc}", err=True)

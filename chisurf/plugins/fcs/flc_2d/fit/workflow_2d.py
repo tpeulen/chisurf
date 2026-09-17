@@ -149,16 +149,23 @@ def fit_2d_mem_workflow(
         Function evaluations per trial.
     """
     x = np.asarray(xdata_ns, dtype=float)
-    tau = (np.arange(0.05, 5.05 + 1e-9, 0.05) if tau_ns is None
-           else np.asarray(tau_ns, dtype=float))
+    tau = np.arange(0.05, 5.05 + 1e-9, 0.05) if tau_ns is None else np.asarray(tau_ns, dtype=float)
     if irf_range is None:
         irf_range = (50, x.size - 70 - 20)
     lin_axis = matlab_lin_axis_ns(t_min_ns, t_max_ns, t_step_ns, lint_bin_factor)
     log_axis = matlab_log_axis_ns(t_min_ns, t_max_ns, t_step_ns, lint_bin_factor, logt_imax)
     basis = create_exp_curve(
-        tau, x, irf, t_min_ns=t_min_ns, t_max_ns=t_max_ns, t_step_ns=t_step_ns,
-        lint_bin_factor=lint_bin_factor, log_axis_ns=log_axis, rise_point_fl=rise_point_fl,
-        rise_point_irf=rise_point_irf, irf_range=irf_range,
+        tau,
+        x,
+        irf,
+        t_min_ns=t_min_ns,
+        t_max_ns=t_max_ns,
+        t_step_ns=t_step_ns,
+        lint_bin_factor=lint_bin_factor,
+        log_axis_ns=log_axis,
+        rise_point_fl=rise_point_fl,
+        rise_point_irf=rise_point_irf,
+        irf_range=irf_range,
     )
     lags_lin = np.asarray(matrices["lin"], dtype=float)
     lags_log = np.asarray(matrices["log"], dtype=float)
@@ -176,41 +183,91 @@ def fit_2d_mem_workflow(
     A0 = gaussian_initial_distribution(tau, estimates)
     A0 = scale_initial_distribution(A0, E_fit, float(np.max(lags_fit)))
     width = float(lin_axis[1] - lin_axis[0])
-    common = dict(tau_ns=tau, mi_type=mi_type, t_min_ns=t_min_ns, t_max_ns=t_max_ns,
-                  break_factor=break_factor, fit_start=fit_start,
-                  max_evaluations=max_evaluations, regulator=regulator,
-                  regulator_factor=regulator_factor)
+    common = dict(
+        tau_ns=tau,
+        mi_type=mi_type,
+        t_min_ns=t_min_ns,
+        t_max_ns=t_max_ns,
+        break_factor=break_factor,
+        fit_start=fit_start,
+        max_evaluations=max_evaluations,
+        regulator=regulator,
+        regulator_factor=regulator_factor,
+    )
 
-    short = minimize_q(short_fit, axis_fit, E_fit, initial_amplitudes=A0,
-                       initial_y0=y0 / width, fix_amplitudes=fix_amplitudes,
-                       fix_correlations=fix_correlations, fix_y0=fix_y0,
-                       n_regulator_trials=n_short_trials, **common)
+    short = minimize_q(
+        short_fit,
+        axis_fit,
+        E_fit,
+        initial_amplitudes=A0,
+        initial_y0=y0 / width,
+        fix_amplitudes=fix_amplitudes,
+        fix_correlations=fix_correlations,
+        fix_y0=fix_y0,
+        n_regulator_trials=n_short_trials,
+        **common,
+    )
     short_y0 = float(short.y0[0]) * width
 
     per_lag, G_init, y_init = [], [], []
     for t in range(lags_fit.shape[0]):
-        r = minimize_q(lags_fit[t], axis_fit, E_fit, initial_amplitudes=short.amplitudes,
-                       initial_y0=short_y0 / width, fix_amplitudes=1,
-                       fix_correlations=fix_correlations, fix_y0=fix_y0,
-                       n_regulator_trials=n_lag_trials, **common)
+        r = minimize_q(
+            lags_fit[t],
+            axis_fit,
+            E_fit,
+            initial_amplitudes=short.amplitudes,
+            initial_y0=short_y0 / width,
+            fix_amplitudes=1,
+            fix_correlations=fix_correlations,
+            fix_y0=fix_y0,
+            n_regulator_trials=n_lag_trials,
+            **common,
+        )
         per_lag.append(r)
         G_init.append(r.correlations[0])
         y_init.append(r.y0[0])
 
-    glob = minimize_q(lags_fit, axis_fit, E_fit, initial_amplitudes=short.amplitudes,
-                      initial_correlations=np.stack(G_init), initial_y0=np.asarray(y_init),
-                      fix_amplitudes=fix_amplitudes, fix_correlations=fix_correlations,
-                      fix_y0=fix_y0, n_regulator_trials=n_global_trials, **common)
+    glob = minimize_q(
+        lags_fit,
+        axis_fit,
+        E_fit,
+        initial_amplitudes=short.amplitudes,
+        initial_correlations=np.stack(G_init),
+        initial_y0=np.asarray(y_init),
+        fix_amplitudes=fix_amplitudes,
+        fix_correlations=fix_correlations,
+        fix_y0=fix_y0,
+        n_regulator_trials=n_global_trials,
+        **common,
+    )
     kw = dict(floor_zeros=False, mi=glob.mi, regulator=glob.regulator)
-    rep_lin = reproduce_global_2d(glob.amplitudes, glob.correlations, E_lin, lin_axis,
-                                  y0=glob.y0, data=lags_lin, **kw)
-    rep_log = reproduce_global_2d(glob.amplitudes, glob.correlations, basis.binned_log,
-                                  log_axis, y0=glob.y0, data=lags_log, **kw)
+    rep_lin = reproduce_global_2d(
+        glob.amplitudes, glob.correlations, E_lin, lin_axis, y0=glob.y0, data=lags_lin, **kw
+    )
+    rep_log = reproduce_global_2d(
+        glob.amplitudes,
+        glob.correlations,
+        basis.binned_log,
+        log_axis,
+        y0=glob.y0,
+        data=lags_log,
+        **kw,
+    )
     return Mem2DWorkflowResult(
-        rise_point_irf=int(rise_point_irf), tau_ns=tau, lin_axis_ns=lin_axis,
-        log_axis_ns=log_axis, basis=basis, short=short, per_lag=per_lag, global_fit=glob,
-        amplitudes=glob.amplitudes, correlations=glob.correlations, y0=glob.y0 * width,
-        flc_maps=rep_lin.flc_map, model_lin=rep_lin.model, model_log=rep_log.model,
+        rise_point_irf=int(rise_point_irf),
+        tau_ns=tau,
+        lin_axis_ns=lin_axis,
+        log_axis_ns=log_axis,
+        basis=basis,
+        short=short,
+        per_lag=per_lag,
+        global_fit=glob,
+        amplitudes=glob.amplitudes,
+        correlations=glob.correlations,
+        y0=glob.y0 * width,
+        flc_maps=rep_lin.flc_map,
+        model_lin=rep_lin.model,
+        model_log=rep_log.model,
         q_table=glob.q_table,
     )
 
@@ -247,8 +304,11 @@ def search_irf_rise_2d(
     reference's 300..319. Every other keyword goes to the workflow; the reference runs
     this with amplitudes ``abs`` (2) and symmetric ``G`` (3).
     """
-    points = rise_points(center, n_points) if rise_points_irf is None else np.asarray(
-        rise_points_irf, dtype=int)
+    points = (
+        rise_points(center, n_points)
+        if rise_points_irf is None
+        else np.asarray(rise_points_irf, dtype=int)
+    )
     runs = [fit_2d_mem_workflow(matrices, rise_point_irf=int(p), **workflow) for p in points]
     return RiseSearch2DResult(
         rise_point_fl=int(workflow.get("rise_point_fl", 300)),
@@ -295,8 +355,12 @@ def average_2d_mem(
     setting for this driver.
     """
     points = rise_points(center, n_points)
-    runs = [fit_2d_mem_workflow(matrices, rise_point_irf=int(p), fix_amplitudes=fix_amplitudes,
-                                **workflow) for p in points]
+    runs = [
+        fit_2d_mem_workflow(
+            matrices, rise_point_irf=int(p), fix_amplitudes=fix_amplitudes, **workflow
+        )
+        for p in points
+    ]
 
     def mean(attr):
         return np.mean(np.stack([np.asarray(attr(r), dtype=float) for r in runs]), axis=0)

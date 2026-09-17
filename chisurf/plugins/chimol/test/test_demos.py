@@ -233,6 +233,7 @@ def test_every_demo_has_a_menu_entry(window):
     win, _shared, _errors, _qapp = window
     entries = _demo_menu_of(win)
     assert entries is not None, "no Demo menu on the viewport menu bar"
+
     # The PetWorld models sit in a submenu of their own; an entry there is as
     # reachable as one at the top.
     def walk(items):

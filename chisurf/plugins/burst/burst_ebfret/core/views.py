@@ -163,10 +163,19 @@ def series_table(session: Any, analysis: Any) -> list[dict]:
         lowerbound = None
         if analysis is not None and n < len(analysis.expect) and analysis.expect[n] is not None:
             lowerbound = _num(analysis.lowerbound[n])
-        rows.append({"index": n + 1, "label": s.label, "file": s.file, "group": s.group,
-                     "length": s.length, "crop_min": int(s.crop_min),
-                     "crop_max": int(s.crop_max), "exclude": bool(s.exclude),
-                     "lowerbound": lowerbound})
+        rows.append(
+            {
+                "index": n + 1,
+                "label": s.label,
+                "file": s.file,
+                "group": s.group,
+                "length": s.length,
+                "crop_min": int(s.crop_min),
+                "crop_max": int(s.crop_max),
+                "exclude": bool(s.exclude),
+                "lowerbound": lowerbound,
+            }
+        )
     return rows
 
 
@@ -201,6 +210,14 @@ def states_table(analysis: Any) -> list[dict]:
         center_std = np.sqrt(b / (beta * (a - 1.0)))
         noise = (a / b) ** -0.5
     dwell = np.ravel(dist.dirichlet_tau(np.asarray(u.A, dtype=float)))
-    return [{"state": k + 1, "occupancy": _num(occupancy[k]), "center": _num(u.mu[k]),
-             "center_std": _num(center_std[k]), "noise": _num(noise[k]),
-             "dwell": _num(dwell[k])} for k in range(a.size)]
+    return [
+        {
+            "state": k + 1,
+            "occupancy": _num(occupancy[k]),
+            "center": _num(u.mu[k]),
+            "center_std": _num(center_std[k]),
+            "noise": _num(noise[k]),
+            "dwell": _num(dwell[k]),
+        }
+        for k in range(a.size)
+    ]

@@ -102,8 +102,11 @@ def test_clip_outliers_excludes_series_with_too_many_outliers(session):
 
 
 def test_set_priors_spreads_the_centers(session):
-    session.init_priors({"mu_min": 0.1, "mu_max": 0.7, "sigma": 0.05, "tau": 50.0},
-                        {"mu": 0.1, "sigma": 10.0, "tau": 10.0}, 1)
+    session.init_priors(
+        {"mu_min": 0.1, "mu_max": 0.7, "sigma": 0.05, "tau": 50.0},
+        {"mu": 0.1, "sigma": 10.0, "tau": 10.0},
+        1,
+    )
     np.testing.assert_allclose(session.analysis[4].prior.mu, [0.1, 0.3, 0.5, 0.7])
     np.testing.assert_allclose(session.analysis[4].prior.W, 400.0 / 10.0)
 
@@ -147,8 +150,11 @@ def test_exports_and_session_round_trip(session, tmp_path):
     assert "Lower_Bound" in text and "Transition_Matrix" in text
 
     traces = tmp_path / "traces.dat"
-    session.export_traces(str(traces), dict.fromkeys(
-        ("donor", "acceptor", "fret", "viterbi_state", "viterbi_mean"), True), 2)
+    session.export_traces(
+        str(traces),
+        dict.fromkeys(("donor", "acceptor", "fret", "viterbi_state", "viterbi_mean"), True),
+        2,
+    )
     table = np.loadtxt(traces)
     assert table.shape[1] == 6
     assert set(np.unique(table[:, 4])) <= {1.0, 2.0}

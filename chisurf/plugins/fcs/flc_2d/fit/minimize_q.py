@@ -42,8 +42,9 @@ __all__ = [
 ]
 
 
-def mi_model(amplitudes: np.ndarray, tau_ns: np.ndarray, t_max_ns: float, t_min_ns: float,
-             mi_type: int = 0) -> np.ndarray:
+def mi_model(
+    amplitudes: np.ndarray, tau_ns: np.ndarray, t_max_ns: float, t_min_ns: float, mi_type: int = 0
+) -> np.ndarray:
     """Entropy prior per state (``TK_mi_ModelFunction``), ``amplitudes`` ``n_comp x n_states``.
 
     ``0``: the grand mean over each state's mean, weighted by the lifetime resolution
@@ -75,8 +76,9 @@ def mi_model(amplitudes: np.ndarray, tau_ns: np.ndarray, t_max_ns: float, t_min_
             total = A[:, k].sum()
             ave = ivec @ A[:, k] / total
             std = np.sqrt(((ivec - ave) ** 2) @ A[:, k] / total)
-            out[:, k] = (1.0 / std / np.sqrt(2 * np.pi)
-                         * np.exp(-((ivec - ave) ** 2) / (2 * std * std))) * total
+            out[:, k] = (
+                1.0 / std / np.sqrt(2 * np.pi) * np.exp(-((ivec - ave) ** 2) / (2 * std * std))
+            ) * total
         return out
     raise ValueError(f"unknown mi_type {mi_type}")
 
@@ -92,13 +94,14 @@ def gaussian_initial_distribution(tau_ns: np.ndarray, estimates) -> np.ndarray:
     n_states = h.size // 3
     A = np.zeros((tau.size, n_states))
     for k in range(n_states):
-        amp, tau0, width = h[1 + 3 * k: 4 + 3 * k]
+        amp, tau0, width = h[1 + 3 * k : 4 + 3 * k]
         A[:, k] = amp * np.exp(-1 * ((tau - tau0) / width) ** 2)
     return A
 
 
-def scale_initial_distribution(amplitudes: np.ndarray, basis: np.ndarray, data_max: float,
-                               *, power: int = 2) -> np.ndarray:
+def scale_initial_distribution(
+    amplitudes: np.ndarray, basis: np.ndarray, data_max: float, *, power: int = 2
+) -> np.ndarray:
     """Scale start amplitudes to the data: ``A sqrt(max(M) / (sum(A) max(E))^power)``.
 
     ``power = 2`` is the 2D driver (the model is quadratic in ``A``), ``1`` the 1D one.
@@ -183,9 +186,16 @@ class _Objective:
 
     def unpack(self, x):
         return unpack_estimates_global_2d(
-            x, self.n_comp, self.n_states, self.n_lags, initial_amplitudes=self.A0,
-            initial_correlations=self.G0, initial_y0=self.y00, fix_amplitudes=self.fix_A,
-            fix_correlations=self.fix_G, fix_y0=self.fix_y0,
+            x,
+            self.n_comp,
+            self.n_states,
+            self.n_lags,
+            initial_amplitudes=self.A0,
+            initial_correlations=self.G0,
+            initial_y0=self.y00,
+            fix_amplitudes=self.fix_A,
+            fix_correlations=self.fix_G,
+            fix_y0=self.fix_y0,
         )
 
     def __call__(self, x, mi, regulator):
@@ -295,15 +305,27 @@ def minimize_q(
     E = np.asarray(basis, dtype=float)[s:]
     A0 = np.atleast_2d(np.asarray(initial_amplitudes, dtype=float).T).T
     n_states = A0.shape[1]
-    G0 = (np.tile(np.eye(n_states), (n_lags, 1, 1)) if initial_correlations is None
-          else _as_stack(initial_correlations).copy())
+    G0 = (
+        np.tile(np.eye(n_states), (n_lags, 1, 1))
+        if initial_correlations is None
+        else _as_stack(initial_correlations).copy()
+    )
     y00 = np.broadcast_to(np.asarray(initial_y0, dtype=float), (n_lags,)).copy()
-    fix_A = np.broadcast_to(np.asarray(fix_amplitudes).ravel(), (n_states,)) if np.size(
-        fix_amplitudes) in (1, n_states) else np.asarray(fix_amplitudes).ravel()
-    fix_G = np.broadcast_to(np.asarray(fix_correlations), (n_lags, n_states, n_states)) \
-        if np.ndim(fix_correlations) < 3 else np.asarray(fix_correlations)
-    fix_y = np.broadcast_to(np.asarray(fix_y0).ravel(), (n_lags,)) if np.size(fix_y0) in (
-        1, n_lags) else np.asarray(fix_y0).ravel()
+    fix_A = (
+        np.broadcast_to(np.asarray(fix_amplitudes).ravel(), (n_states,))
+        if np.size(fix_amplitudes) in (1, n_states)
+        else np.asarray(fix_amplitudes).ravel()
+    )
+    fix_G = (
+        np.broadcast_to(np.asarray(fix_correlations), (n_lags, n_states, n_states))
+        if np.ndim(fix_correlations) < 3
+        else np.asarray(fix_correlations)
+    )
+    fix_y = (
+        np.broadcast_to(np.asarray(fix_y0).ravel(), (n_lags,))
+        if np.size(fix_y0) in (1, n_lags)
+        else np.asarray(fix_y0).ravel()
+    )
 
     A_cur, G_cur, y_cur = A0, G0, y00
     x = None
@@ -318,8 +340,14 @@ def minimize_q(
             obj = _Objective(D, C, axis, E, A_cur, G_cur, y_cur, fix_A, fix_G, fix_y)
             x0 = obj.start()
             if x0.size:
-                res = minimize(lambda v: obj(v, mi, lam)[:2], x0, jac=True, method="L-BFGS-B",
-                               bounds=obj.bounds(), options={"maxfun": int(max_evaluations)})
+                res = minimize(
+                    lambda v: obj(v, mi, lam)[:2],
+                    x0,
+                    jac=True,
+                    method="L-BFGS-B",
+                    bounds=obj.bounds(),
+                    options={"maxfun": int(max_evaluations)},
+                )
                 x = res.x
             else:
                 x = x0
@@ -331,10 +359,14 @@ def minimize_q(
             check = q
             if converged:
                 break
-        if abs(chi2 / (2.0 * S / lam)) > 10.0 ** break_factor:
+        if abs(chi2 / (2.0 * S / lam)) > 10.0**break_factor:
             break
     return MinimizeQResult(
-        amplitudes=A_cur, correlations=G_cur, y0=y_cur,
+        amplitudes=A_cur,
+        correlations=G_cur,
+        y0=y_cur,
         estimates=np.asarray(x if x is not None else [], dtype=float),
-        q_table=np.asarray(table, dtype=float), regulator=lam, mi=mi,
+        q_table=np.asarray(table, dtype=float),
+        regulator=lam,
+        mi=mi,
     )

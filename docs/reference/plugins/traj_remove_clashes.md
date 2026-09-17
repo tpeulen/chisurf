@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Atom selection | `atom_selection` | text |  |  | mdtraj atom-selection expression. The listed atoms' pairwise distances are tested; a frame is dropped when any pair is closer than the minimum distance. |
 | Stride | `stride` | int |  | 1 … 999999 | Read every Nth frame of the source trajectory. |
-| Min distance | `min_distance` | float |  | 0.0 … 100.0 (step 0.1) | Minimum allowed atom-atom distance (shown in Ångström). Frames with any selected atom pair closer than this (after a /10 conversion to the trajectory length unit) are removed. |
+| Min distance | `min_distance` | float |  | 0.0 … 100.0 (step 0.1) | Minimum allowed atom-atom distance in Ångström. Frames with any selected atom pair closer than this are removed. |
 
 ## Source
 
