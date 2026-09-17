@@ -35,6 +35,11 @@ SKIP = {
 }
 
 SCRIPT = f'''
+# Bare forms of `movie`, `png`, `save` and friends write their default file
+# into the working directory; from the checkout that left orbit.gif and its
+# frames in the repository root. The sweep runs somewhere disposable.
+import os, tempfile
+os.chdir(tempfile.mkdtemp(prefix="every-command-"))
 app = open_app(size=(600, 400))
 cmd = app.cmd
 errors = []
