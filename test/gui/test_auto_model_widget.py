@@ -44,10 +44,16 @@ def lifetime_model():
 
 
 def _rows(widget):
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    """How many parameters the editor draws (a component table draws several per row)."""
+    from chisurf.gui.autoform.sections.parameter_table import (
+        PairedParameterTableWidget,
+        ParameterGroupTableWidget,
+    )
 
-    return len(widget.parameter_widgets) + sum(
-        t.table_model.rowCount() for t in widget.findChildren(ParameterGroupTableWidget)
+    return (
+        len(widget.parameter_widgets)
+        + sum(t.table_model.rowCount() for t in widget.findChildren(ParameterGroupTableWidget))
+        + sum(len(t._model._params) for t in widget.findChildren(PairedParameterTableWidget))
     )
 
 
@@ -307,19 +313,30 @@ def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_mod
     assert payload.get("slot") == "response" and "fit_index" in payload
 
 
-def test_choice_and_toggle_controls_mutate_the_model(qapp, lifetime_model):
-    """The topology is a choice and the switches are scalars; both write through."""
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget, ToggleWidget
+def test_add_and_del_change_the_components_and_the_switches_write_scalars(qapp, lifetime_model):
+    """A lifetime is added and removed by the panel's buttons; the switches are scalars."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui.autoform.sections.builtin import ToggleRowWidget
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(lifetime_model)
-    choices = {c._section.attr: c for c in w.findChildren(ChoiceWidget)}
-    toggles = {t._section.attr: t for t in w.findChildren(ToggleWidget)}
-    assert "structure" in choices
-    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up"} <= set(toggles)
+    buttons = {b.text(): b for b in w.findChildren(QtWidgets.QToolButton) if b.text() in ("add", "del")}
+    assert set(buttons) == {"add", "del"}
+    assert lifetime_model.structure == "lifetime.components.1"
+    buttons["add"].click()
+    assert lifetime_model.structure == "lifetime.components.2"
+    buttons["del"].click()
+    assert lifetime_model.structure == "lifetime.components.1"
 
+    switches = {
+        cb.text(): cb
+        for row in w.findChildren(ToggleRowWidget)
+        for cb in row.findChildren(QtWidgets.QCheckBox)
+    }
+    assert {"Convolve", "Periodic", "Pile-up"} <= set(switches)
     before = bool(lifetime_model.get_scalar("convolve"))
-    toggles["scalars.convolve"].checkbox.setChecked(not before)
+    switches["Convolve"].setChecked(not before)
     assert bool(lifetime_model.get_scalar("convolve")) == (not before)
 
 

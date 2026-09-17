@@ -700,19 +700,21 @@ class ToggleWidget(_BoundControlMixin, QtWidgets.QWidget):
 
 
 class ToggleRowWidget(QtWidgets.QWidget):
-    """Multiple boolean checkboxes on a single horizontal line.
+    """Boolean checkboxes on one line, wrapping onto the next when the panel is narrow.
 
     Used for ``ToggleRowSection`` (e.g. Pile-up / DNL / Reverse in corrections).
-    Each item dict has keys ``target``, ``attr``, ``label``.
+    Each item dict has keys ``target``, ``attr``, ``label``. On a single fixed
+    line three labelled switches needed 322 px, and a narrower dock scrolled
+    sideways instead.
     """
 
     is_form_field = False
 
     def __init__(self, model, section, parent=None):
         super().__init__(parent)
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        from chisurf.gui.widgets.dock_area.dock_stacked_tab_bar import FlowLayout
+
+        layout = FlowLayout(self, margin=0, h_spacing=8, v_spacing=2)
         for item in section.items:
             target = item.get("target")
             attr = item.get("attr", "")
@@ -733,7 +735,6 @@ class ToggleRowWidget(QtWidgets.QWidget):
 
             cb.toggled.connect(_on_toggle)
             layout.addWidget(cb)
-        layout.addStretch(1)
 
 
 class ButtonRowWidget(QtWidgets.QWidget):

@@ -237,7 +237,17 @@ def test_the_editor_is_derived_from_the_description():
     model.problem
     spec = model.view_spec()
     targets = spec.section_targets()
-    assert "lifetimes" in targets and "instrument" in targets
+    assert "lifetimes" in targets
+    # The instrument's parameters are split over the Convolution and Generic
+    # panels, each a table of the ones that panel names.
+    shown = {
+        p.canonical_id
+        for target in targets
+        for p in getattr(getattr(model, target, None), "parameters_all", ())
+    }
+    assert {p.canonical_id for p in model.instrument.visible_parameters()} <= shown
+    titles = [getattr(s, "title", None) for s in spec.sections]
+    assert titles[:3] == ["Convolution", "Generic", "Corrections"]
     labels = [getattr(s, "label", None) for s in spec.flat_sections()]
     assert "IRF" in labels and "Period [ns]" in labels
 

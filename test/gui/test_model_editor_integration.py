@@ -123,6 +123,7 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
         COL_BOUNDS_ON,
         COL_ERROR,
         COL_VALUE,
+        PairedParameterTableWidget,
         ParameterGroupTableWidget,
     )
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
@@ -140,8 +141,15 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 
     # (b) every parameter of the active structure is on screen
     tables = editor.findChildren(ParameterGroupTableWidget)
-    rows = len(editor.parameter_widgets) + sum(t.table_model.rowCount() for t in tables)
-    assert rows >= len(model.structure_parameter_ids()), "parameter groups rendered empty"
+    shown = {p.canonical_id for t in tables for p in t.table_model._params}
+    shown |= {
+        p.canonical_id
+        for t in editor.findChildren(PairedParameterTableWidget)
+        for p in t._model._params
+    }
+    shown |= {getattr(w, "parameter", None) and w.parameter.canonical_id for w in editor.parameter_widgets}
+    missing = set(model.structure_parameter_ids()) - shown
+    assert not {m for m in missing if not m.startswith("output.")}, f"not on screen: {missing}"
 
     # (b2) squeezed, a table drops columns by priority; widened, it brings them back
     gen = next((t for t in tables if t.has_bounds_columns()), None)
@@ -164,6 +172,11 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     assert not view.isColumnHidden(COL_ERROR) and not view.isColumnHidden(COL_BOUNDS_ON)
     editor.setMaximumWidth(16777215)
 
+    # (b3) nothing in the editor refuses a narrow dock: the form fields shrink
+    # and a row of switches wraps, so the tables are what give way (their bounds
+    # first). Two unbounded number fields per row used to ask for ~590 px.
+    assert editor.minimumSizeHint().width() <= 300, editor.minimumSizeHint().width()
+
     # (c) the IRF input binds the view's response slot
     spec = model.view_spec()
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
@@ -173,6 +186,12 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 
     # (d) the switches the hand-written widget had are the description's scalars
     toggles = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)}
+    toggles |= {
+        f"{item['target']}.{item['attr']}"
+        for s in spec.flat_sections()
+        if isinstance(s, vs.ToggleRowSection)
+        for item in s.items
+    }
     assert {
         "scalars.convolve",
         "scalars.periodic_excitation",

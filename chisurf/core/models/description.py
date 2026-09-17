@@ -16,7 +16,9 @@ family is a new description file, not a new class.
 
 from __future__ import annotations
 
+import functools
 import json
+import pathlib
 
 import numpy as np
 
@@ -85,8 +87,39 @@ class DescriptionParameter(FittingParameter):
         factorgraph.bump_structure_version()
 
 
+def _component_index(canonical_id: str) -> typing.Optional[int]:
+    """The component a parameter belongs to (``lifetime.tau.1`` -> 1), or ``None``."""
+    head, _, tail = canonical_id.rpartition(".")
+    return int(tail) if head and tail.isdigit() else None
+
+
+def _component_base(canonical_id: str) -> str:
+    """A per-component parameter's id without its index (``lifetime.tau``)."""
+    return canonical_id.rpartition(".")[0] if _component_index(canonical_id) is not None else canonical_id
+
+
+#: ChiSurf's editor layouts for described families: ``views/*.layout.json``.
+_VIEWS = pathlib.Path(__file__).parent / "views"
+
+
+@functools.lru_cache(maxsize=None)
+def _layout_for(family: str) -> typing.Optional[dict]:
+    """The editor layout that applies to *family*, or ``None`` for the generic one."""
+    for path in sorted(_VIEWS.glob("*.layout.json")):
+        layout = json.loads(path.read_text(encoding="utf-8"))
+        if any(family.startswith(prefix) for prefix in layout.get("applies_to", ())):
+            return layout
+    return None
+
+
 class DescriptionGroup(FittingParameterGroup):
-    """The parameters of one ``group`` a description declares."""
+    """The parameters of one ``group`` a description declares.
+
+    A group whose parameters carry a component index (``lifetime.amplitude.0``,
+    ``lifetime.tau.0``, ...) is a list of components: the editor shows one row
+    per component and adds or removes components through :meth:`append` and
+    :meth:`pop`, which choose the topology with one more or one fewer.
+    """
 
     def __init__(self, view: DescriptionModel, key: str, parameters, **kwargs):
         super().__init__(parameters=list(parameters), **kwargs)
@@ -98,6 +131,137 @@ class DescriptionGroup(FittingParameterGroup):
         """The group's parameters the current topology reads, in registry order."""
         used = set(self._view.structure_parameter_ids())
         return [p for p in self.parameters_all if p.canonical_id in used]
+
+    # --- components ------------------------------------------------------------
+    def component_bases(self) -> typing.List[str]:
+        """The per-component parameter kinds, in description order (amplitude, tau)."""
+        return list(
+            dict.fromkeys(
+                _component_base(p.canonical_id)
+                for p in self.parameters_all
+                if _component_index(p.canonical_id) is not None
+            )
+        )
+
+    def component_parameters(self):
+        """The per-component parameters the topology reads, one component after another."""
+        bases = self.component_bases()
+        rows = [p for p in self.visible_parameters() if _component_index(p.canonical_id) is not None]
+        return sorted(
+            rows,
+            key=lambda p: (_component_index(p.canonical_id), bases.index(_component_base(p.canonical_id))),
+        )
+
+    def static_parameters(self):
+        """The group's parameters that are not per component (``anisotropy.g``)."""
+        return [p for p in self.visible_parameters() if _component_index(p.canonical_id) is None]
+
+    def append(self) -> None:
+        """Add a component."""
+        self._view.change_components(self.key, +1)
+
+    def pop(self, index: typing.Optional[int] = None) -> None:
+        """Remove component *index*, or the last one."""
+        self._view.remove_component(self.key, index)
+
+    # --- anisotropy diagnostics (the r(t) window) ---------------------------------
+    def _channel_fits(self):
+        """The fits of this model's group set to VV (1) and to VH (2), if both exist."""
+        fit = getattr(self._view, "fit", None)
+        members = list(getattr(fit, "group", None) or ()) or [fit]
+        channels = {}
+        for member in members:
+            model = getattr(member, "model", None)
+            try:
+                code = float(model.get_scalar("polarization"))
+            except Exception:
+                continue
+            channels.setdefault(code, member)
+        return channels.get(1.0), channels.get(2.0)
+
+    def _value_of(self, canonical: str, default: float) -> float:
+        for parameter in self._view.parameters_all:
+            if getattr(parameter, "canonical_id", None) == canonical:
+                return float(parameter.value)
+        return float(default)
+
+    def _extract_vv_vh_raw_for_diag(self):
+        """``(t, vv, vh, defaults)`` from the VV and VH fits of this group."""
+        vv_fit, vh_fit = self._channel_fits()
+        if vv_fit is None or vh_fit is None:
+            return None, None, None, None
+        vv = np.asarray(vv_fit.data.y, dtype=float)
+        vh = np.asarray(vh_fit.data.y, dtype=float)
+        n = min(vv.size, vh.size)
+        t = np.asarray(vv_fit.data.x, dtype=float)[:n]
+        defaults = {
+            "g": self._value_of("anisotropy.g", 1.0),
+            "l1": self._value_of("anisotropy.l1", 0.0),
+            "l2": self._value_of("anisotropy.l2", 0.0),
+            "bg_vv": float(vv_fit.model._value_of_instrument("instrument.background")),
+            "bg_vh": float(vh_fit.model._value_of_instrument("instrument.background")),
+            "shift_vv": float(vv_fit.model._value_of_instrument("instrument.timeshift")),
+            "shift_vh": float(vh_fit.model._value_of_instrument("instrument.timeshift")),
+        }
+        return t, vv[:n], vh[:n], defaults
+
+    def _extract_vv_vh_model_for_diag(self):
+        """``(t, vv, vh)`` of the model curves of the VV and VH fits."""
+        vv_fit, vh_fit = self._channel_fits()
+        if vv_fit is None or vh_fit is None:
+            return None, None, None
+        vv = np.asarray(vv_fit.model.y, dtype=float)
+        vh = np.asarray(vh_fit.model.y, dtype=float)
+        n = min(vv.size, vh.size)
+        return np.asarray(vv_fit.model.x, dtype=float)[:n], vv[:n], vh[:n]
+
+    @staticmethod
+    def _shift_trace_to_reference(t, trace, shift: float):
+        """*trace* moved by *shift* along *t* (linear interpolation)."""
+        t = np.asarray(t, dtype=float)
+        trace = np.asarray(trace, dtype=float)
+        return np.interp(t, t + float(shift), trace) if shift else trace
+
+    @staticmethod
+    def rt_from_channels(t, vv, vh, g: float, l1: float, l2: float):
+        """``(t, r_uncorrected, r_corrected)`` -- see :func:`chisurf.core.fluorescence.anisotropy.rt.rt_curves`."""
+        from chisurf.core.fluorescence.anisotropy.rt import rt_curves
+
+        return rt_curves(t, vv, vh, g, l1, l2)
+
+
+class _Selection:
+    """Named parameters of a model, as a table target (a layout panel's own list).
+
+    Holds canonical ids, not parameters, so discovering the model's parameters
+    never finds the same parameter twice through a panel.
+    """
+
+    def __init__(self, view: "DescriptionModel", ids: typing.Tuple[str, ...]):
+        self._view = view
+        self.ids = ids
+        self.name = ""
+
+    @property
+    def parameters_all(self):
+        by_id = {getattr(p, "canonical_id", None): p for p in self._view.parameters_all}
+        used = set(self._view.structure_parameter_ids())
+        return [by_id[i] for i in self.ids if i in by_id and i in used]
+
+    def visible_parameters(self):
+        return self.parameters_all
+
+
+class _Datasets:
+    """The curves bound to a model's measurement slots, as attributes (for the editor)."""
+
+    def __init__(self, view: "DescriptionModel"):
+        self._view = view
+
+    def __getattr__(self, slot: str):
+        if slot.startswith("_") or slot not in self._view.dataset_slots():
+            raise AttributeError(slot)
+        return self._view.__dict__.get("_sources", {}).get(slot)
 
 
 class _Scalars:
@@ -514,6 +678,7 @@ class DescriptionModel(ModelCurve):
         """Wrap the model's ports once; a rebuild keeps them, so this is idempotent."""
         document = self._document
         labels = self.presentation.get("groups", {})
+        symbols = (_layout_for(self.family) or {}).get("labels", {})
         by_group: typing.Dict[str, list] = {}
         known = {p.canonical_id: p for g in self._groups.values() for p in g.parameters_all}
         for canonical in problem.get_parameter_ids():
@@ -524,15 +689,28 @@ class DescriptionModel(ModelCurve):
                 parameter = DescriptionParameter(
                     self, canonical, port, name=entry.get("name", canonical)
                 )
+                label = symbols.get(_component_base(canonical))
+                if label:
+                    index = _component_index(canonical)
+                    parameter.__dict__["label_text"] = label.format(
+                        n="" if index is None else index + 1
+                    )
             by_group.setdefault(entry.get("group", "equation"), []).append(parameter)
         for key, parameters in by_group.items():
             # A group named like something the model already has (its
             # ``parameters`` list, say) would shadow it; such a group is
             # reached under ``<name>_group`` instead.
             attribute = key if not hasattr(type(self), key) else f"{key}_group"
-            group = DescriptionGroup(
-                self, key, parameters, name=labels.get(key, key.replace("_", " ").capitalize())
-            )
+            group = self._groups.get(attribute)
+            if group is None:
+                group = DescriptionGroup(
+                    self, key, parameters, name=labels.get(key, key.replace("_", " ").capitalize())
+                )
+            else:
+                # The same group object, so an editor holding it sees a component
+                # a rebuild added (a fourth lifetime once the maximum rose).
+                group._parameter[:] = parameters
+                group.__dict__["_parameters"] = None
             self._groups[attribute] = group
             self.__dict__[attribute] = group
         self.__dict__["_adopting"] = True
@@ -544,6 +722,11 @@ class DescriptionModel(ModelCurve):
     @property
     def scalars(self) -> _Scalars:
         return _Scalars(self)
+
+    @property
+    def datasets(self) -> "_Datasets":
+        """``model.datasets.<slot>``: the curve bound to a measurement slot, or ``None``."""
+        return _Datasets(self)
 
     # --- editor ------------------------------------------------------------------
     def view_spec(self):
@@ -560,100 +743,12 @@ class DescriptionModel(ModelCurve):
         authored = pathlib.Path(__file__).parent / "views" / f"{self.family}.view.json"
         if authored.is_file():
             return vs.load_view_spec(authored)
+        layout = _layout_for(self.family)
+        if layout is not None and self.problem is not None:
+            sections = self._layout_sections(layout)
+        else:
+            sections = self._generic_sections()
         presentation = self.presentation
-        slot_info = presentation.get("datasets", {})
-        scalar_info = presentation.get("scalars", {})
-        sections = [
-            vs.ChoiceSection(
-                label="Equation" if self._catalogue else "Model",
-                attr="structure",
-                options_source="structure_options",
-                rebuild_on_change=True,
-            ),
-            *(
-                (vs.ValueSection(label="Equation", kind="expression", attr="func"),)
-                if self._catalogue
-                else ()
-            ),
-            vs.PanelSection(
-                title="Measurements",
-                sections=tuple(
-                    vs.CurveInputSection(
-                        label=slot_info.get(slot, {}).get("label", slot),
-                        select_action="model.set_dataset",
-                        unload_action="model.unset_dataset",
-                        index_key="idx",
-                        name_key="name",
-                        action_fixed={"slot": slot},
-                    )
-                    for slot in self.dataset_slots()
-                ),
-            ),
-        ]
-        settings = []
-        # A description that presents its scalars lists the ones a user sets;
-        # the rest (a fit window the view fills itself) stay out of the editor.
-        presented = set(scalar_info) if scalar_info else None
-        for name in self.scalar_names():
-            if presented is not None and name not in presented:
-                continue
-            info = scalar_info.get(name, {})
-            if info.get("kind") == "flag":
-                settings.append(
-                    vs.ToggleSection(label=info.get("label", name), attr=f"scalars.{name}")
-                )
-            else:
-                settings.append(
-                    vs.ValueSection(
-                        label=info.get("label", name), kind="float", attr=f"scalars.{name}"
-                    )
-                )
-        sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
-        if presentation.get("regularization"):
-            sections.append(
-                vs.PanelSection(
-                    title="L-curve",
-                    collapsed=True,
-                    sections=(
-                        vs.CustomSection(
-                            key="lcurve",
-                            target="l_curve",
-                            options={
-                                "compute_action": "compute_l_curve",
-                                "select_action": "set_reg_from_lcurve_index",
-                                "n_points": 16,
-                            },
-                        ),
-                    ),
-                )
-            )
-        sources = self.source_info
-        if sources and sources.get("kind") != "values":
-            sections.append(
-                vs.PanelSection(
-                    title=sources.get("label", "Models"),
-                    sections=(vs.CustomSection(key="fit_mixer"),),
-                )
-            )
-        source_parameter = (
-            sources.get("parameter", "").split("{")[0]
-            if sources and sources.get("kind") != "values"
-            else ""
-        )
-        for attribute, group in self._groups.items():
-            if source_parameter and all(
-                p.canonical_id.startswith(source_parameter) for p in group.parameters_all
-            ):
-                # Shown with its source by the models section.
-                continue
-            sections.append(
-                vs.ParameterGroupTableSection(
-                    target=attribute,
-                    title=group.name,
-                    parameters_source="visible_parameters",
-                    collapsible=False,
-                )
-            )
         grid = (getattr(getattr(self.fit, "data", None), "meta_data", None) or {}).get("grid") or {}
         if len(tuple(grid.get("shape", ()) or ())) >= 2:
             # A measurement on a grid is shown as images; the accessors are
@@ -726,6 +821,292 @@ class DescriptionModel(ModelCurve):
             plots.append(vs.PlotSpec("residual"))
             plots = tuple(plots)
         return vs.ModelView(sections=tuple(sections), plots=plots)
+
+    def _regularization_and_source_sections(self) -> list:
+        """The L-curve panel of a regularised family and the models a mixture reads."""
+        from chisurf.core.models import view_spec as vs
+
+        sections = []
+        if self.presentation.get("regularization"):
+            sections.append(
+                vs.PanelSection(
+                    title="L-curve",
+                    collapsed=True,
+                    sections=(
+                        vs.CustomSection(
+                            key="lcurve",
+                            target="l_curve",
+                            options={
+                                "compute_action": "compute_l_curve",
+                                "select_action": "set_reg_from_lcurve_index",
+                                "n_points": 16,
+                            },
+                        ),
+                    ),
+                )
+            )
+        sources = self.source_info
+        if sources and sources.get("kind") != "values":
+            sections.append(
+                vs.PanelSection(
+                    title=sources.get("label", "Models"),
+                    sections=(vs.CustomSection(key="fit_mixer"),),
+                )
+            )
+        return sections
+
+    def _shown_with_sources(self, group) -> bool:
+        """Whether *group* holds the per-source parameters the models section shows."""
+        sources = self.source_info
+        if not sources or sources.get("kind") == "values":
+            return False
+        prefix = sources.get("parameter", "").split("{")[0]
+        return bool(prefix) and all(p.canonical_id.startswith(prefix) for p in group.parameters_all)
+
+    def _generic_sections(self) -> list:
+        """The editor for a family with no ChiSurf layout: slots, settings, one table per group."""
+        from chisurf.core.models import view_spec as vs
+
+        presentation = self.presentation
+        slot_info = presentation.get("datasets", {})
+        scalar_info = presentation.get("scalars", {})
+        sections = [
+            vs.ChoiceSection(
+                label="Equation" if self._catalogue else "Model",
+                attr="structure",
+                options_source="structure_options",
+                rebuild_on_change=True,
+            ),
+            *(
+                (vs.ValueSection(label="Equation", kind="expression", attr="func"),)
+                if self._catalogue
+                else ()
+            ),
+            vs.PanelSection(
+                title="Measurements",
+                sections=tuple(
+                    vs.CurveInputSection(
+                        label=slot_info.get(slot, {}).get("label", slot),
+                        select_action="model.set_dataset",
+                        unload_action="model.unset_dataset",
+                        index_key="idx",
+                        name_key="name",
+                        action_fixed={"slot": slot},
+                        target="datasets",
+                        name_attr=slot,
+                    )
+                    for slot in self.dataset_slots()
+                ),
+            ),
+        ]
+        settings = []
+        # A description that presents its scalars lists the ones a user sets;
+        # the rest (a fit window the view fills itself) stay out of the editor.
+        presented = set(scalar_info) if scalar_info else None
+        for name in self.scalar_names():
+            if presented is not None and name not in presented:
+                continue
+            info = scalar_info.get(name, {})
+            if info.get("kind") == "flag":
+                settings.append(
+                    vs.ToggleSection(label=info.get("label", name), attr=f"scalars.{name}")
+                )
+            else:
+                settings.append(
+                    vs.ValueSection(
+                        label=info.get("label", name), kind="float", attr=f"scalars.{name}"
+                    )
+                )
+        sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
+        sections.extend(self._regularization_and_source_sections())
+        for attribute, group in self._groups.items():
+            if self._shown_with_sources(group):
+                # Shown with its source by the models section.
+                continue
+            sections.append(
+                vs.ParameterGroupTableSection(
+                    target=attribute,
+                    title=group.name,
+                    parameters_source="visible_parameters",
+                    collapsible=False,
+                )
+            )
+        return sections
+
+    def _layout_sections(self, layout: dict) -> list:
+        """The editor a ``views/*.layout.json`` lays out (see ``tcspc.layout.json``).
+
+        Each panel names measurement slots, scalar switches, choices and values,
+        and parameters or whole groups; what the family does not have is left
+        out, and a panel left empty is not drawn. ``"groups": "*"`` places every
+        group no other panel claims, and ``"values": "*"`` every scalar left.
+        A group of components becomes an add/del table, one row per component.
+        """
+        from chisurf.core.models import view_spec as vs
+
+        presentation = self.presentation
+        slot_info = presentation.get("datasets", {})
+        scalar_info = presentation.get("scalars", {})
+        group_labels = presentation.get("groups", {})
+        slots = self.dataset_slots()
+        scalars = self.scalar_names()
+        visible = set(self.structure_parameter_ids())
+        attribute_of = {group.key: attribute for attribute, group in self._groups.items()}
+        claimed_groups = {g for panel in layout.get("panels", ()) for g in (
+            panel.get("groups") if isinstance(panel.get("groups"), list) else ())}
+        claimed_groups |= {g for panel in layout.get("panels", ()) for g in panel.get("except", ())}
+        claimed_scalars = {
+            name
+            for panel in layout.get("panels", ())
+            for key in ("toggles", "values")
+            if isinstance(panel.get(key), list)
+            for name in panel[key]
+        } | {name for panel in layout.get("panels", ()) for name in panel.get("choices", {})}
+        selections = self.__dict__.setdefault("_selections", {})
+        short = layout.get("scalar_labels", {})
+
+        def scalar_label(name):
+            return short.get(name) or scalar_info.get(name, {}).get("label", name)
+
+        def curve(slot):
+            return vs.CurveInputSection(
+                label=slot_info.get(slot, {}).get("label", slot),
+                select_action="model.set_dataset",
+                unload_action="model.unset_dataset",
+                index_key="idx",
+                name_key="name",
+                action_fixed={"slot": slot},
+                target="datasets",
+                name_attr=slot,
+            )
+
+        def group_sections(key):
+            group = self._groups.get(attribute_of.get(key, ""))
+            if group is None or not any(p.canonical_id in visible for p in group.parameters_all):
+                return []
+            out = []
+            if group.static_parameters():
+                out.append(
+                    vs.ParameterGroupTableSection(
+                        target=attribute_of[key],
+                        parameters_source="static_parameters",
+                        collapsible=False,
+                        columns=("name", "value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
+                    )
+                )
+            bases = group.component_bases()
+            if bases:
+                out.append(
+                    vs.DynamicGroupSection(
+                        target=attribute_of[key],
+                        rows_source="component_parameters",
+                        append_method="append",
+                        remove_method="pop",
+                        row_width=len(bases),
+                        style="table",
+                        collapsible=False,
+                        min_rows=1,
+                        columns=("value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
+                    )
+                )
+            return out
+
+        sections = []
+        for panel in layout.get("panels", ()):
+            children = []
+            for slot in panel.get("datasets", ()):
+                if slot in slots:
+                    children.append(curve(slot))
+            toggles = [
+                name for name in panel.get("toggles", ())
+                if name in scalars and scalar_info.get(name, {}).get("kind") == "flag"
+            ]
+            if toggles:
+                children.append(
+                    vs.ToggleRowSection(
+                        items=tuple(
+                            {"target": "scalars", "attr": name, "label": scalar_label(name)}
+                            for name in toggles
+                        )
+                    )
+                )
+            for name, choice in panel.get("choices", {}).items():
+                if name in scalars:
+                    children.append(
+                        vs.ChoiceSection(
+                            label=choice.get("label", name),
+                            attr=f"scalars.{name}",
+                            options=tuple(choice.get("options", ())),
+                            labels=tuple(choice.get("labels", ())),
+                            rebuild_on_change=True,
+                        )
+                    )
+            ids = [i for i in panel.get("parameters", ()) if i in visible]
+            if ids:
+                name = f"selection_{len(selections)}"
+                for existing, selection in selections.items():
+                    if selection.ids == tuple(ids):
+                        name = existing
+                        break
+                selections[name] = _Selection(self, tuple(ids))
+                children.append(
+                    vs.ParameterGroupTableSection(
+                        target=name,
+                        collapsible=False,
+                        columns=("name", "value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
+                    )
+                )
+            groups = panel.get("groups", ())
+            if groups == "*":
+                sections.extend(self._regularization_and_source_sections())
+                for group in self._groups.values():
+                    key = group.key
+                    if key in claimed_groups or self._shown_with_sources(group):
+                        continue
+                    content = group_sections(key)
+                    if content:
+                        sections.append(
+                            vs.PanelSection(
+                                title=group_labels.get(key, key.replace("_", " ").capitalize()),
+                                sections=tuple(content),
+                            )
+                        )
+                continue
+            has_group = False
+            for key in groups:
+                content = group_sections(key)
+                has_group = has_group or bool(content)
+                children.extend(content)
+            if groups and not has_group and not panel.get("choices"):
+                continue
+            values = panel.get("values", ())
+            if values == "*":
+                values = [n for n in scalars if n not in claimed_scalars]
+            for name in values:
+                if name not in scalars:
+                    continue
+                info = scalar_info.get(name, {})
+                if info.get("kind") == "flag":
+                    children.append(vs.ToggleSection(label=scalar_label(name), attr=f"scalars.{name}"))
+                else:
+                    children.append(
+                        vs.ValueSection(label=scalar_label(name), kind="float", attr=f"scalars.{name}")
+                    )
+            if panel.get("custom") and has_group:
+                children.extend(
+                    vs.CustomSection(key=key, target=attribute_of.get(groups[0], ""))
+                    for key in panel["custom"]
+                )
+            if not children:
+                continue
+            collapsed = bool(panel.get("collapsed", False))
+            switch = panel.get("collapsed_unless_scalar")
+            if switch:
+                collapsed = not (self.get_scalar(switch) or 0.0)
+            sections.append(
+                vs.PanelSection(title=panel.get("title", ""), collapsed=collapsed, sections=tuple(children))
+            )
+        return sections
 
     def find_parameters(self, parameter_type=FittingParameter) -> None:
         """Discover parameters, wrapping the model's ports first if it is complete.
@@ -900,6 +1281,112 @@ class DescriptionModel(ModelCurve):
             return []
         return list(problem.get_structure_parameter_ids(problem.get_active_structure()))
 
+    def _component_counts(self, problem, structure: str) -> typing.Dict[str, int]:
+        """How many components each group has in *structure*."""
+        parameters = self._document.get("parameters", {})
+        indices: typing.Dict[str, set] = {}
+        for canonical in problem.get_structure_parameter_ids(structure):
+            index = _component_index(canonical)
+            if index is not None:
+                group = parameters.get(canonical, {}).get("group", "equation")
+                indices.setdefault(group, set()).add(index)
+        return {group: len(found) for group, found in indices.items()}
+
+    def _structure_with(self, problem, group: str, wanted: int, others: typing.Dict[str, int]):
+        """A topology with *wanted* components in *group* and the others unchanged."""
+        for key in self._spec.get_structure_keys():
+            counts = self._component_counts(problem, key)
+            if counts.get(group, 0) == wanted and all(
+                counts.get(g, 0) == n for g, n in others.items() if g != group
+            ):
+                return key
+        return None
+
+    def change_components(self, group: str, delta: int) -> bool:
+        """Add (``delta=+1``) or remove (``-1``) a component of *group*.
+
+        The description lists the topologies it can build; this selects the one
+        with the component count asked for and every other group unchanged.
+        Where no listed topology has it, the count is bounded by a scalar --
+        ``max_components`` above a lifetime list, ``donor_lifetimes`` fixing a
+        FRET model's donor -- and that scalar is moved by *delta* when doing so
+        yields the topology. Returns whether the model changed.
+        """
+        problem = self.problem
+        if problem is None:
+            raise RuntimeError(f"the model is incomplete: missing {', '.join(self.missing)}")
+        counts = self._component_counts(problem, str(problem.get_active_structure()))
+        wanted = counts.get(group, 0) + int(delta)
+        if wanted < 1:
+            return False
+        key = self._structure_with(problem, group, wanted, counts)
+        if key is None:
+            key = self._widen_for(group, wanted, counts, int(delta))
+        if key is None:
+            from chisurf import logging
+
+            logging.warning(f"{self.name}: no topology with {wanted} {group}")
+            return False
+        self.structure = key
+        return True
+
+    def _widen_for(self, group: str, wanted: int, counts, delta: int):
+        """Move a scalar that bounds the component axes until the topology exists."""
+        names = set(self.scalar_names())
+        fixed, upper = [], []
+        for axis in (self._document.get("axes") or {}).values():
+            low, high = axis.get("from"), axis.get("to")
+            if isinstance(high, str) and high in names:
+                (fixed if low == high else upper).append(high)
+        for name in dict.fromkeys([*fixed, *upper]):
+            before = self.get_scalar(name)
+            chosen = name in self._scalars
+            if before is None or before + delta < 0:
+                continue
+            self.set_scalar(name, before + delta)
+            problem = self.problem
+            key = None if problem is None else self._structure_with(problem, group, wanted, counts)
+            if key is not None:
+                return key
+            if chosen:
+                self.set_scalar(name, before)
+            else:
+                self._scalars.pop(name, None)
+                self._spec.set_scalar(name, float(before))
+                self._forget_discovery()
+        return None
+
+    def remove_component(self, group: str, index: typing.Optional[int] = None) -> bool:
+        """Remove component *index* of *group* (the last one when ``None``).
+
+        A component in the middle is removed by moving the ones after it down
+        a place -- value, fixed flag and bounds -- and dropping the last.
+        """
+        members = self._groups.get(group) or next(
+            (g for g in self._groups.values() if g.key == group), None
+        )
+        if members is not None and index is not None:
+            rows = members.component_parameters()
+            bases = members.component_bases()
+            width = max(1, len(bases))
+            count = len(rows) // width
+            by_id = {p.canonical_id: p for p in members.parameters_all}
+            for j in range(int(index), count - 1):
+                for base in bases:
+                    here, after = by_id.get(f"{base}.{j}"), by_id.get(f"{base}.{j + 1}")
+                    if here is None or after is None:
+                        continue
+                    here.value = after.value
+                    here.bounds = after.bounds
+                    here.fixed = after.fixed
+        return self.change_components(group, -1)
+
+    def _value_of_instrument(self, canonical: str) -> float:
+        for parameter in self.parameters_all:
+            if getattr(parameter, "canonical_id", None) == canonical:
+                return float(parameter.value)
+        return 0.0
+
     # --- presented outputs -------------------------------------------------------
     def presented_distribution(self, name: str) -> np.ndarray:
         """A distribution the description presents, read from the live model now."""
@@ -919,6 +1406,8 @@ class DescriptionModel(ModelCurve):
         # plot configured by attribute (``lifetime_spectrum``) reads the model.
         if name.startswith("_"):
             raise AttributeError(name)
+        if name.startswith("selection_") and name in self.__dict__.get("_selections", {}):
+            return self._selections[name]
         try:
             document = object.__getattribute__(self, "_document")
         except Exception:
@@ -1120,6 +1609,33 @@ class DescriptionModel(ModelCurve):
         node = problem.get_structure_curve_node(active, self.primary_dataset)
         self.y = np.array(problem.get_structure_output(active, node), dtype=float)
         self._update_statistics()
+
+    def get_curves(self, copy_curves: bool = False):
+        """The model curve, and the curves the layout draws beside it (the IRF).
+
+        A measured IRF is drawn as loaded, at its own height, as the classic
+        lifetime model drew it; a modelled one is the node that models it.
+        """
+        from chisurf.core.curve import Curve
+
+        curves = super().get_curves(copy_curves)
+        for label, info in ((_layout_for(self.family) or {}).get("curves") or {}).items():
+            source = self.__dict__.get("_sources", {}).get(info.get("dataset", ""))
+            if source is not None:
+                curves[label] = Curve(x=np.asarray(source.x), y=np.asarray(source.y), copy_array=copy_curves)
+                continue
+            problem = self.problem
+            node = info.get("node")
+            if problem is None or not node:
+                continue
+            active = problem.get_active_structure()
+            try:
+                y = np.array(problem.get_structure_output(active, f"{active}.{node}"), dtype=float)
+            except Exception:
+                continue
+            if y.size == np.asarray(self.x).size:
+                curves[label] = Curve(x=np.asarray(self.x), y=y, copy_array=copy_curves)
+        return curves
 
     def evaluate_lifetime_spectrum(self, lifetime_spectrum) -> np.ndarray:
         """The model's decay for an interleaved ``[a0, tau0, a1, tau1, ...]``.

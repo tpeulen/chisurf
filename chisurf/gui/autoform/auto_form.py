@@ -48,6 +48,10 @@ REMOVE_BUTTON_STYLE = (
 )
 
 
+#: The narrowest a form editor is squeezed to: a few digits stay readable.
+_FIELD_MIN_WIDTH = 48
+
+
 def _make_field_shrinkable(field) -> None:
     """Let a field's editors shrink so the form scales to narrow docks/panels.
 
@@ -61,7 +65,12 @@ def _make_field_shrinkable(field) -> None:
         (QtWidgets.QAbstractSpinBox, QtWidgets.QComboBox, QtWidgets.QLineEdit)
     )
     for editor in editors:
-        editor.setMinimumWidth(0)
+        # A positive floor, not 0: to a layout a minimum width of 0 means "none
+        # set", so it fell back to the editor's size hint -- 216 px for an
+        # unbounded float field -- and nothing shrank. Two such fields per row
+        # made every panel ~590 px wide, the dock scrolled sideways, and the
+        # parameter tables never got narrow enough to drop their bounds columns.
+        editor.setMinimumWidth(_FIELD_MIN_WIDTH)
         editor.setSizePolicy(QtWidgets.QSizePolicy.Expanding, editor.sizePolicy().verticalPolicy())
         if isinstance(editor, QtWidgets.QComboBox):
             editor.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)

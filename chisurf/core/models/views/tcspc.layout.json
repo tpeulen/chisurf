@@ -1,0 +1,179 @@
+{
+  "_comment": "How ChiSurf lays out the editor of a BFF-described TCSPC model: the panels the classic lifetime editor had (Convolution, Generic, Corrections, then the model's own groups, Anisotropy). Layout and labels only; what a family consists of is its BFF description. A family is laid out by this file when its name starts with a listed prefix. {n} in a label is the component number, counted from 1. scalar_labels shortens the description's labels for the compact panels. curves are drawn beside the model: a bound measurement at its own height, or else the node that models it.",
+  "applies_to": [
+    "tcspc_"
+  ],
+  "labels": {
+    "lifetime.amplitude": "x<sub>L,{n}</sub>",
+    "lifetime.tau": "&tau;<sub>L,{n}</sub>",
+    "donor.amplitude": "x<sub>D,{n}</sub>",
+    "donor.tau": "&tau;<sub>D,{n}</sub>",
+    "chromophore_a.amplitude": "x<sub>A,{n}</sub>",
+    "chromophore_a.tau": "&tau;<sub>A,{n}</sub>",
+    "rotation.amplitude": "b<sub>{n}</sub>",
+    "rotation.time": "&rho;<sub>{n}</sub>",
+    "distance.mean": "R<sub>DA,{n}</sub>",
+    "distance.sigma": "w<sub>{n}</sub>",
+    "distance.shape": "k<sub>{n}</sub>",
+    "distance.amplitude": "x<sub>{n}</sub>",
+    "mixture.fraction": "x<sub>{n}</sub>",
+    "instrument.scatter": "sc",
+    "instrument.background": "bg",
+    "instrument.n0": "n<sub>0</sub>",
+    "instrument.timeshift": "ts",
+    "instrument.response_background": "lb",
+    "instrument.irf_width": "IRF<sub>w</sub>",
+    "instrument.irf_shape": "IRF<sub>k</sub>",
+    "instrument.irf_position": "IRF<sub>pos</sub>",
+    "anisotropy.r0": "r<sub>0</sub>",
+    "anisotropy.g": "g",
+    "anisotropy.l1": "l<sub>1</sub>",
+    "anisotropy.l2": "l<sub>2</sub>",
+    "fret.forster_radius": "R<sub>0</sub>",
+    "fret.tau0": "&tau;<sub>0</sub>",
+    "fret.kappa2": "&kappa;<sup>2</sup>",
+    "fret.x_donly": "x<sub>DOnly</sub>"
+  },
+  "panels": [
+    {
+      "title": "Convolution",
+      "datasets": [
+        "response"
+      ],
+      "toggles": [
+        "convolve",
+        "periodic_excitation",
+        "generated_response"
+      ],
+      "parameters": [
+        "instrument.n0",
+        "instrument.timeshift",
+        "instrument.response_background",
+        "instrument.irf_width",
+        "instrument.irf_shape",
+        "instrument.irf_position"
+      ],
+      "values": [
+        "dt",
+        "period"
+      ]
+    },
+    {
+      "title": "Generic",
+      "datasets": [
+        "background_pattern"
+      ],
+      "parameters": [
+        "instrument.scatter",
+        "instrument.background"
+      ],
+      "toggles": [
+        "shift_background"
+      ],
+      "values": [
+        "t_background",
+        "t_decay"
+      ]
+    },
+    {
+      "title": "Corrections",
+      "collapsed": true,
+      "datasets": [
+        "linearization",
+        "linearization_curve"
+      ],
+      "toggles": [
+        "pile_up",
+        "reverse_linearization",
+        "autoscale"
+      ],
+      "values": [
+        "dead_time",
+        "measurement_time",
+        "lin_window_length"
+      ],
+      "choices": {
+        "lin_window": {
+          "label": "DNL window",
+          "options": [
+            "0.0",
+            "1.0",
+            "2.0",
+            "3.0",
+            "4.0"
+          ],
+          "labels": [
+            "flat",
+            "hanning",
+            "hamming",
+            "bartlett",
+            "blackman"
+          ]
+        }
+      }
+    },
+    {
+      "groups": "*",
+      "except": [
+        "instrument",
+        "anisotropy",
+        "rotations"
+      ]
+    },
+    {
+      "title": "Anisotropy",
+      "collapsed_unless_scalar": "polarization",
+      "choices": {
+        "polarization": {
+          "label": "Polarization",
+          "options": [
+            "0.0",
+            "1.0",
+            "2.0",
+            "3.0"
+          ],
+          "labels": [
+            "VM",
+            "VV",
+            "VH",
+            "VV/VH"
+          ]
+        }
+      },
+      "groups": [
+        "anisotropy",
+        "rotations"
+      ],
+      "custom": [
+        "anisotropy_diagnostics"
+      ]
+    },
+    {
+      "title": "Settings",
+      "collapsed": true,
+      "values": "*"
+    }
+  ],
+  "scalar_labels": {
+    "convolve": "Convolve",
+    "periodic_excitation": "Periodic",
+    "generated_response": "Model IRF",
+    "shift_background": "Shift bg with IRF",
+    "pile_up": "Pile-up",
+    "reverse_linearization": "Reverse DNL",
+    "autoscale": "Autoscale n<sub>0</sub>",
+    "lin_window_length": "DNL window [ch]",
+    "dt": "dt [ns]",
+    "period": "Period [ns]",
+    "t_background": "t<sub>bg</sub> [s]",
+    "t_decay": "t<sub>decay</sub> [s]",
+    "dead_time": "t<sub>dead</sub> [ns]",
+    "measurement_time": "t<sub>meas</sub> [s]"
+  },
+  "curves": {
+    "IRF": {
+      "dataset": "response",
+      "node": "generated_response"
+    }
+  }
+}

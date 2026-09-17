@@ -46,8 +46,13 @@ def test_lifetime_model_view_spec_structure():
     spec = model.view_spec()
     assert isinstance(spec, vs.ModelView)
     targets = spec.section_targets()
-    for expected in ("lifetimes", "instrument"):
-        assert expected in targets, f"missing section target {expected!r}"
+    assert "lifetimes" in targets, "missing section target 'lifetimes'"
+    shown = {
+        p.canonical_id
+        for target in targets
+        for p in getattr(getattr(model, target, None), "parameters_all", ())
+    }
+    assert {p.canonical_id for p in model.instrument.visible_parameters()} <= shown
     plot_keys = [p.key for p in spec.plots]
     assert {"line", "residual", "distribution"} <= set(plot_keys)
     assert all(isinstance(p.key, str) for p in spec.plots)
@@ -135,7 +140,16 @@ def test_lifetime_view_exposes_its_settings():
     """What the hand-written widget's controls set are the description's scalars."""
     spec = _make_view("tcspc_lifetime").view_spec()
     attrs = {
-        s.attr for s in spec.flat_sections() if isinstance(s, (vs.ToggleSection, vs.ValueSection))
+        s.attr
+        for s in spec.flat_sections()
+        if isinstance(s, (vs.ToggleSection, vs.ValueSection, vs.ChoiceSection))
+    }
+    # Switches that share a line are one toggle row, bound through ``scalars``.
+    attrs |= {
+        f"{item['target']}.{item['attr']}"
+        for s in spec.flat_sections()
+        if isinstance(s, vs.ToggleRowSection)
+        for item in s.items
     }
     assert {
         "scalars.convolve",
