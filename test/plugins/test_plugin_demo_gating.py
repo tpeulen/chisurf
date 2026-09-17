@@ -26,8 +26,13 @@ GAMES_ROOT = PLUGIN_ROOT / "misc" / "games"
 
 
 def _game_manifests() -> list[pathlib.Path]:
-    """Return the games hub manifest and every game manifest inside it."""
-    return sorted(GAMES_ROOT.rglob("manifest.json"))
+    """Return every game's manifest.
+
+    Not the hub's: the Games hub stays in the menus so the games can be found,
+    and each game inside it is the demo (the games plugin's own
+    test_manifest.py pins the hub side).
+    """
+    return sorted(p for p in GAMES_ROOT.rglob("manifest.json") if p.parent != GAMES_ROOT)
 
 
 def test_demo_is_a_declared_manifest_key():
@@ -89,12 +94,28 @@ def test_a_demo_is_hidden_from_every_menu_by_default(monkeypatch: pytest.MonkeyP
     assert not visible, f"demo plugins reachable from the menus by default: {visible}"
 
 
-def test_opting_in_brings_the_demo_hub_back(monkeypatch: pytest.MonkeyPatch):
-    """The setting must actually change the answer, not only exist."""
-    records = _records(monkeypatch, show_demos=True)
-    hub = records[str(GAMES_ROOT)]
-    assert hub["demo"] is True
-    assert hub["menu_hidden"] is False
+def test_opting_in_brings_a_demo_back(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """The setting must actually change the answer, not only exist.
+
+    Every shipped game is also ``menu_hidden`` in its own right (the hub is
+    how they are reached), so the opt-in cannot unhide one; a demo plugin
+    that is not hidden otherwise is made here.
+    """
+    import chisurf.plugins as plugins
+
+    package = tmp_path / "gating_probe_demo"
+    package.mkdir()
+    (package / "__init__.py").write_text('name = "Gating probe"\n', encoding="utf-8")
+    (package / "manifest.json").write_text(json.dumps(
+        {"id": "gating_probe_demo", "version": "1", "demo": True, "menu_hidden": False}),
+        encoding="utf-8")
+    monkeypatch.setattr(plugins, "__path__", [*plugins.__path__, str(tmp_path)])
+
+    key = str(package.resolve())
+    assert _records(monkeypatch, show_demos=False)[key]["menu_hidden"] is True
+    shown = _records(monkeypatch, show_demos=True)[key]
+    assert shown["demo"] is True
+    assert shown["menu_hidden"] is False
 
 
 def test_the_gate_hides_only_demos(monkeypatch: pytest.MonkeyPatch):
