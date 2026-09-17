@@ -15,6 +15,20 @@
   which re-ran `GP_logL.m` and reproduced all four stored logL bit-exactly. The FCS/PCF
   A/B tests and `models.yaml` comments were cite-only; their `junk/PAM` paths now cite
   the upstream revision instead.
+* **FLCS filters: A/B against both of PAM's filter routines, and PAM's second
+  empty-bin convention added.** PAM computes `F = (DᵀWD)⁻¹DᵀW` twice, and the two
+  disagree only on empty total-decay bins: BurstBrowser `Calc_fFCS_Filters.m` sets
+  `I=0 → 1` and keeps the bin, `PAM.m` `Update_fFCS_GUI` drops it (renormalising
+  the patterns over occupied bins, filters zero there). `calc_ffcs_filters` matched
+  the BurstBrowser routine already (7e-16 relative, Octave); it gains
+  `empty_bins="exclude"` for the `PAM.m` routine (5e-16), default unchanged.
+  On a synthetic case with five empty pre-rise bins the two differ by O(1): unit
+  weight gives an empty bin the largest weight of any bin. Verbatim PAM excerpts,
+  generator and a 19 KB fixture in `test/data/flcs/`, so the A/B survives deleting
+  `junk/PAM`; test `test/fitting/test_fcs_filters.py`. Whether the default should
+  become `"exclude"` is left open in
+  [fcs-pam-port](references/fcs-pam-port.md) "Where to pick this up", with a
+  pre-existing order dependence in the Filter Calculator widget tests.
 
 ## 2026-09-16
 

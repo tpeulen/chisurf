@@ -3,7 +3,7 @@ type: Reference
 title: "FCS model catalogue & FLCS filters: PAM port status and gaps"
 description: PAM parity status — what ChiSurf's FCS fit-model catalogue, FLCS lifetime filters and image correlation (MIA) gained from using PAM as reference (A/B verified), what is deliberately out of scope, and what is still missing.
 tags: [reference, fcs, flcs, mia, image-correlation, diffusion, roadmap]
-timestamp: '2026-07-15T00:00:00Z'
+timestamp: '2026-09-17T00:00:00Z'
 ---
 
 # FCS model catalogue & FLCS filters — PAM port
@@ -13,6 +13,21 @@ Fluorescence Correlation Spectroscopy (FCS) fit models and its filtered-FCS
 (FLCS) lifetime-filter maths. Ports are **A/B-verified**: each PAM model's MATLAB
 `fit` lambda (`junk/PAM/Models/fcs/*.m`) is transcribed verbatim as the reference
 and asserted equal, over random parameters, to the ChiSurf implementation.
+
+## Where to pick this up
+
+1. **FLCS `empty_bins` default.** Both PAM filter routines are pinned by
+   `test/fitting/test_fcs_filters.py` against `test/data/flcs/`. Open: whether the
+   default becomes `"exclude"` and whether the Filter Calculator exposes it (see
+   "What is missing"). Measure on a PIE-gated real file before deciding; the
+   synthetic fixture exaggerates (it zeroes bins by hand).
+2. **Order-dependent Filter Calculator widget tests.** `test_widgets.py` passes
+   on its own but 9 of its tests fail when any `test/` file runs first in the same
+   session (e.g. `pytest test/fitting/test_flcs_correlation.py
+   chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py`):
+   `detector_selection.get_selected()` comes back empty, so `test/conftest.py`
+   evidently changes the detector/settings state the widget reads. Pre-existing
+   (same result with the pre-change `filtered.py`); not fixed.
 
 ## What is there (implemented / ported)
 
@@ -47,8 +62,37 @@ itself uses the Gaussian two-focus MDF, not the full non-Gaussian Dertinger MDF
 
 ### FLCS lifetime filters (`chisurf/core/fluorescence/fcs/filtered.py`)
 The core weighted-pseudo-inverse filter maths (`calc_ffcs_filters`,
-`F = (Dₙᵀ W Dₙ)⁻¹ Dₙᵀ W`, `W = diag(1/I)`) was already a correct PAM
-(`Calc_fFCS_Filters`) port. Added/fixed here:
+`F = (Dₙᵀ W Dₙ)⁻¹ Dₙᵀ W`, `W = diag(1/I)`) is A/B-verified against **both** of
+PAM's filter routines, run in Octave (verdict 2026-09-17, PAM commit `7319d15d`):
+
+| PAM routine | empty total-decay bins | ChiSurf | agreement |
+|---|---|---|---|
+| `functions/BurstBrowser/Calc_fFCS_Filters.m` l. 30-32, 54-58, 65-67 | `I=0 → 1`, patterns normalised over all bins, par and perp solved separately | `empty_bins="unit_weight"` (default; unchanged) | filters 7e-16, reconstruction 7e-16 relative |
+| `PAM.m` `Update_fFCS_GUI` l. 13911-13916 (stack PIE channels, normalise), 13954-13982 (filters) | dropped: `valid = Decay ~= 0`, patterns renormalised over valid bins, filters 0 elsewhere | `empty_bins="exclude"` (added) | filters 5e-16, reconstruction 2e-16 relative |
+
+The two PAM routines agree to machine precision when no bin is empty and differ
+by O(1) when a pattern has weight on empty bins (fixture case `two_species_bg`:
+unit weight puts filter values up to 58 on the five empty pre-rise bins, and the
+occupied-bin filters differ by up to 6.7). The reason: `I=0 → 1` gives an empty
+bin the *largest* weight of any bin. PAM's stacked multi-channel layout is
+`calc_ffcs_filters` on the concatenated channels (fixture case
+`stacked_par_perp`); the Filter Calculator's "Global (stacked)" mode already does
+this. Fixture and generator: `test/data/flcs/` (verbatim PAM excerpts in
+`pam_ffcs_filters_reference.m`, so it regenerates without a checkout; `--pam
+<root>` re-checks the excerpts). Tests: `test/fitting/test_fcs_filters.py`.
+
+Deliberate differences / not taken:
+- BurstBrowser's weighted residual uses the substituted `1` as the measured value
+  on empty bins; ChiSurf keeps the measured zero (display-only quantity).
+- PAM.m's FCS-tab **afterpulsing correction** (l. 6949-6962: `Decay(Decay==0)=1`,
+  baseline `min(smooth(Decay, 250 ps))`, species `[Decay−baseline, flat]`, filter
+  on the PIE `From:To` window only) is not ported as a one-click mode: ChiSurf's
+  equivalent is a measured/fitted pattern plus `uniform_pattern` as a nuisance
+  species, and `smooth` is a MATLAB toolbox function with no Octave A/B.
+- PAM's automatic scatter / donor-only columns (BurstBrowser l. 19-29) — see
+  "What is missing".
+
+Earlier additions, still in place:
 
 - **Conditioning** — `calc_ffcs_filters` now takes `rcond` (truncated-SVD
   pseudo-inverse) and `tikhonov` (ridge `G + λI`) options to tame
@@ -187,9 +231,14 @@ agreement with PAM" is caught as the regression it would be.
 - **Model-generated patterns.** Related: `synthetic_decay` can build a decay from
   fitted lifetimes reconvolved with the IRF, but the filter species themselves
   are still file-loaded empirical decays.
-- **PAM's stacked single-micro-time-axis PIE layout.** Channel-aware par/perp
-  weighting is done via the `{channel: matrix}` / 3-D table, which supersedes the
-  stacked layout for most uses; the stacked variant itself is unimplemented.
+- **Default `empty_bins` choice (open decision).** The default stays
+  `"unit_weight"` (BurstBrowser, and ChiSurf's behaviour before 2026-09-17).
+  `"exclude"` is the physically safer choice whenever a total decay has empty
+  bins inside a pattern's support (a PIE-gated total against an ungated
+  pattern); switching the default changes filter output for every caller
+  (Filter Calculator, `flc_2d.species_filters`, `fcs_lfcs_sim`) and was left for
+  the owner to decide. Measure first with `calc_ffcs_filters(..., empty_bins=…)`
+  on a real PIE-gated `.ptu`; nothing is exposed in the Filter Calculator GUI yet.
 - **Dertinger non-Gaussian MDF two-focus model.** The ported two-focus model is
   the Gaussian form (as in PAM). The fully accurate Dertinger model needs a
   numerically-integrated non-Gaussian detection function (`erf`/quadrature) and
@@ -214,12 +263,14 @@ catalogue is considered complete at 22 of 26 (19 FCS + 3 PCF).
 - Filters: `chisurf/core/fluorescence/fcs/filtered.py`; plugin
   `chisurf/plugins/fcs/fcs_filter_calculator/`; 2D-FLC consumer
   `chisurf/plugins/fcs/flc_2d/fit/dynamics.py`.
-- PAM reference: `junk/PAM/Models/fcs/*.m`,
-  `junk/PAM/functions/BurstBrowser/Calc_fFCS_Filters.m`.
+- PAM reference (https://gitlab.com/PAM-PIE/PAM at `7319d15d`; the local
+  `junk/PAM` checkout is harvested and deleted, `junk/clone.sh` re-clones it):
+  `Models/fcs/*.m`, `functions/BurstBrowser/Calc_fFCS_Filters.m`, `PAM.m`
+  `Update_fFCS_GUI`. Filter fixture: `test/data/flcs/`.
 - Image correlation: `chisurf/core/experiments/ics/`,
   `chisurf/core/models/ics/`; MIA reference `junk/PAM/functions/MIA/`,
   `junk/PAM/Models/miafit/*.miafit`.
 - Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`,
-  `test_fcs_filters.py`; `test/experiments/test_ics_unification.py`,
+  `test_fcs_filters.py` (PAM filter A/B); `test/experiments/test_ics_unification.py`,
   `test_ics_vs_pam.py`.
 - FCS plugin group overview: [/plugins/fcs.md](/plugins/fcs.md).

@@ -388,8 +388,8 @@ def compute_filters(
 ) -> FilterResult:
     """Compute fFCS lifetime filters.
     
-    Implements the weighted least-squares filter computation from PAM's
-    Calc_fFCS_Filters function.
+    Implements the weighted least-squares filter computation of PAM's
+    BurstBrowser ``Calc_fFCS_Filters`` (see ``calc_ffcs_filters``).
     
     Algorithm
     ---------

@@ -8,6 +8,8 @@ conditioning, and the divide-by-zero guard in the legacy lifetime-filter helper.
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -115,3 +117,85 @@ def test_calc_lifetime_filter_zero_bin_guard():
     total[5] = 0.0  # would divide by zero without the guard
     filters = calc_lifetime_filter(pats, total)
     assert np.all(np.isfinite(filters))
+
+
+PAM_REFERENCE = (
+    pathlib.Path(__file__).resolve().parents[1] / "data" / "flcs" / "pam_ffcs_filters_reference.npz"
+)
+
+
+CASES = ["two_species_bg", "stacked_par_perp", "dense"]
+
+
+def _pam_case(case):
+    ref = np.load(PAM_REFERENCE)
+    decay = ref[f"{case}_decay"].ravel()
+    patterns = ref[f"{case}_patterns"]
+    return ref, decay, list(patterns.reshape(patterns.shape[0], -1))
+
+
+def _assert_close(got, expected, rel=1e-10):
+    assert got.shape == expected.shape
+    assert np.abs(got - expected).max() <= rel * np.abs(expected).max()
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_default_filters_match_pam_burstbrowser(case):
+    """A/B against PAM's BurstBrowser ``Calc_fFCS_Filters.m``, run in Octave.
+
+    Empty total-decay bins are set to one and kept (the default). The fixture
+    holds inputs and PAM's outputs; generator and the verbatim PAM excerpts are
+    in ``test/data/flcs/``. PAM's weighted residual on an empty bin uses the
+    substituted one as the measured value, ChiSurf keeps the zero, so residuals
+    are compared on the occupied bins.
+    """
+    ref, decay, patterns = _pam_case(case)
+    filters, reconstruction, residuals = calc_ffcs_filters(decay, patterns)
+    _assert_close(filters, ref[f"{case}_bb_filters"])
+    _assert_close(reconstruction, ref[f"{case}_bb_reconstruction"])
+    occupied = decay != 0
+    _assert_close(residuals[occupied], ref[f"{case}_bb_weighted_residuals"][occupied])
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_exclude_filters_match_pam_main_window(case):
+    """A/B against PAM's main-window fFCS filters (``PAM.m`` ``Update_fFCS_GUI``).
+
+    ``empty_bins="exclude"`` drops empty bins, renormalises the patterns over
+    the occupied ones and zeroes the filters there. ``stacked_par_perp`` is
+    PAM's joint par/perp layout, passed as the two channels concatenated.
+    """
+    ref, decay, patterns = _pam_case(case)
+    filters, reconstruction, _ = calc_ffcs_filters(decay, patterns, empty_bins="exclude")
+    _assert_close(filters, ref[f"{case}_filters"])
+    _assert_close(reconstruction, ref[f"{case}_reconstruction"])
+    assert np.all(filters[:, decay == 0] == 0.0)
+
+
+def test_the_two_pam_conventions_differ_only_with_empty_bins():
+    """Guard that the fixture exercises the difference it is there to pin."""
+    ref, decay, patterns = _pam_case("two_species_bg")
+    assert np.abs(ref["two_species_bg_filters"] - ref["two_species_bg_bb_filters"]).max() > 0.1
+    ref, decay, patterns = _pam_case("dense")
+    _assert_close(ref["dense_filters"], ref["dense_bb_filters"], rel=1e-12)
+
+
+def test_excluded_empty_bins_are_the_same_as_never_measured():
+    """With ``empty_bins="exclude"`` an empty bin is as if it were never measured."""
+    pats = _patterns()
+    total = np.column_stack(pats) @ np.array([6000.0, 4000.0])
+    total[[0, 40]] = 0.0
+    keep = total != 0
+    full, _, _ = calc_ffcs_filters(total, pats, empty_bins="exclude")
+    cut, _, _ = calc_ffcs_filters(total[keep], [p[keep] for p in pats])
+    np.testing.assert_allclose(full[:, keep], cut, rtol=1e-12, atol=0)
+    # and the relation holds on the occupied bins with patterns renormalised there
+    renorm = np.column_stack([p[keep] / p[keep].sum() for p in pats])
+    np.testing.assert_allclose(cut @ renorm, np.eye(2), atol=1e-10)
+
+
+def test_unknown_empty_bin_mode_is_rejected():
+    """A misspelt mode fails loudly instead of falling back to a default."""
+    pats = _patterns()
+    with pytest.raises(ValueError):
+        calc_ffcs_filters(np.column_stack(pats) @ np.array([1.0, 1.0]), pats, empty_bins="drop")

@@ -77,6 +77,31 @@ up-weights late micro-time channels and down-weights early ones; a short-lifetim
 filter does the opposite. Feeding the per-photon weights $w_s(t)$ into a multi-tau
 correlator then yields the species auto- and cross-correlations directly.
 
+**Empty bins.** A micro-time bin where the measured total decay is zero has no
+defined weight $1/I(t)$. There are two conventions, selected by `empty_bins` in
+`calc_ffcs_filters`, and PAM uses both:
+
+- `"unit_weight"` (the default; PAM's BurstBrowser fFCS) sets $I(t)=1$ there and
+  keeps every bin. The orthogonality relation holds over the whole micro-time axis.
+  The catch is that an empty bin then carries the *largest* weight any bin can have
+  (the same as a one-photon bin), so where a pattern still has weight on empty bins
+  — a decay gated to a PIE window, say, against an ungated pattern — the filters
+  are shaped by bins that hold no photons.
+- `"exclude"` (PAM's main-window fFCS) leaves empty bins out: $D$, $W$ and the
+  pattern normalisation are taken over the occupied bins, and the filters are zero
+  on the empty ones. The relation holds on the occupied bins, with each species
+  scaled by its pattern fraction there — a factor that cancels in the normalised
+  correlation.
+
+The two agree exactly when no bin is empty. ChiSurf reproduces each PAM routine
+to $10^{-15}$ relative (A/B test `test/fitting/test_fcs_filters.py`).
+
+**Several detectors.** Parallel and perpendicular (or any set of) detection
+channels can share one filter by concatenating their decays and patterns on a
+single micro-time axis. The patterns are then normalised over all channels
+together, so the filter also uses each species' intensity *ratio* between the
+channels — its anisotropy, say — as contrast, not only the decay shape.
+
 ## Afterpulse removal with a flat pattern
 
 Detector **afterpulsing** and **dark counts** are uncorrelated with the excitation

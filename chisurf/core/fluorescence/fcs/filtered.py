@@ -284,8 +284,29 @@ def calc_lifetime_filter(
     return r
 
 
-def _ffcs_normal_matrix(experimental_decay, species_decays):
+_EMPTY_BIN_MODES = ("unit_weight", "exclude")
+
+
+def _ffcs_normal_matrix(experimental_decay, species_decays, empty_bins="unit_weight"):
     """Build the weighted normal matrix ``G = D_norm^T W D_norm`` and its pieces.
+
+    A bin where the total decay ``I`` is zero has no defined weight ``1 / I``.
+    PAM resolves this two ways, and ``empty_bins`` selects between them:
+
+    ``"unit_weight"``
+        Replace ``I = 0`` by one and keep every bin; patterns are normalised
+        over all bins, so ``sum_t F_k(t) p_j(t) = delta_kj`` holds on the whole
+        micro-time axis and a species' mean filtered count rate is its
+        amplitude. PAM's BurstBrowser ``Calc_fFCS_Filters.m``.
+    ``"exclude"``
+        Drop the empty bins; patterns are renormalised over the occupied bins
+        and the filters are zero on the empty ones. The relation then holds on
+        the occupied bins only, so a species' mean filtered count rate is its
+        amplitude times the pattern fraction on those bins (a scale that
+        cancels in normalised correlations). PAM's main-window fFCS filters
+        (``PAM.m``, ``Update_fFCS_GUI``).
+
+    The two agree exactly when no bin is empty.
 
     Parameters
     ----------
@@ -293,21 +314,27 @@ def _ffcs_normal_matrix(experimental_decay, species_decays):
         1D total decay (one value per TAC bin).
     species_decays : sequence of array_like
         Species/pattern decays, each the same length as ``experimental_decay``.
+    empty_bins : {"unit_weight", "exclude"}
+        Treatment of bins where the total decay is zero (see above).
 
     Returns
     -------
     y : np.ndarray
-        The total decay as a float array.
-    y_safe : np.ndarray
-        The total decay with zero bins replaced by one.
+        The total decay as a float array (all bins).
+    used : np.ndarray
+        Boolean mask of the bins entering the problem.
     d_norm : np.ndarray
-        Column-normalised pattern matrix, shape ``(n_bins, n_species)``.
+        Pattern matrix on the used bins, column-normalised over them, shape
+        ``(n_used, n_species)``.
     dw : np.ndarray
-        ``D_norm^T * w`` with ``w = 1 / y_safe``, shape ``(n_species, n_bins)``.
+        ``D_norm^T * w`` with ``w = 1 / I`` on the used bins, shape
+        ``(n_species, n_used)``.
     g : np.ndarray
         Weighted normal matrix ``D_norm^T W D_norm``, shape
         ``(n_species, n_species)``.
     """
+    if empty_bins not in _EMPTY_BIN_MODES:
+        raise ValueError(f"empty_bins must be one of {_EMPTY_BIN_MODES}, got {empty_bins!r}")
     y = np.asarray(experimental_decay, dtype=float).copy()
     if y.ndim != 1:
         raise ValueError("experimental_decay must be a 1D array")
@@ -316,22 +343,24 @@ def _ffcs_normal_matrix(experimental_decay, species_decays):
     if d.ndim != 2:
         raise ValueError("species_decays must form a 2D matrix (bins × species)")
 
-    # Normalize columns of D (Decay_par = Decay_par ./ sum(Decay_par,1))
-    col_sums = d.sum(axis=0)
+    if empty_bins == "exclude":
+        used = y != 0.0
+    else:
+        used = np.ones(y.size, dtype=bool)
+    d_used = d[used]
+    col_sums = d_used.sum(axis=0)
     col_sums[col_sums == 0.0] = 1.0
-    d_norm = d / col_sums
+    d_norm = d_used / col_sums
 
-    # Protect against zeros in the total decay before building the weights.
-    y_safe = y.copy()
-    y_safe[y_safe == 0.0] = 1.0
-    w = 1.0 / y_safe
-
-    dw = d_norm.T * w  # (n_species, n_bins)
+    y_used = y[used]
+    y_used[y_used == 0.0] = 1.0
+    w = 1.0 / y_used
+    dw = d_norm.T * w  # (n_species, n_used)
     g = dw @ d_norm  # (n_species, n_species)
-    return y, y_safe, d_norm, dw, g
+    return y, used, d_norm, dw, g
 
 
-def filter_condition_number(experimental_decay, species_decays) -> float:
+def filter_condition_number(experimental_decay, species_decays, empty_bins="unit_weight") -> float:
     """Condition number of the fFCS weighted normal matrix ``D_norm^T W D_norm``.
 
     A large value (``>> 1``) signals that the reference patterns are nearly
@@ -345,13 +374,15 @@ def filter_condition_number(experimental_decay, species_decays) -> float:
         1D total decay.
     species_decays : sequence of array_like
         Species/pattern decays.
+    empty_bins : {"unit_weight", "exclude"}
+        Treatment of empty total-decay bins, as in :func:`calc_ffcs_filters`.
 
     Returns
     -------
     float
         ``numpy.linalg.cond`` of the weighted normal matrix.
     """
-    _, _, _, _, g = _ffcs_normal_matrix(experimental_decay, species_decays)
+    _, _, _, _, g = _ffcs_normal_matrix(experimental_decay, species_decays, empty_bins)
     return float(np.linalg.cond(g))
 
 
@@ -415,14 +446,19 @@ def calc_ffcs_filters(
         species_decays,
         rcond: float | None = None,
         tikhonov: float = 0.0,
+        empty_bins: str = "unit_weight",
 ):
     """Compute fFCS-style lifetime filters and reconstruction.
 
-    This helper mirrors the weighted least-squares scheme used in PAM's
-    ``Calc_fFCS_Filters`` implementation for filtered FCS/FLCS: with the
-    column-normalized pattern matrix ``D_norm`` and the diagonal weight
+    This is PAM's weighted least-squares filter scheme: with the column-
+    normalised pattern matrix ``D_norm`` and the diagonal weight
     ``W = diag(1 / I)`` (``I`` the total decay), the filters are
-    ``F = (D_norm^T W D_norm)^{-1} D_norm^T W``.
+    ``F = (D_norm^T W D_norm)^{-1} D_norm^T W``. ``empty_bins`` chooses how a
+    bin with ``I = 0`` is treated -- PAM's two filter routines differ exactly
+    there (see ``_ffcs_normal_matrix``). Several detection channels (e.g.
+    parallel and perpendicular) are handled jointly by passing the channels
+    concatenated on one micro-time axis, PAM's stacked layout; the filter then
+    also uses each species' channel ratio as contrast.
 
     Parameters
     ----------
@@ -441,6 +477,11 @@ def calc_ffcs_filters(
         Non-negative Tikhonov (ridge) regularisation added to the diagonal of
         the normal matrix (``G + tikhonov * I``) before inversion. ``0`` (the
         default) reproduces the unregularised PAM result.
+    empty_bins : {"unit_weight", "exclude"}
+        ``"unit_weight"`` (default) sets ``I = 1`` on empty bins and keeps them,
+        as PAM's BurstBrowser fFCS does; ``"exclude"`` drops them, renormalises
+        the patterns over the occupied bins and zeroes the filters on the empty
+        ones, as PAM's main-window fFCS does.
 
     Returns
     -------
@@ -448,14 +489,15 @@ def calc_ffcs_filters(
         2D array with shape ``(n_species, n_bins)`` containing the filters
         (one row per species / pattern).
     reconstruction : np.ndarray
-        1D array with the reconstructed total decay, obtained from the
-        normalized patterns and filter matrix.
+        1D array ``sum_k [(D_norm^T W D_norm)^{-1} D_norm^T]_k`` per bin (PAM's
+        filter-quality trace), zero on bins left out.
     weighted_residuals : np.ndarray
-        1D array with weighted residuals,
-
-        ``(experimental_decay - reconstruction) / sqrt(experimental_decay_safe)``.
+        1D array ``(experimental_decay - reconstruction) / sqrt(I_safe)`` with
+        ``I_safe`` the total decay with zero bins replaced by one. (PAM's
+        BurstBrowser puts the substituted one in the numerator as well; the
+        measured zero is kept here.)
     """
-    y, y_safe, d_norm, dw, g = _ffcs_normal_matrix(experimental_decay, species_decays)
+    y, used, d_norm, dw, g = _ffcs_normal_matrix(experimental_decay, species_decays, empty_bins)
 
     if tikhonov:
         g = g + float(tikhonov) * np.eye(g.shape[0])
@@ -470,12 +512,15 @@ def calc_ffcs_filters(
         except np.linalg.LinAlgError:
             g_inv = np.linalg.pinv(g)
 
-    filters = g_inv @ dw  # (n_species, n_bins)
+    n_species, n_bins = g.shape[0], y.size
+    filters = np.zeros((n_species, n_bins))
+    filters[:, used] = g_inv @ dw
 
     # Reconstruction and weighted residuals as in the PAM implementation:
-    # reconstruction = sum( (D^T W D)^{-1} D^T , 1)
-    a = g_inv @ d_norm.T
-    reconstruction = a.sum(axis=0)
+    # reconstruction = sum( (D^T W D)^{-1} D^T , 1), zero on bins left out
+    reconstruction = np.zeros(n_bins)
+    reconstruction[used] = (g_inv @ d_norm.T).sum(axis=0)
+    y_safe = np.where(y == 0.0, 1.0, y)
     weighted_residuals = (y - reconstruction) / np.sqrt(y_safe)
 
     return filters, reconstruction, weighted_residuals
