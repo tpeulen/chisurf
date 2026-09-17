@@ -112,3 +112,32 @@ def test_post_show_services_filtered_separately_from_splash():
     assert splash_ordered[0].id == "splash_a"
     assert len(post_ordered) == 1
     assert post_ordered[0].id == "post_b"
+
+
+def test_gui_imports_service_binds_modules_setup_ipython_needs():
+    """``gui_imports`` really imports the modules later services reach by attribute.
+
+    The other tests here stub the loader, so a ``gui_imports`` body emptied by an
+    unused-import autofix passed them all while the app died at startup with
+    ``cs.gui.widgets`` missing. Run in a fresh interpreter: in this process some
+    other test has almost certainly imported those modules already.
+    """
+    import os
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "import chisurf as cs\n"
+        "from chisurf.startup import gui_services\n"
+        "assert 'chisurf.gui.widgets' not in sys.modules\n"
+        "gui_services.gui_imports(None)\n"
+        "for name in gui_services._GUI_MODULES:\n"
+        "    assert name in sys.modules, name\n"
+        "assert callable(cs.gui.widgets.ipython.QIPythonWidget)\n"
+    )
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    proc = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=300
+    )
+    assert proc.returncode == 0, proc.stderr[-4000:]

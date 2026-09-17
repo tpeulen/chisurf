@@ -287,6 +287,9 @@ ignore = [
     #     this codebase's nested-function lazy-import style (chisurf/gui/__init__.py).
     #   F401 (273) -- the __init__.py re-export convention: importing a
     #     submodule so `pkg.submodule` works, with no __all__ to declare it.
+    #     Never re-enable with --fix / --unsafe-fixes: the autofix cannot tell a
+    #     side-effect `import a.b` from an unused one, and deleting them once
+    #     already stopped the app starting (chisurf/startup/gui_services.py).
     #   F403/F405 (80) -- `from .widgets import *` aggregator __init__.py
     #     files, the same convention as F401 above (23 of 24 files hit).
     #   UP031/UP035/UP007/UP045 (76) -- pyupgrade modernization (%-format,

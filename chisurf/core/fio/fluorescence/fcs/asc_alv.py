@@ -694,7 +694,9 @@ def read_asc(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
             mean_count_rate = float(np.mean(intensity))
 
         # Import here to avoid circular import
-        w = 1.0 / cs.core.fluorescence.fcs.noise(
+        from chisurf.core.fluorescence.fcs import noise
+
+        w = 1.0 / noise(
             correlation_time,
             correlation_amplitude,
             aquisition_time,

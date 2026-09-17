@@ -6,8 +6,43 @@ These functions are referenced by JSON config files in
 
 from __future__ import annotations
 
+import importlib
+
 import chisurf as cs
 from chisurf.gui import dialogs
+
+# Imported for their side effects: binding ``cs.gui.widgets`` & co. as package
+# attributes, installing the exception hook. Spelled as ``import_module`` so a
+# lint autofix cannot mistake them for unused imports and delete them.
+_GUI_MODULES = (
+    "chisurf.core.settings",
+    "chisurf.core.base",
+    "chisurf.core.support.common",
+    "chisurf.core.curve",
+    "chisurf.core.support.decorators",
+    "chisurf.core.parameter",
+    "chisurf.core.experiments",
+    "chisurf.core.fio",
+    "chisurf.gui.decorators",
+    "chisurf.gui.widgets",
+    "chisurf.gui.widgets.ipython",
+    "chisurf.macros",
+    "chisurf.core.math",
+)
+
+_DEFERRED_MODULES = (
+    "chisurf.core.fitting",
+    "chisurf.core.fluorescence",
+    "chisurf.core.models",
+    "chisurf.gui.plots",
+    "chisurf.core.structure",
+)
+
+
+def _import_all(names) -> None:
+    """Import each dotted module name in ``names`` for its side effects."""
+    for name in names:
+        importlib.import_module(name)
 
 
 def _get_window(context):
@@ -17,12 +52,14 @@ def _get_window(context):
 
 def gui_imports(context) -> None:
     """Import core GUI modules needed for the main window scaffold."""
+    _import_all(_GUI_MODULES)
     if cs.core.settings.exceptions_on_gui:
-        pass
+        importlib.import_module("chisurf.gui.exception_hook")
 
 
 def setup_ipython(context) -> None:
     """Create the IPython console widget."""
+    importlib.import_module("chisurf.gui.widgets.ipython")
     cs.console = cs.gui.widgets.ipython.QIPythonWidget()
     cs.console.history_widget = None
 
@@ -33,6 +70,7 @@ def startup_interface(context) -> object:
 
     window = Main()
     cs.cs = window
+    importlib.import_module("chisurf.core.base")
     cs.core.base.set_safe_import_notify(
         lambda title, text: dialogs.information(window, title, text)
     )
@@ -114,6 +152,7 @@ def setup_style(context) -> None:
 
 def deferred_gui_imports(context) -> None:
     """Import heavy functional submodules."""
+    _import_all(_DEFERRED_MODULES)
 
 
 def populate_plugins(context) -> None:
