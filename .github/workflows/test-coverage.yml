@@ -189,6 +189,35 @@ jobs:
             }
           }
 
+      # Diagnostic: build_tools/build_tttrlib.py's find_package(HDF5) still
+      # fails to find this same vcpkg tree even with HDF5_ROOT/
+      # CMAKE_PREFIX_PATH pointed at it and CONFIG mode left available --
+      # four fix rounds haven't resolved it by reasoning about the flags
+      # alone. --debug-find-pkg gives the real search trace: which paths
+      # CMake checked and why each was rejected, without tttrlib's own
+      # CMakeLists.txt or the pixi task chain in the way. Remove once the
+      # real fix lands.
+      - name: Diagnose HDF5 discovery (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $root = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          New-Item -ItemType Directory -Force -Path hdf5_probe | Out-Null
+          $lines = @(
+            'cmake_minimum_required(VERSION 3.20)',
+            'project(hdf5_probe LANGUAGES C)',
+            'find_package(HDF5 REQUIRED COMPONENTS C)',
+            'message(STATUS "HDF5_FOUND=${HDF5_FOUND}")',
+            'message(STATUS "HDF5_INCLUDE_DIRS=${HDF5_INCLUDE_DIRS}")',
+            'message(STATUS "HDF5_LIBRARIES=${HDF5_LIBRARIES}")'
+          )
+          Set-Content -Path hdf5_probe\CMakeLists.txt -Value $lines
+          cmake -S hdf5_probe -B hdf5_probe\build `
+            "-DCMAKE_PREFIX_PATH=$root" "-DHDF5_ROOT=$root" `
+            --debug-find-pkg=HDF5
+          Write-Host "::notice::probe exit code: $LASTEXITCODE"
+
       - name: Set up Pixi
         uses: prefix-dev/setup-pixi@v0.9.4
         with:
