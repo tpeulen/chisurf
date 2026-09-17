@@ -2,6 +2,26 @@
 
 ## 2026-09-17
 
+* **CTBN amalgamation is harvested into imp.bff; the aGrUM lead is closed.** The
+  lead in [aGrUM mining](references/agrum-mining.md) said to check real schemes
+  first. Product schemes do occur:
+  - the polarised smFRET simulator, conformation x emission mode
+    (`burst/simulate.py` builds it by hand, transposes included);
+  - conformation x photophysics for FCS saturation;
+  - donor x acceptor label kinetics in imp.bff's FRETExchange pair.
+
+  Energy transfer does not factor: one event changes two variables. The port is
+  `IMP.bff.KineticNetwork` (imp.bff `include/KineticNetwork.h`, imp.bff PRD-150). It
+  has conditional intensity matrices, aGrUM's amalgamate and extract, the joint
+  generator `K[target, source]`, and stationary and transient distributions. Its
+  tests reproduce the simulator's `k_nrad`/`k_rad` and a 6-state FCS dark/excitation
+  pair exactly from their factors, and match a pyagrum-free transcription of aGrUM
+  (generators 8.9e-16, posteriors 1.6e-15). Open:
+  - route `simulate.py` through it;
+  - an "add a conformation" path in the FCS kinetics model;
+  - owner question: should the FRETExchange pair compose transition matrices
+    (Kronecker product, today) or generators (Kronecker sum)?
+
 * **New GUIs are emtk + AutoForm, never PyQt (maintainer rule).** `CLAUDE.md` now
   states it as a working practice: new windows/dialogs/panels are declared as AutoForm
   `view.json` specs rendered by emtk (`emtk/widgets/view_spec.py`), hand-written emtk

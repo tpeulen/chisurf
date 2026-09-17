@@ -3,7 +3,7 @@ type: Reference
 title: aGrUM/pyAgrum mining — what a mature graphical-model toolkit has that ChiSurf's factor graph does not
 description: Survey of the aGrUM/pyAgrum checkout against chisurf's factor-graph layer. Records the correction that matters most — continuous linear-Gaussian inference through canonical forms (K, h, g) is exact and does transfer, contradicting a claim that had propagated from a PRD into the shipped source and the docs — plus the CTBN amalgamation lead for kinetic rate matrices, and what was deliberately skipped.
 tags: [reference, fitting, statistics, architecture, roadmap]
-timestamp: '2026-08-31T00:00:00Z'
+timestamp: '2026-09-17T00:00:00Z'
 ---
 
 # aGrUM/pyAgrum mining — inference kernels, canonical forms, CTBN
@@ -89,6 +89,33 @@ schemes that actually occur before building anything: the win is only real if
 schemes in practice factor, and a hand-written matrix for a 3-state system is
 not a problem worth solving.
 
+**Evaluated and landed (2026-09-17)** as `IMP.bff.KineticNetwork` (imp.bff
+`include/KineticNetwork.h`, imp.bff PRD-150). Product schemes do occur, in three
+places:
+
+- the polarised smFRET simulator: conformation x emission mode, in
+  `core/fluorescence/burst/simulate.py` `exchange_matrix_ms` /
+  `photoselection_matrix`, with the index arithmetic and both transposes written by
+  hand;
+- conformation x photophysics for FCS saturation: PET/PIFE, the S1 decay conditioned
+  on the conformation;
+- donor x acceptor label kinetics, in imp.bff `fret_efficiency_exact_kinetic_pair`.
+
+All three factor exactly. The tests reproduce the simulator's `k_nrad`/`k_rad` and a
+6-state FCS dark/excitation pair from their factors, with 0.0 difference.
+
+What does **not** factor:
+
+- single-dye photophysics, where there is nothing to factor (Cy5's isomer and triplet
+  both leave S1);
+- energy transfer (imp.bff `PhotophysicsTransferKinetics`), because D*A -> DA* changes
+  two variables in one event and amalgamation sets that to zero.
+
+Conventions: bff is `K[target, source]`, C-order over the order the variables were
+declared, with a derived diagonal. aGrUM's `toMatrix` is `Q[from, to]`, little-endian
+over sorted names. `K = Q[perm][:, perm].T`, pinned by an A/B against a pyagrum-free
+transcription: generators to 8.9e-16, `SimpleInference` posteriors to 1.6e-15.
+
 ## Deliberately not taken
 
 - **The discrete-table inference core** (`src/agrum/BN`, `MRF`, `CN`). This is
@@ -117,7 +144,14 @@ not a problem worth solving.
    that a conditioned marginal differs from the unconditioned one for a
    correlated pair — the exact bug that was found in `condition` before, where
    it pinned the value and reported the unconditioned answer.
-2. **Decide the CTBN question** by looking at real schemes, not in the abstract.
+2. ~~**Decide the CTBN question** by looking at real schemes, not in the abstract.~~
+   **Resolved 2026-09-17:** it fits product schemes and landed in imp.bff as
+   `KineticNetwork` (PRD-150; see "The second lead" above). What is left:
+   - route `burst/simulate.py`'s `k_nrad`/`k_rad` through it;
+   - offer "add a conformation" in the FCS kinetics model instead of a hand-written
+     2N-state matrix;
+   - owner question: should imp.bff's `fret_efficiency_exact_kinetic_pair` compose
+     transition matrices (Kronecker product, today) or generators (Kronecker sum)?
 3. The structural half of the comparison is **closed**: model/engine separation,
    junction tree, relevance pruning and the dependence view all landed
    ([PRD-68](/prds/prd-68.md), [PRD-69](/prds/prd-69.md),
