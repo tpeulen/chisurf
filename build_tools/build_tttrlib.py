@@ -251,12 +251,26 @@ def _cmake_args(prefix: Path) -> str:
         # matches tttrlib's own CI setup); use it here when present, since
         # HDF5_NO_FIND_PACKAGE_CONFIG_FILE below forces module mode and so
         # cannot fall back to vcpkg's config package on its own.
-        vcpkg_root = os.environ.get("VCPKG_INSTALLATION_ROOT")
-        if vcpkg_root:
+        # VCPKG_INSTALLATION_ROOT is set in the CI step that runs `vcpkg
+        # install`, but this script may run several `pixi run` task-chain
+        # levels deeper (test -> build-extensions -> build-tttrlib), and
+        # nothing here confirms that env var actually survives that chain --
+        # so also try C:\vcpkg, the fixed, documented location every
+        # windows-2022/-latest GitHub-hosted runner installs vcpkg to.
+        vcpkg_roots = [r for r in (os.environ.get("VCPKG_INSTALLATION_ROOT"), r"C:\vcpkg") if r]
+        for vcpkg_root in vcpkg_roots:
             vcpkg_hdf5 = Path(vcpkg_root) / "installed" / "x64-windows"
             if (vcpkg_hdf5 / "include" / "H5public.h").is_file():
                 hdf5_root = vcpkg_hdf5
                 cmake_prefix_path = f"{prefix};{vcpkg_hdf5}"
+                print(f"build-tttrlib: using vcpkg HDF5 at {vcpkg_hdf5}", flush=True)
+                break
+        else:
+            print(
+                f"build-tttrlib: no vcpkg HDF5 found in {vcpkg_roots or '(none checked)'}; "
+                f"falling back to {prefix}",
+                flush=True,
+            )
     return " ".join(
         (
             f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}",
