@@ -2,6 +2,13 @@
 
 ## 2026-09-17
 
+* **New GUIs are emtk + AutoForm, never PyQt (maintainer rule).** `CLAUDE.md` now
+  states it as a working practice: new windows/dialogs/panels are declared as AutoForm
+  `view.json` specs rendered by emtk (`emtk/widgets/view_spec.py`), hand-written emtk
+  only where a spec cannot express the UI, Qt only as the host of an emtk surface, and
+  missing widgets are added to emtk. Turns the [GUI/AutoForm](subsystems/gui-autoform.md)
+  long-term direction into the rule for new work.
+
 * **chimol reads PyMOL command lines; PyMOL source harvested into chimol OKF.**
   chimol `db07093`: PyMOL's keyword table + signatures generated from
   `junk/pymol-open-source` (`tools/gen/make_pymol_keywords.py`); arguments bind by
