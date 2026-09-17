@@ -33,7 +33,9 @@
   `two_d_spectrum`/`fit_mem_2d`/`global_lifetime_mem` now refuse a non-uniform axis
   unless given `basis=` + `tau_grid`. `TK_DisIntLife2Dmap` is a plot (image,
   Gaussian smoothing, a colormap file absent from the repository, no return value).
-  Fixture `test/data/flc_2d/matlab_exp_curve.npz`; tests `test_exp_curve.py`,
+  `TK_MyMain_Exp_FFT_FWHM` (spectral width of each basis column, a resolution
+  study) is `exp_curve.basis_fft_hwhm`, A/B 7e-16 against the unchanged script.
+  Fixtures `test/data/flc_2d/matlab_exp_curve.npz`, `matlab_fft_hwhm.npz`; tests `test_exp_curve.py`,
   `test_workflow_2d.py`. Resume point:
   [filtered-fcs-2dflcs-theory](references/filtered-fcs-2dflcs-theory.md).
 

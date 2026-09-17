@@ -151,6 +151,10 @@ incl. MFD polarisation-resolved).
   estimates-vector unpacking with fix flags. Octave A/B 2e-16.
 - `fit/exp_curve.py` — `TK_ExpMultiDeco_For2DFLC` + `TK_CreateExpCurve`: IRF placed by
   rise points, basis summed over linear/log bins (Octave A/B <= 4e-14, four gates).
+  `basis_fft_hwhm` is `TK_MyMain_Exp_FFT_FWHM` (spectral half width of each basis
+  column, i.e. the time scale a lifetime is resolved on with the IRF folded in: 0.60 ns
+  at tau 0.01 ns, 1.50 at 1.01, 5.41 at 5.01 on the reference IRF; the unchanged
+  script's 501 widths A/B 7e-16, fixture `matlab_fft_hwhm.npz`).
   `api.two_d_spectrum`/`fit_mem_2d`/`global_lifetime_mem` refuse a non-uniform axis
   unless given `basis=` + `tau_grid`.
 - `fit/minimize_q.py` — `TK_FitF_MinimizeQ_09`/`TK_GFitF_MinimizeQ_04` schedule,
