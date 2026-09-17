@@ -2,6 +2,16 @@
 
 ## 2026-09-17
 
+* **chimol reads PyMOL command lines; PyMOL source harvested into chimol OKF.**
+  chimol `db07093`: PyMOL's keyword table + signatures generated from
+  `junk/pymol-open-source` (`tools/gen/make_pymol_keywords.py`); arguments bind by
+  PyMOL's names (LEGACY `set a=b`, `quiet`, unsupported-arg-at-default rule), Python
+  lines/blocks, `alias`, `run`, `extend`, `?`, and a prefix guard (`fit` ran
+  `fitmap`). `load file, object` / `fetch code, name, type=` fixed. Probe of 110
+  PyMOL lines: 45 → 22 failing. Seven read-only passes wrote 12 reference pages to
+  `~/dev/chimol/okf/references/pymol/` and ~140 `CHISURF-REVIEWED` headers; resume
+  point is that index (pointer added to `okf/plugins/pymol-parity.md`).
+
 * **ChiSurf's PAM A/B tests no longer read the PAM checkout.** Ahead of deleting
   `junk/PAM`: the compiled three-colour PDA kernel A/B
   (`test/models/test_pda3c_octave_ab.py`) had been silently *skipping* for a while

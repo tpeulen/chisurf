@@ -48,6 +48,17 @@ bearing for this group's work**, and those are tiered below.
 
 # Where to pick this up
 
+**2026-09-17: the PyMOL source is now harvested into chimol's own OKF, and that
+is the resume point.** chimol lives at `~/dev/chimol`; the per-area reference
+pages with ranked resume lists are `~/dev/chimol/okf/references/pymol/index.md`
+(command language, viewing/selecting, setting levels, editing/IO, colours,
+representations, cartoon, data model, mmCIF, maps/picking, internal GUI, UX).
+They supersede this file where they disagree -- notably the closed
+`nonbonded_size` finding below is wrong (sphere radius is always
+`vdw*sphere_scale`; see `representations.md`). PyMOL-syntax binding landed in
+chimol `db07093`.
+
+
 The findings below are what has been *closed*. This section is the open front,
 kept at the top so a new session does not have to reconstruct it. Ordered by
 what a user actually hits.
