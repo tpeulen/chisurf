@@ -59,6 +59,24 @@ jobs:
             "${TTTRLIB_REPO:-https://github.com/tpeulen/tttrlib.git}" \
             "$GITHUB_WORKSPACE/../tttrlib"
 
+      # quest is built from source (build-quest), same sibling-checkout
+      # pattern as mmfdb/tttrlib -- modules/quest is a symlink to ../../quest.
+      - name: Checkout quest (sibling for the modules/quest symlink)
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${QUEST_REF:-dev}" \
+            "${QUEST_REPO:-https://github.com/tpeulen/quest.git}" \
+            "$GITHUB_WORKSPACE/../quest"
+
+      # chimol is built from source (build-chimol), same sibling-checkout
+      # pattern -- modules/chimol is a symlink to ../../chimol.
+      - name: Checkout chimol (sibling for the modules/chimol symlink)
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${CHIMOL_REF:-development}" \
+            "${CHIMOL_REPO:-https://github.com/tpeulen/chimol.git}" \
+            "$GITHUB_WORKSPACE/../chimol"
+
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |

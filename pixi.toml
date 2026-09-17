@@ -226,6 +226,19 @@ docs-release = { depends-on = ["docs-check-frontmatter", "docs-check-reviewed", 
 cmake = "<4"
 ninja = "*"
 
+# eigen/libboost-headers/cereal (added for imp-bff's from-source build, see
+# the imp-bff pypi-dependency below) install their CMake config files under
+# %CONDA_PREFIX%\Library\cmake\ on the conda-forge Windows build of each
+# package, not %CONDA_PREFIX%\cmake\ the way the Unix "prefix" layout does --
+# a long-standing conda-forge/Windows packaging difference, not specific to
+# these three packages. CMake's default search does not know to look one
+# level down into `Library`, so `find_package(Eigen3 REQUIRED CONFIG)` in
+# imp-bff's own CMakeLists.txt cannot find it there without this. Unverified
+# on a real Windows runner (no Windows environment available locally) --
+# flagging rather than claiming this is confirmed; may need another round.
+[target.win-64.activation.env]
+CMAKE_PREFIX_PATH = "%CONDA_PREFIX%\\Library"
+
 # tttrlib is NOT a conda dependency. The published package (bioconda/PyPI, both
 # capped at 0.26.2) lags the source by enough to be wrong rather than merely old:
 # it predates the photon simulator (SimEngine) and still carries a compute_ics

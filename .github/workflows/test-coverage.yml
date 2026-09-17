@@ -25,10 +25,10 @@ jobs:
           locked: false
 
       - name: Run Ruff
-        run: pixi run lint
+        run: pixi run --environment dev lint
 
       - name: Run MyPy
-        run: pixi run typecheck
+        run: pixi run --environment dev typecheck
 
   tests:
     name: Tests (${{ matrix.os }})
@@ -66,6 +66,24 @@ jobs:
           git clone --depth 1 --branch "${TTTRLIB_REF:-dev}" \
             "${TTTRLIB_REPO:-https://github.com/tpeulen/tttrlib.git}" \
             "$GITHUB_WORKSPACE/../tttrlib"
+
+      # quest is built from source (build-quest), same sibling-checkout
+      # pattern as mmfdb/tttrlib -- modules/quest is a symlink to ../../quest.
+      - name: Checkout quest (sibling for the modules/quest symlink)
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${QUEST_REF:-dev}" \
+            "${QUEST_REPO:-https://github.com/tpeulen/quest.git}" \
+            "$GITHUB_WORKSPACE/../quest"
+
+      # chimol is built from source (build-chimol), same sibling-checkout
+      # pattern -- modules/chimol is a symlink to ../../chimol.
+      - name: Checkout chimol (sibling for the modules/chimol symlink)
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${CHIMOL_REF:-development}" \
+            "${CHIMOL_REPO:-https://github.com/tpeulen/chimol.git}" \
+            "$GITHUB_WORKSPACE/../chimol"
 
       - name: Set up Pixi
         uses: prefix-dev/setup-pixi@v0.9.4
