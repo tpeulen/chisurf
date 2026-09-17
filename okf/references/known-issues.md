@@ -1,3 +1,22 @@
+## Four repository guard tests are red, none from the change that found them
+
+**Measured 2026-09-17** (ebFRET port session, arm64 env,
+`pytest test/test_plugin_dependencies.py test/test_ui_schemas.py
+test/test_prd_mentions.py test/test_pyqtgraph_seam.py`), all in areas other
+sessions had open at the time, so recorded rather than edited under them:
+`test_no_stale_declarations` — `burst_2cde.requires['burst_bva']` is declared
+and unused; `test_a_view_spec_follows_the_scheme[modules/ndxplorer/ndxplorer/ui/vizrank.view.json]`
+— the VizRank panel spec (in progress in the ndX session);
+`test_no_new_prd_mentions_in_source` — `chisurf/gui/chiplot/backends/__init__.py`,
+`chisurf/gui/chiplot/backends/emtk_backend.py`,
+`chisurf/plugins/chimol/test/test_keybindings.py` name a PRD;
+`test_native_allowlist_has_no_stale_entries` — three files left
+`test/chiplot_native_allowlist.txt` behind (`fcs_saturation_calc/tests/test_gui.py`,
+`mmfdb_admin/test/test_optical_components.py`,
+`fcs_filter_calculator/test/test_widgets.py`). **Blocks:** nothing at run
+time; each keeps its guard from catching the next regression of its kind. Each
+is a one-line fix by whoever owns the file.
+
 ## The flow-map demo PTU reconstructs to an empty image
 
 **Measured 2026-09-17.** `chisurf/plugins/microscopy/img_flow/demo.py::create_demo`
