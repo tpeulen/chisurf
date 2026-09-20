@@ -216,6 +216,7 @@ namespaces = true
 version = {attr = "chisurf.core.info.__version__"}
 
 [tool.pytest.ini_options]
+qt_api = "pyqt5"
 # Coverage is opt-in (use `pixi run test-cov`); keeping it off by default avoids
 # dumping .coverage*/htmlcov into the repo root on every test run.
 addopts = ""

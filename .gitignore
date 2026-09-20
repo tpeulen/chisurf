@@ -61,6 +61,7 @@ Thumbs.db
 /llm-wiki
 /thirdparty
 /scratch*
+/renders/
 /build_tools/osx/resources/
 /modules/*/.git/
 /modules/*/b2/

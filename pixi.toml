@@ -45,7 +45,7 @@ jsonschema = "*"
 qtpy = "<2.0"
 pyqt = "*"
 pyqtgraph = "0.13.*"
-matplotlib = "*"
+matplotlib-base = "*"
 # scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
 # the five segmentation primitives the imaging tools used (gaussian,
 # threshold_otsu, clear_border, peak_local_max, watershed) in
@@ -290,6 +290,10 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
  build-chimol = { cmd = "pip install -e modules/chimol --no-deps", inputs = [
      "modules/chimol/pyproject.toml",
  ] }
+ build-mmfdb = { cmd = "pip install -e modules/mmfdb --no-deps", inputs = [
+     "modules/mmfdb/pyproject.toml",
+     "modules/mmfdb/src/**",
+ ] }
  build-tttrlib = { cmd = "python build_tools/build_tttrlib.py", inputs = [
      "build_tools/build_tttrlib.py",
      "modules/tttrlib/pyproject.toml",
@@ -303,6 +307,7 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
      "build-quest",
       "build-tttrlib",
      "build-chimol",
+     "build-mmfdb",
  ] }
  chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }
 
@@ -318,14 +323,14 @@ test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment
 # defined in pyproject and excluded from nothing, so a file marked slow still
 # ran in every default sweep. The slow ones build whole windows and grab them --
 # a minute against seconds for the rest -- and `test-slow` is how to ask for them.
-test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow' --timeout=120 --timeout-method=thread", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1" } }
+test = { cmd = "pytest -v test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow' --timeout=120 --timeout-method=thread", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-slow = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') -m slow", depends-on = ["build-extensions"] }
 test-gui = { cmd = "pytest $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'widget or gui'", depends-on = ["build-extensions"] }
 test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-extensions"] }
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }
 fmt = { cmd = "ruff format chisurf/ test/ && ruff check --fix chisurf/ test/" }
 typecheck = { cmd = "mypy chisurf/" }
-test-cov = { cmd = "pytest test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -m 'not slow' --timeout=120 --timeout-method=thread --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1" } }
+test-cov = { cmd = "pytest -v test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -m 'not slow' --timeout=120 --timeout-method=thread --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
 # PRD-46: run the shipped example scripts + their public-API unit tests. These

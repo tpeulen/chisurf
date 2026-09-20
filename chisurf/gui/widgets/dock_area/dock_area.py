@@ -23,7 +23,7 @@ def _is_deleted(widget) -> bool:
     if widget is None:
         return True
     try:  # PyQt (sip)
-        from qtpy import sip  # type: ignore
+        from PyQt5 import sip  # type: ignore
 
         return bool(sip.isdeleted(widget))
     except Exception:

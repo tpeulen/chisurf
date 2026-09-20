@@ -405,7 +405,7 @@ class Fit(cs.core.base.Base):
         float
             Sum of squared weighted residuals.
         """
-        return get_chi2(self.model.parameter_values, model=self.model, reduced=False)
+        return get_chi2(list(), model=self.model, reduced=False)
 
     @property
     def chi2r(self) -> float:
@@ -1277,6 +1277,8 @@ class Fit(cs.core.base.Base):
         makes "no chi2 yet" mean "never run" rather than "never stored".
         """
         for name, attribute in (("_last_chi2", "chi2"), ("_last_chi2r", "chi2r")):
+            if self.__dict__.get(name) is not None:
+                continue
             try:
                 value = float(getattr(self, attribute))
             except Exception:

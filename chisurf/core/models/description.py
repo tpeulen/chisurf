@@ -369,7 +369,11 @@ class DescriptionModel(ModelCurve):
         """The description as BFF reads it now -- a catalogue's structures appear
         once the measurement that decides which variables are axes is bound.
         """
-        return json.loads(self._spec.get_description_json())
+        cached = self.__dict__.get("_cached_document")
+        if cached is None:
+            cached = json.loads(self._spec.get_description_json())
+            self.__dict__["_cached_document"] = cached
+        return cached
 
     # --- equations ---------------------------------------------------------------
     @property
@@ -576,6 +580,7 @@ class DescriptionModel(ModelCurve):
     def _forget_discovery(self) -> None:
         """What the model consists of may have changed; rediscover on next read."""
         self.__dict__["_parameters"] = None
+        self.__dict__["_cached_document"] = None
 
     def _bind_primary(self) -> None:
         fit = self.fit
@@ -606,6 +611,7 @@ class DescriptionModel(ModelCurve):
             return
         self._spec.set_dataset(self.primary_dataset, _measurement(x, y, ey, window))
         self.__dict__["_bound_primary"] = key
+        self._forget_discovery()
         # A description that scales or normalises over the fit window names
         # it ``fit_start``/``fit_stop``; the window is the fit's, not the user's
         # to type twice.

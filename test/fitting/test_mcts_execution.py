@@ -78,3 +78,32 @@ def test_cancellation_during_native_run_is_forwarded(monkeypatch):
 
     assert result == "cancelled"
     assert cancelled.is_set()
+
+
+def test_residual_policy_is_forwarded_to_the_native_problem(monkeypatch):
+    class Problem:
+        configured = None
+
+        def set_residual_action_policy(self, network, action_keys):
+            self.configured = (network, tuple(action_keys))
+
+    class Search:
+        def __init__(self, problem):
+            self.problem = problem
+
+        def set_config(self, config):
+            self.config = config
+
+        def run(self):
+            return self.problem.configured
+
+    monkeypatch.setattr(bff, "ModelSearch", Search)
+    result = run_native_search(
+        Problem(),
+        NativeSearchSettings(
+            residual_action_policy="native-policy-json",
+            residual_action_keys=("add-component", "fit-background"),
+        ),
+    )
+
+    assert result == ("native-policy-json", ("add-component", "fit-background"))

@@ -51,6 +51,11 @@ OPTIONAL = {
     # layers import it guarded because an environment that never fits
     # anything runs without it, and they fail loudly at first use instead.
     "IMP": "IMP.bff port runtime; separate build, deliberately optional",
+    "RMF": "optional RMF structure format (IMP submodule)",
+    "LabelLib": "optional alternative accessible-volume backend",
+    "ihm": "optional python-ihm mmCIF export",
+    "pymol2": "optional PyMOL visualization backend",
+    "docutils": "optional docutils parser for in-app help viewer",
 }
 
 

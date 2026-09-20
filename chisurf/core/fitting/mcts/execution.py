@@ -25,6 +25,10 @@ class NativeSearchSettings:
     dirichlet_alpha: float = 0.3
     dirichlet_fraction: float = 0.0
     seed: int = 7
+    # Optional BFF-native policy.  The network sees the fitted, weighted
+    # residual profile at each tree expansion; action keys name its outputs.
+    residual_action_policy: str = ""
+    residual_action_keys: tuple[str, ...] = ()
 
 
 def run_native_search(
@@ -50,6 +54,11 @@ def run_native_search(
     config.set_seed(max(0, int(settings.seed)))
 
     search = bff.ModelSearch(problem)
+    if settings.residual_action_policy:
+        configure_policy = getattr(problem, "set_residual_action_policy", None)
+        if not callable(configure_policy):
+            raise RuntimeError("this BFF model-search problem has no residual policy API")
+        configure_policy(settings.residual_action_policy, list(settings.residual_action_keys))
     search.set_config(config)
     if should_cancel is None:
         return search.run()

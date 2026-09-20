@@ -576,6 +576,7 @@ def _description_objective(model, free):
         m.maxfev = maxfev
     m._graph = (problem,)
     m._sampler_surface = (objective, ports, objective.get_name())
+    m._description_model = model
     return m, free
 
 
@@ -636,6 +637,8 @@ def _is_fcs_mdf_model(model) -> bool:
     the equation string and therefore in `_graph_cache_key`, so switching it
     cannot leave a graph built for the other branch in place.
     """
+    if "fcs" not in getattr(type(model), "__module__", ""):
+        return False
     try:
         from chisurf.core.models.fcs.general import GeneralFCSModel
         from chisurf.core.models.fcs.mdf import MdfFCSModel
@@ -871,6 +874,21 @@ def _publish_curve(m, model, x) -> bool:
     models. Returns ``False`` -- and the caller runs ``update_model()`` --
     whenever anything is not exactly as this function expects.
     """
+    desc_model = getattr(m, "_description_model", None)
+    if desc_model is not None:
+        try:
+            problem = getattr(desc_model, "problem", None)
+            if problem is not None:
+                active = problem.get_active_structure()
+                node = problem.get_structure_curve_node(active, desc_model.primary_dataset)
+                curve = np.array(problem.get_structure_output(active, node), dtype=float)
+                if curve.ndim == 1 and curve.size == np.asarray(model.y).size:
+                    model.y = curve
+                    model._update_statistics()
+                    return True
+        except Exception:
+            return False
+
     node = getattr(m, "_decay", None)
     surface = getattr(m, "_sampler_surface", None)
     if node is None or surface is None:
@@ -1422,6 +1440,11 @@ def minimize(
     # through here means the *free* QR matrix is used whenever it resolves.
     if fit is not None:
         fit._cpp_covariance = _covariance_at_the_solution(m, free, x, options) if free else None
+        try:
+            fit._last_chi2 = float(m.get_chi2())
+            fit._last_chi2r = float(m.get_chi2r())
+        except Exception:
+            pass
 
     if built is not None:
         # The graph is private, so the answer has to be published: the
