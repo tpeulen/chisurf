@@ -25,7 +25,7 @@ cli_entrypoint = "hmm=chisurf.plugins.core.hmm.cli.main:cli"
 
 _manifest_path = _Path(__file__).parent / "manifest.json"
 if _manifest_path.exists():
-    _manifest = _json.loads(_manifest_path.read_text())
+    _manifest = _json.loads(_manifest_path.read_text(encoding="utf-8"))
     name = _manifest.get("display_name", name)
 
 

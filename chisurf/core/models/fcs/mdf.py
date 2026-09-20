@@ -244,30 +244,17 @@ def compute_brightness(fit, N: float, bg: float = 0.0) -> typing.Optional[float]
 
 
 def set_output_parameter(fit, param: FittingParameter, value: float) -> None:
-    """Write a derived output parameter (value + keep fixed) through the API.
+    """Write a derived output parameter (value + keep fixed).
 
-    Shared by :class:`MdfFCSModel` and the general composable FCS model
-    (:mod:`chisurf.core.models.fcs.general`) so a derived output round-trips
-    through the same path a user edit would.
-
-    The write goes through :class:`~chisurf.core.api.ChiSurfAPI`, not through
-    the GUI's fitting client: a model is compute, and reaching into
-    ``chisurf.gui`` from ``chisurf.core.models`` breaks the split the whole
-    layer is built on (and the headless paths, where no client exists). The
-    facade forwards to the same ``parameter.set_value`` handler either way.
+    Output parameters are updated directly on the parameter instance without
+    dispatching full API update/finalize notifications during model evaluation,
+    avoiding recursive model recomputation and GUI widget overhead in inner loops.
     """
+    if param is None:
+        return
     try:
-        param.value = value
-    except Exception:
-        pass
-    try:
-        from chisurf.core.api import ChiSurfAPI
-
-        api = ChiSurfAPI()
-        fit_idx = getattr(fit, "fit_idx", None)
-        kwargs = {} if fit_idx is None else {"fit_index": int(fit_idx)}
-        api.set_parameter_value(parameter_name=str(param.name), value=float(value), **kwargs)
-        api.set_parameter_fixed(parameter_name=str(param.name), fixed=True, **kwargs)
+        param.value = float(value)
+        param.fixed = True
     except Exception:
         pass
 

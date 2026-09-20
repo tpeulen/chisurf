@@ -474,7 +474,7 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     tuple[dict, list[dict]]
         The raw spec dict and the translated panel definitions.
     """
-    spec = json.loads(pathlib.Path(path).read_text())
+    spec = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     panels: list[dict] = []
     for entry in spec.get("panels", []):
         if entry.get("separator"):

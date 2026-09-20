@@ -62,7 +62,9 @@ def test_every_panel_entrypoint_resolves():
 
     from chisurf.plugins.tttr.filetools.gui import tool as tool_mod
 
-    spec = json.loads((pathlib.Path(tool_mod.__file__).with_name("panels.json")).read_text())
+    spec = json.loads(
+        (pathlib.Path(tool_mod.__file__).with_name("panels.json")).read_text(encoding="utf-8")
+    )
     for panel in spec["panels"]:
         if panel.get("separator"):
             continue
@@ -96,7 +98,9 @@ def test_included_plugins_are_menu_hidden():
         "chisurf.plugins.core.pto_inspector",
     ):
         m = importlib.import_module(mod)
-        manifest = json.loads((pathlib.Path(m.__file__).parent / "manifest.json").read_text())
+        manifest = json.loads(
+            (pathlib.Path(m.__file__).parent / "manifest.json").read_text(encoding="utf-8")
+        )
         assert manifest.get("menu_hidden") is True, mod
 
 

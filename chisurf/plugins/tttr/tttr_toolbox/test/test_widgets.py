@@ -63,7 +63,9 @@ def test_panels_are_data_driven_from_json():
 
     from chisurf.plugins.tttr.tttr_toolbox.gui import tool as tool_mod
 
-    spec = json.loads((pathlib.Path(tool_mod.__file__).with_name("panels.json")).read_text())
+    spec = json.loads(
+        (pathlib.Path(tool_mod.__file__).with_name("panels.json")).read_text(encoding="utf-8")
+    )
     tool_panels = [p for p in spec["panels"] if not p.get("separator")]
     # every non-separator entry declares a resolvable "module:Class" entrypoint
     for p in tool_panels:
