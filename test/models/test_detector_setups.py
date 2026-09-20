@@ -178,6 +178,12 @@ def test_a_missing_setups_file_never_blocks_a_headless_run(tmp_path, monkeypatch
     # QApplication is collected again straight away, and then this test passes
     # for the wrong reason.
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    try:
+        import locale
+
+        locale.setlocale(locale.LC_NUMERIC, "C")
+    except Exception:
+        pass
     assert app is not None
     assert QtWidgets.QApplication.instance() is not None
     assert not is_interactive()

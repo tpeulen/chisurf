@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 
 from chisurf.core.plugin.registry import PluginRegistry
@@ -23,6 +24,8 @@ class ChiSurfServer:
         ...
         server.stop()
     """
+
+    _active_servers: set[ChiSurfServer] = set()
 
     def __init__(
         self,
@@ -78,6 +81,7 @@ class ChiSurfServer:
         )
         # Bridge in-process event bus to ZMQ broadcast
         self.event_bus.subscribe("*", self._broadcast_bridge)
+        ChiSurfServer._active_servers.add(self)
 
     @property
     def cmd_port(self) -> int:
@@ -107,6 +111,7 @@ class ChiSurfServer:
 
     def stop(self) -> None:
         """Gracefully stop the server."""
+        ChiSurfServer._active_servers.discard(self)
         _log.info("ChiSurfServer stopping")
         if hasattr(self, "service_startup_manager"):
             self.service_startup_manager.stop()
@@ -140,3 +145,13 @@ class ChiSurfServer:
         """Bridge in-process event → ZMQ PUB broadcast."""
         topic = event.get("topic", "")
         self._zmq_server.broadcast_event(topic, event)
+
+
+@atexit.register
+def _cleanup_active_servers() -> None:
+    """Stop all running servers on process exit so daemon threads don't segfault."""
+    for server in list(ChiSurfServer._active_servers):
+        try:
+            server.stop()
+        except Exception:
+            pass

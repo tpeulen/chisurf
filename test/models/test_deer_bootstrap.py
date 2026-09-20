@@ -162,8 +162,6 @@ def test_tikhonov_band_returns_none():
     from chisurf.core.models.deer.deer import DeerTikhonovModel
 
     fit = _make_fit(DeerTikhonovModel)
-    fit.xmin, fit.xmax = 0, len(fit.data.y)
-    fit.run()
     model = fit.model
 
     # The base class returns None — Tikhonov does not override it

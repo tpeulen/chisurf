@@ -1211,7 +1211,10 @@ def setup_gui(app: QtWidgets.QApplication, window: cs.gui.main.Main = None, stag
 
 
 def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
+    if getattr(cs, "cs", None) is not None:  # noqa: F823
+        return cs.cs
     logging.info("Starting GUI startup (get_win)")
+
     from chisurf.gui import chiplot as cp
 
     # Configuring the backend also loads it, which applies the pyqtgraph
@@ -2029,7 +2032,18 @@ def get_app():
     # GUI suite down with a **segmentation fault** the moment a second test
     # asked for the application, which killed every later test in that run and
     # left no report. Reuse whatever instance already exists.
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    existing_app = QtWidgets.QApplication.instance()
+    if existing_app is not None and getattr(cs, "cs", None) is not None:
+        return existing_app
+
+    app = existing_app or QtWidgets.QApplication(sys.argv)
+    try:
+        import locale
+
+        locale.setlocale(locale.LC_NUMERIC, "C")
+    except Exception:
+        pass
+
     # Install the UI-language translator before any window is built or any .ui
     # file is loaded (Qt only translates lookups made after install). This also
     # binds the core translation backend so data-driven view.json/manifest text

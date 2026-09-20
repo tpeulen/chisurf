@@ -771,14 +771,22 @@ def read_coordinates(
     except Exception:
         pass
 
-    return _table_to_atoms(
-        _bff().read_structure_table(
+    try:
+        table = _bff().read_structure_table(
             filename,
             keep_water=keep_water,
             only_standard_residues=only_standard_residues,
             radius_no_interaction=True,
         )
-    )
+        return _table_to_atoms(table)
+    except ImportError:
+        if str(filename).lower().endswith((".pdb", ".ent", ".pdb.gz", ".ent.gz")):
+            return parse_pdb_native(
+                filename,
+                keep_water=keep_water,
+                only_standard_residues=only_standard_residues,
+            )
+        raise
 
 
 def read(
@@ -847,6 +855,7 @@ def read(
             filename=filename,
             keep_water=keep_water,
             only_standard_residues=only_standard_residues,
+            radii=radii,
         )
     else:
         return np.zeros(0, dtype={"names": keys, "formats": formats})

@@ -12,6 +12,7 @@ from chisurf.core.fio.fluorescence.burst import (
     write_dataframe_to_bur,
 )
 from chisurf.core.fio.fluorescence.burst_container import (
+    deinterleave_bursts,
     write_burst_artifact,
 )
 

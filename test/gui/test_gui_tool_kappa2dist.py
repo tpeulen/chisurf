@@ -13,12 +13,18 @@ utils.set_search_paths(TOPDIR)
 
 from chisurf.plugins.calculator.kappa2_dist.k2dgui import Kappa2Dist
 
-app = QApplication(sys.argv)
+app = QApplication.instance() or QApplication(sys.argv)
 
 
 class Tests(unittest.TestCase):
     def setUp(self):
         self.form = Kappa2Dist()
+
+    def tearDown(self):
+        if hasattr(self, "form") and self.form is not None:
+            self.form.close()
+            self.form.deleteLater()
+            QApplication.processEvents()
 
     def test_defaults(self):
         self.assertEqual(self.form._model.r_0, 0.380)
