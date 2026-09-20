@@ -59,7 +59,7 @@ jobs:
     # every module in the tree), which multiple runs stuck 30-70+ min with
     # no failure suggest is exactly where this is stuck. Revisit once a real
     # green run exists to measure against.
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

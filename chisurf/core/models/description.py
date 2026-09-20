@@ -1911,7 +1911,10 @@ def __getattr__(name: str):
     if name.startswith("_") or _bff is None:
         raise AttributeError(name)
     if name in set(_bff.ModelSearchSpec.get_available_names()):
-        return for_family(name)
+        try:
+            return for_family(name)
+        except Exception as exc:
+            raise AttributeError(f"family {name!r} failed to load: {exc}") from exc
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

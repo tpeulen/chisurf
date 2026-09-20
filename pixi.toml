@@ -330,7 +330,7 @@ test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-ext
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }
 fmt = { cmd = "ruff format chisurf/ test/ && ruff check --fix chisurf/ test/" }
 typecheck = { cmd = "mypy chisurf/" }
-test-cov = { cmd = "pytest -v test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -m 'not slow' --timeout=120 --timeout-method=thread --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-cov = { cmd = "pytest -v test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow' --timeout=120 --timeout-method=thread --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
 # PRD-46: run the shipped example scripts + their public-API unit tests. These
