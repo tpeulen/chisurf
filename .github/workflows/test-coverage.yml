@@ -19,6 +19,7 @@ env:
   OMP_NUM_THREADS: "1"
   OPENBLAS_NUM_THREADS: "1"
   MKL_NUM_THREADS: "1"
+  CMAKE_BUILD_PARALLEL_LEVEL: "4"
 
 jobs:
   lint-typecheck:
@@ -61,7 +62,7 @@ jobs:
     # every module in the tree), which multiple runs stuck 30-70+ min with
     # no failure suggest is exactly where this is stuck. Revisit once a real
     # green run exists to measure against.
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:

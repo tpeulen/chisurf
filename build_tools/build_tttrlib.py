@@ -83,8 +83,12 @@ def _conda_env_prefixes() -> list[Path]:
     if active:
         p = Path(active)
         roots += [p, p.parent.parent]
-    roots += [Path.home() / "mambaforge", Path.home() / "miniforge3",
-              Path.home() / "miniconda3", Path.home() / "anaconda3"]
+    roots += [
+        Path.home() / "mambaforge",
+        Path.home() / "miniforge3",
+        Path.home() / "miniconda3",
+        Path.home() / "anaconda3",
+    ]
     out: list[Path] = []
     for root in roots:
         for name in _DEFAULT_LINK_ENV_NAMES:
@@ -127,15 +131,18 @@ def _verify(prefix: Path) -> bool:
     if not python.is_file():
         return True
     check = subprocess.run(
-        [str(python), "-c",
-         "import tttrlib;print(tttrlib.__version__, tttrlib.__file__)"],
-        capture_output=True, text=True,
+        [str(python), "-c", "import tttrlib;print(tttrlib.__version__, tttrlib.__file__)"],
+        capture_output=True,
+        text=True,
     )
     if check.returncode != 0:
-        print("build-tttrlib: the build installed but does not import:\n"
-              f"{check.stderr.strip()}\n"
-              "build-tttrlib: the wrapper and the compiled extension disagree; "
-              "rebuild rather than copying one of them into place.", flush=True)
+        print(
+            "build-tttrlib: the build installed but does not import:\n"
+            f"{check.stderr.strip()}\n"
+            "build-tttrlib: the wrapper and the compiled extension disagree; "
+            "rebuild rather than copying one of them into place.",
+            flush=True,
+        )
         return False
     print(f"build-tttrlib: {prefix.name} -> {check.stdout.strip()}", flush=True)
     return True
@@ -154,21 +161,22 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
     # A compiled extension is tied to an exact CPython ABI. Linking a cp312 module into a
     # cp311 env produces an ImportError at first use, far from the cause, so refuse here.
     package = source_sp / _PACKAGE_DIR
-    ext_globs = (
-        [package.glob("_tttrlib*.so")] if package.is_dir() else []
-    ) + [source_sp.glob("_tttrlib*.so")]
-    src_ext = next(
-        (e for glob in ext_globs for e in sorted(glob)), None
-    )
+    ext_globs = ([package.glob("_tttrlib*.so")] if package.is_dir() else []) + [
+        source_sp.glob("_tttrlib*.so")
+    ]
+    src_ext = next((e for glob in ext_globs for e in sorted(glob)), None)
     if src_ext is None:
         print("build-tttrlib: no built extension to link from; skipped", flush=True)
         return False
-    tag = src_ext.name.split(".")[1]                     # e.g. cpython-312-darwin
-    target_py = target_sp.parent.name                    # e.g. python3.12
+    tag = src_ext.name.split(".")[1]  # e.g. cpython-312-darwin
+    target_py = target_sp.parent.name  # e.g. python3.12
     want = "cpython-" + target_py.replace("python", "").replace(".", "")
     if not tag.startswith(want):
-        print(f"build-tttrlib: {prefix.name} is {target_py} but the extension is '{tag}'; "
-              "skipped (a compiled extension cannot cross CPython versions)", flush=True)
+        print(
+            f"build-tttrlib: {prefix.name} is {target_py} but the extension is '{tag}'; "
+            "skipped (a compiled extension cannot cross CPython versions)",
+            flush=True,
+        )
         return False
 
     linked = []
@@ -190,9 +198,11 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
     # Whichever shape was *not* built leaves its own names behind, and a stale
     # symlink to a file that no longer exists is worse than an absent one: it
     # reads as an install. Clear the other layout's artefacts before linking.
-    stale = [target_sp / _PACKAGE_DIR] if not package.is_dir() else [
-        target_sp / name for name in _ARTIFACTS
-    ] + sorted(target_sp.glob("_tttrlib*.so"))
+    stale = (
+        [target_sp / _PACKAGE_DIR]
+        if not package.is_dir()
+        else [target_sp / name for name in _ARTIFACTS] + sorted(target_sp.glob("_tttrlib*.so"))
+    )
     for path in stale:
         if path.is_symlink() or path.is_file():
             path.unlink()
@@ -211,17 +221,18 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
     # surfaces later in someone else's script.
     python = prefix / "bin" / "python"
     if not python.is_file():
-        print(f"build-tttrlib: linked into {prefix} (no interpreter found to verify)",
-              flush=True)
+        print(f"build-tttrlib: linked into {prefix} (no interpreter found to verify)", flush=True)
         return True
     check = subprocess.run(
-        [str(python), "-c",
-         "import tttrlib,sys;print(tttrlib.__version__, tttrlib.__file__)"],
-        capture_output=True, text=True,
+        [str(python), "-c", "import tttrlib,sys;print(tttrlib.__version__, tttrlib.__file__)"],
+        capture_output=True,
+        text=True,
     )
     if check.returncode != 0:
-        print(f"build-tttrlib: linked into {prefix} but it does not import:\n"
-              f"{check.stderr.strip()}", flush=True)
+        print(
+            f"build-tttrlib: linked into {prefix} but it does not import:\n{check.stderr.strip()}",
+            flush=True,
+        )
         return False
     print(f"build-tttrlib: linked into {prefix.name} -> {check.stdout.strip()}", flush=True)
     return True
@@ -343,14 +354,28 @@ def _build_into(prefix: Path) -> bool:
     staging.mkdir(parents=True, exist_ok=True)
 
     env = dict(os.environ)
+    if "CMAKE_BUILD_PARALLEL_LEVEL" not in env:
+        env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(os.cpu_count() or 2)
     env["CMAKE_ARGS"] = _cmake_args(prefix)
-    print(f"build-tttrlib: {prefix.name} cannot load the shared build; "
-          "building against its own libraries (this takes a few minutes)", flush=True)
+    print(
+        f"build-tttrlib: {prefix.name} cannot load the shared build; "
+        "building against its own libraries (this takes a few minutes)",
+        flush=True,
+    )
     rc = subprocess.call(
-        [str(python), "-m", "pip", "install", str(_SRC),
-         "--no-build-isolation", "--no-deps", "--no-cache-dir",
-         "--target", str(staging),
-         f"--config-settings=build-dir={build_dir / 'tree'}"],
+        [
+            str(python),
+            "-m",
+            "pip",
+            "install",
+            str(_SRC),
+            "--no-build-isolation",
+            "--no-deps",
+            "--no-cache-dir",
+            "--target",
+            str(staging),
+            f"--config-settings=build-dir={build_dir / 'tree'}",
+        ],
         env=env,
     )
     if rc != 0:
@@ -400,9 +425,11 @@ def link_build() -> bool:
         ``True`` when every target environment imports tttrlib afterwards.
     """
     source_sp = Path(
-        subprocess.run([sys.executable, "-c",
-                        "import site;print(site.getsitepackages()[0])"],
-                       capture_output=True, text=True).stdout.strip()
+        subprocess.run(
+            [sys.executable, "-c", "import site;print(site.getsitepackages()[0])"],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
     )
     if not source_sp.is_dir():
         return True
@@ -464,6 +491,8 @@ def main() -> int:
     # first. Forcing module mode with an explicit root keeps both out of the
     # same process.
     env = dict(os.environ)
+    if "CMAKE_BUILD_PARALLEL_LEVEL" not in env:
+        env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(os.cpu_count() or 2)
     env["CMAKE_ARGS"] = _cmake_args(Path(prefix))
 
     shutil.rmtree(_BUILD_DIR, ignore_errors=True)

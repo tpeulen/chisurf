@@ -388,6 +388,7 @@ def test_the_timing_terms_are_negligible_at_a_normal_dwell():
     assert 0.28 < sigma < 0.32
 
 
+@pytest.mark.slow
 @events_only
 def test_event_mode_beats_binning_at_the_same_photon_count():
     """The claim single-photon compatibility is *for*.
@@ -452,6 +453,7 @@ def test_event_mode_conserves_photons_and_stays_non_negative():
     assert abs(interior.sum() / 5000 - 1.0) < 1e-9
 
 
+@pytest.mark.slow
 @events_only
 def test_event_mode_can_reconstruct_finer_than_the_acquisition_grid():
     """Sub-pixel positions are only worth keeping if they can be cashed in."""
