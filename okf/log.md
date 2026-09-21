@@ -1,5 +1,23 @@
 # Update Log
 
+## 2026-09-21
+
+* **CI test suite stabilized across Linux, macOS, and Windows.**
+  - Fixed systemic `GraphExpression` and model compilation failure on non-C locales
+    (where `QApplication` initialisation invoked `setlocale` switching `,` to `.`):
+    enforced `LC_NUMERIC="C"` on app creation, test fixtures, and CI env.
+  - Added fallback in `read_structure_table` to `parse_pdb_native` for core builds
+    of `IMP.bff`.
+  - Optimized `set_output_parameter` in `chisurf/core/models/fcs/mdf.py` to write
+    directly to `param.value` and `param.fixed`, preventing GUI widget finalization
+    and API re-entrancy inside optimizer inner evaluation loops (unblocking 16-curve
+    FCS fits).
+  - Enforced `PYTHONUTF8: "1"` and UTF-8 decoding for `manifest.json` and navigation
+    specs, eliminating Windows `charmap`/`cp1252` collection crashes.
+  - Marked high-iteration event-mode deconvolution benchmarks in `test/core/test_restoration.py`
+    as `@pytest.mark.slow`, parallelized `tttrlib` C++ builds with `CMAKE_BUILD_PARALLEL_LEVEL=4`,
+    and raised CI job timeout to 120 minutes.
+
 ## 2026-09-17
 
 * **aGrUM's linear-Gaussian inference lives in imp.bff; ChiSurf conditions
