@@ -21,7 +21,11 @@ import chisurf as cs
 import chisurf.gui
 import chisurf.macros
 
-cs_app = cs.gui.get_app()
+
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_app():
+    return cs.gui.get_app()
+
 
 # Run fit creation locally, not via server RPC, to avoid hangs
 if hasattr(cs, "api") and cs.core.api is not None:

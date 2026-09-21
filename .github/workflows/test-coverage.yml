@@ -82,6 +82,12 @@ jobs:
       # "not a valid editable requirement" on Windows. Must be set before the
       # checkout that follows; the runner is already elevated, so this is
       # enough (no Developer Mode toggle needed).
+      - name: Disable Windows Defender (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -DisableArchiveScanning $true -DisableBehaviorMonitoring $true -DisableIntrusionPreventionSystem $true -DisableScriptScanning $true
+
       - name: Enable symlinks (Windows)
         if: runner.os == 'Windows'
         run: git config --global core.symlinks true

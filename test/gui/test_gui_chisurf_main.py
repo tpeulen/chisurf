@@ -10,6 +10,7 @@ import utils
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
+import pytest
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtTest import QTest
@@ -20,7 +21,10 @@ import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments
 import chisurf.macros
 
-cs_app = cs.gui.get_app()
+
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_app():
+    return cs.gui.get_app()
 
 
 def add_fit(
@@ -113,6 +117,10 @@ def setup_reader(
 
 class Tests(unittest.TestCase):
     """Walk the main window through "choose experiment → load data → add fit"."""
+
+    @classmethod
+    def setUpClass(cls):
+        cs.gui.get_app()
 
     def test_tcspc(self):
         """Open a TCSPC dataset and create a lifetime and a FRET fit."""

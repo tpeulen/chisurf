@@ -13,11 +13,17 @@ utils.set_search_paths(TOPDIR)
 
 from unittest.mock import patch
 
+import pytest
+
 import chisurf as cs
 import chisurf.gui
 from chisurf.gui import dialogs
 
-cs_app = cs.gui.get_app()
+
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_app():
+    return cs.gui.get_app()
+
 
 if hasattr(cs, "api") and cs.core.api is not None:
     cs.core.api.mode = "local"

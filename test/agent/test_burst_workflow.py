@@ -173,21 +173,25 @@ def analysis(bursts, tmp_path_factory):
     return results
 
 
+@pytest.mark.slow
 def test_every_population_yields_a_decay_worth_fitting(analysis):
     assert analysis["donor_only"]["photons"] > 5000
     assert analysis["fret"]["photons"] > 1000
 
 
+@pytest.mark.slow
 def test_both_sub_ensemble_fits_describe_their_decay(analysis):
     for label, outcome in analysis.items():
         assert 0.5 < outcome["chi2r"] < 2.0, f"{label}: chi2r {outcome['chi2r']}"
 
 
+@pytest.mark.slow
 def test_fret_shortens_the_donor_lifetime(analysis):
     """The direction is the whole physics: an acceptor quenches the donor."""
     assert analysis["fret"]["tau_x"] < analysis["donor_only"]["tau_x"]
 
 
+@pytest.mark.slow
 def test_the_lifetime_efficiency_agrees_with_the_proximity_ratio(analysis):
     """Independent observables, so this is evidence rather than a tautology.
 

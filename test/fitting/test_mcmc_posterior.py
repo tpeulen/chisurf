@@ -65,6 +65,7 @@ def test_walk_mcmc_does_not_walk_away_from_the_optimum():
     assert chi2r.max() < 20.0 * chi2r_best
 
 
+@pytest.mark.slow
 def test_walk_mcmc_reproduces_the_analytic_posterior():
     """For a linear model the sampled width must match ``sigma^2 (X'X)^-1``."""
     np.random.seed(2)

@@ -23,11 +23,14 @@ utils.set_search_paths(os.path.abspath(os.path.join(os.path.dirname(__file__), "
 import chisurf as cs  # noqa: E402
 import chisurf.gui  # noqa: E402
 
-cs_app = cs.gui.get_app()
+
+@pytest.fixture(scope="module")
+def cs_app():
+    return cs.gui.get_app()
 
 
 @pytest.fixture
-def main_window():
+def main_window(cs_app):
     """The bootstrapped ChiSurf main window."""
     assert cs_app is not None  # the QApplication must exist before the window
     return cs.cs

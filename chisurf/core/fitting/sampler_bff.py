@@ -100,7 +100,7 @@ def _seed_int(seed) -> int:
         return int(seed) & 0xFFFFFFFF
     if isinstance(seed, np.random.Generator):
         return int(seed.integers(2**32))
-    return int(np.random.randint(2**32))
+    return int(np.random.randint(0, 2**32 - 1, dtype=np.int64))
 
 
 def _substeps(substeps) -> int:

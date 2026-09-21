@@ -52,7 +52,7 @@ def _rng(seed) -> np.random.Generator:
     if isinstance(seed, np.random.Generator):
         return seed
     if seed is None:
-        seed = int(np.random.randint(0, 2**32 - 1))
+        seed = int(np.random.randint(0, 2**32 - 1, dtype=np.int64))
     return np.random.default_rng(seed)
 
 

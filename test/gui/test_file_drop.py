@@ -24,7 +24,11 @@ from qtpy.QtWidgets import QApplication
 import chisurf as cs
 import chisurf.gui
 
-cs_app = cs.gui.get_app()
+
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_app():
+    return cs.gui.get_app()
+
 
 # Use local mode for dataset operations (avoids server RPC fallback warnings)
 if hasattr(cs, "api") and cs.core.api is not None:

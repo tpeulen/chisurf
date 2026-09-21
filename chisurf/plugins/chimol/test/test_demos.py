@@ -76,6 +76,7 @@ def test_the_scripts_are_commands_not_python():
             assert not stripped.startswith(("import ", "from ", "def ")), key
 
 
+@pytest.mark.slow
 def test_the_structures_the_demos_name_can_be_found():
     """They say `load 148l.pdb` so they read like something a person types.
 
@@ -146,6 +147,7 @@ def _vertices(viewer):
     )
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""

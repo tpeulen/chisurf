@@ -290,7 +290,7 @@ def _check_random_state(seed) -> np.random.Generator:
     if isinstance(seed, np.random.Generator):
         return seed
     if isinstance(seed, np.random.RandomState):
-        return np.random.default_rng(seed.randint(0, 2**32 - 1))
+        return np.random.default_rng(seed.randint(0, 2**32 - 1, dtype=np.int64))
     raise ValueError(f"{seed!r} cannot be used to seed a random number generator")
 
 

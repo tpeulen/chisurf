@@ -17,6 +17,20 @@
   - Marked high-iteration event-mode deconvolution benchmarks in `test/core/test_restoration.py`
     as `@pytest.mark.slow`, parallelized `tttrlib` C++ builds with `CMAKE_BUILD_PARALLEL_LEVEL=4`,
     and raised CI job timeout to 120 minutes.
+  - Eliminated collection-phase futex deadlock with `coverage.py` on Linux (`test-cov`)
+    by converting module-level `cs.gui.get_app()` in `test/gui/` (`test_file_drop.py`,
+    `test_file_open.py`, `test_fit_workflows.py`, `test_gui_chisurf_main.py`,
+    `test_parameter_linking.py`, `test_update_ui.py`, `test_workflows.py`) into lazy fixtures.
+  - Marked network-downloading demo tests in `chisurf/plugins/chimol/test/test_demos.py`
+    (`test_the_structures_the_demos_name_can_be_found` and `test_a_demo_runs_and_draws_something`)
+    as `@pytest.mark.slow`, preventing 400MB CIF downloads and 120s test timeouts on macOS CI.
+  - Marked 20,000-iteration MCMC posterior walk in `test/fitting/test_mcmc_posterior.py` and
+    10-file photon burst multi-fit tests in `test/agent/test_burst_workflow.py` as `@pytest.mark.slow`.
+  - Fixed Windows 32-bit integer overflow (`ValueError: high is out of bounds for int32`)
+    by specifying `dtype=np.int64` on `np.random.randint(0, 2**32 - 1)` in
+    `chisurf/core/fitting/sample.py`, `sampler_bff.py`, and `chisurf/core/math/hmm.py`.
+  - Added Windows Defender scanning bypass to GitHub Actions Windows runner, and enabled
+    `--durations=20` on `test` and `test-cov` in `pixi.toml`.
 
 ## 2026-09-17
 
