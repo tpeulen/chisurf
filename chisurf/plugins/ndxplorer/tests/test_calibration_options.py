@@ -14,12 +14,14 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
-from chisurf.plugins.ndxplorer.calibration_options import CalibrationOptions
-
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 
 from ndxplorer.core.data_source import DataSource  # noqa: E402
+
+from chisurf.plugins.ndxplorer.calibration_bridge import (  # noqa: E402
+    optimize_calibration_from_ndx,
+)
+from chisurf.plugins.ndxplorer.calibration_options import CalibrationOptions  # noqa: E402
 
 
 def _window(**constants):

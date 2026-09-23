@@ -71,4 +71,3 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/ndxplorer/`
 - Manifest: {src}`chisurf/plugins/ndxplorer/manifest.json`
-- UI spec: {src}`chisurf/plugins/ndxplorer/calibration_options.view.json`

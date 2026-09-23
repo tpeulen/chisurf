@@ -35,8 +35,9 @@ It used to take every default and write every factor, which is right exactly
 once. After that it is usually wrong in one way: γ from a measurement's own
 populations is only as good as those populations, and someone who determined γ
 on a reference sample wants α and δ fitted *around* it rather than replaced by a
-worse estimate. So the action now asks first (`calibration_options.py` +
-`.view.json`): which of α, δ, γ, β, R₀ may be written, which route γ comes from,
+worse estimate. So the action now asks first (the options and their form are ndX's,
+`ndxplorer/analysis/fret_calibration.py` + `fret_calibration_options.view.json`,
+shown in the Qt window by `calibration_options.py`): which of α, δ, γ, β, R₀ may be written, which route γ comes from,
 whether the light-path priors are used, the bootstrap count, τ_D(0) and the
 linker width, and whether the accurate per-burst columns are added.
 
@@ -240,7 +241,8 @@ enough to leave thirteen `fret_calibration` artifacts in a container — every
 reader then walks them all to find one. Keeping only the newest is the other
 extreme: the previous calibration is what you compare against when a new one
 comes out differently, and the one before that is what you go back to when it
-turns out worse. So `calibration_io.CALIBRATION_HISTORY` bounds the history at
+turns out worse. So `CALIBRATION_HISTORY` (in ndX's `ndxplorer/io/fret_calibration_io.py`, moved
+there from the plugin's `calibration_io.py` so the emtk app saves the same way) bounds the history at
 five and `_prune_calibrations` drops the excess after each save.
 
 **The trap is the ordering, and it only appears after the first prune.**
@@ -254,7 +256,7 @@ was the fifth (0.5), not the ninth (0.9). Both the prune and every reader
 therefore sort on the payload's own `saved_utc`, which is written to the
 **microsecond** — at one-second resolution two saves in the same second tie and
 the ordering is back to being position's. Pinned by
-`tests/test_calibration_io.py::test_history_is_bounded_and_drops_the_oldest`
+ndX's `ndxplorer/tests/test_fret_calibration_io.py::test_history_is_bounded_and_drops_the_oldest`
 and `::test_history_bound_survives_repeated_pruning`, which fail on positional
 order.
 

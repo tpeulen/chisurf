@@ -10,7 +10,7 @@ factors and the population fits at the bottom — was the part behind a scrollba
 This is a plain resizable window with the whole report in a monospaced view, and
 the two actions that belong next to it: keep this calibration, or keep the text.
 Saving defaults to the measurement container (see
-:mod:`chisurf.plugins.ndxplorer.calibration_io`).
+:mod:`ndxplorer.io.fret_calibration_io`).
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def show_calibration_report(
     from qtpy import QtGui, QtWidgets
 
     from chisurf.gui import dialogs
-    from chisurf.plugins.ndxplorer.calibration_io import (
+    from ndxplorer.io.fret_calibration_io import (
         SUFFIX,
         container_of,
         save_calibration,

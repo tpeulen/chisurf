@@ -10,89 +10,28 @@ wants α and δ fitted *around* it rather than replaced by a worse estimate.
 So the factors are a choice, and so is the route γ comes from. The calibration
 is still run in full whatever is chosen — the report says what every factor came
 out as — but only the selected ones are written into the window.
+
+The options and their form belong to ndX
+(:mod:`ndxplorer.analysis.fret_calibration`), because its emtk app asks the
+same question; this module only shows them in the Qt window, through AutoForm.
 """
 
 from __future__ import annotations
 
-import pathlib
+from ndxplorer.analysis.fret_calibration import FACTOR_ATTRS, OPTIONS_SPEC
+from ndxplorer.analysis.fret_calibration import CalibrationOptions as _Options
 
-_VIEW_JSON = pathlib.Path(__file__).parent / "calibration_options.view.json"
-
-#: Factor name → the attribute holding whether it is applied.
-FACTOR_ATTRS = {
-    "alpha": "fit_alpha",
-    "delta": "fit_delta",
-    "gamma": "fit_gamma",
-    "beta": "fit_beta",
-    "r0": "fit_r0",
-}
+__all__ = ["CalibrationOptions", "FACTOR_ATTRS", "ask_calibration_options"]
 
 
-class CalibrationOptions:
-    """The settings of one calibration run."""
-
-    def __init__(self, donor_lifetime: float = 4.0) -> None:
-        """Start from the window's own τ_D(0), and apply everything."""
-        #: Leakage of donor emission into the acceptor channel.
-        self.fit_alpha: bool = True
-        #: Direct excitation of the acceptor by the donor laser.
-        self.fit_delta: bool = True
-        #: Detection efficiency × quantum yield ratio.
-        self.fit_gamma: bool = True
-        #: Excitation flux / cross-section ratio of the two lasers.
-        self.fit_beta: bool = True
-        #: Förster radius. Not a correction factor; the distances depend on it.
-        self.fit_r0: bool = False
-        #: Where the channel backgrounds come from — including fitting them.
-        self.background: str = "fit"
-        #: Smallest reference population accepted when fitting a background.
-        self.min_population: int = 20
-        #: Which route γ comes from.
-        self.gamma_source: str = "auto"
-        #: Combine the data estimates with the light-path priors.
-        self.use_priors: bool = True
-        #: Bootstrap resamples for the factor uncertainties (0 skips them).
-        self.n_bootstrap: int = 50
-        #: Donor-only lifetime τ_D(0), ns — shapes the static FRET line.
-        self.donor_lifetime: float = float(donor_lifetime)
-        #: Linker width, Å.
-        self.linker_sigma: float = 6.0
-        #: Also add the accurate per-burst E / S / R_DA columns.
-        self.inject_columns: bool = True
-        #: Store the result in the measurement when it finishes. On by default
-        #: and into the `.pto` container by default: a calibration determined
-        #: from a measurement belongs beside that measurement's photons and
-        #: burst table, not in a file next to it that a later copy leaves
-        #: behind. Off writes nothing; the report window can still save.
-        self.save_when_done: bool = True
+class CalibrationOptions(_Options):
+    """ndX's calibration options, with the view spec AutoForm resolves."""
 
     def view_spec(self):
-        """Resolve the AutoForm view spec from the authored view.json."""
+        """Resolve the AutoForm view spec from ndX's options form."""
         from chisurf.core.dataspec import load_view_spec
 
-        return load_view_spec(_VIEW_JSON)
-
-    def factors(self) -> list[str]:
-        """The factors the calibration may write, in the paper's order."""
-        return [name for name, attr in FACTOR_ATTRS.items() if getattr(self, attr)]
-
-    def as_kwargs(self) -> dict:
-        """Keyword arguments for :func:`optimize_calibration_from_ndx`."""
-        return {
-            "factors": self.factors(),
-            "background": str(self.background),
-            "min_population": int(self.min_population),
-            "gamma_source": str(self.gamma_source),
-            "use_priors": bool(self.use_priors),
-            "n_bootstrap": int(self.n_bootstrap),
-            "donor_lifetime": float(self.donor_lifetime),
-            "linker_sigma": float(self.linker_sigma),
-            "inject_columns": bool(self.inject_columns),
-        }
-
-    def save_requested(self) -> bool:
-        """Whether the finished calibration should be stored automatically."""
-        return bool(self.save_when_done)
+        return load_view_spec(OPTIONS_SPEC)
 
 
 def ask_calibration_options(parent, donor_lifetime: float = 4.0):

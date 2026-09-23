@@ -110,6 +110,97 @@ Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
    package that shadows chisurf. `web.py` now refuses it rather than shipping an empty
    package.
 
+### Accurate FRET (what the ChiSurf-hosted Qt window adds) — 2026-09-23
+
+The Qt window has Accurate FRET only when ChiSurf's ndX plugin decorates it,
+and the first baseline had only standalone ndX. Now both are captured.
+
+* **What ChiSurf adds** (`chisurf/plugins/ndxplorer/__init__.py`, `rpc_bridge.py`):
+  the ChiSurf Phasor toolbar and panel, the "Send selection to" targets, the
+  calibration restore when a `.pto` is opened (all from `make_ndxplorer`'s
+  in-process RPC client and subclass); the Accurate FRET toolbar (FRET
+  calibration, Save calibration, Load calibration, Sync constants); the MMFDB
+  toolbar; the constants in the Global View (`bind_ndx_parameters`). Not GUI:
+  `cli.py` (`filter`/`image`) and `mmfdb_launcher`. Full inventory: the
+  "ChiSurf-hosted window" part of `tools/parity/features.md`.
+* **Baseline:** `capture_qt.py` scenario key `"host": "chisurf"` runs the
+  plugin's `__init__.py` as ChiSurf's ribbon does. Scenarios `chisurf_toolbars`,
+  `accurate_fret_options`, `accurate_fret_run`, `calibration_save_load`,
+  `mmfdb_open`, `chisurf_phasor`, on `~/dev/tttr-data/sm/cal1/…_alex.pto`
+  (dataset `cal1_alex`, opened as a copy in the scratch `$HOME` because a run
+  writes into the container). Qt run: α 0.1570 ± 0.0020, δ 0.0674 ± 0.0005,
+  γ 0.7502 ± 0.0069, β 1.0599 ± 0.0043; 2945 donor-only, 9740 acceptor-only,
+  2 FRET populations (E 0.335, 0.937); about 10 s per run.
+* **emtk:** `ndxplorer/app/features/accurate_fret.py` (+ `accurate_fret/*.view.json`):
+  a **FRET** menu before Help (FRET calibration…, Save calibration…, Load
+  calibration…), always there, not only under ChiSurf; the options are
+  `ndxplorer/analysis/fret_calibration_options.view.json`, the same file the
+  Qt AutoForm shows; progress with Cancel on `emtk.tasks`; a report window
+  with factor, population and constants tables and the full text; save/load
+  through the `.pto` or `app.io_service`. File > Import > "From MMFDB… (only
+  inside ChiSurf)" is disabled. No toolbar button (the map's space).
+* **Moved, not copied, out of the ChiSurf plugin into ndX:** the options model
+  and its form (`ndxplorer/analysis/fret_calibration.py`; the plugin's
+  `calibration_options.py` keeps only the Qt dialog), the report text
+  (`report_text`, which the plugin now calls), and `calibration_io.py` ->
+  `ndxplorer/io/fret_calibration_io.py` (with its test). The plugin package
+  no longer imports Qt at import time (the GUI imports sit in the `plugin`
+  block).
+
+Where to pick this up:
+
+1. **Wire the backend.** The algorithm is being moved into a compiled library
+   (board T-20260923-afret). The emtk app calls
+   `fret_calibration.calibrate(columns, constants, options, container=, progress=)`
+   and applies the result itself (`apply_result`: constants, then the new
+   columns); the result keys are listed in its docstring. Until a backend is
+   installed (`fret_calibration.set_backend`), Calibrate is off with the
+   reason. When the library exists: install it as the backend, and make
+   ChiSurf's `calibration_bridge.optimize_calibration_from_ndx` a thin caller
+   of the same `calibrate`, so both windows run one path.
+2. **Measured agreement, and how to re-take it.** With ChiSurf's current Python
+   behind the contract (a scratch adapter, not shipped: `DataSource.from_columns`
+   + `optimize_calibration_from_ndx` on a stand-in window), the emtk run on
+   the cal1 `.pto` gives α, β, γ, δ and their uncertainties bit-identical to
+   the Qt run, and the same report text. **Trap:** only from the same starting
+   constants. The hosted Qt window restores the container's stored
+   calibration on open (PhiA = PhiD = 1, gG/gR 1.333…), the emtk app opens with
+   the settings' (PhiA 0.32, PhiD 0.8). α β γ δ still agree, but the equation
+   column `<tauD(A)>x` differs, so the lifetime-route γ (0.548 vs 0.433), τf
+   and gG/gR do.
+3. **Open: restore on open.** `calibration_bridge.restore_calibration_from_container`
+   (factor table, background artifact, saved constants) is held with the
+   library move; port it as the emtk app's `on_data_changed` once the bridge
+   is split. It is what item 2's trap is about.
+4. **Open: per-population factors.** Another agent is making the constants
+   vector-valued (owns `features/overlays.py`, `core/constants_group.py`, the
+   equation engine). The feature writes global scalars through
+   `AccurateFretFeature.write_constants` today; switch that to the vector API
+   (population-wise γ/β/α/δ with uncertainties) when it exists.
+5. **Open: Global View.** The emtk constants group is registered in ChiSurf's
+   parameter-group registry (owner `ndxplorer`, the slot the Qt plugin uses),
+   so it reaches the Global View as soon as the emtk app runs in ChiSurf's
+   process; no ChiSurf plugin hosts the emtk app yet. "Sync constants" is not
+   needed then (one group, no copy).
+6. **Open: ChiSurf Phasor** (`chisurf_phasor`): needs a ChiSurf RPC client in
+   `NdxApp` (`--chisurf-rpc` does not reach it).
+7. **Browser.** Nothing in the feature imports Qt (tested). What blocks a
+   calibration in the page is the missing backend, as on the desktop; the
+   file save/load works there through the io service, and the container
+   route needs `chisurf.core.fio.pto`. Not yet run in a page.
+8. **ChiSurf bugs found, not fixed here:** the MMFDB toolbar never appears
+   (the plugin's `MMFDBClient(inprocess=True)` has no session token and
+   `mmfdb.status` requires one); ChiSurf's *menu* route
+   (`run_plugin_from_dir` -> manifest `entrypoints.gui`) never runs the
+   plugin's `__init__.py`, so a window opened from the menu has no Accurate
+   FRET toolbar and no Global View parameters, only the ribbon route has them.
+
+Re-measure: `python -m ndxplorer.app.capture -s chisurf_toolbars -s accurate_fret_options
+-s accurate_fret_run -s calibration_save_load -s mmfdb_open` (with no backend the
+run and report shots are not taken: install one first), `pytest
+ndxplorer/tests/test_app/test_accurate_fret.py ndxplorer/tests/test_fret_calibration_io.py`,
+and chisurf `chisurf/plugins/ndxplorer/tests`.
+
 ### Plot window space (toolbar, corner, marginals) — 2026-09-23
 
 The map gets most of the window now. ndxplorer `1a21cc2`, `d51142c`, `8a5be94`,

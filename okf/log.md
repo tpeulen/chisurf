@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **ndX: Accurate FRET is in the emtk app, and the Qt baseline has the ChiSurf-hosted window.**
+  - The Accurate FRET toolbar, MMFDB open, the calibration restore on open and the Global View constants exist only when ChiSurf's plugin decorates the Qt window. `capture_qt.py` gained a ChiSurf host mode; six hosted scenarios on the cal1 ALEX `.pto` are in the baseline and in features.md.
+  - The emtk app has a FRET menu (calibration options, progress, report, save/load through the `.pto` or the io service), File > Import > From MMFDB disabled with its reason. The calibration is a backend contract (`ndxplorer.analysis.fret_calibration.calibrate`) waiting for the accurate-FRET library.
+  - Moved from the plugin into ndX: the options and their form, the report text, and `calibration_io.py` (now `ndxplorer/io/fret_calibration_io.py`). The plugin package imports no Qt at import time.
+  - Same starting constants: α, β, γ, δ and uncertainties identical in both windows. Found: the MMFDB toolbar never appears (no session token), and ChiSurf's menu route opens ndX without the Accurate FRET toolbar.
+  - Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md), *Accurate FRET*.
+
 * **The model search now runs a trained action policy by default.** bff shipped candidate 6 (imp.bff 08742ec9): it passes the strict search gate at temperature 3, which the policy document carries, so `NativeSearchSettings.action_policy="shipped"` loads a policy for the first time; `test/fitting/test_mcts_shipped_policy.py` passes on it. PRD-152 status updated.
 
 * **ndX emtk app: the map gets half the window.**

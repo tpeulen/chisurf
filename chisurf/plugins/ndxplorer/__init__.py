@@ -27,12 +27,9 @@ of multiparameter fluorescence information, enabling spatial correlation of
 spectroscopic properties.
 """
 
-from chisurf.gui import dialogs
-
 name = "Main:Tools:ndX"
 
 import chisurf as cs
-from chisurf.gui.glyphs import Glyphs
 
 log = cs.logging.info
 
@@ -51,8 +48,14 @@ if __name__ == "__main__":
     sys.exit(app.exec())
 
 if __name__ == "plugin":
+    # The GUI imports live here, not at module level: importing this package
+    # (as every ``chisurf.plugins.ndxplorer.*`` import does) must not pull in
+    # Qt, and only running it as a plugin opens a window.
     import pathlib
     import sys
+
+    from chisurf.gui import dialogs
+    from chisurf.gui.glyphs import Glyphs
 
     _ndxplorer_module = pathlib.Path(__file__).resolve().parents[3] / "modules" / "ndxplorer"
     if _ndxplorer_module.is_dir():
@@ -165,64 +168,14 @@ if __name__ == "plugin":
             if ndx_parameters is not None:
                 # The Global View must show what the window now holds.
                 ndx_parameters.pull(ndx)
-            before = result["before"]
-            lines = [result["report"], "", "ndX constants:"]
-            lines += [
-                f"  {name}: {before.get(name)!s} → {value:.4f}"
-                for name, value in result["constants"].items()
-            ]
-            # What was deliberately not written, and what it would have been.
-            # A factor held fixed is a decision, and the number it was held
-            # against is the only way to judge whether it was a good one.
-            held = result.get("held") or {}
-            if held:
-                determined = result.get("determined") or {}
-                lines += ["", "Held fixed (not calibrated):"]
-                lines += [
-                    f"  {name}: kept {value:.4f}"
-                    + (
-                        f" — this measurement would have given {determined[name]:.4f}"
-                        if name in determined
-                        else ""
-                    )
-                    for name, value in held.items()
-                ]
-            per_burst = result.get("background_per_burst") or []
-            fitted_bg = result.get("background_fitted") or {}
-            if result.get("background") == "fit":
-                lines += [
-                    "",
-                    (
-                        "Background, fitted from the reference populations: "
-                        + ", ".join(f"{k} = {v:.2f}" for k, v in fitted_bg.items())
-                    )
-                    if fitted_bg
-                    else (
-                        "Background: the reference populations were too small to fit "
-                        "one — the window's constants were used"
-                    ),
-                ]
-            elif result.get("background") == "measurement":
-                lines += [
-                    "",
-                    (
-                        "Background: per burst, from this measurement's own "
-                        f"estimate ({', '.join(per_burst)})"
-                        if per_burst
-                        else "Background: the container has no stored estimate — the "
-                        "window's own constants were used"
-                    ),
-                ]
-            elif result.get("background") == "none":
-                lines += ["", "Background: none (set to zero)"]
-            if result["injected"]:
-                lines += ["", "New columns: " + ", ".join(result["injected"])]
+            # The report is ndX's, so the emtk app reads the same text.
+            from ndxplorer.analysis.fret_calibration import report_text
             # Store it before showing the report: the numbers are worth more
             # than the window, and a user who closes the report should not
             # thereby have discarded the calibration.
             saved = None
             if getattr(options, "save_when_done", False):
-                from chisurf.plugins.ndxplorer.calibration_io import save_calibration
+                from ndxplorer.io.fret_calibration_io import save_calibration
 
                 saved = save_calibration(
                     dict(getattr(ndx, "constants", {}) or {}),
@@ -237,7 +190,7 @@ if __name__ == "plugin":
             show_calibration_report(
                 ndx,
                 "FRET calibration — applied",
-                "\n".join(lines),
+                report_text(result),
                 constants=dict(getattr(ndx, "constants", {}) or {}),
                 result=result,
                 ndx=ndx,
@@ -263,7 +216,7 @@ if __name__ == "plugin":
             """Store the window's current constants as a calibration."""
             from qtpy import QtWidgets
 
-            from chisurf.plugins.ndxplorer.calibration_io import (
+            from ndxplorer.io.fret_calibration_io import (
                 SUFFIX,
                 container_of,
                 save_calibration,
@@ -323,7 +276,7 @@ if __name__ == "plugin":
             """Read a calibration back and, if the user agrees, apply it."""
             from qtpy import QtWidgets
 
-            from chisurf.plugins.ndxplorer.calibration_io import (
+            from ndxplorer.io.fret_calibration_io import (
                 SUFFIX,
                 load_calibration,
                 stored_calibrations,
