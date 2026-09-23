@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the settings group (Settings menu, Axis Control, report tool, Help).**
+  - The emtk app gets Performance Settings, Load settings, Save settings (axis settings, constants, equations), Set default axis, View > Axis Control (the plots read `model.axis_display`), File > Make Report, and Help/About/Update.
+  - Writing settings leaves `settings_helpers.py` for `settings/persist.py`, and reports leave `report_tool.py` for `export/report.py` (Figure to PNG bytes, browser-ready). Both GUIs call these modules.
+  - Fixed: the report's 2-D CSV/PNG were transposed, Performance Reset did nothing, and Save > Equations, Help, About and Update were not connected. Fix Report Tool is dropped, because its module never existed.
+  - emtk: view_form colour values and the `code_editor` section. Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / settings.
+
 * **ndX emtk port: the io group (open, merge, image mode, burst IDs, selection files, screenshot).**
   - `app.io_service` is the one file service for desktop and browser: drawn emtk file dialogs, and in a page the mount, the drops and downloads.
   - Opening leaves the Qt class for `ndxplorer/io/loading.py`, which both GUIs use. Image mode (`axis_helpers.image_axes`), the burst-ID writer with progress, and the screenshot rules are shared as well.

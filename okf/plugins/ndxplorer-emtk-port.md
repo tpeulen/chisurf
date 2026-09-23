@@ -238,3 +238,75 @@ emtk additions: `view_form` choice `style: "radio_list"` (`0ccf122`), `emtk.web.
 Tried and reverted: an `im_widgets.begin_modal` in emtk (dim, chrome, title bar). It was
 dropped before its commit because `emtk.dialog_window.DialogWindow` landed at the same time
 and does the same thing.
+
+### settings (Settings menu, View > Axis Control, File > Make Report, Help)
+
+Re-measure with `HOME=<scratch> python -m ndxplorer.app.capture -s menu_settings -s menu_view
+-s menu_help -s set_default_axis -s load_settings_dialog -s save_axis_settings_dialog
+-s performance_settings -s axis_control_dialog -s report_tool` and `pytest
+ndxplorer/tests/test_app/test_settings.py test_settings_logic.py test_plot_axis_display.py
+test_feature_hooks.py` (33 tests). Qt, offscreen: the whole non-app suite (864 passed). The
+trap: set_default_axis, Save constants and performance Apply write `~/.ndxplorer`, so
+capture and test with a scratch HOME (the tests set one).
+
+1. **Parity status, 2026-09-23: all nine capturable scenarios are captured and ticked.**
+   fix_report_tool is `[-]`: `ndxplorer.fix_report_tool` never existed (a5a1b2a added a
+   dangling import), the entry is gone from both menus (core 3cf8811), and the report
+   tool's Report column, Clear Reports and Generate Reports cover a missing or stale
+   report. Deliberate differences, in features.md:
+   - Axis Control has no tick-size, title-size or bold fields: the app draws in emtk's
+     font (user directive). The values stay in axis_labels.yaml.
+   - Performance has no Plot Backend choice.
+   - The report's folder list is single-select, with a Report column instead of the
+     green highlight.
+   - Help > Update tells you how to update; it installs nothing.
+2. **What changes the plots.** `plotting/axis_display.AxisDisplay` is
+   `app.model.axis_display`, and `app/plots.py` reads it:
+   - ticks per plot and side, one side per axis (bottom/left win when both are on);
+   - the x-top and y-right titles;
+   - the title colour.
+
+   **Open:** the y-top and z-plot titles are stored but not drawn, because the core
+   draws no such titles. Adding them to `plots.py` would make those three switches do
+   something.
+3. **Qt-free, shared (moved, not copied).**
+   - `settings/persist.py`: axis settings, default axes, constants (a rich file keeps
+     its format), equations.
+   - `plotting/axis_display.py`: the label file.
+   - `utils/performance_config.save_performance_config`.
+   - `export/report.py`: discovery, templates, histograms through the GUI-free
+     `ExplorerModel`, matplotlib `Figure` to PNG bytes, CSV, axes_info, DOCX, clear.
+
+   `settings_helpers.py` and `report_tool.py` keep only the Qt dialogs; the Qt report
+   no longer builds a hidden NDXplorer.
+4. **Fixed rather than copied.**
+   - Report 2-D CSV/PNG were transposed: H is (n_y, n_x) and the report used it as
+     (n_x, n_y). With equal bins this was wrong without an error; with unequal bins
+     it raised.
+   - Performance Reset reset nothing, and the plot backend was never saved.
+   - Save settings > Equations was not connected.
+   - Help, About and Update were not connected.
+5. **Measured.** A report of the three packaged plots on the MFD folder takes 0.46 s per
+   folder once warm (the first takes 0.8 s). The report tool runs one folder per frame.
+   None of the Performance values changes a computation in either GUI, because nothing
+   reads `PerformanceConfig`: either wire `histogram_threads` into tttrlib's fill or
+   drop the dialog.
+6. **Browser, not yet run in a page.** Nothing imports Qt (tested in a fresh
+   process). Files go through `app.io_service`: the combined DOCX is `save_bytes`, and a
+   report written into a folder reaches the disk only inside the mounted folder.
+   python-docx is not in the arm64 env, so the DOCX path has not been exercised in the
+   emtk app (the message says so).
+7. **Delegation.** Save > Constants and Save > Equations call the overlays feature's
+   `constants.save_parameters` and `equations.save_equations_file` when they are there
+   (rich constants, the table's equations), and `persist` otherwise. Load settings hands
+   constants over as a plain dict, which the Parameters tab takes over on its next frame.
+
+emtk additions: `view_form` `kind: "color"` values (swatch, HSV picker, hex) and the
+`code_editor` section (a TextEditor bound to an attribute), in `dfb7823`. Core hooks
+added on the lead's request: a capture op that returns False passes the step on, and a
+target locator that returns None falls through (`039f918`); `files_dropped` (`9490acb`);
+`plots.py` reads `axis_display`.
+
+Tried and reverted: `emtk.begin_modal` for the dialogs. It left before its commit, and
+`DialogWindow` replaced it. A Qt-sized dialog (resize_dialog to 460x1500) left a
+half-empty window, so resize is a no-op and the dialogs are sized to their controls.
