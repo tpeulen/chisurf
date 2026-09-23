@@ -2,6 +2,8 @@
 
 ## 2026-09-23
 
+* **The model search now runs a trained action policy by default.** bff shipped candidate 6 (imp.bff 08742ec9): it passes the strict search gate at temperature 3, which the policy document carries, so `NativeSearchSettings.action_policy="shipped"` loads a policy for the first time; `test/fitting/test_mcts_shipped_policy.py` passes on it. PRD-152 status updated.
+
 * **ndX emtk app: the map gets half the window.**
   - The display controls moved to a toolbar (Path, Browse, colours), and the counts, inf/NaN and the four actions moved into the marginals' corner. If the user makes the corner too small, they go to the toolbar.
   - The marginals are 96/132 px by default, and the user resizes them with the bars beside the map. The sizes are kept in the layout file.

@@ -121,9 +121,15 @@ action policy for every game"):
   kinetic scheme over FCS + TCSPC (`kinetic_fcs_tcspc`). Count data are
   recorded as photons per curve; smFRET/MFD bursts and PIE/ALEX are not yet
   games.
-- Gate: `test/mcts/bench_action_policy.py`. The first candidate failed it at
-  budget 2 and was withdrawn; ChiSurf loads a policy only when bff ships one.
+- Gate: `test/mcts/bench_action_policy.py`, strict (never fewer right than
+  the declared priors at any budget). Candidates 1-5 failed it. **Candidate 6
+  passed and ships** (imp.bff 08742ec9, `data/model_search/policy/`): on 270
+  fresh runs per budget it matches or beats the priors at budgets 2, 4 and 8
+  with 11-23% fewer structures evaluated, at temperature 3, which the document
+  carries. ChiSurf's default `action_policy="shipped"` now runs it.
+- Block-aware state features (the worst member block of a joint residual) are
+  in the shipped policy.
 
-Still open: block-aware features with a modality token, `request_information`,
+Still open: a modality token in the state, `request_information`,
 invalid-acquisition validation before simulation, and one full photon stream
 reduced to several observables for multi-observable families.
