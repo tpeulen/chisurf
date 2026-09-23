@@ -44,8 +44,8 @@ points.
       directly in {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
 - [x] Provenance/data RPC handlers live in
       {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
-- [x] Node editor widget lives in {src}`chisurf/gui/widgets/node_editor/editor.py`.
-- [x] Node scene serialization lives in {src}`chisurf/gui/widgets/node_editor/scene.py`.
+- [x] Node editor widget lives in `chisurf/gui/widgets/node_editor/editor.py` (since removed).
+- [x] Node scene serialization lives in `chisurf/gui/widgets/node_editor/scene.py` (since removed).
 - [x] Node type registry lives in {src}`chisurf/gui/widgets/node_editor/registry.py`.
 - [x] Headless node graph model lives in {src}`chisurf/gui/widgets/node_editor/graph.py`.
 - [x] Existing MMFDB UI bug: `raw_data.list` returns `raw_data`, but the UI
@@ -90,7 +90,7 @@ points.
 
 ### 1. Make `NodeEditorWidget` reusable instead of demo-only
 
-Edit {src}`chisurf/gui/widgets/node_editor/editor.py`.
+Edit `chisurf/gui/widgets/node_editor/editor.py` (since removed).
 
 - [x] Add backward-compatible constructor kwargs:
   - [x] `build_example: bool = True`
@@ -124,7 +124,7 @@ Edit {src}`chisurf/gui/widgets/node_editor/editor.py`.
 
 ### 2. Add read-only interaction mode
 
-Edit {src}`chisurf/gui/widgets/node_editor/scene.py`.
+Edit `chisurf/gui/widgets/node_editor/scene.py` (since removed).
 
 - [x] Add `read_only: bool = False` to `NodeScene.__init__`.
 - [x] Store `self.read_only`.
@@ -155,8 +155,8 @@ Edit {src}`chisurf/gui/widgets/node_editor/scene.py`.
 
 ### 3. Preserve graph identity and metadata
 
-Edit {src}`chisurf/gui/widgets/node_editor/scene.py` and
-{src}`chisurf/gui/widgets/node_editor/edge_item.py`.
+Edit `chisurf/gui/widgets/node_editor/scene.py` (since removed) and
+`chisurf/gui/widgets/node_editor/edge_item.py` (since removed).
 
 - [x] In `NodeScene.from_dict()`, construct `NodeModel(..., id=node_id)`.
 - [x] Preserve top-level `meta` from loaded graph on the scene.
@@ -630,12 +630,12 @@ Review scope:
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/editor.py`
+- [x] `chisurf/gui/widgets/node_editor/editor.py` (since removed)
 - [x] {src}`chisurf/gui/widgets/node_editor/graph.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/scene.py`
+- [x] `chisurf/gui/widgets/node_editor/scene.py` (since removed)
 - [x] `test/plugins/test_sample_database_plugin.py`
 - [x] {src}`test/plugins/test_provenance_graph_adapter.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_read_only.py`
+- [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py` (since removed)
 - [x] {src}`chisurf/gui/widgets/node_editor/tests/test_graph_headless.py`
 
 Current review decision:
@@ -678,7 +678,7 @@ Findings fixed in this implementation pass:
   - [x] Added a test proving default construction uses ZMQ and does not import
         plugin backend services.
 - [x] **P2: A read-only `NodeViewerWidget` abstraction is now available.**
-      {src}`chisurf/gui/widgets/node_editor/node_viewer.py` owns the embeddable
+      `chisurf/gui/widgets/node_editor/node_viewer.py` (since removed) owns the embeddable
       read-only graph display API (`load_graph_dict`, `graph_dict`, `fit_graph`,
       `clear_graph`, selection signals), while `NodeEditorWidget` remains an
       editable subclass for workflow authoring/demo behavior.
@@ -706,10 +706,10 @@ Verification performed during review:
 
 Review scope:
 
-- [x] {src}`chisurf/gui/widgets/node_editor/node_viewer.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/editor.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_node_viewer.py`
-- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_read_only.py`
+- [x] `chisurf/gui/widgets/node_editor/node_viewer.py` (since removed)
+- [x] `chisurf/gui/widgets/node_editor/editor.py` (since removed)
+- [x] `chisurf/gui/widgets/node_editor/tests/test_node_viewer.py` (since removed)
+- [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py` (since removed)
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/backend/services.py`
@@ -888,7 +888,7 @@ API / transport modules:
 
 GUI modules:
 
-- [ ] Create {src}`chisurf/gui/widgets/node_editor/node_viewer.py` or
+- [ ] Create `chisurf/gui/widgets/node_editor/node_viewer.py` (since removed) or
       `chisurf/gui/widgets/node_viewer.py`.
 - [ ] Implement `NodeViewerWidget` as a thin read-only wrapper around the
       existing scene/view infrastructure.

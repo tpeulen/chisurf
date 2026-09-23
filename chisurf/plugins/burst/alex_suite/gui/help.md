@@ -113,5 +113,5 @@ csc alex-suite titration series.csv --populations 2
 - [Accurate FRET](docs/guides/41_accurate_fret.md)
 - [Selecting FRET populations](docs/guides/28_selecting_fret_populations.md)
 - [Burst variance analysis](docs/guides/08_burst_variance_analysis.md)
-- Kapanidis *et al.*, PNAS **101**, 8936 (2004) — [10.1073/pnas.0401690101](https://doi.org/10.1073/pnas.0401690101)
-- Hellenkamp *et al.*, Nat. Methods **15**, 669 (2018) — [10.1038/s41592-018-0085-0](https://doi.org/10.1038/s41592-018-0085-0)
+- {cite}`kapanidis2004`
+- {cite}`hellenkamp2018`

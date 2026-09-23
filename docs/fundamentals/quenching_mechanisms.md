@@ -237,7 +237,7 @@ on exactly the concepts on this page:
 4. **The decay that follows.** Quenching is a step function of distance — active
    whenever the dye is within the critical distance of a quenching atom — so
    each trajectory frame carries the summed rate of whichever quenchers it is in
-   contact with ({src}`chisurf/core/structure/av/dynamic.py#_quenching_rate_per_frame`),
+   contact with (`IMP.bff.quenching_rate_per_frame`),
    and integrating that along the trajectory gives the donor decay.
 
 The output is a **non-exponential donor decay computed from a structure**, and
@@ -288,8 +288,8 @@ demonstration that $Q_D$ is a property of the *conformation* and not of the dye.
   {ref}`concept-tcspc-lifetime`.
 - Implementation: the quencher table
   `chisurf/core/settings/constants/structure.json`, the trajectory-based rate
-  {src}`chisurf/core/structure/av/dynamic.py#_quenching_rate_per_frame`, the
-  fittable `AVDecayModel` in `chisurf/core/models/tcspc/av_decay.py`, and the
+  `IMP.bff.quenching_rate_per_frame`, the
+  structure-derived donor decay `IMP.bff.QuenchedDonorDecay`, and the
   QuEst simulator in `modules/quest`.
 - Fundamentals: {ref}`fundamentals-energy-transfer` ·
   {ref}`fundamentals-fluorophores` · {ref}`fundamentals-solvent`.

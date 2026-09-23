@@ -19,7 +19,7 @@ audience: developer
 | ZMQ JSON-RPC server | Working transport, `ServiceDispatcher`, session state, event bus |
 | Core "namespace" RPC methods | `dataset.*`, `fit.*`, `parameter.*`, `project.*`, `session.*`, `model.*`, `graph.*` |
 | Plugin discovery | `iter_plugins()` walks `__path__` and parses AST for `name`/`cli_entrypoint` — works well |
-| CLI registration | {src}`chisurf/core/cli.py` reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
+| CLI registration | `chisurf/core/cli.py` (since removed) reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
 
 ### What needs to change
 
@@ -789,7 +789,7 @@ The registry lives at {src}`chisurf/core/plugin/registry.py`. It reads manifest.
 
 **Why the CLI does not call `registry.register_cli`.** That method imports every
 plugin's CLI object to attach it to the Click group, which would make `csc --help`
-import the whole plugin tree — Qt, tttrlib and all. {src}`chisurf/core/cli.py` instead
+import the whole plugin tree — Qt, tttrlib and all. `chisurf/core/cli.py` (since removed) instead
 reads `entrypoints.cli` during the same filesystem+AST scan it already performs,
 registers a thin forwarding command per plugin, and imports the target module only
 when that command is actually invoked. `PluginRegistry.register_cli` remains for

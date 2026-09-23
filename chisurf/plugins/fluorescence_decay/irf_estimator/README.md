@@ -179,7 +179,7 @@ After estimation, check the single plot for:
 
 ## Reference
 
-**Gómez-Sánchez, A., Fersini, F., Zappone, S., Slenders, E., Donato, M., Pelicci, S., Tortarolo, G., Bega, G., Bouzin, M., Cardarelli, F., Lanzanò, L., Koho, S. V., & Vicidomini, G. (2024).** "Blind instrument response function identification from fluorescence decays." _Biophysical Reports_, 4(2), 100155.
+**Gómez-Sánchez, A., Devos, O., Vitale, R., Sliwa, M., Sakhapov, D., Enderlein, J., de Juan, A., & Ruckebusch, C. (2024).** "Blind instrument response function identification from fluorescence decays." _Biophysical Reports_, 4, 100155.
 
 DOI: [10.1016/j.bpr.2024.100155](https://doi.org/10.1016/j.bpr.2024.100155)
 

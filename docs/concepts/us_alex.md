@@ -60,7 +60,7 @@ Take a µs-ALEX stream and replace each photon's micro time by its **phase withi
 the alternation period**,
 
 $$
-\varphi = (t_{\text{macro}} - \Delta) \bmod T,
+\varphi = (t_{\text{macro}} - \Delta)\ \mathrm{mod}\ T,
 $$
 
 and the measurement becomes indistinguishable from a PIE measurement: the two

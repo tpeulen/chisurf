@@ -66,6 +66,8 @@ one that invents one.
 
 ## Further reading
 
+- {cite}`gomezsanchez2024` — the blind IRF identification this tool implements:
+  the IRF recovered from the measured decays, without a scatter measurement.
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md) — the
   convolution this inverts.
 - [Lifetime and anisotropy fitting](docs/guides/10_lifetime_anisotropy_fitting.md)

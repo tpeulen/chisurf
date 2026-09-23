@@ -75,3 +75,5 @@ is the worst-case reference, not a model of a real sample.
 * [Guide: κ² distributions](docs/guides/61_kappa2_distribution.md)
 * {cite}`dale1979` — that measured depolarization bounds κ² at all.
 * {cite}`sindbert2011` — the order-parameter expression this tool evaluates.
+* {cite}`peulen2017` — how dye mobility and the κ² uncertainty carry into a
+  model-based analysis of time-resolved FRET on labeled macromolecules.

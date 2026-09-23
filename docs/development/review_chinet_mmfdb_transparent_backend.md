@@ -510,7 +510,7 @@ Parameter metadata target:
 
 Required tests before merge:
 
-- {src}`modules/chinet/test/test_session_schema.py`
+- `modules/chinet/test/test_session_schema.py` (since removed)
   - destructive and non-destructive restore modes.
   - scalar/vector round trips.
 - {src}`test/fio/test_mmfdb_chinet_adapter.py`

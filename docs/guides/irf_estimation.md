@@ -370,8 +370,7 @@ The exponential fitting uses scipy.optimize.minimize with:
 
 ### Primary Reference
 
-**Gómez-Sánchez, A., Fersini, F., Zappone, S., Slenders, E., Donato, M., Pelicci, S., Tortarolo, G., Bega, G., Bouzin, M., Cardarelli, F., Lanzanò, L., Koho, S. V., & Vicidomini, G. (2024).** "Blind instrument response function identification from fluorescence decays." _Biophysical Reports_, 4(2), 100155.  
-DOI: [10.1016/j.bpr.2024.100155](https://doi.org/10.1016/j.bpr.2024.100155)
+{cite}`gomezsanchez2024` — the blind IRF identification algorithm the tool implements.
 
 ### Algorithm References
 

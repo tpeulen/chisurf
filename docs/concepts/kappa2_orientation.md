@@ -233,5 +233,7 @@ do not, because $E(R)$ is non-linear.
   plugin `chisurf/plugins/calculator/kappa2_dist/`.
 - Literature: {cite}`dale1979` established that measured depolarization bounds
   $\kappa^2$; {cite}`sindbert2011` gives the order-parameter form used here and
-  the linker-length measurements behind it; {cite}`lakowicz2006`,
+  the linker-length measurements behind it; {cite}`peulen2017` carries dye
+  mobility and the $\kappa^2$ uncertainty into time-resolved FRET analysis;
+  {cite}`lakowicz2006`,
   energy-transfer chapters, for the geometry and the averaging regimes.

@@ -86,23 +86,13 @@ the lifetime. A long-lived probe buys slower rotations; nothing else does.
 
 Original papers:
 
-- [10.1366/0003702953963652](https://doi.org/10.1366/0003702953963652) —
-  M. Koshioka, K. Sasaki, H. Masuhara, *Time-dependent fluorescence
-  depolarization analysis in three-dimensional microspectroscopy*, Appl.
-  Spectrosc. **49**, 224 (1995): the l1/l2 channel mixing of a high-NA objective.
-- [10.1371/journal.pone.0100526](https://doi.org/10.1371/journal.pone.0100526) —
-  M. Erdelyi, J. Simon, E. A. Barnard, C. F. Kaminski, *Analyzing receptor
-  assemblies in the cell membrane using fluorescence anisotropy imaging with
-  TIRF microscopy*, PLoS ONE **9**, e100526 (2014).
-- [10.1021/jp9833597](https://doi.org/10.1021/jp9833597) — J. Schaffer et al.,
-  *Identification of single molecules in aqueous solution by time-resolved
-  fluorescence anisotropy*, J. Phys. Chem. A **103**, 331 (1999): the g = S_VV/S_VH
-  convention with the l1/l2 correction.
+- {cite}`koshioka1995` — the l1/l2 channel mixing of a high-NA objective.
+- {cite}`erdelyi2014` — the same corrections in TIRF anisotropy imaging.
+- {cite}`schaffer1999` — the g = S_VV/S_VH convention with the l1/l2 correction.
 
 In the ChiSurf documentation:
 
 - [Fluorescence anisotropy](docs/concepts/anisotropy.md) — theory, r₀, rotors.
-
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md)
 - [Lifetime and anisotropy fitting](docs/guides/10_lifetime_anisotropy_fitting.md)
   — the step-by-step workflow.

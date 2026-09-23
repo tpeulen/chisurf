@@ -21,8 +21,8 @@ Primary source areas:
 - `chisurf/plugins/modelling/proteinmc/`
 - `chisurf/core/models/structure/`
 - {src}`modules/chimol/chimol/io/rmf.py`
-- {src}`modules/chimol/chimol/renderer/chimol_state.py`
-- {src}`modules/chimol/chimol/renderer/view.py`
+- `modules/chimol/chimol/renderer/chimol_state.py` (since removed)
+- `modules/chimol/chimol/renderer/view.py` (since removed)
 - `modules/chimol/chimol/app/`
 
 Reference-only source areas:
@@ -103,7 +103,7 @@ Recommended module layout:
 - {src}`chisurf/plugins/modelling/proteinmc/rmf.py`: thin compatibility import or ProteinMC-specific adapter around the shared writer.
 - {src}`chisurf/plugins/modelling/proteinmc/model.py`: ProteinMC runner passes frame metadata into the writer.
 - {src}`modules/chimol/chimol/io/rmf.py`: loader extracts hierarchy, coordinates, features, provenance, and PMI `stat` frame series.
-- {src}`modules/chimol/chimol/app/rmf_panel.py`: RMF feature/provenance/plot dock.
+- `modules/chimol/chimol/app/rmf_panel.py` (since removed): RMF feature/provenance/plot dock.
 
 The shared writer should support two levels of compatibility:
 
@@ -299,7 +299,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Add {src}`modules/chimol/chimol/app/rmf_panel.py`.
+- Add `modules/chimol/chimol/app/rmf_panel.py` (since removed).
 - Provide a dock with:
   - frame-series combo box,
   - line plot widget,
