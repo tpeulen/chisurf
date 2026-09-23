@@ -1,4 +1,10 @@
-"""The browser backend translates the engine's calls into WebGPU's JavaScript.
+"""chimol's renderer survives emtk's browser backend.
+
+The backend itself -- ``emtk.gpu.browser``, the translation from
+``create_buffer(size=..., usage=...)`` to ``createBuffer({size, usage})`` -- is
+emtk's and tested there (``emtk/tests/test_gpu_browser.py``). What is chimol's
+is the set of calls its engine makes, checked below against the same recording
+stand-in for ``js``.
 
 Why this can be tested without a browser
 ----------------------------------------
@@ -20,7 +26,7 @@ import sys
 import types
 
 import pytest
-from chimol.render.gpu import browser
+from emtk.gpu import browser
 
 
 class _Recorder:
@@ -76,126 +82,6 @@ def fake_js(monkeypatch):
     monkeypatch.setitem(sys.modules, "pyodide", pyodide)
     monkeypatch.setitem(sys.modules, "pyodide.ffi", ffi)
     return js
-
-
-def test_a_dict_becomes_an_object_and_not_a_map(fake_js):
-    """``to_js`` uses ``Object.fromEntries``.
-
-    Pyodide's default for a ``dict`` is a JavaScript ``Map``, and WebGPU reads
-    its descriptors as plain objects -- a ``Map`` arrives with every field
-    ``undefined``, which surfaces as a validation error naming a field the
-    caller did in fact pass.
-    """
-    assert browser.to_js({"size": 16}) == {"size": 16}
-
-
-def test_calls_are_camel_cased(fake_js):
-    """``create_buffer`` reaches JavaScript as ``createBuffer``."""
-    log: list = []
-    device = browser._Js(_Recorder("device", log))
-    device.create_buffer(size=16, usage=32)
-    assert log[0][0] == "device.createBuffer"
-
-
-def test_keyword_arguments_become_one_descriptor(fake_js):
-    """The engine's kwargs arrive as a single object, with camelCase keys."""
-    log: list = []
-    device = browser._Js(_Recorder("device", log))
-    device.create_texture(size=(4, 4, 1), format="rgba8unorm", usage=16)
-    _name, args, kwargs = log[0]
-    assert not kwargs, "descriptor fields must not stay as keyword arguments"
-    assert args[0] == {"size": [4, 4, 1], "format": "rgba8unorm", "usage": 16}
-
-
-def test_nested_descriptor_keys_are_camel_cased_too(fake_js):
-    """A render-pipeline descriptor is camelCased all the way down.
-
-    ``vertex.buffers[].attributes[].shader_location`` is four levels in, and a
-    translation that stopped at the top would pass the outer validation while
-    silently dropping the attribute's location -- which draws a plausible
-    picture out of the wrong bytes.
-    """
-    log: list = []
-    device = browser._Js(_Recorder("device", log))
-    device.create_render_pipeline(
-        vertex={
-            "entry_point": "vs_ui",
-            "buffers": [
-                {
-                    "array_stride": 48,
-                    "step_mode": "vertex",
-                    "attributes": [{"format": "float32x2", "offset": 0, "shader_location": 0}],
-                }
-            ],
-        }
-    )
-    _name, args, _kwargs = log[0]
-    vertex = args[0]["vertex"]
-    assert vertex["entryPoint"] == "vs_ui"
-    buffer = vertex["buffers"][0]
-    assert buffer["arrayStride"] == 48
-    assert buffer["stepMode"] == "vertex"
-    assert buffer["attributes"][0]["shaderLocation"] == 0
-
-
-def test_a_wrapped_object_is_unwrapped_when_passed_on(fake_js):
-    """Passing one wrapper into another call hands over the JavaScript object."""
-    log: list = []
-    inner = _Recorder("texture", log)
-    encoder = browser._Js(_Recorder("encoder", log))
-    encoder.copy_texture_to_buffer(browser._Js(inner))
-    _name, args, _kwargs = log[0]
-    assert args[0] is inner
-
-
-def test_private_attributes_are_not_forwarded(fake_js):
-    """A miss on ``_device`` raises rather than returning a JavaScript method.
-
-    Forwarded, it would return the *method* ``device`` -- truthy -- so a "have
-    I resolved a device yet" check would answer yes and the next call would
-    fail somewhere unrelated.
-    """
-    wrapper = browser._Js(_Recorder("adapter"))
-    with pytest.raises(AttributeError):
-        wrapper._device  # noqa: B018
-
-
-def test_the_sync_adapter_refuses_rather_than_blocking(fake_js, monkeypatch):
-    """Without a resolved adapter it raises, and says what the page must do.
-
-    It cannot block: there is no way to wait on a promise from the browser's
-    main thread, so a synchronous wait would deadlock the page rather than be
-    slow.
-    """
-    monkeypatch.setattr(browser, "_ADAPTER", None)
-    with pytest.raises(RuntimeError, match="await"):
-        browser.request_adapter_sync()
-
-
-def test_an_srgb_canvas_format_is_refused(fake_js):
-    """``configure_canvas`` refuses sRGB instead of quietly converting.
-
-    The browser never asks for one -- ``getPreferredCanvasFormat`` returns
-    ``bgra8unorm`` or ``rgba8unorm`` -- so an sRGB format can only arrive by
-    someone "fixing" it, and it washes out every colour: a clear of 0.09 comes
-    back as 85 instead of 23.
-    """
-    canvas = _Recorder("canvas")
-    device = browser._Js(_Recorder("device"))
-    with pytest.raises(ValueError, match="srgb"):
-        browser.configure_canvas(canvas, device, format="bgra8unorm-srgb")
-
-
-def test_availability_is_false_without_a_browser():
-    """On the desktop the browser backend must not select itself."""
-    assert browser.is_available() is False
-
-
-def test_the_backend_choice_falls_back_to_native():
-    """With no browser under it, the seam picks the native backend."""
-    from chimol.render.gpu import api
-
-    assert api.backend_name() == "native"
 
 
 def test_the_real_engine_survives_the_translation(fake_js):

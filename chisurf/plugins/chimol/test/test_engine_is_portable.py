@@ -70,8 +70,11 @@ ENGINE_MODULES = (
     "chimol.core.camera.state",
     "chimol.render.compute",
     "chimol.render.depth_cue",
-    "chimol.render.gpu.api",
-    "chimol.render.gpu.enums",
+    "emtk.gpu.api",
+    "emtk.gpu.enums",
+    "emtk.native",
+    "emtk.web.page",
+    "chimol.hosts.web.page",
     "chimol.ui.gui",
     "chimol.render.lighting",
     "chimol.render.markers",
@@ -372,12 +375,17 @@ def test_qt_is_opt_in_at_the_entry_point():
     assert '"--qt" in args' in source, "Qt is no longer opt-in"
 
 
-def test_only_the_native_backend_imports_the_gpu_binding():
-    """No module outside ``render/gpu/native.py`` may import ``wgpu``."""
-    backend = _CHIMOL / "render" / "gpu" / "native.py"
+def test_chimol_never_imports_the_gpu_binding():
+    """No chimol module imports ``wgpu``: the GPU is reached through ``emtk.gpu``.
+
+    The seam (``emtk.gpu.api``, served by ``emtk.gpu.native`` on the desktop
+    and ``emtk.gpu.browser`` in a page) is emtk's, so the engine runs in both
+    places unchanged -- and a direct import anywhere here is a module that
+    cannot load in a browser.
+    """
     offenders = []
     for path in sorted(_CHIMOL.rglob("*.py")):
-        if path == backend or "__pycache__" in path.parts:
+        if "__pycache__" in path.parts:
             continue
         code = "\n".join(
             line
@@ -388,7 +396,7 @@ def test_only_the_native_backend_imports_the_gpu_binding():
             offenders.append(str(path.relative_to(_CHIMOL)))
     assert not offenders, (
         "these modules reach the GPU binding directly instead of through "
-        "chimol.render.gpu.api: " + ", ".join(offenders)
+        "emtk.gpu.api: " + ", ".join(offenders)
     )
 
 

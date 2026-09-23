@@ -41,7 +41,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[4]
 #: grab, the viewer's selection, the strip's selected columns, and the
 #: chrome quad count of a fresh frame.
 _STATE = """() => {
-  const v = globalThis.chimolViewer;
+  const v = globalThis.emtkApp;
   const seqs = v.gui.sequences;
   const strip = [];
   for (let i = 0; i < seqs.length; i++) strip.push(seqs.get(i).selected.length);
@@ -50,14 +50,14 @@ _STATE = """() => {
     grab: v.sink._gui_grab,
     selected: v.view._selected_residues.length,
     strip: strip,
-    quads: v.draw(),
+    quads: globalThis.emtkPage.draw(),
   };
 }"""
 
 #: The centre of a named control, in CSS pixels, read from the panel's own
 #: layout so the test does not hard-code a screenshot's coordinates.
 _MENUBAR_TITLE = """(title) => {
-  const g = globalThis.chimolViewer.gui;
+  const g = globalThis.emtkApp.gui;
   const rects = g._menubar_rects;
   for (let i = 0; i < rects.length; i++) {
     const t = rects.get(i);
@@ -69,7 +69,7 @@ _MENUBAR_TITLE = """(title) => {
 
 _ROW_BUTTON = """(args) => {
   const [rowName, key] = args;
-  const g = globalThis.chimolViewer.gui;
+  const g = globalThis.emtkApp.gui;
   for (let i = 0; i < g.rows.length; i++) {
     if (g.rows.get(i).name !== rowName) continue;
     const r = g._button_rects.get(i).get(key);
@@ -79,7 +79,7 @@ _ROW_BUTTON = """(args) => {
 }"""
 
 _ROW_NAME = """(rowName) => {
-  const g = globalThis.chimolViewer.gui;
+  const g = globalThis.emtkApp.gui;
   for (let i = 0; i < g.rows.length; i++) {
     if (g.rows.get(i).name !== rowName) continue;
     const r = g._row_rects.get(i);
@@ -171,15 +171,15 @@ def test_the_info_panel_a_load_raises_goes_away_on_a_click(page):
     came back with the next frame -- and while it is up every press on the
     scene dismisses it instead of picking, which read as "clicks do nothing".
     """
-    _run = lambda c: page.evaluate("(c) => globalThis.chimolViewer.cmd.do(c)", c)  # noqa: E731
+    _run = lambda c: page.evaluate("(c) => globalThis.emtkApp.cmd.do(c)", c)  # noqa: E731
     _run("delete all")
     _run("load 148l.pdb")
-    page.evaluate("() => globalThis.chimolViewer.draw()")
-    assert page.evaluate("() => globalThis.chimolViewer.gui.info_visible") is True
+    page.evaluate("() => globalThis.emtkPage.draw()")
+    assert page.evaluate("() => globalThis.emtkApp.gui.info_visible") is True
     page.mouse.click(120, 400)
     page.wait_for_timeout(300)
-    page.evaluate("() => globalThis.chimolViewer.draw()")
-    assert page.evaluate("() => globalThis.chimolViewer.gui.info_visible") is False, (
+    page.evaluate("() => globalThis.emtkPage.draw()")
+    assert page.evaluate("() => globalThis.emtkApp.gui.info_visible") is False, (
         "the info panel came back: the close hook did not reach the viewer"
     )
     _reset(page)
@@ -254,7 +254,7 @@ def test_a_pick_highlights_the_strip_and_the_strip_picks(page):
     # A residue clicked in the strip reaches the viewer's selection: the row
     # names itself by object *id*, and the host must resolve that.
     strip = page.evaluate(
-        "() => { const g = globalThis.chimolViewer.gui; const r = g._seq_rows.get(0);"
+        "() => { const g = globalThis.emtkApp.gui; const r = g._seq_rows.get(0);"
         " return [g._seq_origin + 12 * 7, r.y + r.h / 2]; }"
     )
     _click(page, strip)

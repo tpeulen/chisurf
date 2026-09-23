@@ -137,7 +137,7 @@ def _current_native_users() -> set[str]:
     """Return the files that read a ``.native`` attribute in real code.
 
     Parsed, not matched: ``native`` is also a *module* name here
-    (``chisurf.core.fitting.mcts.native``, ``chimol.render.gpu.native``), and a
+    (``chisurf.core.fitting.mcts.native``, ``emtk.gpu.native``), and a
     text search reported every import of one and every docstring that named one
     as a reach past the seam. An attribute read is an ``ast.Attribute``; an
     import is not, and neither is prose.

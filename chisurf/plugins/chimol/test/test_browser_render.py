@@ -135,7 +135,7 @@ def rendered(server, tmp_path_factory):
         except Exception:  # noqa: BLE001 - reported through `status` below
             pass
         status = page.evaluate("() => document.getElementById('status')?.textContent || ''")
-        failure = page.evaluate("() => globalThis.chimolError || ''")
+        failure = page.evaluate("() => globalThis.emtkError || ''")
         page.screenshot(path=str(out))
 
         # Typed through the browser's own key handling -- `page.keyboard` emits
@@ -148,19 +148,19 @@ def rendered(server, tmp_path_factory):
             page.keyboard.type(TYPED_COMMAND, delay=5)
             page.keyboard.press("Enter")  # runs it
             page.wait_for_timeout(500)
-            prompt = page.evaluate("() => globalThis.chimolViewer.prompt_state()")
+            prompt = page.evaluate("() => globalThis.emtkApp.prompt_state()")
             page.screenshot(path=str(typed_out))
 
             page.keyboard.type(SELECT_COMMAND, delay=5)
             page.keyboard.press("Enter")
             page.wait_for_timeout(500)
-            prompt += "\n" + page.evaluate("() => globalThis.chimolViewer.prompt_state()")
+            prompt += "\n" + page.evaluate("() => globalThis.emtkApp.prompt_state()")
             page.screenshot(path=str(selected_out))
 
             page.keyboard.type(SHOW_COMMAND, delay=5)
             page.keyboard.press("Enter")
             page.wait_for_timeout(1500)
-            prompt += "\n" + page.evaluate("() => globalThis.chimolViewer.prompt_state()")
+            prompt += "\n" + page.evaluate("() => globalThis.emtkApp.prompt_state()")
             page.screenshot(path=str(cartoon_out))
 
         browser.close()

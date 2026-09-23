@@ -169,14 +169,14 @@ def page(server):
 
 
 _LOG = """() => {
-  const l = globalThis.chimolViewer.gui.command_line.log;
+  const l = globalThis.emtkApp.gui.command_line.log;
   const out = [];
   for (let i = 0; i < l.length; i++) out.push(l.get(i).kind + ': ' + l.get(i).text);
   return out;
 }"""
 
 _OBJECTS = """() => {
-  const rows = globalThis.chimolViewer.gui.rows;
+  const rows = globalThis.emtkApp.gui.rows;
   const out = [];
   for (let i = 0; i < rows.length; i++) out.push(rows.get(i).name);
   return out;
@@ -186,8 +186,8 @@ _OBJECTS = """() => {
 def _run(page, command: str) -> list[str]:
     """Run one command at the page and return the prompt lines it added."""
     before = len(page.evaluate(_LOG))
-    page.evaluate("(c) => globalThis.chimolViewer.cmd.do(c)", command)
-    page.evaluate("() => globalThis.chimolViewer.draw()")
+    page.evaluate("(c) => globalThis.emtkApp.cmd.do(c)", command)
+    page.evaluate("() => globalThis.emtkPage.draw()")
     return page.evaluate(_LOG)[before:]
 
 
@@ -233,11 +233,11 @@ def test_a_dropped_file_opens(page):
     page.dispatch_event("#view", "dragover", {"dataTransfer": transfer})
     page.dispatch_event("#view", "drop", {"dataTransfer": transfer})
     page.wait_for_function(
-        "() => globalThis.chimolViewer.prompt_state().includes('/mnt/dropped/dropped_fragment.pdb')",
+        "() => globalThis.emtkApp.prompt_state().includes('/mnt/dropped/dropped_fragment.pdb')",
         timeout=20_000,
     )
     assert "dropped_fragment" in page.evaluate(_OBJECTS)
-    assert page.evaluate("() => globalThis.chimolViewer.user_files_dir()") == "/mnt/dropped"
+    assert page.evaluate("() => globalThis.emtkApp.user_files_dir()") == "/mnt/dropped"
     _run(page, "delete all")
 
 
@@ -254,19 +254,19 @@ def test_a_mounted_folder_is_the_engines_filesystem(page):
           const root = await navigator.storage.getDirectory();
           const fh = await root.getFileHandle('opfs_fragment.pdb', {create: true});
           const w = await fh.createWritable(); await w.write(text); await w.close();
-          return await globalThis.chimolMountDirectory(root);
+          return await globalThis.emtkMountDirectory(root);
         }""",
         text,
     )
     assert where == "/mnt/local"
-    assert page.evaluate("() => globalThis.chimolViewer.user_files_dir()") == "/mnt/local"
+    assert page.evaluate("() => globalThis.emtkApp.user_files_dir()") == "/mnt/local"
     lines = _run(page, "load /mnt/local/opfs_fragment.pdb")
     assert not _errors(lines), lines
     assert "opfs_fragment" in page.evaluate(_OBJECTS)
     lines = _run(page, "save /mnt/local/out.pdb, opfs_fragment")
     assert not _errors(lines), lines
     size = page.evaluate(
-        """async () => { await globalThis.chimolMount.syncfs();
+        """async () => { await globalThis.emtkMount.syncfs();
           const root = await navigator.storage.getDirectory();
           const fh = await root.getFileHandle('out.pdb'); return (await fh.getFile()).size; }"""
     )
@@ -275,7 +275,7 @@ def test_a_mounted_folder_is_the_engines_filesystem(page):
 
 
 _PNG_STATS = """() => {
-  const v = globalThis.chimolViewer;
+  const v = globalThis.emtkApp;
   const g = v.__init__.__globals__;
   const exec = g.get('__builtins__').get('exec');
   const code = [
@@ -309,11 +309,11 @@ def test_ray_traces_a_picture_from_the_prompt(page):
     page.keyboard.type("ray /mnt/ray_test.png, 96, 72", delay=5)
     page.keyboard.press("Enter")
     page.wait_for_function(
-        "() => globalThis.chimolViewer.prompt_state().includes('ray: wrote')"
-        " || globalThis.chimolViewer.prompt_state().includes('error: ray')",
+        "() => globalThis.emtkApp.prompt_state().includes('ray: wrote')"
+        " || globalThis.emtkApp.prompt_state().includes('error: ray')",
         timeout=120_000,
     )
-    state = page.evaluate("() => globalThis.chimolViewer.prompt_state()")
+    state = page.evaluate("() => globalThis.emtkApp.prompt_state()")
     assert "ray: wrote /mnt/ray_test.png" in state, state
     width, height, distinct = page.evaluate(_PNG_STATS)
     assert (width, height) == (96, 72)

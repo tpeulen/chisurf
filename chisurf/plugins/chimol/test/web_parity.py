@@ -213,12 +213,12 @@ def browser_report(
             )
             status = page.evaluate("() => document.getElementById('status')?.textContent || ''")
             if "drawn" not in status:
-                failure = page.evaluate("() => globalThis.chimolError || ''")
+                failure = page.evaluate("() => globalThis.emtkError || ''")
                 browser.close()
                 raise RuntimeError(f"the page did not draw: {status}\n{failure}")
             page.screenshot(path=str(shot))
             raw = page.evaluate(
-                "() => globalThis.chimolViewer.parity_report()",
+                "() => globalThis.emtkApp.parity_report()",
             )
             browser.close()
     finally:

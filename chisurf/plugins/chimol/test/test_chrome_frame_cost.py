@@ -213,6 +213,7 @@ class _Backend:
         self._ui_atlas_size = (512, 512)
         self._ui_layout = object()
         self._ui_sampler = object()
+        self._ui_nearest_sampler = object()
         self._bind_layout = object()
         self._ui_frame_cache = None
         self._texture = _Texture()

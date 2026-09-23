@@ -19,6 +19,7 @@ it, the windowed path uses it, and neither carries its own copy of the clock.
 from __future__ import annotations
 
 import inspect
+import pathlib
 
 import pytest
 from chimol.viewport.canvas import CanvasRenderer
@@ -41,7 +42,7 @@ def test_the_page_goes_through_it_too():
     """The host that had none of it."""
     from chimol.hosts.web.page import Page
 
-    source = inspect.getsource(Page.draw)
+    source = inspect.getsource(Page.render)
     assert "self.sink.frame()" in source, source
 
 
@@ -52,11 +53,12 @@ def test_the_page_has_no_second_clock():
     assert not hasattr(page_module.Page, "pump"), (
         "the page pumps the movie itself again -- two clocks, one movie"
     )
-    boot = (page_module.__file__.rsplit("/", 1)[0]) + "/boot.js"
-    with open(boot, encoding="utf-8") as handle:
-        text = handle.read()
-    assert "viewer.pump()" not in text, "boot.js still advances the movie by hand"
-    assert "viewer.animating()" in text, "the rAF loop lost its continuation check"
+    import emtk.web
+
+    boot = pathlib.Path(emtk.web.__file__).with_name("boot.js")
+    text = boot.read_text(encoding="utf-8")
+    assert ".pump()" not in text, "boot.js still advances the movie by hand"
+    assert "page.animating()" in text, "the rAF loop lost its continuation check"
 
 
 def test_a_frame_fills_the_counters(monkeypatch):

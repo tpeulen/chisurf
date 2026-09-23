@@ -1,7 +1,7 @@
 """A dropped file opens, on whichever host it was dropped on.
 
-The page took drops from the day it existed: `boot.js` writes the bytes into
-the Pyodide filesystem and calls `open_path`, and
+The page took drops from the day it existed: emtk's `boot.js` writes the bytes
+into the Pyodide filesystem and calls the page's `open_path`, and
 `test_browser_demos.py::test_a_dropped_file_opens` pins it. The desktop took
 none. Dragging a structure onto the window did **nothing at all** -- no
 message, no error, no cursor saying it would not be accepted -- while the same
@@ -14,10 +14,10 @@ bytes in first and passes the path it wrote. Everything after that -- what a
 dropped file *means* -- is `CanvasRenderer.on_files_dropped`, which all three
 hosts call:
 
-* the page, through `Page.open_path`;
+* the page, through `Page.on_files_dropped` (emtk's `WebPage.open_path`);
 * Qt, through `dropEvent`;
 * the toolkit-free window, through glfw's `set_drop_callback`, which
-  `rendercanvas` does not wrap and the canvas reaches for itself.
+  `rendercanvas` does not wrap and `emtk.native.CanvasEvents` reaches for.
 
 What it means is `load` -- the same command a typed line takes, so a session, a
 labelling plan, a map and a structure are dispatched by suffix by the code that
@@ -64,7 +64,7 @@ emit("two", str(renderer.on_files_dropped([pdb, str(demos / "t4l_3gun.pdb")])))
 emit("after_two", str(atoms()))
 
 # An offscreen canvas has no window to drop on, and that is not an error.
-emit("hooked_offscreen", str(getattr(renderer, "_drop_callback", None) is not None))
+emit("hooked_offscreen", str(renderer._events.supports_file_drop))
 '''
 
 
@@ -123,7 +123,7 @@ def test_the_qt_widget_accepts_dropped_files(qtbot):
 
 
 def test_the_page_opens_through_the_same_seam():
-    """`Page.open_path` must not grow a second answer to "what is a drop".
+    """`Page.on_files_dropped` must not grow a second answer to "what is a drop".
 
     It had one -- its own `load` call -- which is how the desktop could have
     none for so long without anything looking wrong on the page.
@@ -132,7 +132,7 @@ def test_the_page_opens_through_the_same_seam():
 
     from chimol.hosts.web.page import Page
 
-    source = inspect.getsource(Page.open_path)
+    source = inspect.getsource(Page.on_files_dropped)
     assert "on_files_dropped" in source
     assert "cmd.do" not in source, "the page decides what a dropped file is again"
 
@@ -146,7 +146,7 @@ def test_every_host_says_it_takes_drops_and_means_it():
     could not take a drop at all. It is in the vocabulary now, and each host's
     claim is checked here rather than believed:
 
-    * the page listens in `boot.js`;
+    * the page listens in emtk's `boot.js`;
     * Qt answers Qt's own question, `acceptDrops()`;
     * the toolkit-free canvas answers by *asking its canvas* -- the claim is a
       property, not a constant, because the same class is also what an

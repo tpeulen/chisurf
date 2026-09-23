@@ -75,16 +75,16 @@ def page(server):
 #: JavaScript object handed to a Python call arrives as a `JsProxy` and is not
 #: a dict, which is a fact about Pyodide rather than about this panel.
 _PLAN = """() => {
-  const v = globalThis.chimolViewer;
+  const v = globalThis.emtkApp;
   v.cmd.do('add_dye resi 119 and name CB, AV1 20 4.5 3.5');
   v.cmd.do('add_dye resi 44 and name CB, AV1 20 4.5 3.5');
   v.cmd.do('fps_circle');
-  v.draw();
+  globalThis.emtkPage.draw();
   return v.gui.panels.get('fps_circle') ? 'open' : 'no panel';
 }"""
 
 _SHAPE = """() => {
-  const v = globalThis.chimolViewer;
+  const v = globalThis.emtkApp;
   const panel = v.gui.panels.get('fps_circle');
   if (!panel) return 'no panel';
   panel.refresh();
@@ -106,5 +106,5 @@ def test_the_scenes_dyes_become_a_circle(page):
 def test_the_page_draws_it_without_complaint(page):
     """A panel that throws mid-draw takes the frame with it."""
     page.evaluate(_PLAN)
-    quads = page.evaluate("() => globalThis.chimolViewer.draw()")
+    quads = page.evaluate("() => globalThis.emtkPage.draw()")
     assert int(quads) > 0

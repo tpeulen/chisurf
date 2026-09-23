@@ -79,12 +79,12 @@ def page(server):
 
 
 def _do(page, command: str) -> None:
-    page.evaluate("(c) => globalThis.chimolViewer.cmd.do(c)", command)
-    page.evaluate("() => globalThis.chimolViewer.draw()")
+    page.evaluate("(c) => globalThis.emtkApp.cmd.do(c)", command)
+    page.evaluate("() => globalThis.emtkPage.draw()")
 
 
 _LINES = """() => {
-  const g = globalThis.chimolViewer.gui;
+  const g = globalThis.emtkApp.gui;
   const out = [];
   const l = g.nerd_lines;
   if (!l) return out;
@@ -97,7 +97,7 @@ _LINES = """() => {
 def readout(page):
     _do(page, "nerd_mode on")
     for _ in range(6):
-        page.evaluate("() => globalThis.chimolViewer.draw()")
+        page.evaluate("() => globalThis.emtkPage.draw()")
         page.wait_for_timeout(60)
     return page
 
@@ -120,10 +120,10 @@ def test_the_counted_rows_are_not_all_zero(readout):
 def test_switching_it_off_takes_the_readout_away(readout):
     """`nerd off` is a switch, not a suggestion -- and it switches the counting off too."""
     _do(readout, "nerd_mode off")
-    readout.evaluate("() => globalThis.chimolViewer.draw()")
+    readout.evaluate("() => globalThis.emtkPage.draw()")
     assert readout.evaluate(_LINES) == [], "the readout survived being switched off"
     counting = readout.evaluate("""() => {
-      const s = globalThis.chimolViewer.renderer.stats;
+      const s = globalThis.emtkApp.renderer.stats;
       return s ? String(s.enabled) : 'none';
     }""")
     assert counting in ("False", "false"), (
@@ -131,7 +131,7 @@ def test_switching_it_off_takes_the_readout_away(readout):
     )
     _do(readout, "nerd_mode on")  # leave it as the later tests expect
     for _ in range(4):
-        readout.evaluate("() => globalThis.chimolViewer.draw()")
+        readout.evaluate("() => globalThis.emtkPage.draw()")
         readout.wait_for_timeout(60)
     assert readout.evaluate(_LINES), "switching it back on left it blank"
 
@@ -139,9 +139,9 @@ def test_switching_it_off_takes_the_readout_away(readout):
 def test_the_dbg_window_reads_the_same_live_stats(readout):
     """It used to snapshot `viewer.renderer._gpu.stats`, which a page has not got."""
     _do(readout, "dbg")
-    readout.evaluate("() => globalThis.chimolViewer.draw()")
+    readout.evaluate("() => globalThis.emtkPage.draw()")
     same = readout.evaluate("""() => {
-      const v = globalThis.chimolViewer;
+      const v = globalThis.emtkApp;
       const panel = v.gui.panels.get('dbg');
       if (!panel) return 'no panel';
       const stats = panel.stats;

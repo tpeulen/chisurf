@@ -80,7 +80,7 @@ outside = (min(rect.x + rect.w + 150.0, 895.0), rect.y + 50.0)
 
 
 def wheel(point, dy):
-    renderer._on_wheel({"x": point[0], "y": point[1], "dy": dy, "modifiers": []})
+    renderer._events._on_wheel({"x": point[0], "y": point[1], "dy": dy, "modifiers": []})
 
 
 check("panel_is_scrollable", gui.info_visible and gui.info_max_scroll() > 0,

@@ -77,20 +77,20 @@ def page(server):
         browser.close()
 
 
-_FRAME = "() => globalThis.chimolViewer.view.get_frame_position()"
-_RUNNING = "() => globalThis.chimolViewer.animating()"
+_FRAME = "() => globalThis.emtkApp.view.get_frame_position()"
+_RUNNING = "() => globalThis.emtkApp.animating()"
 
 
 def _do(page, command: str) -> None:
-    page.evaluate("(c) => globalThis.chimolViewer.cmd.do(c)", command)
-    page.evaluate("() => globalThis.chimolViewer.draw()")
+    page.evaluate("(c) => globalThis.emtkApp.cmd.do(c)", command)
+    page.evaluate("() => globalThis.emtkPage.draw()")
 
 
 @pytest.fixture(scope="module")
 def playing(page):
     """A trajectory loaded and the movie started, once for the module."""
     _do(page, "demo trajectory")
-    assert page.evaluate("() => globalThis.chimolViewer.view.get_total_frames()") > 1
+    assert page.evaluate("() => globalThis.emtkApp.view.get_total_frames()") > 1
     return page
 
 
@@ -120,7 +120,7 @@ def test_stopping_it_stops_the_frames(playing):
 def test_the_page_reports_no_errors_from_the_loop(playing):
     """A pump that raised every frame would flood the prompt rather than stop."""
     lines = playing.evaluate("""() => {
-      const l = globalThis.chimolViewer.gui.command_line.log;
+      const l = globalThis.emtkApp.gui.command_line.log;
       const out = [];
       for (let i = 0; i < l.length; i++) out.push(l.get(i).kind + ': ' + l.get(i).text);
       return out;
