@@ -285,8 +285,8 @@ difference between the channels. ChiSurf supports both a single stacked
   {src}`chisurf/core/fluorescence/anisotropy/decay.py#vm_rt_to_vv_vh` builds
   VV/VH from the magic-angle decay and the rotation spectrum; the anisotropy
   parameter group is
-  {src}`chisurf/core/models/tcspc/anisotropy.py#Anisotropy` and the combined-fit
-  model {src}`chisurf/core/models/tcspc/lifetime.py`.
+  {src}`chisurf/core/models/tcspc/classic_editor.py#Anisotropy` and the combined-fit
+  model is declared in {src}`chisurf/core/models/views/tcspc_lifetime.view.json`.
 - Key literature: {cite}`lakowicz2006` (anisotropy chapters) covers
   steady-state and time-resolved anisotropy, the Perrin equation and hindered
   rotors; {cite}`schaffer1999` is the $G = S_\parallel/S_\perp$ convention and

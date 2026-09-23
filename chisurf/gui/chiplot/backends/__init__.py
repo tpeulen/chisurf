@@ -20,7 +20,7 @@ _REGISTRY: dict[str, str] = {
     # name -> "module:ClassName"
     # emtk, the native renderer and the default: chimol's own toolkit, drawn
     # through its painter. What it does not draw yet raises a
-    # NotImplementedError naming the family and PRD-104; pyqtgraph stays
+    # NotImplementedError naming the family (open front: okf/subsystems/chiplot.md); pyqtgraph stays
     # selectable for those (CHISURF_PLOT_BACKEND=pyqtgraph).
     "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
     "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",

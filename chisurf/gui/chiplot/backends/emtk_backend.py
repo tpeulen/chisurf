@@ -20,7 +20,7 @@ and text labels, rectangle/ellipse/polygon ROIs, an inverted y-axis, the colour
 bar, arrows, the multi-panel grid and the image view. What is left -- filled
 curves, horizontal regions -- raises :class:`NotImplementedError` naming what is
 missing, because a plot that silently omits half of what it was asked to draw
-is worse than one that says so. Those are the rest of PRD-104.
+is worse than one that says so. Those are the open front recorded in okf/subsystems/chiplot.md.
 
 It is the default backend; ``CHISURF_PLOT_BACKEND=pyqtgraph`` or
 ``gui.plot.backend: pyqtgraph`` selects the other one.
@@ -1612,7 +1612,7 @@ class EmtkCanvas(base.Canvas):
     # -- the families this backend does not draw yet -------------------
     def _unsupported(self, what: str):
         raise NotImplementedError(
-            f"emtk: {what} is not drawn yet (PRD-104); use CHISURF_PLOT_BACKEND="
+            f"emtk: {what} is not drawn yet; use CHISURF_PLOT_BACKEND="
             f"pyqtgraph for a plot that needs it"
         )
 
@@ -1689,7 +1689,7 @@ class EmtkCanvas(base.Canvas):
         """Draw a draggable interval selector and return its handle."""
         if _orientation(orientation) != "vertical":
             raise NotImplementedError(
-                "emtk: a horizontal region is not drawn yet (PRD-104); use "
+                "emtk: a horizontal region is not drawn yet; use "
                 "CHISURF_PLOT_BACKEND=pyqtgraph for one"
             )
         low, high = (float(bounds[0]), float(bounds[1]))
@@ -1719,13 +1719,13 @@ class EmtkCanvas(base.Canvas):
         Rectangles, ellipses, polygons and polylines are drawn and can be
         dragged; a rectangle or ellipse is turned ``angle`` degrees about its
         centre. Resize and rotation grips are not drawn: a shape is moved whole,
-        and its size and angle are set programmatically (PRD-104).
+        and its size and angle are set programmatically.
         """
         shape = str(getattr(kind, "value", kind)).lower()
         if shape not in ("rect", "rectangle", "ellipse", "circle", "polygon", "polyline"):
             raise NotImplementedError(
-                f"emtk: a {shape!r} region of interest is not drawn yet "
-                f"(PRD-104); use CHISURF_PLOT_BACKEND=pyqtgraph for one"
+                f"emtk: a {shape!r} region of interest is not drawn yet; "
+                f"use CHISURF_PLOT_BACKEND=pyqtgraph for one"
             )
         shape = {"rectangle": "rect", "circle": "ellipse"}.get(shape, shape)
         vertices = [(float(x), float(y)) for x, y in (points or [])]

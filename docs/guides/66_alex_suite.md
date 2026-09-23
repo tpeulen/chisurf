@@ -202,7 +202,7 @@ csc alex-suite titration series.csv --populations 2
 
 ## See also
 
-- {src}`chisurf/plugins/burst/alex_suite/` — the plugin; its `api/` is Qt-free.
+- {src}`chisurf/plugins/burst/alex_suite/manifest.json` — the plugin; its `api/` is Qt-free.
 - [The µs-ALEX workflow, as a notebook](27_alex_smfret_workflow.md).
 - [Finding bursts, step by step](13_burst_identification.md),
   [background rates](15_background_rates.md),

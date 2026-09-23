@@ -70,7 +70,7 @@ the entire reason to build the histogram.
 :name: fig-pch-brightness
 :width: 100%
 
-**Two samples no intensity measurement can tell apart.** Open-system photon-counting histograms from {src}`chisurf/plugins/pch/api/algorithms.py#pch_open_system`: few bright molecules ($\epsilon T = 1.0$, $N = 2$) against many dim ones ($\epsilon T = 0.5$, $N = 4$). Both give $\langle k\rangle = 2$ and an identical intensity trace; the *shape* of $P(k)$ is where the difference is.
+**Two samples no intensity measurement can tell apart.** Open-system photon-counting histograms from {src}`chisurf/core/models/pch/pch.py#pch_open_system`: few bright molecules ($\epsilon T = 1.0$, $N = 2$) against many dim ones ($\epsilon T = 0.5$, $N = 4$). Both give $\langle k\rangle = 2$ and an identical intensity trace; the *shape* of $P(k)$ is where the difference is.
 ```
 
 ## Single-species PCH
@@ -91,7 +91,7 @@ $$
 In ChiSurf the confocal volume is the 3-D Gaussian (3DG), so the radial
 brightness profile is $\bar{PSF}\propto e^{-2x^2}$ and the integral is taken over
 the reduced coordinate $x = r/w$ with the spherical volume element
-$\mathrm{d}\mathbf{r} = 4\pi w^3 x^2\,\mathrm{d}x$ ({src}`chisurf/plugins/pch/api/algorithms.py#pch_single_species`) — that
+$\mathrm{d}\mathbf{r} = 4\pi w^3 x^2\,\mathrm{d}x$ ({src}`chisurf/core/models/pch/pch.py#pch_single_species`) — that
 $x^2$ shell weight is what makes the volume three-dimensional; without it the
 same integral describes a *1-D* Gaussian and returns $\gamma_2 = 2^{-1/2}$
 instead of $2^{-3/2}$. Second, the actual number of
@@ -105,7 +105,7 @@ P(k) = \sum_{n=0}^{\infty} \mathrm{Poisson}(n;N)\;
 $$
 
 That is exactly
-{src}`chisurf/plugins/pch/api/algorithms.py#pch_open_system`: a Poisson-weighted stack of repeated
+{src}`chisurf/core/models/pch/pch.py#pch_open_system`: a Poisson-weighted stack of repeated
 convolutions of $p^{(1)}$ with itself.
 
 ## Multiple species
@@ -119,7 +119,7 @@ P(k) = P_1 \ast P_2 \ast \cdots \ast P_S \,(k),
 $$
 
 each $P_s$ being an open-system PCH with its own $(\epsilon_s, N_s)$. ChiSurf's
-{src}`chisurf/plugins/pch/api/algorithms.py#pch_mixture` builds this with FFT convolutions, and the fit returns per-species
+{src}`chisurf/core/models/pch/pch.py#pch_mixture` builds this with FFT convolutions, and the fit returns per-species
 brightness $\epsilon_s$, occupancy $N_s$, and amplitude fractions.
 
 ## FIDA: the generating-function route
