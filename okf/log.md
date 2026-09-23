@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **ndX emtk port, core: the main window on emtk.**
+  - `ndxplorer/app`: model, view specs, plots (the map as one nearest-sampled texture), menus as data, file dialogs, headless capture into `parity/emtk/` in a scratch `$HOME`, `python -m ndxplorer --emtk`. Feature modules register through `ndxplorer/app/features` hooks.
+  - Qt-free logic moved out of the Qt classes for both GUIs: gates, map colour limits, colormap LUTs, settings bundle, axis setup; importing the data layer no longer imports Qt.
+  - emtk: view_form folds/widths/custom sections/spin boxes, data_table editing, folder dialog, nearest textures, window backgrounds, edge tick labels, short log axes.
+  - Main-view scenarios ticked in `tools/parity/features.md`; resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / core.
+
 * **ndX emtk port: playback, find projections and publication export (playback_export group).**
   - `PlaybackViewModel` is Qt-free. `tick(now)` is driven by the emtk frame loop (so playback works in a browser) and by a `QTimer` in the Qt window.
   - `VizRankModel` and `ProjectionRankModel` with `build_context` moved to `ndxplorer/analysis/` and run on injected runners. The emtk app scores in `emtk.tasks` slices.

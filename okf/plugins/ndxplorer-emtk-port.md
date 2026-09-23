@@ -22,6 +22,54 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### core (window, main view, hooks, capture)
+
+Re-measure with `python -m ndxplorer.app.capture -s open_mfd_folder -s axes_fdfa_tau
+-s axes_log_norm_bins -s colour_log_contrast -s menu_file -s clear_plot -s startup_empty`
+(arm64 env; every scenario runs in a scratch `$HOME`) and `pytest
+ndxplorer/tests/test_app/test_emtk_app.py ndxplorer/tests/test_qt_free_logic.py`
+(the core tests build `NdxApp(features=[])`). Compare each shot with `parity/qt/`
+by control inventory; the ticks are in `tools/parity/features.md`.
+
+1. **Parity status, 2026-09-23.** The main-view scenarios above are ticked:
+   same default axes, stored axis settings (Fd/Fa log 0.1..500 on selection),
+   counts 12237/12237, colour limits 1.00e+00 / 2.01e+02, bins and ranges as
+   spin boxes, shortcuts Ctrl+O/Ctrl+I, drop to open, status line. The look is
+   emtk's and ImPlot's default (user directive): no Qt palette, no proportional
+   font; `theme.py` only maps x/y/z/gate to ImPlot's first colormap colours.
+   Deliberate difference: `log #` re-derives vmin/vmax in log10 units; the Qt
+   window keeps linear limits over a log image (its map washes out).
+2. **Open, core:** the window title with the file name (`global`). The native
+   and Tk hosts take a fixed title; a host API to retitle (`control.window_title`
+   read each frame) has to go into emtk `native.py` / `tk_host.py`, which the HiDPI
+   work was editing at the time.
+3. **Check on a real Retina screen** after the emtk HiDPI fix (emtk `d7d1f23`
+   and later): offscreen captures run at ratio 1 and hid glyphs drawn 2x too
+   large and a window opened at ~986x605 instead of 1400x900. The view specs
+   still use fixed pixel widths for bins (58 px) and buttons; re-check them
+   for clipping at the real ratio.
+4. **Browser boot not taken yet.** `ndxplorer.app.frame:make_app` is the factory
+   for `python -m emtk.web.serve --app ...`; nothing under `ndxplorer/app` imports
+   Qt (a test checks a fresh process) and the data layer imports without Qt
+   (package `__init__`s are lazy), but tttrlib for Pyodide is still being built.
+5. **Hooks** (`features/__init__.py`): actions/available/fields, menu_entries,
+   custom_sections (`playback`, `draw_mask` in the core spec), tabs,
+   draw_windows, draw_plot/plot_input, mask_terms, map_image, on_data_changed,
+   on_z_select, animating, files_dropped, capture_ops/targets/actions; plus
+   `NdxApp.open_menu` and `show_status`. Add a hook rather than editing a
+   feature from the core.
+
+Qt-free logic both GUIs call (moved, not copied): `core/gates.py`,
+`core/histograms.py` (display_counts, colour_limits, auto_contrast_limits),
+`plotting/colormap_lut.py` (pyqtgraph's map files read without pyqtgraph),
+`settings/bundle.py`, `utils/axis_helpers.settings_for_axis`,
+`DataSource.merge(warn=...)`. emtk gained on the way: view_form folds, fixed
+widths, host-drawn custom sections, spin boxes (`style: "spin"` / `spin: true`),
+combo-box choices, data_table editing (check boxes, cell edits, delete),
+`FileDialog(mode="folder")`, `Texture(filter="nearest")`, windows with an opaque
+background, edge tick labels kept inside the frame, labelled minor ticks on
+short log axes, `Style.frame_border_size`, the Qt host honouring `animating()`.
+
 ### playback_export (playback, find projections, publication export)
 
 Re-measure with `python -m ndxplorer.app.capture -s playback -s playback_image_frames
