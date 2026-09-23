@@ -107,6 +107,9 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    accessible_volume
+   hydrodynamics
+   dye_quenching
+   structure_trajectories
    molecular_surfaces
    imaging_flim_phasor
    region_properties

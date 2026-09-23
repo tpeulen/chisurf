@@ -1,0 +1,37 @@
+{
+  "steps": [
+    {
+      "title": "What a FRET line tells you",
+      "text": "A static species sits on its <b>static line</b> in the E–τ_F plot. A molecule exchanging between two states within the burst bows towards longer lifetimes, onto a <b>dynamic line</b>. We will draw one of each.<br/><br/>The tool starts with one <i>FD (Gaussian)</i> component, which is what the static line needs.",
+      "target": {"tab": "Components"}
+    },
+    {
+      "title": "Step 1 — choose what varies",
+      "text": "Open <b>Sweep</b>. Set <i>Vary</i> to <b>C0 … · RDA0</b>, the mean distance, with Min 20 and Max 120 Å. Set <i>τ_D0</i> to your donor-only lifetime (4 ns if you have none).<br/><br/>The Gaussian width w in the Editor is the linker width, which bends the line away from the diagonal. 6 Å is typical.",
+      "target": {"tab": "Sweep"}
+    },
+    {
+      "title": "Step 2 — compute the static line",
+      "text": "Press <b>+ Add FRET line</b>. The orange curve is the static line. At τ_F = 2 ns it sits near E = 0.56, while the diagonal 1 − τ_F/τ_D0 gives 0.50.",
+      "target": {"action": "Add FRET line"},
+      "await": true
+    },
+    {
+      "title": "Step 3 — a second state",
+      "text": "On <b>Components</b>, press <b>+ Add</b> for a second FD (Gaussian). In the Editor, set component C0's R_DA to one state (e.g. 40 Å) and C1's to the other (70 Å).",
+      "target": {"action": "+ Add"},
+      "await": true
+    },
+    {
+      "title": "Step 4 — sweep the fraction",
+      "text": "Back on <b>Sweep</b>, set <i>Vary</i> to <b>fraction · C0</b>, Min 0 and Max 1, then press <b>+ Add FRET line</b> again. The new curve joins the static line at both states and bows out between them. A population in that gap exchanges within the burst.",
+      "target": {"action": "Add FRET line"},
+      "await": true
+    },
+    {
+      "title": "Use the lines",
+      "text": "<b>Save CSV</b> writes every line (τ_F, τ_X, E per point). <b>Push to ndX</b> overlays them on visible ndX overlay panels, over your burst histogram.",
+      "target": {"action": "Push to ndX"}
+    }
+  ]
+}

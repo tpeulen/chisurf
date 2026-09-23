@@ -183,6 +183,73 @@ believed to be static: a dynamic population would be mistaken for a
 mis-calibration and vice versa. Independent confirmation comes from
 {ref}`concept-bva` or {ref}`concept-burst-2cde`.
 
+### The lines in closed form
+
+Every FRET line comes from one relation, $E = 1 - \langle\tau\rangle_x/\tau_{D(0)}$,
+plotted against $\langle\tau\rangle_F$. The lines differ only in which lifetime
+spectrum is averaged. Write the moments of the donor lifetime over a
+distance distribution $p(R)$ as
+
+$$
+m_k = \int p(R)\,\tau(R)^k\,dR,
+\qquad \tau(R) = \frac{\tau_{D(0)}}{1 + (R_0/R)^6},
+\qquad \langle\tau\rangle_x = m_1,\quad \langle\tau\rangle_F = \frac{m_2}{m_1}.
+$$
+
+**Static line.** For a single sharp distance, $m_2 = m_1^2$ and the line is the
+diagonal $E = 1 - \langle\tau\rangle_F/\tau_{D(0)}$. The **linker correction**
+replaces the sharp distance with a Gaussian of width $\sigma$ around each mean
+distance and sweeps the mean. This lifts the line above the diagonal. With
+$\tau_{D(0)}$ = 4 ns, $R_0$ = 52 Å and $\sigma$ = 6 Å, the line passes through
+$E = 0.558$ at $\langle\tau\rangle_F$ = 2.0 ns, where the diagonal gives 0.500.
+Because $m_1$ and $m_2$ come from the same sweep, the line is often reported
+as a polynomial $\langle\tau\rangle_x = f(\langle\tau\rangle_F)$, which turns
+a burst's fitted lifetime into its species-averaged lifetime. A
+multi-exponential donor is handled the same way, with each donor component
+averaged over $p(R)$ and then over its amplitudes.
+
+**Dynamic line, sharp states.** Two states with lifetimes $\tau_1$, $\tau_2$
+mixed with species fraction $x$ give
+$\langle\tau\rangle_x = x\tau_1 + (1-x)\tau_2$ and
+$\langle\tau\rangle_x\langle\tau\rangle_F = x\tau_1^2 + (1-x)\tau_2^2$.
+Eliminating $x$ gives the dynamic line {cite}`barth2022`
+
+$$
+E = 1 - \frac{1}{\tau_{D(0)}}\,\frac{\tau_1\tau_2}{\tau_1 + \tau_2 - \langle\tau\rangle_F}.
+$$
+
+**Dynamic line with linkers.** When each state carries its own linker
+distribution, the same elimination with moments $m_k^{(1)}$, $m_k^{(2)}$ gives
+
+$$
+\langle\tau\rangle_x =
+\frac{m_1^{(1)} m_2^{(2)} - m_1^{(2)} m_2^{(1)}}
+     {\big(m_1^{(1)} - m_1^{(2)}\big)\langle\tau\rangle_F - \big(m_2^{(1)} - m_2^{(2)}\big)},
+$$
+
+which reduces to the sharp-state line when $m_2 = m_1^2$. Putting the
+linker-averaged lifetimes $m_1^{(i)}$ into the sharp-state formula instead is a
+common shortcut and is wrong. For states at 40 and 70 Å with $\sigma$ = 6 Å,
+it misplaces the line by up to 0.03 in $E$. ChiSurf's
+{src}`chisurf/core/fluorescence/fret/lines.py` builds both lines from the
+mixed lifetime spectra and agrees with the moment formula to four decimals.
+
+**More than two states, or other shapes.** A mixture of any lifetime models
+gives the same construction: the spectra add as species and the plotted
+lifetime stays fluorescence-averaged. The FRET-line generator
+({doc}`guide </guides/82_fret_lines>`) sweeps a parameter of any registered
+FRET model (a Gaussian or worm-like-chain distance distribution, a discrete
+distance, a plain lifetime), or the fraction of one component of a mixture.
+Three exchanging states no longer give a line. They fill an area bounded by
+the three pairwise dynamic lines, and every population exchanging among them
+lies inside it {cite}`barth2022`.
+
+**Off the line is not the same as dynamic.** Excess width beyond shot noise
+can come from acceptor photophysics rather than conformational exchange
+{cite}`kalinin2010b`. A population off the static line has to be checked
+against a correctly measured $\tau_{D(0)}$, $\gamma$ and linker width before
+it is read as dynamics.
+
 ## Self-consistency: the factors and the gates depend on each other
 
 The reference populations are identified by their stoichiometry — which is
@@ -330,3 +397,4 @@ does not know.
 - {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
+- {cite}`kalinin2010b` — excess E-distribution width from acceptor photophysics, not dynamics.

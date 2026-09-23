@@ -304,6 +304,7 @@ class LLTFGUIWizard(ChisurfDockTool):
         # Create central widget
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
+        self.ensure_help_toolbar(title="Lazy Lifetime Analysis — help")
 
         # Create main layout
         main_layout = QtWidgets.QVBoxLayout()

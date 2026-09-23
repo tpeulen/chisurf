@@ -1,0 +1,39 @@
+{
+  "_comment": "Guided tour for the Batch-Analysis wizard. Steps point at real wizard rows and controls and wait for the user. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "One fit, many datasets",
+      "text": "Every item in the batch starts from the same template parameters, so the numbers that come out are comparable. That only works if the template is good: optimise one representative fit by hand <b>before</b> this. Six steps.",
+      "target": {}
+    },
+    {
+      "title": "Pick datasets already loaded",
+      "text": "Anything loaded in ChiSurf can join the batch. Hover a row to see the curve.",
+      "target": {"panel": "Loaded data"},
+      "await": {"hint": "Open <b>Loaded data</b> and tick the datasets to process."}
+    },
+    {
+      "title": "Or add files",
+      "text": "Files are loaded one by one and fitted after the loaded datasets. A folder adds everything in it.",
+      "target": {"attr": "files"}
+    },
+    {
+      "title": "Choose the template",
+      "text": "The fit whose parameter values — and fixed flags — seed every run.",
+      "target": {"attr": "selected_fit_name"},
+      "await": {"hint": "Choose the <b>Template fit</b>."}
+    },
+    {
+      "title": "Where the results go",
+      "text": "A CSV here; a DOCX report and a ZIP of per-run curve exports are written beside it.",
+      "target": {"attr": "save_path"}
+    },
+    {
+      "title": "Run it",
+      "text": "Each item is restored to the template, fitted, exported and captured. When it finishes, scan the <b>Chi2r</b> column in <b>Results</b> first — a jump marks a sample the template does not describe.",
+      "target": {"action": "Run batch"},
+      "await": {"hint": "Press <b>▶️ Run batch</b>."},
+      "links": [{"text": "Guide", "doc": "docs/guides/78_model_comparison_and_batch.md"}]
+    }
+  ]
+}

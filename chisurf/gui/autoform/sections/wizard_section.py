@@ -85,6 +85,14 @@ class WizardWidget(QtWidgets.QWidget):
                 font-weight: bold;
                 font-size: 14px;
             }
+            /* The platform highlight paints highlighted-text on a near-white
+               fill, which hid the current step's label entirely. */
+            QListWidget::item:selected,
+            QListWidget::item:selected:active,
+            QListWidget::item:selected:!active {
+                background: rgba(128, 160, 210, 0.35);
+                color: palette(text);
+            }
             """
         )
         for step in self._steps:

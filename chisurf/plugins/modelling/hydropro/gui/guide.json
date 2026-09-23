@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for HydroPro. Steps point at real controls and wait for the user to press them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this tool computes",
+      "text": "HydroPro predicts the <b>translational diffusion coefficient</b> of a rigid protein from its PDB file, with the external HYDROPRO program. The same run writes the rotational relaxation times you compare with an anisotropy decay.<br/><br/>HYDROPRO is downloaded separately; it is not part of ChiSurf.",
+      "target": {}
+    },
+    {
+      "title": "Point at the program",
+      "text": "Choose the HYDROPRO 10 binary. Its file name must contain <b>hydropro</b>: any other name is treated as HYDRO++, and then the settings in this form are not used.",
+      "target": {"action": "Executable"},
+      "await": {"hint": "Press <b>Executable…</b> and select the HYDROPRO binary."}
+    },
+    {
+      "title": "Choose the structures",
+      "text": "One job per PDB file. Remove crystal waters, ligands and alternate conformations first: every non-hydrogen atom except water oxygens becomes part of the body.",
+      "target": {"action": "Select files"},
+      "await": {"hint": "Press <b>Select files…</b> and pick one or more PDB files."}
+    },
+    {
+      "title": "INDMODE and AER go together",
+      "text": "Mode 1 (atomic, shell) with AER = 2.9 Å is the reference. Mode 2 needs 4.8 Å and mode 4 needs 6.1 Å. AER contains the hydration layer and is calibrated — keep it at these values.",
+      "target": {"attr": "aer"}
+    },
+    {
+      "title": "Temperature and viscosity set the answer",
+      "text": "Every diffusion coefficient scales as T/η. ETA is in poise: water at 20 °C is 0.01 P. Enter your buffer's viscosity if it is not water.",
+      "target": {"attr": "eta"}
+    },
+    {
+      "title": "Mass only matters for sedimentation",
+      "text": "RM, VBAR and RHO enter the sedimentation coefficient and intrinsic viscosity, not the diffusion coefficient. Replace the 100 000 Da placeholder with the real mass if you want those.",
+      "target": {"attr": "rm"}
+    },
+    {
+      "title": "Run",
+      "text": "The jobs run off the GUI thread; an output window shows the program's console. Each structure gets a folder under ~/.hydropp_gui.",
+      "target": {"action": "Run"},
+      "await": {"hint": "Press <b>Run</b>."}
+    },
+    {
+      "title": "Read the table, then the report",
+      "text": "The table shows D<sub>t</sub> in cm²/s. The rotational relaxation times are in <b>&lt;name&gt;-res.txt</b> in the job folder. <b>Save CSV</b> writes the table; copy reports you want to keep, because the next run overwrites them.",
+      "target": {"action": "Save CSV"}
+    }
+  ]
+}

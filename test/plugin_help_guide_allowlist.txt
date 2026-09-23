@@ -11,13 +11,10 @@ chisurf/plugins/burst/burst_fcs_correlator/gui
 chisurf/plugins/burst/burst_mle_analysis
 chisurf/plugins/calculator/fret_calculator/gui
 chisurf/plugins/calculator/hub/gui
-chisurf/plugins/calculator/phasor_calculator/gui
 modules/chimol/chimol/hosts/qt
 chisurf/plugins/core/acq/gui
-chisurf/plugins/core/batch_analysis/gui
 chisurf/plugins/core/boarding
 chisurf/plugins/core/code_editor
-chisurf/plugins/core/f_test/gui
 chisurf/plugins/core/help/gui
 chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
@@ -29,8 +26,6 @@ chisurf/plugins/core/switch_user
 chisurf/plugins/core/updater
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
-chisurf/plugins/fluorescence_decay/lltf
-chisurf/plugins/fret_line/gui
 chisurf/plugins/microscopy/clsm/gui
 chisurf/plugins/microscopy/clsm_generator/gui
 chisurf/plugins/microscopy/imaging_tools/gui
@@ -48,11 +43,9 @@ chisurf/plugins/misc/games/pong
 chisurf/plugins/misc/games/tetris
 chisurf/plugins/modelling/fps_json_editor/gui
 chisurf/plugins/modelling/fret/gui
-chisurf/plugins/modelling/hydropro/gui
 chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer
 chisurf/plugins/pch/gui
-chisurf/plugins/quenching_estimator/gui
 chisurf/plugins/spectra_downloader/gui
 chisurf/plugins/traj/fret_trajectory
 chisurf/plugins/traj/potential_energy
@@ -63,7 +56,6 @@ chisurf/plugins/traj/traj_join
 chisurf/plugins/traj/traj_remove_clashes
 chisurf/plugins/traj/traj_rotate_translate
 chisurf/plugins/traj/traj_save_topology
-chisurf/plugins/traj/traj_tools/gui
 chisurf/plugins/tttr/audifier/gui
 chisurf/plugins/tttr/microtime_histogram
 chisurf/plugins/tttr/ptu_alex_creator/gui

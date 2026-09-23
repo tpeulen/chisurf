@@ -1,0 +1,37 @@
+{
+  "_comment": "Guided tour for Lazy Lifetime Analysis (hand-built Qt panel, no view spec): steps target buttons by caption ('action') and output tabs ('tab'). Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "One decay, one IRF, choices made by rule",
+      "text": "This fits a single TCSPC decay with a few exponentials, reconvolved with a measured IRF. What makes it <b>lazy</b> is that the fit range, the background, the IRF shift and — if you ask — the number of components are decided by fixed rules instead of by you.<br/><br/>That is convenient and it is also the risk: each rule can be wrong for your data. Six steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the decay",
+      "text": "A text file with a time column in <b>ns</b> and a count column. Only the first two columns are read.<br/><br/>The plugin ships an example: <code>chisurf/plugins/fluorescence_decay/lltf/example/5-44_D0.dat</code>.",
+      "target": {"action": "Load..."},
+      "await": {"hint": "Press the first <b>Load...</b> and pick a decay file."}
+    },
+    {
+      "title": "The IRF, and the settings file",
+      "text": "Load the IRF the same way (second <b>Load...</b>; the example is <code>IRF_D0.dat</code>).<br/><br/><b>Edit...</b> opens the configuration file: fit range (<code>start_fraction</code>, <code>area</code>), background window, IRF-shift grid, starting lifetimes, pile-up. Everything not on this panel lives there.",
+      "target": {"action": "Edit..."}
+    },
+    {
+      "title": "Fix the number of lifetimes yourself",
+      "text": "Start with a fixed number. <b>Find Optimal Number of Lifetimes</b> fits 1 … Max components and picks one, but its test needs a 14 % drop in reduced χ² at the default threshold whatever the photon count, and a failed fit with more components can make it count wrong.<br/><br/>Use it to <i>see</i> the sequence of χ², not to decide.",
+      "target": {"action": "Find Optimal"}
+    },
+    {
+      "title": "Run the fit",
+      "text": "The fit runs in a separate process; its log appears in <b>Analysis Output</b>. A <code>maxfev</code> warning there means the optimizer ran out of evaluations rather than converging.",
+      "target": {"action": "Fit"},
+      "await": {"hint": "Press <b>Fit</b>."}
+    },
+    {
+      "title": "Read the residuals, then move the range",
+      "text": "<b>Results</b> shows species fractions (they sum to 1 — not intensity fractions), lifetimes, χ² and the fit range, above the fit and its weighted residuals.<br/><br/>Structure in the residuals means the model is wrong in a way χ² hides. Then change <code>start_fraction</code> or <code>area</code> and fit again: on the example decay the short lifetime moves from 0.78 to 1.35 ns between two reasonable ranges. A lifetime that moves with the window is not determined by the data.",
+      "target": {"tab": "Results"}
+    }
+  ]
+}

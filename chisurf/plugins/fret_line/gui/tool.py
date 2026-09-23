@@ -174,6 +174,14 @@ class FRETLineTool(QtWidgets.QWidget):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(4)
+        # A plain QWidget cannot take the dock-tool mixin; ?/Guide go on a
+        # slim right-aligned row.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QtWidgets.QHBoxLayout()
+        help_row.addStretch(1)
+        root.addLayout(help_row)
+        attach_help_and_guide(self, help_row, title="FRET lines — help")
 
         self._dock = DockArea(self)
         self._dock.setNewTabButtonVisible(False)

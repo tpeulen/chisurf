@@ -70,6 +70,10 @@ noise pattern, and it usually takes only a handful of seeds to find out.
 
 ## The IRF
 
+The file must hold **one** column of counts (text or `.npy`). A two-column
+time/count file is not rejected but flattened into a single vector, which
+silently corrupts the IRF — strip the time column first.
+
 Without one, the generated decay starts instantaneously — a mathematical
 convenience no instrument produces. With one, the rise is smeared by the
 instrument's response, and **components shorter than the IRF width stop being
@@ -127,6 +131,8 @@ bin width comes in through the time axis.
 
 ## Further reading
 
+- [Decay Analysis, Lazy Lifetime Analysis and synthetic decays](docs/guides/76_decay_analysis_tools.md)
+  — every control, the CLI, and a ground-truth test of the automatic lifetime fit.
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md) — the model,
   the convolution and the averaged lifetimes.
 - [Lifetime and anisotropy fitting](docs/guides/10_lifetime_anisotropy_fitting.md)

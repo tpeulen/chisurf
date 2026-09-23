@@ -18,8 +18,11 @@ import os
 import pathlib
 import shutil
 import tempfile
+import time
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# LLTF's fitter calls plt.show(); keep it off-screen.
+os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np  # noqa: E402
 from qtpy.QtWidgets import QApplication  # noqa: E402
@@ -29,6 +32,10 @@ import chisurf.core.settings  # noqa: E402,F401
 FIG = pathlib.Path(__file__).parent / "figures"
 FIG.mkdir(exist_ok=True)
 _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+_PDB_148L = pathlib.Path("test/data/atomic_coordinates/pdb_files/148l.pdb").resolve()
+_T4L = pathlib.Path("chisurf/plugins/modelling/fret/examples/olga_t4l")
+_T4L_TOP = _T4L / "3GUN_NMSim_cl-rep-001.pdb"
+_T4L_DCD = _T4L / "3GUN_NMSim_cl-rep_894.dcd"
 
 
 def _grab(widget, name):
@@ -1871,6 +1878,504 @@ def _grab_fcs_toolbox():
     tool.close()
 
 
+def _pump(seconds):
+    app = QApplication.instance()
+    end = time.time() + seconds
+    while time.time() < end:
+        app.processEvents()
+        time.sleep(0.02)
+
+
+def _grab_lltf():
+    """Grab the Decay Analysis hub on its Lazy Lifetime Analysis panel.
+
+    Loads the plugin's bundled donor-only decay and IRF, runs the real Fit
+    button (a child ``lltf fit`` process) with a two-lifetime model and waits
+    for the Results tab.
+    """
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
+        LifetimeAnalysisTool,
+    )
+    from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
+
+    ex = pathlib.Path("chisurf") / "plugins" / "fluorescence_decay" / "lltf" / "example"
+    out = pathlib.Path(tempfile.mkdtemp(prefix="lltf_"))
+    hub = LifetimeAnalysisTool()
+    hub.resize(1280, 900)
+    hub.show()
+    _pump(0.3)
+    _grab(hub, "decay_analysis_hub.png")
+
+    hub.resize(1280, 1350)
+    hub.nav_list.setCurrentRow(2)  # 3. Lazy Lifetime Analysis
+    _pump(0.5)
+    lltf = hub.findChildren(LLTFGUIWizard)[0]
+    lltf.decay_file = str(ex / "5-44_D0.dat")
+    lltf.decay_file_edit.setText(lltf.decay_file)
+    lltf.irf_file = str(ex / "IRF_D0.dat")
+    lltf.irf_file_edit.setText(lltf.irf_file)
+    lltf.output_dir = str(out)
+    lltf.output_dir_edit.setText(str(out))
+    lltf._update_fit_button_state()
+    lltf.n_lifetimes_spin.setValue(2)
+    _pump(0.2)
+    lltf.fit_button.click()
+    for _ in range(600):  # the child process: ~5 s for one fixed-n fit
+        _pump(0.1)
+        if not lltf.analysis_tab.running:
+            break
+    _pump(0.5)
+    lltf.tab_widget.setCurrentIndex(1)
+    _pump(0.2)
+    _grab(hub, "lltf_output.png")
+    lltf.tab_widget.setCurrentWidget(lltf.results_tab)
+    from qtpy import QtWidgets
+    for sp in lltf.results_tab.findChildren(QtWidgets.QSplitter):
+        sp.setSizes([230, 520])
+    _pump(0.3)
+    _grab(hub, "lltf_results.png")
+
+    lltf.on_edit_config()
+    ed = lltf.settings_editor
+    ed.resize(560, 940)
+    _pump(0.3)
+    _grab(ed, "lltf_settings.png")
+
+
+def _grab_synthetic_decay():
+    """Grab the Synthetic Decay Generator in VM and VV/VH mode.
+
+    Two lifetimes (1.2 and 4.0 ns, the defaults) on 1024 bins of 32 ps, the
+    LLTF example IRF, 10^6 photons of Poisson noise; then the same spectrum as a
+    polarized pair with g = 1.1 and one 2 ns rotation.
+    """
+    import numpy as np
+
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import (
+        SyntheticDecayTool,
+    )
+
+    ex = pathlib.Path("chisurf") / "plugins" / "fluorescence_decay" / "lltf" / "example"
+    irf = np.loadtxt(ex / "IRF_D0.dat")[:, 1]
+    # 8 ps channels -> 32 ps: sum groups of four, keep the first 1024 bins
+    irf32 = irf[: 4 * (irf.size // 4)].reshape(-1, 4).sum(axis=1)[:1024]
+    irf_file = pathlib.Path(tempfile.mkdtemp(prefix="synth_")) / "irf_32ps.txt"
+    np.savetxt(irf_file, irf32)
+
+    tool = SyntheticDecayTool()
+    tool.resize(760, 1180)
+    m = tool.model
+    m.n_bins = 1024
+    m.bin_width = 0.032
+    m.irf_path = str(irf_file)
+    m.shot_noise = True
+    m.photon_count = 1e6
+    m.seed = 1
+    tool.form.sync_fields()
+    m.generate()
+    _pump(0.3)
+    _grab(tool, "synthetic_decay_vm.png")
+
+    from qtpy import QtWidgets
+
+    # Switch mode the way a user does: click the radio button (the choice
+    # rebuilds the form), then open the collapsed corrections panel.
+    for rb in tool.findChildren(QtWidgets.QRadioButton):
+        if rb.text().startswith("VV/VH"):
+            rb.click()
+    _pump(0.3)
+    for b in tool.findChildren(QtWidgets.QAbstractButton):
+        if "detection corrections" in b.text():
+            b.click()
+    _pump(0.2)
+    m.g_factor = 1.1
+    m.rotation_rows = [{"b": 0.38, "rho": 2.0}]
+    tool.form.sync_fields()
+    for b in tool.findChildren(QtWidgets.QAbstractButton):
+        if b.text().endswith("Generate") and b.isVisible():
+            b.click()
+            break
+    _pump(0.3)
+    _grab(tool, "synthetic_decay_vvvh.png")
+
+
+def _grab_phasor_calculator():
+    """Phasor calculator: 80 MHz, grid + ticks, FRET for tau_D0 = 4 ns, a 0.6/5 ns mixture."""
+    from chisurf.plugins.calculator.phasor_calculator.gui.tool import PhasorCalculatorTool
+    from chisurf.plugins.microscopy.img_pixel_phasor import analysis
+
+    tool = PhasorCalculatorTool()
+    m = tool._model
+    g1, s1 = analysis.lifetime_to_phasor(0.6, 80.0)
+    g2, s2 = analysis.lifetime_to_phasor(5.0, 80.0)
+    m.g1, m.s1, m.g2, m.s2 = float(g1), float(s1), float(g2), float(s2)
+    m.show_fret = True
+    m.tau_d0 = 4.0
+    m.show_component = True
+    m.show_mixing = True
+    m.frac1 = 0.5
+    m.show_cursor = True
+    gm = 0.5 * g1 + 0.5 * g2
+    sm = 0.5 * s1 + 0.5 * s2
+    m.cursor_g, m.cursor_s, m.cursor_radius = float(gm), float(sm), 0.04
+    tool._form.sync_fields()
+    tool._form.refresh_plots()
+    from qtpy import QtWidgets
+    for b in tool.findChildren(QtWidgets.QPushButton):
+        if "Results" in b.text():
+            b.click()
+    tool.resize(900, 640)
+    _grab(tool, "phasor_calculator_controls.png")
+    for tb in tool.findChildren(QtWidgets.QTabBar):
+        for i in range(tb.count()):
+            if tb.tabText(i) == "Phasor plot":
+                tb.setCurrentIndex(i)
+    tool._form.refresh_plots()
+    _grab(tool, "phasor_calculator.png")
+    return tool
+
+
+
+
+# ── guide 78: F-test and batch analysis on the ibh donor / donor-acceptor decays ──
+_IBH = pathlib.Path("test/data/tcspc/ibh_sample")
+_DT = 0.0141 * 8  # ns per channel after 8x rebinning (4096 -> 512)
+
+
+def _ibh_decay(name):
+    """Load an ibh .txt decay (8 header lines + 'Chan Data'), rebinned 8x."""
+    import numpy as np
+
+    y = np.loadtxt(_IBH / name, skiprows=9)[:, 1]
+    return y.reshape(-1, 8).sum(1)
+
+
+def _ibh_irf():
+    """The shared prompt, its constant background removed, rebinned 8x."""
+    import numpy as np
+
+    y = np.loadtxt(_IBH / "Prompt.txt", skiprows=9)[:, 1]
+    y = np.clip(y - np.median(y[-800:]), 0, None)
+    return y.reshape(-1, 8).sum(1)
+
+
+def _ibh_fit(decay, n):
+    import warnings
+
+    from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
+
+    warnings.simplefilter("ignore")
+    fit = build_lifetime_fit(
+        decay, bin_width=_DT, irf=_ibh_irf(), n_components=n,
+        initial_lifetimes=[0.5, 2.0, 4.5][-n:], fit_background=True,
+        start_bin=55, stop_bin=480,
+    )
+    return fit
+
+
+def _grab_f_test():
+    """F-test fed from real fits: 1- vs 2-exponential donor-only decay."""
+    from chisurf.plugins.core.f_test.gui.tool import FTestTool
+
+    d0 = _ibh_decay("Decay_577D.txt")
+    f1, f2 = _ibh_fit(d0, 1), _ibh_fit(d0, 2)
+    f1.run(); f2.run()
+    tool = FTestTool()
+    tool._load_fit(f1, "model1")
+    tool._load_fit(f2, "model2")
+    tool._load_fit(f2, "chi2max")
+    tool.resize(620, 560)
+    _grab(tool, "f_test_tool.png")
+    m = tool._model
+    print("ftest", m.chi2_1, m.n1, m.chi2_2, m.n2, m.conf_level, m.chi2_min, m.npars, m.dof, m.chi2_max)
+    return tool
+
+
+class _DirectClient:
+    """In-process stand-in for the fitting client: writes parameters directly.
+
+    The shipped FittingClient only talks JSON-RPC to the running server, so
+    without the main window there is none; run_batch takes any object with
+    these three methods.
+    """
+
+    def get_fit_objects(self):
+        import chisurf as cs
+
+        return list(cs.fits)
+
+    def _param(self, name, fit_index):
+        import chisurf as cs
+
+        for p in cs.fits[fit_index].model.parameters_all:
+            if p.name == name:
+                return p
+        return None
+
+    def set_parameter_value(self, parameter_name, value, fit_index):
+        p = self._param(parameter_name, fit_index)
+        if p is not None and not p.fixed:
+            p.value = value
+
+    def set_parameter_fixed(self, parameter_name, fixed, fit_index):
+        p = self._param(parameter_name, fit_index)
+        if p is not None:
+            p.fixed = fixed
+
+
+def _grab_batch_analysis():
+    """Batch wizard: template 2-exp fit on the donor-only decay, run over D0 and DA."""
+    import chisurf as cs
+    from chisurf.plugins.core.batch_analysis.core import runner
+    from chisurf.plugins.core.batch_analysis.gui.tool import BatchProcessingWizard
+
+    d0 = _ibh_decay("Decay_577D.txt")
+    da = _ibh_decay("Decay_577D+577A+GTPgS.txt")
+    template = _ibh_fit(d0, 2)
+    template.run()
+    ds_d0 = template.data
+    ds_da = _ibh_fit(da, 2).data
+    ds_d0.name, ds_da.name = "Decay_577D", "Decay_577D+577A+GTPgS"
+    cs.fits[:] = [template]
+    cs.imported_datasets[:] = [ds_d0, ds_da]
+
+    import chisurf.gui.widgets.fitting.fitting_client as fc
+
+    fc._FITTING_CLIENT = _DirectClient()  # the GUI installs the RPC client here
+    wiz = BatchProcessingWizard()
+    vm = wiz.model
+    vm.selected_dataset_indices = [0, 1]
+    from chisurf.plugins.core.batch_analysis.gui.loaded_datasets import LoadedDatasetSelector
+
+    for sel in wiz.findChildren(LoadedDatasetSelector):
+        sel.repopulate()
+    vm.selected_fit_name = vm.fit_names()[0] if vm.fit_names() else ""
+    vm.save_path = "/data/ibh/batch_results.csv"
+    wiz.assistant.auto_form.sync_fields()
+    results = runner.run_batch(0, vm.build_items())
+    vm._results = results
+    vm._status_html = "<p><b>Done.</b></p>"
+    for r in results.rows:
+        print("batch", r["Run"], r["Filename"], r["Parameter"], r["Fixed"], r["Value"], r["Chi2r"])
+    vm.notify("refresh")
+    wiz.resize(900, 620)
+    from qtpy import QtWidgets
+
+    nav = [w for w in wiz.findChildren(QtWidgets.QListWidget)]
+    shots = {
+        "Loaded data": "batch_analysis_loaded.png",
+        "Files & fit": "batch_analysis_files.png",
+        "Run": "batch_analysis_run.png",
+        "Results": "batch_analysis_results.png",
+    }
+    for lw in nav:
+        for i in range(lw.count()):
+            text = lw.item(i).text()
+            for key, png in shots.items():
+                if key in text:
+                    lw.setCurrentRow(i)
+                    wiz.assistant.auto_form.refresh_plots()
+                    _grab(wiz, png)
+    return wiz
+
+
+def _grab_hydropro():
+    """HydroPro with 148L selected and T4 lysozyme's mass and v-bar entered.
+
+    No HYDROPRO executable exists for macOS, so the grab shows the form ready to
+    run, with the structure listed in the results table and no value yet.
+    """
+    from chisurf.plugins.modelling.hydropro.gui.tool import HydroProTool
+
+    w = HydroProTool()
+    m = w._model
+    m.exe_path = ""
+    m.struct_files = str(_PDB_148L)
+    m.rm = 18700.0
+    m.vbar = 0.73
+    m.status = "Executable not configured"
+    w._form.rebuild()
+    w._refresh_table_files()
+    w.table.setColumnWidth(0, 470)
+    w.resize(760, 820)
+    _grab(w, "hydropro_tool.png")
+
+
+def _grab_hydropro_exe_dialog():
+    """The dialog Run opens when no executable is configured."""
+    from chisurf.plugins.modelling.hydropro.gui.dialogs import DownloadInfoDialog
+    from chisurf.plugins.modelling.hydropro.gui.tool import _DOWNLOAD_URL
+
+    d = DownloadInfoDialog(_DOWNLOAD_URL)
+    d.resize(560, 200)
+    _grab(d, "hydropro_exe_dialog.png")
+
+
+def _grab_quest_hub():
+    """Structure Tools with the QuEst entry selected (its error panel)."""
+    from chisurf.plugins.modelling.structure_tools.gui.tool import StructureToolsTool
+
+    w = StructureToolsTool()
+    w.resize(1100, 640)
+    w.show()
+    QApplication.instance().processEvents()
+    # select the QuEst panel by role
+    nav = getattr(w, "select_role", None)
+    if callable(nav):
+        nav("quest")
+    else:
+        from chisurf.plugins.modelling.structure_tools.gui.tool import STRUCTURE_PANELS
+
+        idx = [p.get("role") for p in STRUCTURE_PANELS].index("quest")
+        w.nav_list.setCurrentRow(idx)
+    for _ in range(5):
+        QApplication.instance().processEvents()
+    _grab(w, "quest_structure_tools.png")
+
+
+def _grab_traj_tools():
+    """Traj Tools hub on the T4L NMSim trajectory: Align, FRET, Energy Calc, Remove Clashed (guide 81)."""
+    from chisurf.core.structure import trajectory_data as md
+    from chisurf.gui.widgets.structure import potentialDict
+    from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
+
+    out = pathlib.Path(tempfile.mkdtemp(prefix="traj_tools_"))
+    top, dcd = str(_T4L_TOP), str(_T4L_DCD)
+    ref = md.load(top)
+    ca = ref.top.select("name CA")
+
+    def idx(res, name):
+        return int(ref.top.select(f"resSeq {res} and name {name}")[0])
+
+    tool = TrajectoryToolsTool()
+    tool.resize(900, 640)
+    tools = tool._tools
+
+    align = tools["Align"]
+    align.model.set_topology(top)
+    align.model.set_trajectory(dcd)
+    align.model.atom_selection = ", ".join(str(i) for i in ca)
+    align.model.save_aligned(str(out / "t4l_aligned.dcd"))
+    align.auto_form.sync_fields()
+    tool._select_tool("Align")
+    _grab(tool, "traj_tools_align.png")
+
+    fret = tools["FRET"]
+    fret.model.set_topology(top)
+    fret.model.set_trajectory(dcd)
+    section = fret.model.atom_pair_section
+    section.set_donor(idx(36, "CA"), idx(36, "CB"))
+    section.set_acceptor(idx(132, "CA"), idx(132, "CB"))
+    fret.model.forster_radius = 52.0
+    fret.model.tau0 = 4.0
+    fret.model.t_step = 1.0
+    fret.model.calc(str(out / "t4l_36_132.csv"))
+    fret.auto_form.sync_fields()
+    tool._select_tool("FRET")
+    _grab(tool, "traj_tools_fret.png")
+
+    energy = tools["Energy Calc"]
+    energy.model.set_topology(top)
+    energy.model.set_trajectory(dcd)
+    energy.model.stride = 10
+    for name in ("Radius of Gyration", "Clash potential"):
+        energy.model.add_potential(potentialDict[name](structure=None, parent=None), 1.0, name=name)
+    energy.model.process(str(out / "t4l_energy.txt"))
+    energy.auto_form.sync_fields()
+    tool._select_tool("Energy Calc")
+    _grab(tool, "traj_tools_energy.png")
+
+    clash = tools["Remove Clashed"]
+    clash.model.set_topology(top)
+    clash.model.set_trajectory(dcd)
+    clash.model.atom_selection = "name CA"
+    clash.model.min_distance = 3.5
+    clash.model.save_clash_free(str(out / "t4l_clash_free.dcd"))
+    clash.auto_form.sync_fields()
+    tool._select_tool("Remove Clashed")
+    _grab(tool, "traj_tools_clashes.png")
+
+    conv = tools["Convert"]
+    conv.model.set_topology(top)
+    conv.model.set_trajectory(dcd)
+    conv.model.set_target_directory(str(out))
+    conv.model.filename = "t4l_every10"
+    conv.model.stride = 10
+    conv.model.convert()
+    conv.auto_form.sync_fields()
+    tool._select_tool("Convert")
+    _grab(tool, "traj_tools_convert.png")
+    tool.close()
+
+
+def _grab_fret_line_tool():
+    """FRET Line Generator: static line (Gaussian sweep) + dynamic line 40<->70 A (guide 82)."""
+    from chisurf.core.fluorescence.fret.fret_line import find_parameter
+    from chisurf.plugins.fret_line.gui.tool import FRETLineTool
+
+    tool = FRETLineTool()
+    tool.resize(1100, 760)
+    # line 1: static line, sweep RDA0 of the one Gaussian component
+    tool._refresh_sweep_targets()
+    combo = tool._sweep_combo
+
+    def pick(label_part):
+        for i in range(combo.count()):
+            if label_part in combo.itemText(i):
+                combo.setCurrentIndex(i)
+                return
+        raise KeyError(label_part)
+
+    pick("C0 [FRET: FD (Gaussian)] · RDA0")
+    tool._min_spin.setValue(20.0)
+    tool._max_spin.setValue(120.0)
+    tool._tau_d0_spin.setValue(4.0)
+    tool._do_compute()
+    # line 2: dynamic line = mixture of two Gaussians (40 A, 70 A), sweep the fraction
+    m0 = tool._components[0]["model"]
+    find_parameter(m0, "distance.mean.0").value = 40.0
+    tool._add_component()
+    m1 = tool._components[1]["model"]
+    find_parameter(m1, "distance.mean.0").value = 70.0
+    tool._refresh_sweep_targets()
+    pick("fraction · C0")
+    tool._min_spin.setValue(0.0)
+    tool._max_spin.setValue(1.0)
+    tool._do_compute()
+    tool._comp_list.setCurrentRow(1)
+    QApplication.instance().processEvents()
+    # Editor: scroll past the IRF/convolution block to the FRET and distance groups.
+    from qtpy import QtWidgets
+
+    from chisurf.gui.widgets.dock_area.dock_stacked_tab_widget import DockStackedTabWidget
+
+    tool.show()
+    QApplication.instance().processEvents()
+    editor = tool._components[1]["editor"]
+    areas = [editor] if isinstance(editor, QtWidgets.QScrollArea) else []
+    areas += editor.findChildren(QtWidgets.QScrollArea) + [tool._editor_scroll]
+    area = max(areas, key=lambda a: a.verticalScrollBar().maximum())
+    area.verticalScrollBar().setValue(int(area.verticalScrollBar().maximum()))
+
+    def front(page):
+        # The dock's tab groups are QTabWidgets; bring *page*'s tab to the front.
+        groups = tool._dock.findChildren(QtWidgets.QTabWidget)
+        groups += tool._dock.findChildren(DockStackedTabWidget)
+        for tabs in groups:
+            for i in range(tabs.count()):
+                w = tabs.widget(i)
+                if w is page or (w is not None and w.isAncestorOf(page)):
+                    tabs.setCurrentIndex(i)
+                    return
+        print("tab not found for", page)
+
+    front(tool._sweep_combo.parentWidget())
+    _grab(tool, "fret_line_tool.png")
+    front(tool._lines_list.parentWidget())
+    _grab(tool, "fret_line_tool_lines.png")
+    tool.close()
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1914,6 +2419,16 @@ def main():
         _grab_intensity_trace,
         _grab_file_tools,
         _grab_fcs_toolbox,
+        _grab_lltf,
+        _grab_synthetic_decay,
+        _grab_phasor_calculator,
+        _grab_f_test,
+        _grab_batch_analysis,
+        _grab_hydropro,
+        _grab_hydropro_exe_dialog,
+        _grab_quest_hub,
+        _grab_traj_tools,
+        _grab_fret_line_tool,
     ):
         try:
             grab()

@@ -43,6 +43,7 @@ class TrajectoryToolsTool(ChisurfDockTool):
         """Build the main window layout."""
         central = QtWidgets.QWidget(self)
         self.setCentralWidget(central)
+        self.ensure_help_toolbar(title="Trajectory tools — help")
         layout = QtWidgets.QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
 

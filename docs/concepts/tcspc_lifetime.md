@@ -23,7 +23,9 @@ For the step-by-step workflows in ChiSurf, see the guides
 {doc}`/guides/10_lifetime_anisotropy_fitting`,
 {doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`;
 building the decay from a photon file is
-{doc}`/guides/73_tttr_decay_and_correlation`.
+{doc}`/guides/73_tttr_decay_and_correlation`; the Decay Analysis window, Lazy
+Lifetime Analysis and the Synthetic Decay Generator are
+{doc}`/guides/76_decay_analysis_tools`.
 
 ## The measurement
 
@@ -250,6 +252,98 @@ orthogonal evidence — global fitting, a maximum-entropy model, or anisotropy/
 spectral channels — not goodness-of-fit alone.
 ```
 
+(concept-tcspc-model-selection)=
+## How many components?
+
+Models with $n$ and $n+1$ exponentials are **nested**: setting one amplitude to
+zero turns the larger into the smaller, so its minimum $\chi^2$ can only be
+lower. Whether the drop is more than noise is a test, not a reading of
+$\chi^2_r$. With $\nu_n = N - p_n$ degrees of freedom and $\Delta p = p_{n+1}-p_n$
+(two per exponential), the **extra-sum-of-squares F-test** is
+
+$$
+F = \frac{(\chi^2_n - \chi^2_{n+1})/\Delta p}{\chi^2_{n+1}/\nu_{n+1}}
+\;\sim\; F(\Delta p,\, \nu_{n+1}),
+$$
+
+exact for linear models and approximate for a non-linear fit
+{cite}`motulsky1987`. Written in the ratio of reduced chi-squares that lifetime
+software usually reports, $R = \chi^2_{r,n}/\chi^2_{r,n+1} = (\nu_{n+1}+\Delta p\,F)/\nu_n
+\approx 1 + \Delta p\,(F-1)/\nu$. The threshold a given ratio must beat depends
+strongly on which distribution it is referred to. For $\nu = 3500$ channels and
+$\Delta p = 2$:
+
+| Rule | Referred to | $R$ needed at 68 % | at 95 % |
+|---|---|---|---|
+| extra-sum-of-squares | $F(\Delta p, \nu_{n+1})$ | 1.0001 | 1.0011 |
+| ratio of reduced $\chi^2$ (the **F-Test** tool) | $F(\nu_n, \nu_{n+1})$ | 1.016 | 1.057 |
+| ratio against $F(2, \nu_{n+1})$ (**Lazy Lifetime Analysis**) | — | 1.14 | 3.0 |
+
+The first is the textbook test; the second treats the two $\chi^2$ as
+independent, which they are not, and is correspondingly conservative; the third
+is what {doc}`/guides/76_decay_analysis_tools` measures and flags as a defect.
+
+Three cautions apply whichever rule is used.
+
+- **Significance is not physics.** At $10^6$ photons the extra-sum test accepts
+  a component that lowers $\chi^2_r$ by 0.1 %. An IRF that is slightly wrong in
+  shape or position produces exactly such residual structure, and an extra
+  exponential absorbs it. A component is established when it survives a change of
+  IRF, of fit range and of starting values, and when a distribution model
+  ({ref}`concept-maximum-entropy`) or a global fit finds it too.
+- **Close lifetimes are poorly separable.** Exponentials are far from
+  orthogonal: two lifetimes within a factor of about two are strongly correlated
+  with each other and with their amplitudes, and the separation that a given
+  photon budget allows falls off steeply with their ratio
+  {cite}`grinvald1974,istratov1999`.
+- **The test assumes both fits reached their minimum.** A multi-exponential fit
+  started from poor values can end *above* the fit with one component fewer; a
+  selection rule applied to such a sequence counts optimizer failures, not
+  components. Start the $n+1$ fit from the $n$ solution plus one new component,
+  and check that $\chi^2$ is monotone in $n$ before testing anything.
+
+Information criteria make the same trade without a threshold. For a
+least-squares fit with Gaussian errors, up to a constant,
+$\mathrm{AIC} = \chi^2 + 2p$ {cite}`akaike1974` and
+$\mathrm{BIC} = \chi^2 + p\ln N$ {cite}`schwarz1978`; the model with the smaller
+value wins. Adding an exponential costs 4 in AIC and $2\ln N$ in BIC (16 at
+3500 channels), so on well-filled decays AIC accepts components BIC rejects
+{cite}`burnham2004`.
+
+(concept-tcspc-synthetic-decays)=
+## Synthetic decays
+
+A decay generated from known parameters is the only data on which a fitted
+lifetime can be called right or wrong. ChiSurf builds one as the measurement
+does: the ideal decay on the channel grid, convolved with a normalized IRF, then
+sampled,
+
+$$
+p_k = \frac{(\mathrm{IRF}\otimes I)_k}{\sum_j (\mathrm{IRF}\otimes I)_j},\qquad
+y_k \sim \mathrm{Poisson}(N\,p_k).
+$$
+
+Independent Poisson channels are a multinomial draw of $N'$ photons with
+$N' \sim \mathrm{Poisson}(N)$, so the total itself scatters: a request for
+$10^4$ photons returned 9883 for one seed. Without the sampling step the result
+is the exact expectation $N p_k$ — the right input for checking that code
+reproduces a function, and the wrong one for anything about uncertainty, since
+$\chi^2$ against noise-free data has no distribution.
+
+The photon budget sets a floor on the precision of any lifetime estimate,
+$\sigma_\tau/\tau = F/\sqrt{N}$, with $F = 1$ for a single exponential recorded
+without IRF blur, background or truncation, and $F > 1$ once any of those enter
+{cite}`kollner1992`. 400 generated 4 ns decays of $10^4$ photons in a 65 ns
+window, estimated by their mean arrival time, gave $F = 1.03$. A window shorter
+than a few times the longest lifetime truncates the tail that carries the
+evidence for it, and $F$ grows accordingly.
+
+Two generator options model effects a real instrument has and the simple
+recipe above omits: a finite laser **period**, which wraps the unrelaxed tail of
+earlier pulses into the window through the periodic kernel (*Reconvolution*,
+above), and a sub-channel **time shift** of the IRF. Both are arguments of
+{src}`chisurf/core/fluorescence/decay.py#synthetic_decay`, not of the GUI.
+
 ## Global fitting
 
 Fitting several decays together — donor-only vs donor-acceptor, a titration, or
@@ -267,12 +361,14 @@ FRET distance distributions and anisotropy decays are resolved; see
   the two averages).
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
   {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime` ·
-  {doc}`/guides/73_tttr_decay_and_correlation` (histogramming a photon file).
+  {doc}`/guides/73_tttr_decay_and_correlation` (histogramming a photon file) ·
+  {doc}`/guides/76_decay_analysis_tools` (Decay Analysis, Lazy Lifetime
+  Analysis, Synthetic Decay Generator).
 - Implementation: convolution kernels
   {src}`chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
   {src}`chisurf/core/fluorescence/tcspc/corrections.py`; IRF helpers
-  {src}`chisurf/core/fluorescence/tcspc/irf.py`; lifetime models
-  {src}`chisurf/core/models/tcspc/lifetime.py`; Poisson-MLE facade
+  {src}`chisurf/core/fluorescence/tcspc/irf.py`; lifetime model view
+  {src}`chisurf/core/models/views/tcspc_lifetime.view.json`; Poisson-MLE facade
   {src}`chisurf/core/fluorescence/mle/__init__.py`.
 - Key literature: {cite}`oconnor1984` is the standard treatment of reconvolution
   and the nuisance terms; {cite}`becker2005` the instrumentation, pile-up and
@@ -281,4 +377,4 @@ FRET distance distributions and anisotropy decays are resolved; see
   applied above; {cite}`maus2001` the $2I^*$ statistic used for burst- and
   pixel-wise fits; {cite}`wahl2015` the timing electronics and acquisition
   modes; {cite}`isbaner2016` dead-time distortion and its correction.
-- Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for a quick answer, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.
+- Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for an automated discrete-exponential fit of one decay file, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.

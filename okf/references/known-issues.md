@@ -5794,3 +5794,65 @@ Found while writing `docs/guides/75_fcs_toolbox.md` ("Known issue" boxes).
 8. Fixed in the same change: `fcs-convert -v/--verbose` was a click on/off
    pair (`--verbose` turned it *off*); guide 16 imported a non-existent
    `fcs.correlate.correlate`.
+
+## Defects found writing guides 76–82 (2026-09-23, second round)
+
+Measured while documenting; each guide carries a "Known defects" note. Fixed
+in the same change: LLTF `dof` precedence (fixed=None gave dof 0);
+synthetic-decay IRF loader flattened two-column files (peak at channel 1238
+instead of 624); batch `restore_parameters` ignored `{"ok": False}` (now
+raises) and headless `run_batch` crashed on `cs.core.actions`;
+`open_maybe_zipped` had no append mode, so every multi-frame PDB write raised,
+and `write_pdb` fused `MODEL`/`ENDMDL` into ATOM lines with no serial; the
+AutoForm wizard's selected step was invisible; the `?`/Guide buttons were
+missing on phasor calculator, F-test, batch analysis, HydroPro, QuEst, LLTF,
+trajectory tools and FRET lines (help files existed, nothing drew them).
+
+Open:
+
+1. **QuEst does not import (blocker).** `modules/quest` imports
+   `IMP.bff.quenching`, `IMP.bff.av.compute`, `IMP.bff.av._kernels`,
+   `IMP.bff.distance_metrics` (`quest/core/dye_diffusion.py:47`, `photon.py:43,69`,
+   `av.py:52…477`); imp.bff 294e63fa moved them to top-level C++ `IMP.bff`.
+   Tool, `csc quest` and the Structure Tools panel all fail; 3/14 plugin tests.
+   Port in the quest repo. Two more tests fail because
+   `modules/imp-tricks/src/sitecustomize.py` imports IMP at start-up.
+2. **LLTF component-count test is mis-specified** (`lltf/core/fitter.py:661-672`):
+   `f.cdf(chi2r[n-1]/chi2r[n], 2, df2)` ≈ 1−e^(−R) whatever the photon count —
+   0.68 needs a 14 % χ²r drop. On 3.0+4.5 ns (seed 2) it picks n=1 at p=0.667
+   where extra-sum-of-squares gives p=6e-78. And nested fits start from
+   `linspace`, hit `maxfev` and end *worse* than n−1, so selection counts
+   optimizer failures (warm-start n+1 from n). Three differing default sets
+   (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
+   `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
+   `plt.show()` unconditionally.
+3. **F-test tool reports the variance-ratio form** (`core/math/statistics.py`
+   `f_test_confidence`), conservative for two fits of the same data: 0.59 vs
+   extra-sum-of-squares p=0.003 on ibh donor 2→3 exp. Add the ESS F as a second
+   readout.
+4. **Batch analysis:** mixed experiment types never rejected
+   (`datasets_have_mixed_types` has no caller); Results panel prints
+   full-precision floats in a short scroll box; CSV rows include placeholder
+   parameters (unused `a2`/`t2`). `python-docx` missing from the local arm64 env.
+5. **Phasor calculator:** Results panel lists only reference τ/g/s despite its
+   description; controls split each (g, s) pair across rows.
+6. **HydroPro:** an executable name without "hydropro" is treated as HYDRO++
+   and gets a hard-coded input (20 °C, 0.01 P, 1e5 Da); only D_t parsed; job
+   folders overwritten; `_DOWNLOAD_URL` is the HYDRO++ page; the startup
+   dialog's "don't show" is never saved. No macOS HYDROPRO binary exists.
+7. **Trajectory tools:** Convert split mode ignores stride and crashes with a
+   frame range (`chunk=None`); folder mode loads the folder itself; "Last
+   frame" exclusive. Join interleaves chunks A,B,A… and truncates to the
+   shorter trajectory. FRET tab has no topology row, so a DCD cannot be opened;
+   its dipole selectors overlap. 6/9 energy potentials fail on a plain
+   `Structure` (no `l_res`/`dist_ca`), Ramachandran returns 0, H-Bond is the
+   default. `trajectory_data` docstrings say nm but data are Å, and
+   `plugins/modelling/fret/core/trajectory.py:158` multiplies by 10
+   (E ≈ 2e-5 where 0.97 is right; `rmsd_matrix` too). traj2fret `__main__` is
+   Python 2.
+8. **FRET lines:** CLI docstring's "R(G,1)" names error (use
+   `distance.mean.0`); FD-Gaussian at σ=0 gives NaN; the plot's grey background
+   leaves axis labels low-contrast.
+9. **Synthetic Decay Generator:** unreachable from the GUI (`menu_hidden`, no
+   hub); a Mode change re-creates the promoted Generate/Save/Fit row.
+10. **Help-render guard:** `{src}` role cannot link a directory — link a file in it.

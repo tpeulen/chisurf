@@ -1,4 +1,4 @@
-"""F-test / χ²-max calculator (AutoForm, PRD-40).
+"""F-test / χ²-max calculator (AutoForm; see okf/subsystems/gui-autoform.md).
 
 Two coupled statistics tools in one declarative form (``ftest.view.json``):
 
@@ -13,8 +13,7 @@ three per-row "load from fit" menus) is replaced by an :class:`_FTestModel`
 whose fields AutoForm binds directly, plus a single compact *From fit ▾* toolbar
 button. ``FTestWidget`` is kept as a back-compat alias.
 
-The window is a :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 /
-PRD-36), so the window-level drag-drop dispatch, the lazy MMFDB accessors, and
+The window is a :class:`~chisurf.gui.widgets.tools.ChisurfDockTool`, so the window-level drag-drop dispatch, the lazy MMFDB accessors, and
 the declared-message status bar come from the shared base instead of being
 re-forked here.
 """
@@ -102,7 +101,7 @@ class FTestTool(ChisurfDockTool):
 
     name = "F-Test"
 
-    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1).
+    #: QSettings key for the base's geometry helpers.
     tool_settings_name: str = "FTestTool"
 
     class Information(ChisurfDockTool.Information):
@@ -158,6 +157,7 @@ class FTestTool(ChisurfDockTool):
         self._from_fit_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         self._from_fit_btn.setMenu(self._build_fit_menu())
         toolbar.addWidget(self._from_fit_btn)
+        self.ensure_help_toolbar(toolbar=toolbar, title="F-test — help")
 
     def _build_fit_menu(self) -> QtWidgets.QMenu:
         """One submenu per open fit, each with the three load targets."""

@@ -1,0 +1,42 @@
+{
+  "_comment": "Guided tour for QuEst embedded in ChiSurf. Targets follow QuEst's own form (quest/gui/quest.view.json) and its tour (quest/settings/tour.json). Steps wait for the user to press the buttons. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What QuEst predicts",
+      "text": "QuEst predicts how strongly a dye at one labelling site is quenched by the protein. The dye diffuses inside its accessible volume and is quenched by <b>photoinduced electron transfer</b> whenever it touches Trp, Tyr, Met, His, Pro or Cys. The result is a donor decay and a quantum yield.<br/><br/>Use it to <b>compare sites</b>: the rate table is a starting point, not a calibration.",
+      "target": {}
+    },
+    {
+      "title": "Load the structure",
+      "text": "Remove crystal waters first: they block the accessible volume and hide quenchers. A four-character PDB ID also works; T4 lysozyme (148L) is the example.",
+      "target": {"action": "Load PDB"},
+      "await": {"hint": "Press <b>Load PDB…</b> and choose a structure."}
+    },
+    {
+      "title": "Where the dye sits",
+      "text": "Chain, residue and atom of the attachment point, usually the Cβ of the labelled residue.",
+      "target": {"attr": "attachment_residue"}
+    },
+    {
+      "title": "The accessible volume",
+      "text": "Linker length, linker width and dye radius define where the dye centre can be. A longer linker reaches more quenchers.",
+      "target": {"attr": "av_linker_length"}
+    },
+    {
+      "title": "The quenching chemistry",
+      "text": "One row per residue type: the rate while in contact (kQ), the contact radius from the dye centre, the atoms that define the quenching centre, and the slow factor that models stickiness. Overlapping contacts add their rates.",
+      "target": {"tab": "Quenching Chemistry"}
+    },
+    {
+      "title": "Simulate",
+      "text": "QuEst walks the dye through its volume and races photons against the quenching rate along the walk.",
+      "target": {"action": "Run Simulation"},
+      "await": {"hint": "Press <b>Run Simulation</b>."}
+    },
+    {
+      "title": "Read the result",
+      "text": "The quantum yield is relative to the unquenched dye (1 means no quenching). The per-residue breakdown says which residue type does the quenching — the residue to move away from, or to mutate. Run twice with different seeds: if the quantum yield changes, lengthen the simulation.",
+      "target": {"tab": "Plots & Dynamics"}
+    }
+  ]
+}

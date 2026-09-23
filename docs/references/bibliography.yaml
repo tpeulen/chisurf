@@ -2923,3 +2923,498 @@ ensign2010:
   doi: 10.1021/jp906786b
   note: Bayesian change-point detection on photon arrival times. (Crossref lists the online date as 2009.)
   topics: [photons, kinetics, statistics]
+
+# ── Decay model selection and lifetime analysis ─────────────────
+motulsky1987:
+  authors: H. J. Motulsky, L. A. Ransnas
+  title: "Fitting curves to data using nonlinear regression: a practical and nonmathematical review"
+  journal: The FASEB Journal
+  year: 1987
+  volume: 1
+  pages: 365-374
+  doi: 10.1096/fasebj.1.5.3315805
+  note: The extra-sum-of-squares F test for comparing nested nonlinear models, in practical form.
+  topics: [statistics]
+
+akaike1974:
+  authors: H. Akaike
+  title: A new look at the statistical model identification
+  journal: IEEE Transactions on Automatic Control
+  year: 1974
+  volume: 19
+  pages: 716-723
+  doi: 10.1109/TAC.1974.1100705
+  note: The Akaike information criterion, -2 ln L + 2k.
+  topics: [statistics]
+
+schwarz1978:
+  authors: G. Schwarz
+  title: Estimating the Dimension of a Model
+  journal: The Annals of Statistics
+  year: 1978
+  volume: 6
+  pages: 461-464
+  doi: 10.1214/aos/1176344136
+  note: The Bayesian information criterion, -2 ln L + k ln N.
+  topics: [statistics]
+
+burnham2004:
+  authors: K. P. Burnham, D. R. Anderson
+  title: "Multimodel Inference: Understanding AIC and BIC in Model Selection"
+  journal: Sociological Methods & Research
+  year: 2004
+  volume: 33
+  pages: 261-304
+  doi: 10.1177/0049124104268644
+  note: What AIC and BIC each estimate, and why they disagree on how many parameters a large dataset supports.
+  topics: [statistics]
+
+grinvald1974:
+  authors: A. Grinvald, I. Z. Steinberg
+  title: On the analysis of fluorescence decay kinetics by the method of least-squares
+  journal: Analytical Biochemistry
+  year: 1974
+  volume: 59
+  pages: 583-598
+  doi: 10.1016/0003-2697(74)90312-1
+  note: Reconvolution least squares for decays, and how closely spaced lifetimes trade off against each other.
+  topics: [tcspc, statistics]
+
+istratov1999:
+  authors: A. A. Istratov, O. F. Vyvenko
+  title: Exponential analysis in physical phenomena
+  journal: Review of Scientific Instruments
+  year: 1999
+  volume: 70
+  pages: 1233-1257
+  doi: 10.1063/1.1149581
+  note: Review of why separating a sum of exponentials is ill-conditioned, and of the methods that try.
+  topics: [statistics, tcspc]
+
+kollner1992:
+  authors: M. Köllner, J. Wolfrum
+  title: How many photons are necessary for fluorescence-lifetime measurements?
+  journal: Chemical Physics Letters
+  year: 1992
+  volume: 200
+  pages: 199-204
+  doi: 10.1016/0009-2614(92)87068-Z
+  note: The photon-budget limit of a lifetime estimate, sigma_tau/tau = F/sqrt(N), with F = 1 in the ideal case.
+  topics: [tcspc, statistics]
+
+# ── Phasor analysis and nested-model comparison ─────────────────
+weber1981:
+  authors: G. Weber
+  title: Resolution of the fluorescence lifetimes in a heterogeneous system by phase and modulation measurements
+  journal: The Journal of Physical Chemistry
+  year: 1981
+  volume: 85
+  pages: 949-953
+  doi: 10.1021/j150608a006
+  note: Resolving the lifetimes and fractions of a heterogeneous emission from phase and modulation at one or more frequencies -- the algebra behind two-component phasor unmixing.
+  topics: [imaging, phasor, tcspc]
+
+jameson1984:
+  authors: D. M. Jameson, E. Gratton, R. D. Hall
+  title: The Measurement and Analysis of Heterogeneous Emissions by Multifrequency Phase and Modulation Fluorometry
+  journal: Applied Spectroscopy Reviews
+  year: 1984
+  volume: 20
+  pages: 55-106
+  doi: 10.1080/05704928408081716
+  note: Phase/modulation lifetimes, their inequality for mixtures, and the M cos(phi) vs M sin(phi) plot that the phasor plot later became.
+  topics: [imaging, phasor, tcspc]
+
+clayton2004:
+  authors: A. H. A. Clayton, Q. S. Hanley, P. J. Verveer
+  title: Graphical representation and multicomponent analysis of single-frequency fluorescence lifetime imaging microscopy data
+  journal: Journal of Microscopy
+  year: 2004
+  volume: 213
+  pages: 1-5
+  doi: 10.1111/j.1365-2818.2004.01265.x
+  note: A line fitted through a two-component pixel cloud meets the universal circle at the two lifetimes; closed form for tau_1,2 from slope and intercept.
+  topics: [imaging, phasor]
+
+redford2005:
+  authors: G. I. Redford, R. M. Clegg
+  title: Polar Plot Representation for Frequency-Domain Analysis of Fluorescence Lifetimes
+  journal: Journal of Fluorescence
+  year: 2005
+  volume: 15
+  pages: 805-815
+  doi: 10.1007/s10895-005-2990-8
+  note: The polar plot for frequency-domain lifetimes, including the instrument-response correction as a rotation and rescaling.
+  topics: [imaging, phasor]
+
+stefl2011:
+  authors: M. Štefl, N. G. James, J. A. Ross, D. M. Jameson
+  title: Applications of phasors to in vitro time-resolved fluorescence measurements
+  journal: Analytical Biochemistry
+  year: 2011
+  volume: 410
+  pages: 62-69
+  doi: 10.1016/j.ab.2010.11.010
+  note: Phasors for cuvette time-domain and frequency-domain data -- reference calibration with a known lifetime, multiple frequencies, and FRET/quenching trajectories.
+  topics: [phasor, tcspc]
+
+ranjit2018:
+  authors: S. Ranjit, L. Malacrida, D. M. Jameson, E. Gratton
+  title: Fit-free analysis of fluorescence lifetime imaging data using the phasor approach
+  journal: Nature Protocols
+  year: 2018
+  volume: 13
+  pages: 1979-2004
+  doi: 10.1038/s41596-018-0026-5
+  note: A step-by-step protocol for phasor FLIM -- calibration with a reference dye, cursors, fractional-intensity unmixing.
+  topics: [imaging, phasor]
+
+vallmitjana2020:
+  authors: A. Vallmitjana, B. Torrado, A. Dvornikov, S. Ranjit, E. Gratton
+  title: Blind Resolution of Lifetime Components in Individual Pixels of Fluorescence Lifetime Images Using the Phasor Approach
+  journal: The Journal of Physical Chemistry B
+  year: 2020
+  volume: 124
+  pages: 10126-10137
+  doi: 10.1021/acs.jpcb.0c06946
+  note: Higher harmonics add independent equations, so more components can be resolved per pixel than the first harmonic alone allows.
+  topics: [imaging, phasor]
+
+# ── model comparison / least squares ────────────────────────────────
+
+bevington2003:
+  authors: P. R. Bevington, D. K. Robinson
+  title: Data Reduction and Error Analysis for the Physical Sciences
+  journal: McGraw-Hill (3rd edition)
+  year: 2003
+  note: The chi-square and F distributions, the variance-ratio F test and the F test for an additional term in a least-squares fit. Book; no DOI.
+  topics: [statistics]
+
+johnson1992:
+  authors: M. L. Johnson, L. M. Faunt
+  title: Parameter estimation by least-squares methods
+  journal: Methods in Enzymology
+  year: 1992
+  volume: 210
+  pages: 1-37
+  doi: 10.1016/0076-6879(92)10003-V
+  note: Assumptions of least squares, and joint confidence regions from the F-statistic chi-square threshold.
+  topics: [statistics]
+
+straume1991:
+  authors: M. Straume, S. G. Frasier-Cadoret, M. L. Johnson
+  title: Least-Squares Analysis of Fluorescence Data
+  journal: Topics in Fluorescence Spectroscopy, Vol. 2 (Plenum)
+  year: 1991
+  pages: 177-240
+  doi: 10.1007/0-306-47058-6_4
+  note: Least squares for fluorescence decays -- weighting, goodness of fit, and confidence intervals by the F-statistic support plane.
+  topics: [statistics, tcspc]
+
+box1953:
+  authors: G. E. P. Box
+  title: Non-Normality and Tests on Variances
+  journal: Biometrika
+  year: 1953
+  volume: 40
+  pages: 318-335
+  doi: 10.1093/biomet/40.3-4.318
+  note: The variance-ratio F test is sensitive to non-normal errors -- why its nominal confidence should not be read to many digits.
+  topics: [statistics]
+
+wilks1938:
+  authors: S. S. Wilks
+  title: The Large-Sample Distribution of the Likelihood Ratio for Testing Composite Hypotheses
+  journal: The Annals of Mathematical Statistics
+  year: 1938
+  volume: 9
+  pages: 60-62
+  doi: 10.1214/aoms/1177732360
+  note: Twice the log-likelihood ratio of nested models is asymptotically chi-square in the number of extra parameters -- the likelihood analogue of the F test.
+  topics: [statistics]
+
+self1987:
+  authors: S. G. Self, K.-Y. Liang
+  title: Asymptotic Properties of Maximum Likelihood Estimators and Likelihood Ratio Tests under Nonstandard Conditions
+  journal: Journal of the American Statistical Association
+  year: 1987
+  volume: 82
+  pages: 605-610
+  doi: 10.1080/01621459.1987.10478472
+  note: When the extra parameter sits on a boundary (an amplitude at zero), the likelihood-ratio statistic is a chi-square mixture, not chi-square.
+  topics: [statistics]
+
+burnham2002:
+  authors: K. P. Burnham, D. R. Anderson
+  title: Model Selection and Multimodel Inference
+  journal: Springer (2nd edition)
+  year: 2002
+  doi: 10.1007/b97636
+  note: Information-criterion model selection, and why AIC differences rather than hypothesis tests compare non-nested models.
+  topics: [statistics]
+
+# ── Hydrodynamics and dye quenching ─────────────────────────────
+einstein1905:
+  authors: A. Einstein
+  title: Über die von der molekularkinetischen Theorie der Wärme geforderte Bewegung von in ruhenden Flüssigkeiten suspendierten Teilchen
+  journal: Annalen der Physik
+  year: 1905
+  volume: 322
+  pages: 549-560
+  doi: 10.1002/andp.19053220806
+  note: D = kT/(6πηR) for a sphere - the Stokes-Einstein relation.
+  topics: [hydrodynamics, fcs]
+
+sutherland1905:
+  authors: W. Sutherland
+  title: A dynamical theory of diffusion for non-electrolytes and the molecular mass of albumin
+  journal: The London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science
+  year: 1905
+  volume: 9
+  pages: 781-785
+  doi: 10.1080/14786440509463331
+  note: The same diffusion-friction relation, found independently the same year.
+  topics: [hydrodynamics]
+
+debye1929:
+  authors: P. Debye
+  title: Polar Molecules
+  journal: Chemical Catalog Company, New York
+  year: 1929
+  note: Rotational diffusion of a sphere, D_r = kT/(8πηR³) - the Debye half of Stokes-Einstein-Debye.
+  topics: [hydrodynamics, anisotropy]
+
+rotne1969:
+  authors: J. Rotne, S. Prager
+  title: Variational treatment of hydrodynamic interaction in polymers
+  journal: The Journal of Chemical Physics
+  year: 1969
+  volume: 50
+  pages: 4831-4837
+  doi: 10.1063/1.1670977
+  note: The hydrodynamic-interaction tensor between beads that bead-model programs use.
+  topics: [hydrodynamics]
+
+garciadelatorre1981:
+  authors: J. García de la Torre, V. A. Bloomfield
+  title: Hydrodynamic properties of complex, rigid, biological macromolecules - theory and applications
+  journal: Quarterly Reviews of Biophysics
+  year: 1981
+  volume: 14
+  pages: 81-139
+  doi: 10.1017/S0033583500002080
+  note: The bead-model theory - friction and diffusion tensors of an arbitrary rigid body.
+  topics: [hydrodynamics, structure]
+
+carrasco1999:
+  authors: B. Carrasco, J. García de la Torre
+  title: Hydrodynamic properties of rigid particles - comparison of different modeling and computational procedures
+  journal: Biophysical Journal
+  year: 1999
+  volume: 76
+  pages: 3044-3057
+  doi: 10.1016/S0006-3495(99)77457-6
+  note: Bead versus shell models, and why the shell model extrapolated to zero minibead size is the accurate one.
+  topics: [hydrodynamics]
+
+garciadelatorre2000:
+  authors: J. García de la Torre, M. L. Huertas, B. Carrasco
+  title: Calculation of hydrodynamic properties of globular proteins from their atomic-level structure
+  journal: Biophysical Journal
+  year: 2000
+  volume: 78
+  pages: 719-730
+  doi: 10.1016/S0006-3495(00)76630-6
+  note: HYDROPRO - a shell model built around the atoms, with one hydration parameter (AER) fitted once for all proteins.
+  topics: [hydrodynamics, structure]
+
+garciadelatorre2001:
+  authors: J. García de la Torre
+  title: Hydration from hydrodynamics. General considerations and applications of bead modelling to globular proteins
+  journal: Biophysical Chemistry
+  year: 2001
+  volume: 93
+  pages: 159-170
+  doi: 10.1016/S0301-4622(01)00218-6
+  note: What the hydration shell in a hydrodynamic model does and does not mean.
+  topics: [hydrodynamics]
+
+ortega2011:
+  authors: A. Ortega, D. Amorós, J. García de la Torre
+  title: Prediction of hydrodynamic and other solution properties of rigid proteins from atomic- and residue-level models
+  journal: Biophysical Journal
+  year: 2011
+  volume: 101
+  pages: 892-898
+  doi: 10.1016/j.bpj.2011.06.046
+  note: HYDROPRO 10 - the three INDMODEs and their AER values (2.9, 4.8, 6.1 Å).
+  topics: [hydrodynamics, structure]
+
+# ── PET quenching of dyes by amino acids ────────────────────────────
+
+neuweiler2003:
+  authors: H. Neuweiler, A. Schulz, M. Böhmer, J. Enderlein, M. Sauer
+  title: Measurement of submicrosecond intramolecular contact formation in peptides at the single-molecule level
+  journal: Journal of the American Chemical Society
+  year: 2003
+  volume: 125
+  pages: 5324-5330
+  doi: 10.1021/ja034040p
+  note: PET-FCS - dye-Trp contact switches fluorescence off, so the correlation function times contact formation.
+  topics: [photophysics, fcs]
+
+vaiana2003:
+  authors: A. C. Vaiana, H. Neuweiler, A. Schulz, J. Wolfrum, M. Sauer, J. C. Smith
+  title: Fluorescence quenching of dyes by tryptophan - interactions at atomic detail from combination of experiment and computer simulation
+  journal: Journal of the American Chemical Society
+  year: 2003
+  volume: 125
+  pages: 14564-14572
+  doi: 10.1021/ja036082j
+  note: Molecular dynamics of dye-Trp complexes - quenching happens in stacked van der Waals contact.
+  topics: [photophysics]
+
+marme2003:
+  authors: N. Marmé, J.-P. Knemeyer, M. Sauer, J. Wolfrum
+  title: Inter- and intramolecular fluorescence quenching of organic dyes by tryptophan
+  journal: Bioconjugate Chemistry
+  year: 2003
+  volume: 14
+  pages: 1133-1139
+  doi: 10.1021/bc0341324
+  note: Which dye classes Trp quenches, and how strongly - it follows the dye's reduction potential.
+  topics: [photophysics]
+
+chen2010:
+  authors: H. Chen, S. S. Ahsan, M. B. Santiago-Berrios, H. D. Abruña, W. W. Webb
+  title: Mechanisms of quenching of Alexa fluorophores by natural amino acids
+  journal: Journal of the American Chemical Society
+  year: 2010
+  volume: 132
+  pages: 7244-7245
+  doi: 10.1021/ja100500k
+  note: Alexa488 is quenched by Trp, Tyr, Met and His - static and dynamic contributions.
+  topics: [photophysics]
+
+# ── Superposition, clashes and FRET lines ───────────────────────
+horn1987:
+  authors: B. K. P. Horn
+  title: Closed-form solution of absolute orientation using unit quaternions
+  journal: Journal of the Optical Society of America A
+  year: 1987
+  volume: 4
+  pages: 629-642
+  doi: 10.1364/JOSAA.4.000629
+  note: The optimal rotation as the top eigenvector of a 4x4 matrix; the quaternion route to the Kabsch result, with no reflection case.
+  topics: [structure]
+
+coutsias2004:
+  authors: E. A. Coutsias, C. Seok, K. A. Dill
+  title: Using quaternions to calculate RMSD
+  journal: Journal of Computational Chemistry
+  year: 2004
+  volume: 25
+  pages: 1849-1857
+  doi: 10.1002/jcc.20110
+  note: Quaternion RMSD for molecules, and a proof that it gives the same answer as the Kabsch SVD.
+  topics: [structure]
+
+theobald2005:
+  authors: D. L. Theobald
+  title: Rapid calculation of RMSDs using a quaternion-based characteristic polynomial
+  journal: Acta Crystallographica Section A
+  year: 2005
+  volume: 61
+  pages: 478-480
+  doi: 10.1107/S0108767305015266
+  note: QCP - the minimal RMSD from the largest root of the characteristic polynomial, by Newton iteration and without the eigenvector.
+  topics: [structure]
+
+bondi1964:
+  authors: A. Bondi
+  title: van der Waals volumes and radii
+  journal: Journal of Physical Chemistry
+  year: 1964
+  volume: 68
+  pages: 441-451
+  doi: 10.1021/j100785a001
+  note: The van der Waals radii (C 1.70, N 1.55, O 1.52 A) that a clash criterion compares distances against.
+  topics: [structure]
+
+word1999:
+  authors: J. M. Word, S. C. Lovell, T. H. LaBean, H. C. Taylor, M. E. Zalis, B. K. Presley, J. S. Richardson, D. C. Richardson
+  title: 'Visualizing and quantifying molecular goodness-of-fit: small-probe contact dots with explicit hydrogen atoms'
+  journal: Journal of Molecular Biology
+  year: 1999
+  volume: 285
+  pages: 1711-1733
+  doi: 10.1006/jmbi.1998.2400
+  note: All-atom contacts; a van der Waals overlap of 0.4 A or more between non-bonded atoms is a serious clash.
+  topics: [structure]
+
+chen2010molprobity:
+  authors: V. B. Chen, W. B. Arendall, J. J. Headd, D. A. Keedy, R. M. Immormino, G. J. Kapral, L. W. Murray, J. S. Richardson, D. C. Richardson
+  title: 'MolProbity: all-atom structure validation for macromolecular crystallography'
+  journal: Acta Crystallographica Section D
+  year: 2010
+  volume: 66
+  pages: 12-21
+  doi: 10.1107/S0907444909042073
+  note: The clashscore - serious overlaps per 1000 atoms - as the standard steric validation of a structure.
+  topics: [structure]
+
+schroder2005:
+  authors: G. F. Schröder, U. Alexiev, H. Grubmüller
+  title: 'Simulation of fluorescence anisotropy experiments: probing protein dynamics'
+  journal: Biophysical Journal
+  year: 2005
+  volume: 89
+  pages: 3757-3770
+  doi: 10.1529/biophysj.105.069500
+  note: Dye orientation and anisotropy decays computed from MD trajectories; the source of traj2anisotropy in the trajectory FRET tool.
+  topics: [structure, anisotropy]
+
+hoefling2011:
+  authors: M. Hoefling, N. Lima, D. Haenni, C. A. M. Seidel, B. Schuler, H. Grubmüller
+  title: Structural heterogeneity and quantitative FRET efficiency distributions of polyprolines through a hybrid atomistic simulation and Monte Carlo approach
+  journal: PLoS ONE
+  year: 2011
+  volume: 6
+  pages: e19791
+  doi: 10.1371/journal.pone.0019791
+  note: FRET efficiency from atomistic trajectories with explicit kappa2(t); replacing it with 2/3 broadens and biases the result when orientations relax slowly.
+  topics: [fret, structure]
+
+kalinin2010b:
+  authors: S. Kalinin, E. Sisamakis, S. W. Magennis, S. Felekyan, C. A. M. Seidel
+  title: On the origin of broadening of single-molecule FRET efficiency distributions beyond shot noise limits
+  journal: Journal of Physical Chemistry B
+  year: 2010
+  volume: 114
+  pages: 6197-6206
+  doi: 10.1021/jp100025v
+  note: Rigid dsDNA shows E distributions wider than shot noise; acceptor photophysics, not chain dynamics, is the main cause - excess width alone does not prove dynamics.
+  topics: [fret, pda]
+
+# ── Restored from legacy plugin help ────────────────────────────
+garciadelatorre2007:
+  authors: J. García de la Torre, G. del Rio Echenique, A. Ortega
+  title: Improved calculation of rotational diffusion and intrinsic viscosity of bead models for macromolecules and nanoparticles
+  journal: Journal of Physical Chemistry B
+  year: 2007
+  volume: 111
+  pages: 955-961
+  doi: 10.1021/jp0647941
+  note: HYDRO++ - the bead-model calculation the HydroPro tool drives.
+  topics: [structure, hydrodynamics]
+
+hansen2004:
+  authors: S. Hansen
+  title: Translational friction coefficients for cylinders of arbitrary axial ratios estimated by Monte Carlo simulation
+  journal: Journal of Chemical Physics
+  year: 2004
+  volume: 121
+  pages: 9111-9115
+  doi: 10.1063/1.1803533
+  note: Friction factor of a rod - the Cylinder shape of the FCS calculator.
+  topics: [fcs, hydrodynamics]

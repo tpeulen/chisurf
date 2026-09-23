@@ -114,6 +114,62 @@ circle is, by construction, multi-exponential.
 **The universal circle at 80 MHz.** Single exponentials land on the arc — marked at 0.5, 1, 2, 4 and 8 ns, short lifetimes to the right. A pixel mixing a 0.6 ns and a 4 ns species lies on the chord between them, at the position the lever rule gives for its fractional intensities (quarter points shown). Anything strictly inside the arc is multi-exponential; nothing outside it is physical.
 ```
 
+## Apparent lifetimes
+
+A phasor in polar form is a phase $\varphi = \arctan(s/g)$ and a modulation
+$M = \sqrt{g^2 + s^2}$ — the two numbers a frequency-domain fluorometer measures
+directly. Inverting the single-exponential relations $\tan\varphi = \omega\tau$
+and $M = 1/\sqrt{1 + (\omega\tau)^2}$ gives two lifetimes from every point:
+
+$$
+\tau_\varphi = \frac{1}{\omega}\,\frac{s}{g},
+\qquad
+\tau_M = \frac{1}{\omega}\sqrt{\frac{1}{g^2 + s^2} - 1}.
+$$
+
+$\tau_\varphi$ is constant along a ray from the origin (**iso-phase** line), $\tau_M$
+along an arc centred on the origin (**iso-modulation** arc); both lines cross on the
+semicircle at the lifetime they name. On the circle $\tau_\varphi = \tau_M = \tau$.
+Inside it, for any mixture of exponentials, $\tau_\varphi < \tau_M$
+{cite}`jameson1984`, and neither equals the intensity-weighted mean lifetime. A
+50:50 photon mixture of 0.6 ns and 5 ns at 80 MHz reads $\tau_\varphi = 1.17$ ns and
+$\tau_M = 2.58$ ns, against a mean of 2.8 ns. The gap between the two is itself a
+heterogeneity readout; a single "phasor lifetime" quoted without saying which is
+ambiguous by up to a factor of two.
+
+## Harmonics
+
+The transform can be taken at any integer multiple $n\omega$ of the repetition
+frequency. The $n$-th harmonic of a single exponential is
+
+$$
+g_n = \frac{1}{1 + (n\omega\tau)^2},
+\qquad
+s_n = \frac{n\omega\tau}{1 + (n\omega\tau)^2},
+$$
+
+so every harmonic has its own universal semicircle, with lifetimes spread along it
+by $n\omega\tau$ instead of $\omega\tau$. Two uses follow.
+
+- **Placing lifetimes where they resolve.** Angular separation on the arc is
+  largest near its apex, $n\omega\tau = 1$. At 80 MHz the apex sits at 2 ns; a
+  sample whose lifetimes are 0.3–0.6 ns crowds against $(1, 0)$ at $n = 1$ and
+  spreads out at $n = 2$ or $3$.
+- **Counting components.** A single exponential lies on the circle at *every*
+  harmonic, with the same $\tau_\varphi = \tau_M$. A mixture falls inside, and its
+  apparent lifetimes move with $n$ because each component is re-weighted by its
+  own $n\omega\tau$. Each harmonic adds two equations, which is what lets more than
+  two components be resolved in one pixel {cite}`vallmitjana2020`. Measured on the
+  repository's donor-only and donor–acceptor decays (`test/data/tcspc/ibh_sample`,
+  IRF-corrected, fundamental 17.3 MHz): the donor-only $\tau_\varphi$ stays at 4.15,
+  4.12, 4.08 ns for $n = 1, 2, 3$, while the donor–acceptor sample falls
+  3.21 → 2.96 → 2.67 ns with $\tau_M$ at 3.72, 3.67, 3.56 ns — a quenched
+  sub-population that no single harmonic names but the trend reveals.
+
+Higher harmonics carry less signal: $M_n$ falls as $1/(n\omega\tau)$ and the IRF's
+own modulation falls with $n$, so the noise in $(g_n, s_n)$ grows. One or two
+harmonics above the fundamental are usually all the data support.
+
 ## Fractions by the lever rule
 
 Because mixing is linear, composition is read off *geometrically*. If a pixel is a
@@ -133,18 +189,89 @@ triangle $P_1 P_2 P_3$ and the fractions are the barycentric weights. This
 **graphical unmixing** replaces per-pixel fitting entirely: no model, no starting
 values, no convergence — just distances on a plot.
 
+The weights are **fractional intensities** (photon fractions), not the
+pre-exponential amplitudes a fit reports. For $I(t) = \sum_i a_i e^{-t/\tau_i}$,
+
+$$
+P = \sum_i f_i\,P(\tau_i),
+\qquad
+f_i = \frac{a_i\tau_i}{\sum_j a_j\tau_j},
+$$
+
+so a long-lived minority species pulls the phasor further than its amplitude
+suggests. Convert with $a_i \propto f_i/\tau_i$ before comparing with a fit.
+
+### Two components of unknown lifetime
+
+The lever rule needs the pure phasors. When they are unknown but every pixel is a
+mixture of the *same* two single-exponential species, the pixel cloud lies on one
+chord, and the chord's ends are the answer. Fit a straight line $s = v\,g + u$
+through the cloud; it meets the circle where $s/g = \omega\tau$, which gives
+{cite}`clayton2004`
+
+$$
+\tau_{1,2} = \frac{1 \pm \sqrt{1 - 4u(u + v)}}{2\omega u}.
+$$
+
+This is the imaging form of the older result that phase and modulation at one
+frequency determine two lifetimes and their fraction {cite}`weber1981`. It fails
+quietly when either species is itself multi-exponential — the cloud is then no
+longer on a chord whose ends are on the circle — so check that the cloud is
+linear before trusting the intersections.
+
 ## Calibration
 
 The raw phasor of a real measurement is rotated and scaled away from the ideal
 circle by the instrument response — the finite width of the laser pulse and the
 detector/electronics timing (the IRF). Phasor FLIM handles this without
 deconvolution by a one-point **calibration**: measure a **reference dye of known,
-single lifetime** $\tau_\text{ref}$ (e.g. a standard fluorophore in solution),
+single lifetime** $\tau_R$ (e.g. a standard fluorophore in solution),
 compute where its phasor *should* sit on the universal circle, and derive the fixed
 rotation and scaling that move the measured reference point onto that ideal
 position. The same correction is then applied to every pixel of the sample. After
 calibration, sample phasors sit in true coordinates and lifetimes can be read
 directly off the circle.
+
+### The correction as arithmetic
+
+Write the phasor as a complex number, $P = g + i s$. The measured decay is the
+true decay convolved with the IRF, and the Fourier transform turns convolution
+into multiplication; because each phasor is normalized by its own integral,
+
+$$
+P_\text{meas} = P_\text{IRF}\,P_\text{true}
+\quad\Longrightarrow\quad
+P_\text{true} = \frac{P_\text{meas}}{P_\text{IRF}}
+$$
+
+at each harmonic {cite}`redford2005`. In polar form the division is a rotation
+and a rescaling: $\varphi_\text{true} = \varphi_\text{meas} - \varphi_\text{IRF}$,
+$M_\text{true} = M_\text{meas}/M_\text{IRF}$.
+
+A measured IRF gives $P_\text{IRF}$ directly. A **reference of known lifetime** $\tau_R$
+gives it indirectly — which is the usual route, because a reference dye is
+recorded under the same conditions as the sample (same emission path, same
+detector colour response) and a scatter IRF is not {cite}`digman2008,stefl2011`:
+
+$$
+P_\text{IRF} = \frac{P_{R,\text{meas}}}{P(\tau_R)},
+\qquad
+\Delta\varphi = \arctan(\omega\tau_R) - \varphi_{R,\text{meas}},
+\qquad
+m = \frac{1}{M_{R,\text{meas}}\sqrt{1 + (\omega\tau_R)^2}},
+$$
+
+and every sample pixel is rotated by $\Delta\varphi$ and scaled by $m$
+{cite}`ranjit2018`. Two conditions make it exact: the reference must be a single
+exponential at the frequency used, and $\omega$ must be the true repetition
+frequency (or a harmonic of it) with the decay fully relaxed within one period —
+a TCSPC window shorter than the period truncates the decay, and the truncated
+decay's phasor is no longer on the circle.
+
+On the donor-only decay in `test/data/tcspc/ibh_sample` (window as period,
+17.3 MHz), $P_\text{meas}/P_\text{IRF}$ lands 0.0008 outside the circle — on it,
+within noise — at $\tau_\varphi = 4.15$ ns and $\tau_M = 4.12$ ns, against 4.15 ns
+from a mono-exponential reconvolution fit of the same file.
 
 ## Fit-free FLIM and FRET by phasor
 
@@ -206,4 +333,14 @@ fit the pixels that matter.
   {cite}`verveer2000` is the global alternative to per-pixel fitting: hold one
   lifetime pair fixed across the whole stack and fit only the fraction per pixel,
   which is what makes a two-state FRET map tractable at realistic photon counts.
+  For the frequency-domain roots: {cite}`jameson1984` is the review of phase and
+  modulation lifetimes and why they differ for mixtures, {cite}`weber1981` the
+  two-component resolution from them, and {cite}`redford2005` the polar plot with
+  its instrument correction. {cite}`clayton2004` resolves two unknown lifetimes
+  from the chord of a pixel cloud; {cite}`stefl2011` applies phasors to cuvette
+  data, including reference calibration; {cite}`ranjit2018` is the working
+  protocol; {cite}`vallmitjana2020` uses higher harmonics to resolve more
+  components per pixel.
+- Guide: {doc}`/guides/77_phasor_calculator` — the Phasor-Calculator, with the
+  headless equivalents of every overlay.
 - Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.

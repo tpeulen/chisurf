@@ -40216,3 +40216,22 @@ side of the line.
   that does not exist; PSF help/tour quoted widths 5–40 % off and claimed
   radial focuses tighter (it does not over the full aperture; tttrlib
   over-weights E_z 2× — upstream).
+
+- 2026-09-23 — **Guides 76–82 and the help that ports dropped** (owner:
+  "continue adding guides; in the aniso wiz the refs to original papers
+  disappeared"). The anisotropy wizard's AutoForm port had dropped the Qt
+  wizard's References (Koshioka 1995, Erdelyi 2014) and its IRF caution;
+  restored, and a sweep of all 164 deleted `.ui` files and GUI diffs found the
+  same loss in the kappa2 dialog, IRF estimator (whose cited author list was
+  wrong), HydroPro, QuEst and the FCS calculator. New guides: 76 decay tools
+  (LLTF, synthetic decays), 77 phasor calculator, 78 F-test + batch, 79
+  HydroPro, 80 QuEst, 81 trajectory tools, 82 FRET lines; concept pages
+  `hydrodynamics`, `dye_quenching`, `structure_trajectories`, plus sections in
+  `tcspc_lifetime`, `imaging_flim_phasor`, `fitting_objectives`,
+  `accurate_fret`. 45 more bibliography entries (Crossref-verified), Literature
+  page regenerated. Eight tools shipped help/tours nothing drew — wired. Fixed
+  en route: multi-frame PDB writes (append mode + MODEL records), batch restore
+  silently failing, LLTF dof, two-column IRF flattening, invisible wizard
+  selection, and three red help-render guards plus the red PRD-mention guard.
+  Open defects: [known-issues](references/known-issues.md), second 2026-09-23
+  section; QuEst import is the blocker.

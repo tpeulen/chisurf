@@ -1,4 +1,4 @@
-"""Interactive phasor-plot calculator embeddable in the Calculators hub (PRD-56).
+"""Interactive phasor-plot calculator embeddable in the Calculators hub.
 
 A data-free phasor plot: the model holds the frequency, reference lifetimes and the
 FRET / two-component overlay settings; ``phasor.view.json`` (AutoForm) renders the
@@ -144,24 +144,11 @@ class PhasorCalculatorTool(ChisurfDockTool):
         self._apply_statefulness()
 
     def _build_toolbar(self) -> None:
-        """Add a compact toolbar with a Help button opening the modal help window."""
+        """Add a compact toolbar carrying the shared ``?``/**Guide** buttons."""
         toolbar = self.addToolBar("Phasor")
         toolbar.setObjectName("phasorCalcToolbar")
         toolbar.setMovable(False)
-        spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
-        toolbar.addWidget(spacer)
-        self._help_btn = QtWidgets.QToolButton()
-        self._help_btn.setText("❓")
-        self._help_btn.setToolTip("What is a phasor plot? (help)")
-        self._help_btn.clicked.connect(self._show_help)
-        toolbar.addWidget(self._help_btn)
-
-    def _show_help(self) -> None:
-        """Open the modal phasor-plot help dialog."""
-        from .help import PhasorHelpDialog
-
-        PhasorHelpDialog(self).exec_()
+        self.ensure_help_toolbar(toolbar=toolbar, title="Phasor calculator — help")
 
     def _wire_refresh(self) -> None:
         """Redraw the phasor plot whenever any control commits a new value."""

@@ -82,6 +82,7 @@ class QuEstTool(ChisurfDockTool):
                 continue
             action = toolbar.addAction(label)
             action.triggered.connect(handler)
+        self.ensure_help_toolbar(toolbar=toolbar, title="QuEst — help")
 
 
 #: The old name. Kept because ChiSurf's legacy AST discovery and the plugin's

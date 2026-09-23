@@ -222,7 +222,25 @@ anything a page wants. The dump's standing use is the last item below.
 
 ## Where to pick this up
 
-**Latest (2026-09-23) — page-driven harvest works; plugin coverage is the front.**
+**Latest (2026-09-23, round 2) — guides 72–82 done; ports lose help silently.**
+Guides 76–82 + concepts `hydrodynamics`, `dye_quenching`, `structure_trajectories`
+added 45 entries (312 total). Open, in order:
+
+1. **A help file that nothing draws is invisible to the seam test.**
+   `test_plugin_help_guide_seam` passes when `help.md`/`guide.json` exist;
+   eight tools had both and no `?`/Guide button because the tool never called
+   `ensure_help_toolbar` / `attach_help_and_guide`. Check by constructing the
+   widget and looking for the buttons (`findChildren(QAbstractButton)` texts
+   "Guide", "?"), not by the file. A guard for this would pay.
+2. **Ports drop references.** The sweep (all deleted `.ui` + GUI diffs,
+   2026-09-23) is complete for citations and cautions; long uncited help prose
+   in Python was not searched exhaustively.
+3. **Undocumented plugins left** are admin/core tools and `menu_hidden` ones
+   with no hub (Synthetic Decay Generator is documented but unreachable).
+4. **QuEst import blocker** and LLTF's mis-specified component test are the
+   highest-value code fixes the docs exposed (known-issues, second 09-23 section).
+
+**Earlier (2026-09-23) — page-driven harvest works; plugin coverage is the front.**
 Guides 72–75 + concepts `point_spread_function`, `intensity_traces` drew 40
 Crossref-verified entries from dump citations (commit `226b7f845`). Open, in order:
 

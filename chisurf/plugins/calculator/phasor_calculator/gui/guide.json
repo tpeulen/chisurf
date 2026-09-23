@@ -1,0 +1,45 @@
+{
+  "_comment": "Guided tour for the phasor calculator. Steps point at real controls; the user edits them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this calculator is for",
+      "text": "Before reading a phasor plot of real data you need to know where the things you expect would land: a donor at its unquenched lifetime, the same donor under FRET, a mixture of two species. This tool draws that geometry. It needs no data.<br/><br/>Six steps. You change the values; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Set the frequency first",
+      "text": "Everything on the plot moves with ω = 2π · frequency · harmonic. Use the laser repetition rate of your instrument — not the TCSPC window.",
+      "target": {"attr": "frequency"},
+      "await": {"hint": "Type your laser repetition rate (MHz) and press Enter."}
+    },
+    {
+      "title": "Place the lifetimes you expect",
+      "text": "Each lifetime becomes a tick on the semicircle, with an iso-phase ray and an iso-modulation arc through it. Their g and s appear under <b>Results</b>.",
+      "target": {"attr": "taus"},
+      "await": {"hint": "Enter a comma-separated list of lifetimes in ns and press Enter."}
+    },
+    {
+      "title": "Spread them with a harmonic",
+      "text": "Lifetimes resolve best where nωτ ≈ 1. If yours crowd against (1, 0) on the right, a higher harmonic spreads them out.",
+      "target": {"attr": "harmonic"}
+    },
+    {
+      "title": "Add the FRET trajectory",
+      "text": "The path a mono-exponential donor takes as FRET shortens it from τD0 towards zero lifetime. A mix of FRET and donor-only molecules lies <i>inside</i> the circle, on the chord between the two points.",
+      "target": {"attr": "show_fret"},
+      "await": {"hint": "Tick <b>FRET trajectory</b>, then set <b>Donor τ0</b> below it."}
+    },
+    {
+      "title": "A two-species mixture",
+      "text": "Copy two lifetimes' g and s from <b>Results</b> into g1/s1 and g2/s2, tick <b>Mixing region</b> and move <b>Fraction c1</b>. The mixture point slides along the chord in proportion to the <b>photon</b> fraction, not the amplitude.",
+      "target": {"attr": "frac1"}
+    },
+    {
+      "title": "Look at the plot",
+      "text": "The drawing lives in its own tab. Short lifetimes on the right, long on the left; anything inside the arc is multi-exponential.",
+      "target": {"tab": "Phasor plot"},
+      "await": {"hint": "Open the <b>Phasor plot</b> tab."},
+      "links": [{"text": "Guide", "doc": "docs/guides/77_phasor_calculator.md"}]
+    }
+  ]
+}

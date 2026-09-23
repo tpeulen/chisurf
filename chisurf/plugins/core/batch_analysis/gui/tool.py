@@ -56,8 +56,16 @@ class BatchProcessingWizard(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
+        # A QDialog cannot take the dock-tool mixin; attach ?/Guide to a slim
+        # right-aligned row instead.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QtWidgets.QHBoxLayout()
+        help_row.addStretch(1)
+        layout.addLayout(help_row)
         self.assistant = BatchAnalysisWidget(self)
         layout.addWidget(self.assistant)
+        attach_help_and_guide(self, help_row, title="Batch analysis — help", model=self.model)
 
     @property
     def model(self):

@@ -109,3 +109,6 @@ six months.
   calibration-free alternative, when the calibration is the problem.
 - Kapusta, *Absolute diffusion coefficients: compilation of reference data for
   FCS calibration*, PicoQuant application note (2010).
+- {cite}`perrin1936` — translation of ellipsoidal molecules: the friction
+  factor behind the *Ellipsoid* shape.
+- {cite}`hansen2004` — the cylinder approximation for rods.

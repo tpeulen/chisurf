@@ -166,6 +166,7 @@ class HydroProTool(ChisurfDockTool):
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         layout = QtWidgets.QVBoxLayout(central)
+        self.ensure_help_toolbar(title="HydroPro — help")
 
         self._form = AutoForm(self._model, parent=self)
         layout.addWidget(self._form)

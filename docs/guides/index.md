@@ -46,6 +46,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 
 14_multiparameter_es
 41_accurate_fret
+82_fret_lines
 61_kappa2_distribution
 fret_calibration
 07_rcm_calibration
@@ -87,6 +88,7 @@ h2mm
 irf_estimation
 21_lifetime_from_bursts
 32_nsalex_lifetime
+76_decay_analysis_tools
 ```
 
 ## Correlation spectroscopy
@@ -117,6 +119,7 @@ irf_estimation
 50_particle_tracking
 51_frc_resolution
 72_psf_calculator
+77_phasor_calculator
 45_scan_precision
 55_pair_correlation
 ```
@@ -129,6 +132,9 @@ irf_estimation
 23_accessible_volume
 03_polymer_distance_distributions
 44_molecular_viewer
+79_hydropro
+80_quenching_estimator
+81_trajectory_tools
 ```
 
 ## Exploration, simulation and automation
@@ -142,6 +148,7 @@ irf_estimation
 26_2d_peak_fitting
 18_tttr_simulation
 39_parameter_uncertainty
+78_model_comparison_and_batch
 62_maxent_decay
 60_global_analysis
 40_ai_assistant
@@ -229,6 +236,13 @@ irf_estimation
 | [Decays and correlation curves straight from a photon file](73_tttr_decay_and_correlation.md) | `tttr_histogram` + `tttr_correlate` plugins, `tttrlib.Correlator` |
 | [Intensity traces and file tools](74_intensity_traces_and_file_tools.md) | `intensity_trace` plugin, `filetools` hub (`tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`, `tttr_time_windows`, `bid_to_analysis`), `csc tttr-time-windows` |
 | [FCS toolbox: correlate, merge, convert](75_fcs_toolbox.md) | `fcs_toolbox` (channel definitions, filter, correlator, merger), `fcs_convert`, `fcs.merge` |
+| [Decay Analysis, Lazy Lifetime Analysis and synthetic decays](76_decay_analysis_tools.md) | `lifetime_analysis`, `lltf`, `synthetic_decay` plugins, `csc lltf`, `csc synth-decay` |
+| [The phasor calculator](77_phasor_calculator.md) | `phasor_calculator` (Calculators hub), `img_pixel_phasor.analysis` |
+| [Model comparison and batch fits](78_model_comparison_and_batch.md) | `f_test`, `batch_analysis`, `core.math.statistics` |
+| [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
+| [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator`, `modules/quest` |
+| [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_tools` (Structure Tools hub), `core.structure.trajectory_data` |
+| [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Calculators hub), `core.fluorescence.fret.lines` |
 
 ## Regenerating the figures
 

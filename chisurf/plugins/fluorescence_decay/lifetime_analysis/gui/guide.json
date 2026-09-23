@@ -27,8 +27,8 @@
       }
     },
     {
-      "title": "The same fit, over many files",
-      "text": "Once the settings are right for one file, this runs them across the rest without re-deciding anything. The value is not only the time saved — it is that every file in a series gets <b>identically</b> treated, which is what makes the differences between them interpretable.",
+      "title": "A fit that makes its own choices",
+      "text": "This fits one decay file with a few exponentials and decides the fit range, the background, the IRF shift and — if you tick it — the number of components by fixed rules. The rules live in a settings file, so every file of a series can be treated <b>identically</b>, which is what makes differences between them interpretable.<br/><br/>Do not trust the automatic component count on its own: run it first on a synthetic decay whose answer you know.",
       "target": {
         "panel": "Lazy Lifetime"
       }

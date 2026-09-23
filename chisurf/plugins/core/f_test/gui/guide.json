@@ -1,0 +1,38 @@
+{
+  "_comment": "Guided tour for the F-test / chi2-max calculator. Steps point at real controls and wait for the user. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this answers",
+      "text": "You fitted the same data with a simpler and a more complex model. The complex one has the lower χ² — it always does. The question is whether the drop is more than noise. Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the fits, not the numbers",
+      "text": "<b>From fit</b> lists every open fit. Send the simpler one to <b>model 1</b> and the more complex one to <b>model 2</b>; χ²r and ν = points − free parameters come across exactly.",
+      "target": {"action": "From fit"},
+      "await": {"hint": "Press <b>📊 From fit</b> and choose a fit for model 1, then again for model 2."}
+    },
+    {
+      "title": "Read the confidence",
+      "text": "F.cdf(χ²r₁/χ²r₂; n₁, n₂). Near 1: the extra parameters are justified. 0.5: no preference. This variance-ratio form is conservative for two fits of the same data — see the guide for the sharper extra-sum-of-squares test.",
+      "target": {"attr": "conf_level"}
+    },
+    {
+      "title": "Or ask what χ² you need",
+      "text": "Type a confidence here and the tool solves for the χ²r₂ the complex model must reach. It overwrites <b>χ²(2)</b>.",
+      "target": {"attr": "chi2_2"}
+    },
+    {
+      "title": "The threshold of one fit",
+      "text": "χ²max is the χ²r below which a parameter set is still inside the confidence region. Set <b>params</b> to 1 for the interval of a single parameter.",
+      "target": {"attr": "npars"},
+      "await": {"hint": "Set <b>params</b> to 1 and press Enter; watch <b>χ² max</b> drop."}
+    },
+    {
+      "title": "Where the threshold comes out",
+      "text": "χ²min · (1 + p/ν · F(p, ν; conf)). The profile scan in the fit window stops at this level for a least-squares fit.",
+      "target": {"attr": "chi2_max"},
+      "links": [{"text": "Guide", "doc": "docs/guides/78_model_comparison_and_batch.md"}]
+    }
+  ]
+}

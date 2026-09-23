@@ -21,8 +21,11 @@ A multi-exponential fit needs the number of components declared in advance, and
 that choice usually decides the answer. MEM returns a *distribution* and lets the
 data say whether it has one peak or three.
 
-**3. Lazy Lifetime Analysis** is the batch route: the same fit over many files
-without re-deciding the settings each time.
+**3. Lazy Lifetime Analysis** fits one decay file with a few exponentials and
+makes the surrounding choices by rule — fit range, background, IRF shift and,
+if asked, the number of components. Its settings live in a file, so the same
+rules can be reapplied file after file; check them on a synthetic decay first,
+because the automatic component count is not reliable.
 
 **4. Micro-time histograms** build the decay itself out of a raw photon stream —
 the step before everything above, when you are starting from TTTR rather than
@@ -64,6 +67,8 @@ without being asked for".
 
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md)
 - [Fluorescence anisotropy](docs/concepts/anisotropy.md)
+- [Decay Analysis, Lazy Lifetime Analysis and synthetic decays](docs/guides/76_decay_analysis_tools.md)
+- [How many components?](docs/concepts/tcspc_lifetime.md)
 - [Lifetime and anisotropy fitting, step by step](docs/guides/10_lifetime_anisotropy_fitting.md)
 - [Lifetimes from bursts](docs/guides/21_lifetime_from_bursts.md)
 - [nsALEX lifetimes](docs/guides/32_nsalex_lifetime.md)

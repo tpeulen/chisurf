@@ -1,0 +1,37 @@
+{
+  "steps": [
+    {
+      "title": "What these tools are for",
+      "text": "A trajectory has to be prepared before it is averaged: superposed, stripped of frames that cannot exist, then turned into FRET geometry. We will do that in three tabs.<br/><br/>No data of your own? Use the T4 lysozyme ensemble in <code>chisurf/plugins/modelling/fret/examples/olga_t4l/</code>: <code>3GUN_NMSim_cl-rep_894.dcd</code> with the topology <code>3GUN_NMSim_cl-rep-001.pdb</code>.",
+      "target": {"tab": "Align"}
+    },
+    {
+      "title": "Step 1 — superpose on frame 0",
+      "text": "Pick the <b>Trajectory</b> (DCD) and the <b>Topology</b> (PDB) with the <b>…</b> buttons. <i>Atom selection</i> takes atom <b>indices</b> of the fitting set; empty fits on all atoms.<br/><br/>Then press <b>Save aligned…</b> and choose an output name. On the example, the Cα RMSD to frame 0 drops from a median of 6.6 Å to 3.9 Å.",
+      "target": {"action": "Save aligned"},
+      "await": true
+    },
+    {
+      "title": "Step 2 — drop clashed frames",
+      "text": "Open the <b>Remove Clashed</b> tab and load the same two files. Set <i>Atom selection</i> to <code>name CA</code> and <i>Min distance</i> below 3.8 Å, the Cα–Cα spacing. The test does not skip bonded atoms, so a threshold on all atoms removes everything.",
+      "target": {"tab": "Remove Clashed"}
+    },
+    {
+      "title": "Write the clash-free trajectory",
+      "text": "Press <b>Save clash-free…</b>. At 3.5 Å the example keeps 762 of 894 frames. The source time of every kept frame is written next to the DCD as <code>.times.npy</code>.",
+      "target": {"action": "Save clash-free"},
+      "await": true
+    },
+    {
+      "title": "Step 3 — FRET geometry per frame",
+      "text": "The <b>FRET</b> tab takes two atoms per dye as its dipole and writes R_DA, κ, κ² and k_FRET for every frame. It does no averaging: static ⟨E⟩ and dynamic ⟨k⟩ differ, and the timescales decide which applies.",
+      "target": {"tab": "FRET"}
+    },
+    {
+      "title": "Run it",
+      "text": "Choose the donor and acceptor atoms, R0, τ0 and the frame time step, then press <b>Process trajectory</b>.<br/><br/>This tab has no topology row yet. For a DCD, use the Python route in the guide.",
+      "target": {"action": "Process trajectory"},
+      "await": true
+    }
+  ]
+}
