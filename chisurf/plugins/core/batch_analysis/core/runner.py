@@ -176,16 +176,32 @@ def restore_parameters(
         The fit whose model parameters are being reset.
     snapshot : mapping
         The ``{name: (value, fixed)}`` mapping from :func:`snapshot_parameters`.
+
+    Raises
+    ------
+    RuntimeError
+        If the client reports that a value could not be set. Carrying on would
+        start the item from the previous item's optimum instead of the
+        template, which makes the batch results silently incomparable.
     """
+    failed = []
     for param in fit.model.parameters_all:
         if param.name not in snapshot:
             continue
         value, fixed = snapshot[param.name]
-        fit_client.set_parameter_value(
-            parameter_name=str(param.name), value=value, fit_index=fit_index
+        results = (
+            fit_client.set_parameter_value(
+                parameter_name=str(param.name), value=value, fit_index=fit_index
+            ),
+            fit_client.set_parameter_fixed(
+                parameter_name=str(param.name), fixed=fixed, fit_index=fit_index
+            ),
         )
-        fit_client.set_parameter_fixed(
-            parameter_name=str(param.name), fixed=fixed, fit_index=fit_index
+        if any(isinstance(r, dict) and not r.get("ok", True) for r in results):
+            failed.append(str(param.name))
+    if failed:
+        raise RuntimeError(
+            "Could not restore the template parameters " + ", ".join(failed)
         )
 
 
@@ -360,9 +376,11 @@ def run_batch(
 
         fit_client = get_fitting_client()
     if dispatch is None:
-        import chisurf as cs
+        # ``chisurf.core`` does not import its ``actions`` submodule, so the
+        # attribute path only worked when a GUI had imported it first.
+        import chisurf.core.actions
 
-        dispatch = cs.core.actions.dispatch
+        dispatch = chisurf.core.actions.dispatch
     if imported_datasets is None:
         import chisurf as cs
 

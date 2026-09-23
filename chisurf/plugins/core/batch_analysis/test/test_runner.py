@@ -107,6 +107,24 @@ def test_snapshot_and_restore_roundtrip():
     assert ("tau", 4.0) in client.set_values
 
 
+def test_restore_parameters_raises_when_the_client_cannot_set():
+    """An unreachable fit server must not let an item start from the last optimum."""
+    import pytest
+
+    fit = FakeFit([FakeParam("tau", 4.0, False)])
+    snap = runner.snapshot_parameters(fit)
+
+    class Offline:
+        def set_parameter_value(self, **kwargs):
+            return {"ok": False}
+
+        def set_parameter_fixed(self, **kwargs):
+            return {"ok": False}
+
+    with pytest.raises(RuntimeError, match="tau"):
+        runner.restore_parameters(Offline(), 0, fit, snap)
+
+
 def test_collect_rows():
     fit = FakeFit([FakeParam("tau", 4.0, False)], chi2r=1.23)
     rows = runner.collect_rows(fit, 2, "file.sm", "key")

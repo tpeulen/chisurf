@@ -249,7 +249,12 @@ class Trajectory:
         atoms = self.topology.atom_array.copy()
         for frame in range(self.n_frames):
             atoms["xyz"] = self.xyz[frame]
-            write_pdb(str(filename), atoms, append_model=frame > 0)
+            write_pdb(
+                str(filename),
+                atoms,
+                append_model=frame > 0,
+                model_serial=frame + 1 if self.n_frames > 1 else None,
+            )
 
     def save(self, filename) -> None:
         """Write the trajectory, choosing the format from the suffix."""

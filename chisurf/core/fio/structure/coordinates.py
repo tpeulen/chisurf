@@ -93,6 +93,7 @@ def write_pdb(
     append_model: bool = False,
     append_coordinates: bool = False,
     verbose: bool = False,
+    model_serial: int | None = None,
 ):
     """Writes a structured numpy array containing the PDB-info to a PDB-file
 
@@ -106,6 +107,10 @@ def write_pdb(
         If True the atoms are appended as a new models
     :param append_coordinates:
         If True the coordinates are appended to the file
+    :param model_serial:
+        Wrap the atoms in ``MODEL <serial>`` / ``ENDMDL`` records. Needed for
+        every frame of a multi-model file, the first included; the file is
+        still overwritten unless an append flag is set.
 
     """
     mode = "a+" if append_model or append_coordinates else "w"
@@ -160,11 +165,15 @@ def write_pdb(
             )
             for at in atoms
         ]
-        if append_model:
-            fp.write("MODEL")
+        # MODEL/ENDMDL are records of their own: without the newlines and the
+        # serial they fused with the neighbouring ATOM lines and no reader
+        # could split the models again.
+        wrap = model_serial is not None or append_model
+        if wrap:
+            fp.write("MODEL     %4d\n" % (model_serial if model_serial is not None else 0))
         fp.write("".join(al))
-        if append_model:
-            fp.write("ENDMDL")
+        if wrap:
+            fp.write("ENDMDL\n")
 
 
 #: The atom row every reader produces. **chimol owns it** (`chimol.io.atoms.ATOM_DTYPE`)

@@ -858,7 +858,9 @@ class Decay:
             )
             weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
-            dof = len(residuals) - (2 * n_lifetimes + 3) + sum(fixed) if fixed else 0
+            # Parenthesized: the conditional used to bind the whole expression, so
+            # fixed=None gave dof = 0 and reported chi-square as reduced chi-square.
+            dof = len(residuals) - (2 * n_lifetimes + 3) + (sum(fixed) if fixed else 0)
             reduced_chi_square = chi_square / max(1, dof)
 
             # Store fit results

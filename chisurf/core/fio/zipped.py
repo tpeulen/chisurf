@@ -53,6 +53,17 @@ def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: 
             return io.TextIOWrapper(binary_fh, encoding="utf-8")
         else:
             return open(filename, "w")
+    elif mode in ("a", "a+"):
+        # Appending models to a multi-frame PDB. gzip and bz2 streams may be
+        # concatenated, so appending is valid for them; a zip archive is not.
+        if extension == ".gz":
+            return io.TextIOWrapper(gzip.GzipFile(filename, "ab"), encoding="utf-8")
+        elif extension == ".bz2":
+            return io.TextIOWrapper(bz2.BZ2File(filename, "ab"), encoding="utf-8")
+        elif extension == ".zip":
+            raise ValueError("Cannot append to a .zip archive")
+        else:
+            return open(filename, "a")
     elif mode == "wb":
         if os.path.exists(filename) and not force_overwrite:
             raise OSError(f'"{filename}" already exists')

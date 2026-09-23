@@ -30,9 +30,11 @@ def _load_irf(irf: Any) -> np.ndarray | None:
         path = pathlib.Path(irf)
         if not path.is_file():
             raise ValueError(f"IRF file does not exist: {path}")
-        if path.suffix.lower() == ".npy":
-            return np.load(path).astype(float).ravel()
-        return np.loadtxt(path).astype(float).ravel()
+        data = np.load(path) if path.suffix.lower() == ".npy" else np.loadtxt(path)
+        data = np.asarray(data, dtype=float)
+        # A (time, counts) table must not be flattened into interleaved
+        # time/count samples; the counts are the last column.
+        return data[:, -1] if data.ndim == 2 else data.ravel()
     return np.asarray(irf, dtype=float).ravel()
 
 
