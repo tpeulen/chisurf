@@ -2,6 +2,16 @@
 
 ## 2026-09-23
 
+* **ndX emtk app: the map gets half the window.**
+  - The display controls moved to a toolbar (Path, Browse, colours), and the counts, inf/NaN and the four actions moved into the marginals' corner. If the user makes the corner too small, they go to the toolbar.
+  - The marginals are 96/132 px by default, and the user resizes them with the bars beside the map. The sizes are kept in the layout file.
+  - The left dock's share went from 0.357 to 0.29. The status line now shares the menu row. Playback's Step and Speed are one slider each. The z marginal is 56 px.
+  - The default window is 1120x720.
+  - Map area at 1400x900 went from 411k px² (32.7 %) to 626k px² (49.7 %), and at 992x593 from 151k (25.7 %) to 181k (30.8 %).
+  - emtk gained `DockManager.set_extra`, field-less sliders, `wrap_indent`, and even wrapping.
+  - Parity capture: 58/61 shots, the same 3 skips as before, and no control lost.
+  - Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md), *Plot window space*.
+
 * **Global View is one emtk surface, and every parameter-network builder is one module.**
   - The window is `GlobalViewSurface` (emtk `ImApp`: toolbar form, `DockManager` with Network/Parameters/Selection/View, status line) over a Qt-free `GlobalViewModel`; every control is a section of `gui/globalview.view.json`, the tables `data_table` sections. `GraphWizard` only hosts. Removed: `network_widget.py`, `adapter.py`, `parameters_model.py`, the Qt panels.
   - New **factor graph** representation: likelihood squares over link-resolved variables, shared variables gold, status naming shared variables and independent blocks.

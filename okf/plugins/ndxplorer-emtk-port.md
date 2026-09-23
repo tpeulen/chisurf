@@ -110,6 +110,57 @@ Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
    package that shadows chisurf. `web.py` now refuses it rather than shipping an empty
    package.
 
+### Plot window space (toolbar, corner, marginals) — 2026-09-23
+
+The map gets most of the window now. ndxplorer `1a21cc2`, `d51142c`, `8a5be94`,
+`8252d86`; emtk `843bfdf` (`DockManager.set_extra`/`extra`: app values saved with
+the layout), `75c59c9` (a `"field": false` slider: value on the slider, double
+click to type), `3b69002` (a row's `"wrap_indent": false`: a toolbar wraps to the
+left edge), `fa88ced` (a wrapped row is cut as evenly as its breaks allow).
+
+* **Layout.** Toolbar (`views/plot_header.view.json`): Path, Browse, then
+  colormap, log #, vmin, vmax, Contrast, Update. One line at 1120 and wider,
+  two at 992, three at 735. The corner between the marginals
+  (`views/plot_corner.view.json`) holds the counts "43283 / 44270", inf/NaN and
+  Screenshot/Data/Export…/Clear two by two. When the user drags the marginals
+  too small for it (under 110 px wide, or shorter than it measured), it goes to
+  the toolbar's end (`NdxApp.corner_in_toolbar`; `NdxApp.control_rect(name)`
+  finds a control in either place). The marginals are 96 px (x) and 132 px (y)
+  by default. The bars between them and the map (`hsplit`/`vsplit` in
+  `plot_boxes`) resize them, and the sizes are kept in the layout file under
+  `extras` (`plot.xmarginal_h`/`plot.ymarginal_w`). *Reset window layout*
+  forgets them. The x marginal's title is inside its plot, top left, so its
+  tick labels sit right under the toolbar. The status line is in the menu bar's
+  row, right-aligned. The left dock's share is 0.29, and its floor stays 405.
+  Playback's Step and Speed are one slider each. The z marginal is 56 px, with
+  two count labels (0 and a round top).
+* **Default window 1120x720** (`launch.SIZE`, three quarters of a 1470x949
+  work area). Parity captures stay at 1400x900 (`capture.WINDOW`). emtk.docking
+  does not persist the OS window size, so `--size` or the default always wins.
+* **Measure** with `Replay(...).app.plot_boxes["map"]` after opening
+  `test/mfd/burstwise_All 0.1500#30` in a scratch `$HOME` (a real `$HOME` reads
+  the user's saved split ratio). Map area was 636x647 = 411k px², 32.7 % of the
+  window at 1400x900, and 389x388 = 151k px², 25.7 % at 992x593. It is now
+  851x736 = 626k px², 49.7 % at 1400x900; 443x409 = 181k px², 30.8 % at 992x593;
+  571x556 = 317k px², 39.4 % at 1120x720. Guards:
+  `test_window_sizes.py` (six sizes: nothing clips, the corner holds its
+  controls, vmin/vmax show "2.01e+02" whole) and `test_docks.py` (bar drag
+  resizes and persists; small marginals send the corner to the toolbar).
+* **Trap: the user's own layout keeps their split.** `~/.ndxplorer/ndxplorer_layout.json`
+  has `root: 0.3936`, so their window keeps a wider left dock until View >
+  Reset window layout. A real-screen check of the defaults needs
+  `NdxApp(layout_store=None)`, as `scratchpad/space/realrun.py` did.
+* **Tried and not done: hiding a lone window's tab strip** (the Plot's). It
+  would save about 20 px, but the strip is the only handle to undock, drag and
+  close the window, so hiding it loses a control. Revisit only with another
+  handle, such as a grip that shows on hover.
+
+Open:
+
+1. On a very narrow floating Plot (under about 400 px) the toolbar takes 4-5
+   lines. That is correct, but a lot of it. A compact colour group (vmin/vmax
+   beside the colormap in one control) would help.
+
 ### docks (every dock a sticky window)
 
 Built on emtk's window manager, `emtk.docking` (emtk `a4bda9d`, `1fa683b`,
@@ -135,10 +186,9 @@ Re-measure:
 
 Open:
 
-1. **A small floating Plot crowds its corner.** At about 420 px wide, the
-   Screenshot, Update and Contrast buttons overlap. `plot_boxes` gives the
-   corner `min(258, 30 %)` of the window's width. It needs a minimum width,
-   or a narrower spec at small sizes.
+1. ~~A small floating Plot crowds its corner~~: resolved 2026-09-23. The corner
+   controls move to the toolbar when the corner is too small (see *Plot window
+   space*).
 2. **The layout file is keyed by window title.** Renaming a window drops its
    saved place: it comes back at the default, which is harmless.
 3. **Trap: a `Replay` built outside `scratch_home` must not get a store.**
