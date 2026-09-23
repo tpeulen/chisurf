@@ -175,3 +175,66 @@ Tried and reverted: a hand-drawn `ToolWindow` in the feature (title row, drag,
 feature. Reading
 the ranking's help/guide by importing `ndxplorer.ui` builds Qt dialogs, so the
 files are read by path instead.
+
+### io (open, merge, image mode, working path, burst IDs, selection files, screenshot)
+
+Re-measure with `python -m ndxplorer.app.capture -s startup_empty -s file_dialog_analysis_folder
+-s merge_dialog -s open_csv_iris -s open_csv_file_dialog -s open_bur_cli -s open_sampling
+-s open_analysis_file_error -s open_image_h5 -s save_burst_ids -s selection_save
+-s browse_working_path -s screenshot_button`, then run `pytest ndxplorer/tests/test_app/test_io*.py`
+(35 tests) and, for Qt offscreen, `ndxplorer/tests/test_ui ndxplorer/tests/test_workflows
+ndxplorer/tests/test_cli.py`.
+
+1. **Parity status, 2026-09-23: all 13 scenarios are captured, and every io item is ticked**
+   in `tools/parity/features.md`. The one item left open is open_image_h5's "Frame drives
+   playback", which belongs to the playback group. The deliberate differences:
+   - A load error shows the reader's reason, not the Qt traceback.
+   - Screenshot saves the whole window, as Qt's `grab()` does. It is not copied to the
+     clipboard.
+   - BID is enabled only for a table with First/Last File and First/Last Photon.
+   - The Process-Burst-IDs follow-ups say that the correlator and the microtime
+     histogram are ChiSurf plugins.
+2. **`app.io_service`** (`features/io_service.FileService`) is the one file service.
+   - The API is `ask_open`, `ask_save`, `ask_folder` and `save_bytes`. Answers come
+     through a callback. `answer()` presses a dialog for tests and replays.
+   - On a desktop the dialogs are emtk FileDialogs in a `DialogWindow`.
+   - In a page they open on `/mnt/local` (the mount), else `/mnt/dropped`. `save_bytes`,
+     and any save outside the mount, becomes a download (emtk `emtk.web.page.download`).
+   - The settings and playback_export groups already use it.
+3. **Qt-free, shared (moved, not copied).**
+   - `io/loading.py` holds the importers (dialog caption, file or folder, filters, merge
+     title), the drop dispatch, the reader for each kind, the worker load, the merge
+     question and its answers, and the working path and title rules.
+   - `utils/axis_helpers.image_axes`.
+   - `io/writer`: `save_burst_ids_headless(progress=)`, `find_bst_files`,
+     `find_setup_name`.
+   - `export/screenshots.py`.
+   - `region_selection`: interval gates save and load without ChiSurf.
+   - `file_operations.open_files` keeps only the Qt dialogs and the worker.
+4. **Fixed on the way.**
+   - A `.bur` line's trailing tab no longer becomes a parameter named "". The emtk axis
+     chooser had picked it for x.
+   - The emtk file dialog's save-mode name field was not drawn, because
+     `set_next_item_width(-1)` gave it a negative width. The fix is emtk `0a64a62`.
+   - Opening a `.pto` or `.h5` without an importer used to fall to the CSV reader.
+5. **Browser, not yet run in a page.**
+   - Nothing under `features/io*` imports Qt (a test checks this).
+   - Loads run unthreaded in a page, on the next frame.
+   - Saving a drawn region or a mask to `*.selection.json` needs `chisurf.core.roi`,
+     which a page does not have. Interval gates work without it.
+   - A real `emtk.web` page load that drops a file, mounts a folder and saves is still
+     to be done.
+6. **Asked of the core (lead).**
+   - `model.read_path` (drop and `--file`) duplicates `io.loading.kind_for_paths` and
+     reads a `.pto` with the burst reader. It should call `io.loading.read`.
+   - `frame.open_dialog`/`_draw_dialog` and the core open actions are shadowed by io's
+     and can go.
+   - `pyproject` package-data does not list `ndxplorer/app/**/*.json` (views and feature
+     specs), so a wheel would ship without them.
+
+emtk additions: `view_form` choice `style: "radio_list"` (`0ccf122`), `emtk.web.page.download`
+/ `in_browser` (`d906b00`), and `Layout.row` negative widths (`0a64a62`).
+
+Tried and reverted: an `im_widgets.begin_modal` in emtk (dim, chrome, title bar). It was
+dropped before its commit because `emtk.dialog_window.DialogWindow` landed at the same time
+and does the same thing.

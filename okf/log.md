@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the io group (open, merge, image mode, burst IDs, selection files, screenshot).**
+  - `app.io_service` is the one file service for desktop and browser: drawn emtk file dialogs, and in a page the mount, the drops and downloads.
+  - Opening leaves the Qt class for `ndxplorer/io/loading.py`, which both GUIs use. Image mode (`axis_helpers.image_axes`), the burst-ID writer with progress, and the screenshot rules are shared as well.
+  - Fixed: a `.bur`'s trailing tab read as a parameter named "", and the emtk save dialog had no name field. emtk also gains `radio_list` choices and `emtk.web.page.download`.
+  - All 13 io scenarios are ticked. Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / io.
+
 * **ndX emtk port: the selection group (gate menus, pick population, draw mask).**
   - One gate list for both GUIs: `core/gates.GateList`, where masks and regions are kept as their objects. The Qt table is rebuilt from it, and `get_selections` reads the list.
   - The emtk app gets the gate-table and map context menus (Send to ChiSurf and napari are disabled with the reason in the browser), Fit gate to the population here (a density-watershed fit, fixed in the Qt window too), and the Draw Mask panel as a view spec with brush painting that works.
