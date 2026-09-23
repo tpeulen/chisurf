@@ -23,7 +23,7 @@ statistics. ChiSurf provides the common analytic models in one place
 - `gaussian_chain` — the ideal (theta) chain.
 - `worm_like_chain` — semi-flexible chain (persistence length).
 - **`saw_nu`** — the self-avoiding walk with Flory exponent $\nu$ (des Cloizeaux
-  form; Zheng et al., *JACS* 2018):
+  form; {cite}`zheng2018`):
   $P(R)\propto R^{2+\theta}\,e^{-(R/r_0)^{\delta}}$, $\theta=(\gamma-1)/\nu$,
   $\delta=1/(1-\nu)$, scaled to a target RMS. $\nu\approx0.588$ is an expanded
   chain, $0.5$ theta, $<0.4$ collapsed.
@@ -54,9 +54,32 @@ p_unfolded = rdf.ising_chain(r, 40, 4.0, 9.0, coupling=1.5, field=-3.0)
 
 Both are wired into ChiSurf's fit stages as distance-distribution FRET models:
 
-- **TCSPC** (time-resolved FRET decay): the models *“FRET: FD (SAW-ν polymer)”*
-  and *“FRET: FD (Ising two-state chain)”* in the TCSPC experiment.
-- **PDA** (burst FRET-E histograms): the *“PDA-SAW-ν-distance”* model.
+- **TCSPC** (time-resolved FRET decay): the models *“FRET: self-avoiding chain
+  (SAW-ν)”* and *“FRET: Ising two-state chain”* in the TCSPC experiment.
+- **PDA** (burst FRET-E histograms): the *“PDA2c-SAW-ν-distance”* model.
+
+In the TCSPC editor the chain replaces the Gaussian distance block: the
+**SAW chain** panel holds `Rrms` (default 55 Å, bounds 1–1000) and `nu`
+(0.588, bounds 0.3–0.95); the **Ising chain** panel holds `N` (residues,
+fixed at 40), the bond lengths `bS`/`bU` (4 and 8 Å), the cooperativity `J`
+(1.5) and the field `h` (0). The donor lifetimes, `R0`, `κ²` and the donor-only
+fraction `xD,0` sit in the usual **Donor** and **FRET parameters** panels, and
+`EFRET` is computed (0.679 for the SAW defaults, 0.892 for the Ising defaults at
+`τ0` = 4 ns, `R0` = 52 Å).
+
+```{figure} figures/03_saw_nu_editor.png
+:name: fig-saw-nu-editor
+:width: 60%
+
+The TCSPC model editor with *FRET: self-avoiding chain (SAW-ν)* selected.
+```
+
+```{figure} figures/03_ising_chain_editor.png
+:name: fig-ising-chain-editor
+:width: 60%
+
+The same editor with *FRET: Ising two-state chain*.
+```
 
 ## Result
 

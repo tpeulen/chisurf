@@ -48,9 +48,10 @@ Three things follow, and they are the reason for the change:
   decision; ChiSurf never makes it.
 
 The vendor file still works everywhere a `.pto` does — nothing stops you opening
-a `.ptu` directly. And the legacy `…4` folders are still *read*; they are now
-written only when you ask for them (in Burst Selection, tick **Seidel folder**),
-for the external tools that expect them.
+a `.ptu` directly. And the legacy `…4` folders are still *read*. Burst Selection
+decides where its results go from what it was given: a `.pto` keeps its bursts
+inside, a vendor file gets a `bi4_bur/` folder beside it — the **Files** tab
+says which (*Results go to: …*).
 
 ```python
 from chisurf.core.fio.staging import import_measurement, open_tttr
@@ -78,9 +79,20 @@ file name, not one container per file; a Becker & Hickl `.spc`'s `.set`
 sidecar is always picked up automatically and never converted on its own.
 
 For converting outside those tools — or for turning a `.pto` back into the
-vendor file(s) it embeds — use the standalone **TTTR ⇄ .pto** tool: one drop
-target, no options, works either direction depending on what you drop, and
-packs multiple dropped vendor files the same way.
+vendor file(s) it embeds — use the standalone **TTTR ⇄ .pto** tool
+(*TTTR → ⇄ .pto*): one drop target, no options, works either direction
+depending on what you drop, and packs multiple dropped vendor files the same
+way.
+
+```{figure} figures/12_tttr_to_pto.png
+:name: fig-tttr-to-pto
+:width: 70%
+
+**TTTR ⇄ .pto** after dropping three split SPC-132 files (`m000`–`m002.spc`,
+3 600 000 bytes) — packed into one `m000.pto` of 3 623 533 bytes — and then
+dropping that `.pto`, which unpacks the three files again, byte-identical to
+the originals (`cmp`).
+```
 
 ```python
 from chisurf.plugins.core.tttr_to_pto import api
@@ -107,15 +119,23 @@ res_micro = d.header.micro_time_resolution       # seconds / channel
 sel = d[np.where(route == 0)[0]]
 hist, edges = np.histogram(sel.micro_times, bins=d.number_of_micro_time_channels)
 
-# export to the interoperable Photon-HDF5 format
-d.write("measurement.photon-hdf5")
+# export to the interoperable Photon-HDF5 format -- name the container type
+d.write("measurement.h5", "PHOTON-HDF5")
 ```
+
+The container type is what selects the format, not the extension:
+`d.write("measurement.photon-hdf5")` without it writes the input's own record
+format (SPC-130 events for an `.spc`) under that name, which no HDF5 reader
+opens. With the type, `BH_SPC132.spc` round-trips through Photon-HDF5 with all
+183 657 photons.
 
 `tttrlib.TTTR` opens a `.pto` as readily as a `.ptu` — the container names the
 member it holds, so nothing above changes when the path does.
 
 TTTR utility plugins (`chisurf/plugins/tttr/`) provide GUI tools for conversion,
-splitting, header editing, time-window gating and micro-time linearisation.
+splitting, header editing, time-window gating and micro-time linearisation;
+**Tools → TTTR Tools** gathers the ALEX Creator, Micro-time Shifter, header
+editor, Split / Convert and Count Rate Analysis in one window.
 
 For a stream you want to slice and select on, `Photons` wraps a `tttrlib.TTTR`
 with the conveniences the tools use:
@@ -153,4 +173,4 @@ Micro-time histograms from a TTTR file.
 - [The photon container](../concepts/photon_container.md) — what a `.pto`
   holds, how a result says what one of its rows is, and how to take one apart.
 - `chisurf/core/fio/fluorescence/` and the `tttrlib.TTTR` reader; plugins in `chisurf/plugins/tttr/`.
-- Tools: the **TTTR Toolbox** (`chisurf/plugins/tttr/tttr_toolbox/`) converts, splits and edits headers; **TTTR ⇄ .pto** (`chisurf/plugins/core/tttr_to_pto/`) packs a vendor file into a `.pto` or unpacks one back out, with no prompt; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.
+- Tools: **TTTR Tools** (`chisurf/plugins/tttr/tttr_toolbox/`) converts, splits and edits headers; **TTTR ⇄ .pto** (`chisurf/plugins/core/tttr_to_pto/`) packs a vendor file into a `.pto` or unpacks one back out, with no prompt; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.

@@ -266,6 +266,11 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py
 The PSF calculator's OpenGL volume view cannot render offscreen; its figure
 comes from `docs/guides/make_screenshot_psf.py`, run in its own process.
 
+The per-guide screenshots of guides 02–67 and 83–85 live in
+`docs/guides/screenshots/`, one module per range of guides; run one module per
+process with `python docs/guides/screenshots/run.py <module> [_grab_name ...]`
+and settings isolated in a scratch `CHISURF_SETTINGS_DIR`.
+
 or, outside pixi, with the project on the path:
 
 ```bash

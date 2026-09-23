@@ -36,7 +36,7 @@ independent of the (much slower) diffusion time.
 import numpy as np
 import tttrlib
 
-tttr = tttrlib.TTTR("measurement.ptu")
+tttr = tttrlib.TTTR("test/data/tttr/BH/132/BH_SPC132.spc", "SPC-130")
 donor = np.isin(tttr.routing_channels, [0, 8]).astype(float)
 acceptor = np.isin(tttr.routing_channels, [1, 9]).astype(float)
 mt = tttr.macro_times
@@ -56,9 +56,44 @@ _, G_da = g(donor, acceptor)
 # G_dd, G_aa, G_da  ->  fit sharing the exchange rate k = k12 + k21
 ```
 
-The FCS model catalogue includes explicit 2-state FRET-FCCS kinetic models
+(`tttr.header.macro_time_resolution` is in seconds, so `tau` is in ms.) The FCS
+model catalogue includes explicit 2-state FRET-FCCS kinetic models
 (`FRET-FCCS, 2-state (D)`); the correlator plugins compute the auto/cross curves
 from the burst or full photon streams.
+
+### Burst-wise FCS
+
+**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Burst-wise FCS** (also
+the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**) correlates each burst
+separately, using only the photons of that burst ± **Padding**. Left, top to
+bottom:
+
+- the **detector setup**; its stored FCS pairs fill **FCS channel pairs**
+  (tick the pairs to compute — GG, RR and the GR cross term for FRET-FCS);
+- **Correlator**: **FCS bins (B)** (linear bins per cascade, 3), **cascades**
+  (20), **Fine grid** (micro-time-resolved lags), **Padding ±[ms]** (100);
+- **Fitting**: **Mode** *None* / *Simple* (one diffusion component) /
+  *MaxEnt* (a diffusion-time distribution, regularised by **MaxEnt reg
+  (log10)** over **τ_D min/max**, 0 = automatic), and the fit window
+  **t_min / t_max** (0 = the full lag range);
+- **Burst folders or BUR/BST files**: a burst-analysis folder (its `bi4_bur/`
+  or `BID/` files point back at the TTTR measurement).
+
+**▶ Run** correlates every checked file × pair × burst. The right side lists the
+curves (`file · b<burst> · pair`, filterable by text) and plots the selected one
+with its fit; *Diffusion-time distribution* holds $P(\tau_D)$ in MaxEnt mode.
+**≡ Settings** saves/loads the settings as JSON and shows the resolved pairs.
+
+```{figure} figures/16_burst_fcs.png
+:name: fig-16-burst-fcs
+:width: 100%
+
+Burst-wise FCS on the 10 BH SPC-132 smFRET files of the burst-selection test
+folder, pairs GG (0/8), RR (1/9) and GR: 8940 curves. Shown is the GG
+auto-correlation of the longest burst of `m000.spc` (598 photons) with the
+*Simple* diffusion fit; a single burst's curve is shot-noise limited at short
+lags, which is why the kinetic terms are fitted globally over many bursts.
+```
 
 ## Result
 
@@ -72,6 +107,13 @@ diffusion decay — the FRET-FCS signature of conformational exchange.
 
 FRET-FCS auto and cross correlations.
 ```
+
+## Known defects
+
+- After **▶ Run** the *Computing burst-wise FCS…* progress bar stays in the
+  status bar (visible in the figure): `_on_run` in
+  `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py` sets the final value
+  but never closes the `ChiSurfProgress`.
 
 ## See also
 

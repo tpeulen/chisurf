@@ -18,7 +18,8 @@ tool.
 
 ## 1. Open the calculator and pick a scheme
 
-Open **Calculators → FCS Saturation**. The **Photophysics** panel on the left
+Open **Calculators → FCS Saturation** (also on the ribbon as **Spectroscopy →
+Fluorescence Correlation Spectroscopy → FCS Saturation**). The **Photophysics** panel on the left
 holds everything about the molecule and the optics; the other panels are output.
 
 Start from a shipped scheme in the **Scheme** dropdown:
@@ -32,7 +33,7 @@ Start from a shipped scheme in the **Scheme** dropdown:
 
 A new scheme starts as the three-state singlet/triplet case, which is what most
 dyes do. A preset is a starting point, not a constraint: every rate,
-cross-section and brightness stays editable, and **States** goes up to six.
+cross-section and brightness stays editable, and **Number of States** goes up to six.
 
 ## 2. Set the optics — wavelength before ε
 
@@ -51,8 +52,8 @@ Three fields, in this order:
    even resolution. Drag it and the FCS curve follows: computed results are
    cached, so sweeping back over a power you already visited is instant.
 
-Then set `w_r`, `w_z` and `D` in the **Optics & measurement** table (next to the
-state diagram). At **P = 0** the saturated curve is identical to the unsaturated
+Then set `w_r`, `w_z` and `D` in the parameter table under the **State
+diagram**. At **P = 0** the saturated curve is identical to the unsaturated
 Gaussian — that is the definition of unsaturated, and a useful sanity check.
 
 ## 3. A worked case: Rhodamine 6G at 488 nm
@@ -62,7 +63,7 @@ Set the Rhodamine 6G preset, λ = 488 nm, ε = 100 000 M⁻¹cm⁻¹ (its value 
 D = 400 µm²/s. The unsaturated diffusion time is `w_r²/4D` = 39 µs. Now sweep
 the power:
 
-| Power | k_exc(0,0) | V_eff/V₀ | apparent τ_D | G(0) vs unsaturated |
+| Power | k_exc(0,0) | V_eff/V₀ | apparent τ_D | G(0) vs unsaturated, no bunching |
 | --- | --- | --- | --- | --- |
 | 0 | 0 | 1.00 | 39 µs | 1.00 |
 | 0.05 mW | 48 µs⁻¹ | 1.33 | 47 µs | 0.76 |
@@ -70,6 +71,11 @@ the power:
 | 1 mW | 957 µs⁻¹ | 2.80 | 78 µs | 0.36 |
 | 2 mW | 1914 µs⁻¹ | 3.33 | 87 µs | 0.30 |
 | 5 mW | 4784 µs⁻¹ | 4.11 | 100 µs | 0.24 |
+
+The last column is the volume effect alone (`--no-bunching`). With the
+photokinetic bunching term on — the default — G(0) *rises* instead (1.30 at
+0.05 mW, 1.32 at 2 mW, CLI `amplitude_ratio`), because the triplet blinking adds
+its own amplitude; neither is a reliable concentration.
 
 Read the middle column as **the factor by which an unsaturated fit
 overestimates N**. At 50 µW — a power most people would call gentle — it is
@@ -79,19 +85,34 @@ good FCS curve at every one of those powers, and still fits.
 
 ## 4. Read the four outputs
 
-![The FCS saturation calculator on a Rhodamine 6G scheme at 2 mW](figures/fcs_saturation_tool.png)
+```{figure} figures/fcs_saturation_tool.png
+:name: fig-56-fcs-saturation-tool
+:width: 100%
+
+The calculator on its default Rhodamine 6G scheme at 2 mW and 488 nm
+(ε = 80 000 M⁻¹cm⁻¹, `w_r` = 200 nm, `w_z` = 1000 nm, D = 400 µm²/s). The
+saturated curve (red) sits on its own one-component fit (grey) — residual below
+it — although it is 2.39× slower than the unperturbed Gaussian (blue). The
+**Info** dock (hidden) reports a peak focal rate of 2392 µs⁻¹, G(0) 0.9959 →
+1.265 and `V_eff/V₀` = 3.50.
+```
 
 * **FCS curve** — the unperturbed Gaussian (blue) against the saturated curve
-  (red). Below it, the summary: the peak focal excitation rate, and
-  `V_eff/V₀`, **the factor by which an unsaturated fit overestimates N**.
-* **Profiles** — the excitation rate, one population curve per state, and the
+  (red) and, with **1-component fit** ticked, the one-component Gaussian fitted
+  to the saturated curve (grey), with its residual underneath. That the fit is
+  good is the point: saturation does not show in the shape.
+* **Volume profile** — the excitation rate, one population curve per state, and the
   emission profile `F(r) = Σ Q_i P_i(r)`. Watch the emission flatten, then
   hollow out, as you raise the power. That flattening *is* the saturation.
 * **Volume(P)** and **Diffusion time** — the same two quantities swept over
   power, with your current power marked. This is the plot to look at before
   choosing an operating point: pick a power where the curve is still flat.
 * **Info** — the summary, in a dock of its own that starts hidden; restore it
-  from the dock's right-click menu.
+  from the dock's right-click menu. It holds the numbers: photon flux, ε(λ), the
+  peak focal excitation rate, unperturbed and saturated G(0), `V_eff/V₀` —
+  **the factor by which an unsaturated fit overestimates N** — the relaxation
+  times of the scheme, the apparent one-component τ_D against the true one, and
+  a two-diffusion-time fit.
 
 Each of these is a separate dock: drag it out, tab it with another, or close and
 restore it. The profile plots start tabbed together so each gets full width.

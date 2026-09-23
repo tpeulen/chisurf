@@ -30,11 +30,12 @@ Three settings are worth understanding before you press anything:
 | Setting | What it does |
 |---|---|
 | **Donor / Acceptor** | Detector names as they appear in the `.bur` columns. Their channel definitions are *verified* against the count columns; a detector that fails is refused rather than used. |
-| **Min donor photons** | Bursts below it are excluded, because the Gaussian kernel the model uses for `⟨t⟩` is not valid there. The model applies the identical cut. |
+| **Min donor photons** (collapsed **Selection** panel) | Bursts below it are excluded, because the Gaussian kernel the model uses for `⟨t⟩` is not valid there. The model applies the identical cut. |
 | **⟨t⟩ min / max** | The mean-micro-time axis, in nanoseconds. Bursts outside it are excluded and counted. |
 
 The dataset reports what it dropped — typically 40–50% of bursts at a 20-photon
-cut. That is expected, and it is shown rather than hidden.
+cut on a measurement (22% on the simulated folder of §6: 3387 of 4340 bursts
+kept). That is expected, and it is shown rather than hidden.
 
 ```{note}
 If the reader refuses a detector, its channel definition could not be reproduced
@@ -50,7 +51,10 @@ empty, which *is* the static analysis. Fit that first — the static answer is w
 dynamic one has to beat, and starting with exchange makes it far too easy to
 explain static heterogeneity as dynamics.
 
-Free, in roughly this order:
+A new fit comes with two states and start values read off the histogram
+(**↺ Estimate start** re-reads them): `tauD0`, `alpha`, `R1`, `R2`, `x2` and
+`donorOnly` free, everything else fixed. If you want to build the fit up by hand,
+free in roughly this order:
 
 1. **donorOnly** and **alpha** — the donor-only population's position pins both.
 2. **tauD0** — the donor-only population's `⟨t⟩` pins it.
@@ -60,12 +64,34 @@ Leave `sigma`, `gamma`, `R0` and `tauA` fixed to begin with. `sigma` in particul
 is *not* a free broadening parameter: under the histogram source alone it will
 happily absorb width that belongs to the kinetics.
 
-![The MFD 2D plot: measured histogram, model, and the static FRET line over both](figures/mfd_2d_fit.png)
+```{figure} figures/57_mfd_fit_window.png
+:name: fig-57-mfd-fit-window
+:width: 100%
 
-The plot shows the measured histogram, the model's, and the proximity-ratio
-marginal of both. The white curve is the static FRET line, drawn in the *same raw
-coordinates* as the data — with the model's own corrections applied to it, so the
-deviation you read off it is dynamics rather than a mis-set `γ`.
+The simulated intermediate-exchange folder of §6 loaded as **MFD (burst folder)**
+with an **MFD 2D** fit added. Left, the **Analysis** dock: the fit controls, the
+two states with their distances and amplitudes, the (empty) **Rate matrix** and
+the **calibration** group. Right, the **MFD map** tab — the measured histogram;
+the **channel** selector flips the same axes to the model, the residual or the
+difference.
+```
+
+```{figure} figures/57_mfd_marginals.png
+:name: fig-57-mfd-marginals
+:width: 100%
+
+The **MFD marginals** tab of the same fit at its data-seeded start values, before
+**Fit**: measured (blue) against model (red), proximity ratio above and `⟨t⟩`
+below. The static two-state model puts two peaks where the exchanging data has a
+bridge between them — the signature §4 is about.
+```
+
+The plot tabs are **MFD map** (one heat map with a channel selector: measured,
+model, residual, difference), **MFD marginals** (the proximity-ratio and `⟨t⟩`
+marginals of both), **State Scheme**, **Info**, **Residuals 2D** and
+**Parameter scan**. Both axes are *raw* — proximity ratio and mean micro time —
+and every correction lives in the model, so the measured histogram never moves
+while a correction factor is fitted.
 
 ## 3. Read the width, not just the position
 
@@ -162,6 +188,18 @@ whatever you are testing from the contamination of the estimated one.
 Bear in mind what it proves: the simulator shares its physics with the model, so it
 is a **code** test. It shows the machinery is wired correctly, not that the physics
 is right.
+
+On the §6 folder `data.report()` lists the four detectors with a count agreement
+of 1.0000 each and a background of 0.335 kHz; one static model evaluation
+(`model.score`) takes 0.3 s and the two-state kinetic one 1.5 s.
+
+## Known defects
+
+- After loading, the status bar reads *MFD reader form could not refresh:
+  'AutoForm' object has no attribute 'update_widgets'* —
+  `chisurf/gui/widgets/experiments/mfd.py` calls a method AutoForm does not have
+  (`sync_fields` is the current name), so the reader panel does not redraw after
+  a load.
 
 ## Two things not to misread
 

@@ -100,11 +100,14 @@ for w in report['warnings']:
 ```
 
 ```
-   c  0.9756 ± 0.0394   ESS=1763  R-hat=1.0025  tau=11.3
-   a  2.0305 ± 0.0544   ESS=1780  R-hat=1.0023  tau=11.2
-   b  0.4918 ± 0.0184   ESS=1807  R-hat=1.0020  tau=11.0
-   warnings: none
+   c  0.9757 ± 0.0379   ESS=2226  R-hat=1.0012  tau=9.0
+   a  2.0302 ± 0.0525   ESS=2186  R-hat=1.0016  tau=9.1
+   b  0.4919 ± 0.0179   ESS=2110  R-hat=1.0014  tau=9.4
 ```
+
+No `WARNING:` line follows: the list is empty. The sampler is not seeded, so a
+re-run gives slightly different ESS and τ; the means agree to the third
+decimal.
 
 (`c` sits slightly below the true 1.0 because the `NormalPrior(1.0, 0.05)` from
 step 2 is pulling on it — that is the prior doing its job, and `a` and `b` shift
@@ -238,6 +241,15 @@ The posterior graph's second tab draws how strongly each pair of parameters
 constrains the other. Where the fit carries only a covariance that is `|r|`;
 where it carries draws it is mutual information, measured from them.
 
+```{figure} figures/39_posterior_dependence.png
+:name: fig-39-posterior-dependence
+:width: 100%
+
+The **Dependence** tab for the sampled fit of §1–4. All three pairs sit above
+|r| = 0.96: on x ∈ [1, 2] the constant, linear and quadratic terms trade off
+against each other, and the notes under the plot say so pair by pair.
+```
+
 Look for **warm-coloured edges**, labelled with both numbers:
 
 ```
@@ -316,8 +328,8 @@ sampling/2026-07-28_13-53-19/
 ```
 
 The chains are written as tab-separated text (`.er4`) or as an HDF5 table
-(`.h5`, one dataset per column), chosen in the **Format** field of the sampling
-panel or with `chain_format` (`optimization.sampling.chain_format` for the
+(`.h5`, one dataset per column), chosen in the **Chains** field of the fit
+controller's **⚙** settings or with `chain_format` (`optimization.sampling.chain_format` for the
 default). Text reads anywhere, which is why it is the default; HDF5 is about
 **three times smaller**, which is what matters once a run is long enough to be
 worth keeping — measured 0.60 MB against 0.20 MB for 3 × 2000 draws of a
@@ -361,7 +373,8 @@ measurement.
 Four datasets, each with its own private `c`, all sharing `a`. Node shade is
 relative uncertainty: `a` is pale because four datasets constrain it, the `c`s
 are red because one each does. The other two tabs show the posterior
-*correlation* (a pair at ±1 is one measurement, not two) and the *junction tree*.
+*dependence* (§8; a pair at ±1 is one measurement, not two) and the *junction
+tree*.
 
 **What-if** answers the question a correlated fit provokes: *if this parameter
 really were that value, what would the others have to be?* Pick a parameter,
@@ -411,15 +424,25 @@ for t in approx['targets']:
 
 **Chain diagnostics** shows whether the chain can be believed.
 
-![The rank tab of the chain diagnostics, showing eight converged chains](../images/chain_diagnostics_rank.png)
+```{figure} figures/39_chain_diagnostics.png
+:name: fig-39-chain-diagnostics
+:width: 100%
 
-Each row is a chain, each column a rank bin, and the colour is the departure
-from flat. An even field means the chains sample the same distribution; a chain
-favouring one end of the range appears as a coloured band across its row. The
+The **Rank** tab after the four-run `blocked` sampling of §3: one step line per
+chain, the grey line at the flat expectation.
+```
+
+Every draw is ranked against all chains pooled, and each chain's ranks are
+histogrammed — one step line per chain, the grey line at the count a flat
+histogram would have. Lines scattered about the grey one mean the chains sample
+the same distribution; a chain favouring one end of the range rises at that end
+and sags at the other. The
 verdict underneath is calibrated against what noise alone produces for a
 histogram of that size *and* the chain's own autocorrelation — so "consistent
 with noise" means it, and a warning is worth acting on. The second tab plots
-effective sample size against draws, which should grow in a straight line.
+effective sample size against draws, which should grow in a straight line; its
+note gives the lowest ESS and the efficiency (1978 from 19920 draws, 9.9 %, for
+the run above).
 
 Every symmetric interval carries this check automatically once a chain exists.
 `posterior_summary()` rows, and the `diagnostics` of any `laplace` or `gaussian`
@@ -438,9 +461,22 @@ symmetric, only that nothing has checked.
 
 ## 12. In the GUI
 
-The **Sampling** button on the fit controller runs the same code on the server.
-The backend comes from `optimization.sampling.method` in the settings
-(`blocked` by default); `n_runs` and `steps` come from the controller.
+The **Sample** button on the fit controller runs the same code on the server.
+Everything that configures the run sits behind **⚙** beside it — the sampler
+(`optimization.sampling.method`, `blocked` by default) and its own settings, the
+chain format, **Runs** and **Steps** (`n_runs`, `steps`; 10 and 1000 as shipped),
+and the optimiser tolerances. They are written to your settings, because they
+are shared by every fit; the controller itself keeps only what belongs to this
+fit (dataset, range, stored result).
+
+```{figure} figures/39_sampling_controls.png
+:name: fig-39-sampling-controls
+:width: 100%
+
+Left: the fit controller on the §1 fit — **Sample** starts the job. Right: the
+form **⚙** opens, with the sampler panel (which fields appear depends on the
+sampler chosen), the run length, and the optimiser.
+```
 
 When the job finishes, its **convergence verdict is written to the log** — the
 warnings if the chain is not usable, otherwise a one-line all-clear. A finished

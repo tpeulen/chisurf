@@ -32,13 +32,29 @@ rather than failing later.
 
 1. Open ndX from ChiSurf (or start it with `--chisurf-rpc host:port`). Without a
    connection there is nothing to send *to*, and the menu says exactly that.
-2. Load a burst table — a `.bur` file, or bursts computed in the trace browser.
+2. Load a burst table with photon provenance — **File → Import →
+   Analysis-Folder** (Ctrl+I) on a Seidel-style folder whose `bi4_bur/` holds
+   the `.bur` files, or bursts computed in the trace browser.
 3. Draw a gate on the 2-D histogram, or add one in the selection table.
 4. **Right-click** either the 2-D histogram or the selection table →
    **Send selection to** → *FCS*, *TCSPC decay*, *PDA* or *PCH*.
 
+```{figure} figures/52_send_selection_menu.png
+:name: fig-52-send-selection-menu
+:width: 100%
+
+ndX opened from ChiSurf on 293 bursts searched in `BH_SPC132.spc`, plotted as
+proximity ratio against the mean green micro time. The gate `FRET` (proximity
+ratio 0.35–1.0) leaves 59 bursts; right-clicking the 2-D histogram offers the
+four consumers ChiSurf advertises under **Send selection to**.
+```
+
 The status line reports how many bursts from how many files went across, and
-whether the handoff was recorded.
+whether the handoff was recorded — for the gate above, *Sent 59 bursts from 1
+file(s) to pda (not recorded: no database product attached)*. The menu uses the
+consumer's advertised `defaults`; it has no dialog for parameters, so detector
+groups other than `[[0], [1]]`, or PDA on a non-PTU file, need the
+headless call below.
 
 ## The menu is not a list ndX keeps
 
@@ -168,6 +184,31 @@ print(reply["result"]["burst_duty_cycle"], reply["provenance"])
 `send(..., record=False)` skips the provenance write for batch callers that
 record their own operation.
 
+`rpc_client` is ndX's `chisurf_rpc` (or
+`chisurf.plugins.ndxplorer.rpc_bridge.make_inprocess_chisurf_client()`), and
+`data_source` the loaded table (`ndxplorer.io.loading.load(folder,
+kind="burst_dir")` outside the GUI). On the gate above, with `BH_SPC132.spc`
+(green 0/8, red 1/9), the TCSPC call returns 59 bursts → 2 decays holding 7674
+photons; the PCH call reports `burst_duty_cycle` 0.0048 — the 59 bursts fill
+half a percent of the span between the first and last gated photon, which is
+where `span` and `interior` part ways. Without `owner` (or a table opened from
+MMFDB), `provenance` is `None`.
+
+## Known defects
+
+- **The result stays in ChiSurf's reply.** The menu shows the counts in the
+  status line and drops the returned decay, histogram or curves; nothing opens
+  as a dataset or fit. Use `bridge.send(...)` to keep them.
+- **FCS from the menu returns no curves.** The advertised default pair in
+  {src}`chisurf/server/burst_consumers.json` is `{"ch1": [0], "ch2": [1]}`;
+  the correlator reads `chs_a`/`chs_b`, so both channel lists are empty. Pass
+  `pairs=[{"name": "GxR", "chs_a": [0], "chs_b": [1]}]` from a script.
+- **PDA on a non-PTU file is silently empty.** `pda.from_bursts` defaults to
+  `reading_routine="PTU"`; on an SPC file it answers `ok` with `curves: []`.
+- **Bare file names are resolved against the working directory**, not the
+  analysis folder, so a `.bur` naming `m000.spc` fails with *No such file or
+  directory* unless ndX runs from the data folder.
+
 ## Related
 
 - [ndX exploration workflow](46_ndxplorer.md)
@@ -176,4 +217,5 @@ record their own operation.
 
 ## See also
 
-- Tool: the **Burst Browser** (`chisurf/plugins/burst/burst_browser/`).
+- Tool: **ndX** (`chisurf/plugins/ndxplorer/`); the menu is
+  `ndxplorer/analysis/send_menu.py`, the bridge `ndxplorer/analysis/burst_bridge.py`.

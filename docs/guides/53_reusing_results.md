@@ -45,6 +45,17 @@ run is skipped and the status bar says so:
 Unchanged — kept the previous BVA result (🔁 Restart recomputes it)
 ```
 
+```{figure} figures/53_bva_unchanged.png
+:name: fig-53-bva-unchanged
+:width: 100%
+
+**Spectroscopy → Burst Analysis → 4. Burst BVA** on four files of the BH SPC-132 DNA
+measurement (934 of 1133 bursts plotted). The step had written its `bv4/` files;
+pressing **Run** again with nothing changed kept them: the status bar says so and
+**🔁 Restart** (third toolbar button) is outlined. **⏩** sits between **◀ Back**
+and **Next ▶**.
+```
+
 Anything else recomputes: a changed τ or window length, a different donor
 channel, one more `.bur` file in the folder, a re-recorded measurement, a new
 IRF. You never have to remember to invalidate anything.
@@ -52,22 +63,22 @@ IRF. You never have to remember to invalidate anything.
 | Step | Reuses when | Recomputes when |
 |---|---|---|
 | 2. Burst Selection | the same raw files and the same search settings produced the displayed search | any file or setting differs |
-| 3. Burst BVA | the plot on screen is the answer *and*, for a Run, the `bv4/` files are current | settings, detectors or burst files differ |
-| 4. Burst 2CDE | the `2c4/` companions on disk match the current settings | variant, kernel, τ, channels or burst files differ |
-| 5. Burst MLE | the `bg4/`, `br4/`, `by4/` exports on disk match | model, start values, min photons, per-detector settings or IRF differ |
-| 6. Burst segmentation (H2MM) | the fitted model on screen matches the request | state range, criterion, engine, seed, streams or burst files differ |
-| 7. Burst segment MLE | the `bg4/`, `br4/`, `by4/` exports match *including* their per-state columns | anything in row 5, plus the H2MM run or the per-state photon floor |
+| 4. Burst BVA | the plot on screen is the answer *and*, for a Run, the `bv4/` files are current | settings, detectors or burst files differ |
+| 5. Burst 2CDE | the `2c4/` companions on disk match the current settings | variant, kernel, τ, channels or burst files differ |
+| 6. Burst MLE | the `bg4/`, `br4/`, `by4/` exports on disk match | model, start values, min photons, per-detector settings or IRF differ |
+| 7. Burst segmentation (H2MM) | the fitted model on screen matches the request | state range, criterion, engine, seed, streams or burst files differ |
+| 8. Burst segment MLE | the `bg4/`, `br4/`, `by4/` exports match *including* their per-state columns | anything in row 6, plus the H2MM run or the per-state photon floor |
 
 …and, for every row, when the raw measurements change, when the setup's reading
 correction changes, or when the code that computes it does.
 
-Steps 5 and 6 differ in *where* they keep the answer, which is why step 5 can
-reuse across sessions and step 6 cannot: the MLE batch's product is the exported
+Steps 6 and 7 differ in *where* they keep the answer, which is why step 6 can
+reuse across sessions and step 7 cannot: the MLE batch's product is the exported
 files, while an H2MM fit lives only in the panel.
 
 ## Steps that start themselves
 
-Two steps do not wait for a Run click at all: **2CDE (4)** and **H2MM (6)**
+Two steps do not wait for a Run click at all: **2CDE (5)** and **H2MM (7)**
 compute as soon as you open them, because by then everything they need has been
 decided upstream. Both run off the GUI thread and both carry a **Stop** button
 in their toolbar — BVA, which has always recomputed on its own when the folder
@@ -87,7 +98,10 @@ the first place.
 ## Walking the whole pipeline (⏩)
 
 **⏩**, between **◀ Back** and **Next ▶**, runs the remaining **numbered** steps
-in order, including the one you are on. It stops at the separator: what follows
+in order, including the one you are on. It passes over **3. Burst Fusion
+(optional)** — as **Next ▶** does — because fusing replaces the burst folder every
+later step reads, and that should happen only when you press the step's own
+button. It stops at the separator: what follows
 are tools you reach *with* the result (Browser, Accurate FRET, Burst FCS) or that
 feed the pipeline from the raw files (Background, IRF & Background), and running
 those unasked is not what fast-forward means.
@@ -97,8 +111,8 @@ It is not a loop that fires them off together: each is started only once the
 previous has finished, the same wait **Next ▶** performs, because starting a step
 while another is in flight is what that wait exists to prevent. So a
 fast-forward takes as long as the steps do, the panel you are watching is always
-the one working, and the status bar counts them off (*Fast-forward 3/7: 5. Burst
-MLE*).
+the one working, and the status bar counts them off (*Fast-forward 3/7: 4. Burst
+BVA*).
 
 The button is its own cancel: while it is walking it reads **⏸**, and a second
 click stops it *after* the step in flight (a running analysis is never killed
@@ -167,8 +181,9 @@ beside its Run button, and it is outlined the moment a run was skipped, which is
 exactly when it is the thing you want. Deleting the stamp file works too.
 
 ```python
-tool._run_analysis(force=True)      # BVA / H2MM
-tool.run(force=True)                # 2CDE
+bva._restart_analysis()             # BVA (its Run takes no force)
+h2mm._run_analysis(force=True)      # H2MM
+two_cde.run(force=True)             # 2CDE
 wizard.process_bursts(force=True)   # burst-wise MLE export
 ```
 

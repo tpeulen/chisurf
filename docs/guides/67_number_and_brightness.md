@@ -92,6 +92,13 @@ maps = nb_pipeline(stack, {"detrend_segments": 5, "gamma": 1.0})
 dimers = nb_gate_mask(maps["mean"], maps["B"], RectangleROI(0, 1.75, 100, 3))
 ```
 
+On the demo file (**🧪 Load demo** writes it; `create_demo()` in
+`chisurf.plugins.microscopy.img_pixel_nb.demo` from Python) the gate keeps 496
+of 1024 pixels with median ε = 0.99 and n = 3.00. The CLI line above, with
+γ = 0.3536 and 3-pixel smoothing, prints `B mean=1.747 | epsilon median=2.120 |
+n median=1.405` for the whole image — γ-corrected values, not comparable with the
+γ = 1 ones.
+
 `nb_maps` takes the detector (`gain`, `offset`, `read_variance`, `dead_time`,
 `pixel_dwell`) and estimator (`gamma`, `smoothing`, `radius`, `median`, `ddof`)
 settings directly; `ccnb_maps(stack_a, stack_b)` is cross N&B;

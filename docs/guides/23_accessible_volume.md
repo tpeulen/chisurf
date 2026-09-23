@@ -38,7 +38,7 @@ distribution and the FRET-averaged distance come straight off the object:
 from chisurf.core.structure import Structure
 from chisurf.core.structure.av import BasicAV
 
-s = Structure(filename="protein.pdb")
+s = Structure(filename="test/data/atomic_coordinates/pdb_files/148l.pdb")   # T4 lysozyme
 kw = dict(linker_length=20.5, linker_width=1.5, radius1=3.5, simulation_type="AV1")
 donor    = BasicAV(s, residue_seq_number=27, atom_name="CA", **kw)
 acceptor = BasicAV(s, residue_seq_number=95, atom_name="CA", **kw)
@@ -53,6 +53,48 @@ AV-based decay model (`models/tcspc/av_decay.py`) uses the simulated $P(R_{DA})$
 directly in a FRET decay fit, and the FRET-docking tools use AV clouds as
 restraints. The coarse-grained dye models for docking come from the external
 molecular-modelling framework.
+
+On 148L (residues 27 and 95, CA, AV1 as above) this gives $P(R_{DA})$ on 96
+bins with $\langle R_{DA}\rangle = 40.4$ Å and
+$\langle R_{DA}\rangle_E = 42.2$ Å ($R_0 = 52$ Å).
+
+### The FPS JSON Editor
+
+**Structure ▸ FRET ▸ FPS JSON Editor.** The toolbar loads/saves a
+`*.fps.json` labelling project, **Update** pushes hand edits of the *JSON* tab
+back into the tables, **Clear** empties it. Tabs:
+
+- **Positions** — one row per labelling site: **Show**, **Name**, **PDB
+  (File/ID)** (a path or a PDB ID), **Chain**, **Res**, **Atom**, **Dye Preset**,
+  **Dye Model** (AV1/AV3/…), linker and radii under **Details…**, a **Color**
+  and delete. **Compute AVs** computes every populated row (a row also
+  recomputes when its site changes); **Save AV MRC** writes the selected AVs as
+  density maps. The status line reports each AV's volume and grid points.
+- **Distances** — donor/acceptor pairs (**Label 1**, **Label 2**), the distance
+  **Type** (`dRDAE` = $\langle R_{DA}\rangle_E$, `dRDA`, `dRmp`, …), the
+  measured value and errors under **Details…**, and a **Score set** grouping.
+- **FlexFit**, **JSON** (the raw file), **3D View** (the structure with AV
+  clouds; OpenGL, not captured offscreen).
+
+```{figure} figures/23_fps_editor.png
+:name: fig-23-fps-editor
+:width: 100%
+
+**Positions** of the HIV-RT example
+(`chisurf/plugins/modelling/fret/examples/fps_hiv_rt/hiv_rt.fps.json`): eight
+AV1 sites on the p66/p51 subunits of 1R0A and three AV3 sites on the DNA. The
+shipped file names no structure; for the figure each site was pointed at
+`protein_1R0A.pdb` (body 0) or `dna.pdb` (body 1), and all 11 AVs were
+computed (last: p51_E194C, 16 530.8 Å³, 4898 grid points).
+```
+
+```{figure} figures/23_fps_editor_distances.png
+:name: fig-23-fps-editor-distances
+:width: 100%
+
+**Distances** of the same project: 20 protein–DNA pairs of type `dRDAE`
+(the last row is the empty row for adding one).
+```
 
 Besides **Load** in the toolbar, the editor window accepts a dropped
 `*.fps.json` file from the file manager — the first JSON path dropped anywhere on

@@ -47,11 +47,11 @@ res.as_dict()              # {'tau': ..., 'gamma': ..., 'r0': ..., 'rho': ...}
 res.twoIstar               # the 2I* statistic (lower is better; ~1 per d.o.f. is good)
 ```
 
-`fit.parameter_names` gives the parameter order for the chosen estimator. Note
-that `res.x` is the *full* tttrlib vector: its leading entries follow those
-names, while trailing entries carry derived quantities (for `fit23`, `x[6]` is
-the scatter anisotropy and `x[7]` the experimental anisotropy). Use
-`res.as_dict()` when you just want the named parameters.
+`fit.parameter_names` gives the parameter order for the chosen estimator, and
+`res.x` holds exactly those free parameters (four for `fit23`). Derived
+quantities are named result columns: `res.r_scatter`, `res.r_experimental`,
+`res.converged`, or `res.result(name)` for any column in `res.result_names`.
+`res.as_dict()` maps names to values.
 
 The estimator variants differ in what they solve for: **Fit23** (`tau`, `gamma`,
 `r0`, `rho`) is the single-lifetime + anisotropy workhorse, **Fit24** fits a
@@ -64,6 +64,36 @@ The IRF and background can come directly from the non-burst photons (see
 [Background rates](15_background_rates.md)); the same harness drives the
 pixel-wise image MLE. Batch fits run off the UI thread and export per-burst
 tables that open in ndxplorer.
+
+### The Burst MLE tool
+
+**Spectroscopy ▸ Single-Molecule ▸ Burst MLE**, or step *6. Burst MLE* of
+**Spectroscopy ▸ Burst Analysis**. Tabs: **Detector Definition**, **Burst
+Files** (`.bur` tables), **IRF Files**, **Background Files** and
+**Burst-MLE**. The Burst-MLE tab holds the file and **Detector**, the fit
+**Range** (micro-time channels after binning), **Min photons**, the collapsed
+*IRF (shift · threshold · range)* and *Shift · scatter · G/l1/l2* groups, and
+*Fit parameters*: the **Model** (Fit23/24/25, tail fit), **Split by H2MM
+state** with its own **min ph.**, **BIFL scatter**, **2I\*: P+2S**, **Save
+VV/VHs**, and per parameter an initial value, a fix box **F** and the fitted
+value. **⚡ Auto** picks the micro-time binning and fit window, **✨ Auto IRF**
+estimates a Gaussian IRF and background from the non-burst photons; **🎯 Opt**
+optimises; **▶** runs the batch over all bursts.
+
+```{figure} figures/21_burst_mle.png
+:name: fig-21-burst-mle
+:width: 100%
+
+Burst MLE on `m000.bur` of the BH SPC-132 sample folder (green = routing
+0/8, red = 1/9), after **Auto IRF**: binning 32, window 15–116, and a Fit23 of
+all selected green photons at τ = 2.103 ns (γ, r₀, ρ fixed). Right: the VV|VH
+decays (white), the Gaussian IRF (red), the non-burst background (blue) and the
+model (green); top, the weighted residuals.
+```
+
+The status line says what the Auto IRF did and that a measured IRF/background
+gives better lifetimes: the Gaussian stand-in leaves the systematic residual on
+the rising edge seen here.
 
 ## Result
 
@@ -93,12 +123,12 @@ lands at 2.2 ns — a number nothing in the sample has.
 
 Tick **Split by H2MM state** and each burst is additionally fitted once per
 Viterbi state, using the same IRF, background and model as the ordinary fit. It
-needs a segmentation in the same analysis folder (step 6, *Burst segmentation
+needs a segmentation in the same analysis folder (step 7, *Burst segmentation
 (H2MM)*); without one the option says so and the batch proceeds normally.
 
-In the burst workflow this is step 7, **Burst segment MLE**: the same wizard as
-step 5 with the box already ticked, placed *after* the segmentation it consumes.
-The control is shown only there — on step 5 it offered an option whose input did
+In the burst workflow this is step 8, **Burst segment MLE**: the same wizard as
+step 6 with the box already ticked, placed *after* the segmentation it consumes.
+The control is shown only there — on step 6 it offered an option whose input did
 not exist yet. Run standalone, the checkbox is always available.
 
 The results are extra **columns on the same burst row** — `Tau S0 (green)`,

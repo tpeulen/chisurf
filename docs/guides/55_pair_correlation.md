@@ -238,6 +238,22 @@ It is one-dimensional and per-pixel, which makes it the route for a flow profile
 5. **Is the intensity flat where the pCF says "barrier"?** A dark line is an
    absent sample, not a wall.
 
+## Known defects
+
+- **The Flow tool's demo currently yields no arrows.** Measured 2026-09-23:
+  **🧪 Load demo** then **▶ Map flow** at the defaults (tile 24, 5 lags)
+  refuses all 25 tiles as escaped, and so do 2 or 3 lags; `pcf_from_stack` and
+  `pcf_flow_map` on the same stack return no transit time. The analysis itself
+  is sound — `stics_flow_map` on a numpy phantom drifting 1 px/frame recovers
+  2.30 µm/s against 2.44 µm/s, coherence 0.997, nothing escaped — so the fault
+  is in reading the demo's photon stream back into frames: the plugin's own test
+  (`test_the_demo_is_a_readable_ptu_whose_flow_comes_back`) fails with 29
+  frames read where 30 were written. The figure above predates the regression
+  and shows what the demo should produce.
+- `pcf_from_kymograph` splits the record into 8 segments by default and
+  refuses one whose segments come out too short (49 rows, 6 per segment, is
+  refused); pass `n_segments=` for a short kymograph.
+
 ## Regenerating the figures
 
 ```bash

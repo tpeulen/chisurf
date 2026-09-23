@@ -32,16 +32,60 @@ The `burst_h2mm` plugin is a Qt-free numba engine (with an equivalent C++
 ```python
 from chisurf.plugins.burst.burst_h2mm.core.analysis import analyze
 
-result = analyze(bundle, states=(1, 2, 3), criterion="bic")
+# data: BurstPhotons (photon streams of every burst, e.g. from
+# core.photons.bursts_from_dataframe); state_counts are scanned, BIC selects
+result = analyze(data, state_counts=(1, 2, 3), criterion="bic")
+result.fret          # apparent E per state
 result.dwells        # per-dwell measured E (and S with an acceptor-excitation stream)
-result.transitions   # Viterbi transition-count matrix
+result.transitions   # Viterbi transitions
 ```
+
+Headless on a burst-analysis folder (donor 0,8 and acceptor 1,9 are the
+defaults):
+
+```bash
+csc h2mm compute "burstwise_All 0.1000#15" --no-photons   # or the h2mm console script
+```
+
+On the BH SPC-132 sample folder
+(`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/`) this
+reads 2980 bursts / 228 338 photons and selects 3 states by BIC
+(BIC 273 709 → 220 224 → 214 494 for 1 → 3 states), E = 0.029, 0.422, 0.866,
+Viterbi populations 0.391 / 0.572 / 0.038 against posterior occupancy
+0.391 / 0.566 / 0.042; it writes `h2mm/h2mm_result.json` in the folder.
 
 From the guided workflow: `bursts.h2mm(states=(1, 2, 3))`. Optional ALEX/PIE
 stoichiometry, nanotime divisors (lifetime-resolved states) and bootstrap
 uncertainties are supported.
 
-In the burst workflow, **step 6 starts fitting as soon as you open it**. A state
+### The H2MM tool
+
+**Spectroscopy ▸ Single-Molecule ▸ H2MM**, or step *7. Burst segmentation
+(H2MM)* of **Spectroscopy ▸ Burst Analysis**. The left dock has two tabs:
+**H2MM Settings** — *Model Selection* (**Min/Max states**, **Criterion**
+bic/icl, **Scan patience**) and *Optimisation* (**Engine**, **Restarts**,
+**Seed**, **Photon table** HDF5/CSV, **Max iterations**, **Min photons/burst**,
+**Macro-time scale**, **Nanotime divisors**, **Decoder** + its seed, **State
+photons → write** PTU/sidecar) — and **Channel Definitions** (donor, acceptor
+and optional acceptor-excitation detector, from the detector setup). The
+toolbar opens the burst folder, runs, restarts, stops, runs the bootstrap
+uncertainty and the likelihood scan, and saves. Each result plot is its own
+dock.
+
+```{figure} figures/19_h2mm_tool.png
+:name: fig-19-h2mm-tool
+:width: 100%
+
+The H2MM tool after a 1–3 state scan of the BH SPC-132 sample folder (donor
+0/8, acceptor 1/9, the default *EM float32* engine, 2 restarts, seed 0). The
+status line reads `Selected 3 states (BIC) from 2980 bursts / 228338 photons
+(seed 0) — occupancy 0.391, 0.566, 0.042`, the same as the headless run above.
+Docks: dwell E histogram per state, transition density, model selection
+(BIC/ICL), dwell times, per-state decay, transition rates and the state path of
+one burst.
+```
+
+In the burst workflow, **step 7 starts fitting as soon as you open it**. A state
 scan with restarts runs for minutes, so it runs off the GUI thread and **Stop**
 in the toolbar ends it — a stopped scan is discarded rather than reported as the
 answer, and coming back to the step does not restart it. Opening the step again
@@ -213,6 +257,12 @@ efficiencies).
 
 H2MM state path and dwell E histogram.
 ```
+
+## Known defects
+
+- The *State path* dock gets ~20 px of plot height in the default layout, so the
+  E trace is flattened onto one line, and its time axis reads
+  `Time in burst (ms) (x0.001)` — µs presented as scaled ms.
 
 ## See also
 

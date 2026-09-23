@@ -46,7 +46,23 @@ rcm = rcm_from_dye_solutions(
 
 The returned matrix is the identity on unused channels and normalised so its
 first ordered element is 1; apply it to measured channel rates to obtain
-corrected, species-resolved signals.
+corrected, species-resolved signals. For the rates above it is
+
+```text
+[[ 1.    -0.06   0.     0.   ]
+ [-0.037  0.915  0.     0.   ]
+ [ 0.     0.     0.726 -0.038]
+ [ 0.     0.    -0.018  0.55 ]]
+```
+
+one 2 × 2 block per polarisation, the off-diagonal terms being the donor→acceptor
+leakage and acceptor→donor cross-talk.
+
+There is no GUI for this calibration: `rcm_from_dye_solutions` is an API
+function. The **Accurate FRET** tool determines the scalar factors α, δ, γ and β
+from the bursts of a FRET sample instead (see
+[Multi-parameter E–S histograms](14_multiparameter_es.md) and
+[RCM from FRET samples](25_rcm_from_fret_samples.md)).
 
 ## Result
 
@@ -65,4 +81,5 @@ Routing-correction matrix from dye solutions.
 
 - {src}`chisurf/core/fluorescence/fret/calibration.py` (`rcm_from_dye_solutions`, plus the
   γ/β/leakage/direct-excitation correction helpers).
-- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).
+- Related tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`), which
+  estimates α/δ/γ/β from bursts rather than the channel matrix from dye solutions.

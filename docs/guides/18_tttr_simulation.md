@@ -31,12 +31,15 @@ states — and the events are encoded to a real TTTR container (PTU/HT3/SPC).
 ## In ChiSurf
 
 ```python
+import numpy as np
 import tttrlib
 
-cfg = tttrlib.SimEngine.default_json()          # edit species, D, brightness, kinetics
+cfg = tttrlib.SimEngine.default_json()          # a JSON string: edit species, D, brightness, kinetics
 sim = tttrlib.SimEngine.from_json(cfg)
-sim.run()
-macro = sim.macro_window                        # + sim.arrival_time, sim.micro_time, sim.channel
+sim.run()                                       # default: 1 000 000 photons, 2 channels
+macro = np.asarray(sim.macro_window())          # accessors are methods returning tuples:
+arrival = np.asarray(sim.arrival_time())        # + sim.micro_time(), sim.channel()
+t = macro * 0.01 + arrival                      # absolute time = window * settings.dt + offset
 ```
 
 The lifetime-FCS simulator ({src}`chisurf/core/fluorescence/fcs/simulate.py`) and the
@@ -44,7 +47,39 @@ FRET-docking / burst-workflow `simulate()` helpers wrap this for common cases,
 returning data registered in MMFDB so recovered states can be compared with the
 truth.
 
+### The lifetime-FCS simulator
+
+**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Lifetime-FCS
+Simulator** simulates two diffusing species with lifetimes **τ₁**, **τ₂** and
+diffusion coefficients **D₁**, **D₂**, an optional symmetric interconversion
+rate **k (1/ms)** (0 = static), a **Photons** budget and a **Seed**; **Simulate
++ Correlate** builds the lifetime filters from the species' reference decays and
+plots the filtered species auto- and cross-correlations. The status line reports
+the filter condition number (large = the lifetimes are too similar to separate).
+
+```{figure} figures/18_lfcs_sim.png
+:name: fig-18-lfcs-sim
+:width: 100%
+
+Defaults (τ₁ = 1 ns, D₁ = 8 µm²/ms; τ₂ = 4 ns, D₂ = 0.5 µm²/ms; k = 0;
+400 000 photons; seed 1): the fast species (blue) decays at the shorter lag,
+the static cross-correlation (green) is flat at 1. Filter condition number 3.3.
+```
+
 ### Setting up species and kinetics in the GUI
+
+The acquisition simulator is the *Simulation* device of **Main ▸ Tools ▸
+Acquisition**; its card-setup dialog is shown below.
+
+```{figure} figures/18_sim_setup.png
+:name: fig-18-sim-setup
+:width: 80%
+
+The simulation setup dialog with two species, green and red detection, and the
+*Kinetics* panel open: the radiative grid holds two non-zero rates
+(1 → 2 at 1.0/ms, 2 → 1 at 0.5/ms), which the button reads back as
+"2×2, 2 set".
+```
 
 The **Sample & brightness** panel is one row per species: molecules *M*,
 diffusion coefficient *D*, and the parallel/perpendicular brightness *q* of each
@@ -85,6 +120,12 @@ validated against a known input.
 
 Simulated confocal trace and its correlation.
 ```
+
+## Known defects
+
+- The Lifetime-FCS simulator's parameter column is capped at 320 px, which
+  clips the **D₁**, **D₂** and **Photons** spin boxes (`8.0000`, `400000`
+  are cut in the figure).
 
 ## See also
 

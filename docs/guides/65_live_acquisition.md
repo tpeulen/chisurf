@@ -21,21 +21,57 @@ photophysics — and produces the same B&H records a card does.
 
 ## Running one
 
-1. Open **Setup → Settings → Acquisition** and pick the **device**. With
-   *Simulation*, **Simulation Setup…** in the dock opens the simulator's
-   parameters (species, brightness, diffusion, lifetimes, excitation mode).
-2. Set the **stop conditions** in the dock: a time in seconds, a photon count in
-   kilo-photons, or both. At least one is required — an acquisition with neither
-   would never stop on its own.
-3. Set the four **routing channels**. These are the detector numbers the card
-   emits, and they are what the decay and count-rate windows are indexed by:
-   window *i* shows channel *i* of that list, whatever the numbering.
-4. Optionally set an **output folder**. On devices that support it, raw vendor
-   words are written there during the run.
+1. Open **Setup → Settings → Acquisition** and pick the **Active Device Type**.
+   With *Simulation*, the simulator's parameters (species, brightness,
+   diffusion, lifetimes, excitation mode) are embedded below the device picker.
+   Set **Acquisition → Mode** to *Pulsed* if you want to see a decay: the default is CW,
+   whose micro times are all zero, so the decay window shows a single spike at
+   0 ns and the phasor reads (1, 0).
+
+   ```{figure} figures/65_acquisition_settings.png
+   :name: fig-65-acquisition-settings
+   :width: 70%
+
+   Setup → Settings → Acquisition with the simulator selected and switched to
+   pulsed excitation. The species table sets the number of molecules in the box
+   (M), the diffusion coefficient (D) and the brightness per detector; **Decay
+   …** sets the lifetimes.
+   ```
+2. Set the **stop conditions** in the dock: **Time [s]** and **Nbr Ph [k]**
+   (kilo-photons), or both. At least one must be non-zero — an acquisition with
+   neither would never stop on its own. The photon condition is checked per
+   chunk, so a run overshoots it by up to one chunk (**Chunk Size** in the
+   settings page, 16384 photons by default).
+3. The four **routing channels** are the detector numbers the card emits, and
+   window *i* of the decay and count-rate displays is channel *i* of that list.
+   They default to 0, 1, 2, 3; the simulator emits 8 and 0 (B&H numbering). The
+   dock does not currently show the four spinboxes (see *Known defects*), so the
+   list can only be changed through **Save Settings** / **Load Settings** (the
+   `channel_spinboxes` key of the JSON).
+4. Optionally set an **Output folder**. On devices that support it, raw vendor
+   words are written there during the run; the simulator writes `mNNN.spc`
+   files plus `simulation_config.json` and `simulation_info.txt`. The field is
+   pre-filled with a default `…/acquisition` folder (the configured one, else
+   under the working path, else `~/chisurf/acquisition`), and an empty field is
+   refilled with that default on **Start** — every run writes its raw words
+   somewhere.
 5. Press **Start**. The device is initialised on demand.
 
-The status bar reports the stop reason when a condition is met, and the LCD next
-to it is the mean count rate in kHz.
+The progress bar reports the stop reason and the photon count when a condition is
+met, and the LCD next to it is the mean count rate in kHz.
+
+```{figure} figures/65_live_acquisition.png
+:name: fig-65-live-acquisition
+:width: 100%
+
+The standalone acquisition window after a simulated run (pulsed excitation,
+τ = 3.5 ns, 300 k-photon stop condition, routing channels 8, 0, 9, 1). Left: the
+dock with the stop conditions, status and output folder. Right: the decay per
+detector with the burst/phasor line beneath, the live FCS curve, and the MCS
+trace, count rate and inter-photon-time windows. The run stopped at 388,767
+photons (one chunk past the limit) and found 9,970 bursts; the phasor of all
+micro times is g = 0.295, s = 0.513.
+```
 
 ## What the windows show
 
@@ -102,7 +138,9 @@ pipeline = AcquisitionPipeline(PipelineConfig(
     photon_limit=1_000_000,
 ))
 
-for chunk in device_chunks:              # uint32 records, as read from the FIFO
+# uint32 records, as read from the FIFO; with no card, split the simulator's
+# words (next block) into chunks: device_chunks = np.array_split(words, 10)
+for chunk in device_chunks:
     pipeline.push(chunk)
     if pipeline.stop_reason:
         break
@@ -140,6 +178,38 @@ constructor and nothing catches it: an unknown name, a `radial` without a
 `psf_file`, or a photon library built without that grid all fail the call. None
 of them falls back to the plain Gaussian, because a substituted focus changes
 the answer without changing anything you can see.
+
+## Using it well
+
+- Check the phasor line before trusting the decay: (1, 0) means every micro
+  time is zero — CW excitation, or a card whose TAC is not running.
+- A photon stop condition overshoots by up to one chunk; for an exact count,
+  cut the saved raw words afterwards.
+- Point the output folder somewhere deliberate before the first run: it is
+  never empty, so a quick test run leaves `mNNN.spc` files in the default
+  folder.
+
+## Known defects
+
+Measured on the standalone window (`photon-acquisition`) with the simulator:
+
+- **Routing channels are not in the dock.** The four spinboxes that define the
+  window order (`AcquisitionDockWidget.channel_spinboxes`,
+  `chisurf/plugins/core/acq/gui/tool.py`) are created but never added to the
+  layout. They stay at 0, 1, 2, 3, while the decay window's curve controller
+  defaults to routing 8, 9, 10 — so with default settings no decay curve is
+  drawn at all. Workaround: set `channel_spinboxes` through **Load Settings**.
+- **Simulation Setup… never appears.** `update_ui_for_device_type` compares
+  the device type with `"Simulation"`, but the device reports `"SIMULATION"`,
+  so the button stays hidden (and every **Start** re-creates the device, since
+  the same mismatch makes the "type changed" test always true). Use
+  Setup → Settings → Acquisition instead.
+- **Plot controllers paint over the title bars** in the standalone window: each
+  window's controller is parented to its MDI subwindow with no layout
+  (`chisurf/plugins/core/acq/gui/windows.py`), so labels such as "Channel
+  Selection" and "Update Frequency" overlap the window title. The screenshot
+  above hides them.
+- The burst/phasor line under the decay takes half the decay window's height.
 
 ## Related
 

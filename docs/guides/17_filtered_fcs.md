@@ -52,6 +52,56 @@ The `fcs_filter_calculator` and `flc_2d` plugins provide the interactive
 filter-design and 2D-FLCS workflow, and the lifetime-FCS simulator closes the
 loop for validation.
 
+### The Filter Calculator
+
+**Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ FCS Filter Calculator**
+opens with a built-in example (two lifetimes,
+scatter and afterpulsing) so the panel is never empty; **📂 Mixed…** replaces
+it with a measured decay (`.pto`, TTTR, or a text histogram). The docks:
+
+- **Decay sources** — *Inputs* (**Pol** for parallel/perpendicular filters,
+  **IRF**, **AP** afterpulse/constant nuisance), the **Detectors** of the
+  selected setup with a per-detector IRF *Width*, *Skew*, *Shift* and IRF file
+  (`…`), **Global (stacked) multi-detector filters**, the **Mixed decay** with
+  **Fit range** (TAC bins; also a draggable band on the plots), and the
+  **Components** list (right-click to add/edit/remove, double-click to edit);
+- **Lifetime filters**, **Weighted residuals**, **Reconstruction / decay** —
+  the filters per component and detector, the residuals of the non-negative
+  unmixing, and data vs. reconstruction;
+- **Info** (per-detector fit ranges, a text summary), **Instrument** (below),
+  **Auto-fit** (**Type** lifetime or FRET species, **Components / states**,
+  **Lifetime min/max**, *Fit + generate filters*, and the fitted model's
+  parameters), **Setup** (the detector setup).
+
+**🎯 Auto-fit** decomposes the mixed decay into *N* components and adds them as
+species; **🧩 Unmix** fits their non-negative amplitudes and computes the
+filters. **💾 Project** saves/loads the whole state and exports the results.
+
+```{figure} figures/17_filter_calculator.png
+:name: fig-17-filter-calculator
+:width: 100%
+
+The BH SPC-132 smFRET measurement as mixed decay, detectors green (0/8) and
+red (1/9) from the setup, after **Auto-fit** with 2 components and **Unmix**.
+The short component sits on the 0.2 ns lower bound (scatter-like, 51 %), the
+long one at 2.58 ns (49 %); χ²ᵣ = 1.58. The nuisance components (afterpulse,
+scatter/IRF) are listed but *rejected* — they are fitted, not given a filter.
+```
+
+```{figure} figures/17_filter_calculator_autofit.png
+:name: fig-17-filter-calculator-autofit
+:width: 100%
+
+The **Auto-fit** dock after the fit: settings, the status line, and the fitted
+model's parameters (amplitudes $x$, lifetimes $\tau$, scatter `sc`, background
+`bg`, IRF shift `ts`, width and skew) with errors and bounds.
+```
+
+A component pinned on a bound, as here, is the fit saying the model is not
+what the data hold — a real dilute smFRET sample is not a two-lifetime
+mixture. Use Auto-fit components as a starting set and prefer measured
+reference patterns.
+
 ### 2D-FLCS on many molecules, with error bars
 
 Single-molecule 2D-FLCS data are one photon stream per molecule. Build the matrices
@@ -108,8 +158,8 @@ $\beta$ (excitation-flux ratio of the acceptor to the donor laser), $\gamma$
 polarization calibration $G$, $l_1$, $l_2$, the Förster radius $R_0$ and the
 laser period.
 
-These are **pre-filled from the detector setup** you pick at the top of the
-panel. Measure them once with the [Accurate FRET tool](41_accurate_fret.md) and
+These are **pre-filled from the detector setup** you pick in the **Setup**
+dock. Measure them once with the [Accurate FRET tool](41_accurate_fret.md) and
 press *🔬 Store on setup*; every later session that selects the same setup starts
 from the measured values instead of the defaults. Anything you edit here wins
 over the stored value for the current session.
@@ -134,6 +184,12 @@ filter the early ones, so the filtered correlations separate the species.
 
 Filtered FCS patterns and filters.
 ```
+
+## Known defects
+
+- In the *Detectors* table of the Filter Calculator the **Width**, **Skew** and
+  **Shift** spin boxes are too narrow for their values (`0.14…`, `-0.0…`,
+  `2.27…` in the figure).
 
 ## See also
 

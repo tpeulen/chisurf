@@ -31,11 +31,17 @@ tools:
 ```python
 import tttrlib
 
-img = tttrlib.CLSMImage(tttr, channels=[0])     # reconstruct from frame/line/pixel markers
-img.fill(tttr)
-stack = img.intensity                            # frames × lines × pixels
-decays = img.get_pixel_decays()                  # per-pixel micro-time histograms
+tttr = tttrlib.TTTR("test/data/clsm/Leica_SP8.ptu")
+img = tttrlib.CLSMImage(tttr, channels=[0, 1])  # reconstruct from frame/line/pixel markers
+stack = img.intensity                            # frames × lines × pixels: (93, 512, 512)
+mean_mt = img.get_mean_micro_time(tttr, minimum_number_of_photons=1)
+decays = img.get_fluorescence_decay(             # per-pixel micro-time histograms
+    tttr, micro_time_coarsening=16, stack_frames=True)
 ```
+
+The per-pixel histogram array is frames × lines × pixels × micro-time bins
+(uint8), so coarsen the micro-time axis and stack the frames before asking for
+it on a full image.
 
 Pixel-wise analyses: `img_pixel_mle` (per-pixel `2I*` lifetime, same harness as
 [burst MLE](21_lifetime_from_bursts.md)), `img_pixel_phasor`, `img_pixel_intensity`,
@@ -45,15 +51,40 @@ Pixel-wise analyses: `img_pixel_mle` (per-pixel `2I*` lifetime, same harness as
 ## Selecting pixels
 
 A decay is built from the pixels you select. Paint them with the brush on the
-image, then save the selection under a name in the **ROIs** tab: each saved
-region is listed with what it actually is — `bright patch — 216 px, 41.8 ph/px`
-— so you can tell a real structure from a stray brush stroke without applying
-it. Clicking a region makes it the current selection and rebuilds the decay.
+image, then save the selection under a name in the **Regions** tab: each saved
+region is listed with what it actually is — *Shape* and a *Measurement* such as
+`13496 px, 85.8 ph/px` — so you can tell a real structure from a stray brush
+stroke without applying it. Clicking a region makes it the current selection and rebuilds the decay.
 
 **Save** writes `.json` (the region itself: geometry, name, and nested
 combinations — the format to prefer) or a `.tif` / `.npy` mask image for tools
 that read nothing else. **Load** reads all of those back, plus a Cellpose
 `_seg.npy` segmentation, which arrives as one region per detected object.
+
+The tool is **Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its docks are
+tabs: **File**, **Acquisition** (setup preset — PTU, Leica SP5/SP8, MFIS
+Olympus — markers, pixels per line, channels; markers are read from the file
+header when present), **Brush & Decay** (brush size/width, select/erase, live
+update, *Image type* Intensity / Mean micro time, *Min #Ph*, micro-time
+*Coarsen*, frame mode), **Image**, **Regions** and **Decay**.
+
+```{figure} figures/24_clsm_draw.png
+:name: fig-24-clsm-draw
+:width: 100%
+
+CLSM-Draw on `test/data/clsm/Leica_SP8.ptu` (preset *Leica SP8*, channels
+0,1; 93 frames of 512 × 512 summed). **Left:** the intensity image with the
+brightest 5 % of pixels selected (white). **Right:** the decay of that
+selection, 1 157 700 photons.
+```
+
+```{figure} figures/24_clsm_draw_rois.png
+:name: fig-24-clsm-draw-rois
+:width: 90%
+
+The selection saved as the region *bright patch*: a mask of 13 496 px at
+85.8 photons per pixel. *Combine* sets how enabled regions merge (∪ / ∩).
+```
 
 The same regions work headlessly:
 
@@ -61,7 +92,8 @@ The same regions work headlessly:
 from chisurf.plugins.microscopy.clsm.api import clsm
 
 clsm.extract_decay("image.ptu", mask_path="cell.json")   # a stored region
-clsm.extract_decay("image.ptu", threshold=0.2)           # brightest pixels
+clsm.extract_decay("test/data/clsm/Leica_SP8.ptu", threshold=0.2)   # brightest pixels
+# -> {"time_ns", "counts", "noise", "n_photons", "output_path"}
 ```
 
 A saved region is not only for decays. Point the **Region** field of the
@@ -100,3 +132,8 @@ intensity images and why dim pixels are masked rather than fitted.
   {ref}`concept-imaging-flim-phasor`, [lifetime from bursts](21_lifetime_from_bursts.md).
 - Tool: **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`), **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`) and **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`).
 - Also for images: **Intensity** (`chisurf/plugins/microscopy/img_pixel_intensity/`) for the plain photon-count map, **IRF & BG** (`chisurf/plugins/microscopy/img_calibration/`) for the per-detector calibration the lifetime tools consume, **CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`) to build an image from a stream by hand, **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) to simulate one whose answer is known, and the **Image Browser** (`chisurf/plugins/tttr/tttr_image_browser/`) to page through a folder.
+
+## Known defects
+
+- The *Brush & Decay* dock tab of CLSM-Draw reads **Brush _Decay**: the `&` in
+  the title is taken as a Qt mnemonic marker.
