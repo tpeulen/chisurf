@@ -225,6 +225,8 @@ testpaths = ["test", "chisurf/plugins/burst/burst_selection/tests"]
 markers = [
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",
     "live_llm: hits a real LLM provider; skipped unless an API key is configured",
+    "gui: marks tests that require or drive the graphical user interface",
+    "widget: marks tests that instantiate Qt widgets",
 ]
 
 # Coverage.py config (read by pytest-cov on `pixi run test-cov`). Output is

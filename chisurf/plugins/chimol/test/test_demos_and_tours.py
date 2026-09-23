@@ -20,6 +20,8 @@ import socket
 import pytest
 from toolkit_free import probe
 
+pytestmark = pytest.mark.slow
+
 
 def _online() -> bool:
     """Whether the public repositories a fetching demo needs are reachable."""

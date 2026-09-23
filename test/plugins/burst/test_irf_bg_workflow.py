@@ -10,6 +10,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+pytestmark = [pytest.mark.gui, pytest.mark.widget]
+
 from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
 
 _PATTERNS = {

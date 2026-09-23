@@ -1,5 +1,19 @@
 # Update Log
 
+## 2026-09-23
+
+* **Resolved CI test suite failures across Linux, macOS, and Windows.**
+  - **Linux (`ubuntu-22.04`)**: Fixed coverage.py data lock deadlock during test execution in
+    `test/agent/test_bootstrap.py` by marking `test_qt_widget_models_appear_once_an_application_exists`
+    as `@pytest.mark.gui`, properly excluding Qt widget reader setup from the non-GUI suite.
+  - **macOS (`macos-latest`)**: Fixed SIGSEGV (exit code 139) caused by unclosed `BurstAnalysisTool`
+    widgets during `test/plugins/burst/test_fusion_workflow.py` by marking burst workflow tests with
+    `pytestmark = [pytest.mark.gui, pytest.mark.widget]` and adding explicit `close()`/`deleteLater()`
+    teardown to the shell fixture.
+  - **Windows (`windows-2022`)**: Marked `chisurf/plugins/chimol/test/test_demos_and_tours.py` as
+    `@pytest.mark.slow`, preventing 10-minute subprocess demo runs from exceeding the 120s test timeout
+    and leaving orphan processes locking DLLs during cleanup. Registered `gui` and `widget` markers in `pyproject.toml`.
+
 ## 2026-09-21
 
 * **CI test suite stabilized across Linux, macOS, and Windows.**

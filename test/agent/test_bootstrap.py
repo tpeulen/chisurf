@@ -31,7 +31,11 @@ def test_the_offscreen_application_outlives_the_call():
     assert ensure_qt_application() is True, "a second call must be a no-op"
 
 
-def test_qt_only_models_appear_once_an_application_exists():
+import pytest
+
+
+@pytest.mark.gui
+def test_qt_widget_models_appear_once_an_application_exists():
     ensure_qt_application()
     registry = ensure_experiments_registered(allow_widgets=True, force=True)
     names = [name.strip() for name in registry["TCSPC"]["models"]]

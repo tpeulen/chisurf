@@ -19,6 +19,8 @@ import pathlib
 
 import pytest
 
+pytestmark = [pytest.mark.gui, pytest.mark.widget]
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
@@ -53,7 +55,10 @@ def shell(qapp, demo):
     names = [panel["name"] for panel in tool.panels]
     tool.nav_list.setCurrentRow(names.index("3. Burst Fusion (optional)"))
     qapp.processEvents()
-    return tool
+    yield tool
+    tool.close()
+    tool.deleteLater()
+    qapp.processEvents()
 
 
 def _fusion_panel(shell):
