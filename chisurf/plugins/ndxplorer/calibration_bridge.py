@@ -31,6 +31,7 @@ __all__ = [
     "push_calibration_to_ndx",
     "push_unmixed_columns_to_ndx",
     "optimize_calibration_from_ndx",
+    "calibrate_columns",
     "measured_background",
     "fitted_background",
     "calibration_from_container",
@@ -1262,3 +1263,46 @@ def refresh_stored_parameters(ndx) -> dict:
     it from overwriting values the user tuned themselves.
     """
     return restore_calibration_from_container(ndx)
+
+
+def calibrate_columns(columns, constants, options, *, container: str = "", progress=None) -> dict:
+    """ndX's calibration contract over plain burst columns.
+
+    :func:`ndxplorer.analysis.fret_calibration.calibrate` hands a window's burst
+    columns and constants to its backend without the window. This runs
+    :func:`optimize_calibration_from_ndx` on a stand-in holding just those, so
+    the emtk window and the Qt one get the same numbers from the same code
+    (verified bit for bit against the Qt run on the cal1 ALEX measurement).
+
+    Parameters
+    ----------
+    columns : mapping of str to ndarray
+        Burst columns by name.
+    constants : mapping of str to float
+        The window's constants: the starting point, and what held factors keep.
+    options : ndxplorer.analysis.fret_calibration.CalibrationOptions
+        What to determine and write.
+    container : str, optional
+        The `.pto` the bursts came from (for ``background="measurement"``).
+    progress : callable, optional
+        ``progress(step, total, message) -> bool``; ``False`` stops the run.
+
+    Returns
+    -------
+    dict
+        The contract's result, with ``new_columns`` holding the injected
+        accurate columns.
+    """
+    from types import SimpleNamespace
+
+    from ndxplorer.core.data_source import DataSource
+
+    source = DataSource.from_columns(columns)
+    source.provenance = {"container_path": container}
+    window = SimpleNamespace(data_source=source, constants=dict(constants))
+    result = optimize_calibration_from_ndx(window, progress=progress, recompute=False,
+                                           **options.as_kwargs())
+    if result.get("ok"):
+        result["new_columns"] = {name: np.asarray(source.column_values(name))
+                                 for name in result.get("injected") or []}
+    return result
