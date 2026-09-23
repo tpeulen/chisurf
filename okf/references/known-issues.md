@@ -5656,3 +5656,141 @@ rewrite pastes over *both* kinds of caller. A file that stopped importing is a
 red suite; a file that now imports the wrong `common` and silently loses
 `atom_weights` is a wrong-answer path — the PDB parser's `except KeyError`
 printed "Cloud not assign parameters" and kept going.
+
+## Intensity trace / File tools defects found while documenting them (2026-09-23)
+
+Found while writing `docs/guides/74_intensity_traces_and_file_tools.md`; not
+fixed in that change because `chisurf/plugins/tttr/intensity_trace/__init__.py`
+is a 1700-line legacy Qt + direct-pyqtgraph widget (on
+`test/pyqtgraph_import_allowlist.txt`), and touching it obliges the chiplot
+port. Whoever takes that port should fix these with it:
+
+* ~~**Off-by-one in every `.bst` these tools write.**~~ **Fixed 2026-09-23**:
+  both writers now emit `stop - 1` and drop empty windows
+  (`tttr_time_windows/api/io.py::save_bst`, `intensity_trace.save_burst_ids`;
+  guard `tttr_time_windows/tests/test_bst_inclusive.py`). Original report:
+  `intensity_trace.save_burst_ids`
+  and `tttr_time_windows/api/selection.py::compute_bids_from_tttr` write the
+  second column as `searchsorted(..., end)` — the first photon *after* the
+  run/window (half-open). `core/fio/fluorescence/burst.py::generate_burst_dataframe`
+  (used by BID → Analysis) documents the stop as the **last photon, inclusive**.
+  Each run/window therefore gains one photon when read back. Verify on
+  `BH_SPC132.spc` with 1000 ms windows: row 0 is `0 2788`, row 1 `2788 5620`.
+* **Fallback routing mode bins one channel.** With no detector setup,
+  `process_ptu` passes only `selected_detectors[0]` to
+  `_process_routing_channels`; the default (all eight "Routing Channel" boxes
+  ticked) therefore shows only channel 0, and nothing if channel 0 is absent.
+* **"FRET efficiency" is `ch0 / sum`** of whatever detector is first; with the
+  donor first it is 1 − E_PR. The bottom trace plot is x-labelled "FRET
+  Efficiency" though its x axis is time.
+* **Layout:** the Processing/HMM tab widget and the plot widget share stretch
+  equally, so ~40 % of the window is empty control area and the stacked plots'
+  y-labels overlap; the histogram axis says "Counts (log)" on a linear axis.
+* **No `help.md` / `guide.json`** for the intensity-trace tool (CLAUDE.md
+  requires both); README.md names `chisurf.core.math.hmm` while the code uses
+  `chisurf.plugins.core.hmm`.
+* **TTTR Split / Convert:** the "µ-time binning" choice is never applied —
+  `SplitterViewModel.micro_time_binning` is not used by `do_split`.
+* **BID → Analysis GUI:** `process_all` has its `try/except` commented out, so
+  one failing file aborts the batch; `README.md` says BUR is the default output
+  while `convert_bid_file` defaults to `{"pto"}`.
+* **tttrlib:** `TTTR.get_intensity_trace` docstring says the window is in
+  milliseconds; it is in seconds (0.005 → 12466 bins over 62.3 s). Belongs
+  upstream in tttrlib.
+* **Time Windows preview** draws one `vline` per window over the whole file
+  (6000+ lines at 10 ms on a 1-min file) and the `style="dash"` pen renders
+  solid.
+
+## TTTR: Generate Decay / TTTR: Correlate compute wrong axes and error bars (found 2026-09-23)
+
+Found while documenting both tools (`docs/guides/73_tttr_decay_and_correlation.md`,
+"Known defects"); the docs session was not cleared to edit plugin code, so none
+is fixed. Re-derive with the grab script's probe: load
+`test/data/tttr/BH/132/BH_SPC132.spc`, histogram detector 0, correlate 0 × 8.
+
+1. **Correlate — error bars inverted.** `Correlator.run` builds
+   `ey = 1.0 / w.mean(axis=0)`, but `Correlator.weight` returns
+   `fcs.noise(...)`, which is a *standard deviation* (every reader in
+   `core/fio/fluorescence/fcs/` inverts it to get a weight). Measured: `ey` 0.32
+   at 13.5 ns (G = 12.8) and 15.9 at 127 ms (G = 1.08). Fix: `ey` = rms of the
+   split σ over √n_splits; guard test: `ey` at the longest lags < `ey` at the
+   shortest. Blocks any weighted FCS fit of this tool's output.
+2. **Correlate — Fine mislabels the lag axis.** With `set_microtimes` the
+   correlator's lags are micro-time ticks, but `tau = x * mt_clk * 1e3` scales
+   by the macro clock. Measured: fine curve ends at 31 µs, labelled 127.4 ms.
+   Fix: scale by `self.p.dt` (already mt_clk / effective_n_tac when fine).
+3. **Generate Decay — axis in seconds and TAC div ignored.** `make_histogram`
+   uses `photons.dt` (seconds, undivided) and `minlength=photons.n_tac`, so
+   x is in s (lifetime models expect ns) and with TAC div 16 the decay is drawn
+   over 0.84 ns followed by empty channels. `onTacDivChanged` shows
+   `(nTAC + 1) / div` (4097 at div 1). Fix: ⌈n_tac/div⌉ channels at
+   `self.dt` (ns, divided).
+4. **Generate Decay — curve list never shows curves.** The selector is built
+   with `experiment=tcspc` and filters on `isinstance(d.experiment, ...)`; the
+   tool's `DataCurve`s have no experiment. `add_curve` also refreshes list and
+   plot *before* `super().add_curve(v)`, so the plot lags one press.
+5. **Both — context-menu Save writes nothing.** `ExperimentalDataSelector.
+   onSaveDataset` saves `file_type="pkl"`, which `Base.save` does not support
+   (`supported_save_file_types = ["yaml", "json"]`); it returns silently.
+   Neither tool therefore has a GUI route to a fit.
+6. **Correlate — `default` Type** is not a tttrlib method; tttrlib keeps `wahl`
+   without warning.
+7. Neither tool has `help.md` or `gui/guide.json` (legacy Qt, no AutoForm spec).
+
+## PSF calculator: backend and two tttrlib optics errors (found 2026-09-23)
+
+Found while writing `docs/guides/72_psf_calculator.md` and
+`docs/concepts/point_spread_function.md`; measurement scripts were an
+independent Debye pupil integral (NA 1.4, n 1.518, 520 nm, full quadrature).
+
+1. **The tool does not open on the default plot backend.** `gui/tool.py`
+   builds `cp.VolumeView()`, and emtk has no volume renderer
+   (`NotImplementedError`). Opening it from the Calculators hub fails unless
+   `CHISURF_PLOT_BACKEND=pyqtgraph`. Blocks: every user on defaults. Fix
+   belongs in emtk (a volume/iso-surface widget), not a Qt fallback.
+2. **tttrlib radial polarization over-weights the longitudinal field 2×.**
+   `ext/python/CLSMSuperRes.i::vectorial_psf` uses `e_z = 2j*j0`; Youngworth &
+   Brown 2000 give `E_r ∝ sin2θ`, `E_z ∝ 2i sin²θ`, i.e. `e_z = 1j*j0` with
+   this code's `e_r`. Measured: tttrlib radial 181 nm vs circular 210 nm; the
+   independent integral gives radial 241 nm vs circular 209 nm (same integral
+   reproduces tttrlib's linear-x 250 × 179 exactly). Dorn 2003: over the full
+   aperture radial is *wider*. File + fix upstream in tttrlib; the docs carry a
+   warning until then.
+3. **tttrlib Gaussian axial envelope 4× too short.** `z_r = π σ² n/λ` where the
+   beam waist is `w0 = 2σ`, so `z_r = π w0² n/λ`. Axial FWHM 117 nm measured vs
+   ~456 nm expected. Upstream in tttrlib.
+4. pyqtgraph `_PgVolumeView.set_vectors` skips the translation `set_volume`
+   applies, so polarization strokes draw off-centre. The Result line
+   "(1.12 x lateral)" is lateral ÷ scalar and reads backwards.
+
+## FCS toolbox defects (found 2026-09-23)
+
+Found while writing `docs/guides/75_fcs_toolbox.md` ("Known issue" boxes).
+
+1. **Channel Definitions no longer reaches the correlator.** After the
+   AutoForm port `FCSChannelWidget` has no `setup_combo` / `_detector_setups` /
+   `_channels_for_setup`, but `fcs_correlator/tool.py` `_channel_def_context`
+   and `_bind_channel_def_panel` still read them, so the context is always
+   empty: FCS Preset list and A/B selectors stay empty and the LUT setup is
+   never forwarded. Fix: read `widget.model`, observe `setup_changed`. (A docs
+   agent's attempt at this edit was refused by the permission system and
+   reverted; left for the owner.) Related: `apply_preset` looks for
+   bins/cascades under `pair["correlator"]`; the editor saves them top-level.
+2. **Default `suren` noise differs from Koppel 1974.** `core/fluorescence/fcs/__init__.py::noise`
+   codes the middle term `2*G0/ns**2*(1+B)` where Koppel has
+   `2*G0*(1+B)/(ns*na)`, and scales variance by 10 ms/τ above `time_upper`
+   without reason. Affects fit weights everywhere.
+3. `fcs_yaml.read_yaml` is a stub: YAML conversion is write-only (TypeError).
+4. Readers disagree on the plateau (ALV +1 → 1; PyCorrFit/.pqres/.dat → 0);
+   the converter preserves the source's convention.
+5. `.pqres`: missing σ → unit weights (skips the promised noise fallback); lag
+   units possibly seconds on an ms axis (max lag 0.092, unverified); no count
+   rate → 1 kHz written to `.cor`.
+6. `merge.py::compute_average_correlations` says "weighted" but is an
+   unweighted mean, drops the first lag, and counts unticked curves in its label.
+7. Filter panel: `invert` also inverts channel/dMT cuts; inter-photon plot
+   fails on the emtk backend ("horizontal region not drawn yet"); clipped
+   y-label. Merger dock does not stretch; status stays "Computing…".
+8. Fixed in the same change: `fcs-convert -v/--verbose` was a click on/off
+   pair (`--verbose` turned it *off*); guide 16 imported a non-existent
+   `fcs.correlate.correlate`.

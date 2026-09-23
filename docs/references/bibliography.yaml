@@ -2477,3 +2477,449 @@ arnborg1989:
   doi: 10.1016/0166-218X(89)90031-0
   note: Why treewidth is the quantity worth reporting - bounded treewidth turns hard problems tractable.
   topics: [statistics]
+
+# ── Point-spread function and focusing optics ───────────────────
+airy1835:
+  authors: G. B. Airy
+  title: On the diffraction of an object-glass with circular aperture
+  journal: Transactions of the Cambridge Philosophical Society
+  year: 1835
+  volume: 5
+  pages: 283-291
+  url: https://archive.org/details/cbarchive_105300_airygbonthediffractionofanobje9999
+  note: The scalar focal pattern of a circular aperture - the Airy disk and its rings.
+  topics: [imaging, optics, resolution]
+
+rayleigh1879:
+  authors: Lord Rayleigh
+  title: Investigations in optics, with special reference to the spectroscope
+  journal: The London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science
+  year: 1879
+  volume: 8
+  pages: 261-274
+  doi: 10.1080/14786447908639684
+  note: The two-point criterion - one maximum on the other's first minimum, 0.61 lambda/NA.
+  topics: [resolution, optics]
+
+wolf1959:
+  authors: E. Wolf
+  title: Electromagnetic diffraction in optical systems - I. An integral representation of the image field
+  journal: Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences
+  year: 1959
+  volume: 253
+  pages: 349-357
+  doi: 10.1098/rspa.1959.0199
+  note: Part I of the vectorial theory - the angular-spectrum integral that part II (richards1959) evaluates for an aplanatic lens.
+  topics: [imaging, optics]
+
+youngworth2000:
+  authors: K. S. Youngworth, T. G. Brown
+  title: Focusing of high numerical aperture cylindrical-vector beams
+  journal: Optics Express
+  year: 2000
+  volume: 7
+  pages: 77-87
+  doi: 10.1364/OE.7.000077
+  note: The Richards-Wolf integrals for radially and azimuthally polarized pupils; azimuthal stays purely transverse at any NA.
+  topics: [imaging, optics]
+
+quabis2000:
+  authors: S. Quabis, R. Dorn, M. Eberler, O. Glöckl, G. Leuchs
+  title: Focusing light to a tighter spot
+  journal: Optics Communications
+  year: 2000
+  volume: 179
+  pages: 1-7
+  doi: 10.1016/S0030-4018(99)00729-4
+  note: Radial polarization with an annular pupil concentrates the focus in the longitudinal field.
+  topics: [imaging, optics]
+
+dorn2003:
+  authors: R. Dorn, S. Quabis, G. Leuchs
+  title: Sharper focus for a radially polarized light beam
+  journal: Physical Review Letters
+  year: 2003
+  volume: 91
+  pages: 233901
+  doi: 10.1103/PhysRevLett.91.233901
+  note: At NA 0.9 the radial focus is tighter than the linear one only with an annular aperture (0.16 vs 0.26 lambda^2); over the full aperture its total spot is larger.
+  topics: [imaging, optics, resolution]
+
+zhan2009:
+  authors: Q. Zhan
+  title: "Cylindrical vector beams: from mathematical concepts to applications"
+  journal: Advances in Optics and Photonics
+  year: 2009
+  volume: 1
+  pages: 1-57
+  doi: 10.1364/AOP.1.000001
+  note: Review of radial and azimuthal beams, their generation and their tight focusing.
+  topics: [optics]
+
+cole2011:
+  authors: R. W. Cole, T. Jinadasa, C. M. Brown
+  title: Measuring and interpreting point spread functions to determine confocal microscope resolution and ensure quality control
+  journal: Nature Protocols
+  year: 2011
+  volume: 6
+  pages: 1929-1941
+  doi: 10.1038/nprot.2011.407
+  note: Bead PSF protocol; quotes 0.51 lambda/NA lateral and 0.88 lambda/(n - sqrt(n^2 - NA^2)) axial, and sampling at about a third of the resolution.
+  topics: [imaging, resolution]
+
+nyquist1928:
+  authors: H. Nyquist
+  title: Certain topics in telegraph transmission theory
+  journal: Transactions of the American Institute of Electrical Engineers
+  year: 1928
+  volume: 47
+  pages: 617-644
+  doi: 10.1109/T-AIEE.1928.5055024
+  note: Two samples per period of the highest frequency present.
+  topics: [imaging, statistics]
+
+shannon1949:
+  authors: C. E. Shannon
+  title: Communication in the presence of noise
+  journal: Proceedings of the IRE
+  year: 1949
+  volume: 37
+  pages: 10-21
+  doi: 10.1109/JRPROC.1949.232969
+  note: The sampling theorem - a band-limited signal is fixed by samples at twice its cut-off frequency.
+  topics: [imaging, statistics]
+
+bornwolf1999:
+  authors: M. Born, E. Wolf
+  title: "Principles of Optics: Electromagnetic Theory of Propagation, Interference and Diffraction of Light (7th ed.)"
+  journal: Cambridge University Press
+  year: 1999
+  doi: 10.1017/CBO9781139644181
+  note: The Airy pattern, the three-dimensional scalar focus and the Rayleigh criterion.
+  topics: [optics, resolution]
+
+novotny2012:
+  authors: L. Novotny, B. Hecht
+  title: Principles of Nano-Optics (2nd ed.)
+  journal: Cambridge University Press
+  year: 2012
+  doi: 10.1017/CBO9780511794193
+  note: Focal fields of strongly focused beams, including the angular-spectrum derivation of the Richards-Wolf integrals.
+  topics: [optics]
+
+# ── TCSPC histogramming and photon correlation ──────────────────
+wahl2003:
+  authors: M. Wahl, I. Gregor, M. Patting, J. Enderlein
+  title: Fast calculation of fluorescence correlation data with asynchronous time-correlated single-photon counting
+  journal: Optics Express
+  year: 2003
+  volume: 11
+  pages: "3583"
+  doi: 10.1364/OE.11.003583
+  note: The multiple-tau correlator on photon time tags — the `wahl` method of tttrlib's Correlator.
+  topics: [fcs, correlation]
+
+laurence2006:
+  authors: T. A. Laurence, S. Fore, T. Huser
+  title: Fast, flexible algorithm for calculating photon correlations
+  journal: Optics Letters
+  year: 2006
+  volume: 31
+  pages: 829-831
+  doi: 10.1364/OL.31.000829
+  note: Correlation as a count of photon pairs on arbitrary lag bins — the `laurence` method.
+  topics: [fcs, correlation]
+
+felekyan2005:
+  authors: S. Felekyan, R. Kühnemuth, V. Kudryavtsev, C. Sandhagen, W. Becker, C. A. M. Seidel
+  title: Full correlation from picoseconds to seconds by time-resolved and time-correlated single photon detection
+  journal: Review of Scientific Instruments
+  year: 2005
+  volume: 76
+  pages: '083104'
+  doi: 10.1063/1.1946088
+  note: Macro and micro time combined into one clock, so one curve spans picoseconds to seconds — the `felekyan` method and the Fine option.
+  topics: [fcs, correlation, tcspc]
+
+koppel1974:
+  authors: D. E. Koppel
+  title: Statistical accuracy in fluorescence correlation spectroscopy
+  journal: Physical Review A
+  year: 1974
+  volume: 10
+  pages: 1938-1945
+  doi: 10.1103/PhysRevA.10.1938
+  note: The standard deviation of a measured correlation curve; the model behind ChiSurf's `Koppel` error bars.
+  topics: [fcs, statistics]
+
+schatzel1990:
+  authors: K. Schätzel
+  title: Noise on photon correlation data. I. Autocorrelation functions
+  journal: 'Quantum Optics: Journal of the European Optical Society Part B'
+  year: 1990
+  volume: 2
+  pages: 287-305
+  doi: 10.1088/0954-8998/2/4/002
+  note: Noise of a multiple-tau correlator, including the symmetric normalization the `laurence` method uses.
+  topics: [fcs, statistics, correlation]
+
+zhao2003:
+  authors: M. Zhao, L. Jin, B. Chen, Y. Ding, H. Ma, D. Chen
+  title: Afterpulsing and its correction in fluorescence correlation spectroscopy experiments
+  journal: Applied Optics
+  year: 2003
+  volume: 42
+  pages: "4031"
+  doi: 10.1364/AO.42.004031
+  note: Afterpulsing measured and subtracted from a single-detector autocorrelation.
+  topics: [fcs, detectors]
+
+enderlein2005afterpulsing:
+  authors: J. Enderlein, I. Gregor
+  title: Using fluorescence lifetime for discriminating detector afterpulsing in fluorescence-correlation spectroscopy
+  journal: Review of Scientific Instruments
+  year: 2005
+  volume: 76
+  pages: '033102'
+  doi: 10.1063/1.1863399
+  note: Afterpulses are flat in micro time, so a lifetime filter removes them from a one-detector curve.
+  topics: [fcs, filtered-fcs, detectors]
+
+hanburybrown1956:
+  authors: R. Hanbury Brown, R. Q. Twiss
+  title: Correlation between photons in two coherent beams of light
+  journal: Nature
+  year: 1956
+  volume: 177
+  pages: 27-29
+  doi: 10.1038/177027a0
+  note: The split-beam, two-detector intensity correlation; why FCS cross-correlates two detectors.
+  topics: [fcs, correlation]
+
+# ── TCSPC ────────────────────────────────────────────────────────────
+
+wahl2015:
+  authors: M. Wahl
+  title: 'Modern TCSPC electronics: principles and acquisition modes'
+  journal: Springer Series on Fluorescence (Advanced Photon Counting)
+  year: 2015
+  volume: 15
+  pages: 1-21
+  doi: 10.1007/4243_2014_62
+  note: Start-stop, reverse start-stop and time-tagging electronics; dead time and differential non-linearity of the timing converter.
+  topics: [tcspc, instrumentation]
+
+isbaner2016:
+  authors: S. Isbaner, N. Karedla, D. Ruhlandt, S. C. Stein, A. Chizhik, I. Gregor, J. Enderlein
+  title: Dead-time correction of fluorescence lifetime measurements and fluorescence lifetime imaging
+  journal: Optics Express
+  year: 2016
+  volume: 24
+  pages: 9429-9445
+  doi: 10.1364/OE.24.009429
+  note: How detector and electronics dead time distort a TCSPC histogram, and a correction applied to the histogram.
+  topics: [tcspc, instrumentation]
+
+# ── FCS noise and error bars ────────────────────────────────────
+qian1990c:
+  authors: H. Qian
+  title: On the statistics of fluorescence correlation spectroscopy
+  journal: Biophysical Chemistry
+  year: 1990
+  volume: 38
+  pages: 49-57
+  doi: 10.1016/0301-4622(90)80039-A
+  note: Signal-to-noise of FCS and its dependence on molecular brightness rather than concentration.
+  topics: [fcs]
+
+starchev2001:
+  authors: K. Starchev, J. Ricka, J. Buffle
+  title: Noise on fluorescence correlation spectroscopy
+  journal: Journal of Colloid and Interface Science
+  year: 2001
+  volume: 233
+  pages: 50-55
+  doi: 10.1006/jcis.2000.7229
+  note: An empirical FCS noise model with correlator-dependent constants — ChiSurf's 'starchev' weighting mode.
+  topics: [fcs]
+
+saffarian2003:
+  authors: S. Saffarian, E. L. Elson
+  title: 'Statistical analysis of fluorescence correlation spectroscopy: the standard deviation and bias'
+  journal: Biophysical Journal
+  year: 2003
+  volume: 84
+  pages: 2030-2042
+  doi: 10.1016/S0006-3495(03)75011-5
+  note: Analytical standard deviation and bias of a measured FCS curve, including the particle noise that dominates at long lags.
+  topics: [fcs]
+
+mueller2014:
+  authors: P. Müller, P. Schwille, T. Weidemann
+  title: PyCorrFit — generic data evaluation for fluorescence correlation spectroscopy
+  journal: Bioinformatics
+  year: 2014
+  volume: 30
+  pages: 2532-2533
+  doi: 10.1093/bioinformatics/btu328
+  note: FCS fitting software whose spline-residual weighting ChiSurf's 'splineN' mode follows; also a readable correlation-file format.
+  topics: [fcs, software]
+
+# ── Intensity traces, blinking and change points ────────────────
+schottky1918:
+  authors: W. Schottky
+  title: Über spontane Stromschwankungen in verschiedenen Elektrizitätsleitern
+  journal: Annalen der Physik
+  year: 1918
+  volume: 362
+  pages: 541-567
+  doi: 10.1002/andp.19183622304
+  note: Shot noise named and derived - the Poisson floor under every binned photon trace. (Harvested from enwiki "Shot noise".)
+  topics: [photophysics, statistics]
+
+fano1947:
+  authors: U. Fano
+  title: Ionization Yield of Radiations. II. The Fluctuations of the Number of Ions
+  journal: Physical Review
+  year: 1947
+  volume: 72
+  pages: 26-29
+  doi: 10.1103/PhysRev.72.26
+  note: The variance-to-mean ratio (Fano factor), used here as the one-number test of whether a trace is more than shot noise. (Harvested from enwiki "Fano factor".)
+  topics: [statistics]
+
+shimazaki2007:
+  authors: H. Shimazaki, S. Shinomoto
+  title: A Method for Selecting the Bin Size of a Time Histogram
+  journal: Neural Computation
+  year: 2007
+  volume: 19
+  pages: 1503-1527
+  doi: 10.1162/neco.2007.19.6.1503
+  note: Bin width of a time histogram of a Poisson process chosen by minimising the mean integrated squared error. (Harvested from enwiki "Histogram".)
+  topics: [statistics, photons]
+
+freedman1981:
+  authors: D. Freedman, P. Diaconis
+  title: "On the histogram as a density estimator: L2 theory"
+  journal: Zeitschrift für Wahrscheinlichkeitstheorie und Verwandte Gebiete
+  year: 1981
+  volume: 57
+  pages: 453-476
+  doi: 10.1007/BF01025868
+  note: The IQR-based rule for the number of bins of a count histogram. (Harvested from enwiki "Freedman–Diaconis rule".)
+  topics: [statistics]
+
+roy2008:
+  authors: R. Roy, S. Hohng, T. Ha
+  title: A practical guide to single-molecule FRET
+  journal: Nature Methods
+  year: 2008
+  volume: 5
+  pages: 507-516
+  doi: 10.1038/nmeth.1208
+  note: Intensity traces of immobilised molecules - anticorrelated donor/acceptor steps, single-step bleaching as the single-molecule test. (Harvested from enwiki "Single-molecule FRET".)
+  topics: [smfret]
+
+# ── Blinking and bleaching ──────────────────────────────────────────
+
+nirmal1996:
+  authors: M. Nirmal, B. O. Dabbousi, M. G. Bawendi, J. J. Macklin, J. K. Trautman, T. D. Harris, L. E. Brus
+  title: Fluorescence intermittency in single cadmium selenide nanocrystals
+  journal: Nature
+  year: 1996
+  volume: 383
+  pages: 802-804
+  doi: 10.1038/383802a0
+  note: On/off blinking of single nanocrystals first reported.
+  topics: [photophysics]
+
+dickson1997:
+  authors: R. M. Dickson, A. B. Cubitt, R. Y. Tsien, W. E. Moerner
+  title: On/off blinking and switching behaviour of single molecules of green fluorescent protein
+  journal: Nature
+  year: 1997
+  volume: 388
+  pages: 355-358
+  doi: 10.1038/41048
+  note: Blinking on a seconds timescale in single fluorescent proteins - invisible in bulk, obvious in a trace.
+  topics: [photophysics]
+
+kuno2000:
+  authors: M. Kuno, D. P. Fromm, H. F. Hamann, A. Gallagher, D. J. Nesbitt
+  title: "Nonexponential 'blinking' kinetics of single CdSe quantum dots: A universal power law behavior"
+  journal: The Journal of Chemical Physics
+  year: 2000
+  volume: 112
+  pages: 3117-3120
+  doi: 10.1063/1.480896
+  note: Power-law on- and off-time distributions over a wide dynamic range.
+  topics: [photophysics]
+
+frantsuzov2008:
+  authors: P. Frantsuzov, M. Kuno, B. Jankó, R. A. Marcus
+  title: Universal emission intermittency in quantum dots, nanorods and nanowires
+  journal: Nature Physics
+  year: 2008
+  volume: 4
+  pages: 519-522
+  doi: 10.1038/nphys1001
+  note: Review of power-law intermittency across nanoscale emitters. (Harvested from enwiki "Fluorescence intermittency".)
+  topics: [photophysics]
+
+crouch2010:
+  authors: C. H. Crouch, O. Sauter, X. Wu, R. Purcell, C. Querner, M. Drndic, M. Pelton
+  title: Facts and Artifacts in the Blinking Statistics of Semiconductor Nanocrystals
+  journal: Nano Letters
+  year: 2010
+  volume: 10
+  pages: 1692-1698
+  doi: 10.1021/nl100030e
+  note: On/off statistics from a binned, thresholded trace depend on the bin time and the threshold - tenfold bin, 30 % change in the apparent exponent. (Harvested from enwiki "Fluorescence intermittency in colloidal nanocrystals".)
+  topics: [photophysics, statistics]
+
+ulbrich2007:
+  authors: M. H. Ulbrich, E. Y. Isacoff
+  title: Subunit counting in membrane-bound proteins
+  journal: Nature Methods
+  year: 2007
+  volume: 4
+  pages: 319-321
+  doi: 10.1038/nmeth1024
+  note: Counting subunits from the number of single-step bleaching events in an intensity trace; the step counts are binomial.
+  topics: [photophysics]
+
+# ── Change points ───────────────────────────────────────────────────
+
+page1957:
+  authors: E. S. Page
+  title: On problems in which a change in a parameter occurs at an unknown point
+  journal: Biometrika
+  year: 1957
+  volume: 44
+  pages: 248-252
+  doi: 10.1093/biomet/44.1-2.248
+  note: The change-point problem as a statistical test. (Harvested from enwiki "Change detection".)
+  topics: [statistics]
+
+watkins2005:
+  authors: L. P. Watkins, H. Yang
+  title: Detection of Intensity Change Points in Time-Resolved Single-Molecule Measurements
+  journal: The Journal of Physical Chemistry B
+  year: 2005
+  volume: 109
+  pages: 617-628
+  doi: 10.1021/jp0467548
+  note: Photon-by-photon generalised likelihood-ratio test for intensity change points, applied recursively, states by EM clustering + BIC - no bin, no threshold. (Crossref lists the online date as 2004.)
+  topics: [photons, kinetics, statistics]
+
+ensign2010:
+  authors: D. L. Ensign, V. S. Pande
+  title: Bayesian Detection of Intensity Changes in Single Molecule and Molecular Dynamics Trajectories
+  journal: The Journal of Physical Chemistry B
+  year: 2010
+  volume: 114
+  pages: 280-292
+  doi: 10.1021/jp906786b
+  note: Bayesian change-point detection on photon arrival times. (Crossref lists the online date as 2009.)
+  topics: [photons, kinetics, statistics]

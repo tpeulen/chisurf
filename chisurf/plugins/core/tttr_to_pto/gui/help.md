@@ -18,7 +18,8 @@ automatically with the file it belongs to.
 
 This window is the explicit "convert" action. It is distinct from the drop
 *guard* (which asks permission when a convertible file lands on some other
-tool) and from the `tttr/filetools` hub (which transcodes between vendor
-formats and has nothing to do with `.pto`).
+tool). It is also a panel of **Tools → File tools**, beside the converter that
+transcodes between vendor formats; see
+[Intensity traces and file tools](docs/guides/74_intensity_traces_and_file_tools.md).
 
 Press **Guide** for the walk-through.

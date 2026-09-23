@@ -88,6 +88,8 @@ Adding the result to ChiSurf writes it as an FCS dataset, ready to fit.
 - [FCS correlation](docs/concepts/fcs_correlation.md) — what G(τ) is and why
   G(0) = 1/N.
 - [Diffusion by FCS, step by step](docs/guides/09_diffusion_fcs.md)
+- [FCS toolbox: correlate, merge, convert](docs/guides/75_fcs_toolbox.md) — the
+  workflow this merger is step 5 of, and where its error bars come from.
 - [Combining repeats](docs/guides/35_combining_repeats.md)
 - [FCS confocal calculator](docs/concepts/fcs_correlation.md) — for turning the
   merged τ into D, r_h and a concentration.

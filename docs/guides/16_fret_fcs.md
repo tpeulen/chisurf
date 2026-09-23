@@ -33,7 +33,26 @@ independent of the (much slower) diffusion time.
 ```python
 # correlate two photon streams (donor, acceptor) with the FCS correlator, then
 # fit the auto/cross curves globally with the FRET-FCCS models in models.yaml.
-from chisurf.core.fluorescence.fcs.correlate import correlate
+import numpy as np
+import tttrlib
+
+tttr = tttrlib.TTTR("measurement.ptu")
+donor = np.isin(tttr.routing_channels, [0, 8]).astype(float)
+acceptor = np.isin(tttr.routing_channels, [1, 9]).astype(float)
+mt = tttr.macro_times
+dt_ms = tttr.header.macro_time_resolution * 1e3
+
+
+def g(w_a, w_b):
+    corr = tttrlib.Correlator(n_bins=4, n_casc=26, make_fine=False)
+    corr.set_macrotimes(mt, mt)
+    corr.set_weights(w_a, w_b)
+    return corr.x_axis * dt_ms, np.asarray(corr.correlation)
+
+
+tau, G_dd = g(donor, donor)
+_, G_aa = g(acceptor, acceptor)
+_, G_da = g(donor, acceptor)
 # G_dd, G_aa, G_da  ->  fit sharing the exchange rate k = k12 + k21
 ```
 

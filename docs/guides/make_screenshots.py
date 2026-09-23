@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import shutil
 import tempfile
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -27,6 +28,7 @@ import chisurf.core.settings  # noqa: E402,F401
 
 FIG = pathlib.Path(__file__).parent / "figures"
 FIG.mkdir(exist_ok=True)
+_SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 
 
 def _grab(widget, name):
@@ -1583,6 +1585,292 @@ def _grab_alex_suite_titration():
     _grab(tool, "alex_suite_titration.png")
 
 
+def _grab_tttr_generate_decay():
+    """Grab **TTTR: Generate Decay** with two decays histogrammed from a real SPC file.
+
+    Two curves (detectors 0 and 8) at TAC div 1: at larger divisors the tool
+    draws the decay on a wrong time axis (okf/references/known-issues.md).
+    """
+    from qtpy.QtCore import Qt
+    from qtpy.QtTest import QTest
+
+    from chisurf.plugins.tttr.tttr_histogram.gui import HistogramTTTR
+
+    tool = HistogramTTTR()
+    setup = tool.tcspc_setup_widget
+    setup.spcFileWidget.onLoadSample(None, filenames=[str(_SPC_FILE)], file_type="bh132")
+    # the File widget's Load action also fires onLoadFile; a programmatic load does not
+    setup.onLoadFile()
+    setup.lineEdit.setText("(ROUT==0)")
+    setup.comboBox.setCurrentIndex(setup.comboBox.findText("1"))
+    setup.checkBox.setChecked(False)
+    QTest.mouseClick(setup.pushButton, Qt.LeftButton)
+    setup.lineEdit.setText("(ROUT==8)")
+    QTest.mouseClick(setup.pushButton, Qt.LeftButton)
+    # add_curve refreshes the list and the plot *before* it appends the new
+    # curve, so the view lags one click behind; refresh once more.
+    tool.curve_selector.update()
+    tool.plot_curves()
+    for c in tool._curves:
+        print(c.name, "photons", int(c.y.sum()), "bins", c.y.size, "dt[ns]", c.x[1] - c.x[0])
+    tool.resize(1280, 760)
+    tool.splitter.setSizes([560, 720])
+    _grab(tool, "tttr_generate_decay.png")
+    return tool
+
+
+def _grab_tttr_correlate():
+    """Grab **TTTR: Correlate** after a real cross-correlation of channels 0 and 8."""
+    from chisurf.plugins.tttr.tttr_correlate.gui import CorrelateTTTR
+
+    tool = CorrelateTTTR()
+    tool.fileWidget.onLoadSample(None, filenames=[str(_SPC_FILE)], file_type="bh132")
+    corr = tool.correlator
+    corr.ch1, corr.ch2 = "0", "8"
+    corr.correlator_thread.run()  # synchronous: the thread's body
+    tool.add_curve()
+    c = tool._curves[0]
+    print("tau[ms]", c.x[:3], "...", c.x[-1], "G", c.y[:3], "...", c.y[-3:], "ey", c.ey[:3], c.ey[-3:])
+    corr.progressBar.setValue(100)
+    if os.environ.get("PROBE_FINE"):
+        corr.fine = True
+        corr.correlator_thread.run()
+        f = corr.data
+        print("FINE tau[ms]", f.x[:3], "...", f.x[-1], "G", f.y[-3:])
+        corr.fine = False
+    tool.resize(1280, 760)
+    tool.splitter.setSizes([560, 720])
+    _grab(tool, "tttr_correlate.png")
+    return tool
+
+
+def _grab_intensity_trace():
+    """Intensity-trace tool on a real smFRET TTTR file, binned and HMM-decoded.
+
+    The file is copied to a scratch folder first: *Compute HMM* writes its
+    ``<stem>_HMM#<n>_<w>ms/`` output folder beside the TTTR file, and that must
+    not land in ``test/data``.
+    """
+    from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+
+    src = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
+    if not src.is_file():
+        raise FileNotFoundError(f"instrument test data missing: {src}")
+    work = pathlib.Path(tempfile.mkdtemp(dir="/tmp")) / "smfret"
+    work.mkdir()
+    spc = work / src.name
+    shutil.copy(src, spc)
+
+    tool = IntensityTrace()
+    tool.resize(1280, 900)
+    # Two detectors as the detector setup would define them: green = routing
+    # channels 0/8 (parallel/perpendicular), red = 1/9.
+    tool._detector_settings = {
+        "detectors": {
+            # acceptor first: the per-bin ratio n0/(n0+n1) is then the
+            # proximity ratio rather than its complement
+            "red": {"chs": [1, 9], "micro_time_ranges": []},
+            "green": {"chs": [0, 8], "micro_time_ranges": []},
+        }
+    }
+    tool._refresh_detector_checkboxes()
+    tool.window_spin.blockSignals(True)
+    tool.window_spin.setValue(5.0)
+    tool.window_spin.blockSignals(False)
+    tool.hist_max_input.setValue(100.0)
+    tool.hmm_components_spinner.setValue(2)
+    tool.load_file(file_path=str(spc))
+    tool.perform_hmm()
+    tool.show()
+    QApplication.instance().processEvents()
+    # zoom the time axis onto a 6 s stretch so single bursts are resolved
+    try:
+        tool.plot_widget.plots[0][0].setXRange(20.0, 26.0, padding=0)
+    except Exception:
+        pass
+    QApplication.instance().processEvents()
+    _grab(tool, "intensity_trace.png")
+    return tool, work
+
+
+def _grab_file_tools():
+    """File-tools hub: Split / Convert with a file loaded, and Time Windows run.
+
+    Writes ``file_tools.png`` (TTTR -> Time Windows after *Process*, preview
+    tab showing the trace with its window boundaries) and
+    ``file_tools_split.png`` (TTTR Split / Convert with a file loaded).
+    """
+    import tttrlib
+    from qtpy.QtWidgets import QWidget
+
+    from chisurf.plugins.tttr.filetools.gui.tool import FileToolsTool
+    from chisurf.plugins.tttr.tttr_splitter.gui.view_model import SplitterViewModel
+    from chisurf.plugins.tttr.tttr_time_windows.gui.tool import TTTRTimeWindowTool
+
+    src = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
+    if not src.is_file():
+        raise FileNotFoundError(f"instrument test data missing: {src}")
+    work = pathlib.Path(tempfile.mkdtemp(dir="/tmp")) / "smfret"
+    work.mkdir()
+    spc = work / src.name
+    shutil.copy(src, spc)
+    app = QApplication.instance()
+
+    tool = FileToolsTool()
+    tool.resize(1300, 800)
+    tool.show()
+    app.processEvents()
+
+    def _panel(row, cls):
+        tool.nav_list.setCurrentRow(row)
+        app.processEvents()
+        inst = tool.panels[row].get("instance")
+        if isinstance(inst, cls):
+            return inst
+        # an embedded QMainWindow is flattened; the window itself is kept here
+        for child in [inst, *inst.findChildren(QWidget)]:
+            mw = getattr(child, "_embedded_mainwindow", None)
+            if isinstance(mw, cls):
+                return mw
+        found = inst.findChildren(cls) if inst is not None else []
+        return found[0] if found else None
+
+    # 1) Split / Convert (row 0)
+    tool.nav_list.setCurrentRow(0)
+    app.processEvents()
+    inst = tool.panels[0].get("instance")
+    model = None
+    for obj in [inst, *inst.findChildren(object)]:
+        m = getattr(obj, "model", None) or getattr(obj, "_model", None)
+        if isinstance(m, SplitterViewModel):
+            model = m
+            break
+    model.output_folder = str(work / "split")
+    model.set_tttr(tttrlib.TTTR(str(spc)), str(spc))
+    model.update()
+    app.processEvents()
+    _grab(tool, "file_tools_split.png")
+
+    # 2) TTTR -> Time Windows (row 4): queue the file, process, show preview
+    tw = _panel(4, TTTRTimeWindowTool)
+    tw.tws_spin.blockSignals(True)
+    tw.tws_spin.setValue(1000.0)
+    tw.tws_spin.blockSignals(False)
+    tw._file_model.files = [str(spc)]
+    tw._on_files_changed()
+    tw._process_all()
+    tw.dock_area.setCurrentIndex(2)
+    app.processEvents()
+    _grab(tool, "file_tools.png")
+    return tool
+
+
+def _grab_fcs_toolbox():
+    """Grab the unified FCS tool (Spectroscopy:FCS): every correlator step.
+
+    Loads the BH SPC-132 test stream, defines a two-detector setup, turns on
+    the photon filter, correlates the green channels against the red ones in
+    ten chunks and hands them to the merger — the state a user reaches after
+    one pass through the rail.
+    """
+    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+
+    app = QApplication.instance()
+    spc = _SPC_FILE.resolve()
+    setup_name = "SPC-132 (2 detectors)"
+    setup = {
+        "windows": {"prompt": [0, 4095]},
+        "detectors": {
+            "Green": {"chs": [0, 8], "micro_time_ranges": [[0, 4095]]},
+            "Red": {"chs": [1, 9], "micro_time_ranges": [[0, 4095]]},
+        },
+    }
+
+    tool = FcsTool()
+    tool.resize(1280, 800)
+    tool.show()
+    app.processEvents()
+
+    def go(role):
+        tool.nav_list.setCurrentRow(tool._nav_row_for_role(role))
+        for _ in range(3):
+            app.processEvents()
+
+    # 1. Channel definitions: a detector setup and its correlation pairs.
+    go("channel_def")
+    chdef = tool._workflow_panels["channel_def"]
+    chdef.model._detector_setups = {setup_name: setup}
+    chdef.model._fcs_cfg = {"setups": {setup_name: {"pairs": []}}}
+    chdef.model.current_setup = setup_name
+    chdef.model.add_pair("Green", "Green")
+    chdef.model.add_pair("Red", "Red")
+    chdef.model.add_pair("Green", "Red")
+    chdef.auto_form.rebuild()
+    app.processEvents()
+    _grab(tool, "fcs_toolbox_channels.png")
+
+    # 2. Files & steps: one photon stream, photon filter on, merger on.
+    go("files")
+    files = tool._workflow_panels["files"]
+    files.file_list.set_paths([str(spc)])
+    files.cb_photon_filter.setChecked(True)
+    app.processEvents()
+    _grab(tool, "fcs_toolbox_files.png")
+
+    # 3. Photon / burst filter: default count-rate burst selection.
+    go("filter")
+    fm = tool._filter_model
+    fm.channel_numbers = "0, 1, 8, 9"
+    fm.max_dmt = 0.5
+    fm.min_ph = 30
+    fm.mcs_bin_width = 10.0
+    tool._filter_form.sync_fields()
+    tool._filter_form.refresh_plots()
+    app.processEvents()
+    _grab(tool, "fcs_toolbox_filter.png")
+
+    # 4. Correlator: green x red cross-correlation, ten chunks.
+    files.cb_photon_filter.setChecked(False)  # correlate the whole stream
+    go("correlator")
+    cm = tool._correlator_model
+    cm.channel_a = "0, 8"
+    cm.channel_b = "1, 9"
+    cm.n_bins = 4
+    cm.n_casc = 26
+    cm.n_splits = 10
+    tool._correlator_form.sync_fields()
+    from chisurf.plugins.fcs.fcs_correlator.correlator_panel import _CorrelateControls
+
+    for ctl in tool._correlator_form.findChildren(_CorrelateControls):
+        ctl.btn.click()  # the real button: status label + plot refresh
+    app.processEvents()
+    print("chunks", len(cm._correlations))
+    _grab(tool, "fcs_toolbox_correlator.png")
+
+    # 5. Merger: the chunks averaged; drop one to show the dashed style.
+    go("merger")
+    mm = tool._merger_model
+    if len(mm._correlations) > 3:
+        mm._toggle_curve(3)
+    mm._form.sync_fields()
+    for w in mm._form.findChildren(object):
+        if getattr(w, "AUTOFORM_REFRESH", False) and hasattr(w, "refresh"):
+            w.refresh()
+    print("merger folder:", repr(mm.folder_path), "target:", mm.target_filepath())
+    app.processEvents()
+    mean = mm.compute_mean()
+    if mean is not None:
+        print("merged", mean["n_curves"], "curves, dur", mean["duration"], "CR", mean["count_rate"])
+    _grab(tool, "fcs_toolbox_merger.png")
+
+    # Visit every optional tool once so a broken panel shows up here.
+    for role in ("flc_2d", "lfcs_sim", "burst_fcs", "diffusion_calc", "filter_calc"):
+        go(role)
+        row = tool._nav_row_for_role(role)
+        print(role, "loaded:", tool.panels[row].get("instance") is not None)
+    tool.close()
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1621,6 +1909,11 @@ def main():
         _grab_burst_export_table,
         _grab_alex_suite_alternation,
         _grab_alex_suite_titration,
+        _grab_tttr_generate_decay,
+        _grab_tttr_correlate,
+        _grab_intensity_trace,
+        _grab_file_tools,
+        _grab_fcs_toolbox,
     ):
         try:
             grab()

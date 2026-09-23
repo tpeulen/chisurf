@@ -132,6 +132,8 @@ green.tttr                            # the tttrlib object, for anything else
 
 Correlation is `tttrlib.Correlator` — including in the **TTTR correlate** tool,
 whose lag axis is in **milliseconds**, the unit ChiSurf's FCS models expect.
+That tool and **TTTR: Generate Decay** are walked through in
+{doc}`73_tttr_decay_and_correlation`.
 
 ## Result
 

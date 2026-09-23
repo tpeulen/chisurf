@@ -16,7 +16,8 @@ curve *is*, how ChiSurf's fit-model catalogue is built from independent physical
 factors, and how the fit parameters map onto physical quantities.
 
 For the step-by-step workflow in ChiSurf, see the guide
-{doc}`/guides/09_diffusion_fcs`.
+{doc}`/guides/09_diffusion_fcs`; correlating a photon file directly is
+{doc}`/guides/73_tttr_decay_and_correlation`.
 
 ## What the correlation function is
 
@@ -59,6 +60,88 @@ Two practical consequences follow from $G$ being a *statistical* quantity:
 - **Anything correlated that is not the process of interest is
   indistinguishable by shape alone** — detector afterpulsing mimics fast
   photodynamics, and a slow drift mimics a slow diffusing component.
+
+(concept-fcs-photon-correlation)=
+## Correlating photon time tags
+
+A TTTR file holds no intensity trace to correlate, only arrival times
+$t^{(1)}_i$ and $t^{(2)}_j$ in two channels (the same channel for an
+autocorrelation). The correlator counts photon pairs whose separation falls in
+lag bin $k$, $[\tau_k, \tau_k+\Delta\tau_k)$,
+
+$$
+n_k = \sum_{i,j} w^{(1)}_i\, w^{(2)}_j\;
+      \mathbb{1}\!\left[\tau_k \le t^{(2)}_j - t^{(1)}_i < \tau_k + \Delta\tau_k\right],
+$$
+
+with photon weights $w$ (all one for plain FCS), and normalizes by the pairs
+uncorrelated photons would give:
+
+$$
+G(\tau_k) = \frac{n_k}{r_1\, r_2\, \Delta\tau_k\, (T - \tau_k)},
+\qquad r_c = N_c / T .
+$$
+
+$T-\tau_k$ is the stretch of the measurement over which a pair at that lag can
+occur. This $G$ plateaus at **1**, the convention with $G_\infty = 1$ above.
+
+- **Multiple-tau binning.** The lag axis is $n_\text{casc}$ cascades of $B$
+  equal bins; each cascade doubles the bin width. Between cascades the time tags
+  are halved (integer division), and photons that fall on the same coarse tag are
+  merged by adding their weights, so every cascade costs about the same
+  {cite}`wahl2003`. The longest lag is roughly $B\,2^{\,n_\text{casc}}$ clock
+  ticks, and the relative lag resolution is constant on a logarithmic axis
+  (this is tttrlib's `wahl` method).
+- **Arbitrary bins.** Counting pairs directly against a sorted list of lag edges
+  gives any bin layout at comparable speed {cite}`laurence2006` (`laurence`).
+  Its normalization is *symmetric*: the rates $r_1$, $r_2$ are taken only over
+  the photons that can have a partner at that lag (channel 1 before
+  $T_\text{end}-\tau$, channel 2 after $T_0+\tau$), which removes the long-lag
+  upturn a slowly decaying intensity produces with the global rates
+  {cite}`schatzel1990`.
+- **Macro plus micro time.** Replacing each macro time by
+  $t = t_\text{macro}\, n_\text{TAC} + \mu$ makes the clock one TAC channel
+  wide, so one curve spans picoseconds (antibunching, rotation) to seconds
+  {cite}`felekyan2005` (`felekyan`, and **Fine** in **TTTR: Correlate**). It
+  needs the macro clock to be the laser period, and $n_\text{casc}$ must grow by
+  $\log_2 n_\text{TAC}$ to reach the same longest lag.
+- **Weights are filters.** Non-unit weights give time-gated FCS (weight 1 inside
+  a micro-time window, 0 outside) and lifetime- or species-filtered FCS
+  {cite}`boehmer2002,kapusta2007,felekyan2012`; see
+  {ref}`concept-filtered-fcs`.
+
+### Afterpulsing and dead time: cross-correlate two detectors
+
+A single detector adds two artefacts of its own. An **afterpulse** is a second,
+spurious count a few hundred nanoseconds to microseconds after a real one; it is
+correlated with that photon, so the autocorrelation gains an additive term at
+exactly the lags of triplet blinking. **Dead time** removes pairs closer than
+$t_d$, a hole in $G(\tau)$ at $\tau < t_d$
+({ref}`fundamentals-photon-counting`).
+
+Splitting the fluorescence 50/50 onto two detectors and **cross-correlating**
+them removes both, because one detector's afterpulses and dead time are
+uncorrelated with the other's photons. For identical detection volumes the
+cross-correlation equals the true autocorrelation; this split-beam arrangement
+is that of {cite}`hanburybrown1956`. The price is half the photons per channel,
+not a smaller amplitude. Where only one detector is available, the afterpulse
+term can be measured and subtracted {cite}`zhao2003`, or filtered out using the
+micro time — afterpulses are flat in micro time, unlike fluorescence
+{cite}`enderlein2005afterpulsing`.
+
+### Error bars
+
+$G$ at each lag is an average over photon pairs, so its noise depends on the
+measurement time, the count rate, $N$ and the bin width; long lags, with wide
+bins, are better determined than short ones. {cite}`koppel1974` gives the
+standard deviation for a Gaussian volume; the multiple-tau correlator's own
+noise is analysed in {cite}`schatzel1990`. **TTTR: Correlate** cuts the
+measurement into equal-time **splits**, correlates each, averages them, and
+takes the error bar from the Koppel-type model evaluated for one split's
+duration and count rate (`w.res = Koppel`; `none` gives uniform weights). The
+scatter between splits is the model-free check: a split that disagrees with the
+rest is an aggregate, a bleaching step or a focus drift. The three ways of
+getting $\sigma$ are compared in {ref}`concept-fcs-error-bars`.
 
 ## The anatomy of a correlation curve
 
@@ -265,6 +348,74 @@ a concentration series, a viscosity or temperature series, two-focus FCS for an
 absolute $D$, or a lifetime/anisotropy measurement — not a marginally better
 $\chi^2$.
 
+(concept-fcs-error-bars)=
+## Error bars on a measured curve
+
+This expands the short *Error bars* note under
+{ref}`concept-fcs-photon-correlation`. A fit minimizes $\chi^2 = \sum_i w_i^2\,[G_i - G_\text{model}(\tau_i)]^2$ with
+$w_i = 1/\sigma_i$ — ChiSurf stores the weight, not the variance
+(`correlation_amplitude_weights`, the inverse of the `ey` column). Without
+$\sigma_i$ the short-lag points, which are noisy by orders of magnitude more
+than the tail, decide the fit. The weights are only approximately right in any
+case: neighbouring multi-tau channels share photons, so their errors are
+correlated and a diagonal $\chi^2$ is not a true likelihood
+{cite}`schatzel1990`.
+
+There are three ways to get $\sigma_i$, in order of trust.
+
+**From repeats.** Split the measurement into $n$ chunks (or record $n$
+measurements), correlate each, and take the standard error of the mean,
+
+$$
+\bar G(\tau) = \frac{1}{n}\sum_{k=1}^{n} G_k(\tau), \qquad
+\sigma(\tau) = \frac{s_G(\tau)}{\sqrt{n}},
+$$
+
+with $s_G$ the sample standard deviation across chunks. Averaging independent
+measurements gives the most accurate $\sigma$ {cite}`wohland2001`; its cost is
+that a chunk must be long compared with $\tau_D$ and the slowest process, or the
+long-lag points of every chunk are poorly sampled. The acquisition times of the
+chunks add, and the count rate is their duration-weighted mean. The chunks are
+also the place to reject what the photon statistics cannot see — an aggregate
+passing the focus spoils one chunk, not the average of ten. Where the chunks
+happen to agree exactly (common at long lags) $s_G = 0$; a zero $\sigma$ inverts
+into an infinite weight, so such points are completed from the model below.
+
+**From photon statistics.** For a curve with amplitude $G_0$ decaying roughly
+exponentially, Koppel's result gives the variance of the point at lag
+$\tau = m\,\Delta\tau$ measured with lag-channel width $\Delta\tau$ over an
+acquisition $T$ {cite}`koppel1974`:
+
+$$
+\sigma^2(\tau) = \frac{1}{M}\left\{ G_0^2\left[\frac{(1+q^2)(1+q^{2m})}{1-q^2}
+ + 2m\,q^{2m}\right] + \frac{2G_0\,(1+q^{2m})}{\langle n\rangle}
+ + \frac{1+G_0\,q^{m}}{\langle n\rangle^{2}}\right\},
+$$
+
+with $M = T/\Delta\tau$ samples, $\langle n\rangle = I\,\Delta\tau$ the mean
+counts per channel at count rate $I$, and $q = e^{-\Delta\tau/\tau_D}$ (the curve
+approximated by $G_0 e^{-2\tau/\tau_D}$). The three terms are the intrinsic
+fluctuation of the particle number, shot noise times signal, and pure shot
+noise. Two consequences worth knowing: at the low occupancies FCS uses, the
+signal-to-noise ratio is set by the counts per molecule per channel, not by the
+concentration {cite}`koppel1974,qian1990c`; and at lags approaching the chunk
+length a further *particle noise* — too few molecules entered and left during
+the dwell — takes over {cite}`saffarian2003`. The formula needs $T$ and $I$,
+which is why ChiSurf's `.cor` files carry both in their third column.
+
+**From the curve itself.** Without repeats or acquisition metadata, the local
+scatter of the curve about a smooth spline on a log-lag axis estimates $\sigma$
+{cite}`mueller2014`; empirical models with correlator-specific constants are
+the alternative {cite}`starchev2001`. Both are last resorts: a spline cannot
+tell noise from a real fast process.
+
+Two conventions matter when curves change hands. The offset question — $G$
+plateauing at $1$ or at $0$ — is the one discussed at the top of this page, and
+file formats differ on it. And a stored uncertainty column may be a standard
+error of the mean over repeats, a model $\sigma$, or absent; a reader that finds
+none has to fall back to a model, so the numbers in a fit report depend on which
+it was.
+
 ## References
 
 - {cite}`magde1972` — the original FCS experiment, a chemical relaxation read
@@ -288,15 +439,23 @@ $\chi^2$.
 - {cite}`hess2002` — the focal volume treated as an optical system: which
   aberrations bias $G(0)$ and which bias $\tau_D$.
 
+- {cite}`wahl2003`, {cite}`laurence2006`, {cite}`felekyan2005` — the three
+  time-tag correlators tttrlib implements (multiple-tau, arbitrary bins, macro
+  plus micro time).
+
 - {cite}`sheppard1977` — the theoretical foundation of confocal image formation; the PSF that FCS measures in.
+- {cite}`koppel1974` — the variance of a measured curve from counting
+  statistics; {cite}`wohland2001` — which way of estimating it to trust.
 
 ## See also
 
 - Fundamentals: {ref}`fundamentals-quenching` (the triplet term) ·
   {ref}`fundamentals-instrumentation` (afterpulsing, and why two detectors).
-- Guide: {doc}`/guides/09_diffusion_fcs` · two-focus & absolute volume:
+- Guide: {doc}`/guides/09_diffusion_fcs` · photon-file correlation:
+  {doc}`/guides/73_tttr_decay_and_correlation` · two-focus & absolute volume:
   {doc}`/guides/05_enderlein_mdf_two_focus_fcs` · filtered FCS:
-  {doc}`/guides/17_filtered_fcs`.
+  {doc}`/guides/17_filtered_fcs` · correlating, merging and converting
+  curves: {doc}`/guides/75_fcs_toolbox`.
 - Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.
 - Tools in ChiSurf: the **Diffusion/Volume Calculator** (`chisurf/plugins/fcs/fcs_calculator/`) converts between $\tau_D$, $D$, $r_h$ and a concentration; **FCS-Merger** (`chisurf/plugins/fcs/fcs_merger/`) averages repeats; **Burst-wise FCS** (`chisurf/plugins/burst/burst_fcs_correlator/`) correlates inside bursts.

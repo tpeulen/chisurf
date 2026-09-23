@@ -55,6 +55,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 .. toctree::
    :maxdepth: 1
 
+   intensity_traces
    smfret_bursts
    us_alex
    accurate_fret
@@ -114,6 +115,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    drift_correction
    particle_tracking
    frc_resolution
+   point_spread_function
 
 .. rubric:: Simulation
 

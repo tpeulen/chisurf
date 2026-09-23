@@ -99,5 +99,6 @@ a triplet term.
   {doc}`/reference/plugins/index`.
 - Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator:
   `chisurf/plugins/fcs/fcs_correlator/`.
+- Correlating a photon file with **TTTR: Correlate**: {doc}`73_tttr_decay_and_correlation`.
 - Absolute concentrations & two-focus: {doc}`05_enderlein_mdf_two_focus_fcs`.
 - Higher-order statistics: {doc}`06_nsfcs_second_order`.

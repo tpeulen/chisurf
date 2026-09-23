@@ -104,7 +104,7 @@
                     "Radial",
                     "Azimuthal"
                   ],
-                  "description": "State of the light entering the pupil. Linear elongates the focus along its own axis; radial focuses tighter; azimuthal is a doughnut with a zero on axis."
+                  "description": "State of the light entering the pupil. Linear elongates the focus along its own axis; radial has a strong longitudinal core (tighter than linear only with an annular aperture); azimuthal is a doughnut with a zero on axis."
                 },
                 {
                   "type": "value",

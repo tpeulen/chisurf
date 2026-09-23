@@ -30,6 +30,8 @@ already have a burst list or a decay, jump straight to the analysis you need.
 13_burst_identification
 15_background_rates
 22_binned_photon_traces
+74_intensity_traces_and_file_tools
+73_tttr_decay_and_correlation
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -97,6 +99,7 @@ irf_estimation
 17_filtered_fcs
 05_enderlein_mdf_two_focus_fcs
 06_nsfcs_second_order
+75_fcs_toolbox
 56_fcs_saturation
 04_fida_pch
 ```
@@ -113,6 +116,7 @@ irf_estimation
 43_drift_correction
 50_particle_tracking
 51_frc_resolution
+72_psf_calculator
 45_scan_precision
 55_pair_correlation
 ```
@@ -221,6 +225,10 @@ irf_estimation
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |
 | [Photon-by-photon HMM (H2MM)](h2mm.md) | `burst_h2mm` plugin |
+| [The PSF calculator: the focus your objective actually makes](72_psf_calculator.md) | `psf_calculator` calculator (Calculators hub), `PSFModel`, `tttrlib.CLSMSuperRes.psf_volume` |
+| [Decays and correlation curves straight from a photon file](73_tttr_decay_and_correlation.md) | `tttr_histogram` + `tttr_correlate` plugins, `tttrlib.Correlator` |
+| [Intensity traces and file tools](74_intensity_traces_and_file_tools.md) | `intensity_trace` plugin, `filetools` hub (`tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`, `tttr_time_windows`, `bid_to_analysis`), `csc tttr-time-windows` |
+| [FCS toolbox: correlate, merge, convert](75_fcs_toolbox.md) | `fcs_toolbox` (channel definitions, filter, correlator, merger), `fcs_convert`, `fcs.merge` |
 
 ## Regenerating the figures
 
@@ -234,6 +242,9 @@ widgets under an offscreen Qt platform (needs the full GUI environment):
 ```bash
 QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py
 ```
+
+The PSF calculator's OpenGL volume view cannot render offscreen; its figure
+comes from `docs/guides/make_screenshot_psf.py`, run in its own process.
 
 or, outside pixi, with the project on the path:
 

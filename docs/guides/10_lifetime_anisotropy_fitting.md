@@ -95,6 +95,7 @@ Fluorescence lifetime and anisotropy decays.
 
 - Concept: {ref}`concept-tcspc-lifetime`.
 - `chisurf/core/models/tcspc/` (lifetime, FRET, anisotropy, mixture, structural models).
+- Building the decay from a photon file: {doc}`73_tttr_decay_and_correlation`.
 - Lifetimes from single-molecule bursts: {doc}`21_lifetime_from_bursts`;
   ns-ALEX/PIE lifetimes: {doc}`32_nsalex_lifetime`.
 - Distance-distribution FRET models: [Polymer distance distributions](03_polymer_distance_distributions.md).

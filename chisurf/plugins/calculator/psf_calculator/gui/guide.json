@@ -33,7 +33,7 @@
     },
     {
       "title": "Step 4 — now switch to vectorial",
-      "text": "Change the optical model to <b>Vectorial (Richards–Wolf)</b>.<br/><br/>The summary's lateral width grows. At NA 1.4 and 520 nm the true circular-polarization width is about <b>224 nm</b> where the scalar formula says 189 nm — the textbook number is optimistic by roughly 17%, before anything else goes wrong.",
+      "text": "Change the optical model to <b>Vectorial (Richards–Wolf)</b>.<br/><br/>The summary's lateral width grows. At NA 1.4 and 520 nm the true circular-polarization width is about <b>210 nm</b> where the scalar formula says 189 nm — the textbook number is optimistic by roughly 11%, before anything else goes wrong.",
       "target": {
         "attr": "model"
       },
@@ -41,7 +41,7 @@
     },
     {
       "title": "Step 5 — the part the formula cannot express",
-      "text": "Set <b>Polarization</b> to <b>Linear x</b>.<br/><br/>The focus is now longer in one direction than the other — about 256 nm across x against 192 nm across y. A resolution quoted as a single number is hiding a third of a difference between two axes. Try <b>Azimuthal</b> too: it is a doughnut with an exact zero on axis, which no scalar model can produce.",
+      "text": "Set <b>Polarization</b> to <b>Linear x</b>.<br/><br/>The focus is now longer in one direction than the other — about 250 nm across x against 179 nm across y. A resolution quoted as a single number is hiding a 40% difference between two axes. Try <b>Azimuthal</b> too: it is a doughnut with an exact zero on axis, which no scalar model can produce.",
       "target": {
         "attr": "polarization"
       },

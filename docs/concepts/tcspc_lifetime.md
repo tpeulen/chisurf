@@ -21,7 +21,9 @@ and lifetimes turn into physical numbers.
 
 For the step-by-step workflows in ChiSurf, see the guides
 {doc}`/guides/10_lifetime_anisotropy_fitting`,
-{doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`.
+{doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`;
+building the decay from a photon file is
+{doc}`/guides/73_tttr_decay_and_correlation`.
 
 ## The measurement
 
@@ -37,6 +39,73 @@ Each channel is Poisson-distributed: its variance equals its mean. Hence the
 correct least-squares weight is $\sigma_i=\sqrt{y_i}$, and at low counts the
 statistically correct objective is the Poisson likelihood, not Gaussian
 $\chi^2$.
+
+(concept-tcspc-histogramming)=
+## From a photon stream to a decay histogram
+
+Time-tagging electronics store no histogram. Each photon carries a micro time
+$\mu$ (an integer TAC/ADC channel, width $\Delta t$), a macro time and a routing
+channel ({ref}`fundamentals-photon-counting`), and the decay is built afterwards
+from the photons a selection keeps:
+
+$$
+y_k = \#\{\,j \in S : \lfloor \mu_j / b \rfloor = k \,\}, \qquad
+\Delta t_b = b\,\Delta t ,
+$$
+
+with $S$ the selected photons and $b$ an integer **binning factor** (*TAC div*
+in **TTTR: Generate Decay**). The histogram then has $\lceil n_\text{TAC}/b\rceil$
+channels.
+
+- **Binning keeps the statistics Poisson.** A coarse channel is a sum of Poisson
+  channels, so $\sigma_k=\sqrt{y_k}$ still holds and no weighting changes.
+  It costs time resolution only once $\Delta t_b$ approaches the IRF width;
+  electronics with a few-ps channel width against a 100–300 ps IRF can be binned
+  8–32-fold for free, and the fit gets fewer, better-filled channels.
+- **The selection is part of the measurement.** Routing channels separate
+  detectors, and therefore polarizations and colours. Parallel and perpendicular
+  decays for anisotropy, and the prompt and delayed windows of PIE, are separate
+  histograms of one file. A micro-time cut (`TAC < 3000`) drops the end of the
+  converter range, where the TAC is least linear and, in reverse start-stop
+  mode, where the next laser pulse arrives {cite}`wahl2015`.
+- **Macro-time filters select photons by context.** Keeping only photons whose
+  next photon follows within $\Delta T_\text{min}$ enriches photons from inside
+  single-molecule bursts; the inverse keeps the sparse photons between bursts,
+  which is a background or scatter decay taken from the same measurement.
+
+### What distorts the histogram
+
+The histogram is not the decay if the electronics could not record every photon
+with equal probability at every micro time. Three effects are routine; ChiSurf's
+fit applies the first two to the *model* (*The nuisance terms*, below, and
+{ref}`fundamentals-photon-counting`):
+
+- **Differential non-linearity.** Converter channels differ in width, so a flat
+  input gives a rippled histogram. It is measured with light uncorrelated with the
+  laser and corrected by a per-channel table {cite}`becker2005,wahl2015`. Binning
+  by $b$ averages the ripple down roughly as $1/\sqrt{b}$ when channel errors are
+  independent, but a periodic pattern survives binning by its own period.
+- **Pile-up.** In start-stop timing only the first photon per excitation period
+  is recorded, so early photons are over-represented and the decay looks too
+  short. The effect scales with the detected photons per pulse: the classical
+  limit is 1 %, the lifetime shift stays near 1 % up to about 10 %, and the
+  correction of {cite}`coates1968` recovers the rest
+  {cite}`oconnor1984,becker2005`.
+- **Dead time.** After each detection the detector and the timing channel are
+  blind for a dead time $t_d$ (typically tens of ns up to ~100 ns, detector and
+  electronics together). With $t_d$ longer than the laser period
+  this is the same as pile-up. When $t_d$ is shorter than the period, a photon
+  late in the period is lost only if a photon arrived within $t_d$ before it, so
+  the loss depends on the micro time and on the previous period. That is not the
+  Coates model, and at high count rates in FLIM it biases lifetimes noticeably;
+  {cite}`isbaner2016` derive the distortion and a correction applied to the
+  histogram. Reverse start-stop, which starts the converter on the photon rather
+  than the laser, reduces converter dead time; it does not remove detector dead
+  time {cite}`wahl2015`.
+
+A histogram built from a subset of photons carries these distortions as they
+were at the full count rate: selecting one detector, or only burst photons, does
+not undo pile-up or dead-time losses caused by photons the selection discarded.
 
 ## The multi-exponential decay
 
@@ -197,7 +266,8 @@ FRET distance distributions and anisotropy decays are resolved; see
   residuals) · {ref}`fundamentals-lifetime-quantum-yield` (the rate picture and
   the two averages).
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
-  {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime`.
+  {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime` ·
+  {doc}`/guides/73_tttr_decay_and_correlation` (histogramming a photon file).
 - Implementation: convolution kernels
   {src}`chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
   {src}`chisurf/core/fluorescence/tcspc/corrections.py`; IRF helpers
@@ -209,5 +279,6 @@ FRET distance distributions and anisotropy decays are resolved; see
   differential non-linearity; {cite}`lakowicz2006` (lifetime chapters) the two
   averages and their correct use; {cite}`coates1968` the pile-up correction
   applied above; {cite}`maus2001` the $2I^*$ statistic used for burst- and
-  pixel-wise fits.
+  pixel-wise fits; {cite}`wahl2015` the timing electronics and acquisition
+  modes; {cite}`isbaner2016` dead-time distortion and its correction.
 - Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for a quick answer, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.

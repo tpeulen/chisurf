@@ -40192,3 +40192,21 @@ side of the line.
   package chisurf declares. See
   [okf/references/imp-ecosystem.md](references/imp-ecosystem.md) and
   [okf/prds/prd-137.md](prds/prd-137.md).
+
+- 2026-09-23 — **Docs for five menu-visible tools that had none** (owner:
+  "improve docs", sources: the SD1TB Wikipedia dump plus web cross-check, always
+  cited). New concept pages `point_spread_function.md`, `intensity_traces.md`;
+  new sections in `tcspc_lifetime.md` (histogramming, DNL/pile-up/dead time) and
+  `fcs_correlation.md` (photon-tag correlation, multi-tau, afterpulsing, error
+  bars); guides 72 PSF calculator, 73 TTTR decay/correlate, 74 intensity trace +
+  file tools, 75 FCS toolbox, all with real screenshots
+  (`make_screenshots.py`; PSF via `make_screenshot_psf.py`, since its GL view
+  cannot render offscreen). 40 bibliography entries, every DOI Crossref-verified.
+  Writing the pages measured the tools and found ~30 defects, recorded in
+  [known-issues](references/known-issues.md) (four 2026-09-23 sections). Fixed
+  here: `.bst` writers emitted a half-open stop where every reader expects the
+  inclusive last photon (+1 photon per burst/window; guard test added);
+  `fcs-convert --verbose` turned verbosity off; guide 16 imported a function
+  that does not exist; PSF help/tour quoted widths 5–40 % off and claimed
+  radial focuses tighter (it does not over the full aperture; tttrlib
+  over-weights E_z 2× — upstream).
