@@ -100,3 +100,30 @@ link `SimEngine`. The first code change is in BFF's build integration: consume
 that exported target (with the simulation module enabled), then add a compact
 C++ scenario/reduction adapter and multi-block policy features. Do not include
 tttrlib source by relative path or invoke its Python binding from BFF.
+
+## Implementation status (2026-09-23)
+
+Landed in bff (see `imp.bff/okf/validation/model-search-strategy.md`, "One
+action policy for every game"):
+
+- The first boundary above is done: bff's optional `dependency/tttrlib`
+  links `tttrlib::tttrlib`, and `IMP.bff.PhotonExperiment` runs `SimEngine`
+  scenarios in native memory (`simulate`, `record_pattern`).
+- Self-play, labels and training are native (`ModelSearchSelfPlay`,
+  `ModelSearchPolicyData`, `train_action_policy`); the network is bff's own
+  `MlpCore`, no longer a vendored tttrlib copy (`bff.neural_net` documents).
+- **Deviation: no global action vocabulary.** The network scores each
+  (state, move) pair from family-agnostic features and multiplies the declared
+  prior; one network therefore serves every family, including ones added
+  later, with no vocabulary to extend. Legal-move restriction is structural.
+- Curriculum coverage today: TCSPC lifetime, polarised and VV/VH/VM
+  anisotropy, FRET distance families, FCS, generic equations, and a global
+  kinetic scheme over FCS + TCSPC (`kinetic_fcs_tcspc`). Count data are
+  recorded as photons per curve; smFRET/MFD bursts and PIE/ALEX are not yet
+  games.
+- Gate: `test/mcts/bench_action_policy.py`. The first candidate failed it at
+  budget 2 and was withdrawn; ChiSurf loads a policy only when bff ships one.
+
+Still open: block-aware features with a modality token, `request_information`,
+invalid-acquisition validation before simulation, and one full photon stream
+reduced to several observables for multi-observable families.

@@ -25,10 +25,10 @@ class NativeSearchSettings:
     dirichlet_alpha: float = 0.3
     dirichlet_fraction: float = 0.0
     seed: int = 7
-    # Optional BFF-native policy.  The network sees the fitted, weighted
-    # residual profile at each tree expansion; action keys name its outputs.
-    residual_action_policy: str = ""
-    residual_action_keys: tuple[str, ...] = ()
+    # The move policy weighting PUCT's priors: ``"shipped"`` is the
+    # family-agnostic network bff ships, ``""`` searches on the declared
+    # priors alone, anything else is a ``bff.neural_net`` document.
+    action_policy: str = "shipped"
 
 
 def run_native_search(
@@ -54,11 +54,13 @@ def run_native_search(
     config.set_seed(max(0, int(settings.seed)))
 
     search = bff.ModelSearch(problem)
-    if settings.residual_action_policy:
-        configure_policy = getattr(problem, "set_residual_action_policy", None)
-        if not callable(configure_policy):
-            raise RuntimeError("this BFF model-search problem has no residual policy API")
-        configure_policy(settings.residual_action_policy, list(settings.residual_action_keys))
+    policy = settings.action_policy
+    if policy == "shipped":
+        # Only a fitting problem has residuals for a policy to read; a
+        # pre-scored one searches on its declared priors.
+        policy = bff.get_shipped_action_policy() if hasattr(problem, "set_action_policy") else ""
+    if policy:
+        problem.set_action_policy(policy)
     search.set_config(config)
     if should_cancel is None:
         return search.run()

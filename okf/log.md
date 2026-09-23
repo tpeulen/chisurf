@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **Model search loads bff's shipped action policy by default.**
+  - `NativeSearchSettings.action_policy` replaces the keyed `residual_action_policy`/`residual_action_keys`. `"shipped"` (the default) loads `IMP.bff.get_shipped_action_policy()` for fitting problems, `""` searches on the declared priors, and anything else is a `bff.neural_net` document.
+  - bff ships no policy until one passes its search gate, so today the default searches on the declared priors.
+  - `test/fitting/test_mcts_shipped_policy.py` runs the whole path: a decay recorded as photons by tttrlib, a ChiSurf fit, `prepare_model_search`, `run_native_search`, and the winner applied to the live model.
+  - PRD-152 now has an implementation status.
+
 * **ndX in the browser, with the fitting parameters.**
   - `python -m ndxplorer.app.web` finds the IMP.bff Pyodide wheel on its own
     (`$NDX_IMPBFF_WHEEL`).

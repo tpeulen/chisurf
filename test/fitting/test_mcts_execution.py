@@ -80,30 +80,34 @@ def test_cancellation_during_native_run_is_forwarded(monkeypatch):
     assert cancelled.is_set()
 
 
-def test_residual_policy_is_forwarded_to_the_native_problem(monkeypatch):
-    class Problem:
-        configured = None
+class _PolicyProblem:
+    configured = None
 
-        def set_residual_action_policy(self, network, action_keys):
-            self.configured = (network, tuple(action_keys))
+    def set_action_policy(self, network):
+        self.configured = network
 
-    class Search:
-        def __init__(self, problem):
-            self.problem = problem
 
-        def set_config(self, config):
-            self.config = config
+class _EchoSearch:
+    def __init__(self, problem):
+        self.problem = problem
 
-        def run(self):
-            return self.problem.configured
+    def set_config(self, config):
+        self.config = config
 
-    monkeypatch.setattr(bff, "ModelSearch", Search)
+    def run(self):
+        return self.problem.configured
+
+
+def test_an_explicit_policy_is_forwarded_to_the_native_problem(monkeypatch):
+    monkeypatch.setattr(bff, "ModelSearch", _EchoSearch)
     result = run_native_search(
-        Problem(),
-        NativeSearchSettings(
-            residual_action_policy="native-policy-json",
-            residual_action_keys=("add-component", "fit-background"),
-        ),
+        _PolicyProblem(), NativeSearchSettings(action_policy="native-policy-json")
     )
+    assert result == "native-policy-json"
 
-    assert result == ("native-policy-json", ("add-component", "fit-background"))
+
+def test_the_shipped_policy_is_the_default_and_none_means_declared_priors(monkeypatch):
+    monkeypatch.setattr(bff, "ModelSearch", _EchoSearch)
+    monkeypatch.setattr(bff, "get_shipped_action_policy", lambda: "shipped-json")
+    assert run_native_search(_PolicyProblem(), NativeSearchSettings()) == "shipped-json"
+    assert run_native_search(_PolicyProblem(), NativeSearchSettings(action_policy="")) is None
