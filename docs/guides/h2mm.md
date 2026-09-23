@@ -102,8 +102,15 @@ channel (and optional micro-time window).
   dwell means, and the BIC/ICL scan;
 * `h2mm_photons.h5` — a **per-photon table** with the Viterbi `State`, macro/micro
   time, channel and stream;
+* `h2mm_photons.csv` — the same per-photon table as CSV (either format can be
+  switched off under *Photon table*);
 * `h2mm_bursts.csv` — a **per-burst summary** (photon count, dominant state,
-  transition count, mean FRET).
+  transition count, mean FRET);
+* `h2mm_dwells.csv` — one row per Viterbi dwell (state, photons, duration, E/S,
+  `Is Edge`);
+* `h2mm_state_decays.csv` — the per-state micro-time histograms per channel;
+* a burst companion per measurement (`bh4/<stem>.bh4`) beside the output folder,
+  merged column-wise with the burst table by the readers that consume it.
 
 The photon and burst tables are plain numeric tables (time column
 `Mean Macro Time (s)`) that open directly in **ndxplorer (ndX)** through its
@@ -128,10 +135,26 @@ against simulated data with a known answer in
 
 ### GUI
 
-Launch the H2MM tool, select a `.bur` folder, assign donor/acceptor detectors,
-choose the state range, criterion, and engine, then **Run**. Results appear as a
-FRET-state plot, transition-density plot, model-selection curve, and dwell-time
-distributions.
+Open **Spectroscopy → Single-Molecule → H2MM** (or step 7 of **Burst
+Analysis**), pick the burst folder with the folder button (or drop it on the
+path field), assign the donor, acceptor and optional acceptor-excitation
+(*Aex*) detectors under **Channel Definitions**, choose the state range,
+criterion, engine and decoder under **H2MM Settings**, then **▶ Run**. The GUI
+defaults to the `em-float32` engine with scan patience 1. Seven result docks
+appear: *Dwell FRET states* (an E–S scatter when an Aex stream is set),
+*Transition density*, *Model selection*, *Dwell times*, *Per-state decay*,
+*Transition rates* and *State path*. **±** bootstraps the selected model, **📈**
+profiles the likelihood of each state, and **🔬** opens the per-dwell table in
+ndX.
+
+```{figure} figures/30_h2mm_results.png
+:name: fig-h2mm-gui
+:width: 100%
+
+The H2MM window after a 1–4-state scan of 2980 bursts from ten BH SPC-130
+files of a double-labelled DNA sample; BIC selects four states. Walked through
+in [H2MM results](30_h2mm_workflow_results.md).
+```
 
 ### CLI
 

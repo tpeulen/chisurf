@@ -3677,7 +3677,10 @@ class BurstSelectionTool(ChisurfDockTool):
             else:
                 offset_ticks = previous_end - first
             offsets.append(offset_ticks * resolution_ms)
-            previous_end = float(macro_times[-1])
+            # The end on the *continued* axis, not the file's own: with the raw
+            # end, file 3 started where file 2's raw end lay, so ten files of
+            # 642 s showed as 126 s and every file after the second overlapped.
+            previous_end = float(macro_times[-1]) + offset_ticks
         return offsets
 
     def _delta_macro_time_ms(self, tttr: Any, offset_ticks: float = 0.0) -> np.ndarray:

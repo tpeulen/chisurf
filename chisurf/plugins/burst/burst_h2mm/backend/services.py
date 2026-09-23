@@ -603,14 +603,19 @@ def _tttr_path_candidates(candidate: pathlib.Path, data_dir: pathlib.Path):
 
 def _macro_resolution(tttrs) -> float:
     """Return the macro-time resolution (seconds) from the first TTTR header."""
+    # tttrlib reports -1 for "unset" (e.g. Photon-HDF5 without a resolution);
+    # accepting it made dwell times negative and rates per tick.
     for tttr in tttrs.values():
-        try:
-            return float(tttr.header.tag("MeasDesc_GlobalResolution")["value"])
-        except Exception:
+        for read in (
+            lambda: tttr.header.tag("MeasDesc_GlobalResolution")["value"],
+            lambda: tttr.header.macro_time_resolution,
+        ):
             try:
-                return float(tttr.header.macro_time_resolution)
+                value = float(read())
             except Exception:
                 continue
+            if value > 0:
+                return value
     return 1.0
 
 

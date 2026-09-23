@@ -112,6 +112,26 @@ def test_macro_time_offsets_continue_across_file_boundaries() -> None:
     assert delta_b.tolist() == [20.0, 5.0, 15.0]
 
 
+def test_macro_time_offsets_accumulate_over_three_files() -> None:
+    """File 3 continues from file 2's *continued* end, not its raw end.
+
+    With the raw end, ten 642 s files showed as 126 s and files 2-10 overlapped;
+    two identical files cannot tell the difference.
+    """
+
+    class FakeHeader:
+        macro_time_resolution = 0.001
+
+    class FakeTTTR:
+        header = FakeHeader()
+        macro_times = np.array([10, 15, 30])
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    diagnostics = [{"tttr": FakeTTTR(), "selected": np.ones(3, dtype=bool)} for _ in range(3)]
+    offsets = BurstSelectionTool._macro_time_offsets_ms(tool, diagnostics)
+    assert offsets == [0.0, 20.0, 40.0]
+
+
 def test_histogram_data_ignores_interleaved_zero_rows() -> None:
     """Histogram updates should ignore Margarita zero separator rows."""
     frame = pd.DataFrame(
