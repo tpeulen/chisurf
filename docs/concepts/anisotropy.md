@@ -62,7 +62,11 @@ unpolarized (e.g. tail-region emission, horizontally polarized excitation, or a
 freely tumbling small dye). Getting $G$ wrong shifts the whole $r(t)$ curve up
 or down and biases the recovered $r_0$ and $r_\infty$. ChiSurf additionally
 carries two small **channel-mixing** factors $l_1, l_2$ that account for
-cross-talk of each polarized channel into the other (imperfect polarizers):
+cross-talk of each polarized channel into the other — chiefly the geometric
+depolarization of a high-aperture objective {cite}`koshioka1995`, with
+imperfect polarizers adding to it; the same correction is used for
+single-molecule MFD {cite}`schaffer1999` and TIRF anisotropy imaging
+{cite}`erdelyi2014`:
 
 $$
 I_{\parallel,\mathrm{m}} = (1-l_1)\,I_\parallel + l_1\,I_\perp, \qquad

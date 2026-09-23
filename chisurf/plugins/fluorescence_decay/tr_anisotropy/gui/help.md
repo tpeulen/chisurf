@@ -40,14 +40,19 @@ roughly a 10 % error in every anisotropy you report, including r₀. Measure it
 high-aperture objective. A large collection angle mixes the two polarisations
 geometrically, which **compresses** the measured anisotropy toward zero. Leaving
 them at 0 on a high-NA setup reports a smaller r₀ and a smaller amplitude than
-the sample has.
+the sample has. The mixing model is that of Koshioka, Sasaki and Masuhara
+(1995); Schaffer et al. (1999) use it with the g convention above for
+single-molecule MFD, and Erdelyi et al. (2014) for TIRF anisotropy imaging.
 
 **Background matters more here than in a plain lifetime fit.** Background is
 unpolarised, so it enters VV and VH equally and pulls their *ratio* toward 1 —
 i.e. toward zero anisotropy — and it does so most severely in the tail, exactly
 where the slow rotation lives. The *Normalize IRF* step subtracts a background
 region you pick and intensity-matches the two IRFs, which is why it is a step of
-its own rather than a checkbox.
+its own rather than a checkbox. With two separate detectors (as on a
+microscope) the IRFs must be normalized to the same total photon number after
+background removal. The model is convolved with the IRF, so changing the IRF
+also changes the number of photons in the model.
 
 ## Reading the result
 
@@ -78,6 +83,25 @@ the lifetime. A long-lived probe buys slower rotations; nothing else does.
   mimics a fast rotational component.
 
 ## Further reading
+
+Original papers:
+
+- [10.1366/0003702953963652](https://doi.org/10.1366/0003702953963652) —
+  M. Koshioka, K. Sasaki, H. Masuhara, *Time-dependent fluorescence
+  depolarization analysis in three-dimensional microspectroscopy*, Appl.
+  Spectrosc. **49**, 224 (1995): the l1/l2 channel mixing of a high-NA objective.
+- [10.1371/journal.pone.0100526](https://doi.org/10.1371/journal.pone.0100526) —
+  M. Erdelyi, J. Simon, E. A. Barnard, C. F. Kaminski, *Analyzing receptor
+  assemblies in the cell membrane using fluorescence anisotropy imaging with
+  TIRF microscopy*, PLoS ONE **9**, e100526 (2014).
+- [10.1021/jp9833597](https://doi.org/10.1021/jp9833597) — J. Schaffer et al.,
+  *Identification of single molecules in aqueous solution by time-resolved
+  fluorescence anisotropy*, J. Phys. Chem. A **103**, 331 (1999): the g = S_VV/S_VH
+  convention with the l1/l2 correction.
+
+In the ChiSurf documentation:
+
+- [Fluorescence anisotropy](docs/concepts/anisotropy.md) — theory, r₀, rotors.
 
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md)
 - [Lifetime and anisotropy fitting](docs/guides/10_lifetime_anisotropy_fitting.md)
