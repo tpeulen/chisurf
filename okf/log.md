@@ -2,6 +2,30 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the analysis group (Find structure, UMAP, Gaussian Fit).**
+  - Qt-free, for both GUIs:
+    - `analysis/structure.py`: the method table, and the clustering and UMAP as checkpoint generators;
+    - `analysis/gaussian_mixture.py`: EM, seeds, ellipses, marginals, files and GMM settings;
+    - `utils/package_install.py`;
+    - a Qt-free `writer.save_clustering_data`.
+  - The emtk app gets:
+    - Find structure (PCA/UMAP/HDBSCAN/K-means), run as `emtk.tasks` tasks;
+    - the column chooser;
+    - the UMAP progress log and the Projection window (2-D/3-D);
+    - cluster colours and isolation;
+    - the Gaussian Fit tab, with seeds, fit, a Link column and the gate through `gates.add_gaussian`;
+    - GMM Settings.
+  - Fixed in both GUIs:
+    - View > UMAP (a missing function);
+    - the GMM Settings button (wrong import);
+    - the seed-width transposition;
+    - `_gaussians.csv` reload;
+    - `_hist2d.csv` orientation;
+    - Weight floor and Log Gauss;
+    - three dead installer imports.
+  - emtk: `tasks`, `dialog_window`, view_form `special_text`/`label_source`/button `hidden_when`/`progress`, and `text_wrapped` newlines.
+  - All nine analysis scenarios are ticked. UMAP was verified with a scratch umap-learn, and arm64 is unchanged. Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / analysis.
+
 * **ndX emtk port: the overlays group (Parameters, Overlays, curve fit, Equations, Table Editor).**
   - Qt-free, for both GUIs: `core/overlay_curves.py`, `analysis/curve_fit_setup.py` (the curve fit's setup behind a `FitHost`), `core/equation_table.py`, `core/store_edits.py`.
   - The emtk app gets the constants as a chisurf parameter group (edits recompute only what reads them, right-click link/unlink), overlay curves drawn on the map, Fit curve to data, the Equations tab (reachable from View > Equations, unlike Qt) and the Table Editor. Without chisurf's parameters (a browser) the constants are plain numbers and the tabs say why.

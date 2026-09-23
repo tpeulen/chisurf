@@ -304,6 +304,70 @@ Tried and reverted: an `im_widgets.begin_modal` in emtk (dim, chrome, title bar)
 dropped before its commit because `emtk.dialog_window.DialogWindow` landed at the same time
 and does the same thing.
 
+### analysis (Find structure, UMAP, Gaussian Fit)
+
+Re-measure with `python -m ndxplorer.app.capture -s clustering_dialog
+-s column_selection_dialog -s clustering_kmeans_run -s clustering_pca_run -s umap_run
+-s view_umap_action -s gaussian_fit -s gaussian_select -s gmm_settings_dialog` and
+`pytest ndxplorer/tests/test_app/test_analysis_app.py
+ndxplorer/tests/test_app/test_analysis_logic.py` (28 tests: clustering as a cooperative
+`emtk.tasks` task, cancel, the browser's UMAP text, PCA report, seed orientation, fit with
+a held centre, save/load, settings, and a check that no Qt is imported). Trap: the
+Gaussian tests need `chisurf.core.fitting.parameter`, which needs IMP.bff. While
+someone rebuilds IMP.bff they fail with an `_IMP_bff.so` symbol error. That is the
+environment, not the port; `python -c "import IMP.bff"` tells which.
+
+1. **Parity status, 2026-09-23.** All nine scenarios are ticked in features.md, with
+   the deliberate differences noted there. The values match the Qt window:
+   - K-means on iris finds 3 clusters, and the colour survives isolating a cluster (it
+     did not in Qt).
+   - PCA on the six MFD columns gives 29 %/27 %, 12089 rows fitted and 148 dropped.
+   - The Gaussian fit gives x1 3.77419, σx,1 1.30578 and w1 0.617.
+   - gaussian_select keeps 10257 of 12237 rows.
+   The work is in Qt-free modules both GUIs call:
+   - `analysis/structure.py`: the method table, the clustering and the UMAP
+     embedding as generators of checkpoints, and the PCA report.
+   - `analysis/gaussian_mixture.py`: EM, seeds, ellipses, marginals, files and GMM
+     settings.
+   - `utils/package_install.py`: conda/pip and `install_task`.
+   - `io/writer.save_clustering_data`: now takes a progress callback.
+2. **UMAP was verified outside arm64.** arm64 has no umap-learn, so `umap_run`
+   records the install offer, as the Qt baseline does. A real run used umap-learn
+   0.5.12 and pynndescent from a `pip install --no-deps --target` scratch folder on
+   `PYTHONPATH`, with arm64 left untouched. It covered columns, the progress log, Plot
+   2-D and Plot 3-D. To re-check, do the same, or accept the in-app Install, which runs
+   `conda install umap-learn -c conda-forge` into the env as a task.
+3. **Browser run not yet taken.** Every module imports without Qt. What is missing:
+   - K-means, HDBSCAN and PCA fall back to scikit-learn when `chisurf.core.ml` cannot
+     be imported. This code path was never run under Pyodide.
+   - UMAP says in words that it cannot run in a browser (numba).
+   - The Gaussian Fit panel needs chisurf's `FittingParameter` (IMP.bff, native). In a
+     page it shows the reason instead of the table. A browser Gaussian fit needs a
+     parameter group that does not depend on IMP.bff, and there is none today.
+   - A real `emtk.web` page load that clicks Run has not been done yet.
+4. **Handed to others.** The selection feature outlines enabled Gaussian gates. This
+   panel stops drawing a component once it is that gate (`GaussianPanel.is_gate`).
+   `cluster_labels` feeds the ranking's "Clusters" classes (playback_export item 4).
+   Docks becoming windows (window-manager agent) will move the Gaussian Fit tab
+   from `tabs()` to a feature window.
+
+Fixed on the way, in both GUIs:
+- the seed width was read from the transposed bin;
+- a saved `_gaussians.csv` did not load again;
+- `_hist2d.csv` wrote y down the rows;
+- Weight floor was never applied;
+- Log Gauss did nothing;
+- GMM Settings never opened;
+- View > UMAP raised AttributeError;
+- three installer offers imported `deps_installer` from the wrong package.
+
+emtk gained:
+- `emtk.tasks`;
+- `emtk.dialog_window.DialogWindow`, now used by several features;
+- in view_form, `special_text`, `label_source`, per-button `hidden_when` and the
+  `progress` section;
+- newlines in `text_wrapped`.
+
 ### settings (Settings menu, View > Axis Control, File > Make Report, Help)
 
 Re-measure with `HOME=<scratch> python -m ndxplorer.app.capture -s menu_settings -s menu_view
