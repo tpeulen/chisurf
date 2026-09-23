@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the selection group (gate menus, pick population, draw mask).**
+  - One gate list for both GUIs: `core/gates.GateList`, where masks and regions are kept as their objects. The Qt table is rebuilt from it, and `get_selections` reads the list.
+  - The emtk app gets the gate-table and map context menus (Send to ChiSurf and napari are disabled with the reason in the browser), Fit gate to the population here (a density-watershed fit, fixed in the Qt window too), and the Draw Mask panel as a view spec with brush painting that works.
+  - emtk: DataTable Select All / multi-row Delete, and `emtk.clipboard`.
+  - All ten selection scenarios are ticked in `tools/parity/features.md`. Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / selection.
+
 * **ndX emtk port, core: the main window on emtk.**
   - `ndxplorer/app`: model, view specs, plots (the map as one nearest-sampled texture), menus as data, file dialogs, headless capture into `parity/emtk/` in a scratch `$HOME`, `python -m ndxplorer --emtk`. Feature modules register through `ndxplorer/app/features` hooks.
   - Qt-free logic moved out of the Qt classes for both GUIs: gates, map colour limits, colormap LUTs, settings bundle, axis setup; importing the data layer no longer imports Qt.
