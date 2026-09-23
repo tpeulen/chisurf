@@ -24,8 +24,9 @@ How it works
 3. The spread of the fitted values over many realisations gives the mean squared
    relative error.
 
-The covariance follows Sanguigno et al.'s treatment of RICS estimator noise: a
-shot-noise term involving the three-point correlation :func:`triple_correlation`
+The covariance follows the RICS performance evaluation of Longfils et al.
+(Biophys. J. 2019, 10.1016/j.bpj.2019.09.045), extending Saffarian & Elson
+2003: a shot-noise term involving the three-point correlation :func:`triple_correlation`
 on the diagonal, plus two terms that sum products of two-point correlations over
 every pixel pair, weighted by how many pairs share each separation.
 

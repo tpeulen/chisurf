@@ -3,8 +3,8 @@
 2CDE (Tomov et al., Biophys. J. 2012) is a per-burst *feature* that flags
 within-burst dynamics from per-photon kernel-density estimates of two photon
 streams.  The heavy lifting is done by the tttrlib ``TwoCDE`` burst feature
-(parallel, bit-exact port of the FRETBursts reference); a pure-NumPy fallback
-reproduces the same reference when that class is unavailable.
+(parallel, bit-exact port of the FRETBursts reference); without it the plugin
+raises -- there is no NumPy fallback.
 """
 
 from __future__ import annotations

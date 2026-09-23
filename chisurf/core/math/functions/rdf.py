@@ -50,7 +50,7 @@ def saw_nu(
     """Radial distribution of a self-avoiding walk with Flory exponent ``nu``.
 
     The SAW-ν inter-monomer distance distribution (des Cloizeaux form; Zheng
-    et al., J. Am. Chem. Soc. 2018), the standard model for disordered/unfolded
+    et al., J. Chem. Phys. 148, 123329 (2018)), the standard model for disordered/unfolded
     chains in single-molecule FRET:
 
     .. math::

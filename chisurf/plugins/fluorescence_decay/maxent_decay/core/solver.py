@@ -1,8 +1,8 @@
 """Maximum-entropy TCSPC analysis for the MaxEnt decay tool, run by BFF.
 
 The inversion is the engine's (``tcspc_maxent_lifetime`` / ``tcspc_maxent_fret``:
-a MaxEntSpectrum over TCSPCDecay's basis, tttrlib's Skilling-Bryan programme
-underneath); the MEM TCSPC model that used to live in tttrlib, with its own
+a MaxEntSpectrum over TCSPCDecay's basis, IMP.bff's Skilling-Bryan programme
+underneath, ported from tttrlib); the MEM TCSPC model that used to live in tttrlib, with its own
 convolution and IRF shift, is gone. This module keeps the tool's contract --
 the arguments the GUI passes and the result dictionary the plots, the sampler
 and the saved JSON read -- and translates both ways.

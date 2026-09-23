@@ -123,5 +123,6 @@ and four plots (decay, residuals, distribution, L‑curve) on the right.
 
 The underlying maximum-entropy algorithm is based on:
 
-- V. Vinogradov and B. Wilson, "Quantitative decay analysis by the maximum
-  entropy method", *Applied Spectroscopy* **54** (2000) 849–855.
+- S. A. Vinogradov and D. F. Wilson, "Recursive maximum entropy algorithm and
+  its application to the luminescence lifetime distribution recovery",
+  *Applied Spectroscopy* **54** (2000) 849–855, doi:10.1366/0003702001950210.
