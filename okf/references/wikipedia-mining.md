@@ -222,6 +222,26 @@ anything a page wants. The dump's standing use is the last item below.
 
 ## Where to pick this up
 
+**Latest (2026-09-23) — page-driven harvest works; plugin coverage is the front.**
+Guides 72–75 + concepts `point_spread_function`, `intensity_traces` drew 40
+Crossref-verified entries from dump citations (commit `226b7f845`). Open, in order:
+
+1. **Undocumented plugins.** Re-measure with the loop that found them: for each
+   `chisurf/plugins/**/manifest.json`, grep its directory name in
+   `docs/guides docs/concepts` — 0 hits = no page. *Trap:* the name test misses
+   pages that use the menu label only, so check `display_name` too before writing.
+   Menu-visible and still undocumented: none of the five taken; the rest
+   (`traj/*`, `spot_finder`, `proteinmc`, `mfd_prepare`, core admin tools) are
+   `menu_hidden` — document only if they are reachable from a hub.
+2. **Writing a page measures the tool.** All four passes found real defects
+   (~30, in known-issues 2026-09-23). The highest-value ones are blockers, not
+   cosmetics: FCS Channel Definitions → correlator disconnected; TTTR Correlate
+   error bars inverted; PSF calculator does not open on the emtk backend;
+   tttrlib radial PSF E_z 2× (fix upstream). Fix these before more docs.
+3. **Docs that quote numbers must re-derive them.** The PSF help's widths were
+   5–40 % off because they were typed, not measured; `PSFModel` scripts in the
+   guide reproduce the table.
+
 Done since this page was written, in order: the seed extension and second
 harvest (item 1, item 2), the `sources:` renderer and its test (item 3), the
 cross-reference guardrail (item 4). What remains:
