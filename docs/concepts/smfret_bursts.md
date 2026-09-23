@@ -243,7 +243,7 @@ dye artefacts above.
   inside a burst).
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`
   · {doc}`/guides/15_background_rates` · {doc}`/guides/27_alex_smfret_workflow`.
-- Implementation: per-burst E/S {src}`chisurf/core/fluorescence/burst/es.py`;
+- Implementation: per-burst E/S in tttrlib (`tttrlib.corrected_es`, the accurate-FRET kernels shared with ndXplorer);
   correction algebra {src}`chisurf/core/fluorescence/crosstalk.py`; calibration
   factors {src}`chisurf/core/fluorescence/fret/calibration.py`; burst search
   {src}`chisurf/core/fluorescence/burst/tttrlib_search.py#search`; background

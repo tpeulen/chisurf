@@ -244,7 +244,7 @@ class BurstBrowserViewModel:
         # over BOTH excitation periods. Deriving E from those un-gated columns
         # gave (DA + AA) / (DD + DA + AA + AD), which is not a proximity ratio
         # and put the populations of a two-state sample at the wrong efficiency.
-        from chisurf.core.fluorescence.burst.es import apparent_es
+        from tttrlib import apparent_es
         from chisurf.core.fluorescence.burst.table import guess_columns
 
         mapping = guess_columns(names)

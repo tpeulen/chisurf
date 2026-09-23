@@ -8,7 +8,7 @@ same numbers as the interactive ndX view.
 
 Qt-free; the channel columns are recognised with the shared conventions in
 :mod:`chisurf.core.fluorescence.burst.table` and the corrections applied with
-:func:`chisurf.core.fluorescence.burst.es.corrected_es`, so nothing about the
+``tttrlib.corrected_es``, so nothing about the
 correction algebra is re-implemented here.
 """
 
@@ -18,8 +18,8 @@ import pathlib
 from dataclasses import dataclass, field
 
 import numpy as np
+import tttrlib
 
-from chisurf.core.fluorescence.burst.es import corrected_es
 from chisurf.core.fluorescence.burst.table import guess_columns, read_burst_table
 
 __all__ = [
@@ -46,12 +46,12 @@ class Corrections:
     alpha : float
         Donor leakage into the acceptor channel. ALEX-Suite asked for the
         donor-only peak *position* (``E_donly``) instead; derive the factor
-        with :func:`chisurf.core.fluorescence.fret.calibration.leakage_from_donor_only`,
+        with ``tttrlib.leakage_from_donor_only``,
         or let the Accurate FRET step find it — there is one implementation of
         each correction factor and it is not here.
     delta : float
         Direct acceptor excitation (ALEX-Suite's ``S_aonly``); see
-        :func:`~chisurf.core.fluorescence.fret.calibration.direct_excitation_from_acceptor_only`.
+        ``tttrlib.direct_excitation_from_acceptor_only``.
     gamma, beta : float
         Detection/quantum-yield ratio and excitation-flux ratio.
     """
@@ -197,7 +197,7 @@ def burst_efficiency_stoichiometry(
 
     The backgrounds in :class:`Corrections` are rates (counts/ms), so they are
     turned into counts with the per-burst duration before
-    :func:`~chisurf.core.fluorescence.burst.es.corrected_es` subtracts them. A
+    ``tttrlib.corrected_es`` subtracts them. A
     table without a duration column gets no background subtraction rather than a
     wrong one — the same choice the old program made when ``Tau`` was missing.
 
@@ -219,7 +219,7 @@ def burst_efficiency_stoichiometry(
         bg_da = corrections.bg_da * tau_ms
         bg_aa = corrections.bg_aa * tau_ms
 
-    result = corrected_es(
+    result = tttrlib.corrected_es(
         i_dd,
         i_da,
         i_aa,

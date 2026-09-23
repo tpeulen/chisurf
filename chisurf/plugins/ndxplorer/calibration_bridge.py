@@ -859,8 +859,10 @@ def optimize_calibration_from_ndx(
         "columns", "injected", "populations"}``, or ``{"ok": False, "error": …}``
         when the window carries no usable burst columns.
     """
+    import tttrlib
+
     from chisurf.core.fluorescence.burst.table import guess_columns
-    from chisurf.core.fluorescence.fret.accurate import accurate_fret, auto_calibrate
+    from chisurf.core.fluorescence.fret.accurate import auto_calibrate
     from chisurf.core.fluorescence.fret.calibration import calibration_from_ndx_constants
     from chisurf.core.fluorescence.fret.lines import static_fret_line
 
@@ -997,17 +999,18 @@ def optimize_calibration_from_ndx(
             setattr(calib, name, kept[name])
 
     injected: list[str] = []
+    vectors: dict = {}
     if inject_columns:
         split = result.split
         labels = np.zeros(np.asarray(counts("i_dd")).shape, dtype=int)
         if split is not None:
             labels = np.where(split.fret, split.fret_labels, -1)
             labels = np.where(split.acceptor_only, -2, labels)
-        accurate = accurate_fret(
+        accurate = tttrlib.accurate_fret(
             counts("i_dd"),
             counts("i_da"),
             counts("i_aa"),
-            calibration=calib,
+            factors=calib.as_dict(),
             tau_f=tau_f,
             line=line,
             uncertainties=result.uncertainties,
@@ -1024,6 +1027,14 @@ def optimize_calibration_from_ndx(
         injected.append("R_DA (accurate)")
         data_source.set_column("Population", labels.astype(float))
         injected.append("Population")
+        vectors = _species_vectors(result.species, data_source, injected)
+        if vectors and "gamma" in vectors:
+            # the species model won: the accurate columns use each burst's gamma
+            data_source.set_column("FRET efficiency (accurate)",
+                                   np.asarray(result.species["E"], dtype=float))
+            if accurate["S"] is not None:
+                data_source.set_column("Stoichiometry (accurate)",
+                                       np.asarray(result.species["S"], dtype=float))
         if accurate["deviation"] is not None:
             data_source.set_column(
                 "Off static FRET line", np.asarray(accurate["deviation"], dtype=float)
@@ -1051,6 +1062,11 @@ def optimize_calibration_from_ndx(
         "columns": mapping,
         "injected": injected,
         "populations": result.populations,
+        # global + per-population factors and the shared-vs-species model
+        # choice; "vectors" holds the set_vector arguments of the factors
+        # that are not pooled (only when the species model was selected)
+        "species": _species_summary(result.species),
+        "vectors": vectors,
         # What the calibration determined, and which of those were written.
         # A factor the caller held fixed still appears here, so the report can
         # show "gamma would have been 0.91; kept 1.00".
@@ -1263,6 +1279,53 @@ def refresh_stored_parameters(ndx) -> dict:
     it from overwriting values the user tuned themselves.
     """
     return restore_calibration_from_container(ndx)
+
+
+def _species_summary(species) -> dict | None:
+    """The species table of a calibration, JSON-ready (no per-burst arrays)."""
+    if not species:
+        return None
+    return {
+        "labels": list(species["labels"]),
+        "names": list(species["names"]),
+        "populations": list(species["populations"]),
+        "factors": species["factors"],
+        "model_selection": species["model_selection"],
+    }
+
+
+def _species_vectors(species, data_source, injected) -> dict:
+    """Per-population factors as ndX vector constants, with their per-burst axis.
+
+    Only factors that are not pooled become vectors -- gamma, when the
+    species model lowered the BIC. The axis is the injected ``Population``
+    column (FRET population ``s`` coded ``s``) and one ``P(<name>)`` column
+    per population holding each burst's assignment probability; the equation
+    engine mixes the elements with those weights.
+    """
+    if not species:
+        return {}
+    names = list(species["names"])
+    vectors = {}
+    for factor, entry in species["factors"].items():
+        if entry.get("pooled", True):
+            continue
+        if not vectors:
+            assignment = np.asarray(species["assignment"], dtype=float)
+            for s, name in enumerate(names):
+                column = f"P({name})"
+                data_source.set_column(column, assignment[:, s])
+                injected.append(column)
+        vectors[factor] = {
+            "values": [float(v) for v in entry["values"]],
+            "populations": names,
+            "uncertainties": [float(v) for v in entry["sigma"]],
+            "default": float(entry["global"]),
+            "column": "Population",
+            "codes": {name: float(s) for s, name in enumerate(names)},
+            "probabilities": {name: f"P({name})" for name in names},
+        }
+    return vectors
 
 
 def calibrate_columns(columns, constants, options, *, container: str = "", progress=None) -> dict:

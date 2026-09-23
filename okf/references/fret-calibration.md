@@ -3,10 +3,44 @@ type: Reference
 title: "smFRET calibration: light-path prior → data-optimized posterior"
 description: How ChiSurf turns calibration factors (gamma, leakage, direct excitation, R0) into fittable parameters whose prior comes from the light-path calculator and whose posterior comes from optimizing against the data.
 tags: [reference, fret, calibration, priors, bursts]
-timestamp: '2026-07-16T00:00:00Z'
+timestamp: '2026-09-23T00:00:00Z'
 ---
 
 # smFRET calibration — light-path prior, data-optimized posterior
+
+## Where to pick this up
+
+1. **The algorithms live in tttrlib now (2026-09-23).** Corrected E/S
+   (`apparent_es`, `corrected_es`, `corrected_es_matrix`,
+   `corrected_es_general`), the gating (`gaussian_mixture_1d`,
+   `classify_es_populations`, `split_fret_subpopulations`, and the
+   multidimensional `classify_populations_nd`), the estimators
+   (`leakage_from_donor_only`, `direct_excitation_from_acceptor_only`,
+   `global_es_correction`, `beta_from_stoichiometry`, `gamma_from_lifetime`,
+   `refine_gamma`, `lightpath_correction_factors`, `rcm_from_dye_solutions`),
+   `auto_calibrate`, `accurate_fret`, the uncertainties/distances and the
+   species-specific gamma (`species_factors`) are C++ in tttrlib
+   `modules/spectroscopy/corrections` (tttrlib PRD-042, branch `accurate-fret`,
+   A/B-pinned against a numpy transcription of the deleted chisurf code in
+   `test/python/corrections/afret_reference/`). ChiSurf keeps the plumbing:
+   `CalibrationParameters` + priors, the light-path payload parsing,
+   `fret/lines.py`, and `fret/accurate.py:auto_calibrate`, which reads the
+   parameters/priors, builds the static line, calls `tttrlib.auto_calibrate`
+   and writes the factors back. `burst/es.py` is deleted.
+2. **Open: the tttrlib branch is not merged.** `accurate-fret` (worktree
+   `~/dev/worktrees/tttrlib-accurate-fret`) carries `dev` merged in; the arm64
+   env runs its wheel. Another session installing a wheel built from `dev`
+   removes `tttrlib.auto_calibrate` and breaks every caller here with an
+   ImportError -- merge the branch into `dev` before anyone rebuilds from it.
+3. **Open: the multidimensional gating has no real-data validation.** On cal1
+   with `dimensions=["S","E"]` it finds 4 FRET populations and gamma 0.731
+   against 0.826 from the S-only gating (and takes 25 s for 44 270 bursts
+   against 2.4 s). The ground-truth tests are synthetic. Validate on an MFD
+   measurement with lifetimes before making it the default.
+4. **Inherited quirk kept for exactness:** the 1-D gate's EM weights squared
+   residuals by the squared responsibility (the spherical estimator in
+   `chisurf.core.ml` does the same); the port reproduces it. Fixing it changes
+   the gates slightly -- do it in both places or neither.
 
 Accurate single-molecule FRET requires calibration factors that turn raw
 green/red/yellow photon counts into a true efficiency: the detection/quantum-yield
@@ -448,11 +482,16 @@ back to the physically-motivated light-path prior.
 
 ## Pointers
 
-- Core: `chisurf/core/fluorescence/fret/accurate.py` (automatic factors,
-  uncertainties), `chisurf/core/fluorescence/fret/lines.py` (analytic E–τ lines),
+- Algorithms: tttrlib `modules/spectroscopy/corrections/AccurateFret*`
+  (Python: `tttrlib.auto_calibrate`, `tttrlib.accurate_fret`,
+  `tttrlib.corrected_es`, ...; registry entry `corrections/accurate_fret`).
+- ChiSurf plumbing: `chisurf/core/fluorescence/fret/accurate.py`
+  (`auto_calibrate` on `CalibrationParameters`, `AutoCalibration.report`),
+  `chisurf/core/fluorescence/fret/lines.py` (analytic E–τ lines),
   `chisurf/core/fluorescence/fret/calibration.py`,
-  `chisurf/core/fluorescence/burst/es.py`,
-  `chisurf/core/fluorescence/crosstalk.py`.
+  `chisurf/core/fluorescence/crosstalk.py`; ndX bridge
+  `chisurf/plugins/ndxplorer/calibration_bridge.py` (species factors become
+  ndX vector constants).
 - Priors: `chisurf/core/fitting/priors.py`, `chisurf/core/fitting/fit.py`
   (`set_parameter_prior`, `_prior_residuals`, `lnprob`).
 - Factor algebra reused from `chisurf/core/models/pda2c/nusiance.py::Pda2cFretNuisance`.

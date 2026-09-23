@@ -8,7 +8,7 @@ guessing rules, so the conventions live here once and both the file readers and
 the live ndX bridge use them.
 
 Channel roles follow the convention of
-:mod:`chisurf.core.fluorescence.burst.es`: ``i_dd`` (donor emission under donor
+``tttrlib.corrected_es``: ``i_dd`` (donor emission under donor
 excitation), ``i_da`` (acceptor emission under donor excitation, the FRET
 channel), ``i_aa`` (acceptor emission under acceptor excitation) and ``tau_f``
 (the fluorescence-averaged donor lifetime in presence of the acceptor).

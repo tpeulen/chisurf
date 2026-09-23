@@ -434,7 +434,7 @@ def static_fret_line(
     the linker distribution. This is the line a structurally homogeneous
     (static) population must lie on; deviations to longer lifetimes at the same
     efficiency indicate dynamics or a wrong ``gamma`` — which is exactly what
-    :func:`chisurf.core.fluorescence.fret.accurate.gamma_from_lifetime` exploits.
+    ``tttrlib.gamma_from_lifetime`` exploits.
 
     Parameters
     ----------

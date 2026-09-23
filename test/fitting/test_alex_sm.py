@@ -11,8 +11,7 @@ Exercises the full chisurf smFRET path on Shimon Weiss lab single-molecule ``.sm
   :func:`...core.auto_alex_windows` (guard bands drop the laser rise/fall), gate
   each burst into the DD / DA / AA streams via :func:`...core.alex_stream_masks`;
 * turn the per-burst counts into ``E``/``S`` with
-  :func:`chisurf.core.fluorescence.burst.es.apparent_es` /
-  :func:`...corrected_es`.
+  ``tttrlib.apparent_es`` / ``tttrlib.corrected_es``.
 
 A ground-truth ALEX stream with realistic laser windows (on-plateaus separated
 by rise/fall gaps, plus edge smear) is round-tripped through the ``.sm``
@@ -42,10 +41,8 @@ from chisurf.core.fluorescence.simulation.alex_sm import (
 
 tttrlib = pytest.importorskip("tttrlib")
 
-from chisurf.core.fluorescence.burst.es import (  # noqa: E402
-    apparent_es,
-    corrected_es,
-)
+from tttrlib import apparent_es, corrected_es
+
 from chisurf.plugins.tttr.ptu_alex_creator.core import (  # noqa: E402
     CONTAINER_INFO,
     alex_stream_masks,

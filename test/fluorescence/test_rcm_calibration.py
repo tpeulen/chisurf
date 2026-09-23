@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chisurf.core.fluorescence.fret.calibration import rcm_from_dye_solutions
+from tttrlib import rcm_from_dye_solutions
 
 
 def test_two_channel_shape_and_normalisation():

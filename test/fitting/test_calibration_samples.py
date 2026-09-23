@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tttrlib import corrected_es, direct_excitation_from_acceptor_only, leakage_from_donor_only
 
-from chisurf.core.fluorescence.burst.es import corrected_es
-from chisurf.core.fluorescence.fret.calibration import (
-    CalibrationParameters,
-    calibrate_from_samples,
-    direct_excitation_from_acceptor_only,
-    leakage_from_donor_only,
-)
+from chisurf.core.fluorescence.fret.calibration import CalibrationParameters, calibrate_from_samples
 
 GAMMA, ALPHA, DELTA = 1.4, 0.08, 0.05
 

@@ -26,7 +26,8 @@ tttrlib = pytest.importorskip("tttrlib")
 if not hasattr(tttrlib, "SimEngine"):
     pytest.skip("tttrlib build lacks the SimEngine simulator", allow_module_level=True)
 
-from chisurf.core.fluorescence.burst.es import apparent_es  # noqa: E402
+from tttrlib import apparent_es
+
 from chisurf.core.fluorescence.burst.simulate import (  # noqa: E402
     STREAMS,
     SmfretParameters,

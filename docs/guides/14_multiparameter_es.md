@@ -63,14 +63,14 @@ see *Known defects*.
 ### Headless
 
 ```python
-from chisurf.core.fluorescence.fret import calibration as cal
+import tttrlib
 
 # leakage & direct-excitation from the donor-only / acceptor-only populations
-leak  = cal.leakage_from_donor_only(i_dd, i_da)
-dir_a = cal.direct_excitation_from_acceptor_only(i_da, i_aa)
+leak  = tttrlib.leakage_from_donor_only(i_dd, i_da)
+dir_a = tttrlib.direct_excitation_from_acceptor_only(i_da, i_aa)
 
 # global gamma/beta from the FRET populations
-est = cal.global_es_correction(i_dd, i_da, i_aa, labels, alpha=leak, delta=dir_a)
+est = tttrlib.global_es_correction(i_dd, i_da, i_aa, labels, alpha=leak, delta=dir_a)
 ```
 
 The three calls take per-burst counts of the respective population
@@ -78,7 +78,7 @@ The three calls take per-burst counts of the respective population
 with α = 0.08, δ = 0.06, γ = 0.65, β = 1.4 they return α = 0.0801,
 δ = 0.0609, γ = 0.651 and β = 1.396 (`est` also carries Ω and Σ).
 
-The per-burst $E$/$S$ are computed in {src}`chisurf/core/fluorescence/burst/es.py`
+The per-burst $E$/$S$ are computed by tttrlib (`tttrlib.corrected_es`)
 (ALEX/PIE-aware). See also the
 [RCM detection calibration](07_rcm_calibration.md) for the full channel matrix.
 
@@ -97,7 +97,7 @@ Multi-parameter E–S histogram.
 
 ## See also
 
-- {src}`chisurf/core/fluorescence/burst/es.py`, {src}`chisurf/core/fluorescence/fret/calibration.py`.
+- tttrlib `corrected_es` / `global_es_correction` (accurate-FRET kernels, shared with ndXplorer), {src}`chisurf/core/fluorescence/fret/calibration.py`.
 - Tools: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`); the **Burst
   Browser** (`chisurf/plugins/burst/burst_browser/`) plots and gates the burst
   table.

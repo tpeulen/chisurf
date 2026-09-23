@@ -21,11 +21,19 @@ Because the priors are attached to ordinary ``FittingParameter``\\s, the standar
 ChiSurf MAP (``_prior_residuals``) and MCMC (``lnprob``) machinery regularizes
 the fit automatically. The module is Qt-free and array-based so it runs
 head-less, in tests and from the CLI.
+
+The arithmetic -- the reference-sample estimators, the E-S fit, the posterior
+of :func:`refine_calibration`, the light-path factor algebra -- is tttrlib's
+(``tttrlib.global_es_correction``, ``tttrlib.refine_gamma``,
+``tttrlib.lightpath_correction_factors``, ...), shared with ndXplorer; this
+module holds the factors as fitting parameters and reads the light-path
+payloads.
 """
 
 from __future__ import annotations
 
 import numpy as np
+import tttrlib
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
@@ -37,7 +45,6 @@ __all__ = [
     "crosstalk_matrices_from_lightpath",
     "general_correction_from_lightpath",
     "set_priors_from_lightpath",
-    "global_es_correction",
     "refine_calibration",
     "CalibrationFit",
     "register_calibration",
@@ -51,8 +58,6 @@ __all__ = [
     "setup_calibration_uncertainties",
     "SETUP_CALIBRATION_KEYS",
     "SETUP_CALIBRATION_FIELD",
-    "leakage_from_donor_only",
-    "direct_excitation_from_acceptor_only",
     "calibrate_from_samples",
 ]
 
@@ -282,14 +287,14 @@ def lightpath_correction_factors(
     -------
     dict
         ``{"gamma", "alpha", "delta"}`` in the **Hellenkamp 2018** convention the
-        rest of this module and :func:`~chisurf.core.fluorescence.burst.es.corrected_es`
+        rest of this module and ``tttrlib.corrected_es``
         consume — in particular ``alpha = I_DA/I_DD = (gR·cRD)/(gG·cGD)``, the donor
         leakage *relative to the green channel*, matching
-        :func:`leakage_from_donor_only`. This is **not** the legacy MFD fraction
+        ``tttrlib.leakage_from_donor_only``. This is **not** the legacy MFD fraction
         ``R_D0/(G_D0 + R_D0)`` of ``pda/nusiance.py``. Likewise
         ``delta = I_DA/I_AA = ex[green, A]/ex[red, A]``, the direct acceptor
         excitation *relative to the acceptor-excitation channel*, matching
-        :func:`direct_excitation_from_acceptor_only` — not the ratio to the
+        ``tttrlib.direct_excitation_from_acceptor_only`` — not the ratio to the
         donor's own excitation, which differs from it by ``beta``. Without an
         acceptor-excitation laser there is no ``I_AA`` to subtract and ``delta``
         is 0.
@@ -306,22 +311,10 @@ def lightpath_correction_factors(
     c_ra = _cell(emi, acceptor, red_detector, 1.0)
     ex_ag = _cell(exc, laser, acceptor, 0.0) if laser is not None else 0.0
     ex_ar = _cell(exc, red_laser, acceptor, 0.0) if red_laser is not None else 0.0
-
-    eps = 1e-12
-    den_g = gG * c_gd * qy_d
-    gamma = (gR * c_ra * qy_a) / den_g if den_g > eps else float("nan")
-    # alpha in the Hellenkamp convention every consumer applies: I_DA/I_DD, the
-    # ratio to the *green* channel alone (not the legacy MFD fraction-of-all-donor-
-    # photons R_D0/(G_D0+R_D0) of pda/nusiance.py). qy_d cancels — both channels
-    # see the same donor emission.
-    den_a = gG * c_gd
-    alpha = (gR * c_rd) / den_a if den_a > eps else 0.0
-    # delta in the same convention: I_DA/I_AA, i.e. the direct acceptor excitation
-    # by the green laser referenced to the acceptor-excitation channel (the
-    # acceptor emission, its QY and gR cancel between numerator and denominator).
-    # Referencing it to the donor's own excitation instead is off by beta.
-    delta = ex_ag / ex_ar if abs(ex_ar) > eps else 0.0
-    return {"gamma": float(gamma), "alpha": float(alpha), "delta": float(delta)}
+    # the algebra is tttrlib's (lightpath_correction_factors); this reads the cells
+    return tttrlib.lightpath_correction_factors(
+        c_gd, c_rd, c_ra, ex_ag, ex_ar, gG=gG, gR=gR, qy_d=qy_d, qy_a=qy_a
+    )
 
 
 def crosstalk_matrices_from_lightpath(
@@ -336,7 +329,7 @@ def crosstalk_matrices_from_lightpath(
     """Build the ``(excitation, emission)`` matrices for the general correction.
 
     The scalar Hellenkamp factors are only a two-colour summary; the general
-    correction (:func:`chisurf.core.fluorescence.burst.es.corrected_es_general`)
+    correction (``tttrlib.corrected_es_general``)
     consumes the light-path matrices themselves. This assembles them, ordered, and
     folds the per-chromophore quantum yields and per-detector detection
     efficiencies into the **emission** matrix so its diagonal carries the
@@ -404,7 +397,7 @@ def general_correction_from_lightpath(
 
     Convenience wrapper: build the excitation/emission matrices with
     :func:`crosstalk_matrices_from_lightpath` and run the general correction
-    :func:`chisurf.core.fluorescence.burst.es.corrected_es_general`. This is the
+    ``tttrlib.corrected_es_general``. This is the
     general (any number of chromophores, arbitrary inter-channel bleed) counterpart
     of the scalar :func:`lightpath_correction_factors` + ``corrected_es`` path.
 
@@ -424,8 +417,6 @@ def general_correction_from_lightpath(
     dict
         ``{(donor, acceptor): {"E", "fc"}}`` per pair.
     """
-    from chisurf.core.fluorescence.burst.es import corrected_es_general
-
     excitation, emission = crosstalk_matrices_from_lightpath(
         matrices,
         chromophores,
@@ -434,7 +425,7 @@ def general_correction_from_lightpath(
         quantum_yields=quantum_yields,
         detection_efficiencies=detection_efficiencies,
     )
-    return corrected_es_general(
+    return tttrlib.corrected_es_general(
         intensity,
         excitation,
         emission,
@@ -527,65 +518,6 @@ def set_priors_from_lightpath(
     return factors
 
 
-def global_es_correction(i_dd, i_da, i_aa, labels, *, alpha=0.0, delta=0.0) -> dict:
-    """Recover gamma (and beta) from an E-S population plot (Lee 2005 / Hellenkamp 2018).
-
-    After removing donor leakage (``alpha``) and direct acceptor excitation
-    (``delta``), the apparent stoichiometry and proximity ratio of a doubly
-    labelled sample obey the linear relation ``1/S = Omega + Sigma * E`` across
-    FRET populations; the detection factor is
-    ``gamma = (Omega - 1) / (Omega + Sigma - 1)`` and ``beta = Omega + Sigma - 1``.
-
-    Parameters
-    ----------
-    i_dd, i_da, i_aa : array_like
-        Per-burst ``I_DD`` / ``I_DA`` / ``I_AA`` counts (donor|donor,
-        acceptor|donor, acceptor|acceptor excitation).
-    labels : array_like
-        Population label per burst (>= 2 distinct populations required).
-    alpha, delta : float, optional
-        Donor-leakage (α) and direct-excitation (δ) coefficients (e.g. from the
-        light-path prior or donor-only/acceptor-only samples).
-
-    Returns
-    -------
-    dict
-        ``{"gamma", "beta", "Omega", "Sigma"}`` (Hellenkamp β = Ω+Σ−1).
-    """
-    g = np.asarray(i_dd, dtype=float)
-    r = np.asarray(i_da, dtype=float)
-    y = np.asarray(i_aa, dtype=float)
-    labels = np.asarray(labels)
-
-    f_da = r - alpha * g - delta * y  # leakage + direct-excitation corrected
-    gf = g + f_da
-    with np.errstate(divide="ignore", invalid="ignore"):
-        e_pr = np.where(gf != 0, f_da / gf, 0.0)
-        s_pr = np.where((gf + y) != 0, gf / (gf + y), 0.0)
-
-    uniq = [u for u in np.unique(labels)]
-    if len(uniq) < 2:
-        raise ValueError("global_es_correction needs >= 2 populations")
-    e_mean = np.array([e_pr[labels == u].mean() for u in uniq])
-    inv_s = np.array([1.0 / s_pr[labels == u].mean() for u in uniq])
-    counts = np.array([np.count_nonzero(labels == u) for u in uniq], dtype=float)
-
-    # Linear fit 1/S = Omega + Sigma * E, each population weighted by how well
-    # its centre is known (the standard error of a mean falls as 1/sqrt(n)). Left
-    # unweighted, a small population — often a shot-noise artefact of splitting a
-    # burst cloud rather than a species — drags the slope and biases gamma.
-    sigma, omega = np.polyfit(e_mean, inv_s, 1, w=np.sqrt(counts))
-    denom = omega + sigma - 1.0
-    gamma = (omega - 1.0) / denom if abs(denom) > 1e-12 else float("nan")
-    beta = denom
-    return {
-        "gamma": float(gamma),
-        "beta": float(beta),
-        "Omega": float(omega),
-        "Sigma": float(sigma),
-    }
-
-
 def refine_calibration(
     calib: CalibrationParameters,
     i_dd,
@@ -599,7 +531,7 @@ def refine_calibration(
 ) -> dict:
     """Prior-regularized (Bayesian) refinement of ``gamma`` against E-S data.
 
-    The data estimate of ``gamma`` comes from :func:`global_es_correction` (the
+    The data estimate of ``gamma`` comes from ``tttrlib.global_es_correction`` (the
     E-S population linear fit — the only quantity the E-S data identifies); its
     uncertainty is estimated by bootstrapping bursts. The **posterior** ``gamma``
     is the precision-weighted combination of that data estimate and the
@@ -640,51 +572,27 @@ def refine_calibration(
     """
     from chisurf.core.fitting.priors import as_prior
 
-    g = np.asarray(i_dd, dtype=float)
-    r = np.asarray(i_da, dtype=float)
-    y = np.asarray(i_aa, dtype=float)
     labels = np.asarray(labels)
-
-    est = global_es_correction(g, r, y, labels, alpha=calib.alpha, delta=calib.delta)
-    gamma_data = est["gamma"]
+    prior = as_prior(calib._gamma.prior)
+    has_prior = prior is not None and hasattr(prior, "sigma")
+    # the resampling draws numpy's generator, as this function always did
+    rng = np.random.default_rng(seed)
+    n = labels.size
+    indices = np.stack([rng.integers(0, n, n) for _ in range(int(n_bootstrap))]) \
+        if data_sigma is None and n_bootstrap else None
+    est = tttrlib.refine_gamma(
+        i_dd, i_da, i_aa, labels, alpha=calib.alpha, delta=calib.delta,
+        prior=(float(prior.mu), float(prior.sigma)) if has_prior else None,
+        data_sigma=data_sigma, n_bootstrap=int(n_bootstrap) if indices is not None else 0,
+        seed=seed, indices=indices,
+    )
+    gamma_data = est["gamma_data"]
     # beta (excitation-flux ratio) is also identified by the E-S fit.
     if np.isfinite(est["beta"]) and est["beta"] > 0:
         calib.beta = float(est["beta"])
-
-    prior = as_prior(calib._gamma.prior)
     gamma_prior = float(getattr(prior, "mu", gamma_data))
-
-    if not np.isfinite(gamma_data):
-        # A degenerate population (e.g. one with zero total signal) makes the
-        # E-S fit return NaN. Bootstrapping and combining it would only spread
-        # the NaN, and clipping it into the bounded parameter would silently
-        # write the lower bound, so keep the current (prior-seeded) gamma.
-        gamma_post = float("nan")
-        data_sigma = float("nan")
-    else:
-        if data_sigma is None:
-            rng = np.random.default_rng(seed)
-            n = labels.size
-            boot = []
-            for _ in range(int(n_bootstrap)):
-                idx = rng.integers(0, n, n)
-                try:
-                    gb = global_es_correction(
-                        g[idx], r[idx], y[idx], labels[idx], alpha=calib.alpha, delta=calib.delta
-                    )["gamma"]
-                    if np.isfinite(gb):
-                        boot.append(gb)
-                except Exception:
-                    continue
-            data_sigma = float(np.std(boot)) if len(boot) > 2 else abs(gamma_data) * 0.1
-        data_sigma = max(float(data_sigma), 1e-6)
-
-        if prior is not None and hasattr(prior, "sigma"):
-            w_d = 1.0 / data_sigma**2
-            w_p = 1.0 / float(prior.sigma) ** 2
-            gamma_post = (gamma_data * w_d + gamma_prior * w_p) / (w_d + w_p)
-        else:
-            gamma_post = gamma_data
+    data_sigma = est["data_sigma"]
+    gamma_post = est["gamma_posterior"]
 
     gamma_updated = bool(np.isfinite(gamma_post))
     if gamma_updated:
@@ -1072,72 +980,6 @@ def calibration_from_ndx_constants(constants: dict, calib=None):
     return calib
 
 
-def leakage_from_donor_only(i_dd, i_da, *, bg_dd=0.0, bg_da=0.0) -> float:
-    """Estimate donor leakage ``alpha`` from a donor-only reference sample.
-
-    For a donor-only sample the acceptor (``i_da``) channel under donor
-    excitation contains only donor spectral bleed-through, so
-
-        alpha = <i_da - Bg_da> / <i_dd - Bg_dd>
-
-    (Hellenkamp 2018). Averages are taken over the donor-only bursts.
-
-    Parameters
-    ----------
-    i_dd, i_da : array_like
-        Per-burst donor and acceptor counts under donor excitation for the
-        **donor-only** population.
-    bg_dd, bg_da : float, optional
-        Channel backgrounds.
-
-    Returns
-    -------
-    float
-        Donor leakage ``alpha`` (α).
-    """
-    f_dd = np.asarray(i_dd, dtype=float) - bg_dd
-    f_da = np.asarray(i_da, dtype=float) - bg_da
-    denom = float(np.mean(f_dd))
-    return float(np.mean(f_da) / denom) if denom != 0 else 0.0
-
-
-def direct_excitation_from_acceptor_only(
-    i_da, i_aa, i_dd=None, *, alpha=0.0, bg_dd=0.0, bg_da=0.0, bg_aa=0.0
-) -> float:
-    """Estimate direct excitation ``delta`` from an acceptor-only reference sample.
-
-    For an acceptor-only sample the acceptor (``i_da``) channel under donor
-    excitation contains only directly-excited acceptor emission, so
-
-        delta = <i_da - Bg_da - alpha*(i_dd - Bg_dd)> / <i_aa - Bg_aa>
-
-    (Hellenkamp 2018). The optional ``alpha`` term removes any residual leakage.
-
-    Parameters
-    ----------
-    i_da, i_aa : array_like
-        Per-burst acceptor counts under donor and acceptor excitation for the
-        **acceptor-only** population.
-    i_dd : array_like, optional
-        Donor-channel counts (for the residual-leakage correction).
-    alpha : float, optional
-        Donor leakage (from :func:`leakage_from_donor_only`).
-    bg_dd, bg_da, bg_aa : float, optional
-        Channel backgrounds.
-
-    Returns
-    -------
-    float
-        Direct acceptor excitation ``delta`` (δ).
-    """
-    f_da = np.asarray(i_da, dtype=float) - bg_da
-    f_aa = np.asarray(i_aa, dtype=float) - bg_aa
-    if i_dd is not None and alpha:
-        f_da = f_da - alpha * (np.asarray(i_dd, dtype=float) - bg_dd)
-    denom = float(np.mean(f_aa))
-    return float(np.mean(f_da) / denom) if denom != 0 else 0.0
-
-
 def calibrate_from_samples(
     calib: CalibrationParameters, fret, *, donor_only=None, acceptor_only=None, refine: bool = True
 ) -> dict:
@@ -1145,11 +987,11 @@ def calibrate_from_samples(
 
     The complete layered procedure:
 
-    1. ``alpha`` from the **donor-only** sample (:func:`leakage_from_donor_only`),
+    1. ``alpha`` from the **donor-only** sample (``tttrlib.leakage_from_donor_only``),
     2. ``delta`` from the **acceptor-only** sample
-       (:func:`direct_excitation_from_acceptor_only`, using the estimated α),
+       (``tttrlib.direct_excitation_from_acceptor_only``, using the estimated α),
     3. ``gamma``/``beta`` from the multi-population FRET E-S fit
-       (:func:`global_es_correction`) and, if ``refine``, the prior-regularized
+       (``tttrlib.global_es_correction``) and, if ``refine``, the prior-regularized
        posterior (:func:`refine_calibration`).
 
     Each provided estimate is written into ``calib``. When a reference sample is
@@ -1176,12 +1018,14 @@ def calibrate_from_samples(
         The calibration values plus refinement diagnostics.
     """
     if donor_only is not None:
-        calib.alpha = leakage_from_donor_only(*donor_only[:2], bg_dd=calib.bg_dd, bg_da=calib.bg_da)
+        calib.alpha = tttrlib.leakage_from_donor_only(
+            *donor_only[:2], bg_dd=calib.bg_dd, bg_da=calib.bg_da
+        )
     if acceptor_only is not None:
         i_da_ao = acceptor_only[0]
         i_aa_ao = acceptor_only[1]
         i_dd_ao = acceptor_only[2] if len(acceptor_only) > 2 else None
-        calib.delta = direct_excitation_from_acceptor_only(
+        calib.delta = tttrlib.direct_excitation_from_acceptor_only(
             i_da_ao,
             i_aa_ao,
             i_dd_ao,
@@ -1194,7 +1038,9 @@ def calibrate_from_samples(
     i_dd, i_da, i_aa, labels = fret
     if refine:
         return refine_calibration(calib, i_dd, i_da, i_aa, labels)
-    est = global_es_correction(i_dd, i_da, i_aa, labels, alpha=calib.alpha, delta=calib.delta)
+    est = tttrlib.global_es_correction(
+        i_dd, i_da, i_aa, labels, alpha=calib.alpha, delta=calib.delta
+    )
     if np.isfinite(est["gamma"]):
         calib.gamma = float(np.clip(est["gamma"], 0.05, 20.0))
     if np.isfinite(est["beta"]) and est["beta"] > 0:
@@ -1202,111 +1048,3 @@ def calibrate_from_samples(
     out = calib.as_dict()
     out.update(est)
     return out
-
-
-def rcm_from_dye_solutions(
-    donor_sample_rates,
-    acceptor_sample_rates,
-    absorbance_ratio: float,
-    detector_assignment,
-    anisotropy=(0.0, 0.0),
-):
-    """Routing/detection-correction matrix (RCM) from dye-solution measurements.
-
-    Port of Fretica ``FRCMCalibrationFromDyeSolutions``.  From per-channel count
-    rates of a **donor-only** and an **acceptor-only** dye solution, the relative
-    absorbance ``AbsorbanceA / AbsorbanceD`` and the detector layout, it solves
-    for the matrix that corrects measured channel rates for detection
-    efficiencies and cross-talk between the spectral (and, with a polarising
-    beam-splitter, polarisation) channels — a per-setup calibration that removes
-    the need to hand-enter correction factors.
-
-    Parameters
-    ----------
-    donor_sample_rates, acceptor_sample_rates : array_like
-        Background-corrected count rate in every channel for the donor-only and
-        acceptor-only dye solution (length = number of channels).
-    absorbance_ratio : float
-        ``AbsorbanceA / AbsorbanceD`` of the two calibration solutions (relative
-        excitation/concentration).
-    detector_assignment : sequence of (str, str)
-        Per channel ``(species, polarisation)`` with ``species in {"A", "D"}``
-        and ``polarisation in {"P", "S"}`` (polarisation ignored for a 2-channel
-        setup).  Must have an equal number of A and D channels (1 or 2 each).
-    anisotropy : (float, float)
-        ``(r_donor, r_acceptor)`` steady-state anisotropies (used only for a
-        4-channel polarising-beam-splitter setup; ``(0, 0)`` for a 50/50 split).
-
-    Returns
-    -------
-    numpy.ndarray
-        The ``nchtot x nchtot`` correction matrix (identity on unused channels,
-        normalised so its first ordered element is 1).
-    """
-    donor_sample_rates = np.asarray(donor_sample_rates, dtype=float)
-    acceptor_sample_rates = np.asarray(acceptor_sample_rates, dtype=float)
-    nchtot = len(detector_assignment)
-    if donor_sample_rates.size != nchtot or acceptor_sample_rates.size != nchtot:
-        raise ValueError("rate vectors must match the number of detector channels")
-
-    # the polarisation entry of each assignment is implicit in the channel order
-    # below (a_idx/d_idx) together with `anisotropy`, so only the species is read
-    species = [d[0] for d in detector_assignment]
-    nchA = species.count("A")
-    nchD = species.count("D")
-    if nchA != nchD or nchA == 0 or nchA > 2:
-        raise ValueError("need an equal number of A and D channels (1 or 2 each)")
-    nch = nchA + nchD
-    alpha = float(absorbance_ratio)
-    rd, ra = anisotropy
-
-    a_idx = [i for i, s in enumerate(species) if s == "A"]
-    d_idx = [i for i, s in enumerate(species) if s == "D"]
-
-    if nch == 2:
-        order = [a_idx[0], d_idx[0]]
-        pa = pd = 0.0
-    else:
-
-        def _find(sp, pl):
-            return [i for i, d in enumerate(detector_assignment) if d == (sp, pl)]
-
-        polarized = all(
-            len(_find(sp, pl)) == 1 for sp, pl in [("A", "P"), ("D", "P"), ("A", "S"), ("D", "S")]
-        )
-        if polarized:
-            order = [_find("A", "P")[0], _find("D", "P")[0], _find("A", "S")[0], _find("D", "S")[0]]
-            pa = (3.0 * ra) / (2.0 + ra)
-            pd = (3.0 * rd) / (2.0 + rd)
-        else:  # 50/50 beam splitter, polarisation not resolved
-            order = [a_idx[0], d_idx[0], a_idx[1], d_idx[1]]
-            pa = pd = 0.0
-
-    nd = donor_sample_rates[order]
-    na = acceptor_sample_rates[order]
-
-    if nch == 2:
-        amat = np.array([[na[0], alpha * nd[0]], [na[1], alpha * nd[1]]], dtype=float)
-    else:
-        amat = np.array(
-            [
-                [na[0] / (1 + pa), alpha * nd[0] / (1 + pd), 0.0, 0.0],
-                [na[1] / (1 + pa), alpha * nd[1] / (1 + pd), 0.0, 0.0],
-                [0.0, 0.0, na[2] / (1 - pa), alpha * nd[2] / (1 - pd)],
-                [0.0, 0.0, na[3] / (1 - pa), alpha * nd[3] / (1 - pd)],
-            ],
-            dtype=float,
-        )
-
-    rcm_sub = np.linalg.inv(amat)
-    rcm_sub /= rcm_sub[0, 0]
-
-    # Scatter the nch x nch block back into full channel space (identity elsewhere).
-    perm = np.zeros((nch, nchtot), dtype=float)
-    for i, o in enumerate(order):
-        perm[i, o] = 1.0
-    rcm = perm.T @ rcm_sub @ perm
-    for i in range(nchtot):
-        if i not in order:
-            rcm[i, i] = 1.0
-    return rcm

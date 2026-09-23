@@ -84,7 +84,7 @@ fixed sliding window.
 
 Once a burst is delimited, its photons are binned by **excitation period ×
 detection channel**. The general index convention (shared with
-`burst/es.py` and the calibration code) is $I_{ij}$ = photons emitted by
+tttrlib's accurate-FRET kernels and the calibration code) is $I_{ij}$ = photons emitted by
 chromophore $j$ while chromophore $i$ is being excited, chromophores numbered
 donor $=1$, acceptor $=2$, second acceptor $=3$, … For the ordinary two-colour
 donor/acceptor experiment the three counts have friendly aliases:
@@ -123,7 +123,7 @@ $$
   came from donor excitation. Doubly-labelled FRET species sit near $S\approx0.5$,
   donor-only near $S\to1$ (no $F_{aa}$), acceptor-only near $S\to0$.
 
-`apparent_es(i_dd, i_da, i_aa)` in `burst/es.py` returns exactly this pair
+`tttrlib.apparent_es(i_dd, i_da, i_aa)` returns exactly this pair
 (vectorized over bursts; $S=$ `None` when $I_{aa}$ is absent).
 
 ## The four correction factors
@@ -274,8 +274,8 @@ $$
 (Lee 2005 / Hellenkamp 2018). Applying the resulting $\gamma$ and $\beta$
 **straightens the FRET line**: on the corrected $E$–$S$ plot every FRET species
 falls on the same horizontal $S\approx0.5$ level, and $E$ is now the accurate
-efficiency. This E–S global estimator is `global_es_correction(...)` in
-`fret/calibration.py` (it returns `{gamma, beta, Omega, Sigma}`); the
+efficiency. This E–S global estimator is `tttrlib.global_es_correction(...)` (formerly in
+`fret/calibration.py`; it returns `{gamma, beta, Omega, Sigma}`); the
 donor-only and acceptor-only estimators supply $\alpha$ and $\delta$.
 
 Once $E$ is accurate it maps to distance through the Förster relation
@@ -317,7 +317,7 @@ function of measurement time. ChiSurf's background estimators live in
 
 ## Mapping to ChiSurf
 
-- **Per-burst E/S core** — `chisurf/core/fluorescence/burst/es.py`:
+- **Per-burst E/S core** — tttrlib `corrected_es`/`apparent_es` (the chisurf `burst/es.py` was deleted when the algorithms moved to tttrlib, 2026-09-23):
   `apparent_es` (raw proximity ratio + raw $S$), `corrected_es` (the scalar
   four-factor correction above), `corrected_es_matrix` (N-cube scalar),
   `corrected_es_general` (light-path matrix form).
@@ -339,7 +339,7 @@ function of measurement time. ChiSurf's background estimators live in
 
 - Adjacent concepts: [fret-calibration.md](fret-calibration.md) (obtaining the
   factors; priors/posterior), [crosstalk.md](crosstalk.md) (linear-mixing core).
-- Core: `chisurf/core/fluorescence/burst/es.py`,
+- Core: tttrlib accurate-FRET kernels (`modules/spectroscopy/corrections`),
   `chisurf/core/fluorescence/crosstalk.py`,
   `chisurf/core/fluorescence/fret/calibration.py`.
 - User-facing page: `docs/concepts/smfret_bursts.md`.

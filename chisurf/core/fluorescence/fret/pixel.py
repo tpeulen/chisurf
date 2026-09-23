@@ -1,7 +1,7 @@
 """Per-pixel (FLIM / imaging) FRET calibration.
 
 Applies the general crosstalk-matrix FRET correction
-(:func:`chisurf.core.fluorescence.burst.es.corrected_es_general`) to **images**:
+(``tttrlib.corrected_es_general``) to **images**:
 the per-pixel photon-count channels of a FLIM/PIE/ALEX acquisition are corrected
 into per-pixel accurate FRET-efficiency maps. The burst cores are already
 array-safe (they broadcast over trailing axes), so this module is a thin, ergonomic
@@ -14,8 +14,8 @@ All functions are Qt-free and run head-less.
 from __future__ import annotations
 
 import numpy as np
+import tttrlib
 
-from chisurf.core.fluorescence.burst.es import corrected_es_general
 from chisurf.core.fluorescence.crosstalk import invert_mixing, photon_shuffle_unmix
 
 __all__ = ["corrected_es_image", "pixel_source_photons"]
@@ -54,7 +54,7 @@ def corrected_es_image(
         is ``NaN`` where masked by ``min_counts``.
     """
     intensity = np.asarray(intensity, dtype=float)
-    res = corrected_es_general(
+    res = tttrlib.corrected_es_general(
         intensity, excitation, emission, unmix=unmix, ridge=ridge, pairs=pairs
     )
     if min_counts and min_counts > 0:

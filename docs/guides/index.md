@@ -171,7 +171,7 @@ irf_estimation
 | [FIDA — photon-counting histograms](04_fida_pch.md) | `core.models.pch.fida` |
 | [Enderlein MDF & two-focus FCS](05_enderlein_mdf_two_focus_fcs.md) | `core.fluorescence.fcs.enderlein` |
 | [ns-FCS second-order correlation](06_nsfcs_second_order.md) | `core.fluorescence.fcs.correlate.second_order_correlation` |
-| [RCM detection calibration](07_rcm_calibration.md) | `core.fluorescence.fret.calibration.rcm_from_dye_solutions` |
+| [RCM detection calibration](07_rcm_calibration.md) | `tttrlib.rcm_from_dye_solutions` |
 | [Burst Variance Analysis (BVA)](08_burst_variance_analysis.md) | `tttrlib.BVA`, `burst_bva` plugin |
 | [Diffusion FCS](09_diffusion_fcs.md) | FCS models + `fcs_correlator` plugin |
 | [Lifetime & anisotropy decay fitting](10_lifetime_anisotropy_fitting.md) | `core.fluorescence.tcspc`, TCSPC models |
@@ -179,7 +179,7 @@ irf_estimation
 | [Live acquisition](65_live_acquisition.md) | `core/acq` plugin, `acq.pipeline`, `tttrlib` streaming consumers |
 | [Handling TTTR files (& Photon-HDF5)](12_handling_tttr_files.md) | `tttrlib.TTTR`, `plugins/tttr` |
 | [Photon burst identification](13_burst_identification.md) | `TTTR.burst_search`, `burst_selection` |
-| [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `burst/es.py`, `fret/calibration.py` |
+| [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `tttrlib.corrected_es`, `fret/calibration.py` |
 | [Background rates](15_background_rates.md) | `burst/background.py`, `burst_background` |
 | [FRET-FCS](16_fret_fcs.md) | FRET-FCCS models + correlator |
 | [Filtered FCS (fFCS / 2D-FLCS)](17_filtered_fcs.md) | `fcs/filtered.py`, `flc_2d` |
@@ -190,7 +190,7 @@ irf_estimation
 | [Binned photon traces (MCS)](22_binned_photon_traces.md) | `trace_browser`, TTTR binning |
 | [Accessible-volume (AV) calculations](23_accessible_volume.md) | `core.structure.av`, `fps_json_editor` |
 | [Confocal scan images (CLSM)](24_scan_images.md) | `tttrlib.CLSMImage`, `plugins/microscopy` |
-| [RCM from FRET-labelled samples (PIE/ALEX)](25_rcm_from_fret_samples.md) | `fret/calibration.py`, `burst/es.py` |
+| [RCM from FRET-labelled samples (PIE/ALEX)](25_rcm_from_fret_samples.md) | `fret/calibration.py`, `tttrlib.corrected_es` |
 | [2-D peak fitting](26_2d_peak_fitting.md) | `burst_selection` GMM features |
 | [Complete µs-ALEX smFRET workflow](27_alex_smfret_workflow.md) | `BurstWorkflow` facade |
 | [Selecting & comparing FRET populations](28_selecting_fret_populations.md) | `Bursts.table`, `burst_selection` |
@@ -208,7 +208,7 @@ irf_estimation
 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | [Asking the documentation](70_ask_the_documentation.md) | Help browser **Ask** panel, `csc help ask`, `help.docs.ask` |
-| [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
+| [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `tttrlib.auto_calibrate`, `fret.accurate`, `fret.lines` |
 | [κ² distributions: how much is the orientation assumption costing?](61_kappa2_distribution.md) | `kappa2_dist` plugin, `fluorescence.anisotropy.kappa2` |
 | [Three-colour PDA (PDA3c)](42_pda3c.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |

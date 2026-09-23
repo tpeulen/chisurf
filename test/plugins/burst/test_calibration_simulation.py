@@ -23,7 +23,8 @@ pytest.importorskip("mmfdb")
 if not hasattr(tttrlib, "SimEngine"):
     pytest.skip("tttrlib build lacks the SimEngine simulator", allow_module_level=True)
 
-from chisurf.core.fluorescence.burst.es import corrected_es  # noqa: E402
+from tttrlib import corrected_es
+
 from chisurf.plugins.burst.burst_analysis.api import BurstWorkflow  # noqa: E402
 
 GROUND_TRUTH = (0.25, 0.75)

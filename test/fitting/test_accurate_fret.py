@@ -9,18 +9,18 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chisurf.core.fluorescence.burst.es import corrected_es
-from chisurf.core.fluorescence.fret.accurate import (
+from tttrlib import (
     accurate_fret,
-    auto_calibrate,
     beta_from_stoichiometry,
     classify_es_populations,
+    corrected_es,
     distance_from_efficiency,
     efficiency_uncertainty,
     gamma_from_lifetime,
     gaussian_mixture_1d,
 )
+
+from chisurf.core.fluorescence.fret.accurate import auto_calibrate
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 
@@ -108,14 +108,14 @@ def test_population_classification_matches_the_truth():
     d = simulate()
     es = corrected_es(d["i_dd"], d["i_da"], d["i_aa"])
     split = classify_es_populations(es["S"], es["E"])
-    assert split.method == "mixture"
+    assert split["method"] == "mixture"
     truth = d["kind"]
-    for mask, name in ((split.donor_only, "donor_only"), (split.acceptor_only, "acceptor_only")):
+    for mask, name in ((split["donor_only"], "donor_only"), (split["acceptor_only"], "acceptor_only")):
         assert np.count_nonzero(mask) > 300
         purity = np.mean(truth[mask] == name)
         assert purity > 0.95, f"{name} gate is only {purity:.2%} pure"
-    assert np.mean(np.char.startswith(truth[split.fret], "fret")) > 0.95
-    assert split.counts["fret_populations"] == 2
+    assert np.mean(np.char.startswith(truth[split["fret"]], "fret")) > 0.95
+    assert split["counts"]["fret_populations"] == 2
 
 
 def test_iteration_is_self_consistent():
@@ -317,7 +317,7 @@ def test_accurate_fret_reports_populations():
         d["i_dd"],
         d["i_da"],
         d["i_aa"],
-        calibration=cal.calibration,
+        factors=cal.calibration.as_dict(),
         tau_f=d["tau_f"],
         line=LINE,
         uncertainties=cal.uncertainties,

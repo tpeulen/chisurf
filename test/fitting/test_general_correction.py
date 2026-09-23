@@ -15,12 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chisurf.core.fluorescence.burst.es import (
-    corrected_es,
-    corrected_es_general,
-    corrected_es_matrix,
-)
+from tttrlib import corrected_es, corrected_es_general, corrected_es_matrix
 
 
 @pytest.mark.parametrize("e_true", [0.2, 0.4, 0.75])

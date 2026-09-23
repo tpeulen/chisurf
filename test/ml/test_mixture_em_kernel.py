@@ -2,11 +2,11 @@
 
 The tree carried three expectation-maximisations of the same mixture: the
 estimator in :mod:`chisurf.core.ml.mixture`, a private 1-D copy behind the FRET
-population gate, and the emission half of the HMM's M-step. Three copies of one
-algorithm disagree silently, and these pin the two things that proves: the
-gating call site now *runs* the estimator rather than its own loop, and the
-degenerate cases each copy guarded differently are guarded once, in the shared
-kernel.
+population gate, and the emission half of the HMM's M-step. The FRET gate has
+since moved to tttrlib (``tttrlib.gaussian_mixture_1d``, a port of the
+spherical estimator pinned there against it); the gate tests below keep its
+converged numbers and properties, and the degenerate cases each copy guarded
+differently are guarded once, in the shared kernel.
 
 Nothing here needs scikit-learn; the numeric comparison against the library
 lives in ``test_parity.py``.
@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import tttrlib
 
-from chisurf.core.fluorescence.fret import accurate
 from chisurf.core.ml import GaussianMixture
 from chisurf.core.ml._gaussian import (
     _log_gaussian_density,
@@ -103,28 +103,6 @@ def test_a_fit_survives_an_impossible_sample():
 # ---------------------------------------------------------------------------
 
 
-def test_the_gate_fits_through_the_shared_estimator(monkeypatch):
-    """``gaussian_mixture_1d`` must reach ``GaussianMixture``, not a private loop.
-
-    Asserted by construction rather than by reading the source: the fit fails
-    if the estimator is not the thing that runs.
-    """
-    calls = []
-    real_fit = GaussianMixture.fit
-
-    def counting_fit(self, X):
-        calls.append(self.covariance_type)
-        return real_fit(self, X)
-
-    monkeypatch.setattr(GaussianMixture, "fit", counting_fit)
-    rng = np.random.default_rng(0)
-    x = np.concatenate([rng.normal(0.2, 0.05, 200), rng.normal(0.8, 0.08, 300)])
-    accurate.gaussian_mixture_1d(x, 2)
-
-    assert calls, "the 1-D gate did not run the shared estimator"
-    assert set(calls) == {"spherical"}, "a 1-D mixture is the spherical layout"
-
-
 def test_the_ported_gate_converges_where_the_copy_it_replaced_did():
     """Converged parameters match the deleted 1-D EM, which produced these numbers.
 
@@ -142,7 +120,7 @@ def test_the_ported_gate_converges_where_the_copy_it_replaced_did():
     """
     rng = np.random.default_rng(0)
     x = np.concatenate([rng.normal(0.2, 0.05, 800), rng.normal(0.8, 0.08, 1200)])
-    fit = accurate.gaussian_mixture_1d(x, 2)
+    fit = tttrlib.gaussian_mixture_1d(x, 2)
 
     before_weights = [0.39999999, 0.60000001]
     before_means = [0.19868985, 0.79766073]
@@ -153,8 +131,6 @@ def test_the_ported_gate_converges_where_the_copy_it_replaced_did():
     np.testing.assert_allclose(fit["means"], before_means, atol=1e-7)
     assert fit["log_likelihood"] == pytest.approx(before_log_likelihood, abs=1e-3)
     # the widths differ by the ridge, exactly
-    ridge = accurate.gaussian_mixture_1d.__defaults__ is None  # keeps ruff quiet
-    del ridge
     expected = np.sqrt(np.asarray(before_sigmas) ** 2 + 1e-3**2)
     np.testing.assert_allclose(fit["sigmas"], expected, rtol=2e-4)
     # and it converges in a sane number of steps, not by exhausting the budget
@@ -165,7 +141,7 @@ def test_the_gate_still_recovers_three_known_components():
     """Ground-truth recovery, the property the gate exists for."""
     rng = np.random.default_rng(2)
     x = np.concatenate([rng.normal(-2, 0.3, 300), rng.normal(0, 0.2, 300), rng.normal(3, 0.4, 300)])
-    fit = accurate.gaussian_mixture_1d(x, 3)
+    fit = tttrlib.gaussian_mixture_1d(x, 3)
     np.testing.assert_allclose(fit["means"], [-2.0, 0.0, 3.0], atol=0.05)
     np.testing.assert_allclose(fit["weights"], [1 / 3, 1 / 3, 1 / 3], atol=0.02)
     np.testing.assert_allclose(fit["sigmas"], [0.3, 0.2, 0.4], atol=0.02)
@@ -181,7 +157,7 @@ def test_more_components_than_the_data_supports_stays_a_mixture():
     """
     rng = np.random.default_rng(1)
     x = rng.normal(0.0, 0.01, 60)
-    fit = accurate.gaussian_mixture_1d(x, 3, sigma_floor=1e-3)
+    fit = tttrlib.gaussian_mixture_1d(x, 3, sigma_floor=1e-3)
 
     assert np.isfinite(fit["means"]).all()
     assert np.isfinite(fit["sigmas"]).all()
@@ -197,6 +173,6 @@ def test_the_gate_is_deterministic():
     """Two calls on the same samples give the same gate, as the docstring claims."""
     rng = np.random.default_rng(4)
     x = np.concatenate([rng.normal(0.25, 0.04, 400), rng.normal(0.75, 0.06, 400)])
-    first, second = accurate.gaussian_mixture_1d(x, 2), accurate.gaussian_mixture_1d(x, 2)
+    first, second = tttrlib.gaussian_mixture_1d(x, 2), tttrlib.gaussian_mixture_1d(x, 2)
     np.testing.assert_array_equal(first["labels"], second["labels"])
     np.testing.assert_array_equal(first["means"], second["means"])

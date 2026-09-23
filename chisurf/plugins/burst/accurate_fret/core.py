@@ -21,6 +21,7 @@ import pathlib
 from dataclasses import dataclass, field
 
 import numpy as np
+import tttrlib
 
 from chisurf.core.fluorescence.burst.table import (
     COLUMN_HINTS,
@@ -28,7 +29,7 @@ from chisurf.core.fluorescence.burst.table import (
     guess_columns,
     read_burst_table,
 )
-from chisurf.core.fluorescence.fret.accurate import AutoCalibration, accurate_fret, auto_calibrate
+from chisurf.core.fluorescence.fret.accurate import AutoCalibration, auto_calibrate
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 from chisurf.core.fluorescence.fret.lines import dynamic_fret_line, static_fret_line
 
@@ -353,11 +354,11 @@ def calibrate(
         labels = np.where(split.fret, split.fret_labels, -1)
         labels = np.where(split.acceptor_only, -2, labels)
 
-    final = accurate_fret(
+    final = tttrlib.accurate_fret(
         i_dd,
         i_da,
         i_aa,
-        calibration=calib,
+        factors=calib.as_dict(),
         tau_f=tau_f,
         line=line,
         uncertainties=result.uncertainties,

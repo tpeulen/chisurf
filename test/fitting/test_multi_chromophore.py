@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chisurf.core.fluorescence.burst.es import corrected_es, corrected_es_matrix
+from tttrlib import corrected_es, corrected_es_matrix
 
 
 def test_two_chromophore_reduces_to_2color():

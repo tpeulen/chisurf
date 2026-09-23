@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
-from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
-from chisurf.core.fluorescence.fret.calibration import (
-    CalibrationParameters,
+from tttrlib import (
+    apparent_es,
+    corrected_es,
     direct_excitation_from_acceptor_only,
     global_es_correction,
     leakage_from_donor_only,
+)
+
+from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
+from chisurf.core.fluorescence.fret.calibration import (
+    CalibrationParameters,
     lightpath_correction_factors,
     refine_calibration,
     set_priors_from_lightpath,

@@ -8,7 +8,7 @@ one implementation.
 They are **vectorised**, which they were not: the kernels were written as
 element-at-a-time loops over samples, features and clusters, in the shape a JIT
 would compile away — and nothing here is jitted. On a 7 000-burst
-:func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate` (a 1-D mixture
+the accurate-FRET gating (``tttrlib.gaussian_mixture_1d``, a 1-D mixture
 that uses k-means only to *seed* its EM) that was 2.2 of the 2.7 seconds, in
 seeding rather than in the fit anybody was waiting for.
 

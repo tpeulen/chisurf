@@ -28,8 +28,8 @@ separates).
 
 The correction machinery lives in {src}`chisurf/core/fluorescence/fret/calibration.py`
 (γ/β, leakage, direct excitation, and the routing-correction matrix), and the
-ALEX/PIE stream handling in {src}`chisurf/core/fluorescence/burst/es.py`. The
-E–S-based `global_es_correction` / `refine_calibration` derive the correction
+ALEX/PIE stream handling in tttrlib (`tttrlib.corrected_es`). The
+E–S-based `tttrlib.global_es_correction` / `refine_calibration` derive the correction
 factors from the sample's own donor-only / acceptor-only / FRET populations; the
 `ptu_alex_creator` and micro-time-gating tools prepare PIE/ALEX streams.
 
@@ -108,7 +108,7 @@ computed with the real `corrected_es`.
 
 ## See also
 
-- {src}`chisurf/core/fluorescence/fret/calibration.py`, `.../burst/es.py`; the dye-solution route: [RCM calibration](07_rcm_calibration.md).
+- {src}`chisurf/core/fluorescence/fret/calibration.py`, tttrlib `corrected_es`; the dye-solution route: [RCM calibration](07_rcm_calibration.md).
 - The full correction algebra and the general crosstalk-matrix form: [accurate FRET calibration](fret_calibration.md).
 - The E–S map these populations are read from: [multi-parameter E–S](14_multiparameter_es.md).
 - Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).

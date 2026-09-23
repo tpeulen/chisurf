@@ -30,7 +30,7 @@ dye anisotropies, or a 50/50 split).
 ## In ChiSurf
 
 ```python
-from chisurf.core.fluorescence.fret.calibration import rcm_from_dye_solutions
+from tttrlib import rcm_from_dye_solutions
 
 assignment = [("A", "P"), ("D", "P"), ("A", "S"), ("D", "S")]   # per channel: (species, pol.)
 donor    = [0.06, 1.00, 0.05, 0.95]   # background-corrected rate/channel, donor solution
@@ -58,7 +58,7 @@ corrected, species-resolved signals. For the rates above it is
 one 2 × 2 block per polarisation, the off-diagonal terms being the donor→acceptor
 leakage and acceptor→donor cross-talk.
 
-There is no GUI for this calibration: `rcm_from_dye_solutions` is an API
+There is no GUI for this calibration: `tttrlib.rcm_from_dye_solutions` is an API
 function. The **Accurate FRET** tool determines the scalar factors α, δ, γ and β
 from the bursts of a FRET sample instead (see
 [Multi-parameter E–S histograms](14_multiparameter_es.md) and
@@ -79,7 +79,8 @@ Routing-correction matrix from dye solutions.
 
 ## See also
 
-- {src}`chisurf/core/fluorescence/fret/calibration.py` (`rcm_from_dye_solutions`, plus the
-  γ/β/leakage/direct-excitation correction helpers).
+- `tttrlib.rcm_from_dye_solutions` (with tttrlib's γ/β/leakage/direct-excitation
+  estimators); {src}`chisurf/core/fluorescence/fret/calibration.py` holds the
+  calibration parameters.
 - Related tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`), which
   estimates α/δ/γ/β from bursts rather than the channel matrix from dye solutions.

@@ -13,6 +13,7 @@ from __future__ import annotations
 import pathlib
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -203,7 +204,7 @@ def fig_g3():
 # 7. RCM detection-correction matrix
 # --------------------------------------------------------------------------
 def fig_rcm():
-    from chisurf.core.fluorescence.fret.calibration import rcm_from_dye_solutions
+    from tttrlib import rcm_from_dye_solutions
     assignment = [("A", "P"), ("D", "P"), ("A", "S"), ("D", "S")]
     donor = [0.06, 1.0, 0.05, 0.95]      # donor solution: mostly D channels + leak
     acceptor = [1.0, 0.04, 0.9, 0.03]    # acceptor solution: mostly A channels + leak
@@ -701,7 +702,7 @@ def fig_h2mm_dashboard():
     for _ in range(1500):
         ns = rng.integers(0, 3)
         d = rng.integers(4, 25)
-        dwell_E.append((rng.binomial(d, E_states[ns]) / d))
+        dwell_E.append(rng.binomial(d, E_states[ns]) / d)
         if s is not None:
             before.append(E_states[s]); after.append(E_states[ns])
         s = ns
@@ -773,7 +774,8 @@ def fig_nsalex_etau():
 
 def fig_accurate_fret():
     """Static/dynamic FRET lines and what a wrong gamma does to a population."""
-    from chisurf.core.fluorescence.fret.accurate import gamma_from_lifetime
+    from tttrlib import gamma_from_lifetime
+
     from chisurf.core.fluorescence.fret.lines import (
         dynamic_fret_line,
         no_linker_line,
@@ -1089,7 +1091,7 @@ def fig_clsm():
 
 def fig_rcm_alex():
     """RCM/correction from the sample itself: E-S before and after correction."""
-    from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
+    from tttrlib import apparent_es, corrected_es
 
     rng = np.random.default_rng(21)
     gamma, alpha, delta, beta = 1.35, 0.09, 0.06, 0.95
@@ -1507,6 +1509,8 @@ def fig_regions():
     Runs the real ``chisurf.core.roi`` segmentation and measurement on a
     synthetic frame — the same functions the guide describes.
     """
+    import scipy.ndimage as ndi
+
     from chisurf.core.roi import (
         MaskROI,
         RectangleROI,
@@ -1514,7 +1518,6 @@ def fig_regions():
         regionprops,
         regionprops_table,
     )
-    import scipy.ndimage as ndi
 
     rng = np.random.default_rng(11)
     ny = nx = 96
@@ -1667,7 +1670,8 @@ def fig_lifetime_averages():
     decay = (a[:, None] * np.exp(-t[None, :] / tau[:, None]))
 
     from chisurf.core.fluorescence.general import (
-        fluorescence_averaged_lifetime, species_averaged_lifetime,
+        fluorescence_averaged_lifetime,
+        species_averaged_lifetime,
     )
     spectrum = np.array([a[0], tau[0], a[1], tau[1]])
     tx = species_averaged_lifetime(spectrum)
@@ -1964,7 +1968,7 @@ def fig_static_quenching_mechanisms():
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.4))
     ax.plot(q, dynamic, lw=2.0, color="#3b5bdb", label="dynamic only")
     ax.plot(q, sphere, lw=2.0, color="#2b8a3e",
-            label=rf"+ sphere of action ($r$ = 7 Å)")
+            label=r"+ sphere of action ($r$ = 7 Å)")
     ax.plot(q, complexed, lw=2.0, color="#e8590c",
             label=rf"+ complex ($K_S$ = {K_S:g} M$^{{-1}}$)")
     ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
@@ -2002,7 +2006,7 @@ def fig_quenching_mixtures():
     ax.plot(q, 1 / strict, lw=2.4, color="#3b5bdb",
             label=rf"incomplete / inert fraction ($f$ = {f_a:g})")
     ax.plot(q, 1 / leaky, lw=2.0, color="#e8590c",
-            label=rf"$K_b$ = 0.1$K_a$")
+            label=r"$K_b$ = 0.1$K_a$")
     # The plateau is the whole point: more quencher cannot remove emission that
     # was never quenchable.
     ax.axhline(1 / (1 - f_a), color="#3b5bdb", lw=0.9, ls=":")

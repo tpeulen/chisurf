@@ -20,8 +20,9 @@ and **optimizing against the measured data** yields the *posterior* factors used
 for accurate FRET. The same calibration can be shared across many datasets
 (global analysis) and pushed to ndxplorer.
 
-The core is Qt-free (`chisurf.core.fluorescence.fret.calibration` and
-`chisurf.core.fluorescence.burst.es`), so everything below runs head-less, from
+The core is Qt-free (the accurate-FRET kernels in tttrlib, shared with
+ndXplorer, and `chisurf.core.fluorescence.fret.calibration` for the calibration
+parameters), so everything below runs head-less, from
 the CLI, or in a notebook. A complete runnable example ships at
 `chisurf/plugins/burst/burst_analysis/examples/FRET_Calibration.ipynb`.
 
@@ -65,7 +66,7 @@ $$E = \frac{F_{12}}{F_{12} + \gamma\,F_{11}}, \qquad
 S = \frac{\gamma F_{11} + F_{12}}{\gamma F_{11} + F_{12} + F_{22}/\beta}.$$
 
 ```python
-from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
+from tttrlib import apparent_es, corrected_es
 
 app = apparent_es(i_dd, i_da, i_aa)          # raw proximity ratio + raw S
 cor = corrected_es(i_dd, i_da, i_aa,         # accurate E and S
@@ -168,7 +169,7 @@ lie on the static FRET line, so the detection factor is whatever makes the
 intensity-based efficiency agree with the lifetime-based one:
 
 ```python
-from chisurf.core.fluorescence.fret.accurate import gamma_from_lifetime
+from tttrlib import gamma_from_lifetime
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 
 line = static_fret_line(4.0, r0=52.0, sigma=6.0)   # tau_D(0), R0, linker width
@@ -226,7 +227,7 @@ $X=\left[\begin{smallmatrix}1&\delta\\0&1\end{smallmatrix}\right]$ this is
 algebraically identical to `corrected_es` above.
 
 ```python
-from chisurf.core.fluorescence.burst.es import corrected_es_general
+from tttrlib import corrected_es_general
 from chisurf.core.fluorescence.fret.calibration import general_correction_from_lightpath
 
 # straight from the two crosstalk matrices (intensity[laser, detector])
@@ -347,7 +348,7 @@ would bias $E_{ij}\to E_{ij}/(1-E_{ik})$) and reduces to the two-colour formula
 for a single acceptor.
 
 ```python
-from chisurf.core.fluorescence.burst.es import corrected_es_matrix
+from tttrlib import corrected_es_matrix
 
 # intensity[i, j] = excite i, detect j; gamma/alpha/delta are (N, N) matrices
 res = corrected_es_matrix(intensity, gamma, alpha, delta)
@@ -398,8 +399,9 @@ correct → recover the true efficiencies). See
   the background rates the correction subtracts:
   [background rates](15_background_rates.md).
 - Source: {src}`chisurf/core/fluorescence/fret/calibration.py`,
-  {src}`chisurf/core/fluorescence/burst/es.py`,
-  {src}`chisurf/core/fluorescence/crosstalk.py`.
+  {src}`chisurf/core/fluorescence/crosstalk.py`; the algorithms (E/S
+  corrections, estimators, `auto_calibrate`) are tttrlib's accurate-FRET
+  kernels, shared with ndXplorer.
 
 ## References
 

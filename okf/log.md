@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **Accurate FRET moved into tttrlib; ChiSurf keeps the calibration-parameter plumbing.**
+  - The algorithms of `burst/es.py`, `fret/accurate.py` and the estimators of `fret/calibration.py` are C++ in tttrlib (`modules/spectroscopy/corrections`, branch `accurate-fret`, tttrlib PRD-042), one implementation for ChiSurf and ndXplorer (desktop and Pyodide). A/B against a numpy transcription of the deleted code: E/S to 1e-14, mixture/gates exact, cal1 alpha/delta bit-identical and gamma/beta within 2e-15, bootstrap sigmas within 2e-14 given the same draws.
+  - Deleted: `burst/es.py`; from `fret/accurate.py` the mixture, gating, estimators, uncertainty, distance, `accurate_fret`, `auto_calibrate`'s algorithm; from `fret/calibration.py` `global_es_correction`, `leakage_from_donor_only`, `direct_excitation_from_acceptor_only`, `rcm_from_dye_solutions` and the arithmetic of `lightpath_correction_factors`/`refine_calibration`. Callers import from tttrlib; no shims.
+  - New in tttrlib (not in the old code): gating over declared dimensions (S, E, lifetimes, anisotropies) and species-specific gamma chosen by BIC. The ndX bridge turns a species result into vector constants (`gamma[FRET n]` on `Population` / `P(FRET n)`), ndX's `apply_result` writes them via `set_vector`, and the calibration file stores the vectors so order and axis survive.
+  - Resume point: [fret-calibration](references/fret-calibration.md), *Where to pick this up*.
+
 * **ndX: vector constants — one value per population (γ, β, α, δ per species).**
   - An element is a constant `name[pop]` with its own value/fixed/bounds/link; `name` alone is the global. Equations evaluate `'gamma'` per burst by the population label column or the assignment probabilities; `'gamma[HF]'` is one element.
   - emtk Parameters tab: expandable vector rows, Make vector/scalar, per-population copy/paste/link; Lo/Hi show `−∞`/`∞`; columns fit; Link column on demand. emtk: data_table trees, elided-cell tooltips, Greek/math atlas glyphs.

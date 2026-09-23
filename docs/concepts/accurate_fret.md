@@ -260,6 +260,47 @@ Gaussian mixture over the stoichiometry rather than with fixed cuts, so the
 boundary follows the actual populations and no one has to defend where a box was
 drawn.
 
+## Gating on every dimension
+
+The stoichiometry separates donor-only, acceptor-only and doubly labelled
+molecules, but not everything a measurement can tell apart. Two FRET species at
+the same efficiency differ in their donor lifetime when one of them is dynamic;
+a donor-only population is recognised by its lifetime $\tau_{D(0)}$ even
+without ALEX. When donor lifetimes ($\tau_D$), acceptor lifetimes ($\tau_A$)
+or anisotropies are available, the calibration can gate on all of them: the
+columns taking part are *declared* (`dimensions`: `S`, `E`, `tau_d`, `tau_a`,
+`r_d`, `r_a`), and a diagonal-covariance Gaussian mixture over the
+standardised columns replaces the one over $S$. A value a burst cannot have
+(the acceptor lifetime of a donor-only burst) is treated as missing and
+marginalised. The donor-only class then supplies $\tau_{D(0)}$ for the
+lifetime route, and the acceptor-only class $\tau_A$, a check on acceptor
+photophysics. Without a static FRET line the no-linker line
+$E = 1 - \tau_{D(A)}/\tau_{D(0)}$ is used.
+
+## Species-specific γ
+
+$\gamma = \eta_A\phi_A/(\eta_D\phi_D)$ contains the quantum yields, and a local
+environment can change them for one species only. With donor lifetimes, each
+FRET population carries two observations — its corrected $S$ must be 0.5
+(1:1 labelling, which defines $\beta$) and its intensity efficiency must lie on
+the static FRET line at its mean lifetime — so a $\gamma$ per population is
+identifiable. The calibration fits a shared $\gamma$ and one $\gamma$ per
+population (with $\beta$ shared: $\phi_A$ cancels from $S$) and adopts the
+species model only when its BIC, $\chi^2 + k\ln N_\text{obs}$, is lower; each
+residual is weighted by the standard error of its population mean plus a small
+model floor. Without lifetimes the species model has more unknowns than
+equations and is never selected. $\alpha$ and $\delta$ need a reference
+population of the species and stay pooled. Per burst, $E$ and $S$ are then
+corrected with the burst's population $\gamma$, weighted by its assignment
+probabilities; in ndXplorer the per-population values become vector constants
+(`gamma[FRET 1]`, …) evaluated on the `Population` and `P(FRET n)` columns.
+
+The static-line caveat matters here: a *dynamic* population also lies off the
+static line, and the lifetime route would read it as a different $\gamma$.
+A species-specific $\gamma$ from the acceptor side shows in the acceptor
+lifetime as well (it tracks $\phi_A$), which dynamics does not; the result
+reports $\tau_A$ per population for that check.
+
 ## From estimates to a posterior
 
 Each route yields a number and an uncertainty: the optics give a prior
@@ -380,6 +421,14 @@ does not know.
   lifetime-derived $\gamma$; 6 Å is typical for common dye linkers.
 * **Backgrounds must be subtracted first** — they bias the low-efficiency
   populations most.
+* **Species-specific γ assumes static species.** A population off the static
+  line because it is dynamic is indistinguishable, by the donor lifetime alone,
+  from one with its own γ; compare the acceptor lifetimes.
+
+The algorithms behind this page — the corrected E/S, the gating, the
+estimators, the self-consistent iteration, the bootstrap, the propagated
+errors and the species model — are tttrlib's (`tttrlib.auto_calibrate`,
+`tttrlib.accurate_fret`), one implementation shared by ChiSurf and ndXplorer.
 
 ## See also
 

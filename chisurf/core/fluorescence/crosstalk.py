@@ -258,7 +258,7 @@ def correct_three_cube(
     negative-over-negative quotient). A negative efficiency with a positive
     denominator is preserved, as before. ``ratio`` is a plain division and
     keeps its own convention (0 where ``IDD`` is 0). Backgrounds stay the
-    caller's business, as before (:func:`...burst.es.corrected_es` subtracts
+    caller's business, as before (``tttrlib.corrected_es`` subtracts
     them first); tttrlib's own background parameters are passed as zero.
 
     Parameters

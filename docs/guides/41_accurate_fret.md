@@ -388,7 +388,8 @@ Add `--as-json` for a machine-readable reply (the same payload the
 
 ```python
 import numpy as np
-from chisurf.core.fluorescence.fret.accurate import auto_calibrate, accurate_fret
+import tttrlib
+from chisurf.core.fluorescence.fret.accurate import auto_calibrate
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 
 line = static_fret_line(4.0, r0=52.0, sigma=6.0)      # tau_D(0), R0, linker width
@@ -405,11 +406,11 @@ result = auto_calibrate(
 print(result.report())
 print(result.factors["gamma"], "±", result.uncertainties["gamma"])
 
-acc = accurate_fret(i_dd, i_da, i_aa, calibration=result.calibration,
-                    tau_f=tau, line=line, uncertainties=result.uncertainties)
+acc = tttrlib.accurate_fret(i_dd, i_da, i_aa, factors=result.factors,
+                            tau_f=tau, line=line, uncertainties=result.uncertainties)
 ```
 
-`gamma_from_lifetime` is available on its own when only the FRET-line route is
+`tttrlib.gamma_from_lifetime` is available on its own when only the FRET-line route is
 wanted, and `dynamic_fret_line` builds the two-state line for the overlay. The
 older reference-sample API (`calibrate_from_samples`, explicit donor-only and
 acceptor-only measurements) is described in
