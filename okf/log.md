@@ -2,6 +2,11 @@
 
 ## 2026-09-23
 
+* **ndX: vector constants — one value per population (γ, β, α, δ per species).**
+  - An element is a constant `name[pop]` with its own value/fixed/bounds/link; `name` alone is the global. Equations evaluate `'gamma'` per burst by the population label column or the assignment probabilities; `'gamma[HF]'` is one element.
+  - emtk Parameters tab: expandable vector rows, Make vector/scalar, per-population copy/paste/link; Lo/Hi show `−∞`/`∞`; columns fit; Link column on demand. emtk: data_table trees, elided-cell tooltips, Greek/math atlas glyphs.
+  - Qt table shows vectors read-only; Global View publishes elements as `name[pop]`. Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md), *Vector parameters*.
+
 * **ndX: the menu and the ribbon open the same window, and the MMFDB toolbar appears.**
   - One construction, `chisurf.plugins.ndxplorer.window.build_ndxplorer_window`, called by the manifest's GUI entry point (menu) and by `__init__.py` (ribbon). A window from the menu now has the Accurate FRET and MMFDB toolbars and the Global View constants.
   - MMFDB: the window used a private in-process client without a session token, so `mmfdb.status` failed and a bare `except: pass` hid it. It now uses ChiSurf's shared session client (`picker.inprocess_client()`); when MMFDB is unavailable the reason is a warning and a status-bar message.

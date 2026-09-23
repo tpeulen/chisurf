@@ -110,6 +110,58 @@ Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
    package that shadows chisurf. `web.py` now refuses it rather than shipping an empty
    package.
 
+### Vector parameters (one value per population) — 2026-09-23
+
+**Model.** A constant can be a vector over populations: its elements are
+ordinary constants named `base[label]` (`gamma[HF]`), each its own chisurf
+`FittingParameter` (own value, fixed, bounds, link, own IMP.bff port); the plain
+`base` is the global value for a burst in no population. One vector-valued
+GraphPort was not used: bounds/fixed/link are per port, so one port per element
+is what keeps them per element. Order, axis and uncertainties live on the group
+(`_ndx_vectors`) and in the rich file's `"vectors"` entry. Code:
+`ndxplorer/core/vector_constants.py` (pure), `core/constants_group.py`
+(`set_vector`, `to_vector`, `to_scalar`, `vectors_state`, `ConstantsMapping.set_vector`).
+
+**Equations.** `'gamma'` naming a vector is evaluated per burst: the element whose
+code equals the burst's label column (default `Cluster Label`; int labels are
+their own code, names their position, or `codes`), or the mix
+`sum p_k gamma_k / sum p_k` when every probability column of the axis exists,
+else the global. `'gamma[HF]'` is one element as a scalar. A changed element
+recomputes what reads its vector; the tab re-hashes the axis columns twice a
+second, so re-clustering recomputes too. A plain dict carrying `gamma[..]` keys
+(the Qt window, a calibration's `constants`) is read the same way on the default axis.
+
+**UI** (`features/constant_rows.py`, `overlays.py`, `parameters.view.json`,
+`vector.view.json`): parent row `▸ gamma [2]  0.61, 0.83`, children `(global)`
+and one per population; right-click *Make vector…* / *Copy values* / *Paste
+values* / *Populations…* / *Make scalar*; per element Copy/Paste/Link/Unlink.
+Add parameter has Scalar/Vector. Lo/Hi always show a value (`−∞`/`∞` when
+unbounded; typing sets, clearing removes); the Bounds column is gone; Link shows
+only while something is linked; columns fit their contents. emtk gained
+`data_table` trees (`tree_key`, `expanded_attr`), elided-cell tooltips, info
+`source` as property, Greek and math glyphs in the web atlas.
+
+**Calibration API** (for `features/accurate_fret.py`, not edited here):
+`app.model.manager.constants.set_vector(name, values, populations,
+uncertainties=None, default=None, column=None, probabilities=None, codes=None)`
+then the tab's `poll()` (their `write_constants` already polls), or the panel's
+`feature.constants.set_vector(...)` which also opens the row and recomputes.
+
+Open items:
+1. The calibration file (`io/fret_calibration_io.py`, the FRET agent's) writes the
+   elements flat with `sort_keys=True`: values round-trip, but the population
+   order becomes alphabetical and a non-default axis column/probabilities are
+   lost. Fix there: store `constants_group.vectors_state(group)` and restore via
+   `set_vector` on load.
+2. Settings > Load settings applies values only (`install()`); a rich file's
+   `"vectors"` axis is read when the tab builds, not on a later load.
+3. The legacy Qt table shows vectors read-only under the table; the Global View
+   (`chisurf/plugins/ndxplorer/parameters.py`) already publishes each element
+   as `name[pop]` — test `test_vector_constants_published.py`.
+4. Screens checked: offscreen, native window, Pyodide page (per-population
+   recompute verified in the page). Tests: `tests/test_vector_constants.py`,
+   `tests/test_app/test_vector_parameters.py`, `tests/test_ui/test_parameter_editor_vectors.py`.
+
 ### Accurate FRET (what the ChiSurf-hosted Qt window adds) — 2026-09-23
 
 The Qt window has Accurate FRET only when ChiSurf's ndX plugin decorates it,
