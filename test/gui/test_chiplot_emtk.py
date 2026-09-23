@@ -270,6 +270,34 @@ def test_bars_bands_errorbars_and_text_all_paint(plot):
     assert len(colours) > 4, "the panel drew more than its background and one curve"
 
 
+def test_error_bars_can_be_updated_to_a_new_length(plot):
+    """set_data used to replace x/y and keep the old extents.
+
+    The painter then indexed past their end on every frame, which left the BVA
+    plot with no axes and no density under the default backend.
+    """
+    bars = plot.errorbars([0.0, 1.0], [1.0, 2.0], height=[0.2, 0.2])
+    bars.set_data(np.arange(5.0), np.ones(5), top=np.full(5, 0.1), bottom=np.full(5, 0.3))
+    assert bars.native["top"].shape == (5,) and bars.native["bottom"].shape == (5,)
+    assert bars.native["bottom"][0] == pytest.approx(0.3)
+    bars.set_data(np.arange(3.0), np.ones(3), height=np.full(3, 1.0))
+    assert bars.native["top"].tolist() == [0.5, 0.5, 0.5]
+    _paint(plot, 160, 120)
+
+
+def test_a_transparent_pen_with_markers_draws_no_line(plot):
+    """Markers-only series (AutoForm's ``no_line``) were joined by black lines.
+
+    emtk colours are RGB; the transparent pen's alpha was dropped, so Accurate
+    FRET's E-S cloud came out as a black zig-zag with black legend swatches.
+    """
+    marked = plot.line([0.0, 1.0, 2.0], [1.0, 3.0, 2.0], pen=(0, 0, 0, 0), symbol="o")
+    joined = plot.line([0.0, 1.0, 2.0], [1.0, 3.0, 2.0], pen="r", symbol="o")
+    assert marked.native["line"] is False
+    assert joined.native["line"] is True
+    _paint(plot, 160, 120)
+
+
 def test_error_bars_need_a_size(plot):
     """Neither height nor top/bottom means there is nothing to draw."""
     with pytest.raises(ValueError, match="height"):

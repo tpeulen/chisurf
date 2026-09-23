@@ -918,7 +918,9 @@ class SMAcquisitionManager:
 
     def update_ui_for_device_type(self):
         """Update UI elements based on selected device type."""
-        self.device_type = self.device.device_type
+        # The device reports "SIMULATION"; the combo says "Simulation". Compare
+        # case-insensitively, or the Simulation Setup button never shows.
+        self.device_type = str(self.device.device_type).capitalize()
 
         # Show/hide Simulation Setup button
         if self.device_type == "Simulation":
@@ -992,8 +994,17 @@ class SMAcquisitionManager:
         acq_config = gui_settings.get("acquisition", {})
         device_type = acq_config.get("device_type", "Simulation")
 
+        # The config stores the combo label; the device reports its factory
+        # key. Comparing the two directly re-created the device on every Start.
+        wanted = {
+            "Becker-Hickl": "BH_SPC",
+            "PicoQuant": "PICOQUANT",
+            "Simulation": "SIMULATION",
+            "BrickMic": "BRICKMIC",
+        }.get(device_type, "SIMULATION")
+
         # Re-create and initialize device if type changed or not initialized
-        if self.device.device_type != device_type or not self.device.initialized:
+        if self.device.device_type != wanted or not self.device.initialized:
             logger.info(f"Auto-initializing device type: {device_type}")
             if self.device.initialized:
                 self.device.close()

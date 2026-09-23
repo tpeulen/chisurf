@@ -157,6 +157,18 @@ def _finite_pairs(x, y, gaps: bool = False) -> tuple[np.ndarray, np.ndarray]:
     return xs[keep], ys[keep]
 
 
+def _whiskers(xs, height=None, top=None, bottom=None) -> tuple[np.ndarray, np.ndarray]:
+    """Return per-sample ``(top, bottom)`` extents sized like ``xs``."""
+    if height is not None and top is None and bottom is None:
+        tops = bottoms = np.asarray(height, dtype=float).ravel() / 2.0
+    else:
+        tops = np.asarray(top if top is not None else 0.0, dtype=float).ravel()
+        bottoms = np.asarray(bottom if bottom is not None else 0.0, dtype=float).ravel()
+    tops = np.resize(tops, xs.shape) if tops.size else np.zeros_like(xs)
+    bottoms = np.resize(bottoms, xs.shape) if bottoms.size else np.zeros_like(xs)
+    return tops, bottoms
+
+
 def _lut(colormap, size: int = 256) -> np.ndarray:
     """Return ``colormap`` as an ``(size, 4)`` uint8 RGBA lookup table.
 
@@ -269,12 +281,21 @@ class _Entry:
         return self.state
 
     # -- Curve / Scatter ----------------------------------------------
-    def set_data(self, x, y=None, **_: Any) -> None:
-        """Replace the series' samples."""
+    def set_data(self, x, y=None, **kwargs: Any) -> None:
+        """Replace the series' samples (and an error bar's extents)."""
         if y is None and x is not None and len(np.shape(x)) == 2:
             data = np.asarray(x, dtype=float)
             x, y = data[:, 0], data[:, 1]
         self.state["x"], self.state["y"] = _finite_pairs(x, y, gaps=self.state.get("gaps", False))
+        if self.kind == "errorbars":
+            # Error bars carry per-sample extents; replacing x/y alone left
+            # them the old length and the painter indexed past their end.
+            self.state["top"], self.state["bottom"] = _whiskers(
+                self.state["x"],
+                kwargs.get("height"),
+                kwargs.get("top"),
+                kwargs.get("bottom"),
+            )
         self._canvas.refresh()
 
     def get_data(self) -> tuple[np.ndarray, np.ndarray]:
@@ -746,7 +767,7 @@ class EmtkCanvas(base.Canvas):
         opacity = float(state.get("opacity", 1.0))
         if entry.kind == "curve":
             xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
-            if xs.size:
+            if xs.size and state.get("line", True):
                 plot.line(
                     label,
                     xs,
@@ -1098,7 +1119,7 @@ class EmtkCanvas(base.Canvas):
         bottom_values = entry.state["bottom"]
         colour = entry.state.get("color", (200, 200, 200))
         beam = float(entry.state.get("beam", 3.0))
-        for index in range(len(xs)):
+        for index in range(min(len(xs), len(top_values), len(bottom_values))):
             at = plot._x_axis.to_pixels(xs[index])
             high = plot._y_axis.to_pixels(ys[index] + top_values[index])
             low = plot._y_axis.to_pixels(ys[index] - bottom_values[index])
@@ -1334,6 +1355,10 @@ class EmtkCanvas(base.Canvas):
             name=name,
             color=_rgb(pen),
             width=float(getattr(pen, "width", 1.0) or 1.0),
+            # A fully transparent pen means markers only. emtk colours are
+            # RGB, so the alpha has to be read here or the points are joined
+            # by an opaque black line (and the legend swatch turns black).
+            line=symbol is None or _rgba(pen, (0, 0, 0, 255))[3] > 0,
             symbol=symbol,
             symbol_size=symbol_size,
             symbol_color=_rgb(symbol_brush, _rgb(pen)) if symbol is not None else None,
@@ -1644,14 +1669,7 @@ class EmtkCanvas(base.Canvas):
         xs, ys = _finite_pairs(x, y)
         if top is None and bottom is None and height is None:
             raise ValueError("error bars need height, or top and bottom")
-        if height is not None and top is None and bottom is None:
-            half = np.asarray(height, dtype=float).ravel() / 2.0
-            tops = bottoms = half
-        else:
-            tops = np.asarray(top if top is not None else 0.0, dtype=float).ravel()
-            bottoms = np.asarray(bottom if bottom is not None else 0.0, dtype=float).ravel()
-        tops = np.resize(tops, xs.shape) if tops.size else np.zeros_like(xs)
-        bottoms = np.resize(bottoms, xs.shape) if bottoms.size else np.zeros_like(xs)
+        tops, bottoms = _whiskers(xs, height, top, bottom)
         return self._add(
             "errorbars",
             x=xs,

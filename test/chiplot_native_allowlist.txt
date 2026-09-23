@@ -24,7 +24,4 @@
 # See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.
 chisurf/gui/widgets/spectrum_view.py
 chisurf/plugins/burst/burst_background/gui/sections.py
-chisurf/plugins/calculator/fcs_saturation_calc/tests/test_gui.py
-chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
-chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fret_line/gui/tool.py

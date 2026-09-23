@@ -67,6 +67,6 @@ class MFDController(reader.ExperimentReaderController, QtWidgets.QWidget):
         """Refresh the settings form from the reader."""
         if self._settings_form is not None:
             try:
-                self._settings_form.update_widgets()
+                self._settings_form.sync_fields()
             except Exception as exc:  # pragma: no cover - surfaced, not swallowed
                 cs.logging.warning("MFD reader form could not refresh: %s", exc)
