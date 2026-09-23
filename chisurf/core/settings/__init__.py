@@ -126,11 +126,13 @@ colors = get_chisurf_settings(color_settings_file)
 package_directory = pathlib.Path(__file__).parent
 chisurf_root = package_directory.parent.parent
 style_sheet_file = chisurf_root / "gui" / "styles" / gui["style_sheet"]
+# The core without the GUI package (a browser page) has no style sheets; that
+# is not an error worth reporting on every import.
 style_sheet = safe_open_file(
     file_path=style_sheet_file,
     default_value="",
     error_message=f"Error opening style sheet file {style_sheet_file}",
-)
+) if style_sheet_file.parent.is_dir() else ""
 structure_data = safe_open_file(
     file_path=package_directory / "constants" / "structure.json",
     processor=json.load,

@@ -2,6 +2,24 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the app runs in a browser (Pyodide 0.28 + WebGPU).**
+  - `python -m ndxplorer.app.web` builds and serves the page on :8795. The Zed task is
+    `ndx-emtk-web`.
+  - The page ships ndxplorer, emtk, chisurf's Qt-free core, mmfdb's config and
+    tttrlib's Pyodide wheel. `--wheels` adds more, such as IMP once it is built.
+  - Verified in headless Chromium with WebGPU:
+    - a real folder drop opens the MFD burst folder (12237 bursts, the desktop's
+      axes and colour limits);
+    - a dragged gate filters the data;
+    - a gate save downloads.
+  - Fixed on the way:
+    - `chisurf.core.settings` no longer needs `chisurf/gui/styles` at import;
+    - emtk `boot.js` takes dropped folders;
+    - a frame that makes gates asks for the next frame;
+    - typed keys add up between frames, in ndX and in emtk `ImApp`;
+    - Gaussian Fit says why it is off instead of raising on *add*.
+  - Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / Browser.
+
 * **ndX emtk port: the analysis group (Find structure, UMAP, Gaussian Fit).**
   - Qt-free, for both GUIs:
     - `analysis/structure.py`: the method table, and the clustering and UMAP as checkpoint generators;

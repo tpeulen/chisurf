@@ -168,6 +168,11 @@ def copy_styles_to_user_folder():
     """
     # Navigate from core/settings/settings_utils.py up to chisurf/ then gui/styles
     package_path = pathlib.Path(__file__).resolve().parent.parent.parent / "gui" / "styles"
+    if not package_path.is_dir():
+        # The core without the GUI (a browser page ships chisurf.core alone):
+        # there are no style sheets to copy, and importing the settings must
+        # not need them.
+        return
     user_settings_path = get_path("settings") / "styles"
     user_settings_path.mkdir(parents=True, exist_ok=True)
 

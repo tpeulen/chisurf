@@ -22,6 +22,65 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Browser (the app in a Pyodide + WebGPU page)
+
+Run `python -m ndxplorer.app.web` (arm64 env) from the ChiSurf checkout root. It
+serves http://localhost:8795/. The Zed task `ndx-emtk-web` runs the same command.
+Take the measurement in a headless Chromium with WebGPU: playwright in `~/opt/playwright-venv`,
+flags `--enable-unsafe-webgpu --enable-features=Vulkan,WebGPU --enable-gpu
+--ignore-gpu-blocklist`. On macOS this gives an `apple metal-3` adapter in headless mode.
+Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
+`data.files=[<folder path>]`). A synthetic `DataTransfer` cannot carry a folder.
+
+1. **Works, 2026-09-23.**
+   - Boot takes 11–45 s from the Pyodide CDN, and there are no page errors.
+   - Dropping `test/mfd/burstwise_All 0.1500#30` opens it on the default axes. It
+     shows Tau (green) × Proximity ratio, 12237/12237 bursts, and colour limits
+     1.00e+00 / 2.01e+02, the same as the desktop.
+   - Dragging a rectangle on the map gives two interval gates (3272 bursts kept).
+   - Selection *save* goes through the emtk file dialog and then downloads
+     `gates.selection.json`.
+   - The Parameters and Overlays tabs show plain-number constants and give the reason.
+   - A single `.bur` drop works too.
+2. **What the page carries.** See `ndxplorer/app/web.py`:
+   - ndxplorer and emtk;
+   - chisurf's Qt-free core (`__init__`, `_bundled_packages`, `core`, `settings`)
+     and `mmfdb/config.py`;
+   - from Pyodide: numpy, scipy, pyyaml, matplotlib, Pillow and **lzma**
+     (`chisurf.core.fio` imports it);
+   - the tttrlib wheel from `~/dev/worktrees/tttrlib-pyodide/dist/pyodide`, or
+     `$NDX_TTTRLIB_WHEEL`.
+
+   Nothing native was cut. The one fix in chisurf itself: `chisurf.core.settings`
+   copied the Qt style sheets from `chisurf/gui/styles` at import and failed
+   without the GUI package. It now skips that step.
+3. **Blocked on the IMP Pyodide wheel (IMP.bff).** Without it:
+   - Gaussian Fit gives the reason on its tab (`build_gaussian_group` now probes a
+     parameter; before, the empty group built and its *add* raised inside a frame);
+   - the overlay curves are off, and constants are plain numbers.
+
+   Add the wheel with `python -m ndxplorer.app.web --wheels <imp wheel>`. Then
+   re-take the Gaussian Fit and Overlays tabs in a page.
+4. **Not taken yet in a page:**
+   - *Mount folder…* (needs a picker; `emtkMountDirectory` with an OPFS handle is
+     the test route);
+   - Find structure (scikit-learn is not in the page's package list; K-means,
+     HDBSCAN and PCA fall back to it);
+   - Load/Save Mask (`tttrlib.imread`/`imwrite`);
+   - export and report downloads.
+5. **Fixed on the way.** The headless tests draw twice after every event, which
+   hid both of these:
+   - A frame that changes the data now asks for the next frame
+     (`ExplorerModel.stale`, `NdxApp.animating`). Before, a gate showed the
+     old counts until the pointer moved.
+   - Typed keys add up between frames. Before, `gates` typed fast became `ges`.
+     The same fix went into emtk `ImApp` (`6287fba`).
+   - emtk `boot.js` takes a dropped **folder** (`copyDropped`, which walks the
+     entries). It landed inside `b49285a`; its test is `ffc832d`.
+6. **Trap.** Running from `~` breaks the build: `~/chisurf` is a namespace
+   package that shadows chisurf. `web.py` now refuses it rather than shipping an empty
+   package.
+
 ### core (window, main view, hooks, capture)
 
 Re-measure with `python -m ndxplorer.app.capture -s open_mfd_folder -s axes_fdfa_tau
@@ -48,10 +107,7 @@ by control inventory; the ticks are in `tools/parity/features.md`.
    large and a window opened at ~986x605 instead of 1400x900. The view specs
    still use fixed pixel widths for bins (58 px) and buttons; re-check them
    for clipping at the real ratio.
-4. **Browser boot not taken yet.** `ndxplorer.app.frame:make_app` is the factory
-   for `python -m emtk.web.serve --app ...`; nothing under `ndxplorer/app` imports
-   Qt (a test checks a fresh process) and the data layer imports without Qt
-   (package `__init__`s are lazy), but tttrlib for Pyodide is still being built.
+4. **Browser boot: taken.** See the Browser item above (`python -m ndxplorer.app.web`).
 5. **Hooks** (`features/__init__.py`): actions/available/fields, menu_entries,
    custom_sections (`playback`, `draw_mask` in the core spec), tabs,
    draw_windows, draw_plot/plot_input, mask_terms, map_image, on_data_changed,
