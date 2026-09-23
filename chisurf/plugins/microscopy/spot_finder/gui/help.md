@@ -25,6 +25,12 @@ that can be handed regions from *any* detector, including one drawn by hand.
 | `log` | Laplacian-of-Gaussian scale space | spots of unknown width — it reports each spot's own σ |
 | `dog` | difference-of-Gaussians; the cheaper approximation of `log` | as above, faster, slightly less accurate about the width |
 
+For `log` and `dog` the **Threshold** is a minimum of the scale-normalised
+response −σ²∇²(G_σ ∗ I), which is linear in the image: it is
+in image units, and an image ten times brighter needs a threshold ten times
+higher. The `camera_spots` default of 0.05 suits images scaled to about one;
+on photon counts, scan it (Preview, watch the region count).
+
 `log` and `dog` answer *where and how wide*, and the file needs *which pixels*,
 so each spot becomes a disc of radius `√2·σ` — the width the detector measured,
 not one chosen in advance. Overlapping discs are arbitrated by distance, so a
@@ -93,5 +99,7 @@ than trusted.
 
 ## Further reading
 
+- [Finding spots and objects in an image](docs/guides/84_spot_finder.md)
+- [Single-particle tracking — detection](docs/concepts/particle_tracking.md)
 - [Region properties](docs/concepts/region_properties.md)
 - [Regions and gating](docs/guides/48_regions.md)

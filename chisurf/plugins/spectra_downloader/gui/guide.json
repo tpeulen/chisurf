@@ -1,0 +1,34 @@
+{
+  "_comment": "Guided tour for the Spectra Downloader (NavigationPanelTool): steps are panels of the left navigation list, and the user selects each one. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "A staging database, not the MMFDB",
+      "text": "This tool fills a <b>staging</b> database of spectra from public sources — FPbase, Chroma, Thorlabs, PhotochemCAD, ATTO-TEC — and lets you look at it before anything reaches the MMFDB.<br/><br/>It computes nothing. R₀ is computed from the MMFDB by <b>calc R0</b> in the TCSPC FRET models, once the spectra have been pushed there.",
+      "target": {}
+    },
+    {
+      "title": "What is already there",
+      "text": "<b>Overview</b> counts the staging database by category and by source. A source with zero rows has not been downloaded yet.",
+      "target": {"panel": "Overview"},
+      "await": {"hint": "Select <b>Overview</b> in the list on the left."}
+    },
+    {
+      "title": "Look at one component",
+      "text": "<b>Browse</b> filters by name, source and category and shows one component's properties and spectra.<br/><br/>Check two things before using a dye for R₀: that it has an <b>absorption</b> spectrum (not only excitation), and that <b>QY</b> and <b>Extinction</b> are filled in — the spectra are peak-normalised, so without ε_max and Q_D there is no R₀.",
+      "target": {"panel": "Browse"},
+      "await": {"hint": "Select <b>Browse</b>, then type a dye name into the filter."}
+    },
+    {
+      "title": "Fetch a source",
+      "text": "<b>Download</b> runs one scraper into the staging database and shows its log. Only FPbase publishes an open data policy; treat the other sources as reference data for your own work.",
+      "target": {"panel": "Download"},
+      "await": {"hint": "Select <b>Download</b>."}
+    },
+    {
+      "title": "Push to the MMFDB",
+      "text": "<b>Add to MMFDB</b> chooses the target — a local MMFDB file or a server — and pushes the staging set. Pushed components arrive <i>unverified</i>; approve them in the MMFDB admin before relying on them.",
+      "target": {"panel": "Add to MMFDB"},
+      "await": {"hint": "Select <b>Add to MMFDB</b>."}
+    }
+  ]
+}

@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*380 works.*
+*383 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -129,6 +129,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lakowicz (2006)](https://doi.org/10.1007/978-0-387-46312-4)** — J. R. Lakowicz. *Principles of Fluorescence Spectroscopy*. Springer US. (2006).  
 *The standard textbook; 3rd edition. FRET, lifetime and anisotropy chapters.*
 
+(lambert2019)=
+
+**[Lambert (2019)](https://doi.org/10.1038/s41592-019-0352-8)** — T. J. Lambert. *FPbase: a community-editable fluorescent protein database*. Nature Methods **16**, 277-278. (2019).  
+*The fluorescent-protein spectra and properties the Spectra Downloader scrapes; FPbase data are copyright-free but ask users to attribute the original authors.*
+
 (lee2005)=
 
 **[Lee et al. (2005)](https://doi.org/10.1529/biophysj.104.054114)** — N. K. Lee, A. N. Kapanidis, Y. Wang, X. Michalet, J. Mukhopadhyay, R. H. Ebright, S. Weiss. *Accurate FRET measurements within single diffusing biomolecules using alternating-laser excitation*. Biophysical Journal **88**, 2939-2953. (2005).  
@@ -173,6 +178,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Steinberg (1971)](https://doi.org/10.1146/annurev.bi.40.070171.000503)** — I. Z. Steinberg. *Long-range nonradiative transfer of electronic excitation energy in proteins and polypeptides*. Annual Review of Biochemistry **40**, 83-114. (1971).  
 *The effective orientation factor 0.476 for rigid, randomly oriented and distributed acceptors (static averaging).*
+
+(taniguchi2018)=
+
+**[Taniguchi & Lindsey (2018)](https://doi.org/10.1111/php.12860)** — M. Taniguchi, J. S. Lindsey. *Database of Absorption and Fluorescence Spectra of >300 Common Compounds for use in PhotochemCAD*. Photochemistry and Photobiology **94**, 290-327. (2018).  
+*The PhotochemCAD common-compounds set (absorption, emission, epsilon and quantum yield) that the Spectra Downloader imports.*
 
 (thomas1978)=
 
@@ -813,6 +823,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Lakowicz et al. (1992)](https://doi.org/10.1016/0003-2697(92)90112-k)** — J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, K. W. Berndt, M. Johnson. *Fluorescence lifetime imaging*. Analytical Biochemistry **202**, 316-330. (1992).  
 *The method paper for lifetime imaging: contrast from tau rather than from intensity.*
+
+(lindeberg1998)=
+
+**[Lindeberg (1998)](https://doi.org/10.1023/A:1008045108935)** — T. Lindeberg. *Feature Detection with Automatic Scale Selection*. International Journal of Computer Vision **30**, 79-116. (1998).  
+*The scale-normalised Laplacian and scale selection by maxima over scale — the basis of LoG/DoG blob detection, and why a detected blob carries its own width. Found via the Wikipedia "Blob detection" article.*
 
 (longfils2019)=
 

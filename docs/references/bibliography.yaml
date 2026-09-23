@@ -4179,3 +4179,37 @@ selvin2002:
   doi: 10.1146/annurev.biophys.31.101101.140927
   note: Lanthanide chelates - ms lifetimes, time-gated detection, and LRET distances.
   topics: [photophysics, fluorophores, fret]
+
+# ── Spot detection and spectra ─────────────────────────────────
+lindeberg1998:
+  authors: T. Lindeberg
+  title: Feature Detection with Automatic Scale Selection
+  journal: International Journal of Computer Vision
+  year: 1998
+  volume: 30
+  pages: 79-116
+  doi: 10.1023/A:1008045108935
+  note: The scale-normalised Laplacian and scale selection by maxima over scale — the basis of LoG/DoG blob detection, and why a detected blob carries its own width. Found via the Wikipedia "Blob detection" article.
+  topics: [imaging, segmentation, tracking]
+
+lambert2019:
+  authors: T. J. Lambert
+  title: 'FPbase: a community-editable fluorescent protein database'
+  journal: Nature Methods
+  year: 2019
+  volume: 16
+  pages: 277-278
+  doi: 10.1038/s41592-019-0352-8
+  note: The fluorescent-protein spectra and properties the Spectra Downloader scrapes; FPbase data are copyright-free but ask users to attribute the original authors.
+  topics: [fret, fluorophores, data]
+
+taniguchi2018:
+  authors: M. Taniguchi, J. S. Lindsey
+  title: Database of Absorption and Fluorescence Spectra of >300 Common Compounds for use in PhotochemCAD
+  journal: Photochemistry and Photobiology
+  year: 2018
+  volume: 94
+  pages: 290-327
+  doi: 10.1111/php.12860
+  note: The PhotochemCAD common-compounds set (absorption, emission, epsilon and quantum yield) that the Spectra Downloader imports.
+  topics: [fret, fluorophores, data]

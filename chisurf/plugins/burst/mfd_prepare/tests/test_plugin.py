@@ -119,3 +119,16 @@ class TestGui:
         tool = MfdPrepareTool()
         assert tool.windowTitle() == "MFD Prepare"
         assert tool.centralWidget() is not None
+
+
+def test_jsonable_drops_in_process_handles():
+    """The summary's ``_tttrs`` made the RPC result unserializable."""
+    import json
+
+    import numpy as np
+
+    from chisurf.plugins.burst.mfd_prepare.api.prepare import _jsonable
+
+    out = _jsonable({"n": np.int64(3), "_tttrs": [object()], "nested": {"_x": 1, "y": 2}})
+    assert out == {"n": 3, "nested": {"y": 2}}
+    json.dumps(out)

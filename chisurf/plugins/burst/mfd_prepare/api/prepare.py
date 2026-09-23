@@ -71,11 +71,16 @@ def describe_preparation() -> dict:
 
 
 def _jsonable(obj):
-    """Best-effort conversion of numpy/path objects to JSON-serializable."""
+    """Best-effort conversion of numpy/path objects to JSON-serializable.
+
+    Keys starting with ``_`` are in-process handles (the summary keeps the
+    opened TTTR objects under ``_tttrs`` for the fit step) and are dropped: the
+    result crosses the RPC boundary as JSON, where they cannot go.
+    """
     import numpy as np
 
     if isinstance(obj, dict):
-        return {str(k): _jsonable(v) for k, v in obj.items()}
+        return {str(k): _jsonable(v) for k, v in obj.items() if not str(k).startswith("_")}
     if isinstance(obj, (list, tuple)):
         return [_jsonable(v) for v in obj]
     if isinstance(obj, np.integer):

@@ -47,6 +47,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 14_multiparameter_es
 41_accurate_fret
 82_fret_lines
+83_spectra_and_r0
 61_kappa2_distribution
 fret_calibration
 07_rcm_calibration
@@ -76,6 +77,7 @@ h2mm
 11_pda2c
 42_pda3c
 57_mfd_fitting
+85_mfd_prepare
 58_burst_fusion
 ```
 
@@ -120,6 +122,7 @@ irf_estimation
 51_frc_resolution
 72_psf_calculator
 77_phasor_calculator
+84_spot_finder
 45_scan_precision
 55_pair_correlation
 ```
@@ -243,6 +246,9 @@ irf_estimation
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator`, `modules/quest` |
 | [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_tools` (Structure Tools hub), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Calculators hub), `core.fluorescence.fret.lines` |
+| [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
+| [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
+| [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
 
 ## Regenerating the figures
 

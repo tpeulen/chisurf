@@ -74,6 +74,39 @@ The single-plane row is the point: the number of noise pixels surviving *k*
 sigma is the pixel count times the tail probability, so a threshold that looks
 clean on a small frame floods a large one.
 
+### Scale-space detectors, and a threshold that is not in photons
+
+The Spot Finder ({doc}`/guides/84_spot_finder`) offers the other classical
+answer. The image is filtered with a Laplacian of Gaussian at a ladder of widths
+$\sigma$, each multiplied by $\sigma^2$, and a spot is a local maximum of
+
+$$
+R(x, y; \sigma) = -\sigma^2\,\nabla^2 (G_\sigma * I)(x, y)
+$$
+
+over position *and* scale {cite}`lindeberg1998`. The $\sigma^2$ makes the
+response of a Gaussian spot peak at the scale matching its own width, so
+each detection carries a width as well as a position. A difference of two
+Gaussians approximates the same operator more cheaply (DoG). A spot of width
+$\sigma$ covers a disc of radius $\sqrt{2}\,\sigma$.
+
+$R$ is linear in $I$. The threshold on $R$ is therefore in image units: scaling
+an image by ten multiplies every response by ten, and a fixed threshold then
+admits many more spots. It is *not* comparable across images of different
+brightness.
+
+The intensity-threshold route (smooth, cut at Otsu's level {cite}`otsu1979`,
+split touching objects by a distance-transform watershed seeded on local maxima
+{cite}`vincent1991`) returns regions, not widths. Its cut is set by the image's
+histogram, which is robust when objects are bright and few and fails when one
+very bright object sets the level for all the others.
+
+Either way, the position is a centroid or a fit, and its precision is bounded
+as in {ref}`concept-super-resolution`: roughly $\sigma^2/N$ from photon counting
+plus a background term that grows as $b^2/N^2$ {cite}`thompson2002`. A
+maximum-likelihood fit reaches the Cramér–Rao bound; a centroid or a
+least-squares fit does not {cite}`mortensen2010`.
+
 ## Linking
 
 ### An assignment, not a nearest neighbour
@@ -190,6 +223,8 @@ gives 20 out of 20.
 - {cite}`jaqaman2008` — linking as a global assignment problem, which is what survives dense fields.
 - {cite}`michalet2010` — how localisation error and finite track length bias an MSD-derived D.
 - {cite}`chenouard2014` — the community benchmark, and the source of the "density, not algorithm, is the limit" conclusion.
+- {cite}`lindeberg1998` — the scale-normalised Laplacian and scale selection behind LoG/DoG spot detection.
+- {cite}`otsu1979` and {cite}`vincent1991` — the automatic threshold and the watershed of the intensity-threshold detectors.
 
 ## Runnable examples
 

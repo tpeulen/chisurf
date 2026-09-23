@@ -239,4 +239,4 @@ with the flexible dye-linker cloud handled by accessible volumes
 - Key literature: {cite}`foerster1948` is the mechanism itself;
   {cite}`clegg1995` a compact review of it; {cite}`lakowicz2006` the textbook
   treatment, FRET chapters.
-- Tools in ChiSurf: the **FRET-Calculator** (`chisurf/plugins/calculator/fret_calculator/`) converts between $E$, $R$ and $R_0$; the **Spectra Downloader** (`chisurf/plugins/spectra_downloader/`) fetches the spectra the overlap integral needs.
+- Tools in ChiSurf: the **FRET-Calculator** (`chisurf/plugins/calculator/fret_calculator/`) converts between $E$, $R$ and $R_0$; the **Spectra Downloader** (`chisurf/plugins/spectra_downloader/`) fetches the spectra the overlap integral needs, and {doc}`/guides/83_spectra_and_r0` computes $J$ and $R_0$ from them and checks the result against tabulated values.

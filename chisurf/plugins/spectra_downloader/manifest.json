@@ -12,7 +12,7 @@
   ],
   "icon": "🌈",
   "entrypoints": {
-    "gui": "chisurf.plugins.spectra_downloader:get_db",
+    "gui": "chisurf.plugins.spectra_downloader.gui.tool:SpectraTool",
     "cli": "spectra-download=chisurf.plugins.spectra_downloader.cli:cli"
   },
   "requires": {

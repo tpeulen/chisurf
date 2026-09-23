@@ -1,21 +1,26 @@
 {
-  "_comment": "Guided tour for MFD Prepare. Three steps: point at the folder, prepare, read the result. Steps carry no widget targets — the tool is a single panel, so the tour walks the workflow rather than individual controls.",
+  "_comment": "Guided tour for MFD Prepare: point at Browse, then Prepare, then read the report. Steps wait for the user to press the buttons.",
   "steps": [
     {
-      "title": "Preparation is a claim check, not a copy",
-      "text": "An MFD fit reads a burst folder on trust: it assumes the channels line up, the counts agree and every measurement traces back to its photons. This tool checks those claims <b>before</b> a fit sits down to depend on them.<br/><br/>Nothing is moved or rewritten — a prepare either reports the folder is sound or names what is wrong with it.",
+      "title": "A check, not a copy",
+      "text": "An MFD fit reads a burst folder on trust: that every burst's photons can be found, that the photon indices are read with the right convention, and that each detector is defined by the right channels and micro-time window.<br/><br/>This tool reads the folder exactly as the fit will and reports each of those, <b>before</b> a fit depends on them. Nothing is moved or rewritten.",
       "target": {}
     },
     {
-      "title": "Choose the folder, then prepare it",
-      "text": "<b>Browse</b> to the folder burst search wrote, then press <b>Prepare</b>. The service walks the folder over RPC, so a large folder keeps the window responsive.<br/><br/>Prepare the folder once, after burst search and before the first MFD session opens it.",
-      "await": {
-        "hint": "Pick a burst folder and press <b>Prepare</b>."
-      }
+      "title": "Choose the folder",
+      "text": "<b>Browse…</b> to the analysis folder burst search wrote — the one holding <code>bi4_bur</code> and <code>Info</code> — or to <code>bi4_bur</code> itself.",
+      "target": {"action": "Browse…"},
+      "await": {"hint": "Press <b>Browse…</b> and pick a burst folder."}
     },
     {
-      "title": "Read all four answers",
-      "text": "The result panel answers four questions: which channels were <b>verified</b>, whether the <b>counts agree</b> across companion files, where each <b>source</b> resolved, and what the <b>diagnostics</b> raised.<br/><br/>A channel with no photons, a count mismatch against its companions, or a source that does not resolve are all cheap to fix now and expensive to discover mid-fit."
+      "title": "Prepare it",
+      "text": "<b>Prepare</b> resolves the photon files, detects the photon-index convention, and recomputes every detector's counts from the photons. Reading the photons takes a few seconds.",
+      "target": {"action": "Prepare"},
+      "await": {"hint": "Press <b>Prepare</b>."}
+    },
+    {
+      "title": "Read the count agreement last",
+      "text": "Each detector's <b>count agreement</b> is the fraction of bursts whose count, recomputed from the photons, equals the <code>.bur</code> column. <b>ok</b> needs 0.98.<br/><br/>An <b>UNVERIFIED</b> detector would put photons under the wrong colour; the MFD fit refuses it. Record the detectors in the analysis manifest, or pass them explicitly, and prepare again."
     }
   ]
 }

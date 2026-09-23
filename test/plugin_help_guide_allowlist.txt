@@ -46,7 +46,6 @@ chisurf/plugins/modelling/fret/gui
 chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer
 chisurf/plugins/pch/gui
-chisurf/plugins/spectra_downloader/gui
 chisurf/plugins/traj/fret_trajectory
 chisurf/plugins/traj/potential_energy
 chisurf/plugins/traj/potential_energy
