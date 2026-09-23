@@ -110,6 +110,43 @@ Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
    package that shadows chisurf. `web.py` now refuses it rather than shipping an empty
    package.
 
+### docks (every dock a sticky window)
+
+Built on emtk's window manager, `emtk.docking` (emtk `a4bda9d`, `1fa683b`,
+`cfb404b`; its example is `python -m emtk.native --app examples.docking:make_app`
+from the emtk checkout). ndX side: `ndxplorer/app/docks.py` and ndxplorer
+`122f008`. There is a left and a right region. Plot controls, Parameters,
+Overlays, Equations and Gaussian Fit are tabs on the left, and the Plot fills
+the right. Equations and Gaussian Fit start hidden and View opens them.
+
+Re-measure:
+
+* `pytest ndxplorer/tests/test_app/test_docks.py` covers the default layout,
+  every View toggle, close with × then reopen, and persistence. It also checks
+  that a bare `NdxApp()`/`Replay` never reads or writes the user's layout.
+* The scenarios `open_mfd_folder`, `parameters_panel`, `equations_panel`,
+  `gaussian_fit`, `menu_view` and `colour_log_contrast`, compared by control
+  inventory. The 2026-09-23 pass found no control missing. What changed on
+  purpose: a × on each region's strip, the View entries *Plot* and *Reset
+  window layout*, and a status row kept along the bottom.
+* In the page, the Playwright drive `dock_drive.py` goes through default,
+  tab, float, drop preview, re-dock, close, View reopen and reload. The layout
+  comes back after the reload, from `localStorage` key `emtk.layout.ndxplorer`.
+
+Open:
+
+1. **A small floating Plot crowds its corner.** At about 420 px wide, the
+   Screenshot, Update and Contrast buttons overlap. `plot_boxes` gives the
+   corner `min(258, 30 %)` of the window's width. It needs a minimum width,
+   or a narrower spec at small sizes.
+2. **The layout file is keyed by window title.** Renaming a window drops its
+   saved place: it comes back at the default, which is harmless.
+3. **Trap: a `Replay` built outside `scratch_home` must not get a store.**
+   One did, and the tests wrote `~/.ndxplorer/ndxplorer_layout.json`. That
+   leaked a Gaussian Fit tab into later runs, where it hid the Cluster
+   button. Only `capture_scenario` passes `layout_store()`, inside the
+   scratch `$HOME`.
+
 ### core (window, main view, hooks, capture)
 
 Re-measure with `python -m ndxplorer.app.capture -s open_mfd_folder -s axes_fdfa_tau

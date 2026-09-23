@@ -14,6 +14,22 @@
   - `test/fitting/test_mcts_shipped_policy.py` runs the whole path: a decay recorded as photons by tttrlib, a ChiSurf fit, `prepare_model_search`, `run_native_search`, and the winner applied to the live model.
   - PRD-152 now has an implementation status.
 
+* **Sticky windows with dock regions: emtk.docking; every ndX dock is a window.**
+  - The snapping logic moved out of chimol into emtk `emtk/docking.py` (emtk
+    `a4bda9d`): edge snap and anchors, window-to-window snap, stuck groups
+    that travel together, the snap hint, and the JSON layout. chimol's copy,
+    `ui/window_state.py`, is deleted, and chimol now calls emtk (chimol `1d80c19`). Added:
+    `DockManager`, named regions (`Region`/`Split`), drop targets that
+    fill a region, tabs, undock by dragging a tab off, draggable splits,
+    and `LayoutStore` (a file, or `localStorage` in a page).
+  - The example: `python -m emtk.native --app examples.docking:make_app`.
+  - ndX: Plot controls, Parameters, Overlays, Equations, Gaussian Fit and
+    Plot are windows. The default layout is the old fixed layout. The View
+    toggles work now; in Qt they did nothing. `Feature.tabs()` became
+    `Feature.windows()`. The layout is kept in
+    `~/.ndxplorer/ndxplorer_layout.json` (ndxplorer `122f008`).
+  - Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / docks.
+
 * **ndX in the browser, with the fitting parameters.**
   - `python -m ndxplorer.app.web` finds the IMP.bff Pyodide wheel on its own
     (`$NDX_IMPBFF_WHEEL`).
