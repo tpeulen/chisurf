@@ -40266,3 +40266,19 @@ side of the line.
   selection, and three red help-render guards plus the red PRD-mention guard.
   Open defects: [known-issues](references/known-issues.md), second 2026-09-23
   section; QuEst import is the blocker.
+
+- 2026-09-23 — **Every guide shows its tool; the thinnest concept pages are
+  cited** (owner: "continue with docs"). Round 3: ~40 guides that carried only
+  script figures got headless screenshots of the real tool on real data, and
+  re-running their code blocks corrected widespread API drift (grab code in
+  `docs/guides/screenshots/`). The 14 concept pages with 0–2 citations got 68
+  sourced references, and citing exposed 12 wrong claims — among them
+  tttrlib's ALEX-2CDE sign (ticket T-20260923-11), a reversed FAD lifetime
+  statement, and an orientation formula needing atan2. Guides 83–85 (spectra
+  and R0, Spot Finder, MFD Prepare). New guard `test_shipped_help_is_drawn`
+  (seven more tools shipped help nobody could open). Fixed on the way: emtk
+  error bars and markers-only curves, Burst Selection file offsets, H2MM
+  unset resolution, Spectra Downloader menu, MFD Prepare RPC serialization,
+  acquisition device-type mismatch, MFD reader refresh. Bibliography 383.
+  Open defects: [known-issues](references/known-issues.md), third 09-23
+  section.

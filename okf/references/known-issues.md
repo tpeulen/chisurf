@@ -5861,3 +5861,60 @@ Open:
 9. **Synthetic Decay Generator:** unreachable from the GUI (`menu_hidden`, no
    hub); a Mode change re-creates the promoted Generate/Save/Fit row.
 10. **Help-render guard:** `{src}` role cannot link a directory — link a file in it.
+
+## Defects found by the screenshot and citation passes (2026-09-23, third round)
+
+Each guide carries its own "Known defects" note. Fixed in the same round:
+emtk error-bar updates (blank BVA plot) and markers-only curves joined by
+black lines; Burst Selection file offsets past the second file; H2MM
+accepting resolution −1; MFD Prepare RPC result unserializable; Spectra
+Downloader menu entry opening nothing; acquisition SIMULATION/Simulation
+mismatch; MFD reader `update_widgets`; seven tools not drawing shipped help
+(new guard `test_shipped_help_is_drawn`).
+
+Open, highest value first:
+
+1. **tttrlib ALEX-2CDE sign** (`TwoCDE.cpp:43`, − where Tomov eq. 12 has +;
+   static-burst median 98.5 vs 7.3) — board ticket T-20260923-11.
+2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
+   ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
+   detectors/windows, so the table has no per-detector counts (hit by two passes).
+3. **Burst Selection won't open on a fresh profile** —
+   `tttr_detector_setups.load_detector_setups` (~228) with owner
+   "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
+4. **PCH plugin fit unusable** — `pch/backend/services.py:156-171` unweighted,
+   Pearson χ² over bins with expected ~1e-14 (χ²r 1.5e20). FIDA fits run N
+   negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
+5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
+   tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
+6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
+   0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
+   standalone window plot controllers overlap title bars.
+7. **Trace Browser lists nothing for point measurements** —
+   `_is_clsm_compatible` (trace_browser/__init__.py:1432) accepts
+   intensity shape (1,0,0).
+8. **Burst-selection tables**: Bursts/Histogram tabs and Fit GMM use only the
+   visible window (8 of 1130 bursts); dT trace joins across gaps.
+9. **Accurate FRET dye choice ignored** — `apply_dye_selection(self)` receives
+   a value from the bound control and fails every commit.
+10. **ndX bridges**: send menu discards the result (`send_menu.py:106`); FCS
+    defaults use `ch1/ch2` where the correlator reads `chs_a/chs_b`
+    (`server/burst_consumers.json:35`); PDA reads non-PTU files as PTU and
+    reports success (`server/services/pda.py:42,122`); bare file names not
+    resolved against the analysis folder (`burst_bridge.py:200`).
+11. **BVA**: `concat_stores` fails on mixed float/empty rate columns; a
+    second Run raises (`compute_bva` appends in place); static line not drawn
+    on emtk.
+12. **Spot Finder threshold is in image units** though three docstrings say
+    otherwise; `camera_spots.json` ships 0.05 (every noise maximum).
+13. **Förster calculator** offers only acceptors with an "absorption"
+    spectrum (164/543 Chroma dyes carry excitation only); a cached R0
+    silently overrides user Q_D/ε/n. Staging DB: ATTO-550 carries ATTO 565's
+    data; the ATTO-TEC ATTO488 record is soft-deleted.
+14. **Smaller**: MFD Prepare unreachable from any menu/hub; `csc mfd-prepare
+    fit` AttributeError; partial `streams=` IndexError; burst fusion writes an
+    empty folder before validating; burst-FCS progress bar never closes; H2MM
+    floor rates printed as measured; `fcs-convert` etc. HDF5 "compressed ~4×"
+    wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
+    `DataSource(columns, frame)` gone, breaking make_screenshots'
+    `_grab_ndx_gaussian_panel`.

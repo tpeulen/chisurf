@@ -222,7 +222,22 @@ anything a page wants. The dump's standing use is the last item below.
 
 ## Where to pick this up
 
-**Latest (2026-09-23, round 2) — guides 72–82 done; ports lose help silently.**
+**Latest (2026-09-23, round 3) — every guide has a real screenshot; citing corrects.**
+1. **Measure coverage again before writing**: guides without a screenshot
+   (compare `figures/*.png` referenced by a guide against the grab modules in
+   `docs/guides/screenshots/` + `make_screenshots.py`), concept pages by
+   `{cite}` count. After round 3 the lowest pages carry ≥2 citations; the next
+   thin tier (3–5) is the front.
+2. **Citing a page is an audit of it**: 12 of 14 pages had a wrong claim,
+   found only because each citation forced re-reading against the code.
+3. **Screenshot agents stall on hung GUI scripts**: run every grab as a
+   subprocess with a hard timeout (macOS has no `timeout`); the three that
+   stalled all resumed from their `progress.md`.
+4. **Grab traps**: never let an agent run the acquisition tool against the
+   default output folder (it wrote m000–m043.spc into ~/chisurf/acquisition);
+   the flow grab would overwrite the intended-result figure.
+
+**Earlier (2026-09-23, round 2) — guides 72–82 done; ports lose help silently.**
 Guides 76–82 + concepts `hydrodynamics`, `dye_quenching`, `structure_trajectories`
 added 45 entries (312 total). Open, in order:
 
