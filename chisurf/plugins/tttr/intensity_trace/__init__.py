@@ -132,7 +132,10 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
                     tttr_obj.macro_times, stop_time / macro_time_resolution
                 )
 
-                f.write(f"{start_tttr_idx}\t{stop_tttr_idx}\n")
+                # .bst rows are first/last photon, both inclusive; the
+                # searchsorted stop is the first photon *after* the run.
+                if stop_tttr_idx > start_tttr_idx:
+                    f.write(f"{start_tttr_idx}\t{stop_tttr_idx - 1}\n")
 
     return burst_ids
 

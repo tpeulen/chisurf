@@ -150,8 +150,10 @@ def convert_fcs(
     help="Interpret the first CSV row as column headers.",
 )
 @click.option(
-    "-v/--verbose",
+    "-v",
+    "--verbose",
     "verbose",
+    is_flag=True,
     default=False,
     show_default=True,
     help="Emit verbose logging from the reader/writer.",

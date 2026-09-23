@@ -40,10 +40,21 @@ def save_bst(bids: np.ndarray, path: str | Path) -> None:
         Array of shape ``(n_windows, 2)`` with ``[start_idx, stop_idx)``.
     path : str or Path
         Output file path.
+
+    Notes
+    -----
+    A ``.bst`` row is *first* and *last* photon, both inclusive -- the
+    convention every reader (:func:`chisurf.core.fio.fluorescence.burst.generate_burst_dataframe`,
+    the .bur "Last Photon" column) assumes. The half-open stop is therefore
+    written as ``stop - 1``, and windows holding no photon are dropped because
+    an inclusive row cannot express an empty range.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savetxt(str(path), bids.astype(np.int64), fmt="%d\t%d")
+    bids = np.asarray(bids, dtype=np.int64).reshape(-1, 2)
+    bids = bids[bids[:, 1] > bids[:, 0]]
+    rows = np.column_stack([bids[:, 0], bids[:, 1] - 1])
+    np.savetxt(str(path), rows, fmt="%d\t%d")
 
 
 def compute_and_save(
