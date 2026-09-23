@@ -62,6 +62,14 @@ class AutoFormMleTool(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
+        # ?/Guide for help.md + guide.json beside this module; a plain QWidget
+        # cannot take the dock-tool mixin, so they go on a slim right-aligned row.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QtWidgets.QHBoxLayout()
+        help_row.addStretch(1)
+        layout.addLayout(help_row)
+        attach_help_and_guide(self, help_row, model=self.model)
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
         self.model.add_observer(self._on_model_event)

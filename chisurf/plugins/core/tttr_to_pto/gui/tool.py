@@ -41,6 +41,14 @@ class TttrToPtoTool(QtWidgets.QWidget):
         self.setWindowTitle("TTTR ⇄ .pto")
 
         layout = QtWidgets.QVBoxLayout(self)
+        # ?/Guide for help.md + guide.json beside this module; a plain QWidget
+        # cannot take the dock-tool mixin, so they go on a slim right-aligned row.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QtWidgets.QHBoxLayout()
+        help_row.addStretch(1)
+        layout.addLayout(help_row)
+        attach_help_and_guide(self, help_row)
         info = QtWidgets.QLabel(
             "Drop vendor photon file(s) (.ptu, .spc, .ht3, ...) to pack them "
             "into one .pto beside the first, or drop a .pto to unpack the "

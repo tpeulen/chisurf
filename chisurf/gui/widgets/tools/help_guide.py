@@ -20,8 +20,8 @@ have them however it is built.
 Three ways in, in order of how little you have to write:
 
 **Nothing at all.** Mix :class:`HelpGuideMixin` into the window class and call
-:meth:`~HelpGuideMixin.ensure_help_toolbar` (``NavigationPanelTool`` and
-``ChisurfDockTool`` already do). It looks for ``help.md`` and ``guide.json``
+:meth:`~HelpGuideMixin.ensure_help_toolbar` (``NavigationPanelTool`` does it
+for you; a ``ChisurfDockTool`` must call it once). It looks for ``help.md`` and ``guide.json``
 beside the tool's own module and adds whichever it finds. A plugin gets both
 buttons by shipping two files and changing no code.
 

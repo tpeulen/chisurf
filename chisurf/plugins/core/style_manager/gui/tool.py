@@ -152,6 +152,13 @@ class StyleManagerWidget(QWidget):
         """Set up the user interface components."""
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
+        # ?/Guide for help.md + guide.json beside this module, on a slim row.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QHBoxLayout()
+        help_row.addStretch(1)
+        main_layout.addLayout(help_row)
+        attach_help_and_guide(self, help_row)
 
         # Top section with file selection and buttons
         top_layout = QHBoxLayout()

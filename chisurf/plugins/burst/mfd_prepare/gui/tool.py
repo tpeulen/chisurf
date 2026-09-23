@@ -40,6 +40,7 @@ class MfdPrepareTool(ChisurfDockTool):
     def _setup_ui(self) -> None:
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
+        self.ensure_help_toolbar(title="MFD Prepare — help")
         layout = QtWidgets.QVBoxLayout(central)
 
         folder_row = QtWidgets.QHBoxLayout()

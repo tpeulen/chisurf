@@ -5,12 +5,14 @@ two different questions and a tool needs both — ``?`` says what a control
 *means*, the guide says which control to touch **first**. A dense panel of
 well-documented settings is still unusable without the second one.
 
-Neither costs a plugin any code. A tool ships ``help.md`` and ``guide.json``
-beside the module its ``entrypoints.gui`` names, and
-:class:`~chisurf.gui.widgets.tools.help_guide.HelpGuideMixin` — inherited by
-``ChisurfDockTool`` and ``NavigationPanelTool`` alike — finds them and builds the
-buttons. A tool built on neither base calls
-:func:`~chisurf.gui.widgets.tools.help_guide.attach_help_and_guide` once.
+A tool ships ``help.md`` and ``guide.json`` beside the module its
+``entrypoints.gui`` names. ``NavigationPanelTool`` (and the bases built on it)
+draws the buttons by itself; a ``ChisurfDockTool`` must call
+``ensure_help_toolbar()`` once, and a tool on neither base calls
+:func:`~chisurf.gui.widgets.tools.help_guide.attach_help_and_guide`. Shipping the
+files without that call is the failure this file was blind to: eight tools
+passed with help nobody could open (see
+:func:`test_shipped_help_is_drawn`).
 
 ``test/plugin_help_guide_allowlist.txt`` is a **shrinking** record of plugins not
 yet modernised — never somewhere to add yourself to make this test pass. This
@@ -25,6 +27,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -339,3 +342,44 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
         f"{plugin.relative}/help.md links to documentation that is not there:\n  "
         + "\n  ".join(broken)
     )
+
+
+#: Calls or bases that draw ``?``/**Guide** for a tool that ships the files.
+_DRAWS_HELP = re.compile(
+    r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
+    r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool)\b"
+)
+
+#: Tools that ship help files but do not draw them yet. **Shrinking**; never
+#: add to it. globalview is being rebuilt on emtk by another stream.
+_HELP_NOT_DRAWN = {"chisurf/plugins/core/globalview/gui"}
+
+
+def test_shipped_help_is_drawn():
+    """A tool that ships ``help.md``/``guide.json`` also draws the buttons.
+
+    The files alone satisfy every other test here, and a ``ChisurfDockTool``
+    does not install the buttons by itself -- so help could ship and never be
+    reachable. Static on purpose, like the rest of this file: the plugin's
+    package must name one of the drawing entry points or bases.
+    """
+    missing, stale = [], []
+    for plugin in gui_plugins():
+        if not (plugin.has_help() or plugin.has_guide()):
+            continue
+        roots = {plugin.manifest.parent}
+        if plugin.directory is not None:
+            roots.add(plugin.directory)
+        text = "".join(
+            path.read_text(encoding="utf-8", errors="ignore")
+            for root in roots
+            for path in root.rglob("*.py")
+            if "test" not in path.relative_to(root).parts[:-1]
+        )
+        draws = bool(_DRAWS_HELP.search(text))
+        if not draws and plugin.relative not in _HELP_NOT_DRAWN:
+            missing.append(plugin.relative)
+        if draws and plugin.relative in _HELP_NOT_DRAWN:
+            stale.append(plugin.relative)
+    assert not missing, "help files shipped but no ?/Guide drawn: " + ", ".join(missing)
+    assert not stale, "now draws its help; strike from _HELP_NOT_DRAWN: " + ", ".join(stale)

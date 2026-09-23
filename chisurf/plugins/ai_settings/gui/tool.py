@@ -67,7 +67,15 @@ class AISettingsWidget(QtWidgets.QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         title = QtWidgets.QLabel("<h2>AI Settings</h2>")
-        layout.addWidget(title)
+        # ?/Guide share the title row: a plain QWidget cannot take the
+        # dock-tool mixin.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        title_row = QtWidgets.QHBoxLayout()
+        title_row.addWidget(title)
+        title_row.addStretch(1)
+        layout.addLayout(title_row)
+        attach_help_and_guide(self, title_row)
 
         info = QtWidgets.QLabel(
             "Configure one endpoint per provider, with separate models for "
