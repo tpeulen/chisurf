@@ -9,7 +9,7 @@
   - The default window is 1120x720.
   - Map area at 1400x900 went from 411k px² (32.7 %) to 626k px² (49.7 %), and at 992x593 from 151k (25.7 %) to 181k (30.8 %).
   - emtk gained `DockManager.set_extra`, field-less sliders, `wrap_indent`, and even wrapping.
-  - Parity capture: 58/61 shots, the same 3 skips as before, and no control lost.
+  - Parity capture: 60 of 61 shots, no control lost. fix_report_tool is dropped on purpose. overlays_equation_list and curve_fit_dialog had been skipped since the choice lists moved into emtk.overlays: the Overlays replay drove `app.popup`, which is now always None. The replay now picks from emtk's list and photographs it (ndxplorer capture fix).
   - Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md), *Plot window space*.
 
 * **Global View is one emtk surface, and every parameter-network builder is one module.**
