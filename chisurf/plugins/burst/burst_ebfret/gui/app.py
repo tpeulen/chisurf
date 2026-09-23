@@ -27,8 +27,9 @@ from typing import Any
 
 import emtk
 from emtk import im, implot, keys
+from emtk.overlays import holding
 from emtk.view_form import FormState, draw_sections, find_section
-from emtk.widgets.menus import Menu, MenuBar, MenuItem, Popup
+from emtk.widgets.menus import Menu, MenuBar, MenuItem
 from emtk.widgets.view_spec import load_view_spec
 
 from ..core.session import FILE_TYPES, SESSION, SMD_JSON, SMD_JSON_GZ, SMD_MAT
@@ -603,7 +604,6 @@ class App:
         self.menubar = MenuBar(list(self.menus.values()))
         self.box = (0.0, 0.0, 0.0, 0.0)
         self.panels: dict[str, tuple] = {}
-        self.popup: tuple | None = None
 
     # -- commands ---------------------------------------------------------- #
     def command(self, name: str) -> None:
@@ -684,7 +684,22 @@ class App:
                 body(inner[2] - 8.0, inner[3] - 8.0)
                 im.end_disabled()
                 im.end()
+            # Inside the panels' frame, so a choice's list -- drawn over
+            # that frame at its end (emtk.overlays) -- lies over the tables too.
+            self._draw_tables(painter, x, y, w, h, modal)
         g.item_rects.update(g.form_state.rects)
+        if modal:
+            self._draw_dialog(painter, x, y, w, h)
+        g.dialogs = [d for d in g.dialogs if not d.done]
+        if g.error:
+            painter.text(x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90], RED)
+        self.menubar.draw(painter, x, y, w, MENU_H)
+        self._remember_menu_rects()
+
+    def _draw_tables(self, painter: Any, x: float, y: float, w: float, h: float,
+                     modal: bool) -> None:
+        """The table overlays, each a frame of its own over its panel."""
+        g = self.gui
         self.table_boxes = []
         for title, host in (("Series List", "Time Series"), ("States Table", "Ensemble")):
             if title not in g.shown_tables:
@@ -704,17 +719,6 @@ class App:
                 g.draw_table_panel(title)
                 im.end_disabled()
                 im.end()
-        g.item_rects.update(g.form_state.rects)
-        if modal:
-            self._draw_dialog(painter, x, y, w, h)
-        g.dialogs = [d for d in g.dialogs if not d.done]
-        self._open_requested_dropdown()
-        if self.popup is not None:
-            self.popup[0].draw(painter, x, y, w, h)
-        if g.error:
-            painter.text(x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90], RED)
-        self.menubar.draw(painter, x, y, w, MENU_H)
-        self._remember_menu_rects()
 
     def _draw_dialog(self, painter: Any, x: float, y: float, w: float, h: float) -> None:
         dialog = self.gui.dialogs[-1]
@@ -738,31 +742,14 @@ class App:
         for menu, rect in getattr(self.menubar, "_titles", []):
             self.gui.item_rects[f"menu.{menu.label}"] = tuple(rect)
 
-    def _form_states(self) -> list:
-        """The form states a choice list may have been requested from."""
-        states = [self.gui.form_state]
-        states += [d.state for d in self.gui.dialogs if hasattr(d, "state")]
-        return states
-
-    def _open_requested_dropdown(self) -> None:
-        for state in self._form_states():
-            request, state.dropdown_request = state.dropdown_request, None
-            if request is None:
-                continue
-            key, (rx, ry, rw, rh), labels, current = request
-            items = [
-                MenuItem(text, checked=(index == current)) for index, text in enumerate(labels)
-            ]
-            popup = Popup(items)
-            popup.open_at(rx, ry + rh)
-            self.popup = (popup, items, key, state)
-
     # -- input ------------------------------------------------------------- #
     def active_io(self, px: float | None = None, py: float | None = None) -> Any:
         """The IO that receives input at a point: a dialog's while one is open,
         a table overlay's over one, the panels' otherwise."""
         if self.modal():
             return self.dialog_io
+        if holding(self.storage):
+            return self.io              # a choice's list is up: the press is its
         if px is not None and any(
             bx <= px < bx + bw and by <= py < by + bh for bx, by, bw, bh in self.table_boxes
         ):
@@ -780,29 +767,23 @@ class App:
         (self._pressed_io or self.active_io(px, py)).mouse_pos = (px, py)
 
     def press(self, px: float, py: float, *extra: Any, **_kw: Any) -> None:
-        """A button went down: popup, then menu bar, then the frame."""
+        """A button went down: the menu bar, then the frame (a choice's list
+        that is up takes it first: emtk.overlays)."""
         x, y, w, h = self.box
         clicks = extra[5] if len(extra) > 5 else 1
-        if self.popup is not None:
-            popup, items, key, state = self.popup
-            result = popup.press(px, py, x, y, w, h)
+        if not (holding(self.storage) or holding(self.dialog_storage)):
+            result = self.menubar.press(px, py, x, y, w, MENU_H)
             if result.item is not None:
-                state.dropdown_result[key] = items.index(result.item)
-            if not popup.open:
-                self.popup = None
-            return
-        result = self.menubar.press(px, py, x, y, w, MENU_H)
-        if result.item is not None:
-            for name, item in self.items.items():
-                if item is result.item:
-                    self.command(name)
-            return
-        if result.consumed or py < y + MENU_H:
-            if py < y + MENU_H:
-                for menu, rect in getattr(self.menubar, "_titles", []):
-                    if rect[0] <= px < rect[0] + rect[2]:
-                        self.gui.track(f"menu.{menu.label}")
-            return
+                for name, item in self.items.items():
+                    if item is result.item:
+                        self.command(name)
+                return
+            if result.consumed or py < y + MENU_H:
+                if py < y + MENU_H:
+                    for menu, rect in getattr(self.menubar, "_titles", []):
+                        if rect[0] <= px < rect[0] + rect[2]:
+                            self.gui.track(f"menu.{menu.label}")
+                return
         io = self._pressed_io = self._focus_io = self.active_io(px, py)
         io.mouse_pos = io.mouse_clicked_pos[0] = (px, py)
         io.mouse_clicked[0] = io.mouse_down[0] = True
@@ -817,20 +798,20 @@ class App:
                 io.mouse_released[0] = True
 
     def scroll(self, rows: int) -> None:
-        """Wheel: nothing in this window scrolls."""
+        """Wheel: only a choice's list scrolls."""
+        io = self.active_io()
+        io.mouse_wheel += -float(rows) / 3.0
 
     def key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
         """A key press: Escape closes the top popup/menu/dialog, the rest types."""
-        if key == keys.KEY_ESCAPE:
-            if self.popup is not None:
-                self.popup[0].close()
-                self.popup = None
-            elif any(m.open for m in self.menubar.menus):
+        listing = holding(self.storage) and not self.modal()
+        if key == keys.KEY_ESCAPE and not listing:
+            if any(m.open for m in self.menubar.menus):
                 self.menubar.close()
             elif self.gui.dialogs:
                 self.gui.dialogs.pop()
             return True
-        io = self.dialog_io if self.modal() else (self._focus_io or self.io)
+        io = self.dialog_io if self.modal() else (self.io if listing else (self._focus_io or self.io))
         io.key = int(key)
         io.text = "".join(c for c in (text or "") if c >= " " and c != "\x7f")
         return True
