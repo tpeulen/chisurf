@@ -1,4 +1,4 @@
-"""Cross-engine agreement for the H2MM surrogate: scikit-learn vs tttrlib C++.
+"""Cross-engine agreement for the H2MM surrogate: scikit-learn vs IMP.bff C++.
 
 The contract these tests defend: a surrogate trained here with scikit-learn and
 exported to the language-neutral JSON schema must produce *identical* estimates
@@ -18,11 +18,11 @@ import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm, surrogate
 
-tttrlib = pytest.importorskip("tttrlib")
-if not hasattr(tttrlib, "HmmSurrogate"):
-    pytest.skip("tttrlib without HmmSurrogate support", allow_module_level=True)
+bff = pytest.importorskip("IMP.bff")
+if not hasattr(bff, "HmmSurrogate"):
+    pytest.skip("IMP.bff without HmmSurrogate support", allow_module_level=True)
 
-from chisurf.plugins.burst.burst_h2mm.core import surrogate_tttrlib  # noqa: E402
+from chisurf.plugins.burst.burst_h2mm.core import surrogate_bff  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
     not surrogate.surrogate_available(), reason="scikit-learn is required"
@@ -61,7 +61,7 @@ def test_feature_extractors_agree(trained):
     """The C++ extractor must reproduce the numba one bit for bit."""
     data = _dataset(seed=5)
     np.testing.assert_allclose(
-        surrogate_tttrlib.extract_features(data),
+        surrogate_bff.extract_features(data),
         surrogate.extract_features(data),
         rtol=0,
         atol=1e-12,
@@ -70,10 +70,10 @@ def test_feature_extractors_agree(trained):
 
 def test_export_json_schema(trained):
     doc = trained.to_json()
-    assert doc["format"] == "tttrlib.hmm_surrogate"
+    assert doc["format"] == "bff.hmm_surrogate"
     assert doc["n_states"] == 2 and doc["n_streams"] == 2
     assert doc["features_version"] == surrogate.FEATURES_VERSION
-    assert doc["net"]["format"] == "tttrlib.neural_net"
+    assert doc["net"]["format"] == "bff.neural_net"
 
     # weights must be transposed relative to sklearn's (n_in, n_out) layout
     layer0, coef0 = doc["net"]["layers"][0], trained.net.coefs_[0]
@@ -93,7 +93,7 @@ def test_cpp_and_sklearn_estimates_agree(trained):
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "surrogate.json")
         trained.export_json(path)
-        got = surrogate_tttrlib.estimate_model(data, 2, path)
+        got = surrogate_bff.estimate_model(data, 2, path)
 
     expect = surrogate.estimate_model(data, 2, trained)
     np.testing.assert_allclose(got.obs, expect.obs, rtol=0, atol=1e-9)
@@ -106,12 +106,12 @@ def test_refinement_agrees_too(trained):
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "surrogate.json")
         trained.export_json(path)
-        got = surrogate_tttrlib.estimate_model(data, 2, path, refine_iters=5)
+        got = surrogate_bff.estimate_model(data, 2, path, refine_iters=5)
     expect = surrogate.estimate_model(data, 2, trained, refine_iters=5)
     np.testing.assert_allclose(got.obs, expect.obs, rtol=0, atol=1e-7)
 
 
-def test_engines_routes_json_surrogate_to_tttrlib(trained):
+def test_engines_routes_json_surrogate_to_bff(trained):
     """fit_one must accept a JSON path and still match the Python path."""
     data = _dataset(seed=13)
     with tempfile.TemporaryDirectory() as d:
@@ -135,7 +135,7 @@ def test_state_count_mismatch_is_rejected(trained):
         path = os.path.join(d, "surrogate.json")
         trained.export_json(path)
         with pytest.raises(ValueError):
-            surrogate_tttrlib.estimate_model(data, 3, path)
+            surrogate_bff.estimate_model(data, 3, path)
 
 
 def test_stale_features_version_is_rejected(trained):
@@ -147,5 +147,5 @@ def test_stale_features_version_is_rejected(trained):
         with open(path, "w") as fh:
             json.dump(doc, fh)
         with pytest.raises(Exception) as exc:
-            surrogate_tttrlib.load(path)
+            surrogate_bff.load(path)
     assert "features_version" in str(exc.value)

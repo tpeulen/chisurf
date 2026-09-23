@@ -3,7 +3,7 @@
 Four places used to import the in-tree engine directly and so always got it,
 even where the compiled one was available and 44x faster: ``fixed_loglik``,
 ``burst_gs``'s cross-check fit, ``surrogate``'s EM polish, and --- least
-intentionally --- ``surrogate_tttrlib``, the C++ surrogate, which refined its
+intentionally --- ``surrogate_tttrlib`` (now ``surrogate_bff``), the C++ surrogate, which refined its
 own estimate with the in-tree optimiser.
 
 That second engine has since been deleted, so those imports no longer resolve

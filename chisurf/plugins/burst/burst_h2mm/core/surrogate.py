@@ -98,7 +98,7 @@ def extract_features(data: BurstPhotons) -> np.ndarray:
     numpy.ndarray
         The feature vector.
     """
-    from .surrogate_tttrlib import extract_features as _extract
+    from .surrogate_bff import extract_features as _extract
 
     return _extract(data)
 
@@ -177,11 +177,11 @@ class SurrogateModel:
             pickle.dump(self, fh)
 
     def to_json(self) -> dict:
-        """Return this surrogate in the language-neutral ``tttrlib`` JSON schema.
+        """Return this surrogate in the language-neutral ``bff`` JSON schema.
 
         The pickle written by :meth:`save` is Python-only and unsafe to share;
-        this schema is readable by :class:`tttrlib.HmmSurrogate`, so a surrogate
-        trained here runs in the C++ engine (and in any other tttrlib binding)
+        this schema is readable by :class:`IMP.bff.HmmSurrogate`, so a surrogate
+        trained here runs in the C++ engine (and in any other IMP.bff binding)
         with identical numbers.
 
         Note scikit-learn stores ``coefs_`` as ``(n_in, n_out)`` while tttrlib
@@ -201,14 +201,14 @@ class SurrogateModel:
                 }
             )
         return {
-            "format": "tttrlib.hmm_surrogate",
+            "format": "bff.hmm_surrogate",
             "version": 1,
             "features_version": int(self.features_version),
             "n_states": int(self.n_states),
             "n_streams": int(self.n_streams),
             "meta": dict(self.meta),
             "net": {
-                "format": "tttrlib.neural_net",
+                "format": "bff.neural_net",
                 "version": 1,
                 "x_scaler": {
                     "mean": np.asarray(self.x_scaler.mean_, dtype=float).tolist(),
@@ -223,7 +223,7 @@ class SurrogateModel:
         }
 
     def export_json(self, path: str | Path, indent: int = 2) -> None:
-        """Write this surrogate to ``path`` in the ``tttrlib`` JSON schema."""
+        """Write this surrogate to ``path`` in the ``bff`` JSON schema."""
         with open(path, "w") as fh:
             json.dump(self.to_json(), fh, indent=indent)
 
@@ -396,7 +396,7 @@ def estimate_model(
     model = surrogate.predict(data)
     if refine_iters > 0:
         # Imported here, not at module scope: `.engines` pulls in
-        # `surrogate_tttrlib`, which imports this module's siblings, so a
+        # `surrogate_bff`, which imports this module's siblings, so a
         # top-level import closes a cycle.
         from .engines import optimize
 

@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **The H2MM surrogate's C++ engine is IMP.bff's now (T-20260923-nn).**
+  - tttrlib keeps no ML code; `HmmSurrogate` and network training moved to IMP.bff (imp.bff 8ef6c968).
+  - `burst_h2mm/core/surrogate_tttrlib.py` became `surrogate_bff.py`. It hands `BurstPhotons`' CSR arrays straight to `IMP.bff.HmmSurrogate.predict_from_layout`, so no photon engine is built first. The gate is `HAVE_BFF`.
+  - `SurrogateModel.to_json()` writes `bff.hmm_surrogate` / `bff.neural_net`. Old `tttrlib.*` exports no longer load; there is no fallback reader.
+  - burst_h2mm tests: 110 passed. `test/architecture/test_optional_backends.py` checks the bff gate.
+
 * **Model search loads bff's shipped action policy by default.**
   - `NativeSearchSettings.action_policy` replaces the keyed `residual_action_policy`/`residual_action_keys`. `"shipped"` (the default) loads `IMP.bff.get_shipped_action_policy()` for fitting problems, `""` searches on the declared priors, and anything else is a `bff.neural_net` document.
   - bff ships no policy until one passes its search gate, so today the default searches on the declared priors.

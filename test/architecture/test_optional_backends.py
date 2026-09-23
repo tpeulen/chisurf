@@ -33,9 +33,17 @@ tttrlib = pytest.importorskip("tttrlib")
 #: silently selects a slow path, so each one is a place this can happen again.
 TTTRLIB_BACKENDS = [
     ("chisurf.plugins.burst.burst_h2mm.core.h2mm_tttrlib", "HAVE_TTTRLIB", "HMM"),
-    ("chisurf.plugins.burst.burst_h2mm.core.surrogate_tttrlib", "HAVE_TTTRLIB", "HmmSurrogate"),
     ("chisurf.core.fluorescence.mle.fit2x", "HAVE_TTTRLIB", "TTTR"),
 ]
+
+
+def test_the_bff_surrogate_backend_reports_itself_present():
+    """Same rule for the learned H2MM estimator, which lives in IMP.bff."""
+    bff = pytest.importorskip("IMP.bff")
+    if not hasattr(bff, "HmmSurrogate"):
+        pytest.skip("this IMP.bff build has no HmmSurrogate (built without tttrlib)")
+    module = importlib.import_module("chisurf.plugins.burst.burst_h2mm.core.surrogate_bff")
+    assert module.HAVE_BFF is True
 
 
 @pytest.mark.parametrize("module_name,flag,feature", TTTRLIB_BACKENDS)

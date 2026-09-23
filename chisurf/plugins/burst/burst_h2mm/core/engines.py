@@ -54,7 +54,7 @@ from . import h2mm_tttrlib as _tttrlib_engine
 
 # The C++ surrogate is used only for surrogates stored in the language-neutral
 # JSON schema; a pickled SurrogateModel stays on the scikit-learn path.
-from . import surrogate_tttrlib as _tttrlib_surrogate
+from . import surrogate_bff as _bff_surrogate
 
 
 def _use_tttrlib() -> bool:
@@ -258,18 +258,18 @@ def fit_one(
             # features with the same (compiled) extractor and differ only in
             # which regressor was serialised -- a C++ estimator in JSON, or a
             # pickled scikit-learn model.
-            if _tttrlib_surrogate.is_json_surrogate(sm):
+            if _bff_surrogate.is_json_surrogate(sm):
                 # A JSON surrogate is the C++ estimator's format. If that engine
                 # is missing, say so -- quietly handing it to the scikit-learn
                 # path would answer with a different estimator than the one the
                 # surrogate was trained for.
-                if not _tttrlib_surrogate.HAVE_TTTRLIB:
+                if not _bff_surrogate.HAVE_BFF:
                     raise RuntimeError(
                         "this surrogate is in the compiled estimator's JSON "
-                        "format, but the installed photon library has no "
-                        "HmmSurrogate; rebuild it"
+                        "format, but IMP.bff has no HmmSurrogate (it was "
+                        "built without tttrlib); rebuild it"
                     )
-                return _tttrlib_surrogate.estimate_model(
+                return _bff_surrogate.estimate_model(
                     data, n_states, sm, refine_iters=ri, tol=tol
                 )
             # A pickled SurrogateModel stays on the scikit-learn path. This
