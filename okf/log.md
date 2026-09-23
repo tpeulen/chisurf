@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: playback, find projections and publication export (playback_export group).**
+  - `PlaybackViewModel` is Qt-free. `tick(now)` is driven by the emtk frame loop (so playback works in a browser) and by a `QTimer` in the Qt window.
+  - `VizRankModel` and `ProjectionRankModel` with `build_context` moved to `ndxplorer/analysis/` and run on injected runners. The emtk app scores in `emtk.tasks` slices.
+  - The publication figure goes out as bytes (`figure_bytes`) to `app.io_service`.
+  - emtk: `view_form` shows and reads a value's `suffix`.
+  - Parity for all six scenarios; resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up".
+
 * **Fitting on bff's `FitObjective` API.**
   - `minimizer.py` passes objectives, not port names. Its director `ResidualNode` is now a `FitObjective`.
   - `mcts/native.py` builds the single bff `FittingModelSearchProblem`: one canonical id per group port (`<group>.<index>`), and one structure per declaration with its fixed mask and seeds.
