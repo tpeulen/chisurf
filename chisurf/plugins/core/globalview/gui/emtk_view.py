@@ -55,7 +55,6 @@ __all__ = [
     "GlobalViewContent",
     "KIND_COLOURS",
     "KIND_TITLE",
-    "graph_result_to_document",
 ]
 
 logger = logging.getLogger(__name__)
@@ -68,6 +67,12 @@ NODE_PARAM_FIXED = 1
 NODE_PARAM_LINKED = 2
 NODE_PARAM_FREE = 3
 NODE_GROUP = 4
+#: The factor-graph representation's kinds: a dataset's likelihood, a free
+#: variable, and a variable two or more likelihoods share -- the one a global
+#: fit is global through.
+NODE_FACTOR = 5
+NODE_VARIABLE = 6
+NODE_SHARED = 7
 
 #: How a node of each kind announces itself in its title bar. The glyphs are
 #: from the baked atlas -- a character the atlas lacks draws as *nothing* in
@@ -78,6 +83,9 @@ KIND_TITLE: dict = {
     NODE_PARAM_FIXED: "fixed",
     NODE_PARAM_LINKED: "linked",
     NODE_PARAM_FREE: "free",
+    NODE_FACTOR: "likelihood",
+    NODE_VARIABLE: "variable",
+    NODE_SHARED: "shared",
 }
 
 #: Title-bar colour per kind, matching ``graph_canvas.KIND_COLOURS`` so the two
@@ -93,6 +101,9 @@ KIND_COLOURS: dict = {
     NODE_PARAM_FIXED: (144, 164, 174, 255),
     NODE_PARAM_LINKED: (102, 187, 106, 255),
     NODE_PARAM_FREE: (171, 71, 188, 255),
+    NODE_FACTOR: (66, 165, 245, 255),
+    NODE_VARIABLE: (171, 71, 188, 255),
+    NODE_SHARED: (255, 193, 7, 255),
 }
 
 #: The three edge kinds, as ``(colour, thickness, arrowhead)``.
@@ -105,6 +116,11 @@ EDGE_COLOURS: dict = {
     "ownership": ((120, 126, 134, 160), 1.4, False),
     "link": ((0, 200, 235, 255), 2.6, True),
     "base": ((86, 92, 100, 110), 1.0, False),
+    # A likelihood reads a variable: the factor graph's own edge, brighter than
+    # ownership because it is the structure, not scaffolding.
+    "scope": ((150, 158, 170, 220), 1.8, False),
+    # A held parameter a likelihood reads: evidence, not a variable.
+    "evidence": ((110, 116, 124, 120), 1.0, False),
 }
 
 #: Disc radius per kind. Owners are larger because they are the things you
@@ -115,6 +131,9 @@ KIND_RADIUS: dict = {
     NODE_PARAM_FIXED: 10.0,
     NODE_PARAM_LINKED: 11.0,
     NODE_PARAM_FREE: 11.0,
+    NODE_FACTOR: 13.0,
+    NODE_VARIABLE: 11.0,
+    NODE_SHARED: 12.0,
 }
 
 #: What the legend calls each kind.
@@ -124,10 +143,25 @@ KIND_LABELS: dict = {
     NODE_PARAM_FREE: "free parameter",
     NODE_PARAM_LINKED: "linked parameter",
     NODE_PARAM_FIXED: "fixed parameter",
+    NODE_FACTOR: "likelihood (dataset)",
+    NODE_VARIABLE: "variable",
+    NODE_SHARED: "shared variable",
 }
 
 #: Legend order: owners first, then parameters by how much freedom they have.
-LEGEND_ORDER: tuple = (NODE_FIT, NODE_GROUP, NODE_PARAM_FREE, NODE_PARAM_LINKED, NODE_PARAM_FIXED)
+LEGEND_ORDER: tuple = (
+    NODE_FIT,
+    NODE_GROUP,
+    NODE_FACTOR,
+    NODE_SHARED,
+    NODE_VARIABLE,
+    NODE_PARAM_FREE,
+    NODE_PARAM_LINKED,
+    NODE_PARAM_FIXED,
+)
+
+#: Kinds that are not parameters: nothing links to them or from them.
+NOT_LINKABLE = frozenset({NODE_FIT, NODE_GROUP, NODE_FACTOR})
 
 #: Pin names. Every node carries exactly one of each, because a link here joins
 #: two *nodes* rather than two of a node's several outputs -- a parameter has
@@ -158,106 +192,6 @@ def _node_kind(entry: typing.Any) -> int:
     if entry.is_linked:
         return NODE_PARAM_LINKED
     return NODE_PARAM_FREE
-
-
-def graph_result_to_document(
-    result: typing.Any,
-    positions: dict | None = None,
-    include_fixed: bool = True,
-) -> GraphDocument:
-    """Turn the RPC's graph into a document the node editor can draw.
-
-    Parameters
-    ----------
-    result : object
-        A ``GraphResult`` -- nodes with ``node_idx``/``node_type``/``name`` and
-        edges of source and target indices.
-    positions : dict, optional
-        ``node_idx -> (x, y)`` from
-        :func:`~chisurf.plugins.core.globalview.gui.adapter.compute_layout`.
-        Nodes with no entry are stacked in a column rather than piled at the
-        origin, so a missing layout is visible as a column instead of as one
-        node with everything hidden behind it.
-    include_fixed : bool
-        Keep parameters that are held rather than estimated. Turning them off
-        is how a large global fit is made readable.
-
-    Returns
-    -------
-    GraphDocument
-        Ready for :class:`~chisurf.gui.widgets.node_editor.emtk_control.GraphControl`.
-
-    Notes
-    -----
-    Node ids are the adapter's ``node_idx`` as a string, so a selection made in
-    the graph resolves back to the fit or parameter it names without a second
-    mapping to keep in step.
-
-    The edge *kinds* are recovered here rather than carried by the RPC, which
-    reports only source and target. An edge between a parameter and its owner
-    is ownership; between two parameters it is a link; between two owners it is
-    a base edge. That is a rule about what the endpoints *are*, so it cannot
-    disagree with the graph the way a separately-transmitted label could.
-    """
-    document = GraphDocument()
-    kinds: dict = {}
-    kept: set = set()
-
-    for index, entry in enumerate(result.nodes):
-        kind = _node_kind(entry)
-        if kind == NODE_PARAM_FIXED and not include_fixed:
-            continue
-        kinds[entry.node_idx] = kind
-        kept.add(entry.node_idx)
-
-        position = (positions or {}).get(entry.node_idx)
-        if position is None:
-            position = (0.0, float(len(kept)) * 90.0)
-
-        node = GraphNode(
-            node_id=str(entry.node_idx),
-            node_type=entry.node_type,
-            title=str(entry.name),
-            inputs=[PortSpec(name=PORT_IN, is_output=False, port_type="param")],
-            outputs=[PortSpec(name=PORT_OUT, is_output=True, port_type="param")],
-            config={
-                "kind": kind,
-                "value": entry.value,
-                "fixed": bool(entry.fixed),
-                "is_linked": bool(entry.is_linked),
-                "link_name": entry.link_name,
-                "fit_name": entry.fit_name,
-                "param_uid": entry.param_uid,
-                "owner_uid": entry.owner_uid,
-            },
-            pos=(float(position[0]), float(position[1])),
-        )
-        document.add_node(node)
-
-    owners = {NODE_FIT, NODE_GROUP}
-    for edge in result.edges:
-        if edge.source not in kept or edge.target not in kept:
-            # An edge to a parameter that was filtered out. Dropped rather than
-            # drawn to nowhere -- "hide fixed parameters" must hide their edges
-            # too, or the graph keeps lines running off to nothing.
-            continue
-        source_kind, target_kind = kinds[edge.source], kinds[edge.target]
-        if source_kind in owners and target_kind in owners:
-            kind = "base"
-        elif source_kind in owners or target_kind in owners:
-            kind = "ownership"
-        else:
-            kind = "link"
-        document.add_edge(
-            GraphEdge(
-                source=str(edge.source),
-                source_port=0,
-                target=str(edge.target),
-                target_port=0,
-                config={"kind": kind},
-            )
-        )
-    return document
 
 
 def apply_network_style(editor: typing.Any) -> None:
@@ -331,7 +265,12 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
     draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0), (70, 76, 86, 180), 4.0)
     for index, kind in enumerate(present):
         centre_y = y + 4.0 + row * index + row * 0.5
-        draw.add_circle_filled((x + 14.0, centre_y), 5.0, KIND_COLOURS[kind])
+        if kind == NODE_FACTOR:
+            draw.add_rect_filled(
+                (x + 9.0, centre_y - 5.0), (x + 19.0, centre_y + 5.0), KIND_COLOURS[kind], 2.0
+            )
+        else:
+            draw.add_circle_filled((x + 14.0, centre_y), 5.0, KIND_COLOURS[kind])
         draw.add_text(
             (x + 24.0, centre_y - row * 0.5 + 1.0), (216, 220, 228, 255), KIND_LABELS[kind]
         )
@@ -376,10 +315,9 @@ class GlobalViewContent(NodeContentRenderer):
             edge the parameter model has no meaning for, drawn in a panel whose
             whole job is to show what follows what.
         """
-        owners = {NODE_FIT, NODE_GROUP}
         return (
-            int(source.config.get("kind", -1)) not in owners
-            and int(target.config.get("kind", -1)) not in owners
+            int(source.config.get("kind", -1)) not in NOT_LINKABLE
+            and int(target.config.get("kind", -1)) not in NOT_LINKABLE
         )
 
     def node_shape(self, node: GraphNode) -> tuple:
@@ -402,7 +340,8 @@ class GlobalViewContent(NodeContentRenderer):
             if isinstance(value, (int, float)):
                 label = f"{node.title} = {value:.4g}"
         radius = KIND_RADIUS.get(kind, 11.0) * self.radius_scale
-        return (emtk_nodes.NodeShape.DISC, label, radius)
+        shape = emtk_nodes.NodeShape.SQUARE if kind == NODE_FACTOR else emtk_nodes.NodeShape.DISC
+        return (shape, label, radius)
 
     def node_style(self, node: GraphNode) -> tuple | None:
         """Colour the disc by what kind of node this is.
@@ -470,58 +409,3 @@ class GlobalViewContent(NodeContentRenderer):
             Always ``False``.
         """
         return False
-
-
-def document_from_arrays(positions, edges, names, kinds) -> GraphDocument:
-    """Build a document from the four parallel arrays the tool already has.
-
-    Parameters
-    ----------
-    positions : sequence
-        ``(x, y)`` per node, in the layout algorithm's units.
-    edges : sequence
-        ``(source_index, target_index)`` pairs.
-    names, kinds : sequence
-        Per-node label and ``NODE_*`` code.
-
-    Returns
-    -------
-    GraphDocument
-
-    Notes
-    -----
-    The tool computes its own layout and hands over arrays rather than a
-    ``GraphResult``, so this is the second door into the same room as
-    :func:`graph_result_to_document`. Kept separate rather than made to
-    convert: inventing a ``GraphResult`` to throw away would put a third shape
-    between the tool and the graph.
-    """
-    document = GraphDocument()
-    for index, name in enumerate(names):
-        kind = int(kinds[index]) if index < len(kinds) else NODE_PARAM_FREE
-        x, y = positions[index] if index < len(positions) else (0.0, index * 90.0)
-        document.add_node(
-            GraphNode(
-                node_id=str(index),
-                node_type="parameter",
-                title=str(name),
-                inputs=[PortSpec(name=PORT_IN, is_output=False, port_type="param")],
-                outputs=[PortSpec(name=PORT_OUT, is_output=True, port_type="param")],
-                config={"kind": kind},
-                pos=(float(x), float(y)),
-            )
-        )
-
-    owners = {NODE_FIT, NODE_GROUP}
-    for source, target in edges:
-        if not (0 <= source < len(names) and 0 <= target < len(names)):
-            continue
-        source_kind, target_kind = int(kinds[source]), int(kinds[target])
-        if source_kind in owners and target_kind in owners:
-            kind = "base"
-        elif source_kind in owners or target_kind in owners:
-            kind = "ownership"
-        else:
-            kind = "link"
-        document.add_edge(GraphEdge(str(source), 0, str(target), 0, config={"kind": kind}))
-    return document

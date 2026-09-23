@@ -3840,6 +3840,11 @@ decline until someone has a file they actually cannot open.
 
 ## globalview: two graph builders, and they have already drifted
 
+**Resolved 2026-09-23**: every builder now reads
+`chisurf/core/fitting/parameter_network.py` (see
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network)). The
+history below is kept for why.
+
 **2026-08-06.** The parameter graph is built twice. The plugin builds it locally
 (`chisurf/plugins/core/globalview/api/graph.py`); the server builds it again, by
 hand, for the `graph.build` RPC (`chisurf/server/services/graph.py`,

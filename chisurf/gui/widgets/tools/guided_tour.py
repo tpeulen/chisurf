@@ -593,6 +593,18 @@ class GuidedTour(QtCore.QObject):
         # separately; cleared here so a stale one cannot leak into a later step.
         self._sub_rect = None
         self._panel_row = None
+        self._hook_name = None
+
+        # A host that draws its own controls -- an emtk surface, where a field
+        # is a rectangle and not a widget -- says where the control is itself.
+        hook = getattr(self._host, "tour_target", None)
+        if callable(hook):
+            found = hook(target)
+            if found is not None:
+                widget, rect = found
+                self._sub_rect = rect
+                self._hook_name = str(attr or action or tab or panel or "")
+                return widget
 
         if panel:
             widget = self._resolve_panel(panel)
@@ -875,6 +887,32 @@ class GuidedTour(QtCore.QObject):
         if not step.waits or self._index in self._satisfied:
             bubble.prompt.setVisible(False)
             bubble.next_button.setEnabled(True)
+            return
+
+        # A control of a host-drawn surface: done when the host says it was used.
+        used = getattr(self._host, "tour_used", None)
+        if getattr(self, "_hook_name", None) and used is not None and hasattr(used, "connect"):
+            name = self._hook_name
+            hint = str(step.expect.get("hint", "")) or "Use the highlighted control to go on."
+            bubble.prompt.setText(f"<span style='color:#c07800'>▸ {hint}</span>")
+            bubble.prompt.setVisible(True)
+            bubble.next_button.setEnabled(False)
+
+            def _used(which: str) -> None:
+                if which != name:
+                    return
+                self._satisfied.add(self._index)
+                self._disconnect()
+                if self._bubble is None:
+                    return
+                self._bubble.prompt.setText(
+                    "<span style='color:#2a8a4a'>✓ done — press Next</span>"
+                )
+                self._bubble.next_button.setEnabled(True)
+                self._bubble.next_button.setDefault(True)
+
+            used.connect(_used)
+            self._waiting = (used, _used)
             return
 
         # A panel step is satisfied by selecting *that* row, not by any change of

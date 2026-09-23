@@ -1907,6 +1907,14 @@ guides/figures/console.png:
     whatever is in the input buffer -- so each line is written with `view.set_input_buffer(line)` before
     `execute(line)`. Executing alone yields a transcript of bare `In []:` prompts with outputs and no
     inputs.'
+guides/figures/globalview_factor_graph.png:
+  caption: The same session as a factor graph -- three likelihoods over one shared lifetime, and the
+    second FRET-low curve on its own, so two independent blocks.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_global_view
+  pages:
+  - docs/guides/60_global_analysis.md
+  recipe: 'As globalview_network.png, then Show set to "factor graph".'
 guides/figures/globalview_network.png:
   caption: Three fits sharing one donor lifetime, with the cyan link arrows pointing at the master.
   kind: screenshot
@@ -1914,10 +1922,11 @@ guides/figures/globalview_network.png:
   pages:
   - docs/guides/60_global_analysis.md
   recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. Three FitGroups
-    (Donor-only, FRET-low with two curves, FRET-high) are built on synthetic decays and the `tL1`
+    (Donor-only, FRET-low with two curves, FRET-high) are built on synthetic decays and the `t0`
     parameter of the two FRET fits is linked to the donor-only one -- an *unlinked* network shows nothing
-    a list of fits would not have shown, so the links are the point. The parameter is `tL1`; the older
-    spelling `t(L,1)` raises KeyError.'
+    a list of fits would not have shown, so the links are the point. The lifetime parameters are
+    `t0`, `t1`, ...; `tL1` and `t(L,1)` raise KeyError. Only the first curve of FRET-low is linked,
+    which the factor graph shows as a second block.'
 guides/figures/irf_estimator.png:
   caption: A blind IRF estimate on a simulated decay with a known answer, with the forward model lying on
     the measured data.

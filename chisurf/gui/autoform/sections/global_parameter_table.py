@@ -5,7 +5,7 @@ Global View's *Parameters* tab. Unlike
 :class:`~chisurf.gui.autoform.sections.parameter_table.ParameterGroupTableWidget`
 (one group, in-process edits), this widget:
 
-* spans **multiple owners** — every fit in ``chisurf.fits`` (descending into
+* spans **multiple owners** — every fit in the session (descending into
   :class:`FitGroup` members, skipping the aggregate :class:`GlobalFitModel`) plus
   every out-of-fit group registered via
   :mod:`chisurf.core.registry.parameter_groups` (e.g. a plugin working model);
@@ -28,9 +28,8 @@ import re
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf as cs
 from chisurf import logging
-from chisurf.core.fitting.fit import FitGroup
+from chisurf.core.fitting.parameter_network import ParameterRow, parameter_rows, session_owners
 from chisurf.core.parameter import Parameter
 from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
 from chisurf.gui import dialogs
@@ -43,6 +42,9 @@ from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import ChiTableWidget, TableFeature
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.gui.widgets.fitting.parameter_mutator import (
+    FittingClientParamMutator,
+)
 
 # ── column enumeration ──────────────────────────────────────────────────
 
@@ -73,179 +75,21 @@ HEADERS = [
 ]
 
 
-class GlobalParamRow:
-    """One table row: a parameter and everything needed to address its owner.
-
-    ``kind`` is ``"fit"`` (owner is a :class:`Fit`; addressed by ``fit_uid`` /
-    ``fit_index`` [+ ``local_idx``] + name) or ``"group"`` (an out-of-fit
-    registered group; addressed by the parameter's global ``param_uid`` and the
-    group's ``owner_uid``).
-    """
-
-    __slots__ = (
-        "kind",
-        "owner_label",
-        "local_label",
-        "param",
-        "param_uid",
-        "owner_uid",
-        "fit_uid",
-        "fit_index",
-        "local_idx",
-    )
-
-    def __init__(
-        self,
-        kind,
-        owner_label,
-        local_label,
-        param,
-        param_uid,
-        owner_uid=None,
-        fit_uid=None,
-        fit_index=None,
-        local_idx=None,
-    ):
-        self.kind = kind
-        self.owner_label = owner_label
-        self.local_label = local_label
-        self.param = param
-        self.param_uid = param_uid
-        self.owner_uid = owner_uid
-        self.fit_uid = fit_uid
-        self.fit_index = fit_index
-        self.local_idx = local_idx
-
-
-def _uid(obj) -> str:
-    return str(getattr(obj, "unique_identifier", "") or "")
+#: One table row: the session enumeration's, shared with the Global View.
+GlobalParamRow = ParameterRow
 
 
 def enumerate_global_rows() -> list[GlobalParamRow]:
-    """Return every fitting parameter across fits and registered plugin groups.
+    """Every fitting parameter across fits and registered plugin groups.
 
-    Fits come from the live ``chisurf.fits`` list (descending into
-    :class:`FitGroup` members and skipping the aggregate
-    :class:`GlobalFitModel`); out-of-fit groups come from
-    :func:`iter_registered_parameter_groups`.
+    The rows are :func:`chisurf.core.fitting.parameter_network.parameter_rows`,
+    which the Global View's network is built from as well: a
+    :class:`FitGroup` contributes its local fits and the aggregate global-fit
+    model is left out.
     """
-    from chisurf.core.models.global_model import GlobalFitModel
-
-    rows: list[GlobalParamRow] = []
-    fits = list(getattr(cs, "fits", []) or [])
-
-    for fi, fit in enumerate(fits):
-        model = getattr(fit, "model", None)
-        if isinstance(model, GlobalFitModel):
-            continue
-        owner_label = str(getattr(fit, "name", f"Fit {fi}"))
-        if isinstance(fit, FitGroup) and getattr(fit, "grouped_fits", None):
-            for li, local_fit in enumerate(fit.grouped_fits):
-                lmodel = getattr(local_fit, "model", None)
-                for p in getattr(lmodel, "parameters_all", []) or []:
-                    rows.append(
-                        GlobalParamRow(
-                            "fit",
-                            owner_label,
-                            f"[{li}]",
-                            p,
-                            _uid(p),
-                            owner_uid=_uid(lmodel),
-                            fit_uid=_uid(fit),
-                            fit_index=fi,
-                            local_idx=li,
-                        )
-                    )
-        else:
-            for p in getattr(model, "parameters_all", []) or []:
-                rows.append(
-                    GlobalParamRow(
-                        "fit",
-                        owner_label,
-                        "",
-                        p,
-                        _uid(p),
-                        owner_uid=_uid(model),
-                        fit_uid=_uid(fit),
-                        fit_index=fi,
-                    )
-                )
-
-    for owner_id, label, group in iter_registered_parameter_groups():
-        for p in getattr(group, "parameters_all", []) or []:
-            rows.append(
-                GlobalParamRow(
-                    "group",
-                    label,
-                    "",
-                    p,
-                    _uid(p),
-                    owner_uid=_uid(group),
-                )
-            )
-
-    return rows
-
-
-# ── mutator ─────────────────────────────────────────────────────────────
-
-
-class FittingClientParamMutator:
-    """Route parameter edits/links through the :class:`FittingClient`.
-
-    Fit rows keep the proven fit-addressed RPC path; group (out-of-fit) rows use
-    the ``parameter_uid`` / ``owner_uid`` path so their parameters resolve via the
-    server's global ``Base._uuid_index``.
-    """
-
-    def _addr(self, row: GlobalParamRow) -> dict:
-        """Return the RPC kwargs that address *row*'s parameter for the source."""
-        if row.kind == "fit":
-            return {
-                "parameter_name": str(getattr(row.param, "name", "")),
-                "fit_uid": row.fit_uid or None,
-                "fit_index": row.fit_index,
-                "local_idx": row.local_idx,
-            }
-        return {
-            "parameter_name": str(getattr(row.param, "name", "")),
-            "parameter_uid": row.param_uid,
-            "owner_uid": row.owner_uid,
-        }
-
-    def set_value(self, row, value):
-        fc = get_fitting_client()
-        return fc.set_parameter_value(value=value, **self._addr(row)) if fc else {"ok": False}
-
-    def set_fixed(self, row, fixed):
-        fc = get_fitting_client()
-        return fc.set_parameter_fixed(fixed=fixed, **self._addr(row)) if fc else {"ok": False}
-
-    def set_bounds(self, row, bounds):
-        fc = get_fitting_client()
-        return fc.set_parameter_bounds(bounds=bounds, **self._addr(row)) if fc else {"ok": False}
-
-    def set_bounds_on(self, row, bounds_on):
-        fc = get_fitting_client()
-        return (
-            fc.set_parameter_bounds_on(bounds_on=bounds_on, **self._addr(row))
-            if fc
-            else {"ok": False}
-        )
-
-    def link(self, src, target):
-        fc = get_fitting_client()
-        if fc is None:
-            return {"ok": False}
-        kw = self._addr(src)
-        # Target is always addressable by its global uid, regardless of owner kind.
-        kw["target_parameter_name"] = str(getattr(target.param, "name", ""))
-        kw["target_parameter_uid"] = target.param_uid
-        return fc.link_parameters(**kw)
-
-    def unlink(self, row):
-        fc = get_fitting_client()
-        return fc.unlink_parameter(**self._addr(row)) if fc else {"ok": False}
+    fc = get_fitting_client()
+    fits = fc.get_fit_objects() if fc is not None else []
+    return parameter_rows(session_owners(fits, iter_registered_parameter_groups()))
 
 
 # ── table model ─────────────────────────────────────────────────────────

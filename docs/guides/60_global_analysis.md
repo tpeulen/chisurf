@@ -34,65 +34,87 @@ and every link between parameters.
   parameter, **grey** fixed (shown only with **Include fixed** ticked)
 - thin grey lines are ownership — which parameter belongs to which fit
 - **cyan arrows are the links**, and they point *at the master*
-- dashed lines appear with **Connect base**: they join the owners themselves,
+- dim lines appear with **Connect base**: they join the owners themselves,
   fits and plugin groups alike, so a plugin's working model (an ndX selection,
   a calculator) is visibly part of the same web rather than off on its own
 
-The colour key sits in the top-left corner of the panel, and the status bar
-counts what is on screen.
+The colour key sits in the top-left corner of the panel, and the status line
+counts what is on screen. Every panel (Network, Parameters, Selection, View) is
+a dock: drag its tab to float it or to dock it elsewhere, and the arrangement is
+remembered.
 
 ```{figure} figures/globalview_network.png
 :name: fig-globalview-network
 :width: 100%
 
-Three fits sharing one donor lifetime. Each **blue** disc is a fit
-(*Donor-only*, *FRET-low*, *FRET-high*) surrounded by its parameters; the two
-**cyan arrows** run from the followers' `tL1` to the master's, and they point
-*at* the master, so the direction of the constraint is readable off the picture.
-The follower nodes are **green** and the master stays **purple** — a green node
-with no arrow leaving it is a link you thought you made and did not. The status
-bar counts what is drawn: *3 owners · 15 parameters · 2 linked*.
+Three fits sharing one donor lifetime, *FRET-low* a fit group of two curves,
+so four owners. Each **blue** disc is a fit (or one local fit of a group)
+surrounded by its parameters; the two **cyan arrows** run from the followers'
+`t0` to the master's, and they point *at* the master, so the direction of the
+constraint is readable off the picture. The follower nodes are **green** and the
+master stays **purple**. The owner in the top-left corner has no arrow at all:
+the second curve of *FRET-low*, which the link was never made for.
 ```
 
 ## 3. Link the shared parameter
 
 Two ways, and they do the same thing:
 
-- **Drag** one parameter node onto another. The one you dragged becomes the
-  follower.
-- **Click** the master (it gets a red rim), click the follower, then press
-  🔗 **Link** on the toolbar.
+- **Drag** from one parameter onto another. The one you dragged from becomes
+  the follower, and the arrow you drew is the one that stays: it points at the
+  master.
+- **Click** the master, click the follower, then press **Link** on the toolbar.
 
-The follower turns green and an arrow appears. Its editor in **Selection** is
-now read-only-in-effect: it takes the master's value. A link that would create a
-cycle is refused by name.
+The follower turns green and an arrow appears. In **Selection** its role reads
+*follower* and its value no longer opens for typing: it takes the master's. A
+link that would create a cycle is refused by name.
 
-To undo one, double-click its arrow, or select the follower and press
-🧹 **Unlink**. Ticking **all** first clears every link in every fit.
+To undo one, break its arrow, or select the follower and press **Unlink**.
+Ticking **all** first clears every link in every fit.
 
 ```{note}
 Two fits of the same model name their parameters identically, so `tau1` on its
-own does not say which fit is being edited. The **Selection** panel captions
-each editor with the fit it belongs to, and the **Parameters** table has an
-*Owner* column — use them before believing which node you clicked.
+own does not say which fit is being edited. The **Selection** table lists
+each selected parameter with the fit it belongs to, and the **Parameters** table
+has an *Owner* column — use them before believing which node you clicked.
 ```
 
 If the network is too crowded to work in, change **Layout** in the **View**
-panel, raise **Spread**, use the wheel to zoom and drag the background to pan.
-⌖ puts everything back in the panel.
+panel, raise **Spread**, use the wheel to zoom and drag the background with the
+middle button to pan. **Fit view** puts everything back in the panel.
 
 The network follows the session on its own: it redraws when a fit or a link
 changes, and only re-runs the layout when the *shape* changed, so a fit running
-for a thousand iterations costs nothing. **⟳ Refresh** forces a redraw, and
-unticking **auto** hands that over to you entirely — the status bar then says
+for a thousand iterations costs nothing. **Refresh** forces a redraw, and
+unticking **auto** hands that over to you entirely — the status line then says
 when the picture has gone stale.
 
 ## 4. Check that the link took effect
 
 Open the **Parameters** panel: it is the same information as a table — every
-parameter of every fit and every registered plugin group, searchable, with
+parameter of every fit and every registered plugin group, filterable, with
 value, bounds, fixed state, and a **Link row** column naming the row each
-follower follows. A follower is shown in italics.
+follower follows (type a row number there to link, clear it to unlink). A
+follower's row is dimmed. Right-click the header to choose columns;
+**Export…** writes the table to CSV.
+
+**Show ▸ Factor graph** in the **View** panel is the check that the link
+couples what you meant it to. Each dataset becomes a square — its likelihood —
+joined to the variables it depends on, links resolved: the shared lifetime is
+**one gold variable** joined to every square that reads it, and each follower
+hangs off it. The status line names the shared variables and counts the
+**independent blocks**; more than one block means some datasets share nothing
+with the rest, whatever the network looked like.
+
+```{figure} figures/globalview_factor_graph.png
+:name: fig-globalview-factor-graph
+:width: 100%
+
+The same session as a factor graph. Three likelihoods (squares) read the one
+shared `t0` (gold); the fourth -- the second curve of *FRET-low* -- reads a
+`t0` of its own, and the status line says so: *1 shared (t0) · 2 independent
+blocks*. Linking that curve's `t0` too makes it one block.
+```
 
 The number that matters is the **free-parameter count**, which must drop. If it
 did not, the link is not in effect and any result is meaningless.
@@ -107,8 +129,8 @@ the parameter is not actually shared; see
 
 ## 6. Save the scheme
 
-💾 writes the network as GraphML (`.gml`): node values, fixed flags and links.
-📂 applies a saved one back onto the fits you have open, which is how the same
+**Save…** writes the network as GraphML (`.gml`): node values, fixed flags and
+links. **Load…** applies a saved one back onto the fits you have open, which is how the same
 linking scheme is reused on a new set of datasets.
 
 ## Headless: linking two fits

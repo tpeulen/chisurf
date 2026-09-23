@@ -41,9 +41,6 @@ SCAN_DIRECTORIES = [
 EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/autoform/auto_form.py": 1,
     "chisurf/gui/autoform/sections/builtin.py": 5,
-    # global_parameter_table: in-process Global-View table needs live fit
-    # objects (params/UUIDs) that cannot cross the ZMQ boundary.
-    "chisurf/gui/autoform/sections/global_parameter_table.py": 1,
     "chisurf/gui/autoform/sections/parameter_table.py": 5,
     "chisurf/gui/autoform/sections/rate_matrix_section.py": 2,
     "chisurf/gui/main.py": 9,
@@ -71,6 +68,9 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/plugins/core/batch_analysis/test/test_runner.py": 4,
     # backend/services.py: server-side RPC handlers — direct param.link = is LEGITIMATE here
     "chisurf/plugins/core/globalview/backend/services.py": 3,
+    # tests/test_model.py: a fake mutator standing in for the server applies the
+    # edits the fitting client would, plus the fixture's own link setup.
+    "chisurf/plugins/core/globalview/tests/test_model.py": 9,
     "chisurf/plugins/core/lightpath_simulator/core/parameters.py": 2,
     "chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py": 1,
     "chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py": 3,

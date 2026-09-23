@@ -38,7 +38,7 @@ Consumers, and what they add on top:
 | consumer | hosts | adds |
 |---|---|---|
 | lightpath simulator | `NodeGraphWidget` + `BeampathContent` | palette double-click to create nodes |
-| globalview | `ParameterNetworkWidget` over `GraphControl` | `on_link`/`on_unlink` arbitration against the fit model |
+| globalview | `GraphControl` drawn inside `GlobalViewSurface` (one `ImApp` frame) | `on_link`/`on_unlink` arbitration against the fit model; discs and squares (`MARK_SHAPES`) |
 | mmfdb_admin | `NodeGraphWidget(read_only=True)` | nothing — a pure viewer |
 | AutoForm `node_graph` | `NodeGraphWidget(read_only=True)` | nothing — a viewer bound to a model method |
 

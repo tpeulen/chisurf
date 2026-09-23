@@ -483,7 +483,7 @@ class GraphControl:
         # every control the same width while the text around it shrinks.
         im.push_item_width(NODE_ITEM_WIDTH * nodes.content_scale())
 
-        if shape == nodes.NodeShape.DISC:
+        if shape in nodes.MARK_SHAPES:
             # Returns **before** the title bar, and that placement is the whole
             # of it: a disc labels itself underneath, so letting the title bar
             # run as well draws the name twice, a few pixels apart, in two

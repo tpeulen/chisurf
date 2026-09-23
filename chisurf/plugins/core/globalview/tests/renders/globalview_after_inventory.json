@@ -1,0 +1,56 @@
+{
+ "controls": [
+  "auto_refresh",
+  "connect_owners",
+  "export_parameters",
+  "fit_view",
+  "graph_layout",
+  "graph_scale",
+  "graph_scale.stepper",
+  "include_fixed",
+  "link_selected",
+  "load_network",
+  "node_size",
+  "node_size.stepper",
+  "parameter_records",
+  "refresh",
+  "reload_parameters",
+  "representation",
+  "save_network",
+  "selection_records",
+  "shade_values",
+  "show_guide",
+  "show_help",
+  "unlink_all",
+  "unlink_selected"
+ ],
+ "columns": {
+  "selection_records": [
+   "Owner",
+   "Parameter",
+   "Role",
+   "Value",
+   "Fixed",
+   "Error"
+  ],
+  "parameter_records": [
+   "Row",
+   "Owner",
+   "Local",
+   "Parameter",
+   "Value",
+   "Fixed",
+   "Lo",
+   "Hi",
+   "Bounds",
+   "Error",
+   "Link row"
+  ]
+ },
+ "docks": [
+  "Network",
+  "Parameters",
+  "Selection",
+  "View"
+ ]
+}

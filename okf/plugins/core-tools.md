@@ -45,30 +45,27 @@ Two open fronts: the **PTO inspector**'s operation index, and **Global View**
 
 ### Global View
 
-1. **Delete the server's copy of the graph builder.** Two implementations of one
-   contract: `chisurf/plugins/core/globalview/api/graph.py` and
-   `chisurf/server/services/graph.py`. Measure the drift by running the same
-   fits through both and diffing the node/edge sets — today the server's has no
-   `group` node type at all, so a network fetched over RPC silently omits every
-   registered plugin parameter group, and the link-by-name defect had to be
-   fixed twice. The blocker is unproven: `api/graph.py` looks Qt-free (its only
-   import, `GlobalFitModel`, is function-local) but that has not been checked
-   against the server's import path — check it, and if it holds the deletion is
-   the whole fix. Recorded in [known issues](/references/known-issues.md).
-2. **`GraphWizard.link()` still writes values and fixed flags one RPC call at a
-   time** when a GraphML file is loaded — two calls per node, plus one per edge.
-   Fine for the fits anyone has open today; it will not be for a saved network
-   of a few hundred parameters. A batched `set_parameters` on the fitting client
-   is the shape of the fix.
-3. **The Selection panel rebuilds every editor on every click.** Cheap now
-   (`clear_layout` + `make_fitting_parameter_widget` for at most two nodes) but
-   it is the reason `clear_layout` had to be fixed to unparent — worth
-   remembering before the selection limit is raised past two.
-4. *Tried and reverted:* making a plain drag on a parameter **move** the node
-   and Shift-drag create the link. It is the better default in the abstract and
-   it breaks every existing user's muscle memory for the plugin's one purpose;
-   the gesture is left as it was (drag = link, Shift-drag = move) and both are
-   in the tooltip and the help.
+The window is one emtk surface since 2026-09-23 (below). Open, in order:
+
+1. **Batch the GraphML load.** `GlobalViewModel.apply_graph` still writes values
+   and fixed flags one RPC call at a time -- two per node, one per edge. Fine for
+   the fits anyone has open today, not for a saved network of a few hundred
+   parameters; a batched `set_parameters` on the fitting client is the shape of
+   the fix.
+2. **The legend can cover a node.** The key is drawn over the top-left corner
+   and the editor's fit-to-content does not know about it; visible in
+   `docs/guides/figures/globalview_factor_graph.png`. Reserve the key's box in
+   the fit, rather than moving the key, which is where people look for it.
+3. **Per-column filters.** The Qt table had a filter row per column; the emtk
+   table has one filter box matching any cell (`DataTable.column_filters`
+   exists, with no UI). Recorded as a deliberate difference in the parity pair;
+   add the UI to emtk if someone misses it.
+4. **The fits come from `FittingClient.get_fit_objects()`**, which is
+   deprecated. The window needs the live objects (links are between them), so
+   the replacement is an in-process accessor that says so, not the RPC list.
+5. *Tried and reverted (August):* a plain drag on a parameter moves it and
+   Shift-drag links. It breaks every user's muscle memory for the plugin's one
+   purpose; drag = link stays.
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
@@ -184,70 +181,93 @@ the workflow in
 [`docs/guides/60_global_analysis.md`](../../docs/guides/60_global_analysis.md);
 the linking machinery itself belongs to [parameters](/subsystems/parameters.md).
 
-Four dock panels over a `DockArea`, like every other tool: **Network** (the
-graph), **Parameters** (the same content as a table, the shared
-`global_parameter_table` AutoForm section), **Selection** (an editor per
-selected node, captioned with its owner — two fits of one model name their
-parameters identically), and **View** (layout, node size, spread, *Connect
-base*, *Include fixed*).
+### One emtk surface
 
-### Drawing
+Since 2026-09-23 the whole window is **one emtk control** in a Qt host, on the
+same pattern as ndXplorer:
 
-The graph is painted directly, on the shared node-link marks in
-`chisurf/gui/widgets/graph_canvas.py` — the same dark grid, radial-gradient
-discs and curved arrows the [state-scheme diagram](/subsystems/gui-autoform.md)
-uses, so ChiSurf's two graphs read as one idea. That module is the seam: node
-palette, backdrop, `ZoomPan`, cubic edge routing, arrowheads, badges, legend.
+| file | is |
+| --- | --- |
+| `gui/globalview.view.json` | every control: the toolbar, **View**, **Selection** and **Parameters** panels -- the tables are `data_table` sections |
+| `gui/model.py` | `GlobalViewModel`, Qt-free: the settings the spec binds, the graph document, the table records, the selection, one method per button |
+| `gui/surface.py` | `GlobalViewSurface` (`emtk.app.ImApp`): the toolbar form, an `emtk.docking.DockManager` (Network + Parameters, Selection + View), the status line |
+| `gui/emtk_view.py` | what a node and an edge look like: kinds, colours, disc or square, the legend |
+| `gui/tool.py` | `GraphWizard`: the Qt host -- file dialogs, warnings, help, the guided tour, fit events |
 
-It replaced a `pyqtgraph.GraphItem`, which sized nodes in **data** coordinates —
-so label offsets, arrow lengths and node radii all scaled with the layout, and a
-graph was either unreadable dots or a few huge blobs. The layout is now fitted
-to the panel (re-fitted on resize and on show, until the user drags a node), and
-*spread* scales it past the panel edges instead of being an invisible layout
-argument.
+It replaced four hand-built Qt panels around the emtk network (a
+`QToolBar`, a `QFormLayout`, a scroll area of per-parameter editor widgets, and
+an AutoForm-hosted Qt table). The before/after pair is in
+`chisurf/plugins/core/globalview/tests/renders/` with both control inventories;
+re-take the after-half with `test/gui/globalview_parity_capture.py`. Deliberate
+differences: glyph buttons became words (the emtk atlas has no emoji); the
+Selection panel's per-parameter editors became one table with a *Role* column;
+the Qt table's per-column filter row became one filter box.
 
-Three edge kinds, and they are different claims:
+The guided tour spotlights emtk controls through a host hook added to
+`chisurf/gui/widgets/tools/guided_tour.py`: a host may define
+`tour_target(target) -> (widget, rect)` and a `tour_used(name)` signal, and
+`GraphWizard` answers from the surface's `FormState.rects`.
+
+### One enumeration: rows, network, factor graph
+
+`chisurf/core/fitting/parameter_network.py` enumerates the session's owners
+(`session_owners`: fits, a `FitGroup` by its local fits, registered groups;
+never the aggregate global model) and builds all three views from them:
+`parameter_rows`, `build_parameter_network` (edge kinds explicit: ownership,
+link, base) and `build_session_factor_graph` (one likelihood per owner over its
+parameters' link **roots**, as a `factorgraph.FactorGraph`). The plugin's
+`api/graph.py`, its RPC backend, the server's `graph.build` service and the Qt
+`global_parameter_table` section all read it; before, there were three network
+builders and a fourth row enumeration, and they had drifted (the server had no
+group nodes; the table descended into fit groups and the network did not).
+
+### Two representations
+
+**Parameter network** (default): owners as large discs, parameters as small
+ones, and three edge kinds that are three claims:
 
 | edge | drawn | means |
 | --- | --- | --- |
 | ownership | thin grey, no head | this parameter belongs to that fit or group |
 | link | cyan, arrowhead at the **master** | this parameter follows that one |
-| base (*Connect base*) | dashed, dim | these owners are things links can run between |
+| base (*Connect base*) | dim | these owners are things links can run between |
 
-*Connect base* connects every **owner** — fits *and* registered parameter groups
-— not fits only, so a plugin's working model (an ndX selection, a calculator)
-appears with the fits it exists to be linked against.
+**Factor graph**: each owner is a likelihood (a square, `emtk.nodes.NodeShape.SQUARE`)
+joined by *scope* edges to the variables it reads, links resolved. A variable
+two or more likelihoods read is *shared* (gold): the thing a global fit is
+global through. A follower hangs off its root by its link arrow; a held
+parameter is *evidence* on its likelihood. The status line names the shared
+variables and counts the independent blocks (`FactorGraph.connected_components`),
+which is how "I linked it" is checked against "it is coupled": the guide's own
+screenshot session has a second FRET-low curve whose `t0` was never linked, and
+the old network never drew that curve at all.
 
 ### Refreshing without cost
 
-The tool subscribes to `fit.`/`parameter.` events, which during a fit arrive once
-per iteration. Answering each one meant re-running a layout algorithm hundreds of
-times for a graph whose shape never changed. Now the events are coalesced into
-one wake-up (`REFRESH_DEBOUNCE_MS`), the rebuild is skipped entirely while the
-window is hidden, and the layout only re-runs when a **structure signature**
-(node names, node kinds, edges) differs from what is drawn — values moving is not
-a reason to move a node. An explicit **⟳ Refresh** always redraws, and *auto* can
-be switched off, in which case the status bar says when the picture is stale.
+`fit.`/`parameter.` events arrive once per fit iteration; the host coalesces
+them (`REFRESH_DEBOUNCE_MS`) and skips them while hidden. The model re-reads
+the fits but re-runs the layout only when the picture's structure signature
+(ids, kinds, labels, edges) changed -- values moving is not a reason to move a
+node. *Refresh* always lays out again; with *auto* off the status line says
+when the picture is stale.
 
 ### Traps this area has already sprung
 
-- **A link edge resolved by name** matched *every* same-named parameter in the
-  session, so three fits with a `tau1` turned one link into three arrows. Both
-  builders (`plugins/core/globalview/api/graph.py` and the server's
-  `server/services/graph.py`) now resolve the master by UUID, with the name only
-  as a fallback.
-- **`chinet.graph` edges are undirected** and come back renumbered low-to-high,
-  so a link's follower → master direction is destroyed by a round trip through
-  the graph container. The graph is used for *layout only*; the directed edges
-  are carried out of the builder separately.
-- **Node ids are not canvas indices.** They diverge the moment `include_fixed`
-  drops a node, and an un-reindexed edge then joins two unrelated parameters.
-- **A dock layout saved before the window is shown** records every split as
-  ~48/48 and, being persisted, beats the authored default on every later launch.
-  Saving waits for the first real show.
-- **Two graph builders exist** — the plugin's and the server's `graph.build`
-  service — and they have already drifted once. Fixes must land in both until
-  they are unified; see [known issues](/references/known-issues.md).
+- **A link edge resolved by name** matched every same-named parameter in the
+  session, so three fits with a `tau1` turned one link into three arrows. The
+  master is resolved by UUID, the name only for a master that has none.
+- **Link direction in the editor was reversed** until 2026-09-23. The editor
+  reports a drawn link as (dragged-from, dropped-on) and the old host made the
+  *dropped-on* parameter follow -- the opposite of the arrow drawn and of what
+  the guide said. Breaking an arrow passed its master, so the follower stayed
+  linked. Both pinned in `tests/test_model.py`.
+- **Node ids are not array indices.** Nodes are named `owner:<n>` and
+  `param:<uid>`; the old window's positional arrays put an edge on the wrong
+  parameter whenever *Include fixed* dropped a node.
+- **`chisurf.core.graph` edges are undirected**: the graph is used for layout
+  only, and edges carry their direction and kind separately.
+- **emtk's `set_cursor_pos` is in frame coordinates**, not window-relative: the
+  status line was drawn under the toolbar until the surface said so.
 
 ## Reading a `.pto` back
 

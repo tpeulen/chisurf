@@ -1,0 +1,348 @@
+{
+  "title": "Global View",
+  "description": "The parameter network of every open fit and registered parameter group, and the links that make a fit global.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Toolbar",
+      "n_col": 8,
+      "sections": [
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "label": "Load…",
+              "action": "load_network",
+              "description": "Load a parameter network from a GraphML (.gml) file and apply its values, fixed flags and links to the fits."
+            },
+            {
+              "label": "Save…",
+              "action": "save_network",
+              "description": "Save the current parameter network to a GraphML (.gml) file."
+            },
+            {
+              "label": "Refresh",
+              "action": "refresh",
+              "description": "Rebuild the network from the current fits and links, and lay it out again. The button to reach for when the picture disagrees with the fits."
+            }
+          ]
+        },
+        {
+          "type": "toggle",
+          "attr": "auto_refresh",
+          "label": "auto",
+          "call": "auto_refresh_changed",
+          "description": "Redraw when a fit or a link changes. Changes are coalesced and the layout only re-runs when the network's shape changed, so a running fit costs nothing here. Untick to refresh by hand."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "label": "Link",
+              "action": "link_selected",
+              "description": "Link the two selected parameters: the first one selected is the master, the second follows it."
+            },
+            {
+              "label": "Unlink",
+              "action": "unlink_selected",
+              "description": "Remove the links of the selected parameters (of every parameter, with 'all')."
+            }
+          ]
+        },
+        {
+          "type": "toggle",
+          "attr": "unlink_all",
+          "label": "all",
+          "description": "Unlink applies to EVERY parameter in every fit, not just the selection."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "label": "Fit view",
+              "action": "fit_view",
+              "description": "Fit the graph back into the panel: undoes zoom, pan and any nodes you dragged."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "label": "Guide",
+              "action": "show_guide",
+              "description": "Walk through the window, one control at a time."
+            },
+            {
+              "label": "?",
+              "action": "show_help",
+              "description": "What the Global View shows and how links work."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "View",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "representation",
+          "label": "Show",
+          "options": [
+            "network",
+            "factor graph"
+          ],
+          "labels": [
+            "Parameter network",
+            "Factor graph"
+          ],
+          "call": "relayout",
+          "description": "Parameter network: every fit with the parameters it owns, and an arrow from each linked parameter to the one it follows. Factor graph: each dataset's likelihood (a square) over the variables it depends on, links resolved -- a parameter shared by two datasets is one variable joined to both, drawn gold, and a follower hangs off its master."
+        },
+        {
+          "type": "choice",
+          "attr": "graph_layout",
+          "label": "Layout",
+          "options": [
+            "kamada_kawai",
+            "spring",
+            "shell",
+            "arf",
+            "spectral"
+          ],
+          "call": "relayout",
+          "description": "Algorithm that places the nodes: kamada_kawai and spring keep linked parameters near each other, shell and spectral expose structure."
+        },
+        {
+          "type": "value",
+          "attr": "node_size",
+          "label": "Node size",
+          "kind": "float",
+          "minimum": 4,
+          "maximum": 40,
+          "step": 1,
+          "decimals": 0,
+          "style": "spin",
+          "call": "apply_node_size",
+          "description": "Radius of a parameter node, in pixels; fits and factors are drawn larger."
+        },
+        {
+          "type": "value",
+          "attr": "graph_scale",
+          "label": "Spread",
+          "kind": "float",
+          "minimum": 0.2,
+          "maximum": 8,
+          "step": 0.1,
+          "decimals": 2,
+          "style": "spin",
+          "call": "relayout",
+          "description": "Spread the network beyond the panel (pan and zoom to read it): how a crowded graph is pulled apart without changing its layout."
+        },
+        {
+          "type": "toggle",
+          "attr": "connect_owners",
+          "label": "Connect base",
+          "call": "relayout",
+          "description": "Draw a line between every pair of owners -- every fit AND every registered parameter group (ndX, a calculator) -- so a plugin's working model sits with the fits it can be linked to. Visual only: it links nothing."
+        },
+        {
+          "type": "toggle",
+          "attr": "include_fixed",
+          "label": "Include fixed",
+          "call": "relayout",
+          "description": "Show parameters held fixed; they cannot be fitted but can still be linked. In the factor graph they are evidence: a grey node on the likelihood that reads them."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Selection",
+      "sections": [
+        {
+          "type": "info",
+          "source": "selection_hint"
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "options": {
+            "source": "selection_records",
+            "row_key": "uid",
+            "editable": true,
+            "edited_call": "edit_parameter",
+            "editable_call": "may_edit_parameter",
+            "muted_key": "muted",
+            "tooltip_key": "tip",
+            "expand": true,
+            "height": 160,
+            "columns": [
+              {
+                "key": "owner",
+                "title": "Owner",
+                "editable": false
+              },
+              {
+                "key": "parameter",
+                "title": "Parameter",
+                "editable": false
+              },
+              {
+                "key": "role",
+                "title": "Role",
+                "editable": false,
+                "tooltip": "master: the first selected, which Link makes the second follow; follower: its value is another parameter's; fixed: held, not fitted; free: fitted."
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "format": "%.6g"
+              },
+              {
+                "key": "fixed",
+                "title": "Fixed"
+              },
+              {
+                "key": "error",
+                "title": "Error",
+                "editable": false,
+                "format": "%.4g"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Parameters",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "options": {
+            "source": "parameter_records",
+            "row_key": "uid",
+            "editable": true,
+            "edited_call": "edit_parameter",
+            "editable_call": "may_edit_parameter",
+            "selected_call": "select_parameter",
+            "muted_key": "muted",
+            "tooltip_key": "tip",
+            "colour_source": "value_shading",
+            "filter": true,
+            "column_picker": true,
+            "status": true,
+            "expand": true,
+            "reserve": 34,
+            "height": 240,
+            "min_column_width": 44,
+            "columns": [
+              {
+                "key": "row",
+                "title": "Row",
+                "editable": false,
+                "width": 44,
+                "shade": false
+              },
+              {
+                "key": "owner",
+                "title": "Owner",
+                "editable": false,
+                "width": 150
+              },
+              {
+                "key": "local",
+                "title": "Local",
+                "editable": false,
+                "width": 52,
+                "tooltip": "The local fit of a fit group this parameter belongs to."
+              },
+              {
+                "key": "parameter",
+                "title": "Parameter",
+                "editable": false
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "format": "%.6g"
+              },
+              {
+                "key": "fixed",
+                "title": "Fixed",
+                "width": 52,
+                "shade": false
+              },
+              {
+                "key": "lo",
+                "title": "Lo",
+                "format": "%.6g",
+                "shade": false
+              },
+              {
+                "key": "hi",
+                "title": "Hi",
+                "format": "%.6g",
+                "shade": false
+              },
+              {
+                "key": "bounded",
+                "title": "Bounds",
+                "width": 60,
+                "shade": false
+              },
+              {
+                "key": "error",
+                "title": "Error",
+                "editable": false,
+                "format": "%.4g"
+              },
+              {
+                "key": "link",
+                "title": "Link row",
+                "width": 70,
+                "tooltip": "Type the Row number of the parameter this one should follow; clear it to unlink.",
+                "shade": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "panel",
+          "n_col": 3,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "shade_values",
+              "label": "Shade values",
+              "description": "Colour Value and Error cells by their magnitude, each column over its own range."
+            },
+            {
+              "type": "button_row",
+              "weight": 0,
+              "buttons": [
+                {
+                  "label": "Reload",
+                  "action": "reload_parameters",
+                  "description": "Reload parameters from all fits and plugins."
+                },
+                {
+                  "label": "Export…",
+                  "action": "export_parameters",
+                  "description": "Write the table, as shown, to a CSV file."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

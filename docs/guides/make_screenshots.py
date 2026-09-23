@@ -1123,14 +1123,17 @@ def _grab_global_view():
     fits = [make("Donor-only", 4.0), make("FRET-low", 2.4, 2), make("FRET-high", 1.3)]
     install_fitting_client(None)
     chisurf.fits = fits
-    source = fits[0].model.parameters_all_dict["tL1"]
+    source = fits[0].model.parameters_all_dict["t0"]
     for fit in fits[1:]:
-        fit.model.parameters_all_dict["tL1"].link = source
+        fit.model.parameters_all_dict["t0"].link = source
 
     tool = GraphWizard(fit_list=fits)
     tool.resize(1150, 760)
-    tool.recompute_graph()
+    tool.model.rebuild(force=True)
     _grab(tool, "globalview_network.png")
+    tool.model.representation = "factor graph"
+    tool.model.relayout()
+    _grab(tool, "globalview_factor_graph.png")
 
 
 def _grab_ebfret_tool():

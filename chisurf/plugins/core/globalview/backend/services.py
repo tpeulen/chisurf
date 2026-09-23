@@ -70,7 +70,7 @@ def graph_build_handler(
     state: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Build a parameter relationship graph."""
+    """Build the parameter network of the selected fits."""
     try:
         fits = _select_fits(fit_indices, fit_uids, state=state)
         result = build_graph(
@@ -78,25 +78,7 @@ def graph_build_handler(
             include_fixed=include_fixed,
             connect_owners=connect_owners,
         )
-        return {
-            "ok": True,
-            "graph": {
-                "nodes": [
-                    {
-                        "node_idx": n.node_idx,
-                        "node_type": n.node_type,
-                        "name": n.name,
-                        "fit_idx": n.fit_idx,
-                        "value": n.value,
-                        "fixed": n.fixed,
-                        "is_linked": n.is_linked,
-                        "link_name": n.link_name,
-                    }
-                    for n in result.nodes
-                ],
-                "edges": [{"source": e.source, "target": e.target} for e in result.edges],
-            },
-        }
+        return {"ok": True, "graph": result.to_dict()}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -108,35 +90,33 @@ def parameters_list_handler(
     state: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """List all parameters across fits."""
+    """List every parameter of the selected fits, fit groups by their local fits."""
+    from chisurf.core.fitting.parameter_network import parameter_rows, session_owners
+
     try:
         fits = _select_fits(fit_indices, fit_uids, state=state)
         params_list = []
-        for fi, fit in enumerate(fits):
+        for row in parameter_rows(session_owners(fits)):
+            p = row.param
             try:
-                parameters = list(getattr(fit.model, "parameters_all", []) or [])
+                fixed = bool(getattr(p, "fixed", False))
             except Exception:
-                parameters = []
-            for p in parameters:
-                try:
-                    fixed = bool(getattr(p, "fixed", False))
-                except Exception:
-                    fixed = False
-                if fixed and not include_fixed:
-                    continue
-                params_list.append(
-                    {
-                        "name": str(getattr(p, "name", "")),
-                        "value": _safe_float(getattr(p, "value", None)),
-                        "fixed": fixed,
-                        "fit_idx": fi,
-                        "fit_name": str(getattr(fit, "name", "")),
-                        "is_linked": bool(getattr(p, "is_linked", False)),
-                        "link_name": str(getattr(getattr(p, "link", None), "name", "") or ""),
-                        "bounds": _safe_bounds(getattr(p, "bounds", None)),
-                        "bounds_on": bool(getattr(p, "bounds_on", False)),
-                    }
-                )
+                fixed = False
+            if fixed and not include_fixed:
+                continue
+            params_list.append(
+                {
+                    "name": str(getattr(p, "name", "")),
+                    "value": _safe_float(getattr(p, "value", None)),
+                    "fixed": fixed,
+                    "fit_idx": row.fit_index,
+                    "fit_name": row.owner.title if row.owner is not None else row.owner_label,
+                    "is_linked": bool(getattr(p, "is_linked", False)),
+                    "link_name": str(getattr(getattr(p, "link", None), "name", "") or ""),
+                    "bounds": _safe_bounds(getattr(p, "bounds", None)),
+                    "bounds_on": bool(getattr(p, "bounds_on", False)),
+                }
+            )
         return {"ok": True, "parameters": params_list}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}

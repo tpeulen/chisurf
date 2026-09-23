@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **Global View is one emtk surface, and every parameter-network builder is one module.**
+  - The window is `GlobalViewSurface` (emtk `ImApp`: toolbar form, `DockManager` with Network/Parameters/Selection/View, status line) over a Qt-free `GlobalViewModel`; every control is a section of `gui/globalview.view.json`, the tables `data_table` sections. `GraphWizard` only hosts. Removed: `network_widget.py`, `adapter.py`, `parameters_model.py`, the Qt panels.
+  - New **factor graph** representation: likelihood squares over link-resolved variables, shared variables gold, status naming shared variables and independent blocks.
+  - `chisurf/core/fitting/parameter_network.py` is the one enumeration: rows, network (explicit edge kinds), session factor graph. The server `graph.build` service, the plugin API and backend, and the Qt `global_parameter_table` read it (its `cs.fits` read is gone; allowance removed). Known issue "two graph builders" resolved.
+  - Fixed: a link drawn A→B made B follow A; breaking an arrow unlinked the master, not the follower. Guided tour gains a host hook (`tour_target`, `tour_used`) for emtk surfaces. emtk gained a square node mark, table cell rules/muted rows/column picker/status/shade opt-out, and full-button forwarding in the Qt host.
+  - Before/after parity pair and inventories in `plugins/core/globalview/tests/renders/`; docs guide 60 updated, new factor-graph figure; `make_screenshots.py` used a renamed parameter (`tL1` → `t0`).
+
 * **Global fits run on their native graph, and the factor graph is derived from it.**
   - `_masked` counted every fit's default all-ones mask as a mask, so every `GlobalFitModel` was refused `_group_objective` and ran on the Python director path. An all-ones mask is now no mask.
   - The native builders record `_parameter_ports`, and held parameters' ports are marked fixed. `build_factor_graph` takes its scopes from `IMP.bff.get_fit_factor_graph` and keeps the whole derived graph (links, evidence) as `FactorGraph.fit_graph`.
