@@ -214,7 +214,10 @@
                 "editable": false,
                 "format": "%.4g"
               }
-            ]
+            ],
+            "fit_columns": true,
+            "min_column_width": 36,
+            "columns_source": "selection_columns"
           }
         }
       ]
@@ -242,26 +245,23 @@
             "expand": true,
             "reserve": 34,
             "height": 240,
-            "min_column_width": 44,
+            "min_column_width": 36,
             "columns": [
               {
                 "key": "row",
                 "title": "Row",
                 "editable": false,
-                "width": 44,
                 "shade": false
               },
               {
                 "key": "owner",
                 "title": "Owner",
-                "editable": false,
-                "width": 150
+                "editable": false
               },
               {
                 "key": "local",
                 "title": "Local",
                 "editable": false,
-                "width": 52,
                 "tooltip": "The local fit of a fit group this parameter belongs to."
               },
               {
@@ -277,25 +277,23 @@
               {
                 "key": "fixed",
                 "title": "Fixed",
-                "width": 52,
                 "shade": false
               },
               {
                 "key": "lo",
                 "title": "Lo",
-                "format": "%.6g",
+                "format": "%.4g",
                 "shade": false
               },
               {
                 "key": "hi",
                 "title": "Hi",
-                "format": "%.6g",
+                "format": "%.4g",
                 "shade": false
               },
               {
                 "key": "bounded",
                 "title": "Bounds",
-                "width": 60,
                 "shade": false
               },
               {
@@ -307,11 +305,12 @@
               {
                 "key": "link",
                 "title": "Link row",
-                "width": 70,
                 "tooltip": "Type the Row number of the parameter this one should follow; clear it to unlink.",
                 "shade": false
               }
-            ]
+            ],
+            "fit_columns": true,
+            "columns_source": "parameter_columns"
           }
         },
         {

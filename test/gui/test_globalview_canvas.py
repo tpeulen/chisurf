@@ -82,7 +82,9 @@ def tool(qapp):
 
     models = [_group(["tau", "x0"]) for _ in range(2)]
     models[1].parameters_all_dict["tau"].link = models[0].parameters_all_dict["tau"]
-    window = GraphWizard(fit_list=[_Fit(m, f"Fit {i}") for i, m in enumerate(models)])
+    window = GraphWizard(
+        fit_list=[_Fit(m, f"Fit {i}") for i, m in enumerate(models)], remember_layout=False
+    )
     window.resize(1100, 760)
     window.show()
     qapp.processEvents()

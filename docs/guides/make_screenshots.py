@@ -1127,7 +1127,7 @@ def _grab_global_view():
     for fit in fits[1:]:
         fit.model.parameters_all_dict["t0"].link = source
 
-    tool = GraphWizard(fit_list=fits)
+    tool = GraphWizard(fit_list=fits, remember_layout=False)
     tool.resize(1150, 760)
     tool.model.rebuild(force=True)
     _grab(tool, "globalview_network.png")

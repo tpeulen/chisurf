@@ -52,6 +52,9 @@ class GraphWizard(ChisurfDockTool):
         The fits to show; the session's, re-read on every refresh, by default.
     connect_owners, include_fixed : bool
         Initial values of the two view settings.
+    remember_layout : bool
+        Keep the dock arrangement in the settings folder. Off for a test or a
+        screenshot, which must not rearrange the user's window.
 
     Attributes
     ----------
@@ -71,6 +74,7 @@ class GraphWizard(ChisurfDockTool):
         parent=None,
         connect_owners: bool = False,
         include_fixed: bool = False,
+        remember_layout: bool = True,
         *args,
         **kwargs,
     ):
@@ -92,13 +96,7 @@ class GraphWizard(ChisurfDockTool):
         self.model.open_guide = self.show_guide
         self.model.rebuild(force=True)
 
-        store = None
-        try:
-            from chisurf.core.settings import chisurf_settings_path
-
-            store = LayoutStore("globalview", path=chisurf_settings_path / "globalview_layout.json")
-        except Exception:  # noqa: BLE001 - no settings folder: the layout is not kept
-            store = None
+        store = self._layout_store(LayoutStore) if remember_layout else None
         self.surface = GlobalViewSurface(self.model, store=store, on_used=self.tour_used.emit)
         self.host = ControlHost(self.surface, background=(30, 32, 38))
         self.host.setObjectName("globalview_surface")
@@ -113,6 +111,17 @@ class GraphWizard(ChisurfDockTool):
 
         self.restore_window_geometry()
         self._connect_events()
+
+    @staticmethod
+    def _layout_store(layout_store_class):
+        """Where the dock arrangement is kept: the ChiSurf settings folder."""
+        try:
+            from chisurf.core.settings import chisurf_settings_path
+        except Exception:  # noqa: BLE001 - no settings folder: the layout is not kept
+            return None
+        return layout_store_class(
+            "globalview", path=chisurf_settings_path / "globalview_layout.json"
+        )
 
     # -- what the model asks of its host -----------------------------------
 

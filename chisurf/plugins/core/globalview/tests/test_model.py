@@ -285,3 +285,16 @@ def test_the_surface_draws_every_declared_control_with_no_display():
         "export_parameters",
     ):
         assert surface.rect_of(name) is not None, f"{name} was not drawn"
+
+
+def test_columns_that_say_nothing_are_not_shown():
+    """One fit: no Owner column; no fit groups: no Local; nothing fitted: no Error."""
+
+    def shown(model):
+        return [c["key"] for c in model.parameter_columns() if c.get("visible", True)]
+
+    model, _fits, _ = _session(1)
+    assert {"owner", "local", "error"}.isdisjoint(shown(model))
+    assert {"row", "parameter", "value", "fixed", "lo", "hi", "link"} <= set(shown(model))
+    model, _fits, _ = _session(3)
+    assert "owner" in shown(model)

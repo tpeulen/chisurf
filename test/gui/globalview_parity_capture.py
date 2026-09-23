@@ -34,7 +34,7 @@ for f in fits[1:]:
 fits[2].model.parameters_all_dict["c"].fixed = True
 
 from chisurf.plugins.core.globalview.gui.tool import GraphWizard
-w = GraphWizard(fit_list=fits)
+w = GraphWizard(fit_list=fits, remember_layout=False)
 w.resize(1100, 760); w.show()
 def pump(n=6):
     for _ in range(n):

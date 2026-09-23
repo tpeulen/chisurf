@@ -190,7 +190,7 @@ class GlobalViewModel:
         self.include_fixed = False
         self.auto_refresh = True
         self.unlink_all = False
-        self.shade_values = True
+        self.shade_values = False
 
         # -- host hooks --
         self.ask_open_path: typing.Optional[typing.Callable] = None
@@ -417,6 +417,63 @@ class GlobalViewModel:
             record["role"] = role
             out.append(record)
         return out
+
+    def _declared_columns(self, source: str) -> list:
+        """The columns ``globalview.view.json`` declares for the table over *source*."""
+        cache = getattr(self, "_columns_cache", None)
+        if cache is None:
+            import json
+            import pathlib
+
+            spec = json.loads(pathlib.Path(__file__).with_name("globalview.view.json").read_text())
+            cache = {}
+
+            def walk(node):
+                if isinstance(node, dict):
+                    options = node.get("options")
+                    if node.get("key") == "data_table" and isinstance(options, dict):
+                        cache[options.get("source")] = options.get("columns") or []
+                    for value in node.values():
+                        walk(value)
+                elif isinstance(node, list):
+                    for value in node:
+                        walk(value)
+
+            walk(spec)
+            self._columns_cache = cache
+        return cache.get(source, [])
+
+    def _shown_columns(self, source: str, records: list) -> list:
+        """The declared columns, less the two that say nothing for these fits.
+
+        *Owner* is one repeated name while there is one fit; *Local* names a
+        fit group's curve and is ``[0]`` on every row unless a group has
+        several; *Error* is empty until a fit has estimated one.
+        Shown, they cost two columns of a panel that cannot spare one, so they
+        appear when they carry something (and the picker can still show them).
+        """
+        locals_ = {r["local"] for r in records if r.get("local")}
+        owners = {r["owner"] for r in records}
+        errors = any(r.get("error") is not None for r in records)
+        shown = []
+        for column in self._declared_columns(source):
+            column = dict(column)
+            if column["key"] == "local" and len(locals_) < 2:
+                column["visible"] = False
+            if column["key"] == "owner" and len(owners) < 2:
+                column["visible"] = False
+            if column["key"] == "error" and not errors:
+                column["visible"] = False
+            shown.append(column)
+        return shown
+
+    def parameter_columns(self) -> list:
+        """The Parameters table's columns, as :meth:`_shown_columns` decides."""
+        return self._shown_columns("parameter_records", self._records)
+
+    def selection_columns(self) -> list:
+        """The Selection table's columns, as :meth:`_shown_columns` decides."""
+        return self._shown_columns("selection_records", self._records)
 
     def selection_hint(self) -> str:
         """What to do in the Selection panel, until two parameters are selected."""
